@@ -9,3 +9,8 @@ add_executable(run_passive run_passive.cc)
 target_link_libraries(run_passive 
   drake::drake drake::drake-common-text-logging-gflags gflags_shared
 )
+
+add_executable(test_contact test_contact.cc)
+target_link_libraries(test_contact 
+  drake::drake drake::drake-common-text-logging-gflags gflags_shared
+)

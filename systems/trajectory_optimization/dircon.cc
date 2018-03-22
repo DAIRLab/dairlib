@@ -1,5 +1,5 @@
-#include "drake/systems/trajectory_optimization/dircon.h"
-#include "drake/systems/trajectory_optimization/dircon_options.h"
+#include "dircon.h"
+#include "dircon_options.h"
 
 #include <cstddef>
 #include <stdexcept>
@@ -19,43 +19,18 @@ using solvers::Constraint;
 using solvers::MathematicalProgram;
 using solvers::VectorXDecisionVariable;
 
-DirectCollocationConstraint::DirectCollocationConstraint(
-    const System<double>& system, const Context<double>& context)
-    : DirectCollocationConstraint(
-          system, context, context.get_continuous_state().size(),
-          (context.get_num_input_ports() > 0 ? system.get_input_port(0).size()
-                                             : 0)) {}
 
-DirectCollocationConstraint::DirectCollocationConstraint(
-    const System<double>& system, const Context<double>& context,
-    int num_states, int num_inputs)
-    : Constraint(num_states, 1 + (2 * num_states) + (2 * num_inputs),
+DirconDynamicConstraint::DirconDynamicConstraint(RigidBodyTree<double> robot, int num_states, 
+                                          int num_inputs, int num_kinematic_constraints)
+    : Constraint(num_states, 1 + (2 * num_states) + (2 * num_inputs) + (2 * num_kinematic_constraints),
                  Eigen::VectorXd::Zero(num_states),
-                 Eigen::VectorXd::Zero(num_states)),
-      system_(System<double>::ToAutoDiffXd(system)),
-      context_(system_->CreateDefaultContext()),
-      // Don't allocate the input port until we're past the point
-      // where we might throw.
-      derivatives_(system_->AllocateTimeDerivatives()),
-      num_states_(num_states),
-      num_inputs_(num_inputs) {
-  DRAKE_THROW_UNLESS(system_->get_num_input_ports() <= 1);
-  DRAKE_THROW_UNLESS(context.has_only_continuous_state());
+                 Eigen::VectorXd::Zero(num_states)) {
 
-  // TODO(russt): Add support for time-varying dynamics OR check for
-  // time-invariance.
-
-  context_->SetTimeStateAndParametersFrom(context);
-
-  if (context.get_num_input_ports() > 0) {
-    // Allocate the input port and keep an alias around.
-    input_port_value_ = &context_->FixInputPort(
-        0, system_->AllocateInputVector(system_->get_input_port(0)));
-  }
 }
 
-void DirconConstraint::constrained_dynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, const AutoDiffVecXd& forces, 
+void DirconDynamicConstraint::constrained_dynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, const AutoDiffVecXd& forces, 
                                             AutoDiffVecXd* xdot) const {  
+/*
 //mposa: this function has the right structure, but none of the lines will actually compile yet...(todo!)
   VectorX<T> q = x.topRows(nq);
   VectorX<T> v = x.bottomRows(nv);
@@ -77,12 +52,18 @@ void DirconConstraint::constrained_dynamics(const AutoDiffVecXd& state, const Au
   VectorX<T> vdot = M.llt().solve(right_hand_side);
 
   VectorX<T> xdot(get_num_states());
-  xdot << tree_->transformVelocityToQDot(kinsol, v), vdot;
+  xdot << tree_->transformVelocityToQDot(kinsol, v), vdot;*/
+}
+
+void DirconDynamicConstraint::collocation_constrained_dynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, 
+        const AutoDiffVecXd& forces, const AutoDiffVecXd& position_slack, AutoDiffVecXd* xdot) const {
+  constrained_dynamics(state,input,forces,xdot);
+  //xdot += J*position_slack;
 }
 
 
 //mposa: what is this function actually doing?
-void DirconConstraint::DoEval(
+void DirconDynamicConstraint::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
     Eigen::VectorXd& y) const {
   AutoDiffVecXd y_t;
@@ -93,7 +74,7 @@ void DirconConstraint::DoEval(
 // The format of the input to the eval() function is the
 // tuple { timestep, state 0, state 1, input 0, input 1, force 0, force 1},
 // which has a total length of 1 + 2*num_states + 2*num_inputs + dim*num_constraints.
-void DirectCollocationConstraint::DoEval(
+void DirconDynamicConstraint::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
   DRAKE_ASSERT(x.size() == 1 + (2 * num_states_) + (2 * num_inputs_));
 
@@ -106,16 +87,20 @@ void DirectCollocationConstraint::DoEval(
   const auto x1 = x.segment(1 + num_states_, num_states_);
   const auto u0 = x.segment(1 + (2 * num_states_), num_inputs_);
   const auto u1 = x.segment(1 + (2 * num_states_) + num_inputs_, num_inputs_);
+  const auto l0 = x.segment(1 + (2 * num_states_ + num_inputs_), num_kinematic_constraints_);
+  const auto l1 = x.segment(1 + (2 * num_states_ + num_inputs_) + num_kinematic_constraints_, num_kinematic_constraints_);
+  const auto lc = x.segment(1 + (2 * num_states_ + num_inputs_) + 2*num_kinematic_constraints_, num_kinematic_constraints_);
+  const auto vc = x.segment(1 + (2 * num_states_ + num_inputs_) + 3*num_kinematic_constraints_, num_kinematic_constraints_);
 
   // TODO(sam.creasey): Use caching (when it arrives) to avoid recomputing
   // the dynamics.  Currently the dynamics evaluated here as {u1,x1} are
   // recomputed in the next constraint as {u0,x0}.
   AutoDiffVecXd xdot0;
-  dynamics(x0, u0, &xdot0);
+  constrained_dynamics(x0, u0, l0, &xdot0);
   const Eigen::MatrixXd dxdot0 = math::autoDiffToGradientMatrix(xdot0);
 
   AutoDiffVecXd xdot1;
-  dynamics(x1, u1, &xdot1);
+  constrained_dynamics(x1, u1, l1, &xdot1);
   const Eigen::MatrixXd dxdot1 = math::autoDiffToGradientMatrix(xdot1);
 
   // Cubic interpolation to get xcol and xdotcol.
@@ -123,17 +108,21 @@ void DirectCollocationConstraint::DoEval(
   const AutoDiffVecXd xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
 
   AutoDiffVecXd g;
-  dynamics(xcol, 0.5 * (u0 + u1), &g);
+  collocation_constrained_dynamics(xcol, 0.5 * (u0 + u1), lc, vc, &g);
   y = xdotcol - g;
 }
 
-Binding<Constraint> AddDirectCollocationConstraint(
-    std::shared_ptr<DirectCollocationConstraint> constraint,
+Binding<Constraint> DirconDynamicConstraint(
+    std::shared_ptr<DirconDynamicConstraint> constraint,
     const Eigen::Ref<const VectorXDecisionVariable>& timestep,
     const Eigen::Ref<const VectorXDecisionVariable>& state,
     const Eigen::Ref<const VectorXDecisionVariable>& next_state,
     const Eigen::Ref<const VectorXDecisionVariable>& input,
     const Eigen::Ref<const VectorXDecisionVariable>& next_input,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& force,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_force,    
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_force,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_position_slack,
     MathematicalProgram* prog) {
   DRAKE_DEMAND(timestep.size() == 1);
   DRAKE_DEMAND(state.size() == constraint->num_states());
@@ -141,8 +130,11 @@ Binding<Constraint> AddDirectCollocationConstraint(
   DRAKE_DEMAND(input.size() == constraint->num_inputs());
   DRAKE_DEMAND(next_input.size() == constraint->num_inputs());
   return prog->AddConstraint(constraint,
-                             {timestep, state, next_state, input, next_input});
+                             {timestep, state, next_state, input, next_input, force, 
+                              next_force, collocation_force, collocation_position_slack});
 }
+
+/*
 
 DirectCollocation::DirectCollocation(const System<double>* system,
                                      const Context<double>& context,
@@ -229,7 +221,7 @@ DirectCollocation::ReconstructStateTrajectory()
     derivatives[i] = continuous_state_->CopyToVector();
   }
   return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);
-}
+}*/
 
 }  // namespace trajectory_optimization
 }  // namespace systems

@@ -21,7 +21,8 @@ class DirconKinematicConstraint {
 
   protected:
     RigidBodyTree<double>* tree_;
-    //std::vector<solvers::Constraint> force_constraints_; //things like friction cone constraints
+    //things like friction cone constraints
+    std::vector<std::shared_ptr<solvers::Constraint>> force_constraints_; 
     VectorX<T> c_;
     VectorX<T> cdot_;
     MatrixX<T> J_;

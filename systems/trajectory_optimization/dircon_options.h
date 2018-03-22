@@ -1,9 +1,13 @@
 #pragma once
 
+#include "dircon_kinematic_constraint.h"
+#include "drake/math/autodiff.h"
+
+namespace drake{
 class DirconOptions {
   private:
     int n_constraints_;
-    std::vector<int> active_inds_;
+    std::vector<DirconKinematicConstraint<AutoDiffXd>*> kinematic_constraints_;
     std::vector<bool> is_constraints_relative_;
     bool constrain_start_;
     bool constrain_end_;
@@ -12,7 +16,7 @@ class DirconOptions {
     double accel_cost_;  
 
   public:
-    DirconOptions(std::vector<int> active_inds);
+    DirconOptions(std::vector<DirconKinematicConstraint<AutoDiffXd>*> kinematic_constraints);
     ~DirconOptions(void);
 
     void setAllConstraintsRelative(bool relative);
@@ -24,7 +28,7 @@ class DirconOptions {
     void setAccelCost(double accel_cost);
 
     int getNumConstraints();
-    int getSingleActiveInd(int index);
+    DirconKinematicConstraint<AutoDiffXd>* getSingleConstraint(int index);
     bool getSingleConstraintRelative(int index);
     bool getConstrainStart();
     bool getConstrainEnd();
@@ -32,3 +36,4 @@ class DirconOptions {
     bool getConstrainPhiEnd();
     double getAccelCost();      
 };
+}

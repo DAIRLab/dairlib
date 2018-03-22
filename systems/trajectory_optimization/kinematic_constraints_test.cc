@@ -39,7 +39,7 @@ int do_main(int argc, char* argv[]) {
   int bodyIdx = 3;
   Vector3d pt;
   pt << 0,0,-1;
-  bool isXZ;
+  bool isXZ = true;
   DirconPositionConstraint<AutoDiffXd> constraintd = DirconPositionConstraint<AutoDiffXd>(&tree,bodyIdx,pt,isXZ);
 
   int n = 8;

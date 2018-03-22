@@ -22,5 +22,6 @@ class DirconPositionConstraint : public DirconKinematicConstraint<T> {
     int bodyIdx_;
     Vector3d pt_;
     bool isXZ_;
+    Eigen::Matrix<double,2,3> TXZ_;
 };
 }

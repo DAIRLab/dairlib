@@ -2,6 +2,7 @@
 
 #include <memory>
 #include "systems/trajectory_optimization/dircon_options.h"
+#include "systems/trajectory_optimization/dircon_kinematic_constraint.h"
 #include "drake/common/drake_copyable.h"
 #include "drake/solvers/constraint.h"
 #include "drake/systems/framework/context.h"
@@ -38,7 +39,8 @@ class Dircon : public MultipleShooting {
   /// @param num_time_samples The number of knot points in the trajectory.
   /// @param minimum_timestep Minimum spacing between sample times.
   /// @param maximum_timestep Maximum spacing between sample times.
-  Dircon(RigidBodyTree robot, int num_time_samples, double min_duration, double max_duration, DirconOptions options);
+  Dircon(RigidBodyTree robot, int num_time_samples, double min_duration, double max_duration, 
+         std::vector<DirconKinematicConstraint*> constraints, DirconOptions options);
 
   // NOTE: The fixed timestep constructor, which would avoid adding h as
   // decision variables, has been removed since it complicates the API and code.

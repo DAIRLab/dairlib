@@ -1,11 +1,12 @@
-#include  "systems/trajectory_optimization/dircon_options.h"
+#include "dircon_options.h"
 
 using std::vector;
 
-DirconOptions::DirconOptions(vector<int> active_inds) {
-  n_constraints_ = active_inds.size();
-  active_inds_ = active_inds;
-  is_constraints_relative_ = vector<bool>(n);
+namespace drake{
+DirconOptions::DirconOptions(vector<DirconKinematicConstraint<AutoDiffXd>*> kinematic_constraints_) {
+  n_constraints_ = kinematic_constraints_.size();
+  kinematic_constraints_ = kinematic_constraints_;
+  is_constraints_relative_ = vector<bool>(n_constraints_);
   for (int i=0; i < n_constraints_; i++) {
     is_constraints_relative_[i] = false;
   }
@@ -16,7 +17,7 @@ DirconOptions::DirconOptions(vector<int> active_inds) {
   accel_cost_ = 0;
 }
 
-void DirconOptions::setAllConstraintRelative(bool relative) {
+void DirconOptions::setAllConstraintsRelative(bool relative) {
   for (int i=0; i < n_constraints_; i++) {
     is_constraints_relative_[i] = relative;
   }
@@ -50,8 +51,8 @@ int DirconOptions::getNumConstraints() {
   return n_constraints_;
 }
 
-int DirconOptions::getSingleActiveInd(int index) {
-  return active_inds_[index];
+DirconKinematicConstraint<AutoDiffXd>* DirconOptions::getSingleConstraint(int index) {
+  return kinematic_constraints_[index];
 }
 
 bool DirconOptions::getSingleConstraintRelative(int index) {
@@ -76,4 +77,5 @@ bool DirconOptions::getConstrainPhiEnd() {
 }
 double DirconOptions::getAccelCost() {
   return accel_cost_;
+}
 }

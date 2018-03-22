@@ -1,4 +1,5 @@
-#include "systems/trajectory_optimization/dircon.h"
+#include "drake/systems/trajectory_optimization/dircon.h"
+#include "drake/systems/trajectory_optimization/dircon_options.h"
 
 #include <cstddef>
 #include <stdexcept>
@@ -53,18 +54,35 @@ DirectCollocationConstraint::DirectCollocationConstraint(
   }
 }
 
-void DirectCollocationConstraint::dynamics(const AutoDiffVecXd& state,
-                                           const AutoDiffVecXd& input,
-                                           AutoDiffVecXd* xdot) const {
-  if (context_->get_num_input_ports() > 0) {
-    input_port_value_->GetMutableVectorData<AutoDiffXd>()->SetFromVector(input);
+void DirconConstraint::constrained_dynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, const AutoDiffVecXd& forces, 
+                                            AutoDiffVecXd* xdot) const {  
+//mposa: this function has the right structure, but none of the lines will actually compile yet...(todo!)
+  VectorX<T> q = x.topRows(nq);
+  VectorX<T> v = x.bottomRows(nv);
+
+  auto kinsol = tree_->doKinematics(q, v);
+
+  const MatrixX<T> M = tree_->massMatrix(kinsol);
+
+  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
+  // right_hand_side is the right hand side of the system's equations:
+  // M*vdot -J^T*f = right_hand_side.
+  VectorX<T> right_hand_side = -tree_->dynamicsBiasTerm(kinsol, no_external_wrenches) tree_->B * u;
+
+  if (num_constraints > 0) {
+    auto J = tree_->positionConstraintsJacobian(kinsol, false);
+    right_hand_side += J.transpose()*forces;
   }
-  context_->get_mutable_continuous_state().SetFromVector(state);
-  system_->CalcTimeDerivatives(*context_, derivatives_.get());
-  *xdot = derivatives_->CopyToVector();
+ 
+  VectorX<T> vdot = M.llt().solve(right_hand_side);
+
+  VectorX<T> xdot(get_num_states());
+  xdot << tree_->transformVelocityToQDot(kinsol, v), vdot;
 }
 
-void DirectCollocationConstraint::DoEval(
+
+//mposa: what is this function actually doing?
+void DirconConstraint::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
     Eigen::VectorXd& y) const {
   AutoDiffVecXd y_t;
@@ -73,8 +91,8 @@ void DirectCollocationConstraint::DoEval(
 }
 
 // The format of the input to the eval() function is the
-// tuple { timestep, state 0, state 1, input 0, input 1 },
-// which has a total length of 1 + 2*num_states + 2*num_inputs.
+// tuple { timestep, state 0, state 1, input 0, input 1, force 0, force 1},
+// which has a total length of 1 + 2*num_states + 2*num_inputs + dim*num_constraints.
 void DirectCollocationConstraint::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
   DRAKE_ASSERT(x.size() == 1 + (2 * num_states_) + (2 * num_inputs_));

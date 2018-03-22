@@ -19,3 +19,4 @@ find_package(PythonInterp 2.7 EXACT MODULE REQUIRED)
 set(PYTHONPATH "${drake_PYTHON_DIRS}:$ENV{PYTHONPATH}")
 
 add_subdirectory(examples)
+add_subdirectory(systems)

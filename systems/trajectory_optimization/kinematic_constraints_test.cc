@@ -2,50 +2,93 @@
 
 #include <gflags/gflags.h>
 #include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/manipulation/util/sim_diagram_builder.h"
-#include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/kinematics_cache.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
-#include "drake/systems/controllers/controlUtil.h"
+#include "dircon_position_constraint.h"
 
+using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
-using Eigen::Vector3d;
 using Eigen::Matrix3Xd;
-//using Eigen::MatrixX;
 using std::cout;
 using std::endl;
 
+//template VectorXd RigidBodyTree<double>::transformPointsJacobianDotTimesV<double, Matrix3Xd>(KinematicsCache<double> const&, Eigen::MatrixBase<Matrix3Xd> const&, int, int);
+
 namespace drake{
 namespace goldilocks {
-namespace examples {
-namespace planarwalker {
+namespace examples {     
 namespace {
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  lcm::DrakeLcm lcm;
-  auto tree = std::make_unique<RigidBodyTree<double>>();
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "PlanarWalker.urdf",
-      multibody::joints::kFixed, tree.get());
-  multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);  
+  RigidBodyTree<double> tree;
+  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot.urdf", multibody::joints::kRollPitchYaw, &tree);
 
+  cout << tree.get_num_positions() << endl;
+  //return 0;
+  //cout << tree.getBodyOrFrameName(1) << endl;
+  //cout << tree.getBodyOrFrameName(2) << endl;
+  //cout << tree.getBodyOrFrameName(3) << endl;
+
+  int bodyIdx = 3;
+  Vector3d pt;
+  pt << 0,0,-1;
+  bool isXZ;
+  DirconPositionConstraint<AutoDiffXd> constraintd = DirconPositionConstraint<AutoDiffXd>(&tree,bodyIdx,pt,isXZ);
+
+  int n = 8;
+  VectorXd q(n,1);
+  VectorXd v(n,1);
+  q << 0,0,0,0,0,0,0,0;
+  v << 1,1,1,1,1,0,0,0;   
+  VectorXd x(2*n);
+  x << q, v;  
+
+  AutoDiffVecXd x_autodiff = math::initializeAutoDiff(x);  
+  AutoDiffVecXd q_autodiff = x_autodiff.head(n);
+  AutoDiffVecXd v_autodiff = x_autodiff.tail(n);
+
+  KinematicsCache<AutoDiffXd> cache = tree.doKinematics(q_autodiff,v_autodiff,true);
+  constraintd.updateConstraint(cache);
+
+  auto c = constraintd.getC();
+  auto cdot = constraintd.getCDot();
+  auto J = constraintd.getJ();
+  auto Jdotv = constraintd.getJdotv();
+  cout << "***********c ***********" << endl;
+  cout << c << endl;
+
+  cout << "***********J ***********" << endl;
+  cout << J << endl;  
+
+  cout << "***********cdot ***********" << endl;
+  cout << cdot << endl;  
+
+  cout << "***********Jdotv ***********" << endl;
+  cout << Jdotv << endl;  
+
+  cout << "***********dc ***********" << endl;
+  cout << math::autoDiffToGradientMatrix(c) << endl;
+
+  cout << "***********dcdot ***********" << endl;
+  cout << math::autoDiffToGradientMatrix(cdot) << endl;  
+
+  cout << "***********dJdotv ***********" << endl;
+  cout << math::autoDiffToGradientMatrix(Jdotv) << endl;    
+
+/*
   Matrix3Xd xA, xB, normal;
   std::vector<int> idxA;
   std::vector<int> idxB;
-  VectorXd q(6,1);
-  VectorXd v(6,1);
-  q << 0,1,1,0,0,0;
-  v << 1,1,1,1,1,0; 
   VectorXd phi;
   
-  KinematicsCache<double> cache = tree.get()->doKinematics(q,v,true);
+  
   tree.get()->collisionDetect(cache, phi, normal, xA, xB, idxA, idxB);  
   cout << "Phi: " << phi << endl << endl;
   cout << "normal: " << normal << endl << endl;
@@ -99,32 +142,7 @@ int do_main(int argc, char* argv[]) {
   //const Eigen::Map<Matrix3Xd> xB_col0(xB.data(), 3, 1);
   const Eigen::Map<const Eigen::Matrix3Xd> xB_col0(xB.data(), 3, 1);
   //auto JdotV = tree.get()->transformPointsJacobianDotTimesV(cache_autodiff, xB_col0, idxB.at(0), 0); 
-  const Eigen::Vector3d xBc0 = Eigen::Vector3d(xB.col(0));
-  //AutoDiffVecXd tmp = xB.col(0).template cast<AutoDiffXd>();
-  auto tmp = xBc0.template cast<AutoDiffXd>();
-
-  cout << "*********** xB0 ***********" << endl;
-  cout << xBc0 << endl;
-  cout << "*********** xB0 ***********" << endl;
-  cout << tmp << endl;
-  cout << "*********** xB0 derivatives ***********" << endl;
-  cout << math::autoDiffToGradientMatrix(tmp) << endl;
-
-  auto Jdiff = tree.get()->transformPointsJacobian(cache_autodiff, xBc0.template cast<AutoDiffXd>(), idxB.at(0), 0, true); 
-
-  cout << "*********** Jdiff  ***********" << endl;
-  cout << Jdiff << endl;
-
-  auto phidot = Jdiff*v_autodiff;
-
-  cout << "*********** phidot  ***********" << endl;
-  cout << phidot << endl;
-
-    cout << "*********** phidot derivatives ***********" << endl;
-  cout <<  math::autoDiffToGradientMatrix(phidot) << endl;
-
-  //AutoDiffVecXd JdotV = tree.get()->transformPointsJacobianDotTimesV(cache_autodiff, xB_col0, idxB.at(0), 0); 
-  AutoDiffVecXd JdotV = tree.get()->transformPointsJacobianDotTimesV(cache_autodiff, xBc0.template cast<AutoDiffXd>(), idxB.at(0), 0); 
+  AutoDiffVecXd JdotV = tree.get()->transformPointsJacobianDotTimesV(cache_autodiff, xB_col0, idxB.at(0), 0); 
 
   cout << "*********** JdotV ***********" << endl;
   cout << JdotV << endl;
@@ -155,17 +173,17 @@ int do_main(int argc, char* argv[]) {
   cout << "*********** d_again ***********" << endl;
   cout << d_world[1] << endl;  
 
-  // see https://github.com/RobotLocomotion/drake/blob/master/multibody/rigid_body_constraint.cc#L1930~L1959
+  // see https://github.com/RobotLocomotdion/drake/blob/master/multibody/rigid_body_constraint.cc#L1930~L1959
   // for how to generat ejacobian
+  */
   return 0;
 }
 
 }  // namespace
-}  // namespace planarwalker
 }  // namespace examples
 }  // namespace goldilocks
 }  // namespace drake
 
 int main(int argc, char* argv[]) {
-  return drake::goldilocks::examples::planarwalker::do_main(argc, argv);
+  return drake::goldilocks::examples::do_main(argc, argv);
 }

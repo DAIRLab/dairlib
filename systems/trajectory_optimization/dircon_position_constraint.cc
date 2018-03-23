@@ -3,7 +3,7 @@
 namespace drake{
 
 template <typename T>
-DirconPositionConstraint<T>::DirconPositionConstraint(RigidBodyTree<double>* tree, int bodyIdx, Vector3d pt, bool isXZ) 
+DirconPositionConstraint<T>::DirconPositionConstraint(const RigidBodyTree<double>& tree, int bodyIdx, Vector3d pt, bool isXZ)
   : DirconKinematicConstraint<T>(tree,isXZ ? 2 : 3) {
   bodyIdx_ = bodyIdx;
   pt_ = pt;

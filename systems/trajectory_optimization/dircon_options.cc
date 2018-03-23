@@ -3,9 +3,8 @@
 using std::vector;
 
 namespace drake{
-DirconOptions::DirconOptions(vector<DirconKinematicConstraint<AutoDiffXd>*> kinematic_constraints_) {
-  n_constraints_ = kinematic_constraints_.size();
-  kinematic_constraints_ = kinematic_constraints_;
+DirconOptions::DirconOptions(int n_constraints) {
+  n_constraints_ = n_constraints;
   is_constraints_relative_ = vector<bool>(n_constraints_);
   for (int i=0; i < n_constraints_; i++) {
     is_constraints_relative_[i] = false;
@@ -49,10 +48,6 @@ void DirconOptions::setAccelCost(double accel_cost) {
 
 int DirconOptions::getNumConstraints() {
   return n_constraints_;
-}
-
-DirconKinematicConstraint<AutoDiffXd>* DirconOptions::getSingleConstraint(int index) {
-  return kinematic_constraints_[index];
 }
 
 bool DirconOptions::getSingleConstraintRelative(int index) {

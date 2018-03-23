@@ -8,6 +8,8 @@
 
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
+#include "dircon_position_constraint.h"
+#include "dircon_position_constraint.h"
 
 namespace drake {
 namespace systems {
@@ -19,46 +21,72 @@ using solvers::Constraint;
 using solvers::MathematicalProgram;
 using solvers::VectorXDecisionVariable;
 
+DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicConstraintSet<AutoDiffXd>& constraints) :
+  DirconDynamicConstraint(tree, constraints, tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.getNumConstraints()) {}
 
-DirconDynamicConstraint::DirconDynamicConstraint(RigidBodyTree<double> robot, int num_states, 
-                                          int num_inputs, int num_kinematic_constraints)
-    : Constraint(num_states, 1 + (2 * num_states) + (2 * num_inputs) + (2 * num_kinematic_constraints),
-                 Eigen::VectorXd::Zero(num_states),
-                 Eigen::VectorXd::Zero(num_states)) {
+/*
+DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicConstraintSet<AutoDiffXd>& constraints)
+    : Constraint(tree.get_num_positions() + tree.get_num_velocities(), 1 + 2 *(tree.get_num_positions()+ tree.get_num_velocities()) + (2 * tree.get_num_actuators()) + (4 * constraints.getNumConstraints()),
+                 Eigen::VectorXd::Zero(tree.get_num_positions()+ tree.get_num_velocities()), Eigen::VectorXd::Zero(tree.get_num_positions()+ tree.get_num_velocities())),
+      num_states_{tree.get_num_positions()+tree.get_num_velocities()}, num_inputs_{tree.get_num_actuators()}, num_kinematic_constraints_{constraints.getNumConstraints()},
+      num_positions_{tree.get_num_positions()}, num_velocities_{tree.get_num_velocities()} {
+  tree_ = &tree;
+  constraints_ = &constraints;
+}*/
 
+DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicConstraintSet<AutoDiffXd>& constraints,
+                                                 int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints)
+    : Constraint(num_positions + num_velocities, 1 + 2 *(num_positions+ num_velocities) + (2 * num_inputs) + (4 * num_kinematic_constraints),
+                 Eigen::VectorXd::Zero(num_positions+ num_velocities), Eigen::VectorXd::Zero(num_positions+ num_velocities)),
+      num_states_{num_positions+num_velocities}, num_inputs_{num_inputs}, num_kinematic_constraints_{num_kinematic_constraints},
+      num_positions_{num_positions}, num_velocities_{num_velocities} {
+  tree_ = &tree;
+  constraints_ = &constraints;
 }
 
-void DirconDynamicConstraint::constrained_dynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, const AutoDiffVecXd& forces, 
-                                            AutoDiffVecXd* xdot) const {  
-/*
-//mposa: this function has the right structure, but none of the lines will actually compile yet...(todo!)
-  VectorX<T> q = x.topRows(nq);
-  VectorX<T> v = x.bottomRows(nv);
+void DirconDynamicConstraint::ConstrainedDynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, const AutoDiffVecXd& forces,
+                                            AutoDiffVecXd* xdot) const {
+  //TODO: this and collocation_constrained_dynamics should share code rather than being copy-paste
+  AutoDiffVecXd q = state.head(num_positions_);
+  AutoDiffVecXd v = state.tail(num_velocities_);
 
-  auto kinsol = tree_->doKinematics(q, v);
+  KinematicsCache<AutoDiffXd> kinsol = tree_->doKinematics(q,v,true);
 
-  const MatrixX<T> M = tree_->massMatrix(kinsol);
+  constraints_->updateConstraints(kinsol);
 
-  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
+  const MatrixX<AutoDiffXd> M = tree_->massMatrix(kinsol);
+  const drake::eigen_aligned_std_unordered_map<RigidBody<double> const*, drake::WrenchVector<AutoDiffXd>> no_external_wrenches;
+  const MatrixX<AutoDiffXd> J_transpose = constraints_->getJ().transpose();
+
   // right_hand_side is the right hand side of the system's equations:
   // M*vdot -J^T*f = right_hand_side.
-  VectorX<T> right_hand_side = -tree_->dynamicsBiasTerm(kinsol, no_external_wrenches) tree_->B * u;
+  AutoDiffVecXd right_hand_side = -tree_->dynamicsBiasTerm(kinsol, no_external_wrenches) + tree_->B * input + J_transpose*forces;
 
-  if (num_constraints > 0) {
-    auto J = tree_->positionConstraintsJacobian(kinsol, false);
-    right_hand_side += J.transpose()*forces;
-  }
- 
-  VectorX<T> vdot = M.llt().solve(right_hand_side);
+  AutoDiffVecXd vdot = M.llt().solve(right_hand_side);
 
-  VectorX<T> xdot(get_num_states());
-  xdot << tree_->transformVelocityToQDot(kinsol, v), vdot;*/
+  *xdot << tree_->transformVelocityToQDot(kinsol, v), vdot;
 }
 
-void DirconDynamicConstraint::collocation_constrained_dynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, 
+void DirconDynamicConstraint::CollocationConstrainedDynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, 
         const AutoDiffVecXd& forces, const AutoDiffVecXd& position_slack, AutoDiffVecXd* xdot) const {
-  constrained_dynamics(state,input,forces,xdot);
-  //xdot += J*position_slack;
+  AutoDiffVecXd q = state.head(num_positions_);
+  AutoDiffVecXd v = state.tail(num_velocities_);
+
+  KinematicsCache<AutoDiffXd> kinsol = tree_->doKinematics(q,v,true);
+
+  constraints_->updateConstraints(kinsol);
+
+  const MatrixX<AutoDiffXd> M = tree_->massMatrix(kinsol);
+  const drake::eigen_aligned_std_unordered_map<RigidBody<double> const*, drake::WrenchVector<AutoDiffXd>> no_external_wrenches;
+  const MatrixX<AutoDiffXd> J_transpose = constraints_->getJ().transpose();
+
+  // right_hand_side is the right hand side of the system's equations:
+  // M*vdot -J^T*f = right_hand_side.
+  AutoDiffVecXd right_hand_side = -tree_->dynamicsBiasTerm(kinsol, no_external_wrenches) + tree_->B * input + J_transpose*forces;
+
+  AutoDiffVecXd vdot = M.llt().solve(right_hand_side);
+
+  *xdot << tree_->transformVelocityToQDot(kinsol, v) + J_transpose*position_slack, vdot;
 }
 
 
@@ -96,11 +124,11 @@ void DirconDynamicConstraint::DoEval(
   // the dynamics.  Currently the dynamics evaluated here as {u1,x1} are
   // recomputed in the next constraint as {u0,x0}.
   AutoDiffVecXd xdot0;
-  constrained_dynamics(x0, u0, l0, &xdot0);
+  ConstrainedDynamics(x0, u0, l0, &xdot0);
   const Eigen::MatrixXd dxdot0 = math::autoDiffToGradientMatrix(xdot0);
 
   AutoDiffVecXd xdot1;
-  constrained_dynamics(x1, u1, l1, &xdot1);
+  ConstrainedDynamics(x1, u1, l1, &xdot1);
   const Eigen::MatrixXd dxdot1 = math::autoDiffToGradientMatrix(xdot1);
 
   // Cubic interpolation to get xcol and xdotcol.
@@ -108,11 +136,11 @@ void DirconDynamicConstraint::DoEval(
   const AutoDiffVecXd xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
 
   AutoDiffVecXd g;
-  collocation_constrained_dynamics(xcol, 0.5 * (u0 + u1), lc, vc, &g);
+  CollocationConstrainedDynamics(xcol, 0.5 * (u0 + u1), lc, vc, &g);
   y = xdotcol - g;
 }
 
-Binding<Constraint> DirconDynamicConstraint(
+Binding<Constraint> AddDirconConstraint(
     std::shared_ptr<DirconDynamicConstraint> constraint,
     const Eigen::Ref<const VectorXDecisionVariable>& timestep,
     const Eigen::Ref<const VectorXDecisionVariable>& state,
@@ -120,7 +148,7 @@ Binding<Constraint> DirconDynamicConstraint(
     const Eigen::Ref<const VectorXDecisionVariable>& input,
     const Eigen::Ref<const VectorXDecisionVariable>& next_input,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& force,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_force,    
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_force,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_force,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_position_slack,
     MathematicalProgram* prog) {
@@ -129,43 +157,38 @@ Binding<Constraint> DirconDynamicConstraint(
   DRAKE_DEMAND(next_state.size() == constraint->num_states());
   DRAKE_DEMAND(input.size() == constraint->num_inputs());
   DRAKE_DEMAND(next_input.size() == constraint->num_inputs());
+  DRAKE_DEMAND(force.size() == constraint->num_kinematic_constraints());
+  DRAKE_DEMAND(next_force.size() == constraint->num_kinematic_constraints());
+  DRAKE_DEMAND(collocation_force.size() == constraint->num_kinematic_constraints());
+  DRAKE_DEMAND(collocation_position_slack.size() == constraint->num_kinematic_constraints());
   return prog->AddConstraint(constraint,
-                             {timestep, state, next_state, input, next_input, force, 
+                             {timestep, state, next_state, input, next_input, force,
                               next_force, collocation_force, collocation_position_slack});
 }
 
-/*
+//Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
+//    DirconKinematicConstraintSet<AutoDiffXd>& constraints, DirconOptions options)
+Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
+    DirconKinematicConstraintSet<AutoDiffXd>& constraints, DirconOptions options)
+    : MultipleShooting(tree.get_num_actuators(), tree.get_num_positions() + tree.get_num_velocities(), num_time_samples, minimum_timestep, maximum_timestep) {
 
-DirectCollocation::DirectCollocation(const System<double>* system,
-                                     const Context<double>& context,
-                                     int num_time_samples,
-                                     double minimum_timestep,
-                                     double maximum_timestep)
-    : MultipleShooting(system->get_num_total_inputs(),
-                       context.get_continuous_state().size(), num_time_samples,
-                       minimum_timestep, maximum_timestep),
-      system_(system),
-      context_(system_->CreateDefaultContext()),
-      continuous_state_(system_->AllocateTimeDerivatives()) {
-  DRAKE_DEMAND(context.has_only_continuous_state());
-
-  context_->SetTimeStateAndParametersFrom(context);
-
-  if (context_->get_num_input_ports() > 0) {
-    // Allocate the input port and keep an alias around.
-    input_port_value_ = &context_->FixInputPort(
-        0, system_->AllocateInputVector(system_->get_input_port(0)));
-  }
-
+      //DirconDynamicConstraint constraint;
+//      auto constraint = DirconPositionConstraint<double>(tree, 0, Eigen::Vector3d::Zero());
+      //DirconDynamicConstraint c = DirconDynamicConstraint(tree,constraints);
+  //int x;
   // Add the dynamic constraints.
-  auto constraint = std::make_shared<DirectCollocationConstraint>(
-      *system, context);
+  //DirconDynamicConstraint(tree,constraints);
+  //constraint.getJ();
+
+  auto constraint = std::make_shared<DirconDynamicConstraint>(tree, constraints);
 
   DRAKE_ASSERT(static_cast<int>(constraint->num_constraints()) == num_states());
 
   // For N-1 timesteps, add a constraint which depends on the knot
   // value along with the state and input vectors at that knot and the
   // next.
+
+  //TODO: declare all of the collocation variables and add them here
   for (int i = 0; i < N() - 1; i++) {
     AddConstraint(constraint,
                   {h_vars().segment<1>(i),
@@ -174,7 +197,7 @@ DirectCollocation::DirectCollocation(const System<double>* system,
   }
 }
 
-void DirectCollocation::DoAddRunningCost(const symbolic::Expression& g) {
+void Dircon::DoAddRunningCost(const symbolic::Expression& g) {
   // Trapezoidal integration:
   //    sum_{i=0...N-2} h_i/2.0 * (g_i + g_{i+1}), or
   // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
@@ -190,7 +213,7 @@ void DirectCollocation::DoAddRunningCost(const symbolic::Expression& g) {
 }
 
 PiecewisePolynomial<double>
-DirectCollocation::ReconstructInputTrajectory()
+Dircon::ReconstructInputTrajectory()
     const {
   Eigen::VectorXd times = GetSampleTimes();
   std::vector<double> times_vec(N());
@@ -202,9 +225,9 @@ DirectCollocation::ReconstructInputTrajectory()
   }
   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
 }
-
+/*
 PiecewisePolynomial<double>
-DirectCollocation::ReconstructStateTrajectory()
+Dircon::ReconstructStateTrajectory()
     const {
   Eigen::VectorXd times = GetSampleTimes();
   std::vector<double> times_vec(N());

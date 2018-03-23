@@ -40,7 +40,7 @@ int do_main(int argc, char* argv[]) {
   Vector3d pt;
   pt << 0,0,-1;
   bool isXZ = true;
-  DirconPositionConstraint<AutoDiffXd> constraintd = DirconPositionConstraint<AutoDiffXd>(&tree,bodyIdx,pt,isXZ);
+  DirconPositionConstraint<AutoDiffXd> constraintd = DirconPositionConstraint<AutoDiffXd>(tree,bodyIdx,pt,isXZ);
 
   int n = 8;
   VectorXd q(n,1);

@@ -14,7 +14,7 @@ namespace drake {
 template <typename T>
 class DirconPositionConstraint : public DirconKinematicConstraint<T> {
   public:
-    DirconPositionConstraint(RigidBodyTree<double>* tree, int bodyIdx, Vector3d pt, bool isXZ = false);
+    DirconPositionConstraint(const RigidBodyTree<double>& tree, int bodyIdx, Vector3d pt, bool isXZ = false);
     ~DirconPositionConstraint();
 
     //The workhorse function, updates and caches everything needed by the outside world

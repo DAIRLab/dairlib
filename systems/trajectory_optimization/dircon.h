@@ -1,6 +1,6 @@
 #pragma once
 
-#include <memory>
+#include <memory.h>
 #include "dircon_options.h"
 #include "dircon_kinematic_constraint.h"
 #include "drake/common/drake_copyable.h"
@@ -22,7 +22,7 @@ namespace trajectory_optimization {
 /// representation of the state trajectory, and adds dynamic constraints (and
 /// running costs) to the midpoints as well as the knot points in order to
 /// achieve a 3rd order integration accuracy.
-  /*
+
 class Dircon : public MultipleShooting {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Dircon)
@@ -40,7 +40,8 @@ class Dircon : public MultipleShooting {
   /// @param num_time_samples The number of knot points in the trajectory.
   /// @param minimum_timestep Minimum spacing between sample times.
   /// @param maximum_timestep Maximum spacing between sample times.
-  Dircon(RigidBodyTree<double> robot, int num_time_samples, double min_duration, double max_duration, DirconOptions options);
+  Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
+    DirconKinematicConstraintSet<AutoDiffXd>& constraints, DirconOptions options);
 
   // NOTE: The fixed timestep constructor, which would avoid adding h as
   // decision variables, has been removed since it complicates the API and code.
@@ -64,7 +65,8 @@ class Dircon : public MultipleShooting {
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
   void DoAddRunningCost(const symbolic::Expression& e) override;
-};*/
+  int tmp_;
+};
 
 /// Implements the direct collocation constraints for a first-order hold on
 /// the input and a cubic polynomial representation of the state trajectories.
@@ -78,9 +80,9 @@ class DirconDynamicConstraint : public solvers::Constraint {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
 
  public:
-  DirconDynamicConstraint(RigidBodyTree<double> robot);
+  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicConstraintSet<AutoDiffXd>& constraints);
 
-  ~DirconDynamicConstraint() override = default; //mposa what does this line do?
+  ~DirconDynamicConstraint() override = default;
 
   int num_states() const { return num_states_; }
   int num_inputs() const { return num_inputs_; }
@@ -94,14 +96,18 @@ class DirconDynamicConstraint : public solvers::Constraint {
               AutoDiffVecXd& y) const override;
 
  private:
-  DirconDynamicConstraint(RigidBodyTree<double> robot, int num_states, int num_inputs, int num_kinematic_constraints);
+  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicConstraintSet<AutoDiffXd>&,
+    int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
 
-  void constrained_dynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, const AutoDiffVecXd& forces, AutoDiffVecXd* xdot) const;
-  void collocation_constrained_dynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, 
+  void ConstrainedDynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, const AutoDiffVecXd& forces, AutoDiffVecXd* xdot) const;
+  void CollocationConstrainedDynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, 
         const AutoDiffVecXd& forces, const AutoDiffVecXd& position_slack, AutoDiffVecXd* xdot) const;
 
-  std::unique_ptr<RigidBodyTree<double>> robot_;
+  const RigidBodyTree<double>* tree_;
+  DirconKinematicConstraintSet<AutoDiffXd>* constraints_;
 
+  const int num_positions_{0};
+  const int num_velocities_{0};
   const int num_states_{0};
   const int num_inputs_{0};
   const int num_kinematic_constraints_{0};
@@ -112,6 +118,7 @@ class DirconDynamicConstraint : public solvers::Constraint {
 /// expected by the constraint.
 // Note: The order of arguments is a compromise between GSG and the desire to
 // match the AddConstraint interfaces in MathematicalProgram.
+
 solvers::Binding<solvers::Constraint> AddDirconConstraint(
     std::shared_ptr<DirconDynamicConstraint> constraint,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& timestep,
@@ -121,7 +128,8 @@ solvers::Binding<solvers::Constraint> AddDirconConstraint(
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_input,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& force,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_force,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_position_slack,    
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_force,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_position_slack,
     solvers::MathematicalProgram* prog);
 
 }  // namespace trajectory_optimization

@@ -146,7 +146,8 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
       collocation_force_vars_(NewContinuousVariables(constraints.getNumConstraints() * (num_time_samples - 1), "lambda_c")),
       collocation_slack_vars_(NewContinuousVariables(constraints.getNumConstraints() * (num_time_samples - 1), "v_c"))
  {
-
+  tree_ = &tree;
+  constraints_ = &constraints;
   auto constraint = std::make_shared<DirconDynamicConstraint>(tree, constraints);
 
   DRAKE_ASSERT(static_cast<int>(constraint->num_constraints()) == num_states());
@@ -206,27 +207,28 @@ Dircon::ReconstructInputTrajectory()
   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
 }
 
-//TODO finish this function
-/*
+
 PiecewisePolynomial<double>
 Dircon::ReconstructStateTrajectory()
     const {
   Eigen::VectorXd times = GetSampleTimes();
   std::vector<double> times_vec(N());
   std::vector<Eigen::MatrixXd> states(N());
+  std::vector<Eigen::MatrixXd> inputs(N());
+  std::vector<Eigen::MatrixXd> forces(N());
   std::vector<Eigen::MatrixXd> derivatives(N());
 
   for (int i = 0; i < N(); i++) {
     times_vec[i] = times(i);
     states[i] = GetSolution(state(i));
-    input_port_value_->GetMutableVectorData<double>()->SetFromVector(
-        GetSolution(input(i)));
-    context_->get_mutable_continuous_state().SetFromVector(states[i]);
-    system_->CalcTimeDerivatives(*context_, continuous_state_.get());
-    derivatives[i] = continuous_state_->CopyToVector();
+    inputs[i] = GetSolution(input(i));
+    forces[i] = GetSolution(force(i));
+    constraints_->updateData(states[i], inputs[i], forces[i]);
+
+    derivatives[i] =   math::autoDiffToValueMatrix(constraints_->getXDot());//Do I need to make a copy here?
   }
   return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);
-}*/
+}
 
 }  // namespace trajectory_optimization
 }  // namespace systems

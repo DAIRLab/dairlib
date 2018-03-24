@@ -70,8 +70,16 @@ class Dircon : public MultipleShooting {
 
   const solvers::VectorXDecisionVariable& collocation_slack_vars() const { return collocation_slack_vars_; }
 
+  Eigen::VectorBlock<const solvers::VectorXDecisionVariable> force(
+      int index) const {
+    DRAKE_DEMAND(index >= 0 && index < N());
+    return force_vars_.segment(index * num_kinematic_constraints_, num_kinematic_constraints_);
+  }
+
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
+  const RigidBodyTree<double>* tree_;
+  DirconKinematicDataSet<AutoDiffXd>* constraints_;
   void DoAddRunningCost(const symbolic::Expression& e) override;
   const solvers::VectorXDecisionVariable force_vars_;
   const solvers::VectorXDecisionVariable collocation_force_vars_;

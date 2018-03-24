@@ -2,7 +2,7 @@
 
 #include <memory.h>
 #include "dircon_options.h"
-#include "dircon_kinematic_constraint.h"
+#include "dircon_kinematic_data.h"
 #include "drake/common/drake_copyable.h"
 #include "drake/solvers/constraint.h"
 #include "drake/systems/framework/context.h"
@@ -41,7 +41,7 @@ class Dircon : public MultipleShooting {
   /// @param minimum_timestep Minimum spacing between sample times.
   /// @param maximum_timestep Maximum spacing between sample times.
   Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
-    DirconKinematicConstraintSet<AutoDiffXd>& constraints, DirconOptions options);
+    DirconKinematicDataSet<AutoDiffXd>& constraints, DirconOptions options);
 
   // NOTE: The fixed timestep constructor, which would avoid adding h as
   // decision variables, has been removed since it complicates the API and code.
@@ -62,10 +62,51 @@ class Dircon : public MultipleShooting {
   trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
   const override;
 
+  int num_kinematic_constraints() const { return num_kinematic_constraints_; }
+
+  const solvers::VectorXDecisionVariable& force_vars() const { return force_vars_; }
+
+  const solvers::VectorXDecisionVariable& collocation_force_vars() const { return collocation_force_vars_; }
+
+  const solvers::VectorXDecisionVariable& collocation_slack_vars() const { return collocation_slack_vars_; }
+
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
   void DoAddRunningCost(const symbolic::Expression& e) override;
-  int tmp_;
+  const solvers::VectorXDecisionVariable force_vars_;
+  const solvers::VectorXDecisionVariable collocation_force_vars_;
+  const solvers::VectorXDecisionVariable collocation_slack_vars_;
+  const int num_kinematic_constraints_;
+};
+
+
+class DirconKinematicConstraint : public solvers::Constraint{
+
+   public:
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data);
+
+  ~DirconKinematicConstraint() override = default;
+
+ protected:
+  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+              Eigen::VectorXd& y) const override;
+
+  void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
+              AutoDiffVecXd& y) const override;
+
+ private:
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>&,
+    int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
+
+
+  const RigidBodyTree<double>* tree_;
+  DirconKinematicDataSet<AutoDiffXd>* constraints_;
+
+  const int num_positions_{0};
+  const int num_velocities_{0};
+  const int num_states_{0};
+  const int num_inputs_{0};
+  const int num_kinematic_constraints_{0};
 };
 
 /// Implements the direct collocation constraints for a first-order hold on
@@ -77,10 +118,10 @@ class Dircon : public MultipleShooting {
 
 class DirconDynamicConstraint : public solvers::Constraint {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
+//  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
 
  public:
-  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicConstraintSet<AutoDiffXd>& constraints);
+  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints);
 
   ~DirconDynamicConstraint() override = default;
 
@@ -96,15 +137,11 @@ class DirconDynamicConstraint : public solvers::Constraint {
               AutoDiffVecXd& y) const override;
 
  private:
-  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicConstraintSet<AutoDiffXd>&,
+  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>&,
     int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
 
-  void ConstrainedDynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, const AutoDiffVecXd& forces, AutoDiffVecXd* xdot) const;
-  void CollocationConstrainedDynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, 
-        const AutoDiffVecXd& forces, const AutoDiffVecXd& position_slack, AutoDiffVecXd* xdot) const;
-
   const RigidBodyTree<double>* tree_;
-  DirconKinematicConstraintSet<AutoDiffXd>* constraints_;
+  DirconKinematicDataSet<AutoDiffXd>* constraints_;
 
   const int num_positions_{0};
   const int num_velocities_{0};

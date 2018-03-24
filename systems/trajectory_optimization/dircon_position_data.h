@@ -6,16 +6,16 @@
 #include "drake/solvers/constraint.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/kinematics_cache.h"
-#include "dircon_kinematic_constraint.h"
+#include "dircon_kinematic_data.h"
 
 using Eigen::Vector3d;
 
 namespace drake {
 template <typename T>
-class DirconPositionConstraint : public DirconKinematicConstraint<T> {
+class DirconPositionData : public DirconKinematicData<T> {
   public:
-    DirconPositionConstraint(const RigidBodyTree<double>& tree, int bodyIdx, Vector3d pt, bool isXZ = false);
-    ~DirconPositionConstraint();
+    DirconPositionData(const RigidBodyTree<double>& tree, int bodyIdx, Vector3d pt, bool isXZ = false);
+    ~DirconPositionData();
 
     //The workhorse function, updates and caches everything needed by the outside world
     void updateConstraint(KinematicsCache<T>& cache);

@@ -1,10 +1,10 @@
-#include "dircon_position_constraint.h"
+#include "dircon_position_data.h"
 
 namespace drake{
 
 template <typename T>
-DirconPositionConstraint<T>::DirconPositionConstraint(const RigidBodyTree<double>& tree, int bodyIdx, Vector3d pt, bool isXZ)
-  : DirconKinematicConstraint<T>(tree,isXZ ? 2 : 3) {
+DirconPositionData<T>::DirconPositionData(const RigidBodyTree<double>& tree, int bodyIdx, Vector3d pt, bool isXZ)
+  : DirconKinematicData<T>(tree,isXZ ? 2 : 3) {
   bodyIdx_ = bodyIdx;
   pt_ = pt;
   isXZ_ = isXZ;
@@ -14,14 +14,14 @@ DirconPositionConstraint<T>::DirconPositionConstraint(const RigidBodyTree<double
 }
 
 template <typename T>
-DirconPositionConstraint<T>::~DirconPositionConstraint() {
+DirconPositionData<T>::~DirconPositionData() {
 }
 
 template <typename T>
-void DirconPositionConstraint<T>::updateConstraint(KinematicsCache<T>& cache) {
+void DirconPositionData<T>::updateConstraint(KinematicsCache<T>& cache) {
   auto pts = this->tree_->transformPoints(cache,pt_,bodyIdx_,0);
-  
-  //TODO: implement some caching here
+
+  //TODO: implement some caching here, check cache.getV and cache.getQ before recomputing
   auto v = cache.getV();
   if (isXZ_) {
     this->c_ = TXZ_*pts;
@@ -37,6 +37,6 @@ void DirconPositionConstraint<T>::updateConstraint(KinematicsCache<T>& cache) {
 }
 
 // Explicitly instantiates on the most common scalar types.
-template class DirconPositionConstraint<double>;
-template class DirconPositionConstraint<AutoDiffXd>;
+template class DirconPositionData<double>;
+template class DirconPositionData<AutoDiffXd>;
 }

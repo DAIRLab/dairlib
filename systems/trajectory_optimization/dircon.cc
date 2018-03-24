@@ -8,8 +8,6 @@
 
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
-#include "dircon_position_constraint.h"
-#include "dircon_position_constraint.h"
 
 namespace drake {
 namespace systems {
@@ -21,74 +19,18 @@ using solvers::Constraint;
 using solvers::MathematicalProgram;
 using solvers::VectorXDecisionVariable;
 
-DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicConstraintSet<AutoDiffXd>& constraints) :
+DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints) :
   DirconDynamicConstraint(tree, constraints, tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.getNumConstraints()) {}
 
-/*
-DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicConstraintSet<AutoDiffXd>& constraints)
-    : Constraint(tree.get_num_positions() + tree.get_num_velocities(), 1 + 2 *(tree.get_num_positions()+ tree.get_num_velocities()) + (2 * tree.get_num_actuators()) + (4 * constraints.getNumConstraints()),
-                 Eigen::VectorXd::Zero(tree.get_num_positions()+ tree.get_num_velocities()), Eigen::VectorXd::Zero(tree.get_num_positions()+ tree.get_num_velocities())),
-      num_states_{tree.get_num_positions()+tree.get_num_velocities()}, num_inputs_{tree.get_num_actuators()}, num_kinematic_constraints_{constraints.getNumConstraints()},
-      num_positions_{tree.get_num_positions()}, num_velocities_{tree.get_num_velocities()} {
-  tree_ = &tree;
-  constraints_ = &constraints;
-}*/
-
-DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicConstraintSet<AutoDiffXd>& constraints,
+DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints,
                                                  int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints)
     : Constraint(num_positions + num_velocities, 1 + 2 *(num_positions+ num_velocities) + (2 * num_inputs) + (4 * num_kinematic_constraints),
-                 Eigen::VectorXd::Zero(num_positions+ num_velocities), Eigen::VectorXd::Zero(num_positions+ num_velocities)),
+                 Eigen::VectorXd::Zero(num_positions + num_velocities), Eigen::VectorXd::Zero(num_positions + num_velocities)),
       num_states_{num_positions+num_velocities}, num_inputs_{num_inputs}, num_kinematic_constraints_{num_kinematic_constraints},
       num_positions_{num_positions}, num_velocities_{num_velocities} {
   tree_ = &tree;
   constraints_ = &constraints;
 }
-
-void DirconDynamicConstraint::ConstrainedDynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, const AutoDiffVecXd& forces,
-                                            AutoDiffVecXd* xdot) const {
-  //TODO: this and collocation_constrained_dynamics should share code rather than being copy-paste
-  AutoDiffVecXd q = state.head(num_positions_);
-  AutoDiffVecXd v = state.tail(num_velocities_);
-
-  KinematicsCache<AutoDiffXd> kinsol = tree_->doKinematics(q,v,true);
-
-  constraints_->updateConstraints(kinsol);
-
-  const MatrixX<AutoDiffXd> M = tree_->massMatrix(kinsol);
-  const drake::eigen_aligned_std_unordered_map<RigidBody<double> const*, drake::WrenchVector<AutoDiffXd>> no_external_wrenches;
-  const MatrixX<AutoDiffXd> J_transpose = constraints_->getJ().transpose();
-
-  // right_hand_side is the right hand side of the system's equations:
-  // M*vdot -J^T*f = right_hand_side.
-  AutoDiffVecXd right_hand_side = -tree_->dynamicsBiasTerm(kinsol, no_external_wrenches) + tree_->B * input + J_transpose*forces;
-
-  AutoDiffVecXd vdot = M.llt().solve(right_hand_side);
-
-  *xdot << tree_->transformVelocityToQDot(kinsol, v), vdot;
-}
-
-void DirconDynamicConstraint::CollocationConstrainedDynamics(const AutoDiffVecXd& state, const AutoDiffVecXd& input, 
-        const AutoDiffVecXd& forces, const AutoDiffVecXd& position_slack, AutoDiffVecXd* xdot) const {
-  AutoDiffVecXd q = state.head(num_positions_);
-  AutoDiffVecXd v = state.tail(num_velocities_);
-
-  KinematicsCache<AutoDiffXd> kinsol = tree_->doKinematics(q,v,true);
-
-  constraints_->updateConstraints(kinsol);
-
-  const MatrixX<AutoDiffXd> M = tree_->massMatrix(kinsol);
-  const drake::eigen_aligned_std_unordered_map<RigidBody<double> const*, drake::WrenchVector<AutoDiffXd>> no_external_wrenches;
-  const MatrixX<AutoDiffXd> J_transpose = constraints_->getJ().transpose();
-
-  // right_hand_side is the right hand side of the system's equations:
-  // M*vdot -J^T*f = right_hand_side.
-  AutoDiffVecXd right_hand_side = -tree_->dynamicsBiasTerm(kinsol, no_external_wrenches) + tree_->B * input + J_transpose*forces;
-
-  AutoDiffVecXd vdot = M.llt().solve(right_hand_side);
-
-  *xdot << tree_->transformVelocityToQDot(kinsol, v) + J_transpose*position_slack, vdot;
-}
-
 
 //mposa: what is this function actually doing?
 void DirconDynamicConstraint::DoEval(
@@ -104,7 +46,7 @@ void DirconDynamicConstraint::DoEval(
 // which has a total length of 1 + 2*num_states + 2*num_inputs + dim*num_constraints.
 void DirconDynamicConstraint::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
-  DRAKE_ASSERT(x.size() == 1 + (2 * num_states_) + (2 * num_inputs_));
+  DRAKE_ASSERT(x.size() == 1 + (2 * num_states_) + (2 * num_inputs_) + 4*(num_kinematic_constraints_));
 
   // Extract our input variables:
   // h - current time (knot) value
@@ -120,23 +62,22 @@ void DirconDynamicConstraint::DoEval(
   const auto lc = x.segment(1 + (2 * num_states_ + num_inputs_) + 2*num_kinematic_constraints_, num_kinematic_constraints_);
   const auto vc = x.segment(1 + (2 * num_states_ + num_inputs_) + 3*num_kinematic_constraints_, num_kinematic_constraints_);
 
-  // TODO(sam.creasey): Use caching (when it arrives) to avoid recomputing
-  // the dynamics.  Currently the dynamics evaluated here as {u1,x1} are
-  // recomputed in the next constraint as {u0,x0}.
-  AutoDiffVecXd xdot0;
-  ConstrainedDynamics(x0, u0, l0, &xdot0);
+  constraints_->updateData(x0, u0, l0);
+  AutoDiffVecXd xdot0 = constraints_->getXDot();
   const Eigen::MatrixXd dxdot0 = math::autoDiffToGradientMatrix(xdot0);
 
-  AutoDiffVecXd xdot1;
-  ConstrainedDynamics(x1, u1, l1, &xdot1);
+  constraints_->updateData(x1, u1, l1);
+  AutoDiffVecXd xdot1 = constraints_->getXDot();
   const Eigen::MatrixXd dxdot1 = math::autoDiffToGradientMatrix(xdot1);
 
   // Cubic interpolation to get xcol and xdotcol.
   const AutoDiffVecXd xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
   const AutoDiffVecXd xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
 
-  AutoDiffVecXd g;
-  CollocationConstrainedDynamics(xcol, 0.5 * (u0 + u1), lc, vc, &g);
+  constraints_->updateData(xcol, 0.5 * (u0 + u1), vc);
+  AutoDiffVecXd g = constraints_->getXDot();
+  g.head(num_positions_) += constraints_->getJ()*vc;
+
   y = xdotcol - g;
 }
 
@@ -166,19 +107,45 @@ Binding<Constraint> AddDirconConstraint(
                               next_force, collocation_force, collocation_position_slack});
 }
 
-//Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
-//    DirconKinematicConstraintSet<AutoDiffXd>& constraints, DirconOptions options)
-Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
-    DirconKinematicConstraintSet<AutoDiffXd>& constraints, DirconOptions options)
-    : MultipleShooting(tree.get_num_actuators(), tree.get_num_positions() + tree.get_num_velocities(), num_time_samples, minimum_timestep, maximum_timestep) {
+DirconKinematicConstraint::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints) :
+  DirconKinematicConstraint(tree, constraints, tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.getNumConstraints()) {}
 
-      //DirconDynamicConstraint constraint;
-//      auto constraint = DirconPositionConstraint<double>(tree, 0, Eigen::Vector3d::Zero());
-      //DirconDynamicConstraint c = DirconDynamicConstraint(tree,constraints);
-  //int x;
-  // Add the dynamic constraints.
-  //DirconDynamicConstraint(tree,constraints);
-  //constraint.getJ();
+DirconKinematicConstraint::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints,
+                                                 int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints)
+    : Constraint(num_positions + num_velocities, 1 + 2 *(num_positions+ num_velocities) + (2 * num_inputs) + (4 * num_kinematic_constraints),
+                 Eigen::VectorXd::Zero(num_positions + num_velocities), Eigen::VectorXd::Zero(num_positions + num_velocities)),
+      num_states_{num_positions+num_velocities}, num_inputs_{num_inputs}, num_kinematic_constraints_{num_kinematic_constraints},
+      num_positions_{num_positions}, num_velocities_{num_velocities} {
+  tree_ = &tree;
+  constraints_ = &constraints;
+}
+
+void DirconKinematicConstraint::DoEval(
+    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
+  DRAKE_ASSERT(x.size() == num_states_ + num_inputs_ + num_kinematic_constraints_);
+
+  // Extract our input variables:
+  // h - current time (knot) value
+  // x0, x1 state vector at time steps k, k+1
+  // u0, u1 input vector at time steps k, k+1
+  const auto state = x.segment(0, num_states_);
+  const auto input = x.segment(num_states_, num_inputs_);
+  const auto force = x.segment(num_states_ + num_inputs_, num_kinematic_constraints_);
+
+  //TODO: properly add in relative constraint decision variables
+  constraints_->updateData(state, input, force);
+
+  y << constraints_->getC(), constraints_->getCDot(), constraints_->getCDDot();
+}
+
+Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
+    DirconKinematicDataSet<AutoDiffXd>& constraints, DirconOptions options)
+    : MultipleShooting(tree.get_num_actuators(), tree.get_num_positions() + tree.get_num_velocities(), num_time_samples, minimum_timestep, maximum_timestep),
+      num_kinematic_constraints_{constraints.getNumConstraints()},
+      force_vars_(NewContinuousVariables(constraints.getNumConstraints() * num_time_samples, "lambda")),
+      collocation_force_vars_(NewContinuousVariables(constraints.getNumConstraints() * (num_time_samples - 1), "lambda_c")),
+      collocation_slack_vars_(NewContinuousVariables(constraints.getNumConstraints() * (num_time_samples - 1), "v_c"))
+ {
 
   auto constraint = std::make_shared<DirconDynamicConstraint>(tree, constraints);
 
@@ -188,12 +155,25 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
   // value along with the state and input vectors at that knot and the
   // next.
 
-  //TODO: declare all of the collocation variables and add them here
+  //TODO: To enable caching of constraint calculations, I probably need to make deep copies of constraints (and make another container
+  // class that that has double the info for time i and i+1)
   for (int i = 0; i < N() - 1; i++) {
     AddConstraint(constraint,
                   {h_vars().segment<1>(i),
                    x_vars().segment(i * num_states(), num_states() * 2),
-                   u_vars().segment(i * num_inputs(), num_inputs() * 2)});
+                   u_vars().segment(i * num_inputs(), num_inputs() * 2),
+                   force_vars().segment(i * num_kinematic_constraints(), num_kinematic_constraints() * 2),
+                   collocation_force_vars().segment(i * num_kinematic_constraints(), num_kinematic_constraints()),
+                   collocation_slack_vars().segment(i * num_kinematic_constraints(), num_kinematic_constraints())});
+  }
+
+  //TODO: add decision variables related to relative constraints
+  auto kinematic_constraint = std::make_shared<DirconKinematicConstraint>(tree, constraints);
+  for (int i = 0; i < N(); i++) {
+    AddConstraint(kinematic_constraint,
+                  {x_vars().segment(i * num_states(), num_states()),
+                   u_vars().segment(i * num_inputs(), num_inputs()),
+                   force_vars().segment(i * num_kinematic_constraints(), num_kinematic_constraints())});
   }
 }
 
@@ -225,6 +205,8 @@ Dircon::ReconstructInputTrajectory()
   }
   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
 }
+
+//TODO finish this function
 /*
 PiecewisePolynomial<double>
 Dircon::ReconstructStateTrajectory()

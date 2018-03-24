@@ -8,7 +8,7 @@
 #include "drake/multibody/kinematics_cache.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
-#include "dircon_position_constraint.h"
+#include "dircon_position_data.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -21,7 +21,7 @@ using std::endl;
 
 namespace drake{
 namespace goldilocks {
-namespace examples {     
+namespace examples {
 namespace {
 
 int do_main(int argc, char* argv[]) {
@@ -40,15 +40,15 @@ int do_main(int argc, char* argv[]) {
   Vector3d pt;
   pt << 0,0,-1;
   bool isXZ = true;
-  DirconPositionConstraint<AutoDiffXd> constraintd = DirconPositionConstraint<AutoDiffXd>(tree,bodyIdx,pt,isXZ);
+  DirconPositionData<AutoDiffXd> constraintd = DirconPositionData<AutoDiffXd>(tree,bodyIdx,pt,isXZ);
 
   int n = 8;
   VectorXd q(n,1);
   VectorXd v(n,1);
   q << 0,0,0,0,0,0,0,0;
-  v << 1,1,1,1,1,0,0,0;   
+  v << 1,1,1,1,1,0,0,0;
   VectorXd x(2*n);
-  x << q, v;  
+  x << q, v;
 
   AutoDiffVecXd x_autodiff = math::initializeAutoDiff(x);  
   AutoDiffVecXd q_autodiff = x_autodiff.head(n);
@@ -80,7 +80,9 @@ int do_main(int argc, char* argv[]) {
   cout << math::autoDiffToGradientMatrix(cdot) << endl;  
 
   cout << "***********dJdotv ***********" << endl;
-  cout << math::autoDiffToGradientMatrix(Jdotv) << endl;    
+  cout << math::autoDiffToGradientMatrix(Jdotv) << endl;
+
+  //TODO: add tests for constraint set and dircondynamicconstraint, probably should make these constraints more than just a does-run check (check values)
 
 /*
   Matrix3Xd xA, xB, normal;

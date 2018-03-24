@@ -7,11 +7,12 @@
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/kinematics_cache.h"
 namespace drake {
+
 template <typename T>
-class DirconKinematicConstraint {
+class DirconKinematicData {
   public:
-    DirconKinematicConstraint(const RigidBodyTree<double>& tree, int length);
-    ~DirconKinematicConstraint();
+    DirconKinematicData(const RigidBodyTree<double>& tree, int length);
+    ~DirconKinematicData();
 
     //The workhorse function, updates and caches everything needed by the outside world
     virtual void updateConstraint(KinematicsCache<T>& cache) = 0;
@@ -34,29 +35,39 @@ class DirconKinematicConstraint {
 };
 
 template <typename T>
-class DirconKinematicConstraintSet {
+class DirconKinematicDataSet {
   public:
-    DirconKinematicConstraintSet(std::vector<DirconKinematicConstraint<T>> constraints, int num_positions);
-    ~DirconKinematicConstraintSet();
+    DirconKinematicDataSet(RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>> constraints, int num_positions, int num_velocities);
+    ~DirconKinematicDataSet();
 
-    void updateConstraints(KinematicsCache<T>& cache);
+    void updateData(const VectorX<T>& state, const VectorX<T>& input, const VectorX<T>& forces);
 
     VectorX<T> getC();
     VectorX<T> getCDot();
     MatrixX<T> getJ();
     VectorX<T> getJdotv();
+    VectorX<T> getCDDot();
+    VectorX<T> getVDot();
+    VectorX<T> getXDot();
 
-    DirconKinematicConstraint<T> getConstraint(int index);
+    DirconKinematicData<T> getConstraint(int index);
 
     int getNumConstraints();
 
   private:
+    void updateVdot(const VectorX<T>& state, const VectorX<T>& input, const VectorX<T>& forces);
+
+    const RigidBodyTree<double>* tree_;
     int num_positions_;
+    int num_velocities_;
     int num_constraints_;
-    std::vector<DirconKinematicConstraint<T>> constraints_;
+    std::vector<DirconKinematicData<T>> constraints_;
     VectorX<T> c_;
     VectorX<T> cdot_;
     MatrixX<T> J_;
     VectorX<T> Jdotv_;
+    VectorX<T> cddot_;
+    VectorX<T> vdot_;
+    VectorX<T> xdot_;
 };
 }

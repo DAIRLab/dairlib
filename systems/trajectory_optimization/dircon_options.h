@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dircon_kinematic_constraint.h"
+#include <vector>
 
 namespace drake{
 class DirconOptions {
@@ -31,6 +31,6 @@ class DirconOptions {
     bool getConstrainEnd();
     bool getConstrainPhiStart();
     bool getConstrainPhiEnd();
-    double getAccelCost();      
+    double getAccelCost();
 };
 }

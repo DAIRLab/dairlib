@@ -3,6 +3,7 @@
 #include <memory.h>
 #include "dircon_options.h"
 #include "dircon_kinematic_data.h"
+#include "dircon_kinematic_data_set.h"
 #include "drake/common/drake_copyable.h"
 #include "drake/solvers/constraint.h"
 #include "drake/systems/framework/context.h"

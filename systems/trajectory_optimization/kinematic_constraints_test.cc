@@ -9,6 +9,7 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 #include "dircon_position_data.h"
+#include "dircon_kinematic_data_set.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -31,6 +32,7 @@ int do_main(int argc, char* argv[]) {
   parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot.urdf", multibody::joints::kRollPitchYaw, &tree);
 
   cout << tree.get_num_positions() << endl;
+  cout << tree.get_num_actuators() << endl;
   //return 0;
   //cout << tree.getBodyOrFrameName(1) << endl;
   //cout << tree.getBodyOrFrameName(2) << endl;
@@ -39,20 +41,40 @@ int do_main(int argc, char* argv[]) {
   int bodyIdx = 3;
   Vector3d pt;
   pt << 0,0,-1;
+  Vector3d pt2;
+  pt << 1,0,1;
   bool isXZ = true;
   DirconPositionData<AutoDiffXd> constraintd = DirconPositionData<AutoDiffXd>(tree,bodyIdx,pt,isXZ);
+  DirconPositionData<AutoDiffXd> constraintd2 = DirconPositionData<AutoDiffXd>(tree,bodyIdx,pt2,isXZ);
+  DirconPositionData<double> constraint = DirconPositionData<double>(tree,bodyIdx,pt,isXZ);
+  DirconPositionData<double> constraint2 = DirconPositionData<double>(tree,bodyIdx,pt2,isXZ);
 
   int n = 8;
+  int nl = 4;
+  int nu = 1;
+
   VectorXd q(n,1);
   VectorXd v(n,1);
   q << 0,0,0,0,0,0,0,0;
   v << 1,1,1,1,1,0,0,0;
-  VectorXd x(2*n);
+  VectorXd x(2*n,1);
   x << q, v;
+  VectorXd u(nu,1);
+  u << 2;
+  VectorXd l(nl,1);
+  l << -2, 2, 1, 1;
 
-  AutoDiffVecXd x_autodiff = math::initializeAutoDiff(x);  
+  VectorXd vars(2*n + nu + nl);
+  vars << x,u,l;
+
+  AutoDiffVecXd vars_autodiff = math::initializeAutoDiff(vars);
+  AutoDiffVecXd x_autodiff = vars_autodiff.head(2*n);  
   AutoDiffVecXd q_autodiff = x_autodiff.head(n);
   AutoDiffVecXd v_autodiff = x_autodiff.tail(n);
+
+  AutoDiffVecXd u_autodiff = vars_autodiff.segment(2*n, nu);
+  AutoDiffVecXd l_autodiff = vars_autodiff.segment(2*n + nu, nl);
+
 
   KinematicsCache<AutoDiffXd> cache = tree.doKinematics(q_autodiff,v_autodiff,true);
   constraintd.updateConstraint(cache);
@@ -81,6 +103,42 @@ int do_main(int argc, char* argv[]) {
 
   cout << "***********dJdotv ***********" << endl;
   cout << math::autoDiffToGradientMatrix(Jdotv) << endl;
+
+  std::vector<DirconKinematicData<AutoDiffXd>*> constraintsd;
+  constraintsd.push_back(&constraintd);
+  constraintsd.push_back(&constraintd2);
+  auto datasetd = DirconKinematicDataSet<AutoDiffXd>(tree, &constraintsd);
+
+  datasetd.updateData(x_autodiff, u_autodiff, l_autodiff);
+
+  cout << "***********c ***********" << endl;
+  cout << datasetd.getC() << endl;
+
+  cout << "***********J ***********" << endl;
+  cout << datasetd.getJ() << endl;  
+
+  cout << "***********cdot ***********" << endl;
+  cout << datasetd.getCDot() << endl;  
+
+  cout << "***********Jdotv ***********" << endl;
+  cout << datasetd.getJdotv() << endl;  
+
+  cout << "***********dc ***********" << endl;
+  cout << math::autoDiffToGradientMatrix(datasetd.getC()) << endl;
+
+  cout << "***********dcdot ***********" << endl;
+  cout << math::autoDiffToGradientMatrix(datasetd.getCDot()) << endl;  
+
+  cout << "***********dJdotv ***********" << endl;
+  cout << math::autoDiffToGradientMatrix(datasetd.getJdotv()) << endl;
+
+  std::vector<DirconKinematicData<double>*> constraints;
+  constraints.push_back(&constraint);
+  constraints.push_back(&constraint2);
+  auto dataset = DirconKinematicDataSet<double>(tree, &constraints);
+
+  dataset.updateData(x, u, l);
+
 
   //TODO: add tests for constraint set and dircondynamicconstraint, probably should make these constraints more than just a does-run check (check values)
 

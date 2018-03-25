@@ -18,6 +18,14 @@ target_link_libraries(kinematic_constraints_test
 dircon_kinematic_data drake::drake drake::drake-common-text-logging-gflags gflags_shared
 )
 
+add_executable(dircon_test dircon_test.cc)
+target_include_directories(dircon_test PRIVATE
+"${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_link_libraries(dircon_test
+dircon_kinematic_data dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
+)
+
 
 #add_executable(run_passive run_passive.cc)
 #target_link_libraries(run_passive 

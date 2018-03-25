@@ -104,7 +104,7 @@ class DirconKinematicConstraint : public solvers::Constraint{
               AutoDiffVecXd& y) const override;
 
  private:
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>&,
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data,
     int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
 
 
@@ -138,7 +138,7 @@ class DirconDynamicConstraint : public solvers::Constraint {
   int num_inputs() const { return num_inputs_; }
   int num_kinematic_constraints() const { return num_kinematic_constraints_; }
 
- protected:
+ public:
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
               Eigen::VectorXd& y) const override;
 
@@ -146,7 +146,7 @@ class DirconDynamicConstraint : public solvers::Constraint {
               AutoDiffVecXd& y) const override;
 
  private:
-  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>&,
+  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints,
     int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
 
   const RigidBodyTree<double>* tree_;

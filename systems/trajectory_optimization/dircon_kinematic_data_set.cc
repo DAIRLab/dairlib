@@ -3,11 +3,11 @@
 
 namespace drake{
 template <typename T>
-DirconKinematicDataSet<T>::DirconKinematicDataSet(RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints) :
+DirconKinematicDataSet<T>::DirconKinematicDataSet(const RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints) :
   DirconKinematicDataSet(tree,constraints, tree.get_num_positions(), tree.get_num_velocities()) {}
 
 template <typename T>
-DirconKinematicDataSet<T>::DirconKinematicDataSet(RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints, int num_positions, int num_velocities) {
+DirconKinematicDataSet<T>::DirconKinematicDataSet(const RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints, int num_positions, int num_velocities) {
   tree_ = &tree;
 
   constraints_ = constraints;
@@ -22,6 +22,9 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(RigidBodyTree<double>& tree, s
   cdot_ = VectorX<T>(num_constraints_);
   J_ = MatrixX<T>(num_constraints_,num_positions);
   Jdotv_ = VectorX<T>(num_constraints_);
+  cddot_ = VectorX<T>(num_constraints_);
+  vdot_ = VectorX<T>(num_velocities_);
+  xdot_ = VectorX<T>(num_positions_ + num_velocities_);
 }
 
 
@@ -44,9 +47,11 @@ void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state, const Vector
 
     index += n;
   }
-  
+
   updateVdot(state, input, forces);
   cddot_ = Jdotv_ + J_*vdot_;
+
+  xdot_ << tree_->GetVelocityToQDotMapping(cache)*v, vdot_; //assumes v = qdot
 }
 
 template <typename T>

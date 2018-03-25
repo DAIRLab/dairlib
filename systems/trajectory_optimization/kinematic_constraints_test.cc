@@ -132,12 +132,20 @@ int do_main(int argc, char* argv[]) {
   cout << "***********dJdotv ***********" << endl;
   cout << math::autoDiffToGradientMatrix(datasetd.getJdotv()) << endl;
 
+  cout << "***********vdot ***********" << endl;
+  cout << datasetd.getVDot() << endl;
+  cout << "***********xdot ***********" << endl;
+  cout << datasetd.getXDot() << endl;
+
+
   std::vector<DirconKinematicData<double>*> constraints;
   constraints.push_back(&constraint);
   constraints.push_back(&constraint2);
   auto dataset = DirconKinematicDataSet<double>(tree, &constraints);
 
   dataset.updateData(x, u, l);
+
+
 
 
   //TODO: add tests for constraint set and dircondynamicconstraint, probably should make these constraints more than just a does-run check (check values)

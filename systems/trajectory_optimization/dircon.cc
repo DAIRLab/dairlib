@@ -32,6 +32,7 @@ DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tr
   constraints_ = &constraints;
 }
 
+
 //mposa: what is this function actually doing?
 void DirconDynamicConstraint::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
@@ -69,15 +70,13 @@ void DirconDynamicConstraint::DoEval(
   constraints_->updateData(x1, u1, l1);
   AutoDiffVecXd xdot1 = constraints_->getXDot();
   const Eigen::MatrixXd dxdot1 = math::autoDiffToGradientMatrix(xdot1);
-
   // Cubic interpolation to get xcol and xdotcol.
   const AutoDiffVecXd xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
   const AutoDiffVecXd xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
 
   constraints_->updateData(xcol, 0.5 * (u0 + u1), vc);
   AutoDiffVecXd g = constraints_->getXDot();
-  g.head(num_positions_) += constraints_->getJ()*vc;
-
+  g.head(num_positions_) += constraints_->getJ().transpose()*vc;
   y = xdotcol - g;
 }
 
@@ -112,12 +111,22 @@ DirconKinematicConstraint::DirconKinematicConstraint(const RigidBodyTree<double>
 
 DirconKinematicConstraint::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints,
                                                  int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints)
-    : Constraint(num_positions + num_velocities, 1 + 2 *(num_positions+ num_velocities) + (2 * num_inputs) + (4 * num_kinematic_constraints),
-                 Eigen::VectorXd::Zero(num_positions + num_velocities), Eigen::VectorXd::Zero(num_positions + num_velocities)),
+    : Constraint(3*num_kinematic_constraints, num_positions+ num_velocities + num_inputs + num_kinematic_constraints,
+                 Eigen::VectorXd::Zero(3*num_kinematic_constraints), Eigen::VectorXd::Zero(3*num_kinematic_constraints)),
       num_states_{num_positions+num_velocities}, num_inputs_{num_inputs}, num_kinematic_constraints_{num_kinematic_constraints},
       num_positions_{num_positions}, num_velocities_{num_velocities} {
   tree_ = &tree;
   constraints_ = &constraints;
+}
+
+
+//mposa: what is this function actually doing?
+void DirconKinematicConstraint::DoEval(
+    const Eigen::Ref<const Eigen::VectorXd>& x,
+    Eigen::VectorXd& y) const {
+  AutoDiffVecXd y_t;
+  Eval(math::initializeAutoDiff(x), y_t);
+  y = math::autoDiffToValueMatrix(y_t);
 }
 
 void DirconKinematicConstraint::DoEval(
@@ -131,10 +140,9 @@ void DirconKinematicConstraint::DoEval(
   const auto state = x.segment(0, num_states_);
   const auto input = x.segment(num_states_, num_inputs_);
   const auto force = x.segment(num_states_ + num_inputs_, num_kinematic_constraints_);
-
   //TODO: properly add in relative constraint decision variables
   constraints_->updateData(state, input, force);
-
+  y = AutoDiffVecXd(3*num_kinematic_constraints_);
   y << constraints_->getC(), constraints_->getCDot(), constraints_->getCDDot();
 }
 

@@ -11,7 +11,7 @@ namespace drake{
 template <typename T>
 class DirconKinematicDataSet {
   public:
-    DirconKinematicDataSet(RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints);
+    DirconKinematicDataSet(const RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints);
 
     //~DirconKinematicDataSet();
 
@@ -28,7 +28,7 @@ class DirconKinematicDataSet {
     int getNumConstraints();
 
   private:
-    DirconKinematicDataSet(RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints, int num_positions, int num_velocities);
+    DirconKinematicDataSet(const RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints, int num_positions, int num_velocities);
 
     void updateVdot(const VectorX<T>& state, const VectorX<T>& input, const VectorX<T>& forces);
 

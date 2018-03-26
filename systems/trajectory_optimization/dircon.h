@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory.h>
+#include "dircon_opt_constraints.h"
 #include "dircon_options.h"
 #include "dircon_kinematic_data.h"
 #include "dircon_kinematic_data_set.h"
@@ -10,6 +11,9 @@
 #include "drake/systems/framework/system.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/symbolic.h"
+
+
 
 namespace drake {
 namespace systems {
@@ -47,13 +51,6 @@ class Dircon : public MultipleShooting {
   Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
     DirconKinematicDataSet<AutoDiffXd>& constraints, DirconOptions options);
 
-  // NOTE: The fixed timestep constructor, which would avoid adding h as
-  // decision variables, has been removed since it complicates the API and code.
-  // Unlike other trajectory optimization transcriptions, direct collocation
-  // will not be a convex optimization even if the sample times are fixed, so
-  // there is little advantage to actually removing the variables.  Setting
-  // minimum_timestep == maximum_timestep should be essentially just as good.
-
   ~Dircon() override {}
 
   /// Get the input trajectory at the solution as a
@@ -69,6 +66,8 @@ class Dircon : public MultipleShooting {
   void SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u, const PiecewisePolynomial<double>& traj_init_x,
                             const PiecewisePolynomial<double>& traj_init_l, const PiecewisePolynomial<double>& traj_init_lc,
                             const PiecewisePolynomial<double>& traj_init_vc);
+
+
 
   int num_kinematic_constraints() const { return num_kinematic_constraints_; }
 
@@ -96,82 +95,13 @@ class Dircon : public MultipleShooting {
 };
 
 
-class DirconKinematicConstraint : public solvers::Constraint{
-
-   public:
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data);
-
-  ~DirconKinematicConstraint() override = default;
-
- protected:
-  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd& y) const override;
-
-  void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-              AutoDiffVecXd& y) const override;
-
- private:
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data,
-    int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
-
-
-  const RigidBodyTree<double>* tree_;
-  DirconKinematicDataSet<AutoDiffXd>* constraints_;
-
-  const int num_positions_{0};
-  const int num_velocities_{0};
-  const int num_states_{0};
-  const int num_inputs_{0};
-  const int num_kinematic_constraints_{0};
-};
-
-/// Implements the direct collocation constraints for a first-order hold on
-/// the input and a cubic polynomial representation of the state trajectories.
-///
-/// Note that the DirectCollocation implementation allocates only ONE of
-/// these constraints, but binds that constraint multiple times (with
-/// different decision variables, along the trajectory).
-
-class DirconDynamicConstraint : public solvers::Constraint {
- public:
-//  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
-
- public:
-  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints);
-
-  ~DirconDynamicConstraint() override = default;
-
-  int num_states() const { return num_states_; }
-  int num_inputs() const { return num_inputs_; }
-  int num_kinematic_constraints() const { return num_kinematic_constraints_; }
-
- public:
-  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd& y) const override;
-
-  void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-              AutoDiffVecXd& y) const override;
-
- private:
-  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints,
-    int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
-
-  const RigidBodyTree<double>* tree_;
-  DirconKinematicDataSet<AutoDiffXd>* constraints_;
-
-  const int num_positions_{0};
-  const int num_velocities_{0};
-  const int num_states_{0};
-  const int num_inputs_{0};
-  const int num_kinematic_constraints_{0};
-};
-
 /// Helper method to add a DirconDynamicConstraint to the @p prog,
 /// ensuring that the order of variables in the binding matches the order
 /// expected by the constraint.
 // Note: The order of arguments is a compromise between GSG and the desire to
 // match the AddConstraint interfaces in MathematicalProgram.
-
+//
+// mposa: I don't think this function is actually being used, and I'm not sure what it does
 solvers::Binding<solvers::Constraint> AddDirconConstraint(
     std::shared_ptr<DirconDynamicConstraint> constraint,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& timestep,

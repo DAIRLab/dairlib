@@ -4,18 +4,15 @@
 
 find_package(GFlags MODULE REQUIRED COMPONENTS shared)
 
-add_library(dircon_kinematic_data dircon_kinematic_data_set.cc dircon_kinematic_data_set.h dircon_kinematic_data.cc dircon_kinematic_data.h dircon_position_data.cc dircon_position_data.h)
-target_link_libraries(dircon_kinematic_data drake::drake)
-
-add_library(dircon dircon_options.cc dircon_options.h dircon.h dircon.cc)
-target_link_libraries(dircon dircon_kinematic_data drake::drake)
+add_library(dircon dircon_options.cc dircon_options.h dircon.h dircon.cc dircon_opt_constraints.h dircon_opt_constraints.cc dircon_kinematic_data_set.cc dircon_kinematic_data_set.h dircon_kinematic_data.cc dircon_kinematic_data.h dircon_position_data.cc dircon_position_data.h)
+target_link_libraries(dircon drake::drake)
 
 add_executable(kinematic_constraints_test kinematic_constraints_test.cc)
 target_include_directories(kinematic_constraints_test PRIVATE
 "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(kinematic_constraints_test
-dircon_kinematic_data drake::drake drake::drake-common-text-logging-gflags gflags_shared
+dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
 )
 
 add_executable(dircon_test dircon_test.cc)
@@ -23,7 +20,7 @@ target_include_directories(dircon_test PRIVATE
 "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(dircon_test
-dircon_kinematic_data dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
+ dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
 )
 
 

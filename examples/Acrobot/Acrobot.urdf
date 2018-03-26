@@ -4,6 +4,9 @@
  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
  name="Acrobot">
 
+  <link name="base"/>
+  <link name="base_x"/>
+  <link name="base_xz"/>
   <link name="base_link">
     <visual>
       <geometry>
@@ -48,7 +51,6 @@
       </material>
     </visual>
   </link>
-  
   <joint name="shoulder" type="continuous">
     <parent link="base_link" />
     <child link="upper_link" />
@@ -63,6 +65,22 @@
     <origin xyz="0 0.1 -1" />
     <axis xyz="0 1 0" />
     <dynamics damping="0.1" />
+  </joint>
+
+  <joint name="planar_x" type="prismatic">
+    <parent link="base"/>
+    <child link="base_x"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <joint name="planar_z" type="prismatic">
+    <parent link="base_x"/>
+    <child link="base_xz"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <joint name="planar_roty" type="continuous">
+    <parent link="base_xz"/>
+    <child link="base_link"/>
+    <axis xyz="0 1 0"/>
   </joint>
 
   <transmission type="SimpleTransmission" name="elbow_trans">

@@ -9,10 +9,13 @@
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/system.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 
 namespace drake {
 namespace systems {
 namespace trajectory_optimization {
+
+using trajectories::PiecewisePolynomial;
 
 /// DirectCollocation implements the approach to trajectory optimization as
 /// described in
@@ -55,13 +58,17 @@ class Dircon : public MultipleShooting {
 
   /// Get the input trajectory at the solution as a
   /// %PiecewisePolynomialTrajectory%.
-  trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
+  PiecewisePolynomial<double> ReconstructInputTrajectory()
   const override;
 
   /// Get the state trajectory at the solution as a
   /// %PiecewisePolynomialTrajectory%.
-  trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
+  PiecewisePolynomial<double> ReconstructStateTrajectory()
   const override;
+
+  void SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u, const PiecewisePolynomial<double>& traj_init_x,
+                            const PiecewisePolynomial<double>& traj_init_l, const PiecewisePolynomial<double>& traj_init_lc,
+                            const PiecewisePolynomial<double>& traj_init_vc);
 
   int num_kinematic_constraints() const { return num_kinematic_constraints_; }
 

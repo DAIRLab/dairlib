@@ -15,7 +15,6 @@ class DirconOptions {
 
   public:
     DirconOptions(int n_constraints);
-    ~DirconOptions(void);
 
     void setAllConstraintsRelative(bool relative);
     void setConstraintRelative(int index, bool relative);

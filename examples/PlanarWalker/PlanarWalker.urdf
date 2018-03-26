@@ -164,7 +164,7 @@
     <parent link="base_xz"/>
     <child link="hip"/>
     <axis xyz="0 1 0"/>
-  </joint>  -->
+  </joint>
   <joint name="right_lower_leg_mass_weld" type="fixed">
     <parent link="right_lower_leg"/>
     <child link="right_lower_leg_mass"/>

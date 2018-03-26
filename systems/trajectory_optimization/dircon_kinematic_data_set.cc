@@ -62,7 +62,8 @@ void DirconKinematicDataSet<T>::updateVdot(const VectorX<T>& state, const Vector
   KinematicsCache<T> kinsol = tree_->doKinematics(q,v,true);
 
   const MatrixX<T> M = tree_->massMatrix(kinsol);
-  const drake::eigen_aligned_std_unordered_map<RigidBody<double> const*, drake::WrenchVector<T>> no_external_wrenches;
+  //const drake::eigen_aligned_std_unordered_map<RigidBody<double> const*, drake::WrenchVector<T>> no_external_wrenches;
+  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
   const MatrixX<T> J_transpose = getJ().transpose();
 
   // right_hand_side is the right hand side of the system's equations:

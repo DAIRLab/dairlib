@@ -1,5 +1,4 @@
 #include "dircon.h"
-#include "dircon_options.h"
 
 #include <cstddef>
 #include <stdexcept>
@@ -13,11 +12,12 @@ namespace drake {
 namespace systems {
 namespace trajectory_optimization {
 
-using trajectories::PiecewisePolynomial;
 using solvers::Binding;
 using solvers::Constraint;
 using solvers::MathematicalProgram;
 using solvers::VectorXDecisionVariable;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
 
 DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints) :
   DirconDynamicConstraint(tree, constraints, tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.getNumConstraints()) {}
@@ -58,10 +58,10 @@ void DirconDynamicConstraint::DoEval(
   const auto x1 = x.segment(1 + num_states_, num_states_);
   const auto u0 = x.segment(1 + (2 * num_states_), num_inputs_);
   const auto u1 = x.segment(1 + (2 * num_states_) + num_inputs_, num_inputs_);
-  const auto l0 = x.segment(1 + (2 * num_states_ + num_inputs_), num_kinematic_constraints_);
-  const auto l1 = x.segment(1 + (2 * num_states_ + num_inputs_) + num_kinematic_constraints_, num_kinematic_constraints_);
-  const auto lc = x.segment(1 + (2 * num_states_ + num_inputs_) + 2*num_kinematic_constraints_, num_kinematic_constraints_);
-  const auto vc = x.segment(1 + (2 * num_states_ + num_inputs_) + 3*num_kinematic_constraints_, num_kinematic_constraints_);
+  const auto l0 = x.segment(1 + 2 * (num_states_ + num_inputs_), num_kinematic_constraints_);
+  const auto l1 = x.segment(1 + 2 * (num_states_ + num_inputs_) + num_kinematic_constraints_, num_kinematic_constraints_);
+  const auto lc = x.segment(1 + 2 * (num_states_ + num_inputs_) + 2*num_kinematic_constraints_, num_kinematic_constraints_);
+  const auto vc = x.segment(1 + 2 * (num_states_ + num_inputs_) + 3*num_kinematic_constraints_, num_kinematic_constraints_);
 
   constraints_->updateData(x0, u0, l0);
   AutoDiffVecXd xdot0 = constraints_->getXDot();
@@ -74,7 +74,7 @@ void DirconDynamicConstraint::DoEval(
   const AutoDiffVecXd xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
   const AutoDiffVecXd xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
 
-  constraints_->updateData(xcol, 0.5 * (u0 + u1), vc);
+  constraints_->updateData(xcol, 0.5 * (u0 + u1), lc);
   AutoDiffVecXd g = constraints_->getXDot();
   g.head(num_positions_) += constraints_->getJ().transpose()*vc;
   y = xdotcol - g;
@@ -207,7 +207,6 @@ Dircon::ReconstructInputTrajectory()
   Eigen::VectorXd times = GetSampleTimes();
   std::vector<double> times_vec(N());
   std::vector<Eigen::MatrixXd> inputs(N());
-
   for (int i = 0; i < N(); i++) {
     times_vec[i] = times(i);
     inputs[i] = GetSolution(input(i));
@@ -237,6 +236,53 @@ Dircon::ReconstructStateTrajectory()
   }
   return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);
 }
+
+void Dircon::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u, const PiecewisePolynomial<double>& traj_init_x,
+                                  const PiecewisePolynomial<double>& traj_init_l, const PiecewisePolynomial<double>& traj_init_lc,
+                                  const PiecewisePolynomial<double>& traj_init_vc) {
+  MultipleShooting::SetInitialTrajectory(traj_init_u,traj_init_x);
+  double start_time = 0;
+  double h;
+  if (timesteps_are_decision_variables())
+    h = GetInitialGuess(h_vars()[0]);
+  else
+    h = fixed_timestep();
+
+  VectorXd guess_force(force_vars_.size());
+  if (traj_init_l.empty()) {
+    guess_force.fill(0);  // Start with some small number <= 0.01.
+  } else {
+    for (int i = 0; i < N(); ++i) {
+      guess_force.segment(num_kinematic_constraints_ * i, num_kinematic_constraints_) =
+          traj_init_l.value(start_time + i * h);
+    }
+  }
+  SetInitialGuess(force_vars_, guess_force);
+
+  VectorXd guess_collocation_force(collocation_force_vars_.size());
+  if (traj_init_lc.empty()) {
+    guess_collocation_force.fill(0);  // Start with some small number <= 0.01.
+  } else {
+    for (int i = 0; i < N()-1; ++i) {
+      guess_collocation_force.segment(num_kinematic_constraints_ * i, num_kinematic_constraints_) =
+          traj_init_lc.value(start_time + (i + 0.5) * h);
+    }
+  }
+  SetInitialGuess(collocation_force_vars_, guess_collocation_force);
+
+  VectorXd guess_collocation_slack(collocation_slack_vars_.size());
+  if (traj_init_vc.empty()) {
+    guess_collocation_slack.fill(0);  // Start with some small number <= 0.01.
+  } else {
+    for (int i = 0; i < N()-1; ++i) {
+      guess_collocation_slack.segment(num_kinematic_constraints_ * i, num_kinematic_constraints_) =
+          traj_init_vc.value(start_time + (i + 0.5) * h);
+    }
+  }
+  SetInitialGuess(collocation_slack_vars_, guess_collocation_slack);
+}
+
+
 
 }  // namespace trajectory_optimization
 }  // namespace systems

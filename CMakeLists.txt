@@ -3,7 +3,7 @@
 
 
 cmake_minimum_required(VERSION 3.5.1)
-project(goldilocks_walking)
+project(dircon)
 
 # N.B. This is a temporary flag. It only really applies to Linux, as Mac
 # does not need X11.

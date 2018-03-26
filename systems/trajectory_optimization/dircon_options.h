@@ -26,9 +26,11 @@ class DirconOptions {
 
     int getNumConstraints();
     bool getSingleConstraintRelative(int index);
+    std::vector<bool> getConstraintsRelative();
     DirconKinConstraintType getStartType();
     DirconKinConstraintType getEndType();
     double getForceCost();
+    int getNumRelative();
 };
 
 }

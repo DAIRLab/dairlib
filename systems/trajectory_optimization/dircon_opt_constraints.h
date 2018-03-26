@@ -11,7 +11,7 @@
 namespace drake {
 namespace systems {
 namespace trajectory_optimization {
-  
+
 enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
 
 /// Implements the direct collocation constraints for a first-order hold on
@@ -58,8 +58,10 @@ class DirconDynamicConstraint : public solvers::Constraint {
 class DirconKinematicConstraint : public solvers::Constraint{
 
    public:
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data);
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data, DirconKinConstraintType type);
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data,
+                            DirconKinConstraintType type = DirconKinConstraintType::kAll);
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data,
+                            std::vector<bool> is_constraint_relative, DirconKinConstraintType type = DirconKinConstraintType::kAll);
 
   ~DirconKinematicConstraint() override = default;
 
@@ -71,8 +73,8 @@ class DirconKinematicConstraint : public solvers::Constraint{
               AutoDiffVecXd& y) const override;
 
  private:
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data, DirconKinConstraintType type,
-    int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data, std::vector<bool> is_constraint_relative,
+                            DirconKinConstraintType type, int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
 
 
   const RigidBodyTree<double>* tree_;
@@ -84,6 +86,9 @@ class DirconKinematicConstraint : public solvers::Constraint{
   const int num_inputs_{0};
   const int num_kinematic_constraints_{0};
   const DirconKinConstraintType type_{kAll};
+  const std::vector<bool> is_constraint_relative_;
+  const int n_relative_;
+  Eigen::MatrixXd relative_map_;
 };
 
 }

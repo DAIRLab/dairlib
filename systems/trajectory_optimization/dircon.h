@@ -73,6 +73,8 @@ class Dircon : public MultipleShooting {
 
   const solvers::VectorXDecisionVariable& force_vars() const { return force_vars_; }
 
+  const solvers::VectorXDecisionVariable& offset_vars() const { return offset_vars_; }
+
   const solvers::VectorXDecisionVariable& collocation_force_vars() const { return collocation_force_vars_; }
 
   const solvers::VectorXDecisionVariable& collocation_slack_vars() const { return collocation_slack_vars_; }
@@ -91,6 +93,7 @@ class Dircon : public MultipleShooting {
   const solvers::VectorXDecisionVariable force_vars_;
   const solvers::VectorXDecisionVariable collocation_force_vars_;
   const solvers::VectorXDecisionVariable collocation_slack_vars_;
+  const solvers::VectorXDecisionVariable offset_vars_;
   const int num_kinematic_constraints_;
 };
 

@@ -73,6 +73,9 @@ void DirconKinematicDataSet<T>::updateVdot(const VectorX<T>& state, const Vector
   right_hand_side +=  J_transpose*forces;
 
   vdot_ = M.llt().solve(right_hand_side);
+  //std::cout << M << std::endl;
+  //std::cout << M.inverse() << std::endl;
+  //vdot_ = M.inverse()*right_hand_side;
 }
 
 

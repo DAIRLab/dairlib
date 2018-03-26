@@ -9,6 +9,12 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/snopt_solver.h"
+#include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/diagram.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/primitives/trajectory_source.h"
+#include "drake/multibody/rigid_body_plant/drake_visualizer.h"
+#include "drake/lcm/drake_lcm.h"
 #include "dircon_position_data.h"
 #include "dircon_kinematic_data_set.h"
 #include "dircon.h"
@@ -51,14 +57,14 @@ int testConstraints() {
   DirconPositionData<double> constraint = DirconPositionData<double>(tree,bodyIdx,pt,isXZ);
   DirconPositionData<double> constraint2 = DirconPositionData<double>(tree,bodyIdx,pt2,isXZ);
   cout << "??" <<endl;
-  int n = 5;
+  int n = 4;
   int nl = 4;
   int nu = 1;
 
   VectorXd q(n,1);
   VectorXd v(n,1);
-  q << 0,0,0,M_PI,0;
-  v << 0,0,0,0,0;
+  q << 0,0,M_PI,0;
+  v << 0,0,0,0;
   VectorXd x(2*n,1);
   x << q, v;
   VectorXd u(nu,1);
@@ -68,8 +74,8 @@ int testConstraints() {
 
   VectorXd q1(n,1);
   VectorXd v1(n,1);
-  q1 << 0,0,0,M_PI,0;
-  v1 << 0,0,0,0,0;
+  q1 << 0,0,M_PI,0;
+  v1 << 0,0,0,0;
   VectorXd x1(2*n,1);
   x1 << q1, v1;
   VectorXd u1(nu,1);
@@ -161,11 +167,10 @@ RigidBodyTree<double> tree;
   cout << tree.getBodyOrFrameName(3) << endl;
   cout << tree.getBodyOrFrameName(4) << endl;
   cout << tree.getBodyOrFrameName(5) << endl;
-  cout << tree.getBodyOrFrameName(6) << endl;
-  int n = 8;
+  int n = 4;
   int nu = 1;
   int nl = 2;
-  int bodyIdx = 5;
+  int bodyIdx = 4;
   Vector3d pt;
   pt << 0,0,0;
   bool isXZ = true;
@@ -176,7 +181,7 @@ RigidBodyTree<double> tree;
   auto dataset = DirconKinematicDataSet<AutoDiffXd>(tree, &constraints);
 
   int N = 10;
-  auto trajopt = std::make_shared<Dircon>(tree, N, .01, 1.0, dataset, DirconOptions(dataset.getNumConstraints()));
+  auto trajopt = std::make_shared<Dircon>(tree, N, .01, 3.0, dataset, DirconOptions(dataset.getNumConstraints()));
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
 
@@ -194,8 +199,9 @@ RigidBodyTree<double> tree;
   for (int i = 0; i < N; i++) {
     init_time.push_back(i*.1);
     init_x.push_back(VectorXd::Zero(2*n));
-    init_x[i](3) = M_PI;
+    init_x[i](2) = M_PI;
     init_u.push_back(VectorXd::Zero(nu));
+    //init_u[i](0) = .1;
     init_l.push_back(init_l_vec);
     init_lc.push_back(init_l_vec);
     init_vc.push_back(VectorXd::Zero(nl));
@@ -206,17 +212,47 @@ RigidBodyTree<double> tree;
   auto init_l_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_l);
   auto init_lc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_lc);
   auto init_vc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_vc);
-  trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
+  //trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
 
-  Eigen::VectorXd x0(10);
-  x0 << 0, 0, 0, M_PI, 0, 0, 0, 0, 0, 0;
-  Eigen::VectorXd xG(10);
-  xG << 0, 0, 0, M_PI, 0, 0, 0, 0, 0, 0;
+  Eigen::VectorXd x0(2*n);
+  x0 << 0, 0, 0, 0, 0, 0, 0, 0;
+  Eigen::VectorXd xG(2*n);
+  xG << 0, 0, M_PI, 0, 0, 0, 0, 0;
   trajopt->AddLinearConstraint(trajopt->initial_state() == x0);
   trajopt->AddLinearConstraint(trajopt->final_state() == xG);
 
+  const double kTorqueLimit = 8;
+  auto u = trajopt->input();
+  trajopt->AddConstraintToAllKnotPoints(-kTorqueLimit <= u(0));
+  trajopt->AddConstraintToAllKnotPoints(u(0) <= kTorqueLimit);
+
+  const double R = 10;  // Cost on input "effort".
+  trajopt->AddRunningCost((R * u) * u);
+
+  trajopt->AddEqualTimeIntervalsConstraints();
+
   auto result = trajopt->Solve();
   trajopt->PrintSolution();
+
+  //visualizer
+  lcm::DrakeLcm lcm;
+  systems::DiagramBuilder<double> builder;
+  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
+  auto state_source = builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
+  auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
+  publisher->set_publish_period(1.0 / 60.0);
+  builder.Connect(state_source->get_output_port(),
+                  publisher->get_input_port(0));
+
+  auto diagram = builder.Build();
+
+  systems::Simulator<double> simulator(*diagram);
+
+  simulator.set_target_realtime_rate(1);
+  simulator.Initialize();
+  simulator.StepTo(pp_xtraj.end_time());
+  return 0;
+
 }
 
 
@@ -227,6 +263,7 @@ RigidBodyTree<double> tree;
 }  // namespace drake
 
 int main(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   //drake::goldilocks::examples::testConstraints();
   drake::goldilocks::examples::testDircon();
   return 0;

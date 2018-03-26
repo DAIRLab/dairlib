@@ -6,7 +6,6 @@
 
   <link name="base"/>
   <link name="base_x"/>
-  <link name="base_xz"/>
   <link name="base_link">
     <visual>
       <geometry>
@@ -74,13 +73,8 @@
   </joint>
   <joint name="planar_z" type="prismatic">
     <parent link="base_x"/>
-    <child link="base_xz"/>
-    <axis xyz="0 0 1"/>
-  </joint>
-  <joint name="planar_roty" type="continuous">
-    <parent link="base_xz"/>
     <child link="base_link"/>
-    <axis xyz="0 1 0"/>
+    <axis xyz="0 0 1"/>
   </joint>
 
   <transmission type="SimpleTransmission" name="elbow_trans">

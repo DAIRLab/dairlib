@@ -176,7 +176,7 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
                    collocation_slack_vars().segment(i * num_kinematic_constraints(), num_kinematic_constraints())});
   }
 
-  //TODO: add decision variables related to relative constraints
+  //TODO: add decision variables related to relative constraints, also use the options here
   auto kinematic_constraint = std::make_shared<DirconKinematicConstraint>(tree, constraints);
   for (int i = 0; i < N(); i++) {
     AddConstraint(kinematic_constraint,

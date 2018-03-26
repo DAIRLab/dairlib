@@ -27,7 +27,8 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
       num_kinematic_constraints_{constraints.getNumConstraints()},
       force_vars_(NewContinuousVariables(constraints.getNumConstraints() * num_time_samples, "lambda")),
       collocation_force_vars_(NewContinuousVariables(constraints.getNumConstraints() * (num_time_samples - 1), "lambda_c")),
-      collocation_slack_vars_(NewContinuousVariables(constraints.getNumConstraints() * (num_time_samples - 1), "v_c")) {
+      collocation_slack_vars_(NewContinuousVariables(constraints.getNumConstraints() * (num_time_samples - 1), "v_c")),
+      offset_vars_(NewContinuousVariables(options.getNumRelative(), "offset")) {
   tree_ = &tree;
   constraints_ = &constraints;
   auto constraint = std::make_shared<DirconDynamicConstraint>(tree, constraints);
@@ -51,27 +52,30 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
   }
 
   //TODO: add decision variables related to relative constraints, also use the options here
-  auto kinematic_constraint = std::make_shared<DirconKinematicConstraint>(tree, constraints);
+  auto kinematic_constraint = std::make_shared<DirconKinematicConstraint>(tree, constraints, options.getConstraintsRelative());
   for (int i = 1; i < N()-1; i++) {
     AddConstraint(kinematic_constraint,
                   {x_vars().segment(i * num_states(), num_states()),
                    u_vars().segment(i * num_inputs(), num_inputs()),
-                   force_vars().segment(i * num_kinematic_constraints(), num_kinematic_constraints())});
+                   force_vars().segment(i * num_kinematic_constraints(), num_kinematic_constraints()),
+                   offset_vars()});
   }
 
   //special case i=0 and i=N based on options
-  auto kinematic_constraint_start = std::make_shared<DirconKinematicConstraint>(tree, constraints, options.getStartType());
+  auto kinematic_constraint_start = std::make_shared<DirconKinematicConstraint>(tree, constraints, options.getConstraintsRelative(), options.getStartType());
   AddConstraint(kinematic_constraint_start,
                 {x_vars().segment(0, num_states()),
                  u_vars().segment(0, num_inputs()),
-                 force_vars().segment(0, num_kinematic_constraints())});
+                 force_vars().segment(0, num_kinematic_constraints()),
+                 offset_vars()});
 
 
-  auto kinematic_constraint_end = std::make_shared<DirconKinematicConstraint>(tree, constraints, options.getEndType());
+  auto kinematic_constraint_end = std::make_shared<DirconKinematicConstraint>(tree, constraints, options.getConstraintsRelative(), options.getEndType());
   AddConstraint(kinematic_constraint_end,
                 {x_vars().segment((N()-1) * num_states(), num_states()),
                  u_vars().segment((N()-1) * num_inputs(), num_inputs()),
-                 force_vars().segment((N()-1) * num_kinematic_constraints(), num_kinematic_constraints())});
+                 force_vars().segment((N()-1) * num_kinematic_constraints(), num_kinematic_constraints()),
+                 offset_vars()});
 
   //Force cost option
   if (options.getForceCost() != 0) {

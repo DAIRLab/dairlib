@@ -106,23 +106,34 @@ Binding<Constraint> AddDirconConstraint(
                               next_force, collocation_force, collocation_position_slack});
 }
 
-DirconKinematicConstraint::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints) :
-  DirconKinematicConstraint(tree, constraints, DirconKinConstraintType::kAll) {}
+DirconKinematicConstraint::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints,
+                            DirconKinConstraintType type) :
+  DirconKinematicConstraint(tree, constraints, std::vector<bool>(constraints.getNumConstraints(), false), type,
+                            tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.getNumConstraints()) {}
 
 DirconKinematicConstraint::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints,
-                                                     DirconKinConstraintType type) :
-  DirconKinematicConstraint(tree, constraints, type, tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(),
-                            constraints.getNumConstraints()) {}
+                            std::vector<bool> is_constraint_relative, DirconKinConstraintType type) :
+  DirconKinematicConstraint(tree, constraints, is_constraint_relative, type,
+                            tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.getNumConstraints()) {}
 
 DirconKinematicConstraint::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints,
-                                                     DirconKinConstraintType type, int num_positions, int num_velocities, int num_inputs,
-                                                     int num_kinematic_constraints)
-    : Constraint(type*num_kinematic_constraints, num_positions + num_velocities + num_inputs + num_kinematic_constraints,
+                                                     std::vector<bool> is_constraint_relative, DirconKinConstraintType type, int num_positions,
+                                                    int num_velocities, int num_inputs, int num_kinematic_constraints)
+    : Constraint(type*num_kinematic_constraints, num_positions + num_velocities + num_inputs + num_kinematic_constraints + std::count(is_constraint_relative.begin(),is_constraint_relative.end(),true),
                  Eigen::VectorXd::Zero(type*num_kinematic_constraints), Eigen::VectorXd::Zero(type*num_kinematic_constraints)),
       num_states_{num_positions+num_velocities}, num_inputs_{num_inputs}, num_kinematic_constraints_{num_kinematic_constraints},
-      num_positions_{num_positions}, num_velocities_{num_velocities}, type_{type} {
+      num_positions_{num_positions}, num_velocities_{num_velocities}, type_{type}, is_constraint_relative_{is_constraint_relative},
+      n_relative_{(int) std::count(is_constraint_relative.begin(),is_constraint_relative.end(),true)} {
   tree_ = &tree;
   constraints_ = &constraints;
+  relative_map_ = MatrixXd::Zero(num_kinematic_constraints_,n_relative_);
+  int j = 0;
+  for (int i=0; i < num_kinematic_constraints_; i++) {
+    if(is_constraint_relative_[i]) {
+      relative_map_(i,j) = 1;
+      j++;
+    }
+  }
 }
 
 
@@ -137,7 +148,7 @@ void DirconKinematicConstraint::DoEval(
 
 void DirconKinematicConstraint::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
-  DRAKE_ASSERT(x.size() == num_states_ + num_inputs_ + num_kinematic_constraints_);
+  DRAKE_ASSERT(x.size() == num_states_ + num_inputs_ + num_kinematic_constraints_ + n_relative_);
 
   // Extract our input variables:
   // h - current time (knot) value
@@ -146,12 +157,13 @@ void DirconKinematicConstraint::DoEval(
   const auto state = x.segment(0, num_states_);
   const auto input = x.segment(num_states_, num_inputs_);
   const auto force = x.segment(num_states_ + num_inputs_, num_kinematic_constraints_);
+  const auto offset = x.segment(num_states_ + num_inputs_ + num_kinematic_constraints_, n_relative_);
   //TODO: properly add in relative constraint decision variables
   constraints_->updateData(state, input, force);
   switch(type_) {
     case kAll:
       y = AutoDiffVecXd(3*num_kinematic_constraints_);
-      y << constraints_->getC(), constraints_->getCDot(), constraints_->getCDDot();
+      y << constraints_->getC() + relative_map_*offset, constraints_->getCDot(), constraints_->getCDDot();
       break;
     case kAccelAndVel:
       y = AutoDiffVecXd(2*num_kinematic_constraints_);

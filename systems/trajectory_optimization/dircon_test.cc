@@ -186,6 +186,7 @@ RigidBodyTree<double> tree;
   auto options = DirconOptions(dataset.getNumConstraints());
   options.setStartType(DirconKinConstraintType::kAccelOnly);
   options.setEndType(DirconKinConstraintType::kAccelOnly);
+  //options.setConstraintRelative(0,true);
   auto trajopt = std::make_shared<Dircon>(tree, N, .01, 3.0, dataset, options);
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
@@ -217,7 +218,7 @@ RigidBodyTree<double> tree;
   auto init_l_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_l);
   auto init_lc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_lc);
   auto init_vc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_vc);
-  trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
+  //trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
 
   Eigen::VectorXd x0(2*n);
   x0 << 0, 0, 0, 0, 0, 0, 0, 0;
@@ -255,8 +256,7 @@ RigidBodyTree<double> tree;
 
   simulator.set_target_realtime_rate(1);
   simulator.Initialize();
-  while (true)
-    simulator.StepTo(pp_xtraj.end_time());
+  simulator.StepTo(pp_xtraj.end_time());
   return 0;
 
 }

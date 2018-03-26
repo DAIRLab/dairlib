@@ -13,8 +13,6 @@ class DirconKinematicDataSet {
   public:
     DirconKinematicDataSet(const RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints);
 
-    //~DirconKinematicDataSet();
-
     void updateData(const VectorX<T>& state, const VectorX<T>& input, const VectorX<T>& forces);
 
     VectorX<T> getC();
@@ -29,8 +27,6 @@ class DirconKinematicDataSet {
 
   private:
     DirconKinematicDataSet(const RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints, int num_positions, int num_velocities);
-
-    void updateVdot(const VectorX<T>& state, const VectorX<T>& input, const VectorX<T>& forces);
 
     const RigidBodyTree<double>* tree_;
     int num_positions_;

@@ -30,8 +30,8 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(const RigidBodyTree<double>& t
 
 template <typename T>
 void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state, const VectorX<T>& input, const VectorX<T>& forces) {
-  VectorX<T> q = state.head(num_positions_);
-  VectorX<T> v = state.tail(num_velocities_);
+  const VectorX<T> q = state.head(num_positions_);
+  const VectorX<T> v = state.tail(num_velocities_);
   KinematicsCache<T> cache = tree_->doKinematics(q, v, true);
 
   int index = 0;
@@ -48,36 +48,20 @@ void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state, const Vector
     index += n;
   }
 
-  updateVdot(state, input, forces);
-  cddot_ = Jdotv_ + J_*vdot_;
 
-  xdot_ << tree_->GetVelocityToQDotMapping(cache)*v, vdot_; //assumes v = qdot
-}
-
-template <typename T>
-void DirconKinematicDataSet<T>::updateVdot(const VectorX<T>& state, const VectorX<T>& input, const VectorX<T>& forces) {
-  VectorX<T> q = state.head(num_positions_);
-  VectorX<T> v = state.tail(num_velocities_);
-
-  KinematicsCache<T> kinsol = tree_->doKinematics(q,v,true);
-
-  const MatrixX<T> M = tree_->massMatrix(kinsol);
-  //const drake::eigen_aligned_std_unordered_map<RigidBody<double> const*, drake::WrenchVector<T>> no_external_wrenches;
+  const MatrixX<T> M = tree_->massMatrix(cache);
   const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
   const MatrixX<T> J_transpose = getJ().transpose();
 
   // right_hand_side is the right hand side of the system's equations:
   // M*vdot -J^T*f = right_hand_side.
-  VectorX<T> right_hand_side = -tree_->dynamicsBiasTerm(kinsol, no_external_wrenches);
-  right_hand_side +=  tree_->B*input;
-  right_hand_side +=  J_transpose*forces;
-
+  VectorX<T> right_hand_side = -tree_->dynamicsBiasTerm(cache, no_external_wrenches) + tree_->B*input + J_transpose*forces;
   vdot_ = M.llt().solve(right_hand_side);
-  //std::cout << M << std::endl;
-  //std::cout << M.inverse() << std::endl;
-  //vdot_ = M.inverse()*right_hand_side;
-}
 
+  cddot_ = Jdotv_ + J_*vdot_;
+
+  xdot_ << tree_->GetVelocityToQDotMapping(cache)*v, vdot_; //assumes v = qdot
+}
 
 template <typename T>
 int DirconKinematicDataSet<T>::getNumConstraints() {
@@ -118,7 +102,6 @@ template <typename T>
 VectorX<T> DirconKinematicDataSet<T>::getXDot() {
   return xdot_;
 }
-
 
 // Explicitly instantiates on the most common scalar types.
 template class DirconKinematicDataSet<double>;

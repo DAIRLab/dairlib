@@ -14,7 +14,7 @@ DirconOptions::DirconOptions(int n_constraints) {
   }
   start_constraint_type_ = DirconKinConstraintType::kAll;
   end_constraint_type_ = DirconKinConstraintType::kAll;
-  force_cost_ = 1.0e-6;
+  force_cost_ = 1.0e-2;
 }
 
 void DirconOptions::setAllConstraintsRelative(bool relative) {
@@ -47,6 +47,10 @@ bool DirconOptions::getSingleConstraintRelative(int index) {
   return is_constraints_relative_[index];
 }
 
+std::vector<bool> DirconOptions::getConstraintsRelative() {
+  return is_constraints_relative_;
+}
+
 DirconKinConstraintType DirconOptions::getStartType() {
   return start_constraint_type_;
 }
@@ -57,6 +61,10 @@ DirconKinConstraintType DirconOptions::getEndType() {
 
 double DirconOptions::getForceCost() {
   return force_cost_;
+}
+
+int DirconOptions::getNumRelative() {
+  return (int) std::count(is_constraints_relative_.begin(),is_constraints_relative_.end(),true);
 }
 
 }

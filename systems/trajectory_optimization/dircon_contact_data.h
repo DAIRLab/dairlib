@@ -9,21 +9,31 @@
 #include "dircon_kinematic_data.h"
 
 using Eigen::Vector3d;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using Eigen::Matrix3Xd;
+
 
 namespace drake {
 template <typename T>
-class DirconPositionData : public DirconKinematicData<T> {
+class DirconContactData : public DirconKinematicData<T> {
   public:
-    DirconPositionData(RigidBodyTree<double>& tree, int bodyIdx, Vector3d pt, bool isXZ = false);
-    ~DirconPositionData();
+    DirconContactData(RigidBodyTree<double>& tree, std::vector<int>& contact_indices,
+                      double mu, bool isXZ = false);
+    ~DirconContactData();
 
     //The workhorse function, updates and caches everything needed by the outside world
     void updateConstraint(KinematicsCache<T>& cache);
 
   private:
-    int bodyIdx_;
-    Vector3d pt_;
+    double mu_;
+    std::vector<int> contact_indices_;
     bool isXZ_;
     Eigen::Matrix<double,2,3> TXZ_;
+
+    Matrix3Xd xA_, xB_, normal_;
+    std::vector<int> idxA_;
+    std::vector<int> idxB_;
+    VectorXd phi_;
 };
 }

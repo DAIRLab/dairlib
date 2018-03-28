@@ -1,5 +1,8 @@
 #include "dircon_kinematic_data_set.h"
-#include <iostream>
+#include "drake/math/autodiff.h"
+#include "drake/math/autodiff_gradient.h"
+
+#include <chrono>
 
 namespace drake{
 template <typename T>
@@ -48,6 +51,30 @@ void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state, const Vector
     index += n;
   }
 
+  /*
+  Eigen::VectorXd q2(4);
+  Eigen::VectorXd v2(4);
+  Eigen::VectorXd x2(8);
+  q2 << 1,2,3,4.1;
+  v2 << -1,-3.2,-4,-2.5;
+  x2 <<q2,v2;
+
+  VectorX<AutoDiffUpTo73d> xd = VectorX<AutoDiffUpTo73d>::Ones(8);
+  VectorX<AutoDiffUpTo73d> qd = xd.segment(0,4);
+  VectorX<AutoDiffUpTo73d> vd = xd.segment(4,4);
+
+  auto cache2 = tree_->doKinematics(qd,vd,true);
+
+
+//  MatrixX<AutoDiffXd> M2(4,4);
+  auto start = std::chrono::high_resolution_clock::now();
+  for (int i=0; i < 1000; i++)
+     auto M2 = tree_->massMatrix(cache2);
+  std::cout << "C:" << cache2.areInertiasCached() <<std::endl; 
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "T:" << elapsed.count() <<std::endl;
+  */
 
   const MatrixX<T> M = tree_->massMatrix(cache);
   const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;

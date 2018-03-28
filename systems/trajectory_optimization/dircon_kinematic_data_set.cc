@@ -130,6 +130,12 @@ VectorX<T> DirconKinematicDataSet<T>::getXDot() {
   return xdot_;
 }
 
+template <typename T>
+DirconKinematicData<T>* DirconKinematicDataSet<T>::getConstraint(int index) {
+  return (*constraints_)[index];
+}
+
+
 // Explicitly instantiates on the most common scalar types.
 template class DirconKinematicDataSet<double>;
 template class DirconKinematicDataSet<AutoDiffXd>;

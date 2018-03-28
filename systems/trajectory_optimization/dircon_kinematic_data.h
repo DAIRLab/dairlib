@@ -22,6 +22,8 @@ class DirconKinematicData {
     MatrixX<T> getJ();
     VectorX<T> getJdotv();
     int getLength();
+    int numForceConstraints();
+    std::shared_ptr<solvers::Constraint> getForceConstraint(int index);
 
   protected:
     const RigidBodyTree<double>* tree_;

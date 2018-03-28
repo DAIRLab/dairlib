@@ -1,6 +1,9 @@
 #include <memory>
+#include <chrono>
 
 #include <gflags/gflags.h>
+#include "drake/systems/trajectory_optimization/direct_collocation.h"
+#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
@@ -26,6 +29,7 @@ using Eigen::Matrix3Xd;
 using std::cout;
 using std::endl;
 using drake::systems::trajectory_optimization::Dircon;
+using drake::systems::trajectory_optimization::DirectCollocation;
 using drake::systems::trajectory_optimization::DirconDynamicConstraint;
 using drake::systems::trajectory_optimization::DirconKinematicConstraint;
 using drake::systems::trajectory_optimization::DirconOptions;
@@ -45,7 +49,7 @@ int testConstraints() {
 
   //auto model = std::make_unique<RigidBodyTree<double>>();
   RigidBodyTree<double> tree;
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot.urdf", multibody::joints::kFixed, &tree);
+  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot_floating.urdf", multibody::joints::kFixed, &tree);
   //const std::unique_ptr<const RigidBodyTree<double>> tree =  std::unique_ptr<const RigidBodyTree<double>>(&model);
 
   int bodyIdx = 5;
@@ -160,7 +164,7 @@ int testConstraints() {
 
 int testDircon() {
 RigidBodyTree<double> tree;
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot.urdf", multibody::joints::kFixed, &tree);
+  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot_floating.urdf", multibody::joints::kFixed, &tree);
   //const std::unique_ptr<const RigidBodyTree<double>> tree =  std::unique_ptr<const RigidBodyTree<double>>(&model);
 
   cout << tree.getBodyOrFrameName(0) << endl;
@@ -261,6 +265,73 @@ RigidBodyTree<double> tree;
 
 }
 
+int testDircol() {
+  RigidBodyTree<double> tree_dircon;
+  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot.urdf", multibody::joints::kFixed, &tree_dircon);
+
+  auto tree = std::make_unique<RigidBodyTree<double>>();
+  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot.urdf", multibody::joints::kFixed, tree.get());
+  drake::systems::DiagramBuilder<double> builder;
+  auto plant = builder.AddSystem<systems::RigidBodyPlant<double>>(std::move(tree));
+  const auto context = plant->CreateDefaultContext();
+
+  int N = 10;
+
+  // std::vector<DirconKinematicData<AutoDiffXd>*> constraints;
+  // auto dataset = DirconKinematicDataSet<AutoDiffXd>(tree_dircon, &constraints);
+  // auto options = DirconOptions(dataset.getNumConstraints());
+  // auto trajopt = std::make_shared<Dircon>(tree_dircon, N, .01, 3.0, dataset, options);
+
+  auto trajopt = std::make_shared<DirectCollocation>(plant, *context, N, .1,.3);
+
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
+
+  Eigen::VectorXd x0(4);
+  x0 << 0, 0, 0, 0;
+  Eigen::VectorXd xG(4);
+  xG << M_PI, 0, 0, 0;
+  cout << trajopt->initial_state() << endl;
+  trajopt->AddLinearConstraint(trajopt->initial_state() == x0);
+  trajopt->AddLinearConstraint(trajopt->final_state() == xG);
+
+  const double kTorqueLimit = 8;
+  auto u = trajopt->input();
+  trajopt->AddConstraintToAllKnotPoints(-kTorqueLimit <= u(0));
+  trajopt->AddConstraintToAllKnotPoints(u(0) <= kTorqueLimit);
+
+  const double R = 10;  // Cost on input "effort".
+  trajopt->AddRunningCost((R * u) * u);
+
+  trajopt->AddEqualTimeIntervalsConstraints();
+
+  const double timespan_init = 4;
+  auto traj_init_x = PiecewisePolynomial<double>::FirstOrderHold(
+      {0, timespan_init}, {x0,xG});
+  //trajopt->SetInitialTrajectory(PiecewisePolynomial<double>(), traj_init_x,PiecewisePolynomial<double>(),PiecewisePolynomial<double>(),PiecewisePolynomial<double>());
+  trajopt->SetInitialTrajectory(PiecewisePolynomial<double>(), traj_init_x);
+
+  auto result = trajopt->Solve();
+  trajopt->PrintSolution();
+
+  //visualizer
+  lcm::DrakeLcm lcm;
+  systems::DiagramBuilder<double> vis_builder;
+  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
+  auto state_source = vis_builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
+  auto publisher = vis_builder.AddSystem<systems::DrakeVisualizer>(plant->get_rigid_body_tree(), &lcm);
+  publisher->set_publish_period(1.0 / 60.0);
+  vis_builder.Connect(state_source->get_output_port(),
+                  publisher->get_input_port(0));
+  auto diagram = vis_builder.Build();
+  systems::Simulator<double> simulator(*diagram);
+
+  simulator.set_target_realtime_rate(1);
+  simulator.Initialize();
+  simulator.StepTo(pp_xtraj.end_time());
+  return 0;
+
+}
+
 
 
 }  // namespace
@@ -271,6 +342,7 @@ RigidBodyTree<double> tree;
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   //drake::dircon::examples::testConstraints();
-  drake::dircon::examples::testDircon();
+  //drake::dircon::examples::testDircon();
+  drake::dircon::examples::testDircol();
   return 0;
 }

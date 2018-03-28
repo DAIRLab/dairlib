@@ -23,6 +23,8 @@ class DirconKinematicDataSet {
     VectorX<T> getVDot();
     VectorX<T> getXDot();
 
+    DirconKinematicData<T>* getConstraint(int index);
+
     int getNumConstraints();
 
   private:

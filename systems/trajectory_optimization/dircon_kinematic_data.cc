@@ -37,6 +37,16 @@ int DirconKinematicData<T>::getLength() {
   return length_;
 }
 
+template <typename T>
+int DirconKinematicData<T>::numForceConstraints() {
+  return force_constraints_.size();
+}
+
+template <typename T>
+std::shared_ptr<solvers::Constraint> DirconKinematicData<T>::getForceConstraint(int index) {
+  return force_constraints_[index];
+}
+
 // Explicitly instantiates on the most common scalar types.
 template class DirconKinematicData<double>;
 template class DirconKinematicData<AutoDiffXd>;

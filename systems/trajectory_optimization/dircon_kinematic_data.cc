@@ -3,7 +3,7 @@
 namespace drake{
 
 template <typename T>
-DirconKinematicData<T>::DirconKinematicData(const RigidBodyTree<double>& tree, int length) {
+DirconKinematicData<T>::DirconKinematicData(RigidBodyTree<double>& tree, int length) {
   tree_ = &tree;
   length_ = length;
   //force_constraints_ = std::vector<solvers::Constraint>(0);

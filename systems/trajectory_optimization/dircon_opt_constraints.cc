@@ -65,11 +65,10 @@ void DirconDynamicConstraint::DoEval(
 
   constraints_->updateData(x0, u0, l0);
   AutoDiffVecXd xdot0 = constraints_->getXDot();
-  const Eigen::MatrixXd dxdot0 = math::autoDiffToGradientMatrix(xdot0);
 
   constraints_->updateData(x1, u1, l1);
   AutoDiffVecXd xdot1 = constraints_->getXDot();
-  const Eigen::MatrixXd dxdot1 = math::autoDiffToGradientMatrix(xdot1);
+  
   // Cubic interpolation to get xcol and xdotcol.
   const AutoDiffVecXd xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
   const AutoDiffVecXd xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);

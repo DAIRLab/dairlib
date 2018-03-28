@@ -41,6 +41,7 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
 
   //TODO: To enable caching of constraint calculations, I probably need to make deep copies of constraints (and make another container
   // class that that has double the info for time i and i+1)
+  //Adding dynamic constraints
   for (int i = 0; i < N() - 1; i++) {
     AddConstraint(constraint,
                   {h_vars().segment<1>(i),
@@ -51,7 +52,7 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
                    collocation_slack_vars().segment(i * num_kinematic_constraints(), num_kinematic_constraints())});
   }
 
-  //TODO: add decision variables related to relative constraints, also use the options here
+  //Adding kinematic constraints
   auto kinematic_constraint = std::make_shared<DirconKinematicConstraint>(tree, constraints, options.getConstraintsRelative());
   for (int i = 1; i < N()-1; i++) {
     AddConstraint(kinematic_constraint,
@@ -59,6 +60,16 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
                    u_vars().segment(i * num_inputs(), num_inputs()),
                    force_vars().segment(i * num_kinematic_constraints(), num_kinematic_constraints()),
                    offset_vars()});
+  }
+
+  //Add constraints on force variables
+  for (int i = 0; i < N() - 1; i++) {
+    for (int j = 0; j < num_kinematic_constraints(); j++) {
+      DirconKinematicData<AutoDiffXd>* constraint_j = constraints_->getConstraint(j);
+      for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
+        AddConstraint(constraint_j->getForceConstraint(k), force_vars().segment(k * num_kinematic_constraints(), num_kinematic_constraints()));
+      }
+    }
   }
 
   //special case i=0 and i=N based on options

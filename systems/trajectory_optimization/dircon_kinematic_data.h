@@ -11,7 +11,7 @@ namespace drake {
 template <typename T>
 class DirconKinematicData {
   public:
-    DirconKinematicData(const RigidBodyTree<double>& tree, int length);
+    DirconKinematicData(RigidBodyTree<double>& tree, int length);
     ~DirconKinematicData();
 
     //The workhorse function, updates and caches everything needed by the outside world
@@ -26,7 +26,7 @@ class DirconKinematicData {
     std::shared_ptr<solvers::Constraint> getForceConstraint(int index);
 
   protected:
-    const RigidBodyTree<double>* tree_;
+    RigidBodyTree<double>* tree_;
     //things like friction cone constraints
     std::vector<std::shared_ptr<solvers::Constraint>> force_constraints_;
     VectorX<T> c_;

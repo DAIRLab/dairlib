@@ -9,6 +9,7 @@
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/kinematics_cache.h"
+#include "drake/math/jacobian.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/snopt_solver.h"
@@ -21,6 +22,7 @@
 #include "dircon_position_data.h"
 #include "dircon_kinematic_data_set.h"
 #include "dircon.h"
+#include "dircon_opt_constraints.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -262,6 +264,52 @@ RigidBodyTree<double> tree;
   simulator.Initialize();
   simulator.StepTo(pp_xtraj.end_time());
   return 0;
+}
+
+int testDirconConstraints() {
+RigidBodyTree<double> tree;
+  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot_floating.urdf", multibody::joints::kFixed, &tree);
+  //const std::unique_ptr<const RigidBodyTree<double>> tree =  std::unique_ptr<const RigidBodyTree<double>>(&model);
+
+  cout << tree.getBodyOrFrameName(0) << endl;
+  cout << tree.getBodyOrFrameName(1) << endl;
+  cout << tree.getBodyOrFrameName(2) << endl;
+  cout << tree.getBodyOrFrameName(3) << endl;
+  cout << tree.getBodyOrFrameName(4) << endl;
+  cout << tree.getBodyOrFrameName(5) << endl;
+  int n = 4;
+  int nu = 1;
+  int nl = 2;
+  int bodyIdx = 4;
+  Vector3d pt;
+  pt << 0,0,0;
+  bool isXZ = true;
+  DirconPositionData<AutoDiffXd> constraint = DirconPositionData<AutoDiffXd>(tree,bodyIdx,pt,isXZ);
+
+  std::vector<DirconKinematicData<AutoDiffXd>*> constraints;
+  constraints.push_back(&constraint);
+  auto dataset = DirconKinematicDataSet<AutoDiffXd>(tree, &constraints);
+
+  auto dyn_constraint = std::make_shared<DirconDynamicConstraint>(tree, dataset);
+  auto start = std::chrono::high_resolution_clock::now();
+  VectorXd x = VectorXd::Ones(2*(2*n+nu)+4*nl+1);
+  x(0) = .01;
+
+  AutoDiffVecXd y;
+
+  for (int i=0; i < 100; i++) {
+    x(3) = i;
+    AutoDiffVecXd x_autodiff = math::initializeAutoDiff(x);
+    //y = dyn_constraint->tmp(x);
+    //y = math::jacobian([dyn_constraint](const auto& x_arg) { return dyn_constraint->DoEvalJacobian(x_arg.template cast<AutoDiffXd>().eval()); }, x_autodiff);
+    dyn_constraint->DoEval(x_autodiff,y);
+  }
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "T:" << elapsed.count() <<std::endl;
+  std::cout << y  << endl;
+  std::cout << math::autoDiffToGradientMatrix(y) << endl;
+  return 0;
 
 }
 
@@ -343,6 +391,7 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   //drake::dircon::examples::testConstraints();
   //drake::dircon::examples::testDircon();
-  drake::dircon::examples::testDircol();
+  //drake::dircon::examples::testDircol();
+  drake::dircon::examples::testDirconConstraints();
   return 0;
 }

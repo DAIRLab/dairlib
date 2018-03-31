@@ -63,6 +63,11 @@ class DirconKinematicConstraint : public solvers::Constraint{
   DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data,
                             std::vector<bool> is_constraint_relative, DirconKinConstraintType type = DirconKinConstraintType::kAll);
 
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<double>& constraint_data,
+                            DirconKinConstraintType type = DirconKinConstraintType::kAll);
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<double>& constraint_data,
+                            std::vector<bool> is_constraint_relative, DirconKinConstraintType type = DirconKinConstraintType::kAll);
+
   ~DirconKinematicConstraint() override = default;
 
  protected:
@@ -75,10 +80,13 @@ class DirconKinematicConstraint : public solvers::Constraint{
  private:
   DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data, std::vector<bool> is_constraint_relative,
                             DirconKinConstraintType type, int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<double>& constraint_data, std::vector<bool> is_constraint_relative,
+                            DirconKinConstraintType type, int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
 
 
   const RigidBodyTree<double>* tree_;
   DirconKinematicDataSet<AutoDiffXd>* constraints_;
+  DirconKinematicDataSet<double>* constraints_d_;
 
   const int num_positions_{0};
   const int num_velocities_{0};

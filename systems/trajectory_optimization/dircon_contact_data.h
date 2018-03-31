@@ -31,7 +31,9 @@ class DirconContactData : public DirconKinematicData<T> {
     bool isXZ_;
     Eigen::Matrix<double,2,3> TXZ_;
 
-    Matrix3Xd xA_, xB_, normal_;
+
+    Matrix3Xd xA_, xB_, normal_, d_data_;
+    std::vector<Eigen::Map<Matrix3Xd>> d_world_;
     std::vector<int> idxA_;
     std::vector<int> idxB_;
     VectorXd phi_;

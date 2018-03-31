@@ -33,13 +33,12 @@ DirconDynamicConstraint::DirconDynamicConstraint(const RigidBodyTree<double>& tr
 }
 
 
-//mposa: what is this function actually doing?
 void DirconDynamicConstraint::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
     Eigen::VectorXd& y) const {
-  AutoDiffVecXd y_t;
-  Eval(math::initializeAutoDiff(x), y_t);
-  y = math::autoDiffToValueMatrix(y_t);
+    AutoDiffVecXd y_t;
+    Eval(math::initializeAutoDiff(x), y_t);
+    y = math::autoDiffToValueMatrix(y_t);
 }
 
 // The format of the input to the eval() function is the

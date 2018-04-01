@@ -41,6 +41,7 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
 
   //TODO: To enable caching of constraint calculations, I probably need to make deep copies of constraints (and make another container
   // class that that has double the info for time i and i+1)
+
   //Adding dynamic constraints
   for (int i = 0; i < N() - 1; i++) {
     AddConstraint(constraint,
@@ -162,7 +163,7 @@ void Dircon::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u
 
   VectorXd guess_force(force_vars_.size());
   if (traj_init_l.empty()) {
-    guess_force.fill(0);  // Start with some small number <= 0.01.
+    guess_force.fill(0);  // Start with 0
   } else {
     for (int i = 0; i < N(); ++i) {
       guess_force.segment(num_kinematic_constraints_ * i, num_kinematic_constraints_) =
@@ -173,7 +174,7 @@ void Dircon::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u
 
   VectorXd guess_collocation_force(collocation_force_vars_.size());
   if (traj_init_lc.empty()) {
-    guess_collocation_force.fill(0);  // Start with some small number <= 0.01.
+    guess_collocation_force.fill(0);  // Start with 0
   } else {
     for (int i = 0; i < N()-1; ++i) {
       guess_collocation_force.segment(num_kinematic_constraints_ * i, num_kinematic_constraints_) =
@@ -184,14 +185,14 @@ void Dircon::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u
 
   VectorXd guess_collocation_slack(collocation_slack_vars_.size());
   if (traj_init_vc.empty()) {
-    guess_collocation_slack.fill(0);  // Start with some small number <= 0.01.
+    guess_collocation_slack.fill(0);  // Start with 0
   } else {
     for (int i = 0; i < N()-1; ++i) {
       guess_collocation_slack.segment(num_kinematic_constraints_ * i, num_kinematic_constraints_) =
           traj_init_vc.value(start_time + (i + 0.5) * h);
     }
   }
-  SetInitialGuess(collocation_slack_vars_, guess_collocation_slack);
+  SetInitialGuess(collocation_slack_vars_, guess_collocation_slack); //call superclass method
 }
 
 }  // namespace trajectory_optimization

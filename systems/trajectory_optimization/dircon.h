@@ -21,15 +21,16 @@ namespace trajectory_optimization {
 
 using trajectories::PiecewisePolynomial;
 
-/// DirectCollocation implements the approach to trajectory optimization as
+/// DIRCCON implements the approach to trajectory optimization as
 /// described in
-///   C. R. Hargraves and S. W. Paris. Direct trajectory optimization using
-///    nonlinear programming and collocation. J Guidance, 10(4):338-342,
-///    July-August 1987.
+///   Michael Posa, Scott Kuindersma, Russ Tedrake. "Optimization and Stabilization
+////  of Trajectories for Constrained Dynamical Systems." ICRA, 2016.
 /// It assumes a first-order hold on the input trajectory and a cubic spline
 /// representation of the state trajectory, and adds dynamic constraints (and
 /// running costs) to the midpoints as well as the knot points in order to
 /// achieve a 3rd order integration accuracy.
+/// DIRCON addresses kinematic constraints by incorporating constraint forces
+/// and corresponding acceleration, velocity, and position constraints.
 
 class Dircon : public MultipleShooting {
  public:
@@ -37,17 +38,12 @@ class Dircon : public MultipleShooting {
 
   /// Constructs the %MathematicalProgram% and adds the collocation constraints.
   ///
-  /// @param system A dynamical system to be used in the dynamic constraints.
-  ///    This system must support System::ToAutoDiffXd.
-  ///    Note that this is aliased for the lifetime of this object.
-  /// @param context Required to describe any parameters of the system.  The
-  ///    values of the state in this context do not have any effect.  This
-  ///    context will also be "cloned" by the optimization; changes to the
-  ///    context after calling this method will NOT impact the trajectory
-  ///    optimization.
+  /// @param tree The RigidBodyTree describing the plant and kinematics
   /// @param num_time_samples The number of knot points in the trajectory.
   /// @param minimum_timestep Minimum spacing between sample times.
   /// @param maximum_timestep Maximum spacing between sample times.
+  /// @param constraints The set of kinematic constraints that must be enforced
+  /// @param opttions a set of options for the optimization program (see DirconOptions)
   Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
     DirconKinematicDataSet<AutoDiffXd>& constraints, DirconOptions options);
 
@@ -63,6 +59,12 @@ class Dircon : public MultipleShooting {
   PiecewisePolynomial<double> ReconstructStateTrajectory()
   const override;
 
+  /// Set the initial guess
+  /// @param traj_init_u control input u
+  /// @param traj_init_x stat ex
+  /// @param traj_init_l contact forces lambda (interpreted at knot points)
+  /// @param traj_init_lc contact forces lambda_collocation (interpretted at collocation points)
+  /// @param traj_init_vc velocity constrait slack variables at collocation points
   void SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u, const PiecewisePolynomial<double>& traj_init_x,
                             const PiecewisePolynomial<double>& traj_init_l, const PiecewisePolynomial<double>& traj_init_lc,
                             const PiecewisePolynomial<double>& traj_init_vc);
@@ -96,27 +98,6 @@ class Dircon : public MultipleShooting {
   const solvers::VectorXDecisionVariable offset_vars_;
   const int num_kinematic_constraints_;
 };
-
-
-/// Helper method to add a DirconDynamicConstraint to the @p prog,
-/// ensuring that the order of variables in the binding matches the order
-/// expected by the constraint.
-// Note: The order of arguments is a compromise between GSG and the desire to
-// match the AddConstraint interfaces in MathematicalProgram.
-//
-// mposa: I don't think this function is actually being used, and I'm not sure what it does
-solvers::Binding<solvers::Constraint> AddDirconConstraint(
-    std::shared_ptr<DirconDynamicConstraint> constraint,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& timestep,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& state,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_state,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& input,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_input,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& force,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_force,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_force,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_position_slack,
-    solvers::MathematicalProgram* prog);
 
 }  // namespace trajectory_optimization
 }  // namespace systems

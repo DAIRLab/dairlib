@@ -16,10 +16,8 @@ enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
 
 /// Implements the direct collocation constraints for a first-order hold on
 /// the input and a cubic polynomial representation of the state trajectories.
-///
-/// Note that the DirectCollocation implementation allocates only ONE of
-/// these constraints, but binds that constraint multiple times (with
-/// different decision variables, along the trajectory).
+/// This class is based on the similar constraint used by DirectCollocation,
+/// but incorporates the effect of constraint forces
 
 class DirconDynamicConstraint : public solvers::Constraint {
  public:
@@ -55,17 +53,34 @@ class DirconDynamicConstraint : public solvers::Constraint {
   const int num_kinematic_constraints_{0};
 };
 
+
+/// Implements the kinematic constraints used by Dircon
+/// For constraints given by c(q), enforces the three constraints
+///   c(q), d/dt c(q), d^2/dt^2 c(q)
+///   at the position, velocity, and constraint levels
+/// When used with states that are fully constrained, i.e. if q_0 or x_0
+/// is fully specified, this class contains the option DirconKinConstraintType
+/// to only include a subset of the three constraints above, avoiding
+/// redundancy.
+///
+/// Constraints may also be specified as relative, where rather than c(q)=0,
+/// we have the constriant c(q)=constant. The constant value is a then new
+/// optimization decision variable.
 class DirconKinematicConstraint : public solvers::Constraint{
 
    public:
+  /// Constructor. Defaults the relative constraints to be all false
+  /// @param tree the RigidBodyTree
+  /// @param DirconKinematicDataSet the set of kinematic constraints to be enforced
+  /// @param type the constraint type (all, accel and vel, accel only). Defaults to all
   DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data,
                             DirconKinConstraintType type = DirconKinConstraintType::kAll);
+  /// Constructor
+  /// @param tree the RigidBodyTree
+  /// @param DirconKinematicDataSet the set of kinematic constraints to be enforced
+  /// @param is_constraint_relative vector of booleans specifying whether constraints are relative
+  /// @param type the constraint type (all, accel and vel, accel only). Defaults to all
   DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data,
-                            std::vector<bool> is_constraint_relative, DirconKinConstraintType type = DirconKinConstraintType::kAll);
-
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<double>& constraint_data,
-                            DirconKinConstraintType type = DirconKinConstraintType::kAll);
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<double>& constraint_data,
                             std::vector<bool> is_constraint_relative, DirconKinConstraintType type = DirconKinConstraintType::kAll);
 
   ~DirconKinematicConstraint() override = default;
@@ -99,6 +114,25 @@ class DirconKinematicConstraint : public solvers::Constraint{
   Eigen::MatrixXd relative_map_;
 };
 
+/// Helper method to add a DirconDynamicConstraint to the @p prog,
+/// ensuring that the order of variables in the binding matches the order
+/// expected by the constraint.
+// Note: The order of arguments is a compromise between GSG and the desire to
+// match the AddConstraint interfaces in MathematicalProgram.
+//
+// mposa: I don't think this function is actually being used, and I'm not sure what it does
+solvers::Binding<solvers::Constraint> AddDirconConstraint(
+    std::shared_ptr<DirconDynamicConstraint> constraint,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& timestep,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& state,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_state,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& input,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_input,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& force,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_force,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_force,
+    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_position_slack,
+    solvers::MathematicalProgram* prog);
 }
 }
 }

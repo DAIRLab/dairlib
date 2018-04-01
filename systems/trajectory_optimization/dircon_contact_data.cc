@@ -35,13 +35,12 @@ DirconContactData<T>::DirconContactData(RigidBodyTree<double>& tree, std::vector
     A_fric << mu, 1, mu, -1;
     Vector2d lb_fric = Vector2d::Zero();
     Vector2d ub_fric = VectorXd::Constant(2, std::numeric_limits<double>::infinity());
+    auto force_constraint = std::make_shared<solvers::LinearConstraint>(A_fric, lb_fric, ub_fric);
 
     for (int i = 0; i < n_contacts; i++) {
       Eigen::Map<Matrix3Xd> dmap(d_data_.block(0, 2*i, 3, 2).data(),3,2);
       d_world_.push_back(dmap);
 
-
-      auto force_constraint = std::make_shared<solvers::LinearConstraint>(A_fric, lb_fric, ub_fric);
       this->force_constraints_.push_back(force_constraint);
       // auto dynamicConstraint = std::make_shared<DirconDynamicConstraint>(tree, datasetd);
       //std::shared_ptr<solvers::Constraint>;
@@ -49,16 +48,18 @@ DirconContactData<T>::DirconContactData(RigidBodyTree<double>& tree, std::vector
   } else {
     d_data_ = Matrix3Xd::Zero(3,n_contacts*3);
 
+    Matrix3d A_fric;
+    A_fric << mu, 0, 0, 0, 1, 0, 0, 0, 1;
+    Vector3d b_fric = Vector3d::Zero();
+    auto force_constraint = std::make_shared<solvers::LorentzConeConstraint>(A_fric, b_fric);
+
     for (int i = 0; i < n_contacts; i++) {
       Eigen::Map<Matrix3Xd> dmap(d_data_.block(0, 3*i, 3, 3).data(),3,3);
       d_world_.push_back(dmap);
+
+      this->force_constraints_.push_back(force_constraint);
     }
 
-    Matrix3d A_fric;
-    A_fric << 1, 0, 0, 0, mu, 0, 0, 0, mu;
-    Vector3d b_fric = Vector3d::Zero();
-    auto force_constraint = std::make_shared<solvers::LorentzConeConstraint>(A_fric, b_fric);
-    this->force_constraints_.push_back(force_constraint);
   }
 }
 

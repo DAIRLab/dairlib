@@ -38,7 +38,7 @@ using drake::systems::trajectory_optimization::DirconOptions;
 using drake::systems::trajectory_optimization::DirconKinConstraintType;
 using drake::trajectories::PiecewisePolynomial;
 
-
+DEFINE_int64(testIndex, 0, "The index of the test to run");
 
 //template VectorXd RigidBodyTree<double>::transformPointsJacobianDotTimesV<double, Matrix3Xd>(KinematicsCache<double> const&, Eigen::MatrixBase<Matrix3Xd> const&, int, int);
 
@@ -118,8 +118,8 @@ int testConstraints() {
 
    datasetd.updateData(x_autodiff, u_autodiff, l_autodiff);
 
-  auto dynamicConstraint = std::make_shared<DirconDynamicConstraint>(tree, datasetd);
-  auto kinematicConstraint = std::make_shared<DirconKinematicConstraint>(tree, datasetd);
+  auto dynamicConstraint = std::make_shared<DirconDynamicConstraint<AutoDiffXd>>(tree, datasetd);
+  auto kinematicConstraint = std::make_shared<DirconKinematicConstraint<AutoDiffXd>>(tree, datasetd);
 
 
   //AutoDiffVecXd xul 
@@ -164,6 +164,7 @@ int testConstraints() {
   return 0;
 }
 
+template <typename T>
 int testDircon() {
 RigidBodyTree<double> tree;
   parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot_floating.urdf", multibody::joints::kFixed, &tree);
@@ -182,18 +183,18 @@ RigidBodyTree<double> tree;
   Vector3d pt;
   pt << 0,0,0;
   bool isXZ = true;
-  DirconPositionData<AutoDiffXd> constraint = DirconPositionData<AutoDiffXd>(tree,bodyIdx,pt,isXZ);
+  auto constraint = DirconPositionData<T>(tree,bodyIdx,pt,isXZ);
 
-  std::vector<DirconKinematicData<AutoDiffXd>*> constraints;
+  std::vector<DirconKinematicData<T>*> constraints;
   constraints.push_back(&constraint);
-  auto dataset = DirconKinematicDataSet<AutoDiffXd>(tree, &constraints);
+  auto dataset = DirconKinematicDataSet<T>(tree, &constraints);
 
   int N = 10;
-  auto options = DirconOptions(dataset.getNumConstraints());
+  auto options = DirconOptions(dataset.countConstraints());
   options.setStartType(DirconKinConstraintType::kAccelOnly);
   options.setEndType(DirconKinConstraintType::kAccelOnly);
   //options.setConstraintRelative(0,true);
-  auto trajopt = std::make_shared<Dircon>(tree, N, .01, 3.0, dataset, options);
+  auto trajopt = std::make_shared<Dircon<T>>(tree, N, .01, 3.0, dataset, options);
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
 
@@ -243,8 +244,12 @@ RigidBodyTree<double> tree;
 
   trajopt->AddEqualTimeIntervalsConstraints();
 
+  auto start = std::chrono::high_resolution_clock::now();
   auto result = trajopt->Solve();
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
   trajopt->PrintSolution();
+  std::cout << "Solve time:" << elapsed.count() <<std::endl;
 
   //visualizer
   lcm::DrakeLcm lcm;
@@ -284,31 +289,55 @@ RigidBodyTree<double> tree;
   Vector3d pt;
   pt << 0,0,0;
   bool isXZ = true;
+  
   DirconPositionData<AutoDiffXd> constraint = DirconPositionData<AutoDiffXd>(tree,bodyIdx,pt,isXZ);
-
   std::vector<DirconKinematicData<AutoDiffXd>*> constraints;
   constraints.push_back(&constraint);
   auto dataset = DirconKinematicDataSet<AutoDiffXd>(tree, &constraints);
+  auto dyn_constraint = std::make_shared<DirconDynamicConstraint<AutoDiffXd>>(tree, dataset);
 
-  auto dyn_constraint = std::make_shared<DirconDynamicConstraint>(tree, dataset);
-  auto start = std::chrono::high_resolution_clock::now();
+  DirconPositionData<double> constraint_double = DirconPositionData<double>(tree,bodyIdx,pt,isXZ);
+  std::vector<DirconKinematicData<double>*> constraints_double;
+  constraints_double.push_back(&constraint_double);
+  auto dataset_double = DirconKinematicDataSet<double>(tree, &constraints_double);
+  auto dyn_constraint_double = std::make_shared<DirconDynamicConstraint<double>>(tree, dataset_double);
+  
   VectorXd x = VectorXd::Ones(2*(2*n+nu)+4*nl+1);
   x(0) = .01;
 
   AutoDiffVecXd y;
 
+  auto start = std::chrono::high_resolution_clock::now();
   for (int i=0; i < 100; i++) {
-    x(3) = i;
+    x(3) = i/100.0;
     AutoDiffVecXd x_autodiff = math::initializeAutoDiff(x);
-    //y = dyn_constraint->tmp(x);
-    //y = math::jacobian([dyn_constraint](const auto& x_arg) { return dyn_constraint->DoEvalJacobian(x_arg.template cast<AutoDiffXd>().eval()); }, x_autodiff);
     dyn_constraint->DoEval(x_autodiff,y);
   }
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "T:" << elapsed.count() <<std::endl;
+  std::cout << "T(autodiff):" << elapsed.count() <<std::endl;
   std::cout << y  << endl;
   std::cout << math::autoDiffToGradientMatrix(y) << endl;
+  MatrixXd dy = math::autoDiffToGradientMatrix(y);
+
+  start = std::chrono::high_resolution_clock::now();
+  for (int i=0; i < 100; i++) {
+    x(3) = i/100.0;
+    AutoDiffVecXd x_autodiff = math::initializeAutoDiff(x);
+    //y = dyn_constraint->tmp(x);
+    //y = math::jacobian([dyn_constraint](const auto& x_arg) { return dyn_constraint->DoEvalJacobian(x_arg.template cast<AutoDiffXd>().eval()); }, x_autodiff);
+    dyn_constraint_double->DoEval(x_autodiff,y);
+  }
+  finish = std::chrono::high_resolution_clock::now();
+  elapsed = finish - start;
+  std::cout << "T(double):" << elapsed.count() <<std::endl;
+  std::cout << y  << endl;
+  std::cout << math::autoDiffToGradientMatrix(y) << endl;
+  MatrixXd dy_double = math::autoDiffToGradientMatrix(y);
+
+  std::cout << "Gradient Check:" << endl;
+  MatrixXd gradient_error = dy - dy_double;
+  std::cout << (gradient_error*1e6).array().round()*1e-6 << endl;
   return 0;
 
 }
@@ -389,9 +418,27 @@ int testDircol() {
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  //drake::dircon::examples::testConstraints();
-  //drake::dircon::examples::testDircon();
-  //drake::dircon::examples::testDircol();
-  drake::dircon::examples::testDirconConstraints();
+  switch(FLAGS_testIndex) {
+    case 0:
+      std::cout << "Testing DIRCON with AutoDiffXd" << std::endl;
+      drake::dircon::examples::testDircon<drake::AutoDiffXd>();
+      break;
+    case 1:
+    std::cout << "Testing DIRCON with double" << std::endl;
+      drake::dircon::examples::testDircon<double>();
+      break;
+    case 2:
+    std::cout << "Testing Dircol with AutoDiffXd" << std::endl;
+      drake::dircon::examples::testDircol();
+      break;
+    case 3:
+    std::cout << "Testing DIRCON optimization constraints" << std::endl;
+      drake::dircon::examples::testDirconConstraints();
+      break;
+    case 4:
+    std::cout << "Testing kinematic constraints" << std::endl;
+      drake::dircon::examples::testConstraints();
+      break;
+  }
   return 0;
 }

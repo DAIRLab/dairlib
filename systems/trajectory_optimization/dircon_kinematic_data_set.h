@@ -25,7 +25,8 @@ class DirconKinematicDataSet {
 
     DirconKinematicData<T>* getConstraint(int index);
 
-    int getNumConstraints();
+    int getNumConstraintObjects();
+    int countConstraints();
 
   private:
     DirconKinematicDataSet(const RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints, int num_positions, int num_velocities);
@@ -33,7 +34,7 @@ class DirconKinematicDataSet {
     const RigidBodyTree<double>* tree_;
     int num_positions_;
     int num_velocities_;
-    int num_constraints_;
+    int constraint_count_;
     std::vector<DirconKinematicData<T>*>* constraints_;
     VectorX<T> c_;
     VectorX<T> cdot_;

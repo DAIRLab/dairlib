@@ -19,12 +19,13 @@ enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
 /// This class is based on the similar constraint used by DirectCollocation,
 /// but incorporates the effect of constraint forces
 
+template <typename T>
 class DirconDynamicConstraint : public solvers::Constraint {
  public:
 //  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
 
  public:
-  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints);
+  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints);
 
   ~DirconDynamicConstraint() override = default;
 
@@ -37,14 +38,17 @@ class DirconDynamicConstraint : public solvers::Constraint {
               Eigen::VectorXd& y) const override;
 
   void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-              AutoDiffVecXd& y) const override;
+              AutoDiffVecXd& y) const override;  
+
+  void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
+              VectorX<T>& y) const;
 
  private:
-  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraints,
+  DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
     int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
 
   const RigidBodyTree<double>* tree_;
-  DirconKinematicDataSet<AutoDiffXd>* constraints_;
+  DirconKinematicDataSet<T>* constraints_;
 
   const int num_positions_{0};
   const int num_velocities_{0};
@@ -66,6 +70,7 @@ class DirconDynamicConstraint : public solvers::Constraint {
 /// Constraints may also be specified as relative, where rather than c(q)=0,
 /// we have the constriant c(q)=constant. The constant value is a then new
 /// optimization decision variable.
+template <typename T>
 class DirconKinematicConstraint : public solvers::Constraint{
 
    public:
@@ -73,14 +78,14 @@ class DirconKinematicConstraint : public solvers::Constraint{
   /// @param tree the RigidBodyTree
   /// @param DirconKinematicDataSet the set of kinematic constraints to be enforced
   /// @param type the constraint type (all, accel and vel, accel only). Defaults to all
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data,
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraint_data,
                             DirconKinConstraintType type = DirconKinConstraintType::kAll);
   /// Constructor
   /// @param tree the RigidBodyTree
   /// @param DirconKinematicDataSet the set of kinematic constraints to be enforced
   /// @param is_constraint_relative vector of booleans specifying whether constraints are relative
   /// @param type the constraint type (all, accel and vel, accel only). Defaults to all
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data,
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraint_data,
                             std::vector<bool> is_constraint_relative, DirconKinConstraintType type = DirconKinConstraintType::kAll);
 
   ~DirconKinematicConstraint() override = default;
@@ -91,17 +96,16 @@ class DirconKinematicConstraint : public solvers::Constraint{
 
   void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
               AutoDiffVecXd& y) const override;
+  void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
+              VectorX<T>& y) const;
 
  private:
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<AutoDiffXd>& constraint_data, std::vector<bool> is_constraint_relative,
-                            DirconKinConstraintType type, int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<double>& constraint_data, std::vector<bool> is_constraint_relative,
+  DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraint_data, std::vector<bool> is_constraint_relative,
                             DirconKinConstraintType type, int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
 
 
   const RigidBodyTree<double>* tree_;
-  DirconKinematicDataSet<AutoDiffXd>* constraints_;
-  DirconKinematicDataSet<double>* constraints_d_;
+  DirconKinematicDataSet<T>* constraints_;
 
   const int num_positions_{0};
   const int num_velocities_{0};
@@ -121,8 +125,9 @@ class DirconKinematicConstraint : public solvers::Constraint{
 // match the AddConstraint interfaces in MathematicalProgram.
 //
 // mposa: I don't think this function is actually being used, and I'm not sure what it does
+template <typename T>
 solvers::Binding<solvers::Constraint> AddDirconConstraint(
-    std::shared_ptr<DirconDynamicConstraint> constraint,
+    std::shared_ptr<DirconDynamicConstraint<T>> constraint,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& timestep,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& state,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_state,

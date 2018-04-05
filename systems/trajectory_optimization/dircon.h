@@ -32,6 +32,7 @@ using trajectories::PiecewisePolynomial;
 /// DIRCON addresses kinematic constraints by incorporating constraint forces
 /// and corresponding acceleration, velocity, and position constraints.
 
+template <typename T>
 class Dircon : public MultipleShooting {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Dircon)
@@ -45,7 +46,7 @@ class Dircon : public MultipleShooting {
   /// @param constraints The set of kinematic constraints that must be enforced
   /// @param opttions a set of options for the optimization program (see DirconOptions)
   Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
-    DirconKinematicDataSet<AutoDiffXd>& constraints, DirconOptions options);
+    DirconKinematicDataSet<T>& constraints, DirconOptions options);
 
   ~Dircon() override {}
 
@@ -90,7 +91,7 @@ class Dircon : public MultipleShooting {
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
   const RigidBodyTree<double>* tree_;
-  DirconKinematicDataSet<AutoDiffXd>* constraints_;
+  DirconKinematicDataSet<T>* constraints_;
   void DoAddRunningCost(const symbolic::Expression& e) override;
   const solvers::VectorXDecisionVariable force_vars_;
   const solvers::VectorXDecisionVariable collocation_force_vars_;

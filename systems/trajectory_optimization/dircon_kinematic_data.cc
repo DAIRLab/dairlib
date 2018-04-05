@@ -6,7 +6,7 @@ template <typename T>
 DirconKinematicData<T>::DirconKinematicData(RigidBodyTree<double>& tree, int length) {
   tree_ = &tree;
   length_ = length;
-  //force_constraints_ = std::vector<solvers::Constraint>(0);
+  force_constraints_ = std::vector<std::shared_ptr<solvers::Constraint>>(0);
 }
 
 template <typename T>

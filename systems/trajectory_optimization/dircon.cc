@@ -20,18 +20,18 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
 
-
-Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
-    DirconKinematicDataSet<AutoDiffXd>& constraints, DirconOptions options)
+template <typename T>
+Dircon<T>::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
+    DirconKinematicDataSet<T>& constraints, DirconOptions options)
     : MultipleShooting(tree.get_num_actuators(), tree.get_num_positions() + tree.get_num_velocities(), num_time_samples, minimum_timestep, maximum_timestep),
-      num_kinematic_constraints_{constraints.getNumConstraints()},
-      force_vars_(NewContinuousVariables(constraints.getNumConstraints() * num_time_samples, "lambda")),
-      collocation_force_vars_(NewContinuousVariables(constraints.getNumConstraints() * (num_time_samples - 1), "lambda_c")),
-      collocation_slack_vars_(NewContinuousVariables(constraints.getNumConstraints() * (num_time_samples - 1), "v_c")),
+      num_kinematic_constraints_{constraints.countConstraints()},
+      force_vars_(NewContinuousVariables(constraints.countConstraints() * num_time_samples, "lambda")),
+      collocation_force_vars_(NewContinuousVariables(constraints.countConstraints() * (num_time_samples - 1), "lambda_c")),
+      collocation_slack_vars_(NewContinuousVariables(constraints.countConstraints() * (num_time_samples - 1), "v_c")),
       offset_vars_(NewContinuousVariables(options.getNumRelative(), "offset")) {
   tree_ = &tree;
   constraints_ = &constraints;
-  auto constraint = std::make_shared<DirconDynamicConstraint>(tree, constraints);
+  auto constraint = std::make_shared<DirconDynamicConstraint<T>>(tree, constraints);
 
   DRAKE_ASSERT(static_cast<int>(constraint->num_constraints()) == num_states());
 
@@ -45,7 +45,7 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
   //Adding dynamic constraints
   for (int i = 0; i < N() - 1; i++) {
     AddConstraint(constraint,
-                  {h_vars().segment<1>(i),
+                  {h_vars().segment(i,1),
                    x_vars().segment(i * num_states(), num_states() * 2),
                    u_vars().segment(i * num_inputs(), num_inputs() * 2),
                    force_vars().segment(i * num_kinematic_constraints(), num_kinematic_constraints() * 2),
@@ -54,7 +54,7 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
   }
 
   //Adding kinematic constraints
-  auto kinematic_constraint = std::make_shared<DirconKinematicConstraint>(tree, constraints, options.getConstraintsRelative());
+  auto kinematic_constraint = std::make_shared<DirconKinematicConstraint<T>>(tree, constraints, options.getConstraintsRelative());
   for (int i = 1; i < N()-1; i++) {
     AddConstraint(kinematic_constraint,
                   {x_vars().segment(i * num_states(), num_states()),
@@ -65,8 +65,8 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
 
   //Add constraints on force variables
   for (int i = 0; i < N() - 1; i++) {
-    for (int j = 0; j < num_kinematic_constraints(); j++) {
-      DirconKinematicData<AutoDiffXd>* constraint_j = constraints_->getConstraint(j);
+    for (int j = 0; j < constraints_->getNumConstraintObjects(); j++) {
+      DirconKinematicData<T>* constraint_j = constraints_->getConstraint(j);
       for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
         AddConstraint(constraint_j->getForceConstraint(k), force_vars().segment(k * num_kinematic_constraints(), num_kinematic_constraints()));
       }
@@ -74,7 +74,7 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
   }
 
   //special case i=0 and i=N based on options
-  auto kinematic_constraint_start = std::make_shared<DirconKinematicConstraint>(tree, constraints, options.getConstraintsRelative(), options.getStartType());
+  auto kinematic_constraint_start = std::make_shared<DirconKinematicConstraint<T>>(tree, constraints, options.getConstraintsRelative(), options.getStartType());
   AddConstraint(kinematic_constraint_start,
                 {x_vars().segment(0, num_states()),
                  u_vars().segment(0, num_inputs()),
@@ -82,7 +82,7 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
                  offset_vars()});
 
 
-  auto kinematic_constraint_end = std::make_shared<DirconKinematicConstraint>(tree, constraints, options.getConstraintsRelative(), options.getEndType());
+  auto kinematic_constraint_end = std::make_shared<DirconKinematicConstraint<T>>(tree, constraints, options.getConstraintsRelative(), options.getEndType());
   AddConstraint(kinematic_constraint_end,
                 {x_vars().segment((N()-1) * num_states(), num_states()),
                  u_vars().segment((N()-1) * num_inputs(), num_inputs()),
@@ -99,7 +99,8 @@ Dircon::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double m
   }
 }
 
-void Dircon::DoAddRunningCost(const symbolic::Expression& g) {
+template <typename T>
+void Dircon<T>::DoAddRunningCost(const symbolic::Expression& g) {
   // Trapezoidal integration:
   //    sum_{i=0...N-2} h_i/2.0 * (g_i + g_{i+1}), or
   // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
@@ -114,8 +115,8 @@ void Dircon::DoAddRunningCost(const symbolic::Expression& g) {
           SubstitutePlaceholderVariables(g * h_vars()(N() - 2) / 2, N() - 1));
 }
 
-PiecewisePolynomial<double>
-Dircon::ReconstructInputTrajectory()
+template <typename T>
+PiecewisePolynomial<double> Dircon<T>::ReconstructInputTrajectory()
     const {
   Eigen::VectorXd times = GetSampleTimes();
   std::vector<double> times_vec(N());
@@ -127,9 +128,8 @@ Dircon::ReconstructInputTrajectory()
   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
 }
 
-
-PiecewisePolynomial<double>
-Dircon::ReconstructStateTrajectory()
+template <typename T>
+PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory()
     const {
   Eigen::VectorXd times = GetSampleTimes();
   std::vector<double> times_vec(N());
@@ -145,12 +145,13 @@ Dircon::ReconstructStateTrajectory()
     forces[i] = GetSolution(force(i));
     constraints_->updateData(states[i], inputs[i], forces[i]);
 
-    derivatives[i] =   math::autoDiffToValueMatrix(constraints_->getXDot());//Do I need to make a copy here?
+    derivatives[i] = math::DiscardGradient(constraints_->getXDot());//Do I need to make a copy here?
   }
   return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);
 }
 
-void Dircon::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u, const PiecewisePolynomial<double>& traj_init_x,
+template <typename T>
+void Dircon<T>::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u, const PiecewisePolynomial<double>& traj_init_x,
                                   const PiecewisePolynomial<double>& traj_init_l, const PiecewisePolynomial<double>& traj_init_lc,
                                   const PiecewisePolynomial<double>& traj_init_vc) {
   MultipleShooting::SetInitialTrajectory(traj_init_u,traj_init_x);
@@ -194,6 +195,9 @@ void Dircon::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u
   }
   SetInitialGuess(collocation_slack_vars_, guess_collocation_slack); //call superclass method
 }
+
+template class Dircon<double>;
+template class Dircon<AutoDiffXd>;
 
 }  // namespace trajectory_optimization
 }  // namespace systems

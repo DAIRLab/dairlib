@@ -17,15 +17,15 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(const RigidBodyTree<double>& t
   num_positions_ = num_positions;
   num_velocities_ = num_velocities;
   // Initialize matrices
-  num_constraints_ = 0;
+  constraint_count_ = 0;
   for (int i=0; i < constraints_->size(); i++) {
-    num_constraints_ += (*constraints_)[i]->getLength();
+    constraint_count_ += (*constraints_)[i]->getLength();
   }
-  c_ = VectorX<T>(num_constraints_);
-  cdot_ = VectorX<T>(num_constraints_);
-  J_ = MatrixX<T>(num_constraints_,num_positions);
-  Jdotv_ = VectorX<T>(num_constraints_);
-  cddot_ = VectorX<T>(num_constraints_);
+  c_ = VectorX<T>(constraint_count_);
+  cdot_ = VectorX<T>(constraint_count_);
+  J_ = MatrixX<T>(constraint_count_,num_positions);
+  Jdotv_ = VectorX<T>(constraint_count_);
+  cddot_ = VectorX<T>(constraint_count_);
   vdot_ = VectorX<T>(num_velocities_);
   xdot_ = VectorX<T>(num_positions_ + num_velocities_);
 }
@@ -51,31 +51,6 @@ void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state, const Vector
     index += n;
   }
 
-  /*
-  Eigen::VectorXd q2(4);
-  Eigen::VectorXd v2(4);
-  Eigen::VectorXd x2(8);
-  q2 << 1,2,3,4.1;
-  v2 << -1,-3.2,-4,-2.5;
-  x2 <<q2,v2;
-
-  VectorX<AutoDiffUpTo73d> xd = VectorX<AutoDiffUpTo73d>::Ones(8);
-  VectorX<AutoDiffUpTo73d> qd = xd.segment(0,4);
-  VectorX<AutoDiffUpTo73d> vd = xd.segment(4,4);
-
-  auto cache2 = tree_->doKinematics(qd,vd,true);
-
-
-//  MatrixX<AutoDiffXd> M2(4,4);
-  auto start = std::chrono::high_resolution_clock::now();
-  for (int i=0; i < 1000; i++)
-     auto M2 = tree_->massMatrix(cache2);
-  std::cout << "C:" << cache2.areInertiasCached() <<std::endl; 
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "T:" << elapsed.count() <<std::endl;
-  */
-
   const MatrixX<T> M = tree_->massMatrix(cache);
   const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
   const MatrixX<T> J_transpose = getJ().transpose();
@@ -91,8 +66,13 @@ void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state, const Vector
 }
 
 template <typename T>
-int DirconKinematicDataSet<T>::getNumConstraints() {
-  return num_constraints_;
+int DirconKinematicDataSet<T>::countConstraints() {
+  return constraint_count_;
+}
+
+template <typename T>
+int DirconKinematicDataSet<T>::getNumConstraintObjects() {
+  return constraints_->size();
 }
 
 template <typename T>

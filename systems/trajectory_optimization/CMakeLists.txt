@@ -1,10 +1,11 @@
 # -*- mode: cmake -*-
 # vi: set ft=cmake :
 
+#set(CMAKE_BUILD_TYPE Debug)
 
 find_package(GFlags MODULE REQUIRED COMPONENTS shared)
 
-add_library(dircon dircon_options.cc dircon_options.h dircon.h dircon.cc dircon_opt_constraints.h dircon_opt_constraints.cc dircon_kinematic_data_set.cc dircon_kinematic_data_set.h dircon_kinematic_data.cc dircon_kinematic_data.h dircon_position_data.cc dircon_position_data.h dircon_contact_data.h dircon_contact_data.cc)
+add_library(dircon dircon_options.cc dircon_options.h dircon.h dircon.cc dircon_opt_constraints.h dircon_opt_constraints.cc dircon_kinematic_data_set.cc dircon_kinematic_data_set.h dircon_kinematic_data.cc dircon_kinematic_data.h dircon_position_data.cc dircon_position_data.h)
 target_link_libraries(dircon drake::drake)
 
 add_executable(kinematic_constraints_test kinematic_constraints_test.cc)

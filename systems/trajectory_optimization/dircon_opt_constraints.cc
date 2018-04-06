@@ -62,7 +62,7 @@ template <>
 void DirconDynamicConstraint<double>::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
   // forward differencing
-    double dx = 1e-6;
+    double dx = 1e-8;
 
     VectorXd x_val = math::autoDiffToValueMatrix(x);
     VectorXd y0,yi;
@@ -201,7 +201,7 @@ template <>
 void DirconKinematicConstraint<double>::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
   // forward differencing
-    double dx = 1e-6;
+    double dx = 1e-8;
 
     VectorXd x_val = math::autoDiffToValueMatrix(x);
     VectorXd y0,yi;

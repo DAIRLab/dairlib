@@ -164,8 +164,8 @@ int testConstraints() {
 }
 
 template <typename T>
-int testDircon() {
-RigidBodyTree<double> tree;
+int testDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::VectorXd::Zero(8)) {
+  RigidBodyTree<double> tree;
   parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot_floating.urdf", multibody::joints::kFixed, &tree);
   //const std::unique_ptr<const RigidBodyTree<double>> tree =  std::unique_ptr<const RigidBodyTree<double>>(&model);
 
@@ -184,16 +184,23 @@ RigidBodyTree<double> tree;
   bool isXZ = true;
   auto constraint = DirconPositionData<T>(tree,bodyIdx,pt,isXZ);
 
+  if (addForceConstraints) {
+    Vector3d normal;
+    normal << 0,0,1;
+    double mu = 1;
+    constraint.addFixedNormalFrictionConstraints(normal,mu);
+  }
+
   std::vector<DirconKinematicData<T>*> constraints;
   constraints.push_back(&constraint);
   auto dataset = DirconKinematicDataSet<T>(tree, &constraints);
 
-  int N = 10;
+  int N = 11;
   auto options = DirconOptions(dataset.countConstraints());
   options.setStartType(DirconKinConstraintType::kAccelOnly);
   options.setEndType(DirconKinConstraintType::kAccelOnly);
   //options.setConstraintRelative(0,true);
-  auto trajopt = std::make_shared<Dircon<T>>(tree, N, .01, 3.0, dataset, options);
+  auto trajopt = std::make_shared<Dircon<T>>(tree, N, .02, .3, dataset, options);
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level","1");
@@ -211,10 +218,10 @@ RigidBodyTree<double> tree;
 
   for (int i = 0; i < N; i++) {
     init_time.push_back(i*.1);
-    init_x.push_back(VectorXd::Zero(2*n));
-    //init_x[i](2) = M_PI;
-    init_u.push_back(VectorXd::Zero(nu));
-    init_u[i](0) = .1;
+    // init_x.push_back(VectorXd::Zero(2*n));
+    init_x.push_back(x0);
+    init_u.push_back(VectorXd::Random(nu));
+    //init_u[i](0) = .1;
     init_l.push_back(init_l_vec);
     init_lc.push_back(init_l_vec);
     init_vc.push_back(VectorXd::Zero(nl));
@@ -225,10 +232,8 @@ RigidBodyTree<double> tree;
   auto init_l_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_l);
   auto init_lc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_lc);
   auto init_vc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_vc);
-  //trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
+  trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
 
-  Eigen::VectorXd x0(2*n);
-  x0 << 0, 0, 0, 0, 0, 0, 0, 0;
   Eigen::VectorXd xG(2*n);
   xG << 0, 0, M_PI, 0, 0, 0, 0, 0;
   trajopt->AddLinearConstraint(trajopt->initial_state() == x0);
@@ -250,6 +255,8 @@ RigidBodyTree<double> tree;
   std::chrono::duration<double> elapsed = finish - start;
   trajopt->PrintSolution();
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
+  std::cout << result << std::endl;
+  std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
 
   //visualizer
   lcm::DrakeLcm lcm;
@@ -271,6 +278,8 @@ RigidBodyTree<double> tree;
   return 0;
 }
 
+
+
 int testDirconConstraints() {
 RigidBodyTree<double> tree;
   parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot_floating.urdf", multibody::joints::kFixed, &tree);
@@ -289,7 +298,7 @@ RigidBodyTree<double> tree;
   Vector3d pt;
   pt << 0,0,0;
   bool isXZ = true;
-  
+
   DirconPositionData<AutoDiffXd> constraint = DirconPositionData<AutoDiffXd>(tree,bodyIdx,pt,isXZ);
   std::vector<DirconKinematicData<AutoDiffXd>*> constraints;
   constraints.push_back(&constraint);
@@ -301,7 +310,7 @@ RigidBodyTree<double> tree;
   constraints_double.push_back(&constraint_double);
   auto dataset_double = DirconKinematicDataSet<double>(tree, &constraints_double);
   auto dyn_constraint_double = std::make_shared<DirconDynamicConstraint<double>>(tree, dataset_double);
-  
+
   VectorXd x = VectorXd::Ones(2*(2*n+nu)+4*nl+1);
   x(0) = .01;
 
@@ -418,14 +427,24 @@ int testDircol() {
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  Eigen::VectorXd init_up = Eigen::VectorXd(8);
+  init_up << 0, 0, 3, .2, 0, 0, 0, 0;
   switch(FLAGS_testIndex) {
     case 0:
       std::cout << "Testing DIRCON with AutoDiffXd" << std::endl;
-      drake::dircon::examples::testDircon<drake::AutoDiffXd>();
+      drake::dircon::examples::testDircon<drake::AutoDiffXd>(false);
       break;
     case 1:
     std::cout << "Testing DIRCON with double" << std::endl;
-      drake::dircon::examples::testDircon<double>();
+      drake::dircon::examples::testDircon<double>(false);
+      break;
+    case 2:
+      std::cout << "Testing DIRCON with force constraints (autodiff)" << std::endl;
+      drake::dircon::examples::testDircon<drake::AutoDiffXd>(true, init_up);
+      break;
+    case 3:
+      std::cout << "Testing DIRCON with force constraints (double)" << std::endl;
+      drake::dircon::examples::testDircon<double>(true, init_up);
       break;
     case 4:
     std::cout << "Testing Dircol with AutoDiffXd" << std::endl;

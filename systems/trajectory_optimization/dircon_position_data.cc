@@ -1,6 +1,7 @@
 #include "dircon_position_data.h"
 
 namespace drake{
+using Eigen::Vector2d;
 
 template <typename T>
 DirconPositionData<T>::DirconPositionData(RigidBodyTree<double>& tree, int bodyIdx, Vector3d pt, bool isXZ)
@@ -35,6 +36,36 @@ void DirconPositionData<T>::updateConstraint(KinematicsCache<T>& cache) {
     this->Jdotv_ = this->tree_->transformPointsJacobianDotTimesV(cache, pt_,bodyIdx_,0);
   }
 }
+
+template <typename T>
+void DirconPositionData<T>::addFixedNormalFrictionConstraints(Vector3d normal, double mu) {
+  if (isXZ_) {
+    Vector2d normal_xz, d_xz;
+    double L = sqrt(normal(0)*normal(0) + normal(2)*normal(2));
+    normal_xz << normal(0)/L, normal(2)/L;
+    d_xz << -normal_xz(1), normal_xz(0);
+
+    Eigen::Matrix2d A_fric;
+    A_fric << (mu*normal_xz + d_xz).transpose(), (mu*normal_xz - d_xz).transpose();
+    Vector2d lb_fric = Vector2d::Zero();
+    Vector2d ub_fric = Vector2d::Constant(std::numeric_limits<double>::infinity());
+    
+    auto force_constraint = std::make_shared<solvers::LinearConstraint>(A_fric, lb_fric, ub_fric);
+    this->force_constraints_.push_back(force_constraint);
+  } else {
+    //Awkward construction here using the tree
+    std::vector<Eigen::Map<Eigen::Matrix3Xd>> d_world;
+    Eigen::Map<Eigen::Matrix3Xd> n_world(normal.data(),3,1);
+    this->tree_->surfaceTangents(n_world, d_world);
+
+    Eigen::Matrix3d A_fric;
+    A_fric << mu*normal.transpose(), d_world[0].transpose();
+    Vector3d b_fric = Vector3d::Zero();
+    auto force_constraint = std::make_shared<solvers::LorentzConeConstraint>(A_fric, b_fric);
+    this->force_constraints_.push_back(force_constraint);
+  }
+}
+
 
 // Explicitly instantiates on the most common scalar types.
 template class DirconPositionData<double>;

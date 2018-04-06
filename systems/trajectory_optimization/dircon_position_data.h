@@ -20,6 +20,8 @@ class DirconPositionData : public DirconKinematicData<T> {
     //The workhorse function, updates and caches everything needed by the outside world
     void updateConstraint(KinematicsCache<T>& cache);
 
+    void addFixedNormalFrictionConstraints(Vector3d normal, double mu);
+
   private:
     int bodyIdx_;
     Vector3d pt_;

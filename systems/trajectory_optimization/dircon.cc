@@ -65,10 +65,12 @@ Dircon<T>::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, doubl
 
   //Add constraints on force variables
   for (int i = 0; i < N() - 1; i++) {
+    int start_index = i*num_kinematic_constraints();
     for (int j = 0; j < constraints_->getNumConstraintObjects(); j++) {
       DirconKinematicData<T>* constraint_j = constraints_->getConstraint(j);
+      start_index += constraint_j->getLength();
       for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
-        AddConstraint(constraint_j->getForceConstraint(k), force_vars().segment(k * num_kinematic_constraints(), num_kinematic_constraints()));
+        AddConstraint(constraint_j->getForceConstraint(k), force_vars().segment(start_index, constraint_j->getLength()));
       }
     }
   }

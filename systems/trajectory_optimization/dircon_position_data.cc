@@ -25,14 +25,14 @@ void DirconPositionData<T>::updateConstraint(KinematicsCache<T>& cache) {
   auto v = cache.getV();
   if (isXZ_) {
     this->c_ = TXZ_*pts;
-    this->J_ = TXZ_*this->tree_->transformPointsJacobian(cache, pt_.template cast<T>(),bodyIdx_,0, true);
+    this->J_ = TXZ_*this->tree_->transformPointsJacobian(cache, pt_,bodyIdx_,0, true);
     this->cdot_ = this->J_*v;
-    this->Jdotv_ = TXZ_*this->tree_->transformPointsJacobianDotTimesV(cache, pt_.template cast<T>(),bodyIdx_,0);
+    this->Jdotv_ = TXZ_*this->tree_->transformPointsJacobianDotTimesV(cache, pt_,bodyIdx_,0);
   } else {
     this->c_ = pts;
-    this->J_ = this->tree_->transformPointsJacobian(cache, pt_.template cast<T>(),bodyIdx_,0, true);
+    this->J_ = this->tree_->transformPointsJacobian(cache, pt_,bodyIdx_,0, true);
     this->cdot_ = this->J_*v;
-    this->Jdotv_ = this->tree_->transformPointsJacobianDotTimesV(cache, pt_.template cast<T>(),bodyIdx_,0);
+    this->Jdotv_ = this->tree_->transformPointsJacobianDotTimesV(cache, pt_,bodyIdx_,0);
   }
 }
 

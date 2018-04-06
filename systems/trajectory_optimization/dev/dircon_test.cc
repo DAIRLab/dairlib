@@ -19,6 +19,7 @@
 #include "drake/multibody/rigid_body_plant/drake_visualizer.h"
 #include "drake/lcm/drake_lcm.h"
 #include "dircon_position_data.h"
+#include "dircon_contact_data.h"
 #include "dircon_kinematic_data_set.h"
 #include "dircon.h"
 #include "dircon_opt_constraints.h"
@@ -271,6 +272,121 @@ RigidBodyTree<double> tree;
   return 0;
 }
 
+
+template <typename T>
+int testDirconContact() {
+  RigidBodyTree<double> tree;
+  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot_floating.urdf", multibody::joints::kFixed, &tree);
+  multibody::AddFlatTerrainToWorld(&tree, 100., 10.);
+
+  cout << tree.getBodyOrFrameName(0) << endl;
+  cout << tree.getBodyOrFrameName(1) << endl;
+  cout << tree.getBodyOrFrameName(2) << endl;
+  cout << tree.getBodyOrFrameName(3) << endl;
+  cout << tree.getBodyOrFrameName(4) << endl;
+  cout << tree.getBodyOrFrameName(5) << endl;
+  int n = 4;
+  int nu = 1;
+  int nl = 2;
+  int bodyIdx = 4;
+  Vector3d pt;
+  pt << 0,0,0;
+  bool isXZ = true;
+  double mu = 1;
+  std::vector<int> contact_indices;
+  contact_indices.push_back(0);
+
+  auto constraint = DirconContactData<T>(tree, contact_indices, mu, isXZ);
+
+  std::vector<DirconKinematicData<T>*> constraints;
+  constraints.push_back(&constraint);
+  auto dataset = DirconKinematicDataSet<T>(tree, &constraints);
+
+  int N = 10;
+  auto options = DirconOptions(dataset.countConstraints());
+  options.setStartType(DirconKinConstraintType::kAccelOnly);
+  options.setEndType(DirconKinConstraintType::kAccelOnly);
+  
+  auto trajopt = std::make_shared<Dircon<T>>(tree, N, .01, 3.0, dataset, options);
+
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",2);
+
+  //Construct what should be a feasible trajectory
+  std::vector<double> init_time;
+  std::vector<MatrixXd> init_x;
+  std::vector<MatrixXd> init_u;
+  std::vector<MatrixXd> init_l;
+  std::vector<MatrixXd> init_lc;
+  std::vector<MatrixXd> init_vc;
+
+  VectorXd init_l_vec(nl);
+  init_l_vec << tree.getMass()*9.81, 0;
+
+  for (int i = 0; i < N; i++) {
+    init_time.push_back(i*.1);
+    // init_x.push_back(VectorXd::Zero(2*n));
+    init_x.push_back(VectorXd::Random(2*n));
+    //init_x[i](2) = M_PI;
+    init_u.push_back(VectorXd::Random(nu));
+    // init_u.push_back(VectorXd::Zero(nu));
+    // init_u[i](0) = .1;
+    init_l.push_back(init_l_vec);
+    init_lc.push_back(init_l_vec);
+    init_vc.push_back(VectorXd::Zero(nl));
+  }
+
+  auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_x);
+  auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_u);
+  auto init_l_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_l);
+  auto init_lc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_lc);
+  auto init_vc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_vc);
+  trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
+
+  Eigen::VectorXd x0(2*n);
+  x0 << 0, 0, M_PI-.2, 0, 0, 0, 0, 0;
+  Eigen::VectorXd xG(2*n);
+  xG << 0, 0, M_PI, 0, 0, 0, 0, 0;
+  trajopt->AddLinearConstraint(trajopt->initial_state() == x0);
+  trajopt->AddLinearConstraint(trajopt->final_state() == xG);
+
+  const double kTorqueLimit = 8;
+  auto u = trajopt->input();
+  trajopt->AddConstraintToAllKnotPoints(-kTorqueLimit <= u(0));
+  trajopt->AddConstraintToAllKnotPoints(u(0) <= kTorqueLimit);
+
+  const double R = 10;  // Cost on input "effort".
+  trajopt->AddRunningCost((R * u) * u);
+
+  trajopt->AddEqualTimeIntervalsConstraints();
+
+  auto start = std::chrono::high_resolution_clock::now();
+  auto result = trajopt->Solve();
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  trajopt->PrintSolution();
+  std::cout << "Solve time:" << elapsed.count() <<std::endl;
+
+  //visualizer
+  lcm::DrakeLcm lcm;
+  systems::DiagramBuilder<double> builder;
+  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
+  auto state_source = builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
+  auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
+  publisher->set_publish_period(1.0 / 60.0);
+  builder.Connect(state_source->get_output_port(),
+                  publisher->get_input_port(0));
+
+  auto diagram = builder.Build();
+
+  systems::Simulator<double> simulator(*diagram);
+
+  simulator.set_target_realtime_rate(1);
+  simulator.Initialize();
+  simulator.StepTo(pp_xtraj.end_time());
+  return 0;
+}
+
 int testDirconConstraints() {
 RigidBodyTree<double> tree;
   parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot_floating.urdf", multibody::joints::kFixed, &tree);
@@ -427,6 +543,14 @@ int main(int argc, char* argv[]) {
     std::cout << "Testing DIRCON with double" << std::endl;
       drake::dircon::examples::testDircon<double>();
       break;
+    case 2:
+      std::cout << "Testing DIRCON with contact constraints" << std::endl;
+      drake::dircon::examples::testDirconContact<drake::AutoDiffXd>();
+      break;
+    case 3:
+      std::cout << "Testing DIRCON with contact constraints" << std::endl;
+      drake::dircon::examples::testDirconContact<double>();
+      break;      
     case 4:
     std::cout << "Testing Dircol with AutoDiffXd" << std::endl;
       drake::dircon::examples::testDircol();

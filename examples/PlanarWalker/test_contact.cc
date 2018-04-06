@@ -124,7 +124,7 @@ int do_main(int argc, char* argv[]) {
   cout <<  math::autoDiffToGradientMatrix(phidot) << endl;
 
   //AutoDiffVecXd JdotV = tree.get()->transformPointsJacobianDotTimesV(cache_autodiff, xB_col0, idxB.at(0), 0); 
-  AutoDiffVecXd JdotV = tree.get()->transformPointsJacobianDotTimesV(cache_autodiff, xBc0.template cast<AutoDiffXd>(), idxB.at(0), 0); 
+  AutoDiffVecXd JdotV = tree.get()->transformPointsJacobianDotTimesV(cache_autodiff, xBc0, idxB.at(0), 0); 
 
   cout << "*********** JdotV ***********" << endl;
   cout << JdotV << endl;

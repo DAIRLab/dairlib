@@ -7,6 +7,10 @@ DirconKinematicData<T>::DirconKinematicData(RigidBodyTree<double>& tree, int len
   tree_ = &tree;
   length_ = length;
   force_constraints_ = std::vector<std::shared_ptr<solvers::Constraint>>(0);
+  c_ = VectorX<T>::Zero(length);
+  cdot_ = VectorX<T>::Zero(length);
+  J_ = MatrixX<T>::Zero(length, tree.get_num_positions());
+  Jdotv_ = VectorX<T>::Zero(length);
 }
 
 template <typename T>

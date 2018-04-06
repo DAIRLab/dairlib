@@ -15,6 +15,12 @@
         <color rgba="0 1 0 1" />
       </material>
     </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0"/>
+      </geometry>
+    </collision>
   </link>
 
   <link name="upper_link">

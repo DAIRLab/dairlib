@@ -322,9 +322,9 @@ int testHybridDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::Vecto
   std::vector<int> timesteps;
   timesteps.push_back(N);
   std::vector<double> min_dt;
-  timesteps.push_back(.02);
+  min_dt.push_back(.02);
   std::vector<double> max_dt;
-  timesteps.push_back(.3);
+  max_dt.push_back(.3);
   std::vector<DirconKinematicDataSet<T>*> dataset_list;
   dataset_list.push_back(&dataset);
 
@@ -368,6 +368,7 @@ int testHybridDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::Vecto
   auto init_vc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_vc);
   // trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
   trajopt->systems::trajectory_optimization::MultipleShooting::SetInitialTrajectory(init_u_traj,init_x_traj);
+  trajopt->SetInitialForceTrajectory(0, init_l_traj, init_lc_traj, init_vc_traj);
 
   Eigen::VectorXd xG(2*n);
   xG << 0, 0, M_PI, 0, 0, 0, 0, 0;

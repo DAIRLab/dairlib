@@ -28,6 +28,7 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     : MultipleShooting(tree.get_num_actuators(), tree.get_num_positions() + tree.get_num_velocities(), 
       std::accumulate(num_time_samples.begin(), num_time_samples.end(),0), 1e-8, 1e8),
       num_modes_(num_time_samples.size()),
+      v_post_impact_vars_(NewContinuousVariables(tree.get_num_velocities() * (num_time_samples.size() - 1), "v_p")),
       mode_lengths_(num_time_samples) {
 
   DRAKE_ASSERT(minimum_timestep.size() == num_modes_);
@@ -37,17 +38,19 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
   tree_ = &tree;
   constraints_ = constraints;
 
+  // v_post_impact_vars_ = NewContinuousVariables(tree.get_num_velocities() * (num_modes_ - 1), "v_p");
+
   //Initialization is looped over the modes
   int counter = 0;
   for (int i = 0; i < num_modes_; i++) {
     mode_start_.push_back(counter);
 
     //set timestep bounds
-    for (int j = 0; j < mode_lengths_[i]; j++) {
-      AddBoundingBoxConstraint(minimum_timestep[i], maximum_timestep[i], timestep(j));
-    }
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
-      AddLinearConstraint(timestep(j) == timestep(j+1)); //all timesteps must be equal
+      AddBoundingBoxConstraint(minimum_timestep[i], maximum_timestep[i], timestep(mode_start_[i] + j));
+    }
+    for (int j = 0; j < mode_lengths_[i] - 2; j++) {
+      AddLinearConstraint(timestep(mode_start_[i] + j) == timestep(mode_start_[i] + j + 1)); //all timesteps must be equal
     }
 
     //initialize constraint lengths
@@ -58,7 +61,6 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     collocation_force_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraints() * (num_time_samples[i] - 1), "lambda_c[" + std::to_string(i) + "]"));
     collocation_slack_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraints() * (num_time_samples[i] - 1), "v_c[" + std::to_string(i) + "]"));
     offset_vars_.push_back(NewContinuousVariables(options[i].getNumRelative(), "offset[" + std::to_string(i) + "]"));
-    v_post_impact_vars_ = NewContinuousVariables(tree.get_num_velocities(), "v_p");
 
     auto constraint = std::make_shared<DirconDynamicConstraint<T>>(tree, *constraints_[i]);
 
@@ -75,6 +77,7 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
       vector<solvers::VectorXDecisionVariable> x_next;
+
       AddConstraint(constraint,
                     {h_vars().segment(time_index,1),
                      state_vars_by_mode(i, j),
@@ -147,21 +150,22 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
 }
 
 template <typename T>
-const Eigen::VectorBlock<solvers::VectorXDecisionVariable> HybridDircon<T>::v_post_impact_vars_by_mode(int mode) {
+const Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>::v_post_impact_vars_by_mode(int mode) {
   return v_post_impact_vars_.segment(mode * tree_->get_num_velocities(), tree_->get_num_velocities());
 }
 
 template <typename T>
-const Eigen::VectorBlock<solvers::VectorXDecisionVariable> HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
+Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
   if (time_index == 0 && mode > 0) {
-    solvers::VectorXDecisionVariable ret;
-    ret << x_vars().segment(mode_start_[mode] + time_index, tree_->get_num_positions()),
+    solvers::VectorXDecisionVariable ret(num_states());
+    ret << x_vars().segment(mode_start_[mode] + time_index*num_states(), tree_->get_num_positions()),
           v_post_impact_vars_by_mode(mode);
-    return Eigen::VectorBlock<solvers::VectorXDecisionVariable>(ret, 0, num_states());
+    return Eigen::VectorBlock<const solvers::VectorXDecisionVariable>(ret, 0, num_states());
   } else {
-    solvers::VectorXDecisionVariable ret;
-    ret << x_vars().segment(mode_start_[mode] + time_index, num_states());
-    return Eigen::VectorBlock<solvers::VectorXDecisionVariable>(ret, 0, num_states());
+    solvers::VectorXDecisionVariable ret(num_states());
+    return x_vars().segment(mode_start_[mode] + time_index*num_states(), num_states());
+    // std::cout << Eigen::VectorBlock<solvers::VectorXDecisionVariable>(ret, 0, num_states())  << std::endl;
+    // return Eigen::VectorBlock<solvers::VectorXDecisionVariable>(ret, 0, num_states());
   }
 }
 

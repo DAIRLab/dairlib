@@ -21,6 +21,7 @@
 #include "dircon_position_data.h"
 #include "dircon_kinematic_data_set.h"
 #include "dircon.h"
+#include "hybrid_dircon.h"
 #include "dircon_opt_constraints.h"
 
 using Eigen::Vector3d;
@@ -30,6 +31,7 @@ using Eigen::Matrix3Xd;
 using std::cout;
 using std::endl;
 using drake::systems::trajectory_optimization::Dircon;
+using drake::systems::trajectory_optimization::HybridDircon;
 using drake::systems::trajectory_optimization::DirectCollocation;
 using drake::systems::trajectory_optimization::DirconDynamicConstraint;
 using drake::systems::trajectory_optimization::DirconKinematicConstraint;
@@ -280,6 +282,136 @@ int testDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::VectorXd::Z
 }
 
 
+template <typename T>
+int testHybridDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::VectorXd::Zero(8)) {
+  RigidBodyTree<double> tree;
+  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("../../examples/Acrobot/Acrobot_floating.urdf", multibody::joints::kFixed, &tree);
+  //const std::unique_ptr<const RigidBodyTree<double>> tree =  std::unique_ptr<const RigidBodyTree<double>>(&model);
+
+  cout << tree.getBodyOrFrameName(0) << endl;
+  cout << tree.getBodyOrFrameName(1) << endl;
+  cout << tree.getBodyOrFrameName(2) << endl;
+  cout << tree.getBodyOrFrameName(3) << endl;
+  cout << tree.getBodyOrFrameName(4) << endl;
+  cout << tree.getBodyOrFrameName(5) << endl;
+  int n = 4;
+  int nu = 1;
+  int nl = 2;
+  int bodyIdx = 4;
+  Vector3d pt;
+  pt << 0,0,0;
+  bool isXZ = true;
+  auto constraint = DirconPositionData<T>(tree,bodyIdx,pt,isXZ);
+
+  if (addForceConstraints) {
+    Vector3d normal;
+    normal << 0,0,1;
+    double mu = 1;
+    constraint.addFixedNormalFrictionConstraints(normal,mu);
+  }
+
+  std::vector<DirconKinematicData<T>*> constraints;
+  constraints.push_back(&constraint);
+  auto dataset = DirconKinematicDataSet<T>(tree, &constraints);
+
+  int N = 11;
+  auto options = DirconOptions(dataset.countConstraints());
+  options.setStartType(DirconKinConstraintType::kAccelOnly);
+  options.setEndType(DirconKinConstraintType::kAccelOnly);
+  //options.setConstraintRelative(0,true);
+  std::vector<int> timesteps;
+  timesteps.push_back(N);
+  std::vector<double> min_dt;
+  timesteps.push_back(.02);
+  std::vector<double> max_dt;
+  timesteps.push_back(.3);
+  std::vector<DirconKinematicDataSet<T>*> dataset_list;
+  dataset_list.push_back(&dataset);
+
+  std::vector<DirconOptions> options_list;
+  options_list.push_back(options);
+  
+  auto trajopt = std::make_shared<HybridDircon<T>>(tree, timesteps, min_dt, max_dt, dataset_list, options_list);
+
+  // HybridDircon(const RigidBodyTree<double>& tree, vector<int> num_time_samples, vector<double> minimum_timestep,
+    // vector<double> maximum_timestep, vector<DirconKinematicDataSet<T>*> constraints, vector<DirconOptions> options);
+
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
+  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level","1");
+
+  //Construct what should be a feasible trajectory
+  std::vector<double> init_time;
+  std::vector<MatrixXd> init_x;
+  std::vector<MatrixXd> init_u;
+  std::vector<MatrixXd> init_l;
+  std::vector<MatrixXd> init_lc;
+  std::vector<MatrixXd> init_vc;
+
+  VectorXd init_l_vec(nl);
+  init_l_vec << 0, tree.getMass()*9.81;
+
+  for (int i = 0; i < N; i++) {
+    init_time.push_back(i*.1);
+    // init_x.push_back(VectorXd::Zero(2*n));
+    init_x.push_back(x0);
+    init_u.push_back(VectorXd::Random(nu));
+    //init_u[i](0) = .1;
+    init_l.push_back(init_l_vec);
+    init_lc.push_back(init_l_vec);
+    init_vc.push_back(VectorXd::Zero(nl));
+  }
+
+  auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_x);
+  auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_u);
+  auto init_l_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_l);
+  auto init_lc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_lc);
+  auto init_vc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_vc);
+  // trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
+  trajopt->systems::trajectory_optimization::MultipleShooting::SetInitialTrajectory(init_u_traj,init_x_traj);
+
+  Eigen::VectorXd xG(2*n);
+  xG << 0, 0, M_PI, 0, 0, 0, 0, 0;
+  trajopt->AddLinearConstraint(trajopt->initial_state() == x0);
+  trajopt->AddLinearConstraint(trajopt->final_state() == xG);
+
+  const double kTorqueLimit = 8;
+  auto u = trajopt->input();
+  trajopt->AddConstraintToAllKnotPoints(-kTorqueLimit <= u(0));
+  trajopt->AddConstraintToAllKnotPoints(u(0) <= kTorqueLimit);
+
+  const double R = 10;  // Cost on input "effort".
+  trajopt->AddRunningCost((R * u) * u);
+
+  trajopt->AddEqualTimeIntervalsConstraints();
+
+  auto start = std::chrono::high_resolution_clock::now();
+  auto result = trajopt->Solve();
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  trajopt->PrintSolution();
+  std::cout << "Solve time:" << elapsed.count() <<std::endl;
+  std::cout << result << std::endl;
+  std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
+
+  //visualizer
+  lcm::DrakeLcm lcm;
+  systems::DiagramBuilder<double> builder;
+  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
+  auto state_source = builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
+  auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
+  publisher->set_publish_period(1.0 / 60.0);
+  builder.Connect(state_source->get_output_port(),
+                  publisher->get_input_port(0));
+
+  auto diagram = builder.Build();
+
+  systems::Simulator<double> simulator(*diagram);
+
+  simulator.set_target_realtime_rate(1);
+  simulator.Initialize();
+  simulator.StepTo(pp_xtraj.end_time());
+  return 0;
+}
 
 int testDirconConstraints() {
 RigidBodyTree<double> tree;
@@ -458,6 +590,10 @@ int main(int argc, char* argv[]) {
     case 6:
     std::cout << "Testing kinematic constraints" << std::endl;
       drake::dircon::examples::testConstraints();
+      break;
+    case 7:
+      std::cout << "Testing hybrid DIRCON (Acrobot, one mode) with double" << std::endl;
+      drake::dircon::examples::testHybridDircon<double>(false);
       break;
   }
   return 0;

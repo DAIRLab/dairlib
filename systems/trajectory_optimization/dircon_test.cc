@@ -233,6 +233,7 @@ int testDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::VectorXd::Z
   auto init_lc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_lc);
   auto init_vc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_vc);
   trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
+  // trajopt->systems::trajectory_optimization::MultipleShooting::SetInitialTrajectory(init_u_traj,init_x_traj);
 
   Eigen::VectorXd xG(2*n);
   xG << 0, 0, M_PI, 0, 0, 0, 0, 0;

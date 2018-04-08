@@ -18,6 +18,7 @@ using solvers::MathematicalProgram;
 using solvers::VectorXDecisionVariable;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::Map;
 using std::vector;
 
 
@@ -57,6 +58,7 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     collocation_force_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraints() * (num_time_samples[i] - 1), "lambda_c[" + std::to_string(i) + "]"));
     collocation_slack_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraints() * (num_time_samples[i] - 1), "v_c[" + std::to_string(i) + "]"));
     offset_vars_.push_back(NewContinuousVariables(options[i].getNumRelative(), "offset[" + std::to_string(i) + "]"));
+    v_post_impact_vars_ = NewContinuousVariables(tree.get_num_velocities(), "v_p");
 
     auto constraint = std::make_shared<DirconDynamicConstraint<T>>(tree, *constraints_[i]);
 
@@ -72,9 +74,11 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     //Adding dynamic constraints
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
+      vector<solvers::VectorXDecisionVariable> x_next;
       AddConstraint(constraint,
                     {h_vars().segment(time_index,1),
-                     x_vars().segment(time_index * num_states(), num_states() * 2),
+                     state_vars_by_mode(i, j),
+                     state_vars_by_mode(i, j+1),
                      u_vars().segment(time_index * num_inputs(), num_inputs() * 2),
                      force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i) * 2),
                      collocation_force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
@@ -87,7 +91,7 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     for (int j = 1; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
       AddConstraint(kinematic_constraint,
-                    {x_vars().segment(time_index * num_states(), num_states()),
+                    {state_vars_by_mode(i,j),
                      u_vars().segment(time_index * num_inputs(), num_inputs()),
                      force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
                      offset_vars(i)});
@@ -97,7 +101,7 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     auto kinematic_constraint_start = std::make_shared<DirconKinematicConstraint<T>>(tree, *constraints_[i],
       options[i].getConstraintsRelative(), options[i].getStartType());
     AddConstraint(kinematic_constraint_start,
-                  {x_vars().segment(mode_start_[i], num_states()),
+                  {state_vars_by_mode(i,0),
                    u_vars().segment(mode_start_[i], num_inputs()),
                    force_vars(i).segment(0, num_kinematic_constraints(i)),
                    offset_vars(i)});
@@ -106,7 +110,7 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     auto kinematic_constraint_end = std::make_shared<DirconKinematicConstraint<T>>(tree, *constraints_[i],
       options[i].getConstraintsRelative(), options[i].getEndType());
     AddConstraint(kinematic_constraint_end,
-                  {x_vars().segment((mode_start_[i] + mode_lengths_[i] - 1) * num_states(), num_states()),
+                  {state_vars_by_mode(i, mode_lengths_[i] - 1),
                    u_vars().segment((mode_start_[i] + mode_lengths_[i] - 1) * num_inputs(), num_inputs()),
                    force_vars(i).segment((mode_lengths_[i]-1) * num_kinematic_constraints(i), num_kinematic_constraints(i)),
                    offset_vars(i)});
@@ -133,106 +137,134 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
       }
     }
 
+    //TODO: add impact constraints
+    // add new decision variables for impulse
+    // add new constraint and constraint type
+
+
     counter += mode_lengths_[i];
   }
 }
 
-// template <typename T>
-// void HybridDircon<T>::DoAddRunningCost(const symbolic::Expression& g) {
-//   // Trapezoidal integration:
-//   //    sum_{i=0...N-2} h_i/2.0 * (g_i + g_{i+1}), or
-//   // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
-//   // g_{N-1}*h_{N-2}/2.0.
+template <typename T>
+const Eigen::VectorBlock<solvers::VectorXDecisionVariable> HybridDircon<T>::v_post_impact_vars_by_mode(int mode) {
+  return v_post_impact_vars_.segment(mode * tree_->get_num_velocities(), tree_->get_num_velocities());
+}
 
-//   AddCost(0.5 * SubstitutePlaceholderVariables(g * h_vars()(0) / 2, 0));
-//   for (int i = 1; i < N() - 2; i++) {
-//     AddCost(SubstitutePlaceholderVariables(
-//         g * (h_vars()(i - 1) + h_vars()(i)) / 2, i));
-//   }
-//   AddCost(0.5 *
-//           SubstitutePlaceholderVariables(g * h_vars()(N() - 2) / 2, N() - 1));
-// }
+template <typename T>
+const Eigen::VectorBlock<solvers::VectorXDecisionVariable> HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
+  if (time_index == 0 && mode > 0) {
+    solvers::VectorXDecisionVariable ret;
+    ret << x_vars().segment(mode_start_[mode] + time_index, tree_->get_num_positions()),
+          v_post_impact_vars_by_mode(mode);
+    return Eigen::VectorBlock<solvers::VectorXDecisionVariable>(ret, 0, num_states());
+  } else {
+    solvers::VectorXDecisionVariable ret;
+    ret << x_vars().segment(mode_start_[mode] + time_index, num_states());
+    return Eigen::VectorBlock<solvers::VectorXDecisionVariable>(ret, 0, num_states());
+  }
+}
 
-// template <typename T>
-// PiecewisePolynomial<double> HybridDircon<T>::ReconstructInputTrajectory()
-//     const {
-//   Eigen::VectorXd times = GetSampleTimes();
-//   vector<double> times_vec(N());
-//   vector<Eigen::MatrixXd> inputs(N());
-//   for (int i = 0; i < N(); i++) {
-//     times_vec[i] = times(i);
-//     inputs[i] = GetSolution(input(i));
-//   }
-//   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
-// }
+//TODO: need to configure this to handle the hybrid discontinuities properly
+template <typename T>
+void HybridDircon<T>::DoAddRunningCost(const symbolic::Expression& g) {
+  // Trapezoidal integration:
+  //    sum_{i=0...N-2} h_i/2.0 * (g_i + g_{i+1}), or
+  // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
+  // g_{N-1}*h_{N-2}/2.0.
 
-// template <typename T>
-// PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory()
-//     const {
-//   Eigen::VectorXd times = GetSampleTimes();
-//   vector<double> times_vec(N());
-//   vector<Eigen::MatrixXd> states(N());
-//   vector<Eigen::MatrixXd> inputs(N());
-//   vector<Eigen::MatrixXd> forces(N());
-//   vector<Eigen::MatrixXd> derivatives(N());
+  AddCost(0.5 * SubstitutePlaceholderVariables(g * h_vars()(0) / 2, 0));
+  for (int i = 1; i < N() - 2; i++) {
+    AddCost(SubstitutePlaceholderVariables(
+        g * (h_vars()(i - 1) + h_vars()(i)) / 2, i));
+  }
+  AddCost(0.5 *
+          SubstitutePlaceholderVariables(g * h_vars()(N() - 2) / 2, N() - 1));
+}
 
-//   for (int i = 0; i < N(); i++) {
-//     times_vec[i] = times(i);
-//     states[i] = GetSolution(state(i));
-//     inputs[i] = GetSolution(input(i));
-//     forces[i] = GetSolution(force(i));
-//     constraints_->updateData(states[i], inputs[i], forces[i]);
+template <typename T>
+PiecewisePolynomial<double> HybridDircon<T>::ReconstructInputTrajectory()
+    const {
+  Eigen::VectorXd times = GetSampleTimes();
+  vector<double> times_vec(N());
+  vector<Eigen::MatrixXd> inputs(N());
+  for (int i = 0; i < N(); i++) {
+    times_vec[i] = times(i);
+    inputs[i] = GetSolution(input(i));
+  }
+  return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
+}
 
-//     derivatives[i] = math::DiscardGradient(constraints_->getXDot());//Do I need to make a copy here?
-//   }
-//   return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);
-// }
+//TODO: need to configure this to handle the hybrid discontinuities properly
+template <typename T>
+PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory()
+    const {
+  Eigen::VectorXd times = GetSampleTimes();
+  vector<double> times_vec(N());
+  vector<Eigen::MatrixXd> states(N());
+  vector<Eigen::MatrixXd> inputs(N());
+  vector<Eigen::MatrixXd> forces(N());
+  vector<Eigen::MatrixXd> derivatives(N());
 
-// template <typename T>
-// void HybridDircon<T>::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u, const PiecewisePolynomial<double>& traj_init_x,
-//                                   const PiecewisePolynomial<double>& traj_init_l, const PiecewisePolynomial<double>& traj_init_lc,
-//                                   const PiecewisePolynomial<double>& traj_init_vc) {
-//   MultipleShooting::SetInitialTrajectory(traj_init_u,traj_init_x);
-//   double start_time = 0;
-//   double h;
-//   if (timesteps_are_decision_variables())
-//     h = GetInitialGuess(h_vars()[0]);
-//   else
-//     h = fixed_timestep();
+  for (int i = 0; i < num_modes_; i++) {
+    for (int j = 0; j < mode_lengths_[i]; j++) {
+      int k = mode_start_[i] + j;
+      times_vec[k] = times(k);
+      states[k] = GetSolution(state(k));
+      inputs[k] = GetSolution(input(k));
+      forces[k] = GetSolution(force(i, j));
+      constraints_[i]->updateData(states[k], inputs[k], forces[k]);
 
-//   VectorXd guess_force(force_vars_.size());
-//   if (traj_init_l.empty()) {
-//     guess_force.fill(0);  // Start with 0
-//   } else {
-//     for (int i = 0; i < N(); ++i) {
-//       guess_force.segment(num_kinematic_constraints_ * i, num_kinematic_constraints_) =
-//           traj_init_l.value(start_time + i * h);
-//     }
-//   }
-//   SetInitialGuess(force_vars_, guess_force);
+    derivatives[k] = math::DiscardGradient(constraints_[i]->getXDot());//Do I need to make a copy here?
+  }
+}
+  return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);
+}
 
-//   VectorXd guess_collocation_force(collocation_force_vars_.size());
-//   if (traj_init_lc.empty()) {
-//     guess_collocation_force.fill(0);  // Start with 0
-//   } else {
-//     for (int i = 0; i < N()-1; ++i) {
-//       guess_collocation_force.segment(num_kinematic_constraints_ * i, num_kinematic_constraints_) =
-//           traj_init_lc.value(start_time + (i + 0.5) * h);
-//     }
-//   }
-//   SetInitialGuess(collocation_force_vars_, guess_collocation_force);
+template <typename T>
+void HybridDircon<T>::SetInitialForceTrajectory(int mode, const PiecewisePolynomial<double>& traj_init_l,
+                                                const PiecewisePolynomial<double>& traj_init_lc,
+                                                const PiecewisePolynomial<double>& traj_init_vc) {
+  double start_time = 0;
+  double h;
+  if (timesteps_are_decision_variables())
+    h = GetInitialGuess(h_vars()[0]);
+  else
+    h = fixed_timestep();
 
-//   VectorXd guess_collocation_slack(collocation_slack_vars_.size());
-//   if (traj_init_vc.empty()) {
-//     guess_collocation_slack.fill(0);  // Start with 0
-//   } else {
-//     for (int i = 0; i < N()-1; ++i) {
-//       guess_collocation_slack.segment(num_kinematic_constraints_ * i, num_kinematic_constraints_) =
-//           traj_init_vc.value(start_time + (i + 0.5) * h);
-//     }
-//   }
-//   SetInitialGuess(collocation_slack_vars_, guess_collocation_slack); //call superclass method
-// }
+  VectorXd guess_force(force_vars_[mode].size());
+  if (traj_init_l.empty()) {
+    guess_force.fill(0);  // Start with 0
+  } else {
+    for (int i = 0; i < N(); ++i) {
+      guess_force.segment(num_kinematic_constraints_[mode] * i, num_kinematic_constraints_[mode]) =
+          traj_init_l.value(start_time + i * h);
+    }
+  }
+  SetInitialGuess(force_vars_[mode], guess_force);
+
+  VectorXd guess_collocation_force(collocation_force_vars_[mode].size());
+  if (traj_init_lc.empty()) {
+    guess_collocation_force.fill(0);  // Start with 0
+  } else {
+    for (int i = 0; i < N()-1; ++i) {
+      guess_collocation_force.segment(num_kinematic_constraints_[mode] * i, num_kinematic_constraints_[mode]) =
+          traj_init_lc.value(start_time + (i + 0.5) * h);
+    }
+  }
+  SetInitialGuess(collocation_force_vars_[mode], guess_collocation_force);
+
+  VectorXd guess_collocation_slack(collocation_slack_vars_[mode].size());
+  if (traj_init_vc.empty()) {
+    guess_collocation_slack.fill(0);  // Start with 0
+  } else {
+    for (int i = 0; i < N()-1; ++i) {
+      guess_collocation_slack.segment(num_kinematic_constraints_[mode] * i, num_kinematic_constraints_[mode]) =
+          traj_init_vc.value(start_time + (i + 0.5) * h);
+    }
+  }
+  SetInitialGuess(collocation_slack_vars_[mode], guess_collocation_slack); //call superclass method
+}
 
 template class HybridDircon<double>;
 template class HybridDircon<AutoDiffXd>;

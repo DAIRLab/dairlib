@@ -83,12 +83,12 @@ class HybridDircon : public MultipleShooting {
   const solvers::VectorXDecisionVariable& collocation_slack_vars(int mode) const { return collocation_slack_vars_[mode]; }
 
   const solvers::VectorXDecisionVariable& v_post_impact_vars() const { return v_post_impact_vars_; }
-  
-  const Eigen::VectorBlock<solvers::VectorXDecisionVariable> v_post_impact_vars_by_mode(int mode);
+
+  const Eigen::VectorBlock<const solvers::VectorXDecisionVariable> v_post_impact_vars_by_mode(int mode);
 
   /// Get the state decision variables given a mdoe and a time_index (time_index is w.r.t that particular mode)
   /// This will use the v_post_impact_vars_ if needed. Otherwise, it just returns the standard x_vars element
-  const Eigen::VectorBlock<solvers::VectorXDecisionVariable> state_vars_by_mode(int mode, int time_index);
+  Eigen::VectorBlock<const solvers::VectorXDecisionVariable> state_vars_by_mode(int mode, int time_index);
 
   Eigen::VectorBlock<const solvers::VectorXDecisionVariable> force(int mode, int index) const {
     DRAKE_DEMAND(index >= 0 && index < N());
@@ -103,7 +103,7 @@ class HybridDircon : public MultipleShooting {
   vector<int> mode_start_;
   vector<DirconKinematicDataSet<T>*> constraints_;
   void DoAddRunningCost(const symbolic::Expression& e) override;
-  solvers::VectorXDecisionVariable v_post_impact_vars_;
+  const solvers::VectorXDecisionVariable v_post_impact_vars_;
   vector<solvers::VectorXDecisionVariable> force_vars_;
   vector<solvers::VectorXDecisionVariable> collocation_force_vars_;
   vector<solvers::VectorXDecisionVariable> collocation_slack_vars_;

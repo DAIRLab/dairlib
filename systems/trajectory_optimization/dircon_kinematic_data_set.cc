@@ -10,7 +10,8 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(const RigidBodyTree<double>& t
   DirconKinematicDataSet(tree,constraints, tree.get_num_positions(), tree.get_num_velocities()) {}
 
 template <typename T>
-DirconKinematicDataSet<T>::DirconKinematicDataSet(const RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints, int num_positions, int num_velocities) {
+DirconKinematicDataSet<T>::DirconKinematicDataSet(const RigidBodyTree<double>& tree, std::vector<DirconKinematicData<T>*>* constraints, int num_positions, int num_velocities): 
+  cache_(tree.CreateKinematicsCacheWithType<T>()) {
   tree_ = &tree;
 
   constraints_ = constraints;
@@ -35,12 +36,12 @@ template <typename T>
 void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state, const VectorX<T>& input, const VectorX<T>& forces) {
   const VectorX<T> q = state.head(num_positions_);
   const VectorX<T> v = state.tail(num_velocities_);
-  KinematicsCache<T> cache = tree_->doKinematics(q, v, true);
+  cache_ = tree_->doKinematics(q, v, true);
 
   int index = 0;
   int n;
   for (int i=0; i < constraints_->size(); i++) {
-    (*constraints_)[i]->updateConstraint(cache);
+    (*constraints_)[i]->updateConstraint(cache_);
 
     n = (*constraints_)[i]->getLength();
     c_.segment(index, n) = (*constraints_)[i]->getC();
@@ -51,18 +52,18 @@ void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state, const Vector
     index += n;
   }
 
-  const MatrixX<T> M = tree_->massMatrix(cache);
+  const MatrixX<T> M = tree_->massMatrix(cache_);
   const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
   const MatrixX<T> J_transpose = getJ().transpose();
 
   // right_hand_side is the right hand side of the system's equations:
   // M*vdot -J^T*f = right_hand_side.
-  VectorX<T> right_hand_side = -tree_->dynamicsBiasTerm(cache, no_external_wrenches) + tree_->B*input + J_transpose*forces;
+  VectorX<T> right_hand_side = -tree_->dynamicsBiasTerm(cache_, no_external_wrenches) + tree_->B*input + J_transpose*forces;
   vdot_ = M.llt().solve(right_hand_side);
 
   cddot_ = Jdotv_ + J_*vdot_;
 
-  xdot_ << tree_->GetVelocityToQDotMapping(cache)*v, vdot_; //assumes v = qdot
+  xdot_ << tree_->GetVelocityToQDotMapping(cache_)*v, vdot_; //assumes v = qdot
 }
 
 template <typename T>

@@ -108,6 +108,7 @@ class HybridDircon : public MultipleShooting {
   vector<solvers::VectorXDecisionVariable> collocation_force_vars_;
   vector<solvers::VectorXDecisionVariable> collocation_slack_vars_;
   vector<solvers::VectorXDecisionVariable> offset_vars_;
+  vector<solvers::VectorXDecisionVariable> impulse_vars_;
   vector<int> num_kinematic_constraints_;
 };
 

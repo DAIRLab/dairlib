@@ -20,38 +20,22 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
 template <typename T>
-DirconDynamicConstraint<T>::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints) :
-  DirconDynamicConstraint(tree, constraints, tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.countConstraints()) {}
-
-template <typename T>
-DirconDynamicConstraint<T>::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
-                                                 int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints)
-    : Constraint(num_positions + num_velocities, 1 + 2 *(num_positions+ num_velocities) + (2 * num_inputs) + (4 * num_kinematic_constraints),
-                 Eigen::VectorXd::Zero(num_positions + num_velocities), Eigen::VectorXd::Zero(num_positions + num_velocities)),
-      num_states_{num_positions+num_velocities}, num_inputs_{num_inputs}, num_kinematic_constraints_{num_kinematic_constraints},
-      num_positions_{num_positions}, num_velocities_{num_velocities} {
-  tree_ = &tree;
-  constraints_ = &constraints;
+DirconAbstractConstraint<T>::DirconAbstractConstraint(int num_constraints, int num_vars,
+                                                      const VectorXd& lb,
+                                                      const VectorXd& ub,
+                                                      const std::string& description)
+  : Constraint(num_constraints, num_vars, lb, ub, description) {
 }
 
-// template <typename T>
-// void DirconDynamicConstraint<T>::DoEval(
-//     const Eigen::Ref<const Eigen::VectorXd>& x,
-//     Eigen::VectorXd& y) const {
-//     AutoDiffVecXd y_t;
-//     Eval(math::initializeAutoDiff(x), y_t);
-//     y = math::autoDiffToValueMatrix(y_t);
-// }
-
 template <>
-void DirconDynamicConstraint<double>::DoEval(
+void DirconAbstractConstraint<double>::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
     Eigen::VectorXd& y) const {
   EvaluateConstraint(x,y);
 }
 
 template <>
-void DirconDynamicConstraint<AutoDiffXd>::DoEval(
+void DirconAbstractConstraint<AutoDiffXd>::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
     Eigen::VectorXd& y) const {
   AutoDiffVecXd y_t;
@@ -59,7 +43,13 @@ void DirconDynamicConstraint<AutoDiffXd>::DoEval(
 }
 
 template <>
-void DirconDynamicConstraint<double>::DoEval(
+void DirconAbstractConstraint<AutoDiffXd>::DoEval(
+    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
+  EvaluateConstraint(x,y);
+}
+
+template <>
+void DirconAbstractConstraint<double>::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
   // forward differencing
     double dx = 1e-8;
@@ -78,10 +68,21 @@ void DirconDynamicConstraint<double>::DoEval(
     math::initializeAutoDiffGivenGradientMatrix(y0, dy, y);
 }
 
-template <>
-void DirconDynamicConstraint<AutoDiffXd>::DoEval(
-    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
-  EvaluateConstraint(x,y);
+
+
+template <typename T>
+DirconDynamicConstraint<T>::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints) :
+  DirconDynamicConstraint(tree, constraints, tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.countConstraints()) {}
+
+template <typename T>
+DirconDynamicConstraint<T>::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+                                                 int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints)
+    : DirconAbstractConstraint<T>(num_positions + num_velocities, 1 + 2 *(num_positions+ num_velocities) + (2 * num_inputs) + (4 * num_kinematic_constraints),
+                 Eigen::VectorXd::Zero(num_positions + num_velocities), Eigen::VectorXd::Zero(num_positions + num_velocities)),
+      num_states_{num_positions+num_velocities}, num_inputs_{num_inputs}, num_kinematic_constraints_{num_kinematic_constraints},
+      num_positions_{num_positions}, num_velocities_{num_velocities} {
+  tree_ = &tree;
+  constraints_ = &constraints;
 }
 
 // The format of the input to the eval() function is the
@@ -111,7 +112,7 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
 
   constraints_->updateData(x1, u1, l1);
   const auto xdot1 = constraints_->getXDot();
-  
+
   // Cubic interpolation to get xcol and xdotcol.
   const auto xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
   const auto xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
@@ -165,7 +166,7 @@ template <typename T>
 DirconKinematicConstraint<T>::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
                                                      std::vector<bool> is_constraint_relative, DirconKinConstraintType type, int num_positions,
                                                     int num_velocities, int num_inputs, int num_kinematic_constraints)
-    : Constraint(type*num_kinematic_constraints, num_positions + num_velocities + num_inputs + num_kinematic_constraints + std::count(is_constraint_relative.begin(),is_constraint_relative.end(),true),
+    : DirconAbstractConstraint<T>(type*num_kinematic_constraints, num_positions + num_velocities + num_inputs + num_kinematic_constraints + std::count(is_constraint_relative.begin(),is_constraint_relative.end(),true),
                  Eigen::VectorXd::Zero(type*num_kinematic_constraints), Eigen::VectorXd::Zero(type*num_kinematic_constraints)),
       num_states_{num_positions+num_velocities}, num_inputs_{num_inputs}, num_kinematic_constraints_{num_kinematic_constraints},
       num_positions_{num_positions}, num_velocities_{num_velocities}, type_{type}, is_constraint_relative_{is_constraint_relative},
@@ -181,48 +182,6 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(const RigidBodyTree<doub
     }
   }
 }
-
-template <>
-void DirconKinematicConstraint<double>::DoEval(
-    const Eigen::Ref<const Eigen::VectorXd>& x,
-    Eigen::VectorXd& y) const {
-  EvaluateConstraint(x,y);
-}
-
-template <>
-void DirconKinematicConstraint<AutoDiffXd>::DoEval(
-    const Eigen::Ref<const Eigen::VectorXd>& x,
-    Eigen::VectorXd& y) const {
-  AutoDiffVecXd y_t;
-  EvaluateConstraint(math::initializeAutoDiff(x), y_t);
-}
-
-template <>
-void DirconKinematicConstraint<double>::DoEval(
-    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
-  // forward differencing
-    double dx = 1e-8;
-
-    VectorXd x_val = math::autoDiffToValueMatrix(x);
-    VectorXd y0,yi;
-    EvaluateConstraint(x_val,y0);
-
-    MatrixXd dy = MatrixXd(y0.size(),x_val.size());
-    for (int i=0; i < x_val.size(); i++) {
-      x_val(i) += dx;
-      EvaluateConstraint(x_val,yi);
-      x_val(i) -= dx;
-      dy.col(i) = (yi - y0)/dx;
-    }
-    math::initializeAutoDiffGivenGradientMatrix(y0, dy, y);
-}
-
-template <>
-void DirconKinematicConstraint<AutoDiffXd>::DoEval(
-    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
-  EvaluateConstraint(x,y);
-}
-
 
 template <typename T>
 void DirconKinematicConstraint<T>::EvaluateConstraint(
@@ -254,11 +213,60 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
   }
 }
 
+template <typename T>
+DirconImpactConstraint<T>::DirconImpactConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints) :
+  DirconImpactConstraint(tree, constraints, tree.get_num_positions(), tree.get_num_velocities(), constraints.countConstraints()) {}
+
+template <typename T>
+DirconImpactConstraint<T>::DirconImpactConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+                                                  int num_positions, int num_velocities, int num_kinematic_constraints)
+    : DirconAbstractConstraint<T>(num_kinematic_constraints, num_positions + 2*num_velocities + num_kinematic_constraints,
+                 Eigen::VectorXd::Zero(num_kinematic_constraints), Eigen::VectorXd::Zero(num_kinematic_constraints)),
+      num_states_{num_positions+num_velocities},  num_kinematic_constraints_{num_kinematic_constraints},
+      num_positions_{num_positions}, num_velocities_{num_velocities} {
+  tree_ = &tree;
+  constraints_ = &constraints;
+}
+
+
+// The format of the input to the eval() function is the
+// tuple { state 0, impulse, velocity 1},
+template <typename T>
+void DirconImpactConstraint<T>::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<T>>& x, VectorX<T>& y) const {
+  DRAKE_ASSERT(x.size() == 1 + (2 * num_velocities_) + num_kinematic_constraints_);
+
+  // Extract our input variables:
+  // h - current time (knot) value
+  // x0, x1 state vector at time steps k, k+1
+  // u0, u1 input vector at time steps k, k+1
+  const auto x0 = x.segment(0, num_states_);
+  const auto impulse = x.segment(num_states_, num_kinematic_constraints_);
+  const auto v1 = x.segment(num_states_ + num_kinematic_constraints_, num_velocities_);
+
+  const auto v0 = x0.tail(num_velocities_);
+
+  //vp = vm + M^{-1}*J^T*Lambda
+  const auto u = VectorXd::Zero(tree_->get_num_actuators()).template cast<T>();
+
+  //Passing in a dummmy value for u. Impulse value also does not matter, since
+  //we only actually want J.
+  //TODO(mposa): Streamline calculations here by either caching or only doing
+  //a partial update of the constraints
+  constraints_->updateData(x0, u, impulse);
+
+  const MatrixX<T> M = tree_->massMatrix(*constraints_->getCache());
+
+  y = M*(v1 - v0) - constraints_->getJ().transpose()*impulse;
+}
+
 // Explicitly instantiates on the most common scalar types.
 template class DirconDynamicConstraint<double>;
 template class DirconDynamicConstraint<AutoDiffXd>;
 template class DirconKinematicConstraint<double>;
 template class DirconKinematicConstraint<AutoDiffXd>;
+template class DirconImpactConstraint<double>;
+template class DirconImpactConstraint<AutoDiffXd>;
 
 
 } //drake

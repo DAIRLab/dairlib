@@ -14,7 +14,7 @@ DirconOptions::DirconOptions(int n_constraints) {
   }
   start_constraint_type_ = DirconKinConstraintType::kAll;
   end_constraint_type_ = DirconKinConstraintType::kAll;
-  force_cost_ = 1.0e-2;
+  force_cost_ = 1.0e-4;
 }
 
 void DirconOptions::setAllConstraintsRelative(bool relative) {

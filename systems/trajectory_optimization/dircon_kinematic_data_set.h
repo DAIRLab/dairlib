@@ -25,6 +25,8 @@ class DirconKinematicDataSet {
 
     DirconKinematicData<T>* getConstraint(int index);
 
+    KinematicsCache<T>* getCache() { return &cache_; };
+
     int getNumConstraintObjects();
     int countConstraints();
 
@@ -43,5 +45,6 @@ class DirconKinematicDataSet {
     VectorX<T> cddot_;
     VectorX<T> vdot_;
     VectorX<T> xdot_;
+    KinematicsCache<T> cache_;
 };
 }

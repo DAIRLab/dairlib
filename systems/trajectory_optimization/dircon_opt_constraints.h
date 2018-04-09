@@ -12,6 +12,27 @@ namespace drake {
 namespace systems {
 namespace trajectory_optimization {
 
+/// Helper class for all dircon constraints
+/// manages evaluation of functions and numerical gradients
+template <typename T>
+class DirconAbstractConstraint : public solvers::Constraint {
+ public:
+  DirconAbstractConstraint(int num_constraints, int num_vars,
+                           const Eigen::VectorXd& lb,
+                           const Eigen::VectorXd& ub,
+                           const std::string& description = "");
+
+ public:
+  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+              Eigen::VectorXd& y) const override;
+
+  void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
+              AutoDiffVecXd& y) const override;
+  virtual void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
+              VectorX<T>& y) const = 0;
+
+};
+
 enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
 
 /// Implements the direct collocation constraints for a first-order hold on
@@ -20,7 +41,7 @@ enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
 /// but incorporates the effect of constraint forces
 
 template <typename T>
-class DirconDynamicConstraint : public solvers::Constraint {
+class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
  public:
 //  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
 
@@ -34,14 +55,8 @@ class DirconDynamicConstraint : public solvers::Constraint {
   int num_kinematic_constraints() const { return num_kinematic_constraints_; }
 
  public:
-  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd& y) const override;
-
-  void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-              AutoDiffVecXd& y) const override;  
-
   void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
-              VectorX<T>& y) const;
+              VectorX<T>& y) const override;
 
  private:
   DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
@@ -71,7 +86,7 @@ class DirconDynamicConstraint : public solvers::Constraint {
 /// we have the constriant c(q)=constant. The constant value is a then new
 /// optimization decision variable.
 template <typename T>
-class DirconKinematicConstraint : public solvers::Constraint{
+class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
 
    public:
   /// Constructor. Defaults the relative constraints to be all false
@@ -90,15 +105,10 @@ class DirconKinematicConstraint : public solvers::Constraint{
 
   ~DirconKinematicConstraint() override = default;
 
- protected:
-  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd& y) const override;
-
-  void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-              AutoDiffVecXd& y) const override;
   void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
-              VectorX<T>& y) const;
+              VectorX<T>& y) const override;
 
+ protected:
  private:
   DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraint_data, std::vector<bool> is_constraint_relative,
                             DirconKinConstraintType type, int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints);
@@ -138,6 +148,38 @@ solvers::Binding<solvers::Constraint> AddDirconConstraint(
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_force,
     const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_position_slack,
     solvers::MathematicalProgram* prog);
+
+
+/// Implements the hybrid impact constraints used by Dircon
+/// Enforces the impact constraint that vp = vm + M^{-1}*J^T*Lambda
+template <typename T>
+class DirconImpactConstraint : public DirconAbstractConstraint<T> {
+
+   public:
+  /// @param tree the RigidBodyTree
+  /// @param DirconKinematicDataSet the set of kinematic constraints to be enforced
+  DirconImpactConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraint_data);
+
+  ~DirconImpactConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
+              VectorX<T>& y) const override;
+
+ protected:
+
+ private:
+  DirconImpactConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraint_data,
+                            int num_positions, int num_velocities, int num_kinematic_constraints);
+
+
+  const RigidBodyTree<double>* tree_;
+  DirconKinematicDataSet<T>* constraints_;
+
+  const int num_positions_{0};
+  const int num_velocities_{0};
+  const int num_states_{0};
+  const int num_kinematic_constraints_{0};
+};
 }
 }
 }

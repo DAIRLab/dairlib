@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "drake/solvers/decision_variable.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 
@@ -26,7 +27,7 @@ template <typename T>
 HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num_time_samples, vector<double> minimum_timestep,
   vector<double> maximum_timestep, vector<DirconKinematicDataSet<T>*> constraints, vector<DirconOptions> options)
     : MultipleShooting(tree.get_num_actuators(), tree.get_num_positions() + tree.get_num_velocities(), 
-      std::accumulate(num_time_samples.begin(), num_time_samples.end(),0), 1e-8, 1e8),
+      std::accumulate(num_time_samples.begin(), num_time_samples.end(),0) - num_time_samples.size() + 1, 1e-8, 1e8),
       num_modes_(num_time_samples.size()),
       v_post_impact_vars_(NewContinuousVariables(tree.get_num_velocities() * (num_time_samples.size() - 1), "v_p")),
       mode_lengths_(num_time_samples) {
@@ -81,6 +82,30 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
       int time_index = mode_start_[i] + j;
       vector<solvers::VectorXDecisionVariable> x_next;
 
+      // auto tmp = solvers::ConcatenateVariableRefList({h_vars().segment(time_index,1),
+      //                state_vars_by_mode(0, j),
+      //                state_vars_by_mode(0, j+1),
+      //                u_vars().segment(time_index * num_inputs(), num_inputs() * 2)});
+
+      // auto tmp = FindDecisionVariableIndices(state_vars_by_mode(i,j));
+      // std::cout << i <<"x" << j << ":" <<   std::endl;
+      // for (int k = 0; k < tmp.size(); k++) {
+      //   std::cout << tmp[k] <<   std::endl;
+      // }
+      // tmp = FindDecisionVariableIndices(state_vars_by_mode(i,j+1));
+      // std::cout << "i,j+1:" << std::endl;
+      // for (int k = 0; k < tmp.size(); k++) {
+      //   std::cout << tmp[k] << std::endl;
+      // }
+
+      // auto tmp2 = solvers::ConcatenateVariableRefList({h_vars().segment(time_index,1),
+      //                state_vars_by_mode(i, j),
+      //                state_vars_by_mode(i, j+1),
+      //                u_vars().segment(time_index * num_inputs(), num_inputs() * 2),
+      //                force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i) * 2),
+      //                collocation_force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
+      //                collocation_slack_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i))});
+
       AddConstraint(constraint,
                     {h_vars().segment(time_index,1),
                      state_vars_by_mode(i, j),
@@ -89,6 +114,8 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
                      force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i) * 2),
                      collocation_force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
                      collocation_slack_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i))});
+
+      // std::cout << "Constraining " << state_vars_by_mode(i,j) << " to " << state_vars_by_mode(i,j+1) << std::endl;
     }
 
     //Adding kinematic constraints
@@ -136,7 +163,7 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
 
     //Force cost option
     if (options[i].getForceCost() != 0) {
-      auto A = MatrixXd::Identity(num_kinematic_constraints(i),num_kinematic_constraints(i));
+      auto A = options[i].getForceCost()*MatrixXd::Identity(num_kinematic_constraints(i),num_kinematic_constraints(i));
       auto b = MatrixXd::Zero(num_kinematic_constraints(i),1);
       for (int j=0; j <  mode_lengths_[i]; j++) {
         AddL2NormCost(A,b,force(i,j));
@@ -144,10 +171,22 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     }
 
     //TODO: add impact constraints
+    if (i > 0) {
+      if (num_kinematic_constraints(i) > 0) {
+        auto impact_constraint = std::make_shared<DirconImpactConstraint<T>>(tree, *constraints_[i]);
+        AddConstraint(impact_constraint,
+                {state_vars_by_mode(i-1, mode_lengths_[i-1] - 1), // last state from previous mode
+                 impulse_vars(i-1),
+                 v_post_impact_vars_by_mode(i-1)});
+      } else {
+        auto x_vars_prev = state_vars_by_mode(i-1, mode_lengths_[i-1] - 1);
+        AddConstraint(v_post_impact_vars_by_mode(i-1) == x_vars_prev.tail(tree.get_num_velocities()));
+      }
+    }
     // add new constraint and constraint type
 
 
-    counter += mode_lengths_[i];
+    counter += mode_lengths_[i] - 1;
   }
 }
 
@@ -156,16 +195,19 @@ const Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>
   return v_post_impact_vars_.segment(mode * tree_->get_num_velocities(), tree_->get_num_velocities());
 }
 
+
+// Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
 template <typename T>
-Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
-  if (time_index == 0 && mode > 0) {
+solvers::VectorXDecisionVariable HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
+  if (time_index == 0 && mode > 0) {//TODO(mposa): remove the false
     solvers::VectorXDecisionVariable ret(num_states());
-    ret << x_vars().segment(mode_start_[mode] + time_index*num_states(), tree_->get_num_positions()),
-          v_post_impact_vars_by_mode(mode);
-    return Eigen::VectorBlock<const solvers::VectorXDecisionVariable>(ret, 0, num_states());
+    ret << x_vars().segment((mode_start_[mode] + time_index)*num_states(), tree_->get_num_positions()),
+          v_post_impact_vars_by_mode(mode - 1);
+    return ret;
+    // return Eigen::VectorBlock<const solvers::VectorXDecisionVariable>(ret, 0, num_states());
   } else {
     solvers::VectorXDecisionVariable ret(num_states());
-    return x_vars().segment(mode_start_[mode] + time_index*num_states(), num_states());
+    return x_vars().segment((mode_start_[mode] + time_index)*num_states(), num_states());
     // std::cout << Eigen::VectorBlock<solvers::VectorXDecisionVariable>(ret, 0, num_states())  << std::endl;
     // return Eigen::VectorBlock<solvers::VectorXDecisionVariable>(ret, 0, num_states());
   }
@@ -242,7 +284,7 @@ void HybridDircon<T>::SetInitialForceTrajectory(int mode, const PiecewisePolynom
   if (traj_init_l.empty()) {
     guess_force.fill(0);  // Start with 0
   } else {
-    for (int i = 0; i < N(); ++i) {
+    for (int i = 0; i < mode_lengths_[mode]; ++i) {
       guess_force.segment(num_kinematic_constraints_[mode] * i, num_kinematic_constraints_[mode]) =
           traj_init_l.value(start_time + i * h);
     }
@@ -253,7 +295,7 @@ void HybridDircon<T>::SetInitialForceTrajectory(int mode, const PiecewisePolynom
   if (traj_init_lc.empty()) {
     guess_collocation_force.fill(0);  // Start with 0
   } else {
-    for (int i = 0; i < N()-1; ++i) {
+    for (int i = 0; i < mode_lengths_[mode]-1; ++i) {
       guess_collocation_force.segment(num_kinematic_constraints_[mode] * i, num_kinematic_constraints_[mode]) =
           traj_init_lc.value(start_time + (i + 0.5) * h);
     }
@@ -264,7 +306,7 @@ void HybridDircon<T>::SetInitialForceTrajectory(int mode, const PiecewisePolynom
   if (traj_init_vc.empty()) {
     guess_collocation_slack.fill(0);  // Start with 0
   } else {
-    for (int i = 0; i < N()-1; ++i) {
+    for (int i = 0; i < mode_lengths_[mode]-1; ++i) {
       guess_collocation_slack.segment(num_kinematic_constraints_[mode] * i, num_kinematic_constraints_[mode]) =
           traj_init_vc.value(start_time + (i + 0.5) * h);
     }

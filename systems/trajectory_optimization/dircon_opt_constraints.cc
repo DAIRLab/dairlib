@@ -234,7 +234,7 @@ DirconImpactConstraint<T>::DirconImpactConstraint(const RigidBodyTree<double>& t
 template <typename T>
 void DirconImpactConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>& y) const {
-  DRAKE_ASSERT(x.size() == 1 + (2 * num_velocities_) + num_kinematic_constraints_);
+  DRAKE_ASSERT(x.size() == 2 * num_velocities_ + num_positions_ + num_kinematic_constraints_);
 
   // Extract our input variables:
   // h - current time (knot) value

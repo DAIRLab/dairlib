@@ -93,7 +93,7 @@ Dircon<T>::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, doubl
 
   //Force cost option
   if (options.getForceCost() != 0) {
-    auto A = MatrixXd::Identity(num_kinematic_constraints(),num_kinematic_constraints());
+    auto A = options.getForceCost()*MatrixXd::Identity(num_kinematic_constraints(),num_kinematic_constraints());
     auto b = MatrixXd::Zero(num_kinematic_constraints(),1);
     for (int i=0; i < N(); i++) {
       AddL2NormCost(A,b,force(i));

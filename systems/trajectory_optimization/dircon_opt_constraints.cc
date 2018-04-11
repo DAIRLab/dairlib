@@ -220,8 +220,8 @@ DirconImpactConstraint<T>::DirconImpactConstraint(const RigidBodyTree<double>& t
 template <typename T>
 DirconImpactConstraint<T>::DirconImpactConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
                                                   int num_positions, int num_velocities, int num_kinematic_constraints)
-    : DirconAbstractConstraint<T>(num_kinematic_constraints, num_positions + 2*num_velocities + num_kinematic_constraints,
-                 Eigen::VectorXd::Zero(num_kinematic_constraints), Eigen::VectorXd::Zero(num_kinematic_constraints)),
+    : DirconAbstractConstraint<T>(num_velocities, num_positions + 2*num_velocities + num_kinematic_constraints,
+                 Eigen::VectorXd::Zero(num_velocities), Eigen::VectorXd::Zero(num_velocities)),
       num_states_{num_positions+num_velocities},  num_kinematic_constraints_{num_kinematic_constraints},
       num_positions_{num_positions}, num_velocities_{num_velocities} {
   tree_ = &tree;

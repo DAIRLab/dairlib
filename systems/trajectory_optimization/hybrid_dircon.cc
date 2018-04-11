@@ -149,7 +149,7 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
                    offset_vars(i)});
 
 
-    //Add constraints on force variables
+    //Add constraints on force and impulse variables
     for (int l = 0; l < mode_lengths_[i] - 1; l++) {
       int start_index = l*num_kinematic_constraints(i);
       for (int j = 0; j < constraints_[i]->getNumConstraintObjects(); j++) {
@@ -170,7 +170,6 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
       }
     }
 
-    //TODO: add impact constraints
     if (i > 0) {
       if (num_kinematic_constraints(i) > 0) {
         auto impact_constraint = std::make_shared<DirconImpactConstraint<T>>(tree, *constraints_[i]);
@@ -178,13 +177,22 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
                 {state_vars_by_mode(i-1, mode_lengths_[i-1] - 1), // last state from previous mode
                  impulse_vars(i-1),
                  v_post_impact_vars_by_mode(i-1)});
+
+        //Add constraints on impulse variables
+        int start_index = 0;
+        for (int j = 0; j < constraints_[i]->getNumConstraintObjects(); j++) {
+          DirconKinematicData<T>* constraint_j = constraints_[i]->getConstraint(j);
+          for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
+            AddConstraint(constraint_j->getForceConstraint(k), impulse_vars(i-1).segment(start_index, constraint_j->getLength()));
+          }
+          start_index += constraint_j->getLength();
+        }
+
       } else {
         auto x_vars_prev = state_vars_by_mode(i-1, mode_lengths_[i-1] - 1);
         AddConstraint(v_post_impact_vars_by_mode(i-1) == x_vars_prev.tail(tree.get_num_velocities()));
       }
     }
-    // add new constraint and constraint type
-
 
     counter += mode_lengths_[i] - 1;
   }

@@ -23,6 +23,8 @@
 #include "dircon.h"
 #include "hybrid_dircon.h"
 #include "dircon_opt_constraints.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/constraint.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -47,6 +49,22 @@ namespace drake{
 namespace dircon {
 namespace examples {
 namespace {
+
+void checkConstraints(const solvers::MathematicalProgram* prog) {
+  for (auto const& binding : prog->generic_constraints()) {
+    double tol = 1e-6;
+    auto y = prog->EvalBindingAtSolution(binding);
+    auto c = binding.evaluator();
+    bool isSatisfied = (y.array() >= c->lower_bound().array() - tol).all() &&
+                       (y.array() <= c->upper_bound().array() + tol).all();
+    if (!isSatisfied) {
+      cout << "Constraint violation: " << c->get_description() << endl;
+      MatrixXd tmp(y.size(),3);
+      tmp << c->lower_bound(), y, c->upper_bound();
+      cout << tmp << endl;
+    }
+  }
+}
 
 int testConstraints() {
 
@@ -450,28 +468,34 @@ int testHybridDirconJump(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::V
   std::vector<DirconKinematicData<T>*> no_constraints;
   auto dataset_free = DirconKinematicDataSet<T>(tree, &no_constraints);
 
-  int N = 11;
   auto options = DirconOptions(dataset.countConstraints());
   options.setStartType(DirconKinConstraintType::kAccelOnly);
-  //options.setConstraintRelative(0,true);
+  auto options_end = DirconOptions(dataset.countConstraints());
+  options_end.setEndType(DirconKinConstraintType::kAll);
+  options_end.setConstraintRelative(0,true);
 
   std::vector<int> timesteps;
-  timesteps.push_back(N);
-  timesteps.push_back(N);
+  timesteps.push_back(5);
+  timesteps.push_back(5);
+  timesteps.push_back(10);
   std::vector<double> min_dt;
-  min_dt.push_back(.02);
-  min_dt.push_back(.02);
+  min_dt.push_back(.1);
+  min_dt.push_back(.05);
+  min_dt.push_back(.1);
   std::vector<double> max_dt;
   max_dt.push_back(.3);
   max_dt.push_back(.3);
+  max_dt.push_back(.5);
 
   std::vector<DirconKinematicDataSet<T>*> dataset_list;
   dataset_list.push_back(&dataset);
   dataset_list.push_back(&dataset_free);
+  dataset_list.push_back(&dataset);
 
   std::vector<DirconOptions> options_list;
   options_list.push_back(options);
   options_list.push_back(DirconOptions(0));
+  options_list.push_back(options_end);
   
   auto trajopt = std::make_shared<HybridDircon<T>>(tree, timesteps, min_dt, max_dt, dataset_list, options_list);
 
@@ -479,42 +503,48 @@ int testHybridDirconJump(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::V
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level","1");
 
-  std::vector<double> init_time;
-  std::vector<MatrixXd> init_x;
-  std::vector<MatrixXd> init_u;
-  std::vector<MatrixXd> init_l;
-  std::vector<MatrixXd> init_lc;
-  std::vector<MatrixXd> init_vc;
 
-  VectorXd init_l_vec(nl);
-  init_l_vec << 0, tree.getMass()*9.81;
 
-  for (int i = 0; i < N; i++) {
-    init_time.push_back(i*.1);
-    // init_x.push_back(VectorXd::Zero(2*n));
-    init_x.push_back(x0);
-    init_u.push_back(VectorXd::Random(nu));
-    init_u[i](0) = .1;
-    init_l.push_back(init_l_vec);
-    init_lc.push_back(init_l_vec);
-    init_vc.push_back(VectorXd::Zero(nl));
+
+
+  for (int j = 0; j < timesteps.size(); j++) {
+    if (timesteps[j] <= 1)
+      continue;
+    VectorXd init_l_vec(nl);
+    init_l_vec << 0, tree.getMass()*9.81;
+    std::vector<double> init_time;
+    std::vector<MatrixXd> init_x;
+    std::vector<MatrixXd> init_u;
+    std::vector<MatrixXd> init_l;
+    std::vector<MatrixXd> init_lc;
+    std::vector<MatrixXd> init_vc;
+    for (int i = 0; i < timesteps[j]; i++) {
+      init_time.push_back(i*.1);
+      // init_x.push_back(VectorXd::Zero(2*n));
+      init_x.push_back(x0);
+      init_u.push_back(VectorXd::Random(nu));
+      // init_u[i](0) = .1;
+      init_l.push_back(init_l_vec);
+      init_lc.push_back(init_l_vec);
+      init_vc.push_back(VectorXd::Zero(nl));
+    }
+
+    auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_x);
+    auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_u);
+    auto init_l_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_l);
+    auto init_lc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_lc);
+    auto init_vc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_vc);
+    // trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
+    trajopt->systems::trajectory_optimization::MultipleShooting::SetInitialTrajectory(init_u_traj,init_x_traj);
+    if (j!= 1)
+      trajopt->SetInitialForceTrajectory(j, init_l_traj, init_lc_traj, init_vc_traj);
   }
 
-  auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_x);
-  auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_u);
-  auto init_l_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_l);
-  auto init_lc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_lc);
-  auto init_vc_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_vc);
-  // trajopt->SetInitialTrajectory(init_u_traj,init_x_traj,init_l_traj,init_lc_traj,init_vc_traj);
-  trajopt->systems::trajectory_optimization::MultipleShooting::SetInitialTrajectory(init_u_traj,init_x_traj);
-  trajopt->SetInitialForceTrajectory(0, init_l_traj, init_lc_traj, init_vc_traj);
-
   Eigen::VectorXd xG(2*n);
-  xG << 0, .1, M_PI, 0, 0, 0, 0, 0;
+  xG << 0, 0, M_PI, 0, 0, 0, 0, 0;
   trajopt->AddLinearConstraint(trajopt->initial_state() == x0);
-  // trajopt->AddLinearConstraint(trajopt->initial_state() == xG);
-  trajopt->AddLinearConstraint(trajopt->final_state()(1) >= .2);
-  // trajopt->AddLinearConstraint(trajopt->final_state()(5) == 0);
+  trajopt->AddLinearConstraint(trajopt->state(timesteps[0] + 1)(1) >= .1);
+  trajopt->AddLinearConstraint(trajopt->final_state().tail(2*n-2) == xG.tail(2*n-2));
 
   const double kTorqueLimit = 8;
   auto u = trajopt->input();
@@ -533,6 +563,8 @@ int testHybridDirconJump(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::V
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
   std::cout << result << std::endl;
   std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
+
+  checkConstraints(trajopt.get());
 
   //visualizer
   lcm::DrakeLcm lcm;
@@ -701,6 +733,8 @@ int testDircol() {
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  std::srand(time(0));  // Initialize random number generator.
+
   Eigen::VectorXd init_up = Eigen::VectorXd(8);
   init_up << 0, 0, 3, .2, 0, 0, 0, 0;
   switch(FLAGS_testIndex) {
@@ -739,8 +773,8 @@ int main(int argc, char* argv[]) {
     case 8:
       Eigen::VectorXd init_jump = Eigen::VectorXd(8);
       init_jump << 0, 0, M_PI*3/4, M_PI/2, 0, 0, 0, 0;
-      std::cout << "Testing hybrid DIRCON (Acrobot, two modes jumping) with double" << std::endl;
-      drake::dircon::examples::testHybridDirconJump<double>(false);
+      std::cout << "Testing hybrid DIRCON (Acrobot, three modes jumping then swingup) with double" << std::endl;
+      drake::dircon::examples::testHybridDirconJump<double>(true);
       break;
   }
   return 0;

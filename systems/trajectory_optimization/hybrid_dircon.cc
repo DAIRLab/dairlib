@@ -199,14 +199,14 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
 }
 
 template <typename T>
-const Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>::v_post_impact_vars_by_mode(int mode) {
+const Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>::v_post_impact_vars_by_mode(int mode) const {
   return v_post_impact_vars_.segment(mode * tree_->get_num_velocities(), tree_->get_num_velocities());
 }
 
 
 // Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
 template <typename T>
-solvers::VectorXDecisionVariable HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
+solvers::VectorXDecisionVariable HybridDircon<T>::state_vars_by_mode(int mode, int time_index) const {
   if (time_index == 0 && mode > 0) {//TODO(mposa): remove the false
     solvers::VectorXDecisionVariable ret(num_states());
     ret << x_vars().segment((mode_start_[mode] + time_index)*num_states(), tree_->get_num_positions()),
@@ -256,22 +256,28 @@ template <typename T>
 PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory()
     const {
   Eigen::VectorXd times = GetSampleTimes();
-  vector<double> times_vec(N());
-  vector<Eigen::MatrixXd> states(N());
-  vector<Eigen::MatrixXd> inputs(N());
-  vector<Eigen::MatrixXd> forces(N());
-  vector<Eigen::MatrixXd> derivatives(N());
+  vector<double> times_vec(N() + num_modes_ - 1);
+  vector<Eigen::MatrixXd> states(N() + num_modes_ - 1);
+  vector<Eigen::MatrixXd> inputs(N() + num_modes_ - 1);
+  vector<Eigen::MatrixXd> forces(N() + num_modes_ - 1);
+  vector<Eigen::MatrixXd> derivatives(N() + num_modes_ - 1);
 
   for (int i = 0; i < num_modes_; i++) {
+
+    
     for (int j = 0; j < mode_lengths_[i]; j++) {
-      int k = mode_start_[i] + j;
-      times_vec[k] = times(k);
-      states[k] = GetSolution(state(k));
-      inputs[k] = GetSolution(input(k));
+      int k = mode_start_[i] + j + i;
+      int k_data = mode_start_[i] + j;
+      times_vec[k] = times(k_data);
+      //False timestep to match velocities
+      if (i > 0 && j == 0) {
+        times_vec[k] += + 1e-6;
+      }
+      states[k] = GetSolution(state_vars_by_mode(i, j));
+      inputs[k] = GetSolution(input(k_data));
       forces[k] = GetSolution(force(i, j));
       constraints_[i]->updateData(states[k], inputs[k], forces[k]);
-
-    derivatives[k] = math::DiscardGradient(constraints_[i]->getXDot());//Do I need to make a copy here?
+      derivatives[k] = math::DiscardGradient(constraints_[i]->getXDot());
   }
 }
   return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);

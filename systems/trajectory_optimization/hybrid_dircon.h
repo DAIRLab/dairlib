@@ -86,12 +86,12 @@ class HybridDircon : public MultipleShooting {
 
   const solvers::VectorXDecisionVariable& impulse_vars(int mode) const {return impulse_vars_[mode]; }
 
-  const Eigen::VectorBlock<const solvers::VectorXDecisionVariable> v_post_impact_vars_by_mode(int mode);
+  const Eigen::VectorBlock<const solvers::VectorXDecisionVariable> v_post_impact_vars_by_mode(int mode) const;
 
   /// Get the state decision variables given a mdoe and a time_index (time_index is w.r.t that particular mode)
   /// This will use the v_post_impact_vars_ if needed. Otherwise, it just returns the standard x_vars element
   // Eigen::VectorBlock<const solvers::VectorXDecisionVariable> state_vars_by_mode(int mode, int time_index);
-  solvers::VectorXDecisionVariable state_vars_by_mode(int mode, int time_index);
+  solvers::VectorXDecisionVariable state_vars_by_mode(int mode, int time_index) const;
 
   Eigen::VectorBlock<const solvers::VectorXDecisionVariable> force(int mode, int index) const {
     DRAKE_DEMAND(index >= 0 && index < N());

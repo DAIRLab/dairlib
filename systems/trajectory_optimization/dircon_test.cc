@@ -578,11 +578,13 @@ int testHybridDirconJump(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::V
 
   auto diagram = builder.Build();
 
-  systems::Simulator<double> simulator(*diagram);
 
-  simulator.set_target_realtime_rate(1);
-  simulator.Initialize();
-  simulator.StepTo(pp_xtraj.end_time());
+  while (true) {
+    systems::Simulator<double> simulator(*diagram);
+    simulator.set_target_realtime_rate(1);
+    simulator.Initialize();
+    simulator.StepTo(pp_xtraj.end_time());
+  }
   return 0;
 }
 

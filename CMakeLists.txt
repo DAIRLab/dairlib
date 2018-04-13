@@ -5,6 +5,7 @@
 cmake_minimum_required(VERSION 3.5.1)
 project(dircon)
 
+
 # N.B. This is a temporary flag. It only really applies to Linux, as Mac
 # does not need X11.
 option(RUN_X11_TESTS "Run tests that require X11" OFF)

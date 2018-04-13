@@ -234,7 +234,7 @@ int testDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::VectorXd::Z
   std::vector<MatrixXd> init_vc;
 
   VectorXd init_l_vec(nl);
-  init_l_vec << 0, tree.getMass()*9.81;
+  init_l_vec << 0, 20*9.81;
 
   for (int i = 0; i < N; i++) {
     init_time.push_back(i*.1);

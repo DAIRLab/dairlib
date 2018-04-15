@@ -30,6 +30,15 @@ target_link_libraries(dircon_test
 )
 
 
+add_executable(test_util test_util.cc)
+target_include_directories(test_util PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        )
+target_link_libraries(test_util
+        dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
+        )
+
+
 #add_executable(run_passive run_passive.cc)
 #target_link_libraries(run_passive 
 #  drake::drake drake::drake-common-text-logging-gflags gflags_shared

@@ -17,6 +17,8 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/constraint.h"
 
+#include "systems/trajectory_optimization/dircon_util.h"
+
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
@@ -140,8 +142,8 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   trajopt->AddDurationBounds(duration, duration);
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Major iterations limit",200);
-  
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Major iterations limit",10);
+
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level","1");
 
   for (int j = 0; j < timesteps.size(); j++) {
@@ -203,7 +205,22 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   std::cout << result << std::endl;
   std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
 
-  // checkConstraints(trajopt.get());
+  systems::trajectory_optimization::dircon::checkConstraints(trajopt.get());
+
+  MatrixXd A;
+  VectorXd y,lb,ub;
+  VectorXd x_sol = trajopt->GetSolution(trajopt->decision_variables());
+  systems::trajectory_optimization::dircon::linearizeConstraints(trajopt.get(),
+    x_sol, y, A, lb, ub);
+
+//  MatrixXd y_and_bounds(y.size(),3);
+//  y_and_bounds.col(0) = lb;
+//  y_and_bounds.col(1) = y;
+//  y_and_bounds.col(2) = ub;
+//  cout << "*************y***************" << endl;
+//  cout << y_and_bounds << endl;
+//  cout << "*************A***************" << endl;
+//  cout << A << endl;
 
   //visualizer
   lcm::DrakeLcm lcm;

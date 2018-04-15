@@ -36,17 +36,21 @@ void linearizeConstraints(const solvers::MathematicalProgram* prog, VectorXd& x,
   int num_vars = prog->num_vars();
 
   // First, count constraints
-  countConstraints(prog, prog->linear_constraints());
-  countConstraints(prog, prog->generic_constraints());
+  num_constraints += countConstraints(prog, prog->linear_constraints());
+  num_constraints += countConstraints(prog, prog->linear_equality_constraints());
+  num_constraints += countConstraints(prog, prog->lorentz_cone_constraints());
+  num_constraints += countConstraints(prog, prog->generic_constraints());
 
   //Initialize data storage
   lb.resize(num_constraints);
   ub.resize(num_constraints);
   y.resize(num_constraints);
-  A.resize(num_constraints, num_vars);
+  A = Eigen::MatrixXd::Zero(num_constraints, num_vars);
 
   int constraint_index = 0;
   constraint_index = updateConstraints(prog, prog->linear_constraints(), x, y, A, lb, ub, constraint_index);
+  constraint_index = updateConstraints(prog, prog->linear_equality_constraints(), x, y, A, lb, ub, constraint_index);
+  constraint_index = updateConstraints(prog, prog->lorentz_cone_constraints(), x, y, A, lb, ub, constraint_index);
   constraint_index = updateConstraints(prog, prog->generic_constraints(), x, y, A, lb, ub, constraint_index);
 }
 
@@ -71,7 +75,7 @@ int updateConstraints(const solvers::MathematicalProgram* prog, const std::vecto
 
     //evaluate constraint
     auto variables = binding.variables();
-    AutoDiffVecXd y_val;
+    AutoDiffVecXd y_val = math::initializeAutoDiff(VectorXd::Zero(c->num_constraints()), variables.size());
     VectorXd x_binding(variables.size());
     for (int i=0; i < variables.size(); i++) {
       x_binding(i) = x(prog->FindDecisionVariableIndex(variables(i)));
@@ -81,7 +85,6 @@ int updateConstraints(const solvers::MathematicalProgram* prog, const std::vecto
     MatrixXd dx = math::autoDiffToGradientMatrix(y_val);
 
     y.segment(constraint_index, n) = math::autoDiffToValueMatrix(y_val);
-
     for (int i = 0; i < variables.size(); i++) {
       A.block(constraint_index, prog->FindDecisionVariableIndex(variables(i)),n,1) = dx.col(i);
     }

@@ -1,0 +1,17 @@
+# - Config file for the DIRCON package
+# It defines the following variables
+#  DIRCON_INCLUDE_DIRS - include directories 
+#  DIRCON_LIBRARIES    - libraries to link against
+#  DIRCON_EXECUTABLE   - the bar executable
+ 
+# Compute paths
+get_filename_component(DIRCON_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+set(DIRCON_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+ 
+# Our library dependencies (contains definitions for IMPORTED targets)
+if(NOT TARGET dircon AND NOT Dircon_BINARY_DIR)
+  include("${DIRCON_CMAKE_DIR}/DirconTargets.cmake")
+endif()
+ 
+# These are IMPORTED targets created by DirconTargets.cmake
+set(DIRCON_LIBRARIES dircon)

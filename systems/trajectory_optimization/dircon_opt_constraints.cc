@@ -237,9 +237,9 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
   DRAKE_ASSERT(x.size() == 2 * num_velocities_ + num_positions_ + num_kinematic_constraints_);
 
   // Extract our input variables:
-  // h - current time (knot) value
-  // x0, x1 state vector at time steps k, k+1
-  // u0, u1 input vector at time steps k, k+1
+  // x0, state vector at time k^-
+  // impulse, impulsive force at impact
+  // v1, post-impact velocity at time k^+
   const auto x0 = x.segment(0, num_states_);
   const auto impulse = x.segment(num_states_, num_kinematic_constraints_);
   const auto v1 = x.segment(num_states_ + num_kinematic_constraints_, num_velocities_);

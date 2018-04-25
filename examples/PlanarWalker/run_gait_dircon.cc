@@ -177,7 +177,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   trajopt->AddLinearConstraint(x0(7) == xf(7));
   trajopt->AddLinearConstraint(x0(8) == xf(8) + xf(10));
   trajopt->AddLinearConstraint(x0(9) == xf(11));
-  trajopt->AddLinearConstraint(x0(8) + x0(10) == -xf(10));
+  trajopt->AddLinearConstraint(x0(8) + x0(10) == xf(10));
   trajopt->AddLinearConstraint(x0(11) == xf(9));
 
   // Knee joint limits

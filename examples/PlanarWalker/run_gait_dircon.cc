@@ -24,6 +24,8 @@
 #include "systems/trajectory_optimization/hybrid_dircon.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 
+#include "src/manifold_constraint.h"
+
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -38,22 +40,25 @@ using std::vector;
 using std::shared_ptr;
 using std::cout;
 using std::endl;
+using drake::goldilocks_walking::ManifoldConstraint;
 
 DEFINE_double(strideLength, 0.1, "The stride length.");
 DEFINE_double(duration, 1, "The stride duration");
+DEFINE_double(height, 0.8, "The height");
+DEFINE_int64(iter, 100, "Number of iterations");
 
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
 namespace drake{
 namespace dircon {
-shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration,
+shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration, double height, int iter,
     PiecewisePolynomial<double> init_x_traj,
     PiecewisePolynomial<double> init_u_traj,
     vector<PiecewisePolynomial<double>> init_l_traj,
     vector<PiecewisePolynomial<double>> init_lc_traj,
     vector<PiecewisePolynomial<double>> init_vc_traj) {
   RigidBodyTree<double> tree;
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalker.urdf", multibody::joints::kFixed, &tree);
+  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalkerWithTorso.urdf", multibody::joints::kFixed, &tree);
   //const std::unique_ptr<const RigidBodyTree<double>> tree =  std::unique_ptr<const RigidBodyTree<double>>(&model);
 
   for (int i = 0; i < tree.get_num_bodies(); i++)
@@ -65,11 +70,13 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   for (int i = 0; i < tree.get_num_velocities(); i++)
     cout << tree.get_velocity_name(i) << endl;
 
+
 // world
 // base
 // base_x
 // base_xz
-// hip
+// torso
+// torso_mass
 // left_upper_leg
 // left_upper_leg_mass
 // left_lower_leg
@@ -79,11 +86,26 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 // right_lower_leg
 // right_lower_leg_mass
 
-// hip_torque
+// left_hip_torque
+// right_hip_torque
 // left_knee_torque
 // right_knee_torque
 
+// planar_x
+// planar_z
+// planar_roty
+// left_hip_pin
+// left_knee_pin
+// right_hip_pin
+// right_knee_pin
 
+// planar_xdot
+// planar_zdot
+// planar_rotydot
+// left_hip_pindot
+// left_knee_pindot
+// right_hip_pindot
+// right_knee_pindot
 
 
   int n = tree.get_num_positions();
@@ -129,6 +151,11 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   max_dt.push_back(.3);
   max_dt.push_back(.3);
 
+  int N = 1 - timesteps.size();
+  for (int i = 0; i < timesteps.size(); i++) {
+    N += timesteps[i];
+  }
+
   std::vector<DirconKinematicDataSet<double>*> dataset_list;
   dataset_list.push_back(&leftDataSet);
   dataset_list.push_back(&rightDataSet);
@@ -142,7 +169,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   trajopt->AddDurationBounds(duration, duration);
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Major iterations limit",10);
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Major iterations limit",iter);
 
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level","1");
 
@@ -152,40 +179,39 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   }
 
   //Periodicity constraints
-  // planar_x-0
-  // planar_z-1
-  // planar_roty-2
-  // left_knee_pin-3
-  // hip_pin-4
-  // right_knee_pin-5
-  // planar_xdot-6
-  // planar_zdot-7
-  // planar_rotydot-8
-  // left_knee_pindot-9
-  // hip_pindot-10
-  // right_knee_pindot-11
+  // planar_x - 0
+  // planar_z - 1
+  // planar_roty - 2
+  // left_hip_pin - 3
+  // left_knee_pin - 4
+  // right_hip_pin - 5
+  // right_knee_pin - 6
   auto x0 = trajopt->initial_state();
   auto xf = trajopt->final_state();
 
   trajopt->AddLinearConstraint(x0(1) == xf(1));
   trajopt->AddLinearConstraint(x0(2) == xf(2));
   trajopt->AddLinearConstraint(x0(3) == xf(5));
-  trajopt->AddLinearConstraint(x0(4) == xf(4));
+  trajopt->AddLinearConstraint(x0(4) == xf(6));
   trajopt->AddLinearConstraint(x0(5) == xf(3));
+  trajopt->AddLinearConstraint(x0(6) == xf(4));
 
-  trajopt->AddLinearConstraint(x0(6) == xf(6));
   trajopt->AddLinearConstraint(x0(7) == xf(7));
   trajopt->AddLinearConstraint(x0(8) == xf(8));
-  trajopt->AddLinearConstraint(x0(9) == xf(11));
-  trajopt->AddLinearConstraint(x0(10) == -xf(10));
-  trajopt->AddLinearConstraint(x0(11) == xf(9));
+  trajopt->AddLinearConstraint(x0(9) == xf(9));
+  trajopt->AddLinearConstraint(x0(10) == xf(12));
+  trajopt->AddLinearConstraint(x0(11) == xf(13));
+  trajopt->AddLinearConstraint(x0(12) == xf(10));
+  trajopt->AddLinearConstraint(x0(13) == xf(11));
+
 
   // Knee joint limits
   auto x = trajopt->state();
-  trajopt->AddConstraintToAllKnotPoints(x(3) >= 0);
-  trajopt->AddConstraintToAllKnotPoints(x(5) >= 0);
 
-  //Hip constraints
+  trajopt->AddConstraintToAllKnotPoints(x(4) >= 0);
+  trajopt->AddConstraintToAllKnotPoints(x(6) >= 0);
+
+  // x-distance constraint constraints
   trajopt->AddLinearConstraint(x0(0) == 0);
   trajopt->AddLinearConstraint(xf(0) == stride_length);
 
@@ -195,6 +221,30 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   const double Q = 1;
   trajopt->AddRunningCost(x.transpose()*Q*x);
 
+  //Add manifold constraint: constaint height at z = 7
+  // MatrixXd weights = MatrixXd::Zero(2,2*n);
+  // weights(0,1) = 1;
+  // weights(1,7) = 1;
+  // VectorXd c(2);
+  // c << 0.5, 0;
+  MatrixXd weights = MatrixXd::Zero(1,6*n);
+  weights(0,1) = 1; //z
+  weights(0,2+2*n) = 0.3; //0.3*cos(pitch)
+
+  // trajopt->AddConstraintToAllKnotPoints(x(1) == 0.9);
+
+  VectorXd c(1);
+  if (height > 0) {
+    c << height;
+    auto m_constraint = std::make_shared<ManifoldConstraint>(tree, weights, c);
+
+    for (int i = 0; i < N; i++) {
+       trajopt->AddConstraint(m_constraint, trajopt->state(i));
+    }
+  }
+
+  auto l = trajopt->impulse_vars(0);
+  // trajopt->AddLinearConstraint(l(1) == 0);
 
   auto start = std::chrono::high_resolution_clock::now();
   auto result = trajopt->Solve();
@@ -205,7 +255,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   std::cout << result << std::endl;
   std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
 
-  systems::trajectory_optimization::dircon::checkConstraints(trajopt.get());
+  // systems::trajectory_optimization::dircon::checkConstraints(trajopt.get());
 
   MatrixXd A;
   VectorXd y,lb,ub;
@@ -253,13 +303,18 @@ int main(int argc, char* argv[]) {
   std::srand(time(0));  // Initialize random number generator.
 
   RigidBodyTree<double> tree;
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalker.urdf", drake::multibody::joints::kFixed, &tree);
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalkerWithTorso.urdf", drake::multibody::joints::kFixed, &tree);
 
   Eigen::VectorXd x0 = Eigen::VectorXd::Zero(tree.get_num_positions() + tree.get_num_velocities());
-
+  x0(1) = 1;
+  x0(3) = -.4;
+  x0(4) = .8;
+  x0(5) = -.4;
+  x0(6) = .8;
   Eigen::VectorXd init_l_vec(2);
   init_l_vec << 0, tree.getMass()*9.81;
-  int nu = 3;
+  int nu = 4;
+  int nx = 14;
   int N = 10;
 
   
@@ -273,7 +328,7 @@ int main(int argc, char* argv[]) {
   std::vector<double> init_time;
   for (int i = 0; i < 2*N-1; i++) {
     init_time.push_back(i*.2);
-    init_x.push_back(x0);
+    init_x.push_back(x0 + .1*VectorXd::Random(nx));
     init_u.push_back(VectorXd::Random(nu));
   }
   auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_x);
@@ -301,7 +356,7 @@ int main(int argc, char* argv[]) {
     init_vc_traj.push_back(init_vc_traj_j);
   }
 
-  auto prog = drake::dircon::runDircon(FLAGS_strideLength, FLAGS_duration,
+  auto prog = drake::dircon::runDircon(FLAGS_strideLength, FLAGS_duration, FLAGS_height, FLAGS_iter,
     init_x_traj, init_u_traj,  init_l_traj, init_lc_traj, init_vc_traj);
 }
 

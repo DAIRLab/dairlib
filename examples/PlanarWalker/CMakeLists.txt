@@ -4,11 +4,12 @@
 set(CMAKE_BUILD_TYPE Debug)
 
 configure_file(PlanarWalker.urdf "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
+configure_file(PlanarWalkerWithTorso.urdf "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 
 find_package(GFlags MODULE REQUIRED COMPONENTS shared)
 
 add_executable(run_gait_dircon run_gait_dircon.cc)
 
-target_link_libraries(run_gait_dircon
+target_link_libraries(run_gait_dircon goldilocks
  dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
 )

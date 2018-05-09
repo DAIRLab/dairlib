@@ -19,6 +19,9 @@ void checkConstraints(const solvers::MathematicalProgram* prog);
 void linearizeConstraints(const solvers::MathematicalProgram* prog, VectorXd& x,
   VectorXd& y, MatrixXd& A, VectorXd& lb, VectorXd& ub);
 
+double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
+  MatrixXd& Q, VectorXd& w);
+
 template <typename Derived>
 int countConstraints(const solvers::MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints);
 

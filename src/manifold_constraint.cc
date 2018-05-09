@@ -12,7 +12,7 @@ using Eigen::MatrixXd;
 ManifoldConstraint::ManifoldConstraint(const RigidBodyTree<double>& tree,
   const MatrixXd& weights, const VectorXd& c)
   : Constraint(weights.rows(), tree.get_num_positions() + tree.get_num_velocities(),
-   c-.01*VectorXd::Ones(c.size()), c+.0*VectorXd::Ones(c.size()), "manifold"), weights_{weights}, c_{c} {
+   c-.0*VectorXd::Ones(c.size()), c+.0*VectorXd::Ones(c.size()), "manifold"), weights_{weights}, c_{c} {
   tree_ = &tree;
   n_features_ = 3*tree.get_num_positions() + 3*tree.get_num_velocities();
 

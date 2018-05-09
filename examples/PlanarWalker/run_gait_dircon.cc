@@ -25,6 +25,7 @@
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 
 #include "src/manifold_constraint.h"
+#include "src/file_utils.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -46,6 +47,7 @@ DEFINE_double(strideLength, 0.1, "The stride length.");
 DEFINE_double(duration, 1, "The stride duration");
 DEFINE_double(height, 0.8, "The height");
 DEFINE_int64(iter, 100, "Number of iterations");
+DEFINE_string(init, "", "File name to override initial guess");
 
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
@@ -56,19 +58,20 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
     PiecewisePolynomial<double> init_u_traj,
     vector<PiecewisePolynomial<double>> init_l_traj,
     vector<PiecewisePolynomial<double>> init_lc_traj,
-    vector<PiecewisePolynomial<double>> init_vc_traj) {
+    vector<PiecewisePolynomial<double>> init_vc_traj,
+    std::string init_file) {
   RigidBodyTree<double> tree;
   parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalkerWithTorso.urdf", multibody::joints::kFixed, &tree);
   //const std::unique_ptr<const RigidBodyTree<double>> tree =  std::unique_ptr<const RigidBodyTree<double>>(&model);
 
-  for (int i = 0; i < tree.get_num_bodies(); i++)
-    cout << tree.getBodyOrFrameName(i) << endl;
-  for (int i = 0; i < tree.get_num_actuators(); i++)
-    cout << tree.actuators[i].name_ << endl;
-  for (int i = 0; i < tree.get_num_positions(); i++)
-    cout << tree.get_position_name(i) << endl;
-  for (int i = 0; i < tree.get_num_velocities(); i++)
-    cout << tree.get_velocity_name(i) << endl;
+  // for (int i = 0; i < tree.get_num_bodies(); i++)
+  //   cout << tree.getBodyOrFrameName(i) << endl;
+  // for (int i = 0; i < tree.get_num_actuators(); i++)
+  //   cout << tree.actuators[i].name_ << endl;
+  // for (int i = 0; i < tree.get_num_positions(); i++)
+  //   cout << tree.get_position_name(i) << endl;
+  // for (int i = 0; i < tree.get_num_velocities(); i++)
+  //   cout << tree.get_velocity_name(i) << endl;
 
 
 // world
@@ -142,8 +145,8 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   rightOptions.setConstraintRelative(0,true);
 
   std::vector<int> timesteps;
-  timesteps.push_back(10);
-  timesteps.push_back(10);
+  timesteps.push_back(20);
+  timesteps.push_back(1);
   std::vector<double> min_dt;
   min_dt.push_back(.01);
   min_dt.push_back(.01);
@@ -171,7 +174,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Major iterations limit",iter);
 
-  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level","1");
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",0);
 
   for (int j = 0; j < timesteps.size(); j++) {
     trajopt->systems::trajectory_optimization::MultipleShooting::SetInitialTrajectory(init_u_traj,init_x_traj);
@@ -187,7 +190,8 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   // right_hip_pin - 5
   // right_knee_pin - 6
   auto x0 = trajopt->initial_state();
-  auto xf = trajopt->final_state();
+  // auto xf = trajopt->final_state();
+  auto xf = trajopt->state_vars_by_mode(timesteps.size()-1,timesteps[timesteps.size()-1]-1);
 
   trajopt->AddLinearConstraint(x0(1) == xf(1));
   trajopt->AddLinearConstraint(x0(2) == xf(2));
@@ -207,9 +211,17 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 
   // Knee joint limits
   auto x = trajopt->state();
+  trajopt->AddConstraintToAllKnotPoints(x(4) >= 5.0/180.0*M_PI);
+  trajopt->AddConstraintToAllKnotPoints(x(6) >= 5.0/180.0*M_PI);
+  trajopt->AddConstraintToAllKnotPoints(x(4) <= M_PI/2.0);
+  trajopt->AddConstraintToAllKnotPoints(x(6) <= M_PI/2.0);
 
-  trajopt->AddConstraintToAllKnotPoints(x(4) >= 0);
-  trajopt->AddConstraintToAllKnotPoints(x(6) >= 0);
+  // hip joint limits
+  trajopt->AddConstraintToAllKnotPoints(x(3) >= -M_PI/2);
+  trajopt->AddConstraintToAllKnotPoints(x(5) >= -M_PI/2);
+  trajopt->AddConstraintToAllKnotPoints(x(3) <= M_PI/2.0);
+  trajopt->AddConstraintToAllKnotPoints(x(5) <= M_PI/2.0);
+
 
   // x-distance constraint constraints
   trajopt->AddLinearConstraint(x0(0) == 0);
@@ -218,7 +230,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   const double R = 10;  // Cost on input effort
   auto u = trajopt->input();
   trajopt->AddRunningCost(u.transpose()*R*u);
-  const double Q = 1;
+  const double Q = .1;
   trajopt->AddRunningCost(x.transpose()*Q*x);
 
   //Add manifold constraint: constaint height at z = 7
@@ -227,11 +239,11 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   // weights(1,7) = 1;
   // VectorXd c(2);
   // c << 0.5, 0;
+  // MatrixXd weights = MatrixXd::Zero(1,6*n);
+  // weights(0,1) = 1; //z
+  // weights(0,2+2*n) = 0.3; //0.3*cos(pitch)
   MatrixXd weights = MatrixXd::Zero(1,6*n);
-  weights(0,1) = 1; //z
-  weights(0,2+2*n) = 0.3; //0.3*cos(pitch)
-
-  // trajopt->AddConstraintToAllKnotPoints(x(1) == 0.9);
+  weights(0,4) = 1; //left knee pitch
 
   VectorXd c(1);
   if (height > 0) {
@@ -246,6 +258,11 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   auto l = trajopt->impulse_vars(0);
   // trajopt->AddLinearConstraint(l(1) == 0);
 
+  if (!init_file.empty()) {
+    MatrixXd z0 = drake::goldilocks_walking::readCSV(init_file);
+    trajopt->SetInitialGuessForAllVariables(z0);
+  }
+
   auto start = std::chrono::high_resolution_clock::now();
   auto result = trajopt->Solve();
   auto finish = std::chrono::high_resolution_clock::now();
@@ -257,12 +274,38 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 
   // systems::trajectory_optimization::dircon::checkConstraints(trajopt.get());
 
-  MatrixXd A;
-  VectorXd y,lb,ub;
+  MatrixXd A,H;
+  VectorXd y,lb,ub,w;
   VectorXd x_sol = trajopt->GetSolution(trajopt->decision_variables());
   systems::trajectory_optimization::dircon::linearizeConstraints(trajopt.get(),
     x_sol, y, A, lb, ub);
 
+  double costval = systems::trajectory_optimization::dircon::secondOrderCost(
+    trajopt.get(), x_sol, H, w);
+
+
+  VectorXd z = trajopt->GetSolution(trajopt->decision_variables());
+  
+  drake::goldilocks_walking::writeCSV(string("A.csv"),A);
+  drake::goldilocks_walking::writeCSV(string("y.csv"),y);
+  drake::goldilocks_walking::writeCSV(string("lb.csv"),lb);
+  drake::goldilocks_walking::writeCSV(string("ub.csv"),ub);
+  drake::goldilocks_walking::writeCSV(string("H.csv"),H);
+  drake::goldilocks_walking::writeCSV(string("w.csv"),w);
+  drake::goldilocks_walking::writeCSV(string("z.csv"),z);
+  
+
+
+  // cout << "*************w***************" << endl;
+  // cout << w << endl;
+  // cout << "*************H_diag(u)***************" << endl;
+  // for (int i = 0; i < N; i++) {
+  //   auto u_i = trajopt->input(i);
+  //   for (int j=0; j < u_i.size(); j++) {
+  //     int ind = trajopt->FindDecisionVariableIndex(u_i(j));
+  //     cout << H(ind,ind) << endl;
+  //   }
+  // }
 //  MatrixXd y_and_bounds(y.size(),3);
 //  y_and_bounds.col(0) = lb;
 //  y_and_bounds.col(1) = y;
@@ -317,7 +360,6 @@ int main(int argc, char* argv[]) {
   int nx = 14;
   int N = 10;
 
-  
   std::vector<MatrixXd> init_x;
   std::vector<MatrixXd> init_u;
   std::vector<PiecewisePolynomial<double>> init_l_traj;
@@ -357,6 +399,6 @@ int main(int argc, char* argv[]) {
   }
 
   auto prog = drake::dircon::runDircon(FLAGS_strideLength, FLAGS_duration, FLAGS_height, FLAGS_iter,
-    init_x_traj, init_u_traj,  init_l_traj, init_lc_traj, init_vc_traj);
+    init_x_traj, init_u_traj,  init_l_traj, init_lc_traj, init_vc_traj, FLAGS_init);
 }
 

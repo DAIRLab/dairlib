@@ -26,6 +26,78 @@ void checkConstraints(const solvers::MathematicalProgram* prog) {
   }
 }
 
+//form a quadratic approximation of the cost
+// cost \approx 1/2 z^T*Q*z + w^T*z + c
+// return value is the constant term (c)
+double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
+  MatrixXd& Q, VectorXd& w) {
+
+  int num_vars = prog->num_vars();
+  Q = Eigen::MatrixXd::Zero(num_vars, num_vars);
+  w = Eigen::MatrixXd::Zero(num_vars, 1);
+  double c = 0;
+
+  for (auto const& binding : prog->GetAllCosts()) {
+    //evaluate cost
+    auto variables = binding.variables();
+    if (variables.size() == 0)
+      continue;
+    AutoDiffVecXd y_val = math::initializeAutoDiff(VectorXd::Zero(1), variables.size());
+    VectorXd x_binding(variables.size());
+    for (int i=0; i < variables.size(); i++) {
+      x_binding(i) = x(prog->FindDecisionVariableIndex(variables(i)));
+    }
+    AutoDiffVecXd x_val = math::initializeAutoDiff(x_binding);
+    binding.evaluator()->Eval(x_val, y_val);
+    MatrixXd gradient_x = math::autoDiffToGradientMatrix(y_val);
+    VectorXd y = math::autoDiffToValueMatrix(y_val);
+    c += y(0); //costs are length 1
+    for (int i = 0; i < variables.size(); i++) {
+      w(prog->FindDecisionVariableIndex(variables(i))) = gradient_x(0,i);
+    }
+
+
+    // forward differencing for Hessian
+    double dx = 1e-8;
+    AutoDiffVecXd y_hessian = math::initializeAutoDiff(VectorXd::Zero(1), variables.size());
+    for (int i = 0; i < variables.size(); i++) {
+      x_val(i) += dx;
+      binding.evaluator()->Eval(x_val, y_hessian);
+      x_val(i) -= dx;
+      MatrixXd gradient_hessian = math::autoDiffToGradientMatrix(y_hessian);
+      for (int j=0; j <= i; j++) {
+        int ind_i = prog->FindDecisionVariableIndex(variables(i));
+        int ind_j = prog->FindDecisionVariableIndex(variables(j));
+        Q(ind_i,ind_j) += (gradient_hessian(0,j)-gradient_x(0,j))/dx;
+        Q(ind_j,ind_i) += (gradient_hessian(0,j)-gradient_x(0,j))/dx;
+      }
+    }
+
+    // // Central differencing for Hessian
+    // double dx = 1e-8;
+    // AutoDiffVecXd y_hessian_p = math::initializeAutoDiff(VectorXd::Zero(1), variables.size());
+    // AutoDiffVecXd y_hessian_m = math::initializeAutoDiff(VectorXd::Zero(1), variables.size());
+    // for (int i = 0; i < variables.size(); i++) {
+    //   x_val(i) -= dx/2;
+    //   binding.evaluator()->Eval(x_val, y_hessian_m);
+    //   x_val(i) += dx;
+    //   binding.evaluator()->Eval(x_val, y_hessian_p);
+    //   x_val(i) -= dx/2;
+
+    //   MatrixXd gradient_hessian_p = math::autoDiffToGradientMatrix(y_hessian_p);
+    //   MatrixXd gradient_hessian_m = math::autoDiffToGradientMatrix(y_hessian_m);
+
+    //   for (int j=0; j <= i; j++) {
+    //     Q(prog->FindDecisionVariableIndex(variables(i)),
+    //       prog->FindDecisionVariableIndex(variables(j))) += 
+    //       (gradient_hessian_p(j)-gradient_hessian_m(j))/dx;
+    //   }
+    // }
+
+  }
+  return c;
+}
+
 
 // Evaluate all constraints and construct a linearization of them
 void linearizeConstraints(const solvers::MathematicalProgram* prog, VectorXd& x,

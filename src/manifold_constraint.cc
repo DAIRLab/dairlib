@@ -10,11 +10,11 @@ using Eigen::MatrixXd;
 
 //
 ManifoldConstraint::ManifoldConstraint(const RigidBodyTree<double>& tree,
-  const MatrixXd& weights, const VectorXd& c)
+  const MatrixXd& weights)
   : Constraint(weights.rows(), tree.get_num_positions() + tree.get_num_velocities(),
-   c-.0*VectorXd::Ones(c.size()), c+.0*VectorXd::Ones(c.size()), "manifold"), weights_{weights}, c_{c} {
+   VectorXd::Zero(1), VectorXd::Zero(1), "manifold"), weights_{weights} {
   tree_ = &tree;
-  n_features_ = 3*tree.get_num_positions() + 3*tree.get_num_velocities();
+  n_features_ = 3*tree.get_num_positions() + 3*tree.get_num_velocities() + 1;
 
   DRAKE_ASSERT(n_features_ == weights.cols());
 }
@@ -29,18 +29,22 @@ void ManifoldConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
   EvaluateConstraint<AutoDiffXd>(x,y);
 }
 
+template <typename T>
+VectorX<T> ManifoldConstraint::CalcFeatures(const Eigen::Ref<const VectorX<T>>& x) const {
+  VectorX<T> features(n_features_);
+  features(0) = 1; //constant feature
+  for (int i = 0; i < x.size(); i++) {
+    features(i+1) = x(i);
+    features(x.size()+i+1) = cos(x(i));
+    features(2*x.size()+i+1) = sin(x(i));
+  }
+  return features;
+}
 
 template <typename T>
 void ManifoldConstraint::EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
               VectorX<T>& y) const {
-  // Calculate features
-  VectorX<T> features(n_features_);
-  for (int i = 0; i < x.size(); i++) {
-    features(i) = x(i);
-    features(x.size()+i) = cos(x(i));
-    features(2*x.size()+i) = sin(x(i));
-  }
-
+  VectorX<T> features = CalcFeatures(x);
   y = weights_ * features;
 }
 

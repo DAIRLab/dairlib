@@ -11,7 +11,9 @@ namespace goldilocks_walking {
 class ManifoldConstraint : public solvers::Constraint {
  public:
   ManifoldConstraint(const RigidBodyTree<double>& tree,
-    const Eigen::MatrixXd& weights, const Eigen::VectorXd& c);
+    const Eigen::MatrixXd& weights);
+
+  int n_features() {return n_features_;};
 
  public:
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
@@ -24,9 +26,11 @@ class ManifoldConstraint : public solvers::Constraint {
   void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
               VectorX<T>& y) const;
 
+  template <typename T>
+  VectorX<T> CalcFeatures(const Eigen::Ref<const VectorX<T>>& x) const;
+
   int n_features_;
   const Eigen::MatrixXd weights_;
-  const Eigen::VectorXd c_;
   const RigidBodyTree<double>* tree_;
 };
 }

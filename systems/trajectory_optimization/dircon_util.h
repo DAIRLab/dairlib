@@ -15,6 +15,8 @@ namespace dircon {
 
 void checkConstraints(const solvers::MathematicalProgram* prog);
 
+VectorXd getConstraintRows(const solvers::MathematicalProgram* prog, Binding<Constraint>& c);
+
 // Evaluate all constraints and construct a linearization of them
 void linearizeConstraints(const solvers::MathematicalProgram* prog, VectorXd& x,
   VectorXd& y, MatrixXd& A, VectorXd& lb, VectorXd& ub);

@@ -229,13 +229,11 @@ void HybridDircon<T>::DoAddRunningCost(const symbolic::Expression& g) {
   // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
   // g_{N-1}*h_{N-2}/2.0.
 
-  AddCost(SubstitutePlaceholderVariables(g * h_vars()(0) / 2, 0));
-  for (int i = 1; i < N() - 1; i++) {
-    AddCost(SubstitutePlaceholderVariables(
-        g * (h_vars()(i - 1) + h_vars()(i)) / 2, i));
+  AddCost(SubstitutePlaceholderVariables(g, 0) * h_vars()(0) / 2);
+  for (int i = 1; i <= N() - 2; i++) {
+    AddCost(SubstitutePlaceholderVariables(g , i)*(h_vars()(i - 1) + h_vars()(i)) / 2);
   }
-  AddCost(
-          SubstitutePlaceholderVariables(g * h_vars()(N() - 2) / 2, N() - 1));
+  AddCost(SubstitutePlaceholderVariables(g, N() - 1) * h_vars()(N() - 2) / 2);
 }
 
 template <typename T>

@@ -126,6 +126,62 @@ void linearizeConstraints(const solvers::MathematicalProgram* prog, VectorXd& x,
   constraint_index = updateConstraints(prog, prog->generic_constraints(), x, y, A, lb, ub, constraint_index);
 }
 
+VectorXd NVec(int start, int length) {
+  VectorXd ret(length);
+  for (int i = 0; i < length; i++) {
+    ret(i) = i + start;
+  }
+  return ret;
+}
+
+template <typename Derived>
+std::pair<int,int> getConstraintStart(const solvers::MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints,
+  Binding<Constraint>& c) {
+  int start = -1;
+  int n = 0;
+  for (auto const& binding : constraints) {
+    if (c.evaluator() == binding.evaluator() && c.variables() == binding.variables())
+      start = n;
+    n += binding.evaluator()->num_constraints();
+  }
+  return std::pair<int,int> (start,n);
+}
+
+VectorXd getConstraintRows(const solvers::MathematicalProgram* prog, Binding<Constraint>& c) {
+  int n = 0;
+  auto index = getConstraintStart(prog, prog->linear_constraints(),c);
+  if (index.first != -1) {
+    int num_constraints = c.evaluator()->num_constraints();
+    return NVec(n + index.first, num_constraints);
+  }
+  n += index.second;
+
+  index = getConstraintStart(prog, prog->linear_equality_constraints(),c);
+  if (index.first != -1) {
+    int num_constraints = c.evaluator()->num_constraints();
+    return NVec(n + index.first, num_constraints);
+  }
+  n += index.second;
+
+  index = getConstraintStart(prog, prog->lorentz_cone_constraints(),c);
+  if (index.first != -1) {
+    int num_constraints = c.evaluator()->num_constraints();
+    return NVec(n + index.first, num_constraints);
+  }
+  n += index.second;
+
+  index = getConstraintStart(prog, prog->generic_constraints(),c);
+  if (index.first != -1) {
+    int num_constraints = c.evaluator()->num_constraints();
+    return NVec(n + index.first, num_constraints);
+  }
+  n += index.second;
+
+  return VectorXd(0);
+}
+
+
+
 template <typename Derived>
 int countConstraints(const solvers::MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints) {
   int n = 0;
@@ -166,8 +222,6 @@ int updateConstraints(const solvers::MathematicalProgram* prog, const std::vecto
 
   return constraint_index;
 }
-
-
 
 }
 }

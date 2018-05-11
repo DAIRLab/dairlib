@@ -42,37 +42,24 @@ using std::shared_ptr;
 using std::cout;
 using std::endl;
 using drake::goldilocks_walking::ManifoldConstraint;
+using std::string;
 
 DEFINE_double(strideLength, 0.1, "The stride length.");
 DEFINE_double(duration, 1, "The stride duration");
-DEFINE_double(height, 0.8, "The height");
 DEFINE_int64(iter, 100, "Number of iterations");
-DEFINE_string(init, "", "File name to override initial guess");
+DEFINE_string(dir, "data/", "Save directory");
+DEFINE_string(init, "z_save.csv", "File name for initial guess");
+DEFINE_string(weights, "theta.csv", "File name for weights guess");
+DEFINE_string(prefix, "", "Output prefix for results");
 
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
 namespace drake{
 namespace dircon {
-shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration, double height, int iter,
-    PiecewisePolynomial<double> init_x_traj,
-    PiecewisePolynomial<double> init_u_traj,
-    vector<PiecewisePolynomial<double>> init_l_traj,
-    vector<PiecewisePolynomial<double>> init_lc_traj,
-    vector<PiecewisePolynomial<double>> init_vc_traj,
-    std::string init_file) {
+shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration, int iter,
+    string directory, string init_file, string weights_file, string output_prefix) {
   RigidBodyTree<double> tree;
   parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalkerWithTorso.urdf", multibody::joints::kFixed, &tree);
-  //const std::unique_ptr<const RigidBodyTree<double>> tree =  std::unique_ptr<const RigidBodyTree<double>>(&model);
-
-  // for (int i = 0; i < tree.get_num_bodies(); i++)
-  //   cout << tree.getBodyOrFrameName(i) << endl;
-  // for (int i = 0; i < tree.get_num_actuators(); i++)
-  //   cout << tree.actuators[i].name_ << endl;
-  // for (int i = 0; i < tree.get_num_positions(); i++)
-  //   cout << tree.get_position_name(i) << endl;
-  // for (int i = 0; i < tree.get_num_velocities(); i++)
-  //   cout << tree.get_velocity_name(i) << endl;
-
 
 // world
 // base
@@ -176,11 +163,6 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",0);
 
-  for (int j = 0; j < timesteps.size(); j++) {
-    trajopt->systems::trajectory_optimization::MultipleShooting::SetInitialTrajectory(init_u_traj,init_x_traj);
-    trajopt->SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j], init_vc_traj[j]);
-  }
-
   //Periodicity constraints
   // planar_x - 0
   // planar_z - 1
@@ -244,36 +226,21 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   }
   trajopt->AddRunningCost(x.transpose()*Q*x);
 
-  //Add manifold constraint: constaint height at z = 7
-  // MatrixXd weights = MatrixXd::Zero(2,2*n);
-  // weights(0,1) = 1;
-  // weights(1,7) = 1;
-  // VectorXd c(2);
-  // c << 0.5, 0;
-  // MatrixXd weights = MatrixXd::Zero(1,6*n);
-  // weights(0,1) = 1; //z
-  // weights(0,2+2*n) = 0.3; //0.3*cos(pitch)
+  // MatrixXd weights = MatrixXd::Zero(1,6*n+1);
+  // weights(0,0) = -0.1;
+  // weights(0,5) = 1; //left knee pitch
 
-  MatrixXd weights = MatrixXd::Zero(1,6*n+1);
-  weights(0,0) = -0.1;
-  weights(0,5) = 1; //left knee pitch
-
-  MatrixXd dz = drake::goldilocks_walking::readCSV(string("dtheta.csv"));
-  weights += dz.transpose();
+  MatrixXd weights = drake::goldilocks_walking::readCSV(directory + weights_file).transpose();
 
   std::vector<Binding<Constraint>> manifold_bindings;
   auto m_constraint = std::make_shared<ManifoldConstraint>(tree, weights);
-  if (height > 0) {
-    for (int i = 0; i < N; i++) {
-       manifold_bindings.push_back(trajopt->AddConstraint(m_constraint, trajopt->state(i)));
-    }
+  for (int i = 0; i < N; i++) {
+     manifold_bindings.push_back(trajopt->AddConstraint(m_constraint, trajopt->state(i)));
   }
 
-  auto l = trajopt->impulse_vars(0);
-  // trajopt->AddLinearConstraint(l(1) == 0);
 
   if (!init_file.empty()) {
-    MatrixXd z0 = drake::goldilocks_walking::readCSV(init_file);
+    MatrixXd z0 = drake::goldilocks_walking::readCSV(directory + init_file);
     trajopt->SetInitialGuessForAllVariables(z0);
   }
 
@@ -281,7 +248,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   auto result = trajopt->Solve();
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  trajopt->PrintSolution();
+  // trajopt->PrintSolution();
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
   std::cout << result << std::endl;
   std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
@@ -301,52 +268,32 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 
   //get feature vectors
   MatrixXd B = MatrixXd::Zero(A.rows(), m_constraint->n_features());
-  if (height > 0) {
-    for (int i = 0; i < N; i++) {
-      VectorXd xi = trajopt->GetSolution(trajopt->state(i));
-      VectorXd features = m_constraint->CalcFeatures<double>(xi);
+  for (int i = 0; i < N; i++) {
+    VectorXd xi = trajopt->GetSolution(trajopt->state(i));
+    VectorXd features = m_constraint->CalcFeatures<double>(xi);
 
 
-      VectorXd ind = systems::trajectory_optimization::dircon::getConstraintRows(
-        trajopt.get(), manifold_bindings[i]);
+    VectorXd ind = systems::trajectory_optimization::dircon::getConstraintRows(
+      trajopt.get(), manifold_bindings[i]);
 
-      DRAKE_ASSERT(ind.size() == 1);
+    DRAKE_ASSERT(ind.size() == 1);
 
-      for (int j = 0; j < features.size(); j++) {
-        B(ind(0), j) = features(j);
-      }
+    for (int j = 0; j < features.size(); j++) {
+      B(ind(0), j) = features(j);
     }
   }
   
-  drake::goldilocks_walking::writeCSV(string("B.csv"),B);
-  drake::goldilocks_walking::writeCSV(string("A.csv"),A);
-  drake::goldilocks_walking::writeCSV(string("y.csv"),y);
-  drake::goldilocks_walking::writeCSV(string("lb.csv"),lb);
-  drake::goldilocks_walking::writeCSV(string("ub.csv"),ub);
-  drake::goldilocks_walking::writeCSV(string("H.csv"),H);
-  drake::goldilocks_walking::writeCSV(string("w.csv"),w);
-  drake::goldilocks_walking::writeCSV(string("z.csv"),z);
+  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("B.csv"),B);
+  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("A.csv"),A);
+  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("y.csv"),y);
+  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("lb.csv"),lb);
+  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("ub.csv"),ub);
+  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("H.csv"),H);
+  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("w.csv"),w);
+  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("z.csv"),z);
   
 
 
-  // cout << "*************w***************" << endl;
-  // cout << w << endl;
-  // cout << "*************H_diag(u)***************" << endl;
-  // for (int i = 0; i < N; i++) {
-  //   auto u_i = trajopt->input(i);
-  //   for (int j=0; j < u_i.size(); j++) {
-  //     int ind = trajopt->FindDecisionVariableIndex(u_i(j));
-  //     cout << H(ind,ind) << endl;
-  //   }
-  // }
-//  MatrixXd y_and_bounds(y.size(),3);
-//  y_and_bounds.col(0) = lb;
-//  y_and_bounds.col(1) = y;
-//  y_and_bounds.col(2) = ub;
-//  cout << "*************y***************" << endl;
-//  cout << y_and_bounds << endl;
-//  cout << "*************A***************" << endl;
-//  cout << A << endl;
 
   //visualizer
   lcm::DrakeLcm lcm;
@@ -378,60 +325,7 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::srand(time(0));  // Initialize random number generator.
 
-  RigidBodyTree<double> tree;
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalkerWithTorso.urdf", drake::multibody::joints::kFixed, &tree);
-
-  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(tree.get_num_positions() + tree.get_num_velocities());
-  x0(1) = 1;
-  x0(3) = -.4;
-  x0(4) = .8;
-  x0(5) = -.4;
-  x0(6) = .8;
-  Eigen::VectorXd init_l_vec(2);
-  init_l_vec << 0, tree.getMass()*9.81;
-  int nu = 4;
-  int nx = 14;
-  int N = 10;
-
-  std::vector<MatrixXd> init_x;
-  std::vector<MatrixXd> init_u;
-  std::vector<PiecewisePolynomial<double>> init_l_traj;
-  std::vector<PiecewisePolynomial<double>> init_lc_traj;
-  std::vector<PiecewisePolynomial<double>> init_vc_traj;
-
-  //Initialize state trajectory
-  std::vector<double> init_time;
-  for (int i = 0; i < 2*N-1; i++) {
-    init_time.push_back(i*.2);
-    init_x.push_back(x0 + .1*VectorXd::Random(nx));
-    init_u.push_back(VectorXd::Random(nu));
-  }
-  auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_x);
-  auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_u);
-
-  //Initialize force trajectories
-  for (int j = 0; j < 2; j++) {    
-    std::vector<MatrixXd> init_l_j;
-    std::vector<MatrixXd> init_lc_j;
-    std::vector<MatrixXd> init_vc_j;
-    std::vector<double> init_time_j;
-    for (int i = 0; i < N; i++) {
-      init_time_j.push_back(i*.2);
-      init_l_j.push_back(init_l_vec);
-      init_lc_j.push_back(init_l_vec);
-      init_vc_j.push_back(VectorXd::Zero(2));
-    }
-
-    auto init_l_traj_j = PiecewisePolynomial<double>::ZeroOrderHold(init_time_j,init_l_j);
-    auto init_lc_traj_j = PiecewisePolynomial<double>::ZeroOrderHold(init_time_j,init_lc_j);
-    auto init_vc_traj_j = PiecewisePolynomial<double>::ZeroOrderHold(init_time_j,init_vc_j);
-
-    init_l_traj.push_back(init_l_traj_j);
-    init_lc_traj.push_back(init_lc_traj_j);
-    init_vc_traj.push_back(init_vc_traj_j);
-  }
-
-  auto prog = drake::dircon::runDircon(FLAGS_strideLength, FLAGS_duration, FLAGS_height, FLAGS_iter,
-    init_x_traj, init_u_traj,  init_l_traj, init_lc_traj, init_vc_traj, FLAGS_init);
+  auto prog = drake::dircon::runDircon(FLAGS_strideLength, FLAGS_duration, FLAGS_iter,
+    FLAGS_dir, FLAGS_init, FLAGS_weights, FLAGS_prefix);
 }
 

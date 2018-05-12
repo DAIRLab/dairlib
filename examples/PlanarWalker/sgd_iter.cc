@@ -26,6 +26,8 @@
 
 #include "src/manifold_constraint.h"
 #include "src/file_utils.h"
+#include "sgd_iter.h"
+
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -55,8 +57,8 @@ DEFINE_string(prefix, "", "Output prefix for results");
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
 namespace drake{
-namespace dircon {
-shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration, int iter,
+namespace goldilocks_walking {
+shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, int iter,
     string directory, string init_file, string weights_file, string output_prefix) {
   RigidBodyTree<double> tree;
   parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalkerWithTorso.urdf", multibody::joints::kFixed, &tree);
@@ -321,11 +323,11 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 }
 
 
-int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  std::srand(time(0));  // Initialize random number generator.
+// int main(int argc, char* argv[]) {
+//   gflags::ParseCommandLineFlags(&argc, &argv, true);
+//   std::srand(time(0));  // Initialize random number generator.
 
-  auto prog = drake::dircon::runDircon(FLAGS_strideLength, FLAGS_duration, FLAGS_iter,
-    FLAGS_dir, FLAGS_init, FLAGS_weights, FLAGS_prefix);
-}
+//   auto prog = drake::dircon::sgdIter(FLAGS_strideLength, FLAGS_duration, FLAGS_iter,
+//     FLAGS_dir, FLAGS_init, FLAGS_weights, FLAGS_prefix);
+// }
 

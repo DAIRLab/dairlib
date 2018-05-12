@@ -21,7 +21,6 @@
 
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
-#include "systems/trajectory_optimization/hybrid_dircon.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 
 #include "src/manifold_constraint.h"

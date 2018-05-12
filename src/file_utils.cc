@@ -1,5 +1,6 @@
 #include <vector>
 #include "file_utils.h"
+#include "drake/common/drake_assert.h"
 
 using namespace Eigen;
 using std::ofstream;
@@ -26,6 +27,9 @@ MatrixXd readCSV (const string & path) {
             values.push_back(std::stod(cell));
         }
         ++rows;
+    }
+    if (values.size() == 0) {
+      DRAKE_ABORT_MSG(("Could not read file " + path + " to load a CSV.").c_str());
     }
     return Map<const Matrix<double, Dynamic, Dynamic, RowMajor>>(values.data(), rows, values.size()/rows);
 }

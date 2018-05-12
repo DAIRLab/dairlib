@@ -67,10 +67,12 @@ for iter=1:20,
     
   csvwrite(sprintf('data/%d_theta.csv',iter),theta + dtheta)
   
-  length = 0.5 + .0*rand;
-  duration = 1;
+  speed = .5;
+  length = .3 + .2*rand
+  duration = length/speed;
   
-  system(sprintf('./sgd_iter -strideLength %.2f -duration %.2f -iter 200 -init %d_z.csv -weights %d_theta.csv -prefix %d_',...
-    length, duration, iter-1, iter, iter));
+%   system(sprintf('./sgd_iter -strideLength %.2f -duration %.2f -iter 200 -init %d_z.csv -weights %d_theta.csv -prefix %d_',...
+  system(sprintf('./sgd_iter -strideLength %.2f -duration %.2f -iter 200 -init z_save.csv -weights %d_theta.csv -prefix %d_',...
+    length, duration, iter, iter));
 end
 

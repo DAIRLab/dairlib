@@ -14,8 +14,11 @@ target_link_libraries(run_gait_dircon goldilocks
  dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
 )
 
-add_executable(sgd_iter sgd_iter.cc)
+add_executable(runSGD runSGD.cc sgd_iter.cc)
 
-target_link_libraries(sgd_iter goldilocks
+set_target_properties(runSGD PROPERTIES
+  PUBLIC_HEADER "sgd_iter.h;")
+
+target_link_libraries(runSGD goldilocks
  dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
 )

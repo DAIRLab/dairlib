@@ -14,8 +14,9 @@ ManifoldConstraint::ManifoldConstraint(const RigidBodyTree<double>& tree,
   : Constraint(weights.rows(), tree.get_num_positions() + tree.get_num_velocities(),
    VectorXd::Zero(1), VectorXd::Zero(1), "manifold"), weights_{weights} {
   tree_ = &tree;
-  n_features_ = 3*tree.get_num_positions() + 3*tree.get_num_velocities() + 1;
-
+  // n_features_ = 3*tree.get_num_positions() + 3*tree.get_num_velocities() + 1;
+  n_features_ = 3*(tree.get_num_positions()-2) + 1;
+  // std::cout << n_features_ << weights.cols() << std::endl;
   DRAKE_ASSERT(n_features_ == weights.cols());
 }
 
@@ -32,11 +33,12 @@ void ManifoldConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
 template <typename T>
 VectorX<T> ManifoldConstraint::CalcFeatures(const Eigen::Ref<const VectorX<T>>& x) const {
   VectorX<T> features(n_features_);
+  int iter_len = tree_->get_num_positions() - 2;
   features(0) = 1; //constant feature
-  for (int i = 0; i < x.size(); i++) {
+  for (int i = 0; i < iter_len; i++) {
     features(i+1) = x(i);
-    features(x.size()+i+1) = cos(x(i));
-    features(2*x.size()+i+1) = sin(x(i));
+    features(iter_len+i+1) = cos(x(i));
+    features(2*iter_len+i+1) = sin(x(i));
   }
   return features;
 }

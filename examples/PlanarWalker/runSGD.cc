@@ -1,6 +1,6 @@
 #include <memory>
 #include <chrono>
-
+#include <random>
 #include <gflags/gflags.h>
 
 
@@ -24,11 +24,19 @@ namespace drake{
 namespace goldilocks_walking {
 
 void runSGD() {
-  int n_weights = 43;
+  std::random_device randgen;
+  std::default_random_engine e1(randgen());
+  std::uniform_real_distribution<> dist(0, 1);
+
+
+
+
+  // int n_weights = 43;
+  int n_weights =  16;
   VectorXd theta_0 = VectorXd::Zero(n_weights);
   theta_0(0) = -0.1;
-  theta_0(6) = 1.0;
-  writeCSV("data/0_theta.sv", theta_0);
+  theta_0(5) = 1.0;
+  writeCSV("data/0_theta.csv", theta_0);
 
   double length = 0.5;
   double duration = 1;
@@ -64,15 +72,37 @@ void runSGD() {
     MatrixXd B_active(n_active, nt);
     MatrixXd AB_active(n_active, nz + nt);
 
-    int row = 0;
+    int nl = 0;
     for (int i = 0; i < y.rows(); i++) {
       if (y(i) >= ub(i) - tol || y(i) <= lb(i) + tol) {
-        A_active.row(row) = A.row(i);
-        B_active.row(row) = B.row(i);
-        AB_active.row(row) << A.row(i), B.row(i);
-        row++;
+        A_active.row(nl) = A.row(i);
+        B_active.row(nl) = B.row(i);
+        AB_active.row(nl) << A.row(i), B.row(i);
+        nl++;
       }
     }
+
+
+    // double weight = 10000;
+
+    // MatrixXd R = MatrixXd::Zero(nz + nt + nl, nz + nt + nl);
+    // R.block(0, 0, nz, nz) = H;
+    // R.block(nz, nz, nt, nt) = weight*MatrixXd::Identity(nt,nt);
+    // R.block(0, nz + nt, nz + nt, nl) = AB_active.transpose();
+    // R.block(nz + nt, 0, nl, nz + nt) = AB_active;
+
+    // VectorXd b = VectorXd::Zero(nz + nt + nl);
+    // b.head(nz) = w.col(0);
+
+    // VectorXd ztl = -R.colPivHouseholderQr().solve(b);
+
+    // VectorXd dtheta = ztl.segment(nz,nt);
+    // VectorXd dz = ztl.head(nz);
+    // auto dcost = 0.5*dz.transpose()*H*dz + w.transpose()*dz;
+
+    // std::cout << "Solve error: " << (R*ztl + b).norm() << std::endl;
+    // std::cout << "Delta cost: " << dcost(0) << std::endl;
+    // std::cout << "dtheta norm: " << dtheta.norm() << std::endl;
 
     Eigen::BDCSVD<MatrixXd> svd(AB_active,  Eigen::ComputeFullV);
 
@@ -83,39 +113,58 @@ void runSGD() {
     H_ext.block(0,0,nz,nz) = H;
     H_ext.block(nz,nz,nt,nt) = 1e-2*MatrixXd::Identity(nt,nt);
 
-    MatrixXd w_ext(nz+nt,1);
+    VectorXd w_ext(nz+nt,1);
     w_ext << w, MatrixXd::Zero(nt,1);
 
-    MatrixXd Q = N.transpose() * H_ext * N;
-    MatrixXd b = N.transpose() * w_ext;
+    auto gradient = N*N.transpose()*w_ext;
 
-    drake::solvers::MathematicalProgram qp_theta;
-    VectorXDecisionVariable  vars = qp_theta.NewContinuousVariables(N.cols(), "v");
+    double scale_num= gradient.dot(gradient);
+    double scale_den = gradient.dot(H_ext*gradient);
 
-    qp_theta.AddQuadraticCost(Q,b,vars);
+    auto dtheta = -0.1*gradient.tail(nt)*scale_num/scale_den;
 
-    double trust = .5/(5.0+iter);
+    std::cout << "dtheta norm: " << dtheta.norm() << std::endl;
 
-    qp_theta.AddLinearConstraint(N*vars <= MatrixXd::Constant(N.rows(), 1, trust));
-    qp_theta.AddLinearConstraint(N*vars >= MatrixXd::Constant(N.rows(), 1, -trust));
-    // drake::solvers::GurobiSolver solver;
-    // std::cout << solver.available() << std::endl;
-    // std::cout << solver.License() << std::endl;
+    std::cout << "scale predict: " << scale_num/scale_den << std::endl;
 
-    // DRAKE_ASSERT(solver.available());
+    // MatrixXd Q = N.transpose() * H_ext * N;
+    // MatrixXd b = N.transpose() * w_ext;
 
-    auto result = qp_theta.Solve();
-    // auto result = solver.Solve(qp_theta);
-    auto dtheta = N.bottomRows(nt)*qp_theta.GetSolution(vars);
+    // drake::solvers::MathematicalProgram qp_theta;
+    // VectorXDecisionVariable  vars = qp_theta.NewContinuousVariables(N.cols(), "v");
+
+    // qp_theta.AddQuadraticCost(Q,b,vars);
+
+    // double trust = .5/(5.0+iter);
+
+    // qp_theta.AddLinearConstraint(N*vars <= MatrixXd::Constant(N.rows(), 1, trust));
+    // qp_theta.AddLinearConstraint(N*vars >= MatrixXd::Constant(N.rows(), 1, -trust));
+    // // drake::solvers::GurobiSolver solver;
+    // // std::cout << solver.available() << std::endl;
+    // // std::cout << solver.License() << std::endl;
+
+    // // DRAKE_ASSERT(solver.available());
+
+    // auto result = qp_theta.Solve();
+    // // auto result = solver.Solve(qp_theta);
+    // auto dtheta = N.bottomRows(nt)*qp_theta.GetSolution(vars);
 
     writeCSV("data/" + std::to_string(iter) + "_theta.csv", theta + dtheta);
 
     init_z = std::to_string(iter-1) + "_z.csv";
     weights = std::to_string(iter) +  "_theta.csv";
     prefix = std::to_string(iter) +  "_";
+
+    //randomize distance on [0.3,0.5]
+    // length = 0.3 + 0.2*dist(e1);
+    duration =  length/0.5; //maintain constaint speed of 0.5 m/s
+
+    std::cout << std::endl << "Iter: " << iter <<  std::endl;
+    std::cout << "New length: " << length << std::endl;
+
     sgdIter(length, duration, snopt_iter, directory, init_z, weights, prefix);
 
-    std::cout << "Iter: " << iter << "dtheta: " <<  std::endl << dtheta << std::endl;
+    // <<" dtheta: " <<  std::endl << dtheta << std::endl;
   }
 }
 }

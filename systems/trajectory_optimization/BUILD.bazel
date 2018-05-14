@@ -1,0 +1,28 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+
+# Compile a sample application.
+cc_library(
+    name = "dircon",
+    srcs = ["dircon_options.cc",
+            "dircon.cc",
+            "dircon_opt_constraints.cc",
+            "dircon_kinematic_data_set.cc",
+            "dircon_kinematic_data.cc",
+            "dircon_position_data.cc",
+            "hybrid_dircon.cc",
+            "dircon_util.cc"],
+    hdrs = ["dircon_options.h",
+            "dircon.h",
+            "dircon_opt_constraints.h",
+            "dircon_kinematic_data_set.h",
+            "dircon_kinematic_data.h",
+            "dircon_position_data.h",
+            "hybrid_dircon.h",
+            "dircon_util.h"],
+    deps = [
+        "@drake//systems/analysis",
+        "@drake//systems/framework",
+    ],
+)

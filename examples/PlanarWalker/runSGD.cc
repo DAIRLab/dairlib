@@ -29,7 +29,7 @@ void runSGD() {
   std::uniform_real_distribution<> dist(0, 1);
 
 
-
+  int n_batch = 5;
 
   // int n_weights = 43;
   int n_weights =  16;
@@ -44,77 +44,112 @@ void runSGD() {
   string directory = "data/";
   string init_z = "z_save.csv";
   string weights = "0_theta.csv";
-  string prefix = "0_";
-  sgdIter(length, duration, snopt_iter, directory, init_z, weights, prefix);
+  string output_prefix = "0_0_";
+  sgdIter(length, duration, snopt_iter, directory, init_z, weights, output_prefix);
 
-  for (int iter = 1; iter <= 20; iter++) {
-    MatrixXd A = readCSV(directory + std::to_string(iter-1) + "_A.csv");
-    MatrixXd B = readCSV(directory + std::to_string(iter-1) + "_B.csv");
-    MatrixXd H = readCSV(directory + std::to_string(iter-1) + "_H.csv");
-    MatrixXd lb = readCSV(directory + std::to_string(iter-1) + "_lb.csv");
-    MatrixXd ub = readCSV(directory + std::to_string(iter-1) + "_ub.csv");
-    MatrixXd y = readCSV(directory + std::to_string(iter-1) + "_y.csv");
-    MatrixXd w = readCSV(directory + std::to_string(iter-1) + "_w.csv");
-    MatrixXd z = readCSV(directory + std::to_string(iter-1) + "_z.csv");
-    MatrixXd theta = readCSV(directory + std::to_string(iter-1) + "_theta.csv");
+  for (int iter = 1; iter <= 50; iter++) {
+    int input_batch = iter == 1 ? 1 : n_batch;
 
-    int n_active = 0;
-    double tol = 1e-4;
-    for (int i = 0; i < y.rows(); i++) {
-      if (y(i) >= ub(i) - tol || y(i) <= lb(i) + tol)
-        n_active++;
-    }
+    std::vector<MatrixXd> A_vec;
+    std::vector<MatrixXd> B_vec;
+    std::vector<MatrixXd> H_vec;
+    std::vector<MatrixXd> A_active_vec;
+    std::vector<MatrixXd> B_active_vec;
+    std::vector<MatrixXd> lb_vec;
+    std::vector<MatrixXd> ub_vec;
+    std::vector<MatrixXd> y_vec;
+    std::vector<MatrixXd> w_vec;
+    std::vector<MatrixXd> z_vec;
+    std::vector<MatrixXd> theta_vec;
+    std::vector<double> nl_vec;
+    std::vector<double> nz_vec;
 
-    int nz = A.cols();
-    int nt = B.cols();
+    int nz,nt,nl;
 
-    MatrixXd A_active(n_active, nz);
-    MatrixXd B_active(n_active, nt);
-    MatrixXd AB_active(n_active, nz + nt);
+    for (int batch = 0; batch < input_batch; batch++) {
+      string batch_prefix = std::to_string(iter-1) + "_" + std::to_string(batch) + "_";
+      string iter_prefix = std::to_string(iter-1) + "_";
 
-    int nl = 0;
-    for (int i = 0; i < y.rows(); i++) {
-      if (y(i) >= ub(i) - tol || y(i) <= lb(i) + tol) {
-        A_active.row(nl) = A.row(i);
-        B_active.row(nl) = B.row(i);
-        AB_active.row(nl) << A.row(i), B.row(i);
-        nl++;
+      A_vec.push_back(readCSV(directory + batch_prefix + "A.csv"));
+      B_vec.push_back(readCSV(directory + batch_prefix + "B.csv"));
+      H_vec.push_back(readCSV(directory + batch_prefix + "H.csv"));
+      lb_vec.push_back(readCSV(directory + batch_prefix + "lb.csv"));
+      ub_vec.push_back(readCSV(directory + batch_prefix + "ub.csv"));
+      y_vec.push_back(readCSV(directory + batch_prefix + "y.csv"));
+      w_vec.push_back(readCSV(directory + batch_prefix + "w.csv"));
+      z_vec.push_back(readCSV(directory + batch_prefix + "z.csv"));
+      theta_vec.push_back(readCSV(directory + iter_prefix + "theta.csv"));
+
+      DRAKE_ASSERT(w_vec[batch].cols() == 1);
+      DRAKE_ASSERT(lb_vec[batch].cols() == 1);
+      DRAKE_ASSERT(ub_vec[batch].cols() == 1);
+      DRAKE_ASSERT(y_vec[batch].cols() == 1);
+      DRAKE_ASSERT(w_vec[batch].cols() == 1);
+      DRAKE_ASSERT(z_vec[batch].cols() == 1);
+      DRAKE_ASSERT(theta_vec[batch].cols() == 1);
+
+
+      int n_active = 0;
+      double tol = 1e-4;
+      for (int i = 0; i < y_vec[batch].rows(); i++) {
+        if (y_vec[batch](i) >= ub_vec[batch](i) - tol || y_vec[batch](i) <= lb_vec[batch](i) + tol)
+          n_active++;
+      }
+
+      int nz_i = A_vec[batch].cols();
+      int nt_i = B_vec[batch].cols();
+
+      MatrixXd A_active(n_active, nz_i);
+      MatrixXd B_active(n_active, nt_i);
+      MatrixXd AB_active(n_active, nz_i + nt_i);
+
+      int nl_i = 0;
+      for (int i = 0; i < y_vec[batch].rows(); i++) {
+        if (y_vec[batch](i) >= ub_vec[batch](i) - tol || y_vec[batch](i) <= lb_vec[batch](i) + tol) {
+          A_active.row(nl_i) = A_vec[batch].row(i);
+          B_active.row(nl_i) = B_vec[batch].row(i);
+          AB_active.row(nl_i) << A_vec[batch].row(i), B_vec[batch].row(i);
+          nl_i++;
+        }
+      }
+
+      A_active_vec.push_back(A_active);
+      B_active_vec.push_back(B_active);
+      nl_vec.push_back(nl_i);
+      nz_vec.push_back(nz_i);
+
+      nl += nl_i;
+      nz += nz_i;
+      if (batch == 0) {
+        nt = nt_i;
+      } else {
+        DRAKE_ASSERT(nt == nt_i);
+        DRAKE_ASSERT((theta_vec[0] - theta_vec[batch]).norm() == 0);
       }
     }
 
+    //Join matricies
+    MatrixXd AB_active = MatrixXd::Zero(nl,nz+nt);
+    MatrixXd H_ext = MatrixXd::Zero(nz + nt, nz + nt);
+    VectorXd w_ext = VectorXd::Zero(nz+nt,1);
+    int nl_start = 0;
+    int nz_start = 0;
+    for (int batch = 0; batch < input_batch; batch++) {
+      AB_active.block(nl_start, nz_start, nl_vec[batch], nz_vec[batch]) = A_active_vec[batch];
+      AB_active.block(nl_start, nz, nl_vec[batch], nt) = B_active_vec[batch];
 
-    // double weight = 10000;
+      H_ext.block(nz_start,nz_start,nz_vec[batch],nz_vec[batch]) = H_vec[batch];
+      w_ext.segment(nz_start,nz_vec[batch]) = w_vec[batch].col(0);
 
-    // MatrixXd R = MatrixXd::Zero(nz + nt + nl, nz + nt + nl);
-    // R.block(0, 0, nz, nz) = H;
-    // R.block(nz, nz, nt, nt) = weight*MatrixXd::Identity(nt,nt);
-    // R.block(0, nz + nt, nz + nt, nl) = AB_active.transpose();
-    // R.block(nz + nt, 0, nl, nz + nt) = AB_active;
+      nl_start += nl_vec[batch];
+      nz_start += nz_vec[batch];
+    }
+    H_ext.block(nz,nz,nt,nt) = 1e-2*MatrixXd::Identity(nt,nt);
 
-    // VectorXd b = VectorXd::Zero(nz + nt + nl);
-    // b.head(nz) = w.col(0);
-
-    // VectorXd ztl = -R.colPivHouseholderQr().solve(b);
-
-    // VectorXd dtheta = ztl.segment(nz,nt);
-    // VectorXd dz = ztl.head(nz);
-    // auto dcost = 0.5*dz.transpose()*H*dz + w.transpose()*dz;
-
-    // std::cout << "Solve error: " << (R*ztl + b).norm() << std::endl;
-    // std::cout << "Delta cost: " << dcost(0) << std::endl;
-    // std::cout << "dtheta norm: " << dtheta.norm() << std::endl;
 
     Eigen::BDCSVD<MatrixXd> svd(AB_active,  Eigen::ComputeFullV);
 
-
     MatrixXd N = svd.matrixV().rightCols(AB_active.cols() - svd.rank());
-
-    MatrixXd H_ext = MatrixXd::Zero(nz + nt, nz + nt);
-    H_ext.block(0,0,nz,nz) = H;
-    H_ext.block(nz,nz,nt,nt) = 1e-2*MatrixXd::Identity(nt,nt);
-
-    VectorXd w_ext(nz+nt,1);
-    w_ext << w, MatrixXd::Zero(nt,1);
 
     auto gradient = N*N.transpose()*w_ext;
 
@@ -123,48 +158,30 @@ void runSGD() {
 
     auto dtheta = -0.1*gradient.tail(nt)*scale_num/scale_den;
 
-    std::cout << "dtheta norm: " << dtheta.norm() << std::endl;
+    std::cout << std::endl<< "dtheta norm: " << dtheta.norm() << std::endl;
+    std::cout << "***********Next iteration*************" << std::endl;
 
-    std::cout << "scale predict: " << scale_num/scale_den << std::endl;
+    // std::cout << "scale predict: " << scale_num/scale_den << std::endl;
 
-    // MatrixXd Q = N.transpose() * H_ext * N;
-    // MatrixXd b = N.transpose() * w_ext;
+    writeCSV("data/" + std::to_string(iter) + "_theta.csv", theta_vec[0] + dtheta);
 
-    // drake::solvers::MathematicalProgram qp_theta;
-    // VectorXDecisionVariable  vars = qp_theta.NewContinuousVariables(N.cols(), "v");
-
-    // qp_theta.AddQuadraticCost(Q,b,vars);
-
-    // double trust = .5/(5.0+iter);
-
-    // qp_theta.AddLinearConstraint(N*vars <= MatrixXd::Constant(N.rows(), 1, trust));
-    // qp_theta.AddLinearConstraint(N*vars >= MatrixXd::Constant(N.rows(), 1, -trust));
-    // // drake::solvers::GurobiSolver solver;
-    // // std::cout << solver.available() << std::endl;
-    // // std::cout << solver.License() << std::endl;
-
-    // // DRAKE_ASSERT(solver.available());
-
-    // auto result = qp_theta.Solve();
-    // // auto result = solver.Solve(qp_theta);
-    // auto dtheta = N.bottomRows(nt)*qp_theta.GetSolution(vars);
-
-    writeCSV("data/" + std::to_string(iter) + "_theta.csv", theta + dtheta);
-
-    init_z = std::to_string(iter-1) + "_z.csv";
+    // init_z = std::to_string(iter-1) + "_z.csv";
+    init_z = "z_save.csv";
     weights = std::to_string(iter) +  "_theta.csv";
-    prefix = std::to_string(iter) +  "_";
+    output_prefix = std::to_string(iter) +  "_";
 
+    for(int batch = 0; batch < n_batch; batch++) {
     //randomize distance on [0.3,0.5]
-    // length = 0.3 + 0.2*dist(e1);
-    duration =  length/0.5; //maintain constaint speed of 0.5 m/s
+      length = 0.3 + 0.2*dist(e1);
+      duration =  length/0.5; //maintain constaint speed of 0.5 m/s
 
-    std::cout << std::endl << "Iter: " << iter <<  std::endl;
-    std::cout << "New length: " << length << std::endl;
+      std::cout << std::endl << "Iter-Batch: " << iter << "-" << batch << std::endl;
+      std::cout << "New length: " << length << std::endl;
 
-    sgdIter(length, duration, snopt_iter, directory, init_z, weights, prefix);
+      string batch_prefix = output_prefix + std::to_string(batch) + "_";
 
-    // <<" dtheta: " <<  std::endl << dtheta << std::endl;
+      sgdIter(length, duration, snopt_iter, directory, init_z, weights, batch_prefix);
+    }
   }
 }
 }

@@ -108,6 +108,7 @@ void linearizeConstraints(const solvers::MathematicalProgram* prog, VectorXd& x,
   int num_vars = prog->num_vars();
 
   // First, count constraints
+  num_constraints += countConstraints(prog, prog->bounding_box_constraints());
   num_constraints += countConstraints(prog, prog->linear_constraints());
   num_constraints += countConstraints(prog, prog->linear_equality_constraints());
   num_constraints += countConstraints(prog, prog->lorentz_cone_constraints());
@@ -120,6 +121,7 @@ void linearizeConstraints(const solvers::MathematicalProgram* prog, VectorXd& x,
   A = Eigen::MatrixXd::Zero(num_constraints, num_vars);
 
   int constraint_index = 0;
+  constraint_index = updateConstraints(prog, prog->bounding_box_constraints(), x, y, A, lb, ub, constraint_index);
   constraint_index = updateConstraints(prog, prog->linear_constraints(), x, y, A, lb, ub, constraint_index);
   constraint_index = updateConstraints(prog, prog->linear_equality_constraints(), x, y, A, lb, ub, constraint_index);
   constraint_index = updateConstraints(prog, prog->lorentz_cone_constraints(), x, y, A, lb, ub, constraint_index);
@@ -149,7 +151,14 @@ std::pair<int,int> getConstraintStart(const solvers::MathematicalProgram* prog, 
 
 VectorXd getConstraintRows(const solvers::MathematicalProgram* prog, Binding<Constraint>& c) {
   int n = 0;
-  auto index = getConstraintStart(prog, prog->linear_constraints(),c);
+  auto index = getConstraintStart(prog, prog->bounding_box_constraints(),c);
+  if (index.first != -1) {
+    int num_constraints = c.evaluator()->num_constraints();
+    return NVec(n + index.first, num_constraints);
+  }
+  n += index.second;
+
+  index = getConstraintStart(prog, prog->linear_constraints(),c);
   if (index.first != -1) {
     int num_constraints = c.evaluator()->num_constraints();
     return NVec(n + index.first, num_constraints);

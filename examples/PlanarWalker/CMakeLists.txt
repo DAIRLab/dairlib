@@ -24,3 +24,12 @@ set_target_properties(runSGD PROPERTIES
 target_link_libraries(runSGD goldilocks
  dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
 )
+
+add_executable(generate_nominal_gaits generate_nominal_gaits.cc sgd_iter.cc)
+
+set_target_properties(generate_nominal_gaits PROPERTIES
+  PUBLIC_HEADER "sgd_iter.h;")
+
+target_link_libraries(generate_nominal_gaits goldilocks
+ dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
+)

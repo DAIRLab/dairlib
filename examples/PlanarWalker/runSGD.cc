@@ -3,6 +3,7 @@
 #include <random>
 #include <gflags/gflags.h>
 
+#include <Eigen/Sparse>
 
 #include "drake/solvers/mosek_solver.h"
 #include "drake/solvers/gurobi_solver.h"
@@ -129,34 +130,119 @@ void runSGD() {
     }
 
     //Join matricies
-    MatrixXd AB_active = MatrixXd::Zero(nl,nz+nt);
-    MatrixXd H_ext = MatrixXd::Zero(nz + nt, nz + nt);
+    // MatrixXd AB_active = MatrixXd::Zero(nl,nz+nt);
+    // MatrixXd H_ext = MatrixXd::Zero(nz + nt, nz + nt);
     VectorXd w_ext = VectorXd::Zero(nz+nt,1);
     int nl_start = 0;
     int nz_start = 0;
     for (int batch = 0; batch < input_batch; batch++) {
-      AB_active.block(nl_start, nz_start, nl_vec[batch], nz_vec[batch]) = A_active_vec[batch];
-      AB_active.block(nl_start, nz, nl_vec[batch], nt) = B_active_vec[batch];
+      // AB_active.block(nl_start, nz_start, nl_vec[batch], nz_vec[batch]) = A_active_vec[batch];
+      // AB_active.block(nl_start, nz, nl_vec[batch], nt) = B_active_vec[batch];
 
-      H_ext.block(nz_start,nz_start,nz_vec[batch],nz_vec[batch]) = H_vec[batch];
+      // H_ext.block(nz_start,nz_start,nz_vec[batch],nz_vec[batch]) = H_vec[batch];
       w_ext.segment(nz_start,nz_vec[batch]) = w_vec[batch].col(0);
 
       nl_start += nl_vec[batch];
       nz_start += nz_vec[batch];
     }
-    H_ext.block(nz,nz,nt,nt) = 1e-2*MatrixXd::Identity(nt,nt);
+    // H_ext.block(nz,nz,nt,nt) = 1e-2*MatrixXd::Identity(nt,nt);
 
 
-    Eigen::BDCSVD<MatrixXd> svd(AB_active,  Eigen::ComputeFullV);
+    // Eigen::BDCSVD<MatrixXd> svd(AB_active,  Eigen::ComputeFullV);
 
-    MatrixXd N = svd.matrixV().rightCols(AB_active.cols() - svd.rank());
+    // MatrixXd N = svd.matrixV().rightCols(AB_active.cols() - svd.rank());
 
-    auto gradient = N*N.transpose()*w_ext;
+    // auto gradient = N*N.transpose()*w_ext;
 
-    double scale_num= gradient.dot(gradient);
-    double scale_den = gradient.dot(H_ext*gradient);
+    // double scale_num= gradient.dot(gradient);
+    // double scale_den = gradient.dot(Ei_ext*gradient);
 
-    auto dtheta = -0.02*gradient.tail(nt)*scale_num/scale_den;
+    // auto dtheta = -0.02*gradient.tail(nt)*scale_num/scale_den;
+
+
+    nl_start = 0;
+    nz_start = 0;
+    std::vector<Eigen::Triplet<double>> tripletList;
+    std::vector<Eigen::Triplet<double>> tripletList_H;
+    for (int batch = 0; batch < input_batch; batch++) {
+      for (int i = 0; i < nz_vec[batch]; i++) {
+        for (int j = 0; j < nz_vec[batch]; j++) {
+          tripletList.push_back(Eigen::Triplet<double>(nz_start + i, nz_start + j, H_vec[batch](i,j)));
+          tripletList_H.push_back(Eigen::Triplet<double>(nz_start + i, nz_start + j, H_vec[batch](i,j)));
+        }
+      }
+      for (int i = 0; i < nl_vec[batch]; i++) {
+        for (int j = 0; j < nz_vec[batch]; j++) {
+          int i_ind = nz + nt + nl_start + i;
+          int j_ind = nz_start + j;
+          tripletList.push_back(Eigen::Triplet<double>(i_ind, j_ind, A_active_vec[batch](i,j)));
+          tripletList.push_back(Eigen::Triplet<double>(j_ind, i_ind, A_active_vec[batch](i,j)));
+        }
+        for (int j = 0; j < nt; j++) {
+          int i_ind = nz + nt + nl_start + i;
+          int j_ind = nz + j;
+          tripletList.push_back(Eigen::Triplet<double>(i_ind, j_ind, B_active_vec[batch](i,j)));
+          tripletList.push_back(Eigen::Triplet<double>(j_ind, i_ind, B_active_vec[batch](i,j)));
+        }
+      }
+      nl_start += nl_vec[batch];
+      nz_start += nz_vec[batch];
+    }
+
+    VectorXd b(nz + nt + nl);
+    b << -w_ext, VectorXd::Zero(nl);
+
+    Eigen::SparseMatrix<double> M(nz + nt + nl, nz + nt + nl);
+    M.setFromTriplets(tripletList.begin(), tripletList.end());
+
+    Eigen::SparseMatrix<double> H_ext(nz + nt, nz + nt);
+    H_ext.setFromTriplets(tripletList_H.begin(), tripletList_H.end());
+    Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> qr(M);
+    auto gradient = qr.solve(b);
+
+    // Eigen::SparseLU<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
+    // // fill A and b;
+    // // Compute the ordering permutation vector from the structural pattern of A
+    // solver.analyzePattern(M); 
+    // // Compute the numerical factorization
+    // solver.factorize(M);
+    // std::cout << solver.info() << std::endl;
+    // //Use the factors to solve the linear system
+    // auto gradient = solver.solve(b);
+
+    // Eigen::BiCGSTAB<Eigen::SparseMatrix<double> > solver;
+    // solver.compute(M);
+    // auto gradient = solver.solve(b);
+    // std::cout << "#iterations:     " << solver.iterations() << std::endl;
+    // std::cout << "estimated error: " << solver.error()      << std::endl;
+
+    // std::cout << M*gradient - b << std::endl;
+
+
+    // std::cout << gradient << std::endl;
+
+
+    // //M = [H_ext A'; A 0]
+    // MatrixXd M(nz + nt + nl, nz + nt + nl);
+    // M.block(0, 0, nz + nt, nz + nt) = H_ext;
+    // M.block(0, nz + nt, nz + nt, nl) = AB_active.transpose();
+    // M.block(nz + nt, 0, nl, nz + nt) = AB_active;
+    // M.block(nz + nt, nz + nt, nl, nl) = MatrixXd::Zero(nl,nl);
+    // VectorXd b(nz + nt + nl);
+    // b << -w_ext, VectorXd::Zero(nl);
+    // auto gradient = M.colPivHouseholderQr().solve(b);
+
+    auto zt = gradient.head(nz+nt);
+
+    // std::cout << "tmp: "<< H_ext*zt << std::endl;
+
+    double scale = 1/sqrt(zt.dot(H_ext*zt));
+
+    std::cout << "scale: "<< scale << std::endl;
+
+    auto dtheta = -.1*scale*gradient.segment(nz, nt);
+
+    std::cout << "found dtheta"<< std::endl;
 
     std::cout << std::endl<< "dtheta norm: " << dtheta.norm() << std::endl;
     std::cout << "***********Next iteration*************" << std::endl;

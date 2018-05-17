@@ -1,7 +1,8 @@
 # -*- mode: cmake -*-
 # vi: set ft=cmake :
 
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS "-O2")
 
 configure_file(PlanarWalker.urdf "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 

@@ -156,7 +156,7 @@ void runSGD() {
     double scale_num= gradient.dot(gradient);
     double scale_den = gradient.dot(H_ext*gradient);
 
-    auto dtheta = -0.1*gradient.tail(nt)*scale_num/scale_den;
+    auto dtheta = -0.02*gradient.tail(nt)*scale_num/scale_den;
 
     std::cout << std::endl<< "dtheta norm: " << dtheta.norm() << std::endl;
     std::cout << "***********Next iteration*************" << std::endl;
@@ -172,8 +172,16 @@ void runSGD() {
 
     for(int batch = 0; batch < n_batch; batch++) {
     //randomize distance on [0.3,0.5]
-      length = 0.3 + 0.2*dist(e1);
-      duration =  length/0.5; //maintain constaint speed of 0.5 m/s
+      // length = 0.2 + 0.3*dist(e1);
+      length = 0.25 + 0.05*batch + 0.05*dist(e1);
+      // duration =  length/0.5; //maintain constaint speed of 0.5 m/s
+      duration = 1;
+
+      int length_file_index = (int) ((0.5 - length) * 10);
+      if (iter == 1) 
+        init_z = "init_length_" + std::to_string(length_file_index) + "_speed_0_z.csv";
+      else
+        init_z = std::to_string(iter-1) + "_" + std::to_string(batch) + "_z.csv";
 
       std::cout << std::endl << "Iter-Batch: " << iter << "-" << batch << std::endl;
       std::cout << "New length: " << length << std::endl;

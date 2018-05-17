@@ -234,13 +234,16 @@ void runSGD() {
 
     auto zt = gradient.head(nz+nt);
 
-    // std::cout << "tmp: "<< H_ext*zt << std::endl;
+    auto resid = M*gradient - b;
+
+    std::cout << "residual-norm: "<< resid.tail(nl).norm() << std::endl;
+    std::cout << "descent: "<< gradient.head(nz+nt).dot(w_ext) << std::endl;
 
     double scale = 1/sqrt(zt.dot(H_ext*zt));
 
     std::cout << "scale: "<< scale << std::endl;
 
-    auto dtheta = -.1*scale*gradient.segment(nz, nt);
+    auto dtheta = -.01*scale*gradient.segment(nz, nt);
 
     std::cout << "found dtheta"<< std::endl;
 

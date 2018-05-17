@@ -22,7 +22,10 @@ cc_library(
             "hybrid_dircon.h",
             "dircon_util.h"],
     deps = [
-        "@drake//systems/analysis",
+        #"@drake//multibody:rigid_body_tree",
+        "@drake//systems/trajectory_optimization:trajectory_optimization",
         "@drake//systems/framework",
+        "@drake//common",
+        "@drake//solvers"
     ],
 )

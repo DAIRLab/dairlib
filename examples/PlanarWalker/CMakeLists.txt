@@ -33,3 +33,19 @@ set_target_properties(generate_nominal_gaits PROPERTIES
 target_link_libraries(generate_nominal_gaits goldilocks
  dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
 )
+
+add_executable(runSGDIter runSGDIter.cc sgd_iter.cc)
+
+set_target_properties(runSGDIter PROPERTIES
+  PUBLIC_HEADER "sgd_iter.h;")
+
+target_link_libraries(runSGDIter goldilocks
+ dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
+)
+
+add_executable(visualize_gait visualize_gait.cc)
+
+
+target_link_libraries(visualize_gait goldilocks
+ dircon drake::drake drake::drake-common-text-logging-gflags gflags_shared
+)

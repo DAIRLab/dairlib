@@ -254,12 +254,14 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   // weights(0,1) = 1; //z
   // weights(0,2+2*n) = 0.3; //0.3*cos(pitch)
 
-  MatrixXd weights = MatrixXd::Zero(1,6*n+1);
+  MatrixXd weights = MatrixXd::Zero(2,16);
   weights(0,0) = -0.1;
   weights(0,5) = 1; //left knee pitch
+  weights(1,0) = 0;
+  weights(1,3) = 1;
 
-  MatrixXd dz = drake::goldilocks_walking::readCSV(string("dtheta.csv"));
-  weights += dz.transpose();
+  // MatrixXd dz = drake::goldilocks_walking::readCSV(string("dtheta.csv"));
+  // weights += dz.transpose();
 
   std::vector<Binding<Constraint>> manifold_bindings;
   auto m_constraint = std::make_shared<ManifoldConstraint>(tree, weights);
@@ -300,20 +302,18 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   VectorXd z = trajopt->GetSolution(trajopt->decision_variables());
 
   //get feature vectors
-  MatrixXd B = MatrixXd::Zero(A.rows(), m_constraint->n_features());
-  if (height > 0) {
-    for (int i = 0; i < N; i++) {
-      VectorXd xi = trajopt->GetSolution(trajopt->state(i));
-      VectorXd features = m_constraint->CalcFeatures<double>(xi);
+  MatrixXd B = MatrixXd::Zero(A.rows(), weights.rows() * m_constraint->n_features());
+  for (int i = 0; i < N; i++) {
+    VectorXd xi = trajopt->GetSolution(trajopt->state(i));
+    VectorXd features = m_constraint->CalcFeatures<double>(xi);
 
 
-      VectorXd ind = systems::trajectory_optimization::dircon::getConstraintRows(
-        trajopt.get(), manifold_bindings[i]);
+    VectorXd ind = systems::trajectory_optimization::dircon::getConstraintRows(
+      trajopt.get(), manifold_bindings[i]);
 
-      DRAKE_ASSERT(ind.size() == 1);
-
+    for (int k = 0; k < ind.size(); k++) {
       for (int j = 0; j < features.size(); j++) {
-        B(ind(0), j) = features(j);
+        B(ind(k), k*features.size() + j) = features(j);
       }
     }
   }
@@ -361,12 +361,12 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   auto diagram = builder.Build();
 
 
-  // while (true) {
+  while (true) {
     systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(.5);
     simulator.Initialize();
     simulator.StepTo(pp_xtraj.end_time());
-  // }
+  }
 
   return trajopt;
 }

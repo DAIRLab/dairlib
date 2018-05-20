@@ -32,13 +32,15 @@ void generateNominalGaits() {
   int n_batch = 5;
 
   // int n_weights = 43;
-  int n_weights =  16;
-  VectorXd theta_0 = VectorXd::Zero(n_weights);
-  theta_0(0) = -0.1;
-  theta_0(5) = 1.0;
+  int n_weights =  10;
+  MatrixXd theta_0 = MatrixXd::Zero(2,n_weights);
+  theta_0(0,0) = -0.1;
+  theta_0(0,3) = 1.0;
+  theta_0(1,0) = 0;
+  theta_0(1,1) = 1;
   writeCSV("data/0_theta.csv", theta_0);
 
-  double length = 0.5;
+  double length;
   double duration = 1;
   int snopt_iter = 200;
   string directory = "data/";
@@ -46,7 +48,7 @@ void generateNominalGaits() {
   string weights = "0_theta.csv";
   string output_prefix;
   VectorXd lengths(5);
-  lengths << .5, .4, .3, .2, .1;
+  lengths << .35, .3, .25, .2, .15;
 
   double speed = 0.5;
 

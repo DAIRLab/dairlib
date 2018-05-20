@@ -45,14 +45,6 @@ using std::endl;
 using drake::goldilocks_walking::ManifoldConstraint;
 using std::string;
 
-DEFINE_double(strideLength, 0.1, "The stride length.");
-DEFINE_double(duration, 1, "The stride duration");
-DEFINE_int64(iter, 100, "Number of iterations");
-DEFINE_string(dir, "data/", "Save directory");
-DEFINE_string(init, "z_save.csv", "File name for initial guess");
-DEFINE_string(weights, "theta.csv", "File name for weights guess");
-DEFINE_string(prefix, "", "Output prefix for results");
-
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
 namespace drake{
@@ -231,7 +223,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   // weights(0,0) = -0.1;
   // weights(0,5) = 1; //left knee pitch
 
-  MatrixXd weights = drake::goldilocks_walking::readCSV(directory + weights_file).transpose();
+  MatrixXd weights = drake::goldilocks_walking::readCSV(directory + weights_file);
 
   std::vector<Binding<Constraint>> manifold_bindings;
   auto m_constraint = std::make_shared<ManifoldConstraint>(tree, weights);
@@ -268,7 +260,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   VectorXd z = trajopt->GetSolution(trajopt->decision_variables());
 
   //get feature vectors
-  MatrixXd B = MatrixXd::Zero(A.rows(), m_constraint->n_features());
+  MatrixXd B = MatrixXd::Zero(A.rows(), weights.rows() * m_constraint->n_features());
   for (int i = 0; i < N; i++) {
     VectorXd xi = trajopt->GetSolution(trajopt->state(i));
     VectorXd features = m_constraint->CalcFeatures<double>(xi);
@@ -277,13 +269,13 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
     VectorXd ind = systems::trajectory_optimization::dircon::getConstraintRows(
       trajopt.get(), manifold_bindings[i]);
 
-    DRAKE_ASSERT(ind.size() == 1);
-
-    for (int j = 0; j < features.size(); j++) {
-      B(ind(0), j) = features(j);
+    for (int k = 0; k < ind.size(); k++) {
+      for (int j = 0; j < features.size(); j++) {
+        B(ind(k), k*features.size() + j) = features(j);
+      }
     }
   }
-  
+
   drake::goldilocks_walking::writeCSV(directory + output_prefix + string("B.csv"),B);
   drake::goldilocks_walking::writeCSV(directory + output_prefix + string("A.csv"),A);
   drake::goldilocks_walking::writeCSV(directory + output_prefix + string("y.csv"),y);

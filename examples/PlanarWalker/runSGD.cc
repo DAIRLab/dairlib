@@ -33,13 +33,15 @@ void runSGD() {
   int n_batch = 5;
 
   // int n_weights = 43;
-  int n_weights =  16;
-  VectorXd theta_0 = VectorXd::Zero(n_weights);
-  theta_0(0) = -0.1;
-  theta_0(5) = 1.0;
+  int n_weights =  10;
+  MatrixXd theta_0 = MatrixXd::Zero(2,n_weights);
+  theta_0(0,0) = -0.1;
+  theta_0(0,3) = 1.0;
+  theta_0(1,0) = 0;
+  theta_0(1,1) = 1;
   writeCSV("data/0_theta.csv", theta_0);
 
-  double length = 0.5;
+  double length = 0.3;
   double duration = 1;
   int snopt_iter = 200;
   string directory = "data/";
@@ -87,7 +89,6 @@ void runSGD() {
       DRAKE_ASSERT(y_vec[batch].cols() == 1);
       DRAKE_ASSERT(w_vec[batch].cols() == 1);
       DRAKE_ASSERT(z_vec[batch].cols() == 1);
-      DRAKE_ASSERT(theta_vec[batch].cols() == 1);
 
 
       int n_active = 0;
@@ -245,6 +246,7 @@ void runSGD() {
 
     auto dtheta = -.01*scale*gradient.segment(nz, nt);
 
+
     std::cout << "found dtheta"<< std::endl;
 
     std::cout << std::endl<< "dtheta norm: " << dtheta.norm() << std::endl;
@@ -252,7 +254,16 @@ void runSGD() {
 
     // std::cout << "scale predict: " << scale_num/scale_den << std::endl;
 
-    writeCSV("data/" + std::to_string(iter) + "_theta.csv", theta_vec[0] + dtheta);
+    //reshape dtheta
+    MatrixXd theta_mat(theta_vec[0].rows(), theta_vec[0].cols());
+    for (int i = 0; i < theta_vec[0].rows(); i++) {
+      theta_mat.row(i) = theta_vec[0].row(i) +
+                         dtheta.segment(i*theta_vec[0].cols(),theta_vec[0].cols()).transpose();
+    }
+    if (iter == 1)
+      writeCSV("data/" + std::to_string(iter) + "_theta.csv", theta_vec[0]);
+    else
+      writeCSV("data/" + std::to_string(iter) + "_theta.csv", theta_mat);
 
     // init_z = std::to_string(iter-1) + "_z.csv";
     init_z = "z_save.csv";
@@ -262,7 +273,7 @@ void runSGD() {
     for(int batch = 0; batch < n_batch; batch++) {
     //randomize distance on [0.3,0.5]
       // length = 0.2 + 0.3*dist(e1);
-      length = 0.25 + 0.05*batch + 0.05*dist(e1);
+      length = 0.15 + 0.05*batch + 0.0*dist(e1);
       // duration =  length/0.5; //maintain constaint speed of 0.5 m/s
       duration = 1;
 

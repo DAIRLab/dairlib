@@ -1,0 +1,22 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+
+# Compile a sample application.
+cc_library(
+    name = "goldilocks",
+    srcs = ["manifold_constraint.cc",
+            "file_utils.cc"],
+    hdrs = ["manifold_constraint.h",
+            "file_utils.h"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//solvers",
+        "@drake//common",
+        "@dircon//systems/trajectory_optimization:dircon",
+    ],
+)

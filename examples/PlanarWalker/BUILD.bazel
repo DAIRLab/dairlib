@@ -1,0 +1,81 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+
+cc_binary(
+    name = "run_gait_dircon",
+    srcs = ["run_gait_dircon.cc"],
+    data = ["PlanarWalkerWithTorso.urdf"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/trajectory_optimization",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@dircon//systems/trajectory_optimization:dircon",
+        "//src:goldilocks",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "runSGD",
+    srcs = ["runSGD.cc", "sgd_iter.cc", "sgd_iter.h"],
+    data = ["PlanarWalkerWithTorso.urdf"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/trajectory_optimization",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@dircon//systems/trajectory_optimization:dircon",
+        "//src:goldilocks",
+        "@gflags",
+    ],
+)
+
+
+cc_binary(
+    name = "runSGDIter",
+    srcs = ["runSGDIter.cc", "sgd_iter.cc", "sgd_iter.h"],
+    data = ["PlanarWalkerWithTorso.urdf"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/trajectory_optimization",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@dircon//systems/trajectory_optimization:dircon",
+        "//src:goldilocks",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "visualize_gait",
+    srcs = ["visualize_gait.cc"],
+    data = ["PlanarWalkerWithTorso.urdf"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/trajectory_optimization",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@drake//systems/primitives",
+        "@dircon//systems/trajectory_optimization:dircon",
+        "//src:goldilocks",
+        "@gflags",
+    ],
+)

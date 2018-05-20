@@ -7,6 +7,7 @@ set(CMAKE_CXX_FLAGS "-O2")
 
 configure_file(PlanarWalker.urdf "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 configure_file(PlanarWalkerWithTorso.urdf "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
+configure_file(z_save.csv "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 
 find_package(GFlags MODULE REQUIRED COMPONENTS shared)
 

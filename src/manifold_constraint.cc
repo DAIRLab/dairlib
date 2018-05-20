@@ -53,5 +53,8 @@ void ManifoldConstraint::EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& 
 template void ManifoldConstraint::EvaluateConstraint<double>(const Eigen::Ref<const VectorXd>&,VectorXd& y) const;
 template void ManifoldConstraint::EvaluateConstraint<AutoDiffXd>(const Eigen::Ref<const AutoDiffVecXd>&,AutoDiffVecXd& y) const;
 
+template VectorXd ManifoldConstraint::CalcFeatures<double>(const Eigen::Ref<const VectorXd>& x) const;
+template AutoDiffVecXd ManifoldConstraint::CalcFeatures<AutoDiffXd>(const Eigen::Ref<const AutoDiffVecXd>& x) const;
+
 }
 }

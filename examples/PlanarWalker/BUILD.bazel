@@ -1,11 +1,10 @@
 # -*- mode: python -*-
 # vi: set ft=python :
 
-
-cc_binary(
-    name = "run_gait_dircon",
-    srcs = ["run_gait_dircon.cc"],
-    data = ["PlanarWalkerWithTorso.urdf"],
+cc_library(
+    name = "sgd_iter",
+    srcs = ["sgd_iter.cc"],
+    hdrs = ["sgd_iter.h"],
     deps = [
         "@drake//multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
@@ -15,6 +14,29 @@ cc_binary(
         "@drake//common",
         "@drake//solvers",
         "@drake//lcm",
+        "@drake//systems/primitives",
+        "@dircon//systems/trajectory_optimization:dircon",
+        "//src:goldilocks",
+        "@gflags",
+    ],
+)
+
+
+cc_binary(
+    name = "run_gait_dircon",
+    srcs = ["run_gait_dircon.cc"],
+    data = ["PlanarWalkerWithTorso.urdf",
+            "z_save.csv"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/trajectory_optimization",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@drake//systems/primitives",
         "@dircon//systems/trajectory_optimization:dircon",
         "//src:goldilocks",
         "@gflags",
@@ -23,8 +45,9 @@ cc_binary(
 
 cc_binary(
     name = "runSGD",
-    srcs = ["runSGD.cc", "sgd_iter.cc", "sgd_iter.h"],
-    data = ["PlanarWalkerWithTorso.urdf"],
+    srcs = ["runSGD.cc"],
+    data = ["PlanarWalkerWithTorso.urdf",
+            "z_save.csv"],
     deps = [
         "@drake//multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
@@ -34,8 +57,10 @@ cc_binary(
         "@drake//common",
         "@drake//solvers",
         "@drake//lcm",
+        "@drake//systems/primitives",
         "@dircon//systems/trajectory_optimization:dircon",
         "//src:goldilocks",
+        ":sgd_iter",
         "@gflags",
     ],
 )
@@ -43,7 +68,7 @@ cc_binary(
 
 cc_binary(
     name = "runSGDIter",
-    srcs = ["runSGDIter.cc", "sgd_iter.cc", "sgd_iter.h"],
+    srcs = ["runSGDIter.cc"],
     data = ["PlanarWalkerWithTorso.urdf"],
     deps = [
         "@drake//multibody:rigid_body_tree",
@@ -54,8 +79,10 @@ cc_binary(
         "@drake//common",
         "@drake//solvers",
         "@drake//lcm",
+        "@drake//systems/primitives",
         "@dircon//systems/trajectory_optimization:dircon",
         "//src:goldilocks",
+        ":sgd_iter",
         "@gflags",
     ],
 )
@@ -76,6 +103,28 @@ cc_binary(
         "@drake//systems/primitives",
         "@dircon//systems/trajectory_optimization:dircon",
         "//src:goldilocks",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "generate_nominal_gaits",
+    srcs = ["generate_nominal_gaits.cc"],
+    data = ["PlanarWalkerWithTorso.urdf",
+            "z_save.csv"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/trajectory_optimization",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@drake//systems/primitives",
+        "@dircon//systems/trajectory_optimization:dircon",
+        "//src:goldilocks",
+        ":sgd_iter",
         "@gflags",
     ],
 )

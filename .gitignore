@@ -1,8 +1,4 @@
 /build/
 /.idea/
 /cmake-build-debug/
-/bazel-DIRCON
-/bazel-bin
-/bazel-genfiles
-/bazel-out
-/bazel-testlogs
+/bazel-*

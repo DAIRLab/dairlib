@@ -2,6 +2,9 @@
 # vi: set ft=python :
 
 
+package(default_visibility = ["//visibility:public"])
+
+
 # Compile a sample application.
 cc_library(
     name = "dircon",
@@ -26,6 +29,6 @@ cc_library(
         "@drake//systems/trajectory_optimization:trajectory_optimization",
         "@drake//systems/framework",
         "@drake//common",
-        "@drake//solvers"
+        "@drake//solvers",
     ],
 )

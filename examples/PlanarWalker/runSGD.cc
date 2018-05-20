@@ -67,7 +67,7 @@ void runSGD() {
     std::vector<double> nl_vec;
     std::vector<double> nz_vec;
 
-    int nz,nt,nl;
+    int nz=0,nt=0,nl=0;
 
     for (int batch = 0; batch < input_batch; batch++) {
       string batch_prefix = std::to_string(iter-1) + "_" + std::to_string(batch) + "_";

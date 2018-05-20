@@ -65,6 +65,7 @@ for iter=1:20,
   FVAL
   norm(dtheta)
     
+  %%
   csvwrite(sprintf('data/%d_theta.csv',iter),theta + dtheta)
   
   speed = .5;

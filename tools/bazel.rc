@@ -47,3 +47,5 @@ build --action_env=CCACHE_DISABLE=1
 
 # TODO(jwnimmer-tri) We should see if we can reuse more of Drake's
 # customizations somehow.
+
+build:snopt --define=WITH_SNOPT=ON

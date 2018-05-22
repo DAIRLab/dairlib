@@ -15,6 +15,8 @@ class ManifoldConstraint : public solvers::Constraint {
 
   int n_features() {return n_features_;};
 
+  int n_constraints() {return weights_.rows();};
+
  public:
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
               Eigen::VectorXd& y) const override;

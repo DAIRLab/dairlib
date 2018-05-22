@@ -203,6 +203,16 @@ const Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>
   return v_post_impact_vars_.segment(mode * tree_->get_num_velocities(), tree_->get_num_velocities());
 }
 
+template <typename T>
+VectorX<symbolic::Expression> HybridDircon<T>::SubstitutePlaceholderVariables(const VectorX<symbolic::Expression>& f,
+                                                int interval_index) const {  
+  VectorX<symbolic::Expression> ret(f.size());
+  for (int i = 0; i < f.size(); i++) {
+    ret(i) = SubstitutePlaceholderVariables(f(i), interval_index);
+  }
+  return ret;
+}
+
 
 // Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
 template <typename T>

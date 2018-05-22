@@ -23,7 +23,7 @@
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 
-#include "src/manifold_constraint.h"
+#include "src/symbolic_manifold.h"
 #include "src/file_utils.h"
 #include "sgd_iter.h"
 
@@ -42,7 +42,7 @@ using std::vector;
 using std::shared_ptr;
 using std::cout;
 using std::endl;
-using drake::goldilocks_walking::ManifoldConstraint;
+//using drake::goldilocks_walking::ManifoldConstraint;
 using std::string;
 
 /// Inputs: initial trajectory
@@ -226,11 +226,21 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   MatrixXd weights = drake::goldilocks_walking::readCSV(directory + weights_file);
 
   std::vector<Binding<Constraint>> manifold_bindings;
-  auto m_constraint = std::make_shared<ManifoldConstraint>(tree, weights);
-  for (int i = 0; i < N; i++) {
-     manifold_bindings.push_back(trajopt->AddConstraint(m_constraint, trajopt->state(i)));
-  }
 
+  // auto m_constraint = std::make_shared<ManifoldConstraint>(tree, weights);
+  //   for (int i = 0; i < N; i++) {
+  //    manifold_bindings.push_back(trajopt->AddConstraint(m_constraint, trajopt->state(i)));
+  // }
+
+  VectorX<symbolic::Expression> features(10);
+  features << 1, x(2), x(3), x(4), cos(x(2)), cos(x(3)), cos(x(4)), sin(x(2)), sin(x(3)), sin(x(4));
+  SymbolicManifold m_constraint(tree, features, weights);
+
+  //add constraints to optimization problem and add bindings
+  for (int i = 0; i < N; i++) {
+    auto m_i = trajopt->SubstitutePlaceholderVariables(m_constraint.getConstraintExpressions(), i);
+    manifold_bindings.push_back(trajopt->AddConstraint(m_i, VectorXd::Zero(m_i.size()), VectorXd::Zero(m_i.size())));
+  }
 
   if (!init_file.empty()) {
     MatrixXd z0 = drake::goldilocks_walking::readCSV(directory + init_file);
@@ -260,11 +270,15 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   VectorXd z = trajopt->GetSolution(trajopt->decision_variables());
 
   //get feature vectors
-  MatrixXd B = MatrixXd::Zero(A.rows(), weights.rows() * m_constraint->n_features());
+  MatrixXd B = MatrixXd::Zero(A.rows(), weights.rows() * m_constraint.n_features());
   for (int i = 0; i < N; i++) {
     VectorXd xi = trajopt->GetSolution(trajopt->state(i));
-    VectorXd features = m_constraint->CalcFeatures<double>(xi);
-
+    // VectorXd features = m_constraint->CalcFeatures<double>(xi);
+    VectorXd features(m_constraint.n_features());
+    for (int j = 0; j < m_constraint.n_features(); j++) {
+      auto m_ij = trajopt->SubstitutePlaceholderVariables(m_constraint.getFeature(j), i);
+      features(j) = ExtractDoubleOrThrow(trajopt->SubstituteSolution(m_ij));
+    }
 
     VectorXd ind = systems::trajectory_optimization::dircon::getConstraintRows(
       trajopt.get(), manifold_bindings[i]);
@@ -284,9 +298,6 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   drake::goldilocks_walking::writeCSV(directory + output_prefix + string("H.csv"),H);
   drake::goldilocks_walking::writeCSV(directory + output_prefix + string("w.csv"),w);
   drake::goldilocks_walking::writeCSV(directory + output_prefix + string("z.csv"),z);
-  
-
-
 
   //visualizer
   lcm::DrakeLcm lcm;

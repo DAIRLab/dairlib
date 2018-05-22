@@ -8,13 +8,25 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "goldilocks",
     srcs = ["manifold_constraint.cc",
-            "file_utils.cc"],
+            "file_utils.cc",
+            "symbolic_manifold.cc"],
     hdrs = ["manifold_constraint.h",
-            "file_utils.h"],
+            "file_utils.h",
+            "symbolic_manifold.h"],
     deps = [
         "@drake//multibody:rigid_body_tree",
         "@drake//solvers",
         "@drake//common",
         "@dircon//systems/trajectory_optimization:dircon",
+    ],
+)
+
+cc_library(
+    name = "symtest",
+    srcs = ["symbolic_manifold.cc"],
+    hdrs = ["symbolic_manifold.h"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//common:symbolic",
     ],
 )

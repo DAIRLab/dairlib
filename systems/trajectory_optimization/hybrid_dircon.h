@@ -98,6 +98,12 @@ class HybridDircon : public MultipleShooting {
     return force_vars_[mode].segment(index * num_kinematic_constraints_[mode], num_kinematic_constraints_[mode]);
   }
 
+  using MultipleShooting::N;
+  using MultipleShooting::SubstitutePlaceholderVariables;
+
+  VectorX<symbolic::Expression> SubstitutePlaceholderVariables(const VectorX<symbolic::Expression>& f,
+                                                   int interval_index) const;
+
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
   const RigidBodyTree<double>* tree_;

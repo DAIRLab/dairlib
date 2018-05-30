@@ -1,0 +1,10 @@
+package drake;
+
+struct lcmt_cassie_input
+{
+  int64_t timestamp;
+  int32_t num_joints;
+
+  string joint_names [num_joints];
+  double inputs [num_joints];
+}

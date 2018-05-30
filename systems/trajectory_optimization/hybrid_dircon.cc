@@ -29,8 +29,8 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     : MultipleShooting(tree.get_num_actuators(), tree.get_num_positions() + tree.get_num_velocities(), 
       std::accumulate(num_time_samples.begin(), num_time_samples.end(),0) - num_time_samples.size() + 1, 1e-8, 1e8),
       num_modes_(num_time_samples.size()),
-      v_post_impact_vars_(NewContinuousVariables(tree.get_num_velocities() * (num_time_samples.size() - 1), "v_p")),
-      mode_lengths_(num_time_samples) {
+      mode_lengths_(num_time_samples),
+      v_post_impact_vars_(NewContinuousVariables(tree.get_num_velocities() * (num_time_samples.size() - 1), "v_p")) {
 
   DRAKE_ASSERT(minimum_timestep.size() == num_modes_);
   DRAKE_ASSERT(maximum_timestep.size() == num_modes_);

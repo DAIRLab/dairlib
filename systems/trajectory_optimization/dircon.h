@@ -90,6 +90,7 @@ class Dircon : public MultipleShooting {
 
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
+ 	const int num_kinematic_constraints_;
   const RigidBodyTree<double>* tree_;
   DirconKinematicDataSet<T>* constraints_;
   void DoAddRunningCost(const symbolic::Expression& e) override;
@@ -97,7 +98,6 @@ class Dircon : public MultipleShooting {
   const solvers::VectorXDecisionVariable collocation_force_vars_;
   const solvers::VectorXDecisionVariable collocation_slack_vars_;
   const solvers::VectorXDecisionVariable offset_vars_;
-  const int num_kinematic_constraints_;
 };
 
 }  // namespace trajectory_optimization

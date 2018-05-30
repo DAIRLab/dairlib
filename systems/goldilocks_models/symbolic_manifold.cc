@@ -2,7 +2,7 @@
 #include "drake/common/drake_assert.h"
 
 namespace drake {
-namespace goldilocks_walking {
+namespace goldilocks_models {
 
 using Eigen::VectorXd;
 

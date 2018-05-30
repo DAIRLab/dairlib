@@ -12,7 +12,7 @@ const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
 
 
 namespace drake {
-namespace goldilocks_walking {
+namespace goldilocks_models {
 
 MatrixXd readCSV (const string & path) {
     ifstream indata;

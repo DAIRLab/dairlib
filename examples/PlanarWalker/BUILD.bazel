@@ -66,33 +66,12 @@ cc_library(
         "@drake//solvers",
         "@drake//lcm",
         "@drake//systems/primitives",
-        "@dircon//systems/trajectory_optimization:dircon",
-        "//src:goldilocks",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/goldilocks_models",
         "@gflags",
     ],
 )
 
-
-cc_binary(
-    name = "run_gait_dircon",
-    srcs = ["run_gait_dircon.cc"],
-    data = ["PlanarWalkerWithTorso.urdf",
-            "z_save.csv"],
-    deps = [
-        "@drake//multibody:rigid_body_tree",
-        "@drake//systems/analysis:simulator",
-        "@drake//manipulation/util",
-        "@drake//systems/framework",
-        "@drake//systems/trajectory_optimization",
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//lcm",
-        "@drake//systems/primitives",
-        "@dircon//systems/trajectory_optimization:dircon",
-        "//src:goldilocks",
-        "@gflags",
-    ],
-)
 
 cc_binary(
     name = "runSGD",
@@ -109,8 +88,8 @@ cc_binary(
         "@drake//solvers",
         "@drake//lcm",
         "@drake//systems/primitives",
-        "@dircon//systems/trajectory_optimization:dircon",
-        "//src:goldilocks",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/goldilocks_models",
         ":sgd_iter",
         "@gflags",
     ],
@@ -132,7 +111,7 @@ cc_binary(
         "@drake//lcm",
         "@drake//systems/primitives",
         "@//systems/trajectory_optimization:dircon",
-        "//src:goldilocks",
+        "//systems/goldilocks_models",
         ":sgd_iter",
         "@gflags",
     ],
@@ -153,7 +132,7 @@ cc_binary(
         "@drake//lcm",
         "@drake//systems/primitives",
         "@//systems/trajectory_optimization:dircon",
-        "//src:goldilocks",
+        "//systems/goldilocks_models",
         "@gflags",
     ],
 )
@@ -174,7 +153,7 @@ cc_binary(
         "@drake//lcm",
         "@drake//systems/primitives",
         "@//systems/trajectory_optimization:dircon",
-        "//src:goldilocks",
+        "//systems/goldilocks_models",
         ":sgd_iter",
         "@gflags",
     ],

@@ -8,7 +8,7 @@ using std::cout;
 using std::string;
 
 namespace drake {
-namespace goldilocks_walking {
+namespace goldilocks_models {
 
 Eigen::MatrixXd readCSV (const string & path);
 

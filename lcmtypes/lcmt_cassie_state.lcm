@@ -1,0 +1,11 @@
+package drake;
+
+struct lcmt_cassie_state
+{
+  int64_t timestamp;
+  int32_t num_joints;
+
+  string joint_names [num_joints];
+  double position [num_joints];
+  double velocity [num_joints];
+}

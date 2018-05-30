@@ -1,0 +1,148 @@
+load("@drake//tools:drake.bzl", "drake_cc_googletest", "drake_cc_library", "drake_cc_binary")
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+
+cc_library(
+	name = "polling_interface",
+	hdrs = [":polling_interface.h"]
+)
+
+cc_library(
+	name = "silent_interface",
+	hdrs = [":silent_interface.h"]
+)
+
+cc_library(
+	name = "dispatcher",
+	hdrs = [":dispatcher.h"],
+	deps = [":polling_interface"]
+)
+
+cc_library(
+	name = "cassie_robot_dispatch_interface",
+	hdrs = [":cassie_robot_dispatch_interface.h"],
+	srcs = ["cassie_robot_dispatch_interface.cc"],
+	deps = [
+	        ":polling_interface",
+	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
+)
+
+cc_library(
+	name = "cassie_lcm_dispatch_interface",
+	hdrs = [":cassie_lcm_dispatch_interface.h"],
+	srcs = ["cassie_lcm_dispatch_interface.cc"],
+	deps = [
+	        ":polling_interface",
+	        "//examples/Cassie/datatypes:cassie_dispatch_types",
+	        "@lcm",
+	        "@drake//systems/lcm:lcm",
+	        "@drake//systems/framework:value",
+	        "@drake//lcmtypes:drake_signal",
+ 	        ]
+)
+
+cc_library(
+	name = "cassie_dispatcher",
+	hdrs = [":cassie_dispatcher.h"],
+	srcs = ["cassie_dispatcher.cc"],
+	deps = [
+	        ":polling_interface",
+	        ":dispatcher",
+	        "//examples/Cassie/datatypes:cassie_names",
+	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
+)
+
+cc_binary(
+	name = "run_cassie_dispatch",
+	srcs = ["run_cassie_dispatch.cc"],
+	deps = [
+	        ":cassie_dispatcher",
+	        ":cassie_robot_dispatch_interface",
+	        ":cassie_lcm_dispatch_interface",
+	        ":silent_interface",
+	        "//examples/Cassie/datatypes:cassie_dispatch_types",
+	        "//examples/Cassie/datatypes:cassie_networking",
+	        "//examples/Cassie/datatypes:cassie_names",
+	        "@drake//systems/lcm:lcm"
+	        ]
+)
+
+cc_binary(
+	name = "run_udp_dummy_server",
+	srcs = ["run_udp_dummy_server.c"],
+	deps = [
+	        "//examples/Cassie/datatypes:cassie_networking",
+	        "//examples/Cassie/datatypes:cassie_out_t",
+	        "//examples/Cassie/datatypes:cassie_user_in_t"
+	        ]
+)
+
+
+
+cc_library(
+  name = "cassie_pd_controller_lcm",
+  hdrs = [
+          "cassie_controller_lcm.h",
+          "pd_controller.h",
+          ],
+  srcs = ["cassie_controller_lcm.cc",
+          "pd_controller.cc"],
+  deps = [
+          "//examples/Cassie/datatypes:cassie_names",
+          "@drake//systems/framework:leaf_system",
+          "@lcm",
+          "//lcmtypes:lcmt_cassie"
+          ]
+)
+
+
+cc_binary(
+    name = "run_pd_controller",
+    srcs = ["run_pd_controller.cc"],
+    deps = [
+            ":cassie_pd_controller_lcm",
+            "@drake//systems/framework:diagram_builder",
+            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/analysis:simulator",
+            "@drake//lcm"
+            ]
+)
+
+cc_binary(
+    name = "run_state_pub_test",
+    srcs = ["run_state_pub_test.cc"],
+    deps = [
+            ":cassie_pd_controller_lcm",
+            "@drake//systems/framework:diagram_builder",
+            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/analysis:simulator",
+            "@drake//systems/primitives:sine",
+            "@drake//lcm"
+            ]
+)
+
+py_binary(
+    name = "pd_controller_gui",
+    srcs = ["pd_controller_gui.py"],
+    deps = [
+        "@lcm//:lcm-python",
+        "@drake//lcmtypes:lcmtypes_py",
+        "//lcmtypes:lcmtypes_cassie_py",
+    ],
+)
+

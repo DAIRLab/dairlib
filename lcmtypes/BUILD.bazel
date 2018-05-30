@@ -1,0 +1,65 @@
+load(
+    "@drake//tools:drake.bzl",
+    "drake_cc_googletest",
+    "drake_cc_library",
+    "drake_cc_binary",
+)
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+
+load(
+    "@drake//tools/skylark:drake_java.bzl",
+    "drake_java_binary",
+)
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+#Lcm libraries
+
+#Lcm libraries
+drake_lcm_cc_library(
+    name = "lcmt_cassie",
+    lcm_package = "drake",
+    lcm_srcs = ["lcmt_cassie_state.lcm",
+                "lcmt_cassie_input.lcm",
+                "lcmt_cassie_pd_config.lcm"],
+)
+
+drake_lcm_java_library(
+    name = "lcmtypes_cassie_java",
+    lcm_package = "drake",
+    lcm_srcs = glob(["*.lcm"]),
+    deps = ["@lcmtypes_bot2_core//:lcmtypes_bot2_core_java"],
+)
+
+drake_lcm_py_library(
+    name = "lcmtypes_cassie_py",
+    add_current_package_to_imports = False,  # Use //:module_py instead.
+    extra_srcs = ["__init__.py"],
+    lcm_package = "drake",
+    lcm_srcs = glob(["*.lcm"]),
+    deps = [
+        "@drake//:module_py",
+        "@lcmtypes_bot2_core//:lcmtypes_bot2_core_py",
+    ],
+)
+
+drake_java_binary(
+    name = "cassie-lcm-spy",
+    main_class = "lcm.spy.Spy",
+    visibility = ["//visibility:private"],
+    runtime_deps = [
+        "@drake//lcmtypes:lcmtypes_drake_java",
+        ":lcmtypes_cassie_java",
+        "@lcmtypes_bot2_core//:lcmtypes_bot2_core_java",
+        "@lcmtypes_robotlocomotion//:lcmtypes_robotlocomotion_java",
+        "@optitrack_driver//lcmtypes:lcmtypes_optitrack",
+    ],
+)

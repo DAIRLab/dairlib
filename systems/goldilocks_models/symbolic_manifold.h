@@ -4,7 +4,7 @@
 #include "drake/common/symbolic.h"
 
 namespace drake {
-namespace goldilocks_walking {
+namespace goldilocks_models {
 
 
 //Manifold constraint class

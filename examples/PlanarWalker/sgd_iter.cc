@@ -23,8 +23,8 @@
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 
-#include "src/symbolic_manifold.h"
-#include "src/file_utils.h"
+#include "systems/goldilocks_models/symbolic_manifold.h"
+#include "systems/goldilocks_models/file_utils.h"
 #include "sgd_iter.h"
 
 
@@ -42,13 +42,13 @@ using std::vector;
 using std::shared_ptr;
 using std::cout;
 using std::endl;
-//using drake::goldilocks_walking::ManifoldConstraint;
+//using drake::goldilocks_models::ManifoldConstraint;
 using std::string;
 
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
 namespace drake{
-namespace goldilocks_walking {
+namespace goldilocks_models {
 shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, int iter,
     string directory, string init_file, string weights_file, string output_prefix) {
   RigidBodyTree<double> tree;
@@ -223,7 +223,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   // weights(0,0) = -0.1;
   // weights(0,5) = 1; //left knee pitch
 
-  MatrixXd weights = drake::goldilocks_walking::readCSV(directory + weights_file);
+  MatrixXd weights = drake::goldilocks_models::readCSV(directory + weights_file);
 
   std::vector<Binding<Constraint>> manifold_bindings;
 
@@ -243,7 +243,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   }
 
   if (!init_file.empty()) {
-    MatrixXd z0 = drake::goldilocks_walking::readCSV(directory + init_file);
+    MatrixXd z0 = drake::goldilocks_models::readCSV(directory + init_file);
     trajopt->SetInitialGuessForAllVariables(z0);
   }
 
@@ -290,14 +290,14 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
     }
   }
 
-  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("B.csv"),B);
-  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("A.csv"),A);
-  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("y.csv"),y);
-  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("lb.csv"),lb);
-  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("ub.csv"),ub);
-  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("H.csv"),H);
-  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("w.csv"),w);
-  drake::goldilocks_walking::writeCSV(directory + output_prefix + string("z.csv"),z);
+  drake::goldilocks_models::writeCSV(directory + output_prefix + string("B.csv"),B);
+  drake::goldilocks_models::writeCSV(directory + output_prefix + string("A.csv"),A);
+  drake::goldilocks_models::writeCSV(directory + output_prefix + string("y.csv"),y);
+  drake::goldilocks_models::writeCSV(directory + output_prefix + string("lb.csv"),lb);
+  drake::goldilocks_models::writeCSV(directory + output_prefix + string("ub.csv"),ub);
+  drake::goldilocks_models::writeCSV(directory + output_prefix + string("H.csv"),H);
+  drake::goldilocks_models::writeCSV(directory + output_prefix + string("w.csv"),w);
+  drake::goldilocks_models::writeCSV(directory + output_prefix + string("z.csv"),z);
 
   //visualizer
   lcm::DrakeLcm lcm;

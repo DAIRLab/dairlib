@@ -24,10 +24,7 @@
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
-
-
-#include "src/manifold_constraint.h"
-#include "src/file_utils.h"
+#include "systems/goldilocks_models/file_utils.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -43,7 +40,6 @@ using std::vector;
 using std::shared_ptr;
 using std::cout;
 using std::endl;
-using drake::goldilocks_walking::ManifoldConstraint;
 
 DEFINE_int64(steps, 10, "Number of steps");
 DEFINE_double(rate, 1, "Playback rate");
@@ -52,7 +48,7 @@ DEFINE_string(file, "data/", "File name to load");
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
 namespace drake{
-namespace goldilocks_walking {
+
 void visualizeGait(std::string file, int steps, double rate) {
   RigidBodyTree<double> tree;
   parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalkerWithTorso.urdf", multibody::joints::kFixed, &tree);
@@ -117,7 +113,7 @@ void visualizeGait(std::string file, int steps, double rate) {
   auto trajopt = std::make_shared<HybridDircon<double>>(tree, timesteps, min_dt, max_dt, dataset_list, options_list);
 
   // read in file and set decision variable values
-  MatrixXd z = drake::goldilocks_walking::readCSV(file);
+  MatrixXd z = drake::goldilocks_models::readCSV(file);
 
   
 
@@ -206,12 +202,11 @@ void visualizeGait(std::string file, int steps, double rate) {
   return;
 }
 }
-}
 
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  drake::goldilocks_walking::visualizeGait(FLAGS_file, FLAGS_steps, FLAGS_rate);
+  drake::visualizeGait(FLAGS_file, FLAGS_steps, FLAGS_rate);
 }
 

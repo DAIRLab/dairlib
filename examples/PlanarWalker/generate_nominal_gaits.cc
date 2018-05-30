@@ -9,19 +9,18 @@
 #include "drake/solvers/mathematical_program.h"
 
 #include "sgd_iter.h"
-#include "src/manifold_constraint.h"
-#include "src/file_utils.h"
+#include "systems/goldilocks_models/file_utils.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::string;
 
-using drake::goldilocks_walking::writeCSV;
-using drake::goldilocks_walking::readCSV;
+using drake::goldilocks_models::writeCSV;
+using drake::goldilocks_models::readCSV;
 using drake::solvers::VectorXDecisionVariable;
 
 namespace drake{
-namespace goldilocks_walking {
+namespace goldilocks_models {
 
 void generateNominalGaits() {
   std::random_device randgen;
@@ -68,5 +67,5 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::srand(time(0));  // Initialize random number generator.
 
-  drake::goldilocks_walking::generateNominalGaits();
+  drake::goldilocks_models::generateNominalGaits();
 }

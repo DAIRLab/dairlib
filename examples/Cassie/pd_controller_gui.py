@@ -2,11 +2,11 @@ import sys
 import time
 import math
 import lcm
+
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 
-# this import line...cannot be right, but it's needed right now to work
-import dair_lab.utility.applications.cassie.lcmtypes.drake.lcmt_cassie_pd_config
+import dairlib.lcmt_cassie_pd_config
 
 #Default values
 joint_names = ["L_HIP_ROLL", "L_HIP_YAW", "L_HIP_PITCH", "L_KNEE", "L_FOOT",
@@ -112,7 +112,7 @@ class ControllerGui(QDialog):
 
     #Storing in a file once the move button is clicked
     def publish_clicked(self):
-        msg = dair_lab.utility.applications.cassie.lcmtypes.drake.lcmt_cassie_pd_config()
+        msg = dairlib.lcmt_cassie_pd_config()
         msg.timestamp = int(time.time() * 1e6)
         msg.num_joints = 10
         msg.joint_names = joint_names

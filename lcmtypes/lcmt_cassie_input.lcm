@@ -1,4 +1,4 @@
-package drake;
+package dairlib;
 
 struct lcmt_cassie_input
 {

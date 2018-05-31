@@ -1,9 +1,10 @@
 #pragma once
 
 #include "drake/systems/framework/leaf_system.h"
-#include "drake/lcmt_cassie_state.hpp"
-#include "drake/lcmt_cassie_input.hpp"
-#include "drake/lcmt_cassie_pd_config.hpp"
+
+#include "dairlib/lcmt_cassie_state.hpp"
+#include "dairlib/lcmt_cassie_input.hpp"
+#include "dairlib/lcmt_cassie_pd_config.hpp"
 #include "cassie_controller_lcm.h"
 
 namespace drake{
@@ -36,7 +37,7 @@ class CassieCommandSender : public systems::LeafSystem<double> {
 
  private:
   void OutputCommand(const systems::Context<double>& context,
-                     lcmt_cassie_input* output) const;
+                     dairlib::lcmt_cassie_input* output) const;
 };
 
 class CassieStateSender : public systems::LeafSystem<double> {
@@ -46,7 +47,7 @@ class CassieStateSender : public systems::LeafSystem<double> {
 
  private:
   void OutputState(const systems::Context<double>& context,
-                     lcmt_cassie_state* output) const;
+                     dairlib::lcmt_cassie_state* output) const;
 };
 
 
@@ -95,5 +96,4 @@ class CassiePDConfigReceiver : public systems::LeafSystem<double> {
   void CopyConfig(const systems::Context<double>& context,
                     CassiePDConfig* output) const;
 };
-
 }

@@ -26,7 +26,7 @@ package(default_visibility = ["//visibility:public"])
 #Lcm libraries
 drake_lcm_cc_library(
     name = "lcmt_cassie",
-    lcm_package = "drake",
+    lcm_package = "dairlib",
     lcm_srcs = ["lcmt_cassie_state.lcm",
                 "lcmt_cassie_input.lcm",
                 "lcmt_cassie_pd_config.lcm"],
@@ -34,7 +34,7 @@ drake_lcm_cc_library(
 
 drake_lcm_java_library(
     name = "lcmtypes_cassie_java",
-    lcm_package = "drake",
+    lcm_package = "dairlib",
     lcm_srcs = glob(["*.lcm"]),
     deps = ["@lcmtypes_bot2_core//:lcmtypes_bot2_core_java"],
 )

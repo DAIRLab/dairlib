@@ -5,7 +5,7 @@
 #include "drake/systems/primitives/sine.h"
 
 #include "cassie_controller_lcm.h"
-#include "drake/lcmt_cassie_state.hpp"
+#include "dairlib/lcmt_cassie_state.hpp"
 
 namespace drake{
 
@@ -20,7 +20,7 @@ int doMain() {
 
   // Create state receiver.
   auto state_pub = builder.AddSystem(
-      systems::lcm::LcmPublisherSystem::Make<lcmt_cassie_state>(channel_x, &lcm));
+      systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_cassie_state>(channel_x, &lcm));
   auto state_sender = builder.AddSystem<CassieStateSender>();
 
   builder.Connect(sine_source->get_output_port(0), state_sender->get_input_port(0));

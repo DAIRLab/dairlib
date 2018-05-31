@@ -4,9 +4,9 @@
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 
-#include "drake/lcmt_cassie_state.hpp"
-#include "drake/lcmt_cassie_input.hpp"
-#include "drake/lcmt_cassie_pd_config.hpp"
+#include "dairlib/lcmt_cassie_state.hpp"
+#include "dairlib/lcmt_cassie_input.hpp"
+#include "dairlib/lcmt_cassie_pd_config.hpp"
 #include "pd_controller.h"
 #include "cassie_controller_lcm.h"
 #include "datatypes/cassie_names.h"
@@ -23,14 +23,14 @@ int doMain() {
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
-      systems::lcm::LcmSubscriberSystem::Make<lcmt_cassie_state>(channel_x, &lcm));
+      systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_cassie_state>(channel_x, &lcm));
   auto state_receiver = builder.AddSystem<CassieStateReceiver>();
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port(0));
 
   // Create config receiver.
   auto config_sub = builder.AddSystem(
-      systems::lcm::LcmSubscriberSystem::Make<lcmt_cassie_pd_config>(channel_config, &lcm));
+      systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_cassie_pd_config>(channel_config, &lcm));
   auto config_receiver = builder.AddSystem<CassiePDConfigReceiver>();
   builder.Connect(config_sub->get_output_port(),
                   config_receiver->get_input_port(0));
@@ -38,7 +38,7 @@ int doMain() {
 
   // Create command sender.
   auto command_pub = builder.AddSystem(
-      systems::lcm::LcmPublisherSystem::Make<lcmt_cassie_input>(channel_u, &lcm));
+      systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_cassie_input>(channel_u, &lcm));
   auto command_sender = builder.AddSystem<CassieCommandSender>();
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());

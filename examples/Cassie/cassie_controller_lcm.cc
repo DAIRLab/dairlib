@@ -37,7 +37,7 @@ void CassieStateReceiver::CopyStateOut(
     const Context<double>& context, BasicVector<double>* output) const {
   const systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
-  const auto& state_msg = input->GetValue<lcmt_cassie_state>();
+  const auto& state_msg = input->GetValue<dairlib::lcmt_cassie_state>();
 
   VectorXd state = VectorXd::Zero(2*CASSIE_NUM_JOINTS);
 
@@ -58,7 +58,7 @@ CassieCommandSender::CassieCommandSender() {
 }
 
 void CassieCommandSender::OutputCommand(const Context<double>& context,
-                                         lcmt_cassie_input* input_msg) const {
+                                         dairlib::lcmt_cassie_input* input_msg) const {
   const systems::BasicVector<double>* command =
       this->EvalVectorInput(context, 0);
 
@@ -83,7 +83,7 @@ CassieStateSender::CassieStateSender() {
 /// Assumes: number of positions == number of velocities
 ///          state is a vector ordered [positions; velocities]
 void CassieStateSender::OutputState(const Context<double>& context,
-                                         lcmt_cassie_state* state_msg) const {
+                                         dairlib::lcmt_cassie_state* state_msg) const {
   const systems::BasicVector<double>* state =
       this->EvalVectorInput(context, 0);
 
@@ -111,7 +111,7 @@ void CassiePDConfigReceiver::CopyConfig(
     const Context<double>& context, CassiePDConfig* output) const {
   const systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
-  const auto& config_msg = input->GetValue<lcmt_cassie_pd_config>();
+  const auto& config_msg = input->GetValue<dairlib::lcmt_cassie_pd_config>();
 
   for (int i = 0; i < config_msg.num_joints; i++) {
     int j = getJointIndex(config_msg.joint_names[i]);

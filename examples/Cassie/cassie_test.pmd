@@ -16,6 +16,11 @@ group "0.operator" {
     exec = "bazel-bin/examples/Cassie/pd_controller_gui";
     host = "localhost";
   }
+
+  cmd "3.state-visualizer" {
+    exec = "bazel-bin/examples/Cassie/cassie_state_visualizer";
+    host = "localhost";
+  }
 }
 
 group "1.robot" {

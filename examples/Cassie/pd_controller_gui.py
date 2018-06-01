@@ -7,6 +7,7 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 
 import dairlib.lcmt_cassie_pd_config
+import dairlib.lcmt_cassie_state
 
 #Default values
 joint_names = ["L_HIP_ROLL", "L_HIP_YAW", "L_HIP_PITCH", "L_KNEE", "L_FOOT",
@@ -22,37 +23,32 @@ class ControllerGui(QDialog):
 
         super(ControllerGui, self).__init__(parent)
 
+        self.lc = lcm.LCM()
+        subscription = self.lc.subscribe("CASSIE_STATE", self.state_handler)
+        subscription.set_queue_capacity(1)
+        print(subscription)
 
         labels = []
-        self.sliders = []
         self.values = []
         self.ledits = []
         for name in joint_names:
             labels.append(QLabel(name))
-            self.sliders.append(QSlider(Qt.Horizontal))
             self.values.append(0)
-            self.ledits.append(QLineEdit())
-            self.sliders.append(QSlider(Qt.Horizontal))
+            self.ledits.append(QDoubleSpinBox())
             self.values.append(0)
-            self.ledits.append(QLineEdit())
-            self.sliders.append(QSlider(Qt.Horizontal))
+            self.ledits.append(QDoubleSpinBox())
             self.values.append(0)
-            self.ledits.append(QLineEdit())
-
-        for idx, name in enumerate(joint_names):
-            self.sliders[idx].setMinimum(-180)
-            self.sliders[idx].setMaximum(180)
-            self.sliders[idx + len(joint_names)].setMinimum(0)
-            self.sliders[idx + len(joint_names)].setMaximum(200)
-            self.sliders[idx + 2*len(joint_names)].setMinimum(0)
-            self.sliders[idx + 2*len(joint_names)].setMaximum(20)
+            self.ledits.append(QDoubleSpinBox())
 
         for ledit in self.ledits:
-            ledit.setFixedSize(45, 25)
+            ledit.setFixedSize(100, 25)
+
 
         #Initializing widgets
 
         self.publish_button = QPushButton('Publish')
+
+        self.setState_button = QPushButton('Set from State')
 
         #Grid and widget locations
 
@@ -64,50 +60,50 @@ class ControllerGui(QDialog):
 
         for idx, name in enumerate(joint_names):
             grid.addWidget(labels[idx], idx+1, 0)
-            grid.addWidget(self.sliders[idx], idx+1, 1)
-            grid.addWidget(self.ledits[idx], idx+1, 2)
+            grid.addWidget(self.ledits[idx], idx+1, 1)
+            self.ledits[idx].setMinimum(-3.14)
+            self.ledits[idx].setMaximum(3.14)
+            self.ledits[idx].setSingleStep(.01)
 
-            grid.addWidget(self.sliders[idx + len(joint_names)], idx+1, 3)
-            grid.addWidget(self.ledits[idx + len(joint_names)], idx+1, 4)
+            grid.addWidget(self.ledits[idx + len(joint_names)], idx+1, 3)
 
-            grid.addWidget(self.sliders[idx + 2*len(joint_names)], idx+1, 5)
-            grid.addWidget(self.ledits[idx + 2*len(joint_names)], idx+1, 6)
+            self.ledits[idx + len(joint_names)].setMinimum(-100)
+            self.ledits[idx + len(joint_names)].setMaximum(100)
+            self.ledits[idx + len(joint_names)].setSingleStep(1)
 
-        for slider in self.sliders:
-            slider.valueChanged.connect(self.slider_change)
+            grid.addWidget(self.ledits[idx + 2*len(joint_names)], idx+1, 5)
+            self.ledits[idx + 2*len(joint_names)].setMinimum(-100)
+            self.ledits[idx + 2*len(joint_names)].setMaximum(100)
+            self.ledits[idx + 2*len(joint_names)].setSingleStep(1)
 
         for ledit in self.ledits:
             self.connect(ledit, SIGNAL("editingFinished()"), self.text_change)
 
-        grid.addWidget(self.publish_button, len(joint_names) + 2, 3)
+        grid.addWidget(self.publish_button, len(joint_names) + 2, 0)
+        grid.addWidget(self.setState_button, len(joint_names) + 2, 3)
 
         #Initializing the text boxes to the initial values
         self.initialize_default()
 
         self.connect(self.publish_button, SIGNAL("clicked()"), self.publish_clicked)
 
+        self.connect(self.setState_button, SIGNAL("clicked()"), self.setState_clicked)
+
         self.setLayout(grid)
         self.setWindowTitle("Controller GUI")
-        self.resize(600, 400)
-
-    def slider_change(self):
-
-        for idx,slider in enumerate(self.sliders):
-            self.values[idx] = float(self.sliders[idx].value())
-            self.ledits[idx].setText(str(self.values[idx]))
+        self.resize(400, 300)
 
     def text_change(self):
 
         for idx, ledit in enumerate(self.ledits):
             self.values[idx] = float(self.ledits[idx].text())
-            self.sliders[idx].setValue(self.values[idx])
 
     #Initial defafult text values
     def initialize_default(self):
         for idx, name in enumerate(joint_names):
-            self.ledits[idx].setText(str(joint_default[idx]))
-            self.ledits[idx + len(joint_names)].setText(str(kp_default[idx]))
-            self.ledits[idx + 2*len(joint_names)].setText(str(kd_default[idx]))
+            self.ledits[idx].setValue(joint_default[idx])
+            self.ledits[idx + len(joint_names)].setValue(kp_default[idx])
+            self.ledits[idx + 2*len(joint_names)].setValue(kd_default[idx])
 
 
     #Storing in a file once the move button is clicked
@@ -122,8 +118,18 @@ class ControllerGui(QDialog):
         msg.kp = self.values[len(joint_names):2*len(joint_names)]
         msg.kd = self.values[2*len(joint_names):3*len(joint_names)]
 
-        lc = lcm.LCM()
-        lc.publish("PD_CONFIG", msg.encode())
+        self.lc.publish("PD_CONFIG", msg.encode())
+
+    def setState_clicked(self):
+        self.lc.handle_timeout(100)
+    def state_handler(self, channel, data):
+        msg = dairlib.lcmt_cassie_state.decode(data)
+        for joint in msg.joint_names:
+            idx = joint_names.index(joint)
+            self.ledits[idx].setValue(msg.position[idx])
+
+def handler(channel, data):
+    print("rx")
 
 def main():
     app = QApplication(sys.argv)

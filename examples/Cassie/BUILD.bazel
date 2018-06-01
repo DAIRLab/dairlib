@@ -124,6 +124,21 @@ cc_binary(
 )
 
 cc_binary(
+    name = "cassie_state_visualizer",
+    srcs = ["cassie_state_visualizer.cc"],
+    data = glob(["urdf/**"]),
+    deps = [
+            ":cassie_pd_controller_lcm",
+            "@drake//systems/framework:diagram_builder",
+            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/analysis:simulator",
+            "@drake//lcm",
+            "@drake//multibody:rigid_body_tree",
+            "@drake//manipulation/util",
+            ]
+)
+
+cc_binary(
     name = "run_state_pub_test",
     srcs = ["run_state_pub_test.cc"],
     deps = [

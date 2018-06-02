@@ -24,8 +24,7 @@ addSignals('CASSIE_STATE', msg.timestamp, msg.velocity, joints, keyLookup=names,
 
 
 p3 = addPlot()
-#addSignals('CASSIE_INPUT', msg.timestamp, msg.inputs, joints, keyLookup=input_names, plot=p3)
-addSignals('CASSIE_INPUT', msg.timestamp, msg.inputs, joints, keyLookup=names, plot=p)
+addSignals('CASSIE_INPUT', msg.timestamp, msg.inputs, joints, keyLookup=names, plot=p3)
 
 
 

@@ -1,3 +1,5 @@
+#include <time.h>
+
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/lcm/drake_lcm.h"
@@ -14,7 +16,7 @@ int doMain() {
   lcm::DrakeLcm lcm;
 
   const std::string channel_x = "CASSIE_STATE";
-
+  
   //sine vector source
   auto sine_source = builder.AddSystem<systems::Sine<double>>(2,1,0,20);
 
@@ -33,6 +35,15 @@ int doMain() {
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
+
+  time_t now;
+  struct tm newyear;
+  time(&now);
+  newyear = *localtime(&now);
+  newyear.tm_hour = 0; newyear.tm_min = 0; newyear.tm_sec = 0;
+  newyear.tm_mon = 0;  newyear.tm_mday = 1;
+  double dt = difftime(now, mktime(&newyear));
+  context->set_time(dt);
 
   auto stepper = std::make_unique<systems::Simulator<double>>(*diagram, std::move(context));
   stepper->set_publish_every_time_step(false);

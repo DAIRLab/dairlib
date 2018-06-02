@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 
+os.environ['LD_LIBRARY_PATH'] = '/opt/drake/lib'
 
 runfiles_dir = os.environ.get("DRAKE_BAZEL_RUNFILES")
 assert runfiles_dir, (

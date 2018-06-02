@@ -127,6 +127,7 @@ class ControllerGui(QDialog):
         for joint in msg.joint_names:
             idx = joint_names.index(joint)
             self.ledits[idx].setValue(msg.position[idx])
+            self.values[idx] = msg.position[idx]
 
 def handler(channel, data):
     print("rx")

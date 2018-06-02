@@ -12,6 +12,7 @@ Install Drake from source into `"my-workspace"/drake` http://drake.mit.edu/from_
 2. Build what you want via Bazel. From `dairlib`, `bazel build ...` will build the entire project. Drake will be built as an external dependency.
 
 ### (Optional Dependencies)
+These dependencies are necessary for some advanced visualization and process management. Many examples will work without a full installation of Director or libbot, but (for lab members), these are ultimately recommended. The build process below is not ideal (particularly the extra installation of binary Drake), but we will try to improve the process.
 1. Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2'. The prerequisites installation from Drake should add the proper repo for these.
 2. Install Director
   1. Install dependencies `sudo apt-get install build-essential cmake libglib2.0-dev libqt4-dev pyqt4-dev-tools libx11-dev libxext-dev libxt-dev python-dev python-lxml python-numpy python-scipy python-yaml`

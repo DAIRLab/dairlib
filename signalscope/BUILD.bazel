@@ -1,0 +1,7 @@
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+  name = "dairlib-signal-scope",
+  srcs = ["add_cassie_state.py",
+          "startscope.py"]
+)

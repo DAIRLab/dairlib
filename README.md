@@ -34,7 +34,7 @@ These dependencies are necessary for some advanced visualization and process man
   ```
   4. Build director
   ```
-  export CMAKE_PREFIX_PATH=/opt/drake/lib/cmake/drake
+  export CMAKE_PREFIX_PATH=/opt/drake/lib/cmake
   mkdir build
   cd build
   cmake ../distro/superbuild/

@@ -138,3 +138,8 @@ class ControllerGui(QWidget):
 
 panel = ControllerGui()
 app.addWidgetToDock(panel, QtCore.Qt.RightDockWidgetArea)
+
+import director.openscope as scope
+import subprocess
+view = applogic.getMainWindow()
+applogic.addShortcut(view, 'Ctrl+I', scope.startSignalScope)

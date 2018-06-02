@@ -40,7 +40,6 @@ void CassieStateReceiver::CopyStateOut(
   const auto& state_msg = input->GetValue<dairlib::lcmt_cassie_state>();
 
   VectorXd state = VectorXd::Zero(2*CASSIE_NUM_JOINTS);
-
   for (int i = 0; i < state_msg.num_joints; i++) {
     int j = getJointIndex(state_msg.joint_names[i]);
     state(j) = state_msg.position[i];
@@ -62,6 +61,7 @@ void CassieCommandSender::OutputCommand(const Context<double>& context,
   const systems::BasicVector<double>* command =
       this->EvalVectorInput(context, 0);
 
+  input_msg->timestamp = context.get_time()*1e6;
   input_msg->num_joints = CASSIE_NUM_JOINTS;
   input_msg->joint_names.resize(CASSIE_NUM_JOINTS);
   input_msg->inputs.resize(CASSIE_NUM_JOINTS);
@@ -87,6 +87,7 @@ void CassieStateSender::OutputState(const Context<double>& context,
   const systems::BasicVector<double>* state =
       this->EvalVectorInput(context, 0);
 
+  state_msg->timestamp = context.get_time()*1e6;
   state_msg->num_joints = CASSIE_NUM_JOINTS;
   state_msg->joint_names.resize(CASSIE_NUM_JOINTS);
   state_msg->position.resize(CASSIE_NUM_JOINTS);

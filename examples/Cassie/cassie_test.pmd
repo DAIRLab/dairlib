@@ -1,17 +1,12 @@
 
 group "0.operator" {
 
-  cmd "0.drake-visualizer" {
-    exec = "../drake/bazel-bin/tools/drake_visualizer";
+  cmd "0.drake-director" {
+    exec = "bazel-bin/director/drake-director --script examples/Cassie/pd_panel.py";
     host = "localhost";
   }
 
-  cmd "2.pd-gui" {
-    exec = "bazel-bin/examples/Cassie/pd_controller_gui";
-    host = "localhost";
-  }
-
-  cmd "3.state-visualizer" {
+  cmd "1.state-visualizer" {
     exec = "bazel-bin/examples/Cassie/cassie_state_visualizer";
     host = "localhost";
   }

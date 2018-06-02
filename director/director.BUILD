@@ -7,3 +7,4 @@ py_library(
     deps = ["@drake//lcmtypes:lcmtypes_py",
             "@lcm//:lcm-python"]
 )
+

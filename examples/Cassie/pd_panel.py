@@ -83,7 +83,7 @@ class ControllerGui(QWidget):
             self.ledits[idx + 2*len(joint_names)].setSingleStep(1)
 
         for ledit in self.ledits:
-            self.connect(ledit, SIGNAL("editingFinished()"), self.text_change)
+            self.connect(ledit, SIGNAL("editingFinished()"), self.value_change)
 
         grid.addWidget(self.publish_button, len(joint_names) + 2, 0)
         grid.addWidget(self.setState_button, len(joint_names) + 2, 3)
@@ -99,10 +99,10 @@ class ControllerGui(QWidget):
         #self.setWindowTitle("Controller GUI")
         #self.resize(400, 300)
 
-    def text_change(self):
-
+    def value_change(self):
+        print("Asdf")
         for idx, ledit in enumerate(self.ledits):
-            self.values[idx] = float(self.ledits[idx].text())
+            self.values[idx] = self.ledits[idx].value
 
     #Initial defafult text values
     def initialize_default(self):
@@ -119,7 +119,7 @@ class ControllerGui(QWidget):
         msg.num_joints = 10
         msg.joint_names = joint_names
         msg.desired_position = self.values[0:len(joint_names)]
-        msg.desired_position = [x*math.pi/180 for x in msg.desired_position]
+        msg.desired_position = [x for x in msg.desired_position]
         msg.desired_velocity = [0,0,0,0,0,0,0,0,0,0]
         msg.kp = self.values[len(joint_names):2*len(joint_names)]
         msg.kd = self.values[2*len(joint_names):3*len(joint_names)]

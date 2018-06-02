@@ -1,0 +1,5 @@
+py_binary(
+  name = "run_director",
+  srcs = ["run_director.py"],
+  deps = ["@director//:visualizer-bin"]
+)

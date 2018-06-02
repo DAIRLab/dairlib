@@ -4,10 +4,13 @@
 ### Build Drake
 The library is meant to be built with Drake (see http://drake.mit.edu/ for more details)
 
-Install Drake from source into `"my-workspace"/drake` http://drake.mit.edu/from_source.html. You do not need to build it, but prerequisites should also be installed.
+Install Drake from source into `"my-workspace"/drake` http://drake.mit.edu/from_source.html. You do not need to build it, but prerequisites should also be installed. You will need `git` to start.
 
 ### Build dairlib
 1. Clone `dairlib` into the same root directory, "my-workspace/dairlib"
+```
+git clone https://github.com/DAIRLab/director.git
+```
 
 2. Build what you want via Bazel. From `dairlib`, `bazel build ...` will build the entire project. Drake will be built as an external dependency.
 
@@ -15,17 +18,23 @@ Install Drake from source into `"my-workspace"/drake` http://drake.mit.edu/from_
 These dependencies are necessary for some advanced visualization and process management. Many examples will work without a full installation of Director or libbot, but (for lab members), these are ultimately recommended. The build process below is not ideal (particularly the extra installation of binary Drake), but we will try to improve the process.
 1. Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2'. The prerequisites installation from Drake should add the proper repo for these.
 2. Install Director
-  1. Install dependencies `sudo apt-get install build-essential cmake libglib2.0-dev libqt4-dev pyqt4-dev-tools libx11-dev libxext-dev libxt-dev python-dev python-lxml python-numpy python-scipy python-yaml`
+  1. Install dependencies
+  ```
+  sudo apt-get install build-essential cmake libglib2.0-dev libqt4-dev pyqt4-dev-tools libx11-dev libxext-dev libxt-dev python-dev python-lxml python-numpy python-scipy python-yaml
+  ```
   2. Install a binary copy of Drake into `/opt/drake/` (not ideal--will work on removing this dependency). 
   ```
   wget https://drake-packages.csail.mit.edu/drake/nightly/drake-latest-xenial.tar.gz
   sudo tar -xzf drake-latest-xenial.tar.gz -C /opt/
   rm drake-latest-xenial.tar.gz
   ```
-  3. Clone DAIRLab's fork of `director` into your workspace directory. `git clone https://github.com/DAIRLab/director.git`
+  3. Clone DAIRLab's fork of `director` into your workspace directory.
+  ```
+  git clone https://github.com/DAIRLab/director.git
+  ```
   4. Build director
   ```
-  export :/opt/drake/lib/cmake/drake
+  export CMAKE_PREFIX_PATH=/opt/drake/lib/cmake/drake
   mkdir build
   cd build
   cmake ../distro/superbuild/

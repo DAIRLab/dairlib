@@ -28,6 +28,16 @@ class CassieStateReceiver : public systems::LeafSystem<double> {
                     systems::BasicVector<double>* output) const;
 };
 
+class CassieInputReceiver : public systems::LeafSystem<double> {
+ public:
+  CassieInputReceiver();
+
+
+ private:
+  void CopyInputOut(const systems::Context<double>& context,
+                    systems::BasicVector<double>* output) const;
+};
+
 /// Receives the output of a controller controller, and outputs it as an LCM
 /// message with type lcm_cassie_u. Its output port is usually connected to
 /// an LcmPublisherSystem to publish the messages it generates.

@@ -20,7 +20,7 @@ int doMain() {
   //sine vector source
   auto sine_source = builder.AddSystem<systems::Sine<double>>(2,1,0,20);
 
-  // Create state receiver.
+  // Create state sender.
   auto state_pub = builder.AddSystem(
       systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_cassie_state>(channel_x, &lcm));
   auto state_sender = builder.AddSystem<CassieStateSender>();

@@ -806,7 +806,7 @@
   </joint> 
 
 
-  <joint name="ankle_joint_left" type="revolute">
+  <joint name="ankle_joint_left" type="fixed">
     <origin xyz="0.43476 0.02 0" rpy="0 0 0" />
     <parent link="shin_left" />
     <child link="tarsus_left" />
@@ -815,7 +815,7 @@
     <dynamics damping="0.01" /> <!-- made up value -->
   </joint>
 
-  <joint name="ankle_joint_right" type="revolute">
+  <joint name="ankle_joint_right" type="fixed">
     <origin xyz="0.43476 0.02 0" rpy="0 0 0" />
     <parent link="shin_right" />
     <child link="tarsus_right" />
@@ -845,7 +845,7 @@
   </joint> 
 
 
-  <joint name="toe_left" type="fixed">
+  <joint name="toe_left" type="revolute">
     <origin xyz="0.408 -0.040 0" rpy="0 0 0" />
     <parent link="tarsus_left" />
     <child link="toe_left" />
@@ -854,7 +854,7 @@
     <dynamics damping="0.01" /> <!-- made up value -->
   </joint>
 
-  <joint name="toe_right" type="fixed">
+  <joint name="toe_right" type="revolute">
     <origin xyz="0.408 -0.040 0" rpy="0 0 0" />
     <parent link="tarsus_right" />
     <child link="toe_right" />

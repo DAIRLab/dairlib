@@ -18,7 +18,12 @@ group "1.robot" {
     host = "localhost";
   }
 
-  cmd "1.fake-state-pub" {
+  cmd "1.simulator" {
+    exec = "bazel-bin/examples/Cassie/run_simple_sim";
+    host = "localhost";
+  }
+
+  cmd "2.fake-state-pub" {
     exec = "bazel-bin/examples/Cassie/run_state_pub_test";
     host = "localhost";
   }

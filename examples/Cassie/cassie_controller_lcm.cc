@@ -49,6 +49,28 @@ void CassieStateReceiver::CopyStateOut(
 }
 
 /*--------------------------------------------------------------------------*/
+// methods implementation for CassieInputReceiver.
+CassieInputReceiver::CassieInputReceiver() {
+  this->DeclareAbstractInputPort();
+  this->DeclareVectorOutputPort(BasicVector<double>(CASSIE_NUM_JOINTS),
+   &CassieInputReceiver::CopyInputOut);
+}
+
+void CassieInputReceiver::CopyInputOut(
+    const Context<double>& context, BasicVector<double>* output) const {
+  const systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  DRAKE_ASSERT(input != nullptr);
+  const auto& input_msg = input->GetValue<dairlib::lcmt_cassie_input>();
+
+  VectorXd input_vector = VectorXd::Zero(CASSIE_NUM_JOINTS);
+  for (int i = 0; i < input_msg.num_joints; i++) {
+    int j = getJointIndex(input_msg.joint_names[i]);
+    input_vector(j) = input_msg.inputs[i];
+  }
+  output->SetFromVector(input_vector);
+}
+
+/*--------------------------------------------------------------------------*/
 // methods implementation for CassieCommandSender.
 
 CassieCommandSender::CassieCommandSender() {
@@ -93,9 +115,9 @@ void CassieStateSender::OutputState(const Context<double>& context,
   state_msg->position.resize(CASSIE_NUM_JOINTS);
   state_msg->velocity.resize(CASSIE_NUM_JOINTS);
   for (int i = 0; i < CASSIE_NUM_JOINTS; i++) {
-    state_msg->joint_names[i] = cassieJointNames[i];
     state_msg->position[i] = state->GetAtIndex(i);
     state_msg->velocity[i] = state->GetAtIndex(i + CASSIE_NUM_JOINTS);
+    state_msg->joint_names[i] = cassieJointNames[i];
   }
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "drake/systems/framework/leaf_system.h"
+#include "systems/framework/timestamped_vector.h"
 
 #include "dairlib/lcmt_cassie_state.hpp"
 #include "dairlib/lcmt_cassie_input.hpp"
@@ -9,6 +10,7 @@
 
 namespace drake{
 
+using dairlib::systems::TimestampedVector;
 using Eigen::VectorXd;
 
 /// @file This file contains classes dealing with sending/receiving
@@ -25,7 +27,7 @@ class CassieStateReceiver : public systems::LeafSystem<double> {
 
  private:
   void CopyStateOut(const systems::Context<double>& context,
-                    systems::BasicVector<double>* output) const;
+                    TimestampedVector<double>* output) const;
 };
 
 class CassieInputReceiver : public systems::LeafSystem<double> {
@@ -35,7 +37,7 @@ class CassieInputReceiver : public systems::LeafSystem<double> {
 
  private:
   void CopyInputOut(const systems::Context<double>& context,
-                    systems::BasicVector<double>* output) const;
+                    TimestampedVector<double>* output) const;
 };
 
 /// Receives the output of a controller controller, and outputs it as an LCM
@@ -61,9 +63,9 @@ class CassieStateSender : public systems::LeafSystem<double> {
 };
 
 
-/// Implementation of BasicVector to store, set, and get PD configuration:
+/// Implementation of TimestampedVector to store, set, and get PD configuration:
 /// desired position/velocity and gains (kp/kd)
-class CassiePDConfig : public systems::BasicVector<double> {
+class CassiePDConfig : public TimestampedVector<double> {
   public:
     CassiePDConfig(int num_joints);
 

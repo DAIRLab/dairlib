@@ -20,7 +20,9 @@ These dependencies are necessary for some advanced visualization and process man
 2. Install Director
   1. Install dependencies
   ```
-  sudo apt-get install build-essential cmake libglib2.0-dev libqt4-dev pyqt4-dev-tools libx11-dev libxext-dev libxt-dev python-dev python-lxml python-numpy python-scipy python-yaml
+  sudo apt-get install build-essential cmake libglib2.0-dev libqt4-dev \
+        pyqt4-dev-tools libx11-dev libxext-dev libxt-dev python-dev python-lxml \
+        python-numpy python-scipy python-yaml libqwt-dev
   ```
   2. Install a binary copy of Drake into `/opt/drake/` (not ideal--will work on removing this dependency). 
   ```

@@ -106,7 +106,8 @@ cc_library(
           "//examples/Cassie/datatypes:cassie_names",
           "@drake//systems/framework:leaf_system",
           "@lcm",
-          "//lcmtypes:lcmt_cassie"
+          "//lcmtypes:lcmt_cassie",
+          "//systems/framework:vector"
           ]
 )
 
@@ -151,15 +152,6 @@ cc_binary(
             ]
 )
 
-py_binary(
-    name = "pd_controller_gui",
-    srcs = ["pd_controller_gui.py"],
-    deps = [
-        "@lcm//:lcm-python",
-        "@drake//lcmtypes:lcmtypes_py",
-        "//lcmtypes:lcmtypes_cassie_py",
-    ],
-)
 
 cc_binary(
     name = "run_simple_sim",

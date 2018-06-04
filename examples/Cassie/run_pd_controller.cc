@@ -1,5 +1,3 @@
-#include <time.h>
-
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
@@ -60,15 +58,6 @@ int doMain() {
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
-
-  time_t now;
-  struct tm newyear;
-  time(&now);
-  newyear = *localtime(&now);
-  newyear.tm_hour = 0; newyear.tm_min = 0; newyear.tm_sec = 0;
-  newyear.tm_mon = 0;  newyear.tm_mday = 1;
-  double dt = difftime(now, mktime(&newyear));
-  context->set_time(dt);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice 

@@ -5,7 +5,7 @@ namespace drake{
 
 using std::string;
 using systems::Context;
-using systems::BasicVector;
+using dairlib::systems::TimestampedVector;
 using Eigen::VectorXd;
 
 const int CASSIE_NUM_COMMANDS = cassieJointNames.size();
@@ -29,12 +29,12 @@ int getJointIndex(string joint) {
 // methods implementation for CassieStateReceiver.
 CassieStateReceiver::CassieStateReceiver() {
   this->DeclareAbstractInputPort();
-  this->DeclareVectorOutputPort(BasicVector<double>(CASSIE_NUM_JOINTS*2),
+  this->DeclareVectorOutputPort(TimestampedVector<double>(CASSIE_NUM_JOINTS*2),
    &CassieStateReceiver::CopyStateOut);
 }
 
 void CassieStateReceiver::CopyStateOut(
-    const Context<double>& context, BasicVector<double>* output) const {
+    const Context<double>& context, TimestampedVector<double>* output) const {
   const systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& state_msg = input->GetValue<dairlib::lcmt_cassie_state>();
@@ -46,18 +46,19 @@ void CassieStateReceiver::CopyStateOut(
     state(j + CASSIE_NUM_JOINTS) = state_msg.velocity[i];
   }
   output->SetFromVector(state);
+  output->set_timestamp(state_msg.timestamp);
 }
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for CassieInputReceiver.
 CassieInputReceiver::CassieInputReceiver() {
   this->DeclareAbstractInputPort();
-  this->DeclareVectorOutputPort(BasicVector<double>(CASSIE_NUM_JOINTS),
+  this->DeclareVectorOutputPort(TimestampedVector<double>(CASSIE_NUM_JOINTS),
    &CassieInputReceiver::CopyInputOut);
 }
 
 void CassieInputReceiver::CopyInputOut(
-    const Context<double>& context, BasicVector<double>* output) const {
+    const Context<double>& context, TimestampedVector<double>* output) const {  
   const systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& input_msg = input->GetValue<dairlib::lcmt_cassie_input>();
@@ -68,6 +69,7 @@ void CassieInputReceiver::CopyInputOut(
     input_vector(j) = input_msg.inputs[i];
   }
   output->SetFromVector(input_vector);
+  output->set_timestamp(input_msg.timestamp);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -80,10 +82,10 @@ CassieCommandSender::CassieCommandSender() {
 
 void CassieCommandSender::OutputCommand(const Context<double>& context,
                                          dairlib::lcmt_cassie_input* input_msg) const {
-  const systems::BasicVector<double>* command =
+  const TimestampedVector<double>* command = (TimestampedVector<double>*)
       this->EvalVectorInput(context, 0);
 
-  input_msg->timestamp = context.get_time()*1e6;
+  input_msg->timestamp = command->get_timestamp(); //context.get_time()*1e6;
   input_msg->num_joints = CASSIE_NUM_JOINTS;
   input_msg->joint_names.resize(CASSIE_NUM_JOINTS);
   input_msg->inputs.resize(CASSIE_NUM_JOINTS);
@@ -106,10 +108,12 @@ CassieStateSender::CassieStateSender() {
 ///          state is a vector ordered [positions; velocities]
 void CassieStateSender::OutputState(const Context<double>& context,
                                          dairlib::lcmt_cassie_state* state_msg) const {
-  const systems::BasicVector<double>* state =
+  auto state =
       this->EvalVectorInput(context, 0);
 
+  //using the time from the context
   state_msg->timestamp = context.get_time()*1e6;
+
   state_msg->num_joints = CASSIE_NUM_JOINTS;
   state_msg->joint_names.resize(CASSIE_NUM_JOINTS);
   state_msg->position.resize(CASSIE_NUM_JOINTS);
@@ -145,7 +149,7 @@ void CassiePDConfigReceiver::CopyConfig(
   }
 }
 
-CassiePDConfig::CassiePDConfig(int num_joints) : BasicVector<double>(4*num_joints) {
+CassiePDConfig::CassiePDConfig(int num_joints) : TimestampedVector<double>(4*num_joints) {
   num_joints_ = num_joints;
   desired_position_ = VectorXd::Zero(num_joints);
   desired_velocity_ = VectorXd::Zero(num_joints);

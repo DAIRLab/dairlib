@@ -4,16 +4,16 @@
 
 namespace drake{
 
-using systems::BasicVector;
 using systems::Context;
 using Eigen::VectorXd;
 
 CassiePDController::CassiePDController() {
   num_joints_ = cassieJointNames.size();
-  state_input_port_ = this->DeclareInputPort(systems::kVectorValued, 2*num_joints_).get_index();
+  // state_input_port_ = this->DeclareInputPort(systems::kVectorValued, 2*num_joints_).get_index();
+  state_input_port_ = this->DeclareVectorInputPort(TimestampedVector<double>(2*num_joints_)).get_index();
   config_input_port_ = this->DeclareVectorInputPort(CassiePDConfig(num_joints_)).get_index();
 
-  this->DeclareVectorOutputPort(BasicVector<double>(num_joints_), &CassiePDController::CalcControl);
+  this->DeclareVectorOutputPort(TimestampedVector<double>(num_joints_), &CassiePDController::CalcControl);
 
   q_des_ = VectorXd::Zero(num_joints_);
   v_des_ = VectorXd::Zero(num_joints_);
@@ -21,9 +21,12 @@ CassiePDController::CassiePDController() {
   kd_ = VectorXd::Zero(num_joints_);
 }
 
-void CassiePDController::CalcControl(const Context<double>& context, BasicVector<double>* output) const {
-    const Eigen::VectorBlock<const VectorXd> state =
-      this->EvalEigenVectorInput(context, state_input_port_);
+void CassiePDController::CalcControl(const Context<double>& context, TimestampedVector<double>* output) const {
+    const TimestampedVector<double>* state_timestamped = (TimestampedVector<double>*)
+      this->EvalVectorInput(context, state_input_port_);
+    auto state = state_timestamped->get_value();
+    // const Eigen::VectorBlock<const VectorXd> state =
+    //   this->EvalEigenVectorInput(context, state_input_port_);
 
     const CassiePDConfig* config =
       dynamic_cast<const CassiePDConfig*>(this->EvalVectorInput(context, config_input_port_));
@@ -36,6 +39,7 @@ void CassiePDController::CalcControl(const Context<double>& context, BasicVector
     }
 
     output->SetFromVector(u);
+    output->set_timestamp(state_timestamped->get_timestamp());
 }
 
 

@@ -1,0 +1,25 @@
+# -*- python -*-
+
+
+load("@drake//tools:drake.bzl", "drake_cc_googletest", "drake_cc_library", "drake_cc_binary")
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "vector",
+    srcs = [
+        "timestamped_vector.cc",
+    ],
+    hdrs = [
+        "timestamped_vector.h",
+    ],
+    deps = [
+        "@drake//systems/framework:vector",
+        "@drake//common:autodiff",
+        "@drake//common:default_scalars",
+        "@drake//common:dummy_value",
+        "@drake//common:essential",
+        "@drake//common:symbolic",
+    ],
+)

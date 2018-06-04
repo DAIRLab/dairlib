@@ -1,5 +1,4 @@
 #include <memory>
-#include <time.h>
 
 #include <gflags/gflags.h>
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
@@ -130,15 +129,6 @@ int do_main(int argc, char* argv[]) {
     // state[3] = 0;
     // state[4] = 0;
   }
-
-  time_t now;
-  struct tm newyear;
-  time(&now);
-  newyear = *localtime(&now);
-  newyear.tm_hour = 0; newyear.tm_min = 0; newyear.tm_sec = 0;
-  newyear.tm_mon = 0;  newyear.tm_mday = 1;
-  double dt = difftime(now, mktime(&newyear));
-  context.set_time(dt);
 
   // int num_u = plant->get_num_actuators();
   // auto zero_input = Eigen::MatrixXd::Zero(num_u,1);

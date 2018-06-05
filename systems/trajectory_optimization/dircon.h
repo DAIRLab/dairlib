@@ -21,7 +21,7 @@ namespace trajectory_optimization {
 
 using trajectories::PiecewisePolynomial;
 
-/// DIRCCON implements the approach to trajectory optimization as
+/// DIRCON implements the approach to trajectory optimization as
 /// described in
 ///   Michael Posa, Scott Kuindersma, Russ Tedrake. "Optimization and Stabilization
 ////  of Trajectories for Constrained Dynamical Systems." ICRA, 2016.

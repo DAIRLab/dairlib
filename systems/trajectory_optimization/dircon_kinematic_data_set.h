@@ -3,7 +3,6 @@
 #include <memory>
 
 #include "dircon_kinematic_data.h"
-#include <gflags/gflags.h>
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/kinematics_cache.h"
 

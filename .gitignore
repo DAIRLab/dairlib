@@ -1,4 +1,6 @@
+__pycache__/
 /build/
 /.idea/
 /cmake-build-debug/
 /bazel-*
+*.ipynb_checkpoints

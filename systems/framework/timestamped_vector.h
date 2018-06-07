@@ -45,7 +45,7 @@ public:
   }
 
   void set_timestamp(T timestamp) {
-    this->SetAtIndex(timestep_index_, timestamp); 
+    this->SetAtIndex(timestep_index_, timestamp);
   }
 
   T get_timestamp() const {return this->GetAtIndex(timestep_index_);}
@@ -67,9 +67,16 @@ public:
   }
 
   /// Returns a mutable vector of the data values (without timestamp)
-  VectorX<T> get_mutable_data() {
-    return this->get_mutable_value().head(timestep_index_);
+  Eigen::Map<VectorX<T>> get_mutable_data() {
+    auto data = this->get_mutable_value().head(timestep_index_);
+    return Eigen::Map<VectorX<T>>(&data(0), data.size());
   }
+
+  /// Returns the entire vector as a const Eigen::VectorBlock.
+  const VectorX<T> get_data() const {
+    return this->get_value().head(timestep_index_);
+  }
+
 
   //sets the data part of the vector (without timestamp)
   void SetDataVector(const Eigen::Ref<const VectorX<T>>& value) {
@@ -84,7 +91,6 @@ public:
   /// Subclasses of TimestampedVector must override DoClone to return their covariant
   /// type.
   ///
-  /// mposa: This doesn't appear to actually clone the object
   virtual TimestampedVector<T>* DoClone() const {
     return new TimestampedVector<T>(timestep_index_);
   }

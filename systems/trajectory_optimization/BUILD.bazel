@@ -5,7 +5,6 @@
 package(default_visibility = ["//visibility:public"])
 
 
-# Compile a sample application.
 cc_library(
     name = "dircon",
     srcs = ["dircon_options.cc",

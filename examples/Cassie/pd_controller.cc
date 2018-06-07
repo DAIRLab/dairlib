@@ -24,7 +24,7 @@ CassiePDController::CassiePDController() {
 void CassiePDController::CalcControl(const Context<double>& context, TimestampedVector<double>* output) const {
     const TimestampedVector<double>* state_timestamped = (TimestampedVector<double>*)
       this->EvalVectorInput(context, state_input_port_);
-    auto state = state_timestamped->get_value();
+    auto state = state_timestamped->CopyVectorNoTimestamp();
     // const Eigen::VectorBlock<const VectorXd> state =
     //   this->EvalEigenVectorInput(context, state_input_port_);
 
@@ -38,7 +38,7 @@ void CassiePDController::CalcControl(const Context<double>& context, Timestamped
              config->getKd(i)*(config->getDesiredVelocity(i) - state(i + num_joints_));
     }
 
-    output->SetFromVector(u);
+    output->SetDataVector(u);
     output->set_timestamp(state_timestamped->get_timestamp());
 }
 

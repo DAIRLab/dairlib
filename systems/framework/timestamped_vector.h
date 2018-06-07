@@ -10,6 +10,8 @@ using drake::VectorX;
 
 /// TimestampedVector wraps a BasicVector along with a timestamp field
 /// The primary purpose of this is to pass-through a message (e.g. LCM) timestamp
+/// Uses a length N+1 BasicVector to store a vector of length N and a timestamp
+/// The timestamp is stored as the final element (Nth)
 template <typename T>
 class TimestampedVector : public drake::systems::BasicVector<T>  {
 public:
@@ -22,21 +24,31 @@ public:
   /// Initializes with the given @p size using the drake::dummy_value<T>, which
   /// is NaN when T = double.
   explicit TimestampedVector(int size)
-      : BasicVector<T>(size), timestamp_(0) {}
+      : BasicVector<T>(size + 1) {}
 
   /// Constructs a TimestampedVector with the specified @p data.
   explicit TimestampedVector(const VectorX<T>& data) 
-      : BasicVector<T>(data), timestamp_(0) {}
+      : TimestampedVector(data.size()) {
+    VectorX<T> data_timestamped = VectorX<T>(data.size() + 1);
+    data_timestamped.head(data.size()) = data;
+    data_timestamped(data.size()) = 0;
+    this->SetFromVector(data_timestamped);
+  }
 
   /// Constructs a TimestampedVector whose elements are the elements of @p data.
   TimestampedVector(const std::initializer_list<T>& data)
-      : BasicVector<T>(data), timestamp_(0) {}
-
-  void set_timestamp(double timestamp) {
-    timestamp_ = timestamp;
+      : TimestampedVector<T>(data.size()) {
+    int i = 0;
+    for (const T& datum : data) {
+      this->SetAtIndex(i++, datum);
+    }
   }
 
-  double get_timestamp() const {return timestamp_;}
+  void set_timestamp(T timestamp) {
+    this->SetAtIndex(this->size()-1, timestamp); 
+  }
+
+  T get_timestamp() const {return this->GetAtIndex(this->size()-1);}
 
   /// Copies the entire vector to a new TimestampedVector, with the same concrete
   /// implementation type.
@@ -46,8 +58,21 @@ public:
   std::unique_ptr<TimestampedVector<T>> Clone() const {
     auto clone = std::unique_ptr<TimestampedVector<T>>(DoClone());
     clone->set_value(this->get_value());
-    clone->set_timestamp(this->get_timestamp());
     return clone;
+  }
+
+  /// Returns the vector without the timestamp
+  VectorX<T> CopyVectorNoTimestamp() const {
+    return this->CopyToVector().head(this->size()-1);
+  }
+
+  /// Returns a mutable vector of the data values (without timestamp)
+  Eigen::VectorBlock<VectorX<T>> get_mutable_data() {
+    return this->get_mutable_value().head(this->size() - 1);
+  }
+
+  void SetDataVector(const Eigen::Ref<const VectorX<T>>& value) {
+    this->get_mutable_data() = value;
   }
 
  protected:
@@ -64,7 +89,6 @@ public:
   }
 
   private:
-    double timestamp_;
   };
 
 }  // namespace systems

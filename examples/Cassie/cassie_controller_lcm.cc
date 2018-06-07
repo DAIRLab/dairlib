@@ -68,7 +68,7 @@ void CassieInputReceiver::CopyInputOut(
     int j = getJointIndex(input_msg.joint_names[i]);
     input_vector(j) = input_msg.inputs[i];
   }
-  output->SetFromVector(input_vector);
+  output->SetDataVector(input_vector);
   output->set_timestamp(input_msg.timestamp);
 }
 

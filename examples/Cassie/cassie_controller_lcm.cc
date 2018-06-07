@@ -45,7 +45,7 @@ void CassieStateReceiver::CopyStateOut(
     state(j) = state_msg.position[i];
     state(j + CASSIE_NUM_JOINTS) = state_msg.velocity[i];
   }
-  output->SetFromVector(state);
+  output->SetDataVector(state);
   output->set_timestamp(state_msg.timestamp);
 }
 
@@ -76,7 +76,7 @@ void CassieInputReceiver::CopyInputOut(
 // methods implementation for CassieCommandSender.
 
 CassieCommandSender::CassieCommandSender() {
-  this->DeclareInputPort(systems::kVectorValued, CASSIE_NUM_COMMANDS); //number of inputs
+  this->DeclareVectorInputPort(TimestampedVector<double>(CASSIE_NUM_JOINTS));
   this->DeclareAbstractOutputPort(&CassieCommandSender::OutputCommand);
 }
 
@@ -126,7 +126,7 @@ void CassieStateSender::OutputState(const Context<double>& context,
 }
 
 
-// methods implementation for CassieStateReceiver.
+// methods implementation for CassiePDConfigReceiver.
 CassiePDConfigReceiver::CassiePDConfigReceiver() {
   this->DeclareAbstractInputPort();
   this->DeclareVectorOutputPort(CassiePDConfig(CASSIE_NUM_JOINTS),

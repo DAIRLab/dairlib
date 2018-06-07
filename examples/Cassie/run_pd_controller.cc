@@ -35,7 +35,6 @@ int doMain() {
   builder.Connect(config_sub->get_output_port(),
                   config_receiver->get_input_port(0));
 
-
   // Create command sender.
   auto command_pub = builder.AddSystem(
       systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_cassie_input>(channel_u, &lcm));
@@ -45,11 +44,14 @@ int doMain() {
 
 
   auto controller = builder.AddSystem<CassiePDController>();
-
   builder.Connect(state_receiver->get_output_port(0),
                   controller->get_input_port(controller->state_input_port()));
+
   builder.Connect(config_receiver->get_output_port(0),
                   controller->get_input_port(controller->config_input_port()));
+
+  std::cout << controller->get_output_port(0).size() << std::endl;
+  std::cout << command_sender->get_input_port(0).size() << std::endl;
   builder.Connect(controller->get_output_port(0),
                   command_sender->get_input_port(0));
 

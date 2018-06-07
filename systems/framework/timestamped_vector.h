@@ -23,8 +23,8 @@ public:
 
   /// Initializes with the given @p size using the drake::dummy_value<T>, which
   /// is NaN when T = double.
-  explicit TimestampedVector(int size)
-      : BasicVector<T>(size + 1) {}
+  explicit TimestampedVector(int data_size)
+      : BasicVector<T>(data_size + 1), timestep_index_(data_size) {}
 
   /// Constructs a TimestampedVector with the specified @p data.
   explicit TimestampedVector(const VectorX<T>& data) 
@@ -45,10 +45,10 @@ public:
   }
 
   void set_timestamp(T timestamp) {
-    this->SetAtIndex(this->size()-1, timestamp); 
+    this->SetAtIndex(timestep_index_, timestamp); 
   }
 
-  T get_timestamp() const {return this->GetAtIndex(this->size()-1);}
+  T get_timestamp() const {return this->GetAtIndex(timestep_index_);}
 
   /// Copies the entire vector to a new TimestampedVector, with the same concrete
   /// implementation type.
@@ -63,16 +63,17 @@ public:
 
   /// Returns the vector without the timestamp
   VectorX<T> CopyVectorNoTimestamp() const {
-    return this->CopyToVector().head(this->size()-1);
+    return this->CopyToVector().head(timestep_index_);
   }
 
   /// Returns a mutable vector of the data values (without timestamp)
-  Eigen::VectorBlock<VectorX<T>> get_mutable_data() {
-    return this->get_mutable_value().head(this->size() - 1);
+  VectorX<T> get_mutable_data() {
+    return this->get_mutable_value().head(timestep_index_);
   }
 
+  //sets the data part of the vector (without timestamp)
   void SetDataVector(const Eigen::Ref<const VectorX<T>>& value) {
-    this->get_mutable_data() = value;
+    this->get_mutable_data().head(timestep_index_) = value;
   }
 
  protected:
@@ -85,10 +86,11 @@ public:
   ///
   /// mposa: This doesn't appear to actually clone the object
   virtual TimestampedVector<T>* DoClone() const {
-    return new TimestampedVector<T>(this->size());
+    return new TimestampedVector<T>(timestep_index_);
   }
 
   private:
+    const int timestep_index_;
   };
 
 }  // namespace systems

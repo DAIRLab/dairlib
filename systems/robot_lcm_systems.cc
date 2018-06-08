@@ -1,7 +1,7 @@
-#include "datatypes/cassie_names.h"
-#include "cassie_controller_lcm.h"
+#include "robot_lcm_systems.h"
 
 namespace dairlib{
+namespace systems{
 
 using std::string;
 using drake::systems::Context;
@@ -10,18 +10,18 @@ using Eigen::VectorXd;
 using drake::systems::LeafSystem;
 
 /*--------------------------------------------------------------------------*/
-// methods implementation for CassieStateReceiver.
-CassieStateReceiver::CassieStateReceiver(RigidBodyTree<double>& tree) {
+// methods implementation for RobotOutputReceiver.
+RobotOutputReceiver::RobotOutputReceiver(RigidBodyTree<double>& tree) {
   tree_ = &tree;
   positionIndexMap_ = multibody::utils::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::utils::makeNameToVelocitiesMap(tree);
   this->DeclareAbstractInputPort();
   this->DeclareVectorOutputPort(StateVector<double>(
     tree.get_num_positions(), tree.get_num_velocities()),
-    &CassieStateReceiver::CopyStateOut);
+    &RobotOutputReceiver::CopyOutput);
 }
 
-void CassieStateReceiver::CopyStateOut(
+void RobotOutputReceiver::CopyOutput(
     const Context<double>& context, StateVector<double>* output) const {
   const drake::systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
@@ -44,20 +44,20 @@ void CassieStateReceiver::CopyStateOut(
 
 
 /*--------------------------------------------------------------------------*/
-// methods implementation for CassieStateSender.
+// methods implementation for RobotOutputSender.
 
-CassieStateSender::CassieStateSender(RigidBodyTree<double>& tree) {
+RobotOutputSender::RobotOutputSender(RigidBodyTree<double>& tree) {
   tree_ = &tree;
   positionIndexMap_ = multibody::utils::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::utils::makeNameToVelocitiesMap(tree);
 
   this->DeclareVectorInputPort(StateVector<double>(tree.get_num_positions(),
                                                    tree.get_num_velocities()));
-  this->DeclareAbstractOutputPort(&CassieStateSender::OutputState);
+  this->DeclareAbstractOutputPort(&RobotOutputSender::Output);
 }
 
 /// Populate a state message with all states
-void CassieStateSender::OutputState(const Context<double>& context,
+void RobotOutputSender::Output(const Context<double>& context,
                                          dairlib::lcmt_robot_output* state_msg) const {
   const StateVector<double>* state =
       (StateVector<double>*) this->EvalVectorInput(context, 0);
@@ -86,17 +86,17 @@ void CassieStateSender::OutputState(const Context<double>& context,
 }
 
 /*--------------------------------------------------------------------------*/
-// methods implementation for CassieInputReceiver.
-CassieInputReceiver::CassieInputReceiver(RigidBodyTree<double>& tree) {
+// methods implementation for RobotInputReceiver.
+RobotInputReceiver::RobotInputReceiver(RigidBodyTree<double>& tree) {
   tree_ = &tree;
   actuatorIndexMap_ = multibody::utils::makeNameToActuatorsMap(tree);
 
   this->DeclareAbstractInputPort();
   this->DeclareVectorOutputPort(TimestampedVector<double>(
-      tree.get_num_actuators()), &CassieInputReceiver::CopyInputOut);
+      tree.get_num_actuators()), &RobotInputReceiver::CopyInputOut);
 }
 
-void CassieInputReceiver::CopyInputOut(
+void RobotInputReceiver::CopyInputOut(
     const Context<double>& context, TimestampedVector<double>* output) const {
   const drake::systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
@@ -104,9 +104,9 @@ void CassieInputReceiver::CopyInputOut(
 
   VectorXd input_vector = VectorXd::Zero(tree_->get_num_actuators());
 
-  for (int i = 0; i < input_msg.num_inputs; i++) {
-    int j = actuatorIndexMap_.at(input_msg.input_names[i]);
-    input_vector(j) = input_msg.inputs[i];
+  for (int i = 0; i < input_msg.num_efforts; i++) {
+    int j = actuatorIndexMap_.at(input_msg.effort_names[i]);
+    input_vector(j) = input_msg.efforts[i];
   }
   output->SetDataVector(input_vector);
   output->set_timestamp(input_msg.timestamp);
@@ -114,17 +114,17 @@ void CassieInputReceiver::CopyInputOut(
 
 
 /*--------------------------------------------------------------------------*/
-// methods implementation for CassieCommandSender.
+// methods implementation for RobotCommandSender.
 
-CassieCommandSender::CassieCommandSender(RigidBodyTree<double>& tree) {
+RobotCommandSender::RobotCommandSender(RigidBodyTree<double>& tree) {
   tree_ = &tree;
   actuatorIndexMap_ = multibody::utils::makeNameToActuatorsMap(tree);
 
   this->DeclareVectorInputPort(TimestampedVector<double>(tree.get_num_actuators()));
-  this->DeclareAbstractOutputPort(&CassieCommandSender::OutputCommand);
+  this->DeclareAbstractOutputPort(&RobotCommandSender::OutputCommand);
 }
 
-void CassieCommandSender::OutputCommand(const Context<double>& context,
+void RobotCommandSender::OutputCommand(const Context<double>& context,
                                          dairlib::lcmt_robot_input* input_msg) const {
   const TimestampedVector<double>* command = (TimestampedVector<double>*)
       this->EvalVectorInput(context, 0);
@@ -132,14 +132,15 @@ void CassieCommandSender::OutputCommand(const Context<double>& context,
   int nu = tree_->get_num_actuators();
 
   input_msg->timestamp = command->get_timestamp(); //context.get_time()*1e6;
-  input_msg->num_inputs = nu;
-  input_msg->input_names.resize(nu);
-  input_msg->inputs.resize(nu);
+  input_msg->num_efforts = nu;
+  input_msg->effort_names.resize(nu);
+  input_msg->efforts.resize(nu);
   for (int i = 0; i < nu; i++) {
-    input_msg->input_names[i] = tree_->actuators[i].name_;
-    input_msg->inputs[i] = command->GetAtIndex(i);
+    input_msg->effort_names[i] = tree_->actuators[i].name_;
+    input_msg->efforts[i] = command->GetAtIndex(i);
   }
 }
 
 
+}
 }

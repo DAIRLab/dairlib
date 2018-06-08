@@ -9,11 +9,11 @@ cc_library(
     name = "vector",
     srcs = [
         "timestamped_vector.cc",
-        "state_vector.cc"
+        "output_vector.cc"
     ],
     hdrs = [
         "timestamped_vector.h",
-        "state_vector.h",
+        "output_vector.h",
     ],
     deps = [
         "@drake//systems/framework:vector",

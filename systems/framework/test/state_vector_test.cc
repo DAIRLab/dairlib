@@ -1,4 +1,4 @@
-#include "systems/framework/state_vector.h"
+#include "systems/framework/output_vector.h"
 
 #include <memory>
 #include <utility>
@@ -12,27 +12,32 @@ namespace {
 using drake::systems::BasicVector;
 using std::make_unique;
 
-class StateVectorTest : public ::testing::Test {
+class OutputVectorTest : public ::testing::Test {
  protected:
   void SetUp() override {
     int nq = 5;
     int nv = 4;
+    int nu = 2;
     q_.resize(nq);
     q_ << 2.0, -1.5, 1.0, 3.14, 2.18;
     v_.resize(nv);
     v_ << -.7, 10.6, 0.0, -1.0;
     x_.resize(nq+nv);
     x_ << q_, v_;
-    vector_ = make_unique<StateVector<double>>(q_, v_);
+    effort_.resize(nu);
+    effort_ << -2.5, 3.7;
+
+    vector_ = make_unique<OutputVector<double>>(q_, v_, effort_);
   }
 
   Eigen::VectorXd x_;
   Eigen::VectorXd q_;
   Eigen::VectorXd v_;
-  std::unique_ptr<StateVector<double>> vector_;
+  Eigen::VectorXd effort_;
+  std::unique_ptr<OutputVector<double>> vector_;
 };
 
-TEST_F(StateVectorTest, ValueChecks) {
+TEST_F(OutputVectorTest, ValueChecks) {
   ASSERT_EQ(q_, vector_->GetPositions());
 
   ASSERT_EQ(v_, vector_->GetVelocities());
@@ -46,14 +51,14 @@ TEST_F(StateVectorTest, ValueChecks) {
   ASSERT_EQ(x_, vector_->GetMutableState());
 }
 
-// TEST_F(StateVectorTest, NonMutableCheck) {
+// TEST_F(OutputVectorTest, NonMutableCheck) {
 //   auto data = vector_->CopyVectorNoTimestamp();
 //   ASSERT_EQ(input_value_, data);
 //   data(0) = 1;
 //   ASSERT_EQ(input_value_, vector_->get_data());
 // }
 
-TEST_F(StateVectorTest, MutableCheck) {
+TEST_F(OutputVectorTest, MutableCheck) {
   auto data = vector_->GetMutableState();
   data(0) = 1;
   ASSERT_EQ(1, vector_->GetState()(0));

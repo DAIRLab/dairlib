@@ -6,6 +6,8 @@ namespace dairlib {
 namespace systems {
 
 using drake::VectorX;
+using std::string;
+using std::vector;
 
 /// StateVector stores a position and state vector in a TimestampedVector
 /// Can be later extended if more information is desired in here
@@ -88,6 +90,14 @@ public:
     return Eigen::Map<VectorX<T>>(&data(0), data.size());
   }
 
+  void SetName(int index, string name) {
+    position_names_[index] = name;
+  }
+
+  string GetName(int index) {
+    return position_names_[index];
+  }
+
 protected:
   virtual StateVector<T>* DoClone() const {
     return new StateVector<T>(num_positions_, num_velocities_);
@@ -97,6 +107,7 @@ private:
   const int num_positions_;
   const int num_velocities_;
   const int position_start_;
+  vector<string> position_names_;
 };
 
 }  // namespace systems

@@ -17,13 +17,10 @@
 
 #include "cassie_controller_lcm.h"
 #include "dairlib/lcmt_cassie_state.hpp"
-
+#include "systems/primitives/subvector_pass_through.h"
 
 namespace drake{
-
-// Simple example which simulates the (passive) Acrobot.  Run drake-visualizer
-// to see the animated result.
-
+  using dairlib::systems::SubvectorPassThrough;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
@@ -90,9 +87,14 @@ int do_main(int argc, char* argv[]) {
   auto state_sender = builder.AddSystem<CassieStateSender>();
   state_pub->set_publish_period(1.0/200.0);
 
-
+  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
+    input_receiver->get_output_port(0).size(),
+    0,
+    input_receiver->get_output_port(0).size() - 1);
 
   builder.Connect(input_receiver->get_output_port(0),
+                  passthrough->get_input_port());
+  builder.Connect(passthrough->get_output_port(),
                   plant->get_input_port(0));
   builder.Connect(plant->state_output_port(), state_sender->get_input_port(0));
 

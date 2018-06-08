@@ -80,7 +80,7 @@ public:
 
   //sets the data part of the vector (without timestamp)
   void SetDataVector(const Eigen::Ref<const VectorX<T>>& value) {
-    this->get_mutable_data().head(timestep_index_) = value;
+    this->get_mutable_data() = value;
   }
 
  protected:

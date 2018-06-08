@@ -1,3 +1,5 @@
+package(default_visibility = ["//visibility:public"])
+
 load(
     "@drake//tools/skylark:drake_cc.bzl",
     "drake_cc_googletest",

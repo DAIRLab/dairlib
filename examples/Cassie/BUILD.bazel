@@ -130,6 +130,7 @@ cc_binary(
     data = glob(["urdf/**"]),
     deps = [
             ":cassie_pd_controller_lcm",
+            "//systems/primitives",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
@@ -167,5 +168,6 @@ cc_binary(
         "@drake//lcm",
         "@gflags",
         "cassie_pd_controller_lcm",
+        "//systems/primitives"
     ],
 )

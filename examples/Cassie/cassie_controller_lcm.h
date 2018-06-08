@@ -8,7 +8,7 @@
 #include "dairlib/lcmt_cassie_pd_config.hpp"
 #include "cassie_controller_lcm.h"
 
-namespace drake{
+namespace dairlib{
 
 using dairlib::systems::TimestampedVector;
 using Eigen::VectorXd;
@@ -22,14 +22,18 @@ using Eigen::VectorXd;
 /// Cassie states as a Context.
 class CassieStateReceiver : public systems::LeafSystem<double> {
  public:
-  CassieStateReceiver();
+  CassieStateReceiver(RigidBodyTree<double>& tree);
 
 
  private:
   void CopyStateOut(const systems::Context<double>& context,
                     TimestampedVector<double>* output) const;
-};
+  const RigidBodyTree<double>* tree_;
+  const map<string, int> positionIndexMap_;
+  const map<string, int> velocityIndexMap_;
 
+}
+namespace drake {
 class CassieInputReceiver : public systems::LeafSystem<double> {
  public:
   CassieInputReceiver();
@@ -38,6 +42,7 @@ class CassieInputReceiver : public systems::LeafSystem<double> {
  private:
   void CopyInputOut(const systems::Context<double>& context,
                     TimestampedVector<double>* output) const;
+  const RigidBodyTree<double>* tree_;
 };
 
 /// Receives the output of a controller controller, and outputs it as an LCM
@@ -50,6 +55,7 @@ class CassieCommandSender : public systems::LeafSystem<double> {
  private:
   void OutputCommand(const systems::Context<double>& context,
                      dairlib::lcmt_cassie_input* output) const;
+  const RigidBodyTree<double>* tree_;
 };
 
 class CassieStateSender : public systems::LeafSystem<double> {
@@ -60,6 +66,7 @@ class CassieStateSender : public systems::LeafSystem<double> {
  private:
   void OutputState(const systems::Context<double>& context,
                      dairlib::lcmt_cassie_state* output) const;
+  const RigidBodyTree<double>* tree_;
 };
 
 

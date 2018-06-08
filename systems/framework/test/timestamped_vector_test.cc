@@ -54,8 +54,8 @@ TEST_F(TimestampedVectorTest, MutableCheck) {
 }
 
 TEST_F(TimestampedVectorTest, SetCheck) {
-  auto vector2 = TimestampedVector<double>(input_value_.size());
-  vector2.SetDataVector(input_value);
+  auto vector2 = make_unique<TimestampedVector<double>>(input_value_.size());
+  vector2->SetDataVector(input_value_);
 
   ASSERT_EQ(vector_->get_data(), vector2->get_data());
 }

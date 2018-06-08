@@ -1,0 +1,19 @@
+# -*- python -*-
+
+load("@drake//tools:drake.bzl", "drake_cc_googletest", "drake_cc_library", "drake_cc_binary")
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "utils",
+    srcs = [
+        "rbt_utils.cc",
+    ],
+    hdrs = [
+        "rbt_utils.h"
+    ],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+    ],
+)

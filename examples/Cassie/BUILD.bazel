@@ -92,21 +92,7 @@ cc_binary(
 	        ]
 )
 
-cc_library(
-  name = "cassie_controller_lcm",
-  hdrs = [
-          "cassie_controller_lcm.h"
-          ],
-  srcs = ["cassie_controller_lcm.cc"],
-  deps = [
-        "//examples/Cassie/datatypes:cassie_names",
-        "//multibody:utils",
-        "@drake//systems/framework:leaf_system",
-        "@lcm",
-        "//lcmtypes:lcmt_cassie",
-        "//systems/framework:vector"
-        ]
-)
+
 
 cc_binary(
     name = "run_pd_controller",
@@ -114,7 +100,7 @@ cc_binary(
             "pd_controller.cc",
             "pd_controller.h",],
     deps = [
-            ":cassie_controller_lcm",
+            "//systems:robot_lcm_systems",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
@@ -127,7 +113,7 @@ cc_binary(
     srcs = ["cassie_state_visualizer.cc"],
     data = glob(["urdf/**"]),
     deps = [
-            ":cassie_controller_lcm",
+            "//systems:robot_lcm_systems",
             "//systems/primitives",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
@@ -142,7 +128,7 @@ cc_binary(
     name = "run_state_pub_test",
     srcs = ["run_state_pub_test.cc"],
     deps = [
-            ":cassie_controller_lcm",
+            "//systems:robot_lcm_systems",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",

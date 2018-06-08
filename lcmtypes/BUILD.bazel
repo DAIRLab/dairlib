@@ -25,7 +25,7 @@ package(default_visibility = ["//visibility:public"])
 
 #Lcm libraries
 drake_lcm_cc_library(
-    name = "lcmt_cassie",
+    name = "lcmt_robot",
     lcm_package = "dairlib",
     lcm_srcs = glob(["*.lcm"]),
 )

@@ -7,21 +7,22 @@
 #include "drake/systems/analysis/simulator.h"
 #include "systems/primitives/subvector_pass_through.h"
 
-#include "dairlib/lcmt_cassie_state.hpp"
-#include "cassie_controller_lcm.h"
-#include "datatypes/cassie_names.h"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "systems/robot_lcm_systems.h"
 
 namespace dairlib{
 
 using std::endl;
 using std::cout;
 using dairlib::systems::SubvectorPassThrough;
+using drake::systems::Simulator;
+using dairlib::systems::RobotOutputReceiver;
 
 int doMain() {
   RigidBodyTree<double> tree;
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
       "examples/Cassie/urdf/cassie_fixed_springs.urdf",
-      multibody::joints::kFixed, &tree);
+      drake::multibody::joints::kFixed, &tree);
 
 
   cout << endl << "****bodies****" << endl;
@@ -45,13 +46,13 @@ int doMain() {
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
-      drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_cassie_state>(channel_x, &lcm));
-  auto state_receiver = builder.AddSystem<CassieStateReceiver>(tree);
+      drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+  auto state_receiver = builder.AddSystem<RobotOutputReceiver>(tree);
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port(0));
 
 
-  auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
+  auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree, &lcm);
 
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
     state_receiver->get_output_port(0).size(),
@@ -76,7 +77,7 @@ int doMain() {
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice 
   /// Set realtime rate. Otherwise, runs as fast as possible
-  auto stepper = std::make_unique<systems::Simulator<double>>(*diagram, std::move(context));
+  auto stepper = std::make_unique<Simulator<double>>(*diagram, std::move(context));
   stepper->set_publish_every_time_step(false);
   stepper->set_publish_at_initialization(false);
   stepper->set_target_realtime_rate(1.0);
@@ -94,4 +95,4 @@ int doMain() {
 
 }
 
-int main() { return drake::doMain(); }
+int main() { return dairlib::doMain(); }

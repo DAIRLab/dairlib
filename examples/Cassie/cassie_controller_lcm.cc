@@ -1,10 +1,11 @@
 #include "datatypes/cassie_names.h"
+#include "multibody/rbt_utils.h"
 #include "cassie_controller_lcm.h"
 
-namespace drake{
+namespace dairlib{
 
 using std::string;
-using systems::Context;
+using drake::systems::Context;
 using dairlib::systems::TimestampedVector;
 using Eigen::VectorXd;
 
@@ -27,27 +28,37 @@ int getJointIndex(string joint) {
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for CassieStateReceiver.
-CassieStateReceiver::CassieStateReceiver() {
+CassieStateReceiver::CassieStateReceiver(RigidBodyTree<double>& tree) {
+  tree_ = &tree;
+  positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
+  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
   this->DeclareAbstractInputPort();
-  this->DeclareVectorOutputPort(TimestampedVector<double>(CASSIE_NUM_JOINTS*2),
+  this->DeclareVectorOutputPort(StateVector<double>(
+    tree.get_num_positions() + tree.get_num_velocities()),
    &CassieStateReceiver::CopyStateOut);
 }
 
 void CassieStateReceiver::CopyStateOut(
-    const Context<double>& context, TimestampedVector<double>* output) const {
+    const Context<double>& context, StateVector<double>* output) const {
   const systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& state_msg = input->GetValue<dairlib::lcmt_cassie_state>();
 
-  VectorXd state = VectorXd::Zero(2*CASSIE_NUM_JOINTS);
-  for (int i = 0; i < state_msg.num_joints; i++) {
-    int j = getJointIndex(state_msg.joint_names[i]);
-    state(j) = state_msg.position[i];
-    state(j + CASSIE_NUM_JOINTS) = state_msg.velocity[i];
+  VectorXd positions = VectorXd::Zero(tree_.get_num_positions());
+  for (int i = 0; i < state_msg.num_positions; i++) {
+    state(positionIndexMap_[state_msg.joint_names[i]]) = state_msg.position[i];
   }
+  VectorXd velocities = VectorXd::Zero(tree_.get_num_velocities());
+  for (int i = 0; i < state_msg.num_velocities; i++) {
+    state(velocityIndexMap_[state_msg.joint_names[i]]) = state_msg.velocity[i];
+  }
+  //todo
   output->SetDataVector(state);
   output->set_timestamp(state_msg.timestamp);
 }
+}
+
+namespace drake {
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for CassieInputReceiver.

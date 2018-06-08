@@ -3,9 +3,12 @@ package dairlib;
 struct lcmt_cassie_state
 {
   int64_t timestamp;
-  int32_t num_joints;
+  int32_t num_positions;
+  int32_t num_velocities;
 
-  string joint_names [num_joints];
-  double position [num_joints];
-  double velocity [num_joints];
+  string position_names [num_positions];
+  double position [num_positions];
+
+  string velocity_names [num_velocities];
+  double velocity [num_velocities];
 }

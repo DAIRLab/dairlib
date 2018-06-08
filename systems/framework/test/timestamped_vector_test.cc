@@ -53,7 +53,12 @@ TEST_F(TimestampedVectorTest, MutableCheck) {
   data(0) = input_value_(0);
 }
 
+TEST_F(TimestampedVectorTest, SetCheck) {
+  auto vector2 = TimestampedVector<double>(input_value_.size());
+  vector2.SetDataVector(input_value);
 
+  ASSERT_EQ(vector_->get_data(), vector2->get_data());
+}
 
 }  // namespace
 }  // namespace systems

@@ -5,6 +5,7 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
+#include "systems/primitives/subvector_pass_through.h"
 
 #include "dairlib/lcmt_cassie_state.hpp"
 #include "cassie_controller_lcm.h"
@@ -12,8 +13,9 @@
 
 namespace drake{
 
-  using std::endl;
-  using std::cout;
+using std::endl;
+using std::cout;
+using dairlib::systems::SubvectorPassThrough;
 
 int doMain() {
   RigidBodyTree<double> tree;
@@ -49,10 +51,17 @@ int doMain() {
 
   auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
 
+  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
+    state_receiver->get_output_port(0).size(),
+    0,
+    state_receiver->get_output_port(0).size() - 1);
+
   std::cout << state_receiver->get_output_port(0).size() << std::endl;
   std::cout << publisher->get_input_port(0).size() << std::endl;
   
   builder.Connect(state_receiver->get_output_port(0),
+                  passthrough->get_input_port());
+  builder.Connect(passthrough->get_output_port(),
                   publisher->get_input_port(0));
 
 

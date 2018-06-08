@@ -37,7 +37,6 @@ void CassiePDController::CalcControl(const Context<double>& context, Timestamped
       u(i) = config->getKp(i)*(config->getDesiredPosition(i) - state(i)) +
              config->getKd(i)*(config->getDesiredVelocity(i) - state(i + num_joints_));
     }
-
     output->SetDataVector(u);
     output->set_timestamp(state_timestamped->get_timestamp());
 }

@@ -92,31 +92,29 @@ cc_binary(
 	        ]
 )
 
-
-
 cc_library(
-  name = "cassie_pd_controller_lcm",
+  name = "cassie_controller_lcm",
   hdrs = [
-          "cassie_controller_lcm.h",
-          "pd_controller.h",
+          "cassie_controller_lcm.h"
           ],
-  srcs = ["cassie_controller_lcm.cc",
-          "pd_controller.cc"],
+  srcs = ["cassie_controller_lcm.cc"],
   deps = [
-          "//examples/Cassie/datatypes:cassie_names",
-          "@drake//systems/framework:leaf_system",
-          "@lcm",
-          "//lcmtypes:lcmt_cassie",
-          "//systems/framework:vector"
-          ]
+        "//examples/Cassie/datatypes:cassie_names",
+        "//multibody:utils",
+        "@drake//systems/framework:leaf_system",
+        "@lcm",
+        "//lcmtypes:lcmt_cassie",
+        "//systems/framework:vector"
+        ]
 )
-
 
 cc_binary(
     name = "run_pd_controller",
-    srcs = ["run_pd_controller.cc"],
+    srcs = ["run_pd_controller.cc",
+            "pd_controller.cc",
+            "pd_controller.h",],
     deps = [
-            ":cassie_pd_controller_lcm",
+            ":cassie_controller_lcm",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
@@ -129,7 +127,7 @@ cc_binary(
     srcs = ["cassie_state_visualizer.cc"],
     data = glob(["urdf/**"]),
     deps = [
-            ":cassie_pd_controller_lcm",
+            ":cassie_controller_lcm",
             "//systems/primitives",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
@@ -144,7 +142,7 @@ cc_binary(
     name = "run_state_pub_test",
     srcs = ["run_state_pub_test.cc"],
     deps = [
-            ":cassie_pd_controller_lcm",
+            ":cassie_controller_lcm",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
@@ -167,7 +165,7 @@ cc_binary(
         "@drake//solvers",
         "@drake//lcm",
         "@gflags",
-        "cassie_pd_controller_lcm",
+        "cassie_controller_lcm",
         "//systems/primitives"
     ],
 )

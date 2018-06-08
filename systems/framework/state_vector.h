@@ -35,11 +35,13 @@ public:
   }
 
   void SetPositions(VectorX<T> positions) {
-    this->get_mutable_data().segment(position_start_, num_positions_) = positions;
+    this->get_mutable_data().segment(position_start_,
+                                     num_positions_) = positions;
   }
 
   void SetVelocities(VectorX<T> velocities) {
-    this->get_mutable_data().segment(num_positions_, num_velocities_) = velocities;
+    this->get_mutable_data().segment(position_start_ + num_positions_,
+                                     num_velocities_) = velocities;
   }
 
   void SetPositionAtIndex(int index, T value) {
@@ -47,7 +49,7 @@ public:
   }
 
   void SetVelocityAtIndex(int index, T value) {
-    this->SetAtIndex(num_positions_ + index, value);
+    this->SetAtIndex(position_start_ + num_positions_ + index, value);
   }
 
   void SetState(VectorX<T> state) {
@@ -68,7 +70,8 @@ public:
 
   /// Returns a const velocities vector
   const VectorX<T> GetVelocities() {
-    return this->get_data().segment(num_positions_, num_velocities_);
+    return this->get_data().segment(position_start_ + num_positions_,
+                                    num_velocities_);
   }
 
   /// Returns a mutable state vector
@@ -86,9 +89,19 @@ public:
 
   /// Returns a mutable velocities vector
   Eigen::Map<VectorX<T>> GetMutableVelocities() {
-    auto data = this->get_mutable_data().segment(num_positions_, num_velocities_);
+    auto data = this->get_mutable_data().segment(
+        position_start_ + num_positions_, num_velocities_);
     return Eigen::Map<VectorX<T>>(&data(0), data.size());
   }
+
+  T GetPositionAtIndex(int index) const {
+    return this->GetAtIndex(position_start_ + index);
+  }
+
+  T GetVelocityAtIndex(int index) const {
+    return this->GetAtIndex(position_start_ + num_positions_ + index);
+  }
+
 
   void SetName(int index, string name) {
     position_names_[index] = name;

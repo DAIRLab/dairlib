@@ -11,7 +11,7 @@
 #include "cassie_controller_lcm.h"
 #include "datatypes/cassie_names.h"
 
-namespace drake{
+namespace dairlib{
 
 using std::endl;
 using std::cout;
@@ -19,32 +19,34 @@ using dairlib::systems::SubvectorPassThrough;
 
 int doMain() {
   RigidBodyTree<double> tree;
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("examples/Cassie/urdf/cassie_fixed_springs.urdf", multibody::joints::kFixed, &tree);
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf",
+      multibody::joints::kFixed, &tree);
 
 
-  std::cout << "bodies" << std::endl;
+  cout << endl << "****bodies****" << endl;
   for (int i = 0; i < tree.get_num_bodies(); i++)
     cout << tree.getBodyOrFrameName(i) << endl;
-  std::cout << "actuators" << std::endl;
+  cout << endl << "****actuators****" << endl;
   for (int i = 0; i < tree.get_num_actuators(); i++)
     cout << tree.actuators[i].name_ << endl;
-  std::cout << "positions" << std::endl;
+  cout << endl << "****positions****" << endl;
   for (int i = 0; i < tree.get_num_positions(); i++)
     cout << tree.get_position_name(i) << endl;
-  std::cout << "velocities" << std::endl;
+  cout << endl << "****velocities****" << endl;
   for (int i = 0; i < tree.get_num_velocities(); i++)
     cout << tree.get_velocity_name(i) << endl;
 
 
   drake::systems::DiagramBuilder<double> builder;
-  lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm;
 
   const std::string channel_x = "CASSIE_STATE";
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
-      systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_cassie_state>(channel_x, &lcm));
-  auto state_receiver = builder.AddSystem<CassieStateReceiver>();
+      drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_cassie_state>(channel_x, &lcm));
+  auto state_receiver = builder.AddSystem<CassieStateReceiver>(tree);
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port(0));
 
@@ -56,8 +58,8 @@ int doMain() {
     0,
     state_receiver->get_output_port(0).size() - 1);
 
-  std::cout << state_receiver->get_output_port(0).size() << std::endl;
-  std::cout << publisher->get_input_port(0).size() << std::endl;
+  cout << state_receiver->get_output_port(0).size() << endl;
+  cout << publisher->get_input_port(0).size() << endl;
   
   builder.Connect(state_receiver->get_output_port(0),
                   passthrough->get_input_port());

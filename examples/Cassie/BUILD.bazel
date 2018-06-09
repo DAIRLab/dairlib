@@ -18,6 +18,11 @@ load(
 )
 
 cc_library(
+  name = "cassie_urdf",
+  data = glob(["urdf/**"]),
+)
+
+cc_library(
 	name = "polling_interface",
 	hdrs = [":polling_interface.h"]
 )
@@ -94,32 +99,18 @@ cc_binary(
 
 
 
-cc_library(
-  name = "cassie_pd_controller_lcm",
-  hdrs = [
-          "cassie_controller_lcm.h",
-          "pd_controller.h",
-          ],
-  srcs = ["cassie_controller_lcm.cc",
-          "pd_controller.cc"],
-  deps = [
-          "//examples/Cassie/datatypes:cassie_names",
-          "@drake//systems/framework:leaf_system",
-          "@lcm",
-          "//lcmtypes:lcmt_cassie",
-          "//systems/framework:vector"
-          ]
-)
-
-
 cc_binary(
     name = "run_pd_controller",
     srcs = ["run_pd_controller.cc"],
     deps = [
-            ":cassie_pd_controller_lcm",
+            "//systems:robot_lcm_systems",
+            "//systems/controllers",
+            "//systems/controllers:pd_config_lcm",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
+            "@drake//multibody:rigid_body_tree",
+            "@drake//manipulation/util",
             "@drake//lcm"
             ]
 )
@@ -127,9 +118,10 @@ cc_binary(
 cc_binary(
     name = "cassie_state_visualizer",
     srcs = ["cassie_state_visualizer.cc"],
-    data = glob(["urdf/**"]),
     deps = [
-            ":cassie_pd_controller_lcm",
+            "//systems:robot_lcm_systems",
+            "//systems/primitives",
+            ":cassie_urdf",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
@@ -140,23 +132,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_state_pub_test",
-    srcs = ["run_state_pub_test.cc"],
-    deps = [
-            ":cassie_pd_controller_lcm",
-            "@drake//systems/framework:diagram_builder",
-            "@drake//systems/lcm:lcm_pubsub_system",
-            "@drake//systems/analysis:simulator",
-            "@drake//systems/primitives:sine",
-            "@drake//lcm"
-            ]
-)
-
-
-cc_binary(
     name = "run_simple_sim",
     srcs = ["run_simple_sim.cc"],
-    data = glob(["urdf/**"]),
     deps = [
         "@drake//multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
@@ -166,6 +143,8 @@ cc_binary(
         "@drake//solvers",
         "@drake//lcm",
         "@gflags",
-        "cassie_pd_controller_lcm",
+        ":cassie_urdf",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives"
     ],
 )

@@ -1,0 +1,34 @@
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:drake_cc.bzl",
+    "drake_cc_googletest",
+    "drake_cc_library",
+    "drake_cc_package_library",
+)
+
+cc_library(
+    name = "primitives",
+    srcs = ["subvector_pass_through.cc"],
+    hdrs = [
+        "subvector_pass_through.h",
+        "subvector_pass_through-inl.h",
+    ],
+    deps = [
+        "@drake//systems/framework",
+    ],
+)
+
+cc_test(
+    name = "subvector_pass_through_test",
+    srcs = [
+        "test/subvector_pass_through_test.cc",
+    ],
+    deps = [
+        ":primitives",
+        "@drake//common/test_utilities:eigen_matrix_compare",
+        "@drake//systems/framework",
+        "@drake//systems/framework/test_utilities",
+    ],
+    size = "small"
+)

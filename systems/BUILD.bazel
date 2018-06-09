@@ -1,0 +1,16 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+  name = "robot_lcm_systems",
+  hdrs = [
+          "robot_lcm_systems.h"
+          ],
+  srcs = ["robot_lcm_systems.cc"],
+  deps = [
+        "//multibody:utils",
+        "@drake//systems/framework:leaf_system",
+        "@lcm",
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector"
+        ]
+)

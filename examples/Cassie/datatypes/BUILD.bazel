@@ -60,6 +60,6 @@ cc_library(
 	        ":cassie_out_t",
 	        ":cassie_user_in_t",
 	        ":cassie_names",
-	        "//lcmtypes:lcmt_cassie"
+	        "//lcmtypes:lcmt_robot"
 	        ]
 )

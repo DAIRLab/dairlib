@@ -3,7 +3,7 @@ py_binary(
   srcs = ["drake-director.py"],
   main = "drake-director.py",
   deps = ["@director//:visualizer-bin",
-          "//lcmtypes:lcmtypes_cassie_py"]
+          "//lcmtypes:lcmtypes_robot_py"]
 )
 
 

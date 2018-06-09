@@ -5,24 +5,25 @@ namespace systems{
 
 using std::string;
 using drake::systems::Context;
-using systems::StateVector;
+using systems::OutputVector;
 using Eigen::VectorXd;
 using drake::systems::LeafSystem;
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputReceiver.
-RobotOutputReceiver::RobotOutputReceiver(RigidBodyTree<double>& tree) {
+RobotOutputReceiver::RobotOutputReceiver(const RigidBodyTree<double>& tree) {
   tree_ = &tree;
   positionIndexMap_ = multibody::utils::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::utils::makeNameToVelocitiesMap(tree);
   this->DeclareAbstractInputPort();
-  this->DeclareVectorOutputPort(StateVector<double>(
-    tree.get_num_positions(), tree.get_num_velocities()),
+  this->DeclareVectorOutputPort(OutputVector<double>(
+    tree.get_num_positions(), tree.get_num_velocities(),
+    tree.get_num_actuators()),
     &RobotOutputReceiver::CopyOutput);
 }
 
 void RobotOutputReceiver::CopyOutput(
-    const Context<double>& context, StateVector<double>* output) const {
+    const Context<double>& context, OutputVector<double>* output) const {
   const drake::systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& state_msg = input->GetValue<dairlib::lcmt_robot_output>();
@@ -46,21 +47,20 @@ void RobotOutputReceiver::CopyOutput(
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputSender.
 
-RobotOutputSender::RobotOutputSender(RigidBodyTree<double>& tree) {
+RobotOutputSender::RobotOutputSender(const RigidBodyTree<double>& tree) {
   tree_ = &tree;
   positionIndexMap_ = multibody::utils::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::utils::makeNameToVelocitiesMap(tree);
 
-  this->DeclareVectorInputPort(StateVector<double>(tree.get_num_positions(),
-                                                   tree.get_num_velocities()));
+  state_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
+      tree.get_num_positions() + tree.get_num_velocities())).get_index();
   this->DeclareAbstractOutputPort(&RobotOutputSender::Output);
 }
 
 /// Populate a state message with all states
 void RobotOutputSender::Output(const Context<double>& context,
                                          dairlib::lcmt_robot_output* state_msg) const {
-  const StateVector<double>* state =
-      (StateVector<double>*) this->EvalVectorInput(context, 0);
+  const auto state = this->EvalVectorInput(context, state_input_port_);
 
   //using the time from the context
   state_msg->timestamp = context.get_time()*1e6;
@@ -76,21 +76,20 @@ void RobotOutputSender::Output(const Context<double>& context,
   state_msg->velocity.resize(nv);
 
   for (int i = 0; i < nq; i++) {
-    state_msg->position[i] = state->GetPositionAtIndex(i);
+    state_msg->position[i] = state->GetAtIndex(i);
     state_msg->position_names[i] = tree_->get_position_name(i);
   }
   for (int i = 0; i < nv; i++) {
-    state_msg->velocity[i] = state->GetVelocityAtIndex(i);
+    state_msg->velocity[i] = state->GetAtIndex(nq + i);
     state_msg->velocity_names[i] = tree_->get_velocity_name(i);
   }
 }
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotInputReceiver.
-RobotInputReceiver::RobotInputReceiver(RigidBodyTree<double>& tree) {
+RobotInputReceiver::RobotInputReceiver(const RigidBodyTree<double>& tree) {
   tree_ = &tree;
   actuatorIndexMap_ = multibody::utils::makeNameToActuatorsMap(tree);
-
   this->DeclareAbstractInputPort();
   this->DeclareVectorOutputPort(TimestampedVector<double>(
       tree.get_num_actuators()), &RobotInputReceiver::CopyInputOut);
@@ -116,7 +115,7 @@ void RobotInputReceiver::CopyInputOut(
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotCommandSender.
 
-RobotCommandSender::RobotCommandSender(RigidBodyTree<double>& tree) {
+RobotCommandSender::RobotCommandSender(const RigidBodyTree<double>& tree) {
   tree_ = &tree;
   actuatorIndexMap_ = multibody::utils::makeNameToActuatorsMap(tree);
 

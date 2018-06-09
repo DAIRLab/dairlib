@@ -1,4 +1,3 @@
-load("@drake//tools:drake.bzl", "drake_cc_googletest", "drake_cc_library", "drake_cc_binary")
 load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
@@ -8,9 +7,10 @@ cc_library(
     srcs = ["pd_config_lcm.cc"],
     hdrs = ["pd_config_lcm.h"],
     deps = [
-            "//multibody:utils",
+            "@drake//manipulation/util",
             "@drake//systems/framework:leaf_system",
             "@lcm",
+            "//multibody:utils",
             "//lcmtypes:lcmt_robot",
             "//systems/framework:vector",
             ":controllers"
@@ -25,4 +25,19 @@ cc_library(
             "//systems/framework:vector",
             "@drake//systems/framework:leaf_system",
             ]
+)
+
+cc_test(
+    name = "pd_config_lcm_test",
+    srcs = ["test/pd_config_lcm_test.cc"],
+    deps = [
+            ":pd_config_lcm",
+            "//examples/Cassie:cassie_urdf",
+            "@drake//multibody:rigid_body_tree",
+            "@drake//multibody/parsers",
+            "@drake//manipulation/util",
+            "@gtest//:main",
+            "@drake//systems/framework/test_utilities",
+            ],
+    size = "small"
 )

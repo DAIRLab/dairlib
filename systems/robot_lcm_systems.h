@@ -1,7 +1,7 @@
 #pragma once
 
 #include "drake/systems/framework/leaf_system.h"
-#include "systems/framework/state_vector.h"
+#include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 #include "multibody/rbt_utils.h"
 
@@ -11,7 +11,7 @@
 namespace dairlib{
 namespace systems{
 
-using systems::StateVector;
+using systems::OutputVector;
 using systems::TimestampedVector;
 using Eigen::VectorXd;
 using drake::systems::LeafSystem;
@@ -26,23 +26,27 @@ using drake::systems::Context;
 /// robot states as a OutputVector.
 class RobotOutputReceiver : public LeafSystem<double> {
  public:
-  RobotOutputReceiver(RigidBodyTree<double>& tree);
+  RobotOutputReceiver(const RigidBodyTree<double>& tree);
 
 
  private:
   void CopyOutput(const Context<double>& context,
-                    StateVector<double>* output) const;
+                    OutputVector<double>* output) const;
   const RigidBodyTree<double>* tree_;
   map<string, int> positionIndexMap_;
   map<string, int> velocityIndexMap_;
 };
 
 
-/// Converts a StateVector object to LCM type lcmt_robot_output
+/// Converts a OutputVector object to LCM type lcmt_robot_output
 class RobotOutputSender : public LeafSystem<double> {
  public:
-  RobotOutputSender(RigidBodyTree<double>& tree);
+  RobotOutputSender(const RigidBodyTree<double>& tree);
 
+  const drake::systems::InputPortDescriptor<double>& get_input_port_state()
+      const {
+    return this->get_input_port(state_input_port_);
+  }
 
  private:
   void Output(const Context<double>& context,
@@ -50,6 +54,7 @@ class RobotOutputSender : public LeafSystem<double> {
   const RigidBodyTree<double>* tree_;
   map<string, int> positionIndexMap_;
   map<string, int> velocityIndexMap_;
+  int state_input_port_;
 };
 
 /// Receives the output of an LcmSubsriberSystem that subsribes to the
@@ -57,7 +62,7 @@ class RobotOutputSender : public LeafSystem<double> {
 /// robot inputs as a TimestampedVector.
 class RobotInputReceiver : public LeafSystem<double> {
  public:
-  RobotInputReceiver(RigidBodyTree<double>& tree);
+  RobotInputReceiver(const RigidBodyTree<double>& tree);
 
 
  private:
@@ -72,9 +77,9 @@ class RobotInputReceiver : public LeafSystem<double> {
 /// Receives the output of a controller, and outputs it as an LCM
 /// message with type lcm_robot_u. Its output port is usually connected to
 /// an LcmPublisherSystem to publish the messages it generates.
-class RobotCommandSender : LeafSystem<double> {
+class RobotCommandSender : public LeafSystem<double> {
  public:
-  RobotCommandSender(RigidBodyTree<double>& tree);
+  RobotCommandSender(const RigidBodyTree<double>& tree);
 
  private:
   void OutputCommand(const Context<double>& context,

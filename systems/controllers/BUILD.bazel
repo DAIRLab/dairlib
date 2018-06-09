@@ -1,0 +1,43 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "pd_config_lcm",
+    srcs = ["pd_config_lcm.cc"],
+    hdrs = ["pd_config_lcm.h"],
+    deps = [
+            "@drake//manipulation/util",
+            "@drake//systems/framework:leaf_system",
+            "@lcm",
+            "//multibody:utils",
+            "//lcmtypes:lcmt_robot",
+            "//systems/framework:vector",
+            ":controllers"
+            ]
+)
+
+cc_library(
+    name = "controllers",
+    srcs = ["linear_controller.cc",],
+    hdrs = ["linear_controller.h"],
+    deps = [
+            "//systems/framework:vector",
+            "@drake//systems/framework:leaf_system",
+            ]
+)
+
+cc_test(
+    name = "pd_config_lcm_test",
+    srcs = ["test/pd_config_lcm_test.cc"],
+    deps = [
+            ":pd_config_lcm",
+            "//examples/Cassie:cassie_urdf",
+            "@drake//multibody:rigid_body_tree",
+            "@drake//multibody/parsers",
+            "@drake//manipulation/util",
+            "@gtest//:main",
+            "@drake//systems/framework/test_utilities",
+            ],
+    size = "small"
+)

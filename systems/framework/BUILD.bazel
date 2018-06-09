@@ -1,6 +1,5 @@
 # -*- python -*-
 
-
 load("@drake//tools:drake.bzl", "drake_cc_googletest", "drake_cc_library", "drake_cc_binary")
 load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
@@ -10,9 +9,11 @@ cc_library(
     name = "vector",
     srcs = [
         "timestamped_vector.cc",
+        "output_vector.cc"
     ],
     hdrs = [
         "timestamped_vector.h",
+        "output_vector.h",
     ],
     deps = [
         "@drake//systems/framework:vector",
@@ -22,4 +23,33 @@ cc_library(
         "@drake//common:essential",
         "@drake//common:symbolic",
     ],
+)
+
+cc_test(
+    name = "timestamped_vector_test",
+    srcs = [
+        "test/timestamped_vector_test.cc",
+    ],
+    deps = [
+        ":vector",
+        "@drake//systems/framework",
+        "@drake//systems/framework/test_utilities",
+        "@gtest//:main"
+    ],
+    size = "small"
+)
+
+
+cc_test(
+    name = "state_vector_test",
+    srcs = [
+        "test/state_vector_test.cc",
+    ],
+    deps = [
+        ":vector",
+        "@drake//systems/framework",
+        "@drake//systems/framework/test_utilities",
+        "@gtest//:main"
+    ],
+    size = "small"
 )

@@ -738,7 +738,7 @@
   </joint> 
 
 
-  <joint name="knee_motor_left" type="revolute">
+  <joint name="knee_left" type="revolute">
     <origin xyz="0.12 0 0.0045" rpy="0 0 0" />
     <parent link="thigh_left" />
     <child link="knee_left" />
@@ -747,7 +747,7 @@
     <dynamics damping="0.01" /> <!-- made up value actual:<dynamics damping="1.10" /> -->
   </joint>
 
-  <joint name="knee_motor_right" type="revolute">
+  <joint name="knee_right" type="revolute">
     <origin xyz="0.12 0 -0.0045" rpy="0 0 0" />
     <parent link="thigh_right" />
     <child link="knee_right" />
@@ -912,13 +912,13 @@
 
   <transmission name="knee_left_trans" type="transmission_interface/SimpleTransmission">
     <actuator name="knee_left_motor"/>
-    <joint name="knee_motor_left"/>
+    <joint name="knee_left"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 
   <transmission name="knee_right_trans" type="transmission_interface/SimpleTransmission">
     <actuator name="knee_right_motor"/>
-    <joint name="knee_motor_right"/>
+    <joint name="knee_right"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 

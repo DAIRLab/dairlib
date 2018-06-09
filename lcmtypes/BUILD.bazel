@@ -31,14 +31,14 @@ drake_lcm_cc_library(
 )
 
 drake_lcm_java_library(
-    name = "lcmtypes_cassie_java",
+    name = "lcmtypes_robot_java",
     lcm_package = "dairlib",
     lcm_srcs = glob(["*.lcm"]),
     deps = ["@lcmtypes_bot2_core//:lcmtypes_bot2_core_java"],
 )
 
 drake_lcm_py_library(
-    name = "lcmtypes_cassie_py",
+    name = "lcmtypes_robot_py",
     add_current_package_to_imports = True,  # Use //:module_py instead.
     extra_srcs = ["__init__.py"],
     lcm_package = "dairlib",
@@ -50,12 +50,12 @@ drake_lcm_py_library(
 )
 
 drake_java_binary(
-    name = "cassie-lcm-spy",
+    name = "dair-lcm-spy",
     main_class = "lcm.spy.Spy",
     visibility = ["//visibility:private"],
     runtime_deps = [
         "@drake//lcmtypes:lcmtypes_drake_java",
-        ":lcmtypes_cassie_java",
+        ":lcmtypes_robot_java",
         "@lcmtypes_bot2_core//:lcmtypes_bot2_core_java",
         "@lcmtypes_robotlocomotion//:lcmtypes_robotlocomotion_java",
         "@optitrack_driver//lcmtypes:lcmtypes_optitrack",

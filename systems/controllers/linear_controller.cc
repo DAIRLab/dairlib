@@ -6,7 +6,7 @@ namespace systems{
 LinearController::LinearController(int num_positions, int num_velocities,
                                    int num_inputs) {
 
-  state_input_port_ = this->DeclareVectorInputPort(
+  output_input_port_ = this->DeclareVectorInputPort(
       OutputVector<double>(num_positions, num_velocities,
                            num_inputs)).get_index();
 
@@ -20,12 +20,12 @@ LinearController::LinearController(int num_positions, int num_velocities,
 void LinearController::CalcControl(const Context<double>& context,
                                   TimestampedVector<double>* control) const {
     const OutputVector<double>* output = (OutputVector<double>*)
-        this->EvalVectorInput(context, state_input_port_);
+        this->EvalVectorInput(context, output_input_port_);
 
     const LinearConfig* config = dynamic_cast<const LinearConfig*>(
         this->EvalVectorInput(context, config_input_port_));
-    VectorXd u = config->getK() *
-        (config->getDesiredState() - output->GetState());
+    VectorXd u = config->GetK() *
+        (config->GetDesiredState() - output->GetState());
 
     control->SetDataVector(u);
     control->set_timestamp(output->get_timestamp());

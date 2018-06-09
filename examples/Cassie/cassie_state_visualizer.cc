@@ -21,7 +21,7 @@ using dairlib::systems::RobotOutputReceiver;
 int doMain() {
   RigidBodyTree<double> tree;
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf",
+      "examples/Cassie/urdf/cassie.urdf",
       drake::multibody::joints::kFixed, &tree);
 
 
@@ -57,11 +57,8 @@ int doMain() {
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
     state_receiver->get_output_port(0).size(),
     0,
-    state_receiver->get_output_port(0).size() - 1);
+    publisher->get_input_port(0).size());
 
-  cout << state_receiver->get_output_port(0).size() << endl;
-  cout << publisher->get_input_port(0).size() << endl;
-  
   builder.Connect(state_receiver->get_output_port(0),
                   passthrough->get_input_port());
   builder.Connect(passthrough->get_output_port(),

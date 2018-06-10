@@ -4,13 +4,13 @@ extern "C" {
 #include "cassie_out_t.h"
 #include "cassie_user_in_t.h"
 }
-#include "dairlib/lcmt_cassie_state.hpp"
-#include "dairlib/lcmt_cassie_input.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_robot_input.hpp"
 typedef cassie_user_in_t cassie_dispatch_robot_in_t;
 typedef cassie_out_t cassie_dispatch_robot_out_t;
 //placeholders
-typedef dairlib::lcmt_cassie_state cassie_dispatch_lcm_in_t;
-typedef dairlib::lcmt_cassie_input cassie_dispatch_lcm_out_t;
+typedef dairlib::lcmt_robot_output cassie_dispatch_lcm_in_t;
+typedef dairlib::lcmt_robot_input cassie_dispatch_lcm_out_t;
 typedef int cassie_dispatch_director_in_t;
 typedef int cassie_dispatch_director_out_t;
 typedef int cassie_dispatch_robot_state_t;

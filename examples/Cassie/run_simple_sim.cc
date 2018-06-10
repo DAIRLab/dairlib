@@ -120,10 +120,36 @@ std::cout << "b" << std::endl;
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
 
+  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(
+      plant->get_rigid_body_tree().get_num_positions() +
+      plant->get_rigid_body_tree().get_num_velocities());
+  std::map<std::string, int>  map =
+      plant->get_rigid_body_tree().computePositionNameToIndexMap();
+  x0(map.at("hip_pitch_left")) = .269;
+  x0(map.at("hip_pitch_right")) = .269;
+  x0(map.at("achilles_hip_pitch_left")) = -.44;
+  x0(map.at("achilles_hip_pitch_right")) = -.44;
+  x0(map.at("achilles_heel_pitch_left")) = -.105;
+  x0(map.at("achilles_heel_pitch_right")) = -.105;
+  x0(map.at("knee_left")) = -.644;
+  x0(map.at("knee_right")) = -.644;
+  x0(map.at("ankle_joint_left")) = .792;
+  x0(map.at("ankle_joint_right")) = .792;
+
+  x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
+  x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
+
+  x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
+  x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
+
+  x0(map.at("toe_left")) = -60.0*M_PI/180.0;
+  x0(map.at("toe_right")) = -60.0*M_PI/180.0;
+
+
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
     std::cout << "Continuous " << state.size() << std::endl;
-    state.SetFromVector(Eigen::VectorXd::Zero(state.size()));
+    state.SetFromVector(x0);
     // state[4] = 1;
     // state[3] = 0;
     // state[4] = 0;
@@ -131,7 +157,7 @@ std::cout << "b" << std::endl;
     std::cout << "ngroups "<< context.get_num_discrete_state_groups() <<  std::endl;
     drake::systems::BasicVector<double>& state = context.get_mutable_discrete_state(0); 
     std::cout << "Discrete " << state.size() << std::endl;
-    state.SetFromVector(Eigen::VectorXd::Zero(state.size()));
+    state.SetFromVector(x0);
     // state[4] = 1;
     // state[3] = 0;
     // state[4] = 0;

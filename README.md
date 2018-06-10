@@ -9,7 +9,7 @@ Install Drake from source into `"my-workspace"/drake` http://drake.mit.edu/from_
 ### Build dairlib
 1. Clone `dairlib` into the same root directory, "my-workspace/dairlib"
 ```
-git clone https://github.com/DAIRLab/director.git
+git clone https://github.com/DAIRLab/dairlib.git
 ```
 
 2. Build what you want via Bazel. From `dairlib`, `bazel build ...` will build the entire project. Drake will be built as an external dependency.

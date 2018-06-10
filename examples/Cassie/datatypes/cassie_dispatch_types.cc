@@ -3,11 +3,11 @@
 
 cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot_out)
 {
-  const int CASSIE_NUM_JOINTS = cassieJointNames.size();
+  /*const int CASSIE_NUM_JOINTS = cassieJointNames.size();*/
 
   cassie_dispatch_lcm_in_t lcm_in = cassie_dispatch_lcm_in_t();
 
-  lcm_in.joint_names.resize(CASSIE_NUM_JOINTS);
+  /*lcm_in.joint_names.resize(CASSIE_NUM_JOINTS);
   lcm_in.position.resize(CASSIE_NUM_JOINTS);
   lcm_in.velocity.resize(CASSIE_NUM_JOINTS);
 
@@ -36,7 +36,7 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
   lcm_in.velocity[6] = robot_out.rightLeg.hipYawDrive.velocity;
   lcm_in.velocity[7] = robot_out.rightLeg.hipPitchDrive.velocity;
   lcm_in.velocity[8] = robot_out.rightLeg.kneeDrive.velocity;
-  lcm_in.velocity[9] = robot_out.rightLeg.footDrive.velocity;
+  lcm_in.velocity[9] = robot_out.rightLeg.footDrive.velocity;*/
 
   return lcm_in;
 }
@@ -45,11 +45,11 @@ cassie_dispatch_robot_in_t CassieLcmOutToRobotIn(cassie_dispatch_lcm_out_t lcm_o
 {
   cassie_dispatch_robot_in_t robot_in = cassie_dispatch_robot_in_t();
 
-  const int CASSIE_NUM_JOINTS = cassieJointNames.size();
+  /*const int CASSIE_NUM_JOINTS = cassieJointNames.size();
 
   for (int i = 0; i < CASSIE_NUM_JOINTS; i++) {
     robot_in.torque[i] = lcm_out.inputs[i];
-  }
+  }*/
 
   return robot_in;
 }

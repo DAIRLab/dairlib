@@ -1178,14 +1178,14 @@
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 
-  <transmission name="toe_left_trans" type="transmission_interface/SimpleTransmission">
-    <actuator name="toe_left_motor"/>
+  <transmission name="toe_crank_left_trans" type="transmission_interface/SimpleTransmission">
+    <actuator name="toe_crank_left_motor"/>
     <joint name="toe_crank_left"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 
-  <transmission name="toe_right_trans" type="transmission_interface/SimpleTransmission">
-    <actuator name="toe_right_motor"/>
+  <transmission name="toe_crank_right_trans" type="transmission_interface/SimpleTransmission">
+    <actuator name="toe_crank_right_motor"/>
     <joint name="toe_crank_right"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>

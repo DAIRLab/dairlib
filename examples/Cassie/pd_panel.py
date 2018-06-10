@@ -23,8 +23,8 @@ joint_names = [
     "hip_pitch_right_motor",
     "knee_left_motor",
     "knee_right_motor",
-    "toe_left_motor",
-    "toe_right_motor"]
+    "toe_crank_left_motor",
+    "toe_crank_right_motor"]
 
 position_names = [
     "hip_roll_left",
@@ -35,12 +35,12 @@ position_names = [
     "hip_pitch_right",
     "knee_left",
     "knee_right",
-    "toe_left",
-    "toe_right"]
+    "toe_crank_left",
+    "toe_crank_right"]
 
 joint_default = [0,0,0,0,0,0,0,0,0,0]
-kp_default = [0,0,0,0,0,0,0,0,0,0]
-kd_default = [0,0,0,0,0,0,0,0,0,0]
+kp_default = [20,20,20,20,20,20,20,20,2,2]
+kd_default = [5,5,5,5,5,5,5,5,1,1]
 
 
 class ControllerGui(QWidget):
@@ -56,7 +56,7 @@ class ControllerGui(QWidget):
         labels = []
         self.values = []
         self.ledits = []
-        for name in joint_names:
+        for name in position_names:
             labels.append(QLabel(name))
             self.values.append(0)
             self.ledits.append(QDoubleSpinBox())
@@ -151,11 +151,14 @@ class ControllerGui(QWidget):
         self.lc.handle_timeout(100)
     def state_handler(self, channel, data):
         msg = dairlib.lcmt_robot_output.decode(data)
-        for joint in msg.position_names:
+        for idx_msg, joint in enumerate(msg.position_names):
             if joint in position_names:
                 idx = position_names.index(joint)
-                self.ledits[idx].setValue(msg.position[idx])
-                self.values[idx] = msg.position[idx]
+                self.ledits[idx].setValue(msg.position[idx_msg])
+                self.values[idx] = msg.position[idx_msg]
+                print("Joint: " + joint + " idx: " + str(idx))
+            else:
+                print("Could not find joint " + joint)
 
 
 panel = ControllerGui()

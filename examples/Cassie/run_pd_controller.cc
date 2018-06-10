@@ -24,7 +24,7 @@ int doMain() {
 
   RigidBodyTree<double> tree;
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "examples/Cassie/urdf/cassie.urdf",
+      "examples/Cassie/urdf/cassie_v2.urdf",
       drake::multibody::joints::kFixed, &tree);
 
   const std::string channel_x = "CASSIE_STATE";

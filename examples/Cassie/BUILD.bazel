@@ -72,6 +72,16 @@ cc_library(
 	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
 )
 
+cc_library(
+	name = "cassie_udp_spoofer",
+	hdrs = [":cassie_udp_spoofer.h"],
+	srcs = ["cassie_udp_spoofer.cc"],
+	deps = [
+	        ":polling_interface",
+	        "//examples/Cassie/datatypes:cassie_dispatch_types"
+	        ]
+)
+
 cc_binary(
 	name = "run_cassie_dispatch",
 	srcs = ["run_cassie_dispatch.cc"],

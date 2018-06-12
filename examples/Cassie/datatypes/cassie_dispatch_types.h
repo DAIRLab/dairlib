@@ -18,4 +18,6 @@ typedef int cassie_dispatch_director_state_t;
 
 cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot_out);
 cassie_dispatch_robot_in_t CassieLcmOutToRobotIn(cassie_dispatch_lcm_out_t lcm_out);
+cassie_dispatch_lcm_out_t CassieRobotInToLcmOut(cassie_dispatch_robot_in_t robot_in);
+cassie_dispatch_robot_out_t CassieLcmInToRobotOut(cassie_dispatch_lcm_in_t lcm_in);
 #endif

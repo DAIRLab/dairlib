@@ -136,11 +136,11 @@ std::cout << "b" << std::endl;
   x0(map.at("ankle_joint_left")) = .792;
   x0(map.at("ankle_joint_right")) = .792;
 
-  x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
-  x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
+  // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
+  // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
 
-  x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
-  x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
+  // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
+  // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
 
   x0(map.at("toe_left")) = -60.0*M_PI/180.0;
   x0(map.at("toe_right")) = -60.0*M_PI/180.0;

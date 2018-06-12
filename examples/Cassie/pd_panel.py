@@ -23,8 +23,8 @@ joint_names = [
     "hip_pitch_right_motor",
     "knee_left_motor",
     "knee_right_motor",
-    "toe_crank_left_motor",
-    "toe_crank_right_motor"]
+    "toe_left_motor",
+    "toe_right_motor"]
 
 position_names = [
     "hip_roll_left",
@@ -35,8 +35,8 @@ position_names = [
     "hip_pitch_right",
     "knee_left",
     "knee_right",
-    "toe_crank_left",
-    "toe_crank_right"]
+    "toe_left",
+    "toe_right"]
 
 joint_default = [0,0,0,0,0,0,0,0,0,0]
 kp_default = [20,20,20,20,20,20,20,20,2,2]

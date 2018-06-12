@@ -18,6 +18,16 @@ load(
 )
 
 cc_library(
+  name = "cassie_utils",
+  srcs = ["cassie_utils.cc"],
+  hdrs = ["cassie_utils.h"],
+  deps = ["@drake//solvers:mathematical_program",
+          "@drake//solvers:constraint",
+          "@drake//multibody:rigid_body_tree",
+          "@drake//manipulation/util",]
+)
+
+cc_library(
   name = "cassie_urdf",
   data = glob(["urdf/**"]),
 )
@@ -145,6 +155,7 @@ cc_binary(
         "@gflags",
         ":cassie_urdf",
         "//systems:robot_lcm_systems",
-        "//systems/primitives"
+        "//systems/primitives",
+        ":cassie_utils",
     ],
 )

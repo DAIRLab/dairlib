@@ -20,6 +20,8 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "systems/primitives/subvector_pass_through.h"
 
+#include "examples/Cassie/cassie_utils.h"
+
 namespace dairlib{
   using dairlib::systems::SubvectorPassThrough;
 
@@ -43,10 +45,11 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   drake::lcm::DrakeLcm lcm;
-  auto tree = std::make_unique<RigidBodyTree<double>>();
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "examples/Cassie/urdf/cassie_v2.urdf",
-      drake::multibody::joints::kFixed, tree.get());
+  auto tree = makeFixedBaseCassieTree();
+  // auto tree = std::make_unique<RigidBodyTree<double>>();
+  // drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
+  //     "examples/Cassie/urdf/cassie_v2.urdf",
+  //     drake::multibody::joints::kFixed, tree.get());
 
   // multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);
 
@@ -97,15 +100,11 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(passthrough->get_output_port(),
                   plant->get_input_port(0));
 
-  std::cout << plant->state_output_port().size() << std::endl;
-  std::cout << state_sender->get_input_port(0).size() << std::endl;
-
   builder.Connect(plant->state_output_port(), state_sender->get_input_port_state());
 
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
 
-std::cout << "b" << std::endl;
 
   // Creates and adds LCM publisher for visualization.
   //builder.AddVisualizer(&lcm);
@@ -144,6 +143,19 @@ std::cout << "b" << std::endl;
 
   x0(map.at("toe_left")) = -60.0*M_PI/180.0;
   x0(map.at("toe_right")) = -60.0*M_PI/180.0;
+
+  std::vector<int> fixed_joints;
+  fixed_joints.push_back(map.at("hip_pitch_left"));
+  fixed_joints.push_back(map.at("hip_pitch_right"));
+  fixed_joints.push_back(map.at("knee_left"));
+  fixed_joints.push_back(map.at("knee_right"));
+
+  auto q0 = solvePositionConstraints(
+      plant->get_rigid_body_tree(),
+      x0.head(plant->get_rigid_body_tree().get_num_positions()), fixed_joints);
+  x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
+
+  std::cout << q0 << std::endl;
 
 
   if (FLAGS_simulation_type != "timestepping") {

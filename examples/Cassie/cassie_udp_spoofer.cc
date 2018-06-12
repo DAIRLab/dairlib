@@ -161,7 +161,7 @@ void CassieUdpSpoofer::subscription_function()
   //std::cout <<  "Terminate Polling UDP" << std::endl;
 }
 
-void CassieUdpSpoofer::publishing_function()
+/*void CassieUdpSpoofer::publishing_function()
 {
     while (continue_publishing)
     { 
@@ -169,14 +169,14 @@ void CassieUdpSpoofer::publishing_function()
         this->publish_message();
         std::this_thread::sleep_until(x);
     }
-}
+}*/
 
 void CassieUdpSpoofer::SetSubscriptionHandler(std::function<void(cassie_dispatch_robot_in_t)> hand)
 {
     this->handler = hand;
 }
 
-
+/*
 void CassieUdpSpoofer::SetPublishingSource(std::shared_ptr<std::atomic<cassie_dispatch_robot_out_t>> ps)
 {
     this->publishing_source = ps;
@@ -201,7 +201,7 @@ void CassieUdpSpoofer::StopPublisher()
   continue_publishing = false;
   subscribing_thread.join();
 }
-
+*/
 void CassieUdpSpoofer::StartSubscriber()
 {
   continue_subscribing = true;
@@ -217,15 +217,15 @@ void CassieUdpSpoofer::StopSubscriber()
   subscribing_thread.join();
 }
 
-void CassieUdpSpoofer::publish_message()
+void CassieUdpSpoofer::Publish(cassie_dispatch_robot_out_t robot_out)
 {
   
-  cassie_out_t cassie_out = *(this->publishing_source.get());
+  //cassie_out_t cassie_out = *(this->publishing_source.get());
   //std::cout <<  "Sending UDP command\n" << std::endl;
   const char *header_in = recvbuf;
   char *header_out = sendbuf;
   unsigned char *data_out = reinterpret_cast<unsigned char *>(&sendbuf[2]);
-  pack_cassie_out_t(&cassie_out, data_out);
+  pack_cassie_out_t(&robot_out, data_out);
 
 
   // Process incoming header and write outgoing header

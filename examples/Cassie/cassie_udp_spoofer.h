@@ -35,12 +35,13 @@ class CassieUdpSpoofer {
             unsigned short rport) : local_address(local_addr), remote_address(remote_addr), local_port(lport), remote_port(rport) {};
     void SetupChannel();
     void SetSubscriptionHandler(std::function<void(cassie_dispatch_robot_in_t)> hand);
-    void SetPublishingSource(std::shared_ptr<std::atomic<cassie_dispatch_robot_out_t>> ps);
-    void SetPublishingPeriod(double dt);
+    //void SetPublishingSource(std::shared_ptr<std::atomic<cassie_dispatch_robot_out_t>> ps);
+    void Publish(cassie_dispatch_robot_out_t robot_out);
+    //void SetPublishingPeriod(double dt);
     void StartSubscriber();
     void StopSubscriber();
-    void StartPublisher();
-    void StopPublisher();
+    //void StartPublisher();
+    //void StopPublisher();
 
   private:
     static struct sockaddr_in make_sockaddr_in(const char *addr_str, unsigned short port);
@@ -49,23 +50,22 @@ class CassieUdpSpoofer {
     void subscription_function();
     void publishing_function();
     cassie_dispatch_robot_in_t receive_message();
-    void publish_message();
-    void send_message();
+    //void send_message();
     const char * local_address;
     const char * remote_address;
     unsigned short local_port;
     unsigned short remote_port;
     std::function<void(cassie_dispatch_robot_in_t)> handler;
-    std::shared_ptr<std::atomic<cassie_dispatch_robot_out_t>> publishing_source; 
+    //std::shared_ptr<std::atomic<cassie_dispatch_robot_out_t>> publishing_source; 
     int sock;
     bool continue_subscribing;
-    bool continue_publishing;
-    double publishing_period = 5e-4;
+    //bool continue_publishing;
+    //double publishing_period = 5e-4;
 
     char sendbuf[2 + CASSIE_OUT_T_LEN];
     char recvbuf[2 + CASSIE_USER_IN_T_LEN];
     packet_header_info_t header_info = {0};
     std::thread subscribing_thread;
-    std::thread publishing_thread;
+    //std::thread publishing_thread;
 };
 #endif

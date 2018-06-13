@@ -3,9 +3,9 @@ py_binary(
   srcs = ["drake-director.py"],
   main = "drake-director.py",
   deps = ["@director//:visualizer-bin",
+  		  "@director//:signal-scope-bin",
           "//lcmtypes:lcmtypes_robot_py"]
 )
-
 
 load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
 
@@ -13,3 +13,4 @@ drake_runfiles_binary(
     name = "drake-director",
     target = ":drake-director-py",
 )
+

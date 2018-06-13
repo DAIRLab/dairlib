@@ -8,3 +8,10 @@ py_library(
             "@lcm//:lcm-python"]
 )
 
+py_library(
+    name = "signal-scope-bin",
+    data = ["build/install/bin/signal-scope"],
+    deps = ["@drake//lcmtypes:lcmtypes_py",
+            "@lcm//:lcm-python"]
+)
+

@@ -10,6 +10,10 @@ is used to record the attribute lookups that are required to
 extract the signal data from the lcm message in the future.
 '''
 
+print(dir())
+print(globals())
+print(locals())
+
 position_names = [
     "hip_roll_left",
     "hip_roll_right",

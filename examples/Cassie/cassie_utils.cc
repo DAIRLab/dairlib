@@ -1,4 +1,5 @@
 #include "examples/Cassie/cassie_utils.h"
+#include "common/find_resource.h"
 #include "drake/solvers/mathematical_program.h"
 
 namespace dairlib {
@@ -7,12 +8,18 @@ using drake::solvers::Constraint;
 using drake::AutoDiffVecXd;
 using drake::solvers::MathematicalProgram;
 
-std::unique_ptr<RigidBodyTree<double>> makeFixedBaseCassieTree(
+std::unique_ptr<RigidBodyTree<double>> makeFixedBaseCassieTreePointer(
     std::string filename) {
   auto tree = std::make_unique<RigidBodyTree<double>>();
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      filename, drake::multibody::joints::kFixed, tree.get());
+  buildFixedBaseCassieTree(*tree.get());
   return tree;
+}
+
+void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
+                              std::string filename) {
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
+      FindResourceOrThrow(filename),
+      drake::multibody::joints::kFixed, &tree);
 }
 
 VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,

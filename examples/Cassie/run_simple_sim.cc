@@ -45,25 +45,13 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   drake::lcm::DrakeLcm lcm;
-  auto tree = makeFixedBaseCassieTree();
-  // auto tree = std::make_unique<RigidBodyTree<double>>();
-  // drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-  //     "examples/Cassie/urdf/cassie_v2.urdf",
-  //     drake::multibody::joints::kFixed, tree.get());
+  std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
 
-  // multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);
-
-//  manipulation::util::SimDiagramBuilder<double> builder;
   drake::systems::DiagramBuilder<double> builder;
-
-  //auto plant = biulder.template AddSystem<systems::RigidBodyPlant<double>>(std::move(tree));
-  //systems::RigidBodyPlant<double>* plant = builder.AddPlant(std::move(tree));
 
   if (FLAGS_simulation_type != "timestepping")
     FLAGS_dt = 0.0;
   auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
-  //auto plant = builder.AddSystem<systems::RigidBodyPlant<double>>(std::move(tree));
-  //systems::RigidBodyPlant<double>* plant = builder.AddPlant(std::move(tree));
 
     // Note: this sets identical contact parameters across all object pairs:
 

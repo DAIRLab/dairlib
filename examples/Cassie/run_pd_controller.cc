@@ -12,6 +12,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
+#include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib {
 
@@ -23,9 +24,7 @@ int doMain() {
   drake::lcm::DrakeLcm lcm;
 
   RigidBodyTree<double> tree;
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "examples/Cassie/urdf/cassie_v2.urdf",
-      drake::multibody::joints::kFixed, &tree);
+  buildFixedBaseCassieTree(tree);
 
   const std::string channel_x = "CASSIE_STATE";
   const std::string channel_u = "CASSIE_INPUT";

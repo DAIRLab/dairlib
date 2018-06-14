@@ -190,75 +190,6 @@
     </visual>
   </link>
 
-  <link name="achilles_rod_left">
-    <inertial>
-      <origin
-        xyz="0.24719 0 0"
-        rpy="0 0 0" />
-      <mass value="0.1567" />
-      <inertia
-        ixx=".000004"
-        ixy="0"
-        ixz=""
-        iyy=".014061"
-        iyz="0"
-        izz=".014061" />
-    </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh filename="meshes/achilles-rod.obj" />
-      </geometry>
-      <material name="">
-        <color rgba="1 0 0 1.0" />
-      </material>
-    </visual>
-  </link>
-
-  <link name="achilles_hip_pitch_left"/>
-
-  <link name="achilles_heel_roll_left"/>
-
-  <link name="achilles_heel_pitch_left">
-  </link>
-
-  <link name="achilles_rod_right">
-    <inertial>
-      <origin
-        xyz="0.24719 0 0"
-        rpy="0 0 0" />
-      <mass value="0.1567" />
-      <inertia
-        ixx=".000004"
-        ixy="0"
-        ixz=""
-        iyy=".014061"
-        iyz="0"
-        izz=".014061" />
-    </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh filename="meshes/achilles-rod.obj" />
-      </geometry>
-      <material name="">
-        <color rgba="1 0 0 1.0" />
-      </material>
-    </visual>
-  </link>
-
-  <link name="achilles_hip_pitch_right"/>
-
-  <link name="achilles_heel_roll_right"/>
-
-  <link name="achilles_heel_pitch_right">
-  </link>
-
-
   <link name="knee_left">
     <inertial>
       <origin
@@ -726,77 +657,6 @@
     <dynamics damping="1" /> 
   </joint>
 
-  <joint name="achilles_hip_left" type="revolute">
-    <origin xyz ="0  0  .045" rpy="0 0 0" />
-    <parent link="thigh_left" />
-    <child link="achilles_hip_pitch_left" />
-    <axis xyz ="0 1 0" />
-    <dynamics damping="0.01" />
-    <limit lower="-3.14" upper="3.14"/>
-  </joint>
-
-  <joint name="achilles_hip_pitch_left" type="revolute">
-    <parent link="achilles_hip_pitch_left" />
-    <child link="achilles_rod_left" />
-    <axis xyz ="0 0 1" />
-    <dynamics damping="0.01" />
-    <limit lower="-3.14" upper="3.14"/>
-  </joint>
-
-  <joint name="achilles_heel_roll_left" type="revolute">
-    <origin xyz=".5012 0 0" />
-    <parent link="achilles_rod_left" />
-    <child link="achilles_heel_roll_left" />
-    <axis xyz ="1 0 0" />
-    <dynamics damping="0.01" />
-    <limit lower="-20" upper="20"/>
-  </joint>
-
-  <joint name="achilles_heel_pitch_left" type="revolute">
-    <origin xyz="0 0 0" />
-    <parent link="achilles_heel_roll_left" />
-    <child link="achilles_heel_pitch_left" />
-    <axis xyz ="0 1 0" />
-    <dynamics damping="0.01" />
-    <limit lower="-3.14" upper="3.14"/>
-  </joint>
-
-  <joint name="achilles_hip_right" type="revolute">
-    <origin xyz ="0  0  -.045" rpy="0 0 0" />
-    <parent link="thigh_right" />
-    <child link="achilles_hip_pitch_right" />
-    <axis xyz ="0 1 0" />
-    <dynamics damping="0.01" />
-    <limit lower="-3.14" upper="3.14"/>
-  </joint>
-
-  <joint name="achilles_hip_pitch_right" type="revolute">
-    <parent link="achilles_hip_pitch_right" />
-    <child link="achilles_rod_right" />
-    <axis xyz ="0 0 1" />
-    <dynamics damping="0.01" />
-    <limit lower="-3.14" upper="3.14"/>
-  </joint>
-
-  <joint name="achilles_heel_roll_right" type="revolute">
-    <origin xyz=".5012 0 0" />
-    <parent link="achilles_rod_right" />
-    <child link="achilles_heel_roll_right" />
-    <axis xyz ="1 0 0" />
-    <dynamics damping="0.01" />
-    <limit lower="-3.14" upper="3.14"/>
-  </joint>
-
-  <joint name="achilles_heel_pitch_right" type="revolute">
-    <origin xyz="0 0 0" />
-    <parent link="achilles_heel_roll_right" />
-    <child link="achilles_heel_pitch_right" />
-    <axis xyz ="0 1 0" />
-    <dynamics damping="0.01" />
-    <limit lower="-3.14" upper="3.14"/>
-  </joint>
-
-
   <joint name="knee_left" type="revolute">
     <origin xyz="0.12 0 0.0045" rpy="0 0 0" />
     <parent link="thigh_left" />
@@ -928,19 +788,6 @@
     <limit lower="-3.14" upper="3.14"/>
     <dynamics damping="1" /> 
   </joint>
-
- <!-- LOOP_JOINTS ||| LOOP_JOINTS ||| LOOP_JOINTS ||| LOOP_JOINTS |||-->
- <loop_joint name="achilles_loop_left">
-    <link1 link="achilles_heel_pitch_left" xyz="0 0 0" />
-    <link2 link="heel_spring_left" xyz=".11877 -.01 0" />
-    <axis xyz="0 0 1"/>
-  </loop_joint>
-
- <loop_joint name="achilles_loop_right">
-    <link1 link="achilles_heel_pitch_right" xyz="0 0 0" />
-    <link2 link="heel_spring_right" xyz=".11877 -.01 0" />
-    <axis xyz="0 0 1"/>
-  </loop_joint>
 
  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->

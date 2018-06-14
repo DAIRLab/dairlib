@@ -114,10 +114,10 @@ int do_main(int argc, char* argv[]) {
       plant->get_rigid_body_tree().computePositionNameToIndexMap();
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
-  x0(map.at("achilles_hip_pitch_left")) = -.44;
-  x0(map.at("achilles_hip_pitch_right")) = -.44;
-  x0(map.at("achilles_heel_pitch_left")) = -.105;
-  x0(map.at("achilles_heel_pitch_right")) = -.105;
+  // x0(map.at("achilles_hip_pitch_left")) = -.44;
+  // x0(map.at("achilles_hip_pitch_right")) = -.44;
+  // x0(map.at("achilles_heel_pitch_left")) = -.105;
+  // x0(map.at("achilles_heel_pitch_right")) = -.105;
   x0(map.at("knee_left")) = -.644;
   x0(map.at("knee_right")) = -.644;
   x0(map.at("ankle_joint_left")) = .792;

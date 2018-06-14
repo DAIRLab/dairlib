@@ -1,17 +1,17 @@
-group "1.robot" {
+group "2.lcm-spy" {
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "1.simulated-robot" {
     cmd "1.simulator" {
         exec = "bazel-bin/examples/Cassie/run_simple_sim";
         host = "localhost";
     }
     cmd "0.pd-controller" {
         exec = "bazel-bin/examples/Cassie/run_pd_controller";
-        host = "localhost";
-    }
-}
-
-group "2.lcm-spy" {
-    cmd "0.lcm-spy" {
-        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
         host = "localhost";
     }
 }

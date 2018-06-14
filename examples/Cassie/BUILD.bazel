@@ -122,7 +122,9 @@ cc_binary(
             "@drake//systems/analysis:simulator",
             "@drake//multibody:rigid_body_tree",
             "@drake//manipulation/util",
-            "@drake//lcm"
+            "@drake//lcm",
+            ":cassie_utils",
+            ":cassie_urdf",
             ]
 )
 
@@ -139,6 +141,7 @@ cc_binary(
             "@drake//lcm",
             "@drake//multibody:rigid_body_tree",
             "@drake//manipulation/util",
+            ":cassie_utils"
             ]
 )
 

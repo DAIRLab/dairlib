@@ -9,6 +9,7 @@
 
 #include "dairlib/lcmt_robot_output.hpp"
 #include "systems/robot_lcm_systems.h"
+#include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib{
 
@@ -20,10 +21,7 @@ using dairlib::systems::RobotOutputReceiver;
 
 int doMain() {
   RigidBodyTree<double> tree;
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "examples/Cassie/urdf/cassie_v2.urdf",
-      drake::multibody::joints::kFixed, &tree);
-
+  buildFixedBaseCassieTree(tree);
 
   cout << endl << "****bodies****" << endl;
   for (int i = 0; i < tree.get_num_bodies(); i++)

@@ -18,7 +18,7 @@ group "2.lcm-spy" {
 
 group "0.operator" {
     cmd "0.drake-director" {
-        exec = "bazel-bin/director/drake-director --script examples/Cassie/pd_panel.py --script ../drake/multibody/rigid_body_plant/visualization/show_time.py";
+        exec = "bazel-bin/director/drake-director --script examples/Cassie/pd_panel.py --script examples/Cassie/show_time.py";
         host = "localhost";
     }
     cmd "1.state-visualizer" {

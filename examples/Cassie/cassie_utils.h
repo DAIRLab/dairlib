@@ -3,6 +3,7 @@
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/solvers/constraint.h"
+#include "drake/math/autodiff_gradient.h"
 
 namespace dairlib {
 

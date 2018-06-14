@@ -24,7 +24,8 @@ cc_library(
   deps = ["@drake//solvers:mathematical_program",
           "@drake//solvers:constraint",
           "@drake//multibody:rigid_body_tree",
-          "@drake//manipulation/util",]
+          "@drake//manipulation/util",
+          "//common"]
 )
 
 cc_library(
@@ -157,5 +158,13 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         ":cassie_utils",
+    ],
+)
+
+py_binary(
+    name = "draw_graphviz",
+    srcs = ["draw_graphviz.py"],
+    deps = [
+        "@drake//bindings/pydrake",
     ],
 )

@@ -13,13 +13,15 @@
 
 void CassieLcmDispatchInterface::LcmSubscribeHandler(const void* lcm_message_bytes, int lcm_message_length, std::function<void(cassie_dispatch_lcm_out_t)> handler)
 {
+  //std::cout <<  "subscription caught" << std::endl;std::cout.flush();
   drake::systems::lcm::Serializer<cassie_dispatch_lcm_out_t> serializer;
 
   auto lcm_message_abstract = serializer.CreateDefaultValue();
 
   serializer.Deserialize(lcm_message_bytes, lcm_message_length, lcm_message_abstract.get());
+  //std::cout <<  "lcm  messaged processed" << std::endl;std::cout.flush();
   handler(lcm_message_abstract->GetValue<cassie_dispatch_lcm_out_t>());
-
+  
 }
 
 

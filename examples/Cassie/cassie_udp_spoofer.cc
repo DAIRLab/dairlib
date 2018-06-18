@@ -20,6 +20,10 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
 
+
+namespace dairlib {
+
+
 struct sockaddr_in
 CassieUdpSpoofer::make_sockaddr_in(const char *addr_str,
                  unsigned short port)
@@ -47,7 +51,28 @@ int CassieUdpSpoofer::udp_connect(const char *local_addr_str,
         perror("Error creating socket: ");
         return -1;
     }
-    struct sockaddr * la = (struct sockaddr *) (&local_addr);
+    
+    
+    int optval = 1;
+	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
+		   (const void *)&optval, sizeof(int));
+
+	/*
+	 * build the server's Internet address
+	 */
+	bzero((char *)&local_addr, sizeof(local_addr));
+	local_addr.sin_family = AF_INET;
+	local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	local_addr.sin_port = htons((unsigned short)lport);
+
+	/*
+	 * bind: associate the parent socket with a port
+	 */
+	if (bind(sock, (struct sockaddr *)&local_addr,
+		 sizeof(struct sockaddr)) < 0)
+		perror("ERROR on binding");
+    
+    /*struct sockaddr * la = (struct sockaddr *) (&local_addr);
     // Bind to local address
     if (-1 == bind(sock,
                    la,
@@ -64,7 +89,7 @@ int CassieUdpSpoofer::udp_connect(const char *local_addr_str,
         perror("Error connecting to remote address: ");
         close(sock);
         return -1;
-    }
+    }*/
 
     return sock;
 }
@@ -98,9 +123,11 @@ void CassieUdpSpoofer::SetupChannel()
   sock = udp_connect(this->local_address, this->remote_address, this->local_port, this->remote_port);
   if (-1 == sock)
       exit(EXIT_FAILURE);
-
+ std::cout << "Cassie UDP Spoofer Waiting for Connection..." << std::endl;
+ this->receive_message();
+ std::cout << "Connection Established" << std::endl;
   // Make socket non-blocking
-  fcntl(sock, O_NONBLOCK);
+  //fcntl(sock, O_NONBLOCK);
 }
 
 cassie_dispatch_robot_in_t CassieUdpSpoofer::receive_message()
@@ -112,7 +139,7 @@ cassie_dispatch_robot_in_t CassieUdpSpoofer::receive_message()
   ssize_t des_len = 60;
   // Poll for a new packet of the correct length
   ssize_t nbytes = 0;
-  do {
+  /*do {
       // Wait if no packets are available
       struct pollfd fd = {.fd = sock, .events = POLLIN, .revents = 0};
       while (!poll(&fd, 1, 2000))
@@ -134,14 +161,42 @@ cassie_dispatch_robot_in_t CassieUdpSpoofer::receive_message()
         }
           //std::cout <<  "received: " << nbytes << std::endl;
       }
-  } while (des_len != nbytes);
+  } while (des_len != nbytes);*/
+  
+  int n = 0;
+  socklen_t clientlen = sizeof(clientaddr);
+  while (1) {
+
+		/*
+		 * recvfrom: receive a UDP datagram from a client
+		 */
+		//this->addrmux.lock();
+		std::this_thread::sleep_for(std::chrono::milliseconds(2));
+		std::cout << "RECV" << std::endl;std::cout.flush();
+		n = recvfrom(sock, recvbuf, sizeof(recvbuf), 0,
+			     (struct sockaddr *)&clientaddr, &clientlen);
+		//this->addrmux.unlock();
+		if (n < 0)
+			perror("ERROR in recvfrom");
+		if (n == 0)
+		  continue;
+		//printf("received %d \n",n);
+        if (n != 60)
+            perror("Broken Packet!");
+        break;
+        std::cout << "No Message!" << std::endl;std::cout.flush();
+		/*
+		 * gethostbyaddr: determine who sent the datagram
+		 */
+  }
+  
 
   // Split header and data
   const unsigned char * data_in = reinterpret_cast<const unsigned char *>(&recvbuf[2]);
 
   // Unpack received data into cassie output struct
   unpack_cassie_user_in_t(reinterpret_cast<const unsigned char *>(data_in), &cassie_user_in);
-
+  //std::cout << "unpacked input" << std::endl; std::cout.flush();
   return cassie_user_in;
 }
 
@@ -161,47 +216,13 @@ void CassieUdpSpoofer::subscription_function()
   //std::cout <<  "Terminate Polling UDP" << std::endl;
 }
 
-/*void CassieUdpSpoofer::publishing_function()
-{
-    while (continue_publishing)
-    { 
-        auto x = std::chrono::steady_clock::now() + std::chrono::duration<double>(this->publishing_period);
-        this->publish_message();
-        std::this_thread::sleep_until(x);
-    }
-}*/
 
 void CassieUdpSpoofer::SetSubscriptionHandler(std::function<void(cassie_dispatch_robot_in_t)> hand)
 {
     this->handler = hand;
 }
 
-/*
-void CassieUdpSpoofer::SetPublishingSource(std::shared_ptr<std::atomic<cassie_dispatch_robot_out_t>> ps)
-{
-    this->publishing_source = ps;
-}
 
-void CassieUdpSpoofer::SetPublishingPeriod(double dt)
-{
-    this->publishing_period = dt;
-}
-
-void CassieUdpSpoofer::StartPublisher()
-{
-  continue_publishing = true;
-  // temp for testing!
-  //Send(cassie_dispatch_robot_in_t());
-
-  publishing_thread = std::thread(&CassieUdpSpoofer::publishing_function, this);
-}
-
-void CassieUdpSpoofer::StopPublisher()
-{
-  continue_publishing = false;
-  subscribing_thread.join();
-}
-*/
 void CassieUdpSpoofer::StartSubscriber()
 {
   continue_subscribing = true;
@@ -235,8 +256,22 @@ void CassieUdpSpoofer::Publish(cassie_dispatch_robot_out_t robot_out)
          header_info.delay, header_info.seq_num_in_diff);*/
 
   // Send response, retry if busy
-  while (-1 == send(sock, sendbuf, sizeof sendbuf, 0)) {}
+  
+  
+  //while (-1 == send(sock, sendbuf, sizeof sendbuf, 0)) {}
+  
+  int n;
+  //this->addrmux.lock();
+  int clientlen = sizeof(clientaddr);
+  struct sockaddr_in sendaddr = clientaddr;
+  //this->addrmux.unlock();
+  n = sendto(sock, sendbuf, sizeof(sendbuf), 0,
+           (struct sockaddr *)&sendaddr, clientlen);
+  if (n < 0)
+    perror("ERROR in sendto");
+  //printf("sent %d \n",n);
 }
 
 
+}
 #pragma GCC diagnostic pop

@@ -1,11 +1,12 @@
 #include <memory>
+#include <chrono>
 
 #include <gflags/gflags.h>
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/manipulation/util/sim_diagram_builder.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
+//#include "drake/systems/lcm/lcm_publisher_system.h"
+//#include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
@@ -18,6 +19,9 @@
 #include "systems/robot_lcm_systems.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
+#include "datatypes/cassie_networking.h"
+#include "cassie_udp_spoofer.h"
+#include "cassie_udp_systems.h"
 #include "systems/primitives/subvector_pass_through.h"
 
 namespace dairlib{
@@ -42,7 +46,6 @@ DEFINE_double(dt, 1e-3, "The step size to use for "
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  drake::lcm::DrakeLcm lcm;
   auto tree = std::make_unique<RigidBodyTree<double>>();
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
       "examples/Cassie/urdf/cassie_v2.urdf",
@@ -73,17 +76,27 @@ int do_main(int argc, char* argv[]) {
   model_parameters.characteristic_radius = FLAGS_contact_radius;
   model_parameters.v_stiction_tolerance = FLAGS_v_tol;
   plant->set_contact_model_parameters(model_parameters);
-
+  
+  // Create UDP Spoofer
+  // local/remote address/port flipped as this is simulation side.
+  auto udp_spoofer = std::make_shared<CassieUdpSpoofer>(CASSIE_UDP_REMOTE_ADDR,
+            CASSIE_UDP_LOCAL_ADDR,
+            CASSIE_UDP_REMOTE_PORT,
+            CASSIE_UDP_LOCAL_PORT);
+  udp_spoofer->SetupChannel();
+  
+  
+  
   // Create input receiver.
   auto input_sub = builder.AddSystem(
-      drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>("CASSIE_INPUT", &lcm));
+      std::make_unique<dairlib::CassieUdpInputSubscriber>(udp_spoofer));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant->get_rigid_body_tree());
-  builder.Connect(input_sub->get_output_port(),
+  builder.Connect(input_sub->get_output_port(0),
                   input_receiver->get_input_port(0));
 
   // Create state publisher.
   auto state_pub = builder.AddSystem(
-      drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>("CASSIE_STATE", &lcm));
+      std::make_unique<dairlib::CassieUdpOutputPublisher>(udp_spoofer));
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
   state_pub->set_publish_period(1.0/200.0);
 
@@ -103,7 +116,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(plant->state_output_port(), state_sender->get_input_port_state());
 
   builder.Connect(state_sender->get_output_port(0),
-                  state_pub->get_input_port());
+                  state_pub->get_input_port(0));
 
 std::cout << "b" << std::endl;
 
@@ -171,9 +184,9 @@ std::cout << "b" << std::endl;
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
-
-  lcm.StartReceiveThread();
-
+  
+  
+  udp_spoofer->StartSubscriber();
   simulator.StepTo(std::numeric_limits<double>::infinity());
   // simulator.StepTo(.001);
   return 0;

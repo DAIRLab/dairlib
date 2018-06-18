@@ -3,15 +3,20 @@
 
 void CassieDispatcher::robot_interface_handler(cassie_dispatch_robot_out_t robot_out)
 {
-  //std::cout <<  "received UDP packet!" << std::endl;
+  std::cout << "Robot State Received!" << std::endl;std::cout.flush();
   cassie_dispatch_lcm_in_t lcm_in = CassieRobotOutToLcmIn(robot_out);
   this->lcm_interface->Send(lcm_in);
+  std::cout << "LCM State Sent!" << std::endl;std::cout.flush();
 }
 
 void CassieDispatcher::lcm_interface_handler(cassie_dispatch_lcm_out_t lcm_out)
 {
+  std::cout << "LCM Input Received!" << std::endl;std::cout.flush();
+  //std::cout <<  "converting LCM/ROBOT type" << std::endl;std::cout.flush();
   cassie_dispatch_robot_in_t robot_in = CassieLcmOutToRobotIn(lcm_out);
+  //std::cout <<  "finished conversion" << std::endl;std::cout.flush();
   this->robot_interface->Send(robot_in);
+  std::cout << "Robot Input Sent!" << std::endl;std::cout.flush();
 }
 
 void CassieDispatcher::director_interface_handler(cassie_dispatch_director_out_t director_out)

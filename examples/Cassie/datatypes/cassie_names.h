@@ -47,7 +47,7 @@ static std::vector<std::string> cassieVelocityNames = {
 "toe_rightdot",
 };
 
-static std::vector<std::string> cassieEfforNames = {
+static std::vector<std::string> cassieEffortNames = {
 "hip_roll_left_motor",
 "hip_yaw_left_motor",
 "hip_pitch_left_motor",

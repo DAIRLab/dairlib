@@ -20,6 +20,11 @@ extern "C" {
 #include "datatypes/cassie_out_t.h"
 #include "datatypes/cassie_user_in_t.h"
 }
+
+
+namespace dairlib {
+
+
 typedef struct {
     char seq_num_out;
     char seq_num_in_last;
@@ -65,7 +70,11 @@ class CassieUdpSpoofer {
     char sendbuf[2 + CASSIE_OUT_T_LEN];
     char recvbuf[2 + CASSIE_USER_IN_T_LEN];
     packet_header_info_t header_info = {0};
+    mutable std::mutex addrmux;
     std::thread subscribing_thread;
+    struct sockaddr_in clientaddr;
     //std::thread publishing_thread;
 };
+
+}
 #endif

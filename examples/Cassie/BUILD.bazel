@@ -93,6 +93,45 @@ cc_library(
 	        ]
 )
 
+
+cc_library(
+	name = "cassie_udp_systems",
+	hdrs = [":cassie_udp_systems.h"],
+	srcs = ["cassie_udp_systems.cc"],
+	deps = [
+	        "@drake//systems/framework",
+	        "@drake//systems/lcm",
+	        ":cassie_udp_spoofer",
+	        "//examples/Cassie/datatypes:cassie_dispatch_types",
+	        "//examples/Cassie/datatypes:cassie_names"
+	        ]
+)
+
+
+cc_binary(
+    name = "run_udp_sim",
+    srcs = ["run_udp_sim.cc"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@gflags",
+        ":cassie_urdf",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        ":cassie_udp_systems",
+        ":cassie_udp_spoofer",
+        "//examples/Cassie/datatypes:cassie_networking"
+    ],
+)
+
+
+
+
 cc_binary(
 	name = "run_cassie_dispatch",
 	srcs = ["run_cassie_dispatch.cc"],

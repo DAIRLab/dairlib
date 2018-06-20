@@ -14,6 +14,10 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_pd_controller";
         host = "localhost";
     }
+    cmd "2.clqr-controller"{
+        exec = "bazel-bin/examples/Cassie/run_clqr_controller";
+        host = "localhost";
+    }
 }
 
 group "0.operator" {
@@ -23,6 +27,10 @@ group "0.operator" {
     }
     cmd "1.state-visualizer" {
         exec = "bazel-bin/examples/Cassie/cassie_state_visualizer";
+        host = "localhost";
+    }
+    cmd "2.drake-visualizer" {
+        exec = "../drake/bazel-bin/tools/drake_visualizer";
         host = "localhost";
     }
 }

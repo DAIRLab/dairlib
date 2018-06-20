@@ -164,6 +164,26 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "run_clqr_controller",
+    srcs = ["run_clqr_controller.cc"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/primitives:constant_vector_source",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@gflags",
+        ":cassie_urdf",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        ":cassie_utils",
+    ],
+)
+
 py_binary(
     name = "draw_graphviz",
     srcs = ["draw_graphviz.py"],

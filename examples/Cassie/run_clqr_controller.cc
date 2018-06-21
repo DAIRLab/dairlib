@@ -17,6 +17,7 @@
 #include "drake/systems/primitives/constant_vector_source.h"
 
 #include "systems/robot_lcm_systems.h"
+#include "systems/controllers/clqr_controller.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 
@@ -67,9 +68,7 @@ int do_main(int argc, char* argv[])
     
     drake::systems::DiagramBuilder<double> builder;
     
-    if (FLAGS_simulation_type != "timestepping")
-      FLAGS_sot = 0.0;
-    auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
+    auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree));
     
       // Note: this sets identical contact parameters across all object pairs:
     
@@ -99,6 +98,8 @@ int do_main(int argc, char* argv[])
                             visualizer_publisher.get_input_port(0));
 
     
+    systems::ClqrController clqr_controller(NUM_POSITIONS, NUM_VELOCITIES, NUM_ACTUATORS);
+    cout << clqr_controller.getNumPositions() << endl;
     
     auto diagram = builder.Build();
     
@@ -142,19 +143,8 @@ int do_main(int argc, char* argv[])
         x0.head(plant->get_rigid_body_tree().get_num_positions()), fixed_joints);
     x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
     
-    std::cout << q0 << std::endl;
-    
-    
-    if (FLAGS_simulation_type != "timestepping") {
-      drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
-      std::cout << "Continuous " << state.size() << std::endl;
-      state.SetFromVector(x0);
-    } else {
-      std::cout << "ngroups "<< context.get_num_discrete_state_groups() <<  std::endl;
-      drake::systems::BasicVector<double>& state = context.get_mutable_discrete_state(0); 
-      std::cout << "Discrete " << state.size() << std::endl;
-      state.SetFromVector(x0);
-    }
+    drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
+    state.SetFromVector(x0);
     
     // int num_u = plant->get_num_actuators();
     // auto zero_input = Eigen::MatrixXd::Zero(num_u,1);

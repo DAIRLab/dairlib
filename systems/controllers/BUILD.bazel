@@ -19,11 +19,14 @@ cc_library(
 
 cc_library(
     name = "controllers",
-    srcs = ["linear_controller.cc",],
-    hdrs = ["linear_controller.h"],
+    srcs = ["linear_controller.cc",
+            "clqr_controller.cc",],
+    hdrs = ["linear_controller.h",
+            "clqr_controller.h"],
     deps = [
             "//systems/framework:vector",
             "@drake//systems/framework:leaf_system",
+            "@drake//systems/framework:vector",
             ]
 )
 
@@ -42,13 +45,4 @@ cc_test(
     size = "small"
 )
 
-cc_library(
-    name = "clqr_controller",
-    srcs = ["clqr_controller.cc",],
-    hdrs = ["clqr_controller.h"],
-    deps = [
-            "//systems/framework:vector",
-            "@drake//systems/framework:leaf_system",
-            "@drake//systems/framework:basic_vector",
-            ]
-)
+

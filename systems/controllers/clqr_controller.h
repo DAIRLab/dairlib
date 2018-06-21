@@ -2,21 +2,34 @@
 #define CLQR_CONTROLLER_H
 
 #include "drake/systems/framework/leaf_system.h"
-#include "systems/framework/output_vector.h"
-#include "systems/framework/basic_vector.h"
+#include "drake/systems/framework/basic_vector.h"
+
+using drake::systems::Context;
+using drake::systems::BasicVector;
+using drake::systems::LeafSystem;
+using drake::systems::InputPortDescriptor;
+using drake::systems::OutputPort;
 
 namespace dairlib{
 namespace systems{
-
-using drake::systems::BasicVector;
 
 class ClqrController : public LeafSystem<double>
 {
     public: 
 
         ClqrController(int num_positions, int num_velocities, int num_inputs);
+        const InputPortDescriptor<double>& getInputStatePort();
+        const InputPortDescriptor<double>& getInputDesiredPort();
+        const OutputPort<double>& getOutputActuatorPort();
+        int getNumPositions();
+        int getNumVelocities();
+        int getNumStates();
+        int getNumActuators();
+
 
     private:
+
+        void calcControl(const Context<double>& context, BasicVector<double>*output) const;
 
         int input_state_port_index_;
         int input_desired_port_index_;
@@ -24,7 +37,11 @@ class ClqrController : public LeafSystem<double>
         int num_positions_;
         int num_velocities_;
         int num_states_;
-        int num_inputs_;
+        int num_actuators_;
+};
+
+}// namespace systems
+}//namespace dairlib
 
 
 

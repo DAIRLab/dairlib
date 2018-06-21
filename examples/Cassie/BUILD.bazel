@@ -180,6 +180,7 @@ cc_binary(
         ":cassie_urdf",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
+        "//systems/controllers:controllers",
         ":cassie_utils",
     ],
 )

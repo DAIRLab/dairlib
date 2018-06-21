@@ -1,6 +1,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "common/find_resource.h"
 #include "drake/solvers/mathematical_program.h"
+#include "drake/multibody/joints/fixed_axis_one_dof_joint.h"
 
 namespace dairlib {
 using Eigen::VectorXd;
@@ -47,6 +48,19 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
   tree.addDistanceConstraint(heel_spring_right, rod_on_heel_spring,
                            thigh_right, rod_on_thigh_right,
                            achilles_length);
+
+  // Add spring forces
+  FixedAxisOneDoFJoint<double>& knee_joint_left = (FixedAxisOneDoFJoint<double>&) tree.FindChildBodyOfJoint("knee_joint_left",0)->getJoint();
+  knee_joint_left.setSpringDynamics(1500.0,0.0);
+
+  FixedAxisOneDoFJoint<double>& knee_joint_right = (FixedAxisOneDoFJoint<double>&) tree.FindChildBodyOfJoint("knee_joint_right",0)->getJoint();
+  knee_joint_right.setSpringDynamics(1500.0,0.0);
+
+  FixedAxisOneDoFJoint<double>& ankle_spring_joint_left = (FixedAxisOneDoFJoint<double>&) tree.FindChildBodyOfJoint("ankle_spring_joint_left",0)->getJoint();
+  ankle_spring_joint_left.setSpringDynamics(1250.0,0.0);
+
+  FixedAxisOneDoFJoint<double>& ankle_spring_joint_right = (FixedAxisOneDoFJoint<double>&) tree.FindChildBodyOfJoint("ankle_spring_joint_right",0)->getJoint();
+  ankle_spring_joint_right.setSpringDynamics(1250.0,0.0);
 }
 
 VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,

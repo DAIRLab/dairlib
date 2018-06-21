@@ -6,6 +6,7 @@
 #include "drake/multibody/rigid_body_tree.h"
 
 using Eigen::VectorXd;
+using Eigen::Matrix;
 using drake::systems::Context;
 using drake::systems::BasicVector;
 using drake::systems::LeafSystem;

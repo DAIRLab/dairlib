@@ -23,10 +23,13 @@ void ClqrController::calcControl(const Context<double>& context, BasicVector<dou
     output_bv->SetFromVector(out);
 
     auto input_state_port_vec = dynamic_cast<const BasicVector<double>*>(EvalVectorInput(context, input_state_port_index_))->get_value();
-    auto input_desired_port_vec = dynamic_cast<const BasicVector<double>*>(EvalVectorInput(context, input_desired_port_index_))->get_value();
-    auto q = input_state_port_vec.head(num_positions_);
-    auto v = input_state_port_vec.tail(num_velocities_);
-    //KinematicsCache<double> kcache = tree_.doKinematics(VectorXd::Zero(num_actuators_));
+    VectorXd q = input_state_port_vec.head(num_positions_);
+    VectorXd v = input_state_port_vec.tail(num_velocities_);
+    auto input_desired_port_vec = dynamic_cast<const BasicVector<double>*>(EvalVectorInput(context, input_state_port_index_))->get_value();
+    KinematicsCache<double> kcache = tree_.doKinematics(q, v);
+
+    Matrix<double, Eigen::Dynamic, Eigen::Dynamic> c_jac = tree_.positionConstraintsJacobian(kcache);
+    std::cout << c_jac << std::endl;
 
 
 }

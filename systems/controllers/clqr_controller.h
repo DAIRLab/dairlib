@@ -3,6 +3,7 @@
 
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/framework/basic_vector.h"
+#include "drake/multibody/rigid_body_tree.h"
 
 using Eigen::VectorXd;
 using drake::systems::Context;
@@ -18,7 +19,7 @@ class ClqrController : public LeafSystem<double>
 {
     public: 
 
-        ClqrController(int num_positions, int num_velocities, int num_inputs);
+        ClqrController(const RigidBodyTree<double>& tree, int num_positions, int num_velocities, int num_inputs);
         const InputPortDescriptor<double>& getInputStatePort();
         const InputPortDescriptor<double>& getInputDesiredPort();
         const OutputPort<double>& getOutputActuatorPort();
@@ -31,6 +32,7 @@ class ClqrController : public LeafSystem<double>
     private:
 
         void calcControl(const Context<double>& context, BasicVector<double>*output) const;
+        const RigidBodyTree<double>& tree_;
         int input_state_port_index_;
         int input_desired_port_index_;
         int output_actuator_port_index_;

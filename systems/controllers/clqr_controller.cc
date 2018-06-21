@@ -3,7 +3,7 @@
 namespace dairlib{
 namespace systems{
 
-ClqrController::ClqrController(int num_positions, int num_velocities, int num_actuators)
+ClqrController::ClqrController(const RigidBodyTree<double>& tree, int num_positions, int num_velocities, int num_actuators): tree_(tree)
 {
     num_positions_ = num_positions;
     num_velocities_ = num_velocities;
@@ -21,6 +21,14 @@ void ClqrController::calcControl(const Context<double>& context, BasicVector<dou
 {
     VectorXd out = VectorXd::Ones(num_actuators_)*10.0;
     output_bv->SetFromVector(out);
+
+    auto input_state_port_vec = dynamic_cast<const BasicVector<double>*>(EvalVectorInput(context, input_state_port_index_))->get_value();
+    auto input_desired_port_vec = dynamic_cast<const BasicVector<double>*>(EvalVectorInput(context, input_desired_port_index_))->get_value();
+    auto q = input_state_port_vec.head(num_positions_);
+    auto v = input_state_port_vec.tail(num_velocities_);
+    //KinematicsCache<double> kcache = tree_.doKinematics(VectorXd::Zero(num_actuators_));
+
+
 }
 
 

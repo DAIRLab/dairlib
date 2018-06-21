@@ -27,6 +27,7 @@ cc_library(
             "//systems/framework:vector",
             "@drake//systems/framework:leaf_system",
             "@drake//systems/framework:vector",
+            "@drake//multibody:rigid_body_tree",
             ]
 )
 

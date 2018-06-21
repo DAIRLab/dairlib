@@ -4,9 +4,12 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/framework/basic_vector.h"
 #include "drake/multibody/rigid_body_tree.h"
+#include "drake/math/autodiff.h"
 
 using Eigen::VectorXd;
 using Eigen::Matrix;
+using drake::AutoDiffXd;
+using drake::AutoDiffVecXd;
 using drake::systems::Context;
 using drake::systems::BasicVector;
 using drake::systems::LeafSystem;

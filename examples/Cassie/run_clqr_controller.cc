@@ -68,7 +68,7 @@ int do_main(int argc, char* argv[])
     drake::systems::DiagramBuilder<double> builder;
     
     if (FLAGS_simulation_type != "timestepping")
-      FLAGS_dt = 0.0;
+      FLAGS_sot = 0.0;
     auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
     
       // Note: this sets identical contact parameters across all object pairs:

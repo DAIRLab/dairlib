@@ -86,8 +86,7 @@ int do_main(int argc, char* argv[])
             drake::VectorX<double>::Zero(plant->actuator_command_input_port().size()));
 
     // The vector source is connected to the inputs of the rigid body tree (Joints of the robot)
-    builder.Connect(constant_zero_source->get_output_port(),
-                            plant->actuator_command_input_port());
+    //builder.Connect(constant_zero_source->get_output_port(), plant->actuator_command_input_port());
 
     // Adding the visualizer to the diagram
     drake::systems::DrakeVisualizer& visualizer_publisher =
@@ -98,9 +97,12 @@ int do_main(int argc, char* argv[])
                             visualizer_publisher.get_input_port(0));
 
     
-    systems::ClqrController clqr_controller(NUM_POSITIONS, NUM_VELOCITIES, NUM_ACTUATORS);
-    cout << clqr_controller.getNumPositions() << endl;
+    auto clqr_controller = builder.AddSystem<systems::ClqrController>(NUM_POSITIONS, NUM_VELOCITIES, NUM_ACTUATORS);
+    builder.Connect(plant->state_output_port(), clqr_controller->getInputStatePort());
+    builder.Connect(clqr_controller->getOutputActuatorPort(), plant->actuator_command_input_port());
+
     
+
     auto diagram = builder.Build();
     
     drake::systems::Simulator<double> simulator(*diagram);

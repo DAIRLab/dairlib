@@ -13,6 +13,14 @@ ClqrController::ClqrController(int num_positions, int num_velocities, int num_ac
     input_state_port_index_ = this->DeclareVectorInputPort(BasicVector<double>(num_states_)).get_index();
     input_desired_port_index_ = this->DeclareVectorInputPort(BasicVector<double>(num_states_)).get_index();
 
+    output_actuator_port_index_ = this->DeclareVectorOutputPort(BasicVector<double>(num_actuators_), &ClqrController::calcControl).get_index(); 
+
+}
+
+void ClqrController::calcControl(const Context<double>& context, BasicVector<double>* output_bv) const
+{
+    VectorXd out = VectorXd::Ones(num_actuators_)*10.0;
+    output_bv->SetFromVector(out);
 }
 
 

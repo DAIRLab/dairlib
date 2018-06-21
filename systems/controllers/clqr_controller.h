@@ -4,6 +4,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/framework/basic_vector.h"
 
+using Eigen::VectorXd;
 using drake::systems::Context;
 using drake::systems::BasicVector;
 using drake::systems::LeafSystem;
@@ -30,7 +31,6 @@ class ClqrController : public LeafSystem<double>
     private:
 
         void calcControl(const Context<double>& context, BasicVector<double>*output) const;
-
         int input_state_port_index_;
         int input_desired_port_index_;
         int output_actuator_port_index_;

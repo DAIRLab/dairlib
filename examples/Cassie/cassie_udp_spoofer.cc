@@ -11,6 +11,7 @@
 #include <functional>
 #include <iostream>
 #include <chrono>
+#include <mutex>
 
 #include "polling_interface.h"
 #include "datatypes/cassie_dispatch_types.h"

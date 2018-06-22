@@ -29,11 +29,11 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
     }
     
     for (int i = 0; i < CASSIE_NUM_VEL; i++) {
-        lcm_in.velocity_names[i] = cassiePositionNames[i];
+        lcm_in.velocity_names[i] = cassieVelocityNames[i];
     }
     
     for (int i = 0; i < CASSIE_NUM_EFF; i++) {
-        lcm_in.effort_names[i] = cassiePositionNames[i];
+        lcm_in.effort_names[i] = cassieEffortNames[i];
     }
   
     lcm_in.position[0] = robot_out.leftLeg.hipRollDrive.position;

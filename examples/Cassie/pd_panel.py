@@ -124,6 +124,7 @@ class ControllerGui(QWidget):
     def value_change(self):
         for idx, ledit in enumerate(self.ledits):
             self.values[idx] = self.ledits[idx].value
+        print('value changed')
 
     #Initial defafult text values
     def initialize_default(self):
@@ -149,6 +150,7 @@ class ControllerGui(QWidget):
 
     def setState_clicked(self):
         self.lc.handle_timeout(100)
+        self.lc.handle_timeout(100) #twice to clear the buffer
     def state_handler(self, channel, data):
         msg = dairlib.lcmt_robot_output.decode(data)
         for idx_msg, joint in enumerate(msg.position_names):
@@ -156,9 +158,8 @@ class ControllerGui(QWidget):
                 idx = position_names.index(joint)
                 self.ledits[idx].setValue(msg.position[idx_msg])
                 self.values[idx] = msg.position[idx_msg]
-                print("Joint: " + joint + " idx: " + str(idx))
-            else:
-                print("Could not find joint " + joint)
+        print('message handled')
+        print(msg.position[6])
 
 
 panel = ControllerGui()

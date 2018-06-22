@@ -52,14 +52,14 @@ cc_library(
 )
 
 
-cc_library(
-	name = "cassie_dispatch_types",
-	hdrs = [":cassie_dispatch_types.h"],
-	srcs = [":cassie_dispatch_types.cc"],
-	deps = [
-	        ":cassie_out_t",
-	        ":cassie_user_in_t",
-	        ":cassie_names",
-	        "//lcmtypes:lcmt_robot"
-	        ]
-)
+#cc_library(
+#	name = "cassie_dispatch_types",
+#	hdrs = [":cassie_dispatch_types.h"],
+#	srcs = [":cassie_dispatch_types.cc"],
+#	deps = [
+#	        ":cassie_out_t",
+#	        ":cassie_user_in_t",
+#	        ":cassie_names",
+#	        "//lcmtypes:lcmt_robot"
+#	        ]
+#)

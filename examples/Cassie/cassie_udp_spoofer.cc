@@ -127,7 +127,7 @@ void CassieUdpSpoofer::SetupChannel()
  this->receive_message();
  std::cout << "Connection Established" << std::endl;
   // Make socket non-blocking
-  //fcntl(sock, O_NONBLOCK);
+  fcntl(sock, O_NONBLOCK);
 }
 
 cassie_dispatch_robot_in_t CassieUdpSpoofer::receive_message()

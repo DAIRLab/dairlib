@@ -63,7 +63,6 @@ int do_main(int argc, char* argv[])
     cout << tree->positionConstraints(kcache) << endl;
     cout << tree->positionConstraintsJacobian(kcache) << endl;
     cout << "--------------------------------------------------------" << endl;
-
     
     
     drake::systems::DiagramBuilder<double> builder;
@@ -96,24 +95,10 @@ int do_main(int argc, char* argv[])
     builder.Connect(plant->state_output_port(),
                             visualizer_publisher.get_input_port(0));
 
-    
-    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant->get_rigid_body_tree(), NUM_POSITIONS, NUM_VELOCITIES, NUM_ACTUATORS);
-    builder.Connect(plant->state_output_port(), clqr_controller->getInputStatePort());
-    builder.Connect(clqr_controller->getOutputActuatorPort(), plant->actuator_command_input_port());
-
-    
-
-    auto diagram = builder.Build();
-    
-    drake::systems::Simulator<double> simulator(*diagram);
-    drake::systems::Context<double>& context =
-        diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
-    
-    Eigen::VectorXd x0 = Eigen::VectorXd::Zero(
-        plant->get_rigid_body_tree().get_num_positions() +
-        plant->get_rigid_body_tree().get_num_velocities());
+    Eigen::VectorXd x0 = Eigen::VectorXd::Zero(NUM_POSITIONS + NUM_VELOCITIES);
     std::map<std::string, int>  map =
         plant->get_rigid_body_tree().computePositionNameToIndexMap();
+
     x0(map.at("hip_pitch_left")) = .269;
     x0(map.at("hip_pitch_right")) = .269;
     // x0(map.at("achilles_hip_pitch_left")) = -.44;
@@ -133,7 +118,20 @@ int do_main(int argc, char* argv[])
     
     x0(map.at("toe_left")) = -60.0*M_PI/180.0;
     x0(map.at("toe_right")) = -60.0*M_PI/180.0;
+
     
+    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant->get_rigid_body_tree(), x0, NUM_POSITIONS, NUM_VELOCITIES, NUM_ACTUATORS);
+    builder.Connect(plant->state_output_port(), clqr_controller->get_input_port_output());
+    builder.Connect(clqr_controller->get_output_port(0), plant->actuator_command_input_port());
+
+
+    auto diagram = builder.Build();
+    
+    drake::systems::Simulator<double> simulator(*diagram);
+    drake::systems::Context<double>& context =
+        diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
+    
+        
     std::vector<int> fixed_joints;
     fixed_joints.push_back(map.at("hip_pitch_left"));
     fixed_joints.push_back(map.at("hip_pitch_right"));
@@ -148,9 +146,8 @@ int do_main(int argc, char* argv[])
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
     state.SetFromVector(x0);
     
-    // int num_u = plant->get_num_actuators();
-    // auto zero_input = Eigen::MatrixXd::Zero(num_u,1);
-    // context.FixInputPort(0, zero_input);
+    //auto zero_input = Eigen::MatrixXd::Zero(NUM_ACTUATORS,1);
+    //context.FixInputPort(0, zero_input);
     
     //simulator.set_publish_every_time_step(false);
     //simulator.set_publish_at_initialization(false);

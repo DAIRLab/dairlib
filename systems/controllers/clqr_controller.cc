@@ -33,7 +33,10 @@ void ClqrController::calcControl(const Context<double>& context, BasicVector<dou
     auto input_desired_port_vec = dynamic_cast<const BasicVector<double>*>(EvalVectorInput(context, input_state_port_index_))->get_value();
     KinematicsCache<AutoDiffXd> kcache = tree_.doKinematics(q_autodiff, v_autodiff);
 
-    AutoDiffVecXd c_jac(tree_.positionConstraintsJacobian(kcache));
+    AutoDiffVecXd c_jac = tree_.positionConstraintsJacobian(kcache);
+
+    Matrix<double, Eigen::Dynamic, Eigen::Dynamic> c_jac_dot = drake::math::autoDiffToGradientMatrix(c_jac);
+    std::cout << c_jac_dot << std::endl;
 
 
 }

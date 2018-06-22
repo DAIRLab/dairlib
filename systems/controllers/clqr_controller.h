@@ -5,6 +5,7 @@
 #include "drake/systems/framework/basic_vector.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/math/autodiff.h"
+#include "drake/math/autodiff_gradient.h"
 
 using Eigen::VectorXd;
 using Eigen::Matrix;

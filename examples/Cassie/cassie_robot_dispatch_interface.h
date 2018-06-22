@@ -53,7 +53,7 @@ class CassieRobotDispatchInterface : public PollingInterface<cassie_dispatch_rob
     bool continue_running;
 
     // hack
-    unsigned short spoofing_offset = 16;
+    unsigned short spoofing_offset = 0;
     char recvbuf[2 + CASSIE_OUT_T_LEN];
     char sendbuf[2 + CASSIE_USER_IN_T_LEN];
     packet_header_info_t header_info = {0};

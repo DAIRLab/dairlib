@@ -43,7 +43,7 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
     lcm_in.position[4] = robot_out.leftLeg.footDrive.position;
     lcm_in.position[5] = robot_out.leftLeg.shinJoint.position;
     lcm_in.position[6] = robot_out.leftLeg.tarsusJoint.position;
-    lcm_in.position[7] = robot_out.leftLeg.footJoint.position;
+    lcm_in.position[7] = 0.0;//robot_out.leftLeg.footJoint.position;
     lcm_in.position[8] = robot_out.rightLeg.hipRollDrive.position;
     lcm_in.position[9] = robot_out.rightLeg.hipYawDrive.position;
     lcm_in.position[10] = robot_out.rightLeg.hipPitchDrive.position;
@@ -51,7 +51,7 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
     lcm_in.position[12] = robot_out.rightLeg.footDrive.position;
     lcm_in.position[13] = robot_out.rightLeg.shinJoint.position;
     lcm_in.position[14] = robot_out.rightLeg.tarsusJoint.position;
-    lcm_in.position[15] = robot_out.rightLeg.footJoint.position;
+    lcm_in.position[15] = 0.0;//robot_out.rightLeg.footJoint.position;
 
     lcm_in.velocity[0] = robot_out.leftLeg.hipRollDrive.velocity;
     lcm_in.velocity[1] = robot_out.leftLeg.hipYawDrive.velocity;
@@ -60,7 +60,7 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
     lcm_in.velocity[4] = robot_out.leftLeg.footDrive.velocity;
     lcm_in.velocity[5] = robot_out.leftLeg.shinJoint.velocity;
     lcm_in.velocity[6] = robot_out.leftLeg.tarsusJoint.velocity;
-    lcm_in.velocity[7] = robot_out.leftLeg.footJoint.velocity;
+    lcm_in.velocity[7] = 0.0;//robot_out.leftLeg.footJoint.velocity;
     lcm_in.velocity[8] = robot_out.rightLeg.hipRollDrive.velocity;
     lcm_in.velocity[9] = robot_out.rightLeg.hipYawDrive.velocity;
     lcm_in.velocity[10] = robot_out.rightLeg.hipPitchDrive.velocity;
@@ -68,7 +68,7 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
     lcm_in.velocity[12] = robot_out.rightLeg.footDrive.velocity;
     lcm_in.velocity[13] = robot_out.rightLeg.shinJoint.velocity;
     lcm_in.velocity[14] = robot_out.rightLeg.tarsusJoint.velocity;
-    lcm_in.velocity[15] = robot_out.rightLeg.footJoint.velocity;
+    lcm_in.velocity[15] = 0.0;//robot_out.rightLeg.footJoint.velocity;
 
     lcm_in.effort[0] = robot_out.leftLeg.hipRollDrive.torque;
     lcm_in.effort[1] = robot_out.leftLeg.hipYawDrive.torque;

@@ -3,12 +3,8 @@
 namespace dairlib{
 namespace systems{
 
-ClqrController::ClqrController(const RigidBodyTree<double>& tree, RigidBodyPlant<double>* plant, VectorXd x0, int num_positions, int num_velocities, int num_actuators): LinearController(num_positions, num_velocities, num_actuators), tree_(tree), plant_(plant), x0_(x0)
+ClqrController::ClqrController(const RigidBodyTree<double>& tree, RigidBodyPlant<double>* plant, VectorXd x0, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R): LinearController(num_positions, num_velocities, num_efforts), tree_(tree), plant_(plant), x0_(x0), num_positions_(num_positions), num_velocities_(num_velocities), num_states_(num_positions + num_velocities), num_efforts_(num_efforts), Q_(Q), R_(R)
 {
-    num_positions_ = num_positions;
-    num_velocities_ = num_velocities;
-    num_states_ = num_positions_ + num_velocities_;
-    num_actuators_ = num_actuators;
     F_ = computeF();
     K_ = computeK();
 
@@ -50,7 +46,13 @@ Matrix<double, Dynamic, Dynamic> ClqrController::computeK()
 
     //Linearizing
     auto context = plant_->CreateDefaultContext();
-    //auto linear_system = Linearize(*plant, context, 0, kNoOutput);
+    VectorX<double> cstate = VectorXd::Zero(num_states_);
+    VectorX<double> zero_input = VectorXd::Zero(num_efforts_);
+    context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(cstate).Clone(), num_positions_, num_velocities_, 0));
+    context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(zero_input));
+    auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
+
+    return P;
 
 }
 
@@ -70,9 +72,9 @@ int ClqrController::getNumStates()
     return num_states_;
 }
 
-int ClqrController::getNumActuators()
+int ClqrController::getNumEfforts()
 {
-    return num_actuators_;
+    return num_efforts_;
 }
 
 Matrix<double, Dynamic, Dynamic> ClqrController::getQ()

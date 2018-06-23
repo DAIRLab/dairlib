@@ -3,6 +3,9 @@
 
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/framework/basic_vector.h"
+#include "drake/systems/framework/context.h"
+#include "drake/systems/controllers/linear_quadratic_regulator.h"
+#include "drake/systems/primitives/linear_system.h"
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/math/autodiff.h"
@@ -17,6 +20,7 @@ using Eigen::Matrix;
 using Eigen::MatrixXd;
 using Eigen::Dynamic;
 using Eigen::HouseholderQR;
+using drake::VectorX;
 using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
 using drake::systems::RigidBodyPlant;
@@ -25,6 +29,9 @@ using drake::systems::BasicVector;
 using drake::systems::LeafSystem;
 using drake::systems::InputPortDescriptor;
 using drake::systems::OutputPort;
+using drake::systems::ContinuousState;
+using drake::systems::Context;
+using drake::systems::kNoOutput;
 
 namespace dairlib{
 namespace systems{
@@ -33,20 +40,20 @@ class ClqrController : public LinearController
 {
     public: 
 
-        ClqrController(const RigidBodyTree<double>& tree, RigidBodyPlant<double>* plant, VectorXd x0_, int num_positions, int num_velocities, int num_actuators);
+        ClqrController(const RigidBodyTree<double>& tree, RigidBodyPlant<double>* plant, VectorXd x0_, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R);
         //const InputPortDescriptor<double>& getInputStatePort();
         //const InputPortDescriptor<double>& getInputDesiredPort();
         //const OutputPort<double>& getOutputActuatorPort();
         int getNumPositions();
         int getNumVelocities();
         int getNumStates();
-        int getNumActuators();
+        int getNumEfforts();
         Matrix<double, Dynamic, Dynamic> getQ();
         Matrix<double, Dynamic, Dynamic> getR();
         Matrix<double, Dynamic, Dynamic> getK();
         void setK(Matrix<double, Dynamic, Dynamic> K);
-        void setQ(Matrix<double, Dynamic, Dynamic>, Q);
-        void setR(Matrix<double, Dynamic, Dynamic>, R);
+        void setQ(Matrix<double, Dynamic, Dynamic> Q);
+        void setR(Matrix<double, Dynamic, Dynamic> R);
 
 
     private:
@@ -63,7 +70,7 @@ class ClqrController : public LinearController
         int num_positions_;
         int num_velocities_;
         int num_states_;
-        int num_actuators_;
+        int num_efforts_;
         Matrix<double, Dynamic, Dynamic> Q_;
         Matrix<double, Dynamic, Dynamic> R_;
         Matrix<double, Dynamic, Dynamic> F_;

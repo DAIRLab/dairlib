@@ -26,6 +26,11 @@
 using std::cout;
 using std::endl;
 
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using Eigen::Matrix;
+using Eigen::Dynamic;
+
 namespace dairlib{
 
 // Simulation parameters.
@@ -51,11 +56,12 @@ int do_main(int argc, char* argv[])
     drake::lcm::DrakeLcm lcm;
     std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
     
-    const int NUM_ACTUATORS = tree->get_num_actuators();
+    const int NUM_EFFORT = tree->get_num_actuators();
     const int NUM_POSITIONS = tree->get_num_positions();
     const int NUM_VELOCITIES = tree->get_num_velocities();
+    const int NUM_STATES = NUM_POSITIONS + NUM_VELOCITIES;
     
-    cout << "Number of actuators: " << NUM_ACTUATORS << endl;
+    cout << "Number of actuators: " << NUM_EFFORT << endl;
     cout << "Number of generalized coordinates: " << NUM_POSITIONS << endl;
     cout << "Number of generalized velocities: " << NUM_VELOCITIES << endl;
 
@@ -119,8 +125,10 @@ int do_main(int argc, char* argv[])
     x0(map.at("toe_left")) = -60.0*M_PI/180.0;
     x0(map.at("toe_right")) = -60.0*M_PI/180.0;
 
-    
-    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant->get_rigid_body_tree(), plant, x0, NUM_POSITIONS, NUM_VELOCITIES, NUM_ACTUATORS);
+    Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES, NUM_STATES);
+    Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORT, NUM_EFFORT);
+
+    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant->get_rigid_body_tree(), plant, x0, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORT, Q, R);
     builder.Connect(plant->state_output_port(), clqr_controller->get_input_port_output());
     builder.Connect(clqr_controller->get_output_port(0), plant->actuator_command_input_port());
 

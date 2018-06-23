@@ -5,54 +5,61 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
+#include "systems/primitives/subvector_pass_through.h"
 
-#include "dairlib/lcmt_cassie_state.hpp"
-#include "cassie_controller_lcm.h"
-#include "datatypes/cassie_names.h"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "systems/robot_lcm_systems.h"
+#include "examples/Cassie/cassie_utils.h"
 
-namespace drake{
+namespace dairlib{
 
-  using std::endl;
-  using std::cout;
+using std::endl;
+using std::cout;
+using dairlib::systems::SubvectorPassThrough;
+using drake::systems::Simulator;
+using dairlib::systems::RobotOutputReceiver;
 
 int doMain() {
   RigidBodyTree<double> tree;
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("examples/Cassie/urdf/cassie_fixed_springs.urdf", multibody::joints::kFixed, &tree);
+  buildFixedBaseCassieTree(tree);
 
-
-  std::cout << "bodies" << std::endl;
+  cout << endl << "****bodies****" << endl;
   for (int i = 0; i < tree.get_num_bodies(); i++)
     cout << tree.getBodyOrFrameName(i) << endl;
-  std::cout << "actuators" << std::endl;
+  cout << endl << "****actuators****" << endl;
   for (int i = 0; i < tree.get_num_actuators(); i++)
     cout << tree.actuators[i].name_ << endl;
-  std::cout << "positions" << std::endl;
+  cout << endl << "****positions****" << endl;
   for (int i = 0; i < tree.get_num_positions(); i++)
     cout << tree.get_position_name(i) << endl;
-  std::cout << "velocities" << std::endl;
+  cout << endl << "****velocities****" << endl;
   for (int i = 0; i < tree.get_num_velocities(); i++)
     cout << tree.get_velocity_name(i) << endl;
 
 
   drake::systems::DiagramBuilder<double> builder;
-  lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm;
 
   const std::string channel_x = "CASSIE_STATE";
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
-      systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_cassie_state>(channel_x, &lcm));
-  auto state_receiver = builder.AddSystem<CassieStateReceiver>();
+      drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+  auto state_receiver = builder.AddSystem<RobotOutputReceiver>(tree);
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port(0));
 
 
-  auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
+  auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree, &lcm);
 
-  std::cout << state_receiver->get_output_port(0).size() << std::endl;
-  std::cout << publisher->get_input_port(0).size() << std::endl;
-  
+  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
+    state_receiver->get_output_port(0).size(),
+    0,
+    publisher->get_input_port(0).size());
+
   builder.Connect(state_receiver->get_output_port(0),
+                  passthrough->get_input_port());
+  builder.Connect(passthrough->get_output_port(),
                   publisher->get_input_port(0));
 
 
@@ -65,7 +72,7 @@ int doMain() {
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice 
   /// Set realtime rate. Otherwise, runs as fast as possible
-  auto stepper = std::make_unique<systems::Simulator<double>>(*diagram, std::move(context));
+  auto stepper = std::make_unique<Simulator<double>>(*diagram, std::move(context));
   stepper->set_publish_every_time_step(false);
   stepper->set_publish_at_initialization(false);
   stepper->set_target_realtime_rate(1.0);
@@ -83,4 +90,4 @@ int doMain() {
 
 }
 
-int main() { return drake::doMain(); }
+int main() { return dairlib::doMain(); }

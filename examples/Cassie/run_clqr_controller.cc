@@ -120,7 +120,7 @@ int do_main(int argc, char* argv[])
     x0(map.at("toe_right")) = -60.0*M_PI/180.0;
 
     
-    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant->get_rigid_body_tree(), x0, NUM_POSITIONS, NUM_VELOCITIES, NUM_ACTUATORS);
+    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant->get_rigid_body_tree(), plant, x0, NUM_POSITIONS, NUM_VELOCITIES, NUM_ACTUATORS);
     builder.Connect(plant->state_output_port(), clqr_controller->get_input_port_output());
     builder.Connect(clqr_controller->get_output_port(0), plant->actuator_command_input_port());
 

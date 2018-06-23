@@ -66,7 +66,7 @@ int CassieRobotDispatchInterface::udp_connect(const char *local_addr_str,
         close(sock);
         return -1;
     }
-
+    std::cout << "dispatch socket configured" << std::endl;
     return sock;
 }
 
@@ -110,7 +110,7 @@ cassie_dispatch_robot_out_t CassieRobotDispatchInterface::Receive()
   cassie_out_t cassie_out;
 
   //hack for testing
-  ssize_t des_len = 699;
+  ssize_t des_len = (sizeof recvbuf);// + this->spoofing_offset;
   // Poll for a new packet of the correct length
   ssize_t nbytes = 0;
   do {
@@ -126,14 +126,14 @@ cassie_dispatch_robot_out_t CassieRobotDispatchInterface::Receive()
       // Does not use sequence number for determining newest packet
       while (poll(&fd, 1, 0)) {
         ioctl(sock, FIONREAD, &nbytes);
-        //std::cout <<  "ioctl: " << nbytes << std::endl;
-        if (sizeof recvbuf == nbytes){
-          nbytes = recv(sock, recvbuf, sizeof recvbuf, 0);
+        std::cout <<  "ioctl: " << nbytes << std::endl;
+        if (des_len <= nbytes){
+          nbytes = recv(sock, recvbuf, des_len, 0);
         }
         else {
           recv(sock, recvbuf, 0, 0); // Discard packet
         }
-          //std::cout <<  "received: " << nbytes << std::endl;
+          std::cout <<  "received: " << nbytes << std::endl;
       }
   } while (des_len != nbytes);
 
@@ -157,6 +157,7 @@ void CassieRobotDispatchInterface::polling_function(std::function<void(cassie_di
     {
       break;
     }
+    std::cout <<  "Sending State To Controller" << std::endl;
     handler(cassie_out);
   }
   //std::cout <<  "Terminate Polling UDP" << std::endl;
@@ -179,7 +180,7 @@ void CassieRobotDispatchInterface::StopPolling()
 
 void CassieRobotDispatchInterface::Send(cassie_dispatch_robot_in_t message)
 {
-  //std::cout <<  "Sending UDP command\n" << std::endl;
+  //std::cout <<  "Sending UDP command" << std::endl;std::cout.flush();
   const char *header_in = recvbuf;
   char *header_out = sendbuf;
   unsigned char *data_out = reinterpret_cast<unsigned char *>(&sendbuf[2]);

@@ -10,21 +10,60 @@ is used to record the attribute lookups that are required to
 extract the signal data from the lcm message in the future.
 '''
 
-joints = ['L_HIP_ROLL', 'L_HIP_YAW','L_HIP_PITCH', 'L_KNEE', 'L_FOOT','R_HIP_ROLL', 'R_HIP_YAW','R_HIP_PITCH', 'R_KNEE', 'R_FOOT']
-names = msg.joint_names
+print(dir())
+print(globals())
+print(locals())
 
+position_names = [
+    "hip_roll_left",
+    "hip_roll_right",
+    "hip_yaw_left",
+    "hip_yaw_right",
+    "hip_pitch_left",
+    "hip_pitch_right",
+    "knee_left",
+    "knee_right",
+    "toe_crank_left",
+    "toe_crank_right"]
 
+velocity_names = [
+    "hip_roll_leftdot",
+    "hip_roll_rightdot",
+    "hip_yaw_leftdot",
+    "hip_yaw_rightdot",
+    "hip_pitch_leftdot",
+    "hip_pitch_rightdot",
+    "knee_leftdot",
+    "knee_rightdot",
+    "toe_crank_leftdot",
+    "toe_crank_rightdot"]
+
+effort_names = [
+    "hip_roll_left_motor",
+    "hip_roll_right_motor",
+    "hip_yaw_left_motor",
+    "hip_yaw_right_motor",
+    "hip_pitch_left_motor",
+    "hip_pitch_right_motor",
+    "knee_left_motor",
+    "knee_right_motor",
+    "toe_crank_left_motor",
+    "toe_crank_right_motor"]
+
+pos_names = msg.position_names
+vel_names = msg.velocity_names
+eff_names = msg.effort_names
 addPlot()
-addSignals('CASSIE_STATE', msg.timestamp, msg.position, joints, keyLookup=names)
+addSignals('CASSIE_STATE', msg.timestamp, msg.position, position_names, keyLookup=pos_names)
 
 
 # you can assign the plot to a variable and reference it later
 p=addPlot()
-addSignals('CASSIE_STATE', msg.timestamp, msg.velocity, joints, keyLookup=names, plot=p)
+addSignals('CASSIE_STATE', msg.timestamp, msg.velocity, velocity_names, keyLookup=vel_names, plot=p)
 
 
 p3 = addPlot()
-addSignals('CASSIE_INPUT', msg.timestamp, msg.inputs, joints, keyLookup=names, plot=p3)
+addSignals('CASSIE_INPUT', msg.timestamp, msg.efforts, effort_names, keyLookup=eff_names, plot=p3)
 
 
 

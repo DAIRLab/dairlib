@@ -40,7 +40,7 @@ class ClqrController : public LinearController
 {
     public: 
 
-        ClqrController(const RigidBodyTree<double>& tree, RigidBodyPlant<double>* plant, VectorXd x0_, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R);
+        ClqrController(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd xd, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R);
         //const InputPortDescriptor<double>& getInputStatePort();
         //const InputPortDescriptor<double>& getInputDesiredPort();
         //const OutputPort<double>& getOutputActuatorPort();
@@ -64,6 +64,7 @@ class ClqrController : public LinearController
         const RigidBodyTree<double>& tree_;
         RigidBodyPlant<double>* plant_;
         VectorXd x0_;
+        VectorXd xd_;
         //int input_state_port_index_;
         //int input_desired_port_index_;
         //int output_actuator_port_index_;

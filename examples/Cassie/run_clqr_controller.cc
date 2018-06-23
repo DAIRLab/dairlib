@@ -56,12 +56,12 @@ int do_main(int argc, char* argv[])
     drake::lcm::DrakeLcm lcm;
     std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
     
-    const int NUM_EFFORT = tree->get_num_actuators();
+    const int NUM_EFFORTS = tree->get_num_actuators();
     const int NUM_POSITIONS = tree->get_num_positions();
     const int NUM_VELOCITIES = tree->get_num_velocities();
     const int NUM_STATES = NUM_POSITIONS + NUM_VELOCITIES;
     
-    cout << "Number of actuators: " << NUM_EFFORT << endl;
+    cout << "Number of actuators: " << NUM_EFFORTS << endl;
     cout << "Number of generalized coordinates: " << NUM_POSITIONS << endl;
     cout << "Number of generalized velocities: " << NUM_VELOCITIES << endl;
 
@@ -125,12 +125,15 @@ int do_main(int argc, char* argv[])
     x0(map.at("toe_left")) = -60.0*M_PI/180.0;
     x0(map.at("toe_right")) = -60.0*M_PI/180.0;
 
-    Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES, NUM_STATES);
-    Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORT, NUM_EFFORT);
+    x0 = VectorXd::Zero(NUM_STATES);
 
-    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant->get_rigid_body_tree(), plant, x0, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORT, Q, R);
-    builder.Connect(plant->state_output_port(), clqr_controller->get_input_port_output());
-    builder.Connect(clqr_controller->get_output_port(0), plant->actuator_command_input_port());
+    Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES, NUM_STATES);
+    Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS);
+    VectorXd xd = x0;
+
+    //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x0, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
+    //builder.Connect(plant->state_output_port(), clqr_controller->get_input_port_output());
+    //builder.Connect(clqr_controller->get_output_port(0), plant->actuator_command_input_port());
 
 
     auto diagram = builder.Build();
@@ -154,8 +157,8 @@ int do_main(int argc, char* argv[])
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
     state.SetFromVector(x0);
     
-    //auto zero_input = Eigen::MatrixXd::Zero(NUM_ACTUATORS,1);
-    //context.FixInputPort(0, zero_input);
+    auto zero_input = Eigen::MatrixXd::Zero(NUM_EFFORTS,1);
+    context.FixInputPort(0, zero_input);
     
     //simulator.set_publish_every_time_step(false);
     //simulator.set_publish_at_initialization(false);

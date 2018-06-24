@@ -125,34 +125,33 @@ int do_main(int argc, char* argv[])
     x0(map.at("toe_left")) = -60.0*M_PI/180.0;
     x0(map.at("toe_right")) = -60.0*M_PI/180.0;
 
-    x0 = VectorXd::Zero(NUM_STATES);
-
-    Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES, NUM_STATES);
-    Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS);
-    VectorXd xd = x0;
-
-    //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x0, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
-    //builder.Connect(plant->state_output_port(), clqr_controller->get_input_port_output());
-    //builder.Connect(clqr_controller->get_output_port(0), plant->actuator_command_input_port());
-
-
-    auto diagram = builder.Build();
-    
-    drake::systems::Simulator<double> simulator(*diagram);
-    drake::systems::Context<double>& context =
-        diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
-    
-        
     std::vector<int> fixed_joints;
     fixed_joints.push_back(map.at("hip_pitch_left"));
     fixed_joints.push_back(map.at("hip_pitch_right"));
     fixed_joints.push_back(map.at("knee_left"));
     fixed_joints.push_back(map.at("knee_right"));
     
-    auto q0 = solvePositionConstraints(
-        plant->get_rigid_body_tree(),
-        x0.head(plant->get_rigid_body_tree().get_num_positions()), fixed_joints);
-    x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
+
+    auto q0 = solvePositionConstraints(plant->get_rigid_body_tree(),
+        x0.head(NUM_POSITIONS), fixed_joints);
+    x0.head(NUM_POSITIONS) = q0;
+
+    VectorXd xd = x0;
+
+    //std::cout << plant->get_rigid_body_tree().B << std::endl;
+
+    Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES, NUM_STATES);
+    Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS);
+
+    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x0, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
+    //builder.Connect(plant->state_output_port(), clqr_controller->get_input_port_output());
+    //builder.Connect(clqr_controller->get_output_port(0), plant->actuator_command_input_port());
+
+    auto diagram = builder.Build();
+    
+    drake::systems::Simulator<double> simulator(*diagram);
+    drake::systems::Context<double>& context =
+        diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
     
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
     state.SetFromVector(x0);

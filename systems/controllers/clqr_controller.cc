@@ -12,11 +12,9 @@ ClqrController::ClqrController(RigidBodyPlant<double>* plant, VectorXd x0, Vecto
 
 Matrix<double, Dynamic, Dynamic> ClqrController::computeF()
 {
-    VectorXd q = x0_.head(num_positions_);
-    VectorXd v = x0_.tail(num_velocities_);
     
-    KinematicsCache<double> kcache = tree_.doKinematics(q, v);
-    Matrix<double, Dynamic, Dynamic> c_jac = tree_.positionConstraintsJacobian(kcache);
+    KinematicsCache<double> kcache_0 = tree_.doKinematics(x0_.head(num_positions_), x0_.tail(num_velocities_));
+    Matrix<double, Dynamic, Dynamic> c_jac = tree_.positionConstraintsJacobian(kcache_0);
 
     const int r = c_jac.rows();
     const int c = c_jac.cols();
@@ -46,12 +44,20 @@ Matrix<double, Dynamic, Dynamic> ClqrController::computeK()
 
     //Linearizing
     auto context = plant_->CreateDefaultContext();
-    VectorX<double> cstate = xd_;
-    std::cout << x0_.transpose() << std::endl;
-    std::cout << xd_.transpose() << std::endl;
-    VectorX<double> zero_input = VectorXd::Zero(num_efforts_);
-    context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(cstate).Clone(), num_positions_, num_velocities_, 0));
-    context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(zero_input));
+
+    //Computing inputs for the stabilizable point
+    Matrix<double, Dynamic, Dynamic> B = tree_.B;
+    Matrix<double, Dynamic, Dynamic> B_pinv = B.completeOrthogonalDecomposition().pseudoInverse();
+    KinematicsCache<double> kcache_d = tree_.doKinematics(xd_.head(num_positions_), xd_.tail(num_velocities_));
+    RigidBodyTree<double>::BodyToWrenchMap no_wrenches;
+    VectorXd C = tree_.dynamicsBiasTerm(kcache_d, no_wrenches);
+    VectorX<double> u0 = B.colPivHouseholderQr().solve(C);
+
+    std::cout << C << std::endl;
+    std::cout << C - B*u0 << std::endl;
+    std::cout << num_positions_ << " " << num_velocities_ << " " << num_states_ << std::endl;
+    context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(xd_).Clone(), num_positions_, num_velocities_, 0));
+    context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0));
     auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
 
     return P;

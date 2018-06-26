@@ -11,10 +11,12 @@ SolveFixedPoint::SolveFixedPoint(RigidBodyPlant<double>* plant, CompliantContact
 
 VectorXd SolveFixedPoint::solve(VectorXd xu_init, std::vector<int> fixed_joints) 
 {
+    std::cout << "Starting solve" << std::endl;
 
     MathematicalProgram prog;
     auto xu = prog.NewContinuousVariables(num_variables_, "xu");
-    auto constraint = std::make_shared<FixedPointConstraint>(plant_, compliant_contact_model_, num_states_, num_variables_, "");
+    std::cout << "Adding constraint" << std::endl;
+    auto constraint = std::make_shared<FixedPointConstraint>(plant_, compliant_contact_model_, num_variables_, num_variables_, "");
     prog.AddConstraint(constraint, xu);
     for (uint i = 0; i < fixed_joints.size(); i++)
     {
@@ -23,7 +25,9 @@ VectorXd SolveFixedPoint::solve(VectorXd xu_init, std::vector<int> fixed_joints)
     }
     prog.AddQuadraticCost((xu - xu_init).dot(xu - xu_init));
     prog.SetInitialGuessForAllVariables(xu_init);
+    std::cout << "Pre solve" << std::endl;
     prog.Solve();
+    std::cout << "Post solve" << std::endl;
     return prog.GetSolution(xu);
 }
 
@@ -34,10 +38,10 @@ FixedPointConstraint::FixedPointConstraint(RigidBodyPlant<double>* plant, Compli
         VectorXd::Zero(num_constraints),
         VectorXd::Zero(num_constraints),
         description),
-    RigidBodyPlant<double>(std::make_unique<RigidBodyTree<double>>()),
     plant_(plant), tree_(plant->get_rigid_body_tree()), 
     compliant_contact_model_(compliant_contact_model)
 {
+    std::cout << "Inside constructor" << std::endl;
 }
 
 void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, ContinuousState<double>* der, VectorX<double> u) const
@@ -68,7 +72,7 @@ void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, C
         auto const& joint = b->getJoint();
         if (joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
           const double limit_force =
-              JointLimitForce(joint, q(b->get_position_start_index()),
+              plant_->JointLimitForce(joint, q(b->get_position_start_index()),
                               v(b->get_velocity_start_index()));
           right_hand_side(b->get_velocity_start_index()) += limit_force;
         }
@@ -103,6 +107,8 @@ void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, C
     xdot << tree_.transformVelocityToQDot(kinsol, v), vdot;
     der->SetFromVector(xdot);
 
+    std::cout << der << std::endl;
+
 }
 
 
@@ -110,21 +116,27 @@ void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, C
 void FixedPointConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& xu,
                                     Eigen::VectorXd& y) const 
 {
+    std::cout << "Testing" << std::endl;
     const int num_positions = tree_.get_num_positions();
     const int num_velocities = tree_.get_num_velocities();
     const int num_states = num_positions + num_velocities;
     const int num_efforts = tree_.get_num_actuators();
+    std::cout << "Testing" << std::endl;
 
     auto context = plant_->CreateDefaultContext();
     VectorXd x = xu.head(num_states);
     VectorXd u = xu.tail(num_efforts);
 
+    std::cout << "Testing" << std::endl;
     context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(x).Clone(), num_positions, num_velocities, 0));
     context->FixInputPort(0, std::make_unique<BasicVector<double>>(u));
+    std::cout << "Testing" << std::endl;
    
     ContinuousState<double>* cstate_output;
+    std::cout << "Testing" << std::endl;
     calcTimeDerivatives(*context, cstate_output, u);
 
+    std::cout << "Testing" << std::endl;
     y = cstate_output->CopyToVector();
 
 }

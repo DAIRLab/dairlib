@@ -153,8 +153,11 @@ int do_main(int argc, char* argv[])
     compliant_contact_model.set_default_material(default_material);
     compliant_contact_model.set_model_parameters(model_parameters);
 
+    cout << "Starting" << endl;
     SolveFixedPoint solve_fixed_point(plant, &compliant_contact_model); 
+    cout << "Solving" << endl;
     VectorXd xu = solve_fixed_point.solve(x0, fixed_joints);
+    cout << "Solved" << endl;
 
 
     //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x0, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);

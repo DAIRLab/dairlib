@@ -42,7 +42,7 @@ class SolveFixedPoint
 
 
 
-class FixedPointConstraint : public Constraint, public RigidBodyPlant<double>
+class FixedPointConstraint : public Constraint
 {
     public:
         FixedPointConstraint(RigidBodyPlant<double>* plant,

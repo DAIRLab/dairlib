@@ -129,4 +129,9 @@ void FixedPointConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& xu,
 
 }
 
+void FixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
+                                    AutoDiffVecXd& y) const 
+{
+}
+
 }//namespace drake

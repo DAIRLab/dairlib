@@ -28,7 +28,7 @@ class SolveFixedPoint
 {
     public:
         SolveFixedPoint(RigidBodyPlant<double>* plant, CompliantContactModel<double>* compliant_contact_model);
-        VectorXd solve(VectorXd x_init, std::vector<int> fixed_joints);
+        VectorXd solve(VectorXd xu_init, std::vector<int> fixed_joints);
     private:
         RigidBodyPlant<double>* plant_;
         const RigidBodyTree<double>& tree_;

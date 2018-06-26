@@ -59,7 +59,7 @@ class FixedPointConstraint : public Constraint, public RigidBodyPlant<double>
         VectorXd solve(VectorXd x_init, std::vector<int> fixed_joints);
   
     private:
-        void calcTimeDerivatives(const Context<double>& context, ContinuousState<double>* der, VectorX<double> u);
+        void calcTimeDerivatives(const Context<double>& context, ContinuousState<double>* der, VectorX<double> u) const;
         RigidBodyPlant<double>* plant_;
         const RigidBodyTree<double>& tree_;
         CompliantContactModel<double>* compliant_contact_model_;

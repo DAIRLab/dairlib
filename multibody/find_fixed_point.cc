@@ -40,7 +40,7 @@ FixedPointConstraint::FixedPointConstraint(RigidBodyPlant<double>* plant, Compli
 {
 }
 
-void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, ContinuousState<double>* der, VectorX<double> u)
+void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, ContinuousState<double>* der, VectorX<double> u) const
 {
 
     auto x = dynamic_cast<const BasicVector<double>&>(context.get_continuous_state_vector()).get_value();
@@ -124,6 +124,8 @@ void FixedPointConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& xu,
    
     ContinuousState<double>* cstate_output;
     calcTimeDerivatives(*context, cstate_output, u);
+
+    y = cstate_output->CopyToVector();
 
 }
 

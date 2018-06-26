@@ -11,12 +11,10 @@ SolveFixedPoint::SolveFixedPoint(RigidBodyPlant<double>* plant, CompliantContact
 
 VectorXd SolveFixedPoint::solve(VectorXd xu_init, std::vector<int> fixed_joints) 
 {
-    std::cout << "Starting solve" << std::endl;
 
     MathematicalProgram prog;
     auto xu = prog.NewContinuousVariables(num_variables_, "xu");
-    std::cout << "Adding constraint" << std::endl;
-    auto constraint = std::make_shared<FixedPointConstraint>(plant_, compliant_contact_model_, num_variables_, num_variables_, "");
+    auto constraint = std::make_shared<FixedPointConstraint>(plant_, compliant_contact_model_, num_states_, num_variables_, "");
     prog.AddConstraint(constraint, xu);
     for (uint i = 0; i < fixed_joints.size(); i++)
     {
@@ -41,13 +39,14 @@ FixedPointConstraint::FixedPointConstraint(RigidBodyPlant<double>* plant, Compli
     plant_(plant), tree_(plant->get_rigid_body_tree()), 
     compliant_contact_model_(compliant_contact_model)
 {
-    std::cout << "Inside constructor" << std::endl;
 }
 
 void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, ContinuousState<double>* der, VectorX<double> u) const
 {
+    //std::cout << u.transpose() << std::endl;
 
     auto x = dynamic_cast<const BasicVector<double>&>(context.get_continuous_state_vector()).get_value();
+    
 
     const int nq = tree_.get_num_positions();
     const int nv = tree_.get_num_velocities();
@@ -55,6 +54,8 @@ void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, C
 
     VectorX<double> q = x.topRows(nq);
     VectorX<double> v = x.bottomRows(nv);
+    //std::cout << q.transpose() << std::endl;
+    //std::cout << v.transpose() << std::endl;
 
     auto kinsol = tree_.doKinematics(q, v);
 
@@ -72,7 +73,7 @@ void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, C
         auto const& joint = b->getJoint();
         if (joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
           const double limit_force =
-              plant_->JointLimitForce(joint, q(b->get_position_start_index()),
+              RigidBodyPlant<double>::JointLimitForce(joint, q(b->get_position_start_index()),
                               v(b->get_velocity_start_index()));
           right_hand_side(b->get_velocity_start_index()) += limit_force;
         }
@@ -105,9 +106,9 @@ void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, C
 
     VectorX<double> xdot(tree_.get_num_positions() + tree_.get_num_velocities());
     xdot << tree_.transformVelocityToQDot(kinsol, v), vdot;
+    //std::cout << xdot.transpose() << std::endl;
     der->SetFromVector(xdot);
 
-    std::cout << der << std::endl;
 
 }
 
@@ -116,34 +117,34 @@ void FixedPointConstraint::calcTimeDerivatives(const Context<double>& context, C
 void FixedPointConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& xu,
                                     Eigen::VectorXd& y) const 
 {
-    std::cout << "Testing" << std::endl;
     const int num_positions = tree_.get_num_positions();
     const int num_velocities = tree_.get_num_velocities();
     const int num_states = num_positions + num_velocities;
     const int num_efforts = tree_.get_num_actuators();
-    std::cout << "Testing" << std::endl;
 
     auto context = plant_->CreateDefaultContext();
     VectorXd x = xu.head(num_states);
     VectorXd u = xu.tail(num_efforts);
 
-    std::cout << "Testing" << std::endl;
     context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(x).Clone(), num_positions, num_velocities, 0));
     context->FixInputPort(0, std::make_unique<BasicVector<double>>(u));
-    std::cout << "Testing" << std::endl;
-   
-    ContinuousState<double>* cstate_output;
-    std::cout << "Testing" << std::endl;
-    calcTimeDerivatives(*context, cstate_output, u);
+    
+    ContinuousState<double> cstate_output(BasicVector<double>(x).Clone(), num_positions, num_velocities, 0);
+    calcTimeDerivatives(*context, &cstate_output, u);
 
-    std::cout << "Testing" << std::endl;
-    y = cstate_output->CopyToVector();
+    y = cstate_output.CopyToVector();
+    //std::cout << y.transpose() << std::endl;
 
 }
 
 void FixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
                                     AutoDiffVecXd& y) const 
 {
+    std::cout << y.transpose() << std::endl;
+    VectorXd x_vec = autoDiffToValueMatrix(x);
+    VectorXd y_vec = autoDiffToValueMatrix(y);
+    Eval(x_vec, y_vec);
+    y = initializeAutoDiff(y_vec);
 }
 
 }//namespace drake

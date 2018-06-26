@@ -13,6 +13,8 @@ using drake::VectorX;
 using drake::MatrixX;
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
+using drake::math::autoDiffToValueMatrix;
+using drake::math::initializeAutoDiff;
 using drake::systems::RigidBodyPlant;
 using drake::systems::Context;
 using drake::systems::BasicVector;

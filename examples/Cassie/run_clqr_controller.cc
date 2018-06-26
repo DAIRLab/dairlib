@@ -144,6 +144,7 @@ int do_main(int argc, char* argv[])
     VectorXd xu0 = VectorXd::Zero(NUM_STATES + NUM_EFFORTS);
     xu0.head(NUM_STATES) = x0;
 
+
     //std::cout << plant->get_rigid_body_tree().B << std::endl;
 
     Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES, NUM_STATES);
@@ -156,8 +157,11 @@ int do_main(int argc, char* argv[])
     cout << "Starting" << endl;
     SolveFixedPoint solve_fixed_point(plant, &compliant_contact_model); 
     cout << "Solving" << endl;
-    VectorXd xu = solve_fixed_point.solve(x0, fixed_joints);
+    VectorXd xu = solve_fixed_point.solve(xu0, fixed_joints);
     cout << "Solved" << endl;
+
+    cout << xu.transpose() << endl;
+    cout << xu0.transpose() << endl;
 
 
     //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x0, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);

@@ -16,12 +16,13 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 
-#include "systems/robot_lcm_systems.h"
-#include "systems/controllers/clqr_controller.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
-
 #include "examples/Cassie/cassie_utils.h"
+#include "systems/robot_lcm_systems.h"
+#include "systems/controllers/clqr_controller.h"
+#include "systems/framework/output_vector.h"
+#include "multibody/find_fixed_point.h"
 
 using std::cout;
 using std::endl;
@@ -30,6 +31,7 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix;
 using Eigen::Dynamic;
+using drake::systems::CompliantContactModel;
 
 namespace dairlib{
 
@@ -87,8 +89,10 @@ int do_main(int argc, char* argv[])
     model_parameters.v_stiction_tolerance = FLAGS_v_tol;
     plant->set_contact_model_parameters(model_parameters);
 
-    auto constant_zero_source = builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
-            drake::VectorX<double>::Zero(plant->actuator_command_input_port().size()));
+
+
+    //auto constant_zero_source = builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
+            //drake::VectorX<double>::Zero(plant->actuator_command_input_port().size()));
 
     // The vector source is connected to the inputs of the rigid body tree (Joints of the robot)
     //builder.Connect(constant_zero_source->get_output_port(), plant->actuator_command_input_port());
@@ -137,14 +141,28 @@ int do_main(int argc, char* argv[])
     x0.head(NUM_POSITIONS) = q0;
 
     VectorXd xd = x0;
+    VectorXd xu0 = VectorXd::Zero(NUM_STATES + NUM_EFFORTS);
+    xu0.head(NUM_STATES) = x0;
 
     //std::cout << plant->get_rigid_body_tree().B << std::endl;
 
     Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES, NUM_STATES);
     Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS);
 
-    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x0, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
+    CompliantContactModel<double> compliant_contact_model;
+    compliant_contact_model.set_default_material(default_material);
+    compliant_contact_model.set_model_parameters(model_parameters);
+
+    SolveFixedPoint solve_fixed_point(plant, &compliant_contact_model); 
+    VectorXd xu = solve_fixed_point.solve(x0, fixed_joints);
+
+
+    //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x0, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
+    //cout << clqr_controller->get_input_port_output().size() << endl;
+    //cout << clqr_controller->get_output_port(0).size() << endl;
+    //OutputVector<double> input_port_output_vector(NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS);
     //builder.Connect(plant->state_output_port(), clqr_controller->get_input_port_output());
+
     //builder.Connect(clqr_controller->get_output_port(0), plant->actuator_command_input_port());
 
     auto diagram = builder.Build();

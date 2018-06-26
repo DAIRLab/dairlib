@@ -180,7 +180,9 @@ cc_binary(
         ":cassie_urdf",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
+        "//systems/framework:vector",
         "//systems/controllers:controllers",
+        "//multibody:find_fixed_point",
         ":cassie_utils",
     ],
 )

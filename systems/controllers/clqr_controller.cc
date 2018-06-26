@@ -49,16 +49,19 @@ Matrix<double, Dynamic, Dynamic> ClqrController::computeK()
     Matrix<double, Dynamic, Dynamic> B = tree_.B;
     Matrix<double, Dynamic, Dynamic> B_pinv = B.completeOrthogonalDecomposition().pseudoInverse();
     KinematicsCache<double> kcache_d = tree_.doKinematics(xd_.head(num_positions_), xd_.tail(num_velocities_));
-    RigidBodyTree<double>::BodyToWrenchMap no_wrenches;
+    const typename RigidBodyTree<double>::BodyToWrenchMap no_wrenches;
     VectorXd C = tree_.dynamicsBiasTerm(kcache_d, no_wrenches);
     VectorX<double> u0 = B.colPivHouseholderQr().solve(C);
 
-    std::cout << C << std::endl;
-    std::cout << C - B*u0 << std::endl;
-    std::cout << num_positions_ << " " << num_velocities_ << " " << num_states_ << std::endl;
+    //std::cout << C << std::endl;
+    //std::cout << C - B*u0 << std::endl;
+    //std::cout << num_positions_ << " " << num_velocities_ << " " << num_states_ << std::endl;
     context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(xd_).Clone(), num_positions_, num_velocities_, 0));
     context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0));
-    auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
+    //auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
+
+    //auto lqr_result = LinearQuadraticRegulator(P*linear_system->A()*P.transpose(), P*linear_system->B(), Q_, R_);
+    //K_ = lqr_result.K*P;
 
     return P;
 

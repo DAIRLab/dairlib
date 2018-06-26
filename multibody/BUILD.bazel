@@ -17,3 +17,23 @@ cc_library(
         "@drake//multibody:rigid_body_tree",
     ],
 )
+
+cc_library(
+    name = "find_fixed_point",
+    srcs = [
+        "find_fixed_point.cc",
+    ],
+    hdrs = [
+        "find_fixed_point.h"
+    ],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//multibody/rigid_body_plant:rigid_body_plant",
+        "@drake//solvers:mathematical_program",
+        "@drake//solvers:constraint",
+        "@drake//manipulation/util",
+
+    ],
+)
+
+

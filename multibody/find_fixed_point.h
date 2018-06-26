@@ -29,8 +29,8 @@ namespace dairlib {
 class SolveFixedPoint
 {
     public:
-        SolveFixedPoint(RigidBodyPlant<double>* plant, CompliantContactModel<double>* compliant_contact_model);
-        VectorXd solve(VectorXd xu_init, std::vector<int> fixed_joints);
+        SolveFixedPoint(RigidBodyPlant<double>* plant);
+        VectorXd solve(VectorXd xu_init, std::vector<int> fixed_joints = std::vector<int>());
     private:
         RigidBodyPlant<double>* plant_;
         const RigidBodyTree<double>& tree_;
@@ -48,7 +48,6 @@ class FixedPointConstraint : public Constraint
 {
     public:
         FixedPointConstraint(RigidBodyPlant<double>* plant,
-                CompliantContactModel<double>* compliant_contact_model,
                 int num_constraints,
                 int num_variables,
                 const std::string& description = "");
@@ -58,13 +57,9 @@ class FixedPointConstraint : public Constraint
         void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
                     drake::AutoDiffVecXd& y) const override;
   
-        VectorXd solve(VectorXd x_init, std::vector<int> fixed_joints);
-  
     private:
-        void calcTimeDerivatives(const Context<double>& context, ContinuousState<double>* der, VectorX<double> u) const;
         RigidBodyPlant<double>* plant_;
         const RigidBodyTree<double>& tree_;
-        CompliantContactModel<double>* compliant_contact_model_;
 
 };
 

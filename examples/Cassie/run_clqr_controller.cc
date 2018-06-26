@@ -141,8 +141,8 @@ int do_main(int argc, char* argv[])
     x0.head(NUM_POSITIONS) = q0;
 
     VectorXd xd = x0;
-    VectorXd xu0 = VectorXd::Zero(NUM_STATES + NUM_EFFORTS);
-    xu0.head(NUM_STATES) = x0;
+    VectorXd xu_init = VectorXd::Zero(NUM_STATES + NUM_EFFORTS);
+    xu_init.head(NUM_STATES) = x0;
 
 
     //std::cout << plant->get_rigid_body_tree().B << std::endl;
@@ -155,16 +155,17 @@ int do_main(int argc, char* argv[])
     compliant_contact_model.set_model_parameters(model_parameters);
 
     cout << "Starting" << endl;
-    SolveFixedPoint solve_fixed_point(plant, &compliant_contact_model); 
+    SolveFixedPoint solve_fixed_point(plant); 
     cout << "Solving" << endl;
-    VectorXd xu = solve_fixed_point.solve(xu0, fixed_joints);
+    VectorXd xu_sol = solve_fixed_point.solve(xu_init);
     cout << "Solved" << endl;
 
-    cout << xu.transpose() << endl;
-    cout << xu0.transpose() << endl;
+    cout << xu_sol.transpose() << endl;
+    cout << xu_init.transpose() << endl;
+    cout << "--------------------------------------------------------------------------------------------------------" << endl; 
 
 
-    //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x0, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
+    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, xu_sol, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
     //cout << clqr_controller->get_input_port_output().size() << endl;
     //cout << clqr_controller->get_output_port(0).size() << endl;
     //OutputVector<double> input_port_output_vector(NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS);

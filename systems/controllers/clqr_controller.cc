@@ -3,7 +3,7 @@
 namespace dairlib{
 namespace systems{
 
-ClqrController::ClqrController(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd xd, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R): LinearController(num_positions, num_velocities, num_efforts), tree_(plant->get_rigid_body_tree()), plant_(plant), x0_(x0), xd_(xd), num_positions_(num_positions), num_velocities_(num_velocities), num_states_(num_positions + num_velocities), num_efforts_(num_efforts), Q_(Q), R_(R)
+ClqrController::ClqrController(RigidBodyPlant<double>* plant, VectorXd xu0, VectorXd xd, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R): LinearController(num_positions, num_velocities, num_efforts), tree_(plant->get_rigid_body_tree()), plant_(plant), xu0_(xu0), xd_(xd), num_positions_(num_positions), num_velocities_(num_velocities), num_states_(num_positions + num_velocities), num_efforts_(num_efforts), Q_(Q), R_(R)
 {
     F_ = computeF();
     K_ = computeK();
@@ -13,7 +13,8 @@ ClqrController::ClqrController(RigidBodyPlant<double>* plant, VectorXd x0, Vecto
 Matrix<double, Dynamic, Dynamic> ClqrController::computeF()
 {
     
-    KinematicsCache<double> kcache_0 = tree_.doKinematics(x0_.head(num_positions_), x0_.tail(num_velocities_));
+    VectorXd x0 = xu0_.head(num_states_);
+    KinematicsCache<double> kcache_0 = tree_.doKinematics(x0.head(num_positions_), x0.tail(num_velocities_));
     Matrix<double, Dynamic, Dynamic> c_jac = tree_.positionConstraintsJacobian(kcache_0);
 
     const int r = c_jac.rows();
@@ -46,19 +47,24 @@ Matrix<double, Dynamic, Dynamic> ClqrController::computeK()
     auto context = plant_->CreateDefaultContext();
 
     //Computing inputs for the stabilizable point
-    Matrix<double, Dynamic, Dynamic> B = tree_.B;
-    Matrix<double, Dynamic, Dynamic> B_pinv = B.completeOrthogonalDecomposition().pseudoInverse();
-    KinematicsCache<double> kcache_d = tree_.doKinematics(xd_.head(num_positions_), xd_.tail(num_velocities_));
-    const typename RigidBodyTree<double>::BodyToWrenchMap no_wrenches;
-    VectorXd C = tree_.dynamicsBiasTerm(kcache_d, no_wrenches);
-    VectorX<double> u0 = B.colPivHouseholderQr().solve(C);
+    //Matrix<double, Dynamic, Dynamic> B = tree_.B;
+    //Matrix<double, Dynamic, Dynamic> B_pinv = B.completeOrthogonalDecomposition().pseudoInverse();
+    //KinematicsCache<double> kcache_d = tree_.doKinematics(xd_.head(num_positions_), xd_.tail(num_velocities_));
+    //const typename RigidBodyTree<double>::BodyToWrenchMap no_wrenches;
+    //VectorXd C = tree_.dynamicsBiasTerm(kcache_d, no_wrenches);
+    //VectorX<double> u0 = B.colPivHouseholderQr().solve(C);
+
+    VectorXd x0 = xu0_.head(num_states_);
+    VectorXd u0 = xu0_.tail(num_efforts_);
 
     //std::cout << C << std::endl;
     //std::cout << C - B*u0 << std::endl;
     //std::cout << num_positions_ << " " << num_velocities_ << " " << num_states_ << std::endl;
-    context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(xd_).Clone(), num_positions_, num_velocities_, 0));
+    context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(x0).Clone(), num_positions_, num_velocities_, 0));
     context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0));
-    //auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
+    std::cout << x0.transpose() << std::endl;
+    std::cout << u0.transpose() << std::endl;
+    auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
 
     //auto lqr_result = LinearQuadraticRegulator(P*linear_system->A()*P.transpose(), P*linear_system->B(), Q_, R_);
     //K_ = lqr_result.K*P;

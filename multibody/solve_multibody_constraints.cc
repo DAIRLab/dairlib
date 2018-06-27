@@ -2,18 +2,20 @@
 #include "drake/solvers/mathematical_program.h"
 
 namespace dairlib{
+namespace multibody{
 
-SolveFixedPoint::SolveConstraints(RigidBodyPlant<double>* plant): plant_(plant), tree_(plant->get_rigid_body_tree()), num_positions_(tree_.get_num_positions()), num_velocities_(tree_.get_num_velocities()), num_states_(num_positions_ + num_velocities_), num_efforts_(tree_.get_num_actuators()), num_tree_position_constraints(tree_.getNumPositionConstraints())
+SolveMultibodyConstraints::SolveMultibodyConstraints(RigidBodyPlant<double>* plant): plant_(plant), tree_(plant->get_rigid_body_tree()), num_positions_(tree_.get_num_positions()), num_velocities_(tree_.get_num_velocities()), num_states_(num_positions_ + num_velocities_), num_efforts_(tree_.get_num_actuators()), num_tree_position_constraints_(tree_.getNumPositionConstraints())
 {  
 
 }
 
-VectorXd SolveConstraints::solveTP(VectorXd x_init, std::vector<int> fixed_joints) 
+VectorXd SolveMultibodyConstraints::solveTP(VectorXd x_init, std::vector<int> fixed_joints) 
 {
 
     MathematicalProgram prog;
-    auto x = prog.NewContinuousVariables(num_variables_, "x");
-    auto constraint = std::make_shared<TreePositionConstraint>(plant_, num_tree_position_constraints_, num_states_);
+    int num_variables = num_states_;
+    auto x = prog.NewContinuousVariables(num_variables, "x");
+    auto constraint = std::make_shared<TreePositionConstraint>(plant_, num_tree_position_constraints_, num_variables);
     prog.AddConstraint(constraint, x);
     for (uint i = 0; i < fixed_joints.size(); i++)
     {
@@ -22,20 +24,42 @@ VectorXd SolveConstraints::solveTP(VectorXd x_init, std::vector<int> fixed_joint
     }
     prog.AddQuadraticCost((x - x_init).dot(x - x_init));
     prog.SetInitialGuessForAllVariables(x_init);
-    std::cout << "Pre solve" << std::endl;
     prog.Solve();
-    std::cout << "Post solve" << std::endl;
     return prog.GetSolution(x);
 }
 
 
-VectorXd SolveConstraints::solveFP(VectorXd xu_init, std::vector<int> fixed_joints) 
+VectorXd SolveMultibodyConstraints::solveFP(VectorXd xu_init, std::vector<int> fixed_joints) 
 {
 
     MathematicalProgram prog;
-    auto xu = prog.NewContinuousVariables(num_variables_, "xu");
-    auto constraint = std::make_shared<FixedPointConstraint>(plant_, num_states_, num_variables_);
+    int num_variables = num_states_ + num_efforts_;
+    auto xu = prog.NewContinuousVariables(num_variables, "xu");
+    auto constraint = std::make_shared<FixedPointConstraint>(plant_, num_states_, num_variables);
     prog.AddConstraint(constraint, xu);
+    for (uint i = 0; i < fixed_joints.size(); i++)
+    {
+      int j = fixed_joints[i];
+      prog.AddConstraint(xu(j) == xu_init(j));
+    }
+    prog.AddQuadraticCost((xu - xu_init).dot(xu - xu_init));
+    prog.SetInitialGuessForAllVariables(xu_init);
+    prog.Solve();
+    return prog.GetSolution(xu);
+}
+
+
+VectorXd SolveMultibodyConstraints::solveTPFP(VectorXd xu_init, std::vector<int> fixed_joints) 
+{
+
+    MathematicalProgram prog;
+    int num_variables_tp = num_states_;
+    int num_variables_fp = num_states_ + num_efforts_;
+    auto xu = prog.NewContinuousVariables(num_variables_fp, "xu");
+    //auto constraint_tp = std::make_shared<TreePositionConstraint>(plant_, num_tree_position_constraints_, num_variables_tp);
+    auto constraint_fp = std::make_shared<FixedPointConstraint>(plant_, num_states_, num_variables_fp);
+    //prog.AddConstraint(constraint_tp, xu);
+    prog.AddConstraint(constraint_fp, xu);
     for (uint i = 0; i < fixed_joints.size(); i++)
     {
       int j = fixed_joints[i];
@@ -127,4 +151,5 @@ void FixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& xu,
 
 }
 
+}//namespace multibody
 }//namespace drake

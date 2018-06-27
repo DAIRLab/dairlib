@@ -182,7 +182,7 @@ cc_binary(
         "//systems/primitives",
         "//systems/framework:vector",
         "//systems/controllers:controllers",
-        "//multibody:find_fixed_point",
+        "//multibody:solve_multibody_constraints",
         ":cassie_utils",
     ],
 )

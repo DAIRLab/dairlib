@@ -22,7 +22,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/clqr_controller.h"
 #include "systems/framework/output_vector.h"
-#include "multibody/find_fixed_point.h"
+#include "multibody/solve_multibody_constraints.h"
 
 using std::cout;
 using std::endl;
@@ -105,9 +105,8 @@ int do_main(int argc, char* argv[])
     builder.Connect(plant->state_output_port(),
                             visualizer_publisher.get_input_port(0));
 
-    Eigen::VectorXd x0 = Eigen::VectorXd::Zero(NUM_POSITIONS + NUM_VELOCITIES);
-    std::map<std::string, int>  map =
-        plant->get_rigid_body_tree().computePositionNameToIndexMap();
+    VectorXd x0 = VectorXd::Zero(NUM_POSITIONS + NUM_VELOCITIES);
+    std::map<std::string, int>  map = plant->get_rigid_body_tree().computePositionNameToIndexMap();
 
     x0(map.at("hip_pitch_left")) = .269;
     x0(map.at("hip_pitch_right")) = .269;
@@ -136,11 +135,11 @@ int do_main(int argc, char* argv[])
     fixed_joints.push_back(map.at("knee_right"));
     
 
-    auto q0 = solvePositionConstraints(plant->get_rigid_body_tree(),
-        x0.head(NUM_POSITIONS), fixed_joints);
-    x0.head(NUM_POSITIONS) = q0;
+ //   auto q0 = solvePositionConstraints(plant->get_rigid_body_tree(),
+ //       x0.head(NUM_POSITIONS), fixed_joints);
+ //   x0.head(NUM_POSITIONS) = q0;
 
-    VectorXd xd = x0;
+    VectorXd x_init = x0;
     VectorXd xu_init = VectorXd::Zero(NUM_STATES + NUM_EFFORTS);
     xu_init.head(NUM_STATES) = x0;
 
@@ -150,22 +149,23 @@ int do_main(int argc, char* argv[])
     Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES, NUM_STATES);
     Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS);
 
-    CompliantContactModel<double> compliant_contact_model;
-    compliant_contact_model.set_default_material(default_material);
-    compliant_contact_model.set_model_parameters(model_parameters);
-
     cout << "Starting" << endl;
-    SolveFixedPoint solve_fixed_point(plant); 
+    multibody::SolveMultibodyConstraints solver(plant); 
     cout << "Solving" << endl;
-    VectorXd xu_sol = solve_fixed_point.solve(xu_init);
+    VectorXd xu_sol = solver.solveFP(xu_init);
+    VectorXd x_sol = solver.solveTP(x_init);
+    VectorXd xu_sol_tpfp = solver.solveTPFP(xu_init);
     cout << "Solved" << endl;
 
     cout << xu_sol.transpose() << endl;
-    cout << xu_init.transpose() << endl;
+    cout << "--------------------------------------------------------------------------------------------------------" << endl; 
+    cout << x_sol.transpose() << endl;
+    cout << "--------------------------------------------------------------------------------------------------------" << endl; 
+    cout << xu_sol_tpfp.transpose() << endl;
     cout << "--------------------------------------------------------------------------------------------------------" << endl; 
 
 
-    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, xu_sol, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
+    //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, xu_sol, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
     //cout << clqr_controller->get_input_port_output().size() << endl;
     //cout << clqr_controller->get_output_port(0).size() << endl;
     //OutputVector<double> input_port_output_vector(NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS);

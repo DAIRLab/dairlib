@@ -19,12 +19,12 @@ cc_library(
 )
 
 cc_library(
-    name = "find_fixed_point",
+    name = "solve_multibody_constraints",
     srcs = [
-        "find_fixed_point.cc",
+        "solve_multibody_constraints.cc",
     ],
     hdrs = [
-        "find_fixed_point.h"
+        "solve_multibody_constraints.h"
     ],
     deps = [
         "@drake//multibody:rigid_body_tree",

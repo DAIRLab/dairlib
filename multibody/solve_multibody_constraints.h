@@ -20,29 +20,49 @@ using drake::systems::Context;
 using drake::systems::BasicVector;
 using drake::systems::ContinuousState;
 using drake::systems::CompliantContactModel;
+using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::Constraint;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::Constraint;
 
 namespace dairlib {
+namespace multibody{
 
-class SolveFixedPoint
+class SolveMultibodyConstraints
 {
     public:
-        SolveFixedPoint(RigidBodyPlant<double>* plant);
-        VectorXd solve(VectorXd xu_init, std::vector<int> fixed_joints = std::vector<int>());
+        SolveMultibodyConstraints(RigidBodyPlant<double>* plant);
+        VectorXd solveTP(VectorXd x_init, std::vector<int> fixed_joints = std::vector<int>());
+        VectorXd solveFP(VectorXd xu_init, std::vector<int> fixed_joints = std::vector<int>());
+        VectorXd solveTPFP(VectorXd x_init, std::vector<int> fixed_joints = std::vector<int>());
     private:
         RigidBodyPlant<double>* plant_;
         const RigidBodyTree<double>& tree_;
-        CompliantContactModel<double>* compliant_contact_model_;
         const int num_positions_;
         const int num_velocities_;
         const int num_states_;
         const int num_efforts_;
-        const int num_variables_;
+        const int num_tree_position_constraints_;
 };
 
+class TreePositionConstraint : public Constraint
+{
+    public:
+        TreePositionConstraint(RigidBodyPlant<double>* plant,
+                int num_constraints,
+                int num_variables,
+                const std::string& description = "");
+        void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+                    Eigen::VectorXd& y) const override;
+  
+        void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
+                    drake::AutoDiffVecXd& y) const override;
+  
+    private:
+        RigidBodyPlant<double>* plant_;
+        const RigidBodyTree<double>& tree_;
 
+};
 
 class FixedPointConstraint : public Constraint
 {
@@ -63,4 +83,6 @@ class FixedPointConstraint : public Constraint
 
 };
 
-}
+
+}//namespace multibody
+}//namespace dairlib

@@ -4,7 +4,7 @@
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/multibody/parsers/urdf_parser.h"
-#include "drake/solvers/constraint.h"
+#include "drake/solvers/mathematical_program.h"
 #include "drake/math/autodiff_gradient.h"
 
 using Eigen::VectorXd;
@@ -24,6 +24,8 @@ using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::Constraint;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::Constraint;
+using drake::solvers::VariableRefList;
+using drake::solvers::Binding;
 
 namespace dairlib {
 namespace multibody{

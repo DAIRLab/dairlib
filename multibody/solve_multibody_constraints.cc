@@ -53,12 +53,11 @@ VectorXd SolveMultibodyConstraints::solveTPFP(VectorXd xu_init, std::vector<int>
 {
 
     MathematicalProgram prog;
-    int num_variables_tp = num_states_;
-    int num_variables_fp = num_states_ + num_efforts_;
-    auto xu = prog.NewContinuousVariables(num_variables_fp, "xu");
-    //auto constraint_tp = std::make_shared<TreePositionConstraint>(plant_, num_tree_position_constraints_, num_variables_tp);
-    auto constraint_fp = std::make_shared<FixedPointConstraint>(plant_, num_states_, num_variables_fp);
-    //prog.AddConstraint(constraint_tp, xu);
+    int num_variables = num_states_ + num_efforts_;
+    auto xu = prog.NewContinuousVariables(num_variables, "xu");
+    auto constraint_tp = std::make_shared<TreePositionConstraint>(plant_, num_tree_position_constraints_, num_variables);
+    auto constraint_fp = std::make_shared<FixedPointConstraint>(plant_, num_states_, num_variables);
+    prog.AddConstraint(constraint_tp, xu);
     prog.AddConstraint(constraint_fp, xu);
     for (uint i = 0; i < fixed_joints.size(); i++)
     {
@@ -67,9 +66,7 @@ VectorXd SolveMultibodyConstraints::solveTPFP(VectorXd xu_init, std::vector<int>
     }
     prog.AddQuadraticCost((xu - xu_init).dot(xu - xu_init));
     prog.SetInitialGuessForAllVariables(xu_init);
-    std::cout << "Pre solve" << std::endl;
     prog.Solve();
-    std::cout << "Post solve" << std::endl;
     return prog.GetSolution(xu);
 }
 

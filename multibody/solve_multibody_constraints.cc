@@ -4,20 +4,19 @@
 namespace dairlib{
 namespace multibody{
 
-SolveMultibodyConstraints::SolveMultibodyConstraints(RigidBodyPlant<double>* plant): plant_(plant), tree_(plant->get_rigid_body_tree()), num_positions_(tree_.get_num_positions()), num_velocities_(tree_.get_num_velocities()), num_states_(num_positions_ + num_velocities_), num_efforts_(tree_.get_num_actuators()), num_tree_position_constraints_(tree_.getNumPositionConstraints())
-{  
 
-}
-
-VectorXd SolveMultibodyConstraints::solveTP(VectorXd x_init, std::vector<int> fixed_joints) 
+vector<VectorXd> SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd x_init, vector<int> fixed_joints) 
 {
 
+    const int num_states = tree.get_num_positions() + tree.get_num_velocities();
+    const int num_constraints = tree.getNumPositionConstraints();
+    const int num_variables = num_states;
+
     MathematicalProgram prog;
-    int num_variables = num_states_;
     auto x = prog.NewContinuousVariables(num_variables, "x");
-    auto constraint = std::make_shared<TreePositionConstraint>(plant_, num_tree_position_constraints_, num_variables);
+    auto constraint = std::make_shared<TreePositionConstraint>(tree, num_constraints, num_variables);
     prog.AddConstraint(constraint, x);
-    for (uint i = 0; i < fixed_joints.size(); i++)
+    for(uint i = 0; i < fixed_joints.size(); i++)
     {
       int j = fixed_joints[i];
       prog.AddConstraint(x(j) == x_init(j));
@@ -25,59 +24,91 @@ VectorXd SolveMultibodyConstraints::solveTP(VectorXd x_init, std::vector<int> fi
     prog.AddQuadraticCost((x - x_init).dot(x - x_init));
     prog.SetInitialGuessForAllVariables(x_init);
     prog.Solve();
-    return prog.GetSolution(x);
+
+    vector<VectorXd> sol;
+    sol.push_back(prog.GetSolution(x));
+    return sol;
 }
 
-
-VectorXd SolveMultibodyConstraints::solveFP(VectorXd xu_init, std::vector<int> fixed_joints) 
+vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints) 
 {
+    const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
+
+    const int num_states = tree.get_num_positions() + tree.get_num_velocities();
+    const int num_efforts = tree.get_num_actuators();
+    const int num_constraints = num_states;
+    const int num_variables = num_states + num_efforts;
 
     MathematicalProgram prog;
-    int num_variables = num_states_ + num_efforts_;
-    auto xu = prog.NewContinuousVariables(num_variables, "xu");
-    auto constraint = std::make_shared<FixedPointConstraint>(plant_, num_states_, num_variables);
-    prog.AddConstraint(constraint, xu);
-    for (uint i = 0; i < fixed_joints.size(); i++)
+    auto x = prog.NewContinuousVariables(num_states, "x");
+    auto u = prog.NewContinuousVariables(num_efforts, "u");
+    auto constraint = std::make_shared<FixedPointConstraint>(plant, num_constraints, num_variables);
+    prog.AddConstraint(constraint, {x, u});
+
+    for(uint i = 0; i < fixed_joints.size(); i++)
     {
       int j = fixed_joints[i];
-      prog.AddConstraint(xu(j) == xu_init(j));
+      prog.AddConstraint(x(j) == x_init(j));
     }
-    prog.AddQuadraticCost((xu - xu_init).dot(xu - xu_init));
-    prog.SetInitialGuessForAllVariables(xu_init);
+
+    prog.AddQuadraticCost((x - x_init).dot(x - x_init) + (u - u_init).dot(u - u_init));
+    prog.SetInitialGuess(x, x_init);
+    prog.SetInitialGuess(u, u_init);
     prog.Solve();
-    return prog.GetSolution(xu);
+
+    vector<VectorXd> sol;
+    sol.push_back(prog.GetSolution(x));
+    sol.push_back(prog.GetSolution(u));
+    return sol;
 }
 
 
-VectorXd SolveMultibodyConstraints::solveTPFP(VectorXd xu_init, std::vector<int> fixed_joints) 
+vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints) 
 {
 
+    const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
+
+    const int num_states = tree.get_num_positions() + tree.get_num_velocities();
+    const int num_efforts = tree.get_num_actuators();
+    const int num_constraints_tree_position = tree.getNumPositionConstraints();
+    const int num_constraints_fixed_point = num_states;
+    const int num_variables_tree_position = num_states;
+    const int num_variables_fixed_point = num_states + num_efforts;
+
+
     MathematicalProgram prog;
-    int num_variables = num_states_ + num_efforts_;
-    auto xu = prog.NewContinuousVariables(num_variables, "xu");
-    auto constraint_tp = std::make_shared<TreePositionConstraint>(plant_, num_tree_position_constraints_, num_variables);
-    auto constraint_fp = std::make_shared<FixedPointConstraint>(plant_, num_states_, num_variables);
-    prog.AddConstraint(constraint_tp, xu);
-    prog.AddConstraint(constraint_fp, xu);
-    for (uint i = 0; i < fixed_joints.size(); i++)
+    auto x = prog.NewContinuousVariables(num_states, "x");
+    auto u = prog.NewContinuousVariables(num_efforts, "u");
+    auto constraint_tree_position = std::make_shared<TreePositionConstraint>(tree, num_constraints_tree_position, num_variables_tree_position);
+    auto constraint_fixed_point = std::make_shared<FixedPointConstraint>(plant, num_constraints_fixed_point, num_variables_fixed_point);
+    prog.AddConstraint(constraint_tree_position, x);
+    prog.AddConstraint(constraint_fixed_point, {x, u});
+    
+    for(uint i = 0; i < fixed_joints.size(); i++)
     {
       int j = fixed_joints[i];
-      prog.AddConstraint(xu(j) == xu_init(j));
+      prog.AddConstraint(x(j) == x_init(j));
     }
-    prog.AddQuadraticCost((xu - xu_init).dot(xu - xu_init));
-    prog.SetInitialGuessForAllVariables(xu_init);
+
+    prog.AddQuadraticCost((x - x_init).dot(x - x_init) + (u - u_init).dot(u - u_init));
+    prog.SetInitialGuess(x, x_init);
+    prog.SetInitialGuess(u, u_init);
     prog.Solve();
-    return prog.GetSolution(xu);
+
+    vector<VectorXd> sol;
+    sol.push_back(prog.GetSolution(x));
+    sol.push_back(prog.GetSolution(u));
+    return sol;
 }
 
 
-TreePositionConstraint::TreePositionConstraint(RigidBodyPlant<double>* plant, int num_constraints, int num_variables, const std::string& description):
+TreePositionConstraint::TreePositionConstraint(const RigidBodyTree<double>& tree, int num_constraints, int num_variables, const std::string& description):
     Constraint(num_constraints,
         num_variables,
         VectorXd::Zero(num_constraints),
         VectorXd::Zero(num_constraints),
         description),
-    plant_(plant), tree_(plant->get_rigid_body_tree()) 
+        tree_(tree) 
 {
 }
 

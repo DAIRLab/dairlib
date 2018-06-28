@@ -25,6 +25,7 @@ using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
 using drake::systems::RigidBodyPlant;
 using drake::systems::Context;
+using drake::systems::controllers::LinearQuadraticRegulator;
 using drake::systems::BasicVector;
 using drake::systems::LeafSystem;
 using drake::systems::InputPortDescriptor;
@@ -40,7 +41,7 @@ class ClqrController : public LinearController
 {
     public: 
 
-        ClqrController(RigidBodyPlant<double>* plant, VectorXd xu0, VectorXd xd, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R);
+        ClqrController(RigidBodyPlant<double>* plant, VectorXd xu0, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R);
         //const InputPortDescriptor<double>& getInputStatePort();
         //const InputPortDescriptor<double>& getInputDesiredPort();
         //const OutputPort<double>& getOutputActuatorPort();
@@ -64,7 +65,6 @@ class ClqrController : public LinearController
         const RigidBodyTree<double>& tree_;
         RigidBodyPlant<double>* plant_;
         VectorXd xu0_;
-        VectorXd xd_;
         //int input_state_port_index_;
         //int input_desired_port_index_;
         //int output_actuator_port_index_;

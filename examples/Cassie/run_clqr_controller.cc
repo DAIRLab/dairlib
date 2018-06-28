@@ -15,6 +15,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
+#include "drake/systems/primitives/multiplexer.h"
 
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -26,12 +27,22 @@
 
 using std::cout;
 using std::endl;
+using std::vector;
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix;
 using Eigen::Dynamic;
-using drake::systems::CompliantContactModel;
+using drake::VectorX;
+using drake::MatrixX;
+using drake::systems::ConstantVectorSource;
+using drake::systems::Multiplexer;
+
+using dairlib::systems::LinearConfig;
+using dairlib::multibody::SolveTreePositionConstraints;
+using dairlib::multibody::SolveFixedPointConstraints;
+using dairlib::multibody::SolveTreePositionAndFixedPointConstraints;
+
 
 namespace dairlib{
 
@@ -62,6 +73,7 @@ int do_main(int argc, char* argv[])
     const int NUM_POSITIONS = tree->get_num_positions();
     const int NUM_VELOCITIES = tree->get_num_velocities();
     const int NUM_STATES = NUM_POSITIONS + NUM_VELOCITIES;
+    const int NUM_CONSTRAINTS = tree->getNumPositionConstraints();
     
     cout << "Number of actuators: " << NUM_EFFORTS << endl;
     cout << "Number of generalized coordinates: " << NUM_POSITIONS << endl;
@@ -88,11 +100,6 @@ int do_main(int argc, char* argv[])
     model_parameters.characteristic_radius = FLAGS_contact_radius;
     model_parameters.v_stiction_tolerance = FLAGS_v_tol;
     plant->set_contact_model_parameters(model_parameters);
-
-
-
-    //auto constant_zero_source = builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
-            //drake::VectorX<double>::Zero(plant->actuator_command_input_port().size()));
 
     // The vector source is connected to the inputs of the rigid body tree (Joints of the robot)
     //builder.Connect(constant_zero_source->get_output_port(), plant->actuator_command_input_port());
@@ -140,32 +147,39 @@ int do_main(int argc, char* argv[])
  //   x0.head(NUM_POSITIONS) = q0;
 
     VectorXd x_init = x0;
-    VectorXd xu_init = VectorXd::Zero(NUM_STATES + NUM_EFFORTS);
-    xu_init.head(NUM_STATES) = x0;
+    VectorXd u_init = VectorXd::Zero(NUM_EFFORTS);
+    //VectorXd xu_init = VectorXd::Zero(NUM_STATES + NUM_EFFORTS);
+    //xu_init.head(NUM_STATES) = x0;
 
 
     //std::cout << plant->get_rigid_body_tree().B << std::endl;
 
-    Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES, NUM_STATES);
+    Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS);
     Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS);
 
-    cout << "Starting" << endl;
-    multibody::SolveMultibodyConstraints solver(plant); 
-    cout << "Solving" << endl;
-    VectorXd xu_sol = solver.solveFP(xu_init);
-    VectorXd x_sol = solver.solveTP(x_init);
-    VectorXd xu_sol_tpfp = solver.solveTPFP(xu_init);
-    cout << "Solved" << endl;
+    cout << "Solving TP and FP constraints." << endl;
+    vector<VectorXd> sol_tpfp = SolveTreePositionAndFixedPointConstraints(plant, x_init, u_init);
+    cout << "Solution found." << endl;
+    VectorXd x_sol = sol_tpfp.at(0);
+    VectorXd u_sol = sol_tpfp.at(1);
 
-    cout << xu_sol.transpose() << endl;
-    cout << "--------------------------------------------------------------------------------------------------------" << endl; 
     cout << x_sol.transpose() << endl;
-    cout << "--------------------------------------------------------------------------------------------------------" << endl; 
-    cout << xu_sol_tpfp.transpose() << endl;
-    cout << "--------------------------------------------------------------------------------------------------------" << endl; 
+    cout << u_sol.transpose() << endl;
 
 
-    //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, xu_sol, xd, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
+    //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, xu_sol, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
+ 
+    //vector<int> input_sizes{NUM_STATES, NUM_EFFORTS + 3 + 1};
+    //auto constant_zero_source = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(NUM_EFFORTS + 3 + 1));
+    //auto multiplexer = builder.AddSystem<Multiplexer<double>>(input_sizes);
+    //cout << multiplexer->get_input_port(0).size() << endl;
+    //cout << multiplexer->get_input_port(1).size() << endl;
+    //cout << multiplexer->get_output_port().size() << endl;
+    //cout << clqr_controller->get_input_port_output().size() << endl;
+    //builder.Connect(plant->state_output_port(), multiplexer->get_input_port(0));
+    //builder.Connect(multiplexer->get_output_port(), clqr_controller->get_input_port_output());
+    //builder.Connect(constant_zero_source->get_output_port(), multiplexer.get_input_port(1));
+
     //cout << clqr_controller->get_input_port_output().size() << endl;
     //cout << clqr_controller->get_output_port(0).size() << endl;
     //OutputVector<double> input_port_output_vector(NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS);

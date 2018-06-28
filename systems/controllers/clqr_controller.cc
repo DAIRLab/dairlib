@@ -3,7 +3,7 @@
 namespace dairlib{
 namespace systems{
 
-ClqrController::ClqrController(RigidBodyPlant<double>* plant, VectorXd xu0, VectorXd xd, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R): LinearController(num_positions, num_velocities, num_efforts), tree_(plant->get_rigid_body_tree()), plant_(plant), xu0_(xu0), xd_(xd), num_positions_(num_positions), num_velocities_(num_velocities), num_states_(num_positions + num_velocities), num_efforts_(num_efforts), Q_(Q), R_(R)
+ClqrController::ClqrController(RigidBodyPlant<double>* plant, VectorXd xu0, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R): LinearController(num_positions, num_velocities, num_efforts), tree_(plant->get_rigid_body_tree()), plant_(plant), xu0_(xu0), num_positions_(num_positions), num_velocities_(num_velocities), num_states_(num_positions + num_velocities), num_efforts_(num_efforts), Q_(Q), R_(R)
 {
     F_ = computeF();
     K_ = computeK();
@@ -46,30 +46,23 @@ Matrix<double, Dynamic, Dynamic> ClqrController::computeK()
     //Linearizing
     auto context = plant_->CreateDefaultContext();
 
-    //Computing inputs for the stabilizable point
-    //Matrix<double, Dynamic, Dynamic> B = tree_.B;
-    //Matrix<double, Dynamic, Dynamic> B_pinv = B.completeOrthogonalDecomposition().pseudoInverse();
-    //KinematicsCache<double> kcache_d = tree_.doKinematics(xd_.head(num_positions_), xd_.tail(num_velocities_));
-    //const typename RigidBodyTree<double>::BodyToWrenchMap no_wrenches;
-    //VectorXd C = tree_.dynamicsBiasTerm(kcache_d, no_wrenches);
-    //VectorX<double> u0 = B.colPivHouseholderQr().solve(C);
-
     VectorXd x0 = xu0_.head(num_states_);
     VectorXd u0 = xu0_.tail(num_efforts_);
 
-    //std::cout << C << std::endl;
-    //std::cout << C - B*u0 << std::endl;
-    //std::cout << num_positions_ << " " << num_velocities_ << " " << num_states_ << std::endl;
     context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(x0).Clone(), num_positions_, num_velocities_, 0));
     context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0));
-    std::cout << x0.transpose() << std::endl;
-    std::cout << u0.transpose() << std::endl;
+
+    std::cout << "x0: " << x0.transpose() << std::endl;
+    std::cout << "u0: " << u0.transpose() << std::endl;
+
     auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
+    MatrixXd A_new_coord = P*linear_system->A()*P.transpose();
+    MatrixXd B_new_coord = P*linear_system->B();
 
-    //auto lqr_result = LinearQuadraticRegulator(P*linear_system->A()*P.transpose(), P*linear_system->B(), Q_, R_);
-    //K_ = lqr_result.K*P;
 
-    return P;
+    auto lqr_result = LinearQuadraticRegulator(P*linear_system->A()*P.transpose(), P*linear_system->B(), Q_, R_);
+    return lqr_result.K*P;
+
 
 }
 

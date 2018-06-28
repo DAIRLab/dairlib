@@ -1,11 +1,13 @@
 #pragma once
 
-//#include "dra
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/math/autodiff_gradient.h"
+
+using std::vector;
+using std::list;
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
@@ -30,27 +32,16 @@ using drake::solvers::Binding;
 namespace dairlib {
 namespace multibody{
 
-class SolveMultibodyConstraints
-{
-    public:
-        SolveMultibodyConstraints(RigidBodyPlant<double>* plant);
-        VectorXd solveTP(VectorXd x_init, std::vector<int> fixed_joints = std::vector<int>());
-        VectorXd solveFP(VectorXd xu_init, std::vector<int> fixed_joints = std::vector<int>());
-        VectorXd solveTPFP(VectorXd x_init, std::vector<int> fixed_joints = std::vector<int>());
-    private:
-        RigidBodyPlant<double>* plant_;
-        const RigidBodyTree<double>& tree_;
-        const int num_positions_;
-        const int num_velocities_;
-        const int num_states_;
-        const int num_efforts_;
-        const int num_tree_position_constraints_;
-};
+vector<VectorXd> SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd x_init, vector<int> fixed_joints = {});
+
+vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints = {});
+
+vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints = {});
 
 class TreePositionConstraint : public Constraint
 {
     public:
-        TreePositionConstraint(RigidBodyPlant<double>* plant,
+        TreePositionConstraint(const RigidBodyTree<double>& tree,
                 int num_constraints,
                 int num_variables,
                 const std::string& description = "");
@@ -61,7 +52,6 @@ class TreePositionConstraint : public Constraint
                     drake::AutoDiffVecXd& y) const override;
   
     private:
-        RigidBodyPlant<double>* plant_;
         const RigidBodyTree<double>& tree_;
 
 };

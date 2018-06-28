@@ -11,6 +11,7 @@ using std::list;
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
+using Eigen::MatrixXd;
 using drake::VectorX;
 using drake::MatrixX;
 using drake::AutoDiffVecXd;
@@ -32,7 +33,7 @@ using drake::solvers::Binding;
 namespace dairlib {
 namespace multibody{
 
-vector<VectorXd> SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd x_init, vector<int> fixed_joints = {});
+VectorXd SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd x_init, vector<int> fixed_joints = {});
 
 vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints = {});
 
@@ -42,8 +43,6 @@ class TreePositionConstraint : public Constraint
 {
     public:
         TreePositionConstraint(const RigidBodyTree<double>& tree,
-                int num_constraints,
-                int num_variables,
                 const std::string& description = "");
         void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
                     Eigen::VectorXd& y) const override;
@@ -60,8 +59,6 @@ class FixedPointConstraint : public Constraint
 {
     public:
         FixedPointConstraint(RigidBodyPlant<double>* plant,
-                int num_constraints,
-                int num_variables,
                 const std::string& description = "");
         void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
                     Eigen::VectorXd& y) const override;

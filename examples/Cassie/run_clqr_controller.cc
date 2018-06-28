@@ -146,25 +146,37 @@ int do_main(int argc, char* argv[])
  //       x0.head(NUM_POSITIONS), fixed_joints);
  //   x0.head(NUM_POSITIONS) = q0;
 
-    VectorXd x_init = x0;
-    VectorXd u_init = VectorXd::Zero(NUM_EFFORTS);
-    //VectorXd xu_init = VectorXd::Zero(NUM_STATES + NUM_EFFORTS);
-    //xu_init.head(NUM_STATES) = x0;
+    VectorXd q0 = SolveTreePositionConstraints(plant->get_rigid_body_tree(), x0.head(NUM_POSITIONS), fixed_joints);
+    x0.head(NUM_POSITIONS) = q0;
 
+    VectorXd x_init = x0;
+    VectorXd q_init = x0.head(NUM_POSITIONS);
+    VectorXd v_init = x0.tail(NUM_VELOCITIES);
+    VectorXd u_init = VectorXd::Zero(NUM_EFFORTS);
+    
+    VectorXd xu_init = VectorXd::Zero(NUM_STATES + NUM_EFFORTS);
+    xu_init.head(NUM_STATES) = x_init;
 
     //std::cout << plant->get_rigid_body_tree().B << std::endl;
 
     Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS);
     Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS);
 
-    cout << "Solving TP and FP constraints." << endl;
     vector<VectorXd> sol_tpfp = SolveTreePositionAndFixedPointConstraints(plant, x_init, u_init);
-    cout << "Solution found." << endl;
-    VectorXd x_sol = sol_tpfp.at(0);
-    VectorXd u_sol = sol_tpfp.at(1);
+    //vector<VectorXd> sol_fp = SolveFixedPointConstraints(plant, x_init, u_init);
+    //vector<VectorXd> sol_tp = SolveTreePositionConstraints(plant->get_rigid_body_tree(), q_init, fixed_joints);
 
-    cout << x_sol.transpose() << endl;
-    cout << u_sol.transpose() << endl;
+    cout << "Solution found" << endl;
+
+    VectorXd q_sol = sol_tpfp.at(0);
+    VectorXd v_sol = sol_tpfp.at(1);
+    VectorXd u_sol = sol_tpfp.at(2);
+    VectorXd x_sol(NUM_STATES);
+    x_sol << q_sol, v_sol;
+
+    cout << "x: " << x_sol.transpose() << endl;
+    cout << "u: " << u_sol.transpose() << endl;
+    cout << "--------------------------------------------------------------------" << endl;
 
 
     //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, xu_sol, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);

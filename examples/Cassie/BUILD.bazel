@@ -21,9 +21,7 @@ cc_library(
   name = "cassie_utils",
   srcs = ["cassie_utils.cc"],
   hdrs = ["cassie_utils.h"],
-  deps = ["@drake//solvers:mathematical_program",
-          "@drake//solvers:constraint",
-          "@drake//multibody:rigid_body_tree",
+  deps = ["@drake//multibody:rigid_body_tree",
           "@drake//manipulation/util",
           "//common"]
 )

@@ -23,6 +23,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/clqr_controller.h"
 #include "systems/framework/output_vector.h"
+#include "systems/primitives/subvector_pass_through.h"
 #include "multibody/solve_multibody_constraints.h"
 
 using std::cout;
@@ -38,10 +39,10 @@ using drake::MatrixX;
 using drake::systems::ConstantVectorSource;
 using drake::systems::Multiplexer;
 
-using dairlib::systems::LinearConfig;
 using dairlib::multibody::SolveTreePositionConstraints;
 using dairlib::multibody::SolveFixedPointConstraints;
 using dairlib::multibody::SolveTreePositionAndFixedPointConstraints;
+using dairlib::systems::SubvectorPassThrough;
 
 
 namespace dairlib{
@@ -178,24 +179,49 @@ int do_main(int argc, char* argv[])
     cout << "u: " << u_sol.transpose() << endl;
     cout << "--------------------------------------------------------------------" << endl;
 
+    auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x_sol, u_sol, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
+    VectorXd K_vec = clqr_controller->GetKVec();
+    VectorXd C = u_sol; 
+    VectorXd x_desired = x_sol;
 
-    //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, xu_sol, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
- 
-    //vector<int> input_sizes{NUM_STATES, NUM_EFFORTS + 3 + 1};
-    //auto constant_zero_source = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(NUM_EFFORTS + 3 + 1));
-    //auto multiplexer = builder.AddSystem<Multiplexer<double>>(input_sizes);
-    //cout << multiplexer->get_input_port(0).size() << endl;
-    //cout << multiplexer->get_input_port(1).size() << endl;
-    //cout << multiplexer->get_output_port().size() << endl;
-    //cout << clqr_controller->get_input_port_output().size() << endl;
-    //builder.Connect(plant->state_output_port(), multiplexer->get_input_port(0));
-    //builder.Connect(multiplexer->get_output_port(), clqr_controller->get_input_port_output());
-    //builder.Connect(constant_zero_source->get_output_port(), multiplexer.get_input_port(1));
+    vector<int> input_info_sizes{NUM_STATES, NUM_EFFORTS, 3, 1};
+    vector<int> input_params_sizes{NUM_STATES*NUM_EFFORTS, NUM_EFFORTS, NUM_STATES, 1};
+
+    auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
+    auto multiplexer_params = builder.AddSystem<Multiplexer<double>>(input_params_sizes);
+
+    auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(NUM_EFFORTS));
+    auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(3));
+    auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(1));
+    auto constant_K_source = builder.AddSystem<ConstantVectorSource<double>>(K_vec);
+    auto constant_C_source = builder.AddSystem<ConstantVectorSource<double>>(C);
+    auto constant_x_desired_source = builder.AddSystem<ConstantVectorSource<double>>(x_desired);
+
+    builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
+    builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
+    builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
+    builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
+    builder.Connect(multiplexer_info->get_output_port(0), clqr_controller->get_input_port_info());
+
+
+    builder.Connect(constant_K_source->get_output_port(), multiplexer_params->get_input_port(0));
+    builder.Connect(constant_C_source->get_output_port(), multiplexer_params->get_input_port(1));
+    builder.Connect(constant_x_desired_source->get_output_port(), multiplexer_params->get_input_port(2));
+    builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_params->get_input_port(3));
+    builder.Connect(multiplexer_params->get_output_port(0), clqr_controller->get_input_port_params());
+
+    auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
+            (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
+
+    cout << "Pre" << endl;
+    //builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
+    cout << "Done" << endl;
+
 
     //cout << clqr_controller->get_input_port_output().size() << endl;
     //cout << clqr_controller->get_output_port(0).size() << endl;
     //OutputVector<double> input_port_output_vector(NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS);
-    //builder.Connect(plant->state_output_port(), clqr_controller->get_input_port_output());
+    //builder.Connect(multiplexer->get_output_port(), clqr_controller->get_input_port_output());
 
     //builder.Connect(clqr_controller->get_output_port(0), plant->actuator_command_input_port());
 
@@ -206,7 +232,7 @@ int do_main(int argc, char* argv[])
         diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
     
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
-    state.SetFromVector(x0);
+    //state.SetFromVector(x0);
     
     auto zero_input = Eigen::MatrixXd::Zero(NUM_EFFORTS,1);
     context.FixInputPort(0, zero_input);

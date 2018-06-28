@@ -179,7 +179,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "//systems/framework:vector",
-        "//systems/controllers:controllers",
+        "//systems/controllers:clqr_controller",
         "//multibody:solve_multibody_constraints",
         ":cassie_utils",
     ],

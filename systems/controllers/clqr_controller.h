@@ -11,9 +11,7 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 
-#include "systems/controllers/linear_controller.h"
-
-#include <iomanip>
+#include "systems/controllers/affine_controller.h"
 
 using Eigen::VectorXd;
 using Eigen::Matrix;
@@ -37,45 +35,41 @@ using drake::systems::kNoOutput;
 namespace dairlib{
 namespace systems{
 
-class ClqrController : public LinearController
+class ClqrController : public AffineController
 {
     public: 
 
-        ClqrController(RigidBodyPlant<double>* plant, VectorXd xu0, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R);
-        //const InputPortDescriptor<double>& getInputStatePort();
-        //const InputPortDescriptor<double>& getInputDesiredPort();
-        //const OutputPort<double>& getOutputActuatorPort();
-        int getNumPositions();
-        int getNumVelocities();
-        int getNumStates();
-        int getNumEfforts();
-        Matrix<double, Dynamic, Dynamic> getQ();
-        Matrix<double, Dynamic, Dynamic> getR();
-        Matrix<double, Dynamic, Dynamic> getK();
-        void setK(Matrix<double, Dynamic, Dynamic> K);
-        void setQ(Matrix<double, Dynamic, Dynamic> Q);
-        void setR(Matrix<double, Dynamic, Dynamic> R);
+        ClqrController(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd u0, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R);
+
+        int GetNumPositions(){ return num_positions_;}
+        int GetNumVelocities(){ return num_velocities_;}
+        int GetNumStates(){ return num_states_;}
+        int GetNumEfforts(){ return num_efforts_;}
+        MatrixXd GetQ(){ return Q_;}
+        MatrixXd GetR(){ return R_;}
+        MatrixXd GetK(){ return K_;}
+        VectorXd GetKVec(){ return MatToVec(K_);}
+        void SetQ(MatrixXd Q){ Q_ = Q;}
+        void SetR(MatrixXd R){ R_ = R;}
+        void SetK(MatrixXd K){ K_ = K;}
 
 
     private:
 
-        //void calcControl(const Context<double>& context, BasicVector<double>*output) const;
-        Matrix<double, Dynamic, Dynamic> computeF();
-        Matrix<double, Dynamic, Dynamic> computeK();
+        MatrixXd computeF();
+        MatrixXd computeK();
         const RigidBodyTree<double>& tree_;
         RigidBodyPlant<double>* plant_;
-        VectorXd xu0_;
-        //int input_state_port_index_;
-        //int input_desired_port_index_;
-        //int output_actuator_port_index_;
+        VectorXd x0_;
+        VectorXd u0_;
         int num_positions_;
         int num_velocities_;
         int num_states_;
         int num_efforts_;
-        Matrix<double, Dynamic, Dynamic> Q_;
-        Matrix<double, Dynamic, Dynamic> R_;
-        Matrix<double, Dynamic, Dynamic> F_;
-        Matrix<double, Dynamic, Dynamic> K_;
+        MatrixXd Q_;
+        MatrixXd R_;
+        MatrixXd F_;
+        MatrixXd K_;
 };
 
 }// namespace systems

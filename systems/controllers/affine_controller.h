@@ -52,9 +52,6 @@ class AffineParams : public TimestampedVector<double>
         TimestampedVector<double>(num_states * num_efforts + num_efforts + num_states),
         num_states_(num_states), num_efforts_(num_efforts) {};
 
-    
-
-
     private:
     
     AffineParams* DoClone() const override {

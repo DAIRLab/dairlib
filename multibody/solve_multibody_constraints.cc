@@ -133,6 +133,7 @@ FixedPointConstraint::FixedPointConstraint(RigidBodyPlant<double>* plant, const 
         description),
     plant_(plant), tree_(plant->get_rigid_body_tree()) 
 {
+    plant_autodiff_ = make_unique<RigidBodyPlant<AutoDiffXd>>(*plant);
 }
 
 
@@ -154,21 +155,18 @@ void FixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& xu,
     const int num_states = num_positions + num_velocities;
     const int num_efforts = tree_.get_num_actuators();
 
-    RigidBodyPlant<AutoDiffXd> plant_autodiff(*plant_);
+    auto context_autodiff = plant_autodiff_->CreateDefaultContext();
 
-    auto context_autodiff = plant_autodiff.CreateDefaultContext();
     const AutoDiffVecXd x = xu.head(num_states);
     const AutoDiffVecXd u = xu.tail(num_efforts); 
     
     context_autodiff->set_continuous_state(std::make_unique<ContinuousState<AutoDiffXd>>(BasicVector<AutoDiffXd>(x).Clone(), num_positions, num_velocities, 0));
     context_autodiff->FixInputPort(0, std::make_unique<BasicVector<AutoDiffXd>>(u));
     ContinuousState<AutoDiffXd> cstate_output_autodiff(BasicVector<AutoDiffXd>(x).Clone(), num_positions, num_velocities, 0);
-    plant_autodiff.CalcTimeDerivatives(*context_autodiff, &cstate_output_autodiff);
+    plant_autodiff_->CalcTimeDerivatives(*context_autodiff, &cstate_output_autodiff);
 
     y = cstate_output_autodiff.CopyToVector();
 
-    //std::cout << drake::math::autoDiffToGradientMatrix(y) << std::endl;
-    //std::cout << "------------------------------------------------------" << std::endl;
 
 }
 

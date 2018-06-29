@@ -8,6 +8,8 @@
 
 using std::vector;
 using std::list;
+using std::unique_ptr;
+using std::make_unique;
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
@@ -69,6 +71,7 @@ class FixedPointConstraint : public Constraint
     private:
         RigidBodyPlant<double>* plant_;
         const RigidBodyTree<double>& tree_;
+        unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
 
 };
 

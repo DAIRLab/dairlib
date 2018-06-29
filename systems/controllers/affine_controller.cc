@@ -6,7 +6,6 @@ namespace systems{
 AffineController::AffineController(int num_positions, int num_velocities, int num_efforts):
     num_states_(num_positions + num_velocities), num_efforts_(num_efforts)
 {
-    std::cout << "Debugging" << std::endl;
 
   input_port_info_index_ = this->DeclareVectorInputPort(
       OutputVector<double>(num_positions, num_velocities,
@@ -52,33 +51,23 @@ VectorXd AffineController::MatToVec(MatrixXd m) const
 void AffineController::CalcControl(const Context<double>& context,
                                   TimestampedVector<double>* control) const
 {
-    std::cout << "Debugging" << std::endl;
     const OutputVector<double>* info = (OutputVector<double>*)
         this->EvalVectorInput(context, input_port_info_index_);
-    std::cout << "Debugging" << std::endl;
 
     const AffineParams* params = dynamic_cast<const AffineParams*>(
         this->EvalVectorInput(context, input_port_params_index_));
-    std::cout << "Debugging" << std::endl;
 
-    VectorXd params_vec = params->get_data();
-    std::cout << "Debugging" << std::endl;
+
+    VectorXd params_vec = params->CopyVectorNoTimestamp();
     VectorXd K_vec = params_vec.head(num_states_*num_efforts_);
-    std::cout << "Debugging" << std::endl;
     VectorXd C = params_vec.segment(num_states_*num_efforts_, num_efforts_);
-    std::cout << "Debugging" << std::endl;
     VectorXd desired_state = params_vec.tail(num_states_);
-    std::cout << "Debugging" << std::endl;
     MatrixXd K = VecToMat(K_vec, num_efforts_, num_states_);
-    std::cout << "Debugging" << std::endl;
 
     VectorXd u = K*(desired_state - info->GetState()) + C;
-    std::cout << "Debugging" << std::endl;
 
     control->SetDataVector(u);
-    std::cout << "Debugging" << std::endl;
     control->set_timestamp(info->get_timestamp());
-    std::cout << "Debugging" << std::endl;
     
     }
 

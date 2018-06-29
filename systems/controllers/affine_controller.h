@@ -50,7 +50,9 @@ class AffineParams : public TimestampedVector<double>
 
     AffineParams(int num_states, int num_efforts):
         TimestampedVector<double>(num_states * num_efforts + num_efforts + num_states),
-        num_states_(num_states), num_efforts_(num_efforts) {};
+        num_states_(num_states), num_efforts_(num_efforts) {}
+
+    int GetNumStates() const { return num_states_;}
 
     private:
     

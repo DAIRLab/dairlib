@@ -19,12 +19,12 @@
 
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
-#include "examples/Cassie/cassie_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/clqr_controller.h"
 #include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "multibody/solve_multibody_constraints.h"
+#include "examples/Cassie/cassie_utils.h"
 
 using std::cout;
 using std::endl;
@@ -36,16 +36,47 @@ using Eigen::Matrix;
 using Eigen::Dynamic;
 using drake::VectorX;
 using drake::MatrixX;
+using drake::systems::Context;
+using drake::systems::LeafSystem;
+using drake::systems::BasicVector;
 using drake::systems::ConstantVectorSource;
 using drake::systems::Multiplexer;
 
 using dairlib::multibody::SolveTreePositionConstraints;
 using dairlib::multibody::SolveFixedPointConstraints;
 using dairlib::multibody::SolveTreePositionAndFixedPointConstraints;
+using dairlib::systems::AffineParams;
 using dairlib::systems::SubvectorPassThrough;
+using dairlib::systems::OutputVector;
 
 
 namespace dairlib{
+
+class InfoConnector: public LeafSystem<double>
+{
+
+    public:
+
+       InfoConnector(int num_positions, int num_velocities, int num_efforts): num_states_(num_positions + num_velocities), num_efforts_(num_efforts)
+       {
+           this->DeclareVectorInputPort(BasicVector<double>(num_positions + num_velocities + num_efforts + 3 + 1));
+           this->DeclareVectorOutputPort(OutputVector<double>(num_positions, num_velocities, num_efforts), &dairlib::InfoConnector::CopyOut);
+       }
+
+       const int num_states_;
+       const int num_efforts_;
+
+    private:
+
+        void CopyOut(const Context<double>& context, OutputVector<double>* output) const
+        {
+            const auto info = this->EvalVectorInput(context, 0);
+            const VectorX<double> info_vec = info->get_value();
+            output->SetState(info_vec.head(num_states_));
+        }
+
+};
+
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
@@ -116,6 +147,14 @@ int do_main(int argc, char* argv[])
     VectorXd x0 = VectorXd::Zero(NUM_POSITIONS + NUM_VELOCITIES);
     std::map<std::string, int>  map = plant->get_rigid_body_tree().computePositionNameToIndexMap();
 
+    for(auto elem: map)
+    {
+        cout << elem.first << " " << elem.second << endl;
+    }
+
+    x0(map.at("hip_roll_left")) = 0.5;
+    
+
     x0(map.at("hip_pitch_left")) = .269;
     x0(map.at("hip_pitch_right")) = .269;
     // x0(map.at("achilles_hip_pitch_left")) = -.44;
@@ -137,17 +176,16 @@ int do_main(int argc, char* argv[])
     x0(map.at("toe_right")) = -60.0*M_PI/180.0;
 
     std::vector<int> fixed_joints;
+    fixed_joints.push_back(map.at("hip_roll_left"));
     fixed_joints.push_back(map.at("hip_pitch_left"));
     fixed_joints.push_back(map.at("hip_pitch_right"));
     fixed_joints.push_back(map.at("knee_left"));
     fixed_joints.push_back(map.at("knee_right"));
     
-
- //   auto q0 = solvePositionConstraints(plant->get_rigid_body_tree(),
- //       x0.head(NUM_POSITIONS), fixed_joints);
- //   x0.head(NUM_POSITIONS) = q0;
-
     VectorXd q0 = SolveTreePositionConstraints(plant->get_rigid_body_tree(), x0.head(NUM_POSITIONS), fixed_joints);
+
+    cout << "Solved Tree Position constraints" << endl;
+
     x0.head(NUM_POSITIONS) = q0;
 
     VectorXd x_init = x0;
@@ -155,19 +193,14 @@ int do_main(int argc, char* argv[])
     VectorXd v_init = x0.tail(NUM_VELOCITIES);
     VectorXd u_init = VectorXd::Zero(NUM_EFFORTS);
     
-    VectorXd xu_init = VectorXd::Zero(NUM_STATES + NUM_EFFORTS);
-    xu_init.head(NUM_STATES) = x_init;
-
     //std::cout << plant->get_rigid_body_tree().B << std::endl;
 
-    Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS);
-    Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS);
+    Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS)*10;
+    Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS)*5;
 
     vector<VectorXd> sol_tpfp = SolveTreePositionAndFixedPointConstraints(plant, x_init, u_init);
-    //vector<VectorXd> sol_fp = SolveFixedPointConstraints(plant, x_init, u_init);
-    //vector<VectorXd> sol_tp = SolveTreePositionConstraints(plant->get_rigid_body_tree(), q_init, fixed_joints);
 
-    cout << "Solution found" << endl;
+    cout << "Solved Fixed Point constraints" << endl;
 
     VectorXd q_sol = sol_tpfp.at(0);
     VectorXd v_sol = sol_tpfp.at(1);
@@ -187,43 +220,32 @@ int do_main(int argc, char* argv[])
     vector<int> input_info_sizes{NUM_STATES, NUM_EFFORTS, 3, 1};
     vector<int> input_params_sizes{NUM_STATES*NUM_EFFORTS, NUM_EFFORTS, NUM_STATES, 1};
 
+    auto info_connector = builder.AddSystem<InfoConnector>(NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS);
+
     auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
-    auto multiplexer_params = builder.AddSystem<Multiplexer<double>>(input_params_sizes);
 
     auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(NUM_EFFORTS));
     auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(3));
     auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(1));
-    auto constant_K_source = builder.AddSystem<ConstantVectorSource<double>>(K_vec);
-    auto constant_C_source = builder.AddSystem<ConstantVectorSource<double>>(C);
-    auto constant_x_desired_source = builder.AddSystem<ConstantVectorSource<double>>(x_desired);
+
+    VectorXd params_vec(NUM_STATES*NUM_EFFORTS + NUM_EFFORTS + NUM_STATES);
+    params_vec << K_vec, C, x_desired;
+    AffineParams params(NUM_STATES, NUM_EFFORTS);
+    params.SetDataVector(params_vec);
+    auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
+
+    auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
+            (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
 
     builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
     builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
     builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
     builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
-    builder.Connect(multiplexer_info->get_output_port(0), clqr_controller->get_input_port_info());
-
-
-    builder.Connect(constant_K_source->get_output_port(), multiplexer_params->get_input_port(0));
-    builder.Connect(constant_C_source->get_output_port(), multiplexer_params->get_input_port(1));
-    builder.Connect(constant_x_desired_source->get_output_port(), multiplexer_params->get_input_port(2));
-    builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_params->get_input_port(3));
-    builder.Connect(multiplexer_params->get_output_port(0), clqr_controller->get_input_port_params());
-
-    auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
-            (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
-
-    cout << "Pre" << endl;
-    //builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
-    cout << "Done" << endl;
-
-
-    //cout << clqr_controller->get_input_port_output().size() << endl;
-    //cout << clqr_controller->get_output_port(0).size() << endl;
-    //OutputVector<double> input_port_output_vector(NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS);
-    //builder.Connect(multiplexer->get_output_port(), clqr_controller->get_input_port_output());
-
-    //builder.Connect(clqr_controller->get_output_port(0), plant->actuator_command_input_port());
+    builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
+    builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
+    builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
+    builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
+    builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
 
     auto diagram = builder.Build();
     
@@ -234,8 +256,8 @@ int do_main(int argc, char* argv[])
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
     //state.SetFromVector(x0);
     
-    auto zero_input = Eigen::MatrixXd::Zero(NUM_EFFORTS,1);
-    context.FixInputPort(0, zero_input);
+    //auto zero_input = Eigen::MatrixXd::Zero(NUM_EFFORTS,1);
+    //context.FixInputPort(0, zero_input);
     
     //simulator.set_publish_every_time_step(false);
     //simulator.set_publish_at_initialization(false);

@@ -73,6 +73,7 @@ class InfoConnector: public LeafSystem<double>
             const auto info = this->EvalVectorInput(context, 0);
             const VectorX<double> info_vec = info->get_value();
             output->SetState(info_vec.head(num_states_));
+            output->set_timestamp(0);
         }
 
 };
@@ -152,9 +153,8 @@ int do_main(int argc, char* argv[])
         cout << elem.first << " " << elem.second << endl;
     }
 
-    x0(map.at("hip_roll_left")) = 0.5;
-    
-
+    x0(map.at("hip_roll_left")) = 0.15;
+    x0(map.at("hip_yaw_left")) = 0.2;
     x0(map.at("hip_pitch_left")) = .269;
     x0(map.at("hip_pitch_right")) = .269;
     // x0(map.at("achilles_hip_pitch_left")) = -.44;
@@ -172,19 +172,25 @@ int do_main(int argc, char* argv[])
     // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
     // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
     
-    x0(map.at("toe_left")) = -60.0*M_PI/180.0;
+    x0(map.at("toe_left")) = -30.0*M_PI/180.0;
     x0(map.at("toe_right")) = -60.0*M_PI/180.0;
 
     std::vector<int> fixed_joints;
     fixed_joints.push_back(map.at("hip_roll_left"));
+    fixed_joints.push_back(map.at("hip_yaw_left"));
     fixed_joints.push_back(map.at("hip_pitch_left"));
     fixed_joints.push_back(map.at("hip_pitch_right"));
     fixed_joints.push_back(map.at("knee_left"));
     fixed_joints.push_back(map.at("knee_right"));
+    fixed_joints.push_back(map.at("toe_left"));
     
     VectorXd q0 = SolveTreePositionConstraints(plant->get_rigid_body_tree(), x0.head(NUM_POSITIONS), fixed_joints);
 
-    cout << "Solved Tree Position constraints" << endl;
+    VectorXd x_start = VectorXd::Zero(NUM_STATES);
+    x_start.head(NUM_POSITIONS) = SolveTreePositionConstraints(plant->get_rigid_body_tree(), VectorXd::Zero(NUM_POSITIONS));
+    cout << "x_start: " << x_start.transpose() << endl;
+
+    cout << "q0: " << q0.transpose() << endl;
 
     x0.head(NUM_POSITIONS) = q0;
 
@@ -193,14 +199,12 @@ int do_main(int argc, char* argv[])
     VectorXd v_init = x0.tail(NUM_VELOCITIES);
     VectorXd u_init = VectorXd::Zero(NUM_EFFORTS);
     
-    //std::cout << plant->get_rigid_body_tree().B << std::endl;
-
-    Matrix<double, Dynamic, Dynamic> Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS)*10;
-    Matrix<double, Dynamic, Dynamic> R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS)*5;
+    MatrixXd Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS)*10;
+    MatrixXd R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS)*5;
 
     vector<VectorXd> sol_tpfp = SolveTreePositionAndFixedPointConstraints(plant, x_init, u_init);
 
-    cout << "Solved Fixed Point constraints" << endl;
+    cout << "Solved Tree Position and Fixed Point constraints" << endl;
 
     VectorXd q_sol = sol_tpfp.at(0);
     VectorXd v_sol = sol_tpfp.at(1);
@@ -216,12 +220,14 @@ int do_main(int argc, char* argv[])
     VectorXd K_vec = clqr_controller->GetKVec();
     VectorXd C = u_sol; 
     VectorXd x_desired = x_sol;
+    cout << "K: " << K_vec.transpose() << endl;
+    cout << "C: " << C.transpose() << endl;
+    cout << "xdes: " << x_desired.transpose() << endl;
 
     vector<int> input_info_sizes{NUM_STATES, NUM_EFFORTS, 3, 1};
     vector<int> input_params_sizes{NUM_STATES*NUM_EFFORTS, NUM_EFFORTS, NUM_STATES, 1};
 
     auto info_connector = builder.AddSystem<InfoConnector>(NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS);
-
     auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
 
     auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(NUM_EFFORTS));
@@ -254,7 +260,7 @@ int do_main(int argc, char* argv[])
         diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
     
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
-    //state.SetFromVector(x0);
+    state.SetFromVector(x_start);
     
     //auto zero_input = Eigen::MatrixXd::Zero(NUM_EFFORTS,1);
     //context.FixInputPort(0, zero_input);

@@ -40,7 +40,7 @@ MatrixXd ClqrController::computeK()
     
     MatrixXd P = Q.block(0, F_.rows(), Q.rows(), Q.cols() - F_.rows());
     P.transposeInPlace();
-    
+
     //Linearizing
     auto context = plant_->CreateDefaultContext();
 
@@ -52,7 +52,7 @@ MatrixXd ClqrController::computeK()
     MatrixXd B_new_coord = P*linear_system->B();
 
 
-    auto lqr_result = LinearQuadraticRegulator(P*linear_system->A()*P.transpose(), P*linear_system->B(), Q_, R_);
+    auto lqr_result = LinearQuadraticRegulator(A_new_coord, B_new_coord, Q_, R_);
     return lqr_result.K*P;
 
 }

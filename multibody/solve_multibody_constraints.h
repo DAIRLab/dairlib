@@ -37,9 +37,11 @@ namespace multibody{
 
 VectorXd SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd x_init, vector<int> fixed_joints = {});
 
-vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints = {});
+vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, vector<int> fixed_joints = {});
 
 vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints = {});
+
+vector<VectorXd> SlveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd u_init, vector<int> fixed_joints = {});
 
 class TreePositionConstraint : public Constraint
 {
@@ -69,6 +71,27 @@ class FixedPointConstraint : public Constraint
                     drake::AutoDiffVecXd& y) const override;
   
     private:
+        RigidBodyPlant<double>* plant_;
+        const RigidBodyTree<double>& tree_;
+        unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
+
+};
+
+
+class FixedPointFeasibilityConstraint : public Constraint
+{
+    public:
+        FixedPointConstraint(RigidBodyPlant<double>* plant,
+                VectorXd x0,
+                const std::string& description = "");
+        void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+                    Eigen::VectorXd& y) const override;
+  
+        void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
+                    drake::AutoDiffVecXd& y) const override;
+  
+    private:
+        VectorXd x0_;
         RigidBodyPlant<double>* plant_;
         const RigidBodyTree<double>& tree_;
         unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;

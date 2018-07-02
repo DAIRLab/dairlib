@@ -209,7 +209,6 @@ void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const Eigen::Vecto
     AutoDiffVecXd y_t;
     Eval(drake::math::initializeAutoDiff(u), y_t);
     y = drake::math::autoDiffToValueMatrix(y_t);
- 
 }
 
 void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& u,
@@ -218,24 +217,17 @@ void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const AutoDiffVecX
     
     const int num_positions = tree_.get_num_positions();
     const int num_velocities = tree_.get_num_velocities();
-    std::cout << "Test" << std::endl;
 
     auto context_autodiff = plant_autodiff_->CreateDefaultContext();
-    std::cout << "Test" << std::endl;
 
-    context_autodiff->set_continuous_state(std::make_unique<ContinuousState<AutoDiffXd>>(BasicVector<AutoDiffXd>(x0_).Clone(), num_positions, num_velocities, 0));
-    std::cout << "Test" << std::endl;
+    AutoDiffVecXd x0_autodiff_ = initializeAutoDiff(x0_);
+
+    context_autodiff->set_continuous_state(std::make_unique<ContinuousState<AutoDiffXd>>(BasicVector<AutoDiffXd>(x0_autodiff_).Clone(), num_positions, num_velocities, 0));
     context_autodiff->FixInputPort(0, std::make_unique<BasicVector<AutoDiffXd>>(u));
-    std::cout << "Test" << std::endl;
-    ContinuousState<AutoDiffXd> cstate_output_autodiff(BasicVector<AutoDiffXd>(x0_).Clone(), num_positions, num_velocities, 0);
-    std::cout << "Test" << std::endl;
+    ContinuousState<AutoDiffXd> cstate_output_autodiff(BasicVector<AutoDiffXd>(x0_autodiff_).Clone(), num_positions, num_velocities, 0);
     plant_autodiff_->CalcTimeDerivatives(*context_autodiff, &cstate_output_autodiff);
-    std::cout << "Test" << std::endl;
 
     y = cstate_output_autodiff.CopyToVector();
-    std::cout << "Test" << std::endl;
-    std::cout << "--------------------------------------------" << std::endl;
-    std::cout << y.transpose() << std::endl;
 
 
 }

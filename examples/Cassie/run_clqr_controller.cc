@@ -154,7 +154,7 @@ int do_main(int argc, char* argv[])
         cout << elem.first << " " << elem.second << endl;
     }
 
-    x0(map.at("hip_roll_left")) = 0.15;
+    //x0(map.at("hip_roll_left")) = 0.15;
     //x0(map.at("hip_yaw_left")) = 0.2;
     x0(map.at("hip_pitch_left")) = .269;
     x0(map.at("hip_pitch_right")) = .269;
@@ -177,7 +177,7 @@ int do_main(int argc, char* argv[])
     x0(map.at("toe_right")) = -60.0*M_PI/180.0;
 
     std::vector<int> fixed_joints;
-    fixed_joints.push_back(map.at("hip_roll_left"));
+    //fixed_joints.push_back(map.at("hip_roll_left"));
     //fixed_joints.push_back(map.at("hip_yaw_left"));
     fixed_joints.push_back(map.at("hip_pitch_left"));
     fixed_joints.push_back(map.at("hip_pitch_right"));
@@ -201,12 +201,12 @@ int do_main(int argc, char* argv[])
     VectorXd u_init = VectorXd::Zero(NUM_EFFORTS);
     //u_init(0) = 0.5;
     
-    MatrixXd Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS)*10;
+    MatrixXd Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS);
+    MatrixXd Q_p = MatrixXd::Identity(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS)*100.0;
+    MatrixXd Q_v = MatrixXd::Identity(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS)*10.0;
+    Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
+    Q.block(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS, Q_v.rows(), Q_v.cols()) = Q_v;
     MatrixXd R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS)*5;
-
-    vector<VectorXd> sol_fpf = SolveFixedPointFeasibilityConstraints(plant, x_init, u_init);
-
-    cout << "Solved feasibility problem" << endl;
 
     vector<VectorXd> sol_tpfp = SolveTreePositionAndFixedPointConstraints(plant, x_init, u_init);
 

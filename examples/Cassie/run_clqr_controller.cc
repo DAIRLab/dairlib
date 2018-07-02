@@ -53,6 +53,24 @@ using dairlib::systems::OutputVector;
 
 namespace dairlib{
 
+
+// Simulation parameters.
+DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
+DEFINE_double(youngs_modulus, 1e8, "The contact model's Young's modulus (Pa)");
+DEFINE_double(us, 0.7, "The static coefficient of friction");
+DEFINE_double(ud, 0.7, "The dynamic coefficient of friction");
+DEFINE_double(v_tol, 0.01,
+              "The maximum slipping speed allowed during stiction (m/s)");
+DEFINE_double(dissipation, 2, "The contact model's dissipation (s/m)");
+DEFINE_double(contact_radius, 2e-4,
+              "The characteristic scale of contact patch (m)");
+DEFINE_string(simulation_type, "compliant", "The type of simulation to use: "
+              "'compliant' or 'timestepping'");
+DEFINE_double(dt, 1e-3, "The step size to use for "
+              "'simulation_type=timestepping' (ignored for "
+              "'simulation_type=compliant'");
+
+
 class InfoConnector: public LeafSystem<double>
 {
 
@@ -79,22 +97,43 @@ class InfoConnector: public LeafSystem<double>
 
 };
 
+VectorXd ComputeUAnalytical(RigidBodyPlant<double>* plant, VectorXd x)
+{
+    const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
+    KinematicsCache<double> kcache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
+    const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
 
-// Simulation parameters.
-DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
-DEFINE_double(youngs_modulus, 1e8, "The contact model's Young's modulus (Pa)");
-DEFINE_double(us, 0.7, "The static coefficient of friction");
-DEFINE_double(ud, 0.7, "The dynamic coefficient of friction");
-DEFINE_double(v_tol, 0.01,
-              "The maximum slipping speed allowed during stiction (m/s)");
-DEFINE_double(dissipation, 2, "The contact model's dissipation (s/m)");
-DEFINE_double(contact_radius, 2e-4,
-              "The characteristic scale of contact patch (m)");
-DEFINE_string(simulation_type, "compliant", "The type of simulation to use: "
-              "'compliant' or 'timestepping'");
-DEFINE_double(dt, 1e-3, "The step size to use for "
-              "'simulation_type=timestepping' (ignored for "
-              "'simulation_type=compliant'");
+    MatrixXd J = tree.positionConstraintsJacobian(kcache);
+    MatrixXd H = tree.massMatrix(kcache);
+    MatrixXd B = tree.B;
+    MatrixXd C = tree.dynamicsBiasTerm(kcache, no_external_wrenches);
+
+    MatrixXd W = J*H.inverse()*J.transpose();
+    MatrixXd Z = W.completeOrthogonalDecomposition().pseudoInverse();
+
+    MatrixXd T = J.transpose()*Z*J*H.inverse()*B;
+    MatrixXd Y = -J.transpose()*Z*J*H.inverse()*C + C;
+    MatrixXd X = B - T;
+    MatrixXd Xpinv = X.completeOrthogonalDecomposition().pseudoInverse();
+    VectorXd u = Xpinv*Y;
+
+    cout << "u calculated: " << u.transpose() << endl;
+
+    auto context = plant->CreateDefaultContext();
+
+    context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(x).Clone(), tree.get_num_positions(), tree.get_num_velocities(), 0));
+    context->FixInputPort(0, std::make_unique<BasicVector<double>>(u));
+    ContinuousState<double> cstate_output(BasicVector<double>(x).Clone(), tree.get_num_positions(), tree.get_num_velocities(), 0);
+    plant->CalcTimeDerivatives(*context, &cstate_output);
+    VectorXd xdot = cstate_output.CopyToVector();
+
+    cout << "xdot: " << xdot.transpose() << endl;
+
+    return u;
+
+}
+
+
 
 int do_main(int argc, char* argv[]) 
 {
@@ -196,6 +235,7 @@ int do_main(int argc, char* argv[])
     x0.head(NUM_POSITIONS) = q0;
 
     VectorXd x_init = x0;
+    cout << "xinit: " << x_init.transpose() << endl;
     VectorXd q_init = x0.head(NUM_POSITIONS);
     VectorXd v_init = x0.tail(NUM_VELOCITIES);
     VectorXd u_init = VectorXd::Zero(NUM_EFFORTS);
@@ -206,8 +246,11 @@ int do_main(int argc, char* argv[])
     MatrixXd Q_v = MatrixXd::Identity(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS)*10.0;
     Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
     Q.block(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS, Q_v.rows(), Q_v.cols()) = Q_v;
-    MatrixXd R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS)*5;
+    MatrixXd R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS)*100.0;
 
+    //VectorXd u_init = ComputeUAnalytical(plant, x_init);
+
+    vector<VectorXd> sol_f = SolveFixedPointFeasibilityConstraints(plant, x_init, u_init);
     vector<VectorXd> sol_tpfp = SolveTreePositionAndFixedPointConstraints(plant, x_init, u_init);
 
     cout << "Solved Tree Position and Fixed Point constraints" << endl;

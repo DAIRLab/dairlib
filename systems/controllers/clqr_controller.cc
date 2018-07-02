@@ -14,6 +14,8 @@ MatrixXd ClqrController::computeF()
 {
     
     KinematicsCache<double> kcache_0 = tree_.doKinematics(x0_.head(num_positions_), x0_.tail(num_velocities_));
+
+    //Computing the constraint jacobian
     MatrixXd c_jac = tree_.positionConstraintsJacobian(kcache_0);
 
     const int r = c_jac.rows();
@@ -23,6 +25,7 @@ MatrixXd ClqrController::computeF()
 
     MatrixXd F =  MatrixXd::Zero(2*r, 2*c);
 
+    //Computing F by populating with J
     F.block(0, 0, r, c) = c_jac;
     F.block(r, c, r, c) = c_jac;
 
@@ -41,17 +44,16 @@ MatrixXd ClqrController::computeK()
     MatrixXd P = Q.block(0, F_.rows(), Q.rows(), Q.cols() - F_.rows());
     P.transposeInPlace();
 
-    //Linearizing
     auto context = plant_->CreateDefaultContext();
-
     context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(x0_).Clone(), num_positions_, num_velocities_, 0));
     context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0_));
 
+    //Linearizing
     auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
     MatrixXd A_new_coord = P*linear_system->A()*P.transpose();
     MatrixXd B_new_coord = P*linear_system->B();
 
-
+    //Computing LQR result
     auto lqr_result = LinearQuadraticRegulator(A_new_coord, B_new_coord, Q_, R_);
     return lqr_result.K*P;
 

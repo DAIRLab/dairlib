@@ -4,6 +4,13 @@
 namespace dairlib{
 namespace multibody{
 
+/*
+Solves tree position constraints for the given tree.
+@param tree RigidBodyTree for which the constraints needs to be solved
+@param q_init Initial value of the positions that need to be given to the solver
+@params fixed_joints Joints that need to have the exact values as that in q_init
+@param return Generalized positions that satisfy the constraints
+*/
 
 VectorXd SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd q_init, vector<int> fixed_joints) 
 {
@@ -26,38 +33,64 @@ VectorXd SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorX
     return prog.GetSolution(q);
 }
 
+/*
+Solves fixed point constraints for the given tree.
+@param plant RigidBodyPlant for which the constraints needs to be solved
+@param x_init Initial value of the state given to the solver
+@param u_init Initial value of the control inputs
+@params fixed_joints Joints that need to have the exact values as that in q_init
+@param return Vector of q, v, and u solutions as found by the solver
+*/
+
 vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints) 
 {
+
     const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
+    VectorXd u_zero = VectorXd::Zero(u_init.size());
 
     MathematicalProgram prog;
-    auto x = prog.NewContinuousVariables(tree.get_num_positions() + tree.get_num_velocities(), "x");
+    auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
+    auto v = prog.NewContinuousVariables(tree.get_num_velocities(), "v");
     auto u = prog.NewContinuousVariables(tree.get_num_actuators(), "u");
-    auto constraint = std::make_shared<FixedPointConstraint>(plant);
-    prog.AddConstraint(constraint, {x, u});
-
+    auto constraint_fixed_point = std::make_shared<FixedPointConstraint>(plant);
+    prog.AddConstraint(constraint_fixed_point, {q, v, u});
+    
     for(uint i = 0; i < fixed_joints.size(); i++)
     {
       int j = fixed_joints[i];
-      prog.AddConstraint(x(j) == x_init(j));
+      prog.AddConstraint(q(j) == x_init(j));
     }
 
-    prog.AddQuadraticCost((x - x_init).dot(x - x_init) + (u - u_init).dot(u - u_init));
-    prog.SetInitialGuess(x, x_init);
+    VectorXd q_init = x_init.head(tree.get_num_positions());
+    VectorXd v_init = x_init.head(tree.get_num_velocities());
+
+    prog.AddQuadraticCost((q - q_init).dot(q - q_init) + (v - v_init).dot(v - v_init) + (u - u_zero).dot(u - u_zero));
+    prog.SetInitialGuess(q, q_init);
+    prog.SetInitialGuess(v, v_init);
     prog.SetInitialGuess(u, u_init);
     prog.Solve();
 
     vector<VectorXd> sol;
-    sol.push_back(prog.GetSolution(x));
+    sol.push_back(prog.GetSolution(q));
+    sol.push_back(prog.GetSolution(v));
     sol.push_back(prog.GetSolution(u));
     return sol;
 }
 
+/*
+Solves tree position and fixed point constraints for the given tree.
+@param plant RigidBodyPlant for which the constraints needs to be solved
+@param x_init Initial value of the state given to the solver
+@param u_init Initial value of the control inputs
+@params fixed_joints Joints that need to have the exact values as that in q_init
+@param return Vector of q, v, and u solutions as found by the solver
+*/
 
 vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints) 
 {
 
     const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
+    VectorXd u_zero = VectorXd::Zero(u_init.size());
 
     MathematicalProgram prog;
     auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
@@ -77,8 +110,7 @@ vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double
     VectorXd q_init = x_init.head(tree.get_num_positions());
     VectorXd v_init = x_init.head(tree.get_num_velocities());
 
-    prog.AddQuadraticCost((q - q_init).dot(q - q_init) + (v - v_init).dot(v - v_init) + (u - u_init).dot(u - u_init));
-
+    prog.AddQuadraticCost((q - q_init).dot(q - q_init) + (v - v_init).dot(v - v_init) + (u - u_zero).dot(u - u_zero));
     prog.SetInitialGuess(q, q_init);
     prog.SetInitialGuess(v, v_init);
     prog.SetInitialGuess(u, u_init);
@@ -220,11 +252,11 @@ void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const AutoDiffVecX
 
     auto context_autodiff = plant_autodiff_->CreateDefaultContext();
 
-    AutoDiffVecXd x0_autodiff_ = initializeAutoDiff(x0_);
+    AutoDiffVecXd x0_autodiff = initializeAutoDiff(x0_);
 
-    context_autodiff->set_continuous_state(std::make_unique<ContinuousState<AutoDiffXd>>(BasicVector<AutoDiffXd>(x0_autodiff_).Clone(), num_positions, num_velocities, 0));
+    context_autodiff->set_continuous_state(std::make_unique<ContinuousState<AutoDiffXd>>(BasicVector<AutoDiffXd>(x0_autodiff).Clone(), num_positions, num_velocities, 0));
     context_autodiff->FixInputPort(0, std::make_unique<BasicVector<AutoDiffXd>>(u));
-    ContinuousState<AutoDiffXd> cstate_output_autodiff(BasicVector<AutoDiffXd>(x0_autodiff_).Clone(), num_positions, num_velocities, 0);
+    ContinuousState<AutoDiffXd> cstate_output_autodiff(BasicVector<AutoDiffXd>(x0_autodiff).Clone(), num_positions, num_velocities, 0);
     plant_autodiff_->CalcTimeDerivatives(*context_autodiff, &cstate_output_autodiff);
 
     y = cstate_output_autodiff.CopyToVector();

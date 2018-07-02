@@ -92,28 +92,20 @@ vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double
 }
 
 
-vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd u_init, vector<int> fixed_joints) 
+vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd u_init) 
 {
     const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
 
     MathematicalProgram prog;
     auto u = prog.NewContinuousVariables(tree.get_num_actuators(), "u");
-    auto constraint = std::make_shared<FixedPointConstraint>(plant);
-    prog.AddConstraint(constraint, {x, u});
+    auto constraint = std::make_shared<FixedPointFeasibilityConstraint>(plant, x0);
+    prog.AddConstraint(constraint, u);
 
-    for(uint i = 0; i < fixed_joints.size(); i++)
-    {
-      int j = fixed_joints[i];
-      prog.AddConstraint(x(j) == x_init(j));
-    }
-
-    prog.AddQuadraticCost((x - x_init).dot(x - x_init) + (u - u_init).dot(u - u_init));
-    prog.SetInitialGuess(x, x_init);
+    prog.AddQuadraticCost(1.0);
     prog.SetInitialGuess(u, u_init);
     prog.Solve();
 
     vector<VectorXd> sol;
-    sol.push_back(prog.GetSolution(x));
     sol.push_back(prog.GetSolution(u));
     return sol;
 }
@@ -199,47 +191,51 @@ void FixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& xu,
 
 
 
-FixedPointFeasibilityConstraint::FixedPointConstraint(RigidBodyPlant<double>* plant, VectorXd x0, const std::string& description):
+FixedPointFeasibilityConstraint::FixedPointFeasibilityConstraint(RigidBodyPlant<double>* plant, VectorXd x0, const std::string& description):
     Constraint((plant->get_rigid_body_tree()).get_num_positions() + (plant->get_rigid_body_tree()).get_num_velocities(),
-        (plant->get_rigid_body_tree()).get_num_positions() + (plant->get_rigid_body_tree()).get_num_positions() + (plant->get_rigid_body_tree()).get_num_actuators(),
+        (plant->get_rigid_body_tree()).get_num_actuators(),
         VectorXd::Zero((plant->get_rigid_body_tree()).get_num_positions() + (plant->get_rigid_body_tree()).get_num_velocities()),
         VectorXd::Zero((plant->get_rigid_body_tree()).get_num_positions() + (plant->get_rigid_body_tree()).get_num_velocities()),
         description),
-    plant_(plant), tree_(plant->get_rigid_body_tree()) 
+    plant_(plant), tree_(plant->get_rigid_body_tree()), x0_(x0)
 {
     plant_autodiff_ = make_unique<RigidBodyPlant<AutoDiffXd>>(*plant);
 }
 
 
-void FixedPointConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& xu,
+void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& u,
                                     Eigen::VectorXd& y) const 
 {
     AutoDiffVecXd y_t;
-    Eval(drake::math::initializeAutoDiff(xu), y_t);
+    Eval(drake::math::initializeAutoDiff(u), y_t);
     y = drake::math::autoDiffToValueMatrix(y_t);
  
 }
 
-void FixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& xu,
+void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& u,
                                     AutoDiffVecXd& y) const 
 {
     
     const int num_positions = tree_.get_num_positions();
     const int num_velocities = tree_.get_num_velocities();
-    const int num_states = num_positions + num_velocities;
-    const int num_efforts = tree_.get_num_actuators();
+    std::cout << "Test" << std::endl;
 
     auto context_autodiff = plant_autodiff_->CreateDefaultContext();
+    std::cout << "Test" << std::endl;
 
-    const AutoDiffVecXd x = xu.head(num_states);
-    const AutoDiffVecXd u = xu.tail(num_efforts); 
-    
-    context_autodiff->set_continuous_state(std::make_unique<ContinuousState<AutoDiffXd>>(BasicVector<AutoDiffXd>(x).Clone(), num_positions, num_velocities, 0));
+    context_autodiff->set_continuous_state(std::make_unique<ContinuousState<AutoDiffXd>>(BasicVector<AutoDiffXd>(x0_).Clone(), num_positions, num_velocities, 0));
+    std::cout << "Test" << std::endl;
     context_autodiff->FixInputPort(0, std::make_unique<BasicVector<AutoDiffXd>>(u));
-    ContinuousState<AutoDiffXd> cstate_output_autodiff(BasicVector<AutoDiffXd>(x).Clone(), num_positions, num_velocities, 0);
+    std::cout << "Test" << std::endl;
+    ContinuousState<AutoDiffXd> cstate_output_autodiff(BasicVector<AutoDiffXd>(x0_).Clone(), num_positions, num_velocities, 0);
+    std::cout << "Test" << std::endl;
     plant_autodiff_->CalcTimeDerivatives(*context_autodiff, &cstate_output_autodiff);
+    std::cout << "Test" << std::endl;
 
     y = cstate_output_autodiff.CopyToVector();
+    std::cout << "Test" << std::endl;
+    std::cout << "--------------------------------------------" << std::endl;
+    std::cout << y.transpose() << std::endl;
 
 
 }

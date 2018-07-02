@@ -41,7 +41,7 @@ vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, Vecto
 
 vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints = {});
 
-vector<VectorXd> SlveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd u_init, vector<int> fixed_joints = {});
+vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd u_init);
 
 class TreePositionConstraint : public Constraint
 {
@@ -81,7 +81,7 @@ class FixedPointConstraint : public Constraint
 class FixedPointFeasibilityConstraint : public Constraint
 {
     public:
-        FixedPointConstraint(RigidBodyPlant<double>* plant,
+        FixedPointFeasibilityConstraint(RigidBodyPlant<double>* plant,
                 VectorXd x0,
                 const std::string& description = "");
         void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
@@ -91,9 +91,9 @@ class FixedPointFeasibilityConstraint : public Constraint
                     drake::AutoDiffVecXd& y) const override;
   
     private:
-        VectorXd x0_;
         RigidBodyPlant<double>* plant_;
         const RigidBodyTree<double>& tree_;
+        VectorXd x0_;
         unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
 
 };

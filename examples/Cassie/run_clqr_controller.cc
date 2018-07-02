@@ -45,6 +45,7 @@ using drake::systems::Multiplexer;
 using dairlib::multibody::SolveTreePositionConstraints;
 using dairlib::multibody::SolveFixedPointConstraints;
 using dairlib::multibody::SolveTreePositionAndFixedPointConstraints;
+using dairlib::multibody::SolveFixedPointFeasibilityConstraints;
 using dairlib::systems::AffineParams;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::OutputVector;
@@ -154,7 +155,7 @@ int do_main(int argc, char* argv[])
     }
 
     x0(map.at("hip_roll_left")) = 0.15;
-    x0(map.at("hip_yaw_left")) = 0.2;
+    //x0(map.at("hip_yaw_left")) = 0.2;
     x0(map.at("hip_pitch_left")) = .269;
     x0(map.at("hip_pitch_right")) = .269;
     // x0(map.at("achilles_hip_pitch_left")) = -.44;
@@ -177,7 +178,7 @@ int do_main(int argc, char* argv[])
 
     std::vector<int> fixed_joints;
     fixed_joints.push_back(map.at("hip_roll_left"));
-    fixed_joints.push_back(map.at("hip_yaw_left"));
+    //fixed_joints.push_back(map.at("hip_yaw_left"));
     fixed_joints.push_back(map.at("hip_pitch_left"));
     fixed_joints.push_back(map.at("hip_pitch_right"));
     fixed_joints.push_back(map.at("knee_left"));
@@ -198,9 +199,14 @@ int do_main(int argc, char* argv[])
     VectorXd q_init = x0.head(NUM_POSITIONS);
     VectorXd v_init = x0.tail(NUM_VELOCITIES);
     VectorXd u_init = VectorXd::Zero(NUM_EFFORTS);
+    //u_init(0) = 0.5;
     
     MatrixXd Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS)*10;
     MatrixXd R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS)*5;
+
+    vector<VectorXd> sol_fpf = SolveFixedPointFeasibilityConstraints(plant, x_init, u_init);
+
+    cout << "Solved feasibility problem" << endl;
 
     vector<VectorXd> sol_tpfp = SolveTreePositionAndFixedPointConstraints(plant, x_init, u_init);
 

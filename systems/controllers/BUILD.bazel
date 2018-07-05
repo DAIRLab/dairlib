@@ -67,4 +67,19 @@ cc_test(
     size = "small"
 )
 
+cc_test(
+    name = "affine_controller_test",
+    srcs = [
+        "test/affine_controller_test.cc",
+    ],
+    deps = [
+        "@drake//common/test_utilities:eigen_matrix_compare",
+        "@drake//systems/framework",
+        "@drake//systems/framework/test_utilities",
+        "//systems/framework:vector",
+        "controllers",
+    ],
+    size = "small"
+)
+
 

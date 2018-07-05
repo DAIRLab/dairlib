@@ -28,6 +28,16 @@ class AffineController : public LeafSystem<double>
       return this->get_input_port(input_port_info_index_);
     }
 
+    int get_input_port_info_index()
+    {
+        return input_port_info_index_;
+    }
+
+    int get_input_port_params_index()
+    {
+        return input_port_params_index_;
+    }
+
     MatrixXd VecToMat(VectorXd v, int num_rows, int num_cols) const;
     VectorXd MatToVec(MatrixXd m) const;
 

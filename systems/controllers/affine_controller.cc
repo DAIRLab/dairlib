@@ -67,12 +67,12 @@ void AffineController::CalcControl(const Context<double>& context,
     //These are unwrapped into the required vectors
     VectorXd params_vec = params->CopyVectorNoTimestamp();
     VectorXd K_vec = params_vec.head(num_states_*num_efforts_);
-    VectorXd C = params_vec.segment(num_states_*num_efforts_, num_efforts_);
+    VectorXd E = params_vec.segment(num_states_*num_efforts_, num_efforts_);
     VectorXd desired_state = params_vec.tail(num_states_);
     //The matrix K is generated from the vector
     MatrixXd K = VecToMat(K_vec, num_efforts_, num_states_);
 
-    VectorXd u = K*(desired_state - info->GetState()) + C;
+    VectorXd u = K*(desired_state - info->GetState()) + E;
 
     std::cout << "-----------------------------------------------------------------" << std::endl;
     std::cout << "xa: " << info->GetState().transpose() << std::endl;

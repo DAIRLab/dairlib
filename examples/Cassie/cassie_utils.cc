@@ -15,7 +15,7 @@ using drake::solvers::MathematicalProgram;
 std::unique_ptr<RigidBodyTree<double>> makeFixedBaseCassieTreePointer(
     std::string filename) {
   auto tree = std::make_unique<RigidBodyTree<double>>();
-  buildFixedBaseCassieTree(*tree.get());
+  buildFixedBaseCassieTree(*tree.get(), filename);
   return tree;
 }
 

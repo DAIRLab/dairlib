@@ -43,8 +43,11 @@ using drake::systems::ConstantVectorSource;
 using drake::systems::Multiplexer;
 
 using dairlib::multibody::SolveTreePositionConstraints;
+using dairlib::multibody::CheckTreePositionConstraints;
 using dairlib::multibody::SolveFixedPointConstraints;
+using dairlib::multibody::CheckFixedPointConstraints;
 using dairlib::multibody::SolveTreePositionAndFixedPointConstraints;
+using dairlib::multibody::CheckTreePositionAndFixedPointConstraints;
 using dairlib::multibody::SolveFixedPointFeasibilityConstraints;
 using dairlib::systems::AffineParams;
 using dairlib::systems::SubvectorPassThrough;
@@ -97,7 +100,7 @@ class InfoConnector: public LeafSystem<double>
 
 };
 
-VectorXd ComputeUAnalytical(RigidBodyPlant<double>* plant, VectorXd x)
+VectorXd ComputeUAnalytical(RigidBodyPlant<double>* plant, VectorXd x, VectorXd u)
 {
     const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
     KinematicsCache<double> kcache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
@@ -106,16 +109,57 @@ VectorXd ComputeUAnalytical(RigidBodyPlant<double>* plant, VectorXd x)
     MatrixXd J = tree.positionConstraintsJacobian(kcache);
     MatrixXd H = tree.massMatrix(kcache);
     MatrixXd B = tree.B;
-    MatrixXd C = tree.dynamicsBiasTerm(kcache, no_external_wrenches);
+    VectorXd C = tree.dynamicsBiasTerm(kcache, no_external_wrenches);
 
-    MatrixXd W = J*H.inverse()*J.transpose();
-    MatrixXd Z = W.completeOrthogonalDecomposition().pseudoInverse();
+    VectorXd r = C - B*u;
+    MatrixXd Jt = J.transpose();
+    cout << "--------------------------" << endl;
 
-    MatrixXd T = J.transpose()*Z*J*H.inverse()*B;
-    MatrixXd Y = -J.transpose()*Z*J*H.inverse()*C + C;
-    MatrixXd X = B - T;
-    MatrixXd Xpinv = X.completeOrthogonalDecomposition().pseudoInverse();
-    VectorXd u = Xpinv*Y;
+    cout <<  J << endl;
+    
+    
+
+    //MatrixXd W = J*H.inverse()*J.transpose();
+    //MatrixXd Z = W.completeOrthogonalDecomposition().pseudoInverse();
+
+    //MatrixXd T = J.transpose()*Z*J*H.inverse()*B;
+    //MatrixXd Y = -J.transpose()*Z*J*H.inverse()*C + C;
+    //MatrixXd X = B - T;
+    //MatrixXd Xpinv = X.completeOrthogonalDecomposition().pseudoInverse();
+    //VectorXd u = Xpinv*Y;
+
+    //MatrixXd J2 = J.block(0, 8, J.rows(), 6);
+    //J2.transposeInPlace();
+    //VectorXd C2 = -1.0*C.segment(8, 6);
+    //VectorXd lambda = J2.colPivHouseholderQr().solve(C2);
+
+    //cout << J2 << endl;
+    //cout << "--------------------------" << endl;
+    //cout << C2 << endl;
+    //cout << "--------------------------" << endl;
+
+    //cout << C2 + J2*lambda << endl;
+    //cout << "--------------------------" << endl;
+    //cout << C + J.transpose()*lambda << endl;
+    //cout << "--------------------------" << endl;
+
+    cout << "C: " << C.transpose() << endl;
+    //cout << "C2: " << C2.transpose() << endl;
+    cout << "--------------------------" << endl;
+    cout << "Bu: " << (B*u).transpose() << endl;
+    cout << "--------------------------" << endl;
+    cout << "r: " << r.transpose() << endl;
+    cout << "--------------------------" << endl;
+
+    MatrixXd Jtpinv = Jt.completeOrthogonalDecomposition().pseudoInverse();
+    VectorXd lambda = Jtpinv*r;
+    cout << lambda.transpose() << endl;
+    cout << "--------------------------" << endl;
+    cout << (Jt*lambda).transpose() << endl;
+    cout << "--------------------------" << endl;
+
+    u = VectorXd::Zero(plant->get_num_actuators()-1);
+
 
     cout << "u calculated: " << u.transpose() << endl;
 
@@ -141,6 +185,8 @@ int do_main(int argc, char* argv[])
     
     drake::lcm::DrakeLcm lcm;
     std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
+    //std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+    cout << tree->getNumPositionConstraints() << endl;
     
     const int NUM_EFFORTS = tree->get_num_actuators();
     const int NUM_POSITIONS = tree->get_num_positions();
@@ -156,6 +202,9 @@ int do_main(int argc, char* argv[])
     cout << tree->positionConstraints(kcache) << endl;
     cout << tree->positionConstraintsJacobian(kcache) << endl;
     cout << "--------------------------------------------------------" << endl;
+    cout << tree->B << endl;
+    cout << "--------------------------------------------------------" << endl;
+    
     
     
     drake::systems::DiagramBuilder<double> builder;
@@ -224,12 +273,13 @@ int do_main(int argc, char* argv[])
     fixed_joints.push_back(map.at("knee_right"));
     fixed_joints.push_back(map.at("toe_left"));
     
-    VectorXd q0 = SolveTreePositionConstraints(plant->get_rigid_body_tree(), x0.head(NUM_POSITIONS), fixed_joints);
-
     VectorXd x_start = VectorXd::Zero(NUM_STATES);
     x_start.head(NUM_POSITIONS) = SolveTreePositionConstraints(plant->get_rigid_body_tree(), VectorXd::Zero(NUM_POSITIONS));
-    cout << "x_start: " << x_start.transpose() << endl;
 
+    VectorXd q0 = SolveTreePositionConstraints(plant->get_rigid_body_tree(), x0.head(NUM_POSITIONS), fixed_joints);
+    cout << "Is TP satisfied: " << CheckTreePositionConstraints(plant->get_rigid_body_tree(), q0) << endl;
+
+    cout << "x_start: " << x_start.transpose() << endl;
     cout << "q0: " << q0.transpose() << endl;
 
     x0.head(NUM_POSITIONS) = q0;
@@ -242,15 +292,14 @@ int do_main(int argc, char* argv[])
     //u_init(0) = 0.5;
     
     MatrixXd Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS);
-    MatrixXd Q_p = MatrixXd::Identity(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS)*100.0;
+    MatrixXd Q_p = MatrixXd::Identity(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS)*1000.0;
     MatrixXd Q_v = MatrixXd::Identity(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS)*10.0;
     Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
     Q.block(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS, Q_v.rows(), Q_v.cols()) = Q_v;
     MatrixXd R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS)*100.0;
 
-    //VectorXd u_init = ComputeUAnalytical(plant, x_init);
 
-    vector<VectorXd> sol_f = SolveFixedPointFeasibilityConstraints(plant, x_init, u_init);
+    //vector<VectorXd> sol_f = SolveFixedPointFeasibilityConstraints(plant, x_init, u_init);
     vector<VectorXd> sol_tpfp = SolveTreePositionAndFixedPointConstraints(plant, x_init, u_init);
 
     cout << "Solved Tree Position and Fixed Point constraints" << endl;
@@ -260,6 +309,10 @@ int do_main(int argc, char* argv[])
     VectorXd u_sol = sol_tpfp.at(2);
     VectorXd x_sol(NUM_STATES);
     x_sol << q_sol, v_sol;
+
+    cout << "Is TP and FP satisfied : " << CheckTreePositionAndFixedPointConstraints(plant, x_sol, u_sol) << endl;
+
+    //u_init = ComputeUAnalytical(plant, x_sol, u_sol);
 
     cout << "x: " << x_sol.transpose() << endl;
     cout << "u: " << u_sol.transpose() << endl;

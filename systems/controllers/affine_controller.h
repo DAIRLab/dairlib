@@ -11,6 +11,13 @@ using drake::systems::Context;
 namespace dairlib{
 namespace systems{
 
+/*
+AffineController class that generates a control input of the form u = K(x_desired - x_current) + E
+The controller has two input ports.
+The first port is of type OutputVector<double> and has the state information of the system
+The second input port is of type AffineParams and has the parameters (K, E and x_desired) of the controller
+The controller has a single output port of type TimestampedVector<double> that holds the control inputs plus a timestamp that is taken from the timestamp of the OutputVector input port
+ */
 class AffineController : public LeafSystem<double>
 {
 

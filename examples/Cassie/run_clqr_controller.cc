@@ -42,12 +42,12 @@ using drake::systems::BasicVector;
 using drake::systems::ConstantVectorSource;
 using drake::systems::Multiplexer;
 
-using dairlib::multibody::SolveTreePositionConstraints;
-using dairlib::multibody::CheckTreePositionConstraints;
+using dairlib::multibody::SolveTreeConstraints;
+using dairlib::multibody::CheckTreeConstraints;
 using dairlib::multibody::SolveFixedPointConstraints;
 using dairlib::multibody::CheckFixedPointConstraints;
-using dairlib::multibody::SolveTreePositionAndFixedPointConstraints;
-using dairlib::multibody::CheckTreePositionAndFixedPointConstraints;
+using dairlib::multibody::SolveTreeAndFixedPointConstraints;
+using dairlib::multibody::CheckTreeAndFixedPointConstraints;
 using dairlib::multibody::SolveFixedPointFeasibilityConstraints;
 using dairlib::systems::AffineParams;
 using dairlib::systems::SubvectorPassThrough;
@@ -74,6 +74,8 @@ DEFINE_double(dt, 1e-3, "The step size to use for "
               "'simulation_type=compliant'");
 
 
+
+//Class to serve as a connecer between the OutputVector type input port of the clqr controller and a BasicVector port through which the plant states are sent
 class InfoConnector: public LeafSystem<double>
 {
 
@@ -100,84 +102,6 @@ class InfoConnector: public LeafSystem<double>
 
 };
 
-VectorXd ComputeUAnalytical(RigidBodyPlant<double>* plant, VectorXd x, VectorXd u)
-{
-    const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
-    KinematicsCache<double> kcache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
-    const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
-
-    MatrixXd J = tree.positionConstraintsJacobian(kcache);
-    MatrixXd H = tree.massMatrix(kcache);
-    MatrixXd B = tree.B;
-    VectorXd C = tree.dynamicsBiasTerm(kcache, no_external_wrenches);
-
-    VectorXd r = C - B*u;
-    MatrixXd Jt = J.transpose();
-    cout << "--------------------------" << endl;
-
-    cout <<  J << endl;
-    
-    
-
-    //MatrixXd W = J*H.inverse()*J.transpose();
-    //MatrixXd Z = W.completeOrthogonalDecomposition().pseudoInverse();
-
-    //MatrixXd T = J.transpose()*Z*J*H.inverse()*B;
-    //MatrixXd Y = -J.transpose()*Z*J*H.inverse()*C + C;
-    //MatrixXd X = B - T;
-    //MatrixXd Xpinv = X.completeOrthogonalDecomposition().pseudoInverse();
-    //VectorXd u = Xpinv*Y;
-
-    //MatrixXd J2 = J.block(0, 8, J.rows(), 6);
-    //J2.transposeInPlace();
-    //VectorXd C2 = -1.0*C.segment(8, 6);
-    //VectorXd lambda = J2.colPivHouseholderQr().solve(C2);
-
-    //cout << J2 << endl;
-    //cout << "--------------------------" << endl;
-    //cout << C2 << endl;
-    //cout << "--------------------------" << endl;
-
-    //cout << C2 + J2*lambda << endl;
-    //cout << "--------------------------" << endl;
-    //cout << C + J.transpose()*lambda << endl;
-    //cout << "--------------------------" << endl;
-
-    cout << "C: " << C.transpose() << endl;
-    //cout << "C2: " << C2.transpose() << endl;
-    cout << "--------------------------" << endl;
-    cout << "Bu: " << (B*u).transpose() << endl;
-    cout << "--------------------------" << endl;
-    cout << "r: " << r.transpose() << endl;
-    cout << "--------------------------" << endl;
-
-    MatrixXd Jtpinv = Jt.completeOrthogonalDecomposition().pseudoInverse();
-    VectorXd lambda = Jtpinv*r;
-    cout << lambda.transpose() << endl;
-    cout << "--------------------------" << endl;
-    cout << (Jt*lambda).transpose() << endl;
-    cout << "--------------------------" << endl;
-
-    u = VectorXd::Zero(plant->get_num_actuators()-1);
-
-
-    cout << "u calculated: " << u.transpose() << endl;
-
-    auto context = plant->CreateDefaultContext();
-
-    context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(x).Clone(), tree.get_num_positions(), tree.get_num_velocities(), 0));
-    context->FixInputPort(0, std::make_unique<BasicVector<double>>(u));
-    ContinuousState<double> cstate_output(BasicVector<double>(x).Clone(), tree.get_num_positions(), tree.get_num_velocities(), 0);
-    plant->CalcTimeDerivatives(*context, &cstate_output);
-    VectorXd xdot = cstate_output.CopyToVector();
-
-    cout << "xdot: " << xdot.transpose() << endl;
-
-    return u;
-
-}
-
-
 
 int do_main(int argc, char* argv[]) 
 {
@@ -197,21 +121,10 @@ int do_main(int argc, char* argv[])
     cout << "Number of actuators: " << NUM_EFFORTS << endl;
     cout << "Number of generalized coordinates: " << NUM_POSITIONS << endl;
     cout << "Number of generalized velocities: " << NUM_VELOCITIES << endl;
-
-    KinematicsCache<double> kcache = tree->doKinematics(tree->getZeroConfiguration());
-    cout << tree->positionConstraints(kcache) << endl;
-    cout << tree->positionConstraintsJacobian(kcache) << endl;
-    cout << "--------------------------------------------------------" << endl;
-    cout << tree->B << endl;
-    cout << "--------------------------------------------------------" << endl;
-    
-    
     
     drake::systems::DiagramBuilder<double> builder;
     
     auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree));
-    
-      // Note: this sets identical contact parameters across all object pairs:
     
     drake::systems::CompliantMaterial default_material;
     default_material.set_youngs_modulus(FLAGS_youngs_modulus)
@@ -223,8 +136,6 @@ int do_main(int argc, char* argv[])
     model_parameters.v_stiction_tolerance = FLAGS_v_tol;
     plant->set_contact_model_parameters(model_parameters);
 
-    // The vector source is connected to the inputs of the rigid body tree (Joints of the robot)
-    //builder.Connect(constant_zero_source->get_output_port(), plant->actuator_command_input_port());
 
     // Adding the visualizer to the diagram
     drake::systems::DrakeVisualizer& visualizer_publisher =
@@ -274,10 +185,10 @@ int do_main(int argc, char* argv[])
     fixed_joints.push_back(map.at("toe_left"));
     
     VectorXd x_start = VectorXd::Zero(NUM_STATES);
-    x_start.head(NUM_POSITIONS) = SolveTreePositionConstraints(plant->get_rigid_body_tree(), VectorXd::Zero(NUM_POSITIONS));
+    x_start.head(NUM_POSITIONS) = SolveTreeConstraints(plant->get_rigid_body_tree(), VectorXd::Zero(NUM_POSITIONS));
 
-    VectorXd q0 = SolveTreePositionConstraints(plant->get_rigid_body_tree(), x0.head(NUM_POSITIONS), fixed_joints);
-    cout << "Is TP satisfied: " << CheckTreePositionConstraints(plant->get_rigid_body_tree(), q0) << endl;
+    VectorXd q0 = SolveTreeConstraints(plant->get_rigid_body_tree(), x0.head(NUM_POSITIONS), fixed_joints);
+    cout << "Is TP satisfied: " << CheckTreeConstraints(plant->get_rigid_body_tree(), q0) << endl;
 
     cout << "x_start: " << x_start.transpose() << endl;
     cout << "q0: " << q0.transpose() << endl;
@@ -289,18 +200,18 @@ int do_main(int argc, char* argv[])
     VectorXd q_init = x0.head(NUM_POSITIONS);
     VectorXd v_init = x0.tail(NUM_VELOCITIES);
     VectorXd u_init = VectorXd::Zero(NUM_EFFORTS);
-    //u_init(0) = 0.5;
     
+    //Parameter matrices for LQR
     MatrixXd Q = MatrixXd::Identity(NUM_STATES - 2*NUM_CONSTRAINTS, NUM_STATES - 2*NUM_CONSTRAINTS);
+    //Q corresponding to the positions
     MatrixXd Q_p = MatrixXd::Identity(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS)*1000.0;
+    //Q corresponding to the velocities
     MatrixXd Q_v = MatrixXd::Identity(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS)*10.0;
     Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
     Q.block(NUM_STATES/2 - NUM_CONSTRAINTS, NUM_STATES/2 - NUM_CONSTRAINTS, Q_v.rows(), Q_v.cols()) = Q_v;
     MatrixXd R = MatrixXd::Identity(NUM_EFFORTS, NUM_EFFORTS)*100.0;
 
-
-    //vector<VectorXd> sol_f = SolveFixedPointFeasibilityConstraints(plant, x_init, u_init);
-    vector<VectorXd> sol_tpfp = SolveTreePositionAndFixedPointConstraints(plant, x_init, u_init);
+    vector<VectorXd> sol_tpfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_init);
 
     cout << "Solved Tree Position and Fixed Point constraints" << endl;
 
@@ -310,14 +221,9 @@ int do_main(int argc, char* argv[])
     VectorXd x_sol(NUM_STATES);
     x_sol << q_sol, v_sol;
 
-    cout << "Is TP and FP satisfied : " << CheckTreePositionAndFixedPointConstraints(plant, x_sol, u_sol) << endl;
+    cout << "Is TP and FP satisfied : " << CheckTreeAndFixedPointConstraints(plant, x_sol, u_sol) << endl;
 
-    //u_init = ComputeUAnalytical(plant, x_sol, u_sol);
-
-    cout << "x: " << x_sol.transpose() << endl;
-    cout << "u: " << u_sol.transpose() << endl;
-    cout << "--------------------------------------------------------------------" << endl;
-
+    //Building the controller
     auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x_sol, u_sol, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
     VectorXd K_vec = clqr_controller->GetKVec();
     VectorXd C = u_sol; 

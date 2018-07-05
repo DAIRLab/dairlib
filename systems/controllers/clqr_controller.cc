@@ -22,7 +22,6 @@ MatrixXd ClqrController::computeF()
     const int c = c_jac.cols();
 
     // j_dot is zero for the time invariant case
-
     MatrixXd F =  MatrixXd::Zero(2*r, 2*c);
 
     //Computing F by populating with J
@@ -37,7 +36,6 @@ MatrixXd ClqrController::computeK()
 {
 
     //Finding the null space
-
     HouseholderQR<MatrixXd> qr(F_.transpose());
     MatrixXd Q = qr.householderQ();
     
@@ -48,7 +46,7 @@ MatrixXd ClqrController::computeK()
     context->set_continuous_state(std::make_unique<ContinuousState<double>>(BasicVector<double>(x0_).Clone(), num_positions_, num_velocities_, 0));
     context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0_));
 
-    //Linearizing
+    //Linearizing about the operating point
     auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
     MatrixXd A_new_coord = P*linear_system->A()*P.transpose();
     MatrixXd B_new_coord = P*linear_system->B();

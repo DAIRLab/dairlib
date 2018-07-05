@@ -4,20 +4,13 @@
 namespace dairlib{
 namespace multibody{
 
-/*
-Solves tree position constraints for the given tree.
-@param tree RigidBodyTree for which the constraints needs to be solved
-@param q_init Initial value of the positions that need to be given to the solver
-@params fixed_joints Joints that need to have the exact values as that in q_init
-@param return Generalized positions that satisfy the constraints
-*/
 
-VectorXd SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd q_init, vector<int> fixed_joints) 
+VectorXd SolveTreeConstraints(const RigidBodyTree<double>& tree, VectorXd q_init, vector<int> fixed_joints) 
 {
 
     MathematicalProgram prog;
     auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
-    auto constraint = std::make_shared<TreePositionConstraint>(tree);
+    auto constraint = std::make_shared<TreeConstraint>(tree);
     prog.AddConstraint(constraint, q);
 
     for(uint i = 0; i < fixed_joints.size(); i++)
@@ -33,20 +26,13 @@ VectorXd SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorX
     return prog.GetSolution(q);
 }
 
-bool CheckTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd q_check)
+bool CheckTreeConstraints(const RigidBodyTree<double>& tree, VectorXd q_check)
 {
-    auto constraint = std::make_shared<TreePositionConstraint>(tree);
+    auto constraint = std::make_shared<TreeConstraint>(tree);
     return constraint->CheckSatisfied(q_check);
 }
 
-/*
-Solves fixed point constraints for the given tree.
-@param plant RigidBodyPlant for which the constraints needs to be solved
-@param x_init Initial value of the state given to the solver
-@param u_init Initial value of the control inputs
-@params fixed_joints Joints that need to have the exact values as that in q_init
-@param return Vector of q, v, and u solutions as found by the solver
-*/
+
 
 vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints) 
 {
@@ -92,16 +78,8 @@ bool CheckFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_check,
     return constraint->CheckSatisfied(xu_check);
 }
 
-/*
-Solves tree position and fixed point constraints for the given tree.
-@param plant RigidBodyPlant for which the constraints needs to be solved
-@param x_init Initial value of the state given to the solver
-@param u_init Initial value of the control inputs
-@params fixed_joints Joints that need to have the exact values as that in q_init
-@param return Vector of q, v, and u solutions as found by the solver
-*/
 
-vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints) 
+vector<VectorXd> SolveTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints) 
 {
 
     const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
@@ -111,7 +89,7 @@ vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double
     auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
     auto v = prog.NewContinuousVariables(tree.get_num_velocities(), "v");
     auto u = prog.NewContinuousVariables(tree.get_num_actuators(), "u");
-    auto constraint_tree_position = std::make_shared<TreePositionConstraint>(tree);
+    auto constraint_tree_position = std::make_shared<TreeConstraint>(tree);
     auto constraint_fixed_point = std::make_shared<FixedPointConstraint>(plant);
     prog.AddConstraint(constraint_tree_position, q);
     prog.AddConstraint(constraint_fixed_point, {q, v, u});
@@ -138,10 +116,10 @@ vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double
     return sol;
 }
 
-bool CheckTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_check, VectorXd u_check)
+bool CheckTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_check, VectorXd u_check)
 {
     const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
-    auto constraint_tree_position = std::make_shared<TreePositionConstraint>(tree);
+    auto constraint_tree_position = std::make_shared<TreeConstraint>(tree);
     auto constraint_fixed_point = std::make_shared<FixedPointConstraint>(plant);
     VectorXd xu_check(x_check.size() + u_check.size());
     VectorXd q_check = x_check.head(tree.get_num_positions());
@@ -170,7 +148,7 @@ vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* p
 }
 
 
-TreePositionConstraint::TreePositionConstraint(const RigidBodyTree<double>& tree, const std::string& description):
+TreeConstraint::TreeConstraint(const RigidBodyTree<double>& tree, const std::string& description):
     Constraint(tree.getNumPositionConstraints(),
         tree.get_num_positions(),
         VectorXd::Zero(tree.getNumPositionConstraints()),
@@ -181,7 +159,7 @@ TreePositionConstraint::TreePositionConstraint(const RigidBodyTree<double>& tree
 }
 
 
-void TreePositionConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+void TreeConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
                                     Eigen::VectorXd& y) const 
 {
 
@@ -191,7 +169,7 @@ void TreePositionConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
 
 }
 
-void TreePositionConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
+void TreeConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
                                     AutoDiffVecXd& y) const 
 {
 

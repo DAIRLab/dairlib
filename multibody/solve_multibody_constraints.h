@@ -35,21 +35,76 @@ using drake::solvers::Binding;
 namespace dairlib {
 namespace multibody{
 
-VectorXd SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd q_init, vector<int> fixed_joints = {});
-bool CheckTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd q_chec);
 
+/*
+Solves tree position constraints for the given tree.
+@param tree RigidBodyTree for which the constraints needs to be solved
+@param q_init Initial value of the positions that need to be given to the solver
+@params fixed_joints Joints that need to have the exact values as that in q_init
+@return std::vector of 'q' that satisfy the constraints
+*/
+VectorXd SolveTreeConstraints(const RigidBodyTree<double>& tree, VectorXd q_init, vector<int> fixed_joints = {});
+
+/*
+Checks if the given position satisfies constraints of the tree
+@param tree RigidBodyTree for which the constraints need to be checked
+@param q_check Position at which the constraints need to be checked
+@return Boolean value that corresponds to whether the constraints are satisfied or not
+ */
+bool CheckTreeConstraints(const RigidBodyTree<double>& tree, VectorXd q_check);
+
+/*
+Solves fixed point constraints for the given tree.
+@param plant RigidBodyPlant for which the constraints needs to be solved
+@param x_init Initial value of the state given to the solver
+@param u_init Initial value of the control inputs
+@params fixed_joints Joints that need to have the exact values as that in q_init
+@return std::vector of q, v, and u solutions as found by the solver
+*/
 vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, vector<int> fixed_joints = {});
-bool CheckFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init);
 
-vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints = {});
-bool CheckTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init);
+/*
+Checks if the given state and inputs satisfies fixed point constraints
+@param plant RigidBodyPlant input
+@param x_check State at which the fixed point constraints need to be checked
+@param u_check Inputs at which the fixed point constraints need to be checked
+@return Boolean value that corresponds to whether the fixed point constraints are satisfied or not
+ */
 
+bool CheckFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_check, VectorXd u_check);
+
+/*
+Solves tree and fixed point constraints for the given tree.
+@param plant RigidBodyPlant for which the constraints needs to be solved
+@param x_init Initial value of the state given to the solver
+@param u_init Initial value of the control inputs
+@params fixed_joints Joints that need to have the exact values as that in q_init
+@return std::vector of q, v, and u solutions as found by the solver
+*/
+vector<VectorXd> SolveTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints = {});
+
+/*
+Checks if the given state and inputs satisfies tree and fixed point constraints
+@param plant RigidBodyPlant input
+@param x_check State at which the fixed point constraints need to be checked
+@param u_check Inputs at which the fixed point constraints need to be checked
+@return Boolean value that corresponds to whether the tree and fixed point constraints are satisfied or not
+ */
+bool CheckTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_check, VectorXd u_check);
+
+/*
+Finds a feasible control input for the given state such that the pair satisfies tree and fixed point constraints
+@param plant RigidBodyPlant input
+@param x0 Given input state that must satisfy tree constraints
+@param u_init Initial value of the control inputs given to the solver
+@return std::vector of solution 'u'
+ */
 vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd u_init);
 
-class TreePositionConstraint : public Constraint
+class TreeConstraint : public Constraint
 {
     public:
-        TreePositionConstraint(const RigidBodyTree<double>& tree,
+        TreeConstraint(const RigidBodyTree<double>& tree,
                 const std::string& description = "");
         void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
                     Eigen::VectorXd& y) const override;

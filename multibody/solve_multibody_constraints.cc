@@ -33,6 +33,12 @@ VectorXd SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorX
     return prog.GetSolution(q);
 }
 
+bool CheckTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd q_check)
+{
+    auto constraint = std::make_shared<TreePositionConstraint>(tree);
+    return constraint->CheckSatisfied(q_check);
+}
+
 /*
 Solves fixed point constraints for the given tree.
 @param plant RigidBodyPlant for which the constraints needs to be solved
@@ -75,6 +81,15 @@ vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, Vecto
     sol.push_back(prog.GetSolution(v));
     sol.push_back(prog.GetSolution(u));
     return sol;
+}
+
+bool CheckFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_check, VectorXd u_check)
+{
+    auto constraint = std::make_shared<FixedPointConstraint>(plant);
+    VectorXd xu_check(x_check.size() + u_check.size());
+    xu_check << x_check, u_check;
+
+    return constraint->CheckSatisfied(xu_check);
 }
 
 /*
@@ -121,6 +136,18 @@ vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double
     sol.push_back(prog.GetSolution(v));
     sol.push_back(prog.GetSolution(u));
     return sol;
+}
+
+bool CheckTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_check, VectorXd u_check)
+{
+    const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
+    auto constraint_tree_position = std::make_shared<TreePositionConstraint>(tree);
+    auto constraint_fixed_point = std::make_shared<FixedPointConstraint>(plant);
+    VectorXd xu_check(x_check.size() + u_check.size());
+    VectorXd q_check = x_check.head(tree.get_num_positions());
+    xu_check << x_check, u_check;
+
+    return constraint_tree_position->CheckSatisfied(q_check) && constraint_fixed_point->CheckSatisfied(xu_check);
 }
 
 

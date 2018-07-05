@@ -35,11 +35,14 @@ using drake::solvers::Binding;
 namespace dairlib {
 namespace multibody{
 
-VectorXd SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd x_init, vector<int> fixed_joints = {});
+VectorXd SolveTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd q_init, vector<int> fixed_joints = {});
+bool CheckTreePositionConstraints(const RigidBodyTree<double>& tree, VectorXd q_chec);
 
 vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, vector<int> fixed_joints = {});
+bool CheckFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init);
 
 vector<VectorXd> SolveTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints = {});
+bool CheckTreePositionAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init);
 
 vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd u_init);
 

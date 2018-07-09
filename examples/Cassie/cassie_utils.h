@@ -18,6 +18,10 @@ std::unique_ptr<RigidBodyTree<double>> makeFixedBaseCassieTreePointer(
 void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
 
+std::unique_ptr<RigidBodyTree<double>> makeFloatingBaseCassieTreePointer(
+    std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
 
+void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree, 
+    std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
 
 }

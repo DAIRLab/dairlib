@@ -1,8 +1,9 @@
 #pragma once
 
 #include <memory.h>
-#include "dircon_kinematic_data.h"
-#include "dircon_kinematic_data_set.h"
+#include <string>
+#include "systems/trajectory_optimization/dircon_kinematic_data.h"
+#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "drake/common/drake_copyable.h"
 #include "drake/solvers/constraint.h"
 #include "drake/common/symbolic.h"
@@ -24,13 +25,16 @@ class DirconAbstractConstraint : public solvers::Constraint {
 
  public:
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd& y) const override;
+              Eigen::VectorXd* y) const override;
 
   void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-              AutoDiffVecXd& y) const override;
-  virtual void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
-              VectorX<T>& y) const = 0;
+              AutoDiffVecXd* y) const override;
 
+  void DoEval(const Eigen::Ref<const VectorX<symbolic::Variable>>&,
+              VectorX<symbolic::Expression>*) const override;
+
+  virtual void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
+              VectorX<T>* y) const = 0;
 };
 
 enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
@@ -56,7 +60,7 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
 
  public:
   void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
-              VectorX<T>& y) const override;
+              VectorX<T>* y) const override;
 
  private:
   DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
@@ -106,7 +110,7 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
   ~DirconKinematicConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
-              VectorX<T>& y) const override;
+              VectorX<T>* y) const override;
 
  protected:
  private:
@@ -163,7 +167,7 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
   ~DirconImpactConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const VectorX<T>>& x,
-              VectorX<T>& y) const override;
+              VectorX<T>* y) const override;
 
  protected:
 

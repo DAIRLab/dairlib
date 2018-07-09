@@ -53,8 +53,7 @@ MatrixXd ClqrController::computeK() {
   P.transposeInPlace();
 
   auto context = plant_->CreateDefaultContext();
-  context->set_continuous_state(std::make_unique<ContinuousState<double>>(
-      BasicVector<double>(x0_).Clone(), num_positions_, num_velocities_, 0));
+  context->get_mutable_continuous_state_vector().SetFromVector(x0_);
   context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0_));
 
   //Linearizing about the operating point

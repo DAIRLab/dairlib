@@ -165,7 +165,7 @@ int do_main(int argc, char* argv[]) {
   }
 
 
-  x0(map.at("base_z")) = 6.0;
+  x0(map.at("base_z")) = 4.0;
 
   //x0(map.at("hip_roll_left")) = 0.15;
   //x0(map.at("hip_yaw_left")) = 0.2;
@@ -186,8 +186,8 @@ int do_main(int argc, char* argv[]) {
   // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
   // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
   
-  x0(map.at("toe_left")) = -30.0*M_PI/180.0;
-  x0(map.at("toe_right")) = -60.0*M_PI/180.0;
+  x0(map.at("toe_left")) = -80.0*M_PI/180.0;
+  x0(map.at("toe_right")) = -80.0*M_PI/180.0;
 
   std::vector<int> fixed_joints;
   //fixed_joints.push_back(map.at("hip_roll_left"));
@@ -198,24 +198,22 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map.at("knee_right"));
   fixed_joints.push_back(map.at("toe_left"));
   
-  VectorXd x_start = VectorXd::Zero(num_total_states);
-  x_start(2) = 6.0;
+  VectorXd x_start = x0;
   VectorXd q_start = SolveTreeConstraints(plant->get_rigid_body_tree(), x_start.head(num_total_positions));
   x_start.head(num_total_positions) = q_start;
 
-  VectorXd q0 = SolveTreeConstraints(plant->get_rigid_body_tree(), x0.head(num_total_positions), fixed_joints);
-  cout << "Is TP satisfied: " << CheckTreeConstraints(plant->get_rigid_body_tree(), q0) << endl;
+  //VectorXd q0 = SolveTreeConstraints(plant->get_rigid_body_tree(), x0.head(num_total_positions), fixed_joints);
 
   cout << "x_start: " << x_start.transpose() << endl;
-  cout << "q0: " << q0.transpose() << endl;
+  //cout << "q0: " << q0.transpose() << endl;
 
-  x0.head(num_positions) = q0;
+  //x0.head(num_positions) = q0;
 
-  VectorXd x_init = x0;
-  cout << "xinit: " << x_init.transpose() << endl;
-  VectorXd q_init = x0.head(num_total_positions);
-  VectorXd v_init = x0.tail(num_total_velocities);
-  VectorXd u_init = VectorXd::Zero(num_efforts);
+  //VectorXd x_init = x0;
+  //cout << "xinit: " << x_init.transpose() << endl;
+  //VectorXd q_init = x0.head(num_total_positions);
+  //VectorXd v_init = x0.tail(num_total_velocities);
+  //VectorXd u_init = VectorXd::Zero(num_efforts);
   
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(num_states - 2*num_constraints, num_states - 2*num_constraints);
@@ -227,17 +225,16 @@ int do_main(int argc, char* argv[]) {
   Q.block(num_states/2 - num_constraints, num_states/2 - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
 
-  vector<VectorXd> sol_tpfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_init);
+  //vector<VectorXd> sol_tpfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_init);
 
-  cout << "Solved Tree Position and Fixed Point constraints" << endl;
+  //cout << "Solved Tree Position and Fixed Point constraints" << endl;
 
-  VectorXd q_sol = sol_tpfp.at(0);
-  VectorXd v_sol = sol_tpfp.at(1);
-  VectorXd u_sol = sol_tpfp.at(2);
-  VectorXd x_sol(NUM_STATES);
-  x_sol << q_sol, v_sol;
+  //VectorXd q_sol = sol_tpfp.at(0);
+  //VectorXd v_sol = sol_tpfp.at(1);
+  //VectorXd u_sol = sol_tpfp.at(2);
+  //VectorXd x_sol(num_states);
+  //x_sol << q_sol, v_sol;
 
-  cout << "Is TP and FP satisfied : " << CheckTreeAndFixedPointConstraints(plant, x_sol, u_sol) << endl;
 
 
   //Building the controller
@@ -286,7 +283,7 @@ int do_main(int argc, char* argv[]) {
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
   state.SetFromVector(x_start);
   
-  auto zero_input = Eigen::MatrixXd::Zero(NUM_EFFORTS,1);
+  auto zero_input = Eigen::MatrixXd::Zero(num_efforts,1);
   context.FixInputPort(0, zero_input);
   
   //simulator.set_publish_every_time_step(false);

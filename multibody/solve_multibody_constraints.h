@@ -34,6 +34,8 @@ using drake::solvers::MathematicalProgram;
 using drake::solvers::Constraint;
 using drake::solvers::VariableRefList;
 using drake::solvers::Binding;
+using drake::symbolic::Variable;
+using drake::symbolic::Expression;
 
 namespace dairlib {
 namespace multibody{
@@ -119,15 +121,20 @@ vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* p
                                                        VectorXd x0,
                                                        VectorXd u_init);
 
+
+
 class TreeConstraint : public Constraint {
   public:
     TreeConstraint(const RigidBodyTree<double>& tree,
                    const std::string& description = "");
     void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                Eigen::VectorXd& y) const override;
+                Eigen::VectorXd* y) const override;
   
     void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-                drake::AutoDiffVecXd& y) const override;
+                drake::AutoDiffVecXd* y) const override;
+
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
+                VectorX<Expression>*y) const override;
   
   private:
     const RigidBodyTree<double>& tree_;
@@ -138,11 +145,13 @@ class FixedPointConstraint : public Constraint {
   public:
     FixedPointConstraint(RigidBodyPlant<double>* plant,
                          const std::string& description = "");
-    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                Eigen::VectorXd& y) const override;
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& xu,
+                Eigen::VectorXd* y) const override;
   
-    void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-                drake::AutoDiffVecXd& y) const override;
+    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& xu,
+                AutoDiffVecXd* y) const override;
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& xu, 
+                VectorX<Expression>*y) const override;
   
   private:
     RigidBodyPlant<double>* plant_;
@@ -157,11 +166,14 @@ class FixedPointFeasibilityConstraint : public Constraint {
     FixedPointFeasibilityConstraint(RigidBodyPlant<double>* plant,
                                     VectorXd x0,
                                     const std::string& description = "");
-    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                Eigen::VectorXd& y) const override;
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& u,
+                Eigen::VectorXd* y) const override;
   
-    void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-                drake::AutoDiffVecXd& y) const override;
+    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& u,
+                AutoDiffVecXd* y) const override;
+
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& u, 
+                VectorX<Expression>*y) const override;
   
   private:
     RigidBodyPlant<double>* plant_;

@@ -54,7 +54,8 @@ class AffineControllerTest : public ::testing::Test {
     expected_output_vec_ << 16.0, 19.0;
     K_ << 1.0, 3.0, 2.0, 2.0, 2.0, 4.0, 1.0, 1.0; 
 
-    input_port_info_val_= make_unique<OutputVector<double>>(positions_vec_, velocities_vec_, efforts_vec_);
+    input_port_info_val_= make_unique<OutputVector<double>>(
+        positions_vec_, velocities_vec_, efforts_vec_);
     input_port_info_val_->set_timestamp(timestamp_);
     input_port_params_val_ = make_unique<AffineParams>(ns_, ne_);
     affine_controller_ = make_unique<AffineController>(np, nv, ne_);
@@ -62,7 +63,7 @@ class AffineControllerTest : public ::testing::Test {
     input_port_params_val_->SetFromVector(params_vec_);
 
     context_ = affine_controller_->CreateDefaultContext();
-    output_ = affine_controller_->AllocateOutput(*context_);
+    output_ = affine_controller_->AllocateOutput();
   }
 
   int ns_;
@@ -95,8 +96,10 @@ TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
   ASSERT_EQ(2, affine_controller_->get_num_input_ports());
 
   // Hook input of the expected size.
-  context_->FixInputPort(affine_controller_->get_input_port_info_index(), *input_port_info_val_);
-  context_->FixInputPort(affine_controller_->get_input_port_params_index(), *input_port_params_val_);
+  context_->FixInputPort(
+      affine_controller_->get_input_port_info_index(), *input_port_info_val_);
+  context_->FixInputPort(
+      affine_controller_->get_input_port_params_index(), *input_port_params_val_);
 
   affine_controller_->CalcOutput(*context_, output_.get());
 

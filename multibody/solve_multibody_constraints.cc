@@ -31,6 +31,8 @@ VectorXd SolveTreeConstraints(const RigidBodyTree<double>& tree,
     DRAKE_DEMAND(!isnan(q_sol(i)) && !isinf(q_sol(i)));
   }
 
+  DRAKE_DEMAND(CheckTreeConstraints(tree, q_sol) == 1);
+
   return q_sol;
 }
 
@@ -75,6 +77,8 @@ vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant,
   VectorXd q_sol = prog.GetSolution(q);
   VectorXd v_sol = prog.GetSolution(v);
   VectorXd u_sol = prog.GetSolution(u);
+  VectorXd x_sol(q_sol.size() + v_sol.size());
+  x_sol << q_sol, v_sol;
 
   DRAKE_DEMAND(q_sol.size() == q_init.size());
   DRAKE_DEMAND(v_sol.size() == v_init.size());
@@ -91,6 +95,8 @@ vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant,
   {
     DRAKE_DEMAND(!isnan(u_sol(i)) && !isinf(u_sol(i)));
   }
+
+  DRAKE_DEMAND(CheckFixedPointConstraints(plant, x_sol, u_sol));
 
   vector<VectorXd> sol;
   sol.push_back(q_sol);
@@ -147,6 +153,8 @@ vector<VectorXd> SolveTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant
   VectorXd q_sol = prog.GetSolution(q);
   VectorXd v_sol = prog.GetSolution(v);
   VectorXd u_sol = prog.GetSolution(u);
+  VectorXd x_sol(q_sol.size() + v_sol.size());
+  x_sol << q_sol, v_sol;
 
   DRAKE_DEMAND(q_sol.size() == q_init.size());
   DRAKE_DEMAND(v_sol.size() == v_init.size());
@@ -163,6 +171,8 @@ vector<VectorXd> SolveTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant
   {
     DRAKE_DEMAND(!isnan(u_sol(i)) && !isinf(u_sol(i)));
   }
+  DRAKE_DEMAND(CheckTreeAndFixedPointConstraints(plant, x_sol, u_sol));
+
   vector<VectorXd> sol;
   sol.push_back(q_sol);
   sol.push_back(v_sol);

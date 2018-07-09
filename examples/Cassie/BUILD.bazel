@@ -186,6 +186,30 @@ cc_binary(
 )
 
 
+cc_binary(
+    name = "run_clqr_controller_standing",
+    srcs = ["run_clqr_controller_standing.cc"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/primitives:primitives",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@gflags",
+        ":cassie_urdf",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//systems/framework:vector",
+        "//systems/controllers:clqr_controller",
+        "//multibody:solve_multibody_constraints",
+        ":cassie_utils",
+    ],
+)
+
+
 
 py_binary(
     name = "draw_graphviz",

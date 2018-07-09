@@ -18,11 +18,9 @@ The first port is of type OutputVector<double> and has the state information of 
 The second input port is of type AffineParams and has the parameters (K, E and x_desired) of the controller
 The controller has a single output port of type TimestampedVector<double> that holds the control inputs plus a timestamp that is taken from the timestamp of the OutputVector input port
  */
-class AffineController : public LeafSystem<double>
-{
+class AffineController : public LeafSystem<double> {
 
-    public:
-
+  public:
     AffineController(int num_positions, int num_velocities, int num_efforts);
 
     const drake::systems::InputPortDescriptor<double>& get_input_port_params() const
@@ -48,11 +46,10 @@ class AffineController : public LeafSystem<double>
     MatrixXd VecToMat(VectorXd v, int num_rows, int num_cols) const;
     VectorXd MatToVec(MatrixXd m) const;
 
-   private:
+  private:
 
     void CalcControl(const Context<double>& context,
                      TimestampedVector<double>* output) const;
-
     const int num_states_;
     const int num_efforts_;
     int input_port_info_index_;
@@ -60,25 +57,22 @@ class AffineController : public LeafSystem<double>
 };
 
 
-class AffineParams : public TimestampedVector<double>
-{
+class AffineParams : public TimestampedVector<double> {
 
-    public:
-
+  public:
     AffineParams(int num_states, int num_efforts):
-        TimestampedVector<double>(num_states * num_efforts + num_efforts + num_states),
-        num_states_(num_states), num_efforts_(num_efforts) {}
+      TimestampedVector<double>(num_states * num_efforts + num_efforts + num_states),
+      num_states_(num_states), num_efforts_(num_efforts) {}
 
-    int GetNumStates() const { return num_states_;}
+  int GetNumStates() const { return num_states_;}
 
-    private:
-    
-    AffineParams* DoClone() const override {
-      return new AffineParams(num_states_, num_efforts_);
-    }
+  private:
+  AffineParams* DoClone() const override {
+    return new AffineParams(num_states_, num_efforts_);
+  }
 
-    int num_states_;
-    int num_efforts_;
+  int num_states_;
+  int num_efforts_;
 
 };
 

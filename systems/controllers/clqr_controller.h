@@ -35,41 +35,45 @@ using drake::systems::kNoOutput;
 namespace dairlib{
 namespace systems{
 
-class ClqrController : public AffineController
-{
-    public: 
+class ClqrController : public AffineController {
 
-        ClqrController(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd u0, int num_positions, int num_velocities, int num_efforts, Matrix<double, Dynamic, Dynamic> Q, Matrix<double, Dynamic, Dynamic> R);
+  public: 
+    ClqrController(RigidBodyPlant<double>* plant,
+                   VectorXd x0,
+                   VectorXd u0,
+                   int num_positions,
+                   int num_velocities,
+                   int num_efforts,
+                   MatrixXd Q,
+                   MatrixXd R);
 
-        int GetNumPositions(){ return num_positions_;}
-        int GetNumVelocities(){ return num_velocities_;}
-        int GetNumStates(){ return num_states_;}
-        int GetNumEfforts(){ return num_efforts_;}
-        MatrixXd GetQ(){ return Q_;}
-        MatrixXd GetR(){ return R_;}
-        MatrixXd GetK(){ return K_;}
-        VectorXd GetKVec(){ return MatToVec(K_);}
-        void SetQ(MatrixXd Q){ Q_ = Q;}
-        void SetR(MatrixXd R){ R_ = R;}
-        void SetK(MatrixXd K){ K_ = K;}
+    int GetNumPositions(){ return num_positions_;}
+    int GetNumVelocities(){ return num_velocities_;}
+    int GetNumStates(){ return num_states_;}
+    int GetNumEfforts(){ return num_efforts_;}
+    MatrixXd GetQ(){ return Q_;}
+    MatrixXd GetR(){ return R_;}
+    MatrixXd GetK(){ return K_;}
+    VectorXd GetKVec(){ return MatToVec(K_);}
+    void SetQ(MatrixXd Q){ Q_ = Q;}
+    void SetR(MatrixXd R){ R_ = R;}
+    void SetK(MatrixXd K){ K_ = K;}
 
-
-    private:
-
-        MatrixXd computeF();
-        MatrixXd computeK();
-        const RigidBodyTree<double>& tree_;
-        RigidBodyPlant<double>* plant_;
-        VectorXd x0_;
-        VectorXd u0_;
-        int num_positions_;
-        int num_velocities_;
-        int num_states_;
-        int num_efforts_;
-        MatrixXd Q_;
-        MatrixXd R_;
-        MatrixXd F_;
-        MatrixXd K_;
+  private:
+    MatrixXd computeF();
+    MatrixXd computeK();
+    const RigidBodyTree<double>& tree_;
+    RigidBodyPlant<double>* plant_;
+    VectorXd x0_;
+    VectorXd u0_;
+    int num_positions_;
+    int num_velocities_;
+    int num_states_;
+    int num_efforts_;
+    MatrixXd Q_;
+    MatrixXd R_;
+    MatrixXd F_;
+    MatrixXd K_;
 };
 
 }// namespace systems

@@ -184,3 +184,4 @@ int do_main(int argc, char* argv[]) {
 int main(int argc, char* argv[]) {
   return dairlib::do_main(argc, argv);
 }
+

@@ -33,10 +33,6 @@ group "0.operator" {
         exec = "bazel-bin/examples/Cassie/cassie_state_visualizer";
         host = "localhost";
     }
-    cmd "2.drake-visualizer" {
-        exec = "../drake/bazel-bin/tools/drake_visualizer";
-        host = "localhost";
-    }
 }
 
 

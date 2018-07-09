@@ -1,5 +1,6 @@
 #pragma once
 
+#include "drake/common/drake_throw.h"
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/multibody/parsers/urdf_parser.h"
@@ -10,6 +11,8 @@ using std::vector;
 using std::list;
 using std::unique_ptr;
 using std::make_unique;
+using std::isnan;
+using std::isinf;
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
@@ -43,7 +46,9 @@ Solves tree position constraints for the given tree.
 @params fixed_joints Joints that need to have the exact values as that in q_init
 @return std::vector of 'q' that satisfy the constraints
 */
-VectorXd SolveTreeConstraints(const RigidBodyTree<double>& tree, VectorXd q_init, vector<int> fixed_joints = {});
+VectorXd SolveTreeConstraints(const RigidBodyTree<double>& tree, 
+                              VectorXd q_init,
+                              vector<int> fixed_joints = {});
 
 /*
 Checks if the given position satisfies constraints of the tree
@@ -51,7 +56,8 @@ Checks if the given position satisfies constraints of the tree
 @param q_check Position at which the constraints need to be checked
 @return Boolean value that corresponds to whether the constraints are satisfied or not
  */
-bool CheckTreeConstraints(const RigidBodyTree<double>& tree, VectorXd q_check);
+bool CheckTreeConstraints(const RigidBodyTree<double>& tree,
+                          VectorXd q_check);
 
 /*
 Solves fixed point constraints for the given tree.
@@ -61,7 +67,10 @@ Solves fixed point constraints for the given tree.
 @params fixed_joints Joints that need to have the exact values as that in q_init
 @return std::vector of q, v, and u solutions as found by the solver
 */
-vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, vector<int> fixed_joints = {});
+vector<VectorXd> SolveFixedPointConstraints(RigidBodyPlant<double>* plant,
+                                            VectorXd x_init,
+                                            VectorXd u_init,
+                                            vector<int> fixed_joints = {});
 
 /*
 Checks if the given state and inputs satisfies fixed point constraints
@@ -71,7 +80,9 @@ Checks if the given state and inputs satisfies fixed point constraints
 @return Boolean value that corresponds to whether the fixed point constraints are satisfied or not
  */
 
-bool CheckFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_check, VectorXd u_check);
+bool CheckFixedPointConstraints(RigidBodyPlant<double>* plant,
+                                VectorXd x_check,
+                                VectorXd u_check);
 
 /*
 Solves tree and fixed point constraints for the given tree.
@@ -81,7 +92,10 @@ Solves tree and fixed point constraints for the given tree.
 @params fixed_joints Joints that need to have the exact values as that in q_init
 @return std::vector of q, v, and u solutions as found by the solver
 */
-vector<VectorXd> SolveTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_init, VectorXd u_init, std::vector<int> fixed_joints = {});
+vector<VectorXd> SolveTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant,
+                                                   VectorXd x_init,
+                                                   VectorXd u_init,
+                                                   std::vector<int> fixed_joints = {});
 
 /*
 Checks if the given state and inputs satisfies tree and fixed point constraints
@@ -90,7 +104,9 @@ Checks if the given state and inputs satisfies tree and fixed point constraints
 @param u_check Inputs at which the fixed point constraints need to be checked
 @return Boolean value that corresponds to whether the tree and fixed point constraints are satisfied or not
  */
-bool CheckTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, VectorXd x_check, VectorXd u_check);
+bool CheckTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant,
+                                       VectorXd x_check,
+                                       VectorXd u_check);
 
 /*
 Finds a feasible control input for the given state such that the pair satisfies tree and fixed point constraints
@@ -99,60 +115,59 @@ Finds a feasible control input for the given state such that the pair satisfies 
 @param u_init Initial value of the control inputs given to the solver
 @return std::vector of solution 'u'
  */
-vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant, VectorXd x0, VectorXd u_init);
+vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant,
+                                                       VectorXd x0,
+                                                       VectorXd u_init);
 
-class TreeConstraint : public Constraint
-{
-    public:
-        TreeConstraint(const RigidBodyTree<double>& tree,
-                const std::string& description = "");
-        void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                    Eigen::VectorXd& y) const override;
+class TreeConstraint : public Constraint {
+  public:
+    TreeConstraint(const RigidBodyTree<double>& tree,
+                   const std::string& description = "");
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+                Eigen::VectorXd& y) const override;
   
-        void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-                    drake::AutoDiffVecXd& y) const override;
+    void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
+                drake::AutoDiffVecXd& y) const override;
   
-    private:
-        const RigidBodyTree<double>& tree_;
-
-};
-
-class FixedPointConstraint : public Constraint
-{
-    public:
-        FixedPointConstraint(RigidBodyPlant<double>* plant,
-                const std::string& description = "");
-        void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                    Eigen::VectorXd& y) const override;
-  
-        void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-                    drake::AutoDiffVecXd& y) const override;
-  
-    private:
-        RigidBodyPlant<double>* plant_;
-        const RigidBodyTree<double>& tree_;
-        unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
+  private:
+    const RigidBodyTree<double>& tree_;
 
 };
 
+class FixedPointConstraint : public Constraint {
+  public:
+    FixedPointConstraint(RigidBodyPlant<double>* plant,
+                         const std::string& description = "");
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+                Eigen::VectorXd& y) const override;
+  
+    void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
+                drake::AutoDiffVecXd& y) const override;
+  
+  private:
+    RigidBodyPlant<double>* plant_;
+    const RigidBodyTree<double>& tree_;
+    unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
 
-class FixedPointFeasibilityConstraint : public Constraint
-{
-    public:
-        FixedPointFeasibilityConstraint(RigidBodyPlant<double>* plant,
-                VectorXd x0,
-                const std::string& description = "");
-        void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                    Eigen::VectorXd& y) const override;
+};
+
+
+class FixedPointFeasibilityConstraint : public Constraint {
+  public:
+    FixedPointFeasibilityConstraint(RigidBodyPlant<double>* plant,
+                                    VectorXd x0,
+                                    const std::string& description = "");
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+                Eigen::VectorXd& y) const override;
   
-        void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-                    drake::AutoDiffVecXd& y) const override;
+    void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
+                drake::AutoDiffVecXd& y) const override;
   
-    private:
-        RigidBodyPlant<double>* plant_;
-        const RigidBodyTree<double>& tree_;
-        VectorXd x0_;
-        unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
+  private:
+    RigidBodyPlant<double>* plant_;
+    const RigidBodyTree<double>& tree_;
+    VectorXd x0_;
+    unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
 
 };
 

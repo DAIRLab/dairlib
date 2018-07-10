@@ -298,9 +298,6 @@ py_binary(
     deps = [
         "@drake//bindings/pydrake",
     ],
-<<<<<<< HEAD
-)
-=======
 )
 
 cc_binary(
@@ -318,4 +315,3 @@ cc_binary(
             ":cassie_utils"
             ]
 )
->>>>>>> da6c1b67181016869921efcfa98e6aee78b5c4f4

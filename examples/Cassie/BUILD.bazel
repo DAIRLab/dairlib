@@ -11,10 +11,65 @@ load(
 )
 
 load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library"
+)
+
+load(
     "@drake//tools/skylark:drake_py.bzl",
     "drake_py_binary",
     "drake_py_library",
     "drake_py_unittest",
+)
+
+py_test(
+    name = "test_cassie_utils",
+    srcs = ["test_cassie_utils.py"],
+    deps = [":cassie_utils_py"],
+    data = glob(["urdf/**"]),
+)
+
+cc_library(
+  name = "cassie_utils",
+  srcs = ["cassie_utils.cc"],
+  hdrs = ["cassie_utils.h"],
+  deps = ["@drake//solvers:mathematical_program",
+          "@drake//solvers:constraint",
+          "@drake//multibody:rigid_body_tree",
+          "@drake//manipulation/util",
+          "//common"]
+)
+
+#py_test(
+#    name = "test_trajectory_sim",
+#    srcs = ["test_trajectory_sim.py"],
+#    deps = [":run_trajectory_sim_py"],
+#)
+
+cc_library(
+    name = "run_trajectory_sim",
+    srcs = ["run_trajectory_sim.cc"],
+    hdrs = ["run_trajectory_sim.h"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/primitives",
+        "@drake//common",
+        "@drake//solvers",
+        "@gflags",
+        ":cassie_urdf",
+        ":cassie_utils",
+    ],
+)
+
+cc_library(
+  name = "cassie_urdf",
+  data = glob(["urdf/**"]),
 )
 
 cc_library(
@@ -27,60 +82,82 @@ cc_library(
 	hdrs = [":silent_interface.h"]
 )
 
-cc_library(
-	name = "dispatcher",
-	hdrs = [":dispatcher.h"],
-	deps = [":polling_interface"]
+pybind_py_library(
+    name = "run_trajectory_sim_py",
+    cc_so_name = "run_trajectory_sim",
+    cc_srcs = ["run_trajectory_sim_py.cc"],
+    cc_deps = [":run_trajectory_sim",               
+               "@drake//bindings/pydrake/systems:systems_pybind",
+               "@drake//bindings/pydrake/util:cpp_template_pybind",
+               ],
+    py_imports = ["."],
 )
 
-cc_library(
-	name = "cassie_robot_dispatch_interface",
-	hdrs = [":cassie_robot_dispatch_interface.h"],
-	srcs = ["cassie_robot_dispatch_interface.cc"],
-	deps = [
-	        ":polling_interface",
-	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
+pybind_py_library(
+    name = "cassie_utils_py",
+    cc_so_name = "cassie_utils",
+    cc_srcs = ["cassie_utils_py.cc"],
+    cc_deps = [":cassie_utils",
+               "@drake//bindings/pydrake/systems:systems_pybind",
+               "@drake//bindings/pydrake/util:cpp_template_pybind",
+               ],
+    py_imports = ["."],
 )
 
-cc_library(
-	name = "cassie_lcm_dispatch_interface",
-	hdrs = [":cassie_lcm_dispatch_interface.h"],
-	srcs = ["cassie_lcm_dispatch_interface.cc"],
-	deps = [
-	        ":polling_interface",
-	        "//examples/Cassie/datatypes:cassie_dispatch_types",
-	        "@lcm",
-	        "@drake//systems/lcm:lcm",
-	        "@drake//systems/framework:value",
-	        "@drake//lcmtypes:drake_signal",
- 	        ]
-)
+#cc_library(
+#	name = "dispatcher",
+#	hdrs = [":dispatcher.h"],
+#	deps = [":polling_interface"]
+#)
 
-cc_library(
-	name = "cassie_dispatcher",
-	hdrs = [":cassie_dispatcher.h"],
-	srcs = ["cassie_dispatcher.cc"],
-	deps = [
-	        ":polling_interface",
-	        ":dispatcher",
-	        "//examples/Cassie/datatypes:cassie_names",
-	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
-)
+#cc_library(
+#	name = "cassie_robot_dispatch_interface",
+#	hdrs = [":cassie_robot_dispatch_interface.h"],
+#	srcs = ["cassie_robot_dispatch_interface.cc"],
+#	deps = [
+#	        ":polling_interface",
+#	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
+#)
 
-cc_binary(
-	name = "run_cassie_dispatch",
-	srcs = ["run_cassie_dispatch.cc"],
-	deps = [
-	        ":cassie_dispatcher",
-	        ":cassie_robot_dispatch_interface",
-	        ":cassie_lcm_dispatch_interface",
-	        ":silent_interface",
-	        "//examples/Cassie/datatypes:cassie_dispatch_types",
-	        "//examples/Cassie/datatypes:cassie_networking",
-	        "//examples/Cassie/datatypes:cassie_names",
-	        "@drake//systems/lcm:lcm"
-	        ]
-)
+#cc_library(
+#	name = "cassie_lcm_dispatch_interface",
+#	hdrs = [":cassie_lcm_dispatch_interface.h"],
+#	srcs = ["cassie_lcm_dispatch_interface.cc"],
+#	deps = [
+#	        ":polling_interface",
+#	        "//examples/Cassie/datatypes:cassie_dispatch_types",
+#	        "@lcm",
+#	        "@drake//systems/lcm:lcm",
+#	        "@drake//systems/framework:value",
+#	        "@drake//lcmtypes:drake_signal",
+#	        ]
+#)
+
+#cc_library(
+#	name = "cassie_dispatcher",
+#	hdrs = [":cassie_dispatcher.h"],
+#	srcs = ["cassie_dispatcher.cc"],
+#	deps = [
+#	        ":polling_interface",
+#	        ":dispatcher",
+#	        "//examples/Cassie/datatypes:cassie_names",
+#	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
+#)
+
+#cc_binary(
+#	name = "run_cassie_dispatch",
+#	srcs = ["run_cassie_dispatch.cc"],
+#	deps = [
+#	        ":cassie_dispatcher",
+#	        ":cassie_robot_dispatch_interface",
+#	        ":cassie_lcm_dispatch_interface",
+#	        ":silent_interface",
+#	        "//examples/Cassie/datatypes:cassie_dispatch_types",
+#	        "//examples/Cassie/datatypes:cassie_networking",
+#	        "//examples/Cassie/datatypes:cassie_names",
+#	        "@drake//systems/lcm:lcm"
+#	        ]
+#)
 
 cc_binary(
 	name = "run_udp_dummy_server",
@@ -94,69 +171,44 @@ cc_binary(
 
 
 
-cc_library(
-  name = "cassie_pd_controller_lcm",
-  hdrs = [
-          "cassie_controller_lcm.h",
-          "pd_controller.h",
-          ],
-  srcs = ["cassie_controller_lcm.cc",
-          "pd_controller.cc"],
-  deps = [
-          "//examples/Cassie/datatypes:cassie_names",
-          "@drake//systems/framework:leaf_system",
-          "@lcm",
-          "//lcmtypes:lcmt_cassie",
-          "//systems/framework:vector"
-          ]
-)
-
-
 cc_binary(
     name = "run_pd_controller",
     srcs = ["run_pd_controller.cc"],
     deps = [
-            ":cassie_pd_controller_lcm",
+            "//systems:robot_lcm_systems",
+            "//systems/controllers",
+            "//systems/controllers:pd_config_lcm",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
-            "@drake//lcm"
+            "@drake//multibody:rigid_body_tree",
+            "@drake//manipulation/util",
+            "@drake//lcm",
+            ":cassie_utils",
+            ":cassie_urdf",
             ]
 )
 
 cc_binary(
     name = "cassie_state_visualizer",
     srcs = ["cassie_state_visualizer.cc"],
-    data = glob(["urdf/**"]),
     deps = [
-            ":cassie_pd_controller_lcm",
+            "//systems:robot_lcm_systems",
+            "//systems/primitives",
+            ":cassie_urdf",
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
             "@drake//lcm",
             "@drake//multibody:rigid_body_tree",
             "@drake//manipulation/util",
+            ":cassie_utils"
             ]
 )
-
-cc_binary(
-    name = "run_state_pub_test",
-    srcs = ["run_state_pub_test.cc"],
-    deps = [
-            ":cassie_pd_controller_lcm",
-            "@drake//systems/framework:diagram_builder",
-            "@drake//systems/lcm:lcm_pubsub_system",
-            "@drake//systems/analysis:simulator",
-            "@drake//systems/primitives:sine",
-            "@drake//lcm"
-            ]
-)
-
 
 cc_binary(
     name = "run_simple_sim",
     srcs = ["run_simple_sim.cc"],
-    data = glob(["urdf/**"]),
     deps = [
         "@drake//multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
@@ -166,6 +218,17 @@ cc_binary(
         "@drake//solvers",
         "@drake//lcm",
         "@gflags",
-        "cassie_pd_controller_lcm",
+        ":cassie_urdf",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        ":cassie_utils",
+    ],
+)
+
+py_binary(
+    name = "draw_graphviz",
+    srcs = ["draw_graphviz.py"],
+    deps = [
+        "@drake//bindings/pydrake",
     ],
 )

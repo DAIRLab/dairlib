@@ -103,6 +103,35 @@ class InfoConnector: public LeafSystem<double> {
 
 };
 
+//Class to serve as a pass through port that just prints the value of the input port. Useful for debugging
+class DebugPassThrough: public LeafSystem<double> {
+
+  public:
+    DebugPassThrough(int size, bool debug_flag = true): size_(size), debug_flag_(debug_flag) {
+
+    this->DeclareVectorInputPort(BasicVector<double>(size_));
+    this->DeclareVectorOutputPort(BasicVector<double>(size_), &dairlib::DebugPassThrough::CopyOut);
+  }
+
+  const int size_;
+  bool debug_flag_;
+
+  private:
+    void CopyOut(const Context<double>& context, BasicVector<double>* output) const {
+
+      const auto input = this->EvalVectorInput(context, 0);
+      const VectorX<double> input_vector = input->get_value();
+
+
+      if(debug_flag_) {
+        cout << input_vector.transpose() << endl;
+        cout << "------------------------------------------------------------------------------------------" << endl;
+      }
+      output->SetFromVector(input_vector);
+    }
+};
+
+
 
 int do_main(int argc, char* argv[]) {
 
@@ -110,8 +139,17 @@ int do_main(int argc, char* argv[]) {
   
   drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree = makeFloatingBaseCassieTreePointer();
-  //std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-  
+
+  const double toe_contact_distance = 0.2;
+  VectorXd toe_left_ground = VectorXd::Zero(3);
+  VectorXd toe_right_ground = VectorXd::Zero(3);
+  toe_left_ground(1) = 0.3;
+  toe_right_ground(1) = -0.3;
+
+  tree->addDistanceConstraint(0, toe_left_ground, 18, VectorXd::Zero(3), toe_contact_distance);
+  tree->addDistanceConstraint(0, toe_right_ground, 20, VectorXd::Zero(3), toe_contact_distance);
+
+
   //Floating base adds 6 additional states for the base position and orientation
   const int extra_states = 6;
   const int num_efforts = tree->get_num_actuators();
@@ -128,10 +166,22 @@ int do_main(int argc, char* argv[]) {
   cout << "Number of generalized velocities: " << num_velocities << endl;
   cout << "Number of tree constraints: " << num_constraints << endl;
 
-
   const double terrain_size = 4;
   const double terrain_depth = 0.05;
+
+  cout << tree->get_num_bodies() << endl;
   drake::multibody::AddFlatTerrainToWorld(tree.get(), terrain_size, terrain_depth);
+  cout << tree->get_num_bodies() << endl;
+
+  cout << "---------------------------------------------------------------------" << endl;
+
+  for(int i=0; i<tree->get_num_bodies(); i++)
+  {
+    cout << tree->get_body(i).get_name() << " " << i << endl;
+  }
+
+
+  cout << "---------------------------------------------------------------------" << endl;
   
   drake::systems::DiagramBuilder<double> builder;
   
@@ -153,8 +203,13 @@ int do_main(int argc, char* argv[]) {
       *builder.template AddSystem<drake::systems::DrakeVisualizer>(
           plant->get_rigid_body_tree(), &lcm);
   visualizer_publisher.set_name("visualizer_publisher");
-  builder.Connect(plant->state_output_port(),
-                          visualizer_publisher.get_input_port(0));
+  //builder.Connect(plant->state_output_port(),
+                          //visualizer_publisher.get_input_port(0));
+
+  auto debug_pass_through = builder.AddSystem<DebugPassThrough>(num_total_states, false);
+  builder.Connect(plant->state_output_port(), debug_pass_through->get_input_port(0));
+  builder.Connect(debug_pass_through->get_output_port(0), visualizer_publisher.get_input_port(0));
+
 
   VectorXd x0 = VectorXd::Zero(num_total_states);
   std::map<std::string, int>  map = plant->get_rigid_body_tree().computePositionNameToIndexMap();
@@ -164,8 +219,9 @@ int do_main(int argc, char* argv[]) {
       cout << elem.first << " " << elem.second << endl;
   }
 
-
-  x0(map.at("base_z")) = 4.0;
+  x0(map.at("base_x")) = 0.0;
+  x0(map.at("base_y")) = 0.0;
+  x0(map.at("base_z")) = 1.129;
 
   //x0(map.at("hip_roll_left")) = 0.15;
   //x0(map.at("hip_yaw_left")) = 0.2;
@@ -186,10 +242,18 @@ int do_main(int argc, char* argv[]) {
   // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
   // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
   
-  x0(map.at("toe_left")) = -80.0*M_PI/180.0;
-  x0(map.at("toe_right")) = -80.0*M_PI/180.0;
+  x0(map.at("toe_left")) = -80*M_PI/180.0;
+  x0(map.at("toe_right")) = -80*M_PI/180.0;
 
   std::vector<int> fixed_joints;
+
+  //fixed_joints.push_back(map.at("base_x"));
+  //fixed_joints.push_back(map.at("base_y"));
+  //fixed_joints.push_back(map.at("base_z"));
+  fixed_joints.push_back(map.at("base_roll"));
+  fixed_joints.push_back(map.at("base_pitch"));
+
+  fixed_joints.push_back(map.at("base_yaw"));
   //fixed_joints.push_back(map.at("hip_roll_left"));
   //fixed_joints.push_back(map.at("hip_yaw_left"));
   fixed_joints.push_back(map.at("hip_pitch_left"));
@@ -197,9 +261,19 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map.at("knee_left"));
   fixed_joints.push_back(map.at("knee_right"));
   fixed_joints.push_back(map.at("toe_left"));
+  fixed_joints.push_back(map.at("toe_right"));
   
   VectorXd x_start = x0;
-  VectorXd q_start = SolveTreeConstraints(plant->get_rigid_body_tree(), x_start.head(num_total_positions));
+  
+  //const RigidBodyTree<double>& tree_p = plant->get_rigid_body_tree();
+  //auto k_cache = tree_p.doKinematics(x_start.head(num_total_positions));
+  //auto k_cache_element = k_cache.get_element(18);
+  //Eigen::Transform<double, 3, Eigen::Isometry> tr = k_cache_element.transform_to_world;
+  //cout << tr.matrix() << endl;
+  //cout << k_cache_element.transform_to_world << endl;
+
+
+  VectorXd q_start = SolveTreeConstraints(plant->get_rigid_body_tree(), x_start.head(num_total_positions), fixed_joints);
   x_start.head(num_total_positions) = q_start;
 
   //VectorXd q0 = SolveTreeConstraints(plant->get_rigid_body_tree(), x0.head(num_total_positions), fixed_joints);

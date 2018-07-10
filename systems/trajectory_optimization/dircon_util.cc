@@ -48,7 +48,7 @@ double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
       x_binding(i) = x(prog->FindDecisionVariableIndex(variables(i)));
     }
     AutoDiffVecXd x_val = math::initializeAutoDiff(x_binding);
-    binding.evaluator()->Eval(x_val, y_val);
+    binding.evaluator()->Eval(x_val, &y_val);
     MatrixXd gradient_x = math::autoDiffToGradientMatrix(y_val);
     VectorXd y = math::autoDiffToValueMatrix(y_val);
     c += y(0); //costs are length 1
@@ -62,7 +62,7 @@ double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
     AutoDiffVecXd y_hessian = math::initializeAutoDiff(VectorXd::Zero(1), variables.size());
     for (int i = 0; i < variables.size(); i++) {
       x_val(i) += dx;
-      binding.evaluator()->Eval(x_val, y_hessian);
+      binding.evaluator()->Eval(x_val, &y_hessian);
       x_val(i) -= dx;
       MatrixXd gradient_hessian = math::autoDiffToGradientMatrix(y_hessian);
       for (int j=0; j <= i; j++) {
@@ -218,7 +218,7 @@ int updateConstraints(const solvers::MathematicalProgram* prog, const std::vecto
       x_binding(i) = x(prog->FindDecisionVariableIndex(variables(i)));
     }
     AutoDiffVecXd x_val = math::initializeAutoDiff(x_binding);
-    binding.evaluator()->Eval(x_val, y_val);
+    binding.evaluator()->Eval(x_val, &y_val);
     MatrixXd dx = math::autoDiffToGradientMatrix(y_val);
 
     y.segment(constraint_index, n) = math::autoDiffToValueMatrix(y_val);

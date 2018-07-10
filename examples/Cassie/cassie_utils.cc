@@ -22,7 +22,11 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
       FindResourceOrThrow(filename),
       drake::multibody::joints::kFixed, &tree);
 
+<<<<<<< HEAD
   // //Add distance constraints for the two legs
+=======
+  // Add distance constraints for the two legs
+>>>>>>> da6c1b67181016869921efcfa98e6aee78b5c4f4
   double achilles_length = .5012;
   int heel_spring_left = tree.FindBodyIndex("heel_spring_left");
   int thigh_left = tree.FindBodyIndex("thigh_left");
@@ -30,7 +34,11 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
   int heel_spring_right = tree.FindBodyIndex("heel_spring_right");
   int thigh_right = tree.FindBodyIndex("thigh_right");
 
+<<<<<<< HEAD
   Vector3d rod_on_heel_spring; //symmetric left and right
+=======
+  Vector3d rod_on_heel_spring;  // symmetric left and right
+>>>>>>> da6c1b67181016869921efcfa98e6aee78b5c4f4
   rod_on_heel_spring << .11877, -.01, 0.0;
 
   Vector3d rod_on_thigh_left;
@@ -76,18 +84,24 @@ TreePositionConstraint::TreePositionConstraint(
   tree_ = &tree;
 }
 
-void TreePositionConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                                    Eigen::VectorXd& y) const {
+void TreePositionConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x, Eigen::VectorXd* y) const {
   AutoDiffVecXd y_t;
-  Eval(drake::math::initializeAutoDiff(x), y_t);
-  y = drake::math::autoDiffToValueMatrix(y_t);
+  Eval(drake::math::initializeAutoDiff(x), &y_t);
+  *y = drake::math::autoDiffToValueMatrix(y_t);
 }
 
 void TreePositionConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-                                    AutoDiffVecXd& y) const {
+                                    AutoDiffVecXd* y) const {
   const AutoDiffVecXd q = x.head(tree_->get_num_positions());
   KinematicsCache<drake::AutoDiffXd> cache = tree_->doKinematics(q);
-  y = tree_->positionConstraints(cache);
+  *y = tree_->positionConstraints(cache);
 }
 
+void TreePositionConstraint::DoEval(
+    const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& x,
+    drake::VectorX<drake::symbolic::Expression>* y) const {
+  throw std::logic_error(
+      "TreePositionConstraint does not support symbolic evaluation.");
 }
+
+}  // namespace dairlib

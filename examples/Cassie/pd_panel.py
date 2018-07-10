@@ -6,8 +6,8 @@ import lcm
 from PythonQt.QtGui import *
 from PythonQt.QtCore import *
 
-import dairlib.lcmt_cassie_pd_config
-import dairlib.lcmt_cassie_state
+import dairlib.lcmt_pd_config
+import dairlib.lcmt_robot_output
 
 import director.applogic
 import director.mainwindowapp
@@ -15,19 +15,32 @@ import director.mainwindowapp
 
 #Default values
 joint_names = [
-  "L_HIP_ROLL",
-  "R_HIP_ROLL",
-  "L_HIP_YAW",
-  "R_HIP_YAW",
-  "L_HIP_PITCH",
-  "R_HIP_PITCH",
-  "L_KNEE",
-  "R_KNEE",
-  "L_FOOT",
-  "R_FOOT"]
+    "hip_roll_left_motor",
+    "hip_roll_right_motor",
+    "hip_yaw_left_motor",
+    "hip_yaw_right_motor",
+    "hip_pitch_left_motor",
+    "hip_pitch_right_motor",
+    "knee_left_motor",
+    "knee_right_motor",
+    "toe_left_motor",
+    "toe_right_motor"]
+
+position_names = [
+    "hip_roll_left",
+    "hip_roll_right",
+    "hip_yaw_left",
+    "hip_yaw_right",
+    "hip_pitch_left",
+    "hip_pitch_right",
+    "knee_left",
+    "knee_right",
+    "toe_left",
+    "toe_right"]
+
 joint_default = [0,0,0,0,0,0,0,0,0,0]
-kp_default = [0,0,0,0,0,0,0,0,0,0]
-kd_default = [0,0,0,0,0,0,0,0,0,0]
+kp_default = [20,20,20,20,20,20,20,20,2,2]
+kd_default = [5,5,5,5,5,5,5,5,1,1]
 
 
 class ControllerGui(QWidget):
@@ -43,7 +56,7 @@ class ControllerGui(QWidget):
         labels = []
         self.values = []
         self.ledits = []
-        for name in joint_names:
+        for name in position_names:
             labels.append(QLabel(name))
             self.values.append(0)
             self.ledits.append(QDoubleSpinBox())
@@ -109,9 +122,9 @@ class ControllerGui(QWidget):
         #self.resize(400, 300)
 
     def value_change(self):
-        print("Asdf")
         for idx, ledit in enumerate(self.ledits):
             self.values[idx] = self.ledits[idx].value
+        print('value changed')
 
     #Initial defafult text values
     def initialize_default(self):
@@ -123,7 +136,7 @@ class ControllerGui(QWidget):
 
     #Storing in a file once the move button is clicked
     def publish_clicked(self):
-        msg = dairlib.lcmt_cassie_pd_config()
+        msg = dairlib.lcmt_pd_config()
         msg.timestamp = int(time.time() * 1e6)
         msg.num_joints = 10
         msg.joint_names = joint_names
@@ -137,12 +150,16 @@ class ControllerGui(QWidget):
 
     def setState_clicked(self):
         self.lc.handle_timeout(100)
+        self.lc.handle_timeout(100) #twice to clear the buffer
     def state_handler(self, channel, data):
-        msg = dairlib.lcmt_cassie_state.decode(data)
-        for joint in msg.joint_names:
-            idx = joint_names.index(joint)
-            self.ledits[idx].setValue(msg.position[idx])
-            self.values[idx] = msg.position[idx]
+        msg = dairlib.lcmt_robot_output.decode(data)
+        for idx_msg, joint in enumerate(msg.position_names):
+            if joint in position_names:
+                idx = position_names.index(joint)
+                self.ledits[idx].setValue(msg.position[idx_msg])
+                self.values[idx] = msg.position[idx_msg]
+        print('message handled')
+        print(msg.position[6])
 
 
 panel = ControllerGui()

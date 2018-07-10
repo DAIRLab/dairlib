@@ -15,15 +15,15 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 
-#include "cassie_controller_lcm.h"
-#include "dairlib/lcmt_cassie_state.hpp"
+#include "systems/robot_lcm_systems.h"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_robot_input.hpp"
+#include "systems/primitives/subvector_pass_through.h"
 
+#include "examples/Cassie/cassie_utils.h"
 
-namespace drake{
-
-// Simple example which simulates the (passive) Acrobot.  Run drake-visualizer
-// to see the animated result.
-
+namespace dairlib{
+  using dairlib::systems::SubvectorPassThrough;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
@@ -35,7 +35,7 @@ DEFINE_double(v_tol, 0.01,
 DEFINE_double(dissipation, 2, "The contact model's dissipation (s/m)");
 DEFINE_double(contact_radius, 2e-4,
               "The characteristic scale of contact patch (m)");
-DEFINE_string(simulation_type, "timestepping", "The type of simulation to use: "
+DEFINE_string(simulation_type, "compliant", "The type of simulation to use: "
               "'compliant' or 'timestepping'");
 DEFINE_double(dt, 1e-3, "The step size to use for "
               "'simulation_type=timestepping' (ignored for "
@@ -44,57 +44,51 @@ DEFINE_double(dt, 1e-3, "The step size to use for "
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  lcm::DrakeLcm lcm;
-  auto tree = std::make_unique<RigidBodyTree<double>>();
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf",
-      multibody::joints::kFixed, tree.get());
+  drake::lcm::DrakeLcm lcm;
+  std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
 
-  // multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);  
-
-//  manipulation::util::SimDiagramBuilder<double> builder;
-  drake::systems::DiagramBuilder<double> builder;  
-
-  //auto plant = biulder.template AddSystem<systems::RigidBodyPlant<double>>(std::move(tree));
-  //systems::RigidBodyPlant<double>* plant = builder.AddPlant(std::move(tree));
+  drake::systems::DiagramBuilder<double> builder;
 
   if (FLAGS_simulation_type != "timestepping")
     FLAGS_dt = 0.0;
-  auto plant = builder.AddSystem<systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
-  //auto plant = builder.AddSystem<systems::RigidBodyPlant<double>>(std::move(tree));
-  //systems::RigidBodyPlant<double>* plant = builder.AddPlant(std::move(tree));
+  auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
 
     // Note: this sets identical contact parameters across all object pairs:
 
-  systems::CompliantMaterial default_material;
+  drake::systems::CompliantMaterial default_material;
   default_material.set_youngs_modulus(FLAGS_youngs_modulus)
       .set_dissipation(FLAGS_dissipation)
       .set_friction(FLAGS_us, FLAGS_ud);
   plant->set_default_compliant_material(default_material);
-  systems::CompliantContactModelParameters model_parameters;
+  drake::systems::CompliantContactModelParameters model_parameters;
   model_parameters.characteristic_radius = FLAGS_contact_radius;
   model_parameters.v_stiction_tolerance = FLAGS_v_tol;
   plant->set_contact_model_parameters(model_parameters);
 
-
   // Create input receiver.
   auto input_sub = builder.AddSystem(
-      systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_cassie_input>("CASSIE_INPUT", &lcm));
-  auto input_receiver = builder.AddSystem<CassieInputReceiver>();
+      drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>("CASSIE_INPUT", &lcm));
+  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant->get_rigid_body_tree());
   builder.Connect(input_sub->get_output_port(),
                   input_receiver->get_input_port(0));
 
   // Create state publisher.
   auto state_pub = builder.AddSystem(
-      systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_cassie_state>("CASSIE_STATE", &lcm));
-  auto state_sender = builder.AddSystem<CassieStateSender>();
+      drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>("CASSIE_STATE", &lcm));
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
   state_pub->set_publish_period(1.0/200.0);
 
-
+  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
+    input_receiver->get_output_port(0).size(),
+    0,
+    plant->get_input_port(0).size());
 
   builder.Connect(input_receiver->get_output_port(0),
+                  passthrough->get_input_port());
+  builder.Connect(passthrough->get_output_port(),
                   plant->get_input_port(0));
-  builder.Connect(plant->state_output_port(), state_sender->get_input_port(0));
+
+  builder.Connect(plant->state_output_port(), state_sender->get_input_port_state());
 
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
@@ -109,23 +103,62 @@ int do_main(int argc, char* argv[]) {
 
   auto diagram = builder.Build();
 
-  systems::Simulator<double> simulator(*diagram);
-  systems::Context<double>& context =
+  drake::systems::Simulator<double> simulator(*diagram);
+  drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
+
+  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(
+      plant->get_rigid_body_tree().get_num_positions() +
+      plant->get_rigid_body_tree().get_num_velocities());
+  std::map<std::string, int>  map =
+      plant->get_rigid_body_tree().computePositionNameToIndexMap();
+  x0(map.at("hip_pitch_left")) = .269;
+  x0(map.at("hip_pitch_right")) = .269;
+  // x0(map.at("achilles_hip_pitch_left")) = -.44;
+  // x0(map.at("achilles_hip_pitch_right")) = -.44;
+  // x0(map.at("achilles_heel_pitch_left")) = -.105;
+  // x0(map.at("achilles_heel_pitch_right")) = -.105;
+  x0(map.at("knee_left")) = -.644;
+  x0(map.at("knee_right")) = -.644;
+  x0(map.at("ankle_joint_left")) = .792;
+  x0(map.at("ankle_joint_right")) = .792;
+
+  // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
+  // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
+
+  // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
+  // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
+
+  x0(map.at("toe_left")) = -60.0*M_PI/180.0;
+  x0(map.at("toe_right")) = -60.0*M_PI/180.0;
+
+  std::vector<int> fixed_joints;
+  fixed_joints.push_back(map.at("hip_pitch_left"));
+  fixed_joints.push_back(map.at("hip_pitch_right"));
+  fixed_joints.push_back(map.at("knee_left"));
+  fixed_joints.push_back(map.at("knee_right"));
+
+  auto q0 = solvePositionConstraints(
+      plant->get_rigid_body_tree(),
+      x0.head(plant->get_rigid_body_tree().get_num_positions()), fixed_joints);
+  x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
+
+  std::cout << q0 << std::endl;
+
 
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
     std::cout << "Continuous " << state.size() << std::endl;
-    // state.SetFromVector(Eigen::VectorXd::Zero(state.size()));
-    state[4] = 1;
+    state.SetFromVector(x0);
+    // state[4] = 1;
     // state[3] = 0;
     // state[4] = 0;
   } else {
     std::cout << "ngroups "<< context.get_num_discrete_state_groups() <<  std::endl;
-    systems::BasicVector<double>& state = context.get_mutable_discrete_state(0); 
+    drake::systems::BasicVector<double>& state = context.get_mutable_discrete_state(0); 
     std::cout << "Discrete " << state.size() << std::endl;
-    // state.SetFromVector(Eigen::VectorXd::Zero(state.size()));
-    state[4] = 1;
+    state.SetFromVector(x0);
+    // state[4] = 1;
     // state[3] = 0;
     // state[4] = 0;
   }
@@ -149,5 +182,5 @@ int do_main(int argc, char* argv[]) {
 }  // namespace drake
 
 int main(int argc, char* argv[]) {
-  return drake::do_main(argc, argv);
+  return dairlib::do_main(argc, argv);
 }

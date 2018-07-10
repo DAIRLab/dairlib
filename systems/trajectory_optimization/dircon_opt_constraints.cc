@@ -30,42 +30,51 @@ DirconAbstractConstraint<T>::DirconAbstractConstraint(int num_constraints, int n
 template <>
 void DirconAbstractConstraint<double>::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
-    Eigen::VectorXd& y) const {
+    Eigen::VectorXd* y) const {
   EvaluateConstraint(x,y);
 }
 
 template <>
 void DirconAbstractConstraint<AutoDiffXd>::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
-    Eigen::VectorXd& y) const {
+    Eigen::VectorXd* y) const {
   AutoDiffVecXd y_t;
-  EvaluateConstraint(math::initializeAutoDiff(x), y_t);
+  EvaluateConstraint(math::initializeAutoDiff(x), &y_t);
+  *y = math::autoDiffToValueMatrix(y_t);
+}
+
+template <typename T>
+void DirconAbstractConstraint<T>::DoEval(
+    const Eigen::Ref<const VectorX<symbolic::Variable>>& x,
+    VectorX<symbolic::Expression>* y) const {
+  throw std::logic_error(
+      "DirconAbstractConstraint does not support symbolic evaluation.");
 }
 
 template <>
 void DirconAbstractConstraint<AutoDiffXd>::DoEval(
-    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
+    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
   EvaluateConstraint(x,y);
 }
 
 template <>
 void DirconAbstractConstraint<double>::DoEval(
-    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd& y) const {
+    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
     // forward differencing
     double dx = 1e-8;
 
     VectorXd x_val = math::autoDiffToValueMatrix(x);
     VectorXd y0,yi;
-    EvaluateConstraint(x_val,y0);
+    EvaluateConstraint(x_val,&y0);
 
     MatrixXd dy = MatrixXd(y0.size(),x_val.size());
     for (int i=0; i < x_val.size(); i++) {
       x_val(i) += dx;
-      EvaluateConstraint(x_val,yi);
+      EvaluateConstraint(x_val,&yi);
       x_val(i) -= dx;
       dy.col(i) = (yi - y0)/dx;
     }
-    math::initializeAutoDiffGivenGradientMatrix(y0, dy, y);
+    math::initializeAutoDiffGivenGradientMatrix(y0, dy, *y);
 
     // // central differencing
     // double dx = 1e-8;
@@ -90,15 +99,24 @@ void DirconAbstractConstraint<double>::DoEval(
 
 
 template <typename T>
-DirconDynamicConstraint<T>::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints) :
-  DirconDynamicConstraint(tree, constraints, tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.countConstraints()) {}
+DirconDynamicConstraint<T>::DirconDynamicConstraint(
+    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints) :
+  DirconDynamicConstraint(tree, constraints, tree.get_num_positions(),
+                          tree.get_num_velocities(), tree.get_num_actuators(),
+                          constraints.countConstraints()) {}
 
 template <typename T>
-DirconDynamicConstraint<T>::DirconDynamicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
-                                                 int num_positions, int num_velocities, int num_inputs, int num_kinematic_constraints)
-    : DirconAbstractConstraint<T>(num_positions + num_velocities, 1 + 2 *(num_positions+ num_velocities) + (2 * num_inputs) + (4 * num_kinematic_constraints),
-                 Eigen::VectorXd::Zero(num_positions + num_velocities), Eigen::VectorXd::Zero(num_positions + num_velocities)),
-      num_states_{num_positions+num_velocities}, num_inputs_{num_inputs}, num_kinematic_constraints_{num_kinematic_constraints},
+DirconDynamicConstraint<T>::DirconDynamicConstraint(
+    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+    int num_positions, int num_velocities, int num_inputs,
+    int num_kinematic_constraints)
+    : DirconAbstractConstraint<T>(num_positions + num_velocities,
+          1 + 2 *(num_positions+ num_velocities) + (2 * num_inputs) +
+          (4 * num_kinematic_constraints),
+          Eigen::VectorXd::Zero(num_positions + num_velocities),
+          Eigen::VectorXd::Zero(num_positions + num_velocities)),
+      num_states_{num_positions+num_velocities}, num_inputs_{num_inputs},
+      num_kinematic_constraints_{num_kinematic_constraints},
       num_positions_{num_positions}, num_velocities_{num_velocities} {
   tree_ = &tree;
   constraints_ = &constraints;
@@ -109,8 +127,9 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(const RigidBodyTree<double>&
 // which has a total length of 1 + 2*num_states + 2*num_inputs + dim*num_constraints.
 template <typename T>
 void DirconDynamicConstraint<T>::EvaluateConstraint(
-    const Eigen::Ref<const VectorX<T>>& x, VectorX<T>& y) const {
-  DRAKE_ASSERT(x.size() == 1 + (2 * num_states_) + (2 * num_inputs_) + 4*(num_kinematic_constraints_));
+    const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
+  DRAKE_ASSERT(x.size() == 1 + (2 * num_states_) + (2 * num_inputs_) +
+      4*(num_kinematic_constraints_));
 
   // Extract our input variables:
   // h - current time (knot) value
@@ -121,10 +140,14 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   const auto x1 = x.segment(1 + num_states_, num_states_);
   const auto u0 = x.segment(1 + (2 * num_states_), num_inputs_);
   const auto u1 = x.segment(1 + (2 * num_states_) + num_inputs_, num_inputs_);
-  const auto l0 = x.segment(1 + 2 * (num_states_ + num_inputs_), num_kinematic_constraints_);
-  const auto l1 = x.segment(1 + 2 * (num_states_ + num_inputs_) + num_kinematic_constraints_, num_kinematic_constraints_);
-  const auto lc = x.segment(1 + 2 * (num_states_ + num_inputs_) + 2*num_kinematic_constraints_, num_kinematic_constraints_);
-  const auto vc = x.segment(1 + 2 * (num_states_ + num_inputs_) + 3*num_kinematic_constraints_, num_kinematic_constraints_);
+  const auto l0 = x.segment(1 + 2 * (num_states_ + num_inputs_),
+                            num_kinematic_constraints_);
+  const auto l1 = x.segment(1 + 2 * (num_states_ + num_inputs_) +
+      num_kinematic_constraints_, num_kinematic_constraints_);
+  const auto lc = x.segment(1 + 2 * (num_states_ + num_inputs_) +
+      2*num_kinematic_constraints_, num_kinematic_constraints_);
+  const auto vc = x.segment(1 + 2 * (num_states_ + num_inputs_) +
+      3*num_kinematic_constraints_, num_kinematic_constraints_);
 
   constraints_->updateData(x0, u0, l0);
   const auto xdot0 = constraints_->getXDot();
@@ -139,7 +162,7 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   constraints_->updateData(xcol, 0.5 * (u0 + u1), lc);
   auto g = constraints_->getXDot();
   g.head(num_positions_) += constraints_->getJ().transpose()*vc;
-  y = xdotcol - g;
+  *y = xdotcol - g;
 }
 
 template <typename T>
@@ -150,10 +173,10 @@ Binding<Constraint> AddDirconConstraint(
     const Eigen::Ref<const VectorXDecisionVariable>& next_state,
     const Eigen::Ref<const VectorXDecisionVariable>& input,
     const Eigen::Ref<const VectorXDecisionVariable>& next_input,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& force,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& next_force,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_force,
-    const Eigen::Ref<const solvers::VectorXDecisionVariable>& collocation_position_slack,
+    const Eigen::Ref<const VectorXDecisionVariable>& force,
+    const Eigen::Ref<const VectorXDecisionVariable>& next_force,
+    const Eigen::Ref<const VectorXDecisionVariable>& collocation_force,
+    const Eigen::Ref<const VectorXDecisionVariable>& collocation_position_slack,
     MathematicalProgram* prog) {
   DRAKE_DEMAND(timestep.size() == 1);
   DRAKE_DEMAND(state.size() == constraint->num_states());
@@ -163,33 +186,51 @@ Binding<Constraint> AddDirconConstraint(
   DRAKE_DEMAND(force.size() == constraint->num_kinematic_constraints());
   DRAKE_DEMAND(next_force.size() == constraint->num_kinematic_constraints());
   DRAKE_DEMAND(collocation_force.size() == constraint->num_kinematic_constraints());
-  DRAKE_DEMAND(collocation_position_slack.size() == constraint->num_kinematic_constraints());
-  return prog->AddConstraint(constraint,
-                             {timestep, state, next_state, input, next_input, force,
-                              next_force, collocation_force, collocation_position_slack});
+  DRAKE_DEMAND(collocation_position_slack.size() ==
+      constraint->num_kinematic_constraints());
+  return prog->AddConstraint(constraint, {timestep, state, next_state, input,
+                                          next_input, force, next_force,
+                                          collocation_force,
+                                          collocation_position_slack});
 }
 
 template <typename T>
-DirconKinematicConstraint<T>::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
-                            DirconKinConstraintType type) :
-  DirconKinematicConstraint(tree, constraints, std::vector<bool>(constraints.countConstraints(), false), type,
-                            tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.countConstraints()) {}
+DirconKinematicConstraint<T>::DirconKinematicConstraint(
+    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+    DirconKinConstraintType type) :
+    DirconKinematicConstraint(tree, constraints,
+                            std::vector<bool>(constraints.countConstraints(),
+                            false), type, tree.get_num_positions(),
+                            tree.get_num_velocities(), tree.get_num_actuators(),
+                            constraints.countConstraints()) {}
 
 template <typename T>
-DirconKinematicConstraint<T>::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
-                            std::vector<bool> is_constraint_relative, DirconKinConstraintType type) :
-  DirconKinematicConstraint(tree, constraints, is_constraint_relative, type,
-                            tree.get_num_positions(), tree.get_num_velocities(), tree.get_num_actuators(), constraints.countConstraints()) {}
+DirconKinematicConstraint<T>::DirconKinematicConstraint(
+    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+    std::vector<bool> is_constraint_relative, DirconKinConstraintType type) :
+    DirconKinematicConstraint(tree, constraints, is_constraint_relative, type,
+                              tree.get_num_positions(),
+                              tree.get_num_velocities(),
+                              tree.get_num_actuators(),
+                              constraints.countConstraints()) {}
 
 template <typename T>
-DirconKinematicConstraint<T>::DirconKinematicConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
-                                                     std::vector<bool> is_constraint_relative, DirconKinConstraintType type, int num_positions,
-                                                    int num_velocities, int num_inputs, int num_kinematic_constraints)
-    : DirconAbstractConstraint<T>(type*num_kinematic_constraints, num_positions + num_velocities + num_inputs + num_kinematic_constraints + std::count(is_constraint_relative.begin(),is_constraint_relative.end(),true),
-                 Eigen::VectorXd::Zero(type*num_kinematic_constraints), Eigen::VectorXd::Zero(type*num_kinematic_constraints)),
-      num_states_{num_positions+num_velocities}, num_inputs_{num_inputs}, num_kinematic_constraints_{num_kinematic_constraints},
-      num_positions_{num_positions}, num_velocities_{num_velocities}, type_{type}, is_constraint_relative_{is_constraint_relative},
-      n_relative_{(int) std::count(is_constraint_relative.begin(),is_constraint_relative.end(),true)} {
+DirconKinematicConstraint<T>::DirconKinematicConstraint(
+    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+    std::vector<bool> is_constraint_relative, DirconKinConstraintType type,
+    int num_positions, int num_velocities, int num_inputs,
+    int num_kinematic_constraints)
+    : DirconAbstractConstraint<T>(type*num_kinematic_constraints,
+        num_positions + num_velocities + num_inputs + num_kinematic_constraints +
+        std::count(is_constraint_relative.begin(),is_constraint_relative.end(),true),
+        VectorXd::Zero(type*num_kinematic_constraints),
+        VectorXd::Zero(type*num_kinematic_constraints)),
+      num_states_{num_positions+num_velocities}, num_inputs_{num_inputs},
+      num_kinematic_constraints_{num_kinematic_constraints},
+      num_positions_{num_positions}, num_velocities_{num_velocities},
+      type_{type}, is_constraint_relative_{is_constraint_relative},
+      n_relative_{(int) std::count(is_constraint_relative.begin(),
+      is_constraint_relative.end(),true)} {
   tree_ = &tree;
   constraints_ = &constraints;
   relative_map_ = MatrixXd::Zero(num_kinematic_constraints_,n_relative_);
@@ -204,8 +245,9 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(const RigidBodyTree<doub
 
 template <typename T>
 void DirconKinematicConstraint<T>::EvaluateConstraint(
-    const Eigen::Ref<const VectorX<T>>& x, VectorX<T>& y) const {
-  DRAKE_ASSERT(x.size() == num_states_ + num_inputs_ + num_kinematic_constraints_ + n_relative_);
+    const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
+  DRAKE_ASSERT(x.size() == num_states_ + num_inputs_ +
+                           num_kinematic_constraints_ + n_relative_);
 
   // Extract our input variables:
   // h - current time (knot) value
@@ -218,30 +260,36 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
   constraints_->updateData(state, input, force);
   switch(type_) {
     case kAll:
-      y = VectorX<T>(3*num_kinematic_constraints_);
-      y << constraints_->getC() + relative_map_*offset, constraints_->getCDot(), constraints_->getCDDot();
+      *y = VectorX<T>(3*num_kinematic_constraints_);
+      *y << constraints_->getC() + relative_map_*offset, constraints_->getCDot(), constraints_->getCDDot();
       break;
     case kAccelAndVel:
-      y = VectorX<T>(2*num_kinematic_constraints_);
-      y << constraints_->getCDot(), constraints_->getCDDot();
+      *y = VectorX<T>(2*num_kinematic_constraints_);
+      *y << constraints_->getCDot(), constraints_->getCDDot();
       break;
     case kAccelOnly:
-      y = VectorX<T>(1*num_kinematic_constraints_);
-      y << constraints_->getCDDot();
+      *y = VectorX<T>(1*num_kinematic_constraints_);
+      *y << constraints_->getCDDot();
       break;
   }
 }
 
 template <typename T>
-DirconImpactConstraint<T>::DirconImpactConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints) :
-  DirconImpactConstraint(tree, constraints, tree.get_num_positions(), tree.get_num_velocities(), constraints.countConstraints()) {}
+DirconImpactConstraint<T>::DirconImpactConstraint(
+    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints) :
+  DirconImpactConstraint(tree, constraints, tree.get_num_positions(),
+                         tree.get_num_velocities(),
+                         constraints.countConstraints()) {}
 
 template <typename T>
-DirconImpactConstraint<T>::DirconImpactConstraint(const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
-                                                  int num_positions, int num_velocities, int num_kinematic_constraints)
-    : DirconAbstractConstraint<T>(num_velocities, num_positions + 2*num_velocities + num_kinematic_constraints,
-                 Eigen::VectorXd::Zero(num_velocities), Eigen::VectorXd::Zero(num_velocities)),
-      num_states_{num_positions+num_velocities},  num_kinematic_constraints_{num_kinematic_constraints},
+DirconImpactConstraint<T>::DirconImpactConstraint(
+    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+    int num_positions, int num_velocities, int num_kinematic_constraints)
+    : DirconAbstractConstraint<T>(num_velocities, num_positions +
+        2*num_velocities + num_kinematic_constraints,
+        VectorXd::Zero(num_velocities), VectorXd::Zero(num_velocities)),
+      num_states_{num_positions+num_velocities},
+      num_kinematic_constraints_{num_kinematic_constraints},
       num_positions_{num_positions}, num_velocities_{num_velocities} {
   tree_ = &tree;
   constraints_ = &constraints;
@@ -252,8 +300,9 @@ DirconImpactConstraint<T>::DirconImpactConstraint(const RigidBodyTree<double>& t
 // tuple { state 0, impulse, velocity 1},
 template <typename T>
 void DirconImpactConstraint<T>::EvaluateConstraint(
-    const Eigen::Ref<const VectorX<T>>& x, VectorX<T>& y) const {
-  DRAKE_ASSERT(x.size() == 2 * num_velocities_ + num_positions_ + num_kinematic_constraints_);
+    const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
+  DRAKE_ASSERT(x.size() == 2 * num_velocities_ + num_positions_ +
+                           num_kinematic_constraints_);
 
   // Extract our input variables:
   // x0, state vector at time k^-
@@ -276,7 +325,7 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
 
   const MatrixX<T> M = tree_->massMatrix(*constraints_->getCache());
 
-  y = M*(v1 - v0) - constraints_->getJ().transpose()*impulse;
+  *y = M*(v1 - v0) - constraints_->getJ().transpose()*impulse;
 }
 
 // Explicitly instantiates on the most common scalar types.

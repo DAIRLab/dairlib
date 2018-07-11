@@ -86,6 +86,13 @@ bool CheckFixedPointConstraints(RigidBodyPlant<double>* plant,
                                 VectorXd x_check,
                                 VectorXd u_check);
 
+
+vector<VectorXd> SolveFixedPointConstraintsApproximate(RigidBodyPlant<double>* plant, 
+                                                       VectorXd x_init, 
+                                                       VectorXd u_init);
+
+
+
 /*
 Solves tree and fixed point constraints for the given tree.
 @param plant RigidBodyPlant for which the constraints needs to be solved
@@ -109,6 +116,7 @@ Checks if the given state and inputs satisfies tree and fixed point constraints
 bool CheckTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant,
                                        VectorXd x_check,
                                        VectorXd u_check);
+
 
 /*
 Finds a feasible control input for the given state such that the pair satisfies tree and fixed point constraints
@@ -145,17 +153,39 @@ class FixedPointConstraint : public Constraint {
   public:
     FixedPointConstraint(RigidBodyPlant<double>* plant,
                          const std::string& description = "");
-    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& xu,
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x_u,
                 Eigen::VectorXd* y) const override;
   
-    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& xu,
+    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x_u,
                 AutoDiffVecXd* y) const override;
-    void DoEval(const Eigen::Ref<const VectorX<Variable>>& xu, 
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x_u, 
                 VectorX<Expression>*y) const override;
   
   private:
     RigidBodyPlant<double>* plant_;
     const RigidBodyTree<double>& tree_;
+    unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
+
+};
+
+class FixedPointConstraintApproximate : public Constraint {
+  public:
+    FixedPointConstraintApproximate(RigidBodyPlant<double>* plant,
+                                    VectorXd x0, 
+                                    const std::string& description = "");
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x_dot_u,
+                Eigen::VectorXd* y) const override;
+  
+    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x_dot_u,
+                AutoDiffVecXd* y) const override;
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x_dot_u, 
+                VectorX<Expression>*y) const override;
+    VectorXd CalcXDot(VectorXd u);
+  
+  private:
+    RigidBodyPlant<double>* plant_;
+    const RigidBodyTree<double>& tree_;
+    VectorXd x0_;
     unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
 
 };

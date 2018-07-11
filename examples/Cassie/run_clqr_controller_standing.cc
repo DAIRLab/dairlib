@@ -46,6 +46,7 @@ using dairlib::multibody::SolveTreeConstraints;
 using dairlib::multibody::CheckTreeConstraints;
 using dairlib::multibody::SolveFixedPointConstraints;
 using dairlib::multibody::CheckFixedPointConstraints;
+using dairlib::multibody::SolveFixedPointConstraintsApproximate;
 using dairlib::multibody::SolveTreeAndFixedPointConstraints;
 using dairlib::multibody::CheckTreeAndFixedPointConstraints;
 using dairlib::multibody::SolveFixedPointFeasibilityConstraints;
@@ -131,6 +132,22 @@ class DebugPassThrough: public LeafSystem<double> {
     }
 };
 
+//Function to take the state of a floating base model and extract the state for the fixed base model by removing the 
+//positions and velocities corresponding to the base
+VectorXd ExtractFixedStateFromFloat(VectorXd x_float, int num_positions_float, int num_velocities_float, int num_extra_positions, int num_extra_velocities)
+{
+  const int num_positions_fixed = num_positions_float - num_extra_positions;
+  const int num_velocities_fixed = num_velocities_float - num_extra_velocities;
+  const int fixed_size = num_positions_fixed + num_velocities_fixed;
+
+  VectorXd x_fixed(fixed_size);
+  x_fixed.head(num_positions_fixed) = x_float.segment(6, num_positions_fixed);
+  x_fixed.tail(num_velocities_fixed) = x_float.segment(num_positions_float + 6, num_velocities_fixed);
+
+  return x_fixed;
+}
+
+
 
 
 int do_main(int argc, char* argv[]) {
@@ -138,28 +155,28 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   
   drake::lcm::DrakeLcm lcm;
-  std::unique_ptr<RigidBodyTree<double>> tree = makeFloatingBaseCassieTreePointer();
+  std::unique_ptr<RigidBodyTree<double>> tree_sim = makeFloatingBaseCassieTreePointer();
+  std::unique_ptr<RigidBodyTree<double>> tree_model = makeFixedBaseCassieTreePointer();
 
-  const double toe_contact_distance = 0.2;
-  VectorXd toe_left_ground = VectorXd::Zero(3);
-  VectorXd toe_right_ground = VectorXd::Zero(3);
-  toe_left_ground(1) = 0.3;
-  toe_right_ground(1) = -0.3;
+  //const double toe_contact_distance = 0.2;
+  //VectorXd toe_left_ground = VectorXd::Zero(3);
+  //VectorXd toe_right_ground = VectorXd::Zero(3);
+  //toe_left_ground(1) = 0.3;
+  //toe_right_ground(1) = -0.3;
 
-  tree->addDistanceConstraint(0, toe_left_ground, 18, VectorXd::Zero(3), toe_contact_distance);
-  tree->addDistanceConstraint(0, toe_right_ground, 20, VectorXd::Zero(3), toe_contact_distance);
+  //tree->addDistanceConstraint(0, toe_left_ground, 18, VectorXd::Zero(3), toe_contact_distance);
+  //tree->addDistanceConstraint(0, toe_right_ground, 20, VectorXd::Zero(3), toe_contact_distance);
 
 
   //Floating base adds 6 additional states for the base position and orientation
-  const int extra_states = 6;
-  const int num_efforts = tree->get_num_actuators();
-  const int num_total_positions = tree->get_num_positions();
-  const int num_total_velocities = tree->get_num_velocities();
+  const int num_total_positions = tree_sim->get_num_positions();
+  const int num_total_velocities = tree_sim->get_num_velocities();
   const int num_total_states = num_total_positions + num_total_velocities;
-  const int num_constraints = tree->getNumPositionConstraints();
-  const int num_positions = num_total_positions - extra_states;
-  const int num_velocities = num_total_velocities - extra_states;
-  const int num_states = num_total_velocities - extra_states;
+  const int num_positions = tree_model->get_num_positions();
+  const int num_velocities = tree_model->get_num_velocities();
+  const int num_states = num_positions + num_velocities;
+  const int num_efforts = tree_model->get_num_actuators();
+  const int num_constraints = tree_model->getNumPositionConstraints();
   
   cout << "Number of actuators: " << num_efforts << endl;
   cout << "Number of generalized coordinates: " << num_positions << endl;
@@ -169,15 +186,14 @@ int do_main(int argc, char* argv[]) {
   const double terrain_size = 4;
   const double terrain_depth = 0.05;
 
-  cout << tree->get_num_bodies() << endl;
-  drake::multibody::AddFlatTerrainToWorld(tree.get(), terrain_size, terrain_depth);
-  cout << tree->get_num_bodies() << endl;
-
+  drake::multibody::AddFlatTerrainToWorld(tree_sim.get(), terrain_size, terrain_depth);
+  drake::multibody::AddFlatTerrainToWorld(tree_model.get(), terrain_size, terrain_depth);
+  
   cout << "---------------------------------------------------------------------" << endl;
 
-  for(int i=0; i<tree->get_num_bodies(); i++)
+  for(int i=0; i<tree_sim->get_num_bodies(); i++)
   {
-    cout << tree->get_body(i).get_name() << " " << i << endl;
+    cout << tree_sim->get_body(i).get_name() << " " << i << endl;
   }
 
 
@@ -185,56 +201,61 @@ int do_main(int argc, char* argv[]) {
   
   drake::systems::DiagramBuilder<double> builder;
   
-  auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree));
-  
+  auto plant_sim = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree_sim));
+  auto plant_model = make_unique<RigidBodyPlant<double>>(std::move(tree_model));
+
   drake::systems::CompliantMaterial default_material;
   default_material.set_youngs_modulus(FLAGS_youngs_modulus)
       .set_dissipation(FLAGS_dissipation)
       .set_friction(FLAGS_us, FLAGS_ud);
-  plant->set_default_compliant_material(default_material);
+  plant_sim->set_default_compliant_material(default_material);
+  plant_model->set_default_compliant_material(default_material);
   drake::systems::CompliantContactModelParameters model_parameters;
   model_parameters.characteristic_radius = FLAGS_contact_radius;
   model_parameters.v_stiction_tolerance = FLAGS_v_tol;
-  plant->set_contact_model_parameters(model_parameters);
+  plant_sim->set_contact_model_parameters(model_parameters);
+  plant_model->set_contact_model_parameters(model_parameters);
 
 
   // Adding the visualizer to the diagram
   drake::systems::DrakeVisualizer& visualizer_publisher =
       *builder.template AddSystem<drake::systems::DrakeVisualizer>(
-          plant->get_rigid_body_tree(), &lcm);
+          plant_sim->get_rigid_body_tree(), &lcm);
   visualizer_publisher.set_name("visualizer_publisher");
   //builder.Connect(plant->state_output_port(),
                           //visualizer_publisher.get_input_port(0));
 
   auto debug_pass_through = builder.AddSystem<DebugPassThrough>(num_total_states, false);
-  builder.Connect(plant->state_output_port(), debug_pass_through->get_input_port(0));
+  builder.Connect(plant_sim->state_output_port(), debug_pass_through->get_input_port(0));
   builder.Connect(debug_pass_through->get_output_port(0), visualizer_publisher.get_input_port(0));
 
 
   VectorXd x0 = VectorXd::Zero(num_total_states);
-  std::map<std::string, int>  map = plant->get_rigid_body_tree().computePositionNameToIndexMap();
+  std::map<std::string, int>  map_sim = plant_sim->get_rigid_body_tree().computePositionNameToIndexMap();
+  std::map<std::string, int>  map_model = plant_model->get_rigid_body_tree().computePositionNameToIndexMap();
 
-  for(auto elem: map)
+  for(auto elem: map_sim)
   {
       cout << elem.first << " " << elem.second << endl;
   }
 
-  x0(map.at("base_x")) = 0.0;
-  x0(map.at("base_y")) = 0.0;
-  x0(map.at("base_z")) = 1.129;
+
+  x0(map_sim.at("base_x")) = 0.0;
+  x0(map_sim.at("base_y")) = 0.0;
+  x0(map_sim.at("base_z")) = 1.129;
 
   //x0(map.at("hip_roll_left")) = 0.15;
   //x0(map.at("hip_yaw_left")) = 0.2;
-  x0(map.at("hip_pitch_left")) = .269;
-  x0(map.at("hip_pitch_right")) = .269;
+  x0(map_sim.at("hip_pitch_left")) = .269;
+  x0(map_sim.at("hip_pitch_right")) = .269;
   // x0(map.at("achilles_hip_pitch_left")) = -.44;
   // x0(map.at("achilles_hip_pitch_right")) = -.44;
   // x0(map.at("achilles_heel_pitch_left")) = -.105;
   // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  x0(map.at("knee_left")) = -.644;
-  x0(map.at("knee_right")) = -.644;
-  x0(map.at("ankle_joint_left")) = .792;
-  x0(map.at("ankle_joint_right")) = .792;
+  x0(map_sim.at("knee_left")) = -.644;
+  x0(map_sim.at("knee_right")) = -.644;
+  x0(map_sim.at("ankle_joint_left")) = .792;
+  x0(map_sim.at("ankle_joint_right")) = .792;
   
   // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
   // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
@@ -242,26 +263,22 @@ int do_main(int argc, char* argv[]) {
   // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
   // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
   
-  x0(map.at("toe_left")) = -80*M_PI/180.0;
-  x0(map.at("toe_right")) = -80*M_PI/180.0;
+  x0(map_sim.at("toe_left")) = -80*M_PI/180.0;
+  x0(map_sim.at("toe_right")) = -80*M_PI/180.0;
 
   std::vector<int> fixed_joints;
 
-  //fixed_joints.push_back(map.at("base_x"));
-  //fixed_joints.push_back(map.at("base_y"));
-  //fixed_joints.push_back(map.at("base_z"));
-  fixed_joints.push_back(map.at("base_roll"));
-  fixed_joints.push_back(map.at("base_pitch"));
-
-  fixed_joints.push_back(map.at("base_yaw"));
   //fixed_joints.push_back(map.at("hip_roll_left"));
   //fixed_joints.push_back(map.at("hip_yaw_left"));
-  fixed_joints.push_back(map.at("hip_pitch_left"));
-  fixed_joints.push_back(map.at("hip_pitch_right"));
-  fixed_joints.push_back(map.at("knee_left"));
-  fixed_joints.push_back(map.at("knee_right"));
-  fixed_joints.push_back(map.at("toe_left"));
-  fixed_joints.push_back(map.at("toe_right"));
+  fixed_joints.push_back(map_model.at("hip_pitch_left"));
+  fixed_joints.push_back(map_model.at("hip_pitch_right"));
+  fixed_joints.push_back(map_model.at("knee_left"));
+  fixed_joints.push_back(map_model.at("knee_right"));
+  fixed_joints.push_back(map_model.at("toe_left"));
+  fixed_joints.push_back(map_model.at("toe_right"));
+
+
+  cout << "Works till here" << endl;
   
   VectorXd x_start = x0;
   
@@ -273,21 +290,16 @@ int do_main(int argc, char* argv[]) {
   //cout << k_cache_element.transform_to_world << endl;
 
 
-  VectorXd q_start = SolveTreeConstraints(plant->get_rigid_body_tree(), x_start.head(num_total_positions), fixed_joints);
-  x_start.head(num_total_positions) = q_start;
-
-  //VectorXd q0 = SolveTreeConstraints(plant->get_rigid_body_tree(), x0.head(num_total_positions), fixed_joints);
+  VectorXd q_start = SolveTreeConstraints(plant_model->get_rigid_body_tree(), x_start.segment(6, num_positions), fixed_joints);
+  x_start.segment(6, num_positions) = q_start;
 
   cout << "x_start: " << x_start.transpose() << endl;
-  //cout << "q0: " << q0.transpose() << endl;
 
-  //x0.head(num_positions) = q0;
-
-  //VectorXd x_init = x0;
-  //cout << "xinit: " << x_init.transpose() << endl;
-  //VectorXd q_init = x0.head(num_total_positions);
-  //VectorXd v_init = x0.tail(num_total_velocities);
-  //VectorXd u_init = VectorXd::Zero(num_efforts);
+  VectorXd x_init = ExtractFixedStateFromFloat(x_start, num_total_positions, num_total_velocities, 6, 6);
+  cout << "x_init: " << x_init.transpose() << endl;
+  VectorXd q_init = x_start.head(num_total_positions);
+  VectorXd v_init = x_start.tail(num_total_velocities);
+  VectorXd u_init = VectorXd::Zero(num_efforts);
   
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(num_states - 2*num_constraints, num_states - 2*num_constraints);
@@ -299,7 +311,10 @@ int do_main(int argc, char* argv[]) {
   Q.block(num_states/2 - num_constraints, num_states/2 - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
 
-  //vector<VectorXd> sol_tpfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_init);
+  //vector<VectorXd> sol_tpfp = SolveTreeAndFixedPointConstraints(plant_model, x_init, u_init);
+  vector<VectorXd> sol_fpa = SolveFixedPointConstraintsApproximate(plant_model.get(), x_init, u_init);
+  VectorXd u_sol = sol_fpa.at(0);
+  cout << u_sol.transpose() << endl;
 
   //cout << "Solved Tree Position and Fixed Point constraints" << endl;
 
@@ -352,7 +367,7 @@ int do_main(int argc, char* argv[]) {
   auto diagram = builder.Build();
 
   drake::systems::Simulator<double> simulator(*diagram);
-  drake::systems::Context<double>& context = diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
+  drake::systems::Context<double>& context = diagram->GetMutableSubsystemContext(*plant_sim, &simulator.get_mutable_context());
   
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
   state.SetFromVector(x_start);

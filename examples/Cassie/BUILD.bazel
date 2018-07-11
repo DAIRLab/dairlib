@@ -25,12 +25,6 @@ load(
     "drake_py_unittest",
 )
 
-py_test(
-    name = "test_cassie_utils",
-    srcs = ["test_cassie_utils.py"],
-    deps = [":cassie_utils_py"],
-    data = glob(["urdf/**"]),
-
 cc_library(
   name = "cassie_utils",
   srcs = ["cassie_utils.cc"],
@@ -39,19 +33,14 @@ cc_library(
           "@drake//solvers:constraint",
           "@drake//multibody:rigid_body_tree",
           "@drake//manipulation/util",
-          "//common"]
+          "//common"],
+  data = glob(["urdf/**"])
 )
 
-#py_test(
-#    name = "test_trajectory_sim",
-#    srcs = ["test_trajectory_sim.py"],
-#    deps = [":run_trajectory_sim_py"],
-#)
-
 cc_library(
-    name = "run_trajectory_sim",
-    srcs = ["run_trajectory_sim.cc"],
-    hdrs = ["run_trajectory_sim.h"],
+    name = "cassie_sysid_utils",
+    srcs = ["cassie_sysid_utils.cc"],
+    hdrs = ["cassie_sysid_utils.h"],
     deps = [
         "@drake//multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
@@ -81,84 +70,47 @@ cc_library(
 	hdrs = [":silent_interface.h"]
 )
 
-<<<<<<< HEAD
-pybind_py_library(
-    name = "run_trajectory_sim_py",
-    cc_so_name = "run_trajectory_sim",
-    cc_srcs = ["run_trajectory_sim_py.cc"],
-    cc_deps = [":run_trajectory_sim",               
-               "@drake//bindings/pydrake/systems:systems_pybind",
-               "@drake//bindings/pydrake/util:cpp_template_pybind",
-               ],
-    py_imports = ["."],
+cc_library(
+	name = "dispatcher",
+	hdrs = [":dispatcher.h"],
+	deps = [":polling_interface"]
 )
 
-pybind_py_library(
-    name = "cassie_utils_py",
-    cc_so_name = "cassie_utils",
-    cc_srcs = ["cassie_utils_py.cc"],
-    cc_deps = [":cassie_utils",
-               "@drake//bindings/pydrake/systems:systems_pybind",
-               "@drake//bindings/pydrake/util:cpp_template_pybind",
-               ],
-    py_imports = ["."],
+cc_library(
+	name = "cassie_robot_dispatch_interface",
+	hdrs = [":cassie_robot_dispatch_interface.h"],
+	srcs = ["cassie_robot_dispatch_interface.cc"],
+	deps = [
+	        ":polling_interface",
+	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
 )
 
-#cc_library(
-#	name = "dispatcher",
-#	hdrs = [":dispatcher.h"],
-#	deps = [":polling_interface"]
-#)
+cc_library(
+	name = "cassie_lcm_dispatch_interface",
+	hdrs = [":cassie_lcm_dispatch_interface.h"],
+	srcs = ["cassie_lcm_dispatch_interface.cc"],
+	deps = [
+	        ":polling_interface",
+	        "//examples/Cassie/datatypes:cassie_dispatch_types",
+	        "@lcm",
+	        "@drake//systems/lcm:lcm",
+	        "@drake//systems/framework:value",
+	        "@drake//lcmtypes:drake_signal",
+	        ]
+)
 
-#cc_library(
-#	name = "cassie_robot_dispatch_interface",
-#	hdrs = [":cassie_robot_dispatch_interface.h"],
-#	srcs = ["cassie_robot_dispatch_interface.cc"],
-#	deps = [
-#	        ":polling_interface",
-#	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
-#)
+cc_library(
+	name = "cassie_dispatcher",
+	hdrs = [":cassie_dispatcher.h"],
+	srcs = ["cassie_dispatcher.cc"],
+	deps = [
+	        ":polling_interface",
+	        ":dispatcher",
+	        "//examples/Cassie/datatypes:cassie_names",
+	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
+)
 
-#cc_library(
-#	name = "cassie_lcm_dispatch_interface",
-#	hdrs = [":cassie_lcm_dispatch_interface.h"],
-#	srcs = ["cassie_lcm_dispatch_interface.cc"],
-#	deps = [
-#	        ":polling_interface",
-#	        "//examples/Cassie/datatypes:cassie_dispatch_types",
-#	        "@lcm",
-#	        "@drake//systems/lcm:lcm",
-#	        "@drake//systems/framework:value",
-#	        "@drake//lcmtypes:drake_signal",
-#	        ]
-#)
 
-#cc_library(
-#	name = "cassie_dispatcher",
-#	hdrs = [":cassie_dispatcher.h"],
-#	srcs = ["cassie_dispatcher.cc"],
-#	deps = [
-#	        ":polling_interface",
-#	        ":dispatcher",
-#	        "//examples/Cassie/datatypes:cassie_names",
-#	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
-#)
-
-#cc_binary(
-#	name = "run_cassie_dispatch",
-#	srcs = ["run_cassie_dispatch.cc"],
-#	deps = [
-#	        ":cassie_dispatcher",
-#	        ":cassie_robot_dispatch_interface",
-#	        ":cassie_lcm_dispatch_interface",
-#	        ":silent_interface",
-#	        "//examples/Cassie/datatypes:cassie_dispatch_types",
-#	        "//examples/Cassie/datatypes:cassie_networking",
-#	        "//examples/Cassie/datatypes:cassie_names",
-#	        "@drake//systems/lcm:lcm"
-#	        ]
-#)
-=======
 cc_library(
 	name = "cassie_udp_spoofer",
 	hdrs = [":cassie_udp_spoofer.h"],
@@ -206,9 +158,6 @@ cc_binary(
     ],
 )
 
-
-
-
 cc_binary(
 	name = "run_cassie_dispatch",
 	srcs = ["run_cassie_dispatch.cc"],
@@ -223,8 +172,6 @@ cc_binary(
 	        "@drake//systems/lcm:lcm"
 	        ]
 )
-
->>>>>>> da6c1b67181016869921efcfa98e6aee78b5c4f4
 
 cc_binary(
 	name = "run_udp_dummy_server",

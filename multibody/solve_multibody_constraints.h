@@ -22,6 +22,7 @@ using drake::MatrixX;
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::math::autoDiffToValueMatrix;
+using drake::math::autoDiffToGradientMatrix;
 using drake::math::initializeAutoDiff;
 using drake::systems::RigidBodyPlant;
 using drake::systems::Context;

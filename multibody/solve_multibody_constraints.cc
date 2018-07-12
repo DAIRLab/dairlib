@@ -137,13 +137,22 @@ vector<VectorXd> SolveFixedPointConstraintsApproximate(RigidBodyPlant<double>* p
   prog.Solve();
 
   VectorXd u_sol = prog.GetSolution(u);
+  VectorXd x_dot_sol = prog.GetSolution(x_dot);
+  VectorXd x_dot_computed = constraint->CalcXDot(u_sol);
 
   DRAKE_DEMAND(u_sol.size() == u_init.size());
+  DRAKE_DEMAND(x_dot_sol.size() == x0.size());
 
   for(int i=0; i<u_sol.size(); i++)
   {
     DRAKE_DEMAND(!isnan(u_sol(i)) && !isinf(u_sol(i)));
   }
+  for(int i=0; i<x_dot_sol.size(); i++)
+  {
+    DRAKE_DEMAND(!isnan(x_dot_sol(i)) && !isinf(x_dot_sol(i)));
+    DRAKE_DEMAND(x_dot_sol(i) == x_dot_computed(i));
+  }
+
 
   vector<VectorXd> sol;
   sol.push_back(u_sol);
@@ -398,7 +407,14 @@ void FixedPointConstraintApproximate::DoEval(const Eigen::Ref<const AutoDiffVecX
       BasicVector<AutoDiffXd>(x0_).Clone(), num_positions, num_velocities, 0);
   plant_autodiff_->CalcTimeDerivatives(*context_autodiff, &cstate_output_autodiff);
 
-  *y = cstate_output_autodiff.CopyToVector() - x_dot;
+  AutoDiffVecXd x_dot_computed = cstate_output_autodiff.CopyToVector();
+
+  *y = x_dot - x_dot_computed;
+  //*y = x_dot_computed - x_dot;
+  MatrixXd g = autoDiffToGradientMatrix(*y);
+  //std::cout << g.rows() << " " << g.cols() << std::endl;
+  //std::cout << autoDiffToGradientMatrix(*y) << std::endl;
+  //std::cout << "---------------------------------------" << std::endl;
 
 
 }

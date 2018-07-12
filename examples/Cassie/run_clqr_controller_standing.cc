@@ -147,6 +147,18 @@ VectorXd ExtractFixedStateFromFloat(VectorXd x_float, int num_positions_float, i
   return x_fixed;
 }
 
+VectorXd ComputeUAnalytical(const RigidBodyTree<double>& tree, VectorXd x) {
+
+  MatrixXd B = tree.B;
+  auto k_cache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
+  const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
+  VectorXd C = tree.dynamicsBiasTerm(k_cache, no_external_wrenches, true);
+  VectorXd u = B.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(C);
+
+  return u;
+
+}
+
 
 
 
@@ -311,10 +323,27 @@ int do_main(int argc, char* argv[]) {
   Q.block(num_states/2 - num_constraints, num_states/2 - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
 
+  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(plant_model.get(), x_init, ComputeUAnalytical(plant_model->get_rigid_body_tree(), x_init));
+  VectorXd q_sol = sol_tfp.at(0);
+  VectorXd v_sol = sol_tfp.at(1);
+  VectorXd u_sol = sol_tfp.at(2);
+  VectorXd x_sol(num_states);
+  x_sol << q_sol, v_sol;
+
+  //x_start.segment(6, num_positions
+
+  cout << "x_sol: " << x_sol.transpose() << endl;
+  cout << "x_sol2: " << sol_tfp2.at(0).transpose() << " " << sol_tfp2.at(1).transpose() << endl;
+
+  x_start.segment(6, num_positions) = q_sol;
+  x_start.segment(num_total_positions + 6, num_velocities) = v_sol;
+
+  //VectorXd u_a = ComputeUAnalytical(plant_model->get_rigid_body_tree(), sol_fp.at(0));
+
   //vector<VectorXd> sol_tpfp = SolveTreeAndFixedPointConstraints(plant_model, x_init, u_init);
-  vector<VectorXd> sol_fpa = SolveFixedPointConstraintsApproximate(plant_model.get(), x_init, u_init);
-  VectorXd u_sol = sol_fpa.at(0);
-  cout << u_sol.transpose() << endl;
+  //vector<VectorXd> sol_fpa = SolveFixedPointConstraintsApproximate(plant_model.get(), x_init, u_init);
+  //VectorXd u_sol = sol_fpa.at(0);
+  //cout << u_sol.transpose() << endl;
 
   //cout << "Solved Tree Position and Fixed Point constraints" << endl;
 

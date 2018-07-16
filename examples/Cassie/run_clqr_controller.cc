@@ -105,6 +105,18 @@ class InfoConnector: public LeafSystem<double>
 
 };
 
+VectorXd ComputeUAnalytical(const RigidBodyTree<double>& tree, VectorXd x) {
+
+  MatrixXd B = tree.B;
+  auto k_cache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
+  const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
+  VectorXd C = tree.dynamicsBiasTerm(k_cache, no_external_wrenches, true);
+  VectorXd u = B.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(C);
+
+  return u;
+
+}
+
 
 int do_main(int argc, char* argv[]) { 
 
@@ -155,7 +167,7 @@ int do_main(int argc, char* argv[]) {
       cout << elem.first << " " << elem.second << endl;
   }
 
-  //x0(map.at("hip_roll_left")) = 0.15;
+  x0(map.at("hip_roll_left")) = 0.15;
   //x0(map.at("hip_yaw_left")) = 0.2;
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
@@ -192,7 +204,6 @@ int do_main(int argc, char* argv[]) {
 
   VectorXd q0 = SolveTreeConstraints(
           plant->get_rigid_body_tree(), x0.head(num_positions), fixed_joints);
-  cout << "Is TP satisfied: " << CheckTreeConstraints(plant->get_rigid_body_tree(), q0) << endl;
 
   cout << "x_start: " << x_start.transpose() << endl;
   cout << "q0: " << q0.transpose() << endl;
@@ -218,17 +229,38 @@ int do_main(int argc, char* argv[]) {
   Q.block(num_states/2 - num_constraints, num_states/2 - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
 
-  vector<VectorXd> sol_tpfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_init);
+  VectorXd xw = x0;
+  xw(map.at("hip_roll_left")) = 0;
+
+
+  vector<VectorXd> sol_tfp0 = SolveTreeAndFixedPointConstraints(plant, xw, u_init);
+  cout << "Start solved" << endl;
+
+
+  const int resolution = 1000;
+
+  //for(int i=0;i<resolution;i++)
+  //{
+  //  int k = (i+0.0)/(resolution-1);
+  //  VectorXd x_curr = (1-k)*xw + k*x_init;
+  //  VectorXd tmp_q = SolveTreeConstraints(
+  //      plant->get_rigid_body_tree(), x_curr.head(num_positions));
+  //  x_curr.head(num_positions) = tmp_q;
+  //  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(plant, x_curr, u_init);
+  //  cout << "Solved " << i << endl;
+  //  u_init = sol_tfp.at(2);
+  //}
+
+  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_init);
 
   cout << "Solved Tree Position and Fixed Point constraints" << endl;
 
-  VectorXd q_sol = sol_tpfp.at(0);
-  VectorXd v_sol = sol_tpfp.at(1);
-  VectorXd u_sol = sol_tpfp.at(2);
+  VectorXd q_sol = sol_tfp.at(0);
+  VectorXd v_sol = sol_tfp.at(1);
+  VectorXd u_sol = sol_tfp.at(2);
   VectorXd x_sol(num_states);
   x_sol << q_sol, v_sol;
 
-  cout << "Is TP and FP satisfied : " << CheckTreeAndFixedPointConstraints(plant, x_sol, u_sol) << endl;
 
   //Building the controller
   auto clqr_controller = builder.AddSystem<systems::ClqrController>(

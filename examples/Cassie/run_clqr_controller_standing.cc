@@ -170,6 +170,7 @@ int do_main(int argc, char* argv[]) {
   std::unique_ptr<RigidBodyTree<double>> tree_sim = makeFloatingBaseCassieTreePointer();
   std::unique_ptr<RigidBodyTree<double>> tree_model = makeFixedBaseCassieTreePointer();
 
+
   //const double toe_contact_distance = 0.2;
   //VectorXd toe_left_ground = VectorXd::Zero(3);
   //VectorXd toe_right_ground = VectorXd::Zero(3);
@@ -309,19 +310,9 @@ int do_main(int argc, char* argv[]) {
 
   VectorXd x_init = ExtractFixedStateFromFloat(x_start, num_total_positions, num_total_velocities, 6, 6);
   cout << "x_init: " << x_init.transpose() << endl;
-  VectorXd q_init = x_start.head(num_total_positions);
-  VectorXd v_init = x_start.tail(num_total_velocities);
   VectorXd u_init = VectorXd::Zero(num_efforts);
   
-  //Parameter matrices for LQR
-  MatrixXd Q = MatrixXd::Identity(num_states - 2*num_constraints, num_states - 2*num_constraints);
-  //Q corresponding to the positions
-  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_constraints, num_states/2 - num_constraints)*1000.0;
-  //Q corresponding to the velocities
-  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_constraints, num_states/2 - num_constraints)*10.0;
-  Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
-  Q.block(num_states/2 - num_constraints, num_states/2 - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
+
 
   vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(plant_model.get(), x_init, ComputeUAnalytical(plant_model->get_rigid_body_tree(), x_init));
   VectorXd q_sol = sol_tfp.at(0);
@@ -333,30 +324,83 @@ int do_main(int argc, char* argv[]) {
   //x_start.segment(6, num_positions
 
   cout << "x_sol: " << x_sol.transpose() << endl;
-  cout << "x_sol2: " << sol_tfp2.at(0).transpose() << " " << sol_tfp2.at(1).transpose() << endl;
 
   x_start.segment(6, num_positions) = q_sol;
   x_start.segment(num_total_positions + 6, num_velocities) = v_sol;
 
-  //VectorXd u_a = ComputeUAnalytical(plant_model->get_rigid_body_tree(), sol_fp.at(0));
 
-  //vector<VectorXd> sol_tpfp = SolveTreeAndFixedPointConstraints(plant_model, x_init, u_init);
-  //vector<VectorXd> sol_fpa = SolveFixedPointConstraintsApproximate(plant_model.get(), x_init, u_init);
-  //VectorXd u_sol = sol_fpa.at(0);
-  //cout << u_sol.transpose() << endl;
+  std::unique_ptr<RigidBodyTree<double>> tree_utility_fixed = makeFixedBaseCassieTreePointer();
+  std::unique_ptr<RigidBodyTree<double>> tree_utility_float = makeFloatingBaseCassieTreePointer();
+  drake::multibody::AddFlatTerrainToWorld(tree_utility_fixed.get(), terrain_size, terrain_depth);
+  drake::multibody::AddFlatTerrainToWorld(tree_utility_float.get(), terrain_size, terrain_depth);
+  
+  VectorXd phi_collision;
+  Matrix3Xd normal_collision, xA_collision, xB_collision;
+  vector<int> idxA_collision, idxB_collision;
+  KinematicsCache<double> k_cache = tree_utility_float->doKinematics(
+      x_start.head(num_total_positions), x_start.tail(num_total_velocities));
+  cout << tree_utility_float->collisionDetect(
+      k_cache, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision) << endl;
 
-  //cout << "Solved Tree Position and Fixed Point constraints" << endl;
+  for(auto id: idxA_collision) {
+    cout << id << " ";
+  }
+  cout << endl;
+  for(auto id: idxB_collision) {
+    cout << id << " ";
+  }
+  cout << endl;
+  cout << phi_collision.transpose() << endl;
 
-  //VectorXd q_sol = sol_tpfp.at(0);
-  //VectorXd v_sol = sol_tpfp.at(1);
-  //VectorXd u_sol = sol_tpfp.at(2);
-  //VectorXd x_sol(num_states);
-  //x_sol << q_sol, v_sol;
+  cout << "----------------------------------------------------------------------------------------" << endl;
+  cout << "----------------------------------------------------------------------------------------" << endl;
+
+  KinematicsCache<double> k_cache_fixed = tree_utility_fixed->doKinematics(
+      x_sol.head(num_positions), x_sol.tail(num_velocities));
+
+
+  KinematicsCache<double> k_cache_float = tree_utility_float->doKinematics(
+      x_start.head(num_total_positions), x_start.tail(num_total_velocities));
+
+
+  int num_collision_pts = xA_collision.cols();
+  MatrixXd J_collision = MatrixXd::Zero(num_collision_pts, tree_utility_float->get_num_positions());
+
+  for(int i=0; i<num_collision_pts; i++) {
+
+    MatrixXd JA = tree_utility_float->transformPointsJacobian(
+        k_cache_float, xA_collision.col(i), idxA_collision.at(i), 0, true);
+    MatrixXd JB = tree_utility_float->transformPointsJacobian(
+        k_cache_float, xB_collision.col(i), idxB_collision.at(i), 0, true);
+    J_collision.row(i) = normal_collision.col(i).transpose()*(JA - JB);
+  }
+
+
+  cout << "----------------------------------------------------------------------------------------" << endl;
+  cout << "----------------------------------------------------------------------------------------" << endl;
+
+  cout << J_collision << endl;
+  J_collision = J_collision.block(0, 6, J_collision.rows(), J_collision.cols() - 6);
+  cout << "----------------------------------------------------------------------------------------" << endl;
+  cout << J_collision << endl;
+
+  //Parameter matrices for LQR
+  MatrixXd Q = MatrixXd::Identity(num_states - 2*num_constraints, num_states - 2*num_constraints);
+  //Q corresponding to the positions
+  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_constraints, num_states/2 - num_constraints)*1000.0;
+  //Q corresponding to the velocities
+  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_constraints, num_states/2 - num_constraints)*10.0;
+  Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
+  Q.block(num_states/2 - num_constraints, num_states/2 - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
+  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
+
+
+
 
 
 
   //Building the controller
-  //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant, x_sol, u_sol, NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS, Q, R);
+  auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant_model.get(), x_sol, u_sol, J_collision, num_positions, num_velocities, num_efforts, Q, R);
   //VectorXd K_vec = clqr_controller->GetKVec();
   //VectorXd C = u_sol; 
   //VectorXd x_desired = x_sol;

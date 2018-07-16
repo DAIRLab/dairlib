@@ -6,6 +6,7 @@ namespace systems{
 ClqrController::ClqrController(RigidBodyPlant<double>* plant,
                                VectorXd x0,
                                VectorXd u0,
+                               MatrixXd J_collision,
                                int num_positions,
                                int num_velocities,
                                int num_efforts,
@@ -13,7 +14,8 @@ ClqrController::ClqrController(RigidBodyPlant<double>* plant,
                                MatrixXd R):
   AffineController(num_positions, num_velocities, num_efforts),
   tree_(plant->get_rigid_body_tree()), plant_(plant), x0_(x0),
-  u0_(u0), num_positions_(num_positions), num_velocities_(num_velocities),
+  u0_(u0), J_collision_(J_collision), num_positions_(num_positions),
+  num_velocities_(num_velocities),
   num_states_(num_positions + num_velocities),
   num_efforts_(num_efforts), Q_(Q), R_(R)
 {
@@ -23,21 +25,22 @@ ClqrController::ClqrController(RigidBodyPlant<double>* plant,
 
 MatrixXd ClqrController::computeF() {
     
-  KinematicsCache<double> kcache_0 = tree_.doKinematics(
+  KinematicsCache<double> k_cache = tree_.doKinematics(
       x0_.head(num_positions_), x0_.tail(num_velocities_));
 
   //Computing the constraint jacobian
-  MatrixXd c_jac = tree_.positionConstraintsJacobian(kcache_0);
+  MatrixXd J_constraint = tree_.positionConstraintsJacobian(k_cache);
 
-  const int r = c_jac.rows();
-  const int c = c_jac.cols();
+
+  const int r = J_constraint.rows();
+  const int c = J_constraint.cols();
 
   // j_dot is zero for the time invariant case
   MatrixXd F =  MatrixXd::Zero(2*r, 2*c);
 
   //Computing F by populating with J
-  F.block(0, 0, r, c) = c_jac;
-  F.block(r, c, r, c) = c_jac;
+  F.block(0, 0, r, c) = J_constraint;
+  F.block(r, c, r, c) = J_constraint;
 
   return F;
 

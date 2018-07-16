@@ -13,9 +13,12 @@
 
 #include "systems/controllers/affine_controller.h"
 
+using std::vector;
 using Eigen::VectorXd;
+using Eigen::VectorXi;
 using Eigen::Matrix;
 using Eigen::MatrixXd;
+using Eigen::Matrix3Xd;
 using Eigen::Dynamic;
 using Eigen::HouseholderQR;
 using drake::VectorX;
@@ -41,6 +44,7 @@ class ClqrController : public AffineController {
     ClqrController(RigidBodyPlant<double>* plant,
                    VectorXd x0,
                    VectorXd u0,
+                   MatrixXd J_collision,
                    int num_positions,
                    int num_velocities,
                    int num_efforts,
@@ -66,6 +70,7 @@ class ClqrController : public AffineController {
     RigidBodyPlant<double>* plant_;
     VectorXd x0_;
     VectorXd u0_;
+    MatrixXd J_collision_;
     int num_positions_;
     int num_velocities_;
     int num_states_;

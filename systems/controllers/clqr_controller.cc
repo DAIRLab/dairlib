@@ -21,6 +21,7 @@ ClqrController::ClqrController(RigidBodyPlant<double>* plant,
 {
   F_ = computeF();
   K_ = computeK();
+  
 }
 
 MatrixXd ClqrController::computeF() {
@@ -31,16 +32,23 @@ MatrixXd ClqrController::computeF() {
   //Computing the constraint jacobian
   MatrixXd J_constraint = tree_.positionConstraintsJacobian(k_cache);
 
+  std::cout << J_collision_ << std::endl;
 
-  const int r = J_constraint.rows();
-  const int c = J_constraint.cols();
+  MatrixXd J(J_constraint.rows() + J_collision_.rows(), J_constraint.cols());
+  J << J_constraint, 
+       J_collision_;
+
+
+  const int r = J.rows();
+  const int c = J.cols();
 
   // j_dot is zero for the time invariant case
   MatrixXd F =  MatrixXd::Zero(2*r, 2*c);
 
   //Computing F by populating with J
-  F.block(0, 0, r, c) = J_constraint;
-  F.block(r, c, r, c) = J_constraint;
+  F.block(0, 0, r, c) = J;
+  F.block(r, c, r, c) = J;
+
 
   return F;
 

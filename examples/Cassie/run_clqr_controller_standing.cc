@@ -81,27 +81,60 @@ class InfoConnector: public LeafSystem<double> {
   public:
 
     InfoConnector(int num_positions, int num_velocities, int num_efforts):
-      num_states_(num_positions + num_velocities), num_efforts_(num_efforts)
-    {
+      num_states_(num_positions + num_velocities), num_efforts_(num_efforts) {
+
       this->DeclareVectorInputPort(BasicVector<double>(
             num_positions + num_velocities + num_efforts + 3 + 1));
       this->DeclareVectorOutputPort(OutputVector<double>(
             num_positions, num_velocities, num_efforts), &dairlib::InfoConnector::CopyOut);
     }
 
+  private:
+
     const int num_states_;
     const int num_efforts_;
 
-  private:
+    void CopyOut(const Context<double>& context, OutputVector<double>* output) const {
 
-    void CopyOut(const Context<double>& context, OutputVector<double>* output) const
-    {
       const auto info = this->EvalVectorInput(context, 0);
       const VectorX<double> info_vec = info->get_value();
       output->SetState(info_vec.head(num_states_));
       output->set_timestamp(0);
     }
 
+};
+
+//Class to serve as a selective pass through to convert the floating base states to the fixed base states needed by the controller
+class FloatToFixedConnector: public LeafSystem<double> {
+
+  public:
+    FloatToFixedConnector(int num_positions, int num_velocities, int num_efforts, int num_extra):
+      num_positions_(num_positions), num_velocities_(num_velocities), num_efforts_(num_efforts), num_extra_(num_extra) {
+
+    this->DeclareVectorInputPort(BasicVector<double>(num_positions_ + num_velocities_ + num_efforts_ + 3 + 1));
+    this->DeclareVectorOutputPort(BasicVector<double>(num_positions_ + num_velocities_ + num_efforts_ + 3 + 1 - 2*num_extra_), &dairlib::FloatToFixedConnector::CopyOut);
+  }
+
+
+  private:
+    
+    int num_positions_;
+    int num_velocities_;
+    int num_efforts_;
+    int num_extra_;
+
+    void CopyOut(const Context<double>& context, BasicVector<double>* output) const {
+
+      const auto input = this->EvalVectorInput(context, 0);
+      const VectorX<double> input_vector = input->get_value();
+      VectorX<double> output_vector(input_vector.size() - 2*num_extra_);
+      output_vector << input_vector.segment(num_extra_, num_positions_ - num_extra_),
+        input_vector.segment(num_positions_ + num_extra_, num_velocities_ - num_extra_),
+        input_vector.segment(num_positions_ + num_velocities_, num_efforts_ + 3 + 1);
+
+      output->SetFromVector(output_vector);
+
+    }
 };
 
 //Class to serve as a pass through port that just prints the value of the input port. Useful for debugging
@@ -290,9 +323,6 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map_model.at("toe_left"));
   fixed_joints.push_back(map_model.at("toe_right"));
 
-
-  cout << "Works till here" << endl;
-  
   VectorXd x_start = x0;
   
   //const RigidBodyTree<double>& tree_p = plant->get_rigid_body_tree();
@@ -328,6 +358,8 @@ int do_main(int argc, char* argv[]) {
   x_start.segment(6, num_positions) = q_sol;
   x_start.segment(num_total_positions + 6, num_velocities) = v_sol;
 
+  cout << "x_start: " << x_start.transpose() << endl;
+
 
   std::unique_ptr<RigidBodyTree<double>> tree_utility_fixed = makeFixedBaseCassieTreePointer();
   std::unique_ptr<RigidBodyTree<double>> tree_utility_float = makeFloatingBaseCassieTreePointer();
@@ -352,90 +384,89 @@ int do_main(int argc, char* argv[]) {
   cout << endl;
   cout << phi_collision.transpose() << endl;
 
-  cout << "----------------------------------------------------------------------------------------" << endl;
-  cout << "----------------------------------------------------------------------------------------" << endl;
-
   KinematicsCache<double> k_cache_fixed = tree_utility_fixed->doKinematics(
       x_sol.head(num_positions), x_sol.tail(num_velocities));
-
 
   KinematicsCache<double> k_cache_float = tree_utility_float->doKinematics(
       x_start.head(num_total_positions), x_start.tail(num_total_velocities));
 
+  vector<int> selected_collision{0, 1, 2, 3};
+  int num_collision_points = selected_collision.size();
 
-  int num_collision_pts = xA_collision.cols();
-  MatrixXd J_collision = MatrixXd::Zero(num_collision_pts, tree_utility_float->get_num_positions());
+  //int num_collision_pts = xA_collision.cols();
+  //MatrixXd J_collision = MatrixXd::Zero(num_collision_points, tree_utility_float->get_num_positions());
 
-  for(int i=0; i<num_collision_pts; i++) {
+  //for(auto i: selected_collision) {
 
-    MatrixXd JA = tree_utility_float->transformPointsJacobian(
-        k_cache_float, xA_collision.col(i), idxA_collision.at(i), 0, true);
-    MatrixXd JB = tree_utility_float->transformPointsJacobian(
-        k_cache_float, xB_collision.col(i), idxB_collision.at(i), 0, true);
-    J_collision.row(i) = normal_collision.col(i).transpose()*(JA - JB);
-  }
+  //  MatrixXd JA = tree_utility_float->transformPointsJacobian(
+  //      k_cache_float, xA_collision.col(i), idxA_collision.at(i), 0, true);
+  //  MatrixXd JB = tree_utility_float->transformPointsJacobian(
+  //      k_cache_float, xB_collision.col(i), idxB_collision.at(i), 0, true);
+  //  J_collision.row(i) = normal_collision.col(i).transpose()*(JA - JB);
+  //}
 
+  MatrixXd J_collision(6, tree_utility_float->get_num_positions());
+  J_collision << tree_utility_float->transformPointsJacobian(k_cache_float, xA_collision.col(1), idxA_collision.at(1), 0, true),
+                 //tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(1), idxB_collision.at(1), 0, true),
+                 tree_utility_float->transformPointsJacobian(k_cache_float, xA_collision.col(3), idxA_collision.at(3), 0, true); 
+                 //tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(3), idxB_collision.at(3), 0, true); 
 
-  cout << "----------------------------------------------------------------------------------------" << endl;
-  cout << "----------------------------------------------------------------------------------------" << endl;
-
-  cout << J_collision << endl;
   J_collision = J_collision.block(0, 6, J_collision.rows(), J_collision.cols() - 6);
-  cout << "----------------------------------------------------------------------------------------" << endl;
-  cout << J_collision << endl;
+
+  const int num_total_constraints = num_constraints + J_collision.rows();
 
   //Parameter matrices for LQR
-  MatrixXd Q = MatrixXd::Identity(num_states - 2*num_constraints, num_states - 2*num_constraints);
+  MatrixXd Q = MatrixXd::Identity(num_states - 2*num_total_constraints, num_states - 2*num_total_constraints);
   //Q corresponding to the positions
-  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_constraints, num_states/2 - num_constraints)*1000.0;
+  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*1000.0;
   //Q corresponding to the velocities
-  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_constraints, num_states/2 - num_constraints)*10.0;
+  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*10.0;
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
-  Q.block(num_states/2 - num_constraints, num_states/2 - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
-
-
-
-
+  Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
+  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*0.1;
 
 
   //Building the controller
   auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant_model.get(), x_sol, u_sol, J_collision, num_positions, num_velocities, num_efforts, Q, R);
-  //VectorXd K_vec = clqr_controller->GetKVec();
-  //VectorXd C = u_sol; 
-  //VectorXd x_desired = x_sol;
-  //cout << "K: " << K_vec.transpose() << endl;
-  //cout << "C: " << C.transpose() << endl;
-  //cout << "xdes: " << x_desired.transpose() << endl;
+  VectorXd K_vec = clqr_controller->GetKVec();
+  VectorXd C = u_sol; 
+  VectorXd x_desired = x_sol;
+  cout << "----------------------------------------------------------------------------------------" << endl;
+  cout << "K: " << K_vec.transpose() << endl;
+  cout << "C: " << C.transpose() << endl;
+  cout << "xdes: " << x_desired.transpose() << endl;
 
-  //vector<int> input_info_sizes{NUM_STATES, NUM_EFFORTS, 3, 1};
-  //vector<int> input_params_sizes{NUM_STATES*NUM_EFFORTS, NUM_EFFORTS, NUM_STATES, 1};
+  vector<int> input_info_sizes{num_total_states, num_efforts, 3, 1};
+  //vector<int> input_params_sizes{num_states*num_efforts, num_efforts, num_states, 1};
 
-  //auto info_connector = builder.AddSystem<InfoConnector>(NUM_POSITIONS, NUM_VELOCITIES, NUM_EFFORTS);
-  //auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
+  auto info_connector = builder.AddSystem<InfoConnector>(num_positions, num_velocities, num_efforts);
+  auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
 
-  //auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(NUM_EFFORTS));
-  //auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(3));
-  //auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(1));
+  auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(num_efforts));
+  auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(3));
+  auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(1));
 
-  //VectorXd params_vec(NUM_STATES*NUM_EFFORTS + NUM_EFFORTS + NUM_STATES);
-  //params_vec << K_vec, C, x_desired;
-  //AffineParams params(NUM_STATES, NUM_EFFORTS);
-  //params.SetDataVector(params_vec);
-  //auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
+  VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
+  params_vec << K_vec, C, x_desired;
+  AffineParams params(num_states, num_efforts);
+  params.SetDataVector(params_vec);
 
-  //auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
-  //        (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
+  auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
+  auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
+          (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
+  auto float_to_fixed_passthrough = builder.AddSystem<FloatToFixedConnector>(
+      num_total_positions, num_total_velocities, num_efforts, 6);
 
-  //builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
-  //builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
-  //builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
-  //builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
-  //builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
-  //builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
-  //builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
-  //builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
-  //builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
+  builder.Connect(plant_sim->state_output_port(), multiplexer_info->get_input_port(0));
+  builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
+  builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
+  builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
+  builder.Connect(multiplexer_info->get_output_port(0), float_to_fixed_passthrough->get_input_port(0));
+  builder.Connect(float_to_fixed_passthrough->get_output_port(0), info_connector->get_input_port(0));
+  builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
+  builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
+  builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
+  builder.Connect(control_output->get_output_port(), plant_sim->actuator_command_input_port()); 
 
   auto diagram = builder.Build();
 
@@ -445,8 +476,8 @@ int do_main(int argc, char* argv[]) {
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
   state.SetFromVector(x_start);
   
-  auto zero_input = Eigen::MatrixXd::Zero(num_efforts,1);
-  context.FixInputPort(0, zero_input);
+  //auto zero_input = Eigen::MatrixXd::Zero(num_efforts,1);
+  //context.FixInputPort(0, zero_input);
   
   //simulator.set_publish_every_time_step(false);
   //simulator.set_publish_at_initialization(false);

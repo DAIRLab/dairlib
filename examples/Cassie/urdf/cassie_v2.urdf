@@ -851,13 +851,13 @@
   <transmission name="toe_left_trans" type="transmission_interface/SimpleTransmission">
     <actuator name="toe_left_motor"/>
     <joint name="toe_left"/>
-    <mechanicalReduction>.02</mechanicalReduction>
+    <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 
   <transmission name="toe_right_trans" type="transmission_interface/SimpleTransmission">
     <actuator name="toe_right_motor"/>
     <joint name="toe_right"/>
-    <mechanicalReduction>.02</mechanicalReduction>
+    <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 
  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->

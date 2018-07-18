@@ -1,7 +1,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "common/find_resource.h"
 #include "drake/solvers/mathematical_program.h"
-#include "drake/multibody/joints/fixed_axis_one_dof_joint.h"
+#include "drake/multibody/joints/revolute_joint.h"
 
 namespace dairlib {
 using Eigen::VectorXd;
@@ -50,25 +50,30 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
                            achilles_length);
 
   // Add spring forces
-  FixedAxisOneDoFJoint<double>& knee_joint_left =
-      (FixedAxisOneDoFJoint<double>&)
-      tree.FindChildBodyOfJoint("knee_joint_left",0)->getJoint();
-  knee_joint_left.SetSpringDynamics(1500.0,0.0);
+  int body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_left");
+  auto body = tree.get_mutable_body(body_index);
+  RevoluteJoint& knee_joint_left = dynamic_cast<RevoluteJoint&>(
+        body->get_mutable_joint());
+  // stiffness is 2300 in URDF,these #s from gazebo
+  knee_joint_left.SetSpringDynamics(1500.0, 0.0);
 
-  FixedAxisOneDoFJoint<double>& knee_joint_right =
-      (FixedAxisOneDoFJoint<double>&)
-      tree.FindChildBodyOfJoint("knee_joint_right",0)->getJoint();
-  knee_joint_right.SetSpringDynamics(1500.0,0.0);
+  body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_right");
+  body = tree.get_mutable_body(body_index);
+  RevoluteJoint& knee_joint_right = dynamic_cast<RevoluteJoint&>(
+        body->get_mutable_joint());
+  knee_joint_right.SetSpringDynamics(1500.0, 0.0);  // 2300 in URDF
 
-  FixedAxisOneDoFJoint<double>& ankle_spring_joint_left =
-      (FixedAxisOneDoFJoint<double>&)
-      tree.FindChildBodyOfJoint("ankle_spring_joint_left",0)->getJoint();
-  ankle_spring_joint_left.SetSpringDynamics(1250.0,0.0);
+  body_index = tree.FindIndexOfChildBodyOfJoint("ankle_spring_joint_left");
+  body = tree.get_mutable_body(body_index);
+  RevoluteJoint& ankle_spring_joint_left = dynamic_cast<RevoluteJoint&>(
+        body->get_mutable_joint());
+  ankle_spring_joint_left.SetSpringDynamics(1250.0, 0.0);  // 2000 in URDF
 
-  FixedAxisOneDoFJoint<double>& ankle_spring_joint_right =
-      (FixedAxisOneDoFJoint<double>&)
-      tree.FindChildBodyOfJoint("ankle_spring_joint_right",0)->getJoint();
-  ankle_spring_joint_right.SetSpringDynamics(1250.0,0.0);
+  body_index = tree.FindIndexOfChildBodyOfJoint("ankle_spring_joint_right");
+  body = tree.get_mutable_body(body_index);
+  RevoluteJoint& ankle_spring_joint_right = dynamic_cast<RevoluteJoint&>(
+        body->get_mutable_joint());
+  ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
 }
 
 VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,

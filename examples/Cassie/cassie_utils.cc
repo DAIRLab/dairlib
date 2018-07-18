@@ -50,17 +50,25 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
                            achilles_length);
 
   // Add spring forces
-  FixedAxisOneDoFJoint<double>& knee_joint_left = (FixedAxisOneDoFJoint<double>&) tree.FindChildBodyOfJoint("knee_joint_left",0)->getJoint();
-  knee_joint_left.setSpringDynamics(1500.0,0.0);
+  FixedAxisOneDoFJoint<double>& knee_joint_left =
+      (FixedAxisOneDoFJoint<double>&)
+      tree.FindChildBodyOfJoint("knee_joint_left",0)->getJoint();
+  knee_joint_left.SetSpringDynamics(1500.0,0.0);
 
-  FixedAxisOneDoFJoint<double>& knee_joint_right = (FixedAxisOneDoFJoint<double>&) tree.FindChildBodyOfJoint("knee_joint_right",0)->getJoint();
-  knee_joint_right.setSpringDynamics(1500.0,0.0);
+  FixedAxisOneDoFJoint<double>& knee_joint_right =
+      (FixedAxisOneDoFJoint<double>&)
+      tree.FindChildBodyOfJoint("knee_joint_right",0)->getJoint();
+  knee_joint_right.SetSpringDynamics(1500.0,0.0);
 
-  FixedAxisOneDoFJoint<double>& ankle_spring_joint_left = (FixedAxisOneDoFJoint<double>&) tree.FindChildBodyOfJoint("ankle_spring_joint_left",0)->getJoint();
-  ankle_spring_joint_left.setSpringDynamics(1250.0,0.0);
+  FixedAxisOneDoFJoint<double>& ankle_spring_joint_left =
+      (FixedAxisOneDoFJoint<double>&)
+      tree.FindChildBodyOfJoint("ankle_spring_joint_left",0)->getJoint();
+  ankle_spring_joint_left.SetSpringDynamics(1250.0,0.0);
 
-  FixedAxisOneDoFJoint<double>& ankle_spring_joint_right = (FixedAxisOneDoFJoint<double>&) tree.FindChildBodyOfJoint("ankle_spring_joint_right",0)->getJoint();
-  ankle_spring_joint_right.setSpringDynamics(1250.0,0.0);
+  FixedAxisOneDoFJoint<double>& ankle_spring_joint_right =
+      (FixedAxisOneDoFJoint<double>&)
+      tree.FindChildBodyOfJoint("ankle_spring_joint_right",0)->getJoint();
+  ankle_spring_joint_right.SetSpringDynamics(1250.0,0.0);
 }
 
 VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,

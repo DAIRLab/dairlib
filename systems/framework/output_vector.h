@@ -1,6 +1,9 @@
 #pragma once
 
 #include "systems/framework/timestamped_vector.h"
+#include <string>
+#include <vector>
+
 
 namespace dairlib {
 namespace systems {

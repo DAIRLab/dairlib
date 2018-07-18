@@ -4,3 +4,4 @@ __pycache__/
 /cmake-build-debug/
 /bazel-*
 *.ipynb_checkpoints
+*.DS_Store*

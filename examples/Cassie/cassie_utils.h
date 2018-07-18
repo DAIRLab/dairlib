@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/solvers/constraint.h"
@@ -31,14 +34,16 @@ class TreePositionConstraint : public drake::solvers::Constraint {
   TreePositionConstraint(const RigidBodyTree<double>& tree,
                          const std::string& description = "");
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd& y) const override;
+              Eigen::VectorXd* y) const override;
 
   void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-              drake::AutoDiffVecXd& y) const override;
+              drake::AutoDiffVecXd* y) const override;
 
-  private:
+  void DoEval(const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& x,
+              drake::VectorX<drake::symbolic::Expression>* y) const override;
+
+ private:
     const RigidBodyTree<double>* tree_;
-
 };
 
-}
+}  // namespace dairlib

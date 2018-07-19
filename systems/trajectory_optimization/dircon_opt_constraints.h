@@ -68,12 +68,12 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
 
   const RigidBodyTree<double>* tree_;
   DirconKinematicDataSet<T>* constraints_;
-
-  const int num_positions_{0};
-  const int num_velocities_{0};
   const int num_states_{0};
   const int num_inputs_{0};
   const int num_kinematic_constraints_{0};
+  const int num_positions_{0};
+  const int num_velocities_{0};
+  
 };
 
 
@@ -121,11 +121,11 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
   const RigidBodyTree<double>* tree_;
   DirconKinematicDataSet<T>* constraints_;
 
-  const int num_positions_{0};
-  const int num_velocities_{0};
   const int num_states_{0};
   const int num_inputs_{0};
   const int num_kinematic_constraints_{0};
+  const int num_positions_{0};
+  const int num_velocities_{0};
   const DirconKinConstraintType type_{kAll};
   const std::vector<bool> is_constraint_relative_;
   const int n_relative_;
@@ -179,10 +179,10 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
   const RigidBodyTree<double>* tree_;
   DirconKinematicDataSet<T>* constraints_;
 
-  const int num_positions_{0};
-  const int num_velocities_{0};
   const int num_states_{0};
   const int num_kinematic_constraints_{0};
+  const int num_positions_{0};
+  const int num_velocities_{0};
 };
 }
 }

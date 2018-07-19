@@ -15,12 +15,12 @@ class LinearController : public LeafSystem<double> {
  public:
   LinearController(int num_positions, int num_velocities, int num_inputs);
 
-  const drake::systems::InputPortDescriptor<double>& get_input_port_config()
+  const drake::systems::InputPort<double>& get_input_port_config()
       const {
     return this->get_input_port(config_input_port_);
   }
 
-  const drake::systems::InputPortDescriptor<double>& get_input_port_output()
+  const drake::systems::InputPort<double>& get_input_port_output()
       const {
     return this->get_input_port(output_input_port_);
   }

@@ -50,9 +50,12 @@ cc_library(
         "@drake//common",
         "@drake//solvers",
         "@gflags",
+        "//systems/lcm:lcm_log_parser",
+        "//systems:robot_lcm_systems",
         ":cassie_urdf",
         ":cassie_utils",
     ],
+    data = [":test.log"]
 )
 
 cc_library(
@@ -251,6 +254,24 @@ cc_binary(
     name = "parse_log_test",
     srcs = ["test/parse_log_test.cc"],
     deps = [
+            "//systems:robot_lcm_systems",
+            ":cassie_urdf",
+            "@drake//systems/framework:diagram_builder",
+            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/analysis:simulator",
+            "@drake//lcm",
+            "@drake//multibody:rigid_body_tree",
+            "@drake//systems/primitives",
+            "//systems/lcm:lcm_log_parser",
+            ":cassie_utils"
+            ]
+)
+
+cc_binary(
+    name = "cassie_sysid_utils_test",
+    srcs = ["test/cassie_sysid_utils_test.cc"],
+    deps = [
+            ":cassie_sysid_utils",
             "//systems:robot_lcm_systems",
             ":cassie_urdf",
             "@drake//systems/framework:diagram_builder",

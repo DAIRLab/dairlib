@@ -30,6 +30,7 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+using Eigen::VectorXi;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix;
@@ -309,8 +310,8 @@ int do_main(int argc, char* argv[]) {
   // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
   // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
   
-  x0(map_sim.at("toe_left")) = -80*M_PI/180.0;
-  x0(map_sim.at("toe_right")) = -80*M_PI/180.0;
+  x0(map_sim.at("toe_left")) = -78*M_PI/180.0;
+  x0(map_sim.at("toe_right")) = -78*M_PI/180.0;
 
   std::vector<int> fixed_joints;
 
@@ -365,14 +366,19 @@ int do_main(int argc, char* argv[]) {
   std::unique_ptr<RigidBodyTree<double>> tree_utility_float = makeFloatingBaseCassieTreePointer();
   drake::multibody::AddFlatTerrainToWorld(tree_utility_fixed.get(), terrain_size, terrain_depth);
   drake::multibody::AddFlatTerrainToWorld(tree_utility_float.get(), terrain_size, terrain_depth);
+
+  KinematicsCache<double> k_cache_fixed = tree_utility_fixed->doKinematics(
+      x_sol.head(num_positions), x_sol.tail(num_velocities));
+
+  KinematicsCache<double> k_cache_float = tree_utility_float->doKinematics(
+      x_start.head(num_total_positions), x_start.tail(num_total_velocities));
+
   
   VectorXd phi_collision;
   Matrix3Xd normal_collision, xA_collision, xB_collision;
   vector<int> idxA_collision, idxB_collision;
-  KinematicsCache<double> k_cache = tree_utility_float->doKinematics(
-      x_start.head(num_total_positions), x_start.tail(num_total_velocities));
   cout << tree_utility_float->collisionDetect(
-      k_cache, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision) << endl;
+      k_cache_float, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision) << endl;
 
   for(auto id: idxA_collision) {
     cout << id << " ";
@@ -384,50 +390,54 @@ int do_main(int argc, char* argv[]) {
   cout << endl;
   cout << phi_collision.transpose() << endl;
 
-  KinematicsCache<double> k_cache_fixed = tree_utility_fixed->doKinematics(
-      x_sol.head(num_positions), x_sol.tail(num_velocities));
-
-  KinematicsCache<double> k_cache_float = tree_utility_float->doKinematics(
-      x_start.head(num_total_positions), x_start.tail(num_total_velocities));
-
   vector<int> selected_collision{0, 1, 2, 3};
   int num_collision_points = selected_collision.size();
 
-  //int num_collision_pts = xA_collision.cols();
-  //MatrixXd J_collision = MatrixXd::Zero(num_collision_points, tree_utility_float->get_num_positions());
 
-  //for(auto i: selected_collision) {
+  MatrixXd J_collision_float = MatrixXd::Zero(num_collision_points, tree_utility_float->get_num_positions());
+  MatrixXd J_collision_fixed = MatrixXd::Zero(num_collision_points, tree_utility_fixed->get_num_positions());
 
-  //  MatrixXd JA = tree_utility_float->transformPointsJacobian(
-  //      k_cache_float, xA_collision.col(i), idxA_collision.at(i), 0, true);
-  //  MatrixXd JB = tree_utility_float->transformPointsJacobian(
-  //      k_cache_float, xB_collision.col(i), idxB_collision.at(i), 0, true);
-  //  J_collision.row(i) = normal_collision.col(i).transpose()*(JA - JB);
-  //}
+  for(auto i: selected_collision) {
 
-  MatrixXd J_collision(6, tree_utility_float->get_num_positions());
-  J_collision << tree_utility_float->transformPointsJacobian(k_cache_float, xA_collision.col(1), idxA_collision.at(1), 0, true),
-                 //tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(1), idxB_collision.at(1), 0, true),
-                 tree_utility_float->transformPointsJacobian(k_cache_float, xA_collision.col(3), idxA_collision.at(3), 0, true); 
-                 //tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(3), idxB_collision.at(3), 0, true); 
+    MatrixXd JA = tree_utility_float->transformPointsJacobian(
+        k_cache_float, xA_collision.col(i), idxA_collision.at(i), 0, true);
+    MatrixXd JB = tree_utility_float->transformPointsJacobian(
+        k_cache_float, xB_collision.col(i), idxB_collision.at(i), 0, true);
+    J_collision_float.row(i) = normal_collision.col(i).transpose()*(JA - JB);
+  }
 
-  J_collision = J_collision.block(0, 6, J_collision.rows(), J_collision.cols() - 6);
+  //MatrixXd J_collision(6, tree_utility_float->get_num_positions());
+  //J_collision << tree_utility_float->transformPointsJacobian(k_cache_float, xA_collision.col(1), idxA_collision.at(1), 0, true),
+  //               //tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(1), idxB_collision.at(1), 0, true),
+  //               tree_utility_float->transformPointsJacobian(k_cache_float, xA_collision.col(3), idxA_collision.at(3), 0, true); 
+  //               //tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(3), idxB_collision.at(3), 0, true); 
+  
+  VectorXi idxA_contact, idxB_contact;
+  Matrix3Xd xA_contact, xB_contact;
+  MatrixXd J_contact;
+  tree_utility_float->computeContactJacobians(k_cache_float, idxA_contact, idxB_contact, xA_contact, xB_contact, J_contact);
+  cout << "J_contact******************" << endl;
+  cout << J_contact << endl;
 
-  const int num_total_constraints = num_constraints + J_collision.rows();
+  J_collision_fixed << J_collision_float.block(0, 6, J_collision_float.rows(), J_collision_float.cols() - 6);
+  cout << "J collision" << endl;
+  cout << J_collision_fixed << endl;
+
+  const int num_total_constraints = num_constraints + J_collision_fixed.rows();
 
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(num_states - 2*num_total_constraints, num_states - 2*num_total_constraints);
   //Q corresponding to the positions
-  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*1000.0;
+  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*100.0;
   //Q corresponding to the velocities
   MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*10.0;
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
   Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*0.1;
+  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*10;
 
 
   //Building the controller
-  auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant_model.get(), x_sol, u_sol, J_collision, num_positions, num_velocities, num_efforts, Q, R);
+  auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant_model.get(), x_sol, u_sol, J_collision_fixed, num_positions, num_velocities, num_efforts, Q, R);
   VectorXd K_vec = clqr_controller->GetKVec();
   VectorXd C = u_sol; 
   VectorXd x_desired = x_sol;

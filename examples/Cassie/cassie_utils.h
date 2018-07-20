@@ -1,7 +1,12 @@
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/parsers/urdf_parser.h"
+#include "drake/solvers/constraint.h"
+#include "drake/math/autodiff_gradient.h"
 
 namespace dairlib {
 
@@ -21,7 +26,7 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
 std::unique_ptr<RigidBodyTree<double>> makeFloatingBaseCassieTreePointer(
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
 
-void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree, 
+void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
 
-}
+}  // namespace dairlib

@@ -14,11 +14,15 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_pd_controller";
         host = "localhost";
     }
-    cmd "2.clqr-controller"{
+    cmd "2.dispatcher" {
+        exec = "bazel-bin/examples/Cassie/run_cassie_dispatch";
+        host = "localhost";
+    }
+    cmd "3.clqr-controller" {
         exec = "bazel-bin/examples/Cassie/run_clqr_controller";
         host = "localhost";
     }
-    cmd "3.clqr-controller-standing"{
+    cmd "4.clqr-controller-standing" {
         exec = "bazel-bin/examples/Cassie/run_clqr_controller_standing";
         host = "localhost";
     }

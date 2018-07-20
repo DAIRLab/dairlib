@@ -48,8 +48,6 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
   tree.addDistanceConstraint(heel_spring_right, rod_on_heel_spring,
                            thigh_right, rod_on_thigh_right,
                            achilles_length);
-<<<<<<< HEAD
-=======
 
   // Add spring forces
   int body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_left");
@@ -77,7 +75,6 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
         body->get_mutable_joint());
   ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
 }
->>>>>>> upstream/master
 
   // Add spring forces
   int body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_left");
@@ -113,7 +110,6 @@ std::unique_ptr<RigidBodyTree<double>> makeFloatingBaseCassieTreePointer(
   return tree;
 }
 
-<<<<<<< HEAD
 void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree,
                               std::string filename) {
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
@@ -174,27 +170,6 @@ void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree,
 }
 
 
-=======
-void TreePositionConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                                    Eigen::VectorXd* y) const {
-  AutoDiffVecXd y_t;
-  Eval(drake::math::initializeAutoDiff(x), &y_t);
-  *y = drake::math::autoDiffToValueMatrix(y_t);
-}
 
-void TreePositionConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-                                    AutoDiffVecXd* y) const {
-  const AutoDiffVecXd q = x.head(tree_->get_num_positions());
-  KinematicsCache<drake::AutoDiffXd> cache = tree_->doKinematics(q);
-  *y = tree_->positionConstraints(cache);
-}
-
-void TreePositionConstraint::DoEval(
-    const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& x,
-    drake::VectorX<drake::symbolic::Expression>* y) const {
-  throw std::logic_error(
-      "TreePositionConstraint does not support symbolic evaluation.");
-}
 
 }  // namespace dairlib
->>>>>>> upstream/master

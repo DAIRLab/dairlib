@@ -23,13 +23,11 @@ std::unique_ptr<RigidBodyTree<double>> makeFixedBaseCassieTreePointer(
 void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
 
-<<<<<<< HEAD
 std::unique_ptr<RigidBodyTree<double>> makeFloatingBaseCassieTreePointer(
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
 
 void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
-=======
 /// Solves the position constraints for a position that satisfies them
 Eigen::VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
                                          Eigen::VectorXd q_init,
@@ -52,6 +50,5 @@ class TreePositionConstraint : public drake::solvers::Constraint {
  private:
     const RigidBodyTree<double>* tree_;
 };
->>>>>>> upstream/master
 
 }  // namespace dairlib

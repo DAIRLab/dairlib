@@ -238,6 +238,7 @@ cc_binary(
             ":cassie_utils"
             ]
 )
+<<<<<<< HEAD
 
 cc_binary(
     name = "run_clqr_controller",
@@ -287,3 +288,5 @@ cc_binary(
 )
 
 
+=======
+>>>>>>> upstream/master

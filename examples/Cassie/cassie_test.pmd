@@ -18,6 +18,7 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_cassie_dispatch";
         host = "localhost";
     }
+<<<<<<< HEAD
     cmd "3.clqr-controller" {
         exec = "bazel-bin/examples/Cassie/run_clqr_controller";
         host = "localhost";
@@ -26,6 +27,8 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_clqr_controller_standing";
         host = "localhost";
     }
+=======
+>>>>>>> upstream/master
 }
 
 group "0.operator" {

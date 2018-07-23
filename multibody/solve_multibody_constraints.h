@@ -88,11 +88,6 @@ bool CheckFixedPointConstraints(RigidBodyPlant<double>* plant,
                                 VectorXd u_check);
 
 
-vector<VectorXd> SolveFixedPointConstraintsApproximate(RigidBodyPlant<double>* plant, 
-                                                       VectorXd x_init, 
-                                                       VectorXd u_init);
-
-
 
 /*
 Solves tree and fixed point constraints for the given tree.
@@ -169,27 +164,6 @@ class FixedPointConstraint : public Constraint {
 
 };
 
-class FixedPointConstraintApproximate : public Constraint {
-  public:
-    FixedPointConstraintApproximate(RigidBodyPlant<double>* plant,
-                                    VectorXd x0, 
-                                    const std::string& description = "");
-    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x_dot_u,
-                Eigen::VectorXd* y) const override;
-  
-    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x_dot_u,
-                AutoDiffVecXd* y) const override;
-    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x_dot_u, 
-                VectorX<Expression>*y) const override;
-    VectorXd CalcXDot(VectorXd u);
-  
-  private:
-    RigidBodyPlant<double>* plant_;
-    const RigidBodyTree<double>& tree_;
-    VectorXd x0_;
-    unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
-
-};
 
 
 class FixedPointFeasibilityConstraint : public Constraint {

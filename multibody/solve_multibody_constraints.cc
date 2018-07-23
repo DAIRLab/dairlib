@@ -117,49 +117,6 @@ bool CheckFixedPointConstraints(RigidBodyPlant<double>* plant,
 }
 
 
-vector<VectorXd> SolveFixedPointConstraintsApproximate(RigidBodyPlant<double>* plant,
-                                                       VectorXd x0, VectorXd u_init) {
-
-  const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
-  VectorXd u_zero = VectorXd::Zero(u_init.size());
-
-  MathematicalProgram prog;
-  auto x_dot = prog.NewContinuousVariables(tree.get_num_positions() + tree.get_num_velocities(), "x_dot");
-  auto u = prog.NewContinuousVariables(tree.get_num_actuators(), "u");
-
-  auto constraint = std::make_shared<FixedPointConstraintApproximate>(plant, x0);
-  prog.AddConstraint(constraint, {x_dot, u});
-  
-  VectorXd x_dot_zero = VectorXd::Zero(tree.get_num_positions() + tree.get_num_velocities());
-  prog.AddQuadraticCost((x_dot - x_dot_zero).dot(x_dot - x_dot_zero));
-  prog.SetInitialGuess(x_dot, constraint->CalcXDot(u_init));
-  prog.SetInitialGuess(u, u_init);
-  prog.Solve();
-
-  VectorXd u_sol = prog.GetSolution(u);
-  VectorXd x_dot_sol = prog.GetSolution(x_dot);
-  VectorXd x_dot_computed = constraint->CalcXDot(u_sol);
-
-  DRAKE_DEMAND(u_sol.size() == u_init.size());
-  DRAKE_DEMAND(x_dot_sol.size() == x0.size());
-
-  for(int i=0; i<u_sol.size(); i++)
-  {
-    DRAKE_DEMAND(!isnan(u_sol(i)) && !isinf(u_sol(i)));
-  }
-  for(int i=0; i<x_dot_sol.size(); i++)
-  {
-    DRAKE_DEMAND(!isnan(x_dot_sol(i)) && !isinf(x_dot_sol(i)));
-    DRAKE_DEMAND(x_dot_sol(i) == x_dot_computed(i));
-  }
-
-
-  vector<VectorXd> sol;
-  sol.push_back(u_sol);
-  return sol;
-}
-
-
 
 vector<VectorXd> SolveTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant,
                                                    VectorXd x_init,
@@ -188,7 +145,7 @@ vector<VectorXd> SolveTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant
   VectorXd v_init = x_init.head(tree.get_num_velocities());
 
   prog.AddQuadraticCost(
-      (q - q_init).dot(q - q_init) + (v - v_init).dot(v - v_init) + (u - u_zero).dot(u - u_zero));
+      (q - q_init).dot(q - q_init) + (v - v_init).dot(v - v_init) + (u - u_init).dot(u - u_init));
   prog.SetInitialGuess(q, q_init);
   prog.SetInitialGuess(v, v_init);
   prog.SetInitialGuess(u, u_init);
@@ -357,92 +314,6 @@ void FixedPointConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x_u
 
   throw std::logic_error(
       "FixedPointConstraint does not support symbolic evaluation.");
-}
-
-
-FixedPointConstraintApproximate::FixedPointConstraintApproximate(RigidBodyPlant<double>* plant,
-                                                                 VectorXd x0,
-                                                                 const std::string& description):
-  Constraint((plant->get_rigid_body_tree()).get_num_positions() +
-      (plant->get_rigid_body_tree()).get_num_velocities(),
-  (plant->get_rigid_body_tree()).get_num_positions() +
-      (plant->get_rigid_body_tree()).get_num_velocities() +
-      (plant->get_rigid_body_tree()).get_num_actuators(),
-  VectorXd::Zero((plant->get_rigid_body_tree()).get_num_positions() +
-      (plant->get_rigid_body_tree()).get_num_velocities()),
-  VectorXd::Zero((plant->get_rigid_body_tree()).get_num_positions() +
-      (plant->get_rigid_body_tree()).get_num_velocities()),
-  description),
-  plant_(plant), tree_(plant->get_rigid_body_tree()), x0_(x0)
-{
-    plant_autodiff_ = make_unique<RigidBodyPlant<AutoDiffXd>>(*plant);
-}
-
-
-void FixedPointConstraintApproximate::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x_dot_u,
-                                  Eigen::VectorXd* y) const {
-  AutoDiffVecXd y_t;
-  Eval(drake::math::initializeAutoDiff(x_dot_u), &y_t);
-  *y = drake::math::autoDiffToValueMatrix(y_t);
- 
-}
-
-void FixedPointConstraintApproximate::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x_dot_u,
-                                  AutoDiffVecXd* y) const {
-    
-  const int num_positions = tree_.get_num_positions();
-  const int num_velocities = tree_.get_num_velocities();
-  const int num_states = num_positions + num_velocities;
-  const int num_efforts = tree_.get_num_actuators();
-
-  auto context_autodiff = plant_autodiff_->CreateDefaultContext();
-
-  const AutoDiffVecXd x_dot = x_dot_u.head(num_states);
-  const AutoDiffVecXd u = x_dot_u.tail(num_efforts); 
-
-  context_autodiff->get_mutable_continuous_state().SetFromVector(initializeAutoDiff(x0_));
-  
-  context_autodiff->FixInputPort(0, std::make_unique<BasicVector<AutoDiffXd>>(u));
-  ContinuousState<AutoDiffXd> cstate_output_autodiff(
-      BasicVector<AutoDiffXd>(x0_).Clone(), num_positions, num_velocities, 0);
-  plant_autodiff_->CalcTimeDerivatives(*context_autodiff, &cstate_output_autodiff);
-
-  AutoDiffVecXd x_dot_computed = cstate_output_autodiff.CopyToVector();
-
-  *y = x_dot - x_dot_computed;
-  //*y = x_dot_computed - x_dot;
-  MatrixXd g = autoDiffToGradientMatrix(*y);
-  //std::cout << g.rows() << " " << g.cols() << std::endl;
-  //std::cout << autoDiffToGradientMatrix(*y) << std::endl;
-  //std::cout << "---------------------------------------" << std::endl;
-
-
-}
-
-void FixedPointConstraintApproximate::DoEval(const Eigen::Ref<const VectorX<Variable>>& x_u, 
-                            VectorX<Expression>*y) const {
-
-  throw std::logic_error(
-      "FixedPointConstraint does not support symbolic evaluation.");
-}
-
-
-VectorXd FixedPointConstraintApproximate::CalcXDot(VectorXd u) {
-
-  const int num_positions = tree_.get_num_positions();
-  const int num_velocities = tree_.get_num_velocities();
-
-  auto context = plant_->CreateDefaultContext();
-  context->get_mutable_continuous_state().SetFromVector(x0_);
-  context->FixInputPort(0, std::make_unique<BasicVector<double>>(u));
-  ContinuousState<double> cstate_output(
-      BasicVector<double>(x0_).Clone(), num_positions, num_velocities, 0);
-  plant_->CalcTimeDerivatives(*context, &cstate_output);
-
-  VectorXd x_dot = cstate_output.CopyToVector();
-  return x_dot;
-
-
 }
 
 

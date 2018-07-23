@@ -47,7 +47,6 @@ using dairlib::multibody::SolveTreeConstraints;
 using dairlib::multibody::CheckTreeConstraints;
 using dairlib::multibody::SolveFixedPointConstraints;
 using dairlib::multibody::CheckFixedPointConstraints;
-using dairlib::multibody::SolveFixedPointConstraintsApproximate;
 using dairlib::multibody::SolveTreeAndFixedPointConstraints;
 using dairlib::multibody::CheckTreeAndFixedPointConstraints;
 using dairlib::multibody::SolveFixedPointFeasibilityConstraints;
@@ -168,7 +167,7 @@ class DebugPassThrough: public LeafSystem<double> {
 
 //Function to take the state of a floating base model and extract the state for the fixed base model by removing the 
 //positions and velocities corresponding to the base
-VectorXd ExtractFixedStateFromFloat(VectorXd x_float, int num_positions_float, int num_velocities_float, int num_extra_positions, int num_extra_velocities)
+VectorXd ExtractFixedStateFromFloating(VectorXd x_float, int num_positions_float, int num_velocities_float, int num_extra_positions, int num_extra_velocities)
 {
   const int num_positions_fixed = num_positions_float - num_extra_positions;
   const int num_velocities_fixed = num_velocities_float - num_extra_velocities;
@@ -291,8 +290,10 @@ int do_main(int argc, char* argv[]) {
   x0(map_sim.at("base_y")) = 0.0;
   x0(map_sim.at("base_z")) = 1.129;
 
-  //x0(map.at("hip_roll_left")) = 0.15;
-  //x0(map.at("hip_yaw_left")) = 0.2;
+  x0(map_sim.at("hip_roll_left")) = 0.1;
+  x0(map_sim.at("hip_roll_right")) = -0.1;
+  x0(map_sim.at("hip_yaw_left")) = 0;
+  x0(map_sim.at("hip_yaw_right")) = 0;
   x0(map_sim.at("hip_pitch_left")) = .269;
   x0(map_sim.at("hip_pitch_right")) = .269;
   // x0(map.at("achilles_hip_pitch_left")) = -.44;
@@ -310,17 +311,21 @@ int do_main(int argc, char* argv[]) {
   // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
   // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
   
-  x0(map_sim.at("toe_left")) = -78*M_PI/180.0;
-  x0(map_sim.at("toe_right")) = -78*M_PI/180.0;
+  x0(map_sim.at("toe_left")) = -60*M_PI/180.0;
+  x0(map_sim.at("toe_right")) = -60*M_PI/180.0;
 
   std::vector<int> fixed_joints;
 
-  //fixed_joints.push_back(map.at("hip_roll_left"));
-  //fixed_joints.push_back(map.at("hip_yaw_left"));
-  fixed_joints.push_back(map_model.at("hip_pitch_left"));
-  fixed_joints.push_back(map_model.at("hip_pitch_right"));
+  //fixed_joints.push_back(map_model.at("hip_roll_left"));
+  //fixed_joints.push_back(map_model.at("hip_roll_right"));
+  //fixed_joints.push_back(map_model.at("hip_yaw_left"));
+  //fixed_joints.push_back(map_model.at("hip_yaw_right"));
+  //fixed_joints.push_back(map_model.at("hip_pitch_left"));
+  //fixed_joints.push_back(map_model.at("hip_pitch_right"));
   fixed_joints.push_back(map_model.at("knee_left"));
   fixed_joints.push_back(map_model.at("knee_right"));
+  //fixed_joints.push_back(map_model.at("ankle_joint_left"));
+  //fixed_joints.push_back(map_model.at("ankle_joint_right"));
   fixed_joints.push_back(map_model.at("toe_left"));
   fixed_joints.push_back(map_model.at("toe_right"));
 
@@ -339,13 +344,14 @@ int do_main(int argc, char* argv[]) {
 
   cout << "x_start: " << x_start.transpose() << endl;
 
-  VectorXd x_init = ExtractFixedStateFromFloat(x_start, num_total_positions, num_total_velocities, 6, 6);
+  VectorXd x_init = ExtractFixedStateFromFloating(x_start, num_total_positions, num_total_velocities, 6, 6);
   cout << "x_init: " << x_init.transpose() << endl;
   VectorXd u_init = VectorXd::Zero(num_efforts);
   
 
 
-  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(plant_model.get(), x_init, ComputeUAnalytical(plant_model->get_rigid_body_tree(), x_init));
+  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
+      plant_model.get(), x_init, ComputeUAnalytical(plant_model->get_rigid_body_tree(), x_init), fixed_joints);
   VectorXd q_sol = sol_tfp.at(0);
   VectorXd v_sol = sol_tfp.at(1);
   VectorXd u_sol = sol_tfp.at(2);
@@ -380,6 +386,17 @@ int do_main(int argc, char* argv[]) {
   cout << tree_utility_float->collisionDetect(
       k_cache_float, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision) << endl;
 
+  const Eigen::Map<Matrix3Xd> normal_collision_map(normal_collision.data(), normal_collision.rows(), normal_collision.cols());
+  vector<Matrix3Xd> tangent_collision;
+  Matrix3kd t;
+
+  //tree_utility_float.get()->surfaceTangents(normal_collision.col(0), t);
+  //surfaceTangents(normal_collision.col(0), t);
+
+  //cout << "**** Tangents" << endl;
+  //cout << tangent_collision.size() << endl;
+  //cout << "Testingggggg" << endl;
+
   for(auto id: idxA_collision) {
     cout << id << " ";
   }
@@ -394,32 +411,26 @@ int do_main(int argc, char* argv[]) {
   int num_collision_points = selected_collision.size();
 
 
-  MatrixXd J_collision_float = MatrixXd::Zero(num_collision_points, tree_utility_float->get_num_positions());
-  MatrixXd J_collision_fixed = MatrixXd::Zero(num_collision_points, tree_utility_fixed->get_num_positions());
+  //MatrixXd J_collision_float = MatrixXd::Zero(num_collision_points, tree_utility_float->get_num_positions());
+  //MatrixXd J_collision_fixed = MatrixXd::Zero(num_collision_points, tree_utility_fixed->get_num_positions());
+  //for(auto i: selected_collision) {
 
-  for(auto i: selected_collision) {
+  //  MatrixXd JA = tree_utility_float->transformPointsJacobian(
+  //      k_cache_float, xA_collision.col(i), idxA_collision.at(i), 0, true);
+  //  MatrixXd JB = tree_utility_float->transformPointsJacobian(
+  //      k_cache_float, xB_collision.col(i), idxB_collision.at(i), 0, true);
+  //  J_collision_float.row(i) = normal_collision.col(i).transpose()*(JA - JB);
+  //}
 
-    MatrixXd JA = tree_utility_float->transformPointsJacobian(
-        k_cache_float, xA_collision.col(i), idxA_collision.at(i), 0, true);
-    MatrixXd JB = tree_utility_float->transformPointsJacobian(
-        k_cache_float, xB_collision.col(i), idxB_collision.at(i), 0, true);
-    J_collision_float.row(i) = normal_collision.col(i).transpose()*(JA - JB);
-  }
-
-  //MatrixXd J_collision(6, tree_utility_float->get_num_positions());
-  //J_collision << tree_utility_float->transformPointsJacobian(k_cache_float, xA_collision.col(1), idxA_collision.at(1), 0, true),
-  //               //tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(1), idxB_collision.at(1), 0, true),
-  //               tree_utility_float->transformPointsJacobian(k_cache_float, xA_collision.col(3), idxA_collision.at(3), 0, true); 
-  //               //tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(3), idxB_collision.at(3), 0, true); 
+  MatrixXd J_collision_float(num_collision_points*3, tree_utility_float->get_num_positions());
+  MatrixXd J_collision_fixed(num_collision_points*3, tree_utility_float->get_num_positions());
+  J_collision_float << tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(0), idxB_collision.at(0), 0, true),
+                 tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(1), idxB_collision.at(1), 0, true),
+                 tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(2), idxB_collision.at(2), 0, true); 
+                 tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(3), idxB_collision.at(3), 0, true); 
   
-  VectorXi idxA_contact, idxB_contact;
-  Matrix3Xd xA_contact, xB_contact;
-  MatrixXd J_contact;
-  tree_utility_float->computeContactJacobians(k_cache_float, idxA_contact, idxB_contact, xA_contact, xB_contact, J_contact);
-  cout << "J_contact******************" << endl;
-  cout << J_contact << endl;
 
-  J_collision_fixed << J_collision_float.block(0, 6, J_collision_float.rows(), J_collision_float.cols() - 6);
+  J_collision_fixed = J_collision_float.block(0, 6, J_collision_float.rows(), J_collision_float.cols() - 6);
   cout << "J collision" << endl;
   cout << J_collision_fixed << endl;
 

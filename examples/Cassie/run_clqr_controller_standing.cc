@@ -318,8 +318,8 @@ int do_main(int argc, char* argv[]) {
 
   //fixed_joints.push_back(map_model.at("hip_roll_left"));
   //fixed_joints.push_back(map_model.at("hip_roll_right"));
-  //fixed_joints.push_back(map_model.at("hip_yaw_left"));
-  //fixed_joints.push_back(map_model.at("hip_yaw_right"));
+  fixed_joints.push_back(map_model.at("hip_yaw_left"));
+  fixed_joints.push_back(map_model.at("hip_yaw_right"));
   //fixed_joints.push_back(map_model.at("hip_pitch_left"));
   //fixed_joints.push_back(map_model.at("hip_pitch_right"));
   fixed_joints.push_back(map_model.at("knee_left"));
@@ -444,7 +444,7 @@ int do_main(int argc, char* argv[]) {
   MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*10.0;
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
   Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*10;
+  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100;
 
 
   //Building the controller

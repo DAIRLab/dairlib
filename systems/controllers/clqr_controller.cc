@@ -33,9 +33,6 @@ MatrixXd ClqrController::computeF() {
   //Computing the constraint jacobian
   MatrixXd J_constraint = tree_.positionConstraintsJacobian(k_cache);
 
-  std::cout << J_constraint.rows() << " " << J_constraint.cols() << std::endl;
-  std::cout << J_collision_.rows() << " " << J_collision_.cols() << std::endl;
-
   MatrixXd J(J_constraint.rows() + J_collision_.rows(), J_constraint.cols());
   J << J_constraint, 
        J_collision_;
@@ -55,7 +52,6 @@ MatrixXd ClqrController::computeF() {
   F.block(0, 0, r, c) = J;
   F.block(r, c, r, c) = J;
 
-  std::cout << F << std::endl;
 
   //std::cout << "F times x----------------------------" << std::endl;
   //std::cout << F*x0_ << std::endl;

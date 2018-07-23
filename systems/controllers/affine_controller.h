@@ -23,12 +23,12 @@ class AffineController : public LeafSystem<double> {
   public:
     AffineController(int num_positions, int num_velocities, int num_efforts);
 
-    const drake::systems::InputPortDescriptor<double>& get_input_port_params() const
+    const drake::systems::InputPort<double>& get_input_port_params() const
     {
       return this->get_input_port(input_port_params_index_);
     }
 
-    const drake::systems::InputPortDescriptor<double>& get_input_port_info() const 
+    const drake::systems::InputPort<double>& get_input_port_info() const 
     {
       return this->get_input_port(input_port_info_index_);
     }

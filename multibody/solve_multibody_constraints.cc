@@ -14,8 +14,7 @@ VectorXd SolveTreeConstraints(const RigidBodyTree<double>& tree,
   auto constraint = std::make_shared<TreeConstraint>(tree);
   prog.AddConstraint(constraint, q);
 
-  for(uint i = 0; i < fixed_joints.size(); i++)
-  {
+  for(uint i = 0; i < fixed_joints.size(); i++) {
     int j = fixed_joints[i];
     prog.AddConstraint(q(j) == q_init(j));
   }
@@ -35,6 +34,34 @@ VectorXd SolveTreeConstraints(const RigidBodyTree<double>& tree,
 
   return q_sol;
 }
+
+VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 
+                                        VectorXd q_init, 
+                                        vector<int> fixed_joints) {
+
+  MathematicalProgram prog;
+  auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
+  auto constraint_tree = std::make_shared<TreeConstraint>(tree);
+  auto constraint_contact = std::make_shared<CassieContactConstraint>(tree);
+  
+  prog.AddConstraint(constraint_tree, q);
+  prog.AddConstraint(constraint_contact, q);
+
+  for(uint i = 0; i < fixed_joints.size(); i++) {
+    int j = fixed_joints[i];
+    prog.AddConstraint(q(j) == q_init(j));
+  }
+
+  prog.AddQuadraticCost((q - q_init).dot(q - q_init));
+  prog.SetInitialGuess(q, q_init);
+  prog.Solve();
+  VectorXd q_sol = prog.GetSolution(q);
+
+  return q_sol;
+
+}
+
+
 
 bool CheckTreeConstraints(const RigidBodyTree<double>& tree, VectorXd q_check) {
 
@@ -222,10 +249,10 @@ vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* p
 TreeConstraint::TreeConstraint(const RigidBodyTree<double>& tree,
                                const std::string& description):
   Constraint(tree.getNumPositionConstraints(),
-  tree.get_num_positions(),
-  VectorXd::Zero(tree.getNumPositionConstraints()),
-  VectorXd::Zero(tree.getNumPositionConstraints()),
-  description),
+             tree.get_num_positions(),
+             VectorXd::Zero(tree.getNumPositionConstraints()),
+             VectorXd::Zero(tree.getNumPositionConstraints()),
+             description),
   tree_(tree) 
 {
 }
@@ -257,6 +284,98 @@ void TreeConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x,
 }
 
 
+CassieContactConstraint::CassieContactConstraint(const RigidBodyTree<double>& tree,
+                                                 const std::string& description):
+  Constraint(4,
+             tree.get_num_positions(),
+             VectorXd::Zero(4),
+             VectorXd::Zero(4),
+             description),
+  tree_(tree) 
+{
+}
+
+
+void CassieContactConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,
+                                     Eigen::VectorXd* y) const {
+
+  AutoDiffVecXd y_t;
+  Eval(initializeAutoDiff(q), &y_t);
+  *y = autoDiffToValueMatrix(y_t);
+
+}
+
+void CassieContactConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q,
+                                     AutoDiffVecXd* y) const {
+
+  VectorXd left_toe_collision_pt1(3),
+           left_toe_collision_pt2(3), 
+           right_toe_collision_pt1(3), 
+           right_toe_collision_pt2(3);
+
+  // Taken from the Cassie v2 urdf
+
+  left_toe_collision_pt1 << -0.0457, .112, 0;
+  left_toe_collision_pt2 << 0.088, 0, 0;
+  right_toe_collision_pt1 << -0.0457, .112, 0;
+  right_toe_collision_pt2 << 0.088, 0, 0;
+
+  AutoDiffVecXd left_toe_collision_pt1_autodiff = 
+    initializeAutoDiff(left_toe_collision_pt1);
+  AutoDiffVecXd left_toe_collision_pt2_autodiff = 
+    initializeAutoDiff(left_toe_collision_pt2);
+  AutoDiffVecXd right_toe_collision_pt1_autodiff = 
+    initializeAutoDiff(right_toe_collision_pt1);
+  AutoDiffVecXd right_toe_collision_pt2_autodiff = 
+    initializeAutoDiff(right_toe_collision_pt2);
+
+  map<string, int>  map_sim =
+    tree_.computePositionNameToIndexMap();
+
+  AutoDiffVecXd y_tmp(4);
+
+  KinematicsCache<AutoDiffXd> k_cache = tree_.doKinematics(q);
+  AutoDiffVecXd left_toe_collision_pt1_autodiff_world = 
+    tree_.transformPoints(k_cache,
+                          left_toe_collision_pt1_autodiff, 
+                          18, 
+                          0);
+  AutoDiffVecXd left_toe_collision_pt2_autodiff_world = 
+    tree_.transformPoints(k_cache,
+                          left_toe_collision_pt2_autodiff, 
+                          18, 
+                          0);
+  AutoDiffVecXd right_toe_collision_pt1_autodiff_world = 
+    tree_.transformPoints(k_cache,
+                          right_toe_collision_pt1_autodiff, 
+                          20, 
+                          0);
+  AutoDiffVecXd right_toe_collision_pt2_autodiff_world = 
+    tree_.transformPoints(k_cache,
+                          right_toe_collision_pt2_autodiff, 
+                          20, 
+                          0);
+
+  y_tmp << left_toe_collision_pt1_autodiff_world(2),
+           left_toe_collision_pt2_autodiff_world(2),
+           right_toe_collision_pt1_autodiff_world(2),
+           right_toe_collision_pt2_autodiff_world(2);
+
+  *y = y_tmp;
+
+
+
+
+    
+}
+
+void CassieContactConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
+                                     VectorX<Expression>*y) const {
+
+  throw std::logic_error(
+      "TreeConstraint does not support symbolic evaluation.");
+}
+
 
 FixedPointConstraint::FixedPointConstraint(RigidBodyPlant<double>* plant,
                                            const std::string& description):
@@ -279,8 +398,8 @@ FixedPointConstraint::FixedPointConstraint(RigidBodyPlant<double>* plant,
 void FixedPointConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x_u,
                                   Eigen::VectorXd* y) const {
   AutoDiffVecXd y_t;
-  Eval(drake::math::initializeAutoDiff(x_u), &y_t);
-  *y = drake::math::autoDiffToValueMatrix(y_t);
+  Eval(initializeAutoDiff(x_u), &y_t);
+  *y = autoDiffToValueMatrix(y_t);
  
 }
 

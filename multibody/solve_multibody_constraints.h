@@ -7,6 +7,8 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/math/autodiff_gradient.h"
 
+using std::map;
+using std::string;
 using std::vector;
 using std::list;
 using std::unique_ptr;
@@ -16,6 +18,7 @@ using std::isinf;
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
+using Eigen::Matrix;
 using Eigen::MatrixXd;
 using drake::VectorX;
 using drake::MatrixX;
@@ -52,6 +55,10 @@ Solves tree position constraints for the given tree.
 VectorXd SolveTreeConstraints(const RigidBodyTree<double>& tree, 
                               VectorXd q_init,
                               vector<int> fixed_joints = {});
+
+VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 
+                                        VectorXd q_init, 
+                                        vector<int> fixed_joints = {});
 
 /*
 Checks if the given position satisfies constraints of the tree
@@ -131,6 +138,24 @@ class TreeConstraint : public Constraint {
   public:
     TreeConstraint(const RigidBodyTree<double>& tree,
                    const std::string& description = "");
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+                Eigen::VectorXd* y) const override;
+  
+    void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
+                drake::AutoDiffVecXd* y) const override;
+
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
+                VectorX<Expression>*y) const override;
+  
+  private:
+    const RigidBodyTree<double>& tree_;
+
+};
+
+class CassieContactConstraint : public Constraint {
+  public:
+    CassieContactConstraint(const RigidBodyTree<double>& tree,
+                            const std::string& description = "");
     void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
                 Eigen::VectorXd* y) const override;
   

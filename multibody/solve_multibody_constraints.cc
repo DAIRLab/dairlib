@@ -38,11 +38,17 @@ VectorXd SolveTreeConstraints(const RigidBodyTree<double>& tree,
 VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 
                                         VectorXd q_init, 
                                         vector<int> fixed_joints) {
+  
+  std::cout << "Starting standing solver" << std::endl;
+  std::cout << "Works till here" << std::endl;
 
   MathematicalProgram prog;
   auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
+  std::cout << "Works till here" << std::endl;
   auto constraint_tree = std::make_shared<TreeConstraint>(tree);
+  std::cout << "Works till here" << std::endl;
   auto constraint_contact = std::make_shared<CassieContactConstraint>(tree);
+  std::cout << "Works till here" << std::endl;
   
   prog.AddConstraint(constraint_tree, q);
   prog.AddConstraint(constraint_contact, q);
@@ -54,8 +60,11 @@ VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree,
 
   prog.AddQuadraticCost((q - q_init).dot(q - q_init));
   prog.SetInitialGuess(q, q_init);
+  std::cout << "Works till here" << std::endl;
   prog.Solve();
+  std::cout << "Works till here" << std::endl;
   VectorXd q_sol = prog.GetSolution(q);
+  std::cout << "Works till here" << std::endl;
 
   return q_sol;
 
@@ -288,30 +297,32 @@ CassieContactConstraint::CassieContactConstraint(const RigidBodyTree<double>& tr
                                                  const std::string& description):
   Constraint(4,
              tree.get_num_positions(),
-             VectorXd::Zero(4),
-             VectorXd::Zero(4),
+             VectorXd::Ones(4)*-1e-3,
+             VectorXd::Ones(4)*1e-3,
              description),
   tree_(tree) 
 {
 }
 
 
-void CassieContactConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,
+void CassieContactConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
                                      Eigen::VectorXd* y) const {
 
   AutoDiffVecXd y_t;
-  Eval(initializeAutoDiff(q), &y_t);
+  Eval(initializeAutoDiff(x), &y_t);
   *y = autoDiffToValueMatrix(y_t);
 
 }
 
-void CassieContactConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q,
+void CassieContactConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
                                      AutoDiffVecXd* y) const {
 
-  VectorXd left_toe_collision_pt1(3),
-           left_toe_collision_pt2(3), 
-           right_toe_collision_pt1(3), 
-           right_toe_collision_pt2(3);
+  const AutoDiffVecXd q = x.head(tree_.get_num_positions());
+
+  Vector3d left_toe_collision_pt1,
+           left_toe_collision_pt2, 
+           right_toe_collision_pt1, 
+           right_toe_collision_pt2;
 
   // Taken from the Cassie v2 urdf
 
@@ -320,53 +331,75 @@ void CassieContactConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q,
   right_toe_collision_pt1 << -0.0457, .112, 0;
   right_toe_collision_pt2 << 0.088, 0, 0;
 
-  AutoDiffVecXd left_toe_collision_pt1_autodiff = 
+  auto left_toe_collision_pt1_autodiff = 
     initializeAutoDiff(left_toe_collision_pt1);
-  AutoDiffVecXd left_toe_collision_pt2_autodiff = 
+  auto left_toe_collision_pt2_autodiff = 
     initializeAutoDiff(left_toe_collision_pt2);
-  AutoDiffVecXd right_toe_collision_pt1_autodiff = 
+  auto right_toe_collision_pt1_autodiff = 
     initializeAutoDiff(right_toe_collision_pt1);
-  AutoDiffVecXd right_toe_collision_pt2_autodiff = 
+  auto right_toe_collision_pt2_autodiff = 
     initializeAutoDiff(right_toe_collision_pt2);
 
-  map<string, int>  map_sim =
-    tree_.computePositionNameToIndexMap();
 
-  AutoDiffVecXd y_tmp(4);
+  // Getting the indices for the toes and world
+  int world_ind = 0, toe_left_ind = 0, toe_right_ind = 0;
+  
+  for(int i=0; i<tree_.get_num_bodies(); i++) {
+
+    if(!tree_.get_body(i).get_name().compare("world")) {
+      world_ind = i;
+    }
+
+    if(!tree_.get_body(i).get_name().compare("toe_left")) {
+      toe_left_ind = i;
+    }
+
+    if(!tree_.get_body(i).get_name().compare("toe_right")) {
+      toe_right_ind = i;
+    }
+  }
+
+
+  AutoDiffVecXd y_tmp = initializeAutoDiff(VectorXd::Zero(4));
 
   KinematicsCache<AutoDiffXd> k_cache = tree_.doKinematics(q);
-  AutoDiffVecXd left_toe_collision_pt1_autodiff_world = 
+  auto left_toe_collision_pt1_autodiff_world = 
     tree_.transformPoints(k_cache,
                           left_toe_collision_pt1_autodiff, 
-                          18, 
-                          0);
-  AutoDiffVecXd left_toe_collision_pt2_autodiff_world = 
+                          toe_left_ind, 
+                          world_ind);
+  auto left_toe_collision_pt2_autodiff_world = 
     tree_.transformPoints(k_cache,
                           left_toe_collision_pt2_autodiff, 
-                          18, 
-                          0);
-  AutoDiffVecXd right_toe_collision_pt1_autodiff_world = 
+                          toe_left_ind, 
+                          world_ind);
+  auto right_toe_collision_pt1_autodiff_world = 
     tree_.transformPoints(k_cache,
                           right_toe_collision_pt1_autodiff, 
-                          20, 
-                          0);
-  AutoDiffVecXd right_toe_collision_pt2_autodiff_world = 
+                          toe_right_ind, 
+                          world_ind);
+  auto right_toe_collision_pt2_autodiff_world = 
     tree_.transformPoints(k_cache,
                           right_toe_collision_pt2_autodiff, 
-                          20, 
-                          0);
+                          toe_right_ind, 
+                          world_ind);
 
-  y_tmp << left_toe_collision_pt1_autodiff_world(2),
-           left_toe_collision_pt2_autodiff_world(2),
-           right_toe_collision_pt1_autodiff_world(2),
-           right_toe_collision_pt2_autodiff_world(2);
+  std::cout << "-------------------------------" << std::endl;
+  std::cout << left_toe_collision_pt1_autodiff_world.transpose() << std::endl;
+  std::cout << left_toe_collision_pt2_autodiff_world.transpose() << std::endl;
+  std::cout << right_toe_collision_pt1_autodiff_world.transpose() << std::endl;
+  std::cout << right_toe_collision_pt2_autodiff_world.transpose() << std::endl;
+  std::cout << "-------------------------------" << std::endl;
+
+
+  y_tmp(0) = left_toe_collision_pt1_autodiff_world(2);
+  y_tmp(1) = left_toe_collision_pt2_autodiff_world(2);
+  y_tmp(2) = right_toe_collision_pt1_autodiff_world(2);
+  y_tmp(3) = right_toe_collision_pt2_autodiff_world(2);
 
   *y = y_tmp;
 
 
-
-
-    
 }
 
 void CassieContactConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 

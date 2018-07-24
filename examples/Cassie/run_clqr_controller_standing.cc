@@ -45,6 +45,7 @@ using drake::systems::Multiplexer;
 
 using dairlib::multibody::SolveTreeConstraints;
 using dairlib::multibody::CheckTreeConstraints;
+using dairlib::multibody::SolveCassieStandingConstraints;
 using dairlib::multibody::SolveFixedPointConstraints;
 using dairlib::multibody::CheckFixedPointConstraints;
 using dairlib::multibody::SolveTreeAndFixedPointConstraints;
@@ -337,7 +338,10 @@ int do_main(int argc, char* argv[]) {
   //Eigen::Transform<double, 3, Eigen::Isometry> tr = k_cache_element.transform_to_world;
   //cout << tr.matrix() << endl;
   //cout << k_cache_element.transform_to_world << endl;
+  
 
+  //VectorXd q_stand = SolveCassieStandingConstraints(plant_sim->get_rigid_body_tree(), x_start.head(num_total_positions));
+  //cout << "q_stand: " << q_stand.transpose() << endl;
 
   VectorXd q_start = SolveTreeConstraints(plant_model->get_rigid_body_tree(), x_start.segment(6, num_positions), fixed_joints);
   x_start.segment(6, num_positions) = q_start;
@@ -347,8 +351,6 @@ int do_main(int argc, char* argv[]) {
   VectorXd x_init = ExtractFixedStateFromFloating(x_start, num_total_positions, num_total_velocities, 6, 6);
   cout << "x_init: " << x_init.transpose() << endl;
   VectorXd u_init = VectorXd::Zero(num_efforts);
-  
-
 
   vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
       plant_model.get(), x_init, ComputeUAnalytical(plant_model->get_rigid_body_tree(), x_init), fixed_joints);
@@ -390,13 +392,6 @@ int do_main(int argc, char* argv[]) {
   vector<Matrix3Xd> tangent_collision;
   Matrix3kd t;
 
-  //tree_utility_float.get()->surfaceTangents(normal_collision.col(0), t);
-  //surfaceTangents(normal_collision.col(0), t);
-
-  //cout << "**** Tangents" << endl;
-  //cout << tangent_collision.size() << endl;
-  //cout << "Testingggggg" << endl;
-
   for(auto id: idxA_collision) {
     cout << id << " ";
   }
@@ -409,18 +404,6 @@ int do_main(int argc, char* argv[]) {
 
   vector<int> selected_collision{0, 1, 2, 3};
   int num_collision_points = selected_collision.size();
-
-
-  //MatrixXd J_collision_float = MatrixXd::Zero(num_collision_points, tree_utility_float->get_num_positions());
-  //MatrixXd J_collision_fixed = MatrixXd::Zero(num_collision_points, tree_utility_fixed->get_num_positions());
-  //for(auto i: selected_collision) {
-
-  //  MatrixXd JA = tree_utility_float->transformPointsJacobian(
-  //      k_cache_float, xA_collision.col(i), idxA_collision.at(i), 0, true);
-  //  MatrixXd JB = tree_utility_float->transformPointsJacobian(
-  //      k_cache_float, xB_collision.col(i), idxB_collision.at(i), 0, true);
-  //  J_collision_float.row(i) = normal_collision.col(i).transpose()*(JA - JB);
-  //}
 
   MatrixXd J_collision_float(num_collision_points*3, tree_utility_float->get_num_positions());
   MatrixXd J_collision_fixed(num_collision_points*3, tree_utility_float->get_num_positions());

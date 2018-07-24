@@ -16,6 +16,8 @@ using std::make_unique;
 using std::isnan;
 using std::isinf;
 
+using Eigen::Dynamic;
+using Eigen::AutoDiffScalar;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::Matrix;
@@ -40,6 +42,8 @@ using drake::solvers::VariableRefList;
 using drake::solvers::Binding;
 using drake::symbolic::Variable;
 using drake::symbolic::Expression;
+
+typedef drake::AutoDiffVecd<3, 3> AutoDiffVec3d;
 
 namespace dairlib {
 namespace multibody{

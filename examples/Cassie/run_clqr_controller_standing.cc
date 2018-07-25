@@ -251,6 +251,7 @@ int do_main(int argc, char* argv[]) {
   auto plant_sim = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree_sim));
   auto plant_model = make_unique<RigidBodyPlant<double>>(std::move(tree_model));
 
+
   drake::systems::CompliantMaterial default_material;
   default_material.set_youngs_modulus(FLAGS_youngs_modulus)
       .set_dissipation(FLAGS_dissipation)
@@ -331,14 +332,7 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map_model.at("toe_right"));
 
   VectorXd x_start = x0;
-  
-  //const RigidBodyTree<double>& tree_p = plant->get_rigid_body_tree();
-  //auto k_cache = tree_p.doKinematics(x_start.head(num_total_positions));
-  //auto k_cache_element = k_cache.get_element(18);
-  //Eigen::Transform<double, 3, Eigen::Isometry> tr = k_cache_element.transform_to_world;
-  //cout << tr.matrix() << endl;
-  //cout << k_cache_element.transform_to_world << endl;
-  
+
 
   //VectorXd q_stand = SolveCassieStandingConstraints(plant_sim->get_rigid_body_tree(), x_start.head(num_total_positions));
   //cout << "q_stand: " << q_stand.transpose() << endl;
@@ -370,6 +364,20 @@ int do_main(int argc, char* argv[]) {
   cout << "x_start: " << x_start.transpose() << endl;
 
 
+  std::unique_ptr<RigidBodyTree<double>> tree_test = makeFloatingBaseCassieTreePointer();
+  drake::multibody::AddFlatTerrainToWorld(tree_test.get(), terrain_size, terrain_depth);
+
+  VectorXd lambda = VectorXd::Ones(4);
+  RigidBodyPlant<AutoDiffXd> plant_sim_autodiff(std::move(tree_test));
+  CassiePlant<AutoDiffXd> cassie_plant(&plant_sim_autodiff);
+  ContinuousState<AutoDiffXd> x_dot(
+      std::make_unique<BasicVector<AutoDiffXd>>(num_total_states), num_total_positions, num_total_velocities, 0);
+  cassie_plant.CalcTimeDerivativesCassieDuringContact(initializeAutoDiff(x_start), 
+                                                      initializeAutoDiff(u_init), 
+                                                      initializeAutoDiff(lambda),
+                                                      &x_dot);
+
+
   std::unique_ptr<RigidBodyTree<double>> tree_utility_fixed = makeFixedBaseCassieTreePointer();
   std::unique_ptr<RigidBodyTree<double>> tree_utility_float = makeFloatingBaseCassieTreePointer();
   drake::multibody::AddFlatTerrainToWorld(tree_utility_fixed.get(), terrain_size, terrain_depth);
@@ -381,10 +389,15 @@ int do_main(int argc, char* argv[]) {
   KinematicsCache<double> k_cache_float = tree_utility_float->doKinematics(
       x_start.head(num_total_positions), x_start.tail(num_total_velocities));
 
+  KinematicsCache<double> k_cache_test = (plant_sim->get_rigid_body_tree()).doKinematics(
+      x_start.head(num_total_positions), x_start.tail(num_total_velocities));
+
   
   VectorXd phi_collision;
   Matrix3Xd normal_collision, xA_collision, xB_collision;
   vector<int> idxA_collision, idxB_collision;
+  //cout << tree_utility_float->collisionDetect(
+      //k_cache_float, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision) << endl;
   cout << tree_utility_float->collisionDetect(
       k_cache_float, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision) << endl;
 

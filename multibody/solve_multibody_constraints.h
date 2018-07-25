@@ -132,7 +132,7 @@ Finds a feasible control input for the given state such that the pair satisfies 
 @param u_init Initial value of the control inputs given to the solver
 @return std::vector of solution 'u'
  */
-vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant,
+VectorXd SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant,
                                                        VectorXd x0,
                                                        VectorXd u_init);
 
@@ -178,12 +178,12 @@ class FixedPointConstraint : public Constraint {
   public:
     FixedPointConstraint(RigidBodyPlant<double>* plant,
                          const std::string& description = "");
-    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x_u,
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
                 Eigen::VectorXd* y) const override;
   
-    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x_u,
+    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
                 AutoDiffVecXd* y) const override;
-    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x_u, 
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
                 VectorX<Expression>*y) const override;
   
   private:
@@ -200,13 +200,13 @@ class FixedPointFeasibilityConstraint : public Constraint {
     FixedPointFeasibilityConstraint(RigidBodyPlant<double>* plant,
                                     VectorXd x0,
                                     const std::string& description = "");
-    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& u,
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
                 Eigen::VectorXd* y) const override;
   
-    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& u,
+    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
                 AutoDiffVecXd* y) const override;
 
-    void DoEval(const Eigen::Ref<const VectorX<Variable>>& u, 
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
                 VectorX<Expression>*y) const override;
   
   private:

@@ -208,7 +208,7 @@ vector<VectorXd> SolveTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant
   {
     DRAKE_DEMAND(!isnan(u_sol(i)) && !isinf(u_sol(i)));
   }
-  DRAKE_DEMAND(CheckTreeAndFixedPointConstraints(plant, x_sol, u_sol) == 1);
+  DRAKE_DEMAND(CheckTreeAndFixedPointConstraints(plant, x_sol, u_sol));
 
   vector<VectorXd> sol;
   sol.push_back(q_sol);
@@ -228,13 +228,13 @@ bool CheckTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant,
   VectorXd q_check = x_check.head(tree.get_num_positions());
   x_u_check << x_check, u_check;
 
-  return constraint_tree_position->
-    CheckSatisfied(q_check) && constraint_fixed_point->CheckSatisfied(x_u_check);
+  return constraint_tree_position->CheckSatisfied(q_check) && 
+    constraint_fixed_point->CheckSatisfied(x_u_check);
 }
 
 
 
-vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant,
+VectorXd SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant,
                                                        VectorXd x0,
                                                        VectorXd u_init) {
 
@@ -249,9 +249,9 @@ vector<VectorXd> SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* p
   prog.SetInitialGuess(u, u_init);
   prog.Solve();
 
-  vector<VectorXd> sol;
-  sol.push_back(prog.GetSolution(u));
-  return sol;
+  VectorXd u_sol = prog.GetSolution(u);
+
+  return u_sol;
 }
 
 
@@ -483,22 +483,23 @@ FixedPointFeasibilityConstraint::FixedPointFeasibilityConstraint(RigidBodyPlant<
   description),
   plant_(plant), tree_(plant->get_rigid_body_tree()), x0_(x0)
 {
-    plant_autodiff_ = make_unique<RigidBodyPlant<AutoDiffXd>>(*plant);
+  plant_autodiff_ = make_unique<RigidBodyPlant<AutoDiffXd>>(*plant);
 }
 
 
-void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& u,
+void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
                                              Eigen::VectorXd* y) const {
   AutoDiffVecXd y_t;
-  Eval(drake::math::initializeAutoDiff(u), &y_t);
+  Eval(drake::math::initializeAutoDiff(x), &y_t);
   *y = drake::math::autoDiffToValueMatrix(y_t);
 }
 
-void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& u,
+void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
                                              AutoDiffVecXd* y) const {
     
   const int num_positions = tree_.get_num_positions();
   const int num_velocities = tree_.get_num_velocities();
+  const AutoDiffVecXd u = x;
 
   auto context_autodiff = plant_autodiff_->CreateDefaultContext();
 
@@ -520,7 +521,7 @@ void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const VectorX<Vari
                             VectorX<Expression>*y) const {
 
   throw std::logic_error(
-      "FixedPointConstraint does not support symbolic evaluation.");
+      "FixedPointFeasibilityConstraint does not support symbolic evaluation.");
 }
 
 

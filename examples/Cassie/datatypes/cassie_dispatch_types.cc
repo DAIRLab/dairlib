@@ -84,7 +84,7 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
 
     auto current_time = std::chrono::system_clock::now();
     auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
-    lcm_in.timestamp  = duration_in_seconds.count();
+    lcm_in.timestamp  = duration_in_seconds.count()*1e6;
     
     return lcm_in;
 }

@@ -67,7 +67,7 @@ int doMain() {
   builder.Connect(controller->get_output_port(0),
                   command_sender->get_input_port(0));
 
-  command_pub->set_publish_period(1.0/200.0);
+  command_pub->set_publish_period(1.0/1000.0);
 
 
   auto diagram = builder.Build();

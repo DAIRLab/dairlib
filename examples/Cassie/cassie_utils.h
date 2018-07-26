@@ -12,6 +12,7 @@
 
 using std::vector;
 using std::is_same;
+using std::string;
 
 using Eigen::Map;
 using Eigen::VectorXd;
@@ -48,6 +49,10 @@ std::unique_ptr<RigidBodyTree<double>> makeFloatingBaseCassieTreePointer(
 
 void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
+
+
+int GetBodyIndexFromName(const RigidBodyTree<double>& tree, 
+                         string name);
 
 
 // The RigidBodyPlant<AutoDiff> that is passed to the constructor needs to be

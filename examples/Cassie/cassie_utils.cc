@@ -146,6 +146,19 @@ void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree,
 }
 
 
+int GetBodyIndexFromName(const RigidBodyTree<double>& tree, 
+                         string name) {
+
+  for(int i=0; i<tree.get_num_bodies(); i++) {
+
+    if(!tree.get_body(i).get_name().compare(name)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+
 // The function is not templated as we need the double versions of
 // x, u and lambda (for collision detect) which is difficult to obtain during compile time
 template<typename T>
@@ -223,26 +236,69 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
 
 
   //Collision detect (double template as AutoDiff doesnt work)
-  VectorXd phi_collision;
-  Matrix3Xd normal_collision, xA_collision, xB_collision;
-  vector<int> idxA_collision, idxB_collision;
+  VectorXd phi_total;
+  Matrix3Xd normal_total, xA_total, xB_total;
+  vector<int> idxA_total, idxB_total;
   
 
   // This is an ugly way of doing it. Change it later if a better method is available
   std::cout << const_cast<RigidBodyTree<double>&>(tree_).collisionDetect(
-      k_cache_double, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision);
+      k_cache_double, phi_total, normal_total, xA_total, xB_total, idxA_total, idxB_total);
   std::cout << std::endl;
 
+  const int num_total_contacts = normal_total.cols();
   // 4 contacts for Cassie (2 in each toe)
   const int num_contacts = 4;
 
-  //const Map<Matrix3Xd> normals(normal_collision.data(), 3, num_contacts);
-  //vector<Map<Matrix3Xd>> tangents;
-  //tree_.surfaceTangents(normals, tangents);
+  //Getting the indices of the world and toes
+  const int world_ind = GetBodyIndexFromName(tree_, "world");
+  const int toe_left_ind = GetBodyIndexFromName(tree_, "toe_left");
+  const int toe_right_ind = GetBodyIndexFromName(tree_, "toe_right");
 
+  vector<int> contact_ind(num_contacts);
+  int k=0;
+  for (int i=0; i<num_total_contacts; i++) {
+    int ind_a = idxA_total.at(i);
+    int ind_b = idxB_total.at(i);
+    if ((ind_a == world_ind && ind_b == toe_left_ind) ||
+        (ind_a == world_ind && ind_b == toe_right_ind) ||
+        (ind_a == toe_left_ind && ind_b == world_ind) ||
+        (ind_a == toe_right_ind && ind_b == world_ind)) {
 
+      contact_ind.at(k) = i;
+      k++;
 
+    }
+  }
 
+  Matrix3Xd normal = Matrix3Xd::Zero(normal_total.rows(), num_contacts);
+  for (int i=0; i<num_contacts; i++) {
+    normal.col(i) = normal_total.col(contact_ind.at(i));
+  }
+  
+  const Map<Matrix3Xd> normal_map(
+      normal.data(), normal_total.rows(), num_contacts);
+
+  vector<Map<Matrix3Xd>> tangents;
+
+  Matrix3Xd tmp_mat1 = Matrix3Xd::Zero(3, 4);
+  Map<Matrix3Xd> tmp_map1(tmp_mat1.data(), 3, 4);
+  Matrix3Xd tmp_mat2 = Matrix3Xd::Zero(3, 4);
+  Map<Matrix3Xd> tmp_map2(tmp_mat2.data(), 3, 4);
+  tangents.push_back(tmp_map1);
+  tangents.push_back(tmp_map2);
+
+  for (auto ind : idxA_total) {
+    std::cout << ind << " ";
+  }
+  std::cout << std::endl;
+  for (auto ind : idxB_total) {
+    std::cout << ind << " ";
+  }
+  std::cout << std::endl;
+  std::cout << normal_total << std::endl;
+  std::cout << normal << std::endl;
+  tree_.surfaceTangents(normal_map, tangents);
 
 
 

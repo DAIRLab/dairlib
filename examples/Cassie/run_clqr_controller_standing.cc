@@ -405,6 +405,8 @@ int do_main(int argc, char* argv[]) {
   vector<Matrix3Xd> tangent_collision;
   Matrix3kd t;
 
+  std::cout << normal_collision << std::endl;
+
   for(auto id: idxA_collision) {
     cout << id << " ";
   }

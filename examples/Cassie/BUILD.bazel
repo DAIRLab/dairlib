@@ -28,6 +28,25 @@ cc_library(
           "//common"]
 )
 
+cc_library(
+    name = "cassie_solver",
+    srcs = [
+        "cassie_solver.cc",
+    ],
+    hdrs = [
+        "cassie_solver.h"
+    ],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//multibody/rigid_body_plant:rigid_body_plant",
+        "@drake//solvers:mathematical_program",
+        "@drake//solvers:constraint",
+        "@drake//manipulation/util",
+        "//multibody:solve_multibody_constraints",
+        ":cassie_utils",
+    ],
+)
+
 
 cc_library(
   name = "cassie_urdf",
@@ -262,6 +281,7 @@ cc_binary(
         "//systems/controllers:clqr_controller",
         "//multibody:solve_multibody_constraints",
         ":cassie_utils",
+        ":cassie_solver",
     ],
 )
 
@@ -286,6 +306,7 @@ cc_binary(
         "//systems/controllers:clqr_controller",
         "//multibody:solve_multibody_constraints",
         ":cassie_utils",
+        ":cassie_solver",
     ],
 )
 

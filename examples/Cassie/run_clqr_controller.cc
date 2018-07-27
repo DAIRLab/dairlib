@@ -24,7 +24,8 @@
 #include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "multibody/solve_multibody_constraints.h"
-#include "examples/Cassie/cassie_utils.h"
+#include "cassie_utils.h"
+#include "cassie_solver.h"
 
 using std::cout;
 using std::endl;
@@ -167,14 +168,11 @@ int do_main(int argc, char* argv[]) {
       cout << elem.first << " " << elem.second << endl;
   }
 
-  //x0(map.at("hip_roll_left")) = 0
-  //x0(map.at("hip_yaw_left")) = 0.2;
+  x0(map.at("hip_roll_left")) = 0.1;
+  x0(map.at("hip_roll_right")) = -0.1;
+  //x0(map.at("hip_yaw_left")) = 0;
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
-  // x0(map.at("achilles_hip_pitch_left")) = -.44;
-  // x0(map.at("achilles_hip_pitch_right")) = -.44;
-  // x0(map.at("achilles_heel_pitch_left")) = -.105;
-  // x0(map.at("achilles_heel_pitch_right")) = -.105;
   x0(map.at("knee_left")) = -.644;
   x0(map.at("knee_right")) = -.644;
   x0(map.at("ankle_joint_left")) = .792;
@@ -190,13 +188,20 @@ int do_main(int argc, char* argv[]) {
   x0(map.at("toe_right")) = -60.0*M_PI/180.0;
 
   std::vector<int> fixed_joints;
-  //fixed_joints.push_back(map.at("hip_roll_left"));
+
+  fixed_joints.push_back(map.at("hip_roll_left"));
+  fixed_joints.push_back(map.at("hip_roll_right"));
   //fixed_joints.push_back(map.at("hip_yaw_left"));
+  //fixed_joints.push_back(map.at("hip_yaw_right"));
   fixed_joints.push_back(map.at("hip_pitch_left"));
   fixed_joints.push_back(map.at("hip_pitch_right"));
+  //fixed_joints.push_back(map.at("ankle_joint_left"));
+  //fixed_joints.push_back(map.at("ankle_joint_right"));
   fixed_joints.push_back(map.at("knee_left"));
   fixed_joints.push_back(map.at("knee_right"));
   fixed_joints.push_back(map.at("toe_left"));
+  fixed_joints.push_back(map.at("toe_right"));
+
   
   VectorXd x_start = VectorXd::Zero(num_states);
   x_start.head(num_positions) = SolveTreeConstraints(

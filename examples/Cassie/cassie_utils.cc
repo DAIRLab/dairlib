@@ -239,9 +239,8 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
   VectorXd phi_total;
   Matrix3Xd normal_total, xA_total, xB_total;
   vector<int> idxA_total, idxB_total;
-  
 
-  // This is an ugly way of doing it. Change it later if a better method is available
+  // This (const cast) is an ugly way of doing it. Change it later if a better method is available
   std::cout << const_cast<RigidBodyTree<double>&>(tree_).collisionDetect(
       k_cache_double, phi_total, normal_total, xA_total, xB_total, idxA_total, idxB_total);
   std::cout << std::endl;

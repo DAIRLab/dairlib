@@ -24,7 +24,8 @@
 #include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "multibody/solve_multibody_constraints.h"
-#include "examples/Cassie/cassie_utils.h"
+#include "cassie_utils.h"
+#include "cassie_solver.h"
 
 using std::cout;
 using std::endl;
@@ -43,9 +44,9 @@ using drake::systems::BasicVector;
 using drake::systems::ConstantVectorSource;
 using drake::systems::Multiplexer;
 
+using dairlib::SolveCassieStandingConstraints;
 using dairlib::multibody::SolveTreeConstraints;
 using dairlib::multibody::CheckTreeConstraints;
-using dairlib::multibody::SolveCassieStandingConstraints;
 using dairlib::multibody::SolveFixedPointConstraints;
 using dairlib::multibody::CheckFixedPointConstraints;
 using dairlib::multibody::SolveTreeAndFixedPointConstraints;
@@ -290,7 +291,7 @@ int do_main(int argc, char* argv[]) {
 
   x0(map_sim.at("base_x")) = 0.0;
   x0(map_sim.at("base_y")) = 0.0;
-  x0(map_sim.at("base_z")) = 1.129;
+  x0(map_sim.at("base_z")) = 2.129;
 
   x0(map_sim.at("hip_roll_left")) = 0.1;
   x0(map_sim.at("hip_roll_right")) = -0.1;
@@ -334,160 +335,161 @@ int do_main(int argc, char* argv[]) {
   VectorXd x_start = x0;
 
 
-  //VectorXd q_stand = SolveCassieStandingConstraints(plant_sim->get_rigid_body_tree(), x_start.head(num_total_positions));
-  //cout << "q_stand: " << q_stand.transpose() << endl;
+  VectorXd q_stand = SolveCassieStandingConstraints(plant_sim->get_rigid_body_tree(), x_start.head(num_total_positions));
+  cout << "q_stand: " << q_stand.transpose() << endl;
+  x_start.segment(6, num_positions) = q_stand;
 
-  VectorXd q_start = SolveTreeConstraints(plant_model->get_rigid_body_tree(), x_start.segment(6, num_positions), fixed_joints);
-  x_start.segment(6, num_positions) = q_start;
+  //VectorXd q_start = SolveTreeConstraints(plant_model->get_rigid_body_tree(), x_start.segment(6, num_positions), fixed_joints);
+  //x_start.segment(6, num_positions) = q_start;
 
-  cout << "x_start: " << x_start.transpose() << endl;
+  //cout << "x_start: " << x_start.transpose() << endl;
 
-  VectorXd x_init = ExtractFixedStateFromFloating(x_start, num_total_positions, num_total_velocities, 6, 6);
-  cout << "x_init: " << x_init.transpose() << endl;
-  VectorXd u_init = VectorXd::Zero(num_efforts);
+  //VectorXd x_init = ExtractFixedStateFromFloating(x_start, num_total_positions, num_total_velocities, 6, 6);
+  //cout << "x_init: " << x_init.transpose() << endl;
+  //VectorXd u_init = VectorXd::Zero(num_efforts);
 
-  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
-      plant_model.get(), x_init, ComputeUAnalytical(plant_model->get_rigid_body_tree(), x_init), fixed_joints);
-  VectorXd q_sol = sol_tfp.at(0);
-  VectorXd v_sol = sol_tfp.at(1);
-  VectorXd u_sol = sol_tfp.at(2);
-  VectorXd x_sol(num_states);
-  x_sol << q_sol, v_sol;
+  //vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
+  //    plant_model.get(), x_init, ComputeUAnalytical(plant_model->get_rigid_body_tree(), x_init), fixed_joints);
+  //VectorXd q_sol = sol_tfp.at(0);
+  //VectorXd v_sol = sol_tfp.at(1);
+  //VectorXd u_sol = sol_tfp.at(2);
+  //VectorXd x_sol(num_states);
+  //x_sol << q_sol, v_sol;
 
-  //x_start.segment(6, num_positions
+  ////x_start.segment(6, num_positions
 
-  cout << "x_sol: " << x_sol.transpose() << endl;
+  //cout << "x_sol: " << x_sol.transpose() << endl;
 
-  x_start.segment(6, num_positions) = q_sol;
-  x_start.segment(num_total_positions + 6, num_velocities) = v_sol;
+  //x_start.segment(6, num_positions) = q_sol;
+  //x_start.segment(num_total_positions + 6, num_velocities) = v_sol;
 
-  cout << "x_start: " << x_start.transpose() << endl;
-
-
-  std::unique_ptr<RigidBodyTree<double>> tree_test = makeFloatingBaseCassieTreePointer();
-  drake::multibody::AddFlatTerrainToWorld(tree_test.get(), terrain_size, terrain_depth);
-
-  VectorXd lambda = VectorXd::Ones(12);
-  RigidBodyPlant<AutoDiffXd> plant_sim_autodiff(std::move(tree_test));
-  CassiePlant<AutoDiffXd> cassie_plant(&plant_sim_autodiff);
-  ContinuousState<AutoDiffXd> x_dot(
-      std::make_unique<BasicVector<AutoDiffXd>>(num_total_states), num_total_positions, num_total_velocities, 0);
-  cassie_plant.CalcTimeDerivativesCassieDuringContact(initializeAutoDiff(x_start), 
-                                                      initializeAutoDiff(u_init), 
-                                                      initializeAutoDiff(lambda),
-                                                      &x_dot);
-  cout << "*********************vdot*******************" << endl;
-  cout << x_dot.CopyToVector().transpose() << endl;
+  //cout << "x_start: " << x_start.transpose() << endl;
 
 
-  std::unique_ptr<RigidBodyTree<double>> tree_utility_fixed = makeFixedBaseCassieTreePointer();
-  std::unique_ptr<RigidBodyTree<double>> tree_utility_float = makeFloatingBaseCassieTreePointer();
-  drake::multibody::AddFlatTerrainToWorld(tree_utility_fixed.get(), terrain_size, terrain_depth);
-  drake::multibody::AddFlatTerrainToWorld(tree_utility_float.get(), terrain_size, terrain_depth);
+  //std::unique_ptr<RigidBodyTree<double>> tree_test = makeFloatingBaseCassieTreePointer();
+  //drake::multibody::AddFlatTerrainToWorld(tree_test.get(), terrain_size, terrain_depth);
 
-  KinematicsCache<double> k_cache_fixed = tree_utility_fixed->doKinematics(
-      x_sol.head(num_positions), x_sol.tail(num_velocities));
+  //VectorXd lambda = VectorXd::Ones(12);
+  //RigidBodyPlant<AutoDiffXd> plant_sim_autodiff(std::move(tree_test));
+  //CassiePlant<AutoDiffXd> cassie_plant(&plant_sim_autodiff);
+  //ContinuousState<AutoDiffXd> x_dot(
+  //    std::make_unique<BasicVector<AutoDiffXd>>(num_total_states), num_total_positions, num_total_velocities, 0);
+  //cassie_plant.CalcTimeDerivativesCassieDuringContact(initializeAutoDiff(x_start), 
+  //                                                    initializeAutoDiff(u_init), 
+  //                                                    initializeAutoDiff(lambda),
+  //                                                    &x_dot);
+  //cout << "*********************vdot*******************" << endl;
+  //cout << x_dot.CopyToVector().transpose() << endl;
 
-  KinematicsCache<double> k_cache_float = tree_utility_float->doKinematics(
-      x_start.head(num_total_positions), x_start.tail(num_total_velocities));
 
-  KinematicsCache<double> k_cache_test = (plant_sim->get_rigid_body_tree()).doKinematics(
-      x_start.head(num_total_positions), x_start.tail(num_total_velocities));
+  //std::unique_ptr<RigidBodyTree<double>> tree_utility_fixed = makeFixedBaseCassieTreePointer();
+  //std::unique_ptr<RigidBodyTree<double>> tree_utility_float = makeFloatingBaseCassieTreePointer();
+  //drake::multibody::AddFlatTerrainToWorld(tree_utility_fixed.get(), terrain_size, terrain_depth);
+  //drake::multibody::AddFlatTerrainToWorld(tree_utility_float.get(), terrain_size, terrain_depth);
 
-  
-  VectorXd phi_collision;
-  Matrix3Xd normal_collision, xA_collision, xB_collision;
-  vector<int> idxA_collision, idxB_collision;
+  //KinematicsCache<double> k_cache_fixed = tree_utility_fixed->doKinematics(
+  //    x_sol.head(num_positions), x_sol.tail(num_velocities));
+
+  //KinematicsCache<double> k_cache_float = tree_utility_float->doKinematics(
+  //    x_start.head(num_total_positions), x_start.tail(num_total_velocities));
+
+  //KinematicsCache<double> k_cache_test = (plant_sim->get_rigid_body_tree()).doKinematics(
+  //    x_start.head(num_total_positions), x_start.tail(num_total_velocities));
+
+  //
+  //VectorXd phi_collision;
+  //Matrix3Xd normal_collision, xA_collision, xB_collision;
+  //vector<int> idxA_collision, idxB_collision;
+  ////cout << tree_utility_float->collisionDetect(
+  //    //k_cache_float, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision) << endl;
   //cout << tree_utility_float->collisionDetect(
-      //k_cache_float, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision) << endl;
-  cout << tree_utility_float->collisionDetect(
-      k_cache_float, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision) << endl;
+  //    k_cache_float, phi_collision, normal_collision, xA_collision, xB_collision, idxA_collision, idxB_collision) << endl;
 
-  const Eigen::Map<Matrix3Xd> normal_collision_map(normal_collision.data(), normal_collision.rows(), normal_collision.cols());
-  vector<Matrix3Xd> tangent_collision;
-  Matrix3kd t;
+  //const Eigen::Map<Matrix3Xd> normal_collision_map(normal_collision.data(), normal_collision.rows(), normal_collision.cols());
+  //vector<Matrix3Xd> tangent_collision;
+  //Matrix3kd t;
 
-  std::cout << normal_collision << std::endl;
+  //std::cout << normal_collision << std::endl;
 
-  for(auto id: idxA_collision) {
-    cout << id << " ";
-  }
-  cout << endl;
-  for(auto id: idxB_collision) {
-    cout << id << " ";
-  }
-  cout << endl;
-  cout << phi_collision.transpose() << endl;
+  //for(auto id: idxA_collision) {
+  //  cout << id << " ";
+  //}
+  //cout << endl;
+  //for(auto id: idxB_collision) {
+  //  cout << id << " ";
+  //}
+  //cout << endl;
+  //cout << phi_collision.transpose() << endl;
 
-  vector<int> selected_collision{0, 1, 2, 3};
-  int num_collision_points = selected_collision.size();
+  //vector<int> selected_collision{0, 1, 2, 3};
+  //int num_collision_points = selected_collision.size();
 
-  MatrixXd J_collision_float(num_collision_points*3, tree_utility_float->get_num_positions());
-  MatrixXd J_collision_fixed(num_collision_points*3, tree_utility_float->get_num_positions());
-  J_collision_float << tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(0), idxB_collision.at(0), 0, true),
-                 tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(1), idxB_collision.at(1), 0, true),
-                 tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(2), idxB_collision.at(2), 0, true); 
-                 tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(3), idxB_collision.at(3), 0, true); 
-  
+  //MatrixXd J_collision_float(num_collision_points*3, tree_utility_float->get_num_positions());
+  //MatrixXd J_collision_fixed(num_collision_points*3, tree_utility_float->get_num_positions());
+  //J_collision_float << tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(0), idxB_collision.at(0), 0, true),
+  //               tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(1), idxB_collision.at(1), 0, true),
+  //               tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(2), idxB_collision.at(2), 0, true); 
+  //               tree_utility_float->transformPointsJacobian(k_cache_float, xB_collision.col(3), idxB_collision.at(3), 0, true); 
+  //
 
-  J_collision_fixed = J_collision_float.block(0, 6, J_collision_float.rows(), J_collision_float.cols() - 6);
-  cout << "J collision" << endl;
-  cout << J_collision_fixed << endl;
+  //J_collision_fixed = J_collision_float.block(0, 6, J_collision_float.rows(), J_collision_float.cols() - 6);
+  //cout << "J collision" << endl;
+  //cout << J_collision_fixed << endl;
 
-  const int num_total_constraints = num_constraints + J_collision_fixed.rows();
+  //const int num_total_constraints = num_constraints + J_collision_fixed.rows();
 
-  //Parameter matrices for LQR
-  MatrixXd Q = MatrixXd::Identity(num_states - 2*num_total_constraints, num_states - 2*num_total_constraints);
-  //Q corresponding to the positions
-  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*100.0;
-  //Q corresponding to the velocities
-  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*10.0;
-  Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
-  Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100;
+  ////Parameter matrices for LQR
+  //MatrixXd Q = MatrixXd::Identity(num_states - 2*num_total_constraints, num_states - 2*num_total_constraints);
+  ////Q corresponding to the positions
+  //MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*100.0;
+  ////Q corresponding to the velocities
+  //MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*10.0;
+  //Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
+  //Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
+  //MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100;
 
 
-  //Building the controller
-  auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant_model.get(), x_sol, u_sol, J_collision_fixed, num_positions, num_velocities, num_efforts, Q, R);
-  VectorXd K_vec = clqr_controller->GetKVec();
-  VectorXd C = u_sol; 
-  VectorXd x_desired = x_sol;
-  cout << "----------------------------------------------------------------------------------------" << endl;
-  cout << "K: " << K_vec.transpose() << endl;
-  cout << "C: " << C.transpose() << endl;
-  cout << "xdes: " << x_desired.transpose() << endl;
+  ////Building the controller
+  //auto clqr_controller = builder.AddSystem<systems::ClqrController>(plant_model.get(), x_sol, u_sol, J_collision_fixed, num_positions, num_velocities, num_efforts, Q, R);
+  //VectorXd K_vec = clqr_controller->GetKVec();
+  //VectorXd C = u_sol; 
+  //VectorXd x_desired = x_sol;
+  //cout << "----------------------------------------------------------------------------------------" << endl;
+  //cout << "K: " << K_vec.transpose() << endl;
+  //cout << "C: " << C.transpose() << endl;
+  //cout << "xdes: " << x_desired.transpose() << endl;
 
-  vector<int> input_info_sizes{num_total_states, num_efforts, 3, 1};
-  //vector<int> input_params_sizes{num_states*num_efforts, num_efforts, num_states, 1};
+  //vector<int> input_info_sizes{num_total_states, num_efforts, 3, 1};
+  ////vector<int> input_params_sizes{num_states*num_efforts, num_efforts, num_states, 1};
 
-  auto info_connector = builder.AddSystem<InfoConnector>(num_positions, num_velocities, num_efforts);
-  auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
+  //auto info_connector = builder.AddSystem<InfoConnector>(num_positions, num_velocities, num_efforts);
+  //auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
 
-  auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(num_efforts));
-  auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(3));
-  auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(1));
+  //auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(num_efforts));
+  //auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(3));
+  //auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(1));
 
-  VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
-  params_vec << K_vec, C, x_desired;
-  AffineParams params(num_states, num_efforts);
-  params.SetDataVector(params_vec);
+  //VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
+  //params_vec << K_vec, C, x_desired;
+  //AffineParams params(num_states, num_efforts);
+  //params.SetDataVector(params_vec);
 
-  auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
-  auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
-          (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
-  auto float_to_fixed_passthrough = builder.AddSystem<FloatToFixedConnector>(
-      num_total_positions, num_total_velocities, num_efforts, 6);
+  //auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
+  //auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
+  //        (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
+  //auto float_to_fixed_passthrough = builder.AddSystem<FloatToFixedConnector>(
+  //    num_total_positions, num_total_velocities, num_efforts, 6);
 
-  builder.Connect(plant_sim->state_output_port(), multiplexer_info->get_input_port(0));
-  builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
-  builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
-  builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
-  builder.Connect(multiplexer_info->get_output_port(0), float_to_fixed_passthrough->get_input_port(0));
-  builder.Connect(float_to_fixed_passthrough->get_output_port(0), info_connector->get_input_port(0));
-  builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
-  builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
-  builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
-  builder.Connect(control_output->get_output_port(), plant_sim->actuator_command_input_port()); 
+  //builder.Connect(plant_sim->state_output_port(), multiplexer_info->get_input_port(0));
+  //builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
+  //builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
+  //builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
+  //builder.Connect(multiplexer_info->get_output_port(0), float_to_fixed_passthrough->get_input_port(0));
+  //builder.Connect(float_to_fixed_passthrough->get_output_port(0), info_connector->get_input_port(0));
+  //builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
+  //builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
+  //builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
+  //builder.Connect(control_output->get_output_port(), plant_sim->actuator_command_input_port()); 
 
   auto diagram = builder.Build();
 
@@ -497,8 +499,8 @@ int do_main(int argc, char* argv[]) {
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
   state.SetFromVector(x_start);
   
-  //auto zero_input = Eigen::MatrixXd::Zero(num_efforts,1);
-  //context.FixInputPort(0, zero_input);
+  auto zero_input = Eigen::MatrixXd::Zero(num_efforts,1);
+  context.FixInputPort(0, zero_input);
   
   //simulator.set_publish_every_time_step(false);
   //simulator.set_publish_at_initialization(false);

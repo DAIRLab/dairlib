@@ -1,0 +1,460 @@
+1
+ 
+ SNMEMA EXIT 100 -- finished successfully
+ SNMEMA INFO 104 -- memory requirements estimated
+      Total character workspace             501
+      Total integer workspace          500000
+      Total real workspace          500000
+1
+ 
+ Parameters
+ ==========
+
+ Files
+ -----
+ Solution file..........         0       Old basis file ........         0       Standard input.........         5
+ Insert file............         0       New basis file ........         0       (Printer)..............         9
+ Punch file.............         0       Backup basis file......         0       (Specs file)...........         0
+ Load file..............         0       Dump file..............         0       Standard output........         6
+
+ Frequencies
+ -----------
+ Print frequency........       100       Check frequency........        60       Save new basis map.....       100
+ Summary frequency......       100       Factorization frequency        50       Expand frequency.......     10000
+
+ QP subproblems
+ --------------
+ QPsolver Cholesky......
+ Scale tolerance........      .900       Minor feasibility tol..  1.00E-06       Iteration limit........     10000
+ Scale option...........         0       Minor optimality  tol..  1.00E-06       Minor print level......         1
+ Crash tolerance........      .100       Pivot tolerance........  3.25E-11       New superbasics........        99
+ Crash option...........         3       Elastic weight.........  1.00E+05
+
+ Partial pricing
+ ---------------
+ LP Partial price.......         1       Prtl price section ( A)        42       Prtl price section (-I)        41
+ QP Partial price.......         1       Prtl price section ( A)        42       Prtl price section (-I)        41
+
+ The SQP Method
+ --------------
+ Minimize...............                 Cold start.............                 Proximal Point method..         1
+ Nonlinear objectiv vars        42       Objective Row..........         1       Function precision.....  3.00E-13
+ Unbounded step size....  1.00E+20       Superbasics limit......        42       Difference interval....  5.48E-07
+ Unbounded objective....  1.00E+15       Reduced Hessian dim....        42       Central difference int.  6.70E-05
+ Major step limit.......  2.00E+00       Derivative linesearch..                 Derivative option......         1
+ Major iterations limit.      1000       Linesearch tolerance...    .90000       Verify level...........         0
+ Minor iterations limit.       500       Penalty parameter......  0.00E+00       Major Print Level......        11
+ Time limit (secs)...... 9999999.0       Major optimality tol...  2.00E-06
+
+ Hessian Approximation
+ ---------------------
+ Full-Memory Hessian....                 Hessian updates........  99999999       Hessian frequency......  99999999
+                                                                                 Hessian flush..........  99999999
+
+ Nonlinear constraints
+ ---------------------
+ Nonlinear constraints..        34       Major feasibility tol..  1.00E-06       Violation limit........  1.00E+01
+ Nonlinear Jacobian vars        42
+
+ Miscellaneous
+ -------------
+ LU factor tolerance....      3.99       LU singularity tol.....  3.25E-11       Timing level...........         3
+ LU update tolerance....      3.99       LU swap tolerance......  1.22E-04       Debug level............         0
+ LU partial  pivoting...                 eps (machine precision)  2.22E-16       System information.....        No
+                                                                                 Sticky parameters......        No
+1
+ 
+
+ 
+
+ Matrix statistics
+ -----------------
+               Total      Normal        Free       Fixed     Bounded
+ Rows             41           0           1          40           0
+ Columns          42           0          42           0           0
+
+ No. of matrix elements                 1382     Density      80.256
+ Biggest  constant element        1.0000E+00  (excluding fixed columns,
+ Smallest constant element        1.0000E+00   free rows, and RHS)
+
+ No. of objective coefficients             0
+
+ Nonlinear constraints      34     Linear constraints       7
+ Nonlinear variables        42     Linear variables         0
+ Jacobian  variables        42     Objective variables     42
+ Total constraints          41     Total variables         42
+1
+ 
+
+ 
+ The user has defined    1418   out of    1418   first  derivatives
+
+ Cheap test of user-supplied problem derivatives...
+
+ The constraint gradients seem to be OK.
+
+ -->  The largest discrepancy was    4.88E-08  in constraint    74
+ 
+
+ The objective  gradients seem to be OK.
+
+ Gradient projected in one direction   0.00000000000E+00
+ Difference approximation              2.38106948700E-07
+1
+ 
+
+ Factor      3  Demand      0  Itn          0
+ Nonlin     22  Linear      0  Slacks      19  B  factorize
+ m          41 =n          41  Elems      753  Amax   7.7E+05  Density  44.79
+ Singular(m=n)  rank       41  n-rank       0  nsing        2
+ Merit     1.6  lenL       46  L+U        216  Cmpressns    0  Incres  -71.31
+ Utri       19  lenU      170  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        4  dense1     15  Lmax  3.94E+00
+ bump       18  dense2      9  DUmax  7.6E+05  DUmin  1.0E+00  condU  7.6E+05
+ 
+ Nonlin     22  Linear      0  Slacks      19  BR factorize
+ m          41 =n          41  Elems      753  Amax   7.7E+05  Density  44.79
+ Singular(m=n)  rank       41  n-rank       0  nsing       35
+ MerRP     3.4  lenL       49  L+U        209  Cmpressns    0  Incres  -72.24
+ Utri       19  lenU      160  Ltol  2.50E+00  Umax   7.7E+05  Ugrwth 1.0E+00
+ Ltri        3  dense1     15  Lmax  1.42E+00  Akmax  0.0E+00  Agrwth 0.0E+00
+ bump       19  dense2      4  DUmax  7.7E+05  DUmin  1.1E-02  condU  7.2E+07
+ Column     43  replaced by slack      1
+ Column     44  replaced by slack      2
+ Column     47  replaced by slack      5
+ Column     48  replaced by slack      6
+ Column     49  replaced by slack      7
+ and so on.  Total slacks inserted =    35
+ 
+ Nonlin      6  Linear      0  Slacks      35  B  factorize
+ m          41 =n          41  Elems      236  Amax   7.7E+05  Density  14.04
+ Merit      .1  lenL        6  L+U         90  Cmpressns    0  Incres  -61.86
+ Utri       35  lenU       84  Ltol  2.00E+00  Umax   7.7E+05  Ugrwth 1.0E+00
+ Ltri        0  dense1      5  Lmax  4.19E-01
+ bump        6  dense2      4  DUmax  7.7E+05  DUmin  1.0E+00  condU  7.7E+05
+ 
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     30     0     30              1  1.0E+03  1.7E-04  1.4210855E-14     327                              _  r
+
+ Factor      5  Demand      0  Itn         30
+ Nonlin     36  Linear      0  Slacks       5  B  factorize
+ m          41 =n          41  Elems     1195  Amax   7.7E+05  Density  71.09
+ Merit    18.6  lenL       84  L+U        295  Cmpressns    0  Incres  -75.31
+ Utri        5  lenU      211  Ltol  3.99E+00  Umax   7.8E+05  Ugrwth 1.0E+00
+ Ltri        0  dense1     24  Lmax  3.83E+00
+ bump       36  dense2      4  DUmax  7.8E+05  DUmin  5.9E-02  condU  1.3E+07
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     32     1      2 6.2E-02      2  9.6E+02  1.0E+00  6.3635059E+09     295            2 1.0E+00 2.2E-05 _  rli
+
+ Factor      6  Demand      0  Itn         32
+ Nonlin     36  Linear      0  Slacks       5  BT factorize
+ m          41 =n          41  Elems     1195  Amax   7.7E+05  Density  71.09
+ Merit    17.7  lenL       95  L+U        296  Cmpressns    0  Incres  -75.23
+ Utri        5  lenU      201  Ltol  3.99E+00  Umax   7.8E+05  Ugrwth 1.0E+00
+ Ltri        0  dense1     24  Lmax  3.25E+00
+ bump       36  dense2      5  DUmax  7.8E+05  DUmin  9.4E-02  condU  8.2E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     33     2      1 1.0E+00      4  8.9E+00  1.6E-02  1.4258278E+03     296            2 1.9E+00 2.2E-05 _sm  i
+
+ Factor      7  Demand      0  Itn         33
+ Nonlin     36  Linear      0  Slacks       5  BT factorize
+ m          41 =n          41  Elems     1195  Amax   7.7E+05  Density  71.09
+ Merit    17.9  lenL       88  L+U        289  Cmpressns    0  Incres  -75.82
+ Utri        5  lenU      201  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        0  dense1     24  Lmax  2.70E+00
+ bump       36  dense2      5  DUmax  4.3E+05  DUmin  4.9E-02  condU  8.7E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     37     3      4 7.3E-01      7  3.2E+00  4.9E-02  1.3548551E+03     307            2 7.7E+03 2.2E-05 _ m  i
+
+ Factor      8  Demand      0  Itn         37
+ Nonlin     38  Linear      0  Slacks       3  BT factorize
+ m          41 =n          41  Elems     1257  Amax   7.7E+05  Density  74.78
+ Merit    18.5  lenL      100  L+U        305  Cmpressns    0  Incres  -75.74
+ Utri        3  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        0  dense1     24  Lmax  2.69E+00
+ bump       38  dense2      5  DUmax  4.4E+05  DUmin  5.0E-02  condU  8.9E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     39     4      2 2.0E-01     15  3.3E+00  1.7E-02  1.3978363E+03     305            1 1.7E+09 2.2E-01 _ m  i
+
+ Factor      9  Demand      0  Itn         39
+ Nonlin     38  Linear      0  Slacks       3  BT factorize
+ m          41 =n          41  Elems     1257  Amax   7.7E+05  Density  74.78
+ Merit    18.5  lenL       99  L+U        303  Cmpressns    0  Incres  -75.89
+ Utri        3  lenU      204  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        0  dense1     24  Lmax  3.93E+00
+ bump       38  dense2      5  DUmax  3.8E+05  DUmin  5.8E-02  condU  6.6E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     42     5      3 1.0E+00     17  4.1E+00  5.0E-02  7.3692787E+02     312            2 5.1E+07 2.2E-01 _ M  i
+
+ Factor     10  Demand      0  Itn         42
+ Nonlin     39  Linear      0  Slacks       2  BT factorize
+ m          41 =n          41  Elems     1288  Amax   7.7E+05  Density  76.62
+ Merit    18.5  lenL      108  L+U        313  Cmpressns    0  Incres  -75.70
+ Utri        2  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        1  dense1     24  Lmax  2.87E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.0E-02  condU  7.9E+06
+ 
+ Itn     42: BS factorize
+ m          43 >n          41  Elems     1265  Amax   7.7E+05  Density  71.75
+ Merit     3.5  lenL       27  L+U        259  Cmpressns    0  Incres  -79.53
+ Utri       24  lenU      232  Ltol  2.50E+00  Umax   7.6E+05  Ugrwth 1.0E+00
+ Ltri        0  dense1     16  Lmax  5.91E-01
+ bump       19  dense2     11  DUmax  1.3E+05  DUmin  9.6E-02  condU  1.3E+06
+ BS Factorize.   nSwap =      1
+ 
+ Nonlin     38  Linear      0  Slacks       3  B  factorize
+ m          41 =n          41  Elems     1257  Amax   7.7E+05  Density  74.78
+ Merit    18.1  lenL      104  L+U        315  Cmpressns    0  Incres  -74.94
+ Utri        3  lenU      211  Ltol  3.99E+00  Umax   7.7E+05  Ugrwth 1.0E+00
+ Ltri        1  dense1     23  Lmax  2.97E+00
+ bump       37  dense2      5  DUmax  7.7E+05  DUmin  5.7E-02  condU  1.3E+07
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     46     6      4 1.0E+00     18  1.9E-01  4.8E-02  6.5900556E+02     342     1      2 1.0E+00 2.2E-01 _
+
+ Factor     11  Demand      0  Itn         46
+ Nonlin     40  Linear      0  Slacks       1  BT factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      115  L+U        320  Cmpressns    0  Incres  -75.74
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.97E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     47     7      1 1.0E+00     20  2.9E-02  4.3E+00  1.3489717E+01     320            2 1.2E+01 2.2E-01 _ m
+
+ Factor     12  Demand      0  Itn         47
+ Nonlin     40  Linear      0  Slacks       1  BT factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      116  L+U        321  Cmpressns    0  Incres  -75.66
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.26E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     48     8      1 6.7E-01     23  9.5E-03  8.0E-01  4.5314427E+01     321            2 3.8E+00 2.5E+03 _ M
+
+ Factor     13  Demand      0  Itn         48
+ Nonlin     40  Linear      0  Slacks       1  BT factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      116  L+U        321  Cmpressns    0  Incres  -75.66
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.25E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     49     9      1 1.0E+00     24  3.0E-04  1.6E-02  4.5322467E+01     321            2 4.0E+00 2.5E+03 _
+
+ Factor     14  Demand      0  Itn         49
+ Nonlin     40  Linear      0  Slacks       1  BT factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      116  L+U        321  Cmpressns    0  Incres  -75.66
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.25E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     50    10      1 1.0E+00     25 (8.5E-08) 6.0E-02  4.5321515E+01     321            2 1.0E+00 7.8E+01 _
+
+ Factor     15  Demand      0  Itn         50
+ Nonlin     40  Linear      0  Slacks       1  BT factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      116  L+U        321  Cmpressns    0  Incres  -75.66
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.25E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     51    11      1 1.0E+00     26 (8.4E-07) 1.8E-03  4.5321426E+01     321            2 1.0E+00 1.9E+01 _
+
+ Factor     16  Demand      0  Itn         51
+ Nonlin     40  Linear      0  Slacks       1  BT factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      116  L+U        321  Cmpressns    0  Incres  -75.66
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.25E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     52    12      1 1.0E+00     27 (5.8E-10) 2.3E-05  4.5321426E+01     321            2 1.0E+00 1.6E+01 _
+
+ Factor     17  Demand      0  Itn         52
+ Nonlin     40  Linear      0  Slacks       1  BT factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      116  L+U        321  Cmpressns    0  Incres  -75.66
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.25E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+
+ Factor     18  Demand      0  Itn         53
+ Nonlin     40  Linear      0  Slacks       1  BT factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      116  L+U        321  Cmpressns    0  Incres  -75.66
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.25E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+
+ Factor     19  Demand      0  Itn         53
+ Nonlin     40  Linear      0  Slacks       1  BT factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      116  L+U        321  Cmpressns    0  Incres  -75.66
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.25E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+ 
+ Itn     53: BS factorize
+ m          43 >n          41  Elems     1383  Amax   7.6E+05  Density  78.45
+ Merit     4.6  lenL       37  L+U        289  Cmpressns    0  Incres  -79.10
+ Utri       23  lenU      252  Ltol  2.50E+00  Umax   7.6E+05  Ugrwth 1.0E+00
+ Ltri        0  dense1     17  Lmax  1.95E+00
+ bump       20  dense2     10  DUmax  7.6E+05  DUmin  9.6E-02  condU  7.9E+06
+ BS Factorize.   nSwap =      0
+ 
+ Nonlin     40  Linear      0  Slacks       1  B  factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      116  L+U        321  Cmpressns    0  Incres  -75.66
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.25E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+
+ Factor     20  Demand      0  Itn         53
+ Nonlin     40  Linear      0  Slacks       1  BT factorize
+ m          41 =n          41  Elems     1319  Amax   7.6E+05  Density  78.47
+ Merit    18.5  lenL      116  L+U        321  Cmpressns    0  Incres  -75.66
+ Utri        1  lenU      205  Ltol  3.99E+00  Umax   7.6E+05  Ugrwth 9.9E-01
+ Ltri        2  dense1     24  Lmax  3.25E+00
+ bump       38  dense2      5  DUmax  3.9E+05  DUmin  5.7E-02  condU  6.9E+06
+
+   Itns Major Minors    Step   nCon Feasible  Optimal  MeritFunction     L+U BSwap     nS condZHZ Penalty
+     53    13      1 1.0E+00     28 (1.1E-12)(1.7E-07) 4.5321426E+01     321            2 1.0E+00 1.6E+01 _
+1
+ 
+ SNOPTA EXIT   0 -- finished successfully
+ SNOPTA INFO   1 -- optimality conditions satisfied
+
+ Problem name                 drake.ou
+ No. of iterations                  53   Objective            4.5321425523E+01
+ No. of major iterations            13   Linear    obj. term  0.0000000000E+00
+ Penalty parameter           1.572E+01   Nonlinear obj. term  4.5321425523E+01
+ User function calls (total)        29
+ No. of superbasics                  2   No. of basic nonlinears            40
+ No. of degenerate steps            19   Percentage                      35.85
+ Max x                      33 4.1E+00   Max pi                      2 2.4E+03
+ Max Primal infeas           0 0.0E+00   Max Dual infeas            14 3.9E-04
+ Nonlinear constraint violn    5.4E-12
+1
+ 
+ Name           drake.ou                 Objective Value      4.5321425523E+01
+
+ Status         Optimal Soln             Iteration     53    Superbasics     2
+
+ Objective               (Min)
+ RHS
+ Ranges
+ Bounds
+
+ Section 1 - Rows
+
+  Number  ...Row.. State  ...Activity...  Slack Activity  ..Lower Limit.  ..Upper Limit.  .Dual Activity    ..i
+ 
+      43  r      1    BS          .               .                None            None         -1.0          1
+      44  r      2    EQ          .00000          .00000          .               .           2352.76474      2
+      45  r      3    EQ          .00000          .00000          .               .           2352.80176      3
+      46  r      4    EQ          .               .               .               .               .03851      4
+      47  r      5    EQ          .               .               .               .              -.03850      5
+      48  r      6    EQ          .               .               .               .              -.86959      6
+      49  r      7    EQ          .               .               .               .               .86960      7
+      50  r      8    EQ          .               .               .               .             -8.43781      8
+      51  r      9    EQ          .               .               .               .             -8.43795      9
+      52  r     10    EQ          .               .               .               .             -5.56710     10
+      53  r     11    EQ          .00000          .00000          .               .             -5.56721     11
+      54  r     12    EQ          .               .               .               .               .00998     12
+      55  r     13    EQ          .               .               .               .               .00998     13
+      56  r     14    EQ          .               .               .               .             10.84619     14
+      57  r     15    EQ          .               .               .               .             10.84635     15
+      58  r     16    EQ          .00000          .00000          .               .               .54114     16
+      59  r     17    EQ          .               .               .               .               .54115     17
+      60  r     18    EQ          .               .               .               .              -.01674     18
+      61  r     19    EQ          .00000          .00000          .               .              -.01674     19
+      62  r     20    EQ          .00000          .00000          .               .               .24191     20
+      63  r     21    EQ          .00000          .00000          .               .              -.23686     21
+      64  r     22    EQ          .00000          .00000          .               .              -.10240     22
+      65  r     23    EQ          .00000          .00000          .               .               .09355     23
+      66  r     24    EQ          .00000          .00000          .               .              5.96688     24
+      67  r     25    EQ          .00000          .00000          .               .              5.96576     25
+      68  r     26    EQ          .00000          .00000          .               .              6.20768     26
+      69  r     27    EQ          .00000          .00000          .               .              6.20679     27
+      70  r     28    EQ          .00000          .00000          .               .              6.05485     28
+      71  r     29    EQ          .00000          .00000          .               .              6.05410     29
+      72  r     30    EQ          .00000          .00000          .               .              5.30502     30
+      73  r     31    EQ          .00000          .00000          .               .              5.30490     31
+      74  r     32    EQ          .00000          .00000          .               .               .24793     32
+      75  r     33    EQ          .00000          .00000          .               .               .24794     33
+      76  r     34    EQ          .00000          .00000          .               .               .18590     34
+      77  r     35    EQ          .00000          .00000          .               .               .18591     35
+      78  r     36    EQ          .               .               .               .               .20087     36
+      79  r     37    EQ          .               .               .               .              -.19908     37
+      80  r     38    EQ         -.64400          .              -.64400         -.64400      -724.86926     38
+      81  r     39    EQ         -.64400          .              -.64400         -.64400      -724.88241     39
+      82  r     40    EQ        -1.04720          .             -1.04720        -1.04720         3.32211     40
+      83  r     41    EQ        -1.04720          .             -1.04720        -1.04720         3.32217     41
+1
+ 
+ Section 2 - Columns
+
+  Number  .Column. State  ...Activity...  .Obj Gradient.  ..Lower Limit.  ..Upper Limit.  Reduced Gradnt    m+j
+ 
+       1  x      1    BS          .10289          .00578           None            None           .00000     42
+       2  x      2    BS         -.10289         -.00578           None            None           .00000     43
+       3  x      3    BS          .               .                None            None           .00000     44
+       4  x      4    BS          .               .                None            None           .00000     45
+       5  x      5    BS         -.01985         -.57770           None            None           .00000     46
+       6  x      6    BS         -.01986         -.57771           None            None           .00000     47
+       7  x      7    BS         -.64400          .                None            None           .00000     48
+       8  x      8    BS         -.64400          .                None            None           .00001     49
+       9  x      9    BS          .00215         -.05702           None            None           .00000     50
+      10  x     10    BS          .00215         -.05702           None            None          -.00020     51
+      11  x     11    BS          .86121          .10339           None            None           .00000     52
+      12  x     12    BS          .86121          .10339           None            None           .00000     53
+      13  x     13    BS         -.00001         -.01316           None            None           .00000     54
+      14  x     14    BS         -.00001         -.01316           None            None          -.00039     55
+      15  x     15    BS        -1.04720          .                None            None           .00000     56
+      16  x     16    BS        -1.04720          .                None            None           .00000     57
+      17  x     17    BS          .               .                None            None           .00000     58
+      18  x     18    BS          .               .                None            None           .00000     59
+      19  x     19    BS          .               .                None            None           .00000     60
+      20  x     20    BS          .               .                None            None           .00000     61
+      21  x     21    BS          .               .                None            None           .00000     62
+      22  x     22    BS          .               .                None            None           .00000     63
+      23  x     23    BS          .               .                None            None           .00000     64
+      24  x     24    BS          .00000          .00000           None            None           .00000     65
+      25  x     25    BS          .               .                None            None           .00000     66
+      26  x     26    BS          .               .                None            None           .00000     67
+      27  x     27    BS          .               .                None            None           .00000     68
+      28  x     28    BS          .               .                None            None           .00000     69
+      29  x     29    BS          .00000          .00000           None            None           .00000     70
+      30  x     30    BS          .               .                None            None           .00000     71
+      31  x     31    BS          .               .                None            None           .00000     72
+      32  x     32    BS          .00000          .00000           None            None           .00000     73
+      33  x     33   SBS         4.06036          .03851           None            None           .00000     74
+      34  x     34   SBS        -4.04029         -.03850           None            None           .00000     75
+      35  x     35    BS         -.40670         -.86959           None            None           .00000     76
+      36  x     36    BS          .40671          .86960           None            None           .00000     77
+      37  x     37    BS        -3.30207        -8.43781           None            None           .00000     78
+      38  x     38    BS        -3.30213        -8.43795           None            None           .00000     79
+      39  x     39    BS        -2.88124        -4.28239           None            None           .00000     80
+      40  x     40    BS        -2.88128        -4.28247           None            None           .00000     81
+      41  x     41    BS          .02139         -.01674           None            None           .00000     82
+      42  x     42    BS          .02139         -.01674           None            None           .00000     83
+ 
+ Time for MPS input                              .00 seconds
+ Time for solving problem              ************* seconds
+ Time for solution output                        .00 seconds
+ Time for constraint functions         ************* seconds
+ Time for objective function                     .00 seconds

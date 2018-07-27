@@ -7,8 +7,8 @@
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/multibody/parsers/urdf_parser.h"
-#include "drake/solvers/constraint.h"
 #include "drake/math/autodiff_gradient.h"
+#include "drake/solvers/constraint.h"
 
 using std::vector;
 using std::is_same;
@@ -22,6 +22,8 @@ using Eigen::Matrix3Xd;
 using drake::AutoDiffXd;
 using drake::VectorX;
 using drake::MatrixX;
+using drake::math::AutoDiffMatrixType;
+using drake::math::initializeAutoDiff;
 using drake::math::autoDiffToValueMatrix;
 using drake::math::DiscardGradient;
 using drake::systems::RigidBodyPlant;

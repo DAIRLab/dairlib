@@ -288,18 +288,45 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
   tangents.push_back(tmp_map1);
   tangents.push_back(tmp_map2);
 
-  for (auto ind : idxA_total) {
-    std::cout << ind << " ";
-  }
-  std::cout << std::endl;
-  for (auto ind : idxB_total) {
-    std::cout << ind << " ";
-  }
-  std::cout << std::endl;
-  std::cout << normal_total << std::endl;
-  std::cout << normal << std::endl;
   tree_.surfaceTangents(normal_map, tangents);
 
+
+  //Computing the position Jacobian
+  vector<MatrixX<T>> Jd(num_contacts);
+
+  for (int i=0; i<num_contacts; i++) {
+    auto tmp_JA = tree_.transformPointsJacobian(k_cache,
+                                                initializeAutoDiff(xA_total.col(contact_ind.at(i))), 
+                                                idxA_total.at(contact_ind.at(i)),
+                                                world_ind, 
+                                                true);
+    auto tmp_JB = tree_.transformPointsJacobian(k_cache,
+                                                initializeAutoDiff(xB_total.col(contact_ind.at(i))), 
+                                                idxB_total.at(contact_ind.at(i)),
+                                                world_ind, 
+                                                true);
+    Jd.at(i) = tmp_JA - tmp_JB;
+  }
+
+  std::cout << Jd.at(0) << std::endl;
+
+  //Computing the 3 jacobians for each contact point
+  vector<MatrixX<T>> J(num_contacts);
+
+  for (int i=0; i<num_contacts; i++) {
+
+    MatrixX<T> J_pt(3, tree_.get_num_positions());
+    auto normal_autodiff = initializeAutoDiff(normal.col(contact_ind.at(i)));
+    auto tangent1_autodiff = initializeAutoDiff(tangents.at(0).col(contact_ind.at(i)));
+    auto tangent2_autodiff = initializeAutoDiff(tangents.at(1).col(contact_ind.at(i)));
+    normal_autodiff.transposeInPlace();
+    tangent1_autodiff.transposeInPlace();
+    tangent2_autodiff.transposeInPlace();
+    J_pt.row(i) = normal_autodiff.transpose()*Jd.at(i);
+            //initializeAutoDiff(tangents.at(0).col(contact_ind.at(i)).transpose())*Jd.at(i),
+            //initializeAutoDiff(tangents.at(1).col(contact_ind.at(i)).transpose())*Jd.at(i);
+            
+  }
 
 
   VectorX<T> x_dot_sol(plant_->get_num_states());

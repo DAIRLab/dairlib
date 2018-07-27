@@ -297,8 +297,8 @@ CassieContactConstraint::CassieContactConstraint(const RigidBodyTree<double>& tr
                                                  const std::string& description):
   Constraint(4,
              tree.get_num_positions(),
-             VectorXd::Ones(4)*-1e-3,
-             VectorXd::Ones(4)*1e-3,
+             VectorXd::Zero(4),
+             VectorXd::Zero(4),
              description),
   tree_(tree) 
 {

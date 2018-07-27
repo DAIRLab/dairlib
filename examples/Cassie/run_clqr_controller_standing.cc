@@ -367,7 +367,7 @@ int do_main(int argc, char* argv[]) {
   std::unique_ptr<RigidBodyTree<double>> tree_test = makeFloatingBaseCassieTreePointer();
   drake::multibody::AddFlatTerrainToWorld(tree_test.get(), terrain_size, terrain_depth);
 
-  VectorXd lambda = VectorXd::Ones(4);
+  VectorXd lambda = VectorXd::Ones(12);
   RigidBodyPlant<AutoDiffXd> plant_sim_autodiff(std::move(tree_test));
   CassiePlant<AutoDiffXd> cassie_plant(&plant_sim_autodiff);
   ContinuousState<AutoDiffXd> x_dot(
@@ -376,6 +376,8 @@ int do_main(int argc, char* argv[]) {
                                                       initializeAutoDiff(u_init), 
                                                       initializeAutoDiff(lambda),
                                                       &x_dot);
+  cout << "*********************vdot*******************" << endl;
+  cout << x_dot.CopyToVector().transpose() << endl;
 
 
   std::unique_ptr<RigidBodyTree<double>> tree_utility_fixed = makeFixedBaseCassieTreePointer();

@@ -208,7 +208,7 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
   // Compliant contact forces wont be added here
   // Computing accelerations without the collision information
 
-  VectorX<T> vdot;
+  VectorX<T> v_dot1;
   if (tree_.getNumPositionConstraints()) {
 
     const T alpha = 0.5;
@@ -225,13 +225,13 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
     b << right_hand_side, 
          -(Jdotv + 2 * alpha * J * v + alpha * alpha * phi);
 
-    const VectorX<T> vdot_f = 
+    const VectorX<T> v_dot_f = 
       A.completeOrthogonalDecomposition().solve(b);
 
-    vdot = vdot_f.head(tree_.get_num_velocities());
+    v_dot1 = v_dot_f.head(tree_.get_num_velocities());
   } else {
 
-    vdot = M.llt().solve(right_hand_side);
+    v_dot1 = M.llt().solve(right_hand_side);
   }
 
 
@@ -249,6 +249,9 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
   const int num_total_contacts = normal_total.cols();
   // 4 contacts for Cassie (2 in each toe)
   const int num_contacts = 4;
+
+  // Making sure that the number of constraint forces are valid
+  DRAKE_DEMAND(lambda.size() == num_contacts*3);
 
   //Getting the indices of the world and toes
   const int world_ind = GetBodyIndexFromName(tree_, "world");
@@ -296,12 +299,12 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
 
   for (int i=0; i<num_contacts; i++) {
     auto tmp_JA = tree_.transformPointsJacobian(k_cache,
-                                                initializeAutoDiff(xA_total.col(contact_ind.at(i))), 
+                                                xA_total.col(contact_ind.at(i)), 
                                                 idxA_total.at(contact_ind.at(i)),
                                                 world_ind, 
                                                 true);
     auto tmp_JB = tree_.transformPointsJacobian(k_cache,
-                                                initializeAutoDiff(xB_total.col(contact_ind.at(i))), 
+                                                xB_total.col(contact_ind.at(i)), 
                                                 idxB_total.at(contact_ind.at(i)),
                                                 world_ind, 
                                                 true);
@@ -311,26 +314,37 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
   std::cout << Jd.at(0) << std::endl;
 
   //Computing the 3 jacobians for each contact point
-  vector<MatrixX<T>> J(num_contacts);
+  MatrixX<T> J(num_contacts*3, tree_.get_num_positions());
 
   for (int i=0; i<num_contacts; i++) {
 
     MatrixX<T> J_pt(3, tree_.get_num_positions());
-    auto normal_autodiff = initializeAutoDiff(normal.col(contact_ind.at(i)));
-    auto tangent1_autodiff = initializeAutoDiff(tangents.at(0).col(contact_ind.at(i)));
-    auto tangent2_autodiff = initializeAutoDiff(tangents.at(1).col(contact_ind.at(i)));
-    normal_autodiff.transposeInPlace();
-    tangent1_autodiff.transposeInPlace();
-    tangent2_autodiff.transposeInPlace();
-    J_pt.row(i) = normal_autodiff.transpose()*Jd.at(i);
-            //initializeAutoDiff(tangents.at(0).col(contact_ind.at(i)).transpose())*Jd.at(i),
-            //initializeAutoDiff(tangents.at(1).col(contact_ind.at(i)).transpose())*Jd.at(i);
+
+    auto normal_pt = normal.col(contact_ind.at(i));
+    auto tangent1_pt = tangents.at(0).col(contact_ind.at(i));
+    auto tangent2_pt = tangents.at(1).col(contact_ind.at(i));
+
+    J_pt.row(0) = normal_pt.transpose()*Jd.at(i);
+    J_pt.row(1) = tangent1_pt.transpose()*Jd.at(i);
+    J_pt.row(2) = tangent2_pt.transpose()*Jd.at(i);
+
+    J.block(i*3, 0, 3, tree_.get_num_positions()) =  J_pt;
             
   }
 
 
+  // Adding the vdots for the no contact and the contact case
   VectorX<T> x_dot_sol(plant_->get_num_states());
-  x_dot_sol << tree_.transformVelocityToQDot(k_cache, v), vdot;
+  VectorX<T> v_dot2;
+  v_dot2 = M.llt().solve(J.transpose()*lambda);
+
+  DRAKE_DEMAND(v_dot1.size() == tree_.get_num_velocities());
+  DRAKE_DEMAND(v_dot2.size() == tree_.get_num_velocities());
+
+  VectorX<T> v_dot(plant_->get_num_velocities());
+  v_dot = v_dot1 + v_dot2;
+
+  x_dot_sol << tree_.transformVelocityToQDot(k_cache, v), v_dot;
   x_dot->SetFromVector(x_dot_sol);
 }
 

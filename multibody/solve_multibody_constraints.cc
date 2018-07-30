@@ -146,7 +146,7 @@ vector<VectorXd> SolveTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant
   VectorXd v_init = x_init.tail(tree.get_num_velocities());
 
   prog.AddQuadraticCost(
-      (q - q_init).dot(q - q_init) + (v - v_init).dot(v - v_init) + (u - u_init).dot(u - u_init));
+      (q - q_init).dot(q - q_init) + (v - v_init).dot(v - v_init));
   prog.SetInitialGuess(q, q_init);
   prog.SetInitialGuess(v, v_init);
   prog.SetInitialGuess(u, u_init);
@@ -207,6 +207,7 @@ VectorXd SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant,
                                                        VectorXd u_init) {
 
   const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
+  DRAKE_DEMAND(CheckTreeConstraints(tree, x0.head(tree.get_num_positions())));
 
   MathematicalProgram prog;
   auto u = prog.NewContinuousVariables(tree.get_num_actuators(), "u");
@@ -215,9 +216,12 @@ VectorXd SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant,
 
   prog.AddQuadraticCost(1.0);
   prog.SetInitialGuess(u, u_init);
-  prog.Solve();
+  auto solution = prog.Solve();
+  std::cout << to_string(solution) << std::endl;
 
   VectorXd u_sol = prog.GetSolution(u);
+
+  DRAKE_DEMAND(CheckTreeAndFixedPointConstraints(plant, x0, u_sol));
 
   return u_sol;
 }
@@ -250,6 +254,9 @@ void TreeConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
   const AutoDiffVecXd q = x.head(tree_.get_num_positions());
   KinematicsCache<AutoDiffXd> cache = tree_.doKinematics(q);
   *y = tree_.positionConstraints(cache);
+
+  //std::cout << "*********************" << std::endl;
+  //std::cout << autoDiffToGradientMatrix(*y) << std::endl;
     
 }
 
@@ -364,6 +371,8 @@ void FixedPointFeasibilityConstraint::DoEval(const Eigen::Ref<const AutoDiffVecX
   plant_autodiff_->CalcTimeDerivatives(*context_autodiff, &cstate_output_autodiff);
 
   *y = cstate_output_autodiff.CopyToVector();
+
+  std::cout << y->transpose() << std::endl;
 
 
 }

@@ -124,8 +124,8 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   
   drake::lcm::DrakeLcm lcm;
-  std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
-  cout << tree->getNumPositionConstraints() << endl;
+  std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+  //std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf");
   
   const int num_efforts = tree->get_num_actuators();
   const int num_positions = tree->get_num_positions();
@@ -189,8 +189,8 @@ int do_main(int argc, char* argv[]) {
 
   std::vector<int> fixed_joints;
 
-  fixed_joints.push_back(map.at("hip_roll_left"));
-  fixed_joints.push_back(map.at("hip_roll_right"));
+  //fixed_joints.push_back(map.at("hip_roll_left"));
+  //fixed_joints.push_back(map.at("hip_roll_right"));
   //fixed_joints.push_back(map.at("hip_yaw_left"));
   //fixed_joints.push_back(map.at("hip_yaw_right"));
   fixed_joints.push_back(map.at("hip_pitch_left"));
@@ -234,7 +234,11 @@ int do_main(int argc, char* argv[]) {
   Q.block(num_states/2 - num_constraints, num_states/2 - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
 
-  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_init, fixed_joints);
+  VectorXd cu = ComputeCassieControlInputAnalytical(plant->get_rigid_body_tree(), x_init);
+
+
+  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
+    plant, x_init, ComputeUAnalytical(plant->get_rigid_body_tree(), x_init), fixed_joints);
 
   cout << "Solved Tree Position and Fixed Point constraints" << endl;
 

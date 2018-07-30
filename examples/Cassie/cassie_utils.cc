@@ -14,7 +14,7 @@ namespace dairlib {
 std::unique_ptr<RigidBodyTree<double>> makeFixedBaseCassieTreePointer(
     std::string filename) {
   auto tree = std::make_unique<RigidBodyTree<double>>();
-  buildFixedBaseCassieTree(*tree.get());
+  buildFixedBaseCassieTree(*tree.get(), filename);
   return tree;
 }
 
@@ -50,31 +50,31 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
                            thigh_right, rod_on_thigh_right,
                            achilles_length);
 
-  // Add spring forces
-  int body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_left");
-  auto body = tree.get_mutable_body(body_index);
-  RevoluteJoint& knee_joint_left = dynamic_cast<RevoluteJoint&>(
-        body->get_mutable_joint());
-  // stiffness is 2300 in URDF,these #s from gazebo
-  knee_joint_left.SetSpringDynamics(1500.0, 0.0);
+  //// Add spring forces
+  //int body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_left");
+  //auto body = tree.get_mutable_body(body_index);
+  //RevoluteJoint& knee_joint_left = dynamic_cast<RevoluteJoint&>(
+  //      body->get_mutable_joint());
+  //// stiffness is 2300 in URDF,these #s from gazebo
+  //knee_joint_left.SetSpringDynamics(15.0, 0.0);
 
-  body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_right");
-  body = tree.get_mutable_body(body_index);
-  RevoluteJoint& knee_joint_right = dynamic_cast<RevoluteJoint&>(
-        body->get_mutable_joint());
-  knee_joint_right.SetSpringDynamics(1500.0, 0.0);  // 2300 in URDF
+  //body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_right");
+  //body = tree.get_mutable_body(body_index);
+  //RevoluteJoint& knee_joint_right = dynamic_cast<RevoluteJoint&>(
+  //      body->get_mutable_joint());
+  //knee_joint_right.SetSpringDynamics(15.0, 0.0);  // 2300 in URDF
 
-  body_index = tree.FindIndexOfChildBodyOfJoint("ankle_spring_joint_left");
-  body = tree.get_mutable_body(body_index);
-  RevoluteJoint& ankle_spring_joint_left = dynamic_cast<RevoluteJoint&>(
-        body->get_mutable_joint());
-  ankle_spring_joint_left.SetSpringDynamics(1250.0, 0.0);  // 2000 in URDF
+  //body_index = tree.FindIndexOfChildBodyOfJoint("ankle_spring_joint_left");
+  //body = tree.get_mutable_body(body_index);
+  //RevoluteJoint& ankle_spring_joint_left = dynamic_cast<RevoluteJoint&>(
+  //      body->get_mutable_joint());
+  //ankle_spring_joint_left.SetSpringDynamics(12.0, 0.0);  // 2000 in URDF
 
-  body_index = tree.FindIndexOfChildBodyOfJoint("ankle_spring_joint_right");
-  body = tree.get_mutable_body(body_index);
-  RevoluteJoint& ankle_spring_joint_right = dynamic_cast<RevoluteJoint&>(
-        body->get_mutable_joint());
-  ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
+  //body_index = tree.FindIndexOfChildBodyOfJoint("ankle_spring_joint_right");
+  //body = tree.get_mutable_body(body_index);
+  //RevoluteJoint& ankle_spring_joint_right = dynamic_cast<RevoluteJoint&>(
+  //      body->get_mutable_joint());
+  //ankle_spring_joint_right.SetSpringDynamics(12.0, 0.0);  // 2300 in URDF
 }
 
 
@@ -143,6 +143,26 @@ void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree,
   RevoluteJoint& ankle_spring_joint_right = dynamic_cast<RevoluteJoint&>(
         body->get_mutable_joint());
   ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
+}
+
+
+VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, VectorXd x) {
+
+  MatrixXd B = tree.B;
+  auto k_cache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
+  const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
+  VectorXd C = tree.dynamicsBiasTerm(k_cache, no_external_wrenches, true);
+  //VectorXd u = B.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(C);
+  MatrixXd J = tree.positionConstraintsJacobian(k_cache, true);
+
+  std::cout << "*****************C******************" << std::endl;
+  std::cout << C << std::endl;
+  std::cout << "***********B********************" << std::endl;
+  std::cout << B << std::endl;
+  std::cout << "***********J********************" << std::endl;
+  std::cout << J << std::endl;
+  return x;
+
 }
 
 

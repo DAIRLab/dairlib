@@ -148,6 +148,8 @@ void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree,
 
 VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, VectorXd x) {
 
+  bool debug_flag = true;
+
   MatrixXd B = tree.B;
   auto k_cache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
   const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
@@ -155,13 +157,60 @@ VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, 
   //VectorXd u = B.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(C);
   MatrixXd J = tree.positionConstraintsJacobian(k_cache, true);
 
-  std::cout << "*****************C******************" << std::endl;
-  std::cout << C << std::endl;
-  std::cout << "***********B********************" << std::endl;
-  std::cout << B << std::endl;
-  std::cout << "***********J********************" << std::endl;
-  std::cout << J << std::endl;
-  return x;
+
+  // Computing lambda using the zero rows of B
+  int num_zero_rows = 0;
+  vector<int> zero_row_indices;
+  for (int i=0; i<B.rows(); i++) {
+    if (B.row(i).isZero()) {
+      num_zero_rows++;
+      zero_row_indices.push_back(i);
+    }
+  }
+
+  // Block of J and C used to compute lambda
+  MatrixXd Jb = MatrixXd::Zero(J.rows(), num_zero_rows);
+  VectorXd Cb = VectorXd::Zero(num_zero_rows);
+  for (int i=0; i<num_zero_rows; i++) {
+    Jb.col(i) = J.col(zero_row_indices.at(i));
+    Cb(i) = C(zero_row_indices.at(i));
+  }
+
+  Jb.transposeInPlace();
+
+  VectorXd lambda = Jb.completeOrthogonalDecomposition().solve(Cb);
+
+  MatrixXd CJ = C - J.transpose()*lambda;
+
+  // Computing u
+  VectorXd u = B.completeOrthogonalDecomposition().solve(CJ);
+
+
+  if (debug_flag) {
+
+    std::cout << "*****************C******************" << std::endl;
+    std::cout << C << std::endl;
+    std::cout << "*****************B******************" << std::endl;
+    std::cout << B << std::endl;
+    std::cout << "*****************J******************" << std::endl;
+    std::cout << J << std::endl;
+    std::cout << "*****************Jb*****************" << std::endl;
+    std::cout << Jb << std::endl;
+    std::cout << "*****************Cb*****************" << std::endl;
+    std::cout << Cb << std::endl;
+    std::cout << "**************lambda****************" << std::endl;
+    std::cout << lambda << std::endl;
+    std::cout << "****************CJ******************" << std::endl;
+    std::cout << CJ << std::endl;
+    std::cout << "****************u*******************" << std::endl;
+    std::cout << u << std::endl;
+    std::cout << "**************Check*****************" << std::endl;
+    std::cout << C - J.transpose()*lambda - B*u << std::endl;
+
+  }
+
+
+  return u;
 
 }
 

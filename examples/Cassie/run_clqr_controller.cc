@@ -234,7 +234,7 @@ int do_main(int argc, char* argv[]) {
   Q.block(num_states/2 - num_constraints, num_states/2 - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
 
-  VectorXd cu = ComputeCassieControlInputAnalytical(plant->get_rigid_body_tree(), x_init);
+  VectorXd u_analytical = ComputeCassieControlInputAnalytical(plant->get_rigid_body_tree(), x_init);
 
 
   vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(

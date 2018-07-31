@@ -227,8 +227,35 @@ int GetBodyIndexFromName(const RigidBodyTree<double>& tree,
   return -1;
 }
 
+
+VectorXd ComputeCassieJointLimitForces(RigidBodyPlant<double>* plant,
+                                       VectorXd x_init) {
+
+  VectorXd joint_forces = VectorXd::Zero(plant->get_num_positions());
+  VectorXd q_init = x_init.head(plant->get_num_positions());
+  VectorXd v_init = x_init.tail(plant->get_num_velocities());
+  {
+    for (auto const& b : plant->get_rigid_body_tree().get_bodies()) {
+      if(!b->has_parent_body()) continue;
+      auto const& joint = b->getJoint();
+
+      if(joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
+        const double limit_force = 
+          plant->JointLimitForce(joint, q_init(b->get_position_start_index()), 
+                                  v_init(b->get_velocity_start_index()));
+        joint_forces(b->get_velocity_start_index()) += limit_force;
+      }
+    }
+  }
+
+  return joint_forces;
+}
+
+
+
 bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree, 
-                              VectorXd x, 
+                              VectorXd x,
+                              double tolerance, 
                               bool print_debug_messages) {
 
   map<string, int> position_map =
@@ -246,7 +273,8 @@ bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree,
       const int ind = position_map.at(joint.get_name());
 
       // Checking if the value is within limits
-      if (x(ind) < joint_lim_min_vec(0) || x(ind) > joint_lim_max_vec(0)) {
+      if (x(ind) < (joint_lim_min_vec(0) + tolerance)
+          || x(ind) > (joint_lim_max_vec(0) - tolerance)) {
         is_within_limits = false;
 
         if (print_debug_messages) {

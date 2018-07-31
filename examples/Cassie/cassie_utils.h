@@ -58,8 +58,12 @@ VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, 
 int GetBodyIndexFromName(const RigidBodyTree<double>& tree, 
                          string name);
 
+VectorXd ComputeCassieJointLimitForces(RigidBodyPlant<double>* plant, 
+                                       VectorXd x_init);
+
 bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree, 
                               VectorXd x,
+                              double tolerance = 0.0,
                               bool print_debug_messages = true);
 
 

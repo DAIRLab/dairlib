@@ -168,13 +168,13 @@ int do_main(int argc, char* argv[]) {
       cout << elem.first << " " << elem.second << endl;
   }
 
-  x0(map.at("hip_roll_left")) = 0.1;
-  x0(map.at("hip_roll_right")) = -0.1;
+  x0(map.at("hip_roll_left")) = 0.01;
+  x0(map.at("hip_roll_right")) = -0.01;
   //x0(map.at("hip_yaw_left")) = 0;
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
-  x0(map.at("knee_left")) = -.544;
-  x0(map.at("knee_right")) = -.544;
+  x0(map.at("knee_left")) = -.844;
+  x0(map.at("knee_right")) = -.844;
   x0(map.at("ankle_joint_left")) = .792;
   x0(map.at("ankle_joint_right")) = .792;
   
@@ -237,38 +237,26 @@ int do_main(int argc, char* argv[]) {
   VectorXd u_analytical = ComputeCassieControlInputAnalytical(plant->get_rigid_body_tree(), x_init);
 
   // Joint limit forces
-  VectorXd jlf = VectorXd::Zero(num_positions);
-  {
-    for (auto const& b : plant->get_rigid_body_tree().get_bodies()) {
-      if(!b->has_parent_body()) continue;
-      auto const& joint = b->getJoint();
-
-      if(joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
-        const double limit_force = 
-          plant->JointLimitForce(joint, q_init(b->get_position_start_index()), 
-                                  v_init(b->get_velocity_start_index()));
-        jlf(b->get_velocity_start_index()) += limit_force;
-      }
-    }
-  }
-
+  VectorXd joint_forces = ComputeCassieJointLimitForces(plant, x_init);
   std::cout << "**************Joint limit forces*****************" << std::endl;
-  std::cout << jlf.transpose() << std::endl;
+  std::cout << joint_forces.transpose() << std::endl;
 
   bool b = CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_init);
+  VectorXd x_sol = x_init;
+  VectorXd u_sol = u_analytical;
 
   DRAKE_DEMAND(b);
 
-  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
-    plant, x_init, ComputeUAnalytical(plant->get_rigid_body_tree(), x_init), fixed_joints);
+  //vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
+  //  plant, x_init, ComputeUAnalytical(plant->get_rigid_body_tree(), x_init), fixed_joints);
 
-  cout << "Solved Tree Position and Fixed Point constraints" << endl;
+  //cout << "Solved Tree Position and Fixed Point constraints" << endl;
 
-  VectorXd q_sol = sol_tfp.at(0);
-  VectorXd v_sol = sol_tfp.at(1);
-  VectorXd u_sol = sol_tfp.at(2);
-  VectorXd x_sol(num_states);
-  x_sol << q_sol, v_sol;
+  //VectorXd q_sol = sol_tfp.at(0);
+  //VectorXd v_sol = sol_tfp.at(1);
+  //VectorXd u_sol = sol_tfp.at(2);
+  //VectorXd x_sol(num_states);
+  //x_sol << q_sol, v_sol;
 
   MatrixXd J_collision;
 

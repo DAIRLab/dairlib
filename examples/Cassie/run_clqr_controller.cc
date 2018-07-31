@@ -161,7 +161,7 @@ int do_main(int argc, char* argv[]) {
                           visualizer_publisher.get_input_port(0));
 
   VectorXd x0 = VectorXd::Zero(num_states);
-  std::map<std::string, int>  map = plant->get_rigid_body_tree().computePositionNameToIndexMap();
+  std::map<std::string, int> map = plant->get_rigid_body_tree().computePositionNameToIndexMap();
 
   for(auto elem: map)
   {
@@ -173,8 +173,8 @@ int do_main(int argc, char* argv[]) {
   //x0(map.at("hip_yaw_left")) = 0;
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
-  x0(map.at("knee_left")) = -.644;
-  x0(map.at("knee_right")) = -.644;
+  x0(map.at("knee_left")) = -.544;
+  x0(map.at("knee_right")) = -.544;
   x0(map.at("ankle_joint_left")) = .792;
   x0(map.at("ankle_joint_right")) = .792;
   
@@ -236,6 +236,28 @@ int do_main(int argc, char* argv[]) {
 
   VectorXd u_analytical = ComputeCassieControlInputAnalytical(plant->get_rigid_body_tree(), x_init);
 
+  // Joint limit forces
+  VectorXd jlf = VectorXd::Zero(num_positions);
+  {
+    for (auto const& b : plant->get_rigid_body_tree().get_bodies()) {
+      if(!b->has_parent_body()) continue;
+      auto const& joint = b->getJoint();
+
+      if(joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
+        const double limit_force = 
+          plant->JointLimitForce(joint, q_init(b->get_position_start_index()), 
+                                  v_init(b->get_velocity_start_index()));
+        jlf(b->get_velocity_start_index()) += limit_force;
+      }
+    }
+  }
+
+  std::cout << "**************Joint limit forces*****************" << std::endl;
+  std::cout << jlf.transpose() << std::endl;
+
+  bool b = CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_init);
+
+  DRAKE_DEMAND(b);
 
   vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
     plant, x_init, ComputeUAnalytical(plant->get_rigid_body_tree(), x_init), fixed_joints);
@@ -252,7 +274,7 @@ int do_main(int argc, char* argv[]) {
 
   //Building the controller
   auto clqr_controller = builder.AddSystem<systems::ClqrController>(
-          plant, x_sol, u_sol, J_collision, num_positions, num_velocities, num_efforts, Q, R);
+          plant, x_init, u_analytical, J_collision, num_positions, num_velocities, num_efforts, Q, R);
   VectorXd K_vec = clqr_controller->GetKVec();
   VectorXd C = u_sol; 
   VectorXd x_desired = x_sol;

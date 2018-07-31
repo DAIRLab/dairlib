@@ -10,6 +10,7 @@
 #include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/constraint.h"
 
+using std::map;
 using std::vector;
 using std::is_same;
 using std::string;
@@ -56,6 +57,10 @@ VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, 
 
 int GetBodyIndexFromName(const RigidBodyTree<double>& tree, 
                          string name);
+
+bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree, 
+                              VectorXd x,
+                              bool print_debug_messages = true);
 
 
 

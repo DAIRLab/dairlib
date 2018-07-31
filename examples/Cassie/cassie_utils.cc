@@ -227,6 +227,45 @@ int GetBodyIndexFromName(const RigidBodyTree<double>& tree,
   return -1;
 }
 
+bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree, 
+                              VectorXd x, 
+                              bool print_debug_messages) {
+
+  map<string, int> position_map =
+    tree.computePositionNameToIndexMap();
+
+  bool is_within_limits = true;
+
+  for (auto const& b : tree.get_bodies()) {
+    if(!b->has_parent_body()) continue;
+    auto const& joint = b->getJoint();
+    if(joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
+
+      auto joint_lim_min_vec = joint.getJointLimitMin();
+      auto joint_lim_max_vec = joint.getJointLimitMax();
+      const int ind = position_map.at(joint.get_name());
+
+      // Checking if the value is within limits
+      if (x(ind) < joint_lim_min_vec(0) || x(ind) > joint_lim_max_vec(0)) {
+        is_within_limits = false;
+
+        if (print_debug_messages) {
+          std::cout << "Joint " << joint.get_name() <<
+            " with index " << ind << " is outside limits." << std::endl;
+          std::cout << "Min limit: " << joint_lim_min_vec(0) << std::endl;
+          std::cout << "Max limit: " << joint_lim_max_vec(0) << std::endl;
+          std::cout << "Value: " << x(ind) << std::endl;
+          std::cout << "_________________" << std::endl;
+        }
+
+      }
+
+    }
+  }
+
+  return is_within_limits;
+}
+
 
 // The function is not templated as we need the double versions of
 // x, u and lambda (for collision detect) which is difficult to obtain during compile time

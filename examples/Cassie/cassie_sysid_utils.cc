@@ -21,7 +21,7 @@ DEFINE_double(contact_radius, 2e-4,
               "The characteristic scale of contact patch (m)");
 DEFINE_string(simulation_type, "compliant", "The type of simulation to use: "
               "'compliant' or 'timestepping'");
-DEFINE_double(dt, 0.0, "The step size to use for "
+DEFINE_double(dt, 1e-3, "The step size to use for "
               "'simulation_type=timestepping' (ignored for "
               "'simulation_type=compliant'");
 
@@ -37,7 +37,7 @@ void setPlantMaterialProperties(drake::systems::RigidBodyPlant<double> *rbp){
 	model_parameters.characteristic_radius = FLAGS_contact_radius;
 	model_parameters.v_stiction_tolerance = FLAGS_v_tol;
 	rbp->set_contact_model_parameters(model_parameters);
-}
+	}
 
 PiecewisePolynomial<double> getSimulationTrajectoryOverTime(PiecewisePolynomial<double> traj_input, double simulationTime, Eigen::Matrix<double, 32, 1> initX){
 
@@ -45,6 +45,9 @@ PiecewisePolynomial<double> getSimulationTrajectoryOverTime(PiecewisePolynomial<
 
 	std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
 	drake::systems::DiagramBuilder<double> builder;
+
+	if (FLAGS_simulation_type != "timestepping")
+	   FLAGS_dt = 0.0;
 
 	//Add Cassie RigidBodyPlant System
 	auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
@@ -92,7 +95,7 @@ PiecewisePolynomial<double> getSimulationTrajectoryOverTime(PiecewisePolynomial<
 	return PiecewisePolynomial<double>::FirstOrderHold(dataTimes, data); 
 }
 
-PiecewisePolynomial<double> getDerivativePredictionAtTime(double time, PiecewisePolynomial<double> utrajectory, PiecewisePolynomial<double> xtrajectory){
+PiecewisePolynomial<double> getDerivativePredictionAtTime (double time, PiecewisePolynomial<double> utrajectory, PiecewisePolynomial<double> xtrajectory){
 	//x should be a vector of 16 generalized positions and 16 generalized velocities.
 
 	std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
@@ -103,31 +106,42 @@ PiecewisePolynomial<double> getDerivativePredictionAtTime(double time, Piecewise
 	auto derivatives = rbp.AllocateTimeDerivatives();
 
 	double timestamp = 0.0;
+	
 	Eigen::Matrix<double, 32, Eigen::Dynamic> trajectoryMatrix; 
 	Eigen::Matrix<double, 1, Eigen::Dynamic> timeMatrix;
+	
+	auto& u_rbp = context_rbp->FixInputPort(0, Eigen::Matrix<double, 10, 1>::Zero());
 
 	while(timestamp < utrajectory.end_time()){
 	    context_rbp->get_mutable_continuous_state_vector().SetFromVector(xtrajectory.value(timestamp).block(0, 0, 32, 1));
-	   	auto& u_rbp = context_rbp->FixInputPort(0, Eigen::Matrix<double, 10, 1>::Zero());
+	   	//std::cout << "xtrajectory state" << std::endl;
+	   	//std::cout << xtrajectory.value(timestamp) << std::endl;
 		u_rbp.GetMutableVectorData<double>()->SetFromVector(utrajectory.value(timestamp).block(0, 0, 10, 1));
+		//std::cout << "utrajectory state" << std::endl;
+		//std::cout << utrajectory.value(timestamp) << std::endl;
 		rbp.CalcTimeDerivatives(*context_rbp, derivatives.get());
+		//std::cout << "calculated derivatives" << std::endl;
+		//std::cout << derivatives->CopyToVector() << std::endl;
 		
 		Eigen::MatrixXd B(trajectoryMatrix.rows(), trajectoryMatrix.cols() + 1);
-		B << trajectoryMatrix, derivatives.get()->get_vector();
+		B << trajectoryMatrix, derivatives->CopyToVector();
 		trajectoryMatrix = B;
+
+		//std::cout << "/////////////////////" << std::endl;
+		//std::cout << derivatives->CopyToVector() << std::endl;
 
 		Eigen::MatrixXd C(timeMatrix.rows(), timeMatrix.cols() + 1);
 		C << timeMatrix, timestamp;
 		timeMatrix = C;
 
 		timestamp = timestamp + 1e-3;
-		std::cout << timestamp << std::endl;
+		//std::cout << timestamp << std::endl;
 	}
 
 	std::cout << trajectoryMatrix.cols() << std::endl;
 	std::cout << timeMatrix.cols() << std::endl;
 
-	return PiecewisePolynomial<double>::FirstOrderHold(timeMatrix, trajectoryMatrix);
+	return PiecewisePolynomial<double>::Pchip(timeMatrix, trajectoryMatrix);
 }
 
 std::pair<PiecewisePolynomial<double>, PiecewisePolynomial<double>> lcmLogToTrajectory(string filename){

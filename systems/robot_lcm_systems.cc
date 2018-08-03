@@ -66,7 +66,7 @@ void RobotOutputSender::Output(const Context<double>& context,
   state_msg->timestamp = context.get_time()*1e6;
 
   int nq = tree_->get_num_positions();
-  int nv = tree_->get_num_positions();
+  int nv = tree_->get_num_velocities();
 
   state_msg->num_positions = nq;
   state_msg->num_velocities = nv;

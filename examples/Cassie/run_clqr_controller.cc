@@ -42,6 +42,7 @@ using drake::systems::LeafSystem;
 using drake::systems::BasicVector;
 using drake::systems::ConstantVectorSource;
 using drake::systems::Multiplexer;
+//using drake::systems::CompliantContactModel;
 
 using dairlib::multibody::SolveTreeConstraints;
 using dairlib::multibody::CheckTreeConstraints;
@@ -106,17 +107,6 @@ class InfoConnector: public LeafSystem<double>
 
 };
 
-VectorXd ComputeUAnalytical(const RigidBodyTree<double>& tree, VectorXd x) {
-
-  MatrixXd B = tree.B;
-  auto k_cache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
-  const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
-  VectorXd C = tree.dynamicsBiasTerm(k_cache, no_external_wrenches, true);
-  VectorXd u = B.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(C);
-
-  return u;
-
-}
 
 
 int do_main(int argc, char* argv[]) { 
@@ -220,6 +210,9 @@ int do_main(int argc, char* argv[]) {
   VectorXd q_init = x0.head(num_positions);
   VectorXd v_init = x0.tail(num_velocities);
   VectorXd u_init = VectorXd::Zero(num_efforts);
+
+  KinematicsCache<double> k_cache_init = 
+    plant->get_rigid_body_tree().doKinematics(q_init, v_init);
   
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(
@@ -247,60 +240,70 @@ int do_main(int argc, char* argv[]) {
 
   DRAKE_DEMAND(b);
 
-  //vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
-  //  plant, x_init, ComputeUAnalytical(plant->get_rigid_body_tree(), x_init), fixed_joints);
+  //Contact forces
+  drake::systems::CompliantContactModel<double> contact_model;
+  contact_model.set_default_material(default_material);
+  contact_model.set_model_parameters(model_parameters);
+  
+  cout << "*****************Contact Forces********************" << endl;
+  VectorXd contact_forces = contact_model.ComputeContactForce(plant->get_rigid_body_tree(), k_cache_init);
+  cout << contact_forces.transpose() << endl;;
 
-  //cout << "Solved Tree Position and Fixed Point constraints" << endl;
 
-  //VectorXd q_sol = sol_tfp.at(0);
-  //VectorXd v_sol = sol_tfp.at(1);
-  //VectorXd u_sol = sol_tfp.at(2);
-  //VectorXd x_sol(num_states);
-  //x_sol << q_sol, v_sol;
+  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
+    plant, x_init, ComputeUAnalytical(plant->get_rigid_body_tree(), x_init), fixed_joints);
+
+  cout << "Solved Tree Position and Fixed Point constraints" << endl;
+
+  VectorXd q_sol = sol_tfp.at(0);
+  VectorXd v_sol = sol_tfp.at(1);
+  VectorXd u_sol = sol_tfp.at(2);
+  VectorXd x_sol(num_states);
+  x_sol << q_sol, v_sol;
 
   MatrixXd J_collision;
 
   //Building the controller
-  auto clqr_controller = builder.AddSystem<systems::ClqrController>(
-          plant, x_init, u_analytical, J_collision, num_positions, num_velocities, num_efforts, Q, R);
-  VectorXd K_vec = clqr_controller->GetKVec();
-  VectorXd C = u_sol; 
-  VectorXd x_desired = x_sol;
-  cout << "K: " << K_vec.transpose() << endl;
-  cout << "C: " << C.transpose() << endl;
-  cout << "xdes: " << x_desired.transpose() << endl;
+  //auto clqr_controller = builder.AddSystem<systems::ClqrController>(
+  //        plant, x_init, u_analytical, J_collision, num_positions, num_velocities, num_efforts, Q, R);
+  //VectorXd K_vec = clqr_controller->GetKVec();
+  //VectorXd C = u_sol; 
+  //VectorXd x_desired = x_sol;
+  //cout << "K: " << K_vec.transpose() << endl;
+  //cout << "C: " << C.transpose() << endl;
+  //cout << "xdes: " << x_desired.transpose() << endl;
 
-  vector<int> input_info_sizes{num_states, num_efforts, 3, 1};
-  vector<int> input_params_sizes{num_states*num_efforts, num_efforts, num_states, 1};
+  //vector<int> input_info_sizes{num_states, num_efforts, 3, 1};
+  //vector<int> input_params_sizes{num_states*num_efforts, num_efforts, num_states, 1};
 
-  auto info_connector = builder.AddSystem<InfoConnector>(num_positions, num_velocities, num_efforts);
-  auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
+  //auto info_connector = builder.AddSystem<InfoConnector>(num_positions, num_velocities, num_efforts);
+  //auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
 
-  auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(
-          VectorX<double>::Zero(num_efforts));
-  auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(
-          VectorX<double>::Zero(3));
-  auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(
-          VectorX<double>::Zero(1));
+  //auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(
+  //        VectorX<double>::Zero(num_efforts));
+  //auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(
+  //        VectorX<double>::Zero(3));
+  //auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(
+  //        VectorX<double>::Zero(1));
 
-  VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
-  params_vec << K_vec, C, x_desired;
-  AffineParams params(num_states, num_efforts);
-  params.SetDataVector(params_vec);
-  auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
+  //VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
+  //params_vec << K_vec, C, x_desired;
+  //AffineParams params(num_states, num_efforts);
+  //params.SetDataVector(params_vec);
+  //auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
 
-  auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
-          (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
+  //auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
+  //        (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
 
-  builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
-  builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
-  builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
-  builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
-  builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
-  builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
-  builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
-  builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
-  builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
+  //builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
+  //builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
+  //builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
+  //builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
+  //builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
+  //builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
+  //builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
+  //builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
+  //builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
 
   auto diagram = builder.Build();
   
@@ -311,8 +314,8 @@ int do_main(int argc, char* argv[]) {
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
   state.SetFromVector(x_start);
   
-  //auto zero_input = Eigen::MatrixXd::Zero(NUM_EFFORTS,1);
-  //context.FixInputPort(0, zero_input);
+  auto zero_input = Eigen::MatrixXd::Zero(num_efforts, 1);
+  context.FixInputPort(0, zero_input);
   
   //simulator.set_publish_every_time_step(false);
   //simulator.set_publish_at_initialization(false);

@@ -78,10 +78,14 @@ class CassiePlant {
     CassiePlant(RigidBodyPlant<T>* plant):plant_(plant),
                                           tree_(plant_->get_rigid_body_tree()) {}
 
+    void CalcTimeDerivativesCassie(VectorX<T> x,
+                                   VectorX<T> u, 
+                                   ContinuousState<T>* xdot) const;
+
     void CalcTimeDerivativesCassieDuringContact(VectorX<T> x, 
                                                 VectorX<T> u, 
                                                 VectorX<T> lambda,
-                                                ContinuousState<T>* x_dot) const;
+                                                ContinuousState<T>* xdot) const;
 
     RigidBodyPlant<T>* plant_;
     const RigidBodyTree<double>& tree_;

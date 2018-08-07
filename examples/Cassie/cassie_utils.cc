@@ -152,6 +152,8 @@ VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, 
 
   MatrixXd B = tree.B;
   auto k_cache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
+  MatrixXd M = tree.massMatrix(k_cache);
+
   const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
   VectorXd C = tree.dynamicsBiasTerm(k_cache, no_external_wrenches, true);
   //VectorXd u = B.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(C);
@@ -184,7 +186,6 @@ VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, 
 
   // Computing u
   VectorXd u = B.completeOrthogonalDecomposition().solve(CJ);
-
 
   if (debug_flag) {
 
@@ -294,6 +295,74 @@ bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree,
   return is_within_limits;
 }
 
+// Time derivative computation with zero alpha
+template<typename T>
+void CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x, 
+                                               VectorX<T> u,
+                                               ContinuousState<T>* x_dot) const {
+
+  const int nq = tree_.get_num_positions();
+  const int nv = tree_.get_num_velocities();
+  const int num_actuators = tree_.get_num_actuators();
+
+  VectorX<T> q = x.topRows(nq);
+  VectorX<T> v = x.bottomRows(nv);
+
+  auto k_cache = tree_.doKinematics(q, v);
+  const MatrixX<T> M = tree_.massMatrix(k_cache);
+  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
+
+  VectorX<T> right_hand_side = 
+    -tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
+
+  if (num_actuators > 0) {
+    right_hand_side += tree_.B * u;
+  }
+
+  {
+    for (auto const& b : tree_.get_bodies()) {
+      if (!b->has_parent_body()) continue;
+      auto const& joint = b->getJoint();
+      if (joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
+        const T limit_force = 
+          plant_->JointLimitForce(joint, q(b->get_position_start_index()),
+                                  v(b->get_velocity_start_index()));
+        right_hand_side(b->get_velocity_start_index()) += limit_force;
+      }
+    }
+  }
+
+  VectorX<T> vdot;
+  if (tree_.getNumPositionConstraints()) {
+    const T alpha = 0.0;
+    auto phi = tree_.positionConstraints(k_cache);
+    auto J = tree_.positionConstraintsJacobian(k_cache, false);
+    auto Jdotv = tree_.positionConstraintsJacDotTimesV(k_cache);
+
+    MatrixX<T> A(M.rows() + J.rows(), 
+                 M.cols() + J.rows());
+    VectorX<T> b(M.rows() + J.rows());
+    A << M, -J.transpose(), 
+         J, MatrixX<T>::Zero(J.rows(), J.rows());
+    b << right_hand_side, 
+         -(Jdotv + 2 * alpha * J * v + alpha * alpha * phi);
+    const VectorX<T> vdot_f = 
+      A.completeOrthogonalDecomposition().solve(b);
+    vdot = vdot_f.head(tree_.get_num_velocities());
+  } else {
+    vdot = M.llt().solve(right_hand_side);
+  }
+
+  VectorX<T> xdot_sol(plant_->get_num_states());
+  xdot_sol << tree_.transformVelocityToQDot(k_cache, v), vdot;
+  x_dot->SetFromVector(xdot_sol);
+}
+
+
+          
+
+
+
 
 // The function is not templated as we need the double versions of
 // x, u and lambda (for collision detect) which is difficult to obtain during compile time
@@ -323,8 +392,8 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
   VectorX<T> right_hand_side = 
     -tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
 
-  if(num_actuators > 0) {
-    right_hand_side += tree_.B*u;
+  if (num_actuators > 0) {
+    right_hand_side += tree_.B * u;
   }
 
   {

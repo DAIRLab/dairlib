@@ -467,19 +467,27 @@
       **************************************************************
   -->
   <link name="foot_crank_mass_left">
-    <mass value="0.129"/>
+    <inertial>
+      <mass value="0.129"/>
+    </inertial>
   </link>
 
   <link name="foot_crank_mass_right">
-    <mass value="0.129"/>
+    <inertial>
+      <mass value="0.129"/>
+    </inertial>
   </link>
 
   <link name="plantar_rod_mass_left">
-    <mass value="0.1186"/>
+    <inertial>
+      <mass value="0.1186"/>
+    </inertial>
   </link>
 
   <link name="plantar_rod_mass_right">
-    <mass value="0.1186"/>
+    <inertial>
+      <mass value="0.1186"/>
+    </inertial>
   </link>
 
   <link name="toe_left">

@@ -17,6 +17,7 @@ using std::vector;
 using std::list;
 using std::unique_ptr;
 using std::make_unique;
+using std::make_shared;
 using std::isnan;
 using std::isinf;
 
@@ -57,6 +58,31 @@ namespace dairlib {
 VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 
                                         VectorXd q_init, 
                                         vector<int> fixed_joints = {});
+
+vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, 
+                                                 VectorXd x_init, 
+                                                 VectorXd u_init, 
+                                                 vector<int> fixed_joints = {});
+
+
+class CassieFixedPointConstraint : public Constraint {
+  public:
+    CassieFixedPointConstraint(RigidBodyPlant<double>* plant,
+                               const std::string& description = "");
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+                Eigen::VectorXd* y) const override;
+  
+    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
+                AutoDiffVecXd* y) const override;
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
+                VectorX<Expression>*y) const override;
+  
+  private:
+    RigidBodyPlant<double>* plant_;
+    const RigidBodyTree<double>& tree_;
+    unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
+
+};
 
 
 class CassieContactConstraint : public Constraint {

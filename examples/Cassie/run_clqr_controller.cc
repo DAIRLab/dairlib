@@ -158,8 +158,8 @@ int do_main(int argc, char* argv[]) {
       cout << elem.first << " " << elem.second << endl;
   }
 
-  x0(map.at("hip_roll_left")) = 0.01;
-  x0(map.at("hip_roll_right")) = -0.01;
+  //x0(map.at("hip_roll_left")) = 0.01;
+  //x0(map.at("hip_roll_right")) = -0.01;
   //x0(map.at("hip_yaw_left")) = 0;
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
@@ -179,8 +179,8 @@ int do_main(int argc, char* argv[]) {
 
   std::vector<int> fixed_joints;
 
-  //fixed_joints.push_back(map.at("hip_roll_left"));
-  //fixed_joints.push_back(map.at("hip_roll_right"));
+  fixed_joints.push_back(map.at("hip_roll_left"));
+  fixed_joints.push_back(map.at("hip_roll_right"));
   //fixed_joints.push_back(map.at("hip_yaw_left"));
   //fixed_joints.push_back(map.at("hip_yaw_right"));
   fixed_joints.push_back(map.at("hip_pitch_left"));
@@ -235,8 +235,8 @@ int do_main(int argc, char* argv[]) {
   std::cout << joint_forces.transpose() << std::endl;
 
   bool b = CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_init);
-  VectorXd x_sol = x_init;
-  VectorXd u_sol = u_analytical;
+  //VectorXd x_sol = x_init;
+  //VectorXd u_sol = u_analytical;
 
   DRAKE_DEMAND(b);
 
@@ -250,8 +250,8 @@ int do_main(int argc, char* argv[]) {
   cout << contact_forces.transpose() << endl;;
 
 
-  vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(
-    plant, x_init, ComputeUAnalytical(plant->get_rigid_body_tree(), x_init), fixed_joints);
+  vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(
+    plant, x_init, u_analytical, fixed_joints);
 
   cout << "Solved Tree Position and Fixed Point constraints" << endl;
 

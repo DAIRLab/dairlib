@@ -51,18 +51,26 @@ using drake::symbolic::Variable;
 using drake::symbolic::Expression;
 
 using dairlib::multibody::TreeConstraint;
+using dairlib::multibody::CheckTreeConstraints;
 using dairlib::GetBodyIndexFromName;
 
 namespace dairlib {
 
-VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 
-                                        VectorXd q_init, 
-                                        vector<int> fixed_joints = {});
 
 vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, 
                                                  VectorXd x_init, 
                                                  VectorXd u_init, 
-                                                 vector<int> fixed_joints = {});
+                                                 vector<int> fixed_joints = {},
+                                                 string snopt_output_filename = "multibody/log_files/cassie_snopt.out");
+
+bool CheckCassieFixedPointConstraints(RigidBodyPlant<double>* plant,
+                                      VectorXd x_check,
+                                      VectorXd u_check);
+
+
+VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 
+                                        VectorXd q_init, 
+                                        vector<int> fixed_joints = {});
 
 
 class CassieFixedPointConstraint : public Constraint {

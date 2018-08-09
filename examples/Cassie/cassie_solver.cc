@@ -7,9 +7,13 @@ namespace dairlib{
 vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, 
                                                          VectorXd x_init, 
                                                          VectorXd u_init, 
-                                                         vector<int> fixed_joints) {
+                                                         vector<int> fixed_joints,
+                                                         string snopt_output_filename) {
 
   MathematicalProgram prog;
+  //Setting log file
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", snopt_output_filename);
+
   auto q = prog.NewContinuousVariables(plant->get_num_positions(), "q");
   auto v = prog.NewContinuousVariables(plant->get_num_velocities(), "v");
   auto u = prog.NewContinuousVariables(plant->get_num_actuators(), "u");
@@ -28,14 +32,15 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
   VectorXd q_init = x_init.head(plant->get_num_positions());
   VectorXd v_init = x_init.tail(plant->get_num_velocities());
 
-  prog.AddQuadraticCost(
-      (q - q_init).dot(q - q_init) + (v - v_init).dot(v - v_init));
+  //prog.AddQuadraticCost(
+      //(q - q_init).dot(q - q_init) + (v - v_init).dot(v - v_init));
+  prog.AddQuadraticCost(1.0);
   prog.SetInitialGuess(q, q_init);
   prog.SetInitialGuess(v, v_init);
   prog.SetInitialGuess(u, u_init);
   auto solution = prog.Solve();
 
-  std::cout << "Solver Result: " << std::endl;
+  std::cout << "********** Solver Result **********" << std::endl;
   std::cout << to_string(solution) << std::endl;
 
   VectorXd q_sol = prog.GetSolution(q);
@@ -43,6 +48,7 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
   VectorXd u_sol = prog.GetSolution(u);
   VectorXd x_sol(q_sol.size() + v_sol.size());
   x_sol << q_sol, v_sol;
+
 
   DRAKE_DEMAND(q_sol.size() == q_init.size());
   DRAKE_DEMAND(v_sol.size() == v_init.size());
@@ -60,7 +66,10 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
   {
     DRAKE_DEMAND(!isnan(u_sol(i)) && !isinf(u_sol(i)));
   }
-  //DRAKE_DEMAND(CheckTreeAndFixedPointConstraints(plant, x_sol, u_sol));
+
+  //Checking if the Tree position constraints are satisfied
+  //DRAKE_DEMAND(CheckTreeConstraints(plant->get_rigid_body_tree(), q_sol));
+  DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, x_sol, u_sol));
 
   vector<VectorXd> sol;
   sol.push_back(q_sol);
@@ -68,6 +77,20 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
   sol.push_back(u_sol);
   return sol;
 }
+
+
+
+bool CheckCassieFixedPointConstraints(RigidBodyPlant<double>* plant,
+                                      VectorXd x_check,
+                                      VectorXd u_check) {
+
+  auto constraint = std::make_shared<CassieFixedPointConstraint>(plant);
+  VectorXd x_u_check(x_check.size() + u_check.size());
+  x_u_check << x_check, u_check;
+  return constraint->CheckSatisfied(x_u_check);
+}
+
+
 
 
 VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 

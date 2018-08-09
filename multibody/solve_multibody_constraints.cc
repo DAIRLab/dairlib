@@ -1,5 +1,4 @@
 #include "multibody/solve_multibody_constraints.h"
-#include "drake/solvers/mathematical_program.h"
 
 namespace dairlib{
 namespace multibody{
@@ -270,15 +269,10 @@ void TreeConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x,
 
 FixedPointConstraint::FixedPointConstraint(RigidBodyPlant<double>* plant,
                                            const std::string& description):
-  Constraint((plant->get_rigid_body_tree()).get_num_positions() +
-      (plant->get_rigid_body_tree()).get_num_velocities(),
-  (plant->get_rigid_body_tree()).get_num_positions() +
-      (plant->get_rigid_body_tree()).get_num_velocities() +
-      (plant->get_rigid_body_tree()).get_num_actuators(),
-  VectorXd::Zero((plant->get_rigid_body_tree()).get_num_positions() +
-      (plant->get_rigid_body_tree()).get_num_velocities()),
-  VectorXd::Zero((plant->get_rigid_body_tree()).get_num_positions() +
-      (plant->get_rigid_body_tree()).get_num_velocities()),
+  Constraint(plant->get_num_states(),
+             plant->get_num_states() + plant->get_num_actuators(),
+             VectorXd::Zero(plant->get_num_states()),
+             VectorXd::Zero(plant->get_num_states()),
   description),
   plant_(plant), tree_(plant->get_rigid_body_tree()) 
 {
@@ -297,10 +291,10 @@ void FixedPointConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x_u,
 void FixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x_u,
                                   AutoDiffVecXd* y) const {
     
-  const int num_positions = tree_.get_num_positions();
-  const int num_velocities = tree_.get_num_velocities();
-  const int num_states = num_positions + num_velocities;
-  const int num_efforts = tree_.get_num_actuators();
+  const int num_positions = plant_->get_num_positions();
+  const int num_velocities = plant_->get_num_velocities();
+  const int num_states = plant_->get_num_states();
+  const int num_efforts = plant_->get_num_actuators();
 
   auto context_autodiff = plant_autodiff_->CreateDefaultContext();
 
@@ -311,7 +305,7 @@ void FixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x_u,
   
   context_autodiff->FixInputPort(0, std::make_unique<BasicVector<AutoDiffXd>>(u));
   ContinuousState<AutoDiffXd> cstate_output_autodiff(
-      BasicVector<AutoDiffXd>(x).Clone(), num_positions, num_velocities, 0);
+      BasicVector<AutoDiffXd>(num_states).Clone(), num_positions, num_velocities, 0);
   plant_autodiff_->CalcTimeDerivatives(*context_autodiff, &cstate_output_autodiff);
 
   *y = cstate_output_autodiff.CopyToVector();

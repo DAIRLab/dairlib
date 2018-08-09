@@ -158,9 +158,10 @@ int do_main(int argc, char* argv[]) {
       cout << elem.first << " " << elem.second << endl;
   }
 
-  //x0(map.at("hip_roll_left")) = 0.01;
-  //x0(map.at("hip_roll_right")) = -0.01;
-  //x0(map.at("hip_yaw_left")) = 0;
+  x0(map.at("hip_roll_left")) = 0.1;
+  x0(map.at("hip_roll_right")) = -0.01;
+  x0(map.at("hip_yaw_left")) = 0.2;
+  x0(map.at("hip_yaw_right")) = -0.3;
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
   x0(map.at("knee_left")) = -.844;
@@ -181,8 +182,8 @@ int do_main(int argc, char* argv[]) {
 
   fixed_joints.push_back(map.at("hip_roll_left"));
   fixed_joints.push_back(map.at("hip_roll_right"));
-  //fixed_joints.push_back(map.at("hip_yaw_left"));
-  //fixed_joints.push_back(map.at("hip_yaw_right"));
+  fixed_joints.push_back(map.at("hip_yaw_left"));
+  fixed_joints.push_back(map.at("hip_yaw_right"));
   fixed_joints.push_back(map.at("hip_pitch_left"));
   fixed_joints.push_back(map.at("hip_pitch_right"));
   //fixed_joints.push_back(map.at("ankle_joint_left"));
@@ -234,11 +235,7 @@ int do_main(int argc, char* argv[]) {
   std::cout << "**************Joint limit forces*****************" << std::endl;
   std::cout << joint_forces.transpose() << std::endl;
 
-  bool b = CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_init);
-  //VectorXd x_sol = x_init;
-  //VectorXd u_sol = u_analytical;
-
-  DRAKE_DEMAND(b);
+  DRAKE_DEMAND(CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_init));
 
   //Contact forces
   drake::systems::CompliantContactModel<double> contact_model;
@@ -250,16 +247,18 @@ int do_main(int argc, char* argv[]) {
   cout << contact_forces.transpose() << endl;;
 
 
-  vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(
-    plant, x_init, u_analytical, fixed_joints);
+  vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(plant, x_init, u_analytical, fixed_joints);
 
-  cout << "Solved Tree Position and Fixed Point constraints" << endl;
+  //vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_analytical, fixed_joints);
 
   VectorXd q_sol = sol_tfp.at(0);
   VectorXd v_sol = sol_tfp.at(1);
   VectorXd u_sol = sol_tfp.at(2);
   VectorXd x_sol(num_states);
   x_sol << q_sol, v_sol;
+
+  cout << "x_sol: " << endl;
+  cout << x_sol.transpose() << endl;
 
   MatrixXd J_collision;
 
@@ -312,7 +311,7 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
   
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
-  state.SetFromVector(x_start);
+  state.SetFromVector(x_sol);
   
   auto zero_input = Eigen::MatrixXd::Zero(num_efforts, 1);
   context.FixInputPort(0, zero_input);

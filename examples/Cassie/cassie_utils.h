@@ -82,6 +82,9 @@ class CassiePlant {
                                    VectorX<T> u, 
                                    ContinuousState<T>* xdot) const;
 
+    VectorX<T> CalcTimeDerivativesCassie(VectorX<T> x,
+                                         VectorX<T> u) const;
+
     void CalcTimeDerivativesCassieDuringContact(VectorX<T> x, 
                                                 VectorX<T> u, 
                                                 VectorX<T> lambda,

@@ -1,0 +1,68 @@
+load("@drake//tools:drake.bzl", "drake_cc_googletest", "drake_cc_library", "drake_cc_binary")
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library"
+)
+
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+
+pybind_py_library(
+    name = "cassie_utils_py",
+    cc_so_name = "cassie_utils",
+    cc_srcs = ["cassie_utils_py.cc"],
+    cc_deps = ["//examples/Cassie:cassie_utils",
+               "@drake//bindings/pydrake/systems:systems_pybind",
+               "@drake//bindings/pydrake/util:cpp_template_pybind",
+               ],
+    py_imports = ["."],
+)
+
+
+pybind_py_library(
+    name = "cassie_sysid_utils_py",
+    cc_so_name = "cassie_sysid_utils",
+    cc_srcs = ["cassie_sysid_utils_py.cc"],
+    cc_deps = ["//examples/Cassie:cassie_sysid_utils",               
+               "@drake//bindings/pydrake/systems:systems_pybind",
+               "@drake//bindings/pydrake/util:cpp_template_pybind",
+               ],
+    py_imports =   ["."],
+)
+
+py_test(
+  name = "cassie_utils_py_test",
+  srcs = ["test/cassie_utils_py_test.py"],
+  deps = [":cassie_utils_py"],
+  data = glob([":test.log"])
+)
+
+py_test(
+  name = "cassie_sysid_utils_py_test",
+  srcs = ["test/cassie_sysid_utils_py_test.py"],
+  deps = [":cassie_sysid_utils_py"],
+)
+
+py_library(
+  name = "sysid_errors",
+  srcs = ["sysid/sysid_errors.py"],
+  deps = [":cassie_sysid_utils_py"]
+)
+
+py_test(
+  name = "sysid_errors_test",
+  srcs = ["sysid/sysid_errors_test.py"],
+  deps = [":sysid_errors",
+          ":cassie_utils_py"]
+)

@@ -11,6 +11,14 @@ load(
 )
 
 load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library"
+)
+
+load(
     "@drake//tools/skylark:drake_py.bzl",
     "drake_py_binary",
     "drake_py_library",
@@ -25,7 +33,29 @@ cc_library(
           "@drake//solvers:constraint",
           "@drake//multibody:rigid_body_tree",
           "@drake//manipulation/util",
-          "//common"]
+          "//common"],
+  data = glob(["urdf/**"])
+)
+
+cc_library(
+    name = "cassie_sysid_utils",
+    srcs = ["cassie_sysid_utils.cc"],
+    hdrs = ["cassie_sysid_utils.h"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/primitives",
+        "@drake//common",
+        "@drake//solvers",
+        "@gflags",
+        "//systems/lcm:lcm_log_parser",
+        "//systems:robot_lcm_systems",
+        ":cassie_urdf",
+        ":cassie_utils",
+    ],
+    data = [":test.log"]
 )
 
 cc_library(
@@ -69,7 +99,7 @@ cc_library(
 	        "@drake//systems/lcm:lcm",
 	        "@drake//systems/framework:value",
 	        "@drake//lcmtypes:drake_signal",
- 	        ]
+	        ]
 )
 
 cc_library(
@@ -82,6 +112,7 @@ cc_library(
 	        "//examples/Cassie/datatypes:cassie_names",
 	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
 )
+
 
 cc_library(
 	name = "cassie_udp_spoofer",
@@ -130,9 +161,6 @@ cc_binary(
     ],
 )
 
-
-
-
 cc_binary(
 	name = "run_cassie_dispatch",
 	srcs = ["run_cassie_dispatch.cc"],
@@ -147,7 +175,6 @@ cc_binary(
 	        "@drake//systems/lcm:lcm"
 	        ]
 )
-
 
 cc_binary(
 	name = "run_udp_dummy_server",
@@ -227,6 +254,24 @@ cc_binary(
     name = "parse_log_test",
     srcs = ["test/parse_log_test.cc"],
     deps = [
+            "//systems:robot_lcm_systems",
+            ":cassie_urdf",
+            "@drake//systems/framework:diagram_builder",
+            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/analysis:simulator",
+            "@drake//lcm",
+            "@drake//multibody:rigid_body_tree",
+            "@drake//systems/primitives",
+            "//systems/lcm:lcm_log_parser",
+            ":cassie_utils"
+            ]
+)
+
+cc_binary(
+    name = "cassie_sysid_utils_test",
+    srcs = ["test/cassie_sysid_utils_test.cc"],
+    deps = [
+            ":cassie_sysid_utils",
             "//systems:robot_lcm_systems",
             ":cassie_urdf",
             "@drake//systems/framework:diagram_builder",

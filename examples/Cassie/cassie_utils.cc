@@ -23,6 +23,7 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
       FindResourceOrThrow(filename),
       drake::multibody::joints::kFixed, &tree);
 
+
   // Add distance constraints for the two legs
   double achilles_length = .5012;
   int heel_spring_left = tree.FindBodyIndex("heel_spring_left");
@@ -31,7 +32,7 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
   int heel_spring_right = tree.FindBodyIndex("heel_spring_right");
   int thigh_right = tree.FindBodyIndex("thigh_right");
 
-  Vector3d rod_on_heel_spring;  // symmetric left and right
+  Vector3d rod_on_heel_spring; //symmetric left and right
   rod_on_heel_spring << .11877, -.01, 0.0;
 
   Vector3d rod_on_thigh_left;
@@ -103,8 +104,7 @@ TreePositionConstraint::TreePositionConstraint(
   tree_ = &tree;
 }
 
-void TreePositionConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                                    Eigen::VectorXd* y) const {
+void TreePositionConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x, Eigen::VectorXd* y) const {
   AutoDiffVecXd y_t;
   Eval(drake::math::initializeAutoDiff(x), &y_t);
   *y = drake::math::autoDiffToValueMatrix(y_t);

@@ -295,6 +295,36 @@ bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree,
   return is_within_limits;
 }
 
+
+
+//Computing Mvdot
+template<typename T>
+VectorX<T> CassiePlant<T>::CalcMVdot(VectorX<T> x,
+                                     VectorX<T> u, 
+                                     VectorX<T> lambda) {
+
+  const int nq = tree_.get_num_positions();
+  const int nv = tree_.get_num_velocities();
+  const int num_actuators = tree_.get_num_actuators();
+
+  VectorX<T> q = x.topRows(nq);
+  VectorX<T> v = x.bottomRows(nv);
+
+  auto k_cache = tree_.doKinematics(q, v);
+  const MatrixX<T> M = tree_.massMatrix(k_cache);
+  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
+
+  VectorX<T> C = tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
+  MatrixX<T> J = tree_.positionConstraintsJacobian(k_cache);
+
+  VectorX<T> m_vdot = -C + tree_.B*u + J.transpose()*lambda;
+
+  return m_vdot;
+}
+
+
+
+
 // Time derivative computation with zero alpha
 template<typename T>
 void CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x, 
@@ -417,12 +447,59 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
     vdot = M.llt().solve(right_hand_side);
   }
 
-  VectorX<T> xdot(plant_->get_num_states());
-  xdot << tree_.transformVelocityToQDot(k_cache, v), vdot;
-  return xdot;
+  VectorX<T> x_dot(plant_->get_num_states());
+  x_dot << tree_.transformVelocityToQDot(k_cache, v), vdot;
+  return x_dot;
+}
+
+
+template<typename T>
+VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x, 
+                                                     VectorX<T> u, 
+                                                     VectorX<T> lambda) const {
+
+  const int nq = tree_.get_num_positions();
+  const int nv = tree_.get_num_velocities();
+  const int num_actuators = tree_.get_num_actuators();
+
+  VectorX<T> q = x.topRows(nq);
+  VectorX<T> v = x.bottomRows(nv);
+
+  auto k_cache = tree_.doKinematics(q, v);
+  const MatrixX<T> M = tree_.massMatrix(k_cache);
+  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
+
+  VectorX<T> right_hand_side = 
+    -tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
+
+  if (num_actuators > 0) {
+    right_hand_side += tree_.B * u;
+  }
+
+  {
+    for (auto const& b : tree_.get_bodies()) {
+      if (!b->has_parent_body()) continue;
+      auto const& joint = b->getJoint();
+      if (joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
+        const T limit_force = 
+          plant_->JointLimitForce(joint, q(b->get_position_start_index()),
+                                  v(b->get_velocity_start_index()));
+        right_hand_side(b->get_velocity_start_index()) += limit_force;
+      }
+    }
+  }
+
+  auto J = tree_.positionConstraintsJacobian(k_cache);
+  right_hand_side += J.transpose()*lambda;
+
+  VectorX<T> vdot =
+    M.completeOrthogonalDecomposition().solve(right_hand_side);
+
+  VectorX<T> x_dot(plant_->get_num_states());
+  x_dot << tree_.transformVelocityToQDot(k_cache, v), vdot;
+  return x_dot;
 }
           
-
 
 
 

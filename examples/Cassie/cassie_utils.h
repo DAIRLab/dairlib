@@ -78,12 +78,20 @@ class CassiePlant {
     CassiePlant(RigidBodyPlant<T>* plant):plant_(plant),
                                           tree_(plant_->get_rigid_body_tree()) {}
 
+    VectorX<T> CalcMVdot(VectorX<T> x,
+                         VectorX<T> u,
+                         VectorX<T> lambda);
+
     void CalcTimeDerivativesCassie(VectorX<T> x,
                                    VectorX<T> u, 
                                    ContinuousState<T>* xdot) const;
 
     VectorX<T> CalcTimeDerivativesCassie(VectorX<T> x,
                                          VectorX<T> u) const;
+
+    VectorX<T> CalcTimeDerivativesCassie(VectorX<T> x,
+                                         VectorX<T> u, 
+                                         VectorX<T> lambda) const;
 
     void CalcTimeDerivativesCassieDuringContact(VectorX<T> x, 
                                                 VectorX<T> u, 

@@ -202,8 +202,8 @@ bool CheckTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant,
 
 
 VectorXd SolveFixedPointFeasibilityConstraints(RigidBodyPlant<double>* plant,
-                                                       VectorXd x0,
-                                                       VectorXd u_init) {
+                                               VectorXd x0,
+                                               VectorXd u_init) {
 
   const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
   DRAKE_DEMAND(CheckTreeConstraints(tree, x0.head(tree.get_num_positions())));

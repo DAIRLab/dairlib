@@ -214,6 +214,7 @@ int do_main(int argc, char* argv[]) {
 
   KinematicsCache<double> k_cache_init = 
     plant->get_rigid_body_tree().doKinematics(q_init, v_init);
+
   
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(
@@ -247,18 +248,28 @@ int do_main(int argc, char* argv[]) {
   cout << contact_forces.transpose() << endl;;
 
 
-  vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(plant, x_init, u_analytical, fixed_joints);
+  VectorXd lambda_init = VectorXd::Zero(2);
+  vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(plant, 2, x_init, u_analytical, lambda_init, fixed_joints);
 
   //vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_analytical, fixed_joints);
 
   VectorXd q_sol = sol_tfp.at(0);
   VectorXd v_sol = sol_tfp.at(1);
   VectorXd u_sol = sol_tfp.at(2);
+  VectorXd lambda_sol = sol_tfp.at(3);
   VectorXd x_sol(num_states);
   x_sol << q_sol, v_sol;
 
   cout << "x_sol: " << endl;
   cout << x_sol.transpose() << endl;
+  cout << "u_sol: " << endl;
+  cout << u_sol.transpose() << endl;
+  cout << "lambda_sol: " << endl;
+  cout << lambda_sol.transpose() << endl;
+
+  CassiePlant<double> cassie_plant(plant);
+  cout << "*********** xdot ************" << endl;
+  cout << cassie_plant.CalcTimeDerivativesCassie(x_sol, u_sol, lambda_sol) << endl;
 
   MatrixXd J_collision;
 

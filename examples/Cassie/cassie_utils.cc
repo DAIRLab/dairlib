@@ -214,31 +214,6 @@ VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, 
 
 }
 
-//Computing Mvdot 
-VectorX<AutoDiffXd> CalcMVdot(RigidBodyPlant<double>* plant,
-                              VectorX<AutoDiffXd> q,
-                              VectorX<AutoDiffXd> v,
-                              VectorX<AutoDiffXd> u, 
-                              VectorX<AutoDiffXd> lambda) {
-
-  auto k_cache =
-    plant->get_rigid_body_tree().doKinematics(q, v);
-  const MatrixX<AutoDiffXd> M =
-    plant->get_rigid_body_tree().massMatrix(k_cache);
-
-  const typename RigidBodyTree<AutoDiffXd>::BodyToWrenchMap no_external_wrenches;
-
-  VectorX<AutoDiffXd> C =
-    plant->get_rigid_body_tree().dynamicsBiasTerm(k_cache, no_external_wrenches);
-  MatrixX<AutoDiffXd> J =
-    plant->get_rigid_body_tree().positionConstraintsJacobian(k_cache);
-
-  VectorX<AutoDiffXd> m_vdot =
-    -C + plant->get_rigid_body_tree().B*u + J.transpose()*lambda;
-
-  return m_vdot;
-}
-
 
 int GetBodyIndexFromName(const RigidBodyTree<double>& tree, 
                          string name) {
@@ -487,9 +462,6 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
 
   auto J = tree_.positionConstraintsJacobian(k_cache);
   right_hand_side += J.transpose()*lambda;
-
-  std::cout << "***************** rhs *****************" << std::endl;
-  std::cout << right_hand_side << std::endl;
 
   VectorX<T> vdot =
     M.completeOrthogonalDecomposition().solve(right_hand_side);

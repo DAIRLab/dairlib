@@ -55,11 +55,6 @@ void buildFloatingBaseCassieTree(RigidBodyTree<double>& tree,
 
 VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, VectorXd x);
 
-VectorX<AutoDiffXd> CalcMVdot(RigidBodyPlant<double>* plant, 
-                              VectorX<AutoDiffXd> q,
-                              VectorX<AutoDiffXd> v,
-                              VectorX<AutoDiffXd> u,
-                              VectorX<AutoDiffXd> lambda);
 
 int GetBodyIndexFromName(const RigidBodyTree<double>& tree, 
                          string name);

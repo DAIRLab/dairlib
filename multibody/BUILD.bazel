@@ -9,14 +9,19 @@ cc_library(
     name = "utils",
     srcs = [
         "rbt_utils.cc",
+        "rbp_utils.cc",
     ],
     hdrs = [
-        "rbt_utils.h"
+        "rbt_utils.h",
+        "rbp_utils.h",
     ],
     deps = [
         "@drake//multibody:rigid_body_tree",
+        "@drake//multibody/rigid_body_plant:rigid_body_plant",
     ],
 )
+
+
 
 cc_library(
     name = "solve_multibody_constraints",

@@ -9,6 +9,7 @@
 #include "drake/solvers/snopt_solver.h"
 
 #include "cassie_utils.h"
+#include "multibody/rbp_utils.h"
 #include "multibody/solve_multibody_constraints.h"
 
 using std::map;
@@ -52,6 +53,7 @@ using drake::symbolic::Expression;
 
 using dairlib::multibody::TreeConstraint;
 using dairlib::multibody::CheckTreeConstraints;
+using dairlib::multibody::utils::CalcMVdot;
 using dairlib::GetBodyIndexFromName;
 
 namespace dairlib {

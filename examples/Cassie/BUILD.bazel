@@ -43,6 +43,7 @@ cc_library(
         "@drake//solvers:constraint",
         "@drake//manipulation/util",
         "//multibody:solve_multibody_constraints",
+        "//multibody:utils",
         ":cassie_utils",
     ],
 )
@@ -279,6 +280,7 @@ cc_binary(
         "//systems/primitives",
         "//systems/framework:vector",
         "//systems/controllers:clqr_controller",
+        "//multibody:utils",
         "//multibody:solve_multibody_constraints",
         ":cassie_utils",
         ":cassie_solver",

@@ -23,6 +23,7 @@
 #include "systems/controllers/clqr_controller.h"
 #include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
+#include "multibody/rbp_utils.h"
 #include "multibody/solve_multibody_constraints.h"
 #include "cassie_utils.h"
 #include "cassie_solver.h"
@@ -50,6 +51,7 @@ using dairlib::multibody::CheckFixedPointConstraints;
 using dairlib::multibody::SolveTreeAndFixedPointConstraints;
 using dairlib::multibody::CheckTreeAndFixedPointConstraints;
 using dairlib::multibody::SolveFixedPointFeasibilityConstraints;
+using dairlib::multibody::utils::CalcTimeDerivativesUsingLambda;
 using dairlib::systems::ClqrController;
 using dairlib::systems::AffineParams;
 using dairlib::systems::SubvectorPassThrough;
@@ -270,9 +272,8 @@ int do_main(int argc, char* argv[]) {
   cout << "******************lambda_sol*********************" << endl;
   cout << lambda_sol.transpose() << endl;
 
-  //CassiePlant<double> cassie_plant(plant);
-  //cout << "*********** xdot ************" << endl;
-  //cout << cassie_plant.CalcTimeDerivativesCassie(x_sol, u_sol, lambda_sol) << endl;
+  cout << "*********** xdot ************" << endl;
+  cout << CalcTimeDerivativesUsingLambda(plant, x_sol, u_sol, lambda_sol) << endl;
 
   MatrixXd J_collision = MatrixXd::Zero(0, 0);
 

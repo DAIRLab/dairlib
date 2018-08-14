@@ -14,7 +14,8 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
 
   MathematicalProgram prog;
   //Setting log file
-  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", snopt_output_filename);
+  
+  //prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", snopt_output_filename);
 
 
   auto q = prog.NewContinuousVariables(plant->get_num_positions(), "q");

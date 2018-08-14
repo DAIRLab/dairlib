@@ -42,7 +42,6 @@ using drake::systems::LeafSystem;
 using drake::systems::BasicVector;
 using drake::systems::ConstantVectorSource;
 using drake::systems::Multiplexer;
-//using drake::systems::CompliantContactModel;
 
 using dairlib::multibody::SolveTreeConstraints;
 using dairlib::multibody::CheckTreeConstraints;
@@ -51,6 +50,7 @@ using dairlib::multibody::CheckFixedPointConstraints;
 using dairlib::multibody::SolveTreeAndFixedPointConstraints;
 using dairlib::multibody::CheckTreeAndFixedPointConstraints;
 using dairlib::multibody::SolveFixedPointFeasibilityConstraints;
+using dairlib::systems::ClqrController;
 using dairlib::systems::AffineParams;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::OutputVector;
@@ -221,12 +221,12 @@ int do_main(int argc, char* argv[]) {
           num_states - 2*num_constraints, num_states - 2*num_constraints);
   //Q corresponding to the positions
   MatrixXd Q_p = MatrixXd::Identity(
-          num_states/2 - num_constraints, num_states/2 - num_constraints)*1000.0;
+          num_positions - num_constraints, num_positions - num_constraints)*1000.0;
   //Q corresponding to the velocities
   MatrixXd Q_v = MatrixXd::Identity(
-          num_states/2 - num_constraints, num_states/2 - num_constraints)*10.0;
+          num_velocities - num_constraints, num_velocities - num_constraints)*10.0;
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
-  Q.block(num_states/2 - num_constraints, num_states/2 - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
+  Q.block(num_positions - num_constraints, num_positions - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
 
   VectorXd u_analytical = ComputeCassieControlInputAnalytical(plant->get_rigid_body_tree(), x_init);
@@ -248,11 +248,12 @@ int do_main(int argc, char* argv[]) {
   cout << contact_forces.transpose() << endl;;
 
 
-  VectorXd lambda_init = VectorXd::Zero(2);
-  vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(plant, 2, q_init, u_analytical, lambda_init, fixed_joints);
+  const int num_constraint_forces = num_constraints;
+  VectorXd lambda_init = VectorXd::Zero(num_constraint_forces);
+  cout << "Starting to solve" << endl;
+  vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(
+      plant, num_constraint_forces, q_init, u_init, lambda_init, fixed_joints);
 
-
-  //vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_analytical, fixed_joints);
 
   VectorXd q_sol = sol_tfp.at(0);
   VectorXd u_sol = sol_tfp.at(1);
@@ -262,60 +263,61 @@ int do_main(int argc, char* argv[]) {
   x_sol << q_sol, VectorXd::Zero(num_velocities);
   DRAKE_DEMAND(CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_sol));
 
-  cout << "q_sol: " << endl;
+  cout << "********************q_sol*************************" << endl;
   cout << q_sol.transpose() << endl;
-  cout << "u_sol: " << endl;
+  cout << "********************u_sol*************************" << endl;
   cout << u_sol.transpose() << endl;
-  cout << "lambda_sol: " << endl;
+  cout << "******************lambda_sol*********************" << endl;
   cout << lambda_sol.transpose() << endl;
 
-  CassiePlant<double> cassie_plant(plant);
-  cout << "*********** xdot ************" << endl;
-  cout << cassie_plant.CalcTimeDerivativesCassie(x_sol, u_sol, lambda_sol) << endl;
+  //CassiePlant<double> cassie_plant(plant);
+  //cout << "*********** xdot ************" << endl;
+  //cout << cassie_plant.CalcTimeDerivativesCassie(x_sol, u_sol, lambda_sol) << endl;
 
-  MatrixXd J_collision;
+  MatrixXd J_collision = MatrixXd::Zero(0, 0);
+
+  cout << "Starting controller" << endl;
 
   //Building the controller
-  //auto clqr_controller = builder.AddSystem<systems::ClqrController>(
-  //        plant, x_init, u_analytical, J_collision, num_positions, num_velocities, num_efforts, Q, R);
-  //VectorXd K_vec = clqr_controller->GetKVec();
-  //VectorXd C = u_sol; 
-  //VectorXd x_desired = x_sol;
-  //cout << "K: " << K_vec.transpose() << endl;
-  //cout << "C: " << C.transpose() << endl;
-  //cout << "xdes: " << x_desired.transpose() << endl;
+  auto clqr_controller = builder.AddSystem<ClqrController>(plant, x_init, u_analytical, J_collision, num_positions, num_velocities, num_efforts, Q, R);
+  VectorXd K_vec = clqr_controller->GetKVec();
+  VectorXd C = u_sol; 
+  VectorXd x_desired = x_sol;
+  cout << "K: " << K_vec.transpose() << endl;
+  cout << "C: " << C.transpose() << endl;
+  cout << "xdes: " << x_desired.transpose() << endl;
 
-  //vector<int> input_info_sizes{num_states, num_efforts, 3, 1};
-  //vector<int> input_params_sizes{num_states*num_efforts, num_efforts, num_states, 1};
+  vector<int> input_info_sizes{num_states, num_efforts, 3, 1};
+  vector<int> input_params_sizes{num_states*num_efforts, num_efforts, num_states, 1};
 
-  //auto info_connector = builder.AddSystem<InfoConnector>(num_positions, num_velocities, num_efforts);
-  //auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
+  auto info_connector = builder.AddSystem<InfoConnector>(num_positions, num_velocities, num_efforts);
+  auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
 
-  //auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(
-  //        VectorX<double>::Zero(num_efforts));
-  //auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(
-  //        VectorX<double>::Zero(3));
-  //auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(
-  //        VectorX<double>::Zero(1));
+  auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(
+          VectorX<double>::Zero(num_efforts));
+  auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(
+          VectorX<double>::Zero(3));
+  auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(
+          VectorX<double>::Zero(1));
 
-  //VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
-  //params_vec << K_vec, C, x_desired;
-  //AffineParams params(num_states, num_efforts);
-  //params.SetDataVector(params_vec);
-  //auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
+  VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
+  params_vec << K_vec, C, x_desired;
+  AffineParams params(num_states, num_efforts);
+  params.SetDataVector(params_vec);
+  auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
 
-  //auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
-  //        (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
+  auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
+          (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
 
-  //builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
-  //builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
-  //builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
-  //builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
-  //builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
-  //builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
-  //builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
-  //builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
-  //builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
+  builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
+  builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
+  builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
+  builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
+  builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
+  builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
+  builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
+  builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
+  builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
 
   auto diagram = builder.Build();
   
@@ -324,7 +326,7 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
   
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
-  state.SetFromVector(x_sol);
+  state.SetFromVector(x_start);
   
   auto zero_input = Eigen::MatrixXd::Zero(num_efforts, 1);
   context.FixInputPort(0, zero_input);

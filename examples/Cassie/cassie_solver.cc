@@ -6,7 +6,7 @@ namespace dairlib{
 
 vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, 
                                                          int num_constraint_forces,
-                                                         VectorXd x_init, 
+                                                         VectorXd q_init, 
                                                          VectorXd u_init, 
                                                          VectorXd lambda_init,
                                                          vector<int> fixed_joints,
@@ -18,7 +18,6 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
 
 
   auto q = prog.NewContinuousVariables(plant->get_num_positions(), "q");
-  auto v = prog.NewContinuousVariables(plant->get_num_velocities(), "v");
   auto u = prog.NewContinuousVariables(plant->get_num_actuators(), "u");
   auto lambda = prog.NewContinuousVariables(num_constraint_forces, "lambda");
   auto constraint_tree_position = make_shared<TreeConstraint>(
@@ -26,22 +25,30 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
   auto constraint_fixed_point = make_shared<CassieFixedPointConstraint>(
       plant, num_constraint_forces);
   prog.AddConstraint(constraint_tree_position, q);
-  prog.AddConstraint(constraint_fixed_point, {q, v, u, lambda});
+  prog.AddConstraint(constraint_fixed_point, {q, u, lambda});
   
   for(uint i = 0; i < fixed_joints.size(); i++)
   {
     int j = fixed_joints[i];
-    prog.AddConstraint(q(j) == x_init(j));
+    prog.AddConstraint(q(j) == q_init(j));
   }
 
-  VectorXd q_init = x_init.head(plant->get_num_positions());
-  VectorXd v_init = x_init.tail(plant->get_num_velocities());
+  // Zero velocity constraints
+  //for(uint i = 0; i < v.size(); i++)
+  //{
+  //  prog.AddConstraint(v(i) == 0.0);
+  //}
+
+  //for(uint i = 0; i < lambda.size(); i++) {
+  //  prog.AddConstraint(lambda(i) >= 0.01);
+  //}
+
 
   prog.AddQuadraticCost(
-      (q - q_init).dot(q - q_init) + (v - v_init).dot(v - v_init));
+      (q - q_init).dot(q - q_init));
   //prog.AddQuadraticCost(1.0);
   prog.SetInitialGuess(q, q_init);
-  prog.SetInitialGuess(v, v_init);
+  //prog.SetInitialGuess(v, v_init);
   prog.SetInitialGuess(u, u_init);
   prog.SetInitialGuess(lambda, lambda_init);
 
@@ -50,25 +57,18 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
   std::cout << "********** Fixed Point Solver Result **********" << std::endl;
   std::cout << to_string(solution) << std::endl;
 
+
   VectorXd q_sol = prog.GetSolution(q);
-  VectorXd v_sol = prog.GetSolution(v);
   VectorXd u_sol = prog.GetSolution(u);
   VectorXd lambda_sol = prog.GetSolution(lambda);
-  VectorXd x_sol(q_sol.size() + v_sol.size());
-  x_sol << q_sol, v_sol;
 
   DRAKE_DEMAND(q_sol.size() == q_init.size());
-  DRAKE_DEMAND(v_sol.size() == v_init.size());
   DRAKE_DEMAND(u_sol.size() == u_init.size());
   DRAKE_DEMAND(lambda_sol.size() == lambda_init.size());
 
   for(int i=0; i<q_sol.size(); i++)
   {
     DRAKE_DEMAND(!isnan(q_sol(i)) && !isinf(q_sol(i)));
-  }
-  for(int i=0; i<v_sol.size(); i++)
-  {
-    DRAKE_DEMAND(!isnan(v_sol(i)) && !isinf(v_sol(i)));
   }
   for(int i=0; i<u_sol.size(); i++)
   {
@@ -82,59 +82,28 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
 
   //Checking if the Tree position constraints are satisfied
   DRAKE_DEMAND(CheckTreeConstraints(plant->get_rigid_body_tree(), q_sol));
-  //DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, x_sol, u_sol, lambda_sol));
+  //DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, q_sol, u_sol, lambda_sol));
 
   vector<VectorXd> sol;
   sol.push_back(q_sol);
-  sol.push_back(v_sol);
   sol.push_back(u_sol);
   sol.push_back(lambda_sol);
+
   return sol;
 }
 
 
 
 bool CheckCassieFixedPointConstraints(RigidBodyPlant<double>* plant,
-                                      VectorXd x_check,
+                                      VectorXd q_check,
                                       VectorXd u_check, 
                                       VectorXd lambda_check) {
 
   auto constraint = std::make_shared<CassieFixedPointConstraint>(plant, 2);
-  VectorXd x_u_l_check(x_check.size() + u_check.size() + lambda_check.size());
-  x_u_l_check << x_check, u_check, lambda_check;
-  return constraint->CheckSatisfied(x_u_l_check);
+  VectorXd q_u_l_check(q_check.size() + u_check.size() + lambda_check.size());
+  q_u_l_check << q_check, u_check, lambda_check;
+  return constraint->CheckSatisfied(q_u_l_check);
 }
-
-
-
-//VectorXd SolveCassieFixedPointControlInputConstraints(RigidBodyPlant<double>* plant,
-//                                                      VectorXd x0,
-//                                                      VectorXd u_init) {
-//
-//  const RigidBodyTree<double>& tree = plant->get_rigid_body_tree();
-//  
-//  // Making sure that the tree position constraints are satisfied
-//  DRAKE_DEMAND(CheckTreeConstraints(tree, x0.head(tree.get_num_positions())));
-//
-//  MathematicalProgram prog;
-//  auto u = prog.NewContinuousVariables(tree.get_num_actuators(), "u");
-//  auto constraint = std::make_shared<CassieFixedPointControlInputConstraint>(plant, x0);
-//  prog.AddConstraint(constraint, u);
-//
-//  prog.AddQuadraticCost(1.0);
-//  prog.SetInitialGuess(u, u_init);
-//  auto solution = prog.Solve();
-//
-//  std::cout << "********** Feaasibility Solver Result **********" << std::endl;
-//  std::cout << to_string(solution) << std::endl;
-//
-//  VectorXd u_sol = prog.GetSolution(u);
-//
-//  DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, x0, u_sol));
-//
-//  return u_sol;
-//}
-
 
 
 
@@ -170,43 +139,44 @@ CassieFixedPointConstraint::CassieFixedPointConstraint(RigidBodyPlant<double>* p
                                                        int num_constraint_forces,
                                                        const std::string& description):
   Constraint(plant->get_num_velocities(),
-             plant->get_num_states() + plant->get_num_actuators() + num_constraint_forces,
+             plant->get_num_positions() + plant->get_num_actuators() + num_constraint_forces,
              VectorXd::Zero(plant->get_num_velocities()),
              VectorXd::Zero(plant->get_num_velocities()),
              description),
   plant_(plant), tree_(plant->get_rigid_body_tree()),
   num_constraint_forces_(num_constraint_forces) 
 {
-    plant_autodiff_ = make_unique<RigidBodyPlant<AutoDiffXd>>(*plant);
+  plant_autodiff_ = make_unique<RigidBodyPlant<AutoDiffXd>>(*plant);
 }
 
 
-void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x_u_l,
+void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& q_u_l,
                                         Eigen::VectorXd* y) const {
   AutoDiffVecXd y_t;
-  Eval(initializeAutoDiff(x_u_l), &y_t);
+  Eval(initializeAutoDiff(q_u_l), &y_t);
   *y = autoDiffToValueMatrix(y_t);
  
 }
 
-void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x_u_l,
+void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q_u_l,
                                         AutoDiffVecXd* y) const {
-    
+
+
   const int num_positions = tree_.get_num_positions();
   const int num_velocities = tree_.get_num_velocities();
   const int num_states = num_positions + num_velocities;
   const int num_efforts = tree_.get_num_actuators();
 
 
-  const AutoDiffVecXd x = x_u_l.head(num_states);
-  const AutoDiffVecXd u = x_u_l.segment(num_states, num_efforts); 
-  const AutoDiffVecXd lambda = x_u_l.tail(num_constraint_forces_);
+  const AutoDiffVecXd q = q_u_l.head(num_positions);
+  const AutoDiffVecXd u = q_u_l.segment(num_positions, num_efforts); 
+  const AutoDiffVecXd lambda = q_u_l.tail(num_constraint_forces_);
 
-  // Using CalcTimeDerivatives from Cassie Plant
-  RigidBodyPlant<AutoDiffXd> plant_autodiff(*plant_);
-  CassiePlant<AutoDiffXd> cassie_plant(&plant_autodiff);
-
-  *y = cassie_plant.CalcMVdot(x, u, lambda);
+  *y = CalcMVdot(plant_,
+                 q,
+                 initializeAutoDiff(VectorXd::Zero(num_velocities)),
+                 u,
+                 lambda);
   //std::cout << *y << std::endl;
   //std::cout << "------------------------------------" << std::endl;
 
@@ -219,61 +189,6 @@ void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>
   throw std::logic_error(
       "FixedPointConstraint does not support symbolic evaluation.");
 }
-
-
-
-
-
-//CassieFixedPointControlInputConstraint::CassieFixedPointControlInputConstraint(RigidBodyPlant<double>* plant,
-//                                                                               VectorXd x0,
-//                                                                               const std::string& description):
-//  Constraint(plant->get_num_states(),
-//             plant->get_num_actuators(),
-//             VectorXd::Zero(plant->get_num_states()),
-//             VectorXd::Zero(plant->get_num_states()),
-//             description),
-//  plant_(plant), tree_(plant->get_rigid_body_tree()), x0_(x0)
-//{
-//    plant_autodiff_ = make_unique<RigidBodyPlant<AutoDiffXd>>(*plant);
-//}
-//
-//
-//void CassieFixedPointControlInputConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-//                                                    Eigen::VectorXd* y) const {
-//  AutoDiffVecXd y_t;
-//  Eval(initializeAutoDiff(x), &y_t);
-//  *y = autoDiffToValueMatrix(y_t);
-// 
-//}
-//
-//void CassieFixedPointControlInputConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-//                                                    AutoDiffVecXd* y) const {
-//    
-//  const int num_positions = tree_.get_num_positions();
-//  const int num_velocities = tree_.get_num_velocities();
-//
-//  const AutoDiffVecXd u = x; 
-//
-//  ContinuousState<AutoDiffXd> cstate_output_autodiff(
-//      BasicVector<AutoDiffXd>(x).Clone(), num_positions, num_velocities, 0);
-//
-//  // Using CalcTimeDerivatives from Cassie Plant
-//  RigidBodyPlant<AutoDiffXd> plant_autodiff(*plant_);
-//  CassiePlant<AutoDiffXd> cassie_plant(&plant_autodiff);
-//
-//  *y = cassie_plant.CalcTimeDerivativesCassie(x0_, u);
-//
-//
-//}
-//
-//void CassieFixedPointControlInputConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
-//                                                    VectorX<Expression>*y) const {
-//
-//  throw std::logic_error(
-//      "FixedPointConstraint does not support symbolic evaluation.");
-//}
-
-
 
 
 
@@ -399,5 +314,6 @@ void CassieContactConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& 
   throw std::logic_error(
       "TreeConstraint does not support symbolic evaluation.");
 }
+
 
 } // namespace dairlib

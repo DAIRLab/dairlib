@@ -156,7 +156,6 @@ VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, 
 
   const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
   VectorXd C = tree.dynamicsBiasTerm(k_cache, no_external_wrenches, true);
-  //VectorXd u = B.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(C);
   MatrixXd J = tree.positionConstraintsJacobian(k_cache, true);
 
 
@@ -213,6 +212,31 @@ VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, 
 
   return u;
 
+}
+
+//Computing Mvdot 
+VectorX<AutoDiffXd> CalcMVdot(RigidBodyPlant<double>* plant,
+                              VectorX<AutoDiffXd> q,
+                              VectorX<AutoDiffXd> v,
+                              VectorX<AutoDiffXd> u, 
+                              VectorX<AutoDiffXd> lambda) {
+
+  auto k_cache =
+    plant->get_rigid_body_tree().doKinematics(q, v);
+  const MatrixX<AutoDiffXd> M =
+    plant->get_rigid_body_tree().massMatrix(k_cache);
+
+  const typename RigidBodyTree<AutoDiffXd>::BodyToWrenchMap no_external_wrenches;
+
+  VectorX<AutoDiffXd> C =
+    plant->get_rigid_body_tree().dynamicsBiasTerm(k_cache, no_external_wrenches);
+  MatrixX<AutoDiffXd> J =
+    plant->get_rigid_body_tree().positionConstraintsJacobian(k_cache);
+
+  VectorX<AutoDiffXd> m_vdot =
+    -C + plant->get_rigid_body_tree().B*u + J.transpose()*lambda;
+
+  return m_vdot;
 }
 
 
@@ -294,34 +318,6 @@ bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree,
 
   return is_within_limits;
 }
-
-
-
-//Computing Mvdot
-template<typename T>
-VectorX<T> CassiePlant<T>::CalcMVdot(VectorX<T> x,
-                                     VectorX<T> u, 
-                                     VectorX<T> lambda) {
-
-  const int nq = tree_.get_num_positions();
-  const int nv = tree_.get_num_velocities();
-  const int num_actuators = tree_.get_num_actuators();
-
-  VectorX<T> q = x.topRows(nq);
-  VectorX<T> v = x.bottomRows(nv);
-
-  auto k_cache = tree_.doKinematics(q, v);
-  const MatrixX<T> M = tree_.massMatrix(k_cache);
-  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
-
-  VectorX<T> C = tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
-  MatrixX<T> J = tree_.positionConstraintsJacobian(k_cache);
-
-  VectorX<T> m_vdot = -C + tree_.B*u + J.transpose()*lambda;
-
-  return m_vdot;
-}
-
 
 
 
@@ -491,6 +487,9 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
 
   auto J = tree_.positionConstraintsJacobian(k_cache);
   right_hand_side += J.transpose()*lambda;
+
+  std::cout << "***************** rhs *****************" << std::endl;
+  std::cout << right_hand_side << std::endl;
 
   VectorX<T> vdot =
     M.completeOrthogonalDecomposition().solve(right_hand_side);
@@ -697,4 +696,8 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
 }  // namespace dairlib
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-    class ::dairlib::CassiePlant)
+    class ::dairlib::CassiePlant);
+
+
+
+

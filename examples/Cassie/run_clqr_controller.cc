@@ -249,19 +249,21 @@ int do_main(int argc, char* argv[]) {
 
 
   VectorXd lambda_init = VectorXd::Zero(2);
-  vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(plant, 2, x_init, u_analytical, lambda_init, fixed_joints);
+  vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(plant, 2, q_init, u_analytical, lambda_init, fixed_joints);
+
 
   //vector<VectorXd> sol_tfp = SolveTreeAndFixedPointConstraints(plant, x_init, u_analytical, fixed_joints);
 
   VectorXd q_sol = sol_tfp.at(0);
-  VectorXd v_sol = sol_tfp.at(1);
-  VectorXd u_sol = sol_tfp.at(2);
-  VectorXd lambda_sol = sol_tfp.at(3);
-  VectorXd x_sol(num_states);
-  x_sol << q_sol, v_sol;
+  VectorXd u_sol = sol_tfp.at(1);
+  VectorXd lambda_sol = sol_tfp.at(2);
 
-  cout << "x_sol: " << endl;
-  cout << x_sol.transpose() << endl;
+  VectorXd x_sol(num_states);
+  x_sol << q_sol, VectorXd::Zero(num_velocities);
+  DRAKE_DEMAND(CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_sol));
+
+  cout << "q_sol: " << endl;
+  cout << q_sol.transpose() << endl;
   cout << "u_sol: " << endl;
   cout << u_sol.transpose() << endl;
   cout << "lambda_sol: " << endl;

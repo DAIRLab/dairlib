@@ -88,11 +88,12 @@ template VectorX<AutoDiffXd> CalcTimeDerivativesUsingLambda<AutoDiffXd>(const Ri
                                                         VectorX<AutoDiffXd>,
                                                         VectorX<AutoDiffXd>);
 
-//template VectorX<double> CalcMVdot<double>(const RigidBodyTree<double>&,
-//                                           VectorX<double>,
-//                                           VectorX<double>,
-//                                           VectorX<double>,
-//                                           VectorX<double>);
+
+template VectorX<double> CalcMVdot<double>(const RigidBodyTree<double>&,
+                                           VectorX<double>,
+                                           VectorX<double>,
+                                           VectorX<double>,
+                                           VectorX<double>);
 
 template VectorX<AutoDiffXd> CalcMVdot<AutoDiffXd>(const RigidBodyTree<double>&,
                                                    VectorX<AutoDiffXd>,

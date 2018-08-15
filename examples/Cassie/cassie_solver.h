@@ -65,6 +65,7 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<do
                                                          VectorXd u_init, 
                                                          VectorXd lambda_init,
                                                          vector<int> fixed_joints = {},
+                                                         bool print_debug = false,
                                                          string snopt_output_filename = "multibody/log_files/cassie_snopt.out");
 
 bool CheckCassieFixedPointConstraints(const RigidBodyPlant<double>& plant,
@@ -82,6 +83,7 @@ class CassieFixedPointConstraint : public Constraint {
   public:
     CassieFixedPointConstraint(const RigidBodyPlant<double>& plant,
                                int num_constraint_forces,
+                               bool print_debug = false,
                                const std::string& description = "");
     void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
                 Eigen::VectorXd* y) const override;
@@ -95,6 +97,7 @@ class CassieFixedPointConstraint : public Constraint {
     const RigidBodyPlant<double>& plant_;
     const RigidBodyTree<double>& tree_;
     int num_constraint_forces_;
+    bool print_debug_;
 
 };
 

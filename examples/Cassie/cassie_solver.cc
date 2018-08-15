@@ -10,12 +10,17 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<do
                                                          VectorXd u_init, 
                                                          VectorXd lambda_init,
                                                          vector<int> fixed_joints,
+                                                         bool print_debug,
                                                          string snopt_output_filename) {
 
   MathematicalProgram prog;
-  //Setting log file
-  
+
+  // Setting solver options
+  // Setting log file
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", snopt_output_filename);
+  // Non linear and linear constraint tolerance
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1.0e-7);
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Minor feasibility tolerance", 1.0e-7);
 
 
   auto q = prog.NewContinuousVariables(plant.get_num_positions(), "q");
@@ -24,7 +29,7 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<do
   auto constraint_tree_position = make_shared<TreeConstraint>(
       plant.get_rigid_body_tree());
   auto constraint_fixed_point = make_shared<CassieFixedPointConstraint>(
-      plant, num_constraint_forces);
+      plant, num_constraint_forces, print_debug);
   prog.AddConstraint(constraint_tree_position, q);
   prog.AddConstraint(constraint_fixed_point, {q, u, lambda});
   
@@ -35,8 +40,7 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<do
   }
 
 
-  prog.AddQuadraticCost(
-      (q - q_init).dot(q - q_init));
+  prog.AddQuadraticCost((q - q_init).dot(q - q_init));
   //prog.AddQuadraticCost(1.0);
   prog.SetInitialGuess(q, q_init);
   //prog.SetInitialGuess(v, v_init);
@@ -73,7 +77,7 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<do
 
   //Checking if the Tree position constraints are satisfied
   DRAKE_DEMAND(CheckTreeConstraints(plant.get_rigid_body_tree(), q_sol));
-  DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, q_sol, u_sol, lambda_sol));
+  //DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, q_sol, u_sol, lambda_sol));
 
   vector<VectorXd> sol;
   sol.push_back(q_sol);
@@ -128,6 +132,7 @@ VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree,
 
 CassieFixedPointConstraint::CassieFixedPointConstraint(const RigidBodyPlant<double>& plant,
                                                        int num_constraint_forces,
+                                                       bool print_debug,
                                                        const std::string& description):
   Constraint(plant.get_num_velocities(),
              plant.get_num_positions() + plant.get_num_actuators() + num_constraint_forces,
@@ -135,7 +140,8 @@ CassieFixedPointConstraint::CassieFixedPointConstraint(const RigidBodyPlant<doub
              VectorXd::Zero(plant.get_num_velocities()),
              description),
   plant_(plant), tree_(plant.get_rigid_body_tree()),
-  num_constraint_forces_(num_constraint_forces) 
+  num_constraint_forces_(num_constraint_forces),
+  print_debug_(print_debug)
 {
 }
 
@@ -161,13 +167,29 @@ void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q
   const AutoDiffVecXd u = q_u_l.segment(num_positions, num_efforts); 
   const AutoDiffVecXd lambda = q_u_l.tail(num_constraint_forces_);
 
-  *y = CalcMVdot<AutoDiffXd>(plant_,
+  *y = CalcMVdot<AutoDiffXd>(tree_,
                  q,
                  initializeAutoDiff(VectorXd::Zero(num_velocities)),
                  u,
                  lambda);
-  //std::cout << *y << std::endl;
-  //std::cout << "------------------------------------" << std::endl;
+
+  // Debug printing (constraint output and gradient)
+  if (print_debug_) {
+
+    std::cout << y->transpose() << std::endl;
+
+    for (int i = 0; i < 7; i++) {
+      std::cout << "----------------------------------------------------------";
+    }
+    std::cout << std::endl;
+
+    std::cout << autoDiffToGradientMatrix(*y) << std::endl;
+
+    for (int i = 0; i < 7; i++) {
+      std::cout << "**********************************************************";
+    }
+    std::cout << std::endl;
+  }
 
 
 }

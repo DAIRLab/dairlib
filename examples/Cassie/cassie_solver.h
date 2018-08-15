@@ -59,7 +59,7 @@ using dairlib::GetBodyIndexFromName;
 namespace dairlib {
 
 
-vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, 
+vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<double>& plant, 
                                                          int num_constraint_forces,
                                                          VectorXd q_init, 
                                                          VectorXd u_init, 
@@ -67,7 +67,7 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
                                                          vector<int> fixed_joints = {},
                                                          string snopt_output_filename = "multibody/log_files/cassie_snopt.out");
 
-bool CheckCassieFixedPointConstraints(RigidBodyPlant<double>* plant,
+bool CheckCassieFixedPointConstraints(const RigidBodyPlant<double>& plant,
                                       VectorXd x_check,
                                       VectorXd u_check, 
                                       VectorXd lambda_check);
@@ -80,7 +80,7 @@ VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree,
 
 class CassieFixedPointConstraint : public Constraint {
   public:
-    CassieFixedPointConstraint(RigidBodyPlant<double>* plant,
+    CassieFixedPointConstraint(const RigidBodyPlant<double>& plant,
                                int num_constraint_forces,
                                const std::string& description = "");
     void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
@@ -92,7 +92,7 @@ class CassieFixedPointConstraint : public Constraint {
                 VectorX<Expression>*y) const override;
   
   private:
-    RigidBodyPlant<double>* plant_;
+    const RigidBodyPlant<double>& plant_;
     const RigidBodyTree<double>& tree_;
     int num_constraint_forces_;
 

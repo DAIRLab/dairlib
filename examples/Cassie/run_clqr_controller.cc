@@ -262,7 +262,7 @@ int do_main(int argc, char* argv[]) {
   VectorXd lambda_init = VectorXd::Zero(num_constraint_forces);
   cout << "Starting to solve" << endl;
   vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(
-      &plant_solver, num_constraint_forces, q_init, u_init, lambda_init, fixed_joints);
+      plant_solver, num_constraint_forces, q_init, u_init, lambda_init, fixed_joints);
 
 
   VectorXd q_sol = sol_tfp.at(0);
@@ -281,7 +281,7 @@ int do_main(int argc, char* argv[]) {
   cout << lambda_sol.transpose() << endl;
 
   cout << "*********** xdot ************" << endl;
-  cout << CalcTimeDerivativesUsingLambda<double>(plant, x_sol, u_sol, lambda_sol) << endl;
+  cout << CalcTimeDerivativesUsingLambda<double>(*plant, x_sol, u_sol, lambda_sol) << endl;
 
   MatrixXd J_collision = MatrixXd::Zero(0, 0);
 

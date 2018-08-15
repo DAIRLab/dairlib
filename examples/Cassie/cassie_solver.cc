@@ -4,7 +4,7 @@
 namespace dairlib{
 
 
-vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>* plant, 
+vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<double>& plant, 
                                                          int num_constraint_forces,
                                                          VectorXd q_init, 
                                                          VectorXd u_init, 
@@ -18,11 +18,11 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", snopt_output_filename);
 
 
-  auto q = prog.NewContinuousVariables(plant->get_num_positions(), "q");
-  auto u = prog.NewContinuousVariables(plant->get_num_actuators(), "u");
+  auto q = prog.NewContinuousVariables(plant.get_num_positions(), "q");
+  auto u = prog.NewContinuousVariables(plant.get_num_actuators(), "u");
   auto lambda = prog.NewContinuousVariables(num_constraint_forces, "lambda");
   auto constraint_tree_position = make_shared<TreeConstraint>(
-      plant->get_rigid_body_tree());
+      plant.get_rigid_body_tree());
   auto constraint_fixed_point = make_shared<CassieFixedPointConstraint>(
       plant, num_constraint_forces);
   prog.AddConstraint(constraint_tree_position, q);
@@ -72,8 +72,8 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
 
 
   //Checking if the Tree position constraints are satisfied
-  DRAKE_DEMAND(CheckTreeConstraints(plant->get_rigid_body_tree(), q_sol));
-  //DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, q_sol, u_sol, lambda_sol));
+  DRAKE_DEMAND(CheckTreeConstraints(plant.get_rigid_body_tree(), q_sol));
+  DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, q_sol, u_sol, lambda_sol));
 
   vector<VectorXd> sol;
   sol.push_back(q_sol);
@@ -85,7 +85,7 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
 
 
 
-bool CheckCassieFixedPointConstraints(RigidBodyPlant<double>* plant,
+bool CheckCassieFixedPointConstraints(const RigidBodyPlant<double>& plant,
                                       VectorXd q_check,
                                       VectorXd u_check, 
                                       VectorXd lambda_check) {
@@ -126,15 +126,15 @@ VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree,
 }
 
 
-CassieFixedPointConstraint::CassieFixedPointConstraint(RigidBodyPlant<double>* plant,
+CassieFixedPointConstraint::CassieFixedPointConstraint(const RigidBodyPlant<double>& plant,
                                                        int num_constraint_forces,
                                                        const std::string& description):
-  Constraint(plant->get_num_velocities(),
-             plant->get_num_positions() + plant->get_num_actuators() + num_constraint_forces,
-             VectorXd::Zero(plant->get_num_velocities()),
-             VectorXd::Zero(plant->get_num_velocities()),
+  Constraint(plant.get_num_velocities(),
+             plant.get_num_positions() + plant.get_num_actuators() + num_constraint_forces,
+             VectorXd::Zero(plant.get_num_velocities()),
+             VectorXd::Zero(plant.get_num_velocities()),
              description),
-  plant_(plant), tree_(plant->get_rigid_body_tree()),
+  plant_(plant), tree_(plant.get_rigid_body_tree()),
   num_constraint_forces_(num_constraint_forces) 
 {
 }
@@ -154,7 +154,6 @@ void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q
 
   const int num_positions = tree_.get_num_positions();
   const int num_velocities = tree_.get_num_velocities();
-  const int num_states = num_positions + num_velocities;
   const int num_efforts = tree_.get_num_actuators();
 
 

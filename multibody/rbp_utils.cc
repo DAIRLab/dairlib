@@ -1,6 +1,5 @@
 #include "rbp_utils.h"
 
-using drake::systems::RigidBodyPlant;
 using drake::VectorX;
 using drake::MatrixX;
 using drake::AutoDiffXd;
@@ -14,13 +13,12 @@ namespace multibody {
 namespace utils {
 
 template<typename T>
-VectorX<T> CalcMVdot(const RigidBodyPlant<double>& plant,
+VectorX<T> CalcMVdot(const RigidBodyTree<double>& tree,
                               VectorX<T> q,
                               VectorX<T> v,
                               VectorX<T> u, 
                               VectorX<T> lambda) {
 
-  const RigidBodyTree<double>& tree = plant.get_rigid_body_tree();
   auto k_cache = tree.doKinematics(q, v);
   const MatrixX<T> M = tree.massMatrix(k_cache);
 
@@ -38,12 +36,11 @@ VectorX<T> CalcMVdot(const RigidBodyPlant<double>& plant,
 
 
 template<typename T>
-VectorX<T> CalcTimeDerivativesUsingLambda(const RigidBodyPlant<T>& plant, 
+VectorX<T> CalcTimeDerivativesUsingLambda(const RigidBodyTree<double>& tree, 
                                         VectorX<T> x,
                                         VectorX<T> u,
                                         VectorX<T> lambda) {
 
-  const RigidBodyTree<double>& tree = plant.get_rigid_body_tree();
   const int num_positions = tree.get_num_positions();
   const int num_velocities = tree.get_num_velocities();
   const int num_actuators = tree.get_num_actuators();
@@ -69,30 +66,30 @@ VectorX<T> CalcTimeDerivativesUsingLambda(const RigidBodyPlant<T>& plant,
   VectorX<T> vdot =
     M.completeOrthogonalDecomposition().solve(right_hand_side);
 
-  VectorX<T> x_dot(plant.get_num_states());
+  VectorX<T> x_dot(num_positions + num_velocities);
   x_dot << tree.transformVelocityToQDot(k_cache, v), vdot;
   return x_dot;
 }
 
 
 // Instantiating templates
-template VectorX<double> CalcTimeDerivativesUsingLambda<double>(const RigidBodyPlant<double>&,
+template VectorX<double> CalcTimeDerivativesUsingLambda<double>(const RigidBodyTree<double>&,
                                                         VectorX<double>,
                                                         VectorX<double>,
                                                         VectorX<double>);
 
-template VectorX<AutoDiffXd> CalcTimeDerivativesUsingLambda<AutoDiffXd>(const RigidBodyPlant<AutoDiffXd>&,
+template VectorX<AutoDiffXd> CalcTimeDerivativesUsingLambda<AutoDiffXd>(const RigidBodyTree<double>&,
                                                         VectorX<AutoDiffXd>,
                                                         VectorX<AutoDiffXd>,
                                                         VectorX<AutoDiffXd>);
 
-template VectorX<double> CalcMVdot<double>(const RigidBodyPlant<double>&,
+template VectorX<double> CalcMVdot<double>(const RigidBodyTree<double>&,
                                            VectorX<double>,
                                            VectorX<double>,
                                            VectorX<double>,
                                            VectorX<double>);
 
-template VectorX<AutoDiffXd> CalcMVdot<AutoDiffXd>(const RigidBodyPlant<double>&,
+template VectorX<AutoDiffXd> CalcMVdot<AutoDiffXd>(const RigidBodyTree<double>&,
                                                    VectorX<AutoDiffXd>,
                                                    VectorX<AutoDiffXd>,
                                                    VectorX<AutoDiffXd>,

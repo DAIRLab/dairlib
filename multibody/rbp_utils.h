@@ -7,7 +7,7 @@ namespace multibody {
 namespace utils {
 
 template<typename T>
-drake::VectorX<T> CalcMVdot(const drake::systems::RigidBodyPlant<double>& plant, 
+drake::VectorX<T> CalcMVdot(const RigidBodyTree<double>& tree, 
                             drake::VectorX<T> q,
                             drake::VectorX<T> v,
                             drake::VectorX<T> u,
@@ -15,7 +15,7 @@ drake::VectorX<T> CalcMVdot(const drake::systems::RigidBodyPlant<double>& plant,
 
 
 template<typename T>
-drake::VectorX<T> CalcTimeDerivativesUsingLambda(const drake::systems::RigidBodyPlant<T>& plant, 
+drake::VectorX<T> CalcTimeDerivativesUsingLambda(const RigidBodyTree<double>& tree, 
                                                  drake::VectorX<T> x,
                                                  drake::VectorX<T> u,
                                                  drake::VectorX<T> lambda);

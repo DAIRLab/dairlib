@@ -116,9 +116,10 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   
   drake::lcm::DrakeLcm lcm;
-  std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-  std::unique_ptr<RigidBodyTree<double>> tree_solver = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-  //std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf");
+  //std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+  //std::unique_ptr<RigidBodyTree<double>> tree_solver = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+  std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf");
+  std::unique_ptr<RigidBodyTree<double>> tree_solver = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf");
   
   const int num_efforts = tree->get_num_actuators();
   const int num_positions = tree->get_num_positions();
@@ -172,8 +173,8 @@ int do_main(int argc, char* argv[]) {
   x0(map.at("hip_yaw_right")) = 0.01;
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
-  x0(map.at("knee_left")) = -.844;
-  x0(map.at("knee_right")) = -.844;
+  x0(map.at("knee_left")) = -.744;
+  x0(map.at("knee_right")) = -.744;
   x0(map.at("ankle_joint_left")) = .792;
   x0(map.at("ankle_joint_right")) = .792;
   
@@ -259,10 +260,11 @@ int do_main(int argc, char* argv[]) {
 
 
   const int num_constraint_forces = num_constraints;
+  bool print_debug = true;
   VectorXd lambda_init = VectorXd::Zero(num_constraint_forces);
   cout << "Starting to solve" << endl;
   vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(
-      plant_solver, num_constraint_forces, q_init, u_init, lambda_init, fixed_joints);
+      plant_solver, num_constraint_forces, q_init, u_init, lambda_init, fixed_joints, print_debug);
 
 
   VectorXd q_sol = sol_tfp.at(0);
@@ -281,7 +283,7 @@ int do_main(int argc, char* argv[]) {
   cout << lambda_sol.transpose() << endl;
 
   cout << "*********** xdot ************" << endl;
-  cout << CalcTimeDerivativesUsingLambda<double>(*plant, x_sol, u_sol, lambda_sol) << endl;
+  cout << CalcTimeDerivativesUsingLambda<double>(plant->get_rigid_body_tree(), x_sol, u_sol, lambda_sol) << endl;
 
   MatrixXd J_collision = MatrixXd::Zero(0, 0);
 

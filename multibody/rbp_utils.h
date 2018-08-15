@@ -6,23 +6,19 @@ namespace dairlib {
 namespace multibody {
 namespace utils {
 
+template<typename T>
+drake::VectorX<T> CalcMVdot(drake::systems::RigidBodyPlant<double>* plant, 
+                            drake::VectorX<T> q,
+                            drake::VectorX<T> v,
+                            drake::VectorX<T> u,
+                            drake::VectorX<T> lambda);
 
-drake::VectorX<drake::AutoDiffXd> CalcMVdot(drake::systems::RigidBodyPlant<double>* plant, 
-                                     drake::VectorX<drake::AutoDiffXd> q,
-                                     drake::VectorX<drake::AutoDiffXd> v,
-                                     drake::VectorX<drake::AutoDiffXd> u,
-                                     drake::VectorX<drake::AutoDiffXd> lambda);
 
-drake::VectorX<double> CalcMVdot(drake::systems::RigidBodyPlant<double>* plant, 
-                                 drake::VectorX<double> q,
-                                 drake::VectorX<double> v,
-                                 drake::VectorX<double> u,
-                                 drake::VectorX<double> lambda);
-
-Eigen::VectorXd CalcTimeDerivativesUsingLambda(drake::systems::RigidBodyPlant<double>* plant, 
-                                               Eigen::VectorXd x,
-                                               Eigen::VectorXd u,
-                                               Eigen::VectorXd lambda);
+template<typename T>
+drake::VectorX<T> CalcTimeDerivativesUsingLambda(drake::systems::RigidBodyPlant<T>* plant, 
+                                                 drake::VectorX<T> x,
+                                                 drake::VectorX<T> u,
+                                                 drake::VectorX<T> lambda);
 
 
 

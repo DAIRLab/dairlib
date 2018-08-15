@@ -15,7 +15,7 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
   MathematicalProgram prog;
   //Setting log file
   
-  //prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", snopt_output_filename);
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", snopt_output_filename);
 
 
   auto q = prog.NewContinuousVariables(plant->get_num_positions(), "q");
@@ -33,16 +33,6 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(RigidBodyPlant<double>*
     int j = fixed_joints[i];
     prog.AddConstraint(q(j) == q_init(j));
   }
-
-  // Zero velocity constraints
-  //for(uint i = 0; i < v.size(); i++)
-  //{
-  //  prog.AddConstraint(v(i) == 0.0);
-  //}
-
-  //for(uint i = 0; i < lambda.size(); i++) {
-  //  prog.AddConstraint(lambda(i) >= 0.01);
-  //}
 
 
   prog.AddQuadraticCost(
@@ -147,7 +137,6 @@ CassieFixedPointConstraint::CassieFixedPointConstraint(RigidBodyPlant<double>* p
   plant_(plant), tree_(plant->get_rigid_body_tree()),
   num_constraint_forces_(num_constraint_forces) 
 {
-  plant_autodiff_ = make_unique<RigidBodyPlant<AutoDiffXd>>(*plant);
 }
 
 
@@ -173,7 +162,7 @@ void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q
   const AutoDiffVecXd u = q_u_l.segment(num_positions, num_efforts); 
   const AutoDiffVecXd lambda = q_u_l.tail(num_constraint_forces_);
 
-  *y = CalcMVdot(plant_,
+  *y = CalcMVdot<AutoDiffXd>(plant_,
                  q,
                  initializeAutoDiff(VectorXd::Zero(num_velocities)),
                  u,

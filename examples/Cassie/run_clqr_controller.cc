@@ -117,6 +117,7 @@ int do_main(int argc, char* argv[]) {
   
   drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+  std::unique_ptr<RigidBodyTree<double>> tree_solver = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_fixed_springs.urdf");
   //std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf");
   
   const int num_efforts = tree->get_num_actuators();
@@ -132,16 +133,21 @@ int do_main(int argc, char* argv[]) {
   drake::systems::DiagramBuilder<double> builder;
   
   auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree));
+
+  // plant to pass to the solver
+  RigidBodyPlant<double> plant_solver(std::move(tree_solver));
   
   drake::systems::CompliantMaterial default_material;
   default_material.set_youngs_modulus(FLAGS_youngs_modulus)
       .set_dissipation(FLAGS_dissipation)
       .set_friction(FLAGS_us, FLAGS_ud);
   plant->set_default_compliant_material(default_material);
+  plant_solver.set_default_compliant_material(default_material);
   drake::systems::CompliantContactModelParameters model_parameters;
   model_parameters.characteristic_radius = FLAGS_contact_radius;
   model_parameters.v_stiction_tolerance = FLAGS_v_tol;
   plant->set_contact_model_parameters(model_parameters);
+  plant_solver.set_contact_model_parameters(model_parameters);
 
 
   // Adding the visualizer to the diagram
@@ -162,8 +168,8 @@ int do_main(int argc, char* argv[]) {
 
   x0(map.at("hip_roll_left")) = 0.1;
   x0(map.at("hip_roll_right")) = -0.01;
-  x0(map.at("hip_yaw_left")) = 0.2;
-  x0(map.at("hip_yaw_right")) = -0.3;
+  x0(map.at("hip_yaw_left")) = 0.01;
+  x0(map.at("hip_yaw_right")) = 0.01;
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
   x0(map.at("knee_left")) = -.844;
@@ -188,8 +194,10 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map.at("hip_yaw_right"));
   fixed_joints.push_back(map.at("hip_pitch_left"));
   fixed_joints.push_back(map.at("hip_pitch_right"));
+  
   //fixed_joints.push_back(map.at("ankle_joint_left"));
   //fixed_joints.push_back(map.at("ankle_joint_right"));
+ 
   fixed_joints.push_back(map.at("knee_left"));
   fixed_joints.push_back(map.at("knee_right"));
   fixed_joints.push_back(map.at("toe_left"));
@@ -254,7 +262,7 @@ int do_main(int argc, char* argv[]) {
   VectorXd lambda_init = VectorXd::Zero(num_constraint_forces);
   cout << "Starting to solve" << endl;
   vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(
-      plant, num_constraint_forces, q_init, u_init, lambda_init, fixed_joints);
+      &plant_solver, num_constraint_forces, q_init, u_init, lambda_init, fixed_joints);
 
 
   VectorXd q_sol = sol_tfp.at(0);
@@ -273,7 +281,7 @@ int do_main(int argc, char* argv[]) {
   cout << lambda_sol.transpose() << endl;
 
   cout << "*********** xdot ************" << endl;
-  cout << CalcTimeDerivativesUsingLambda(plant, x_sol, u_sol, lambda_sol) << endl;
+  cout << CalcTimeDerivativesUsingLambda<double>(plant, x_sol, u_sol, lambda_sol) << endl;
 
   MatrixXd J_collision = MatrixXd::Zero(0, 0);
 

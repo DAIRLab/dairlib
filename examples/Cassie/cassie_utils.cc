@@ -50,7 +50,7 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
                            thigh_right, rod_on_thigh_right,
                            achilles_length);
 
-  //// Add spring forces
+  // Add spring forces
   //int body_index = tree.FindIndexOfChildBodyOfJoint("knee_joint_left");
   //auto body = tree.get_mutable_body(body_index);
   //RevoluteJoint& knee_joint_left = dynamic_cast<RevoluteJoint&>(
@@ -320,18 +320,6 @@ void CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
     right_hand_side += tree_.B * u;
   }
 
-  {
-    for (auto const& b : tree_.get_bodies()) {
-      if (!b->has_parent_body()) continue;
-      auto const& joint = b->getJoint();
-      if (joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
-        const T limit_force = 
-          plant_->JointLimitForce(joint, q(b->get_position_start_index()),
-                                  v(b->get_velocity_start_index()));
-        right_hand_side(b->get_velocity_start_index()) += limit_force;
-      }
-    }
-  }
 
   VectorX<T> vdot;
   if (tree_.getNumPositionConstraints()) {
@@ -384,18 +372,6 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
     right_hand_side += tree_.B * u;
   }
 
-  {
-    for (auto const& b : tree_.get_bodies()) {
-      if (!b->has_parent_body()) continue;
-      auto const& joint = b->getJoint();
-      if (joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
-        const T limit_force = 
-          plant_->JointLimitForce(joint, q(b->get_position_start_index()),
-                                  v(b->get_velocity_start_index()));
-        right_hand_side(b->get_velocity_start_index()) += limit_force;
-      }
-    }
-  }
 
   VectorX<T> vdot;
   if (tree_.getNumPositionConstraints()) {
@@ -447,19 +423,6 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
     right_hand_side += tree_.B * u;
   }
 
-  {
-    for (auto const& b : tree_.get_bodies()) {
-      if (!b->has_parent_body()) continue;
-      auto const& joint = b->getJoint();
-      if (joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
-        const T limit_force = 
-          plant_->JointLimitForce(joint, q(b->get_position_start_index()),
-                                  v(b->get_velocity_start_index()));
-        right_hand_side(b->get_velocity_start_index()) += limit_force;
-      }
-    }
-  }
-
   auto J = tree_.positionConstraintsJacobian(k_cache);
   right_hand_side += J.transpose()*lambda;
 
@@ -504,20 +467,6 @@ void CassiePlant<T>::CalcTimeDerivativesCassieDuringContact(VectorX<T> x,
 
   if (num_actuators > 0) {
     right_hand_side += tree_.B * u;
-  }
-
-  {
-    for (auto const& b : tree_.get_bodies()) {
-      if(!b->has_parent_body()) continue;
-      auto const& joint = b->getJoint();
-
-      if(joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
-        const T limit_force = 
-          plant_->JointLimitForce(joint, q(b->get_position_start_index()), 
-                                  v(b->get_velocity_start_index()));
-        right_hand_side(b->get_velocity_start_index()) += limit_force;
-      }
-    }
   }
 
   // Compliant contact forces wont be added here

@@ -94,7 +94,6 @@ class CassieFixedPointConstraint : public Constraint {
   private:
     RigidBodyPlant<double>* plant_;
     const RigidBodyTree<double>& tree_;
-    unique_ptr<RigidBodyPlant<AutoDiffXd>> plant_autodiff_;
     int num_constraint_forces_;
 
 };

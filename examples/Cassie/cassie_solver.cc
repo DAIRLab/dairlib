@@ -22,7 +22,6 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<do
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1.0e-7);
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Minor feasibility tolerance", 1.0e-7);
 
-
   auto q = prog.NewContinuousVariables(plant.get_num_positions(), "q");
   auto u = prog.NewContinuousVariables(plant.get_num_actuators(), "u");
   auto lambda = prog.NewContinuousVariables(num_constraint_forces, "lambda");
@@ -40,10 +39,9 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<do
   }
 
 
-  prog.AddQuadraticCost((q - q_init).dot(q - q_init));
-  //prog.AddQuadraticCost(1.0);
+  prog.AddQuadraticCost(
+      (q - q_init).dot(q - q_init) + (u - u_init).dot(u - u_init));
   prog.SetInitialGuess(q, q_init);
-  //prog.SetInitialGuess(v, v_init);
   prog.SetInitialGuess(u, u_init);
   prog.SetInitialGuess(lambda, lambda_init);
 
@@ -77,7 +75,7 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<do
 
   //Checking if the Tree position constraints are satisfied
   DRAKE_DEMAND(CheckTreeConstraints(plant.get_rigid_body_tree(), q_sol));
-  //DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, q_sol, u_sol, lambda_sol));
+  DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, q_sol, u_sol, lambda_sol));
 
   vector<VectorXd> sol;
   sol.push_back(q_sol);
@@ -162,14 +160,16 @@ void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q
   const int num_velocities = tree_.get_num_velocities();
   const int num_efforts = tree_.get_num_actuators();
 
+  DRAKE_DEMAND(q_u_l.size() == num_positions + num_efforts + num_constraint_forces_);
 
   const AutoDiffVecXd q = q_u_l.head(num_positions);
   const AutoDiffVecXd u = q_u_l.segment(num_positions, num_efforts); 
   const AutoDiffVecXd lambda = q_u_l.tail(num_constraint_forces_);
 
+
   *y = CalcMVdot<AutoDiffXd>(tree_,
                  q,
-                 initializeAutoDiff(VectorXd::Zero(num_velocities)),
+                 VectorXd::Zero(num_velocities).template cast<AutoDiffXd>(),
                  u,
                  lambda);
 

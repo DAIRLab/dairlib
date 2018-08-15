@@ -171,7 +171,7 @@ int do_main(int argc, char* argv[]) {
   x0(map.at("hip_roll_right")) = -0.01;
   x0(map.at("hip_yaw_left")) = 0.01;
   x0(map.at("hip_yaw_right")) = 0.01;
-  x0(map.at("hip_pitch_left")) = .269;
+  x0(map.at("hip_pitch_left")) = .169;
   x0(map.at("hip_pitch_right")) = .269;
   x0(map.at("knee_left")) = -.744;
   x0(map.at("knee_right")) = -.744;
@@ -260,7 +260,7 @@ int do_main(int argc, char* argv[]) {
 
 
   const int num_constraint_forces = num_constraints;
-  bool print_debug = true;
+  bool print_debug = false;
   VectorXd lambda_init = VectorXd::Zero(num_constraint_forces);
   cout << "Starting to solve" << endl;
   vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(

@@ -3,6 +3,7 @@
 using drake::VectorX;
 using drake::MatrixX;
 using drake::AutoDiffXd;
+using drake::math::autoDiffToGradientMatrix;
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -30,6 +31,8 @@ VectorX<T> CalcMVdot(const RigidBodyTree<double>& tree,
     tree.positionConstraintsJacobian(k_cache);
   VectorX<T> m_vdot =
     -C + tree.B*u + J.transpose()*lambda;
+  VectorX<T> tmp = 
+    -C + J.transpose()*lambda;
 
   return m_vdot;
 }
@@ -45,8 +48,8 @@ VectorX<T> CalcTimeDerivativesUsingLambda(const RigidBodyTree<double>& tree,
   const int num_velocities = tree.get_num_velocities();
   const int num_actuators = tree.get_num_actuators();
 
-  VectorX<T> q = x.topRows(num_positions);
-  VectorX<T> v = x.bottomRows(num_velocities);
+  VectorX<T> q = x.head(num_positions);
+  VectorX<T> v = x.tail(num_velocities);
 
   auto k_cache = tree.doKinematics(q, v);
   const MatrixX<T> M = tree.massMatrix(k_cache);
@@ -59,8 +62,10 @@ VectorX<T> CalcTimeDerivativesUsingLambda(const RigidBodyTree<double>& tree,
     right_hand_side += tree.B * u;
   }
 
-
   auto J = tree.positionConstraintsJacobian(k_cache);
+
+  DRAKE_DEMAND(J.rows() == lambda.size());
+
   right_hand_side += J.transpose()*lambda;
 
   VectorX<T> vdot =
@@ -83,11 +88,11 @@ template VectorX<AutoDiffXd> CalcTimeDerivativesUsingLambda<AutoDiffXd>(const Ri
                                                         VectorX<AutoDiffXd>,
                                                         VectorX<AutoDiffXd>);
 
-template VectorX<double> CalcMVdot<double>(const RigidBodyTree<double>&,
-                                           VectorX<double>,
-                                           VectorX<double>,
-                                           VectorX<double>,
-                                           VectorX<double>);
+//template VectorX<double> CalcMVdot<double>(const RigidBodyTree<double>&,
+//                                           VectorX<double>,
+//                                           VectorX<double>,
+//                                           VectorX<double>,
+//                                           VectorX<double>);
 
 template VectorX<AutoDiffXd> CalcMVdot<AutoDiffXd>(const RigidBodyTree<double>&,
                                                    VectorX<AutoDiffXd>,

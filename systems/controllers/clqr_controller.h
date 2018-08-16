@@ -12,6 +12,7 @@
 #include "drake/math/autodiff_gradient.h"
 
 #include "systems/controllers/affine_controller.h"
+#include "multibody/rbp_utils.h"
 
 using std::vector;
 using Eigen::VectorXd;
@@ -24,6 +25,9 @@ using Eigen::HouseholderQR;
 using drake::VectorX;
 using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
+using drake::math::initializeAutoDiff;
+using drake::math::autoDiffToGradientMatrix;
+using drake::math::autoDiffToValueMatrix;
 using drake::systems::RigidBodyPlant;
 using drake::systems::Context;
 using drake::systems::controllers::LinearQuadraticRegulator;
@@ -35,6 +39,8 @@ using drake::systems::ContinuousState;
 using drake::systems::Context;
 using drake::systems::kNoOutput;
 
+using dairlib::multibody::utils::CalcTimeDerivativesUsingLambda;
+
 namespace dairlib{
 namespace systems{
 
@@ -44,12 +50,14 @@ class ClqrController : public AffineController {
     ClqrController(RigidBodyPlant<double>* plant,
                    VectorXd x0,
                    VectorXd u0,
+                   VectorXd lambda, 
                    MatrixXd J_collision,
                    int num_positions,
                    int num_velocities,
                    int num_efforts,
                    MatrixXd Q,
-                   MatrixXd R);
+                   MatrixXd R,
+                   double fixed_point_tolerance = 1e-6);
 
     int GetNumPositions(){ return num_positions_;}
     int GetNumVelocities(){ return num_velocities_;}
@@ -70,6 +78,7 @@ class ClqrController : public AffineController {
     RigidBodyPlant<double>* plant_;
     VectorXd x0_;
     VectorXd u0_;
+    VectorXd lambda_;
     MatrixXd J_collision_;
     int num_positions_;
     int num_velocities_;
@@ -79,6 +88,7 @@ class ClqrController : public AffineController {
     MatrixXd R_;
     MatrixXd F_;
     MatrixXd K_;
+    double fixed_point_tolerance_;
 };
 
 }// namespace systems

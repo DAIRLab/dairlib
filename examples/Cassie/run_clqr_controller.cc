@@ -232,7 +232,7 @@ int do_main(int argc, char* argv[]) {
           num_states - 2*num_constraints, num_states - 2*num_constraints);
   //Q corresponding to the positions
   MatrixXd Q_p = MatrixXd::Identity(
-          num_positions - num_constraints, num_positions - num_constraints)*1000.0;
+          num_positions - num_constraints, num_positions - num_constraints)*10.0;
   //Q corresponding to the velocities
   MatrixXd Q_v = MatrixXd::Identity(
           num_velocities - num_constraints, num_velocities - num_constraints)*10.0;
@@ -282,15 +282,21 @@ int do_main(int argc, char* argv[]) {
   cout << "******************lambda_sol*********************" << endl;
   cout << lambda_sol.transpose() << endl;
 
-  cout << "*********** xdot ************" << endl;
-  cout << CalcTimeDerivativesUsingLambda<double>(plant->get_rigid_body_tree(), x_sol, u_sol, lambda_sol) << endl;
-
   MatrixXd J_collision = MatrixXd::Zero(0, 0);
 
   cout << "Starting controller" << endl;
 
   //Building the controller
-  auto clqr_controller = builder.AddSystem<ClqrController>(plant, x_init, u_analytical, J_collision, num_positions, num_velocities, num_efforts, Q, R);
+  auto clqr_controller = builder.AddSystem<ClqrController>(plant,
+                                                           x_sol,
+                                                           u_sol,
+                                                           lambda_sol,
+                                                           J_collision,
+                                                           num_positions,
+                                                           num_velocities,
+                                                           num_efforts,
+                                                           Q,
+                                                           R);
   VectorXd K_vec = clqr_controller->GetKVec();
   VectorXd C = u_sol; 
   VectorXd x_desired = x_sol;
@@ -339,8 +345,8 @@ int do_main(int argc, char* argv[]) {
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
   state.SetFromVector(x_start);
   
-  auto zero_input = Eigen::MatrixXd::Zero(num_efforts, 1);
-  context.FixInputPort(0, zero_input);
+  //auto zero_input = Eigen::MatrixXd::Zero(num_efforts, 1);
+  //context.FixInputPort(0, zero_input);
   
   //simulator.set_publish_every_time_step(false);
   //simulator.set_publish_at_initialization(false);

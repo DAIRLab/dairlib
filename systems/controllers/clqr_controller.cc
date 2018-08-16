@@ -6,18 +6,21 @@ namespace systems{
 ClqrController::ClqrController(RigidBodyPlant<double>* plant,
                                VectorXd x0,
                                VectorXd u0,
+                               VectorXd lambda,
                                MatrixXd J_collision,
                                int num_positions,
                                int num_velocities,
                                int num_efforts,
                                MatrixXd Q,
-                               MatrixXd R):
+                               MatrixXd R,
+                               double fixed_point_tolerance):
   AffineController(num_positions, num_velocities, num_efforts),
   tree_(plant->get_rigid_body_tree()), plant_(plant), x0_(x0),
-  u0_(u0), J_collision_(J_collision), num_positions_(num_positions),
-  num_velocities_(num_velocities),
+  u0_(u0), lambda_(lambda), J_collision_(J_collision),
+  num_positions_(num_positions),  num_velocities_(num_velocities),
   num_states_(num_positions + num_velocities),
-  num_efforts_(num_efforts), Q_(Q), R_(R)
+  num_efforts_(num_efforts), Q_(Q), R_(R),
+  fixed_point_tolerance_(fixed_point_tolerance)
 {
 
   F_ = computeF();
@@ -75,9 +78,50 @@ MatrixXd ClqrController::computeK() {
   context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0_));
 
   //Linearizing about the operating point
-  auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
-  MatrixXd A_new_coord = P*linear_system->A()*P.transpose();
-  MatrixXd B_new_coord = P*linear_system->B();
+  
+  MatrixXd A(num_states_, num_states_);
+  MatrixXd B(num_states_, num_efforts_);
+
+  // Generating an autodiff vector with all the stacked variables
+  VectorXd xu0(num_states_ + num_efforts_);
+  xu0 << x0_, u0_;
+  auto xu0_autodiff = initializeAutoDiff(xu0);
+
+  // Extracting the x and u values
+  auto x0_autodiff = xu0_autodiff.head(num_states_);
+  auto u0_autodiff = xu0_autodiff.tail(num_efforts_);
+
+  // Lambda being initialized as a separate autodiff means that
+  // the gradient with respect to lambda will not be computed
+  auto lambda_autodiff = initializeAutoDiff(lambda_);
+
+  auto x_dot0_autodiff = CalcTimeDerivativesUsingLambda<AutoDiffXd>(
+      tree_, x0_autodiff, u0_autodiff, lambda_autodiff); 
+
+  // Making sure that the derivative is zero (fixed point)
+  VectorXd x_dot0 = autoDiffToValueMatrix(x_dot0_autodiff);
+  
+  if (!x_dot0.isZero(fixed_point_tolerance_)) {
+    
+    throw std::runtime_error(
+        "The nominal operating point (x0, u0) is not an equilibrium point "
+        "of the system.");
+  }
+
+
+  const MatrixXd AB = 
+    autoDiffToGradientMatrix(x_dot0_autodiff);
+  //std::cout << "AB: " << std::endl;
+  //std::cout << AB << std::endl;
+  //std::cout << AB.rows() << " " << AB.cols() << std::endl;
+
+  A = AB.leftCols(num_states_);
+  B = AB.rightCols(num_efforts_);
+
+
+  //auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
+  MatrixXd A_new_coord = P*A*P.transpose();
+  MatrixXd B_new_coord = P*B;
 
   //Computing LQR result
   auto lqr_result = LinearQuadraticRegulator(A_new_coord, B_new_coord, Q_, R_);

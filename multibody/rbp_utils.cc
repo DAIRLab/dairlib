@@ -31,8 +31,6 @@ VectorX<T> CalcMVdot(const RigidBodyTree<double>& tree,
     tree.positionConstraintsJacobian(k_cache);
   VectorX<T> m_vdot =
     -C + tree.B*u + J.transpose()*lambda;
-  VectorX<T> tmp = 
-    -C + J.transpose()*lambda;
 
   return m_vdot;
 }
@@ -75,6 +73,7 @@ VectorX<T> CalcTimeDerivativesUsingLambda(const RigidBodyTree<double>& tree,
   x_dot << tree.transformVelocityToQDot(k_cache, v), vdot;
   return x_dot;
 }
+
 
 
 // Instantiating templates

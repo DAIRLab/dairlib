@@ -73,11 +73,26 @@ cc_library(
 )
 
 cc_library(
+    name = "cassie_director_dispatch_interface",
+    hdrs = [":cassie_director_dispatch_interface.h"],
+    srcs = ["cassie_director_dispatch_interface.cc"],
+    deps = [
+            ":polling_interface",
+            "//examples/Cassie/datatypes:cassie_dispatch_types",
+            "@lcm",
+            "@drake//systems/lcm:lcm",
+            "@drake//systems/framework:value",
+            "@drake//lcmtypes:drake_signal",
+            ]
+)
+
+cc_library(
 	name = "cassie_dispatcher",
 	hdrs = [":cassie_dispatcher.h"],
 	srcs = ["cassie_dispatcher.cc"],
 	deps = [
 	        ":polling_interface",
+            ":cassie_director_dispatch_interface",
 	        ":dispatcher",
 	        "//examples/Cassie/datatypes:cassie_names",
 	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
@@ -140,7 +155,7 @@ cc_binary(
 	        ":cassie_dispatcher",
 	        ":cassie_robot_dispatch_interface",
 	        ":cassie_lcm_dispatch_interface",
-	        ":silent_interface",
+	        ":cassie_director_dispatch_interface",
 	        "//examples/Cassie/datatypes:cassie_dispatch_types",
 	        "//examples/Cassie/datatypes:cassie_networking",
 	        "//examples/Cassie/datatypes:cassie_names",

@@ -92,7 +92,7 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
 cassie_dispatch_robot_in_t CassieLcmOutToRobotIn(cassie_dispatch_lcm_out_t lcm_out)
 {
     cassie_dispatch_robot_in_t robot_in;
-    for (int i = 0; i < cassieEffortNames.size(); i++)
+    for (uint i = 0; i < cassieEffortNames.size(); i++)
         for (int j = 0; j < lcm_out.num_efforts; j++)
             if (lcm_out.effort_names[j] == cassieEffortNames[i])
                 robot_in.torque[i] = lcm_out.efforts[j];
@@ -106,7 +106,7 @@ cassie_dispatch_lcm_out_t CassieRobotInToLcmOut(cassie_dispatch_robot_in_t robot
     lcm_out.efforts.resize(CASSIE_NUM_EFF);
     lcm_out.effort_names.resize(CASSIE_NUM_EFF);
     
-    for (int i = 0; i < cassieEffortNames.size(); i++)
+    for (uint i = 0; i < cassieEffortNames.size(); i++)
     {
          lcm_out.efforts[i] = robot_in.torque[i];
          lcm_out.effort_names[i] = cassieEffortNames[i];
@@ -119,21 +119,21 @@ cassie_dispatch_robot_out_t CassieLcmInToRobotOut(cassie_dispatch_lcm_in_t lcm_i
     double position[CASSIE_NUM_POS];
     double velocity[CASSIE_NUM_VEL];
     double effort[CASSIE_NUM_EFF];
-    for (int i = 0; i < cassiePositionNames.size(); i++)
+    for (uint i = 0; i < cassiePositionNames.size(); i++)
     {
         position[i] = 0.0;
         for (int j = 0; j < lcm_in.num_positions; j++)
             if (lcm_in.position_names[j] == cassiePositionNames[i])
                 position[i] = lcm_in.position[j];
     }
-    for (int i = 0; i < cassieVelocityNames.size(); i++)
+    for (uint i = 0; i < cassieVelocityNames.size(); i++)
     {
         velocity[i] = 0.0;
         for (int j = 0; j < lcm_in.num_velocities; j++)
             if (lcm_in.velocity_names[j] == cassieVelocityNames[i])
                 velocity[i] = lcm_in.velocity[j];
     }
-    for (int i = 0; i < cassieEffortNames.size(); i++)
+    for (uint i = 0; i < cassieEffortNames.size(); i++)
     {
         effort[i] = 0.0;
         for (int j = 0; j < lcm_in.num_efforts; j++)
@@ -192,6 +192,56 @@ cassie_dispatch_robot_out_t CassieLcmInToRobotOut(cassie_dispatch_lcm_in_t lcm_i
         
 }
 
+
+cassie_dispatch_director_in_t CassieRobotStateToDirectorIn(cassie_dispatch_robot_state_t * robot_state)
+{
+    cassie_dispatch_director_in_t director_in = cassie_dispatch_director_in_t();
+
+    director_in.num_positions = robot_state->last_robot_out.num_positions;
+    director_in.num_velocities = robot_state->last_robot_out.num_velocities;
+    director_in.num_efforts = robot_state->last_robot_out.num_efforts;
+    director_in.num_commanded_efforts = robot_state->last_robot_in.num_efforts;
+
+    director_in.position.resize(robot_state->last_robot_out.num_positions);
+    director_in.velocity.resize(robot_state->last_robot_out.num_velocities);
+    director_in.effort.resize(robot_state->last_robot_out.num_efforts);
+    director_in.commanded_effort.resize(robot_state->last_robot_in.num_efforts);
+    
+    director_in.position_names.resize(robot_state->last_robot_out.num_positions);
+    director_in.velocity_names.resize(robot_state->last_robot_out.num_velocities);
+    director_in.effort_names.resize(robot_state->last_robot_out.num_efforts);
+    director_in.commanded_effort_names.resize(robot_state->last_robot_in.num_efforts);
+
+    for (int i = 0; i < director_in.num_positions; i++)
+    {
+        director_in.position[i] = robot_state->last_robot_out.position[i];
+        director_in.position_names[i] = robot_state->last_robot_out.position_names[i];
+    }
+
+    for (int i = 0; i < director_in.num_velocities; i++)
+    {
+        director_in.velocity[i] = robot_state->last_robot_out.velocity[i];
+        director_in.velocity_names[i] = robot_state->last_robot_out.velocity_names[i];
+    }
+
+    for (int i = 0; i < director_in.num_efforts; i++)
+    {
+        director_in.effort[i] = robot_state->last_robot_out.effort[i];
+        director_in.effort_names[i] = robot_state->last_robot_out.effort_names[i];
+    }
+
+    for (int i = 0; i < director_in.num_commanded_efforts; i++)
+    {
+        director_in.commanded_effort[i] = robot_state->last_robot_in.efforts[i];
+        director_in.commanded_effort_names[i] = robot_state->last_robot_in.effort_names[i];
+    }
+
+    auto current_time = std::chrono::system_clock::now();
+    auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
+    director_in.timestamp  = duration_in_seconds.count()*1e6;
+    
+    return director_in;
+}
 
 
 

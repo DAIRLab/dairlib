@@ -14,7 +14,7 @@ using namespace drake;
 int main()
 {
   drake::lcm::DrakeLcm lcm_local;
-  drake::lcm::DrakeLcm lcm_broadcast ("udpm://239.255.76.68:7667?ttl=1");
+  drake::lcm::DrakeLcm lcm_broadcast ("udpm://239.255.76.67:7667?ttl=1");
   std::shared_ptr<CassieLcmDispatchInterface>
     lcmInterface{std::make_shared<CassieLcmDispatchInterface>(CASSIE_STATE_LCM_CHANNEL, CASSIE_INPUT_LCM_CHANNEL, &lcm_local)};
   std::shared_ptr<PollingInterface<cassie_dispatch_lcm_in_t, cassie_dispatch_lcm_out_t>> t1 = lcmInterface;

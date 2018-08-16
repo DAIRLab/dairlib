@@ -19,7 +19,7 @@ struct lcmt_robot_state
 
   double imu_accel[3];
 
-  string commanded_effort_names [num_efforts];
-  double commanded_effort [num_efforts];
+  string commanded_effort_names [num_commanded_efforts];
+  double commanded_effort [num_commanded_efforts];
 
 }

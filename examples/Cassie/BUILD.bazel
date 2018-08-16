@@ -159,7 +159,8 @@ cc_binary(
 	        "//examples/Cassie/datatypes:cassie_dispatch_types",
 	        "//examples/Cassie/datatypes:cassie_networking",
 	        "//examples/Cassie/datatypes:cassie_names",
-	        "@drake//systems/lcm:lcm"
+	        "@drake//systems/lcm:lcm",
+            "@gflags"
 	        ]
 )
 

@@ -141,8 +141,8 @@ int do_main(int argc, char* argv[]) {
   x0(map.at("hip_pitch_right")) = .269;
   x0(map.at("knee_left")) = -.744;
   x0(map.at("knee_right")) = -.744;
-  x0(map.at("ankle_joint_left")) = .792;
-  x0(map.at("ankle_joint_right")) = .792;
+  x0(map.at("ankle_joint_left")) = .81;
+  x0(map.at("ankle_joint_right")) = .81;
   
   // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
   // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;

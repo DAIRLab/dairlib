@@ -293,10 +293,10 @@ int do_main(int argc, char* argv[]) {
   // x0(map.at("achilles_hip_pitch_right")) = -.44;
   // x0(map.at("achilles_heel_pitch_left")) = -.105;
   // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  x0(map_sim.at("knee_left")) = -.644;
-  x0(map_sim.at("knee_right")) = -.644;
-  x0(map_sim.at("ankle_joint_left")) = .792;
-  x0(map_sim.at("ankle_joint_right")) = .792;
+  x0(map_sim.at("knee_left")) = -.744;
+  x0(map_sim.at("knee_right")) = -.744;
+  x0(map_sim.at("ankle_joint_left")) = .81;
+  x0(map_sim.at("ankle_joint_right")) = .81;
   
   // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
   // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
@@ -306,6 +306,11 @@ int do_main(int argc, char* argv[]) {
   
   x0(map_sim.at("toe_left")) = -60*M_PI/180.0;
   x0(map_sim.at("toe_right")) = -60*M_PI/180.0;
+
+  VectorXd x_init = x0;
+
+  // Making sure tha the joints are within limits
+  DRAKE_DEMAND(CassieJointsWithinLimits(plant_sim->get_rigid_body_tree(), x_init));
 
   std::vector<int> fixed_joints;
 
@@ -326,6 +331,7 @@ int do_main(int argc, char* argv[]) {
 
 
   VectorXd q_sol = SolveCassieStandingConstraints(plant_sim->get_rigid_body_tree(), x_start.head(num_total_positions));
+
   cout << "q_sol: " << q_sol.transpose() << endl;
   cout << q_sol.size() << endl;
   x_start.head(num_total_states) = q_sol;

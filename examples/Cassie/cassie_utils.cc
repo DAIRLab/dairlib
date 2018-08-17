@@ -342,9 +342,9 @@ void CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
     vdot = M.llt().solve(right_hand_side);
   }
 
-  VectorX<T> xdot_sol(plant_->get_num_states());
-  xdot_sol << tree_.transformVelocityToQDot(k_cache, v), vdot;
-  x_dot->SetFromVector(xdot_sol);
+  VectorX<T> x_dot_sol(plant_->get_num_states());
+  x_dot_sol << tree_.transformVelocityToQDot(k_cache, v), vdot;
+  x_dot->SetFromVector(x_dot_sol);
 }
 
 
@@ -396,6 +396,43 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
 
   VectorX<T> x_dot(plant_->get_num_states());
   x_dot << tree_.transformVelocityToQDot(k_cache, v), vdot;
+  return x_dot;
+}
+
+
+template<typename T>
+void CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x, 
+                                               VectorX<T> u, 
+                                               VectorX<T> lambda,
+                                               ContinuousState<T>* x_dot) const {
+
+  const int nq = tree_.get_num_positions();
+  const int nv = tree_.get_num_velocities();
+  const int num_actuators = tree_.get_num_actuators();
+
+  VectorX<T> q = x.topRows(nq);
+  VectorX<T> v = x.bottomRows(nv);
+
+  auto k_cache = tree_.doKinematics(q, v);
+  const MatrixX<T> M = tree_.massMatrix(k_cache);
+  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
+
+  VectorX<T> right_hand_side = 
+    -tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
+
+  if (num_actuators > 0) {
+    right_hand_side += tree_.B * u;
+  }
+
+  auto J = tree_.positionConstraintsJacobian(k_cache);
+  right_hand_side += J.transpose()*lambda;
+
+  VectorX<T> vdot =
+    M.completeOrthogonalDecomposition().solve(right_hand_side);
+
+  VectorX<T> x_dot_sol(plant_->get_num_states());
+  x_dot_sol << tree_.transformVelocityToQDot(k_cache, v), vdot;
+  x_dot->SetFromVector(x_dot_sol);
   return x_dot;
 }
 

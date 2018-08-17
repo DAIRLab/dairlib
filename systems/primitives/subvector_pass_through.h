@@ -8,17 +8,10 @@
 namespace dairlib {
 namespace systems {
 
-using drake::systems::LeafSystem;
-using drake::systems::OutputPort;
-using drake::systems::InputPortDescriptor;
-using drake::systems::BasicVector;
-using drake::systems::Context;
-using drake::optional;
-
 /// This class is copied from drake/systems/primitives/PassThrough
 /// with the modification that it only passes through a subset of the vector
 template <typename T>
-class SubvectorPassThrough final : public LeafSystem<T> {
+class SubvectorPassThrough final : public drake::systems::LeafSystem<T> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(SubvectorPassThrough)
 
@@ -36,16 +29,16 @@ class SubvectorPassThrough final : public LeafSystem<T> {
   virtual ~SubvectorPassThrough() {}
 
   /// Returns the sole input port.
-  const InputPortDescriptor<T>& get_input_port() const {
-    return LeafSystem<T>::get_input_port(0);
+  const drake::systems::InputPort<T>& get_input_port() const {
+    return drake::systems::LeafSystem<T>::get_input_port(0);
   }
 
   // Don't use the indexed get_input_port when calling this system directly.
   void get_input_port(int) = delete;
 
   /// Returns the sole output port.
-  const OutputPort<T>& get_output_port() const {
-    return LeafSystem<T>::get_output_port(0);
+  const drake::systems::OutputPort<T>& get_output_port() const {
+    return drake::systems::LeafSystem<T>::get_output_port(0);
   }
 
   // Don't use the indexed get_output_port when calling this system directly.
@@ -53,11 +46,11 @@ class SubvectorPassThrough final : public LeafSystem<T> {
 
  protected:
   void DoCalcVectorOutput(
-      const Context<T>& context,
-      BasicVector<T>* output) const;
+      const drake::systems::Context<T>& context,
+      drake::systems::BasicVector<T>* output) const;
 
   // Override feedthrough detection to avoid the need for `DoToSymbolic()`.
-  optional<bool> DoHasDirectFeedthrough(
+  drake::optional<bool> DoHasDirectFeedthrough(
       int input_port, int output_port) const override;
 
  private:

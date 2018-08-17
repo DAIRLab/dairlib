@@ -8,7 +8,10 @@
 #include "polling_interface.h"
 #include "datatypes/cassie_dispatch_types.h"
 
-
+/* Broadcast LCM interface to manage communication between dispatcher and basestation
+ * Currently does not retreive any messages from basestation, but can be used to publish
+ * robot state data via a telemetry channel on LCM.
+ */
 class CassieDirectorDispatchInterface : public PollingInterface<cassie_dispatch_director_in_t,
         cassie_dispatch_director_out_t>
 {

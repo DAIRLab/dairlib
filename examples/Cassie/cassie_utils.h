@@ -96,10 +96,14 @@ class CassiePlant {
                                          VectorX<T> u, 
                                          VectorX<T> lambda) const;
 
-    void CalcTimeDerivativesCassieDuringContact(VectorX<T> x, 
-                                                VectorX<T> u, 
-                                                VectorX<T> lambda,
-                                                ContinuousState<T>* x_dot) const;
+    void CalcTimeDerivativesCassieStanding(VectorX<T> x, 
+                                           VectorX<T> u, 
+                                           VectorX<T> lambda,
+                                           ContinuousState<T>* x_dot) const;
+
+    VectorX<T> CalcTimeDerivativesCassieStanding(VectorX<T> x, 
+                                                 VectorX<T> u, 
+                                                 VectorX<T> lambda) const;
 
     RigidBodyPlant<T>* plant_;
     const RigidBodyTree<double>& tree_;

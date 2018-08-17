@@ -19,6 +19,19 @@ cc_library(
     ],
 )
 
+cc_library(
+  name = "vector_aggregator",
+  hdrs = [
+          "vector_aggregator.h"
+          ],
+  deps = [
+        "//multibody:utils",
+        "@drake//systems/framework:diagram_builder",
+        "@drake//systems/framework:leaf_system",
+        "//systems/framework:vector"
+        ]
+)
+
 cc_test(
     name = "subvector_pass_through_test",
     srcs = [

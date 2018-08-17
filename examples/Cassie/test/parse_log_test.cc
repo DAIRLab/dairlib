@@ -6,7 +6,7 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/multibody/rigid_body_tree.h"
 
-#include "systems/lcm/lcm_log_parser.h"
+#include "systems/primitives/vector_aggregator.h"
 #include "systems/robot_lcm_systems.h"
 #include "examples/Cassie/cassie_utils.h"
 
@@ -19,7 +19,7 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 
 namespace dairlib {
-using systems::lcm::VectorAggregator;
+using systems::VectorAggregator;
 
 int ParseLog(string filename) {
   RigidBodyTree<double> tree;

@@ -171,7 +171,7 @@ int do_main(int argc, char* argv[]) {
   x0(map.at("hip_roll_right")) = -0.01;
   x0(map.at("hip_yaw_left")) = 0.01;
   x0(map.at("hip_yaw_right")) = 0.01;
-  x0(map.at("hip_pitch_left")) = .169;
+  x0(map.at("hip_pitch_left")) = -.169;
   x0(map.at("hip_pitch_right")) = .269;
   x0(map.at("knee_left")) = -.744;
   x0(map.at("knee_right")) = -.744;
@@ -232,36 +232,22 @@ int do_main(int argc, char* argv[]) {
           num_states - 2*num_constraints, num_states - 2*num_constraints);
   //Q corresponding to the positions
   MatrixXd Q_p = MatrixXd::Identity(
-          num_positions - num_constraints, num_positions - num_constraints)*10.0;
+          num_positions - num_constraints, num_positions - num_constraints)*1.0;
   //Q corresponding to the velocities
   MatrixXd Q_v = MatrixXd::Identity(
-          num_velocities - num_constraints, num_velocities - num_constraints)*10.0;
+          num_velocities - num_constraints, num_velocities - num_constraints)*1.0;
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
   Q.block(num_positions - num_constraints, num_positions - num_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100.0;
+  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*1.0;
 
-  VectorXd u_analytical = ComputeCassieControlInputAnalytical(plant->get_rigid_body_tree(), x_init);
-
-  // Joint limit forces
-  VectorXd joint_forces = ComputeCassieJointLimitForces(plant, x_init);
-  std::cout << "**************Joint limit forces*****************" << std::endl;
-  std::cout << joint_forces.transpose() << std::endl;
-
+  // Throw an exception if the Joint angles are not within limits
   DRAKE_DEMAND(CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_init));
-
-  //Contact forces
-  drake::systems::CompliantContactModel<double> contact_model;
-  contact_model.set_default_material(default_material);
-  contact_model.set_model_parameters(model_parameters);
-  
-  cout << "*****************Contact Forces********************" << endl;
-  VectorXd contact_forces = contact_model.ComputeContactForce(plant->get_rigid_body_tree(), k_cache_init);
-  cout << contact_forces.transpose() << endl;;
 
 
   const int num_constraint_forces = num_constraints;
   bool print_debug = false;
   VectorXd lambda_init = VectorXd::Zero(num_constraint_forces);
+
   cout << "Starting to solve" << endl;
   vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(
       plant_solver, num_constraint_forces, q_init, u_init, lambda_init, fixed_joints, print_debug);

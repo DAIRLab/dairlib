@@ -40,11 +40,6 @@ MatrixXd ClqrController::computeF() {
   J << J_constraint, 
        J_collision_;
 
-
-  //std::cout << "J times x----------------------------" << std::endl;
-  //std::cout << J.rows() << " " << J.cols() << " " << x0_.size() << std::endl;
-  //std::cout << J*x0_.head(num_positions_) << std::endl;
-
   const int r = J.rows();
   const int c = J.cols();
 
@@ -54,10 +49,6 @@ MatrixXd ClqrController::computeF() {
   //Computing F by populating with J
   F.block(0, 0, r, c) = J;
   F.block(r, c, r, c) = J;
-
-
-  //std::cout << "F times x----------------------------" << std::endl;
-  //std::cout << F*x0_ << std::endl;
 
 
   return F;
@@ -79,21 +70,18 @@ MatrixXd ClqrController::computeK() {
 
   //Linearizing about the operating point
   
-  MatrixXd A(num_states_, num_states_);
-  MatrixXd B(num_states_, num_efforts_);
+  MatrixXd A;
+  MatrixXd B;
 
   // Generating an autodiff vector with all the stacked variables
-  VectorXd xu0(num_states_ + num_efforts_);
-  xu0 << x0_, u0_;
-  auto xu0_autodiff = initializeAutoDiff(xu0);
+  VectorXd x_u_l0(num_states_ + num_efforts_ + lambda_.size());
+  x_u_l0 << x0_, u0_, lambda_;
+  auto x_u_l0_autodiff = initializeAutoDiff(x_u_l0);
 
   // Extracting the x and u values
-  auto x0_autodiff = xu0_autodiff.head(num_states_);
-  auto u0_autodiff = xu0_autodiff.tail(num_efforts_);
-
-  // Lambda being initialized as a separate autodiff means that
-  // the gradient with respect to lambda will not be computed
-  auto lambda_autodiff = initializeAutoDiff(lambda_);
+  auto x0_autodiff = x_u_l0_autodiff.head(num_states_);
+  auto u0_autodiff = x_u_l0_autodiff.segment(num_states_, num_efforts_);
+  auto lambda_autodiff = x_u_l0_autodiff.tail(lambda_.size());
 
   auto x_dot0_autodiff = CalcTimeDerivativesUsingLambda<AutoDiffXd>(
       tree_, x0_autodiff, u0_autodiff, lambda_autodiff); 
@@ -102,6 +90,9 @@ MatrixXd ClqrController::computeK() {
   VectorXd x_dot0 = autoDiffToValueMatrix(x_dot0_autodiff);
   
   if (!x_dot0.isZero(fixed_point_tolerance_)) {
+
+    std::cout << "x dot: " << x_dot0.transpose() << std::endl;
+    std::cout << "Tolerance: " << fixed_point_tolerance_ << std::endl;
     
     throw std::runtime_error(
         "The nominal operating point (x0, u0) is not an equilibrium point "
@@ -111,13 +102,15 @@ MatrixXd ClqrController::computeK() {
 
   const MatrixXd AB = 
     autoDiffToGradientMatrix(x_dot0_autodiff);
-  //std::cout << "AB: " << std::endl;
-  //std::cout << AB << std::endl;
-  //std::cout << AB.rows() << " " << AB.cols() << std::endl;
 
   A = AB.leftCols(num_states_);
-  B = AB.rightCols(num_efforts_);
+  B = AB.block(
+      0, num_states_, AB.rows(), num_efforts_);
 
+  DRAKE_DEMAND(A.rows() == num_states_);
+  DRAKE_DEMAND(A.cols() == num_states_);
+  DRAKE_DEMAND(B.rows() == num_states_);
+  DRAKE_DEMAND(B.cols() == num_efforts_);
 
   //auto linear_system = Linearize(*plant_, *context, 0, kNoOutput);
   MatrixXd A_new_coord = P*A*P.transpose();

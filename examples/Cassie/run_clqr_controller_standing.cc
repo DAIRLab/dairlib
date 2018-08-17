@@ -206,16 +206,6 @@ int do_main(int argc, char* argv[]) {
   std::unique_ptr<RigidBodyTree<double>> tree_model = makeFixedBaseCassieTreePointer();
 
 
-  //const double toe_contact_distance = 0.2;
-  //VectorXd toe_left_ground = VectorXd::Zero(3);
-  //VectorXd toe_right_ground = VectorXd::Zero(3);
-  //toe_left_ground(1) = 0.3;
-  //toe_right_ground(1) = -0.3;
-
-  //tree->addDistanceConstraint(0, toe_left_ground, 18, VectorXd::Zero(3), toe_contact_distance);
-  //tree->addDistanceConstraint(0, toe_right_ground, 20, VectorXd::Zero(3), toe_contact_distance);
-
-
   //Floating base adds 6 additional states for the base position and orientation
   const int num_total_positions = tree_sim->get_num_positions();
   const int num_total_velocities = tree_sim->get_num_velocities();
@@ -291,7 +281,7 @@ int do_main(int argc, char* argv[]) {
 
   x0(map_sim.at("base_x")) = 0.0;
   x0(map_sim.at("base_y")) = 0.0;
-  x0(map_sim.at("base_z")) = 2.129;
+  x0(map_sim.at("base_z")) = 2.2;
 
   x0(map_sim.at("hip_roll_left")) = 0.1;
   x0(map_sim.at("hip_roll_right")) = -0.1;
@@ -335,9 +325,10 @@ int do_main(int argc, char* argv[]) {
   VectorXd x_start = x0;
 
 
-  VectorXd q_stand = SolveCassieStandingConstraints(plant_sim->get_rigid_body_tree(), x_start.head(num_total_positions));
-  cout << "q_stand: " << q_stand.transpose() << endl;
-  x_start.segment(6, num_positions) = q_stand;
+  VectorXd q_sol = SolveCassieStandingConstraints(plant_sim->get_rigid_body_tree(), x_start.head(num_total_positions));
+  cout << "q_sol: " << q_sol.transpose() << endl;
+  cout << q_sol.size() << endl;
+  x_start.head(num_total_states) = q_sol;
 
   //VectorXd q_start = SolveTreeConstraints(plant_model->get_rigid_body_tree(), x_start.segment(6, num_positions), fixed_joints);
   //x_start.segment(6, num_positions) = q_start;
@@ -509,7 +500,8 @@ int do_main(int argc, char* argv[]) {
   
   lcm.StartReceiveThread();
   
-  simulator.StepTo(std::numeric_limits<double>::infinity());
+  //simulator.StepTo(std::numeric_limits<double>::infinity());
+  simulator.StepTo(0.000000001);
   return 0;
 }
 

@@ -66,7 +66,7 @@ vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<do
                                                          VectorXd lambda_init,
                                                          vector<int> fixed_joints = {},
                                                          bool print_debug = false,
-                                                         string snopt_output_filename = "multibody/log_files/cassie_snopt.out");
+                                                         string snopt_output_filename = "multibody/log_files/snopt_cassie_fp.out");
 
 bool CheckCassieFixedPointConstraints(const RigidBodyPlant<double>& plant,
                                       VectorXd x_check,
@@ -76,7 +76,9 @@ bool CheckCassieFixedPointConstraints(const RigidBodyPlant<double>& plant,
 
 VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 
                                         VectorXd q_init, 
-                                        vector<int> fixed_joints = {});
+                                        vector<int> fixed_joints = {},
+                                        bool print_debug = false,
+                                        string snopt_output_filename = "multibody/log_files/snopt_cassie_standing.out");
 
 
 class CassieFixedPointConstraint : public Constraint {
@@ -85,12 +87,12 @@ class CassieFixedPointConstraint : public Constraint {
                                int num_constraint_forces,
                                bool print_debug = false,
                                const std::string& description = "");
-    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& q_u_l,
                 Eigen::VectorXd* y) const override;
   
-    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
+    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& q_u_l,
                 AutoDiffVecXd* y) const override;
-    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& q_u_l, 
                 VectorX<Expression>*y) const override;
   
   private:
@@ -102,17 +104,17 @@ class CassieFixedPointConstraint : public Constraint {
 };
 
 
-class CassieContactConstraint : public Constraint {
+class CassieStandingConstraint : public Constraint {
   public:
-    CassieContactConstraint(const RigidBodyTree<double>& tree,
+    CassieStandingConstraint(const RigidBodyTree<double>& tree,
                             const std::string& description = "");
-    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,
                 Eigen::VectorXd* y) const override;
   
-    void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
+    void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
                 drake::AutoDiffVecXd* y) const override;
 
-    void DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& q, 
                 VectorX<Expression>*y) const override;
   
   private:

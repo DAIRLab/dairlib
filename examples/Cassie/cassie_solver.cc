@@ -103,12 +103,22 @@ bool CheckCassieFixedPointConstraints(const RigidBodyPlant<double>& plant,
 
 VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 
                                         VectorXd q_init, 
-                                        vector<int> fixed_joints) {
+                                        vector<int> fixed_joints,
+                                        bool pring_debug, 
+                                        string snopt_output_filename) {
   
   MathematicalProgram prog;
+
+  // Setting solver options
+  // Setting log file
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", snopt_output_filename);
+  // Non linear and linear constraint tolerance
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1.0e-7);
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Minor feasibility tolerance", 1.0e-7);
+
   auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
   auto constraint_tree = std::make_shared<TreeConstraint>(tree);
-  auto constraint_contact = std::make_shared<CassieContactConstraint>(tree);
+  auto constraint_contact = std::make_shared<CassieStandingConstraint>(tree);
   
   prog.AddConstraint(constraint_tree, q);
   prog.AddConstraint(constraint_contact, q);
@@ -118,11 +128,22 @@ VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree,
     prog.AddConstraint(q(j) == q_init(j));
   }
 
-  prog.AddQuadraticCost(1.0);
+  prog.AddQuadraticCost(
+      (q - q_init).dot(q - q_init));
   prog.SetInitialGuess(q, q_init);
   auto solution = prog.Solve();
+
+  std::cout << "********** Standing Constraints Solver Result **********" << std::endl;
   std::cout << to_string(solution) << std::endl;
+
   VectorXd q_sol = prog.GetSolution(q);
+
+  DRAKE_DEMAND(q_sol.size() == q_init.size());
+
+  for(int i=0; i<q_sol.size(); i++)
+  {
+    DRAKE_DEMAND(!isnan(q_sol(i)) && !isinf(q_sol(i)));
+  }
 
   return q_sol;
 
@@ -194,7 +215,7 @@ void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q
 
 }
 
-void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x_u, 
+void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& q_u_l, 
                             VectorX<Expression>*y) const {
 
   throw std::logic_error(
@@ -203,8 +224,8 @@ void CassieFixedPointConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>
 
 
 
-CassieContactConstraint::CassieContactConstraint(const RigidBodyTree<double>& tree,
-                                                 const std::string& description):
+CassieStandingConstraint::CassieStandingConstraint(const RigidBodyTree<double>& tree,
+                                                   const std::string& description):
   Constraint(4,
              tree.get_num_positions(),
              VectorXd::Zero(4),
@@ -215,22 +236,22 @@ CassieContactConstraint::CassieContactConstraint(const RigidBodyTree<double>& tr
 }
 
 
-void CassieContactConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                                     Eigen::VectorXd* y) const {
+void CassieStandingConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,
+                                      Eigen::VectorXd* y) const {
 
   AutoDiffVecXd y_t;
-  Eval(initializeAutoDiff(x), &y_t);
+  Eval(initializeAutoDiff(q), &y_t);
   *y = autoDiffToValueMatrix(y_t);
 
 }
 
-void CassieContactConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
+void CassieStandingConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q,
                                      AutoDiffVecXd* y) const {
 
-  const AutoDiffVecXd q = x.head(tree_.get_num_positions());
+  const AutoDiffVecXd q_autodiff = q.head(tree_.get_num_positions());
   const VectorXd q_double = DiscardGradient(q);
 
-  KinematicsCache<AutoDiffXd> k_cache = tree_.doKinematics(q);
+  KinematicsCache<AutoDiffXd> k_cache = tree_.doKinematics(q_autodiff);
   KinematicsCache<double> k_cache_double = tree_.doKinematics(q_double);
 
   // Collision
@@ -252,8 +273,8 @@ void CassieContactConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
   const int toe_right_ind = GetBodyIndexFromName(tree_, "toe_right");
 
   vector<int> contact_ind(num_contacts);
-  int k=0;
-  for (int i=0; i<num_total_contacts; i++) {
+  int k = 0;
+  for (int i = 0; i < num_total_contacts; i++) {
     int ind_a = idxA_total.at(i);
     int ind_b = idxB_total.at(i);
     if ((ind_a == world_ind && ind_b == toe_left_ind) ||
@@ -276,16 +297,16 @@ void CassieContactConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
                                               idxA_total.at(contact_ind.at(0)), 
                                               world_ind);
   auto contact_A_pt_2 = tree_.transformPoints(k_cache,
-                                              xA_total.col(contact_ind.at(0)), 
-                                              idxA_total.at(contact_ind.at(0)), 
+                                              xA_total.col(contact_ind.at(1)), 
+                                              idxA_total.at(contact_ind.at(1)), 
                                               world_ind);
   auto contact_A_pt_3 = tree_.transformPoints(k_cache,
-                                              xA_total.col(contact_ind.at(0)), 
-                                              idxA_total.at(contact_ind.at(0)), 
+                                              xA_total.col(contact_ind.at(2)), 
+                                              idxA_total.at(contact_ind.at(2)), 
                                               world_ind);
   auto contact_A_pt_4 = tree_.transformPoints(k_cache,
-                                              xA_total.col(contact_ind.at(0)), 
-                                              idxA_total.at(contact_ind.at(0)), 
+                                              xA_total.col(contact_ind.at(3)), 
+                                              idxA_total.at(contact_ind.at(3)), 
                                               world_ind);
 
   auto contact_B_pt_1 = tree_.transformPoints(k_cache,
@@ -293,16 +314,16 @@ void CassieContactConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
                                               idxB_total.at(contact_ind.at(0)), 
                                               world_ind);
   auto contact_B_pt_2 = tree_.transformPoints(k_cache,
-                                              xB_total.col(contact_ind.at(0)), 
-                                              idxB_total.at(contact_ind.at(0)), 
+                                              xB_total.col(contact_ind.at(1)), 
+                                              idxB_total.at(contact_ind.at(1)), 
                                               world_ind);
   auto contact_B_pt_3 = tree_.transformPoints(k_cache,
-                                              xB_total.col(contact_ind.at(0)), 
-                                              idxB_total.at(contact_ind.at(0)), 
+                                              xB_total.col(contact_ind.at(2)), 
+                                              idxB_total.at(contact_ind.at(2)), 
                                               world_ind);
   auto contact_B_pt_4 = tree_.transformPoints(k_cache,
-                                              xB_total.col(contact_ind.at(0)), 
-                                              idxB_total.at(contact_ind.at(0)), 
+                                              xB_total.col(contact_ind.at(3)), 
+                                              idxB_total.at(contact_ind.at(3)), 
                                               world_ind);
 
   // Computing distance
@@ -319,8 +340,8 @@ void CassieContactConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
 
 }
 
-void CassieContactConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
-                                     VectorX<Expression>*y) const {
+void CassieStandingConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x, 
+                                      VectorX<Expression>*y) const {
 
   throw std::logic_error(
       "TreeConstraint does not support symbolic evaluation.");

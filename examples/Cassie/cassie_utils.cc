@@ -82,7 +82,7 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
 std::unique_ptr<RigidBodyTree<double>> makeFloatingBaseCassieTreePointer(
     std::string filename) {
   auto tree = std::make_unique<RigidBodyTree<double>>();
-  buildFloatingBaseCassieTree(*tree.get());
+  buildFloatingBaseCassieTree(*tree.get(), filename);
   return tree;
 }
 

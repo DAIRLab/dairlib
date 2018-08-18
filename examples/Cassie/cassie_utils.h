@@ -76,8 +76,8 @@ template<typename T>
 class CassiePlant {
 
   public:
-    CassiePlant(RigidBodyPlant<T>* plant):plant_(plant),
-                                          tree_(plant_->get_rigid_body_tree()) {}
+    CassiePlant(const RigidBodyPlant<T>& plant):plant_(plant),
+                                          tree_(plant_.get_rigid_body_tree()) {}
 
 
     void CalcTimeDerivativesCassie(VectorX<T> x,
@@ -105,7 +105,7 @@ class CassiePlant {
                                                  VectorX<T> u, 
                                                  VectorX<T> lambda) const;
 
-    RigidBodyPlant<T>* plant_;
+    const RigidBodyPlant<T>& plant_;
     const RigidBodyTree<double>& tree_;
 
 };

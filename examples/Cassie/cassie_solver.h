@@ -59,6 +59,15 @@ using dairlib::GetBodyIndexFromName;
 namespace dairlib {
 
 
+VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 
+                                        VectorXd q_init, 
+                                        vector<int> fixed_joints = {},
+                                        bool print_debug = false,
+                                        string snopt_output_filename = "multibody/log_files/snopt_cassie_standing.out");
+
+
+
+
 vector<VectorXd> SolveCassieTreeAndFixedPointConstraints(const RigidBodyPlant<double>& plant, 
                                                          int num_constraint_forces,
                                                          VectorXd q_init, 
@@ -73,12 +82,35 @@ bool CheckCassieFixedPointConstraints(const RigidBodyPlant<double>& plant,
                                       VectorXd u_check, 
                                       VectorXd lambda_check);
 
+vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBodyPlant<double>& plant, 
+                                                                 const RigidBodyPlant<AutoDiffXd>& plant_autodiff,
+                                                                 int num_constraint_forces,
+                                                                 VectorXd q_init, 
+                                                                 VectorXd u_init, 
+                                                                 VectorXd lambda_init,
+                                                                 vector<int> fixed_joints = {},
+                                                                 bool print_debug = false,
+                                                                 string snopt_output_filename = "multibody/log_files/snopt_cassie_fp.out");
 
-VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree, 
-                                        VectorXd q_init, 
-                                        vector<int> fixed_joints = {},
-                                        bool print_debug = false,
-                                        string snopt_output_filename = "multibody/log_files/snopt_cassie_standing.out");
+
+
+class CassieStandingConstraint : public Constraint {
+  public:
+    CassieStandingConstraint(const RigidBodyTree<double>& tree,
+                            const std::string& description = "");
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,
+                Eigen::VectorXd* y) const override;
+  
+    void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
+                drake::AutoDiffVecXd* y) const override;
+
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& q, 
+                VectorX<Expression>*y) const override;
+  
+  private:
+    const RigidBodyTree<double>& tree_;
+
+};
 
 
 class CassieFixedPointConstraint : public Constraint {
@@ -104,23 +136,32 @@ class CassieFixedPointConstraint : public Constraint {
 };
 
 
-class CassieStandingConstraint : public Constraint {
+class CassieStandingFixedPointConstraint : public Constraint {
   public:
-    CassieStandingConstraint(const RigidBodyTree<double>& tree,
-                            const std::string& description = "");
-    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,
+    CassieStandingFixedPointConstraint(const RigidBodyPlant<double>& plant,
+                                       const RigidBodyPlant<AutoDiffXd>& plant_autodiff,
+                                       int num_constraint_forces,
+                                       bool print_debug = false,
+                                       const std::string& description = "");
+    void DoEval(const Eigen::Ref<const Eigen::VectorXd>& q_u_l,
                 Eigen::VectorXd* y) const override;
   
-    void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
-                drake::AutoDiffVecXd* y) const override;
-
-    void DoEval(const Eigen::Ref<const VectorX<Variable>>& q, 
+    void DoEval(const Eigen::Ref<const AutoDiffVecXd>& q_u_l,
+                AutoDiffVecXd* y) const override;
+    void DoEval(const Eigen::Ref<const VectorX<Variable>>& q_u_l, 
                 VectorX<Expression>*y) const override;
   
   private:
+    const RigidBodyPlant<double>& plant_;
+    const RigidBodyPlant<AutoDiffXd>& plant_autodiff_;
     const RigidBodyTree<double>& tree_;
+    int num_constraint_forces_;
+    bool print_debug_;
 
 };
+
+
+
 
 } // namespace dairlib
 

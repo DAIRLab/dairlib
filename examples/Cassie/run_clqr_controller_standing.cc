@@ -202,19 +202,15 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   
   drake::lcm::DrakeLcm lcm;
-  std::unique_ptr<RigidBodyTree<double>> tree_sim = makeFloatingBaseCassieTreePointer();
-  std::unique_ptr<RigidBodyTree<double>> tree_model = makeFixedBaseCassieTreePointer();
-
+  std::unique_ptr<RigidBodyTree<double>> tree = makeFloatingBaseCassieTreePointer();
+  std::unique_ptr<RigidBodyTree<double>> tree_autodiff = makeFloatingBaseCassieTreePointer();
 
   //Floating base adds 6 additional states for the base position and orientation
-  const int num_total_positions = tree_sim->get_num_positions();
-  const int num_total_velocities = tree_sim->get_num_velocities();
-  const int num_total_states = num_total_positions + num_total_velocities;
-  const int num_positions = tree_model->get_num_positions();
-  const int num_velocities = tree_model->get_num_velocities();
+  const int num_positions = tree->get_num_positions();
+  const int num_velocities = tree->get_num_velocities();
   const int num_states = num_positions + num_velocities;
-  const int num_efforts = tree_model->get_num_actuators();
-  const int num_constraints = tree_model->getNumPositionConstraints();
+  const int num_efforts = tree->get_num_actuators();
+  const int num_constraints = tree->getNumPositionConstraints();
   
   cout << "Number of actuators: " << num_efforts << endl;
   cout << "Number of generalized coordinates: " << num_positions << endl;
@@ -224,14 +220,14 @@ int do_main(int argc, char* argv[]) {
   const double terrain_size = 4;
   const double terrain_depth = 0.05;
 
-  drake::multibody::AddFlatTerrainToWorld(tree_sim.get(), terrain_size, terrain_depth);
-  drake::multibody::AddFlatTerrainToWorld(tree_model.get(), terrain_size, terrain_depth);
+  drake::multibody::AddFlatTerrainToWorld(tree.get(), terrain_size, terrain_depth);
+  drake::multibody::AddFlatTerrainToWorld(tree_autodiff.get(), terrain_size, terrain_depth);
   
   cout << "---------------------------------------------------------------------" << endl;
 
-  for(int i=0; i<tree_sim->get_num_bodies(); i++)
+  for(int i=0; i<tree->get_num_bodies(); i++)
   {
-    cout << tree_sim->get_body(i).get_name() << " " << i << endl;
+    cout << tree->get_body(i).get_name() << " " << i << endl;
   }
 
 
@@ -239,39 +235,37 @@ int do_main(int argc, char* argv[]) {
   
   drake::systems::DiagramBuilder<double> builder;
   
-  auto plant_sim = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree_sim));
-  auto plant_model = make_unique<RigidBodyPlant<double>>(std::move(tree_model));
+  auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree));
+  RigidBodyPlant<AutoDiffXd> plant_autodiff(std::move(tree_autodiff));
 
 
   drake::systems::CompliantMaterial default_material;
   default_material.set_youngs_modulus(FLAGS_youngs_modulus)
       .set_dissipation(FLAGS_dissipation)
       .set_friction(FLAGS_us, FLAGS_ud);
-  plant_sim->set_default_compliant_material(default_material);
-  plant_model->set_default_compliant_material(default_material);
+  plant->set_default_compliant_material(default_material);
   drake::systems::CompliantContactModelParameters model_parameters;
   model_parameters.characteristic_radius = FLAGS_contact_radius;
   model_parameters.v_stiction_tolerance = FLAGS_v_tol;
-  plant_sim->set_contact_model_parameters(model_parameters);
-  plant_model->set_contact_model_parameters(model_parameters);
+  plant->set_contact_model_parameters(model_parameters);
 
 
   // Adding the visualizer to the diagram
   drake::systems::DrakeVisualizer& visualizer_publisher =
       *builder.template AddSystem<drake::systems::DrakeVisualizer>(
-          plant_sim->get_rigid_body_tree(), &lcm);
+          plant->get_rigid_body_tree(), &lcm);
   visualizer_publisher.set_name("visualizer_publisher");
   //builder.Connect(plant->state_output_port(),
                           //visualizer_publisher.get_input_port(0));
 
-  auto debug_pass_through = builder.AddSystem<DebugPassThrough>(num_total_states, false);
-  builder.Connect(plant_sim->state_output_port(), debug_pass_through->get_input_port(0));
+  auto debug_pass_through = builder.AddSystem<DebugPassThrough>(num_states, false);
+  builder.Connect(plant->state_output_port(), debug_pass_through->get_input_port(0));
   builder.Connect(debug_pass_through->get_output_port(0), visualizer_publisher.get_input_port(0));
 
 
-  VectorXd x0 = VectorXd::Zero(num_total_states);
-  std::map<std::string, int>  map_sim = plant_sim->get_rigid_body_tree().computePositionNameToIndexMap();
-  std::map<std::string, int>  map_model = plant_model->get_rigid_body_tree().computePositionNameToIndexMap();
+  VectorXd x0 = VectorXd::Zero(num_states);
+  std::map<std::string, int>  map_sim = plant->get_rigid_body_tree().computePositionNameToIndexMap();
+  std::map<std::string, int>  map_model = plant->get_rigid_body_tree().computePositionNameToIndexMap();
 
   for(auto elem: map_sim)
   {
@@ -310,7 +304,7 @@ int do_main(int argc, char* argv[]) {
   VectorXd x_init = x0;
 
   // Making sure tha the joints are within limits
-  DRAKE_DEMAND(CassieJointsWithinLimits(plant_sim->get_rigid_body_tree(), x_init));
+  DRAKE_DEMAND(CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_init));
 
   std::vector<int> fixed_joints;
 
@@ -330,11 +324,38 @@ int do_main(int argc, char* argv[]) {
   VectorXd x_start = x0;
 
 
-  VectorXd q_sol = SolveCassieStandingConstraints(plant_sim->get_rigid_body_tree(), x_start.head(num_total_positions));
+  //VectorXd q_sol = SolveCassieStandingConstraints(plant_sim->get_rigid_body_tree(), x_start.head(num_total_positions));
+  
+  const int num_tree_constraints = 2;
+  const int num_contacts = 4;
+  const int num_contact_constraints = num_contacts * 3;
+  const int num_total_constraints = num_tree_constraints + num_contact_constraints;
+  VectorXd q_init = x_start.head(num_positions);
+  VectorXd u_init = VectorXd::Zero(num_efforts);
+  VectorXd lambda_init = VectorXd::Zero(num_total_constraints);
+  const bool print_debug = true;
 
-  cout << "q_sol: " << q_sol.transpose() << endl;
-  cout << q_sol.size() << endl;
-  x_start.head(num_total_states) = q_sol;
+  vector<VectorXd> q_u_l_sol = SolveCassieTreeFixedPointAndStandingConstraints(*plant,
+                                                                               plant_autodiff,
+                                                                               num_total_constraints,
+                                                                               q_init,
+                                                                               u_init,
+                                                                               lambda_init,
+                                                                               fixed_joints,
+                                                                               print_debug); 
+
+  VectorXd q_sol = q_u_l_sol.at(0);
+  VectorXd u_sol = q_u_l_sol.at(1);
+  VectorXd lambda_sol = q_u_l_sol.at(2);
+
+  cout << "***************** q sol *****************" << endl;
+  cout << q_sol.transpose() << endl;
+  cout << "***************** u sol *****************" << endl;
+  cout << u_sol.transpose() << endl;
+  cout << "***************** lambda sol *****************" << endl;
+  cout << lambda_sol.transpose() << endl;
+  
+  x_start.head(num_states) = q_sol;
 
   //VectorXd q_start = SolveTreeConstraints(plant_model->get_rigid_body_tree(), x_start.segment(6, num_positions), fixed_joints);
   //x_start.segment(6, num_positions) = q_start;
@@ -491,7 +512,7 @@ int do_main(int argc, char* argv[]) {
   auto diagram = builder.Build();
 
   drake::systems::Simulator<double> simulator(*diagram);
-  drake::systems::Context<double>& context = diagram->GetMutableSubsystemContext(*plant_sim, &simulator.get_mutable_context());
+  drake::systems::Context<double>& context = diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
   
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
   state.SetFromVector(x_start);

@@ -342,7 +342,7 @@ void CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
     vdot = M.llt().solve(right_hand_side);
   }
 
-  VectorX<T> x_dot_sol(plant_->get_num_states());
+  VectorX<T> x_dot_sol(plant_.get_num_states());
   x_dot_sol << tree_.transformVelocityToQDot(k_cache, v), vdot;
   x_dot->SetFromVector(x_dot_sol);
 }
@@ -394,7 +394,7 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
     vdot = M.llt().solve(right_hand_side);
   }
 
-  VectorX<T> x_dot(plant_->get_num_states());
+  VectorX<T> x_dot(plant_.get_num_states());
   x_dot << tree_.transformVelocityToQDot(k_cache, v), vdot;
   return x_dot;
 }
@@ -430,7 +430,7 @@ void CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
   VectorX<T> vdot =
     M.completeOrthogonalDecomposition().solve(right_hand_side);
 
-  VectorX<T> x_dot_sol(plant_->get_num_states());
+  VectorX<T> x_dot_sol(plant_.get_num_states());
   x_dot_sol << tree_.transformVelocityToQDot(k_cache, v), vdot;
   x_dot->SetFromVector(x_dot_sol);
 }
@@ -468,7 +468,7 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassie(VectorX<T> x,
   VectorX<T> vdot =
     M.completeOrthogonalDecomposition().solve(right_hand_side);
 
-  VectorX<T> x_dot(plant_->get_num_states());
+  VectorX<T> x_dot(plant_.get_num_states());
   x_dot << tree_.transformVelocityToQDot(k_cache, v), vdot;
   return x_dot;
 }
@@ -623,7 +623,7 @@ void CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
 
 
   // Adding the vdots for the no contact and the contact case
-  VectorX<T> x_dot_sol(plant_->get_num_states());
+  VectorX<T> x_dot_sol(plant_.get_num_states());
   VectorX<T> v_dot2 =
     M.completeOrthogonalDecomposition().solve(J.transpose()*lambda_contact);
 
@@ -658,6 +658,9 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   VectorX<T> lambda_contact = lambda.tail(num_contact_constraints);
 
   // Making sure that the number of contact constraint forces are valid
+  std::cout << num_tree_constraints << std::endl;
+  std::cout << num_total_constraints << std::endl;
+  std::cout << num_contact_constraints << std::endl;
   DRAKE_DEMAND(lambda_contact.size() == num_contacts*3);
 
   //Computing double versions
@@ -785,7 +788,7 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
 
 
   // Adding the vdots for the no contact and the contact case
-  VectorX<T> x_dot(plant_->get_num_states());
+  VectorX<T> x_dot(plant_.get_num_states());
   VectorX<T> v_dot2 =
     M.completeOrthogonalDecomposition().solve(J.transpose()*lambda_contact);
 

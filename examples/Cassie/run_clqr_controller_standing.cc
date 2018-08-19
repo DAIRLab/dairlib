@@ -308,8 +308,12 @@ int do_main(int argc, char* argv[]) {
 
   std::vector<int> fixed_joints;
 
-  //fixed_joints.push_back(map_model.at("hip_roll_left"));
-  //fixed_joints.push_back(map_model.at("hip_roll_right"));
+  //fixed_joints.push_back(map_model.at("base_roll"));
+  //fixed_joints.push_back(map_model.at("base_pitch"));
+  fixed_joints.push_back(map_model.at("base_yaw"));
+
+  fixed_joints.push_back(map_model.at("hip_roll_left"));
+  fixed_joints.push_back(map_model.at("hip_roll_right"));
   fixed_joints.push_back(map_model.at("hip_yaw_left"));
   fixed_joints.push_back(map_model.at("hip_yaw_right"));
   //fixed_joints.push_back(map_model.at("hip_pitch_left"));
@@ -328,12 +332,13 @@ int do_main(int argc, char* argv[]) {
   
   const int num_tree_constraints = 2;
   const int num_contacts = 4;
-  const int num_contact_constraints = num_contacts * 3;
+  const int num_constraints_per_contact = 3;
+  const int num_contact_constraints = num_contacts * num_constraints_per_contact;
   const int num_total_constraints = num_tree_constraints + num_contact_constraints;
   VectorXd q_init = x_start.head(num_positions);
   VectorXd u_init = VectorXd::Zero(num_efforts);
   VectorXd lambda_init = VectorXd::Zero(num_total_constraints);
-  const bool print_debug = true;
+  const bool print_debug = false;
 
   vector<VectorXd> q_u_l_sol = SolveCassieTreeFixedPointAndStandingConstraints(*plant,
                                                                                plant_autodiff,

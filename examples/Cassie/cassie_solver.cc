@@ -168,6 +168,8 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
   // Non linear and linear constraint tolerance
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1.0e-7);
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Minor feasibility tolerance", 1.0e-7);
+  // Verify level
+  //prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 3);
 
 
   auto q = prog.NewContinuousVariables(plant.get_num_positions(), "q");
@@ -190,6 +192,9 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
     prog.AddConstraint(q(j) == q_init(j));
   }
 
+  prog.AddConstraint(q(2) >= 0.1);
+
+
  prog.AddQuadraticCost(
       (q - q_init).dot(q - q_init) + (u - u_init).dot(u - u_init));
 
@@ -207,6 +212,18 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
   VectorXd q_sol = prog.GetSolution(q);
   VectorXd u_sol = prog.GetSolution(u);
   VectorXd lambda_sol = prog.GetSolution(lambda);
+
+
+  std::cout << "Solutions inside the solver" << std::endl;
+  std::cout << q_sol.transpose() << std::endl;
+  std::cout << u_sol.transpose() << std::endl;
+  std::cout << lambda_sol.transpose() << std::endl;
+
+  CassiePlant<AutoDiffXd> cassie_plant(plant_autodiff);
+  std::cout << cassie_plant.CalcMVdotCassieStanding(q_sol,
+                                                    VectorXd::Zero(plant.get_num_velocities()).template cast<AutoDiffXd>(),
+                                                    u_sol,
+                                                    lambda_sol) << std::endl;
 
   DRAKE_DEMAND(q_sol.size() == q_init.size());
   DRAKE_DEMAND(u_sol.size() == u_init.size());
@@ -349,8 +366,6 @@ void CassieStandingConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& q,
   y_tmp(2) = (contact_A_pt_3 - contact_B_pt_3).dot(contact_A_pt_3 - contact_B_pt_3);
   y_tmp(3) = (contact_A_pt_4 - contact_B_pt_4).dot(contact_A_pt_4 - contact_B_pt_4);
 
-  std::cout << y_tmp.transpose() << std::endl;
-
   *y = y_tmp;
 
 
@@ -476,13 +491,13 @@ void CassieStandingFixedPointConstraint::DoEval(const Eigen::Ref<const AutoDiffV
 
   const AutoDiffVecXd q = q_u_l.head(num_positions);
   const AutoDiffVecXd v = VectorXd::Zero(num_velocities).template cast<AutoDiffXd>();
-  AutoDiffVecXd x(num_positions + num_velocities);
-  x << q, v;
+  //AutoDiffVecXd x(num_positions + num_velocities);
+  //x << q, v;
   const AutoDiffVecXd u = q_u_l.segment(num_positions, num_efforts); 
   const AutoDiffVecXd lambda = q_u_l.tail(num_constraint_forces_);
 
   CassiePlant<AutoDiffXd> cassie_plant(plant_autodiff_);
-  *y = cassie_plant.CalcTimeDerivativesCassieStanding(x, u, lambda);
+  *y = cassie_plant.CalcMVdotCassieStanding(q, v, u, lambda);
        
 
   // Debug printing (constraint output and gradient)

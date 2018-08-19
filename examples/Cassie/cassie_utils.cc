@@ -489,6 +489,7 @@ void CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   const int num_contact_constraints = num_total_constraints - num_tree_constraints;
   // 4 contacts for Cassie (2 in each toe)
   const int num_contacts = 4;
+  const int num_constraints_per_contact = num_contact_constraints/num_contacts;
 
   VectorX<T> q = x.topRows(num_positions);
   VectorX<T> v = x.bottomRows(num_velocities);
@@ -534,9 +535,8 @@ void CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   vector<int> idxA_total, idxB_total;
 
   // This (const cast) is an ugly way of doing it. Change it later if a better method is available
-  std::cout << const_cast<RigidBodyTree<double>&>(tree_).collisionDetect(
+  const_cast<RigidBodyTree<double>&>(tree_).collisionDetect(
       k_cache_double, phi_total, normal_total, xA_total, xB_total, idxA_total, idxB_total);
-  std::cout << std::endl;
 
   const int num_total_contacts = normal_total.cols();
 
@@ -607,7 +607,7 @@ void CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
 
   for (int i=0; i<num_contacts; i++) {
 
-    MatrixX<T> J_pt(3, num_positions);
+    MatrixX<T> J_pt(num_constraints_per_contact, num_positions);
 
     auto normal_pt = normal.col(contact_ind.at(i));
     auto tangent1_pt = tangents.at(0).col(contact_ind.at(i));
@@ -617,7 +617,7 @@ void CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
     J_pt.row(1) = tangent1_pt.transpose()*Jd.at(i);
     J_pt.row(2) = tangent2_pt.transpose()*Jd.at(i);
 
-    J.block(i*3, 0, 3, num_positions) =  J_pt;
+    J.block(i*num_constraints_per_contact, 0, num_constraints_per_contact, num_positions) =  J_pt;
             
   }
 
@@ -639,7 +639,8 @@ void CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
 
 
 template<typename T>
-VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x, 
+VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> q, 
+                                                             VectorX<T> v,
                                                              VectorX<T> u, 
                                                              VectorX<T> lambda) const {
 
@@ -651,17 +652,15 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   const int num_contact_constraints = num_total_constraints - num_tree_constraints;
   // 4 contacts for Cassie (2 in each toe)
   const int num_contacts = 4;
+  const int num_constraints_per_contact = num_contact_constraints/num_contacts;
 
-  VectorX<T> q = x.topRows(num_positions);
-  VectorX<T> v = x.bottomRows(num_velocities);
+  //VectorX<T> q = x.topRows(num_positions);
+  //VectorX<T> v = x.bottomRows(num_velocities);
   VectorX<T> lambda_tree = lambda.head(num_tree_constraints);
   VectorX<T> lambda_contact = lambda.tail(num_contact_constraints);
 
   // Making sure that the number of contact constraint forces are valid
-  std::cout << num_tree_constraints << std::endl;
-  std::cout << num_total_constraints << std::endl;
-  std::cout << num_contact_constraints << std::endl;
-  DRAKE_DEMAND(lambda_contact.size() == num_contacts*3);
+  DRAKE_THROW_UNLESS(num_tree_constraints >= 1);
 
   //Computing double versions
   VectorX<double> q_double = DiscardGradient(q);
@@ -683,14 +682,11 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   // Compliant contact forces wont be added here
   // Computing accelerations without the collision information
 
-  VectorX<T> v_dot1;
   if (num_tree_constraints) {
 
     auto J = tree_.positionConstraintsJacobian(k_cache, false);
     right_hand_side += J.transpose()*lambda_tree;
   }
-
-  v_dot1 = M.completeOrthogonalDecomposition().solve(right_hand_side);
 
 
   //Collision detect (double template as AutoDiff doesnt work)
@@ -699,9 +695,8 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   vector<int> idxA_total, idxB_total;
 
   // This (const cast) is an ugly way of doing it. Change it later if a better method is available
-  std::cout << const_cast<RigidBodyTree<double>&>(tree_).collisionDetect(
+  const_cast<RigidBodyTree<double>&>(tree_).collisionDetect(
       k_cache_double, phi_total, normal_total, xA_total, xB_total, idxA_total, idxB_total);
-  std::cout << std::endl;
 
   const int num_total_contacts = normal_total.cols();
 
@@ -765,14 +760,14 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
     Jd.at(i) = tmp_JA - tmp_JB;
   }
 
-  std::cout << Jd.at(0) << std::endl;
+  //std::cout << Jd.at(0) << std::endl;
 
   //Computing the 3 jacobians for each contact point
-  MatrixX<T> J(num_contacts*3, num_positions);
+  MatrixX<T> J(num_contact_constraints, num_positions);
 
   for (int i=0; i<num_contacts; i++) {
 
-    MatrixX<T> J_pt(3, num_positions);
+    MatrixX<T> J_pt(num_constraints_per_contact, num_positions);
 
     auto normal_pt = normal.col(contact_ind.at(i));
     auto tangent1_pt = tangents.at(0).col(contact_ind.at(i));
@@ -782,24 +777,172 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
     J_pt.row(1) = tangent1_pt.transpose()*Jd.at(i);
     J_pt.row(2) = tangent2_pt.transpose()*Jd.at(i);
 
-    J.block(i*3, 0, 3, num_positions) =  J_pt;
+    J.block(i*num_constraints_per_contact, 0, num_constraints_per_contact, num_positions) =  J_pt;
             
   }
+
+  right_hand_side += J.transpose()*lambda_contact;
 
 
   // Adding the vdots for the no contact and the contact case
   VectorX<T> x_dot(plant_.get_num_states());
-  VectorX<T> v_dot2 =
-    M.completeOrthogonalDecomposition().solve(J.transpose()*lambda_contact);
+  VectorX<T> v_dot =
+    M.completeOrthogonalDecomposition().solve(right_hand_side);
 
-  DRAKE_DEMAND(v_dot1.size() == num_velocities);
-  DRAKE_DEMAND(v_dot2.size() == num_velocities);
-
-  VectorX<T> v_dot(num_velocities);
-  v_dot = v_dot1 + v_dot2;
+  DRAKE_DEMAND(v_dot.size() == num_velocities);
 
   x_dot << tree_.transformVelocityToQDot(k_cache, v), v_dot;
   return x_dot;
+
+}
+
+
+template<typename T>
+VectorX<T> CassiePlant<T>::CalcMVdotCassieStanding(VectorX<T> q, 
+                                                   VectorX<T> v,
+                                                   VectorX<T> u, 
+                                                   VectorX<T> lambda) const {
+
+  const int num_positions = tree_.get_num_positions();
+  const int num_velocities = tree_.get_num_velocities();
+  const int num_efforts = tree_.get_num_actuators();
+  const int num_tree_constraints = tree_.getNumPositionConstraints();
+  const int num_total_constraints = lambda.size();
+  const int num_contact_constraints = num_total_constraints - num_tree_constraints;
+  // 4 contacts for Cassie (2 in each toe)
+  const int num_contacts = 4;
+  const int num_constraints_per_contact = num_contact_constraints/num_contacts;
+
+  //VectorX<T> q = x.topRows(num_positions);
+  //VectorX<T> v = x.bottomRows(num_velocities);
+  VectorX<T> lambda_tree = lambda.head(num_tree_constraints);
+  VectorX<T> lambda_contact = lambda.tail(num_contact_constraints);
+
+  // Making sure that the number of contact constraint forces are valid
+  DRAKE_THROW_UNLESS(num_tree_constraints >= 1);
+
+  //Computing double versions
+  VectorX<double> q_double = DiscardGradient(q);
+  VectorX<double> v_double = DiscardGradient(v);
+
+  KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
+  KinematicsCache<double> k_cache_double = tree_.doKinematics(q_double, v_double);
+
+  const MatrixX<T> M = tree_.massMatrix(k_cache);
+  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
+
+  VectorX<T> right_hand_side = 
+    -tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
+
+  if (num_efforts > 0) {
+    right_hand_side += tree_.B * u;
+  }
+
+  // Compliant contact forces wont be added here
+  // Computing accelerations without the collision information
+
+  if (num_tree_constraints) {
+
+    auto J = tree_.positionConstraintsJacobian(k_cache, false);
+    right_hand_side += J.transpose()*lambda_tree;
+  }
+
+
+  //Collision detect (double template as AutoDiff doesnt work)
+  VectorXd phi_total;
+  Matrix3Xd normal_total, xA_total, xB_total;
+  vector<int> idxA_total, idxB_total;
+
+  // This (const cast) is an ugly way of doing it. Change it later if a better method is available
+  const_cast<RigidBodyTree<double>&>(tree_).collisionDetect(
+      k_cache_double, phi_total, normal_total, xA_total, xB_total, idxA_total, idxB_total);
+
+  const int num_total_contacts = normal_total.cols();
+
+
+  //  Getting the indices of the world and toes
+  const int world_ind = GetBodyIndexFromName(tree_, "world");
+  const int toe_left_ind = GetBodyIndexFromName(tree_, "toe_left");
+  const int toe_right_ind = GetBodyIndexFromName(tree_, "toe_right");
+
+  // Obtaining the indices of valid collisions
+  vector<int> contact_ind(num_contacts);
+  int k=0;
+  for (int i=0; i<num_total_contacts; i++) {
+    int ind_a = idxA_total.at(i);
+    int ind_b = idxB_total.at(i);
+    if ((ind_a == world_ind && ind_b == toe_left_ind) ||
+        (ind_a == world_ind && ind_b == toe_right_ind) ||
+        (ind_a == toe_left_ind && ind_b == world_ind) ||
+        (ind_a == toe_right_ind && ind_b == world_ind)) {
+
+      contact_ind.at(k) = i;
+      k++;
+
+    }
+  }
+
+  Matrix3Xd normal = Matrix3Xd::Zero(normal_total.rows(), num_contacts);
+  for (int i=0; i<num_contacts; i++) {
+    normal.col(i) = normal_total.col(contact_ind.at(i));
+  }
+  
+  const Map<Matrix3Xd> normal_map(
+      normal.data(), normal_total.rows(), num_contacts);
+
+  vector<Map<Matrix3Xd>> tangents;
+
+  Matrix3Xd tmp_mat1 = Matrix3Xd::Zero(3, 4);
+  Map<Matrix3Xd> tmp_map1(tmp_mat1.data(), 3, 4);
+  Matrix3Xd tmp_mat2 = Matrix3Xd::Zero(3, 4);
+  Map<Matrix3Xd> tmp_map2(tmp_mat2.data(), 3, 4);
+  tangents.push_back(tmp_map1);
+  tangents.push_back(tmp_map2);
+
+  tree_.surfaceTangents(normal_map, tangents);
+
+
+  //Computing the position Jacobian
+  vector<MatrixX<T>> Jd(num_contacts);
+
+  for (int i=0; i<num_contacts; i++) {
+    auto tmp_JA = tree_.transformPointsJacobian(k_cache,
+                                                xA_total.col(contact_ind.at(i)), 
+                                                idxA_total.at(contact_ind.at(i)),
+                                                world_ind, 
+                                                true);
+    auto tmp_JB = tree_.transformPointsJacobian(k_cache,
+                                                xB_total.col(contact_ind.at(i)), 
+                                                idxB_total.at(contact_ind.at(i)),
+                                                world_ind, 
+                                                true);
+    Jd.at(i) = tmp_JA - tmp_JB;
+  }
+
+  //std::cout << Jd.at(0) << std::endl;
+
+  //Computing the 3 jacobians for each contact point
+  MatrixX<T> J(num_contact_constraints, num_positions);
+
+  for (int i=0; i<num_contacts; i++) {
+
+    MatrixX<T> J_pt(num_constraints_per_contact, num_positions);
+
+    auto normal_pt = normal.col(contact_ind.at(i));
+    auto tangent1_pt = tangents.at(0).col(contact_ind.at(i));
+    auto tangent2_pt = tangents.at(1).col(contact_ind.at(i));
+
+    J_pt.row(0) = normal_pt.transpose()*Jd.at(i);
+    J_pt.row(1) = tangent1_pt.transpose()*Jd.at(i);
+    J_pt.row(2) = tangent2_pt.transpose()*Jd.at(i);
+
+    J.block(i*num_constraints_per_contact, 0, num_constraints_per_contact, num_positions) =  J_pt;
+            
+  }
+
+  right_hand_side += J.transpose()*lambda_contact;
+
+  return right_hand_side;
 
 }
 

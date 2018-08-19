@@ -101,9 +101,15 @@ class CassiePlant {
                                            VectorX<T> lambda,
                                            ContinuousState<T>* x_dot) const;
 
-    VectorX<T> CalcTimeDerivativesCassieStanding(VectorX<T> x, 
+    VectorX<T> CalcTimeDerivativesCassieStanding(VectorX<T> q, 
+                                                 VectorX<T> v,
                                                  VectorX<T> u, 
                                                  VectorX<T> lambda) const;
+
+    VectorX<T> CalcMVdotCassieStanding(VectorX<T> q, 
+                                       VectorX<T> v, 
+                                       VectorX<T> u,
+                                       VectorX<T> lambda) const;
 
     const RigidBodyPlant<T>& plant_;
     const RigidBodyTree<double>& tree_;

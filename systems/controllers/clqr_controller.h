@@ -47,14 +47,12 @@ namespace systems{
 class ClqrController : public AffineController {
 
   public: 
-    ClqrController(RigidBodyPlant<double>* plant,
+    ClqrController(const RigidBodyPlant<double>& plant,
+                   const RigidBodyPlant<AutoDiffXd>& plant_autodiff,
                    VectorXd x0,
                    VectorXd u0,
                    VectorXd lambda, 
-                   MatrixXd J_collision,
-                   int num_positions,
-                   int num_velocities,
-                   int num_efforts,
+                   MatrixXd J_contact,
                    MatrixXd Q,
                    MatrixXd R,
                    double fixed_point_tolerance = 1e-6);
@@ -75,11 +73,12 @@ class ClqrController : public AffineController {
     MatrixXd computeF();
     MatrixXd computeK();
     const RigidBodyTree<double>& tree_;
-    RigidBodyPlant<double>* plant_;
+    const RigidBodyPlant<double>& plant_;
+    const RigidBodyPlant<AutoDiffXd>& plant_autodiff_;
     VectorXd x0_;
     VectorXd u0_;
     VectorXd lambda_;
-    MatrixXd J_collision_;
+    MatrixXd J_contact_;
     int num_positions_;
     int num_velocities_;
     int num_states_;

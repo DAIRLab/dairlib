@@ -240,9 +240,6 @@ int do_main(int argc, char* argv[]) {
                                                            u_sol,
                                                            lambda_sol,
                                                            J_collision,
-                                                           num_positions,
-                                                           num_velocities,
-                                                           num_efforts,
                                                            Q,
                                                            R);
   VectorXd K_vec = clqr_controller->GetKVec();

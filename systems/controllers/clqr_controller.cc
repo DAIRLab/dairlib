@@ -3,23 +3,25 @@
 namespace dairlib{
 namespace systems{
 
-ClqrController::ClqrController(RigidBodyPlant<double>* plant,
+ClqrController::ClqrController(const RigidBodyPlant<double>& plant,
+                               const RigidBodyPlant<AutoDiffXd>& plant_autodiff,
                                VectorXd x0,
                                VectorXd u0,
                                VectorXd lambda,
-                               MatrixXd J_collision,
-                               int num_positions,
-                               int num_velocities,
-                               int num_efforts,
+                               MatrixXd J_contact,
                                MatrixXd Q,
                                MatrixXd R,
                                double fixed_point_tolerance):
-  AffineController(num_positions, num_velocities, num_efforts),
-  tree_(plant->get_rigid_body_tree()), plant_(plant), x0_(x0),
-  u0_(u0), lambda_(lambda), J_collision_(J_collision),
-  num_positions_(num_positions),  num_velocities_(num_velocities),
-  num_states_(num_positions + num_velocities),
-  num_efforts_(num_efforts), Q_(Q), R_(R),
+  AffineController(plant.get_num_positions(),
+                   plant.get_num_velocities(),
+                   plant.get_num_actuators()),
+  tree_(plant.get_rigid_body_tree()), plant_(plant),
+  plant_autodiff_(plant_autodiff), x0_(x0),
+  u0_(u0), lambda_(lambda), J_contact_(J_contact),
+  num_positions_(plant.get_num_positions()),
+  num_velocities_(plant.get_num_velocities()),
+  num_states_(plant.get_num_states()),
+  num_efforts_(plant.get_num_actuators()), Q_(Q), R_(R),
   fixed_point_tolerance_(fixed_point_tolerance)
 {
 
@@ -36,9 +38,9 @@ MatrixXd ClqrController::computeF() {
   //Computing the constraint jacobian
   MatrixXd J_constraint = tree_.positionConstraintsJacobian(k_cache);
 
-  MatrixXd J(J_constraint.rows() + J_collision_.rows(), J_constraint.cols());
+  MatrixXd J(J_constraint.rows() + J_contact_.rows(), J_constraint.cols());
   J << J_constraint, 
-       J_collision_;
+       J_contact_;
 
   const int r = J.rows();
   const int c = J.cols();
@@ -64,7 +66,7 @@ MatrixXd ClqrController::computeK() {
   MatrixXd P = Q.block(0, F_.rows(), Q.rows(), Q.cols() - F_.rows());
   P.transposeInPlace();
 
-  auto context = plant_->CreateDefaultContext();
+  auto context = plant_.CreateDefaultContext();
   context->get_mutable_continuous_state_vector().SetFromVector(x0_);
   context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0_));
 

@@ -68,6 +68,12 @@ bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree,
                               bool print_debug_messages = true);
 
 
+template<typename T>
+MatrixX<T> CalcContactJacobianCassie(const RigidBodyTree<double>& tree, 
+                                     VectorX<T> q,
+                                     VectorX<T> v,
+                                     int num_contact_constraints);
+
 
 // The RigidBodyPlant<AutoDiff> that is passed to the constructor needs to be
 // created using the RigidBodyTree<double> and not using the scalar conversion
@@ -101,13 +107,11 @@ class CassiePlant {
                                            VectorX<T> lambda,
                                            ContinuousState<T>* x_dot) const;
 
-    VectorX<T> CalcTimeDerivativesCassieStanding(VectorX<T> q, 
-                                                 VectorX<T> v,
+    VectorX<T> CalcTimeDerivativesCassieStanding(VectorX<T> x, 
                                                  VectorX<T> u, 
                                                  VectorX<T> lambda) const;
 
-    VectorX<T> CalcMVdotCassieStanding(VectorX<T> q, 
-                                       VectorX<T> v, 
+    VectorX<T> CalcMVdotCassieStanding(VectorX<T> x, 
                                        VectorX<T> u,
                                        VectorX<T> lambda) const;
 

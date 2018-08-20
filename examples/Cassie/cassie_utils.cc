@@ -798,9 +798,9 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   }
 
   MatrixX<T> J_contact = CalcContactJacobianCassie<T>(tree_,  
-                                                    q, 
-                                                    v,
-                                                    num_contact_constraints);
+                                                      q, 
+                                                      v,
+                                                      num_contact_constraints);
 
 
   
@@ -869,9 +869,9 @@ VectorX<T> CassiePlant<T>::CalcMVdotCassieStanding(VectorX<T> x,
   }
 
   MatrixX<T> J_contact = CalcContactJacobianCassie<T>(tree_,  
-                                                    q, 
-                                                    v,
-                                                    num_contact_constraints);
+                                                      q, 
+                                                      v,
+                                                      num_contact_constraints);
 
  
   right_hand_side += J_contact.transpose()*lambda_contact;

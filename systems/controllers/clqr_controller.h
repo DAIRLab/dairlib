@@ -11,6 +11,7 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 
+#include "examples/Cassie/cassie_utils.h"
 #include "systems/controllers/affine_controller.h"
 #include "multibody/rbp_utils.h"
 
@@ -51,8 +52,7 @@ class ClqrController : public AffineController {
                    const RigidBodyPlant<AutoDiffXd>& plant_autodiff,
                    VectorXd x0,
                    VectorXd u0,
-                   VectorXd lambda, 
-                   MatrixXd J_contact,
+                   VectorXd lambda0, 
                    MatrixXd Q,
                    MatrixXd R,
                    double fixed_point_tolerance = 1e-6);
@@ -77,7 +77,7 @@ class ClqrController : public AffineController {
     const RigidBodyPlant<AutoDiffXd>& plant_autodiff_;
     VectorXd x0_;
     VectorXd u0_;
-    VectorXd lambda_;
+    VectorXd lambda0_;
     MatrixXd J_contact_;
     int num_positions_;
     int num_velocities_;

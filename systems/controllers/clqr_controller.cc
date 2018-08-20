@@ -7,8 +7,7 @@ ClqrController::ClqrController(const RigidBodyPlant<double>& plant,
                                const RigidBodyPlant<AutoDiffXd>& plant_autodiff,
                                VectorXd x0,
                                VectorXd u0,
-                               VectorXd lambda,
-                               MatrixXd J_contact,
+                               VectorXd lambda0,
                                MatrixXd Q,
                                MatrixXd R,
                                double fixed_point_tolerance):
@@ -17,7 +16,7 @@ ClqrController::ClqrController(const RigidBodyPlant<double>& plant,
                    plant.get_num_actuators()),
   tree_(plant.get_rigid_body_tree()), plant_(plant),
   plant_autodiff_(plant_autodiff), x0_(x0),
-  u0_(u0), lambda_(lambda), J_contact_(J_contact),
+  u0_(u0), lambda0_(lambda0), 
   num_positions_(plant.get_num_positions()),
   num_velocities_(plant.get_num_velocities()),
   num_states_(plant.get_num_states()),
@@ -36,11 +35,17 @@ MatrixXd ClqrController::computeF() {
       x0_.head(num_positions_), x0_.tail(num_velocities_));
 
   //Computing the constraint jacobian
-  MatrixXd J_constraint = tree_.positionConstraintsJacobian(k_cache);
+  MatrixXd J_tree = tree_.positionConstraintsJacobian(k_cache);
 
-  MatrixXd J(J_constraint.rows() + J_contact_.rows(), J_constraint.cols());
-  J << J_constraint, 
-       J_contact_;
+  // Contact Jacobian
+  MatrixXd J_contact = CalcContactJacobianCassie<double>(tree_,  
+                                                         x0_.head(num_positions_), 
+                                                         x0_.tail(num_velocities_),
+                                                         lambda0_.size() - J_tree.rows());
+
+  MatrixXd J(J_tree.rows() + J_contact.rows(), J_tree.cols());
+  J << J_tree, 
+       J_contact;
 
   const int r = J.rows();
   const int c = J.cols();
@@ -76,24 +81,26 @@ MatrixXd ClqrController::computeK() {
   MatrixXd B;
 
   // Generating an autodiff vector with all the stacked variables
-  VectorXd x_u_l0(num_states_ + num_efforts_ + lambda_.size());
-  x_u_l0 << x0_, u0_, lambda_;
+  VectorXd x_u_l0(num_states_ + num_efforts_ + lambda0_.size());
+  x_u_l0 << x0_, u0_, lambda0_;
   auto x_u_l0_autodiff = initializeAutoDiff(x_u_l0);
 
   // Extracting the x and u values
   auto x0_autodiff = x_u_l0_autodiff.head(num_states_);
   auto u0_autodiff = x_u_l0_autodiff.segment(num_states_, num_efforts_);
-  auto lambda_autodiff = x_u_l0_autodiff.tail(lambda_.size());
+  auto lambda0_autodiff = x_u_l0_autodiff.tail(lambda0_.size());
 
-  auto x_dot0_autodiff = CalcTimeDerivativesUsingLambda<AutoDiffXd>(
-      tree_, x0_autodiff, u0_autodiff, lambda_autodiff); 
+  CassiePlant<AutoDiffXd> cassie_plant(plant_autodiff_);
+  auto x_dot0_autodiff = cassie_plant.CalcTimeDerivativesCassieStanding(
+      x0_autodiff, u0_autodiff, lambda0_autodiff); 
 
   // Making sure that the derivative is zero (fixed point)
   VectorXd x_dot0 = autoDiffToValueMatrix(x_dot0_autodiff);
   
   if (!x_dot0.isZero(fixed_point_tolerance_)) {
 
-    std::cout << "x dot: " << x_dot0.transpose() << std::endl;
+    std::cout << "********* x dot *********" << std::endl;
+    std::cout << x_dot0 << std::endl;
     std::cout << "Tolerance: " << fixed_point_tolerance_ << std::endl;
     
     throw std::runtime_error(

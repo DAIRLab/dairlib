@@ -40,6 +40,7 @@ cc_library(
             "//systems/framework:vector",
             "//systems/controllers:controllers",
             "//multibody:utils",
+            "//examples/Cassie:cassie_utils",
             "@drake//systems/framework:leaf_system",
             "@drake//systems/framework:vector",
             "@drake//systems/framework:context",

@@ -346,10 +346,11 @@ int do_main(int argc, char* argv[]) {
                                                                                print_debug); 
 
   VectorXd q_sol = q_u_l_sol.at(0);
+  VectorXd v_sol = VectorXd::Zero(num_velocities);
+  VectorXd x_sol(num_states);
+  x_sol << q_sol, v_sol;
   VectorXd u_sol = q_u_l_sol.at(1);
   VectorXd lambda_sol = q_u_l_sol.at(2);
-  VectorXd x_sol(num_states);
-  x_sol << q_sol, VectorXd::Zero(num_velocities);
 
   cout << "***************** q sol *****************" << endl;
   cout << q_sol.transpose() << endl;
@@ -357,11 +358,13 @@ int do_main(int argc, char* argv[]) {
   cout << u_sol.transpose() << endl;
   cout << "***************** lambda sol *****************" << endl;
   cout << lambda_sol.transpose() << endl;
+
+  CassiePlant<double> cassie_plant(*plant);
+  cout << "***************** Mvdot final *******************" << endl;
+  cout << cassie_plant.CalcMVdotCassieStanding(x_sol, 
+                                               u_sol, 
+                                               lambda_sol) << endl;
   
-
-  // Contact Jacobian that is to be sent to the controller
-  MatrixXd J_contact;
-
 
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(num_states - 2*num_total_constraints, num_states - 2*num_total_constraints);
@@ -380,7 +383,6 @@ int do_main(int argc, char* argv[]) {
                                                                     x_sol,
                                                                     u_sol,
                                                                     lambda_sol,
-                                                                    J_contact,
                                                                     Q,
                                                                     R);
   VectorXd K_vec = clqr_controller->GetKVec();
@@ -429,10 +431,10 @@ int do_main(int argc, char* argv[]) {
   drake::systems::Context<double>& context = diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
   
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
-  state.SetFromVector(x_desired);
+  state.SetFromVector(x_sol);
   
-  //auto zero_input = Eigen::MatrixXd::Zero(num_efforts,1);
-  //context.FixInputPort(0, zero_input);
+  auto zero_input = Eigen::MatrixXd::Zero(num_efforts,1);
+  context.FixInputPort(0, zero_input);
   
   //simulator.set_publish_every_time_step(false);
   //simulator.set_publish_at_initialization(false);
@@ -441,8 +443,8 @@ int do_main(int argc, char* argv[]) {
   
   lcm.StartReceiveThread();
   
-  //simulator.StepTo(std::numeric_limits<double>::infinity());
-  simulator.StepTo(0.000000001);
+  simulator.StepTo(std::numeric_limits<double>::infinity());
+  //simulator.StepTo(0.000000001);
   return 0;
 }
 

@@ -166,8 +166,8 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
   // Setting log file
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", snopt_output_filename);
   // Non linear and linear constraint tolerance
-  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1.0e-7);
-  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Minor feasibility tolerance", 1.0e-7);
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1.0e-10);
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Minor feasibility tolerance", 1.0e-10);
   // Verify level
   //prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 3);
   

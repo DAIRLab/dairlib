@@ -315,9 +315,6 @@ int do_main(int argc, char* argv[]) {
     state.SetFromVector(x_start);
   }
   
-  //auto zero_input = Eigen::MatrixXd::Zero(num_efforts, 1);
-  //context.FixInputPort(0, zero_input);
-  
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(1.0);

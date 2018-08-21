@@ -106,38 +106,7 @@ class InfoConnector: public LeafSystem<double> {
 
 };
 
-//Class to serve as a selective pass through to convert the floating base states to the fixed base states needed by the controller
-class FloatToFixedConnector: public LeafSystem<double> {
 
-  public:
-    FloatToFixedConnector(int num_positions, int num_velocities, int num_efforts, int num_extra):
-      num_positions_(num_positions), num_velocities_(num_velocities), num_efforts_(num_efforts), num_extra_(num_extra) {
-
-    this->DeclareVectorInputPort(BasicVector<double>(num_positions_ + num_velocities_ + num_efforts_ + 3 + 1));
-    this->DeclareVectorOutputPort(BasicVector<double>(num_positions_ + num_velocities_ + num_efforts_ + 3 + 1 - 2*num_extra_), &dairlib::FloatToFixedConnector::CopyOut);
-  }
-
-
-  private:
-    
-    int num_positions_;
-    int num_velocities_;
-    int num_efforts_;
-    int num_extra_;
-
-    void CopyOut(const Context<double>& context, BasicVector<double>* output) const {
-
-      const auto input = this->EvalVectorInput(context, 0);
-      const VectorX<double> input_vector = input->get_value();
-      VectorX<double> output_vector(input_vector.size() - 2*num_extra_);
-      output_vector << input_vector.segment(num_extra_, num_positions_ - num_extra_),
-        input_vector.segment(num_positions_ + num_extra_, num_velocities_ - num_extra_),
-        input_vector.segment(num_positions_ + num_velocities_, num_efforts_ + 3 + 1);
-
-      output->SetFromVector(output_vector);
-
-    }
-};
 
 //Class to serve as a pass through port that just prints the value of the input port. Useful for debugging
 class DebugPassThrough: public LeafSystem<double> {
@@ -166,34 +135,6 @@ class DebugPassThrough: public LeafSystem<double> {
       output->SetFromVector(input_vector);
     }
 };
-
-//Function to take the state of a floating base model and extract the state for the fixed base model by removing the 
-//positions and velocities corresponding to the base
-VectorXd ExtractFixedStateFromFloating(VectorXd x_float, int num_positions_float, int num_velocities_float, int num_extra_positions, int num_extra_velocities)
-{
-  const int num_positions_fixed = num_positions_float - num_extra_positions;
-  const int num_velocities_fixed = num_velocities_float - num_extra_velocities;
-  const int fixed_size = num_positions_fixed + num_velocities_fixed;
-
-  VectorXd x_fixed(fixed_size);
-  x_fixed.head(num_positions_fixed) = x_float.segment(6, num_positions_fixed);
-  x_fixed.tail(num_velocities_fixed) = x_float.segment(num_positions_float + 6, num_velocities_fixed);
-
-  return x_fixed;
-}
-
-VectorXd ComputeUAnalytical(const RigidBodyTree<double>& tree, VectorXd x) {
-
-  MatrixXd B = tree.B;
-  auto k_cache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
-  const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
-  VectorXd C = tree.dynamicsBiasTerm(k_cache, no_external_wrenches, true);
-  VectorXd u = B.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(C);
-
-  return u;
-
-}
-
 
 
 
@@ -352,6 +293,9 @@ int do_main(int argc, char* argv[]) {
   VectorXd u_sol = q_u_l_sol.at(1);
   VectorXd lambda_sol = q_u_l_sol.at(2);
 
+  KinematicsCache<double> k_cache_sol = plant->get_rigid_body_tree().doKinematics(q_sol, v_sol);
+  MatrixXd M = plant->get_rigid_body_tree().massMatrix(k_cache_sol);
+
   // Making sure that the joint state solution is within limits
   DRAKE_DEMAND(CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_sol));
 
@@ -367,6 +311,7 @@ int do_main(int argc, char* argv[]) {
   cout << cassie_plant.CalcMVdotCassieStanding(x_sol, 
                                                u_sol, 
                                                lambda_sol) << endl;
+
   
 
   //Parameter matrices for LQR
@@ -377,7 +322,7 @@ int do_main(int argc, char* argv[]) {
   MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*10.0;
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
   Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*10;
+  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100;
 
 
   //Building the controller
@@ -397,14 +342,13 @@ int do_main(int argc, char* argv[]) {
   cout << "xdes: " << x_desired.transpose() << endl;
 
   vector<int> input_info_sizes{num_states, num_efforts, 3, 1};
-  //vector<int> input_params_sizes{num_states*num_efforts, num_efforts, num_states, 1};
 
   auto info_connector = builder.AddSystem<InfoConnector>(num_positions, num_velocities, num_efforts);
   auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
 
-  auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(num_efforts));
-  auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(3));
-  auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(VectorX<double>::Zero(1));
+  auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(VectorXd::Zero(num_efforts));
+  auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(VectorXd::Zero(3));
+  auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(VectorXd::Zero(1));
 
   VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
   params_vec << K_vec, C, x_desired;
@@ -414,15 +358,12 @@ int do_main(int argc, char* argv[]) {
   auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
   auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
           (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
-  auto float_to_fixed_passthrough = builder.AddSystem<FloatToFixedConnector>(
-      num_positions, num_velocities, num_efforts, 6);
 
   builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
   builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
   builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
   builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
-  builder.Connect(multiplexer_info->get_output_port(0), float_to_fixed_passthrough->get_input_port(0));
-  builder.Connect(float_to_fixed_passthrough->get_output_port(0), info_connector->get_input_port(0));
+  builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
   builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
   builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
   builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
@@ -436,8 +377,8 @@ int do_main(int argc, char* argv[]) {
   drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
   state.SetFromVector(x_sol);
   
-  auto zero_input = Eigen::MatrixXd::Zero(num_efforts,1);
-  context.FixInputPort(0, zero_input);
+  //auto zero_input = MatrixXd::Zero(num_efforts,1);
+  //context.FixInputPort(0, zero_input);
   
   //simulator.set_publish_every_time_step(false);
   //simulator.set_publish_at_initialization(false);
@@ -446,8 +387,8 @@ int do_main(int argc, char* argv[]) {
   
   lcm.StartReceiveThread();
   
-  //simulator.StepTo(std::numeric_limits<double>::infinity());
-  simulator.StepTo(0.000000001);
+  simulator.StepTo(std::numeric_limits<double>::infinity());
+  //simulator.StepTo(0.000000001);
   return 0;
 }
 

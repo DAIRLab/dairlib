@@ -600,8 +600,8 @@ void CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   const int num_total_constraints = lambda.size();
   const int num_contact_constraints = num_total_constraints - num_tree_constraints;
 
-  VectorX<T> q = x.topRows(num_positions);
-  VectorX<T> v = x.bottomRows(num_velocities);
+  VectorX<T> q = x.head(num_positions);
+  VectorX<T> v = x.tail(num_velocities);
   VectorX<T> lambda_tree = lambda.head(num_tree_constraints);
   VectorX<T> lambda_contact = lambda.tail(num_contact_constraints);
 
@@ -628,7 +628,7 @@ void CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   VectorX<T> v_dot1;
   if (num_tree_constraints) {
 
-    auto J_tree = tree_.positionConstraintsJacobian(k_cache, false);
+    auto J_tree = tree_.positionConstraintsJacobian(k_cache);
     right_hand_side += J_tree.transpose()*lambda_tree;
   }
 
@@ -661,8 +661,8 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   const int num_total_constraints = lambda.size();
   const int num_contact_constraints = num_total_constraints - num_tree_constraints;
 
-  VectorX<T> q = x.topRows(num_positions);
-  VectorX<T> v = x.bottomRows(num_velocities);
+  VectorX<T> q = x.head(num_positions);
+  VectorX<T> v = x.tail(num_velocities);
   VectorX<T> lambda_tree = lambda.head(num_tree_constraints);
   VectorX<T> lambda_contact = lambda.tail(num_contact_constraints);
 
@@ -690,7 +690,7 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
 
   if (num_tree_constraints) {
 
-    auto J_tree = tree_.positionConstraintsJacobian(k_cache, false);
+    auto J_tree = tree_.positionConstraintsJacobian(k_cache);
     right_hand_side += J_tree.transpose()*lambda_tree;
   }
 
@@ -727,8 +727,8 @@ VectorX<T> CassiePlant<T>::CalcMVdotCassieStanding(VectorX<T> x,
   const int num_total_constraints = lambda.size();
   const int num_contact_constraints = num_total_constraints - num_tree_constraints;
 
-  VectorX<T> q = x.topRows(num_positions);
-  VectorX<T> v = x.bottomRows(num_velocities);
+  VectorX<T> q = x.head(num_positions);
+  VectorX<T> v = x.tail(num_velocities);
   VectorX<T> lambda_tree = lambda.head(num_tree_constraints);
   VectorX<T> lambda_contact = lambda.tail(num_contact_constraints);
 
@@ -756,7 +756,7 @@ VectorX<T> CassiePlant<T>::CalcMVdotCassieStanding(VectorX<T> x,
 
   if (num_tree_constraints) {
 
-    auto J_tree = tree_.positionConstraintsJacobian(k_cache, false);
+    auto J_tree = tree_.positionConstraintsJacobian(k_cache);
     right_hand_side += J_tree.transpose()*lambda_tree;
   }
 

@@ -195,8 +195,26 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
     prog.AddConstraint(q(j) == q_init(j));
   }
 
+  // Adding joint limit constraints
+  map<string, int> position_map =
+    plant.get_rigid_body_tree().computePositionNameToIndexMap();
+  for (auto const& b : plant.get_rigid_body_tree().get_bodies()) {
+    if(!b->has_parent_body()) continue;
+    auto const& joint = b->getJoint();
+    if(joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
+
+      auto joint_limit_min_vec = joint.getJointLimitMin();
+      auto joint_limit_max_vec = joint.getJointLimitMax();
+      const int ind = position_map.at(joint.get_name());
+
+      prog.AddConstraint(q(ind) <= joint_limit_max_vec(0));
+      prog.AddConstraint(q(ind) >= joint_limit_min_vec(0));
+
+    }
+  }
+
   // z axis constraint
-  prog.AddConstraint(q(2) >= 0.1);
+  //prog.AddConstraint(q(2) >= 0.1);
 
   // Friction constraints
   const double mu = 0.5;

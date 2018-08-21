@@ -611,7 +611,6 @@ void CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   VectorX<double> v_double = DiscardGradient(v);
 
   KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
-  KinematicsCache<double> k_cache_double = tree_.doKinematics(q_double, v_double);
 
   const MatrixX<T> M = tree_.massMatrix(k_cache);
   const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
@@ -675,7 +674,6 @@ VectorX<T> CassiePlant<T>::CalcTimeDerivativesCassieStanding(VectorX<T> x,
   VectorX<double> v_double = DiscardGradient(v);
 
   KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
-  KinematicsCache<double> k_cache_double = tree_.doKinematics(q_double, v_double);
 
   const MatrixX<T> M = tree_.massMatrix(k_cache);
   const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
@@ -742,7 +740,6 @@ VectorX<T> CassiePlant<T>::CalcMVdotCassieStanding(VectorX<T> x,
   VectorX<double> v_double = DiscardGradient(v);
 
   KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
-  KinematicsCache<double> k_cache_double = tree_.doKinematics(q_double, v_double);
 
   const MatrixX<T> M = tree_.massMatrix(k_cache);
   const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;

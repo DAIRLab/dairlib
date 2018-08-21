@@ -38,10 +38,10 @@ MatrixXd ClqrController::computeF() {
   MatrixXd J_tree = tree_.positionConstraintsJacobian(k_cache);
 
   // Contact Jacobian
-  MatrixXd J_contact = CalcContactJacobianCassie<double>(tree_,  
-                                                         x0_.head(num_positions_), 
-                                                         x0_.tail(num_velocities_),
-                                                         lambda0_.size() - J_tree.rows());
+  CassiePlant<double> cassie_plant(plant_);
+  MatrixXd J_contact = cassie_plant.CalcContactJacobianCassie(x0_.head(num_positions_), 
+                                                              x0_.tail(num_velocities_),
+                                                              lambda0_.size() - J_tree.rows());
 
   MatrixXd J(J_tree.rows() + J_contact.rows(), J_tree.cols());
   J << J_tree, 

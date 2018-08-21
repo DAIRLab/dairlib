@@ -199,7 +199,7 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
   prog.AddConstraint(q(2) >= 0.1);
 
   // Friction constraints
-  const double mu = 0.25;
+  const double mu = 0.5;
   for (int i = 0; i < num_contacts; i++) {
     //prog.AddConstraint(lambda(i*3 + num_tree_constraints) >= 0);
     prog.AddConstraint(lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
@@ -224,12 +224,6 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
   VectorXd q_sol = prog.GetSolution(q);
   VectorXd u_sol = prog.GetSolution(u);
   VectorXd lambda_sol = prog.GetSolution(lambda);
-
-
-  std::cout << "Solutions inside the solver" << std::endl;
-  std::cout << q_sol.transpose() << std::endl;
-  std::cout << u_sol.transpose() << std::endl;
-  std::cout << lambda_sol.transpose() << std::endl;
 
 
   DRAKE_DEMAND(q_sol.size() == q_init.size());

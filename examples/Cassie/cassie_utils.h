@@ -69,21 +69,16 @@ bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree,
 
 
 template<typename T>
-MatrixX<T> CalcContactJacobianCassie(const RigidBodyTree<double>& tree, 
-                                     VectorX<T> q,
-                                     VectorX<T> v,
-                                     int num_contact_constraints);
-
-
-// The RigidBodyPlant<AutoDiff> that is passed to the constructor needs to be
-// created using the RigidBodyTree<double> and not using the scalar conversion
-// Contact information is lost the AutoDiffXd scalar conversion is used`
-template<typename T>
 class CassiePlant {
 
   public:
     CassiePlant(const RigidBodyPlant<T>& plant):plant_(plant),
                                           tree_(plant_.get_rigid_body_tree()) {}
+
+
+    MatrixX<T> CalcContactJacobianCassie(VectorX<T> q,
+                                         VectorX<T> v,
+                                         int num_contact_constraints) const;
 
 
     void CalcTimeDerivativesCassie(VectorX<T> x,

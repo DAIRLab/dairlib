@@ -90,7 +90,7 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
                                                                  VectorXd lambda_init,
                                                                  vector<int> fixed_joints = {},
                                                                  bool print_debug = false,
-                                                                 string snopt_output_filename = "multibody/log_files/snopt_cassie_fp.out");
+                                                                 string snopt_output_filename = "multibody/log_files/snopt_cassie_fp_standing.out");
 
 
 

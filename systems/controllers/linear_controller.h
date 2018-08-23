@@ -15,6 +15,7 @@ class LinearController : public LeafSystem<double> {
  public:
   LinearController(int num_positions, int num_velocities, int num_inputs);
 
+// get input port. output_input_port_ and config_input_port_ record 
   const drake::systems::InputPort<double>& get_input_port_config()
       const {
     return this->get_input_port(config_input_port_);
@@ -32,6 +33,7 @@ class LinearController : public LeafSystem<double> {
   int output_input_port_;
   int config_input_port_;
 
+  // desired states and gain matrix
   VectorXd x_des_;
   MatrixXd K_;
   int num_states_;
@@ -42,11 +44,12 @@ class LinearController : public LeafSystem<double> {
 /// controller configuration
 class LinearConfig : public TimestampedVector<double> {
   public:
+  //constructor of parent class and itself
     LinearConfig(int num_states, int num_inputs) :
         TimestampedVector<double>(num_states * num_inputs + num_states),
         num_states_(num_states), num_inputs_(num_inputs) {};
 
-    //Getters and setters
+    //Getters and setters of gains and states
     VectorXd GetDesiredState() const {return desired_state_;};
 
     MatrixXd GetK() const {return K_;};

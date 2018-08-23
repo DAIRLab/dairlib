@@ -160,6 +160,66 @@ cc_binary(
 )
 
 
+cc_library(
+    name = "cassie_solver",
+    srcs = [
+        "cassie_solver.cc",
+    ],
+    hdrs = [
+        "cassie_solver.h"
+    ],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//multibody/rigid_body_plant:rigid_body_plant",
+        "@drake//solvers:mathematical_program",
+        "@drake//solvers:constraint",
+        "@drake//manipulation/util",
+        "//multibody:solve_multibody_constraints",
+        ":cassie_utils",
+    ],
+)
+
+
+
+cc_binary(
+    name = "run_mpc_controller",
+    srcs = ["run_mpc_controller.cc"],
+    deps = [
+	    "//systems/controllers:mpc_controllers",
+            "//systems:robot_lcm_systems",
+            "//systems/controllers",
+            "//systems/controllers:pd_config_lcm",
+            "@drake//systems/framework:diagram_builder",
+            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/analysis:simulator",
+            "@drake//multibody:rigid_body_tree",
+            "@drake//manipulation/util",
+            "@drake//lcm",
+            ":cassie_utils",
+            ":cassie_urdf",
+            ]
+)
+
+
+cc_binary(
+    name = "run_auto_jaco_mpc_controller",
+    srcs = ["run_auto_jaco_mpc_controller.cc"],
+    deps = [
+	    "//systems/controllers:auto_jaco_mpc_controllers",
+            "//systems:robot_lcm_systems",
+            "//systems/controllers",
+            "//systems/controllers:pd_config_lcm",
+            "@drake//systems/framework:diagram_builder",
+            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/analysis:simulator",
+            "@drake//multibody:rigid_body_tree",
+            "@drake//manipulation/util",
+            "@drake//lcm",
+            ":cassie_utils",
+            ":cassie_urdf",
+            ]
+)
+
 
 cc_binary(
     name = "run_pd_controller",
@@ -178,6 +238,7 @@ cc_binary(
             ":cassie_urdf",
             ]
 )
+
 
 cc_binary(
     name = "cassie_state_visualizer",
@@ -223,18 +284,3 @@ py_binary(
     ],
 )
 
-cc_binary(
-    name = "parse_log_test",
-    srcs = ["test/parse_log_test.cc"],
-    deps = [
-            "//systems:robot_lcm_systems",
-            ":cassie_urdf",
-            "@drake//systems/framework:diagram_builder",
-            "@drake//systems/lcm:lcm_pubsub_system",
-            "@drake//systems/analysis:simulator",
-            "@drake//lcm",
-            "@drake//multibody:rigid_body_tree",
-            "//systems/lcm:lcm_log_parser",
-            ":cassie_utils"
-            ]
-)

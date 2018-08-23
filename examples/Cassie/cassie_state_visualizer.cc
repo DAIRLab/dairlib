@@ -21,8 +21,8 @@ using dairlib::systems::RobotOutputReceiver;
 
 int doMain() {
   RigidBodyTree<double> tree;
-  buildFixedBaseCassieTree(tree);
-
+  buildFloatBaseCassieTree(tree);
+  //buildFixedBaseCassieTree(tree);
   cout << endl << "****bodies****" << endl;
   for (int i = 0; i < tree.get_num_bodies(); i++)
     cout << tree.getBodyOrFrameName(i) << endl;

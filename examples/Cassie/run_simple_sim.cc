@@ -35,9 +35,9 @@ DEFINE_double(v_tol, 0.01,
 DEFINE_double(dissipation, 2, "The contact model's dissipation (s/m)");
 DEFINE_double(contact_radius, 2e-4,
               "The characteristic scale of contact patch (m)");
-DEFINE_string(simulation_type, "compliant", "The type of simulation to use: "
+DEFINE_string(simulation_type, "timestepping", "The type of simulation to use: "
               "'compliant' or 'timestepping'");
-DEFINE_double(dt, 1e-3, "The step size to use for "
+DEFINE_double(dt, 1e-4, "The step size to use for "
               "'simulation_type=timestepping' (ignored for "
               "'simulation_type=compliant'");
 
@@ -45,10 +45,11 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   drake::lcm::DrakeLcm lcm;
-  std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
-
+  std::unique_ptr<RigidBodyTree<double>> tree = makeFloatBaseCassieTreePointer();
+  //std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
   drake::systems::DiagramBuilder<double> builder;
 
+  std::cout<<FLAGS_ud<<"  "<<FLAGS_us<<std::endl;
   if (FLAGS_simulation_type != "timestepping")
     FLAGS_dt = 0.0;
   auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
@@ -104,24 +105,35 @@ int do_main(int argc, char* argv[]) {
   auto diagram = builder.Build();
 
   drake::systems::Simulator<double> simulator(*diagram);
+  // get context from robot plant
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
 
   Eigen::VectorXd x0 = Eigen::VectorXd::Zero(
       plant->get_rigid_body_tree().get_num_positions() +
       plant->get_rigid_body_tree().get_num_velocities());
+  
+  // position to index
   std::map<std::string, int>  map =
       plant->get_rigid_body_tree().computePositionNameToIndexMap();
-  x0(map.at("hip_pitch_left")) = .269;
-  x0(map.at("hip_pitch_right")) = .269;
+  
+  // initial states
+  const double stanceHipTarget = 0.6; //0.4
+  const double stanceKneeTarget = -1.3; //-1.3
+  const double toeOffset = -1.475; //-1.6
+
+   // initial states
+ // Change the intial condition of leg jionts 
+  x0(map.at("hip_pitch_left")) = stanceHipTarget;//.269;
+  x0(map.at("hip_pitch_right")) = stanceHipTarget;//.269;
   // x0(map.at("achilles_hip_pitch_left")) = -.44;
   // x0(map.at("achilles_hip_pitch_right")) = -.44;
   // x0(map.at("achilles_heel_pitch_left")) = -.105;
   // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  x0(map.at("knee_left")) = -.644;
-  x0(map.at("knee_right")) = -.644;
-  x0(map.at("ankle_joint_left")) = .792;
-  x0(map.at("ankle_joint_right")) = .792;
+  x0(map.at("knee_left")) = stanceKneeTarget;//.644;
+  x0(map.at("knee_right")) = stanceKneeTarget;//-.644;
+  x0(map.at("ankle_joint_left")) = 13/180*M_PI-stanceKneeTarget;//.792;
+  x0(map.at("ankle_joint_right")) = 13/180*M_PI-stanceKneeTarget;//.792;
 
   // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
   // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
@@ -129,23 +141,37 @@ int do_main(int argc, char* argv[]) {
   // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
   // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
 
-  x0(map.at("toe_left")) = -60.0*M_PI/180.0;
-  x0(map.at("toe_right")) = -60.0*M_PI/180.0;
+  x0(map.at("toe_left")) = toeOffset;//-60.0*M_PI/180.0;
+  x0(map.at("toe_right")) = toeOffset;//-60.0*M_PI/180.0;
 
+  //some joints are fixed
   std::vector<int> fixed_joints;
   fixed_joints.push_back(map.at("hip_pitch_left"));
   fixed_joints.push_back(map.at("hip_pitch_right"));
   fixed_joints.push_back(map.at("knee_left"));
   fixed_joints.push_back(map.at("knee_right"));
-
-  auto q0 = solvePositionConstraints(
+/*
+  for(auto it = map.cbegin(); it != map.cend(); ++it)
+  {
+      std::cout << it->first << " " << "\n";
+  }
+  */
+  //solver for a feasible state
+ auto q0 = solvePositionConstraints(
       plant->get_rigid_body_tree(),
       x0.head(plant->get_rigid_body_tree().get_num_positions()), fixed_joints);
-  x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
+x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
 
-  std::cout << q0 << std::endl;
+  //std::cout<<"************feasible state***********"<<std::endl;
+  //std::cout << q0 << std::endl;
 
-
+  double pitchShift = 0;//-0.15;
+  x0(map.at("base_z")) = 1.03; //1.14 when using old intial pose
+  x0(map.at("base_pitch")) = pitchShift;
+  
+  // end 
+  
+  //timestepping is a discrete version
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
     std::cout << "Continuous " << state.size() << std::endl;
@@ -169,7 +195,7 @@ int do_main(int argc, char* argv[]) {
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(1.0);
+  simulator.set_target_realtime_rate(1);
   simulator.Initialize();
 
   lcm.StartReceiveThread();

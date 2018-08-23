@@ -14,6 +14,14 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_pd_controller";
         host = "localhost";
     }
+    cmd "3.mpc-controller" {
+        exec = "bazel-bin/examples/Cassie/run_mpc_controller";
+        host = "localhost";
+    }
+    cmd "4.auto-jaco-mpc-controller" {
+        exec = "bazel-bin/examples/Cassie/run_auto_jaco_mpc_controller";
+        host = "localhost";
+    }
     cmd "2.dispatcher" {
         exec = "bazel-bin/examples/Cassie/run_cassie_dispatch";
         host = "localhost";

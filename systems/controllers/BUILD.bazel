@@ -1,3 +1,4 @@
+load("@drake//tools:drake.bzl", "drake_cc_googletest", "drake_cc_library", "drake_cc_binary")
 load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
@@ -26,6 +27,49 @@ cc_library(
             "@drake//systems/framework:leaf_system",
             ]
 )
+
+cc_library(
+    name = "mpc_controllers",
+    srcs = ["mpc_balance_controller.cc",],
+    hdrs = ["mpc_balance_controller.h"],
+    deps = [
+            "//systems/framework:vector",
+            "@drake//systems/framework:leaf_system",
+	    ":admmlib",
+            "@drake//multibody:rigid_body_tree",
+	    "@drake//math:autodiff",
+	    "@drake//systems/controllers:control_util",
+	    "@gurobi//:gurobi_cxx"
+            ]
+)
+
+cc_library(
+    name = "auto_jaco_mpc_controllers",
+    srcs = ["auto_jacobian_mpc_balance_controller.cc",],
+    hdrs = ["auto_jacobian_mpc_balance_controller.h"],
+    deps = [
+            "//systems/framework:vector",
+            "@drake//systems/framework:leaf_system",
+	    ":admmlib",
+            "@drake//multibody:rigid_body_tree",
+	    "@drake//math:autodiff",
+	    "@drake//systems/controllers:control_util",
+	    "@gurobi//:gurobi_cxx"
+            ]
+)
+
+
+cc_library(
+    name = "admmlib",
+    srcs = ["admmsolve.cc"],
+    hdrs = ["admmsolve.h"],
+    deps = [
+	"@gurobi//:gurobi_cxx",
+	"@eigen",
+	"@drake//solvers:gurobi_solver",
+        "@drake//solvers:mathematical_program"],
+)
+
 
 cc_test(
     name = "pd_config_lcm_test",

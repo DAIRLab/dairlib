@@ -21,6 +21,7 @@ map<string, int> makeNameToVelocitiesMap(const RigidBodyTree<double>& tree) {
   }
   return name_to_index_map;
 }
+
 map<string, int> makeNameToActuatorsMap(const RigidBodyTree<double>& tree) {
   map<string, int> name_to_index_map;
   std::cout << tree.get_num_actuators() << std::endl;

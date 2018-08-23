@@ -28,6 +28,7 @@ Dircon<T>::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, doubl
       force_vars_(NewContinuousVariables(constraints.countConstraints() * num_time_samples, "lambda")),
       collocation_force_vars_(NewContinuousVariables(constraints.countConstraints() * (num_time_samples - 1), "lambda_c")),
       collocation_slack_vars_(NewContinuousVariables(constraints.countConstraints() * (num_time_samples - 1), "v_c")),
+      // what is offset
       offset_vars_(NewContinuousVariables(options.getNumRelative(), "offset")) {
   tree_ = &tree;
   constraints_ = &constraints;
@@ -43,6 +44,7 @@ Dircon<T>::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, doubl
   // class that that has double the info for time i and i+1)
 
   //Adding dynamic constraints
+  //Constraints at collocation point，h is step-size
   for (int i = 0; i < N() - 1; i++) {
     AddConstraint(constraint,
                   {h_vars().segment(i,1),
@@ -54,6 +56,7 @@ Dircon<T>::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, doubl
   }
 
   //Adding kinematic constraints
+  //at each point,phi=phidot=phiddot = 0
   auto kinematic_constraint = std::make_shared<DirconKinematicConstraint<T>>(tree, constraints, options.getConstraintsRelative());
   for (int i = 1; i < N()-1; i++) {
     AddConstraint(kinematic_constraint,
@@ -120,9 +123,11 @@ void Dircon<T>::DoAddRunningCost(const symbolic::Expression& g) {
 template <typename T>
 PiecewisePolynomial<double> Dircon<T>::ReconstructInputTrajectory()
     const {
+  // Returns a vector containing the elapsed time at each knot point at the solution. 
   Eigen::VectorXd times = GetSampleTimes();
   std::vector<double> times_vec(N());
   std::vector<Eigen::MatrixXd> inputs(N());
+  // get temperary solution and do simulation
   for (int i = 0; i < N(); i++) {
     times_vec[i] = times(i);
     inputs[i] = GetSolution(input(i));
@@ -145,10 +150,12 @@ PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory()
     states[i] = GetSolution(state(i));
     inputs[i] = GetSolution(input(i));
     forces[i] = GetSolution(force(i));
+    // update constraint after 
     constraints_->updateData(states[i], inputs[i], forces[i]);
-
+    // get x_dot
     derivatives[i] = math::DiscardGradient(constraints_->getXDot());//Do I need to make a copy here?
   }
+  //create a new cubic to represent the trajectory with current state
   return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);
 }
 
@@ -156,13 +163,16 @@ template <typename T>
 void Dircon<T>::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u, const PiecewisePolynomial<double>& traj_init_x,
                                   const PiecewisePolynomial<double>& traj_init_l, const PiecewisePolynomial<double>& traj_init_lc,
                                   const PiecewisePolynomial<double>& traj_init_vc) {
+  // multiple shooting have SetInitialTrajectory to set the inital state and input
   MultipleShooting::SetInitialTrajectory(traj_init_u,traj_init_x);
   double start_time = 0;
   double h;
+  // time step can be fixed or decision variable
   if (timesteps_are_decision_variables())
     h = GetInitialGuess(h_vars()[0]);
   else
     h = fixed_timestep();
+  
 
   VectorXd guess_force(force_vars_.size());
   if (traj_init_l.empty()) {
@@ -173,6 +183,7 @@ void Dircon<T>::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_ini
           traj_init_l.value(start_time + i * h);
     }
   }
+  // force_vars_ are variables from solvers class, can set initial guess
   SetInitialGuess(force_vars_, guess_force);
 
   VectorXd guess_collocation_force(collocation_force_vars_.size());

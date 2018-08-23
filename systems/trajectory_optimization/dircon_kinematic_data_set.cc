@@ -17,7 +17,7 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(const RigidBodyTree<double>& t
   constraints_ = constraints;
   num_positions_ = num_positions;
   num_velocities_ = num_velocities;
-  // Initialize matrices
+  // Initialize matrices,get total number of constraint
   constraint_count_ = 0;
   for (int i=0; i < constraints_->size(); i++) {
     constraint_count_ += (*constraints_)[i]->getLength();
@@ -42,7 +42,6 @@ void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state, const Vector
   int n;
   for (int i=0; i < constraints_->size(); i++) {
     (*constraints_)[i]->updateConstraint(cache_);
-
     n = (*constraints_)[i]->getLength();
     c_.segment(index, n) = (*constraints_)[i]->getC();
     cdot_.segment(index, n) = (*constraints_)[i]->getCDot();
@@ -60,7 +59,7 @@ void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state, const Vector
   // M*vdot -J^T*f = right_hand_side.
   VectorX<T> right_hand_side = -tree_->dynamicsBiasTerm(cache_, no_external_wrenches) + tree_->B*input + J_transpose*forces;
   vdot_ = M.llt().solve(right_hand_side);
-
+  
   cddot_ = Jdotv_ + J_*vdot_;
 
   xdot_ << tree_->GetVelocityToQDotMapping(cache_)*v, vdot_; //assumes v = qdot

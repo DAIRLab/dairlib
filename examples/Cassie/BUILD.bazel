@@ -204,6 +204,7 @@ cc_binary(
     name = "cassie_state_visualizer",
     srcs = ["cassie_state_visualizer.cc"],
     deps = [
+            "@gflags",
             "//systems:robot_lcm_systems",
             "//systems/primitives",
             ":cassie_urdf",

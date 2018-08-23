@@ -33,8 +33,12 @@ group "0.operator" {
         exec = "bazel-bin/director/drake-director --script examples/Cassie/pd_panel.py --script examples/Cassie/show_time.py";
         host = "localhost";
     }
-    cmd "1.state-visualizer" {
+    cmd "1.state-visualizer (Fixed)" {
         exec = "bazel-bin/examples/Cassie/cassie_state_visualizer";
+        host = "localhost";
+    }
+    cmd "2.state-visualizer (Floating)" {
+        exec = "bazel-bin/examples/Cassie/cassie_state_visualizer --model_type \"Floating\"";
         host = "localhost";
     }
 }

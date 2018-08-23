@@ -42,7 +42,10 @@ using drake::systems::Context;
 using drake::systems::LeafSystem;
 using drake::systems::BasicVector;
 using drake::systems::ConstantVectorSource;
+using drake::systems::DrakeVisualizer;
 using drake::systems::Multiplexer;
+using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::LcmSubscriberSystem;
 
 using dairlib::SolveCassieStandingConstraints;
 using dairlib::multibody::SolveTreeConstraints;
@@ -175,9 +178,12 @@ int do_main(int argc, char* argv[]) {
   cout << "---------------------------------------------------------------------" << endl;
   
   drake::systems::DiagramBuilder<double> builder;
+
+  if (FLAGS_simulation_type != "timestepping")
+    FLAGS_dt = 0.0;
   
-  auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree));
-  RigidBodyPlant<AutoDiffXd> plant_autodiff(std::move(tree_autodiff));
+  auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
+  RigidBodyPlant<AutoDiffXd> plant_autodiff(std::move(tree_autodiff), FLAGS_dt);
 
 
   drake::systems::CompliantMaterial default_material;
@@ -190,48 +196,42 @@ int do_main(int argc, char* argv[]) {
   model_parameters.v_stiction_tolerance = FLAGS_v_tol;
   plant->set_contact_model_parameters(model_parameters);
 
-
-  // Adding the visualizer to the diagram
-  drake::systems::DrakeVisualizer& visualizer_publisher =
-      *builder.template AddSystem<drake::systems::DrakeVisualizer>(
-          plant->get_rigid_body_tree(), &lcm);
-  visualizer_publisher.set_name("visualizer_publisher");
-  //builder.Connect(plant->state_output_port(),
-                          //visualizer_publisher.get_input_port(0));
-
-  auto debug_pass_through = builder.AddSystem<DebugPassThrough>(num_states, false);
-  builder.Connect(plant->state_output_port(), debug_pass_through->get_input_port(0));
-  builder.Connect(debug_pass_through->get_output_port(0), visualizer_publisher.get_input_port(0));
+  // Visualizer
+  //DrakeVisualizer& visualizer_publisher = 
+  //  *builder.template AddSystem<DrakeVisualizer>(
+  //      plant->get_rigid_body_tree(), &lcm);
+  //visualizer_publisher.set_name("visualizer_publisher");
+  //builder.Connect(plant->state_output_port(), 
+  //                visualizer_publisher.get_input_port(0));
 
 
   VectorXd x0 = VectorXd::Zero(num_states);
-  std::map<std::string, int>  map_sim = plant->get_rigid_body_tree().computePositionNameToIndexMap();
-  std::map<std::string, int>  map_model = plant->get_rigid_body_tree().computePositionNameToIndexMap();
+  std::map<std::string, int>  map = plant->get_rigid_body_tree().computePositionNameToIndexMap();
 
-  for(auto elem: map_sim)
+  for(auto elem: map)
   {
       cout << elem.first << " " << elem.second << endl;
   }
 
 
-  x0(map_sim.at("base_x")) = 0.0;
-  x0(map_sim.at("base_y")) = 0.0;
-  x0(map_sim.at("base_z")) = 2.2;
+  x0(map.at("base_x")) = 0.0;
+  x0(map.at("base_y")) = 0.0;
+  x0(map.at("base_z")) = 2.2;
 
-  x0(map_sim.at("hip_roll_left")) = 0.1;
-  x0(map_sim.at("hip_roll_right")) = -0.1;
-  x0(map_sim.at("hip_yaw_left")) = 0;
-  x0(map_sim.at("hip_yaw_right")) = 0;
-  x0(map_sim.at("hip_pitch_left")) = .269;
-  x0(map_sim.at("hip_pitch_right")) = .269;
+  x0(map.at("hip_roll_left")) = 0.1;
+  x0(map.at("hip_roll_right")) = -0.1;
+  x0(map.at("hip_yaw_left")) = 0;
+  x0(map.at("hip_yaw_right")) = 0;
+  x0(map.at("hip_pitch_left")) = .269;
+  x0(map.at("hip_pitch_right")) = .269;
   // x0(map.at("achilles_hip_pitch_left")) = -.44;
   // x0(map.at("achilles_hip_pitch_right")) = -.44;
   // x0(map.at("achilles_heel_pitch_left")) = -.105;
   // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  x0(map_sim.at("knee_left")) = -.744;
-  x0(map_sim.at("knee_right")) = -.744;
-  x0(map_sim.at("ankle_joint_left")) = .81;
-  x0(map_sim.at("ankle_joint_right")) = .81;
+  x0(map.at("knee_left")) = -.744;
+  x0(map.at("knee_right")) = -.744;
+  x0(map.at("ankle_joint_left")) = .81;
+  x0(map.at("ankle_joint_right")) = .81;
   
   // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
   // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
@@ -239,8 +239,8 @@ int do_main(int argc, char* argv[]) {
   // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
   // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
   
-  x0(map_sim.at("toe_left")) = -60*M_PI/180.0;
-  x0(map_sim.at("toe_right")) = -60*M_PI/180.0;
+  x0(map.at("toe_left")) = -60*M_PI/180.0;
+  x0(map.at("toe_right")) = -60*M_PI/180.0;
 
   VectorXd x_init = x0;
 
@@ -249,22 +249,22 @@ int do_main(int argc, char* argv[]) {
 
   std::vector<int> fixed_joints;
 
-  //fixed_joints.push_back(map_model.at("base_roll"));
-  //fixed_joints.push_back(map_model.at("base_pitch"));
-  fixed_joints.push_back(map_model.at("base_yaw"));
+  //fixed_joints.push_back(map.at("base_roll"));
+  //fixed_joints.push_back(map.at("base_pitch"));
+  fixed_joints.push_back(map.at("base_yaw"));
 
-  fixed_joints.push_back(map_model.at("hip_roll_left"));
-  fixed_joints.push_back(map_model.at("hip_roll_right"));
-  //fixed_joints.push_back(map_model.at("hip_yaw_left"));
-  //fixed_joints.push_back(map_model.at("hip_yaw_right"));
-  //fixed_joints.push_back(map_model.at("hip_pitch_left"));
-  //fixed_joints.push_back(map_model.at("hip_pitch_right"));
-  //fixed_joints.push_back(map_model.at("knee_left"));
-  //fixed_joints.push_back(map_model.at("knee_right"));
-  //fixed_joints.push_back(map_model.at("ankle_joint_left"));
-  //fixed_joints.push_back(map_model.at("ankle_joint_right"));
-  //fixed_joints.push_back(map_model.at("toe_left"));
-  //fixed_joints.push_back(map_model.at("toe_right"));
+  fixed_joints.push_back(map.at("hip_roll_left"));
+  fixed_joints.push_back(map.at("hip_roll_right"));
+  //fixed_joints.push_back(map.at("hip_yaw_left"));
+  //fixed_joints.push_back(map.at("hip_yaw_right"));
+  //fixed_joints.push_back(map.at("hip_pitch_left"));
+  //fixed_joints.push_back(map.at("hip_pitch_right"));
+  //fixed_joints.push_back(map.at("knee_left"));
+  //fixed_joints.push_back(map.at("knee_right"));
+  //fixed_joints.push_back(map.at("ankle_joint_left"));
+  //fixed_joints.push_back(map.at("ankle_joint_right"));
+  //fixed_joints.push_back(map.at("toe_left"));
+  //fixed_joints.push_back(map.at("toe_right"));
 
   
   const int num_tree_constraints = 2;
@@ -277,6 +277,7 @@ int do_main(int argc, char* argv[]) {
   VectorXd lambda_init = VectorXd::Zero(num_total_constraints);
   const bool print_debug = false;
 
+  cout << "Solving" << endl;
   vector<VectorXd> q_u_l_sol = SolveCassieTreeFixedPointAndStandingConstraints(*plant,
                                                                                plant_autodiff,
                                                                                num_total_constraints,
@@ -312,17 +313,23 @@ int do_main(int argc, char* argv[]) {
                                                u_sol, 
                                                lambda_sol) << endl;
 
+  cout << "J tree " << endl;
+  cout << plant->get_rigid_body_tree().positionConstraintsJacobian(k_cache_sol);
   
 
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(num_states - 2*num_total_constraints, num_states - 2*num_total_constraints);
   //Q corresponding to the positions
-  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*10.0;
+  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*100.0;
   //Q corresponding to the velocities
-  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*10.0;
+  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*1.0;
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
   Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*100;
+  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*1;
+  R(8, 8) = 0.1;
+  R(9, 9) = 0.1;
+  
+  const double fixed_point_tolerance = 1e-3;
 
 
   //Building the controller
@@ -332,26 +339,34 @@ int do_main(int argc, char* argv[]) {
                                                                     u_sol,
                                                                     lambda_sol,
                                                                     Q,
-                                                                    R);
+                                                                    R, 
+                                                                    fixed_point_tolerance);
   VectorXd K_vec = clqr_controller->GetKVec();
-  VectorXd C = u_sol; 
+  //K_vec = K_vec*0.0;
+  VectorXd E = u_sol; 
+  //E = E*0.0;
   VectorXd x_desired = x_sol;
   cout << "----------------------------------------------------------------------------------------" << endl;
   cout << "K: " << K_vec.transpose() << endl;
-  cout << "C: " << C.transpose() << endl;
+  cout << "E: " << E.transpose() << endl;
   cout << "xdes: " << x_desired.transpose() << endl;
 
-  vector<int> input_info_sizes{num_states, num_efforts, 3, 1};
+  //vector<int> input_info_sizes{num_states, num_efforts, 3, 1};
+  //auto info_connector = builder.AddSystem<InfoConnector>(
+  //    num_positions, num_velocities, num_efforts);
+  //auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(
+  //    input_info_sizes);
 
-  auto info_connector = builder.AddSystem<InfoConnector>(num_positions, num_velocities, num_efforts);
-  auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(input_info_sizes);
+  //auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(
+  //    VectorXd::Zero(num_efforts));
+  //auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(
+  //    VectorXd::Zero(3));
+  //auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(
+  //    VectorXd::Zero(1));
 
-  auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(VectorXd::Zero(num_efforts));
-  auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(VectorXd::Zero(3));
-  auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(VectorXd::Zero(1));
 
   VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
-  params_vec << K_vec, C, x_desired;
+  params_vec << K_vec, E, x_desired;
   AffineParams params(num_states, num_efforts);
   params.SetDataVector(params_vec);
 
@@ -359,29 +374,78 @@ int do_main(int argc, char* argv[]) {
   auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
           (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
 
-  builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
-  builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
-  builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
-  builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
-  builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
-  builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
-  builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
-  builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
-  builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
+  const string channel_x = "CASSIE_STATE";
+  const string channel_u = "CASSIE_INPUT";
+  const string channel_config = "PD_CONFIG";
+  
+  // Create state publisher.
+  auto state_pub = builder.AddSystem(
+      drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
+  state_pub->set_publish_period(1.0/200.0);
+  builder.Connect(state_sender->get_output_port(0),
+                  state_pub->get_input_port());
+
+  // Create state receiver.
+  auto state_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant->get_rigid_body_tree());
+  builder.Connect(state_sub->get_output_port(),
+                  state_receiver->get_input_port(0));
+
+  // Create command sender.
+  auto command_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm));
+  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant->get_rigid_body_tree());
+  command_pub->set_publish_period(1.0/200.0);
+
+  builder.Connect(command_sender->get_output_port(0),
+                  command_pub->get_input_port());
+
+  builder.Connect(plant->state_output_port(),
+                  state_sender->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(0), 
+                  clqr_controller->get_input_port_info());
+  builder.Connect(constant_params_source->get_output_port(),
+                  clqr_controller->get_input_port_params());
+  builder.Connect(clqr_controller->get_output_port(0),
+                  command_sender->get_input_port(0));
+  builder.Connect(clqr_controller->get_output_port(0),
+                  control_output->get_input_port());
+  builder.Connect(control_output->get_output_port(),
+                  plant->actuator_command_input_port());
+
+  //builder.Connect(plant->state_output_port(), 
+                  //visualizer_publisher.get_input_port(0));
+
+
+  //builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
+  //builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
+  //builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
+  //builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
+  //builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
+  //builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
+  //builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
+  //builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
+  //builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
 
   auto diagram = builder.Build();
 
   drake::systems::Simulator<double> simulator(*diagram);
-  drake::systems::Context<double>& context = diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
-  
-  drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
-  state.SetFromVector(x_sol);
+  drake::systems::Context<double>& context =
+    diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
+
+  if (FLAGS_simulation_type != "timestepping") {
+    drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
+    state.SetFromVector(x_sol);
+  }
+
   
   //auto zero_input = MatrixXd::Zero(num_efforts,1);
   //context.FixInputPort(0, zero_input);
   
-  //simulator.set_publish_every_time_step(false);
-  //simulator.set_publish_at_initialization(false);
+  simulator.set_publish_every_time_step(false);
+  simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
   

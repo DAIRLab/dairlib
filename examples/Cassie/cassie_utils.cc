@@ -758,6 +758,7 @@ VectorX<T> CassiePlant<T>::CalcMVdotCassieStanding(VectorX<T> x,
 
     auto J_tree = tree_.positionConstraintsJacobian(k_cache);
     right_hand_side += J_tree.transpose()*lambda_tree;
+
   }
 
   MatrixX<T> J_contact = CalcContactJacobianCassie(q, 

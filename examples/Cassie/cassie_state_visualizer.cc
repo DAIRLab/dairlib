@@ -1,3 +1,4 @@
+#include <gflags/gflags.h>
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -13,15 +14,34 @@
 
 namespace dairlib{
 
+// Simulation parameters
+// Flag to determine the model to use (Fixed or floating base)
+DEFINE_string(model_type, "Fixed", 
+              "Type of model to use - 'Fixed' or 'Floating' base");
+
 using std::endl;
 using std::cout;
 using dairlib::systems::SubvectorPassThrough;
 using drake::systems::Simulator;
 using dairlib::systems::RobotOutputReceiver;
 
-int doMain() {
+int doMain(int argc, char* argv[] ) {
+
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   RigidBodyTree<double> tree;
-  buildFixedBaseCassieTree(tree);
+
+  if (FLAGS_model_type == "Fixed") {
+    buildFixedBaseCassieTree(tree);
+  }
+  else {
+    buildFloatingBaseCassieTree(tree);
+    // Adding the ground plane
+    const double terrain_size = 4;
+    const double terrain_depth = 0.05;
+    drake::multibody::AddFlatTerrainToWorld(&tree, terrain_size, terrain_depth);
+
+  }
 
   cout << endl << "****bodies****" << endl;
   for (int i = 0; i < tree.get_num_bodies(); i++)
@@ -90,4 +110,4 @@ int doMain() {
 
 }
 
-int main() { return dairlib::doMain(); }
+int main(int argc, char* argv[]) { return dairlib::doMain(argc, argv); }

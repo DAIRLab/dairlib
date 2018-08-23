@@ -198,6 +198,7 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
   // Adding joint limit constraints
   map<string, int> position_map =
     plant.get_rigid_body_tree().computePositionNameToIndexMap();
+  double joint_limit_tolerance = 0.0;
   for (auto const& b : plant.get_rigid_body_tree().get_bodies()) {
     if(!b->has_parent_body()) continue;
     auto const& joint = b->getJoint();
@@ -213,20 +214,23 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
     }
   }
 
-  // z axis constraint
-  //prog.AddConstraint(q(2) >= 0.1);
 
-  // Friction constraints
-  const double mu = 0.5;
+  // Friction magnitude constraints
+  const double mu = 0.8;
   for (int i = 0; i < num_contacts; i++) {
+
     //prog.AddConstraint(lambda(i*3 + num_tree_constraints) >= 0);
     prog.AddConstraint(lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+    //prog.AddConstraint(-lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
     prog.AddConstraint(lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+    //prog.AddConstraint(-lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
   }
 
 
- prog.AddQuadraticCost(
-      (q - q_init).dot(q - q_init) + (u - u_init).dot(u - u_init));
+  VectorXd u_zero = VectorXd::Zero(plant.get_num_actuators());
+  prog.AddQuadraticCost(
+      (q - q_init).dot(q - q_init) + (u - u_zero).dot(u - u_zero));
+  prog.AddQuadraticCost(lambda(2)*lambda(2) + lambda(5)*lambda(5) + lambda(8)*lambda(8) + lambda(11)*lambda(11));
 
 
   prog.SetInitialGuess(q, q_init);

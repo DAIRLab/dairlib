@@ -221,9 +221,9 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
 
     //prog.AddConstraint(lambda(i*3 + num_tree_constraints) >= 0);
     prog.AddConstraint(lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
-    //prog.AddConstraint(-lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+    prog.AddConstraint(-lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
     prog.AddConstraint(lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
-    //prog.AddConstraint(-lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+    prog.AddConstraint(-lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
   }
 
 

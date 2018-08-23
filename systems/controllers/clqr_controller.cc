@@ -39,9 +39,13 @@ MatrixXd ClqrController::computeF() {
 
   // Contact Jacobian
   CassiePlant<double> cassie_plant(plant_);
-  MatrixXd J_contact = cassie_plant.CalcContactJacobianCassie(x0_.head(num_positions_), 
-                                                              x0_.tail(num_velocities_),
-                                                              lambda0_.size() - J_tree.rows());
+  MatrixXd J_contact;
+
+  if (num_positions_ == 22) {
+    J_contact = cassie_plant.CalcContactJacobianCassie(x0_.head(num_positions_), 
+                                                      x0_.tail(num_velocities_),
+                                                      lambda0_.size() - J_tree.rows());
+  }
 
   MatrixXd J(J_tree.rows() + J_contact.rows(), J_tree.cols());
   J << J_tree, 
@@ -91,8 +95,16 @@ MatrixXd ClqrController::computeK() {
   auto lambda0_autodiff = x_u_l0_autodiff.tail(lambda0_.size());
 
   CassiePlant<AutoDiffXd> cassie_plant(plant_autodiff_);
-  auto x_dot0_autodiff = cassie_plant.CalcTimeDerivativesCassieStanding(
+  VectorX<AutoDiffXd> x_dot0_autodiff;
+
+  if (num_positions_ == 22) {
+  x_dot0_autodiff = cassie_plant.CalcTimeDerivativesCassieStanding(
       x0_autodiff, u0_autodiff, lambda0_autodiff); 
+  }else {
+  x_dot0_autodiff = cassie_plant.CalcTimeDerivativesCassie(
+        x0_autodiff, u0_autodiff, lambda0_autodiff); 
+  }
+
 
   // Making sure that the derivative is zero (fixed point)
   VectorXd x_dot0 = autoDiffToValueMatrix(x_dot0_autodiff);

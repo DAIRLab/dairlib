@@ -90,7 +90,7 @@ int do_main(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm;
 
   std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf");
-  std::unique_ptr<RigidBodyTree<double>> tree_solver = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf");
+  std::unique_ptr<RigidBodyTree<double>> tree_autodiff = makeFixedBaseCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf");
   
   const int num_efforts = tree->get_num_actuators();
   const int num_positions = tree->get_num_positions();
@@ -108,21 +108,18 @@ int do_main(int argc, char* argv[]) {
     FLAGS_dt = 0.0;
   
   auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
+  RigidBodyPlant<AutoDiffXd> plant_autodiff(std::move(tree_autodiff), FLAGS_dt);
 
-  // plant to pass to the solver
-  RigidBodyPlant<double> plant_solver(std::move(tree_solver), FLAGS_dt);
   
   drake::systems::CompliantMaterial default_material;
   default_material.set_youngs_modulus(FLAGS_youngs_modulus)
       .set_dissipation(FLAGS_dissipation)
       .set_friction(FLAGS_us, FLAGS_ud);
   plant->set_default_compliant_material(default_material);
-  plant_solver.set_default_compliant_material(default_material);
   drake::systems::CompliantContactModelParameters model_parameters;
   model_parameters.characteristic_radius = FLAGS_contact_radius;
   model_parameters.v_stiction_tolerance = FLAGS_v_tol;
   plant->set_contact_model_parameters(model_parameters);
-  plant_solver.set_contact_model_parameters(model_parameters);
 
 
   VectorXd x0 = VectorXd::Zero(num_states);
@@ -202,7 +199,7 @@ int do_main(int argc, char* argv[]) {
 
   cout << "Starting to solve" << endl;
   vector<VectorXd> sol_tfp = SolveCassieTreeAndFixedPointConstraints(
-      plant_solver, num_constraint_forces, q_init, u_init, lambda_init, fixed_joints, print_debug);
+      *plant, num_constraint_forces, q_init, u_init, lambda_init, fixed_joints, print_debug);
 
   VectorXd q_sol = sol_tfp.at(0);
   VectorXd u_sol = sol_tfp.at(1);
@@ -235,11 +232,11 @@ int do_main(int argc, char* argv[]) {
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*1.0;
 
   //Building the controller
-  auto clqr_controller = builder.AddSystem<ClqrController>(plant,
+  auto clqr_controller = builder.AddSystem<ClqrController>(*plant,
+                                                           plant_autodiff,
                                                            x_sol,
                                                            u_sol,
                                                            lambda_sol,
-                                                           J_collision,
                                                            Q,
                                                            R);
   VectorXd K_vec = clqr_controller->GetKVec();

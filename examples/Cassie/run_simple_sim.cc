@@ -19,11 +19,13 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "systems/primitives/subvector_pass_through.h"
+#include "multibody/solve_multibody_constraints.h"
 
 #include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib{
   using dairlib::systems::SubvectorPassThrough;
+  using dairlib::multibody::SolveTreeConstraints;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
@@ -138,7 +140,7 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map.at("knee_left"));
   fixed_joints.push_back(map.at("knee_right"));
 
-  auto q0 = solvePositionConstraints(
+  auto q0 = SolveTreeConstraints(
       plant->get_rigid_body_tree(),
       x0.head(plant->get_rigid_body_tree().get_num_positions()), fixed_joints);
   x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;

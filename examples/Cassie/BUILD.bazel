@@ -234,6 +234,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         ":cassie_utils",
+        "//multibody:solve_multibody_constraints",
     ],
 )
 

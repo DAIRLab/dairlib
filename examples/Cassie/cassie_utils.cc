@@ -316,9 +316,16 @@ MatrixX<T> CassiePlant<T>::CalcContactJacobianCassie(VectorX<T> q,
   Matrix3Xd normal_total, xA_total, xB_total;
   vector<int> idxA_total, idxB_total;
 
+
   // This (const cast) is an ugly way of doing it. Change it later if a better method is available
   const_cast<RigidBodyTree<double>&>(tree_).collisionDetect(
       k_cache_double, phi_total, normal_total, xA_total, xB_total, idxA_total, idxB_total);
+
+  VectorXd phi(num_contacts);
+  Matrix3Xd normal(3, num_contacts);
+  Matrix3Xd xA(3, num_contacts);
+  Matrix3Xd xB(3, num_contacts);
+  vector<int> idxA(num_contacts), idxB(num_contacts);
 
   const int num_total_contacts = normal_total.cols();
 
@@ -344,38 +351,43 @@ MatrixX<T> CassiePlant<T>::CalcContactJacobianCassie(VectorX<T> q,
     }
   }
 
-  Matrix3Xd normal = Matrix3Xd::Zero(normal_total.rows(), num_contacts);
   for (int i = 0; i < num_contacts; i++) {
+    phi(i) = phi_total(contact_ind.at(i));
     normal.col(i) = normal_total.col(contact_ind.at(i));
+    xA.col(i) = xA_total.col(contact_ind.at(i));
+    xB.col(i) = xB_total.col(contact_ind.at(i));
+    idxA.at(i) = idxA_total.at(contact_ind.at(i));
+    idxB.at(i) = idxB_total.at(contact_ind.at(i));
   }
   
   const Map<Matrix3Xd> normal_map(
-      normal.data(), normal_total.rows(), num_contacts);
+      normal.data(), 3, num_contacts);
 
-  vector<Map<Matrix3Xd>> tangents;
+  vector<Map<Matrix3Xd>> tangents_map_vector;
 
-  Matrix3Xd tmp_mat1 = Matrix3Xd::Zero(3, 4);
-  Map<Matrix3Xd> tmp_map1(tmp_mat1.data(), 3, 4);
-  Matrix3Xd tmp_mat2 = Matrix3Xd::Zero(3, 4);
-  Map<Matrix3Xd> tmp_map2(tmp_mat2.data(), 3, 4);
-  tangents.push_back(tmp_map1);
-  tangents.push_back(tmp_map2);
+  Matrix3Xd tmp_mat1 = Matrix3Xd::Zero(3, num_contacts);
+  Map<Matrix3Xd> tmp_map1(tmp_mat1.data(), 3, num_contacts);
+  Matrix3Xd tmp_mat2 = Matrix3Xd::Zero(3, num_contacts);
+  Map<Matrix3Xd> tmp_map2(tmp_mat2.data(), 3, num_contacts);
+  tangents_map_vector.push_back(tmp_map1);
+  tangents_map_vector.push_back(tmp_map2);
 
-  tree_.surfaceTangents(normal_map, tangents);
+  tree_.surfaceTangents(normal_map, tangents_map_vector);
 
 
   //Computing the position Jacobian
   vector<MatrixX<T>> Jd(num_contacts);
 
+
   for (int i=0; i<num_contacts; i++) {
     auto tmp_JA = tree_.transformPointsJacobian(k_cache,
-                                                xA_total.col(contact_ind.at(i)), 
-                                                idxA_total.at(contact_ind.at(i)),
+                                                xA.col(i), 
+                                                idxA.at(i),
                                                 world_ind, 
                                                 true);
     auto tmp_JB = tree_.transformPointsJacobian(k_cache,
-                                                xB_total.col(contact_ind.at(i)), 
-                                                idxB_total.at(contact_ind.at(i)),
+                                                xB.col(i), 
+                                                idxB.at(i),
                                                 world_ind, 
                                                 true);
     Jd.at(i) = tmp_JA - tmp_JB;
@@ -389,9 +401,9 @@ MatrixX<T> CassiePlant<T>::CalcContactJacobianCassie(VectorX<T> q,
 
     MatrixX<T> J_pt(num_contact_constraints, tree_.get_num_positions());
 
-    auto normal_pt = normal.col(contact_ind.at(i));
-    auto tangent1_pt = tangents.at(0).col(contact_ind.at(i));
-    auto tangent2_pt = tangents.at(1).col(contact_ind.at(i));
+    auto normal_pt = normal.col(i);
+    auto tangent1_pt = tangents_map_vector.at(0).col(i);
+    auto tangent2_pt = tangents_map_vector.at(1).col(i);
 
     J_pt.row(0) = normal_pt.transpose()*Jd.at(i);
     J_pt.row(1) = tangent1_pt.transpose()*Jd.at(i);
@@ -405,6 +417,69 @@ MatrixX<T> CassiePlant<T>::CalcContactJacobianCassie(VectorX<T> q,
 
 
 }
+
+
+template<typename T>
+MatrixX<T> CassiePlant<T>::CalcContactJacobianCassie(VectorX<T> q,
+                                                     VectorX<T> v,
+                                                     int num_contact_constraints,
+                                                     ContactInfo contact_info) const {
+
+  const int num_contacts = 4;
+  const int num_constraints_per_contact = num_contact_constraints/num_contacts;
+
+  //Computing double versions
+  VectorX<double> q_double = DiscardGradient(q);
+  VectorX<double> v_double = DiscardGradient(v);
+
+  KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
+  KinematicsCache<double> k_cache_double = tree_.doKinematics(q_double, v_double);
+
+
+  //Computing the position Jacobian
+  vector<MatrixX<T>> Jd(num_contacts);
+
+  const int world_ind = GetBodyIndexFromName(tree_, "world");
+
+  for (int i=0; i<num_contacts; i++) {
+    auto tmp_JA = tree_.transformPointsJacobian(k_cache,
+                                                contact_info.xA.col(i), 
+                                                contact_info.idxA.at(i),
+                                                world_ind, 
+                                                true);
+    auto tmp_JB = tree_.transformPointsJacobian(k_cache,
+                                                contact_info.xB.col(i), 
+                                                contact_info.idxB.at(i),
+                                                world_ind, 
+                                                true);
+    Jd.at(i) = tmp_JA - tmp_JB;
+  }
+
+
+  //Computing the 3 jacobians for each contact point
+  MatrixX<T> J(num_contact_constraints, tree_.get_num_positions());
+
+  for (int i=0; i<num_contacts; i++) {
+
+    MatrixX<T> J_pt(num_contact_constraints, tree_.get_num_positions());
+
+    auto normal_pt = contact_info.normal.col(i);
+    auto tangent1_pt = contact_info.tangents_map_vector.at(0).col(i);
+    auto tangent2_pt = contact_info.tangents_map_vector.at(1).col(i);
+
+    J_pt.row(0) = normal_pt.transpose()*Jd.at(i);
+    J_pt.row(1) = tangent1_pt.transpose()*Jd.at(i);
+    J_pt.row(2) = tangent2_pt.transpose()*Jd.at(i);
+
+    J.block(i*num_constraints_per_contact, 0, num_constraints_per_contact, tree_.get_num_positions()) =  J_pt;
+            
+  }
+
+  return J;
+
+
+}
+
 
 
 

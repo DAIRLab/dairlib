@@ -78,7 +78,6 @@ class ClqrController : public AffineController {
     VectorXd x0_;
     VectorXd u0_;
     VectorXd lambda0_;
-    MatrixXd J_contact_;
     int num_positions_;
     int num_velocities_;
     int num_states_;

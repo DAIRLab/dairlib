@@ -175,9 +175,6 @@ int do_main(int argc, char* argv[]) {
   VectorXd q0 = SolveTreeConstraints(
           plant->get_rigid_body_tree(), x0.head(num_positions), fixed_joints);
 
-  cout << "x_start: " << x_start.transpose() << endl;
-  cout << "q0: " << q0.transpose() << endl;
-
   x0.head(num_positions) = q0;
 
   VectorXd x_init = x0;
@@ -216,8 +213,6 @@ int do_main(int argc, char* argv[]) {
   cout << "******************lambda_sol*********************" << endl;
   cout << lambda_sol.transpose() << endl;
 
-  MatrixXd J_collision = MatrixXd::Zero(0, 0);
-
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(
           num_states - 2*num_constraints, num_states - 2*num_constraints);
@@ -240,14 +235,14 @@ int do_main(int argc, char* argv[]) {
                                                            Q,
                                                            R);
   VectorXd K_vec = clqr_controller->GetKVec();
-  VectorXd C = u_sol; 
+  VectorXd E = u_sol; 
   VectorXd x_desired = x_sol;
   cout << "K: " << K_vec.transpose() << endl;
-  cout << "C: " << C.transpose() << endl;
+  cout << "E: " << E.transpose() << endl;
   cout << "xdes: " << x_desired.transpose() << endl;
 
   VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
-  params_vec << K_vec, C, x_desired;
+  params_vec << K_vec, E, x_desired;
   AffineParams params(num_states, num_efforts);
   params.SetDataVector(params_vec);
   auto constant_params_source = builder.AddSystem<ConstantVectorSource<double>>(params);
@@ -282,7 +277,6 @@ int do_main(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant->get_rigid_body_tree());
   command_pub->set_publish_period(1.0/200.0);
-
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 

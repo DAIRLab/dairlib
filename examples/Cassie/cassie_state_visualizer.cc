@@ -39,7 +39,7 @@ int doMain(int argc, char* argv[] ) {
     // Adding the ground plane
     const double terrain_size = 4;
     const double terrain_depth = 0.05;
-    drake::multibody::AddFlatTerrainToWorld(&tree, terrain_size, terrain_depth);
+    //drake::multibody::AddFlatTerrainToWorld(&tree, terrain_size, terrain_depth);
 
   }
 

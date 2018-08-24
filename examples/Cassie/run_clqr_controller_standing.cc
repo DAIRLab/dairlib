@@ -36,6 +36,7 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix;
 using Eigen::Dynamic;
+using Eigen::EigenSolver;
 using drake::VectorX;
 using drake::MatrixX;
 using drake::systems::Context;
@@ -111,36 +112,6 @@ class InfoConnector: public LeafSystem<double> {
 
 
 
-//Class to serve as a pass through port that just prints the value of the input port. Useful for debugging
-class DebugPassThrough: public LeafSystem<double> {
-
-  public:
-    DebugPassThrough(int size, bool debug_flag = true): size_(size), debug_flag_(debug_flag) {
-
-    this->DeclareVectorInputPort(BasicVector<double>(size_));
-    this->DeclareVectorOutputPort(BasicVector<double>(size_), &dairlib::DebugPassThrough::CopyOut);
-  }
-
-  const int size_;
-  bool debug_flag_;
-
-  private:
-    void CopyOut(const Context<double>& context, BasicVector<double>* output) const {
-
-      const auto input = this->EvalVectorInput(context, 0);
-      const VectorX<double> input_vector = input->get_value();
-
-
-      if(debug_flag_) {
-        cout << input_vector.transpose() << endl;
-        cout << "------------------------------------------------------------------------------------------" << endl;
-      }
-      output->SetFromVector(input_vector);
-    }
-};
-
-
-
 int do_main(int argc, char* argv[]) {
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -197,12 +168,12 @@ int do_main(int argc, char* argv[]) {
   plant->set_contact_model_parameters(model_parameters);
 
   // Visualizer
-  //DrakeVisualizer& visualizer_publisher = 
-  //  *builder.template AddSystem<DrakeVisualizer>(
-  //      plant->get_rigid_body_tree(), &lcm);
-  //visualizer_publisher.set_name("visualizer_publisher");
-  //builder.Connect(plant->state_output_port(), 
-  //                visualizer_publisher.get_input_port(0));
+  DrakeVisualizer& visualizer_publisher = 
+    *builder.template AddSystem<DrakeVisualizer>(
+        plant->get_rigid_body_tree(), &lcm);
+  visualizer_publisher.set_name("visualizer_publisher");
+  builder.Connect(plant->state_output_port(), 
+                  visualizer_publisher.get_input_port(0));
 
 
   VectorXd x0 = VectorXd::Zero(num_states);
@@ -265,6 +236,10 @@ int do_main(int argc, char* argv[]) {
   //fixed_joints.push_back(map.at("ankle_joint_right"));
   //fixed_joints.push_back(map.at("toe_left"));
   //fixed_joints.push_back(map.at("toe_right"));
+  
+  VectorXd q0 = SolveTreeConstraints(
+          plant->get_rigid_body_tree(), x0.head(num_positions), fixed_joints);
+  x0.head(num_positions) = q0;
 
   
   const int num_tree_constraints = 2;
@@ -297,6 +272,8 @@ int do_main(int argc, char* argv[]) {
   KinematicsCache<double> k_cache_sol = plant->get_rigid_body_tree().doKinematics(q_sol, v_sol);
   MatrixXd M = plant->get_rigid_body_tree().massMatrix(k_cache_sol);
 
+  std::cout << "Eigen Values of M: " << endl << M.eigenvalues() << endl;
+
   // Making sure that the joint state solution is within limits
   DRAKE_DEMAND(CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_sol));
 
@@ -313,9 +290,6 @@ int do_main(int argc, char* argv[]) {
                                                u_sol, 
                                                lambda_sol) << endl;
 
-  cout << "J tree " << endl;
-  cout << plant->get_rigid_body_tree().positionConstraintsJacobian(k_cache_sol);
-  
 
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(num_states - 2*num_total_constraints, num_states - 2*num_total_constraints);
@@ -326,11 +300,10 @@ int do_main(int argc, char* argv[]) {
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
   Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*1;
-  R(8, 8) = 0.1;
-  R(9, 9) = 0.1;
+  R(8, 8) = 10;
+  R(9, 9) = 10;
   
   const double fixed_point_tolerance = 1e-3;
-
 
   //Building the controller
   auto clqr_controller = builder.AddSystem<systems::ClqrController>(*plant,
@@ -351,18 +324,18 @@ int do_main(int argc, char* argv[]) {
   cout << "E: " << E.transpose() << endl;
   cout << "xdes: " << x_desired.transpose() << endl;
 
-  //vector<int> input_info_sizes{num_states, num_efforts, 3, 1};
-  //auto info_connector = builder.AddSystem<InfoConnector>(
-  //    num_positions, num_velocities, num_efforts);
-  //auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(
-  //    input_info_sizes);
+  vector<int> input_info_sizes{num_states, num_efforts, 3, 1};
+  auto info_connector = builder.AddSystem<InfoConnector>(
+      num_positions, num_velocities, num_efforts);
+  auto multiplexer_info = builder.AddSystem<Multiplexer<double>>(
+      input_info_sizes);
 
-  //auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(
-  //    VectorXd::Zero(num_efforts));
-  //auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(
-  //    VectorXd::Zero(3));
-  //auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(
-  //    VectorXd::Zero(1));
+  auto constant_zero_source_efforts = builder.AddSystem<ConstantVectorSource<double>>(
+      VectorXd::Zero(num_efforts));
+  auto constant_zero_source_imu = builder.AddSystem<ConstantVectorSource<double>>(
+      VectorXd::Zero(3));
+  auto constant_zero_source_timestamp = builder.AddSystem<ConstantVectorSource<double>>(
+      VectorXd::Zero(1));
 
 
   VectorXd params_vec(num_states*num_efforts + num_efforts + num_states);
@@ -374,60 +347,56 @@ int do_main(int argc, char* argv[]) {
   auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
           (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
 
-  const string channel_x = "CASSIE_STATE";
-  const string channel_u = "CASSIE_INPUT";
-  const string channel_config = "PD_CONFIG";
-  
-  // Create state publisher.
-  auto state_pub = builder.AddSystem(
-      drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
-  state_pub->set_publish_period(1.0/200.0);
-  builder.Connect(state_sender->get_output_port(0),
-                  state_pub->get_input_port());
+  //const string channel_x = "CASSIE_STATE";
+  //const string channel_u = "CASSIE_INPUT";
+  //const string channel_config = "PD_CONFIG";
+  //
+  //// Create state publisher.
+  //auto state_pub = builder.AddSystem(
+  //    drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+  //auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
+  //state_pub->set_publish_period(1.0/200.0);
+  //builder.Connect(state_sender->get_output_port(0),
+  //                state_pub->get_input_port());
 
-  // Create state receiver.
-  auto state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant->get_rigid_body_tree());
-  builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
+  //// Create state receiver.
+  //auto state_sub = builder.AddSystem(
+  //    LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+  //auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant->get_rigid_body_tree());
+  //builder.Connect(state_sub->get_output_port(),
+  //                state_receiver->get_input_port(0));
 
-  // Create command sender.
-  auto command_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm));
-  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant->get_rigid_body_tree());
-  command_pub->set_publish_period(1.0/200.0);
+  //// Create command sender.
+  //auto command_pub = builder.AddSystem(
+  //    LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm));
+  //auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant->get_rigid_body_tree());
+  //command_pub->set_publish_period(1.0/200.0);
+  //builder.Connect(command_sender->get_output_port(0),
+  //                command_pub->get_input_port());
 
-  builder.Connect(command_sender->get_output_port(0),
-                  command_pub->get_input_port());
-
-  builder.Connect(plant->state_output_port(),
-                  state_sender->get_input_port_state());
-  builder.Connect(state_receiver->get_output_port(0), 
-                  clqr_controller->get_input_port_info());
-  builder.Connect(constant_params_source->get_output_port(),
-                  clqr_controller->get_input_port_params());
-  builder.Connect(clqr_controller->get_output_port(0),
-                  command_sender->get_input_port(0));
-  builder.Connect(clqr_controller->get_output_port(0),
-                  control_output->get_input_port());
-  builder.Connect(control_output->get_output_port(),
-                  plant->actuator_command_input_port());
-
-  //builder.Connect(plant->state_output_port(), 
-                  //visualizer_publisher.get_input_port(0));
+  //builder.Connect(plant->state_output_port(),
+  //                state_sender->get_input_port_state());
+  //builder.Connect(state_receiver->get_output_port(0), 
+  //                clqr_controller->get_input_port_info());
+  //builder.Connect(constant_params_source->get_output_port(),
+  //                clqr_controller->get_input_port_params());
+  //builder.Connect(clqr_controller->get_output_port(0),
+  //                command_sender->get_input_port(0));
+  //builder.Connect(clqr_controller->get_output_port(0),
+  //                control_output->get_input_port());
+  //builder.Connect(control_output->get_output_port(),
+  //                plant->actuator_command_input_port());
 
 
-  //builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
-  //builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
-  //builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
-  //builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
-  //builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
-  //builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
-  //builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
-  //builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
-  //builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
+  builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
+  builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
+  builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
+  builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
+  builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
+  builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
+  builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
+  builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
+  builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
 
   auto diagram = builder.Build();
 
@@ -439,13 +408,10 @@ int do_main(int argc, char* argv[]) {
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
     state.SetFromVector(x_sol);
   }
-
   
-  //auto zero_input = MatrixXd::Zero(num_efforts,1);
-  //context.FixInputPort(0, zero_input);
   
-  simulator.set_publish_every_time_step(false);
-  simulator.set_publish_at_initialization(false);
+  //simulator.set_publish_every_time_step(false);
+  //simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
   

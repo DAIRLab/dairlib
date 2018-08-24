@@ -68,6 +68,16 @@ bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree,
                               bool print_debug_messages = true);
 
 
+struct ContactInfo {
+    VectorXd phi;
+    Matrix3Xd normal;
+    Matrix3Xd xA;
+    Matrix3Xd xB;
+    vector<int> idxA;
+    vector<int> idxB;
+    vector<Map<Matrix3Xd>> tangents_map_vector;
+};
+
 template<typename T>
 class CassiePlant {
 
@@ -79,6 +89,12 @@ class CassiePlant {
     MatrixX<T> CalcContactJacobianCassie(VectorX<T> q,
                                          VectorX<T> v,
                                          int num_contact_constraints) const;
+    
+    MatrixX<T> CalcContactJacobianCassie(VectorX<T> q, 
+                                         VectorX<T> v,
+                                         int num_contact_constraints,
+                                         ContactInfo contact_info) const;
+                                         
 
 
     void CalcTimeDerivativesCassie(VectorX<T> x,

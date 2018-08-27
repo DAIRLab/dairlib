@@ -10,7 +10,7 @@ using Eigen::Vector3d;
 using drake::solvers::Constraint;
 using drake::AutoDiffVecXd;
 using drake::solvers::MathematicalProgram;
-
+using namespace std;
 std::unique_ptr<RigidBodyTree<double>> makeFloatBaseCassieTreePointer(
     std::string filename) {
   auto tree = std::make_unique<RigidBodyTree<double>>();
@@ -144,136 +144,6 @@ void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
         body->get_mutable_joint());
   ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
 }
-
-VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
-                                  VectorXd q_init,
-                                  std::vector<int> fixed_joints) {
- 
-  MathematicalProgram prog;
-  auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
-  Eigen::MatrixXd lb = tree.joint_limit_min;
-  Eigen::MatrixXd ub = tree.joint_limit_max;
-  //Eigen::VectorXd lb = -Eigen::VectorXd::Ones(tree.get_num_positions());
-  // Eigen::VectorXd ub = Eigen::VectorXd::Ones(tree.get_num_positions());
-  // what is this constrant
-  auto constraint = std::make_shared<TreePositionConstraint>(tree);
-  prog.AddConstraint(constraint, q);
-  for (uint i = 0; i < fixed_joints.size(); i++) {
-    int j = fixed_joints[i];
-    prog.AddConstraint(q(j) == q_init(j));
-  }
-  for (int i = 0;i<tree.get_num_positions();i++){
-        prog.AddConstraint(q(i) <= ub(i));
-  }
-  for (int i = 0;i<tree.get_num_positions();i++){
-        prog.AddConstraint(q(i) >= lb(i));
-  }
-  prog.AddQuadraticCost((q - q_init).dot(q - q_init));
-  prog.SetInitialGuessForAllVariables(q_init);
-  prog.Solve();
-  return prog.GetSolution(q);
-}
-
-TreePositionConstraint::TreePositionConstraint(
-    const RigidBodyTree<double>& tree, const std::string& description) :
-    Constraint(tree.getNumPositionConstraints(),
-               tree.get_num_positions(),
-               VectorXd::Zero(tree.getNumPositionConstraints()),
-               VectorXd::Zero(tree.getNumPositionConstraints()),
-               description) {
-  tree_ = &tree;
-}
-
-void TreePositionConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                                    Eigen::VectorXd* y) const {
-  AutoDiffVecXd y_t;
-  Eval(drake::math::initializeAutoDiff(x), &y_t);
-  *y = drake::math::autoDiffToValueMatrix(y_t);
-}
-
-void TreePositionConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-                                    AutoDiffVecXd* y) const {
-  const AutoDiffVecXd q = x.head(tree_->get_num_positions());
-  KinematicsCache<drake::AutoDiffXd> cache = tree_->doKinematics(q);
-  *y = tree_->positionConstraints(cache);
-}
-
-void TreePositionConstraint::DoEval(
-    const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& x,
-    drake::VectorX<drake::symbolic::Expression>* y) const {
-  throw std::logic_error(
-      "TreePositionConstraint does not support symbolic evaluation.");
-}
-
-VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, VectorXd x) {
-
-  bool debug_flag = true;
-
-  MatrixXd B = tree.B;
-  auto k_cache = tree.doKinematics(x.head(tree.get_num_positions()), x.tail(tree.get_num_velocities()));
-  MatrixXd M = tree.massMatrix(k_cache);
-
-  const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
-  VectorXd C = tree.dynamicsBiasTerm(k_cache, no_external_wrenches, true);
-  //VectorXd u = B.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(C);
-  MatrixXd J = tree.positionConstraintsJacobian(k_cache, true);
-
-
-  // Computing lambda using the zero rows of B
-  int num_zero_rows = 0;
-  vector<int> zero_row_indices;
-  for (int i=0; i<B.rows(); i++) {
-    if (B.row(i).isZero()) {
-      num_zero_rows++;
-      zero_row_indices.push_back(i);
-    }
-  }
-
-  // Block of J and C used to compute lambda
-  MatrixXd Jb = MatrixXd::Zero(J.rows(), num_zero_rows);
-  VectorXd Cb = VectorXd::Zero(num_zero_rows);
-  for (int i=0; i<num_zero_rows; i++) {
-    Jb.col(i) = J.col(zero_row_indices.at(i));
-    Cb(i) = C(zero_row_indices.at(i));
-  }
-
-  Jb.transposeInPlace();
-
-  VectorXd lambda = Jb.completeOrthogonalDecomposition().solve(Cb);
-
-  MatrixXd CJ = C - J.transpose()*lambda;
-
-  // Computing u
-  VectorXd u = B.completeOrthogonalDecomposition().solve(CJ);
-
-  if (debug_flag) {
-
-    std::cout << "*****************C******************" << std::endl;
-    std::cout << C << std::endl;
-    std::cout << "*****************B******************" << std::endl;
-    std::cout << B << std::endl;
-    std::cout << "*****************J******************" << std::endl;
-    std::cout << J << std::endl;
-    std::cout << "*****************Jb*****************" << std::endl;
-    std::cout << Jb << std::endl;
-    std::cout << "*****************Cb*****************" << std::endl;
-    std::cout << Cb << std::endl;
-    std::cout << "**************lambda****************" << std::endl;
-    std::cout << lambda << std::endl;
-    std::cout << "****************CJ******************" << std::endl;
-    std::cout << CJ << std::endl;
-    std::cout << "****************u*******************" << std::endl;
-    std::cout << u << std::endl;
-    std::cout << "**************Check*****************" << std::endl;
-    std::cout << C - J.transpose()*lambda - B*u << std::endl;
-
-  }
-
-
-  return u;
-
-}
-
 
 int GetBodyIndexFromName(const RigidBodyTree<double>& tree, 
                          string name) {

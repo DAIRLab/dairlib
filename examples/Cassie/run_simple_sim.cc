@@ -21,6 +21,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/cassie_solver.h"
 
 namespace dairlib{
   using dairlib::systems::SubvectorPassThrough;
@@ -109,65 +110,78 @@ int do_main(int argc, char* argv[]) {
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
 
-  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(
-      plant->get_rigid_body_tree().get_num_positions() +
-      plant->get_rigid_body_tree().get_num_velocities());
-  
-  // position to index
-  std::map<std::string, int>  map =
-      plant->get_rigid_body_tree().computePositionNameToIndexMap();
-  
-  // initial states
-  const double stanceHipTarget = 0.6; //0.4
-  const double stanceKneeTarget = -1.3; //-1.3
-  const double toeOffset = -1.475; //-1.6
+  RigidBodyTree<double> tree_for_snopt;
+  buildFloatBaseCassieTree(tree_for_snopt);
 
-   // initial states
- // Change the intial condition of leg jionts 
-  x0(map.at("hip_pitch_left")) = stanceHipTarget;//.269;
-  x0(map.at("hip_pitch_right")) = stanceHipTarget;//.269;
+  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(
+      tree_for_snopt.get_num_positions() +
+      tree_for_snopt.get_num_velocities());
+
+  std::map<std::string, int>  map =
+      tree_for_snopt.computePositionNameToIndexMap();
+
+  x0(map.at("base_x")) = 0.0;
+  x0(map.at("base_y")) = 0.0;
+  x0(map.at("base_z")) = 2.2;
+
+  x0(map.at("base_roll")) = 0.0;
+  x0(map.at("base_pitch")) = 0.0;
+  x0(map.at("base_yaw")) = 0.0;
+  
+  x0(map.at("hip_roll_left")) = 0.1;
+  x0(map.at("hip_roll_right")) = -0.1;
+  x0(map.at("hip_yaw_left")) = 0;
+  x0(map.at("hip_yaw_right")) = 0;
+  x0(map.at("hip_pitch_left")) = .269;
+  x0(map.at("hip_pitch_right")) = .269;
   // x0(map.at("achilles_hip_pitch_left")) = -.44;
   // x0(map.at("achilles_hip_pitch_right")) = -.44;
   // x0(map.at("achilles_heel_pitch_left")) = -.105;
   // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  x0(map.at("knee_left")) = stanceKneeTarget;//.644;
-  x0(map.at("knee_right")) = stanceKneeTarget;//-.644;
-  x0(map.at("ankle_joint_left")) = 13/180*M_PI-stanceKneeTarget;//.792;
-  x0(map.at("ankle_joint_right")) = 13/180*M_PI-stanceKneeTarget;//.792;
-
+  x0(map.at("knee_left")) = -.744;
+  x0(map.at("knee_right")) = -.744;
+  x0(map.at("ankle_joint_left")) = .81;
+  x0(map.at("ankle_joint_right")) = .81;
+  
   // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
   // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
-
+  
   // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
   // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
-
-  x0(map.at("toe_left")) = toeOffset;//-60.0*M_PI/180.0;
-  x0(map.at("toe_right")) = toeOffset;//-60.0*M_PI/180.0;
+  
+  x0(map.at("toe_left")) = -60*M_PI/180.0;
+  x0(map.at("toe_right")) = -60*M_PI/180.0;
 
   //some joints are fixed
   std::vector<int> fixed_joints;
-  fixed_joints.push_back(map.at("hip_pitch_left"));
-  fixed_joints.push_back(map.at("hip_pitch_right"));
-  fixed_joints.push_back(map.at("knee_left"));
-  fixed_joints.push_back(map.at("knee_right"));
-/*
-  for(auto it = map.cbegin(); it != map.cend(); ++it)
-  {
-      std::cout << it->first << " " << "\n";
-  }
-  */
+  fixed_joints.push_back(map.at("base_yaw"));
+  fixed_joints.push_back(map.at("hip_roll_left"));
+  fixed_joints.push_back(map.at("hip_roll_right"));
+
   //solver for a feasible state
- auto q0 = solvePositionConstraints(
-      plant->get_rigid_body_tree(),
-      x0.head(plant->get_rigid_body_tree().get_num_positions()), fixed_joints);
-x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
+  const int num_tree_constraints = 2;
+  const int num_contacts = 4;
+  const int num_constraints_per_contact = 3;
+  const int num_contact_constraints = num_contacts * num_constraints_per_contact;
+  const int num_efforts = tree_for_snopt.get_num_actuators();
 
-  //std::cout<<"************feasible state***********"<<std::endl;
-  //std::cout << q0 << std::endl;
+    const int num_total_constraints = num_tree_constraints + num_contact_constraints;
+    VectorXd u_init = VectorXd::Zero(num_efforts);
+    VectorXd lambda_init = VectorXd::Zero(num_total_constraints);
 
-  double pitchShift = 0;//-0.15;
-  x0(map.at("base_z")) = 1.03; //1.14 when using old intial pose
-  x0(map.at("base_pitch")) = pitchShift;
+    auto solution = solveCassieStandingFixedConstraints(
+      tree_for_snopt,
+      x0.head(tree_for_snopt.get_num_positions()),
+      u_init,
+      lambda_init,
+      num_total_constraints,
+      fixed_joints);
+
+    VectorXd q0 = solution.head(tree_for_snopt.get_num_positions());  
+    x0.head(tree_for_snopt.get_num_positions()) = q0;
+
+    std::cout << "************** qualified state ****************" << std::endl;
+    std::cout << q0 << std::endl;
   
   // end 
   
@@ -195,7 +209,7 @@ x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(1);
+  simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
 
   lcm.StartReceiveThread();

@@ -1,15 +1,15 @@
-group "2.lcm-spy" {
-    cmd "0.lcm-spy" {
-        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+group "0.operator" {
+    cmd "1.state-visualizer" {
+        exec = "bazel-bin/examples/Cassie/cassie_state_visualizer";
+        host = "localhost";
+    }
+    cmd "0.drake-director" {
+        exec = "bazel-bin/director/drake-director --script examples/Cassie/pd_panel.py --script examples/Cassie/show_time.py";
         host = "localhost";
     }
 }
 
 group "1.simulated-robot" {
-    cmd "1.simulator" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim";
-        host = "localhost";
-    }
     cmd "0.pd-controller" {
         exec = "bazel-bin/examples/Cassie/run_pd_controller";
         host = "localhost";
@@ -18,8 +18,8 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_mpc_controller";
         host = "localhost";
     }
-    cmd "4.auto-jaco-mpc-controller" {
-        exec = "bazel-bin/examples/Cassie/run_auto_jaco_mpc_controller";
+    cmd "1.simulator" {
+        exec = "bazel-bin/examples/Cassie/run_simple_sim";
         host = "localhost";
     }
     cmd "2.dispatcher" {
@@ -28,14 +28,21 @@ group "1.simulated-robot" {
     }
 }
 
-group "0.operator" {
-    cmd "0.drake-director" {
-        exec = "bazel-bin/director/drake-director --script examples/Cassie/pd_panel.py --script examples/Cassie/show_time.py";
+group "2.lcm-spy" {
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
         host = "localhost";
     }
-    cmd "1.state-visualizer" {
-        exec = "bazel-bin/examples/Cassie/cassie_state_visualizer";
-        host = "localhost";
+}
+
+group "3.cassie-robot" {
+    cmd "0.pd-controller" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller";
+        host = "dair-cassie";
+    }
+    cmd "2.dispatcher" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_cassie_dispatch";
+        host = "dair-cassie";
     }
 }
 

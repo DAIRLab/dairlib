@@ -1,6 +1,7 @@
 #include "cassie_dispatch_types.h"
 #include "cassie_names.h"
 #include <vector>
+#include <chrono>
 
 #define CASSIE_NUM_POS 16
 #define CASSIE_NUM_VEL 16
@@ -80,6 +81,10 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
     lcm_in.effort[7] = robot_out.rightLeg.hipPitchDrive.torque;
     lcm_in.effort[8] = robot_out.rightLeg.kneeDrive.torque;
     lcm_in.effort[9] = robot_out.rightLeg.footDrive.torque;
+
+    auto current_time = std::chrono::system_clock::now();
+    auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
+    lcm_in.timestamp  = duration_in_seconds.count()*1e6;
     
     return lcm_in;
 }

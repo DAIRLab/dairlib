@@ -23,8 +23,8 @@ position_names = [
     "hip_pitch_right",
     "knee_left",
     "knee_right",
-    "toe_crank_left",
-    "toe_crank_right"]
+    "toe_left",
+    "toe_right"]
 
 velocity_names = [
     "hip_roll_leftdot",
@@ -35,8 +35,8 @@ velocity_names = [
     "hip_pitch_rightdot",
     "knee_leftdot",
     "knee_rightdot",
-    "toe_crank_leftdot",
-    "toe_crank_rightdot"]
+    "toe_leftdot",
+    "toe_rightdot"]
 
 effort_names = [
     "hip_roll_left_motor",
@@ -47,8 +47,8 @@ effort_names = [
     "hip_pitch_right_motor",
     "knee_left_motor",
     "knee_right_motor",
-    "toe_crank_left_motor",
-    "toe_crank_right_motor"]
+    "toe_left_motor",
+    "toe_right_motor"]
 
 pos_names = msg.position_names
 vel_names = msg.velocity_names

@@ -126,14 +126,14 @@ cassie_dispatch_robot_out_t CassieRobotDispatchInterface::Receive()
       // Does not use sequence number for determining newest packet
       while (poll(&fd, 1, 0)) {
         ioctl(sock, FIONREAD, &nbytes);
-        std::cout <<  "ioctl: " << nbytes << std::endl;
+        //std::cout <<  "ioctl: " << nbytes << std::endl;
         if (des_len <= nbytes){
           nbytes = recv(sock, recvbuf, des_len, 0);
         }
         else {
           recv(sock, recvbuf, 0, 0); // Discard packet
         }
-          std::cout <<  "received: " << nbytes << std::endl;
+          //std::cout <<  "received: " << nbytes << std::endl;
       }
   } while (des_len != nbytes);
 
@@ -157,7 +157,7 @@ void CassieRobotDispatchInterface::polling_function(std::function<void(cassie_di
     {
       break;
     }
-    std::cout <<  "Sending State To Controller" << std::endl;
+    //std::cout <<  "Sending State To Controller" << std::endl;
     handler(cassie_out);
   }
   //std::cout <<  "Terminate Polling UDP" << std::endl;

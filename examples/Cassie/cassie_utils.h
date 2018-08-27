@@ -32,6 +32,7 @@ using drake::systems::BasicVector;
 using drake::systems::ContinuousState;
 
 namespace dairlib {
+//first part: build floating and fixed base Cassie tree
 
 /// Construct and create a unique pointer to a RigidBodyTree<double>
 /// for the fixed base version of Cassie.
@@ -52,15 +53,6 @@ std::unique_ptr<RigidBodyTree<double>> makeFixedBaseCassieTreePointer(
 void buildFixedBaseCassieTree(RigidBodyTree<double>& tree,
 std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
 
-    
-/// Solves the position constraints for a position that satisfies them
-Eigen::VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
-                                         Eigen::VectorXd q_init,
-                                         std::vector<int> fixed_joints);
-
-
-VectorXd ComputeCassieControlInputAnalytical(const RigidBodyTree<double>& tree, VectorXd x);
-
 int GetBodyIndexFromName(const RigidBodyTree<double>& tree, 
                          string name);
 
@@ -72,23 +64,8 @@ bool CassieJointsWithinLimits(const RigidBodyTree<double>& tree,
                               double tolerance = 0.0,
 bool print_debug_messages = true);
 
-class TreePositionConstraint : public drake::solvers::Constraint {
- public:
-  TreePositionConstraint(const RigidBodyTree<double>& tree,
-                         const std::string& description = "");
-  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd* y) const override;
 
-  void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-              drake::AutoDiffVecXd* y) const override;
-
-  void DoEval(const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& x,
-              drake::VectorX<drake::symbolic::Expression>* y) const override;
-
- private:
-    const RigidBodyTree<double>* tree_;
-};
-
+// third part, useful for Cassie relative Calculation
 template<typename T>
 class CassiePlant {
 
@@ -107,6 +84,7 @@ class CassiePlant {
                                                 VectorX<T> u, 
                                                 VectorX<T> lambda,
                                                 ContinuousState<T>* xdot) const;
+
 
     RigidBodyPlant<T>* plant_;
     const RigidBodyTree<double>& tree_;

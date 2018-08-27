@@ -4,6 +4,9 @@ namespace dairlib {
 namespace multibody {
 namespace utils {
 
+using std::map;
+using std::string;
+
 map<string, int> makeNameToPositionsMap(const RigidBodyTree<double>& tree) {
   map<string, int> name_to_index_map;
 
@@ -24,7 +27,6 @@ map<string, int> makeNameToVelocitiesMap(const RigidBodyTree<double>& tree) {
 
 map<string, int> makeNameToActuatorsMap(const RigidBodyTree<double>& tree) {
   map<string, int> name_to_index_map;
-  std::cout << tree.get_num_actuators() << std::endl;
   for (int i = 0; i < tree.get_num_actuators(); ++i) {
     std::cout << tree.actuators[i].name_ << std::endl;
     name_to_index_map[tree.actuators[i].name_] = i;
@@ -32,6 +34,6 @@ map<string, int> makeNameToActuatorsMap(const RigidBodyTree<double>& tree) {
   return name_to_index_map;
 }
 
-}
-}
-}
+}  // namespace utils
+}  // namespace multibody
+}  // namespace dairlib

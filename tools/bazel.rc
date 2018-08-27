@@ -51,3 +51,4 @@ build --action_env=CCACHE_DISABLE=1
 # build with snopt
 build --define=WITH_SNOPT=ON
 build --define=WITH_GUROBI=ON
+build --define=WITH_SNOPT=ON

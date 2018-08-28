@@ -29,6 +29,18 @@ cc_library(
 )
 
 cc_library(
+    name = "affine_controller",
+    srcs = ["affine_controller.cc",],
+    hdrs = ["affine_controller.h"],
+    deps = [
+            "//systems/framework:vector",
+            "@drake//systems/framework:leaf_system",
+	    ":controllers"
+            ]
+)
+
+
+cc_library(
     name = "mpc_controllers",
     srcs = ["mpc_balance_controller.cc",],
     hdrs = ["mpc_balance_controller.h"],

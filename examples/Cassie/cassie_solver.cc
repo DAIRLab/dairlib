@@ -155,6 +155,9 @@ Eigen::VectorXd solveCassieStandingFixedConstraints(const RigidBodyTree<double>&
 
   // other constraint on state
   // prog.AddConstraint(q(2)>= 0.5);
+  prog.AddConstraint(q(20) <= 0);
+  prog.AddConstraint(q(21) <= 0);
+
   // add Friction constraints
   const double mu = 0.7;
   for (int i = 0; i < num_contacts; i++) {
@@ -163,10 +166,10 @@ Eigen::VectorXd solveCassieStandingFixedConstraints(const RigidBodyTree<double>&
     
     // with tangent force
     
-    prog.AddConstraint(lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
-    prog.AddConstraint(-lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
-    prog.AddConstraint(lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
-    prog.AddConstraint(-lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+    //prog.AddConstraint(lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+    //prog.AddConstraint(-lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+    //prog.AddConstraint(lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+    //prog.AddConstraint(-lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
   
   
     // without tangent force
@@ -174,12 +177,16 @@ Eigen::VectorXd solveCassieStandingFixedConstraints(const RigidBodyTree<double>&
     prog.AddConstraint(lambda(i*3 + 2 + num_tree_constraints) == 0);
   }
 
+
   // contact force should balance
   //prog.AddConstraint(lambda(num_tree_constraints) + lambda(3 + num_tree_constraints) == lambda(6+num_tree_constraints) + lambda(9 + num_tree_constraints));
   //prog.AddConstraint(lambda(num_tree_constraints) + lambda(6 + num_tree_constraints) == lambda(3+num_tree_constraints) + lambda(9 + num_tree_constraints));
-  //prog.AddQuadraticCost(0.1*(lambda(2) + lambda(8) - lambda(5) - lambda(11))*(lambda(2) + lambda(8) - lambda(5) - lambda(11)));
-  //prog.AddQuadraticCost(0.1*(lambda(2) + lambda(5) - lambda(8) - lambda(11))*(lambda(2) + lambda(5) - lambda(8) - lambda(11)));
+  //prog.AddQuadraticCost((lambda(2) + lambda(8) - lambda(5) - lambda(11))*(lambda(2) + lambda(8) - lambda(5) - lambda(11)));
+  //prog.AddQuadraticCost((lambda(2) + lambda(5) - lambda(8) - lambda(11))*(lambda(2) + lambda(5) - lambda(8) - lambda(11)));
 
+  for(int i=0;i<num_contacts-1;i++){
+    prog.AddConstraint(lambda(i*3 + num_tree_constraints) == lambda((i+1)*3 + num_tree_constraints));
+  }
   // TODO: Cassie will fall down, what is the
   VectorXd u_zero = VectorXd::Zero(tree.get_num_actuators());
   prog.AddQuadraticCost(
@@ -232,6 +239,8 @@ Eigen::VectorXd solveCassieStandingFixedConstraints(const RigidBodyTree<double>&
   for(int i=0; i<tree.get_num_positions(); i++){
     cout << tree.getPositionName(i) << ":" << q_sol(i) << endl;
   }
+  cout << "**************** input solver ****************" << endl;
+  cout << u_sol << endl;
 
   VectorXd sol = VectorXd::Zero(tree.get_num_positions() + tree.get_num_actuators() + lambda_sol.rows());
   sol << q_sol,u_sol,lambda_sol;
@@ -721,14 +730,19 @@ bool checkCassieFixed(const RigidBodyTree<double>& tree, VectorXd q_sol, VectorX
   }
   auto J_tree = tree.positionConstraintsJacobian(cache);
   Mvdot += J_tree.transpose()*lambda_tree + J.transpose()*lambda_ground;
-  cout << "*************** Mvdot ***************" << endl;
+  MatrixXd M = tree.massMatrix(cache);
+
+  VectorXd vdot = M.completeOrthogonalDecomposition().solve(Mvdot);
+  cout << "*************** vdot ***************" << endl;
+
+  bool vdot_is_zero = true;
   for(int i=0; i<num_velocities ; i++){
-    cout << Mvdot(i) << endl;
-    if(abs(Mvdot(i))>1e-4){
-      return false;
+    cout << vdot(i) << endl;
+    if(abs(vdot(i))>1e-4){
+      vdot_is_zero = false;
     }
   }
-  return true;
+  return vdot_is_zero;
 }
 
 template<typename T>
@@ -770,8 +784,10 @@ VectorX<T> CalcMVdotCassieStanding(const RigidBodyTree<double>& tree, VectorX<T>
   }
   // contact force from ground 
   MatrixX<T> J_contact = CalCassieContactJacobian(tree, q , v , num_contact_constraints);
+  
+  // two options: 1. return Mvdot     2.return vdot  
+  // return vdot is much slower
   right_hand_side += J_contact.transpose()*lambda_ground;
-
   VectorX<T> vdot = M.completeOrthogonalDecomposition().solve(right_hand_side);
 
   return right_hand_side;

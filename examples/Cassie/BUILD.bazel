@@ -215,6 +215,26 @@ cc_binary(
             ]
 )
 
+cc_binary(
+    name = "run_pd_standing_controller",
+    srcs = ["run_pd_standing_controller.cc"],
+    deps = [
+            "//systems:robot_lcm_systems",
+            "//systems/controllers",
+	    "//systems/controllers:affine_controller",
+            "//systems/controllers:pd_config_lcm",
+            "@drake//systems/framework:diagram_builder",
+            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/analysis:simulator",
+            "@drake//multibody:rigid_body_tree",
+            "@drake//manipulation/util",
+            "@drake//lcm",
+            ":cassie_utils",
+            ":cassie_urdf",
+	    ":cassie_solver"
+            ]
+)
+
 
 cc_binary(
     name = "cassie_state_visualizer",

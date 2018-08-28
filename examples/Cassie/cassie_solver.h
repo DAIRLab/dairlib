@@ -48,10 +48,12 @@ Eigen::VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
                                          Eigen::VectorXd q_init,
                                          std::vector<int> fixed_joints);
 
+/// Cassie is (1: standing on the ground  2: satisfy the tree constraint)
 Eigen::VectorXd solveCassieStandingConstraints(const RigidBodyTree<double>& tree,
                                          Eigen::VectorXd q_init,
                                          std::vector<int> fixed_joints);
 
+// Cassie is (1:fixed, acceleration is zero 2: standing on the ground  3: satisfy the tree constraint)
 Eigen::VectorXd solveCassieStandingFixedConstraints(const RigidBodyTree<double>& tree,
                                          Eigen::VectorXd q_init,
                                          Eigen::VectorXd u_init,

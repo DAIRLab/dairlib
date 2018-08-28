@@ -10,28 +10,27 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_pd_config.hpp"
 #include "systems/robot_lcm_systems.h"
-#include "systems/controllers/linear_controller.h"
-#include "systems/controllers/mpc_balance_controller.h"
+#include "systems/controllers/affine_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/cassie_solver.h"
 
-using namespace std;
 namespace dairlib {
 
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
-
+using std::endl;
+using std::cout;
 int doMain() {
   drake::systems::DiagramBuilder<double> builder;
   drake::lcm::DrakeLcm lcm;
 
   RigidBodyTree<double> tree;
   buildFloatBaseCassieTree(tree);
-  //buildFixedBaseCassieTree(tree);
+
   const std::string channel_x = "CASSIE_STATE";
   const std::string channel_u = "CASSIE_INPUT";
-  //const std::string channel_config = "PD_CONFIG";
+  const std::string channel_config = "PD_CONFIG";
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
@@ -41,11 +40,11 @@ int doMain() {
                   state_receiver->get_input_port(0));
 
   // Create config receiver.
-  //auto config_sub = builder.AddSystem(
-  //    LcmSubscriberSystem::Make<dairlib::lcmt_pd_config>(channel_config, &lcm));
-  //auto config_receiver = builder.AddSystem<systems::PDConfigReceiver>(tree);
-  //builder.Connect(config_sub->get_output_port(),
-  //                config_receiver->get_input_port(0));
+  auto config_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_pd_config>(channel_config, &lcm));
+  auto config_receiver = builder.AddSystem<systems::PDConfigReceiver>(tree);
+  builder.Connect(config_sub->get_output_port(),
+                  config_receiver->get_input_port(0));
 
   // Create command sender.
   auto command_pub = builder.AddSystem(
@@ -55,8 +54,8 @@ int doMain() {
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
-  // tianze:  find desired 
-  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(
+
+ Eigen::VectorXd x0 = Eigen::VectorXd::Zero(
       tree.get_num_positions() +
       tree.get_num_velocities());
 
@@ -83,8 +82,8 @@ int doMain() {
   // x0(map.at("achilles_hip_pitch_right")) = -.44;
   // x0(map.at("achilles_heel_pitch_left")) = -.105;
   // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  x0(map.at("knee_left")) = -.544;
-  x0(map.at("knee_right")) = -.544;
+  x0(map.at("knee_left")) = -.744;
+  x0(map.at("knee_right")) = -.744;
   x0(map.at("ankle_joint_left")) = 1.41;
   x0(map.at("ankle_joint_right")) = 1.41;
   
@@ -128,29 +127,23 @@ int doMain() {
     VectorXd q0 = solution.head(tree.get_num_positions());  
     VectorXd u0 = solution.segment(tree.get_num_positions(),tree.get_num_actuators());
     VectorXd lambda0 = solution.tail(num_total_constraints);
-
     x0.head(tree.get_num_positions()) = q0;
-  // add linear controller to the system
-  // constructor of LinearController include number of position,velocity and input
-  auto controller = builder.AddSystem<systems::MpcBalanceController>(
+  auto controller = builder.AddSystem<systems::AffineController>(
       tree.get_num_positions(), tree.get_num_velocities(),
-      tree.get_num_actuators(),tree,x0,u0,lambda0);
-  
-  // get the robot state to compute the control output
+      tree.get_num_actuators(), u0, x0);
+
   builder.Connect(state_receiver->get_output_port(0),
                   controller->get_input_port_output());
-  
-  // receive the gains
-  //builder.Connect(config_receiver->get_output_port(0),
-  //                controller->get_input_port_config());
+
+  builder.Connect(config_receiver->get_output_port(0),
+                  controller->get_input_port_config());
 
   std::cout << controller->get_output_port(0).size() << std::endl;
   std::cout << command_sender->get_input_port(0).size() << std::endl;
-  // send the result to the commander
   builder.Connect(controller->get_output_port(0),
                   command_sender->get_input_port(0));
 
-  command_pub->set_publish_period(1.0/200.0);
+  command_pub->set_publish_period(1.0/1000.0);
 
 
   auto diagram = builder.Build();

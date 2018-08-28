@@ -26,6 +26,10 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_cassie_dispatch";
         host = "localhost";
     }
+    cmd "4.pd_standing" {
+        exec = "bazel-bin/examples/Cassie/run_pd_standing_controller";
+        host = "localhost";
+    }
 }
 
 group "2.lcm-spy" {

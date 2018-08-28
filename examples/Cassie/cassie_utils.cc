@@ -31,7 +31,7 @@ void buildFloatBaseCassieTree(RigidBodyTree<double>& tree,
       FindResourceOrThrow(filename),
       drake::multibody::joints::kRollPitchYaw, &tree);
 
-  drake::multibody::AddFlatTerrainToWorld(&tree, 4, 0.2); 
+  drake::multibody::AddFlatTerrainToWorld(&tree, 4, 0.1); 
   // Add distance constraints for the two legs
   double achilles_length = .5012;
   int heel_spring_left = tree.FindBodyIndex("heel_spring_left");

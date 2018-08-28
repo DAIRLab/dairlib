@@ -252,13 +252,14 @@ void MpcBalanceController::CalcControl(const Context<double>& context,
         this->EvalVectorInput(context, output_input_port_);
     // formulate the large mpc matrix, assume now we have 
     MatrixXd dynamic_matrix[14];
-    int N = 5;
-    int rho = 10;
+    int N = 6;
+    int rho = 100;
     VectorXd current_state = output->GetState();
     get_optimization_matrix(dynamic_matrix,N,current_state);
     //admm_solve(dynamic_matrix,N,current_state,rho);
     // call admmsolver to optimize problem to get u
     //VectorXd u = admm_solve(dynamic_matrix,N,current_state,rho);
+    //cout << u << endl;
     VectorXd u = u_des_;
     //send u as command
     control->SetDataVector(u);
@@ -290,7 +291,7 @@ VectorXd MpcBalanceController::admm_solve(MatrixXd dynamic_matrix[13],int N,Vect
     MatrixXd bin = dynamic_matrix[13];   
 
     MatrixXd Q = 10*MatrixXd::Identity(num_states_,num_states_);
-    MatrixXd R = .1*MatrixXd::Identity(num_inputs_,num_inputs_);
+    MatrixXd R = 1*MatrixXd::Identity(num_inputs_,num_inputs_);
 
 	int varnum = num_states_ + num_inputs_ + 2* num_contacts_nor_ + num_contacts_tan_ + 2;		
     // eigenvalue decomposition of H1
@@ -347,6 +348,7 @@ VectorXd MpcBalanceController::admm_solve(MatrixXd dynamic_matrix[13],int N,Vect
         xmin.segment(i*dimA,dimA) = qmin_;
         xmin.segment(N*dimA+i*dimC,dimC) = cmin_;
         xmin.segment(N*dimA+N*dimC+i*dimB,dimB) = umin_;
+        xmin.segment(N*(dimA+dimB+dimC)+i*2,2) = -5000*VectorXd::Ones(2);
     }
 
     double *varmax = xmax.data();
@@ -409,7 +411,7 @@ VectorXd MpcBalanceController::admm_solve(MatrixXd dynamic_matrix[13],int N,Vect
             // add quadratic cost on input
             for(int i=0;i<num_inputs_;i++){
                 for(int j=0;j<N;j++){
-                    obj += R(i,i) * xvar[N*(dimA+dimC)+j*dimB+i] * xvar[N*(dimA+dimC)+j*dimB+i];
+                    obj += R(i,i) * (xvar[N*(dimA+dimC)+j*dimB+i] - u_des_(i)) * (xvar[N*(dimA+dimC)+j*dimB+i] - u_des_(i)) ;
                 }
             }
 

@@ -117,8 +117,8 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   
   drake::lcm::DrakeLcm lcm;
-  std::unique_ptr<RigidBodyTree<double>> tree = makeFloatingBaseCassieTreePointer();
-  std::unique_ptr<RigidBodyTree<double>> tree_autodiff = makeFloatingBaseCassieTreePointer();
+  std::unique_ptr<RigidBodyTree<double>> tree = makeFloatingBaseCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf");
+  std::unique_ptr<RigidBodyTree<double>> tree_autodiff = makeFloatingBaseCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf");
 
   //Floating base adds 6 additional states for the base position and orientation
   const int num_positions = tree->get_num_positions();
@@ -224,8 +224,8 @@ int do_main(int argc, char* argv[]) {
   //fixed_joints.push_back(map.at("base_pitch"));
   fixed_joints.push_back(map.at("base_yaw"));
 
-  fixed_joints.push_back(map.at("hip_roll_left"));
-  fixed_joints.push_back(map.at("hip_roll_right"));
+  //fixed_joints.push_back(map.at("hip_roll_left"));
+  //fixed_joints.push_back(map.at("hip_roll_right"));
   //fixed_joints.push_back(map.at("hip_yaw_left"));
   //fixed_joints.push_back(map.at("hip_yaw_right"));
   //fixed_joints.push_back(map.at("hip_pitch_left"));
@@ -417,8 +417,8 @@ int do_main(int argc, char* argv[]) {
   
   lcm.StartReceiveThread();
   
-  simulator.StepTo(std::numeric_limits<double>::infinity());
-  //simulator.StepTo(0.000000001);
+  //simulator.StepTo(std::numeric_limits<double>::infinity());
+  simulator.StepTo(0.000000001);
   return 0;
 }
 

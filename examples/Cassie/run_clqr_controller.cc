@@ -258,7 +258,7 @@ int do_main(int argc, char* argv[]) {
   
   // Create state publisher.
   auto state_pub = builder.AddSystem(
-      drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
   state_pub->set_publish_period(1.0/200.0);
   builder.Connect(state_sender->get_output_port(0),

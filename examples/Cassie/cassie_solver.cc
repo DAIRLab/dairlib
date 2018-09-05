@@ -216,14 +216,14 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
 
 
   // Friction magnitude constraints
-  const double mu = 0.8;
+  const double mu = 0.9;
   for (int i = 0; i < num_contacts; i++) {
 
     //prog.AddConstraint(lambda(i*3 + num_tree_constraints) >= 0);
     prog.AddConstraint(lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
-    //prog.AddConstraint(-lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+    prog.AddConstraint(-lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
     prog.AddConstraint(lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
-    //prog.AddConstraint(-lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+    prog.AddConstraint(-lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
   }
 
 

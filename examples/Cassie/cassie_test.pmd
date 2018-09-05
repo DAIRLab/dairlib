@@ -26,6 +26,10 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_clqr_controller_standing";
         host = "localhost";
     }
+    cmd "5.M matrix check" {
+        exec = "bazel-bin/examples/Cassie/cassie_M_check";
+        host = "localhost";
+    }
 }
 
 group "0.operator" {

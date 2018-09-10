@@ -215,7 +215,7 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
   }
 
 
-  // Friction magnitude constraints
+  // Friction cone constraints
   const double mu = 0.9;
   for (int i = 0; i < num_contacts; i++) {
 
@@ -226,11 +226,19 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
     prog.AddConstraint(-lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
   }
 
+  // Constraint to prevent euler angle singularities
+  prog.AddConstraint(q(4) <= 5);
+  prog.AddConstraint(q(4) >= 0);
+
 
   VectorXd u_zero = VectorXd::Zero(plant.get_num_actuators());
   prog.AddQuadraticCost(
       (q - q_init).dot(q - q_init) + (u - u_zero).dot(u - u_zero));
+
+  // Quadratic cost on lambda normal forces to spread out the forces.
   prog.AddQuadraticCost(lambda(2)*lambda(2) + lambda(5)*lambda(5) + lambda(8)*lambda(8) + lambda(11)*lambda(11));
+
+
 
 
   prog.SetInitialGuess(q, q_init);

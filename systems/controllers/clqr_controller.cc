@@ -109,16 +109,16 @@ MatrixXd ClqrController::computeK() {
   // Making sure that the derivative is zero (fixed point)
   VectorXd x_dot0 = autoDiffToValueMatrix(x_dot0_autodiff);
   
-  //if (!x_dot0.isZero(fixed_point_tolerance_)) {
+  if (!x_dot0.isZero(fixed_point_tolerance_)) {
 
-  //  std::cout << "********* x dot *********" << std::endl;
-  //  std::cout << x_dot0 << std::endl;
-  //  std::cout << "Tolerance: " << fixed_point_tolerance_ << std::endl;
-  //  
-  //  throw std::runtime_error(
-  //      "The nominal operating point (x0, u0) is not an equilibrium point "
-  //      "of the system.");
-  //}
+    std::cout << "********* x dot *********" << std::endl;
+    std::cout << x_dot0 << std::endl;
+    std::cout << "Tolerance: " << fixed_point_tolerance_ << std::endl;
+    
+    throw std::runtime_error(
+        "The nominal operating point (x0, u0) is not an equilibrium point "
+        "of the system.");
+  }
 
 
   const MatrixXd AB = 

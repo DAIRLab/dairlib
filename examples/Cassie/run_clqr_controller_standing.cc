@@ -224,12 +224,12 @@ int do_main(int argc, char* argv[]) {
   //fixed_joints.push_back(map.at("base_pitch"));
   fixed_joints.push_back(map.at("base_yaw"));
 
-  //fixed_joints.push_back(map.at("hip_roll_left"));
-  //fixed_joints.push_back(map.at("hip_roll_right"));
+  fixed_joints.push_back(map.at("hip_roll_left"));
+  fixed_joints.push_back(map.at("hip_roll_right"));
   //fixed_joints.push_back(map.at("hip_yaw_left"));
   //fixed_joints.push_back(map.at("hip_yaw_right"));
-  //fixed_joints.push_back(map.at("hip_pitch_left"));
-  //fixed_joints.push_back(map.at("hip_pitch_right"));
+  fixed_joints.push_back(map.at("hip_pitch_left"));
+  fixed_joints.push_back(map.at("hip_pitch_right"));
   //fixed_joints.push_back(map.at("knee_left"));
   //fixed_joints.push_back(map.at("knee_right"));
   //fixed_joints.push_back(map.at("ankle_joint_left"));
@@ -294,9 +294,9 @@ int do_main(int argc, char* argv[]) {
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(num_states - 2*num_total_constraints, num_states - 2*num_total_constraints);
   //Q corresponding to the positions
-  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*100.0;
+  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*0.1;
   //Q corresponding to the velocities
-  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*1.0;
+  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*100.0;
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
   Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*1;
@@ -347,56 +347,56 @@ int do_main(int argc, char* argv[]) {
   auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
           (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
 
-  //const string channel_x = "CASSIE_STATE";
-  //const string channel_u = "CASSIE_INPUT";
-  //const string channel_config = "PD_CONFIG";
-  //
-  //// Create state publisher.
-  //auto state_pub = builder.AddSystem(
-  //    drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
-  //auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
-  //state_pub->set_publish_period(1.0/200.0);
-  //builder.Connect(state_sender->get_output_port(0),
-  //                state_pub->get_input_port());
+  const string channel_x = "CASSIE_STATE";
+  const string channel_u = "CASSIE_INPUT";
+  const string channel_config = "PD_CONFIG";
+  
+  // Create state publisher.
+  auto state_pub = builder.AddSystem(
+      drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
+  state_pub->set_publish_period(1.0/200.0);
+  builder.Connect(state_sender->get_output_port(0),
+                  state_pub->get_input_port());
 
-  //// Create state receiver.
-  //auto state_sub = builder.AddSystem(
-  //    LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
-  //auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant->get_rigid_body_tree());
-  //builder.Connect(state_sub->get_output_port(),
-  //                state_receiver->get_input_port(0));
+  // Create state receiver.
+  auto state_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant->get_rigid_body_tree());
+  builder.Connect(state_sub->get_output_port(),
+                  state_receiver->get_input_port(0));
 
-  //// Create command sender.
-  //auto command_pub = builder.AddSystem(
-  //    LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm));
-  //auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant->get_rigid_body_tree());
-  //command_pub->set_publish_period(1.0/200.0);
-  //builder.Connect(command_sender->get_output_port(0),
-  //                command_pub->get_input_port());
+  // Create command sender.
+  auto command_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm));
+  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant->get_rigid_body_tree());
+  command_pub->set_publish_period(1.0/200.0);
+  builder.Connect(command_sender->get_output_port(0),
+                  command_pub->get_input_port());
 
-  //builder.Connect(plant->state_output_port(),
-  //                state_sender->get_input_port_state());
-  //builder.Connect(state_receiver->get_output_port(0), 
-  //                clqr_controller->get_input_port_info());
-  //builder.Connect(constant_params_source->get_output_port(),
-  //                clqr_controller->get_input_port_params());
-  //builder.Connect(clqr_controller->get_output_port(0),
-  //                command_sender->get_input_port(0));
-  //builder.Connect(clqr_controller->get_output_port(0),
-  //                control_output->get_input_port());
-  //builder.Connect(control_output->get_output_port(),
-  //                plant->actuator_command_input_port());
+  builder.Connect(plant->state_output_port(),
+                  state_sender->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(0), 
+                  clqr_controller->get_input_port_info());
+  builder.Connect(constant_params_source->get_output_port(),
+                  clqr_controller->get_input_port_params());
+  builder.Connect(clqr_controller->get_output_port(0),
+                  command_sender->get_input_port(0));
+  builder.Connect(clqr_controller->get_output_port(0),
+                  control_output->get_input_port());
+  builder.Connect(control_output->get_output_port(),
+                  plant->actuator_command_input_port());
 
 
-  builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
-  builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
-  builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
-  builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
-  builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
-  builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
-  builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
-  builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
-  builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
+  //builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
+  //builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
+  //builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
+  //builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
+  //builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
+  //builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
+  //builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
+  //builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
+  //builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
 
   auto diagram = builder.Build();
 
@@ -417,8 +417,8 @@ int do_main(int argc, char* argv[]) {
   
   lcm.StartReceiveThread();
   
-  //simulator.StepTo(std::numeric_limits<double>::infinity());
-  simulator.StepTo(0.000000001);
+  simulator.StepTo(std::numeric_limits<double>::infinity());
+  //simulator.StepTo(0.000000001);
   return 0;
 }
 

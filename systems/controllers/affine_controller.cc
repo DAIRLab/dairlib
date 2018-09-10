@@ -73,6 +73,8 @@ void AffineController::CalcControl(const Context<double>& context,
 
   VectorXd u = K*(desired_state - info->GetState()) + E;
 
+  std::cout << "u: " << u.transpose() << std::endl;
+
   control->SetDataVector(u);
   control->set_timestamp(info->get_timestamp());
     

@@ -128,7 +128,7 @@ int do_main(int argc, char* argv[]) {
   x0(1) = 0;
   x0(2) = -0.0131423;
   x0(3) = 1.42392;
-  x0(4) = 1.5708;
+  x0(4) = (M_PI/2)*1;
   x0(5) = 1.86435e-13;
   x0(6) = 0.0479853;
   x0(7) = 0.262;
@@ -155,6 +155,8 @@ int do_main(int argc, char* argv[]) {
   {
       cout << elem.first << " " << elem.second << endl;
   }
+
+
 
   // Making sure tha the joints are within limits
   DRAKE_DEMAND(CassieJointsWithinLimits(plant->get_rigid_body_tree(), x0));

@@ -220,7 +220,7 @@ int do_main(int argc, char* argv[]) {
 
   std::vector<int> fixed_joints;
 
-  //fixed_joints.push_back(map.at("base_roll"));
+  fixed_joints.push_back(map.at("base_roll"));
   //fixed_joints.push_back(map.at("base_pitch"));
   fixed_joints.push_back(map.at("base_yaw"));
 
@@ -294,9 +294,9 @@ int do_main(int argc, char* argv[]) {
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(num_states - 2*num_total_constraints, num_states - 2*num_total_constraints);
   //Q corresponding to the positions
-  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*0.1;
+  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*100;
   //Q corresponding to the velocities
-  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*100.0;
+  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*1.0;
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
   Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*1;

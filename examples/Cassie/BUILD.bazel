@@ -315,8 +315,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "cassie_M_check",
-    srcs = ["cassie_M_check.cc"],
+    name = "planar_clqr_controller_standing",
+    srcs = ["planar_clqr_controller_standing.cc"],
     deps = [
         "@drake//multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",

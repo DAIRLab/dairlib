@@ -1,0 +1,20 @@
+<!DOCTYPE FilterScript>
+<FilterScript>
+ <filter name="Remove Unreferenced Vertex"/>
+ <filter name="Remove Duplicated Vertex"/>
+ <filter name="Remove Duplicate Faces"/>
+ <filter name="Quadric Edge Collapse Decimation">
+  <Param description="Target number of faces" name="TargetFaceNum" value="0" tooltip="The desired final number of faces." type="RichInt"/>
+  <Param description="Percentage reduction (0..1)" name="TargetPerc" value="0.1" tooltip="If non zero, this parameter specifies the desired final size of the mesh as a percentage of the initial size." type="RichFloat"/>
+  <Param description="Quality threshold" name="QualityThr" value=".3" tooltip="Quality threshold for penalizing bad shaped faces.&lt;br>The value is in the range [0..1]&#xa; 0 accept any kind of face (no penalties),&#xa; 0.5  penalize faces with quality &lt; 0.5, proportionally to their shape&#xa;" type="RichFloat"/>
+  <Param description="Preserve Boundary of the mesh" name="PreserveBoundary" value="false" tooltip="The simplification process tries to do not affect mesh boundaries during simplification" type="RichBool"/>
+  <Param description="Boundary Preserving Weight" name="BoundaryWeight" value="1" tooltip="The importance of the boundary during simplification. Default (1.0) means that the boundary has the same importance of the rest. Values greater than 1.0 raise boundary importance and has the effect of removing less vertices on the border. Admitted range of values (0,+inf). " type="RichFloat"/>
+  <Param description="Preserve Normal" name="PreserveNormal" value="false" tooltip="Try to avoid face flipping effects and try to preserve the original orientation of the surface" type="RichBool"/>
+  <Param description="Preserve Topology" name="PreserveTopology" value="true" tooltip="Avoid all the collapses that should cause a topology change in the mesh (like closing holes, squeezing handles, etc). If checked the genus of the mesh should stay unchanged." type="RichBool"/>
+  <Param description="Optimal position of simplified vertices" name="OptimalPlacement" value="true" tooltip="Each collapsed vertex is placed in the position minimizing the quadric error.&#xa; It can fail (creating bad spikes) in case of very flat areas. &#xa;If disabled edges are collapsed onto one of the two original vertices and the final mesh is composed by a subset of the original vertices. " type="RichBool"/>
+  <Param description="Planar Simplification" name="PlanarQuadric" value="true" tooltip="Add additional simplification constraints that improves the quality of the simplification of the planar portion of the mesh." type="RichBool"/>
+  <Param description="Weighted Simplification" name="QualityWeight" value="false" tooltip="Use the Per-Vertex quality as a weighting factor for the simplification. The weight is used as a error amplification value, so a vertex with a high quality value will not be simplified and a portion of the mesh with low quality values will be aggressively simplified." type="RichBool"/>
+  <Param description="Post-simplification cleaning" name="AutoClean" value="true" tooltip="After the simplification an additional set of steps is performed to clean the mesh (unreferenced vertices, bad faces, etc)" type="RichBool"/>
+  <Param description="Simplify only selected faces" name="Selected" value="false" tooltip="The simplification is applied only to the selected set of faces.&#xa; Take care of the target number of faces!" type="RichBool"/>
+ </filter>
+</FilterScript>

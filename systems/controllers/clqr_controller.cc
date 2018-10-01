@@ -45,6 +45,8 @@ MatrixXd ClqrController::computeF() {
     J_contact = cassie_plant.CalcContactJacobianCassie(x0_.head(num_positions_), 
                                                       x0_.tail(num_velocities_),
                                                       lambda0_.size() - J_tree.rows());
+
+
   }
 
   MatrixXd J(J_tree.rows() + J_contact.rows(), J_tree.cols());
@@ -127,6 +129,14 @@ MatrixXd ClqrController::computeK() {
   A = AB.leftCols(num_states_);
   B = AB.block(
       0, num_states_, AB.rows(), num_efforts_);
+
+  //std::cout << A*P.transpose();
+  //std::cout << "-------------------------------------------------------------" << std::endl;
+  //std::cout << "-------------------------------------------------------------" << std::endl;
+  //std::cout << "-------------------------------------------------------------" << std::endl;
+
+  //auto linear_system = Linearize(plant_, *context, 0, kNoOutput);
+  //std::cout << linear_system->A()*P.transpose();
 
   DRAKE_DEMAND(A.rows() == num_states_);
   DRAKE_DEMAND(A.cols() == num_states_);

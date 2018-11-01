@@ -34,7 +34,7 @@ cc_test(
             ":pd_config_lcm",
             "//examples/Cassie:cassie_urdf",
             "@drake//multibody:rigid_body_tree",
-            "@drake//multibody/parsers",
+            "@drake//attic/multibody/parsers",
             "@drake//manipulation/util",
             "@gtest//:main",
             "@drake//systems/framework/test_utilities",

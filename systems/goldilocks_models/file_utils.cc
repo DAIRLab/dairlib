@@ -1,5 +1,5 @@
 #include <vector>
-#include "file_utils.h"
+#include "systems/goldilocks_models/file_utils.h"
 #include "drake/common/drake_assert.h"
 
 using namespace Eigen;
@@ -7,9 +7,9 @@ using std::ofstream;
 using std::ifstream;
 using std::cout;
 using std::string;
+using std::cout;
 
 const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
-
 
 namespace drake {
 namespace goldilocks_models {
@@ -29,9 +29,10 @@ MatrixXd readCSV (const string & path) {
         ++rows;
     }
     if (values.size() == 0) {
-      DRAKE_ABORT_MSG(("Could not read file " + path + " to load a CSV.").c_str());
+      DRAKE_ABORT_MSG(("Could not read " + path + " to load CSV.").c_str());
     }
-    return Map<const Matrix<double, Dynamic, Dynamic, RowMajor>>(values.data(), rows, values.size()/rows);
+    return Map<const Matrix<double, Dynamic, Dynamic, RowMajor>>(
+        values.data(), rows, values.size()/rows);
 }
 
 void writeCSV(const std::string& path, const MatrixXd& M) {
@@ -41,5 +42,5 @@ void writeCSV(const std::string& path, const MatrixXd& M) {
   outfile.close();
 }
 
-}
-}
+}  // namespace goldilocks_models
+}  // namespace drake

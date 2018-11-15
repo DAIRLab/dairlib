@@ -1,4 +1,3 @@
-load("@drake//tools:drake.bzl", "drake_cc_googletest", "drake_cc_library", "drake_cc_binary")
 load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
@@ -230,11 +229,11 @@ cc_binary(
             "//systems:robot_lcm_systems",
             ":cassie_urdf",
             "@drake//systems/framework:diagram_builder",
-            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/lcm",
             "@drake//systems/analysis:simulator",
             "@drake//lcm",
             "@drake//multibody:rigid_body_tree",
-            "//systems/lcm:lcm_log_parser",
+            "//systems/primitives:vector_aggregator",
             ":cassie_utils"
             ]
 )

@@ -34,7 +34,7 @@ class SubvectorPassThroughTest : public ::testing::Test {
     pass_through_ = make_unique<SubvectorPassThrough<double>>(size, start,
                                                               subvector_size);
     context_ = pass_through_->CreateDefaultContext();
-    output_ = pass_through_->AllocateOutput(*context_);
+    output_ = pass_through_->AllocateOutput();
   }
 
   Eigen::VectorXd input_value_;

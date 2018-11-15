@@ -3,16 +3,17 @@
 #include <Eigen/Dense>
 #include <iostream>
 #include <fstream>
-
-using std::cout;
-using std::string;
+#include <string>
 
 namespace drake {
 namespace goldilocks_models {
 
-Eigen::MatrixXd readCSV (const string & path);
 
+/// Read a CSV formatted file as an Eigen Matrix
+Eigen::MatrixXd readCSV(const std::string & path);
+
+/// Write an Eigen Matrix into a CSV formatted file
 void writeCSV(const std::string& path, const Eigen::MatrixXd& M);
 
-}
-}
+}  // namespace goldilocks_models
+}  // namespace drake

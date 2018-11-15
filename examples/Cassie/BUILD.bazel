@@ -24,7 +24,10 @@ cc_library(
           "@drake//solvers:constraint",
           "@drake//multibody:rigid_body_tree",
           "@drake//manipulation/util",
-          "//common"]
+          "//common",
+          "@drake//attic/multibody:rigid_body_tree_construction",
+          "@drake//attic/multibody/parsers",
+         ]
 )
 
 cc_library(
@@ -125,7 +128,11 @@ cc_binary(
         "//systems/primitives",
         ":cassie_udp_systems",
         ":cassie_udp_spoofer",
-        "//examples/Cassie/datatypes:cassie_networking"
+        "//examples/Cassie/datatypes:cassie_networking",
+        "@drake//attic/multibody/rigid_body_plant:rigid_body_plant",
+        "@drake//attic/multibody:rigid_body_tree_construction",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
+        "@drake//attic/multibody/parsers",
     ],
 )
 
@@ -191,7 +198,8 @@ cc_binary(
             "@drake//lcm",
             "@drake//multibody:rigid_body_tree",
             "@drake//manipulation/util",
-            ":cassie_utils"
+            ":cassie_utils",
+            "@drake//attic/multibody/rigid_body_plant:drake_visualizer",
             ]
 )
 
@@ -211,6 +219,8 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         ":cassie_utils",
+        "@drake//attic/multibody/rigid_body_plant:rigid_body_plant",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
     ],
 )
 

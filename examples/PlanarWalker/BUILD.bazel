@@ -15,6 +15,10 @@ cc_binary(
         "@drake//solvers",
         "@drake//lcm",
         "@gflags",
+        "@drake//attic/multibody/rigid_body_plant:rigid_body_plant",
+        "@drake//attic/multibody:rigid_body_tree_construction",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
+        "@drake//attic/multibody/parsers",
     ],
 )
 
@@ -31,6 +35,11 @@ cc_binary(
         "@drake//lcm",
         "@drake//systems/controllers",
         "@gflags",
+        "@drake//attic/multibody:rigid_body_tree_construction",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
+        "@drake//attic/multibody/parsers",
+        "@drake//attic/systems/controllers:control_util",
+        
     ],
 )
 
@@ -49,6 +58,9 @@ cc_binary(
         "@drake//systems/analysis:simulator",
         "@drake//systems/primitives",
         "@gflags",
+        "@drake//attic/multibody:rigid_body_tree_construction",
+        "@drake//attic/multibody/parsers",
+        "@drake//attic/multibody/rigid_body_plant:drake_visualizer",
     ],
 )
 
@@ -69,6 +81,9 @@ cc_library(
         "//systems/trajectory_optimization:dircon",
         "//systems/goldilocks_models",
         "@gflags",
+        "@drake//attic/multibody:rigid_body_tree_construction",
+        "@drake//attic/multibody/parsers",
+        "@drake//attic/multibody/rigid_body_plant:drake_visualizer",
     ],
 )
 
@@ -134,6 +149,9 @@ cc_binary(
         "@//systems/trajectory_optimization:dircon",
         "//systems/goldilocks_models",
         "@gflags",
+        "@drake//attic/multibody:rigid_body_tree_construction",
+        "@drake//attic/multibody/parsers",
+        "@drake//attic/multibody/rigid_body_plant:drake_visualizer",
     ],
 )
 

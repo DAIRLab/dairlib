@@ -24,9 +24,13 @@ group "1.simulated-robot" {
     }
 }
 
-group "2.lcm-spy" {
+group "2.lcm-tools" {
     cmd "0.lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/director/signal-scope";
         host = "localhost";
     }
 }

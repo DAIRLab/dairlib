@@ -1,14 +1,17 @@
 #include "cassie_udp_systems.h"
+#include "dairlib/lcmt_robot_output.hpp"
 
 namespace dairlib {
 
 using drake::systems::LeafSystem;
 using drake::systems::Context;
 using drake::systems::PublishEvent;
-CassieUdpOutputPublisher::CassieUdpOutputPublisher(std::shared_ptr<CassieUdpSpoofer> spoofer)
-{
-    _spoofer = spoofer;
-    this->DeclareAbstractInputPort();
+CassieUdpOutputPublisher::CassieUdpOutputPublisher(
+    std::shared_ptr<CassieUdpSpoofer> spoofer) {
+  _spoofer = spoofer;
+
+  this->DeclareAbstractInputPort("lcmt_robot_output",
+    drake::systems::Value<dairlib::lcmt_robot_output>{});
 }
 
 void CassieUdpOutputPublisher::set_publish_period(double period)

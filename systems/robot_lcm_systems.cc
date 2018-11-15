@@ -15,7 +15,8 @@ RobotOutputReceiver::RobotOutputReceiver(const RigidBodyTree<double>& tree) {
   tree_ = &tree;
   positionIndexMap_ = multibody::utils::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::utils::makeNameToVelocitiesMap(tree);
-  this->DeclareAbstractInputPort();
+  this->DeclareAbstractInputPort("lcmt_robot_output",
+    drake::systems::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(OutputVector<double>(
     tree.get_num_positions(), tree.get_num_velocities(),
     tree.get_num_actuators()),
@@ -90,7 +91,8 @@ void RobotOutputSender::Output(const Context<double>& context,
 RobotInputReceiver::RobotInputReceiver(const RigidBodyTree<double>& tree) {
   tree_ = &tree;
   actuatorIndexMap_ = multibody::utils::makeNameToActuatorsMap(tree);
-  this->DeclareAbstractInputPort();
+  this->DeclareAbstractInputPort("lcmt_robot_input",
+    drake::systems::Value<dairlib::lcmt_robot_input>{});
   this->DeclareVectorOutputPort(TimestampedVector<double>(
       tree.get_num_actuators()), &RobotInputReceiver::CopyInputOut);
 }

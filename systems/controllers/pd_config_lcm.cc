@@ -61,7 +61,8 @@ PDConfigReceiver::PDConfigReceiver(RigidBodyTree<double>& tree) {
   }
 
   //Velocity map:
-  this->DeclareAbstractInputPort();
+  this->DeclareAbstractInputPort("lcmt_pd_config",
+      drake::systems::Value<dairlib::lcmt_pd_config>{});
   this->DeclareVectorOutputPort(LinearConfig(tree.get_num_positions() +
                                              tree.get_num_velocities(),
                                              tree.get_num_actuators()),

@@ -82,30 +82,6 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
       int time_index = mode_start_[i] + j;
       vector<solvers::VectorXDecisionVariable> x_next;
 
-      // auto tmp = solvers::ConcatenateVariableRefList({h_vars().segment(time_index,1),
-      //                state_vars_by_mode(0, j),
-      //                state_vars_by_mode(0, j+1),
-      //                u_vars().segment(time_index * num_inputs(), num_inputs() * 2)});
-
-      // auto tmp = FindDecisionVariableIndices(state_vars_by_mode(i,j));
-      // std::cout << i <<"x" << j << ":" <<   std::endl;
-      // for (int k = 0; k < tmp.size(); k++) {
-      //   std::cout << tmp[k] <<   std::endl;
-      // }
-      // tmp = FindDecisionVariableIndices(state_vars_by_mode(i,j+1));
-      // std::cout << "i,j+1:" << std::endl;
-      // for (int k = 0; k < tmp.size(); k++) {
-      //   std::cout << tmp[k] << std::endl;
-      // }
-
-      // auto tmp2 = solvers::ConcatenateVariableRefList({h_vars().segment(time_index,1),
-      //                state_vars_by_mode(i, j),
-      //                state_vars_by_mode(i, j+1),
-      //                u_vars().segment(time_index * num_inputs(), num_inputs() * 2),
-      //                force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i) * 2),
-      //                collocation_force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
-      //                collocation_slack_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i))});
-
       AddConstraint(constraint,
                     {h_vars().segment(time_index,1),
                      state_vars_by_mode(i, j),

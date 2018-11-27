@@ -14,6 +14,8 @@
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/analysis/runge_kutta2_integrator.h"
+#include "drake/systems/analysis/runge_kutta3_integrator.h"
 
 #include "systems/robot_lcm_systems.h"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -106,6 +108,11 @@ int do_main(int argc, char* argv[]) {
   drake::systems::Simulator<double> simulator(*diagram);
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
+
+  drake::systems::Context<double>& sim_context = simulator.get_mutable_context();
+  auto integrator = simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>(*diagram, &sim_context);
+  integrator->set_maximum_step_size(FLAGS_timestep);
+
 
   Eigen::VectorXd x0 = Eigen::VectorXd::Zero(
       plant->get_rigid_body_tree().get_num_positions() +

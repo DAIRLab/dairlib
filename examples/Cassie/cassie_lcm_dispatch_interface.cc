@@ -7,7 +7,6 @@
 //#include "templates/hdrs/umessage.h"
 
 #include "drake/lcm/drake_lcm.h"
-#include "drake/lcm/drake_lcm_message_handler_interface.h"
 #include "drake/systems/framework/value.h"
 #include "drake/systems/lcm/serializer.h"
 

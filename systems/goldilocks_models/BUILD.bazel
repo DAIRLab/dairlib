@@ -12,7 +12,7 @@ cc_library(
     hdrs = ["file_utils.h",
             "symbolic_manifold.h"],
     deps = [
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//solvers",
         "@drake//common",
         "//systems/trajectory_optimization:dircon",

@@ -22,7 +22,7 @@ cc_library(
   hdrs = ["cassie_utils.h"],
   deps = ["@drake//solvers:mathematical_program",
           "@drake//solvers:constraint",
-          "@drake//multibody:rigid_body_tree",
+          "@drake//attic/multibody:rigid_body_tree",
           "@drake//manipulation/util",
           "//common",
           "@drake//attic/multibody:rigid_body_tree_construction",
@@ -115,7 +115,7 @@ cc_binary(
     name = "run_udp_sim",
     srcs = ["run_udp_sim.cc"],
     deps = [
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",
         "@drake//systems/framework",
@@ -177,7 +177,7 @@ cc_binary(
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
-            "@drake//multibody:rigid_body_tree",
+            "@drake//attic/multibody:rigid_body_tree",
             "@drake//manipulation/util",
             "@drake//lcm",
             ":cassie_utils",
@@ -196,7 +196,7 @@ cc_binary(
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
             "@drake//lcm",
-            "@drake//multibody:rigid_body_tree",
+            "@drake//attic/multibody:rigid_body_tree",
             "@drake//manipulation/util",
             ":cassie_utils",
             "@drake//attic/multibody/rigid_body_plant:drake_visualizer",
@@ -207,7 +207,7 @@ cc_binary(
     name = "run_simple_sim",
     srcs = ["run_simple_sim.cc"],
     deps = [
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",
         "@drake//systems/framework",
@@ -242,7 +242,7 @@ cc_binary(
             "@drake//systems/lcm",
             "@drake//systems/analysis:simulator",
             "@drake//lcm",
-            "@drake//multibody:rigid_body_tree",
+            "@drake//attic/multibody:rigid_body_tree",
             "//systems/primitives:vector_aggregator",
             ":cassie_utils"
             ]

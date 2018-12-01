@@ -7,7 +7,7 @@ cc_binary(
     srcs = ["run_passive.cc"],
     data = ["PlanarWalker.urdf"],
     deps = [
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",
         "@drake//systems/framework",
@@ -27,7 +27,7 @@ cc_binary(
     srcs = ["test_contact.cc"],
     data = ["PlanarWalker.urdf"],
     deps = [
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//manipulation/util",
         "@drake//math",
         "@drake//common",
@@ -41,7 +41,7 @@ cc_binary(
         "@drake//attic/systems/controllers:control_util",
         
     ],
-)
+)   
 
 cc_binary(
     name = "run_gait_dircon",
@@ -49,7 +49,7 @@ cc_binary(
     data = ["PlanarWalker.urdf"],
     deps = [
         "//systems/trajectory_optimization:dircon",
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//manipulation/util",
         "@drake//math",
         "@drake//common",
@@ -69,7 +69,7 @@ cc_library(
     srcs = ["sgd_iter.cc"],
     hdrs = ["sgd_iter.h"],
     deps = [
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",
         "@drake//systems/framework",
@@ -94,7 +94,7 @@ cc_binary(
     data = ["PlanarWalkerWithTorso.urdf",
             "z_save.csv"],
     deps = [
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",
         "@drake//systems/framework",
@@ -116,7 +116,7 @@ cc_binary(
     srcs = ["runSGDIter.cc"],
     data = ["PlanarWalkerWithTorso.urdf"],
     deps = [
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",
         "@drake//systems/framework",
@@ -137,7 +137,7 @@ cc_binary(
     srcs = ["visualize_gait.cc"],
     data = ["PlanarWalkerWithTorso.urdf"],
     deps = [
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",
         "@drake//systems/framework",
@@ -161,7 +161,7 @@ cc_binary(
     data = ["PlanarWalkerWithTorso.urdf",
             "z_save.csv"],
     deps = [
-        "@drake//multibody:rigid_body_tree",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",
         "@drake//systems/framework",

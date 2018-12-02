@@ -32,3 +32,16 @@ cc_binary(
         "@drake//multibody/multibody_tree/parsing",
     ],
 )
+
+cc_test(
+    name = "mbt_utils_test",
+    srcs = ["test/mbt_utils_test.cc"],
+    deps = [
+            ":utils",
+            "//examples/Cassie:cassie_urdf",
+            "//common",
+            "@drake//multibody/multibody_tree/parsing",
+            "@gtest//:main",
+            ],
+    size = "small"
+)

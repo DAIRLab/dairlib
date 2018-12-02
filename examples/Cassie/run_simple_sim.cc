@@ -28,7 +28,7 @@ namespace dairlib{
   using dairlib::systems::SubvectorPassThrough;
 
 // Simulation parameters.
-DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
+DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
 DEFINE_double(youngs_modulus, 1e8, "The contact model's Young's modulus (Pa)");
 DEFINE_double(us, 0.7, "The static coefficient of friction");
 DEFINE_double(ud, 0.7, "The dynamic coefficient of friction");
@@ -110,8 +110,9 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
 
   drake::systems::Context<double>& sim_context = simulator.get_mutable_context();
-  auto integrator = simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>(*diagram, &sim_context);
-  integrator->set_maximum_step_size(FLAGS_timestep);
+  auto integrator = simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(*diagram, FLAGS_timestep, &sim_context);
+  // auto integrator = simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>(*diagram, &sim_context);
+  // integrator->set_maximum_step_size(FLAGS_timestep);
 
 
   Eigen::VectorXd x0 = Eigen::VectorXd::Zero(

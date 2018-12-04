@@ -204,6 +204,27 @@ cc_binary(
             ]
 )
 
+
+cc_binary(
+    name = "fixedbase_cassie_visualizer",
+    srcs = ["fixedbase_cassie_visualizer.cc"],
+    deps = [
+            "//systems:robot_lcm_systems",
+            "//systems/primitives",
+            ":cassie_urdf",
+            "@drake//systems/framework:diagram_builder",
+            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/analysis:simulator",
+            "@drake//lcm",
+            "@drake//manipulation/util",
+            "@drake//geometry:geometry_visualization",
+            "@drake//systems/rendering:multibody_position_to_geometry_pose",
+            ":cassie_utils",
+            "@gflags",
+            ]
+)
+
+
 cc_binary(
     name = "run_simple_sim",
     srcs = ["run_simple_sim.cc"],

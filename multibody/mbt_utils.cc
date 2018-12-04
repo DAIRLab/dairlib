@@ -56,7 +56,9 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
   map<string, int> name_to_index_map;
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant.tree().get_joint(i);
-    auto name = joint.name();
+    // TODO(posa): this "dot" should be removed, it's an anachronism from
+    // RBT
+    auto name = joint.name() + "dot";
 
     if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
       std::vector<JointIndex> index_vector {i};

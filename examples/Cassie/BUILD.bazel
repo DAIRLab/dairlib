@@ -264,6 +264,26 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "fixedbase_mbt_sim",
+    srcs = ["fixedbase_mbt_sim.cc"],
+    deps = [
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@drake//geometry:geometry_visualization",
+        "@drake//systems/primitives",
+        "@gflags",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+    ],
+)
+
 py_binary(
     name = "draw_graphviz",
     srcs = ["draw_graphviz.py"],

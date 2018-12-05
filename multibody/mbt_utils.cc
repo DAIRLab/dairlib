@@ -1,4 +1,5 @@
 #include <vector>
+#include <set>
 #include "multibody/mbt_utils.h"
 #include "drake/common/drake_assert.h"
 
@@ -15,10 +16,12 @@ using drake::multibody::JointActuatorIndex;
 
 /// Construct a map between joint names and position indices
 ///     <name,index> such that q(index) has the given name
-///  -Only includes joints with a single position and single velocity
+///  -Only accurately includes joints with a single position and single velocity
+///  -Others are included as "position[ind]""
 ///  -Index mapping can also be used as a state mapping (assumes x = [q;v])
 map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
   map<string, int> name_to_index_map;
+  std::set<int> index_set;
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant.tree().get_joint(i);
     auto name = joint.name();
@@ -42,18 +45,30 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
       }
 
       name_to_index_map[name] = selector_index;
+      index_set.insert(selector_index);
     }
   }
+
+  for (int i = 0; i < plant.num_positions(); ++i) {
+    // if index has not already been captured, add it
+    if (index_set.find(i) == index_set.end()) {
+      name_to_index_map["position[" + std::to_string(i) + "]"] = i;
+    }
+  }
+
   return name_to_index_map;
 }
 
 /// Construct a map between joint names and velocity indices
 ///     <name,index> such that v(index) has the given name
-///  -Only includes joints with a single position and single velocity
+///  -Only accurately includes joints with a single position and single velocity
+///  -Others are included as "state[ind]"
 ///  -Index mapping can also be used as a state mapping, AFTER
 ///     an offset of num_positions is applied (assumes x = [q;v])
 map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
   map<string, int> name_to_index_map;
+  std::set<int> index_set;
+
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant.tree().get_joint(i);
     // TODO(posa): this "dot" should be removed, it's an anachronism from
@@ -79,8 +94,17 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
       }
 
       name_to_index_map[name] = selector_index - plant.num_positions();
+      index_set.insert(selector_index - plant.num_positions());
     }
   }
+
+  for (int i = 0; i < plant.num_velocities(); ++i) {
+    // if index has not already been captured, add it
+    if (index_set.find(i) == index_set.end()) {
+      name_to_index_map["velocity[" + std::to_string(i) + "]"] = i;
+    }
+  }
+
   return name_to_index_map;
 }
 

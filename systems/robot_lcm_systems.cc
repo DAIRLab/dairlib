@@ -97,20 +97,27 @@ RobotOutputSender::RobotOutputSender(
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
 
-
-  // TODO(posa): need a way to get the entire list of names here
-  if (plant.num_joints() != num_positions_ ||
-      plant.num_joints() != num_velocities_) {
-    DRAKE_ABORT();
-  }
-
-  for (JointIndex i(0); i < plant.num_joints(); ++i) {
-    ordered_position_names_.push_back(plant.tree().get_joint(i).name());
-    ordered_velocity_names_.push_back(plant.tree().get_joint(i).name());
-  }
-
   positionIndexMap_ = multibody::utils::makeNameToPositionsMap(plant);
   velocityIndexMap_ = multibody::utils::makeNameToVelocitiesMap(plant);
+
+  // Loop through the maps to extract ordered names
+  for (int i = 0; i < num_positions_; ++i) {
+    for (auto& x : positionIndexMap_) {
+      if (x.second == i) {
+        ordered_position_names_.push_back(x.first);
+        break;
+      }
+    }
+  }
+
+  for (int i = 0; i < num_velocities_; ++i) {
+    for (auto& x : velocityIndexMap_) {
+      if (x.second == i) {
+        ordered_velocity_names_.push_back(x.first);
+        break;
+      }
+    }
+  }
 
   state_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
       num_positions_ + num_velocities_)).get_index();

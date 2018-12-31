@@ -27,7 +27,7 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "5.Planar Walker" {
-        exec = "bazel-bin/examples/Cassie/planar_clqr_controller_standing";
+        exec = "bazel-bin/examples/PlanarWalker/planar_clqr_controller_standing";
         host = "localhost";
     }
 }

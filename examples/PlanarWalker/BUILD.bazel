@@ -158,3 +158,64 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_library(
+  name = "planar_utils",
+  srcs = ["planar_utils.cc"],
+  hdrs = ["planar_utils.h"],
+  deps = ["@drake//solvers:mathematical_program",
+          "@drake//solvers:constraint",
+          "@drake//multibody:rigid_body_tree",
+          "@drake//manipulation/util",
+          "//common"], 
+  visibility = ["//visibility:public"],
+
+)
+
+cc_library(
+    name = "planar_solver",
+    srcs = [
+        "planar_solver.cc",
+    ],
+    hdrs = [
+        "planar_solver.h"
+    ],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//multibody/rigid_body_plant:rigid_body_plant",
+        "@drake//solvers:mathematical_program",
+        "@drake//solvers:constraint",
+        "@drake//manipulation/util",
+        "//multibody:solve_multibody_constraints",
+        "//multibody:utils",
+        ":planar_utils",
+    ],
+  visibility = ["//visibility:public"],
+
+)
+
+cc_binary(
+    name = "planar_clqr_controller_standing",
+    srcs = ["planar_clqr_controller_standing.cc"],
+    data = ["PlanarWalker.urdf"],
+    deps = [
+        "@drake//multibody:rigid_body_tree",
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//systems/primitives:primitives",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@gflags",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//systems/framework:vector",
+        "//systems/controllers:clqr_controller_planar",
+        "//multibody:solve_multibody_constraints",
+        ":planar_utils",
+        ":planar_solver",
+    ],
+  visibility = ["//visibility:public"],
+
+)

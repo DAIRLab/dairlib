@@ -16,8 +16,8 @@ VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree,
   // Setting log file
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file", snopt_output_filename);
   // Non linear and linear constraint tolerance
-  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1.0e-7);
-  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Minor feasibility tolerance", 1.0e-7);
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Major feasibility tolerance", 1.0e-10);
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Minor feasibility tolerance", 1.0e-10);
 
   auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
   auto constraint_tree = std::make_shared<TreeConstraint>(tree);
@@ -49,6 +49,14 @@ VectorXd SolveCassieStandingConstraints(const RigidBodyTree<double>& tree,
   }
 
   return q_sol;
+
+}
+
+bool CheckCassieStandingConstraints(const RigidBodyTree<double>& tree,
+                                      VectorXd q_check) {
+
+  auto constraint = std::make_shared<CassieStandingConstraint>(tree);
+  return constraint->CheckSatisfied(q_check);
 
 }
 
@@ -216,29 +224,29 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
 
 
   // Friction cone constraints
-  const double mu = 0.9;
+  const double mu = 0.8;
   for (int i = 0; i < num_contacts; i++) {
 
-    //prog.AddConstraint(lambda(i*3 + num_tree_constraints) >= 0);
-    prog.AddConstraint(lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
-    prog.AddConstraint(-lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
-    prog.AddConstraint(lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
-    prog.AddConstraint(-lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+   //prog.AddConstraint(lambda(i*3 + num_tree_constraints) >= 0);
+   // prog.AddConstraint(lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+   // prog.AddConstraint(-lambda(i*3 + 1 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+   // prog.AddConstraint(lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
+   // prog.AddConstraint(-lambda(i*3 + 2 + num_tree_constraints) <= mu*lambda(i*3 + num_tree_constraints));
   }
 
   // Constraint to prevent euler angle singularities
-  prog.AddConstraint(q(4) <= 5);
-  prog.AddConstraint(q(4) >= 0);
+  prog.AddConstraint(q(4) <= 4.99);
+  prog.AddConstraint(q(4) >= 0.01);
 
 
   VectorXd u_zero = VectorXd::Zero(plant.get_num_actuators());
   prog.AddQuadraticCost(
       (q - q_init).dot(q - q_init) + (u - u_zero).dot(u - u_zero));
+  //prog.AddQuadraticCost(
+  //    (q - q_init).dot(q - q_init));
 
   // Quadratic cost on lambda normal forces to spread out the forces.
   prog.AddQuadraticCost(lambda(2)*lambda(2) + lambda(5)*lambda(5) + lambda(8)*lambda(8) + lambda(11)*lambda(11));
-
-
 
 
   prog.SetInitialGuess(q, q_init);
@@ -276,6 +284,7 @@ vector<VectorXd> SolveCassieTreeFixedPointAndStandingConstraints(const RigidBody
 
   //Checking if the Tree position constraints are satisfied
   DRAKE_DEMAND(CheckTreeConstraints(plant.get_rigid_body_tree(), q_sol));
+  DRAKE_DEMAND(CheckCassieStandingConstraints(plant.get_rigid_body_tree(), q_sol));
   //DRAKE_DEMAND(CheckCassieFixedPointConstraints(plant, q_sol, u_sol, lambda_sol));
 
   vector<VectorXd> sol;

@@ -1,9 +1,9 @@
-#include "systems/controllers/clqr_controller.h"
+#include "systems/controllers/clqr_controller_planar.h"
 
 namespace dairlib{
 namespace systems{
 
-ClqrController::ClqrController(const RigidBodyPlant<double>& plant,
+ClqrControllerPlanar::ClqrControllerPlanar(const RigidBodyPlant<double>& plant,
                                const RigidBodyPlant<AutoDiffXd>& plant_autodiff,
                                VectorXd x0,
                                VectorXd u0,
@@ -29,29 +29,23 @@ ClqrController::ClqrController(const RigidBodyPlant<double>& plant,
   
 }
 
-MatrixXd ClqrController::computeF() {
+MatrixXd ClqrControllerPlanar::computeF() {
     
   KinematicsCache<double> k_cache = tree_.doKinematics(
       x0_.head(num_positions_), x0_.tail(num_velocities_));
 
   //Computing the constraint jacobian
-  MatrixXd J_tree = tree_.positionConstraintsJacobian(k_cache);
+  //MatrixXd J_tree = tree_.positionConstraintsJacobian(k_cache);
 
   // Contact Jacobian
-  CassiePlant<double> cassie_plant(plant_);
-  MatrixXd J_contact;
+  PlanarPlant<double> planar_plant(plant_);
+  MatrixXd J;
 
-  if (num_positions_ == 22) {
-    J_contact = cassie_plant.CalcContactJacobianCassie(x0_.head(num_positions_), 
+  J = planar_plant.CalcContactJacobianPlanar(x0_.head(num_positions_), 
                                                       x0_.tail(num_velocities_),
-                                                      lambda0_.size() - J_tree.rows());
+                                                      lambda0_.size());
 
 
-  }
-
-  MatrixXd J(J_tree.rows() + J_contact.rows(), J_tree.cols());
-  J << J_tree, 
-       J_contact;
 
   const int r = J.rows();
   const int c = J.cols();
@@ -68,7 +62,7 @@ MatrixXd ClqrController::computeF() {
 
 }
 
-MatrixXd ClqrController::computeK() {
+MatrixXd ClqrControllerPlanar::computeK() {
 
   //Finding the null space
   HouseholderQR<MatrixXd> qr(F_.transpose());
@@ -77,9 +71,9 @@ MatrixXd ClqrController::computeK() {
   MatrixXd P = Q.block(0, F_.rows(), Q.rows(), Q.cols() - F_.rows());
   P.transposeInPlace();
 
-  auto context = plant_.CreateDefaultContext();
-  context->get_mutable_continuous_state_vector().SetFromVector(x0_);
-  context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0_));
+  //auto context = plant_.CreateDefaultContext();
+  //context->get_mutable_discrete_state_vector().SetFromVector(x0_);
+  //context->FixInputPort(0, std::make_unique<systems::BasicVector<double>>(u0_));
 
   //Linearizing about the operating point
   
@@ -96,16 +90,11 @@ MatrixXd ClqrController::computeK() {
   auto u0_autodiff = x_u_l0_autodiff.segment(num_states_, num_efforts_);
   auto lambda0_autodiff = x_u_l0_autodiff.tail(lambda0_.size());
 
-  CassiePlant<AutoDiffXd> cassie_plant(plant_autodiff_);
+  PlanarPlant<AutoDiffXd> planar_plant(plant_autodiff_);
   VectorX<AutoDiffXd> x_dot0_autodiff;
 
-  if (num_positions_ == 22) {
-  x_dot0_autodiff = cassie_plant.CalcTimeDerivativesCassieStanding(
-      x0_autodiff, u0_autodiff, lambda0_autodiff); 
-  } else {
-  x_dot0_autodiff = cassie_plant.CalcTimeDerivativesCassie(
+  x_dot0_autodiff = planar_plant.CalcTimeDerivativesPlanarStanding(
         x0_autodiff, u0_autodiff, lambda0_autodiff); 
-  }
 
 
   // Making sure that the derivative is zero (fixed point)
@@ -130,13 +119,6 @@ MatrixXd ClqrController::computeK() {
   B = AB.block(
       0, num_states_, AB.rows(), num_efforts_);
 
-  //std::cout << A*P.transpose();
-  //std::cout << "-------------------------------------------------------------" << std::endl;
-  //std::cout << "-------------------------------------------------------------" << std::endl;
-  //std::cout << "-------------------------------------------------------------" << std::endl;
-
-  //auto linear_system = Linearize(plant_, *context, 0, kNoOutput);
-  //std::cout << linear_system->A()*P.transpose();
 
   DRAKE_DEMAND(A.rows() == num_states_);
   DRAKE_DEMAND(A.cols() == num_states_);
@@ -148,6 +130,7 @@ MatrixXd ClqrController::computeK() {
   MatrixXd B_new_coord = P*B;
 
   //Computing LQR result
+
   auto lqr_result = LinearQuadraticRegulator(A_new_coord, B_new_coord, Q_, R_);
   return lqr_result.K*P;
 

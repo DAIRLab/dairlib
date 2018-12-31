@@ -67,12 +67,12 @@ namespace dairlib{
 // Simulation parameters.
 DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
 DEFINE_double(youngs_modulus, 1e8, "The contact model's Young's modulus (Pa)");
-DEFINE_double(us, 0.7, "The static coefficient of friction");
-DEFINE_double(ud, 0.7, "The dynamic coefficient of friction");
+DEFINE_double(us, 1.0, "The static coefficient of friction");
+DEFINE_double(ud, 1.0, "The dynamic coefficient of friction");
 DEFINE_double(v_tol, 0.01,
               "The maximum slipping speed allowed during stiction (m/s)");
 DEFINE_double(dissipation, 2, "The contact model's dissipation (s/m)");
-DEFINE_double(contact_radius, 1e-2,
+DEFINE_double(contact_radius, 2e-4,
               "The characteristic scale of contact patch (m)");
 DEFINE_string(simulation_type, "compliant", "The type of simulation to use: "
               "'compliant' or 'timestepping'");
@@ -191,8 +191,8 @@ int do_main(int argc, char* argv[]) {
 
   x0(map.at("hip_roll_left")) = 0.1;
   x0(map.at("hip_roll_right")) = -0.1;
-  x0(map.at("hip_yaw_left")) = 0;
-  x0(map.at("hip_yaw_right")) = 0;
+  x0(map.at("hip_yaw_left")) = 0.01;
+  x0(map.at("hip_yaw_right")) = -0.01;
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
   // x0(map.at("achilles_hip_pitch_left")) = -.44;
@@ -263,6 +263,21 @@ int do_main(int argc, char* argv[]) {
                                                                                print_debug); 
 
   VectorXd q_sol = q_u_l_sol.at(0);
+  
+  // Interchanging values
+  //std::swap(q_sol(6), q_sol(7));
+  //q_sol(6) = -q_sol(6);
+  //q_sol(7) = -q_sol(7);
+  //std::swap(q_sol(8), q_sol(9));
+  //q_sol(8) = -q_sol(8);
+  //q_sol(9) = -q_sol(9);
+  //std::swap(q_sol(10), q_sol(11));
+  //std::swap(q_sol(12), q_sol(13));
+  //std::swap(q_sol(14), q_sol(15));
+  //std::swap(q_sol(16), q_sol(17));
+  //std::swap(q_sol(18), q_sol(19));
+  //std::swap(q_sol(20), q_sol(21));
+
   VectorXd v_sol = VectorXd::Zero(num_velocities);
   VectorXd x_sol(num_states);
   x_sol << q_sol, v_sol;
@@ -294,14 +309,34 @@ int do_main(int argc, char* argv[]) {
   //Parameter matrices for LQR
   MatrixXd Q = MatrixXd::Identity(num_states - 2*num_total_constraints, num_states - 2*num_total_constraints);
   //Q corresponding to the positions
-  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*100;
+  MatrixXd Q_p = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*10;
   //Q corresponding to the velocities
-  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*1.0;
+  MatrixXd Q_v = MatrixXd::Identity(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints)*10.0;
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
   Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*1;
-  R(8, 8) = 10;
-  R(9, 9) = 10;
+  R(8, 8) = 1;
+  R(9, 9) = 1;
+  
+  // Joints whose Q values need to be ignored or reduced in weight
+  std::vector<std::string> q_ignore = {
+                                       "ankle_joint_left",
+                                       "ankle_joint_right",
+                                       "ankle_spring_joint_left", 
+                                       "ankle_spring_joint_right", 
+                                       //"base_x", 
+                                       //"base_y", 
+                                       //"base_z", 
+                                       "base_roll", 
+                                       "base_pitch", 
+                                       "base_yaw"
+  };
+
+  for (auto &q : q_ignore) {
+    Q(map.at(q), map.at(q)) = 0;
+    Q(map.at(q) + num_positions, map.at(q) + num_positions);
+  }
+
   
   const double fixed_point_tolerance = 1e-3;
 
@@ -347,56 +382,56 @@ int do_main(int argc, char* argv[]) {
   auto control_output = builder.AddSystem<SubvectorPassThrough<double>>(
           (clqr_controller->get_output_port(0)).size(), 0, (clqr_controller->get_output_port(0)).size() - 1);
 
-  const string channel_x = "CASSIE_STATE";
-  const string channel_u = "CASSIE_INPUT";
-  const string channel_config = "PD_CONFIG";
-  
-  // Create state publisher.
-  auto state_pub = builder.AddSystem(
-      drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
-  state_pub->set_publish_period(1.0/200.0);
-  builder.Connect(state_sender->get_output_port(0),
-                  state_pub->get_input_port());
+  //const string channel_x = "CASSIE_STATE";
+  //const string channel_u = "CASSIE_INPUT";
+  //const string channel_config = "PD_CONFIG";
+  //
+  //// Create state publisher.
+  //auto state_pub = builder.AddSystem(
+  //    drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+  //auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
+  //state_pub->set_publish_period(1.0/200.0);
+  //builder.Connect(state_sender->get_output_port(0),
+  //                state_pub->get_input_port());
 
-  // Create state receiver.
-  auto state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant->get_rigid_body_tree());
-  builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
+  //// Create state receiver.
+  //auto state_sub = builder.AddSystem(
+  //    LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+  //auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant->get_rigid_body_tree());
+  //builder.Connect(state_sub->get_output_port(),
+  //                state_receiver->get_input_port(0));
 
-  // Create command sender.
-  auto command_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm));
-  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant->get_rigid_body_tree());
-  command_pub->set_publish_period(1.0/200.0);
-  builder.Connect(command_sender->get_output_port(0),
-                  command_pub->get_input_port());
+  //// Create command sender.
+  //auto command_pub = builder.AddSystem(
+  //    LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm));
+  //auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant->get_rigid_body_tree());
+  //command_pub->set_publish_period(1.0/200.0);
+  //builder.Connect(command_sender->get_output_port(0),
+  //                command_pub->get_input_port());
 
-  builder.Connect(plant->state_output_port(),
-                  state_sender->get_input_port_state());
-  builder.Connect(state_receiver->get_output_port(0), 
-                  clqr_controller->get_input_port_info());
-  builder.Connect(constant_params_source->get_output_port(),
-                  clqr_controller->get_input_port_params());
-  builder.Connect(clqr_controller->get_output_port(0),
-                  command_sender->get_input_port(0));
-  builder.Connect(clqr_controller->get_output_port(0),
-                  control_output->get_input_port());
-  builder.Connect(control_output->get_output_port(),
-                  plant->actuator_command_input_port());
+  //builder.Connect(plant->state_output_port(),
+  //                state_sender->get_input_port_state());
+  //builder.Connect(state_receiver->get_output_port(0), 
+  //                clqr_controller->get_input_port_info());
+  //builder.Connect(constant_params_source->get_output_port(),
+  //                clqr_controller->get_input_port_params());
+  //builder.Connect(clqr_controller->get_output_port(0),
+  //                command_sender->get_input_port(0));
+  //builder.Connect(clqr_controller->get_output_port(0),
+  //                control_output->get_input_port());
+  //builder.Connect(control_output->get_output_port(),
+  //                plant->actuator_command_input_port());
 
 
-  //builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
-  //builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
-  //builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
-  //builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
-  //builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
-  //builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
-  //builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
-  //builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
-  //builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
+  builder.Connect(plant->state_output_port(), multiplexer_info->get_input_port(0));
+  builder.Connect(constant_zero_source_efforts->get_output_port(), multiplexer_info->get_input_port(1));
+  builder.Connect(constant_zero_source_imu->get_output_port(), multiplexer_info->get_input_port(2));
+  builder.Connect(constant_zero_source_timestamp->get_output_port(), multiplexer_info->get_input_port(3));
+  builder.Connect(multiplexer_info->get_output_port(0), info_connector->get_input_port(0));
+  builder.Connect(info_connector->get_output_port(0), clqr_controller->get_input_port_info());
+  builder.Connect(constant_params_source->get_output_port(), clqr_controller->get_input_port_params());
+  builder.Connect(clqr_controller->get_output_port(0), control_output->get_input_port());
+  builder.Connect(control_output->get_output_port(), plant->actuator_command_input_port()); 
 
   auto diagram = builder.Build();
 

@@ -20,12 +20,12 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "systems/robot_lcm_systems.h"
-#include "systems/controllers/clqr_controller.h"
+#include "systems/controllers/clqr_controller_planar.h"
 #include "systems/framework/output_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "multibody/solve_multibody_constraints.h"
-#include "cassie_utils.h"
-#include "cassie_solver.h"
+#include "planar_utils.h"
+#include "planar_solver.h"
 
 using std::cout;
 using std::endl;
@@ -48,7 +48,6 @@ using drake::systems::Multiplexer;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 
-using dairlib::SolveCassieStandingConstraints;
 using dairlib::multibody::SolveTreeConstraints;
 using dairlib::multibody::CheckTreeConstraints;
 using dairlib::multibody::SolveFixedPointConstraints;
@@ -59,22 +58,26 @@ using dairlib::multibody::SolveFixedPointFeasibilityConstraints;
 using dairlib::systems::AffineParams;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::OutputVector;
+using dairlib::PlanarJointsWithinLimits;
+using dairlib::PlanarPlant;
+using dairlib::SolvePlanarStandingConstraints;
 
 
 namespace dairlib{
 
 
 // Simulation parameters.
+DEFINE_double(realtime_rate, 1, "Simulator realtime rate");
 DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
 DEFINE_double(youngs_modulus, 1e8, "The contact model's Young's modulus (Pa)");
-DEFINE_double(us, 0.7, "The static coefficient of friction");
-DEFINE_double(ud, 0.7, "The dynamic coefficient of friction");
+DEFINE_double(us, 0.9, "The static coefficient of friction");
+DEFINE_double(ud, 0.9, "The dynamic coefficient of friction");
 DEFINE_double(v_tol, 0.01,
               "The maximum slipping speed allowed during stiction (m/s)");
 DEFINE_double(dissipation, 2, "The contact model's dissipation (s/m)");
-DEFINE_double(contact_radius, 1e-2,
+DEFINE_double(contact_radius, 2e-4,
               "The characteristic scale of contact patch (m)");
-DEFINE_string(simulation_type, "compliant", "The type of simulation to use: "
+DEFINE_string(simulation_type, "timestepping", "The type of simulation to use: "
               "'compliant' or 'timestepping'");
 DEFINE_double(dt, 1e-3, "The step size to use for "
               "'simulation_type=timestepping' (ignored for "
@@ -193,73 +196,37 @@ int do_main(int argc, char* argv[]) {
 
 
   x0(map.at("planar_x")) = 0.0;
-  x0(map.at("planar_z")) = 2.2;
+  x0(map.at("planar_z")) = 2;
+  x0(map.at("hip_pin")) = 0.1;
+  x0(map.at("left_knee_pin")) = 0.0;
+  x0(map.at("right_knee_pin")) = 0.0;
 
-  //x0(map.at("hip_roll_left")) = 0.1;
-  //x0(map.at("hip_roll_right")) = -0.1;
-  //x0(map.at("hip_yaw_left")) = 0;
-  //x0(map.at("hip_yaw_right")) = 0;
-  //x0(map.at("hip_pitch_left")) = .269;
-  //x0(map.at("hip_pitch_right")) = .269;
-  //// x0(map.at("achilles_hip_pitch_left")) = -.44;
-  //// x0(map.at("achilles_hip_pitch_right")) = -.44;
-  //// x0(map.at("achilles_heel_pitch_left")) = -.105;
-  //// x0(map.at("achilles_heel_pitch_right")) = -.105;
-  //x0(map.at("knee_left")) = -.744;
-  //x0(map.at("knee_right")) = -.744;
-  //x0(map.at("ankle_joint_left")) = .81;
-  //x0(map.at("ankle_joint_right")) = .81;
-  //
-  //// x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
-  //// x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
-  //
-  //// x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
-  //// x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
-  //
-  //x0(map.at("toe_left")) = -60*M_PI/180.0;
-  //x0(map.at("toe_right")) = -60*M_PI/180.0;
-
-  VectorXd x_init = x0;
 
   // Making sure tha the joints are within limits
-  DRAKE_DEMAND(CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_init));
+  DRAKE_DEMAND(PlanarJointsWithinLimits(plant->get_rigid_body_tree(), x0));
 
   std::vector<int> fixed_joints;
 
-  //fixed_joints.push_back(map.at("base_roll"));
-  //fixed_joints.push_back(map.at("base_pitch"));
-  //fixed_joints.push_back(map.at("base_yaw"));
-
-  //fixed_joints.push_back(map.at("hip_roll_left"));
-  //fixed_joints.push_back(map.at("hip_roll_right"));
-  //fixed_joints.push_back(map.at("hip_yaw_left"));
-  //fixed_joints.push_back(map.at("hip_yaw_right"));
-  //fixed_joints.push_back(map.at("hip_pitch_left"));
-  //fixed_joints.push_back(map.at("hip_pitch_right"));
-  //fixed_joints.push_back(map.at("knee_left"));
-  //fixed_joints.push_back(map.at("knee_right"));
-  //fixed_joints.push_back(map.at("ankle_joint_left"));
-  //fixed_joints.push_back(map.at("ankle_joint_right"));
-  //fixed_joints.push_back(map.at("toe_left"));
-  //fixed_joints.push_back(map.at("toe_right"));
+ 
+  // **********************************************************************************
   
-  VectorXd q0 = SolveTreeConstraints(
-          plant->get_rigid_body_tree(), x0.head(num_positions), fixed_joints);
-  x0.head(num_positions) = q0;
-
   
-  const int num_tree_constraints = 2;
-  const int num_contacts = 4;
-  const int num_constraints_per_contact = 3;
+  const int num_tree_constraints = 0;
+  const int num_contacts = 2;
+  const int num_constraints_per_contact = 2;
   const int num_contact_constraints = num_contacts * num_constraints_per_contact;
   const int num_total_constraints = num_tree_constraints + num_contact_constraints;
   VectorXd q_init = x0.head(num_positions);
   VectorXd u_init = VectorXd::Zero(num_efforts);
   VectorXd lambda_init = VectorXd::Zero(num_total_constraints);
   const bool print_debug = false;
+  std::cout << num_total_constraints << std::endl;
+
+
+  // **********************************************************************************
 
   cout << "Solving" << endl;
-  vector<VectorXd> q_u_l_sol = SolveCassieTreeFixedPointAndStandingConstraints(*plant,
+  vector<VectorXd> q_u_l_sol = SolvePlanarFixedPointAndStandingConstraints(*plant,
                                                                                plant_autodiff,
                                                                                num_total_constraints,
                                                                                q_init,
@@ -268,20 +235,31 @@ int do_main(int argc, char* argv[]) {
                                                                                fixed_joints,
                                                                                print_debug); 
 
+
+  //VectorXd qsol =  SolvePlanarStandingConstraints(plant->get_rigid_body_tree(), 
+  //                                        q_init, 
+  //                                        fixed_joints,
+  //                                        print_debug);
+  //std::cout << "Solution: " << qsol.transpose() << std::endl;
+  //
+  //x0.head(num_positions) = qsol;
+    
+
   VectorXd q_sol = q_u_l_sol.at(0);
   VectorXd v_sol = VectorXd::Zero(num_velocities);
   VectorXd x_sol(num_states);
   x_sol << q_sol, v_sol;
   VectorXd u_sol = q_u_l_sol.at(1);
   VectorXd lambda_sol = q_u_l_sol.at(2);
+  x0.head(num_positions) = q_sol;
 
   KinematicsCache<double> k_cache_sol = plant->get_rigid_body_tree().doKinematics(q_sol, v_sol);
   MatrixXd M = plant->get_rigid_body_tree().massMatrix(k_cache_sol);
 
   std::cout << "Eigen Values of M: " << endl << M.eigenvalues() << endl;
 
-  // Making sure that the joint state solution is within limits
-  DRAKE_DEMAND(CassieJointsWithinLimits(plant->get_rigid_body_tree(), x_sol));
+  //// Making sure that the joint state solution is within limits
+  DRAKE_DEMAND(PlanarJointsWithinLimits(plant->get_rigid_body_tree(), x_sol));
 
   cout << "***************** q sol *****************" << endl;
   cout << q_sol.transpose() << endl;
@@ -290,9 +268,9 @@ int do_main(int argc, char* argv[]) {
   cout << "***************** lambda sol *****************" << endl;
   cout << lambda_sol.transpose() << endl;
 
-  CassiePlant<double> cassie_plant(*plant);
+  PlanarPlant<double> planar_plant(*plant);
   cout << "***************** Mvdot final *******************" << endl;
-  cout << cassie_plant.CalcMVdotCassieStanding(x_sol, 
+  cout << planar_plant.CalcMVdotPlanarStanding(x_sol, 
                                                u_sol, 
                                                lambda_sol) << endl;
 
@@ -306,13 +284,11 @@ int do_main(int argc, char* argv[]) {
   Q.block(0, 0, Q_p.rows(), Q_p.cols()) = Q_p;
   Q.block(num_states/2 - num_total_constraints, num_states/2 - num_total_constraints, Q_v.rows(), Q_v.cols()) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts)*1;
-  R(8, 8) = 10;
-  R(9, 9) = 10;
   
   const double fixed_point_tolerance = 1e-3;
 
   //Building the controller
-  auto clqr_controller = builder.AddSystem<systems::ClqrController>(*plant,
+  auto clqr_controller = builder.AddSystem<systems::ClqrControllerPlanar>(*plant,
                                                                     plant_autodiff,
                                                                     x_sol,
                                                                     u_sol,
@@ -320,6 +296,9 @@ int do_main(int argc, char* argv[]) {
                                                                     Q,
                                                                     R, 
                                                                     fixed_point_tolerance);
+  
+
+  
   VectorXd K_vec = clqr_controller->GetKVec();
   //K_vec = K_vec*0.0;
   VectorXd E = u_sol; 
@@ -371,14 +350,23 @@ int do_main(int argc, char* argv[]) {
     diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
 
   if (FLAGS_simulation_type != "timestepping") {
+
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
     state.SetFromVector(x_sol);
+  } else {
+
+    drake::systems::BasicVector<double>& state = context.get_mutable_discrete_state(0);
+    state.SetFromVector(x_sol); 
+
   }
-  
+
+
+  //context.FixInputPort(0, MatrixXd::Zero(num_efforts, 1));
+
   
   //simulator.set_publish_every_time_step(false);
   //simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(1.0);
+  simulator.set_target_realtime_rate(FLAGS_realtime_rate);
   simulator.Initialize();
   
   lcm.StartReceiveThread();

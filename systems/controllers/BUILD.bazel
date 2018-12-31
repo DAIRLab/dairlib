@@ -1,3 +1,5 @@
+# -*- mode: python -*-
+
 load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
@@ -41,6 +43,26 @@ cc_library(
             "//systems/controllers:controllers",
             "//multibody:utils",
             "//examples/Cassie:cassie_utils",
+            "@drake//systems/framework:leaf_system",
+            "@drake//systems/framework:vector",
+            "@drake//systems/framework:context",
+			      "@drake//systems/controllers:linear_quadratic_regulator",
+			      "@drake//systems/primitives:linear_system",
+            "@drake//multibody:rigid_body_tree",
+            "@drake//multibody/rigid_body_plant:rigid_body_plant",
+            "@drake//math",
+            ]
+)
+
+cc_library(
+    name = "clqr_controller_planar",
+    srcs = ["clqr_controller_planar.cc"],
+    hdrs = ["clqr_controller_planar.h"],
+    deps = [
+            "//systems/framework:vector",
+            "//systems/controllers:controllers",
+            "//multibody:utils",
+            "//examples/PlanarWalker:planar_utils",
             "@drake//systems/framework:leaf_system",
             "@drake//systems/framework:vector",
             "@drake//systems/framework:context",

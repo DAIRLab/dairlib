@@ -4,7 +4,6 @@
 #include <gtest/gtest.h>
 #include "systems/controllers/affine_controller.h"
 
-
 namespace dairlib {
 namespace systems {
 namespace {
@@ -124,7 +123,6 @@ TEST_F(AffineControllerTest, VectorToMatrixConversions) {
   ASSERT_EQ(K_vec_, affine_controller_->MatToVec(K_));
 
 }
-
 
 }  // namespace
 }  // namespace systems

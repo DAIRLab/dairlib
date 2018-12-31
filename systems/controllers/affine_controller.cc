@@ -29,10 +29,16 @@ AffineController::AffineController(int num_positions,
 }
 
 
-MatrixXd AffineController::VecToMat(VectorXd v, int num_rows, int num_cols) const {
+MatrixXd AffineController::VecToMat(VectorXd v,
+                                    int num_rows,
+                                    int num_cols) {
 
   // Takes in a vector and matrix dimensions and creates a matrix
   // with columns as the segments of the vector
+
+  // Checking if the dimensions are correct
+  DRAKE_DEMAND(v.size() == num_rows * num_cols);
+
   MatrixXd m = MatrixXd::Zero(num_rows, num_cols);
   for(int i=0; i<num_cols; i++)
   {
@@ -44,7 +50,7 @@ MatrixXd AffineController::VecToMat(VectorXd v, int num_rows, int num_cols) cons
 
 }
 
-VectorXd AffineController::MatToVec(MatrixXd m) const {
+VectorXd AffineController::MatToVec(MatrixXd m) {
   //Take in a matrix and converts it to a vector by concatenating the columns.
   int num_rows = m.rows();
   int num_cols = m.cols();

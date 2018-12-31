@@ -2,13 +2,12 @@
 #include <utility>
 
 #include <gtest/gtest.h>
-
-//#include "drake/common/autodiff.h"
-//#include "drake/systems/framework/basic_vector.h"
-//#include "drake/systems/framework/fixed_input_port_value.h"
-//#include "drake/systems/framework/test_utilities/scalar_conversion.h"
-
 #include "systems/controllers/affine_controller.h"
+
+
+namespace dairlib {
+namespace systems {
+namespace {
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -19,12 +18,8 @@ using drake::systems::Context;
 using drake::systems::SystemOutput;
 using drake::systems::BasicVector;
 
-namespace dairlib {
-namespace systems {
-namespace {
-
-
 class AffineControllerTest : public ::testing::Test {
+
  protected:
   void SetUp() override {
 
@@ -90,10 +85,11 @@ class AffineControllerTest : public ::testing::Test {
 
 // Tests number of input and output ports.
 TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
+
   /// Checks that the number of input ports in the system and in the context
   // are consistent.
-  ASSERT_EQ(2, context_->get_num_input_ports());
-  ASSERT_EQ(2, affine_controller_->get_num_input_ports());
+  ASSERT_EQ(context_->get_num_input_ports(), 2);
+  ASSERT_EQ(affine_controller_->get_num_input_ports(), 2);
 
   // Hook input of the expected size.
   context_->FixInputPort(
@@ -110,10 +106,14 @@ TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
 
   Eigen::VectorXd output, output_data;
   const BasicVector<double>* output_port_vec = output_->get_vector_data(0);
+
+  // Making sure that the output vector does not point to null
   ASSERT_NE(nullptr, output_port_vec);
+
   output = output_port_vec->get_value();
   output_data = output.head(output.size()-1);
   ASSERT_EQ(expected_output_vec_, output);
+
 }
 
 

@@ -19,12 +19,18 @@ cc_library(
 
 cc_library(
     name = "controllers",
-    srcs = ["linear_controller.cc",],
-    hdrs = ["linear_controller.h"],
+    srcs = [
+        "linear_controller.cc", 
+        "affine_controller.cc"
+    ],
+    hdrs = [
+        "linear_controller.h", 
+        "affine_controller.h"
+    ],
     deps = [
-            "//systems/framework:vector",
-            "@drake//systems/framework:leaf_system",
-            ]
+        "//systems/framework:vector",
+        "@drake//systems/framework:leaf_system",
+    ],
 )
 
 cc_test(
@@ -41,3 +47,16 @@ cc_test(
             ],
     size = "small"
 )
+
+cc_test(
+    name = "controllers_test", 
+    srcs = [
+        "test/affine_controller_test.cc",
+    ],
+    deps = [
+        "@gtest//:main",
+        ":controllers", 
+    ],
+    size = "small", 
+)
+           

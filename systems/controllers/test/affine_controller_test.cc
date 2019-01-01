@@ -115,13 +115,10 @@ TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
 
 }
 
-
-TEST_F(AffineControllerTest, VectorToMatrixConversions) {
-
-  //Checks if the vector and matrix conversion functions are working correctly
-  ASSERT_EQ(K_, affine_controller_->VecToMat(K_vec_, ne_, ns_)); 
-  ASSERT_EQ(K_vec_, affine_controller_->MatToVec(K_));
-
+TEST_F(AffineControllerTest, AffineParamsTest) {
+  ASSERT_EQ(K_, input_port_params_val_->get_K());
+  ASSERT_EQ(E_vec_, input_port_params_val_->get_E());
+  ASSERT_EQ(x_des_vec_, input_port_params_val_->get_desired_state());
 }
 
 }  // namespace

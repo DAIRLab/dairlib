@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <map>
+
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/timestamped_vector.h"
 #include "multibody/rbt_utils.h"
@@ -10,11 +13,11 @@ namespace dairlib {
 namespace systems {
 
 /// Receives the output of an LcmSubsriberSystem that subsribes to the
-/// Cassie PD configuration channel with LCM type lcmt_cassie_pd_config, 
+/// Cassie PD configuration channel with LCM type lcmt_cassie_pd_config,
 /// and outputs the CassiePDConfig as Context
 class PDConfigReceiver : public drake::systems::LeafSystem<double> {
  public:
-  PDConfigReceiver(RigidBodyTree<double>& tree);
+  explicit PDConfigReceiver(const RigidBodyTree<double>& tree);
 
 
  private:
@@ -26,5 +29,6 @@ class PDConfigReceiver : public drake::systems::LeafSystem<double> {
   std::map<int, int> actuatorToPositionIndexMap_;
   std::map<int, int> actuatorToVelocityIndexMap_;
 };
-}
-}
+
+}  // namespace systems
+}  // namespace dairlib

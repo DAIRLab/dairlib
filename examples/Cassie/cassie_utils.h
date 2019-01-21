@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "drake/multibody/multibody_tree/multibody_plant/multibody_plant.h"
+#include "drake/multibody/plant/multibody_plant.h"
 #include "drake/solvers/constraint.h"
 #include "drake/math/autodiff_gradient.h"
 

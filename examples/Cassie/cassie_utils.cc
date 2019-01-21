@@ -1,7 +1,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "common/find_resource.h"
 #include "drake/solvers/mathematical_program.h"
-#include "drake/multibody/multibody_tree/uniform_gravity_field_element.h"
+#include "drake/multibody/tree/uniform_gravity_field_element.h"
 #include "drake/multibody/joints/revolute_joint.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/geometry/scene_graph.h"

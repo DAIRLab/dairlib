@@ -10,7 +10,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
-#include "drake/multibody/multibody_tree/joints/revolute_joint.h"
+#include "drake/multibody/tree/revolute_joint.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 
 #include "systems/robot_lcm_systems.h"

@@ -18,6 +18,18 @@ std::map<std::string, int> makeNameToVelocitiesMap(
 std::map<std::string, int> makeNameToActuatorsMap(
     const RigidBodyTree<double>& tree);
 
+// TODO: The following two functions need to be implemented as a part of 
+// RBT/Multibody and not as separate functions that take in RBTs. Make the 
+// change once the codebase shifts to using multibody.
+
+// Given a RigidBodyTree and body name, get the index of the body in the tree
+int GetBodyIndexFromName(const RigidBodyTree<double>& tree, std::string name);
+
+// Given a RigidBodyTree and a state vector, checks if the states are within
+// the joint limits
+bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
+                        double tolerance = 0.0);
+
 }  // namespace utils
 }  // namespace multibody
 }  // namespace dairlib

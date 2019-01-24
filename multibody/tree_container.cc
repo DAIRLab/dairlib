@@ -3,10 +3,86 @@
 namespace dairlib {
 namespace multibody {
 
+using std::vector;
+
+using dairlib::multibody::utils::GetBodyIndexFromName;
+using drake::math::DiscardGradient;
+using drake::MatrixX;
+using Eigen::Map;
+using Eigen::MatrixXd;
+using Eigen::Matrix3Xd;
+
 template <typename T>
 TreeContainer<T>::TreeContainer(const RigidBodyTree<double>& tree,
                                 ContactInfo contact_info)
-    : tree_(tree), contact_info_(contact_info) {}
+    : tree_(tree),
+      contact_info_(contact_info),
+      num_contacts_(contact_info.idxA.size()) {}
+
+template <typename T>
+drake::MatrixX<T> TreeContainer<T>::CalcContactJacobian(drake::VectorX<T> x) {
+  drake::VectorX<T> q = x.head(tree_.get_num_positions());
+  drake::VectorX<T> v = x.tail(tree_.get_num_velocities());
+  // Version with discarded gradients
+  drake::VectorX<double> q_double = DiscardGradient(q);
+  drake::VectorX<double> v_double = DiscardGradient(v);
+
+  KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
+  KinematicsCache<double> k_cache_double =
+      tree_.doKinematics(q_double, v_double);
+
+  // Index of "world" within the RBT
+  const int world_ind = GetBodyIndexFromName(tree_, "world");
+
+  // The normals at each contact are always facing upwards into z
+  Matrix3Xd normal(3, num_contacts_);
+  for (int i = 0; i < num_contacts_; i++) {
+    normal(0, i) = 0;
+    normal(1, i) = 0;
+    normal(2, i) = 1;
+  }
+
+  const Map<Matrix3Xd> normal_map(normal.data(), 3, num_contacts_);
+
+  vector<Map<Matrix3Xd>> tangents_map_vector;
+  Matrix3Xd mat1 = Matrix3Xd::Zero(3, num_contacts_);
+  Map<Matrix3Xd> map1(mat1.data(), 3, num_contacts_);
+  Matrix3Xd mat2 = Matrix3Xd::Zero(3, num_contacts_);
+  Map<Matrix3Xd> map2(mat1.data(), 3, num_contacts_);
+  tangents_map_vector.push_back(map1);
+  tangents_map_vector.push_back(map2);
+
+  tree_.surfaceTangents(normal_map, tangents_map_vector);
+
+  vector<MatrixX<T>> J_diff(num_contacts_);
+
+  for (int i = 0; i < num_contacts_; i++) {
+    auto Ja = tree_.transformPointsJacobian(k_cache, contact_info_.xA.col(i),
+                                            contact_info_.idxA.at(i), world_ind,
+                                            true);
+    auto Jb = tree_.transformPointsJacobian(k_cache, contact_info_.xB.col(i),
+                                            world_ind, world_ind, true);
+    J_diff.at(i) = Ja - Jb;
+  }
+
+  // Contact Jacobians
+  MatrixX<T> J(num_contacts_ * 3,
+               tree_.get_num_positions());
+
+  for (int i = 0; i < num_contacts_; i++) {
+    // Jacobian for the individual constraints
+    MatrixX<T> J_constraint(3, tree_.get_num_positions());
+    J_constraint.row(0) = normal.col(i).transpose() * J_diff.at(i);
+    J_constraint.row(1) =
+        tangents_map_vector.at(0).col(i).transpose() * J_diff.at(i);
+    J_constraint.row(2) =
+        tangents_map_vector.at(1).col(i).transpose() * J_diff.at(i);
+
+    J.block(i * 3, 0, 3, tree_.get_num_positions()) = J_constraint;
+  }
+
+  return J;
+}
 
 template <typename T>
 ContactInfo TreeContainer<T>::get_contact_info() {
@@ -15,10 +91,10 @@ ContactInfo TreeContainer<T>::get_contact_info() {
 
 template <typename T>
 int TreeContainer<T>::get_num_contacts() {
-  return contact_info_.num_contacts;
+  return num_contacts_;
 }
 
-template<typename T>
+template <typename T>
 void TreeContainer<T>::set_contact_info(ContactInfo contact_info) {
   contact_info_ = contact_info;
 }

@@ -1,7 +1,9 @@
 #pragma once
 
 //#include <vector>
+#include "drake/math/autodiff_gradient.h"
 #include "drake/multibody/rigid_body_tree.h"
+#include "multibody/rbt_utils.h"
 
 namespace dairlib {
 namespace multibody {
@@ -10,7 +12,6 @@ struct ContactInfo {
   Eigen::Matrix3Xd xA;
   Eigen::Matrix3Xd xB;
   std::vector<int> idxA;
-  int num_contacts;
 };
 
 template <typename T>
@@ -32,6 +33,7 @@ class TreeContainer {
  private:
   const RigidBodyTree<double>& tree_;
   ContactInfo contact_info_;
+  int num_contacts_;
 };
 
 }  // namespace multibody

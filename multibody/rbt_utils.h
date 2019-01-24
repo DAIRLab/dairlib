@@ -1,3 +1,5 @@
+#pragma once
+
 #include <map>
 #include <string>
 #include "drake/multibody/rigid_body_tree.h"
@@ -18,8 +20,8 @@ std::map<std::string, int> makeNameToVelocitiesMap(
 std::map<std::string, int> makeNameToActuatorsMap(
     const RigidBodyTree<double>& tree);
 
-// TODO: The following two functions need to be implemented as a part of 
-// RBT/Multibody and not as separate functions that take in RBTs. Make the 
+// TODO: The following two functions need to be implemented as a part of
+// RBT/Multibody and not as separate functions that take in RBTs. Make the
 // change once the codebase shifts to using multibody.
 
 // Given a RigidBodyTree and body name, get the index of the body in the tree

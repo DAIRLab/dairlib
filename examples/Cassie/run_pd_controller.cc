@@ -24,7 +24,7 @@ int doMain() {
   drake::lcm::DrakeLcm lcm;
 
   RigidBodyTree<double> tree;
-  buildFixedBaseCassieTree(tree);
+  buildCassieTree(tree);
 
   const std::string channel_x = "CASSIE_STATE";
   const std::string channel_u = "CASSIE_INPUT";

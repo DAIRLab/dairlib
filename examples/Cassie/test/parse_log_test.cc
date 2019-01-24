@@ -23,7 +23,7 @@ using systems::VectorAggregator;
 
 int ParseLog(string filename) {
   RigidBodyTree<double> tree;
-  buildFixedBaseCassieTree(tree);
+  buildCassieTree(tree);
 
   drake::lcm::DrakeLcmLog r_log(filename, false);
 

@@ -31,3 +31,15 @@ cc_library(
         ":utils",
     ],
 )
+
+cc_test(
+    name = "tree_container_test",
+    srcs = [
+        "test/tree_container_test.cc",
+    ],
+    deps = [
+        ":tree_container",
+        "@gtest//:main",
+    ],
+)
+

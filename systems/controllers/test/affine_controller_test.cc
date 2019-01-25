@@ -46,7 +46,7 @@ class AffineControllerTest : public ::testing::Test {
     x_des_vec_ << 0.0, 1.0, -1.5, 4.0;
     params_vec_ << K_vec_, E_vec_, x_des_vec_, 0.0;
     expected_output_vec_ << 16.0, 19.0;
-    K_ << 1.0, 3.0, 2.0, 2.0, 2.0, 4.0, 1.0, 1.0; 
+    K_ << 1.0, 3.0, 2.0, 2.0, 2.0, 4.0, 1.0, 1.0;
 
     input_port_info_val_= make_unique<OutputVector<double>>(
         positions_vec_, velocities_vec_, efforts_vec_);

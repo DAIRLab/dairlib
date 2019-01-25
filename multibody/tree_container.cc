@@ -8,6 +8,7 @@ using std::vector;
 using dairlib::multibody::utils::GetBodyIndexFromName;
 using drake::math::DiscardGradient;
 using drake::MatrixX;
+using drake::VectorX;
 using Eigen::Map;
 using Eigen::MatrixXd;
 using Eigen::Matrix3Xd;
@@ -20,7 +21,8 @@ TreeContainer<T>::TreeContainer(const RigidBodyTree<double>& tree,
       num_contacts_(contact_info.idxA.size()) {}
 
 template <typename T>
-drake::MatrixX<T> TreeContainer<T>::CalcContactJacobian(drake::VectorX<T> x) {
+drake::MatrixX<T> TreeContainer<T>::CalcContactJacobian(
+    drake::VectorX<T> x) const {
   drake::VectorX<T> q = x.head(tree_.get_num_positions());
   drake::VectorX<T> v = x.tail(tree_.get_num_velocities());
   // Version with discarded gradients
@@ -66,8 +68,7 @@ drake::MatrixX<T> TreeContainer<T>::CalcContactJacobian(drake::VectorX<T> x) {
   }
 
   // Contact Jacobians
-  MatrixX<T> J(num_contacts_ * 3,
-               tree_.get_num_positions());
+  MatrixX<T> J(num_contacts_ * 3, tree_.get_num_positions());
 
   for (int i = 0; i < num_contacts_; i++) {
     // Jacobian for the individual constraints
@@ -83,6 +84,74 @@ drake::MatrixX<T> TreeContainer<T>::CalcContactJacobian(drake::VectorX<T> x) {
 
   return J;
 }
+
+
+template <typename T>
+VectorX<T> TreeContainer<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
+                                       VectorX<T> lambda) const {
+  const int num_positions = tree_.get_num_positions();
+  const int num_velocities = tree_.get_num_velocities();
+  const int num_efforts = tree_.get_num_actuators();
+  const int num_position_constraints = tree_.getNumPositionConstraints();
+
+  // Making sure that the size of lambda is correct
+  DRAKE_THROW_UNLESS(num_position_constraints + num_contacts_ * 3 ==
+                     lambda.size());
+
+  VectorX<T> q = x.head(num_positions);
+  VectorX<T> v = x.tail(num_velocities);
+
+  KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
+  const MatrixX<T> M = tree_.massMatrix(k_cache);
+  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
+
+  VectorX<T> right_hand_side =
+      -tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
+
+  if (num_efforts > 0) {
+    right_hand_side += tree_.B * u;
+  }
+
+  // Position constraints Jacocbian
+  if (num_position_constraints) {
+    MatrixX<T> J_position = tree_.positionConstraintsJacobian(k_cache);
+    right_hand_side +=
+        J_position.transpose() * lambda.head(num_position_constraints);
+  }
+
+  // Contact Jacobian
+  if (num_contacts_ > 0) {
+    MatrixX<T> J_contact = CalcContactJacobian(x);
+    right_hand_side += J_contact.transpose() * lambda.tail(num_contacts_ * 3);
+  }
+
+  // Returning right_hand_side (which is Mvdot) directly
+  return right_hand_side;
+
+}
+
+template <typename T>
+VectorX<T> TreeContainer<T>::CalcTimeDerivatives(VectorX<T> x, VectorX<T> u,
+                                                 VectorX<T> lambda) const {
+
+  const int num_positions = tree_.get_num_positions();
+  const int num_velocities = tree_.get_num_velocities();
+
+  VectorX<T> q = x.head(num_positions);
+  VectorX<T> v = x.tail(num_velocities);
+
+  KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
+
+  const MatrixX<T> M = tree_.massMatrix(k_cache);
+  VectorX<T> right_hand_side = CalcMVDot(x, u, lambda);
+
+  VectorX<T> v_dot = M.completeOrthogonalDecomposition().solve(right_hand_side);
+
+  VectorX<T> x_dot(num_positions + num_velocities);
+  x_dot << tree_.transformVelocityToQDot(k_cache, v), v_dot;
+  return x_dot;
+}
+
 
 template <typename T>
 ContactInfo TreeContainer<T>::get_contact_info() {

@@ -19,12 +19,12 @@ class TreeContainer {
  public:
   TreeContainer(const RigidBodyTree<double>& tree, ContactInfo contact_info);
 
-  drake::MatrixX<T> CalcContactJacobian(drake::VectorX<T> q);
+  drake::MatrixX<T> CalcContactJacobian(drake::VectorX<T> x) const;
+  drake::VectorX<T> CalcMVDot(drake::VectorX<T> x, drake::VectorX<T> u,
+                              drake::VectorX<T> lambda) const;
   drake::VectorX<T> CalcTimeDerivatives(drake::VectorX<T> x,
                                         drake::VectorX<T> u,
-                                        drake::VectorX<T> lambda);
-  drake::VectorX<T> CalcMVDot(drake::VectorX<T> x, drake::VectorX<T> u,
-                              drake::VectorX<T> lambda);
+                                        drake::VectorX<T> lambda) const;
 
   ContactInfo get_contact_info();
   int get_num_contacts();

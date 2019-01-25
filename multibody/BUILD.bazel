@@ -38,8 +38,10 @@ cc_test(
         "test/tree_container_test.cc",
     ],
     deps = [
+        "//examples/Cassie:cassie_utils",
         ":tree_container",
+        ":utils",
         "@gtest//:main",
     ],
+    size = "small",
 )
-

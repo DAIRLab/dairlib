@@ -2,25 +2,27 @@
 #include <utility>
 
 #include <gtest/gtest.h>
-#include "multibody/tree_container.h"
+//#include "examples/Cassie/cassie_utils.h"
+#include "multibody/rbt_utils.h"
+#include "multibody/contact_toolkit.h"
 
 namespace dairlib {
 namespace systems {
 namespace {
 
-class TreeContainerTest : public ::testing::Test {
+class ContactToolkitTest : public ::testing::Test {
 
  protected:
   void SetUp() override {
 
   }
+
+  RigidBodyTree<double> tree_;
 };
 
 // Tests number of input and output ports.
-TEST_F(TreeContainerTest, InitializationTest) {
+TEST_F(ContactToolkitTest, InitializationTest) {
 
-  /// Checks that the number of input ports in the system and in the context
-  // are consistent.
   ASSERT_EQ(1, 1);
 }
 

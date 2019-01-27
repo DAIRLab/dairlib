@@ -3,6 +3,7 @@
 //#include <vector>
 #include "drake/math/autodiff_gradient.h"
 #include "drake/multibody/rigid_body_tree.h"
+#include "drake/common/default_scalars.h"
 #include "multibody/rbt_utils.h"
 
 namespace dairlib {
@@ -15,9 +16,9 @@ struct ContactInfo {
 };
 
 template <typename T>
-class TreeContainer {
+class ContactToolkit {
  public:
-  TreeContainer(const RigidBodyTree<double>& tree, ContactInfo contact_info);
+  ContactToolkit(const RigidBodyTree<double>& tree, ContactInfo contact_info);
 
   drake::MatrixX<T> CalcContactJacobian(drake::VectorX<T> x) const;
   drake::VectorX<T> CalcMVDot(drake::VectorX<T> x, drake::VectorX<T> u,

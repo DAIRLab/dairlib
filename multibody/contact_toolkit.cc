@@ -1,4 +1,4 @@
-#include "multibody/tree_container.h"
+#include "multibody/contact_toolkit.h"
 
 namespace dairlib {
 namespace multibody {
@@ -14,14 +14,14 @@ using Eigen::MatrixXd;
 using Eigen::Matrix3Xd;
 
 template <typename T>
-TreeContainer<T>::TreeContainer(const RigidBodyTree<double>& tree,
+ContactToolkit<T>::ContactToolkit(const RigidBodyTree<double>& tree,
                                 ContactInfo contact_info)
     : tree_(tree),
       contact_info_(contact_info),
       num_contacts_(contact_info.idxA.size()) {}
 
 template <typename T>
-drake::MatrixX<T> TreeContainer<T>::CalcContactJacobian(
+drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
     drake::VectorX<T> x) const {
   drake::VectorX<T> q = x.head(tree_.get_num_positions());
   drake::VectorX<T> v = x.tail(tree_.get_num_velocities());
@@ -85,9 +85,8 @@ drake::MatrixX<T> TreeContainer<T>::CalcContactJacobian(
   return J;
 }
 
-
 template <typename T>
-VectorX<T> TreeContainer<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
+VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
                                        VectorX<T> lambda) const {
   const int num_positions = tree_.get_num_positions();
   const int num_velocities = tree_.get_num_velocities();
@@ -127,13 +126,11 @@ VectorX<T> TreeContainer<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
 
   // Returning right_hand_side (which is Mvdot) directly
   return right_hand_side;
-
 }
 
 template <typename T>
-VectorX<T> TreeContainer<T>::CalcTimeDerivatives(VectorX<T> x, VectorX<T> u,
+VectorX<T> ContactToolkit<T>::CalcTimeDerivatives(VectorX<T> x, VectorX<T> u,
                                                  VectorX<T> lambda) const {
-
   const int num_positions = tree_.get_num_positions();
   const int num_velocities = tree_.get_num_velocities();
 
@@ -152,21 +149,23 @@ VectorX<T> TreeContainer<T>::CalcTimeDerivatives(VectorX<T> x, VectorX<T> u,
   return x_dot;
 }
 
-
 template <typename T>
-ContactInfo TreeContainer<T>::get_contact_info() {
+ContactInfo ContactToolkit<T>::get_contact_info() {
   return contact_info_;
 }
 
 template <typename T>
-int TreeContainer<T>::get_num_contacts() {
+int ContactToolkit<T>::get_num_contacts() {
   return num_contacts_;
 }
 
 template <typename T>
-void TreeContainer<T>::set_contact_info(ContactInfo contact_info) {
+void ContactToolkit<T>::set_contact_info(ContactInfo contact_info) {
   contact_info_ = contact_info;
 }
 
 }  // namespace multibody
 }  // namespace dairlib
+
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
+    class ::dairlib::multibody::ContactToolkit);

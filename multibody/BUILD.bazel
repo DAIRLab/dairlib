@@ -18,12 +18,12 @@ cc_library(
 )
 
 cc_library(
-    name = "tree_container",
+    name = "contact_toolkit",
     srcs = [
-        "tree_container.cc",
+        "contact_toolkit.cc",
     ],
     hdrs = [
-        "tree_container.h",
+        "contact_toolkit.h",
     ],
     deps = [
         "@drake//attic/multibody:rigid_body_tree",
@@ -33,13 +33,13 @@ cc_library(
 )
 
 cc_test(
-    name = "tree_container_test",
+    name = "contact_toolkit_test",
     srcs = [
-        "test/tree_container_test.cc",
+        "test/contact_toolkit_test.cc",
     ],
     deps = [
         "//examples/Cassie:cassie_utils",
-        ":tree_container",
+        ":contact_toolkit",
         ":utils",
         "@gtest//:main",
     ],

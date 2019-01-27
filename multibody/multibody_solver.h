@@ -3,7 +3,10 @@
 namespace dairlib {
 namespace multibody {
 
-} // namespace multibody
-} // namespace dairlib
+class PositionConstraints {
+  public:
+    PositionConstraints(const RigidbodyTree<double>& tree,
 
+}  // namespace multibody
+}  // namespace dairlib
 

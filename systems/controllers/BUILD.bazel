@@ -20,11 +20,11 @@ cc_library(
 cc_library(
     name = "controllers",
     srcs = [
-        "linear_controller.cc", 
+        "linear_controller.cc",
         "affine_controller.cc"
     ],
     hdrs = [
-        "linear_controller.h", 
+        "linear_controller.h",
         "affine_controller.h"
     ],
     deps = [
@@ -49,14 +49,13 @@ cc_test(
 )
 
 cc_test(
-    name = "controllers_test", 
+    name = "controllers_test",
     srcs = [
         "test/affine_controller_test.cc",
     ],
     deps = [
         "@gtest//:main",
-        ":controllers", 
+        ":controllers",
     ],
-    size = "small", 
+    size = "small",
 )
-           

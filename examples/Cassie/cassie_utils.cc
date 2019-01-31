@@ -1,9 +1,7 @@
 #include "examples/Cassie/cassie_utils.h"
-#include "common/find_resource.h"
-#include "drake/multibody/joints/revolute_joint.h"
-#include "drake/solvers/mathematical_program.h"
 
 namespace dairlib {
+
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 using drake::solvers::Constraint;

@@ -3,10 +3,13 @@
 #include <string>
 #include <vector>
 
+#include "common/find_resource.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/multibody/parsers/urdf_parser.h"
+#include "drake/multibody/joints/revolute_joint.h"
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/solvers/constraint.h"
+#include "drake/solvers/mathematical_program.h"
 
 namespace dairlib {
 

@@ -2,7 +2,7 @@
 #include <utility>
 
 #include <gtest/gtest.h>
-//#include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/cassie_utils.h"
 #include "multibody/rbt_utils.h"
 #include "multibody/contact_toolkit.h"
 
@@ -17,7 +17,7 @@ class ContactToolkitTest : public ::testing::Test {
 
   }
 
-  RigidBodyTree<double> tree_;
+  //RigidBodyTree<double> tree_;
 };
 
 // Tests number of input and output ports.

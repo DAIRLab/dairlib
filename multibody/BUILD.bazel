@@ -32,6 +32,21 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "multibody_solvers",
+    srcs = [
+        "multibody_solvers.cc",
+    ],
+    hdrs = [
+        "multibody_solvers.h",
+    ],
+    deps = [
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//solvers:mathematical_program",
+        ":utils",
+    ],
+)
+
 cc_test(
     name = "contact_toolkit_test",
     srcs = [

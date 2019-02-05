@@ -1,38 +1,40 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "drake/solvers/constraint.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/kinematics_cache.h"
-namespace drake {
+
+namespace dairlib {
 
 template <typename T>
 class DirconKinematicData {
-  public:
-    DirconKinematicData(RigidBodyTree<double>& tree, int length);
+ public:
+    DirconKinematicData(const RigidBodyTree<double>& tree, int length);
     ~DirconKinematicData();
 
-    //The workhorse function, updates and caches everything needed by the outside world
-    virtual void updateConstraint(KinematicsCache<T>& cache) = 0;
+    // The workhorse function, updates and caches everything needed by the
+    // outside world
+    virtual void updateConstraint(const KinematicsCache<T>& cache) = 0;
 
-    VectorX<T> getC();
-    VectorX<T> getCDot();
-    MatrixX<T> getJ();
-    VectorX<T> getJdotv();
+    drake::VectorX<T> getC();
+    drake::VectorX<T> getCDot();
+    drake::MatrixX<T> getJ();
+    drake::VectorX<T> getJdotv();
     int getLength();
     int numForceConstraints();
-    std::shared_ptr<solvers::Constraint> getForceConstraint(int index);
+    std::shared_ptr<drake::solvers::Constraint> getForceConstraint(int index);
 
-  protected:
-    RigidBodyTree<double>* tree_;
-    //things like friction cone constraints
-    std::vector<std::shared_ptr<solvers::Constraint>> force_constraints_;
-    VectorX<T> c_;
-    VectorX<T> cdot_;
-    MatrixX<T> J_;
-    VectorX<T> Jdotv_;
+ protected:
+    const RigidBodyTree<double>* tree_;
+    std::vector<std::shared_ptr<drake::solvers::Constraint>> force_constraints_;
+    drake::VectorX<T> c_;
+    drake::VectorX<T> cdot_;
+    drake::MatrixX<T> J_;
+    drake::VectorX<T> Jdotv_;
     int length_;
 };
 
-}
+}  // namespace dairlib

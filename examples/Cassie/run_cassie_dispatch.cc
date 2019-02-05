@@ -10,7 +10,6 @@
 #include <iostream>
 //template class PollingInterface<int, int>;
 
-using namespace drake;
 int main()
 {
   drake::lcm::DrakeLcm lcm;

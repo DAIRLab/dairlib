@@ -3,35 +3,36 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
-using drake::solvers::Constraint;
-using drake::solvers::Binding;
-
-namespace drake{
+namespace dairlib {
 namespace systems {
-namespace trajectory_optimization{
-namespace dircon {
+namespace trajectory_optimization {
 
-void checkConstraints(const solvers::MathematicalProgram* prog);
+void checkConstraints(const drake::solvers::MathematicalProgram* prog);
 
-VectorXd getConstraintRows(const solvers::MathematicalProgram* prog, Binding<Constraint>& c);
+Eigen::VectorXd getConstraintRows(
+    const drake::solvers::MathematicalProgram* prog,
+    drake::solvers::Binding<drake::solvers::Constraint>& c);
 
 // Evaluate all constraints and construct a linearization of them
-void linearizeConstraints(const solvers::MathematicalProgram* prog, VectorXd& x,
-  VectorXd& y, MatrixXd& A, VectorXd& lb, VectorXd& ub);
+void linearizeConstraints(const drake::solvers::MathematicalProgram* prog,
+                          Eigen::VectorXd& x, Eigen::VectorXd& y,
+                          Eigen::MatrixXd& A, Eigen::VectorXd& lb,
+                          Eigen::VectorXd& ub);
 
-double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
-  MatrixXd& Q, VectorXd& w);
+double secondOrderCost(const drake::solvers::MathematicalProgram* prog,
+                       Eigen::VectorXd& x, Eigen::MatrixXd& Q,
+                       Eigen::VectorXd& w);
 
 template <typename Derived>
-int countConstraints(const solvers::MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints);
+int countConstraints(const drake::solvers::MathematicalProgram* prog,
+    const std::vector<drake::solvers::Binding<Derived>>& constraints);
 
 template <typename Derived>
-int updateConstraints(const solvers::MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints,
-      VectorXd& x, VectorXd& y, MatrixXd& A, VectorXd& lb, VectorXd& ub, int constraint_index);
+int updateConstraints(const drake::solvers::MathematicalProgram* prog,
+    const std::vector<drake::solvers::Binding<Derived>>& constraints,
+    Eigen::VectorXd& x, Eigen::VectorXd& y, Eigen::MatrixXd& A,
+    Eigen::VectorXd& lb, Eigen::VectorXd& ub, int constraint_index);
 
-}
-}
-}
-}
+}  // namespace trajectory_optimization
+}  // namespace systems
+}  // namespace dairlib

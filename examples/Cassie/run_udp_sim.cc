@@ -24,7 +24,7 @@
 #include "cassie_udp_systems.h"
 #include "systems/primitives/subvector_pass_through.h"
 
-namespace dairlib{
+namespace dairlib {
   using dairlib::systems::SubvectorPassThrough;
 
 // Simulation parameters.
@@ -192,7 +192,7 @@ std::cout << "b" << std::endl;
   return 0;
 }
 
-}  // namespace drake
+}  // namespace dairlib
 
 int main(int argc, char* argv[]) {
   return dairlib::do_main(argc, argv);

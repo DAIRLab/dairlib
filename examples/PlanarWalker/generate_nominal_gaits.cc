@@ -15,11 +15,9 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::string;
 
-using drake::goldilocks_models::writeCSV;
-using drake::goldilocks_models::readCSV;
 using drake::solvers::VectorXDecisionVariable;
 
-namespace drake{
+namespace dairlib {
 namespace goldilocks_models {
 
 void generateNominalGaits() {
@@ -67,5 +65,5 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::srand(time(0));  // Initialize random number generator.
 
-  drake::goldilocks_models::generateNominalGaits();
+  dairlib::goldilocks_models::generateNominalGaits();
 }

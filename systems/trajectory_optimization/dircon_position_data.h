@@ -5,26 +5,27 @@
 #include "drake/solvers/constraint.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/kinematics_cache.h"
-#include "dircon_kinematic_data.h"
+#include "systems/trajectory_optimization/dircon_kinematic_data.h"
 
-using Eigen::Vector3d;
+namespace dairlib {
 
-namespace drake {
 template <typename T>
 class DirconPositionData : public DirconKinematicData<T> {
-  public:
-    DirconPositionData(RigidBodyTree<double>& tree, int bodyIdx, Vector3d pt, bool isXZ = false);
-    ~DirconPositionData();
+ public:
+  DirconPositionData(const RigidBodyTree<double>& tree, int bodyIdx,
+                     Eigen::Vector3d pt, bool isXZ = false);
+  ~DirconPositionData();
 
-    //The workhorse function, updates and caches everything needed by the outside world
-    void updateConstraint(KinematicsCache<T>& cache);
+  // The workhorse function, updates and caches everything needed by the
+  // outside world
+  void updateConstraint(const KinematicsCache<T>& cache);
 
-    void addFixedNormalFrictionConstraints(Vector3d normal, double mu);
+  void addFixedNormalFrictionConstraints(Eigen::Vector3d normal, double mu);
 
-  private:
+ private:
     int bodyIdx_;
-    Vector3d pt_;
+    Eigen::Vector3d pt_;
     bool isXZ_;
-    Eigen::Matrix<double,2,3> TXZ_;
+    Eigen::Matrix<double, 2, 3> TXZ_;
 };
-}
+}  // namespace dairlib

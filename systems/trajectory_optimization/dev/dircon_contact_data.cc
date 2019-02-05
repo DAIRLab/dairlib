@@ -11,7 +11,7 @@ using Eigen::Matrix3Xd;
 using Eigen::Matrix3d;
 
 
-namespace drake{
+namespace dairlib {
 template <typename T>
 DirconContactData<T>::DirconContactData(RigidBodyTree<double>& tree, std::vector<int>& contact_indices,
                       double mu, bool isXZ)
@@ -38,7 +38,7 @@ DirconContactData<T>::DirconContactData(RigidBodyTree<double>& tree, std::vector
     A_fric << mu, 1, mu, -1;
     Vector2d lb_fric = Vector2d::Zero();
     Vector2d ub_fric = VectorXd::Constant(2, std::numeric_limits<double>::infinity());
-    auto force_constraint = std::make_shared<solvers::LinearConstraint>(A_fric, lb_fric, ub_fric);
+    auto force_constraint = std::make_shared<drake::solvers::LinearConstraint>(A_fric, lb_fric, ub_fric);
 
     for (int i = 0; i < n_contacts; i++) {
       Eigen::Map<Matrix3Xd> dmap(d_data_.block(0, 2*i, 3, 2).data(),3,2);
@@ -46,7 +46,7 @@ DirconContactData<T>::DirconContactData(RigidBodyTree<double>& tree, std::vector
 
       this->force_constraints_.push_back(force_constraint);
       // auto dynamicConstraint = std::make_shared<DirconDynamicConstraint>(tree, datasetd);
-      //std::shared_ptr<solvers::Constraint>;
+      //std::shared_ptr<drake::solvers::Constraint>;
     }
   } else {
     d_data_ = Matrix3Xd::Zero(3,n_contacts*3);
@@ -54,7 +54,7 @@ DirconContactData<T>::DirconContactData(RigidBodyTree<double>& tree, std::vector
     Matrix3d A_fric;
     A_fric << mu, 0, 0, 0, 1, 0, 0, 0, 1;
     Vector3d b_fric = Vector3d::Zero();
-    auto force_constraint = std::make_shared<solvers::LorentzConeConstraint>(A_fric, b_fric);
+    auto force_constraint = std::make_shared<drake::solvers::LorentzConeConstraint>(A_fric, b_fric);
 
     for (int i = 0; i < n_contacts; i++) {
       Eigen::Map<Matrix3Xd> dmap(d_data_.block(0, 3*i, 3, 3).data(),3,3);
@@ -72,7 +72,7 @@ DirconContactData<T>::~DirconContactData() {
 
 template <typename T>
 void DirconContactData<T>::updateConstraint(KinematicsCache<T>& cache) {
-  VectorXd q_double = math::DiscardGradient(cache.getQ());
+  VectorXd q_double = drake::math::DiscardGradient(cache.getQ());
   KinematicsCache<double> cache_double = this->tree_->doKinematics(q_double);
 
    this->tree_->collisionDetect(cache_double, phi_, normal_, xA_, xB_, idxA_, idxB_);

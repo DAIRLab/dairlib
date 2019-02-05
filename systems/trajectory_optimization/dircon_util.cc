@@ -4,13 +4,17 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using drake::solvers::Constraint;
 using drake::solvers::Binding;
+using drake::solvers::MathematicalProgram;
+using drake::AutoDiffVecXd;
+using drake::math::initializeAutoDiff;
+using drake::math::autoDiffToGradientMatrix;
+using drake::math::autoDiffToValueMatrix;
 
-namespace drake{
+namespace dairlib {
 namespace systems {
-namespace trajectory_optimization{
-namespace dircon {
+namespace trajectory_optimization {
 
-void checkConstraints(const solvers::MathematicalProgram* prog) {
+void checkConstraints(const MathematicalProgram* prog) {
   for (auto const& binding : prog->generic_constraints()) {
     double tol = 1e-6;
     auto y = prog->EvalBindingAtSolution(binding);
@@ -29,7 +33,7 @@ void checkConstraints(const solvers::MathematicalProgram* prog) {
 //form a quadratic approximation of the cost
 // cost \approx 1/2 z^T*Q*z + w^T*z + c
 // return value is the constant term (c)
-double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
+double secondOrderCost(const MathematicalProgram* prog, VectorXd& x,
   MatrixXd& Q, VectorXd& w) {
 
   int num_vars = prog->num_vars();
@@ -42,15 +46,15 @@ double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
     auto variables = binding.variables();
     if (variables.size() == 0)
       continue;
-    AutoDiffVecXd y_val = math::initializeAutoDiff(VectorXd::Zero(1), variables.size());
+    AutoDiffVecXd y_val = initializeAutoDiff(VectorXd::Zero(1), variables.size());
     VectorXd x_binding(variables.size());
     for (int i=0; i < variables.size(); i++) {
       x_binding(i) = x(prog->FindDecisionVariableIndex(variables(i)));
     }
-    AutoDiffVecXd x_val = math::initializeAutoDiff(x_binding);
+    AutoDiffVecXd x_val = initializeAutoDiff(x_binding);
     binding.evaluator()->Eval(x_val, &y_val);
-    MatrixXd gradient_x = math::autoDiffToGradientMatrix(y_val);
-    VectorXd y = math::autoDiffToValueMatrix(y_val);
+    MatrixXd gradient_x = autoDiffToGradientMatrix(y_val);
+    VectorXd y = autoDiffToValueMatrix(y_val);
     c += y(0); //costs are length 1
     for (int i = 0; i < variables.size(); i++) {
       w(prog->FindDecisionVariableIndex(variables(i))) = gradient_x(0,i);
@@ -59,12 +63,12 @@ double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
 
     // forward differencing for Hessian
     double dx = 1e-8;
-    AutoDiffVecXd y_hessian = math::initializeAutoDiff(VectorXd::Zero(1), variables.size());
+    AutoDiffVecXd y_hessian = initializeAutoDiff(VectorXd::Zero(1), variables.size());
     for (int i = 0; i < variables.size(); i++) {
       x_val(i) += dx;
       binding.evaluator()->Eval(x_val, &y_hessian);
       x_val(i) -= dx;
-      MatrixXd gradient_hessian = math::autoDiffToGradientMatrix(y_hessian);
+      MatrixXd gradient_hessian = autoDiffToGradientMatrix(y_hessian);
       for (int j=0; j <= i; j++) {
         int ind_i = prog->FindDecisionVariableIndex(variables(i));
         int ind_j = prog->FindDecisionVariableIndex(variables(j));
@@ -75,8 +79,8 @@ double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
 
     // // Central differencing for Hessian
     // double dx = 1e-8;
-    // AutoDiffVecXd y_hessian_p = math::initializeAutoDiff(VectorXd::Zero(1), variables.size());
-    // AutoDiffVecXd y_hessian_m = math::initializeAutoDiff(VectorXd::Zero(1), variables.size());
+    // AutoDiffVecXd y_hessian_p = initializeAutoDiff(VectorXd::Zero(1), variables.size());
+    // AutoDiffVecXd y_hessian_m = initializeAutoDiff(VectorXd::Zero(1), variables.size());
     // for (int i = 0; i < variables.size(); i++) {
     //   x_val(i) -= dx/2;
     //   binding.evaluator()->Eval(x_val, y_hessian_m);
@@ -84,8 +88,8 @@ double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
     //   binding.evaluator()->Eval(x_val, y_hessian_p);
     //   x_val(i) -= dx/2;
 
-    //   MatrixXd gradient_hessian_p = math::autoDiffToGradientMatrix(y_hessian_p);
-    //   MatrixXd gradient_hessian_m = math::autoDiffToGradientMatrix(y_hessian_m);
+    //   MatrixXd gradient_hessian_p = autoDiffToGradientMatrix(y_hessian_p);
+    //   MatrixXd gradient_hessian_m = autoDiffToGradientMatrix(y_hessian_m);
 
     //   for (int j=0; j <= i; j++) {
     //     Q(prog->FindDecisionVariableIndex(variables(i)),
@@ -100,7 +104,7 @@ double secondOrderCost(const solvers::MathematicalProgram* prog, VectorXd& x,
 
 
 // Evaluate all constraints and construct a linearization of them
-void linearizeConstraints(const solvers::MathematicalProgram* prog, VectorXd& x,
+void linearizeConstraints(const MathematicalProgram* prog, VectorXd& x,
   VectorXd& y, MatrixXd& A, VectorXd& lb, VectorXd& ub) {
 
 
@@ -137,7 +141,7 @@ VectorXd NVec(int start, int length) {
 }
 
 template <typename Derived>
-std::pair<int,int> getConstraintStart(const solvers::MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints,
+std::pair<int,int> getConstraintStart(const MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints,
   Binding<Constraint>& c) {
   int start = -1;
   int n = 0;
@@ -149,7 +153,7 @@ std::pair<int,int> getConstraintStart(const solvers::MathematicalProgram* prog, 
   return std::pair<int,int> (start,n);
 }
 
-VectorXd getConstraintRows(const solvers::MathematicalProgram* prog, Binding<Constraint>& c) {
+VectorXd getConstraintRows(const MathematicalProgram* prog, Binding<Constraint>& c) {
   int n = 0;
   auto index = getConstraintStart(prog, prog->bounding_box_constraints(),c);
   if (index.first != -1) {
@@ -192,7 +196,7 @@ VectorXd getConstraintRows(const solvers::MathematicalProgram* prog, Binding<Con
 
 
 template <typename Derived>
-int countConstraints(const solvers::MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints) {
+int countConstraints(const MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints) {
   int n = 0;
   for (auto const& binding : constraints) {
     n += binding.evaluator()->num_constraints();
@@ -201,7 +205,7 @@ int countConstraints(const solvers::MathematicalProgram* prog, const std::vector
 }
 
 template <typename Derived>
-int updateConstraints(const solvers::MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints,
+int updateConstraints(const MathematicalProgram* prog, const std::vector<Binding<Derived>>& constraints,
       VectorXd& x, VectorXd& y, MatrixXd& A, VectorXd& lb, VectorXd& ub, int constraint_index) {
 
   for (auto const& binding : constraints) {
@@ -212,16 +216,16 @@ int updateConstraints(const solvers::MathematicalProgram* prog, const std::vecto
 
     //evaluate constraint
     auto variables = binding.variables();
-    AutoDiffVecXd y_val = math::initializeAutoDiff(VectorXd::Zero(c->num_constraints()), variables.size());
+    AutoDiffVecXd y_val = initializeAutoDiff(VectorXd::Zero(c->num_constraints()), variables.size());
     VectorXd x_binding(variables.size());
     for (int i=0; i < variables.size(); i++) {
       x_binding(i) = x(prog->FindDecisionVariableIndex(variables(i)));
     }
-    AutoDiffVecXd x_val = math::initializeAutoDiff(x_binding);
+    AutoDiffVecXd x_val = initializeAutoDiff(x_binding);
     binding.evaluator()->Eval(x_val, &y_val);
-    MatrixXd dx = math::autoDiffToGradientMatrix(y_val);
+    MatrixXd dx = autoDiffToGradientMatrix(y_val);
 
-    y.segment(constraint_index, n) = math::autoDiffToValueMatrix(y_val);
+    y.segment(constraint_index, n) = autoDiffToValueMatrix(y_val);
     for (int i = 0; i < variables.size(); i++) {
       A.block(constraint_index, prog->FindDecisionVariableIndex(variables(i)),n,1) = dx.col(i);
     }
@@ -232,7 +236,6 @@ int updateConstraints(const solvers::MathematicalProgram* prog, const std::vecto
   return constraint_index;
 }
 
-}
-}
-}
-}
+}  // namespace trajectory_optimization
+}  // namespace systems
+}  // namespace dairlib

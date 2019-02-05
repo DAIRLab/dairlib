@@ -3,7 +3,7 @@
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/common/symbolic.h"
 
-namespace drake {
+namespace dairlib {
 namespace goldilocks_models {
 
 
@@ -17,21 +17,21 @@ class SymbolicManifold {
   /// @param weights the weights. Each row of the weights matrix corresponds
   ///    to a different constraint
   SymbolicManifold(const RigidBodyTree<double>& tree,
-    const VectorX<symbolic::Expression>& features,
+    const drake::VectorX<drake::symbolic::Expression>& features,
     const Eigen::MatrixXd& weights);
 
   int n_features() {return n_features_;}
 
   /// Return the expressions for the constraints, weights * features
-  VectorX<symbolic::Expression> getConstraintExpressions();
+  drake::VectorX<drake::symbolic::Expression> getConstraintExpressions();
 
-  symbolic::Expression getFeature(int index) {return features_(index);}
+  drake::symbolic::Expression getFeature(int index) {return features_(index);}
 
   int n_features_;
   const Eigen::MatrixXd weights_;
   const RigidBodyTree<double>* tree_;
-  const VectorX<symbolic::Expression> features_;
+  const drake::VectorX<drake::symbolic::Expression> features_;
 };
 
 }  // namespace goldilocks_models
-}  // namespace drake
+}  // namespace dairlib

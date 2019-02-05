@@ -8,13 +8,7 @@
 #include "drake/multibody/kinematics_cache.h"
 #include "dircon_kinematic_data.h"
 
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using Eigen::Matrix3Xd;
-
-
-namespace drake {
+namespace dairlib {
 template <typename T>
 class DirconContactData : public DirconKinematicData<T> {
   public:
@@ -32,10 +26,10 @@ class DirconContactData : public DirconKinematicData<T> {
     Eigen::Matrix<double,2,3> TXZ_;
 
 
-    Matrix3Xd xA_, xB_, normal_, d_data_;
+    Eigen::Matrix3Xd xA_, xB_, normal_, d_data_;
     std::vector<Eigen::Map<Matrix3Xd>> d_world_;
     std::vector<int> idxA_;
     std::vector<int> idxB_;
-    VectorXd phi_;
+    Eigen::VectorXd phi_;
 };
 }

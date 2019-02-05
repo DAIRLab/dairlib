@@ -11,6 +11,6 @@ DEFINE_string(prefix, "", "Output prefix for results");
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  drake::goldilocks_models::sgdIter(FLAGS_length, FLAGS_duration, FLAGS_iter, 
+  dairlib::goldilocks_models::sgdIter(FLAGS_length, FLAGS_duration, FLAGS_iter, 
     FLAGS_dir, FLAGS_init, FLAGS_weights, FLAGS_prefix);
 }

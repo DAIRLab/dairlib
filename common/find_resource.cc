@@ -282,4 +282,4 @@ std::string FindResourceOrThrow(std::string resource_path) {
   return FindResource(std::move(resource_path)).get_absolute_path_or_throw();
 }
 
-}  // namespace drake
+}  // namespace dairlib

@@ -12,8 +12,8 @@ def resolve_path(relpath):
     assert os.path.exists(abspath), "Path does not exist: {}".format(abspath)
     return abspath
 
-os.environ['LD_LIBRARY_PATH'] = '/opt/drake/lib'
 os.environ['PATH'] = os.environ['PATH'] + ':' + resolve_path("external/director/build/install/bin")
+os.environ['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH'] + ':' + resolve_path("external/director/build/install/lib")
 
 bin_path = resolve_path("external/director/build/install/bin/drake-visualizer")
 args = [bin_path] + sys.argv[1:]

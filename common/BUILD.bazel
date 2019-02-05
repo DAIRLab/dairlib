@@ -7,6 +7,7 @@ cc_library(
           ],
   srcs = ["find_resource.cc"],
   deps = [
-        "@drake//common",
+        "@drake//common:essential",
+        "//third_party/spruce",
         ]
 )

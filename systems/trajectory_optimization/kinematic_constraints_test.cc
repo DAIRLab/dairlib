@@ -20,9 +20,7 @@ using std::endl;
 
 //template VectorXd RigidBodyTree<double>::transformPointsJacobianDotTimesV<double, Matrix3Xd>(KinematicsCache<double> const&, Eigen::MatrixBase<Matrix3Xd> const&, int, int);
 
-namespace drake{
-namespace goldilocks {
-namespace examples {
+namespace dairlib{
 namespace {
 
 int do_main(int argc, char* argv[]) {
@@ -248,9 +246,7 @@ int do_main(int argc, char* argv[]) {
 }
 
 }  // namespace
-}  // namespace examples
-}  // namespace goldilocks
-}  // namespace drake
+}  // namespace dairlib
 
 int main(int argc, char* argv[]) {
   return drake::goldilocks::examples::do_main(argc, argv);

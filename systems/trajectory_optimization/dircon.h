@@ -13,18 +13,15 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/symbolic.h"
 
-
-
-namespace drake {
+namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
-using trajectories::PiecewisePolynomial;
-
 /// DIRCON implements the approach to trajectory optimization as
 /// described in
-///   Michael Posa, Scott Kuindersma, Russ Tedrake. "Optimization and Stabilization
-////  of Trajectories for Constrained Dynamical Systems." ICRA, 2016.
+///   Michael Posa, Scott Kuindersma, Russ Tedrake. "Optimization and
+///   Stabilization of Trajectories for Constrained Dynamical Systems." ICRA,
+///   2016.
 /// It assumes a first-order hold on the input trajectory and a cubic spline
 /// representation of the state trajectory, and adds dynamic constraints (and
 /// running costs) to the midpoints as well as the knot points in order to
@@ -33,7 +30,7 @@ using trajectories::PiecewisePolynomial;
 /// and corresponding acceleration, velocity, and position constraints.
 
 template <typename T>
-class Dircon : public MultipleShooting {
+class Dircon:public drake::systems::trajectory_optimization::MultipleShooting {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Dircon)
 
@@ -44,62 +41,77 @@ class Dircon : public MultipleShooting {
   /// @param minimum_timestep Minimum spacing between sample times.
   /// @param maximum_timestep Maximum spacing between sample times.
   /// @param constraints The set of kinematic constraints that must be enforced
-  /// @param opttions a set of options for the optimization program (see DirconOptions)
-  Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
-    DirconKinematicDataSet<T>& constraints, DirconOptions options);
+  /// @param opttions (see DirconOptions)
+  Dircon(const RigidBodyTree<double>& tree, int num_time_samples,
+         double minimum_timestep, double maximum_timestep,
+         DirconKinematicDataSet<T>& constraints, DirconOptions options);
 
   ~Dircon() override {}
 
   /// Get the input trajectory at the solution as a
   /// %PiecewisePolynomialTrajectory%.
-  PiecewisePolynomial<double> ReconstructInputTrajectory()
+  drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
   const override;
 
   /// Get the state trajectory at the solution as a
   /// %PiecewisePolynomialTrajectory%.
-  PiecewisePolynomial<double> ReconstructStateTrajectory()
+  drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
   const override;
 
   /// Set the initial guess
   /// @param traj_init_u control input u
   /// @param traj_init_x stat ex
   /// @param traj_init_l contact forces lambda (interpreted at knot points)
-  /// @param traj_init_lc contact forces lambda_collocation (interpretted at collocation points)
-  /// @param traj_init_vc velocity constrait slack variables at collocation points
-  void SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u, const PiecewisePolynomial<double>& traj_init_x,
-                            const PiecewisePolynomial<double>& traj_init_l, const PiecewisePolynomial<double>& traj_init_lc,
-                            const PiecewisePolynomial<double>& traj_init_vc);
+  /// @param traj_init_lc contact forces (interpreted at collocation points)
+  /// @param traj_init_vc velocity constraint slack variables at collocation pts
+  void SetInitialTrajectory(
+      const drake::trajectories::PiecewisePolynomial<double>& traj_init_u,
+      const drake::trajectories::PiecewisePolynomial<double>& traj_init_x,
+      const drake::trajectories::PiecewisePolynomial<double>& traj_init_l,
+      const drake::trajectories::PiecewisePolynomial<double>& traj_init_lc,
+      const drake::trajectories::PiecewisePolynomial<double>& traj_init_vc);
 
 
 
   int num_kinematic_constraints() const { return num_kinematic_constraints_; }
 
-  const solvers::VectorXDecisionVariable& force_vars() const { return force_vars_; }
+  const drake::solvers::VectorXDecisionVariable& force_vars() const {
+    return force_vars_;
+  }
 
-  const solvers::VectorXDecisionVariable& offset_vars() const { return offset_vars_; }
+  const drake::solvers::VectorXDecisionVariable& offset_vars() const {
+    return offset_vars_;
+  }
 
-  const solvers::VectorXDecisionVariable& collocation_force_vars() const { return collocation_force_vars_; }
+  const drake::solvers::VectorXDecisionVariable& collocation_force_vars()
+      const {
+    return collocation_force_vars_;
+  }
 
-  const solvers::VectorXDecisionVariable& collocation_slack_vars() const { return collocation_slack_vars_; }
+  const drake::solvers::VectorXDecisionVariable& collocation_slack_vars()
+      const {
+    return collocation_slack_vars_;
+  }
 
-  Eigen::VectorBlock<const solvers::VectorXDecisionVariable> force(
+  Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable> force(
       int index) const {
     DRAKE_DEMAND(index >= 0 && index < N());
-    return force_vars_.segment(index * num_kinematic_constraints_, num_kinematic_constraints_);
+    return force_vars_.segment(index * num_kinematic_constraints_,
+                              num_kinematic_constraints_);
   }
 
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
- 	const int num_kinematic_constraints_;
+  const int num_kinematic_constraints_;
   const RigidBodyTree<double>* tree_;
   DirconKinematicDataSet<T>* constraints_;
-  void DoAddRunningCost(const symbolic::Expression& e) override;
-  const solvers::VectorXDecisionVariable force_vars_;
-  const solvers::VectorXDecisionVariable collocation_force_vars_;
-  const solvers::VectorXDecisionVariable collocation_slack_vars_;
-  const solvers::VectorXDecisionVariable offset_vars_;
+  void DoAddRunningCost(const drake::symbolic::Expression& e) override;
+  const drake::solvers::VectorXDecisionVariable force_vars_;
+  const drake::solvers::VectorXDecisionVariable collocation_force_vars_;
+  const drake::solvers::VectorXDecisionVariable collocation_slack_vars_;
+  const drake::solvers::VectorXDecisionVariable offset_vars_;
 };
 
 }  // namespace trajectory_optimization
 }  // namespace systems
-}  // namespace drake
+}  // namespace dairlib

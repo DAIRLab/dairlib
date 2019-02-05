@@ -8,14 +8,20 @@
 #include "drake/math/autodiff_gradient.h"
 
 
-namespace drake {
+namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
-using solvers::Binding;
-using solvers::Constraint;
-using solvers::MathematicalProgram;
-using solvers::VectorXDecisionVariable;
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::VectorXDecisionVariable;
+using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
+using drake::math::initializeAutoDiff;
+using drake::math::autoDiffToValueMatrix;
+using drake::VectorX;
+using drake::MatrixX;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
@@ -31,7 +37,7 @@ template <>
 void DirconAbstractConstraint<double>::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
     Eigen::VectorXd* y) const {
-  EvaluateConstraint(x,y);
+  EvaluateConstraint(x, y);
 }
 
 template <>
@@ -39,14 +45,14 @@ void DirconAbstractConstraint<AutoDiffXd>::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
     Eigen::VectorXd* y) const {
   AutoDiffVecXd y_t;
-  EvaluateConstraint(math::initializeAutoDiff(x), &y_t);
-  *y = math::autoDiffToValueMatrix(y_t);
+  EvaluateConstraint(initializeAutoDiff(x), &y_t);
+  *y = autoDiffToValueMatrix(y_t);
 }
 
 template <typename T>
 void DirconAbstractConstraint<T>::DoEval(
-    const Eigen::Ref<const VectorX<symbolic::Variable>>& x,
-    VectorX<symbolic::Expression>* y) const {
+    const Eigen::Ref<const VectorX<drake::symbolic::Variable>>& x,
+    VectorX<drake::symbolic::Expression>* y) const {
   throw std::logic_error(
       "DirconAbstractConstraint does not support symbolic evaluation.");
 }
@@ -63,7 +69,7 @@ void DirconAbstractConstraint<double>::DoEval(
     // forward differencing
     double dx = 1e-8;
 
-    VectorXd x_val = math::autoDiffToValueMatrix(x);
+    VectorXd x_val = autoDiffToValueMatrix(x);
     VectorXd y0,yi;
     EvaluateConstraint(x_val,&y0);
 
@@ -74,12 +80,12 @@ void DirconAbstractConstraint<double>::DoEval(
       x_val(i) -= dx;
       dy.col(i) = (yi - y0)/dx;
     }
-    math::initializeAutoDiffGivenGradientMatrix(y0, dy, *y);
+    drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy, *y);
 
     // // central differencing
     // double dx = 1e-8;
 
-    // VectorXd x_val = math::autoDiffToValueMatrix(x);
+    // VectorXd x_val = autoDiffToValueMatrix(x);
     // VectorXd y0,yi;
     // EvaluateConstraint(x_val,y0);
 
@@ -93,7 +99,7 @@ void DirconAbstractConstraint<double>::DoEval(
     //   dy.col(i) = (yi - y0)/dx;
     // }
     // EvaluateConstraint(x_val,y0);
-    // math::initializeAutoDiffGivenGradientMatrix(y0, dy, y);
+    // initializeAutoDiffGivenGradientMatrix(y0, dy, y);
 }
 
 
@@ -337,6 +343,6 @@ template class DirconImpactConstraint<double>;
 template class DirconImpactConstraint<AutoDiffXd>;
 
 
-} //drake
-} //systems
-} //trajectoryoptimization
+}  // namespace trajectory_optimization
+}  // namespace systems
+}  // namespace dairlib

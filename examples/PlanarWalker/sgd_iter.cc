@@ -1,7 +1,11 @@
+#include "examples/PlanarWalker/sgd_iter.h"
+
+#include <gflags/gflags.h>
+
 #include <memory>
 #include <chrono>
 
-#include <gflags/gflags.h>
+
 
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/joints/floating_base_types.h"
@@ -25,34 +29,40 @@
 
 #include "systems/goldilocks_models/symbolic_manifold.h"
 #include "systems/goldilocks_models/file_utils.h"
-#include "sgd_iter.h"
-
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3Xd;
-using drake::systems::trajectory_optimization::HybridDircon;
-using drake::systems::trajectory_optimization::DirconDynamicConstraint;
-using drake::systems::trajectory_optimization::DirconKinematicConstraint;
-using drake::systems::trajectory_optimization::DirconOptions;
-using drake::systems::trajectory_optimization::DirconKinConstraintType;
+using drake::VectorX;
+using drake::systems::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
 using std::vector;
 using std::shared_ptr;
 using std::cout;
 using std::endl;
-//using drake::goldilocks_models::ManifoldConstraint;
 using std::string;
 
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
-namespace drake{
+namespace dairlib {
 namespace goldilocks_models {
-shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, int iter,
-    string directory, string init_file, string weights_file, string output_prefix) {
+
+using systems::trajectory_optimization::HybridDircon;
+using systems::trajectory_optimization::DirconDynamicConstraint;
+using systems::trajectory_optimization::DirconKinematicConstraint;
+using systems::trajectory_optimization::DirconOptions;
+using systems::trajectory_optimization::DirconKinConstraintType;
+
+shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration,
+                                         int iter, string directory,
+                                         string init_file, string weights_file,
+                                         string output_prefix) {
   RigidBodyTree<double> tree;
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalkerWithTorso.urdf", multibody::joints::kFixed, &tree);
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
+      "PlanarWalkerWithTorso.urdf", drake::multibody::joints::kFixed, &tree);
 
 // world
 // base
@@ -92,23 +102,24 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
 
 
   int n = tree.get_num_positions();
-  int nu = tree.get_num_actuators();
 
   int leftLegIdx = tree.FindBodyIndex("left_lower_leg");
   int rightLegIdx = tree.FindBodyIndex("right_lower_leg");
 
   Vector3d pt;
-  pt << 0,0,-.5;
+  pt << 0, 0, -.5;
   bool isXZ = true;
 
-  auto leftFootConstraint = DirconPositionData<double>(tree,leftLegIdx,pt,isXZ);
-  auto rightFootConstraint = DirconPositionData<double>(tree,rightLegIdx,pt,isXZ);
+  auto leftFootConstraint = DirconPositionData<double>(tree, leftLegIdx, pt,
+                                                       isXZ);
+  auto rightFootConstraint = DirconPositionData<double>(tree, rightLegIdx, pt,
+                                                        isXZ);
 
   Vector3d normal;
-  normal << 0,0,1;
+  normal << 0, 0, 1;
   double mu = 1;
-  leftFootConstraint.addFixedNormalFrictionConstraints(normal,mu);
-  rightFootConstraint.addFixedNormalFrictionConstraints(normal,mu);
+  leftFootConstraint.addFixedNormalFrictionConstraints(normal, mu);
+  rightFootConstraint.addFixedNormalFrictionConstraints(normal, mu);
 
   std::vector<DirconKinematicData<double>*> leftConstraints;
   leftConstraints.push_back(&leftFootConstraint);
@@ -119,10 +130,10 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   auto rightDataSet = DirconKinematicDataSet<double>(tree, &rightConstraints);
 
   auto leftOptions = DirconOptions(leftDataSet.countConstraints());
-  leftOptions.setConstraintRelative(0,true);
+  leftOptions.setConstraintRelative(0, true);
 
   auto rightOptions = DirconOptions(rightDataSet.countConstraints());
-  rightOptions.setConstraintRelative(0,true);
+  rightOptions.setConstraintRelative(0, true);
 
   std::vector<int> timesteps;
   timesteps.push_back(20);
@@ -135,7 +146,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   max_dt.push_back(.3);
 
   int N = 1 - timesteps.size();
-  for (int i = 0; i < timesteps.size(); i++) {
+  for (uint i = 0; i < timesteps.size(); i++) {
     N += timesteps[i];
   }
 
@@ -147,16 +158,21 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   options_list.push_back(leftOptions);
   options_list.push_back(rightOptions);
 
-  auto trajopt = std::make_shared<HybridDircon<double>>(tree, timesteps, min_dt, max_dt, dataset_list, options_list);
+  auto trajopt = std::make_shared<HybridDircon<double>>(tree, timesteps, min_dt,
+                                                        max_dt, dataset_list,
+                                                        options_list);
 
   trajopt->AddDurationBounds(duration, duration);
 
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Major iterations limit",iter);
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Print file", "snopt.out");
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Major iterations limit", iter);
 
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",0);
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
+                           0);
 
-  //Periodicity constraints
+  // Periodicity constraints
   // planar_x - 0
   // planar_z - 1
   // planar_roty - 2
@@ -166,7 +182,8 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   // right_knee_pin - 6
   auto x0 = trajopt->initial_state();
   // auto xf = trajopt->final_state();
-  auto xf = trajopt->state_vars_by_mode(timesteps.size()-1,timesteps[timesteps.size()-1]-1);
+  auto xf = trajopt->state_vars_by_mode(timesteps.size()-1,
+                                        timesteps[timesteps.size()-1]-1);
 
   trajopt->AddLinearConstraint(x0(1) == xf(1));
   trajopt->AddLinearConstraint(x0(2) == xf(2));
@@ -213,9 +230,9 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   const double R = 10;  // Cost on input effort
   auto u = trajopt->input();
   trajopt->AddRunningCost(u.transpose()*R*u);
-  MatrixXd Q = MatrixXd::Zero(2*n,2*n);
-  for (int i=0;i < n;i++) {
-    Q(i+n,i+n) = 10;
+  MatrixXd Q = MatrixXd::Zero(2*n, 2*n);
+  for (int i=0; i < n; i++) {
+    Q(i+n, i+n) = 10;
   }
   trajopt->AddRunningCost(x.transpose()*Q*x);
 
@@ -223,7 +240,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   // weights(0,0) = -0.1;
   // weights(0,5) = 1; //left knee pitch
 
-  MatrixXd weights = drake::goldilocks_models::readCSV(directory + weights_file);
+  MatrixXd weights = readCSV(directory + weights_file);
 
   std::vector<Binding<Constraint>> manifold_bindings;
 
@@ -232,7 +249,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   //    manifold_bindings.push_back(trajopt->AddConstraint(m_constraint, trajopt->state(i)));
   // }
 
-  VectorX<symbolic::Expression> features(10);
+  VectorX<drake::symbolic::Expression> features(10);
   features << 1, x(2), x(3), x(4), cos(x(2)), cos(x(3)), cos(x(4)), sin(x(2)), sin(x(3)), sin(x(4));
   SymbolicManifold m_constraint(tree, features, weights);
 
@@ -243,7 +260,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   }
 
   if (!init_file.empty()) {
-    MatrixXd z0 = drake::goldilocks_models::readCSV(directory + init_file);
+    MatrixXd z0 = readCSV(directory + init_file);
     trajopt->SetInitialGuessForAllVariables(z0);
   }
 
@@ -256,15 +273,15 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
   std::cout << result << std::endl;
   std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
 
-  // systems::trajectory_optimization::dircon::checkConstraints(trajopt.get());
+  // systems::trajectory_optimization::checkConstraints(trajopt.get());
 
   MatrixXd A,H;
   VectorXd y,lb,ub,w;
   VectorXd x_sol = trajopt->GetSolution(trajopt->decision_variables());
-  systems::trajectory_optimization::dircon::linearizeConstraints(trajopt.get(),
+  systems::trajectory_optimization::linearizeConstraints(trajopt.get(),
     x_sol, y, A, lb, ub);
 
-  double costval = systems::trajectory_optimization::dircon::secondOrderCost(
+  double costval = systems::trajectory_optimization::secondOrderCost(
     trajopt.get(), x_sol, H, w);
 
   VectorXd z = trajopt->GetSolution(trajopt->decision_variables());
@@ -277,10 +294,10 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
     VectorXd features(m_constraint.n_features());
     for (int j = 0; j < m_constraint.n_features(); j++) {
       auto m_ij = trajopt->SubstitutePlaceholderVariables(m_constraint.getFeature(j), i);
-      features(j) = ExtractDoubleOrThrow(trajopt->SubstituteSolution(m_ij));
+      features(j) = drake::ExtractDoubleOrThrow(trajopt->SubstituteSolution(m_ij));
     }
 
-    VectorXd ind = systems::trajectory_optimization::dircon::getConstraintRows(
+    VectorXd ind = systems::trajectory_optimization::getConstraintRows(
       trajopt.get(), manifold_bindings[i]);
 
     for (int k = 0; k < ind.size(); k++) {
@@ -290,21 +307,22 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
     }
   }
 
-  drake::goldilocks_models::writeCSV(directory + output_prefix + string("B.csv"),B);
-  drake::goldilocks_models::writeCSV(directory + output_prefix + string("A.csv"),A);
-  drake::goldilocks_models::writeCSV(directory + output_prefix + string("y.csv"),y);
-  drake::goldilocks_models::writeCSV(directory + output_prefix + string("lb.csv"),lb);
-  drake::goldilocks_models::writeCSV(directory + output_prefix + string("ub.csv"),ub);
-  drake::goldilocks_models::writeCSV(directory + output_prefix + string("H.csv"),H);
-  drake::goldilocks_models::writeCSV(directory + output_prefix + string("w.csv"),w);
-  drake::goldilocks_models::writeCSV(directory + output_prefix + string("z.csv"),z);
+  writeCSV(directory + output_prefix + string("B.csv"), B);
+  writeCSV(directory + output_prefix + string("A.csv"), A);
+  writeCSV(directory + output_prefix + string("y.csv"), y);
+  writeCSV(directory + output_prefix + string("lb.csv"), lb);
+  writeCSV(directory + output_prefix + string("ub.csv"), ub);
+  writeCSV(directory + output_prefix + string("H.csv"), H);
+  writeCSV(directory + output_prefix + string("w.csv"), w);
+  writeCSV(directory + output_prefix + string("z.csv"), z);
 
-  //visualizer
-  lcm::DrakeLcm lcm;
-  systems::DiagramBuilder<double> builder;
-  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
-  auto state_source = builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
-  auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
+  // visualizer
+  drake::lcm::DrakeLcm lcm;
+  drake::systems::DiagramBuilder<double> builder;
+  const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
+      trajopt->ReconstructStateTrajectory();
+  auto state_source = builder.AddSystem<drake::systems::TrajectorySource>(pp_xtraj);
+  auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree, &lcm);
   publisher->set_publish_period(1.0 / 60.0);
   builder.Connect(state_source->get_output_port(),
                   publisher->get_input_port(0));
@@ -313,7 +331,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
 
 
   // while (true) {
-    systems::Simulator<double> simulator(*diagram);
+    drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(1);
     simulator.Initialize();
     simulator.StepTo(pp_xtraj.end_time());
@@ -321,15 +339,16 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, 
 
   return trajopt;
 }
-}
-}
+
+}  // namespace goldilocks_models
+}  // namespace dairlib
 
 
 // int main(int argc, char* argv[]) {
 //   gflags::ParseCommandLineFlags(&argc, &argv, true);
 //   std::srand(time(0));  // Initialize random number generator.
 
-//   auto prog = drake::dircon::sgdIter(FLAGS_strideLength, FLAGS_duration, FLAGS_iter,
+//   auto prog = drake::sgdIter(FLAGS_strideLength, FLAGS_duration, FLAGS_iter,
 //     FLAGS_dir, FLAGS_init, FLAGS_weights, FLAGS_prefix);
 // }
 

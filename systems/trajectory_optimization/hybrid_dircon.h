@@ -122,6 +122,10 @@ class HybridDircon :
       const drake::VectorX<drake::symbolic::Expression>& f,
       int interval_index) const;
 
+  using drake::systems::trajectory_optimization::MultipleShooting::N;
+  using drake::systems::trajectory_optimization::MultipleShooting::
+        SubstitutePlaceholderVariables;
+
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
   const RigidBodyTree<double>* tree_;

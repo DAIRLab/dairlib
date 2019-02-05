@@ -24,7 +24,7 @@
 
 #include "examples/Cassie/cassie_utils.h"
 
-namespace dairlib{
+namespace dairlib {
   using dairlib::systems::SubvectorPassThrough;
 
 // Simulation parameters.
@@ -186,7 +186,7 @@ int do_main(int argc, char* argv[]) {
   return 0;
 }
 
-}  // namespace drake
+}  // namespace dairlib
 
 int main(int argc, char* argv[]) {
   return dairlib::do_main(argc, argv);

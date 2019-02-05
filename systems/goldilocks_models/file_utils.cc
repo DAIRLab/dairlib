@@ -2,19 +2,24 @@
 #include "systems/goldilocks_models/file_utils.h"
 #include "drake/common/drake_assert.h"
 
-using namespace Eigen;
+using Eigen::MatrixXd;
+using Eigen::Matrix;
+using Eigen::Dynamic;
+using Eigen::Map;
+using Eigen::RowMajor;
 using std::ofstream;
 using std::ifstream;
 using std::cout;
 using std::string;
 using std::cout;
 
-const static IOFormat CSVFormat(StreamPrecision, DontAlignCols, ", ", "\n");
+const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
+                                       Eigen::DontAlignCols, ", ", "\n");
 
-namespace drake {
+namespace dairlib {
 namespace goldilocks_models {
 
-MatrixXd readCSV (const string & path) {
+MatrixXd readCSV(const string & path) {
     ifstream indata;
     indata.open(path);
     string line;
@@ -43,4 +48,4 @@ void writeCSV(const std::string& path, const MatrixXd& M) {
 }
 
 }  // namespace goldilocks_models
-}  // namespace drake
+}  // namespace dairlib

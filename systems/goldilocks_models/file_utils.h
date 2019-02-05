@@ -5,9 +5,8 @@
 #include <fstream>
 #include <string>
 
-namespace drake {
+namespace dairlib {
 namespace goldilocks_models {
-
 
 /// Read a CSV formatted file as an Eigen Matrix
 Eigen::MatrixXd readCSV(const std::string & path);
@@ -16,4 +15,4 @@ Eigen::MatrixXd readCSV(const std::string & path);
 void writeCSV(const std::string& path, const Eigen::MatrixXd& M);
 
 }  // namespace goldilocks_models
-}  // namespace drake
+}  // namespace dairlib

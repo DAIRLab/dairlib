@@ -98,7 +98,7 @@ int do_main(int argc, char* argv[]) {
   auto state_pub = builder.AddSystem(
       std::make_unique<dairlib::CassieUdpOutputPublisher>(udp_spoofer));
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
-  state_pub->set_publish_period(1.0/200.0);
+  state_pub->set_publish_period(1.0/200);
 
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
     input_receiver->get_output_port(0).size(),

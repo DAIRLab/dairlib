@@ -4,11 +4,9 @@
 #include <utility>
 #include <vector>
 
-#include <spruce.hh>
+#include "third_party/spruce/spruce.hh"
 
-#include "drake/common/drake_marker.h"
 #include "drake/common/drake_throw.h"
-#include "drake/common/find_loaded_library.h"
 #include "drake/common/never_destroyed.h"
 
 using std::string;

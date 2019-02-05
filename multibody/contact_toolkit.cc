@@ -25,13 +25,8 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
     drake::VectorX<T> x) const {
   drake::VectorX<T> q = x.head(tree_.get_num_positions());
   drake::VectorX<T> v = x.tail(tree_.get_num_velocities());
-  // Version with discarded gradients
-  drake::VectorX<double> q_double = DiscardGradient(q);
-  drake::VectorX<double> v_double = DiscardGradient(v);
 
   KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
-  KinematicsCache<double> k_cache_double =
-      tree_.doKinematics(q_double, v_double);
 
   // Index of "world" within the RBT
   const int world_ind = GetBodyIndexFromName(tree_, "world");
@@ -73,7 +68,9 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
   for (int i = 0; i < num_contacts_; i++) {
     // Jacobian for the individual constraints
     MatrixX<T> J_constraint(3, tree_.get_num_positions());
+    // Normal
     J_constraint.row(0) = normal.col(i).transpose() * J_diff.at(i);
+    // Both the surface tangents
     J_constraint.row(1) =
         tangents_map_vector.at(0).col(i).transpose() * J_diff.at(i);
     J_constraint.row(2) =
@@ -140,6 +137,7 @@ VectorX<T> ContactToolkit<T>::CalcTimeDerivatives(VectorX<T> x, VectorX<T> u,
   KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
 
   const MatrixX<T> M = tree_.massMatrix(k_cache);
+  // Reusing the code in CalcMVDot as the same computation is required.
   VectorX<T> right_hand_side = CalcMVDot(x, u, lambda);
 
   VectorX<T> v_dot = M.completeOrthogonalDecomposition().solve(right_hand_side);

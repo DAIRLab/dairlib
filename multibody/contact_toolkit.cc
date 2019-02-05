@@ -5,7 +5,7 @@ namespace multibody {
 
 using std::vector;
 
-using dairlib::multibody::utils::GetBodyIndexFromName;
+using dairlib::multibody::GetBodyIndexFromName;
 using drake::math::DiscardGradient;
 using drake::MatrixX;
 using drake::VectorX;

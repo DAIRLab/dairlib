@@ -29,7 +29,7 @@ using drake::multibody::AddFlatTerrainToWorld;
 using dairlib::buildCassieTree;
 using dairlib::multibody::ContactToolkit;
 using dairlib::multibody::ContactInfo;
-using dairlib::multibody::utils::GetBodyIndexFromName;
+using dairlib::multibody::GetBodyIndexFromName;
 
 class ContactToolkitTest : public ::testing::Test {
  protected:
@@ -217,8 +217,10 @@ TEST_F(ContactToolkitTest, TimeDerivativesTest) {
                                                      lambda_autodiff);
 
   // Verifying the dimensions
-  ASSERT_EQ(xdot_double.rows(), tree_.get_num_positions() + tree_.get_num_velocities());
-  ASSERT_EQ(xdot_autodiff.rows(), tree_.get_num_velocities() + tree_.get_num_velocities());
+  ASSERT_EQ(xdot_double.rows(),
+            tree_.get_num_positions() + tree_.get_num_velocities());
+  ASSERT_EQ(xdot_autodiff.rows(),
+            tree_.get_num_velocities() + tree_.get_num_velocities());
 
   // Verifying that both templates return the same value
   ASSERT_TRUE(xdot_double.isApprox(DiscardGradient(xdot_autodiff)));

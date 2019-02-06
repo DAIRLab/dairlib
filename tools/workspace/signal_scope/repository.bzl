@@ -10,8 +10,12 @@ def _impl(repository_ctx):
 
     if os_result.is_macos:
         urls = ["https://www.seas.upenn.edu/~posa/files/signal-scope/signal-scope-macos"]
+        prefix = "signal-scope-macos"
+        sha256 = ""
     elif os_result.ubuntu_release == "16.04":
-        urls = ["https://www.seas.upenn.edu/~posa/files/signal-scope/signal-scope-16.04"]
+        urls = ["https://www.seas.upenn.edu/~posa/files/signal-scope/signal-scope-16.04.zip"]
+        sha256 = "68aa30355d6c094f817ace4c46c786b5c83765a4fddac164d5228994915e10ed"
+        prefix = "signal-scope-16.04"
     elif os_result.ubuntu_release == "18.04":
         urls = ["https://www.seas.upenn.edu/~posa/files/signal-scope/signal-scope-18.04.zip"]
         sha256 = "b9dd567bde8f4a1043ae9f13194b7a2cf9c8c716f8e7373f11a98a770c404d54"

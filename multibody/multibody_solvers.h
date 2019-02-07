@@ -4,6 +4,7 @@
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/solvers/constraint.h"
 #include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/snopt_solver.h"
 #include "multibody/contact_toolkit.h"
 
 namespace dairlib {
@@ -52,9 +53,8 @@ class FixedPointConstraint : public drake::solvers::Constraint {
 
 class ContactConstraint : public drake::solvers::Constraint {
  public:
-  ContactConstraint(const RigidBodyTree<double>& tree,
-                       ContactInfo contact_info,
-                       const std::string& description = "");
+  ContactConstraint(const RigidBodyTree<double>& tree, ContactInfo contact_info,
+                    const std::string& description = "");
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& q_u_l,
               Eigen::VectorXd* y) const override;
   void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q_u_l,
@@ -75,9 +75,33 @@ class ContactConstraint : public drake::solvers::Constraint {
   const int num_forces_;
 };
 
-// class PositionSolver {};
+class PositionSolver {
+ public:
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PositionSolver)
 
-// class FixedPointSolver {};
+  PositionSolver(const RigidBodyTree<double>& tree);
+
+  void SetInitialGuess(Eigen::VectorXd q);
+  void Solve(Eigen::VectorXd q, std::vector<int> fixed_joints);
+  bool CheckConstraint(Eigen::VectorXd q) const;
+
+  drake::solvers::MathematicalProgram get_program();
+  drake::solvers::SolutionResult get_solution_result();
+  Eigen::VectorXd GetSolutionQ();
+
+  void set_filename(std::string filename);
+  void set_major_tolerance(double major_tolerance);
+  void set_minor_tolerance(double minor_tolerance);
+
+ private:
+  const RigidBodyTree<double>& tree_;
+  drake::solvers::MathematicalProgram prog_;
+  drake::solvers::VectorXDecisionVariable q_;
+  drake::solvers::SolutionResult solution_result_;
+  std::string filename_ = "multibody/solver_log/position_solver";
+  double major_tolerance_ = 1.0e-10;
+  double minor_tolerance_ = 1.0e-10;
+};
 
 }  // namespace multibody
 }  // namespace dairlib

@@ -3,9 +3,11 @@
 namespace dairlib {
 namespace multibody {
 
+using std::make_shared;
 using std::make_unique;
 using std::logic_error;
 using std::string;
+using std::vector;
 
 using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
@@ -14,6 +16,10 @@ using drake::math::autoDiffToGradientMatrix;
 using drake::math::DiscardGradient;
 using drake::math::initializeAutoDiff;
 using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::SnoptSolver;
+using drake::solvers::SolutionResult;
+using drake::solvers::VectorXDecisionVariable;
 using drake::symbolic::Variable;
 using drake::symbolic::Expression;
 using drake::VectorX;
@@ -155,6 +161,59 @@ void ContactConstraint::DoEval(
     drake::VectorX<drake::symbolic::Expression>* y) const {
   throw logic_error(
       "FixedPointConstraint does not support symbolic evaluation.");
+}
+
+PositionSolver::PositionSolver(const RigidBodyTree<double>& tree)
+    : tree_(tree) {
+  // Initializing the variable
+  q_ = prog_.NewContinuousVariables(tree_.get_num_positions(), "q");
+}
+
+void PositionSolver::SetInitialGuess(VectorXd q) {
+  prog_.SetInitialGuess(q_, q);
+}
+
+void PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
+  // Setting the solver options
+  prog_.SetSolverOption(SnoptSolver::id(), "Log file", filename_);
+  prog_.SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
+                        major_tolerance_);
+  prog_.SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
+                        minor_tolerance_);
+
+  auto position_constraint = make_shared<PositionConstraint>(tree_);
+
+  prog_.AddConstraint(position_constraint, q_);
+
+  // Adding the fixed joint constraints
+  for (uint i = 0; i < fixed_joints.size(); i++) {
+    int ind = fixed_joints[i];
+    prog_.AddConstraint(q_(ind) == q(ind));
+  }
+
+  prog_.AddQuadraticCost((q_ - q).dot(q_ - q));
+
+  // The initial guess for q needs to be set up separately before calling Solve
+  solution_result_ = prog_.Solve();
+
+  // The solution may be obtained by calling the GetSolution method
+}
+
+MathematicalProgram PositionSolver::get_program() { return prog_; }
+
+SolutionResult PositionSolver::get_solution_result() {
+  return solution_result_;
+}
+
+VectorXd PositionSolver::GetSolutionQ() { return prog_.GetSolution(q_); }
+
+void PositionSolver::set_filename(string filename) { filename_ = filename; }
+
+void PositionSolver::set_major_tolerance(double major_tolerance) {
+  major_tolerance_ = major_tolerance;
+}
+void PositionSolver::set_minor_tolerance(double minor_tolerance) {
+  minor_tolerance_ = minor_tolerance;
 }
 
 }  // namespace multibody

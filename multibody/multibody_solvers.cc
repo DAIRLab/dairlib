@@ -138,8 +138,10 @@ void ContactConstraint::DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
   AutoDiffVecXd y_t = initializeAutoDiff(VectorXd::Zero(num_contact_forces_));
 
   for (int i = 0; i < num_contact_forces_; ++i) {
+    // Transforming the point on the body to the world frame
     AutoDiffVecXd contact_pt_A = tree_.transformPoints(
         k_cache, contact_info_.xA.col(i), contact_info_.idxA.at(i), 0);
+    // Points on the plan are already in world coordinates
     AutoDiffVecXd contact_pt_B =
         tree_.transformPoints(k_cache, contact_info_.xB.col(i), 0, 0);
     y_t(i) = (contact_pt_A - contact_pt_B).dot(contact_pt_A - contact_pt_B);

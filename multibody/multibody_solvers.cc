@@ -86,7 +86,7 @@ void FixedPointConstraint::DoEval(
   const AutoDiffVecXd lambda = q_u_l.tail(num_forces_);
 
   AutoDiffVecXd x = VectorXd::Zero(num_positions_ + num_velocities_)
-                     .template cast<AutoDiffXd>();
+                        .template cast<AutoDiffXd>();
   x.head(num_positions_) = q;
 
   *y = contact_toolkit_->CalcMVDot(x, u, lambda);
@@ -94,6 +94,62 @@ void FixedPointConstraint::DoEval(
 
 void FixedPointConstraint::DoEval(
     const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& q_u_l,
+    drake::VectorX<drake::symbolic::Expression>* y) const {
+  throw logic_error(
+      "FixedPointConstraint does not support symbolic evaluation.");
+}
+
+ContactConstraint::ContactConstraint(const RigidBodyTree<double>& tree,
+                                     ContactInfo contact_info,
+                                     const string& description)
+    : Constraint(tree.get_num_velocities(),
+                 tree.get_num_positions() + tree.get_num_actuators() +
+                     tree.getNumPositionConstraints() +
+                     contact_info.idxA.size(),
+                 VectorXd::Zero(tree.get_num_velocities()),
+                 VectorXd::Zero(tree.get_num_velocities()), description),
+      tree_(tree),
+      contact_info_(contact_info),
+      num_positions_(tree.get_num_positions()),
+      num_velocities_(tree.get_num_velocities()),
+      num_efforts_(tree.get_num_actuators()),
+      num_position_forces_(tree.getNumPositionConstraints()),
+      num_contact_forces_(contact_info.idxA.size()),
+      num_forces_(tree.getNumPositionConstraints() + contact_info.idxA.size()) {
+  contact_toolkit_ =
+      make_unique<ContactToolkit<AutoDiffXd>>(tree, contact_info);
+}
+
+void ContactConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,
+                               Eigen::VectorXd* y) const {
+  AutoDiffVecXd y_t;
+  Eval(initializeAutoDiff(q), &y_t);
+  *y = autoDiffToValueMatrix(y_t);
+}
+
+void ContactConstraint::DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
+                               drake::AutoDiffVecXd* y) const {
+  // Verifying the size of the input vector
+  DRAKE_DEMAND(q.size() == num_positions_);
+
+  // Kinematics Cache
+  KinematicsCache<AutoDiffXd> k_cache = tree_.doKinematics(q);
+
+  AutoDiffVecXd y_t = initializeAutoDiff(VectorXd::Zero(num_contact_forces_));
+
+  for (int i = 0; i < num_contact_forces_; ++i) {
+    AutoDiffVecXd contact_pt_A = tree_.transformPoints(
+        k_cache, contact_info_.xA.col(i), contact_info_.idxA.at(i), 0);
+    AutoDiffVecXd contact_pt_B =
+        tree_.transformPoints(k_cache, contact_info_.xB.col(i), 0, 0);
+    y_t(i) = (contact_pt_A - contact_pt_B).dot(contact_pt_A - contact_pt_B);
+  }
+
+  *y = y_t;
+}
+
+void ContactConstraint::DoEval(
+    const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& q,
     drake::VectorX<drake::symbolic::Expression>* y) const {
   throw logic_error(
       "FixedPointConstraint does not support symbolic evaluation.");

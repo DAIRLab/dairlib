@@ -2,6 +2,21 @@ package(default_visibility = ["//visibility:public"])
 
 py_library(
   name = "dairlib-signal-scope",
-  srcs = ["add_cassie_state.py",
-          "startscope.py"]
+  srcs = glob(["scripts/**"]) + 
+          ["startscope.py"]
+)
+
+py_binary(
+  name = "signal-scope-py",
+  srcs = ["signal-scope.py"],
+  main = "signal-scope.py",
+  deps = ["//lcmtypes:lcmtypes_robot_py"],
+  data = ["@signal_scope//:signal_scope"]
+)
+
+load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
+
+drake_runfiles_binary(
+    name = "signal-scope",
+    target = ":signal-scope-py",
 )

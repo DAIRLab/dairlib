@@ -2,7 +2,6 @@
 
 namespace dairlib {
 namespace multibody {
-namespace utils {
 
 using std::cout;
 using std::endl;
@@ -74,7 +73,5 @@ bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
   return joints_within_limits;
 }
 
-
-}  // namespace utils
 }  // namespace multibody
 }  // namespace dairlib

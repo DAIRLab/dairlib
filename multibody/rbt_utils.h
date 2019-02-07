@@ -6,7 +6,6 @@
 
 namespace dairlib {
 namespace multibody {
-namespace utils {
 
 /// Given a RigidBodyTree, builds a map from position name to position index
 std::map<std::string, int> makeNameToPositionsMap(
@@ -32,6 +31,5 @@ int GetBodyIndexFromName(const RigidBodyTree<double>& tree, std::string name);
 bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
                         double tolerance = 0.0);
 
-}  // namespace utils
 }  // namespace multibody
 }  // namespace dairlib

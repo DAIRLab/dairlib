@@ -1,0 +1,13 @@
+package(default_visibility = ["//visibility:public"])
+
+licenses(["notice"])  # BSD-3-Clause
+
+cc_library(
+  name = "spruce",
+  hdrs = [
+          "spruce.hh"
+          ],
+  srcs = ["spruce.cc"],
+  deps = [
+        ]
+)

@@ -13,6 +13,7 @@ def resolve_path(relpath):
     return abspath
 
 os.environ['LD_LIBRARY_PATH'] = resolve_path("../signal_scope/")
+os.environ['DYLD_LIBRARY_PATH'] = resolve_path("../signal_scope/")
 
 bin_path = resolve_path("../signal_scope/signal-scope")
 args = [bin_path] + sys.argv[1:]

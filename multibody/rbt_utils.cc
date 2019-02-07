@@ -8,6 +8,8 @@ using std::endl;
 using std::map;
 using std::string;
 
+using Eigen::VectorXd;
+
 map<string, int> makeNameToPositionsMap(const RigidBodyTree<double>& tree) {
   map<string, int> name_to_index_map;
 
@@ -46,30 +48,19 @@ int GetBodyIndexFromName(const RigidBodyTree<double>& tree, std::string name) {
 
 bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
                         double tolerance) {
-  map<string, int> position_map = tree.computePositionNameToIndexMap();
+  VectorXd joint_min = tree.joint_limit_min;
+  VectorXd joint_max = tree.joint_limit_max;
+
+  DRAKE_DEMAND(x.size() == joint_min.size());
+
   bool joints_within_limits = true;
 
-  for (auto const& b : tree.get_bodies()) {
-    if (!b->has_parent_body()) continue;
-    auto const& joint = b->getJoint();
-    if (joint.get_num_positions() == 1 && joint.get_num_velocities() == 1) {
-      auto joint_lim_min_vec = joint.getJointLimitMin();
-      auto joint_lim_max_vec = joint.getJointLimitMax();
-      const int ind = position_map.at(joint.get_name());
-
-      if (x(ind) < (joint_lim_min_vec(0) + tolerance) ||
-          x(ind) > (joint_lim_max_vec(0) - tolerance)) {
-        joints_within_limits = false;
-
-        // Debugging output
-        cout << "Joint " << joint.get_name() << "with index " << ind
-             << " is outside limits." << endl;
-        cout << "Min limit: " << joint_lim_min_vec(0) << endl;
-        cout << "Max limit: " << joint_lim_max_vec(0) << endl;
-      }
+  for (int i = 0; i < x.size(); ++i) {
+    if (x(i) < (joint_min(i) + tolerance) ||
+        (x(i) > (joint_min(i) - tolerance))) {
+      joints_within_limits = false;
     }
   }
-
   return joints_within_limits;
 }
 

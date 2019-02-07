@@ -59,7 +59,7 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
                                             true);
     auto Jb = tree_.transformPointsJacobian(k_cache, contact_info_.xB.col(i),
                                             world_ind, world_ind, true);
-    J_diff.at(i) = Ja - Jb;
+    J_diff.at(i) = Jb - Ja;
   }
 
   // Contact Jacobians

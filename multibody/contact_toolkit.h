@@ -36,6 +36,10 @@ struct ContactInfo {
 template <typename T>
 class ContactToolkit {
  public:
+
+  // Disabling copy construction and assignment
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ContactToolkit)
+
   ContactToolkit(const RigidBodyTree<double>& tree, ContactInfo contact_info);
 
   /*

@@ -85,7 +85,7 @@ class PositionSolver {
   void Solve(Eigen::VectorXd q, std::vector<int> fixed_joints);
   bool CheckConstraint(Eigen::VectorXd q) const;
 
-  drake::solvers::MathematicalProgram get_program();
+  std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   drake::solvers::SolutionResult get_solution_result();
   Eigen::VectorXd GetSolutionQ();
 
@@ -95,7 +95,7 @@ class PositionSolver {
 
  private:
   const RigidBodyTree<double>& tree_;
-  drake::solvers::MathematicalProgram prog_;
+  std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::SolutionResult solution_result_;
   std::string filename_ = "multibody/solver_log/position_solver";

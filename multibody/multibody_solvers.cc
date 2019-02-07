@@ -6,6 +6,7 @@ namespace multibody {
 using std::make_shared;
 using std::make_unique;
 using std::logic_error;
+using std::shared_ptr;
 using std::string;
 using std::vector;
 
@@ -166,46 +167,46 @@ void ContactConstraint::DoEval(
 PositionSolver::PositionSolver(const RigidBodyTree<double>& tree)
     : tree_(tree) {
   // Initializing the variable
-  q_ = prog_.NewContinuousVariables(tree_.get_num_positions(), "q");
+  q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
 }
 
 void PositionSolver::SetInitialGuess(VectorXd q) {
-  prog_.SetInitialGuess(q_, q);
+  prog_->SetInitialGuess(q_, q);
 }
 
 void PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   // Setting the solver options
-  prog_.SetSolverOption(SnoptSolver::id(), "Log file", filename_);
-  prog_.SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
-                        major_tolerance_);
-  prog_.SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
-                        minor_tolerance_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Log file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
+                         major_tolerance_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
+                         minor_tolerance_);
 
   auto position_constraint = make_shared<PositionConstraint>(tree_);
 
-  prog_.AddConstraint(position_constraint, q_);
+  prog_->AddConstraint(position_constraint, q_);
 
   // Adding the fixed joint constraints
   for (uint i = 0; i < fixed_joints.size(); i++) {
     int ind = fixed_joints[i];
-    prog_.AddConstraint(q_(ind) == q(ind));
+    prog_->AddConstraint(q_(ind) == q(ind));
   }
 
-  prog_.AddQuadraticCost((q_ - q).dot(q_ - q));
+  prog_->AddQuadraticCost((q_ - q).dot(q_ - q));
 
   // The initial guess for q needs to be set up separately before calling Solve
-  solution_result_ = prog_.Solve();
+  solution_result_ = prog_->Solve();
 
   // The solution may be obtained by calling the GetSolution method
 }
 
-MathematicalProgram PositionSolver::get_program() { return prog_; }
+shared_ptr<MathematicalProgram> PositionSolver::get_program() { return prog_; }
 
 SolutionResult PositionSolver::get_solution_result() {
   return solution_result_;
 }
 
-VectorXd PositionSolver::GetSolutionQ() { return prog_.GetSolution(q_); }
+VectorXd PositionSolver::GetSolutionQ() { return prog_->GetSolution(q_); }
 
 void PositionSolver::set_filename(string filename) { filename_ = filename; }
 

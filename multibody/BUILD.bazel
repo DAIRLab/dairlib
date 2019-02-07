@@ -57,6 +57,7 @@ cc_library(
     deps = [
         "@drake//attic/multibody:rigid_body_tree",
         "@drake//solvers:mathematical_program",
+        ":contact_toolkit",
         ":utils",
     ],
 )

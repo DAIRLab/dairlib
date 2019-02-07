@@ -3,6 +3,7 @@
 namespace dairlib {
 namespace multibody {
 
+using std::make_unique;
 using std::logic_error;
 using std::string;
 
@@ -45,24 +46,58 @@ void PositionConstraint::DoEval(
   throw logic_error("PositionConstraint does not support symbolic evaluation.");
 }
 
-// FixedPointConstraint::FixedPointConstraint(const RigidBodyTree<double>& tree,
-//                                           const int num_forces,
-//                                           const string& description)
-//    : Constraint(
-//          tree.get_num_velocities(),
-//          tree.get_num_positions() + tree.get_num_actuators() + num_forces,
-//          VectorXd::Zero(tree.get_num_velocities()),
-//          VectorXd::Zero(tree.get_num_velocities()), description),
-//      tree_(tree),
-//      num_forces_(num_forces) {}
-//
-// void FixedPointConstraint::DoEval(
-//    const Eigen::Ref<const Eigen::VectorXd>& q_u_l, Eigen::VectorXd* y) const
-//    {
-//  AutoDiffVecXd y_t;
-//  Eval(initializeAutoDiff(q_u_l), &y_t);
-//  *y = autoDiffToValueMatrix(y_t);
-//}
+FixedPointConstraint::FixedPointConstraint(const RigidBodyTree<double>& tree,
+                                           ContactInfo contact_info,
+                                           const string& description)
+    : Constraint(tree.get_num_velocities(),
+                 tree.get_num_positions() + tree.get_num_actuators() +
+                     tree.getNumPositionConstraints() +
+                     contact_info.idxA.size(),
+                 VectorXd::Zero(tree.get_num_velocities()),
+                 VectorXd::Zero(tree.get_num_velocities()), description),
+      tree_(tree),
+      contact_info_(contact_info),
+      num_positions_(tree.get_num_positions()),
+      num_velocities_(tree.get_num_velocities()),
+      num_efforts_(tree.get_num_actuators()),
+      num_position_forces_(tree.getNumPositionConstraints()),
+      num_contact_forces_(contact_info.idxA.size()),
+      num_forces_(tree.getNumPositionConstraints() + contact_info.idxA.size()) {
+  contact_toolkit_ =
+      make_unique<ContactToolkit<AutoDiffXd>>(tree, contact_info);
+}
+
+void FixedPointConstraint::DoEval(
+    const Eigen::Ref<const Eigen::VectorXd>& q_u_l, Eigen::VectorXd* y) const {
+  AutoDiffVecXd y_t;
+  Eval(initializeAutoDiff(q_u_l), &y_t);
+  *y = autoDiffToValueMatrix(y_t);
+}
+
+void FixedPointConstraint::DoEval(
+    const Eigen::Ref<const drake::AutoDiffVecXd>& q_u_l,
+    drake::AutoDiffVecXd* y) const {
+  // Verifying the size of the input vector
+  DRAKE_DEMAND(q_u_l.size() == num_positions_ + num_efforts_ + num_forces_);
+
+  // Extracting the components
+  const AutoDiffVecXd q = q_u_l.head(num_positions_);
+  const AutoDiffVecXd u = q_u_l.segment(num_positions_, num_efforts_);
+  const AutoDiffVecXd lambda = q_u_l.tail(num_forces_);
+
+  AutoDiffVecXd x = VectorXd::Zero(num_positions_ + num_velocities_)
+                     .template cast<AutoDiffXd>();
+  x.head(num_positions_) = q;
+
+  *y = contact_toolkit_->CalcMVDot(x, u, lambda);
+}
+
+void FixedPointConstraint::DoEval(
+    const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& q_u_l,
+    drake::VectorX<drake::symbolic::Expression>* y) const {
+  throw logic_error(
+      "FixedPointConstraint does not support symbolic evaluation.");
+}
 
 }  // namespace multibody
 }  // namespace dairlib

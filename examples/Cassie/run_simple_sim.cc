@@ -50,7 +50,7 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   drake::lcm::DrakeLcm lcm;
-  std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
+  std::unique_ptr<RigidBodyTree<double>> tree = makeCassieTreePointer();
 
   drake::systems::DiagramBuilder<double> builder;
 

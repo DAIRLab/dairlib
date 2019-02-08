@@ -4,12 +4,10 @@ load(
     "drake_lcm_java_library",
     "drake_lcm_py_library",
 )
-
 load(
     "@drake//tools/skylark:drake_java.bzl",
     "drake_java_binary",
 )
-
 load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
@@ -47,8 +45,8 @@ drake_java_binary(
     main_class = "lcm.spy.Spy",
     visibility = ["//visibility:private"],
     runtime_deps = [
-        "@drake//lcmtypes:lcmtypes_drake_java",
         ":lcmtypes_robot_java",
+        "@drake//lcmtypes:lcmtypes_drake_java",
         "@lcmtypes_bot2_core//:lcmtypes_bot2_core_java",
         "@lcmtypes_robotlocomotion//:lcmtypes_robotlocomotion_java",
         "@optitrack_driver//lcmtypes:lcmtypes_optitrack",

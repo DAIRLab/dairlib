@@ -30,12 +30,8 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3Xd;
-using drake::systems::trajectory_optimization::HybridDircon;
-using drake::systems::trajectory_optimization::DirconDynamicConstraint;
-using drake::systems::trajectory_optimization::DirconKinematicConstraint;
-using drake::systems::trajectory_optimization::DirconOptions;
-using drake::systems::trajectory_optimization::DirconKinConstraintType;
 using drake::trajectories::PiecewisePolynomial;
+using drake::MatrixX;
 using std::vector;
 using std::shared_ptr;
 using std::cout;
@@ -47,31 +43,40 @@ DEFINE_string(file, "data/", "File name to load");
 
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
-namespace drake{
+namespace dairlib {
+
+using systems::trajectory_optimization::HybridDircon;
+using systems::trajectory_optimization::DirconDynamicConstraint;
+using systems::trajectory_optimization::DirconKinematicConstraint;
+using systems::trajectory_optimization::DirconOptions;
+using systems::trajectory_optimization::DirconKinConstraintType;
 
 void visualizeGait(std::string file, int steps, double rate) {
   RigidBodyTree<double> tree;
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalkerWithTorso.urdf", multibody::joints::kFixed, &tree);
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
+      "PlanarWalkerWithTorso.urdf", drake::multibody::joints::kFixed, &tree);
 
-  //Buildtrajectory optimization
-  int n = tree.get_num_positions();
-  int nu = tree.get_num_actuators();
+  // Buildtrajectory optimization
+  // int n = tree.get_num_positions();
+  // int nu = tree.get_num_actuators();
 
   int leftLegIdx = tree.FindBodyIndex("left_lower_leg");
   int rightLegIdx = tree.FindBodyIndex("right_lower_leg");
 
   Vector3d pt;
-  pt << 0,0,-.5;
+  pt << 0, 0, -.5;
   bool isXZ = true;
 
-  auto leftFootConstraint = DirconPositionData<double>(tree,leftLegIdx,pt,isXZ);
-  auto rightFootConstraint = DirconPositionData<double>(tree,rightLegIdx,pt,isXZ);
+  auto leftFootConstraint = DirconPositionData<double>(tree, leftLegIdx, pt,
+                                                       isXZ);
+  auto rightFootConstraint = DirconPositionData<double>(tree, rightLegIdx, pt,
+                                                        isXZ);
 
   Vector3d normal;
-  normal << 0,0,1;
+  normal << 0, 0, 1;
   double mu = 1;
-  leftFootConstraint.addFixedNormalFrictionConstraints(normal,mu);
-  rightFootConstraint.addFixedNormalFrictionConstraints(normal,mu);
+  leftFootConstraint.addFixedNormalFrictionConstraints(normal, mu);
+  rightFootConstraint.addFixedNormalFrictionConstraints(normal, mu);
 
   std::vector<DirconKinematicData<double>*> leftConstraints;
   leftConstraints.push_back(&leftFootConstraint);
@@ -82,10 +87,10 @@ void visualizeGait(std::string file, int steps, double rate) {
   auto rightDataSet = DirconKinematicDataSet<double>(tree, &rightConstraints);
 
   auto leftOptions = DirconOptions(leftDataSet.countConstraints());
-  leftOptions.setConstraintRelative(0,true);
+  leftOptions.setConstraintRelative(0, true);
 
   auto rightOptions = DirconOptions(rightDataSet.countConstraints());
-  rightOptions.setConstraintRelative(0,true);
+  rightOptions.setConstraintRelative(0, true);
 
   std::vector<int> timesteps;
   timesteps.push_back(20);
@@ -98,7 +103,7 @@ void visualizeGait(std::string file, int steps, double rate) {
   max_dt.push_back(.3);
 
   int N = 1 - timesteps.size();
-  for (int i = 0; i < timesteps.size(); i++) {
+  for (uint i = 0; i < timesteps.size(); i++) {
     N += timesteps[i];
   }
 
@@ -110,20 +115,21 @@ void visualizeGait(std::string file, int steps, double rate) {
   options_list.push_back(leftOptions);
   options_list.push_back(rightOptions);
 
-  auto trajopt = std::make_shared<HybridDircon<double>>(tree, timesteps, min_dt, max_dt, dataset_list, options_list);
+  auto trajopt = std::make_shared<HybridDircon<double>>(tree, timesteps, min_dt,
+                                                        max_dt, dataset_list,
+                                                        options_list);
 
   // read in file and set decision variable values
-  MatrixXd z = drake::goldilocks_models::readCSV(file);
+  MatrixXd z = dairlib::goldilocks_models::readCSV(file);
 
-  
-
-  //go through solver interface
-  auto solver = std::make_shared<solvers::SnoptSolver>();
-  solvers::SolverResult solver_result(solver->id());
+  // go through solver interface
+  auto solver = std::make_shared<drake::solvers::SnoptSolver>();
+  drake::solvers::SolverResult solver_result(solver->id());
   solver_result.set_decision_variable_values(z);
   trajopt->SetSolverResult(solver_result);
 
-  trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
+  drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
+      trajopt->ReconstructStateTrajectory();
 
   // MatrixXd transformation = MatrixXd::Identity(2*n);
 
@@ -131,7 +137,7 @@ void visualizeGait(std::string file, int steps, double rate) {
 
   // std::cout <<<< std::endl;
 
-  //repeat trajectory
+  // repeat trajectory
   // std::vector<MatrixXd<Polynomial<double>>> trajectory_matrix;
   std::vector<MatrixX<Polynomial<double>>> trajectory_matrix;
   std::vector<double> breaks;
@@ -143,28 +149,28 @@ void visualizeGait(std::string file, int steps, double rate) {
 
   for (int j = 0; j < steps; j++) {
     double t_start = pp_xtraj.end_time() + (j-1)*(pp_xtraj.end_time() - pp_xtraj.start_time());
-    int ind_start = (j==0) ? 0 : 0;
+    int ind_start = (j == 0) ? 0 : 0;
     if (j % 2 == 1) {
-      //mirror left right legs
+      // mirror left right legs
       for (int i = ind_start; i < pp_xtraj.get_number_of_segments(); i++) {
         MatrixX<Polynomial<double>> mat = pp_xtraj.getPolynomialMatrix(i);
-        mat(0,0) += step_distance*j;
+        mat(0, 0) += step_distance*j;
 
-        auto tmp = mat(3,0);
-        mat(3,0) = mat(5,0);
-        mat(5,0) = tmp;
+        auto tmp = mat(3, 0);
+        mat(3, 0) = mat(5, 0);
+        mat(5, 0) = tmp;
 
-        tmp = mat(4,0);
-        mat(4,0) = mat(6,0);
-        mat(6,0) = tmp;
+        tmp = mat(4, 0);
+        mat(4, 0) = mat(6, 0);
+        mat(6, 0) = tmp;
 
-        tmp = mat(10,0);
-        mat(10,0) = mat(12,0);
-        mat(12,0) = tmp;
+        tmp = mat(10, 0);
+        mat(10, 0) = mat(12, 0);
+        mat(12, 0) = tmp;
 
-        tmp = mat(11,0);
-        mat(11,0) = mat(13,0);
-        mat(13,0) = tmp;
+        tmp = mat(11, 0);
+        mat(11, 0) = mat(13, 0);
+        mat(13, 0) = tmp;
 
         trajectory_matrix.push_back(mat);
         breaks.push_back(t_start + pp_xtraj.end_time(i));
@@ -172,20 +178,23 @@ void visualizeGait(std::string file, int steps, double rate) {
     } else {
       for (int i = ind_start; i < pp_xtraj.get_number_of_segments(); i++) {
         MatrixX<Polynomial<double>> mat = pp_xtraj.getPolynomialMatrix(i);
-        mat(0,0) += step_distance*j;
+        mat(0, 0) += step_distance*j;
         trajectory_matrix.push_back(mat);
         breaks.push_back(t_start + pp_xtraj.end_time(i));
       }
     }
   }
 
-  auto pp_xtraj_repeated = trajectories::PiecewisePolynomial<double>(trajectory_matrix, breaks);
+  auto pp_xtraj_repeated = drake::trajectories::PiecewisePolynomial<double>(
+      trajectory_matrix, breaks);
 
-  //visualizer
-  lcm::DrakeLcm lcm;
-  systems::DiagramBuilder<double> builder;
-  auto state_source = builder.AddSystem<systems::TrajectorySource>(pp_xtraj_repeated);
-  auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
+  // visualizer
+  drake::lcm::DrakeLcm lcm;
+  drake::systems::DiagramBuilder<double> builder;
+  auto state_source = builder.AddSystem<drake::systems::TrajectorySource>(
+        pp_xtraj_repeated);
+  auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree,
+                                                                      &lcm);
   publisher->set_publish_period(1.0 / 60.0);
   builder.Connect(state_source->get_output_port(),
                   publisher->get_input_port(0));
@@ -193,7 +202,7 @@ void visualizeGait(std::string file, int steps, double rate) {
   auto diagram = builder.Build();
 
   while (true) {
-    systems::Simulator<double> simulator(*diagram);
+    drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(rate);
     simulator.Initialize();
     simulator.StepTo(pp_xtraj_repeated.end_time());
@@ -207,6 +216,6 @@ void visualizeGait(std::string file, int steps, double rate) {
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  drake::visualizeGait(FLAGS_file, FLAGS_steps, FLAGS_rate);
+  dairlib::visualizeGait(FLAGS_file, FLAGS_steps, FLAGS_rate);
 }
 

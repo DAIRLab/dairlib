@@ -1,10 +1,10 @@
-#include "dircon_options.h"
+#include "systems/trajectory_optimization/dircon_options.h"
 
 using std::vector;
 
-namespace drake{
-namespace systems{
-namespace trajectory_optimization{
+namespace dairlib {
+namespace systems {
+namespace trajectory_optimization {
 
 DirconOptions::DirconOptions(int n_constraints) {
   n_constraints_ = n_constraints;
@@ -64,9 +64,10 @@ double DirconOptions::getForceCost() {
 }
 
 int DirconOptions::getNumRelative() {
-  return (int) std::count(is_constraints_relative_.begin(),is_constraints_relative_.end(),true);
+  return static_cast<int>(std::count(is_constraints_relative_.begin(),
+                                     is_constraints_relative_.end(), true));
 }
 
-}
-}
-}
+}  // namespace trajectory_optimization
+}  // namespace systems
+}  // namespace dairlib

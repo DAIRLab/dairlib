@@ -1,16 +1,17 @@
 # -*- mode: python -*-
 # vi: set ft=python :
 
+
+workspace(name = "dairlib")
+
 local_repository(
   name = "drake",
   path = "../drake",
 )
 
-new_local_repository(
-    name = "director",
-    path = "../director",
-    build_file = "director/director.BUILD",
-)
+load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
+signal_scope_repository(name = "signal_scope")
+
 
 
 # Reference external software libraries and tools per Drake's defaults.  Some

@@ -1,15 +1,14 @@
 #pragma once
 
+#include <string>
 #include "systems/trajectory_optimization/hybrid_dircon.h"
 
-using std::string;
-using drake::systems::trajectory_optimization::HybridDircon;
+namespace dairlib {
+namespace goldilocks_models  {
 
-namespace drake{
-namespace goldilocks_models {
+std::shared_ptr<systems::trajectory_optimization::HybridDircon<double>> sgdIter(
+    double stride_length, double duration, int iter, std::string directory,
+    std::string init_file, std::string weights_file, std::string output_prefix);
 
-std::shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration, int iter,
-    string directory, string init_file, string weights_file, string output_prefix);
-
-}
-}
+}  // namespace goldilocks_models
+}  // namespace dairlib

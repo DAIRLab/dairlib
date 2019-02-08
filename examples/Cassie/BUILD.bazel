@@ -27,7 +27,8 @@ cc_library(
           "//common",
           "@drake//attic/multibody:rigid_body_tree_construction",
           "@drake//attic/multibody/parsers",
-         ]
+          ":cassie_urdf"
+         ],
 )
 
 cc_library(

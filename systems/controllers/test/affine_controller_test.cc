@@ -18,10 +18,8 @@ using drake::systems::SystemOutput;
 using drake::systems::BasicVector;
 
 class AffineControllerTest : public ::testing::Test {
-
  protected:
   void SetUp() override {
-
     int np = 2;
     int nv = 2;
     ns_ = np + nv;
@@ -29,10 +27,10 @@ class AffineControllerTest : public ::testing::Test {
     positions_vec_.resize(np);
     velocities_vec_.resize(nv);
     efforts_vec_.resize(ne_);
-    K_vec_.resize(ns_*ne_);
+    K_vec_.resize(ns_ * ne_);
     E_vec_.resize(ne_);
     x_des_vec_.resize(ns_);
-    params_vec_.resize(ns_*ne_ + ne_ + ns_ + 1);
+    params_vec_.resize(ns_ * ne_ + ne_ + ns_ + 1);
     expected_output_vec_.resize(ne_);
     K_.resize(ne_, ns_);
 
@@ -46,9 +44,9 @@ class AffineControllerTest : public ::testing::Test {
     x_des_vec_ << 0.0, 1.0, -1.5, 4.0;
     params_vec_ << K_vec_, E_vec_, x_des_vec_, 0.0;
     expected_output_vec_ << 16.0, 19.0;
-    K_ << 1.0, 3.0, 2.0, 2.0, 2.0, 4.0, 1.0, 1.0; 
+    K_ << 1.0, 3.0, 2.0, 2.0, 2.0, 4.0, 1.0, 1.0;
 
-    input_port_info_val_= make_unique<OutputVector<double>>(
+    input_port_info_val_ = make_unique<OutputVector<double>>(
         positions_vec_, velocities_vec_, efforts_vec_);
     input_port_info_val_->set_timestamp(timestamp_);
     input_port_params_val_ = make_unique<AffineParams>(ns_, ne_);
@@ -79,22 +77,20 @@ class AffineControllerTest : public ::testing::Test {
   unique_ptr<AffineController> affine_controller_;
   unique_ptr<Context<double>> context_;
   std::unique_ptr<SystemOutput<double>> output_;
-
 };
 
 // Tests number of input and output ports.
 TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
-
   /// Checks that the number of input ports in the system and in the context
   // are consistent.
   ASSERT_EQ(context_->get_num_input_ports(), 2);
   ASSERT_EQ(affine_controller_->get_num_input_ports(), 2);
 
   // Hook input of the expected size.
-  context_->FixInputPort(
-      affine_controller_->get_input_port_info_index(), *input_port_info_val_);
-  context_->FixInputPort(
-      affine_controller_->get_input_port_params_index(), *input_port_params_val_);
+  context_->FixInputPort(affine_controller_->get_input_port_info_index(),
+                         *input_port_info_val_);
+  context_->FixInputPort(affine_controller_->get_input_port_params_index(),
+                         *input_port_params_val_);
 
   affine_controller_->CalcOutput(*context_, output_.get());
 
@@ -110,9 +106,8 @@ TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
   ASSERT_NE(nullptr, output_port_vec);
 
   output = output_port_vec->get_value();
-  output_data = output.head(output.size()-1);
+  output_data = output.head(output.size() - 1);
   ASSERT_EQ(expected_output_vec_, output);
-
 }
 
 TEST_F(AffineControllerTest, AffineParamsTest) {
@@ -125,8 +120,7 @@ TEST_F(AffineControllerTest, AffineParamsTest) {
 }  // namespace systems
 }  // namespace dairlib
 
-
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

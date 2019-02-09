@@ -35,6 +35,21 @@ cc_library(
     ],
 )
 
+
+cc_library(
+    name = "multibody_contact_toolkit",
+    srcs = [
+        "multibody_contact_toolkit.cc",
+    ],
+    hdrs = [
+        "multibody_contact_toolkit.h",
+    ],
+    deps = [
+        "@drake//multibody/plant",
+        ":utils",
+    ],
+)
+
 cc_test(
     name = "contact_toolkit_test",
     srcs = [

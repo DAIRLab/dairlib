@@ -11,6 +11,7 @@ using std::string;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::JointIndex;
 using drake::multibody::JointActuatorIndex;
+using Eigen::VectorXd;
 
 
 /// Construct a map between joint names and position indices
@@ -139,6 +140,24 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<double>& plant) {
     }
   }
   return name_to_index_map;
+}
+
+
+
+bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
+                        VectorXd positions, double tolerance) {
+  VectorXd joint_min = plant.GetPositionLowerLimits();
+  VectorXd joint_max = plant.GetPositionUpperLimits();
+
+  bool joints_within_limits = true;
+
+  for (int i = 0; i < positions.size(); ++i) {
+    if (positions(i) < (joint_min(i) + tolerance) ||
+        (positions(i) > (joint_min(i) - tolerance))) {
+      joints_within_limits = false;
+    }
+  }
+  return joints_within_limits;
 }
 
 }  // namespace multibody

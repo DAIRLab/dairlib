@@ -7,37 +7,55 @@ cc_library(
     srcs = ["pd_config_lcm.cc"],
     hdrs = ["pd_config_lcm.h"],
     deps = [
-            "@drake//manipulation/util",
-            "@drake//systems/framework:leaf_system",
-            "@lcm",
-            "//multibody:utils",
-            "//lcmtypes:lcmt_robot",
-            "//systems/framework:vector",
-            ":controllers"
-            ]
+        ":controllers",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//manipulation/util",
+        "@drake//systems/framework:leaf_system",
+        "@lcm",
+    ],
 )
 
 cc_library(
     name = "controllers",
-    srcs = ["linear_controller.cc",],
-    hdrs = ["linear_controller.h"],
+    srcs = [
+        "affine_controller.cc",
+        "linear_controller.cc",
+    ],
+    hdrs = [
+        "affine_controller.h",
+        "linear_controller.h",
+    ],
     deps = [
-            "//systems/framework:vector",
-            "@drake//systems/framework:leaf_system",
-            ]
+        "//systems/framework:vector",
+        "@drake//systems/framework:leaf_system",
+    ],
 )
 
 cc_test(
     name = "pd_config_lcm_test",
+    size = "small",
     srcs = ["test/pd_config_lcm_test.cc"],
     deps = [
-            ":pd_config_lcm",
-            "//examples/Cassie:cassie_urdf",
-            "@drake//attic/multibody:rigid_body_tree",
-            "@drake//attic/multibody/parsers",
-            "@drake//manipulation/util",
-            "@gtest//:main",
-            "@drake//systems/framework/test_utilities",
-            ],
-    size = "small"
+        ":pd_config_lcm",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//attic/multibody/parsers",
+        "@drake//manipulation/util",
+        "@drake//systems/framework/test_utilities",
+        "@gtest//:main",
+    ],
+)
+
+cc_test(
+    name = "controllers_test",
+    size = "small",
+    srcs = [
+        "test/affine_controller_test.cc",
+    ],
+    deps = [
+        ":controllers",
+        "@gtest//:main",
+    ],
 )

@@ -5,11 +5,10 @@
 
 namespace dairlib {
 namespace multibody {
-namespace utils {
 
 using std::map;
 using std::string;
-using drake::multibody::multibody_plant::MultibodyPlant;
+using drake::multibody::MultibodyPlant;
 using drake::multibody::JointIndex;
 using drake::multibody::JointActuatorIndex;
 
@@ -23,12 +22,12 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
   map<string, int> name_to_index_map;
   std::set<int> index_set;
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
-    const drake::multibody::Joint<double>& joint = plant.tree().get_joint(i);
+    const drake::multibody::Joint<double>& joint = plant.get_joint(i);
     auto name = joint.name();
 
     if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
       std::vector<JointIndex> index_vector {i};
-      auto selectorMatrix = plant.tree().MakeStateSelectorMatrix(index_vector);
+      auto selectorMatrix = plant.MakeStateSelectorMatrix(index_vector);
       // find index and add
       int selector_index = -1;
       for (int j = 0; j < selectorMatrix.cols(); ++j) {
@@ -36,12 +35,12 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
           if (selector_index == -1) {
             selector_index = j;
           } else {
-            DRAKE_ABORT();
+            DRAKE_ABORT_MSG("Unable to create selector map.");
           }
         }
       }
       if (selector_index == -1) {
-        DRAKE_ABORT();
+        DRAKE_ABORT_MSG("Unable to create selector map.");
       }
 
       name_to_index_map[name] = selector_index;
@@ -70,14 +69,14 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
   std::set<int> index_set;
 
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
-    const drake::multibody::Joint<double>& joint = plant.tree().get_joint(i);
+    const drake::multibody::Joint<double>& joint = plant.get_joint(i);
     // TODO(posa): this "dot" should be removed, it's an anachronism from
     // RBT
     auto name = joint.name() + "dot";
 
     if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
       std::vector<JointIndex> index_vector {i};
-      auto selectorMatrix = plant.tree().MakeStateSelectorMatrix(index_vector);
+      auto selectorMatrix = plant.MakeStateSelectorMatrix(index_vector);
       // find index and add
       int selector_index = -1;
       for (int j = 0; j < selectorMatrix.cols(); ++j) {
@@ -85,12 +84,12 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
           if (selector_index == -1) {
             selector_index = j;
           } else {
-            DRAKE_ABORT();
+            DRAKE_ABORT_MSG("Unable to create selector map.");
           }
         }
       }
       if (selector_index == -1) {
-        DRAKE_ABORT();
+        DRAKE_ABORT_MSG("Unable to create selector map.");
       }
 
       name_to_index_map[name] = selector_index - plant.num_positions();
@@ -112,14 +111,14 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<double>& plant) {
   map<string, int> name_to_index_map;
   for (JointActuatorIndex i(0); i < plant.num_actuators(); ++i) {
     const drake::multibody::JointActuator<double>& actuator =
-        plant.tree().get_joint_actuator(i);
+        plant.get_joint_actuator(i);
     auto name = actuator.name();
 
     if (actuator.joint().num_velocities() == 1 &&
         actuator.joint().num_positions() == 1) {
       std::vector<JointActuatorIndex> index_vector {i};
       auto selectorMatrix =
-          plant.tree().MakeActuatorSelectorMatrix(index_vector);
+          plant.MakeActuatorSelectorMatrix(index_vector);
 
       // find index and add
       int selector_index = -1;
@@ -128,12 +127,12 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<double>& plant) {
           if (selector_index == -1) {
             selector_index = j;
           } else {
-            DRAKE_ABORT();
+            DRAKE_ABORT_MSG("Unable to create selector map.");
           }
         }
       }
       if (selector_index == -1) {
-        DRAKE_ABORT();
+        DRAKE_ABORT_MSG("Unable to create selector map.");
       }
 
       name_to_index_map[name] = selector_index;
@@ -142,6 +141,5 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<double>& plant) {
   return name_to_index_map;
 }
 
-}  // namespace utils
 }  // namespace multibody
 }  // namespace dairlib

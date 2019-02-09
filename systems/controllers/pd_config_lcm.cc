@@ -11,11 +11,10 @@ using Eigen::VectorXd;
 using drake::systems::Context;
 using std::map;
 
-
 // methods implementation for CassiePDConfigReceiver.
 PDConfigReceiver::PDConfigReceiver(const RigidBodyTree<double>& tree) {
   tree_ = &tree;
-  actuatorIndexMap_ = multibody::utils::makeNameToActuatorsMap(tree);
+  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
 
   MatrixXd B = tree.B;
   // using all one's because zeros will cause quaternions to NaN
@@ -27,8 +26,9 @@ PDConfigReceiver::PDConfigReceiver(const RigidBodyTree<double>& tree) {
   // Use the tree to build a map from actuators to positions and velocities
   // Specific to systems where each actuator maps uniquely to a joint with
   // position and velocity
-
-  // Expect the jth column of B to be all zero except for one positive element
+  //
+  // Expect the jth column of RBT.B to be all zero except for one positive
+  // element
   // If B(i,j) > 0, then the jth' actuator maps to the ith velocity coordinate
   for (int j = 0; j < B.cols(); j++) {
     int index = -1;
@@ -61,18 +61,18 @@ PDConfigReceiver::PDConfigReceiver(const RigidBodyTree<double>& tree) {
                   index << std::endl;
   }
 
-  //Velocity map:
-  this->DeclareAbstractInputPort("lcmt_pd_config",
-      drake::systems::Value<dairlib::lcmt_pd_config>{});
-  this->DeclareVectorOutputPort(LinearConfig(tree.get_num_positions() +
-                                             tree.get_num_velocities(),
-                                             tree.get_num_actuators()),
-                                &PDConfigReceiver::CopyConfig);
+  // Velocity map:
+  this->DeclareAbstractInputPort(
+      "lcmt_pd_config", drake::systems::Value<dairlib::lcmt_pd_config>{});
+  this->DeclareVectorOutputPort(
+      LinearConfig(tree.get_num_positions() + tree.get_num_velocities(),
+                   tree.get_num_actuators()),
+      &PDConfigReceiver::CopyConfig);
 }
 
 /// read and parse a configuration LCM message
-void PDConfigReceiver::CopyConfig(
-    const Context<double>& context, LinearConfig* output) const {
+void PDConfigReceiver::CopyConfig(const Context<double>& context,
+                                  LinearConfig* output) const {
   const AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_THROW_UNLESS(input != nullptr);
   const auto& config_msg = input->GetValue<dairlib::lcmt_pd_config>();

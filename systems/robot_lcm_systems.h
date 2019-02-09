@@ -4,7 +4,7 @@
 #include <map>
 #include <vector>
 
-#include "drake/multibody/multibody_tree/multibody_plant/multibody_plant.h"
+#include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
@@ -28,7 +28,7 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
   explicit RobotOutputReceiver(const RigidBodyTree<double>& tree);
 
   explicit RobotOutputReceiver(
-    const drake::multibody::multibody_plant::MultibodyPlant<double>& plant);
+    const drake::multibody::MultibodyPlant<double>& plant);
 
 
  private:
@@ -47,7 +47,7 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   explicit RobotOutputSender(const RigidBodyTree<double>& tree);
 
   explicit RobotOutputSender(
-    const drake::multibody::multibody_plant::MultibodyPlant<double>& plant);
+    const drake::multibody::MultibodyPlant<double>& plant);
 
   const drake::systems::InputPort<double>& get_input_port_state()
       const {
@@ -75,7 +75,7 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
   explicit RobotInputReceiver(const RigidBodyTree<double>& tree);
 
   explicit RobotInputReceiver(
-      const drake::multibody::multibody_plant::MultibodyPlant<double>& plant);
+      const drake::multibody::MultibodyPlant<double>& plant);
 
 
  private:
@@ -95,7 +95,7 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
   explicit RobotCommandSender(const RigidBodyTree<double>& tree);
 
   explicit RobotCommandSender(
-      const drake::multibody::multibody_plant::MultibodyPlant<double>& plant);
+      const drake::multibody::MultibodyPlant<double>& plant);
 
  private:
   void OutputCommand(const drake::systems::Context<double>& context,

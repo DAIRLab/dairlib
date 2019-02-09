@@ -17,7 +17,7 @@ namespace dairlib {
 using std::endl;
 using std::cout;
 using drake::geometry::SceneGraph;
-using drake::multibody::multibody_plant::MultibodyPlant;
+using drake::multibody::MultibodyPlant;
 using dairlib::systems::SubvectorPassThrough;
 using drake::systems::Simulator;
 using dairlib::systems::RobotOutputReceiver;

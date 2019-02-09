@@ -24,8 +24,11 @@
 
 #include "examples/Cassie/cassie_utils.h"
 
-namespace dairlib{
-  using dairlib::systems::SubvectorPassThrough;
+namespace dairlib {
+
+using dairlib::systems::SubvectorPassThrough;
+using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::lcm::LcmPublisherSystem;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
@@ -47,7 +50,7 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   drake::lcm::DrakeLcm lcm;
-  std::unique_ptr<RigidBodyTree<double>> tree = makeFixedBaseCassieTreePointer();
+  std::unique_ptr<RigidBodyTree<double>> tree = makeCassieTreePointer();
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -69,16 +72,19 @@ int do_main(int argc, char* argv[]) {
 
   // Create input receiver.
   auto input_sub = builder.AddSystem(
-      drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>("CASSIE_INPUT", &lcm));
-  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant->get_rigid_body_tree());
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
+          "CASSIE_INPUT", &lcm));
+  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(
+        plant->get_rigid_body_tree());
   builder.Connect(input_sub->get_output_port(),
                   input_receiver->get_input_port(0));
 
   // Create state publisher.
   auto state_pub = builder.AddSystem(
-      drake::systems::lcm::LcmPublisherSystem::Make<dairlib::lcmt_robot_output>("CASSIE_STATE", &lcm));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant->get_rigid_body_tree());
-  state_pub->set_publish_period(1.0/200.0);
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+          "CASSIE_STATE", &lcm, 1.0/200.0));
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+        plant->get_rigid_body_tree());
 
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
     input_receiver->get_output_port(0).size(),
@@ -187,7 +193,7 @@ int do_main(int argc, char* argv[]) {
   return 0;
 }
 
-}  // namespace drake
+}  // namespace dairlib
 
 int main(int argc, char* argv[]) {
   return dairlib::do_main(argc, argv);

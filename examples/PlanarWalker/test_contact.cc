@@ -19,22 +19,23 @@ using Eigen::Matrix3Xd;
 //using Eigen::MatrixX;
 using std::cout;
 using std::endl;
+using drake::AutoDiffVecXd;
+using drake::math::autoDiffToGradientMatrix;
+using drake::math::initializeAutoDiff;
+using drake::AutoDiffXd;
 
-namespace drake{
-namespace goldilocks {
-namespace examples {
-namespace planarwalker {
+namespace dairlib {
 namespace {
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm;
   auto tree = std::make_unique<RigidBodyTree<double>>();
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
       "PlanarWalker.urdf",
-      multibody::joints::kFixed, tree.get());
-  multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);  
+      drake::multibody::joints::kFixed, tree.get());
+  drake::multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);  
 
   Matrix3Xd xA, xB, normal;
   std::vector<int> idxA;
@@ -54,12 +55,12 @@ int do_main(int argc, char* argv[]) {
 
 
   int n = 6;
-  //AutoDiffVecXd q_autodiff = math::initializeAutoDiff(q);
-  //AutoDiffVecXd v_autodiff = math::initializeAutoDiff(v);
+  //AutoDiffVecXd q_autodiff = initializeAutoDiff(q);
+  //AutoDiffVecXd v_autodiff = initializeAutoDiff(v);
 
   VectorXd x(2*n);
   x << q, v;
-  AutoDiffVecXd x_autodiff = math::initializeAutoDiff(x);  
+  AutoDiffVecXd x_autodiff = initializeAutoDiff(x);  
   AutoDiffVecXd q_autodiff = x_autodiff.head(n);
   AutoDiffVecXd v_autodiff = x_autodiff.tail(n);
 
@@ -71,7 +72,7 @@ int do_main(int argc, char* argv[]) {
   cout << "***********PTS ***********" << endl;
   cout << pts << endl;
   cout << "***********Derivatives***********" << endl;
-  cout << math::autoDiffToGradientMatrix(pts) << endl;  
+  cout << autoDiffToGradientMatrix(pts) << endl;  
 
   int num_pts = static_cast<int>(xA.cols());
   MatrixXd J = MatrixXd::Zero(num_pts, tree.get()->get_num_positions());
@@ -108,7 +109,7 @@ int do_main(int argc, char* argv[]) {
   cout << "*********** xB0 ***********" << endl;
   cout << tmp << endl;
   cout << "*********** xB0 derivatives ***********" << endl;
-  cout << math::autoDiffToGradientMatrix(tmp) << endl;
+  cout << autoDiffToGradientMatrix(tmp) << endl;
 
   auto Jdiff = tree.get()->transformPointsJacobian(cache_autodiff, xBc0.template cast<AutoDiffXd>(), idxB.at(0), 0, true); 
 
@@ -121,7 +122,7 @@ int do_main(int argc, char* argv[]) {
   cout << phidot << endl;
 
     cout << "*********** phidot derivatives ***********" << endl;
-  cout <<  math::autoDiffToGradientMatrix(phidot) << endl;
+  cout <<  autoDiffToGradientMatrix(phidot) << endl;
 
   //AutoDiffVecXd JdotV = tree.get()->transformPointsJacobianDotTimesV(cache_autodiff, xB_col0, idxB.at(0), 0); 
   AutoDiffVecXd JdotV = tree.get()->transformPointsJacobianDotTimesV(cache_autodiff, xBc0, idxB.at(0), 0); 
@@ -130,10 +131,10 @@ int do_main(int argc, char* argv[]) {
   cout << JdotV << endl;
 
   cout << "*********** JdotV derivatives ***********" << endl;
-  cout << math::autoDiffToGradientMatrix(JdotV) << endl;
+  cout << autoDiffToGradientMatrix(JdotV) << endl;
 
   cout << "*********** JdotV derivatives ***********" << endl;
-  cout << math::autoDiffToGradientMatrix(JdotV) << endl;
+  cout << autoDiffToGradientMatrix(JdotV) << endl;
 
 
   const Eigen::Map<Eigen::Matrix3Xd> n_world(normal.data(),3,2);
@@ -161,11 +162,8 @@ int do_main(int argc, char* argv[]) {
 }
 
 }  // namespace
-}  // namespace planarwalker
-}  // namespace examples
-}  // namespace goldilocks
-}  // namespace drake
+}  // namespace dairlib
 
 int main(int argc, char* argv[]) {
-  return drake::goldilocks::examples::planarwalker::do_main(argc, argv);
+  return dairlib::do_main(argc, argv);
 }

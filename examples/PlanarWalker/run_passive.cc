@@ -13,10 +13,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 
-namespace drake{
-namespace goldilocks {
-namespace examples {
-namespace planarwalker {
+namespace dairlib {
 namespace {
 
 // Simple example which simulates the (passive) Acrobot.  Run drake-visualizer
@@ -45,13 +42,13 @@ DEFINE_double(dt, 1e-3, "The step size to use for "
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm;
   auto tree = std::make_unique<RigidBodyTree<double>>();
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
       "PlanarWalker.urdf",
-      multibody::joints::kFixed, tree.get());
+      drake::multibody::joints::kFixed, tree.get());
 
-  multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);  
+  drake::multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);  
 
 //  manipulation::util::SimDiagramBuilder<double> builder;
   drake::systems::DiagramBuilder<double> builder;  
@@ -61,18 +58,18 @@ int do_main(int argc, char* argv[]) {
 
   if (FLAGS_simulation_type != "timestepping")
     FLAGS_dt = 0.0;
-  auto plant = builder.AddSystem<systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
+  auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
   //auto plant = builder.AddSystem<systems::RigidBodyPlant<double>>(std::move(tree));
   //systems::RigidBodyPlant<double>* plant = builder.AddPlant(std::move(tree));
 
     // Note: this sets identical contact parameters across all object pairs:
 
-  systems::CompliantMaterial default_material;
+  drake::systems::CompliantMaterial default_material;
   default_material.set_youngs_modulus(FLAGS_youngs_modulus)
       .set_dissipation(FLAGS_dissipation)
       .set_friction(FLAGS_us, FLAGS_ud);
   plant->set_default_compliant_material(default_material);
-  systems::CompliantContactModelParameters model_parameters;
+  drake::systems::CompliantContactModelParameters model_parameters;
   model_parameters.characteristic_radius = FLAGS_contact_radius;
   model_parameters.v_stiction_tolerance = FLAGS_v_tol;
   plant->set_contact_model_parameters(model_parameters);
@@ -81,14 +78,14 @@ int do_main(int argc, char* argv[]) {
 
   // Creates and adds LCM publisher for visualization.
   //builder.AddVisualizer(&lcm);
-  auto visualizer = builder.AddSystem<systems::DrakeVisualizer>(plant->get_rigid_body_tree(), &lcm);  
+  auto visualizer = builder.AddSystem<drake::systems::DrakeVisualizer>(plant->get_rigid_body_tree(), &lcm);  
   // Raw state vector to visualizer.
   builder.Connect(plant->state_output_port(), visualizer->get_input_port(0));  
 
   auto diagram = builder.Build();
 
-  systems::Simulator<double> simulator(*diagram);
-  systems::Context<double>& context =
+  drake::systems::Simulator<double> simulator(*diagram);
+  drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
 
   if (FLAGS_simulation_type != "timestepping") {
@@ -99,7 +96,7 @@ int do_main(int argc, char* argv[]) {
     state[4] = 2;
   } else {
     std::cout << "ngroups "<< context.get_num_discrete_state_groups() <<  std::endl;
-    systems::BasicVector<double>& state = context.get_mutable_discrete_state(0); 
+    drake::systems::BasicVector<double>& state = context.get_mutable_discrete_state(0); 
     std::cout << "Discrete " << state.size() << std::endl;
     state[1] = 1;
     state[3] = 1;
@@ -120,11 +117,8 @@ int do_main(int argc, char* argv[]) {
 }
 
 }  // namespace
-}  // namespace planarwalker
-}  // namespace examples
-}  // namespace goldilocks
-}  // namespace drake
+}  // namespace dairlib
 
 int main(int argc, char* argv[]) {
-  return drake::goldilocks::examples::planarwalker::do_main(argc, argv);
+  return dairlib::do_main(argc, argv);
 }

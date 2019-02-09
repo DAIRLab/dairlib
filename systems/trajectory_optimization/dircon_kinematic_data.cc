@@ -1,12 +1,19 @@
 #include "dircon_kinematic_data.h"
 
-namespace drake{
+namespace dairlib {
+
+using std::shared_ptr;
+using std::vector;
+using drake::VectorX;
+using drake::MatrixX;
+using drake::solvers::Constraint;
 
 template <typename T>
-DirconKinematicData<T>::DirconKinematicData(RigidBodyTree<double>& tree, int length) {
+DirconKinematicData<T>::DirconKinematicData(const RigidBodyTree<double>& tree,
+                                            int length) {
   tree_ = &tree;
   length_ = length;
-  force_constraints_ = std::vector<std::shared_ptr<solvers::Constraint>>(0);
+  force_constraints_ = vector<shared_ptr<Constraint>>(0);
   c_ = VectorX<T>::Zero(length);
   cdot_ = VectorX<T>::Zero(length);
   J_ = MatrixX<T>::Zero(length, tree.get_num_positions());
@@ -47,13 +54,13 @@ int DirconKinematicData<T>::numForceConstraints() {
 }
 
 template <typename T>
-std::shared_ptr<solvers::Constraint> DirconKinematicData<T>::getForceConstraint(int index) {
+shared_ptr<Constraint> DirconKinematicData<T>::getForceConstraint(int index) {
   return force_constraints_[index];
 }
 
 // Explicitly instantiates on the most common scalar types.
 template class DirconKinematicData<double>;
-template class DirconKinematicData<AutoDiffXd>;
+template class DirconKinematicData<drake::AutoDiffXd>;
 
-}
+}  // namespace dairlib
 

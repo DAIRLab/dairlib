@@ -22,7 +22,7 @@
 namespace dairlib {
 using drake::systems::DiagramBuilder;
 using drake::geometry::SceneGraph;
-using drake::multibody::multibody_plant::MultibodyPlant;
+using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::Simulator;
 using drake::multibody::RevoluteJoint;
@@ -78,9 +78,8 @@ int do_main(int argc, char* argv[]) {
   // Create state publisher.
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>("CASSIE_STATE",
-                                                           &lcm));
+                                                           &lcm, 1.0/200.0));
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
-  state_pub->set_publish_period(1.0/200.0);
 
   // connect state publisher
   builder.Connect(plant.get_continuous_state_output_port(),

@@ -45,9 +45,7 @@ DEFINE_int64(testIndex, 0, "The index of the test to run");
 
 //template VectorXd RigidBodyTree<double>::transformPointsJacobianDotTimesV<double, Matrix3Xd>(KinematicsCache<double> const&, Eigen::MatrixBase<Matrix3Xd> const&, int, int);
 
-namespace drake{
-namespace dircon {
-namespace examples {
+namespace dairlib {
 namespace {
 
 void checkConstraints(const solvers::MathematicalProgram* prog) {
@@ -729,9 +727,7 @@ int testDircol() {
 
 
 }  // namespace
-}  // namespace examples
-}  // namespace dircon
-}  // namespace drake
+}  // namespace dairlib
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

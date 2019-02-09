@@ -1,12 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-  name = "common",
-  hdrs = [
-          "find_resource.h"
-          ],
-  srcs = ["find_resource.cc"],
-  deps = [
-        "@drake//common",
-        ]
+    name = "common",
+    srcs = ["find_resource.cc"],
+    hdrs = [
+        "find_resource.h",
+    ],
+    deps = [
+        "//third_party/spruce",
+        "@drake//common:essential",
+    ],
 )

@@ -24,7 +24,7 @@ int doMain() {
   drake::lcm::DrakeLcm lcm;
 
   RigidBodyTree<double> tree;
-  buildFixedBaseCassieTree(tree);
+  buildCassieTree(tree);
 
   const std::string channel_x = "CASSIE_STATE";
   const std::string channel_u = "CASSIE_INPUT";
@@ -46,7 +46,8 @@ int doMain() {
 
   // Create command sender.
   auto command_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm));
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm,
+                                                          1.0/1000.0));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(tree);
 
   builder.Connect(command_sender->get_output_port(0),
@@ -66,9 +67,6 @@ int doMain() {
   std::cout << command_sender->get_input_port(0).size() << std::endl;
   builder.Connect(controller->get_output_port(0),
                   command_sender->get_input_port(0));
-
-  command_pub->set_publish_period(1.0/1000.0);
-
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();

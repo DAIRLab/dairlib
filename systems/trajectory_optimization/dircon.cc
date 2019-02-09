@@ -8,17 +8,19 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 
-namespace drake {
+namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
-using solvers::Binding;
-using solvers::Constraint;
-using solvers::MathematicalProgram;
-using solvers::VectorXDecisionVariable;
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::VectorXDecisionVariable;
+using drake::trajectories::PiecewisePolynomial;
+using drake::systems::trajectory_optimization::MultipleShooting;
+using drake::AutoDiffXd;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
-
 
 template <typename T>
 Dircon<T>::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, double minimum_timestep, double maximum_timestep,
@@ -102,7 +104,7 @@ Dircon<T>::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, doubl
 }
 
 template <typename T>
-void Dircon<T>::DoAddRunningCost(const symbolic::Expression& g) {
+void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // Trapezoidal integration:
   //    sum_{i=0...N-2} h_i/2.0 * (g_i + g_{i+1}), or
   // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
@@ -147,15 +149,18 @@ PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory()
     forces[i] = GetSolution(force(i));
     constraints_->updateData(states[i], inputs[i], forces[i]);
 
-    derivatives[i] = math::DiscardGradient(constraints_->getXDot());//Do I need to make a copy here?
+    derivatives[i] = drake::math::DiscardGradient(constraints_->getXDot());
   }
   return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);
 }
 
 template <typename T>
-void Dircon<T>::SetInitialTrajectory(const PiecewisePolynomial<double>& traj_init_u, const PiecewisePolynomial<double>& traj_init_x,
-                                  const PiecewisePolynomial<double>& traj_init_l, const PiecewisePolynomial<double>& traj_init_lc,
-                                  const PiecewisePolynomial<double>& traj_init_vc) {
+void Dircon<T>::SetInitialTrajectory(
+    const PiecewisePolynomial<double>& traj_init_u,
+    const PiecewisePolynomial<double>& traj_init_x,
+    const PiecewisePolynomial<double>& traj_init_l,
+    const PiecewisePolynomial<double>& traj_init_lc,
+    const PiecewisePolynomial<double>& traj_init_vc) {
   MultipleShooting::SetInitialTrajectory(traj_init_u,traj_init_x);
   double start_time = 0;
   double h;
@@ -203,4 +208,4 @@ template class Dircon<AutoDiffXd>;
 
 }  // namespace trajectory_optimization
 }  // namespace systems
-}  // namespace drake
+}  // namespace dairlib

@@ -15,7 +15,7 @@
 namespace dairlib {
 using drake::systems::DiagramBuilder;
 using drake::geometry::SceneGraph;
-using drake::multibody::multibody_plant::MultibodyPlant;
+using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::Simulator;
 using drake::multibody::RevoluteJoint;

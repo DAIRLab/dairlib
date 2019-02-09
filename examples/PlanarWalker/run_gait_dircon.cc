@@ -28,11 +28,6 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3Xd;
-using drake::systems::trajectory_optimization::HybridDircon;
-using drake::systems::trajectory_optimization::DirconDynamicConstraint;
-using drake::systems::trajectory_optimization::DirconKinematicConstraint;
-using drake::systems::trajectory_optimization::DirconOptions;
-using drake::systems::trajectory_optimization::DirconKinConstraintType;
 using drake::trajectories::PiecewisePolynomial;
 using std::vector;
 using std::shared_ptr;
@@ -44,8 +39,15 @@ DEFINE_double(duration, 1, "The stride duration");
 
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
-namespace drake{
-namespace dircon {
+namespace dairlib {
+namespace {
+
+using systems::trajectory_optimization::HybridDircon;
+using systems::trajectory_optimization::DirconDynamicConstraint;
+using systems::trajectory_optimization::DirconKinematicConstraint;
+using systems::trajectory_optimization::DirconOptions;
+using systems::trajectory_optimization::DirconKinConstraintType;
+
 shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration,
     PiecewisePolynomial<double> init_x_traj,
     PiecewisePolynomial<double> init_u_traj,
@@ -53,7 +55,8 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
     vector<PiecewisePolynomial<double>> init_lc_traj,
     vector<PiecewisePolynomial<double>> init_vc_traj) {
   RigidBodyTree<double> tree;
-  parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalker.urdf", multibody::joints::kFixed, &tree);
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalker.urdf",
+      drake::multibody::joints::kFixed, &tree);
   //const std::unique_ptr<const RigidBodyTree<double>> tree =  std::unique_ptr<const RigidBodyTree<double>>(&model);
 
   for (int i = 0; i < tree.get_num_bodies(); i++)
@@ -86,8 +89,8 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 
 
 
-  int n = tree.get_num_positions();
-  int nu = tree.get_num_actuators();
+  // int n = tree.get_num_positions();
+  // int nu = tree.get_num_actuators();
 
   int leftLegIdx = tree.FindBodyIndex("left_lower_leg");
   int rightLegIdx = tree.FindBodyIndex("right_lower_leg");
@@ -137,21 +140,28 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   options_list.push_back(leftOptions);
   options_list.push_back(rightOptions);
 
-  auto trajopt = std::make_shared<HybridDircon<double>>(tree, timesteps, min_dt, max_dt, dataset_list, options_list);
+  auto trajopt = std::make_shared<HybridDircon<double>>(tree, timesteps, min_dt,
+                                                        max_dt, dataset_list,
+                                                        options_list);
 
   trajopt->AddDurationBounds(duration, duration);
 
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file","snopt.out");
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Major iterations limit",200);
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Print file", "snopt.out");
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Major iterations limit", 200);
 
-  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level","1");
+  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  //    "Verify level","1");
 
   for (int j = 0; j < timesteps.size(); j++) {
-    trajopt->systems::trajectory_optimization::MultipleShooting::SetInitialTrajectory(init_u_traj,init_x_traj);
-    trajopt->SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j], init_vc_traj[j]);
+    trajopt->drake::systems::trajectory_optimization::MultipleShooting::
+        SetInitialTrajectory(init_u_traj, init_x_traj);
+    trajopt->SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j],
+                                      init_vc_traj[j]);
   }
 
-  //Periodicity constraints
+  // Periodicity constraints
   // planar_x-0
   // planar_z-1
   // planar_roty-2
@@ -185,7 +195,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   trajopt->AddConstraintToAllKnotPoints(x(3) >= 0);
   trajopt->AddConstraintToAllKnotPoints(x(5) >= 0);
 
-  //Hip constraints
+  // Hip constraints
   trajopt->AddLinearConstraint(x0(0) == 0);
   trajopt->AddLinearConstraint(xf(0) == stride_length);
 
@@ -205,12 +215,12 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   std::cout << result << std::endl;
   std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
 
-  systems::trajectory_optimization::dircon::checkConstraints(trajopt.get());
+  systems::trajectory_optimization::checkConstraints(trajopt.get());
 
   MatrixXd A;
-  VectorXd y,lb,ub;
+  VectorXd y, lb, ub;
   VectorXd x_sol = trajopt->GetSolution(trajopt->decision_variables());
-  systems::trajectory_optimization::dircon::linearizeConstraints(trajopt.get(),
+  systems::trajectory_optimization::linearizeConstraints(trajopt.get(),
     x_sol, y, A, lb, ub);
 
 //  MatrixXd y_and_bounds(y.size(),3);
@@ -222,12 +232,15 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 //  cout << "*************A***************" << endl;
 //  cout << A << endl;
 
-  //visualizer
-  lcm::DrakeLcm lcm;
-  systems::DiagramBuilder<double> builder;
-  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
-  auto state_source = builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
-  auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
+  // visualizer
+  drake::lcm::DrakeLcm lcm;
+  drake::systems::DiagramBuilder<double> builder;
+  const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
+      trajopt->ReconstructStateTrajectory();
+  auto state_source = builder.AddSystem<drake::systems::TrajectorySource>(
+        pp_xtraj);
+  auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree,
+                                                                      &lcm);
   publisher->set_publish_period(1.0 / 60.0);
   builder.Connect(state_source->get_output_port(),
                   publisher->get_input_port(0));
@@ -236,7 +249,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 
 
   while (true) {
-    systems::Simulator<double> simulator(*diagram);
+    drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(.2);
     simulator.Initialize();
     simulator.StepTo(pp_xtraj.end_time());
@@ -244,8 +257,8 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 
   return trajopt;
 }
-}
-}
+}  // namespace
+}  // namespace dairlib
 
 
 int main(int argc, char* argv[]) {
@@ -253,31 +266,32 @@ int main(int argc, char* argv[]) {
   std::srand(time(0));  // Initialize random number generator.
 
   RigidBodyTree<double> tree;
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalker.urdf", drake::multibody::joints::kFixed, &tree);
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalker.urdf",
+        drake::multibody::joints::kFixed, &tree);
 
-  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(tree.get_num_positions() + tree.get_num_velocities());
+  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(tree.get_num_positions() +
+                       tree.get_num_velocities());
 
   Eigen::VectorXd init_l_vec(2);
   init_l_vec << 0, tree.getMass()*9.81;
   int nu = 3;
   int N = 10;
 
-  
   std::vector<MatrixXd> init_x;
   std::vector<MatrixXd> init_u;
   std::vector<PiecewisePolynomial<double>> init_l_traj;
   std::vector<PiecewisePolynomial<double>> init_lc_traj;
   std::vector<PiecewisePolynomial<double>> init_vc_traj;
 
-  //Initialize state trajectory
+  // Initialize state trajectory
   std::vector<double> init_time;
   for (int i = 0; i < 2*N-1; i++) {
     init_time.push_back(i*.2);
     init_x.push_back(x0);
     init_u.push_back(VectorXd::Random(nu));
   }
-  auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_x);
-  auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time,init_u);
+  auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_x);
+  auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_u);
 
   //Initialize force trajectories
   for (int j = 0; j < 2; j++) {    
@@ -301,7 +315,7 @@ int main(int argc, char* argv[]) {
     init_vc_traj.push_back(init_vc_traj_j);
   }
 
-  auto prog = drake::dircon::runDircon(FLAGS_strideLength, FLAGS_duration,
+  auto prog = dairlib::runDircon(FLAGS_strideLength, FLAGS_duration,
     init_x_traj, init_u_traj,  init_l_traj, init_lc_traj, init_vc_traj);
 }
 

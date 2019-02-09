@@ -9,18 +9,15 @@
 #include "drake/solvers/gurobi_solver.h"
 #include "drake/solvers/mathematical_program.h"
 
-#include "sgd_iter.h"
+#include "examples/PlanarWalker/sgd_iter.h"
 #include "systems/goldilocks_models/file_utils.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::string;
-
-using drake::goldilocks_models::writeCSV;
-using drake::goldilocks_models::readCSV;
 using drake::solvers::VectorXDecisionVariable;
 
-namespace drake{
+namespace dairlib {
 namespace goldilocks_models {
 
 void runSGD() {
@@ -291,12 +288,12 @@ void runSGD() {
     }
   }
 }
-}
-}
+}  // namespace goldilocks_models
+}  // namespace dairlib
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::srand(time(0));  // Initialize random number generator.
 
-  drake::goldilocks_models::runSGD();
+  dairlib::goldilocks_models::runSGD();
 }

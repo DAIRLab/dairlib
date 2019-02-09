@@ -3,11 +3,11 @@
 #include <string>
 #include <map>
 
+#include "dairlib/lcmt_pd_config.hpp"
 #include "drake/systems/framework/leaf_system.h"
-#include "systems/framework/timestamped_vector.h"
 #include "multibody/rbt_utils.h"
 #include "systems/controllers/linear_controller.h"
-#include "dairlib/lcmt_pd_config.hpp"
+#include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -18,7 +18,6 @@ namespace systems {
 class PDConfigReceiver : public drake::systems::LeafSystem<double> {
  public:
   explicit PDConfigReceiver(const RigidBodyTree<double>& tree);
-
 
  private:
   void CopyConfig(const drake::systems::Context<double>& context,

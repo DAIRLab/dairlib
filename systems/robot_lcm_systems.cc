@@ -18,11 +18,11 @@ using systems::OutputVector;
 // methods implementation for RobotOutputReceiver.
 
 RobotOutputReceiver::RobotOutputReceiver(
-    const drake::multibody::multibody_plant::MultibodyPlant<double>& plant) {
+    const drake::multibody::MultibodyPlant<double>& plant) {
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
-  positionIndexMap_ = multibody::utils::makeNameToPositionsMap(plant);
-  velocityIndexMap_ = multibody::utils::makeNameToVelocitiesMap(plant);
+  positionIndexMap_ = multibody::makeNameToPositionsMap(plant);
+  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_output",
     drake::systems::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(OutputVector<double>(
@@ -36,8 +36,8 @@ RobotOutputReceiver::RobotOutputReceiver(
     const RigidBodyTree<double>& tree) {
   num_positions_ = tree.get_num_positions();
   num_velocities_ = tree.get_num_velocities();
-  positionIndexMap_ = multibody::utils::makeNameToPositionsMap(tree);
-  velocityIndexMap_ = multibody::utils::makeNameToVelocitiesMap(tree);
+  positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
+  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
   this->DeclareAbstractInputPort("lcmt_robot_output",
     drake::systems::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(OutputVector<double>(
@@ -46,9 +46,10 @@ RobotOutputReceiver::RobotOutputReceiver(
     &RobotOutputReceiver::CopyOutput);
 }
 
-void RobotOutputReceiver::CopyOutput(
-    const Context<double>& context, OutputVector<double>* output) const {
-  const drake::systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
+void RobotOutputReceiver::CopyOutput(const Context<double>& context,
+                                     OutputVector<double>* output) const {
+  const drake::systems::AbstractValue* input =
+      this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& state_msg = input->GetValue<dairlib::lcmt_robot_output>();
 
@@ -67,13 +68,12 @@ void RobotOutputReceiver::CopyOutput(
   output->set_timestamp(state_msg.timestamp);
 }
 
-
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputSender.
 
 // RBT constructor--to be deprecated when move to MBP is complete
 RobotOutputSender::RobotOutputSender(const RigidBodyTree<double>& tree) {
-  num_positions_ = tree.get_num_positions(); 
+  num_positions_ = tree.get_num_positions();
   num_velocities_ = tree.get_num_velocities();
 
   for (int i = 0; i < num_positions_; i++) {
@@ -84,8 +84,8 @@ RobotOutputSender::RobotOutputSender(const RigidBodyTree<double>& tree) {
     ordered_velocity_names_.push_back(tree.get_velocity_name(i));
   }
 
-  positionIndexMap_ = multibody::utils::makeNameToPositionsMap(tree);
-  velocityIndexMap_ = multibody::utils::makeNameToVelocitiesMap(tree);
+  positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
+  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
 
   state_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
       num_positions_ + num_velocities_)).get_index();
@@ -93,12 +93,12 @@ RobotOutputSender::RobotOutputSender(const RigidBodyTree<double>& tree) {
 }
 
 RobotOutputSender::RobotOutputSender(
-    const drake::multibody::multibody_plant::MultibodyPlant<double>& plant) {
+    const drake::multibody::MultibodyPlant<double>& plant) {
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
 
-  positionIndexMap_ = multibody::utils::makeNameToPositionsMap(plant);
-  velocityIndexMap_ = multibody::utils::makeNameToVelocitiesMap(plant);
+  positionIndexMap_ = multibody::makeNameToPositionsMap(plant);
+  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(plant);
 
   // Loop through the maps to extract ordered names
   for (int i = 0; i < num_positions_; ++i) {
@@ -126,11 +126,11 @@ RobotOutputSender::RobotOutputSender(
 
 /// Populate a state message with all states
 void RobotOutputSender::Output(const Context<double>& context,
-                                         dairlib::lcmt_robot_output* state_msg) const {
+                               dairlib::lcmt_robot_output* state_msg) const {
   const auto state = this->EvalVectorInput(context, state_input_port_);
 
-  //using the time from the context
-  state_msg->timestamp = context.get_time()*1e6;
+  // using the time from the context
+  state_msg->timestamp = context.get_time() * 1e6;
 
   state_msg->num_positions = num_positions_;
   state_msg->num_velocities = num_velocities_;
@@ -153,7 +153,7 @@ void RobotOutputSender::Output(const Context<double>& context,
 // methods implementation for RobotInputReceiver.
 RobotInputReceiver::RobotInputReceiver(const RigidBodyTree<double>& tree) {
   num_actuators_ = tree.get_num_actuators();
-  actuatorIndexMap_ = multibody::utils::makeNameToActuatorsMap(tree);
+  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
   this->DeclareAbstractInputPort("lcmt_robot_input",
     drake::systems::Value<dairlib::lcmt_robot_input>{});
   this->DeclareVectorOutputPort(TimestampedVector<double>(num_actuators_),
@@ -161,18 +161,19 @@ RobotInputReceiver::RobotInputReceiver(const RigidBodyTree<double>& tree) {
 }
 
 RobotInputReceiver::RobotInputReceiver(
-      const drake::multibody::multibody_plant::MultibodyPlant<double>& plant) {
+      const drake::multibody::MultibodyPlant<double>& plant) {
   num_actuators_ = plant.num_actuators();
-  actuatorIndexMap_ = multibody::utils::makeNameToActuatorsMap(plant);
+  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_input",
     drake::systems::Value<dairlib::lcmt_robot_input>{});
   this->DeclareVectorOutputPort(TimestampedVector<double>(num_actuators_),
                                 &RobotInputReceiver::CopyInputOut);
 }
 
-void RobotInputReceiver::CopyInputOut(
-    const Context<double>& context, TimestampedVector<double>* output) const {
-  const drake::systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
+void RobotInputReceiver::CopyInputOut(const Context<double>& context,
+                                      TimestampedVector<double>* output) const {
+  const drake::systems::AbstractValue* input =
+      this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& input_msg = input->GetValue<dairlib::lcmt_robot_input>();
 
@@ -186,13 +187,12 @@ void RobotInputReceiver::CopyInputOut(
   output->set_timestamp(input_msg.timestamp);
 }
 
-
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotCommandSender.
 
 RobotCommandSender::RobotCommandSender(const RigidBodyTree<double>& tree) {
   num_actuators_ = tree.get_num_actuators();
-  actuatorIndexMap_ = multibody::utils::makeNameToActuatorsMap(tree);
+  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
 
 for (int i = 0; i < num_actuators_; i++) {
     ordered_actuator_names_.push_back(tree.actuators[i].name_);
@@ -203,13 +203,13 @@ for (int i = 0; i < num_actuators_; i++) {
 }
 
 RobotCommandSender::RobotCommandSender(
-    const drake::multibody::multibody_plant::MultibodyPlant<double>& plant) {
+    const drake::multibody::MultibodyPlant<double>& plant) {
   num_actuators_ = plant.num_actuators();
-  actuatorIndexMap_ = multibody::utils::makeNameToActuatorsMap(plant);
+  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
 
 for (JointActuatorIndex i(0); i < plant.num_actuators(); ++i) {
     ordered_actuator_names_.push_back(
-      plant.tree().get_joint_actuator(i).name());
+      plant.get_joint_actuator(i).name());
   }
 
   this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_));
@@ -217,12 +217,12 @@ for (JointActuatorIndex i(0); i < plant.num_actuators(); ++i) {
 }
 
 void RobotCommandSender::OutputCommand(const Context<double>& context,
-                                         dairlib::lcmt_robot_input* input_msg) const {
+    dairlib::lcmt_robot_input* input_msg) const {
   const TimestampedVector<double>* command = (TimestampedVector<double>*)
       this->EvalVectorInput(context, 0);
 
 
-  input_msg->timestamp = command->get_timestamp(); //context.get_time()*1e6;
+  input_msg->timestamp = command->get_timestamp();  // context.get_time()*1e6;
   input_msg->num_efforts = num_actuators_;
   input_msg->effort_names.resize(num_actuators_);
   input_msg->efforts.resize(num_actuators_);
@@ -232,6 +232,5 @@ void RobotCommandSender::OutputCommand(const Context<double>& context,
   }
 }
 
-
-} // namespace systems
-} // namespace dairlib
+}  // namespace systems
+}  // namespace dairlib

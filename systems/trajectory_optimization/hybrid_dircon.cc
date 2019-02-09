@@ -9,19 +9,23 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 
-namespace drake {
+namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
-using solvers::Binding;
-using solvers::Constraint;
-using solvers::MathematicalProgram;
-using solvers::VectorXDecisionVariable;
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::VectorXDecisionVariable;
+using drake::trajectories::PiecewisePolynomial;
+using drake::systems::trajectory_optimization::MultipleShooting;
+using drake::AutoDiffXd;
+using drake::VectorX;
+using drake::solvers::VectorXDecisionVariable;
+using drake::symbolic::Expression;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
-using Eigen::Map;
 using std::vector;
-
 
 template <typename T>
 HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num_time_samples, vector<double> minimum_timestep,
@@ -80,7 +84,7 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
     //Adding dynamic constraints
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
-      vector<solvers::VectorXDecisionVariable> x_next;
+      vector<VectorXDecisionVariable> x_next;
 
       AddConstraint(constraint,
                     {h_vars().segment(time_index,1),
@@ -175,51 +179,55 @@ HybridDircon<T>::HybridDircon(const RigidBodyTree<double>& tree, vector<int> num
 }
 
 template <typename T>
-const Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>::v_post_impact_vars_by_mode(int mode) const {
+const Eigen::VectorBlock<const VectorXDecisionVariable> HybridDircon<T>::v_post_impact_vars_by_mode(int mode) const {
   return v_post_impact_vars_.segment(mode * tree_->get_num_velocities(), tree_->get_num_velocities());
 }
 
 template <typename T>
-VectorX<symbolic::Expression> HybridDircon<T>::SubstitutePlaceholderVariables(const VectorX<symbolic::Expression>& f,
-                                                int interval_index) const {  
-  VectorX<symbolic::Expression> ret(f.size());
+VectorX<Expression> HybridDircon<T>::SubstitutePlaceholderVariables(
+      const VectorX<Expression>& f, int interval_index) const {
+  VectorX<Expression> ret(f.size());
   for (int i = 0; i < f.size(); i++) {
-    ret(i) = SubstitutePlaceholderVariables(f(i), interval_index);
+    ret(i) = MultipleShooting::SubstitutePlaceholderVariables(f(i),
+                                                              interval_index);
   }
   return ret;
 }
 
 
-// Eigen::VectorBlock<const solvers::VectorXDecisionVariable> HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
+// Eigen::VectorBlock<const VectorXDecisionVariable> HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
 template <typename T>
-solvers::VectorXDecisionVariable HybridDircon<T>::state_vars_by_mode(int mode, int time_index) const {
+VectorXDecisionVariable HybridDircon<T>::state_vars_by_mode(int mode, int time_index) const {
   if (time_index == 0 && mode > 0) {//TODO(mposa): remove the false
-    solvers::VectorXDecisionVariable ret(num_states());
+    VectorXDecisionVariable ret(num_states());
     ret << x_vars().segment((mode_start_[mode] + time_index)*num_states(), tree_->get_num_positions()),
           v_post_impact_vars_by_mode(mode - 1);
     return ret;
-    // return Eigen::VectorBlock<const solvers::VectorXDecisionVariable>(ret, 0, num_states());
+    // return Eigen::VectorBlock<const VectorXDecisionVariable>(ret, 0, num_states());
   } else {
-    solvers::VectorXDecisionVariable ret(num_states());
+    VectorXDecisionVariable ret(num_states());
     return x_vars().segment((mode_start_[mode] + time_index)*num_states(), num_states());
-    // std::cout << Eigen::VectorBlock<solvers::VectorXDecisionVariable>(ret, 0, num_states())  << std::endl;
-    // return Eigen::VectorBlock<solvers::VectorXDecisionVariable>(ret, 0, num_states());
+    // std::cout << Eigen::VectorBlock<VectorXDecisionVariable>(ret, 0, num_states())  << std::endl;
+    // return Eigen::VectorBlock<VectorXDecisionVariable>(ret, 0, num_states());
   }
 }
 
 //TODO: need to configure this to handle the hybrid discontinuities properly
 template <typename T>
-void HybridDircon<T>::DoAddRunningCost(const symbolic::Expression& g) {
+void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // Trapezoidal integration:
   //    sum_{i=0...N-2} h_i/2.0 * (g_i + g_{i+1}), or
   // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
   // g_{N-1}*h_{N-2}/2.0.
 
-  AddCost(SubstitutePlaceholderVariables(g, 0) * h_vars()(0) / 2);
+  AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, 0) *
+          h_vars()(0) / 2);
   for (int i = 1; i <= N() - 2; i++) {
-    AddCost(SubstitutePlaceholderVariables(g , i)*(h_vars()(i - 1) + h_vars()(i)) / 2);
+    AddCost(MultipleShooting::SubstitutePlaceholderVariables(g , i) *
+            (h_vars()(i - 1) + h_vars()(i)) / 2);
   }
-  AddCost(SubstitutePlaceholderVariables(g, N() - 1) * h_vars()(N() - 2) / 2);
+  AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, N() - 1) *
+          h_vars()(N() - 2) / 2);
 }
 
 template <typename T>
@@ -261,7 +269,7 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory()
       inputs[k] = GetSolution(input(k_data));
       forces[k] = GetSolution(force(i, j));
       constraints_[i]->updateData(states[k], inputs[k], forces[k]);
-      derivatives[k] = math::DiscardGradient(constraints_[i]->getXDot());
+      derivatives[k] = drake::math::DiscardGradient(constraints_[i]->getXDot());
   }
 }
   return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);
@@ -317,4 +325,4 @@ template class HybridDircon<AutoDiffXd>;
 
 }  // namespace trajectory_optimization
 }  // namespace systems
-}  // namespace drake
+}  // namespace dairlib

@@ -2,7 +2,7 @@
 #include <utility>
 
 #include "drake/geometry/scene_graph.h"
-#include "drake/multibody/parsing/urdf_parser.h"
+#include "drake/multibody/parsing/parser.h"
 #include "multibody/mbt_utils.h"
 #include "common/find_resource.h"
 
@@ -10,32 +10,32 @@ namespace dairlib {
 namespace multibody {
 
 
-using drake::multibody::multibody_plant::MultibodyPlant;
-using drake::multibody::parsing::AddModelFromUrdfFile;
-
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 
 int do_main()  {
   MultibodyPlant<double> plant;
   drake::geometry::SceneGraph<double> scene_graph;
   std::string full_name = FindResourceOrThrow(
       "examples/Cassie/urdf/cassie_v2.urdf");
-  AddModelFromUrdfFile(full_name, &plant, &scene_graph);
-  plant.Finalize();
 
-  auto positions_map = utils::makeNameToPositionsMap(plant);
+  Parser parser(&plant, &scene_graph);
+  parser.AddModelFromFile(full_name);
+
+  auto positions_map = makeNameToPositionsMap(plant);
 
   for (const auto &p : positions_map) {
       std::cout << "positions[" << p.first << "] = " << p.second << '\n';
   }
 
-  auto velocities_map = utils::makeNameToVelocitiesMap(plant);
+  auto velocities_map = makeNameToVelocitiesMap(plant);
 
   for (const auto &p : velocities_map) {
       std::cout << "velocities[" << p.first << "] = " << p.second << '\n';
   }
 
 
-  auto actuators_map = utils::makeNameToActuatorsMap(plant);
+  auto actuators_map = makeNameToActuatorsMap(plant);
 
   for (const auto &p : actuators_map) {
       std::cout << "actuators[" << p.first << "] = " << p.second << '\n';

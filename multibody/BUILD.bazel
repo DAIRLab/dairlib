@@ -49,19 +49,6 @@ cc_test(
     size = "small",
 )
 
-cc_binary(
-    name = "run_mbt_utils_test",
-    srcs = [
-        "test/run_mbt_utils_test.cc",
-    ],
-    deps = [
-        ":utils",
-        "//examples/Cassie:cassie_urdf",
-        "//common",
-        "@drake//multibody/parsing",
-    ],
-)
-
 cc_test(
     name = "mbt_utils_test",
     srcs = ["test/mbt_utils_test.cc"],
@@ -69,7 +56,7 @@ cc_test(
             ":utils",
             "//examples/Cassie:cassie_urdf",
             "//common",
-            "@drake//multibody/multibody_tree/parsing",
+            "@drake//multibody/parsing",
             "@gtest//:main",
             ],
     size = "small"

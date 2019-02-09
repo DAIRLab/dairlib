@@ -1,4 +1,15 @@
 #include "examples/Cassie/cassie_utils.h"
+#include "common/find_resource.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/multibody/tree/uniform_gravity_field_element.h"
+#include "drake/multibody/joints/revolute_joint.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/geometry/scene_graph.h"
+#include "drake/math/rigid_transform.h"
+
+
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/multibody/parsers/urdf_parser.h"
 
 namespace dairlib {
 
@@ -7,6 +18,35 @@ using Eigen::Vector3d;
 using drake::solvers::Constraint;
 using drake::AutoDiffVecXd;
 using drake::solvers::MathematicalProgram;
+using drake::multibody::MultibodyPlant;
+using drake::geometry::SceneGraph;
+using drake::multibody::Parser;
+using drake::multibody::joints::FloatingBaseType;
+
+/// Add a fixed base cassie to the given multibody plant and scene graph
+/// These methods are to be used rather that direct construction of the plant
+/// from the URDF to centralize any modeling changes or additions
+void addFixedBaseCassieMultibody(MultibodyPlant<double>* plant,
+    SceneGraph<double>* scene_graph, std::string filename) {
+  std::string full_name = FindResourceOrThrow(filename);
+  Parser parser(plant, scene_graph);
+  parser.AddModelFromFile(full_name);
+
+  plant->AddForceElement<drake::multibody::UniformGravityFieldElement>(
+      -9.81 * Eigen::Vector3d::UnitZ());
+
+  plant->WeldFrames(
+    plant->world_frame(), plant->GetFrameByName("pelvis"),
+    drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
+
+  // TODO: add distance constrains and springs
+  plant->Finalize();
+}
+
+void addFixedBaseCassieMultibody(MultibodyPlant<double>* plant,
+  std::string filename) {
+  addFixedBaseCassieMultibody(plant, filename);
+}
 using drake::multibody::joints::FloatingBaseType;
 
 std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(

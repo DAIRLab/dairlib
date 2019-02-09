@@ -12,7 +12,7 @@ using drake::systems::Context;
 using std::map;
 
 // methods implementation for CassiePDConfigReceiver.
-PDConfigReceiver::PDConfigReceiver(RigidBodyTree<double>& tree) {
+PDConfigReceiver::PDConfigReceiver(const RigidBodyTree<double>& tree) {
   tree_ = &tree;
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
 
@@ -55,9 +55,10 @@ PDConfigReceiver::PDConfigReceiver(RigidBodyTree<double>& tree) {
         index_q = k;
       }
     }
-    if (index_q != -1) actuatorToPositionIndexMap_[j] = index_q;
-    std::cout << "Map u_ind:" << j << " q_ind: " << index_q
-              << " v_ind: " << index << std::endl;
+    if (index_q != -1)
+      actuatorToPositionIndexMap_[j] = index_q;
+    std::cout << "Map u_ind:" << j << " q_ind: " << index_q << " v_ind: " <<
+                  index << std::endl;
   }
 
   // Velocity map:
@@ -98,5 +99,6 @@ void PDConfigReceiver::CopyConfig(const Context<double>& context,
   output->SetK(K);
   output->SetDesiredState(desired_state);
 }
-}
-}
+
+}  // namespace systems
+}  // namespace dairlib

@@ -16,16 +16,17 @@ load(
 )
 
 cc_library(
-    name = "cassie_utils",
-    srcs = ["cassie_utils.cc"],
-    hdrs = ["cassie_utils.h"],
-    deps = [
+  name = "cassie_utils",
+  srcs = ["cassie_utils.cc"],
+  hdrs = ["cassie_utils.h"],
+  deps = [
         ":cassie_urdf",
         "//common",
         "@drake//attic/multibody:rigid_body_tree",
         "@drake//attic/multibody:rigid_body_tree_construction",
         "@drake//attic/multibody/parsers",
         "@drake//manipulation/util",
+        "@drake//multibody/parsing:parser",
         "@drake//solvers:constraint",
         "@drake//solvers:mathematical_program",
     ],
@@ -197,6 +198,27 @@ cc_binary(
     ],
 )
 
+
+cc_binary(
+    name = "fixedbase_cassie_visualizer",
+    srcs = ["fixedbase_cassie_visualizer.cc"],
+    deps = [
+            "//systems:robot_lcm_systems",
+            "//systems/primitives",
+            ":cassie_urdf",
+            "@drake//systems/framework:diagram_builder",
+            "@drake//systems/lcm:lcm_pubsub_system",
+            "@drake//systems/analysis:simulator",
+            "@drake//lcm",
+            "@drake//manipulation/util",
+            "@drake//geometry:geometry_visualization",
+            "@drake//systems/rendering:multibody_position_to_geometry_pose",
+            ":cassie_utils",
+            "@gflags",
+            ]
+)
+
+
 cc_binary(
     name = "run_simple_sim",
     srcs = ["run_simple_sim.cc"],
@@ -215,6 +237,44 @@ cc_binary(
         "@drake//systems/analysis:simulator",
         "@drake//systems/framework",
         "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "fixedbase_standalone_mbt_sim",
+    srcs = ["fixedbase_standalone_mbt_sim.cc"],
+    deps = [
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@drake//geometry:geometry_visualization",
+        "@drake//systems/primitives",
+        "@gflags",
+        ":cassie_urdf",
+        ":cassie_utils",
+    ],
+)
+
+cc_binary(
+    name = "fixedbase_mbt_sim",
+    srcs = ["fixedbase_mbt_sim.cc"],
+    deps = [
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@drake//geometry:geometry_visualization",
+        "@drake//systems/primitives",
+        "@gflags",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
     ],
 )
 

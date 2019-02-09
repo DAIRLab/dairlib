@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <map>
+
 #include "dairlib/lcmt_pd_config.hpp"
 #include "drake/systems/framework/leaf_system.h"
 #include "multibody/rbt_utils.h"
@@ -14,7 +17,7 @@ namespace systems {
 /// and outputs the CassiePDConfig as Context
 class PDConfigReceiver : public drake::systems::LeafSystem<double> {
  public:
-  PDConfigReceiver(RigidBodyTree<double>& tree);
+  explicit PDConfigReceiver(const RigidBodyTree<double>& tree);
 
  private:
   void CopyConfig(const drake::systems::Context<double>& context,
@@ -25,5 +28,6 @@ class PDConfigReceiver : public drake::systems::LeafSystem<double> {
   std::map<int, int> actuatorToPositionIndexMap_;
   std::map<int, int> actuatorToVelocityIndexMap_;
 };
-}
-}
+
+}  // namespace systems
+}  // namespace dairlib

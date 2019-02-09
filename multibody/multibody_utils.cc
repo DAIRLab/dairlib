@@ -1,6 +1,6 @@
 #include <vector>
 #include <set>
-#include "multibody/mbt_utils.h"
+#include "multibody/multibody_utils.h"
 #include "drake/common/drake_assert.h"
 
 namespace dairlib {

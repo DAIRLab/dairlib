@@ -4,7 +4,7 @@
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
-#include "multibody/mbt_utils.h"
+#include "multibody/multibody_utils.h"
 #include "common/find_resource.h"
 
 namespace dairlib {

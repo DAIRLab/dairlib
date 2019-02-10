@@ -14,6 +14,8 @@
 
 namespace dairlib {
 
+DEFINE_bool(floating_base, true, "Fixed or floating base model");
+
 using std::endl;
 using std::cout;
 using drake::geometry::SceneGraph;
@@ -33,7 +35,7 @@ int do_main(int argc, char* argv[]) {
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double> plant;
-  addFixedBaseCassieMultibody(&plant, &scene_graph);
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
 
   drake::lcm::DrakeLcm lcm;
 
@@ -47,11 +49,8 @@ int do_main(int argc, char* argv[]) {
                   state_receiver->get_input_port(0));
 
 
-
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-    state_receiver->get_output_port(0).size(),
-    0,
-    plant.num_positions());
+    state_receiver->get_output_port(0).size(), 0, plant.num_positions());
   builder.Connect(state_receiver->get_output_port(0),
                   passthrough->get_input_port());
 

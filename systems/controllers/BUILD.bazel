@@ -11,8 +11,10 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//attic/multibody:utils",
         "//systems/framework:vector",
+        "//multibody:utils",
         "@drake//manipulation/util",
         "@drake//systems/framework:leaf_system",
+        "@drake//multibody/plant",
         "@lcm",
     ],
 )

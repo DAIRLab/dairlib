@@ -40,9 +40,6 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
       plant->world_frame(), plant->GetFrameByName("pelvis"),
       drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
   }
-
-  // TODO(mposa): add distance constrains and springs
-  plant->Finalize();
 }
 
 std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(

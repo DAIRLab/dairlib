@@ -9,10 +9,33 @@ namespace multibody {
 using std::map;
 using std::string;
 using drake::multibody::MultibodyPlant;
+using drake::geometry::SceneGraph;
+using drake::geometry::HalfSpace;
 using drake::multibody::JointIndex;
 using drake::multibody::JointActuatorIndex;
 using Eigen::VectorXd;
 
+template <typename T>
+void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph, 
+                    double mu_static, double mu_kinetic) {
+  if (!plant->geometry_source_is_registered()) {
+    plant->RegisterAsSourceForSceneGraph(scene_graph);
+  }
+
+  Eigen::Vector3d normal_W(0, 0, 1);
+  Eigen::Vector3d point_W(0, 0, 0);
+  drake::multibody::CoulombFriction<T> friction(mu_static, mu_kinetic);
+
+  // A half-space for the ground geometry.
+  plant->RegisterCollisionGeometry(
+      plant->world_body(), HalfSpace::MakePose(normal_W, point_W),
+      HalfSpace(), "collision", friction);
+
+  // Add visual for the ground.
+  plant->RegisterVisualGeometry(
+      plant->world_body(), HalfSpace::MakePose(normal_W, point_W),
+      HalfSpace(), "visual");
+}
 
 /// Construct a map between joint names and position indices
 ///     <name,index> such that q(index) has the given name
@@ -159,6 +182,8 @@ bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
   }
   return joints_within_limits;
 }
+
+template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic);   // NOLINT
 
 }  // namespace multibody
 }  // namespace dairlib

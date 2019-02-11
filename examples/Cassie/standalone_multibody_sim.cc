@@ -9,12 +9,15 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/multibody/tree/revolute_joint.h"
+#include "drake/systems/analysis/runge_kutta2_integrator.h"
 
+#include "multibody/multibody_utils.h"
 #include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib {
 using drake::systems::DiagramBuilder;
 using drake::geometry::SceneGraph;
+using drake::geometry::HalfSpace;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::Simulator;
@@ -29,7 +32,7 @@ DEFINE_double(target_realtime_rate, 1.0,
 DEFINE_bool(time_stepping, false, "If 'true', the plant is modeled as a "
     "discrete system with periodic updates. "
     "If 'false', the plant is modeled as a continuous system.");
-DEFINE_double(dt, 1e-3, "The step size to use for compliant, ignored for time_stepping)");
+DEFINE_double(dt, 1e-4, "The step size to use for compliant, ignored for time_stepping)");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -43,7 +46,14 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double>& plant =
       *builder.AddSystem<MultibodyPlant>(time_step);
+
+  if (FLAGS_floating_base) {
+    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+  }
+
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
+
+  plant.Finalize();
 
   auto input_source = builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
       Eigen::VectorXd::Zero(plant.num_actuators()));
@@ -88,9 +98,23 @@ int do_main(int argc, char* argv[]) {
   plant.GetJointByName<RevoluteJoint>("toe_right").
       set_angle(&plant_context, -M_PI/3);
 
-
+  if (FLAGS_floating_base) {
+    Eigen::Isometry3d transform;
+    transform.linear() = Eigen::Matrix3d::Identity();;
+    transform.translation() = Eigen::Vector3d(0, 0, 1.2);
+    plant.SetFreeBodyPose(&plant_context, plant.GetBodyByName("pelvis"),
+        transform);
+  }
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
+
+  if (!FLAGS_time_stepping) {
+    // simulator.get_mutable_integrator()->set_maximum_step_size(0.01);
+    // simulator.get_mutable_integrator()->set_target_accuracy(1e-1);
+    // simulator.get_mutable_integrator()->set_fixed_step_mode(true);
+    simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
+      *diagram, FLAGS_dt, &simulator.get_mutable_context());
+  }
 
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();

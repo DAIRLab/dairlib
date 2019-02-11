@@ -44,3 +44,18 @@ cc_test(
             ],
     size = "small"
 )
+
+
+cc_test(
+    name = "contact_toolkit_test",
+    srcs = [
+        "test/contact_toolkit_test.cc",
+    ],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        ":contact_toolkit",
+        ":utils",
+        "@gtest//:main",
+    ],
+    size = "small",
+)

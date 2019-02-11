@@ -1,9 +1,18 @@
+#pragma once
+
 #include <map>
 #include <string>
 #include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib {
 namespace multibody {
+
+/// Add flat terrain to an initialized, but not finalized, MultibodyPlant
+/// and scene graph. Uses the given values for coefficients of friction
+template <typename T>
+void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
+                    drake::geometry::SceneGraph<T>* scene_graph,
+                    double mu_static, double mu_kinetic);
 
 /// Given a MultiBodyTree, builds a map from position name to position index
 std::map<std::string, int> makeNameToPositionsMap(
@@ -20,7 +29,6 @@ std::map<std::string, int> makeNameToActuatorsMap(
 // TODO: The following two functions need to be implemented as a part of
 // RBT/Multibody and not as separate functions that take in RBTs. Make the
 // change once the codebase shifts to using multibody.
-
 
 // Given a MultibodyPlant and a state vector, checks if the states are within
 // the joint limits

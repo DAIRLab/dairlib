@@ -18,6 +18,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "systems/primitives/subvector_pass_through.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "multibody/multibody_utils.h"
 
 namespace dairlib {
 using drake::systems::DiagramBuilder;
@@ -56,7 +57,14 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double>& plant =
       *builder.AddSystem<MultibodyPlant>(time_step);
+
+  if (FLAGS_floating_base) {
+    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+  }
+
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
+
+  plant.Finalize();
 
   // Create input receiver.
   auto input_sub = builder.AddSystem(
@@ -127,6 +135,13 @@ int do_main(int argc, char* argv[]) {
       set_angle(&plant_context, -M_PI/3);
 
 
+  if (FLAGS_floating_base) {
+    Eigen::Isometry3d transform;
+    transform.linear() = Eigen::Matrix3d::Identity();;
+    transform.translation() = Eigen::Vector3d(0, 0, 1.2);
+    plant.SetFreeBodyPose(&plant_context, plant.GetBodyByName("pelvis"),
+        transform);
+  }
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

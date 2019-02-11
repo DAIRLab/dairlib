@@ -11,6 +11,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "systems/robot_lcm_systems.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "multibody/multibody_utils.h"
 
 namespace dairlib {
 
@@ -35,7 +36,13 @@ int do_main(int argc, char* argv[]) {
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double> plant;
+
+  if (FLAGS_floating_base) {
+    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+  }
+
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
+  plant.Finalize();
 
   drake::lcm::DrakeLcm lcm;
 

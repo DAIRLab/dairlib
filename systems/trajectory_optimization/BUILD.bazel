@@ -7,14 +7,14 @@ cc_library(
     name = "dircon",
     srcs = [
 #        "dircon.cc",
-#        "dircon_opt_constraints.cc",
+        "dircon_opt_constraints.cc",
 #        "dircon_options.cc",
 #        "dircon_util.cc",
 #        "hybrid_dircon.cc",
     ],
     hdrs = [
 #        "dircon.h",
-#        "dircon_opt_constraints.h",
+        "dircon_opt_constraints.h",
 #        "dircon_options.h",
 #        "dircon_util.h",
 #        "hybrid_dircon.h",
@@ -43,5 +43,6 @@ cc_library(
     deps = [
         "@drake//multibody/plant",
         "@drake//common",
+        "//multibody:utils",
     ],
 )

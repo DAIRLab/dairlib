@@ -3,6 +3,7 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "multibody/multibody_utils.h"
 
 namespace dairlib {
 
@@ -41,14 +42,12 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
 template <typename T>
 void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
                                            const VectorX<T>& forces) {
-  const auto state =
-      dynamic_cast<const drake::systems::BasicVector<T>&>(
-          context.get_continuous_state_vector()).get_value();
+  const auto state = multibody::getState(context);
+
   const VectorX<T> q = state.head(num_positions_);
   const VectorX<T> v = state.tail(num_velocities_);
 
-  VectorX<T> input = plant_.EvalEigenVectorInput(context,
-      plant_.get_actuation_input_port().get_index());
+  VectorX<T> input = multibody::getInput(plant_, context);
 
   int index = 0;
   int n;

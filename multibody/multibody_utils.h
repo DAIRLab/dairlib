@@ -7,6 +7,18 @@
 namespace dairlib {
 namespace multibody {
 
+template <typename T>
+drake::VectorX<T> getState(const drake::systems::Context<T>& context);
+
+template <typename T>
+drake::VectorX<T> getInput(const drake::multibody::MultibodyPlant<T>& plant,
+                           const drake::systems::Context<T>& context);
+
+template <typename T>
+std::unique_ptr<drake::systems::Context<T>> createContext(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const drake::VectorX<T>& state, const drake::VectorX<T>& input);
+
 /// Add flat terrain to an initialized, but not finalized, MultibodyPlant
 /// and scene graph. Uses the given values for coefficients of friction
 template <typename T>

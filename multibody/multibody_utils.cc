@@ -9,11 +9,37 @@ namespace multibody {
 using std::map;
 using std::string;
 using drake::multibody::MultibodyPlant;
+using drake::systems::Context;
 using drake::geometry::SceneGraph;
 using drake::geometry::HalfSpace;
 using drake::multibody::JointIndex;
 using drake::multibody::JointActuatorIndex;
 using Eigen::VectorXd;
+using drake::VectorX;
+
+template <typename T>
+VectorX<T> getState(const Context<T>& context) {
+  auto state = dynamic_cast<const drake::systems::BasicVector<T>&>(
+      context.get_continuous_state_vector()).get_value();
+  return state;
+}
+
+template <typename T>
+VectorX<T> getInput(const MultibodyPlant<T>& plant, const Context<T>& context) {
+  VectorX<T> input = plant.EvalEigenVectorInput(context,
+        plant.get_actuation_input_port().get_index());
+  return input;
+}
+
+template <typename T>
+std::unique_ptr<Context<T>> createContext(const MultibodyPlant<T>& plant,
+    const VectorX<T>& state, const VectorX<T>& input) {
+  auto context = plant.CreateDefaultContext();
+  auto context_state = context.get_mutable_continuous_state_vector();
+  context_state = state;
+  context.FixInputPort(input);
+  return context;
+}
 
 template <typename T>
 void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph, 

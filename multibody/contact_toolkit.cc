@@ -75,8 +75,7 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(const Context<T>& context,
   if (num_efforts > 0) {
     // will get easier after upcoming PR
     // plant_::get_actuation_input_port().Eval(context)
-    VectorX<T> u = plant_.EvalEigenVectorInput(context,
-        plant_.get_actuation_input_port().get_index());
+    VectorX<T> u = getInput(plant_, context);
     right_hand_side += plant_.MakeActuationMatrix() * u;
   }
 
@@ -104,9 +103,7 @@ VectorX<T> ContactToolkit<T>::CalcTimeDerivatives(const Context<T>& context,
   const int num_positions = plant_.num_positions();
   const int num_velocities = plant_.num_velocities();
 
-  const auto x =
-      dynamic_cast<const drake::systems::BasicVector<T>&>(
-          context.get_continuous_state_vector()).get_value();
+  const auto x = getState(context);
   const auto v = x.tail(num_velocities);
 
 

@@ -4,21 +4,20 @@
 #include <vector>
 
 #include "drake/solvers/constraint.h"
-#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/kinematics_cache.h"
 
 namespace dairlib {
 
 template <typename T>
 class DirconKinematicData {
  public:
-    DirconKinematicData(const drake::multibody::MultibodyPlant<T>& plant,
-                        int length);
+    DirconKinematicData(const RigidBodyTree<double>& tree, int length);
     ~DirconKinematicData();
 
     // The workhorse function, updates and caches everything needed by the
     // outside world
-    virtual void updateConstraint(
-        const drake::systems::Context<T>& context) = 0;
+    virtual void updateConstraint(const KinematicsCache<T>& cache) = 0;
 
     drake::VectorX<T> getC();
     drake::VectorX<T> getCDot();
@@ -29,7 +28,7 @@ class DirconKinematicData {
     std::shared_ptr<drake::solvers::Constraint> getForceConstraint(int index);
 
  protected:
-    const drake::multibody::MultibodyPlant<T>& plant_;
+    const RigidBodyTree<double>* tree_;
     std::vector<std::shared_ptr<drake::solvers::Constraint>> force_constraints_;
     drake::VectorX<T> c_;
     drake::VectorX<T> cdot_;

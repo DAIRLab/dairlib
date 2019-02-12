@@ -100,6 +100,11 @@ class ContactToolkitTest : public ::testing::Test {
     Matrix3Xd normal_total, xA_total, xB_total;
     vector<int> idxA_total, idxB_total;
 
+    // plant_->CalcContactResults(plant_context,
+    // const std::vector<PenetrationAsPointPair<T>>& point_pairs,
+    // const std::vector<Matrix3<T>>& R_WC_set,
+    // ContactResults<T>* contact_results)
+
     auto contact_results_value =
       plant_->get_contact_results_output_port().Allocate();
     const ContactResults<double>& contact_results =

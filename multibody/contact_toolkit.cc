@@ -44,8 +44,10 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
   MatrixX<T> Ji(3, plant_.num_positions());
 
   for (int i = 0; i < num_contacts_; i++) {
+    // .template cast<T> converts xA, as a double, into type T
+    VectorX<T> xA_i = contact_info_.xA.col(i).template cast<T>();
     plant_.CalcPointsGeometricJacobianExpressedInWorld(context,
-      *contact_info_.frameA.at(i), contact_info_.xA.col(i), &Ji);
+      *contact_info_.frameA.at(i), xA_i, &Ji);
     J.row(i*3) = normal.transpose() * Ji;
     J.row(i*3) = t_hat_1.transpose() * Ji;
     J.row(i*3) = t_hat_2.transpose() * Ji;
@@ -61,7 +63,7 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(const Context<T>& context,
   const int num_velocities = plant_.num_velocities();
   const int num_efforts = plant_.num_actuators();
   // TODO(mposa): finish when drake is ready for constraints
-  const int num_position_constraints = 0;  
+  const int num_position_constraints = 0;
 
   // Making sure that the size of lambda is correct
   DRAKE_THROW_UNLESS(num_position_constraints + num_contacts_ * 3 ==
@@ -71,8 +73,11 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(const Context<T>& context,
   plant_.CalcBiasTerm(context, &right_hand_side);
 
   if (num_efforts > 0) {
-    // VectorX<T> u = plant_.AssembleActuationInput(context); //private?
-    // right_hand_side += plant_.MakeActuationMatrix() * u;
+    // will get easier after upcoming PR
+    // plant_::get_actuation_input_port().Eval(context)
+    VectorX<T> u = plant_.EvalEigenVectorInput(context,
+        plant_.get_actuation_input_port().get_index());
+    right_hand_side += plant_.MakeActuationMatrix() * u;
   }
 
   // TODO(mposa) update when drake is ready
@@ -105,13 +110,13 @@ VectorX<T> ContactToolkit<T>::CalcTimeDerivatives(const Context<T>& context,
   const auto v = x.tail(num_velocities);
 
 
-  MatrixXd M(num_velocities, num_velocities);
+  MatrixX<T> M(num_velocities, num_velocities);
   plant_.CalcMassMatrixViaInverseDynamics(context, &M);
 
   // Reusing the code in CalcMVDot as the same computation is required.
   VectorX<T> right_hand_side = CalcMVDot(context, lambda);
 
-  VectorX<T> v_dot = M.completeOrthogonalDecomposition().solve(right_hand_side);
+  VectorX<T> v_dot = M.llt().solve(right_hand_side);
 
   VectorX<T> x_dot(num_positions + num_velocities);
   VectorX<T> q_dot(num_positions);
@@ -138,9 +143,8 @@ void ContactToolkit<T>::set_contact_info(ContactInfo<T> contact_info) {
   num_contacts_ = contact_info.frameA.size();
 }
 
-template class ContactToolkit<double>;
 }  // namespace multibody
 }  // namespace dairlib
 
-// DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-    // class ::dairlib::multibody::ContactToolkit);
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
+    class ::dairlib::multibody::ContactToolkit);

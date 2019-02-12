@@ -10,17 +10,25 @@ using std::vector;
 using drake::VectorX;
 using drake::MatrixX;
 using drake::AutoDiffXd;
-using drake::multibody::MultibodyPlant;
-using drake::systems::Context;
 
 template <typename T>
 DirconKinematicDataSet<T>::DirconKinematicDataSet(
-    const MultibodyPlant<T>& plant,
+    const RigidBodyTree<double>& tree,
     vector<DirconKinematicData<T>*>* constraints) :
-    plant_(plant),
-    constraints_(constraints),
-    num_positions_(plant.num_positions()),
-    num_velocities_(plant.num_velocities()) {
+    DirconKinematicDataSet(tree, constraints, tree.get_num_positions(),
+                           tree.get_num_velocities()) {}
+
+template <typename T>
+DirconKinematicDataSet<T>::DirconKinematicDataSet(
+    const RigidBodyTree<double>& tree,
+    vector<DirconKinematicData<T>*>* constraints,
+    int num_positions, int num_velocities) :
+    cache_(tree.CreateKinematicsCacheWithType<T>()) {
+  tree_ = &tree;
+
+  constraints_ = constraints;
+  num_positions_ = num_positions;
+  num_velocities_ = num_velocities;
   // Initialize matrices
   constraint_count_ = 0;
   for (uint i=0; i < constraints_->size(); i++) {
@@ -28,32 +36,26 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
   }
   c_ = VectorX<T>(constraint_count_);
   cdot_ = VectorX<T>(constraint_count_);
-  J_ = MatrixX<T>(constraint_count_, num_positions_);
+  J_ = MatrixX<T>(constraint_count_, num_positions);
   Jdotv_ = VectorX<T>(constraint_count_);
   cddot_ = VectorX<T>(constraint_count_);
   vdot_ = VectorX<T>(num_velocities_);
   xdot_ = VectorX<T>(num_positions_ + num_velocities_);
-  M_ = MatrixX<T>(num_velocities_, num_velocities_);
-  right_hand_side_ = VectorX<T>(num_velocities_);
 }
 
 
 template <typename T>
-void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
+void DirconKinematicDataSet<T>::updateData(const VectorX<T>& state,
+                                           const VectorX<T>& input,
                                            const VectorX<T>& forces) {
-  const auto state =
-      dynamic_cast<const drake::systems::BasicVector<T>&>(
-          context.get_continuous_state_vector()).get_value();
   const VectorX<T> q = state.head(num_positions_);
   const VectorX<T> v = state.tail(num_velocities_);
-
-  VectorX<T> input = plant_.EvalEigenVectorInput(context,
-      plant_.get_actuation_input_port().get_index());
+  cache_ = tree_->doKinematics(q, v, true);
 
   int index = 0;
   int n;
   for (uint i=0; i < constraints_->size(); i++) {
-    (*constraints_)[i]->updateConstraint(context);
+    (*constraints_)[i]->updateConstraint(cache_);
 
     n = (*constraints_)[i]->getLength();
     c_.segment(index, n) = (*constraints_)[i]->getC();
@@ -64,21 +66,21 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
     index += n;
   }
 
-  plant_.CalcMassMatrixViaInverseDynamics(context, &M_);
+  const MatrixX<T> M = tree_->massMatrix(cache_);
+  const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
+  const MatrixX<T> J_transpose = getJ().transpose();
 
   // right_hand_side is the right hand side of the system's equations:
   // M*vdot -J^T*f = right_hand_side.
-  plant_.CalcBiasTerm(context, &right_hand_side_);
-  right_hand_side_ += plant_.MakeActuationMatrix() * input +
-                      getJ().transpose() * forces;
-
-  vdot_ = M_.llt().solve(right_hand_side_);
+  VectorX<T> right_hand_side =
+      -tree_->dynamicsBiasTerm(cache_, no_external_wrenches) +
+      tree_->B*input + J_transpose*forces;
+  vdot_ = M.llt().solve(right_hand_side);
 
   cddot_ = Jdotv_ + J_*vdot_;
 
-  VectorX<T> q_dot(num_positions_);
-  plant_.MapVelocityToQDot(context, v, &q_dot);
-  xdot_ << q_dot, vdot_;
+  // assumes v = qdot
+  xdot_ << tree_->GetVelocityToQDotMapping(cache_)*v, vdot_;
 }
 
 template <typename T>

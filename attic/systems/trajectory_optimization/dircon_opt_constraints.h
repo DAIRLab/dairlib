@@ -7,8 +7,8 @@
 #include "drake/solvers/constraint.h"
 #include "drake/common/symbolic.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "attic/systems/trajectory_optimization/dircon_kinematic_data.h"
+#include "attic/systems/trajectory_optimization/dircon_kinematic_data_set.h"
 
 namespace dairlib {
 namespace systems {

@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "attic/systems/trajectory_optimization/dircon_opt_constraints.h"
 
 namespace dairlib {
 namespace systems {

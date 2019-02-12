@@ -1,7 +1,7 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/constraint.h"
 
-#include "systems/trajectory_optimization/dircon_util.h"
+#include "attic/systems/trajectory_optimization/dircon_util.h"
 
 using drake::systems::trajectory_optimization::dircon::checkConstraints;
 using drake::systems::trajectory_optimization::dircon::linearizeConstraints;

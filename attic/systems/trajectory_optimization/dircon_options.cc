@@ -1,4 +1,4 @@
-#include "systems/trajectory_optimization/dircon_options.h"
+#include "attic/systems/trajectory_optimization/dircon_options.h"
 
 using std::vector;
 

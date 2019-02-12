@@ -11,10 +11,10 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/symbolic.h"
 
-#include "systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "systems/trajectory_optimization/dircon_options.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "attic/systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "attic/systems/trajectory_optimization/dircon_options.h"
+#include "attic/systems/trajectory_optimization/dircon_kinematic_data.h"
+#include "attic/systems/trajectory_optimization/dircon_kinematic_data_set.h"
 
 namespace dairlib {
 namespace systems {

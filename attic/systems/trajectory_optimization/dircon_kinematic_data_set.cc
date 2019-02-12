@@ -2,7 +2,7 @@
 
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "attic/systems/trajectory_optimization/dircon_kinematic_data_set.h"
 
 namespace dairlib {
 

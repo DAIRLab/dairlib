@@ -5,7 +5,7 @@
 
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/kinematics_cache.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data.h"
+#include "attic/systems/trajectory_optimization/dircon_kinematic_data.h"
 
 namespace dairlib {
 

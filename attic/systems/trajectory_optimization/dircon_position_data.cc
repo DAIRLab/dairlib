@@ -1,7 +1,7 @@
 #include <limits>
 #include <vector>
 
-#include "systems/trajectory_optimization/dircon_position_data.h"
+#include "attic/systems/trajectory_optimization/dircon_position_data.h"
 
 namespace dairlib {
 

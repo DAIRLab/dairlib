@@ -53,7 +53,6 @@ cc_binary(
         "@drake//systems/rendering:multibody_position_to_geometry_pose",        
         "@drake//multibody/parsing",
         "@drake//common",
-        "@drake//lcm",
         "@drake//math",
         "@drake//solvers",
         "@drake//systems/analysis:simulator",

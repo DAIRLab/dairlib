@@ -105,10 +105,9 @@ HybridDircon<T>::HybridDircon(
                      collocation_force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
                      collocation_slack_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i))});
 
-      // std::cout << "Constraining " << state_vars_by_mode(i,j) << " to " << state_vars_by_mode(i,j+1) << std::endl;
     }
 
-    //Adding kinematic constraints
+    // Adding kinematic constraints
     auto kinematic_constraint = std::make_shared<DirconKinematicConstraint<T>>(plant_, *constraints_[i],
       options[i].getConstraintsRelative());
     for (int j = 1; j < mode_lengths_[i] - 1; j++) {
@@ -120,7 +119,7 @@ HybridDircon<T>::HybridDircon(
                      offset_vars(i)});
     }
 
-    //special case first and last tiemstep based on options
+    // special case first and last timestep based on options
     auto kinematic_constraint_start = std::make_shared<DirconKinematicConstraint<T>>(plant_, *constraints_[i],
       options[i].getConstraintsRelative(), options[i].getStartType());
     AddConstraint(kinematic_constraint_start,

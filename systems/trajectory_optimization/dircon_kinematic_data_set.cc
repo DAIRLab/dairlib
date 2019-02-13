@@ -67,8 +67,11 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
 
   // right_hand_side is the right hand side of the system's equations:
   // M*vdot -J^T*f = right_hand_side.
+  // BiasTerm is C(q,v) in manipulator equations
   plant_.CalcBiasTerm(context, &right_hand_side_);
-  right_hand_side_ += plant_.MakeActuationMatrix() * input +
+
+  right_hand_side_ = -right_hand_side_ + plant_.MakeActuationMatrix() * input +
+                      plant_.CalcGravityGeneralizedForces(context) +
                       getJ().transpose() * forces;
 
   vdot_ = M_.llt().solve(right_hand_side_);

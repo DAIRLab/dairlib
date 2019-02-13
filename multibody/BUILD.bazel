@@ -14,6 +14,24 @@ cc_library(
     ],
     deps = [
         "@drake//multibody/multibody_tree/multibody_plant",
+        ":visualization_utils"
+    ],
+)
+
+cc_library(
+    name = "visualization_utils",
+    srcs = [
+        "visualization_utils.cc"
+    ],
+    hdrs = [
+        "visualization_utils.h",
+    ],
+    deps = [
+        "@drake//multibody/multibody_tree/multibody_plant",
+        "@drake//geometry:geometry_visualization",
+        "@drake//systems/rendering:multibody_position_to_geometry_pose",        
+        "@drake//systems/primitives",
+         "//systems/primitives",
     ],
 )
 

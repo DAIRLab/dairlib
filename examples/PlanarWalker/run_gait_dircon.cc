@@ -23,7 +23,7 @@
 #include "systems/trajectory_optimization/hybrid_dircon.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "multibody/multibody_utils.h"
-
+#include "multibody/visualization_utils.h"
 
 
 DEFINE_double(strideLength, 0.1, "The stride length.");
@@ -150,7 +150,7 @@ shared_ptr<HybridDircon<double>> runDircon(
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Print file", "snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 200);
+                           "Major iterations limit", 100);
 
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
   //    "Verify level","1");
@@ -190,17 +190,19 @@ shared_ptr<HybridDircon<double>> runDircon(
   trajopt->AddLinearConstraint(x0(positions_map["hip_pin"]) ==
       -xf(positions_map["hip_pin"]));
 
-  trajopt->AddLinearConstraint(
-      x0(velocities_map["planar_zdot"]) == xf(velocities_map["planar_zdot"]));
-  trajopt->AddLinearConstraint(x0(
-      velocities_map["hip_pindot"]) + x0(velocities_map["planar_rotydot"]) ==
-      xf(velocities_map["planar_rotydot"]));
-  trajopt->AddLinearConstraint(x0(velocities_map["left_knee_pindot"]) ==
-      xf(velocities_map["right_knee_pindot"]));
-  trajopt->AddLinearConstraint(x0(velocities_map["right_knee_pindot"]) ==
-      xf(velocities_map["left_knee_pindot"]));
-  trajopt->AddLinearConstraint(x0(velocities_map["hip_pindot"]) ==
-      -xf(velocities_map["hip_pindot"]));
+
+  int nq = plant.num_positions();
+  trajopt->AddLinearConstraint(x0(nq + velocities_map["planar_zdot"]) ==
+                               xf(nq + velocities_map["planar_zdot"]));
+  trajopt->AddLinearConstraint(x0(nq + velocities_map["hip_pindot"]) +
+                               x0(nq + velocities_map["planar_rotydot"]) ==
+                               xf(nq + velocities_map["planar_rotydot"]));
+  trajopt->AddLinearConstraint(x0(nq + velocities_map["left_knee_pindot"]) ==
+                               xf(nq + velocities_map["right_knee_pindot"]));
+  trajopt->AddLinearConstraint(x0(nq + velocities_map["right_knee_pindot"]) ==
+                               xf(nq + velocities_map["left_knee_pindot"]));
+  trajopt->AddLinearConstraint(x0(nq + velocities_map["hip_pindot"]) ==
+                               -xf(nq + velocities_map["hip_pindot"]));
 
   // // Knee joint limits
   auto x = trajopt->state();
@@ -245,32 +247,16 @@ shared_ptr<HybridDircon<double>> runDircon(
 //  cout << A << endl;
 
   // visualizer
-  drake::lcm::DrakeLcm lcm;
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt->ReconstructStateTrajectory();
-  auto state_source = builder.AddSystem<drake::systems::TrajectorySource>(
-        pp_xtraj);
-
-  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-    plant.num_positions() + plant.num_velocities(), 0, plant.num_positions());
-  builder.Connect(state_source->get_output_port(),
-                  passthrough->get_input_port());
-
-  auto to_pose =
-      builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
-  builder.Connect(passthrough->get_output_port(), to_pose->get_input_port());
-
-  builder.Connect(to_pose->get_output_port(),
-      scene_graph.get_source_pose_port(plant.get_source_id().value()));
-
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
-
+  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
+                                         pp_xtraj);
   auto diagram = builder.Build();
 
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(1);
+    simulator.set_target_realtime_rate(.5);
     simulator.Initialize();
     simulator.StepTo(pp_xtraj.end_time());
   }

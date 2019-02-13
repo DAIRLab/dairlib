@@ -8,9 +8,6 @@ namespace dairlib {
 namespace multibody {
 
 template <typename T>
-drake::VectorX<T> getState(const drake::systems::Context<T>& context);
-
-template <typename T>
 drake::VectorX<T> getInput(const drake::multibody::MultibodyPlant<T>& plant,
                            const drake::systems::Context<T>& context);
 

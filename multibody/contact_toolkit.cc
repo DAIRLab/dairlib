@@ -104,7 +104,7 @@ VectorX<T> ContactToolkit<T>::CalcTimeDerivatives(const Context<T>& context,
   const int num_positions = plant_.num_positions();
   const int num_velocities = plant_.num_velocities();
 
-  const auto x = getState(context);
+  const auto x = plant_.GetPositionsAndVelocities(context);
   const auto v = x.tail(num_velocities);
 
 

@@ -19,13 +19,6 @@ using drake::VectorX;
 using drake::AutoDiffXd;
 
 template <typename T>
-VectorX<T> getState(const Context<T>& context) {
-  auto state = dynamic_cast<const drake::systems::BasicVector<T>&>(
-      context.get_continuous_state_vector()).get_value();
-  return state;
-}
-
-template <typename T>
 VectorX<T> getInput(const MultibodyPlant<T>& plant, const Context<T>& context) {
   VectorX<T> input = plant.EvalEigenVectorInput(context,
         plant.get_actuation_input_port().get_index());
@@ -36,9 +29,7 @@ template <typename T>
 std::unique_ptr<Context<T>> createContext(const MultibodyPlant<T>& plant,
     const VectorX<T>& state, const VectorX<T>& input) {
   auto context = plant.CreateDefaultContext();
-  auto& context_state = context->get_mutable_continuous_state_vector();
-
-  context_state.SetFromVector(state);
+  plant.SetPositionsAndVelocities(context.get(), state);
   context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
   return context;
 }
@@ -212,8 +203,6 @@ bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
 }
 
 template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic);   // NOLINT
-template VectorX<double> getState(const Context<double>& context);  // NOLINT
-template VectorX<AutoDiffXd> getState(const Context<AutoDiffXd>& context);  // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
 template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const VectorX<double>& state, const VectorX<double>& input);  // NOLINT

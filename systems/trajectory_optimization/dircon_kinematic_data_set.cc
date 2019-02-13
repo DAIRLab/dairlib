@@ -42,7 +42,7 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
 template <typename T>
 void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
                                            const VectorX<T>& forces) {
-  const auto state = multibody::getState(context);
+  const auto state = plant_.GetPositionsAndVelocities(context);
 
   const VectorX<T> q = state.head(num_positions_);
   const VectorX<T> v = state.tail(num_velocities_);

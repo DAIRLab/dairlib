@@ -8,16 +8,16 @@ cc_library(
     srcs = [
 #        "dircon.cc",
         "dircon_opt_constraints.cc",
-#        "dircon_options.cc",
-#        "dircon_util.cc",
-#        "hybrid_dircon.cc",
+        "dircon_options.cc",
+        "dircon_util.cc",
+        "hybrid_dircon.cc",
     ],
     hdrs = [
 #        "dircon.h",
         "dircon_opt_constraints.h",
-#        "dircon_options.h",
-#        "dircon_util.h",
-#        "hybrid_dircon.h",
+        "dircon_options.h",
+        "dircon_util.h",
+        "hybrid_dircon.h",
     ],
     deps = [
         "@drake//common",

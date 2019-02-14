@@ -22,6 +22,13 @@ struct ContactInfo {
   Eigen::Matrix3Xd xA;
   Eigen::Matrix3Xd xB;
   std::vector<int> idxA;
+
+  ContactInfo()
+      : xA(Eigen::Matrix3Xd::Zero(3, 1)),
+        xB(Eigen::Matrix3Xd::Zero(3, 1)),
+        idxA(std::vector<int>(0)) {}
+  ContactInfo(Eigen::Matrix3Xd xa, Eigen::Matrix3Xd xb, std::vector<int> idxa)
+      : xA(xa), xB(xb), idxA(idxa) {}
 };
 
 /*
@@ -36,7 +43,6 @@ struct ContactInfo {
 template <typename T>
 class ContactToolkit {
  public:
-
   // Disabling copy construction and assignment
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ContactToolkit)
 

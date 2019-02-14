@@ -121,6 +121,12 @@ class ContactToolkitTest : public ::testing::Test {
 
 // Tests the contact toolkit constructor initializations, getters and setters
 TEST_F(ContactToolkitTest, InitializationTest) {
+  // ContactInfo default values
+  ContactInfo default_contact;
+  ASSERT_TRUE(default_contact.xA.isApprox(Matrix3Xd::Zero(3, 1)));
+  ASSERT_TRUE(default_contact.xB.isApprox(Matrix3Xd::Zero(3, 1)));
+  ASSERT_EQ(default_contact.idxA.size(), 0);
+
   // ContactInfo getter
   ContactInfo tmp_info;
   tmp_info = contact_toolkit_double_->get_contact_info();

@@ -241,6 +241,27 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_simple_sim_with_cassie_sensor",
+    srcs = ["run_simple_sim_with_cassie_sensor.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//attic/multibody/rigid_body_plant",
+        "@drake//common",
+        "@drake//lcm",
+        "@drake//manipulation/util",
+        "@drake//solvers",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "fixedbase_standalone_mbt_sim",
     srcs = ["fixedbase_standalone_mbt_sim.cc"],
     deps = [

@@ -25,6 +25,8 @@ using drake::symbolic::Variable;
 using drake::symbolic::Expression;
 using drake::VectorX;
 using Eigen::VectorXd;
+using Eigen::Matrix3Xd;
+using Eigen::MatrixXd;
 
 PositionConstraint::PositionConstraint(const RigidBodyTree<double>& tree,
                                        const string& description)
@@ -170,7 +172,7 @@ PositionSolver::PositionSolver(const RigidBodyTree<double>& tree)
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
 }
 
-void PositionSolver::SetInitialGuess(VectorXd q) {
+void PositionSolver::SetInitialGuessQ(VectorXd q) {
   prog_->SetInitialGuess(q_, q);
 }
 
@@ -182,7 +184,8 @@ void PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
                          minor_tolerance_);
 
-  auto position_constraint = make_shared<PositionConstraint>(tree_);
+  auto position_constraint =
+      make_shared<PositionConstraint>(tree_);
 
   prog_->AddConstraint(position_constraint, q_);
 
@@ -200,6 +203,11 @@ void PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   // The solution may be obtained by calling the GetSolution method
 }
 
+bool PositionSolver::CheckConstraint(VectorXd q) const {
+  auto position_constraint = make_shared<PositionConstraint>(tree_);
+  return position_constraint->CheckSatisfied(q);
+}
+
 shared_ptr<MathematicalProgram> PositionSolver::get_program() { return prog_; }
 
 SolutionResult PositionSolver::get_solution_result() {
@@ -214,6 +222,97 @@ void PositionSolver::set_major_tolerance(double major_tolerance) {
   major_tolerance_ = major_tolerance;
 }
 void PositionSolver::set_minor_tolerance(double minor_tolerance) {
+  minor_tolerance_ = minor_tolerance;
+}
+
+FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree)
+    : tree_(tree) {
+  // Initializing the variable
+  q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
+  u_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "u");
+  lambda_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "lambda");
+}
+
+void FixedPointSolver::SetInitialGuess(VectorXd q, VectorXd u,
+                                       VectorXd lambda) {
+  prog_->SetInitialGuess(q_, q);
+  prog_->SetInitialGuess(u_, u);
+  prog_->SetInitialGuess(lambda_, lambda);
+}
+
+void FixedPointSolver::SetInitialGuessQ(VectorXd q) {
+  prog_->SetInitialGuess(q_, q);
+}
+
+void FixedPointSolver::SetInitialGuessU(VectorXd u) {
+  prog_->SetInitialGuess(u_, u);
+}
+
+void FixedPointSolver::SetInitialGuessLambda(VectorXd lambda) {
+  prog_->SetInitialGuess(lambda_, lambda);
+}
+
+void FixedPointSolver::Solve(VectorXd q, vector<int> fixed_joints) {
+  // Setting the solver options
+  prog_->SetSolverOption(SnoptSolver::id(), "Log file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
+                         major_tolerance_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
+                         minor_tolerance_);
+
+  ContactInfo contact_info;
+  contact_info.xA = Matrix3Xd::Zero(3, 1);
+  contact_info.xB = Matrix3Xd::Zero(3, 1);
+  contact_info.idxA = vector<int>(0);
+
+  auto position_constraint = make_shared<PositionConstraint>(tree_);
+  auto fixed_point_constraint =
+      make_shared<FixedPointConstraint>(tree_, contact_info);
+
+  prog_->AddConstraint(position_constraint, q_);
+  prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
+
+  // Adding the fixed joint constraints
+  for (uint i = 0; i < fixed_joints.size(); i++) {
+    int ind = fixed_joints[i];
+    prog_->AddConstraint(q_(ind) == q(ind));
+  }
+
+  prog_->AddQuadraticCost((q_ - q).dot(q_ - q));
+
+  // The initial guess for q needs to be set up separately before calling Solve
+  solution_result_ = prog_->Solve();
+
+  // The solution may be obtained by calling the GetSolution method
+}
+
+// bool PositionSolver::CheckConstraint(VectorXd q) const {
+//  auto position_constraint = make_shared<PositionConstraint>(tree_);
+//  return constraint->CheckSatisfied(q);
+//}
+
+shared_ptr<MathematicalProgram> FixedPointSolver::get_program() {
+  return prog_;
+}
+
+SolutionResult FixedPointSolver::get_solution_result() {
+  return solution_result_;
+}
+
+VectorXd FixedPointSolver::GetSolutionQ() { return prog_->GetSolution(q_); }
+
+VectorXd FixedPointSolver::GetSolutionU() { return prog_->GetSolution(u_); }
+
+VectorXd FixedPointSolver::GetSolutionLambda() {
+  return prog_->GetSolution(lambda_);
+}
+
+void FixedPointSolver::set_filename(string filename) { filename_ = filename; }
+
+void FixedPointSolver::set_major_tolerance(double major_tolerance) {
+  major_tolerance_ = major_tolerance;
+}
+void FixedPointSolver::set_minor_tolerance(double minor_tolerance) {
   minor_tolerance_ = minor_tolerance;
 }
 

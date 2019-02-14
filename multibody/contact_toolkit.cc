@@ -76,7 +76,7 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(const Context<T>& context,
     // will get easier after upcoming PR
     // plant_::get_actuation_input_port().Eval(context)
     VectorX<T> u = getInput(plant_, context);
-    right_hand_side = -right_hand_side _ plant_.MakeActuationMatrix() * u + 
+    right_hand_side = -right_hand_side + plant_.MakeActuationMatrix() * u + 
         plant_.CalcGravityGeneralizedForces(context);
   }
 

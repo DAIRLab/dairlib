@@ -16,14 +16,13 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/constraint.h"
 #include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/mathematical_program_solver_interface.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
-#include "systems/trajectory_optimization/dircon_util.h"
-#include "systems/trajectory_optimization/dircon_position_data.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
-#include "systems/trajectory_optimization/hybrid_dircon.h"
-#include "systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "attic/systems/trajectory_optimization/dircon_util.h"
+#include "attic/systems/trajectory_optimization/dircon_position_data.h"
+#include "attic/systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "attic/systems/trajectory_optimization/hybrid_dircon.h"
+#include "attic/systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/goldilocks_models/file_utils.h"
 
 using Eigen::Vector3d;

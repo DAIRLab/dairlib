@@ -51,7 +51,7 @@ TEST_F(MultibodyUtilsTest, ContextTest) {
 
   auto context = createContext(plant_, x, u);
 
-  VectorXd x_context = getState(*context);
+  VectorXd x_context = plant_.GetPositionsAndVelocities(*context);
   VectorXd u_context = getInput(plant_, *context);
 
   EXPECT_EQ(x, x_context);

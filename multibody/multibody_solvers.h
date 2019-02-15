@@ -82,7 +82,7 @@ class PositionSolver {
   PositionSolver(const RigidBodyTree<double>& tree);
 
   void SetInitialGuessQ(Eigen::VectorXd q);
-  void Solve(Eigen::VectorXd q, std::vector<int> fixed_joints);
+  void Solve(Eigen::VectorXd q, std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
@@ -115,9 +115,9 @@ class FixedPointSolver {
   void SetInitialGuessU(Eigen::VectorXd u);
   void SetInitialGuessLambda(Eigen::VectorXd lambda);
   void Solve(Eigen::VectorXd q, Eigen::VectorXd u,
-             std::vector<int> fixed_joints);
+             std::vector<int> fixed_joints = {});
   void Solve(Eigen::VectorXd q, Eigen::VectorXd u, ContactInfo contact_info,
-             std::vector<int> fixed_joints);
+             std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, Eigen::VectorXd u,
                        Eigen::VectorXd lambda) const;
 
@@ -151,7 +151,7 @@ class ContactSolver {
 
   void SetInitialGuessQ(Eigen::VectorXd q);
   void Solve(Eigen::VectorXd q, ContactInfo contact_info,
-             std::vector<int> fixed_joints);
+             std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();

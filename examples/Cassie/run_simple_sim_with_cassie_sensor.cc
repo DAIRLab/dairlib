@@ -102,6 +102,22 @@ int do_main(int argc, char* argv[]) {
                   state_pub->get_input_port());
 
 
+
+
+  // TODO: need two more blcoks
+  // sim cassie output creator 
+  // and cassie output lcm pub
+
+
+
+
+
+
+
+
+
+
+
   // Creates and adds LCM publisher for visualization.
   //builder.AddVisualizer(&lcm);
   // auto visualizer = builder.AddSystem<systems::DrakeVisualizer>(plant->get_rigid_body_tree(), &lcm);  

@@ -5,3 +5,6 @@ __pycache__/
 /bazel-*
 *.ipynb_checkpoints
 *.DS_Store*
+
+examples/Goldilocks_models
+snopt.out

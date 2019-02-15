@@ -83,7 +83,7 @@ class PositionSolver {
 
   void SetInitialGuessQ(Eigen::VectorXd q);
   void Solve(Eigen::VectorXd q, std::vector<int> fixed_joints = {});
-  bool CheckConstraint(Eigen::VectorXd q) const;
+  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-5) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   drake::solvers::SolutionResult get_solution_result();
@@ -92,6 +92,10 @@ class PositionSolver {
   void set_filename(std::string filename);
   void set_major_tolerance(double major_tolerance);
   void set_minor_tolerance(double minor_tolerance);
+
+  std::string get_filename();
+  double get_major_tolerance();
+  double get_minor_tolerance();
 
  private:
   const RigidBodyTree<double>& tree_;
@@ -119,7 +123,7 @@ class FixedPointSolver {
   void Solve(Eigen::VectorXd q, Eigen::VectorXd u, ContactInfo contact_info,
              std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, Eigen::VectorXd u,
-                       Eigen::VectorXd lambda) const;
+                       Eigen::VectorXd lambda, double tolerance = 1.0e-5) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   drake::solvers::SolutionResult get_solution_result();
@@ -130,6 +134,10 @@ class FixedPointSolver {
   void set_filename(std::string filename);
   void set_major_tolerance(double major_tolerance);
   void set_minor_tolerance(double minor_tolerance);
+
+  std::string get_filename();
+  double get_major_tolerance();
+  double get_minor_tolerance();
 
  private:
   const RigidBodyTree<double>& tree_;
@@ -152,7 +160,8 @@ class ContactSolver {
   void SetInitialGuessQ(Eigen::VectorXd q);
   void Solve(Eigen::VectorXd q, ContactInfo contact_info,
              std::vector<int> fixed_joints = {});
-  bool CheckConstraint(Eigen::VectorXd q) const;
+  bool CheckConstraint(Eigen::VectorXd q, ContactInfo contact_info,
+                       double tolerance = 1.0e-5) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   drake::solvers::SolutionResult get_solution_result();
@@ -161,6 +170,10 @@ class ContactSolver {
   void set_filename(std::string filename);
   void set_major_tolerance(double major_tolerance);
   void set_minor_tolerance(double minor_tolerance);
+
+  std::string get_filename();
+  double get_major_tolerance();
+  double get_minor_tolerance();
 
  private:
   const RigidBodyTree<double>& tree_;

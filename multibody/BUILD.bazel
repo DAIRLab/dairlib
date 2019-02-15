@@ -61,3 +61,17 @@ cc_library(
         ":utils",
     ],
 )
+
+cc_test(
+    name = "multibody_solvers_test",
+    srcs = [
+        "test/multibody_solvers_test.cc",
+    ],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        ":multibody_solvers",
+        ":utils",
+        "@gtest//:main",
+    ],
+    size = "small",
+)

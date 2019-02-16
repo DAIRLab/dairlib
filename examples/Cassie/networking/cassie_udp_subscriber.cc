@@ -31,7 +31,7 @@ CassieUDPSubscriber::CassieUDPSubscriber(const std::string& address,
     const int port)
     : address_(address),
       port_(port),
-      serializer_(std::move(make_unique<CassieUDPSerializer>())) {
+      serializer_(std::move(make_unique<CassieUDPOutSerializer>())) {
 
   // Creating socket file descriptor
   socket_ = socket(AF_INET, SOCK_DGRAM, 0);
@@ -40,7 +40,7 @@ CassieUDPSubscriber::CassieUDPSubscriber(const std::string& address,
   memset(&server_address_, 0, sizeof(server_address_));
 
   // Filling server information
-  inet_aton(address.c_str(), &server_address_.sin_addr);
+  inet_aton(address_.c_str(), &server_address_.sin_addr);
   server_address_.sin_family = AF_INET;  // IPv4
   server_address_.sin_port = htons(port);
 

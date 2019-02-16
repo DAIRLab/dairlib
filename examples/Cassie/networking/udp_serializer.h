@@ -16,16 +16,16 @@ namespace dairlib {
 namespace systems {
 
 /**
- * %CassieUDPSerializer  translates between
+ * %CassieUDPOutSerializer  translates between
  * UDP message bytes and cassie_out_t structs
  *
  */
-class CassieUDPSerializer : public drake::systems::lcm::SerializerInterface {
+class CassieUDPOutSerializer : public drake::systems::lcm::SerializerInterface {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieUDPSerializer)
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieUDPOutSerializer)
 
-  CassieUDPSerializer() {}
-  ~CassieUDPSerializer() override {}
+  CassieUDPOutSerializer() {}
+  ~CassieUDPOutSerializer() override {}
 
   std::unique_ptr<drake::systems::AbstractValue> CreateDefaultValue()
       const override {
@@ -48,13 +48,48 @@ class CassieUDPSerializer : public drake::systems::lcm::SerializerInterface {
 
   void Serialize(const drake::systems::AbstractValue& abstract_value,
                  std::vector<uint8_t>* message_bytes) const override {
+    DRAKE_ABORT_MSG("CassieUDPOutSerializer::Serialize not yet implemented.");
+  }
+};
+
+/**
+ * %CassieUDPInSerializer  translates between
+ * UDP message bytes and cassie_user_in_t structs
+ *
+ */
+class CassieUDPInSerializer : public drake::systems::lcm::SerializerInterface {
+ public:
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieUDPInSerializer)
+
+  CassieUDPInSerializer() {}
+  ~CassieUDPInSerializer() override {}
+
+  std::unique_ptr<drake::systems::AbstractValue> CreateDefaultValue()
+      const override {
+    // NOTE: We create the message using value-initialization ("{}") to ensure
+    // the POD fields are zeroed (instead of using default construction ("()"),
+    // which would leave the POD data uninitialized.)
+    return std::make_unique<drake::systems::Value<cassie_user_in_t>>(
+        cassie_user_in_t{});
+  }
+
+  void Deserialize(
+      const void* message_bytes, int message_length,
+      drake::systems::AbstractValue* abstract_value) const override {
+    DRAKE_ABORT_MSG("CassieUDPInSerializer::Deserialize not yet implemented.");
+  }
+
+  void Serialize(const drake::systems::AbstractValue& abstract_value,
+                 std::vector<uint8_t>* message_bytes) const override {
     DRAKE_DEMAND(message_bytes != nullptr);
     const cassie_user_in_t& message =
         abstract_value.GetValue<cassie_user_in_t>();
     message_bytes->resize(CASSIE_USER_IN_T_LEN + 2);
+
     pack_cassie_user_in_t(&message, &message_bytes->data()[2]);
   }
 };
+
 
 }  // namespace systems
 }  // namespace dairlib

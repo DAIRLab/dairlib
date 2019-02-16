@@ -171,7 +171,7 @@ class CassieUDPSubscriber : public drake::systems::LeafSystem<double> {
   struct sockaddr_in server_address_;
   std::thread polling_thread_;
 
-  const std::unique_ptr<CassieUDPSerializer> serializer_;
+  const std::unique_ptr<CassieUDPOutSerializer> serializer_;
 };
 
 }  // namespace systems

@@ -56,6 +56,16 @@ cc_binary(
 )
 
 cc_binary(
+  name = "cassie_udp_publisher_test",
+  srcs = ["test/cassie_udp_publisher_test.cc"],
+  deps = [":cassie_udp_pub_sub",
+          "@drake//systems/analysis:simulator",
+          "@drake//systems/framework",
+          "@gflags",
+         ],
+)
+
+cc_binary(
     name = "run_udp_dummy_sender",
     srcs = ["run_udp_dummy_sender.c"],
     deps = [

@@ -96,7 +96,7 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
   int socket_;
 
   // Converts Value<cassie_user_in_t> objects into UDP message bytes.
-  std::unique_ptr<CassieUDPSerializer> serializer_;
+  std::unique_ptr<CassieUDPInSerializer> serializer_;
 };
 
 }  // namespace systems

@@ -18,7 +18,7 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
       const int port, double publish_period)
     : address_(address),
       port_(port),
-      serializer_(std::move(std::make_unique<CassieUDPSerializer>())) {
+      serializer_(std::move(std::make_unique<CassieUDPInSerializer>())) {
   DRAKE_DEMAND(publish_period >= 0.0);
 
   // Creating socket file descriptor
@@ -27,7 +27,7 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
   memset(&server_address_, 0, sizeof(server_address_));
 
   // Filling server information
-  inet_aton(address.c_str(), &server_address_.sin_addr);
+  inet_aton(address_.c_str(), &server_address_.sin_addr);
   server_address_.sin_family = AF_INET;  // IPv4
   server_address_.sin_port = htons(port);
 
@@ -36,7 +36,8 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
   this->DeclareForcedPublishEvent(
     &CassieUDPPublisher::PublishInputAsUDPMessage);
 
-  DeclareAbstractInputPort("cassie_user_in_t", *serializer_->CreateDefaultValue());
+  DeclareAbstractInputPort("cassie_user_in_t",
+      *serializer_->CreateDefaultValue());
 
   set_name(make_name(address, port));
 
@@ -80,9 +81,10 @@ drake::systems::EventStatus CassieUDPPublisher::PublishInputAsUDPMessage(
   serializer_->Serialize(*input_value, &message_bytes);
 
   int result = sendto(socket_, message_bytes.data(),
-      sizeof(message_bytes.data()), 0,
+      message_bytes.size(), 0,
       (struct sockaddr *)&server_address_, sizeof(server_address_));
   DRAKE_THROW_UNLESS(result >= 0);
+  // std:: cout << "Data size: " << sizeof(message_bytes.data()) << std::endl;
   return drake::systems::EventStatus::Succeeded();
 }
 

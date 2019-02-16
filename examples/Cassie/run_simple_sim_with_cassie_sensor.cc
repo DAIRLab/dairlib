@@ -26,6 +26,7 @@
 
 #include "drake/systems/sensors/accelerometer.h"
 #include "drake/systems/sensors/gyroscope.h"
+#include "systems/sensors/sim_cassie_sensor_aggregator.h"
 
 namespace dairlib {
 
@@ -96,11 +97,11 @@ int do_main(int argc, char* argv[]) {
                   plant->get_input_port(0));
 
   // Create state publisher
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+        plant->get_rigid_body_tree());
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE", &lcm, 1.0/200.0));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
-        plant->get_rigid_body_tree());
   builder.Connect(plant->state_output_port(), state_sender->get_input_port_state());
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
@@ -112,6 +113,11 @@ int do_main(int argc, char* argv[]) {
       "Simulated Accelerometer", *imu_frame, plant->get_rigid_body_tree(), true);
   auto gyro_sim = builder.AddSystem<drake::systems::sensors::Gyroscope>(
       "Simulated Gyroscope", *imu_frame, plant->get_rigid_body_tree());
+  auto cassie_sensor_aggregator = builder.AddSystem<systems::SimCassieSensorAggregator>(
+        plant->get_rigid_body_tree());
+  auto cassie_sensor_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_cassie_sensor>(
+          "CASSIE_SENSOR", &lcm, 1.0/200.0));
 
 
 

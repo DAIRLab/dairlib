@@ -244,6 +244,7 @@ cc_binary(
     name = "run_simple_sim_with_cassie_sensor",
     srcs = ["run_simple_sim_with_cassie_sensor.cc"],
     deps = [
+        "//systems/sensors:sim_cassie_sensor_aggregator",
         ":cassie_urdf",
         ":cassie_utils",
         "//systems:robot_lcm_systems",

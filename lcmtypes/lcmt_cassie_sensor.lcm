@@ -1,0 +1,27 @@
+package dairlib;
+
+struct lcmt_cassie_sensor
+{
+  int64_t timestamp;
+  int32_t num_motors;
+  int32_t num_joints;
+
+  string motor_position_names [num_motors];
+  double motor_position [num_motors];
+  string motor_velocity_names [num_motors];
+  double motor_velocity [num_motors];
+
+  string joint_position_names [num_joints];
+  double joint_position [num_joints];
+  string joint_velocity_names [num_joints];
+  double joint_velocity [num_joints];
+
+  string effort_names [num_motors];
+  double effort [num_motors];
+
+  string imu_linear_acc_names [3];
+  double imu_linear_acc [3];
+  string imu_ang_vel_names [3];
+  double imu_ang_vel [3];
+
+}

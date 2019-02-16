@@ -126,7 +126,7 @@ int do_main(int argc, char* argv[]) {
   // and cassie output lcm pub
 
   // And then 
-  // connect Cassie simulator, gyro block and IMU block to output creator block 
+  // connect controller input, Cassie simulator, gyro block and IMU block to output creator block 
   // connect output creator block to lcm pub block 
 
 

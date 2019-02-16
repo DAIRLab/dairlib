@@ -10,6 +10,7 @@
 #include "systems/framework/timestamped_vector.h"
 
 #include "multibody/rbt_utils.h"
+#include "multibody/mbt_utils.h"
 #include "dairlib/lcmt_cassie_sensor.hpp"
 
 namespace dairlib {

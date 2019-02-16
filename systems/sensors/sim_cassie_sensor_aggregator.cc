@@ -39,20 +39,30 @@ void SimCassieSensorAggregator::Aggregator(const Context<double>& context,
   sensor_msg->num_motors = 10;
   sensor_msg->num_joints = 6;
 
+  // std::map<std::string, int> positionIndexMap = positionIndexMap_;
+  // std::map<std::string, int> velocityIndexMap = velocityIndexMap_;
+    // std::cout<<"motor_position_names_[i] = "<<motor_position_names_[i]<<"\n";
+    // std::cout<<"positionIndexMap[motor_position_names_[i]] = "<<positionIndexMap[motor_position_names_[i]]<<"\n";
+    // sensor_msg->motor_position[i] = state->GetAtIndex(positionIndexMap_[motor_position_names_[i]]);
+
   for (int i = 0; i < sensor_msg->num_motors; i++) {
     sensor_msg->motor_position_names[i] = motor_position_names_[i];
-    sensor_msg->motor_position[i] = state->GetAtIndex(positionIndexMap_(motor_position_names_[i]));
+    // sensor_msg->motor_position[i] = state->GetAtIndex(0);
+    sensor_msg->motor_position[i] = state->GetAtIndex(positionIndexMap_.at(motor_position_names_[i]));
     sensor_msg->motor_velocity_names[i] = motor_velocity_names_[i];
-    sensor_msg->motor_velocity[i] = state->GetAtIndex(num_positions_ + velocityIndexMap_(motor_velocity_names_[i]));
+    // sensor_msg->motor_velocity[i] = state->GetAtIndex(0);
+    sensor_msg->motor_velocity[i] = state->GetAtIndex(num_positions_ + velocityIndexMap_.at(motor_velocity_names_[i]));
     sensor_msg->effort_names[i] = effort_names_[i];
     sensor_msg->effort[i] = input->GetAtIndex(i);
   }
 
   for (int i = 0; i < sensor_msg->num_joints; i++) {
     sensor_msg->joint_position_names[i] = joint_position_names_[i];
-    sensor_msg->joint_position[i] = state->GetAtIndex(positionIndexMap_(joint_position_names_[i]));
+    // sensor_msg->joint_position[i] = state->GetAtIndex(0);
+    sensor_msg->joint_position[i] = state->GetAtIndex(positionIndexMap_.at(joint_position_names_[i]));
     sensor_msg->joint_velocity_names[i] = joint_velocity_names_[i];
-    sensor_msg->joint_velocity[i] = state->GetAtIndex(num_positions_ + velocityIndexMap_(joint_velocity_names_[i]));
+    // sensor_msg->joint_velocity[i] = state->GetAtIndex(0);
+    sensor_msg->joint_velocity[i] = state->GetAtIndex(num_positions_ + velocityIndexMap_.at(joint_velocity_names_[i]));
   }
 
   for (int i = 0; i < 3; i++) {

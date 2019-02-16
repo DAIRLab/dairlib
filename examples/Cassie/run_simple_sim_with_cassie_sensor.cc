@@ -24,6 +24,9 @@
 
 #include "examples/Cassie/cassie_utils.h"
 
+#include "drake/systems/sensors/accelerometer.h"
+#include "drake/systems/sensors/gyroscope.h"
+
 namespace dairlib {
 
 using dairlib::systems::SubvectorPassThrough;
@@ -52,6 +55,11 @@ int do_main(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree = makeCassieTreePointer();
 
+  std::shared_ptr<RigidBodyFrame<double>> imu_frame = std::allocate_shared<RigidBodyFrame<double>>(
+      Eigen::aligned_allocator<RigidBodyFrame<double>>(), "imu frame",
+      tree->FindBody("pelvis"), Eigen::Isometry3d::Identity());
+  tree->addFrame(imu_frame);
+
   drake::systems::DiagramBuilder<double> builder;
 
   if (FLAGS_simulation_type != "timestepping")
@@ -70,43 +78,50 @@ int do_main(int argc, char* argv[]) {
   model_parameters.v_stiction_tolerance = FLAGS_v_tol;
   plant->set_contact_model_parameters(model_parameters);
 
-  // Create input receiver.
+  // Create input receiver
   auto input_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
           "CASSIE_INPUT", &lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(
         plant->get_rigid_body_tree());
-  builder.Connect(input_sub->get_output_port(),
-                  input_receiver->get_input_port(0));
-
-  // Create state publisher.
-  auto state_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE", &lcm, 1.0/200.0));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
-        plant->get_rigid_body_tree());
-
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
     input_receiver->get_output_port(0).size(),
     0,
     plant->get_input_port(0).size());
-
+  builder.Connect(input_sub->get_output_port(),
+                  input_receiver->get_input_port(0));
   builder.Connect(input_receiver->get_output_port(0),
                   passthrough->get_input_port());
   builder.Connect(passthrough->get_output_port(),
                   plant->get_input_port(0));
 
+  // Create state publisher
+  auto state_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+          "CASSIE_STATE", &lcm, 1.0/200.0));
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+        plant->get_rigid_body_tree());
   builder.Connect(plant->state_output_port(), state_sender->get_input_port_state());
-
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
 
+  // Create cassie sensor publisher
+  // drake::systems::sensors::Accelerometer("Simulated Accelerometer", *imu_frame, plant->get_rigid_body_tree(), true);
+  // drake::systems::sensors::Gyroscope("Simulated Gyroscope", *imu_frame, plant->get_rigid_body_tree());
+  auto acce_sim = builder.AddSystem<drake::systems::sensors::Accelerometer>(
+      "Simulated Accelerometer", *imu_frame, plant->get_rigid_body_tree(), true);
+  auto gyro_sim = builder.AddSystem<drake::systems::sensors::Gyroscope>(
+      "Simulated Gyroscope", *imu_frame, plant->get_rigid_body_tree());
 
 
 
   // TODO: need two more blcoks
   // sim cassie output creator 
   // and cassie output lcm pub
+
+  // And then 
+  // connect Cassie simulator, gyro block and IMU block to output creator block 
+  // connect output creator block to lcm pub block 
 
 
 

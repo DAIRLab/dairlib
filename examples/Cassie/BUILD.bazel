@@ -251,6 +251,7 @@ cc_binary(
         "@drake//attic/manipulation/util:sim_diagram_builder",
         "@drake//attic/multibody:rigid_body_tree",
         "@drake//attic/multibody/rigid_body_plant",
+        "@drake//attic/systems/sensors:sensors",
         "@drake//common",
         "@drake//lcm",
         "@drake//manipulation/util",

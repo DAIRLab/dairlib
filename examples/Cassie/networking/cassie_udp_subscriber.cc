@@ -87,25 +87,25 @@ void CassieUDPSubscriber::Poll(HandlerFunction handler) {
   // Poll for a new packet of the correct length
   ssize_t nbytes = 0;
   struct pollfd fd = {.fd = socket_, .events = POLLIN, .revents = 0};
-  do {
-      poll(&fd, 1, -1);
-      // Get newest valid packet in RX buffer
-      // Does not use sequence number for determining newest packet
-      ioctl(socket_, FIONREAD, &nbytes);
-      //  std::cout <<  "ioctl: " << nbytes << std::endl;
-      if (des_len <= nbytes) {
-        nbytes = recv(socket_, receive_buffer, des_len, 0);
-      } else {
-        recv(socket_, receive_buffer, 0, 0);  // Discard packet
-      }
-  } while (des_len != nbytes);
+  while (true) {
+    do {
+        poll(&fd, 1, -1);
+        // Get newest valid packet in RX buffer
+        // Does not use sequence number for determining newest packet
+        ioctl(socket_, FIONREAD, &nbytes);
+        if (des_len <= nbytes) {
+          nbytes = recv(socket_, receive_buffer, des_len, 0);
+        } else {
+          recv(socket_, receive_buffer, 0, 0);  // Discard packet
+        }
+    } while (des_len != nbytes);
 
-  // Split header and data
-  const void *data_in =
-    reinterpret_cast<const unsigned char *>(&receive_buffer[2]);
+    // Split header and data
+    const void *data_in =
+      reinterpret_cast<const unsigned char *>(&receive_buffer[2]);
 
-  std:: cout << "Received message." << std::endl;
-  handler(data_in, nbytes - 2);
+    handler(data_in, nbytes - 2);
+  }
 }
 
 void CassieUDPSubscriber::CopyLatestMessageInto(State<double>* state) const {
@@ -116,7 +116,6 @@ void CassieUDPSubscriber::ProcessMessageAndStoreToAbstractState(
     AbstractValues* abstract_state) const {
   std::lock_guard<std::mutex> lock(received_message_mutex_);
   if (!received_message_.empty()) {
-    // TODO(mposa): deserialize/serialie
     serializer_->Deserialize(
         received_message_.data(), received_message_.size(),
         &abstract_state->get_mutable_value(kStateIndexMessage));
@@ -149,7 +148,6 @@ void CassieUDPSubscriber::DoCalcNextUpdateTime(
   }
   // Schedule an update event at the current time.
   *time = context.get_time();
-  std:: cout << context.get_time() << std::endl;
   EventCollection<UnrestrictedUpdateEvent<double>>& uu_events =
       events->get_mutable_unrestricted_update_events();
   uu_events.add_event(
@@ -193,7 +191,7 @@ int CassieUDPSubscriber::WaitForMessage(
   // drake::lcm::DrakeLcmInterface instance passed to the constructor. Thus,
   // for thread safety, these need to be properly protected by a mutex.
   std::unique_lock<std::mutex> lock(received_message_mutex_);
-
+  std::cout << "Waiting for message...";
   // This while loop is necessary to guard for spurious wakeup:
   // https://en.wikipedia.org/wiki/Spurious_wakeup
   while (old_message_count >= received_message_count_) {
@@ -207,7 +205,7 @@ int CassieUDPSubscriber::WaitForMessage(
           received_message_.data(), received_message_.size(), message);
   }
   lock.unlock();
-
+  std::cout << "received!" << std::endl;
   return new_message_count;
 }
 

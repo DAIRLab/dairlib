@@ -75,9 +75,17 @@ int main(int argc, char **argv)
 	int n;			/* message byte size */
   char recvbuf[2 + CASSIE_USER_IN_T_LEN];
   char sendbuf[2 + CASSIE_OUT_T_LEN];
-  cassie_out_t cassie_out;
+  cassie_out_t cassie_out = {0};
   cassie_user_in_t cassie_in;
   packet_header_info_t header_info = {0};
+
+  cassie_out.isCalibrated = true;
+  cassie_out.messages[0] = 5;
+  cassie_out.messages[1] = 5;
+  cassie_out.messages[2] = 5;
+  cassie_out.messages[3] = 6;
+  cassie_out.leftLeg.shinJoint.position = 1.5;
+  cassie_out.leftLeg.shinJoint.velocity = -1.2;
 	/*
 	 * check command line arguments
 	 */

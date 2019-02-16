@@ -1,0 +1,8 @@
+package dairlib;
+
+struct lcmt_radio_out
+{
+  boolean radioReceiverSignalGood;
+  boolean receiverMedullaSignalGood;
+  double channel[16];
+}

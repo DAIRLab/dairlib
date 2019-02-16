@@ -1,0 +1,13 @@
+package dairlib;
+
+struct lcmt_vectornav_out
+{
+  boolean dataGood;
+  int32_t vpeStatus;
+  double pressure;
+  double temperature;
+  double magneticField[3];
+  double angularVelocity[3];
+  double linearAcceleration[3];
+  double orientation[4];
+}

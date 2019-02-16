@@ -1,0 +1,44 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+
+cc_binary(
+  name = "udp_server_test",
+  srcs = ["udp_server_test.c"],
+  deps = [
+       ],
+)
+
+cc_binary(
+  name = "udp_client_test",
+  srcs = ["udp_client_test.c"],
+  deps = [
+       ],
+)
+
+cc_library(
+  name = "cassie_udp_pub_sub",
+  srcs = ["udp_serializer.cc",
+          "cassie_udp_subscriber.cc"],
+  hdrs = ["udp_serializer.h",
+          "cassie_udp_subscriber.h"],
+  deps = [
+    "@drake//common",
+    "@drake//systems/lcm:lcm_pubsub_system",
+    "@drake//systems/framework",
+    "//examples/Cassie/datatypes:cassie_out_t",
+  ]
+)

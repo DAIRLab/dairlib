@@ -2,17 +2,12 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
+
 load(
     "@drake//tools/skylark:drake_lcm.bzl",
     "drake_lcm_cc_library",
     "drake_lcm_java_library",
     "drake_lcm_py_library",
-)
-load(
-    "@drake//tools/skylark:drake_py.bzl",
-    "drake_py_binary",
-    "drake_py_library",
-    "drake_py_unittest",
 )
 
 cc_binary(
@@ -29,6 +24,7 @@ cc_binary(
        ],
 )
 
+
 cc_library(
   name = "cassie_udp_pub_sub",
   srcs = ["udp_serializer.cc",
@@ -41,4 +37,25 @@ cc_library(
     "@drake//systems/framework",
     "//examples/Cassie/datatypes:cassie_out_t",
   ]
+)
+
+
+cc_binary(
+  name = "cassie_udp_subscriber_test",
+  srcs = ["test/cassie_udp_subscriber_test.cc"],
+  deps = [":cassie_udp_pub_sub",
+          "@drake//systems/analysis:simulator",
+          "@drake//systems/framework",
+          "@gflags",
+         ],
+)
+
+cc_binary(
+    name = "run_udp_dummy_sender",
+    srcs = ["run_udp_dummy_sender.c"],
+    deps = [
+        "//examples/Cassie/datatypes:cassie_networking",
+        "//examples/Cassie/datatypes:cassie_out_t",
+        "//examples/Cassie/datatypes:cassie_user_in_t",
+    ],
 )

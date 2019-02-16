@@ -36,7 +36,7 @@ CassieUDPSubscriber::CassieUDPSubscriber(const std::string& address,
   // Creating socket file descriptor
   socket_ = socket(AF_INET, SOCK_DGRAM, 0);
   DRAKE_THROW_UNLESS(socket_ >= 0);
-
+  std::cout << "Opened socket!" << std::endl;
   memset(&server_address_, 0, sizeof(server_address_));
   memset(&client_address_, 0, sizeof(client_address_));
 
@@ -48,6 +48,7 @@ CassieUDPSubscriber::CassieUDPSubscriber(const std::string& address,
   // Bind the socket with the server address
   DRAKE_THROW_UNLESS(bind(socket_, (const struct sockaddr*) &server_address_,
       sizeof(server_address_)) >= 0);
+  std::cout << "Bound socket!" << std::endl;
 
   // Use the "advanced" method to construct explicit non-member functors
   // to deal with the unusual methods we have available.
@@ -66,18 +67,19 @@ CassieUDPSubscriber::CassieUDPSubscriber(const std::string& address,
   this->DeclareAbstractState(AbstractValue::Make<int>(0));
 
   set_name(make_name(address, port));
-
+  std::cout << "Starting polling thread!" << std::endl;
   polling_thread_ = std::thread(&CassieUDPSubscriber::Poll, this,
       [this](const void* buffer, int size) {
         this->HandleMessage(buffer, size);
       });
 }
 
-CassieUDPSubscriber::~CassieUDPSubscriber() {}
+CassieUDPSubscriber::~CassieUDPSubscriber() {
+  polling_thread_.join();
+}
 
 void CassieUDPSubscriber::Poll(HandlerFunction handler) {
   // Create cassie input/output structs
-  cassie_out_t cassie_out;
   char receive_buffer[2 + CASSIE_OUT_T_LEN];
 
   ssize_t des_len = (sizeof receive_buffer);
@@ -102,11 +104,8 @@ void CassieUDPSubscriber::Poll(HandlerFunction handler) {
   const void *data_in =
     reinterpret_cast<const unsigned char *>(&receive_buffer[2]);
 
+  std:: cout << "Received message." << std::endl;
   handler(data_in, nbytes - 2);
-
-  // Unpack received data into cassie output struct
-  unpack_cassie_out_t(reinterpret_cast<const unsigned char *>(data_in),
-                      &cassie_out);
 }
 
 void CassieUDPSubscriber::CopyLatestMessageInto(State<double>* state) const {
@@ -150,6 +149,7 @@ void CassieUDPSubscriber::DoCalcNextUpdateTime(
   }
   // Schedule an update event at the current time.
   *time = context.get_time();
+  std:: cout << context.get_time() << std::endl;
   EventCollection<UnrestrictedUpdateEvent<double>>& uu_events =
       events->get_mutable_unrestricted_update_events();
   uu_events.add_event(

@@ -29,15 +29,17 @@ cc_library(
   name = "cassie_udp_pub_sub",
   srcs = ["udp_serializer.cc",
           "cassie_udp_subscriber.cc",
+          "cassie_udp_publisher.cc",
           "cassie_lcm_systems.cc"],
   hdrs = ["udp_serializer.h",
           "cassie_udp_subscriber.h",
+          "cassie_udp_publisher.h",
           "cassie_lcm_systems.h"],
   deps = [
     "@drake//common",
     "@drake//systems/lcm:lcm_pubsub_system",
     "@drake//systems/framework",
-    "//examples/Cassie/datatypes:cassie_out_t",
+    "//examples/Cassie/datatypes:cassie_dispatch_types",
     "//lcmtypes:lcmt_robot",
   ]
 )

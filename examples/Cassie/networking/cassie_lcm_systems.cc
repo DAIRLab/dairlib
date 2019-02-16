@@ -8,6 +8,10 @@ namespace systems {
 using drake::systems::Context;
 using drake::systems::LeafSystem;
 
+void copy_elmo(const elmo_out_t input, lcmt_elmo_out* output);
+void copy_leg(const cassie_leg_out_t input, lcmt_cassie_leg_out* output);
+template <typename T> void copy_vector(const T* input, T* output, int size);
+
 /*--------------------------------------------------------------------------*/
 // methods implementation for CassieOutputSender.
 
@@ -18,6 +22,8 @@ CassieOutputSender::CassieOutputSender() {
       &CassieOutputSender::Output);
 }
 
+
+// Utility methods for copying data
 void copy_elmo(const elmo_out_t input, lcmt_elmo_out* output) {
   output->statusWord = input.statusWord;
   output->position = input.position;
@@ -59,7 +65,7 @@ void CassieOutputSender::Output(const Context<double>& context,
   const cassie_out_t& cassie_out =
     EvalAbstractInput(context, 0)->GetValue<cassie_out_t>();
   // using the time from the context
-  output->timestamp = context.get_time() * 1e6;
+  output->utime = context.get_time() * 1e6;
 
   // copy pelvis
   copy_vector(cassie_out.pelvis.targetPc.etherCatStatus,

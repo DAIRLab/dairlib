@@ -130,7 +130,7 @@ void RobotOutputSender::Output(const Context<double>& context,
   const auto state = this->EvalVectorInput(context, state_input_port_);
 
   // using the time from the context
-  state_msg->timestamp = context.get_time() * 1e6;
+  state_msg->utime = context.get_time() * 1e6;
 
   state_msg->num_positions = num_positions_;
   state_msg->num_velocities = num_velocities_;

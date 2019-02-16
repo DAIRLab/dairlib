@@ -10,6 +10,7 @@
 #include "drake/common/drake_throw.h"
 #include "drake/systems/framework/value.h"
 #include "examples/Cassie/datatypes/cassie_out_t.h"
+#include "examples/Cassie/datatypes/cassie_user_in_t.h"
 
 namespace dairlib {
 namespace systems {
@@ -48,11 +49,10 @@ class CassieUDPSerializer : public drake::systems::lcm::SerializerInterface {
   void Serialize(const drake::systems::AbstractValue& abstract_value,
                  std::vector<uint8_t>* message_bytes) const override {
     DRAKE_DEMAND(message_bytes != nullptr);
-    // const cassie_out_t& message = abstract_value.GetValue<cassie_out_t>();
-    // const int message_length = message.getEncodedSize();
-    // message_bytes->resize(message_length);
-    // int consumed = message.encode(message_bytes->data(), 0, message_length);
-    // DRAKE_THROW_UNLESS(consumed == message_length);
+    const cassie_user_in_t& message =
+        abstract_value.GetValue<cassie_user_in_t>();
+    message_bytes->resize(CASSIE_USER_IN_T_LEN + 2);
+    pack_cassie_user_in_t(&message, &message_bytes->data()[2]);
   }
 };
 

@@ -38,7 +38,6 @@ CassieUDPSubscriber::CassieUDPSubscriber(const std::string& address,
   DRAKE_THROW_UNLESS(socket_ >= 0);
   std::cout << "Opened socket!" << std::endl;
   memset(&server_address_, 0, sizeof(server_address_));
-  memset(&client_address_, 0, sizeof(client_address_));
 
   // Filling server information
   inet_aton(address.c_str(), &server_address_.sin_addr);
@@ -173,6 +172,7 @@ void CassieUDPSubscriber::CalcSerializerOutputValue(
 
 void CassieUDPSubscriber::HandleMessage(const void* buffer, int size) {
   SPDLOG_TRACE(drake::log(), "Receiving CASSIE message");
+  std::cout << "Handling message!" << std::endl;
 
   const uint8_t* const rbuf_begin = static_cast<const uint8_t*>(buffer);
   const uint8_t* const rbuf_end = rbuf_begin + size;

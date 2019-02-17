@@ -21,7 +21,12 @@ using dairlib::systems::RobotOutputReceiver;
 
 int doMain() {
   RigidBodyTree<double> tree;
-  buildCassieTree(tree);
+  bool isFixedBase = true;
+  if(isFixedBase)
+    buildCassieTree(tree);
+  else
+    buildCassieTree(tree, "examples/Cassie/urdf/cassie_v2.urdf",
+                    drake::multibody::joints::kRollPitchYaw);
 
   cout << endl << "****bodies****" << endl;
   for (int i = 0; i < tree.get_num_bodies(); i++)

@@ -55,7 +55,7 @@ int do_main(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree;
-  bool isFixedBase = false;
+  bool isFixedBase = true;
   if(isFixedBase)
     tree = makeCassieTreePointer();
   else
@@ -195,7 +195,6 @@ int do_main(int argc, char* argv[]) {
   x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
 
   std::cout << q0 << std::endl;
-
 
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 

@@ -42,12 +42,6 @@ void SimCassieSensorAggregator::Aggregator(const Context<double>& context,
   sensor_msg->num_motors = 10;
   sensor_msg->num_joints = 6;
 
-  // std::map<std::string, int> positionIndexMap = positionIndexMap_;
-  // std::map<std::string, int> velocityIndexMap = velocityIndexMap_;
-    // std::cout<<"motor_position_names_[i] = "<<motor_position_names_[i]<<"\n";
-    // std::cout<<"positionIndexMap[motor_position_names_[i]] = "<<positionIndexMap[motor_position_names_[i]]<<"\n";
-    // sensor_msg->motor_position[i] = state->GetAtIndex(positionIndexMap_[motor_position_names_[i]]);
-
   sensor_msg->motor_position_names.resize(sensor_msg->num_motors);
   sensor_msg->motor_velocity_names.resize(sensor_msg->num_motors);
   sensor_msg->joint_position_names.resize(sensor_msg->num_joints);
@@ -59,43 +53,16 @@ void SimCassieSensorAggregator::Aggregator(const Context<double>& context,
   sensor_msg->joint_velocity.resize(sensor_msg->num_joints);
   sensor_msg->effort.resize(sensor_msg->num_motors);
 
-
-  std::cout<<"\n************************\n";
-  for (auto const& element : positionIndexMap_)
-    cout << element.first << " = " << element.second << endl; std::cout<<"\n";
-  for (auto const& element : velocityIndexMap_)
-    cout << element.first << " = " << element.second << endl; std::cout<<"\n";
-  for (auto const& element : actuatorIndexMap_)
-    cout << element.first << " = " << element.second << endl; std::cout<<"\n";
-  std::cout<<"************************\n\n";
-
-  cout<<"num_positions_ = " << num_positions_ <<endl;
-  cout<<"num_velocities_ = " << num_velocities_ <<endl;
-  std::cout<<"************************\n\n";
-
-
-  std::cout<<"motor position/velocity/efforts\n";
   for (int i = 0; i < sensor_msg->num_motors; i++) {
-    std::cout<<"i = "<<i<<"\n";
     sensor_msg->motor_position_names[i] = motor_position_names_[i];
-    std::cout<<"motor_position_names_["<<i<<"] = "<<motor_position_names_[i]<<"\n";
-    std::cout<<"positionIndexMap_.at(motor_position_names_[0]) = "<<positionIndexMap_.at("hip_roll_left")<<"\n";
-    std::cout<<"state->GetAtIndex(6) = "<< state->GetAtIndex(positionIndexMap_.at("hip_roll_left"))<<"\n";
-    sensor_msg->motor_position[i] = state->GetAtIndex(positionIndexMap_.at(motor_position_names_[i]));
-    
+    sensor_msg->motor_position[i] = state->GetAtIndex(positionIndexMap_.at(motor_position_names_[i]));    
     sensor_msg->motor_velocity_names[i] = motor_velocity_names_[i];
-    std::cout<<"motor_velocity_names_["<<i<<"] = "<<motor_velocity_names_[i]<<"\n";
-    std::cout<<"velocityIndexMap_.at(motor_velocity_names_[0]) = "<<velocityIndexMap_.at("hip_roll_leftdot")<<"\n";
-    std::cout<<"state->GetAtIndex(6) = "<< state->GetAtIndex(velocityIndexMap_.at("hip_roll_leftdot"))<<"\n";
     sensor_msg->motor_velocity[i] = state->GetAtIndex(num_positions_ + velocityIndexMap_.at(motor_velocity_names_[i]));
-    
     sensor_msg->effort_names[i] = effort_names_[i];
     sensor_msg->effort[i] = input->GetAtIndex(i);
   }
-
-  std::cout<<"joints position/velocity\n";
+   
   for (int i = 0; i < sensor_msg->num_joints; i++) {
-    std::cout<<"i = "<<i<<"\n";
     sensor_msg->joint_position_names[i] = joint_position_names_[i];
     sensor_msg->joint_position[i] = state->GetAtIndex(positionIndexMap_.at(joint_position_names_[i]));
     sensor_msg->joint_velocity_names[i] = joint_velocity_names_[i];
@@ -103,13 +70,28 @@ void SimCassieSensorAggregator::Aggregator(const Context<double>& context,
   }
 
   for (int i = 0; i < 3; i++) {
-    std::cout<<"i = "<<i<<"\n";
     sensor_msg->imu_linear_acc_names[i] = imu_linear_acc_names_[i];
     sensor_msg->imu_linear_acc[i] = acce->GetAtIndex(i);
     sensor_msg->imu_ang_vel_names[i] = imu_ang_vel_names_[i];
     sensor_msg->imu_ang_vel[i] = gyro->GetAtIndex(i);
   }
-
+  
+  // Printing 
+  // for (int i = 0; i < sensor_msg->num_motors; i++) 
+  //   std::cout<<sensor_msg->motor_position_names[i] <<" ="<< sensor_msg->motor_position[i] << endl;
+  // for (int i = 0; i < sensor_msg->num_motors; i++) 
+  //   std::cout<<sensor_msg->motor_velocity_names[i] <<" ="<< sensor_msg->motor_velocity[i] << endl;
+  // for (int i = 0; i < sensor_msg->num_joints; i++) 
+  //   cout<< sensor_msg->joint_position_names[i] <<" = " << sensor_msg->joint_position[i] <<endl;
+  // for (int i = 0; i < sensor_msg->num_joints; i++) 
+  //   cout<< sensor_msg->joint_velocity_names[i]<<" = " << sensor_msg->joint_velocity[i] <<endl;
+  // for (int i = 0; i < sensor_msg->num_motors; i++) 
+  //   cout<< sensor_msg->effort_names[i] <<" = " << sensor_msg->effort[i] << endl;
+  // for (int i = 0; i < 3; i++) 
+  //   cout<< sensor_msg->imu_linear_acc_names[i]<<" = " << sensor_msg->imu_linear_acc[i] <<endl;
+  // for (int i = 0; i < 3; i++) 
+  //   cout<< sensor_msg->imu_ang_vel_names[i] <<" = " << sensor_msg->imu_ang_vel[i] <<endl;
+  // cout<<endl;
 
 }
 

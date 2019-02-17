@@ -1,5 +1,5 @@
 #include "robot_lcm_systems.h"
-#include "multibody/mbt_utils.h"
+#include "multibody/multibody_utils.h"
 
 
 namespace dairlib {

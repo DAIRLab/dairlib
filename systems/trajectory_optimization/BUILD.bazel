@@ -6,30 +6,43 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "dircon",
     srcs = [
-        "dircon.cc",
-        "dircon_kinematic_data.cc",
-        "dircon_kinematic_data_set.cc",
+#        "dircon.cc",
         "dircon_opt_constraints.cc",
         "dircon_options.cc",
-        "dircon_position_data.cc",
         "dircon_util.cc",
         "hybrid_dircon.cc",
     ],
     hdrs = [
-        "dircon.h",
-        "dircon_kinematic_data.h",
-        "dircon_kinematic_data_set.h",
+#        "dircon.h",
         "dircon_opt_constraints.h",
         "dircon_options.h",
-        "dircon_position_data.h",
         "dircon_util.h",
         "hybrid_dircon.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
         "@drake//common",
         "@drake//solvers",
         "@drake//systems/framework",
         "@drake//systems/trajectory_optimization",
+        ":dircon_kinematic_data",
+    ],
+)
+
+cc_library(
+    name = "dircon_kinematic_data",
+    srcs = [
+        "dircon_kinematic_data.cc",
+        "dircon_position_data.cc",
+        "dircon_kinematic_data_set.cc",
+    ],
+    hdrs = [
+        "dircon_kinematic_data.h",
+        "dircon_position_data.h",
+        "dircon_kinematic_data_set.h",
+    ],
+    deps = [
+        "@drake//multibody/plant",
+        "@drake//common",
+        "//multibody:utils",
     ],
 )

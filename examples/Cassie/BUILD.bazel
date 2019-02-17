@@ -22,6 +22,7 @@ cc_library(
   deps = [
         ":cassie_urdf",
         "//common",
+        "//multibody:utils",
         "@drake//attic/multibody:rigid_body_tree",
         "@drake//attic/multibody:rigid_body_tree_construction",
         "@drake//attic/multibody/parsers",
@@ -171,7 +172,6 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers",
         "//systems/controllers:pd_config_lcm",
-        "@drake//attic/multibody:rigid_body_tree",
         "@drake//lcm",
         "@drake//manipulation/util",
         "@drake//systems/analysis:simulator",
@@ -181,27 +181,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "cassie_state_visualizer",
-    srcs = ["cassie_state_visualizer.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//attic/multibody/rigid_body_plant:drake_visualizer",
-        "@drake//lcm",
-        "@drake//manipulation/util",
-        "@drake//systems/analysis:simulator",
-        "@drake//systems/framework:diagram_builder",
-        "@drake//systems/lcm:lcm_pubsub_system",
-    ],
-)
-
-
-cc_binary(
-    name = "fixedbase_cassie_visualizer",
-    srcs = ["fixedbase_cassie_visualizer.cc"],
+    name = "visualizer",
+    srcs = ["visualizer.cc"],
     deps = [
             "//systems:robot_lcm_systems",
             "//systems/primitives",
@@ -241,8 +222,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "fixedbase_standalone_mbt_sim",
-    srcs = ["fixedbase_standalone_mbt_sim.cc"],
+    name = "standalone_multibody_sim",
+    srcs = ["standalone_multibody_sim.cc"],
     deps = [
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",
@@ -259,8 +240,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "fixedbase_mbt_sim",
-    srcs = ["fixedbase_mbt_sim.cc"],
+    name = "multibody_sim",
+    srcs = ["multibody_sim.cc"],
     deps = [
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",

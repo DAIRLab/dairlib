@@ -3,27 +3,37 @@
 
 #include <gflags/gflags.h>
 
-#include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/multibody/joints/floating_base_types.h"
-#include "drake/multibody/parsers/urdf_parser.h"
-#include "drake/multibody/rigid_body_tree.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/trajectory_source.h"
-#include "drake/multibody/rigid_body_plant/drake_visualizer.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/constraint.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
+#include "drake/geometry/geometry_visualization.h"
 
+#include "common/find_resource.h"
+#include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/dircon_util.h"
-
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "multibody/multibody_utils.h"
+#include "multibody/visualization_utils.h"
 
+
+DEFINE_double(strideLength, 0.1, "The stride length.");
+DEFINE_double(duration, 1, "The stride duration");
+
+using drake::multibody::MultibodyPlant;
+using drake::geometry::SceneGraph;
+using drake::multibody::Body;
+using drake::multibody::Parser;
+using drake::systems::rendering::MultibodyPositionToGeometryPose;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -34,93 +44,85 @@ using std::shared_ptr;
 using std::cout;
 using std::endl;
 
-DEFINE_double(strideLength, 0.1, "The stride length.");
-DEFINE_double(duration, 1, "The stride duration");
 
 /// Inputs: initial trajectory
 /// Outputs: trajectory optimization problem
 namespace dairlib {
 namespace {
-
 using systems::trajectory_optimization::HybridDircon;
 using systems::trajectory_optimization::DirconDynamicConstraint;
 using systems::trajectory_optimization::DirconKinematicConstraint;
 using systems::trajectory_optimization::DirconOptions;
 using systems::trajectory_optimization::DirconKinConstraintType;
+using systems::SubvectorPassThrough;
 
-shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration,
+
+shared_ptr<HybridDircon<double>> runDircon(
+    double stride_length,
+    double duration,
     PiecewisePolynomial<double> init_x_traj,
     PiecewisePolynomial<double> init_u_traj,
     vector<PiecewisePolynomial<double>> init_l_traj,
     vector<PiecewisePolynomial<double>> init_lc_traj,
     vector<PiecewisePolynomial<double>> init_vc_traj) {
-  RigidBodyTree<double> tree;
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalker.urdf",
-      drake::multibody::joints::kFixed, &tree);
-  //const std::unique_ptr<const RigidBodyTree<double>> tree =  std::unique_ptr<const RigidBodyTree<double>>(&model);
 
-  for (int i = 0; i < tree.get_num_bodies(); i++)
-    cout << tree.getBodyOrFrameName(i) << endl;
-  for (int i = 0; i < tree.get_num_actuators(); i++)
-    cout << tree.actuators[i].name_ << endl;
-  for (int i = 0; i < tree.get_num_positions(); i++)
-    cout << tree.get_position_name(i) << endl;
-  for (int i = 0; i < tree.get_num_velocities(); i++)
-    cout << tree.get_velocity_name(i) << endl;
+  drake::systems::DiagramBuilder<double> builder;
+  MultibodyPlant<double> plant;
+  SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
+  Parser parser(&plant, &scene_graph);
 
-// world
-// base
-// base_x
-// base_xz
-// hip
-// left_upper_leg
-// left_upper_leg_mass
-// left_lower_leg
-// left_lower_leg_mass
-// right_upper_leg
-// right_upper_leg_mass
-// right_lower_leg
-// right_lower_leg_mass
+  std::string full_name =
+      FindResourceOrThrow("examples/PlanarWalker/PlanarWalker.urdf");
+  parser.AddModelFromFile(full_name);
 
-// hip_torque
-// left_knee_torque
-// right_knee_torque
+  plant.AddForceElement<drake::multibody::UniformGravityFieldElement>(
+      -9.81 * Eigen::Vector3d::UnitZ());
 
+  plant.WeldFrames(
+      plant.world_frame(), plant.GetFrameByName("base"),
+      drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
 
+  plant.Finalize();
 
+  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
 
-  // int n = tree.get_num_positions();
-  // int nu = tree.get_num_actuators();
+  for (auto const& element : positions_map)
+    cout << element.first << " = " << element.second << endl;
+  for (auto const& element : velocities_map)
+    cout << element.first << " = " << element.second << endl;
 
-  int leftLegIdx = tree.FindBodyIndex("left_lower_leg");
-  int rightLegIdx = tree.FindBodyIndex("right_lower_leg");
+  const Body<double>& left_lower_leg = plant.GetBodyByName("left_lower_leg");
+  const Body<double>& right_lower_leg = plant.GetBodyByName("right_lower_leg");
 
   Vector3d pt;
-  pt << 0,0,-.5;
+  pt << 0, 0, -.5;
   bool isXZ = true;
 
-  auto leftFootConstraint = DirconPositionData<double>(tree,leftLegIdx,pt,isXZ);
-  auto rightFootConstraint = DirconPositionData<double>(tree,rightLegIdx,pt,isXZ);
+  auto leftFootConstraint = DirconPositionData<double>(plant, left_lower_leg,
+                                                       pt, isXZ);
+  auto rightFootConstraint = DirconPositionData<double>(plant, right_lower_leg,
+                                                        pt, isXZ);
 
   Vector3d normal;
-  normal << 0,0,1;
+  normal << 0, 0, 1;
   double mu = 1;
-  leftFootConstraint.addFixedNormalFrictionConstraints(normal,mu);
-  rightFootConstraint.addFixedNormalFrictionConstraints(normal,mu);
+  leftFootConstraint.addFixedNormalFrictionConstraints(normal, mu);
+  rightFootConstraint.addFixedNormalFrictionConstraints(normal, mu);
 
   std::vector<DirconKinematicData<double>*> leftConstraints;
   leftConstraints.push_back(&leftFootConstraint);
-  auto leftDataSet = DirconKinematicDataSet<double>(tree, &leftConstraints);
+  auto leftDataSet = DirconKinematicDataSet<double>(plant, &leftConstraints);
 
   std::vector<DirconKinematicData<double>*> rightConstraints;
   rightConstraints.push_back(&rightFootConstraint);
-  auto rightDataSet = DirconKinematicDataSet<double>(tree, &rightConstraints);
+  auto rightDataSet = DirconKinematicDataSet<double>(plant, &rightConstraints);
 
   auto leftOptions = DirconOptions(leftDataSet.countConstraints());
-  leftOptions.setConstraintRelative(0,true);
+  leftOptions.setConstraintRelative(0, true);
 
   auto rightOptions = DirconOptions(rightDataSet.countConstraints());
-  rightOptions.setConstraintRelative(0,true);
+  rightOptions.setConstraintRelative(0, true);
 
   std::vector<int> timesteps;
   timesteps.push_back(10);
@@ -140,21 +142,20 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   options_list.push_back(leftOptions);
   options_list.push_back(rightOptions);
 
-  auto trajopt = std::make_shared<HybridDircon<double>>(tree, timesteps, min_dt,
-                                                        max_dt, dataset_list,
-                                                        options_list);
+  auto trajopt = std::make_shared<HybridDircon<double>>(plant,
+      timesteps, min_dt, max_dt, dataset_list, options_list);
 
   trajopt->AddDurationBounds(duration, duration);
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Print file", "snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 200);
+                           "Major iterations limit", 100);
 
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
   //    "Verify level","1");
 
-  for (int j = 0; j < timesteps.size(); j++) {
+  for (uint j = 0; j < timesteps.size(); j++) {
     trajopt->drake::systems::trajectory_optimization::MultipleShooting::
         SetInitialTrajectory(init_u_traj, init_x_traj);
     trajopt->SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j],
@@ -162,49 +163,62 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   }
 
   // Periodicity constraints
-  // planar_x-0
-  // planar_z-1
-  // planar_roty-2
-  // left_knee_pin-3
-  // hip_pin-4
-  // right_knee_pin-5
-  // planar_xdot-6
-  // planar_zdot-7
-  // planar_rotydot-8
-  // left_knee_pindot-9
-  // hip_pindot-10
-  // right_knee_pindot-11
+// hip_pin = 3
+// left_knee_pin = 4
+// planar_roty = 2
+// planar_x = 0
+// planar_z = 1
+// right_knee_pin = 5
+//
+// hip_pindot = 3
+// left_knee_pindot = 4
+// planar_rotydot = 2
+// planar_xdot = 0
+// planar_zdot = 1
+// right_knee_pindot = 5
+
   auto x0 = trajopt->initial_state();
   auto xf = trajopt->final_state();
+  trajopt->AddLinearConstraint(
+      x0(positions_map["planar_z"]) == xf(positions_map["planar_z"]));
+  trajopt->AddLinearConstraint(x0(positions_map["hip_pin"]) +
+      x0(positions_map["planar_roty"]) == xf(positions_map["planar_roty"]));
+  trajopt->AddLinearConstraint(x0(positions_map["left_knee_pin"]) ==
+      xf(positions_map["right_knee_pin"]));
+  trajopt->AddLinearConstraint(x0(positions_map["right_knee_pin"]) ==
+      xf(positions_map["left_knee_pin"]));
+  trajopt->AddLinearConstraint(x0(positions_map["hip_pin"]) ==
+      -xf(positions_map["hip_pin"]));
 
-  trajopt->AddLinearConstraint(x0(1) == xf(1));
-  trajopt->AddLinearConstraint(x0(2) + x0(4) == xf(2));
-  trajopt->AddLinearConstraint(x0(3) == xf(5));
-  trajopt->AddLinearConstraint(x0(4) == -xf(4));
-  trajopt->AddLinearConstraint(x0(5) == xf(3));
 
-  trajopt->AddLinearConstraint(x0(6) == xf(6));
-  trajopt->AddLinearConstraint(x0(7) == xf(7));
-  trajopt->AddLinearConstraint(x0(8) + x0(10) == xf(8));
-  trajopt->AddLinearConstraint(x0(9) == xf(11));
-  trajopt->AddLinearConstraint(x0(10) == -xf(10));
-  trajopt->AddLinearConstraint(x0(11) == xf(9));
+  int nq = plant.num_positions();
+  trajopt->AddLinearConstraint(x0(nq + velocities_map["planar_zdot"]) ==
+                               xf(nq + velocities_map["planar_zdot"]));
+  trajopt->AddLinearConstraint(x0(nq + velocities_map["hip_pindot"]) +
+                               x0(nq + velocities_map["planar_rotydot"]) ==
+                               xf(nq + velocities_map["planar_rotydot"]));
+  trajopt->AddLinearConstraint(x0(nq + velocities_map["left_knee_pindot"]) ==
+                               xf(nq + velocities_map["right_knee_pindot"]));
+  trajopt->AddLinearConstraint(x0(nq + velocities_map["right_knee_pindot"]) ==
+                               xf(nq + velocities_map["left_knee_pindot"]));
+  trajopt->AddLinearConstraint(x0(nq + velocities_map["hip_pindot"]) ==
+                               -xf(nq + velocities_map["hip_pindot"]));
 
-  // Knee joint limits
+  // // Knee joint limits
   auto x = trajopt->state();
-  trajopt->AddConstraintToAllKnotPoints(x(3) >= 0);
-  trajopt->AddConstraintToAllKnotPoints(x(5) >= 0);
+  trajopt->AddConstraintToAllKnotPoints(x(positions_map["left_knee_pin"]) >= 0);
+  trajopt->AddConstraintToAllKnotPoints(
+      x(positions_map["right_knee_pin"]) >= 0);
 
-  // Hip constraints
-  trajopt->AddLinearConstraint(x0(0) == 0);
-  trajopt->AddLinearConstraint(xf(0) == stride_length);
+  // stride length constraints
+  trajopt->AddLinearConstraint(x0(positions_map["planar_x"]) == 0);
+  trajopt->AddLinearConstraint(xf(positions_map["planar_x"]) == stride_length);
 
   const double R = 10;  // Cost on input effort
   auto u = trajopt->input();
   trajopt->AddRunningCost(u.transpose()*R*u);
-  const double Q = 1;
-  trajopt->AddRunningCost(x.transpose()*Q*x);
-
+  // const double Q = 1;
+  // trajopt->AddRunningCost(x.transpose()*Q*x);
 
   auto start = std::chrono::high_resolution_clock::now();
   auto result = trajopt->Solve();
@@ -233,24 +247,16 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 //  cout << A << endl;
 
   // visualizer
-  drake::lcm::DrakeLcm lcm;
-  drake::systems::DiagramBuilder<double> builder;
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt->ReconstructStateTrajectory();
-  auto state_source = builder.AddSystem<drake::systems::TrajectorySource>(
-        pp_xtraj);
-  auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree,
-                                                                      &lcm);
-  publisher->set_publish_period(1.0 / 60.0);
-  builder.Connect(state_source->get_output_port(),
-                  publisher->get_input_port(0));
-
+  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
+                                         pp_xtraj);
   auto diagram = builder.Build();
 
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(.2);
+    simulator.set_target_realtime_rate(.5);
     simulator.Initialize();
     simulator.StepTo(pp_xtraj.end_time());
   }
@@ -265,15 +271,25 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::srand(time(0));  // Initialize random number generator.
 
-  RigidBodyTree<double> tree;
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld("PlanarWalker.urdf",
-        drake::multibody::joints::kFixed, &tree);
+  MultibodyPlant<double> plant;
+  SceneGraph<double> scene_graph;
+  Parser parser(&plant, &scene_graph);
+  std::string full_name =
+      dairlib::FindResourceOrThrow("examples/PlanarWalker/PlanarWalker.urdf");
 
-  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(tree.get_num_positions() +
-                       tree.get_num_velocities());
+  parser.AddModelFromFile(full_name);
+
+  plant.WeldFrames(
+      plant.world_frame(), plant.GetFrameByName("base"),
+      drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
+
+  plant.Finalize();
+
+  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(plant.num_positions() +
+                       plant.num_velocities());
 
   Eigen::VectorXd init_l_vec(2);
-  init_l_vec << 0, tree.getMass()*9.81;
+  init_l_vec << 0, 20*9.81;
   int nu = 3;
   int N = 10;
 

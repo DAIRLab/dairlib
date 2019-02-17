@@ -9,7 +9,7 @@
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 
-#include "multibody/rbt_utils.h"
+#include "attic/multibody/rigidbody_utils.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 

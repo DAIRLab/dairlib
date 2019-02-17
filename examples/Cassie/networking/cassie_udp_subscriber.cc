@@ -4,6 +4,7 @@
 #include <functional>
 #include <iostream>
 #include <utility>
+#include <chrono>
 
 #include "examples/Cassie/networking/udp_serializer.h"
 #include "drake/common/drake_assert.h"
@@ -22,9 +23,14 @@ using drake::systems::UnrestrictedUpdateEvent;
 using drake::systems::EventCollection;
 using std::make_unique;
 
+using std::chrono::duration_cast;
+using std::chrono::steady_clock;
+using std::chrono::microseconds;
+
 namespace {
 constexpr int kStateIndexMessage = 0;
 constexpr int kStateIndexMessageCount = 1;
+constexpr int kStateIndexMessageUTime = 2;
 }  // namespace
 
 CassieUDPSubscriber::CassieUDPSubscriber(const std::string& address,
@@ -64,17 +70,28 @@ CassieUDPSubscriber::CassieUDPSubscriber(const std::string& address,
   this->DeclareAbstractState(AllocateSerializerOutputValue());
   static_assert(kStateIndexMessageCount == 1, "");
   this->DeclareAbstractState(AbstractValue::Make<int>(0));
+  static_assert(kStateIndexMessageUTime == 2, "");
+  this->DeclareAbstractState(AbstractValue::Make<int>(0));
 
+
+  keep_polling_ = true;
+  
   set_name(make_name(address, port));
   std::cout << "Starting polling thread!" << std::endl;
   polling_thread_ = std::thread(&CassieUDPSubscriber::Poll, this,
       [this](const void* buffer, int size) {
         this->HandleMessage(buffer, size);
       });
+
+  start_ = steady_clock::now();
 }
 
 CassieUDPSubscriber::~CassieUDPSubscriber() {
   polling_thread_.join();
+}
+
+void CassieUDPSubscriber::StopPolling() {
+  keep_polling_ = false;
 }
 
 void CassieUDPSubscriber::Poll(HandlerFunction handler) {
@@ -86,7 +103,7 @@ void CassieUDPSubscriber::Poll(HandlerFunction handler) {
   // Poll for a new packet of the correct length
   ssize_t nbytes = 0;
   struct pollfd fd = {.fd = socket_, .events = POLLIN, .revents = 0};
-  while (true) {
+  while (keep_polling_) {
     do {
         poll(&fd, 1, -1);
         // Get newest valid packet in RX buffer
@@ -111,6 +128,11 @@ void CassieUDPSubscriber::CopyLatestMessageInto(State<double>* state) const {
   ProcessMessageAndStoreToAbstractState(&state->get_mutable_abstract_state());
 }
 
+int CassieUDPSubscriber::get_message_utime(
+    const drake::systems::Context<double>& context) const {
+  return context.get_abstract_state<int>(kStateIndexMessageUTime);
+}
+
 void CassieUDPSubscriber::ProcessMessageAndStoreToAbstractState(
     AbstractValues* abstract_state) const {
   std::lock_guard<std::mutex> lock(received_message_mutex_);
@@ -121,6 +143,10 @@ void CassieUDPSubscriber::ProcessMessageAndStoreToAbstractState(
   }
   abstract_state->get_mutable_value(kStateIndexMessageCount)
       .GetMutableValue<int>() = received_message_count_;
+  auto t = duration_cast<microseconds>(steady_clock::now() - start_);
+  abstract_state->get_mutable_value(kStateIndexMessageUTime)
+      .GetMutableValue<int>() = t.count();
+  // std::cout << "time: " << t.count() << std::endl;
 }
 
 int CassieUDPSubscriber::GetMessageCount(const Context<double>& context) const {
@@ -172,7 +198,7 @@ void CassieUDPSubscriber::CalcSerializerOutputValue(
 
 void CassieUDPSubscriber::HandleMessage(const void* buffer, int size) {
   SPDLOG_TRACE(drake::log(), "Receiving CASSIE message");
-  std::cout << "Handling message!" << std::endl;
+  // std::cout << "Handling message!" << std::endl;
 
   const uint8_t* const rbuf_begin = static_cast<const uint8_t*>(buffer);
   const uint8_t* const rbuf_end = rbuf_begin + size;
@@ -185,13 +211,13 @@ void CassieUDPSubscriber::HandleMessage(const void* buffer, int size) {
 
 int CassieUDPSubscriber::WaitForMessage(
     int old_message_count, AbstractValue* message) const {
-
+  std::cout << "Waiting for message...";
   // The message buffer and counter are updated in HandleMessage(), which is
   // a callback function invoked by a different thread owned by the
   // drake::lcm::DrakeLcmInterface instance passed to the constructor. Thus,
   // for thread safety, these need to be properly protected by a mutex.
   std::unique_lock<std::mutex> lock(received_message_mutex_);
-  std::cout << "Waiting for message...";
+
   // This while loop is necessary to guard for spurious wakeup:
   // https://en.wikipedia.org/wiki/Spurious_wakeup
   while (old_message_count >= received_message_count_) {

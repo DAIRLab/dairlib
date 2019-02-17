@@ -19,7 +19,6 @@
 
 namespace dairlib {
 namespace systems {
-
 /**
  * Receives UDP messages from Cassie outputs them to a System<double>'s port
  * as a cassie_out_t struct. This class stores the most recently processed
@@ -75,6 +74,8 @@ class CassieUDPSubscriber : public drake::systems::LeafSystem<double> {
 
   ~CassieUDPSubscriber() override;
 
+  void StopPolling();
+
   /// Main polling function.
   /// @param handler for handling received messages
   void Poll(HandlerFunction handler);
@@ -90,6 +91,12 @@ class CassieUDPSubscriber : public drake::systems::LeafSystem<double> {
 
   // This system has no input ports.
   void get_input_port(int) = delete;
+
+  // Gets the last time, in microseconds, of the most recently received message
+  // Counts from the time this subscriber was initialized, which seems
+  // safe because there should only ever be one such subscriber in a process
+  // Needed for UDPDrivenLoop
+  int get_message_utime(const drake::systems::Context<double>& context) const;
 
   /**
    * Blocks the caller until its internal message count exceeds
@@ -139,7 +146,6 @@ class CassieUDPSubscriber : public drake::systems::LeafSystem<double> {
   // Callback entry point from LCM into this class.
   void HandleMessage(const void*, int);
 
-
   std::string make_name(const std::string& address, const int port);
 
   // This pair of methods is used for the output port when we're using a
@@ -172,6 +178,10 @@ class CassieUDPSubscriber : public drake::systems::LeafSystem<double> {
   std::thread polling_thread_;
 
   const std::unique_ptr<CassieUDPOutSerializer> serializer_;
+
+  std::chrono::time_point<std::chrono::steady_clock> start_;
+
+  bool keep_polling_;
 };
 
 }  // namespace systems

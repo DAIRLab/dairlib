@@ -50,6 +50,24 @@ cc_library(
   ]
 )
 
+cc_library(
+  name = "udp_driven_loop",
+  srcs = ["udp_driven_loop.cc",],
+  hdrs = ["udp_driven_loop.h",],
+  deps = [
+    ":cassie_udp_pub_sub",
+    "@drake//systems/analysis:simulator",
+  ]
+)
+
+
+cc_binary(
+  name = "udp_driven_loop_test",
+  srcs = ["test/udp_driven_loop_test.cc"],
+  deps = [":udp_driven_loop",
+          "@gflags",
+         ],
+)
 
 cc_binary(
   name = "cassie_udp_subscriber_test",

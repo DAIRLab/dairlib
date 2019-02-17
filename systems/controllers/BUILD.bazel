@@ -9,10 +9,12 @@ cc_library(
     deps = [
         ":controllers",
         "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
+        "//attic/multibody:utils",
         "//systems/framework:vector",
+        "//multibody:utils",
         "@drake//manipulation/util",
         "@drake//systems/framework:leaf_system",
+        "@drake//multibody/plant",
         "@lcm",
     ],
 )

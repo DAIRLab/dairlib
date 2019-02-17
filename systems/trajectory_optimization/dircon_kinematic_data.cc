@@ -7,16 +7,17 @@ using std::vector;
 using drake::VectorX;
 using drake::MatrixX;
 using drake::solvers::Constraint;
+using drake::multibody::MultibodyPlant;
 
 template <typename T>
-DirconKinematicData<T>::DirconKinematicData(const RigidBodyTree<double>& tree,
-                                            int length) {
-  tree_ = &tree;
-  length_ = length;
+DirconKinematicData<T>::DirconKinematicData(const MultibodyPlant<T>& plant,
+                                            int length) :
+    plant_(plant),
+    length_(length) {
   force_constraints_ = vector<shared_ptr<Constraint>>(0);
   c_ = VectorX<T>::Zero(length);
   cdot_ = VectorX<T>::Zero(length);
-  J_ = MatrixX<T>::Zero(length, tree.get_num_positions());
+  J_ = MatrixX<T>::Zero(length, plant.num_velocities());
   Jdotv_ = VectorX<T>::Zero(length);
 }
 

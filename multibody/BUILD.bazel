@@ -7,16 +7,31 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "utils",
     srcs = [
-        "rbt_utils.cc",
-        "mbt_utils.cc",
+        "multibody_utils.cc",
     ],
     hdrs = [
-        "rbt_utils.h",
-        "mbt_utils.h",
+        "multibody_utils.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
         "@drake//multibody/multibody_tree/multibody_plant",
+        ":visualization_utils"
+    ],
+)
+
+cc_library(
+    name = "visualization_utils",
+    srcs = [
+        "visualization_utils.cc"
+    ],
+    hdrs = [
+        "visualization_utils.h",
+    ],
+    deps = [
+        "@drake//multibody/multibody_tree/multibody_plant",
+        "@drake//geometry:geometry_visualization",
+        "@drake//systems/rendering:multibody_position_to_geometry_pose",        
+        "@drake//systems/primitives",
+         "//systems/primitives",
     ],
 )
 
@@ -29,11 +44,25 @@ cc_library(
         "contact_toolkit.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//solvers:mathematical_program",
+        "@drake//multibody/plant",
         ":utils",
     ],
 )
+
+
+cc_test(
+    name = "multibody_utils_test",
+    srcs = ["test/multibody_utils_test.cc"],
+    deps = [
+            ":utils",
+            "//examples/Cassie:cassie_urdf",
+            "//common",
+            "@drake//multibody/parsing",
+            "@gtest//:main",
+            ],
+    size = "small"
+)
+
 
 cc_test(
     name = "contact_toolkit_test",
@@ -47,17 +76,4 @@ cc_test(
         "@gtest//:main",
     ],
     size = "small",
-)
-
-cc_test(
-    name = "mbt_utils_test",
-    srcs = ["test/mbt_utils_test.cc"],
-    deps = [
-            ":utils",
-            "//examples/Cassie:cassie_urdf",
-            "//common",
-            "@drake//multibody/parsing",
-            "@gtest//:main",
-            ],
-    size = "small"
 )

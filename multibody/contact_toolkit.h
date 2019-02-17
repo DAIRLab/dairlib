@@ -3,8 +3,8 @@
 //#include <vector>
 #include "drake/common/default_scalars.h"
 #include "drake/math/autodiff_gradient.h"
-#include "drake/multibody/rigid_body_tree.h"
-#include "multibody/rbt_utils.h"
+#include "drake/multibody/plant/multibody_plant.h"
+#include "multibody/multibody_utils.h"
 
 namespace dairlib {
 namespace multibody {
@@ -18,10 +18,11 @@ namespace multibody {
  * This structure may be expanded in the future to incorporate more information.
  * Eg: for general body-body contact.
  */
+template <typename T>
 struct ContactInfo {
   Eigen::Matrix3Xd xA;
   Eigen::Matrix3Xd xB;
-  std::vector<int> idxA;
+  std::vector<const drake::multibody::Frame<T>*> frameA;
 };
 
 /*
@@ -40,14 +41,17 @@ class ContactToolkit {
   // Disabling copy construction and assignment
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ContactToolkit)
 
-  ContactToolkit(const RigidBodyTree<double>& tree, ContactInfo contact_info);
+  ContactToolkit(const drake::multibody::MultibodyPlant<T>& plant,
+                 ContactInfo<T> contact_info);
+
 
   /*
    * Function to compute the contact jacobian. The normal and two surface
    * tangent directions are considered for each contact point-plane contact.
    * @param x The state of the system
    */
-  drake::MatrixX<T> CalcContactJacobian(drake::VectorX<T> x) const;
+  drake::MatrixX<T> CalcContactJacobian(
+      const drake::systems::Context<T>& context) const;
   /*
    * Function to compute M * VDot given the state, control inputs and constraint
    * forces
@@ -58,7 +62,7 @@ class ContactToolkit {
    * @pre lambda is the joint vector containing the position constraint force
    * vector followed by the contact force vector (Specifically in this order).
    */
-  drake::VectorX<T> CalcMVDot(drake::VectorX<T> x, drake::VectorX<T> u,
+  drake::VectorX<T> CalcMVDot(const drake::systems::Context<T>& context,
                               drake::VectorX<T> lambda) const;
   /*
    * Function to compute xdot given the state, control inputs and constraint
@@ -70,17 +74,17 @@ class ContactToolkit {
    * @pre lambda is the joint vector containing the position constraint force
    * vector followed by the contact force vector (Specifically in this order).
    */
-  drake::VectorX<T> CalcTimeDerivatives(drake::VectorX<T> x,
-                                        drake::VectorX<T> u,
-                                        drake::VectorX<T> lambda) const;
+  drake::VectorX<T> CalcTimeDerivatives(
+      const drake::systems::Context<T>& context,
+      drake::VectorX<T> lambda) const;
 
-  ContactInfo get_contact_info();
+  ContactInfo<T> get_contact_info();
   int get_num_contacts();
-  void set_contact_info(ContactInfo info);
+  void set_contact_info(ContactInfo<T> info);
 
  private:
-  const RigidBodyTree<double>& tree_;
-  ContactInfo contact_info_;
+  const drake::multibody::MultibodyPlant<T>& plant_;
+  ContactInfo<T> contact_info_;
   int num_contacts_;
 };
 

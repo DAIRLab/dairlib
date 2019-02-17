@@ -11,8 +11,11 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "systems/robot_lcm_systems.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "multibody/multibody_utils.h"
 
 namespace dairlib {
+
+DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
 using std::endl;
 using std::cout;
@@ -33,7 +36,13 @@ int do_main(int argc, char* argv[]) {
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double> plant;
-  addFixedBaseCassieMultibody(&plant, &scene_graph);
+
+  if (FLAGS_floating_base) {
+    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+  }
+
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
+  plant.Finalize();
 
   drake::lcm::DrakeLcm lcm;
 
@@ -47,11 +56,8 @@ int do_main(int argc, char* argv[]) {
                   state_receiver->get_input_port(0));
 
 
-
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-    state_receiver->get_output_port(0).size(),
-    0,
-    plant.num_positions());
+    state_receiver->get_output_port(0).size(), 0, plant.num_positions());
   builder.Connect(state_receiver->get_output_port(0),
                   passthrough->get_input_port());
 

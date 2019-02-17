@@ -26,8 +26,8 @@ using drake::multibody::joints::FloatingBaseType;
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
-void addFixedBaseCassieMultibody(MultibodyPlant<double>* plant,
-    SceneGraph<double>* scene_graph, std::string filename) {
+void addCassieMultibody(MultibodyPlant<double>* plant,
+    SceneGraph<double>* scene_graph, bool floating_base, std::string filename) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
   parser.AddModelFromFile(full_name);
@@ -35,19 +35,12 @@ void addFixedBaseCassieMultibody(MultibodyPlant<double>* plant,
   plant->AddForceElement<drake::multibody::UniformGravityFieldElement>(
       -9.81 * Eigen::Vector3d::UnitZ());
 
-  plant->WeldFrames(
-    plant->world_frame(), plant->GetFrameByName("pelvis"),
-    drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
-
-  // TODO: add distance constrains and springs
-  plant->Finalize();
+  if (!floating_base) {
+    plant->WeldFrames(
+      plant->world_frame(), plant->GetFrameByName("pelvis"),
+      drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
+  }
 }
-
-void addFixedBaseCassieMultibody(MultibodyPlant<double>* plant,
-  std::string filename) {
-  addFixedBaseCassieMultibody(plant, filename);
-}
-using drake::multibody::joints::FloatingBaseType;
 
 std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(
     std::string filename, FloatingBaseType base_type) {

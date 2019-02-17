@@ -1,4 +1,4 @@
-#include "multibody/rbt_utils.h"
+#include "attic/multibody/rigidbody_utils.h"
 
 namespace dairlib {
 namespace multibody {

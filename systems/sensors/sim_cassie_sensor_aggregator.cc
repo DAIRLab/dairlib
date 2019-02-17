@@ -10,6 +10,8 @@ using dairlib::systems::TimestampedVector;
 using Eigen::VectorXd;
 using drake::systems::Context;
 using std::map;
+using std::cout;
+using std::endl;
 
 SimCassieSensorAggregator::SimCassieSensorAggregator(const RigidBodyTree<double>& tree) {
   num_positions_ = tree.get_num_positions();
@@ -17,6 +19,7 @@ SimCassieSensorAggregator::SimCassieSensorAggregator(const RigidBodyTree<double>
 
   positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
+  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
 
   input_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(10)).get_index();
   state_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
@@ -45,27 +48,56 @@ void SimCassieSensorAggregator::Aggregator(const Context<double>& context,
     // std::cout<<"positionIndexMap[motor_position_names_[i]] = "<<positionIndexMap[motor_position_names_[i]]<<"\n";
     // sensor_msg->motor_position[i] = state->GetAtIndex(positionIndexMap_[motor_position_names_[i]]);
 
+  sensor_msg->motor_position_names.resize(sensor_msg->num_motors);
+  sensor_msg->motor_velocity_names.resize(sensor_msg->num_motors);
+  sensor_msg->joint_position_names.resize(sensor_msg->num_joints);
+  sensor_msg->joint_velocity_names.resize(sensor_msg->num_joints);
+  sensor_msg->effort_names.resize(sensor_msg->num_motors);
+  sensor_msg->motor_position.resize(sensor_msg->num_motors);
+  sensor_msg->motor_velocity.resize(sensor_msg->num_motors);
+  sensor_msg->joint_position.resize(sensor_msg->num_joints);
+  sensor_msg->joint_velocity.resize(sensor_msg->num_joints);
+  sensor_msg->effort.resize(sensor_msg->num_motors);
+
+
+  std::cout<<"\n************************\n";
+  for (auto const& element : positionIndexMap_)
+    cout << element.first << " = " << element.second << endl; std::cout<<"\n";
+  for (auto const& element : velocityIndexMap_)
+    cout << element.first << " = " << element.second << endl; std::cout<<"\n";
+  for (auto const& element : actuatorIndexMap_)
+    cout << element.first << " = " << element.second << endl; std::cout<<"\n";
+  std::cout<<"************************\n\n";
+
+  cout<<"num_positions_ = " << num_positions_ <<endl;
+  cout<<"num_velocities_ = " << num_velocities_ <<endl;
+  std::cout<<"************************\n\n";
+
+
+  std::cout<<"motor position/velocity/efforts\n";
   for (int i = 0; i < sensor_msg->num_motors; i++) {
+    std::cout<<"i = "<<i<<"\n";
     sensor_msg->motor_position_names[i] = motor_position_names_[i];
-    // sensor_msg->motor_position[i] = state->GetAtIndex(0);
+    std::cout<<"motor_position_names_["<<i<<"] = "<<motor_position_names_[i]<<"\n";
+    std::cout<<"positionIndexMap_.at(motor_position_names_[i]) = "<<positionIndexMap_.at(motor_position_names_[i])<<"\n";
     sensor_msg->motor_position[i] = state->GetAtIndex(positionIndexMap_.at(motor_position_names_[i]));
     sensor_msg->motor_velocity_names[i] = motor_velocity_names_[i];
-    // sensor_msg->motor_velocity[i] = state->GetAtIndex(0);
     sensor_msg->motor_velocity[i] = state->GetAtIndex(num_positions_ + velocityIndexMap_.at(motor_velocity_names_[i]));
     sensor_msg->effort_names[i] = effort_names_[i];
     sensor_msg->effort[i] = input->GetAtIndex(i);
   }
 
+  std::cout<<"joints position/velocity\n";
   for (int i = 0; i < sensor_msg->num_joints; i++) {
+    std::cout<<"i = "<<i<<"\n";
     sensor_msg->joint_position_names[i] = joint_position_names_[i];
-    // sensor_msg->joint_position[i] = state->GetAtIndex(0);
     sensor_msg->joint_position[i] = state->GetAtIndex(positionIndexMap_.at(joint_position_names_[i]));
     sensor_msg->joint_velocity_names[i] = joint_velocity_names_[i];
-    // sensor_msg->joint_velocity[i] = state->GetAtIndex(0);
     sensor_msg->joint_velocity[i] = state->GetAtIndex(num_positions_ + velocityIndexMap_.at(joint_velocity_names_[i]));
   }
 
   for (int i = 0; i < 3; i++) {
+    std::cout<<"i = "<<i<<"\n";
     sensor_msg->imu_linear_acc_names[i] = imu_linear_acc_names_[i];
     sensor_msg->imu_linear_acc[i] = acce->GetAtIndex(i);
     sensor_msg->imu_ang_vel_names[i] = imu_ang_vel_names_[i];

@@ -42,6 +42,7 @@ class SimCassieSensorAggregator : public drake::systems::LeafSystem<double> {
   int num_velocities_;
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;
+  std::map<std::string, int> actuatorIndexMap_;
   
   std::vector<std::string> motor_position_names_{
   	"hip_roll_left",

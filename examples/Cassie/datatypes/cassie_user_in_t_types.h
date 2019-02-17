@@ -6,7 +6,7 @@
 
 typedef struct {
   double torque[10];
-  short telemetry[9];
+  int16_t telemetry[9];
 } cassie_user_in_t;
 
 #endif

@@ -23,7 +23,7 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
     lcm_in.num_positions = CASSIE_NUM_POS;
     lcm_in.num_velocities = CASSIE_NUM_VEL;
     lcm_in.num_efforts = CASSIE_NUM_EFF;
-    lcm_in.timestamp = 0;
+    lcm_in.utime = 0;
     
     for (uint i = 0; i < CASSIE_NUM_POS; i++) {
         lcm_in.position_names[i] = cassiePositionNames[i];
@@ -84,7 +84,7 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
 
     auto current_time = std::chrono::system_clock::now();
     auto duration_in_seconds = std::chrono::duration<double>(current_time.time_since_epoch());
-    lcm_in.timestamp  = duration_in_seconds.count()*1e6;
+    lcm_in.utime  = duration_in_seconds.count()*1e6;
     
     return lcm_in;
 }

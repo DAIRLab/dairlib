@@ -21,6 +21,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive from.");
 DEFINE_int64(port, 5000, "Port to receive on.");
+DEFINE_double(pub_rate, 0, "LCM pubishing rate.");
 
 
 /// Runs UDP driven loop for 10 seconds
@@ -39,7 +40,7 @@ int do_main(int argc, char* argv[]) {
   auto output_sender = builder.AddSystem<systems::CassieOutputSender>();
   auto output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
-      &lcm, std::numeric_limits<double>::infinity()));
+      &lcm, FLAGS_pub_rate));
 
   // connect state publisher
   builder.Connect(input_sub->get_output_port(),

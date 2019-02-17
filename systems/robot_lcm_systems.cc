@@ -47,7 +47,7 @@ RobotOutputReceiver::RobotOutputReceiver(
 }
 
 void RobotOutputReceiver::CopyOutput(
-    const Context<double>& context, lcmt_cassie_out* output) const {
+    const Context<double>& context, OutputVector<double>* output) const {
   const drake::systems::AbstractValue* input =
       this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
@@ -65,7 +65,7 @@ void RobotOutputReceiver::CopyOutput(
   }
   output->SetPositions(positions);
   output->SetVelocities(velocities);
-  output->set_timestamp(state_msg.timestamp);
+  output->set_timestamp(state_msg.utime * 1.0e-6);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -184,7 +184,7 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
     input_vector(j) = input_msg.efforts[i];
   }
   output->SetDataVector(input_vector);
-  output->set_timestamp(input_msg.timestamp);
+  output->set_timestamp(input_msg.utime * 1.0e-6);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -222,7 +222,7 @@ void RobotCommandSender::OutputCommand(const Context<double>& context,
       this->EvalVectorInput(context, 0);
 
 
-  input_msg->timestamp = command->get_timestamp();  // context.get_time()*1e6;
+  input_msg->utime = command->get_timestamp() * 1e6;
   input_msg->num_efforts = num_actuators_;
   input_msg->effort_names.resize(num_actuators_);
   input_msg->efforts.resize(num_actuators_);

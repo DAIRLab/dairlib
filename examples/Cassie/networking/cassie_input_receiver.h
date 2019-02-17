@@ -18,7 +18,9 @@ class CassieInputReceiver : public drake::systems::LeafSystem<double> {
 
  private:
   void CopyOutput(const drake::systems::Context<double>& context,
-                    cassie_user_in_t* output) const;
+                    cassie_user_in_t* cassie_in) const;
+
+  std::vector<int> u_vector_to_user_index_;
 };
 
 }  // namespace systems

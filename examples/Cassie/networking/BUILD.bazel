@@ -10,21 +10,6 @@ load(
     "drake_lcm_py_library",
 )
 
-cc_binary(
-  name = "udp_server_test",
-  srcs = ["udp_server_test.c"],
-  deps = [
-       ],
-)
-
-cc_binary(
-  name = "udp_client_test",
-  srcs = ["udp_client_test.c"],
-  deps = [
-       ],
-)
-
-
 cc_library(
   name = "cassie_udp_pub_sub",
   srcs = ["udp_serializer.cc",
@@ -32,6 +17,7 @@ cc_library(
           "cassie_udp_publisher.cc",
           "cassie_input_sender.cc",
           "cassie_input_receiver.cc",
+          "cassie_input_translator.cc",
           "cassie_output_sender.cc",
           "cassie_output_receiver.cc"],
   hdrs = ["udp_serializer.h",
@@ -39,14 +25,17 @@ cc_library(
           "cassie_udp_publisher.h",
           "cassie_input_sender.h",
           "cassie_input_receiver.h",
+          "cassie_input_translator.h",
           "cassie_output_sender.h",
           "cassie_output_receiver.h"],
   deps = [
     "@drake//common",
     "@drake//systems/lcm:lcm_pubsub_system",
     "@drake//systems/framework",
+    "@drake//multibody/plant",
     "//examples/Cassie/datatypes:cassie_dispatch_types",
     "//lcmtypes:lcmt_robot",
+    "//multibody:utils",
   ]
 )
 

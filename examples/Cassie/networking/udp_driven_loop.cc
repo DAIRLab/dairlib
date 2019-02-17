@@ -50,12 +50,13 @@ void UDPDrivenLoop::RunToSecondsAssumingInitialized(double stop_time) {
   double msg_time;
 
   while (true) {
+    std::cout << "UDPDrivenLoop::WaitForMessage." << std::endl;
     WaitForMessage();
     msg_time = driving_sub_.get_message_utime(*sub_context_)/1.0e6;
     if (msg_time >= stop_time) break;
-
+    std::cout << "UDPDrivenLoop::Starting step." << std::endl;
     stepper_->StepTo(msg_time);
-
+    std::cout << "UDPDrivenLoop::Starting publish" << std::endl; 
     // Explicitly publish after we are done with all the intermediate
     // computation.
     if (publish_on_every_received_message_) {

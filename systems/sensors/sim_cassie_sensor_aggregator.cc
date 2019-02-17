@@ -79,10 +79,16 @@ void SimCassieSensorAggregator::Aggregator(const Context<double>& context,
     std::cout<<"i = "<<i<<"\n";
     sensor_msg->motor_position_names[i] = motor_position_names_[i];
     std::cout<<"motor_position_names_["<<i<<"] = "<<motor_position_names_[i]<<"\n";
-    std::cout<<"positionIndexMap_.at(motor_position_names_[i]) = "<<positionIndexMap_.at(motor_position_names_[i])<<"\n";
+    std::cout<<"positionIndexMap_.at(motor_position_names_[0]) = "<<positionIndexMap_.at("hip_roll_left")<<"\n";
+    std::cout<<"state->GetAtIndex(6) = "<< state->GetAtIndex(positionIndexMap_.at("hip_roll_left"))<<"\n";
     sensor_msg->motor_position[i] = state->GetAtIndex(positionIndexMap_.at(motor_position_names_[i]));
+    
     sensor_msg->motor_velocity_names[i] = motor_velocity_names_[i];
+    std::cout<<"motor_velocity_names_["<<i<<"] = "<<motor_velocity_names_[i]<<"\n";
+    std::cout<<"velocityIndexMap_.at(motor_velocity_names_[0]) = "<<velocityIndexMap_.at("hip_roll_leftdot")<<"\n";
+    std::cout<<"state->GetAtIndex(6) = "<< state->GetAtIndex(velocityIndexMap_.at("hip_roll_leftdot"))<<"\n";
     sensor_msg->motor_velocity[i] = state->GetAtIndex(num_positions_ + velocityIndexMap_.at(motor_velocity_names_[i]));
+    
     sensor_msg->effort_names[i] = effort_names_[i];
     sensor_msg->effort[i] = input->GetAtIndex(i);
   }

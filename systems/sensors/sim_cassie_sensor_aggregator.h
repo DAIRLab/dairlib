@@ -56,16 +56,16 @@ class SimCassieSensorAggregator : public drake::systems::LeafSystem<double> {
 	"toe_left",
 	"toe_right"};
   std::vector<std::string> motor_velocity_names_{
-	"hip_roll_left",
-	"hip_roll_right",
-	"hip_yaw_left",
-	"hip_yaw_right",
-	"hip_pitch_left",
-	"hip_pitch_right",
-	"knee_left",
-	"knee_right",
-	"toe_left",
-	"toe_right"};
+	"hip_roll_leftdot",
+	"hip_roll_rightdot",
+	"hip_yaw_leftdot",
+	"hip_yaw_rightdot",
+	"hip_pitch_leftdot",
+	"hip_pitch_rightdot",
+	"knee_leftdot",
+	"knee_rightdot",
+	"toe_leftdot",
+	"toe_rightdot"};
   std::vector<std::string> joint_position_names_{
 	"knee_joint_left",
 	"knee_joint_right",

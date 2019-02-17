@@ -1,6 +1,6 @@
 #include <vector>
 #include <set>
-#include "multibody/mbt_utils.h"
+#include "multibody/multibody_utils.h"
 #include "drake/common/drake_assert.h"
 
 namespace dairlib {
@@ -9,9 +9,52 @@ namespace multibody {
 using std::map;
 using std::string;
 using drake::multibody::MultibodyPlant;
+using drake::systems::Context;
+using drake::geometry::SceneGraph;
+using drake::geometry::HalfSpace;
 using drake::multibody::JointIndex;
 using drake::multibody::JointActuatorIndex;
+using Eigen::VectorXd;
+using drake::VectorX;
+using drake::AutoDiffXd;
 
+template <typename T>
+VectorX<T> getInput(const MultibodyPlant<T>& plant, const Context<T>& context) {
+  VectorX<T> input = plant.EvalEigenVectorInput(context,
+        plant.get_actuation_input_port().get_index());
+  return input;
+}
+
+template <typename T>
+std::unique_ptr<Context<T>> createContext(const MultibodyPlant<T>& plant,
+    const VectorX<T>& state, const VectorX<T>& input) {
+  auto context = plant.CreateDefaultContext();
+  plant.SetPositionsAndVelocities(context.get(), state);
+  context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
+  return context;
+}
+
+template <typename T>
+void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
+                    double mu_static, double mu_kinetic) {
+  if (!plant->geometry_source_is_registered()) {
+    plant->RegisterAsSourceForSceneGraph(scene_graph);
+  }
+
+  Eigen::Vector3d normal_W(0, 0, 1);
+  Eigen::Vector3d point_W(0, 0, 0);
+  drake::multibody::CoulombFriction<T> friction(mu_static, mu_kinetic);
+
+  // A half-space for the ground geometry.
+  plant->RegisterCollisionGeometry(
+      plant->world_body(), HalfSpace::MakePose(normal_W, point_W),
+      HalfSpace(), "collision", friction);
+
+  // Add visual for the ground.
+  plant->RegisterVisualGeometry(
+      plant->world_body(), HalfSpace::MakePose(normal_W, point_W),
+      HalfSpace(), "visual");
+}
 
 /// Construct a map between joint names and position indices
 ///     <name,index> such that q(index) has the given name
@@ -141,5 +184,28 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<double>& plant) {
   return name_to_index_map;
 }
 
+
+
+bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
+                        VectorXd positions, double tolerance) {
+  VectorXd joint_min = plant.GetPositionLowerLimits();
+  VectorXd joint_max = plant.GetPositionUpperLimits();
+
+  bool joints_within_limits = true;
+
+  for (int i = 0; i < positions.size(); ++i) {
+    if (positions(i) < (joint_min(i) + tolerance) ||
+        (positions(i) > (joint_min(i) - tolerance))) {
+      joints_within_limits = false;
+    }
+  }
+  return joints_within_limits;
+}
+
+template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic);   // NOLINT
+template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
+template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
+template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const VectorX<double>& state, const VectorX<double>& input);  // NOLINT
+template std::unique_ptr<Context<AutoDiffXd>> createContext(const MultibodyPlant<AutoDiffXd>& plant, const VectorX<AutoDiffXd>& state, const VectorX<AutoDiffXd>& input);  // NOLINT
 }  // namespace multibody
 }  // namespace dairlib

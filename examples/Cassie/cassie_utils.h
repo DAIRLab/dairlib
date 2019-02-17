@@ -22,11 +22,11 @@ namespace dairlib {
 /// from the URDF to centralize any modeling changes or additions
 /// @param plant a pointer to the MultibodyPlant
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
-/// @param filename the URDF or SDF file to use for Cassie 
+/// @param filename the URDF or SDF file to use for Cassie
 ///        omit to use default value
-void addFixedBaseCassieMultibody(
-    drake::multibody::MultibodyPlant<double>* plant,
+void addCassieMultibody(drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
+    bool floating_base = true,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
 
 /// Construct and create a unique pointer to a RigidBodyTree<double>

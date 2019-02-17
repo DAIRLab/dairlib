@@ -16,7 +16,7 @@
 namespace dairlib {
 namespace {
 
-// Simple example which simulates the (passive) Acrobot.  Run drake-visualizer
+// Simple example which simulates the (passive) Kneed walker.  Run drake-visualizer
 // to see the animated result.
 
 DEFINE_double(realtime_factor, .5,

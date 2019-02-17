@@ -1,0 +1,48 @@
+# -*- python -*-
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "utils",
+    srcs = [
+        "rigidbody_utils.cc",
+    ],
+    hdrs = [
+        "rigidbody_utils.h",
+    ],
+    deps = [
+        "@drake//attic/multibody:rigid_body_tree",
+    ],
+)
+
+cc_library(
+    name = "contact_toolkit",
+    srcs = [
+        "contact_toolkit.cc",
+    ],
+    hdrs = [
+        "contact_toolkit.h",
+    ],
+    deps = [
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//solvers:mathematical_program",
+        ":utils",
+    ],
+)
+
+
+cc_test(
+    name = "contact_toolkit_test",
+    srcs = [
+        "test/contact_toolkit_test.cc",
+    ],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        ":contact_toolkit",
+        ":utils",
+        "@gtest//:main",
+    ],
+    size = "small",
+)

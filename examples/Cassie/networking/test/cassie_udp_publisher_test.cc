@@ -8,7 +8,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "examples/Cassie/networking/cassie_udp_publisher.h"
-#include "examples/Cassie/networking/cassie_lcm_systems.h"
+#include "examples/Cassie/networking/cassie_output_sender.h"
 
 namespace dairlib {
 using drake::systems::DiagramBuilder;
@@ -23,7 +23,7 @@ DEFINE_int64(port, 5000, "Port to send to.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  
+
   drake::lcm::DrakeLcm lcm;
   DiagramBuilder<double> builder;
 

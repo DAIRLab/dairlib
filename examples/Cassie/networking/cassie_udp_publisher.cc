@@ -84,7 +84,6 @@ drake::systems::EventStatus CassieUDPPublisher::PublishInputAsUDPMessage(
       message_bytes.size(), 0,
       (struct sockaddr *)&server_address_, sizeof(server_address_));
   DRAKE_THROW_UNLESS(result >= 0);
-  // std:: cout << "Data size: " << sizeof(message_bytes.data()) << std::endl;
   return drake::systems::EventStatus::Succeeded();
 }
 

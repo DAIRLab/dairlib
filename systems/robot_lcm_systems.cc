@@ -46,8 +46,8 @@ RobotOutputReceiver::RobotOutputReceiver(
     &RobotOutputReceiver::CopyOutput);
 }
 
-void RobotOutputReceiver::CopyOutput(const Context<double>& context,
-                                     OutputVector<double>* output) const {
+void RobotOutputReceiver::CopyOutput(
+    const Context<double>& context, lcmt_cassie_out* output) const {
   const drake::systems::AbstractValue* input =
       this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);

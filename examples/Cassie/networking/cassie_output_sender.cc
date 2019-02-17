@@ -1,5 +1,5 @@
 #include <algorithm>
-#include "examples/Cassie/networking/cassie_lcm_systems.h"
+#include "examples/Cassie/networking/cassie_output_sender.h"
 
 
 namespace dairlib {
@@ -8,12 +8,9 @@ namespace systems {
 using drake::systems::Context;
 using drake::systems::LeafSystem;
 
-void copy_elmo(const elmo_out_t input, lcmt_elmo_out* output);
-void copy_leg(const cassie_leg_out_t input, lcmt_cassie_leg_out* output);
+void copy_elmo(const elmo_out_t& input, lcmt_elmo_out* output);
+void copy_leg(const cassie_leg_out_t& input, lcmt_cassie_leg_out* output);
 template <typename T> void copy_vector(const T* input, T* output, int size);
-
-/*--------------------------------------------------------------------------*/
-// methods implementation for CassieOutputSender.
 
 CassieOutputSender::CassieOutputSender() {
   this->DeclareAbstractInputPort("cassie_out_t",
@@ -24,7 +21,7 @@ CassieOutputSender::CassieOutputSender() {
 
 
 // Utility methods for copying data
-void copy_elmo(const elmo_out_t input, lcmt_elmo_out* output) {
+void copy_elmo(const elmo_out_t& input, lcmt_elmo_out* output) {
   output->statusWord = input.statusWord;
   output->position = input.position;
   output->velocity = input.velocity;
@@ -36,7 +33,7 @@ void copy_elmo(const elmo_out_t input, lcmt_elmo_out* output) {
 }
 
 
-void copy_leg(const cassie_leg_out_t input, lcmt_cassie_leg_out* output) {
+void copy_leg(const cassie_leg_out_t& input, lcmt_cassie_leg_out* output) {
   copy_elmo(input.hipRollDrive, &output->hipRollDrive);
   copy_elmo(input.hipYawDrive, &output->hipYawDrive);
   copy_elmo(input.hipPitchDrive, &output->hipPitchDrive);
@@ -71,7 +68,7 @@ void CassieOutputSender::Output(const Context<double>& context,
   copy_vector(cassie_out.pelvis.targetPc.etherCatStatus,
               output->pelvis.targetPc.etherCatStatus, 6);
   copy_vector(cassie_out.pelvis.targetPc.etherCatNotifications,
-              output->pelvis.targetPc.etherCatNotifications, 12);
+              output->pelvis.targetPc.etherCatNotifications, 21);
   output->pelvis.targetPc.taskExecutionTime =
       cassie_out.pelvis.targetPc.taskExecutionTime;
   output->pelvis.targetPc.overloadCounter =

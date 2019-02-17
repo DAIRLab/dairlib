@@ -30,11 +30,13 @@ cc_library(
   srcs = ["udp_serializer.cc",
           "cassie_udp_subscriber.cc",
           "cassie_udp_publisher.cc",
-          "cassie_lcm_systems.cc"],
+          "cassie_output_sender.cc",
+          "cassie_output_receiver.cc"],
   hdrs = ["udp_serializer.h",
           "cassie_udp_subscriber.h",
           "cassie_udp_publisher.h",
-          "cassie_lcm_systems.h"],
+          "cassie_output_sender.h",
+          "cassie_output_receiver.h"],
   deps = [
     "@drake//common",
     "@drake//systems/lcm:lcm_pubsub_system",
@@ -72,5 +74,17 @@ cc_binary(
         "//examples/Cassie/datatypes:cassie_networking",
         "//examples/Cassie/datatypes:cassie_out_t",
         "//examples/Cassie/datatypes:cassie_user_in_t",
+    ],
+)
+
+cc_test(
+    name = "cassie_output_lcm_test",
+    size = "small",
+    srcs = ["test/cassie_output_lcm_test.cc"],
+    deps = [
+        ":cassie_udp_pub_sub",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework",
+        "@gtest//:main",
     ],
 )

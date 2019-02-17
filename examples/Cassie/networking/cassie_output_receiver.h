@@ -12,14 +12,14 @@ namespace dairlib {
 namespace systems {
 
 /// @file This file contains LCM parsers for the native Cassie message structs
-class CassieOutputSender : public drake::systems::LeafSystem<double> {
+class CassieOutputReceiver : public drake::systems::LeafSystem<double> {
  public:
-  CassieOutputSender();
+  CassieOutputReceiver();
 
  private:
-  void Output(const drake::systems::Context<double>& context,
-                    lcmt_cassie_out* output) const;
+  void CopyOutput(const drake::systems::Context<double>& context,
+                    cassie_out_t* output) const;
 };
 
-}  // namespace dairlib
 }  // namespace systems
+}  // namespace dairlib

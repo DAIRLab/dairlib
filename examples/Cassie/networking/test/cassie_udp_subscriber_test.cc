@@ -8,7 +8,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "examples/Cassie/networking/cassie_udp_subscriber.h"
-#include "examples/Cassie/networking/cassie_lcm_systems.h"
+#include "examples/Cassie/networking/cassie_output_sender.h"
 
 namespace dairlib {
 using drake::systems::DiagramBuilder;

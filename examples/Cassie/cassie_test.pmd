@@ -1,10 +1,10 @@
 group "0.operator" {
     cmd "1.state-visualizer" {
-        exec = "bazel-bin/examples/Cassie/cassie_state_visualizer";
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
         host = "localhost";
     }
     cmd "0.drake-director" {
-        exec = "bazel-bin/director/drake-director --script examples/Cassie/pd_panel.py --script examples/Cassie/show_time.py";
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/pd_panel.py --script examples/Cassie/show_time.py";
         host = "localhost";
     }
 }

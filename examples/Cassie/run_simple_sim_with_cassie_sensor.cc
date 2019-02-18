@@ -53,18 +53,18 @@ DEFINE_double(dt, 1e-3, "The step size to use for "
               "'simulation_type=compliant'");
 
 // Cassie model paramter
-DEFINE_bool(is_fixed_base, true, "Fixed base or quaternion floating base");
+DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree;
-  if (FLAGS_is_fixed_base)
-    tree = makeCassieTreePointer();
-  else
+  if (FLAGS_floating_base)
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kQuaternion);
+  else
+    tree = makeCassieTreePointer();
 
   std::shared_ptr<RigidBodyFrame<double>> imu_frame =
            std::allocate_shared<RigidBodyFrame<double>>(

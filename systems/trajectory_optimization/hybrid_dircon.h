@@ -40,13 +40,13 @@ class HybridDircon :
 
   /// Constructs the %MathematicalProgram% and adds the collocation constraints.
   ///
-  /// @param tree The RigidBodyTree describing the plant and kinematics
+  /// @param plant The MultibodyPlant describing the plant and kinematics
   /// @param num_time_samples The number of knot points in the trajectory.
   /// @param minimum_timestep Minimum spacing between sample times.
   /// @param maximum_timestep Maximum spacing between sample times.
   /// @param constraints The set of kinematic constraints that must be enforced
   /// @param opttions (see DirconOptions)
-  HybridDircon(const RigidBodyTree<double>& tree,
+  HybridDircon(const drake::multibody::MultibodyPlant<T>& plant,
                std::vector<int> num_time_samples,
                std::vector<double> minimum_timestep,
                std::vector<double> maximum_timestep,
@@ -128,11 +128,11 @@ class HybridDircon :
 
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
-  const RigidBodyTree<double>* tree_;
+  const drake::multibody::MultibodyPlant<T>& plant_;
+  std::vector<DirconKinematicDataSet<T>*> constraints_;
   const int num_modes_;
   const std::vector<int> mode_lengths_;
   std::vector<int> mode_start_;
-  std::vector<DirconKinematicDataSet<T>*> constraints_;
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;
   const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> force_vars_;

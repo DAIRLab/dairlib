@@ -6,12 +6,14 @@
 
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
-
+#include "multibody/multibody_utils.h"
 
 namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
+using drake::multibody::MultibodyPlant;
+using drake::systems::Context;
 using drake::solvers::Binding;
 using drake::solvers::Constraint;
 using drake::solvers::MathematicalProgram;
@@ -106,14 +108,14 @@ void DirconAbstractConstraint<double>::DoEval(
 
 template <typename T>
 DirconDynamicConstraint<T>::DirconDynamicConstraint(
-    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints) :
-  DirconDynamicConstraint(tree, constraints, tree.get_num_positions(),
-                          tree.get_num_velocities(), tree.get_num_actuators(),
+    const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints) :
+  DirconDynamicConstraint(plant, constraints, plant.num_positions(),
+                          plant.num_velocities(), plant.num_actuators(),
                           constraints.countConstraints()) {}
 
 template <typename T>
 DirconDynamicConstraint<T>::DirconDynamicConstraint(
-    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+    const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
     int num_positions, int num_velocities, int num_inputs,
     int num_kinematic_constraints)
     : DirconAbstractConstraint<T>(num_positions + num_velocities,
@@ -121,12 +123,11 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
           (4 * num_kinematic_constraints),
           Eigen::VectorXd::Zero(num_positions + num_velocities),
           Eigen::VectorXd::Zero(num_positions + num_velocities)),
+      plant_(plant),
+      constraints_(&constraints),
       num_states_{num_positions+num_velocities}, num_inputs_{num_inputs},
       num_kinematic_constraints_{num_kinematic_constraints},
-      num_positions_{num_positions}, num_velocities_{num_velocities} {
-  tree_ = &tree;
-  constraints_ = &constraints;
-}
+      num_positions_{num_positions}, num_velocities_{num_velocities} {}
 
 // The format of the input to the eval() function is the
 // tuple { timestep, state 0, state 1, input 0, input 1, force 0, force 1},
@@ -141,31 +142,35 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   // h - current time (knot) value
   // x0, x1 state vector at time steps k, k+1
   // u0, u1 input vector at time steps k, k+1
-  const auto h = x(0);
-  const auto x0 = x.segment(1, num_states_);
-  const auto x1 = x.segment(1 + num_states_, num_states_);
-  const auto u0 = x.segment(1 + (2 * num_states_), num_inputs_);
-  const auto u1 = x.segment(1 + (2 * num_states_) + num_inputs_, num_inputs_);
-  const auto l0 = x.segment(1 + 2 * (num_states_ + num_inputs_),
+  const T h = x(0);
+  const VectorX<T> x0 = x.segment(1, num_states_);
+  const VectorX<T> x1 = x.segment(1 + num_states_, num_states_);
+  const VectorX<T> u0 = x.segment(1 + (2 * num_states_), num_inputs_);
+  const VectorX<T> u1 = x.segment(1 + (2 * num_states_) + num_inputs_, num_inputs_);
+  const VectorX<T> l0 = x.segment(1 + 2 * (num_states_ + num_inputs_),
                             num_kinematic_constraints_);
-  const auto l1 = x.segment(1 + 2 * (num_states_ + num_inputs_) +
+  const VectorX<T> l1 = x.segment(1 + 2 * (num_states_ + num_inputs_) +
       num_kinematic_constraints_, num_kinematic_constraints_);
-  const auto lc = x.segment(1 + 2 * (num_states_ + num_inputs_) +
+  const VectorX<T> lc = x.segment(1 + 2 * (num_states_ + num_inputs_) +
       2*num_kinematic_constraints_, num_kinematic_constraints_);
-  const auto vc = x.segment(1 + 2 * (num_states_ + num_inputs_) +
+  const VectorX<T> vc = x.segment(1 + 2 * (num_states_ + num_inputs_) +
       3*num_kinematic_constraints_, num_kinematic_constraints_);
 
-  constraints_->updateData(x0, u0, l0);
-  const auto xdot0 = constraints_->getXDot();
+  auto context0 = multibody::createContext(plant_, x0, u0);
+  constraints_->updateData(*context0, l0);
+  const VectorX<T> xdot0 = constraints_->getXDot();
 
-  constraints_->updateData(x1, u1, l1);
-  const auto xdot1 = constraints_->getXDot();
+  auto context1 = multibody::createContext(plant_, x1, u1);
+  constraints_->updateData(*context1, l1);
+  const VectorX<T> xdot1 = constraints_->getXDot();
 
   // Cubic interpolation to get xcol and xdotcol.
-  const auto xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
-  const auto xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
+  const VectorX<T> xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
+  const VectorX<T> xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
+  const VectorX<T> ucol = 0.5 * (u0 + u1);
 
-  constraints_->updateData(xcol, 0.5 * (u0 + u1), lc);
+  auto contextcol = multibody::createContext(plant_, xcol, ucol);
+  constraints_->updateData(*contextcol, lc);
   auto g = constraints_->getXDot();
   g.head(num_positions_) += constraints_->getJ().transpose()*vc;
   *y = xdotcol - g;
@@ -202,48 +207,49 @@ Binding<Constraint> AddDirconConstraint(
 
 template <typename T>
 DirconKinematicConstraint<T>::DirconKinematicConstraint(
-    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+    const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
     DirconKinConstraintType type) :
-    DirconKinematicConstraint(tree, constraints,
+    DirconKinematicConstraint(plant, constraints,
                             std::vector<bool>(constraints.countConstraints(),
-                            false), type, tree.get_num_positions(),
-                            tree.get_num_velocities(), tree.get_num_actuators(),
+                            false), type, plant.num_positions(),
+                            plant.num_velocities(), plant.num_actuators(),
                             constraints.countConstraints()) {}
 
 template <typename T>
 DirconKinematicConstraint<T>::DirconKinematicConstraint(
-    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+    const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
     std::vector<bool> is_constraint_relative, DirconKinConstraintType type) :
-    DirconKinematicConstraint(tree, constraints, is_constraint_relative, type,
-                              tree.get_num_positions(),
-                              tree.get_num_velocities(),
-                              tree.get_num_actuators(),
+    DirconKinematicConstraint(plant, constraints, is_constraint_relative, type,
+                              plant.num_positions(),
+                              plant.num_velocities(),
+                              plant.num_actuators(),
                               constraints.countConstraints()) {}
 
 template <typename T>
 DirconKinematicConstraint<T>::DirconKinematicConstraint(
-    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
+    const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
     std::vector<bool> is_constraint_relative, DirconKinConstraintType type,
     int num_positions, int num_velocities, int num_inputs,
-    int num_kinematic_constraints)
-    : DirconAbstractConstraint<T>(type*num_kinematic_constraints,
-        num_positions + num_velocities + num_inputs + num_kinematic_constraints +
-        std::count(is_constraint_relative.begin(),is_constraint_relative.end(),true),
+    int num_kinematic_constraints) :
+    DirconAbstractConstraint<T>(type*num_kinematic_constraints, num_positions +
+        num_velocities + num_inputs + num_kinematic_constraints +
+        std::count(is_constraint_relative.begin(),
+                   is_constraint_relative.end(), true),
         VectorXd::Zero(type*num_kinematic_constraints),
         VectorXd::Zero(type*num_kinematic_constraints)),
+      plant_(plant),
+      constraints_(&constraints),
       num_states_{num_positions+num_velocities}, num_inputs_{num_inputs},
       num_kinematic_constraints_{num_kinematic_constraints},
       num_positions_{num_positions}, num_velocities_{num_velocities},
       type_{type}, is_constraint_relative_{is_constraint_relative},
-      n_relative_{(int) std::count(is_constraint_relative.begin(),
-      is_constraint_relative.end(),true)} {
-  tree_ = &tree;
-  constraints_ = &constraints;
-  relative_map_ = MatrixXd::Zero(num_kinematic_constraints_,n_relative_);
+      n_relative_{static_cast<int>(std::count(is_constraint_relative.begin(),
+      is_constraint_relative.end(), true))} {
+  relative_map_ = MatrixXd::Zero(num_kinematic_constraints_, n_relative_);
   int j = 0;
   for (int i=0; i < num_kinematic_constraints_; i++) {
-    if(is_constraint_relative_[i]) {
-      relative_map_(i,j) = 1;
+    if (is_constraint_relative_[i]) {
+      relative_map_(i, j) = 1;
       j++;
     }
   }
@@ -259,15 +265,19 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
   // h - current time (knot) value
   // x0, x1 state vector at time steps k, k+1
   // u0, u1 input vector at time steps k, k+1
-  const auto state = x.segment(0, num_states_);
-  const auto input = x.segment(num_states_, num_inputs_);
-  const auto force = x.segment(num_states_ + num_inputs_, num_kinematic_constraints_);
-  const auto offset = x.segment(num_states_ + num_inputs_ + num_kinematic_constraints_, n_relative_);
-  constraints_->updateData(state, input, force);
-  switch(type_) {
+  const VectorX<T> state = x.segment(0, num_states_);
+  const VectorX<T> input = x.segment(num_states_, num_inputs_);
+  const VectorX<T> force = x.segment(num_states_ + num_inputs_,
+                               num_kinematic_constraints_);
+  const VectorX<T> offset = x.segment(num_states_ + num_inputs_ +
+                                num_kinematic_constraints_, n_relative_);
+  auto context = multibody::createContext(plant_, state, input);
+  constraints_->updateData(*context, force);
+  switch (type_) {
     case kAll:
       *y = VectorX<T>(3*num_kinematic_constraints_);
-      *y << constraints_->getC() + relative_map_*offset, constraints_->getCDot(), constraints_->getCDDot();
+      *y << constraints_->getC() + relative_map_*offset,
+            constraints_->getCDot(), constraints_->getCDDot();
       break;
     case kAccelAndVel:
       *y = VectorX<T>(2*num_kinematic_constraints_);
@@ -282,24 +292,23 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
 
 template <typename T>
 DirconImpactConstraint<T>::DirconImpactConstraint(
-    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints) :
-  DirconImpactConstraint(tree, constraints, tree.get_num_positions(),
-                         tree.get_num_velocities(),
+    const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints) :
+  DirconImpactConstraint(plant, constraints, plant.num_positions(),
+                         plant.num_velocities(),
                          constraints.countConstraints()) {}
 
 template <typename T>
 DirconImpactConstraint<T>::DirconImpactConstraint(
-    const RigidBodyTree<double>& tree, DirconKinematicDataSet<T>& constraints,
-    int num_positions, int num_velocities, int num_kinematic_constraints)
-    : DirconAbstractConstraint<T>(num_velocities, num_positions +
+    const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
+    int num_positions, int num_velocities, int num_kinematic_constraints) :
+    DirconAbstractConstraint<T>(num_velocities, num_positions +
         2*num_velocities + num_kinematic_constraints,
         VectorXd::Zero(num_velocities), VectorXd::Zero(num_velocities)),
-      num_states_{num_positions+num_velocities},
-      num_kinematic_constraints_{num_kinematic_constraints},
-      num_positions_{num_positions}, num_velocities_{num_velocities} {
-  tree_ = &tree;
-  constraints_ = &constraints;
-}
+    plant_(plant),
+    constraints_(&constraints),    
+    num_states_{num_positions+num_velocities},
+    num_kinematic_constraints_{num_kinematic_constraints},
+    num_positions_{num_positions}, num_velocities_{num_velocities} {}
 
 
 // The format of the input to the eval() function is the
@@ -314,22 +323,22 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
   // x0, state vector at time k^-
   // impulse, impulsive force at impact
   // v1, post-impact velocity at time k^+
-  const auto x0 = x.segment(0, num_states_);
-  const auto impulse = x.segment(num_states_, num_kinematic_constraints_);
-  const auto v1 = x.segment(num_states_ + num_kinematic_constraints_, num_velocities_);
+  const VectorX<T> x0 = x.segment(0, num_states_);
+  const VectorX<T> impulse = x.segment(num_states_, num_kinematic_constraints_);
+  const VectorX<T> v1 = x.segment(num_states_ + num_kinematic_constraints_,
+                            num_velocities_);
 
-  const auto v0 = x0.tail(num_velocities_);
+  const VectorX<T> v0 = x0.tail(num_velocities_);
 
-  //vp = vm + M^{-1}*J^T*Lambda
-  const auto u = VectorXd::Zero(tree_->get_num_actuators()).template cast<T>();
+  // vp = vm + M^{-1}*J^T*Lambda
+  const VectorX<T> u = VectorXd::Zero(plant_.num_actuators()).template cast<T>();
 
-  //Passing in a dummmy value for u. Impulse value also does not matter, since
-  //we only actually want J.
-  //TODO(mposa): Streamline calculations here by either caching or only doing
-  //a partial update of the constraints
-  constraints_->updateData(x0, u, impulse);
+  auto context = multibody::createContext(plant_, x0, u);
 
-  const MatrixX<T> M = tree_->massMatrix(*constraints_->getCache());
+  constraints_->updateData(*context, impulse);
+
+  MatrixX<T> M(num_velocities_, num_velocities_);
+  plant_.CalcMassMatrixViaInverseDynamics(*context, &M);
 
   *y = M*(v1 - v0) - constraints_->getJ().transpose()*impulse;
 }

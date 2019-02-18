@@ -9,8 +9,8 @@
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 
-#include "multibody/rbt_utils.h"
-#include "multibody/mbt_utils.h"
+#include "attic/multibody/rigidbody_utils.h"
+#include "multibody/multibody_utils.h"
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_cassie_pelvis_out.hpp"

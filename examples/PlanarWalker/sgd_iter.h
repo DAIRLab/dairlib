@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "systems/trajectory_optimization/hybrid_dircon.h"
+#include "attic/systems/trajectory_optimization/hybrid_dircon.h"
 
 namespace dairlib {
 namespace goldilocks_models  {

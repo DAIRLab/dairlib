@@ -2,8 +2,6 @@
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/multibody/joints/floating_base_types.h" 
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/systems/analysis/simulator.h"
@@ -13,25 +11,21 @@
 #include "drake/multibody/tree/revolute_joint.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 
-#include "systems/robot_lcm_systems.h"
-#include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_robot_input.hpp"
-#include "systems/primitives/subvector_pass_through.h"
+#include "multibody/multibody_utils.h"
 #include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib {
 using drake::systems::DiagramBuilder;
 using drake::geometry::SceneGraph;
+using drake::geometry::HalfSpace;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::Simulator;
 using drake::multibody::RevoluteJoint;
-using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::lcm::LcmPublisherSystem;
-using dairlib::systems::SubvectorPassThrough;
-
 
 // Simulation parameters.
+DEFINE_bool(floating_base, true, "Fixed or floating base model");
+
 DEFINE_double(target_realtime_rate, 1.0,  
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
@@ -45,8 +39,6 @@ int do_main(int argc, char* argv[]) {
 
   DiagramBuilder<double> builder;
 
-  drake::lcm::DrakeLcm lcm;
-
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
@@ -54,39 +46,20 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double>& plant =
       *builder.AddSystem<MultibodyPlant>(time_step);
-  addFixedBaseCassieMultibody(&plant, &scene_graph);
 
-  // Create input receiver.
-  auto input_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>("CASSIE_INPUT",
-                                                           &lcm));
-  auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
-  builder.Connect(input_sub->get_output_port(),
-                  input_receiver->get_input_port(0));
+  if (FLAGS_floating_base) {
+    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+  }
 
-  // connect input receiver
-  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-    input_receiver->get_output_port(0).size(),
-    0,
-    plant.get_actuation_input_port().size());
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
 
-  builder.Connect(input_receiver->get_output_port(0),
-                  passthrough->get_input_port());
-  builder.Connect(passthrough->get_output_port(),
+  plant.Finalize();
+
+  auto input_source = builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
+      Eigen::VectorXd::Zero(plant.num_actuators()));
+
+  builder.Connect(input_source->get_output_port(),
                   plant.get_actuation_input_port());
-
-  // Create state publisher.
-  auto state_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_robot_output>("CASSIE_STATE",
-                                                           &lcm, 1.0/200.0));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
-
-  // connect state publisher
-  builder.Connect(plant.get_continuous_state_output_port(),
-                  state_sender->get_input_port_state());
-
-  builder.Connect(state_sender->get_output_port(0),
-                  state_pub->get_input_port());
 
   builder.Connect(
     plant.get_geometry_poses_output_port(),
@@ -95,16 +68,17 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
 
+  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
   auto diagram = builder.Build();
 
 
   // Create a context for this system:
   std::unique_ptr<Context<double>> diagram_context =
       diagram->CreateDefaultContext();
-  diagram_context->EnableCaching();
   diagram->SetDefaultContext(diagram_context.get());
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
+
 
   plant.GetJointByName<RevoluteJoint>("hip_pitch_left").
       set_angle(&plant_context, .269);
@@ -124,7 +98,13 @@ int do_main(int argc, char* argv[]) {
   plant.GetJointByName<RevoluteJoint>("toe_right").
       set_angle(&plant_context, -M_PI/3);
 
-
+  if (FLAGS_floating_base) {
+    Eigen::Isometry3d transform;
+    transform.linear() = Eigen::Matrix3d::Identity();;
+    transform.translation() = Eigen::Vector3d(0, 0, 1.2);
+    plant.SetFreeBodyPose(&plant_context, plant.GetBodyByName("pelvis"),
+        transform);
+  }
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
@@ -136,8 +116,6 @@ int do_main(int argc, char* argv[]) {
       *diagram, FLAGS_dt, &simulator.get_mutable_context());
   }
 
-  simulator.set_publish_every_time_step(false);
-  simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
   simulator.StepTo(std::numeric_limits<double>::infinity());

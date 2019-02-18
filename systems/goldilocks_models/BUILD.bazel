@@ -16,7 +16,6 @@ cc_library(
         "symbolic_manifold.h",
     ],
     deps = [
-        "//systems/trajectory_optimization:dircon",
         "@drake//attic/multibody:rigid_body_tree",
         "@drake//common",
         "@drake//solvers",

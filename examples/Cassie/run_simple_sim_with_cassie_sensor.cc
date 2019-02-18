@@ -36,7 +36,8 @@ using drake::systems::lcm::LcmPublisherSystem;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
-DEFINE_double(youngs_modulus, 1e8, "The contact model's Young's modulus (Pa)");
+DEFINE_double(youngs_modulus, 1e8,
+              "The contact model's Young's modulus (Pa)");
 DEFINE_double(us, 0.7, "The static coefficient of friction");
 DEFINE_double(ud, 0.7, "The dynamic coefficient of friction");
 DEFINE_double(v_tol, 0.01,
@@ -44,34 +45,39 @@ DEFINE_double(v_tol, 0.01,
 DEFINE_double(dissipation, 2, "The contact model's dissipation (s/m)");
 DEFINE_double(contact_radius, 2e-4,
               "The characteristic scale of contact patch (m)");
-DEFINE_string(simulation_type, "compliant", "The type of simulation to use: "
+DEFINE_string(simulation_type, "compliant",
+              "The type of simulation to use: "
               "'compliant' or 'timestepping'");
 DEFINE_double(dt, 1e-3, "The step size to use for "
               "'simulation_type=timestepping' (ignored for "
               "'simulation_type=compliant'");
+
+// Cassie model paramter
+DEFINE_bool(is_fixed_base, true, "Fixed base or quaternion floating base");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree;
-  bool isFixedBase = true;
-  if (isFixedBase)
+  if (FLAGS_is_fixed_base)
     tree = makeCassieTreePointer();
   else
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
-                                 drake::multibody::joints::kRollPitchYaw);
+                                 drake::multibody::joints::kQuaternion);
 
-  std::shared_ptr<RigidBodyFrame<double>> imu_frame = std::allocate_shared<RigidBodyFrame<double>>(
-                                         Eigen::aligned_allocator<RigidBodyFrame<double>>(), "imu frame",
-                                         tree->FindBody("pelvis"), Eigen::Isometry3d::Identity());
+  std::shared_ptr<RigidBodyFrame<double>> imu_frame =
+           std::allocate_shared<RigidBodyFrame<double>>(
+               Eigen::aligned_allocator<RigidBodyFrame<double>>(), "imu frame",
+               tree->FindBody("pelvis"), Eigen::Isometry3d::Identity());
   tree->addFrame(imu_frame);
 
   drake::systems::DiagramBuilder<double> builder;
 
   if (FLAGS_simulation_type != "timestepping")
     FLAGS_dt = 0.0;
-  auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(std::move(tree), FLAGS_dt);
+  auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>
+               (std::move(tree), FLAGS_dt);
 
   // Note: this sets identical contact parameters across all object pairs:
 
@@ -94,7 +100,8 @@ int do_main(int argc, char* argv[]) {
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
                        input_receiver->get_output_port(0).size(),
                        0,
-                       plant->get_input_port(0).size()); // To get rid of the timestamp which is at the tail of a timestapedVector
+                       plant->get_input_port(0).size());
+      // To get rid of the timestamp which is at the tail of a timestapedVector
   builder.Connect(input_sub->get_output_port(),
                   input_receiver->get_input_port(0));
   builder.Connect(input_receiver->get_output_port(0),
@@ -108,40 +115,48 @@ int do_main(int argc, char* argv[]) {
   auto state_pub = builder.AddSystem(
                      LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
                        "CASSIE_STATE", &lcm, 1.0 / 200.0));
-  builder.Connect(plant->state_output_port(), state_sender->get_input_port_state());
+  builder.Connect(plant->state_output_port(),
+                  state_sender->get_input_port_state());
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
 
 
 
   // Create cassie sensor publisher
-  // drake::systems::sensors::Accelerometer("Simulated Accelerometer", *imu_frame, plant->get_rigid_body_tree(), true);
-  // drake::systems::sensors::Gyroscope("Simulated Gyroscope", *imu_frame, plant->get_rigid_body_tree());
   auto acce_sim = builder.AddSystem<drake::systems::sensors::Accelerometer>(
-                    "Simulated Accelerometer", *imu_frame, plant->get_rigid_body_tree(), true);
+    "Simulated Accelerometer", *imu_frame, plant->get_rigid_body_tree(), true);
   auto gyro_sim = builder.AddSystem<drake::systems::sensors::Gyroscope>(
-                    "Simulated Gyroscope", *imu_frame, plant->get_rigid_body_tree());
-  builder.Connect(plant->state_output_port(), acce_sim->get_plant_state_input_port());
-  builder.Connect(plant->state_derivative_output_port(), acce_sim->get_plant_state_derivative_input_port());
+    "Simulated Gyroscope", *imu_frame, plant->get_rigid_body_tree());
+  builder.Connect(plant->state_output_port(),
+                  acce_sim->get_plant_state_input_port());
+  builder.Connect(plant->state_derivative_output_port(),
+                  acce_sim->get_plant_state_derivative_input_port());
   builder.Connect(plant->state_output_port(), gyro_sim->get_input_port());
 
-  auto cassie_sensor_aggregator = builder.AddSystem<systems::SimCassieSensorAggregator>(
-                                    plant->get_rigid_body_tree());
+  auto cassie_sensor_aggregator =
+    builder.AddSystem<systems::SimCassieSensorAggregator>(
+      plant->get_rigid_body_tree());
   auto cassie_sensor_pub = builder.AddSystem(
                              LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
                                "CASSIE_SENSOR", &lcm, 1.0 / 200.0));
-  builder.Connect(passthrough->get_output_port(), cassie_sensor_aggregator->get_input_port_input());
-  builder.Connect(plant->state_output_port(), cassie_sensor_aggregator->get_input_port_state());
-  builder.Connect(acce_sim->get_output_port(), cassie_sensor_aggregator->get_input_port_acce());
-  builder.Connect(gyro_sim->get_output_port (), cassie_sensor_aggregator->get_input_port_gyro());
-  builder.Connect(cassie_sensor_aggregator->get_output_port(0), cassie_sensor_pub->get_input_port());
+  builder.Connect(passthrough->get_output_port(),
+                  cassie_sensor_aggregator->get_input_port_input());
+  builder.Connect(plant->state_output_port(),
+                  cassie_sensor_aggregator->get_input_port_state());
+  builder.Connect(acce_sim->get_output_port(),
+                  cassie_sensor_aggregator->get_input_port_acce());
+  builder.Connect(gyro_sim->get_output_port(),
+                  cassie_sensor_aggregator->get_input_port_gyro());
+  builder.Connect(cassie_sensor_aggregator->get_output_port(0),
+                  cassie_sensor_pub->get_input_port());
 
 
 
 
   // Creates and adds LCM publisher for visualization.
   // builder.AddVisualizer(&lcm);
-  // auto visualizer = builder.AddSystem<systems::DrakeVisualizer>(plant->get_rigid_body_tree(), &lcm);
+  // auto visualizer = builder.AddSystem<systems::DrakeVisualizer>
+  //                   (plant->get_rigid_body_tree(), &lcm);
   // Raw state vector to visualizer.
   // builder.Connect(plant->state_output_port(), visualizer->get_input_port(0));
 
@@ -150,11 +165,17 @@ int do_main(int argc, char* argv[]) {
 
   drake::systems::Simulator<double> simulator(*diagram);
   drake::systems::Context<double>& context =
-    diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
+    diagram->GetMutableSubsystemContext(*plant,
+                                        &simulator.get_mutable_context());
 
-  // drake::systems::Context<double>& sim_context = simulator.get_mutable_context();
-  // auto integrator = simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(*diagram, FLAGS_timestep, &sim_context);
-  // auto integrator = simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>(*diagram, &sim_context);
+  // drake::systems::Context<double>& sim_context =
+  //   simulator.get_mutable_context();
+  // auto integrator =
+  //   simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>
+  //   (*diagram, FLAGS_timestep, &sim_context);
+  // auto integrator =
+  //   simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>
+  //   (*diagram, &sim_context);
   // integrator->set_maximum_step_size(FLAGS_timestep);
 
 
@@ -190,22 +211,25 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map.at("knee_right"));
 
   auto q0 = solvePositionConstraints(
-              plant->get_rigid_body_tree(),
-              x0.head(plant->get_rigid_body_tree().get_num_positions()), fixed_joints);
+      plant->get_rigid_body_tree(),
+      x0.head(plant->get_rigid_body_tree().get_num_positions()), fixed_joints);
   x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
 
   std::cout << q0 << std::endl;
 
   if (FLAGS_simulation_type != "timestepping") {
-    drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state();
+    drake::systems::ContinuousState<double>& state =
+      context.get_mutable_continuous_state();
     std::cout << "Continuous " << state.size() << std::endl;
     state.SetFromVector(x0);
     // state[4] = 1;
     // state[3] = 0;
     // state[4] = 0;
   } else {
-    std::cout << "ngroups " << context.get_num_discrete_state_groups() <<  std::endl;
-    drake::systems::BasicVector<double>& state = context.get_mutable_discrete_state(0);
+    std::cout << "ngroups " << context.get_num_discrete_state_groups() <<
+              std::endl;
+    drake::systems::BasicVector<double>& state =
+      context.get_mutable_discrete_state(0);
     std::cout << "Discrete " << state.size() << std::endl;
     state.SetFromVector(x0);
     // state[4] = 1;

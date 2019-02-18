@@ -1,3 +1,5 @@
+#include <gflags/gflags.h>
+
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -11,7 +13,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "examples/Cassie/cassie_utils.h"
 
-namespace dairlib{
+namespace dairlib {
 
 using std::endl;
 using std::cout;
@@ -19,14 +21,18 @@ using dairlib::systems::SubvectorPassThrough;
 using drake::systems::Simulator;
 using dairlib::systems::RobotOutputReceiver;
 
-int doMain() {
+// Cassie model paramter
+DEFINE_bool(is_fixed_base, true, "Fixed base or quaternion floating base");
+
+int doMain(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   RigidBodyTree<double> tree;
-  bool isFixedBase = true;
-  if(isFixedBase)
+  if (FLAGS_is_fixed_base)
     buildCassieTree(tree);
   else
     buildCassieTree(tree, "examples/Cassie/urdf/cassie_v2.urdf",
-                    drake::multibody::joints::kRollPitchYaw);
+                    drake::multibody::joints::kQuaternion);
 
   cout << endl << "****bodies****" << endl;
   for (int i = 0; i < tree.get_num_bodies(); i++)
@@ -49,18 +55,20 @@ int doMain() {
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
-      drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+      drake::systems::lcm::LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>
+      (channel_x, &lcm));
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(tree);
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port(0));
 
 
-  auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree, &lcm);
+  auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree,
+                   &lcm);
 
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-    state_receiver->get_output_port(0).size(),
-    0,
-    publisher->get_input_port(0).size());
+                       state_receiver->get_output_port(0).size(),
+                       0,
+                       publisher->get_input_port(0).size());
 
   builder.Connect(state_receiver->get_output_port(0),
                   passthrough->get_input_port());
@@ -68,16 +76,17 @@ int doMain() {
                   publisher->get_input_port(0));
 
 
-  publisher->set_publish_period(1.0/30.0);
+  publisher->set_publish_period(1.0 / 30.0);
 
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
 
   /// Use the simulator to drive at a fixed rate
-  /// If set_publish_every_time_step is true, this publishes twice 
+  /// If set_publish_every_time_step is true, this publishes twice
   /// Set realtime rate. Otherwise, runs as fast as possible
-  auto stepper = std::make_unique<Simulator<double>>(*diagram, std::move(context));
+  auto stepper = std::make_unique<Simulator<double>>(*diagram,
+                 std::move(context));
   stepper->set_publish_every_time_step(false);
   stepper->set_publish_at_initialization(false);
   stepper->set_target_realtime_rate(1.0);
@@ -93,6 +102,8 @@ int doMain() {
 }
 
 
-}
+}  // namespace dairlib
 
-int main() { return dairlib::doMain(); }
+int main(int argc, char* argv[]) {
+  return dairlib::doMain(argc, argv);
+}

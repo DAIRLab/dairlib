@@ -210,6 +210,7 @@ cc_binary(
         "@drake//systems/analysis:simulator",
         "@drake//systems/framework:diagram_builder",
         "@drake//systems/lcm:lcm_pubsub_system",
+        "@gflags",
     ],
 )
 

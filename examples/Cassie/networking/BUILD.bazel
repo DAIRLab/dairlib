@@ -36,6 +36,7 @@ cc_library(
     "//examples/Cassie/datatypes:cassie_dispatch_types",
     "//lcmtypes:lcmt_robot",
     "//multibody:utils",
+    "//attic/multibody:utils",
   ]
 )
 

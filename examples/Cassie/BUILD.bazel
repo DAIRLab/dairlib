@@ -153,6 +153,19 @@ cc_binary(
     ],
 )
 
+cc_library(
+  name = "cassie_rbt_state_estimator",
+  srcs = ["cassie_rbt_state_estimator.cc",],
+  hdrs = ["cassie_rbt_state_estimator.h",],
+  deps = [
+    "@drake//systems/framework",
+    "//systems/framework:vector",
+    "//examples/Cassie/datatypes:cassie_out_t",
+    "//examples/Cassie/datatypes:cassie_names",
+    "//attic/multibody:utils",
+  ]
+)
+
 cc_binary(
     name = "run_udp_dummy_server",
     srcs = ["run_udp_dummy_server.c"],

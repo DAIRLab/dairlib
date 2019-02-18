@@ -47,3 +47,17 @@ group "3.cassie-robot" {
 }
 
 
+script "start-operator" {
+    stop cmd "1.state-visualizer";
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 1000;
+    start cmd "1.state-visualizer";
+}
+
+group "4.gazebo" {
+    cmd "0.launch" {
+        exec = "cd ../cassie-gazebo-sim/cassie; bash launch_sim.sh";
+        host = "localhost";
+    }  
+}

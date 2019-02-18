@@ -10,12 +10,16 @@ group "2.lcm-tools" {
 }
 
 group "1.simulated-robot" {
-    cmd "2.dispatcher-robot-out" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001";
-        host = "localhost";
-    }
     cmd "1.simulator" {
         exec = "bazel-bin/examples/Cassie/run_simple_sim";
+        host = "localhost";
+    }
+    cmd "2.dispatcher-robot-out" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --pub_rate=1e6";
+        host = "localhost";
+    }
+    cmd "2.dispatcher-robot-in" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --pub_rate=1e6";
         host = "localhost";
     }
     cmd "0.pd-controller" {
@@ -25,12 +29,12 @@ group "1.simulated-robot" {
 }
 
 group "0.operator" {
-    cmd "1.state-visualizer" {
-        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
-        host = "localhost";
-    }
     cmd "0.drake-director" {
         exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/pd_panel.py --script examples/Cassie/show_time.py";
+        host = "localhost";
+    }
+    cmd "1.state-visualizer" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
         host = "localhost";
     }
 }
@@ -46,6 +50,13 @@ group "3.cassie-robot" {
     }
 }
 
+group "4.gazebo" {
+    cmd "0.launch" {
+        exec = "sh -c 'cd ../cassie-gazebo-sim/cassie; bash launch_sim.sh'";
+        host = "localhost";
+    }
+}
+
 
 script "start-operator" {
     stop cmd "1.state-visualizer";
@@ -53,11 +64,4 @@ script "start-operator" {
     start cmd "0.drake-director";
     wait ms 1000;
     start cmd "1.state-visualizer";
-}
-
-group "4.gazebo" {
-    cmd "0.launch" {
-        exec = "cd ../cassie-gazebo-sim/cassie; bash launch_sim.sh";
-        host = "localhost";
-    }  
 }

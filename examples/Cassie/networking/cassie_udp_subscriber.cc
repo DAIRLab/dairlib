@@ -211,7 +211,7 @@ void CassieUDPSubscriber::HandleMessage(const void* buffer, int size) {
 
 int CassieUDPSubscriber::WaitForMessage(
     int old_message_count, AbstractValue* message) const {
-  std::cout << "Waiting for message...";
+  // std::cout << "Waiting for message...";
   // The message buffer and counter are updated in HandleMessage(), which is
   // a callback function invoked by a different thread owned by the
   // drake::lcm::DrakeLcmInterface instance passed to the constructor. Thus,
@@ -231,7 +231,7 @@ int CassieUDPSubscriber::WaitForMessage(
           received_message_.data(), received_message_.size(), message);
   }
   lock.unlock();
-  std::cout << "received!" << std::endl;
+  // std::cout << "received!" << std::endl;
   return new_message_count;
 }
 

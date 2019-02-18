@@ -2,9 +2,20 @@
 
 ## Complete Build Instructions
 ### Build Drake
-The library is meant to be built with Drake (see http://drake.mit.edu/ for more details)
+The library is meant to be built with Drake (see http://drake.mit.edu/ for more details). There are two ways to use Drake within dairlib:
+#### Option 1: use pegged revision
+The only specific action needed here is to install all of Drake's prerequisites. At the moment, his requires a source download of drake (see instructions for source install). 
 
+bazel will automatically download the pegged revision, specified in the WORKSPACE file. dairlib developers hope to keep this pegged revision current, and ensure that the pegged version will always work with a specific version of dairlib.
+
+This option is recommended for users who are not currently editing any source code in Drake itself. 
+#### Option 2: source install of Drake
 Install Drake from source into `"my-workspace"/drake` http://drake.mit.edu/from_source.html. You do not need to build it, but prerequisites should also be installed. You will need `git` to start.
+
+To tell dairlib to use your local install, set the environment variable `DAIRLIB_LOCAL_DRAKE_PATH`, e.g.
+```
+export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/my-workspace/drake
+```
 
 ### Other dependencies
 These dependencies are necessary for some advanced visualization and process management. Many examples will work without a full installation of Director or libbot, but (for lab members), these are ultimately recommended. 

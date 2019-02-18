@@ -128,7 +128,7 @@ int do_main(int argc, char* argv[]) {
   auto cassie_sensor_aggregator = builder.AddSystem<systems::SimCassieSensorAggregator>(
         plant->get_rigid_body_tree());
   auto cassie_sensor_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_cassie_sensor>(
+      LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_SENSOR", &lcm, 1.0/200.0));
   builder.Connect(passthrough->get_output_port(), cassie_sensor_aggregator->get_input_port_input());
   builder.Connect(plant->state_output_port(), cassie_sensor_aggregator->get_input_port_state());

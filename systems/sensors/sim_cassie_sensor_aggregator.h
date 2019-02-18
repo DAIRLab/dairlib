@@ -11,7 +11,13 @@
 
 #include "multibody/rbt_utils.h"
 #include "multibody/mbt_utils.h"
-#include "dairlib/lcmt_cassie_sensor.hpp"
+
+#include "dairlib/lcmt_cassie_out.hpp"
+#include "dairlib/lcmt_cassie_pelvis_out.hpp"
+#include "dairlib/lcmt_vectornav_out.hpp"
+#include "dairlib/lcmt_cassie_leg_out.hpp"
+#include "dairlib/lcmt_elmo_out.hpp"
+#include "dairlib/lcmt_cassie_joint_out.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -31,7 +37,7 @@ class SimCassieSensorAggregator : public drake::systems::LeafSystem<double> {
 
  private:
   void Aggregator(const drake::systems::Context<double>& context,
-                   dairlib::lcmt_cassie_sensor* sensor_msg) const;
+                   dairlib::lcmt_cassie_out* cassie_out_msg) const;
 
   int input_input_port_;
   int state_input_port_;

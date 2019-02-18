@@ -12,7 +12,7 @@ template <typename T> void copy_vector(const T* input, T* output, int size);
 
 CassieInputReceiver::CassieInputReceiver() {
   this->DeclareAbstractInputPort("lcmt_cassie_in",
-    drake::systems::Value<dairlib::lcmt_cassie_in>{});
+    drake::Value<dairlib::lcmt_cassie_in>{});
   this->DeclareAbstractOutputPort(
       "cassie_in_t", &CassieInputReceiver::CopyOutput);
 }

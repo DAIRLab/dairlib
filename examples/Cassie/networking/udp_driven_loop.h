@@ -85,7 +85,7 @@ class UDPDrivenLoop {
    * to know the type of the actual message and have means to inspect the
    * message.
    */
-  const drake::systems::AbstractValue& WaitForMessage();
+  const drake::AbstractValue& WaitForMessage();
 
   /**
    * Starts the message handling loop assuming the context (e.g. state and

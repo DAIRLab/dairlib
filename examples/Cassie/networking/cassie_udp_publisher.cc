@@ -73,7 +73,7 @@ drake::systems::EventStatus CassieUDPPublisher::PublishInputAsUDPMessage(
   SPDLOG_TRACE(drake::log(), "Publishing UDP {} message", address_);
 
   // Converts the input into message bytes.
-  const drake::systems::AbstractValue* const input_value =
+  const drake::AbstractValue* const input_value =
       this->EvalAbstractInput(context, kPortIndex);
   DRAKE_ASSERT(input_value != nullptr);
   std::vector<uint8_t> message_bytes;

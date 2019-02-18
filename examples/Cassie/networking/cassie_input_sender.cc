@@ -10,7 +10,7 @@ using drake::systems::LeafSystem;
 
 CassieInputSender::CassieInputSender() {
   this->DeclareAbstractInputPort("cassie_user_in_t",
-      drake::systems::Value<cassie_user_in_t>{});
+      drake::Value<cassie_user_in_t>{});
   this->DeclareAbstractOutputPort("lcmt_cassie_in",
       &CassieInputSender::Output);
 }

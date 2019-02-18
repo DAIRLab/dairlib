@@ -9,7 +9,7 @@ using drake::systems::SystemOutput;
 using drake::systems::State;
 using drake::systems::CompositeEventCollection;
 using drake::systems::Simulator;
-using drake::systems::AbstractValue;
+using drake::AbstractValue;
 
 UDPDrivenLoop::UDPDrivenLoop(
     const System<double>& system, const CassieUDPSubscriber& driving_subscriber,

@@ -14,7 +14,7 @@ namespace dairlib {
 namespace systems {
 
 using drake::systems::Context;
-using drake::systems::AbstractValue;
+using drake::AbstractValue;
 using drake::systems::AbstractValues;
 using drake::systems::State;
 using drake::systems::CompositeEventCollection;
@@ -185,7 +185,7 @@ std::string CassieUDPSubscriber::make_name(const std::string& address,
   return "CassieUDPSubscriber(" + address + ":" + std::to_string(port) + ")";
 }
 
-std::unique_ptr<systems::AbstractValue>
+std::unique_ptr<AbstractValue>
 CassieUDPSubscriber::AllocateSerializerOutputValue() const {
   return serializer_->CreateDefaultValue();
 }

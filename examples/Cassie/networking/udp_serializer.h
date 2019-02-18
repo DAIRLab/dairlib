@@ -8,7 +8,7 @@
 #include "drake/common/drake_assert.h"
 #include "drake/common/drake_copyable.h"
 #include "drake/common/drake_throw.h"
-#include "drake/systems/framework/value.h"
+#include "drake/common/value.h"
 #include "examples/Cassie/datatypes/cassie_out_t.h"
 #include "examples/Cassie/datatypes/cassie_user_in_t.h"
 
@@ -27,18 +27,18 @@ class CassieUDPOutSerializer : public drake::systems::lcm::SerializerInterface {
   CassieUDPOutSerializer() {}
   ~CassieUDPOutSerializer() override {}
 
-  std::unique_ptr<drake::systems::AbstractValue> CreateDefaultValue()
+  std::unique_ptr<drake::AbstractValue> CreateDefaultValue()
       const override {
     // NOTE: We create the message using value-initialization ("{}") to ensure
     // the POD fields are zeroed (instead of using default construction ("()"),
     // which would leave the POD data uninitialized.)
-    return std::make_unique<drake::systems::Value<cassie_out_t>>(
+    return std::make_unique<drake::Value<cassie_out_t>>(
         cassie_out_t{});
   }
 
   void Deserialize(
       const void* message_bytes, int message_length,
-      drake::systems::AbstractValue* abstract_value) const override {
+      drake::AbstractValue* abstract_value) const override {
     DRAKE_DEMAND(abstract_value != nullptr);
 
     // Unpack received data into cassie output struct
@@ -46,7 +46,7 @@ class CassieUDPOutSerializer : public drake::systems::lcm::SerializerInterface {
         &abstract_value->GetMutableValue<cassie_out_t>());
   }
 
-  void Serialize(const drake::systems::AbstractValue& abstract_value,
+  void Serialize(const drake::AbstractValue& abstract_value,
                  std::vector<uint8_t>* message_bytes) const override {
     DRAKE_ABORT_MSG("CassieUDPOutSerializer::Serialize not yet implemented.");
   }
@@ -64,22 +64,22 @@ class CassieUDPInSerializer : public drake::systems::lcm::SerializerInterface {
   CassieUDPInSerializer() {}
   ~CassieUDPInSerializer() override {}
 
-  std::unique_ptr<drake::systems::AbstractValue> CreateDefaultValue()
+  std::unique_ptr<drake::AbstractValue> CreateDefaultValue()
       const override {
     // NOTE: We create the message using value-initialization ("{}") to ensure
     // the POD fields are zeroed (instead of using default construction ("()"),
     // which would leave the POD data uninitialized.)
-    return std::make_unique<drake::systems::Value<cassie_user_in_t>>(
+    return std::make_unique<drake::Value<cassie_user_in_t>>(
         cassie_user_in_t{});
   }
 
   void Deserialize(
       const void* message_bytes, int message_length,
-      drake::systems::AbstractValue* abstract_value) const override {
+      drake::AbstractValue* abstract_value) const override {
     DRAKE_ABORT_MSG("CassieUDPInSerializer::Deserialize not yet implemented.");
   }
 
-  void Serialize(const drake::systems::AbstractValue& abstract_value,
+  void Serialize(const drake::AbstractValue& abstract_value,
                  std::vector<uint8_t>* message_bytes) const override {
     DRAKE_DEMAND(message_bytes != nullptr);
     const cassie_user_in_t& message =

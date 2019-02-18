@@ -106,7 +106,7 @@ class CassieUDPSubscriber : public drake::systems::LeafSystem<double> {
    * @pre If `message` is specified, this system must be abstract-valued.
    */
   int WaitForMessage(int old_message_count,
-      drake::systems::AbstractValue* message = nullptr) const;
+      drake::AbstractValue* message = nullptr) const;
 
   /**
    * (Advanced.) Writes the most recently received message (and message count)
@@ -150,10 +150,10 @@ class CassieUDPSubscriber : public drake::systems::LeafSystem<double> {
 
   // This pair of methods is used for the output port when we're using a
   // serializer.
-  std::unique_ptr<drake::systems::AbstractValue> AllocateSerializerOutputValue()
+  std::unique_ptr<drake::AbstractValue> AllocateSerializerOutputValue()
       const;
   void CalcSerializerOutputValue(const drake::systems::Context<double>& context,
-      drake::systems::AbstractValue* output_value) const;
+      drake::AbstractValue* output_value) const;
 
   // The channel on which to receive messages.
   const std::string address_;

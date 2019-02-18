@@ -14,7 +14,7 @@ template <typename T> void copy_vector(const T* input, T* output, int size);
 
 CassieOutputSender::CassieOutputSender() {
   this->DeclareAbstractInputPort("cassie_out_t",
-      drake::systems::Value<cassie_out_t>{});
+      drake::Value<cassie_out_t>{});
   this->DeclareAbstractOutputPort("lcmt_cassie_out",
       &CassieOutputSender::Output);
 }

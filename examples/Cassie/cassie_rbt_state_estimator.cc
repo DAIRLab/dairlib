@@ -17,7 +17,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
 
   this->DeclareAbstractInputPort("cassie_out_t",
-      drake::systems::Value<cassie_out_t>{});
+      drake::Value<cassie_out_t>{});
   this->DeclareVectorOutputPort(OutputVector<double>(tree.get_num_positions(),
       tree.get_num_velocities(), tree.get_num_actuators()),
       &CassieRbtStateEstimator ::Output);
@@ -73,7 +73,7 @@ void CassieRbtStateEstimator::Output(
       cassie_out.leftLeg.footDrive.position);
   output->SetPositionAtIndex(positionIndexMap_.at("knee_joint_left"),
       cassie_out.leftLeg.shinJoint.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("ankle_joint_right"),
+  output->SetPositionAtIndex(positionIndexMap_.at("ankle_joint_left"),
       cassie_out.leftLeg.tarsusJoint.position);
 
   // TODO(mposa): double check these joint mappings. Also unclear what
@@ -112,7 +112,7 @@ void CassieRbtStateEstimator::Output(
       cassie_out.leftLeg.footDrive.velocity);
   output->SetVelocityAtIndex(velocityIndexMap_.at("knee_joint_leftdot"),
       cassie_out.leftLeg.shinJoint.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_joint_rightdot"),
+  output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_joint_leftdot"),
       cassie_out.leftLeg.tarsusJoint.velocity);
   // TODO(mposa): double check these joint mappings. Also unclear what
   // footJoint corresponds to

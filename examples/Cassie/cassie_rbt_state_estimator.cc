@@ -23,6 +23,10 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
       &CassieRbtStateEstimator ::Output);
 }
 
+/// Workhorse state estimation function. Given a `cassie_out_t`, compute the
+/// esitmated state as an OutputVector
+/// Since it needs to map from a struct to a vector, and no assumptions on the
+/// ordering of the vector are made, utilizies index maps to make this mapping.
 void CassieRbtStateEstimator::Output(
     const Context<double>& context, OutputVector<double>* output) const {
   const auto& cassie_out =

@@ -22,6 +22,9 @@
 namespace dairlib {
 namespace systems {
 
+/// SimCassieSensorAggregator is a block that gathers controller input,
+/// gyroscope, accelerometer and plant state, and packs them into
+/// dairlib::lcmt_cassie_out.
 class SimCassieSensorAggregator : public drake::systems::LeafSystem<double> {
  public:
   explicit SimCassieSensorAggregator(const RigidBodyTree<double>& tree);

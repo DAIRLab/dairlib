@@ -33,7 +33,6 @@ SimCassieSensorAggregator::SimCassieSensorAggregator(
   this->DeclareAbstractOutputPort(&SimCassieSensorAggregator::Aggregate);
 }
 
-/// read and parse a configuration LCM message
 void SimCassieSensorAggregator::Aggregate(const Context<double>& context,
     dairlib::lcmt_cassie_out* cassie_out_msg) const {
   const auto input = this->EvalVectorInput(context, input_input_port_);

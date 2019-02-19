@@ -121,7 +121,7 @@ int do_main(int argc, char* argv[]) {
                   state_pub->get_input_port());
 
   // Create cassie output (containing simulated sensor) publisher
-  addIMU2Simulation(builder, plant, imu_frame, passthrough, lcm);
+  addImuToSimulation(builder, plant, imu_frame, passthrough, lcm);
 
 
   // Creates and adds LCM publisher for visualization.

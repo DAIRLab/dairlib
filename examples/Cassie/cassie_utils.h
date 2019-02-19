@@ -64,7 +64,7 @@ void buildCassieTree(
 
 /// Add simulated gyroscope and accelerometer and create/publish an
 /// lcmt_cassie_out LCM message.
-void addIMU2Simulation(
+void addImuToSimulation(
   drake::systems::DiagramBuilder<double> & builder,
   drake::systems::RigidBodyPlant<double> * plant,
   std::shared_ptr<RigidBodyFrame<double>> imu_frame ,

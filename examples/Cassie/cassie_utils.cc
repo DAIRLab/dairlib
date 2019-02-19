@@ -104,7 +104,7 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
   ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
 }
 
-void addIMU2Simulation(
+void addImuToSimulation(
   drake::systems::DiagramBuilder<double> & builder,
   drake::systems::RigidBodyPlant<double> * plant,
   std::shared_ptr<RigidBodyFrame<double>> imu_frame ,

@@ -104,7 +104,7 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
   ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
 }
 
-drake::systems::sensors::Accelerometer * addAccelerometer(
+drake::systems::sensors::Accelerometer * addSimAccelerometer(
   drake::systems::DiagramBuilder<double> & builder,
   drake::systems::RigidBodyPlant<double> * plant,
   std::shared_ptr<RigidBodyFrame<double>> imu_frame){
@@ -118,7 +118,7 @@ drake::systems::sensors::Accelerometer * addAccelerometer(
 
   return acce_sim;
 }
-drake::systems::sensors::Gyroscope * addGyroscope(
+drake::systems::sensors::Gyroscope * addSimGyroscope(
   drake::systems::DiagramBuilder<double> & builder,
   drake::systems::RigidBodyPlant<double> * plant,
   std::shared_ptr<RigidBodyFrame<double>> imu_frame){
@@ -154,8 +154,8 @@ systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
   std::shared_ptr<RigidBodyFrame<double>> imu_frame ,
   SubvectorPassThrough<double> * passthrough){
 
-  auto acce_sim = addAccelerometer(builder, plant, imu_frame);
-  auto gyro_sim = addGyroscope(builder, plant, imu_frame);
+  auto acce_sim = addSimAccelerometer(builder, plant, imu_frame);
+  auto gyro_sim = addSimGyroscope(builder, plant, imu_frame);
   auto cassie_sensor_aggregator = addSimCassieSensorAggregator(
     builder, plant, passthrough, acce_sim, gyro_sim);
 

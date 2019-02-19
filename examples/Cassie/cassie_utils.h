@@ -63,12 +63,12 @@ void buildCassieTree(
         drake::multibody::joints::kFixed);
 
 /// Add simulated accelerometer to the diagram
-drake::systems::sensors::Accelerometer * addAccelerometer(
+drake::systems::sensors::Accelerometer * addSimAccelerometer(
   drake::systems::DiagramBuilder<double> & builder,
   drake::systems::RigidBodyPlant<double> * plant,
   std::shared_ptr<RigidBodyFrame<double>> imu_frame);
 /// Add simulated gyroscope to the diagram
-drake::systems::sensors::Gyroscope * addGyroscope(
+drake::systems::sensors::Gyroscope * addSimGyroscope(
   drake::systems::DiagramBuilder<double> & builder,
   drake::systems::RigidBodyPlant<double> * plant,
   std::shared_ptr<RigidBodyFrame<double>> imu_frame);

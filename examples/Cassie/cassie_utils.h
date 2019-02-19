@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "common/find_resource.h"
 #include "drake/math/autodiff_gradient.h"
@@ -14,8 +15,23 @@
 
 #include "drake/multibody/rigid_body_tree_construction.h"
 
+#include "systems/robot_lcm_systems.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/lcm/drake_lcm.h"
+#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
+#include "drake/systems/framework/diagram.h"
+#include "systems/primitives/subvector_pass_through.h"
+
+#include "drake/systems/sensors/accelerometer.h"
+#include "drake/systems/sensors/gyroscope.h"
+#include "systems/sensors/sim_cassie_sensor_aggregator.h"
+
 namespace dairlib {
 
+using dairlib::systems::SubvectorPassThrough;
+using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::lcm::LcmPublisherSystem;
 
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
@@ -45,6 +61,15 @@ void buildCassieTree(
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf",
     drake::multibody::joints::FloatingBaseType base_type =
         drake::multibody::joints::kFixed);
+
+/// Add simulated gyroscope and accelerometer and create/publish an
+/// lcmt_cassie_out LCM message.
+void addIMU2Simulation(
+  drake::systems::DiagramBuilder<double> & builder,
+  drake::systems::RigidBodyPlant<double> * plant,
+  std::shared_ptr<RigidBodyFrame<double>> imu_frame ,
+  SubvectorPassThrough<double> * passthrough,
+  drake::lcm::DrakeLcm & lcm);
 
 /// Solves the position constraints for a position that satisfies them
 Eigen::VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,

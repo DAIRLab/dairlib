@@ -104,6 +104,42 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
   ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
 }
 
+void addIMU2Simulation(
+  drake::systems::DiagramBuilder<double> & builder,
+  drake::systems::RigidBodyPlant<double> * plant,
+  std::shared_ptr<RigidBodyFrame<double>> imu_frame ,
+  SubvectorPassThrough<double> * passthrough,
+  drake::lcm::DrakeLcm & lcm){
+
+  auto acce_sim = builder.AddSystem<drake::systems::sensors::Accelerometer>(
+    "Simulated Accelerometer", *imu_frame, plant->get_rigid_body_tree(), true);
+  auto gyro_sim = builder.AddSystem<drake::systems::sensors::Gyroscope>(
+    "Simulated Gyroscope", *imu_frame, plant->get_rigid_body_tree());
+  builder.Connect(plant->state_output_port(),
+                  acce_sim->get_plant_state_input_port());
+  builder.Connect(plant->state_derivative_output_port(),
+                  acce_sim->get_plant_state_derivative_input_port());
+  builder.Connect(plant->state_output_port(), gyro_sim->get_input_port());
+
+  auto cassie_sensor_aggregator =
+    builder.AddSystem<systems::SimCassieSensorAggregator>(
+      plant->get_rigid_body_tree());
+  auto cassie_sensor_pub = builder.AddSystem(
+                             LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+                               "CASSIE_OUTPUT", &lcm, 1.0 / 200.0));
+  builder.Connect(passthrough->get_output_port(),
+                  cassie_sensor_aggregator->get_input_port_input());
+  builder.Connect(plant->state_output_port(),
+                  cassie_sensor_aggregator->get_input_port_state());
+  builder.Connect(acce_sim->get_output_port(),
+                  cassie_sensor_aggregator->get_input_port_acce());
+  builder.Connect(gyro_sim->get_output_port(),
+                  cassie_sensor_aggregator->get_input_port_gyro());
+  builder.Connect(cassie_sensor_aggregator->get_output_port(0),
+                  cassie_sensor_pub->get_input_port());
+}
+
+
 VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
                                   VectorXd q_init,
                                   std::vector<int> fixed_joints) {

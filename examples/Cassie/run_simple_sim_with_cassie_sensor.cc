@@ -53,7 +53,7 @@ DEFINE_double(dt, 1e-3, "The step size to use for "
               "'simulation_type=compliant'");
 
 // Cassie model paramter
-DEFINE_bool(floating_base, true, "Fixed or floating base model");
+DEFINE_bool(floating_base, false, "Fixed or floating base model");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -120,37 +120,8 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
 
-
-
-  // Create cassie sensor publisher
-  auto acce_sim = builder.AddSystem<drake::systems::sensors::Accelerometer>(
-    "Simulated Accelerometer", *imu_frame, plant->get_rigid_body_tree(), true);
-  auto gyro_sim = builder.AddSystem<drake::systems::sensors::Gyroscope>(
-    "Simulated Gyroscope", *imu_frame, plant->get_rigid_body_tree());
-  builder.Connect(plant->state_output_port(),
-                  acce_sim->get_plant_state_input_port());
-  builder.Connect(plant->state_derivative_output_port(),
-                  acce_sim->get_plant_state_derivative_input_port());
-  builder.Connect(plant->state_output_port(), gyro_sim->get_input_port());
-
-  auto cassie_sensor_aggregator =
-    builder.AddSystem<systems::SimCassieSensorAggregator>(
-      plant->get_rigid_body_tree());
-  auto cassie_sensor_pub = builder.AddSystem(
-                             LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
-                               "CASSIE_SENSOR", &lcm, 1.0 / 200.0));
-  builder.Connect(passthrough->get_output_port(),
-                  cassie_sensor_aggregator->get_input_port_input());
-  builder.Connect(plant->state_output_port(),
-                  cassie_sensor_aggregator->get_input_port_state());
-  builder.Connect(acce_sim->get_output_port(),
-                  cassie_sensor_aggregator->get_input_port_acce());
-  builder.Connect(gyro_sim->get_output_port(),
-                  cassie_sensor_aggregator->get_input_port_gyro());
-  builder.Connect(cassie_sensor_aggregator->get_output_port(0),
-                  cassie_sensor_pub->get_input_port());
-
-
+  // Create cassie output (containing simulated sensor) publisher
+  addIMU2Simulation(builder, plant, imu_frame, passthrough, lcm);
 
 
   // Creates and adds LCM publisher for visualization.

@@ -59,18 +59,17 @@ group "3.cassie-robot" {
 
 
 script "run-gazebo-pd-control" {
-    start cmd "0.launch-gazebo";
-    wait ms 3000;
-    run_script "start-operator";
-    start cmd "2.dispatcher-robot-out";
-    start cmd "3.dispatcher-robot-in";
-    start cmd "0.pd-controller";
+   run_script "start-operator";
+   start cmd "0.launch-gazebo";
+   start cmd "2.dispatcher-robot-out";
+   start cmd "3.dispatcher-robot-in";
+   start cmd "0.pd-controller";
 }
 
 script "start-operator" {
-    stop cmd "1.state-visualizer";
-    stop cmd "0.drake-director";
-    start cmd "0.drake-director";
-    wait ms 1000;
-    start cmd "1.state-visualizer";
+   stop cmd "1.state-visualizer";
+   stop cmd "0.drake-director";
+   start cmd "0.drake-director";
+   wait ms 3000;
+   start cmd "1.state-visualizer";
 }

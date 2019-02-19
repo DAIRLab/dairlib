@@ -45,7 +45,7 @@ class TimeVisualizer(object):
             self.remove_subscriber()
 
     def handle_message(self, msg):
-        msg_time = msg.timestamp * 1e-6  # convert from microseconds
+        msg_time = msg.utime * 1e-6  # convert from microseconds
         self._real_time.append(time.time())
         self._msg_time.append(msg_time)
 

@@ -121,7 +121,13 @@ int do_main(int argc, char* argv[]) {
                   state_pub->get_input_port());
 
   // Create cassie output (containing simulated sensor) publisher
-  addImuToSimulation(builder, plant, imu_frame, passthrough, lcm);
+  auto cassie_sensor_aggregator = addImuAndAggregatorToSimulation(
+                               builder, plant, imu_frame, passthrough);
+  auto cassie_sensor_pub = builder.AddSystem(
+                             LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+                               "CASSIE_OUTPUT", &lcm, 1.0 / 200.0));
+  builder.Connect(cassie_sensor_aggregator->get_output_port(0),
+                  cassie_sensor_pub->get_input_port());
 
 
   // Creates and adds LCM publisher for visualization.

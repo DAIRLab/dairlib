@@ -25,11 +25,13 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::UtimeMessageToSeconds;
 using systems::RobotInputReceiver;
+using systems::RobotCommandSender;
+using drake::systems::TriggerType;
 
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
 DEFINE_int64(port, 5000, "Port to publish to (UDP).");
-DEFINE_double(pub_rate, 0, "LCM/UDP pubishing rate.");
+DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
 
 
 /// Runs UDP driven loop for 10 seconds
@@ -39,14 +41,17 @@ int do_main(int argc, char* argv[]) {
 
   const std::string channel_u = "CASSIE_INPUT";
 
-  drake::lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
+
   DiagramBuilder<double> builder;
 
   std::unique_ptr<RigidBodyTree<double>> tree = makeCassieTreePointer();
 
   // Crate LCM subscriber/receiver for commands
   auto command_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm));
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(channel_u,
+          &lcm_local));
   auto command_receiver = builder.AddSystem<RobotInputReceiver>(*tree);
   builder.Connect(command_sub->get_output_port(),
                   command_receiver->get_input_port(0));
@@ -59,15 +64,29 @@ int do_main(int argc, char* argv[]) {
 
   // Create and connect input publisher.
   auto input_pub = builder.AddSystem(
-      systems::CassieUDPPublisher::Make(FLAGS_address, FLAGS_port,
-          FLAGS_pub_rate));
+      systems::CassieUDPPublisher::Make(FLAGS_address, FLAGS_port, 0,
+          std::unordered_set<TriggerType>({TriggerType::kForced})));
   builder.Connect(input_translator->get_output_port(0),
                   input_pub->get_input_port());
 
+  // Create and connect LCM command echo to network
+  auto net_command_sender = builder.AddSystem<RobotCommandSender>(*tree);
+  auto net_command_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          "NETWORK_CASSIE_INPUT", &lcm_network, FLAGS_pub_rate,
+          std::unordered_set<TriggerType>({TriggerType::kPeriodic})));
+
+  builder.Connect(command_receiver->get_output_port(0),
+                  net_command_sender->get_input_port(0));
+
+  builder.Connect(net_command_sender->get_output_port(0),
+                  net_command_pub->get_input_port());
+
   auto diagram = builder.Build();
 
-  drake::systems::lcm::LcmDrivenLoop loop(*diagram, *command_sub, nullptr, &lcm,
-        std::make_unique<UtimeMessageToSeconds<dairlib::lcmt_robot_input>>());
+  drake::systems::lcm::LcmDrivenLoop loop(*diagram, *command_sub, nullptr,
+      &lcm_local,
+      std::make_unique<UtimeMessageToSeconds<dairlib::lcmt_robot_input>>());
 
   // caused an extra publish call?
   loop.set_publish_on_every_received_message(true);

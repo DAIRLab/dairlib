@@ -17,12 +17,11 @@ using drake::systems::Simulator;
 using drake::systems::Context;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::TriggerType;
 
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive from.");
 DEFINE_int64(port, 5000, "Port to receive on.");
-DEFINE_double(pub_rate, 0, "LCM pubishing rate.");
-
 
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
@@ -40,7 +39,7 @@ int do_main(int argc, char* argv[]) {
   auto output_sender = builder.AddSystem<systems::CassieOutputSender>();
   auto output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
-      &lcm, FLAGS_pub_rate));
+      &lcm, std::unordered_set<TriggerType>({TriggerType::kForced})));
 
   // connect state publisher
   builder.Connect(input_sub->get_output_port(),

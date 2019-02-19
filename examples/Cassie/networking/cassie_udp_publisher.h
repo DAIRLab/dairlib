@@ -45,8 +45,10 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
    * @pre publish_period is non-negative.
    */
   static std::unique_ptr<CassieUDPPublisher> Make(const std::string& address,
-      const int port, double publish_period = 0.0) {
-    return std::make_unique<CassieUDPPublisher>(address, port, publish_period);
+      const int port, double publish_period = 0.0,
+      std::unordered_set<drake::systems::TriggerType> publish_triggers = {}) {
+    return std::make_unique<CassieUDPPublisher>(address, port, publish_period,
+        publish_triggers);
   }
 
   /**
@@ -63,7 +65,8 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
    * @pre publish_period is non-negative.
    */
   CassieUDPPublisher(const std::string& address, const int port,
-      double publish_period = 0.0);
+      double publish_period = 0.0,
+      std::unordered_set<drake::systems::TriggerType> publish_triggers = {});
 
   ~CassieUDPPublisher() override;
   /**

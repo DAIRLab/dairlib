@@ -22,7 +22,7 @@ using drake::systems::DiagramBuilder;
 
 
 int doMain() {
-  drake::lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   DiagramBuilder<double> builder;
   DiagramBuilder<double> builder_null;

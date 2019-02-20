@@ -176,7 +176,7 @@ void PositionSolver::SetInitialGuessQ(VectorXd q) {
   prog_->SetInitialGuess(q_, q);
 }
 
-void PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
+SolutionResult PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   // Setting the solver options
   prog_->SetSolverOption(SnoptSolver::id(), "Log file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
@@ -199,7 +199,7 @@ void PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   // The initial guess for q needs to be set up separately before calling Solve
   solution_result_ = prog_->Solve();
 
-  // The solution may be obtained by calling the GetSolution method
+  return solution_result_;
 }
 
 bool PositionSolver::CheckConstraint(VectorXd q, double tolerance) const {
@@ -243,7 +243,7 @@ void ContactSolver::SetInitialGuessQ(VectorXd q) {
   prog_->SetInitialGuess(q_, q);
 }
 
-void ContactSolver::Solve(VectorXd q, vector<int> fixed_joints) {
+SolutionResult ContactSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   // Setting the solver options
   prog_->SetSolverOption(SnoptSolver::id(), "Log file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
@@ -269,7 +269,7 @@ void ContactSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   // The initial guess for q needs to be set up separately before calling Solve
   solution_result_ = prog_->Solve();
 
-  // The solution may be obtained by calling the GetSolution method
+  return solution_result_;
 }
 
 bool ContactSolver::CheckConstraint(VectorXd q, double tolerance) const {
@@ -344,7 +344,8 @@ void FixedPointSolver::SetInitialGuessLambda(VectorXd lambda) {
   prog_->SetInitialGuess(lambda_, lambda);
 }
 
-void FixedPointSolver::Solve(VectorXd q, VectorXd u, vector<int> fixed_joints) {
+SolutionResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
+                                       vector<int> fixed_joints) {
   // Setting the solver options
   prog_->SetSolverOption(SnoptSolver::id(), "Log file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
@@ -353,10 +354,17 @@ void FixedPointSolver::Solve(VectorXd q, VectorXd u, vector<int> fixed_joints) {
                          minor_tolerance_);
 
   auto position_constraint = make_shared<PositionConstraint>(tree_);
+  auto contact_constraint =
+      make_shared<ContactConstraint>(tree_, contact_info_);
   auto fixed_point_constraint =
       make_shared<FixedPointConstraint>(tree_, contact_info_);
 
   prog_->AddConstraint(position_constraint, q_);
+
+  if (contact_info_.idxA.size() == 0) {
+    prog_->AddConstraint(contact_constraint, q_);
+  }
+
   prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
 
   // Adding the fixed joint constraints
@@ -370,13 +378,14 @@ void FixedPointSolver::Solve(VectorXd q, VectorXd u, vector<int> fixed_joints) {
   // The initial guess for q needs to be set up separately before calling Solve
   solution_result_ = prog_->Solve();
 
-  // The solution may be obtained by calling the GetSolution method
+  return solution_result_;
 }
 
 bool FixedPointSolver::CheckConstraint(VectorXd q, VectorXd u, VectorXd lambda,
                                        double tolerance) const {
   auto position_constraint = make_shared<PositionConstraint>(tree_);
-  auto fixed_point_constraint = make_shared<FixedPointConstraint>(tree_);
+  auto fixed_point_constraint =
+      make_shared<FixedPointConstraint>(tree_, contact_info_);
   VectorXd q_u_l = VectorXd(q.size() + u.size() + lambda.size());
   q_u_l << q, u, lambda;
   return position_constraint->CheckSatisfied(q, tolerance) &&

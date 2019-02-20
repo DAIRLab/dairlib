@@ -81,7 +81,8 @@ class PositionSolver {
   PositionSolver(const RigidBodyTree<double>& tree);
 
   void SetInitialGuessQ(Eigen::VectorXd q);
-  void Solve(Eigen::VectorXd q, std::vector<int> fixed_joints = {});
+  drake::solvers::SolutionResult Solve(Eigen::VectorXd q,
+                                       std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-5) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
@@ -113,7 +114,7 @@ class ContactSolver {
   ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
 
   void SetInitialGuessQ(Eigen::VectorXd q);
-  void Solve(Eigen::VectorXd q, std::vector<int> fixed_joints = {});
+  drake::solvers::SolutionResult Solve(Eigen::VectorXd q, std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-5) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
@@ -143,7 +144,7 @@ class FixedPointSolver {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(FixedPointSolver)
 
-  FixedPointSolver(const RigidBodyTree<double> & tree);
+  FixedPointSolver(const RigidBodyTree<double>& tree);
   FixedPointSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
 
   void SetInitialGuess(Eigen::VectorXd q, Eigen::VectorXd u,
@@ -151,8 +152,8 @@ class FixedPointSolver {
   void SetInitialGuessQ(Eigen::VectorXd q);
   void SetInitialGuessU(Eigen::VectorXd u);
   void SetInitialGuessLambda(Eigen::VectorXd lambda);
-  void Solve(Eigen::VectorXd q, Eigen::VectorXd u,
-             std::vector<int> fixed_joints = {});
+  drake::solvers::SolutionResult Solve(Eigen::VectorXd q, Eigen::VectorXd u,
+                                       std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, Eigen::VectorXd u,
                        Eigen::VectorXd lambda, double tolerance = 1.0e-5) const;
 
@@ -179,8 +180,8 @@ class FixedPointSolver {
   drake::solvers::VectorXDecisionVariable lambda_;
   drake::solvers::SolutionResult solution_result_;
   std::string filename_ = "multibody/solver_log/position_solver";
-  double major_tolerance_ = 1.0e-10;
-  double minor_tolerance_ = 1.0e-10;
+  double major_tolerance_ = 1.0e-15;
+  double minor_tolerance_ = 1.0e-15;
 };
 
 }  // namespace multibody

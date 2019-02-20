@@ -31,6 +31,7 @@ using drake::multibody::AddFlatTerrainToWorld;
 using drake::solvers::MathematicalProgram;
 using dairlib::buildCassieTree;
 using dairlib::multibody::ContactInfo;
+using dairlib::multibody::ContactToolkit;
 using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::multibody::PositionConstraint;
 using dairlib::multibody::FixedPointConstraint;
@@ -116,7 +117,7 @@ class MultibodySolversTest : public ::testing::Test {
 
     num_contacts_ = contact_info_.idxA.size();
     num_position_constraints_ = tree_.getNumPositionConstraints();
-    num_constraint_forces_ = num_contacts_ * 3 + num_position_constraints_;
+    num_forces_ = num_contacts_ * 3 + num_position_constraints_;
   }
 
   RigidBodyTree<double> tree_;
@@ -126,7 +127,7 @@ class MultibodySolversTest : public ::testing::Test {
   int num_efforts_;
   int num_contacts_;
   int num_position_constraints_;
-  int num_constraint_forces_;
+  int num_forces_;
   ContactInfo contact_info_;
   VectorXd x0_;
 };
@@ -194,11 +195,13 @@ TEST_F(MultibodySolversTest, SolveTest) {
 
   VectorXd q = x0_.head(num_positions_);
   VectorXd u = VectorXd::Zero(num_efforts_);
-  VectorXd lambda = VectorXd::Zero(num_constraint_forces_);
+  VectorXd lambda = VectorXd::Zero(num_forces_);
   // PositionSolver
   PositionSolver position_solver(tree_);
   position_solver.SetInitialGuessQ(q);
-  position_solver.Solve(q);
+
+  std::cout << "Position solver result: " << position_solver.Solve(q)
+            << std::endl;
 
   VectorXd q_sol = position_solver.GetSolutionQ();
 
@@ -211,7 +214,8 @@ TEST_F(MultibodySolversTest, SolveTest) {
   ContactSolver contact_solver(tree_, contact_info_);
   contact_solver.SetInitialGuessQ(q);
 
-  contact_solver.Solve(q);
+  std::cout << "Contact solver result: " << contact_solver.Solve(q)
+            << std::endl;
 
   q_sol = contact_solver.GetSolutionQ();
 
@@ -226,7 +230,27 @@ TEST_F(MultibodySolversTest, SolveTest) {
   fp_solver.SetInitialGuessU(u);
   fp_solver.SetInitialGuessLambda(lambda);
 
-  fp_solver.Solve(q, u);
+  std::cout << "Fixed point solver result: " << fp_solver.Solve(q, u)
+            << std::endl;
+
+  q_sol = fp_solver.GetSolutionQ();
+  VectorXd u_sol = fp_solver.GetSolutionU();
+  VectorXd lambda_sol = fp_solver.GetSolutionLambda();
+
+  VectorXd x_sol = VectorXd::Zero(num_positions_ + num_velocities_);
+  x_sol.head(num_positions_) = q_sol;
+  ContactToolkit<double> ct(tree_, contact_info_);
+  std::cout << ct.CalcMVDot(x_sol, u_sol, lambda_sol).transpose() << std::endl;
+  std::cout << "----------------------" << std::endl;
+  std::cout << ct.CalcTimeDerivatives(x_sol, u_sol, lambda_sol).transpose()
+            << std::endl;
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol.size(), num_positions_);
+  ASSERT_EQ(u_sol.size(), num_efforts_);
+  ASSERT_EQ(lambda_sol.size(), num_forces_);
+  // Solution constraints check
+  ASSERT_TRUE(fp_solver.CheckConstraint(q_sol, u_sol, lambda_sol));
 }
 
 }  // namespace

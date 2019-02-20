@@ -1,0 +1,4 @@
+before_script:
+  - sudo sh install/install_prereqs_ubuntu.sh
+script:
+  - bazel build ...

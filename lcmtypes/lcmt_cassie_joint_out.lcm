@@ -1,0 +1,7 @@
+package dairlib;
+
+struct lcmt_cassie_joint_out
+{
+  double position;
+  double velocity;
+}

@@ -153,6 +153,19 @@ cc_binary(
     ],
 )
 
+cc_library(
+  name = "cassie_rbt_state_estimator",
+  srcs = ["cassie_rbt_state_estimator.cc",],
+  hdrs = ["cassie_rbt_state_estimator.h",],
+  deps = [
+    "@drake//systems/framework",
+    "//systems/framework:vector",
+    "//examples/Cassie/datatypes:cassie_out_t",
+    "//examples/Cassie/datatypes:cassie_names",
+    "//attic/multibody:utils",
+  ]
+)
+
 cc_binary(
     name = "run_udp_dummy_server",
     srcs = ["run_udp_dummy_server.c"],
@@ -281,4 +294,34 @@ cc_binary(
         "@drake//systems/framework:diagram_builder",
         "@drake//systems/lcm",
     ],
+)
+
+cc_binary(
+  name = "dispatcher_robot_out",
+  srcs = ["dispatcher_robot_out.cc"],
+  deps = ["//examples/Cassie/networking:udp_driven_loop",
+          "//examples/Cassie/networking:cassie_udp_pub_sub",
+          "@drake//lcm",
+          "//lcmtypes:lcmt_robot",
+          "//systems:robot_lcm_systems",
+          ":cassie_utils",
+          ":cassie_rbt_state_estimator",
+          ":cassie_urdf",
+          "@gflags",
+         ],
+)
+
+cc_binary(
+  name = "dispatcher_robot_in",
+  srcs = ["dispatcher_robot_in.cc"],
+  deps = ["//examples/Cassie/networking:cassie_udp_pub_sub",
+          "@drake//lcm",
+          "@drake//systems/lcm:lcm_driven_loop",
+          "//lcmtypes:lcmt_robot",
+          "//systems:robot_lcm_systems",
+          ":cassie_utils",
+          ":cassie_rbt_state_estimator",
+          ":cassie_urdf",
+          "@gflags",
+         ],
 )

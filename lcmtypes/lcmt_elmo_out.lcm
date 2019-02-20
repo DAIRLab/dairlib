@@ -1,0 +1,13 @@
+package dairlib;
+
+struct lcmt_elmo_out
+{
+  int16_t statusWord;
+  double position;
+  double velocity;
+  double torque;
+  double driveTemperature;
+  double dcLinkVoltage;
+  double torqueLimit;
+  double gearRatio;
+}

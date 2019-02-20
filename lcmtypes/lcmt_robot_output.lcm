@@ -2,7 +2,7 @@ package dairlib;
 
 struct lcmt_robot_output
 {
-  int64_t timestamp;
+  int64_t utime;
   int32_t num_positions;
   int32_t num_velocities;
   int32_t num_efforts;

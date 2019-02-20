@@ -1,0 +1,16 @@
+package dairlib;
+
+struct lcmt_cassie_leg_out
+{
+  lcmt_elmo_out hipRollDrive;
+  lcmt_elmo_out hipYawDrive;
+  lcmt_elmo_out hipPitchDrive;
+  lcmt_elmo_out kneeDrive;
+  lcmt_elmo_out footDrive;
+  lcmt_cassie_joint_out shinJoint;
+  lcmt_cassie_joint_out tarsusJoint;
+  lcmt_cassie_joint_out footJoint;
+  int8_t medullaCounter;
+  int16_t medullaCpuLoad;
+  boolean reedSwitchState;
+}

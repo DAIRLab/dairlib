@@ -1,25 +1,10 @@
 group "0.operator" {
-    cmd "1.state-visualizer" {
-        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
-        host = "localhost";
-    }
     cmd "0.drake-director" {
         exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/pd_panel.py --script examples/Cassie/show_time.py";
         host = "localhost";
     }
-}
-
-group "1.simulated-robot" {
-    cmd "0.pd-controller" {
-        exec = "bazel-bin/examples/Cassie/run_pd_controller";
-        host = "localhost";
-    }
-    cmd "1.simulator" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim";
-        host = "localhost";
-    }
-    cmd "2.dispatcher" {
-        exec = "bazel-bin/examples/Cassie/run_cassie_dispatch";
+    cmd "1.state-visualizer" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
         host = "localhost";
     }
 }
@@ -31,6 +16,32 @@ group "2.lcm-tools" {
     }
     cmd "1.signal-scope" {
         exec = "bazel-bin/signalscope/signal-scope";
+        host = "localhost";
+    }
+}
+
+group "1.simulated-robot" {
+    cmd "0.pd-controller" {
+        exec = "bazel-bin/examples/Cassie/run_pd_controller";
+        host = "localhost";
+    }
+    cmd "2.dispatcher-robot-out" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --pub_rate=1e6";
+        host = "localhost";
+    }
+    cmd "1.simulator" {
+        exec = "bazel-bin/examples/Cassie/run_simple_sim";
+        host = "localhost";
+    }
+    cmd "3.dispatcher-robot-in" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --pub_rate=1e6";
+        host = "localhost";
+    }
+}
+
+group "4.gazebo" {
+    cmd "0.launch-gazebo" {
+        exec = "sh -c 'cd ../cassie-gazebo-sim/cassie; bash launch_sim.sh'";
         host = "localhost";
     }
 }
@@ -47,3 +58,18 @@ group "3.cassie-robot" {
 }
 
 
+script "run-gazebo-pd-control" {
+   run_script "start-operator";
+   start cmd "0.launch-gazebo";
+   start cmd "2.dispatcher-robot-out";
+   start cmd "3.dispatcher-robot-in";
+   start cmd "0.pd-controller";
+}
+
+script "start-operator" {
+   stop cmd "1.state-visualizer";
+   stop cmd "0.drake-director";
+   start cmd "0.drake-director";
+   wait ms 3000;
+   start cmd "1.state-visualizer";
+}

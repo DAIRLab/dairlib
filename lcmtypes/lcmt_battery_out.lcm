@@ -1,0 +1,10 @@
+package dairlib;
+
+struct lcmt_battery_out
+{
+  boolean dataGood;
+  double stateOfCharge;
+  double voltage[12];
+  double current;
+  double temperature[4];
+}

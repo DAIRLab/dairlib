@@ -1,0 +1,11 @@
+package dairlib;
+
+struct lcmt_cassie_out
+{
+  int64_t utime;
+  lcmt_cassie_pelvis_out pelvis;
+  lcmt_cassie_leg_out leftLeg;
+  lcmt_cassie_leg_out rightLeg;
+  boolean isCalibrated;
+  int16_t messages[4];
+}

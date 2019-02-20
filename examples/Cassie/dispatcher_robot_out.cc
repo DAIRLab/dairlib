@@ -26,7 +26,6 @@ using drake::systems::Context;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::TriggerType;
-using drake::systems::lcm::TriggerTypes;
 
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive from.");
@@ -53,7 +52,7 @@ int do_main(int argc, char* argv[]) {
   auto output_sender = builder.AddSystem<systems::CassieOutputSender>();
   auto output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
-      &lcm_network, TriggerTypes({TriggerType::kPeriodic}), FLAGS_pub_rate));
+      &lcm_network, {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // connect cassie_out publisher
   builder.Connect(input_sub->get_output_port(),
@@ -73,14 +72,14 @@ int do_main(int argc, char* argv[]) {
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE", &lcm_local,
-          TriggerTypes({TriggerType::kForced})));
+          {TriggerType::kForced}));
 
   // Create and connect RobotOutput publisher (low-rate for the network)
   auto net_state_sender = builder.AddSystem<systems::RobotOutputSender>(*tree);
   auto net_state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "NETWORK_CASSIE_STATE", &lcm_network, 
-          TriggerTypes({TriggerType::kPeriodic}), FLAGS_pub_rate));
+          {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // Pass through to drop all but positions and velocities
   auto passthrough = builder.AddSystem<systems::SubvectorPassThrough>(

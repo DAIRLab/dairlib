@@ -26,9 +26,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::UtimeMessageToSeconds;
 using systems::RobotInputReceiver;
 using systems::RobotCommandSender;
-using systems::UDPTriggerTypes;
 using drake::systems::TriggerType;
-using drake::systems::lcm::TriggerTypes;
 
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
@@ -67,7 +65,7 @@ int do_main(int argc, char* argv[]) {
   // Create and connect input publisher.
   auto input_pub = builder.AddSystem(
       systems::CassieUDPPublisher::Make(FLAGS_address, FLAGS_port,
-          UDPTriggerTypes({TriggerType::kForced})));
+          {TriggerType::kForced}));
   builder.Connect(input_translator->get_output_port(0),
                   input_pub->get_input_port());
 
@@ -76,7 +74,7 @@ int do_main(int argc, char* argv[]) {
   auto net_command_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           "NETWORK_CASSIE_INPUT", &lcm_network,
-          TriggerTypes({TriggerType::kPeriodic}), FLAGS_pub_rate));
+          {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   builder.Connect(command_receiver->get_output_port(0),
                   net_command_sender->get_input_port(0));

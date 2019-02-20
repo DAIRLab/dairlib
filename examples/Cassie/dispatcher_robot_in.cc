@@ -76,7 +76,7 @@ int do_main(int argc, char* argv[]) {
   auto net_command_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           "NETWORK_CASSIE_INPUT", &lcm_network,
-          TriggerTypes({TriggerType::kPeriodic}, FLAGS_pub_rate)));
+          TriggerTypes({TriggerType::kPeriodic}), FLAGS_pub_rate));
 
   builder.Connect(command_receiver->get_output_port(0),
                   net_command_sender->get_input_port(0));

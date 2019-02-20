@@ -48,11 +48,12 @@ int do_main(int argc, char* argv[]) {
   auto input_sub = builder.AddSystem(
       systems::CassieUDPSubscriber::Make(FLAGS_address, FLAGS_port));
 
-  // Create publisher--no publishing rate since this will be driven by LCM
+  // Create and connect CassieOutputSender publisher (low-rate for the network)
+  // This echoes the messages from the robot
   auto output_sender = builder.AddSystem<systems::CassieOutputSender>();
   auto output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
-      &lcm_local, TriggerTypes({TriggerType::kForced})));
+      &lcm_network, TriggerTypes({TriggerType::kPeriodic}), FLAGS_pub_rate));
 
   // connect cassie_out publisher
   builder.Connect(input_sub->get_output_port(),

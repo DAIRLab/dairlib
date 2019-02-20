@@ -52,7 +52,7 @@ group "3.cassie-robot" {
 
 group "4.gazebo" {
     cmd "0.launch-gazebo" {
-        exec = "sh -c 'cd ../cassie-gazebo-sim/cassie; bash launch_sim.sh'";
+        exec = "bash ../cassie-gazebo-sim/cassie/launch_sim.sh";
         host = "localhost";
     }
 }

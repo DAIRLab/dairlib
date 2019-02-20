@@ -7,7 +7,7 @@
 //#include "templates/hdrs/umessage.h"
 
 #include "drake/lcm/drake_lcm.h"
-#include "drake/systems/framework/value.h"
+#include "drake/common/value.h"
 #include "drake/systems/lcm/serializer.h"
 
 void CassieLcmDispatchInterface::LcmSubscribeHandler(const void* lcm_message_bytes, int lcm_message_length, std::function<void(cassie_dispatch_lcm_out_t)> handler)
@@ -43,7 +43,7 @@ void CassieLcmDispatchInterface::StopPolling()
 
 void CassieLcmDispatchInterface::Send(cassie_dispatch_lcm_in_t message)
 {
-  drake::systems::Value<cassie_dispatch_lcm_in_t> lcm_message_val(message);
+  drake::Value<cassie_dispatch_lcm_in_t> lcm_message_val(message);
   drake::systems::lcm::Serializer<cassie_dispatch_lcm_in_t> serializer;
   std::vector<uint8_t> lcm_message_bytes;
   serializer.Serialize(lcm_message_val, &lcm_message_bytes);

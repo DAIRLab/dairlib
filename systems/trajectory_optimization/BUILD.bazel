@@ -43,6 +43,7 @@ cc_library(
     deps = [
         "@drake//multibody/plant",
         "@drake//common",
+        "@drake//solvers",
         "//multibody:utils",
     ],
 )

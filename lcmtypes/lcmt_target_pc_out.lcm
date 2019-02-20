@@ -1,0 +1,10 @@
+package dairlib;
+
+struct lcmt_target_pc_out
+{
+  int32_t etherCatStatus[6];
+  int32_t etherCatNotifications[21];
+  double taskExecutionTime;
+  int32_t overloadCounter;
+  double cpuTemperature;
+}

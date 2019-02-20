@@ -25,15 +25,15 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
     lcm_in.num_efforts = CASSIE_NUM_EFF;
     lcm_in.utime = 0;
     
-    for (uint i = 0; i < CASSIE_NUM_POS; i++) {
+    for (int i = 0; i < CASSIE_NUM_POS; i++) {
         lcm_in.position_names[i] = cassiePositionNames[i];
     }
     
-    for (uint i = 0; i < CASSIE_NUM_VEL; i++) {
+    for (int i = 0; i < CASSIE_NUM_VEL; i++) {
         lcm_in.velocity_names[i] = cassieVelocityNames[i];
     }
     
-    for (uint i = 0; i < CASSIE_NUM_EFF; i++) {
+    for (int i = 0; i < CASSIE_NUM_EFF; i++) {
         lcm_in.effort_names[i] = cassieEffortNames[i];
     }
   
@@ -92,7 +92,7 @@ cassie_dispatch_lcm_in_t CassieRobotOutToLcmIn(cassie_dispatch_robot_out_t robot
 cassie_dispatch_robot_in_t CassieLcmOutToRobotIn(cassie_dispatch_lcm_out_t lcm_out)
 {
     cassie_dispatch_robot_in_t robot_in;
-    for (uint i = 0; i < cassieEffortNames.size(); i++)
+    for (int i = 0; i < cassieEffortNames.size(); i++)
         for (int j = 0; j < lcm_out.num_efforts; j++)
             if (lcm_out.effort_names[j] == cassieEffortNames[i])
                 robot_in.torque[i] = lcm_out.efforts[j];
@@ -106,7 +106,7 @@ cassie_dispatch_lcm_out_t CassieRobotInToLcmOut(cassie_dispatch_robot_in_t robot
     lcm_out.efforts.resize(CASSIE_NUM_EFF);
     lcm_out.effort_names.resize(CASSIE_NUM_EFF);
     
-    for (uint i = 0; i < cassieEffortNames.size(); i++)
+    for (int i = 0; i < cassieEffortNames.size(); i++)
     {
          lcm_out.efforts[i] = robot_in.torque[i];
          lcm_out.effort_names[i] = cassieEffortNames[i];
@@ -119,21 +119,21 @@ cassie_dispatch_robot_out_t CassieLcmInToRobotOut(cassie_dispatch_lcm_in_t lcm_i
     double position[CASSIE_NUM_POS];
     double velocity[CASSIE_NUM_VEL];
     double effort[CASSIE_NUM_EFF];
-    for (uint i = 0; i < cassiePositionNames.size(); i++)
+    for (int i = 0; i < cassiePositionNames.size(); i++)
     {
         position[i] = 0.0;
         for (int j = 0; j < lcm_in.num_positions; j++)
             if (lcm_in.position_names[j] == cassiePositionNames[i])
                 position[i] = lcm_in.position[j];
     }
-    for (uint i = 0; i < cassieVelocityNames.size(); i++)
+    for (int i = 0; i < cassieVelocityNames.size(); i++)
     {
         velocity[i] = 0.0;
         for (int j = 0; j < lcm_in.num_velocities; j++)
             if (lcm_in.velocity_names[j] == cassieVelocityNames[i])
                 velocity[i] = lcm_in.velocity[j];
     }
-    for (uint i = 0; i < cassieEffortNames.size(); i++)
+    for (int i = 0; i < cassieEffortNames.size(); i++)
     {
         effort[i] = 0.0;
         for (int j = 0; j < lcm_in.num_efforts; j++)

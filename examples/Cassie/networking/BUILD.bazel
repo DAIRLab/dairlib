@@ -98,5 +98,6 @@ cc_test(
         "@drake//systems/analysis:simulator",
         "@drake//systems/framework",
         "@gtest//:main",
+        "@gflags",
     ],
 )

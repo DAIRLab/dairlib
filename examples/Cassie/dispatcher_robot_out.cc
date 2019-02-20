@@ -25,19 +25,20 @@ using drake::systems::Simulator;
 using drake::systems::Context;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::TriggerType;
 
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive from.");
 DEFINE_int64(port, 5000, "Port to receive on.");
-DEFINE_double(pub_rate, 0, "LCM pubishing rate.");
-
+DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
 
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  drake::lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
   DiagramBuilder<double> builder;
 
   std::unique_ptr<RigidBodyTree<double>> tree = makeCassieTreePointer();
@@ -46,11 +47,12 @@ int do_main(int argc, char* argv[]) {
   auto input_sub = builder.AddSystem(
       systems::CassieUDPSubscriber::Make(FLAGS_address, FLAGS_port));
 
-  // Create publisher--no publishing rate since this will be driven by LCM
+  // Create and connect CassieOutputSender publisher (low-rate for the network)
+  // This echoes the messages from the robot
   auto output_sender = builder.AddSystem<systems::CassieOutputSender>();
   auto output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
-      &lcm, FLAGS_pub_rate));
+      &lcm_network, {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // connect cassie_out publisher
   builder.Connect(input_sub->get_output_port(),
@@ -69,7 +71,15 @@ int do_main(int argc, char* argv[]) {
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(*tree);
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE", &lcm, FLAGS_pub_rate));
+          "CASSIE_STATE", &lcm_local,
+          {TriggerType::kForced}));
+
+  // Create and connect RobotOutput publisher (low-rate for the network)
+  auto net_state_sender = builder.AddSystem<systems::RobotOutputSender>(*tree);
+  auto net_state_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+          "NETWORK_CASSIE_STATE", &lcm_network, 
+          {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // Pass through to drop all but positions and velocities
   auto passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
@@ -85,6 +95,12 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
+
+  builder.Connect(passthrough->get_output_port(),
+      net_state_sender->get_input_port_state());
+
+  builder.Connect(net_state_sender->get_output_port(0),
+                  net_state_pub->get_input_port());
 
   auto diagram = builder.Build();
 

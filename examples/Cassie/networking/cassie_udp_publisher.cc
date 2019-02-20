@@ -10,16 +10,27 @@
 namespace dairlib {
 namespace systems {
 
+using drake::systems::TriggerType;
+
 namespace {
 const int kPortIndex = 0;
 }  // namespace
 
 CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
-      const int port, double publish_period)
+      const int port, const UDPTriggerTypes& publish_triggers,
+      double publish_period)
     : address_(address),
       port_(port),
       serializer_(std::move(std::make_unique<CassieUDPInSerializer>())) {
   DRAKE_DEMAND(publish_period >= 0.0);
+  DRAKE_DEMAND(!publish_triggers.empty());
+
+  // Check that publish_triggers does not contain an unsupported trigger
+  for (const auto& trigger : publish_triggers) {
+      DRAKE_DEMAND((trigger == TriggerType::kForced) ||
+        (trigger == TriggerType::kPeriodic) ||
+        (trigger == TriggerType::kPerStep));
+  }
 
   // Creating socket file descriptor
   socket_ = socket(AF_INET, SOCK_DGRAM, 0);
@@ -33,20 +44,26 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
 
   // Declare a forced publish so that any time Publish(.) is called on this
   // system (or a Diagram containing it), a message is emitted.
-  this->DeclareForcedPublishEvent(
-    &CassieUDPPublisher::PublishInputAsUDPMessage);
+  if (publish_triggers.find(TriggerType::kForced) != publish_triggers.end()) {
+    this->DeclareForcedPublishEvent(
+      &CassieUDPPublisher::PublishInputAsUDPMessage);
+  }
 
   DeclareAbstractInputPort("cassie_user_in_t",
       *serializer_->CreateDefaultValue());
 
   set_name(make_name(address, port));
 
-  if (publish_period > 0.0) {
+  if (publish_triggers.find(TriggerType::kPeriodic) != publish_triggers.end()) {
+    DRAKE_DEMAND(publish_period > 0);
     const double offset = 0.0;
     this->DeclarePeriodicPublishEvent(
         publish_period, offset,
         &CassieUDPPublisher::PublishInputAsUDPMessage);
   } else {
+    DRAKE_DEMAND(publish_period == 0);
+  }
+  if (publish_triggers.find(TriggerType::kPerStep) != publish_triggers.end()) {
     this->DeclarePerStepEvent(
         drake::systems::PublishEvent<double>([this](
             const drake::systems::Context<double>& context,
@@ -55,6 +72,14 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
         }));
   }
 }
+
+CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
+      const int port, double publish_period)
+    : CassieUDPPublisher(address, port,
+      (publish_period > 0) ?
+      UDPTriggerTypes({TriggerType::kForced, TriggerType::kPeriodic}) :
+      UDPTriggerTypes({TriggerType::kForced, TriggerType::kPerStep}),
+      publish_period) {}
 
 CassieUDPPublisher::~CassieUDPPublisher() {}
 

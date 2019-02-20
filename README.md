@@ -1,4 +1,5 @@
 # dairlib
+Warning! This is very much "development-level" code and is provided as-is. APIs are likely to be unstable and, while we hope for the documentation to be thorough and accurate, we make no guarantees.
 
 ## Complete Build Instructions
 

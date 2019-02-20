@@ -17,27 +17,19 @@ const int kPortIndex = 0;
 }  // namespace
 
 CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
-      const int port, double publish_period,
-      std::unordered_set<drake::systems::TriggerType> publish_triggers)
+      const int port, const UDPTriggerTypes& publish_triggers,
+      double publish_period)
     : address_(address),
       port_(port),
       serializer_(std::move(std::make_unique<CassieUDPInSerializer>())) {
   DRAKE_DEMAND(publish_period >= 0.0);
+  DRAKE_DEMAND(!publish_triggers.empty());
 
   // Check that publish_triggers does not contain an unsupported trigger
   for (const auto& trigger : publish_triggers) {
       DRAKE_DEMAND((trigger == TriggerType::kForced) ||
         (trigger == TriggerType::kPeriodic) ||
         (trigger == TriggerType::kPerStep));
-  }
-
-  // If empty, Create default publish triggers
-  if (publish_triggers.empty()) {
-    if (publish_period > 0) {
-      publish_triggers = {TriggerType::kForced, TriggerType::kPeriodic};
-    } else {
-      publish_triggers = {TriggerType::kForced, TriggerType::kPerStep};
-    }
   }
 
   // Creating socket file descriptor
@@ -80,6 +72,14 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
         }));
   }
 }
+
+CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
+      const int port, double publish_period)
+    : CassieUDPPublisher(address, port,
+      (publish_period > 0) ?
+      UDPTriggerTypes({TriggerType::kForced, TriggerType::kPeriodic}) :
+      UDPTriggerTypes({TriggerType::kForced, TriggerType::kPerStep}),
+      publish_period) {}
 
 CassieUDPPublisher::~CassieUDPPublisher() {}
 

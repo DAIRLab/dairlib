@@ -18,6 +18,7 @@ using drake::systems::Context;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::TriggerType;
+using drake::systems::lcm::TriggerTypes;
 
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive from.");
@@ -39,7 +40,7 @@ int do_main(int argc, char* argv[]) {
   auto output_sender = builder.AddSystem<systems::CassieOutputSender>();
   auto output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
-      &lcm, std::unordered_set<TriggerType>({TriggerType::kForced})));
+      &lcm, TriggerTypes({TriggerType::kForced})));
 
   // connect state publisher
   builder.Connect(input_sub->get_output_port(),

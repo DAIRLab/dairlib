@@ -19,6 +19,10 @@
 namespace dairlib {
 namespace systems {
 
+using UDPTriggerTypes =
+    std::unordered_set<drake::systems::TriggerType, drake::DefaultHash>;
+
+
 /**
  * Publishes a UDP message containing information from its input port.
  * Publishing can be set up to happen on a per-step or periodic basis.
@@ -38,6 +42,32 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
    *
    * @param port the port to listen on
    *
+   * @param publish_triggers A set determining which events trigger publishes
+   * must be a non-empty subset of {kForced, kPeriodic, kPerStep}
+   *
+   * @param publish_period Period that messages will be published (optional).
+   * If the publish period is zero, CassieUDPPublisher will use per-step
+   * publishing instead; see LeafSystem::DeclarePerStepPublishEvent().
+   *
+   * @pre publish_period is non-negative.
+   * @pre publish_period > iff publish_triggers contains kPeriodic
+   */
+  static std::unique_ptr<CassieUDPPublisher> Make(const std::string& address,
+      const int port, const UDPTriggerTypes& publish_triggers,
+      double publish_period = 0.0) {
+    return std::make_unique<CassieUDPPublisher>(address, port, publish_triggers,
+        publish_period);
+  }
+
+/**
+   * A factory method that returns an %CassieUDPPublisher
+   * Instantates the default publish triggers: kForced and either (kPeriodic
+   * if publish_period > 0) or (kPerStep if publish_period = 0)
+   *
+   * @param address the IP address to subscribe to
+   *
+   * @param port the port to listen on
+   *
    * @param publish_period Period that messages will be published (optional).
    * If the publish period is zero, CassieUDPPublisher will use per-step
    * publishing instead; see LeafSystem::DeclarePerStepPublishEvent().
@@ -45,14 +75,34 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
    * @pre publish_period is non-negative.
    */
   static std::unique_ptr<CassieUDPPublisher> Make(const std::string& address,
-      const int port, double publish_period = 0.0,
-      std::unordered_set<drake::systems::TriggerType> publish_triggers = {}) {
-    return std::make_unique<CassieUDPPublisher>(address, port, publish_period,
-        publish_triggers);
+      const int port, double publish_period = 0.0) {
+    return std::make_unique<CassieUDPPublisher>(address, port, publish_period);
   }
 
   /**
    * A constructor for a %CassieUDPPublisher
+   *
+   * @param address the IP address to subscribe to
+   *
+   * @param port the port to listen on
+   *
+   * @param publish_triggers A set determining which events trigger publishes
+   * must be a non-empty subset of {kForced, kPeriodic, kPerStep}
+   *
+   * @param publish_period Period that messages will be published (optional).
+   * If the publish period is zero, CassieUDPPublisher will use per-step
+   * publishing instead; see LeafSystem::DeclarePerStepPublishEvent().
+   *
+   * @pre publish_period is non-negative.
+   */
+  CassieUDPPublisher(const std::string& address, const int port,
+      const UDPTriggerTypes& publish_triggers, double publish_period = 0.0);
+
+
+  /**
+   * A constructor for a %CassieUDPPublisher
+   * Instantates the default publish triggers: kForced and either (kPeriodic
+   * if publish_period > 0) or (kPerStep if publish_period = 0)
    *
    * @param address the IP address to subscribe to
    *
@@ -65,8 +115,7 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
    * @pre publish_period is non-negative.
    */
   CassieUDPPublisher(const std::string& address, const int port,
-      double publish_period = 0.0,
-      std::unordered_set<drake::systems::TriggerType> publish_triggers = {});
+      double publish_period = 0.0);
 
   ~CassieUDPPublisher() override;
   /**

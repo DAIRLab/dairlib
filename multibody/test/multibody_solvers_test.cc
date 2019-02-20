@@ -116,7 +116,7 @@ class MultibodySolversTest : public ::testing::Test {
 
     num_contacts_ = contact_info_.idxA.size();
     num_position_constraints_ = tree_.getNumPositionConstraints();
-    num_constraint_forces_ = num_contacts_ + num_position_constraints_;
+    num_constraint_forces_ = num_contacts_ * 3 + num_position_constraints_;
   }
 
   RigidBodyTree<double> tree_;
@@ -162,7 +162,7 @@ TEST_F(MultibodySolversTest, InitializationTest) {
 
   // ContactSolver
   // Testing basic getters and setters
-  ContactSolver contact_solver(tree_);
+  ContactSolver contact_solver(tree_, contact_info_);
   contact_solver.set_filename("contact_log");
   contact_solver.set_major_tolerance(0.002);
   contact_solver.set_minor_tolerance(0.02);
@@ -208,20 +208,20 @@ TEST_F(MultibodySolversTest, SolveTest) {
   ASSERT_TRUE(position_solver.CheckConstraint(q_sol));
 
   // ContactSolver
-  ContactSolver contact_solver(tree_);
+  ContactSolver contact_solver(tree_, contact_info_);
   contact_solver.SetInitialGuessQ(q);
 
-  contact_solver.Solve(q, contact_info_);
+  contact_solver.Solve(q);
 
   q_sol = contact_solver.GetSolutionQ();
 
   // Solution dimension check
   ASSERT_EQ(q_sol.size(), num_positions_);
   // Checking if the solution constraints have been satisfied
-  ASSERT_TRUE(contact_solver.CheckConstraint(q_sol, contact_info_));
+  ASSERT_TRUE(contact_solver.CheckConstraint(q_sol));
 
   // FixedPointSolver
-  FixedPointSolver fp_solver(tree_);
+  FixedPointSolver fp_solver(tree_, contact_info_);
   fp_solver.SetInitialGuessQ(q);
   fp_solver.SetInitialGuessU(u);
   fp_solver.SetInitialGuessLambda(lambda);

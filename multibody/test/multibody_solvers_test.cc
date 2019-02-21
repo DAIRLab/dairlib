@@ -35,10 +35,10 @@ using dairlib::multibody::ContactToolkit;
 using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::multibody::PositionConstraint;
 using dairlib::multibody::FixedPointConstraint;
-using dairlib::multibody::ContactConstraint;
+using dairlib::multibody::GroundContactConstraint;
 using dairlib::multibody::PositionSolver;
 using dairlib::multibody::FixedPointSolver;
-using dairlib::multibody::ContactSolver;
+using dairlib::multibody::GroundContactSolver;
 
 class MultibodySolversTest : public ::testing::Test {
  protected:
@@ -74,8 +74,8 @@ class MultibodySolversTest : public ::testing::Test {
     x0_(position_map.at("ankle_joint_right")) = .81;
     x0_(position_map.at("toe_left")) = 0;
     x0_(position_map.at("toe_right")) = 0;
-    //x0_(position_map.at("toe_left")) = -30.0 * M_PI / 180.0;
-    //x0_(position_map.at("toe_right")) = -60.0 * M_PI / 180.0;
+    // x0_(position_map.at("toe_left")) = -30.0 * M_PI / 180.0;
+    // x0_(position_map.at("toe_right")) = -60.0 * M_PI / 180.0;
 
     // Collison detect
     VectorXd phi_total;
@@ -112,10 +112,15 @@ class MultibodySolversTest : public ::testing::Test {
       }
     }
 
+    // Setting the contact points on the ground to be fixed.
+    VectorXd left_contact1(3), left_contact2(3), right_contact1(3),
+        right_contact2(3);
+
     // Creating the contact info
     // idxB is the vector index for the body which is accessed through
     // ContactInfo.idxA
-    // In this case xA corresponds to the points on the ground and hence xA and
+    // In this case xA corresponds to the points on the ground and hence xA
+    // and
     // xB must be interchanged when constructing contact_info_
     contact_info_ = {xB, xA, idxB};
 
@@ -147,7 +152,7 @@ TEST_F(MultibodySolversTest, InitializationTest) {
   FixedPointConstraint fp_constraint2(tree_, contact_info_);
 
   // Contact constraint
-  ContactConstraint contact_constraint(tree_, contact_info_);
+  GroundContactConstraint contact_constraint(tree_, contact_info_);
 
   // Solver class initializations
 
@@ -167,7 +172,7 @@ TEST_F(MultibodySolversTest, InitializationTest) {
 
   // ContactSolver
   // Testing basic getters and setters
-  ContactSolver contact_solver(tree_, contact_info_);
+  GroundContactSolver contact_solver(tree_, contact_info_);
   contact_solver.set_filename("contact_log");
   contact_solver.set_major_tolerance(0.002);
   contact_solver.set_minor_tolerance(0.02);
@@ -214,8 +219,8 @@ TEST_F(MultibodySolversTest, SolveTest) {
   // Checking if the solution constraints have been satisfied
   ASSERT_TRUE(position_solver.CheckConstraint(q_sol));
 
-  // ContactSolver
-  ContactSolver contact_solver(tree_, contact_info_);
+  // GroundContactSolver
+  GroundContactSolver contact_solver(tree_, contact_info_);
   contact_solver.SetInitialGuessQ(q);
 
   std::cout << "Contact solver result: " << contact_solver.Solve(q)
@@ -227,8 +232,7 @@ TEST_F(MultibodySolversTest, SolveTest) {
   VectorXd phi_total;
   Matrix3Xd normal_total, xA_total, xB_total;
   vector<int> idxA_total, idxB_total;
-  KinematicsCache<double> k_cache =
-      tree_.doKinematics(q_sol);
+  KinematicsCache<double> k_cache = tree_.doKinematics(q_sol);
 
   tree_.collisionDetect(k_cache, phi_total, normal_total, xA_total, xB_total,
                         idxA_total, idxB_total);
@@ -258,39 +262,38 @@ TEST_F(MultibodySolversTest, SolveTest) {
     }
   }
 
-
   // Solution dimension check
   ASSERT_EQ(q_sol.size(), num_positions_);
   // Checking if the solution constraints have been satisfied
   ASSERT_TRUE(contact_solver.CheckConstraint(q_sol));
 
-  // FixedPointSolver
-  FixedPointSolver fp_solver(tree_, contact_info_);
-  fp_solver.SetInitialGuessQ(q);
-  fp_solver.SetInitialGuessU(u);
-  fp_solver.SetInitialGuessLambda(lambda);
+  //// FixedPointSolver
+  //FixedPointSolver fp_solver(tree_, contact_info_);
+  //fp_solver.SetInitialGuessQ(q);
+  //fp_solver.SetInitialGuessU(u);
+  //fp_solver.SetInitialGuessLambda(lambda);
 
-  std::cout << "Fixed point solver result: " << fp_solver.Solve(q, u)
-            << std::endl;
+  //std::cout << "Fixed point solver result: " << fp_solver.Solve(q, u)
+  //          << std::endl;
 
-  q_sol = fp_solver.GetSolutionQ();
-  VectorXd u_sol = fp_solver.GetSolutionU();
-  VectorXd lambda_sol = fp_solver.GetSolutionLambda();
+  //q_sol = fp_solver.GetSolutionQ();
+  //VectorXd u_sol = fp_solver.GetSolutionU();
+  //VectorXd lambda_sol = fp_solver.GetSolutionLambda();
 
-  VectorXd x_sol = VectorXd::Zero(num_positions_ + num_velocities_);
-  x_sol.head(num_positions_) = q_sol;
-  ContactToolkit<double> ct(tree_, contact_info_);
-  std::cout << ct.CalcMVDot(x_sol, u_sol, lambda_sol).transpose() << std::endl;
-  std::cout << "----------------------" << std::endl;
-  std::cout << ct.CalcTimeDerivatives(x_sol, u_sol, lambda_sol).transpose()
-            << std::endl;
+  //VectorXd x_sol = VectorXd::Zero(num_positions_ + num_velocities_);
+  //x_sol.head(num_positions_) = q_sol;
+  //ContactToolkit<double> ct(tree_, contact_info_);
+  //std::cout << ct.CalcMVDot(x_sol, u_sol, lambda_sol).transpose() << std::endl;
+  //std::cout << "----------------------" << std::endl;
+  //std::cout << ct.CalcTimeDerivatives(x_sol, u_sol, lambda_sol).transpose()
+  //          << std::endl;
 
-  // Solution dimension check
-  ASSERT_EQ(q_sol.size(), num_positions_);
-  ASSERT_EQ(u_sol.size(), num_efforts_);
-  ASSERT_EQ(lambda_sol.size(), num_forces_);
-  // Solution constraints check
-  ASSERT_TRUE(fp_solver.CheckConstraint(q_sol, u_sol, lambda_sol));
+  //// Solution dimension check
+  //ASSERT_EQ(q_sol.size(), num_positions_);
+  //ASSERT_EQ(u_sol.size(), num_efforts_);
+  //ASSERT_EQ(lambda_sol.size(), num_forces_);
+  //// Solution constraints check
+  //ASSERT_TRUE(fp_solver.CheckConstraint(q_sol, u_sol, lambda_sol));
 }
 
 }  // namespace

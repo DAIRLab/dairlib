@@ -26,9 +26,9 @@ class PositionConstraint : public drake::solvers::Constraint {
   const RigidBodyTree<double>& tree_;
 };
 
-class ContactConstraint : public drake::solvers::Constraint {
+class GroundContactConstraint : public drake::solvers::Constraint {
  public:
-  ContactConstraint(const RigidBodyTree<double>& tree, ContactInfo contact_info,
+  GroundContactConstraint(const RigidBodyTree<double>& tree, ContactInfo contact_info,
                     const std::string& description = "");
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& q_u_l,
               Eigen::VectorXd* y) const override;
@@ -83,7 +83,7 @@ class PositionSolver {
   void SetInitialGuessQ(Eigen::VectorXd q);
   drake::solvers::SolutionResult Solve(Eigen::VectorXd q,
                                        std::vector<int> fixed_joints = {});
-  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-7) const;
+  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-9) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   drake::solvers::SolutionResult get_solution_result();
@@ -107,15 +107,15 @@ class PositionSolver {
   double minor_tolerance_ = 1.0e-10;
 };
 
-class ContactSolver {
+class GroundContactSolver {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ContactSolver)
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(GroundContactSolver)
 
-  ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
+  GroundContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
 
   void SetInitialGuessQ(Eigen::VectorXd q);
   drake::solvers::SolutionResult Solve(Eigen::VectorXd q, std::vector<int> fixed_joints = {});
-  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-5) const;
+  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-9) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   drake::solvers::SolutionResult get_solution_result();
@@ -136,8 +136,8 @@ class ContactSolver {
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::SolutionResult solution_result_;
   std::string filename_ = "multibody/solver_log/position_solver";
-  double major_tolerance_ = 1.0e-4;
-  double minor_tolerance_ = 1.0e-4;
+  double major_tolerance_ = 1.0e-10;
+  double minor_tolerance_ = 1.0e-10;
 };
 
 class FixedPointSolver {

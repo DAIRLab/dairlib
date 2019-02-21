@@ -5,7 +5,7 @@ namespace systems {
 
 using std::string;
 using drake::systems::Context;
-using drake::systems::AbstractValue;
+using drake::AbstractValue;
 using dairlib::systems::TimestampedVector;
 using Eigen::VectorXd;
 using drake::systems::Context;

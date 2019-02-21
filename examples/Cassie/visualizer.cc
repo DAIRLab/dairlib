@@ -52,18 +52,15 @@ int do_main(int argc, char* argv[]) {
   auto state_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
-  builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
-
+  builder.Connect(*state_sub, *state_receiver);
 
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
     state_receiver->get_output_port(0).size(), 0, plant.num_positions());
-  builder.Connect(state_receiver->get_output_port(0),
-                  passthrough->get_input_port());
+  builder.Connect(*state_receiver, *passthrough);
 
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
-  builder.Connect(passthrough->get_output_port(), to_pose->get_input_port());
+  builder.Connect(*passthrough, *to_pose);
   builder.Connect(to_pose->get_output_port(), scene_graph.get_source_pose_port(
     plant.get_source_id().value()));
 

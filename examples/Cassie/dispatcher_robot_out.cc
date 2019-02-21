@@ -55,17 +55,14 @@ int do_main(int argc, char* argv[]) {
       &lcm_network, {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // connect cassie_out publisher
-  builder.Connect(input_sub->get_output_port(),
-                  output_sender->get_input_port(0));
+  builder.Connect(*input_sub, *output_sender);
 
-  builder.Connect(output_sender->get_output_port(0),
-                  output_pub->get_input_port());
+  builder.Connect(*output_sender, *output_pub);
 
   // Create and connect state estimator
   auto state_estimator =
       builder.AddSystem<systems::CassieRbtStateEstimator>(*tree);
-  builder.Connect(input_sub->get_output_port(),
-                  state_estimator->get_input_port(0));
+  builder.Connect(*input_sub, *state_estimator);
 
   // Create and connect RobotOutput publisher.
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(*tree);
@@ -75,7 +72,6 @@ int do_main(int argc, char* argv[]) {
           {TriggerType::kForced}));
 
   // Create and connect RobotOutput publisher (low-rate for the network)
-  auto net_state_sender = builder.AddSystem<systems::RobotOutputSender>(*tree);
   auto net_state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "NETWORK_CASSIE_STATE", &lcm_network, 
@@ -87,20 +83,11 @@ int do_main(int argc, char* argv[]) {
     0,
     state_sender->get_input_port(0).size());
 
-  builder.Connect(state_estimator->get_output_port(0),
-      passthrough->get_input_port());
+  builder.Connect(*state_estimator, *passthrough);
+  builder.Connect(*passthrough, *state_sender);
+  builder.Connect(*state_sender, *state_pub);
 
-  builder.Connect(passthrough->get_output_port(),
-      state_sender->get_input_port_state());
-
-  builder.Connect(state_sender->get_output_port(0),
-                  state_pub->get_input_port());
-
-  builder.Connect(passthrough->get_output_port(),
-      net_state_sender->get_input_port_state());
-
-  builder.Connect(net_state_sender->get_output_port(0),
-                  net_state_pub->get_input_port());
+  builder.Connect(*state_sender, *net_state_pub);
 
   auto diagram = builder.Build();
 

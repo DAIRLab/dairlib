@@ -1,5 +1,4 @@
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
-#include "examples/Cassie/datatypes/cassie_names.h"
 
 namespace dairlib {
 namespace systems {

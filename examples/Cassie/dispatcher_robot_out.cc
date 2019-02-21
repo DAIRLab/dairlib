@@ -74,7 +74,7 @@ int do_main(int argc, char* argv[]) {
   // Create and connect RobotOutput publisher (low-rate for the network)
   auto net_state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "NETWORK_CASSIE_STATE", &lcm_network, 
+          "NETWORK_CASSIE_STATE", &lcm_network,
           {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // Pass through to drop all but positions and velocities

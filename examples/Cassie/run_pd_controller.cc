@@ -22,7 +22,7 @@ using drake::systems::DiagramBuilder;
 
 
 int doMain() {
-  drake::lcm::DrakeLcm lcm;
+  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   DiagramBuilder<double> builder;
   DiagramBuilder<double> builder_null;
@@ -33,6 +33,7 @@ int doMain() {
   MultibodyPlant<double>& plant =
       *builder_null.AddSystem<MultibodyPlant>(1.0);
   addCassieMultibody(&plant, &scene_graph, false);
+  plant.Finalize();
 
   const std::string channel_x = "CASSIE_STATE";
   const std::string channel_u = "CASSIE_INPUT";

@@ -1,3 +1,33 @@
+group "2.lcm-tools" {
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/signalscope/signal-scope";
+        host = "localhost";
+    }
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "1.simulated-robot" {
+    cmd "0.pd-controller" {
+        exec = "bazel-bin/examples/Cassie/run_pd_controller";
+        host = "localhost";
+    }
+    cmd "2.dispatcher-robot-out" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001";
+        host = "localhost";
+    }
+    cmd "1.simulator" {
+        exec = "bazel-bin/examples/Cassie/run_simple_sim";
+        host = "localhost";
+    }
+    cmd "3.dispatcher-robot-in" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000";
+        host = "localhost";
+    }
+}
+
 group "0.operator" {
     cmd "1.state-visualizer" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
@@ -9,41 +39,37 @@ group "0.operator" {
     }
 }
 
-group "1.simulated-robot" {
-    cmd "0.pd-controller" {
-        exec = "bazel-bin/examples/Cassie/run_pd_controller";
-        host = "localhost";
-    }
-    cmd "1.simulator" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim";
-        host = "localhost";
-    }
-    cmd "2.dispatcher" {
-        exec = "bazel-bin/examples/Cassie/run_cassie_dispatch";
-        host = "localhost";
-    }
-}
-
-group "2.lcm-tools" {
-    cmd "0.lcm-spy" {
-        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
-        host = "localhost";
-    }
-    cmd "1.signal-scope" {
-        exec = "bazel-bin/signalscope/signal-scope";
-        host = "localhost";
-    }
-}
-
 group "3.cassie-robot" {
-    cmd "0.pd-controller" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller";
-        host = "dair-cassie";
-    }
     cmd "2.dispatcher" {
         exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_cassie_dispatch";
         host = "dair-cassie";
     }
+    cmd "0.pd-controller" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller";
+        host = "dair-cassie";
+    }
+}
+
+group "4.gazebo" {
+    cmd "0.launch-gazebo" {
+        exec = "bash ../cassie-gazebo-sim/cassie/launch_sim.sh";
+        host = "localhost";
+    }
 }
 
 
+script "run-gazebo-pd-control" {
+    run_script "start-operator";
+    start cmd "0.launch-gazebo";
+    start cmd "2.dispatcher-robot-out";
+    start cmd "3.dispatcher-robot-in";
+    start cmd "0.pd-controller";
+}
+
+script "start-operator" {
+    stop cmd "1.state-visualizer";
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 3000;
+    start cmd "1.state-visualizer";
+}

@@ -7,7 +7,7 @@ namespace systems {
 using std::string;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
-using drake::systems::AbstractValue;
+using drake::AbstractValue;
 using dairlib::systems::TimestampedVector;
 using Eigen::VectorXd;
 using drake::systems::Context;
@@ -68,7 +68,7 @@ PDConfigReceiver::PDConfigReceiver(const RigidBodyTree<double>& tree) {
 
   // Velocity map:
   this->DeclareAbstractInputPort(
-      "lcmt_pd_config", drake::systems::Value<dairlib::lcmt_pd_config>{});
+      "lcmt_pd_config", drake::Value<dairlib::lcmt_pd_config>{});
   this->DeclareVectorOutputPort(
       LinearConfig(tree.get_num_positions() + tree.get_num_velocities(),
                    tree.get_num_actuators()),
@@ -132,7 +132,7 @@ PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
 
   // Velocity map:
   this->DeclareAbstractInputPort(
-      "lcmt_pd_config", drake::systems::Value<dairlib::lcmt_pd_config>{});
+      "lcmt_pd_config", drake::Value<dairlib::lcmt_pd_config>{});
   this->DeclareVectorOutputPort(
       LinearConfig(plant.num_positions() + plant.num_velocities(),
                    plant.num_actuators()),

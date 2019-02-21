@@ -55,8 +55,19 @@ int do_main(int argc, char* argv[]) {
 
   plant.Finalize();
 
-  auto input_source = builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
-      Eigen::VectorXd::Zero(plant.num_actuators()));
+  std::map<std::string, int> actuatorIndexMap =
+    multibody::makeNameToActuatorsMap(plant);
+
+  for (auto const& x : actuatorIndexMap) {
+    std::cout << x.first  // string (key)
+              << ':'
+              << x.second  // string's value
+              << std::endl;
+  }
+
+  auto input_source =
+      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
+          Eigen::VectorXd::Zero(plant.num_actuators()));
 
   builder.Connect(input_source->get_output_port(),
                   plant.get_actuation_input_port());

@@ -11,7 +11,7 @@ CassieUdpOutputPublisher::CassieUdpOutputPublisher(
   _spoofer = spoofer;
 
   this->DeclareAbstractInputPort("lcmt_robot_output",
-    drake::systems::Value<dairlib::lcmt_robot_output>{});
+    drake::Value<dairlib::lcmt_robot_output>{});
 }
 
 void CassieUdpOutputPublisher::set_publish_period(double period)
@@ -22,7 +22,7 @@ void CassieUdpOutputPublisher::set_publish_period(double period)
 void CassieUdpOutputPublisher::DoPublish(const Context<double>& context,
                const std::vector<const PublishEvent<double>*>&) const
 {
-    const drake::systems::AbstractValue* input = this->EvalAbstractInput(context, 0);
+    const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
     const auto& input_msg = input->GetValue<dairlib::lcmt_robot_output>();
     cassie_dispatch_robot_out_t robot_out = CassieLcmInToRobotOut(input_msg);
     _spoofer->Publish(robot_out);
@@ -62,7 +62,7 @@ void CassieUdpInputSubscriber::Output(const Context<double>& context, lcmt_robot
   this->mux.unlock();
 }
 
-/*std::unique_ptr<systems::AbstractValue>
+/*std::unique_ptr<AbstractValue>
 LcmSubscriberSystem::AllocateSerializerOutputValue() const {
   return _serializer->CreateDefaultValue();
 }

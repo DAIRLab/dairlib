@@ -24,7 +24,7 @@ RobotOutputReceiver::RobotOutputReceiver(
   positionIndexMap_ = multibody::makeNameToPositionsMap(plant);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_output",
-    drake::systems::Value<dairlib::lcmt_robot_output>{});
+    drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(OutputVector<double>(
     plant.num_positions(), plant.num_velocities(),
     plant.num_actuators()),
@@ -39,16 +39,16 @@ RobotOutputReceiver::RobotOutputReceiver(
   positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
   this->DeclareAbstractInputPort("lcmt_robot_output",
-    drake::systems::Value<dairlib::lcmt_robot_output>{});
+    drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(OutputVector<double>(
     tree.get_num_positions(), tree.get_num_velocities(),
     tree.get_num_actuators()),
     &RobotOutputReceiver::CopyOutput);
 }
 
-void RobotOutputReceiver::CopyOutput(const Context<double>& context,
-                                     OutputVector<double>* output) const {
-  const drake::systems::AbstractValue* input =
+void RobotOutputReceiver::CopyOutput(
+    const Context<double>& context, OutputVector<double>* output) const {
+  const drake::AbstractValue* input =
       this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& state_msg = input->GetValue<dairlib::lcmt_robot_output>();
@@ -65,7 +65,7 @@ void RobotOutputReceiver::CopyOutput(const Context<double>& context,
   }
   output->SetPositions(positions);
   output->SetVelocities(velocities);
-  output->set_timestamp(state_msg.timestamp);
+  output->set_timestamp(state_msg.utime * 1.0e-6);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -130,7 +130,7 @@ void RobotOutputSender::Output(const Context<double>& context,
   const auto state = this->EvalVectorInput(context, state_input_port_);
 
   // using the time from the context
-  state_msg->timestamp = context.get_time() * 1e6;
+  state_msg->utime = context.get_time() * 1e6;
 
   state_msg->num_positions = num_positions_;
   state_msg->num_velocities = num_velocities_;
@@ -155,7 +155,7 @@ RobotInputReceiver::RobotInputReceiver(const RigidBodyTree<double>& tree) {
   num_actuators_ = tree.get_num_actuators();
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
   this->DeclareAbstractInputPort("lcmt_robot_input",
-    drake::systems::Value<dairlib::lcmt_robot_input>{});
+    drake::Value<dairlib::lcmt_robot_input>{});
   this->DeclareVectorOutputPort(TimestampedVector<double>(num_actuators_),
                                 &RobotInputReceiver::CopyInputOut);
 }
@@ -165,14 +165,14 @@ RobotInputReceiver::RobotInputReceiver(
   num_actuators_ = plant.num_actuators();
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_input",
-    drake::systems::Value<dairlib::lcmt_robot_input>{});
+    drake::Value<dairlib::lcmt_robot_input>{});
   this->DeclareVectorOutputPort(TimestampedVector<double>(num_actuators_),
                                 &RobotInputReceiver::CopyInputOut);
 }
 
 void RobotInputReceiver::CopyInputOut(const Context<double>& context,
                                       TimestampedVector<double>* output) const {
-  const drake::systems::AbstractValue* input =
+  const drake::AbstractValue* input =
       this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& input_msg = input->GetValue<dairlib::lcmt_robot_input>();
@@ -184,7 +184,7 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
     input_vector(j) = input_msg.efforts[i];
   }
   output->SetDataVector(input_vector);
-  output->set_timestamp(input_msg.timestamp);
+  output->set_timestamp(input_msg.utime * 1.0e-6);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -222,7 +222,7 @@ void RobotCommandSender::OutputCommand(const Context<double>& context,
       this->EvalVectorInput(context, 0);
 
 
-  input_msg->timestamp = command->get_timestamp();  // context.get_time()*1e6;
+  input_msg->utime = command->get_timestamp() * 1e6;
   input_msg->num_efforts = num_actuators_;
   input_msg->effort_names.resize(num_actuators_);
   input_msg->efforts.resize(num_actuators_);

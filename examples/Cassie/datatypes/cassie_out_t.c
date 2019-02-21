@@ -1,4 +1,4 @@
-#include "cassie_out_t.h"
+#include "examples/Cassie/datatypes/cassie_out_t.h"
 #include <stddef.h>
 
 

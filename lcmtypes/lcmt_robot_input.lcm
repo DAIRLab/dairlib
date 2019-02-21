@@ -2,7 +2,7 @@ package dairlib;
 
 struct lcmt_robot_input
 {
-  int64_t timestamp;
+  int64_t utime;
   int32_t num_efforts;
 
   string effort_names [num_efforts];

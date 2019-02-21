@@ -89,19 +89,26 @@ void ContactConstraint::DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
   const AutoDiffVecXd q_t = q.head(tree_.get_num_positions());
 
   // Kinematics Cache
-  KinematicsCache<AutoDiffXd> k_cache = tree_.doKinematics(q_t);
+  KinematicsCache<AutoDiffXd> k_cache_autodiff = tree_.doKinematics(q_t);
+  KinematicsCache<double> k_cache_double =
+      tree_.doKinematics(DiscardGradient(q_t));
 
   AutoDiffVecXd y_t = initializeAutoDiff(VectorXd::Zero(num_contacts_));
 
   for (int i = 0; i < num_contacts_; ++i) {
     // Transforming the point on the body to the world frame
     AutoDiffVecXd contact_pt_A = tree_.transformPoints(
-        k_cache, contact_info_.xA.col(i), contact_info_.idxA.at(i), 0);
+        k_cache_autodiff, contact_info_.xA.col(i), contact_info_.idxA.at(i), 0);
     // Points on the plan are already in world coordinates
     AutoDiffVecXd contact_pt_B =
-        tree_.transformPoints(k_cache, contact_info_.xB.col(i), 0, 0);
+        tree_.transformPoints(k_cache_autodiff, contact_info_.xB.col(i), 0, 0);
     y_t(i) = (contact_pt_A - contact_pt_B).dot(contact_pt_A - contact_pt_B);
   }
+
+  std::cout << y_t << std::endl << "-----" << std::endl;
+
+  // std::cout << autoDiffToGradientMatrix(y_t) << std::endl;
+  // std::cout << "---------------" << std::endl;
 
   *y = y_t;
 }
@@ -157,6 +164,7 @@ void FixedPointConstraint::DoEval(
   x.head(num_positions_) = q;
 
   *y = contact_toolkit_->CalcMVDot(x, u, lambda);
+  std::cout << *y << std::endl <<  "------------------" << std::endl;
 }
 
 void FixedPointConstraint::DoEval(

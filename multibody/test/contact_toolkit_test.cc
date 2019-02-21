@@ -103,7 +103,9 @@ class ContactToolkitTest : public ::testing::Test {
     // Creating the contact info
     // idxB is the vector index for the body which is accessed through
     // ContactInfo.idxA
-    contact_info_ = {xA, xB, idxB};
+    // In this case xA corresponds to the points on the ground and hence xA and
+    // xB must be interchanged when constructing contact_info_
+    contact_info_ = {xB, xA, idxB};
 
     // ContactToolkit objects for both templates
     contact_toolkit_double_ =

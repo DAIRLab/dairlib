@@ -63,19 +63,21 @@ class MultibodySolversTest : public ::testing::Test {
     map<string, int> position_map = tree_.computePositionNameToIndexMap();
     x0_ = VectorXd::Zero(num_states_);
     x0_(position_map.at("hip_roll_left")) = 0.1;
-    x0_(position_map.at("hip_roll_right")) = -0.01;
+    x0_(position_map.at("hip_roll_right")) = -0.1;
     x0_(position_map.at("hip_yaw_left")) = 0.01;
-    x0_(position_map.at("hip_yaw_right")) = 0.01;
-    x0_(position_map.at("hip_pitch_left")) = -.169;
+    x0_(position_map.at("hip_yaw_right")) = -0.01;
+    x0_(position_map.at("hip_pitch_left")) = .269;
     x0_(position_map.at("hip_pitch_right")) = .269;
     x0_(position_map.at("knee_left")) = -.744;
     x0_(position_map.at("knee_right")) = -.744;
     x0_(position_map.at("ankle_joint_left")) = .81;
     x0_(position_map.at("ankle_joint_right")) = .81;
-    x0_(position_map.at("toe_left")) = -30.0 * M_PI / 180.0;
-    x0_(position_map.at("toe_right")) = -60.0 * M_PI / 180.0;
+    x0_(position_map.at("toe_left")) = 0;
+    x0_(position_map.at("toe_right")) = 0;
+    //x0_(position_map.at("toe_left")) = -30.0 * M_PI / 180.0;
+    //x0_(position_map.at("toe_right")) = -60.0 * M_PI / 180.0;
 
-    // Colliison detect
+    // Collison detect
     VectorXd phi_total;
     Matrix3Xd normal_total, xA_total, xB_total;
     vector<int> idxA_total, idxB_total;
@@ -113,7 +115,9 @@ class MultibodySolversTest : public ::testing::Test {
     // Creating the contact info
     // idxB is the vector index for the body which is accessed through
     // ContactInfo.idxA
-    contact_info_ = {xA, xB, idxB};
+    // In this case xA corresponds to the points on the ground and hence xA and
+    // xB must be interchanged when constructing contact_info_
+    contact_info_ = {xB, xA, idxB};
 
     num_contacts_ = contact_info_.idxA.size();
     num_position_constraints_ = tree_.getNumPositionConstraints();
@@ -218,6 +222,42 @@ TEST_F(MultibodySolversTest, SolveTest) {
             << std::endl;
 
   q_sol = contact_solver.GetSolutionQ();
+
+  // Colliison detect
+  VectorXd phi_total;
+  Matrix3Xd normal_total, xA_total, xB_total;
+  vector<int> idxA_total, idxB_total;
+  KinematicsCache<double> k_cache =
+      tree_.doKinematics(q_sol);
+
+  tree_.collisionDetect(k_cache, phi_total, normal_total, xA_total, xB_total,
+                        idxA_total, idxB_total);
+
+  const int world_ind = GetBodyIndexFromName(tree_, "world");
+  const int toe_left_ind = GetBodyIndexFromName(tree_, "toe_left");
+  const int toe_right_ind = GetBodyIndexFromName(tree_, "toe_right");
+
+  // Extracting information into the four contacts.
+  VectorXd phi(4);
+  Matrix3Xd normal(3, 4), xA(3, 4), xB(3, 4);
+  vector<int> idxA(4), idxB(4);
+
+  int k = 0;
+  for (unsigned i = 0; i < idxA_total.size(); ++i) {
+    int ind_a = idxA_total.at(i);
+    int ind_b = idxB_total.at(i);
+    if ((ind_a == world_ind && ind_b == toe_left_ind) ||
+        (ind_a == world_ind && ind_b == toe_right_ind) ||
+        (ind_a == toe_left_ind && ind_b == world_ind) ||
+        (ind_a == toe_right_ind && ind_b == world_ind)) {
+      xA.col(k) = xA_total.col(i);
+      xB.col(k) = xB_total.col(i);
+      idxA.at(k) = idxA_total.at(i);
+      idxB.at(k) = idxB_total.at(i);
+      ++k;
+    }
+  }
+
 
   // Solution dimension check
   ASSERT_EQ(q_sol.size(), num_positions_);

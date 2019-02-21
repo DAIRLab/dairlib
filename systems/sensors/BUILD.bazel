@@ -16,3 +16,20 @@ cc_library(
     ],
 )
 
+
+cc_test(
+    name = "sim_cassie_sensor_aggregator_test",
+    size = "small",
+    srcs = ["test/sim_cassie_sensor_aggregator_test.cc"],
+    deps = [
+        ":sim_cassie_sensor_aggregator",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//attic/multibody/parsers",
+        "@drake//manipulation/util",
+        "@drake//systems/framework/test_utilities",
+        "@gtest//:main",
+    ],
+)
+
+

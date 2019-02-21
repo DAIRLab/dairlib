@@ -53,21 +53,18 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(channel_u,
           &lcm_local));
   auto command_receiver = builder.AddSystem<RobotInputReceiver>(*tree);
-  builder.Connect(command_sub->get_output_port(),
-                  command_receiver->get_input_port(0));
+  builder.Connect(*command_sub, *command_receiver);
 
   // Create and connect translator
   auto input_translator =
       builder.AddSystem<systems::CassieInputTranslator>(*tree);
-  builder.Connect(command_receiver->get_output_port(0),
-                  input_translator->get_input_port(0));
+  builder.Connect(*command_receiver, *input_translator);
 
   // Create and connect input publisher.
   auto input_pub = builder.AddSystem(
       systems::CassieUDPPublisher::Make(FLAGS_address, FLAGS_port,
           {TriggerType::kForced}));
-  builder.Connect(input_translator->get_output_port(0),
-                  input_pub->get_input_port());
+  builder.Connect(*input_translator, *input_pub);
 
   // Create and connect LCM command echo to network
   auto net_command_sender = builder.AddSystem<RobotCommandSender>(*tree);
@@ -76,11 +73,9 @@ int do_main(int argc, char* argv[]) {
           "NETWORK_CASSIE_INPUT", &lcm_network,
           {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
-  builder.Connect(command_receiver->get_output_port(0),
-                  net_command_sender->get_input_port(0));
+  builder.Connect(*command_receiver, *net_command_sender);
 
-  builder.Connect(net_command_sender->get_output_port(0),
-                  net_command_pub->get_input_port());
+  builder.Connect(*net_command_sender, *net_command_pub);
 
   auto diagram = builder.Build();
 

@@ -17,7 +17,6 @@
 #include <arpa/inet.h>
 #include "examples/Cassie/datatypes/cassie_out_t.h"
 #include "examples/Cassie/datatypes/cassie_user_in_t.h"
-#include "examples/Cassie/datatypes/cassie_networking.h"
 
 
 // Data and results for processing packet header
@@ -89,7 +88,7 @@ int main(int argc, char **argv)
 	/*
 	 * check command line arguments
 	 */
-	portno = CASSIE_UDP_REMOTE_PORT;
+	portno = 5000;
 
 	/*
 	 * socket: create the parent socket

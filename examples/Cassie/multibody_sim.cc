@@ -71,8 +71,7 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>("CASSIE_INPUT",
                                                            &lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
-  builder.Connect(input_sub->get_output_port(),
-                  input_receiver->get_input_port(0));
+  builder.Connect(*input_sub, *input_receiver);
 
   // connect input receiver
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
@@ -80,8 +79,7 @@ int do_main(int argc, char* argv[]) {
     0,
     plant.get_actuation_input_port().size());
 
-  builder.Connect(input_receiver->get_output_port(0),
-                  passthrough->get_input_port());
+  builder.Connect(*input_receiver, *passthrough);
   builder.Connect(passthrough->get_output_port(),
                   plant.get_actuation_input_port());
 
@@ -95,8 +93,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(plant.get_continuous_state_output_port(),
                   state_sender->get_input_port_state());
 
-  builder.Connect(state_sender->get_output_port(0),
-                  state_pub->get_input_port());
+  builder.Connect(*state_sender, *state_pub);
 
   builder.Connect(
     plant.get_geometry_poses_output_port(),

@@ -15,6 +15,16 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+  name = "cassie_inout_types",
+  deps = [
+          ":cassie_out_t",
+          ":cassie_user_in_t",
+          ":cassie_names",
+          ],
+)
+
+
+cc_library(
   name = "cassie_out_t",
   hdrs = [
           ":cassie_out_t.h",
@@ -37,22 +47,4 @@ cc_library(
 cc_library(
 	name = "cassie_names",
 	hdrs = [":cassie_names.h"]
-)
-
-cc_library(
-	name = "cassie_networking",
-	hdrs = [":cassie_networking.h"]
-)
-
-
-cc_library(
-	name = "cassie_dispatch_types",
-	hdrs = [":cassie_dispatch_types.h"],
-	srcs = [":cassie_dispatch_types.cc"],
-	deps = [
-	        ":cassie_out_t",
-	        ":cassie_user_in_t",
-	        ":cassie_names",
-	        "//lcmtypes:lcmt_robot"
-	        ]
 )

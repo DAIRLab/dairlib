@@ -29,6 +29,10 @@ group "1.simulated-robot" {
 }
 
 group "0.operator" {
+    cmd "2.state-visualizer-real-robot" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false --channel NETWORK_CASSIE_STATE";
+        host = "localhost";
+    }
     cmd "1.state-visualizer" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
         host = "localhost";
@@ -40,8 +44,12 @@ group "0.operator" {
 }
 
 group "3.cassie-robot" {
-    cmd "2.dispatcher" {
-        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_cassie_dispatch";
+    cmd "1.dispatcher-robot-out" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100";
+        host = "dair-cassie";
+    }
+    cmd "2.dispatcher-robot-in" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3";
         host = "dair-cassie";
     }
     cmd "0.pd-controller" {
@@ -72,4 +80,12 @@ script "start-operator" {
     start cmd "0.drake-director";
     wait ms 3000;
     start cmd "1.state-visualizer";
+}
+
+script "start-operator-real-robot" {
+    stop cmd "2.state-visualizer-real-robot";
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 3000;
+    start cmd "2.state-visualizer-real-robot";
 }

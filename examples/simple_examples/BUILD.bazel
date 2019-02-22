@@ -1,3 +1,26 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+
+cc_binary(
+    name = "polynomial_trajectory_example",
+    srcs = ["polynomial_trajectory_example.cc"],
+    deps = [
+            "//systems/framework:vector",
+            "@drake//common/trajectories:piecewise_polynomial",
+            ]
+)
+
+cc_binary(
+    name = "exponential_trajectory_example",
+    srcs = ["exponential_trajectory_example.cc"],
+    deps = [
+            "//systems/framework:vector",
+            "@drake//common/trajectories:piecewise_polynomial",
+            ]
+)
+
 
 
 cc_binary(

@@ -112,10 +112,6 @@ class MultibodySolversTest : public ::testing::Test {
       }
     }
 
-    // Setting the contact points on the ground to be fixed.
-    VectorXd left_contact1(3), left_contact2(3), right_contact1(3),
-        right_contact2(3);
-
     // Creating the contact info
     // idxB is the vector index for the body which is accessed through
     // ContactInfo.idxA
@@ -228,72 +224,44 @@ TEST_F(MultibodySolversTest, SolveTest) {
 
   q_sol = contact_solver.GetSolutionQ();
 
-  // Colliison detect
-  VectorXd phi_total;
-  Matrix3Xd normal_total, xA_total, xB_total;
-  vector<int> idxA_total, idxB_total;
-  KinematicsCache<double> k_cache = tree_.doKinematics(q_sol);
-
-  tree_.collisionDetect(k_cache, phi_total, normal_total, xA_total, xB_total,
-                        idxA_total, idxB_total);
-
-  const int world_ind = GetBodyIndexFromName(tree_, "world");
-  const int toe_left_ind = GetBodyIndexFromName(tree_, "toe_left");
-  const int toe_right_ind = GetBodyIndexFromName(tree_, "toe_right");
-
-  // Extracting information into the four contacts.
-  VectorXd phi(4);
-  Matrix3Xd normal(3, 4), xA(3, 4), xB(3, 4);
-  vector<int> idxA(4), idxB(4);
-
-  int k = 0;
-  for (unsigned i = 0; i < idxA_total.size(); ++i) {
-    int ind_a = idxA_total.at(i);
-    int ind_b = idxB_total.at(i);
-    if ((ind_a == world_ind && ind_b == toe_left_ind) ||
-        (ind_a == world_ind && ind_b == toe_right_ind) ||
-        (ind_a == toe_left_ind && ind_b == world_ind) ||
-        (ind_a == toe_right_ind && ind_b == world_ind)) {
-      xA.col(k) = xA_total.col(i);
-      xB.col(k) = xB_total.col(i);
-      idxA.at(k) = idxA_total.at(i);
-      idxB.at(k) = idxB_total.at(i);
-      ++k;
-    }
-  }
-
   // Solution dimension check
   ASSERT_EQ(q_sol.size(), num_positions_);
   // Checking if the solution constraints have been satisfied
   ASSERT_TRUE(contact_solver.CheckConstraint(q_sol));
 
-  //// FixedPointSolver
-  //FixedPointSolver fp_solver(tree_, contact_info_);
-  //fp_solver.SetInitialGuessQ(q);
-  //fp_solver.SetInitialGuessU(u);
-  //fp_solver.SetInitialGuessLambda(lambda);
+  // FixedPointSolver
+  FixedPointSolver fp_solver(tree_, contact_info_);
+  fp_solver.SetInitialGuessQ(q);
+  fp_solver.SetInitialGuessU(u);
+  fp_solver.AddSpreadNormalForcesCost();
+  //fp_solver.AddFrictionConeConstraint(0.8);
+  fp_solver.SetInitialGuessLambda(lambda);
 
-  //std::cout << "Fixed point solver result: " << fp_solver.Solve(q, u)
-  //          << std::endl;
+  std::cout << "Fixed point solver result: " << fp_solver.Solve(q, u)
+            << std::endl;
 
-  //q_sol = fp_solver.GetSolutionQ();
-  //VectorXd u_sol = fp_solver.GetSolutionU();
-  //VectorXd lambda_sol = fp_solver.GetSolutionLambda();
+  q_sol = fp_solver.GetSolutionQ();
+  VectorXd u_sol = fp_solver.GetSolutionU();
+  VectorXd lambda_sol = fp_solver.GetSolutionLambda();
 
-  //VectorXd x_sol = VectorXd::Zero(num_positions_ + num_velocities_);
-  //x_sol.head(num_positions_) = q_sol;
-  //ContactToolkit<double> ct(tree_, contact_info_);
-  //std::cout << ct.CalcMVDot(x_sol, u_sol, lambda_sol).transpose() << std::endl;
-  //std::cout << "----------------------" << std::endl;
-  //std::cout << ct.CalcTimeDerivatives(x_sol, u_sol, lambda_sol).transpose()
-  //          << std::endl;
+  VectorXd x_sol = VectorXd::Zero(num_positions_ + num_velocities_);
+  x_sol.head(num_positions_) = q_sol;
+  ContactToolkit<double> ct(tree_, contact_info_);
+  std::cout << ct.CalcMVDot(x_sol, u_sol, lambda_sol).transpose() << std::endl;
+  std::cout << "q ----------------------" << std::endl;
+  std::cout << ct.CalcTimeDerivatives(x_sol, u_sol, lambda_sol).transpose()
+            << std::endl;
+  std::cout << "u ----------------------" << std::endl;
+  std::cout << u_sol << std::endl;
+  std::cout << "lambda ----------------------" << std::endl;
+  std::cout << lambda_sol << std::endl;
 
-  //// Solution dimension check
-  //ASSERT_EQ(q_sol.size(), num_positions_);
-  //ASSERT_EQ(u_sol.size(), num_efforts_);
-  //ASSERT_EQ(lambda_sol.size(), num_forces_);
-  //// Solution constraints check
-  //ASSERT_TRUE(fp_solver.CheckConstraint(q_sol, u_sol, lambda_sol));
+  // Solution dimension check
+  ASSERT_EQ(q_sol.size(), num_positions_);
+  ASSERT_EQ(u_sol.size(), num_efforts_);
+  ASSERT_EQ(lambda_sol.size(), num_forces_);
+  // Solution constraints check
+  ASSERT_TRUE(fp_solver.CheckConstraint(q_sol, u_sol, lambda_sol));
 }
 
 }  // namespace

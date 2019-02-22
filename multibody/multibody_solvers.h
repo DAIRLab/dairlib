@@ -152,10 +152,12 @@ class FixedPointSolver {
   void SetInitialGuessQ(Eigen::VectorXd q);
   void SetInitialGuessU(Eigen::VectorXd u);
   void SetInitialGuessLambda(Eigen::VectorXd lambda);
+  void AddSpreadNormalForcesCost();
+  void AddFrictionConeConstraint(double mu);
   drake::solvers::SolutionResult Solve(Eigen::VectorXd q, Eigen::VectorXd u,
                                        std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, Eigen::VectorXd u,
-                       Eigen::VectorXd lambda, double tolerance = 1.0e-5) const;
+                       Eigen::VectorXd lambda, double tolerance = 1.0e-6) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   drake::solvers::SolutionResult get_solution_result();
@@ -180,8 +182,8 @@ class FixedPointSolver {
   drake::solvers::VectorXDecisionVariable lambda_;
   drake::solvers::SolutionResult solution_result_;
   std::string filename_ = "multibody/solver_log/position_solver";
-  double major_tolerance_ = 1.0e-5;
-  double minor_tolerance_ = 1.0e-5;
+  double major_tolerance_ = 1.0e-10;
+  double minor_tolerance_ = 1.0e-10;
 };
 
 }  // namespace multibody

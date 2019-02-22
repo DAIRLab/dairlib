@@ -19,18 +19,18 @@ int main() {
   int z_dim = 1;
 
   //////////////////////////////////////////////////////////
-  // Declare audoDiff x
+  // Declare autoDiff x
   VectorXd x_val(x_dim);
   x_val << M_PI/2, 3;
   AutoDiffVecXd x = initializeAutoDiff(x_val);
 
-  // Compute jacobian of x; Default wrt itself since it's not derived from other
-  // autoDiff
+  // Compute jacobian of x
+  // Default wrt itself since it's not derived from other autoDiff
   MatrixXd dxdSTH  = autoDiffToGradientMatrix(x);
   cout << "dxdSTH = \n" <<  dxdSTH << "\n\n";
 
   //////////////////////////////////////////////////////////
-  // Declare audoDiff y = x1 + x2^3
+  // Declare autoDiff y = x1 + x2^3
   AutoDiffVecXd y(y_dim);
   y << x(0) + x(1)*x(1)*x(1),
        x(0) * x(1),
@@ -45,7 +45,7 @@ int main() {
   cout << "dydx = \n" << dydx << "\n\n";
 
   //////////////////////////////////////////////////////////
-  // Declare audoDiff z = y1 + y2
+  // Declare autoDiff z = y1 + y2
   AutoDiffVecXd z(z_dim);
   z << y(0) + y(1);
 
@@ -53,7 +53,8 @@ int main() {
   VectorXd z_val = autoDiffToValueMatrix(z);
   cout << "z_val = \n" << z_val << "\n\n";
 
-  // Compute jacobian of z wrt ?? (x!)
+  // Compute jacobian of z wrt x
+  // Note that it's wrt x instead of wrt y
   MatrixXd dzdSTH  = autoDiffToGradientMatrix(z);
   cout << "dzdSTH = \n" << dzdSTH << "\n\n";
 

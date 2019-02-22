@@ -1,0 +1,10 @@
+
+
+cc_binary(
+    name = "autoDiff_example",
+    srcs = ["autoDiff_example.cc"],
+    deps = [
+        "@drake//math:gradient",
+    ],
+)
+

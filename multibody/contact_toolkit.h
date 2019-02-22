@@ -12,6 +12,7 @@ namespace multibody {
 /*
  * ContactInfo structure that holds all the required contact information.
  * xA: Positions on Body A (The robot) expressed in the frame of the robot.
+ * The collisions are assumed to take place with the ground z plane.
  * xB: Positions on Body B (Assumed to be the ground) expressed in the ground
  * frame (world frame).
  * idxA: Body indices of the corresponding positions in the RigidBodyTree.
@@ -20,15 +21,15 @@ namespace multibody {
  */
 struct ContactInfo {
   Eigen::Matrix3Xd xA;
-  Eigen::Matrix3Xd xB;
   std::vector<int> idxA;
+  int num_contacts;
 
   ContactInfo()
       : xA(Eigen::Matrix3Xd::Zero(3, 1)),
-        xB(Eigen::Matrix3Xd::Zero(3, 1)),
-        idxA(std::vector<int>(0)) {}
-  ContactInfo(Eigen::Matrix3Xd xa, Eigen::Matrix3Xd xb, std::vector<int> idxa)
-      : xA(xa), xB(xb), idxA(idxa) {}
+        idxA(std::vector<int>(0)),
+        num_contacts(0) {}
+  ContactInfo(Eigen::Matrix3Xd xa, std::vector<int> idxa)
+      : xA(xa), idxA(idxa), num_contacts(idxa.size()) {}
 };
 
 /*

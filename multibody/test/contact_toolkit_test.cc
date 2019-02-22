@@ -103,9 +103,9 @@ class ContactToolkitTest : public ::testing::Test {
     // Creating the contact info
     // idxB is the vector index for the body which is accessed through
     // ContactInfo.idxA
-    // In this case xA corresponds to the points on the ground and hence xA and
-    // xB must be interchanged when constructing contact_info_
-    contact_info_ = {xB, xA, idxB};
+    // In this case xA corresponds to the points on the ground and hence xB must
+    // be used
+    contact_info_ = {xB, idxB};
 
     // ContactToolkit objects for both templates
     contact_toolkit_double_ =
@@ -126,41 +126,39 @@ TEST_F(ContactToolkitTest, InitializationTest) {
   // ContactInfo default values
   ContactInfo default_contact;
   ASSERT_TRUE(default_contact.xA.isApprox(Matrix3Xd::Zero(3, 1)));
-  ASSERT_TRUE(default_contact.xB.isApprox(Matrix3Xd::Zero(3, 1)));
-  ASSERT_EQ(default_contact.idxA.size(), 0);
+  ASSERT_EQ(default_contact.num_contacts, 0);
 
   // ContactInfo getter
   ContactInfo tmp_info;
   tmp_info = contact_toolkit_double_->get_contact_info();
   ASSERT_TRUE(tmp_info.xA.isApprox(contact_info_.xA));
-  ASSERT_TRUE(tmp_info.xB.isApprox(contact_info_.xB));
   ASSERT_TRUE(tmp_info.idxA == contact_info_.idxA);
+  ASSERT_TRUE(tmp_info.num_contacts == contact_info_.num_contacts);
 
   tmp_info = contact_toolkit_autodiff_->get_contact_info();
   ASSERT_TRUE(tmp_info.xA.isApprox(contact_info_.xA));
-  ASSERT_TRUE(tmp_info.xB.isApprox(contact_info_.xB));
   ASSERT_TRUE(tmp_info.idxA == contact_info_.idxA);
+  ASSERT_TRUE(tmp_info.num_contacts == contact_info_.num_contacts);
 
   // num contacts getter
   ASSERT_EQ(contact_toolkit_double_->get_num_contacts(), 4);
   ASSERT_EQ(contact_toolkit_autodiff_->get_num_contacts(), 4);
 
   // Verifying the contact info setter
-  Matrix3Xd xA(3, 2), xB(3, 2);
+  Matrix3Xd xA(3, 2);
   vector<int> idxA = {0, 0};
   xA << 0.1, 0.2, 0.3, 0.2, -0.3, 2.3;
-  xB << 0.1, -0.3, 0.5, 1.7, 5.5, 0.9;
-  tmp_info = {xA, xB, idxA};
+  tmp_info = {xA, idxA};
 
   contact_toolkit_double_->set_contact_info(tmp_info);
   ASSERT_TRUE(xA.isApprox(contact_toolkit_double_->get_contact_info().xA));
-  ASSERT_TRUE(xB.isApprox(contact_toolkit_double_->get_contact_info().xB));
-  ASSERT_TRUE(idxA == contact_toolkit_double_->get_contact_info().idxA);
+  ASSERT_TRUE(contact_toolkit_double_->get_contact_info().idxA == idxA);
+  ASSERT_TRUE(contact_toolkit_double_->get_contact_info().num_contacts == 2);
 
   contact_toolkit_autodiff_->set_contact_info(tmp_info);
   ASSERT_TRUE(xA.isApprox(contact_toolkit_autodiff_->get_contact_info().xA));
-  ASSERT_TRUE(xB.isApprox(contact_toolkit_autodiff_->get_contact_info().xB));
-  ASSERT_TRUE(idxA == contact_toolkit_autodiff_->get_contact_info().idxA);
+  ASSERT_TRUE(contact_toolkit_autodiff_->get_contact_info().idxA == idxA);
+  ASSERT_TRUE(contact_toolkit_autodiff_->get_contact_info().num_contacts == 2);
 }
 
 // Contact Jacobian test

@@ -18,7 +18,7 @@ ContactToolkit<T>::ContactToolkit(const RigidBodyTree<double>& tree,
                                 ContactInfo contact_info)
     : tree_(tree),
       contact_info_(contact_info),
-      num_contacts_(contact_info.idxA.size()) {}
+      num_contacts_(contact_info.num_contacts) {}
 
 template <typename T>
 drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
@@ -57,9 +57,7 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
     auto Ja = tree_.transformPointsJacobian(k_cache, contact_info_.xA.col(i),
                                             contact_info_.idxA.at(i), world_ind,
                                             true);
-    auto Jb = tree_.transformPointsJacobian(k_cache, contact_info_.xB.col(i),
-                                            world_ind, world_ind, true);
-    J_diff.at(i) = Jb - Ja;
+    J_diff.at(i) = -Ja;
   }
 
   // Contact Jacobians

@@ -30,7 +30,7 @@ using drake::systems::TriggerType;
 
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
-DEFINE_int64(port, 5000, "Port to publish to (UDP).");
+DEFINE_int64(port, 25000, "Port to publish to (UDP).");
 DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
 
 

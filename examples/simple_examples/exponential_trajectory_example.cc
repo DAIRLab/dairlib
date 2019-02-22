@@ -1,5 +1,4 @@
 // This is an example code for ExponentialPlusPiecewisePolynomial
-// By Yu-Ming Chen
 
 #include <iostream>
 

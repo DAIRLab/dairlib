@@ -1,5 +1,4 @@
 // This is an example code for PiecewisePolynomial
-// By Yu-Ming Chen
 
 #include <iostream>
 

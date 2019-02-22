@@ -29,7 +29,7 @@ using drake::systems::TriggerType;
 
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive from.");
-DEFINE_int64(port, 5000, "Port to receive on.");
+DEFINE_int64(port, 25001, "Port to receive on.");
 DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
 
 /// Runs UDP driven loop for 10 seconds

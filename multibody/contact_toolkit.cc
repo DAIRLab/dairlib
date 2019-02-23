@@ -15,7 +15,7 @@ using Eigen::Matrix3Xd;
 
 template <typename T>
 ContactToolkit<T>::ContactToolkit(const RigidBodyTree<double>& tree,
-                                ContactInfo contact_info)
+                                  ContactInfo contact_info)
     : tree_(tree),
       contact_info_(contact_info),
       num_contacts_(contact_info.num_contacts) {}
@@ -45,7 +45,7 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
   Matrix3Xd mat1 = Matrix3Xd::Zero(3, num_contacts_);
   Map<Matrix3Xd> map1(mat1.data(), 3, num_contacts_);
   Matrix3Xd mat2 = Matrix3Xd::Zero(3, num_contacts_);
-  Map<Matrix3Xd> map2(mat1.data(), 3, num_contacts_);
+  Map<Matrix3Xd> map2(mat2.data(), 3, num_contacts_);
   tangents_map_vector.push_back(map1);
   tangents_map_vector.push_back(map2);
 
@@ -57,7 +57,14 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
     auto Ja = tree_.transformPointsJacobian(k_cache, contact_info_.xA.col(i),
                                             contact_info_.idxA.at(i), world_ind,
                                             true);
-    J_diff.at(i) = -Ja;
+
+    VectorX<T> xB_i = tree_.transformPoints(
+        k_cache, contact_info_.xA.col(i), contact_info_.idxA.at(i), world_ind);
+    xB_i(2) = 0;
+
+    auto Jb = tree_.transformPointsJacobian(k_cache, xB_i, world_ind, world_ind,
+                                            true);
+    J_diff.at(i) = Jb - Ja;
   }
 
   // Contact Jacobians
@@ -82,13 +89,14 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
 
 template <typename T>
 VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
-                                       VectorX<T> lambda) const {
+                                        VectorX<T> lambda) const {
   const int num_positions = tree_.get_num_positions();
   const int num_velocities = tree_.get_num_velocities();
   const int num_efforts = tree_.get_num_actuators();
   const int num_position_constraints = tree_.getNumPositionConstraints();
 
   // Making sure that the size of lambda is correct
+  //std::exit(0);
   DRAKE_THROW_UNLESS(num_position_constraints + num_contacts_ * 3 ==
                      lambda.size());
 
@@ -102,7 +110,7 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
   VectorX<T> right_hand_side =
       -tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
 
-  if (num_efforts > 0) {
+  if (num_efforts) {
     right_hand_side += tree_.B * u;
   }
 
@@ -114,7 +122,7 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
   }
 
   // Contact Jacobian
-  if (num_contacts_ > 0) {
+  if (num_contacts_) {
     MatrixX<T> J_contact = CalcContactJacobian(x);
     right_hand_side += J_contact.transpose() * lambda.tail(num_contacts_ * 3);
   }
@@ -125,7 +133,7 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
 
 template <typename T>
 VectorX<T> ContactToolkit<T>::CalcTimeDerivatives(VectorX<T> x, VectorX<T> u,
-                                                 VectorX<T> lambda) const {
+                                                  VectorX<T> lambda) const {
   const int num_positions = tree_.get_num_positions();
   const int num_velocities = tree_.get_num_velocities();
 

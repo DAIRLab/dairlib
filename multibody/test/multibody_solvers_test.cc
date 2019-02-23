@@ -35,10 +35,10 @@ using dairlib::multibody::ContactToolkit;
 using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::multibody::PositionConstraint;
 using dairlib::multibody::FixedPointConstraint;
-using dairlib::multibody::GroundContactConstraint;
+using dairlib::multibody::ContactConstraint;
 using dairlib::multibody::PositionSolver;
 using dairlib::multibody::FixedPointSolver;
-using dairlib::multibody::GroundContactSolver;
+using dairlib::multibody::ContactSolver;
 
 class MultibodySolversTest : public ::testing::Test {
  protected:
@@ -118,9 +118,9 @@ class MultibodySolversTest : public ::testing::Test {
     // In this case xA corresponds to the points on the ground and hence xA
     // and
     // xB must be interchanged when constructing contact_info_
-    contact_info_ = {xB, xA, idxB};
+    contact_info_ = {xB, idxB};
 
-    num_contacts_ = contact_info_.idxA.size();
+    num_contacts_ = contact_info_.num_contacts;
     num_position_constraints_ = tree_.getNumPositionConstraints();
     num_forces_ = num_contacts_ * 3 + num_position_constraints_;
   }
@@ -148,7 +148,7 @@ TEST_F(MultibodySolversTest, InitializationTest) {
   FixedPointConstraint fp_constraint2(tree_, contact_info_);
 
   // Contact constraint
-  GroundContactConstraint contact_constraint(tree_, contact_info_);
+  ContactConstraint contact_constraint(tree_, contact_info_);
 
   // Solver class initializations
 
@@ -168,7 +168,7 @@ TEST_F(MultibodySolversTest, InitializationTest) {
 
   // ContactSolver
   // Testing basic getters and setters
-  GroundContactSolver contact_solver(tree_, contact_info_);
+  ContactSolver contact_solver(tree_, contact_info_);
   contact_solver.set_filename("contact_log");
   contact_solver.set_major_tolerance(0.002);
   contact_solver.set_minor_tolerance(0.02);
@@ -215,8 +215,8 @@ TEST_F(MultibodySolversTest, SolveTest) {
   // Checking if the solution constraints have been satisfied
   ASSERT_TRUE(position_solver.CheckConstraint(q_sol));
 
-  // GroundContactSolver
-  GroundContactSolver contact_solver(tree_, contact_info_);
+  // ContactSolver
+  ContactSolver contact_solver(tree_, contact_info_);
   contact_solver.SetInitialGuessQ(q);
 
   std::cout << "Contact solver result: " << contact_solver.Solve(q)
@@ -230,12 +230,10 @@ TEST_F(MultibodySolversTest, SolveTest) {
   ASSERT_TRUE(contact_solver.CheckConstraint(q_sol));
 
   // FixedPointSolver
-  FixedPointSolver fp_solver(tree_, contact_info_);
-  fp_solver.SetInitialGuessQ(q);
-  fp_solver.SetInitialGuessU(u);
-  fp_solver.AddSpreadNormalForcesCost();
-  //fp_solver.AddFrictionConeConstraint(0.8);
-  fp_solver.SetInitialGuessLambda(lambda);
+  FixedPointSolver fp_solver(tree_);
+  fp_solver.SetInitialGuess(q, u, lambda);
+  // fp_solver.AddSpreadNormalForcesCost();
+  // fp_solver.AddFrictionConeConstraint(0.8);
 
   std::cout << "Fixed point solver result: " << fp_solver.Solve(q, u)
             << std::endl;
@@ -246,15 +244,21 @@ TEST_F(MultibodySolversTest, SolveTest) {
 
   VectorXd x_sol = VectorXd::Zero(num_positions_ + num_velocities_);
   x_sol.head(num_positions_) = q_sol;
-  ContactToolkit<double> ct(tree_, contact_info_);
+  ContactToolkit<double> ct(tree_, ContactInfo());
   std::cout << ct.CalcMVDot(x_sol, u_sol, lambda_sol).transpose() << std::endl;
-  std::cout << "q ----------------------" << std::endl;
+  std::cout << "qdot ----------------------" << std::endl;
   std::cout << ct.CalcTimeDerivatives(x_sol, u_sol, lambda_sol).transpose()
             << std::endl;
+  std::cout << std::endl;
+  std::cout << "q ----------------------" << std::endl;
+  std::cout << q_sol.transpose() << std::endl;
+  std::cout << std::endl;
   std::cout << "u ----------------------" << std::endl;
-  std::cout << u_sol << std::endl;
+  std::cout << u_sol.transpose() << std::endl;
+  std::cout << std::endl;
   std::cout << "lambda ----------------------" << std::endl;
-  std::cout << lambda_sol << std::endl;
+  std::cout << lambda_sol.transpose() << std::endl;
+  std::cout << std::endl;
 
   // Solution dimension check
   ASSERT_EQ(q_sol.size(), num_positions_);

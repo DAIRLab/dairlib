@@ -26,9 +26,9 @@ class PositionConstraint : public drake::solvers::Constraint {
   const RigidBodyTree<double>& tree_;
 };
 
-class GroundContactConstraint : public drake::solvers::Constraint {
+class ContactConstraint : public drake::solvers::Constraint {
  public:
-  GroundContactConstraint(const RigidBodyTree<double>& tree, ContactInfo contact_info,
+  ContactConstraint(const RigidBodyTree<double>& tree, ContactInfo contact_info,
                     const std::string& description = "");
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& q_u_l,
               Eigen::VectorXd* y) const override;
@@ -107,14 +107,15 @@ class PositionSolver {
   double minor_tolerance_ = 1.0e-10;
 };
 
-class GroundContactSolver {
+class ContactSolver {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(GroundContactSolver)
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ContactSolver)
 
-  GroundContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
+  ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
 
   void SetInitialGuessQ(Eigen::VectorXd q);
-  drake::solvers::SolutionResult Solve(Eigen::VectorXd q, std::vector<int> fixed_joints = {});
+  drake::solvers::SolutionResult Solve(Eigen::VectorXd q,
+                                       std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-9) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();

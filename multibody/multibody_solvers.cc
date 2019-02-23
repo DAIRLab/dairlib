@@ -55,35 +55,34 @@ void PositionConstraint::DoEval(
   throw logic_error("PositionConstraint does not support symbolic evaluation.");
 }
 
-GroundContactConstraint::GroundContactConstraint(
-    const RigidBodyTree<double>& tree, ContactInfo contact_info,
-    const string& description)
-    : Constraint(contact_info.idxA.size(), tree.get_num_positions(),
-                 VectorXd::Zero(contact_info.idxA.size()),
-                 VectorXd::Zero(contact_info.idxA.size()), description),
+ContactConstraint::ContactConstraint(const RigidBodyTree<double>& tree,
+                                     ContactInfo contact_info,
+                                     const string& description)
+    : Constraint(contact_info.num_contacts, tree.get_num_positions(),
+                 VectorXd::Zero(contact_info.num_contacts),
+                 VectorXd::Zero(contact_info.num_contacts), description),
       tree_(tree),
       contact_info_(contact_info),
       num_positions_(tree.get_num_positions()),
       num_velocities_(tree.get_num_velocities()),
       num_efforts_(tree.get_num_actuators()),
       num_position_forces_(tree.getNumPositionConstraints()),
-      num_contacts_(contact_info.idxA.size()),
+      num_contacts_(contact_info.num_contacts),
       num_forces_(tree.getNumPositionConstraints() +
-                  contact_info.idxA.size() * 3) {
+                  contact_info.num_contacts * 3) {
   contact_toolkit_ =
       make_unique<ContactToolkit<AutoDiffXd>>(tree, contact_info);
 }
 
-void GroundContactConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,
-                                     Eigen::VectorXd* y) const {
+void ContactConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,
+                               Eigen::VectorXd* y) const {
   AutoDiffVecXd y_t;
   Eval(initializeAutoDiff(q), &y_t);
   *y = autoDiffToValueMatrix(y_t);
 }
 
-void GroundContactConstraint::DoEval(
-    const Eigen::Ref<const drake::AutoDiffVecXd>& q,
-    drake::AutoDiffVecXd* y) const {
+void ContactConstraint::DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
+                               drake::AutoDiffVecXd* y) const {
   // Verifying the size of the input vector
   DRAKE_DEMAND(q.size() == num_positions_);
 
@@ -107,7 +106,7 @@ void GroundContactConstraint::DoEval(
   *y = y_t;
 }
 
-void GroundContactConstraint::DoEval(
+void ContactConstraint::DoEval(
     const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& q,
     drake::VectorX<drake::symbolic::Expression>* y) const {
   throw logic_error(
@@ -120,7 +119,7 @@ FixedPointConstraint::FixedPointConstraint(const RigidBodyTree<double>& tree,
     : Constraint(tree.get_num_velocities(),
                  tree.get_num_positions() + tree.get_num_actuators() +
                      tree.getNumPositionConstraints() +
-                     contact_info.idxA.size() * 3,
+                     contact_info.num_contacts * 3,
                  VectorXd::Zero(tree.get_num_velocities()),
                  VectorXd::Zero(tree.get_num_velocities()), description),
       tree_(tree),
@@ -130,7 +129,7 @@ FixedPointConstraint::FixedPointConstraint(const RigidBodyTree<double>& tree,
       num_efforts_(tree.get_num_actuators()),
       num_position_forces_(tree.getNumPositionConstraints()),
       num_forces_(tree.getNumPositionConstraints() +
-                  contact_info.idxA.size() * 3) {
+                  contact_info.num_contacts * 3) {
   contact_toolkit_ =
       make_unique<ContactToolkit<AutoDiffXd>>(tree, contact_info);
 }
@@ -233,8 +232,8 @@ double PositionSolver::get_major_tolerance() { return major_tolerance_; }
 
 double PositionSolver::get_minor_tolerance() { return minor_tolerance_; }
 
-GroundContactSolver::GroundContactSolver(const RigidBodyTree<double>& tree,
-                                         ContactInfo contact_info)
+ContactSolver::ContactSolver(const RigidBodyTree<double>& tree,
+                             ContactInfo contact_info)
     : tree_(tree),
       contact_info_(contact_info),
       prog_(make_shared<MathematicalProgram>()) {
@@ -242,12 +241,11 @@ GroundContactSolver::GroundContactSolver(const RigidBodyTree<double>& tree,
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
 }
 
-void GroundContactSolver::SetInitialGuessQ(VectorXd q) {
+void ContactSolver::SetInitialGuessQ(VectorXd q) {
   prog_->SetInitialGuess(q_, q);
 }
 
-SolutionResult GroundContactSolver::Solve(VectorXd q,
-                                          vector<int> fixed_joints) {
+SolutionResult ContactSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   // Setting the solver options
   prog_->SetSolverOption(SnoptSolver::id(), "Log file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
@@ -257,7 +255,7 @@ SolutionResult GroundContactSolver::Solve(VectorXd q,
 
   auto position_constraint = make_shared<PositionConstraint>(tree_);
   auto contact_constraint =
-      make_shared<GroundContactConstraint>(tree_, contact_info_);
+      make_shared<ContactConstraint>(tree_, contact_info_);
 
   prog_->AddConstraint(position_constraint, q_);
   prog_->AddConstraint(contact_constraint, q_);
@@ -276,40 +274,34 @@ SolutionResult GroundContactSolver::Solve(VectorXd q,
   return solution_result_;
 }
 
-bool GroundContactSolver::CheckConstraint(VectorXd q, double tolerance) const {
+bool ContactSolver::CheckConstraint(VectorXd q, double tolerance) const {
   auto position_constraint = make_shared<PositionConstraint>(tree_);
   auto contact_constraint =
-      make_shared<GroundContactConstraint>(tree_, contact_info_);
+      make_shared<ContactConstraint>(tree_, contact_info_);
   return position_constraint->CheckSatisfied(q, tolerance) &&
          contact_constraint->CheckSatisfied(q, tolerance);
 }
 
-shared_ptr<MathematicalProgram> GroundContactSolver::get_program() {
-  return prog_;
-}
+shared_ptr<MathematicalProgram> ContactSolver::get_program() { return prog_; }
 
-SolutionResult GroundContactSolver::get_solution_result() {
-  return solution_result_;
-}
+SolutionResult ContactSolver::get_solution_result() { return solution_result_; }
 
-VectorXd GroundContactSolver::GetSolutionQ() { return prog_->GetSolution(q_); }
+VectorXd ContactSolver::GetSolutionQ() { return prog_->GetSolution(q_); }
 
-void GroundContactSolver::set_filename(string filename) {
-  filename_ = filename;
-}
+void ContactSolver::set_filename(string filename) { filename_ = filename; }
 
-void GroundContactSolver::set_major_tolerance(double major_tolerance) {
+void ContactSolver::set_major_tolerance(double major_tolerance) {
   major_tolerance_ = major_tolerance;
 }
-void GroundContactSolver::set_minor_tolerance(double minor_tolerance) {
+void ContactSolver::set_minor_tolerance(double minor_tolerance) {
   minor_tolerance_ = minor_tolerance;
 }
 
-string GroundContactSolver::get_filename() { return filename_; }
+string ContactSolver::get_filename() { return filename_; }
 
-double GroundContactSolver::get_major_tolerance() { return major_tolerance_; }
+double ContactSolver::get_major_tolerance() { return major_tolerance_; }
 
-double GroundContactSolver::get_minor_tolerance() { return minor_tolerance_; }
+double ContactSolver::get_minor_tolerance() { return minor_tolerance_; }
 
 FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree)
     : tree_(tree),
@@ -317,7 +309,7 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree)
       prog_(make_shared<MathematicalProgram>()) {
   // Initializing the variable
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
-  u_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "u");
+  u_ = prog_->NewContinuousVariables(tree_.get_num_actuators(), "u");
   lambda_ = prog_->NewContinuousVariables(tree_.getNumPositionConstraints(),
                                           "lambda");
 }
@@ -331,7 +323,7 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
   u_ = prog_->NewContinuousVariables(tree_.get_num_actuators(), "u");
   lambda_ = prog_->NewContinuousVariables(
-      tree_.getNumPositionConstraints() + contact_info.idxA.size() * 3,
+      tree_.getNumPositionConstraints() + contact_info.num_contacts * 3,
       "lambda");
 }
 
@@ -357,10 +349,10 @@ void FixedPointSolver::SetInitialGuessLambda(VectorXd lambda) {
 void FixedPointSolver::AddSpreadNormalForcesCost() {
   // Adding cost on the normal forces to spread them out
   int num_position_constraints = tree_.getNumPositionConstraints();
-  int num_contacts = contact_info_.idxA.size();
+  int num_contacts = contact_info_.num_contacts;
   int num_forces = num_position_constraints + num_contacts * 3;
   Expression normal_cost_expression(0);
-  for (uint i = num_position_constraints; i < num_forces; i = i + 3) {
+  for (int i = num_position_constraints; i < num_forces; i = i + 3) {
     normal_cost_expression += lambda_(i) * lambda_(i);
   }
 }
@@ -368,7 +360,7 @@ void FixedPointSolver::AddSpreadNormalForcesCost() {
 void FixedPointSolver::AddFrictionConeConstraint(const double mu) {
   // Adding the friction cone constraint at all the contact points
   int num_position_constraints = tree_.getNumPositionConstraints();
-  int num_contacts = contact_info_.idxA.size();
+  int num_contacts = contact_info_.num_contacts;
   for (int i = 0; i < num_contacts; ++i) {
     prog_->AddConstraint(lambda_(i * 3 + 1 + num_position_constraints) <=
                          mu * lambda_(i * 3 + num_position_constraints));
@@ -392,13 +384,13 @@ SolutionResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
 
   auto position_constraint = make_shared<PositionConstraint>(tree_);
   auto contact_constraint =
-      make_shared<GroundContactConstraint>(tree_, contact_info_);
+      make_shared<ContactConstraint>(tree_, contact_info_);
   auto fixed_point_constraint =
       make_shared<FixedPointConstraint>(tree_, contact_info_);
 
   prog_->AddConstraint(position_constraint, q_);
 
-  if (contact_info_.idxA.size() == 0) {
+  if (contact_info_.num_contacts) {
     prog_->AddConstraint(contact_constraint, q_);
   }
 

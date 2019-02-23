@@ -128,8 +128,15 @@ TEST_F(ContactToolkitTest, InitializationTest) {
   ASSERT_TRUE(default_contact.xA.isApprox(Matrix3Xd::Zero(3, 1)));
   ASSERT_EQ(default_contact.num_contacts, 0);
 
+  // ContactInfo construction validity check
+  Matrix3Xd xa = Matrix3Xd::Zero(3, 2);
+  vector<int> idxa(2, 1);
+  ContactInfo tmp_info = {xa, idxa};
+  ASSERT_TRUE(tmp_info.xA.isApprox(xa));
+  ASSERT_TRUE(tmp_info.idxA == idxa);
+  ASSERT_TRUE(tmp_info.num_contacts == 2);
+
   // ContactInfo getter
-  ContactInfo tmp_info;
   tmp_info = contact_toolkit_double_->get_contact_info();
   ASSERT_TRUE(tmp_info.xA.isApprox(contact_info_.xA));
   ASSERT_TRUE(tmp_info.idxA == contact_info_.idxA);

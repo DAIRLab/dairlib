@@ -127,11 +127,19 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
 }
 
 void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree){
+  // IMU position
+  // source: https://github.com/osudrl/cassie-mujoco-sim/blob/master/model/cassie.xml#L86
+  Eigen::Isometry3d Imu_pos_wrt_pelvis_origin;
+  Imu_pos_wrt_pelvis_origin.linear() = Eigen::Matrix3d::Identity();;
+  Imu_pos_wrt_pelvis_origin.translation() =
+      Eigen::Vector3d(0.03155, 0, -0.07996);
+
   std::shared_ptr<RigidBodyFrame<double>> imu_frame =
            std::allocate_shared<RigidBodyFrame<double>>(
                Eigen::aligned_allocator<RigidBodyFrame<double>>(),
                "imu frame",
-               tree->FindBody("pelvis"), Eigen::Isometry3d::Identity());
+               tree->FindBody("pelvis"),
+               Imu_pos_wrt_pelvis_origin);
   tree->addFrame(imu_frame);
 }
 drake::systems::sensors::Accelerometer * addSimAccelerometer(

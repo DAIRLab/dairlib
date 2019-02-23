@@ -126,13 +126,20 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
   ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
 }
 
+void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree){
+  std::shared_ptr<RigidBodyFrame<double>> imu_frame =
+           std::allocate_shared<RigidBodyFrame<double>>(
+               Eigen::aligned_allocator<RigidBodyFrame<double>>(),
+               "imu frame",
+               tree->FindBody("pelvis"), Eigen::Isometry3d::Identity());
+  tree->addFrame(imu_frame);
+}
 drake::systems::sensors::Accelerometer * addSimAccelerometer(
     drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant,
-    const std::string & imu_frame_name) {
+    drake::systems::RigidBodyPlant<double> * plant) {
 
   std::shared_ptr< RigidBodyFrame<double> > imu_frame_ptr =
-      plant->get_rigid_body_tree().findFrame(imu_frame_name);
+      plant->get_rigid_body_tree().findFrame("imu frame");
 
   auto accel_sim = builder.AddSystem<drake::systems::sensors::Accelerometer>(
                     "Simulated Accelerometer", *imu_frame_ptr,
@@ -146,11 +153,10 @@ drake::systems::sensors::Accelerometer * addSimAccelerometer(
 }
 drake::systems::sensors::Gyroscope * addSimGyroscope(
     drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant,
-    const std::string & imu_frame_name) {
+    drake::systems::RigidBodyPlant<double> * plant) {
 
   std::shared_ptr< RigidBodyFrame<double> > imu_frame_ptr =
-      plant->get_rigid_body_tree().findFrame(imu_frame_name);
+      plant->get_rigid_body_tree().findFrame("imu frame");
 
   auto gyro_sim = builder.AddSystem<drake::systems::sensors::Gyroscope>(
                     "Simulated Gyroscope",
@@ -181,11 +187,10 @@ systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
 systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
     drake::systems::DiagramBuilder<double> & builder,
     drake::systems::RigidBodyPlant<double> * plant,
-    const std::string & imu_frame_name,
     SubvectorPassThrough<double> * passthrough) {
 
-  auto accel_sim = addSimAccelerometer(builder, plant, imu_frame_name);
-  auto gyro_sim = addSimGyroscope(builder, plant, imu_frame_name);
+  auto accel_sim = addSimAccelerometer(builder, plant);
+  auto gyro_sim = addSimGyroscope(builder, plant);
   auto cassie_sensor_aggregator = addSimCassieSensorAggregator(
                                     builder, plant, passthrough,
                                     accel_sim, gyro_sim);

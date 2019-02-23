@@ -67,15 +67,8 @@ int do_main(int argc, char* argv[]) {
     tree = makeCassieTreePointer();
 
   // Add imu frame to Cassie's pelvis
-  std::string imu_frame_name = "imu frame";
-  if (FLAGS_is_imu_sim) {
-    std::shared_ptr<RigidBodyFrame<double>> imu_frame =
-             std::allocate_shared<RigidBodyFrame<double>>(
-                 Eigen::aligned_allocator<RigidBodyFrame<double>>(),
-                 imu_frame_name,
-                 tree->FindBody("pelvis"), Eigen::Isometry3d::Identity());
-    tree->addFrame(imu_frame);
-  }
+  if (FLAGS_is_imu_sim)
+    addImuFrameToCassiePelvis(tree);
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -127,7 +120,7 @@ int do_main(int argc, char* argv[]) {
   // Create cassie output (containing simulated sensor) publisher
   if (FLAGS_is_imu_sim) {
     auto cassie_sensor_aggregator = addImuAndAggregatorToSimulation(
-                                 builder, plant, imu_frame_name, passthrough);
+                                 builder, plant, passthrough);
     auto cassie_sensor_pub = builder.AddSystem(
                             LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
                             "CASSIE_OUTPUT", &lcm, 1.0 / 200.0));

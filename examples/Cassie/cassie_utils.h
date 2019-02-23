@@ -62,16 +62,18 @@ void buildCassieTree(
     drake::multibody::joints::FloatingBaseType base_type =
         drake::multibody::joints::kFixed);
 
+// Add a frame to the pelvis so that we can use it for accelerometer and
+// gyroscope simulation.
+void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree);
+
 /// Add simulated accelerometer to the diagram
 drake::systems::sensors::Accelerometer * addSimAccelerometer(
     drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant,
-    const std::string & imu_frame_name);
+    drake::systems::RigidBodyPlant<double> * plant);
 /// Add simulated gyroscope to the diagram
 drake::systems::sensors::Gyroscope * addSimGyroscope(
     drake::systems::DiagramBuilder<double> & builder,
-    drake::systems::RigidBodyPlant<double> * plant,
-    const std::string & imu_frame_name);
+    drake::systems::RigidBodyPlant<double> * plant);
 /// Add sensor aggregator
 systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
     drake::systems::DiagramBuilder<double> & builder,
@@ -85,7 +87,6 @@ systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
 systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
     drake::systems::DiagramBuilder<double> & builder,
     drake::systems::RigidBodyPlant<double> * plant,
-    const std::string & imu_frame_name ,
     SubvectorPassThrough<double> * passthrough);
 
 /// Solves the position constraints for a position that satisfies them

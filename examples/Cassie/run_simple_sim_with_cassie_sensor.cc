@@ -1,4 +1,5 @@
 #include <memory>
+#include <string>
 
 #include <gflags/gflags.h>
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
@@ -54,6 +55,7 @@ DEFINE_double(dt, 1e-3, "The step size to use for "
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
+DEFINE_bool(is_imu_sim, true, "With simulated imu sensor or not");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -66,11 +68,16 @@ int do_main(int argc, char* argv[]) {
   else
     tree = makeCassieTreePointer();
 
-  std::shared_ptr<RigidBodyFrame<double>> imu_frame =
-           std::allocate_shared<RigidBodyFrame<double>>(
-               Eigen::aligned_allocator<RigidBodyFrame<double>>(), "imu frame",
-               tree->FindBody("pelvis"), Eigen::Isometry3d::Identity());
-  tree->addFrame(imu_frame);
+  // Add imu frame to Cassie's pelvis
+  std::string imu_frame_name = "imu frame";
+  if (FLAGS_is_imu_sim) {
+    std::shared_ptr<RigidBodyFrame<double>> imu_frame =
+             std::allocate_shared<RigidBodyFrame<double>>(
+                 Eigen::aligned_allocator<RigidBodyFrame<double>>(),
+                 imu_frame_name,
+                 tree->FindBody("pelvis"), Eigen::Isometry3d::Identity());
+    tree->addFrame(imu_frame);
+  }
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -121,14 +128,15 @@ int do_main(int argc, char* argv[]) {
                   state_pub->get_input_port());
 
   // Create cassie output (containing simulated sensor) publisher
-  auto cassie_sensor_aggregator = addImuAndAggregatorToSimulation(
-                               builder, plant, imu_frame, passthrough);
-  auto cassie_sensor_pub = builder.AddSystem(
-                             LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
-                               "CASSIE_OUTPUT", &lcm, 1.0 / 200.0));
-  builder.Connect(cassie_sensor_aggregator->get_output_port(0),
-                  cassie_sensor_pub->get_input_port());
-
+  if (FLAGS_is_imu_sim) {
+    auto cassie_sensor_aggregator = addImuAndAggregatorToSimulation(
+                                 builder, plant, imu_frame_name, passthrough);
+    auto cassie_sensor_pub = builder.AddSystem(
+                            LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+                            "CASSIE_OUTPUT", &lcm, 1.0 / 200.0));
+    builder.Connect(cassie_sensor_aggregator->get_output_port(0),
+                    cassie_sensor_pub->get_input_port());
+  }
 
   // Creates and adds LCM publisher for visualization.
   // builder.AddVisualizer(&lcm);

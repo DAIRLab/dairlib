@@ -64,29 +64,29 @@ void buildCassieTree(
 
 /// Add simulated accelerometer to the diagram
 drake::systems::sensors::Accelerometer * addSimAccelerometer(
-  drake::systems::DiagramBuilder<double> & builder,
-  drake::systems::RigidBodyPlant<double> * plant,
-  std::shared_ptr<RigidBodyFrame<double>> imu_frame);
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    const std::string & imu_frame_name);
 /// Add simulated gyroscope to the diagram
 drake::systems::sensors::Gyroscope * addSimGyroscope(
-  drake::systems::DiagramBuilder<double> & builder,
-  drake::systems::RigidBodyPlant<double> * plant,
-  std::shared_ptr<RigidBodyFrame<double>> imu_frame);
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    const std::string & imu_frame_name);
 /// Add sensor aggregator
 systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
-  drake::systems::DiagramBuilder<double> & builder,
-  drake::systems::RigidBodyPlant<double> * plant,
-  SubvectorPassThrough<double> * passthrough,
-  drake::systems::sensors::Accelerometer * acce_sim,
-  drake::systems::sensors::Gyroscope * gyro_sim);
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    SubvectorPassThrough<double> * passthrough,
+    drake::systems::sensors::Accelerometer * accel_sim,
+    drake::systems::sensors::Gyroscope * gyro_sim);
 
 /// Add simulated gyroscope and accelerometer and create/publish an
 /// lcmt_cassie_out LCM message.
 systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
-  drake::systems::DiagramBuilder<double> & builder,
-  drake::systems::RigidBodyPlant<double> * plant,
-  std::shared_ptr<RigidBodyFrame<double>> imu_frame ,
-  SubvectorPassThrough<double> * passthrough);
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    const std::string & imu_frame_name ,
+    SubvectorPassThrough<double> * passthrough);
 
 /// Solves the position constraints for a position that satisfies them
 Eigen::VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,

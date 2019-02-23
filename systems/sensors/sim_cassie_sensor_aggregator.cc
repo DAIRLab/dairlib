@@ -37,7 +37,7 @@ void SimCassieSensorAggregator::Aggregate(const Context<double>& context,
     dairlib::lcmt_cassie_out* cassie_out_msg) const {
   const auto input = this->EvalVectorInput(context, input_input_port_);
   const auto state = this->EvalVectorInput(context, state_input_port_);
-  const auto acce = this->EvalVectorInput(context, acce_input_port_);
+  const auto accel = this->EvalVectorInput(context, acce_input_port_);
   const auto gyro = this->EvalVectorInput(context, gyro_input_port_);
 
   // using the time from the context
@@ -136,7 +136,7 @@ void SimCassieSensorAggregator::Aggregate(const Context<double>& context,
   // Gyro and acceleration
   for (int i = 0; i < 3; i++) {
     cassie_out_msg->pelvis.vectorNav.linearAcceleration[i] =
-      acce->GetAtIndex(i);
+      accel->GetAtIndex(i);
     cassie_out_msg->pelvis.vectorNav.angularVelocity[i] = gyro->GetAtIndex(i);
   }
 }

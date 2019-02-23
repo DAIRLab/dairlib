@@ -127,36 +127,44 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
 }
 
 drake::systems::sensors::Accelerometer * addSimAccelerometer(
-  drake::systems::DiagramBuilder<double> & builder,
-  drake::systems::RigidBodyPlant<double> * plant,
-  std::shared_ptr<RigidBodyFrame<double>> imu_frame){
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    const std::string & imu_frame_name) {
 
-  auto acce_sim = builder.AddSystem<drake::systems::sensors::Accelerometer>(
-    "Simulated Accelerometer", *imu_frame, plant->get_rigid_body_tree(), true);
+  std::shared_ptr< RigidBodyFrame<double> > imu_frame_ptr =
+      plant->get_rigid_body_tree().findFrame(imu_frame_name);
+
+  auto accel_sim = builder.AddSystem<drake::systems::sensors::Accelerometer>(
+                    "Simulated Accelerometer", *imu_frame_ptr,
+                    plant->get_rigid_body_tree(), true);
   builder.Connect(plant->state_output_port(),
-                  acce_sim->get_plant_state_input_port());
+                  accel_sim->get_plant_state_input_port());
   builder.Connect(plant->state_derivative_output_port(),
-                  acce_sim->get_plant_state_derivative_input_port());
+                  accel_sim->get_plant_state_derivative_input_port());
 
-  return acce_sim;
+  return accel_sim;
 }
 drake::systems::sensors::Gyroscope * addSimGyroscope(
-  drake::systems::DiagramBuilder<double> & builder,
-  drake::systems::RigidBodyPlant<double> * plant,
-  std::shared_ptr<RigidBodyFrame<double>> imu_frame){
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    const std::string & imu_frame_name) {
+
+  std::shared_ptr< RigidBodyFrame<double> > imu_frame_ptr =
+      plant->get_rigid_body_tree().findFrame(imu_frame_name);
 
   auto gyro_sim = builder.AddSystem<drake::systems::sensors::Gyroscope>(
-    "Simulated Gyroscope", *imu_frame, plant->get_rigid_body_tree());
+                    "Simulated Gyroscope",
+                    *imu_frame_ptr, plant->get_rigid_body_tree());
   builder.Connect(plant->state_output_port(), gyro_sim->get_input_port());
 
   return gyro_sim;
 }
 systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
-  drake::systems::DiagramBuilder<double> & builder,
-  drake::systems::RigidBodyPlant<double> * plant,
-  SubvectorPassThrough<double> * passthrough,
-  drake::systems::sensors::Accelerometer * acce_sim,
-  drake::systems::sensors::Gyroscope * gyro_sim){
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    SubvectorPassThrough<double> * passthrough,
+    drake::systems::sensors::Accelerometer * accel_sim,
+    drake::systems::sensors::Gyroscope * gyro_sim) {
   auto cassie_sensor_aggregator =
     builder.AddSystem<systems::SimCassieSensorAggregator>(
       plant->get_rigid_body_tree());
@@ -164,22 +172,23 @@ systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
                   cassie_sensor_aggregator->get_input_port_input());
   builder.Connect(plant->state_output_port(),
                   cassie_sensor_aggregator->get_input_port_state());
-  builder.Connect(acce_sim->get_output_port(),
+  builder.Connect(accel_sim->get_output_port(),
                   cassie_sensor_aggregator->get_input_port_acce());
   builder.Connect(gyro_sim->get_output_port(),
                   cassie_sensor_aggregator->get_input_port_gyro());
   return cassie_sensor_aggregator;
 }
 systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
-  drake::systems::DiagramBuilder<double> & builder,
-  drake::systems::RigidBodyPlant<double> * plant,
-  std::shared_ptr<RigidBodyFrame<double>> imu_frame ,
-  SubvectorPassThrough<double> * passthrough){
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    const std::string & imu_frame_name,
+    SubvectorPassThrough<double> * passthrough) {
 
-  auto acce_sim = addSimAccelerometer(builder, plant, imu_frame);
-  auto gyro_sim = addSimGyroscope(builder, plant, imu_frame);
+  auto accel_sim = addSimAccelerometer(builder, plant, imu_frame_name);
+  auto gyro_sim = addSimGyroscope(builder, plant, imu_frame_name);
   auto cassie_sensor_aggregator = addSimCassieSensorAggregator(
-    builder, plant, passthrough, acce_sim, gyro_sim);
+                                    builder, plant, passthrough,
+                                    accel_sim, gyro_sim);
 
   return cassie_sensor_aggregator;
 }

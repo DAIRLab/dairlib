@@ -19,7 +19,7 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "1.simulator" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim";
+        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false --is_imu_sim=false";
         host = "localhost";
     }
     cmd "3.dispatcher-robot-in" {

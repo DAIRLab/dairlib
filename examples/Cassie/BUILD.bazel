@@ -108,27 +108,6 @@ cc_binary(
     name = "run_simple_sim",
     srcs = ["run_simple_sim.cc"],
     deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        "@drake//attic/manipulation/util:sim_diagram_builder",
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//attic/multibody/rigid_body_plant",
-        "@drake//common",
-        "@drake//lcm",
-        "@drake//manipulation/util",
-        "@drake//solvers",
-        "@drake//systems/analysis:simulator",
-        "@drake//systems/framework",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "run_simple_sim_with_cassie_sensor",
-    srcs = ["run_simple_sim_with_cassie_sensor.cc"],
-    deps = [
         "//systems/sensors:sim_cassie_sensor_aggregator",
         ":cassie_urdf",
         ":cassie_utils",

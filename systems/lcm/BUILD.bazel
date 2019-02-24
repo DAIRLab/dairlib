@@ -1,0 +1,34 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "switching_lcm_subscriber_system",
+    srcs = [
+        "switching_lcm_subscriber_system.cc",
+    ],
+    hdrs = [
+        "switching_lcm_subscriber_system.h",
+    ],
+    deps = [
+        "@drake//systems/lcm:translator",
+        "@drake//systems/lcm:lcm_pubsub_system",
+        "@drake//common:value",
+        "@drake//lcm:real",
+        "@drake//systems/framework",
+        "//lcmtypes:lcmt_robot",
+    ]
+)
+
+cc_test(
+    name = "switching_lcm_subscriber_test",
+    size = "small",
+    srcs = ["test/switching_lcm_subscriber_test.cc"],
+    deps = [
+        ":switching_lcm_subscriber_system",
+        "@gtest//:main",
+        "@drake//systems/lcm:lcmt_drake_signal_translator",
+        "@drake//lcm:lcmt_drake_signal_utils",
+        "@drake//lcm:mock",
+    ],
+)

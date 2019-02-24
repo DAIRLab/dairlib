@@ -96,7 +96,6 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
   const int num_position_constraints = tree_.getNumPositionConstraints();
 
   // Making sure that the size of lambda is correct
-  //std::exit(0);
   DRAKE_THROW_UNLESS(num_position_constraints + num_contacts_ * 3 ==
                      lambda.size());
 

@@ -10,6 +10,8 @@ namespace dairlib {
 namespace systems {
 namespace {
 
+using std::cout;
+using std::endl;
 using std::unique_ptr;
 using std::shared_ptr;
 using std::make_unique;
@@ -27,6 +29,7 @@ using drake::math::initializeAutoDiff;
 using drake::math::DiscardGradient;
 using drake::multibody::joints::FloatingBaseType;
 using drake::multibody::joints::kRollPitchYaw;
+using drake::multibody::joints::kFixed;
 using drake::multibody::AddFlatTerrainToWorld;
 using drake::solvers::MathematicalProgram;
 using dairlib::buildCassieTree;
@@ -47,49 +50,76 @@ class MultibodySolversTest : public ::testing::Test {
     std::srand((unsigned int)time(0));
 
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf";
-    FloatingBaseType base_type = kRollPitchYaw;
-    buildCassieTree(tree_, filename, base_type);
+    buildCassieTree(tree_floating_, filename, kRollPitchYaw);
+    buildCassieTree(tree_fixed_, filename, kFixed);
 
     // Adding the ground
-    AddFlatTerrainToWorld(&tree_, 4, 0.05);
+    AddFlatTerrainToWorld(&tree_floating_, 4, 0.05);
 
-    num_positions_ = tree_.get_num_positions();
-    num_velocities_ = tree_.get_num_velocities();
-    num_states_ = num_positions_ + num_velocities_;
-    num_efforts_ = tree_.get_num_actuators();
+    num_positions_fixed_ = tree_fixed_.get_num_positions();
+    num_velocities_fixed_ = tree_fixed_.get_num_velocities();
+    num_states_fixed_ = num_positions_fixed_ + num_velocities_fixed_;
+    num_efforts_fixed_ = tree_fixed_.get_num_actuators();
+
+    num_positions_floating_ = tree_floating_.get_num_positions();
+    num_velocities_floating_ = tree_floating_.get_num_velocities();
+    num_states_floating_ = num_positions_floating_ + num_velocities_floating_;
+    num_efforts_floating_ = tree_floating_.get_num_actuators();
 
     // Setting the initial Cassie joint angles
+    map<string, int> position_map_fixed =
+        tree_fixed_.computePositionNameToIndexMap();
+    x0_fixed_ = VectorXd::Zero(num_states_floating_);
+    x0_fixed_(position_map_fixed.at("hip_roll_left")) = 0.1;
+    x0_fixed_(position_map_fixed.at("hip_roll_right")) = -0.1;
+    x0_fixed_(position_map_fixed.at("hip_yaw_left")) = 0.01;
+    x0_fixed_(position_map_fixed.at("hip_yaw_right")) = -0.01;
+    x0_fixed_(position_map_fixed.at("hip_pitch_left")) = .269;
+    x0_fixed_(position_map_fixed.at("hip_pitch_right")) = .269;
+    x0_fixed_(position_map_fixed.at("knee_left")) = -.744;
+    x0_fixed_(position_map_fixed.at("knee_right")) = -.744;
+    x0_fixed_(position_map_fixed.at("ankle_joint_left")) = .81;
+    x0_fixed_(position_map_fixed.at("ankle_joint_right")) = .81;
+    x0_fixed_(position_map_fixed.at("toe_left")) = 0;
+    x0_fixed_(position_map_fixed.at("toe_right")) = 0;
+    // x0_fixed_(position_map_fixed.at("toe_left")) = -30.0 * M_PI / 180.0;
+    // x0_fixed_(position_map_fixed.at("toe_right")) = -60.0 * M_PI / 180.0;
 
-    map<string, int> position_map = tree_.computePositionNameToIndexMap();
-    x0_ = VectorXd::Zero(num_states_);
-    x0_(position_map.at("hip_roll_left")) = 0.1;
-    x0_(position_map.at("hip_roll_right")) = -0.1;
-    x0_(position_map.at("hip_yaw_left")) = 0.01;
-    x0_(position_map.at("hip_yaw_right")) = -0.01;
-    x0_(position_map.at("hip_pitch_left")) = .269;
-    x0_(position_map.at("hip_pitch_right")) = .269;
-    x0_(position_map.at("knee_left")) = -.744;
-    x0_(position_map.at("knee_right")) = -.744;
-    x0_(position_map.at("ankle_joint_left")) = .81;
-    x0_(position_map.at("ankle_joint_right")) = .81;
-    x0_(position_map.at("toe_left")) = 0;
-    x0_(position_map.at("toe_right")) = 0;
-    // x0_(position_map.at("toe_left")) = -30.0 * M_PI / 180.0;
-    // x0_(position_map.at("toe_right")) = -60.0 * M_PI / 180.0;
+    map<string, int> position_map_floating =
+        tree_floating_.computePositionNameToIndexMap();
+    x0_floating_ = VectorXd::Zero(num_states_floating_);
+    x0_floating_(position_map_floating.at("hip_roll_left")) = 0.1;
+    x0_floating_(position_map_floating.at("hip_roll_right")) = -0.1;
+    x0_floating_(position_map_floating.at("hip_yaw_left")) = 0.01;
+    x0_floating_(position_map_floating.at("hip_yaw_right")) = -0.01;
+    x0_floating_(position_map_floating.at("hip_pitch_left")) = .269;
+    x0_floating_(position_map_floating.at("hip_pitch_right")) = .269;
+    x0_floating_(position_map_floating.at("knee_left")) = -.744;
+    x0_floating_(position_map_floating.at("knee_right")) = -.744;
+    x0_floating_(position_map_floating.at("ankle_joint_left")) = .81;
+    x0_floating_(position_map_floating.at("ankle_joint_right")) = .81;
+    x0_floating_(position_map_floating.at("toe_left")) = 0;
+    x0_floating_(position_map_floating.at("toe_right")) = 0;
+    // x0_floating_(position_map_floating.at("toe_left")) = -30.0 * M_PI /
+    // 180.0;
+    // x0_floating_(position_map_floating.at("toe_right")) = -60.0 * M_PI /
+    // 180.0;
 
     // Collison detect
+    // Contact information is specific to the floating base RBT
     VectorXd phi_total;
     Matrix3Xd normal_total, xA_total, xB_total;
     vector<int> idxA_total, idxB_total;
-    KinematicsCache<double> k_cache =
-        tree_.doKinematics(x0_.head(num_positions_), x0_.tail(num_velocities_));
+    KinematicsCache<double> k_cache = tree_floating_.doKinematics(
+        x0_floating_.head(num_positions_floating_),
+        x0_floating_.tail(num_velocities_floating_));
 
-    tree_.collisionDetect(k_cache, phi_total, normal_total, xA_total, xB_total,
-                          idxA_total, idxB_total);
+    tree_floating_.collisionDetect(k_cache, phi_total, normal_total, xA_total,
+                                   xB_total, idxA_total, idxB_total);
 
-    const int world_ind = GetBodyIndexFromName(tree_, "world");
-    const int toe_left_ind = GetBodyIndexFromName(tree_, "toe_left");
-    const int toe_right_ind = GetBodyIndexFromName(tree_, "toe_right");
+    const int world_ind = GetBodyIndexFromName(tree_floating_, "world");
+    const int toe_left_ind = GetBodyIndexFromName(tree_floating_, "toe_left");
+    const int toe_right_ind = GetBodyIndexFromName(tree_floating_, "toe_right");
 
     // Extracting information into the four contacts.
     VectorXd phi(4);
@@ -121,54 +151,73 @@ class MultibodySolversTest : public ::testing::Test {
     contact_info_ = {xB, idxB};
 
     num_contacts_ = contact_info_.num_contacts;
-    num_position_constraints_ = tree_.getNumPositionConstraints();
+    num_position_constraints_ = tree_floating_.getNumPositionConstraints();
     num_forces_ = num_contacts_ * 3 + num_position_constraints_;
   }
 
-  RigidBodyTree<double> tree_;
-  int num_positions_;
-  int num_velocities_;
-  int num_states_;
-  int num_efforts_;
+  RigidBodyTree<double> tree_fixed_;
+  RigidBodyTree<double> tree_floating_;
+  int num_positions_fixed_;
+  int num_positions_floating_;
+  int num_velocities_fixed_;
+  int num_velocities_floating_;
+  int num_states_fixed_;
+  int num_states_floating_;
+  int num_efforts_fixed_;
+  int num_efforts_floating_;
   int num_contacts_;
   int num_position_constraints_;
   int num_forces_;
   ContactInfo contact_info_;
-  VectorXd x0_;
+  VectorXd x0_fixed_;
+  VectorXd x0_floating_;
 };
 
 TEST_F(MultibodySolversTest, InitializationTest) {
   // Constraint class initializations
   // Position constraint
 
-  PositionConstraint position_constraint(tree_);
-
-  // Fixed point constraint with and without contact
-  FixedPointConstraint fp_constraint1(tree_);
-  FixedPointConstraint fp_constraint2(tree_, contact_info_);
+  PositionConstraint position_constraint_fixed(tree_fixed_);
+  PositionConstraint position_constraint_floating(tree_floating_);
 
   // Contact constraint
-  ContactConstraint contact_constraint(tree_, contact_info_);
+  ContactConstraint contact_constraint(tree_floating_, contact_info_);
+
+  // Fixed point constraint with and without contact
+  FixedPointConstraint fp_constraint1(tree_fixed_);
+  FixedPointConstraint fp_constraint2(tree_floating_, contact_info_);
 
   // Solver class initializations
 
   // PositionSolver
   // Testing basic getters and setters
-  PositionSolver position_solver(tree_);
-  position_solver.set_filename("position_log");
-  position_solver.set_major_tolerance(0.001);
-  position_solver.set_minor_tolerance(0.01);
+  PositionSolver position_solver_fixed(tree_floating_);
+  position_solver_fixed.set_filename("position_log");
+  position_solver_fixed.set_major_tolerance(0.001);
+  position_solver_fixed.set_minor_tolerance(0.01);
 
-  ASSERT_EQ(position_solver.get_filename(), "position_log");
-  ASSERT_EQ(position_solver.get_major_tolerance(), 0.001);
-  ASSERT_EQ(position_solver.get_minor_tolerance(), 0.01);
+  ASSERT_EQ(position_solver_fixed.get_filename(), "position_log");
+  ASSERT_EQ(position_solver_fixed.get_major_tolerance(), 0.001);
+  ASSERT_EQ(position_solver_fixed.get_minor_tolerance(), 0.01);
+
+  PositionSolver position_solver_floating(tree_floating_);
+  position_solver_floating.set_filename("position_log");
+  position_solver_floating.set_major_tolerance(0.001);
+  position_solver_floating.set_minor_tolerance(0.01);
+
+  ASSERT_EQ(position_solver_floating.get_filename(), "position_log");
+  ASSERT_EQ(position_solver_floating.get_major_tolerance(), 0.001);
+  ASSERT_EQ(position_solver_floating.get_minor_tolerance(), 0.01);
 
   // Testing mathematical program getter
-  shared_ptr<MathematicalProgram> prog_position = position_solver.get_program();
+  shared_ptr<MathematicalProgram> prog_position_fixed =
+      position_solver_fixed.get_program();
+  shared_ptr<MathematicalProgram> prog_position_floating =
+      position_solver_floating.get_program();
 
   // ContactSolver
   // Testing basic getters and setters
-  ContactSolver contact_solver(tree_, contact_info_);
+  ContactSolver contact_solver(tree_floating_, contact_info_);
   contact_solver.set_filename("contact_log");
   contact_solver.set_major_tolerance(0.002);
   contact_solver.set_minor_tolerance(0.02);
@@ -182,90 +231,122 @@ TEST_F(MultibodySolversTest, InitializationTest) {
 
   // FixedPointSolver
   // Testing basic getters and setters
-  FixedPointSolver fp_solver(tree_);
-  fp_solver.set_filename("fp_log");
-  fp_solver.set_major_tolerance(0.003);
-  fp_solver.set_minor_tolerance(0.03);
+  FixedPointSolver fp_solver_fixed(tree_fixed_);
+  fp_solver_fixed.set_filename("fp_log");
+  fp_solver_fixed.set_major_tolerance(0.003);
+  fp_solver_fixed.set_minor_tolerance(0.03);
 
-  ASSERT_EQ(fp_solver.get_filename(), "fp_log");
-  ASSERT_EQ(fp_solver.get_major_tolerance(), 0.003);
-  ASSERT_EQ(fp_solver.get_minor_tolerance(), 0.03);
+  ASSERT_EQ(fp_solver_fixed.get_filename(), "fp_log");
+  ASSERT_EQ(fp_solver_fixed.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_fixed.get_minor_tolerance(), 0.03);
+
+  FixedPointSolver fp_solver_floating(tree_floating_, contact_info_);
+  fp_solver_floating.set_filename("fp_log");
+  fp_solver_floating.set_major_tolerance(0.003);
+  fp_solver_floating.set_minor_tolerance(0.03);
+
+  ASSERT_EQ(fp_solver_floating.get_filename(), "fp_log");
+  ASSERT_EQ(fp_solver_floating.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_floating.get_minor_tolerance(), 0.03);
 
   // Testing mathematical program getter
-  shared_ptr<MathematicalProgram> prog_fp = fp_solver.get_program();
+  shared_ptr<MathematicalProgram> prog_fp_fixed = fp_solver_fixed.get_program();
+  shared_ptr<MathematicalProgram> prog_fp_floating =
+      fp_solver_floating.get_program();
 }
 
 TEST_F(MultibodySolversTest, SolveTest) {
   // Testing the solvers
 
-  VectorXd q = x0_.head(num_positions_);
-  VectorXd u = VectorXd::Zero(num_efforts_);
-  VectorXd lambda = VectorXd::Zero(num_forces_);
+  VectorXd q_fixed = x0_fixed_.head(num_positions_fixed_);
+  VectorXd u_fixed = VectorXd::Zero(num_efforts_fixed_);
+  VectorXd lambda_fixed = VectorXd::Zero(num_position_constraints_);
+
+  VectorXd q_floating = x0_floating_.head(num_positions_floating_);
+  VectorXd u_floating = VectorXd::Zero(num_efforts_floating_);
+  VectorXd lambda_floating = VectorXd::Zero(num_position_constraints_);
+
   // PositionSolver
-  PositionSolver position_solver(tree_);
-  position_solver.SetInitialGuessQ(q);
+  // Fixed base
+  PositionSolver position_solver_fixed(tree_fixed_);
+  position_solver_fixed.SetInitialGuessQ(q_fixed);
 
-  std::cout << "Position solver result: " << position_solver.Solve(q)
-            << std::endl;
+  cout << "Position solver result (Fixed base): "
+       << position_solver_fixed.Solve(q_fixed) << endl;
 
-  VectorXd q_sol = position_solver.GetSolutionQ();
+  VectorXd q_sol_fixed = position_solver_fixed.GetSolutionQ();
 
   // Solution dimension check
-  ASSERT_EQ(q_sol.size(), num_positions_);
+  ASSERT_EQ(q_sol_fixed.size(), num_positions_fixed_);
   // Checking if the solution constraints have been satisfied
-  ASSERT_TRUE(position_solver.CheckConstraint(q_sol));
+  ASSERT_TRUE(position_solver_fixed.CheckConstraint(q_sol_fixed));
 
-  // ContactSolver
-  ContactSolver contact_solver(tree_, contact_info_);
-  contact_solver.SetInitialGuessQ(q);
+  // Floating base
+  PositionSolver position_solver_floating(tree_floating_);
+  position_solver_floating.SetInitialGuessQ(q_floating);
 
-  std::cout << "Contact solver result: " << contact_solver.Solve(q)
-            << std::endl;
+  cout << "Position solver result (Floating base): "
+       << position_solver_floating.Solve(q_floating) << endl;
 
-  q_sol = contact_solver.GetSolutionQ();
+  VectorXd q_sol_floating = position_solver_floating.GetSolutionQ();
 
   // Solution dimension check
-  ASSERT_EQ(q_sol.size(), num_positions_);
+  ASSERT_EQ(q_sol_floating.size(), num_positions_floating_);
   // Checking if the solution constraints have been satisfied
-  ASSERT_TRUE(contact_solver.CheckConstraint(q_sol));
+  ASSERT_TRUE(position_solver_floating.CheckConstraint(q_sol_floating));
 
-  // FixedPointSolver
-  FixedPointSolver fp_solver(tree_);
-  fp_solver.SetInitialGuess(q, u, lambda);
-  // fp_solver.AddSpreadNormalForcesCost();
-  // fp_solver.AddFrictionConeConstraint(0.8);
-
-  std::cout << "Fixed point solver result: " << fp_solver.Solve(q, u)
-            << std::endl;
-
-  q_sol = fp_solver.GetSolutionQ();
-  VectorXd u_sol = fp_solver.GetSolutionU();
-  VectorXd lambda_sol = fp_solver.GetSolutionLambda();
-
-  VectorXd x_sol = VectorXd::Zero(num_positions_ + num_velocities_);
-  x_sol.head(num_positions_) = q_sol;
-  ContactToolkit<double> ct(tree_, ContactInfo());
-  std::cout << ct.CalcMVDot(x_sol, u_sol, lambda_sol).transpose() << std::endl;
-  std::cout << "qdot ----------------------" << std::endl;
-  std::cout << ct.CalcTimeDerivatives(x_sol, u_sol, lambda_sol).transpose()
-            << std::endl;
-  std::cout << std::endl;
-  std::cout << "q ----------------------" << std::endl;
-  std::cout << q_sol.transpose() << std::endl;
-  std::cout << std::endl;
-  std::cout << "u ----------------------" << std::endl;
-  std::cout << u_sol.transpose() << std::endl;
-  std::cout << std::endl;
-  std::cout << "lambda ----------------------" << std::endl;
-  std::cout << lambda_sol.transpose() << std::endl;
-  std::cout << std::endl;
-
-  // Solution dimension check
-  ASSERT_EQ(q_sol.size(), num_positions_);
-  ASSERT_EQ(u_sol.size(), num_efforts_);
-  ASSERT_EQ(lambda_sol.size(), num_forces_);
-  // Solution constraints check
-  ASSERT_TRUE(fp_solver.CheckConstraint(q_sol, u_sol, lambda_sol));
+  //  // ContactSolver
+  //  ContactSolver contact_solver(tree_floating_, contact_info_);
+  //  contact_solver.SetInitialGuessQ(q);
+  //
+  //  std::cout << "Contact solver result: " << contact_solver.Solve(q)
+  //            << std::endl;
+  //
+  //  q_sol = contact_solver.GetSolutionQ();
+  //
+  //  // Solution dimension check
+  //  ASSERT_EQ(q_sol.size(), num_positions_);
+  //  // Checking if the solution constraints have been satisfied
+  //  ASSERT_TRUE(contact_solver.CheckConstraint(q_sol));
+  //
+  //  // FixedPointSolver
+  //  FixedPointSolver fp_solver(tree_fixed_);
+  //  // fp_solver.SetInitialGuess(q, u, lambda);
+  //  // fp_solver.AddSpreadNormalForcesCost();
+  //  // fp_solver.AddFrictionConeConstraint(0.8);
+  //
+  //  std::cout << "Fixed point solver result: " << fp_solver.Solve(q, u)
+  //            << std::endl;
+  //
+  //  q_sol = fp_solver.GetSolutionQ();
+  //  VectorXd u_sol = fp_solver.GetSolutionU();
+  //  VectorXd lambda_sol = fp_solver.GetSolutionLambda();
+  //
+  //  VectorXd x_sol = VectorXd::Zero(num_positions_ + num_velocities_);
+  //  x_sol.head(num_positions_) = q_sol;
+  //  ContactToolkit<double> ct(tree_, ContactInfo());
+  //  std::cout << ct.CalcMVDot(x_sol, u_sol, lambda_sol).transpose() <<
+  //  std::endl;
+  //  std::cout << "qdot ----------------------" << std::endl;
+  //  std::cout << ct.CalcTimeDerivatives(x_sol, u_sol, lambda_sol).transpose()
+  //            << std::endl;
+  //  std::cout << std::endl;
+  //  std::cout << "q ----------------------" << std::endl;
+  //  std::cout << q_sol.transpose() << std::endl;
+  //  std::cout << std::endl;
+  //  std::cout << "u ----------------------" << std::endl;
+  //  std::cout << u_sol.transpose() << std::endl;
+  //  std::cout << std::endl;
+  //  std::cout << "lambda ----------------------" << std::endl;
+  //  std::cout << lambda_sol.transpose() << std::endl;
+  //  std::cout << std::endl;
+  //
+  //  // Solution dimension check
+  //  ASSERT_EQ(q_sol.size(), num_positions_);
+  //  ASSERT_EQ(u_sol.size(), num_efforts_);
+  //  ASSERT_EQ(lambda_sol.size(), 2);
+  //  // Solution constraints check
+  //  ASSERT_TRUE(fp_solver.CheckConstraint(q_sol, u_sol, lambda_sol));
 }
 
 }  // namespace

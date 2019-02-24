@@ -83,7 +83,7 @@ class PositionSolver {
   void SetInitialGuessQ(Eigen::VectorXd q);
   drake::solvers::SolutionResult Solve(Eigen::VectorXd q,
                                        std::vector<int> fixed_joints = {});
-  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-9) const;
+  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-10) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   drake::solvers::SolutionResult get_solution_result();
@@ -103,8 +103,8 @@ class PositionSolver {
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::SolutionResult solution_result_;
   std::string filename_ = "multibody/solver_log/position_solver";
-  double major_tolerance_ = 1.0e-10;
-  double minor_tolerance_ = 1.0e-10;
+  double major_tolerance_ = 1.0e-13;
+  double minor_tolerance_ = 1.0e-13;
 };
 
 class ContactSolver {
@@ -116,7 +116,7 @@ class ContactSolver {
   void SetInitialGuessQ(Eigen::VectorXd q);
   drake::solvers::SolutionResult Solve(Eigen::VectorXd q,
                                        std::vector<int> fixed_joints = {});
-  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-9) const;
+  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-10) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   drake::solvers::SolutionResult get_solution_result();
@@ -137,8 +137,8 @@ class ContactSolver {
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::SolutionResult solution_result_;
   std::string filename_ = "multibody/solver_log/position_solver";
-  double major_tolerance_ = 1.0e-10;
-  double minor_tolerance_ = 1.0e-10;
+  double major_tolerance_ = 1.0e-13;
+  double minor_tolerance_ = 1.0e-13;
 };
 
 class FixedPointSolver {
@@ -158,7 +158,7 @@ class FixedPointSolver {
   drake::solvers::SolutionResult Solve(Eigen::VectorXd q, Eigen::VectorXd u,
                                        std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, Eigen::VectorXd u,
-                       Eigen::VectorXd lambda, double tolerance = 1.0e-6) const;
+                       Eigen::VectorXd lambda, double tolerance = 1.0e-10) const;
 
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   drake::solvers::SolutionResult get_solution_result();
@@ -183,8 +183,8 @@ class FixedPointSolver {
   drake::solvers::VectorXDecisionVariable lambda_;
   drake::solvers::SolutionResult solution_result_;
   std::string filename_ = "multibody/solver_log/position_solver";
-  double major_tolerance_ = 1.0e-10;
-  double minor_tolerance_ = 1.0e-10;
+  double major_tolerance_ = 1.0e-13;
+  double minor_tolerance_ = 1.0e-13;
 };
 
 }  // namespace multibody

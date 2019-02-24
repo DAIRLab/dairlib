@@ -295,58 +295,65 @@ TEST_F(MultibodySolversTest, SolveTest) {
   // Checking if the solution constraints have been satisfied
   ASSERT_TRUE(position_solver_floating.CheckConstraint(q_sol_floating));
 
-  //  // ContactSolver
-  //  ContactSolver contact_solver(tree_floating_, contact_info_);
-  //  contact_solver.SetInitialGuessQ(q);
-  //
-  //  std::cout << "Contact solver result: " << contact_solver.Solve(q)
-  //            << std::endl;
-  //
-  //  q_sol = contact_solver.GetSolutionQ();
-  //
-  //  // Solution dimension check
-  //  ASSERT_EQ(q_sol.size(), num_positions_);
-  //  // Checking if the solution constraints have been satisfied
-  //  ASSERT_TRUE(contact_solver.CheckConstraint(q_sol));
-  //
-  //  // FixedPointSolver
-  //  FixedPointSolver fp_solver(tree_fixed_);
-  //  // fp_solver.SetInitialGuess(q, u, lambda);
-  //  // fp_solver.AddSpreadNormalForcesCost();
-  //  // fp_solver.AddFrictionConeConstraint(0.8);
-  //
-  //  std::cout << "Fixed point solver result: " << fp_solver.Solve(q, u)
-  //            << std::endl;
-  //
-  //  q_sol = fp_solver.GetSolutionQ();
-  //  VectorXd u_sol = fp_solver.GetSolutionU();
-  //  VectorXd lambda_sol = fp_solver.GetSolutionLambda();
-  //
-  //  VectorXd x_sol = VectorXd::Zero(num_positions_ + num_velocities_);
-  //  x_sol.head(num_positions_) = q_sol;
-  //  ContactToolkit<double> ct(tree_, ContactInfo());
-  //  std::cout << ct.CalcMVDot(x_sol, u_sol, lambda_sol).transpose() <<
-  //  std::endl;
-  //  std::cout << "qdot ----------------------" << std::endl;
-  //  std::cout << ct.CalcTimeDerivatives(x_sol, u_sol, lambda_sol).transpose()
-  //            << std::endl;
-  //  std::cout << std::endl;
-  //  std::cout << "q ----------------------" << std::endl;
-  //  std::cout << q_sol.transpose() << std::endl;
-  //  std::cout << std::endl;
-  //  std::cout << "u ----------------------" << std::endl;
-  //  std::cout << u_sol.transpose() << std::endl;
-  //  std::cout << std::endl;
-  //  std::cout << "lambda ----------------------" << std::endl;
-  //  std::cout << lambda_sol.transpose() << std::endl;
-  //  std::cout << std::endl;
-  //
-  //  // Solution dimension check
-  //  ASSERT_EQ(q_sol.size(), num_positions_);
-  //  ASSERT_EQ(u_sol.size(), num_efforts_);
-  //  ASSERT_EQ(lambda_sol.size(), 2);
-  //  // Solution constraints check
-  //  ASSERT_TRUE(fp_solver.CheckConstraint(q_sol, u_sol, lambda_sol));
+  // ContactSolver
+  ContactSolver contact_solver(tree_floating_, contact_info_);
+  contact_solver.SetInitialGuessQ(q_floating);
+
+  std::cout << "Contact solver result (Floating base): "
+            << contact_solver.Solve(q_floating) << std::endl;
+
+  q_sol_floating = contact_solver.GetSolutionQ();
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_floating.size(), num_positions_floating_);
+  // Checking if the solution constraints have been satisfied
+  ASSERT_TRUE(contact_solver.CheckConstraint(q_sol_floating));
+
+  // FixedPointSolver
+  // Fixed base
+  FixedPointSolver fp_solver_fixed(tree_fixed_);
+  // fp_solver.SetInitialGuess(q, u, lambda);
+  // fp_solver.AddSpreadNormalForcesCost();
+  // fp_solver.AddFrictionConeConstraint(0.8);
+
+  cout << "Fixed point solver result: "
+       << fp_solver_fixed.Solve(q_fixed, u_fixed) << endl;
+
+  q_sol_fixed = fp_solver_fixed.GetSolutionQ();
+  VectorXd u_sol_fixed = fp_solver_fixed.GetSolutionU();
+  VectorXd lambda_sol_fixed = fp_solver_fixed.GetSolutionLambda();
+
+  VectorXd x_sol_fixed =
+      VectorXd::Zero(num_positions_fixed_ + num_velocities_fixed_);
+  x_sol_fixed.head(num_positions_fixed_) = q_sol_fixed;
+  // ContactToolkit object with empty contacts (Default)
+  ContactToolkit<double> ct_fixed(tree_fixed_, ContactInfo());
+  cout << ct_fixed.CalcMVDot(x_sol_fixed, u_sol_fixed, lambda_sol_fixed)
+              .transpose()
+       << endl;
+  cout << "qdot ----------------------" << endl;
+  cout << ct_fixed
+              .CalcTimeDerivatives(x_sol_fixed, u_sol_fixed, lambda_sol_fixed)
+              .transpose()
+       << endl;
+  cout << endl;
+  cout << "q ----------------------" << endl;
+  cout << q_sol_fixed.transpose() << endl;
+  cout << std::endl;
+  cout << "u ----------------------" << endl;
+  cout << u_sol_fixed.transpose() << endl;
+  cout << endl;
+  cout << "lambda ----------------------" << endl;
+  cout << lambda_sol_fixed.transpose() << endl;
+  cout << endl;
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_fixed.size(), num_positions_fixed_);
+  ASSERT_EQ(u_sol_fixed.size(), num_efforts_fixed_);
+  ASSERT_EQ(lambda_sol_fixed.size(), num_position_constraints_);
+  // Solution constraints check
+  ASSERT_TRUE(fp_solver_fixed.CheckConstraint(q_sol_fixed, u_sol_fixed,
+                                              lambda_sol_fixed));
 }
 
 }  // namespace

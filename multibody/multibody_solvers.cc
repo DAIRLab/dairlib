@@ -152,17 +152,12 @@ void FixedPointConstraint::DoEval(
   const AutoDiffVecXd u = q_u_l.segment(num_positions_, num_efforts_);
   const AutoDiffVecXd lambda = q_u_l.tail(num_forces_);
 
-  // const AutoDiffVecXd v =
-  //    VectorXd::Zero(num_velocities_).template cast<AutoDiffXd>();
-  // AutoDiffVecXd x(num_positions_ + num_velocities_);
-  // x << q, v;
-
-  AutoDiffVecXd x =
-      initializeAutoDiff(VectorXd::Zero(num_positions_ + num_velocities_));
-  x.head(num_positions_) = q;
+  const AutoDiffVecXd v =
+      VectorXd::Zero(num_velocities_).template cast<AutoDiffXd>();
+  AutoDiffVecXd x(num_positions_ + num_velocities_);
+  x << q, v;
 
   *y = contact_toolkit_->CalcMVDot(x, u, lambda);
-  std::cout << y->transpose() << std::endl << "------------------" << std::endl;
 }
 
 void FixedPointConstraint::DoEval(

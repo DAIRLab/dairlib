@@ -158,6 +158,8 @@ void FixedPointConstraint::DoEval(
   x << q, v;
 
   *y = contact_toolkit_->CalcMVDot(x, u, lambda);
+  std::cout << y->transpose() << std::endl
+            << "-----------------------" << std::endl;
 }
 
 void FixedPointConstraint::DoEval(
@@ -388,12 +390,11 @@ SolutionResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
       make_shared<FixedPointConstraint>(tree_, contact_info_);
 
   prog_->AddConstraint(position_constraint, q_);
+  prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
 
   if (contact_info_.num_contacts) {
     prog_->AddConstraint(contact_constraint, q_);
   }
-
-  prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
 
   // Adding the fixed joint constraints
   for (uint i = 0; i < fixed_joints.size(); ++i) {
@@ -414,6 +415,8 @@ SolutionResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
 bool FixedPointSolver::CheckConstraint(VectorXd q, VectorXd u, VectorXd lambda,
                                        double tolerance) const {
   auto position_constraint = make_shared<PositionConstraint>(tree_);
+  auto contact_constraint =
+      make_shared<ContactConstraint>(tree_, contact_info_);
   auto fixed_point_constraint =
       make_shared<FixedPointConstraint>(tree_, contact_info_);
   VectorXd q_u_l = VectorXd(q.size() + u.size() + lambda.size());
@@ -423,8 +426,16 @@ bool FixedPointSolver::CheckConstraint(VectorXd q, VectorXd u, VectorXd lambda,
   std::cout << "FP constraint: "
             << fixed_point_constraint->CheckSatisfied(q_u_l, tolerance)
             << std::endl;
-  return position_constraint->CheckSatisfied(q, tolerance) &&
-         fixed_point_constraint->CheckSatisfied(q_u_l, tolerance);
+  if (contact_info_.num_contacts) {
+    std::cout << "Contact constraint: "
+              << contact_constraint->CheckSatisfied(q, tolerance) << std::endl;
+    return position_constraint->CheckSatisfied(q, tolerance) &&
+           contact_constraint->CheckSatisfied(q, tolerance) &&
+           fixed_point_constraint->CheckSatisfied(q_u_l, tolerance);
+  } else {
+    return position_constraint->CheckSatisfied(q, tolerance) &&
+           fixed_point_constraint->CheckSatisfied(q_u_l, tolerance);
+  }
 }
 
 shared_ptr<MathematicalProgram> FixedPointSolver::get_program() {

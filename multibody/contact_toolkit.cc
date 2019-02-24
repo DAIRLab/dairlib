@@ -58,13 +58,8 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
                                             contact_info_.idxA.at(i), world_ind,
                                             true);
 
-    VectorX<T> xB_i = tree_.transformPoints(
-        k_cache, contact_info_.xA.col(i), contact_info_.idxA.at(i), world_ind);
-    xB_i(2) = 0;
-
-    auto Jb = tree_.transformPointsJacobian(k_cache, xB_i, world_ind, world_ind,
-                                            true);
-    J_diff.at(i) = Jb - Ja;
+    // Jb is zero
+    J_diff.at(i) = -Ja;
   }
 
   // Contact Jacobians

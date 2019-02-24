@@ -348,8 +348,8 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   FixedPointSolver fp_solver_floating(tree_floating_, contact_info_);
   fp_solver_floating.SetInitialGuess(q_floating_, u_floating_,
                                      lambda_floating_);
-  // fp_solver.AddSpreadNormalForcesCost();
-  // fp_solver.AddFrictionConeConstraint(0.8);
+  // fp_solver_floating.AddSpreadNormalForcesCost();
+  // fp_solver_floating.AddFrictionConeConstraint(0.8);
 
   cout << "Fixed point solver result (Floating base): "
        << fp_solver_floating.Solve(q_floating_, u_floating_) << endl;
@@ -376,7 +376,7 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   cout << endl;
   cout << "q ----------------------" << endl;
   cout << q_sol_floating.transpose() << endl;
-  cout << std::endl;
+  cout << endl;
   cout << "u ----------------------" << endl;
   cout << u_sol_floating.transpose() << endl;
   cout << endl;

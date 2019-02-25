@@ -154,7 +154,8 @@ class FixedPointSolver {
   void SetInitialGuessU(Eigen::VectorXd u);
   void SetInitialGuessLambda(Eigen::VectorXd lambda);
   void AddSpreadNormalForcesCost();
-  void AddFrictionConeConstraint(double mu);
+  void AddFrictionConeConstraint(const double mu);
+  void AddJointLimitConstraint(const double tolerance);
   drake::solvers::SolutionResult Solve(Eigen::VectorXd q, Eigen::VectorXd u,
                                        std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, Eigen::VectorXd u,

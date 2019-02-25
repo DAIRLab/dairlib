@@ -82,12 +82,11 @@ class MultibodySolversTest : public ::testing::Test {
     x0_fixed_(position_map_fixed.at("ankle_joint_right")) = .81;
     x0_fixed_(position_map_fixed.at("toe_left")) = 0;
     x0_fixed_(position_map_fixed.at("toe_right")) = 0;
-    // x0_fixed_(position_map_fixed.at("toe_left")) = -30.0 * M_PI / 180.0;
-    // x0_fixed_(position_map_fixed.at("toe_right")) = -60.0 * M_PI / 180.0;
 
     map<string, int> position_map_floating =
         tree_floating_.computePositionNameToIndexMap();
     x0_floating_ = VectorXd::Zero(num_states_floating_);
+    x0_floating_(position_map_floating.at("base_z")) = 3;
     x0_floating_(position_map_floating.at("hip_roll_left")) = 0.1;
     x0_floating_(position_map_floating.at("hip_roll_right")) = -0.1;
     x0_floating_(position_map_floating.at("hip_yaw_left")) = 0.01;
@@ -98,12 +97,20 @@ class MultibodySolversTest : public ::testing::Test {
     x0_floating_(position_map_floating.at("knee_right")) = -.744;
     x0_floating_(position_map_floating.at("ankle_joint_left")) = .81;
     x0_floating_(position_map_floating.at("ankle_joint_right")) = .81;
-    x0_floating_(position_map_floating.at("toe_left")) = 0;
-    x0_floating_(position_map_floating.at("toe_right")) = 0;
-    // x0_floating_(position_map_floating.at("toe_left")) = -30.0 * M_PI /
-    // 180.0;
-    // x0_floating_(position_map_floating.at("toe_right")) = -60.0 * M_PI /
-    // 180.0;
+    x0_floating_(position_map_floating.at("toe_left")) = -60.0 * M_PI / 180.0;
+    x0_floating_(position_map_floating.at("toe_right")) = -60.0 * M_PI / 180.0;
+
+    fixed_joints_floating_.push_back(position_map_floating.at("base_roll"));
+    fixed_joints_floating_.push_back(position_map_floating.at("base_yaw"));
+    // fixed_joints_floating_.push_back(position_map_floating.at("hip_roll_left"));
+    // fixed_joints_floating_.push_back(
+    //    position_map_floating.at("hip_roll_right"));
+    // fixed_joints_floating_.push_back(position_map_floating.at("hip_yaw_left"));
+    // fixed_joints_floating_.push_back(position_map_floating.at("hip_yaw_right"));
+    fixed_joints_floating_.push_back(
+        position_map_floating.at("hip_pitch_left"));
+    fixed_joints_floating_.push_back(
+        position_map_floating.at("hip_pitch_right"));
 
     // Collison detect
     // Contact information is specific to the floating base RBT
@@ -154,6 +161,8 @@ class MultibodySolversTest : public ::testing::Test {
     num_position_constraints_ = tree_floating_.getNumPositionConstraints();
     num_forces_ = num_position_constraints_ + num_contacts_ * 3;
 
+    lambda_fixed_ = VectorXd::Zero(num_position_constraints_);
+
     q_fixed_ = x0_fixed_.head(num_positions_fixed_);
     u_fixed_ = VectorXd::Zero(num_efforts_fixed_);
     lambda_fixed_ = VectorXd::Zero(num_position_constraints_);
@@ -165,6 +174,7 @@ class MultibodySolversTest : public ::testing::Test {
 
   RigidBodyTree<double> tree_fixed_;
   RigidBodyTree<double> tree_floating_;
+  vector<int> fixed_joints_floating_;
   int num_positions_fixed_;
   int num_positions_floating_;
   int num_velocities_fixed_;
@@ -348,11 +358,14 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   FixedPointSolver fp_solver_floating(tree_floating_, contact_info_);
   fp_solver_floating.SetInitialGuess(q_floating_, u_floating_,
                                      lambda_floating_);
-  // fp_solver_floating.AddSpreadNormalForcesCost();
-  // fp_solver_floating.AddFrictionConeConstraint(0.8);
+  fp_solver_floating.AddSpreadNormalForcesCost();
+  fp_solver_floating.AddFrictionConeConstraint(0.8);
+  fp_solver_floating.AddJointLimitConstraint(0.001);
 
   cout << "Fixed point solver result (Floating base): "
-       << fp_solver_floating.Solve(q_floating_, u_floating_) << endl;
+       << fp_solver_floating.Solve(q_floating_, u_floating_,
+                                   fixed_joints_floating_)
+       << endl;
 
   VectorXd q_sol_floating = fp_solver_floating.GetSolutionQ();
   VectorXd u_sol_floating = fp_solver_floating.GetSolutionU();

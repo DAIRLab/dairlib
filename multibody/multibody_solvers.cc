@@ -158,8 +158,10 @@ void FixedPointConstraint::DoEval(
   x << q, v;
 
   *y = contact_toolkit_->CalcMVDot(x, u, lambda);
-  std::cout << y->transpose() << std::endl
-            << "-----------------------" << std::endl;
+  // std::cout << y->transpose() << std::endl
+  //          << "-----------------------" << std::endl;
+  // std::cout << autoDiffToGradientMatrix(*y) << std::endl
+  //          << "-----------------" << std::endl;
 }
 
 void FixedPointConstraint::DoEval(
@@ -371,6 +373,17 @@ void FixedPointSolver::AddFrictionConeConstraint(const double mu) {
                          mu * lambda_(i * 3 + num_position_constraints));
     prog_->AddConstraint(-lambda_(i * 3 + 2 + num_position_constraints) <=
                          mu * lambda_(i * 3 + num_position_constraints));
+    prog_->AddConstraint(lambda_(i * 3 + num_position_constraints) >= 0);
+  }
+}
+
+void FixedPointSolver::AddJointLimitConstraint(const double tolerance) {
+  VectorXd joint_min = tree_.joint_limit_min;
+  VectorXd joint_max = tree_.joint_limit_max;
+
+  for (int i = 0; i < joint_min.size(); ++i) {
+    prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
+    prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
   }
 }
 

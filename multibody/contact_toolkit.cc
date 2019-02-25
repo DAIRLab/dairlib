@@ -59,7 +59,7 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
                                             true);
 
     // Jb is zero
-    J_diff.at(i) = -Ja;
+    J_diff.at(i) = Ja;
   }
 
   // Contact Jacobians

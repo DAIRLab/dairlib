@@ -219,7 +219,13 @@ SolutionResult PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
 
 bool PositionSolver::CheckConstraint(VectorXd q, double tolerance) const {
   auto position_constraint = make_shared<PositionConstraint>(tree_);
-  return position_constraint->CheckSatisfied(q, tolerance);
+  bool check = position_constraint->CheckSatisfied(q, tolerance);
+  if (!check) {
+    std::cout << "Position constraint: "
+              << position_constraint->CheckSatisfied(q, tolerance) << std::endl;
+  }
+
+  return check;
 }
 
 shared_ptr<MathematicalProgram> PositionSolver::get_program() { return prog_; }
@@ -301,8 +307,16 @@ bool ContactSolver::CheckConstraint(VectorXd q, double tolerance) const {
   auto position_constraint = make_shared<PositionConstraint>(tree_);
   auto contact_constraint =
       make_shared<ContactConstraint>(tree_, contact_info_);
-  return position_constraint->CheckSatisfied(q, tolerance) &&
-         contact_constraint->CheckSatisfied(q, tolerance);
+  bool check = position_constraint->CheckSatisfied(q, tolerance) &&
+               contact_constraint->CheckSatisfied(q, tolerance);
+  if (!check) {
+    std::cout << "Position constraint: "
+              << position_constraint->CheckSatisfied(q, tolerance) << std::endl;
+    std::cout << "Contact constraint: "
+              << contact_constraint->CheckSatisfied(q, tolerance) << std::endl;
+  }
+
+  return check;
 }
 
 shared_ptr<MathematicalProgram> ContactSolver::get_program() { return prog_; }
@@ -452,22 +466,44 @@ bool FixedPointSolver::CheckConstraint(VectorXd q, VectorXd u, VectorXd lambda,
       make_shared<ContactConstraint>(tree_, contact_info_);
   auto fixed_point_constraint =
       make_shared<FixedPointConstraint>(tree_, contact_info_);
+
   VectorXd q_u_l = VectorXd(q.size() + u.size() + lambda.size());
   q_u_l << q, u, lambda;
-  std::cout << "Position constraint: "
-            << position_constraint->CheckSatisfied(q, tolerance) << std::endl;
-  std::cout << "FP constraint: "
-            << fixed_point_constraint->CheckSatisfied(q_u_l, tolerance)
-            << std::endl;
+
+  bool check;
+
   if (contact_info_.num_contacts) {
-    std::cout << "Contact constraint: "
-              << contact_constraint->CheckSatisfied(q, tolerance) << std::endl;
-    return position_constraint->CheckSatisfied(q, tolerance) &&
-           contact_constraint->CheckSatisfied(q, tolerance) &&
-           fixed_point_constraint->CheckSatisfied(q_u_l, tolerance);
+    check = position_constraint->CheckSatisfied(q, tolerance) &&
+            contact_constraint->CheckSatisfied(q, tolerance) &&
+            fixed_point_constraint->CheckSatisfied(q_u_l, tolerance);
+    if (!check) {
+      std::cout << "Position constraint: "
+                << position_constraint->CheckSatisfied(q, tolerance)
+                << std::endl;
+      std::cout << "FP constraint: "
+                << fixed_point_constraint->CheckSatisfied(q_u_l, tolerance)
+                << std::endl;
+      std::cout << "Contact constraint: "
+                << contact_constraint->CheckSatisfied(q, tolerance)
+                << std::endl;
+    }
+
+    return check;
+
   } else {
-    return position_constraint->CheckSatisfied(q, tolerance) &&
-           fixed_point_constraint->CheckSatisfied(q_u_l, tolerance);
+    check = position_constraint->CheckSatisfied(q, tolerance) &&
+            fixed_point_constraint->CheckSatisfied(q_u_l, tolerance);
+
+    if (!check) {
+      std::cout << "Position constraint: "
+                << position_constraint->CheckSatisfied(q, tolerance)
+                << std::endl;
+      std::cout << "FP constraint: "
+                << fixed_point_constraint->CheckSatisfied(q_u_l, tolerance)
+                << std::endl;
+    }
+
+    return check;
   }
 }
 

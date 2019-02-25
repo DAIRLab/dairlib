@@ -181,6 +181,16 @@ void PositionSolver::SetInitialGuessQ(VectorXd q) {
   prog_->SetInitialGuess(q_, q);
 }
 
+void PositionSolver::AddJointLimitConstraint(const double tolerance) {
+  VectorXd joint_min = tree_.joint_limit_min;
+  VectorXd joint_max = tree_.joint_limit_max;
+
+  for (int i = 0; i < joint_min.size(); ++i) {
+    prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
+    prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
+  }
+}
+
 SolutionResult PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   // Setting the solver options
   prog_->SetSolverOption(SnoptSolver::id(), "Log file", filename_);
@@ -246,6 +256,16 @@ ContactSolver::ContactSolver(const RigidBodyTree<double>& tree,
 
 void ContactSolver::SetInitialGuessQ(VectorXd q) {
   prog_->SetInitialGuess(q_, q);
+}
+
+void ContactSolver::AddJointLimitConstraint(const double tolerance) {
+  VectorXd joint_min = tree_.joint_limit_min;
+  VectorXd joint_max = tree_.joint_limit_max;
+
+  for (int i = 0; i < joint_min.size(); ++i) {
+    prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
+    prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
+  }
 }
 
 SolutionResult ContactSolver::Solve(VectorXd q, vector<int> fixed_joints) {

@@ -81,6 +81,7 @@ class PositionSolver {
   PositionSolver(const RigidBodyTree<double>& tree);
 
   void SetInitialGuessQ(Eigen::VectorXd q);
+  void AddJointLimitConstraint(const double tolerance);
   drake::solvers::SolutionResult Solve(Eigen::VectorXd q,
                                        std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-10) const;
@@ -114,6 +115,7 @@ class ContactSolver {
   ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
 
   void SetInitialGuessQ(Eigen::VectorXd q);
+  void AddJointLimitConstraint(const double tolerance);
   drake::solvers::SolutionResult Solve(Eigen::VectorXd q,
                                        std::vector<int> fixed_joints = {});
   bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-10) const;

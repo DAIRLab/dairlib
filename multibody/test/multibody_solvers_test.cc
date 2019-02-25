@@ -293,6 +293,7 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
   // Fixed base
   PositionSolver position_solver_fixed(tree_fixed_);
   position_solver_fixed.SetInitialGuessQ(q_fixed_);
+  position_solver_fixed.AddJointLimitConstraint(0.001);
 
   cout << "Position solver result (Fixed base): "
        << position_solver_fixed.Solve(q_fixed_) << endl;
@@ -307,6 +308,7 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
   // Floating base
   PositionSolver position_solver_floating(tree_floating_);
   position_solver_floating.SetInitialGuessQ(q_floating_);
+  position_solver_floating.AddJointLimitConstraint(0.001);
 
   cout << "Position solver result (Floating base): "
        << position_solver_floating.Solve(q_floating_) << endl;
@@ -322,6 +324,7 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
 TEST_F(MultibodySolversTest, TestContactSolverSolution) {
   ContactSolver contact_solver(tree_floating_, contact_info_);
   contact_solver.SetInitialGuessQ(q_floating_);
+  contact_solver.AddJointLimitConstraint(0.001);
 
   std::cout << "Contact solver result (Floating base): "
             << contact_solver.Solve(q_floating_) << std::endl;
@@ -338,6 +341,7 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   // Fixed base
   FixedPointSolver fp_solver_fixed(tree_fixed_);
   fp_solver_fixed.SetInitialGuess(q_fixed_, u_fixed_, lambda_fixed_);
+  fp_solver_fixed.AddJointLimitConstraint(0.001);
 
   cout << "Fixed point solver result (Fixed base): "
        << fp_solver_fixed.Solve(q_fixed_, u_fixed_) << endl;

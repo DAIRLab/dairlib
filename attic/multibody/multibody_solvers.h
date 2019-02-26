@@ -1,11 +1,12 @@
 #pragma once
 
+#include "attic/multibody/contact_toolkit.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/solvers/constraint.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/snopt_solver.h"
-#include "attic/multibody/contact_toolkit.h"
+#include "drake/solvers/solve.h"
 
 namespace dairlib {
 namespace multibody {
@@ -151,11 +152,12 @@ class PositionSolver {
    * close to this value as possible.
    * @param fixed_joints A vector of integers that correspond to indices of q
    * whose values are not allowed to change.
-   * Returns a SolutionResult type that gives an indication of whether the
+   * Returns a MathematicalProgramResult type that gives an indication of
+   * whether the
    * solver could successfully solve the problem or not.
    */
-  drake::solvers::SolutionResult Solve(Eigen::VectorXd q,
-                                       std::vector<int> fixed_joints = {});
+  drake::solvers::MathematicalProgramResult Solve(
+      Eigen::VectorXd q, std::vector<int> fixed_joints = {});
   /*
    * Function to check if the a given value of q satisfies the position
    * constraints.
@@ -174,9 +176,9 @@ class PositionSolver {
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   /*
    * Function to obtain the result of the Solve() function through a
-   * SolutionResult type.
+   * MathematicalProgramResult type.
    */
-  drake::solvers::SolutionResult get_solution_result();
+  drake::solvers::MathematicalProgramResult get_program_result();
   /*
    * Get the solved q value.
    * This needs to be called after Solve() to get the final solution.
@@ -199,7 +201,7 @@ class PositionSolver {
   const RigidBodyTree<double>& tree_;
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
-  drake::solvers::SolutionResult solution_result_;
+  drake::solvers::MathematicalProgramResult program_result_;
   std::string filename_ = "attic/multibody/solver_log/position_solver.log";
   double major_tolerance_ = 1.0e-13;
   double minor_tolerance_ = 1.0e-13;
@@ -243,11 +245,12 @@ class ContactSolver {
    * close to this value as possible.
    * @param fixed_joints A vector of integers that correspond to indices of q
    * whose values are not allowed to change.
-   * Returns a SolutionResult type that gives an indication of whether the
+   * Returns a MathematicalProgramResult type that gives an indication of
+   * whether the
    * solver could successfully solve the problem or not.
    */
-  drake::solvers::SolutionResult Solve(Eigen::VectorXd q,
-                                       std::vector<int> fixed_joints = {});
+  drake::solvers::MathematicalProgramResult Solve(
+      Eigen::VectorXd q, std::vector<int> fixed_joints = {});
   /*
    * Function to check if the a given value of q satisfies the contact
    * constraints.
@@ -266,9 +269,9 @@ class ContactSolver {
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   /*
    * Function to obtain the result of the Solve() function through a
-   * SolutionResult type.
+   * MathematicalProgramResult type.
    */
-  drake::solvers::SolutionResult get_solution_result();
+  drake::solvers::MathematicalProgramResult get_program_result();
   /*
    * Get the solved q value.
    * This needs to be called after Solve() to get the final solution.
@@ -292,7 +295,7 @@ class ContactSolver {
   ContactInfo contact_info_;
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
-  drake::solvers::SolutionResult solution_result_;
+  drake::solvers::MathematicalProgramResult program_result_;
   std::string filename_ = "attic/multibody/solver_log/contact_solver.log";
   double major_tolerance_ = 1.0e-13;
   double minor_tolerance_ = 1.0e-13;
@@ -383,11 +386,12 @@ class FixedPointSolver {
    * close to this value as possible.
    * @param fixed_joints A vector of integers that correspond to indices of q
    * whose values are not allowed to change.
-   * Returns a SolutionResult type that gives an indication of whether the
+   * Returns a MathematicalProgramResult type that gives an indication of
+   * whether the
    * solver could successfully solve the problem or not.
    */
-  drake::solvers::SolutionResult Solve(Eigen::VectorXd q, Eigen::VectorXd u,
-                                       std::vector<int> fixed_joints = {});
+  drake::solvers::MathematicalProgramResult Solve(
+      Eigen::VectorXd q, Eigen::VectorXd u, std::vector<int> fixed_joints = {});
   /*
    * Function to check if the a given values of q, u and lambda satisfies the
    * contact constraints.
@@ -408,9 +412,9 @@ class FixedPointSolver {
   std::shared_ptr<drake::solvers::MathematicalProgram> get_program();
   /*
    * Function to obtain the result of the Solve() function through a
-   * SolutionResult type.
+   * MathematicalProgramResult type.
    */
-  drake::solvers::SolutionResult get_solution_result();
+  drake::solvers::MathematicalProgramResult get_program_result();
   /*
    * Get the solved q value.
    * This needs to be called after Solve() to get the final solution.
@@ -446,7 +450,7 @@ class FixedPointSolver {
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::VectorXDecisionVariable u_;
   drake::solvers::VectorXDecisionVariable lambda_;
-  drake::solvers::SolutionResult solution_result_;
+  drake::solvers::MathematicalProgramResult program_result_;
   std::string filename_ = "attic/multibody/solver_log/fixed_point_solver.log";
   double major_tolerance_ = 1.0e-13;
   double minor_tolerance_ = 1.0e-13;

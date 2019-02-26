@@ -165,8 +165,16 @@ int do_main(int argc, char* argv[]) {
       x0.head(plant->get_rigid_body_tree().get_num_positions()));
   position_solver.AddJointLimitConstraint(0.001);
 
-  position_solver.Solve(
-      x0.head(plant->get_rigid_body_tree().get_num_positions()));
+  drake::solvers::MathematicalProgramResult program_result =
+      position_solver.Solve(
+          x0.head(plant->get_rigid_body_tree().get_num_positions()));
+
+  // Returning if the solve is unsuccessful
+  if (!program_result.is_success()) {
+    std::cout << "Solve unsuccessful. " << program_result.get_solution_result()
+              << std::endl;
+    return false;
+  }
 
   Eigen::VectorXd q0 = position_solver.GetSolutionQ();
 

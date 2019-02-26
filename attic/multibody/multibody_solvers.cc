@@ -19,7 +19,7 @@ using drake::math::initializeAutoDiff;
 using drake::solvers::Constraint;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::SnoptSolver;
-using drake::solvers::SolutionResult;
+using drake::solvers::MathematicalProgramResult;
 using drake::solvers::VectorXDecisionVariable;
 using drake::symbolic::Variable;
 using drake::symbolic::Expression;
@@ -195,7 +195,8 @@ void PositionSolver::AddJointLimitConstraint(const double tolerance) {
   }
 }
 
-SolutionResult PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
+MathematicalProgramResult PositionSolver::Solve(VectorXd q,
+                                                vector<int> fixed_joints) {
   // Setting the solver options
   prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
@@ -216,9 +217,9 @@ SolutionResult PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   prog_->AddQuadraticCost((q_ - q).dot(q_ - q));
 
   // The initial guess for q needs to be set up separately before calling Solve
-  solution_result_ = prog_->Solve();
+  program_result_ = drake::solvers::Solve(*prog_);
 
-  return solution_result_;
+  return program_result_;
 }
 
 bool PositionSolver::CheckConstraint(VectorXd q, double tolerance) const {
@@ -235,11 +236,13 @@ bool PositionSolver::CheckConstraint(VectorXd q, double tolerance) const {
 
 shared_ptr<MathematicalProgram> PositionSolver::get_program() { return prog_; }
 
-SolutionResult PositionSolver::get_solution_result() {
-  return solution_result_;
+MathematicalProgramResult PositionSolver::get_program_result() {
+  return program_result_;
 }
 
-VectorXd PositionSolver::GetSolutionQ() { return prog_->GetSolution(q_); }
+VectorXd PositionSolver::GetSolutionQ() {
+  return program_result_.GetSolution(q_);
+}
 
 void PositionSolver::set_filename(string filename) { filename_ = filename; }
 
@@ -280,7 +283,8 @@ void ContactSolver::AddJointLimitConstraint(const double tolerance) {
   }
 }
 
-SolutionResult ContactSolver::Solve(VectorXd q, vector<int> fixed_joints) {
+MathematicalProgramResult ContactSolver::Solve(VectorXd q,
+                                               vector<int> fixed_joints) {
   // Setting the solver options
   prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
@@ -304,9 +308,9 @@ SolutionResult ContactSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   prog_->AddQuadraticCost((q_ - q).dot(q_ - q));
 
   // The initial guess for q needs to be set up separately before calling Solve
-  solution_result_ = prog_->Solve();
+  program_result_ = drake::solvers::Solve(*prog_);
 
-  return solution_result_;
+  return program_result_;
 }
 
 bool ContactSolver::CheckConstraint(VectorXd q, double tolerance) const {
@@ -329,9 +333,13 @@ bool ContactSolver::CheckConstraint(VectorXd q, double tolerance) const {
 
 shared_ptr<MathematicalProgram> ContactSolver::get_program() { return prog_; }
 
-SolutionResult ContactSolver::get_solution_result() { return solution_result_; }
+MathematicalProgramResult ContactSolver::get_program_result() {
+  return program_result_;
+}
 
-VectorXd ContactSolver::GetSolutionQ() { return prog_->GetSolution(q_); }
+VectorXd ContactSolver::GetSolutionQ() {
+  return program_result_.GetSolution(q_);
+}
 
 void ContactSolver::set_filename(string filename) { filename_ = filename; }
 
@@ -433,8 +441,8 @@ void FixedPointSolver::AddJointLimitConstraint(const double tolerance) {
   }
 }
 
-SolutionResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
-                                       vector<int> fixed_joints) {
+MathematicalProgramResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
+                                                  vector<int> fixed_joints) {
   // Setting the solver options
   prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
@@ -467,9 +475,9 @@ SolutionResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
 
   // The initial guess for q, u and lambda needs to be set up separately before
   // calling solve
-  solution_result_ = prog_->Solve();
+  program_result_ = drake::solvers::Solve(*prog_);
 
-  return solution_result_;
+  return program_result_;
 }
 
 bool FixedPointSolver::CheckConstraint(VectorXd q, VectorXd u, VectorXd lambda,
@@ -525,16 +533,20 @@ shared_ptr<MathematicalProgram> FixedPointSolver::get_program() {
   return prog_;
 }
 
-SolutionResult FixedPointSolver::get_solution_result() {
-  return solution_result_;
+MathematicalProgramResult FixedPointSolver::get_program_result() {
+  return program_result_;
 }
 
-VectorXd FixedPointSolver::GetSolutionQ() { return prog_->GetSolution(q_); }
+VectorXd FixedPointSolver::GetSolutionQ() {
+  return program_result_.GetSolution(q_);
+}
 
-VectorXd FixedPointSolver::GetSolutionU() { return prog_->GetSolution(u_); }
+VectorXd FixedPointSolver::GetSolutionU() {
+  return program_result_.GetSolution(u_);
+}
 
 VectorXd FixedPointSolver::GetSolutionLambda() {
-  return prog_->GetSolution(lambda_);
+  return program_result_.GetSolution(lambda_);
 }
 
 void FixedPointSolver::set_filename(string filename) { filename_ = filename; }

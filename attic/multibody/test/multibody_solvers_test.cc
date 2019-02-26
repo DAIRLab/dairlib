@@ -2,9 +2,9 @@
 #include <utility>
 
 #include <gtest/gtest.h>
-#include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/multibody_solvers.h"
 #include "attic/multibody/rigidbody_utils.h"
+#include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib {
 namespace systems {
@@ -32,6 +32,7 @@ using drake::multibody::joints::kRollPitchYaw;
 using drake::multibody::joints::kFixed;
 using drake::multibody::AddFlatTerrainToWorld;
 using drake::solvers::MathematicalProgram;
+using drake::solvers::MathematicalProgramResult;
 using dairlib::buildCassieTree;
 using dairlib::multibody::ContactInfo;
 using dairlib::multibody::ContactToolkit;
@@ -295,8 +296,11 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
   position_solver_fixed.SetInitialGuessQ(q_fixed_);
   position_solver_fixed.AddJointLimitConstraint(0.001);
 
+  MathematicalProgramResult program_result_fixed =
+      position_solver_fixed.Solve(q_fixed_);
+
   cout << "Position solver result (Fixed base): "
-       << position_solver_fixed.Solve(q_fixed_) << endl;
+       << program_result_fixed.get_solution_result() << endl;
 
   VectorXd q_sol_fixed = position_solver_fixed.GetSolutionQ();
 
@@ -310,8 +314,11 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
   position_solver_floating.SetInitialGuessQ(q_floating_);
   position_solver_floating.AddJointLimitConstraint(0.001);
 
+  MathematicalProgramResult program_result_floating =
+      position_solver_floating.Solve(q_floating_);
+
   cout << "Position solver result (Floating base): "
-       << position_solver_floating.Solve(q_floating_) << endl;
+       << program_result_floating.get_solution_result() << endl;
 
   VectorXd q_sol_floating = position_solver_floating.GetSolutionQ();
 
@@ -326,8 +333,10 @@ TEST_F(MultibodySolversTest, TestContactSolverSolution) {
   contact_solver.SetInitialGuessQ(q_floating_);
   contact_solver.AddJointLimitConstraint(0.001);
 
+  MathematicalProgramResult program_result = contact_solver.Solve(q_floating_);
+
   std::cout << "Contact solver result (Floating base): "
-            << contact_solver.Solve(q_floating_) << std::endl;
+            << program_result.get_solution_result() << std::endl;
 
   VectorXd q_sol_floating = contact_solver.GetSolutionQ();
 
@@ -343,8 +352,11 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   fp_solver_fixed.SetInitialGuess(q_fixed_, u_fixed_, lambda_fixed_);
   fp_solver_fixed.AddJointLimitConstraint(0.001);
 
+  MathematicalProgramResult program_result_fixed =
+      fp_solver_fixed.Solve(q_fixed_, u_fixed_);
+
   cout << "Fixed point solver result (Fixed base): "
-       << fp_solver_fixed.Solve(q_fixed_, u_fixed_) << endl;
+       << program_result_fixed.get_solution_result() << endl;
 
   VectorXd q_sol_fixed = fp_solver_fixed.GetSolutionQ();
   VectorXd u_sol_fixed = fp_solver_fixed.GetSolutionU();
@@ -366,10 +378,11 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   fp_solver_floating.AddFrictionConeConstraint(0.8);
   fp_solver_floating.AddJointLimitConstraint(0.001);
 
+  MathematicalProgramResult program_result_floating =
+      fp_solver_floating.Solve(q_fixed_, u_fixed_);
+
   cout << "Fixed point solver result (Floating base): "
-       << fp_solver_floating.Solve(q_floating_, u_floating_,
-                                   fixed_joints_floating_)
-       << endl;
+       << program_result_floating.get_solution_result() << endl;
 
   VectorXd q_sol_floating = fp_solver_floating.GetSolutionQ();
   VectorXd u_sol_floating = fp_solver_floating.GetSolutionU();

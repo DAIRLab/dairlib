@@ -75,27 +75,3 @@ cc_test(
     ],
     size = "small",
 )
-
-cc_binary(
-    name = "test",
-    srcs = [
-        "test.cc",
-    ],
-    deps = [
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//attic/multibody/rigid_body_plant:drake_visualizer",
-        "@drake//attic/multibody/rigid_body_plant",
-        "@drake//systems/analysis:simulator",
-        "@drake//manipulation/util",
-        "@drake//systems/framework",
-        "@drake//systems/primitives:primitives",
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//lcm",
-        "@drake//systems/lcm:lcm_pubsub_system",
-        "@gflags",
-        "//examples/Cassie:cassie_utils",
-        ":multibody_solvers",
-        ":utils",
-    ],
-)

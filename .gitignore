@@ -5,3 +5,4 @@ __pycache__/
 /bazel-*
 *.ipynb_checkpoints
 *.DS_Store*
+multibody/solver_log/

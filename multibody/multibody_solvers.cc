@@ -46,6 +46,8 @@ void PositionConstraint::DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
                                 drake::AutoDiffVecXd* y) const {
   const AutoDiffVecXd q_t = q.head(tree_.get_num_positions());
   KinematicsCache<AutoDiffXd> k_cache = tree_.doKinematics(q_t);
+  // Obtaining the position constraints from the tree and setting it to be the
+  // output.
   *y = tree_.positionConstraints(k_cache);
 }
 
@@ -70,6 +72,7 @@ ContactConstraint::ContactConstraint(const RigidBodyTree<double>& tree,
       num_contacts_(contact_info.num_contacts),
       num_forces_(tree.getNumPositionConstraints() +
                   contact_info.num_contacts * 3) {
+  // ContactToolkit pointer using the ContactInfo object.
   contact_toolkit_ =
       make_unique<ContactToolkit<AutoDiffXd>>(tree, contact_info);
 }
@@ -130,6 +133,7 @@ FixedPointConstraint::FixedPointConstraint(const RigidBodyTree<double>& tree,
       num_position_forces_(tree.getNumPositionConstraints()),
       num_forces_(tree.getNumPositionConstraints() +
                   contact_info.num_contacts * 3) {
+  // ContactToolkit pointer using the ContactInfo object.
   contact_toolkit_ =
       make_unique<ContactToolkit<AutoDiffXd>>(tree, contact_info);
 }
@@ -152,16 +156,15 @@ void FixedPointConstraint::DoEval(
   const AutoDiffVecXd u = q_u_l.segment(num_positions_, num_efforts_);
   const AutoDiffVecXd lambda = q_u_l.tail(num_forces_);
 
+  // the velocities are assumed to be zero.
   const AutoDiffVecXd v =
       VectorXd::Zero(num_velocities_).template cast<AutoDiffXd>();
   AutoDiffVecXd x(num_positions_ + num_velocities_);
   x << q, v;
 
+  // The constraint is set up using MVDot as it is more stable than computing
+  // xdot and constraining it to be zero.
   *y = contact_toolkit_->CalcMVDot(x, u, lambda);
-  // std::cout << y->transpose() << std::endl
-  //          << "-----------------------" << std::endl;
-  // std::cout << autoDiffToGradientMatrix(*y) << std::endl
-  //          << "-----------------" << std::endl;
 }
 
 void FixedPointConstraint::DoEval(
@@ -186,6 +189,7 @@ void PositionSolver::AddJointLimitConstraint(const double tolerance) {
   VectorXd joint_max = tree_.joint_limit_max;
 
   for (int i = 0; i < joint_min.size(); ++i) {
+    // Adding minimum and maximum joint angle constraints.
     prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
     prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
   }
@@ -193,7 +197,7 @@ void PositionSolver::AddJointLimitConstraint(const double tolerance) {
 
 SolutionResult PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   // Setting the solver options
-  prog_->SetSolverOption(SnoptSolver::id(), "Log file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
                          major_tolerance_);
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
@@ -220,6 +224,7 @@ SolutionResult PositionSolver::Solve(VectorXd q, vector<int> fixed_joints) {
 bool PositionSolver::CheckConstraint(VectorXd q, double tolerance) const {
   auto position_constraint = make_shared<PositionConstraint>(tree_);
   bool check = position_constraint->CheckSatisfied(q, tolerance);
+  // If the constraint is not satisfied, print the status.
   if (!check) {
     std::cout << "Position constraint: "
               << position_constraint->CheckSatisfied(q, tolerance) << std::endl;
@@ -269,6 +274,7 @@ void ContactSolver::AddJointLimitConstraint(const double tolerance) {
   VectorXd joint_max = tree_.joint_limit_max;
 
   for (int i = 0; i < joint_min.size(); ++i) {
+    // Adding minimum and maximum joint angle constraints.
     prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
     prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
   }
@@ -276,7 +282,7 @@ void ContactSolver::AddJointLimitConstraint(const double tolerance) {
 
 SolutionResult ContactSolver::Solve(VectorXd q, vector<int> fixed_joints) {
   // Setting the solver options
-  prog_->SetSolverOption(SnoptSolver::id(), "Log file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
                          major_tolerance_);
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
@@ -309,6 +315,8 @@ bool ContactSolver::CheckConstraint(VectorXd q, double tolerance) const {
       make_shared<ContactConstraint>(tree_, contact_info_);
   bool check = position_constraint->CheckSatisfied(q, tolerance) &&
                contact_constraint->CheckSatisfied(q, tolerance);
+  // If the constraints are not satisfied, print the status of the individual
+  // constraints.
   if (!check) {
     std::cout << "Position constraint: "
               << position_constraint->CheckSatisfied(q, tolerance) << std::endl;
@@ -347,6 +355,7 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree)
   // Initializing the variable
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
   u_ = prog_->NewContinuousVariables(tree_.get_num_actuators(), "u");
+  // Without contacts, lambda only contains the position constraint forces.
   lambda_ = prog_->NewContinuousVariables(tree_.getNumPositionConstraints(),
                                           "lambda");
 }
@@ -359,6 +368,8 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
   // Initializing the variable
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
   u_ = prog_->NewContinuousVariables(tree_.get_num_actuators(), "u");
+  // With contact, lambda contains the position constraint as well as the
+  // contact forces (A normal and two tangential forces at each contact point).
   lambda_ = prog_->NewContinuousVariables(
       tree_.getNumPositionConstraints() + contact_info.num_contacts * 3,
       "lambda");
@@ -384,7 +395,7 @@ void FixedPointSolver::SetInitialGuessLambda(VectorXd lambda) {
 }
 
 void FixedPointSolver::AddSpreadNormalForcesCost() {
-  // Adding cost on the normal forces to spread them out
+  // Adding cost on the normal forces to spread them out evenly.
   int num_position_constraints = tree_.getNumPositionConstraints();
   int num_contacts = contact_info_.num_contacts;
   int num_forces = num_position_constraints + num_contacts * 3;
@@ -395,7 +406,7 @@ void FixedPointSolver::AddSpreadNormalForcesCost() {
 }
 
 void FixedPointSolver::AddFrictionConeConstraint(const double mu) {
-  // Adding the friction cone constraint at all the contact points
+  // Adding the friction cone constraint at all the contact points.
   int num_position_constraints = tree_.getNumPositionConstraints();
   int num_contacts = contact_info_.num_contacts;
   for (int i = 0; i < num_contacts; ++i) {
@@ -416,6 +427,7 @@ void FixedPointSolver::AddJointLimitConstraint(const double tolerance) {
   VectorXd joint_max = tree_.joint_limit_max;
 
   for (int i = 0; i < joint_min.size(); ++i) {
+    // Adding minimum and maximum joint angle constraints.
     prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
     prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
   }
@@ -424,7 +436,7 @@ void FixedPointSolver::AddJointLimitConstraint(const double tolerance) {
 SolutionResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
                                        vector<int> fixed_joints) {
   // Setting the solver options
-  prog_->SetSolverOption(SnoptSolver::id(), "Log file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
                          major_tolerance_);
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
@@ -439,6 +451,7 @@ SolutionResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
   prog_->AddConstraint(position_constraint, q_);
   prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
 
+  // Add contact constraints if there are contacts.
   if (contact_info_.num_contacts) {
     prog_->AddConstraint(contact_constraint, q_);
   }
@@ -452,8 +465,8 @@ SolutionResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
   // Cost on q and u
   prog_->AddQuadraticCost((q_ - q).dot(q_ - q) + (u_ - u).dot(u_ - u));
 
-  // The initial guess for q needs to be set up separately before calling
-  // Solve
+  // The initial guess for q, u and lambda needs to be set up separately before
+  // calling solve
   solution_result_ = prog_->Solve();
 
   return solution_result_;
@@ -471,7 +484,8 @@ bool FixedPointSolver::CheckConstraint(VectorXd q, VectorXd u, VectorXd lambda,
   q_u_l << q, u, lambda;
 
   bool check;
-
+  // If the constraints are not satisfied, print the status of the individual
+  // constraints.
   if (contact_info_.num_contacts) {
     check = position_constraint->CheckSatisfied(q, tolerance) &&
             contact_constraint->CheckSatisfied(q, tolerance) &&

@@ -13,7 +13,6 @@ namespace multibody {
  * ContactInfo structure that holds all the required contact information.
  * xA: Positions on Body A (The robot) expressed in the frame of the robot.
  * The collisions are assumed to take place with the ground z plane.
- * xB: Positions on Body B (Assumed to be the ground) expressed in the ground
  * frame (world frame).
  * idxA: Body indices of the corresponding positions in the RigidBodyTree.
  * This structure may be expanded in the future to incorporate more information.

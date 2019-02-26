@@ -1,0 +1,102 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+
+cc_library(
+  name = "cassie_udp_pub_sub",
+  srcs = ["udp_serializer.cc",
+          "cassie_udp_subscriber.cc",
+          "cassie_udp_publisher.cc",
+          "cassie_input_sender.cc",
+          "cassie_input_receiver.cc",
+          "cassie_input_translator.cc",
+          "cassie_output_sender.cc",
+          "cassie_output_receiver.cc"],
+  hdrs = ["udp_serializer.h",
+          "cassie_udp_subscriber.h",
+          "cassie_udp_publisher.h",
+          "cassie_input_sender.h",
+          "cassie_input_receiver.h",
+          "cassie_input_translator.h",
+          "cassie_output_sender.h",
+          "cassie_output_receiver.h"],
+  deps = [
+    "@drake//common",
+    "@drake//systems/lcm:lcm_pubsub_system",
+    "@drake//systems/framework",
+    "@drake//multibody/plant",
+    "//examples/Cassie/datatypes:cassie_inout_types",
+    "//lcmtypes:lcmt_robot",
+    "//multibody:utils",
+    "//attic/multibody:utils",
+  ]
+)
+
+cc_library(
+  name = "udp_driven_loop",
+  srcs = ["udp_driven_loop.cc",],
+  hdrs = ["udp_driven_loop.h",],
+  deps = [
+    ":cassie_udp_pub_sub",
+    "@drake//systems/analysis:simulator",
+  ]
+)
+
+
+cc_binary(
+  name = "udp_driven_loop_test",
+  srcs = ["test/udp_driven_loop_test.cc"],
+  deps = [":udp_driven_loop",
+          "@gflags",
+         ],
+)
+
+cc_binary(
+  name = "cassie_udp_subscriber_test",
+  srcs = ["test/cassie_udp_subscriber_test.cc"],
+  deps = [":cassie_udp_pub_sub",
+          "@drake//systems/analysis:simulator",
+          "@drake//systems/framework",
+          "@gflags",
+         ],
+)
+
+cc_binary(
+  name = "cassie_udp_publisher_test",
+  srcs = ["test/cassie_udp_publisher_test.cc"],
+  deps = [":cassie_udp_pub_sub",
+          "@drake//systems/analysis:simulator",
+          "@drake//systems/framework",
+          "@gflags",
+         ],
+)
+
+cc_binary(
+    name = "run_udp_dummy_sender",
+    srcs = ["run_udp_dummy_sender.c"],
+    deps = [
+        "//examples/Cassie/datatypes:cassie_out_t",
+        "//examples/Cassie/datatypes:cassie_user_in_t",
+    ],
+)
+
+cc_test(
+    name = "cassie_output_lcm_test",
+    size = "small",
+    srcs = ["test/cassie_output_lcm_test.cc"],
+    deps = [
+        ":cassie_udp_pub_sub",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework",
+        "@gtest//:main",
+        "@gflags",
+    ],
+)

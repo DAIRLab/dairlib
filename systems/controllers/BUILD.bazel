@@ -7,25 +7,27 @@ cc_library(
     srcs = ["pd_config_lcm.cc"],
     hdrs = ["pd_config_lcm.h"],
     deps = [
-            "@drake//manipulation/util",
-            "@drake//systems/framework:leaf_system",
-            "@lcm",
-            "//multibody:utils",
-            "//lcmtypes:lcmt_robot",
-            "//systems/framework:vector",
-            ":controllers"
-            ]
+        ":controllers",
+        "//lcmtypes:lcmt_robot",
+        "//attic/multibody:utils",
+        "//systems/framework:vector",
+        "//multibody:utils",
+        "@drake//manipulation/util",
+        "@drake//systems/framework:leaf_system",
+        "@drake//multibody/plant",
+        "@lcm",
+    ],
 )
 
 cc_library(
     name = "controllers",
     srcs = [
+        "affine_controller.cc",
         "linear_controller.cc",
-        "affine_controller.cc"
     ],
     hdrs = [
+        "affine_controller.h",
         "linear_controller.h",
-        "affine_controller.h"
     ],
     deps = [
         "//systems/framework:vector",
@@ -35,27 +37,27 @@ cc_library(
 
 cc_test(
     name = "pd_config_lcm_test",
+    size = "small",
     srcs = ["test/pd_config_lcm_test.cc"],
     deps = [
-            ":pd_config_lcm",
-            "//examples/Cassie:cassie_urdf",
-            "@drake//attic/multibody:rigid_body_tree",
-            "@drake//attic/multibody/parsers",
-            "@drake//manipulation/util",
-            "@gtest//:main",
-            "@drake//systems/framework/test_utilities",
-            ],
-    size = "small"
+        ":pd_config_lcm",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//attic/multibody/parsers",
+        "@drake//manipulation/util",
+        "@drake//systems/framework/test_utilities",
+        "@gtest//:main",
+    ],
 )
 
 cc_test(
     name = "controllers_test",
+    size = "small",
     srcs = [
         "test/affine_controller_test.cc",
     ],
     deps = [
-        "@gtest//:main",
         ":controllers",
+        "@gtest//:main",
     ],
-    size = "small",
 )

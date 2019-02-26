@@ -1,0 +1,15 @@
+package dairlib;
+
+struct lcmt_cassie_pelvis_out
+{
+  lcmt_target_pc_out targetPc;
+  lcmt_battery_out battery;
+  lcmt_radio_out radio;
+  lcmt_vectornav_out vectorNav;
+  int8_t medullaCounter;
+  int16_t medullaCpuLoad;
+  boolean bleederState;
+  boolean leftReedSwitchState;
+  boolean rightReedSwitchState;
+  double vtmTemperature;
+}

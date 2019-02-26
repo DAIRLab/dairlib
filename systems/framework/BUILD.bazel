@@ -7,25 +7,26 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "vector",
     srcs = [
+        "output_vector.cc",
         "timestamped_vector.cc",
-        "output_vector.cc"
     ],
     hdrs = [
-        "timestamped_vector.h",
         "output_vector.h",
+        "timestamped_vector.h",
     ],
     deps = [
-        "@drake//systems/framework:vector",
         "@drake//common:autodiff",
         "@drake//common:default_scalars",
         "@drake//common:dummy_value",
         "@drake//common:essential",
         "@drake//common:symbolic",
+        "@drake//systems/framework:vector",
     ],
 )
 
 cc_test(
     name = "timestamped_vector_test",
+    size = "small",
     srcs = [
         "test/timestamped_vector_test.cc",
     ],
@@ -33,14 +34,13 @@ cc_test(
         ":vector",
         "@drake//systems/framework",
         "@drake//systems/framework/test_utilities",
-        "@gtest//:main"
+        "@gtest//:main",
     ],
-    size = "small"
 )
-
 
 cc_test(
     name = "state_vector_test",
+    size = "small",
     srcs = [
         "test/state_vector_test.cc",
     ],
@@ -48,7 +48,6 @@ cc_test(
         ":vector",
         "@drake//systems/framework",
         "@drake//systems/framework/test_utilities",
-        "@gtest//:main"
+        "@gtest//:main",
     ],
-    size = "small"
 )

@@ -166,4 +166,4 @@ void ContactToolkit<T>::set_contact_info(ContactInfo contact_info) {
 }  // namespace dairlib
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-    class ::dairlib::multibody::ContactToolkit);
+class ::dairlib::multibody::ContactToolkit);

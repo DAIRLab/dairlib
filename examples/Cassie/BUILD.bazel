@@ -8,7 +8,6 @@ load(
     "drake_lcm_java_library",
     "drake_lcm_py_library",
 )
-
 load(
     "@drake//tools/skylark:drake_py.bzl",
     "drake_py_binary",
@@ -20,175 +19,67 @@ cc_library(
   name = "cassie_utils",
   srcs = ["cassie_utils.cc"],
   hdrs = ["cassie_utils.h"],
-  deps = ["@drake//solvers:mathematical_program",
-          "@drake//solvers:constraint",
-          "@drake//attic/multibody:rigid_body_tree",
-          "@drake//manipulation/util",
-          "//common",
-          "@drake//attic/multibody:rigid_body_tree_construction",
-          "@drake//attic/multibody/parsers",
-          ":cassie_urdf"
-         ],
-)
-
-cc_library(
-  name = "cassie_urdf",
-  data = glob(["urdf/**"]),
-)
-
-cc_library(
-	name = "polling_interface",
-	hdrs = [":polling_interface.h"]
-)
-
-cc_library(
-	name = "silent_interface",
-	hdrs = [":silent_interface.h"]
-)
-
-cc_library(
-	name = "dispatcher",
-	hdrs = [":dispatcher.h"],
-	deps = [":polling_interface"]
-)
-
-cc_library(
-	name = "cassie_robot_dispatch_interface",
-	hdrs = [":cassie_robot_dispatch_interface.h"],
-	srcs = ["cassie_robot_dispatch_interface.cc"],
-	deps = [
-	        ":polling_interface",
-	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
-)
-
-cc_library(
-	name = "cassie_lcm_dispatch_interface",
-	hdrs = [":cassie_lcm_dispatch_interface.h"],
-	srcs = ["cassie_lcm_dispatch_interface.cc"],
-	deps = [
-	        ":polling_interface",
-	        "//examples/Cassie/datatypes:cassie_dispatch_types",
-	        "@lcm",
-	        "@drake//systems/lcm:lcm",
-	        "@drake//systems/framework:value",
-	        "@drake//lcmtypes:drake_signal",
- 	        ]
-)
-
-cc_library(
-	name = "cassie_dispatcher",
-	hdrs = [":cassie_dispatcher.h"],
-	srcs = ["cassie_dispatcher.cc"],
-	deps = [
-	        ":polling_interface",
-	        ":dispatcher",
-	        "//examples/Cassie/datatypes:cassie_names",
-	        "//examples/Cassie/datatypes:cassie_dispatch_types"]
-)
-
-cc_library(
-	name = "cassie_udp_spoofer",
-	hdrs = [":cassie_udp_spoofer.h"],
-	srcs = ["cassie_udp_spoofer.cc"],
-	deps = [
-	        ":polling_interface",
-	        "//examples/Cassie/datatypes:cassie_dispatch_types"
-	        ]
-)
-
-
-
-cc_library(
-	name = "cassie_udp_systems",
-	hdrs = [":cassie_udp_systems.h"],
-	srcs = ["cassie_udp_systems.cc"],
-	deps = [
-	        "@drake//systems/framework",
-	        "@drake//systems/lcm",
-	        ":cassie_udp_spoofer",
-	        "//examples/Cassie/datatypes:cassie_dispatch_types",
-	        "//examples/Cassie/datatypes:cassie_names"
-	        ]
-)
-
-
-cc_binary(
-    name = "run_udp_sim",
-    srcs = ["run_udp_sim.cc"],
-    deps = [
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//systems/analysis:simulator",
-        "@drake//manipulation/util",
-        "@drake//systems/framework",
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//lcm",
-        "@gflags",
+  deps = [
         ":cassie_urdf",
-        "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        ":cassie_udp_systems",
-        ":cassie_udp_spoofer",
-        "//examples/Cassie/datatypes:cassie_networking",
-        "@drake//attic/multibody/rigid_body_plant:rigid_body_plant",
+        "//common",
+        "//multibody:utils",
+        "@drake//attic/multibody:rigid_body_tree",
         "@drake//attic/multibody:rigid_body_tree_construction",
-        "@drake//attic/manipulation/util:sim_diagram_builder",
         "@drake//attic/multibody/parsers",
+        "@drake//manipulation/util",
+        "@drake//multibody/parsing:parser",
+        "@drake//solvers:constraint",
+        "@drake//solvers:mathematical_program",
     ],
 )
 
-
-
-
-cc_binary(
-	name = "run_cassie_dispatch",
-	srcs = ["run_cassie_dispatch.cc"],
-	deps = [
-	        ":cassie_dispatcher",
-	        ":cassie_robot_dispatch_interface",
-	        ":cassie_lcm_dispatch_interface",
-	        ":silent_interface",
-	        "//examples/Cassie/datatypes:cassie_dispatch_types",
-	        "//examples/Cassie/datatypes:cassie_networking",
-	        "//examples/Cassie/datatypes:cassie_names",
-	        "@drake//systems/lcm:lcm"
-	        ]
+cc_library(
+    name = "cassie_urdf",
+    data = glob(["urdf/**"]),
 )
 
-
-cc_binary(
-	name = "run_udp_dummy_server",
-	srcs = ["run_udp_dummy_server.c"],
-	deps = [
-	        "//examples/Cassie/datatypes:cassie_networking",
-	        "//examples/Cassie/datatypes:cassie_out_t",
-	        "//examples/Cassie/datatypes:cassie_user_in_t"
-	        ]
+cc_library(
+  name = "cassie_rbt_state_estimator",
+  srcs = ["cassie_rbt_state_estimator.cc",],
+  hdrs = ["cassie_rbt_state_estimator.h",],
+  deps = [
+    "@drake//systems/framework",
+    "//systems/framework:vector",
+    "//examples/Cassie/datatypes:cassie_out_t",
+    "//examples/Cassie/datatypes:cassie_names",
+    "//attic/multibody:utils",
+  ]
 )
 
-
+cc_binary(
+    name = "run_udp_dummy_server",
+    srcs = ["run_udp_dummy_server.c"],
+    deps = [
+        "//examples/Cassie/datatypes:cassie_out_t",
+        "//examples/Cassie/datatypes:cassie_user_in_t",
+    ],
+)
 
 cc_binary(
     name = "run_pd_controller",
     srcs = ["run_pd_controller.cc"],
     deps = [
-            "//systems:robot_lcm_systems",
-            "//systems/controllers",
-            "//systems/controllers:pd_config_lcm",
-            "@drake//systems/framework:diagram_builder",
-            "@drake//systems/lcm:lcm_pubsub_system",
-            "@drake//systems/analysis:simulator",
-            "@drake//attic/multibody:rigid_body_tree",
-            "@drake//manipulation/util",
-            "@drake//lcm",
-            ":cassie_utils",
-            ":cassie_urdf",
-            ]
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/controllers:pd_config_lcm",
+        "@drake//lcm",
+        "@drake//manipulation/util",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework:diagram_builder",
+        "@drake//systems/lcm:lcm_pubsub_system",
+    ],
 )
 
 cc_binary(
-    name = "cassie_state_visualizer",
-    srcs = ["cassie_state_visualizer.cc"],
+    name = "visualizer",
+    srcs = ["visualizer.cc"],
     deps = [
             "//systems:robot_lcm_systems",
             "//systems/primitives",
@@ -197,31 +88,71 @@ cc_binary(
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
             "@drake//lcm",
-            "@drake//attic/multibody:rigid_body_tree",
             "@drake//manipulation/util",
+            "@drake//geometry:geometry_visualization",
+            "@drake//systems/rendering:multibody_position_to_geometry_pose",
             ":cassie_utils",
-            "@drake//attic/multibody/rigid_body_plant:drake_visualizer",
+            "@gflags",
             ]
 )
+
 
 cc_binary(
     name = "run_simple_sim",
     srcs = ["run_simple_sim.cc"],
     deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
         "@drake//attic/multibody:rigid_body_tree",
+        "@drake//attic/multibody/rigid_body_plant",
+        "@drake//common",
+        "@drake//lcm",
+        "@drake//manipulation/util",
+        "@drake//solvers",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "standalone_multibody_sim",
+    srcs = ["standalone_multibody_sim.cc"],
+    deps = [
         "@drake//systems/analysis:simulator",
         "@drake//manipulation/util",
         "@drake//systems/framework",
         "@drake//common",
         "@drake//solvers",
         "@drake//lcm",
+        "@drake//geometry:geometry_visualization",
+        "@drake//systems/primitives",
         "@gflags",
         ":cassie_urdf",
+        ":cassie_utils",
+    ],
+)
+
+cc_binary(
+    name = "multibody_sim",
+    srcs = ["multibody_sim.cc"],
+    deps = [
+        "@drake//systems/analysis:simulator",
+        "@drake//manipulation/util",
+        "@drake//systems/framework",
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//lcm",
+        "@drake//geometry:geometry_visualization",
+        "@drake//systems/primitives",
+        "@gflags",
+        ":cassie_urdf",
+        ":cassie_utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
-        ":cassie_utils",
-        "@drake//attic/multibody/rigid_body_plant:rigid_body_plant",
-        "@drake//attic/manipulation/util:sim_diagram_builder",
     ],
 )
 
@@ -237,14 +168,44 @@ cc_binary(
     name = "parse_log_test",
     srcs = ["test/parse_log_test.cc"],
     deps = [
-            "//systems:robot_lcm_systems",
-            ":cassie_urdf",
-            "@drake//systems/framework:diagram_builder",
-            "@drake//systems/lcm",
-            "@drake//systems/analysis:simulator",
-            "@drake//lcm",
-            "@drake//attic/multibody:rigid_body_tree",
-            "//systems/primitives:vector_aggregator",
-            ":cassie_utils"
-            ]
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives:vector_aggregator",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//lcm",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework:diagram_builder",
+        "@drake//systems/lcm",
+    ],
+)
+
+cc_binary(
+  name = "dispatcher_robot_out",
+  srcs = ["dispatcher_robot_out.cc"],
+  deps = ["//examples/Cassie/networking:udp_driven_loop",
+          "//examples/Cassie/networking:cassie_udp_pub_sub",
+          "@drake//lcm",
+          "//lcmtypes:lcmt_robot",
+          "//systems:robot_lcm_systems",
+          ":cassie_utils",
+          ":cassie_rbt_state_estimator",
+          ":cassie_urdf",
+          "@gflags",
+         ],
+)
+
+cc_binary(
+  name = "dispatcher_robot_in",
+  srcs = ["dispatcher_robot_in.cc"],
+  deps = ["//examples/Cassie/networking:cassie_udp_pub_sub",
+          "@drake//lcm",
+          "@drake//systems/lcm:lcm_driven_loop",
+          "//lcmtypes:lcmt_robot",
+          "//systems:robot_lcm_systems",
+          ":cassie_utils",
+          ":cassie_rbt_state_estimator",
+          ":cassie_urdf",
+          "@gflags",
+         ],
 )

@@ -59,6 +59,11 @@ public:
                                      num_velocities_, num_efforts_) = efforts;
   }
 
+  void SetEffortAtIndex(int index, T value) {
+    this->SetAtIndex(position_start_ + num_positions_ + num_velocities_ +
+          index, value);
+  }
+
   void SetPositionAtIndex(int index, T value) {
     this->SetAtIndex(position_start_ + index, value);
   }

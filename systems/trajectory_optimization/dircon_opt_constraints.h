@@ -52,7 +52,7 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
 //  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
 
  public:
-  DirconDynamicConstraint(const RigidBodyTree<double>& tree,
+  DirconDynamicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                           DirconKinematicDataSet<T>& constraints);
 
   ~DirconDynamicConstraint() override = default;
@@ -66,12 +66,12 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
                           drake::VectorX<T>* y) const override;
 
  private:
-  DirconDynamicConstraint(const RigidBodyTree<double>& tree,
+  DirconDynamicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                           DirconKinematicDataSet<T>& constraints,
                           int num_positions, int num_velocities, int num_inputs,
                           int num_kinematic_constraints);
 
-  const RigidBodyTree<double>* tree_;
+  const drake::multibody::MultibodyPlant<T>& plant_;
   DirconKinematicDataSet<T>* constraints_;
   const int num_states_{0};
   const int num_inputs_{0};
@@ -97,18 +97,18 @@ template <typename T>
 class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
  public:
   /// Constructor. Defaults the relative constraints to be all false
-  /// @param tree the RigidBodyTree
+  /// @param plant the MultibodyPlant
   /// @param DirconKinematicDataSet the set of kinematic constraints
   /// @param type the constraint type. All (default), accel and vel, accel only.
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree,
+  DirconKinematicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
     DirconKinematicDataSet<T>& constraint_data,
     DirconKinConstraintType type = DirconKinConstraintType::kAll);
   /// Constructor
-  /// @param tree the RigidBodyTree
+  /// @param plant the MultibodyPlant
   /// @param DirconKinematicDataSet the set of kinematic constraints
   /// @param is_constraint_relative vector of booleans
   /// @param type the constraint type. All (default), accel and vel, accel only.
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree,
+  DirconKinematicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
     DirconKinematicDataSet<T>& constraint_data,
     std::vector<bool> is_constraint_relative,
     DirconKinConstraintType type = DirconKinConstraintType::kAll);
@@ -119,7 +119,7 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
                           drake::VectorX<T>* y) const override;
 
  private:
-  DirconKinematicConstraint(const RigidBodyTree<double>& tree,
+  DirconKinematicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                             DirconKinematicDataSet<T>& constraint_data,
                             std::vector<bool> is_constraint_relative,
                             DirconKinConstraintType type, int num_positions,
@@ -127,7 +127,7 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
                             int num_kinematic_constraints);
 
 
-  const RigidBodyTree<double>* tree_;
+  const drake::multibody::MultibodyPlant<T>& plant_;
   DirconKinematicDataSet<T>* constraints_;
 
   const int num_states_{0};
@@ -168,9 +168,9 @@ drake::solvers::Binding<drake::solvers::Constraint> AddDirconConstraint(
 template <typename T>
 class DirconImpactConstraint : public DirconAbstractConstraint<T> {
  public:
-  /// @param tree the RigidBodyTree
+  /// @param plant the MultibodyPlant
   /// @param DirconKinematicDataSet the set of kinematic constraints
-  DirconImpactConstraint(const RigidBodyTree<double>& tree,
+  DirconImpactConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                          DirconKinematicDataSet<T>& constraint_data);
 
   ~DirconImpactConstraint() override = default;
@@ -179,13 +179,13 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
                           drake::VectorX<T>* y) const override;
 
  private:
-  DirconImpactConstraint(const RigidBodyTree<double>& tree,
+  DirconImpactConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                          DirconKinematicDataSet<T>& constraint_data,
                          int num_positions, int num_velocities,
                          int num_kinematic_constraints);
 
 
-  const RigidBodyTree<double>* tree_;
+  const drake::multibody::MultibodyPlant<T>& plant_;
   DirconKinematicDataSet<T>* constraints_;
 
   const int num_states_{0};

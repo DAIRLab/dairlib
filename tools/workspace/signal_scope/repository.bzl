@@ -14,7 +14,7 @@ def _impl(repository_ctx):
         sha256 = "c34b4dd4d85f9575b51cc2e03236420d8517f5fdb232bffacc09bf35ee0bd473"
     elif os_result.ubuntu_release == "16.04":
         urls = ["https://www.seas.upenn.edu/~posa/files/signal-scope/signal-scope-16.04.zip"]
-        sha256 = "68aa30355d6c094f817ace4c46c786b5c83765a4fddac164d5228994915e10ed"
+        sha256 = "d51cc26c5130cdf51ee10602d2a32032219bfdf25f96bfaa1f7dbd9d9623e1cf"
         prefix = "signal-scope-16.04"
     elif os_result.ubuntu_release == "18.04":
         urls = ["https://www.seas.upenn.edu/~posa/files/signal-scope/signal-scope-18.04.zip"]

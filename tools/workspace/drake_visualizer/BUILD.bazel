@@ -7,7 +7,6 @@ exports_files(
     visibility = ["//director:__pkg__"],
 )
 
-
 # When developing within Drake, we don't want //tools:drake_visualizer to
 # depend on the entire pydrake library, because that adds a dependency on a
 # whole bunch of C++ code that is irrelevant for the visualizer.  So, here we

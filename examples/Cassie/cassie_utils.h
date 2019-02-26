@@ -16,7 +16,6 @@
 
 namespace dairlib {
 
-
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
@@ -24,7 +23,8 @@ namespace dairlib {
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
 /// @param filename the URDF or SDF file to use for Cassie
 ///        omit to use default value
-void addCassieMultibody(drake::multibody::MultibodyPlant<double>* plant,
+void addCassieMultibody(
+    drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     bool floating_base = true,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
@@ -50,23 +50,5 @@ void buildCassieTree(
 Eigen::VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
                                          Eigen::VectorXd q_init,
                                          std::vector<int> fixed_joints);
-
-class TreePositionConstraint : public drake::solvers::Constraint {
- public:
-  TreePositionConstraint(const RigidBodyTree<double>& tree,
-                         const std::string& description = "");
-  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd* y) const override;
-
-  void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-              drake::AutoDiffVecXd* y) const override;
-
-  void DoEval(
-      const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& x,
-      drake::VectorX<drake::symbolic::Expression>* y) const override;
-
- private:
-  const RigidBodyTree<double>* tree_;
-};
 
 }  // namespace dairlib

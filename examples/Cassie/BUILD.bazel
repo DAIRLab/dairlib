@@ -105,6 +105,7 @@ cc_binary(
         ":cassie_utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
+        "//attic/multibody:multibody_solvers",
         "@drake//attic/manipulation/util:sim_diagram_builder",
         "@drake//attic/multibody:rigid_body_tree",
         "@drake//attic/multibody/rigid_body_plant",

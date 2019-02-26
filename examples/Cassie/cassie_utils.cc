@@ -1,15 +1,15 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "common/find_resource.h"
-#include "drake/solvers/mathematical_program.h"
-#include "drake/multibody/tree/uniform_gravity_field_element.h"
-#include "drake/multibody/joints/revolute_joint.h"
-#include "drake/multibody/parsing/parser.h"
 #include "drake/geometry/scene_graph.h"
 #include "drake/math/rigid_transform.h"
+#include "drake/multibody/joints/revolute_joint.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/multibody/tree/uniform_gravity_field_element.h"
+#include "drake/solvers/mathematical_program.h"
 
-#include "drake/multibody/tree/revolute_spring.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/parsers/urdf_parser.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/multibody/tree/revolute_spring.h"
 
 namespace dairlib {
 
@@ -28,7 +28,8 @@ using drake::multibody::joints::FloatingBaseType;
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
 void addCassieMultibody(MultibodyPlant<double>* plant,
-    SceneGraph<double>* scene_graph, bool floating_base, std::string filename) {
+                        SceneGraph<double>* scene_graph, bool floating_base,
+                        std::string filename) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
   parser.AddModelFromFile(full_name);
@@ -38,8 +39,8 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
 
   if (!floating_base) {
     plant->WeldFrames(
-      plant->world_frame(), plant->GetFrameByName("pelvis"),
-      drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
+        plant->world_frame(), plant->GetFrameByName("pelvis"),
+        drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
   }
 
   // Add springss
@@ -124,53 +125,6 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
   RevoluteJoint& ankle_spring_joint_right =
       dynamic_cast<RevoluteJoint&>(body->get_mutable_joint());
   ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
-}
-
-VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
-                                  VectorXd q_init,
-                                  std::vector<int> fixed_joints) {
-  MathematicalProgram prog;
-  auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
-  auto constraint = std::make_shared<TreePositionConstraint>(tree);
-  prog.AddConstraint(constraint, q);
-  for (uint i = 0; i < fixed_joints.size(); i++) {
-    int j = fixed_joints[i];
-    prog.AddConstraint(q(j) == q_init(j));
-  }
-  prog.AddQuadraticCost((q - q_init).dot(q - q_init));
-  prog.SetInitialGuessForAllVariables(q_init);
-  prog.Solve();
-  return prog.GetSolution(q);
-}
-
-TreePositionConstraint::TreePositionConstraint(
-    const RigidBodyTree<double>& tree, const std::string& description)
-    : Constraint(tree.getNumPositionConstraints(), tree.get_num_positions(),
-                 VectorXd::Zero(tree.getNumPositionConstraints()),
-                 VectorXd::Zero(tree.getNumPositionConstraints()),
-                 description) {
-  tree_ = &tree;
-}
-
-void TreePositionConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                                    Eigen::VectorXd* y) const {
-  AutoDiffVecXd y_t;
-  Eval(drake::math::initializeAutoDiff(x), &y_t);
-  *y = drake::math::autoDiffToValueMatrix(y_t);
-}
-
-void TreePositionConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-                                    AutoDiffVecXd* y) const {
-  const AutoDiffVecXd q = x.head(tree_->get_num_positions());
-  KinematicsCache<drake::AutoDiffXd> cache = tree_->doKinematics(q);
-  *y = tree_->positionConstraints(cache);
-}
-
-void TreePositionConstraint::DoEval(
-    const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& x,
-    drake::VectorX<drake::symbolic::Expression>* y) const {
-  throw std::logic_error(
-      "TreePositionConstraint does not support symbolic evaluation.");
 }
 
 }  // namespace dairlib

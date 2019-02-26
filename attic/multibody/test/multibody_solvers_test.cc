@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/multibody_solvers.h"
-#include "attic/multibody/rbt_utils.h"
+#include "attic/multibody/rigidbody_utils.h"
 
 namespace dairlib {
 namespace systems {

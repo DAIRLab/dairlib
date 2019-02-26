@@ -3,8 +3,8 @@
 
 #include <gtest/gtest.h>
 #include "examples/Cassie/cassie_utils.h"
-#include "multibody/contact_toolkit.h"
-#include "multibody/rbt_utils.h"
+#include "attic/multibody/contact_toolkit.h"
+#include "attic/multibody/rbt_utils.h"
 
 namespace dairlib {
 namespace systems {

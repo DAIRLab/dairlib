@@ -3,8 +3,8 @@
 
 #include <gtest/gtest.h>
 #include "examples/Cassie/cassie_utils.h"
-#include "multibody/multibody_solvers.h"
-#include "multibody/rbt_utils.h"
+#include "attic/multibody/multibody_solvers.h"
+#include "attic/multibody/rbt_utils.h"
 
 namespace dairlib {
 namespace systems {
@@ -374,32 +374,6 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   VectorXd q_sol_floating = fp_solver_floating.GetSolutionQ();
   VectorXd u_sol_floating = fp_solver_floating.GetSolutionU();
   VectorXd lambda_sol_floating = fp_solver_floating.GetSolutionLambda();
-
-  VectorXd x_sol_floating =
-      VectorXd::Zero(num_positions_floating_ + num_velocities_floating_);
-  x_sol_floating.head(num_positions_floating_) = q_sol_floating;
-  // ContactToolkit object for the actual ground contact.
-  ContactToolkit<double> ct_floating(tree_floating_, contact_info_);
-  cout << ct_floating
-              .CalcMVDot(x_sol_floating, u_sol_floating, lambda_sol_floating)
-              .transpose()
-       << endl;
-  cout << "qdot ----------------------" << endl;
-  cout << ct_floating
-              .CalcTimeDerivatives(x_sol_floating, u_sol_floating,
-                                   lambda_sol_floating)
-              .transpose()
-       << endl;
-  cout << endl;
-  cout << "q ----------------------" << endl;
-  cout << q_sol_floating.transpose() << endl;
-  cout << endl;
-  cout << "u ----------------------" << endl;
-  cout << u_sol_floating.transpose() << endl;
-  cout << endl;
-  cout << "lambda ----------------------" << endl;
-  cout << lambda_sol_floating.transpose() << endl;
-  cout << endl;
 
   // Solution dimension check
   ASSERT_EQ(q_sol_floating.size(), num_positions_floating_);

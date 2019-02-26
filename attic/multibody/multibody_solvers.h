@@ -5,7 +5,7 @@
 #include "drake/solvers/constraint.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/snopt_solver.h"
-#include "multibody/contact_toolkit.h"
+#include "attic/multibody/contact_toolkit.h"
 
 namespace dairlib {
 namespace multibody {
@@ -200,7 +200,7 @@ class PositionSolver {
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::SolutionResult solution_result_;
-  std::string filename_ = "multibody/solver_log/position_solver.log";
+  std::string filename_ = "attic/multibody/solver_log/position_solver.log";
   double major_tolerance_ = 1.0e-13;
   double minor_tolerance_ = 1.0e-13;
 };
@@ -293,7 +293,7 @@ class ContactSolver {
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::SolutionResult solution_result_;
-  std::string filename_ = "multibody/solver_log/contact_solver.log";
+  std::string filename_ = "attic/multibody/solver_log/contact_solver.log";
   double major_tolerance_ = 1.0e-13;
   double minor_tolerance_ = 1.0e-13;
 };
@@ -447,7 +447,7 @@ class FixedPointSolver {
   drake::solvers::VectorXDecisionVariable u_;
   drake::solvers::VectorXDecisionVariable lambda_;
   drake::solvers::SolutionResult solution_result_;
-  std::string filename_ = "multibody/solver_log/fixed_point_solver.log";
+  std::string filename_ = "attic/multibody/solver_log/fixed_point_solver.log";
   double major_tolerance_ = 1.0e-13;
   double minor_tolerance_ = 1.0e-13;
 };

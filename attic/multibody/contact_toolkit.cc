@@ -1,4 +1,4 @@
-#include "multibody/contact_toolkit.h"
+#include "attic/multibody/contact_toolkit.h"
 
 namespace dairlib {
 namespace multibody {

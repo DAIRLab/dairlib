@@ -4,7 +4,7 @@
 #include "drake/common/default_scalars.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/multibody/rigid_body_tree.h"
-#include "multibody/rbt_utils.h"
+#include "attic/multibody/rbt_utils.h"
 
 namespace dairlib {
 namespace multibody {

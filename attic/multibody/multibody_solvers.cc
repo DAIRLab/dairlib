@@ -1,4 +1,4 @@
-#include "multibody/multibody_solvers.h"
+#include "attic/multibody/multibody_solvers.h"
 
 namespace dairlib {
 namespace multibody {

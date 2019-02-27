@@ -1,15 +1,15 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "common/find_resource.h"
-#include "drake/geometry/scene_graph.h"
-#include "drake/math/rigid_transform.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/multibody/tree/uniform_gravity_field_element.h"
 #include "drake/multibody/joints/revolute_joint.h"
 #include "drake/multibody/parsing/parser.h"
-#include "drake/multibody/tree/uniform_gravity_field_element.h"
-#include "drake/solvers/mathematical_program.h"
+#include "drake/geometry/scene_graph.h"
+#include "drake/math/rigid_transform.h"
 
-#include "drake/multibody/parsers/urdf_parser.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/tree/revolute_spring.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/multibody/parsers/urdf_parser.h"
 
 namespace dairlib {
 
@@ -28,8 +28,7 @@ using drake::multibody::joints::FloatingBaseType;
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
 void addCassieMultibody(MultibodyPlant<double>* plant,
-                        SceneGraph<double>* scene_graph, bool floating_base,
-                        std::string filename) {
+    SceneGraph<double>* scene_graph, bool floating_base, std::string filename) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
   parser.AddModelFromFile(full_name);
@@ -39,8 +38,8 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
 
   if (!floating_base) {
     plant->WeldFrames(
-        plant->world_frame(), plant->GetFrameByName("pelvis"),
-        drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
+      plant->world_frame(), plant->GetFrameByName("pelvis"),
+      drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
   }
 
   // Add springss
@@ -127,4 +126,4 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
   ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
 }
 
-}  // namespace dairlib
+} // namespace dairlib

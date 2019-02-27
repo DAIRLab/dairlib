@@ -16,6 +16,7 @@
 
 namespace dairlib {
 
+
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
@@ -23,8 +24,7 @@ namespace dairlib {
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
 /// @param filename the URDF or SDF file to use for Cassie
 ///        omit to use default value
-void addCassieMultibody(
-    drake::multibody::MultibodyPlant<double>* plant,
+void addCassieMultibody(drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     bool floating_base = true,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
@@ -46,9 +46,4 @@ void buildCassieTree(
     drake::multibody::joints::FloatingBaseType base_type =
         drake::multibody::joints::kFixed);
 
-/// Solves the position constraints for a position that satisfies them
-Eigen::VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
-                                         Eigen::VectorXd q_init,
-                                         std::vector<int> fixed_joints);
-
-}  // namespace dairlib
+} // namespace dairlib

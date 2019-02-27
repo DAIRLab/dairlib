@@ -3,32 +3,46 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "switching_lcm_subscriber_system",
+    name = "lcm_subscriber_multiplexer",
     srcs = [
-        "switching_lcm_subscriber_system.cc",
+        "lcm_subscriber_multiplexer.cc",
     ],
     hdrs = [
-        "switching_lcm_subscriber_system.h",
+        "lcm_subscriber_multiplexer.h",
     ],
     deps = [
-        "@drake//systems/lcm:translator",
         "@drake//systems/lcm:lcm_pubsub_system",
-        "@drake//common:value",
-        "@drake//lcm:real",
-        "@drake//systems/framework",
-        "//lcmtypes:lcmt_robot",
+    ]
+)
+
+cc_library(
+    name = "lcm_multiplexer_driven_loop",
+    srcs = [
+        "lcm_multiplexer_driven_loop.cc",
+    ],
+    hdrs = [
+        "lcm_multiplexer_driven_loop.h",
+    ],
+    deps = [
+        ":lcm_subscriber_multiplexer",
+        "@drake//lcm",
+        "@drake//systems/analysis:simulator",
     ]
 )
 
 cc_test(
-    name = "switching_lcm_subscriber_test",
+    name = "lcm_subscriber_multiplexer_test",
     size = "small",
-    srcs = ["test/switching_lcm_subscriber_test.cc"],
+    srcs = [
+        "test/lcm_subscriber_multiplexer_test.cc",
+    ],
     deps = [
-        ":switching_lcm_subscriber_system",
-        "@gtest//:main",
+        ":lcm_subscriber_multiplexer",
+        "@drake//systems/framework",
+        "@drake//systems/framework/test_utilities",
         "@drake//systems/lcm:lcmt_drake_signal_translator",
         "@drake//lcm:lcmt_drake_signal_utils",
-        "@drake//lcm:mock",
+        "@drake//lcm:mock",        
+        "@gtest//:main",
     ],
 )

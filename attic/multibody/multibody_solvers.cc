@@ -5,6 +5,7 @@ namespace multibody {
 
 using std::make_shared;
 using std::make_unique;
+using std::map;
 using std::logic_error;
 using std::shared_ptr;
 using std::string;
@@ -174,14 +175,34 @@ void FixedPointConstraint::DoEval(
       "FixedPointConstraint does not support symbolic evaluation.");
 }
 
-PositionSolver::PositionSolver(const RigidBodyTree<double>& tree)
-    : tree_(tree), prog_(make_shared<MathematicalProgram>()) {
+PositionSolver::PositionSolver(const RigidBodyTree<double>& tree,
+                               VectorXd q_cost)
+    : tree_(tree), q_cost_(q_cost), prog_(make_shared<MathematicalProgram>()) {
   // Initializing the variable
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
+
+  // Solver setup
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
+                         major_tolerance_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
+                         minor_tolerance_);
+
+  auto position_constraint = make_shared<PositionConstraint>(tree_);
+
+  prog_->AddConstraint(position_constraint, q_);
+
+  prog_->AddQuadraticCost((q_ - q_cost_).dot(q_ - q_cost_));
 }
 
 void PositionSolver::SetInitialGuessQ(VectorXd q) {
   prog_->SetInitialGuess(q_, q);
+}
+
+void PositionSolver::AddFixedJointsConstraint(map<int, double> fixed_joints) {
+  for (auto it = fixed_joints.begin(); it != fixed_joints.end(); ++it) {
+    prog_->AddConstraint(q_(it->first) == it->second);
+  }
 }
 
 void PositionSolver::AddJointLimitConstraint(const double tolerance) {
@@ -195,27 +216,7 @@ void PositionSolver::AddJointLimitConstraint(const double tolerance) {
   }
 }
 
-MathematicalProgramResult PositionSolver::Solve(VectorXd q,
-                                                vector<int> fixed_joints) {
-  // Setting the solver options
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
-                         major_tolerance_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
-                         minor_tolerance_);
-
-  auto position_constraint = make_shared<PositionConstraint>(tree_);
-
-  prog_->AddConstraint(position_constraint, q_);
-
-  // Adding the fixed joint constraints
-  for (uint i = 0; i < fixed_joints.size(); i++) {
-    int ind = fixed_joints[i];
-    prog_->AddConstraint(q_(ind) == q(ind));
-  }
-
-  prog_->AddQuadraticCost((q_ - q).dot(q_ - q));
-
+MathematicalProgramResult PositionSolver::Solve() {
   // The initial guess for q needs to be set up separately before calling Solve
   program_result_ = drake::solvers::Solve(*prog_);
 
@@ -260,32 +261,15 @@ double PositionSolver::get_major_tolerance() { return major_tolerance_; }
 double PositionSolver::get_minor_tolerance() { return minor_tolerance_; }
 
 ContactSolver::ContactSolver(const RigidBodyTree<double>& tree,
-                             ContactInfo contact_info)
+                             ContactInfo contact_info, VectorXd q_cost)
     : tree_(tree),
       contact_info_(contact_info),
+      q_cost_(q_cost),
       prog_(make_shared<MathematicalProgram>()) {
   // Initializing the variable
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
-}
 
-void ContactSolver::SetInitialGuessQ(VectorXd q) {
-  prog_->SetInitialGuess(q_, q);
-}
-
-void ContactSolver::AddJointLimitConstraint(const double tolerance) {
-  VectorXd joint_min = tree_.joint_limit_min;
-  VectorXd joint_max = tree_.joint_limit_max;
-
-  for (int i = 0; i < joint_min.size(); ++i) {
-    // Adding minimum and maximum joint angle constraints.
-    prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
-    prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
-  }
-}
-
-MathematicalProgramResult ContactSolver::Solve(VectorXd q,
-                                               vector<int> fixed_joints) {
-  // Setting the solver options
+  // Solver setup
   prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
                          major_tolerance_);
@@ -299,15 +283,33 @@ MathematicalProgramResult ContactSolver::Solve(VectorXd q,
   prog_->AddConstraint(position_constraint, q_);
   prog_->AddConstraint(contact_constraint, q_);
 
-  // Adding the fixed joint constraints
-  for (uint i = 0; i < fixed_joints.size(); i++) {
-    int ind = fixed_joints[i];
-    prog_->AddConstraint(q_(ind) == q(ind));
+  prog_->AddQuadraticCost((q_ - q_cost_).dot(q_ - q_cost_));
+}
+
+void ContactSolver::SetInitialGuessQ(VectorXd q) {
+  prog_->SetInitialGuess(q_, q);
+}
+
+void ContactSolver::AddFixedJointsConstraint(map<int, double> fixed_joints) {
+  for (auto it = fixed_joints.begin(); it != fixed_joints.end(); ++it) {
+    prog_->AddConstraint(q_(it->first) == it->second);
   }
+}
 
-  prog_->AddQuadraticCost((q_ - q).dot(q_ - q));
+void ContactSolver::AddJointLimitConstraint(const double tolerance) {
+  VectorXd joint_min = tree_.joint_limit_min;
+  VectorXd joint_max = tree_.joint_limit_max;
 
-  // The initial guess for q needs to be set up separately before calling Solve
+  for (int i = 0; i < joint_min.size(); ++i) {
+    // Adding minimum and maximum joint angle constraints.
+    prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
+    prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
+  }
+}
+
+MathematicalProgramResult ContactSolver::Solve() {
+  // The initial guess for q needs to be set up separately before calling
+  // Solve
   program_result_ = drake::solvers::Solve(*prog_);
 
   return program_result_;
@@ -356,9 +358,12 @@ double ContactSolver::get_major_tolerance() { return major_tolerance_; }
 
 double ContactSolver::get_minor_tolerance() { return minor_tolerance_; }
 
-FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree)
+FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
+                                   VectorXd q_cost, VectorXd u_cost)
     : tree_(tree),
       contact_info_(ContactInfo()),
+      q_cost_(q_cost),
+      u_cost_(u_cost),
       prog_(make_shared<MathematicalProgram>()) {
   // Initializing the variable
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
@@ -366,21 +371,66 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree)
   // Without contacts, lambda only contains the position constraint forces.
   lambda_ = prog_->NewContinuousVariables(tree_.getNumPositionConstraints(),
                                           "lambda");
+
+  // Solver setup
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
+                         major_tolerance_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
+                         minor_tolerance_);
+
+  auto position_constraint = make_shared<PositionConstraint>(tree_);
+  auto fixed_point_constraint =
+      make_shared<FixedPointConstraint>(tree_, contact_info_);
+
+  prog_->AddConstraint(position_constraint, q_);
+  prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
+
+  // Cost on q and u
+  prog_->AddQuadraticCost((q_ - q_cost_).dot(q_ - q_cost_) +
+                          (u_ - u_cost_).dot(u_ - u_cost_));
 }
 
 FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
-                                   ContactInfo contact_info)
+                                   ContactInfo contact_info, VectorXd q_cost,
+                                   VectorXd u_cost)
     : tree_(tree),
       contact_info_(contact_info),
+      q_cost_(q_cost),
+      u_cost_(u_cost),
       prog_(make_shared<MathematicalProgram>()) {
   // Initializing the variable
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
   u_ = prog_->NewContinuousVariables(tree_.get_num_actuators(), "u");
   // With contact, lambda contains the position constraint as well as the
-  // contact forces (A normal and two tangential forces at each contact point).
+  // contact forces (A normal and two tangential forces at each contact
+  // point).
   lambda_ = prog_->NewContinuousVariables(
       tree_.getNumPositionConstraints() + contact_info.num_contacts * 3,
       "lambda");
+
+  // Solver setup
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
+                         major_tolerance_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
+                         minor_tolerance_);
+
+  auto position_constraint = make_shared<PositionConstraint>(tree_);
+  auto contact_constraint =
+      make_shared<ContactConstraint>(tree_, contact_info_);
+  auto fixed_point_constraint =
+      make_shared<FixedPointConstraint>(tree_, contact_info_);
+
+  prog_->AddConstraint(position_constraint, q_);
+  prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
+
+  // Add contact constraints as there is contact in this case
+  prog_->AddConstraint(contact_constraint, q_);
+
+  // Cost on q and u
+  prog_->AddQuadraticCost((q_ - q_cost_).dot(q_ - q_cost_) +
+                          (u_ - u_cost_).dot(u_ - u_cost_));
 }
 
 void FixedPointSolver::SetInitialGuess(VectorXd q, VectorXd u,
@@ -430,6 +480,12 @@ void FixedPointSolver::AddFrictionConeConstraint(const double mu) {
   }
 }
 
+void FixedPointSolver::AddFixedJointsConstraint(map<int, double> fixed_joints) {
+  for (auto it = fixed_joints.begin(); it != fixed_joints.end(); ++it) {
+    prog_->AddConstraint(q_(it->first) == it->second);
+  }
+}
+
 void FixedPointSolver::AddJointLimitConstraint(const double tolerance) {
   VectorXd joint_min = tree_.joint_limit_min;
   VectorXd joint_max = tree_.joint_limit_max;
@@ -441,39 +497,10 @@ void FixedPointSolver::AddJointLimitConstraint(const double tolerance) {
   }
 }
 
-MathematicalProgramResult FixedPointSolver::Solve(VectorXd q, VectorXd u,
-                                                  vector<int> fixed_joints) {
+MathematicalProgramResult FixedPointSolver::Solve() {
   // Setting the solver options
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
-                         major_tolerance_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
-                         minor_tolerance_);
-
-  auto position_constraint = make_shared<PositionConstraint>(tree_);
-  auto contact_constraint =
-      make_shared<ContactConstraint>(tree_, contact_info_);
-  auto fixed_point_constraint =
-      make_shared<FixedPointConstraint>(tree_, contact_info_);
-
-  prog_->AddConstraint(position_constraint, q_);
-  prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
-
-  // Add contact constraints if there are contacts.
-  if (contact_info_.num_contacts) {
-    prog_->AddConstraint(contact_constraint, q_);
-  }
-
-  // Adding the fixed joint constraints
-  for (uint i = 0; i < fixed_joints.size(); ++i) {
-    int ind = fixed_joints[i];
-    prog_->AddConstraint(q_(ind) == q(ind));
-  }
-
-  // Cost on q and u
-  prog_->AddQuadraticCost((q_ - q).dot(q_ - q) + (u_ - u).dot(u_ - u));
-
-  // The initial guess for q, u and lambda needs to be set up separately before
+  // The initial guess for q, u and lambda needs to be set up separately
+  // before
   // calling solve
   program_result_ = drake::solvers::Solve(*prog_);
 

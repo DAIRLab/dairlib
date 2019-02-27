@@ -125,7 +125,7 @@ class PositionSolver {
   // Disabling copy construction and assignment.
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PositionSolver)
 
-  PositionSolver(const RigidBodyTree<double>& tree);
+  PositionSolver(const RigidBodyTree<double>& tree, Eigen::VectorXd q_cost);
 
   /*
    * Function to set the initial guess of q.
@@ -134,6 +134,15 @@ class PositionSolver {
    * @param q The initial guess for the generalized positions q
    */
   void SetInitialGuessQ(Eigen::VectorXd q);
+  /*
+   * Function to fix the values of certain joints. The joints to be fixed are
+   * passed as a map, together with the values. The indices are with respect to
+   * the generalized positions q.
+   * map(joint_index_i -> joint_value_i)
+   * @param fixed_joints Map of joint indices that are to be fixed to the mapped
+   * joint values values.
+   */
+  void AddFixedJointsConstraint(std::map<int, double> fixed_joints);
   /*
    * Function to add joint limit constraints.
    * The joint limits are obtained from the tree that the PositionSolver object
@@ -148,16 +157,10 @@ class PositionSolver {
   /*
    * Function to solve the problem after all the required initial values and
    * other constraints have been set.
-   * @param q Value of q used in the quadratic cost. The solution q would be as
-   * close to this value as possible.
-   * @param fixed_joints A vector of integers that correspond to indices of q
-   * whose values are not allowed to change.
    * Returns a MathematicalProgramResult type that gives an indication of
-   * whether the
-   * solver could successfully solve the problem or not.
+   * whether the solver could successfully solve the problem or not.
    */
-  drake::solvers::MathematicalProgramResult Solve(
-      Eigen::VectorXd q, std::vector<int> fixed_joints = {});
+  drake::solvers::MathematicalProgramResult Solve();
   /*
    * Function to check if the a given value of q satisfies the position
    * constraints.
@@ -199,6 +202,7 @@ class PositionSolver {
 
  private:
   const RigidBodyTree<double>& tree_;
+  Eigen::VectorXd q_cost_;
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::MathematicalProgramResult program_result_;
@@ -218,7 +222,8 @@ class ContactSolver {
   // Disabling copy construction and assignment.
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ContactSolver)
 
-  ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
+  ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info,
+                Eigen::VectorXd q_cost);
 
   /*
    * Function to set the initial guess of q.
@@ -227,6 +232,15 @@ class ContactSolver {
    * @param q The initial guess for the generalized positions q
    */
   void SetInitialGuessQ(Eigen::VectorXd q);
+  /*
+   * Function to fix the values of certain joints. The joints to be fixed are
+   * passed as a map, together with the values. The indices are with respect to
+   * the generalized positions q.
+   * map(joint_index_i -> joint_value_i)
+   * @param fixed_joints Map of joint indices that are to be fixed to the mapped
+   * joint values values.
+   */
+  void AddFixedJointsConstraint(std::map<int, double> fixed_joints);
   /*
    * Function to add joint limit constraints.
    * The joint limits are obtained from the tree that the ContactSolver object
@@ -241,16 +255,10 @@ class ContactSolver {
   /*
    * Function to solve the problem after all the required initial values and
    * other constraints have been set.
-   * @param q Value of q used in the quadratic cost. The solution q would be as
-   * close to this value as possible.
-   * @param fixed_joints A vector of integers that correspond to indices of q
-   * whose values are not allowed to change.
    * Returns a MathematicalProgramResult type that gives an indication of
-   * whether the
-   * solver could successfully solve the problem or not.
+   * whether the solver could successfully solve the problem or not.
    */
-  drake::solvers::MathematicalProgramResult Solve(
-      Eigen::VectorXd q, std::vector<int> fixed_joints = {});
+  drake::solvers::MathematicalProgramResult Solve();
   /*
    * Function to check if the a given value of q satisfies the contact
    * constraints.
@@ -293,6 +301,7 @@ class ContactSolver {
  private:
   const RigidBodyTree<double>& tree_;
   ContactInfo contact_info_;
+  Eigen::VectorXd q_cost_;
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::MathematicalProgramResult program_result_;
@@ -317,12 +326,14 @@ class FixedPointSolver {
   /*
    * Constructor for solving without contact constraints.
    */
-  FixedPointSolver(const RigidBodyTree<double>& tree);
+  FixedPointSolver(const RigidBodyTree<double>& tree, Eigen::VectorXd q_cost,
+                   Eigen::VectorXd u_cost);
   /*
    * Constructor for solving with contact constraints. The ContactInfo object
    * stores point-ground plane contact information.
    */
-  FixedPointSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
+  FixedPointSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info,
+                   Eigen::VectorXd q_cost, Eigen::VectorXd u_cost);
 
   /*
    * Function to set the initial guess of q.
@@ -368,6 +379,15 @@ class FixedPointSolver {
    */
   void AddFrictionConeConstraint(const double mu);
   /*
+   * Function to fix the values of certain joints. The joints to be fixed are
+   * passed as a map, together with the values. The indices are with respect to
+   * the generalized positions q.
+   * map(joint_index_i -> joint_value_i)
+   * @param fixed_joints Map of joint indices that are to be fixed to the mapped
+   * joint values values.
+   */
+  void AddFixedJointsConstraint(std::map<int, double> fixed_joints);
+  /*
    * Function to add joint limit constraints.
    * The joint limits are obtained from the tree that the FixedPointSolver
    * object
@@ -390,8 +410,7 @@ class FixedPointSolver {
    * whether the
    * solver could successfully solve the problem or not.
    */
-  drake::solvers::MathematicalProgramResult Solve(
-      Eigen::VectorXd q, Eigen::VectorXd u, std::vector<int> fixed_joints = {});
+  drake::solvers::MathematicalProgramResult Solve();
   /*
    * Function to check if the a given values of q, u and lambda satisfies the
    * contact constraints.
@@ -446,6 +465,8 @@ class FixedPointSolver {
  private:
   const RigidBodyTree<double>& tree_;
   ContactInfo contact_info_;
+  Eigen::VectorXd q_cost_;
+  Eigen::VectorXd u_cost_;
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::VectorXDecisionVariable u_;

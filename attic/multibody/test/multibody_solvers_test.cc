@@ -101,17 +101,15 @@ class MultibodySolversTest : public ::testing::Test {
     x0_floating_(position_map_floating.at("toe_left")) = -60.0 * M_PI / 180.0;
     x0_floating_(position_map_floating.at("toe_right")) = -60.0 * M_PI / 180.0;
 
-    fixed_joints_floating_.push_back(position_map_floating.at("base_roll"));
-    fixed_joints_floating_.push_back(position_map_floating.at("base_yaw"));
-    // fixed_joints_floating_.push_back(position_map_floating.at("hip_roll_left"));
-    // fixed_joints_floating_.push_back(
-    //    position_map_floating.at("hip_roll_right"));
-    // fixed_joints_floating_.push_back(position_map_floating.at("hip_yaw_left"));
-    // fixed_joints_floating_.push_back(position_map_floating.at("hip_yaw_right"));
-    fixed_joints_floating_.push_back(
-        position_map_floating.at("hip_pitch_left"));
-    fixed_joints_floating_.push_back(
-        position_map_floating.at("hip_pitch_right"));
+    // Setting up fixed_joints_vector_ and fixed_joints_map_
+    fixed_joints_vector_.push_back(position_map_floating.at("base_roll"));
+    fixed_joints_vector_.push_back(position_map_floating.at("base_yaw"));
+    fixed_joints_vector_.push_back(position_map_floating.at("hip_pitch_left"));
+    fixed_joints_vector_.push_back(position_map_floating.at("hip_pitch_right"));
+
+    for (auto& ind : fixed_joints_vector_) {
+      fixed_joints_map_[ind] = x0_floating_(ind);
+    }
 
     // Collison detect
     // Contact information is specific to the floating base RBT
@@ -175,7 +173,8 @@ class MultibodySolversTest : public ::testing::Test {
 
   RigidBodyTree<double> tree_fixed_;
   RigidBodyTree<double> tree_floating_;
-  vector<int> fixed_joints_floating_;
+  vector<int> fixed_joints_vector_;
+  map<int, double> fixed_joints_map_;
   int num_positions_fixed_;
   int num_positions_floating_;
   int num_velocities_fixed_;
@@ -220,7 +219,7 @@ TEST_F(MultibodySolversTest, TestFixedPointConstraintInitialization) {
 TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
   // Testing basic getters and setters
   // Fixed base
-  PositionSolver position_solver_fixed(tree_floating_);
+  PositionSolver position_solver_fixed(tree_fixed_, q_fixed_);
   position_solver_fixed.set_filename("position_log");
   position_solver_fixed.set_major_tolerance(0.001);
   position_solver_fixed.set_minor_tolerance(0.01);
@@ -233,7 +232,7 @@ TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
   ASSERT_EQ(position_solver_fixed.get_minor_tolerance(), 0.01);
 
   // Floating base
-  PositionSolver position_solver_floating(tree_floating_);
+  PositionSolver position_solver_floating(tree_floating_, q_floating_);
   position_solver_floating.set_filename("position_log");
   position_solver_floating.set_major_tolerance(0.001);
   position_solver_floating.set_minor_tolerance(0.01);
@@ -249,7 +248,7 @@ TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
 TEST_F(MultibodySolversTest, TestContactSolverBasic) {
   // Testing basic getters and setters
   // Only the floating base model is used for contact
-  ContactSolver contact_solver(tree_floating_, contact_info_);
+  ContactSolver contact_solver(tree_floating_, contact_info_, q_floating_);
   contact_solver.set_filename("contact_log");
   contact_solver.set_major_tolerance(0.002);
   contact_solver.set_minor_tolerance(0.02);
@@ -265,7 +264,7 @@ TEST_F(MultibodySolversTest, TestContactSolverBasic) {
 TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   // Testing basic getters and setters
   // Fixed base
-  FixedPointSolver fp_solver_fixed(tree_fixed_);
+  FixedPointSolver fp_solver_fixed(tree_fixed_, q_fixed_, u_fixed_);
   fp_solver_fixed.set_filename("fp_log");
   fp_solver_fixed.set_major_tolerance(0.003);
   fp_solver_fixed.set_minor_tolerance(0.03);
@@ -277,7 +276,8 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   ASSERT_EQ(fp_solver_fixed.get_minor_tolerance(), 0.03);
 
   // Floating base
-  FixedPointSolver fp_solver_floating(tree_floating_, contact_info_);
+  FixedPointSolver fp_solver_floating(tree_floating_, contact_info_,
+                                      q_floating_, u_floating_);
   fp_solver_floating.set_filename("fp_log");
   fp_solver_floating.set_major_tolerance(0.003);
   fp_solver_floating.set_minor_tolerance(0.03);
@@ -292,12 +292,12 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
 
 TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
   // Fixed base
-  PositionSolver position_solver_fixed(tree_fixed_);
+  PositionSolver position_solver_fixed(tree_fixed_, q_fixed_);
   position_solver_fixed.SetInitialGuessQ(q_fixed_);
   position_solver_fixed.AddJointLimitConstraint(0.001);
 
   MathematicalProgramResult program_result_fixed =
-      position_solver_fixed.Solve(q_fixed_);
+      position_solver_fixed.Solve();
 
   cout << "Position solver result (Fixed base): "
        << program_result_fixed.get_solution_result() << endl;
@@ -310,12 +310,13 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
   ASSERT_TRUE(position_solver_fixed.CheckConstraint(q_sol_fixed));
 
   // Floating base
-  PositionSolver position_solver_floating(tree_floating_);
+  PositionSolver position_solver_floating(tree_floating_, q_floating_);
   position_solver_floating.SetInitialGuessQ(q_floating_);
+  position_solver_floating.AddFixedJointsConstraint(fixed_joints_map_);
   position_solver_floating.AddJointLimitConstraint(0.001);
 
   MathematicalProgramResult program_result_floating =
-      position_solver_floating.Solve(q_floating_);
+      position_solver_floating.Solve();
 
   cout << "Position solver result (Floating base): "
        << program_result_floating.get_solution_result() << endl;
@@ -329,11 +330,11 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
 }
 
 TEST_F(MultibodySolversTest, TestContactSolverSolution) {
-  ContactSolver contact_solver(tree_floating_, contact_info_);
+  ContactSolver contact_solver(tree_floating_, contact_info_, q_floating_);
   contact_solver.SetInitialGuessQ(q_floating_);
   contact_solver.AddJointLimitConstraint(0.001);
 
-  MathematicalProgramResult program_result = contact_solver.Solve(q_floating_);
+  MathematicalProgramResult program_result = contact_solver.Solve();
 
   std::cout << "Contact solver result (Floating base): "
             << program_result.get_solution_result() << std::endl;
@@ -348,12 +349,11 @@ TEST_F(MultibodySolversTest, TestContactSolverSolution) {
 
 TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   // Fixed base
-  FixedPointSolver fp_solver_fixed(tree_fixed_);
+  FixedPointSolver fp_solver_fixed(tree_fixed_, q_fixed_, u_fixed_);
   fp_solver_fixed.SetInitialGuess(q_fixed_, u_fixed_, lambda_fixed_);
   fp_solver_fixed.AddJointLimitConstraint(0.001);
 
-  MathematicalProgramResult program_result_fixed =
-      fp_solver_fixed.Solve(q_fixed_, u_fixed_);
+  MathematicalProgramResult program_result_fixed = fp_solver_fixed.Solve();
 
   cout << "Fixed point solver result (Fixed base): "
        << program_result_fixed.get_solution_result() << endl;
@@ -371,15 +371,17 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
                                               lambda_sol_fixed));
 
   // Floating base
-  FixedPointSolver fp_solver_floating(tree_floating_, contact_info_);
+  FixedPointSolver fp_solver_floating(tree_floating_, contact_info_,
+                                      q_floating_, u_floating_);
   fp_solver_floating.SetInitialGuess(q_floating_, u_floating_,
                                      lambda_floating_);
   fp_solver_floating.AddSpreadNormalForcesCost();
   fp_solver_floating.AddFrictionConeConstraint(0.8);
+  fp_solver_floating.AddFixedJointsConstraint(fixed_joints_map_);
   fp_solver_floating.AddJointLimitConstraint(0.001);
 
   MathematicalProgramResult program_result_floating =
-      fp_solver_floating.Solve(q_fixed_, u_fixed_);
+      fp_solver_floating.Solve();
 
   cout << "Fixed point solver result (Floating base): "
        << program_result_floating.get_solution_result() << endl;
@@ -401,7 +403,7 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
 }  // namespace systems
 }  // namespace dairlib
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

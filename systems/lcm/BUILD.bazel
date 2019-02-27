@@ -41,8 +41,9 @@ cc_test(
         "@drake//systems/framework",
         "@drake//systems/framework/test_utilities",
         "@drake//systems/lcm:lcmt_drake_signal_translator",
+        "@drake//systems/analysis:simulator",
         "@drake//lcm:lcmt_drake_signal_utils",
-        "@drake//lcm:mock",        
+        "@drake//lcm:mock",
         "@gtest//:main",
     ],
 )

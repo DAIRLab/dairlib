@@ -104,19 +104,19 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
   VectorX<T> right_hand_side =
       -tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
 
-  if (num_efforts) {
+  if (num_efforts > 0) {
     right_hand_side += tree_.B * u;
   }
 
   // Position constraints Jacocbian
-  if (num_position_constraints) {
+  if (num_position_constraints > 0) {
     MatrixX<T> J_position = tree_.positionConstraintsJacobian(k_cache);
     right_hand_side +=
         J_position.transpose() * lambda.head(num_position_constraints);
   }
 
   // Contact Jacobian
-  if (num_contacts_) {
+  if (num_contacts_ > 0) {
     MatrixX<T> J_contact = CalcContactJacobian(x);
     right_hand_side += J_contact.transpose() * lambda.tail(num_contacts_ * 3);
   }

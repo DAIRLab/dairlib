@@ -124,28 +124,28 @@ class ContactToolkitTest : public ::testing::Test {
 // Tests the contact toolkit constructor initializations, getters and setters
 TEST_F(ContactToolkitTest, InitializationTest) {
   // ContactInfo default values
-  ContactInfo default_contact;
-  ASSERT_TRUE(default_contact.xA.isApprox(Matrix3Xd::Zero(3, 1)));
-  ASSERT_EQ(default_contact.num_contacts, 0);
+  ContactInfo contact_info_default;
+  ASSERT_TRUE(contact_info_default.xA.isApprox(Matrix3Xd::Zero(3, 1)));
+  ASSERT_EQ(contact_info_default.num_contacts, 0);
 
   // ContactInfo construction validity check
   Matrix3Xd xa = Matrix3Xd::Zero(3, 2);
   vector<int> idxa(2, 1);
-  ContactInfo tmp_info = {xa, idxa};
-  ASSERT_TRUE(tmp_info.xA.isApprox(xa));
-  ASSERT_TRUE(tmp_info.idxA == idxa);
-  ASSERT_TRUE(tmp_info.num_contacts == 2);
+  ContactInfo contact_info_test = {xa, idxa};
+  ASSERT_TRUE(contact_info_test.xA.isApprox(xa));
+  ASSERT_TRUE(contact_info_test.idxA == idxa);
+  ASSERT_TRUE(contact_info_test.num_contacts == 2);
 
   // ContactInfo getter
-  tmp_info = contact_toolkit_double_->get_contact_info();
-  ASSERT_TRUE(tmp_info.xA.isApprox(contact_info_.xA));
-  ASSERT_TRUE(tmp_info.idxA == contact_info_.idxA);
-  ASSERT_TRUE(tmp_info.num_contacts == contact_info_.num_contacts);
+  contact_info_test = contact_toolkit_double_->get_contact_info();
+  ASSERT_TRUE(contact_info_test.xA.isApprox(contact_info_.xA));
+  ASSERT_TRUE(contact_info_test.idxA == contact_info_.idxA);
+  ASSERT_TRUE(contact_info_test.num_contacts == contact_info_.num_contacts);
 
-  tmp_info = contact_toolkit_autodiff_->get_contact_info();
-  ASSERT_TRUE(tmp_info.xA.isApprox(contact_info_.xA));
-  ASSERT_TRUE(tmp_info.idxA == contact_info_.idxA);
-  ASSERT_TRUE(tmp_info.num_contacts == contact_info_.num_contacts);
+  contact_info_test = contact_toolkit_autodiff_->get_contact_info();
+  ASSERT_TRUE(contact_info_test.xA.isApprox(contact_info_.xA));
+  ASSERT_TRUE(contact_info_test.idxA == contact_info_.idxA);
+  ASSERT_TRUE(contact_info_test.num_contacts == contact_info_.num_contacts);
 
   // num contacts getter
   ASSERT_EQ(contact_toolkit_double_->get_num_contacts(), 4);
@@ -153,16 +153,16 @@ TEST_F(ContactToolkitTest, InitializationTest) {
 
   // Verifying the contact info setter
   Matrix3Xd xA(3, 2);
-  vector<int> idxA = {0, 0};
+  vector<int> idxA = {2, 0};
   xA << 0.1, 0.2, 0.3, 0.2, -0.3, 2.3;
-  tmp_info = {xA, idxA};
+  contact_info_test = {xA, idxA};
 
-  contact_toolkit_double_->set_contact_info(tmp_info);
+  contact_toolkit_double_->set_contact_info(contact_info_test);
   ASSERT_TRUE(xA.isApprox(contact_toolkit_double_->get_contact_info().xA));
   ASSERT_TRUE(contact_toolkit_double_->get_contact_info().idxA == idxA);
   ASSERT_TRUE(contact_toolkit_double_->get_contact_info().num_contacts == 2);
 
-  contact_toolkit_autodiff_->set_contact_info(tmp_info);
+  contact_toolkit_autodiff_->set_contact_info(contact_info_test);
   ASSERT_TRUE(xA.isApprox(contact_toolkit_autodiff_->get_contact_info().xA));
   ASSERT_TRUE(contact_toolkit_autodiff_->get_contact_info().idxA == idxA);
   ASSERT_TRUE(contact_toolkit_autodiff_->get_contact_info().num_contacts == 2);

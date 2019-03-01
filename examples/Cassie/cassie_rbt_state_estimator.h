@@ -10,9 +10,13 @@
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 #include "examples/Cassie/datatypes/cassie_out_t.h"
+#include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib {
 namespace systems {
+
+using Eigen::VectorXd;
+using systems::OutputVector;
 
 /// Translates from a TimestamedVector of cassie torque commands into
 /// a cassie_user_in_t struct for transmission to the real robot.
@@ -21,6 +25,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   explicit CassieRbtStateEstimator(
       const RigidBodyTree<double>&);
  private:
+  VectorXd solveFourbarLinkage(VectorXd q_init) const;
+
   void Output(const drake::systems::Context<double>& context,
       OutputVector<double>* output) const;
 
@@ -28,6 +34,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;
   std::map<std::string, int> actuatorIndexMap_;
+
 };
 
 }  // namespace systems

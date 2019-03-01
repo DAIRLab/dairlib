@@ -1,5 +1,8 @@
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
 
+#include <chrono> // measuring runtime
+using namespace std::chrono; // measuring runtime
+
 namespace dairlib {
 namespace systems {
 
@@ -35,6 +38,11 @@ VectorXd CassieRbtStateEstimator::solveFourbarLinkage(VectorXd q_init) const {
   fixed_joints.push_back(positionIndexMap_.at("ankle_joint_right"));
 
   VectorXd q_sol = solvePositionConstraints(tree_, q_init, fixed_joints);
+
+  // The above way is too slow (takes ~11 ms)
+  // TODO(yuming): compute it analytically by graph
+
+
   return q_sol;
 }
 
@@ -123,9 +131,6 @@ void CassieRbtStateEstimator::Output(
       , 0.0);
 
 
-
-
-
   // cout << endl << "****bodies****" << endl;
   // for (int i = 0; i < tree_.get_num_bodies(); i++)
   //   cout << tree_.getBodyOrFrameName(i) << endl;
@@ -140,16 +145,22 @@ void CassieRbtStateEstimator::Output(
   // cout << tree_.get_velocity_name(i) << endl;
 
 
-
-
-  VectorXd q_temp = output->GetPositions();
-  cout<< q_temp.transpose() << endl;
+  VectorXd q_init = output->GetPositions();
+  cout<< "q_init= "<< q_init.transpose() << endl;
 
   // Step 1 - Solve for the unknown joint angle
+  high_resolution_clock::time_point t_1 = high_resolution_clock::now();
+
   VectorXd q_sol = solveFourbarLinkage(output->GetPositions());
   cout<< "q_sol = " << q_sol.transpose() << endl << endl;
 
+  high_resolution_clock::time_point t_2 = high_resolution_clock::now();
+  auto duration_solve = duration_cast<microseconds>( t_2 - t_1 ).count();
+  std::cout << "Solver took " << duration_solve / 1000.0 << " (ms).\n";
+
+
   // Step 2 - Estimate which foot/feet are in contact with the ground
+
 
 
   // Step 3 - State estimation

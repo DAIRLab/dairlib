@@ -1,4 +1,4 @@
 docker_builder:
-  build_script: docker build --tag DAIRLab/dairlib -f install/bionic/Dockerfile .
+  build_script: docker build --tag dairlib/master -f install/bionic/Dockerfile .
   login_script: docker login
-  push_script: docker push DAIRLab/dairlib
+  push_script: docker push dairlib/master

@@ -290,13 +290,20 @@ VectorXd PositionSolver::GetSolutionQ() {
   return program_result_.GetSolution(q_);
 }
 
-void PositionSolver::set_filename(string filename) { filename_ = filename; }
+void PositionSolver::set_filename(string filename) {
+  filename_ = filename;
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
+}
 
 void PositionSolver::set_major_tolerance(double major_tolerance) {
   major_tolerance_ = major_tolerance;
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
+                         major_tolerance_);
 }
 void PositionSolver::set_minor_tolerance(double minor_tolerance) {
   minor_tolerance_ = minor_tolerance;
+  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
+                         minor_tolerance_);
 }
 
 string PositionSolver::get_filename() { return filename_; }
@@ -438,13 +445,20 @@ VectorXd ContactSolver::GetSolutionQ() {
   return program_result_.GetSolution(q_);
 }
 
-void ContactSolver::set_filename(string filename) { filename_ = filename; }
+void ContactSolver::set_filename(string filename) {
+  filename_ = filename;
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
+}
 
 void ContactSolver::set_major_tolerance(double major_tolerance) {
   major_tolerance_ = major_tolerance;
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
+                         major_tolerance_);
 }
 void ContactSolver::set_minor_tolerance(double minor_tolerance) {
   minor_tolerance_ = minor_tolerance;
+  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
+                         minor_tolerance_);
 }
 
 string ContactSolver::get_filename() { return filename_; }
@@ -474,7 +488,6 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree)
   auto position_constraint = make_shared<PositionConstraint>(tree_);
   auto fixed_point_constraint =
       make_shared<FixedPointConstraint>(tree_, contact_info_);
-
 
   prog_->AddConstraint(position_constraint, q_);
   prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
@@ -525,7 +538,6 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
 
   prog_->AddConstraint(position_constraint, q_);
   prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
-
 
   AddProgramCost(q_desired, u_desired, Q, U);
 }
@@ -662,7 +674,6 @@ void FixedPointSolver::AddProgramCost(VectorXd q_desired, VectorXd u_desired,
   DRAKE_DEMAND(U.rows() == tree_.get_num_actuators() &&
                U.cols() == tree_.get_num_actuators());
 
-
   // The vectors and matrices must be stacked
   VectorXd qu_desired(tree_.get_num_positions() + tree_.get_num_actuators());
   qu_desired << q_desired, u_desired;
@@ -798,13 +809,20 @@ VectorXd FixedPointSolver::GetSolutionLambda() {
   return program_result_.GetSolution(lambda_);
 }
 
-void FixedPointSolver::set_filename(string filename) { filename_ = filename; }
+void FixedPointSolver::set_filename(string filename) {
+  filename_ = filename;
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
+}
 
 void FixedPointSolver::set_major_tolerance(double major_tolerance) {
   major_tolerance_ = major_tolerance;
+  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
+                         major_tolerance_);
 }
 void FixedPointSolver::set_minor_tolerance(double minor_tolerance) {
   minor_tolerance_ = minor_tolerance;
+  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
+                         minor_tolerance_);
 }
 
 string FixedPointSolver::get_filename() { return filename_; }

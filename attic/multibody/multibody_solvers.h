@@ -145,7 +145,7 @@ class PositionSolver {
    * @param q_desired The desired q value in the cost.
    * @param Q The Q matrix in the cost (size num_positions x num_positions).
    */
-  void AddProgramCost(Eigen::VectorXd q_desired, Eigen::MatrixXd Q);
+  void AddProgramCost(const Eigen::VectorXd q_desired, const Eigen::MatrixXd Q);
   /*
    * Function to fix the values of certain joints. The joints to be fixed are
    * passed as a map, together with the values. The indices are with respect to
@@ -255,8 +255,7 @@ class ContactSolver {
    * @param q_desired The desired q value in the cost.
    * @param Q The Q matrix in the cost (Size num_positions x num_positions).
    */
-  void AddProgramCost(Eigen::VectorXd q_desired,
-                      Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0));
+  void AddProgramCost(const Eigen::VectorXd q_desired, const Eigen::MatrixXd Q);
   /*
    * Function to fix the values of certain joints. The joints to be fixed are
    * passed as a map, together with the values. The indices are with respect to
@@ -410,9 +409,9 @@ class FixedPointSolver {
    * @param Q The Q matrix in the cost (size num_positions x num_positions).
    * @param U The U matrix in the cost (size num_actuators x num_actuators).
    */
-  void AddProgramCost(Eigen::VectorXd q_desired, Eigen::VectorXd u_desired,
-                      Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0),
-                      Eigen::MatrixXd U = Eigen::MatrixXd::Identity(0, 0));
+  void AddProgramCost(const Eigen::VectorXd q_desired,
+                      const Eigen::VectorXd u_desired, const Eigen::MatrixXd Q,
+                      const Eigen::MatrixXd U);
   /*
    * Function to add an L-2 norm cost on all the normal lambda values to ensure
    * uniform distribution of the normal forces.

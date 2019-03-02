@@ -125,7 +125,9 @@ class PositionSolver {
   // Disabling copy construction and assignment.
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PositionSolver)
 
-  PositionSolver(const RigidBodyTree<double>& tree, Eigen::VectorXd q_cost);
+  PositionSolver(const RigidBodyTree<double>& tree);
+  PositionSolver(const RigidBodyTree<double>& tree, Eigen::VectorXd q_desired,
+                 Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0));
 
   /*
    * Function to set the initial guess of q.
@@ -134,6 +136,17 @@ class PositionSolver {
    * @param q The initial guess for the generalized positions q
    */
   void SetInitialGuessQ(Eigen::VectorXd q);
+  /*
+   * Function to add the quadratic cost to the program.
+   * The cost that is added is of the form:
+   * Cost = (q - q_desired)'*Q*(q - q_desired);
+   * If the Q matrix is not provided, it defaults to the identity, causing the
+   * cost to be a simple dot product.
+   * @param q_desired The desired q value in the cost.
+   * @param Q The Q matrix in the cost (size num_positions x num_positions).
+   */
+  void AddProgramCost(Eigen::VectorXd q_desired,
+                      Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0));
   /*
    * Function to fix the values of certain joints. The joints to be fixed are
    * passed as a map, together with the values. The indices are with respect to
@@ -202,7 +215,6 @@ class PositionSolver {
 
  private:
   const RigidBodyTree<double>& tree_;
-  Eigen::VectorXd q_cost_;
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::MathematicalProgramResult program_result_;
@@ -222,8 +234,10 @@ class ContactSolver {
   // Disabling copy construction and assignment.
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ContactSolver)
 
+  ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
   ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info,
-                Eigen::VectorXd q_cost);
+                Eigen::VectorXd q_cost,
+                Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0));
 
   /*
    * Function to set the initial guess of q.
@@ -232,6 +246,17 @@ class ContactSolver {
    * @param q The initial guess for the generalized positions q
    */
   void SetInitialGuessQ(Eigen::VectorXd q);
+  /*
+   * Function to add the quadratic cost to the program.
+   * The cost that is added is of the form:
+   * Cost = (q - q_desired)'*Q*(q - q_desired);
+   * If the Q matrix is not provided, it defaults to the identity, causing the
+   * cost to be a simple dot product.
+   * @param q_desired The desired q value in the cost.
+   * @param Q The Q matrix in the cost (Size num_positions x num_positions).
+   */
+  void AddProgramCost(Eigen::VectorXd q_desired,
+                      Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0));
   /*
    * Function to fix the values of certain joints. The joints to be fixed are
    * passed as a map, together with the values. The indices are with respect to
@@ -301,7 +326,6 @@ class ContactSolver {
  private:
   const RigidBodyTree<double>& tree_;
   ContactInfo contact_info_;
-  Eigen::VectorXd q_cost_;
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::MathematicalProgramResult program_result_;
@@ -324,16 +348,22 @@ class FixedPointSolver {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(FixedPointSolver)
 
   /*
-   * Constructor for solving without contact constraints.
+   * Constructors for solving without contact constraints.
    */
-  FixedPointSolver(const RigidBodyTree<double>& tree, Eigen::VectorXd q_cost,
-                   Eigen::VectorXd u_cost);
+  FixedPointSolver(const RigidBodyTree<double>& tree);
+  FixedPointSolver(const RigidBodyTree<double>& tree, Eigen::VectorXd q_desired,
+                   Eigen::VectorXd u_desired,
+                   Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0),
+                   Eigen::MatrixXd U = Eigen::MatrixXd::Identity(0, 0));
   /*
    * Constructor for solving with contact constraints. The ContactInfo object
    * stores point-ground plane contact information.
    */
+  FixedPointSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
   FixedPointSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info,
-                   Eigen::VectorXd q_cost, Eigen::VectorXd u_cost);
+                   Eigen::VectorXd q_desired, Eigen::VectorXd u_desired,
+                   Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0),
+                   Eigen::MatrixXd U = Eigen::MatrixXd::Identity(0, 0));
 
   /*
    * Function to set the initial guess of q.
@@ -364,6 +394,21 @@ class FixedPointSolver {
    */
   void SetInitialGuess(Eigen::VectorXd q, Eigen::VectorXd u,
                        Eigen::VectorXd lambda);
+  /*
+   * Function to add the quadratic cost to the program.
+   * The cost that is added is of the form:
+   * Cost = (q - q_desired)'*Q*(q - q_desired) +
+   * (u - u_desired)'*U*(u - u_desired)
+   * If the Q and U matrix is not provided, it defaults to the identity, causing
+   * the cost to be a simple dot product.
+   * @param q_desired The desired q value in the cost.
+   * @param u_desired The desired u value in the cost.
+   * @param Q The Q matrix in the cost (size num_positions x num_positions).
+   * @param U The U matrix in the cost (size num_actuators x num_actuators).
+   */
+  void AddProgramCost(Eigen::VectorXd q_desired, Eigen::VectorXd u_desired,
+                      Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0),
+                      Eigen::MatrixXd U = Eigen::MatrixXd::Identity(0, 0));
   /*
    * Function to add an L-2 norm cost on all the normal lambda values to ensure
    * uniform distribution of the normal forces.
@@ -465,8 +510,6 @@ class FixedPointSolver {
  private:
   const RigidBodyTree<double>& tree_;
   ContactInfo contact_info_;
-  Eigen::VectorXd q_cost_;
-  Eigen::VectorXd u_cost_;
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::VectorXDecisionVariable u_;

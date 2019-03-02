@@ -218,20 +218,34 @@ TEST_F(MultibodySolversTest, TestFixedPointConstraintInitialization) {
 
 TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
   // Testing basic getters and setters
-  // Fixed base
-  PositionSolver position_solver_fixed(tree_fixed_, q_fixed_);
-  position_solver_fixed.set_filename("position_log");
-  position_solver_fixed.set_major_tolerance(0.001);
-  position_solver_fixed.set_minor_tolerance(0.01);
+  // Fixed base (Constructor 1)
+  PositionSolver position_solver_fixed1(tree_fixed_);
+  position_solver_fixed1.set_filename("position_log");
+  position_solver_fixed1.set_major_tolerance(0.001);
+  position_solver_fixed1.set_minor_tolerance(0.01);
 
-  shared_ptr<MathematicalProgram> prog_position_fixed =
-      position_solver_fixed.get_program();
+  shared_ptr<MathematicalProgram> prog_position_fixed1 =
+      position_solver_fixed1.get_program();
 
-  ASSERT_EQ(position_solver_fixed.get_filename(), "position_log");
-  ASSERT_EQ(position_solver_fixed.get_major_tolerance(), 0.001);
-  ASSERT_EQ(position_solver_fixed.get_minor_tolerance(), 0.01);
+  ASSERT_EQ(position_solver_fixed1.get_filename(), "position_log");
+  ASSERT_EQ(position_solver_fixed1.get_major_tolerance(), 0.001);
+  ASSERT_EQ(position_solver_fixed1.get_minor_tolerance(), 0.01);
 
-  // Floating base
+  // Fixed base (Constructor 2)
+  MatrixXd Q = MatrixXd::Identity(num_positions_fixed_, num_positions_fixed_);
+  PositionSolver position_solver_fixed2(tree_fixed_, q_fixed_, Q);
+  position_solver_fixed2.set_filename("position_log");
+  position_solver_fixed2.set_major_tolerance(0.001);
+  position_solver_fixed2.set_minor_tolerance(0.01);
+
+  shared_ptr<MathematicalProgram> prog_position_fixed2 =
+      position_solver_fixed1.get_program();
+
+  ASSERT_EQ(position_solver_fixed2.get_filename(), "position_log");
+  ASSERT_EQ(position_solver_fixed2.get_major_tolerance(), 0.001);
+  ASSERT_EQ(position_solver_fixed2.get_minor_tolerance(), 0.01);
+
+  // Floating base (Constructor 2 without Q)
   PositionSolver position_solver_floating(tree_floating_, q_floating_);
   position_solver_floating.set_filename("position_log");
   position_solver_floating.set_major_tolerance(0.001);
@@ -248,49 +262,134 @@ TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
 TEST_F(MultibodySolversTest, TestContactSolverBasic) {
   // Testing basic getters and setters
   // Only the floating base model is used for contact
-  ContactSolver contact_solver(tree_floating_, contact_info_, q_floating_);
-  contact_solver.set_filename("contact_log");
-  contact_solver.set_major_tolerance(0.002);
-  contact_solver.set_minor_tolerance(0.02);
+  // Constructor 1
+  ContactSolver contact_solver1(tree_floating_, contact_info_);
+  contact_solver1.set_filename("contact_log");
+  contact_solver1.set_major_tolerance(0.002);
+  contact_solver1.set_minor_tolerance(0.02);
 
-  ASSERT_EQ(contact_solver.get_filename(), "contact_log");
-  ASSERT_EQ(contact_solver.get_major_tolerance(), 0.002);
-  ASSERT_EQ(contact_solver.get_minor_tolerance(), 0.02);
+  ASSERT_EQ(contact_solver1.get_filename(), "contact_log");
+  ASSERT_EQ(contact_solver1.get_major_tolerance(), 0.002);
+  ASSERT_EQ(contact_solver1.get_minor_tolerance(), 0.02);
 
   // Testing mathematical program getter
-  shared_ptr<MathematicalProgram> prog_contact = contact_solver.get_program();
+  shared_ptr<MathematicalProgram> prog_contact1 = contact_solver1.get_program();
+
+  // Constructor 2
+  MatrixXd Q =
+      MatrixXd::Identity(num_positions_floating_, num_positions_floating_);
+  ContactSolver contact_solver2(tree_floating_, contact_info_, q_floating_, Q);
+  contact_solver2.set_filename("contact_log");
+  contact_solver2.set_major_tolerance(0.002);
+  contact_solver2.set_minor_tolerance(0.02);
+
+  ASSERT_EQ(contact_solver2.get_filename(), "contact_log");
+  ASSERT_EQ(contact_solver2.get_major_tolerance(), 0.002);
+  ASSERT_EQ(contact_solver2.get_minor_tolerance(), 0.02);
+
+  // Testing mathematical program getter
+  shared_ptr<MathematicalProgram> prog_contact2 = contact_solver2.get_program();
+
+  // Constructor 2 without Q
+  ContactSolver contact_solver3(tree_floating_, contact_info_, q_floating_);
+  contact_solver3.set_filename("contact_log");
+  contact_solver3.set_major_tolerance(0.002);
+  contact_solver3.set_minor_tolerance(0.02);
+
+  ASSERT_EQ(contact_solver3.get_filename(), "contact_log");
+  ASSERT_EQ(contact_solver3.get_major_tolerance(), 0.002);
+  ASSERT_EQ(contact_solver3.get_minor_tolerance(), 0.02);
+
+  // Testing mathematical program getter
+  shared_ptr<MathematicalProgram> prog_contact3 = contact_solver3.get_program();
 }
 
 TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   // Testing basic getters and setters
   // Fixed base
-  FixedPointSolver fp_solver_fixed(tree_fixed_, q_fixed_, u_fixed_);
-  fp_solver_fixed.set_filename("fp_log");
-  fp_solver_fixed.set_major_tolerance(0.003);
-  fp_solver_fixed.set_minor_tolerance(0.03);
+  // Constructor 1
+  FixedPointSolver fp_solver_fixed1(tree_fixed_);
+  fp_solver_fixed1.set_filename("fp_log");
+  fp_solver_fixed1.set_major_tolerance(0.003);
+  fp_solver_fixed1.set_minor_tolerance(0.03);
 
-  shared_ptr<MathematicalProgram> prog_fp_fixed = fp_solver_fixed.get_program();
+  shared_ptr<MathematicalProgram> prog_fp_fixed1 =
+      fp_solver_fixed1.get_program();
 
-  ASSERT_EQ(fp_solver_fixed.get_filename(), "fp_log");
-  ASSERT_EQ(fp_solver_fixed.get_major_tolerance(), 0.003);
-  ASSERT_EQ(fp_solver_fixed.get_minor_tolerance(), 0.03);
+  ASSERT_EQ(fp_solver_fixed1.get_filename(), "fp_log");
+  ASSERT_EQ(fp_solver_fixed1.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_fixed1.get_minor_tolerance(), 0.03);
+
+  // Constructor 2
+  MatrixXd Q = MatrixXd::Identity(num_positions_fixed_, num_positions_fixed_);
+  MatrixXd U = MatrixXd::Identity(num_efforts_fixed_, num_efforts_fixed_);
+  FixedPointSolver fp_solver_fixed2(tree_fixed_, q_fixed_, u_fixed_, Q, U);
+  fp_solver_fixed2.set_filename("fp_log");
+  fp_solver_fixed2.set_major_tolerance(0.003);
+  fp_solver_fixed2.set_minor_tolerance(0.03);
+
+  shared_ptr<MathematicalProgram> prog_fp_fixed2 =
+      fp_solver_fixed2.get_program();
+
+  ASSERT_EQ(fp_solver_fixed2.get_filename(), "fp_log");
+  ASSERT_EQ(fp_solver_fixed2.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_fixed2.get_minor_tolerance(), 0.03);
+
+  // Constructor 2 (Without providing Q and U)
+  FixedPointSolver fp_solver_fixed3(tree_fixed_, q_fixed_, u_fixed_);
+  fp_solver_fixed3.set_filename("fp_log");
+  fp_solver_fixed3.set_major_tolerance(0.003);
+  fp_solver_fixed3.set_minor_tolerance(0.03);
+
+  shared_ptr<MathematicalProgram> prog_fp_fixed3 =
+      fp_solver_fixed3.get_program();
 
   // Floating base
-  FixedPointSolver fp_solver_floating(tree_floating_, contact_info_,
-                                      q_floating_, u_floating_);
-  fp_solver_floating.set_filename("fp_log");
-  fp_solver_floating.set_major_tolerance(0.003);
-  fp_solver_floating.set_minor_tolerance(0.03);
+  // Constructor 3
+  FixedPointSolver fp_solver_floating1(tree_floating_, contact_info_);
+  fp_solver_floating1.set_filename("fp_log");
+  fp_solver_floating1.set_major_tolerance(0.003);
+  fp_solver_floating1.set_minor_tolerance(0.03);
 
-  shared_ptr<MathematicalProgram> prog_fp_floating =
-      fp_solver_floating.get_program();
+  shared_ptr<MathematicalProgram> prog_fp_floating1 =
+      fp_solver_floating1.get_program();
 
-  ASSERT_EQ(fp_solver_floating.get_filename(), "fp_log");
-  ASSERT_EQ(fp_solver_floating.get_major_tolerance(), 0.003);
-  ASSERT_EQ(fp_solver_floating.get_minor_tolerance(), 0.03);
+  ASSERT_EQ(fp_solver_floating1.get_filename(), "fp_log");
+  ASSERT_EQ(fp_solver_floating1.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_floating1.get_minor_tolerance(), 0.03);
+
+  // Constructor 4
+  Q = MatrixXd::Identity(num_positions_floating_, num_positions_floating_);
+  U = MatrixXd::Identity(num_efforts_floating_, num_efforts_floating_);
+  FixedPointSolver fp_solver_floating2(tree_floating_, contact_info_,
+                                       q_floating_, u_floating_, Q, U);
+  fp_solver_floating2.set_filename("fp_log");
+  fp_solver_floating2.set_major_tolerance(0.003);
+  fp_solver_floating2.set_minor_tolerance(0.03);
+
+  shared_ptr<MathematicalProgram> prog_fp_floating2 =
+      fp_solver_floating2.get_program();
+
+  ASSERT_EQ(fp_solver_floating2.get_filename(), "fp_log");
+  ASSERT_EQ(fp_solver_floating2.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_floating2.get_minor_tolerance(), 0.03);
+
+  // Constructor 4 (Without providing Q and U)
+  FixedPointSolver fp_solver_floating3(tree_floating_, contact_info_,
+                                       q_floating_, u_floating_);
+  fp_solver_floating3.set_filename("fp_log");
+  fp_solver_floating3.set_major_tolerance(0.003);
+  fp_solver_floating3.set_minor_tolerance(0.03);
+
+  shared_ptr<MathematicalProgram> prog_fp_floating3 =
+      fp_solver_floating3.get_program();
+
+  ASSERT_EQ(fp_solver_floating3.get_filename(), "fp_log");
+  ASSERT_EQ(fp_solver_floating3.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_floating3.get_minor_tolerance(), 0.03);
 }
 
-TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
+ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
   // Fixed base
   PositionSolver position_solver_fixed(tree_fixed_, q_fixed_);
   position_solver_fixed.SetInitialGuessQ(q_fixed_);
@@ -329,7 +428,7 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
   ASSERT_TRUE(position_solver_floating.CheckConstraint(q_sol_floating));
 }
 
-TEST_F(MultibodySolversTest, TestContactSolverSolution) {
+ TEST_F(MultibodySolversTest, TestContactSolverSolution) {
   ContactSolver contact_solver(tree_floating_, contact_info_, q_floating_);
   contact_solver.SetInitialGuessQ(q_floating_);
   contact_solver.AddJointLimitConstraint(0.001);
@@ -347,7 +446,7 @@ TEST_F(MultibodySolversTest, TestContactSolverSolution) {
   ASSERT_TRUE(contact_solver.CheckConstraint(q_sol_floating));
 }
 
-TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
+ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   // Fixed base
   FixedPointSolver fp_solver_fixed(tree_fixed_, q_fixed_, u_fixed_);
   fp_solver_fixed.SetInitialGuess(q_fixed_, u_fixed_, lambda_fixed_);
@@ -395,7 +494,8 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   ASSERT_EQ(u_sol_floating.size(), num_efforts_floating_);
   ASSERT_EQ(lambda_sol_floating.size(), num_forces_);
   // Solution constraints check
-  ASSERT_TRUE(fp_solver_floating.CheckConstraint(q_sol_floating, u_sol_floating,
+  ASSERT_TRUE(fp_solver_floating.CheckConstraint(q_sol_floating,
+  u_sol_floating,
                                                  lambda_sol_floating));
 }
 

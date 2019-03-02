@@ -89,27 +89,4 @@ systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
     drake::systems::RigidBodyPlant<double> * plant,
     SubvectorPassThrough<double> * passthrough);
 
-/// Solves the position constraints for a position that satisfies them
-Eigen::VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
-                                         Eigen::VectorXd q_init,
-                                         std::vector<int> fixed_joints);
-
-class TreePositionConstraint : public drake::solvers::Constraint {
- public:
-  TreePositionConstraint(const RigidBodyTree<double>& tree,
-                         const std::string& description = "");
-  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd* y) const override;
-
-  void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-              drake::AutoDiffVecXd* y) const override;
-
-  void DoEval(
-      const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& x,
-      drake::VectorX<drake::symbolic::Expression>* y) const override;
-
- private:
-  const RigidBodyTree<double>* tree_;
-};
-
-}  // namespace dairlib
+} // namespace dairlib

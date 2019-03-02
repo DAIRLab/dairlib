@@ -111,6 +111,7 @@ cc_binary(
         "//systems/sensors:sim_cassie_sensor_aggregator",
         ":cassie_urdf",
         ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//attic/manipulation/util:sim_diagram_builder",

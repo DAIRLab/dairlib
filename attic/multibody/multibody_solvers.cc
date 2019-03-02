@@ -195,35 +195,23 @@ PositionSolver::PositionSolver(const RigidBodyTree<double>& tree)
 }
 
 PositionSolver::PositionSolver(const RigidBodyTree<double>& tree,
-                               VectorXd q_desired, MatrixXd Q)
-    : tree_(tree), prog_(make_shared<MathematicalProgram>()) {
-  // Checking the validity of q_desired
-  DRAKE_DEMAND(q_desired.size() == tree_.get_num_positions());
+                               const VectorXd q_desired, const MatrixXd Q)
+    : PositionSolver(tree) {
+  // Checking the validity of q_desired and Q
+  DRAKE_DEMAND(q_desired.size() == tree.get_num_positions());
 
-  // If the user does not provide Q, default it to identity
-  if (Q.rows() == 0 && Q.cols() == 0) {
-    Q = MatrixXd::Identity(tree_.get_num_positions(),
-                           tree_.get_num_positions());
-  }
+  DRAKE_DEMAND(Q.rows() == tree.get_num_positions() &&
+               Q.cols() == tree.get_num_positions());
 
-  DRAKE_DEMAND(Q.rows() == tree_.get_num_positions() &&
-               Q.cols() == tree_.get_num_positions());
-
-  // Initializing the variable
-  q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
-
-  // Solver setup
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
-                         major_tolerance_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
-                         minor_tolerance_);
-
-  auto position_constraint = make_shared<PositionConstraint>(tree_);
-
-  prog_->AddConstraint(position_constraint, q_);
+  // Adding the program cost
   AddProgramCost(q_desired, Q);
 }
+
+// Constructor for when Q is not provided
+PositionSolver::PositionSolver(const RigidBodyTree<double>& tree,
+                               const VectorXd q_desired)
+    : PositionSolver(tree, q_desired,
+                     MatrixXd::Identity(q_desired.rows(), q_desired.rows())) {}
 
 void PositionSolver::SetInitialGuessQ(VectorXd q) {
   prog_->SetInitialGuess(q_, q);
@@ -232,11 +220,6 @@ void PositionSolver::SetInitialGuessQ(VectorXd q) {
 void PositionSolver::AddProgramCost(VectorXd q_desired, MatrixXd Q) {
   // Checking the validity of the arguments
   DRAKE_DEMAND(q_desired.size() == tree_.get_num_positions());
-
-  if (Q.rows() == 0 && Q.cols() == 0) {
-    Q = MatrixXd::Identity(tree_.get_num_positions(),
-                           tree_.get_num_positions());
-  }
 
   DRAKE_DEMAND(Q.rows() == tree_.get_num_positions() &&
                Q.cols() == tree_.get_num_positions());
@@ -336,42 +319,24 @@ ContactSolver::ContactSolver(const RigidBodyTree<double>& tree,
 }
 
 ContactSolver::ContactSolver(const RigidBodyTree<double>& tree,
-                             ContactInfo contact_info, VectorXd q_desired,
-                             MatrixXd Q)
-    : tree_(tree),
-      contact_info_(contact_info),
-      prog_(make_shared<MathematicalProgram>()) {
-  // Checking the validity of q_desired
-  DRAKE_DEMAND(q_desired.size() == tree_.get_num_positions());
+                             ContactInfo contact_info, const VectorXd q_desired,
+                             const MatrixXd Q)
+    : ContactSolver(tree, contact_info) {
+  // Checking the validity of q_desired and Q
+  DRAKE_DEMAND(q_desired.size() == tree.get_num_positions());
 
-  // If the user does not provide Q, default it to identity
-  if (Q.rows() == 0 && Q.cols() == 0) {
-    Q = MatrixXd::Identity(tree_.get_num_positions(),
-                           tree_.get_num_positions());
-  }
+  DRAKE_DEMAND(Q.rows() == tree.get_num_positions() &&
+               Q.cols() == tree.get_num_positions());
 
-  DRAKE_DEMAND(Q.rows() == tree_.get_num_positions() &&
-               Q.cols() == tree_.get_num_positions());
-
-  // Initializing the variable
-  q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
-
-  // Solver setup
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
-                         major_tolerance_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
-                         minor_tolerance_);
-
-  auto position_constraint = make_shared<PositionConstraint>(tree_);
-  auto contact_constraint =
-      make_shared<ContactConstraint>(tree_, contact_info_);
-
-  prog_->AddConstraint(position_constraint, q_);
-  prog_->AddConstraint(contact_constraint, q_);
-
+  // Adding the program cost
   AddProgramCost(q_desired, Q);
 }
+
+// Constructor for when Q is not provided
+ContactSolver::ContactSolver(const RigidBodyTree<double>& tree,
+                             ContactInfo contact_info, const VectorXd q_desired)
+    : ContactSolver(tree, contact_info, q_desired,
+                    MatrixXd::Identity(q_desired.rows(), q_desired.rows())) {}
 
 void ContactSolver::SetInitialGuessQ(VectorXd q) {
   prog_->SetInitialGuess(q_, q);
@@ -380,11 +345,6 @@ void ContactSolver::SetInitialGuessQ(VectorXd q) {
 void ContactSolver::AddProgramCost(VectorXd q_desired, MatrixXd Q) {
   // Checking the validity of the arguments
   DRAKE_DEMAND(q_desired.size() == tree_.get_num_positions());
-
-  if (Q.rows() == 0 && Q.cols() == 0) {
-    Q = MatrixXd::Identity(tree_.get_num_positions(),
-                           tree_.get_num_positions());
-  }
 
   DRAKE_DEMAND(Q.rows() == tree_.get_num_positions() &&
                Q.cols() == tree_.get_num_positions());
@@ -494,52 +454,30 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree)
 }
 
 FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
-                                   VectorXd q_desired, VectorXd u_desired,
-                                   MatrixXd Q, MatrixXd U)
-    : tree_(tree),
-      contact_info_(ContactInfo()),
-      prog_(make_shared<MathematicalProgram>()) {
+                                   const VectorXd q_desired,
+                                   const VectorXd u_desired, const MatrixXd Q,
+                                   const MatrixXd U)
+    : FixedPointSolver(tree) {
   // Checking the validity of the arguments
   DRAKE_DEMAND(q_desired.size() == tree_.get_num_positions());
   DRAKE_DEMAND(u_desired.size() == tree_.get_num_actuators());
-
-  if (Q.rows() == 0 && Q.cols() == 0) {
-    Q = MatrixXd::Identity(tree_.get_num_positions(),
-                           tree_.get_num_positions());
-  }
-
-  if (U.rows() == 0 && U.cols() == 0) {
-    U = MatrixXd::Identity(tree_.get_num_actuators(),
-                           tree_.get_num_actuators());
-  }
 
   DRAKE_DEMAND(Q.rows() == tree_.get_num_positions() &&
                Q.cols() == tree_.get_num_positions());
   DRAKE_DEMAND(U.rows() == tree_.get_num_actuators() &&
                U.cols() == tree_.get_num_actuators());
 
-  // Initializing the variable
-  q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
-  u_ = prog_->NewContinuousVariables(tree_.get_num_actuators(), "u");
-  // Without contacts, lambda only contains the position constraint forces.
-  lambda_ = prog_->NewContinuousVariables(tree_.getNumPositionConstraints(),
-                                          "lambda");
-
-  // Solver setup
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
-                         major_tolerance_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
-                         minor_tolerance_);
-
-  auto position_constraint = make_shared<PositionConstraint>(tree_);
-  auto fixed_point_constraint =
-      make_shared<FixedPointConstraint>(tree_, contact_info_);
-
-  prog_->AddConstraint(position_constraint, q_);
-  prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
-
+  // Adding the program cost
   AddProgramCost(q_desired, u_desired, Q, U);
+}
+
+// Constructor for when Q and U are not provided
+FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
+                                   const VectorXd q_desired,
+                                   const VectorXd u_desired)
+    : FixedPointSolver(tree, q_desired, u_desired,
+                       MatrixXd::Identity(q_desired.rows(), q_desired.rows()),
+                       MatrixXd::Identity(u_desired.rows(), u_desired.rows())) {
 }
 
 FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
@@ -578,60 +516,32 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
 }
 
 FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
-                                   ContactInfo contact_info, VectorXd q_desired,
-                                   VectorXd u_desired, MatrixXd Q, MatrixXd U)
-    : tree_(tree),
-      contact_info_(contact_info),
-      prog_(make_shared<MathematicalProgram>()) {
+                                   ContactInfo contact_info,
+                                   const VectorXd q_desired,
+                                   const VectorXd u_desired, const MatrixXd Q,
+                                   const MatrixXd U)
+    : FixedPointSolver(tree, contact_info) {
   // Checking the validity of the arguments
   DRAKE_DEMAND(q_desired.size() == tree_.get_num_positions());
   DRAKE_DEMAND(u_desired.size() == tree_.get_num_actuators());
-
-  if (Q.rows() == 0 && Q.cols() == 0) {
-    Q = MatrixXd::Identity(tree_.get_num_positions(),
-                           tree_.get_num_positions());
-  }
-
-  if (U.rows() == 0 && U.cols() == 0) {
-    U = MatrixXd::Identity(tree_.get_num_actuators(),
-                           tree_.get_num_actuators());
-  }
 
   DRAKE_DEMAND(Q.rows() == tree_.get_num_positions() &&
                Q.cols() == tree_.get_num_positions());
   DRAKE_DEMAND(U.rows() == tree_.get_num_actuators() &&
                U.cols() == tree_.get_num_actuators());
 
-  // Initializing the variable
-  q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
-  u_ = prog_->NewContinuousVariables(tree_.get_num_actuators(), "u");
-  // With contact, lambda contains the position constraint as well as the
-  // contact forces (A normal and two tangential forces at each contact
-  // point).
-  lambda_ = prog_->NewContinuousVariables(
-      tree_.getNumPositionConstraints() + contact_info.num_contacts * 3,
-      "lambda");
-
-  // Solver setup
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
-                         major_tolerance_);
-  prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
-                         minor_tolerance_);
-
-  auto position_constraint = make_shared<PositionConstraint>(tree_);
-  auto contact_constraint =
-      make_shared<ContactConstraint>(tree_, contact_info_);
-  auto fixed_point_constraint =
-      make_shared<FixedPointConstraint>(tree_, contact_info_);
-
-  prog_->AddConstraint(position_constraint, q_);
-  prog_->AddConstraint(fixed_point_constraint, {q_, u_, lambda_});
-
-  // Add contact constraints as there is contact in this case
-  prog_->AddConstraint(contact_constraint, q_);
-
+  // Adding the program cost
   AddProgramCost(q_desired, u_desired, Q, U);
+}
+
+// Constructor for when Q and U are not provided
+FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
+                                   ContactInfo contact_info,
+                                   const VectorXd q_desired,
+                                   const VectorXd u_desired)
+    : FixedPointSolver(tree, contact_info, q_desired, u_desired,
+                       MatrixXd::Identity(q_desired.rows(), q_desired.rows()),
+                       MatrixXd::Identity(u_desired.rows(), u_desired.rows())) {
 }
 
 void FixedPointSolver::SetInitialGuessQ(VectorXd q) {
@@ -658,16 +568,6 @@ void FixedPointSolver::AddProgramCost(VectorXd q_desired, VectorXd u_desired,
   // Checking the validity of the arguments
   DRAKE_DEMAND(q_desired.size() == tree_.get_num_positions());
   DRAKE_DEMAND(u_desired.size() == tree_.get_num_actuators());
-
-  if (Q.rows() == 0 && Q.cols() == 0) {
-    Q = MatrixXd::Identity(tree_.get_num_positions(),
-                           tree_.get_num_positions());
-  }
-
-  if (U.rows() == 0 && U.cols() == 0) {
-    U = MatrixXd::Identity(tree_.get_num_actuators(),
-                           tree_.get_num_actuators());
-  }
 
   DRAKE_DEMAND(Q.rows() == tree_.get_num_positions() &&
                Q.cols() == tree_.get_num_positions());

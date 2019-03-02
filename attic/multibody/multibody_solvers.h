@@ -126,8 +126,10 @@ class PositionSolver {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PositionSolver)
 
   PositionSolver(const RigidBodyTree<double>& tree);
-  PositionSolver(const RigidBodyTree<double>& tree, Eigen::VectorXd q_desired,
-                 Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0));
+  PositionSolver(const RigidBodyTree<double>& tree,
+                 const Eigen::VectorXd q_desired);
+  PositionSolver(const RigidBodyTree<double>& tree,
+                 const Eigen::VectorXd q_desired, const Eigen::MatrixXd Q);
 
   /*
    * Function to set the initial guess of q.
@@ -140,13 +142,10 @@ class PositionSolver {
    * Function to add the quadratic cost to the program.
    * The cost that is added is of the form:
    * Cost = (q - q_desired)'*Q*(q - q_desired);
-   * If the Q matrix is not provided, it defaults to the identity, causing the
-   * cost to be a simple dot product.
    * @param q_desired The desired q value in the cost.
    * @param Q The Q matrix in the cost (size num_positions x num_positions).
    */
-  void AddProgramCost(Eigen::VectorXd q_desired,
-                      Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0));
+  void AddProgramCost(Eigen::VectorXd q_desired, Eigen::MatrixXd Q);
   /*
    * Function to fix the values of certain joints. The joints to be fixed are
    * passed as a map, together with the values. The indices are with respect to
@@ -236,8 +235,9 @@ class ContactSolver {
 
   ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
   ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info,
-                Eigen::VectorXd q_cost,
-                Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0));
+                const Eigen::VectorXd q_cost);
+  ContactSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info,
+                const Eigen::VectorXd q_cost, const Eigen::MatrixXd Q);
 
   /*
    * Function to set the initial guess of q.
@@ -351,19 +351,23 @@ class FixedPointSolver {
    * Constructors for solving without contact constraints.
    */
   FixedPointSolver(const RigidBodyTree<double>& tree);
-  FixedPointSolver(const RigidBodyTree<double>& tree, Eigen::VectorXd q_desired,
-                   Eigen::VectorXd u_desired,
-                   Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0),
-                   Eigen::MatrixXd U = Eigen::MatrixXd::Identity(0, 0));
+  FixedPointSolver(const RigidBodyTree<double>& tree,
+                   const Eigen::VectorXd q_desired,
+                   const Eigen::VectorXd u_desired);
+  FixedPointSolver(const RigidBodyTree<double>& tree,
+                   const Eigen::VectorXd q_desired,
+                   const Eigen::VectorXd u_desired, const Eigen::MatrixXd Q,
+                   const Eigen::MatrixXd U);
   /*
    * Constructor for solving with contact constraints. The ContactInfo object
    * stores point-ground plane contact information.
    */
   FixedPointSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info);
   FixedPointSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info,
-                   Eigen::VectorXd q_desired, Eigen::VectorXd u_desired,
-                   Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(0, 0),
-                   Eigen::MatrixXd U = Eigen::MatrixXd::Identity(0, 0));
+                   Eigen::VectorXd q_desired, const Eigen::VectorXd u_desired);
+  FixedPointSolver(const RigidBodyTree<double>& tree, ContactInfo contact_info,
+                   Eigen::VectorXd q_desired, const Eigen::VectorXd u_desired,
+                   const Eigen::MatrixXd Q, const Eigen::MatrixXd U);
 
   /*
    * Function to set the initial guess of q.

@@ -32,7 +32,6 @@ cc_library(
     ],
 )
 
-
 cc_test(
     name = "contact_toolkit_test",
     srcs = [
@@ -41,6 +40,37 @@ cc_test(
     deps = [
         "//examples/Cassie:cassie_utils",
         ":contact_toolkit",
+        ":utils",
+        "@gtest//:main",
+    ],
+    size = "small",
+)
+
+cc_library(
+    name = "multibody_solvers",
+    srcs = [
+        "multibody_solvers.cc",
+    ],
+    hdrs = [
+        "multibody_solvers.h",
+    ],
+    deps = [
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//solvers:mathematical_program",
+        "@drake//solvers:solve",
+        ":contact_toolkit",
+        ":utils",
+    ],
+)
+
+cc_test(
+    name = "multibody_solvers_test",
+    srcs = [
+        "test/multibody_solvers_test.cc",
+    ],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        ":multibody_solvers",
         ":utils",
         "@gtest//:main",
     ],

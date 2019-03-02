@@ -2,26 +2,26 @@
 #include <string>
 
 #include <gflags/gflags.h>
-#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/manipulation/util/sim_diagram_builder.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/lcm/drake_lcm.h"
+#include "drake/manipulation/util/sim_diagram_builder.h"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
-// #include "drake/multibody/rigid_body_plant/drake_visualizer.h"
+#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/multibody/rigid_body_tree.h"
+#include "drake/systems/analysis/runge_kutta2_integrator.h"
+#include "drake/systems/analysis/runge_kutta3_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/analysis/runge_kutta2_integrator.h"
-#include "drake/systems/analysis/runge_kutta3_integrator.h"
 
-#include "systems/robot_lcm_systems.h"
-#include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "attic/multibody/multibody_solvers.h"
 #include "systems/primitives/subvector_pass_through.h"
+#include "systems/robot_lcm_systems.h"
 
 #include "examples/Cassie/cassie_utils.h"
 
@@ -32,6 +32,8 @@
 namespace dairlib {
 
 using dairlib::systems::SubvectorPassThrough;
+using dairlib::multibody::PositionSolver;
+using drake::solvers::MathematicalProgramResult;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 
@@ -45,9 +47,11 @@ DEFINE_double(v_tol, 0.01,
 DEFINE_double(dissipation, 2, "The contact model's dissipation (s/m)");
 DEFINE_double(contact_radius, 2e-4,
               "The characteristic scale of contact patch (m)");
-DEFINE_string(simulation_type, "compliant", "The type of simulation to use: "
+DEFINE_string(simulation_type, "compliant",
+              "The type of simulation to use: "
               "'compliant' or 'timestepping'");
-DEFINE_double(dt, 1e-3, "The step size to use for "
+DEFINE_double(dt, 1e-3,
+              "The step size to use for "
               "'simulation_type=timestepping' (ignored for "
               "'simulation_type=compliant'");
 
@@ -67,15 +71,13 @@ int do_main(int argc, char* argv[]) {
     tree = makeCassieTreePointer();
 
   // Add imu frame to Cassie's pelvis
-  if (FLAGS_is_imu_sim)
-    addImuFrameToCassiePelvis(tree);
+  if (FLAGS_is_imu_sim) addImuFrameToCassiePelvis(tree);
 
   drake::systems::DiagramBuilder<double> builder;
 
-  if (FLAGS_simulation_type != "timestepping")
-    FLAGS_dt = 0.0;
-  auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>
-               (std::move(tree), FLAGS_dt);
+  if (FLAGS_simulation_type != "timestepping") FLAGS_dt = 0.0;
+  auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(
+      std::move(tree), FLAGS_dt);
 
   // Note: this sets identical contact parameters across all object pairs:
   drake::systems::CompliantMaterial default_material;
@@ -89,29 +91,27 @@ int do_main(int argc, char* argv[]) {
   plant->set_contact_model_parameters(model_parameters);
 
   // Create input receiver
-  auto input_sub = builder.AddSystem(
-                     LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-                       "CASSIE_INPUT", &lcm));
+  auto input_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
+          "CASSIE_INPUT", &lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(
-                          plant->get_rigid_body_tree());
+      plant->get_rigid_body_tree());
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-                       input_receiver->get_output_port(0).size(),
-                       0,
-                       plant->get_input_port(0).size());
-      // To get rid of the timestamp which is at the tail of a timestapedVector
+      input_receiver->get_output_port(0).size(), 0,
+      plant->get_input_port(0).size());
+  // To get rid of the timestamp which is at the tail of a timestapedVector
   builder.Connect(input_sub->get_output_port(),
                   input_receiver->get_input_port(0));
   builder.Connect(input_receiver->get_output_port(0),
                   passthrough->get_input_port());
-  builder.Connect(passthrough->get_output_port(),
-                  plant->get_input_port(0));
+  builder.Connect(passthrough->get_output_port(), plant->get_input_port(0));
 
   // Create state publisher
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
-                        plant->get_rigid_body_tree());
-  auto state_pub = builder.AddSystem(
-                     LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-                       "CASSIE_STATE", &lcm, 1.0 / 200.0));
+      plant->get_rigid_body_tree());
+  auto state_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+          "CASSIE_STATE", &lcm, 1.0 / 200.0));
   builder.Connect(plant->state_output_port(),
                   state_sender->get_input_port_state());
   builder.Connect(state_sender->get_output_port(0),
@@ -119,11 +119,11 @@ int do_main(int argc, char* argv[]) {
 
   // Create cassie output (containing simulated sensor) publisher
   if (FLAGS_is_imu_sim) {
-    auto cassie_sensor_aggregator = addImuAndAggregatorToSimulation(
-                                 builder, plant, passthrough);
-    auto cassie_sensor_pub = builder.AddSystem(
-                            LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
-                            "CASSIE_OUTPUT", &lcm, 1.0 / 200.0));
+    auto cassie_sensor_aggregator =
+        addImuAndAggregatorToSimulation(builder, plant, passthrough);
+    auto cassie_sensor_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+            "CASSIE_OUTPUT", &lcm, 1.0 / 200.0));
     builder.Connect(cassie_sensor_aggregator->get_output_port(0),
                     cassie_sensor_pub->get_input_port());
   }
@@ -135,29 +135,27 @@ int do_main(int argc, char* argv[]) {
   // Raw state vector to visualizer.
   // builder.Connect(plant->state_output_port(), visualizer->get_input_port(0));
 
-
   auto diagram = builder.Build();
 
   drake::systems::Simulator<double> simulator(*diagram);
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*plant,
-                                        &simulator.get_mutable_context());
+                                          &simulator.get_mutable_context());
 
   drake::systems::Context<double>& sim_context =
-    simulator.get_mutable_context();
+      simulator.get_mutable_context();
   auto integrator =
-    simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>
-    (*diagram, FLAGS_timestep, &sim_context);
+      simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
+          *diagram, FLAGS_timestep, &sim_context);
   // auto integrator =
   //   simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>
   //   (*diagram, &sim_context);
   // integrator->set_maximum_step_size(FLAGS_timestep);
 
-
-  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(
-                         plant->get_rigid_body_tree().get_num_positions() +
-                         plant->get_rigid_body_tree().get_num_velocities());
-  std::map<std::string, int>  map =
+  Eigen::VectorXd x0 =
+      Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
+                            plant->get_rigid_body_tree().get_num_velocities());
+  std::map<std::string, int> map =
       plant->get_rigid_body_tree().computePositionNameToIndexMap();
   x0(map.at("hip_pitch_left")) = .269;
   x0(map.at("hip_pitch_right")) = .269;
@@ -185,9 +183,27 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map.at("knee_left"));
   fixed_joints.push_back(map.at("knee_right"));
 
-  auto q0 = solvePositionConstraints(
-      plant->get_rigid_body_tree(),
-      x0.head(plant->get_rigid_body_tree().get_num_positions()), fixed_joints);
+  Eigen::VectorXd q0 =
+      x0.head(plant->get_rigid_body_tree().get_num_positions());
+  PositionSolver position_solver(plant->get_rigid_body_tree(), q0);
+  position_solver.SetInitialGuessQ(q0);
+
+  // Creating the map for the fixed joints constraint
+  std::map<int, double> fixed_joints_map;
+  for (auto& ind : fixed_joints) {
+    fixed_joints_map[ind] = x0(ind);
+  }
+
+  position_solver.AddFixedJointsConstraint(fixed_joints_map);
+
+  MathematicalProgramResult program_result = position_solver.Solve();
+
+  if (!program_result.is_success()) {
+    std::cout << "Solver error: " << program_result.get_solution_result() << std::endl;
+    return 0;
+  }
+
+  q0 = position_solver.GetSolutionQ();
   x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
 
   std::cout << q0 << std::endl;
@@ -201,10 +217,10 @@ int do_main(int argc, char* argv[]) {
     // state[3] = 0;
     // state[4] = 0;
   } else {
-    std::cout << "ngroups " << context.get_num_discrete_state_groups() <<
-              std::endl;
+    std::cout << "ngroups " << context.get_num_discrete_state_groups()
+              << std::endl;
     drake::systems::BasicVector<double>& state =
-      context.get_mutable_discrete_state(0);
+        context.get_mutable_discrete_state(0);
     std::cout << "Discrete " << state.size() << std::endl;
     state.SetFromVector(x0);
     // state[4] = 1;
@@ -230,6 +246,4 @@ int do_main(int argc, char* argv[]) {
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) {
-  return dairlib::do_main(argc, argv);
-}
+int main(int argc, char* argv[]) { return dairlib::do_main(argc, argv); }

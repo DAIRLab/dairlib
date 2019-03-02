@@ -1,4 +1,4 @@
-docker_builder:
-  build_script: docker build --tag dairlib/master -f install/bionic/Dockerfile .
-  login_script: docker login
-  push_script: docker push dairlib/master
+build_task:
+  container:
+    dockerfile: install/bionic/Dockerfile
+  test_script: bazel build ...

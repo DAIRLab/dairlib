@@ -1,4 +1,4 @@
-container:
-  image: l.gcr.io/google/bazel:latest
-task:
-  build_script: bazel build //...
+docker_builder:
+  build_script: docker build --tag DAIRLab/dairlib -f install/bionic/Dockerfile .
+  login_script: docker login
+  push_script: docker push DAIRLab/dairlib

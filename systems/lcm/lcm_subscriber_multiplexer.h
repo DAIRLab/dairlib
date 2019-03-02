@@ -22,7 +22,8 @@ class LcmSubscriberMultiplexer : public drake::systems::LeafSystem<double> {
   static LcmSubscriberMultiplexer* MakeMuxAndSubscribers(
       drake::systems::DiagramBuilder<double>* builder,
       const std::vector<std::string>& channels,
-      drake::lcm::DrakeLcmInterface* lcm) {
+      drake::lcm::DrakeLcmInterface* lcm,
+      const std::string default_channel = "") {
     using drake::systems::lcm::LcmSubscriberSystem;
 
     // Create subscribers
@@ -32,9 +33,11 @@ class LcmSubscriberMultiplexer : public drake::systems::LeafSystem<double> {
           LcmSubscriberSystem::Make<LcmMessage>(channel, lcm));
       subscribers.push_back(sub);
     }
+
     auto mux = builder->AddSystem(
         std::make_unique<LcmSubscriberMultiplexer>(channels, subscribers,
-            std::make_unique<drake::systems::lcm::Serializer<LcmMessage>>()));
+            std::make_unique<drake::systems::lcm::Serializer<LcmMessage>>(),
+            (default_channel.size() == 0) ? channels.at(0) : default_channel));
     for (unsigned int i = 0; i < channels.size(); i++) {
       builder->Connect(subscribers.at(i)->get_output_port(),
                        mux->GetSubscriberPort(channels.at(i)));
@@ -51,7 +54,8 @@ class LcmSubscriberMultiplexer : public drake::systems::LeafSystem<double> {
     const std::vector<std::string>& channels,
     std::vector<drake::systems::lcm::LcmSubscriberSystem*>
         subscribers,
-    std::unique_ptr<drake::systems::lcm::SerializerInterface> serializer);
+    std::unique_ptr<drake::systems::lcm::SerializerInterface> serializer,
+    const std::string default_channel);
 
 
   const drake::systems::InputPort<double>& get_channel_input_port();
@@ -79,6 +83,8 @@ class LcmSubscriberMultiplexer : public drake::systems::LeafSystem<double> {
       subscriber_map_;
 
   std::map<std::string, int> port_index_map_;
+
+  std::string default_channel_;
 };
 
 }  // namespace lcm

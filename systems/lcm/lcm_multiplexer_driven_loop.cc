@@ -68,7 +68,8 @@ const AbstractValue& LcmMultiplexerDrivenLoop::WaitForMessage(
   return *(sub_output_->get_data(0));
 }
 
-void LcmMultiplexerDrivenLoop::RunToSecondsAssumingInitialized(double stop_time) {
+void LcmMultiplexerDrivenLoop::RunToSecondsAssumingInitialized(
+    double stop_time) {
   double msg_time;
 
   while (true) {

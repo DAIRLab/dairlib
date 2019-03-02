@@ -26,10 +26,15 @@ const int kActiveChannelIndex = 0;
 LcmSubscriberMultiplexer::LcmSubscriberMultiplexer(
     const vector<string>& channels,
     vector<LcmSubscriberSystem*> lcm_subscribers,
-    unique_ptr<SerializerInterface> serializer) :
+    unique_ptr<SerializerInterface> serializer,
+    string default_channel) :
     serializer_(std::move(serializer)),
-    subscribers_(lcm_subscribers) {
+    subscribers_(lcm_subscribers),
+    default_channel_(default_channel) {
   DRAKE_ASSERT(channels.size() == lcm_subscribers.size());
+  DRAKE_THROW_UNLESS(
+      (std::find(channels.begin(), channels.end(), default_channel) !=
+      channels.end()));
 
   const auto& channel_input_port =
       DeclareAbstractInputPort("active_channel", Value<string>{});
@@ -60,12 +65,17 @@ const InputPort<double>& LcmSubscriberMultiplexer::get_channel_input_port() {
 
 const InputPort<double>& LcmSubscriberMultiplexer::GetSubscriberPort(
     const string channel) {
-  return get_input_port(port_index_map_.at(channel));
+  return get_input_port(GetSubscriberPortIndex(channel));
 }
 
 const int& LcmSubscriberMultiplexer::GetSubscriberPortIndex(
     const string channel) {
-  return port_index_map_.at(channel);
+  // return the default value if unavailable
+  if (port_index_map_.count(channel) != 0) {
+    return port_index_map_.at(channel);
+  } else {
+    return port_index_map_.at(default_channel_);
+  }
 }
 
 void LcmSubscriberMultiplexer::Output(
@@ -83,7 +93,11 @@ const LcmSubscriberSystem* LcmSubscriberMultiplexer::get_active_subscriber(
     const Context<double>& context) const {
   auto active_channel =
       EvalAbstractInput(context, kActiveChannelIndex)->GetValue<string>();
-  return subscriber_map_.at(active_channel);
+  if (port_index_map_.count(active_channel) != 0) {
+    return subscriber_map_.at(active_channel);
+  } else {
+    return subscriber_map_.at(default_channel_);
+  }
 }
 
 const LcmSubscriberSystem* LcmSubscriberMultiplexer::get_subscriber(

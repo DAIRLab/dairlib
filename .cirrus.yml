@@ -1,0 +1,5 @@
+docker_builder:
+  only_if: $CIRRUS_TAG != ''
+  build_script: docker build --tag DAIRLab/dairlib:$CIRRUS_TAG -f install/bionic/Dockerfile .
+  login_script: docker login
+  push_script: docker push DAIRLab/dairlib:$CIRRUS_TAG

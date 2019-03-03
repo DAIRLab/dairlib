@@ -51,11 +51,11 @@ cc_library(
   hdrs = ["cassie_rbt_state_estimator.h",],
   deps = [
     "@drake//systems/framework",
-    "@drake//solvers:mathematical_program",
     "//systems/framework:vector",
     "//examples/Cassie/datatypes:cassie_out_t",
     "//examples/Cassie/datatypes:cassie_names",
     "//attic/multibody:utils",
+    "//attic/multibody:multibody_solvers",
     ":cassie_utils",
   ]
 )

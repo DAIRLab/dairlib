@@ -5,7 +5,7 @@
 using namespace std::chrono; // measuring runtime
 
 // The library below is used for testing. Will delete it before merging to master
-#include "drake/solvers/mathematical_program.h"
+#include "attic/multibody/multibody_solvers.h"
 
 
 namespace dairlib {
@@ -16,6 +16,7 @@ using std::endl;
 using std::string;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
+using dairlib::multibody::PositionSolver;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
     const RigidBodyTree<double>& tree) :
@@ -67,18 +68,18 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
   fixed_joints.push_back(positionIndexMap_.at("knee_joint_right"));
   fixed_joints.push_back(positionIndexMap_.at("ankle_joint_right"));
 
-  drake::solvers::MathematicalProgram prog;
-  auto q = prog.NewContinuousVariables(tree_.get_num_positions(), "q");
-  auto constraint = std::make_shared<TreePositionConstraint>(tree_);
-  prog.AddConstraint(constraint, q);
-  for (uint i = 0; i < fixed_joints.size(); i++) {
-    int j = fixed_joints[i];
-    prog.AddConstraint(q(j) == q_init(j));
+  PositionSolver position_solver(tree_, q_init);
+  position_solver.SetInitialGuessQ(q_init);
+
+  std::map<int, double> fixed_joints_map;
+  for (auto& ind : fixed_joints) {
+    fixed_joints_map[ind] = q_init(ind);
   }
-  prog.AddQuadraticCost((q - q_init).dot(q - q_init));
-  prog.SetInitialGuessForAllVariables(q_init);
-  prog.Solve();
-  VectorXd q_sol = prog.GetSolution(q);
+  position_solver.AddFixedJointsConstraint(fixed_joints_map);
+
+  position_solver.Solve();
+  VectorXd q_sol = position_solver.GetSolutionQ();
+
   // cout<< "q_sol = " << q_sol.transpose() << endl << endl;
 
   cout << "left_heel_spring = " << q_sol(12) << endl;

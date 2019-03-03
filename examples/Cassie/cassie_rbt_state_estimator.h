@@ -15,7 +15,11 @@
 namespace dairlib {
 namespace systems {
 
+using Eigen::Vector2d;
+using Eigen::Vector3d;
 using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using Eigen::Isometry3d;
 using systems::OutputVector;
 
 /// Translates from a TimestamedVector of cassie torque commands into
@@ -25,7 +29,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   explicit CassieRbtStateEstimator(
       const RigidBodyTree<double>&);
  private:
-  VectorXd solveFourbarLinkage(VectorXd q_init) const;
+  VectorXd solveFourbarLinkage(VectorXd q_init, VectorXd v,
+    double & left_heel_spring,double & right_heel_spring) const;
 
   void Output(const drake::systems::Context<double>& context,
       OutputVector<double>* output) const;
@@ -35,6 +40,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> velocityIndexMap_;
   std::map<std::string, int> actuatorIndexMap_;
 
+  int left_thigh_ind_ = -1;
+  int right_thigh_ind_ = -1;
+  int left_heel_spring_ind_ = -1;
+  int right_heel_spring_ind_ = -1;
 };
 
 }  // namespace systems

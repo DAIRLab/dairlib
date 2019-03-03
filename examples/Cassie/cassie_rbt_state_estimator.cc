@@ -1,7 +1,12 @@
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
 
+#include <math.h>
 #include <chrono> // measuring runtime
 using namespace std::chrono; // measuring runtime
+
+// The library below is used for testing. Will delete it before merging to master
+#include "drake/solvers/mathematical_program.h"
+
 
 namespace dairlib {
 namespace systems {
@@ -24,9 +29,31 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   this->DeclareVectorOutputPort(OutputVector<double>(tree.get_num_positions(),
       tree.get_num_velocities(), tree.get_num_actuators()),
       &CassieRbtStateEstimator ::Output);
+
+
+  // Initialize body indices
+  std::vector<string> bodyNames;
+  for (int i = 0; i < tree_.get_num_bodies(); i++)
+    bodyNames.push_back(tree_.getBodyOrFrameName(i));
+  for (int i = 0; i < tree_.get_num_bodies(); i++) {
+    if (bodyNames[i] == "thigh_left")
+      left_thigh_ind_ = i;
+    else if (bodyNames[i] == "thigh_right")
+      right_thigh_ind_ = i;
+    else if (bodyNames[i] == "heel_spring_left")
+      left_heel_spring_ind_ = i;
+    else if (bodyNames[i] == "heel_spring_right")
+      right_heel_spring_ind_ = i;
+  }
+  if (left_thigh_ind_ == -1 || right_thigh_ind_ == -1 ||
+      left_heel_spring_ind_ == -1 || right_heel_spring_ind_ == -1 )
+std::cout << "In cassie_rbt_state_estimator.cc,"
+             " body indices were not set correctly.\n";
 }
 
-VectorXd CassieRbtStateEstimator::solveFourbarLinkage(VectorXd q_init) const {
+VectorXd CassieRbtStateEstimator::solveFourbarLinkage(
+    VectorXd q_init, VectorXd v,
+    double & left_heel_spring,double & right_heel_spring) const {
   std::vector<int> fixed_joints;
   fixed_joints.push_back(positionIndexMap_.at("hip_pitch_left"));
   fixed_joints.push_back(positionIndexMap_.at("knee_left"));
@@ -37,11 +64,91 @@ VectorXd CassieRbtStateEstimator::solveFourbarLinkage(VectorXd q_init) const {
   fixed_joints.push_back(positionIndexMap_.at("knee_joint_right"));
   fixed_joints.push_back(positionIndexMap_.at("ankle_joint_right"));
 
-  VectorXd q_sol = solvePositionConstraints(tree_, q_init, fixed_joints);
+  drake::solvers::MathematicalProgram prog;
+  auto q = prog.NewContinuousVariables(tree_.get_num_positions(), "q");
+  auto constraint = std::make_shared<TreePositionConstraint>(tree_);
+  prog.AddConstraint(constraint, q);
+  for (uint i = 0; i < fixed_joints.size(); i++) {
+    int j = fixed_joints[i];
+    prog.AddConstraint(q(j) == q_init(j));
+  }
+  prog.AddQuadraticCost((q - q_init).dot(q - q_init));
+  prog.SetInitialGuessForAllVariables(q_init);
+  prog.Solve();
+  VectorXd q_sol = prog.GetSolution(q);
 
   // The above way is too slow (takes ~11 ms)
-  // TODO(yuming): compute it analytically by graph
+  // Right now it just serves as a ground truth
 
+
+  // TODO(yminchen): get the numbers below from tree
+  // Get the rod length projected to thigh-shin plane
+  double hip_to_rod_offset_z = 0.045;  // in meter
+  double hip_to_knee_offset_z = 0.0045;
+  double ankle_to_ankle_spring_base_offset_z = 0.00092;  // approximate
+  double rod_z_offset = hip_to_rod_offset_z - hip_to_knee_offset_z
+                                          - ankle_to_ankle_spring_base_offset_z;
+  double rod_length = 0.5012;  // from cassie_utils
+  double projected_rod_length = sqrt(pow(rod_length, 2) - pow(rod_z_offset, 2));
+
+  // Get the rod length
+  Vector3d rod_on_heel_spring(.11877, -.01, 0.0);
+  double spring_length = rod_on_heel_spring.norm();
+
+  std::vector<int> thigh_ind{left_thigh_ind_, right_thigh_ind_};
+  std::vector<int> heel_spring_ind{left_heel_spring_ind_,
+                                      right_heel_spring_ind_};
+
+  KinematicsCache<double> cache = tree_.doKinematics(q_init, v);
+  for (int i = 0; i < 2; i++) {
+    const Isometry3d thigh_pose =
+        tree_.CalcBodyPoseInWorldFrame(cache, tree_.get_body(thigh_ind[i]));
+    const Vector3d thigh_pos = thigh_pose.translation();
+    const MatrixXd thigh_rot_mat = thigh_pose.linear();
+    const Vector3d x_hat = thigh_rot_mat.col(0);
+    const Vector3d y_hat = thigh_rot_mat.col(1);
+    const Vector3d z_hat = thigh_rot_mat.col(2);
+
+    const Isometry3d heel_spring_pose =
+              tree_.CalcBodyPoseInWorldFrame(cache,
+                  tree_.get_body(heel_spring_ind[i]));
+    const Vector3d heel_spring_pos = heel_spring_pose.translation();
+    const MatrixXd heel_spring_rot_mat = heel_spring_pose.linear();
+    const Vector3d spring_rest_dir = heel_spring_rot_mat.col(0);
+
+    const Vector3d thigh_to_heel = heel_spring_pos - thigh_pos;
+    double x_hs_wrt_thigh = thigh_to_heel.dot(x_hat);
+    double y_hs_wrt_thigh = thigh_to_heel.dot(y_hat);
+
+    double k = -y_hs_wrt_thigh / x_hs_wrt_thigh;
+    double c = (pow(projected_rod_length, 2) - pow(spring_length, 2) +
+        pow(x_hs_wrt_thigh, 2) + pow(y_hs_wrt_thigh, 2)) / (2 * x_hs_wrt_thigh);
+
+    double y_sol_1 = (-k * c + sqrt(pow(k * c, 2) - (pow(k, 2) + 1) *
+        (pow(c, 2) - pow(projected_rod_length, 2)))) / (pow(k, 2) + 1);
+    double y_sol_2 = (-k * c - sqrt(pow(k * c, 2) - (pow(k, 2) + 1) *
+        (pow(c, 2) - pow(projected_rod_length, 2)))) / (pow(k, 2) + 1);
+    double x_sol_1 = k * y_sol_1 + c;
+    double x_sol_2 = k * y_sol_2 + c;
+
+    Vector3d sol_1_wrt_thigh(x_sol_1, y_sol_1, 0);
+    Vector3d sol_2_wrt_thigh(x_sol_2, y_sol_2, 0);
+    Vector3d sol_1_cross_sol_2 = sol_1_wrt_thigh.cross(sol_2_wrt_thigh);
+
+    Vector3d r_sol_wrt_thigh = (sol_1_cross_sol_2(2) >= 0) ?
+        sol_1_wrt_thigh : sol_2_wrt_thigh;
+    Vector2d r_hs_to_sol(r_sol_wrt_thigh(0)-x_hs_wrt_thigh,
+                         r_sol_wrt_thigh(1)-y_hs_wrt_thigh);
+    Vector2d r_rest_dir(spring_rest_dir.dot(x_hat),
+                        spring_rest_dir.dot(y_hat));
+
+    double heel_spring_angle = acos(r_hs_to_sol.dot(r_rest_dir) /
+        (r_hs_to_sol.norm()*r_rest_dir.norm()));
+    if (i == 0)
+      left_heel_spring = heel_spring_angle;
+    else
+      right_heel_spring = heel_spring_angle;
+  }
 
   return q_sol;
 }
@@ -151,8 +258,16 @@ void CassieRbtStateEstimator::Output(
   // Step 1 - Solve for the unknown joint angle
   high_resolution_clock::time_point t_1 = high_resolution_clock::now();
 
-  VectorXd q_sol = solveFourbarLinkage(output->GetPositions());
+
+  double left_heel_spring = 0;
+  double right_heel_spring = 0;
+  VectorXd q_sol = solveFourbarLinkage(output->GetPositions(),
+                                       output->GetVelocities(),
+                                       left_heel_spring,
+                                       right_heel_spring);
   cout<< "q_sol = " << q_sol.transpose() << endl << endl;
+  cout << "left_heel_spring = " << left_heel_spring << endl;
+  cout << "right_heel_spring = " << right_heel_spring << endl;
 
   high_resolution_clock::time_point t_2 = high_resolution_clock::now();
   auto duration_solve = duration_cast<microseconds>( t_2 - t_1 ).count();

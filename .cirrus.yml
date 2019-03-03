@@ -1,0 +1,7 @@
+build_task:
+  timeout_in: 120m
+  container:
+    dockerfile: install/bionic/Dockerfile
+    cpu: 8
+    memory: 24
+  test_script: bazel build ... && bazel test ...

@@ -2,6 +2,9 @@ FROM ubuntu
 WORKDIR /dairlib
 COPY . .
 RUN apt update && apt install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip python
+RUN set -eux \
+  && apt-get install --no-install-recommends  locales \
+  && locale-gen en_US.UTF-8
 RUN if type sudo 2>/dev/null; then \ 
      echo "The sudo command already exists... Skipping."; \
     else \
@@ -16,5 +19,3 @@ RUN set -eux \
   && export DEBIAN_FRONTEND=noninteractive \
   && yes | install/install_prereqs_ubuntu.sh \
   && rm -rf /var/lib/apt/lists/*
-RUN set -eux \
-  && bazel build ...

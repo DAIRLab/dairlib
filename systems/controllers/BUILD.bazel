@@ -23,15 +23,19 @@ cc_library(
     name = "controllers",
     srcs = [
         "affine_controller.cc",
+        "constrained_lqr_controller.cc",
         "linear_controller.cc",
     ],
     hdrs = [
         "affine_controller.h",
+        "constrained_lqr_controller.h",
         "linear_controller.h",
     ],
     deps = [
         "//systems/framework:vector",
+        "//attic/multibody:contact_toolkit",
         "@drake//systems/framework:leaf_system",
+        "@drake//systems/controllers:linear_quadratic_regulator",
     ],
 )
 

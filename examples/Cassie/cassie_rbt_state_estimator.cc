@@ -104,13 +104,13 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 
   KinematicsCache<double> cache = tree_.doKinematics(q_init, v);
   for (int i = 0; i < 2; i++) {
+    // Get thigh pose and heel spring pose
     const Isometry3d thigh_pose =
         tree_.CalcBodyPoseInWorldFrame(cache, tree_.get_body(thigh_ind[i]));
     const Vector3d thigh_pos = thigh_pose.translation();
     const MatrixXd thigh_rot_mat = thigh_pose.linear();
     const Vector3d x_hat = thigh_rot_mat.col(0);
     const Vector3d y_hat = thigh_rot_mat.col(1);
-    const Vector3d z_hat = thigh_rot_mat.col(2);
 
     const Isometry3d heel_spring_pose =
               tree_.CalcBodyPoseInWorldFrame(cache,
@@ -119,6 +119,12 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
     const MatrixXd heel_spring_rot_mat = heel_spring_pose.linear();
     const Vector3d spring_rest_dir = heel_spring_rot_mat.col(0);
 
+    // Get the vector of the rest spring direction
+    Vector3d r_rest_dir(spring_rest_dir.dot(x_hat),
+                        spring_rest_dir.dot(y_hat),
+                        0);
+
+    // Get the vector of the deflected spring direction
     const Vector3d thigh_to_heel = heel_spring_pos - thigh_pos;
     double x_hs_wrt_thigh = thigh_to_heel.dot(x_hat);
     double y_hs_wrt_thigh = thigh_to_heel.dot(y_hat);
@@ -143,10 +149,8 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
     Vector3d r_hs_to_sol(r_sol_wrt_thigh(0) - x_hs_wrt_thigh,
                          r_sol_wrt_thigh(1) - y_hs_wrt_thigh,
                          0);
-    Vector3d r_rest_dir(spring_rest_dir.dot(x_hat),
-                        spring_rest_dir.dot(y_hat),
-                        0);
 
+    // Get the heel spring deflection direction and magnitude
     double heel_spring_angle = acos(r_hs_to_sol.dot(r_rest_dir) /
         (r_hs_to_sol.norm()*r_rest_dir.norm()));
     Vector3d r_rest_dir_cross_r_hs_to_sol = r_rest_dir.cross(r_hs_to_sol);
@@ -156,7 +160,6 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
     else
       right_heel_spring = spring_deflect_sign * heel_spring_angle;
   }
-
 }
 
 /// Workhorse state estimation function. Given a `cassie_out_t`, compute the

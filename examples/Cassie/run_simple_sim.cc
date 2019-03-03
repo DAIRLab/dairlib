@@ -54,6 +54,7 @@ DEFINE_double(dt, 1e-3,
               "The step size to use for "
               "'simulation_type=timestepping' (ignored for "
               "'simulation_type=compliant'");
+DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
@@ -111,7 +112,7 @@ int do_main(int argc, char* argv[]) {
       plant->get_rigid_body_tree());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE", &lcm, 1.0 / 200.0));
+          "CASSIE_STATE", &lcm, 1.0 / FLAGS_publish_rate));
   builder.Connect(plant->state_output_port(),
                   state_sender->get_input_port_state());
   builder.Connect(state_sender->get_output_port(0),
@@ -123,7 +124,7 @@ int do_main(int argc, char* argv[]) {
         addImuAndAggregatorToSimulation(builder, plant, passthrough);
     auto cassie_sensor_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
-            "CASSIE_OUTPUT", &lcm, 1.0 / 200.0));
+            "CASSIE_OUTPUT", &lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(cassie_sensor_aggregator->get_output_port(0),
                     cassie_sensor_pub->get_input_port());
   }
@@ -144,9 +145,9 @@ int do_main(int argc, char* argv[]) {
 
   drake::systems::Context<double>& sim_context =
       simulator.get_mutable_context();
-  auto integrator =
-      simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
-          *diagram, FLAGS_timestep, &sim_context);
+  // auto integrator =
+  //     simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
+  //         *diagram, FLAGS_timestep, &sim_context);
   // auto integrator =
   //   simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>
   //   (*diagram, &sim_context);

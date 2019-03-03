@@ -49,3 +49,6 @@ Based off the publication
 Michael Posa, Scott Kuindersma, Russ Tedrake. "Optimization and Stabilization of Trajectories for Constrained Dynamical Systems." Proceedings of the International Conference on Robotics and Automation (ICRA), 2016. 
 
 Available online at https://posa.seas.upenn.edu/wp-content/uploads/Posa16a.pdf
+
+## Docker (experimental)
+Docker support is currently experimental. See `install/bionic/Dockerfile` for an Ubuntu Dockerfile. Docker is being used in conjuction with Cirrus Continuous Integration, and should be better supported in the future.

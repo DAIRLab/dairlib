@@ -15,7 +15,6 @@
 namespace dairlib {
 namespace systems {
 
-using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -29,7 +28,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   explicit CassieRbtStateEstimator(
       const RigidBodyTree<double>&);
  private:
-  VectorXd solveFourbarLinkage(VectorXd q_init, VectorXd v,
+  void solveFourbarLinkage(VectorXd q_init, VectorXd v,
     double & left_heel_spring,double & right_heel_spring) const;
 
   void Output(const drake::systems::Context<double>& context,

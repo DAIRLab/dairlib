@@ -51,9 +51,11 @@ std::cout << "In cassie_rbt_state_estimator.cc,"
              " body indices were not set correctly.\n";
 }
 
-VectorXd CassieRbtStateEstimator::solveFourbarLinkage(
+void CassieRbtStateEstimator::solveFourbarLinkage(
     VectorXd q_init, VectorXd v,
     double & left_heel_spring,double & right_heel_spring) const {
+
+  cout<< "q_init= "<< q_init.transpose() << endl;
   std::vector<int> fixed_joints;
   fixed_joints.push_back(positionIndexMap_.at("hip_pitch_left"));
   fixed_joints.push_back(positionIndexMap_.at("knee_left"));
@@ -76,6 +78,7 @@ VectorXd CassieRbtStateEstimator::solveFourbarLinkage(
   prog.SetInitialGuessForAllVariables(q_init);
   prog.Solve();
   VectorXd q_sol = prog.GetSolution(q);
+  cout<< "q_sol = " << q_sol.transpose() << endl << endl;
 
   // The above way is too slow (takes ~11 ms)
   // Right now it just serves as a ground truth
@@ -137,20 +140,23 @@ VectorXd CassieRbtStateEstimator::solveFourbarLinkage(
 
     Vector3d r_sol_wrt_thigh = (sol_1_cross_sol_2(2) >= 0) ?
         sol_1_wrt_thigh : sol_2_wrt_thigh;
-    Vector2d r_hs_to_sol(r_sol_wrt_thigh(0)-x_hs_wrt_thigh,
-                         r_sol_wrt_thigh(1)-y_hs_wrt_thigh);
-    Vector2d r_rest_dir(spring_rest_dir.dot(x_hat),
-                        spring_rest_dir.dot(y_hat));
+    Vector3d r_hs_to_sol(r_sol_wrt_thigh(0) - x_hs_wrt_thigh,
+                         r_sol_wrt_thigh(1) - y_hs_wrt_thigh,
+                         0);
+    Vector3d r_rest_dir(spring_rest_dir.dot(x_hat),
+                        spring_rest_dir.dot(y_hat),
+                        0);
 
     double heel_spring_angle = acos(r_hs_to_sol.dot(r_rest_dir) /
         (r_hs_to_sol.norm()*r_rest_dir.norm()));
+    Vector3d r_rest_dir_cross_r_hs_to_sol = r_rest_dir.cross(r_hs_to_sol);
+    int spring_deflect_sign = (r_rest_dir_cross_r_hs_to_sol(2) >= 0) ? 1: -1;
     if (i == 0)
-      left_heel_spring = heel_spring_angle;
+      left_heel_spring = spring_deflect_sign * heel_spring_angle;
     else
-      right_heel_spring = heel_spring_angle;
+      right_heel_spring = spring_deflect_sign * heel_spring_angle;
   }
 
-  return q_sol;
 }
 
 /// Workhorse state estimation function. Given a `cassie_out_t`, compute the
@@ -252,8 +258,6 @@ void CassieRbtStateEstimator::Output(
   // cout << tree_.get_velocity_name(i) << endl;
 
 
-  VectorXd q_init = output->GetPositions();
-  cout<< "q_init= "<< q_init.transpose() << endl;
 
   // Step 1 - Solve for the unknown joint angle
   high_resolution_clock::time_point t_1 = high_resolution_clock::now();
@@ -261,11 +265,8 @@ void CassieRbtStateEstimator::Output(
 
   double left_heel_spring = 0;
   double right_heel_spring = 0;
-  VectorXd q_sol = solveFourbarLinkage(output->GetPositions(),
-                                       output->GetVelocities(),
-                                       left_heel_spring,
-                                       right_heel_spring);
-  cout<< "q_sol = " << q_sol.transpose() << endl << endl;
+  solveFourbarLinkage(output->GetPositions(), output->GetVelocities(),
+                      left_heel_spring, right_heel_spring);
   cout << "left_heel_spring = " << left_heel_spring << endl;
   cout << "right_heel_spring = " << right_heel_spring << endl;
 

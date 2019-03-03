@@ -1,8 +1,6 @@
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
 
 #include <math.h>
-#include <chrono> // measuring runtime
-using namespace std::chrono; // measuring runtime
 
 // The library below is used for testing. Will delete it before merging to master
 #include "attic/multibody/multibody_solvers.h"
@@ -58,34 +56,36 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 
   //////////////////////////// Ground truth ////////////////////////////////////
   // cout<< "q_init= "<< q_init.transpose() << endl;
-  std::vector<int> fixed_joints;
-  fixed_joints.push_back(positionIndexMap_.at("knee_left"));
-  fixed_joints.push_back(positionIndexMap_.at("knee_joint_left"));
-  fixed_joints.push_back(positionIndexMap_.at("ankle_joint_left"));
-  fixed_joints.push_back(positionIndexMap_.at("knee_right"));
-  fixed_joints.push_back(positionIndexMap_.at("knee_joint_right"));
-  fixed_joints.push_back(positionIndexMap_.at("ankle_joint_right"));
 
-  PositionSolver position_solver(tree_, q_init);
-  position_solver.SetInitialGuessQ(q_init);
+  // std::vector<int> fixed_joints;
+  // fixed_joints.push_back(positionIndexMap_.at("knee_left"));
+  // fixed_joints.push_back(positionIndexMap_.at("knee_joint_left"));
+  // fixed_joints.push_back(positionIndexMap_.at("ankle_joint_left"));
+  // fixed_joints.push_back(positionIndexMap_.at("knee_right"));
+  // fixed_joints.push_back(positionIndexMap_.at("knee_joint_right"));
+  // fixed_joints.push_back(positionIndexMap_.at("ankle_joint_right"));
 
-  std::map<int, double> fixed_joints_map;
-  for (auto& ind : fixed_joints) {
-    fixed_joints_map[ind] = q_init(ind);
-  }
-  position_solver.AddFixedJointsConstraint(fixed_joints_map);
+  // PositionSolver position_solver(tree_, q_init);
+  // position_solver.SetInitialGuessQ(q_init);
 
-  position_solver.Solve();
-  VectorXd q_sol = position_solver.GetSolutionQ();
+  // std::map<int, double> fixed_joints_map;
+  // for (auto& ind : fixed_joints) {
+  //   fixed_joints_map[ind] = q_init(ind);
+  // }
+  // position_solver.AddFixedJointsConstraint(fixed_joints_map);
 
-  // cout<< "q_sol = " << q_sol.transpose() << endl << endl;
+  // position_solver.Solve();
+  // VectorXd q_sol = position_solver.GetSolutionQ();
 
-  cout << "left_heel_spring = " << q_sol(12) << endl;
-  cout << "right_heel_spring = " << q_sol(13) << endl;
+  // // cout<< "q_sol = " << q_sol.transpose() << endl << endl;
+
+  // cout << "left_heel_spring = " << q_sol(12) << endl;
+  // cout << "right_heel_spring = " << q_sol(13) << endl;
 
   // The above way is too slow (takes ~11 ms)
   // Right now it just serves as a ground truth
   //////////////////////////////////////////////////////////////////////////////
+  // This version takes 0.1 ms to solve.
 
   // TODO(yminchen): get the numbers below from tree
   // Get the rod length projected to thigh-shin plane
@@ -167,6 +167,7 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
       right_heel_spring = spring_deflect_sign * heel_spring_angle
           - spring_rest_offset;
   }
+
 }
 
 /// Workhorse state estimation function. Given a `cassie_out_t`, compute the
@@ -270,8 +271,6 @@ void CassieRbtStateEstimator::Output(
 
 
   // Step 1 - Solve for the unknown joint angle
-  high_resolution_clock::time_point t_1 = high_resolution_clock::now();
-
 
   double left_heel_spring = 0;
   double right_heel_spring = 0;
@@ -279,10 +278,6 @@ void CassieRbtStateEstimator::Output(
                       left_heel_spring, right_heel_spring);
   cout << "left_heel_spring = " << left_heel_spring << endl;
   cout << "right_heel_spring = " << right_heel_spring << endl;
-
-  high_resolution_clock::time_point t_2 = high_resolution_clock::now();
-  auto duration_solve = duration_cast<microseconds>( t_2 - t_1 ).count();
-  std::cout << "Solver took " << duration_solve / 1000.0 << " (ms).\n";
 
 
   // Step 2 - Estimate which foot/feet are in contact with the ground

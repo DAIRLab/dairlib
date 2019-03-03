@@ -88,7 +88,7 @@ class AffineParams : public TimestampedVector<double> {
   void set_E(Eigen::VectorXd E) {E_ = E;}
 
   void set_desired_state(Eigen::VectorXd desired_state) {
-    desired_state = desired_state;
+    desired_state_ = desired_state;
   }
 
  private:

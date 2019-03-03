@@ -70,7 +70,7 @@ class AffineParams : public TimestampedVector<double> {
                                                 num_efforts, num_states).data(),
                      num_states) {}
 
-  int GetNumStates() const { return num_states_;}
+  int get_num_states() const { return num_states_;}
 
   // gets K as a const reference (mutable)
   const Eigen::Map<Eigen::MatrixXd>& get_K() const {return K_;}

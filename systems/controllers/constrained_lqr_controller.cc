@@ -15,6 +15,7 @@ using drake::AutoDiffVecXd;
 using drake::math::initializeAutoDiff;
 using drake::math::autoDiffToGradientMatrix;
 using drake::math::autoDiffToValueMatrix;
+using drake::systems::Context;
 using drake::systems::controllers::LinearQuadraticRegulator;
 using drake::systems::controllers::LinearQuadraticRegulatorResult;
 
@@ -31,7 +32,14 @@ ConstrainedLQRController::ConstrainedLQRController(
       num_states_(num_positions_ + num_velocities_),
       num_efforts_(tree.get_num_actuators()),
       num_forces_(tree.getNumPositionConstraints() +
-                  contact_info.num_contacts * 3) {}
+                  contact_info.num_contacts * 3) {
+  // Output port that outputs the constant AffineParams computed by
+  // SetupController
+  output_port_params_index_ =
+      this->DeclareVectorOutputPort(AffineParams(num_states_, num_efforts_),
+                                    &ConstrainedLQRController::CalcControl)
+          .get_index();
+}
 
 void ConstrainedLQRController::SetupController(VectorXd q0, VectorXd u0,
                                                VectorXd lambda0, MatrixXd Q,
@@ -105,8 +113,15 @@ void ConstrainedLQRController::SetupController(VectorXd q0, VectorXd u0,
   lqr_result_ = LinearQuadraticRegulator(A_, B_, Q, R);
   K_ = lqr_result_.K * P;
   E_ = u0;
+  x_desired_ = x0;
+}
 
-
+void ConstrainedLQRController::CalcControl(const Context<double>& context,
+                                           AffineParams* control) const {
+  control->set_K(K_);
+  control->set_E(E_);
+  control->set_desired_state(x_desired_);
+  control->set_timestamp(context.get_time());
 }
 
 }  // namespace systems

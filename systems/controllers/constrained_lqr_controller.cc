@@ -49,8 +49,6 @@ void ConstrainedLQRController::SetupController(VectorXd q0, VectorXd u0,
   DRAKE_DEMAND(u0.size() == num_efforts_);
   DRAKE_DEMAND(lambda0.size() == num_forces_);
 
-  // TODO: Drake demand for Q and R sizes.
-
   // Creating the full state vector (Velocities are zero as it is a fixed point)
   VectorXd x0(num_states_);
   x0 << q0, VectorXd::Zero(num_velocities_);
@@ -109,6 +107,12 @@ void ConstrainedLQRController::SetupController(VectorXd q0, VectorXd u0,
   // A and B matrices in the new coordinates
   A_ = P * A * P.transpose();
   B_ = P * B;
+
+  // Validating the dimesions of A_, B_, Q and R with respect to each other.
+  DRAKE_DEMAND(Q.rows() == Q.cols());
+  DRAKE_DEMAND(R.rows() == R.cols());
+  DRAKE_DEMAND(A_.rows() == Q.rows());
+  DRAKE_DEMAND(B_.cols() == R.rows());
 
   lqr_result_ = LinearQuadraticRegulator(A_, B_, Q, R);
   K_ = lqr_result_.K * P;

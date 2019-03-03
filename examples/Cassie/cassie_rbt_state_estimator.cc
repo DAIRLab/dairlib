@@ -55,7 +55,8 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
     VectorXd q_init, VectorXd v,
     double & left_heel_spring,double & right_heel_spring) const {
 
-  cout<< "q_init= "<< q_init.transpose() << endl;
+  // Ground truth
+  // cout<< "q_init= "<< q_init.transpose() << endl;
   std::vector<int> fixed_joints;
   fixed_joints.push_back(positionIndexMap_.at("hip_pitch_left"));
   fixed_joints.push_back(positionIndexMap_.at("knee_left"));
@@ -78,7 +79,10 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
   prog.SetInitialGuessForAllVariables(q_init);
   prog.Solve();
   VectorXd q_sol = prog.GetSolution(q);
-  cout<< "q_sol = " << q_sol.transpose() << endl << endl;
+  // cout<< "q_sol = " << q_sol.transpose() << endl << endl;
+
+  cout << "left_heel_spring = " << q_sol(12) << endl;
+  cout << "right_heel_spring = " << q_sol(13) << endl;
 
   // The above way is too slow (takes ~11 ms)
   // Right now it just serves as a ground truth

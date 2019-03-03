@@ -53,17 +53,15 @@ std::cout << "In cassie_rbt_state_estimator.cc,"
 }
 
 void CassieRbtStateEstimator::solveFourbarLinkage(
-    VectorXd q_init, VectorXd v,
+    VectorXd q_init,
     double & left_heel_spring,double & right_heel_spring) const {
 
-  // Ground truth
+  //////////////////////////// Ground truth ////////////////////////////////////
   // cout<< "q_init= "<< q_init.transpose() << endl;
   std::vector<int> fixed_joints;
-  fixed_joints.push_back(positionIndexMap_.at("hip_pitch_left"));
   fixed_joints.push_back(positionIndexMap_.at("knee_left"));
   fixed_joints.push_back(positionIndexMap_.at("knee_joint_left"));
   fixed_joints.push_back(positionIndexMap_.at("ankle_joint_left"));
-  fixed_joints.push_back(positionIndexMap_.at("hip_pitch_right"));
   fixed_joints.push_back(positionIndexMap_.at("knee_right"));
   fixed_joints.push_back(positionIndexMap_.at("knee_joint_right"));
   fixed_joints.push_back(positionIndexMap_.at("ankle_joint_right"));
@@ -87,7 +85,7 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 
   // The above way is too slow (takes ~11 ms)
   // Right now it just serves as a ground truth
-
+  //////////////////////////////////////////////////////////////////////////////
 
   // TODO(yminchen): get the numbers below from tree
   // Get the rod length projected to thigh-shin plane
@@ -102,12 +100,14 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
   // Get the rod length
   Vector3d rod_on_heel_spring(.11877, -.01, 0.0);
   double spring_length = rod_on_heel_spring.norm();
+  // Spring rest angle offset
+  double spring_rest_offset = atan(rod_on_heel_spring(1)/rod_on_heel_spring(0));
 
   std::vector<int> thigh_ind{left_thigh_ind_, right_thigh_ind_};
   std::vector<int> heel_spring_ind{left_heel_spring_ind_,
                                       right_heel_spring_ind_};
 
-  KinematicsCache<double> cache = tree_.doKinematics(q_init, v);
+  KinematicsCache<double> cache = tree_.doKinematics(q_init);
   for (int i = 0; i < 2; i++) {
     // Get thigh pose and heel spring pose
     const Isometry3d thigh_pose =
@@ -161,9 +161,11 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
     Vector3d r_rest_dir_cross_r_hs_to_sol = r_rest_dir.cross(r_hs_to_sol);
     int spring_deflect_sign = (r_rest_dir_cross_r_hs_to_sol(2) >= 0) ? 1: -1;
     if (i == 0)
-      left_heel_spring = spring_deflect_sign * heel_spring_angle;
+      left_heel_spring = spring_deflect_sign * heel_spring_angle
+          - spring_rest_offset;
     else
-      right_heel_spring = spring_deflect_sign * heel_spring_angle;
+      right_heel_spring = spring_deflect_sign * heel_spring_angle
+          - spring_rest_offset;
   }
 }
 
@@ -273,7 +275,7 @@ void CassieRbtStateEstimator::Output(
 
   double left_heel_spring = 0;
   double right_heel_spring = 0;
-  solveFourbarLinkage(output->GetPositions(), output->GetVelocities(),
+  solveFourbarLinkage(output->GetPositions(),
                       left_heel_spring, right_heel_spring);
   cout << "left_heel_spring = " << left_heel_spring << endl;
   cout << "right_heel_spring = " << right_heel_spring << endl;

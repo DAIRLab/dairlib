@@ -22,8 +22,12 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=false";
         host = "localhost";
     }
-    cmd "1.simulator" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false";
+    cmd "1.simulator (dispatched)" {
+        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false --publish_state=false";
+        host = "localhost";
+    }
+    cmd "1.simulator (no dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false --publish_state=true";
         host = "localhost";
     }
     cmd "3.dispatcher-robot-in" {
@@ -83,7 +87,7 @@ script "start-operator" {
 
 script "run-drake-pd-control" {
     run_script "start-operator";
-    start cmd "1.simulator";
+    start cmd "1.simulator (dispatched)";
     start cmd "2.a.dispatcher-robot-out (drake)";
     start cmd "0.pd-controller";
 }

@@ -19,7 +19,7 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "2.b.dispatcher-robot-out (gazebo)" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=false";
         host = "localhost";
     }
     cmd "1.simulator" {

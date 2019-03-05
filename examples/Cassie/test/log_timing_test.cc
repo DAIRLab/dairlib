@@ -6,7 +6,10 @@
 DEFINE_string(file, "", "Log file name.");
 DEFINE_int64(max_count, 5000, "Max number of messages to read.");
 
-// A quick script to test the frequency of messages in an LCM log
+// A quick script to test the frequency of messages in an LCM log.
+// Intended to be run with a log that has only one channel in it. Could
+// easily be modified to first check against a desired channel name, see
+// dispatcher_log_timing_test.cc for an example of this.
 // Prints out the mean and standard deviation of the delta-times
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

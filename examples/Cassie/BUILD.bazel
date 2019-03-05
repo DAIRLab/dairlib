@@ -15,6 +15,14 @@ load(
     "drake_py_unittest",
 )
 
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
 cc_library(
   name = "cassie_utils",
   srcs = ["cassie_utils.cc"],
@@ -206,9 +214,9 @@ cc_binary(
 )
 
 cc_binary(
-  name = "dispatcher_robot_in",
-  srcs = ["dispatcher_robot_in.cc"],
-  deps = ["//examples/Cassie/networking:cassie_udp_pub_sub",
+    name = "dispatcher_robot_in",
+    srcs = ["dispatcher_robot_in.cc"],
+    deps = ["//examples/Cassie/networking:cassie_udp_pub_sub",
           "@drake//lcm",
           "@drake//systems/lcm:lcm_driven_loop",
           "//lcmtypes:lcmt_robot",
@@ -218,4 +226,26 @@ cc_binary(
           ":cassie_urdf",
           "@gflags",
          ],
+)
+
+cc_binary(
+    name = "log_timing_test",
+    srcs = ["test/log_timing_test.cc"],
+    deps = [
+        "@drake//lcm",
+        "@gflags",
+        "@eigen",
+        "//lcmtypes:lcmt_robot",
+    ],
+)
+
+cc_binary(
+    name = "dispatcher_log_timing_test",
+    srcs = ["test/dispatcher_log_timing_test.cc"],
+    deps = [
+        "@drake//lcm",
+        "@gflags",
+        "@eigen",
+        "//lcmtypes:lcmt_robot",
+    ],
 )

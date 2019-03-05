@@ -228,7 +228,6 @@ TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
   shared_ptr<MathematicalProgram> prog_position_fixed1 =
       position_solver_fixed1.get_program();
 
-  ASSERT_EQ(position_solver_fixed1.get_filename(), "position_log");
   ASSERT_EQ(position_solver_fixed1.get_major_tolerance(), 0.001);
   ASSERT_EQ(position_solver_fixed1.get_minor_tolerance(), 0.01);
 
@@ -242,7 +241,6 @@ TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
   shared_ptr<MathematicalProgram> prog_position_fixed2 =
       position_solver_fixed1.get_program();
 
-  ASSERT_EQ(position_solver_fixed2.get_filename(), "position_log");
   ASSERT_EQ(position_solver_fixed2.get_major_tolerance(), 0.001);
   ASSERT_EQ(position_solver_fixed2.get_minor_tolerance(), 0.01);
 
@@ -255,7 +253,6 @@ TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
   shared_ptr<MathematicalProgram> prog_position_floating =
       position_solver_floating.get_program();
 
-  ASSERT_EQ(position_solver_floating.get_filename(), "position_log");
   ASSERT_EQ(position_solver_floating.get_major_tolerance(), 0.001);
   ASSERT_EQ(position_solver_floating.get_minor_tolerance(), 0.01);
 }
@@ -269,7 +266,6 @@ TEST_F(MultibodySolversTest, TestContactSolverBasic) {
   contact_solver1.set_major_tolerance(0.002);
   contact_solver1.set_minor_tolerance(0.02);
 
-  ASSERT_EQ(contact_solver1.get_filename(), "contact_log");
   ASSERT_EQ(contact_solver1.get_major_tolerance(), 0.002);
   ASSERT_EQ(contact_solver1.get_minor_tolerance(), 0.02);
 
@@ -284,7 +280,6 @@ TEST_F(MultibodySolversTest, TestContactSolverBasic) {
   contact_solver2.set_major_tolerance(0.002);
   contact_solver2.set_minor_tolerance(0.02);
 
-  ASSERT_EQ(contact_solver2.get_filename(), "contact_log");
   ASSERT_EQ(contact_solver2.get_major_tolerance(), 0.002);
   ASSERT_EQ(contact_solver2.get_minor_tolerance(), 0.02);
 
@@ -297,7 +292,6 @@ TEST_F(MultibodySolversTest, TestContactSolverBasic) {
   contact_solver3.set_major_tolerance(0.002);
   contact_solver3.set_minor_tolerance(0.02);
 
-  ASSERT_EQ(contact_solver3.get_filename(), "contact_log");
   ASSERT_EQ(contact_solver3.get_major_tolerance(), 0.002);
   ASSERT_EQ(contact_solver3.get_minor_tolerance(), 0.02);
 
@@ -317,7 +311,6 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_fixed1 =
       fp_solver_fixed1.get_program();
 
-  ASSERT_EQ(fp_solver_fixed1.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_fixed1.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_fixed1.get_minor_tolerance(), 0.03);
 
@@ -332,7 +325,6 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_fixed2 =
       fp_solver_fixed2.get_program();
 
-  ASSERT_EQ(fp_solver_fixed2.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_fixed2.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_fixed2.get_minor_tolerance(), 0.03);
 
@@ -355,7 +347,6 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_floating1 =
       fp_solver_floating1.get_program();
 
-  ASSERT_EQ(fp_solver_floating1.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_floating1.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_floating1.get_minor_tolerance(), 0.03);
 
@@ -371,7 +362,6 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_floating2 =
       fp_solver_floating2.get_program();
 
-  ASSERT_EQ(fp_solver_floating2.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_floating2.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_floating2.get_minor_tolerance(), 0.03);
 
@@ -385,7 +375,6 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_floating3 =
       fp_solver_floating3.get_program();
 
-  ASSERT_EQ(fp_solver_floating3.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_floating3.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_floating3.get_minor_tolerance(), 0.03);
 }

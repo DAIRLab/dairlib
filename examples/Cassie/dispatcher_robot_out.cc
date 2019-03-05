@@ -115,7 +115,6 @@ int do_main(int argc, char* argv[]) {
         &lcm_local,
         std::make_unique<UtimeMessageToSeconds<dairlib::lcmt_cassie_out>>());
 
-    // caused an extra publish call?
     loop.set_publish_on_every_received_message(true);
 
     // Starts the loop.
@@ -123,7 +122,6 @@ int do_main(int argc, char* argv[]) {
   } else {
     systems::UDPDrivenLoop loop(*diagram, *udp_input_sub, nullptr);
 
-    // caused an extra publish call?
     loop.set_publish_on_every_received_message(true);
 
     // Starts the loop.

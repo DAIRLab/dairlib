@@ -2,6 +2,7 @@
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
+#include "drake/systems/lcm/lcm_driven_loop.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/analysis/simulator.h"
@@ -13,6 +14,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "examples/Cassie/networking/cassie_udp_subscriber.h"
 #include "examples/Cassie/networking/cassie_output_sender.h"
+#include "examples/Cassie/networking/cassie_output_receiver.h"
 #include "examples/Cassie/networking/udp_driven_loop.h"
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
 #include "examples/Cassie/cassie_utils.h"
@@ -25,12 +27,15 @@ using drake::systems::Simulator;
 using drake::systems::Context;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::UtimeMessageToSeconds;
 using drake::systems::TriggerType;
 
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive from.");
 DEFINE_int64(port, 25001, "Port to receive on.");
 DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
+DEFINE_bool(simulation, false,
+    "Simulated or real robot (default=false, real robot)");
 
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
@@ -43,26 +48,40 @@ int do_main(int argc, char* argv[]) {
 
   std::unique_ptr<RigidBodyTree<double>> tree = makeCassieTreePointer();
 
-  // Create input receiver.
-  auto input_sub = builder.AddSystem(
-      systems::CassieUDPSubscriber::Make(FLAGS_address, FLAGS_port));
+  // Create state estimator
+  auto state_estimator =
+      builder.AddSystem<systems::CassieRbtStateEstimator>(*tree);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
   auto output_sender = builder.AddSystem<systems::CassieOutputSender>();
   auto output_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
+      LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT_ECHO",
       &lcm_network, {TriggerType::kPeriodic}, FLAGS_pub_rate));
-
   // connect cassie_out publisher
-  builder.Connect(*input_sub, *output_sender);
-
   builder.Connect(*output_sender, *output_pub);
 
-  // Create and connect state estimator
-  auto state_estimator =
-      builder.AddSystem<systems::CassieRbtStateEstimator>(*tree);
-  builder.Connect(*input_sub, *state_estimator);
+  // Connect appropriate input receiver, for simlation or the real robot
+
+  LcmSubscriberSystem* sim_input_sub = nullptr;
+  systems::CassieUDPSubscriber* udp_input_sub = nullptr;
+
+  if (FLAGS_simulation) {
+    sim_input_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
+          &lcm_local));
+    auto input_receiver =
+        builder.AddSystem<systems::CassieOutputReceiver>();
+    builder.Connect(*sim_input_sub, *input_receiver);
+    builder.Connect(*input_receiver, *output_sender);
+    builder.Connect(*input_receiver, *state_estimator);
+  } else {
+    // Create input receiver.
+    udp_input_sub = builder.AddSystem(
+        systems::CassieUDPSubscriber::Make(FLAGS_address, FLAGS_port));
+    builder.Connect(*udp_input_sub, *output_sender);
+    builder.Connect(*udp_input_sub, *state_estimator);
+  }
 
   // Create and connect RobotOutput publisher.
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(*tree);
@@ -91,15 +110,25 @@ int do_main(int argc, char* argv[]) {
 
   auto diagram = builder.Build();
 
-  systems::UDPDrivenLoop loop(*diagram, *input_sub, nullptr);
+  if (FLAGS_simulation) {
+    drake::systems::lcm::LcmDrivenLoop loop(*diagram, *sim_input_sub, nullptr,
+        &lcm_local,
+        std::make_unique<UtimeMessageToSeconds<dairlib::lcmt_cassie_out>>());
 
-  // caused an extra publish call?
-  loop.set_publish_on_every_received_message(true);
+    loop.set_publish_on_every_received_message(true);
 
-  // Starts the loop.
-  loop.RunToSecondsAssumingInitialized(1e6);
+    // Starts the loop.
+    loop.RunToSecondsAssumingInitialized(1e6);
+  } else {
+    systems::UDPDrivenLoop loop(*diagram, *udp_input_sub, nullptr);
 
-  input_sub->StopPolling();
+    loop.set_publish_on_every_received_message(true);
+
+    // Starts the loop.
+    loop.RunToSecondsAssumingInitialized(1e6);
+
+    udp_input_sub->StopPolling();
+  }
   return 0;
 }
 

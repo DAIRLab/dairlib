@@ -196,6 +196,7 @@ cc_binary(
   deps = ["//examples/Cassie/networking:udp_driven_loop",
           "//examples/Cassie/networking:cassie_udp_pub_sub",
           "@drake//lcm",
+          "@drake//systems/lcm:lcm_driven_loop",
           "//lcmtypes:lcmt_robot",
           "//systems:robot_lcm_systems",
           ":cassie_utils",

@@ -16,6 +16,7 @@
 #include "drake/lcm/drake_lcm.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/constraint.h"
+#include "drake/solvers/solve.h"
 
 #include "common/find_resource.h"
 #include "attic/systems/trajectory_optimization/dircon_util.h"
@@ -157,7 +158,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
   //    "Verify level","1");
 
-  for (int j = 0; j < timesteps.size(); j++) {
+  for (uint j = 0; j < timesteps.size(); j++) {
     trajopt->drake::systems::trajectory_optimization::MultipleShooting::
         SetInitialTrajectory(init_u_traj, init_x_traj);
     trajopt->SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j],
@@ -210,19 +211,17 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
 
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto result = trajopt->Solve();
+  const auto result = Solve(*trajopt, trajopt->initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  trajopt->PrintSolution();
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
-  std::cout << result << std::endl;
-  std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
 
-  systems::trajectory_optimization::checkConstraints(trajopt.get());
+  systems::trajectory_optimization::checkConstraints(trajopt.get(), result);
 
   MatrixXd A;
   VectorXd y, lb, ub;
-  VectorXd x_sol = trajopt->GetSolution(trajopt->decision_variables());
+  VectorXd x_sol = result.get_x_val();
   systems::trajectory_optimization::linearizeConstraints(trajopt.get(),
     x_sol, y, A, lb, ub);
 

@@ -14,7 +14,8 @@ namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
-void checkConstraints(const MathematicalProgram* prog) {
+void checkConstraints(const MathematicalProgram* prog,
+    const drake::solvers::MathematicalProgramResult& result) {
   for (auto const& binding : prog->generic_constraints()) {
     double tol = 1e-6;
     auto y = prog->EvalBindingAtSolution(binding);

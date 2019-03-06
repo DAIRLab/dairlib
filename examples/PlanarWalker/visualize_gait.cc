@@ -123,12 +123,12 @@ void visualizeGait(std::string file, int steps, double rate) {
 
   // go through solver interface
   auto solver = std::make_shared<drake::solvers::SnoptSolver>();
-  drake::solvers::SolverResult solver_result(solver->id());
-  solver_result.set_decision_variable_values(z);
-  trajopt->SetSolverResult(solver_result);
+
+  drake::solvers::MathematicalProgramResult result;
+  result.set_x_val(z);
 
   drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
-      trajopt->ReconstructStateTrajectory();
+      trajopt->ReconstructStateTrajectory(result);
 
   // MatrixXd transformation = MatrixXd::Identity(2*n);
 

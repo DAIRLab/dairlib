@@ -20,10 +20,12 @@ class ConstrainedLQRController : public AffineController {
     return this->get_output_port(output_port_params_index_);
   }
   int get_output_port_params_index() { return output_port_params_index_; }
-  Eigen::MatrixXd get_A() { return A_; }
-  Eigen::MatrixXd get_B() { return B_; }
   Eigen::MatrixXd get_K() { return K_; }
-  Eigen::MatrixXd get_E() { return E_; }
+  Eigen::VectorXd get_E() { return E_; }
+  Eigen::VectorXd get_x_desired() { return x_desired_; }
+  void set_K(Eigen::MatrixXd K) { K_ = K; }
+  void set_E(Eigen::VectorXd E) { E_ = E; }
+  void set_x_desired(Eigen::VectorXd x_desired) { x_desired_ = x_desired; }
 
  private:
   void CalcControl(const drake::systems::Context<double>& context,
@@ -37,7 +39,7 @@ class ConstrainedLQRController : public AffineController {
   Eigen::MatrixXd A_;
   Eigen::MatrixXd B_;
   Eigen::MatrixXd K_;
-  Eigen::MatrixXd E_;
+  Eigen::VectorXd E_;
   Eigen::VectorXd x_desired_;
   drake::systems::controllers::LinearQuadraticRegulatorResult lqr_result_;
   const int num_positions_;

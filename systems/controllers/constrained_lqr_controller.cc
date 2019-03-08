@@ -115,9 +115,9 @@ void ConstrainedLQRController::SetupController(VectorXd q0, VectorXd u0,
   DRAKE_DEMAND(B_.cols() == R.rows());
 
   lqr_result_ = LinearQuadraticRegulator(A_, B_, Q, R);
-  K_ = lqr_result_.K * P;
-  E_ = u0;
-  x_desired_ = x0;
+  set_K(lqr_result_.K * P);
+  set_E(u0);
+  set_x_desired(x0);
 }
 
 void ConstrainedLQRController::CalcControl(const Context<double>& context,

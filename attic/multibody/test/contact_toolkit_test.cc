@@ -7,7 +7,7 @@
 #include "attic/multibody/rigidbody_utils.h"
 
 namespace dairlib {
-namespace systems {
+namespace multibody {
 namespace {
 
 using std::unique_ptr;
@@ -240,7 +240,7 @@ TEST_F(ContactToolkitTest, TimeDerivativesTest) {
 }
 
 }  // namespace
-}  // namespace systems
+}  // namespace multibody
 }  // namespace dairlib
 
 int main(int argc, char **argv) {

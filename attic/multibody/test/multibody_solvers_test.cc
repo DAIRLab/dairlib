@@ -7,7 +7,7 @@
 #include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib {
-namespace systems {
+namespace multibody {
 namespace {
 
 using std::cout;
@@ -500,7 +500,7 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
 }
 
 }  // namespace
-}  // namespace systems
+}  // namespace multibody
 }  // namespace dairlib
 
 int main(int argc, char** argv) {

@@ -78,12 +78,12 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
           if (selector_index == -1) {
             selector_index = j;
           } else {
-            DRAKE_ABORT_MSG("Unable to create selector map.");
+            throw std::logic_error("Unable to create selector map.");
           }
         }
       }
       if (selector_index == -1) {
-        DRAKE_ABORT_MSG("Unable to create selector map.");
+        std::logic_error("Unable to create selector map.");
       }
 
       name_to_index_map[name] = selector_index;
@@ -127,12 +127,12 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
           if (selector_index == -1) {
             selector_index = j;
           } else {
-            DRAKE_ABORT_MSG("Unable to create selector map.");
+            throw std::logic_error("Unable to create selector map.");
           }
         }
       }
       if (selector_index == -1) {
-        DRAKE_ABORT_MSG("Unable to create selector map.");
+        throw std::logic_error("Unable to create selector map.");
       }
 
       name_to_index_map[name] = selector_index - plant.num_positions();
@@ -170,12 +170,12 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<double>& plant) {
           if (selector_index == -1) {
             selector_index = j;
           } else {
-            DRAKE_ABORT_MSG("Unable to create selector map.");
+            throw std::logic_error("Unable to create selector map.");
           }
         }
       }
       if (selector_index == -1) {
-        DRAKE_ABORT_MSG("Unable to create selector map.");
+        throw std::logic_error("Unable to create selector map.");
       }
 
       name_to_index_map[name] = selector_index;

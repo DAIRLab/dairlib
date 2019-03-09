@@ -120,22 +120,22 @@ void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
 }
 
 template <typename T>
-PiecewisePolynomial<double> Dircon<T>::ReconstructInputTrajectory()
-    const {
-  Eigen::VectorXd times = GetSampleTimes();
+PiecewisePolynomial<double> Dircon<T>::ReconstructInputTrajectory(
+    const drake::solvers::MathematicalProgramResult& result) const {
+  Eigen::VectorXd times = GetSampleTimes(result);
   std::vector<double> times_vec(N());
   std::vector<Eigen::MatrixXd> inputs(N());
   for (int i = 0; i < N(); i++) {
     times_vec[i] = times(i);
-    inputs[i] = GetSolution(input(i));
+    inputs[i] = result.GetSolution(input(i));
   }
   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
 }
 
 template <typename T>
-PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory()
-    const {
-  Eigen::VectorXd times = GetSampleTimes();
+PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory(
+    const drake::solvers::MathematicalProgramResult& result) const {
+  Eigen::VectorXd times = GetSampleTimes(result);
   std::vector<double> times_vec(N());
   std::vector<Eigen::MatrixXd> states(N());
   std::vector<Eigen::MatrixXd> inputs(N());
@@ -144,9 +144,9 @@ PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory()
 
   for (int i = 0; i < N(); i++) {
     times_vec[i] = times(i);
-    states[i] = GetSolution(state(i));
-    inputs[i] = GetSolution(input(i));
-    forces[i] = GetSolution(force(i));
+    states[i] = result.GetSolution(state(i));
+    inputs[i] = result.GetSolution(input(i));
+    forces[i] = result.GetSolution(force(i));
     constraints_->updateData(states[i], inputs[i], forces[i]);
 
     derivatives[i] = drake::math::DiscardGradient(constraints_->getXDot());

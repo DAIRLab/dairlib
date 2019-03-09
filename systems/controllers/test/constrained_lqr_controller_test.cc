@@ -187,7 +187,32 @@ class ConstrainedLQRControllerTest : public ::testing::Test {
   unique_ptr<ConstrainedLQRController> clqr_controller_floating_;
 };
 
-TEST_F(ConstrainedLQRControllerTest, TestAccessors) {}
+TEST_F(ConstrainedLQRControllerTest, TestAccessors) {
+  MatrixXd K_fixed = MatrixXd::Random(num_efforts_fixed_, num_states_fixed_);
+  VectorXd E_fixed = VectorXd::Random(num_efforts_fixed_);
+  VectorXd x_desired_fixed = VectorXd::Random(num_efforts_fixed_);
+
+  clqr_controller_fixed_->set_K(K_fixed);
+  clqr_controller_fixed_->set_E(E_fixed);
+  clqr_controller_fixed_->set_x_desired(x_desired_fixed);
+
+  ASSERT_EQ(clqr_controller_fixed_->get_K(), K_fixed);
+  ASSERT_EQ(clqr_controller_fixed_->get_E(), E_fixed);
+  ASSERT_EQ(clqr_controller_fixed_->get_x_desired(), x_desired_fixed);
+
+  MatrixXd K_floating =
+      MatrixXd::Random(num_efforts_floating_, num_states_floating_);
+  VectorXd E_floating = VectorXd::Random(num_efforts_floating_);
+  VectorXd x_desired_floating = VectorXd::Random(num_efforts_floating_);
+
+  clqr_controller_floating_->set_K(K_floating);
+  clqr_controller_floating_->set_E(E_floating);
+  clqr_controller_floating_->set_x_desired(x_desired_floating);
+
+  ASSERT_EQ(clqr_controller_floating_->get_K(), K_floating);
+  ASSERT_EQ(clqr_controller_floating_->get_E(), E_floating);
+  ASSERT_EQ(clqr_controller_floating_->get_x_desired(), x_desired_floating);
+}
 
 }  // namespace
 }  // namespace systems

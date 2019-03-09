@@ -56,7 +56,6 @@ cc_library(
         "constrained_lqr_controller.h",
     ],
     deps = [
-        ":affine_controller",
         "//systems/framework:vector",
         "//attic/multibody:contact_toolkit",
         "@drake//systems/framework:leaf_system",

@@ -20,10 +20,9 @@ using drake::systems::controllers::LinearQuadraticRegulator;
 using drake::systems::controllers::LinearQuadraticRegulatorResult;
 
 ConstrainedLQRController::ConstrainedLQRController(
-    const RigidBodyTree<double>& tree, ContactInfo contact_info)
-    : AffineController(tree.get_num_positions(), tree.get_num_velocities(),
-                       tree.get_num_actuators()),
-      tree_(tree),
+    const RigidBodyTree<double>& tree, VectorXd q0, VectorXd u0,
+    VectorXd lambda0, MatrixXd Q, MatrixXd R, ContactInfo contact_info)
+    : tree_(tree),
       contact_info_(contact_info),
       contact_toolkit_(
           make_unique<ContactToolkit<AutoDiffXd>>(tree, contact_info)),
@@ -33,17 +32,20 @@ ConstrainedLQRController::ConstrainedLQRController(
       num_efforts_(tree.get_num_actuators()),
       num_forces_(tree.getNumPositionConstraints() +
                   contact_info.num_contacts * 3) {
-  // Output port that outputs the constant AffineParams computed by
-  // SetupController
-  output_port_params_index_ =
-      this->DeclareVectorOutputPort(AffineParams(num_states_, num_efforts_),
+  // Input port that takes in an OutputVector containing the current Cassie
+  // state
+  input_port_info_index_ =
+      this
+          ->DeclareVectorInputPort(OutputVector<double>(
+              num_positions_, num_velocities_, num_efforts_))
+          .get_index();
+
+  // Output port that outputs the efforts
+  output_port_efforts_index_ =
+      this->DeclareVectorOutputPort(TimestampedVector<double>(num_efforts_),
                                     &ConstrainedLQRController::CalcControl)
           .get_index();
-}
 
-void ConstrainedLQRController::SetupController(VectorXd q0, VectorXd u0,
-                                               VectorXd lambda0, MatrixXd Q,
-                                               MatrixXd R) {
   // checking the validity of the parameters
   DRAKE_DEMAND(q0.size() == num_positions_);
   DRAKE_DEMAND(u0.size() == num_efforts_);
@@ -115,17 +117,20 @@ void ConstrainedLQRController::SetupController(VectorXd q0, VectorXd u0,
   DRAKE_DEMAND(B_.cols() == R.rows());
 
   lqr_result_ = LinearQuadraticRegulator(A_, B_, Q, R);
-  set_K(lqr_result_.K * P);
-  set_E(u0);
-  set_x_desired(x0);
+  K_ = lqr_result_.K * P;
+  E_ = u0;
 }
 
-void ConstrainedLQRController::CalcControl(const Context<double>& context,
-                                           AffineParams* control) const {
-  control->set_K(K_);
-  control->set_E(E_);
-  control->set_desired_state(x_desired_);
-  control->set_timestamp(context.get_time());
+void ConstrainedLQRController::CalcControl(
+    const Context<double>& context, TimestampedVector<double>* control) const {
+  const OutputVector<double>* info =
+      (OutputVector<double>*)this->EvalVectorInput(context,
+                                                   input_port_info_index_);
+
+  VectorXd u = K_ * (x_desired_ - info->GetState()) + E_;
+
+  control->SetDataVector(u);
+  control->set_timestamp(info->get_timestamp());
 }
 
 }  // namespace systems

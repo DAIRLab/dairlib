@@ -146,17 +146,55 @@ class ConstrainedLQRControllerTest : public ::testing::Test {
     num_forces_floating_ =
         tree_floating_.getNumPositionConstraints() + 3 * num_contacts_;
 
-    q_fixed_ = x0_fixed_.head(num_positions_fixed_);
-    u_fixed_ = VectorXd::Zero(num_efforts_fixed_);
-    lambda_fixed_ = VectorXd::Zero(num_forces_fixed_);
+    q0_fixed_ = x0_fixed_.head(num_positions_fixed_);
+    u0_fixed_ = VectorXd::Zero(num_efforts_fixed_);
+    lambda0_fixed_ = VectorXd::Zero(num_forces_fixed_);
 
-    q_floating_ = x0_floating_.head(num_positions_floating_);
-    u_floating_ = VectorXd::Zero(num_efforts_floating_);
-    lambda_floating_ = VectorXd::Zero(num_forces_floating_);
+    q0_floating_ = x0_floating_.head(num_positions_floating_);
+    u0_floating_ = VectorXd::Zero(num_efforts_floating_);
+    lambda0_floating_ = VectorXd::Zero(num_forces_floating_);
 
-    clqr_controller_fixed_ = make_unique<ConstrainedLQRController>(tree_fixed_);
-    clqr_controller_floating_ =
-        make_unique<ConstrainedLQRController>(tree_floating_, contact_info_);
+    // Solving for the fixed point (Fixed base).
+    FixedPointSolver fp_solver_fixed(tree_fixed_, q0_fixed_, u0_fixed_);
+    fp_solver_fixed.SetInitialGuess(q0_fixed_, u0_fixed_, lambda0_fixed_);
+    fp_solver_fixed.AddJointLimitConstraint(0.001);
+
+    MathematicalProgramResult program_result_fixed = fp_solver_fixed.Solve();
+    q_fixed_ = fp_solver_fixed.GetSolutionQ();
+    u_fixed_ = fp_solver_fixed.GetSolutionU();
+    lambda_fixed_ = fp_solver_fixed.GetSolutionLambda();
+
+    Q_fixed_ = MatrixXd::Identity(num_states_fixed_ - 2 * num_forces_fixed_,
+                                  num_states_fixed_ - 2 * num_forces_fixed_);
+    R_fixed_ = MatrixXd::Identity(num_efforts_fixed_, num_efforts_fixed_);
+
+    // Initialized the fixed base constrained LQR controller.
+    clqr_controller_fixed_ = make_unique<ConstrainedLQRController>(
+        tree_fixed_, q_fixed_, u_fixed_, lambda_fixed_, Q_fixed_, R_fixed_);
+
+    // Solving for the fixed point (Floating base).
+    FixedPointSolver fp_solver_floating(tree_floating_, contact_info_,
+                                        q0_floating_, u0_floating_);
+    fp_solver_floating.SetInitialGuess(q0_floating_, u0_floating_,
+                                       lambda0_floating_);
+    fp_solver_floating.AddJointLimitConstraint(0.001);
+
+    MathematicalProgramResult program_result_floating =
+        fp_solver_floating.Solve();
+    q_floating_ = fp_solver_floating.GetSolutionQ();
+    u_floating_ = fp_solver_floating.GetSolutionU();
+    lambda_floating_ = fp_solver_floating.GetSolutionLambda();
+
+    Q_floating_ =
+        MatrixXd::Identity(num_states_floating_ - 2 * num_forces_floating_,
+                           num_states_floating_ - 2 * num_forces_floating_);
+    R_floating_ =
+        MatrixXd::Identity(num_efforts_floating_, num_efforts_floating_);
+
+    // Initialized the floating base constrained LQR controller.
+    clqr_controller_floating_ = make_unique<ConstrainedLQRController>(
+        tree_floating_, q_floating_, u_floating_, lambda_floating_, Q_floating_,
+        R_floating_, contact_info_);
   }
 
   RigidBodyTree<double> tree_fixed_;
@@ -177,41 +215,100 @@ class ConstrainedLQRControllerTest : public ::testing::Test {
   ContactInfo contact_info_;
   VectorXd x0_fixed_;
   VectorXd x0_floating_;
+  VectorXd q0_fixed_;
+  VectorXd q0_floating_;
+  VectorXd u0_fixed_;
+  VectorXd u0_floating_;
+  VectorXd lambda0_fixed_;
+  VectorXd lambda0_floating_;
   VectorXd q_fixed_;
   VectorXd q_floating_;
   VectorXd u_fixed_;
   VectorXd u_floating_;
   VectorXd lambda_fixed_;
   VectorXd lambda_floating_;
+  MatrixXd Q_fixed_;
+  MatrixXd Q_floating_;
+  MatrixXd R_fixed_;
+  MatrixXd R_floating_;
   unique_ptr<ConstrainedLQRController> clqr_controller_fixed_;
   unique_ptr<ConstrainedLQRController> clqr_controller_floating_;
 };
 
-TEST_F(ConstrainedLQRControllerTest, TestAccessors) {
-  MatrixXd K_fixed = MatrixXd::Random(num_efforts_fixed_, num_states_fixed_);
-  VectorXd E_fixed = VectorXd::Random(num_efforts_fixed_);
-  VectorXd x_desired_fixed = VectorXd::Random(num_efforts_fixed_);
+TEST_F(ConstrainedLQRControllerTest, TestGettersFixed) {
+  // Testing the getters for the fixed base controller.
+  // Dimensions of K and E
+  ASSERT_EQ(clqr_controller_fixed_->get_K().rows(), num_efforts_fixed_);
+  ASSERT_EQ(clqr_controller_fixed_->get_K().cols(), num_states_fixed_);
 
-  clqr_controller_fixed_->set_K(K_fixed);
-  clqr_controller_fixed_->set_E(E_fixed);
-  clqr_controller_fixed_->set_x_desired(x_desired_fixed);
+  ASSERT_EQ(clqr_controller_fixed_->get_E().size(), num_efforts_fixed_);
 
-  ASSERT_EQ(clqr_controller_fixed_->get_K(), K_fixed);
-  ASSERT_EQ(clqr_controller_fixed_->get_E(), E_fixed);
-  ASSERT_EQ(clqr_controller_fixed_->get_x_desired(), x_desired_fixed);
+  // Verifying the desired state
+  ASSERT_TRUE(clqr_controller_fixed_->get_desired_state()
+                  .head(num_positions_fixed_)
+                  .isApprox(q_fixed_));
+  ASSERT_TRUE(clqr_controller_fixed_->get_desired_state()
+                  .tail(num_velocities_fixed_)
+                  .isApprox(VectorXd::Zero(num_velocities_fixed_)));
 
-  MatrixXd K_floating =
-      MatrixXd::Random(num_efforts_floating_, num_states_floating_);
-  VectorXd E_floating = VectorXd::Random(num_efforts_floating_);
-  VectorXd x_desired_floating = VectorXd::Random(num_efforts_floating_);
+  // Dimensions of the A and B matrices that are in the reduced coordinates
+  ASSERT_EQ(clqr_controller_fixed_->get_A().rows(),
+            num_states_fixed_ - 2 * num_forces_fixed_);
+  ASSERT_EQ(clqr_controller_fixed_->get_A().cols(),
+            num_states_fixed_ - 2 * num_forces_fixed_);
+  ASSERT_EQ(clqr_controller_fixed_->get_B().rows(),
+            num_states_fixed_ - 2 * num_forces_fixed_);
+  ASSERT_EQ(clqr_controller_fixed_->get_B().cols(), num_efforts_fixed_);
+}
 
-  clqr_controller_floating_->set_K(K_floating);
-  clqr_controller_floating_->set_E(E_floating);
-  clqr_controller_floating_->set_x_desired(x_desired_floating);
+TEST_F(ConstrainedLQRControllerTest, TestGettersFloating) {
+  // Running similar tests for the floating base getters.
+  // Dimensions of K and E
+  ASSERT_EQ(clqr_controller_floating_->get_K().rows(), num_efforts_floating_);
+  ASSERT_EQ(clqr_controller_floating_->get_K().cols(), num_states_floating_);
 
-  ASSERT_EQ(clqr_controller_floating_->get_K(), K_floating);
-  ASSERT_EQ(clqr_controller_floating_->get_E(), E_floating);
-  ASSERT_EQ(clqr_controller_floating_->get_x_desired(), x_desired_floating);
+  ASSERT_EQ(clqr_controller_floating_->get_E().size(), num_efforts_floating_);
+
+  // Verifying the desired state
+  ASSERT_TRUE(clqr_controller_floating_->get_desired_state()
+                  .head(num_positions_floating_)
+                  .isApprox(q_floating_));
+  ASSERT_TRUE(clqr_controller_floating_->get_desired_state()
+                  .tail(num_velocities_floating_)
+                  .isApprox(VectorXd::Zero(num_velocities_floating_)));
+
+  // Dimensions of the A and B matrices that are in the reduced coordinates
+  ASSERT_EQ(clqr_controller_floating_->get_A().rows(),
+            num_states_floating_ - 2 * num_forces_floating_);
+  ASSERT_EQ(clqr_controller_floating_->get_A().cols(),
+            num_states_floating_ - 2 * num_forces_floating_);
+  ASSERT_EQ(clqr_controller_floating_->get_B().rows(),
+            num_states_floating_ - 2 * num_forces_floating_);
+  ASSERT_EQ(clqr_controller_floating_->get_B().cols(), num_efforts_floating_);
+}
+
+TEST_F(ConstrainedLQRControllerTest, TestPortsFixed) {
+  // Verifying the number of input and output ports, along with their size.
+  ASSERT_EQ(
+      clqr_controller_fixed_->CreateDefaultContext()->get_num_input_ports(), 1);
+  ASSERT_EQ(clqr_controller_fixed_->get_num_input_ports(), 1);
+
+  ASSERT_EQ(clqr_controller_fixed_->get_num_output_ports(), 1);
+
+  ASSERT_EQ(clqr_controller_fixed_->get_output_port_efforts().size(),
+            num_efforts_fixed_ + 1);
+}
+
+TEST_F(ConstrainedLQRControllerTest, TestPortsFloating) {
+  // Running the same port tests for the floating base controller.
+  ASSERT_EQ(
+      clqr_controller_floating_->CreateDefaultContext()->get_num_input_ports(), 1);
+  ASSERT_EQ(clqr_controller_floating_->get_num_input_ports(), 1);
+
+  ASSERT_EQ(clqr_controller_floating_->get_num_output_ports(), 1);
+
+  ASSERT_EQ(clqr_controller_floating_->get_output_port_efforts().size(),
+            num_efforts_floating_ + 1);
 }
 
 }  // namespace

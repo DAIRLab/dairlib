@@ -10,10 +10,9 @@ namespace systems {
 
 class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
  public:
-  ConstrainedLQRController(const RigidBodyTree<double>& tree,
-                           Eigen::VectorXd q0, Eigen::VectorXd u0,
-                           Eigen::VectorXd lambda0, Eigen::MatrixXd Q,
-                           Eigen::MatrixXd R,
+  ConstrainedLQRController(const RigidBodyTree<double>& tree, Eigen::VectorXd q,
+                           Eigen::VectorXd u, Eigen::VectorXd lambda,
+                           Eigen::MatrixXd Q, Eigen::MatrixXd R,
                            dairlib::multibody::ContactInfo contact_info =
                                dairlib::multibody::ContactInfo());
 
@@ -29,9 +28,9 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
   int get_output_port_efforts_index() { return output_port_efforts_index_; }
   Eigen::MatrixXd get_K() { return K_; }
   Eigen::VectorXd get_E() { return E_; }
-  Eigen::VectorXd get_x_desired() { return x_desired_; }
-  Eigen::VectorXd get_A() { return A_; }
-  Eigen::VectorXd get_B() { return B_; }
+  Eigen::VectorXd get_desired_state() { return desired_state_; }
+  Eigen::MatrixXd get_A() { return A_; }
+  Eigen::MatrixXd get_B() { return B_; }
   drake::systems::controllers::LinearQuadraticRegulatorResult get_lqr_result() {
     return lqr_result_;
   }
@@ -48,7 +47,7 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
   int output_port_efforts_index_;
   Eigen::MatrixXd K_;
   Eigen::VectorXd E_;
-  Eigen::VectorXd x_desired_;
+  Eigen::VectorXd desired_state_;
   Eigen::MatrixXd A_;
   Eigen::MatrixXd B_;
   drake::systems::controllers::LinearQuadraticRegulatorResult lqr_result_;

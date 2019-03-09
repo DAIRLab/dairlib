@@ -20,8 +20,8 @@ using drake::systems::controllers::LinearQuadraticRegulator;
 using drake::systems::controllers::LinearQuadraticRegulatorResult;
 
 ConstrainedLQRController::ConstrainedLQRController(
-    const RigidBodyTree<double>& tree, VectorXd q0, VectorXd u0,
-    VectorXd lambda0, MatrixXd Q, MatrixXd R, ContactInfo contact_info)
+    const RigidBodyTree<double>& tree, VectorXd q, VectorXd u, VectorXd lambda,
+    MatrixXd Q, MatrixXd R, ContactInfo contact_info)
     : tree_(tree),
       contact_info_(contact_info),
       contact_toolkit_(
@@ -47,18 +47,19 @@ ConstrainedLQRController::ConstrainedLQRController(
           .get_index();
 
   // checking the validity of the parameters
-  DRAKE_DEMAND(q0.size() == num_positions_);
-  DRAKE_DEMAND(u0.size() == num_efforts_);
-  DRAKE_DEMAND(lambda0.size() == num_forces_);
+  DRAKE_DEMAND(q.size() == num_positions_);
+  DRAKE_DEMAND(u.size() == num_efforts_);
+  DRAKE_DEMAND(lambda.size() == num_forces_);
 
   // Creating the full state vector (Velocities are zero as it is a fixed point)
-  VectorXd x0(num_states_);
-  x0 << q0, VectorXd::Zero(num_velocities_);
-  VectorX<AutoDiffXd> x0_autodiff = initializeAutoDiff(x0);
+  VectorXd x(num_states_);
+  x << q, VectorXd::Zero(num_velocities_);
+  desired_state_ = x;
+  VectorX<AutoDiffXd> x_autodiff = initializeAutoDiff(x);
 
   // Computing the full Jacobian (Position and contact)
   MatrixXd J_tree, J_contact;
-  KinematicsCache<double> k_cache = tree_.doKinematics(q0);
+  KinematicsCache<double> k_cache = tree_.doKinematics(q);
 
   // Position Jacobian
   J_tree = tree_.positionConstraintsJacobian(k_cache);
@@ -66,7 +67,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   // Contact Jacobian (If contact information is provided)
   if (contact_info_.num_contacts > 0) {
     J_contact = autoDiffToValueMatrix(
-        contact_toolkit_->CalcContactJacobian(x0_autodiff));
+        contact_toolkit_->CalcContactJacobian(x_autodiff));
   }
 
   MatrixXd J(J_tree.rows() + J_contact.rows(), num_positions_);
@@ -88,21 +89,21 @@ ConstrainedLQRController::ConstrainedLQRController(
   // To compute the linearization, xdot (autodiff) is computed
   // Creating a combined autodiff vector and then extracting the individual
   // components to ensure proper gradient initialization.
-  VectorXd xul0(num_states_ + num_efforts_ + num_forces_);
-  xul0 << x0, u0, lambda0;
-  AutoDiffVecXd xul0_autodiff = initializeAutoDiff(xul0);
-  x0_autodiff = xul0_autodiff.head(num_states_);
-  AutoDiffVecXd u0_autodiff = xul0.segment(num_states_, num_efforts_);
-  AutoDiffVecXd lambda0_autodiff = xul0.tail(num_forces_);
+  VectorXd xul(num_states_ + num_efforts_ + num_forces_);
+  xul << x, u, lambda;
+  AutoDiffVecXd xul_autodiff = initializeAutoDiff(xul);
+  x_autodiff = xul_autodiff.head(num_states_);
+  AutoDiffVecXd u_autodiff = xul.segment(num_states_, num_efforts_);
+  AutoDiffVecXd lambda_autodiff = xul.tail(num_forces_);
 
   // xdot
-  AutoDiffVecXd xdot0_autodiff = contact_toolkit_->CalcTimeDerivatives(
-      x0_autodiff, u0_autodiff, lambda0_autodiff);
+  AutoDiffVecXd xdot_autodiff = contact_toolkit_->CalcTimeDerivatives(
+      x_autodiff, u_autodiff, lambda_autodiff);
 
   // Making sure that the derivative is zero
-  DRAKE_DEMAND(autoDiffToValueMatrix(xdot0_autodiff).isZero(1e-6));
+  DRAKE_DEMAND(autoDiffToValueMatrix(xdot_autodiff).isZero(1e-6));
 
-  MatrixXd AB = autoDiffToGradientMatrix(xdot0_autodiff);
+  MatrixXd AB = autoDiffToGradientMatrix(xdot_autodiff);
   MatrixXd A = AB.leftCols(num_states_);
   MatrixXd B = AB.block(0, num_states_, AB.rows(), num_efforts_);
 
@@ -118,7 +119,7 @@ ConstrainedLQRController::ConstrainedLQRController(
 
   lqr_result_ = LinearQuadraticRegulator(A_, B_, Q, R);
   K_ = lqr_result_.K * P;
-  E_ = u0;
+  E_ = u;
 }
 
 void ConstrainedLQRController::CalcControl(
@@ -127,7 +128,7 @@ void ConstrainedLQRController::CalcControl(
       (OutputVector<double>*)this->EvalVectorInput(context,
                                                    input_port_info_index_);
 
-  VectorXd u = K_ * (x_desired_ - info->GetState()) + E_;
+  VectorXd u = K_ * (desired_state_ - info->GetState()) + E_;
 
   control->SetDataVector(u);
   control->set_timestamp(info->get_timestamp());

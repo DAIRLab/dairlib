@@ -177,6 +177,8 @@ class ConstrainedLQRControllerTest : public ::testing::Test {
                                         q0_floating_, u0_floating_);
     fp_solver_floating.SetInitialGuess(q0_floating_, u0_floating_,
                                        lambda0_floating_);
+    fp_solver_floating.AddSpreadNormalForcesCost();
+    fp_solver_floating.AddFixedJointsConstraint(fixed_joints_map_);
     fp_solver_floating.AddJointLimitConstraint(0.001);
 
     MathematicalProgramResult program_result_floating =

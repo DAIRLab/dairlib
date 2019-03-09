@@ -166,6 +166,29 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "run_constrained_lqr_controller_sim",
+    srcs = ["run_constrained_lqr_controller_sim.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//attic/multibody/rigid_body_plant",
+        "@drake//attic/systems/sensors:sensors",
+        "@drake//common",
+        "@drake//lcm",
+        "@drake//manipulation/util",
+        "@drake//solvers",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework",
+        "@gflags",
+    ],
+)
+
 py_binary(
     name = "draw_graphviz",
     srcs = ["draw_graphviz.py"],

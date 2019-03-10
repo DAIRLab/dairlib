@@ -32,12 +32,14 @@ class DirconKinematicDataSet {
   int countConstraints();
 
  private:
-  struct CacheEntry {
+  // Key for the data cache--note that these are VectorXd, and not VectorX<T>
+  struct CacheKey {
     const Eigen::VectorXd state;
     const Eigen::VectorXd input;
     const Eigen::VectorXd forces;
   };
 
+  // Copy of a data entry for the cache
   struct CacheData {
     drake::VectorX<T> c_;
     drake::VectorX<T> cdot_;
@@ -48,57 +50,66 @@ class DirconKinematicDataSet {
     drake::VectorX<T> xdot_;
   };
 
+  // Hashes a CacheKey by bit shifting and combining hashes of the double
+  // elements
   class CacheHasher {
    public:
-    std::size_t operator()(const CacheEntry& entry) const {
+    std::size_t operator()(const CacheKey& key) const {
       std::size_t hash = 0;
-      for (int i = 0; i < entry.state.rows(); i++) {
-        hash = (hash << 1) ^ std::hash<double>{}(entry.state(i));
+      for (int i = 0; i < key.state.rows(); i++) {
+        hash = (hash << 1) ^ std::hash<double>{}(key.state(i));
       }
-      for (int i = 0; i < entry.input.rows(); i++) {
-        hash = (hash << 1) ^ std::hash<double>{}(entry.input(i));
+      for (int i = 0; i < key.input.rows(); i++) {
+        hash = (hash << 1) ^ std::hash<double>{}(key.input(i));
       }
-      for (int i = 0; i < entry.forces.rows(); i++) {
-        hash = (hash << 1) ^ std::hash<double>{}(entry.forces(i));
+      for (int i = 0; i < key.forces.rows(); i++) {
+        hash = (hash << 1) ^ std::hash<double>{}(key.forces(i));
       }
       return hash;
     }
   };
 
+  // == operation for two CacheKeys
   class CacheComparer {
    public:
-    bool operator()(const CacheEntry& a, const CacheEntry& b) const {
+    bool operator()(const CacheKey& a, const CacheKey& b) const {
       auto ret = (a.state.isApprox(b.state)) && (a.forces.isApprox(b.forces)) &&
           (a.input.isApprox(b.input));
       return ret;
     }
   };
 
+  // Simple wrapper of an unordered_map that manages a maximum size
+  // At max size, the oldest objects are removed from the map
   class Cache {
    public:
     explicit Cache(unsigned int max_size) : max_size_(max_size) {}
 
-    bool Contains(const CacheEntry& entry) const {
-      return map_.find(entry) != map_.end();
+    // Check if the cache contains the given key
+    bool Contains(const CacheKey& key) const {
+      return map_.find(key) != map_.end();
     }
 
-    const CacheData& GetData(const CacheEntry& entry) {
-      return map_[entry];
+    // Get the data associated with a key element
+    const CacheData& GetData(const CacheKey& key) {
+      return map_[key];
     }
 
-    void AddData(const CacheEntry& entry, const CacheData& data) {
+    // Adds an entry to storage. If at max size, removes the oldest element
+    // For speed, this assumes that the map does not contain the key already!!
+    void AddData(const CacheKey& key, const CacheData& data) {
       if (map_.size() >= max_size_) {
         map_.erase(queue_.front());
         queue_.pop_front();
       }
-      map_[entry] = data;
-      queue_.push_back(entry);
+      map_[key] = data;
+      queue_.push_back(key);
     }
 
    private:
     unsigned int max_size_;
-    std::unordered_map<CacheEntry, CacheData, CacheHasher, CacheComparer> map_;
-    std::list<CacheEntry> queue_;
+    std::unordered_map<CacheKey, CacheData, CacheHasher, CacheComparer> map_;
+    std::list<CacheKey> queue_;
   };
 
   const drake::multibody::MultibodyPlant<T>& plant_;

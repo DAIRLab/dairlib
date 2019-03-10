@@ -21,3 +21,4 @@ RUN set -eux \
   && git clone https://github.com/RobotLocomotion/drake.git \
   && export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/drake/ \
   && cd dairlib
+

@@ -89,9 +89,6 @@ HybridDircon<T>::HybridDircon(
     // value along with the state and input vectors at that knot and the
     // next.
 
-    //TODO: To enable caching of constraint calculations, I probably need to make deep copies of constraints (and make another container
-    // class that that has double the info for time i and i+1)
-
     //Adding dynamic constraints
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
@@ -208,7 +205,7 @@ VectorX<Expression> HybridDircon<T>::SubstitutePlaceholderVariables(
 // Eigen::VectorBlock<const VectorXDecisionVariable> HybridDircon<T>::state_vars_by_mode(int mode, int time_index)  {
 template <typename T>
 VectorXDecisionVariable HybridDircon<T>::state_vars_by_mode(int mode, int time_index) const {
-  if (time_index == 0 && mode > 0) {//TODO(mposa): remove the false
+  if (time_index == 0 && mode > 0) {
     VectorXDecisionVariable ret(num_states());
     ret << x_vars().segment((mode_start_[mode] + time_index)*num_states(), plant_.num_positions()),
           v_post_impact_vars_by_mode(mode - 1);

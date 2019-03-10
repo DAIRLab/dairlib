@@ -228,7 +228,7 @@ shared_ptr<HybridDircon<double>> runDircon(
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
   std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
 
-  systems::trajectory_optimization::checkConstraints(trajopt.get(), result);
+  // systems::trajectory_optimization::checkConstraints(trajopt.get(), result);
 
   MatrixXd A;
   VectorXd y, lb, ub;

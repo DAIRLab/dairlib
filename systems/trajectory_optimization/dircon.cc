@@ -41,9 +41,6 @@ Dircon<T>::Dircon(const RigidBodyTree<double>& tree, int num_time_samples, doubl
   // value along with the state and input vectors at that knot and the
   // next.
 
-  //TODO: To enable caching of constraint calculations, I probably need to make deep copies of constraints (and make another container
-  // class that that has double the info for time i and i+1)
-
   //Adding dynamic constraints
   for (int i = 0; i < N() - 1; i++) {
     AddConstraint(constraint,

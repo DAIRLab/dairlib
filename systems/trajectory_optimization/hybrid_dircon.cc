@@ -17,6 +17,7 @@ namespace trajectory_optimization {
 using drake::solvers::Binding;
 using drake::solvers::Constraint;
 using drake::solvers::MathematicalProgram;
+using drake::solvers::MathematicalProgramResult;
 using drake::solvers::VectorXDecisionVariable;
 using drake::trajectories::PiecewisePolynomial;
 using drake::systems::trajectory_optimization::MultipleShooting;
@@ -240,14 +241,14 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
 }
 
 template <typename T>
-PiecewisePolynomial<double> HybridDircon<T>::ReconstructInputTrajectory()
-    const {
-  Eigen::VectorXd times = GetSampleTimes();
+PiecewisePolynomial<double> HybridDircon<T>::ReconstructInputTrajectory(
+    const MathematicalProgramResult& result) const {
+  Eigen::VectorXd times = GetSampleTimes(result);
   vector<double> times_vec(N());
   vector<Eigen::MatrixXd> inputs(N());
   for (int i = 0; i < N(); i++) {
     times_vec[i] = times(i);
-    inputs[i] = GetSolution(input(i));
+    inputs[i] = result.GetSolution(input(i));
   }
   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
 }
@@ -255,9 +256,9 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructInputTrajectory()
 // TODO(mposa)
 // need to configure this to handle the hybrid discontinuities properly
 template <typename T>
-PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory()
-    const {
-  VectorXd times_all(GetSampleTimes());
+PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory(
+    const MathematicalProgramResult& result) const {
+  VectorXd times_all(GetSampleTimes(result));
   VectorXd times(N() + num_modes_ - 1);
 
   MatrixXd states(num_states(), N() + num_modes_ - 1);
@@ -274,12 +275,12 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory()
       if (i > 0 && j == 0) {
         times(k) += + 1e-6;
       }
-      VectorX<T> xk = GetSolution(state_vars_by_mode(i, j));
-      VectorX<T> uk = GetSolution(input(k_data));
+      VectorX<T> xk = result.GetSolution(state_vars_by_mode(i, j));
+      VectorX<T> uk = result.GetSolution(input(k_data));
       states.col(k) = xk;
       inputs.col(k) = uk;
       auto context = multibody::createContext(plant_, xk, uk);
-      constraints_[i]->updateData(*context, GetSolution(force(i, j)));
+      constraints_[i]->updateData(*context, result.GetSolution(force(i, j)));
       derivatives.col(k) =
           drake::math::DiscardGradient(constraints_[i]->getXDot());
   }

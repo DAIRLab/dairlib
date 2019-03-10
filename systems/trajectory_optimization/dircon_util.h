@@ -7,7 +7,8 @@ namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
-void checkConstraints(const drake::solvers::MathematicalProgram* prog);
+void checkConstraints(const drake::solvers::MathematicalProgram* prog,
+    const drake::solvers::MathematicalProgramResult& result);
 
 Eigen::VectorXd getConstraintRows(
     const drake::solvers::MathematicalProgram* prog,

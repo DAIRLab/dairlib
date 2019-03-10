@@ -79,7 +79,8 @@ int do_main(int argc, char* argv[]) {
   drake::systems::DiagramBuilder<double> builder;
 
   if (!FLAGS_is_imu_sim && !FLAGS_publish_state) {
-    DRAKE_ABORT_MSG("Must publish either via CASSIE_OUTPUT or CASSIE_STATE");
+    throw std::logic_error(
+        "Must publish either via CASSIE_OUTPUT or CASSIE_STATE");
   }
 
   if (FLAGS_simulation_type != "timestepping") FLAGS_dt = 0.0;

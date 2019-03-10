@@ -48,15 +48,25 @@ class Dircon:public drake::systems::trajectory_optimization::MultipleShooting {
 
   ~Dircon() override {}
 
-  /// Get the input trajectory at the solution as a
-  /// %PiecewisePolynomialTrajectory%.
+  /// TODO(mposa): remove when removed upstream
   drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
-  const override;
+      const override {
+        return drake::trajectories::PiecewisePolynomial<double>();
+      };
+  drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
+      const override {
+        return drake::trajectories::PiecewisePolynomial<double>();
+      };
+
+  /// Get the input trajectory at the solution as a
+  /// %drake::trajectories::PiecewisePolynomialTrajectory%.
+  drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory(
+      const drake::solvers::MathematicalProgramResult& result) const override;
 
   /// Get the state trajectory at the solution as a
-  /// %PiecewisePolynomialTrajectory%.
-  drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
-  const override;
+  /// %drake::trajectories::PiecewisePolynomialTrajectory%.
+  drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory(
+      const drake::solvers::MathematicalProgramResult& result) const override;
 
   /// Set the initial guess
   /// @param traj_init_u control input u

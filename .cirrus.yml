@@ -5,3 +5,10 @@ build_task:
     cpu: 8
     memory: 24
   test_script: bazel build ... && bazel test ...
+drake_master_build_task:
+  timeout_in: 120m
+  container:
+    dockerfile: install/bionic/LocalDrakeDockerfile
+    cpu: 8
+    memory: 24
+  test_script: bazel build ... && bazel test ...  

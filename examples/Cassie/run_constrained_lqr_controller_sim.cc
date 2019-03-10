@@ -289,7 +289,7 @@ int do_main(int argc, char* argv[]) {
 
   MatrixXd Q = MatrixXd::Identity(num_states - 2 * num_forces,
                                   num_states - 2 * num_forces);
-  MatrixXd R = 0.01 * MatrixXd::Identity(num_efforts, num_efforts);
+  MatrixXd R = 100 * MatrixXd::Identity(num_efforts, num_efforts);
 
   auto clqr_controller = builder.AddSystem<ConstrainedLQRController>(
       plant->get_rigid_body_tree(), q, u, lambda, Q, R, contact_info);

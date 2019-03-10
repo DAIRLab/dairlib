@@ -93,8 +93,8 @@ ConstrainedLQRController::ConstrainedLQRController(
   xul << x, u, lambda;
   AutoDiffVecXd xul_autodiff = initializeAutoDiff(xul);
   x_autodiff = xul_autodiff.head(num_states_);
-  AutoDiffVecXd u_autodiff = xul.segment(num_states_, num_efforts_);
-  AutoDiffVecXd lambda_autodiff = xul.tail(num_forces_);
+  AutoDiffVecXd u_autodiff = xul_autodiff.segment(num_states_, num_efforts_);
+  AutoDiffVecXd lambda_autodiff = xul_autodiff.tail(num_forces_);
 
   // xdot
   AutoDiffVecXd xdot_autodiff = contact_toolkit_->CalcTimeDerivatives(
@@ -106,8 +106,6 @@ ConstrainedLQRController::ConstrainedLQRController(
   MatrixXd AB = autoDiffToGradientMatrix(xdot_autodiff);
   MatrixXd A = AB.leftCols(num_states_);
   MatrixXd B = AB.block(0, num_states_, AB.rows(), num_efforts_);
-
-  std::cout << B << std::endl;
 
   // A and B matrices in the new coordinates
   A_ = P * A * P.transpose();
@@ -132,10 +130,11 @@ void ConstrainedLQRController::CalcControl(
 
   VectorXd u = K_ * (desired_state_ - info->GetState()) + E_;
 
+  std::cout << desired_state_ - info->GetState() << std::endl << std::endl;
+
   control->SetDataVector(u);
   control->set_timestamp(info->get_timestamp());
 
-  //std::cout << K_ << std::endl << std::endl;
 }
 
 }  // namespace systems

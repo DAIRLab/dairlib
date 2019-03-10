@@ -107,6 +107,8 @@ ConstrainedLQRController::ConstrainedLQRController(
   MatrixXd A = AB.leftCols(num_states_);
   MatrixXd B = AB.block(0, num_states_, AB.rows(), num_efforts_);
 
+  std::cout << B << std::endl;
+
   // A and B matrices in the new coordinates
   A_ = P * A * P.transpose();
   B_ = P * B;
@@ -132,6 +134,8 @@ void ConstrainedLQRController::CalcControl(
 
   control->SetDataVector(u);
   control->set_timestamp(info->get_timestamp());
+
+  //std::cout << K_ << std::endl << std::endl;
 }
 
 }  // namespace systems

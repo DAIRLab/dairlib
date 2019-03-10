@@ -141,6 +141,12 @@ class ConstrainedLQRControllerTest : public ::testing::Test {
     contact_info_ = {xB, idxB};
     num_contacts_ = contact_info_.num_contacts;
 
+    std::cout << contact_info_.xA << std::endl;
+    for (auto& elem : contact_info_.idxA){
+      std::cout << elem << " ";
+    }
+    std::cout << std::endl;
+
     num_forces_fixed_ = tree_fixed_.getNumPositionConstraints();
 
     num_forces_floating_ =

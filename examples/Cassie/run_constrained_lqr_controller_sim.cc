@@ -18,6 +18,7 @@
 #include "attic/multibody/multibody_solvers.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "systems/controllers/constrained_lqr_controller.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -33,6 +34,7 @@ using std::make_unique;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3Xd;
+using drake::multibody::AddFlatTerrainToWorld;
 using drake::solvers::MathematicalProgramResult;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
@@ -40,6 +42,7 @@ using dairlib::systems::SubvectorPassThrough;
 using dairlib::multibody::FixedPointSolver;
 using dairlib::multibody::ContactInfo;
 using dairlib::multibody::GetBodyIndexFromName;
+using dairlib::systems::ConstrainedLQRController;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
@@ -111,11 +114,18 @@ int do_main(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree;
-  if (FLAGS_floating_base)
+  if (FLAGS_floating_base) {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kRollPitchYaw);
-  else
+    AddFlatTerrainToWorld(tree.get(), 4, 0.05);
+  } else {
     tree = makeCassieTreePointer();
+  }
+
+  const int num_positions = tree->get_num_positions();
+  const int num_velocities = tree->get_num_velocities();
+  const int num_states = num_positions + num_velocities;
+  const int num_efforts = tree->get_num_actuators();
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -147,9 +157,7 @@ int do_main(int argc, char* argv[]) {
   // Fixed joints map that is needed to add the constraint through the solver.
   map<int, double> fixed_joints_map;
 
-  VectorXd x0 =
-      VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
-                     plant->get_rigid_body_tree().get_num_velocities());
+  VectorXd x0 = VectorXd::Zero(num_states);
 
   if (FLAGS_floating_base) {
     // desired x0
@@ -175,10 +183,10 @@ int do_main(int argc, char* argv[]) {
 
   } else {
     x0(position_map.at("hip_roll_left")) = 0.1;
-    x0(position_map.at("hip_roll_right")) = -0.1;
+    x0(position_map.at("hip_roll_right")) = -0.01;
     x0(position_map.at("hip_yaw_left")) = 0.01;
     x0(position_map.at("hip_yaw_right")) = -0.01;
-    x0(position_map.at("hip_pitch_left")) = .269;
+    x0(position_map.at("hip_pitch_left")) = .169;
     x0(position_map.at("hip_pitch_right")) = .269;
     x0(position_map.at("knee_left")) = -.644;
     x0(position_map.at("knee_right")) = -.644;
@@ -192,9 +200,8 @@ int do_main(int argc, char* argv[]) {
     fixed_joints.push_back(position_map.at("hip_pitch_right"));
   }
 
-
   // Initial positions
-  VectorXd q0 = x0.head(plant->get_rigid_body_tree().get_num_positions());
+  VectorXd q0 = x0.head(num_positions);
 
   // Setting up the map using the fixed joints vector
   for (auto& ind : fixed_joints) {
@@ -212,8 +219,7 @@ int do_main(int argc, char* argv[]) {
     num_forces += 3 * contact_info.num_contacts;
   }
 
-  VectorXd u0 =
-      VectorXd::Zero(plant->get_rigid_body_tree().get_num_actuators());
+  VectorXd u0 = VectorXd::Zero(num_efforts);
   VectorXd lambda0 = VectorXd::Zero(num_forces);
 
   unique_ptr<FixedPointSolver> fp_solver;
@@ -234,14 +240,21 @@ int do_main(int argc, char* argv[]) {
 
   MathematicalProgramResult program_result = fp_solver->Solve();
 
+  // Don't proceed if the solver does not find the right solution
+  if (!program_result.is_success()) {
+    std::cout << "Solver error: " << program_result.get_solution_result()
+              << std::endl;
+    return 0;
+  }
+
   // Fixed point results.
   VectorXd q = fp_solver->GetSolutionQ();
   VectorXd u = fp_solver->GetSolutionU();
   VectorXd lambda = fp_solver->GetSolutionLambda();
 
-
   // Setting up lcm channel names
   const string cassie_state_channel = "CASSIE_STATE";
+  const string cassie_input_channel = "CASSIE_INPUT";
 
   // Creating a state publisher
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
@@ -253,6 +266,82 @@ int do_main(int argc, char* argv[]) {
                   state_sender->get_input_port_state());
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
+
+  // State receiver
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
+      plant->get_rigid_body_tree());
+  auto state_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          cassie_state_channel, &lcm));
+  builder.Connect(state_sub->get_output_port(),
+                  state_receiver->get_input_port(0));
+
+  // Input publisher
+  auto input_sender = builder.AddSystem<systems::RobotCommandSender>(
+      plant->get_rigid_body_tree());
+  auto input_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          cassie_input_channel, &lcm, 1.0 / FLAGS_publish_rate));
+  builder.Connect(input_sender->get_output_port(0),
+                  input_pub->get_input_port());
+
+  // Constrained LQR controller
+
+  MatrixXd Q = MatrixXd::Identity(num_states - 2 * num_forces,
+                                  num_states - 2 * num_forces);
+  MatrixXd R = 0.01 * MatrixXd::Identity(num_efforts, num_efforts);
+
+  auto clqr_controller = builder.AddSystem<ConstrainedLQRController>(
+      plant->get_rigid_body_tree(), q, u, lambda, Q, R, contact_info);
+
+  // Passthrough to remove the timestamp from the clqr controller output.
+  auto passthrough = builder.AddSystem<SubvectorPassThrough<double>>(
+      clqr_controller->get_output_port_efforts().size(), 0,
+      plant->get_input_port(0).size());
+
+  // Connecting the controller to the rest of the diagram
+  builder.Connect(state_receiver->get_output_port(0),
+                  clqr_controller->get_input_port_info());
+  builder.Connect(clqr_controller->get_output_port_efforts(),
+                  input_sender->get_input_port(0));
+  builder.Connect(clqr_controller->get_output_port_efforts(),
+                  passthrough->get_input_port());
+  builder.Connect(passthrough->get_output_port(),
+                  plant->actuator_command_input_port());
+
+  auto diagram = builder.Build();
+
+  drake::systems::Simulator<double> simulator(*diagram);
+  drake::systems::Context<double>& context =
+      diagram->GetMutableSubsystemContext(*plant,
+                                          &simulator.get_mutable_context());
+
+  VectorXd x_start(num_states);
+
+  if (FLAGS_floating_base) {
+    x_start << q, VectorXd::Zero(num_velocities);
+  } else {
+    x_start = VectorXd::Zero(num_states);
+  }
+
+  if (FLAGS_simulation_type != "timestepping") {
+    drake::systems::ContinuousState<double>& state =
+        context.get_mutable_continuous_state();
+    state.SetFromVector(x_start);
+  } else {
+    drake::systems::BasicVector<double>& state =
+        context.get_mutable_discrete_state(0);
+    state.SetFromVector(x_start);
+  }
+
+  simulator.set_publish_every_time_step(false);
+  simulator.set_publish_at_initialization(false);
+  simulator.set_target_realtime_rate(1.0);
+  simulator.Initialize();
+
+  lcm.StartReceiveThread();
+
+  simulator.StepTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }

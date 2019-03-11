@@ -5,3 +5,19 @@ build_task:
     cpu: 8
     memory: 24
   test_script: bazel build ... && bazel test ...
+drake_master_build_task:
+  timeout_in: 120m
+  container:
+    dockerfile: install/bionic/Dockerfile
+    cpu: 8
+    memory: 24
+  allow_failures: true
+  test_script:
+    - git clone https://github.com/RobotLocomotion/drake.git ../drake
+    - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
+    - ls ../drake
+    - echo $DAIRLIB_LOCAL_DRAKE_PATH
+    - echo $CIRRUS_WORKING_DIR
+    - ls $DAIRLIB_LOCAL_DRAKE_PATH
+    - bazel build ...
+    - bazel test ...  

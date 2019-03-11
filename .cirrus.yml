@@ -11,4 +11,6 @@ drake_master_build_task:
     dockerfile: install/bionic/LocalDrakeDockerfile
     cpu: 8
     memory: 24
-  test_script: bazel build ... && bazel test ...  
+  env:
+    DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake/
+  test_script: cd ../drake/ && git pull && cd ../dairlib/ && bazel build ... && bazel test ...  

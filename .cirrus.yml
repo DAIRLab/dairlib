@@ -12,5 +12,5 @@ drake_master_build_task:
     cpu: 8
     memory: 24
   env:
-    DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake/
+    DAIRLIB_LOCAL_DRAKE_PATH: $PWD/../drake/
   test_script: cd ../drake/ && git pull && cd ../dairlib/ && bazel build ... && bazel test ...  

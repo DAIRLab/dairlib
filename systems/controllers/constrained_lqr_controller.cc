@@ -53,9 +53,9 @@ ConstrainedLQRController::ConstrainedLQRController(
 
   // Creating the full state vector (Velocities are zero as it is a fixed point)
   VectorXd x(num_states_);
-  x << q, VectorXd::Zero(num_velocities_);
+  VectorXd v = VectorXd::Zero(num_velocities_);
+  x << q, v;
   desired_state_ = x;
-  VectorX<AutoDiffXd> x_autodiff = initializeAutoDiff(x);
 
   // Computing the full Jacobian (Position and contact)
   MatrixXd J_tree, J_contact;
@@ -67,7 +67,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   // Contact Jacobian (If contact information is provided)
   if (contact_info_.num_contacts > 0) {
     J_contact = autoDiffToValueMatrix(
-        contact_toolkit_->CalcContactJacobian(x_autodiff));
+        contact_toolkit_->CalcContactJacobian(initializeAutoDiff(x)));
   }
 
   MatrixXd J(J_tree.rows() + J_contact.rows(), num_positions_);
@@ -92,7 +92,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   VectorXd xul(num_states_ + num_efforts_ + num_forces_);
   xul << x, u, lambda;
   AutoDiffVecXd xul_autodiff = initializeAutoDiff(xul);
-  x_autodiff = xul_autodiff.head(num_states_);
+  AutoDiffVecXd x_autodiff = xul_autodiff.head(num_states_);
   AutoDiffVecXd u_autodiff = xul_autodiff.segment(num_states_, num_efforts_);
   AutoDiffVecXd lambda_autodiff = xul_autodiff.tail(num_forces_);
 
@@ -130,11 +130,8 @@ void ConstrainedLQRController::CalcControl(
 
   VectorXd u = K_ * (desired_state_ - info->GetState()) + E_;
 
-  std::cout << desired_state_ - info->GetState() << std::endl << std::endl;
-
   control->SetDataVector(u);
   control->set_timestamp(info->get_timestamp());
-
 }
 
 }  // namespace systems

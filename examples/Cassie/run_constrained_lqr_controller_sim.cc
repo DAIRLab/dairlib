@@ -40,6 +40,7 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::multibody::FixedPointSolver;
+using dairlib::multibody::PositionSolver;
 using dairlib::multibody::ContactInfo;
 using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::systems::ConstrainedLQRController;
@@ -117,7 +118,7 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_floating_base) {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kRollPitchYaw);
-    AddFlatTerrainToWorld(tree.get(), 4, 0.05);
+    AddFlatTerrainToWorld(tree.get(), 0.8, 0.8);
   } else {
     tree = makeCassieTreePointer();
   }
@@ -182,18 +183,18 @@ int do_main(int argc, char* argv[]) {
     fixed_joints.push_back(position_map.at("hip_pitch_right"));
 
   } else {
-    x0(position_map.at("hip_roll_left")) = 0.1;
-    x0(position_map.at("hip_roll_right")) = -0.01;
-    x0(position_map.at("hip_yaw_left")) = 0.01;
-    x0(position_map.at("hip_yaw_right")) = -0.01;
-    x0(position_map.at("hip_pitch_left")) = .169;
+    x0(position_map.at("hip_roll_left")) = 0.2;
+    x0(position_map.at("hip_roll_right")) = -0.1;
+    x0(position_map.at("hip_yaw_left")) = 0.1;
+    x0(position_map.at("hip_yaw_right")) = -0.2;
+    x0(position_map.at("hip_pitch_left")) = -0.3;
     x0(position_map.at("hip_pitch_right")) = .269;
-    x0(position_map.at("knee_left")) = -.644;
+    x0(position_map.at("knee_left")) = -.344;
     x0(position_map.at("knee_right")) = -.644;
     x0(position_map.at("ankle_joint_left")) = .792;
     x0(position_map.at("ankle_joint_right")) = .792;
     x0(position_map.at("toe_left")) = -60 * M_PI / 180.0;
-    x0(position_map.at("toe_right")) = -60 * M_PI / 180.0;
+    x0(position_map.at("toe_right")) = -30 * M_PI / 180.0;
 
     // Desired fixed joints
     fixed_joints.push_back(position_map.at("hip_pitch_left"));
@@ -222,6 +223,7 @@ int do_main(int argc, char* argv[]) {
   VectorXd u0 = VectorXd::Zero(num_efforts);
   VectorXd lambda0 = VectorXd::Zero(num_forces);
 
+  // Fixed point solver
   unique_ptr<FixedPointSolver> fp_solver;
 
   if (FLAGS_floating_base) {
@@ -238,12 +240,12 @@ int do_main(int argc, char* argv[]) {
   fp_solver->AddJointLimitConstraint(0.001);
   fp_solver->AddFixedJointsConstraint(fixed_joints_map);
 
-  MathematicalProgramResult program_result = fp_solver->Solve();
+  MathematicalProgramResult fp_program_result = fp_solver->Solve();
 
   // Don't proceed if the solver does not find the right solution
-  if (!program_result.is_success()) {
-    std::cout << "Solver error: " << program_result.get_solution_result()
-              << std::endl;
+  if (!fp_program_result.is_success()) {
+    std::cout << "Fixed point solver error: "
+              << fp_program_result.get_solution_result() << std::endl;
     return 0;
   }
 
@@ -251,6 +253,31 @@ int do_main(int argc, char* argv[]) {
   VectorXd q = fp_solver->GetSolutionQ();
   VectorXd u = fp_solver->GetSolutionU();
   VectorXd lambda = fp_solver->GetSolutionLambda();
+
+  // Position solver for the start position
+  VectorXd x_start(num_states);
+
+  if (FLAGS_floating_base) {
+    x_start << q, VectorXd::Zero(num_velocities);
+  } else {
+    x_start = VectorXd::Zero(num_states);
+    unique_ptr<PositionSolver> position_solver;
+    position_solver = make_unique<PositionSolver>(plant->get_rigid_body_tree(),
+                                                  x_start.head(num_positions));
+    position_solver->SetInitialGuessQ(x_start.head(num_positions));
+    position_solver->AddJointLimitConstraint(0.001);
+
+    MathematicalProgramResult position_program_result =
+        position_solver->Solve();
+
+    if (!position_program_result.is_success()) {
+      std::cout << "Position solver error: "
+                << position_program_result.get_solution_result() << std::endl;
+      return 0;
+    }
+
+    x_start.head(num_positions) = position_solver->GetSolutionQ();
+  }
 
   // Setting up lcm channel names
   const string cassie_state_channel = "CASSIE_STATE";
@@ -289,7 +316,7 @@ int do_main(int argc, char* argv[]) {
 
   MatrixXd Q = MatrixXd::Identity(num_states - 2 * num_forces,
                                   num_states - 2 * num_forces);
-  MatrixXd R = 100 * MatrixXd::Identity(num_efforts, num_efforts);
+  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts) * 10.0;
 
   auto clqr_controller = builder.AddSystem<ConstrainedLQRController>(
       plant->get_rigid_body_tree(), q, u, lambda, Q, R, contact_info);
@@ -315,14 +342,6 @@ int do_main(int argc, char* argv[]) {
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*plant,
                                           &simulator.get_mutable_context());
-
-  VectorXd x_start(num_states);
-
-  if (FLAGS_floating_base) {
-    x_start << q, VectorXd::Zero(num_velocities);
-  } else {
-    x_start = VectorXd::Zero(num_states);
-  }
 
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state =

@@ -63,9 +63,6 @@ DEFINE_double(dt, 1e-3,
               "'simulation_type=timestepping' (ignored for "
               "'simulation_type=compliant'");
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
-DEFINE_bool(
-    publish_state, true,
-    "Publish state CASSIE_STATE (set to false when running w/dispatcher");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
@@ -118,9 +115,10 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_floating_base) {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kRollPitchYaw);
-    AddFlatTerrainToWorld(tree.get(), 0.8, 0.8);
+    AddFlatTerrainToWorld(tree.get(), 4, 0.05);
   } else {
-    tree = makeCassieTreePointer();
+    tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
+                                 drake::multibody::joints::kFixed);
   }
 
   const int num_positions = tree->get_num_positions();

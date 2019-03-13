@@ -75,7 +75,8 @@ double secondOrderCost(const MathematicalProgram* prog, VectorXd& x,
         int ind_i = prog->FindDecisionVariableIndex(variables(i));
         int ind_j = prog->FindDecisionVariableIndex(variables(j));
         Q(ind_i,ind_j) += (gradient_hessian(0,j)-gradient_x(0,j))/dx;
-        Q(ind_j,ind_i) += (gradient_hessian(0,j)-gradient_x(0,j))/dx;
+        if(ind_i != ind_j)
+          Q(ind_j,ind_i) += (gradient_hessian(0,j)-gradient_x(0,j))/dx;
       }
     }
 

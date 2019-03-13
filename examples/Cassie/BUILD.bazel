@@ -15,6 +15,14 @@ load(
     "drake_py_unittest",
 )
 
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
 cc_library(
   name = "cassie_utils",
   srcs = ["cassie_utils.cc"],
@@ -23,13 +31,20 @@ cc_library(
         ":cassie_urdf",
         "//common",
         "//multibody:utils",
+        "//systems/primitives",
+        "//systems:robot_lcm_systems",
+        "//systems/sensors:sim_cassie_sensor_aggregator",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
+        "@drake//attic/multibody/rigid_body_plant",
         "@drake//attic/multibody:rigid_body_tree",
         "@drake//attic/multibody:rigid_body_tree_construction",
         "@drake//attic/multibody/parsers",
+        "@drake//attic/systems/sensors:sensors",
         "@drake//manipulation/util",
         "@drake//multibody/parsing:parser",
         "@drake//solvers:constraint",
         "@drake//solvers:mathematical_program",
+        "@drake//lcm",
     ],
 )
 
@@ -101,13 +116,16 @@ cc_binary(
     name = "run_simple_sim",
     srcs = ["run_simple_sim.cc"],
     deps = [
+        "//systems/sensors:sim_cassie_sensor_aggregator",
         ":cassie_urdf",
         ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//attic/manipulation/util:sim_diagram_builder",
         "@drake//attic/multibody:rigid_body_tree",
         "@drake//attic/multibody/rigid_body_plant",
+        "@drake//attic/systems/sensors:sensors",
         "@drake//common",
         "@drake//lcm",
         "@drake//manipulation/util",
@@ -186,6 +204,7 @@ cc_binary(
   deps = ["//examples/Cassie/networking:udp_driven_loop",
           "//examples/Cassie/networking:cassie_udp_pub_sub",
           "@drake//lcm",
+          "@drake//systems/lcm:lcm_driven_loop",
           "//lcmtypes:lcmt_robot",
           "//systems:robot_lcm_systems",
           ":cassie_utils",
@@ -196,9 +215,9 @@ cc_binary(
 )
 
 cc_binary(
-  name = "dispatcher_robot_in",
-  srcs = ["dispatcher_robot_in.cc"],
-  deps = ["//examples/Cassie/networking:cassie_udp_pub_sub",
+    name = "dispatcher_robot_in",
+    srcs = ["dispatcher_robot_in.cc"],
+    deps = ["//examples/Cassie/networking:cassie_udp_pub_sub",
           "@drake//lcm",
           "@drake//systems/lcm:lcm_driven_loop",
           "//lcmtypes:lcmt_robot",
@@ -208,4 +227,26 @@ cc_binary(
           ":cassie_urdf",
           "@gflags",
          ],
+)
+
+cc_binary(
+    name = "log_timing_test",
+    srcs = ["test/log_timing_test.cc"],
+    deps = [
+        "@drake//lcm",
+        "@gflags",
+        "@eigen",
+        "//lcmtypes:lcmt_robot",
+    ],
+)
+
+cc_binary(
+    name = "dispatcher_log_timing_test",
+    srcs = ["test/dispatcher_log_timing_test.cc"],
+    deps = [
+        "@drake//lcm",
+        "@gflags",
+        "@eigen",
+        "//lcmtypes:lcmt_robot",
+    ],
 )

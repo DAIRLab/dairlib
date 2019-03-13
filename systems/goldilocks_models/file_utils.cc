@@ -34,7 +34,8 @@ MatrixXd readCSV(const string & path) {
         ++rows;
     }
     if (values.size() == 0) {
-      DRAKE_ABORT_MSG(("Could not read " + path + " to load CSV.").c_str());
+      throw std::logic_error(
+          ("Could not read " + path + " to load CSV.").c_str());
     }
     return Map<const Matrix<double, Dynamic, Dynamic, RowMajor>>(
         values.data(), rows, values.size()/rows);

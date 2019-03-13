@@ -40,7 +40,7 @@ const AbstractValue& UDPDrivenLoop::WaitForMessage() {
   // and an event should be queued by driving_sub_.CalcNextUpdateTime().
   driving_sub_.CalcUnrestrictedUpdate(*sub_context_,
       sub_events_->get_unrestricted_update_events(), sub_swap_state_.get());
-  sub_context_->get_mutable_state().CopyFrom(*sub_swap_state_);
+  sub_context_->get_mutable_state().SetFrom(*sub_swap_state_);
 
   driving_sub_.CalcOutput(*sub_context_, sub_output_.get());
   return *(sub_output_->get_data(0));

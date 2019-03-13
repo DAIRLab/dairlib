@@ -25,9 +25,6 @@ void generateNominalGaits() {
   std::default_random_engine e1(randgen());
   std::uniform_real_distribution<> dist(0, 1);
 
-
-  int n_batch = 5;
-
   // int n_weights = 43;
   int n_weights =  10;
   MatrixXd theta_0 = MatrixXd::Zero(2,n_weights);
@@ -46,8 +43,6 @@ void generateNominalGaits() {
   string output_prefix;
   VectorXd lengths(5);
   lengths << .35, .3, .25, .2, .15;
-
-  double speed = 0.5;
 
   for (int i = 0; i < lengths.size(); i++) {
     length = lengths(i);

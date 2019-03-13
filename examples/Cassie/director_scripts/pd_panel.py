@@ -46,12 +46,18 @@ kd_default = [5,5,5,5,5,5,5,5,1,1]
 class ControllerGui(QWidget):
 
     def __init__(self, parent = None):
+        if 'pd_panel_state_channel' in globals():
+            channel = pd_panel_state_channel
+        else:
+            channel = "CASSIE_STATE"
 
         super(ControllerGui, self).__init__(parent)
 
         self.lc = lcm.LCM()
-        subscription = self.lc.subscribe("CASSIE_STATE", self.state_handler)
+        subscription = self.lc.subscribe(channel, self.state_handler)
         subscription.set_queue_capacity(1)
+
+        print(channel)
 
         labels = []
         self.values = []

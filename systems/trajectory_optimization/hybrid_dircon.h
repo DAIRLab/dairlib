@@ -55,15 +55,25 @@ class HybridDircon :
 
   ~HybridDircon() override {}
 
+  /// TODO(mposa): remove when removed upstream
+  drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
+      const override {
+        return drake::trajectories::PiecewisePolynomial<double>();
+      };
+  drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
+      const override {
+        return drake::trajectories::PiecewisePolynomial<double>();
+      };
+
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
-  drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory()
-  const override;
+  drake::trajectories::PiecewisePolynomial<double> ReconstructInputTrajectory(
+      const drake::solvers::MathematicalProgramResult& result) const override;
 
   /// Get the state trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
-  drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory()
-  const override;
+  drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory(
+      const drake::solvers::MathematicalProgramResult& result) const override;
 
   /// Set the initial guess for the force variables for a specific mode
   /// @param mode the mode index

@@ -20,6 +20,7 @@
 #include "drake/lcm/drake_lcm.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/constraint.h"
+#include "drake/solvers/solve.h"
 
 #include "attic/systems/trajectory_optimization/dircon_util.h"
 
@@ -265,31 +266,30 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration,
   }
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto result = trajopt->Solve();
+  const auto result = Solve(*trajopt, trajopt->initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   // trajopt->PrintSolution();
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
-  std::cout << result << std::endl;
-  std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
 
   // systems::trajectory_optimization::checkConstraints(trajopt.get());
 
   MatrixXd A,H;
   VectorXd y,lb,ub,w;
-  VectorXd x_sol = trajopt->GetSolution(trajopt->decision_variables());
+  VectorXd x_sol = result.get_x_val();
   systems::trajectory_optimization::linearizeConstraints(trajopt.get(),
     x_sol, y, A, lb, ub);
 
   double costval = systems::trajectory_optimization::secondOrderCost(
     trajopt.get(), x_sol, H, w);
 
-  VectorXd z = trajopt->GetSolution(trajopt->decision_variables());
+  VectorXd z = x_sol;
 
   //get feature vectors
   MatrixXd B = MatrixXd::Zero(A.rows(), weights.rows() * m_constraint.n_features());
   for (int i = 0; i < N; i++) {
-    VectorXd xi = trajopt->GetSolution(trajopt->state(i));
+    VectorXd xi = result.GetSolution(trajopt->state(i));
     // VectorXd features = m_constraint->CalcFeatures<double>(xi);
     VectorXd features(m_constraint.n_features());
     for (int j = 0; j < m_constraint.n_features(); j++) {

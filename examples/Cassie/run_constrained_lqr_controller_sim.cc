@@ -24,6 +24,9 @@
 
 #include "examples/Cassie/cassie_utils.h"
 
+#include "drake/systems/primitives/multiplexer.h"
+#include "drake/systems/primitives/constant_vector_source.h"
+
 namespace dairlib {
 
 using std::map;
@@ -44,6 +47,15 @@ using dairlib::multibody::PositionSolver;
 using dairlib::multibody::ContactInfo;
 using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::systems::ConstrainedLQRController;
+
+using drake::systems::BasicVector;
+using drake::systems::ConstantVectorSource;
+using drake::systems::Context;
+using drake::systems::DrakeVisualizer;
+using drake::systems::LeafSystem;
+using drake::systems::Multiplexer;
+using drake::VectorX;
+using dairlib::systems::OutputVector;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
@@ -66,6 +78,12 @@ DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
+
+// LCM channels
+DEFINE_string(state_channel, "CASSIE_STATE",
+              "LCM channel for receiving the state");
+DEFINE_string(input_channel, "CASSIE_INPUT",
+              "LCM channel for receiving the motor inputs");
 
 ContactInfo ComputeCassieContactInfo(const RigidBodyTree<double>& tree,
                                      VectorXd q0) {
@@ -106,6 +124,29 @@ ContactInfo ComputeCassieContactInfo(const RigidBodyTree<double>& tree,
   ContactInfo contact_info = {xB, idxB};
   return contact_info;
 }
+
+class StateConnector : public LeafSystem<double> {
+ public:
+  StateConnector(int num_positions, int num_velocities, int num_efforts)
+      : num_states_(num_positions + num_velocities) {
+    this->DeclareVectorInputPort(BasicVector<double>(
+        num_positions + num_velocities + num_efforts + 3 + 1));
+    this->DeclareVectorOutputPort(
+        OutputVector<double>(num_positions, num_velocities, num_efforts),
+        &dairlib::StateConnector::CopyOut);
+  }
+
+ private:
+  const int num_states_;
+
+  void CopyOut(const Context<double>& context,
+               OutputVector<double>* output) const {
+    const auto state = this->EvalVectorInput(context, 0);
+    const VectorX<double> state_vec = state->get_value();
+    output->SetState(state_vec.head(num_states_));
+    output->set_timestamp(0);
+  }
+};
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -252,6 +293,8 @@ int do_main(int argc, char* argv[]) {
   VectorXd u = fp_solver->GetSolutionU();
   VectorXd lambda = fp_solver->GetSolutionLambda();
 
+  std::cout << "Forces: " << std:endl << lambda << std::endl;
+
   // Position solver for the start position
   VectorXd x_start(num_states);
 
@@ -277,44 +320,40 @@ int do_main(int argc, char* argv[]) {
     x_start.head(num_positions) = position_solver->GetSolutionQ();
   }
 
-  // Setting up lcm channel names
-  const string cassie_state_channel = "CASSIE_STATE";
-  const string cassie_input_channel = "CASSIE_INPUT";
+  //  // Creating a state publisher
+  //  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+  //      plant->get_rigid_body_tree());
+  //  auto state_pub =
+  //      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+  //          FLAGS_state_channel, &lcm, 1.0 / FLAGS_publish_rate));
+  //  builder.Connect(plant->state_output_port(),
+  //                  state_sender->get_input_port_state());
+  //  builder.Connect(state_sender->get_output_port(0),
+  //                  state_pub->get_input_port());
+  //
+  //// State receiver
+  // auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
+  //    plant->get_rigid_body_tree());
+  // auto state_sub =
+  //    builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+  //        FLAGS_state_channel, &lcm));
+  // builder.Connect(state_sub->get_output_port(),
+  //                state_receiver->get_input_port(0));
 
-  // Creating a state publisher
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
-      plant->get_rigid_body_tree());
-  auto state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          cassie_state_channel, &lcm, 1.0 / FLAGS_publish_rate));
-  builder.Connect(plant->state_output_port(),
-                  state_sender->get_input_port_state());
-  builder.Connect(state_sender->get_output_port(0),
-                  state_pub->get_input_port());
-
-  // State receiver
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
-      plant->get_rigid_body_tree());
-  auto state_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          cassie_state_channel, &lcm));
-  builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
-
-  // Input publisher
-  auto input_sender = builder.AddSystem<systems::RobotCommandSender>(
-      plant->get_rigid_body_tree());
-  auto input_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          cassie_input_channel, &lcm, 1.0 / FLAGS_publish_rate));
-  builder.Connect(input_sender->get_output_port(0),
-                  input_pub->get_input_port());
+  //// Input publisher
+  // auto input_sender = builder.AddSystem<systems::RobotCommandSender>(
+  //    plant->get_rigid_body_tree());
+  // auto input_pub =
+  //    builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+  //        FLAGS_input_channel, &lcm, 1.0 / FLAGS_publish_rate));
+  // builder.Connect(input_sender->get_output_port(0),
+  //                input_pub->get_input_port());
 
   // Constrained LQR controller
 
   MatrixXd Q = MatrixXd::Identity(num_states - 2 * num_forces,
                                   num_states - 2 * num_forces);
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts) * 10.0;
+  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts) * 100;
 
   auto clqr_controller = builder.AddSystem<ConstrainedLQRController>(
       plant->get_rigid_body_tree(), q, u, lambda, Q, R, contact_info);
@@ -324,11 +363,48 @@ int do_main(int argc, char* argv[]) {
       clqr_controller->get_output_port_efforts().size(), 0,
       plant->get_input_port(0).size());
 
-  // Connecting the controller to the rest of the diagram
-  builder.Connect(state_receiver->get_output_port(0),
+  //// Connecting the controller to the rest of the diagram
+  // builder.Connect(state_receiver->get_output_port(0),
+  //                clqr_controller->get_input_port_info());
+  // builder.Connect(clqr_controller->get_output_port_efforts(),
+  //                input_sender->get_input_port(0));
+  // builder.Connect(clqr_controller->get_output_port_efforts(),
+  //                passthrough->get_input_port());
+  // builder.Connect(passthrough->get_output_port(),
+  //                plant->actuator_command_input_port());
+
+  auto state_connector = builder.AddSystem<StateConnector>(
+      num_positions, num_velocities, num_efforts);
+  vector<int> input_info_sizes{num_states, num_efforts, 3, 1};
+  auto multiplexer_info =
+      builder.AddSystem<Multiplexer<double>>(input_info_sizes);
+
+  auto constant_zero_source_efforts =
+      builder.AddSystem<ConstantVectorSource<double>>(
+          VectorXd::Zero(num_efforts));
+  auto constant_zero_source_imu =
+      builder.AddSystem<ConstantVectorSource<double>>(VectorXd::Zero(3));
+  auto constant_zero_source_timestamp =
+      builder.AddSystem<ConstantVectorSource<double>>(VectorXd::Zero(1));
+
+  DrakeVisualizer& visualizer_publisher =
+      *builder.template AddSystem<DrakeVisualizer>(plant->get_rigid_body_tree(),
+                                                   &lcm);
+  builder.Connect(plant->state_output_port(),
+                  visualizer_publisher.get_input_port(0));
+
+  builder.Connect(plant->state_output_port(),
+                  multiplexer_info->get_input_port(0));
+  builder.Connect(constant_zero_source_efforts->get_output_port(),
+                  multiplexer_info->get_input_port(1));
+  builder.Connect(constant_zero_source_imu->get_output_port(),
+                  multiplexer_info->get_input_port(2));
+  builder.Connect(constant_zero_source_timestamp->get_output_port(),
+                  multiplexer_info->get_input_port(3));
+  builder.Connect(multiplexer_info->get_output_port(0),
+                  state_connector->get_input_port(0));
+  builder.Connect(state_connector->get_output_port(0),
                   clqr_controller->get_input_port_info());
-  builder.Connect(clqr_controller->get_output_port_efforts(),
-                  input_sender->get_input_port(0));
   builder.Connect(clqr_controller->get_output_port_efforts(),
                   passthrough->get_input_port());
   builder.Connect(passthrough->get_output_port(),
@@ -340,6 +416,7 @@ int do_main(int argc, char* argv[]) {
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*plant,
                                           &simulator.get_mutable_context());
+  // context.FixInputPort(0, VectorXd::Zero(num_efforts));
 
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state =

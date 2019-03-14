@@ -609,7 +609,7 @@ void FixedPointSolver::AddFrictionConeConstraint(const double mu) {
                          mu * lambda_(i * 3 + num_position_constraints));
     prog_->AddConstraint(-lambda_(i * 3 + 2 + num_position_constraints) <=
                          mu * lambda_(i * 3 + num_position_constraints));
-    prog_->AddConstraint(lambda_(i * 3 + num_position_constraints) >= 0);
+    //prog_->AddConstraint(lambda_(i * 3 + num_position_constraints) >= 0);
   }
 }
 

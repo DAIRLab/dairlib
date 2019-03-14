@@ -59,7 +59,7 @@ double secondOrderCost(const MathematicalProgram* prog, VectorXd& x,
     VectorXd y = autoDiffToValueMatrix(y_val);
     c += y(0); //costs are length 1
     for (int i = 0; i < variables.size(); i++) {
-      w(prog->FindDecisionVariableIndex(variables(i))) = gradient_x(0,i);
+      w(prog->FindDecisionVariableIndex(variables(i))) += gradient_x(0,i);
     }
 
 

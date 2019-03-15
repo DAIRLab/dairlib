@@ -1,6 +1,3 @@
-#include <iostream>
-#include <string>
-#include "math.h"
 #include <Eigen/Dense>
 #include <memory>
 #include <utility>

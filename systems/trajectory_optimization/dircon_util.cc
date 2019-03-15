@@ -109,7 +109,7 @@ double secondOrderCost(const MathematicalProgram* prog, const VectorXd& x,
 
 
 // Evaluate all constraints and construct a linearization of them
-void linearizeConstraints(const MathematicalProgram* prog, VectorXd& x,
+void linearizeConstraints(const MathematicalProgram* prog, const VectorXd& x,
     VectorXd& y, MatrixXd& A, VectorXd& lb, VectorXd& ub) {
 
 
@@ -220,7 +220,7 @@ int countConstraints(const MathematicalProgram* prog,
 template <typename Derived>
 int updateConstraints(const MathematicalProgram* prog,
     const std::vector<Binding<Derived>>& constraints,
-    VectorXd& x, VectorXd& y, MatrixXd& A,
+    const VectorXd& x, VectorXd& y, MatrixXd& A,
     VectorXd& lb, VectorXd& ub,
     int constraint_index) {
 

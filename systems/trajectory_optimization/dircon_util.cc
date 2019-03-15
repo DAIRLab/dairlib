@@ -15,7 +15,7 @@ namespace systems {
 namespace trajectory_optimization {
 
 void checkConstraints(const MathematicalProgram* prog,
-                      const drake::solvers::MathematicalProgramResult& result) {
+    const drake::solvers::MathematicalProgramResult& result) {
   for (auto const& binding : prog->generic_constraints()) {
     double tol = 1e-6;
     // Replace with call to Result once Drake #10720 is resolved
@@ -24,8 +24,8 @@ void checkConstraints(const MathematicalProgram* prog,
     bool isSatisfied = (y.array() >= c->lower_bound().array() - tol).all() &&
                        (y.array() <= c->upper_bound().array() + tol).all();
     if (!isSatisfied) {
-      std::cout << "Constraint violation: "
-          << c->get_description() << std::endl;
+      std::cout << "Constraint violation: " <<
+          c->get_description() << std::endl;
       MatrixXd tmp(y.size(), 3);
       tmp << c->lower_bound(), y, c->upper_bound();
       std::cout << tmp << std::endl;
@@ -33,11 +33,11 @@ void checkConstraints(const MathematicalProgram* prog,
   }
 }
 
-//form a quadratic approximation of the cost
+// Form a quadratic approximation of the cost
 // cost \approx 1/2 z^T*Q*z + w^T*z + c
 // return value is the constant term (c)
-double secondOrderCost(const MathematicalProgram* prog, VectorXd& x,
-                       MatrixXd& Q, VectorXd& w) {
+double secondOrderCost(const MathematicalProgram* prog, const VectorXd& x,
+    MatrixXd& Q, VectorXd& w) {
 
   int num_vars = prog->num_vars();
   Q = Eigen::MatrixXd::Zero(num_vars, num_vars);
@@ -45,7 +45,7 @@ double secondOrderCost(const MathematicalProgram* prog, VectorXd& x,
   double c = 0;
 
   for (auto const& binding : prog->GetAllCosts()) {
-    //evaluate cost
+    // evaluate cost
     auto variables = binding.variables();
     if (variables.size() == 0)
       continue;
@@ -59,7 +59,7 @@ double secondOrderCost(const MathematicalProgram* prog, VectorXd& x,
     binding.evaluator()->Eval(x_val, &y_val);
     MatrixXd gradient_x = autoDiffToGradientMatrix(y_val);
     VectorXd y = autoDiffToValueMatrix(y_val);
-    c += y(0); //costs are length 1
+    c += y(0);  // costs are length 1
     for (int i = 0; i < variables.size(); i++) {
       w(prog->FindDecisionVariableIndex(variables(i))) += gradient_x(0, i);
     }
@@ -110,7 +110,7 @@ double secondOrderCost(const MathematicalProgram* prog, VectorXd& x,
 
 // Evaluate all constraints and construct a linearization of them
 void linearizeConstraints(const MathematicalProgram* prog, VectorXd& x,
-                          VectorXd& y, MatrixXd& A, VectorXd& lb, VectorXd& ub) {
+    VectorXd& y, MatrixXd& A, VectorXd& lb, VectorXd& ub) {
 
 
   int num_constraints = 0;
@@ -143,7 +143,7 @@ void linearizeConstraints(const MathematicalProgram* prog, VectorXd& x,
 }
 
 VectorXd NVec(int start, int length) {
-  VectorXd ret(length);
+    VectorXd ret(length);
   for (int i = 0; i < length; i++) {
     ret(i) = i + start;
   }
@@ -152,13 +152,12 @@ VectorXd NVec(int start, int length) {
 
 template <typename Derived>
 std::pair<int, int> getConstraintStart(const MathematicalProgram* prog,
-                               const std::vector<Binding<Derived>>& constraints,
-                               Binding<Constraint>& c) {
+    const std::vector<Binding<Derived>>& constraints, Binding<Constraint>& c) {
   int start = -1;
   int n = 0;
   for (auto const& binding : constraints) {
-    if (c.evaluator() == binding.evaluator()
-        && c.variables() == binding.variables())
+    if (c.evaluator() == binding.evaluator() &&
+        c.variables() == binding.variables())
       start = n;
     n += binding.evaluator()->num_constraints();
   }
@@ -166,7 +165,7 @@ std::pair<int, int> getConstraintStart(const MathematicalProgram* prog,
 }
 
 VectorXd getConstraintRows(const MathematicalProgram* prog,
-                           Binding<Constraint>& c) {
+    Binding<Constraint>& c) {
   int n = 0;
   auto index = getConstraintStart(prog, prog->bounding_box_constraints(), c);
   if (index.first != -1) {
@@ -210,7 +209,7 @@ VectorXd getConstraintRows(const MathematicalProgram* prog,
 
 template <typename Derived>
 int countConstraints(const MathematicalProgram* prog,
-                     const std::vector<Binding<Derived>>& constraints) {
+    const std::vector<Binding<Derived>>& constraints) {
   int n = 0;
   for (auto const& binding : constraints) {
     n += binding.evaluator()->num_constraints();
@@ -220,10 +219,10 @@ int countConstraints(const MathematicalProgram* prog,
 
 template <typename Derived>
 int updateConstraints(const MathematicalProgram* prog,
-                      const std::vector<Binding<Derived>>& constraints,
-                      VectorXd& x, VectorXd& y, MatrixXd& A,
-                      VectorXd& lb, VectorXd& ub,
-                      int constraint_index) {
+    const std::vector<Binding<Derived>>& constraints,
+    VectorXd& x, VectorXd& y, MatrixXd& A,
+    VectorXd& lb, VectorXd& ub,
+    int constraint_index) {
 
   for (auto const& binding : constraints) {
     auto const& c = binding.evaluator();

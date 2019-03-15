@@ -112,7 +112,6 @@ double secondOrderCost(const MathematicalProgram* prog, const VectorXd& x,
 void linearizeConstraints(const MathematicalProgram* prog, const VectorXd& x,
     VectorXd& y, MatrixXd& A, VectorXd& lb, VectorXd& ub) {
 
-
   int num_constraints = 0;
   int num_vars = prog->num_vars();
 
@@ -233,7 +232,7 @@ int updateConstraints(const MathematicalProgram* prog,
     //evaluate constraint
     auto variables = binding.variables();
     AutoDiffVecXd y_val = initializeAutoDiff(
-                      VectorXd::Zero(c->num_constraints()), variables.size());
+        VectorXd::Zero(c->num_constraints()), variables.size());
     VectorXd x_binding(variables.size());
     for (int i = 0; i < variables.size(); i++) {
       x_binding(i) = x(prog->FindDecisionVariableIndex(variables(i)));
@@ -245,7 +244,7 @@ int updateConstraints(const MathematicalProgram* prog,
     y.segment(constraint_index, n) = autoDiffToValueMatrix(y_val);
     for (int i = 0; i < variables.size(); i++) {
       A.block(constraint_index,
-              prog->FindDecisionVariableIndex(variables(i)), n, 1) = dx.col(i);
+          prog->FindDecisionVariableIndex(variables(i)), n, 1) = dx.col(i);
     }
 
     constraint_index += n;

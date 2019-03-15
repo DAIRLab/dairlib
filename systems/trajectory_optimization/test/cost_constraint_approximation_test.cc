@@ -76,7 +76,7 @@ TEST_F(CostConstraintApproximationTest, QPTest) {
   dairlib::systems::trajectory_optimization::linearizeConstraints(
       &quadprog, w_sol, y_a, A_a, lb_a, ub_a);
   double c_doub = dairlib::systems::trajectory_optimization::secondOrderCost(
-                    &quadprog, w_sol, H_a, b_a);
+      &quadprog, w_sol, H_a, b_a);
   c_a << c_doub;
 
   // Test the cost function

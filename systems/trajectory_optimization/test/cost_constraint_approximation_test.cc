@@ -15,9 +15,11 @@ namespace {
 using drake::solvers::MathematicalProgram;
 using std::cout;
 using std::endl;
-using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::Matrix;
+
+typedef Matrix< double, 1, 1 >  Vector1d;
 
 class CostConstraintApproximationTest : public ::testing::Test {
 };
@@ -31,15 +33,15 @@ TEST_F(CostConstraintApproximationTest, QPTest) {
   VectorXd lb_o = VectorXd::Zero(2);
   VectorXd ub_o = VectorXd::Zero(2);
 
-  VectorXd w_sol = VectorXd::Zero(2);
+  VectorXd w_sol;
 
-  MatrixXd H_a = MatrixXd::Zero(2, 2);
-  VectorXd b_a = VectorXd::Zero(2);
-  VectorXd c_a = VectorXd::Zero(1);
-  MatrixXd A_a = MatrixXd::Zero(2, 2);
-  VectorXd lb_a = VectorXd::Zero(2);
-  VectorXd ub_a = VectorXd::Zero(2);
-  VectorXd y_a = VectorXd::Zero(2);
+  MatrixXd H_a;
+  VectorXd b_a;
+  Vector1d c_a;
+  MatrixXd A_a;
+  VectorXd lb_a;
+  VectorXd ub_a;
+  VectorXd y_a;
 
   // An example
   H_o <<  1.36075, 0.354964,
@@ -98,7 +100,6 @@ TEST_F(CostConstraintApproximationTest, QPTest) {
   ASSERT_EQ(A_o, A_a);
   ASSERT_EQ(lb_o, lb_a);
   ASSERT_EQ(ub_o, ub_a);
-
 }
 
 }  // namespace

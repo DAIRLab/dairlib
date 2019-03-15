@@ -1,6 +1,9 @@
 # dairlib
 Warning! This is very much "development-level" code and is provided as-is. APIs are likely to be unstable and, while we hope for the documentation to be thorough and accurate, we make no guarantees.
 
+## Current Continuous Integration Status
+* `master` branch build and unit tests: [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* Experimental build against Drake's `master` branch: [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=drake_master_build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
 ## Complete Build Instructions
 
 ### Download dairlib
@@ -49,3 +52,6 @@ Based off the publication
 Michael Posa, Scott Kuindersma, Russ Tedrake. "Optimization and Stabilization of Trajectories for Constrained Dynamical Systems." Proceedings of the International Conference on Robotics and Automation (ICRA), 2016. 
 
 Available online at https://posa.seas.upenn.edu/wp-content/uploads/Posa16a.pdf
+
+## Docker (experimental)
+Docker support is currently experimental. See `install/bionic/Dockerfile` for an Ubuntu Dockerfile. Docker is being used in conjuction with Cirrus Continuous Integration, and should be better supported in the future.

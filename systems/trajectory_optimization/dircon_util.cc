@@ -14,9 +14,11 @@ namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
-void checkConstraints(const MathematicalProgram* prog) {
+void checkConstraints(const MathematicalProgram* prog,
+    const drake::solvers::MathematicalProgramResult& result) {
   for (auto const& binding : prog->generic_constraints()) {
     double tol = 1e-6;
+    // Replace with call to Result once Drake #10720 is resolved
     auto y = prog->EvalBindingAtSolution(binding);
     auto c = binding.evaluator();
     bool isSatisfied = (y.array() >= c->lower_bound().array() - tol).all() &&
@@ -57,7 +59,7 @@ double secondOrderCost(const MathematicalProgram* prog, VectorXd& x,
     VectorXd y = autoDiffToValueMatrix(y_val);
     c += y(0); //costs are length 1
     for (int i = 0; i < variables.size(); i++) {
-      w(prog->FindDecisionVariableIndex(variables(i))) = gradient_x(0,i);
+      w(prog->FindDecisionVariableIndex(variables(i))) += gradient_x(0,i);
     }
 
 
@@ -73,7 +75,8 @@ double secondOrderCost(const MathematicalProgram* prog, VectorXd& x,
         int ind_i = prog->FindDecisionVariableIndex(variables(i));
         int ind_j = prog->FindDecisionVariableIndex(variables(j));
         Q(ind_i,ind_j) += (gradient_hessian(0,j)-gradient_x(0,j))/dx;
-        Q(ind_j,ind_i) += (gradient_hessian(0,j)-gradient_x(0,j))/dx;
+        if(ind_i != ind_j)
+          Q(ind_j,ind_i) += (gradient_hessian(0,j)-gradient_x(0,j))/dx;
       }
     }
 

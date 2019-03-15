@@ -16,6 +16,7 @@
 namespace dairlib {
 
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
+DEFINE_string(channel, "CASSIE_STATE", "LCM channel for receiving state.");
 
 using std::endl;
 using std::cout;
@@ -46,11 +47,9 @@ int do_main(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm;
 
-  const std::string channel_x = "CASSIE_STATE";
-
   // Create state receiver.
   auto state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(FLAGS_channel, &lcm));
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
   builder.Connect(*state_sub, *state_receiver);
 

@@ -126,51 +126,84 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
   ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
 }
 
-VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
-                                  VectorXd q_init,
-                                  std::vector<int> fixed_joints) {
-  MathematicalProgram prog;
-  auto q = prog.NewContinuousVariables(tree.get_num_positions(), "q");
-  auto constraint = std::make_shared<TreePositionConstraint>(tree);
-  prog.AddConstraint(constraint, q);
-  for (uint i = 0; i < fixed_joints.size(); i++) {
-    int j = fixed_joints[i];
-    prog.AddConstraint(q(j) == q_init(j));
-  }
-  prog.AddQuadraticCost((q - q_init).dot(q - q_init));
-  prog.SetInitialGuessForAllVariables(q_init);
-  prog.Solve();
-  return prog.GetSolution(q);
+void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree){
+  // IMU position
+  // source: https://github.com/osudrl/cassie-mujoco-sim/blob/master/model/cassie.xml#L86
+  Eigen::Isometry3d Imu_pos_wrt_pelvis_origin;
+  Imu_pos_wrt_pelvis_origin.linear() = Eigen::Matrix3d::Identity();;
+  Imu_pos_wrt_pelvis_origin.translation() =
+      Eigen::Vector3d(0.03155, 0, -0.07996);
+
+  std::shared_ptr<RigidBodyFrame<double>> imu_frame =
+           std::allocate_shared<RigidBodyFrame<double>>(
+               Eigen::aligned_allocator<RigidBodyFrame<double>>(),
+               "imu frame",
+               tree->FindBody("pelvis"),
+               Imu_pos_wrt_pelvis_origin);
+  tree->addFrame(imu_frame);
+}
+drake::systems::sensors::Accelerometer * addSimAccelerometer(
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant) {
+
+  std::shared_ptr< RigidBodyFrame<double> > imu_frame_ptr =
+      plant->get_rigid_body_tree().findFrame("imu frame");
+
+  auto accel_sim = builder.AddSystem<drake::systems::sensors::Accelerometer>(
+                    "Simulated Accelerometer", *imu_frame_ptr,
+                    plant->get_rigid_body_tree(), true);
+  builder.Connect(plant->state_output_port(),
+                  accel_sim->get_plant_state_input_port());
+  builder.Connect(plant->state_derivative_output_port(),
+                  accel_sim->get_plant_state_derivative_input_port());
+
+  return accel_sim;
+}
+drake::systems::sensors::Gyroscope * addSimGyroscope(
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant) {
+
+  std::shared_ptr< RigidBodyFrame<double> > imu_frame_ptr =
+      plant->get_rigid_body_tree().findFrame("imu frame");
+
+  auto gyro_sim = builder.AddSystem<drake::systems::sensors::Gyroscope>(
+                    "Simulated Gyroscope",
+                    *imu_frame_ptr, plant->get_rigid_body_tree());
+  builder.Connect(plant->state_output_port(), gyro_sim->get_input_port());
+
+  return gyro_sim;
+}
+systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    SubvectorPassThrough<double> * passthrough,
+    drake::systems::sensors::Accelerometer * accel_sim,
+    drake::systems::sensors::Gyroscope * gyro_sim) {
+  auto cassie_sensor_aggregator =
+    builder.AddSystem<systems::SimCassieSensorAggregator>(
+      plant->get_rigid_body_tree());
+  builder.Connect(passthrough->get_output_port(),
+                  cassie_sensor_aggregator->get_input_port_input());
+  builder.Connect(plant->state_output_port(),
+                  cassie_sensor_aggregator->get_input_port_state());
+  builder.Connect(accel_sim->get_output_port(),
+                  cassie_sensor_aggregator->get_input_port_acce());
+  builder.Connect(gyro_sim->get_output_port(),
+                  cassie_sensor_aggregator->get_input_port_gyro());
+  return cassie_sensor_aggregator;
+}
+systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    SubvectorPassThrough<double> * passthrough) {
+
+  auto accel_sim = addSimAccelerometer(builder, plant);
+  auto gyro_sim = addSimGyroscope(builder, plant);
+  auto cassie_sensor_aggregator = addSimCassieSensorAggregator(
+                                    builder, plant, passthrough,
+                                    accel_sim, gyro_sim);
+
+  return cassie_sensor_aggregator;
 }
 
-TreePositionConstraint::TreePositionConstraint(
-    const RigidBodyTree<double>& tree, const std::string& description)
-    : Constraint(tree.getNumPositionConstraints(), tree.get_num_positions(),
-                 VectorXd::Zero(tree.getNumPositionConstraints()),
-                 VectorXd::Zero(tree.getNumPositionConstraints()),
-                 description) {
-  tree_ = &tree;
-}
-
-void TreePositionConstraint::DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-                                    Eigen::VectorXd* y) const {
-  AutoDiffVecXd y_t;
-  Eval(drake::math::initializeAutoDiff(x), &y_t);
-  *y = drake::math::autoDiffToValueMatrix(y_t);
-}
-
-void TreePositionConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& x,
-                                    AutoDiffVecXd* y) const {
-  const AutoDiffVecXd q = x.head(tree_->get_num_positions());
-  KinematicsCache<drake::AutoDiffXd> cache = tree_->doKinematics(q);
-  *y = tree_->positionConstraints(cache);
-}
-
-void TreePositionConstraint::DoEval(
-    const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& x,
-    drake::VectorX<drake::symbolic::Expression>* y) const {
-  throw std::logic_error(
-      "TreePositionConstraint does not support symbolic evaluation.");
-}
-
-}  // namespace dairlib
+} // namespace dairlib

@@ -1,0 +1,1 @@
+pd_panel_state_channel = "NETWORK_CASSIE_STATE"

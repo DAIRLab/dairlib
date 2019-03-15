@@ -56,6 +56,7 @@ cc_test(
         "@drake//common",
         "@drake//solvers",
         "@drake//solvers:mathematical_program",
+        "@drake//common/test_utilities:eigen_matrix_compare",
         "//systems/trajectory_optimization:dircon",
         "@gtest//:main",
     ],

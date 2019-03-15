@@ -6,6 +6,7 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
+#include "drake/common/test_utilities/eigen_matrix_compare.h"
 #include "systems/trajectory_optimization/dircon_util.h"
 
 namespace dairlib {
@@ -13,6 +14,7 @@ namespace systems {
 namespace {
 
 using drake::solvers::MathematicalProgram;
+using drake::CompareMatrices;
 using std::cout;
 using std::endl;
 using Eigen::VectorXd;
@@ -44,12 +46,12 @@ TEST_F(CostConstraintApproximationTest, QPTest) {
   VectorXd y_a;
 
   // An example
-  H_o <<  1.36075, 0.354964,
-       0.354964,  1.19376;
+  H_o <<  1.36075,  0.354964,
+          0.354964, 1.19376;
   b_o = VectorXd::Ones(2);
   c_o << 0;
   A_o <<  0.411647, -0.164777,
-       -0.302449, 0.26823;
+         -0.302449, 0.26823;
   lb_o = 0.5 * VectorXd::Ones(2);
   ub_o = VectorXd::Ones(2);
 
@@ -93,13 +95,13 @@ TEST_F(CostConstraintApproximationTest, QPTest) {
     approx_cost_value =
         0.5 * (w_sample[i] - w_sol).transpose() * H_a * (w_sample[i] - w_sol)
         + b_a.transpose() * (w_sample[i] - w_sol) + c_a;
-    ASSERT_TRUE( (original_cost_value - approx_cost_value).norm() < 1e-4 );
+    EXPECT_TRUE(CompareMatrices(original_cost_value, approx_cost_value, 1e-4));
   }
 
   // Test A, lb, and ub
-  ASSERT_EQ(A_o, A_a);
-  ASSERT_EQ(lb_o, lb_a);
-  ASSERT_EQ(ub_o, ub_a);
+  EXPECT_EQ(A_o, A_a);
+  EXPECT_EQ(lb_o, lb_a);
+  EXPECT_EQ(ub_o, ub_a);
 }
 
 }  // namespace

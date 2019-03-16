@@ -43,7 +43,7 @@ class CassieUDPOutSerializer : public drake::systems::lcm::SerializerInterface {
 
     // Unpack received data into cassie output struct
     unpack_cassie_out_t(reinterpret_cast<const unsigned char *>(message_bytes),
-        &abstract_value->GetMutableValue<cassie_out_t>());
+        &abstract_value->get_mutable_value<cassie_out_t>());
   }
 
   void Serialize(const drake::AbstractValue& abstract_value,
@@ -85,7 +85,7 @@ class CassieUDPInSerializer : public drake::systems::lcm::SerializerInterface {
                  std::vector<uint8_t>* message_bytes) const override {
     DRAKE_DEMAND(message_bytes != nullptr);
     const cassie_user_in_t& message =
-        abstract_value.GetValue<cassie_user_in_t>();
+        abstract_value.get_value<cassie_user_in_t>();
     message_bytes->resize(CASSIE_USER_IN_T_LEN + 2);
 
     pack_cassie_user_in_t(&message, &message_bytes->data()[2]);

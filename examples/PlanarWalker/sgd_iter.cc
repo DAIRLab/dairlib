@@ -281,8 +281,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration,
   systems::trajectory_optimization::linearizeConstraints(trajopt.get(),
     x_sol, y, A, lb, ub);
 
-  double costval = systems::trajectory_optimization::secondOrderCost(
-    trajopt.get(), x_sol, H, w);
+  systems::trajectory_optimization::secondOrderCost(trajopt.get(), x_sol, H, w);
 
   VectorXd z = x_sol;
 

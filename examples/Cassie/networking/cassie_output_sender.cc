@@ -61,7 +61,7 @@ void CassieOutputSender::Output(const Context<double>& context,
                                      lcmt_cassie_out* output) const {
   // std::cout << "CassieOutputSender::Output t:" <<  context.get_time() << std::endl;
   const cassie_out_t& cassie_out =
-    EvalAbstractInput(context, 0)->GetValue<cassie_out_t>();
+    EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
   // using the time from the context
   output->utime = context.get_time() * 1e6;
 

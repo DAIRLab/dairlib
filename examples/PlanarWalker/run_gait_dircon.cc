@@ -29,6 +29,7 @@
 
 DEFINE_double(strideLength, 0.1, "The stride length.");
 DEFINE_double(duration, 1, "The stride duration");
+DEFINE_bool(autodiff, false, "Double or autodiff version");
 
 using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;
@@ -323,16 +324,18 @@ int main(int argc, char* argv[]) {
     init_vc_traj.push_back(init_vc_traj_j);
   }
 
-  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
-      drake::systems::System<double>::ToAutoDiffXd(*plant);
-  auto prog = dairlib::runDircon<drake::AutoDiffXd>(
-    std::move(plant_autodiff), plant.get(), std::move(scene_graph),
-    FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
-    init_lc_traj, init_vc_traj);
-
-  // auto prog = dairlib::runDircon<double>(
-  //   std::move(plant), plant.get(), std::move(scene_graph),
-  //   FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
-  //   init_lc_traj, init_vc_traj);
+  if (FLAGS_autodiff) {
+    std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
+        drake::systems::System<double>::ToAutoDiffXd(*plant);
+    auto prog = dairlib::runDircon<drake::AutoDiffXd>(
+      std::move(plant_autodiff), plant.get(), std::move(scene_graph),
+      FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+      init_lc_traj, init_vc_traj);
+  } else {
+    auto prog = dairlib::runDircon<double>(
+      std::move(plant), plant.get(), std::move(scene_graph),
+      FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+      init_lc_traj, init_vc_traj);
+  }
 }
 

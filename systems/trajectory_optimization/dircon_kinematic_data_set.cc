@@ -52,8 +52,7 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
   VectorX<T> input = multibody::getInput(plant_, context);
 
   // Create a CacheKey element by discarding gradient information (if AutoDiff)
-  CacheKey key{DiscardGradient(state), DiscardGradient(forces),
-      DiscardGradient(input)};
+  CacheKey<T> key{state, forces, input};
 
   if (cache_.Contains(key)) {
     auto data = cache_.GetData(key);

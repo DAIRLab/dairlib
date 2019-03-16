@@ -102,7 +102,6 @@ HybridDircon<T>::HybridDircon(
                      force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i) * 2),
                      collocation_force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
                      collocation_slack_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i))});
-
     }
 
     // Adding kinematic constraints

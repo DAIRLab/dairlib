@@ -142,10 +142,10 @@ void CassieUDPSubscriber::ProcessMessageAndStoreToAbstractState(
         &abstract_state->get_mutable_value(kStateIndexMessage));
   }
   abstract_state->get_mutable_value(kStateIndexMessageCount)
-      .GetMutableValue<int>() = received_message_count_;
+      .get_mutable_value<int>() = received_message_count_;
   auto t = duration_cast<microseconds>(steady_clock::now() - start_);
   abstract_state->get_mutable_value(kStateIndexMessageUTime)
-      .GetMutableValue<int>() = t.count();
+      .get_mutable_value<int>() = t.count();
   // std::cout << "time: " << t.count() << std::endl;
 }
 

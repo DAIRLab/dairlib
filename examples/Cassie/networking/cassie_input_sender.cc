@@ -25,7 +25,7 @@ void copy_vector(const T* input, T* output, int size) {
 void CassieInputSender::Output(const Context<double>& context,
                                      lcmt_cassie_in* output) const {
   const cassie_user_in_t& cassie_in =
-    EvalAbstractInput(context, 0)->GetValue<cassie_user_in_t>();
+    EvalAbstractInput(context, 0)->get_value<cassie_user_in_t>();
   // using the time from the context
   output->utime = context.get_time() * 1e6;
 

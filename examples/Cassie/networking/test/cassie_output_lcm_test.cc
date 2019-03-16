@@ -94,7 +94,7 @@ TEST_F(CassieOutputLcmTest, SendReceiveTest) {
   receiver->CalcOutput(receiver_context, output.get());
 
   const cassie_out_t& output_struct =
-      output->get_data(0)->GetValue<cassie_out_t>();
+      output->get_data(0)->get_value<cassie_out_t>();
 
   // cannot memcmp the structs because of buffers between used data
   ASSERT_EQ(0, memcmp(&input_struct.pelvis.targetPc.etherCatStatus,

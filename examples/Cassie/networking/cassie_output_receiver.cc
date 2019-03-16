@@ -59,8 +59,8 @@ void copy_vector(const T* input, T* output, int size) {
 
 void CassieOutputReceiver::CopyOutput(const Context<double>& context,
                                      cassie_out_t* cassie_out) const {
-  const auto& message =
-      this->EvalAbstractInput(context, 0)->GetValue<dairlib::lcmt_cassie_out>();
+  const auto& message = this->EvalAbstractInput(
+      context, 0)->get_value<dairlib::lcmt_cassie_out>();
 
   // copy pelvis
   copy_vector(message.pelvis.targetPc.etherCatStatus,

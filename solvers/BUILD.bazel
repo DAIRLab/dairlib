@@ -1,0 +1,32 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "optimization_utils",
+    srcs = [
+        "optimization_utils.cc",
+    ],
+    hdrs = [
+        "optimization_utils.h",
+    ],
+    deps = [
+        "@drake//common",
+        "@drake//solvers",
+    ],
+)
+
+cc_test(
+    name = "cost_constraint_approximation_test",
+    size = "small",
+    srcs = ["test/cost_constraint_approximation_test.cc"],
+    deps = [
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//solvers:mathematical_program",
+        "@drake//common/test_utilities:eigen_matrix_compare",
+        ":optimization_utils",
+        "@gtest//:main",
+    ],
+)

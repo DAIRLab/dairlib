@@ -31,6 +31,8 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd get_desired_state() { return desired_state_; }
   Eigen::MatrixXd get_A() { return A_; }
   Eigen::MatrixXd get_B() { return B_; }
+  Eigen::MatrixXd get_Q() { return Q_; }
+  Eigen::MatrixXd get_R() { return R_; }
   drake::systems::controllers::LinearQuadraticRegulatorResult get_lqr_result() {
     return lqr_result_;
   }
@@ -50,6 +52,8 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd desired_state_;
   Eigen::MatrixXd A_;
   Eigen::MatrixXd B_;
+  Eigen::MatrixXd Q_;
+  Eigen::MatrixXd R_;
   drake::systems::controllers::LinearQuadraticRegulatorResult lqr_result_;
   const int num_positions_;
   const int num_velocities_;

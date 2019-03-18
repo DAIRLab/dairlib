@@ -274,8 +274,8 @@ int do_main(int argc, char* argv[]) {
   }
 
   fp_solver->SetInitialGuess(q0, u0, lambda0);
-  // fp_solver->AddSpreadNormalForcesCost();
-  fp_solver->AddFrictionConeConstraint(0.8);
+  fp_solver->AddSpreadNormalForcesCost();
+  fp_solver->AddFrictionConeConstraint(0.7);
   fp_solver->AddJointLimitConstraint(0.001);
   fp_solver->AddFixedJointsConstraint(fixed_joints_map);
 
@@ -332,12 +332,12 @@ int do_main(int argc, char* argv[]) {
                   state_pub->get_input_port());
 
   //// State receiver
-  //auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
+  // auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
   //    plant->get_rigid_body_tree());
-  //auto state_sub =
+  // auto state_sub =
   //    builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
   //        FLAGS_state_channel, &lcm));
-  //builder.Connect(state_sub->get_output_port(),
+  // builder.Connect(state_sub->get_output_port(),
   //                state_receiver->get_input_port(0));
 
   // Input publisher
@@ -350,9 +350,12 @@ int do_main(int argc, char* argv[]) {
                   input_pub->get_input_port());
 
   // Constrained LQR controller
-  MatrixXd Q = MatrixXd::Identity(num_states - 2 * num_forces,
-                                  num_states - 2 * num_forces) *
-               10;
+  MatrixXd Q_p = MatrixXd::Identity(num_positions, num_positions) * 10;
+  MatrixXd Q_v = MatrixXd::Identity(num_velocities, num_velocities) * 10;
+  MatrixXd Q = MatrixXd::Zero(num_states, num_states);
+  std::cout << Q << std::endl;
+  Q.block(0, 0, num_positions, num_positions) = Q_p;
+  Q.block(num_positions, num_positions, num_velocities, num_velocities) = Q_v;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts);
 
   auto clqr_controller = builder.AddSystem<ConstrainedLQRController>(

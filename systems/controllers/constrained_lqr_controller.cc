@@ -110,14 +110,17 @@ ConstrainedLQRController::ConstrainedLQRController(
   // A and B matrices in the new coordinates
   A_ = P * A * P.transpose();
   B_ = P * B;
+  // Remapping the Q costs to the new coordinates
+  Q_ = P * Q * P.transpose();
+  R_ = R;
 
-  // Validating the dimesions of A_, B_, Q and R with respect to each other.
-  DRAKE_DEMAND(Q.rows() == Q.cols());
-  DRAKE_DEMAND(R.rows() == R.cols());
-  DRAKE_DEMAND(A_.rows() == Q.rows());
-  DRAKE_DEMAND(B_.cols() == R.rows());
+  // Validating the dimesions of A_, B_, Q_ and R_ with respect to each other.
+  DRAKE_DEMAND(Q_.rows() == Q_.cols());
+  DRAKE_DEMAND(R_.rows() == R_.cols());
+  DRAKE_DEMAND(A_.rows() == Q_.rows());
+  DRAKE_DEMAND(B_.cols() == R_.rows());
 
-  lqr_result_ = LinearQuadraticRegulator(A_, B_, Q, R);
+  lqr_result_ = LinearQuadraticRegulator(A_, B_, Q_, R_);
   K_ = lqr_result_.K * P;
   E_ = u;
 }

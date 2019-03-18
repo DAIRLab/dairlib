@@ -202,8 +202,8 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_floating_base) {
     // desired x0
     x0(position_map.at("base_z")) = 3;
-    x0(position_map.at("hip_roll_left")) = 0.1;
-    x0(position_map.at("hip_roll_right")) = -0.1;
+    x0(position_map.at("hip_roll_left")) = 0.04;
+    x0(position_map.at("hip_roll_right")) = -0.04;
     x0(position_map.at("hip_yaw_left")) = 0.01;
     x0(position_map.at("hip_yaw_right")) = -0.01;
     x0(position_map.at("hip_pitch_left")) = .269;
@@ -350,13 +350,29 @@ int do_main(int argc, char* argv[]) {
                   input_pub->get_input_port());
 
   // Constrained LQR controller
-  MatrixXd Q_p = MatrixXd::Identity(num_positions, num_positions) * 10;
-  MatrixXd Q_v = MatrixXd::Identity(num_velocities, num_velocities) * 10;
+
+  // Defining the Q matrix
+  double qp_mult = 1.0;
+  double qv_mult = 1000.0;
+  MatrixXd Q_p = MatrixXd::Identity(num_positions, num_positions) * qp_mult;
+  MatrixXd Q_v = MatrixXd::Identity(num_velocities, num_velocities) * qv_mult;
   MatrixXd Q = MatrixXd::Zero(num_states, num_states);
-  std::cout << Q << std::endl;
+  // Positions for which the cost need to be ignored.
+  vector<string> cost_ignore_position = {"base_x",    "base_y",     "base_z",
+                                         "base_roll", "base_pitch", "base_yaw"};
+  for (auto& position : cost_ignore_position) {
+    Q_p(position_map.at(position), position_map.at(position)) = 0;
+    Q_v(position_map.at(position), position_map.at(position)) = 0;
+  }
   Q.block(0, 0, num_positions, num_positions) = Q_p;
   Q.block(num_positions, num_positions, num_velocities, num_velocities) = Q_v;
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts);
+
+  // Defining the R matrix
+  double r_mult = 1;
+  double r_toe_cost = 0.1;
+  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts) * r_mult;
+  R(8, 8) = r_toe_cost;
+  R(9, 9) = r_toe_cost;
 
   auto clqr_controller = builder.AddSystem<ConstrainedLQRController>(
       plant->get_rigid_body_tree(), q, u, lambda, Q, R, contact_info);

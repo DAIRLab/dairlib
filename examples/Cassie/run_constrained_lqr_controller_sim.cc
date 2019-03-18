@@ -202,8 +202,8 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_floating_base) {
     // desired x0
     x0(position_map.at("base_z")) = 3;
-    x0(position_map.at("hip_roll_left")) = 0.04;
-    x0(position_map.at("hip_roll_right")) = -0.04;
+    x0(position_map.at("hip_roll_left")) = 0.1;
+    x0(position_map.at("hip_roll_right")) = -0.1;
     x0(position_map.at("hip_yaw_left")) = 0.01;
     x0(position_map.at("hip_yaw_right")) = -0.01;
     x0(position_map.at("hip_pitch_left")) = .269;
@@ -353,7 +353,7 @@ int do_main(int argc, char* argv[]) {
 
   // Defining the Q matrix
   double qp_mult = 1.0;
-  double qv_mult = 1000.0;
+  double qv_mult = 100.0;
   MatrixXd Q_p = MatrixXd::Identity(num_positions, num_positions) * qp_mult;
   MatrixXd Q_v = MatrixXd::Identity(num_velocities, num_velocities) * qv_mult;
   MatrixXd Q = MatrixXd::Zero(num_states, num_states);
@@ -368,8 +368,8 @@ int do_main(int argc, char* argv[]) {
   Q.block(num_positions, num_positions, num_velocities, num_velocities) = Q_v;
 
   // Defining the R matrix
-  double r_mult = 1;
-  double r_toe_cost = 0.1;
+  double r_mult = 0.1;
+  double r_toe_cost = 0.01;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts) * r_mult;
   R(8, 8) = r_toe_cost;
   R(9, 9) = r_toe_cost;

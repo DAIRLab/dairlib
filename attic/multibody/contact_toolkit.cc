@@ -15,10 +15,10 @@ using Eigen::Matrix3Xd;
 
 template <typename T>
 ContactToolkit<T>::ContactToolkit(const RigidBodyTree<double>& tree,
-                                ContactInfo contact_info)
+                                  ContactInfo contact_info)
     : tree_(tree),
       contact_info_(contact_info),
-      num_contacts_(contact_info.idxA.size()) {}
+      num_contacts_(contact_info.num_contacts) {}
 
 template <typename T>
 drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
@@ -45,7 +45,7 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
   Matrix3Xd mat1 = Matrix3Xd::Zero(3, num_contacts_);
   Map<Matrix3Xd> map1(mat1.data(), 3, num_contacts_);
   Matrix3Xd mat2 = Matrix3Xd::Zero(3, num_contacts_);
-  Map<Matrix3Xd> map2(mat1.data(), 3, num_contacts_);
+  Map<Matrix3Xd> map2(mat2.data(), 3, num_contacts_);
   tangents_map_vector.push_back(map1);
   tangents_map_vector.push_back(map2);
 
@@ -57,9 +57,9 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
     auto Ja = tree_.transformPointsJacobian(k_cache, contact_info_.xA.col(i),
                                             contact_info_.idxA.at(i), world_ind,
                                             true);
-    auto Jb = tree_.transformPointsJacobian(k_cache, contact_info_.xB.col(i),
-                                            world_ind, world_ind, true);
-    J_diff.at(i) = Jb - Ja;
+
+    // Jb is zero
+    J_diff.at(i) = Ja;
   }
 
   // Contact Jacobians
@@ -84,7 +84,7 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
 
 template <typename T>
 VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
-                                       VectorX<T> lambda) const {
+                                        VectorX<T> lambda) const {
   const int num_positions = tree_.get_num_positions();
   const int num_velocities = tree_.get_num_velocities();
   const int num_efforts = tree_.get_num_actuators();
@@ -109,7 +109,7 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
   }
 
   // Position constraints Jacocbian
-  if (num_position_constraints) {
+  if (num_position_constraints > 0) {
     MatrixX<T> J_position = tree_.positionConstraintsJacobian(k_cache);
     right_hand_side +=
         J_position.transpose() * lambda.head(num_position_constraints);
@@ -127,7 +127,7 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
 
 template <typename T>
 VectorX<T> ContactToolkit<T>::CalcTimeDerivatives(VectorX<T> x, VectorX<T> u,
-                                                 VectorX<T> lambda) const {
+                                                  VectorX<T> lambda) const {
   const int num_positions = tree_.get_num_positions();
   const int num_velocities = tree_.get_num_velocities();
 
@@ -166,4 +166,4 @@ void ContactToolkit<T>::set_contact_info(ContactInfo contact_info) {
 }  // namespace dairlib
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-    class ::dairlib::multibody::ContactToolkit);
+class ::dairlib::multibody::ContactToolkit);

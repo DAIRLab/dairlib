@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "common/find_resource.h"
 #include "drake/math/autodiff_gradient.h"
@@ -14,8 +15,23 @@
 
 #include "drake/multibody/rigid_body_tree_construction.h"
 
+#include "systems/robot_lcm_systems.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/lcm/drake_lcm.h"
+#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
+#include "drake/systems/framework/diagram.h"
+#include "systems/primitives/subvector_pass_through.h"
+
+#include "drake/systems/sensors/accelerometer.h"
+#include "drake/systems/sensors/gyroscope.h"
+#include "systems/sensors/sim_cassie_sensor_aggregator.h"
+
 namespace dairlib {
 
+using dairlib::systems::SubvectorPassThrough;
+using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::lcm::LcmPublisherSystem;
 
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
@@ -46,27 +62,31 @@ void buildCassieTree(
     drake::multibody::joints::FloatingBaseType base_type =
         drake::multibody::joints::kFixed);
 
-/// Solves the position constraints for a position that satisfies them
-Eigen::VectorXd solvePositionConstraints(const RigidBodyTree<double>& tree,
-                                         Eigen::VectorXd q_init,
-                                         std::vector<int> fixed_joints);
+// Add a frame to the pelvis so that we can use it for accelerometer and
+// gyroscope simulation.
+void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree);
 
-class TreePositionConstraint : public drake::solvers::Constraint {
- public:
-  TreePositionConstraint(const RigidBodyTree<double>& tree,
-                         const std::string& description = "");
-  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd* y) const override;
+/// Add simulated accelerometer to the diagram
+drake::systems::sensors::Accelerometer * addSimAccelerometer(
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant);
+/// Add simulated gyroscope to the diagram
+drake::systems::sensors::Gyroscope * addSimGyroscope(
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant);
+/// Add sensor aggregator
+systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    SubvectorPassThrough<double> * passthrough,
+    drake::systems::sensors::Accelerometer * accel_sim,
+    drake::systems::sensors::Gyroscope * gyro_sim);
 
-  void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-              drake::AutoDiffVecXd* y) const override;
+/// Add simulated gyroscope and accelerometer and create/publish an
+/// lcmt_cassie_out LCM message.
+systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
+    drake::systems::DiagramBuilder<double> & builder,
+    drake::systems::RigidBodyPlant<double> * plant,
+    SubvectorPassThrough<double> * passthrough);
 
-  void DoEval(
-      const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& x,
-      drake::VectorX<drake::symbolic::Expression>* y) const override;
-
- private:
-  const RigidBodyTree<double>* tree_;
-};
-
-}  // namespace dairlib
+} // namespace dairlib

@@ -13,7 +13,7 @@ cc_library(
         "multibody_utils.h",
     ],
     deps = [
-        "@drake//multibody/multibody_tree/multibody_plant",
+        "@drake//multibody/plant",
         ":visualization_utils"
     ],
 )
@@ -27,7 +27,7 @@ cc_library(
         "visualization_utils.h",
     ],
     deps = [
-        "@drake//multibody/multibody_tree/multibody_plant",
+        "@drake//multibody/plant",
         "@drake//geometry:geometry_visualization",
         "@drake//systems/rendering:multibody_position_to_geometry_pose",        
         "@drake//systems/primitives",
@@ -76,4 +76,5 @@ cc_test(
         "@gtest//:main",
     ],
     size = "small",
+    tags = ["manual"],
 )

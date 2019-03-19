@@ -1,3 +1,5 @@
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-function"
 /* udpuser.c
  *
  * Sample program for faking the UDP messages from Cassie
@@ -57,7 +59,7 @@ process_packet_header(packet_header_info_t *info,
 static void
 null_dynamics(const cassie_out_t *out, cassie_user_in_t *in)
 {
-    memset(out, 'a', sizeof (cassie_out_t));
+    memset((void*) out, 'a', sizeof (cassie_out_t));
 }
 
 
@@ -73,7 +75,7 @@ int main(int argc, char **argv)
 	int optval;		/* flag value for setsockopt */
 	int n;			/* message byte size */
   char recvbuf[2 + CASSIE_USER_IN_T_LEN];
-  char sendbuf[2 + CASSIE_OUT_T_LEN];
+  unsigned char sendbuf[2 + CASSIE_OUT_T_LEN];
   cassie_out_t cassie_out = {0};
   cassie_user_in_t cassie_in;
   packet_header_info_t header_info = {0};
@@ -119,8 +121,8 @@ int main(int argc, char **argv)
 
 		 const char *header_in = recvbuf;
      const char *data_in = &recvbuf[2];
-     char *header_out = sendbuf;
-     char *data_out = &sendbuf[2];
+     unsigned char *header_out = sendbuf;
+     unsigned char *data_out = &sendbuf[2];
      // Pack cassie input struct into outgoing packet
      pack_cassie_out_t(&cassie_out, data_out);
 

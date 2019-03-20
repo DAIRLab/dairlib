@@ -1,4 +1,7 @@
 #include "systems/lcm/lcm_multiplexer_driven_loop.h"
+#include "systems/lcm/lcm_subscriber_multiplexer.h"
+#include "systems/lcm/subscriber_switch_parser.h"
+#include "dairlib/lcmt_subscriber_switch.hpp"
 
 #include <gtest/gtest.h>
 #include "lcm/lcm-cpp.hpp"
@@ -14,6 +17,18 @@ namespace systems {
 namespace lcm {
 namespace {
 
+using drake::AbstractValue;
+using drake::Value;
+using drake::VectorX;
+using drake::systems::Context;
+using drake::systems::DiagramBuilder;
+using drake::systems::LeafSystem;
+using drake::systems::BasicVector;
+using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::SignalLogger;
+using drake::lcmt_drake_signal;
+
+const int kSwitch = 5;
 const int kStart = 3;
 const int kEnd = 10;
 // Use a slight perturbation of the default URL.
@@ -28,23 +43,23 @@ class MilliSecTimeStampMessageToSeconds : public LcmMessageToTimeInterface {
   ~MilliSecTimeStampMessageToSeconds() {}
 
   double GetTimeInSeconds(const AbstractValue& abstract_value) const override {
-    const lcmt_drake_signal& msg = abstract_value.GetValue<lcmt_drake_signal>();
+    const lcmt_drake_signal& msg =
+        abstract_value.get_value<lcmt_drake_signal>();
     return static_cast<double>(msg.timestamp) / 1e3;
   }
 };
 
 // A dummy test system that outputs the input message's time stamp in seconds.
-class DummySys : public systems::LeafSystem<double> {
+class DummySys : public LeafSystem<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DummySys);
   DummySys() {
     DeclareAbstractInputPort("lcmt_drake_signal", Value<lcmt_drake_signal>());
-    DeclareVectorOutputPort(systems::BasicVector<double>(1),
-                            &DummySys::CalcTimestamp);
+    DeclareVectorOutputPort(BasicVector<double>(1), &DummySys::CalcTimestamp);
   }
 
-  void CalcTimestamp(const systems::Context<double>& context,
-                     systems::BasicVector<double>* output) const {
+  void CalcTimestamp(const Context<double>& context,
+                     BasicVector<double>* output) const {
     const lcmt_drake_signal& msg =
         this->get_input_port(0).Eval<lcmt_drake_signal>(context);
     auto out_vector = output->get_mutable_value();
@@ -61,6 +76,9 @@ void publish() {
   msg.val.resize(msg.dim);
   msg.coord.resize(msg.dim);
 
+  lcmt_subscriber_switch switch_msg;
+  switch_msg.channel = "channel_2";
+
   const int kSleepMicroSec = 100000;
 
   // This thread will first sleep for long enough to ensure `sys` will always
@@ -69,9 +87,19 @@ void publish() {
   // message.
   usleep(kSleepMicroSec);
 
-  for (int i = kStart; i <= kEnd; i++) {
+  // These messages will be ignored
+  for (int i = kStart; i < kSwitch; i++) {
     msg.timestamp = 1000 * i;
-    lcm.publish("test", &msg);
+    lcm.publish("channel_2", &msg);
+    usleep(kSleepMicroSec);
+  }
+
+  lcm.publish("driver", &switch_msg);
+
+  // Once the driving channel is switched, these messages will be used
+  for (int i = kSwitch; i <= kEnd; i++) {
+    msg.timestamp = 1000 * i;
+    lcm.publish("channel_2", &msg);
     usleep(kSleepMicroSec);
   }
 }
@@ -84,9 +112,18 @@ GTEST_TEST(LcmDrivenLoopTest, TestLoop) {
   DiagramBuilder<double> builder;
 
   // Makes the test system.
-  auto sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<lcmt_drake_signal>("test", &lcm));
-  sub->set_name("subscriber");
+  // Makes the lcm driven loop.
+  const std::string channel_1 = "channel_1";
+  const std::string channel_2 = "channel_2";
+  std::vector<std::string> channels = {channel_1, channel_2};
+  auto sub =
+      LcmSubscriberMultiplexer::MakeMuxAndSubscribers<lcmt_drake_signal>(
+          &builder, channels, &lcm);
+  auto driver_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<lcmt_subscriber_switch>(
+          "driver", &lcm));
+  auto driver_parser = builder.AddSystem<SubscriberSwitchParser>();
+
   auto dummy = builder.AddSystem<DummySys>();
   dummy->set_name("dummy");
 
@@ -94,12 +131,14 @@ GTEST_TEST(LcmDrivenLoopTest, TestLoop) {
   logger->set_name("logger");
   logger->set_forced_publish_only();  // Log only when told to do so.
 
+  builder.Connect(*driver_sub, *driver_parser);
+  builder.Connect(driver_parser->get_output_port(0),
+      sub->get_channel_input_port());
   builder.Connect(*sub, *dummy);
   builder.Connect(*dummy, *logger);
   auto sys = builder.Build();
 
-  // Makes the lcm driven loop.
-  lcm::LcmDrivenLoop dut(*sys, *sub, nullptr, &lcm,
+  LcmMultiplexerDrivenLoop dut(*sys, *sub, nullptr, &lcm,
       std::make_unique<MilliSecTimeStampMessageToSeconds>());
   // This ensures that dut calls sys->Publish() (a.k.a. "forced publish")
   // every time it handles a message, which triggers the logger to save its
@@ -109,11 +148,11 @@ GTEST_TEST(LcmDrivenLoopTest, TestLoop) {
   // Starts the publishing thread.
   std::thread pub_thread(&publish);
 
-  // Waits for the first message.
-  const AbstractValue& first_msg = dut.WaitForMessage();
-  double msg_time =
-      dut.get_message_to_time_converter().GetTimeInSeconds(first_msg);
-  dut.get_mutable_context().set_time(msg_time);
+  // // Waits for the first message.
+  // const AbstractValue& first_msg = dut.WaitForMessage();
+  // double msg_time =
+  //     dut.get_message_to_time_converter().GetTimeInSeconds(first_msg);
+  // dut.get_mutable_context().set_time(msg_time);
 
   // Starts the loop.
   dut.RunToSecondsAssumingInitialized(static_cast<double>(kEnd));
@@ -121,12 +160,12 @@ GTEST_TEST(LcmDrivenLoopTest, TestLoop) {
   // Reaps the publishing thread.
   pub_thread.join();
 
-  // Makes the expected output: should be [kStart + 1, ... kEnd]. kStart is
+  // Makes the expected output: should be [kStart, ... kEnd]. kStart is
   // used to initialize the loop's initial context, so it's not used for
   // computation, thus is not reflected in the output.
-  VectorX<double> expected(kEnd - kStart - 1);
+  VectorX<double> expected(kEnd - kSwitch);
   int ctr = 0;
-  for (int i = kStart + 1; i < kEnd; i++) {
+  for (int i = kSwitch; i < kEnd; i++) {
     expected(ctr++) = i;
   }
 

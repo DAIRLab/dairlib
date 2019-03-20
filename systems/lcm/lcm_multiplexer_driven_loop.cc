@@ -14,13 +14,15 @@ LcmMultiplexerDrivenLoop::LcmMultiplexerDrivenLoop(
     const Diagram<double>& diagram,
     const LcmSubscriberMultiplexer& driving_mux,
     std::unique_ptr<Context<double>> context, drake::lcm::DrakeLcm* lcm,
-    std::unique_ptr<LcmMessageToTimeInterface> time_converter)
+    std::unique_ptr<LcmMessageToTimeInterface> time_converter,
+    double timeout_seconds)
     : diagram_(diagram),
       driving_mux_(driving_mux),
       lcm_(lcm),
       time_converter_(std::move(time_converter)),
       stepper_(
-          std::make_unique<Simulator<double>>(diagram_, std::move(context))) {
+          std::make_unique<Simulator<double>>(diagram_, std::move(context))),
+      timeout_seconds_(timeout_seconds) {
   DRAKE_DEMAND(lcm != nullptr);
   DRAKE_DEMAND(time_converter_ != nullptr);
 
@@ -45,9 +47,18 @@ LcmMultiplexerDrivenLoop::LcmMultiplexerDrivenLoop(
 const AbstractValue& LcmMultiplexerDrivenLoop::WaitForMessage(
       const Context<double>& context) {
   auto active_sub = driving_mux_.get_active_subscriber(context);
+  int message_count = active_sub->GetMessageCount(*sub_context_);
 
-  active_sub->WaitForMessage(active_sub->GetMessageCount(*sub_context_));
+  // Call WaitFormMessage with a timeout. The timeout is needed in case the
+  // active subscriber changes without a message being sent on the old active
+  // subscriber.
+  while (active_sub->WaitForMessage(message_count, nullptr, timeout_seconds_) <=
+      message_count) {
+    // Step to current time to update the input port, if it has changed
+    stepper_->StepTo(stepper_->get_context().get_time());
 
+    active_sub = driving_mux_.get_active_subscriber(context);
+  }
   active_sub->CalcNextUpdateTime(*sub_context_, sub_events_.get());
 
   // If active_sub->WaitForMessage() returned, a message should be received
@@ -62,7 +73,7 @@ const AbstractValue& LcmMultiplexerDrivenLoop::WaitForMessage(
   } else {
     DRAKE_DEMAND(false);
   }
-  sub_context_->get_mutable_state().CopyFrom(*sub_swap_state_);
+  sub_context_->get_mutable_state().SetFrom(*sub_swap_state_);
 
   active_sub->CalcOutput(*sub_context_, sub_output_.get());
   return *(sub_output_->get_data(0));
@@ -77,7 +88,6 @@ void LcmMultiplexerDrivenLoop::RunToSecondsAssumingInitialized(
         diagram_.GetSubsystemContext(driving_mux_, stepper_->get_context());
     msg_time = time_converter_->GetTimeInSeconds(WaitForMessage(context));
     if (msg_time >= stop_time) break;
-
     stepper_->StepTo(msg_time);
 
     // Explicitly publish after we are done with all the intermediate

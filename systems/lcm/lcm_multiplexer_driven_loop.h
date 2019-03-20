@@ -134,7 +134,8 @@ class LcmMultiplexerDrivenLoop {
       const LcmSubscriberMultiplexer& driving_mux,
       std::unique_ptr<drake::systems::Context<double>> context,
       drake::lcm::DrakeLcm* lcm,
-      std::unique_ptr<LcmMessageToTimeInterface> time_converter);
+      std::unique_ptr<LcmMessageToTimeInterface> time_converter,
+      double timeout_seconds = .01);
 
   /**
    * Blocks the caller until a driving Lcm message is received, then returns
@@ -205,6 +206,8 @@ class LcmMultiplexerDrivenLoop {
   std::unique_ptr<drake::systems::SystemOutput<double>> sub_output_;
   std::unique_ptr<drake::systems::State<double>> sub_swap_state_;
   std::unique_ptr<drake::systems::CompositeEventCollection<double>> sub_events_;
+
+  double timeout_seconds_;
 };
 
 }  // namespace lcm

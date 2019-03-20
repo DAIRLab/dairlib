@@ -80,19 +80,16 @@ const int& LcmSubscriberMultiplexer::GetSubscriberPortIndex(
 
 void LcmSubscriberMultiplexer::Output(
     const Context<double>& context, AbstractValue* out) {
-  std::cout << "getting output from channel...";
   auto active_channel =
-      EvalAbstractInput(context, kActiveChannelIndex)->GetValue<string>();
-  std::cout << active_channel << std::endl;
+      EvalAbstractInput(context, kActiveChannelIndex)->get_value<string>();
   out->SetFrom(*EvalAbstractInput(context,
       GetSubscriberPortIndex(active_channel)));
-  std::cout << "Set output" << std::endl;
 }
 
 const LcmSubscriberSystem* LcmSubscriberMultiplexer::get_active_subscriber(
     const Context<double>& context) const {
   auto active_channel =
-      EvalAbstractInput(context, kActiveChannelIndex)->GetValue<string>();
+      EvalAbstractInput(context, kActiveChannelIndex)->get_value<string>();
   if (port_index_map_.count(active_channel) != 0) {
     return subscriber_map_.at(active_channel);
   } else {

@@ -76,7 +76,7 @@ GTEST_TEST(LcmSubscriberMultiplexerTest, SerializerTest) {
   auto& mux_context_1 = diagram->GetMutableSubsystemContext(*mux , &context_1);
   mux->CalcOutput(mux_context_1, output_1.get());
 
-  auto message_1 = output_1->get_data(0)->GetValue<lcmt_drake_signal>();
+  auto message_1 = output_1->get_data(0)->get_value<lcmt_drake_signal>();
 
   // Confirm that the output corresponds to channel_1
   EXPECT_EQ(value_1, message_1.val[0]);
@@ -95,7 +95,7 @@ GTEST_TEST(LcmSubscriberMultiplexerTest, SerializerTest) {
   auto& mux_context_2 = diagram->GetMutableSubsystemContext(*mux , &context_2);
   mux->CalcOutput(mux_context_2, output_2.get());
 
-  auto message_2 = output_2->get_data(0)->GetValue<lcmt_drake_signal>();
+  auto message_2 = output_2->get_data(0)->get_value<lcmt_drake_signal>();
 
   // Confirm that the output corresponds to channel_2
   EXPECT_EQ(value_2, message_2.val[0]);

@@ -219,14 +219,14 @@ int do_main(int argc, char* argv[]) {
     fixed_joints.push_back(position_map.at("base_roll"));
     fixed_joints.push_back(position_map.at("base_pitch"));
     fixed_joints.push_back(position_map.at("base_yaw"));
-    //fixed_joints.push_back(position_map.at("hip_roll_left"));
-    //fixed_joints.push_back(position_map.at("hip_roll_right"));
-    //fixed_joints.push_back(position_map.at("hip_pitch_left"));
-    //fixed_joints.push_back(position_map.at("hip_pitch_right"));
+    // fixed_joints.push_back(position_map.at("hip_roll_left"));
+    // fixed_joints.push_back(position_map.at("hip_roll_right"));
+    // fixed_joints.push_back(position_map.at("hip_pitch_left"));
+    // fixed_joints.push_back(position_map.at("hip_pitch_right"));
     fixed_joints.push_back(position_map.at("hip_yaw_left"));
     fixed_joints.push_back(position_map.at("hip_yaw_right"));
-    //fixed_joints.push_back(position_map.at("knee_left"));
-    //fixed_joints.push_back(position_map.at("knee_right"));
+    // fixed_joints.push_back(position_map.at("knee_left"));
+    // fixed_joints.push_back(position_map.at("knee_right"));
 
   } else {
     x0(position_map.at("hip_roll_left")) = 0.2;
@@ -299,7 +299,6 @@ int do_main(int argc, char* argv[]) {
   VectorXd q = fp_solver->GetSolutionQ();
   VectorXd u = fp_solver->GetSolutionU();
   VectorXd lambda = fp_solver->GetSolutionLambda();
-  //q(position_map.at("base_z")) += 0.05;
 
   std::cout << "Forces: " << std::endl << lambda << std::endl;
   std::cout << "Joint angles: " << std::endl << q << std::endl;
@@ -340,14 +339,14 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
 
-  //// State receiver
-  // auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
-  //    plant->get_rigid_body_tree());
-  // auto state_sub =
-  //    builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-  //        FLAGS_state_channel, &lcm));
-  // builder.Connect(state_sub->get_output_port(),
-  //                state_receiver->get_input_port(0));
+  // State receiver
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
+      plant->get_rigid_body_tree());
+  auto state_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          FLAGS_state_channel, &lcm));
+  builder.Connect(state_sub->get_output_port(),
+                  state_receiver->get_input_port(0));
 
   // Input publisher
   auto input_sender = builder.AddSystem<systems::RobotCommandSender>(
@@ -377,11 +376,11 @@ int do_main(int argc, char* argv[]) {
   Q.block(num_positions, num_positions, num_velocities, num_velocities) = Q_v;
 
   // Defining the R matrix
-  double r_mult = 0.1;
-  double r_toe_cost = 0.001;
+  double r_mult = 0.01;
+  double r_toe_mult = 0.001;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts) * r_mult;
-  R(8, 8) = r_toe_cost;
-  R(9, 9) = r_toe_cost;
+  R(8, 8) = R(8, 8) * r_toe_mult;
+  R(9, 9) = R(9, 9) * r_toe_mult;
 
   auto clqr_controller = builder.AddSystem<ConstrainedLQRController>(
       plant->get_rigid_body_tree(), q, u, lambda, Q, R, contact_info);
@@ -433,7 +432,7 @@ int do_main(int argc, char* argv[]) {
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(1.0);
+  simulator.set_target_realtime_rate(10.0);
   simulator.Initialize();
 
   lcm.StartReceiveThread();

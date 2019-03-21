@@ -1,31 +1,8 @@
-build_task:
-  timeout_in: 120m
-  container:
-    dockerfile: install/bionic/Dockerfile
-    cpu: 8
-    memory: 24
-  test_script:
-    - bazel build ...
-    - bazel test ...
-drake_master_build_task:
-  timeout_in: 120m
-  container:
-    dockerfile: install/bionic/Dockerfile
-    cpu: 8
-    memory: 24
-  allow_failures: true
-  test_script:
-    - git clone https://github.com/RobotLocomotion/drake.git ../drake
-    - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
-    - bazel build ...
-    - bazel test ...  
-
 osx_build_task:
   timeout_in: 120m
-  container:
-    image: mojave-xcode-10.1
-    cpu: 8
-    memory: 24
+  image: mojave-xcode-10.1
+  cpu: 8
+  memory: 24
   setup_script:
     - brew tap bazelbuild/tap
     - brew tap-pin bazelbuild/tap

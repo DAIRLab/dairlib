@@ -85,6 +85,14 @@ DEFINE_string(state_channel, "CASSIE_STATE",
 DEFINE_string(input_channel, "CASSIE_INPUT",
               "LCM channel for receiving the motor inputs");
 
+/*
+ * Function to run collisionDetect and return a ContactInfo object for the four
+ * contact points in Cassie.
+ * @param tree The RigidBodyTree containing the cassie model and a ground plane
+ * box.
+ * @param q0 The Cassie position configuration for which contact information is
+ * to be computed.
+ */
 ContactInfo ComputeCassieContactInfo(const RigidBodyTree<double>& tree,
                                      VectorXd q0) {
   VectorXd phi_total;
@@ -92,6 +100,7 @@ ContactInfo ComputeCassieContactInfo(const RigidBodyTree<double>& tree,
   vector<int> idxA_total, idxB_total;
   KinematicsCache<double> k_cache = tree.doKinematics(q0);
 
+  // The full collisionDetect solution.
   const_cast<RigidBodyTree<double>&>(tree).collisionDetect(
       k_cache, phi_total, normal_total, xA_total, xB_total, idxA_total,
       idxB_total);
@@ -125,6 +134,13 @@ ContactInfo ComputeCassieContactInfo(const RigidBodyTree<double>& tree,
   return contact_info;
 }
 
+/*
+ * A class to serve as the input to the ConstrainedLQRController.
+ * It takes in a basic vector (of size num_states) at its input and has an
+ * output port of type OutputVector.
+ * It serves as an interfacing connector between the RigidBodyPlant's state
+ * output port and ConstrainedLQRController's info input port.
+ */
 class StateConnector : public LeafSystem<double> {
  public:
   StateConnector(int num_positions, int num_velocities, int num_efforts)
@@ -156,7 +172,8 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_floating_base) {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kRollPitchYaw);
-    AddFlatTerrainToWorld(tree.get(), 4, 0.05);
+    // Adding a terrain for the floating base version.
+    AddFlatTerrainToWorld(tree.get(), 20, 1);
   } else {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kFixed);
@@ -359,29 +376,45 @@ int do_main(int argc, char* argv[]) {
 
   // Constrained LQR controller
 
-  // Defining the Q matrix
-  double qp_mult = 1.0;
-  double qv_mult = 100.0;
-  MatrixXd Q_p = MatrixXd::Identity(num_positions, num_positions) * qp_mult;
-  MatrixXd Q_v = MatrixXd::Identity(num_velocities, num_velocities) * qv_mult;
-  MatrixXd Q = MatrixXd::Zero(num_states, num_states);
+  // Defining the Q and R matrix
   // Positions for which the cost need to be ignored.
-  vector<string> cost_ignore_position = {"base_x",    "base_y",     "base_z",
-                                         "base_roll", "base_pitch", "base_yaw"};
-  for (auto& position : cost_ignore_position) {
-    Q_p(position_map.at(position), position_map.at(position)) = 0;
-    Q_v(position_map.at(position), position_map.at(position)) = 0;
+  vector<string> cost_ignore_position;
+  if (FLAGS_floating_base) {
+    cost_ignore_position = {"base_x",    "base_y",     "base_z",
+                            "base_roll", "base_pitch", "base_yaw"};
   }
-  Q.block(0, 0, num_positions, num_positions) = Q_p;
-  Q.block(num_positions, num_positions, num_velocities, num_velocities) = Q_v;
+  MatrixXd Q, R;
 
-  // Defining the R matrix
-  double r_mult = 0.01;
-  double r_toe_mult = 0.001;
-  MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts) * r_mult;
-  R(8, 8) = R(8, 8) * r_toe_mult;
-  R(9, 9) = R(9, 9) * r_toe_mult;
+  // Separate costs for the fixed and floating versions.
+  if (FLAGS_floating_base) {
+    // Floating base
+    double qp_mult = 1.0;
+    double qv_mult = 100.0;
+    MatrixXd Q_p = MatrixXd::Identity(num_positions, num_positions) * qp_mult;
+    MatrixXd Q_v = MatrixXd::Identity(num_velocities, num_velocities) * qv_mult;
+    Q = MatrixXd::Zero(num_states, num_states);
 
+    for (auto& position : cost_ignore_position) {
+      Q_p(position_map.at(position), position_map.at(position)) = 0;
+      Q_v(position_map.at(position), position_map.at(position)) = 0;
+    }
+    Q.block(0, 0, num_positions, num_positions) = Q_p;
+    Q.block(num_positions, num_positions, num_velocities, num_velocities) = Q_v;
+
+    double r_mult = 0.01;
+    double r_toe_mult = 0.001;
+    R = MatrixXd::Identity(num_efforts, num_efforts) * r_mult;
+    R(8, 8) = R(8, 8) * r_toe_mult;
+    R(9, 9) = R(9, 9) * r_toe_mult;
+  } else {
+    // Fixed base
+    double q_mult = 1.0;
+    double r_mult = 1.0;
+    Q = MatrixXd::Identity(num_states, num_states) * q_mult;
+    R = MatrixXd::Identity(num_efforts, num_efforts) * r_mult;
+  }
+
+  // Initializing the controller
   auto clqr_controller = builder.AddSystem<ConstrainedLQRController>(
       plant->get_rigid_body_tree(), q, u, lambda, Q, R, contact_info);
 
@@ -397,7 +430,6 @@ int do_main(int argc, char* argv[]) {
                   state_connector->get_input_port(0));
   builder.Connect(state_connector->get_output_port(0),
                   clqr_controller->get_input_port_info());
-
   builder.Connect(clqr_controller->get_output_port_efforts(),
                   input_sender->get_input_port(0));
   builder.Connect(clqr_controller->get_output_port_efforts(),
@@ -405,20 +437,13 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(passthrough->get_output_port(),
                   plant->actuator_command_input_port());
 
-  // DrakeVisualizer& visualizer_publisher =
-  //    *builder.template
-  //    AddSystem<DrakeVisualizer>(plant->get_rigid_body_tree(),
-  //                                                 &lcm);
-  // builder.Connect(plant->state_output_port(),
-  //                visualizer_publisher.get_input_port(0));
-
+  // Building the diagram and starting the simulation.
   auto diagram = builder.Build();
 
   drake::systems::Simulator<double> simulator(*diagram);
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*plant,
                                           &simulator.get_mutable_context());
-  // context.FixInputPort(0, VectorXd::Zero(num_efforts));
 
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state =
@@ -432,7 +457,7 @@ int do_main(int argc, char* argv[]) {
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(10.0);
+  simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
 
   lcm.StartReceiveThread();

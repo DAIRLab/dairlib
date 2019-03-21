@@ -131,10 +131,8 @@ void ConstrainedLQRController::CalcControl(
       (OutputVector<double>*)this->EvalVectorInput(context,
                                                    input_port_info_index_);
 
+  // Computing the controller output.
   VectorXd u = K_ * (desired_state_ - info->GetState()) + E_;
-
-  //std::cout << info->GetState().transpose() << std::endl << std::endl;
-
   control->SetDataVector(u);
   control->set_timestamp(info->get_timestamp());
 }

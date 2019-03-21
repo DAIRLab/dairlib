@@ -40,7 +40,7 @@ int do_main(int argc, char* argv[]) {
 
   if (FLAGS_floating_base) {
     buildCassieTree(tree, filename, kRollPitchYaw);
-    AddFlatTerrainToWorld(&tree, 8, 0.05);
+    AddFlatTerrainToWorld(&tree, 20, 1);
   } else {
     buildCassieTree(tree, filename, kFixed);
   }

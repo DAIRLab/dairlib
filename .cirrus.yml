@@ -2,7 +2,6 @@ osx_build_task:
   timeout_in: 120m
   osx_instance:
     image: mojave-xcode-10.1
-    cpu: 8
     memory: 24
   setup_script:
     - brew tap bazelbuild/tap

@@ -19,3 +19,14 @@ drake_master_build_task:
     - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
     - bazel build ...
     - bazel test ...  
+
+osx_build_task:
+  timeout_in: 120m
+  container:
+    image: mojave-xcode-10.1
+    cpu: 8
+    memory: 24
+  test_script:
+    - bazel build ...
+    - bazel test ...
+

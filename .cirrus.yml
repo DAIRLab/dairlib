@@ -5,12 +5,11 @@ drake_master_build_task:
     cpu: 8
     memory: 24
   env:
-    DAIRLIB_LOCAL_DRAKE_PATH: $CIRRUS_WORKING_DIR/../drake/
+    DAIRLIB_LOCAL_DRAKE_PATH: $PWD/../drake/
   test_script:
     - git clone https://github.com/RobotLocomotion/drake.git ../drake
     - ls ../drake
     - echo $DAIRLIB_LOCAL_DRAKE_PATH
     - ls $DAIRLIB_LOCAL_DRAKE_PATH
-    - echo $CIRRUS_WORKING_DIR
     - bazel build ...
     - bazel test ...  

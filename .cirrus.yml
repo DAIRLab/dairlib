@@ -8,12 +8,9 @@ build_task:
 drake_master_build_task:
   timeout_in: 120m
   container:
-    dockerfile: install/bionic/Dockerfile
+    dockerfile: install/bionic/LocalDrakeDockerfile
     cpu: 8
     memory: 24
   env:
     DAIRLIB_LOCAL_DRAKE_PATH: $PWD/../drake/
-  test_script:
-    - git clone https://github.com/RobotLocomotion/drake.git ../drake
-    - bazel build ...
-    - bazel test ...  
+  test_script: echo $PWD && ls && cd ../drake/ && git pull && cd ../dairlib/ && bazel build ... && bazel test ...  

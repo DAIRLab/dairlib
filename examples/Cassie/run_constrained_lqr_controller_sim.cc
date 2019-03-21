@@ -204,8 +204,8 @@ int do_main(int argc, char* argv[]) {
     x0(position_map.at("base_z")) = 3;
     x0(position_map.at("hip_roll_left")) = 0.1;
     x0(position_map.at("hip_roll_right")) = -0.1;
-    x0(position_map.at("hip_yaw_left")) = 0.01;
-    x0(position_map.at("hip_yaw_right")) = -0.01;
+    x0(position_map.at("hip_yaw_left")) = -0.01;
+    x0(position_map.at("hip_yaw_right")) = 0.01;
     x0(position_map.at("hip_pitch_left")) = .269;
     x0(position_map.at("hip_pitch_right")) = .269;
     x0(position_map.at("knee_left")) = -.744;
@@ -217,9 +217,16 @@ int do_main(int argc, char* argv[]) {
 
     // Fixed joints
     fixed_joints.push_back(position_map.at("base_roll"));
+    fixed_joints.push_back(position_map.at("base_pitch"));
     fixed_joints.push_back(position_map.at("base_yaw"));
-    fixed_joints.push_back(position_map.at("hip_pitch_left"));
-    fixed_joints.push_back(position_map.at("hip_pitch_right"));
+    //fixed_joints.push_back(position_map.at("hip_roll_left"));
+    //fixed_joints.push_back(position_map.at("hip_roll_right"));
+    //fixed_joints.push_back(position_map.at("hip_pitch_left"));
+    //fixed_joints.push_back(position_map.at("hip_pitch_right"));
+    fixed_joints.push_back(position_map.at("hip_yaw_left"));
+    fixed_joints.push_back(position_map.at("hip_yaw_right"));
+    //fixed_joints.push_back(position_map.at("knee_left"));
+    //fixed_joints.push_back(position_map.at("knee_right"));
 
   } else {
     x0(position_map.at("hip_roll_left")) = 0.2;
@@ -292,8 +299,10 @@ int do_main(int argc, char* argv[]) {
   VectorXd q = fp_solver->GetSolutionQ();
   VectorXd u = fp_solver->GetSolutionU();
   VectorXd lambda = fp_solver->GetSolutionLambda();
+  //q(position_map.at("base_z")) += 0.05;
 
   std::cout << "Forces: " << std::endl << lambda << std::endl;
+  std::cout << "Joint angles: " << std::endl << q << std::endl;
 
   // Position solver for the start position
   VectorXd x_start(num_states);
@@ -369,7 +378,7 @@ int do_main(int argc, char* argv[]) {
 
   // Defining the R matrix
   double r_mult = 0.1;
-  double r_toe_cost = 0.01;
+  double r_toe_cost = 0.001;
   MatrixXd R = MatrixXd::Identity(num_efforts, num_efforts) * r_mult;
   R(8, 8) = r_toe_cost;
   R(9, 9) = r_toe_cost;

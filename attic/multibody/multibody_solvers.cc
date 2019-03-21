@@ -594,6 +594,7 @@ void FixedPointSolver::AddSpreadNormalForcesCost() {
   for (int i = num_position_constraints; i < num_forces; i = i + 3) {
     normal_cost_expression += lambda_(i) * lambda_(i);
   }
+  prog_->AddCost(normal_cost_expression);
 }
 
 void FixedPointSolver::AddFrictionConeConstraint(const double mu) {

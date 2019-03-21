@@ -51,7 +51,7 @@ void RobotOutputReceiver::CopyOutput(
   const drake::AbstractValue* input =
       this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
-  const auto& state_msg = input->GetValue<dairlib::lcmt_robot_output>();
+  const auto& state_msg = input->get_value<dairlib::lcmt_robot_output>();
 
   VectorXd positions = VectorXd::Zero(num_positions_);
   for (int i = 0; i < state_msg.num_positions; i++) {
@@ -175,7 +175,7 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
   const drake::AbstractValue* input =
       this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
-  const auto& input_msg = input->GetValue<dairlib::lcmt_robot_input>();
+  const auto& input_msg = input->get_value<dairlib::lcmt_robot_input>();
 
   VectorXd input_vector = VectorXd::Zero(num_actuators_);
 

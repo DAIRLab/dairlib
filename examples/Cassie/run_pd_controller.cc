@@ -27,12 +27,9 @@ int doMain() {
   DiagramBuilder<double> builder;
   DiagramBuilder<double> builder_null;
 
-  SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
-  scene_graph.set_name("scene_graph");
-
   MultibodyPlant<double>& plant =
       *builder_null.AddSystem<MultibodyPlant>(1.0);
-  addCassieMultibody(&plant, &scene_graph, false);
+  addCassieMultibody(&plant, nullptr, false);
   plant.Finalize();
 
   const std::string channel_x = "CASSIE_STATE";

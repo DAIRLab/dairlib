@@ -22,6 +22,7 @@ using drake::systems::trajectory_optimization::MultipleShooting;
 using drake::AutoDiffXd;
 using drake::VectorX;
 using drake::solvers::VectorXDecisionVariable;
+using drake::solvers::MathematicalProgramResult;
 using drake::symbolic::Expression;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -231,23 +232,23 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
 }
 
 template <typename T>
-PiecewisePolynomial<double> HybridDircon<T>::ReconstructInputTrajectory()
-    const {
-  Eigen::VectorXd times = GetSampleTimes();
+PiecewisePolynomial<double> HybridDircon<T>::ReconstructInputTrajectory(
+    const MathematicalProgramResult& result) const {
+  Eigen::VectorXd times = GetSampleTimes(result);
   vector<double> times_vec(N());
   vector<Eigen::MatrixXd> inputs(N());
   for (int i = 0; i < N(); i++) {
     times_vec[i] = times(i);
-    inputs[i] = GetSolution(input(i));
+    inputs[i] = result.GetSolution(input(i));
   }
   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
 }
 
 //TODO: need to configure this to handle the hybrid discontinuities properly
 template <typename T>
-PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory()
-    const {
-  Eigen::VectorXd times = GetSampleTimes();
+PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory(
+    const MathematicalProgramResult& result) const {
+  Eigen::VectorXd times = GetSampleTimes(result);
   vector<double> times_vec(N() + num_modes_ - 1);
   vector<Eigen::MatrixXd> states(N() + num_modes_ - 1);
   vector<Eigen::MatrixXd> inputs(N() + num_modes_ - 1);
@@ -265,9 +266,9 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory()
       if (i > 0 && j == 0) {
         times_vec[k] += + 1e-6;
       }
-      states[k] = GetSolution(state_vars_by_mode(i, j));
-      inputs[k] = GetSolution(input(k_data));
-      forces[k] = GetSolution(force(i, j));
+      states[k] = result.GetSolution(state_vars_by_mode(i, j));
+      inputs[k] = result.GetSolution(input(k_data));
+      forces[k] = result.GetSolution(force(i, j));
       constraints_[i]->updateData(states[k], inputs[k], forces[k]);
       derivatives[k] = drake::math::DiscardGradient(constraints_[i]->getXDot());
   }

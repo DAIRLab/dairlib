@@ -47,3 +47,19 @@ cc_library(
         "//multibody:utils",
     ],
 )
+
+cc_test(
+    name = "cost_constraint_approximation_test",
+    size = "small",
+    srcs = ["test/cost_constraint_approximation_test.cc"],
+    deps = [
+        "@drake//common",
+        "@drake//solvers",
+        "@drake//solvers:mathematical_program",
+        "@drake//common/test_utilities:eigen_matrix_compare",
+        "//systems/trajectory_optimization:dircon",
+        "@gtest//:main",
+    ],
+)
+
+

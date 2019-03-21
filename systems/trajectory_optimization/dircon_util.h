@@ -7,7 +7,8 @@ namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
-void checkConstraints(const drake::solvers::MathematicalProgram* prog);
+void checkConstraints(const drake::solvers::MathematicalProgram* prog,
+    const drake::solvers::MathematicalProgramResult& result);
 
 Eigen::VectorXd getConstraintRows(
     const drake::solvers::MathematicalProgram* prog,
@@ -15,12 +16,12 @@ Eigen::VectorXd getConstraintRows(
 
 // Evaluate all constraints and construct a linearization of them
 void linearizeConstraints(const drake::solvers::MathematicalProgram* prog,
-                          Eigen::VectorXd& x, Eigen::VectorXd& y,
+                          const Eigen::VectorXd& x, Eigen::VectorXd& y,
                           Eigen::MatrixXd& A, Eigen::VectorXd& lb,
                           Eigen::VectorXd& ub);
 
 double secondOrderCost(const drake::solvers::MathematicalProgram* prog,
-                       Eigen::VectorXd& x, Eigen::MatrixXd& Q,
+                       const Eigen::VectorXd& x, Eigen::MatrixXd& Q,
                        Eigen::VectorXd& w);
 
 template <typename Derived>
@@ -30,7 +31,7 @@ int countConstraints(const drake::solvers::MathematicalProgram* prog,
 template <typename Derived>
 int updateConstraints(const drake::solvers::MathematicalProgram* prog,
     const std::vector<drake::solvers::Binding<Derived>>& constraints,
-    Eigen::VectorXd& x, Eigen::VectorXd& y, Eigen::MatrixXd& A,
+    const Eigen::VectorXd& x, Eigen::VectorXd& y, Eigen::MatrixXd& A,
     Eigen::VectorXd& lb, Eigen::VectorXd& ub, int constraint_index);
 
 }  // namespace trajectory_optimization

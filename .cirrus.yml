@@ -4,7 +4,20 @@ build_task:
     dockerfile: install/bionic/Dockerfile
     cpu: 8
     memory: 24
-  test_script: bazel build ... && bazel test ...
+  build_script:
+    bazel build
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
+  test_script:
+    bazel test
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
 drake_master_build_task:
   timeout_in: 120m
   container:
@@ -12,12 +25,21 @@ drake_master_build_task:
     cpu: 8
     memory: 24
   allow_failures: true
+  env:
+    DAIRLIB_LOCAL_DRAKE_PATH: /tmp/drake
+  clone_drake_script: git clone https://github.com/RobotLocomotion/drake.git $DAIRLIB_LOCAL_DRAKE_PATH
+  
+  build_script:
+    bazel build
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
   test_script:
-    - git clone https://github.com/RobotLocomotion/drake.git ../drake
-    - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
-    - ls ../drake
-    - echo $DAIRLIB_LOCAL_DRAKE_PATH
-    - echo $CIRRUS_WORKING_DIR
-    - ls $DAIRLIB_LOCAL_DRAKE_PATH
-    - bazel build ...
-    - bazel test ...  
+    bazel test
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //... 

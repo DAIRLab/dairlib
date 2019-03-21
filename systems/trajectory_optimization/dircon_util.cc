@@ -18,8 +18,7 @@ void checkConstraints(const MathematicalProgram* prog,
     const drake::solvers::MathematicalProgramResult& result) {
   for (auto const& binding : prog->generic_constraints()) {
     double tol = 1e-6;
-    // Replace with call to Result once Drake #10720 is resolved
-    auto y = prog->EvalBindingAtSolution(binding);
+    auto y = result.EvalBinding(binding);
     auto c = binding.evaluator();
     bool isSatisfied = (y.array() >= c->lower_bound().array() - tol).all() &&
                        (y.array() <= c->upper_bound().array() + tol).all();

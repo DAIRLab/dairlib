@@ -27,7 +27,7 @@ void copy_vector(const T* input, T* output, int size) {
 void CassieInputReceiver::CopyOutput(const Context<double>& context,
                                      cassie_user_in_t* cassie_in) const {
   const auto& message =
-      this->EvalAbstractInput(context, 0)->GetValue<dairlib::lcmt_cassie_in>();
+      this->EvalAbstractInput(context, 0)->get_value<dairlib::lcmt_cassie_in>();
 
   copy_vector(message.telemetry, cassie_in->telemetry, 9);
   copy_vector(message.torque, cassie_in->torque, 9);

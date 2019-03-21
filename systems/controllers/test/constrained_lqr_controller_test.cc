@@ -141,12 +141,6 @@ class ConstrainedLQRControllerTest : public ::testing::Test {
     contact_info_ = {xB, idxB};
     num_contacts_ = contact_info_.num_contacts;
 
-    std::cout << contact_info_.xA << std::endl;
-    for (auto& elem : contact_info_.idxA){
-      std::cout << elem << " ";
-    }
-    std::cout << std::endl;
-
     num_forces_fixed_ = tree_fixed_.getNumPositionConstraints();
 
     num_forces_floating_ =
@@ -170,8 +164,7 @@ class ConstrainedLQRControllerTest : public ::testing::Test {
     u_fixed_ = fp_solver_fixed.GetSolutionU();
     lambda_fixed_ = fp_solver_fixed.GetSolutionLambda();
 
-    Q_fixed_ = MatrixXd::Identity(num_states_fixed_ - 2 * num_forces_fixed_,
-                                  num_states_fixed_ - 2 * num_forces_fixed_);
+    Q_fixed_ = MatrixXd::Identity(num_states_fixed_, num_states_fixed_);
     R_fixed_ = MatrixXd::Identity(num_efforts_fixed_, num_efforts_fixed_);
 
     // Initialized the fixed base constrained LQR controller.
@@ -194,8 +187,7 @@ class ConstrainedLQRControllerTest : public ::testing::Test {
     lambda_floating_ = fp_solver_floating.GetSolutionLambda();
 
     Q_floating_ =
-        MatrixXd::Identity(num_states_floating_ - 2 * num_forces_floating_,
-                           num_states_floating_ - 2 * num_forces_floating_);
+        MatrixXd::Identity(num_states_floating_, num_states_floating_);
     R_floating_ =
         MatrixXd::Identity(num_efforts_floating_, num_efforts_floating_);
 
@@ -310,7 +302,8 @@ TEST_F(ConstrainedLQRControllerTest, TestPortsFixed) {
 TEST_F(ConstrainedLQRControllerTest, TestPortsFloating) {
   // Running the same port tests for the floating base controller.
   ASSERT_EQ(
-      clqr_controller_floating_->CreateDefaultContext()->get_num_input_ports(), 1);
+      clqr_controller_floating_->CreateDefaultContext()->get_num_input_ports(),
+      1);
   ASSERT_EQ(clqr_controller_floating_->get_num_input_ports(), 1);
 
   ASSERT_EQ(clqr_controller_floating_->get_num_output_ports(), 1);

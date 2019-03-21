@@ -26,6 +26,18 @@ osx_build_task:
     image: mojave-xcode-10.1
     cpu: 8
     memory: 24
+  setup_script:
+    - brew tap bazelbuild/tap
+    - brew tap-pin bazelbuild/tap
+    - brew install bazelbuild/tap/bazel
+    - brew install diffstat
+    - brew install doxygen
+    - brew install freetype
+    - brew install graphviz
+    - brew install kcov
+    - brew install llvm@6
+    - brew install patchutils
+    - brew install pkg-config
   test_script:
     - bazel build ...
     - bazel test ...

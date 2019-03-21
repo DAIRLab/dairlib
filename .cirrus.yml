@@ -10,9 +10,6 @@ osx_build_task:
     - brew install doxygen
     - brew install freetype
     - brew install graphviz
-    - brew install kcov
-    - brew install llvm@6
-    - brew install patchutils
     - brew install pkg-config
   test_script:
     - bazel build ...

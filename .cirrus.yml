@@ -3,14 +3,7 @@ osx_build_task:
   osx_instance:
     image: mojave-xcode-10.1
   setup_script:
-    - brew tap bazelbuild/tap
-    - brew tap-pin bazelbuild/tap
-    - brew install bazelbuild/tap/bazel
-    - brew install diffstat
-    - brew install doxygen
-    - brew install freetype
-    - brew install graphviz
-    - brew install pkg-config
+    - ./install/install_prereqs_mac.sh
   test_script:
     - bazel build ...
     - bazel test ...

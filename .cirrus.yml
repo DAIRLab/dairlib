@@ -4,6 +4,7 @@ drake_master_build_task:
     dockerfile: install/bionic/Dockerfile
     cpu: 8
     memory: 24
+  env:
   test_script:
     - git clone https://github.com/RobotLocomotion/drake.git ../drake
     - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake

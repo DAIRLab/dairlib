@@ -9,7 +9,5 @@ drake_master_build_task:
   test_script:
     - git clone https://github.com/RobotLocomotion/drake.git ../drake
     - ls ../drake
-    - echo $DAIRLIB_LOCAL_DRAKE_PATH
-    - ls $DAIRLIB_LOCAL_DRAKE_PATH
     - bazel build ...
     - bazel test ...  

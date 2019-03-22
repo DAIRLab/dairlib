@@ -6,10 +6,11 @@ osx_build_task:
     - wget --quiet -O drake_binary_brewfile "https://raw.githubusercontent.com/RobotLocomotion/drake/21b41f89e4d893635098987639100305131b9569/setup/mac/binary_distribution/Brewfile"
     - wget --quiet -O drake_source_brewfile "https://raw.githubusercontent.com/RobotLocomotion/drake/21b41f89e4d893635098987639100305131b9569/setup/mac/source_distribution/Brewfile"
     - sed -i '' '/kcov/d' drake_source_brewfile
-    - cat drake_source_brewfile
-    - cat drake_binary_brewfile
+    - /usr/local/bin/brew bundle --file="drake_binary_brewfile"
+    - /usr/local/bin/brew bundle --file="drake_source_brewfile"
+    - rm drake_binary_brewfile
+    - rm drake_source_brewfile
 
   test_script:
     - bazel build ...
     - bazel test ...
-

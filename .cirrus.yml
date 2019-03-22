@@ -3,18 +3,4 @@ osx_build_task:
   osx_instance:
     image: mojave-xcode-10.1
   setup_script:
-    - wget --quiet -O drake_binary_brewfile "https://raw.githubusercontent.com/RobotLocomotion/drake/21b41f89e4d893635098987639100305131b9569/setup/mac/binary_distribution/Brewfile"
-    - wget --quiet -O drake_source_brewfile "https://raw.githubusercontent.com/RobotLocomotion/drake/21b41f89e4d893635098987639100305131b9569/setup/mac/source_distribution/Brewfile"
-    - wget --quiet -O drake_binary_requirements "https://raw.githubusercontent.com/RobotLocomotion/drake/21b41f89e4d893635098987639100305131b9569/setup/mac/binary_distribution/requirements.txt"
-    - wget --quiet -O drake_source_requirements "https://raw.githubusercontent.com/RobotLocomotion/drake/21b41f89e4d893635098987639100305131b9569/setup/mac/source_distribution/requirements.txt"
-    - sed -i '' '/kcov/d' drake_source_brewfile
-    - /usr/local/bin/brew bundle --file="drake_binary_brewfile"
-    - /usr/local/bin/pip2 install --ignore-installed --upgrade --requirement "./drake_binary_requirements"
-    - /usr/local/bin/brew bundle --file="drake_source_brewfile"
-    - /usr/local/bin/pip2 install --ignore-installed --upgrade --requirement "./drake_source_requirements"
-
-  test_script:
-    - python tmp.py
-  build_and_test_script:
-    - bazel build --announce_rc //...
-    - bazel test ...
+    - python --version

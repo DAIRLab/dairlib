@@ -8,10 +8,6 @@ osx_build_task:
     - sed -i '' 's#^brew 'kcov'$##g' drake_source_brewfile
     - cat drake_source_brewfile
     - cat drake_binary_brewfile
-    - /usr/local/bin/brew bundle --file="drake_binary_brewfile"
-    - /usr/local/bin/brew bundle --file="drake_source_brewfile"
-    - rm drake_binary_brewfile
-    - rm drake_source_brewfile
 
   test_script:
     - bazel build ...

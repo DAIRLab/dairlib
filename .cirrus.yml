@@ -4,3 +4,5 @@ osx_build_task:
     image: mojave-xcode-10.1
   setup_script:
     - python --version
+    - echo $PYTHONPATH
+    - python tmp.py

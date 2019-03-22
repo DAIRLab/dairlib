@@ -4,7 +4,8 @@ osx_build_task:
   osx_instance:
     image: mojave-xcode-10.1
   setup_script:
-    - pip install protobuf
+    - /usr/local/bin/pip2 install --upgrade --requirement protobuf
+    - /usr/local/bin/pip3 install --upgrade --requirement protobuf
 
   test_script:
     - python tmp.py

@@ -17,6 +17,7 @@ osx_build_task:
     - /usr/local/bin/pip3 install --ignore-installed --upgrade --requirement "./drake_source_requirements"
     - rm drake_binary_brewfile
     - rm drake_source_brewfile
+    - pip install protobuf
 
   test_script:
     - bazel build ...

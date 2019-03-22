@@ -5,4 +5,5 @@ osx_build_task:
   setup_script:
     - python --version
     - echo $PYTHONPATH
+    - brew install protobuf
     - python tmp.py

@@ -38,9 +38,9 @@ TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
          0,
          0.205351,
          0.20456;
-  double calc_left_heel_spring, calc_right_heel_spring;
 
   // Get the angles analytically
+  double calc_left_heel_spring, calc_right_heel_spring;
   estimator.solveFourbarLinkage(q_init,
                                 calc_left_heel_spring, calc_right_heel_spring);
 

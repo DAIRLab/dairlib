@@ -2,34 +2,26 @@
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "attic/multibody/multibody_solvers.h"
-
-#include <memory>
-#include <utility>
-
 #include <gtest/gtest.h>
 
 namespace dairlib {
 namespace systems {
 namespace {
 
-using drake::systems::BasicVector;
-using std::make_unique;
 using Eigen::VectorXd;
 using dairlib::multibody::PositionSolver;
+
 
 class CassieRbtStateEstimatorTest : public ::testing::Test {
 };
 
 TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
   RigidBodyTree<double> tree;
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-    "examples/Cassie/urdf/cassie_v2.urdf",
-    drake::multibody::joints::kFixed, &tree);
-
+  buildCassieTree(tree);
   CassieRbtStateEstimator estimator(tree);
 
   // Example position
-  VectorXd q_init;
+  VectorXd q_init(tree.get_num_positions());
   q_init << -0.084017,
          0.0826151,
          -0.00120735,
@@ -46,15 +38,15 @@ TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
          0,
          0.205351,
          0.20456;
-  double calculated_left_heel_spring, calculated_right_heel_spring;
+  double calc_left_heel_spring, calc_right_heel_spring;
 
   // Get the angles analytically
   estimator.solveFourbarLinkage(q_init,
-                    calculated_left_heel_spring, calculated_right_heel_spring);
+                                calc_left_heel_spring, calc_right_heel_spring);
 
   // Get the angles from nonlinear programming
   std::map<std::string, int> positionIndexMap =
-      multibody::makeNameToPositionsMap(tree);
+    multibody::makeNameToPositionsMap(tree);
   std::vector<int> fixed_joints;
   fixed_joints.push_back(positionIndexMap.at("knee_left"));
   fixed_joints.push_back(positionIndexMap.at("knee_joint_left"));
@@ -74,15 +66,13 @@ TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
 
   position_solver.Solve();
   VectorXd q_sol = position_solver.GetSolutionQ();
-
   double nlp_left_heel_spring =
     q_sol(positionIndexMap.at("ankle_spring_joint_left"));
   double nlp_right_heel_spring =
     q_sol(positionIndexMap.at("ankle_spring_joint_right"));
 
-  ASSERT_EQ(calculated_left_heel_spring, nlp_left_heel_spring);
-  ASSERT_EQ(calculated_right_heel_spring, nlp_right_heel_spring);
-
+  EXPECT_TRUE(abs(calc_left_heel_spring - nlp_left_heel_spring) < 1e-10);
+  EXPECT_TRUE(abs(calc_right_heel_spring - nlp_right_heel_spring) < 1e-10);
 }
 
 

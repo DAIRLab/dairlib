@@ -27,13 +27,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
   // Initialize body indices
   left_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_left");
-  cout << "left_thigh_ind_ = " << left_thigh_ind_ << endl;
   right_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_right");
-  cout << "right_thigh_ind_ = " << right_thigh_ind_ << endl;
   left_heel_spring_ind_ = GetBodyIndexFromName(tree, "heel_spring_left");
-  cout << "left_heel_spring_ind_ = " << left_heel_spring_ind_ << endl;
   right_heel_spring_ind_ = GetBodyIndexFromName(tree, "heel_spring_right");
-  cout << "right_heel_spring_ind_ = " << right_heel_spring_ind_ << endl;
   if (left_thigh_ind_ == -1 || right_thigh_ind_ == -1 ||
       left_heel_spring_ind_ == -1 || right_heel_spring_ind_ == -1 )
     std::cout << "In cassie_rbt_state_estimator.cc,"

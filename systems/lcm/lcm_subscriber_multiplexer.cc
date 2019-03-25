@@ -20,7 +20,7 @@ using drake::systems::CompositeEventCollection;
 using drake::systems::State;
 
 namespace {
-const int kActiveChannelIndex = 0;
+const int kChannelSelectorPortIndex = 0;
 }  // namespace
 
 LcmSubscriberMultiplexer::LcmSubscriberMultiplexer(
@@ -38,7 +38,7 @@ LcmSubscriberMultiplexer::LcmSubscriberMultiplexer(
 
   const auto& channel_input_port =
       DeclareAbstractInputPort("active_channel", Value<string>{});
-  DRAKE_ASSERT(kActiveChannelIndex == channel_input_port.get_index());
+  DRAKE_ASSERT(kChannelSelectorPortIndex == channel_input_port.get_index());
 
   DeclareAbstractOutputPort(
       [this]() {
@@ -60,7 +60,7 @@ LcmSubscriberMultiplexer::LcmSubscriberMultiplexer(
 }
 
 const InputPort<double>& LcmSubscriberMultiplexer::get_channel_input_port() {
-  return get_input_port(kActiveChannelIndex);
+  return get_input_port(kChannelSelectorPortIndex);
 }
 
 const InputPort<double>& LcmSubscriberMultiplexer::GetSubscriberPort(
@@ -80,16 +80,16 @@ const int& LcmSubscriberMultiplexer::GetSubscriberPortIndex(
 
 void LcmSubscriberMultiplexer::Output(
     const Context<double>& context, AbstractValue* out) {
-  auto active_channel =
-      EvalAbstractInput(context, kActiveChannelIndex)->get_value<string>();
+  auto active_channel = EvalAbstractInput(context,
+      kChannelSelectorPortIndex)->get_value<string>();
   out->SetFrom(*EvalAbstractInput(context,
       GetSubscriberPortIndex(active_channel)));
 }
 
 const LcmSubscriberSystem* LcmSubscriberMultiplexer::get_active_subscriber(
     const Context<double>& context) const {
-  auto active_channel =
-      EvalAbstractInput(context, kActiveChannelIndex)->get_value<string>();
+  auto active_channel = EvalAbstractInput(context,
+      kChannelSelectorPortIndex)->get_value<string>();
   if (port_index_map_.count(active_channel) != 0) {
     return subscriber_map_.at(active_channel);
   } else {

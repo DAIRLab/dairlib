@@ -61,8 +61,8 @@ const AbstractValue& LcmMultiplexerDrivenLoop::WaitForMessage(
   }
   active_sub->CalcNextUpdateTime(*sub_context_, sub_events_.get());
 
-  // If active_sub->WaitForMessage() returned, a message should be received
-  // and an event should be queued by active_sub->CalcNextUpdateTime().
+  // If active_sub->WaitForMessage() > message_count, a new message should be
+  // received and an event should be queued by active_sub->CalcNextUpdateTime().
   if (sub_events_->HasDiscreteUpdateEvents()) {
     active_sub->CalcDiscreteVariableUpdates(
         *sub_context_, sub_events_->get_discrete_update_events(),

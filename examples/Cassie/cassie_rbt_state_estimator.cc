@@ -38,6 +38,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
       left_heel_spring_ind_ == -1 || right_heel_spring_ind_ == -1 )
     std::cout << "In cassie_rbt_state_estimator.cc,"
               " body indices were not set correctly.\n";
+
 }
 
 void CassieRbtStateEstimator::solveFourbarLinkage(
@@ -229,10 +230,8 @@ void CassieRbtStateEstimator::Output(
   // Step 1 - Solve for the unknown joint angle
   double left_heel_spring = 0;
   double right_heel_spring = 0;
-  cout << "here\n";
   solveFourbarLinkage(output->GetPositions(),
                       left_heel_spring, right_heel_spring);
-  cout << "here\n";
 
   // Step 2 - Estimate which foot/feet are in contact with the ground
 

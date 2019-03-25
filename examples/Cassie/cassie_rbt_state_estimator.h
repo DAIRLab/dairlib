@@ -27,10 +27,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(
       const RigidBodyTree<double>&);
- private:
   void solveFourbarLinkage(VectorXd q_init,
     double & left_heel_spring,double & right_heel_spring) const;
 
+ private:
   void Output(const drake::systems::Context<double>& context,
       OutputVector<double>* output) const;
 

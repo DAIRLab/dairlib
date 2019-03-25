@@ -259,6 +259,7 @@ cc_test(
     srcs = ["test/cassie_rbt_state_estimator_test.cc"],
     deps = [
         ":cassie_rbt_state_estimator",
+        "//attic/multibody:multibody_solvers",
         "//examples/Cassie:cassie_urdf",
         "@drake//attic/multibody:rigid_body_tree",
         "@drake//attic/multibody/parsers",

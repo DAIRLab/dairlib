@@ -63,7 +63,6 @@ cc_library(
     "//examples/Cassie/datatypes:cassie_out_t",
     "//examples/Cassie/datatypes:cassie_names",
     "//attic/multibody:utils",
-    "//attic/multibody:multibody_solvers",
     ":cassie_utils",
   ]
 )

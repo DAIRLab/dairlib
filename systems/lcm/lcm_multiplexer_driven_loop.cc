@@ -54,7 +54,7 @@ const AbstractValue& LcmMultiplexerDrivenLoop::WaitForMessage(
   // subscriber.
   while (active_sub->WaitForMessage(message_count, nullptr, timeout_seconds_) <=
       message_count) {
-    // Step to current time to update the input port, if it has changed
+    // Step to current time (dt = 0) to update the input port, if it has changed
     stepper_->StepTo(stepper_->get_context().get_time());
 
     active_sub = driving_mux_.get_active_subscriber(context);

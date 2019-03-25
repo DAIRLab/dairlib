@@ -251,3 +251,19 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
     ],
 )
+
+
+cc_test(
+    name = "cassie_rbt_state_estimator_test",
+    size = "small",
+    srcs = ["test/cassie_rbt_state_estimator_test.cc"],
+    deps = [
+        ":cassie_rbt_state_estimator",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//attic/multibody/parsers",
+        "@gtest//:main",
+    ],
+)
+
+

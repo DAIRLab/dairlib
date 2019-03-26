@@ -12,6 +12,10 @@ osx_build_task:
     - /usr/local/bin/pip2 install --ignore-installed --upgrade --requirement "./drake_binary_requirements"
     - /usr/local/bin/brew bundle --file="drake_source_brewfile"
     - /usr/local/bin/pip2 install --ignore-installed --upgrade --requirement "./drake_source_requirements"
-
+    - mkdir gen
+    - echo -e '\nimport %workspace%/tools/macos.bazelrc' >> .bazelrc
   test_script:
     - python tmp.py
+  build_and_test_script:
+    - bazel build --announce_rc //...
+    - bazel test ...

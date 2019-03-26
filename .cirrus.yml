@@ -2,16 +2,10 @@ osx_build_task:
   timeout_in: 120m
   osx_instance:
     image: mojave-xcode-10.1
+  clone_drake_script: git clone https://github.com/RobotLocomotion/drake.git $DAIRLIB_LOCAL_DRAKE_PATH
   setup_script:
-    - wget --quiet -O drake_binary_brewfile "https://raw.githubusercontent.com/RobotLocomotion/drake/21b41f89e4d893635098987639100305131b9569/setup/mac/binary_distribution/Brewfile"
-    - wget --quiet -O drake_source_brewfile "https://raw.githubusercontent.com/RobotLocomotion/drake/21b41f89e4d893635098987639100305131b9569/setup/mac/source_distribution/Brewfile"
-    - wget --quiet -O drake_binary_requirements "https://raw.githubusercontent.com/RobotLocomotion/drake/21b41f89e4d893635098987639100305131b9569/setup/mac/binary_distribution/requirements.txt"
-    - wget --quiet -O drake_source_requirements "https://raw.githubusercontent.com/RobotLocomotion/drake/21b41f89e4d893635098987639100305131b9569/setup/mac/source_distribution/requirements.txt"
-    - sed -i '' '/kcov/d' drake_source_brewfile
-    - /usr/local/bin/brew bundle --file="drake_binary_brewfile"
-    - /usr/local/bin/pip2 install --ignore-installed --upgrade --requirement "./drake_binary_requirements"
-    - /usr/local/bin/brew bundle --file="drake_source_brewfile"
-    - /usr/local/bin/pip2 install --ignore-installed --upgrade --requirement "./drake_source_requirements"
+    - echo -e '\nimport %workspace%/tools/macos.bazelrc' >> .bazelrc
+    - /tmp/drake/setup/mac/install_prereqs.sh
   test_script:
     - python tmp.py
   build_and_test_script:

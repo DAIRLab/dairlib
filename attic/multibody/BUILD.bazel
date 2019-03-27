@@ -43,6 +43,7 @@ cc_test(
         ":utils",
         "@gtest//:main",
     ],
+    linkstatic = "true", 
     size = "small",
 )
 

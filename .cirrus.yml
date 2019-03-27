@@ -8,8 +8,6 @@ osx_build_task:
   setup_script:
     - echo -e '\nimport %workspace%/tools/macos.bazelrc' >> .bazelrc
     - /tmp/drake/setup/mac/install_prereqs.sh
-  test_script:
-    - python tmp.py
   build_script:
     bazel build
       --spawn_strategy=sandboxed
@@ -24,4 +22,3 @@ osx_build_task:
       --genrule_strategy=sandboxed
       --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
       //...
-  

@@ -2,6 +2,8 @@ osx_build_task:
   timeout_in: 120m
   osx_instance:
     image: mojave-xcode-10.1
+  env:
+    DAIRLIB_LOCAL_DRAKE_PATH: /tmp/drake
   clone_drake_script: git clone https://github.com/RobotLocomotion/drake.git $DAIRLIB_LOCAL_DRAKE_PATH
   setup_script:
     - echo -e '\nimport %workspace%/tools/macos.bazelrc' >> .bazelrc

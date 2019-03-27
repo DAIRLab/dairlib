@@ -99,4 +99,5 @@ cc_test(
         "@gtest//:main",
         "@gflags",
     ],
+    linkstatic = 1,
 )

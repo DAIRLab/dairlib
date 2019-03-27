@@ -60,4 +60,5 @@ cc_test(
         ":controllers",
         "@gtest//:main",
     ],
+    linkstatic = 1,
 )

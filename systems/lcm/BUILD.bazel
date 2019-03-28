@@ -72,4 +72,5 @@ cc_test(
         "@drake//common/test_utilities",
         "@gtest//:main",
     ],
+    linkstatic = 1,
 )

@@ -2,7 +2,9 @@
 Warning! This is very much "development-level" code and is provided as-is. APIs are likely to be unstable and, while we hope for the documentation to be thorough and accurate, we make no guarantees.
 
 ## Current Continuous Integration Status
-* `master` branch build and unit tests: [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* `master` (Ubuntu Bionic) build and unit tests: [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* `master` (macOS) build and unit tests: [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=osx_build_task&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+## Complete Build Instructions
 * Experimental build against Drake's `master` branch: [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=drake_master_build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
 ## Complete Build Instructions
 

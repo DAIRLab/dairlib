@@ -1,0 +1,40 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+
+cc_binary(
+    name = "kuka_simulation",
+    srcs = ["kuka_simulation.cc"],
+    data = [
+        "@drake//examples/kuka_iiwa_arm:models",
+        "@drake//manipulation/models/iiwa_description:models",
+    ],
+    deps = [
+        "//common:common",
+        "@drake//examples/kuka_iiwa_arm:iiwa_common",
+        "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
+        "@drake//examples/kuka_iiwa_arm:kuka_torque_controller",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
+        "@drake//attic/multibody:rigid_body_tree_construction",
+        "@drake//attic/multibody/rigid_body_plant:frame_visualizer",
+        "@drake//attic/systems/controllers:rbt_inverse_dynamics_controller",
+        "@drake//common:text_logging_gflags",
+        "@drake//lcm",
+        "@drake//systems/analysis",
+        "@drake//systems/controllers:state_feedback_controller_interface",
+    ],
+)

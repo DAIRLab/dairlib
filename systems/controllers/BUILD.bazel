@@ -63,3 +63,54 @@ cc_test(
     ],
     linkstatic = 1,
 )
+
+
+cc_library(
+    name = "iiwa_velocity_controller",
+    srcs = ["iiwa_velocity_controller.cc"],
+    hdrs = ["iiwa_velocity_controller.h"],
+    deps = [
+            "//common",
+            "//systems/framework:vector",
+            "@drake//attic/multibody/rigid_body_plant:rigid_body_plant",
+            "@drake//attic/multibody/parsers",
+            "@drake//attic/multibody:rigid_body_tree",
+            "@drake//systems/framework:leaf_system",
+            "@drake//attic/manipulation/util:sim_diagram_builder",
+            "@drake//examples/kuka_iiwa_arm:iiwa_common",
+            ],
+)
+
+cc_library(
+    name = "iiwa_position_controller",
+    srcs = ["iiwa_position_controller.cc"],
+    hdrs = ["iiwa_position_controller.h"],
+    deps = [
+            "//common",
+            "//systems/framework:vector",
+            "@drake//attic/multibody/rigid_body_plant:rigid_body_plant",
+            "@drake//attic/multibody/parsers",
+            "@drake//attic/multibody:rigid_body_tree",
+            "@drake//systems/framework:leaf_system",
+            "@drake//attic/manipulation/util:sim_diagram_builder",
+            "@drake//examples/kuka_iiwa_arm:iiwa_common",
+    ]
+
+)
+
+cc_binary(
+    name="iiwa_velocity_broadcaster",
+    srcs = ["iiwa_velocity_broadcaster.cc"],
+    deps = [
+            ":iiwa_velocity_controller",
+            ":iiwa_position_controller",
+            "@drake//common/trajectories:piecewise_polynomial",
+            "@drake//systems/analysis:simulator",
+            "@drake//systems/framework",
+            "@drake//lcm",
+            "@drake//examples/kuka_iiwa_arm:iiwa_common",
+            "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
+            "@drake//common",
+            "@drake//systems/primitives:trajectory_source"
+    ]
+)

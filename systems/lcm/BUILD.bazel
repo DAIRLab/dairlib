@@ -1,0 +1,76 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "lcm_subscriber_multiplexer",
+    srcs = [
+        "lcm_subscriber_multiplexer.cc",
+    ],
+    hdrs = [
+        "lcm_subscriber_multiplexer.h",
+    ],
+    deps = [
+        "@drake//systems/lcm:lcm_pubsub_system",
+        "@drake//systems/framework",
+    ]
+)
+
+cc_library(
+    name = "lcm_multiplexer_driven_loop",
+    srcs = [
+        "lcm_multiplexer_driven_loop.cc",
+        "subscriber_switch_parser.cc",
+    ],
+    hdrs = [
+        "lcm_multiplexer_driven_loop.h",
+        "subscriber_switch_parser.h",
+    ],
+    deps = [
+        ":lcm_subscriber_multiplexer",
+        "//lcmtypes:lcmt_robot",
+        "@drake//lcm",
+        "@drake//systems/analysis:simulator",
+    ]
+)
+
+cc_test(
+    name = "lcm_subscriber_multiplexer_test",
+    size = "small",
+    srcs = [
+        "test/lcm_subscriber_multiplexer_test.cc",
+    ],
+    deps = [
+        ":lcm_subscriber_multiplexer",
+        "@drake//systems/framework",
+        "@drake//systems/framework/test_utilities",
+        "@drake//systems/lcm:lcmt_drake_signal_translator",
+        "@drake//systems/analysis:simulator",
+        "@drake//lcm:lcmt_drake_signal_utils",
+        "@drake//lcm:mock",
+        "@gtest//:main",
+    ],
+)
+
+cc_test(
+    name = "lcm_multiplexer_driven_loop_test",
+    size = "small",
+    srcs = [
+        "test/lcm_multiplexer_driven_loop_test.cc",
+    ],
+    deps = [
+        ":lcm_subscriber_multiplexer",
+        ":lcm_multiplexer_driven_loop",
+        "//lcmtypes:lcmt_robot",
+        "@drake//systems/framework",
+        "@drake//systems/framework/test_utilities",
+        "@drake//systems/lcm:lcmt_drake_signal_translator",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/primitives",
+        "@drake//lcm:lcmt_drake_signal_utils",
+        "@drake//lcm:mock",
+        "@drake//common/test_utilities",
+        "@gtest//:main",
+    ],
+    linkstatic = 1,
+)

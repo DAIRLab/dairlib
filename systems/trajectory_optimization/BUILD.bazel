@@ -60,6 +60,7 @@ cc_test(
         "//systems/trajectory_optimization:dircon",
         "@gtest//:main",
     ],
+    linkstatic = 1,
 )
 
 

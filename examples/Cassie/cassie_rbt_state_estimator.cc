@@ -12,8 +12,8 @@ using drake::systems::LeafSystem;
 using multibody::GetBodyIndexFromName;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
-    const RigidBodyTree<double>& tree) :
-    tree_(tree) {
+  const RigidBodyTree<double>& tree) :
+  tree_(tree) {
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
   positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
@@ -21,9 +21,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   this->DeclareAbstractInputPort("cassie_out_t",
                                  drake::Value<cassie_out_t> {});
   this->DeclareVectorOutputPort(
-      OutputVector<double>(tree.get_num_positions(),
-                           tree.get_num_velocities(), tree.get_num_actuators()),
-      &CassieRbtStateEstimator ::Output);
+    OutputVector<double>(tree.get_num_positions(),
+                         tree.get_num_velocities(), tree.get_num_actuators()),
+    &CassieRbtStateEstimator ::Output);
 
   // Initialize body indices
   left_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_left");
@@ -81,8 +81,9 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
       heel_spring_rot_mat.transpose() * r_heel_spring_base_to_thigh_ball_joint;
 
     // Get the projected rod length in the xy plane of heel spring base
-    double projected_rod_length = sqrt(pow(rod_length, 2) -
-                           pow(r_thigh_ball_joint_wrt_heel_spring_base(2), 2));
+    double projected_rod_length =
+      sqrt(pow(rod_length, 2) -
+        pow(r_thigh_ball_joint_wrt_heel_spring_base(2), 2));
 
     // Get the vector of the deflected spring direction
     // Below solves for the intersections of two circles on a plane
@@ -90,13 +91,16 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
     double y_tbj_wrt_hb = r_thigh_ball_joint_wrt_heel_spring_base(1);
 
     double k = -y_tbj_wrt_hb / x_tbj_wrt_hb;
-    double c = (pow(spring_length, 2) - pow(projected_rod_length, 2) +
-            pow(x_tbj_wrt_hb, 2) + pow(y_tbj_wrt_hb, 2)) / (2 * x_tbj_wrt_hb);
+    double c =
+      (pow(spring_length, 2) - pow(projected_rod_length, 2) +
+       pow(x_tbj_wrt_hb, 2) + pow(y_tbj_wrt_hb, 2)) / (2 * x_tbj_wrt_hb);
 
-    double y_sol_1 = (-k * c + sqrt(pow(k * c, 2) - (pow(k, 2) + 1) *
-                       (pow(c, 2) - pow(spring_length, 2)))) / (pow(k, 2) + 1);
-    double y_sol_2 = (-k * c - sqrt(pow(k * c, 2) - (pow(k, 2) + 1) *
-                       (pow(c, 2) - pow(spring_length, 2)))) / (pow(k, 2) + 1);
+    double y_sol_1 =
+      (-k * c + sqrt(pow(k * c, 2) - (pow(k, 2) + 1) *
+                     (pow(c, 2) - pow(spring_length, 2)))) / (pow(k, 2) + 1);
+    double y_sol_2 =
+      (-k * c - sqrt(pow(k * c, 2) - (pow(k, 2) + 1) *
+                     (pow(c, 2) - pow(spring_length, 2)))) / (pow(k, 2) + 1);
     double x_sol_1 = k * y_sol_1 + c;
     double x_sol_2 = k * y_sol_2 + c;
 
@@ -109,8 +113,9 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 
     // Get the heel spring deflection direction and magnitude
     const Vector3d spring_rest_dir(1, 0, 0);
-    double heel_spring_angle = acos(r_sol_wrt_heel_base.dot(spring_rest_dir) /
-                       (r_sol_wrt_heel_base.norm() * spring_rest_dir.norm()));
+    double heel_spring_angle =
+      acos(r_sol_wrt_heel_base.dot(spring_rest_dir) /
+           (r_sol_wrt_heel_base.norm() * spring_rest_dir.norm()));
     Vector3d r_rest_dir_cross_r_hs_to_sol = spring_rest_dir.cross(
         r_sol_wrt_heel_base);
     int spring_deflect_sign = (r_rest_dir_cross_r_hs_to_sol(2) >= 0) ? 1 : -1;
@@ -229,11 +234,27 @@ void CassieRbtStateEstimator::Output(
   solveFourbarLinkage(output->GetPositions(),
                       left_heel_spring, right_heel_spring);
 
-  // Step 2 - Estimate which foot/feet are in contact with the ground
+
+  // TODO(yminchen): you'll write discrete time update for the estimator
+  // It's fine if your update rate is faster than the rate of receiving cassie's
+  // output. You always need to do the output.
+
+  // You can test the estimator here using fixed based.
+
+  // The concern when moving to floating based simulation:
+  // The simulatino update rate is about 30-60 Hz.
+
+  // TODO: the speed of utime in dispatcher out is not the same as that of the
+  // simulation. Need to get the time info of simulation in dispatcher.
+  // Otherwise, we won't be able to do prediction step.
+
+  // Step 2 - State estimation (update step)
 
 
+  // Step 3 - Estimate which foot/feet are in contact with the ground
 
-  // Step 3 - State estimation
+
+  // Step 4 - State estimation (measurement step)
 
 
 

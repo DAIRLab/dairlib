@@ -244,9 +244,10 @@ void CassieRbtStateEstimator::Output(
   // The concern when moving to floating based simulation:
   // The simulatino update rate is about 30-60 Hz.
 
-  // TODO: the speed of utime in dispatcher out is not the same as that of the
-  // simulation. Need to get the time info of simulation in dispatcher.
-  // Otherwise, we won't be able to do prediction step.
+
+
+  // TODO: think about if the discrete time update would still work if the time
+  // is the same. (i.e. check if the RI-EKF algorithm would still work if dt=0)
 
   // Step 2 - State estimation (update step)
 

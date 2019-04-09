@@ -2,7 +2,6 @@
 #include <utility>
 
 #include <gtest/gtest.h>
-#include "drake/common/test_utilities/eigen_matrix_compare.h"
 #include "systems/controllers/affine_controller.h"
 
 namespace dairlib {
@@ -17,8 +16,6 @@ using drake::systems::System;
 using drake::systems::Context;
 using drake::systems::SystemOutput;
 using drake::systems::BasicVector;
-using drake::CompareMatrices;
-
 
 class AffineControllerTest : public ::testing::Test {
  protected:
@@ -86,8 +83,8 @@ class AffineControllerTest : public ::testing::Test {
 TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
   /// Checks that the number of input ports in the system and in the context
   // are consistent.
-  EXPECT_EQ(context_->get_num_input_ports(), 2);
-  EXPECT_EQ(affine_controller_->get_num_input_ports(), 2);
+  ASSERT_EQ(context_->get_num_input_ports(), 2);
+  ASSERT_EQ(affine_controller_->get_num_input_ports(), 2);
 
   // Hook input of the expected size.
   context_->FixInputPort(affine_controller_->get_input_port_info_index(),
@@ -99,25 +96,24 @@ TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
 
   // Checks that the number of output ports in the system and in the
   // output are consistent.
-  EXPECT_EQ(1, output_->get_num_ports());
-  EXPECT_EQ(1, affine_controller_->get_num_output_ports());
+  ASSERT_EQ(1, output_->get_num_ports());
+  ASSERT_EQ(1, affine_controller_->get_num_output_ports());
 
   Eigen::VectorXd output, output_data;
   const BasicVector<double>* output_port_vec = output_->get_vector_data(0);
 
   // Making sure that the output vector does not point to null
-  EXPECT_NE(nullptr, output_port_vec);
+  ASSERT_NE(nullptr, output_port_vec);
 
   output = output_port_vec->get_value();
   output_data = output.head(output.size() - 1);
-  EXPECT_TRUE(CompareMatrices(expected_output_vec_, output_data));
+  ASSERT_EQ(expected_output_vec_, output);
 }
 
 TEST_F(AffineControllerTest, AffineParamsTest) {
-  EXPECT_TRUE(CompareMatrices(K_, input_port_params_val_->get_K()));
-  EXPECT_TRUE(CompareMatrices(E_vec_, input_port_params_val_->get_E()));
-  EXPECT_TRUE(CompareMatrices(x_des_vec_,
-      input_port_params_val_->get_desired_state()));
+  ASSERT_EQ(K_, input_port_params_val_->get_K());
+  ASSERT_EQ(E_vec_, input_port_params_val_->get_E());
+  ASSERT_EQ(x_des_vec_, input_port_params_val_->get_desired_state());
 }
 
 }  // namespace

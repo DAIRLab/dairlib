@@ -1,6 +1,0 @@
-package dairlib;
-
-struct lcmt_subscriber_switch
-{
-  string channel;
-}

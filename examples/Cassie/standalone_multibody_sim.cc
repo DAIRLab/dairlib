@@ -36,16 +36,14 @@ DEFINE_double(dt, 1e-4, "The step size to use for compliant, ignored for time_st
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
 
   DiagramBuilder<double> builder;
 
-  SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
-  scene_graph.set_name("scene_graph");
-
-  const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
-
-  MultibodyPlant<double>& plant =
-      *builder.AddSystem<MultibodyPlant>(time_step);
+  auto items = drake::multibody::AddMultibodyPlantSceneGraph(&builder,
+      std::make_unique<MultibodyPlant<double>>(time_step));
+  MultibodyPlant<double>& plant = items.plant;
+  SceneGraph<double>& scene_graph = items.scene_graph;
 
   if (FLAGS_floating_base) {
     multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
@@ -71,13 +69,6 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(input_source->get_output_port(),
                   plant.get_actuation_input_port());
-
-  builder.Connect(
-    plant.get_geometry_poses_output_port(),
-    scene_graph.get_source_pose_port(plant.get_source_id().value()));
-
-  builder.Connect(scene_graph.get_query_output_port(),
-                  plant.get_geometry_query_input_port());
 
   drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
   auto diagram = builder.Build();

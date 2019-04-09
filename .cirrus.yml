@@ -4,9 +4,20 @@ build_task:
     dockerfile: install/bionic/Dockerfile
     cpu: 8
     memory: 24
+  build_script:
+    bazel build
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
   test_script:
-    - bazel build ...
-    - bazel test ...
+    bazel test
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
 drake_master_build_task:
   timeout_in: 120m
   container:
@@ -14,8 +25,45 @@ drake_master_build_task:
     cpu: 8
     memory: 24
   allow_failures: true
+  env:
+    DAIRLIB_LOCAL_DRAKE_PATH: /tmp/drake
+  clone_drake_script: git clone https://github.com/RobotLocomotion/drake.git $DAIRLIB_LOCAL_DRAKE_PATH
+  
+  build_script:
+    bazel build
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
   test_script:
-    - git clone https://github.com/RobotLocomotion/drake.git ../drake
-    - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
-    - bazel build ...
-    - bazel test ...  
+    bazel test
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //... 
+osx_build_task:
+  timeout_in: 120m
+  osx_instance:
+    image: mojave-xcode-10.1
+  env:
+    LOCAL_DRAKE_PATH: /tmp/drake
+  clone_drake_script: git clone https://github.com/RobotLocomotion/drake.git $LOCAL_DRAKE_PATH
+  setup_script:
+    - echo -e '\nimport %workspace%/tools/macos.bazelrc' >> .bazelrc
+    - /tmp/drake/setup/mac/install_prereqs.sh
+  build_script:
+    bazel build
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
+  test_script:
+    bazel test
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...

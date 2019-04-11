@@ -9,14 +9,12 @@ cc_library(
 #        "dircon.cc",
         "dircon_opt_constraints.cc",
         "dircon_options.cc",
-        "dircon_util.cc",
         "hybrid_dircon.cc",
     ],
     hdrs = [
 #        "dircon.h",
         "dircon_opt_constraints.h",
         "dircon_options.h",
-        "dircon_util.h",
         "hybrid_dircon.h",
     ],
     deps = [
@@ -25,6 +23,7 @@ cc_library(
         "@drake//systems/framework",
         "@drake//systems/trajectory_optimization",
         ":dircon_kinematic_data",
+        "//solvers:optimization_utils",
     ],
 )
 
@@ -46,21 +45,6 @@ cc_library(
         "@drake//solvers",
         "//multibody:utils",
     ],
-)
-
-cc_test(
-    name = "cost_constraint_approximation_test",
-    size = "small",
-    srcs = ["test/cost_constraint_approximation_test.cc"],
-    deps = [
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//solvers:mathematical_program",
-        "@drake//common/test_utilities:eigen_matrix_compare",
-        "//systems/trajectory_optimization:dircon",
-        "@gtest//:main",
-    ],
-    linkstatic = 1,
 )
 
 

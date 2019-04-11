@@ -13,9 +13,10 @@ using drake::math::autoDiffToValueMatrix;
 namespace dairlib {
 namespace solvers {
 
-void CheckGenericConstraints(const MathematicalProgram& prog,
+bool CheckGenericConstraints(const MathematicalProgram& prog,
     const drake::solvers::MathematicalProgramResult& result,
     double tol) {
+  bool allSatisfied = true;
   for (auto const& binding : prog.generic_constraints()) {
     auto y = result.EvalBinding(binding);
     auto c = binding.evaluator();
@@ -27,8 +28,10 @@ void CheckGenericConstraints(const MathematicalProgram& prog,
       MatrixXd tmp(y.size(), 3);
       tmp << c->lower_bound(), y, c->upper_bound();
       std::cout << tmp << std::endl;
+      allSatisfied = false;
     }
   }
+  return allSatisfied;
 }
 
 double SecondOrderCost(const MathematicalProgram& prog, const VectorXd& x_nom,

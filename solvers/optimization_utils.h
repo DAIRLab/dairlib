@@ -1,3 +1,5 @@
+#pragma once
+
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/decision_variable.h"
 #include "drake/math/autodiff.h"
@@ -10,7 +12,7 @@ namespace solvers {
 /// specified tolerance.
 /// Prints out any violating constraints
 /// @return True if all generic constraints are satisfied
-bool CheckConstraints(const drake::solvers::MathematicalProgram& prog,
+bool CheckGenericConstraints(const drake::solvers::MathematicalProgram& prog,
     const drake::solvers::MathematicalProgramResult& result,
     double tol = 1e-6);
 

@@ -20,8 +20,9 @@ using drake::systems::controllers::LinearQuadraticRegulator;
 using drake::systems::controllers::LinearQuadraticRegulatorResult;
 
 ConstrainedLQRController::ConstrainedLQRController(
-    const RigidBodyTree<double>& tree, VectorXd q, VectorXd u, VectorXd lambda,
-    MatrixXd Q, MatrixXd R, ContactInfo contact_info)
+    const RigidBodyTree<double>& tree, const VectorXd& q, const VectorXd& u,
+    const VectorXd& lambda, const MatrixXd& Q, const MatrixXd& R,
+    const ContactInfo& contact_info)
     : tree_(tree),
       contact_info_(contact_info),
       contact_toolkit_(
@@ -46,10 +47,14 @@ ConstrainedLQRController::ConstrainedLQRController(
                                     &ConstrainedLQRController::CalcControl)
           .get_index();
 
-  // checking the validity of the parameters
+  // checking the validity of the dimensions of the parameters
   DRAKE_DEMAND(q.size() == num_positions_);
   DRAKE_DEMAND(u.size() == num_efforts_);
   DRAKE_DEMAND(lambda.size() == num_forces_);
+  DRAKE_DEMAND(Q.rows() == num_positions_ + num_velocities_);
+  DRAKE_DEMAND(Q.rows() == Q.cols());
+  DRAKE_DEMAND(R.rows() == num_efforts_);
+  DRAKE_DEMAND(R.rows() == R.cols());
 
   // Creating the full state vector (Velocities are zero as it is a fixed point)
   VectorXd x(num_states_);
@@ -74,6 +79,8 @@ ConstrainedLQRController::ConstrainedLQRController(
   J << J_tree, J_contact;
 
   // Computing F
+  // F is the constraint matrix that represents the constraint in the form
+  // Fx = 0 (where x is the full state vector of the model)
   MatrixXd F = MatrixXd::Zero(2 * J.rows(), 2 * J.cols());
   F.block(0, 0, J.rows(), J.cols()) = J;
   F.block(J.rows(), J.cols(), J.rows(), J.cols()) = J;
@@ -114,10 +121,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   Q_ = P * Q * P.transpose();
   R_ = R;
 
-  // Validating the dimesions of A_, B_, Q_ and R_ with respect to each other.
-  DRAKE_DEMAND(Q_.rows() == Q_.cols());
-  DRAKE_DEMAND(R_.rows() == R_.cols());
-  DRAKE_DEMAND(A_.rows() == Q_.rows());
+  // Validating the required dimesions after the matrix operations.
   DRAKE_DEMAND(B_.cols() == R_.rows());
 
   lqr_result_ = LinearQuadraticRegulator(A_, B_, Q_, R_);

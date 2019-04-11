@@ -38,9 +38,10 @@ void AffineController::CalcControl(const Context<double>& context,
   const AffineParams* params = dynamic_cast<const AffineParams*>(
       this->EvalVectorInput(context, input_port_params_index_));
 
-  MatrixXd K = params->get_K();
-  VectorXd desired_state = params->get_desired_state();
-  MatrixXd E = params->get_E();
+  // Using the Eigen type instead of auto would force a copy.
+  auto K = params->get_K();
+  auto desired_state = params->get_desired_state();
+  auto E = params->get_E();
 
   VectorXd u = K * (desired_state - info->GetState()) + E;
 

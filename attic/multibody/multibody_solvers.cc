@@ -602,14 +602,13 @@ void FixedPointSolver::AddFrictionConeConstraint(const double mu) {
   int num_position_constraints = tree_.getNumPositionConstraints();
   int num_contacts = contact_info_.num_contacts;
   for (int i = 0; i < num_contacts; ++i) {
-    prog_->AddConstraint(lambda_(i * 3 + 1 + num_position_constraints) <=
-                         mu * lambda_(i * 3 + num_position_constraints));
-    prog_->AddConstraint(-lambda_(i * 3 + 1 + num_position_constraints) <=
-                         mu * lambda_(i * 3 + num_position_constraints));
-    prog_->AddConstraint(lambda_(i * 3 + 2 + num_position_constraints) <=
-                         mu * lambda_(i * 3 + num_position_constraints));
-    prog_->AddConstraint(-lambda_(i * 3 + 2 + num_position_constraints) <=
-                         mu * lambda_(i * 3 + num_position_constraints));
+    prog_->AddConstraint(mu * mu * lambda_(i * 3 + num_position_constraints) *
+                             lambda_(i * 3 + num_position_constraints) >=
+                         lambda_(i * 3 + 1 + num_position_constraints) *
+                                 lambda_(i * 3 + 1 + num_position_constraints) +
+                             lambda_(i * 3 + 2 + num_position_constraints) *
+                                 lambda_(i * 3 + 2 + num_position_constraints));
+    prog_->AddConstraint(lambda_(i * 3 + num_position_constraints) >= 0);
   }
 }
 
@@ -623,7 +622,10 @@ void FixedPointSolver::AddJointLimitConstraint(const double tolerance) {
   VectorXd joint_min = tree_.joint_limit_min;
   VectorXd joint_max = tree_.joint_limit_max;
 
-  for (int i = 0; i < joint_min.size(); ++i) {
+  //prog_->AddConstraint(
+  //    q_(3) * q_(3) + q_(4) * q_(4) + q_(5) * q_(5) + q_(6) * q_(6) == 1);
+
+  for (int i = 7; i < joint_min.size(); ++i) {
     // Adding minimum and maximum joint angle constraints.
     prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
     prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));

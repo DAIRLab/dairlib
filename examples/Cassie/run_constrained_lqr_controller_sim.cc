@@ -54,7 +54,6 @@ using drake::systems::Context;
 using drake::systems::DrakeVisualizer;
 using drake::systems::LeafSystem;
 using drake::systems::Multiplexer;
-using drake::VectorX;
 using dairlib::systems::OutputVector;
 
 // Simulation parameters.
@@ -94,7 +93,7 @@ DEFINE_string(input_channel, "CASSIE_INPUT",
  * to be computed.
  */
 ContactInfo ComputeCassieContactInfo(const RigidBodyTree<double>& tree,
-                                     VectorXd q0) {
+                                     const VectorXd& q0) {
   VectorXd phi_total;
   Matrix3Xd normal_total, xA_total, xB_total;
   vector<int> idxA_total, idxB_total;
@@ -158,7 +157,7 @@ class StateConnector : public LeafSystem<double> {
   void CopyOut(const Context<double>& context,
                OutputVector<double>* output) const {
     const auto state = this->EvalVectorInput(context, 0);
-    const VectorX<double> state_vec = state->get_value();
+    const VectorXd state_vec = state->get_value();
     output->SetState(state_vec.head(num_states_));
     output->set_timestamp(context.get_time());
   }
@@ -171,7 +170,7 @@ int do_main(int argc, char* argv[]) {
   std::unique_ptr<RigidBodyTree<double>> tree;
   if (FLAGS_floating_base) {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
-                                 drake::multibody::joints::kRollPitchYaw);
+                                 drake::multibody::joints::kQuaternion);
     // Adding a terrain for the floating base version.
     AddFlatTerrainToWorld(tree.get(), 20, 1);
   } else {
@@ -216,9 +215,14 @@ int do_main(int argc, char* argv[]) {
 
   VectorXd x0 = VectorXd::Zero(num_states);
 
+  for (auto it = position_map.begin(); it != position_map.end(); ++it) {
+    std::cout << it->first << " " << it->second << std::endl;
+  }
+
   if (FLAGS_floating_base) {
     // desired x0
-    x0(position_map.at("base_z")) = 3;
+    x0(position_map.at("base_z")) = 5;
+    x0(position_map.at("base_qw")) = 1.0;
     x0(position_map.at("hip_roll_left")) = 0.1;
     x0(position_map.at("hip_roll_right")) = -0.1;
     x0(position_map.at("hip_yaw_left")) = -0.01;
@@ -233,9 +237,10 @@ int do_main(int argc, char* argv[]) {
     x0(position_map.at("toe_right")) = -60.0 * M_PI / 180.0;
 
     // Fixed joints
-    fixed_joints.push_back(position_map.at("base_roll"));
-    fixed_joints.push_back(position_map.at("base_pitch"));
-    fixed_joints.push_back(position_map.at("base_yaw"));
+    fixed_joints.push_back(position_map.at("base_qw"));
+    fixed_joints.push_back(position_map.at("base_qx"));
+    fixed_joints.push_back(position_map.at("base_qy"));
+    fixed_joints.push_back(position_map.at("base_qz"));
     // fixed_joints.push_back(position_map.at("hip_roll_left"));
     // fixed_joints.push_back(position_map.at("hip_roll_right"));
     // fixed_joints.push_back(position_map.at("hip_pitch_left"));
@@ -272,7 +277,7 @@ int do_main(int argc, char* argv[]) {
     fixed_joints_map[ind] = x0(ind);
   }
 
-  // Cassie contact info.
+  // Cassie contact info
   ContactInfo contact_info;
 
   int num_forces = plant->get_rigid_body_tree().getNumPositionConstraints();
@@ -299,10 +304,11 @@ int do_main(int argc, char* argv[]) {
 
   fp_solver->SetInitialGuess(q0, u0, lambda0);
   fp_solver->AddSpreadNormalForcesCost();
-  fp_solver->AddFrictionConeConstraint(0.7);
+  fp_solver->AddFrictionConeConstraint(0.75);
   fp_solver->AddJointLimitConstraint(0.001);
   fp_solver->AddFixedJointsConstraint(fixed_joints_map);
 
+  std::cout << "Solving" << std::endl;
   MathematicalProgramResult fp_program_result = fp_solver->Solve();
 
   // Don't proceed if the solver does not find the right solution
@@ -380,8 +386,8 @@ int do_main(int argc, char* argv[]) {
   // Positions for which the cost need to be ignored.
   vector<string> cost_ignore_position;
   if (FLAGS_floating_base) {
-    cost_ignore_position = {"base_x",    "base_y",     "base_z",
-                            "base_roll", "base_pitch", "base_yaw"};
+    cost_ignore_position = {"base_x", "base_y", "base_z"};
+    //"base_roll", "base_pitch", "base_yaw"};
   }
   MatrixXd Q, R;
 
@@ -436,6 +442,11 @@ int do_main(int argc, char* argv[]) {
                   passthrough->get_input_port());
   builder.Connect(passthrough->get_output_port(),
                   plant->actuator_command_input_port());
+
+  // Drake Visualizer
+  DrakeVisualizer& visualizer = *builder.template AddSystem<DrakeVisualizer>(
+      plant->get_rigid_body_tree(), &lcm);
+  builder.Connect(plant->state_output_port(), visualizer.get_input_port(0));
 
   // Building the diagram and starting the simulation.
   auto diagram = builder.Build();

@@ -11,8 +11,15 @@ namespace systems {
 /*
  * ConstrainedLQRController class that implements an LQR controller that also
  * takes into account constraints in the state space.
+ *
+ * The implementation follows the results from the publication:
+ *
+ * Posa, Michael, Scott Kuindersma, and Russ Tedrake. "Optimization and
+ * stabilization of trajectories for constrained dynamical systems." 2016 IEEE
+ * International Conference on Robotics and Automation (ICRA). IEEE, 2016.
+
  * The controller follows an affine structure. It is not a subclass of
- * AffineControlelr due to difficulties in incorporating the required input
+ * AffineController due to difficulties in incorporating the required input
  * ports.
  * u = K(x_desired - x_current) + E
  * K is obtained using regular LQR on the reduced dimension space.
@@ -31,10 +38,11 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
    * The constructor computes K and E and is the major computational block of
    * the controller class.
    */
-  ConstrainedLQRController(const RigidBodyTree<double>& tree, Eigen::VectorXd q,
-                           Eigen::VectorXd u, Eigen::VectorXd lambda,
-                           Eigen::MatrixXd Q, Eigen::MatrixXd R,
-                           dairlib::multibody::ContactInfo contact_info =
+  ConstrainedLQRController(const RigidBodyTree<double>& tree,
+                           const Eigen::VectorXd& q, const Eigen::VectorXd& u,
+                           const Eigen::VectorXd& lambda,
+                           const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
+                           const dairlib::multibody::ContactInfo& contact_info =
                                dairlib::multibody::ContactInfo());
 
   /*
@@ -97,7 +105,7 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
                    TimestampedVector<double>* control) const;
 
   const RigidBodyTree<double>& tree_;
-  dairlib::multibody::ContactInfo contact_info_;
+  const dairlib::multibody::ContactInfo& contact_info_;
   std::unique_ptr<dairlib::multibody::ContactToolkit<drake::AutoDiffXd>>
       contact_toolkit_;
   int input_port_info_index_;

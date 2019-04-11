@@ -24,6 +24,7 @@ using dairlib::systems::RobotOutputReceiver;
 using drake::multibody::AddFlatTerrainToWorld;
 using drake::multibody::joints::kFixed;
 using drake::multibody::joints::kRollPitchYaw;
+using drake::multibody::joints::kQuaternion;
 
 // RBT version of the cassie state visualizer.
 // TODO: Remove this once multibody can support floating base simulations.
@@ -39,7 +40,7 @@ int do_main(int argc, char* argv[]) {
   string filename = "examples/Cassie/urdf/cassie_v2.urdf";
 
   if (FLAGS_floating_base) {
-    buildCassieTree(tree, filename, kRollPitchYaw);
+    buildCassieTree(tree, filename, kQuaternion);
     AddFlatTerrainToWorld(&tree, 20, 1);
   } else {
     buildCassieTree(tree, filename, kFixed);

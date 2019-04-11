@@ -58,8 +58,6 @@ cc_test(
     ],
     deps = [
         ":controllers",
-        "@drake//common/test_utilities",
         "@gtest//:main",
     ],
-    linkstatic = 1,
 )

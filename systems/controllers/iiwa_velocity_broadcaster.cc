@@ -74,11 +74,18 @@ int do_main(int argc, char* argv[]) {
       "IIWA_STATUS", &lcm));
   auto status_receiver = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaStatusReceiver>();
 
-  // Adding Velocity Controller block
-  auto velocity_controller = builder.AddSystem<systems::KukaIiwaVelocityController>(urdf);
+  Eigen::Vector3d eeContactFrame;
+  eeContactFrame << 0.0, 0, 0.09;
 
   // Adding position controller block
-  auto position_controller = builder.AddSystem<systems::KukaIiwaPositionController>(urdf);
+  auto position_controller = builder.AddSystem<systems::KukaIiwaPositionController>(urdf, 10, eeContactFrame, 7, 50, 50);
+
+  // The coordinates for the end effector with respect to the last joint, used to determine location of end effector
+  Eigen::Translation3d eeContactFrameTranslation(0, 0, 0.09);
+  Eigen::Isometry3d eeCFIsometry = Eigen::Isometry3d(eeContactFrameTranslation);
+
+  // Adding Velocity Controller block
+  auto velocity_controller = builder.AddSystem<systems::KukaIiwaVelocityController>(urdf, eeCFIsometry, 7, 25, 3);
 
   // Adding Trajectory Source
   auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(ee_trajectory);

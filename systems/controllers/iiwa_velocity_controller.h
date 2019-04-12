@@ -24,7 +24,8 @@ namespace systems{
 class KukaIiwaVelocityController : public LeafSystem<double> {
   public:
     // Constructor
-    KukaIiwaVelocityController(const std::string urdf);
+    KukaIiwaVelocityController(const std::string urdf, Eigen::Isometry3d eeCFIsometry,
+                               int num_joints, int k_d, int k_r);
 
   private:
     // The callback called when declaring the output port of the system.
@@ -41,13 +42,11 @@ class KukaIiwaVelocityController : public LeafSystem<double> {
     int joint_position_measured_port;
     int joint_velocity_measured_port;
     int endpoint_twist_commanded_port;
-    // int endpoint_velocity_commanded_port;
-    // int endpoint_angular_velocity_commanded_port;
-    double k;
-
-
+    int num_joints;
+    int k_d;
+    int k_r;
 };
 
 
-} //systems
-} //dairlib
+} // namespace systems
+} // namespace dairlib

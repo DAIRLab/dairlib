@@ -1,9 +1,9 @@
-#include "systems/controllers/iiwa_velocity_controller.h"
+#include "systems/controllers/endeffector_velocity_controller.h"
 
 namespace dairlib{
 namespace systems{
 
-KukaIiwaVelocityController::KukaIiwaVelocityController(const std::string urdf,
+EndEffectorVelocityController::EndEffectorVelocityController(const std::string urdf,
                                                        Eigen::Isometry3d eeCFIsometry,
                                                        int num_joints, int k_d,
                                                        int k_r) {
@@ -14,7 +14,7 @@ KukaIiwaVelocityController::KukaIiwaVelocityController(const std::string urdf,
   endpoint_twist_commanded_port = this->DeclareVectorInputPort("endpoint_twist_commanded", BasicVector<double>(6)).get_index();
 
   // Note that this function contains a pointer to the callback function below.
-  this->DeclareVectorOutputPort(BasicVector<double>(num_joints), &KukaIiwaVelocityController::CalcOutputTorques);
+  this->DeclareVectorOutputPort(BasicVector<double>(num_joints), &EndEffectorVelocityController::CalcOutputTorques);
 
   // initialize a rigidbodytree, and initialize the urdf specified in the parameters for it
   tree = std::make_unique<RigidBodyTree<double>>();
@@ -28,7 +28,7 @@ KukaIiwaVelocityController::KukaIiwaVelocityController(const std::string urdf,
 
 // Callback for DeclareVectorInputPort. No return value. The parameter 'output' is the output.
 // This function is called many times a second, if I understand correctly.
-void KukaIiwaVelocityController::CalcOutputTorques(const Context<double>& context, BasicVector<double>* output) const
+void EndEffectorVelocityController::CalcOutputTorques(const Context<double>& context, BasicVector<double>* output) const
 {
   // We read the above input ports with EvalVectorInput
   // The purpose of CopyToVector().head(NUM_JOINTS) is to remove the timestamp from the vector input ports

@@ -1,11 +1,11 @@
 #define WORLDFRAME_ID 0
 
-#include "systems/controllers/iiwa_position_controller.h"
+#include "systems/controllers/endeffector_position_controller.h"
 
 namespace dairlib{
 namespace systems{
 
-KukaIiwaPositionController::KukaIiwaPositionController(const std::string urdf,
+EndEffectorPositionController::EndEffectorPositionController(const std::string urdf,
                                                        int ee_frame_id,
                                                        Eigen::Vector3d ee_contact_frame,
                                                        int num_joints, int k_p,
@@ -16,7 +16,7 @@ KukaIiwaPositionController::KukaIiwaPositionController(const std::string urdf,
    	joint_position_measured_port = this->DeclareVectorInputPort("joint_position_measured", BasicVector<double>(num_joints)).get_index();
    	endpoint_position_commanded_port = this->DeclareVectorInputPort("endpoint_position_commanded", BasicVector<double>(3)).get_index();
 
-    this->DeclareVectorOutputPort(BasicVector<double>(6), &KukaIiwaPositionController::CalcOutputTwist);
+    this->DeclareVectorOutputPort(BasicVector<double>(6), &EndEffectorPositionController::CalcOutputTwist);
 
     // initialize a rigidbodytree, and initialize the urdf specified in the parameters for it.
     tree_local = std::make_unique<RigidBodyTree<double>>();
@@ -33,7 +33,7 @@ KukaIiwaPositionController::KukaIiwaPositionController(const std::string urdf,
 
 }
 
-void KukaIiwaPositionController::CalcOutputTwist(const Context<double> &context, BasicVector<double>* output) const
+void EndEffectorPositionController::CalcOutputTwist(const Context<double> &context, BasicVector<double>* output) const
 {
      VectorX<double> q_actual = this->EvalVectorInput(context, joint_position_measured_port)->CopyToVector();
      VectorX<double> x_desired = this->EvalVectorInput(context, endpoint_position_commanded_port)->CopyToVector();

@@ -21,10 +21,10 @@ namespace systems{
 // In this case, KukaIiwaVelocityController will take in desired velocities,
 // q, q_dot, and output an appropriate torque
 // \Tau = jacobian.transpose x K x desired_accelerations
-class KukaIiwaVelocityController : public LeafSystem<double> {
+class EndEffectorVelocityController : public LeafSystem<double> {
   public:
     // Constructor
-    KukaIiwaVelocityController(const std::string urdf, Eigen::Isometry3d eeCFIsometry,
+    EndEffectorVelocityController(const std::string urdf, Eigen::Isometry3d eeCFIsometry,
                                int num_joints, int k_d, int k_r);
 
   private:

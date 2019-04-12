@@ -29,10 +29,10 @@ namespace systems{
 // outputs appropriate velocity (twist) as 6-vector: first three indices
 // are desired angular velocity, next three are desired linear velocity.
 
-class KukaIiwaPositionController : public LeafSystem<double> {
+class EndEffectorPositionController : public LeafSystem<double> {
 	public:
 		// Constructor
-		KukaIiwaPositionController(const std::string urdf, int ee_frame_id,
+		EndEffectorPositionController(const std::string urdf, int ee_frame_id,
                              Eigen::Vector3d ee_contact_frame, int num_joints,
                              int k_p, int k_omega);
 

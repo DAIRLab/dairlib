@@ -16,12 +16,11 @@ using drake::systems::Context;
 namespace dairlib{
 namespace systems{
 
-// Declaring the class KukaIiwaVelocityController even though the
-// file is called "iiwa_velocity_controller"
 // KukaIiwaVelocityController extends LeafSystem, which is basically
 // a 'block' like you might see in simulink with inputs and outputs.
 // In this case, KukaIiwaVelocityController will take in desired velocities,
-// q, q_dot, and output an appropriate torque.
+// q, q_dot, and output an appropriate torque
+// \Tau = jacobian.transpose x K x desired_accelerations
 class KukaIiwaVelocityController : public LeafSystem<double> {
   public:
     // Constructor
@@ -30,8 +29,7 @@ class KukaIiwaVelocityController : public LeafSystem<double> {
   private:
     // The callback called when declaring the output port of the system.
     // The 'output' vector is set in place and then passed out.
-    // 'Hur hur hur we're TRI and we don't use return values, we use
-    // input and output ports instead'
+    // Think a simulink system.
     void CalcOutputTorques(const Context<double>& context,
                        BasicVector<double>* output) const;
 

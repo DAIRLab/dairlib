@@ -27,7 +27,7 @@ int do_main(int argc, char* argv[]) {
   const std::vector<double> times {0.0, 25.0, 35.0, 45.0, 55.0, 65.0, 75.0, 85.0, 95.0, 105.0, 115};
 
   std::vector<Eigen::MatrixXd> points(times.size());
-  
+
   Eigen::Vector3d AS, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9;
 
   AS << -0.23, -0.2, 0.05;
@@ -37,7 +37,7 @@ int do_main(int argc, char* argv[]) {
   A2 << 0.23, -0.6, 0.05;
 
   A3 << 0.23, -0.2, 0.05;
-  
+
   A4 << 0.23, -0.2, 0.05;
 
   A5 << 0.23, -0.6, 0.05;
@@ -77,7 +77,6 @@ int do_main(int argc, char* argv[]) {
   auto position_controller = builder.AddSystem<systems::KukaIiwaPositionController>();
 
   // Adding Trajectory Source
-  // TODO: create ee_trajectory
   auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(ee_trajectory);
 
   // Adding command publisher and broadcaster blocks
@@ -95,7 +94,7 @@ int do_main(int argc, char* argv[]) {
                   velocity_controller->get_input_port(0));
   builder.Connect(status_receiver->get_velocity_estimated_output_port(),
                   velocity_controller->get_input_port(1));
-  
+
   //Connecting q input from status receiver to position controller
   builder.Connect(status_receiver->get_position_measured_output_port(),
                   position_controller->get_input_port(0));

@@ -23,6 +23,12 @@ using drake::systems::Context;
 namespace dairlib{
 namespace systems{
 
+// PD Controller for end effector position.
+// Takes in desired end effector position and orientation,
+// orientation as quaternion, position as 3-vector.
+// outputs appropriate velocity (twist) as 6-vector: first three indices
+// are desired angular velocity, next three are desired linear velocity.
+
 class KukaIiwaPositionController : public LeafSystem<double> {
 	public:
 		// Constructor
@@ -31,10 +37,10 @@ class KukaIiwaPositionController : public LeafSystem<double> {
 	private:
 		// Callback method called when declaring output port of the system.
 		void CalcOutputVelocity(const Context<double> &context,
-									  BasicVector<double>* output) const;
+                          BasicVector<double>* output) const;
 
 		void CalcOutputAngularVelocity(const Context<double> &context,
-											 BasicVector<double>* output) const;
+                                 BasicVector<double>* output) const;
 
 		Eigen::Vector3d eeContactFrame;
 		int joint_position_measured_port;

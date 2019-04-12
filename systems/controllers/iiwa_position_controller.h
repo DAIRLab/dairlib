@@ -36,11 +36,15 @@ class KukaIiwaPositionController : public LeafSystem<double> {
 
 	private:
 		// Callback method called when declaring output port of the system.
-		void CalcOutputVelocity(const Context<double> &context,
-                          BasicVector<double>* output) const;
+  // Twist combines linear and angular velocities.
+  void CalcOutputTwist(const Context<double> &context,
+                       BasicVector<double>* output) const;
 
-		void CalcOutputAngularVelocity(const Context<double> &context,
-                                 BasicVector<double>* output) const;
+		// void CalcOutputVelocity(const Context<double> &context,
+  //                         BasicVector<double>* output) const;
+  //
+		// void CalcOutputAngularVelocity(const Context<double> &context,
+  //                                BasicVector<double>* output) const;
 
 		Eigen::Vector3d eeContactFrame;
 		int joint_position_measured_port;

@@ -107,8 +107,8 @@ int do_main(int argc, char* argv[]) {
                   velocity_controller->get_input_port(2));
 
   //Connecting desired orientation from position controller to trajectory/velocity controller;
-  builder.Connect(position_controller->get_output_port(1),
-                  velocity_controller->get_input_port(3));
+  // builder.Connect(position_controller->get_output_port(1),
+  //                 velocity_controller->get_input_port(3));
 
   builder.Connect(velocity_controller->get_output_port(0),
                   command_sender->get_torque_input_port());

@@ -31,7 +31,7 @@ class KukaIiwaVelocityController : public LeafSystem<double> {
     // The 'output' vector is set in place and then passed out.
     // Think a simulink system.
     void CalcOutputTorques(const Context<double>& context,
-                       BasicVector<double>* output) const;
+                         BasicVector<double>* output) const;
 
     Eigen::Vector3d eeContactFrame;
     Eigen::Translation3d eeContactFrameTranslation;
@@ -40,8 +40,9 @@ class KukaIiwaVelocityController : public LeafSystem<double> {
     std::unique_ptr<RigidBodyTree<double>> tree;
     int joint_position_measured_port;
     int joint_velocity_measured_port;
-    int endpoint_velocity_commanded_port;
-    int endpoint_angular_velocity_commanded_port;
+    int endpoint_twist_commanded_port;
+    // int endpoint_velocity_commanded_port;
+    // int endpoint_angular_velocity_commanded_port;
     double k;
 
 

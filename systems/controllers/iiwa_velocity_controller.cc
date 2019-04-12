@@ -14,8 +14,9 @@ KukaIiwaVelocityController::KukaIiwaVelocityController()
   // Input port values will be accessed via EvalVectorInput() later
   joint_position_measured_port = this->DeclareVectorInputPort("joint_position_measured", BasicVector<double>(NUM_JOINTS)).get_index();
   joint_velocity_measured_port = this->DeclareVectorInputPort("joint_velocity_measured", BasicVector<double>(NUM_JOINTS)).get_index();
-  endpoint_velocity_commanded_port = this->DeclareVectorInputPort("endpoint_velocity_commanded", BasicVector<double>(3)).get_index();
-  endpoint_angular_velocity_commanded_port = this->DeclareVectorInputPort("endpoint_angular_velocity_commanded", BasicVector<double>(3)).get_index();
+  endpoint_twist_commanded_port = this->DeclareVectorInputPort("endpoint_twist_commanded", BasicVector<double>(6)).get_index();
+  // endpoint_velocity_commanded_port = this->DeclareVectorInputPort("endpoint_velocity_commanded", BasicVector<double>(3)).get_index();
+  // endpoint_angular_velocity_commanded_port = this->DeclareVectorInputPort("endpoint_angular_velocity_commanded", BasicVector<double>(3)).get_index();
 
   // Note that this function contains a pointer to the callback function below.
   this->DeclareVectorOutputPort(BasicVector<double>(NUM_JOINTS), &KukaIiwaVelocityController::CalcOutputTorques);
@@ -45,12 +46,13 @@ void KukaIiwaVelocityController::CalcOutputTorques(const Context<double>& contex
   // The purpose of CopyToVector().head(NUM_JOINTS) is to remove the timestamp from the vector input ports
   VectorX<double> q = this->EvalVectorInput(context, joint_position_measured_port)->CopyToVector().head(NUM_JOINTS);
   VectorX<double> q_dot = this->EvalVectorInput(context, joint_velocity_measured_port)->CopyToVector().head(NUM_JOINTS);
-  VectorX<double> eev_desired = this->EvalVectorInput(context, endpoint_velocity_commanded_port)->CopyToVector();             // End Effector Desired Velocity.
-  VectorX<double> eeav_desired = this->EvalVectorInput(context, endpoint_angular_velocity_commanded_port)->CopyToVector();    // End Effector Desired Angular Velocity.
+  VectorX<double> twist_desired = this->EvalVectorInput(context, endpoint_twist_commanded_port)->CopyToVector();
+  // VectorX<double> eev_desired = this->EvalVectorInput(context, endpoint_velocity_commanded_port)->CopyToVector();             // End Effector Desired Velocity.
+  // VectorX<double> eeav_desired = this->EvalVectorInput(context, endpoint_angular_velocity_commanded_port)->CopyToVector();    // End Effector Desired Angular Velocity.
 
   // Combining Desired Velocity and Desired Angular Velocity into a single generalized velocity
-  MatrixXd generalizedVelocity_desired(6, 1);
-  generalizedVelocity_desired << eeav_desired, eev_desired;
+  // MatrixXd generalizedVelocity_desired(6, 1);
+  // generalizedVelocity_desired << eeav_desired, eev_desired;
 
   // Calculating the jacobian of the kuka arm
   KinematicsCache<double> cache = tree->doKinematics(q, q_dot);
@@ -59,12 +61,13 @@ void KukaIiwaVelocityController::CalcOutputTorques(const Context<double>& contex
   // Using the jacobian, calculating the actual current velocities of the arm
   MatrixXd generalizedVelocity_actual = frameSpatialVelocityJacobian * q_dot;
 
-  // Gains are placed in a diagonal matrix 
+  // Gains are placed in a diagonal matrix
   Eigen::DiagonalMatrix<double, 6> gains(6);
   gains.diagonal() << K_R, K_R, K_R, K_D, K_D, K_D;
 
   // Calculating the error
-  MatrixXd generalizedForces = gains * (generalizedVelocity_desired - generalizedVelocity_actual);
+  // MatrixXd generalizedForces = gains * (generalizedVelocity_desired - generalizedVelocity_actual);
+  MatrixXd generalizedForces = gains * (twist_desired - generalizedVelocity_actual);
 
   // Multiplying J^t x force to get torque outputs, then storing them in the output vector
   output->set_value(frameSpatialVelocityJacobian.transpose() * generalizedForces); // (7 x 6) * (6 x 1) = 7 x 1

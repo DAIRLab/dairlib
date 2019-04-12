@@ -112,8 +112,7 @@ int DoMain() {
   // Create the command subscriber and status publisher.
   drake::systems::DiagramBuilder<double>* base_builder = builder.get_mutable_builder();
   auto command_sub = base_builder->AddSystem(
-      drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_command>("IIWA_COMMAND",
-                                                                 &lcm));
+      drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_command>("IIWA_COMMAND", &lcm));
   command_sub->set_name("command_subscriber");
   auto command_receiver =
       base_builder->AddSystem<drake::examples::kuka_iiwa_arm::IiwaCommandReceiver>(num_joints);
@@ -124,8 +123,8 @@ int DoMain() {
       base_builder->AddSystem<drake::examples::kuka_iiwa_arm::IiwaContactResultsToExternalTorque>(
           tree, iiwa_instances);
   auto status_pub = base_builder->AddSystem(
-      drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_status>("IIWA_STATUS",
-                                                               &lcm, drake::examples::kuka_iiwa_arm::kIiwaLcmStatusPeriod));
+      drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_status>(
+       "IIWA_STATUS", &lcm, drake::examples::kuka_iiwa_arm::kIiwaLcmStatusPeriod));
   status_pub->set_name("status_publisher");
   auto status_sender = base_builder->AddSystem<drake::examples::kuka_iiwa_arm::IiwaStatusSender>(num_joints);
   status_sender->set_name("status_sender");

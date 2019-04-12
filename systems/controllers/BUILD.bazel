@@ -99,8 +99,8 @@ cc_library(
 )
 
 cc_binary(
-    name="iiwa_velocity_broadcaster",
-    srcs = ["iiwa_velocity_broadcaster.cc"],
+    name="iiwa_controller_demo",
+    srcs = ["iiwa_controller_demo.cc"],
     deps = [
             ":endeffector_velocity_controller",
             ":endeffector_position_controller",

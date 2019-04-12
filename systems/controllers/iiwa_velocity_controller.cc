@@ -7,7 +7,7 @@
 namespace dairlib{
 namespace systems{
 
-KukaIiwaVelocityController::KukaIiwaVelocityController()
+KukaIiwaVelocityController::KukaIiwaVelocityController(const std::string urdf)
 {
 
   // Set up this block's input and output ports
@@ -15,25 +15,17 @@ KukaIiwaVelocityController::KukaIiwaVelocityController()
   joint_position_measured_port = this->DeclareVectorInputPort("joint_position_measured", BasicVector<double>(NUM_JOINTS)).get_index();
   joint_velocity_measured_port = this->DeclareVectorInputPort("joint_velocity_measured", BasicVector<double>(NUM_JOINTS)).get_index();
   endpoint_twist_commanded_port = this->DeclareVectorInputPort("endpoint_twist_commanded", BasicVector<double>(6)).get_index();
-  // endpoint_velocity_commanded_port = this->DeclareVectorInputPort("endpoint_velocity_commanded", BasicVector<double>(3)).get_index();
-  // endpoint_angular_velocity_commanded_port = this->DeclareVectorInputPort("endpoint_angular_velocity_commanded", BasicVector<double>(3)).get_index();
 
   // Note that this function contains a pointer to the callback function below.
   this->DeclareVectorOutputPort(BasicVector<double>(NUM_JOINTS), &KukaIiwaVelocityController::CalcOutputTorques);
 
-  // Adding Kuka model from URDF file-- from Drake kuka simulation files
-  const char* kModelPath = "../drake/manipulation/models/iiwa_description/urdf/iiwa14_polytope_collision.urdf";
-  const std::string urdf = FindResourceOrThrow(kModelPath);
-
-  // initialize a rigidbodytree, and add the model of the Kuka Iiwa arm to it.
+  // initialize a rigidbodytree, and initialize the urdf specified in the parameters for it
   tree = std::make_unique<RigidBodyTree<double>>();
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(urdf, drake::multibody::joints::kFixed, tree.get());
 
   // The coordinates for the end effector with respect to the last joint, used to determine location of end effector
   Eigen::Translation3d eeContactFrameTranslation(0, 0, 0.09);
   Eigen::Isometry3d eeCFIsometry = Eigen::Isometry3d(eeContactFrameTranslation);
-
-
 }
 
 
@@ -47,12 +39,6 @@ void KukaIiwaVelocityController::CalcOutputTorques(const Context<double>& contex
   VectorX<double> q = this->EvalVectorInput(context, joint_position_measured_port)->CopyToVector().head(NUM_JOINTS);
   VectorX<double> q_dot = this->EvalVectorInput(context, joint_velocity_measured_port)->CopyToVector().head(NUM_JOINTS);
   VectorX<double> twist_desired = this->EvalVectorInput(context, endpoint_twist_commanded_port)->CopyToVector();
-  // VectorX<double> eev_desired = this->EvalVectorInput(context, endpoint_velocity_commanded_port)->CopyToVector();             // End Effector Desired Velocity.
-  // VectorX<double> eeav_desired = this->EvalVectorInput(context, endpoint_angular_velocity_commanded_port)->CopyToVector();    // End Effector Desired Angular Velocity.
-
-  // Combining Desired Velocity and Desired Angular Velocity into a single generalized velocity
-  // MatrixXd generalizedVelocity_desired(6, 1);
-  // generalizedVelocity_desired << eeav_desired, eev_desired;
 
   // Calculating the jacobian of the kuka arm
   KinematicsCache<double> cache = tree->doKinematics(q, q_dot);
@@ -66,7 +52,6 @@ void KukaIiwaVelocityController::CalcOutputTorques(const Context<double>& contex
   gains.diagonal() << K_R, K_R, K_R, K_D, K_D, K_D;
 
   // Calculating the error
-  // MatrixXd generalizedForces = gains * (generalizedVelocity_desired - generalizedVelocity_actual);
   MatrixXd generalizedForces = gains * (twist_desired - generalizedVelocity_actual);
 
   // Multiplying J^t x force to get torque outputs, then storing them in the output vector
@@ -77,5 +62,5 @@ void KukaIiwaVelocityController::CalcOutputTorques(const Context<double>& contex
 }
 
 
-} //systems
-} //dairlib
+} // namespace systems
+} // namespace dairlib

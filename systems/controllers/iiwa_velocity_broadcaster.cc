@@ -64,6 +64,10 @@ int do_main(int argc, char* argv[]) {
 
   auto ee_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(times, points);
 
+  // Initialize Kuka model URDF-- from Drake kuka simulation files
+  const char* kModelPath = "../drake/manipulation/models/iiwa_description/urdf/iiwa14_polytope_collision.urdf";
+  const std::string urdf = FindResourceOrThrow(kModelPath);
+
   // Adding status subscriber and receiver blocks
   auto status_subscriber = builder.AddSystem(
     drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_status>(
@@ -71,10 +75,10 @@ int do_main(int argc, char* argv[]) {
   auto status_receiver = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaStatusReceiver>();
 
   // Adding Velocity Controller block
-  auto velocity_controller = builder.AddSystem<systems::KukaIiwaVelocityController>();
+  auto velocity_controller = builder.AddSystem<systems::KukaIiwaVelocityController>(urdf);
 
   // Adding position controller block
-  auto position_controller = builder.AddSystem<systems::KukaIiwaPositionController>();
+  auto position_controller = builder.AddSystem<systems::KukaIiwaPositionController>(urdf);
 
   // Adding Trajectory Source
   auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(ee_trajectory);
@@ -102,13 +106,9 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(input_trajectory->get_output_port(),
                   position_controller->get_input_port(1));
 
-  //Connecting position controller to trajectory/velocity controller;
+  //Connecting position (twist) controller to trajectory/velocity controller;
   builder.Connect(position_controller->get_output_port(0),
                   velocity_controller->get_input_port(2));
-
-  //Connecting desired orientation from position controller to trajectory/velocity controller;
-  // builder.Connect(position_controller->get_output_port(1),
-  //                 velocity_controller->get_input_port(3));
 
   builder.Connect(velocity_controller->get_output_port(0),
                   command_sender->get_torque_input_port());

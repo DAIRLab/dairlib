@@ -32,7 +32,7 @@ namespace systems{
 class KukaIiwaPositionController : public LeafSystem<double> {
 	public:
 		// Constructor
-		KukaIiwaPositionController();
+		KukaIiwaPositionController(const std::string urdf);
 
 	private:
 		// Callback method called when declaring output port of the system.
@@ -49,7 +49,7 @@ class KukaIiwaPositionController : public LeafSystem<double> {
 		Eigen::Vector3d eeContactFrame;
 		int joint_position_measured_port;
 		int endpoint_position_commanded_port;
-		std::unique_ptr<RigidBodyTree<double>> tree;
+		std::unique_ptr<RigidBodyTree<double>> tree_local;
 
 };
 

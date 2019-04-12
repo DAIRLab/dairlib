@@ -24,7 +24,7 @@ namespace systems{
 class KukaIiwaVelocityController : public LeafSystem<double> {
   public:
     // Constructor
-    KukaIiwaVelocityController();
+    KukaIiwaVelocityController(const std::string urdf);
 
   private:
     // The callback called when declaring the output port of the system.

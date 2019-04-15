@@ -249,6 +249,17 @@ void CassieRbtStateEstimator::Output(
   // TODO: think about if the discrete time update would still work if the time
   // is the same. (i.e. check if the RI-EKF algorithm would still work if dt=0)
 
+
+  // We can probably have:
+  //   previous message time
+  //   current message time
+  // and do not use the current time in context.
+
+
+
+  // You can implement step 3 independently of the EKF.
+
+
   // Step 2 - State estimation (update step)
 
 

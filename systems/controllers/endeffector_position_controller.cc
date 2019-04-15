@@ -7,9 +7,9 @@ namespace systems{
 
  // Remember to use std::move on the rigid body tree argument.
 EndEffectorPositionController::EndEffectorPositionController(
-    std::unique_ptr<RigidBodyTree<double>> tree, int ee_frame_id,
-    Eigen::Vector3d ee_contact_frame, int num_joints, int k_p, int k_omega) :
-    tree_local(std::move(tree)){
+    std::unique_ptr<RigidBodyTree<double>>& tree, int ee_frame_id,
+    Eigen::Vector3d ee_contact_frame, int num_joints, int k_p, int k_omega)
+    : tree_local(tree){
  	// Set up this block's input and output ports
   // Input port values will be accessed via EvalVectorInput() later
  	joint_position_measured_port = this->DeclareVectorInputPort(
@@ -25,7 +25,6 @@ EndEffectorPositionController::EndEffectorPositionController(
   // The coordinates for the end effector with respect to the last joint.
   // Eventually passed into transformPointsJacobian()
   this->ee_contact_frame = ee_contact_frame;
-
   // frame ID of the joint connected to the end effector
   this->ee_frame_id = ee_frame_id;
   this->k_p = k_p;

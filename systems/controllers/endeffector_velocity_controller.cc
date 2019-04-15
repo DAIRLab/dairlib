@@ -5,8 +5,8 @@ namespace systems{
 
 // Remember to use std::move on the rigid body tree argument.
 EndEffectorVelocityController::EndEffectorVelocityController(
-    std::unique_ptr<RigidBodyTree<double>> tree, Eigen::Isometry3d eeCFIsometry,
-    int num_joints, int k_d, int k_r) : tree(std::move(tree)){
+    std::unique_ptr<RigidBodyTree<double>>& tree, Eigen::Isometry3d eeCFIsometry,
+    int num_joints, int k_d, int k_r) : tree(tree){
 
   // Set up this block's input and output ports
   // Input port values will be accessed via EvalVectorInput() later

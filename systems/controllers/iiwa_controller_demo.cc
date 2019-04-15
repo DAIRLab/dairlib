@@ -85,6 +85,15 @@ int do_main(int argc, char* argv[]) {
   const char* kModelPath = "../drake/manipulation/models/iiwa_description/urdf/iiwa14_polytope_collision.urdf";
   const std::string urdf = FindResourceOrThrow(kModelPath);
 
+  // We need to construct two trees, one for each controller block, because they're unique pointers.
+  std::unique_ptr<RigidBodyTree<double>> tree1 = std::make_unique<RigidBodyTree<double>>();
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
+    urdf, drake::multibody::joints::kFixed, tree1.get());
+
+  std::unique_ptr<RigidBodyTree<double>> tree2 = std::make_unique<RigidBodyTree<double>>();
+  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
+    urdf, drake::multibody::joints::kFixed, tree2.get());
+
   // Adding status subscriber and receiver blocks
   auto status_subscriber = builder.AddSystem(
     drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_status>(
@@ -98,7 +107,7 @@ int do_main(int argc, char* argv[]) {
 
   // Adding position controller block
   auto position_controller = builder.AddSystem<systems::EndEffectorPositionController>(
-      urdf, ENDEFFECTOR_BODY_ID, eeContactFrame, NUM_JOINTS, K_P, K_OMEGA);
+      std::move(tree1), ENDEFFECTOR_BODY_ID, eeContactFrame, NUM_JOINTS, K_P, K_OMEGA);
 
   // The coordinates for the end effector with respect to the last joint,
   // used to determine location of end effector, but in Isometry3d form
@@ -107,7 +116,7 @@ int do_main(int argc, char* argv[]) {
 
   // Adding Velocity Controller block
   auto velocity_controller = builder.AddSystem<systems::EndEffectorVelocityController>(
-      urdf, eeCFIsometry, NUM_JOINTS, K_D, K_R);
+      std::move(tree2), eeCFIsometry, NUM_JOINTS, K_D, K_R);
 
   // Adding linear position Trajectory Source
   auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(ee_trajectory);

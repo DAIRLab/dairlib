@@ -24,8 +24,9 @@ namespace systems{
 class EndEffectorVelocityController : public LeafSystem<double> {
   public:
     // Constructor
-    EndEffectorVelocityController(const std::string urdf, Eigen::Isometry3d eeCFIsometry,
-                               int num_joints, int k_d, int k_r);
+    EndEffectorVelocityController(std::unique_ptr<RigidBodyTree<double>> tree,
+                                  Eigen::Isometry3d eeCFIsometry,
+                                  int num_joints, int k_d, int k_r);
 
     // Getter methods for each of the individual input/output ports.
     const drake::systems::InputPort<double>& get_joint_pos_input_port() const {

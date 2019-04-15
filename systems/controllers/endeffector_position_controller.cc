@@ -5,9 +5,11 @@
 namespace dairlib{
 namespace systems{
 
+ // Remember to use std::move on the rigid body tree argument.
 EndEffectorPositionController::EndEffectorPositionController(
-    const std::string urdf, int ee_frame_id, Eigen::Vector3d ee_contact_frame,
-    int num_joints, int k_p, int k_omega) {
+    std::unique_ptr<RigidBodyTree<double>> tree, int ee_frame_id,
+    Eigen::Vector3d ee_contact_frame, int num_joints, int k_p, int k_omega) :
+    tree_local(std::move(tree)){
  	// Set up this block's input and output ports
   // Input port values will be accessed via EvalVectorInput() later
  	joint_position_measured_port = this->DeclareVectorInputPort(
@@ -19,11 +21,6 @@ EndEffectorPositionController::EndEffectorPositionController(
 
   endpoint_position_cmd_output_port = this->DeclareVectorOutputPort(
       BasicVector<double>(6), &EndEffectorPositionController::CalcOutputTwist).get_index();
-
-  // initialize a rigidbodytree, and initialize the urdf specified in the parameters for it.
-  tree_local = std::make_unique<RigidBodyTree<double>>();
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      urdf, drake::multibody::joints::kFixed, tree_local.get());
 
   // The coordinates for the end effector with respect to the last joint.
   // Eventually passed into transformPointsJacobian()

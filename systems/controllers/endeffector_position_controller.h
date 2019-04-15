@@ -32,7 +32,7 @@ namespace systems{
 class EndEffectorPositionController : public LeafSystem<double> {
 	public:
 		// Constructor
-		EndEffectorPositionController(const std::string urdf, int ee_frame_id,
+		EndEffectorPositionController(std::unique_ptr<RigidBodyTree<double>> tree, int ee_frame_id,
                              Eigen::Vector3d ee_contact_frame, int num_joints,
                              int k_p, int k_omega);
 

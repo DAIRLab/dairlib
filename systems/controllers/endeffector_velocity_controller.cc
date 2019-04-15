@@ -3,8 +3,10 @@
 namespace dairlib{
 namespace systems{
 
-EndEffectorVelocityController::EndEffectorVelocityController(const std::string urdf,
-    Eigen::Isometry3d eeCFIsometry, int num_joints, int k_d, int k_r) {
+// Remember to use std::move on the rigid body tree argument.
+EndEffectorVelocityController::EndEffectorVelocityController(
+    std::unique_ptr<RigidBodyTree<double>> tree, Eigen::Isometry3d eeCFIsometry,
+    int num_joints, int k_d, int k_r) : tree(std::move(tree)){
 
   // Set up this block's input and output ports
   // Input port values will be accessed via EvalVectorInput() later
@@ -19,12 +21,6 @@ EndEffectorVelocityController::EndEffectorVelocityController(const std::string u
   endpoint_torque_output_port = this->DeclareVectorOutputPort(
       BasicVector<double>(num_joints),
       &EndEffectorVelocityController::CalcOutputTorques).get_index();
-
-  // initialize a rigidbodytree, and initialize the urdf specified in the parameters for it
-  tree = std::make_unique<RigidBodyTree<double>>();
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(urdf,
-                                                            drake::multibody::joints::kFixed,
-                                                            tree.get());
 
   this->eeCFIsometry = eeCFIsometry;
   this->num_joints = num_joints;

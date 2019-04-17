@@ -26,7 +26,7 @@ using systems::OutputVector;
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(
-      const RigidBodyTree<double>&);
+      const RigidBodyTree<double>&, bool);
   void solveFourbarLinkage(VectorXd q_init,
     double & left_heel_spring,double & right_heel_spring) const;
 

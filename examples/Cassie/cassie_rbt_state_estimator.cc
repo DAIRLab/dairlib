@@ -12,7 +12,7 @@ using drake::systems::LeafSystem;
 using multibody::GetBodyIndexFromName;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
-  const RigidBodyTree<double>& tree) :
+  const RigidBodyTree<double>& tree, bool is_floating_base) :
   tree_(tree) {
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
   positionIndexMap_ = multibody::makeNameToPositionsMap(tree);

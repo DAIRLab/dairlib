@@ -50,7 +50,7 @@ int do_main(int argc, char* argv[]) {
 
   // Create state estimator
   auto state_estimator =
-      builder.AddSystem<systems::CassieRbtStateEstimator>(*tree);
+      builder.AddSystem<systems::CassieRbtStateEstimator>(*tree, false);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot

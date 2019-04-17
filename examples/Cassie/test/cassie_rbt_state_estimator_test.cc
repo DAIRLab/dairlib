@@ -18,7 +18,7 @@ class CassieRbtStateEstimatorTest : public ::testing::Test {
 TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
   RigidBodyTree<double> tree;
   buildCassieTree(tree);
-  CassieRbtStateEstimator estimator(tree);
+  CassieRbtStateEstimator estimator(tree, false);
 
   // Example position
   VectorXd q_init(tree.get_num_positions());

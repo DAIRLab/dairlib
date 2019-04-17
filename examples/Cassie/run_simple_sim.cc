@@ -166,7 +166,8 @@ int do_main(int argc, char* argv[]) {
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
   if(FLAGS_floating_base)
-    x0(3) = 1;
+    if(x0(4)==0 && x0(5)==0 && x0(6)==0)
+      x0(3) = 1; // Quaternion's origin
 
   std::map<std::string, int> map =
       plant->get_rigid_body_tree().computePositionNameToIndexMap();

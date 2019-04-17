@@ -23,7 +23,6 @@ cc_library(
         "//systems/framework:vector",
         "@drake//systems/framework",
     ],
-    linkstatic = 1,
 )
 
 cc_library(
@@ -65,5 +64,4 @@ cc_test(
         "@drake//systems/framework",
         "@drake//systems/framework/test_utilities",
     ],
-    linkstatic = 1,
 )

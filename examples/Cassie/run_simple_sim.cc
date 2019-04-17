@@ -165,6 +165,9 @@ int do_main(int argc, char* argv[]) {
   Eigen::VectorXd x0 =
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
+  if(FLAGS_floating_base)
+    x0(3) = 1;
+
   std::map<std::string, int> map =
       plant->get_rigid_body_tree().computePositionNameToIndexMap();
   x0(map.at("hip_pitch_left")) = .269;

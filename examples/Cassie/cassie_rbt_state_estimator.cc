@@ -25,6 +25,11 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
                          tree.get_num_velocities(), tree.get_num_actuators()),
     &CassieRbtStateEstimator ::Output);
 
+  if (is_floating_base) {
+    // Use perStep update
+    // See: "Declare per-step events" section of leafsystem in doxygen
+  }
+
   // Initialize body indices
   left_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_left");
   right_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_right");
@@ -83,7 +88,7 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
     // Get the projected rod length in the xy plane of heel spring base
     double projected_rod_length =
       sqrt(pow(rod_length, 2) -
-        pow(r_thigh_ball_joint_wrt_heel_spring_base(2), 2));
+           pow(r_thigh_ball_joint_wrt_heel_spring_base(2), 2));
 
     // Get the vector of the deflected spring direction
     // Below solves for the intersections of two circles on a plane
@@ -127,6 +132,7 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
                           - spring_rest_offset;
   }  // end for
 }
+
 
 /// Workhorse state estimation function. Given a `cassie_out_t`, compute the
 /// esitmated state as an OutputVector

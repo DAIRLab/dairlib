@@ -26,11 +26,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     &CassieRbtStateEstimator::CopyStateOut);
 
   // if (is_floating_base) {
-    // Use perStep update
-    // See: "Declare per-step events" section of leafsystem in doxygen
-
-    this->DeclarePerStepDiscreteUpdateEvent(
-      &CassieRbtStateEstimator::Update);
+    DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
+    state_idx_ = DeclareDiscreteState(27); // State
+    time_idx_ = DeclareDiscreteState(VectorXd::Zero(1)); // previous time
   // }
 
   // Initialize body indices
@@ -141,7 +139,21 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
 
-  cout << "In per-step update: time = " << context.get_time() << endl;
+  cout << "\nIn per-step update: time = " << context.get_time() << endl;
+  double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
+
+  // Testing
+  if(context.get_time() > prev_t){
+    double dt = context.get_time() - prev_t;
+    discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << context.get_time();
+
+
+    cout << "previous_time = " << discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << endl;
+  }
+
+  // Below is how you should assign the state at the end of this Update
+  // discrete_state->get_mutable_vector(state_idx_).get_mutable_value() = ...;
+  // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() = ...;
 
   return EventStatus::Succeeded();
 }
@@ -246,8 +258,9 @@ void CassieRbtStateEstimator::CopyStateOut(
   // cout << tree_.get_velocity_name(i) << endl;
 
 
-  cout << "In copyStateOut: time = " << context.get_time() << endl;
-
+  cout << "  In copyStateOut: time = " << context.get_time() << endl;
+  auto pre_time = context.get_discrete_state(time_idx_).get_value();
+  cout << "  In copyStateOut: pre_time = " << pre_time << endl;
 
   // Step 1 - Solve for the unknown joint angle
   double left_heel_spring = 0;
@@ -256,29 +269,14 @@ void CassieRbtStateEstimator::CopyStateOut(
                       left_heel_spring, right_heel_spring);
 
 
-  // TODO(yminchen): you'll write discrete time update for the estimator
-  // It's fine if your update rate is faster than the rate of receiving cassie's
-  // output. You always need to do the output.
+  // TODO(yminchen):
 
   // You can test the estimator here using fixed based.
+  // You can implement step 3 independently of the EKF.
 
   // The concern when moving to floating based simulation:
   // The simulatino update rate is about 30-60 Hz.
 
-
-
-  // TODO: think about if the discrete time update would still work if the time
-  // is the same. (i.e. check if the RI-EKF algorithm would still work if dt=0)
-
-
-  // We can probably have:
-  //   previous message time
-  //   current message time
-  // and do not use the current time in context.
-
-
-
-  // You can implement step 3 independently of the EKF.
 
 
   // Step 2 - State estimation (update step)

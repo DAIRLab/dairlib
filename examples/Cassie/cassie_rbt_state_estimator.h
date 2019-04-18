@@ -24,6 +24,7 @@ using systems::OutputVector;
 using drake::systems::Context;
 using drake::systems::EventStatus;
 using drake::systems::DiscreteValues;
+using drake::systems::DiscreteStateIndex;
 
 /// Translates from a TimestamedVector of cassie torque commands into
 /// a cassie_user_in_t struct for transmission to the real robot.
@@ -51,6 +52,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   int right_thigh_ind_ = -1;
   int left_heel_spring_ind_ = -1;
   int right_heel_spring_ind_ = -1;
+
+  DiscreteStateIndex state_idx_;
+  DiscreteStateIndex time_idx_;
 };
 
 }  // namespace systems

@@ -253,8 +253,8 @@ int do_main(int argc, char* argv[]) {
 
   lcm.StartReceiveThread();
 
-  simulator.StepTo(std::numeric_limits<double>::infinity());
-  // simulator.StepTo(.001);
+  // simulator.StepTo(std::numeric_limits<double>::infinity());
+  simulator.StepTo(.01);
   return 0;
 }
 

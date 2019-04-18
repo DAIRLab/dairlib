@@ -23,12 +23,15 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   this->DeclareVectorOutputPort(
     OutputVector<double>(tree.get_num_positions(),
                          tree.get_num_velocities(), tree.get_num_actuators()),
-    &CassieRbtStateEstimator ::Output);
+    &CassieRbtStateEstimator::CopyStateOut);
 
-  if (is_floating_base) {
+  // if (is_floating_base) {
     // Use perStep update
     // See: "Declare per-step events" section of leafsystem in doxygen
-  }
+
+    this->DeclarePerStepDiscreteUpdateEvent(
+      &CassieRbtStateEstimator::Update);
+  // }
 
   // Initialize body indices
   left_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_left");
@@ -134,11 +137,21 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 }
 
 
+
+EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+
+  cout << "In per-step update: time = " << context.get_time() << endl;
+
+  return EventStatus::Succeeded();
+}
+
+
 /// Workhorse state estimation function. Given a `cassie_out_t`, compute the
 /// esitmated state as an OutputVector
 /// Since it needs to map from a struct to a vector, and no assumptions on the
 /// ordering of the vector are made, utilizies index maps to make this mapping.
-void CassieRbtStateEstimator::Output(
+void CassieRbtStateEstimator::CopyStateOut(
   const Context<double>& context, OutputVector<double>* output) const {
   const auto& cassie_out =
     this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
@@ -232,6 +245,8 @@ void CassieRbtStateEstimator::Output(
   // for (int i = 0; i < tree_.get_num_velocities(); i++)
   // cout << tree_.get_velocity_name(i) << endl;
 
+
+  cout << "In copyStateOut: time = " << context.get_time() << endl;
 
 
   // Step 1 - Solve for the unknown joint angle

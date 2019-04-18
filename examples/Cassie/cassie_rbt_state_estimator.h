@@ -21,6 +21,10 @@ using Eigen::MatrixXd;
 using Eigen::Isometry3d;
 using systems::OutputVector;
 
+using drake::systems::Context;
+using drake::systems::EventStatus;
+using drake::systems::DiscreteValues;
+
 /// Translates from a TimestamedVector of cassie torque commands into
 /// a cassie_user_in_t struct for transmission to the real robot.
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
@@ -31,7 +35,11 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
     double & left_heel_spring,double & right_heel_spring) const;
 
  private:
-  void Output(const drake::systems::Context<double>& context,
+
+  EventStatus Update(const Context<double>& context,
+      DiscreteValues<double>* discrete_state) const;
+
+  void CopyStateOut(const Context<double>& context,
       OutputVector<double>* output) const;
 
   const RigidBodyTree<double>& tree_;

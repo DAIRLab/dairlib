@@ -138,7 +138,6 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
   OutputVector<double>* output, const cassie_out_t& cassie_out) const {
-
   // Copy the robot state excluding floating base
   // TODO(yuming): check what cassie_out.leftLeg.footJoint.position is.
   // Similarly, the other leg and the velocity of these joints.
@@ -209,51 +208,12 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
                              cassie_out.rightLeg.tarsusJoint.velocity);
   output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_spring_joint_rightdot")
                              , 0.0);
-}
 
-
-
-EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
-    DiscreteValues<double>* discrete_state) const {
-
-  cout << "\nIn per-step update: time = " << context.get_time() << endl;
-  double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
-
-  // Testing
-  if (context.get_time() > prev_t) {
-    double dt = context.get_time() - prev_t;
-    discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
-        context.get_time();
-
-
-    cout << "previous_time = " <<
-         discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << endl;
-  }
-
-  // Below is how you should assign the state at the end of this Update
-  // discrete_state->get_mutable_vector(ekf_state_idx_).get_mutable_value() = ...;
-  // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() = ...;
-
-  return EventStatus::Succeeded();
-}
-
-
-/// Workhorse state estimation function. Given a `cassie_out_t`, compute the
-/// esitmated state as an OutputVector
-/// Since it needs to map from a struct to a vector, and no assumptions on the
-/// ordering of the vector are made, utilizies index maps to make this mapping.
-void CassieRbtStateEstimator::CopyStateOut(
-  const Context<double>& context, OutputVector<double>* output) const {
-  const auto& cassie_out =
-    this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
-
-  // It's necessary for initialization. Might be a better way to initialize?
-  auto data = output->get_mutable_data();
-  data = Eigen::VectorXd::Zero(data.size());
-
-  // Assign the values
   // Copy actuators
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_left_motor"),
+  // We don't need to copy the value of motor torque, since we are not passing
+  // it to the controller. However, we can pass it if we are doing torque
+  // control, for example.
+  /*output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_left_motor"),
                            cassie_out.leftLeg.hipRollDrive.torque);
   output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_left_motor"),
                            cassie_out.leftLeg.hipYawDrive.torque);
@@ -273,24 +233,40 @@ void CassieRbtStateEstimator::CopyStateOut(
   output->SetEffortAtIndex(actuatorIndexMap_.at("knee_right_motor"),
                            cassie_out.rightLeg.kneeDrive.torque);
   output->SetEffortAtIndex(actuatorIndexMap_.at("toe_right_motor"),
-                           cassie_out.rightLeg.footDrive.torque);
-
-  // Copy the robot state excluding floating base
-  AssignNonFloatingBaseToOutputVector(output, cassie_out);
+                           cassie_out.rightLeg.footDrive.torque);*/
+}
 
 
 
+EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
 
-  // TODO(yminchen): move below to per-step update
+  cout << "\nIn per-step update: time = " << context.get_time() << endl;
+  double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
 
-  // Floating base coordinates
-  if (is_floating_base_) {
-    // Perform EKF first before assigning the values
+  if (context.get_time() > prev_t) {
+    double dt = context.get_time() - prev_t;
+    discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
+        context.get_time();
+
+    // Testing
+    cout << "previous_time = " <<
+         discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << endl;
+
+    // Perform State Estimation (in several steps)
 
     // Step 1 - Solve for the unknown joint angle
+    //TODO(yminchen): Is there a way to avoid copying state two times?
+                    //Currently, we copy in Update() and CopyStateOut().
+    const auto& cassie_out =
+      this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
+    OutputVector<double> output(tree_.get_num_positions(),
+                                tree_.get_num_velocities(),
+                                tree_.get_num_actuators());
+    AssignNonFloatingBaseToOutputVector(&output, cassie_out);
     double left_heel_spring = 0;
     double right_heel_spring = 0;
-    solveFourbarLinkage(output->GetPositions(),
+    solveFourbarLinkage(output.GetPositions(),
                         left_heel_spring, right_heel_spring);
 
     // TODO(yminchen):
@@ -301,7 +277,7 @@ void CassieRbtStateEstimator::CopyStateOut(
     // The simulatino update rate is about 30-60 Hz.
 
 
-    // Step 2 - State estimation (update step)
+    // Step 2 - EKF (update step)
     auto pre_time = context.get_discrete_state(time_idx_).get_value();
     // cout << "  In copyStateOut: pre_time = " << pre_time << endl;
     // cout << "  In copyStateOut: time = " << context.get_time() << endl;
@@ -310,11 +286,43 @@ void CassieRbtStateEstimator::CopyStateOut(
     // Step 3 - Estimate which foot/feet are in contact with the ground
 
 
-    // Step 4 - State estimation (measurement step)
+    // Step 4 - EKF (measurement step)
 
 
-    // Step 5 - Assign the values
-    auto ekf_state_est = context.get_discrete_state(ekf_state_idx_).get_value();
+    // Step 5 - Assign values to states
+    // Below is how you should assign the state at the end of this Update
+    // discrete_state->get_mutable_vector(ekf_state_idx_).get_mutable_value() = ...;
+    // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() = ...;
+  }
+
+
+  return EventStatus::Succeeded();
+}
+
+
+/// Workhorse state estimation function. Given a `cassie_out_t`, compute the
+/// esitmated state as an OutputVector
+/// Since it needs to map from a struct to a vector, and no assumptions on the
+/// ordering of the vector are made, utilizies index maps to make this mapping.
+void CassieRbtStateEstimator::CopyStateOut(
+  const Context<double>& context, OutputVector<double>* output) const {
+  const auto& cassie_out =
+    this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
+
+  // It's necessary for initialization. Might be a better way to initialize?
+  auto data = output->get_mutable_data(); // This doesn't affect timestamp value
+  data = Eigen::VectorXd::Zero(data.size());
+
+  // Assign the values
+  // Copy the robot state excluding floating base
+  AssignNonFloatingBaseToOutputVector(output, cassie_out);
+
+  // TODO(yminchen): move below to per-step update
+
+  // Floating base coordinates
+  if (is_floating_base_) {
+    // Assign the values
+    auto state_est = context.get_discrete_state(state_idx_).get_value();
 
     // TODO(yminchen): The name of the joitn name need to be change when we move to MBP
 

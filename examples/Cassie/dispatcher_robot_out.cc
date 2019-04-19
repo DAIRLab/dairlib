@@ -37,6 +37,9 @@ DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,
     "Simulated or real robot (default=false, real robot)");
 
+// Cassie model paramter
+DEFINE_bool(floating_base, false, "Fixed or floating base model");
+
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
 int do_main(int argc, char* argv[]) {
@@ -46,7 +49,12 @@ int do_main(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
   DiagramBuilder<double> builder;
 
-  std::unique_ptr<RigidBodyTree<double>> tree = makeCassieTreePointer();
+  std::unique_ptr<RigidBodyTree<double>> tree;
+  if (FLAGS_floating_base)
+    tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
+                                 drake::multibody::joints::kQuaternion);
+  else
+    tree = makeCassieTreePointer();
 
   // Create state estimator
   auto state_estimator =

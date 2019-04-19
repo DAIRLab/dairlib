@@ -13,7 +13,7 @@ using multibody::GetBodyIndexFromName;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
   const RigidBodyTree<double>& tree, bool is_floating_base) :
-  tree_(tree) {
+  tree_(tree), is_floating_base_(is_floating_base) {
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
   positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
@@ -25,11 +25,11 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
                          tree.get_num_velocities(), tree.get_num_actuators()),
     &CassieRbtStateEstimator::CopyStateOut);
 
-  // if (is_floating_base) {
+  if (is_floating_base) {
     DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
     state_idx_ = DeclareDiscreteState(27); // State
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1)); // previous time
-  // }
+  }
 
   // Initialize body indices
   left_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_left");
@@ -143,12 +143,14 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
   double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
 
   // Testing
-  if(context.get_time() > prev_t){
+  if (context.get_time() > prev_t) {
     double dt = context.get_time() - prev_t;
-    discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << context.get_time();
+    discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
+        context.get_time();
 
 
-    cout << "previous_time = " << discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << endl;
+    cout << "previous_time = " <<
+         discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << endl;
   }
 
   // Below is how you should assign the state at the end of this Update
@@ -168,11 +170,35 @@ void CassieRbtStateEstimator::CopyStateOut(
   const auto& cassie_out =
     this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
 
-  // Is this necessary? Might be a better way to initialize
+  // It's necessary for initialization. Might be a better way to initialize?
   auto data = output->get_mutable_data();
   data = Eigen::VectorXd::Zero(data.size());
 
-  // Initialize the robot state
+  // Assign the values
+  // Copy actuators
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_left_motor"),
+                           cassie_out.leftLeg.hipRollDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_left_motor"),
+                           cassie_out.leftLeg.hipYawDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_pitch_left_motor"),
+                           cassie_out.leftLeg.hipPitchDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("knee_left_motor"),
+                           cassie_out.leftLeg.kneeDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("toe_left_motor"),
+                           cassie_out.leftLeg.footDrive.torque);
+
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_right_motor"),
+                           cassie_out.rightLeg.hipRollDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_right_motor"),
+                           cassie_out.rightLeg.hipYawDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_pitch_right_motor"),
+                           cassie_out.rightLeg.hipPitchDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("knee_right_motor"),
+                           cassie_out.rightLeg.kneeDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("toe_right_motor"),
+                           cassie_out.rightLeg.footDrive.torque);
+
+  // Copy the robot state excluding floating base
   // TODO(yuming): check what cassie_out.leftLeg.footJoint.position is.
   // Similarly, the other leg and the velocity of these joints.
   output->SetPositionAtIndex(positionIndexMap_.at("hip_roll_left"),
@@ -243,6 +269,77 @@ void CassieRbtStateEstimator::CopyStateOut(
   output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_spring_joint_rightdot")
                              , 0.0);
 
+  // Floating base coordinates
+  // if (is_floating_base_) {
+  if (true) {
+    // Perform EKF first before assigning the values
+
+    // Step 1 - Solve for the unknown joint angle
+    double left_heel_spring = 0;
+    double right_heel_spring = 0;
+    solveFourbarLinkage(output->GetPositions(),
+                        left_heel_spring, right_heel_spring);
+
+    // TODO(yminchen):
+    // You can test the estimator here using fixed based.
+    // You can implement step 3 independently of the EKF.
+
+    // The concern when moving to floating based simulation:
+    // The simulatino update rate is about 30-60 Hz.
+
+
+    // Step 2 - State estimation (update step)
+    auto pre_time = context.get_discrete_state(time_idx_).get_value();
+    // cout << "  In copyStateOut: pre_time = " << pre_time << endl;
+    // cout << "  In copyStateOut: time = " << context.get_time() << endl;
+
+
+    // Step 3 - Estimate which foot/feet are in contact with the ground
+
+
+    // Step 4 - State estimation (measurement step)
+
+
+    // Step 5 - Assign the values
+    auto state_est = context.get_discrete_state(state_idx_).get_value();
+
+    // TODO(yminchen): The name of the joitn name need to be change when we move to MBP
+
+    // Question: Do we need to filter the gyro value?
+    // We will get the bias (parameter) from EKF
+    output->SetPositionAtIndex(positionIndexMap_.at("base_x"),
+                               state_est(9));
+    output->SetPositionAtIndex(positionIndexMap_.at("base_y"),
+                               state_est(10));
+    output->SetPositionAtIndex(positionIndexMap_.at("base_z"),
+                               state_est(11));
+    // TODO(yminchen): Add transformation from Euler to quaternion to master branch
+    // output->SetPositionAtIndex(positionIndexMap_.at("base_qw"),
+    //                           );
+    // output->SetPositionAtIndex(positionIndexMap_.at("base_qx"),
+    //                           );
+    // output->SetPositionAtIndex(positionIndexMap_.at("base_qy"),
+    //                           );
+    // output->SetPositionAtIndex(positionIndexMap_.at("base_qz"),
+    //                           );
+
+    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_wx"),
+    //                           );
+    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_wy"),
+    //                           );
+    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_wz"),
+    //                           );
+    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_vx"),
+    //                           );
+    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_vy"),
+    //                           );
+    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_vz"),
+    //                           );
+
+  }  //  end if(is_floating_base)
+
+
+
 
   // cout << endl << "****bodies****" << endl;
   // for (int i = 0; i < tree_.get_num_bodies(); i++)
@@ -256,63 +353,6 @@ void CassieRbtStateEstimator::CopyStateOut(
   // cout << endl << "****velocities****" << endl;
   // for (int i = 0; i < tree_.get_num_velocities(); i++)
   // cout << tree_.get_velocity_name(i) << endl;
-
-
-  cout << "  In copyStateOut: time = " << context.get_time() << endl;
-  auto pre_time = context.get_discrete_state(time_idx_).get_value();
-  cout << "  In copyStateOut: pre_time = " << pre_time << endl;
-
-  // Step 1 - Solve for the unknown joint angle
-  double left_heel_spring = 0;
-  double right_heel_spring = 0;
-  solveFourbarLinkage(output->GetPositions(),
-                      left_heel_spring, right_heel_spring);
-
-
-  // TODO(yminchen):
-
-  // You can test the estimator here using fixed based.
-  // You can implement step 3 independently of the EKF.
-
-  // The concern when moving to floating based simulation:
-  // The simulatino update rate is about 30-60 Hz.
-
-
-
-  // Step 2 - State estimation (update step)
-
-
-  // Step 3 - Estimate which foot/feet are in contact with the ground
-
-
-  // Step 4 - State estimation (measurement step)
-
-
-
-  // Assign the values
-  // Copy actuators
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_left_motor"),
-                           cassie_out.leftLeg.hipRollDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_left_motor"),
-                           cassie_out.leftLeg.hipYawDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_pitch_left_motor"),
-                           cassie_out.leftLeg.hipPitchDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("knee_left_motor"),
-                           cassie_out.leftLeg.kneeDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("toe_left_motor"),
-                           cassie_out.leftLeg.footDrive.torque);
-
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_right_motor"),
-                           cassie_out.rightLeg.hipRollDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_right_motor"),
-                           cassie_out.rightLeg.hipYawDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_pitch_right_motor"),
-                           cassie_out.rightLeg.hipPitchDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("knee_right_motor"),
-                           cassie_out.rightLeg.kneeDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("toe_right_motor"),
-                           cassie_out.rightLeg.footDrive.torque);
-
 
 
 

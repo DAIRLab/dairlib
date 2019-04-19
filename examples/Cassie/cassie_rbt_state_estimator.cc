@@ -290,6 +290,10 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Below is how you should assign the state at the end of this Update
     // discrete_state->get_mutable_vector(ekf_state_idx_).get_mutable_value() = ...;
     // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() = ...;
+
+    // You can convert a rotational matrix to quaternion using Eigen
+    // https://stackoverflow.com/questions/21761909/eigen-convert-matrix3d-rotation-to-quaternion
+    // http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
   }
 
 

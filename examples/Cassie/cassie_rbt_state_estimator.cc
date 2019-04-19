@@ -270,7 +270,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
                         left_heel_spring, right_heel_spring);
 
     // TODO(yminchen):
-    // You can test the estimator here using fixed based.
+    // You can test the contact force estimator here using fixed based.
     // You can implement step 3 independently of the EKF.
 
     // The concern when moving to floating based simulation:

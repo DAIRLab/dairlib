@@ -25,12 +25,12 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
                          tree.get_num_velocities(), tree.get_num_actuators()),
     &CassieRbtStateEstimator::CopyStateOut);
 
-  if (is_floating_base) {
+  // if (is_floating_base) {
     DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
     state_idx_ = DeclareDiscreteState(7 + 6); // estimated floating base
     ekf_state_idx_ = DeclareDiscreteState(27); // estimated EKF state
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1)); // previous time
-  }
+  // }
 
   // Initialize body indices
   left_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_left");
@@ -250,7 +250,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
         context.get_time();
 
     // Testing
-    cout << "previous_time = " <<
+    cout << "updated previous_time = " <<
          discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << endl;
 
     // Perform State Estimation (in several steps)
@@ -278,9 +278,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
 
     // Step 2 - EKF (update step)
-    auto pre_time = context.get_discrete_state(time_idx_).get_value();
-    // cout << "  In copyStateOut: pre_time = " << pre_time << endl;
-    // cout << "  In copyStateOut: time = " << context.get_time() << endl;
 
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
@@ -316,8 +313,6 @@ void CassieRbtStateEstimator::CopyStateOut(
   // Assign the values
   // Copy the robot state excluding floating base
   AssignNonFloatingBaseToOutputVector(output, cassie_out);
-
-  // TODO(yminchen): move below to per-step update
 
   // Floating base coordinates
   if (is_floating_base_) {
@@ -362,6 +357,12 @@ void CassieRbtStateEstimator::CopyStateOut(
 
 
 
+  // Testing
+  auto pre_time = context.get_discrete_state(time_idx_).get_value();
+  cout << "  In copyStateOut: pre_time = " << pre_time << endl;
+  cout << "  In copyStateOut: time = " << context.get_time() << endl;
+
+  // Testing
   // cout << endl << "****bodies****" << endl;
   // for (int i = 0; i < tree_.get_num_bodies(); i++)
   //   cout << tree_.getBodyOrFrameName(i) << endl;

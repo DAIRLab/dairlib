@@ -27,7 +27,8 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
   if (is_floating_base) {
     DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
-    state_idx_ = DeclareDiscreteState(27); // State
+    state_idx_ = DeclareDiscreteState(7 + 6); // estimated floating base
+    ekf_state_idx_ = DeclareDiscreteState(27); // estimated EKF state
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1)); // previous time
   }
 
@@ -135,68 +136,8 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 }
 
 
-
-EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
-    DiscreteValues<double>* discrete_state) const {
-
-  cout << "\nIn per-step update: time = " << context.get_time() << endl;
-  double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
-
-  // Testing
-  if (context.get_time() > prev_t) {
-    double dt = context.get_time() - prev_t;
-    discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
-        context.get_time();
-
-
-    cout << "previous_time = " <<
-         discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << endl;
-  }
-
-  // Below is how you should assign the state at the end of this Update
-  // discrete_state->get_mutable_vector(state_idx_).get_mutable_value() = ...;
-  // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() = ...;
-
-  return EventStatus::Succeeded();
-}
-
-
-/// Workhorse state estimation function. Given a `cassie_out_t`, compute the
-/// esitmated state as an OutputVector
-/// Since it needs to map from a struct to a vector, and no assumptions on the
-/// ordering of the vector are made, utilizies index maps to make this mapping.
-void CassieRbtStateEstimator::CopyStateOut(
-  const Context<double>& context, OutputVector<double>* output) const {
-  const auto& cassie_out =
-    this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
-
-  // It's necessary for initialization. Might be a better way to initialize?
-  auto data = output->get_mutable_data();
-  data = Eigen::VectorXd::Zero(data.size());
-
-  // Assign the values
-  // Copy actuators
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_left_motor"),
-                           cassie_out.leftLeg.hipRollDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_left_motor"),
-                           cassie_out.leftLeg.hipYawDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_pitch_left_motor"),
-                           cassie_out.leftLeg.hipPitchDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("knee_left_motor"),
-                           cassie_out.leftLeg.kneeDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("toe_left_motor"),
-                           cassie_out.leftLeg.footDrive.torque);
-
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_right_motor"),
-                           cassie_out.rightLeg.hipRollDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_right_motor"),
-                           cassie_out.rightLeg.hipYawDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_pitch_right_motor"),
-                           cassie_out.rightLeg.hipPitchDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("knee_right_motor"),
-                           cassie_out.rightLeg.kneeDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("toe_right_motor"),
-                           cassie_out.rightLeg.footDrive.torque);
+void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
+  OutputVector<double>* output, const cassie_out_t& cassie_out) const {
 
   // Copy the robot state excluding floating base
   // TODO(yuming): check what cassie_out.leftLeg.footJoint.position is.
@@ -268,10 +209,82 @@ void CassieRbtStateEstimator::CopyStateOut(
                              cassie_out.rightLeg.tarsusJoint.velocity);
   output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_spring_joint_rightdot")
                              , 0.0);
+}
+
+
+
+EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+
+  cout << "\nIn per-step update: time = " << context.get_time() << endl;
+  double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
+
+  // Testing
+  if (context.get_time() > prev_t) {
+    double dt = context.get_time() - prev_t;
+    discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
+        context.get_time();
+
+
+    cout << "previous_time = " <<
+         discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << endl;
+  }
+
+  // Below is how you should assign the state at the end of this Update
+  // discrete_state->get_mutable_vector(ekf_state_idx_).get_mutable_value() = ...;
+  // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() = ...;
+
+  return EventStatus::Succeeded();
+}
+
+
+/// Workhorse state estimation function. Given a `cassie_out_t`, compute the
+/// esitmated state as an OutputVector
+/// Since it needs to map from a struct to a vector, and no assumptions on the
+/// ordering of the vector are made, utilizies index maps to make this mapping.
+void CassieRbtStateEstimator::CopyStateOut(
+  const Context<double>& context, OutputVector<double>* output) const {
+  const auto& cassie_out =
+    this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
+
+  // It's necessary for initialization. Might be a better way to initialize?
+  auto data = output->get_mutable_data();
+  data = Eigen::VectorXd::Zero(data.size());
+
+  // Assign the values
+  // Copy actuators
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_left_motor"),
+                           cassie_out.leftLeg.hipRollDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_left_motor"),
+                           cassie_out.leftLeg.hipYawDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_pitch_left_motor"),
+                           cassie_out.leftLeg.hipPitchDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("knee_left_motor"),
+                           cassie_out.leftLeg.kneeDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("toe_left_motor"),
+                           cassie_out.leftLeg.footDrive.torque);
+
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_right_motor"),
+                           cassie_out.rightLeg.hipRollDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_right_motor"),
+                           cassie_out.rightLeg.hipYawDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_pitch_right_motor"),
+                           cassie_out.rightLeg.hipPitchDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("knee_right_motor"),
+                           cassie_out.rightLeg.kneeDrive.torque);
+  output->SetEffortAtIndex(actuatorIndexMap_.at("toe_right_motor"),
+                           cassie_out.rightLeg.footDrive.torque);
+
+  // Copy the robot state excluding floating base
+  AssignNonFloatingBaseToOutputVector(output, cassie_out);
+
+
+
+
+  // TODO(yminchen): move below to per-step update
 
   // Floating base coordinates
-  // if (is_floating_base_) {
-  if (true) {
+  if (is_floating_base_) {
     // Perform EKF first before assigning the values
 
     // Step 1 - Solve for the unknown joint angle
@@ -301,18 +314,18 @@ void CassieRbtStateEstimator::CopyStateOut(
 
 
     // Step 5 - Assign the values
-    auto state_est = context.get_discrete_state(state_idx_).get_value();
+    auto ekf_state_est = context.get_discrete_state(ekf_state_idx_).get_value();
 
     // TODO(yminchen): The name of the joitn name need to be change when we move to MBP
 
     // Question: Do we need to filter the gyro value?
     // We will get the bias (parameter) from EKF
-    output->SetPositionAtIndex(positionIndexMap_.at("base_x"),
-                               state_est(9));
-    output->SetPositionAtIndex(positionIndexMap_.at("base_y"),
-                               state_est(10));
-    output->SetPositionAtIndex(positionIndexMap_.at("base_z"),
-                               state_est(11));
+    // output->SetPositionAtIndex(positionIndexMap_.at("base_x"),
+    //                            state_est(9));
+    // output->SetPositionAtIndex(positionIndexMap_.at("base_y"),
+    //                            state_est(10));
+    // output->SetPositionAtIndex(positionIndexMap_.at("base_z"),
+    //                            state_est(11));
     // TODO(yminchen): Add transformation from Euler to quaternion to master branch
     // output->SetPositionAtIndex(positionIndexMap_.at("base_qw"),
     //                           );

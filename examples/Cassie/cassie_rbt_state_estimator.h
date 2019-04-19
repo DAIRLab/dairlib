@@ -31,17 +31,21 @@ using drake::systems::DiscreteStateIndex;
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(
-      const RigidBodyTree<double>&, bool);
+    const RigidBodyTree<double>&, bool);
   void solveFourbarLinkage(VectorXd q_init,
-    double & left_heel_spring,double & right_heel_spring) const;
+                           double & left_heel_spring,
+                           double & right_heel_spring) const;
 
  private:
 
+  void AssignNonFloatingBaseToOutputVector(
+    OutputVector<double>* output, const cassie_out_t& cassie_out) const;
+
   EventStatus Update(const Context<double>& context,
-      DiscreteValues<double>* discrete_state) const;
+                     DiscreteValues<double>* discrete_state) const;
 
   void CopyStateOut(const Context<double>& context,
-      OutputVector<double>* output) const;
+                    OutputVector<double>* output) const;
 
   const RigidBodyTree<double>& tree_;
   std::map<std::string, int> positionIndexMap_;
@@ -54,6 +58,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   int right_heel_spring_ind_ = -1;
 
   DiscreteStateIndex state_idx_;
+  DiscreteStateIndex ekf_state_idx_;
   DiscreteStateIndex time_idx_;
 
   bool is_floating_base_;

@@ -58,7 +58,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   int right_heel_spring_ind_ = -1;
 
   DiscreteStateIndex state_idx_;
-  DiscreteStateIndex ekf_state_idx_;
+  DiscreteStateIndex ekf_X_idx_;
   DiscreteStateIndex time_idx_;
 
   bool is_floating_base_;

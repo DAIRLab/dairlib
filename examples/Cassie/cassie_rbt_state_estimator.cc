@@ -28,7 +28,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   // if (is_floating_base) {
     DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
     state_idx_ = DeclareDiscreteState(7 + 6); // estimated floating base
-    ekf_state_idx_ = DeclareDiscreteState(27); // estimated EKF state
+    ekf_X_idx_ = DeclareDiscreteState(27); // estimated EKF state
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1)); // previous time
   // }
 
@@ -288,12 +288,21 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
     // Step 5 - Assign values to states
     // Below is how you should assign the state at the end of this Update
-    // discrete_state->get_mutable_vector(ekf_state_idx_).get_mutable_value() = ...;
+    // discrete_state->get_mutable_vector(ekf_X_idx_).get_mutable_value() = ...;
     // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() = ...;
 
     // You can convert a rotational matrix to quaternion using Eigen
     // https://stackoverflow.com/questions/21761909/eigen-convert-matrix3d-rotation-to-quaternion
     // http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+
+    // Then convert Eigen::Quaterion to (w,x,y,z) by drake's QuaternionToVectorWxyz()
+    // https://drake.mit.edu/doxygen_cxx/namespacedrake_1_1multibody.html#ad1b559878de179a7e363846fa67f58c0
+
+
+    // Question: Do we need to filter the gyro value?
+    // We will get the bias (parameter) from EKF
+
+    // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << ...
   }
 
 
@@ -324,38 +333,33 @@ void CassieRbtStateEstimator::CopyStateOut(
     auto state_est = context.get_discrete_state(state_idx_).get_value();
 
     // TODO(yminchen): The name of the joitn name need to be change when we move to MBP
+    output->SetPositionAtIndex(positionIndexMap_.at("base_x"),
+                               state_est(0));
+    output->SetPositionAtIndex(positionIndexMap_.at("base_y"),
+                               state_est(1));
+    output->SetPositionAtIndex(positionIndexMap_.at("base_z"),
+                               state_est(2));
+    output->SetPositionAtIndex(positionIndexMap_.at("base_qw"),
+                               state_est(3));
+    output->SetPositionAtIndex(positionIndexMap_.at("base_qx"),
+                               state_est(4));
+    output->SetPositionAtIndex(positionIndexMap_.at("base_qy"),
+                               state_est(5));
+    output->SetPositionAtIndex(positionIndexMap_.at("base_qz"),
+                               state_est(6));
 
-    // Question: Do we need to filter the gyro value?
-    // We will get the bias (parameter) from EKF
-    // output->SetPositionAtIndex(positionIndexMap_.at("base_x"),
-    //                            state_est(9));
-    // output->SetPositionAtIndex(positionIndexMap_.at("base_y"),
-    //                            state_est(10));
-    // output->SetPositionAtIndex(positionIndexMap_.at("base_z"),
-    //                            state_est(11));
-    // TODO(yminchen): Add transformation from Euler to quaternion to master branch
-    // output->SetPositionAtIndex(positionIndexMap_.at("base_qw"),
-    //                           );
-    // output->SetPositionAtIndex(positionIndexMap_.at("base_qx"),
-    //                           );
-    // output->SetPositionAtIndex(positionIndexMap_.at("base_qy"),
-    //                           );
-    // output->SetPositionAtIndex(positionIndexMap_.at("base_qz"),
-    //                           );
-
-    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_wx"),
-    //                           );
-    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_wy"),
-    //                           );
-    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_wz"),
-    //                           );
-    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_vx"),
-    //                           );
-    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_vy"),
-    //                           );
-    // output->SetVelocityAtIndex(velocityIndexMap_.at("base_vz"),
-    //                           );
-
+    output->SetVelocityAtIndex(velocityIndexMap_.at("base_wx"),
+                               state_est(7));
+    output->SetVelocityAtIndex(velocityIndexMap_.at("base_wy"),
+                               state_est(8));
+    output->SetVelocityAtIndex(velocityIndexMap_.at("base_wz"),
+                               state_est(9));
+    output->SetVelocityAtIndex(velocityIndexMap_.at("base_vx"),
+                               state_est(10));
+    output->SetVelocityAtIndex(velocityIndexMap_.at("base_vy"),
+                               state_est(11));
+    output->SetVelocityAtIndex(velocityIndexMap_.at("base_vz"),
+                               state_est(12));
   }  //  end if(is_floating_base)
 
 

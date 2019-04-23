@@ -146,6 +146,18 @@ class PositionSolver {
    * @param Q The Q matrix in the cost (size num_positions x num_positions).
    */
   void AddProgramCost(const Eigen::VectorXd q_desired, const Eigen::MatrixXd Q);
+
+  /*
+   * Function to enforce the unit quaternion constraint. The position indices of
+   * the quaternion are passed to the function. This is done so that the
+   * function is not urdf specific.
+   * @param qw_ind index of the quaternion's w coordinate
+   * @param qx_ind index of the quaternion's x coordinate
+   * @param qy_ind index of the quaternion's y coordinate
+   * @param qz_ind index of the quaternion's z coordinate
+   */
+  void AddUnitQuaternionConstraint(const int qw_ind, const int qx_ind,
+                                   const int qy_ind, const int qz_ind);
   /*
    * Function to fix the values of certain joints. The joints to be fixed are
    * passed as a map, together with the values. The indices are with respect to
@@ -256,6 +268,17 @@ class ContactSolver {
    * @param Q The Q matrix in the cost (Size num_positions x num_positions).
    */
   void AddProgramCost(const Eigen::VectorXd q_desired, const Eigen::MatrixXd Q);
+  /*
+   * Function to enforce the unit quaternion constraint. The position indices of
+   * the quaternion are passed to the function. This is done so that the
+   * function is not urdf specific.
+   * @param qw_ind index of the quaternion's w coordinate
+   * @param qx_ind index of the quaternion's x coordinate
+   * @param qy_ind index of the quaternion's y coordinate
+   * @param qz_ind index of the quaternion's z coordinate
+   */
+  void AddUnitQuaternionConstraint(const int qw_ind, const int qx_ind,
+                                   const int qy_ind, const int qz_ind);
   /*
    * Function to fix the values of certain joints. The joints to be fixed are
    * passed as a map, together with the values. The indices are with respect to
@@ -417,6 +440,17 @@ class FixedPointSolver {
    * uniform distribution of the normal forces.
    */
   void AddSpreadNormalForcesCost();
+  /*
+   * Function to enforce the unit quaternion constraint. The position indices of
+   * the quaternion are passed to the function. This is done so that the
+   * function is not urdf specific.
+   * @param qw_ind index of the quaternion's w coordinate
+   * @param qx_ind index of the quaternion's x coordinate
+   * @param qy_ind index of the quaternion's y coordinate
+   * @param qz_ind index of the quaternion's z coordinate
+   */
+  void AddUnitQuaternionConstraint(const int qw_ind, const int qx_ind,
+                                   const int qy_ind, const int qz_ind);
   /*
    * Function to add friction cone constraints at all the the contact points.
    * The constraints take the form |fn_i| <= mu * ft_i, Where

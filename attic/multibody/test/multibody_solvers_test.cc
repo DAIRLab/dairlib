@@ -621,64 +621,114 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   ASSERT_EQ(fp_solver_quaternion3.get_minor_tolerance(), 0.03);
 }
 
-// TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
-//  // Fixed base
-//  PositionSolver position_solver_fixed(tree_fixed_, q_fixed_);
-//  position_solver_fixed.SetInitialGuessQ(q_fixed_);
-//  position_solver_fixed.AddJointLimitConstraint(0.001);
-//
-//  MathematicalProgramResult program_result_fixed =
-//      position_solver_fixed.Solve();
-//
-//  cout << "Position solver result (Fixed base): "
-//       << program_result_fixed.get_solution_result() << endl;
-//
-//  VectorXd q_sol_fixed = position_solver_fixed.GetSolutionQ();
-//
-//  // Solution dimension check
-//  ASSERT_EQ(q_sol_fixed.size(), num_positions_fixed_);
-//  // Checking if the solution constraints have been satisfied
-//  ASSERT_TRUE(position_solver_fixed.CheckConstraint(q_sol_fixed));
-//
-//  // Floating base
-//  PositionSolver position_solver_floating(tree_floating_rpy_, q_floating_);
-//  position_solver_floating.SetInitialGuessQ(q_floating_);
-//  position_solver_floating.AddFixedJointsConstraint(fixed_joints_map_);
-//  position_solver_floating.AddJointLimitConstraint(0.001);
-//
-//  MathematicalProgramResult program_result_floating =
-//      position_solver_floating.Solve();
-//
-//  cout << "Position solver result (Floating base): "
-//       << program_result_floating.get_solution_result() << endl;
-//
-//  VectorXd q_sol_floating = position_solver_floating.GetSolutionQ();
-//
-//  // Solution dimension check
-//  ASSERT_EQ(q_sol_floating.size(), num_positions_floating_);
-//  // Checking if the solution constraints have been satisfied
-//  ASSERT_TRUE(position_solver_floating.CheckConstraint(q_sol_floating));
-//}
-//
-// TEST_F(MultibodySolversTest, TestContactSolverSolution) {
-//  ContactSolver contact_solver(tree_floating_rpy_, contact_info_,
-//  q_floating_);
-//  contact_solver.SetInitialGuessQ(q_floating_);
-//  contact_solver.AddJointLimitConstraint(0.001);
-//
-//  MathematicalProgramResult program_result = contact_solver.Solve();
-//
-//  std::cout << "Contact solver result (Floating base): "
-//            << program_result.get_solution_result() << std::endl;
-//
-//  VectorXd q_sol_floating = contact_solver.GetSolutionQ();
-//
-//  // Solution dimension check
-//  ASSERT_EQ(q_sol_floating.size(), num_positions_floating_);
-//  // Checking if the solution constraints have been satisfied
-//  ASSERT_TRUE(contact_solver.CheckConstraint(q_sol_floating));
-//}
-//
+TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
+  // Fixed base
+  PositionSolver position_solver_fixed(tree_fixed_, q_fixed_);
+  position_solver_fixed.SetInitialGuessQ(q_fixed_);
+  position_solver_fixed.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_fixed =
+      position_solver_fixed.Solve();
+
+  cout << "Position solver result (Fixed base): "
+       << program_result_fixed.get_solution_result() << endl;
+
+  VectorXd q_sol_fixed = position_solver_fixed.GetSolutionQ();
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_fixed.size(), num_positions_fixed_);
+  // Checking if the solution constraints have been satisfied
+  ASSERT_TRUE(position_solver_fixed.CheckConstraint(q_sol_fixed));
+
+  // Floating base
+  // RPY base
+  PositionSolver position_solver_rpy(tree_rpy_, q_rpy_);
+  position_solver_rpy.SetInitialGuessQ(q_rpy_);
+  position_solver_rpy.AddFixedJointsConstraint(fixed_joints_map_rpy_);
+  position_solver_rpy.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_rpy = position_solver_rpy.Solve();
+
+  cout << "Position solver result (Rpy floating base): "
+       << program_result_rpy.get_solution_result() << endl;
+
+  VectorXd q_sol_rpy = position_solver_rpy.GetSolutionQ();
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_rpy.size(), num_positions_rpy_);
+  // Checking if the solution constraints have been satisfied
+  ASSERT_TRUE(position_solver_rpy.CheckConstraint(q_sol_rpy));
+
+  // Quaternion base
+  map<string, int> position_map_quaternion =
+      tree_quaternion_.computePositionNameToIndexMap();
+  PositionSolver position_solver_quaternion(tree_quaternion_, q_quaternion_);
+  position_solver_quaternion.SetInitialGuessQ(q_quaternion_);
+  position_solver_quaternion.AddUnitQuaternionConstraint(
+      position_map_quaternion["base_qw"], position_map_quaternion["base_qx"],
+      position_map_quaternion["base_qy"], position_map_quaternion["base_qz"]);
+  position_solver_quaternion.AddFixedJointsConstraint(
+      fixed_joints_map_quaternion_);
+  position_solver_quaternion.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_quaternion =
+      position_solver_quaternion.Solve();
+
+  cout << "Position solver result (Quaternion floating base): "
+       << program_result_quaternion.get_solution_result() << endl;
+
+  VectorXd q_sol_quaternion = position_solver_quaternion.GetSolutionQ();
+
+  std::cout << q_sol_quaternion << std::endl;
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
+  // Checking if the solution constraints have been satisfied
+  ASSERT_TRUE(position_solver_quaternion.CheckConstraint(q_sol_quaternion));
+}
+
+TEST_F(MultibodySolversTest, TestContactSolverSolution) {
+  // Contact solver for the floating base models
+  // RPY base
+  ContactSolver contact_solver_rpy(tree_rpy_, contact_info_rpy_, q_rpy_);
+  contact_solver_rpy.SetInitialGuessQ(q_rpy_);
+  contact_solver_rpy.AddFixedJointsConstraint(fixed_joints_map_rpy_);
+  contact_solver_rpy.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_rpy = contact_solver_rpy.Solve();
+
+  std::cout << "Contact solver result (Rpy Floating base): "
+            << program_result_rpy.get_solution_result() << std::endl;
+
+  VectorXd q_sol_rpy = contact_solver_rpy.GetSolutionQ();
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_rpy.size(), num_positions_rpy_);
+  // Checking if the solution constraints have been satisfied
+  ASSERT_TRUE(contact_solver_rpy.CheckConstraint(q_sol_rpy));
+
+  // Quaternion base
+  ContactSolver contact_solver_quaternion(
+      tree_quaternion_, contact_info_quaternion_, q_quaternion_);
+  contact_solver_quaternion.SetInitialGuessQ(q_quaternion_);
+  contact_solver_quaternion.AddFixedJointsConstraint(
+      fixed_joints_map_quaternion_);
+  contact_solver_quaternion.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_quaternion =
+      contact_solver_quaternion.Solve();
+
+  std::cout << "Contact solver result (Quaternion Floating base): "
+            << program_result_quaternion.get_solution_result() << std::endl;
+
+  VectorXd q_sol_quaternion = contact_solver_quaternion.GetSolutionQ();
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
+  // Checking if the solution constraints have been satisfied
+  ASSERT_TRUE(contact_solver_quaternion.CheckConstraint(q_sol_quaternion));
+}
+
 // TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
 //  // Fixed base
 //  FixedPointSolver fp_solver_fixed(tree_fixed_, q_fixed_, u_fixed_);

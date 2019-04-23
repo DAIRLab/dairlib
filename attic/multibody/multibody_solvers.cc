@@ -227,6 +227,16 @@ void PositionSolver::AddProgramCost(VectorXd q_desired, MatrixXd Q) {
   prog_->AddQuadraticErrorCost(Q, q_desired, q_);
 }
 
+void PositionSolver::AddUnitQuaternionConstraint(const int qw_ind,
+                                                 const int qx_ind,
+                                                 const int qy_ind,
+                                                 const int qz_ind) {
+  // Constraint to enforce a unit quaternion
+  prog_->AddConstraint((q_(qw_ind) * q_(qw_ind) + q_(qx_ind) * q_(qx_ind) +
+                        q_(qy_ind) * q_(qy_ind) + q_(qz_ind) * q_(qz_ind)) ==
+                       1.0);
+}
+
 void PositionSolver::AddFixedJointsConstraint(map<int, double> fixed_joints) {
   for (auto it = fixed_joints.begin(); it != fixed_joints.end(); ++it) {
     prog_->AddConstraint(q_(it->first) == it->second);
@@ -356,6 +366,16 @@ void ContactSolver::AddFixedJointsConstraint(map<int, double> fixed_joints) {
   for (auto it = fixed_joints.begin(); it != fixed_joints.end(); ++it) {
     prog_->AddConstraint(q_(it->first) == it->second);
   }
+}
+
+void ContactSolver::AddUnitQuaternionConstraint(const int qw_ind,
+                                                const int qx_ind,
+                                                const int qy_ind,
+                                                const int qz_ind) {
+  // Constraint to enforce a unit quaternion
+  prog_->AddConstraint((q_(qw_ind) * q_(qw_ind) + q_(qx_ind) * q_(qx_ind) +
+                        q_(qy_ind) * q_(qy_ind) + q_(qz_ind) * q_(qz_ind)) ==
+                       1.0);
 }
 
 void ContactSolver::AddJointLimitConstraint(const double tolerance) {
@@ -597,6 +617,16 @@ void FixedPointSolver::AddSpreadNormalForcesCost() {
   prog_->AddCost(normal_cost_expression);
 }
 
+void FixedPointSolver::AddUnitQuaternionConstraint(const int qw_ind,
+                                                   const int qx_ind,
+                                                   const int qy_ind,
+                                                   const int qz_ind) {
+  // Constraint to enforce a unit quaternion
+  prog_->AddConstraint((q_(qw_ind) * q_(qw_ind) + q_(qx_ind) * q_(qx_ind) +
+                        q_(qy_ind) * q_(qy_ind) + q_(qz_ind) * q_(qz_ind)) ==
+                       1.0);
+}
+
 void FixedPointSolver::AddFrictionConeConstraint(const double mu) {
   // Adding the friction cone constraint at all the contact points.
   int num_position_constraints = tree_.getNumPositionConstraints();
@@ -622,7 +652,7 @@ void FixedPointSolver::AddJointLimitConstraint(const double tolerance) {
   VectorXd joint_min = tree_.joint_limit_min;
   VectorXd joint_max = tree_.joint_limit_max;
 
-  //prog_->AddConstraint(
+  // prog_->AddConstraint(
   //    q_(3) * q_(3) + q_(4) * q_(4) + q_(5) * q_(5) + q_(6) * q_(6) == 1);
 
   for (int i = 7; i < joint_min.size(); ++i) {

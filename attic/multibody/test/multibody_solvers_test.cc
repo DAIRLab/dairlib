@@ -77,81 +77,78 @@ class MultibodySolversTest : public ::testing::Test {
     num_efforts_quaternion_ = tree_quaternion_.get_num_actuators();
 
     // Setting the initial Cassie joint angles
-    map<string, int> position_map_fixed =
-        tree_fixed_.computePositionNameToIndexMap();
+    position_map_fixed_ = tree_fixed_.computePositionNameToIndexMap();
     x0_fixed_ = VectorXd::Zero(num_states_fixed_);
-    x0_fixed_(position_map_fixed.at("hip_roll_left")) = 0.1;
-    x0_fixed_(position_map_fixed.at("hip_roll_right")) = -0.1;
-    x0_fixed_(position_map_fixed.at("hip_yaw_left")) = 0.01;
-    x0_fixed_(position_map_fixed.at("hip_yaw_right")) = -0.01;
-    x0_fixed_(position_map_fixed.at("hip_pitch_left")) = .269;
-    x0_fixed_(position_map_fixed.at("hip_pitch_right")) = .269;
-    x0_fixed_(position_map_fixed.at("knee_left")) = -.744;
-    x0_fixed_(position_map_fixed.at("knee_right")) = -.744;
-    x0_fixed_(position_map_fixed.at("ankle_joint_left")) = .81;
-    x0_fixed_(position_map_fixed.at("ankle_joint_right")) = .81;
-    x0_fixed_(position_map_fixed.at("toe_left")) = 0;
-    x0_fixed_(position_map_fixed.at("toe_right")) = 0;
+    x0_fixed_(position_map_fixed_.at("hip_roll_left")) = 0.1;
+    x0_fixed_(position_map_fixed_.at("hip_roll_right")) = -0.1;
+    x0_fixed_(position_map_fixed_.at("hip_yaw_left")) = 0.01;
+    x0_fixed_(position_map_fixed_.at("hip_yaw_right")) = -0.01;
+    x0_fixed_(position_map_fixed_.at("hip_pitch_left")) = .269;
+    x0_fixed_(position_map_fixed_.at("hip_pitch_right")) = .269;
+    x0_fixed_(position_map_fixed_.at("knee_left")) = -.744;
+    x0_fixed_(position_map_fixed_.at("knee_right")) = -.744;
+    x0_fixed_(position_map_fixed_.at("ankle_joint_left")) = .81;
+    x0_fixed_(position_map_fixed_.at("ankle_joint_right")) = .81;
+    x0_fixed_(position_map_fixed_.at("toe_left")) = 0;
+    x0_fixed_(position_map_fixed_.at("toe_right")) = 0;
 
-    map<string, int> position_map_rpy =
-        tree_rpy_.computePositionNameToIndexMap();
+    position_map_rpy_ = tree_rpy_.computePositionNameToIndexMap();
     x0_rpy_ = VectorXd::Zero(num_states_rpy_);
-    x0_rpy_(position_map_rpy.at("base_z")) = 3;
-    x0_rpy_(position_map_rpy.at("hip_roll_left")) = 0.1;
-    x0_rpy_(position_map_rpy.at("hip_roll_right")) = -0.1;
-    x0_rpy_(position_map_rpy.at("hip_yaw_left")) = 0.01;
-    x0_rpy_(position_map_rpy.at("hip_yaw_right")) = -0.01;
-    x0_rpy_(position_map_rpy.at("hip_pitch_left")) = .269;
-    x0_rpy_(position_map_rpy.at("hip_pitch_right")) = .269;
-    x0_rpy_(position_map_rpy.at("knee_left")) = -.744;
-    x0_rpy_(position_map_rpy.at("knee_right")) = -.744;
-    x0_rpy_(position_map_rpy.at("ankle_joint_left")) = .81;
-    x0_rpy_(position_map_rpy.at("ankle_joint_right")) = .81;
-    x0_rpy_(position_map_rpy.at("toe_left")) = -60.0 * M_PI / 180.0;
-    x0_rpy_(position_map_rpy.at("toe_right")) = -60.0 * M_PI / 180.0;
+    x0_rpy_(position_map_rpy_.at("base_z")) = 3;
+    x0_rpy_(position_map_rpy_.at("hip_roll_left")) = 0.1;
+    x0_rpy_(position_map_rpy_.at("hip_roll_right")) = -0.1;
+    x0_rpy_(position_map_rpy_.at("hip_yaw_left")) = 0.01;
+    x0_rpy_(position_map_rpy_.at("hip_yaw_right")) = -0.01;
+    x0_rpy_(position_map_rpy_.at("hip_pitch_left")) = .269;
+    x0_rpy_(position_map_rpy_.at("hip_pitch_right")) = .269;
+    x0_rpy_(position_map_rpy_.at("knee_left")) = -.744;
+    x0_rpy_(position_map_rpy_.at("knee_right")) = -.744;
+    x0_rpy_(position_map_rpy_.at("ankle_joint_left")) = .81;
+    x0_rpy_(position_map_rpy_.at("ankle_joint_right")) = .81;
+    x0_rpy_(position_map_rpy_.at("toe_left")) = -60.0 * M_PI / 180.0;
+    x0_rpy_(position_map_rpy_.at("toe_right")) = -60.0 * M_PI / 180.0;
 
-    map<string, int> position_map_quaternion =
-        tree_quaternion_.computePositionNameToIndexMap();
+    position_map_quaternion_ = tree_quaternion_.computePositionNameToIndexMap();
     x0_quaternion_ = VectorXd::Zero(num_states_quaternion_);
-    x0_quaternion_(position_map_quaternion.at("base_z")) = 3;
-    x0_quaternion_(position_map_quaternion.at("base_qw")) = 1.0;
-    x0_quaternion_(position_map_quaternion.at("hip_roll_left")) = 0.1;
-    x0_quaternion_(position_map_quaternion.at("hip_roll_right")) = -0.1;
-    x0_quaternion_(position_map_quaternion.at("hip_yaw_left")) = 0.01;
-    x0_quaternion_(position_map_quaternion.at("hip_yaw_right")) = -0.01;
-    x0_quaternion_(position_map_quaternion.at("hip_pitch_left")) = .269;
-    x0_quaternion_(position_map_quaternion.at("hip_pitch_right")) = .269;
-    x0_quaternion_(position_map_quaternion.at("knee_left")) = -.744;
-    x0_quaternion_(position_map_quaternion.at("knee_right")) = -.744;
-    x0_quaternion_(position_map_quaternion.at("ankle_joint_left")) = .81;
-    x0_quaternion_(position_map_quaternion.at("ankle_joint_right")) = .81;
-    x0_quaternion_(position_map_quaternion.at("toe_left")) =
+    x0_quaternion_(position_map_quaternion_.at("base_z")) = 3;
+    x0_quaternion_(position_map_quaternion_.at("base_qw")) = 1.0;
+    x0_quaternion_(position_map_quaternion_.at("hip_roll_left")) = 0.1;
+    x0_quaternion_(position_map_quaternion_.at("hip_roll_right")) = -0.1;
+    x0_quaternion_(position_map_quaternion_.at("hip_yaw_left")) = 0.01;
+    x0_quaternion_(position_map_quaternion_.at("hip_yaw_right")) = -0.01;
+    x0_quaternion_(position_map_quaternion_.at("hip_pitch_left")) = .269;
+    x0_quaternion_(position_map_quaternion_.at("hip_pitch_right")) = .269;
+    x0_quaternion_(position_map_quaternion_.at("knee_left")) = -.744;
+    x0_quaternion_(position_map_quaternion_.at("knee_right")) = -.744;
+    x0_quaternion_(position_map_quaternion_.at("ankle_joint_left")) = .81;
+    x0_quaternion_(position_map_quaternion_.at("ankle_joint_right")) = .81;
+    x0_quaternion_(position_map_quaternion_.at("toe_left")) =
         -60.0 * M_PI / 180.0;
-    x0_quaternion_(position_map_quaternion.at("toe_right")) =
+    x0_quaternion_(position_map_quaternion_.at("toe_right")) =
         -60.0 * M_PI / 180.0;
 
     // Setting up fixed_joints_vector_ and fixed_joints_map_ for the rpy
     // floating base model
-    fixed_joints_vector_rpy_.push_back(position_map_rpy.at("base_roll"));
-    fixed_joints_vector_rpy_.push_back(position_map_rpy.at("base_pitch"));
-    fixed_joints_vector_rpy_.push_back(position_map_rpy.at("base_yaw"));
-    fixed_joints_vector_rpy_.push_back(position_map_rpy.at("hip_pitch_left"));
-    fixed_joints_vector_rpy_.push_back(position_map_rpy.at("hip_pitch_right"));
+    fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("base_roll"));
+    fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("base_pitch"));
+    fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("base_yaw"));
+    fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("hip_pitch_left"));
+    fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("hip_pitch_right"));
 
     // Setting up fixed_joints_vector_ and fixed_joints_map_ for the quaternion
     // floating base model
     fixed_joints_vector_quaternion_.push_back(
-        position_map_quaternion.at("base_qw"));
+        position_map_quaternion_.at("base_qw"));
     fixed_joints_vector_quaternion_.push_back(
-        position_map_quaternion.at("base_qx"));
+        position_map_quaternion_.at("base_qx"));
     fixed_joints_vector_quaternion_.push_back(
-        position_map_quaternion.at("base_qy"));
+        position_map_quaternion_.at("base_qy"));
     fixed_joints_vector_quaternion_.push_back(
-        position_map_quaternion.at("base_qz"));
+        position_map_quaternion_.at("base_qz"));
     fixed_joints_vector_quaternion_.push_back(
-        position_map_quaternion.at("hip_pitch_left"));
+        position_map_quaternion_.at("hip_pitch_left"));
     fixed_joints_vector_quaternion_.push_back(
-        position_map_quaternion.at("hip_pitch_right"));
+        position_map_quaternion_.at("hip_pitch_right"));
 
     // Setting up the fixed joints map
     for (auto& ind : fixed_joints_vector_rpy_) {
@@ -277,6 +274,9 @@ class MultibodySolversTest : public ::testing::Test {
   RigidBodyTree<double> tree_fixed_;
   RigidBodyTree<double> tree_rpy_;
   RigidBodyTree<double> tree_quaternion_;
+  map<string, int> position_map_fixed_;
+  map<string, int> position_map_rpy_;
+  map<string, int> position_map_quaternion_;
   vector<int> fixed_joints_vector_rpy_;
   vector<int> fixed_joints_vector_quaternion_;
   map<int, double> fixed_joints_map_rpy_;
@@ -660,13 +660,11 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
   ASSERT_TRUE(position_solver_rpy.CheckConstraint(q_sol_rpy));
 
   // Quaternion base
-  map<string, int> position_map_quaternion =
-      tree_quaternion_.computePositionNameToIndexMap();
   PositionSolver position_solver_quaternion(tree_quaternion_, q_quaternion_);
   position_solver_quaternion.SetInitialGuessQ(q_quaternion_);
   position_solver_quaternion.AddUnitQuaternionConstraint(
-      position_map_quaternion["base_qw"], position_map_quaternion["base_qx"],
-      position_map_quaternion["base_qy"], position_map_quaternion["base_qz"]);
+      position_map_quaternion_["base_qw"], position_map_quaternion_["base_qx"],
+      position_map_quaternion_["base_qy"], position_map_quaternion_["base_qz"]);
   position_solver_quaternion.AddFixedJointsConstraint(
       fixed_joints_map_quaternion_);
   position_solver_quaternion.AddJointLimitConstraint(0.001);
@@ -678,8 +676,6 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
        << program_result_quaternion.get_solution_result() << endl;
 
   VectorXd q_sol_quaternion = position_solver_quaternion.GetSolutionQ();
-
-  std::cout << q_sol_quaternion << std::endl;
 
   // Solution dimension check
   ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
@@ -711,6 +707,9 @@ TEST_F(MultibodySolversTest, TestContactSolverSolution) {
   ContactSolver contact_solver_quaternion(
       tree_quaternion_, contact_info_quaternion_, q_quaternion_);
   contact_solver_quaternion.SetInitialGuessQ(q_quaternion_);
+  contact_solver_quaternion.AddUnitQuaternionConstraint(
+      position_map_quaternion_["base_qw"], position_map_quaternion_["base_qx"],
+      position_map_quaternion_["base_qy"], position_map_quaternion_["base_qz"]);
   contact_solver_quaternion.AddFixedJointsConstraint(
       fixed_joints_map_quaternion_);
   contact_solver_quaternion.AddJointLimitConstraint(0.001);
@@ -729,58 +728,85 @@ TEST_F(MultibodySolversTest, TestContactSolverSolution) {
   ASSERT_TRUE(contact_solver_quaternion.CheckConstraint(q_sol_quaternion));
 }
 
-// TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
-//  // Fixed base
-//  FixedPointSolver fp_solver_fixed(tree_fixed_, q_fixed_, u_fixed_);
-//  fp_solver_fixed.SetInitialGuess(q_fixed_, u_fixed_, lambda_fixed_);
-//  fp_solver_fixed.AddJointLimitConstraint(0.001);
-//
-//  MathematicalProgramResult program_result_fixed = fp_solver_fixed.Solve();
-//
-//  cout << "Fixed point solver result (Fixed base): "
-//       << program_result_fixed.get_solution_result() << endl;
-//
-//  VectorXd q_sol_fixed = fp_solver_fixed.GetSolutionQ();
-//  VectorXd u_sol_fixed = fp_solver_fixed.GetSolutionU();
-//  VectorXd lambda_sol_fixed = fp_solver_fixed.GetSolutionLambda();
-//
-//  // Solution dimension check
-//  ASSERT_EQ(q_sol_fixed.size(), num_positions_fixed_);
-//  ASSERT_EQ(u_sol_fixed.size(), num_efforts_fixed_);
-//  ASSERT_EQ(lambda_sol_fixed.size(), num_position_constraints_);
-//  // Solution constraints check
-//  ASSERT_TRUE(fp_solver_fixed.CheckConstraint(q_sol_fixed, u_sol_fixed,
-//                                              lambda_sol_fixed));
-//
-//  // Floating base
-//  FixedPointSolver fp_solver_floating(tree_floating_rpy_, contact_info_,
-//                                      q_floating_, u_floating_);
-//  fp_solver_floating.SetInitialGuess(q_floating_, u_floating_,
-//                                     lambda_floating_);
-//  fp_solver_floating.AddSpreadNormalForcesCost();
-//  fp_solver_floating.AddFrictionConeConstraint(0.8);
-//  fp_solver_floating.AddFixedJointsConstraint(fixed_joints_map_);
-//  fp_solver_floating.AddJointLimitConstraint(0.001);
-//
-//  MathematicalProgramResult program_result_floating =
-//      fp_solver_floating.Solve();
-//
-//  cout << "Fixed point solver result (Floating base): "
-//       << program_result_floating.get_solution_result() << endl;
-//
-//  VectorXd q_sol_floating = fp_solver_floating.GetSolutionQ();
-//  VectorXd u_sol_floating = fp_solver_floating.GetSolutionU();
-//  VectorXd lambda_sol_floating = fp_solver_floating.GetSolutionLambda();
-//
-//  // Solution dimension check
-//  ASSERT_EQ(q_sol_floating.size(), num_positions_floating_);
-//  ASSERT_EQ(u_sol_floating.size(), num_efforts_floating_);
-//  ASSERT_EQ(lambda_sol_floating.size(), num_forces_);
-//  // Solution constraints check
-//  ASSERT_TRUE(fp_solver_floating.CheckConstraint(q_sol_floating,
-//  u_sol_floating,
-//                                                 lambda_sol_floating));
-//}
+TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
+  // Fixed base
+  FixedPointSolver fp_solver_fixed(tree_fixed_, q_fixed_, u_fixed_);
+  fp_solver_fixed.SetInitialGuess(q_fixed_, u_fixed_, lambda_fixed_);
+  fp_solver_fixed.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_fixed = fp_solver_fixed.Solve();
+
+  cout << "Fixed point solver result (Fixed base): "
+       << program_result_fixed.get_solution_result() << endl;
+
+  VectorXd q_sol_fixed = fp_solver_fixed.GetSolutionQ();
+  VectorXd u_sol_fixed = fp_solver_fixed.GetSolutionU();
+  VectorXd lambda_sol_fixed = fp_solver_fixed.GetSolutionLambda();
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_fixed.size(), num_positions_fixed_);
+  ASSERT_EQ(u_sol_fixed.size(), num_efforts_fixed_);
+  ASSERT_EQ(lambda_sol_fixed.size(), num_position_constraints_fixed_);
+  // Solution constraints check
+  ASSERT_TRUE(fp_solver_fixed.CheckConstraint(q_sol_fixed, u_sol_fixed,
+                                              lambda_sol_fixed));
+
+  // Rpy base
+  FixedPointSolver fp_solver_rpy(tree_rpy_, contact_info_rpy_, q_rpy_, u_rpy_);
+  fp_solver_rpy.SetInitialGuess(q_rpy_, u_rpy_, lambda_rpy_);
+  fp_solver_rpy.AddSpreadNormalForcesCost();
+  fp_solver_rpy.AddFrictionConeConstraint(0.8);
+  fp_solver_rpy.AddFixedJointsConstraint(fixed_joints_map_rpy_);
+  fp_solver_rpy.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_rpy = fp_solver_rpy.Solve();
+
+  cout << "Fixed point solver result (Rpy base): "
+       << program_result_rpy.get_solution_result() << endl;
+
+  VectorXd q_sol_rpy = fp_solver_rpy.GetSolutionQ();
+  VectorXd u_sol_rpy = fp_solver_rpy.GetSolutionU();
+  VectorXd lambda_sol_rpy = fp_solver_rpy.GetSolutionLambda();
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_rpy.size(), num_positions_rpy_);
+  ASSERT_EQ(u_sol_rpy.size(), num_efforts_rpy_);
+  ASSERT_EQ(lambda_sol_rpy.size(), num_forces_rpy_);
+  // Solution constraints check
+  ASSERT_TRUE(
+      fp_solver_rpy.CheckConstraint(q_sol_rpy, u_sol_rpy, lambda_sol_rpy));
+
+  // Quaternion base
+  FixedPointSolver fp_solver_quaternion(
+      tree_quaternion_, contact_info_quaternion_, q_quaternion_, u_quaternion_);
+  fp_solver_quaternion.SetInitialGuess(q_quaternion_, u_quaternion_,
+                                       lambda_quaternion_);
+  fp_solver_quaternion.AddSpreadNormalForcesCost();
+  fp_solver_quaternion.AddUnitQuaternionConstraint(
+      position_map_quaternion_["base_qw"], position_map_quaternion_["base_qx"],
+      position_map_quaternion_["base_qy"], position_map_quaternion_["base_qz"]);
+  //fp_solver_quaternion.AddFixedJointsConstraint(fixed_joints_map_quaternion_);
+  fp_solver_quaternion.AddFrictionConeConstraint(0.8);
+  fp_solver_quaternion.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_quaternion =
+      fp_solver_quaternion.Solve();
+
+  cout << "Fixed point solver result (Quaternion base): "
+       << program_result_quaternion.get_solution_result() << endl;
+
+  VectorXd q_sol_quaternion = fp_solver_quaternion.GetSolutionQ();
+  VectorXd u_sol_quaternion = fp_solver_quaternion.GetSolutionU();
+  VectorXd lambda_sol_quaternion = fp_solver_quaternion.GetSolutionLambda();
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
+  ASSERT_EQ(u_sol_quaternion.size(), num_efforts_quaternion_);
+  ASSERT_EQ(lambda_sol_quaternion.size(), num_forces_quaternion_);
+  // Solution constraints check
+  ASSERT_TRUE(fp_solver_quaternion.CheckConstraint(
+      q_sol_quaternion, u_sol_quaternion, lambda_sol_quaternion));
+}
 
 }  // namespace
 }  // namespace multibody

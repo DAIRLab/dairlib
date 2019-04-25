@@ -241,16 +241,26 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
 EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
 
-  cout << "\nIn per-step update: time = " << context.get_time() << endl;
+  // Testing
+  const auto& cassie_out =
+    this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
+  cout << "\nIn per-step update: lcm_time = " << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
+  cout << "In per-step update: context_time = " << context.get_time() << endl;
+
+  // Get current time and previous time
+  double current_time = context.get_time();
   double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
 
-  if (context.get_time() > prev_t) {
-    double dt = context.get_time() - prev_t;
+  // Testing
+  // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
+
+  if (current_time > prev_t) {
+    double dt = current_time - prev_t;
     discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
-        context.get_time();
+        current_time;
 
     // Testing
-    cout << "updated previous_time = " <<
+    cout << "In per-step update: updated state_time = " <<
          discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << endl;
 
     // Perform State Estimation (in several steps)
@@ -366,9 +376,10 @@ void CassieRbtStateEstimator::CopyStateOut(
 
 
   // Testing
-  auto pre_time = context.get_discrete_state(time_idx_).get_value();
-  cout << "  In copyStateOut: pre_time = " << pre_time << endl;
-  cout << "  In copyStateOut: time = " << context.get_time() << endl;
+  auto state_time = context.get_discrete_state(time_idx_).get_value();
+  cout << "  In copyStateOut: lcm_time = " << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
+  cout << "  In copyStateOut: state_time = " << state_time << endl;
+  cout << "  In copyStateOut: context_time = " << context.get_time() << endl;
 
   // Testing
   // cout << endl << "****bodies****" << endl;

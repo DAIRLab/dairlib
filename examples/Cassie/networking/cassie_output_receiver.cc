@@ -123,6 +123,9 @@ void CassieOutputReceiver::CopyOutput(const Context<double>& context,
   copy_vector(message.messages,
               cassie_out->messages, 4);
   cassie_out->isCalibrated = message.isCalibrated;
+
+  // Just for testing
+  cassie_out->pelvis.targetPc.taskExecutionTime = message.utime*1e-6;
 }
 
 }  // namespace systems

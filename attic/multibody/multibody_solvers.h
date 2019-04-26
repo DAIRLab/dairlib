@@ -553,8 +553,8 @@ class FixedPointSolver {
   drake::solvers::VectorXDecisionVariable lambda_;
   drake::solvers::MathematicalProgramResult program_result_;
   std::string filename_ = "attic/multibody/solver_log/fixed_point_solver.log";
-  double major_tolerance_ = 1.0e-13;
-  double minor_tolerance_ = 1.0e-13;
+  double major_tolerance_ = 1.0e-9;
+  double minor_tolerance_ = 1.0e-7;
 };
 
 }  // namespace multibody

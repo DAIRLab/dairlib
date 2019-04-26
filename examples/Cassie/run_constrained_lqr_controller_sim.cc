@@ -221,12 +221,12 @@ int do_main(int argc, char* argv[]) {
 
   if (FLAGS_floating_base) {
     // desired x0
-    x0(position_map.at("base_z")) = 5;
+    x0(position_map.at("base_z")) = 3;
     x0(position_map.at("base_qw")) = 1.0;
     x0(position_map.at("hip_roll_left")) = 0.1;
     x0(position_map.at("hip_roll_right")) = -0.1;
-    x0(position_map.at("hip_yaw_left")) = -0.01;
-    x0(position_map.at("hip_yaw_right")) = 0.01;
+    x0(position_map.at("hip_yaw_left")) = 0.01;
+    x0(position_map.at("hip_yaw_right")) = -0.01;
     x0(position_map.at("hip_pitch_left")) = .269;
     x0(position_map.at("hip_pitch_right")) = .269;
     x0(position_map.at("knee_left")) = -.744;
@@ -243,10 +243,10 @@ int do_main(int argc, char* argv[]) {
     fixed_joints.push_back(position_map.at("base_qz"));
     // fixed_joints.push_back(position_map.at("hip_roll_left"));
     // fixed_joints.push_back(position_map.at("hip_roll_right"));
-    // fixed_joints.push_back(position_map.at("hip_pitch_left"));
-    // fixed_joints.push_back(position_map.at("hip_pitch_right"));
-    fixed_joints.push_back(position_map.at("hip_yaw_left"));
-    fixed_joints.push_back(position_map.at("hip_yaw_right"));
+    fixed_joints.push_back(position_map.at("hip_pitch_left"));
+    fixed_joints.push_back(position_map.at("hip_pitch_right"));
+    // fixed_joints.push_back(position_map.at("hip_yaw_left"));
+    // fixed_joints.push_back(position_map.at("hip_yaw_right"));
     // fixed_joints.push_back(position_map.at("knee_left"));
     // fixed_joints.push_back(position_map.at("knee_right"));
 
@@ -306,22 +306,38 @@ int do_main(int argc, char* argv[]) {
   fp_solver->AddSpreadNormalForcesCost();
   fp_solver->AddFrictionConeConstraint(0.75);
   fp_solver->AddJointLimitConstraint(0.001);
-  fp_solver->AddFixedJointsConstraint(fixed_joints_map);
+  // fp_solver->AddFixedJointsConstraint(fixed_joints_map);
 
   std::cout << "Solving" << std::endl;
   MathematicalProgramResult fp_program_result = fp_solver->Solve();
 
   // Don't proceed if the solver does not find the right solution
-  if (!fp_program_result.is_success()) {
-    std::cout << "Fixed point solver error: "
-              << fp_program_result.get_solution_result() << std::endl;
-    return 0;
-  }
+  // if (!fp_program_result.is_success()) {
+  //  std::cout << "Fixed point solver error: "
+  //            << fp_program_result.get_solution_result() << std::endl;
+  //  return 0;
+  //}
 
   // Fixed point results.
   VectorXd q = fp_solver->GetSolutionQ();
   VectorXd u = fp_solver->GetSolutionU();
   VectorXd lambda = fp_solver->GetSolutionLambda();
+
+  if (!fp_solver->CheckConstraint(q, u, lambda, 1e-4)) {
+    std::cout << "Constraints not satisfied." << std::endl;
+    return 0;
+  }
+
+  //double norm =
+  //    std::sqrt(q(3) * q(3) + q(4) * q(4) + q(5) * q(5) + q(6) * q(6));
+  //q(3) /= norm;
+  //q(4) /= norm;
+  //q(5) /= norm;
+  //q(6) /= norm;
+  //q(3) = 1.0;
+  //q(4) = 0.0;
+  //q(5) = 0.0;
+  //q(6) = 0.0;
 
   std::cout << "Forces: " << std::endl << lambda << std::endl;
   std::cout << "Joint angles: " << std::endl << q << std::endl;
@@ -444,9 +460,9 @@ int do_main(int argc, char* argv[]) {
                   plant->actuator_command_input_port());
 
   // Drake Visualizer
-  DrakeVisualizer& visualizer = *builder.template AddSystem<DrakeVisualizer>(
-      plant->get_rigid_body_tree(), &lcm);
-  builder.Connect(plant->state_output_port(), visualizer.get_input_port(0));
+  //DrakeVisualizer& visualizer = *builder.template AddSystem<DrakeVisualizer>(
+  //    plant->get_rigid_body_tree(), &lcm);
+  //builder.Connect(plant->state_output_port(), visualizer.get_input_port(0));
 
   // Building the diagram and starting the simulation.
   auto diagram = builder.Build();
@@ -473,7 +489,8 @@ int do_main(int argc, char* argv[]) {
 
   lcm.StartReceiveThread();
 
-  simulator.StepTo(std::numeric_limits<double>::infinity());
+  // simulator.StepTo(std::numeric_limits<double>::infinity());
+  simulator.StepTo(1e-4);
 
   return 0;
 }

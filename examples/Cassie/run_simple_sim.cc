@@ -198,7 +198,7 @@ int do_main(int argc, char* argv[]) {
     double quaternion_norm = x0.segment(3, 4).norm();
     if (quaternion_norm != 0)  // Unit Quaternion
       x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
-    else  // in case the user enter 0-norm quaternion
+    else  // in case the user enters 0-norm quaternion
       x0(3) = 1;
   }
 

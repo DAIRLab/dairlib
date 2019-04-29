@@ -250,3 +250,24 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
     ],
 )
+
+
+cc_binary(
+    name = "cassie_state_visualizer",
+    srcs = ["cassie_state_visualizer.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        ":cassie_urdf",
+        "@drake//systems/framework:diagram_builder",
+        "@drake//systems/lcm:lcm_pubsub_system",
+        "@drake//systems/analysis:simulator",
+        "@drake//lcm",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//manipulation/util",
+        ":cassie_utils",
+        "@drake//attic/multibody/rigid_body_plant:drake_visualizer",
+        "@gflags",
+        ]
+)
+

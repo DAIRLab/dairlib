@@ -165,9 +165,6 @@ int do_main(int argc, char* argv[]) {
   Eigen::VectorXd x0 =
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
-  if(FLAGS_floating_base)
-    if(x0(4)==0 && x0(5)==0 && x0(6)==0)
-      x0(3) = 1; // Quaternion's origin
 
   std::map<std::string, int> map =
       plant->get_rigid_body_tree().computePositionNameToIndexMap();
@@ -196,6 +193,14 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map.at("hip_pitch_right"));
   fixed_joints.push_back(map.at("knee_left"));
   fixed_joints.push_back(map.at("knee_right"));
+
+  if (FLAGS_floating_base) {
+    double quaternion_norm = x0.segment(3, 4).norm();
+    if (quaternion_norm != 0)  // Unit Quaternion
+      x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
+    else  // in case the user enter 0-norm quaternion
+      x0(3) = 1;
+  }
 
   Eigen::VectorXd q0 =
       x0.head(plant->get_rigid_body_tree().get_num_positions());

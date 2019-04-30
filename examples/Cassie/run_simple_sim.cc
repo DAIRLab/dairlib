@@ -166,66 +166,98 @@ int do_main(int argc, char* argv[]) {
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
 
-  std::map<std::string, int> map =
-      plant->get_rigid_body_tree().computePositionNameToIndexMap();
-  x0(map.at("hip_pitch_left")) = .269;
-  x0(map.at("hip_pitch_right")) = .269;
-  // x0(map.at("achilles_hip_pitch_left")) = -.44;
-  // x0(map.at("achilles_hip_pitch_right")) = -.44;
-  // x0(map.at("achilles_heel_pitch_left")) = -.105;
-  // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  x0(map.at("knee_left")) = -.644;
-  x0(map.at("knee_right")) = -.644;
-  x0(map.at("ankle_joint_left")) = .792;
-  x0(map.at("ankle_joint_right")) = .792;
+  if (!FLAGS_floating_base) {
+    std::map<std::string, int> map =
+        plant->get_rigid_body_tree().computePositionNameToIndexMap();
+    x0(map.at("hip_pitch_left")) = .269;
+    x0(map.at("hip_pitch_right")) = .269;
+    // x0(map.at("achilles_hip_pitch_left")) = -.44;
+    // x0(map.at("achilles_hip_pitch_right")) = -.44;
+    // x0(map.at("achilles_heel_pitch_left")) = -.105;
+    // x0(map.at("achilles_heel_pitch_right")) = -.105;
+    x0(map.at("knee_left")) = -.644;
+    x0(map.at("knee_right")) = -.644;
+    x0(map.at("ankle_joint_left")) = .792;
+    x0(map.at("ankle_joint_right")) = .792;
 
-  // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
-  // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
+    // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
+    // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
 
-  // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
-  // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
+    // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
+    // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
 
-  x0(map.at("toe_left")) = -60.0 * M_PI / 180.0;
-  x0(map.at("toe_right")) = -60.0 * M_PI / 180.0;
+    x0(map.at("toe_left")) = -60.0 * M_PI / 180.0;
+    x0(map.at("toe_right")) = -60.0 * M_PI / 180.0;
 
-  std::vector<int> fixed_joints;
-  fixed_joints.push_back(map.at("hip_pitch_left"));
-  fixed_joints.push_back(map.at("hip_pitch_right"));
-  fixed_joints.push_back(map.at("knee_left"));
-  fixed_joints.push_back(map.at("knee_right"));
+    std::vector<int> fixed_joints;
+    fixed_joints.push_back(map.at("hip_pitch_left"));
+    fixed_joints.push_back(map.at("hip_pitch_right"));
+    fixed_joints.push_back(map.at("knee_left"));
+    fixed_joints.push_back(map.at("knee_right"));
 
-  if (FLAGS_floating_base) {
-    double quaternion_norm = x0.segment(3, 4).norm();
-    if (quaternion_norm != 0)  // Unit Quaternion
-      x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
-    else  // in case the user enters 0-norm quaternion
-      x0(3) = 1;
+    if (FLAGS_floating_base) {
+      double quaternion_norm = x0.segment(3, 4).norm();
+      if (quaternion_norm != 0)  // Unit Quaternion
+        x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
+      else  // in case the user enters 0-norm quaternion
+        x0(3) = 1;
+    }
+
+    Eigen::VectorXd q0 =
+        x0.head(plant->get_rigid_body_tree().get_num_positions());
+    PositionSolver position_solver(plant->get_rigid_body_tree(), q0);
+    position_solver.SetInitialGuessQ(q0);
+
+    // Creating the map for the fixed joints constraint
+    std::map<int, double> fixed_joints_map;
+    for (auto& ind : fixed_joints) {
+      fixed_joints_map[ind] = x0(ind);
+    }
+
+    position_solver.AddFixedJointsConstraint(fixed_joints_map);
+
+    MathematicalProgramResult program_result = position_solver.Solve();
+
+    if (!program_result.is_success()) {
+      std::cout << "Solver error: " << program_result.get_solution_result() << std::endl;
+      return 0;
+    }
+
+    q0 = position_solver.GetSolutionQ();
+    x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
+
+    std::cout << q0 << std::endl;
+
+  } else {
+    // Set the initial pose manually for now
+    Eigen::VectorXd q0(plant->get_rigid_body_tree().get_num_positions());
+    q0 << 0.00941775,
+       - 0.000302489,
+       1.02419,
+       0.990074,
+       0.000454745,
+       0.00115377,
+       0.000835731,
+       - 0.00061303,
+       - 0.000475175,
+       - 0.000578358,
+       - 0.00287131,
+       0.496291,
+       0.496113,
+       - 1.14917,
+       - 1.15002,
+       0,
+       0,
+       1.35286,
+       1.35389,
+       0,
+       0,
+       - 1.57,
+       - 1.57;
+    x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
+
+    std::cout << q0 << std::endl;
   }
-
-  Eigen::VectorXd q0 =
-      x0.head(plant->get_rigid_body_tree().get_num_positions());
-  PositionSolver position_solver(plant->get_rigid_body_tree(), q0);
-  position_solver.SetInitialGuessQ(q0);
-
-  // Creating the map for the fixed joints constraint
-  std::map<int, double> fixed_joints_map;
-  for (auto& ind : fixed_joints) {
-    fixed_joints_map[ind] = x0(ind);
-  }
-
-  position_solver.AddFixedJointsConstraint(fixed_joints_map);
-
-  MathematicalProgramResult program_result = position_solver.Solve();
-
-  if (!program_result.is_success()) {
-    std::cout << "Solver error: " << program_result.get_solution_result() << std::endl;
-    return 0;
-  }
-
-  q0 = position_solver.GetSolutionQ();
-  x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
-
-  std::cout << q0 << std::endl;
 
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state =

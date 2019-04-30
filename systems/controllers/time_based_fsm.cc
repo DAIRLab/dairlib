@@ -3,7 +3,7 @@
 namespace dairlib {
 namespace systems {
 
-TimeBaseCassieFiniteStateMachine::TimeBaseCassieFiniteStateMachine(
+TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
     int num_positions,
     int num_velocities,
     int num_inputs,
@@ -12,14 +12,14 @@ TimeBaseCassieFiniteStateMachine::TimeBaseCassieFiniteStateMachine(
     string first_state_name,
     string second_state_name,
     int start_state_number,
-    double time_duration_per_state,
+    double duration_per_state,
     double time_shift):
   first_state_number_(first_state_number),
   second_state_number_(second_state_number),
   first_state_name_(first_state_name),
   second_state_name_(second_state_name),
   start_state_number_(start_state_number),
-  time_duration_per_state_(time_duration_per_state),
+  duration_per_state_(duration_per_state),
   time_shift_(time_shift) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -27,13 +27,13 @@ TimeBaseCassieFiniteStateMachine::TimeBaseCassieFiniteStateMachine(
                                        num_velocities,
                                        num_inputs)).get_index();
   this->DeclareVectorOutputPort(BasicVector<double>(1),
-                                &TimeBaseCassieFiniteStateMachine::CalcFiniteState);
+                                &TimeBasedFiniteStateMachine::CalcFiniteState);
 }
 
 
-void TimeBaseCassieFiniteStateMachine::CalcFiniteState(
-  const Context<double>& context,
-        BasicVector<double>* fsm_state) const {
+void TimeBasedFiniteStateMachine::CalcFiniteState(
+    const Context<double>& context,
+    BasicVector<double>* fsm_state) const {
   // Read in current state and simulation time
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -41,11 +41,11 @@ void TimeBaseCassieFiniteStateMachine::CalcFiniteState(
   double timestamp = robot_output->get_timestamp();
   double current_sim_time = static_cast<double>(timestamp);
 
-  const double period = time_duration_per_state_ * 2;
+  const double period = duration_per_state_ * 2;
 
   double m = floor((current_sim_time - time_shift_) / period);
   double remainder = (current_sim_time - time_shift_) - m * period;
-  double phase = remainder / time_duration_per_state_;  // within [0,2]
+  double phase = remainder / duration_per_state_;  // within [0,2]
 
   // Get current finite tate
   VectorXd current_finite_state(1);

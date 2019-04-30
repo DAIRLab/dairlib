@@ -72,3 +72,15 @@ cc_library(
             "@drake//systems/framework:leaf_system",
             ]
 )
+
+cc_library(
+    name = "lipm_traj_gen",
+    srcs = ["lipm_traj_gen.cc",],
+    hdrs = ["lipm_traj_gen.h"],
+    deps = [
+            "//systems/framework:vector",
+            "@drake//attic/multibody:rigid_body_tree",
+            "@drake//systems/framework:leaf_system",
+            "@drake//common/trajectories:piecewise_polynomial",
+            ]
+)

@@ -1,9 +1,5 @@
 #include "systems/controllers/time_based_fsm.h"
 
-#include <typeinfo> // for typeid(variable).name()
-#include <math.h>
-#define PI 3.14159265
-
 namespace dairlib {
 namespace systems {
 

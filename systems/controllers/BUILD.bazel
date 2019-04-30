@@ -61,3 +61,14 @@ cc_test(
         "@gtest//:main",
     ],
 )
+
+
+cc_library(
+    name = "time_based_fsm",
+    srcs = ["time_based_fsm.cc",],
+    hdrs = ["time_based_fsm.h"],
+    deps = [
+            "//systems/framework:vector",
+            "@drake//systems/framework:leaf_system",
+            ]
+)

@@ -67,11 +67,16 @@ int do_main(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree;
-  if (FLAGS_floating_base)
+  if (!FLAGS_floating_base){
+    tree = makeCassieTreePointer();
+  } else {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kQuaternion);
-  else
-    tree = makeCassieTreePointer();
+    const double terrain_size = 100;
+    const double terrain_depth = 0.20;
+    drake::multibody::AddFlatTerrainToWorld(
+      tree.get(), terrain_size, terrain_depth);
+  }
 
   // Add imu frame to Cassie's pelvis
   if (FLAGS_is_imu_sim) addImuFrameToCassiePelvis(tree);

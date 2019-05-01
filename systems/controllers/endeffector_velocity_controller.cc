@@ -5,7 +5,7 @@ namespace systems{
 
 // Remember to use std::move on the rigid body tree argument.
 EndEffectorVelocityController::EndEffectorVelocityController(
-    std::unique_ptr<RigidBodyTree<double>>& tree, Eigen::Isometry3d eeCFIsometry,
+    RigidBodyTree<double>& tree, Eigen::Isometry3d eeCFIsometry,
     int num_joints, int k_d, int k_r) : tree(tree){
 
   // Set up this block's input and output ports
@@ -47,10 +47,10 @@ void EndEffectorVelocityController::CalcOutputTorques(
                                   CopyToVector();
 
   // Calculating the jacobian of the kuka arm
-  KinematicsCache<double> cache = tree->doKinematics(q, q_dot);
-  MatrixXd frameSpatialVelocityJacobian = tree->CalcFrameSpatialVelocityJacobianInWorldFrame(
+  KinematicsCache<double> cache = tree.doKinematics(q, q_dot);
+  MatrixXd frameSpatialVelocityJacobian = tree.CalcFrameSpatialVelocityJacobianInWorldFrame(
                                                     cache,
-                                                    tree->get_body(10),
+                                                    tree.get_body(10),
                                                     eeCFIsometry);
 
   // Using the jacobian, calculating the actual current velocities of the arm

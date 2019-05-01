@@ -7,7 +7,7 @@ namespace systems{
 
  // Remember to use std::move on the rigid body tree argument.
 EndEffectorPositionController::EndEffectorPositionController(
-    std::unique_ptr<RigidBodyTree<double>>& tree, int ee_frame_id,
+    RigidBodyTree<double>& tree, int ee_frame_id,
     Eigen::Vector3d ee_contact_frame, int num_joints, int k_p, int k_omega)
     : tree_local(tree){
  	// Set up this block's input and output ports
@@ -45,14 +45,14 @@ void EndEffectorPositionController::CalcOutputTwist(
                                         EvalVectorInput(context, endpoint_orientation_commanded_port)->
                                         CopyToVector();
 
-  KinematicsCache<double> cache = tree_local->doKinematics(q_actual);
+  KinematicsCache<double> cache = tree_local.doKinematics(q_actual);
 
-  MatrixXd x_actual = tree_local->transformPoints(cache, ee_contact_frame,
+  MatrixXd x_actual = tree_local.transformPoints(cache, ee_contact_frame,
                                                   ee_frame_id, WORLDFRAME_ID);
   MatrixXd diff = k_p * (x_desired - x_actual);
 
   // Quaternion for rotation from base to end effector
-  MatrixXd quat_tmp= tree_local->relativeQuaternion(cache, ee_frame_id, WORLDFRAME_ID);
+  MatrixXd quat_tmp= tree_local.relativeQuaternion(cache, ee_frame_id, WORLDFRAME_ID);
 
   Eigen::Quaternion<double> quat_n_a = Eigen::Quaternion<double>(
       quat_tmp(0),quat_tmp(1),quat_tmp(2),quat_tmp(3));
@@ -72,8 +72,7 @@ void EndEffectorPositionController::CalcOutputTwist(
   MatrixXd angularVelocity = k_omega * axis * angleaxis_a_a_des.angle();
 
   // Transforming angular velocity from joint frame to world frame
-  MatrixXd angularVelocityWF = tree_local->
-      relativeTransform(cache, WORLDFRAME_ID, ee_frame_id).linear() * angularVelocity;
+  MatrixXd angularVelocityWF = tree_local.relativeTransform(cache, WORLDFRAME_ID, ee_frame_id).linear() * angularVelocity;
 
   MatrixXd twist(6, 1);
   twist << angularVelocityWF, diff;

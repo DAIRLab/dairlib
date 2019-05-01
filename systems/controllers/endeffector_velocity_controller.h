@@ -24,7 +24,7 @@ namespace systems{
 class EndEffectorVelocityController : public LeafSystem<double> {
   public:
     // Constructor
-    EndEffectorVelocityController(std::unique_ptr<RigidBodyTree<double>>& tree,
+    EndEffectorVelocityController(RigidBodyTree<double>& tree,
                                   Eigen::Isometry3d eeCFIsometry,
                                   int num_joints, int k_d, int k_r);
 
@@ -53,7 +53,7 @@ class EndEffectorVelocityController : public LeafSystem<double> {
     Eigen::Translation3d eeContactFrameTranslation;
     Eigen::Isometry3d eeCFIsometry;
 
-    std::unique_ptr<RigidBodyTree<double>>& tree;
+    RigidBodyTree<double>& tree;
     int joint_position_measured_port;
     int joint_velocity_measured_port;
     int endpoint_twist_commanded_port;

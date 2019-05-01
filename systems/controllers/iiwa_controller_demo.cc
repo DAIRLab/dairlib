@@ -104,7 +104,7 @@ int do_main(int argc, char* argv[]) {
 
   // Adding position controller block
   auto position_controller = builder.AddSystem<systems::EndEffectorPositionController>(
-      tree, ENDEFFECTOR_BODY_ID, eeContactFrame, NUM_JOINTS, K_P, K_OMEGA);
+      *tree, ENDEFFECTOR_BODY_ID, eeContactFrame, NUM_JOINTS, K_P, K_OMEGA);
 
   // The coordinates for the end effector with respect to the last joint,
   // used to determine location of end effector, but in Isometry3d form
@@ -113,7 +113,7 @@ int do_main(int argc, char* argv[]) {
 
   // Adding Velocity Controller block
   auto velocity_controller = builder.AddSystem<systems::EndEffectorVelocityController>(
-      tree, eeCFIsometry, NUM_JOINTS, K_D, K_R);
+      *tree, eeCFIsometry, NUM_JOINTS, K_D, K_R);
 
   // Adding linear position Trajectory Source
   auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(ee_trajectory);

@@ -17,6 +17,7 @@ using drake::systems::LeafSystem;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using drake::systems::DiscreteUpdateEvent;
+using drake::systems::EventStatus;
 
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
@@ -42,11 +43,8 @@ class LIPMTrajGenerator : public LeafSystem<double> {
   }
 
  private:
-  void DoCalcDiscreteVariableUpdates(
-    const Context<double>& context,
-    const std::vector<const DiscreteUpdateEvent<double>*>&,
-    DiscreteValues<double>* discrete_state) const;
-
+  EventStatus DiscreteVariableUpdate(const Context<double>& context,
+                     DiscreteValues<double>* discrete_state) const;
   void CalcTraj(const Context<double>& context,
                 ExponentialPlusPiecewisePolynomial<double>* traj) const;
 

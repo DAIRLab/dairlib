@@ -15,27 +15,25 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
                                      int right_stance_state,
                                      int left_foot_idx,
                                      int right_foot_idx) :
-  tree_(tree),
-  desiredCoMHeight_(desiredCoMHeight),
-  stance_duration_per_leg_(stance_duration_per_leg),
-  left_stance_state_(left_stance_state),
-  right_stance_state_(right_stance_state),
-  left_foot_idx_(left_foot_idx),
-  right_foot_idx_(right_foot_idx) {
+    tree_(tree),
+    desiredCoMHeight_(desiredCoMHeight),
+    stance_duration_per_leg_(stance_duration_per_leg),
+    left_stance_state_(left_stance_state),
+    right_stance_state_(right_stance_state),
+    left_foot_idx_(left_foot_idx),
+    right_foot_idx_(right_foot_idx) {
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
                   tree->get_num_positions(),
                   tree->get_num_velocities(),
                   tree->get_num_actuators())).get_index();
-
   FSM_port_ = this->DeclareVectorInputPort(
                 TimestampedVector<double>(1)).get_index();
-
   this->DeclareAbstractOutputPort(&LIPMTrajGenerator::CalcTraj);
 
-  // State variables inside this controller block
-  this->DeclarePeriodicDiscreteUpdate(1.0 / 200.0); // Match with the publish rate
+  // Discrete state event
+  DeclarePerStepDiscreteUpdateEvent(&LIPMTrajGenerator::DiscreteVariableUpdate);
 
   // The time of the last touch down
   prev_td_time_idx_ = this->DeclareDiscreteState(1);
@@ -44,9 +42,8 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
 }
 
 
-void LIPMTrajGenerator::DoCalcDiscreteVariableUpdates(
+EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
-    const std::vector<const DiscreteUpdateEvent<double>*>&,
     DiscreteValues<double>* discrete_state) const {
 
   // Read in finite state machine
@@ -69,6 +66,8 @@ void LIPMTrajGenerator::DoCalcDiscreteVariableUpdates(
     double current_time = static_cast<double>(timestamp);
     prev_td_time(0) = current_time;
   }
+
+  return EventStatus::Succeeded();
 }
 
 

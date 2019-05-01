@@ -1,14 +1,6 @@
-#include "systems/controllers/cp_lipm_traj_gen.h"
+#include "systems/controllers/lipm_traj_gen.h"
 
-#include <algorithm>    // std::min
 #include <math.h>
-#include <chrono>   // measuring runtime
-#define PI 3.14159265
-
-using namespace std::chrono;
-
-using Eigen::Vector3d;
-using Eigen::Vector4d;
 
 using std::cout;
 using std::endl;
@@ -22,7 +14,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
                                      int left_stance_state,
                                      int right_stance_state,
                                      int left_foot_idx,
-                                     int right_foot_idx):
+                                     int right_foot_idx) :
   tree_(tree),
   desiredCoMHeight_(desiredCoMHeight),
   stance_duration_per_leg_(stance_duration_per_leg),
@@ -33,9 +25,9 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
-                  tree.get_num_positions(),
-                  tree.get_num_velocities(),
-                  tree.get_num_actuators())).get_index();
+                  tree->get_num_positions(),
+                  tree->get_num_velocities(),
+                  tree->get_num_actuators())).get_index();
 
   FSM_port_ = this->DeclareVectorInputPort(
                 TimestampedVector<double>(1)).get_index();
@@ -53,9 +45,9 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
 
 
 void LIPMTrajGenerator::DoCalcDiscreteVariableUpdates(
-  const Context<double>& context,
-  const std::vector<const DiscreteUpdateEvent<double>*>&,
-  DiscreteValues<double>* discrete_state) const {
+    const Context<double>& context,
+    const std::vector<const DiscreteUpdateEvent<double>*>&,
+    DiscreteValues<double>* discrete_state) const {
 
   // Read in finite state machine
   const TimestampedVector<double>* FSMOutput = (TimestampedVector<double>*)
@@ -74,19 +66,20 @@ void LIPMTrajGenerator::DoCalcDiscreteVariableUpdates(
     const OutputVector<double>* robotOutput = (OutputVector<double>*)
         this->EvalVectorInput(context, state_port_);
     double timestamp = robotOutput->get_timestamp();
-    double current_sim_time = static_cast<double>(timestamp);
-    prev_td_time(0) = current_sim_time;
+    double current_time = static_cast<double>(timestamp);
+    prev_td_time(0) = current_time;
   }
 }
 
 
-void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
-                                 ExponentialPlusPiecewisePolynomial<double>* traj) const {
+void LIPMTrajGenerator::CalcTraj(
+    const Context<double>& context,
+    ExponentialPlusPiecewisePolynomial<double>* traj) const {
 
   // Read in current state
   const OutputVector<double>* robotOutput = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
-  VectorXd current_velocity = robotOutput->GetVelocities();
+  VectorXd v = robotOutput->GetVelocities();
 
   // Read in finite state machine
   const TimestampedVector<double>* FSMOutput = (TimestampedVector<double>*)
@@ -99,16 +92,16 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
 
   // Get time
   double timestamp = robotOutput->get_timestamp();
-  double current_sim_time = static_cast<double>(timestamp);
+  double current_time = static_cast<double>(timestamp);
 
-  double start_time_of_this_interval = prev_td_time(0);
   double end_time_of_this_interval = prev_td_time(0) + stance_duration_per_leg_;
-  // Ensure current_sim_time < end_time_of_this_interval to avoid error in creating trajectory.
-  if ((end_time_of_this_interval <= current_sim_time + 0.001)) {
-    end_time_of_this_interval = current_sim_time + 0.002;
+  // Ensure "current_time < end_time_of_this_interval" to avoid error in
+  // creating trajectory.
+  if ((end_time_of_this_interval <= current_time + 0.001)) {
+    end_time_of_this_interval = current_time + 0.002;
   }
-  // cout << "current_sim_time = " << current_sim_time << ", end_time_of_this_interval = " << end_time_of_this_interval << endl;
-  // std::cout<<"start_time_of_this_interval: "<<start_time_of_this_interval<<"\n";
+  // cout << "current_time = " << current_time <<
+  // ", end_time_of_this_interval = " << end_time_of_this_interval << endl;
   // std::cout<<"end_time_of_this_interval: "<<end_time_of_this_interval<<"\n";
 
   // Kinematics cache and indices
@@ -123,21 +116,13 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
 
   cache.initialize(q);
   tree_->doKinematics(cache);
-  int stance_foot_index;
-  int swing_foot_index;
-  if (fsm_state(0) == 3) { // right stance
-    stance_foot_index = right_foot_idx_;
-    swing_foot_index = left_foot_idx_;
-  }
-  else {
-    stance_foot_index = left_foot_idx_;
-    swing_foot_index = right_foot_idx_;
-  }
+  int stance_foot_index = (fsm_state(0) == right_stance_state_) ?
+                          right_foot_idx_ : left_foot_idx_;
 
   // Get center of mass position and velocity
   Vector3d CoM = tree_->centerOfMass(cache);
   MatrixXd J = tree_->centerOfMassJacobian(cache);
-  Vector3d dCoM = J * current_velocity;
+  Vector3d dCoM = J * v;
   // std::cout<<"center of mass:\n"<<CoM<<"\n";
   // std::cout<<"dCoM:\n"<<dCoM<<"\n";
 
@@ -147,10 +132,7 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   Eigen::Vector3d stance_foot_pos = stance_foot_pose.translation();
   // std::cout<<"stance_foot_pos^T = "<<stance_foot_pos.transpose()<<"\n";
 
-  ////////////////////////// CoM Traj  /////////////////////////////////////////
-  // set the CoM at touchdown event as initial CoM (same for dCoM)
-
-  // Get CoMwrtFoot for LIPM
+  // Get CoM_wrt_foot for LIPM
   // Prevent zCoM_wrt_foot from being non-positive (in simulation) cause of
   // calculation of omega
   const double xCoM_wrt_foot = CoM(0) - stance_foot_pos(0);
@@ -160,17 +142,18 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   const double dxCoM_wrt_foot = dCoM(0);
   const double dyCoM_wrt_foot = dCoM(1);
   const double dzCoM_wrt_foot = dCoM(2);
-  // std::cout<<"(x,y,z,dx,dy) of CoMwrtFoot = "<<xCoM_wrt_foot<<","<<yCoM_wrt_foot<<","<<zCoM_wrt_foot<<","<<dxCoM_wrt_foot<<","<<dyCoM_wrt_foot<<"\n";
+  // std::cout<<"(x,y,z,dx,dy) of CoM_wrt_foot = "<<xCoM_wrt_foot<<","<<
+  // yCoM_wrt_foot<<","<<zCoM_wrt_foot<<","<<dxCoM_wrt_foot<<","<<dyCoM_wrt_foot<<"\n";
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
-  std::vector<double> T_waypoint_com = {current_sim_time, end_time_of_this_interval};
+  std::vector<double> T_waypoint_com = {current_time, end_time_of_this_interval};
 
   std::vector<MatrixXd> Y(T_waypoint_com.size(), MatrixXd::Zero(3, 1));
   Y[0](0, 0) = stance_foot_pos(0);
   Y[1](0, 0) = stance_foot_pos(0);
   Y[0](1, 0) = stance_foot_pos(1);
   Y[1](1, 0) = stance_foot_pos(1);
-  Y[0](2, 0) = (CoM(2) > 0)? CoM(2) : 1e-3;
+  Y[0](2, 0) = (CoM(2) > 0) ? CoM(2) : 1e-3;
   // Y[0](2, 0) = desiredCoMHeight_;
   Y[1](2, 0) = desiredCoMHeight_;
 
@@ -219,7 +202,7 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   // std::cout<<std::endl;
 
   // Assign traj
-  trajs->setCoMTraj(exp_traj);
+  *traj = exp_traj;
 }
 
 

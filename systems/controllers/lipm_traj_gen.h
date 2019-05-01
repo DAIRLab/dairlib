@@ -18,6 +18,7 @@ using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::EventStatus;
+using drake::systems::BasicVector;
 
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
@@ -64,6 +65,8 @@ class LIPMTrajGenerator : public LeafSystem<double> {
   int right_stance_state_;
   int left_foot_idx_;
   int right_foot_idx_;
+
+  bool is_quaternion_;
 };
 
 }  // namespace systems

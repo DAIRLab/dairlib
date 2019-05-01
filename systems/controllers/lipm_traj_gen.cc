@@ -1,9 +1,11 @@
 #include "systems/controllers/lipm_traj_gen.h"
 
 #include <math.h>
+#include <string>
 
 using std::cout;
 using std::endl;
+using std::string;
 
 namespace dairlib {
 namespace systems {
@@ -29,7 +31,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
                   tree->get_num_velocities(),
                   tree->get_num_actuators())).get_index();
   FSM_port_ = this->DeclareVectorInputPort(
-                TimestampedVector<double>(1)).get_index();
+                BasicVector<double>(1)).get_index();
   this->DeclareAbstractOutputPort(&LIPMTrajGenerator::CalcTraj);
 
   // Discrete state event
@@ -39,6 +41,9 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
   prev_td_time_idx_ = this->DeclareDiscreteState(1);
   // The last state of FSM
   prev_fsm_state_idx_ = this->DeclareDiscreteState(-VectorXd::Ones(1));
+
+  is_quaternion_ = (tree->get_position_name(3).compare("base_qw")==0)?
+    true : false;
 }
 
 
@@ -47,9 +52,9 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     DiscreteValues<double>* discrete_state) const {
 
   // Read in finite state machine
-  const TimestampedVector<double>* FSMOutput = (TimestampedVector<double>*)
+  const BasicVector<double>* fsm_output = (BasicVector<double>*)
       this->EvalVectorInput(context, FSM_port_);
-  VectorXd fsm_state = FSMOutput->get_data();
+  VectorXd fsm_state = fsm_output->get_value();
 
   auto prev_td_time = discrete_state->get_mutable_vector(
                         prev_td_time_idx_).get_mutable_value();
@@ -60,9 +65,9 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
 
     // Get time
-    const OutputVector<double>* robotOutput = (OutputVector<double>*)
+    const OutputVector<double>* robot_output = (OutputVector<double>*)
         this->EvalVectorInput(context, state_port_);
-    double timestamp = robotOutput->get_timestamp();
+    double timestamp = robot_output->get_timestamp();
     double current_time = static_cast<double>(timestamp);
     prev_td_time(0) = current_time;
   }
@@ -76,21 +81,21 @@ void LIPMTrajGenerator::CalcTraj(
     ExponentialPlusPiecewisePolynomial<double>* traj) const {
 
   // Read in current state
-  const OutputVector<double>* robotOutput = (OutputVector<double>*)
+  const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
-  VectorXd v = robotOutput->GetVelocities();
+  VectorXd v = robot_output->GetVelocities();
 
   // Read in finite state machine
-  const TimestampedVector<double>* FSMOutput = (TimestampedVector<double>*)
+  const BasicVector<double>* fsm_output = (BasicVector<double>*)
       this->EvalVectorInput(context, FSM_port_);
-  VectorXd fsm_state = FSMOutput->get_data();
+  VectorXd fsm_state = fsm_output->get_value();
 
   // Get discrete states
   const auto prev_td_time = context.get_discrete_state(
                               prev_td_time_idx_).get_value();
 
   // Get time
-  double timestamp = robotOutput->get_timestamp();
+  double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);
 
   double end_time_of_this_interval = prev_td_time(0) + stance_duration_per_leg_;
@@ -105,12 +110,12 @@ void LIPMTrajGenerator::CalcTraj(
 
   // Kinematics cache and indices
   KinematicsCache<double> cache = tree_->CreateKinematicsCache();
-  VectorXd q = robotOutput->GetPositions();
+  VectorXd q = robot_output->GetPositions();
 
   // Modify the quaternion in the begining when the state is not received from
   // the robot yet
   // Always remember to check 0-norm quaternion when using doKinematics
-  if (q(3) == 0 && q(4) == 0 && q(5) == 0 && q(6) == 0)
+  if (is_quaternion_ && q.segment(3,4).norm() == 0)
     q(3) = 1;
 
   cache.initialize(q);

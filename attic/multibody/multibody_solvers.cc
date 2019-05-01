@@ -51,9 +51,9 @@ void PositionConstraint::DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
   // output.
   *y = tree_.positionConstraints(k_cache);
 
-  std::cout << "Position: " << std::endl;
-  std::cout << *y << std::endl;
-  std::cout << "----" << std::endl;
+  //std::cout << "Position: " << std::endl;
+  //std::cout << *y << std::endl;
+  //std::cout << "----" << std::endl;
 }
 
 void PositionConstraint::DoEval(
@@ -113,9 +113,9 @@ void ContactConstraint::DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
 
   *y = y_t;
 
-  std::cout << "Contact" << std::endl;
-  std::cout << *y << std::endl;
-  std::cout << "----" << std::endl;
+  //std::cout << "Contact" << std::endl;
+  //std::cout << autoDiffToGradientMatrix(*y) << std::endl;
+  //std::cout << "----" << std::endl;
 }
 
 void ContactConstraint::DoEval(
@@ -175,9 +175,11 @@ void FixedPointConstraint::DoEval(
   // xdot and constraining it to be zero.
   *y = contact_toolkit_->CalcMVDot(x, u, lambda);
 
-  std::cout << "FP" << std::endl;
-  std::cout << *y << std::endl;
-  std::cout << "-----" << std::endl;
+  //std::cout << "FP" << std::endl;
+  //std::cout << autoDiffToGradientMatrix(*y).col(0) << std::endl;
+  //std::cout << *y << std::endl;
+  //std::cout << "-------------------------------------------------" << std::endl;
+  //std::cout << std::endl << std::endl << std::endl;
 }
 
 void FixedPointConstraint::DoEval(

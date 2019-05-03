@@ -34,24 +34,19 @@ void EndEffectorVelocityController::CalcOutputTorques(
   const Context<double>& context, BasicVector<double>* output) const {
   // We read the above input ports with EvalVectorInput
   // The purpose of CopyToVector().head(NUM_JOINTS) is to remove the timestamp from the vector input ports
-  VectorX<double> q = this->
-                      EvalVectorInput(context, joint_position_measured_port)->
-                      CopyToVector().head(num_joints);
+  VectorX<double> q = this->EvalVectorInput(context,
+      joint_position_measured_port)->CopyToVector().head(num_joints);
 
-  VectorX<double> q_dot = this->
-                          EvalVectorInput(context, joint_velocity_measured_port)->
-                          CopyToVector().head(num_joints);
+  VectorX<double> q_dot = this->EvalVectorInput(context,
+      joint_velocity_measured_port)->CopyToVector().head(num_joints);
 
-  VectorX<double> twist_desired = this->
-                                  EvalVectorInput(context, endpoint_twist_commanded_port)->
-                                  CopyToVector();
+  VectorX<double> twist_desired = this->EvalVectorInput(context,
+      endpoint_twist_commanded_port)->CopyToVector();
 
   // Calculating the jacobian of the kuka arm
   KinematicsCache<double> cache = tree.doKinematics(q, q_dot);
   MatrixXd frameSpatialVelocityJacobian = tree.CalcFrameSpatialVelocityJacobianInWorldFrame(
-                                                    cache,
-                                                    tree.get_body(10),
-                                                    eeCFIsometry);
+      cache, tree.get_body(10), eeCFIsometry);
 
   // Using the jacobian, calculating the actual current velocities of the arm
   MatrixXd twist_actual = frameSpatialVelocityJacobian * q_dot;

@@ -33,9 +33,10 @@ EndEffectorPositionController::EndEffectorPositionController(
 
 void EndEffectorPositionController::CalcOutputTwist(
     const Context<double> &context, BasicVector<double>* output) const {
+
   VectorX<double> q_actual = this->EvalVectorInput(context,
       joint_position_measured_port)->CopyToVector();
-      
+
   VectorX<double> x_desired = this->EvalVectorInput(context,
       endpoint_position_commanded_port)->CopyToVector();
 
@@ -45,7 +46,7 @@ void EndEffectorPositionController::CalcOutputTwist(
   KinematicsCache<double> cache = tree_local.doKinematics(q_actual);
 
   MatrixXd x_actual = tree_local.transformPoints(cache, ee_contact_frame,
-                                                  ee_frame_id, WORLDFRAME_ID);
+                                                 ee_frame_id, WORLDFRAME_ID);
   MatrixXd diff = k_p * (x_desired - x_actual);
 
   // Quaternion for rotation from base to end effector

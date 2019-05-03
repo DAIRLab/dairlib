@@ -169,9 +169,6 @@ void FixedPointConstraint::DoEval(
   // xdot and constraining it to be zero.
   *y = contact_toolkit_->CalcMVDot(x, u, lambda);
 
-  std::cout << *y << std::endl;
-  std::cout << "----" << std::endl << std::endl;
-
 }
 
 void FixedPointConstraint::DoEval(

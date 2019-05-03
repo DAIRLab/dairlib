@@ -831,7 +831,7 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
 
   std::cout << "rpy: " << std::endl;
   std::cout << contact_toolkit_rpy
-                   .CalcMVDot(x_sol_rpy, u_sol_rpy, lambda_sol_rpy)
+                   .CalcTimeDerivatives(x_sol_rpy, u_sol_rpy, lambda_sol_rpy)
                    .transpose()
             << std::endl;
   // std::cout << contact_toolkit_rpy.CalcContactJacobian(x_sol_rpy);
@@ -842,62 +842,62 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   std::cout << std::endl;
   std::cout << std::endl;
   std::cout << contact_toolkit_quaternion
-                   .CalcMVDot(x_sol_quaternion, u_sol_rpy, lambda_sol_rpy)
+                   .CalcTimeDerivatives(x_sol_quaternion, u_sol_rpy,
+                                        lambda_sol_rpy)
                    .transpose()
             << std::endl;
+
   // std::cout << contact_toolkit_quaternion.CalcContactJacobian(x_sol_rpy);
 
-  // ASSERT_TRUE(fp_solver_quaternion.CheckConstraint(q_sol_quaternion,
-  // u_sol_rpy,
-  //                                                 lambda_sol_rpy, 1.0e-3));
+  ASSERT_TRUE(fp_solver_quaternion.CheckConstraint(q_sol_quaternion, u_sol_rpy,
+                                                   lambda_sol_rpy, 1.0e-3));
 
   // TEST END --------------------------------------
 
-  //// Quaternion base
-  // FixedPointSolver fp_solver_quaternion(
-  //    tree_quaternion_, contact_info_quaternion_, q_quaternion_,
-  //    u_quaternion_);
-  //// fp_solver_quaternion.set_major_tolerance(1.0e-5);
-  //// fp_solver_quaternion.set_minor_tolerance(1.0e-5);
-  // fp_solver_quaternion.SetInitialGuess(q_quaternion_, u_quaternion_,
-  //                                     lambda_quaternion_);
-  // fp_solver_quaternion.AddSpreadNormalForcesCost();
-  //// fp_solver_quaternion.AddUnitQuaternionConstraint(
-  ////    position_map_quaternion_["base_qw"],
-  //// position_map_quaternion_["base_qx"],
-  ////    position_map_quaternion_["base_qy"],
-  //// position_map_quaternion_["base_qz"]);
-  ////
-  /// fp_solver_quaternion.AddFixedJointsConstraint(fixed_joints_map_quaternion_);
-  // fp_solver_quaternion.AddFrictionConeConstraint(0.8);
-  // fp_solver_quaternion.AddJointLimitConstraint(0.001);
+  // Quaternion base
+  FixedPointSolver fp_solver_quaternion(
+      tree_quaternion_, contact_info_quaternion_, q_quaternion_, u_quaternion_);
+  // fp_solver_quaternion.set_major_tolerance(1.0e-5);
+  // fp_solver_quaternion.set_minor_tolerance(1.0e-5);
+  fp_solver_quaternion.SetInitialGuess(q_quaternion_, u_quaternion_,
+                                       lambda_quaternion_);
+  fp_solver_quaternion.AddSpreadNormalForcesCost();
+  // fp_solver_quaternion.AddUnitQuaternionConstraint(
+  //    position_map_quaternion_["base_qw"],
+  // position_map_quaternion_["base_qx"],
+  //    position_map_quaternion_["base_qy"],
+  // position_map_quaternion_["base_qz"]);
+  //
+  fp_solver_quaternion.AddFixedJointsConstraint(fixed_joints_map_quaternion_);
+  fp_solver_quaternion.AddFrictionConeConstraint(0.8);
+  fp_solver_quaternion.AddJointLimitConstraint(0.001);
 
-  // MathematicalProgramResult program_result_quaternion =
-  //    fp_solver_quaternion.Solve();
+  MathematicalProgramResult program_result_quaternion =
+      fp_solver_quaternion.Solve();
 
-  // std::cout << fp_solver_quaternion.get_major_tolerance() << std::endl;
-  // std::cout << fp_solver_quaternion.get_minor_tolerance() << std::endl;
-  // cout << "Fixed point solver result (Quaternion base): "
-  //     << program_result_quaternion.get_solution_result() << endl;
+  std::cout << fp_solver_quaternion.get_major_tolerance() << std::endl;
+  std::cout << fp_solver_quaternion.get_minor_tolerance() << std::endl;
+  cout << "Fixed point solver result (Quaternion base): "
+       << program_result_quaternion.get_solution_result() << endl;
 
-  // VectorXd q_sol_quaternion = fp_solver_quaternion.GetSolutionQ();
-  // VectorXd u_sol_quaternion = fp_solver_quaternion.GetSolutionU();
-  // VectorXd lambda_sol_quaternion = fp_solver_quaternion.GetSolutionLambda();
+  VectorXd q_sol_quaternion = fp_solver_quaternion.GetSolutionQ();
+  VectorXd u_sol_quaternion = fp_solver_quaternion.GetSolutionU();
+  VectorXd lambda_sol_quaternion = fp_solver_quaternion.GetSolutionLambda();
 
-  // std::cout << "q sol: " << std::endl;
-  // std::cout << q_sol_quaternion.transpose() << std::endl;
-  // std::cout << "u sol: " << std::endl;
-  // std::cout << u_sol_quaternion.transpose() << std::endl;
-  // std::cout << "lambda sol: " << std::endl;
-  // std::cout << lambda_sol_quaternion.transpose() << std::endl;
+  std::cout << "q sol: " << std::endl;
+  std::cout << q_sol_quaternion.transpose() << std::endl;
+  std::cout << "u sol: " << std::endl;
+  std::cout << u_sol_quaternion.transpose() << std::endl;
+  std::cout << "lambda sol: " << std::endl;
+  std::cout << lambda_sol_quaternion.transpose() << std::endl;
 
-  //// Solution dimension check
-  // ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
-  // ASSERT_EQ(u_sol_quaternion.size(), num_efforts_quaternion_);
-  // ASSERT_EQ(lambda_sol_quaternion.size(), num_forces_quaternion_);
-  //// Solution constraints check
-  // ASSERT_TRUE(fp_solver_quaternion.CheckConstraint(
-  //    q_sol_quaternion, u_sol_quaternion, lambda_sol_quaternion, 1.0e-3));
+  // Solution dimension check
+  ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
+  ASSERT_EQ(u_sol_quaternion.size(), num_efforts_quaternion_);
+  ASSERT_EQ(lambda_sol_quaternion.size(), num_forces_quaternion_);
+  // Solution constraints check
+  ASSERT_TRUE(fp_solver_quaternion.CheckConstraint(
+      q_sol_quaternion, u_sol_quaternion, lambda_sol_quaternion, 1.0e-3));
 }
 
 }  // namespace

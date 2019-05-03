@@ -88,6 +88,7 @@ class ContactToolkit {
   const RigidBodyTree<double>& tree_;
   ContactInfo contact_info_;
   int num_contacts_;
+  bool in_terms_of_qdot_;
 };
 
 }  // namespace multibody

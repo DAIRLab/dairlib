@@ -787,7 +787,6 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   fp_solver_quaternion.AddUnitQuaternionConstraint(
       position_map_quaternion_["base_qw"], position_map_quaternion_["base_qx"],
       position_map_quaternion_["base_qy"], position_map_quaternion_["base_qz"]);
-  fp_solver_quaternion.AddFixedJointsConstraint(fixed_joints_map_quaternion_);
   fp_solver_quaternion.AddFrictionConeConstraint(0.8);
   fp_solver_quaternion.AddFixedJointsConstraint(fixed_joints_map_quaternion_);
   fp_solver_quaternion.AddJointLimitConstraint(0.001);

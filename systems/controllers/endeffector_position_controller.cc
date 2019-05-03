@@ -7,7 +7,7 @@ namespace systems{
 
  // Remember to use std::move on the rigid body tree argument.
 EndEffectorPositionController::EndEffectorPositionController(
-    RigidBodyTree<double>& tree, int ee_frame_id,
+    const RigidBodyTree<double>& tree, int ee_frame_id,
     Eigen::Vector3d ee_contact_frame, int num_joints, int k_p, int k_omega)
     : tree_local(tree){
  	// Set up this block's input and output ports
@@ -57,8 +57,7 @@ void EndEffectorPositionController::CalcOutputTwist(
   Eigen::Quaternion<double> quat_n_a = Eigen::Quaternion<double>(
       quat_tmp(0),quat_tmp(1),quat_tmp(2),quat_tmp(3));
 
-  // Quaternion for rotation from world frame to desired end effector attitude. This is constant,
-  // since we don't want the orientation of the end effector to move.
+  // Quaternion for rotation from world frame to desired end effector attitude.
   Eigen::Quaternion<double> quat_n_a_des = Eigen::Quaternion<double>(
       orientation_desired(0), orientation_desired(1), orientation_desired(2),
       orientation_desired(3));

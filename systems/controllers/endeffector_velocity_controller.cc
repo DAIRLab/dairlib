@@ -5,7 +5,7 @@ namespace systems{
 
 // Remember to use std::move on the rigid body tree argument.
 EndEffectorVelocityController::EndEffectorVelocityController(
-    RigidBodyTree<double>& tree, Eigen::Isometry3d eeCFIsometry,
+    const RigidBodyTree<double>& tree, Eigen::Isometry3d eeCFIsometry,
     int num_joints, int k_d, int k_r) : tree(tree){
 
   // Set up this block's input and output ports
@@ -31,7 +31,7 @@ EndEffectorVelocityController::EndEffectorVelocityController(
 // Callback for DeclareVectorInputPort. No return value. The parameter 'output' is the output.
 // This function is called many times a second, if I understand correctly.
 void EndEffectorVelocityController::CalcOutputTorques(
-    const Context<double>& context, BasicVector<double>* output) const {
+  const Context<double>& context, BasicVector<double>* output) const {
   // We read the above input ports with EvalVectorInput
   // The purpose of CopyToVector().head(NUM_JOINTS) is to remove the timestamp from the vector input ports
   VectorX<double> q = this->
@@ -54,14 +54,14 @@ void EndEffectorVelocityController::CalcOutputTorques(
                                                     eeCFIsometry);
 
   // Using the jacobian, calculating the actual current velocities of the arm
-  MatrixXd generalizedVelocity_actual = frameSpatialVelocityJacobian * q_dot;
+  MatrixXd twist_actual = frameSpatialVelocityJacobian * q_dot;
 
   // Gains are placed in a diagonal matrix
   Eigen::DiagonalMatrix<double, 6> gains(6);
   gains.diagonal() << k_r, k_r, k_r, k_d, k_d, k_d;
 
   // Calculating the error
-  MatrixXd generalizedForces = gains * (twist_desired - generalizedVelocity_actual);
+  MatrixXd generalizedForces = gains * (twist_desired - twist_actual);
 
   // Multiplying J^t x force to get torque outputs, then storing them in the output vector
   output->set_value(frameSpatialVelocityJacobian.transpose() * generalizedForces); // (7 x 6) * (6 x 1) = 7 x 1

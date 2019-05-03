@@ -10,7 +10,8 @@ EndEffectorPositionController::EndEffectorPositionController(
     const RigidBodyTree<double>& tree, int ee_frame_id,
     Eigen::Vector3d ee_contact_frame, int num_joints, int k_p, int k_omega)
     : tree_local(tree){
- 	// Set up this block's input and output ports
+
+  // Set up this block's input and output ports
   // Input port values will be accessed via EvalVectorInput() later
  	joint_position_measured_port = this->DeclareVectorInputPort(
       "joint_position_measured", BasicVector<double>(num_joints)).get_index();
@@ -18,7 +19,6 @@ EndEffectorPositionController::EndEffectorPositionController(
       "endpoint_position_commanded", BasicVector<double>(3)).get_index();
   endpoint_orientation_commanded_port = this->DeclareVectorInputPort(
       "endpoint_orientation_commanded", BasicVector<double>(4)).get_index();
-
   endpoint_position_cmd_output_port = this->DeclareVectorOutputPort(
       BasicVector<double>(6), &EndEffectorPositionController::CalcOutputTwist).get_index();
 

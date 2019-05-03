@@ -33,17 +33,14 @@ EndEffectorPositionController::EndEffectorPositionController(
 
 void EndEffectorPositionController::CalcOutputTwist(
     const Context<double> &context, BasicVector<double>* output) const {
-  VectorX<double> q_actual = this->
-                             EvalVectorInput(context, joint_position_measured_port)->
-                             CopyToVector();
+  VectorX<double> q_actual = this->EvalVectorInput(context,
+      joint_position_measured_port)->CopyToVector();
+      
+  VectorX<double> x_desired = this->EvalVectorInput(context,
+      endpoint_position_commanded_port)->CopyToVector();
 
-  VectorX<double> x_desired = this->
-                              EvalVectorInput(context, endpoint_position_commanded_port)->
-                              CopyToVector();
-
-  VectorX<double> orientation_desired = this->
-                                        EvalVectorInput(context, endpoint_orientation_commanded_port)->
-                                        CopyToVector();
+  VectorX<double> orientation_desired = this->EvalVectorInput(context,
+      endpoint_orientation_commanded_port)->CopyToVector();
 
   KinematicsCache<double> cache = tree_local.doKinematics(q_actual);
 

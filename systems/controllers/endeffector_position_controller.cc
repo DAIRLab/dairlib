@@ -13,9 +13,9 @@ EndEffectorPositionController::EndEffectorPositionController(
 
   // Set up this block's input and output ports
   // Input port values will be accessed via EvalVectorInput() later
- 	joint_position_measured_port = this->DeclareVectorInputPort(
+  joint_position_measured_port = this->DeclareVectorInputPort(
       "joint_position_measured", BasicVector<double>(num_joints)).get_index();
- 	endpoint_position_commanded_port = this->DeclareVectorInputPort(
+  endpoint_position_commanded_port = this->DeclareVectorInputPort(
       "endpoint_position_commanded", BasicVector<double>(3)).get_index();
   endpoint_orientation_commanded_port = this->DeclareVectorInputPort(
       "endpoint_orientation_commanded", BasicVector<double>(4)).get_index();

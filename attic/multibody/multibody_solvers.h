@@ -194,7 +194,7 @@ class PositionSolver {
    * If the constraints are not satisfied, it prints the status of each
    * constraint to the standard output stream.
    */
-  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-10) const;
+  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-8) const;
 
   /*
    * Function to get a shared pointer to the Mathematical program that runs the
@@ -231,7 +231,7 @@ class PositionSolver {
   drake::solvers::MathematicalProgramResult program_result_;
   std::string filename_ = "attic/multibody/solver_log/position_solver.log";
   double major_tolerance_ = 1.0e-11;
-  double minor_tolerance_ = 1.0e-11;
+  double minor_tolerance_ = 1.0e-9;
 };
 
 /*
@@ -315,7 +315,7 @@ class ContactSolver {
    * If the constraints are not satisfied, it prints the status of each
    * constraint to the standard output stream.
    */
-  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-10) const;
+  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-8) const;
 
   /*
    * Function to get a shared pointer to the Mathematical program that runs the
@@ -353,7 +353,7 @@ class ContactSolver {
   drake::solvers::MathematicalProgramResult program_result_;
   std::string filename_ = "attic/multibody/solver_log/contact_solver.log";
   double major_tolerance_ = 1.0e-11;
-  double minor_tolerance_ = 1.0e-11;
+  double minor_tolerance_ = 1.0e-9;
 };
 
 /*
@@ -504,7 +504,7 @@ class FixedPointSolver {
    */
   bool CheckConstraint(Eigen::VectorXd q, Eigen::VectorXd u,
                        Eigen::VectorXd lambda,
-                       double tolerance = 1.0e-10) const;
+                       double tolerance = 1.0e-8) const;
 
   /*
    * Function to get a shared pointer to the Mathematical program that runs the
@@ -554,7 +554,7 @@ class FixedPointSolver {
   drake::solvers::MathematicalProgramResult program_result_;
   std::string filename_ = "attic/multibody/solver_log/fixed_point_solver.log";
   double major_tolerance_ = 1.0e-11;
-  double minor_tolerance_ = 1.0e-11;
+  double minor_tolerance_ = 1.0e-9;
 };
 
 }  // namespace multibody

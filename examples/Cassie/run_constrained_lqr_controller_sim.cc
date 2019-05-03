@@ -225,8 +225,8 @@ int do_main(int argc, char* argv[]) {
     x0(position_map.at("base_qw")) = 1.0;
     x0(position_map.at("hip_roll_left")) = 0.1;
     x0(position_map.at("hip_roll_right")) = -0.1;
-    x0(position_map.at("hip_yaw_left")) = 0.01;
-    x0(position_map.at("hip_yaw_right")) = -0.01;
+    x0(position_map.at("hip_yaw_left")) = -0.01;
+    x0(position_map.at("hip_yaw_right")) = 0.01;
     x0(position_map.at("hip_pitch_left")) = .269;
     x0(position_map.at("hip_pitch_right")) = .269;
     x0(position_map.at("knee_left")) = -.744;
@@ -243,10 +243,10 @@ int do_main(int argc, char* argv[]) {
     fixed_joints.push_back(position_map.at("base_qz"));
     // fixed_joints.push_back(position_map.at("hip_roll_left"));
     // fixed_joints.push_back(position_map.at("hip_roll_right"));
-    fixed_joints.push_back(position_map.at("hip_pitch_left"));
-    fixed_joints.push_back(position_map.at("hip_pitch_right"));
-    // fixed_joints.push_back(position_map.at("hip_yaw_left"));
-    // fixed_joints.push_back(position_map.at("hip_yaw_right"));
+    // fixed_joints.push_back(position_map.at("hip_pitch_left"));
+    // fixed_joints.push_back(position_map.at("hip_pitch_right"));
+    fixed_joints.push_back(position_map.at("hip_yaw_left"));
+    fixed_joints.push_back(position_map.at("hip_yaw_right"));
     // fixed_joints.push_back(position_map.at("knee_left"));
     // fixed_joints.push_back(position_map.at("knee_right"));
 
@@ -298,16 +298,17 @@ int do_main(int argc, char* argv[]) {
     fp_solver = make_unique<FixedPointSolver>(plant->get_rigid_body_tree(),
                                               contact_info, q0, u0);
     fp_solver->SetInitialGuess(q0, u0, lambda0);
-    fp_solver->AddJointLimitConstraint(0.001);
-  } else {
-    fp_solver =
-        make_unique<FixedPointSolver>(plant->get_rigid_body_tree(), q0, u0);
-    fp_solver->SetInitialGuess(q0, u0, lambda0);
     fp_solver->AddSpreadNormalForcesCost();
     fp_solver->AddUnitQuaternionConstraint(
         position_map["base_qw"], position_map["base_qx"],
         position_map["base_qy"], position_map["base_qz"]);
     fp_solver->AddFrictionConeConstraint(0.8);
+    fp_solver->AddFixedJointsConstraint(fixed_joints_map);
+    fp_solver->AddJointLimitConstraint(0.001);
+  } else {
+    fp_solver =
+        make_unique<FixedPointSolver>(plant->get_rigid_body_tree(), q0, u0);
+    fp_solver->SetInitialGuess(q0, u0, lambda0);
     fp_solver->AddFixedJointsConstraint(fixed_joints_map);
     fp_solver->AddJointLimitConstraint(0.001);
   }
@@ -454,9 +455,9 @@ int do_main(int argc, char* argv[]) {
                   plant->actuator_command_input_port());
 
   // Drake Visualizer
-  DrakeVisualizer& visualizer = *builder.template AddSystem<DrakeVisualizer>(
-      plant->get_rigid_body_tree(), &lcm);
-  builder.Connect(plant->state_output_port(), visualizer.get_input_port(0));
+  //DrakeVisualizer& visualizer = *builder.template AddSystem<DrakeVisualizer>(
+  //    plant->get_rigid_body_tree(), &lcm);
+  //builder.Connect(plant->state_output_port(), visualizer.get_input_port(0));
 
   // Building the diagram and starting the simulation.
   auto diagram = builder.Build();
@@ -478,13 +479,13 @@ int do_main(int argc, char* argv[]) {
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(1.0);
+  simulator.set_target_realtime_rate(0.0001);
   simulator.Initialize();
 
   lcm.StartReceiveThread();
 
   simulator.StepTo(std::numeric_limits<double>::infinity());
-  // simulator.StepTo(1e-4);
+  //simulator.StepTo(1e-4);
 
   return 0;
 }

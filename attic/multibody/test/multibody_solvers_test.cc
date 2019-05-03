@@ -731,27 +731,27 @@ TEST_F(MultibodySolversTest, TestContactSolverSolution) {
 }
 
 TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
-  //// Fixed base
-  // FixedPointSolver fp_solver_fixed(tree_fixed_, q_fixed_, u_fixed_);
-  // fp_solver_fixed.SetInitialGuess(q_fixed_, u_fixed_, lambda_fixed_);
-  // fp_solver_fixed.AddJointLimitConstraint(0.001);
+  // Fixed base
+  FixedPointSolver fp_solver_fixed(tree_fixed_, q_fixed_, u_fixed_);
+  fp_solver_fixed.SetInitialGuess(q_fixed_, u_fixed_, lambda_fixed_);
+  fp_solver_fixed.AddJointLimitConstraint(0.001);
 
-  // MathematicalProgramResult program_result_fixed = fp_solver_fixed.Solve();
+  MathematicalProgramResult program_result_fixed = fp_solver_fixed.Solve();
 
-  // cout << "Fixed point solver result (Fixed base): "
-  //     << program_result_fixed.get_solution_result() << endl;
+  cout << "Fixed point solver result (Fixed base): "
+       << program_result_fixed.get_solution_result() << endl;
 
-  // VectorXd q_sol_fixed = fp_solver_fixed.GetSolutionQ();
-  // VectorXd u_sol_fixed = fp_solver_fixed.GetSolutionU();
-  // VectorXd lambda_sol_fixed = fp_solver_fixed.GetSolutionLambda();
+  VectorXd q_sol_fixed = fp_solver_fixed.GetSolutionQ();
+  VectorXd u_sol_fixed = fp_solver_fixed.GetSolutionU();
+  VectorXd lambda_sol_fixed = fp_solver_fixed.GetSolutionLambda();
 
-  //// Solution dimension check
-  // ASSERT_EQ(q_sol_fixed.size(), num_positions_fixed_);
-  // ASSERT_EQ(u_sol_fixed.size(), num_efforts_fixed_);
-  // ASSERT_EQ(lambda_sol_fixed.size(), num_position_constraints_fixed_);
-  //// Solution constraints check
-  // ASSERT_TRUE(fp_solver_fixed.CheckConstraint(q_sol_fixed, u_sol_fixed,
-  //                                            lambda_sol_fixed, 1e-8));
+  // Solution dimension check
+  ASSERT_EQ(q_sol_fixed.size(), num_positions_fixed_);
+  ASSERT_EQ(u_sol_fixed.size(), num_efforts_fixed_);
+  ASSERT_EQ(lambda_sol_fixed.size(), num_position_constraints_fixed_);
+  // Solution constraints check
+  ASSERT_TRUE(fp_solver_fixed.CheckConstraint(q_sol_fixed, u_sol_fixed,
+                                              lambda_sol_fixed, 1e-8));
 
   // Rpy base
   FixedPointSolver fp_solver_rpy(tree_rpy_, contact_info_rpy_, q_rpy_, u_rpy_);
@@ -775,108 +775,26 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   ASSERT_EQ(u_sol_rpy.size(), num_efforts_rpy_);
   ASSERT_EQ(lambda_sol_rpy.size(), num_forces_rpy_);
   // Solution constraints check
-  ASSERT_TRUE(fp_solver_rpy.CheckConstraint(q_sol_rpy, u_sol_rpy,
-                                            lambda_sol_rpy, 1e-8));
-
-  // TEST BEGIN ------------------------------------
-
-  drake::math::RollPitchYaw<double> rpy(q_sol_rpy[3], q_sol_rpy[4],
-                                        q_sol_rpy[5]);
-  Eigen::Quaternion<double> quat = rpy.ToQuaternion();
-  VectorXd quat_vec(4);
-  quat_vec(0) = quat.w();
-  quat_vec(1) = quat.x();
-  quat_vec(2) = quat.y();
-  quat_vec(3) = quat.z();
-
-  VectorXd q_sol_quaternion(23);
-  for (int i = 0; i < 3; ++i) {
-    q_sol_quaternion(i) = q_sol_rpy(i);
-  }
-  q_sol_quaternion(3) = quat_vec(0);
-  q_sol_quaternion(4) = quat_vec(1);
-  q_sol_quaternion(5) = quat_vec(2);
-  q_sol_quaternion(6) = quat_vec(3);
-
-  for (int i = 6; i < q_sol_rpy.size(); ++i) {
-    q_sol_quaternion(i + 1) = q_sol_rpy(i);
-  }
-
-  VectorXd x_sol_rpy(44);
-  x_sol_rpy << q_sol_rpy, VectorXd::Zero(22);
-  VectorXd x_sol_quaternion(45);
-  x_sol_quaternion << q_sol_quaternion, VectorXd::Zero(22);
-
-  std::cout << "q rpy: " << std::endl;
-  std::cout << q_sol_rpy.transpose() << std::endl;
-  std::cout << "q quat: " << std::endl;
-  std::cout << q_sol_quaternion.transpose() << std::endl;
-  std::cout << "u: " << std::endl;
-  std::cout << u_sol_rpy.transpose() << std::endl;
-  std::cout << "lambda: " << std::endl;
-  std::cout << lambda_sol_rpy.transpose() << std::endl;
-
-  FixedPointSolver fp_solver_quaternion(
-      tree_quaternion_, contact_info_quaternion_, q_quaternion_, u_quaternion_);
-  fp_solver_quaternion.SetInitialGuess(q_quaternion_, u_quaternion_,
-                                       lambda_quaternion_);
-  fp_solver_quaternion.AddSpreadNormalForcesCost();
-  fp_solver_quaternion.AddFrictionConeConstraint(0.8);
-  fp_solver_quaternion.AddJointLimitConstraint(0.001);
-
-  dairlib::multibody::ContactToolkit<double> contact_toolkit_rpy(
-      tree_rpy_, contact_info_rpy_);
-  dairlib::multibody::ContactToolkit<double> contact_toolkit_quaternion(
-      tree_quaternion_, contact_info_quaternion_);
-
-  std::cout << "rpy: " << std::endl;
-  std::cout << contact_toolkit_rpy
-                   .CalcTimeDerivatives(x_sol_rpy, u_sol_rpy, lambda_sol_rpy)
-                   .transpose()
-            << std::endl;
-  // std::cout << contact_toolkit_rpy.CalcContactJacobian(x_sol_rpy);
-  std::cout << std::endl;
-  std::cout << std::endl;
-  std::cout << "------------" << std::endl;
-  std::cout << "quat: " << std::endl;
-  std::cout << std::endl;
-  std::cout << std::endl;
-  std::cout << contact_toolkit_quaternion
-                   .CalcTimeDerivatives(x_sol_quaternion, u_sol_rpy,
-                                        lambda_sol_rpy)
-                   .transpose()
-            << std::endl;
-
-  // std::cout << contact_toolkit_quaternion.CalcContactJacobian(x_sol_rpy);
-
-  ASSERT_TRUE(fp_solver_quaternion.CheckConstraint(q_sol_quaternion, u_sol_rpy,
-                                                   lambda_sol_rpy, 1.0e-3));
-
-  // TEST END --------------------------------------
+  ASSERT_TRUE(
+      fp_solver_rpy.CheckConstraint(q_sol_rpy, u_sol_rpy, lambda_sol_rpy));
 
   // Quaternion base
   FixedPointSolver fp_solver_quaternion(
       tree_quaternion_, contact_info_quaternion_, q_quaternion_, u_quaternion_);
-  // fp_solver_quaternion.set_major_tolerance(1.0e-5);
-  // fp_solver_quaternion.set_minor_tolerance(1.0e-5);
   fp_solver_quaternion.SetInitialGuess(q_quaternion_, u_quaternion_,
                                        lambda_quaternion_);
   fp_solver_quaternion.AddSpreadNormalForcesCost();
-  // fp_solver_quaternion.AddUnitQuaternionConstraint(
-  //    position_map_quaternion_["base_qw"],
-  // position_map_quaternion_["base_qx"],
-  //    position_map_quaternion_["base_qy"],
-  // position_map_quaternion_["base_qz"]);
-  //
+  fp_solver_quaternion.AddUnitQuaternionConstraint(
+      position_map_quaternion_["base_qw"], position_map_quaternion_["base_qx"],
+      position_map_quaternion_["base_qy"], position_map_quaternion_["base_qz"]);
   fp_solver_quaternion.AddFixedJointsConstraint(fixed_joints_map_quaternion_);
   fp_solver_quaternion.AddFrictionConeConstraint(0.8);
+  fp_solver_quaternion.AddFixedJointsConstraint(fixed_joints_map_quaternion_);
   fp_solver_quaternion.AddJointLimitConstraint(0.001);
 
   MathematicalProgramResult program_result_quaternion =
       fp_solver_quaternion.Solve();
 
-  std::cout << fp_solver_quaternion.get_major_tolerance() << std::endl;
-  std::cout << fp_solver_quaternion.get_minor_tolerance() << std::endl;
   cout << "Fixed point solver result (Quaternion base): "
        << program_result_quaternion.get_solution_result() << endl;
 
@@ -884,20 +802,13 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   VectorXd u_sol_quaternion = fp_solver_quaternion.GetSolutionU();
   VectorXd lambda_sol_quaternion = fp_solver_quaternion.GetSolutionLambda();
 
-  std::cout << "q sol: " << std::endl;
-  std::cout << q_sol_quaternion.transpose() << std::endl;
-  std::cout << "u sol: " << std::endl;
-  std::cout << u_sol_quaternion.transpose() << std::endl;
-  std::cout << "lambda sol: " << std::endl;
-  std::cout << lambda_sol_quaternion.transpose() << std::endl;
-
   // Solution dimension check
   ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
   ASSERT_EQ(u_sol_quaternion.size(), num_efforts_quaternion_);
   ASSERT_EQ(lambda_sol_quaternion.size(), num_forces_quaternion_);
   // Solution constraints check
   ASSERT_TRUE(fp_solver_quaternion.CheckConstraint(
-      q_sol_quaternion, u_sol_quaternion, lambda_sol_quaternion, 1.0e-3));
+      q_sol_quaternion, u_sol_quaternion, lambda_sol_quaternion));
 }
 
 }  // namespace

@@ -230,8 +230,8 @@ class PositionSolver {
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::MathematicalProgramResult program_result_;
   std::string filename_ = "attic/multibody/solver_log/position_solver.log";
-  double major_tolerance_ = 1.0e-13;
-  double minor_tolerance_ = 1.0e-13;
+  double major_tolerance_ = 1.0e-11;
+  double minor_tolerance_ = 1.0e-11;
 };
 
 /*
@@ -352,8 +352,8 @@ class ContactSolver {
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::MathematicalProgramResult program_result_;
   std::string filename_ = "attic/multibody/solver_log/contact_solver.log";
-  double major_tolerance_ = 1.0e-13;
-  double minor_tolerance_ = 1.0e-13;
+  double major_tolerance_ = 1.0e-11;
+  double minor_tolerance_ = 1.0e-11;
 };
 
 /*
@@ -553,8 +553,8 @@ class FixedPointSolver {
   drake::solvers::VectorXDecisionVariable lambda_;
   drake::solvers::MathematicalProgramResult program_result_;
   std::string filename_ = "attic/multibody/solver_log/fixed_point_solver.log";
-  double major_tolerance_ = 1.0e-9;
-  double minor_tolerance_ = 1.0e-7;
+  double major_tolerance_ = 1.0e-11;
+  double minor_tolerance_ = 1.0e-11;
 };
 
 }  // namespace multibody

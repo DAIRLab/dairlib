@@ -19,6 +19,10 @@ ContactToolkit<T>::ContactToolkit(const RigidBodyTree<double>& tree,
     : tree_(tree),
       contact_info_(contact_info),
       num_contacts_(contact_info.num_contacts) {
+  // Boolean variable to decide whether to represent the Jacobians using qdot or
+  // not.
+  // For quaternions (num_positions != num_velocities), we need it in terms of
+  // the generalized velocities, hence it is set to false.
   in_terms_of_qdot_ = true;
   if (tree.get_num_positions() != tree.get_num_velocities()) {
     in_terms_of_qdot_ = false;

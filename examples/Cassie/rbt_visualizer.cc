@@ -49,6 +49,7 @@ int do_main(int argc, char* argv[]) {
   drake::systems::DiagramBuilder<double> builder;
   drake::lcm::DrakeLcm lcm;
 
+
   // Create state receiver.
   auto state_sub =
       builder.AddSystem(drake::systems::lcm::LcmSubscriberSystem::Make<

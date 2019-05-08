@@ -186,7 +186,6 @@ PositionSolver::PositionSolver(const RigidBodyTree<double>& tree)
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
 
   // Solver setup
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
                          major_tolerance_);
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
@@ -287,8 +286,7 @@ VectorXd PositionSolver::GetSolutionQ() {
 }
 
 void PositionSolver::set_filename(string filename) {
-  filename_ = filename;
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename);
 }
 
 void PositionSolver::set_major_tolerance(double major_tolerance) {
@@ -301,8 +299,6 @@ void PositionSolver::set_minor_tolerance(double minor_tolerance) {
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
                          minor_tolerance_);
 }
-
-string PositionSolver::get_filename() { return filename_; }
 
 double PositionSolver::get_major_tolerance() { return major_tolerance_; }
 
@@ -317,7 +313,6 @@ ContactSolver::ContactSolver(const RigidBodyTree<double>& tree,
   q_ = prog_->NewContinuousVariables(tree_.get_num_positions(), "q");
 
   // Solver setup
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
                          major_tolerance_);
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
@@ -429,8 +424,7 @@ VectorXd ContactSolver::GetSolutionQ() {
 }
 
 void ContactSolver::set_filename(string filename) {
-  filename_ = filename;
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename);
 }
 
 void ContactSolver::set_major_tolerance(double major_tolerance) {
@@ -443,8 +437,6 @@ void ContactSolver::set_minor_tolerance(double minor_tolerance) {
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
                          minor_tolerance_);
 }
-
-string ContactSolver::get_filename() { return filename_; }
 
 double ContactSolver::get_major_tolerance() { return major_tolerance_; }
 
@@ -462,7 +454,6 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree)
                                           "lambda");
 
   // Solver setup
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
                          major_tolerance_);
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
@@ -519,7 +510,6 @@ FixedPointSolver::FixedPointSolver(const RigidBodyTree<double>& tree,
       "lambda");
 
   // Solver setup
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
   prog_->SetSolverOption(SnoptSolver::id(), "Major feasibility tolerance",
                          major_tolerance_);
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
@@ -641,6 +631,7 @@ void FixedPointSolver::AddFrictionConeConstraint(const double mu) {
                                  lambda_(i * 3 + 1 + num_position_constraints) +
                              lambda_(i * 3 + 2 + num_position_constraints) *
                                  lambda_(i * 3 + 2 + num_position_constraints));
+    // Normal forces need to be positive
     prog_->AddConstraint(lambda_(i * 3 + num_position_constraints) >= 0);
   }
 }
@@ -742,8 +733,7 @@ VectorXd FixedPointSolver::GetSolutionLambda() {
 }
 
 void FixedPointSolver::set_filename(string filename) {
-  filename_ = filename;
-  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename_);
+  prog_->SetSolverOption(SnoptSolver::id(), "Print file", filename);
 }
 
 void FixedPointSolver::set_major_tolerance(double major_tolerance) {
@@ -756,8 +746,6 @@ void FixedPointSolver::set_minor_tolerance(double minor_tolerance) {
   prog_->SetSolverOption(SnoptSolver::id(), "Minor feasibility tolerance",
                          minor_tolerance_);
 }
-
-string FixedPointSolver::get_filename() { return filename_; }
 
 double FixedPointSolver::get_major_tolerance() { return major_tolerance_; }
 

@@ -57,8 +57,8 @@ class MultibodySolversTest : public ::testing::Test {
     buildCassieTree(tree_fixed_, filename, kFixed);
 
     // Adding the ground
-    AddFlatTerrainToWorld(&tree_rpy_, 20, 1);
-    AddFlatTerrainToWorld(&tree_quaternion_, 20, 1);
+    AddFlatTerrainToWorld(&tree_rpy_, 100, 0.2);
+    AddFlatTerrainToWorld(&tree_quaternion_, 100, 0.2);
 
     num_positions_fixed_ = tree_fixed_.get_num_positions();
     num_velocities_fixed_ = tree_fixed_.get_num_velocities();
@@ -352,7 +352,6 @@ TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
   shared_ptr<MathematicalProgram> prog_position_fixed1 =
       position_solver_fixed1.get_program();
 
-  ASSERT_EQ(position_solver_fixed1.get_filename(), "position_log");
   ASSERT_EQ(position_solver_fixed1.get_major_tolerance(), 0.001);
   ASSERT_EQ(position_solver_fixed1.get_minor_tolerance(), 0.01);
 
@@ -366,7 +365,6 @@ TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
   shared_ptr<MathematicalProgram> prog_position_fixed2 =
       position_solver_fixed1.get_program();
 
-  ASSERT_EQ(position_solver_fixed2.get_filename(), "position_log");
   ASSERT_EQ(position_solver_fixed2.get_major_tolerance(), 0.001);
   ASSERT_EQ(position_solver_fixed2.get_minor_tolerance(), 0.01);
 
@@ -387,11 +385,9 @@ TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
   shared_ptr<MathematicalProgram> prog_position_quaternion =
       position_solver_quaternion.get_program();
 
-  ASSERT_EQ(position_solver_rpy.get_filename(), "position_log");
   ASSERT_EQ(position_solver_rpy.get_major_tolerance(), 0.001);
   ASSERT_EQ(position_solver_rpy.get_minor_tolerance(), 0.01);
 
-  ASSERT_EQ(position_solver_quaternion.get_filename(), "position_log");
   ASSERT_EQ(position_solver_quaternion.get_major_tolerance(), 0.001);
   ASSERT_EQ(position_solver_quaternion.get_minor_tolerance(), 0.01);
 }
@@ -413,11 +409,9 @@ TEST_F(MultibodySolversTest, TestContactSolverBasic) {
   contact_solver_quaternion1.set_major_tolerance(0.002);
   contact_solver_quaternion1.set_minor_tolerance(0.02);
 
-  ASSERT_EQ(contact_solver_rpy1.get_filename(), "contact_log");
   ASSERT_EQ(contact_solver_rpy1.get_major_tolerance(), 0.002);
   ASSERT_EQ(contact_solver_rpy1.get_minor_tolerance(), 0.02);
 
-  ASSERT_EQ(contact_solver_quaternion1.get_filename(), "contact_log");
   ASSERT_EQ(contact_solver_quaternion1.get_major_tolerance(), 0.002);
   ASSERT_EQ(contact_solver_quaternion1.get_minor_tolerance(), 0.02);
 
@@ -445,11 +439,9 @@ TEST_F(MultibodySolversTest, TestContactSolverBasic) {
   contact_solver_quaternion2.set_major_tolerance(0.002);
   contact_solver_quaternion2.set_minor_tolerance(0.02);
 
-  ASSERT_EQ(contact_solver_rpy2.get_filename(), "contact_log");
   ASSERT_EQ(contact_solver_rpy2.get_major_tolerance(), 0.002);
   ASSERT_EQ(contact_solver_rpy2.get_minor_tolerance(), 0.02);
 
-  ASSERT_EQ(contact_solver_quaternion2.get_filename(), "contact_log");
   ASSERT_EQ(contact_solver_quaternion2.get_major_tolerance(), 0.002);
   ASSERT_EQ(contact_solver_quaternion2.get_minor_tolerance(), 0.02);
 
@@ -473,11 +465,9 @@ TEST_F(MultibodySolversTest, TestContactSolverBasic) {
   contact_solver_quaternion3.set_major_tolerance(0.002);
   contact_solver_quaternion3.set_minor_tolerance(0.02);
 
-  ASSERT_EQ(contact_solver_rpy3.get_filename(), "contact_log");
   ASSERT_EQ(contact_solver_rpy3.get_major_tolerance(), 0.002);
   ASSERT_EQ(contact_solver_rpy3.get_minor_tolerance(), 0.02);
 
-  ASSERT_EQ(contact_solver_quaternion3.get_filename(), "contact_log");
   ASSERT_EQ(contact_solver_quaternion3.get_major_tolerance(), 0.002);
   ASSERT_EQ(contact_solver_quaternion3.get_minor_tolerance(), 0.02);
 
@@ -500,7 +490,6 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_fixed1 =
       fp_solver_fixed1.get_program();
 
-  ASSERT_EQ(fp_solver_fixed1.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_fixed1.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_fixed1.get_minor_tolerance(), 0.03);
 
@@ -515,7 +504,6 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_fixed2 =
       fp_solver_fixed2.get_program();
 
-  ASSERT_EQ(fp_solver_fixed2.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_fixed2.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_fixed2.get_minor_tolerance(), 0.03);
 
@@ -548,11 +536,9 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_quaternion1 =
       fp_solver_quaternion1.get_program();
 
-  ASSERT_EQ(fp_solver_rpy1.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_rpy1.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_rpy1.get_minor_tolerance(), 0.03);
 
-  ASSERT_EQ(fp_solver_quaternion1.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_quaternion1.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_quaternion1.get_minor_tolerance(), 0.03);
 
@@ -585,11 +571,9 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_quaternion2 =
       fp_solver_quaternion2.get_program();
 
-  ASSERT_EQ(fp_solver_rpy2.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_rpy2.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_rpy2.get_minor_tolerance(), 0.03);
 
-  ASSERT_EQ(fp_solver_quaternion2.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_quaternion2.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_quaternion2.get_minor_tolerance(), 0.03);
 
@@ -612,11 +596,9 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_quaternion3 =
       fp_solver_quaternion3.get_program();
 
-  ASSERT_EQ(fp_solver_rpy3.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_rpy3.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_rpy3.get_minor_tolerance(), 0.03);
 
-  ASSERT_EQ(fp_solver_quaternion3.get_filename(), "fp_log");
   ASSERT_EQ(fp_solver_quaternion3.get_major_tolerance(), 0.003);
   ASSERT_EQ(fp_solver_quaternion3.get_minor_tolerance(), 0.03);
 }

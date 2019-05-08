@@ -114,14 +114,6 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
   VectorX<T> right_hand_side =
       -tree_.dynamicsBiasTerm(k_cache, no_external_wrenches);
 
-  // std::cout << std::endl;
-  // std::cout << std::endl;
-  // std::cout << right_hand_side.size() << std::endl;
-  ////std::cout << M << std::endl;
-  // std::cout << "-----------------" << std::endl;
-  // std::cout << std::endl;
-  // std::cout << std::endl;
-
   if (num_efforts > 0) {
     right_hand_side += tree_.B * u;
   }
@@ -130,20 +122,9 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
   if (num_position_constraints > 0) {
     MatrixX<T> J_position =
         tree_.positionConstraintsJacobian(k_cache, in_terms_of_qdot_);
-    // std::cout << right_hand_side << std::endl;
-    // std::cout << "________" << std::endl;
     right_hand_side +=
         J_position.transpose() * lambda.head(num_position_constraints);
-    // std::cout << "*******" << std::endl;
-    // std::cout << right_hand_side << std::endl;
   }
-
-  // std::cout << std::endl;
-  // std::cout << std::endl;
-  // std::cout << right_hand_side << std::endl;
-  // std::cout << "-----------------" << std::endl;
-  // std::cout << std::endl;
-  // std::cout << std::endl;
 
   // Contact Jacobian
   if (num_contacts_ > 0) {

@@ -220,7 +220,6 @@ class PositionSolver {
   void set_major_tolerance(double major_tolerance);
   void set_minor_tolerance(double minor_tolerance);
 
-  std::string get_filename();
   double get_major_tolerance();
   double get_minor_tolerance();
 
@@ -229,7 +228,6 @@ class PositionSolver {
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::MathematicalProgramResult program_result_;
-  std::string filename_ = "attic/multibody/solver_log/position_solver.log";
   double major_tolerance_ = 1.0e-11;
   double minor_tolerance_ = 1.0e-9;
 };
@@ -341,7 +339,6 @@ class ContactSolver {
   void set_major_tolerance(double major_tolerance);
   void set_minor_tolerance(double minor_tolerance);
 
-  std::string get_filename();
   double get_major_tolerance();
   double get_minor_tolerance();
 
@@ -351,7 +348,6 @@ class ContactSolver {
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::MathematicalProgramResult program_result_;
-  std::string filename_ = "attic/multibody/solver_log/contact_solver.log";
   double major_tolerance_ = 1.0e-11;
   double minor_tolerance_ = 1.0e-9;
 };
@@ -540,7 +536,6 @@ class FixedPointSolver {
   void set_major_tolerance(double major_tolerance);
   void set_minor_tolerance(double minor_tolerance);
 
-  std::string get_filename();
   double get_major_tolerance();
   double get_minor_tolerance();
 
@@ -552,7 +547,6 @@ class FixedPointSolver {
   drake::solvers::VectorXDecisionVariable u_;
   drake::solvers::VectorXDecisionVariable lambda_;
   drake::solvers::MathematicalProgramResult program_result_;
-  std::string filename_ = "attic/multibody/solver_log/fixed_point_solver.log";
   double major_tolerance_ = 1.0e-11;
   double minor_tolerance_ = 1.0e-9;
 };

@@ -30,7 +30,11 @@ std::unique_ptr<Context<T>> createContext(const MultibodyPlant<T>& plant,
     const VectorX<T>& state, const VectorX<T>& input) {
   auto context = plant.CreateDefaultContext();
   plant.SetPositionsAndVelocities(context.get(), state);
-  context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
+
+  // TODO(mposa) Remove > 0 check once fixed upstream in Drake
+  if (input.size() > 0) {
+    context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
+  }
   return context;
 }
 
@@ -78,12 +82,12 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
           if (selector_index == -1) {
             selector_index = j;
           } else {
-            DRAKE_ABORT_MSG("Unable to create selector map.");
+            throw std::logic_error("Unable to create selector map.");
           }
         }
       }
       if (selector_index == -1) {
-        DRAKE_ABORT_MSG("Unable to create selector map.");
+        std::logic_error("Unable to create selector map.");
       }
 
       name_to_index_map[name] = selector_index;
@@ -127,12 +131,12 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
           if (selector_index == -1) {
             selector_index = j;
           } else {
-            DRAKE_ABORT_MSG("Unable to create selector map.");
+            throw std::logic_error("Unable to create selector map.");
           }
         }
       }
       if (selector_index == -1) {
-        DRAKE_ABORT_MSG("Unable to create selector map.");
+        throw std::logic_error("Unable to create selector map.");
       }
 
       name_to_index_map[name] = selector_index - plant.num_positions();
@@ -170,12 +174,12 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<double>& plant) {
           if (selector_index == -1) {
             selector_index = j;
           } else {
-            DRAKE_ABORT_MSG("Unable to create selector map.");
+            throw std::logic_error("Unable to create selector map.");
           }
         }
       }
       if (selector_index == -1) {
-        DRAKE_ABORT_MSG("Unable to create selector map.");
+        throw std::logic_error("Unable to create selector map.");
       }
 
       name_to_index_map[name] = selector_index;

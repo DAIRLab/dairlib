@@ -54,6 +54,9 @@ DEFINE_double(dt, 1e-3,
               "The step size to use for "
               "'simulation_type=timestepping' (ignored for "
               "'simulation_type=compliant'");
+DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
+DEFINE_bool(publish_state, true,
+    "Publish state CASSIE_STATE (set to false when running w/dispatcher");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
@@ -74,6 +77,11 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_is_imu_sim) addImuFrameToCassiePelvis(tree);
 
   drake::systems::DiagramBuilder<double> builder;
+
+  if (!FLAGS_is_imu_sim && !FLAGS_publish_state) {
+    throw std::logic_error(
+        "Must publish either via CASSIE_OUTPUT or CASSIE_STATE");
+  }
 
   if (FLAGS_simulation_type != "timestepping") FLAGS_dt = 0.0;
   auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(
@@ -106,16 +114,18 @@ int do_main(int argc, char* argv[]) {
                   passthrough->get_input_port());
   builder.Connect(passthrough->get_output_port(), plant->get_input_port(0));
 
-  // Create state publisher
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
-      plant->get_rigid_body_tree());
-  auto state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE", &lcm, 1.0 / 200.0));
-  builder.Connect(plant->state_output_port(),
-                  state_sender->get_input_port_state());
-  builder.Connect(state_sender->get_output_port(0),
-                  state_pub->get_input_port());
+  if (FLAGS_publish_state) {
+    // Create state publisher
+    auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+        plant->get_rigid_body_tree());
+    auto state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "CASSIE_STATE", &lcm, 1.0 / FLAGS_publish_rate));
+    builder.Connect(plant->state_output_port(),
+                    state_sender->get_input_port_state());
+    builder.Connect(state_sender->get_output_port(0),
+                    state_pub->get_input_port());
+  }
 
   // Create cassie output (containing simulated sensor) publisher
   if (FLAGS_is_imu_sim) {
@@ -123,7 +133,7 @@ int do_main(int argc, char* argv[]) {
         addImuAndAggregatorToSimulation(builder, plant, passthrough);
     auto cassie_sensor_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
-            "CASSIE_OUTPUT", &lcm, 1.0 / 200.0));
+            "CASSIE_OUTPUT", &lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(cassie_sensor_aggregator->get_output_port(0),
                     cassie_sensor_pub->get_input_port());
   }
@@ -142,11 +152,11 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*plant,
                                           &simulator.get_mutable_context());
 
-  drake::systems::Context<double>& sim_context =
-      simulator.get_mutable_context();
-  auto integrator =
-      simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
-          *diagram, FLAGS_timestep, &sim_context);
+  // drake::systems::Context<double>& sim_context =
+      // simulator.get_mutable_context();
+  // auto integrator =
+  //     simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
+  //         *diagram, FLAGS_timestep, &sim_context);
   // auto integrator =
   //   simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>
   //   (*diagram, &sim_context);
@@ -155,6 +165,7 @@ int do_main(int argc, char* argv[]) {
   Eigen::VectorXd x0 =
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
+
   std::map<std::string, int> map =
       plant->get_rigid_body_tree().computePositionNameToIndexMap();
   x0(map.at("hip_pitch_left")) = .269;
@@ -182,6 +193,14 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map.at("hip_pitch_right"));
   fixed_joints.push_back(map.at("knee_left"));
   fixed_joints.push_back(map.at("knee_right"));
+
+  if (FLAGS_floating_base) {
+    double quaternion_norm = x0.segment(3, 4).norm();
+    if (quaternion_norm != 0)  // Unit Quaternion
+      x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
+    else  // in case the user enters 0-norm quaternion
+      x0(3) = 1;
+  }
 
   Eigen::VectorXd q0 =
       x0.head(plant->get_rigid_body_tree().get_num_positions());

@@ -9,14 +9,12 @@ cc_library(
 #        "dircon.cc",
         "dircon_opt_constraints.cc",
         "dircon_options.cc",
-        "dircon_util.cc",
         "hybrid_dircon.cc",
     ],
     hdrs = [
 #        "dircon.h",
         "dircon_opt_constraints.h",
         "dircon_options.h",
-        "dircon_util.h",
         "hybrid_dircon.h",
     ],
     deps = [
@@ -25,6 +23,7 @@ cc_library(
         "@drake//systems/framework",
         "@drake//systems/trajectory_optimization",
         ":dircon_kinematic_data",
+        "//solvers:optimization_utils",
     ],
 )
 
@@ -47,3 +46,5 @@ cc_library(
         "//multibody:utils",
     ],
 )
+
+

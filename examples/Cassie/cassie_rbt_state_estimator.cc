@@ -29,7 +29,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 void CassieRbtStateEstimator::Output(
     const Context<double>& context, OutputVector<double>* output) const {
   const auto& cassie_out =
-      this->EvalAbstractInput(context, 0)->GetValue<cassie_out_t>();
+      this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
 
   // Is this necessary? Might be a better way to initialize
   auto data = output->get_mutable_data();

@@ -1,5 +1,21 @@
-docker_builder:
-  only_if: $CIRRUS_TAG != ''
-  build_script: docker build --tag DAIRLab/dairlib:$CIRRUS_TAG -f install/bionic/Dockerfile .
-  login_script: docker login
-  push_script: docker push DAIRLab/dairlib:$CIRRUS_TAG
+build_task:
+  timeout_in: 120m
+  container:
+    dockerfile: install/bionic/Dockerfile
+    cpu: 8
+    memory: 24
+  test_script:
+    - bazel build ...
+    - bazel test ...
+drake_master_build_task:
+  timeout_in: 120m
+  container:
+    dockerfile: install/bionic/Dockerfile
+    cpu: 8
+    memory: 24
+  allow_failures: true
+  test_script:
+    - git clone https://github.com/RobotLocomotion/drake.git ../drake
+    - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
+    - bazel build ...
+    - bazel test ...  

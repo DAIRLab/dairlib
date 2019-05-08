@@ -499,8 +499,7 @@ class FixedPointSolver {
    * constraint to the standard output stream.
    */
   bool CheckConstraint(Eigen::VectorXd q, Eigen::VectorXd u,
-                       Eigen::VectorXd lambda,
-                       double tolerance = 1.0e-8) const;
+                       Eigen::VectorXd lambda, double tolerance = 1.0e-8) const;
 
   /*
    * Function to get a shared pointer to the Mathematical program that runs the

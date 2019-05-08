@@ -14,10 +14,11 @@
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 #include "drake/geometry/geometry_visualization.h"
+#include "drake/solvers/solve.h"
 
 #include "common/find_resource.h"
 #include "systems/primitives/subvector_pass_through.h"
-#include "systems/trajectory_optimization/dircon_util.h"
+#include "solvers/optimization_utils.h"
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
@@ -221,21 +222,18 @@ shared_ptr<HybridDircon<double>> runDircon(
   // trajopt->AddRunningCost(x.transpose()*Q*x);
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto result = trajopt->Solve();
+  const auto result = Solve(*trajopt, trajopt->initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  trajopt->PrintSolution();
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
-  std::cout << result << std::endl;
-  std::cout << "Cost:" << trajopt->GetOptimalCost() <<std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
 
-  systems::trajectory_optimization::checkConstraints(trajopt.get());
+  // systems::trajectory_optimization::checkConstraints(trajopt.get(), result);
 
   MatrixXd A;
   VectorXd y, lb, ub;
-  VectorXd x_sol = trajopt->GetSolution(trajopt->decision_variables());
-  systems::trajectory_optimization::linearizeConstraints(trajopt.get(),
-    x_sol, y, A, lb, ub);
+  VectorXd x_sol = result.get_x_val();
+  solvers::LinearizeConstraints(*trajopt, x_sol, &y, &A, &lb, &ub);
 
 //  MatrixXd y_and_bounds(y.size(),3);
 //  y_and_bounds.col(0) = lb;
@@ -248,7 +246,7 @@ shared_ptr<HybridDircon<double>> runDircon(
 
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
-      trajopt->ReconstructStateTrajectory();
+      trajopt->ReconstructStateTrajectory(result);
   multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
                                          pp_xtraj);
   auto diagram = builder.Build();

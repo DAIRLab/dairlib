@@ -56,16 +56,6 @@ ConstrainedLQRController::ConstrainedLQRController(
   DRAKE_DEMAND(R.rows() == num_efforts_);
   DRAKE_DEMAND(R.rows() == R.cols());
 
-  // Boolean variable to decide whether to represent the Jacobians using qdot or
-  // not.
-  // For quaternions (num_positions != num_velocities), we need it in terms of
-  // the generalized velocities, hence it is set to false.
-  in_terms_of_qdot_ = true;
-  if (tree.get_num_positions() != tree.get_num_velocities()) {
-    in_terms_of_qdot_ = false;
-  }
-
-
   // Creating the full state vector (Velocities are zero as it is a fixed point)
   VectorXd x(num_states_);
   VectorXd v = VectorXd::Zero(num_velocities_);
@@ -75,6 +65,9 @@ ConstrainedLQRController::ConstrainedLQRController(
   // Computing the full Jacobian (Position and contact)
   MatrixXd J_tree_qdot, J_tree_v, J_contact_qdot, J_contact_v;
   KinematicsCache<double> k_cache = tree_.doKinematics(q);
+
+  // Two separate Jacobians -- in terms of qdot and v are computed as the number
+  // of positions and velocities may be different (Quaternion base model)
 
   // Position Jacobian
   J_tree_qdot = tree_.positionConstraintsJacobian(k_cache, true);
@@ -88,6 +81,7 @@ ConstrainedLQRController::ConstrainedLQRController(
         contact_toolkit_->CalcContactJacobian(initializeAutoDiff(x), false));
   }
 
+  // Stacking them up
   MatrixXd J_qdot(J_tree_qdot.rows() + J_contact_qdot.rows(),
                   J_tree_qdot.cols());
   MatrixXd J_v(J_tree_v.rows() + J_contact_v.rows(), J_tree_v.cols());
@@ -144,7 +138,6 @@ ConstrainedLQRController::ConstrainedLQRController(
   lqr_result_ = LinearQuadraticRegulator(A_, B_, Q_, R_);
   K_ = lqr_result_.K * P;
   E_ = u;
-
 }
 
 void ConstrainedLQRController::CalcControl(

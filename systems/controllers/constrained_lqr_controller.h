@@ -123,7 +123,6 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
   const int num_states_;
   const int num_efforts_;
   const int num_forces_;
-  bool in_terms_of_qdot_;
 };
 
 }  // namespace systems

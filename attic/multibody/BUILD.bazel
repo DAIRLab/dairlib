@@ -76,3 +76,18 @@ cc_test(
     ],
     size = "small",
 )
+
+cc_library(
+    name = "utility_systems",
+    srcs = [
+        "utility_systems.cc",
+    ],
+    hdrs = [
+        "utility_systems.h",
+    ],
+    deps = [
+        "@drake//systems/framework:leaf_system",
+        "//systems:robot_lcm_systems",
+        "//examples/Cassie:cassie_utils",
+    ],
+)

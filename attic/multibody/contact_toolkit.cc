@@ -92,6 +92,79 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
 }
 
 template <typename T>
+drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
+    drake::VectorX<T> x, bool in_terms_of_qdot) const {
+  drake::VectorX<T> q = x.head(tree_.get_num_positions());
+  drake::VectorX<T> v = x.tail(tree_.get_num_velocities());
+
+  KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
+
+  // Index of "world" within the RBT
+  const int world_ind = GetBodyIndexFromName(tree_, "world");
+
+  // The normals at each contact are always facing upwards into z
+  Matrix3Xd normal(3, num_contacts_);
+  for (int i = 0; i < num_contacts_; i++) {
+    normal(0, i) = 0;
+    normal(1, i) = 0;
+    normal(2, i) = 1;
+  }
+
+  const Map<Matrix3Xd> normal_map(normal.data(), 3, num_contacts_);
+
+  vector<Map<Matrix3Xd>> tangents_map_vector;
+  Matrix3Xd mat1 = Matrix3Xd::Zero(3, num_contacts_);
+  Map<Matrix3Xd> map1(mat1.data(), 3, num_contacts_);
+  Matrix3Xd mat2 = Matrix3Xd::Zero(3, num_contacts_);
+  Map<Matrix3Xd> map2(mat2.data(), 3, num_contacts_);
+  tangents_map_vector.push_back(map1);
+  tangents_map_vector.push_back(map2);
+
+  tree_.surfaceTangents(normal_map, tangents_map_vector);
+
+  vector<MatrixX<T>> J_diff(num_contacts_);
+
+  for (int i = 0; i < num_contacts_; i++) {
+    // While computing the Jacobian, the local in_terms_of_q_dot is chosen
+    auto Ja = tree_.transformPointsJacobian(k_cache, contact_info_.xA.col(i),
+                                            contact_info_.idxA.at(i), world_ind,
+                                            in_terms_of_qdot);
+
+    // Jb is zero
+    J_diff.at(i) = Ja;
+  }
+
+  // Contact Jacobians
+  MatrixX<T> J;
+  if (in_terms_of_qdot) {
+    J.resize(num_contacts_ * 3, tree_.get_num_positions());
+  } else {
+    J.resize(num_contacts_ * 3, tree_.get_num_velocities());
+  }
+
+  for (int i = 0; i < num_contacts_; i++) {
+    // Jacobian for the individual constraints
+    MatrixX<T> J_constraint;
+    if (in_terms_of_qdot) {
+      J_constraint.resize(3, tree_.get_num_positions());
+    } else {
+      J_constraint.resize(3, tree_.get_num_velocities());
+    }
+    // Normal
+    J_constraint.row(0) = normal.col(i).transpose() * J_diff.at(i);
+    // Both the surface tangents
+    J_constraint.row(1) =
+        tangents_map_vector.at(0).col(i).transpose() * J_diff.at(i);
+    J_constraint.row(2) =
+        tangents_map_vector.at(1).col(i).transpose() * J_diff.at(i);
+
+    J.block(i * 3, 0, 3, tree_.get_num_velocities()) = J_constraint;
+  }
+
+  return J;
+}
+
+template <typename T>
 VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
                                         VectorX<T> lambda) const {
   const int num_positions = tree_.get_num_positions();

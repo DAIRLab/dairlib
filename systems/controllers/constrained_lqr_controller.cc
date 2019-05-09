@@ -56,6 +56,15 @@ ConstrainedLQRController::ConstrainedLQRController(
   DRAKE_DEMAND(R.rows() == num_efforts_);
   DRAKE_DEMAND(R.rows() == R.cols());
 
+  // Boolean variable to decide whether to represent the Jacobians using qdot or
+  // not.
+  // For quaternions (num_positions != num_velocities), we need it in terms of
+  // the generalized velocities, hence it is set to false.
+  in_terms_of_qdot_ = true;
+  if (tree.get_num_positions() != tree.get_num_velocities()) {
+    in_terms_of_qdot_ = false;
+  }
+
   // Creating the full state vector (Velocities are zero as it is a fixed point)
   VectorXd x(num_states_);
   VectorXd v = VectorXd::Zero(num_velocities_);
@@ -67,12 +76,13 @@ ConstrainedLQRController::ConstrainedLQRController(
   KinematicsCache<double> k_cache = tree_.doKinematics(q);
 
   // Position Jacobian
-  J_tree = tree_.positionConstraintsJacobian(k_cache);
+  J_tree = tree_.positionConstraintsJacobian(k_cache, true);
 
   // Contact Jacobian (If contact information is provided)
   if (contact_info_.num_contacts > 0) {
     J_contact = autoDiffToValueMatrix(
-        contact_toolkit_->CalcContactJacobian(initializeAutoDiff(x)));
+        contact_toolkit_->CalcContactJacobian(initializeAutoDiff(x), false));
+    std::cout << J_contact.rows() << " " << J_contact.cols() << std::endl;
   }
 
   MatrixXd J(J_tree.rows() + J_contact.rows(), num_positions_);
@@ -108,7 +118,7 @@ ConstrainedLQRController::ConstrainedLQRController(
       x_autodiff, u_autodiff, lambda_autodiff);
 
   // Making sure that the derivative is zero
-  //DRAKE_DEMAND(autoDiffToValueMatrix(xdot_autodiff).isZero(1e-6));
+  // DRAKE_DEMAND(autoDiffToValueMatrix(xdot_autodiff).isZero(1e-6));
 
   MatrixXd AB = autoDiffToGradientMatrix(xdot_autodiff);
   MatrixXd A = AB.leftCols(num_states_);
@@ -127,6 +137,14 @@ ConstrainedLQRController::ConstrainedLQRController(
   lqr_result_ = LinearQuadraticRegulator(A_, B_, Q_, R_);
   K_ = lqr_result_.K * P;
   E_ = u;
+
+  std::cout << A.rows() << " " << A.cols() << std::endl;
+  std::cout << B.rows() << " " << B.cols() << std::endl;
+  std::cout << P.rows() << " " << P.cols() << std::endl;
+  std::cout << A_.rows() << " " << A_.cols() << std::endl;
+  std::cout << B_.rows() << " " << B_.cols() << std::endl;
+  std::cout << K_.rows() << " " << K_.cols() << std::endl;
+
 }
 
 void ConstrainedLQRController::CalcControl(
@@ -137,6 +155,12 @@ void ConstrainedLQRController::CalcControl(
 
   // Computing the controller output.
   VectorXd u = K_ * (desired_state_ - info->GetState()) + E_;
+  //std::cout << "---" << std::endl;
+  //std::cout << desired_state_.size() << std::endl;
+  //std::cout << K_.rows() << K_.cols() << std::endl;
+  //std::cout << info->GetState().size() << std::endl;
+  //std::cout << E_.size() << std::endl;
+  //std::cout << "---" << std::endl;
   control->SetDataVector(u);
   control->set_timestamp(info->get_timestamp());
 }

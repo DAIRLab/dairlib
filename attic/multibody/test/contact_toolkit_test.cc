@@ -91,38 +91,80 @@ class ContactToolkitTest : public ::testing::Test {
     x0_quaternion_(position_map_quaternion.at("toe_right")) =
         -60.0 * M_PI / 180.0;
 
-    // Colliison detect
-    // Contact_info will be the same for both the floating base models
-    VectorXd phi_total;
-    Matrix3Xd normal_total, xA_total, xB_total;
-    vector<int> idxA_total, idxB_total;
-    KinematicsCache<double> k_cache = tree_rpy_.doKinematics(
+    // Collison detect
+    // Contact information for the rpy and quaternion models
+    VectorXd phi_total_rpy;
+    Matrix3Xd normal_total_rpy, xA_total_rpy, xB_total_rpy;
+    vector<int> idxA_total_rpy, idxB_total_rpy;
+    KinematicsCache<double> k_cache_rpy = tree_rpy_.doKinematics(
         x0_rpy_.head(num_positions_rpy), x0_rpy_.tail(num_velocities_rpy));
 
-    tree_rpy_.collisionDetect(k_cache, phi_total, normal_total, xA_total,
-                              xB_total, idxA_total, idxB_total);
+    VectorXd phi_total_quaternion;
+    Matrix3Xd normal_total_quaternion, xA_total_quaternion, xB_total_quaternion;
+    vector<int> idxA_total_quaternion, idxB_total_quaternion;
+    KinematicsCache<double> k_cache_quaternion = tree_quaternion_.doKinematics(
+        x0_quaternion_.head(num_positions_quaternion),
+        x0_quaternion_.tail(num_velocities_quaternion));
 
-    const int world_ind = GetBodyIndexFromName(tree_rpy_, "world");
-    const int toe_left_ind = GetBodyIndexFromName(tree_rpy_, "toe_left");
-    const int toe_right_ind = GetBodyIndexFromName(tree_rpy_, "toe_right");
+    tree_rpy_.collisionDetect(k_cache_rpy, phi_total_rpy, normal_total_rpy,
+                              xA_total_rpy, xB_total_rpy, idxA_total_rpy,
+                              idxB_total_rpy);
 
-    // Extracting information into the four contacts.
-    VectorXd phi(4);
-    Matrix3Xd normal(3, 4), xA(3, 4), xB(3, 4);
-    vector<int> idxA(4), idxB(4);
+    tree_quaternion_.collisionDetect(
+        k_cache_quaternion, phi_total_quaternion, normal_total_quaternion,
+        xA_total_quaternion, xB_total_quaternion, idxA_total_quaternion,
+        idxB_total_quaternion);
+
+    const int world_ind_rpy = GetBodyIndexFromName(tree_rpy_, "world");
+    const int toe_left_ind_rpy = GetBodyIndexFromName(tree_rpy_, "toe_left");
+    const int toe_right_ind_rpy = GetBodyIndexFromName(tree_rpy_, "toe_right");
+
+    const int world_ind_quaternion =
+        GetBodyIndexFromName(tree_quaternion_, "world");
+    const int toe_left_ind_quaternion =
+        GetBodyIndexFromName(tree_quaternion_, "toe_left");
+    const int toe_right_ind_quaternion =
+        GetBodyIndexFromName(tree_quaternion_, "toe_right");
+
+    // Extracting information into the four contacts for the floating base types
+    VectorXd phi_rpy(4);
+    Matrix3Xd normal_rpy(3, 4), xA_rpy(3, 4), xB_rpy(3, 4);
+    vector<int> idxA_rpy(4), idxB_rpy(4);
+
+    VectorXd phi_quaternion(4);
+    Matrix3Xd normal_quaternion(3, 4), xA_quaternion(3, 4), xB_quaternion(3, 4);
+    vector<int> idxA_quaternion(4), idxB_quaternion(4);
 
     int k = 0;
-    for (unsigned i = 0; i < idxA_total.size(); ++i) {
-      int ind_a = idxA_total.at(i);
-      int ind_b = idxB_total.at(i);
-      if ((ind_a == world_ind && ind_b == toe_left_ind) ||
-          (ind_a == world_ind && ind_b == toe_right_ind) ||
-          (ind_a == toe_left_ind && ind_b == world_ind) ||
-          (ind_a == toe_right_ind && ind_b == world_ind)) {
-        xA.col(k) = xA_total.col(i);
-        xB.col(k) = xB_total.col(i);
-        idxA.at(k) = idxA_total.at(i);
-        idxB.at(k) = idxB_total.at(i);
+    for (unsigned i = 0; i < idxA_total_rpy.size(); ++i) {
+      int ind_a = idxA_total_rpy.at(i);
+      int ind_b = idxB_total_rpy.at(i);
+      if ((ind_a == world_ind_rpy && ind_b == toe_left_ind_rpy) ||
+          (ind_a == world_ind_rpy && ind_b == toe_right_ind_rpy) ||
+          (ind_a == toe_left_ind_rpy && ind_b == world_ind_rpy) ||
+          (ind_a == toe_right_ind_rpy && ind_b == world_ind_rpy)) {
+        xA_rpy.col(k) = xA_total_rpy.col(i);
+        xB_rpy.col(k) = xB_total_rpy.col(i);
+        idxA_rpy.at(k) = idxA_total_rpy.at(i);
+        idxB_rpy.at(k) = idxB_total_rpy.at(i);
+        ++k;
+      }
+    }
+
+    k = 0;
+    for (unsigned i = 0; i < idxA_total_quaternion.size(); ++i) {
+      int ind_a = idxA_total_quaternion.at(i);
+      int ind_b = idxB_total_quaternion.at(i);
+      if ((ind_a == world_ind_quaternion && ind_b == toe_left_ind_quaternion) ||
+          (ind_a == world_ind_quaternion &&
+           ind_b == toe_right_ind_quaternion) ||
+          (ind_a == toe_left_ind_quaternion && ind_b == world_ind_quaternion) ||
+          (ind_a == toe_right_ind_quaternion &&
+           ind_b == world_ind_quaternion)) {
+        xA_quaternion.col(k) = xA_total_quaternion.col(i);
+        xB_quaternion.col(k) = xB_total_quaternion.col(i);
+        idxA_quaternion.at(k) = idxA_total_quaternion.at(i);
+        idxB_quaternion.at(k) = idxB_total_quaternion.at(i);
         ++k;
       }
     }
@@ -132,18 +174,19 @@ class ContactToolkitTest : public ::testing::Test {
     // ContactInfo.idxA
     // In this case xA corresponds to the points on the ground and hence xB must
     // be used
-    contact_info_ = {xB, idxB};
+    contact_info_rpy_ = {xB_rpy, idxB_rpy};
+    contact_info_quaternion_ = {xB_quaternion, idxB_quaternion};
 
     // ContactToolkit objects for both templates and floating bases
     contact_toolkit_rpy_double_ =
-        make_unique<ContactToolkit<double>>(tree_rpy_, contact_info_);
-    contact_toolkit_quaternion_double_ =
-        make_unique<ContactToolkit<double>>(tree_quaternion_, contact_info_);
+        make_unique<ContactToolkit<double>>(tree_rpy_, contact_info_rpy_);
+    contact_toolkit_quaternion_double_ = make_unique<ContactToolkit<double>>(
+        tree_quaternion_, contact_info_quaternion_);
     contact_toolkit_rpy_autodiff_ =
-        make_unique<ContactToolkit<AutoDiffXd>>(tree_rpy_, contact_info_);
+        make_unique<ContactToolkit<AutoDiffXd>>(tree_rpy_, contact_info_rpy_);
     contact_toolkit_quaternion_autodiff_ =
         make_unique<ContactToolkit<AutoDiffXd>>(tree_quaternion_,
-                                                contact_info_);
+                                                contact_info_quaternion_);
   }
 
   RigidBodyTree<double> tree_rpy_;
@@ -152,7 +195,8 @@ class ContactToolkitTest : public ::testing::Test {
   unique_ptr<ContactToolkit<double>> contact_toolkit_quaternion_double_;
   unique_ptr<ContactToolkit<AutoDiffXd>> contact_toolkit_rpy_autodiff_;
   unique_ptr<ContactToolkit<AutoDiffXd>> contact_toolkit_quaternion_autodiff_;
-  ContactInfo contact_info_;
+  ContactInfo contact_info_rpy_;
+  ContactInfo contact_info_quaternion_;
   VectorXd x0_rpy_;
   VectorXd x0_quaternion_;
 };
@@ -174,24 +218,26 @@ TEST_F(ContactToolkitTest, InitializationTest) {
 
   // ContactInfo getter
   contact_info_test = contact_toolkit_rpy_double_->get_contact_info();
-  ASSERT_TRUE(contact_info_test.xA.isApprox(contact_info_.xA));
-  ASSERT_TRUE(contact_info_test.idxA == contact_info_.idxA);
-  ASSERT_TRUE(contact_info_test.num_contacts == contact_info_.num_contacts);
+  ASSERT_TRUE(contact_info_test.xA.isApprox(contact_info_rpy_.xA));
+  ASSERT_TRUE(contact_info_test.idxA == contact_info_rpy_.idxA);
+  ASSERT_TRUE(contact_info_test.num_contacts == contact_info_rpy_.num_contacts);
 
   contact_info_test = contact_toolkit_quaternion_double_->get_contact_info();
-  ASSERT_TRUE(contact_info_test.xA.isApprox(contact_info_.xA));
-  ASSERT_TRUE(contact_info_test.idxA == contact_info_.idxA);
-  ASSERT_TRUE(contact_info_test.num_contacts == contact_info_.num_contacts);
+  ASSERT_TRUE(contact_info_test.xA.isApprox(contact_info_quaternion_.xA));
+  ASSERT_TRUE(contact_info_test.idxA == contact_info_quaternion_.idxA);
+  ASSERT_TRUE(contact_info_test.num_contacts ==
+              contact_info_quaternion_.num_contacts);
 
   contact_info_test = contact_toolkit_rpy_autodiff_->get_contact_info();
-  ASSERT_TRUE(contact_info_test.xA.isApprox(contact_info_.xA));
-  ASSERT_TRUE(contact_info_test.idxA == contact_info_.idxA);
-  ASSERT_TRUE(contact_info_test.num_contacts == contact_info_.num_contacts);
+  ASSERT_TRUE(contact_info_test.xA.isApprox(contact_info_rpy_.xA));
+  ASSERT_TRUE(contact_info_test.idxA == contact_info_rpy_.idxA);
+  ASSERT_TRUE(contact_info_test.num_contacts == contact_info_rpy_.num_contacts);
 
   contact_info_test = contact_toolkit_quaternion_autodiff_->get_contact_info();
-  ASSERT_TRUE(contact_info_test.xA.isApprox(contact_info_.xA));
-  ASSERT_TRUE(contact_info_test.idxA == contact_info_.idxA);
-  ASSERT_TRUE(contact_info_test.num_contacts == contact_info_.num_contacts);
+  ASSERT_TRUE(contact_info_test.xA.isApprox(contact_info_quaternion_.xA));
+  ASSERT_TRUE(contact_info_test.idxA == contact_info_quaternion_.idxA);
+  ASSERT_TRUE(contact_info_test.num_contacts ==
+              contact_info_quaternion_.num_contacts);
 
   // num contacts getter
   ASSERT_EQ(contact_toolkit_rpy_double_->get_num_contacts(), 4);

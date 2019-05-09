@@ -16,6 +16,7 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 
 #include "attic/multibody/multibody_solvers.h"
+#include "attic/multibody/utility_systems.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "systems/controllers/constrained_lqr_controller.h"
@@ -46,6 +47,7 @@ using dairlib::multibody::FixedPointSolver;
 using dairlib::multibody::PositionSolver;
 using dairlib::multibody::ContactInfo;
 using dairlib::multibody::GetBodyIndexFromName;
+using dairlib::multibody::StateToOutputVectorSystem;
 using dairlib::systems::ConstrainedLQRController;
 
 using drake::systems::BasicVector;
@@ -133,36 +135,6 @@ ContactInfo ComputeCassieContactInfo(const RigidBodyTree<double>& tree,
   return contact_info;
 }
 
-/*
- * A class to serve as the input to the ConstrainedLQRController.
- * It takes in a basic vector (of size num_states) at its input and has an
- * output port of type OutputVector.
- * It serves as an interfacing connector between the RigidBodyPlant's state
- * output port and ConstrainedLQRController's info input port.
- */
-class StateConnector : public LeafSystem<double> {
- public:
-  StateConnector(int num_positions, int num_velocities, int num_efforts)
-      : num_states_(num_positions + num_velocities) {
-    this->DeclareVectorInputPort(
-        BasicVector<double>(num_positions + num_velocities));
-    this->DeclareVectorOutputPort(
-        OutputVector<double>(num_positions, num_velocities, num_efforts),
-        &dairlib::StateConnector::CopyOut);
-  }
-
- private:
-  const int num_states_;
-
-  void CopyOut(const Context<double>& context,
-               OutputVector<double>* output) const {
-    const auto state = this->EvalVectorInput(context, 0);
-    const VectorXd state_vec = state->get_value();
-    output->SetState(state_vec.head(num_states_));
-    output->set_timestamp(context.get_time());
-  }
-};
-
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -172,7 +144,7 @@ int do_main(int argc, char* argv[]) {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kQuaternion);
     // Adding a terrain for the floating base version.
-    AddFlatTerrainToWorld(tree.get(), 20, 1);
+    AddFlatTerrainToWorld(tree.get(), 100, 0.1);
   } else {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kFixed);
@@ -373,15 +345,6 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
 
-  // State receiver
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
-      plant->get_rigid_body_tree());
-  auto state_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          FLAGS_state_channel, &lcm));
-  builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
-
   // Input publisher
   auto input_sender = builder.AddSystem<systems::RobotCommandSender>(
       plant->get_rigid_body_tree());
@@ -441,11 +404,11 @@ int do_main(int argc, char* argv[]) {
       plant->get_input_port(0).size());
 
   // State connector to connect the state of the plant to the controller.
-  auto state_connector = builder.AddSystem<StateConnector>(
+  auto state_to_output_vector = builder.AddSystem<StateToOutputVectorSystem>(
       num_positions, num_velocities, num_efforts);
   builder.Connect(plant->state_output_port(),
-                  state_connector->get_input_port(0));
-  builder.Connect(state_connector->get_output_port(0),
+                  state_to_output_vector->get_input_port(0));
+  builder.Connect(state_to_output_vector->get_output_port(0),
                   clqr_controller->get_input_port_info());
   builder.Connect(clqr_controller->get_output_port_efforts(),
                   input_sender->get_input_port(0));
@@ -454,10 +417,9 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(passthrough->get_output_port(),
                   plant->actuator_command_input_port());
 
-  // Drake Visualizer
-  //DrakeVisualizer& visualizer = *builder.template AddSystem<DrakeVisualizer>(
-  //    plant->get_rigid_body_tree(), &lcm);
-  //builder.Connect(plant->state_output_port(), visualizer.get_input_port(0));
+  DrakeVisualizer& visualizer = *builder.template AddSystem<DrakeVisualizer>(
+      plant->get_rigid_body_tree(), &lcm);
+  builder.Connect(plant->state_output_port(), visualizer.get_input_port(0));
 
   // Building the diagram and starting the simulation.
   auto diagram = builder.Build();
@@ -479,13 +441,13 @@ int do_main(int argc, char* argv[]) {
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(0.0001);
+  simulator.set_target_realtime_rate(1);
   simulator.Initialize();
 
   lcm.StartReceiveThread();
 
   simulator.StepTo(std::numeric_limits<double>::infinity());
-  //simulator.StepTo(1e-4);
+  // simulator.StepTo(1e-4);
 
   return 0;
 }

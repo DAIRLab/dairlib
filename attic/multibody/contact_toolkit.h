@@ -1,10 +1,10 @@
 #pragma once
 
 //#include <vector>
+#include "attic/multibody/rigidbody_utils.h"
 #include "drake/common/default_scalars.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/multibody/rigid_body_tree.h"
-#include "attic/multibody/rigidbody_utils.h"
 
 namespace dairlib {
 namespace multibody {
@@ -55,6 +55,12 @@ class ContactToolkit {
    */
   drake::MatrixX<T> CalcContactJacobian(drake::VectorX<T> x) const;
   /*
+   * Overloaded Function to compute the contact jacobian with an explicit choice
+   * of representing it using qdot or v.
+   */
+  drake::MatrixX<T> CalcContactJacobian(drake::VectorX<T> x,
+                                        bool in_terms_of_qdot) const;
+  /*
    * Function to compute M * VDot given the state, control inputs and constraint
    * forces
    * @param x The state of the system
@@ -92,4 +98,4 @@ class ContactToolkit {
 };
 
 }  // namespace multibody
-} // namespace dairlib
+}  // namespace dairlib

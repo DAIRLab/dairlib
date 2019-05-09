@@ -199,6 +199,7 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//attic/multibody:multibody_solvers",
+        "//attic/multibody:utility_systems",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "//systems/controllers:constrained_lqr_controller",

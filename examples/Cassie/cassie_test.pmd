@@ -37,24 +37,16 @@ group "1.simulated-robot" {
 }
 
 group "0.operator" {
-    cmd "5.state-visualizer-real-robot" {
+    cmd "3.state-visualizer-real-robot" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false --channel NETWORK_CASSIE_STATE";
         host = "localhost";
     }
-    cmd "4.drake-director-real-robot" {
+    cmd "2.drake-director-real-robot" {
         exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/set_channel_network.py --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
         host = "localhost";
     }
     cmd "1.state-visualizer" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
-        host = "localhost";
-    }
-    cmd "2.state-visualizer-rbt(Fixed)" {
-        exec = "bazel-bin/examples/Cassie/rbt_visualizer --floating_base=false";
-        host = "localhost";
-    }
-    cmd "3.state-visualizer-rbt(Floating)" {
-        exec = "bazel-bin/examples/Cassie/rbt_visualizer --floating_base=true";
         host = "localhost";
     }
     cmd "0.drake-director" {

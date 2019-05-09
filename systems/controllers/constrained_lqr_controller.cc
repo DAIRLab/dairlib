@@ -65,6 +65,7 @@ ConstrainedLQRController::ConstrainedLQRController(
     in_terms_of_qdot_ = false;
   }
 
+
   // Creating the full state vector (Velocities are zero as it is a fixed point)
   VectorXd x(num_states_);
   VectorXd v = VectorXd::Zero(num_velocities_);
@@ -72,28 +73,34 @@ ConstrainedLQRController::ConstrainedLQRController(
   desired_state_ = x;
 
   // Computing the full Jacobian (Position and contact)
-  MatrixXd J_tree, J_contact;
+  MatrixXd J_tree_qdot, J_tree_v, J_contact_qdot, J_contact_v;
   KinematicsCache<double> k_cache = tree_.doKinematics(q);
 
   // Position Jacobian
-  J_tree = tree_.positionConstraintsJacobian(k_cache, true);
+  J_tree_qdot = tree_.positionConstraintsJacobian(k_cache, true);
+  J_tree_v = tree_.positionConstraintsJacobian(k_cache, false);
 
   // Contact Jacobian (If contact information is provided)
   if (contact_info_.num_contacts > 0) {
-    J_contact = autoDiffToValueMatrix(
+    J_contact_qdot = autoDiffToValueMatrix(
+        contact_toolkit_->CalcContactJacobian(initializeAutoDiff(x), true));
+    J_contact_v = autoDiffToValueMatrix(
         contact_toolkit_->CalcContactJacobian(initializeAutoDiff(x), false));
-    std::cout << J_contact.rows() << " " << J_contact.cols() << std::endl;
   }
 
-  MatrixXd J(J_tree.rows() + J_contact.rows(), num_positions_);
-  J << J_tree, J_contact;
+  MatrixXd J_qdot(J_tree_qdot.rows() + J_contact_qdot.rows(),
+                  J_tree_qdot.cols());
+  MatrixXd J_v(J_tree_v.rows() + J_contact_v.rows(), J_tree_v.cols());
+  J_qdot << J_tree_qdot, J_contact_qdot;
+  J_v << J_tree_v, J_contact_v;
 
   // Computing F
   // F is the constraint matrix that represents the constraint in the form
   // Fx = 0 (where x is the full state vector of the model)
-  MatrixXd F = MatrixXd::Zero(2 * J.rows(), 2 * J.cols());
-  F.block(0, 0, J.rows(), J.cols()) = J;
-  F.block(J.rows(), J.cols(), J.rows(), J.cols()) = J;
+  MatrixXd F =
+      MatrixXd::Zero(J_qdot.rows() + J_v.rows(), J_qdot.cols() + J_v.cols());
+  F.block(0, 0, J_qdot.rows(), J_qdot.cols()) = J_qdot;
+  F.block(J_qdot.rows(), J_qdot.cols(), J_v.rows(), J_v.cols()) = J_v;
 
   // Computing the null space of F
   HouseholderQR<MatrixXd> qr_decomp(F.transpose());
@@ -138,13 +145,6 @@ ConstrainedLQRController::ConstrainedLQRController(
   K_ = lqr_result_.K * P;
   E_ = u;
 
-  std::cout << A.rows() << " " << A.cols() << std::endl;
-  std::cout << B.rows() << " " << B.cols() << std::endl;
-  std::cout << P.rows() << " " << P.cols() << std::endl;
-  std::cout << A_.rows() << " " << A_.cols() << std::endl;
-  std::cout << B_.rows() << " " << B_.cols() << std::endl;
-  std::cout << K_.rows() << " " << K_.cols() << std::endl;
-
 }
 
 void ConstrainedLQRController::CalcControl(
@@ -155,12 +155,12 @@ void ConstrainedLQRController::CalcControl(
 
   // Computing the controller output.
   VectorXd u = K_ * (desired_state_ - info->GetState()) + E_;
-  //std::cout << "---" << std::endl;
-  //std::cout << desired_state_.size() << std::endl;
-  //std::cout << K_.rows() << K_.cols() << std::endl;
-  //std::cout << info->GetState().size() << std::endl;
-  //std::cout << E_.size() << std::endl;
-  //std::cout << "---" << std::endl;
+  // std::cout << "---" << std::endl;
+  // std::cout << desired_state_.size() << std::endl;
+  // std::cout << K_.rows() << K_.cols() << std::endl;
+  // std::cout << info->GetState().size() << std::endl;
+  // std::cout << E_.size() << std::endl;
+  // std::cout << "---" << std::endl;
   control->SetDataVector(u);
   control->set_timestamp(info->get_timestamp());
 }

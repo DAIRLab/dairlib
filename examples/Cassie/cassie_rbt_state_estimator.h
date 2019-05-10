@@ -1,51 +1,41 @@
 #pragma once
 
-#include <string>
 #include <map>
+#include <string>
 #include <vector>
 
 #include "drake/systems/framework/leaf_system.h"
 
 #include "attic/multibody/rigidbody_utils.h"
+#include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/datatypes/cassie_out_t.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
-#include "examples/Cassie/datatypes/cassie_out_t.h"
-#include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib {
 namespace systems {
-
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using Eigen::Isometry3d;
-using systems::OutputVector;
-
-using drake::systems::Context;
-using drake::systems::EventStatus;
-using drake::systems::DiscreteValues;
-using drake::systems::DiscreteStateIndex;
 
 /// Translates from a TimestamedVector of cassie torque commands into
 /// a cassie_user_in_t struct for transmission to the real robot.
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
-  explicit CassieRbtStateEstimator(
-    const RigidBodyTree<double>&, bool);
-  void solveFourbarLinkage(VectorXd q_init,
-                           double & left_heel_spring,
-                           double & right_heel_spring) const;
+  explicit CassieRbtStateEstimator(const RigidBodyTree<double>&, bool);
+  void solveFourbarLinkage(Eigen::VectorXd q_init, double& left_heel_spring,
+                           double& right_heel_spring) const;
 
  private:
+  Eigen::MatrixXd ComputeX(Eigen::VectorXd);
 
   void AssignNonFloatingBaseToOutputVector(
-    OutputVector<double>* output, const cassie_out_t& cassie_out) const;
+      dairlib::systems::OutputVector<double>* output,
+      const cassie_out_t& cassie_out) const;
 
-  EventStatus Update(const Context<double>& context,
-                     DiscreteValues<double>* discrete_state) const;
+  drake::systems::EventStatus Update(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  void CopyStateOut(const Context<double>& context,
-                    OutputVector<double>* output) const;
+  void CopyStateOut(const drake::systems::Context<double>& context,
+                    dairlib::systems::OutputVector<double>* output) const;
 
   const RigidBodyTree<double>& tree_;
   std::map<std::string, int> positionIndexMap_;
@@ -57,9 +47,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   int left_heel_spring_ind_ = -1;
   int right_heel_spring_ind_ = -1;
 
-  DiscreteStateIndex state_idx_;
-  DiscreteStateIndex ekf_X_idx_;
-  DiscreteStateIndex time_idx_;
+  drake::systems::DiscreteStateIndex state_idx_;
+  drake::systems::DiscreteStateIndex ekf_X_idx_;
+  drake::systems::DiscreteStateIndex time_idx_;
 
   bool is_floating_base_;
 };

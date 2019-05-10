@@ -50,7 +50,6 @@ void PositionConstraint::DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
   // Obtaining the position constraints from the tree and setting it to be the
   // output.
   *y = tree_.positionConstraints(k_cache);
-
 }
 
 void PositionConstraint::DoEval(
@@ -109,7 +108,6 @@ void ContactConstraint::DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q,
   }
 
   *y = y_t;
-
 }
 
 void ContactConstraint::DoEval(
@@ -168,7 +166,6 @@ void FixedPointConstraint::DoEval(
   // The constraint is set up using MVDot as it is more stable than computing
   // xdot and constraining it to be zero.
   *y = contact_toolkit_->CalcMVDot(x, u, lambda);
-
 }
 
 void FixedPointConstraint::DoEval(
@@ -646,10 +643,14 @@ void FixedPointSolver::AddJointLimitConstraint(const double tolerance) {
   VectorXd joint_min = tree_.joint_limit_min;
   VectorXd joint_max = tree_.joint_limit_max;
 
-  for (int i = 7; i < joint_min.size(); ++i) {
+  for (int i = 0; i < joint_min.size(); ++i) {
     // Adding minimum and maximum joint angle constraints.
-    prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
-    prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
+    // Ignoring the floating base coordinates if any.
+    // We assume all floating base positions start with "base"
+    if (tree_.get_position_name(i).substr(0, 4) != "base") {
+      prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
+      prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
+    }
   }
 }
 

@@ -50,10 +50,8 @@ using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::multibody::StateToOutputVectorSystem;
 using dairlib::systems::ConstrainedLQRController;
 
-using drake::systems::BasicVector;
 using drake::systems::ConstantVectorSource;
 using drake::systems::Context;
-using drake::systems::DrakeVisualizer;
 using drake::systems::LeafSystem;
 using drake::systems::Multiplexer;
 using dairlib::systems::OutputVector;

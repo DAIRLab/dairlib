@@ -38,7 +38,7 @@ void AffineController::CalcControl(const Context<double>& context,
   const AffineParams* params = dynamic_cast<const AffineParams*>(
       this->EvalVectorInput(context, input_port_params_index_));
 
-  // Using the Eigen type instead of auto would force a copy.
+  // Could use MatrixXd instead of auto, but that would force a copy.
   auto K = params->get_K();
   auto desired_state = params->get_desired_state();
   auto E = params->get_E();

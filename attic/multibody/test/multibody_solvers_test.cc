@@ -130,7 +130,7 @@ class MultibodySolversTest : public ::testing::Test {
     // Setting up fixed_joints_vector_ and fixed_joints_map_ for the rpy
     // floating base model
     fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("base_roll"));
-    fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("base_pitch"));
+    //fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("base_pitch"));
     fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("base_yaw"));
     fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("hip_pitch_left"));
     fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("hip_pitch_right"));

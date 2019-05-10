@@ -53,13 +53,8 @@ class ContactToolkit {
    * tangent directions are considered for each contact point-plane contact.
    * @param x The state of the system
    */
-  drake::MatrixX<T> CalcContactJacobian(drake::VectorX<T> x) const;
-  /*
-   * Overloaded Function to compute the contact jacobian with an explicit choice
-   * of representing it using qdot or v.
-   */
   drake::MatrixX<T> CalcContactJacobian(drake::VectorX<T> x,
-                                        bool in_terms_of_qdot) const;
+                                        bool in_terms_of_qdot = false) const;
   /*
    * Function to compute M * VDot given the state, control inputs and constraint
    * forces
@@ -94,7 +89,6 @@ class ContactToolkit {
   const RigidBodyTree<double>& tree_;
   ContactInfo contact_info_;
   int num_contacts_;
-  bool in_terms_of_qdot_;
 };
 
 }  // namespace multibody

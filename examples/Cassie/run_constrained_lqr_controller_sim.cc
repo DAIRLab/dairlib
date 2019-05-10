@@ -417,10 +417,6 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(passthrough->get_output_port(),
                   plant->actuator_command_input_port());
 
-  DrakeVisualizer& visualizer = *builder.template AddSystem<DrakeVisualizer>(
-      plant->get_rigid_body_tree(), &lcm);
-  builder.Connect(plant->state_output_port(), visualizer.get_input_port(0));
-
   // Building the diagram and starting the simulation.
   auto diagram = builder.Build();
 
@@ -447,7 +443,6 @@ int do_main(int argc, char* argv[]) {
   lcm.StartReceiveThread();
 
   simulator.StepTo(std::numeric_limits<double>::infinity());
-  // simulator.StepTo(1e-4);
 
   return 0;
 }

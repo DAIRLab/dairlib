@@ -127,7 +127,7 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
    * Returns the sole input port.
    */
   const drake::systems::InputPort<double>& get_input_port() const {
-    DRAKE_THROW_UNLESS(this->get_num_input_ports() == 1);
+    DRAKE_THROW_UNLESS(this->num_input_ports() == 1);
     return drake::systems::LeafSystem<double>::get_input_port(0);
   }
 

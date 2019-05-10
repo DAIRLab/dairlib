@@ -83,8 +83,8 @@ class AffineControllerTest : public ::testing::Test {
 TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
   /// Checks that the number of input ports in the system and in the context
   // are consistent.
-  ASSERT_EQ(context_->get_num_input_ports(), 2);
-  ASSERT_EQ(affine_controller_->get_num_input_ports(), 2);
+  ASSERT_EQ(context_->num_input_ports(), 2);
+  ASSERT_EQ(affine_controller_->num_input_ports(), 2);
 
   // Hook input of the expected size.
   context_->FixInputPort(affine_controller_->get_input_port_info_index(),
@@ -96,8 +96,8 @@ TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
 
   // Checks that the number of output ports in the system and in the
   // output are consistent.
-  ASSERT_EQ(1, output_->get_num_ports());
-  ASSERT_EQ(1, affine_controller_->get_num_output_ports());
+  ASSERT_EQ(1, output_->num_ports());
+  ASSERT_EQ(1, affine_controller_->num_output_ports());
 
   Eigen::VectorXd output, output_data;
   const BasicVector<double>* output_port_vec = output_->get_vector_data(0);

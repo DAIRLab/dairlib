@@ -82,7 +82,7 @@ class CassieUDPSubscriber : public drake::systems::LeafSystem<double> {
 
   /// Returns the sole output port.
   const drake::systems::OutputPort<double>& get_output_port() const {
-    DRAKE_THROW_UNLESS(this->get_num_output_ports() == 1);
+    DRAKE_THROW_UNLESS(this->num_output_ports() == 1);
     return drake::systems::LeafSystem<double>::get_output_port(0);
   }
 

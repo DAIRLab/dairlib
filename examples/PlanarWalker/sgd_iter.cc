@@ -293,7 +293,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration,
     VectorXd features(m_constraint.n_features());
     for (int j = 0; j < m_constraint.n_features(); j++) {
       auto m_ij = trajopt->SubstitutePlaceholderVariables(m_constraint.getFeature(j), i);
-      features(j) = drake::ExtractDoubleOrThrow(trajopt->SubstituteSolution(m_ij));
+      features(j) = drake::ExtractDoubleOrThrow(result.GetSolution(m_ij));
     }
 
     VectorXd ind = systems::trajectory_optimization::getConstraintRows(

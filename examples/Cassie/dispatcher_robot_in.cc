@@ -33,6 +33,8 @@ DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
 DEFINE_int64(port, 25000, "Port to publish to (UDP).");
 DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
 
+// Cassie model paramter
+DEFINE_bool(floating_base, false, "Fixed or floating base model");
 
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
@@ -46,7 +48,12 @@ int do_main(int argc, char* argv[]) {
 
   DiagramBuilder<double> builder;
 
-  std::unique_ptr<RigidBodyTree<double>> tree = makeCassieTreePointer();
+  std::unique_ptr<RigidBodyTree<double>> tree;
+  if (FLAGS_floating_base)
+    tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
+                                 drake::multibody::joints::kQuaternion);
+  else
+    tree = makeCassieTreePointer();
 
   // Crate LCM subscriber/receiver for commands
   auto command_sub = builder.AddSystem(

@@ -19,7 +19,8 @@ namespace systems {
 /// a cassie_user_in_t struct for transmission to the real robot.
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
-  explicit CassieRbtStateEstimator(const RigidBodyTree<double>&, bool);
+  explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
+                                   bool is_floating_base);
   void solveFourbarLinkage(Eigen::VectorXd q_init, double& left_heel_spring,
                            double& right_heel_spring) const;
 

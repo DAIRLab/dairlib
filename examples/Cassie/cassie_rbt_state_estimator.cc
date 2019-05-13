@@ -11,6 +11,7 @@ using std::string;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::Matrix3Xd;
 using Eigen::Isometry3d;
 
 using drake::systems::Context;
@@ -145,29 +146,60 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
   }  // end for
 }
 
+MatrixXd CassieRbtStateEstimator::ExtractRotationMatrix(VectorXd ekf_x) {
+  MatrixXd R(3, 3);
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      R(i, j) = ekf_x(i * 3 + j);
+    }
+  }
+
+  return R;
+}
+
+VectorXd CassieRbtStateEstimator::ExtractFloatingBaseVelocities(
+    VectorXd ekf_x) {
+  return ekf_x.segment(9, 3);
+}
+
+VectorXd CassieRbtStateEstimator::ExtractFloatingBasePositions(VectorXd ekf_x) {
+  return ekf_x.segment(12, 3);
+}
+
+MatrixXd CassieRbtStateEstimator::ExtractContactPositions(VectorXd ekf_x) {
+  const int num_contacts = 4;
+  Matrix3Xd d;
+  for (int i = 0; i < num_contacts; ++i) {
+    VectorXd contact_position = ekf_x.segment(15 + 3 * i, 3);
+    if (!contact_position.isApprox(-VectorXd::Ones(3))) {
+      d << contact_position;
+    }
+  }
+
+  return d;
+}
+
 MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) {
-  int num_contacts = (ekf_x.size() - 9 - 6) / 3;
+  MatrixXd R = ExtractRotationMatrix(ekf_x);
+  VectorXd v = ExtractFloatingBaseVelocities(ekf_x);
+  VectorXd p = ExtractFloatingBasePositions(ekf_x);
+  MatrixXd d = ExtractContactPositions(ekf_x);
+
+  int num_contacts = d.cols();
   int n = 5 + num_contacts;
 
   MatrixXd X = MatrixXd::Zero(n, n);
 
-  // Filling up the rotation matrix which is composed of the first nine elements
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      X(i, j) = ekf_x(i * 3 + j);
-    }
-  }
+  X.block(0, 0, 3, 3) = ExtractRotationMatrix(ekf_x);
 
   // Floating base velocitie
-  X.block(0, 3, 3, 1) = ekf_x.segment(9, 3);
+  X.block(0, 3, 3, 1) = ExtractFloatingBaseVelocities(ekf_x);
 
   // Floating base position
-  X.block(0, 4, 3, 1) = ekf_x.segment(12, 3);
+  X.block(0, 4, 3, 1) = ExtractFloatingBasePositions(ekf_x);
 
   // Contact points
-  for (int i = 0; i < num_contacts; ++i) {
-    X.block(0, 5 + i, 3, 1) = ekf_x.segment(15 + 3 * i, 3);
-  }
+  X.block(0, 5, 3, num_contacts) = d;
 
   return X;
 }

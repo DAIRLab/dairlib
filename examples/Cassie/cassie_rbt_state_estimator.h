@@ -25,7 +25,11 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                            double& right_heel_spring) const;
 
  private:
-  Eigen::MatrixXd ComputeX(Eigen::VectorXd);
+  Eigen::MatrixXd ExtractRotationMatrix(Eigen::VectorXd ekf_x);
+  Eigen::VectorXd ExtractFloatingBaseVelocities(Eigen::VectorXd ekf_x);
+  Eigen::VectorXd ExtractFloatingBasePositions(Eigen::VectorXd ekf_x);
+  Eigen::MatrixXd ExtractContactPositions(Eigen::VectorXd ekf_x);
+  Eigen::MatrixXd ComputeX(Eigen::VectorXd ekf_x);
 
   void AssignNonFloatingBaseToOutputVector(
       dairlib::systems::OutputVector<double>* output,

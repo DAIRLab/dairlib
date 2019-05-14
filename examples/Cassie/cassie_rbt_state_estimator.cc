@@ -24,8 +24,12 @@ using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::systems::OutputVector;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
-    const RigidBodyTree<double>& tree, bool is_floating_base)
-    : tree_(tree), is_floating_base_(is_floating_base) {
+    const RigidBodyTree<double>& tree, VectorXd ekf_x_init, VectorXd ekf_b_init,
+    bool is_floating_base)
+    : tree_(tree),
+      ekf_x_init_(ekf_x_init),
+      ekf_b_init_(ekf_b_init),
+      is_floating_base_(is_floating_base) {
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
   positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
@@ -38,8 +42,16 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
   // if (is_floating_base) {
   DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
-  state_idx_ = DeclareDiscreteState(7 + 6);  // estimated floating base
-  ekf_X_idx_ = DeclareDiscreteState(27);     // estimated EKF state
+
+  // Declaring the discrete states with initial values
+  // Verifying the dimensions of the initial state values
+  DRAKE_ASSERT(ekf_x_init.size() == num_states_total_);
+  DRAKE_ASSERT(ekf_b_init.size() == num_states_bias_);
+
+  state_idx_ = DeclareDiscreteState(
+      VectorXd::Zero(num_states_required_));      // estimated floating base
+  ekf_x_idx_ = DeclareDiscreteState(ekf_x_init);  // estimated EKF state
+  ekf_b_idx_ = DeclareDiscreteState(ekf_b_init);  // estimated bias state
   time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));  // previous time
   // }
 
@@ -148,11 +160,9 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 
 MatrixXd CassieRbtStateEstimator::ExtractRotationMatrix(VectorXd ekf_x) {
   MatrixXd R(3, 3);
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      R(i, j) = ekf_x(i * 3 + j);
-    }
-  }
+  R.row(0) = ekf_x.segment(0, 3);
+  R.row(1) = ekf_x.segment(3, 3);
+  R.row(2) = ekf_x.segment(6, 3);
 
   return R;
 }
@@ -167,16 +177,36 @@ VectorXd CassieRbtStateEstimator::ExtractFloatingBasePositions(VectorXd ekf_x) {
 }
 
 MatrixXd CassieRbtStateEstimator::ExtractContactPositions(VectorXd ekf_x) {
-  const int num_contacts = 4;
-  Matrix3Xd d;
-  for (int i = 0; i < num_contacts; ++i) {
+  vector<VectorXd> d_vec;
+  for (int i = 0; i < 4; ++i) {
     VectorXd contact_position = ekf_x.segment(15 + 3 * i, 3);
     if (!contact_position.isApprox(-VectorXd::Ones(3))) {
-      d << contact_position;
+      d_vec.push_back(contact_position);
     }
   }
 
+  int num_contacts = d_vec.size();
+  MatrixXd d = MatrixXd::Zero(3, num_contacts);
+  for (int i = 0; i < num_contacts; ++i) {
+    d.col(i) = d_vec.at(i);
+  }
+
   return d;
+}
+
+MatrixXd CassieRbtStateEstimator::CreateSkewSymmetricMatrix(VectorXd s) {
+  // Making sure the the input vector is of the right size
+  DRAKE_ASSERT(s.size() == 3);
+
+  MatrixXd S = MatrixXd::Zero(3, 3);
+  S(0, 1) = -s(2);
+  S(0, 2) = s(1);
+  S(1, 0) = s(2);
+  S(1, 2) = -s(0);
+  S(2, 0) = -s(1);
+  S(2, 1) = s(0);
+
+  return S;
 }
 
 MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) {
@@ -201,7 +231,21 @@ MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) {
   // Contact points
   X.block(0, 5, 3, num_contacts) = d;
 
+  // Identity block
+  X.block(3, 3, num_contacts + 2, num_contacts + 2) =
+      MatrixXd::Identity(num_contacts + 2, num_contacts + 2);
+
   return X;
+}
+
+MatrixXd CassieRbtStateEstimator::ComputeXDot(VectorXd ekf_x, VectorXd ekf_b,
+                                              VectorXd u) {
+  MatrixXd R = ExtractRotationMatrix(ekf_x);
+  VectorXd v = ExtractFloatingBaseVelocities(ekf_x);
+  VectorXd p = ExtractFloatingBasePositions(ekf_x);
+  MatrixXd d = ExtractContactPositions(ekf_x);
+  VectorXd angular_velocity = u.head(3);
+  VectorXd angular_acceleration = u.tail(3);
 }
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
@@ -363,7 +407,7 @@ EventStatus CassieRbtStateEstimator::Update(
 
     // Step 5 - Assign values to states
     // Below is how you should assign the state at the end of this Update
-    // discrete_state->get_mutable_vector(ekf_X_idx_).get_mutable_value() =
+    // discrete_state->get_mutable_vector(ekf_x_idx_).get_mutable_value() =
     // ...;
     // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() =
     // ...;

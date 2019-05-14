@@ -20,17 +20,21 @@ namespace systems {
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
+                                   Eigen::VectorXd ekf_x_init,
+                                   Eigen::VectorXd ekf_b_init,
                                    bool is_floating_base);
   void solveFourbarLinkage(Eigen::VectorXd q_init, double& left_heel_spring,
                            double& right_heel_spring) const;
-
- private:
   Eigen::MatrixXd ExtractRotationMatrix(Eigen::VectorXd ekf_x);
   Eigen::VectorXd ExtractFloatingBaseVelocities(Eigen::VectorXd ekf_x);
   Eigen::VectorXd ExtractFloatingBasePositions(Eigen::VectorXd ekf_x);
   Eigen::MatrixXd ExtractContactPositions(Eigen::VectorXd ekf_x);
+  Eigen::MatrixXd CreateSkewSymmetricMatrix(Eigen::VectorXd s);
   Eigen::MatrixXd ComputeX(Eigen::VectorXd ekf_x);
+  Eigen::MatrixXd ComputeXDot(Eigen::VectorXd ekf_x, Eigen::VectorXd ekf_b,
+                              Eigen::VectorXd u);
 
+ private:
   void AssignNonFloatingBaseToOutputVector(
       dairlib::systems::OutputVector<double>* output,
       const cassie_out_t& cassie_out) const;
@@ -43,6 +47,14 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                     dairlib::systems::OutputVector<double>* output) const;
 
   const RigidBodyTree<double>& tree_;
+  Eigen::VectorXd ekf_x_init_;
+  Eigen::VectorXd ekf_b_init_;
+  bool is_floating_base_;
+
+  const int num_states_total_ = 27;
+  const int num_states_required_ = 13;
+  const int num_states_bias_ = 2;
+
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;
   std::map<std::string, int> actuatorIndexMap_;
@@ -53,10 +65,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   int right_heel_spring_ind_ = -1;
 
   drake::systems::DiscreteStateIndex state_idx_;
-  drake::systems::DiscreteStateIndex ekf_X_idx_;
+  drake::systems::DiscreteStateIndex ekf_x_idx_;
+  drake::systems::DiscreteStateIndex ekf_b_idx_;
   drake::systems::DiscreteStateIndex time_idx_;
-
-  bool is_floating_base_;
 };
 
 }  // namespace systems

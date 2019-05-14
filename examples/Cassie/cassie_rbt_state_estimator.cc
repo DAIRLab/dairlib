@@ -176,6 +176,18 @@ VectorXd CassieRbtStateEstimator::ExtractFloatingBasePositions(VectorXd ekf_x) {
   return ekf_x.segment(12, 3);
 }
 
+int CassieRbtStateEstimator::ComputeNumContacts(VectorXd ekf_x) {
+  int num_contacts = 0;
+  for (int i = 0; i < 4; ++i) {
+    VectorXd contact_position = ekf_x.segment(15 + 3 * i, 3);
+    if (!contact_position.isApprox(-VectorXd::Ones(3))) {
+      num_contacts++;
+    }
+  }
+
+  return num_contacts;
+}
+
 MatrixXd CassieRbtStateEstimator::ExtractContactPositions(VectorXd ekf_x) {
   vector<VectorXd> d_vec;
   for (int i = 0; i < 4; ++i) {
@@ -238,14 +250,54 @@ MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) {
   return X;
 }
 
+MatrixXd CassieRbtStateEstimator::ComputeX(MatrixXd R, VectorXd v, VectorXd p,
+                                           MatrixXd d) {
+  DRAKE_ASSERT(R.rows() == 3);
+  DRAKE_ASSERT(R.cols() == 3);
+  DRAKE_ASSERT(v.size() == 3);
+  DRAKE_ASSERT(p.size() == 3);
+  DRAKE_ASSERT(d.rows() == 3);
+
+  int num_contacts = d.cols();
+  int n = 5 + num_contacts;
+
+  MatrixXd X = MatrixXd::Zero(n, n);
+
+  X.block(0, 0, 3, 3) = R;
+  X.block(0, 3, 3, 1) = v;
+  X.block(0, 4, 3, 1) = p;
+  X.block(0, 5, 3, d.cols()) = d;
+  X.block(3, 3, num_contacts + 2, num_contacts + 2) =
+      MatrixXd::Identity(num_contacts + 2, num_contacts + 2);
+
+  return X;
+}
+
 MatrixXd CassieRbtStateEstimator::ComputeXDot(VectorXd ekf_x, VectorXd ekf_b,
                                               VectorXd u) {
   MatrixXd R = ExtractRotationMatrix(ekf_x);
   VectorXd v = ExtractFloatingBaseVelocities(ekf_x);
   VectorXd p = ExtractFloatingBasePositions(ekf_x);
-  MatrixXd d = ExtractContactPositions(ekf_x);
+  VectorXd velocity_bias = ekf_b.head(3);
+  VectorXd acceleration_bias = ekf_b.tail(3);
   VectorXd angular_velocity = u.head(3);
   VectorXd angular_acceleration = u.tail(3);
+  MatrixXd angular_velocity_skew =
+      CreateSkewSymmetricMatrix(angular_velocity - velocity_bias);
+  MatrixXd angular_acceleration_skew =
+      CreateSkewSymmetricMatrix(angular_acceleration - acceleration_bias);
+  VectorXd g;
+  g << 0, 0, -9.81;
+  MatrixXd Rdot = R * angular_velocity_skew;
+  MatrixXd vdot = R * angular_acceleration_skew + g;
+  MatrixXd pdot = v;
+  MatrixXd ddot = VectorXd::Zero(3, ComputeNumContacts(ekf_x));
+}
+
+// If a derivate other than zero is required, this function may be changed.
+VectorXd CassieRbtStateEstimator::ComputeBiasDot(VectorXd ekf_b) {
+  DRAKE_ASSERT(ekf_b.size() == 6);
+  return VectorXd::Zero(6);
 }
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(

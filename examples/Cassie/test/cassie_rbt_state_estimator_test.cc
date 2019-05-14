@@ -103,7 +103,7 @@ TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
 // independent of the input tree
 TEST_F(CassieRbtStateEstimatorTest, TestExtractRotation) {
   VectorXd ekf_x = VectorXd::Random(27);
-  VectorXd ekf_b = VectorXd::Random(2);
+  VectorXd ekf_b = VectorXd::Random(6);
 
   CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
   MatrixXd R = estimator.ExtractRotationMatrix(ekf_x);
@@ -121,7 +121,7 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractRotation) {
 
 TEST_F(CassieRbtStateEstimatorTest, TestExtractVelocity) {
   VectorXd ekf_x = VectorXd::Random(27);
-  VectorXd ekf_b = VectorXd::Random(2);
+  VectorXd ekf_b = VectorXd::Random(6);
 
   CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
   VectorXd v = estimator.ExtractFloatingBaseVelocities(ekf_x);
@@ -133,7 +133,7 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractVelocity) {
 
 TEST_F(CassieRbtStateEstimatorTest, TestExtractPosition) {
   VectorXd ekf_x = VectorXd::Random(27);
-  VectorXd ekf_b = VectorXd::Random(2);
+  VectorXd ekf_b = VectorXd::Random(6);
 
   CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
   VectorXd p = estimator.ExtractFloatingBasePositions(ekf_x);
@@ -145,7 +145,7 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractPosition) {
 
 TEST_F(CassieRbtStateEstimatorTest, TestExtractContactFull) {
   VectorXd ekf_x = VectorXd::Random(27);
-  VectorXd ekf_b = VectorXd::Random(2);
+  VectorXd ekf_b = VectorXd::Random(6);
 
   CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
   MatrixXd d = estimator.ExtractContactPositions(ekf_x);
@@ -166,7 +166,7 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractContactFull) {
 
 TEST_F(CassieRbtStateEstimatorTest, TestExtractContactPartial) {
   VectorXd ekf_x = VectorXd::Random(27);
-  VectorXd ekf_b = VectorXd::Random(2);
+  VectorXd ekf_b = VectorXd::Random(6);
 
   CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
 
@@ -204,6 +204,13 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractContactPartial) {
   ASSERT_TRUE(d4.cols() == 2);
   ASSERT_TRUE(d5.cols() == 1);
 
+  // Checking the num contacts function
+  ASSERT_TRUE(estimator.ComputeNumContacts(ekf_x_partial1) == 0);
+  ASSERT_TRUE(estimator.ComputeNumContacts(ekf_x_partial2) == 3);
+  ASSERT_TRUE(estimator.ComputeNumContacts(ekf_x_partial3) == 3);
+  ASSERT_TRUE(estimator.ComputeNumContacts(ekf_x_partial4) == 2);
+  ASSERT_TRUE(estimator.ComputeNumContacts(ekf_x_partial5) == 1);
+
   ASSERT_TRUE(d2.col(0).isApprox(ekf_x_partial2.segment(18, 3)));
   ASSERT_TRUE(d2.col(1).isApprox(ekf_x_partial2.segment(21, 3)));
   ASSERT_TRUE(d2.col(2).isApprox(ekf_x_partial2.segment(24, 3)));
@@ -220,13 +227,80 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractContactPartial) {
 
 TEST_F(CassieRbtStateEstimatorTest, TestSkewSymmetric) {
   VectorXd ekf_x = VectorXd::Random(27);
-  VectorXd ekf_b = VectorXd::Random(2);
+  VectorXd ekf_b = VectorXd::Random(6);
 
   CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
 
   MatrixXd S = estimator.CreateSkewSymmetricMatrix(VectorXd::Random(3));
   ASSERT_TRUE(S.isApprox(-S.transpose()));
+}
 
+TEST_F(CassieRbtStateEstimatorTest, TestComputeX) {
+  VectorXd ekf_x = VectorXd::Random(27);
+  VectorXd ekf_b = VectorXd::Random(6);
+
+  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
+
+  // States with less than four contacts (Different permuations)
+  VectorXd ekf_x_partial1 = ekf_x;
+  VectorXd ekf_x_partial2 = ekf_x;
+  VectorXd ekf_x_partial3 = ekf_x;
+  VectorXd ekf_x_partial4 = ekf_x;
+  VectorXd ekf_x_partial5 = ekf_x;
+
+  // No contacts
+  ekf_x_partial1.segment(15, 12) = -VectorXd::Ones(12);
+  // No first contact
+  ekf_x_partial2.segment(15, 3) = -VectorXd::Ones(3);
+  // No second contact
+  ekf_x_partial3.segment(18, 3) = -VectorXd::Ones(3);
+  // No first and third contact
+  ekf_x_partial4.segment(15, 3) = -VectorXd::Ones(3);
+  ekf_x_partial4.segment(21, 3) = -VectorXd::Ones(3);
+  // No first, second and third contact
+  ekf_x_partial5.segment(15, 3) = -VectorXd::Ones(3);
+  ekf_x_partial5.segment(18, 3) = -VectorXd::Ones(3);
+  ekf_x_partial5.segment(21, 3) = -VectorXd::Ones(3);
+
+  MatrixXd X = estimator.ComputeX(ekf_x);
+  MatrixXd X1 = estimator.ComputeX(ekf_x_partial1);
+  MatrixXd X2 = estimator.ComputeX(ekf_x_partial2);
+  MatrixXd X3 = estimator.ComputeX(ekf_x_partial3);
+  MatrixXd X4 = estimator.ComputeX(ekf_x_partial4);
+  MatrixXd X5 = estimator.ComputeX(ekf_x_partial5);
+
+  // As the individual components of X have been tested in the previous tests,
+  // only the dimensions and identity part need to be tested.
+  ASSERT_TRUE(X1.rows() == 5);
+  ASSERT_TRUE(X1.cols() == 5);
+  ASSERT_TRUE(X2.rows() == 8);
+  ASSERT_TRUE(X2.cols() == 8);
+  ASSERT_TRUE(X3.rows() == 8);
+  ASSERT_TRUE(X3.cols() == 8);
+  ASSERT_TRUE(X4.rows() == 7);
+  ASSERT_TRUE(X4.cols() == 7);
+  ASSERT_TRUE(X5.rows() == 6);
+  ASSERT_TRUE(X5.cols() == 6);
+
+  ASSERT_TRUE(X1.block(3, 3, 2, 2).isApprox(MatrixXd::Identity(2, 2)));
+  ASSERT_TRUE(X2.block(3, 3, 5, 5).isApprox(MatrixXd::Identity(5, 5)));
+  ASSERT_TRUE(X3.block(3, 3, 5, 5).isApprox(MatrixXd::Identity(5, 5)));
+  ASSERT_TRUE(X4.block(3, 3, 4, 4).isApprox(MatrixXd::Identity(4, 4)));
+  ASSERT_TRUE(X4.block(3, 3, 3, 3).isApprox(MatrixXd::Identity(3, 3)));
+
+  // Testing the other overloaded function
+  MatrixXd R = estimator.ExtractRotationMatrix(ekf_x);
+  MatrixXd v = estimator.ExtractFloatingBaseVelocities(ekf_x);
+  MatrixXd p = estimator.ExtractFloatingBasePositions(ekf_x);
+  MatrixXd d = estimator.ExtractContactPositions(ekf_x);
+
+  MatrixXd R1 = estimator.ExtractRotationMatrix(ekf_x_partial1);
+  MatrixXd v1 = estimator.ExtractFloatingBaseVelocities(ekf_x_partial1);
+  MatrixXd p1 = estimator.ExtractFloatingBasePositions(ekf_x_partial1);
+  MatrixXd d1 = estimator.ExtractContactPositions(ekf_x_partial1);
+
+  ASSERT_TRUE(X.isApprox(estimator.ComputeX(R, v, p, d)));
+  ASSERT_TRUE(X1.isApprox(estimator.ComputeX(R1, v1, p1, d1)));
 }
 
 }  // namespace

@@ -28,11 +28,15 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd ExtractRotationMatrix(Eigen::VectorXd ekf_x);
   Eigen::VectorXd ExtractFloatingBaseVelocities(Eigen::VectorXd ekf_x);
   Eigen::VectorXd ExtractFloatingBasePositions(Eigen::VectorXd ekf_x);
+  int ComputeNumContacts(Eigen::VectorXd ekf_x);
   Eigen::MatrixXd ExtractContactPositions(Eigen::VectorXd ekf_x);
   Eigen::MatrixXd CreateSkewSymmetricMatrix(Eigen::VectorXd s);
   Eigen::MatrixXd ComputeX(Eigen::VectorXd ekf_x);
+  Eigen::MatrixXd ComputeX(Eigen::MatrixXd R, Eigen::VectorXd v,
+                           Eigen::VectorXd p, Eigen::MatrixXd d);
   Eigen::MatrixXd ComputeXDot(Eigen::VectorXd ekf_x, Eigen::VectorXd ekf_b,
                               Eigen::VectorXd u);
+  Eigen::VectorXd ComputeBiasDot(Eigen::VectorXd ekf_b);
 
  private:
   void AssignNonFloatingBaseToOutputVector(
@@ -53,7 +57,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
 
   const int num_states_total_ = 27;
   const int num_states_required_ = 13;
-  const int num_states_bias_ = 2;
+  const int num_states_bias_ = 6;
 
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;

@@ -164,6 +164,9 @@ MatrixXd CassieRbtStateEstimator::ExtractRotationMatrix(VectorXd ekf_x) {
   R.row(1) = ekf_x.segment(3, 3);
   R.row(2) = ekf_x.segment(6, 3);
 
+  // Making sure that R is orthogonal
+  DRAKE_ASSERT(MatrixXd::Identity(3, 3).isApprox(R.transpose() * R));
+
   return R;
 }
 
@@ -223,6 +226,13 @@ MatrixXd CassieRbtStateEstimator::CreateSkewSymmetricMatrix(VectorXd s) {
 
 MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) {
   MatrixXd R = ExtractRotationMatrix(ekf_x);
+
+  std::cout << R.transpose() * R << std::endl;
+  std::cout << MatrixXd::Identity(3, 3).isApprox(R.transpose() * R) << std::endl;
+
+  // Making sure that R is orthogonal
+  DRAKE_ASSERT(MatrixXd::Identity(3, 3).isApprox(R.transpose() * R) == 1);
+
   VectorXd v = ExtractFloatingBaseVelocities(ekf_x);
   VectorXd p = ExtractFloatingBasePositions(ekf_x);
   MatrixXd d = ExtractContactPositions(ekf_x);
@@ -286,18 +296,19 @@ MatrixXd CassieRbtStateEstimator::ComputeXDot(VectorXd ekf_x, VectorXd ekf_b,
       CreateSkewSymmetricMatrix(angular_velocity - velocity_bias);
   MatrixXd angular_acceleration_skew =
       CreateSkewSymmetricMatrix(angular_acceleration - acceleration_bias);
-  VectorXd g;
+  VectorXd g(3);
   g << 0, 0, -9.81;
-  MatrixXd Rdot = R * angular_velocity_skew;
-  MatrixXd vdot = R * angular_acceleration_skew + g;
-  MatrixXd pdot = v;
-  MatrixXd ddot = VectorXd::Zero(3, ComputeNumContacts(ekf_x));
+  MatrixXd R_dot = R * angular_velocity_skew;
+  MatrixXd v_dot = R * angular_acceleration_skew + g;
+  MatrixXd p_dot = v;
+  MatrixXd d_dot = VectorXd::Zero(3, ComputeNumContacts(ekf_x));
+  return ComputeX(R_dot, v_dot, p_dot, d_dot);
 }
 
 // If a derivate other than zero is required, this function may be changed.
 VectorXd CassieRbtStateEstimator::ComputeBiasDot(VectorXd ekf_b) {
-  DRAKE_ASSERT(ekf_b.size() == 6);
-  return VectorXd::Zero(6);
+  DRAKE_ASSERT(ekf_b.size() == num_states_bias_);
+  return VectorXd::Zero(num_states_bias_);
 }
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
@@ -414,6 +425,8 @@ EventStatus CassieRbtStateEstimator::Update(
   // Get current time and previous time
   double current_time = context.get_time();
   double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
+  VectorXd ekf_x = discrete_state->get_mutable_vector(ekf_x_idx_).get_value();
+  VectorXd ekf_b = discrete_state->get_mutable_vector(ekf_b_idx_).get_value();
 
   // Testing
   // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;

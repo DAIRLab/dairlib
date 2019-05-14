@@ -303,6 +303,20 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeX) {
   ASSERT_TRUE(X1.isApprox(estimator.ComputeX(R1, v1, p1, d1)));
 }
 
+TEST_F(CassieRbtStateEstimatorTest, TestComputeXDot) {
+  VectorXd ekf_x = VectorXd::Random(27);
+  VectorXd ekf_b = VectorXd::Random(6);
+  VectorXd u = VectorXd::Random(6);
+
+  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
+
+  MatrixXd X_dot = estimator.ComputeXDot(ekf_x, ekf_b, u);
+  std::cout << X_dot << std::endl;
+
+}
+
+
+
 }  // namespace
 }  // namespace systems
 }  // namespace dairlib

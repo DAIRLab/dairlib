@@ -311,11 +311,23 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeXDot) {
   CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
 
   MatrixXd X_dot = estimator.ComputeXDot(ekf_x, ekf_b, u);
-  std::cout << X_dot << std::endl;
 
+  ASSERT_TRUE(X_dot.rows() == 9);
+  ASSERT_TRUE(X_dot.cols() == 9);
 }
 
+// Simple test for bias which may be expanded if a different model dynamics for
+// the bias is employed
+TEST_F(CassieRbtStateEstimatorTest, TestComputeBiasDot) {
+  VectorXd ekf_x = VectorXd::Random(27);
+  VectorXd ekf_b = VectorXd::Random(6);
+  VectorXd u = VectorXd::Random(6);
 
+  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
+  VectorXd b_dot = estimator.ComputeBiasDot(ekf_b);
+
+  ASSERT_TRUE(b_dot.size() == 6);
+}
 
 }  // namespace
 }  // namespace systems

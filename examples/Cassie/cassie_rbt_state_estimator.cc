@@ -64,6 +64,12 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
       left_heel_spring_ind_ == -1 || right_heel_spring_ind_ == -1)
     std::cout << "In cassie_rbt_state_estimator.cc,"
                  " body indices were not set correctly.\n";
+
+  // Initializing the constant Eigen constructs
+  g_.resize(3);
+  g_ << 0, 0, -9.81;
+
+  //P_ = MatrixXd::Identity();
 }
 
 void CassieRbtStateEstimator::solveFourbarLinkage(
@@ -158,7 +164,9 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
   }  // end for
 }
 
-MatrixXd CassieRbtStateEstimator::ExtractRotationMatrix(VectorXd ekf_x) {
+MatrixXd CassieRbtStateEstimator::ExtractRotationMatrix(VectorXd ekf_x) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+
   MatrixXd R(3, 3);
   R.row(0) = ekf_x.segment(0, 3);
   R.row(1) = ekf_x.segment(3, 3);
@@ -171,15 +179,22 @@ MatrixXd CassieRbtStateEstimator::ExtractRotationMatrix(VectorXd ekf_x) {
 }
 
 VectorXd CassieRbtStateEstimator::ExtractFloatingBaseVelocities(
-    VectorXd ekf_x) {
+    VectorXd ekf_x) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+
   return ekf_x.segment(9, 3);
 }
 
-VectorXd CassieRbtStateEstimator::ExtractFloatingBasePositions(VectorXd ekf_x) {
+VectorXd CassieRbtStateEstimator::ExtractFloatingBasePositions(
+    VectorXd ekf_x) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+
   return ekf_x.segment(12, 3);
 }
 
-int CassieRbtStateEstimator::ComputeNumContacts(VectorXd ekf_x) {
+int CassieRbtStateEstimator::ComputeNumContacts(VectorXd ekf_x) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+
   int num_contacts = 0;
   for (int i = 0; i < 4; ++i) {
     VectorXd contact_position = ekf_x.segment(15 + 3 * i, 3);
@@ -191,7 +206,10 @@ int CassieRbtStateEstimator::ComputeNumContacts(VectorXd ekf_x) {
   return num_contacts;
 }
 
-MatrixXd CassieRbtStateEstimator::ExtractContactPositions(VectorXd ekf_x) {
+MatrixXd CassieRbtStateEstimator::ExtractContactPositions(
+    VectorXd ekf_x) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+
   vector<VectorXd> d_vec;
   for (int i = 0; i < 4; ++i) {
     VectorXd contact_position = ekf_x.segment(15 + 3 * i, 3);
@@ -209,7 +227,7 @@ MatrixXd CassieRbtStateEstimator::ExtractContactPositions(VectorXd ekf_x) {
   return d;
 }
 
-MatrixXd CassieRbtStateEstimator::CreateSkewSymmetricMatrix(VectorXd s) {
+MatrixXd CassieRbtStateEstimator::CreateSkewSymmetricMatrix(VectorXd s) const {
   // Making sure the the input vector is of the right size
   DRAKE_ASSERT(s.size() == 3);
 
@@ -224,15 +242,10 @@ MatrixXd CassieRbtStateEstimator::CreateSkewSymmetricMatrix(VectorXd s) {
   return S;
 }
 
-MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) {
+MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+
   MatrixXd R = ExtractRotationMatrix(ekf_x);
-
-  std::cout << R.transpose() * R << std::endl;
-  std::cout << MatrixXd::Identity(3, 3).isApprox(R.transpose() * R) << std::endl;
-
-  // Making sure that R is orthogonal
-  DRAKE_ASSERT(MatrixXd::Identity(3, 3).isApprox(R.transpose() * R) == 1);
-
   VectorXd v = ExtractFloatingBaseVelocities(ekf_x);
   VectorXd p = ExtractFloatingBasePositions(ekf_x);
   MatrixXd d = ExtractContactPositions(ekf_x);
@@ -261,7 +274,7 @@ MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) {
 }
 
 MatrixXd CassieRbtStateEstimator::ComputeX(MatrixXd R, VectorXd v, VectorXd p,
-                                           MatrixXd d) {
+                                           MatrixXd d) const {
   DRAKE_ASSERT(R.rows() == 3);
   DRAKE_ASSERT(R.cols() == 3);
   DRAKE_ASSERT(v.size() == 3);
@@ -284,29 +297,40 @@ MatrixXd CassieRbtStateEstimator::ComputeX(MatrixXd R, VectorXd v, VectorXd p,
 }
 
 MatrixXd CassieRbtStateEstimator::ComputeXDot(VectorXd ekf_x, VectorXd ekf_b,
-                                              VectorXd u) {
+                                              VectorXd u) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+  DRAKE_ASSERT(ekf_b.size() == num_states_bias_);
+  DRAKE_ASSERT(u.size() == num_inputs_);
+
+  int num_contacts = ComputeNumContacts(ekf_x);
+  int n = 5 + num_contacts;
+
   MatrixXd R = ExtractRotationMatrix(ekf_x);
   VectorXd v = ExtractFloatingBaseVelocities(ekf_x);
   VectorXd p = ExtractFloatingBasePositions(ekf_x);
   VectorXd velocity_bias = ekf_b.head(3);
   VectorXd acceleration_bias = ekf_b.tail(3);
   VectorXd angular_velocity = u.head(3);
-  VectorXd angular_acceleration = u.tail(3);
+  VectorXd linear_acceleration = u.tail(3);
   MatrixXd angular_velocity_skew =
       CreateSkewSymmetricMatrix(angular_velocity - velocity_bias);
-  MatrixXd angular_acceleration_skew =
-      CreateSkewSymmetricMatrix(angular_acceleration - acceleration_bias);
-  VectorXd g(3);
-  g << 0, 0, -9.81;
+  MatrixXd linear_acceleration_skew =
+      CreateSkewSymmetricMatrix(linear_acceleration - acceleration_bias);
   MatrixXd R_dot = R * angular_velocity_skew;
-  MatrixXd v_dot = R * angular_acceleration_skew + g;
+  MatrixXd v_dot = R * linear_acceleration_skew + g_;
   MatrixXd p_dot = v;
-  MatrixXd d_dot = VectorXd::Zero(3, ComputeNumContacts(ekf_x));
-  return ComputeX(R_dot, v_dot, p_dot, d_dot);
+  MatrixXd d_dot = MatrixXd::Zero(3, num_contacts);
+
+  MatrixXd X_dot = MatrixXd::Zero(n, n);
+  X_dot.block(0, 0, 3, 3) = R_dot;
+  X_dot.block(0, 3, 3, 1) = v_dot;
+  X_dot.block(0, 4, 3, 1) = p_dot;
+  X_dot.block(0, 5, 3, num_contacts) = d_dot;
+  return X_dot;
 }
 
 // If a derivate other than zero is required, this function may be changed.
-VectorXd CassieRbtStateEstimator::ComputeBiasDot(VectorXd ekf_b) {
+VectorXd CassieRbtStateEstimator::ComputeBiasDot(VectorXd ekf_b) const {
   DRAKE_ASSERT(ekf_b.size() == num_states_bias_);
   return VectorXd::Zero(num_states_bias_);
 }
@@ -425,8 +449,18 @@ EventStatus CassieRbtStateEstimator::Update(
   // Get current time and previous time
   double current_time = context.get_time();
   double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
-  VectorXd ekf_x = discrete_state->get_mutable_vector(ekf_x_idx_).get_value();
-  VectorXd ekf_b = discrete_state->get_mutable_vector(ekf_b_idx_).get_value();
+  VectorXd ekf_x =
+      discrete_state->get_mutable_vector(ekf_x_idx_).get_mutable_value();
+  VectorXd ekf_b =
+      discrete_state->get_mutable_vector(ekf_b_idx_).get_mutable_value();
+
+  // Reading the IMU values
+  VectorXd angular_velocity, linear_acceleration, u;
+  for (int i = 0; i < 3; ++i) {
+    angular_velocity(i) = cassie_out.pelvis.vectorNav.angularVelocity[i];
+    linear_acceleration(i) = cassie_out.pelvis.vectorNav.linearAcceleration[i];
+  }
+  u << angular_velocity, linear_acceleration;
 
   // Testing
   // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
@@ -462,9 +496,17 @@ EventStatus CassieRbtStateEstimator::Update(
     // You can implement step 3 independently of the EKF.
 
     // The concern when moving to floating based simulation:
-    // The simulatino update rate is about 30-60 Hz.
+    // The simulation update rate is about 30-60 Hz.
 
     // Step 2 - EKF (update step)
+    // Prediction step
+    MatrixXd X = ComputeX(ekf_x);
+    MatrixXd X_dot = ComputeXDot(ekf_x, ekf_b, u);
+    VectorXd bias_dot = ComputeBiasDot(ekf_b);
+
+    // Updating by Euler integration
+    MatrixXd X_pred = X + X_dot * dt;
+    VectorXd bias_pred = ekf_b + bias_dot * dt;
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
 

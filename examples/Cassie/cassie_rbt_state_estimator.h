@@ -25,18 +25,18 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                                    bool is_floating_base);
   void solveFourbarLinkage(Eigen::VectorXd q_init, double& left_heel_spring,
                            double& right_heel_spring) const;
-  Eigen::MatrixXd ExtractRotationMatrix(Eigen::VectorXd ekf_x);
-  Eigen::VectorXd ExtractFloatingBaseVelocities(Eigen::VectorXd ekf_x);
-  Eigen::VectorXd ExtractFloatingBasePositions(Eigen::VectorXd ekf_x);
-  int ComputeNumContacts(Eigen::VectorXd ekf_x);
-  Eigen::MatrixXd ExtractContactPositions(Eigen::VectorXd ekf_x);
-  Eigen::MatrixXd CreateSkewSymmetricMatrix(Eigen::VectorXd s);
-  Eigen::MatrixXd ComputeX(Eigen::VectorXd ekf_x);
+  Eigen::MatrixXd ExtractRotationMatrix(Eigen::VectorXd ekf_x) const;
+  Eigen::VectorXd ExtractFloatingBaseVelocities(Eigen::VectorXd ekf_x) const;
+  Eigen::VectorXd ExtractFloatingBasePositions(Eigen::VectorXd ekf_x) const;
+  int ComputeNumContacts(Eigen::VectorXd ekf_x) const;
+  Eigen::MatrixXd ExtractContactPositions(Eigen::VectorXd ekf_x) const;
+  Eigen::MatrixXd CreateSkewSymmetricMatrix(Eigen::VectorXd s) const;
+  Eigen::MatrixXd ComputeX(Eigen::VectorXd ekf_x) const;
   Eigen::MatrixXd ComputeX(Eigen::MatrixXd R, Eigen::VectorXd v,
-                           Eigen::VectorXd p, Eigen::MatrixXd d);
+                           Eigen::VectorXd p, Eigen::MatrixXd d) const;
   Eigen::MatrixXd ComputeXDot(Eigen::VectorXd ekf_x, Eigen::VectorXd ekf_b,
-                              Eigen::VectorXd u);
-  Eigen::VectorXd ComputeBiasDot(Eigen::VectorXd ekf_b);
+                              Eigen::VectorXd u) const;
+  Eigen::VectorXd ComputeBiasDot(Eigen::VectorXd ekf_b) const;
 
  private:
   void AssignNonFloatingBaseToOutputVector(
@@ -58,6 +58,11 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const int num_states_total_ = 27;
   const int num_states_required_ = 13;
   const int num_states_bias_ = 6;
+  const int num_inputs_ = 6;
+
+  Eigen::VectorXd g_;
+  Eigen::MatrixXd P_;
+  Eigen::MatrixXd A_;
 
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;

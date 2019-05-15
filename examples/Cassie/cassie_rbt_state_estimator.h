@@ -37,6 +37,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd ComputeXDot(Eigen::VectorXd ekf_x, Eigen::VectorXd ekf_b,
                               Eigen::VectorXd u) const;
   Eigen::VectorXd ComputeBiasDot(Eigen::VectorXd ekf_b) const;
+  Eigen::MatrixXd ComputeAdjointOperator(Eigen::VectorXd ekf_x) const;
 
  private:
   void AssignNonFloatingBaseToOutputVector(

@@ -329,6 +329,55 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeBiasDot) {
   ASSERT_TRUE(b_dot.size() == 6);
 }
 
+TEST_F(CassieRbtStateEstimatorTest, TestAdjoint) {
+  VectorXd ekf_x = VectorXd::Random(27);
+  VectorXd ekf_b = VectorXd::Random(6);
+
+  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
+
+  // States with less than four contacts (Different permuations)
+  VectorXd ekf_x_partial1 = ekf_x;
+  VectorXd ekf_x_partial2 = ekf_x;
+  VectorXd ekf_x_partial3 = ekf_x;
+  VectorXd ekf_x_partial4 = ekf_x;
+  VectorXd ekf_x_partial5 = ekf_x;
+
+  // No contacts
+  ekf_x_partial1.segment(15, 12) = -VectorXd::Ones(12);
+  // No first contact
+  ekf_x_partial2.segment(15, 3) = -VectorXd::Ones(3);
+  // No second contact
+  ekf_x_partial3.segment(18, 3) = -VectorXd::Ones(3);
+  // No first and third contact
+  ekf_x_partial4.segment(15, 3) = -VectorXd::Ones(3);
+  ekf_x_partial4.segment(21, 3) = -VectorXd::Ones(3);
+  // No first, second and third contact
+  ekf_x_partial5.segment(15, 3) = -VectorXd::Ones(3);
+  ekf_x_partial5.segment(18, 3) = -VectorXd::Ones(3);
+  ekf_x_partial5.segment(21, 3) = -VectorXd::Ones(3);
+
+  MatrixXd adj = estimator.ComputeAdjointOperator(ekf_x);
+  MatrixXd adj1 = estimator.ComputeAdjointOperator(ekf_x_partial1);
+  MatrixXd adj2 = estimator.ComputeAdjointOperator(ekf_x_partial2);
+  MatrixXd adj3 = estimator.ComputeAdjointOperator(ekf_x_partial3);
+  MatrixXd adj4 = estimator.ComputeAdjointOperator(ekf_x_partial4);
+  MatrixXd adj5 = estimator.ComputeAdjointOperator(ekf_x_partial5);
+
+  // Dimension check for all cases
+  ASSERT_TRUE(adj.rows() == 21);
+  ASSERT_TRUE(adj.cols() == 21);
+  ASSERT_TRUE(adj1.rows() == 9);
+  ASSERT_TRUE(adj1.cols() == 9);
+  ASSERT_TRUE(adj2.rows() == 18);
+  ASSERT_TRUE(adj2.cols() == 18);
+  ASSERT_TRUE(adj3.rows() == 18);
+  ASSERT_TRUE(adj3.cols() == 18);
+  ASSERT_TRUE(adj4.rows() == 15);
+  ASSERT_TRUE(adj4.cols() == 15);
+  ASSERT_TRUE(adj5.rows() == 12);
+  ASSERT_TRUE(adj5.cols() == 12);
+}
+
 }  // namespace
 }  // namespace systems
 }  // namespace dairlib

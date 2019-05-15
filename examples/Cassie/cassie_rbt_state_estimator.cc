@@ -69,7 +69,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   g_.resize(3);
   g_ << 0, 0, -9.81;
 
-  //P_ = MatrixXd::Identity();
+  // P_ = MatrixXd::Identity();
 }
 
 void CassieRbtStateEstimator::solveFourbarLinkage(
@@ -333,6 +333,36 @@ MatrixXd CassieRbtStateEstimator::ComputeXDot(VectorXd ekf_x, VectorXd ekf_b,
 VectorXd CassieRbtStateEstimator::ComputeBiasDot(VectorXd ekf_b) const {
   DRAKE_ASSERT(ekf_b.size() == num_states_bias_);
   return VectorXd::Zero(num_states_bias_);
+}
+
+MatrixXd CassieRbtStateEstimator::ComputeAdjointOperator(
+    Eigen::VectorXd ekf_x) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+
+  int num_contacts = ComputeNumContacts(ekf_x);
+  int n = 3 * (3 + num_contacts);
+
+  // Filling up the rotation matrices
+  MatrixXd Adj = MatrixXd::Zero(n, n);
+  MatrixXd R = ExtractRotationMatrix(ekf_x);
+  VectorXd v = ExtractFloatingBaseVelocities(ekf_x);
+  VectorXd p = ExtractFloatingBasePositions(ekf_x);
+  MatrixXd d = ExtractContactPositions(ekf_x);
+
+  for (int i = 0; i < 3 + num_contacts; ++i) {
+    Adj.block(i * 3, i * 3, 3, 3) = R;
+  }
+
+  // Filling up the skew dependent terms
+  Adj.block(3, 0, 3, 3) = CreateSkewSymmetricMatrix(v) * R;
+  Adj.block(6, 0, 3, 3) = CreateSkewSymmetricMatrix(p) * R;
+
+  // Filling up the skew dependent contact terms
+  for (int i = 0; i < num_contacts; ++i) {
+    Adj.block(9 + 3 * i, 0, 3, 3) = CreateSkewSymmetricMatrix(d.col(i)) * R;
+  }
+
+  return Adj;
 }
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(

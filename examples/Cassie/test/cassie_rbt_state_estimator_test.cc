@@ -177,26 +177,27 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractContactPartial) {
   VectorXd ekf_x_partial4 = ekf_x;
   VectorXd ekf_x_partial5 = ekf_x;
 
-  // No contacts
-  ekf_x_partial1.segment(15, 12) = -VectorXd::Ones(12);
-  // No first contact
-  ekf_x_partial2.segment(15, 3) = -VectorXd::Ones(3);
-  // No second contact
-  ekf_x_partial3.segment(18, 3) = -VectorXd::Ones(3);
-  // No first and third contact
-  ekf_x_partial4.segment(15, 3) = -VectorXd::Ones(3);
-  ekf_x_partial4.segment(21, 3) = -VectorXd::Ones(3);
-  // No first, second and third contact
-  ekf_x_partial5.segment(15, 3) = -VectorXd::Ones(3);
-  ekf_x_partial5.segment(18, 3) = -VectorXd::Ones(3);
-  ekf_x_partial5.segment(21, 3) = -VectorXd::Ones(3);
-
   // Computing d
-  MatrixXd d1 = estimator.ExtractContactPositions(ekf_x_partial1);
-  MatrixXd d2 = estimator.ExtractContactPositions(ekf_x_partial2);
-  MatrixXd d3 = estimator.ExtractContactPositions(ekf_x_partial3);
-  MatrixXd d4 = estimator.ExtractContactPositions(ekf_x_partial4);
-  MatrixXd d5 = estimator.ExtractContactPositions(ekf_x_partial5);
+  // No contacts
+  estimator.set_contacts(0, 0, 0, 0);
+  MatrixXd d1 = estimator.ExtractContactPositions(ekf_x);
+  ASSERT_TRUE(estimator.ComputeNumContacts() == 0);
+  // No first contact
+  estimator.set_contacts(0, 1, 1, 1);
+  MatrixXd d2 = estimator.ExtractContactPositions(ekf_x);
+  ASSERT_TRUE(estimator.ComputeNumContacts() == 3);
+  // No second contact
+  estimator.set_contacts(1, 0, 1, 1);
+  MatrixXd d3 = estimator.ExtractContactPositions(ekf_x);
+  ASSERT_TRUE(estimator.ComputeNumContacts() == 3);
+  // No first and third contact
+  estimator.set_contacts(0, 1, 0, 1);
+  MatrixXd d4 = estimator.ExtractContactPositions(ekf_x);
+  ASSERT_TRUE(estimator.ComputeNumContacts() == 2);
+  // No first, second and third contact
+  estimator.set_contacts(0, 0, 0, 1);
+  MatrixXd d5 = estimator.ExtractContactPositions(ekf_x);
+  ASSERT_TRUE(estimator.ComputeNumContacts() == 1);
 
   ASSERT_TRUE(d1.cols() == 0);
   ASSERT_TRUE(d2.cols() == 3);
@@ -205,24 +206,19 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractContactPartial) {
   ASSERT_TRUE(d5.cols() == 1);
 
   // Checking the num contacts function
-  ASSERT_TRUE(estimator.ComputeNumContacts(ekf_x_partial1) == 0);
-  ASSERT_TRUE(estimator.ComputeNumContacts(ekf_x_partial2) == 3);
-  ASSERT_TRUE(estimator.ComputeNumContacts(ekf_x_partial3) == 3);
-  ASSERT_TRUE(estimator.ComputeNumContacts(ekf_x_partial4) == 2);
-  ASSERT_TRUE(estimator.ComputeNumContacts(ekf_x_partial5) == 1);
 
-  ASSERT_TRUE(d2.col(0).isApprox(ekf_x_partial2.segment(18, 3)));
-  ASSERT_TRUE(d2.col(1).isApprox(ekf_x_partial2.segment(21, 3)));
-  ASSERT_TRUE(d2.col(2).isApprox(ekf_x_partial2.segment(24, 3)));
+  ASSERT_TRUE(d2.col(0).isApprox(ekf_x.segment(18, 3)));
+  ASSERT_TRUE(d2.col(1).isApprox(ekf_x.segment(21, 3)));
+  ASSERT_TRUE(d2.col(2).isApprox(ekf_x.segment(24, 3)));
 
-  ASSERT_TRUE(d3.col(0).isApprox(ekf_x_partial3.segment(15, 3)));
-  ASSERT_TRUE(d3.col(1).isApprox(ekf_x_partial3.segment(21, 3)));
-  ASSERT_TRUE(d3.col(2).isApprox(ekf_x_partial3.segment(24, 3)));
+  ASSERT_TRUE(d3.col(0).isApprox(ekf_x.segment(15, 3)));
+  ASSERT_TRUE(d3.col(1).isApprox(ekf_x.segment(21, 3)));
+  ASSERT_TRUE(d3.col(2).isApprox(ekf_x.segment(24, 3)));
 
-  ASSERT_TRUE(d4.col(0).isApprox(ekf_x_partial4.segment(18, 3)));
-  ASSERT_TRUE(d4.col(1).isApprox(ekf_x_partial4.segment(24, 3)));
+  ASSERT_TRUE(d4.col(0).isApprox(ekf_x.segment(18, 3)));
+  ASSERT_TRUE(d4.col(1).isApprox(ekf_x.segment(24, 3)));
 
-  ASSERT_TRUE(d5.col(0).isApprox(ekf_x_partial5.segment(24, 3)));
+  ASSERT_TRUE(d5.col(0).isApprox(ekf_x.segment(24, 3)));
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestSkewSymmetric) {
@@ -241,33 +237,24 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeX) {
 
   CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
 
-  // States with less than four contacts (Different permuations)
-  VectorXd ekf_x_partial1 = ekf_x;
-  VectorXd ekf_x_partial2 = ekf_x;
-  VectorXd ekf_x_partial3 = ekf_x;
-  VectorXd ekf_x_partial4 = ekf_x;
-  VectorXd ekf_x_partial5 = ekf_x;
-
-  // No contacts
-  ekf_x_partial1.segment(15, 12) = -VectorXd::Ones(12);
-  // No first contact
-  ekf_x_partial2.segment(15, 3) = -VectorXd::Ones(3);
-  // No second contact
-  ekf_x_partial3.segment(18, 3) = -VectorXd::Ones(3);
-  // No first and third contact
-  ekf_x_partial4.segment(15, 3) = -VectorXd::Ones(3);
-  ekf_x_partial4.segment(21, 3) = -VectorXd::Ones(3);
-  // No first, second and third contact
-  ekf_x_partial5.segment(15, 3) = -VectorXd::Ones(3);
-  ekf_x_partial5.segment(18, 3) = -VectorXd::Ones(3);
-  ekf_x_partial5.segment(21, 3) = -VectorXd::Ones(3);
-
   MatrixXd X = estimator.ComputeX(ekf_x);
-  MatrixXd X1 = estimator.ComputeX(ekf_x_partial1);
-  MatrixXd X2 = estimator.ComputeX(ekf_x_partial2);
-  MatrixXd X3 = estimator.ComputeX(ekf_x_partial3);
-  MatrixXd X4 = estimator.ComputeX(ekf_x_partial4);
-  MatrixXd X5 = estimator.ComputeX(ekf_x_partial5);
+
+  // Computing d
+  // No contacts
+  estimator.set_contacts(0, 0, 0, 0);
+  MatrixXd X1 = estimator.ComputeX(ekf_x);
+  // No first contact
+  estimator.set_contacts(0, 1, 1, 1);
+  MatrixXd X2 = estimator.ComputeX(ekf_x);
+  // No second contact
+  estimator.set_contacts(1, 0, 1, 1);
+  MatrixXd X3 = estimator.ComputeX(ekf_x);
+  // No first and third contact
+  estimator.set_contacts(0, 1, 0, 1);
+  MatrixXd X4 = estimator.ComputeX(ekf_x);
+  // No first, second and third contact
+  estimator.set_contacts(0, 0, 0, 1);
+  MatrixXd X5 = estimator.ComputeX(ekf_x);
 
   // As the individual components of X have been tested in the previous tests,
   // only the dimensions and identity part need to be tested.
@@ -288,36 +275,65 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeX) {
   ASSERT_TRUE(X4.block(3, 3, 4, 4).isApprox(MatrixXd::Identity(4, 4)));
   ASSERT_TRUE(X4.block(3, 3, 3, 3).isApprox(MatrixXd::Identity(3, 3)));
 
-  // Testing the other overloaded function
+  // Testing the other overloaded function for different contacts
+  estimator.set_contacts(1, 1, 1, 1);
   MatrixXd R = estimator.ExtractRotationMatrix(ekf_x);
   MatrixXd v = estimator.ExtractFloatingBaseVelocities(ekf_x);
   MatrixXd p = estimator.ExtractFloatingBasePositions(ekf_x);
   MatrixXd d = estimator.ExtractContactPositions(ekf_x);
-
-  MatrixXd R1 = estimator.ExtractRotationMatrix(ekf_x_partial1);
-  MatrixXd v1 = estimator.ExtractFloatingBaseVelocities(ekf_x_partial1);
-  MatrixXd p1 = estimator.ExtractFloatingBasePositions(ekf_x_partial1);
-  MatrixXd d1 = estimator.ExtractContactPositions(ekf_x_partial1);
-
   ASSERT_TRUE(X.isApprox(estimator.ComputeX(R, v, p, d)));
+
+  estimator.set_contacts(0, 0, 0, 0);
+  MatrixXd R1 = estimator.ExtractRotationMatrix(ekf_x);
+  MatrixXd v1 = estimator.ExtractFloatingBaseVelocities(ekf_x);
+  MatrixXd p1 = estimator.ExtractFloatingBasePositions(ekf_x);
+  MatrixXd d1 = estimator.ExtractContactPositions(ekf_x);
   ASSERT_TRUE(X1.isApprox(estimator.ComputeX(R1, v1, p1, d1)));
+
+  estimator.set_contacts(0, 1, 1, 1);
+  MatrixXd R2 = estimator.ExtractRotationMatrix(ekf_x);
+  MatrixXd v2 = estimator.ExtractFloatingBaseVelocities(ekf_x);
+  MatrixXd p2 = estimator.ExtractFloatingBasePositions(ekf_x);
+  MatrixXd d2 = estimator.ExtractContactPositions(ekf_x);
+  ASSERT_TRUE(X2.isApprox(estimator.ComputeX(R2, v2, p2, d2)));
+
+  estimator.set_contacts(1, 0, 1, 1);
+  MatrixXd R3 = estimator.ExtractRotationMatrix(ekf_x);
+  MatrixXd v3 = estimator.ExtractFloatingBaseVelocities(ekf_x);
+  MatrixXd p3 = estimator.ExtractFloatingBasePositions(ekf_x);
+  MatrixXd d3 = estimator.ExtractContactPositions(ekf_x);
+  ASSERT_TRUE(X3.isApprox(estimator.ComputeX(R3, v3, p3, d3)));
+
+  estimator.set_contacts(0, 1, 0, 1);
+  MatrixXd R4 = estimator.ExtractRotationMatrix(ekf_x);
+  MatrixXd v4 = estimator.ExtractFloatingBaseVelocities(ekf_x);
+  MatrixXd p4 = estimator.ExtractFloatingBasePositions(ekf_x);
+  MatrixXd d4 = estimator.ExtractContactPositions(ekf_x);
+  ASSERT_TRUE(X4.isApprox(estimator.ComputeX(R4, v4, p4, d4)));
+
+  estimator.set_contacts(0, 0, 0, 1);
+  MatrixXd R5 = estimator.ExtractRotationMatrix(ekf_x);
+  MatrixXd v5 = estimator.ExtractFloatingBaseVelocities(ekf_x);
+  MatrixXd p5 = estimator.ExtractFloatingBasePositions(ekf_x);
+  MatrixXd d5 = estimator.ExtractContactPositions(ekf_x);
+  ASSERT_TRUE(X5.isApprox(estimator.ComputeX(R5, v5, p5, d5)));
 }
 
-TEST_F(CassieRbtStateEstimatorTest, TestComputeXDot) {
-  VectorXd ekf_x = VectorXd::Random(27);
-  VectorXd ekf_b = VectorXd::Random(6);
-  VectorXd u = VectorXd::Random(6);
+// TEST_F(CassieRbtStateEstimatorTest, TestComputeXDot) {
+//  VectorXd ekf_x = VectorXd::Random(27);
+//  VectorXd ekf_b = VectorXd::Random(6);
+//  VectorXd u = VectorXd::Random(6);
+//
+//  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
+//
+//  MatrixXd X_dot = estimator.ComputeXDot(ekf_x, ekf_b, u);
+//
+//  ASSERT_TRUE(X_dot.rows() == 9);
+//  ASSERT_TRUE(X_dot.cols() == 9);
+//}
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
-
-  MatrixXd X_dot = estimator.ComputeXDot(ekf_x, ekf_b, u);
-
-  ASSERT_TRUE(X_dot.rows() == 9);
-  ASSERT_TRUE(X_dot.cols() == 9);
-}
-
-// Simple test for bias which may be expanded if a different model dynamics for
-// the bias is employed
+// Simple test for bias which may be expanded if a different model dynamics
+// for the bias is employed
 TEST_F(CassieRbtStateEstimatorTest, TestComputeBiasDot) {
   VectorXd ekf_x = VectorXd::Random(27);
   VectorXd ekf_b = VectorXd::Random(6);
@@ -335,33 +351,24 @@ TEST_F(CassieRbtStateEstimatorTest, TestAdjoint) {
 
   CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_b, true);
 
-  // States with less than four contacts (Different permuations)
-  VectorXd ekf_x_partial1 = ekf_x;
-  VectorXd ekf_x_partial2 = ekf_x;
-  VectorXd ekf_x_partial3 = ekf_x;
-  VectorXd ekf_x_partial4 = ekf_x;
-  VectorXd ekf_x_partial5 = ekf_x;
-
-  // No contacts
-  ekf_x_partial1.segment(15, 12) = -VectorXd::Ones(12);
-  // No first contact
-  ekf_x_partial2.segment(15, 3) = -VectorXd::Ones(3);
-  // No second contact
-  ekf_x_partial3.segment(18, 3) = -VectorXd::Ones(3);
-  // No first and third contact
-  ekf_x_partial4.segment(15, 3) = -VectorXd::Ones(3);
-  ekf_x_partial4.segment(21, 3) = -VectorXd::Ones(3);
-  // No first, second and third contact
-  ekf_x_partial5.segment(15, 3) = -VectorXd::Ones(3);
-  ekf_x_partial5.segment(18, 3) = -VectorXd::Ones(3);
-  ekf_x_partial5.segment(21, 3) = -VectorXd::Ones(3);
-
   MatrixXd adj = estimator.ComputeAdjointOperator(ekf_x);
-  MatrixXd adj1 = estimator.ComputeAdjointOperator(ekf_x_partial1);
-  MatrixXd adj2 = estimator.ComputeAdjointOperator(ekf_x_partial2);
-  MatrixXd adj3 = estimator.ComputeAdjointOperator(ekf_x_partial3);
-  MatrixXd adj4 = estimator.ComputeAdjointOperator(ekf_x_partial4);
-  MatrixXd adj5 = estimator.ComputeAdjointOperator(ekf_x_partial5);
+
+  // Computing d
+  // No contacts
+  estimator.set_contacts(0, 0, 0, 0);
+  MatrixXd adj1 = estimator.ComputeAdjointOperator(ekf_x);
+  // No first contact
+  estimator.set_contacts(0, 1, 1, 1);
+  MatrixXd adj2 = estimator.ComputeAdjointOperator(ekf_x);
+  // No second contact
+  estimator.set_contacts(1, 0, 1, 1);
+  MatrixXd adj3 = estimator.ComputeAdjointOperator(ekf_x);
+  // No first and third contact
+  estimator.set_contacts(0, 1, 0, 1);
+  MatrixXd adj4 = estimator.ComputeAdjointOperator(ekf_x);
+  // No first, second and third contact
+  estimator.set_contacts(0, 0, 0, 1);
+  MatrixXd adj5 = estimator.ComputeAdjointOperator(ekf_x);
 
   // Dimension check for all cases
   ASSERT_TRUE(adj.rows() == 21);

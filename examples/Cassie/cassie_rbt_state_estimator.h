@@ -12,6 +12,8 @@
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 
+#include <unsupported/Eigen/MatrixFunctions>
+
 namespace dairlib {
 namespace systems {
 
@@ -28,7 +30,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd ExtractRotationMatrix(Eigen::VectorXd ekf_x) const;
   Eigen::VectorXd ExtractFloatingBaseVelocities(Eigen::VectorXd ekf_x) const;
   Eigen::VectorXd ExtractFloatingBasePositions(Eigen::VectorXd ekf_x) const;
-  int ComputeNumContacts(Eigen::VectorXd ekf_x) const;
+  int ComputeNumContacts() const;
   Eigen::MatrixXd ExtractContactPositions(Eigen::VectorXd ekf_x) const;
   Eigen::MatrixXd CreateSkewSymmetricMatrix(Eigen::VectorXd s) const;
   Eigen::MatrixXd ComputeX(Eigen::VectorXd ekf_x) const;
@@ -38,6 +40,11 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                               Eigen::VectorXd u) const;
   Eigen::VectorXd ComputeBiasDot(Eigen::VectorXd ekf_b) const;
   Eigen::MatrixXd ComputeAdjointOperator(Eigen::VectorXd ekf_x) const;
+  Eigen::MatrixXd ComputeA(Eigen::VectorXd ekf_x) const;
+
+  void set_contacts(std::vector<int> contacts);
+  void set_contacts(int left_contact1, int left_contact2, int right_contact1,
+                    int right_contact2);
 
  private:
   void AssignNonFloatingBaseToOutputVector(
@@ -60,6 +67,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const int num_states_required_ = 13;
   const int num_states_bias_ = 6;
   const int num_inputs_ = 6;
+
+  std::vector<int> contacts_;
+  int num_contacts_;
 
   Eigen::VectorXd g_;
   Eigen::MatrixXd P_;

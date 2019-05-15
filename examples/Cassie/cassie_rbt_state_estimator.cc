@@ -7,6 +7,7 @@ namespace systems {
 using std::cout;
 using std::endl;
 using std::string;
+using std::vector;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -64,6 +65,11 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
       left_heel_spring_ind_ == -1 || right_heel_spring_ind_ == -1)
     std::cout << "In cassie_rbt_state_estimator.cc,"
                  " body indices were not set correctly.\n";
+
+  // Initializing the contact indicator vector. Initially we assume both the
+  // feet to be in contact
+  contacts_ = vector<int>(4, 1);
+  num_contacts_ = 4;
 
   // Initializing the constant Eigen constructs
   g_.resize(3);
@@ -192,18 +198,8 @@ VectorXd CassieRbtStateEstimator::ExtractFloatingBasePositions(
   return ekf_x.segment(12, 3);
 }
 
-int CassieRbtStateEstimator::ComputeNumContacts(VectorXd ekf_x) const {
-  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
-
-  int num_contacts = 0;
-  for (int i = 0; i < 4; ++i) {
-    VectorXd contact_position = ekf_x.segment(15 + 3 * i, 3);
-    if (!contact_position.isApprox(-VectorXd::Ones(3))) {
-      num_contacts++;
-    }
-  }
-
-  return num_contacts;
+int CassieRbtStateEstimator::ComputeNumContacts() const {
+  return std::count(contacts_.begin(), contacts_.end(), 1);
 }
 
 MatrixXd CassieRbtStateEstimator::ExtractContactPositions(
@@ -213,12 +209,14 @@ MatrixXd CassieRbtStateEstimator::ExtractContactPositions(
   vector<VectorXd> d_vec;
   for (int i = 0; i < 4; ++i) {
     VectorXd contact_position = ekf_x.segment(15 + 3 * i, 3);
-    if (!contact_position.isApprox(-VectorXd::Ones(3))) {
+    if (contacts_.at(i)) {
       d_vec.push_back(contact_position);
     }
   }
 
-  int num_contacts = d_vec.size();
+  DRAKE_ASSERT(d_vec.size() == ComputeNumContacts());
+
+  int num_contacts = ComputeNumContacts();
   MatrixXd d = MatrixXd::Zero(3, num_contacts);
   for (int i = 0; i < num_contacts; ++i) {
     d.col(i) = d_vec.at(i);
@@ -250,7 +248,7 @@ MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) const {
   VectorXd p = ExtractFloatingBasePositions(ekf_x);
   MatrixXd d = ExtractContactPositions(ekf_x);
 
-  int num_contacts = d.cols();
+  int num_contacts = ComputeNumContacts();
   int n = 5 + num_contacts;
 
   MatrixXd X = MatrixXd::Zero(n, n);
@@ -281,7 +279,7 @@ MatrixXd CassieRbtStateEstimator::ComputeX(MatrixXd R, VectorXd v, VectorXd p,
   DRAKE_ASSERT(p.size() == 3);
   DRAKE_ASSERT(d.rows() == 3);
 
-  int num_contacts = d.cols();
+  int num_contacts = ComputeNumContacts();
   int n = 5 + num_contacts;
 
   MatrixXd X = MatrixXd::Zero(n, n);
@@ -289,7 +287,7 @@ MatrixXd CassieRbtStateEstimator::ComputeX(MatrixXd R, VectorXd v, VectorXd p,
   X.block(0, 0, 3, 3) = R;
   X.block(0, 3, 3, 1) = v;
   X.block(0, 4, 3, 1) = p;
-  X.block(0, 5, 3, d.cols()) = d;
+  X.block(0, 5, 3, num_contacts) = d;
   X.block(3, 3, num_contacts + 2, num_contacts + 2) =
       MatrixXd::Identity(num_contacts + 2, num_contacts + 2);
 
@@ -302,7 +300,7 @@ MatrixXd CassieRbtStateEstimator::ComputeXDot(VectorXd ekf_x, VectorXd ekf_b,
   DRAKE_ASSERT(ekf_b.size() == num_states_bias_);
   DRAKE_ASSERT(u.size() == num_inputs_);
 
-  int num_contacts = ComputeNumContacts(ekf_x);
+  int num_contacts = ComputeNumContacts();
   int n = 5 + num_contacts;
 
   MatrixXd R = ExtractRotationMatrix(ekf_x);
@@ -339,8 +337,8 @@ MatrixXd CassieRbtStateEstimator::ComputeAdjointOperator(
     Eigen::VectorXd ekf_x) const {
   DRAKE_ASSERT(ekf_x.size() == num_states_total_);
 
-  int num_contacts = ComputeNumContacts(ekf_x);
-  int n = 3 * (3 + num_contacts);
+  int num_contacts = ComputeNumContacts();
+  int n = 3 * (num_contacts + 3);
 
   // Filling up the rotation matrices
   MatrixXd Adj = MatrixXd::Zero(n, n);
@@ -359,10 +357,46 @@ MatrixXd CassieRbtStateEstimator::ComputeAdjointOperator(
 
   // Filling up the skew dependent contact terms
   for (int i = 0; i < num_contacts; ++i) {
-    Adj.block(9 + 3 * i, 0, 3, 3) = CreateSkewSymmetricMatrix(d.col(i)) * R;
+    Adj.block(9 + i * 3, 0, 3, 3) = CreateSkewSymmetricMatrix(d.col(i)) * R;
   }
 
   return Adj;
+}
+
+MatrixXd CassieRbtStateEstimator::ComputeA(VectorXd ekf_x) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+
+  int num_contacts = ComputeNumContacts();
+
+  // Size of the A matrix
+  int n = 3 * (num_contacts + 5);
+
+  MatrixXd R = ExtractRotationMatrix(ekf_x);
+  VectorXd v = ExtractFloatingBaseVelocities(ekf_x);
+  VectorXd p = ExtractFloatingBasePositions(ekf_x);
+  MatrixXd d = ExtractContactPositions(ekf_x);
+
+  MatrixXd A = MatrixXd::Zero(n, n);
+  MatrixXd g_skew = CreateSkewSymmetricMatrix(g_);
+
+  A.block(3, 3, 3, 3) = g_skew;
+  A.block(6, 3, 3, 3) = MatrixXd::Identity(3, 3);
+
+  // Skew terms
+  A.block(0, 12, 3, 3) = -R;
+}
+
+void CassieRbtStateEstimator::set_contacts(vector<int> contacts) {
+  contacts_ = contacts;
+}
+
+void CassieRbtStateEstimator::set_contacts(int left_contact1, int left_contact2,
+                                           int right_contact1,
+                                           int right_contact2) {
+  contacts_.at(0) = left_contact1;
+  contacts_.at(1) = left_contact2;
+  contacts_.at(2) = right_contact1;
+  contacts_.at(3) = right_contact2;
 }
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(

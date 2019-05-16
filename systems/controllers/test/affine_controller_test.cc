@@ -79,8 +79,27 @@ class AffineControllerTest : public ::testing::Test {
   std::unique_ptr<SystemOutput<double>> output_;
 };
 
+TEST_F(AffineControllerTest, TestAffineParamsAccessors) {
+  AffineParams affine_params_test(2, 3);
+  MatrixXd K_test(3, 2);
+  VectorXd E_test(3);
+  VectorXd x_des_test(2);
+
+  K_test << 0.1, 2.3, 3.4, -1.5, 6.7, 0.98;
+  E_test << 1, 2, 3.3;
+  x_des_test << 2.7, 5.5;
+
+  affine_params_test.set_K(K_test);
+  affine_params_test.set_E(E_test);
+  affine_params_test.set_desired_state(x_des_test);
+
+  ASSERT_EQ(K_test, affine_params_test.get_K());
+  ASSERT_EQ(E_test, affine_params_test.get_E());
+  ASSERT_EQ(x_des_test, affine_params_test.get_desired_state());
+}
+
 // Tests number of input and output ports.
-TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
+TEST_F(AffineControllerTest, TestNumberOfPortsAndControllerOutput) {
   /// Checks that the number of input ports in the system and in the context
   // are consistent.
   ASSERT_EQ(context_->num_input_ports(), 2);
@@ -107,10 +126,11 @@ TEST_F(AffineControllerTest, NumberOfPortsAndControllerOutput) {
 
   output = output_port_vec->get_value();
   output_data = output.head(output.size() - 1);
-  ASSERT_EQ(expected_output_vec_, output);
+
+  ASSERT_EQ(expected_output_vec_, output_data);
 }
 
-TEST_F(AffineControllerTest, AffineParamsTest) {
+TEST_F(AffineControllerTest, TestAffineParams) {
   ASSERT_EQ(K_, input_port_params_val_->get_K());
   ASSERT_EQ(E_vec_, input_port_params_val_->get_E());
   ASSERT_EQ(x_des_vec_, input_port_params_val_->get_desired_state());

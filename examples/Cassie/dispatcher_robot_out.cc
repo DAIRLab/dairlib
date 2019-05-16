@@ -20,6 +20,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_robot_input.hpp"
 
 namespace dairlib {
 using drake::systems::DiagramBuilder;
@@ -38,7 +39,7 @@ DEFINE_bool(simulation, false,
     "Simulated or real robot (default=false, real robot)");
 
 // Cassie model paramter
-DEFINE_bool(floating_base, false, "Fixed or floating base model");
+DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
@@ -58,7 +59,7 @@ int do_main(int argc, char* argv[]) {
 
   // Create state estimator
   auto state_estimator =
-      builder.AddSystem<systems::CassieRbtStateEstimator>(*tree, false);
+      builder.AddSystem<systems::CassieRbtStateEstimator>(*tree, FLAGS_floating_base);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
@@ -82,7 +83,24 @@ int do_main(int argc, char* argv[]) {
         builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*sim_input_sub, *input_receiver);
     builder.Connect(*input_receiver, *output_sender);
-    builder.Connect(*input_receiver, *state_estimator);
+    builder.Connect(input_receiver->get_output_port(0), state_estimator->get_input_port(0));
+
+    auto state_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>("CASSIE_STATE", &lcm_local));
+    auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*tree);
+    builder.Connect(state_sub->get_output_port(),
+        state_receiver->get_input_port(0));
+    builder.Connect(state_receiver->get_output_port(0),
+        state_estimator->get_input_port(1));
+    
+    auto command_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
+            "CASSIE_INPUT", &lcm_local));
+    auto command_receiver = builder.AddSystem<systems::RobotInputReceiver>(*tree);
+    builder.Connect(command_sub->get_output_port(),
+                  command_receiver->get_input_port(0));
+    builder.Connect(command_receiver->get_output_port(0),
+                    state_estimator->get_input_port(2));
   } else {
     // Create input receiver.
     udp_input_sub = builder.AddSystem(

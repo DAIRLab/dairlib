@@ -1,4 +1,6 @@
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/solve.h"
 #include <math.h>
 
 namespace dairlib {
@@ -10,6 +12,8 @@ using std::string;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
 using multibody::GetBodyIndexFromName;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::Solve;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
   const RigidBodyTree<double>& tree, bool is_floating_base) :
@@ -18,8 +22,16 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
 
-  this->DeclareAbstractInputPort("cassie_out_t",
-                                 drake::Value<cassie_out_t> {});
+  cassie_out_input_port_ = this->DeclareAbstractInputPort("cassie_out_t",
+                                 drake::Value<cassie_out_t> {}).get_index();
+
+  state_input_port_ = this->DeclareVectorInputPort(
+      OutputVector<double>(tree_.get_num_positions(),
+                           tree_.get_num_velocities(), tree_.get_num_actuators())).get_index();
+
+  command_input_port_ = this->DeclareVectorInputPort(
+      TimestampedVector<double>(tree_.get_num_actuators())).get_index();
+
   this->DeclareVectorOutputPort(
     OutputVector<double>(tree.get_num_positions(),
                          tree.get_num_velocities(), tree.get_num_actuators()),
@@ -291,6 +303,225 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
+    const OutputVector<double>* cassie_state = (OutputVector<double>*)
+      this->EvalVectorInput(context, state_input_port_);
+    const TimestampedVector<double>* cassie_command = (TimestampedVector<double>*)
+      this->EvalVectorInput(context, command_input_port_);
+
+    const int num_positions = tree_.get_num_positions();
+    const int num_velocities = tree_.get_num_velocities();
+
+    /* Indices */
+    const int world_ind = GetBodyIndexFromName(tree_, "world");
+    const int left_toe_ind = GetBodyIndexFromName(tree_, "toe_left");
+    const int right_toe_ind = GetBodyIndexFromName(tree_, "toe_right");
+    const int pelvis_ind = GetBodyIndexFromName(tree_, "pelvis");
+
+    /* Cache */
+    KinematicsCache<double> cache = tree_.doKinematics(cassie_state->GetPositions(),
+        cassie_state->GetVelocities(),
+        true);
+
+    /* M, C and B matrices */
+    Eigen::MatrixXd M = tree_.massMatrix(cache);
+    const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
+    Eigen::MatrixXd C = tree_.dynamicsBiasTerm(cache, no_external_wrenches);
+    Eigen::MatrixXd B = tree_.B;
+
+    /* Control input  */
+    Eigen::VectorXd u = cassie_command->get_data();
+
+    /** Jb - Jacobian for fourbar linkage (2 rows) **/
+    Eigen::MatrixXd Jb = tree_.positionConstraintsJacobian(cache, false);
+    Eigen::VectorXd Jb_dot_times_v = tree_.positionConstraintsJacDotTimesV(cache);
+
+    /** Jc{l, r}{f, r} - contact Jacobians **/
+    /* l - left; r - right; f - front; r - rear */
+    Eigen::Vector3d front_contact_disp;
+    front_contact_disp << -0.0457, 0.112, 0;
+    Eigen::Vector3d rear_contact_disp;
+    rear_contact_disp << 0.088, 0, 0;
+
+    Eigen::MatrixXd Jclf = tree_.transformPointsJacobian(cache,
+        front_contact_disp, left_toe_ind, 0, false);
+    Eigen::MatrixXd Jclr = tree_.transformPointsJacobian(cache,
+        rear_contact_disp, left_toe_ind, 0, false);
+
+    Eigen::MatrixXd Jcl(3*2, Jclf.cols());
+    Jcl.block(0, 0, 3, Jclf.cols()) = Jclf;
+    Jcl.block(3, 0, 3, Jclr.cols()) = Jclr;
+
+    Eigen::MatrixXd Jcrf = tree_.transformPointsJacobian(cache,
+        front_contact_disp, right_toe_ind, 0, false);
+    Eigen::MatrixXd Jcrr = tree_.transformPointsJacobian(cache,
+        rear_contact_disp, right_toe_ind, 0, false);
+
+    Eigen::MatrixXd Jcr(3*2, Jcrf.cols());
+    Jcr.block(0, 0, 3, Jcrf.cols()) = Jcrf;
+    Jcr.block(3, 0, 3, Jcrr.cols()) = Jcrr;
+
+    /* Contact jacobian dot times v */
+    Eigen::VectorXd Jclf_dot_times_v = tree_.transformPointsJacobianDotTimesV(cache,
+        front_contact_disp, left_toe_ind, 0);
+    Eigen::VectorXd Jclr_dot_times_v = tree_.transformPointsJacobianDotTimesV(cache,
+        rear_contact_disp, left_toe_ind, 0);
+
+    Eigen::VectorXd Jcl_dot_times_v(6);
+    Jcl_dot_times_v.head(3) = Jclf_dot_times_v;
+    Jcl_dot_times_v.tail(3) = Jclr_dot_times_v;
+
+    Eigen::VectorXd Jcrf_dot_times_v = tree_.transformPointsJacobianDotTimesV(cache,
+        front_contact_disp, right_toe_ind, 0);
+    Eigen::VectorXd Jcrr_dot_times_v = tree_.transformPointsJacobianDotTimesV(cache,
+        rear_contact_disp, right_toe_ind, 0);
+
+    Eigen::VectorXd Jcr_dot_times_v(6);
+    Jcr_dot_times_v.head(3) = Jcrf_dot_times_v;
+    Jcr_dot_times_v.tail(3) = Jcrr_dot_times_v;
+
+    Eigen::Vector3d imu_pos;
+    // TODO: change IMU file to include this as a variable
+    imu_pos << 0.03155, 0, -0.07996; // IMU location wrt pelvis.
+    Eigen::MatrixXd J_imu = tree_.transformPointsJacobian(cache,
+        imu_pos, pelvis_ind, 0, false);
+    Eigen::VectorXd J_imu_dot_times_v = tree_.transformPointsJacobianDotTimesV(cache,
+        imu_pos, pelvis_ind, 0);
+
+    const double* imu_d = cassie_out.pelvis.vectorNav.linearAcceleration;
+    Eigen::Vector3d alpha_imu;
+    alpha_imu << imu_d[0], imu_d[1], imu_d[2];
+
+    const double EPS = 0.0000001;
+    /* Mathematical program - double contact */
+    MathematicalProgram quadprog;
+    auto ddq = quadprog.NewContinuousVariables(M.rows(), "ddq");
+    auto lambda_b = quadprog.NewContinuousVariables(2, "lambda_b");
+    auto lambda_cl = quadprog.NewContinuousVariables(6, "lambda_cl");
+    auto lambda_cr = quadprog.NewContinuousVariables(6, "lambda_cr");
+    auto eps_cl = quadprog.NewContinuousVariables(6, "eps_cl");
+    auto eps_cr = quadprog.NewContinuousVariables(6, "eps_cr");
+    auto eps_imu = quadprog.NewContinuousVariables(3, "eps_imu");
+
+    /* constraints */
+    quadprog.AddLinearEqualityConstraint(Jb, -1*Jb_dot_times_v, ddq);
+    Eigen::MatrixXd CL_coeff(Jcl.rows(), Jcl.cols() + 6);
+    CL_coeff << Jcl, Eigen::MatrixXd::Identity(6, 6);
+    
+    quadprog.AddLinearEqualityConstraint(CL_coeff, -1*Jcl_dot_times_v, {ddq, eps_cl});
+    Eigen::MatrixXd CR_coeff(Jcr.rows(), Jcr.cols() + 6);
+    CR_coeff << Jcr, Eigen::MatrixXd::Identity(6, 6);
+    quadprog.AddLinearEqualityConstraint(CR_coeff, -1*Jcr_dot_times_v, {ddq, eps_cr});
+    
+    Eigen::MatrixXd IMU_coeff(J_imu.rows(), J_imu.cols() + 3);
+    IMU_coeff << J_imu, Eigen::MatrixXd::Identity(3, 3);
+    quadprog.AddLinearEqualityConstraint(IMU_coeff, -1*J_imu_dot_times_v + alpha_imu, {ddq, eps_imu});
+
+    quadprog.AddLinearConstraint(Eigen::MatrixXd::Identity(6, 6), -EPS, EPS, eps_cl);
+    quadprog.AddLinearConstraint(Eigen::MatrixXd::Identity(6, 6), -EPS, EPS, eps_cr);
+    quadprog.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3), -EPS, EPS, eps_imu);
+
+    /* cost */
+    int A_cols = M.cols() + Jb.rows() + Jcl.rows() + Jcr.rows();
+    Eigen::MatrixXd cost_A(M.rows(), A_cols);
+    cost_A << M, -1*Jb.transpose(), -1*Jcl.transpose(), -1*Jcr.transpose();
+    Eigen::VectorXd cost_b(M.rows());
+    cost_b = B*u - C;
+
+    /* Debug info */
+    /* Using eigen values for debug - remove later */
+    Eigen::MatrixXd aa = 2*cost_A.transpose()*cost_A + 0.00001*Eigen::MatrixXd::Identity(A_cols, A_cols);
+    Eigen::SelfAdjointEigenSolver<MatrixXd> eigensolver(aa);
+    if (eigensolver.info() != Eigen::Success) {
+      cout << "Error in eigen solver!" << endl;
+      cout << "cassie_state->positions: \n" << cassie_state->GetPositions() << endl;
+      cout << "cassie_state->velocities: \n" << cassie_state->GetVelocities() << endl;
+      KinematicsCache<double> k_cache = tree_.doKinematics(cassie_state->GetPositions(), cassie_state->GetVelocities(), true);
+      cout << "M: \n" << M << endl;
+      cout << "M_old: \n" << tree_.massMatrix(k_cache) << endl;
+      return EventStatus::Succeeded();
+    }
+    quadprog.AddQuadraticCost(2*cost_A.transpose()*cost_A + 0.00001*Eigen::MatrixXd::Identity(A_cols, A_cols),
+        -2*cost_A.transpose()*cost_b, {ddq, lambda_b, lambda_cl, lambda_cr});
+
+    const drake::solvers::MathematicalProgramResult result = drake::solvers::Solve(quadprog);
+    if (!result.is_success()) {
+      std::cout << "Error (double stance): " << result.get_solution_result() << endl;
+    }
+    cout << "Optimal cost: " << result.get_optimal_cost() + cost_b.transpose()*cost_b << endl;
+    /* for (int i = 0; i < quadprog.num_vars(); ++i) { */
+    /*   std::cout << quadprog.decision_variable(i).get_name() << " = " */
+    /*     << result.GetSolution(quadprog.decision_variable(i)) << "\n"; */
+    /* } */
+
+    /* Mathematical program - left contact*/
+    MathematicalProgram quadprog_left;
+    ddq = quadprog_left.NewContinuousVariables(M.rows(), "ddq");
+    lambda_b = quadprog_left.NewContinuousVariables(2, "lambda_b");
+    lambda_cl = quadprog_left.NewContinuousVariables(6, "lambda_cl");
+    eps_cl = quadprog_left.NewContinuousVariables(6, "eps_cl");
+    eps_imu = quadprog_left.NewContinuousVariables(3, "eps_imu");
+
+    /* constraints */
+    quadprog_left.AddLinearEqualityConstraint(Jb, -1*Jb_dot_times_v, ddq);
+    quadprog_left.AddLinearEqualityConstraint(CL_coeff, -1*Jcl_dot_times_v, {ddq, eps_cl});
+    quadprog_left.AddLinearEqualityConstraint(IMU_coeff, -1*J_imu_dot_times_v + alpha_imu, {ddq, eps_imu});
+
+    quadprog_left.AddLinearConstraint(Eigen::MatrixXd::Identity(6, 6), -EPS, EPS, eps_cl);
+    quadprog_left.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3), -EPS, EPS, eps_imu);
+
+    /* cost */
+    A_cols = M.cols() + Jb.rows() + Jcl.rows();
+    Eigen::MatrixXd cost_A_left(M.rows(), A_cols);
+    cost_A_left << M, -1*Jb.transpose(), -1*Jcl.transpose();
+    cost_b = B*u - C;
+
+    quadprog_left.AddQuadraticCost(2*cost_A_left.transpose()*cost_A_left + 0.00001*Eigen::MatrixXd::Identity(A_cols, A_cols),
+        -2*cost_A_left.transpose()*cost_b, {ddq, lambda_b, lambda_cl});
+
+    const drake::solvers::MathematicalProgramResult result_left = drake::solvers::Solve(quadprog_left);
+    if (!result_left.is_success()) {
+      std::cout << "Error (left stance): " << result_left.get_solution_result() << endl;
+    }
+    cout << "Optimal cost: " << result_left.get_optimal_cost() + cost_b.transpose()*cost_b << endl;
+    /* for (int i = 0; i < quadprog_left.num_vars(); ++i) { */
+    /*   std::cout << quadprog_left.decision_variable(i).get_name() << " = " */
+    /*     << result_left.GetSolution(quadprog_left.decision_variable(i)) << "\n"; */
+    /* } */
+
+    /* Mathematical program - right contact */
+    MathematicalProgram quadprog_right;
+    ddq = quadprog_right.NewContinuousVariables(M.rows(), "ddq");
+    lambda_b = quadprog_right.NewContinuousVariables(2, "lambda_b");
+    lambda_cr = quadprog_right.NewContinuousVariables(6, "lambda_cr");
+    eps_cr = quadprog_right.NewContinuousVariables(6, "eps_cr");
+    eps_imu = quadprog_right.NewContinuousVariables(3, "eps_imu");
+
+    /* constraints */
+    quadprog_right.AddLinearEqualityConstraint(Jb, -1*Jb_dot_times_v, ddq);
+    quadprog_right.AddLinearEqualityConstraint(CR_coeff, -1*Jcr_dot_times_v, {ddq, eps_cr});
+    quadprog_right.AddLinearEqualityConstraint(IMU_coeff, -1*J_imu_dot_times_v + alpha_imu, {ddq, eps_imu});
+
+    quadprog_right.AddLinearConstraint(Eigen::MatrixXd::Identity(6, 6), -EPS, EPS, eps_cr);
+    quadprog_right.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3), -EPS, EPS, eps_imu);
+
+    /* cost */
+    A_cols = M.cols() + Jb.rows() + Jcr.rows();
+    Eigen::MatrixXd cost_A_right(M.rows(), A_cols);
+    cost_A_right << M, -1*Jb.transpose(), -1*Jcr.transpose();
+    cost_b = B*u - C;
+
+    quadprog_right.AddQuadraticCost(2*cost_A_right.transpose()*cost_A_right + 0.00001*Eigen::MatrixXd::Identity(A_cols, A_cols),
+        -2*cost_A_right.transpose()*cost_b, {ddq, lambda_b, lambda_cr});
+
+    const drake::solvers::MathematicalProgramResult result_right = drake::solvers::Solve(quadprog_right);
+    if (!result_right.is_success()) {
+      std::cout << "Error (double stance): " << result_right.get_solution_result() << endl;
+    }
+    cout << "Optimal cost: " << result_right.get_optimal_cost() + cost_b.transpose()*cost_b << endl;
+    /* for (int i = 0; i < quadprog_right.num_vars(); ++i) { */
+    /*   std::cout << quadprog_right.decision_variable(i).get_name() << " = " */
+    /*     << result_right.GetSolution(quadprog_right.decision_variable(i)) << "\n"; */
+    /* } */
 
 
     // Step 4 - EKF (measurement step)

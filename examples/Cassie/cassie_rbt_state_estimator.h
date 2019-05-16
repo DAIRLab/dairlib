@@ -62,6 +62,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   DiscreteStateIndex time_idx_;
 
   bool is_floating_base_;
+
+  int cassie_out_input_port_;
+  int state_input_port_;
+  int command_input_port_;
 };
 
 }  // namespace systems

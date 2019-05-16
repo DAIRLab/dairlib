@@ -3,7 +3,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/lcm/drake_lcm.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -45,11 +45,11 @@ int do_main(int argc, char* argv[]) {
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
   plant.Finalize();
 
-  drake::lcm::DrakeLcm lcm;
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(FLAGS_channel, &lcm));
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(FLAGS_channel, lcm));
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
   builder.Connect(*state_sub, *state_receiver);
 
@@ -80,8 +80,6 @@ int do_main(int argc, char* argv[]) {
   stepper->set_publish_at_initialization(false);
   stepper->set_target_realtime_rate(1.0);
   stepper->Initialize();
-
-  lcm.StartReceiveThread();
 
   drake::log()->info("visualizer started");
 

@@ -457,10 +457,10 @@ TEST_F(ConstrainedLQRControllerTest, TestGettersFloating) {
 TEST_F(ConstrainedLQRControllerTest, TestPortsFixed) {
   // Verifying the number of input and output ports, along with their size.
   ASSERT_EQ(
-      clqr_controller_fixed_->CreateDefaultContext()->get_num_input_ports(), 1);
-  ASSERT_EQ(clqr_controller_fixed_->get_num_input_ports(), 1);
+      clqr_controller_fixed_->CreateDefaultContext()->num_input_ports(), 1);
+  ASSERT_EQ(clqr_controller_fixed_->num_input_ports(), 1);
 
-  ASSERT_EQ(clqr_controller_fixed_->get_num_output_ports(), 1);
+  ASSERT_EQ(clqr_controller_fixed_->num_output_ports(), 1);
 
   ASSERT_EQ(clqr_controller_fixed_->get_output_port_efforts().size(),
             num_efforts_fixed_ + 1);
@@ -469,11 +469,11 @@ TEST_F(ConstrainedLQRControllerTest, TestPortsFixed) {
 TEST_F(ConstrainedLQRControllerTest, TestPortsFloating) {
   // Rpy base
   // Running the same port tests for the floating base controller.
-  ASSERT_EQ(clqr_controller_rpy_->CreateDefaultContext()->get_num_input_ports(),
+  ASSERT_EQ(clqr_controller_rpy_->CreateDefaultContext()->num_input_ports(),
             1);
-  ASSERT_EQ(clqr_controller_rpy_->get_num_input_ports(), 1);
+  ASSERT_EQ(clqr_controller_rpy_->num_input_ports(), 1);
 
-  ASSERT_EQ(clqr_controller_rpy_->get_num_output_ports(), 1);
+  ASSERT_EQ(clqr_controller_rpy_->num_output_ports(), 1);
 
   ASSERT_EQ(clqr_controller_rpy_->get_output_port_efforts().size(),
             num_efforts_rpy_ + 1);
@@ -481,11 +481,10 @@ TEST_F(ConstrainedLQRControllerTest, TestPortsFloating) {
   // Quaternion base
   // Running the same port tests for the floating base controller.
   ASSERT_EQ(clqr_controller_quaternion_->CreateDefaultContext()
-                ->get_num_input_ports(),
-            1);
-  ASSERT_EQ(clqr_controller_quaternion_->get_num_input_ports(), 1);
+                ->num_input_ports(), 1);
+  ASSERT_EQ(clqr_controller_quaternion_->num_input_ports(), 1);
 
-  ASSERT_EQ(clqr_controller_quaternion_->get_num_output_ports(), 1);
+  ASSERT_EQ(clqr_controller_quaternion_->num_output_ports(), 1);
 
   ASSERT_EQ(clqr_controller_quaternion_->get_output_port_efforts().size(),
             num_efforts_quaternion_ + 1);

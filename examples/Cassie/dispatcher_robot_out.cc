@@ -67,9 +67,10 @@ int do_main(int argc, char* argv[]) {
   // connect cassie_out publisher
   builder.Connect(*output_sender, *output_pub);
 
-  // Connect appropriate input receiver for simlation
+  // Connect appropriate input receiver for simulation
+  systems::CassieOutputReceiver* input_receiver = nullptr;
   if (FLAGS_simulation) {
-    auto input_receiver =
+    input_receiver =
         builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*input_receiver, *output_sender);
     builder.Connect(*input_receiver, *state_estimator);

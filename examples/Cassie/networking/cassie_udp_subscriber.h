@@ -20,6 +20,8 @@
 namespace dairlib {
 namespace systems {
 /**
+ * AS OF 5-17-2019, THIS CLASS IS DEPRECATED
+ *
  * Receives UDP messages from Cassie outputs them to a System<double>'s port
  * as a cassie_out_t struct. This class stores the most recently processed
  * message in the State. When a message arrives asynchronously, an update

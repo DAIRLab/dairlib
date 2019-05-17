@@ -11,16 +11,16 @@
 #include "attic/multibody/rigidbody_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/primitives/subvector_pass_through.h"
-#include "examples/Cassie/networking/cassie_udp_subscriber.h"
+#include "examples/Cassie/networking/simple_cassie_udp_subscriber.h"
 #include "examples/Cassie/networking/cassie_output_sender.h"
 #include "examples/Cassie/networking/cassie_output_receiver.h"
-#include "examples/Cassie/networking/udp_driven_loop.h"
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 
 namespace dairlib {
+
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::Context;
@@ -69,7 +69,7 @@ int do_main(int argc, char* argv[]) {
 
   // Connect appropriate input receiver, for simlation or the real robot
 
-  systems::CassieUDPSubscriber* udp_input_sub = nullptr;
+  // systems::CassieUDPSubscriber* udp_input_sub = nullptr;
   systems::CassieOutputReceiver* input_receiver = nullptr;
 
   if (FLAGS_simulation) {
@@ -81,11 +81,11 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(*input_receiver, *output_sender);
     builder.Connect(*input_receiver, *state_estimator);
   } else {
-    // Create input receiver.
-    udp_input_sub = builder.AddSystem(
-        systems::CassieUDPSubscriber::Make(FLAGS_address, FLAGS_port));
-    builder.Connect(*udp_input_sub, *output_sender);
-    builder.Connect(*udp_input_sub, *state_estimator);
+  //   // Create input receiver.
+  //   udp_input_sub = builder.AddSystem(
+  //       systems::CassieUDPSubscriber::Make(FLAGS_address, FLAGS_port));
+  //   builder.Connect(*udp_input_sub, *output_sender);
+  //   builder.Connect(*udp_input_sub, *state_estimator);
   }
 
   // Create and connect RobotOutput publisher.
@@ -120,10 +120,11 @@ int do_main(int argc, char* argv[]) {
   const auto& diagram = *owned_diagram;
   drake::systems::Simulator<double> simulator(std::move(owned_diagram));
   auto& diagram_context = simulator.get_mutable_context();
-  auto& input_receiver_context =
-      diagram.GetMutableSubsystemContext(*input_receiver, &diagram_context);
 
   if (FLAGS_simulation) {
+    auto& input_receiver_context =
+      diagram.GetMutableSubsystemContext(*input_receiver, &diagram_context);
+
     // Wait for the first message.
     drake::log()->info("Waiting for first lcmt_cassie_out");
     drake::lcm::Subscriber<dairlib::lcmt_cassie_out> input_sub(&lcm_local,
@@ -151,14 +152,34 @@ int do_main(int argc, char* argv[]) {
       diagram.Publish(diagram_context);
     }
   } else {
-    systems::UDPDrivenLoop loop(diagram, *udp_input_sub, nullptr);
+    auto& output_sender_context =
+      diagram.GetMutableSubsystemContext(*output_sender, &diagram_context);
+    auto& state_estimator_context =
+      diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
 
-    loop.set_publish_on_every_received_message(true);
+    // Wait for the first message.
+    SimpleCassieUdpSubscriber udp_sub(FLAGS_address, FLAGS_port);
+    drake::log()->info("Waiting for first UDP message from Cassie");
+    udp_sub.Poll();
 
-    // Starts the loop.
-    loop.RunToSecondsAssumingInitialized(1e6);
+    // Initialize the context based on the first message.
+    const double t0 = udp_sub.message_time();
+    diagram_context.SetTime(t0);
+    auto& output_sender_value = output_sender->get_input_port(0).FixValue(
+        &output_sender_context, udp_sub.message());
+    auto& state_estimator_value = state_estimator->get_input_port(0).FixValue(
+        &state_estimator_context, udp_sub.message());
+    drake::log()->info("dispatcher_robot_out started");
 
-    udp_input_sub->StopPolling();
+    while (true) {
+      udp_sub.Poll();
+      output_sender_value.GetMutableData()->set_value(udp_sub.message());
+      state_estimator_value.GetMutableData()->set_value(udp_sub.message());
+      const double time = udp_sub.message_time();
+      simulator.AdvanceTo(time);
+      // Force-publish via the diagram
+      diagram.Publish(diagram_context);
+    }
   }
   return 0;
 }

@@ -2,7 +2,6 @@
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
-#include "drake/systems/lcm/lcm_driven_loop.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/analysis/simulator.h"
@@ -27,7 +26,6 @@ using drake::systems::Simulator;
 using drake::systems::Context;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
-using drake::systems::lcm::UtimeMessageToSeconds;
 using drake::systems::TriggerType;
 
 // Simulation parameters.
@@ -71,16 +69,15 @@ int do_main(int argc, char* argv[]) {
 
   // Connect appropriate input receiver, for simlation or the real robot
 
-  LcmSubscriberSystem* sim_input_sub = nullptr;
   systems::CassieUDPSubscriber* udp_input_sub = nullptr;
+  systems::CassieOutputReceiver* input_receiver = nullptr;
 
   if (FLAGS_simulation) {
-    sim_input_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
-          &lcm_local));
-    auto input_receiver =
+    // sim_input_sub = builder.AddSystem(
+    //   LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
+    //       &lcm_local));
+    input_receiver =
         builder.AddSystem<systems::CassieOutputReceiver>();
-    builder.Connect(*sim_input_sub, *input_receiver);
     builder.Connect(*input_receiver, *output_sender);
     builder.Connect(*input_receiver, *state_estimator);
   } else {
@@ -116,19 +113,45 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(*state_sender, *net_state_pub);
 
-  auto diagram = builder.Build();
+
+
+  // Create the diagram, simulator, and context.
+  auto owned_diagram = builder.Build();
+  const auto& diagram = *owned_diagram;
+  drake::systems::Simulator<double> simulator(std::move(owned_diagram));
+  auto& diagram_context = simulator.get_mutable_context();
+  auto& input_receiver_context =
+      diagram.GetMutableSubsystemContext(*input_receiver, &diagram_context);
 
   if (FLAGS_simulation) {
-    drake::systems::lcm::LcmDrivenLoop loop(*diagram, *sim_input_sub, nullptr,
-        &lcm_local,
-        std::make_unique<UtimeMessageToSeconds<dairlib::lcmt_cassie_out>>());
+    // Wait for the first message.
+    drake::log()->info("Waiting for first lcmt_cassie_out");
+    drake::lcm::Subscriber<dairlib::lcmt_cassie_out> input_sub(&lcm_local,
+        "CASSIE_OUTPUT");
+    LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+        return input_sub.count() > 0; });
 
-    loop.set_publish_on_every_received_message(true);
+    // Initialize the context based on the first message.
+    const double t0 = input_sub.message().utime * 1e-6;
+    diagram_context.SetTime(t0);
+    auto& input_value = input_receiver->get_input_port(0).FixValue(
+        &input_receiver_context, input_sub.message());
 
-    // Starts the loop.
-    loop.RunToSecondsAssumingInitialized(1e6);
+    drake::log()->info("dispatcher_robot_out started");
+    while (true) {
+      // Wait for an lcmt_cassie_out message.
+      input_sub.clear();
+      LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+          return input_sub.count() > 0; });
+      // Write the lcmt_robot_input message into the context and advance.
+      input_value.GetMutableData()->set_value(input_sub.message());
+      const double time = input_sub.message().utime * 1e-6;
+      simulator.AdvanceTo(time);
+      // Force-publish via the diagram
+      diagram.Publish(diagram_context);
+    }
   } else {
-    systems::UDPDrivenLoop loop(*diagram, *udp_input_sub, nullptr);
+    systems::UDPDrivenLoop loop(diagram, *udp_input_sub, nullptr);
 
     loop.set_publish_on_every_received_message(true);
 

@@ -67,25 +67,12 @@ int do_main(int argc, char* argv[]) {
   // connect cassie_out publisher
   builder.Connect(*output_sender, *output_pub);
 
-  // Connect appropriate input receiver, for simlation or the real robot
-
-  // systems::CassieUDPSubscriber* udp_input_sub = nullptr;
-  systems::CassieOutputReceiver* input_receiver = nullptr;
-
+  // Connect appropriate input receiver for simlation
   if (FLAGS_simulation) {
-    // sim_input_sub = builder.AddSystem(
-    //   LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>("CASSIE_OUTPUT",
-    //       &lcm_local));
-    input_receiver =
+    auto input_receiver =
         builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*input_receiver, *output_sender);
     builder.Connect(*input_receiver, *state_estimator);
-  } else {
-  //   // Create input receiver.
-  //   udp_input_sub = builder.AddSystem(
-  //       systems::CassieUDPSubscriber::Make(FLAGS_address, FLAGS_port));
-  //   builder.Connect(*udp_input_sub, *output_sender);
-  //   builder.Connect(*udp_input_sub, *state_estimator);
   }
 
   // Create and connect RobotOutput publisher.

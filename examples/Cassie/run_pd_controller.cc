@@ -1,7 +1,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/lcm/drake_lcm.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/analysis/simulator.h"
 
 #include "dairlib/lcmt_robot_output.hpp"
@@ -22,10 +22,11 @@ using drake::systems::DiagramBuilder;
 
 
 int doMain() {
-  drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
-
   DiagramBuilder<double> builder;
   DiagramBuilder<double> builder_null;
+
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+      "udpm://239.255.76.67:7667?ttl=0");
 
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
@@ -41,21 +42,21 @@ int doMain() {
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, &lcm));
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, lcm));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port(0));
 
   // Create config receiver.
   auto config_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_pd_config>(channel_config, &lcm));
+      LcmSubscriberSystem::Make<dairlib::lcmt_pd_config>(channel_config, lcm));
   auto config_receiver = builder.AddSystem<systems::PDConfigReceiver>(plant);
   builder.Connect(config_sub->get_output_port(),
                   config_receiver->get_input_port(0));
 
   // Create command sender.
   auto command_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, &lcm,
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(channel_u, lcm,
                                                           1.0/1000.0));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
 
@@ -89,7 +90,6 @@ int doMain() {
   stepper->set_target_realtime_rate(1.0);
   stepper->Initialize();
 
-  lcm.StartReceiveThread();
 
   drake::log()->info("controller started");
 

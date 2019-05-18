@@ -2,7 +2,6 @@
 #include <string>
 
 #include <gflags/gflags.h>
-#include "drake/lcm/drake_lcm.h"
 #include "drake/manipulation/util/sim_diagram_builder.h"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
@@ -14,6 +13,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 
 #include "attic/multibody/multibody_solvers.h"
 #include "attic/multibody/utility_systems.h"
@@ -136,7 +136,6 @@ ContactInfo ComputeCassieContactInfo(const RigidBodyTree<double>& tree,
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree;
   if (FLAGS_floating_base) {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
@@ -154,6 +153,8 @@ int do_main(int argc, char* argv[]) {
   const int num_efforts = tree->get_num_actuators();
 
   drake::systems::DiagramBuilder<double> builder;
+
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   if (FLAGS_simulation_type != "timestepping") {
     FLAGS_dt = 0.0;
@@ -337,7 +338,7 @@ int do_main(int argc, char* argv[]) {
       plant->get_rigid_body_tree());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          FLAGS_state_channel, &lcm, 1.0 / FLAGS_publish_rate));
+          FLAGS_state_channel, lcm, 1.0 / FLAGS_publish_rate));
   builder.Connect(plant->state_output_port(),
                   state_sender->get_input_port_state());
   builder.Connect(state_sender->get_output_port(0),
@@ -348,7 +349,7 @@ int do_main(int argc, char* argv[]) {
       plant->get_rigid_body_tree());
   auto input_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_input_channel, &lcm, 1.0 / FLAGS_publish_rate));
+          FLAGS_input_channel, lcm, 1.0 / FLAGS_publish_rate));
   builder.Connect(input_sender->get_output_port(0),
                   input_pub->get_input_port());
 
@@ -437,8 +438,6 @@ int do_main(int argc, char* argv[]) {
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(1);
   simulator.Initialize();
-
-  lcm.StartReceiveThread();
 
   simulator.StepTo(std::numeric_limits<double>::infinity());
 

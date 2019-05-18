@@ -16,6 +16,8 @@ namespace dairlib {
 namespace systems {
 
 /**
+ * AS OF 5-17-2019, THIS CLASS IS DEPRECATED
+ *
  * %CassieUDPOutSerializer  translates between
  * UDP message bytes and cassie_out_t structs
  *

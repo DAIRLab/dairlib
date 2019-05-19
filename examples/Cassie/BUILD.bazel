@@ -277,7 +277,6 @@ cc_binary(
 )
 
 
-<<<<<<< HEAD
 cc_test(
     name = "cassie_rbt_state_estimator_test",
     size = "small",
@@ -293,8 +292,6 @@ cc_test(
 )
 
 
-=======
->>>>>>> master
 cc_binary(
     name = "cassie_state_visualizer",
     srcs = ["cassie_state_visualizer.cc"],

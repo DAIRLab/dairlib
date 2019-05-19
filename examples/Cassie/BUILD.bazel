@@ -277,6 +277,24 @@ cc_binary(
 )
 
 
+<<<<<<< HEAD
+cc_test(
+    name = "cassie_rbt_state_estimator_test",
+    size = "small",
+    srcs = ["test/cassie_rbt_state_estimator_test.cc"],
+    deps = [
+        ":cassie_rbt_state_estimator",
+        "//attic/multibody:multibody_solvers",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//attic/multibody/parsers",
+        "@gtest//:main",
+    ],
+)
+
+
+=======
+>>>>>>> master
 cc_binary(
     name = "cassie_state_visualizer",
     srcs = ["cassie_state_visualizer.cc"],

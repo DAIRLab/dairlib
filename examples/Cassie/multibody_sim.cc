@@ -90,7 +90,7 @@ int do_main(int argc, char* argv[]) {
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
 
   // connect state publisher
-  builder.Connect(plant.get_continuous_state_output_port(),
+  builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
 
   builder.Connect(*state_sender, *state_pub);
@@ -133,9 +133,8 @@ int do_main(int argc, char* argv[]) {
 
 
   if (FLAGS_floating_base) {
-    Eigen::Isometry3d transform;
-    transform.linear() = Eigen::Matrix3d::Identity();;
-    transform.translation() = Eigen::Vector3d(0, 0, 1.2);
+    const drake::math::RigidTransformd transform(
+        drake::math::RotationMatrix<double>(), Eigen::Vector3d(0, 0, 1.2));
     plant.SetFreeBodyPose(&plant_context, plant.GetBodyByName("pelvis"),
         transform);
   }

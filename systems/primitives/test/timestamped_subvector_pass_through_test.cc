@@ -48,8 +48,8 @@ class SubvectorPassThroughTest : public ::testing::Test {
 TEST_F(SubvectorPassThroughTest, VectorThroughPassThroughSystem) {
   /// Checks that the number of input ports in the system and in the context
   // are consistent.
-  ASSERT_EQ(1, context_->get_num_input_ports());
-  ASSERT_EQ(1, pass_through_->get_num_input_ports());
+  ASSERT_EQ(1, context_->num_input_ports());
+  ASSERT_EQ(1, pass_through_->num_input_ports());
   auto input = std::make_unique<TimestampedVector<double>>(input_value_);
   input->set_timestamp(time_);
   // Hook input of the expected size.
@@ -60,8 +60,8 @@ TEST_F(SubvectorPassThroughTest, VectorThroughPassThroughSystem) {
 
   // Checks that the number of output ports in the system and in the
   // output are consistent.
-  ASSERT_EQ(1, output_->get_num_ports());
-  ASSERT_EQ(1, pass_through_->get_num_output_ports());
+  ASSERT_EQ(1, output_->num_ports());
+  ASSERT_EQ(1, pass_through_->num_output_ports());
 
   EXPECT_NE(nullptr,
     dynamic_cast<const TimestampedVector<double>*>(output_->get_vector_data(0)));

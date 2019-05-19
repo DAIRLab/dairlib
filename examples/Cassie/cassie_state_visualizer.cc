@@ -5,7 +5,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/multibody/rigid_body_plant/drake_visualizer.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/lcm/drake_lcm.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/analysis/simulator.h"
 #include "systems/primitives/subvector_pass_through.h"
 
@@ -38,20 +38,20 @@ int doMain(int argc, char* argv[]) {
   }
 
   drake::systems::DiagramBuilder<double> builder;
-  drake::lcm::DrakeLcm lcm;
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   const std::string channel_x = "CASSIE_STATE";
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
                      drake::systems::lcm::LcmSubscriberSystem::Make <
-                     dairlib::lcmt_robot_output > (channel_x, &lcm));
+                     dairlib::lcmt_robot_output > (channel_x, lcm));
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(tree);
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port(0));
 
   auto publisher =
-    builder.AddSystem<drake::systems::DrakeVisualizer>(tree, &lcm);
+    builder.AddSystem<drake::systems::DrakeVisualizer>(tree, lcm);
 
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
                        state_receiver->get_output_port(0).size(),
@@ -78,8 +78,6 @@ int doMain(int argc, char* argv[]) {
   stepper->set_publish_at_initialization(false);
   stepper->set_target_realtime_rate(1.0);
   stepper->Initialize();
-
-  lcm.StartReceiveThread();
 
   drake::log()->info("visualizer started");
 

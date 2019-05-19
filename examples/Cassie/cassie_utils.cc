@@ -39,7 +39,7 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
   if (!floating_base) {
     plant->WeldFrames(
       plant->world_frame(), plant->GetFrameByName("pelvis"),
-      drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
+      drake::math::RigidTransform<double>(Vector3d::Zero()));
   }
 
   // Add springss

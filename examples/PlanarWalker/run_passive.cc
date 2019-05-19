@@ -95,7 +95,7 @@ int do_main(int argc, char* argv[]) {
     state[3] = 1;
     state[4] = 2;
   } else {
-    std::cout << "ngroups "<< context.get_num_discrete_state_groups() <<  std::endl;
+    std::cout << "ngroups "<< context.num_discrete_state_groups() <<  std::endl;
     drake::systems::BasicVector<double>& state = context.get_mutable_discrete_state(0); 
     std::cout << "Discrete " << state.size() << std::endl;
     state[1] = 1;

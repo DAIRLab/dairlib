@@ -257,8 +257,6 @@ int do_main(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
 
-  lcm.StartReceiveThread();
-
   // simulator.StepTo(std::numeric_limits<double>::infinity());
   simulator.StepTo(.01);
   return 0;

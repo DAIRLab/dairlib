@@ -17,6 +17,34 @@ cc_library(
     ],
 )
 
+cc_binary(
+    name = "parse_log_test",
+    srcs = ["test/parse_log_test.cc"],
+    deps = [
+        ":lcm_log_utils",
+        "//examples/Cassie:cassie_utils",
+    ]
+)
+
+cc_library(
+    name = "lcm_log_utils",
+    srcs = [
+        "lcm_log_utils.cc",
+    ],
+    hdrs = [
+        "lcm_log_utils.h",
+    ],
+    deps = [
+         "//systems:robot_lcm_systems",
+        "//systems/primitives:vector_aggregator",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//lcm",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework:diagram_builder",
+        "@drake//systems/lcm",
+    ],
+)
+
 cc_library(
     name = "contact_toolkit",
     srcs = [

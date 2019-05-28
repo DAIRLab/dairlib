@@ -40,6 +40,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   int ComputeNumContacts() const;
   Eigen::MatrixXd ExtractContactPositions(Eigen::VectorXd ekf_x) const;
   Eigen::MatrixXd CreateSkewSymmetricMatrix(Eigen::VectorXd s) const;
+  Eigen::MatrixXd ComputeLieExponential(Eigen::VectorXd xi) const;
   Eigen::MatrixXd ComputeTransformationToeLeftWrtIMU(Eigen::VectorXd q) const;
   Eigen::MatrixXd ComputeTransformationToeRightWrtIMU(Eigen::VectorXd q) const;
   Eigen::MatrixXd ComputeRotationToeLeftWrtIMU(Eigen::VectorXd q) const;
@@ -53,16 +54,31 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd ComputeX(Eigen::VectorXd ekf_x) const;
   Eigen::MatrixXd ComputeX(Eigen::MatrixXd R, Eigen::VectorXd v,
                            Eigen::VectorXd p, Eigen::MatrixXd d) const;
+  Eigen::VectorXd ComputeEkfX(Eigen::MatrixXd X) const;
+  Eigen::MatrixXd ComputeP(Eigen::VectorXd ekf_p) const;
+  Eigen::VectorXd ComputeEkfP(Eigen::MatrixXd P) const;
   Eigen::MatrixXd PredictX(Eigen::VectorXd ekf_x, Eigen::VectorXd ekf_bias,
                            Eigen::VectorXd u, Eigen::VectorXd q,
                            double dt) const;
-  Eigen::MatrixXd PredictBias(Eigen::VectorXd ekf_bias, double dt) const;
+  Eigen::VectorXd PredictBias(Eigen::VectorXd ekf_bias, double dt) const;
   Eigen::MatrixXd ComputeAdjointOperator(Eigen::VectorXd ekf_x) const;
   Eigen::MatrixXd ComputeA(Eigen::VectorXd ekf_x) const;
   Eigen::MatrixXd ComputeCov(Eigen::VectorXd q) const;
-  Eigen::MatrixXd PredictP(Eigen::VectorXd ekf_x, Eigen::VectorXd q,
-                           double dt) const;
-  Eigen::MatrixXd ComputeDelta(Eigen::VectorXd ekf_x, Eigen::VectorXd q) const;
+  Eigen::MatrixXd PredictP(Eigen::VectorXd ekf_x, Eigen::VectorXd ekf_p,
+                           Eigen::VectorXd q, double dt) const;
+  void ComputeUpdateParams(Eigen::VectorXd ekf_x_predicted,
+                           Eigen::VectorXd ekf_p_predicted, Eigen::VectorXd q,
+                           Eigen::VectorXd& y, Eigen::VectorXd& b,
+                           Eigen::MatrixXd& H, Eigen::MatrixXd& N,
+                           Eigen::MatrixXd& Pi, Eigen::MatrixXd& X_full,
+                           Eigen::MatrixXd& S, Eigen::MatrixXd& K,
+                           Eigen::VectorXd& delta) const;
+  Eigen::MatrixXd UpdateX(Eigen::MatrixXd X_predicted,
+                          Eigen::VectorXd delta) const;
+  Eigen::VectorXd UpdateBias(Eigen::VectorXd ekf_bias_predicted,
+                             Eigen::VectorXd delta) const;
+  Eigen::MatrixXd UpdateP(Eigen::VectorXd ekf_p_predicted, Eigen::MatrixXd H,
+                          Eigen::MatrixXd K, Eigen::MatrixXd N) const;
 
   void set_contacts(std::vector<int> contacts);
   void set_contacts(int left_contact1, int left_contact2, int right_contact1,
@@ -106,7 +122,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd local_collision_pt2_hom_;
 
   Eigen::VectorXd g_;
-  Eigen::MatrixXd P_;
   Eigen::MatrixXd N_prior_;
 
   std::map<std::string, int> positionIndexMap_;
@@ -121,6 +136,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex state_idx_;
   drake::systems::DiscreteStateIndex ekf_x_idx_;
   drake::systems::DiscreteStateIndex ekf_bias_idx_;
+  drake::systems::DiscreteStateIndex ekf_p_idx_;
   drake::systems::DiscreteStateIndex time_idx_;
 };
 

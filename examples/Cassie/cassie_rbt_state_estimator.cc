@@ -9,6 +9,7 @@ using std::endl;
 using std::string;
 using std::vector;
 using std::pow;
+using std::sqrt;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -65,6 +66,8 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
       VectorXd::Zero(num_states_required_));      // estimated floating base
   ekf_x_idx_ = DeclareDiscreteState(ekf_x_init);  // estimated EKF state
   ekf_bias_idx_ = DeclareDiscreteState(ekf_bias_init);  // estimated bias state
+  ekf_p_idx_ =
+      DeclareDiscreteState(ComputeEkfP(P));  // estimated state covariance
   time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));  // previous time
   // }
 
@@ -101,7 +104,6 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   g_.resize(3);
   g_ << 0, 0, -9.81;
 
-  P_ = P;
   N_prior_ = N_prior;
 }
 
@@ -254,6 +256,21 @@ MatrixXd CassieRbtStateEstimator::CreateSkewSymmetricMatrix(VectorXd s) const {
   S(2, 1) = s(0);
 
   return S;
+}
+
+MatrixXd CassieRbtStateEstimator::ComputeLieExponential(VectorXd xi) const {
+  DRAKE_ASSERT(xi.size() == 21);
+
+  MatrixXd Lg = MatrixXd::Zero(5 + num_contacts_, 5 + num_contacts_);
+  Lg.block(0, 0, 3, 3) = CreateSkewSymmetricMatrix(xi.head(3));
+  Lg.block(0, 3, 3, 1) = xi.segment(3, 3);
+  Lg.block(0, 4, 3, 1) = xi.segment(6, 3);
+
+  for (int i = 0; i < num_contacts_; ++i) {
+    Lg.block(0, 5 + i, 3, 1) = xi.segment(9 + 3 * i, 3);
+  }
+
+  return Lg.exp();
 }
 
 Eigen::MatrixXd CassieRbtStateEstimator::ComputeTransformationToeLeftWrtIMU(
@@ -409,6 +426,47 @@ MatrixXd CassieRbtStateEstimator::ComputeX(MatrixXd R, VectorXd v, VectorXd p,
   return X;
 }
 
+VectorXd CassieRbtStateEstimator::ComputeEkfX(MatrixXd X) const {
+  DRAKE_ASSERT(X.rows() == 9);
+  DRAKE_ASSERT(X.cols() == 9);
+
+  MatrixXd R = X.block(0, 0, 3, 3);
+  VectorXd r1 = R.row(0);
+  VectorXd r2 = R.row(1);
+  VectorXd r3 = R.row(2);
+  VectorXd v = X.block(0, 3, 3, 1);
+  VectorXd p = X.block(0, 4, 3, 1);
+  VectorXd d1 = X.block(0, 5, 3, 1);
+  VectorXd d2 = X.block(0, 6, 3, 1);
+  VectorXd d3 = X.block(0, 7, 3, 1);
+  VectorXd d4 = X.block(0, 8, 3, 1);
+
+  VectorXd ekf_x(num_states_total_);
+  ekf_x << r1, r2, r3, v, p, d1, d2, d3, d4;
+  return ekf_x;
+}
+
+MatrixXd CassieRbtStateEstimator::ComputeP(VectorXd ekf_p) const {
+  int n = sqrt(ekf_p.size());
+  MatrixXd P(n, n);
+  for (int i = 0; i < n; ++i) {
+    P.row(i) = ekf_p.segment(i * n, n);
+  }
+
+  return P;
+}
+
+VectorXd CassieRbtStateEstimator::ComputeEkfP(MatrixXd P) const {
+  DRAKE_ASSERT(P.rows() == P.cols());
+  int n = P.rows();
+  VectorXd ekf_p(n * n);
+  for (int i = 0; i < n; ++i) {
+    ekf_p.segment(i * n, n) = P.row(i);
+  }
+
+  return ekf_p;
+}
+
 MatrixXd CassieRbtStateEstimator::PredictX(VectorXd ekf_x, VectorXd ekf_bias,
                                            VectorXd u, VectorXd q,
                                            double dt) const {
@@ -465,7 +523,7 @@ MatrixXd CassieRbtStateEstimator::PredictX(VectorXd ekf_x, VectorXd ekf_bias,
   return ComputeX(R_pred, v_pred, p_pred, d_pred);
 }
 
-MatrixXd CassieRbtStateEstimator::PredictBias(VectorXd ekf_bias,
+VectorXd CassieRbtStateEstimator::PredictBias(VectorXd ekf_bias,
                                               double dt) const {
   DRAKE_ASSERT(ekf_bias.size() == num_states_bias_);
   return ekf_bias;
@@ -586,9 +644,11 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeCov(Eigen::VectorXd q) const {
   return Cov;
 }
 
-Eigen::MatrixXd CassieRbtStateEstimator::PredictP(VectorXd ekf_x, VectorXd q,
+Eigen::MatrixXd CassieRbtStateEstimator::PredictP(VectorXd ekf_x,
+                                                  VectorXd ekf_p, VectorXd q,
                                                   double dt) const {
   DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+  DRAKE_ASSERT(ekf_p.size() == num_states_total_ * num_states_total_);
   DRAKE_ASSERT(q.size() == tree_.get_num_positions());
 
   MatrixXd Adj = ComputeAdjointOperator(ekf_x);
@@ -604,23 +664,29 @@ Eigen::MatrixXd CassieRbtStateEstimator::PredictP(VectorXd ekf_x, VectorXd q,
   // Discretizing A
   MatrixXd A_k = MatrixXd::Identity(A.rows(), A.cols()) + A * dt;
 
+  // Constructing the P matrix
+  MatrixXd P = ComputeP(ekf_p);
+
   // Discretized noise matrix
   MatrixXd Q_k =
       A_k * Adj_bias * Cov * Adj_bias.transpose() * A_k.transpose() * dt;
 
-  MatrixXd P_pred = A_k * P_ * A_k.transpose() + Q_k;
+  MatrixXd P_pred = A_k * P * A_k.transpose() + Q_k;
 
   return P_pred;
 }
 
-Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
-                                                      VectorXd q) const {
-  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+void CassieRbtStateEstimator::ComputeUpdateParams(
+    VectorXd ekf_x_predicted, VectorXd ekf_p_predicted, VectorXd q, VectorXd& y,
+    VectorXd& b, MatrixXd& H, MatrixXd& N, MatrixXd& Pi, MatrixXd& X_full,
+    MatrixXd& S, MatrixXd& K, VectorXd& delta) const {
+  DRAKE_ASSERT(ekf_x_predicted.size() == num_states_total_);
+  DRAKE_ASSERT(ekf_p_predicted.size() == num_states_total_ * num_states_total_);
   DRAKE_ASSERT(q.size() == tree_.get_num_positions());
 
   // The ekf_x argument is the state vector after the prediction step.
-  MatrixXd R_pred = ExtractRotationMatrix(ekf_x);
-  MatrixXd X_pred = ComputeX(ekf_x);
+  MatrixXd R_predicted = ExtractRotationMatrix(ekf_x_predicted);
+  MatrixXd X_predicted = ComputeX(ekf_x_predicted);
 
   MatrixXd collision_pts_left = ComputeToeLeftCollisionPointsWrtIMU(q);
   MatrixXd collision_pts_right = ComputeToeRightCollisionPointsWrtIMU(q);
@@ -630,10 +696,8 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
   int h_size = (3 + num_contacts_ + 2) * 3;
   int pi_size = 3 + num_contacts_ + 2;
 
-  VectorXd y, b;
   VectorXd y1(y_size), y2(y_size), y3(y_size), y4(y_size);
   VectorXd b1(b_size), b2(b_size), b3(b_size), b4(b_size);
-  MatrixXd H, N, Pi, X_full;
   MatrixXd H1, H2, H3, H4;
   MatrixXd N1, N2, N3, N4;
 
@@ -672,7 +736,8 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
 
     // N matrix diagonal concatenation
     MatrixXd J = ComputeToeLeftJacobianWrtIMU(q, local_collision_pt1_);
-    N1 = R_pred * J * Qj * J.transpose() * R_pred.transpose() + N_prior_;
+    N1 = R_predicted * J * Qj * J.transpose() * R_predicted.transpose() +
+         N_prior_;
     MatrixXd N_tmp = MatrixXd::Zero(N.rows() + N1.rows(), N.cols() + N1.cols());
     N_tmp.block(0, 0, N.rows(), N.cols()) = N;
     N_tmp.block(N.rows(), N.cols(), N1.rows(), N1.cols()) = N1;
@@ -686,9 +751,11 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
     Pi = Pi_tmp;
 
     // Full state matrix concatenation
-    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_pred.rows(), X_full.cols() + X_pred.cols());
+    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_predicted.rows(),
+                                         X_full.cols() + X_predicted.cols());
     X_full_tmp.block(0, 0, X_full.rows(), X_full.cols()) = X_full;
-    X_full_tmp.block(X_full.rows(), X_full.cols(), X_pred.rows(), X_pred.cols()) = X_pred;
+    X_full_tmp.block(X_full.rows(), X_full.cols(), X_predicted.rows(),
+                     X_predicted.cols()) = X_predicted;
     X_full = X_full_tmp;
   }
 
@@ -717,7 +784,8 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
 
     // N matrix diagonal concatenation
     MatrixXd J = ComputeToeLeftJacobianWrtIMU(q, local_collision_pt2_);
-    N2 = R_pred * J * Qj * J.transpose() * R_pred.transpose() + N_prior_;
+    N2 = R_predicted * J * Qj * J.transpose() * R_predicted.transpose() +
+         N_prior_;
     MatrixXd N_tmp = MatrixXd::Zero(N.rows() + N2.rows(), N.cols() + N2.cols());
     N_tmp.block(0, 0, N.rows(), N.cols()) = N;
     N_tmp.block(N.rows(), N.cols(), N2.rows(), N2.cols()) = N2;
@@ -731,9 +799,11 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
     Pi = Pi_tmp;
 
     // Full state matrix concatenation
-    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_pred.rows(), X_full.cols() + X_pred.cols());
+    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_predicted.rows(),
+                                         X_full.cols() + X_predicted.cols());
     X_full_tmp.block(0, 0, X_full.rows(), X_full.cols()) = X_full;
-    X_full_tmp.block(X_full.rows(), X_full.cols(), X_pred.rows(), X_pred.cols()) = X_pred;
+    X_full_tmp.block(X_full.rows(), X_full.cols(), X_predicted.rows(),
+                     X_predicted.cols()) = X_predicted;
     X_full = X_full_tmp;
   }
 
@@ -762,7 +832,8 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
 
     // N matrix diagonal concatenation
     MatrixXd J = ComputeToeRightJacobianWrtIMU(q, local_collision_pt1_);
-    N3 = R_pred * J * Qj * J.transpose() * R_pred.transpose() + N_prior_;
+    N3 = R_predicted * J * Qj * J.transpose() * R_predicted.transpose() +
+         N_prior_;
     MatrixXd N_tmp = MatrixXd::Zero(N.rows() + N3.rows(), N.cols() + N3.cols());
     N_tmp.block(0, 0, N.rows(), N.cols()) = N;
     N_tmp.block(N.rows(), N.cols(), N3.rows(), N3.cols()) = N3;
@@ -776,9 +847,11 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
     Pi = Pi_tmp;
 
     // Full state matrix concatenation
-    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_pred.rows(), X_full.cols() + X_pred.cols());
+    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_predicted.rows(),
+                                         X_full.cols() + X_predicted.cols());
     X_full_tmp.block(0, 0, X_full.rows(), X_full.cols()) = X_full;
-    X_full_tmp.block(X_full.rows(), X_full.cols(), X_pred.rows(), X_pred.cols()) = X_pred;
+    X_full_tmp.block(X_full.rows(), X_full.cols(), X_predicted.rows(),
+                     X_predicted.cols()) = X_predicted;
     X_full = X_full_tmp;
   }
 
@@ -807,7 +880,8 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
 
     // N matrix diagonal concatenation
     MatrixXd J = ComputeToeRightJacobianWrtIMU(q, local_collision_pt2_);
-    N4 = R_pred * J * Qj * J.transpose() * R_pred.transpose() + N_prior_;
+    N4 = R_predicted * J * Qj * J.transpose() * R_predicted.transpose() +
+         N_prior_;
     MatrixXd N_tmp = MatrixXd::Zero(N.rows() + N4.rows(), N.cols() + N4.cols());
     N_tmp.block(0, 0, N.rows(), N.cols()) = N;
     N_tmp.block(N.rows(), N.cols(), N4.rows(), N4.cols()) = N4;
@@ -821,15 +895,52 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
     Pi = Pi_tmp;
 
     // Full state matrix concatenation
-    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_pred.rows(), X_full.cols() + X_pred.cols());
+    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_predicted.rows(),
+                                         X_full.cols() + X_predicted.cols());
     X_full_tmp.block(0, 0, X_full.rows(), X_full.cols()) = X_full;
-    X_full_tmp.block(X_full.rows(), X_full.cols(), X_pred.rows(), X_pred.cols()) = X_pred;
+    X_full_tmp.block(X_full.rows(), X_full.cols(), X_predicted.rows(),
+                     X_predicted.cols()) = X_predicted;
     X_full = X_full_tmp;
   }
 
-  std::cout << X_full << std::endl;
+  MatrixXd P = ComputeP(ekf_p_predicted);
 
-  return MatrixXd::Zero(3, 3);
+  // Computing S and K for the update step
+  S = H * P * H.transpose() + N;
+  K = P * H.transpose() * (S.inverse());
+  delta = K * Pi * (X_full * y - b);
+}
+
+MatrixXd CassieRbtStateEstimator::UpdateX(MatrixXd X_predicted,
+                                          VectorXd delta) const {
+  DRAKE_ASSERT(delta.size() == num_states_total_);
+
+  // Vector length to represent the state in the lie algebra
+  int lie_dim = 3 * (3 + num_contacts_);
+  MatrixXd dX = ComputeLieExponential(delta.head(lie_dim));
+  return X_predicted * dX;
+}
+
+VectorXd CassieRbtStateEstimator::UpdateBias(VectorXd bias_predicted,
+                                             VectorXd delta) const {
+  DRAKE_ASSERT(delta.size() == num_states_total_);
+
+  return bias_predicted + delta.tail(bias_predicted.size());
+}
+
+MatrixXd CassieRbtStateEstimator::UpdateP(VectorXd ekf_p_predicted, MatrixXd H,
+                                          MatrixXd K, MatrixXd N) const {
+  DRAKE_ASSERT(ekf_p_predicted.size() == num_states_total_ * num_states_total_);
+  DRAKE_ASSERT(K.rows() == num_states_total_);
+  DRAKE_ASSERT(K.cols() == H.rows());
+  DRAKE_ASSERT(K.cols() == N.rows());
+
+  MatrixXd P = ComputeP(ekf_p_predicted);
+
+  // Identity matrix of size P
+  MatrixXd I = MatrixXd::Identity(P.rows(), P.cols());
+
+  return (I - K * H) * P * (I - K * H).transpose() + K * N * K.transpose();
 }
 
 void CassieRbtStateEstimator::set_contacts(vector<int> contacts) {
@@ -963,6 +1074,8 @@ EventStatus CassieRbtStateEstimator::Update(
       discrete_state->get_mutable_vector(ekf_x_idx_).get_mutable_value();
   VectorXd ekf_bias =
       discrete_state->get_mutable_vector(ekf_bias_idx_).get_mutable_value();
+  VectorXd ekf_p =
+      discrete_state->get_mutable_vector(ekf_p_idx_).get_mutable_value();
 
   // Reading the IMU values
   VectorXd angular_velocity, linear_acceleration, u;
@@ -985,6 +1098,13 @@ EventStatus CassieRbtStateEstimator::Update(
          << discrete_state->get_mutable_vector(time_idx_).get_mutable_value()
          << endl;
 
+    VectorXd ekf_x_predicted, ekf_bias_predicted, ekf_p_predicted;
+
+    VectorXd ekf_x_updated, ekf_bias_updated, ekf_p_updated;
+
+    VectorXd y, b, delta;
+    MatrixXd H, N, Pi, X_full, S, K;
+
     // Perform State Estimation (in several steps)
 
     // Step 1 - Solve for the unknown joint angle
@@ -996,6 +1116,10 @@ EventStatus CassieRbtStateEstimator::Update(
                                 tree_.get_num_velocities(),
                                 tree_.get_num_actuators());
     AssignNonFloatingBaseToOutputVector(&output, cassie_out);
+
+    // Current configuration
+    VectorXd q = output.GetMutablePositions();
+
     double left_heel_spring = 0;
     double right_heel_spring = 0;
     solveFourbarLinkage(output.GetPositions(), left_heel_spring,
@@ -1008,15 +1132,31 @@ EventStatus CassieRbtStateEstimator::Update(
     // The concern when moving to floating based simulation:
     // The simulation update rate is about 30-60 Hz.
 
-    // Step 2 - EKF (update step)
+    // Step 2 - EKF (Prediction step)
     // Prediction step
-    MatrixXd X = ComputeX(ekf_x);
+    ekf_x_predicted = ComputeEkfX(PredictX(ekf_x, ekf_bias, u, q, dt));
+    ekf_bias_predicted = PredictBias(ekf_bias, dt);
+    ekf_p_predicted = ComputeEkfP(PredictP(ekf_x, ekf_p, q, dt));
 
     // Updating
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
+    // Updating contacts_
 
     // Step 4 - EKF (measurement step)
+    if (ComputeNumContacts()) {
+      // Computing update step parameters
+      ComputeUpdateParams(ekf_x_predicted, ekf_p_predicted, q, y, b, H, N, Pi,
+                          X_full, S, K, delta);
+      ekf_x_updated = ComputeEkfX(UpdateX(ComputeX(ekf_x_predicted), delta));
+      ekf_bias_updated = UpdateBias(ekf_bias_predicted, delta);
+      ekf_p_updated = ComputeEkfP(UpdateP(ekf_p_predicted, H, K, N));
+    } else {
+      // If there are no contacts, there is no update step.
+      ekf_x_updated = ekf_x_predicted;
+      ekf_bias_updated = ekf_bias_predicted;
+      ekf_p_updated = ekf_p_predicted;
+    }
 
     // Step 5 - Assign values to states
     // Below is how you should assign the state at the end of this Update
@@ -1024,6 +1164,13 @@ EventStatus CassieRbtStateEstimator::Update(
     // ...;
     // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() =
     // ...;
+    discrete_state->get_mutable_vector(ekf_x_idx_).get_mutable_value() =
+        ekf_x_updated;
+    discrete_state->get_mutable_vector(ekf_bias_idx_).get_mutable_value() =
+        ekf_bias_updated;
+    discrete_state->get_mutable_vector(ekf_p_idx_).get_mutable_value() =
+        ekf_p_updated;
+    // P_ = P_updated;
 
     // You can convert a rotational matrix to quaternion using Eigen
     // https://stackoverflow.com/questions/21761909/eigen-convert-matrix3d-rotation-to-quaternion
@@ -1037,7 +1184,8 @@ EventStatus CassieRbtStateEstimator::Update(
     // We will get the bias (parameter) from EKF
 
     // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
-    // ...
+    discrete_state->get_mutable_vector(time_idx_).get_mutable_value()(0) =
+        current_time;
   }
 
   return EventStatus::Succeeded();

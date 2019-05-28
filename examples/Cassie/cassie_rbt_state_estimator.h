@@ -21,10 +21,17 @@ namespace systems {
 /// a cassie_user_in_t struct for transmission to the real robot.
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
-  explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
-                                   Eigen::VectorXd ekf_x_init,
-                                   Eigen::VectorXd ekf_b_init,
-                                   bool is_floating_base);
+  explicit CassieRbtStateEstimator(
+      const RigidBodyTree<double>& tree, Eigen::VectorXd ekf_x_init,
+      Eigen::VectorXd ekf_bias_init, bool is_floating_base,
+      Eigen::MatrixXd P = Eigen::MatrixXd::Identity(27, 27),
+      Eigen::MatrixXd N_prior = 0.01 * Eigen::MatrixXd::Identity(3, 3),
+      Eigen::VectorXd gyro_noise_std = 0.1 * Eigen::VectorXd::Ones(3),
+      Eigen::VectorXd accel_noise_std = 0.1 * Eigen::VectorXd::Ones(3),
+      Eigen::VectorXd contact_noise_std = 0.1 * Eigen::VectorXd::Ones(3),
+      Eigen::VectorXd gyro_bias_noise_std = 0.1 * Eigen::VectorXd::Ones(3),
+      Eigen::VectorXd accel_bias_noise_std = 0.1 * Eigen::VectorXd::Ones(3),
+      Eigen::VectorXd joints_noise_std = 0.1 * Eigen::VectorXd::Ones(16));
   void solveFourbarLinkage(Eigen::VectorXd q_init, double& left_heel_spring,
                            double& right_heel_spring) const;
   Eigen::MatrixXd ExtractRotationMatrix(Eigen::VectorXd ekf_x) const;
@@ -33,14 +40,29 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   int ComputeNumContacts() const;
   Eigen::MatrixXd ExtractContactPositions(Eigen::VectorXd ekf_x) const;
   Eigen::MatrixXd CreateSkewSymmetricMatrix(Eigen::VectorXd s) const;
+  Eigen::MatrixXd ComputeTransformationToeLeftWrtIMU(Eigen::VectorXd q) const;
+  Eigen::MatrixXd ComputeTransformationToeRightWrtIMU(Eigen::VectorXd q) const;
+  Eigen::MatrixXd ComputeRotationToeLeftWrtIMU(Eigen::VectorXd q) const;
+  Eigen::MatrixXd ComputeRotationToeRightWrtIMU(Eigen::VectorXd q) const;
+  Eigen::MatrixXd ComputeToeLeftCollisionPointsWrtIMU(Eigen::VectorXd q) const;
+  Eigen::MatrixXd ComputeToeRightCollisionPointsWrtIMU(Eigen::VectorXd q) const;
+  Eigen::MatrixXd ComputeToeLeftJacobianWrtIMU(Eigen::VectorXd q,
+                                               Eigen::VectorXd p) const;
+  Eigen::MatrixXd ComputeToeRightJacobianWrtIMU(Eigen::VectorXd q,
+                                                Eigen::VectorXd p) const;
   Eigen::MatrixXd ComputeX(Eigen::VectorXd ekf_x) const;
   Eigen::MatrixXd ComputeX(Eigen::MatrixXd R, Eigen::VectorXd v,
                            Eigen::VectorXd p, Eigen::MatrixXd d) const;
-  Eigen::MatrixXd ComputeXDot(Eigen::VectorXd ekf_x, Eigen::VectorXd ekf_b,
-                              Eigen::VectorXd u) const;
-  Eigen::VectorXd ComputeBiasDot(Eigen::VectorXd ekf_b) const;
+  Eigen::MatrixXd PredictX(Eigen::VectorXd ekf_x, Eigen::VectorXd ekf_bias,
+                           Eigen::VectorXd u, Eigen::VectorXd q,
+                           double dt) const;
+  Eigen::MatrixXd PredictBias(Eigen::VectorXd ekf_bias, double dt) const;
   Eigen::MatrixXd ComputeAdjointOperator(Eigen::VectorXd ekf_x) const;
   Eigen::MatrixXd ComputeA(Eigen::VectorXd ekf_x) const;
+  Eigen::MatrixXd ComputeCov(Eigen::VectorXd q) const;
+  Eigen::MatrixXd PredictP(Eigen::VectorXd ekf_x, Eigen::VectorXd q,
+                           double dt) const;
+  Eigen::MatrixXd ComputeDelta(Eigen::VectorXd ekf_x, Eigen::VectorXd q) const;
 
   void set_contacts(std::vector<int> contacts);
   void set_contacts(int left_contact1, int left_contact2, int right_contact1,
@@ -60,20 +82,32 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
 
   const RigidBodyTree<double>& tree_;
   Eigen::VectorXd ekf_x_init_;
-  Eigen::VectorXd ekf_b_init_;
+  Eigen::VectorXd ekf_bias_init_;
   bool is_floating_base_;
+  Eigen::VectorXd gyro_noise_std_;
+  Eigen::VectorXd accel_noise_std_;
+  Eigen::VectorXd contact_noise_std_;
+  Eigen::VectorXd gyro_bias_noise_std_;
+  Eigen::VectorXd accel_bias_noise_std_;
+  Eigen::VectorXd joints_noise_std_;
 
   const int num_states_total_ = 27;
   const int num_states_required_ = 13;
   const int num_states_bias_ = 6;
   const int num_inputs_ = 6;
+  const int num_contacts_ = 4;
+  const int num_joints_ = 16;
 
   std::vector<int> contacts_;
-  int num_contacts_;
+
+  Eigen::VectorXd local_collision_pt1_;
+  Eigen::VectorXd local_collision_pt2_;
+  Eigen::VectorXd local_collision_pt1_hom_;
+  Eigen::VectorXd local_collision_pt2_hom_;
 
   Eigen::VectorXd g_;
   Eigen::MatrixXd P_;
-  Eigen::MatrixXd A_;
+  Eigen::MatrixXd N_prior_;
 
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;
@@ -86,7 +120,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
 
   drake::systems::DiscreteStateIndex state_idx_;
   drake::systems::DiscreteStateIndex ekf_x_idx_;
-  drake::systems::DiscreteStateIndex ekf_b_idx_;
+  drake::systems::DiscreteStateIndex ekf_bias_idx_;
   drake::systems::DiscreteStateIndex time_idx_;
 };
 

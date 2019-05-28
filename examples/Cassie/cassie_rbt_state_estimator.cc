@@ -8,12 +8,15 @@ using std::cout;
 using std::endl;
 using std::string;
 using std::vector;
+using std::pow;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3Xd;
 using Eigen::Isometry3d;
+using Eigen::Isometry;
+using Eigen::Transform;
 
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
@@ -25,12 +28,21 @@ using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::systems::OutputVector;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
-    const RigidBodyTree<double>& tree, VectorXd ekf_x_init, VectorXd ekf_b_init,
-    bool is_floating_base)
+    const RigidBodyTree<double>& tree, VectorXd ekf_x_init,
+    VectorXd ekf_bias_init, bool is_floating_base, MatrixXd P, MatrixXd N_prior,
+    VectorXd gyro_noise_std, VectorXd accel_noise_std,
+    VectorXd contact_noise_std, VectorXd gyro_bias_noise_std,
+    VectorXd accel_bias_noise_std, VectorXd joints_noise_std)
     : tree_(tree),
       ekf_x_init_(ekf_x_init),
-      ekf_b_init_(ekf_b_init),
-      is_floating_base_(is_floating_base) {
+      ekf_bias_init_(ekf_bias_init),
+      is_floating_base_(is_floating_base),
+      gyro_noise_std_(gyro_noise_std),
+      accel_noise_std_(accel_noise_std),
+      contact_noise_std_(contact_noise_std),
+      gyro_bias_noise_std_(gyro_bias_noise_std),
+      accel_bias_noise_std_(accel_bias_noise_std),
+      joints_noise_std_(joints_noise_std) {
   actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
   positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
@@ -47,12 +59,12 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   // Declaring the discrete states with initial values
   // Verifying the dimensions of the initial state values
   DRAKE_ASSERT(ekf_x_init.size() == num_states_total_);
-  DRAKE_ASSERT(ekf_b_init.size() == num_states_bias_);
+  DRAKE_ASSERT(ekf_bias_init.size() == num_states_bias_);
 
   state_idx_ = DeclareDiscreteState(
       VectorXd::Zero(num_states_required_));      // estimated floating base
   ekf_x_idx_ = DeclareDiscreteState(ekf_x_init);  // estimated EKF state
-  ekf_b_idx_ = DeclareDiscreteState(ekf_b_init);  // estimated bias state
+  ekf_bias_idx_ = DeclareDiscreteState(ekf_bias_init);  // estimated bias state
   time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));  // previous time
   // }
 
@@ -69,13 +81,28 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   // Initializing the contact indicator vector. Initially we assume both the
   // feet to be in contact
   contacts_ = vector<int>(4, 1);
-  num_contacts_ = 4;
+
+  // The local collision coordinates wrt to the toe frames (Same for both legs)
+  // It is obtained from the Cassie_v2 urdf.
+  local_collision_pt1_.resize(3);
+  local_collision_pt2_.resize(3);
+  local_collision_pt1_ << -0.0457, 0.112, 0;
+  local_collision_pt2_ << 0.088, 0, 0;
+
+  // Homogeneous collision coordinates
+  local_collision_pt1_hom_.resize(4);
+  local_collision_pt2_hom_.resize(4);
+  local_collision_pt1_hom_.head(3) = local_collision_pt1_;
+  local_collision_pt2_hom_.head(3) = local_collision_pt2_;
+  local_collision_pt1_hom_(3) = 1;
+  local_collision_pt2_hom_(3) = 1;
 
   // Initializing the constant Eigen constructs
   g_.resize(3);
   g_ << 0, 0, -9.81;
 
-  // P_ = MatrixXd::Identity();
+  P_ = P;
+  N_prior_ = N_prior;
 }
 
 void CassieRbtStateEstimator::solveFourbarLinkage(
@@ -206,20 +233,9 @@ MatrixXd CassieRbtStateEstimator::ExtractContactPositions(
     VectorXd ekf_x) const {
   DRAKE_ASSERT(ekf_x.size() == num_states_total_);
 
-  vector<VectorXd> d_vec;
-  for (int i = 0; i < 4; ++i) {
-    VectorXd contact_position = ekf_x.segment(15 + 3 * i, 3);
-    if (contacts_.at(i)) {
-      d_vec.push_back(contact_position);
-    }
-  }
-
-  DRAKE_ASSERT(d_vec.size() == ComputeNumContacts());
-
-  int num_contacts = ComputeNumContacts();
-  MatrixXd d = MatrixXd::Zero(3, num_contacts);
-  for (int i = 0; i < num_contacts; ++i) {
-    d.col(i) = d_vec.at(i);
+  MatrixXd d = MatrixXd::Zero(3, num_contacts_);
+  for (int i = 0; i < num_contacts_; ++i) {
+    d.col(i) = ekf_x.segment(15 + 3 * i, 3);
   }
 
   return d;
@@ -240,6 +256,106 @@ MatrixXd CassieRbtStateEstimator::CreateSkewSymmetricMatrix(VectorXd s) const {
   return S;
 }
 
+Eigen::MatrixXd CassieRbtStateEstimator::ComputeTransformationToeLeftWrtIMU(
+    Eigen::VectorXd q) const {
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+
+  KinematicsCache<double> cache = tree_.doKinematics(q);
+  int pelvis_ind = GetBodyIndexFromName(tree_, "pelvis");
+  int toe_left_ind = GetBodyIndexFromName(tree_, "toe_left");
+  Transform<double, 3, Isometry> T =
+      tree_.relativeTransform(cache, pelvis_ind, toe_left_ind);
+
+  return T.matrix();
+}
+
+Eigen::MatrixXd CassieRbtStateEstimator::ComputeTransformationToeRightWrtIMU(
+    Eigen::VectorXd q) const {
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+
+  KinematicsCache<double> cache = tree_.doKinematics(q);
+  int pelvis_ind = GetBodyIndexFromName(tree_, "pelvis");
+  int toe_right_ind = GetBodyIndexFromName(tree_, "toe_right");
+  Transform<double, 3, Isometry> T =
+      tree_.relativeTransform(cache, pelvis_ind, toe_right_ind);
+
+  return T.matrix();
+}
+
+Eigen::MatrixXd CassieRbtStateEstimator::ComputeRotationToeLeftWrtIMU(
+    Eigen::VectorXd q) const {
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+  return ComputeTransformationToeLeftWrtIMU(q).block(0, 0, 3, 3);
+}
+
+Eigen::MatrixXd CassieRbtStateEstimator::ComputeRotationToeRightWrtIMU(
+    Eigen::VectorXd q) const {
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+  return ComputeTransformationToeRightWrtIMU(q).block(0, 0, 3, 3);
+}
+
+Eigen::MatrixXd CassieRbtStateEstimator::ComputeToeLeftCollisionPointsWrtIMU(
+    Eigen::VectorXd q) const {
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+  MatrixXd T_left = ComputeTransformationToeLeftWrtIMU(q);
+
+  MatrixXd collision_pts = MatrixXd::Zero(3, 2);
+  VectorXd collision_pt1_hom = T_left * local_collision_pt1_hom_;
+  VectorXd collision_pt2_hom = T_left * local_collision_pt2_hom_;
+  collision_pts.col(0) = collision_pt1_hom.head(3);
+  collision_pts.col(1) = collision_pt2_hom.head(3);
+
+  return collision_pts;
+}
+
+Eigen::MatrixXd CassieRbtStateEstimator::ComputeToeRightCollisionPointsWrtIMU(
+    Eigen::VectorXd q) const {
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+  MatrixXd T_right = ComputeTransformationToeRightWrtIMU(q);
+
+  MatrixXd collision_pts = MatrixXd::Zero(3, 2);
+  VectorXd collision_pt1_hom = T_right * local_collision_pt1_hom_;
+  VectorXd collision_pt2_hom = T_right * local_collision_pt2_hom_;
+  collision_pts.col(0) = collision_pt1_hom.head(3);
+  collision_pts.col(1) = collision_pt2_hom.head(3);
+
+  return collision_pts;
+}
+
+Eigen::MatrixXd CassieRbtStateEstimator::ComputeToeLeftJacobianWrtIMU(
+    VectorXd q, VectorXd p) const {
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+  DRAKE_ASSERT(p.size() == 3);
+
+  KinematicsCache<double> cache = tree_.doKinematics(q);
+  int pelvis_ind = GetBodyIndexFromName(tree_, "pelvis");
+  int toe_left_ind = GetBodyIndexFromName(tree_, "toe_left");
+  MatrixXd J =
+      tree_.transformPointsJacobian(cache, p, toe_left_ind, pelvis_ind, false);
+
+  // Returning the columns that correspond to the angles (ignoring the floating
+  // base coordinates) as the linearization only depends on the measured joint
+  // angles and is independent of the floating base coordinates.
+  return J.block(0, J.cols() - num_joints_, J.rows(), num_joints_);
+}
+
+Eigen::MatrixXd CassieRbtStateEstimator::ComputeToeRightJacobianWrtIMU(
+    VectorXd q, VectorXd p) const {
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+  DRAKE_ASSERT(p.size() == 3);
+
+  KinematicsCache<double> cache = tree_.doKinematics(q);
+  int pelvis_ind = GetBodyIndexFromName(tree_, "pelvis");
+  int toe_right_ind = GetBodyIndexFromName(tree_, "toe_right");
+  MatrixXd J =
+      tree_.transformPointsJacobian(cache, p, toe_right_ind, pelvis_ind, false);
+
+  // Returning the columns that correspond to the angles (ignoring the floating
+  // base coordinates) as the linearization only depends on the measured joint
+  // angles and is independent of the floating base coordinates.
+  return J.block(0, J.cols() - num_joints_, J.rows(), num_joints_);
+}
+
 MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) const {
   DRAKE_ASSERT(ekf_x.size() == num_states_total_);
 
@@ -248,8 +364,7 @@ MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) const {
   VectorXd p = ExtractFloatingBasePositions(ekf_x);
   MatrixXd d = ExtractContactPositions(ekf_x);
 
-  int num_contacts = ComputeNumContacts();
-  int n = 5 + num_contacts;
+  int n = 9;
 
   MatrixXd X = MatrixXd::Zero(n, n);
 
@@ -262,11 +377,11 @@ MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) const {
   X.block(0, 4, 3, 1) = ExtractFloatingBasePositions(ekf_x);
 
   // Contact points
-  X.block(0, 5, 3, num_contacts) = d;
+  X.block(0, 5, 3, num_contacts_) = d;
 
   // Identity block
-  X.block(3, 3, num_contacts + 2, num_contacts + 2) =
-      MatrixXd::Identity(num_contacts + 2, num_contacts + 2);
+  X.block(3, 3, num_contacts_ + 2, num_contacts_ + 2) =
+      MatrixXd::Identity(num_contacts_ + 2, num_contacts_ + 2);
 
   return X;
 }
@@ -278,67 +393,90 @@ MatrixXd CassieRbtStateEstimator::ComputeX(MatrixXd R, VectorXd v, VectorXd p,
   DRAKE_ASSERT(v.size() == 3);
   DRAKE_ASSERT(p.size() == 3);
   DRAKE_ASSERT(d.rows() == 3);
+  DRAKE_ASSERT(d.cols() == 4);
 
-  int num_contacts = ComputeNumContacts();
-  int n = 5 + num_contacts;
+  int n = 3 + 2 + num_contacts_;
 
   MatrixXd X = MatrixXd::Zero(n, n);
 
   X.block(0, 0, 3, 3) = R;
   X.block(0, 3, 3, 1) = v;
   X.block(0, 4, 3, 1) = p;
-  X.block(0, 5, 3, num_contacts) = d;
-  X.block(3, 3, num_contacts + 2, num_contacts + 2) =
-      MatrixXd::Identity(num_contacts + 2, num_contacts + 2);
+  X.block(0, 5, 3, num_contacts_) = d;
+  X.block(3, 3, num_contacts_ + 2, num_contacts_ + 2) =
+      MatrixXd::Identity(num_contacts_ + 2, num_contacts_ + 2);
 
   return X;
 }
 
-MatrixXd CassieRbtStateEstimator::ComputeXDot(VectorXd ekf_x, VectorXd ekf_b,
-                                              VectorXd u) const {
+MatrixXd CassieRbtStateEstimator::PredictX(VectorXd ekf_x, VectorXd ekf_bias,
+                                           VectorXd u, VectorXd q,
+                                           double dt) const {
   DRAKE_ASSERT(ekf_x.size() == num_states_total_);
-  DRAKE_ASSERT(ekf_b.size() == num_states_bias_);
+  DRAKE_ASSERT(ekf_bias.size() == num_states_bias_);
   DRAKE_ASSERT(u.size() == num_inputs_);
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
 
-  int num_contacts = ComputeNumContacts();
-  int n = 5 + num_contacts;
-
+  // Extracting the current states
   MatrixXd R = ExtractRotationMatrix(ekf_x);
   VectorXd v = ExtractFloatingBaseVelocities(ekf_x);
   VectorXd p = ExtractFloatingBasePositions(ekf_x);
-  VectorXd velocity_bias = ekf_b.head(3);
-  VectorXd acceleration_bias = ekf_b.tail(3);
+  MatrixXd d = ExtractContactPositions(ekf_x);
+
+  VectorXd angular_velocity_bias = ekf_bias.head(3);
+  VectorXd linear_acceleration_bias = ekf_bias.tail(3);
+
   VectorXd angular_velocity = u.head(3);
   VectorXd linear_acceleration = u.tail(3);
-  MatrixXd angular_velocity_skew =
-      CreateSkewSymmetricMatrix(angular_velocity - velocity_bias);
-  MatrixXd linear_acceleration_skew =
-      CreateSkewSymmetricMatrix(linear_acceleration - acceleration_bias);
-  MatrixXd R_dot = R * angular_velocity_skew;
-  MatrixXd v_dot = R * linear_acceleration_skew + g_;
-  MatrixXd p_dot = v;
-  MatrixXd d_dot = MatrixXd::Zero(3, num_contacts);
 
-  MatrixXd X_dot = MatrixXd::Zero(n, n);
-  X_dot.block(0, 0, 3, 3) = R_dot;
-  X_dot.block(0, 3, 3, 1) = v_dot;
-  X_dot.block(0, 4, 3, 1) = p_dot;
-  X_dot.block(0, 5, 3, num_contacts) = d_dot;
-  return X_dot;
+  VectorXd corrected_angular_velocity =
+      angular_velocity - angular_velocity_bias;
+  VectorXd corrected_linear_acceleration =
+      linear_acceleration - linear_acceleration_bias;
+
+  // Predicted components
+  MatrixXd R_pred =
+      R * (CreateSkewSymmetricMatrix(corrected_angular_velocity * dt).exp());
+  VectorXd v_pred = v + (R * corrected_linear_acceleration + g_) * dt;
+  VectorXd p_pred =
+      p + v * dt + 0.5 * (R * corrected_linear_acceleration + g_) * dt * dt;
+
+  // Contact prediction
+  MatrixXd collision_pts_left = ComputeToeLeftCollisionPointsWrtIMU(q);
+  MatrixXd collision_pts_right = ComputeToeRightCollisionPointsWrtIMU(q);
+
+  // Matrix stacking both the collision coordinates so the prediction step may
+  // be completed in a single loop.
+  MatrixXd collision_pts(3, num_contacts_);
+  collision_pts << collision_pts_left, collision_pts_right;
+
+  MatrixXd d_pred = d;
+
+  // If the respective contact point is active (In contact at this step), then
+  // the prediction is unchanged. If not, the prediction is changed to the
+  // computed predicted coordinate of the collision point.
+  for (int i = 0; i < num_contacts_; ++i) {
+    if (!contacts_.at(i)) {
+      d_pred.col(i) = p_pred + (R_pred * collision_pts.col(i));
+    }
+  }
+
+  // Constructing and returning the state matrix
+  return ComputeX(R_pred, v_pred, p_pred, d_pred);
 }
 
-// If a derivate other than zero is required, this function may be changed.
-VectorXd CassieRbtStateEstimator::ComputeBiasDot(VectorXd ekf_b) const {
-  DRAKE_ASSERT(ekf_b.size() == num_states_bias_);
-  return VectorXd::Zero(num_states_bias_);
+MatrixXd CassieRbtStateEstimator::PredictBias(VectorXd ekf_bias,
+                                              double dt) const {
+  DRAKE_ASSERT(ekf_bias.size() == num_states_bias_);
+  return ekf_bias;
 }
 
 MatrixXd CassieRbtStateEstimator::ComputeAdjointOperator(
     Eigen::VectorXd ekf_x) const {
   DRAKE_ASSERT(ekf_x.size() == num_states_total_);
 
-  int num_contacts = ComputeNumContacts();
-  int n = 3 * (num_contacts + 3);
+  // The matrix consists of 3 + num_contacts blocks of 3x3
+  int n = 3 * (3 + num_contacts_);
 
   // Filling up the rotation matrices
   MatrixXd Adj = MatrixXd::Zero(n, n);
@@ -347,7 +485,7 @@ MatrixXd CassieRbtStateEstimator::ComputeAdjointOperator(
   VectorXd p = ExtractFloatingBasePositions(ekf_x);
   MatrixXd d = ExtractContactPositions(ekf_x);
 
-  for (int i = 0; i < 3 + num_contacts; ++i) {
+  for (int i = 0; i < 3 + num_contacts_; ++i) {
     Adj.block(i * 3, i * 3, 3, 3) = R;
   }
 
@@ -356,7 +494,7 @@ MatrixXd CassieRbtStateEstimator::ComputeAdjointOperator(
   Adj.block(6, 0, 3, 3) = CreateSkewSymmetricMatrix(p) * R;
 
   // Filling up the skew dependent contact terms
-  for (int i = 0; i < num_contacts; ++i) {
+  for (int i = 0; i < num_contacts_; ++i) {
     Adj.block(9 + i * 3, 0, 3, 3) = CreateSkewSymmetricMatrix(d.col(i)) * R;
   }
 
@@ -366,10 +504,10 @@ MatrixXd CassieRbtStateEstimator::ComputeAdjointOperator(
 MatrixXd CassieRbtStateEstimator::ComputeA(VectorXd ekf_x) const {
   DRAKE_ASSERT(ekf_x.size() == num_states_total_);
 
-  int num_contacts = ComputeNumContacts();
-
   // Size of the A matrix
-  int n = 3 * (num_contacts + 5);
+  // 9 = 3 + 2 + 4 (3 for R, p and v, 2 for the bias terms, and 4 for the
+  // contacts)
+  int n = 3 * (3 + 2 + num_contacts_);
 
   MatrixXd R = ExtractRotationMatrix(ekf_x);
   VectorXd v = ExtractFloatingBaseVelocities(ekf_x);
@@ -379,11 +517,319 @@ MatrixXd CassieRbtStateEstimator::ComputeA(VectorXd ekf_x) const {
   MatrixXd A = MatrixXd::Zero(n, n);
   MatrixXd g_skew = CreateSkewSymmetricMatrix(g_);
 
-  A.block(3, 3, 3, 3) = g_skew;
+  A.block(3, 0, 3, 3) = g_skew;
   A.block(6, 3, 3, 3) = MatrixXd::Identity(3, 3);
 
   // Skew terms
-  A.block(0, 12, 3, 3) = -R;
+  A.block(0, n - 6, 3, 3) = -R;
+  A.block(3, n - 3, 3, 3) = -R;
+  A.block(3, n - 6, 3, 3) = -CreateSkewSymmetricMatrix(v) * R;
+  A.block(6, n - 6, 3, 3) = -CreateSkewSymmetricMatrix(p) * R;
+
+  // Contact skew terms
+  for (int i = 0; i < num_contacts_; ++i) {
+    A.block(9 + i * 3, n - 6, 3, 3) = -CreateSkewSymmetricMatrix(d.col(i)) * R;
+  }
+
+  return A;
+}
+
+Eigen::MatrixXd CassieRbtStateEstimator::ComputeCov(Eigen::VectorXd q) const {
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+  MatrixXd Qg = MatrixXd::Zero(3, 3);
+  MatrixXd Qa = MatrixXd::Zero(3, 3);
+  MatrixXd Qc = MatrixXd::Zero(3, 3);
+  MatrixXd Qbg = MatrixXd::Zero(3, 3);
+  MatrixXd Qba = MatrixXd::Zero(3, 3);
+
+  // Individual covariance matrices
+  for (int i = 0; i < 3; ++i) {
+    Qg(i, i) = pow(gyro_noise_std_(i), 2);
+    Qa(i, i) = pow(accel_noise_std_(i), 2);
+    Qc(i, i) = pow(contact_noise_std_(i), 2);
+    Qbg(i, i) = pow(gyro_bias_noise_std_(i), 2);
+    Qba(i, i) = pow(accel_bias_noise_std_(i), 2);
+  }
+
+  // wg, wa, 0, wbg, wba and 4 contacts (5 + num_contacts)
+  int n = 3 * (5 + num_contacts_);
+  MatrixXd Cov = MatrixXd::Zero(n, n);
+
+  MatrixXd R_left = ComputeRotationToeLeftWrtIMU(q);
+  MatrixXd R_right = ComputeRotationToeRightWrtIMU(q);
+
+  Cov.block(0, 0, 3, 3) = Qg;
+  Cov.block(3, 3, 3, 3) = Qa;
+  Cov.block(6, 6, 3, 3) = MatrixXd::Zero(3, 3);
+
+  // For the contact points, we increase the covariance values if there is
+  // no active contact.
+  Cov.block(9, 9, 3, 3) =
+      R_left * (Qc + ((1 - contacts_.at(0)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      (R_left.transpose());
+  Cov.block(12, 12, 3, 3) =
+      R_left * (Qc + ((1 - contacts_.at(1)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      (R_left.transpose());
+  Cov.block(15, 15, 3, 3) =
+      R_right *
+      (Qc + ((1 - contacts_.at(2)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      (R_right.transpose());
+  Cov.block(18, 18, 3, 3) =
+      R_right *
+      (Qc + ((1 - contacts_.at(3)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      (R_right.transpose());
+
+  // Bias covariances
+  Cov.block(21, 21, 3, 3) = Qbg;
+  Cov.block(24, 24, 3, 3) = Qba;
+
+  return Cov;
+}
+
+Eigen::MatrixXd CassieRbtStateEstimator::PredictP(VectorXd ekf_x, VectorXd q,
+                                                  double dt) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+
+  MatrixXd Adj = ComputeAdjointOperator(ekf_x);
+
+  // Adjoint including bias
+  MatrixXd Adj_bias = MatrixXd::Zero(Adj.rows() + 6, Adj.cols() + 6);
+  Adj_bias.block(0, 0, Adj.rows(), Adj.cols()) = Adj;
+  Adj_bias.block(Adj.rows(), Adj.cols(), 6, 6) = MatrixXd::Identity(6, 6);
+
+  MatrixXd A = ComputeA(ekf_x);
+  MatrixXd Cov = ComputeCov(q);
+
+  // Discretizing A
+  MatrixXd A_k = MatrixXd::Identity(A.rows(), A.cols()) + A * dt;
+
+  // Discretized noise matrix
+  MatrixXd Q_k =
+      A_k * Adj_bias * Cov * Adj_bias.transpose() * A_k.transpose() * dt;
+
+  MatrixXd P_pred = A_k * P_ * A_k.transpose() + Q_k;
+
+  return P_pred;
+}
+
+Eigen::MatrixXd CassieRbtStateEstimator::ComputeDelta(VectorXd ekf_x,
+                                                      VectorXd q) const {
+  DRAKE_ASSERT(ekf_x.size() == num_states_total_);
+  DRAKE_ASSERT(q.size() == tree_.get_num_positions());
+
+  // The ekf_x argument is the state vector after the prediction step.
+  MatrixXd R_pred = ExtractRotationMatrix(ekf_x);
+  MatrixXd X_pred = ComputeX(ekf_x);
+
+  MatrixXd collision_pts_left = ComputeToeLeftCollisionPointsWrtIMU(q);
+  MatrixXd collision_pts_right = ComputeToeRightCollisionPointsWrtIMU(q);
+
+  int y_size = 5 + num_contacts_;
+  int b_size = y_size;
+  int h_size = (3 + num_contacts_ + 2) * 3;
+  int pi_size = 3 + num_contacts_ + 2;
+
+  VectorXd y, b;
+  VectorXd y1(y_size), y2(y_size), y3(y_size), y4(y_size);
+  VectorXd b1(b_size), b2(b_size), b3(b_size), b4(b_size);
+  MatrixXd H, N, Pi, X_full;
+  MatrixXd H1, H2, H3, H4;
+  MatrixXd N1, N2, N3, N4;
+
+  // The Pi sub matrix that needs to be repeated
+  MatrixXd Pi_sub = MatrixXd::Zero(3, pi_size);
+  Pi_sub.block(0, 0, 3, 3) = MatrixXd::Identity(3, 3);
+
+  // Joint covariance
+  MatrixXd Qj = MatrixXd::Zero(num_joints_, num_joints_);
+  for (int i = 0; i < num_joints_; ++i) {
+    Qj(i, i) = pow(joints_noise_std_(i), 2);
+  }
+
+  if (contacts_.at(0)) {
+    // Concatenating to the observation vector y
+    y1 << collision_pts_left.col(0), 0, 1, VectorXd::Zero(num_contacts_);
+    y1(5) = -1;
+    VectorXd y_tmp(y.size() + y1.size());
+    y_tmp << y, y1;
+    y = y_tmp;
+
+    // Concatenating to the vector b
+    b1 << VectorXd::Zero(3), 0, 1, VectorXd::Zero(num_contacts_);
+    b1(5) = -1;
+    VectorXd b_tmp(b.size() + b1.size());
+    b_tmp << b, b1;
+    b = b_tmp;
+
+    // H matrix concatenation
+    H1 = MatrixXd::Zero(3, h_size);
+    H1.block(0, 6, 3, 3) = -MatrixXd::Identity(3, 3);
+    H1.block(0, 9, 3, 3) = MatrixXd::Identity(3, 3);
+    MatrixXd H_tmp(H.rows() + H1.rows(), h_size);
+    H_tmp << H, H1;
+    H = H_tmp;
+
+    // N matrix diagonal concatenation
+    MatrixXd J = ComputeToeLeftJacobianWrtIMU(q, local_collision_pt1_);
+    N1 = R_pred * J * Qj * J.transpose() * R_pred.transpose() + N_prior_;
+    MatrixXd N_tmp = MatrixXd::Zero(N.rows() + N1.rows(), N.cols() + N1.cols());
+    N_tmp.block(0, 0, N.rows(), N.cols()) = N;
+    N_tmp.block(N.rows(), N.cols(), N1.rows(), N1.cols()) = N1;
+    N = N_tmp;
+
+    // Pi matrix concatenation
+    MatrixXd Pi_tmp =
+        MatrixXd::Zero(Pi.rows() + Pi_sub.rows(), Pi.cols() + Pi_sub.cols());
+    Pi_tmp.block(0, 0, Pi.rows(), Pi.cols()) = Pi;
+    Pi_tmp.block(Pi.rows(), Pi.cols(), Pi_sub.rows(), Pi_sub.cols()) = Pi_sub;
+    Pi = Pi_tmp;
+
+    // Full state matrix concatenation
+    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_pred.rows(), X_full.cols() + X_pred.cols());
+    X_full_tmp.block(0, 0, X_full.rows(), X_full.cols()) = X_full;
+    X_full_tmp.block(X_full.rows(), X_full.cols(), X_pred.rows(), X_pred.cols()) = X_pred;
+    X_full = X_full_tmp;
+  }
+
+  if (contacts_.at(1)) {
+    // Concatenating to the observation vector y
+    y2 << collision_pts_left.col(1), 0, 1, VectorXd::Zero(num_contacts_);
+    y2(6) = -1;
+    VectorXd y_tmp(y.size() + y2.size());
+    y_tmp << y, y2;
+    y = y_tmp;
+
+    // Concatenating to the vector b
+    b2 << VectorXd::Zero(3), 0, 1, VectorXd::Zero(num_contacts_);
+    b2(6) = -1;
+    VectorXd b_tmp(b.size() + b2.size());
+    b_tmp << b, b2;
+    b = b_tmp;
+
+    // H matrix concatenation
+    H2 = MatrixXd::Zero(3, h_size);
+    H2.block(0, 6, 3, 3) = -MatrixXd::Identity(3, 3);
+    H2.block(0, 12, 3, 3) = MatrixXd::Identity(3, 3);
+    MatrixXd H_tmp(H.rows() + H2.rows(), h_size);
+    H_tmp << H, H2;
+    H = H_tmp;
+
+    // N matrix diagonal concatenation
+    MatrixXd J = ComputeToeLeftJacobianWrtIMU(q, local_collision_pt2_);
+    N2 = R_pred * J * Qj * J.transpose() * R_pred.transpose() + N_prior_;
+    MatrixXd N_tmp = MatrixXd::Zero(N.rows() + N2.rows(), N.cols() + N2.cols());
+    N_tmp.block(0, 0, N.rows(), N.cols()) = N;
+    N_tmp.block(N.rows(), N.cols(), N2.rows(), N2.cols()) = N2;
+    N = N_tmp;
+
+    // Pi matrix concatenation
+    MatrixXd Pi_tmp =
+        MatrixXd::Zero(Pi.rows() + Pi_sub.rows(), Pi.cols() + Pi_sub.cols());
+    Pi_tmp.block(0, 0, Pi.rows(), Pi.cols()) = Pi;
+    Pi_tmp.block(Pi.rows(), Pi.cols(), Pi_sub.rows(), Pi_sub.cols()) = Pi_sub;
+    Pi = Pi_tmp;
+
+    // Full state matrix concatenation
+    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_pred.rows(), X_full.cols() + X_pred.cols());
+    X_full_tmp.block(0, 0, X_full.rows(), X_full.cols()) = X_full;
+    X_full_tmp.block(X_full.rows(), X_full.cols(), X_pred.rows(), X_pred.cols()) = X_pred;
+    X_full = X_full_tmp;
+  }
+
+  if (contacts_.at(2)) {
+    // Concatenating to the observation vector y
+    y3 << collision_pts_right.col(0), 0, 1, VectorXd::Zero(num_contacts_);
+    y3(7) = -1;
+    VectorXd y_tmp(y.size() + y3.size());
+    y_tmp << y, y3;
+    y = y_tmp;
+
+    // Concatenating to the vector b
+    b3 << VectorXd::Zero(3), 0, 1, VectorXd::Zero(num_contacts_);
+    b3(7) = -1;
+    VectorXd b_tmp(b.size() + b3.size());
+    b_tmp << b, b3;
+    b = b_tmp;
+
+    // H matrix concatenation
+    H3 = MatrixXd::Zero(3, h_size);
+    H3.block(0, 6, 3, 3) = -MatrixXd::Identity(3, 3);
+    H3.block(0, 15, 3, 3) = MatrixXd::Identity(3, 3);
+    MatrixXd H_tmp(H.rows() + H3.rows(), h_size);
+    H_tmp << H, H3;
+    H = H_tmp;
+
+    // N matrix diagonal concatenation
+    MatrixXd J = ComputeToeRightJacobianWrtIMU(q, local_collision_pt1_);
+    N3 = R_pred * J * Qj * J.transpose() * R_pred.transpose() + N_prior_;
+    MatrixXd N_tmp = MatrixXd::Zero(N.rows() + N3.rows(), N.cols() + N3.cols());
+    N_tmp.block(0, 0, N.rows(), N.cols()) = N;
+    N_tmp.block(N.rows(), N.cols(), N3.rows(), N3.cols()) = N3;
+    N = N_tmp;
+
+    // Pi matrix concatenation
+    MatrixXd Pi_tmp =
+        MatrixXd::Zero(Pi.rows() + Pi_sub.rows(), Pi.cols() + Pi_sub.cols());
+    Pi_tmp.block(0, 0, Pi.rows(), Pi.cols()) = Pi;
+    Pi_tmp.block(Pi.rows(), Pi.cols(), Pi_sub.rows(), Pi_sub.cols()) = Pi_sub;
+    Pi = Pi_tmp;
+
+    // Full state matrix concatenation
+    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_pred.rows(), X_full.cols() + X_pred.cols());
+    X_full_tmp.block(0, 0, X_full.rows(), X_full.cols()) = X_full;
+    X_full_tmp.block(X_full.rows(), X_full.cols(), X_pred.rows(), X_pred.cols()) = X_pred;
+    X_full = X_full_tmp;
+  }
+
+  if (contacts_.at(3)) {
+    // Concatenating to the observation vector y
+    y4 << collision_pts_right.col(1), 0, 1, VectorXd::Zero(num_contacts_);
+    y4(8) = -1;
+    VectorXd y_tmp(y.size() + y4.size());
+    y_tmp << y, y4;
+    y = y_tmp;
+
+    // Concatenating to the vector b
+    b4 << VectorXd::Zero(3), 0, 1, VectorXd::Zero(num_contacts_);
+    b4(8) = -1;
+    VectorXd b_tmp(b.size() + b4.size());
+    b_tmp << b, b4;
+    b = b_tmp;
+
+    // H matrix concatenation
+    H4 = MatrixXd::Zero(3, h_size);
+    H4.block(0, 6, 3, 3) = -MatrixXd::Identity(3, 3);
+    H4.block(0, 18, 3, 3) = MatrixXd::Identity(3, 3);
+    MatrixXd H_tmp(H.rows() + H4.rows(), h_size);
+    H_tmp << H, H4;
+    H = H_tmp;
+
+    // N matrix diagonal concatenation
+    MatrixXd J = ComputeToeRightJacobianWrtIMU(q, local_collision_pt2_);
+    N4 = R_pred * J * Qj * J.transpose() * R_pred.transpose() + N_prior_;
+    MatrixXd N_tmp = MatrixXd::Zero(N.rows() + N4.rows(), N.cols() + N4.cols());
+    N_tmp.block(0, 0, N.rows(), N.cols()) = N;
+    N_tmp.block(N.rows(), N.cols(), N4.rows(), N4.cols()) = N4;
+    N = N_tmp;
+
+    // Pi matrix concatenation
+    MatrixXd Pi_tmp =
+        MatrixXd::Zero(Pi.rows() + Pi_sub.rows(), Pi.cols() + Pi_sub.cols());
+    Pi_tmp.block(0, 0, Pi.rows(), Pi.cols()) = Pi;
+    Pi_tmp.block(Pi.rows(), Pi.cols(), Pi_sub.rows(), Pi_sub.cols()) = Pi_sub;
+    Pi = Pi_tmp;
+
+    // Full state matrix concatenation
+    MatrixXd X_full_tmp = MatrixXd::Zero(X_full.rows() + X_pred.rows(), X_full.cols() + X_pred.cols());
+    X_full_tmp.block(0, 0, X_full.rows(), X_full.cols()) = X_full;
+    X_full_tmp.block(X_full.rows(), X_full.cols(), X_pred.rows(), X_pred.cols()) = X_pred;
+    X_full = X_full_tmp;
+  }
+
+  std::cout << X_full << std::endl;
+
+  return MatrixXd::Zero(3, 3);
 }
 
 void CassieRbtStateEstimator::set_contacts(vector<int> contacts) {
@@ -515,8 +961,8 @@ EventStatus CassieRbtStateEstimator::Update(
   double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
   VectorXd ekf_x =
       discrete_state->get_mutable_vector(ekf_x_idx_).get_mutable_value();
-  VectorXd ekf_b =
-      discrete_state->get_mutable_vector(ekf_b_idx_).get_mutable_value();
+  VectorXd ekf_bias =
+      discrete_state->get_mutable_vector(ekf_bias_idx_).get_mutable_value();
 
   // Reading the IMU values
   VectorXd angular_velocity, linear_acceleration, u;
@@ -565,12 +1011,8 @@ EventStatus CassieRbtStateEstimator::Update(
     // Step 2 - EKF (update step)
     // Prediction step
     MatrixXd X = ComputeX(ekf_x);
-    MatrixXd X_dot = ComputeXDot(ekf_x, ekf_b, u);
-    VectorXd bias_dot = ComputeBiasDot(ekf_b);
 
-    // Updating by Euler integration
-    MatrixXd X_pred = X + X_dot * dt;
-    VectorXd bias_pred = ekf_b + bias_dot * dt;
+    // Updating
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
 

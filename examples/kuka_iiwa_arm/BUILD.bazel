@@ -36,5 +36,6 @@ cc_binary(
         "@drake//lcm",
         "@drake//systems/analysis",
         "@drake//systems/controllers:state_feedback_controller_interface",
+        "@drake//systems/primitives:discrete_derivative"
     ],
 )

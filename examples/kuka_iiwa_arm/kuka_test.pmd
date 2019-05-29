@@ -12,7 +12,7 @@ group "1.simulated-robot" {
     }
 
     cmd "2.position_broadcaster" {
-        exec = "bazel-bin/systems/controllers/iiwa_velocity_broadcaster";
+        exec = "bazel-bin/examples/kuka_iiwa_arm/iiwa_controller_demo";
         host = "localhost";
     }
 }
@@ -27,5 +27,3 @@ group "2.lcm-tools" {
         host = "localhost";
     }
 }
-
-

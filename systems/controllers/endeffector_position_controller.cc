@@ -70,7 +70,10 @@ void EndEffectorPositionController::CalcOutputTwist(
 
   // Transforming angular velocity from joint frame to world frame
   MatrixXd angularVelocityWF = tree_local.relativeTransform(cache, WORLDFRAME_ID, ee_frame_id).linear() * angularVelocity;
-
+  std::cout << x_desired << std::endl;
+  std::cout << "@@@@@@@@@@@@@@@@@@" << std::endl;
+  std::cout << x_actual << std::endl;
+  
   MatrixXd twist(6, 1);
   twist << angularVelocityWF, diff;
   output->set_value(twist);

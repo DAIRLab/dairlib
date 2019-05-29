@@ -39,3 +39,21 @@ cc_binary(
         "@drake//systems/primitives:discrete_derivative"
     ],
 )
+
+
+cc_binary(
+    name="iiwa_controller_demo",
+    srcs = ["iiwa_controller_demo.cc"],
+    deps = [
+            "//systems/controllers:endeffector_velocity_controller",
+            "//systems/controllers:endeffector_position_controller",
+            "@drake//common/trajectories:piecewise_polynomial",
+            "@drake//systems/analysis:simulator",
+            "@drake//systems/framework",
+            "@drake//lcm",
+            "@drake//examples/kuka_iiwa_arm:iiwa_common",
+            "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
+            "@drake//common",
+            "@drake//systems/primitives:trajectory_source"
+    ]
+)

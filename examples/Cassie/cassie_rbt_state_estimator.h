@@ -24,7 +24,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   explicit CassieRbtStateEstimator(
       const RigidBodyTree<double>& tree, Eigen::VectorXd ekf_x_init,
       Eigen::VectorXd ekf_bias_init, bool is_floating_base,
-      Eigen::MatrixXd P = Eigen::MatrixXd::Identity(27, 27),
+      Eigen::MatrixXd P = 0.01 * Eigen::MatrixXd::Identity(27, 27),
       Eigen::MatrixXd N_prior = 0.01 * Eigen::MatrixXd::Identity(3, 3),
       Eigen::VectorXd gyro_noise_std = 0.1 * Eigen::VectorXd::Ones(3),
       Eigen::VectorXd accel_noise_std = 0.1 * Eigen::VectorXd::Ones(3),
@@ -132,6 +132,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   int right_thigh_ind_ = -1;
   int left_heel_spring_ind_ = -1;
   int right_heel_spring_ind_ = -1;
+  const double left_spring_contact_threshold_ = 0.015;
+  const double right_spring_contact_threshold_ = 0.015;
 
   drake::systems::DiscreteStateIndex state_idx_;
   drake::systems::DiscreteStateIndex ekf_x_idx_;

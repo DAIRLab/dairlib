@@ -54,7 +54,6 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
                            tree.get_num_actuators()),
       &CassieRbtStateEstimator::CopyStateOut);
 
-  // if (is_floating_base) {
   DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
 
   // Declaring the discrete states with initial values
@@ -1063,7 +1062,7 @@ EventStatus CassieRbtStateEstimator::Update(
   // Testing
   const auto& cassie_out =
       this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
-  cout << "\nIn per-step update: lcm_time = "
+  cout << "In per-step update: lcm_time = "
        << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
   cout << "In per-step update: context_time = " << context.get_time() << endl;
 
@@ -1078,7 +1077,7 @@ EventStatus CassieRbtStateEstimator::Update(
       discrete_state->get_mutable_vector(ekf_p_idx_).get_mutable_value();
 
   // Reading the IMU values
-  VectorXd angular_velocity, linear_acceleration, u;
+  VectorXd angular_velocity(3), linear_acceleration(3), u(6);
   for (int i = 0; i < 3; ++i) {
     angular_velocity(i) = cassie_out.pelvis.vectorNav.angularVelocity[i];
     linear_acceleration(i) = cassie_out.pelvis.vectorNav.linearAcceleration[i];
@@ -1090,6 +1089,8 @@ EventStatus CassieRbtStateEstimator::Update(
 
   if (current_time > prev_t) {
     double dt = current_time - prev_t;
+
+    // Updating the time state with the current time.
     discrete_state->get_mutable_vector(time_idx_).get_mutable_value()
         << current_time;
 
@@ -1119,11 +1120,25 @@ EventStatus CassieRbtStateEstimator::Update(
 
     // Current configuration
     VectorXd q = output.GetMutablePositions();
+    VectorXd q_zero = tree_.getZeroConfiguration();
+
+    // The floating base values are not set and are thus nan.
+    // Replacing the nan's with the tree's zero configuration.
+    // RBT's zero configuration is used to provide a generic solution that
+    // handles quaternions as well (Unit normal condition).
+    for (int i = 0; i < q.size(); ++i) {
+      if (std::isnan(q(i))) {
+        q(i) = q_zero(i);
+      }
+    }
 
     double left_heel_spring = 0;
     double right_heel_spring = 0;
-    solveFourbarLinkage(output.GetPositions(), left_heel_spring,
-                        right_heel_spring);
+    solveFourbarLinkage(q, left_heel_spring, right_heel_spring);
+
+    // std::cout << "SPRINGS: " << std::endl;
+    // std::cout << std::abs(left_heel_spring) << " "
+    //          << std::abs(right_heel_spring) << std::endl;
 
     // TODO(yminchen):
     // You can test the contact force estimator here using fixed based.
@@ -1134,29 +1149,53 @@ EventStatus CassieRbtStateEstimator::Update(
 
     // Step 2 - EKF (Prediction step)
     // Prediction step
-    ekf_x_predicted = ComputeEkfX(PredictX(ekf_x, ekf_bias, u, q, dt));
-    ekf_bias_predicted = PredictBias(ekf_bias, dt);
-    ekf_p_predicted = ComputeEkfP(PredictP(ekf_x, ekf_p, q, dt));
+
+    // ekf_x_predicted = ComputeEkfX(PredictX(ekf_x, ekf_bias, u, q, dt));
+    // ekf_bias_predicted = PredictBias(ekf_bias, dt);
+    // ekf_p_predicted = ComputeEkfP(PredictP(ekf_x, ekf_p, q, dt));
 
     // Updating
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
-    // Updating contacts_
-
-    // Step 4 - EKF (measurement step)
-    if (ComputeNumContacts()) {
-      // Computing update step parameters
-      ComputeUpdateParams(ekf_x_predicted, ekf_p_predicted, q, y, b, H, N, Pi,
-                          X_full, S, K, delta);
-      ekf_x_updated = ComputeEkfX(UpdateX(ComputeX(ekf_x_predicted), delta));
-      ekf_bias_updated = UpdateBias(ekf_bias_predicted, delta);
-      ekf_p_updated = ComputeEkfP(UpdateP(ekf_p_predicted, H, K, N));
+    if (std::abs(left_heel_spring) > left_spring_contact_threshold_) {
+      // Left leg in contact with the ground
+      // Updating the contact indicator (Both colliders on the left leg are
+      // assumed to be in contact.
+      contacts_.at(0) = 1;
+      contacts_.at(1) = 1;
+      // std::cout << "LEFT ";
     } else {
-      // If there are no contacts, there is no update step.
-      ekf_x_updated = ekf_x_predicted;
-      ekf_bias_updated = ekf_bias_predicted;
-      ekf_p_updated = ekf_p_predicted;
+      // Not in contact
+      contacts_.at(0) = 0;
+      contacts_.at(1) = 0;
     }
+    if (std::abs(right_heel_spring) > right_spring_contact_threshold_) {
+      // Right leg in contact with the ground
+      // Updating the contact indicator (Both colliders on the right leg are
+      // assumed to be in contact.
+      contacts_.at(2) = 1;
+      contacts_.at(3) = 1;
+      // std::cout << "RIGHT ";
+    } else {
+      // Not in contact
+      contacts_.at(2) = 0;
+      contacts_.at(3) = 0;
+    }
+    // Step 4 - EKF (measurement step)
+
+    // if (ComputeNumContacts()) {
+    //  // Computing update step parameters
+    //  ComputeUpdateParams(ekf_x_predicted, ekf_p_predicted, q, y, b, H, N, Pi,
+    //                      X_full, S, K, delta);
+    //  ekf_x_updated = ComputeEkfX(UpdateX(ComputeX(ekf_x_predicted), delta));
+    //  ekf_bias_updated = UpdateBias(ekf_bias_predicted, delta);
+    //  ekf_p_updated = ComputeEkfP(UpdateP(ekf_p_predicted, H, K, N));
+    //} else {
+    //  // If there are no contacts, there is no update step.
+    //  ekf_x_updated = ekf_x_predicted;
+    //  ekf_bias_updated = ekf_bias_predicted;
+    //  ekf_p_updated = ekf_p_predicted;
+    //}
 
     // Step 5 - Assign values to states
     // Below is how you should assign the state at the end of this Update
@@ -1164,13 +1203,13 @@ EventStatus CassieRbtStateEstimator::Update(
     // ...;
     // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() =
     // ...;
-    discrete_state->get_mutable_vector(ekf_x_idx_).get_mutable_value() =
-        ekf_x_updated;
-    discrete_state->get_mutable_vector(ekf_bias_idx_).get_mutable_value() =
-        ekf_bias_updated;
-    discrete_state->get_mutable_vector(ekf_p_idx_).get_mutable_value() =
-        ekf_p_updated;
-    // P_ = P_updated;
+
+    // discrete_state->get_mutable_vector(ekf_x_idx_).get_mutable_value() =
+    //    ekf_x_updated;
+    // discrete_state->get_mutable_vector(ekf_bias_idx_).get_mutable_value() =
+    //    ekf_bias_updated;
+    // discrete_state->get_mutable_vector(ekf_p_idx_).get_mutable_value() =
+    //    ekf_p_updated;
 
     // You can convert a rotational matrix to quaternion using Eigen
     // https://stackoverflow.com/questions/21761909/eigen-convert-matrix3d-rotation-to-quaternion
@@ -1184,8 +1223,9 @@ EventStatus CassieRbtStateEstimator::Update(
     // We will get the bias (parameter) from EKF
 
     // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
-    discrete_state->get_mutable_vector(time_idx_).get_mutable_value()(0) =
-        current_time;
+
+    // discrete_state->get_mutable_vector(time_idx_).get_mutable_value()(0) =
+    //    current_time;
   }
 
   return EventStatus::Succeeded();
@@ -1237,10 +1277,10 @@ void CassieRbtStateEstimator::CopyStateOut(const Context<double>& context,
 
   // Testing
   auto state_time = context.get_discrete_state(time_idx_).get_value();
-  cout << "  In copyStateOut: lcm_time = "
-       << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
-  cout << "  In copyStateOut: state_time = " << state_time << endl;
-  cout << "  In copyStateOut: context_time = " << context.get_time() << endl;
+  // cout << "  In copyStateOut: lcm_time = "
+  //     << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
+  // cout << "  In copyStateOut: state_time = " << state_time << endl;
+  // cout << "  In copyStateOut: context_time = " << context.get_time() << endl;
 
   // Testing
   // cout << endl << "****bodies****" << endl;

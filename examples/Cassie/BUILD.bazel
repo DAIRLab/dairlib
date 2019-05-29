@@ -74,7 +74,7 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         ":cassie_rbt_state_estimator",
-        "//attic/multibody:multibody_solvers",
+        "//examples/Cassie/networking:cassie_udp_pub_sub",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//attic/manipulation/util:sim_diagram_builder",

@@ -43,7 +43,7 @@ DEFINE_bool(visualize_frames, true, "Visualize end effector frames");
 DEFINE_double(target_realtime_rate, 1.0,
               "Playback speed.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
-DEFINE_bool(torque_control, false, "Simulate using torque control mode.");
+DEFINE_bool(torque_control, true, "Simulate using torque control mode.");
 
 namespace drake {
 namespace examples {
@@ -209,10 +209,18 @@ int DoMain() {
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
 
+  Eigen::Matrix< double , 7 , 1> InitialPositions;
+  InitialPositions << 3.14/4, -3.14/2, (3.14)/2, 3.14/2, (3.14)/2, (3.14)/2, 1*(3.14)/4.;
+
   command_receiver->set_initial_position(
       &sys->GetMutableSubsystemContext(*command_receiver,
                                        &simulator.get_mutable_context()),
-      VectorX<double>::Zero(tree.get_num_positions()));
+      InitialPositions);
+
+  // command_receiver->set_initial_position(
+  //     &sys->GetMutableSubsystemContext(*command_receiver,
+  //                                      &simulator.get_mutable_context()),
+  //     VectorX<double>::Zero(tree.get_num_positions()));
 
   // Simulate for a very long time.
   simulator.AdvanceTo(FLAGS_simulation_sec);

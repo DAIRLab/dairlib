@@ -68,6 +68,30 @@ cc_library(
 )
 
 cc_binary(
+    name = "run_rbt_state_estimator_sim",
+    srcs = ["run_rbt_state_estimator_sim.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        ":cassie_rbt_state_estimator",
+        "//attic/multibody:multibody_solvers",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//attic/multibody/rigid_body_plant",
+        "@drake//attic/systems/sensors:sensors",
+        "@drake//common",
+        "@drake//systems/lcm:lcm_interface_system",
+        "@drake//manipulation/util",
+        "@drake//solvers",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_udp_dummy_server",
     srcs = ["run_udp_dummy_server.c"],
     deps = [

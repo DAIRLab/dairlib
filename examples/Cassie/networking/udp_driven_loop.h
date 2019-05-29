@@ -12,6 +12,8 @@ namespace dairlib {
 namespace systems {
 
 /**
+ * AS OF 5-17-2019, THIS CLASS IS DEPRECATED
+ *
  * This class implements a loop driven by a Cassie UDP message. The context time
  * is explicitly slaved to the time in the received Lcm message. This class is
  * intended to provide a generalized way to implement a message handling loop:

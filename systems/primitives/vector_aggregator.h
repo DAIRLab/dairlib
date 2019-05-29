@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 
 #include "drake/systems/analysis/simulator.h"

@@ -53,6 +53,10 @@ group "0.operator" {
         exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
         host = "localhost";
     }
+    cmd "4.state-visualizer-RBT" {
+        exec = "bazel-bin/examples/Cassie/cassie_state_visualizer --floating_base=true";
+        host = "localhost";
+    }
 }
 
 group "3.cassie-robot" {

@@ -84,7 +84,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers",
         "//systems/controllers:pd_config_lcm",
-        "@drake//lcm",
+        "@drake//systems/lcm:lcm_interface_system",
         "@drake//manipulation/util",
         "@drake//systems/analysis:simulator",
         "@drake//systems/framework:diagram_builder",
@@ -102,7 +102,7 @@ cc_binary(
             "@drake//systems/framework:diagram_builder",
             "@drake//systems/lcm:lcm_pubsub_system",
             "@drake//systems/analysis:simulator",
-            "@drake//lcm",
+            "@drake//systems/lcm:lcm_interface_system",
             "@drake//manipulation/util",
             "@drake//geometry:geometry_visualization",
             "@drake//systems/rendering:multibody_position_to_geometry_pose",
@@ -110,7 +110,6 @@ cc_binary(
             "@gflags",
             ]
 )
-
 
 cc_binary(
     name = "run_simple_sim",
@@ -127,7 +126,7 @@ cc_binary(
         "@drake//attic/multibody/rigid_body_plant",
         "@drake//attic/systems/sensors:sensors",
         "@drake//common",
-        "@drake//lcm",
+        "@drake//systems/lcm:lcm_interface_system",
         "@drake//manipulation/util",
         "@drake//solvers",
         "@drake//systems/analysis:simulator",
@@ -171,6 +170,31 @@ cc_binary(
         ":cassie_utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
+    ],
+)
+
+cc_binary(
+    name = "run_constrained_lqr_controller_sim",
+    srcs = ["run_constrained_lqr_controller_sim.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
+        "//attic/multibody:utility_systems",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//systems/controllers:constrained_lqr_controller",
+        "@drake//attic/manipulation/util:sim_diagram_builder",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//attic/multibody/rigid_body_plant",
+        "@drake//attic/systems/sensors:sensors",
+        "@drake//common",
+        "@drake//systems/lcm:lcm_interface_system",
+        "@drake//manipulation/util",
+        "@drake//solvers",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/framework",
+        "@gflags",
     ],
 )
 
@@ -250,3 +274,24 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
     ],
 )
+
+
+cc_binary(
+    name = "cassie_state_visualizer",
+    srcs = ["cassie_state_visualizer.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        ":cassie_urdf",
+        "@drake//systems/framework:diagram_builder",
+        "@drake//systems/lcm:lcm_pubsub_system",
+        "@drake//systems/analysis:simulator",
+        "@drake//systems/lcm:lcm_interface_system",
+        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//manipulation/util",
+        ":cassie_utils",
+        "@drake//attic/multibody/rigid_body_plant:drake_visualizer",
+        "@gflags",
+        ]
+)
+

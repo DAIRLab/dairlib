@@ -36,8 +36,10 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
                     OutputVector<double>* output) const;
   int num_positions_;
   int num_velocities_;
+  int num_efforts_;
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;
+  std::map<std::string, int> effortIndexMap_;
 };
 
 

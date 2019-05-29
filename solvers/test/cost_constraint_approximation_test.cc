@@ -7,10 +7,10 @@
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 #include "drake/common/test_utilities/eigen_matrix_compare.h"
-#include "systems/trajectory_optimization/dircon_util.h"
+#include "solvers/optimization_utils.h"
 
 namespace dairlib {
-namespace systems {
+namespace solvers {
 namespace {
 
 using drake::solvers::MathematicalProgram;
@@ -75,10 +75,8 @@ TEST_F(CostConstraintApproximationTest, QPTest) {
   w_sol = result.GetSolution(quadprog.decision_variables());
 
   // Approximation
-  dairlib::systems::trajectory_optimization::linearizeConstraints(
-      &quadprog, w_sol, y_a, A_a, lb_a, ub_a);
-  double c_doub = dairlib::systems::trajectory_optimization::secondOrderCost(
-      &quadprog, w_sol, H_a, b_a);
+  LinearizeConstraints(quadprog, w_sol, &y_a, &A_a, &lb_a, &ub_a);
+  double c_doub = SecondOrderCost(quadprog, w_sol, &H_a, &b_a);
   c_a << c_doub;
 
   // Test the cost function
@@ -105,7 +103,7 @@ TEST_F(CostConstraintApproximationTest, QPTest) {
 }
 
 }  // namespace
-}  // namespace systems
+}  // namespace solvers
 }  // namespace dairlib
 
 

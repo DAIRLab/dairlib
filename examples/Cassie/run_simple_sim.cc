@@ -2,7 +2,6 @@
 #include <string>
 
 #include <gflags/gflags.h>
-#include "drake/lcm/drake_lcm.h"
 #include "drake/manipulation/util/sim_diagram_builder.h"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
@@ -10,6 +9,7 @@
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/runge_kutta3_integrator.h"
@@ -65,7 +65,6 @@ DEFINE_bool(is_imu_sim, true, "With simulated imu sensor or not");
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree;
   if (FLAGS_floating_base)
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
@@ -87,6 +86,8 @@ int do_main(int argc, char* argv[]) {
   auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(
       std::move(tree), FLAGS_dt);
 
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+
   // Note: this sets identical contact parameters across all object pairs:
   drake::systems::CompliantMaterial default_material;
   default_material.set_youngs_modulus(FLAGS_youngs_modulus)
@@ -101,7 +102,7 @@ int do_main(int argc, char* argv[]) {
   // Create input receiver
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          "CASSIE_INPUT", &lcm));
+          "CASSIE_INPUT", lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(
       plant->get_rigid_body_tree());
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
@@ -120,7 +121,7 @@ int do_main(int argc, char* argv[]) {
         plant->get_rigid_body_tree());
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            "CASSIE_STATE", &lcm, 1.0 / FLAGS_publish_rate));
+            "CASSIE_STATE", lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(plant->state_output_port(),
                     state_sender->get_input_port_state());
     builder.Connect(state_sender->get_output_port(0),
@@ -133,7 +134,7 @@ int do_main(int argc, char* argv[]) {
         addImuAndAggregatorToSimulation(builder, plant, passthrough);
     auto cassie_sensor_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
-            "CASSIE_OUTPUT", &lcm, 1.0 / FLAGS_publish_rate));
+            "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(cassie_sensor_aggregator->get_output_port(0),
                     cassie_sensor_pub->get_input_port());
   }
@@ -165,6 +166,7 @@ int do_main(int argc, char* argv[]) {
   Eigen::VectorXd x0 =
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
+
   std::map<std::string, int> map =
       plant->get_rigid_body_tree().computePositionNameToIndexMap();
   x0(map.at("hip_pitch_left")) = .269;
@@ -192,6 +194,14 @@ int do_main(int argc, char* argv[]) {
   fixed_joints.push_back(map.at("hip_pitch_right"));
   fixed_joints.push_back(map.at("knee_left"));
   fixed_joints.push_back(map.at("knee_right"));
+
+  if (FLAGS_floating_base) {
+    double quaternion_norm = x0.segment(3, 4).norm();
+    if (quaternion_norm != 0)  // Unit Quaternion
+      x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
+    else  // in case the user enters 0-norm quaternion
+      x0(3) = 1;
+  }
 
   Eigen::VectorXd q0 =
       x0.head(plant->get_rigid_body_tree().get_num_positions());
@@ -227,7 +237,7 @@ int do_main(int argc, char* argv[]) {
     // state[3] = 0;
     // state[4] = 0;
   } else {
-    std::cout << "ngroups " << context.get_num_discrete_state_groups()
+    std::cout << "ngroups " << context.num_discrete_state_groups()
               << std::endl;
     drake::systems::BasicVector<double>& state =
         context.get_mutable_discrete_state(0);
@@ -246,8 +256,6 @@ int do_main(int argc, char* argv[]) {
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
-
-  lcm.StartReceiveThread();
 
   simulator.StepTo(std::numeric_limits<double>::infinity());
   // simulator.StepTo(.001);

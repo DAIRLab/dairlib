@@ -110,9 +110,8 @@ int do_main(int argc, char* argv[]) {
       set_angle(&plant_context, -M_PI/3);
 
   if (FLAGS_floating_base) {
-    Eigen::Isometry3d transform;
-    transform.linear() = Eigen::Matrix3d::Identity();;
-    transform.translation() = Eigen::Vector3d(0, 0, 1.2);
+    const drake::math::RigidTransformd transform(
+        drake::math::RotationMatrix<double>(), Eigen::Vector3d(0, 0, 1.2));
     plant.SetFreeBodyPose(&plant_context, plant.GetBodyByName("pelvis"),
         transform);
   }

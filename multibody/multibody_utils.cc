@@ -50,14 +50,15 @@ void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
   drake::multibody::CoulombFriction<T> friction(mu_static, mu_kinetic);
 
   // A half-space for the ground geometry.
+  const drake::math::RigidTransformd X_WG(
+      HalfSpace::MakePose(normal_W, point_W));
+
   plant->RegisterCollisionGeometry(
-      plant->world_body(), HalfSpace::MakePose(normal_W, point_W),
-      HalfSpace(), "collision", friction);
+      plant->world_body(), X_WG, HalfSpace(), "collision", friction);
 
   // Add visual for the ground.
   plant->RegisterVisualGeometry(
-      plant->world_body(), HalfSpace::MakePose(normal_W, point_W),
-      HalfSpace(), "visual");
+      plant->world_body(), X_WG, HalfSpace(), "visual");
 }
 
 /// Construct a map between joint names and position indices

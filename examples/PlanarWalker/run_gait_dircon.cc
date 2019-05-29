@@ -81,7 +81,7 @@ shared_ptr<HybridDircon<double>> runDircon(
 
   plant.WeldFrames(
       plant.world_frame(), plant.GetFrameByName("base"),
-      drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
+      drake::math::RigidTransform<double>());
 
   plant.Finalize();
 
@@ -279,7 +279,7 @@ int main(int argc, char* argv[]) {
 
   plant.WeldFrames(
       plant.world_frame(), plant.GetFrameByName("base"),
-      drake::math::RigidTransform<double>(Vector3d::Zero()).GetAsIsometry3());
+      drake::math::RigidTransform<double>());
 
   plant.Finalize();
 

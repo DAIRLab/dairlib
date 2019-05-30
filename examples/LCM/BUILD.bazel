@@ -1,0 +1,50 @@
+# -*- python -*-
+
+load("@drake//tools/install:install.bzl", "install")
+
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+pybind_py_library(
+    name = "lcm_log_utils_py",
+    cc_so_name = "lcm_log_utils",
+    cc_srcs = ["lcm_log_utils_py.cc"],
+    cc_deps = [
+	"//attic/multibody:lcm_log_utils",
+        "@drake//bindings/pydrake/common:cpp_template_pybind",
+        "@drake//bindings/pydrake/systems:systems_pybind",
+	"@drake//:drake_shared_library",
+        "@drake//bindings/pydrake/common:eigen_pybind",
+    ],
+    py_deps = ["@drake//bindings/pydrake"],
+    py_imports = ["."],
+)
+
+py_test(
+    name = "lcm_log_utils_py_test",
+    srcs = ["lcm_log_utils_py_test.py"],
+    deps = [":lcm_log_utils_py"],
+)

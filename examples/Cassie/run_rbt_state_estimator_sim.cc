@@ -74,44 +74,29 @@ int doMain(int argc, char* argv[]) {
   builder.Connect(cassie_output_sub->get_output_port(),
                   cassie_output_receiver->get_input_port(0));
 
-  // auto publisher =
-  //    builder.AddSystem<drake::systems::DrakeVisualizer>(tree, lcm);
-
-  // auto passthrough =
-  // builder.AddSystem<dairlib::systems::SubvectorPassThrough>(
-  //    state_receiver->get_output_port(0).size(), 0,
-  //    publisher->get_input_port(0).size());
-
-  // builder.Connect(state_receiver->get_output_port(0),
-  //                passthrough->get_input_port());
-  // builder.Connect(passthrough->get_output_port(),
-  // publisher->get_input_port(0));
-
-  // publisher->set_publish_period(1.0 / 30.0);
-
   // Estimator
   // Initial state and bias values
-  MatrixXd R_init = MatrixXd::Identity(3, 3);
-  VectorXd v_init = VectorXd::Zero(3);
-  VectorXd p_init = VectorXd::Zero(3);
-  MatrixXd d_init = MatrixXd::Zero(3, 4);
+  //MatrixXd R_init = MatrixXd::Identity(3, 3);
+  //VectorXd v_init = VectorXd::Zero(3);
+  //VectorXd p_init = VectorXd::Zero(3);
+  //MatrixXd d_init = MatrixXd::Zero(3, 4);
 
-  VectorXd ekf_x_init = VectorXd::Zero(27);
-  for (int i = 0; i < 3; ++i) {
-    ekf_x_init.segment(i * 3, 3) = R_init.row(i);
-  }
-  ekf_x_init.segment(9, 3) = v_init;
-  ekf_x_init.segment(12, 3) = p_init;
-  for (int i = 0; i < num_contacts; ++i) {
-    ekf_x_init.segment(15 + i * 3, 3) = d_init.col(i);
-  }
+  //VectorXd ekf_x_init = VectorXd::Zero(27);
+  //for (int i = 0; i < 3; ++i) {
+  //  ekf_x_init.segment(i * 3, 3) = R_init.row(i);
+  //}
+  //ekf_x_init.segment(9, 3) = v_init;
+  //ekf_x_init.segment(12, 3) = p_init;
+  //for (int i = 0; i < num_contacts; ++i) {
+  //  ekf_x_init.segment(15 + i * 3, 3) = d_init.col(i);
+  //}
 
-  std::cout << ekf_x_init << std::endl;
+  MatrixXd X_init = MatrixXd::Identity(9, 9);
   VectorXd ekf_bias_init = VectorXd::Zero(6);
-  MatrixXd P = 0.01 * MatrixXd::Identity(27, 27);
+  MatrixXd P_init = 0.01 * MatrixXd::Identity(27, 27);
 
   auto estimator = builder.AddSystem<CassieRbtStateEstimator>(
-      tree, ekf_x_init, ekf_bias_init, true, P);
+      tree, X_init, ekf_bias_init, true, P_init);
 
   // Connecting the estimator
   builder.Connect(cassie_output_receiver->get_output_port(0),

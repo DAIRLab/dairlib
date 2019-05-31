@@ -29,14 +29,15 @@ using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::systems::OutputVector;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
-    const RigidBodyTree<double>& tree, VectorXd ekf_x_init,
-    VectorXd ekf_bias_init, bool is_floating_base, MatrixXd P, MatrixXd N_prior,
+    const RigidBodyTree<double>& tree, MatrixXd X_init, VectorXd ekf_bias_init,
+    bool is_floating_base, MatrixXd P_init, MatrixXd N_prior,
     VectorXd gyro_noise_std, VectorXd accel_noise_std,
     VectorXd contact_noise_std, VectorXd gyro_bias_noise_std,
     VectorXd accel_bias_noise_std, VectorXd joints_noise_std)
     : tree_(tree),
-      ekf_x_init_(ekf_x_init),
+      X_init_(X_init),
       ekf_bias_init_(ekf_bias_init),
+      P_init_(P_init),
       is_floating_base_(is_floating_base),
       gyro_noise_std_(gyro_noise_std),
       accel_noise_std_(accel_noise_std),
@@ -56,6 +57,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
   DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
 
+  VectorXd ekf_x_init = ComputeEkfX(X_init);
+  VectorXd ekf_p_init = ComputeEkfP(P_init);
+
   // Declaring the discrete states with initial values
   // Verifying the dimensions of the initial state values
   DRAKE_ASSERT(ekf_x_init.size() == num_states_total_);
@@ -65,8 +69,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
       VectorXd::Zero(num_states_required_));      // estimated floating base
   ekf_x_idx_ = DeclareDiscreteState(ekf_x_init);  // estimated EKF state
   ekf_bias_idx_ = DeclareDiscreteState(ekf_bias_init);  // estimated bias state
-  ekf_p_idx_ =
-      DeclareDiscreteState(ComputeEkfP(P));  // estimated state covariance
+  ekf_p_idx_ = DeclareDiscreteState(ekf_p_init);  // estimated state covariance
   time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));  // previous time
   // }
 
@@ -82,7 +85,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
   // Initializing the contact indicator vector. Initially we assume both the
   // feet to be in contact
-  contacts_ = vector<int>(4, 1);
+  contacts_ = new vector<int>(4, 1);
 
   // The local collision coordinates wrt to the toe frames (Same for both legs)
   // It is obtained from the Cassie_v2 urdf.
@@ -227,7 +230,7 @@ VectorXd CassieRbtStateEstimator::ExtractFloatingBasePositions(
 }
 
 int CassieRbtStateEstimator::ComputeNumContacts() const {
-  return std::count(contacts_.begin(), contacts_.end(), 1);
+  return std::count(contacts_->begin(), contacts_->end(), 1);
 }
 
 MatrixXd CassieRbtStateEstimator::ExtractContactPositions(
@@ -513,7 +516,7 @@ MatrixXd CassieRbtStateEstimator::PredictX(VectorXd ekf_x, VectorXd ekf_bias,
   // the prediction is unchanged. If not, the prediction is changed to the
   // computed predicted coordinate of the collision point.
   for (int i = 0; i < num_contacts_; ++i) {
-    if (!contacts_.at(i)) {
+    if (!contacts_->at(i)) {
       d_pred.col(i) = p_pred + (R_pred * collision_pts.col(i));
     }
   }
@@ -622,18 +625,20 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeCov(Eigen::VectorXd q) const {
   // For the contact points, we increase the covariance values if there is
   // no active contact.
   Cov.block(9, 9, 3, 3) =
-      R_left * (Qc + ((1 - contacts_.at(0)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      R_left *
+      (Qc + ((1 - contacts_->at(0)) * 1e4 * MatrixXd::Identity(3, 3))) *
       (R_left.transpose());
   Cov.block(12, 12, 3, 3) =
-      R_left * (Qc + ((1 - contacts_.at(1)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      R_left *
+      (Qc + ((1 - contacts_->at(1)) * 1e4 * MatrixXd::Identity(3, 3))) *
       (R_left.transpose());
   Cov.block(15, 15, 3, 3) =
       R_right *
-      (Qc + ((1 - contacts_.at(2)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      (Qc + ((1 - contacts_->at(2)) * 1e4 * MatrixXd::Identity(3, 3))) *
       (R_right.transpose());
   Cov.block(18, 18, 3, 3) =
       R_right *
-      (Qc + ((1 - contacts_.at(3)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      (Qc + ((1 - contacts_->at(3)) * 1e4 * MatrixXd::Identity(3, 3))) *
       (R_right.transpose());
 
   // Bias covariances
@@ -710,7 +715,7 @@ void CassieRbtStateEstimator::ComputeUpdateParams(
     Qj(i, i) = pow(joints_noise_std_(i), 2);
   }
 
-  if (contacts_.at(0)) {
+  if (contacts_->at(0)) {
     // Concatenating to the observation vector y
     y1 << collision_pts_left.col(0), 0, 1, VectorXd::Zero(num_contacts_);
     y1(5) = -1;
@@ -758,7 +763,7 @@ void CassieRbtStateEstimator::ComputeUpdateParams(
     X_full = X_full_tmp;
   }
 
-  if (contacts_.at(1)) {
+  if (contacts_->at(1)) {
     // Concatenating to the observation vector y
     y2 << collision_pts_left.col(1), 0, 1, VectorXd::Zero(num_contacts_);
     y2(6) = -1;
@@ -806,7 +811,7 @@ void CassieRbtStateEstimator::ComputeUpdateParams(
     X_full = X_full_tmp;
   }
 
-  if (contacts_.at(2)) {
+  if (contacts_->at(2)) {
     // Concatenating to the observation vector y
     y3 << collision_pts_right.col(0), 0, 1, VectorXd::Zero(num_contacts_);
     y3(7) = -1;
@@ -854,7 +859,7 @@ void CassieRbtStateEstimator::ComputeUpdateParams(
     X_full = X_full_tmp;
   }
 
-  if (contacts_.at(3)) {
+  if (contacts_->at(3)) {
     // Concatenating to the observation vector y
     y4 << collision_pts_right.col(1), 0, 1, VectorXd::Zero(num_contacts_);
     y4(8) = -1;
@@ -943,16 +948,18 @@ MatrixXd CassieRbtStateEstimator::UpdateP(VectorXd ekf_p_predicted, MatrixXd H,
 }
 
 void CassieRbtStateEstimator::set_contacts(vector<int> contacts) {
-  contacts_ = contacts;
+  for (uint i = 0; i < contacts.size(); ++i) {
+    contacts_->at(i) = contacts.at(i);
+  }
 }
 
 void CassieRbtStateEstimator::set_contacts(int left_contact1, int left_contact2,
                                            int right_contact1,
                                            int right_contact2) {
-  contacts_.at(0) = left_contact1;
-  contacts_.at(1) = left_contact2;
-  contacts_.at(2) = right_contact1;
-  contacts_.at(3) = right_contact2;
+  contacts_->at(0) = left_contact1;
+  contacts_->at(1) = left_contact2;
+  contacts_->at(2) = right_contact1;
+  contacts_->at(3) = right_contact2;
 }
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
@@ -1100,8 +1107,9 @@ EventStatus CassieRbtStateEstimator::Update(
          << endl;
 
     VectorXd ekf_x_predicted, ekf_bias_predicted, ekf_p_predicted;
-
+    MatrixXd X_predicted, P_predicted;
     VectorXd ekf_x_updated, ekf_bias_updated, ekf_p_updated;
+    MatrixXd X_updated, P_updated;
 
     VectorXd y, b, delta;
     MatrixXd H, N, Pi, X_full, S, K;
@@ -1136,10 +1144,6 @@ EventStatus CassieRbtStateEstimator::Update(
     double right_heel_spring = 0;
     solveFourbarLinkage(q, left_heel_spring, right_heel_spring);
 
-    // std::cout << "SPRINGS: " << std::endl;
-    // std::cout << std::abs(left_heel_spring) << " "
-    //          << std::abs(right_heel_spring) << std::endl;
-
     // TODO(yminchen):
     // You can test the contact force estimator here using fixed based.
     // You can implement step 3 independently of the EKF.
@@ -1150,9 +1154,11 @@ EventStatus CassieRbtStateEstimator::Update(
     // Step 2 - EKF (Prediction step)
     // Prediction step
 
-    // ekf_x_predicted = ComputeEkfX(PredictX(ekf_x, ekf_bias, u, q, dt));
-    // ekf_bias_predicted = PredictBias(ekf_bias, dt);
-    // ekf_p_predicted = ComputeEkfP(PredictP(ekf_x, ekf_p, q, dt));
+    ekf_x_predicted = ComputeEkfX(PredictX(ekf_x, ekf_bias, u, q, dt));
+    ekf_bias_predicted = PredictBias(ekf_bias, dt);
+    ekf_p_predicted = ComputeEkfP(PredictP(ekf_x, ekf_p, q, dt));
+    X_predicted = ComputeX(ekf_x_predicted);
+    P_predicted = ComputeP(ekf_p_predicted);
 
     // Updating
 
@@ -1161,41 +1167,53 @@ EventStatus CassieRbtStateEstimator::Update(
       // Left leg in contact with the ground
       // Updating the contact indicator (Both colliders on the left leg are
       // assumed to be in contact.
-      contacts_.at(0) = 1;
-      contacts_.at(1) = 1;
+      contacts_->at(0) = 1;
+      contacts_->at(1) = 1;
       // std::cout << "LEFT ";
     } else {
       // Not in contact
-      contacts_.at(0) = 0;
-      contacts_.at(1) = 0;
+      contacts_->at(0) = 0;
+      contacts_->at(1) = 0;
     }
     if (std::abs(right_heel_spring) > right_spring_contact_threshold_) {
       // Right leg in contact with the ground
       // Updating the contact indicator (Both colliders on the right leg are
       // assumed to be in contact.
-      contacts_.at(2) = 1;
-      contacts_.at(3) = 1;
+      contacts_->at(2) = 1;
+      contacts_->at(3) = 1;
       // std::cout << "RIGHT ";
     } else {
       // Not in contact
-      contacts_.at(2) = 0;
-      contacts_.at(3) = 0;
+      contacts_->at(2) = 0;
+      contacts_->at(3) = 0;
     }
+
     // Step 4 - EKF (measurement step)
 
-    // if (ComputeNumContacts()) {
-    //  // Computing update step parameters
-    //  ComputeUpdateParams(ekf_x_predicted, ekf_p_predicted, q, y, b, H, N, Pi,
-    //                      X_full, S, K, delta);
-    //  ekf_x_updated = ComputeEkfX(UpdateX(ComputeX(ekf_x_predicted), delta));
-    //  ekf_bias_updated = UpdateBias(ekf_bias_predicted, delta);
-    //  ekf_p_updated = ComputeEkfP(UpdateP(ekf_p_predicted, H, K, N));
-    //} else {
-    //  // If there are no contacts, there is no update step.
-    //  ekf_x_updated = ekf_x_predicted;
-    //  ekf_bias_updated = ekf_bias_predicted;
-    //  ekf_p_updated = ekf_p_predicted;
-    //}
+    if (ComputeNumContacts()) {
+      // Computing update step parameters
+      ComputeUpdateParams(ekf_x_predicted, ekf_p_predicted, q, y, b, H, N, Pi,
+                          X_full, S, K, delta);
+      X_updated = UpdateX(ComputeX(ekf_x_predicted), delta);
+      ekf_bias_updated = UpdateBias(ekf_bias_predicted, delta);
+      P_updated = UpdateP(ekf_p_predicted, H, K, N);
+
+      ekf_x_updated = ComputeEkfX(X_updated);
+      ekf_p_updated = ComputeEkfP(P_updated);
+
+    } else {
+      // If there are no contacts, there is no update step.
+      ekf_x_updated = ekf_x_predicted;
+      ekf_bias_updated = ekf_bias_predicted;
+      ekf_p_updated = ekf_p_predicted;
+    }
+
+    std::cout << "---------------" << std::endl;
+    //std::cout << ExtractFloatingBasePositions(ekf_x_updated) << std::endl;
+    //std::cout << X_updated << std::endl;
+    std::cout << q.transpose() << std::endl;
+    //std::cout << u.transpose() << std::endl;
+    std::cout << "---------------" << std::endl;
 
     // Step 5 - Assign values to states
     // Below is how you should assign the state at the end of this Update

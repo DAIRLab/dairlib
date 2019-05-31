@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "drake/systems/framework/leaf_system.h"
+#include "drake/common/drake_assert.h"
 
 #include "attic/multibody/rigidbody_utils.h"
 #include "examples/Cassie/cassie_utils.h"
@@ -22,7 +23,7 @@ namespace systems {
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(
-      const RigidBodyTree<double>& tree, Eigen::VectorXd ekf_x_init,
+      const RigidBodyTree<double>& tree, Eigen::MatrixXd X_init,
       Eigen::VectorXd ekf_bias_init, bool is_floating_base,
       Eigen::MatrixXd P = 0.01 * Eigen::MatrixXd::Identity(27, 27),
       Eigen::MatrixXd N_prior = 0.01 * Eigen::MatrixXd::Identity(3, 3),
@@ -97,8 +98,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                     dairlib::systems::OutputVector<double>* output) const;
 
   const RigidBodyTree<double>& tree_;
-  Eigen::VectorXd ekf_x_init_;
+  Eigen::MatrixXd X_init_;
   Eigen::VectorXd ekf_bias_init_;
+  Eigen::MatrixXd P_init_;
   bool is_floating_base_;
   Eigen::VectorXd gyro_noise_std_;
   Eigen::VectorXd accel_noise_std_;
@@ -114,7 +116,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const int num_contacts_ = 4;
   const int num_joints_ = 16;
 
-  std::vector<int> contacts_;
+  std::vector<int> *contacts_;
 
   Eigen::VectorXd local_collision_pt1_;
   Eigen::VectorXd local_collision_pt2_;

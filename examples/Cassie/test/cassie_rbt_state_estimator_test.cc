@@ -102,10 +102,11 @@ TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
 // The Matrix functions are only tested for the rpy tree version as they are
 // independent of the input tree
 TEST_F(CassieRbtStateEstimatorTest, TestExtractRotation) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
+  VectorXd ekf_x = estimator.ComputeEkfX(X);
   MatrixXd R = estimator.ExtractRotationMatrix(ekf_x);
 
   ASSERT_EQ(R(0, 0), ekf_x(0));
@@ -120,10 +121,11 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractRotation) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestExtractVelocity) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
+  VectorXd ekf_x = estimator.ComputeEkfX(X);
   VectorXd v = estimator.ExtractFloatingBaseVelocities(ekf_x);
 
   ASSERT_EQ(v(0), ekf_x(9));
@@ -132,10 +134,11 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractVelocity) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestExtractPosition) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
+  VectorXd ekf_x = estimator.ComputeEkfX(X);
   VectorXd p = estimator.ExtractFloatingBasePositions(ekf_x);
 
   ASSERT_EQ(p(0), ekf_x(12));
@@ -144,10 +147,11 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractPosition) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestExtractContact) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
+  VectorXd ekf_x = estimator.ComputeEkfX(X);
   MatrixXd d = estimator.ExtractContactPositions(ekf_x);
 
   ASSERT_EQ(d(0, 0), ekf_x(15));
@@ -165,20 +169,20 @@ TEST_F(CassieRbtStateEstimatorTest, TestExtractContact) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestSkewSymmetric) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
 
   MatrixXd S = estimator.CreateSkewSymmetricMatrix(VectorXd::Random(3));
   ASSERT_TRUE(S.isApprox(-S.transpose()));
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestLieExponential) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
 
   VectorXd xi = VectorXd::Random(21);
   MatrixXd exp = estimator.ComputeLieExponential(xi);
@@ -189,12 +193,12 @@ TEST_F(CassieRbtStateEstimatorTest, TestLieExponential) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeLeft) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator_rpy(tree_rpy_, ekf_x, ekf_bias, true);
-  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, ekf_x,
-                                               ekf_bias, true);
+  CassieRbtStateEstimator estimator_rpy(tree_rpy_, X, ekf_bias, true);
+  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, X, ekf_bias,
+                                               true);
 
   VectorXd q_rpy = Eigen::VectorXd::Random(tree_rpy_.get_num_positions());
   MatrixXd T_rpy = estimator_rpy.ComputeTransformationToeLeftWrtIMU(q_rpy);
@@ -219,12 +223,12 @@ TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeLeft) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeRight) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator_rpy(tree_rpy_, ekf_x, ekf_bias, true);
-  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, ekf_x,
-                                               ekf_bias, true);
+  CassieRbtStateEstimator estimator_rpy(tree_rpy_, X, ekf_bias, true);
+  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, X, ekf_bias,
+                                               true);
 
   VectorXd q_rpy = Eigen::VectorXd::Random(tree_rpy_.get_num_positions());
   MatrixXd T_rpy = estimator_rpy.ComputeTransformationToeRightWrtIMU(q_rpy);
@@ -250,12 +254,12 @@ TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeRight) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestRotationToeLeft) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator_rpy(tree_rpy_, ekf_x, ekf_bias, true);
-  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, ekf_x,
-                                               ekf_bias, true);
+  CassieRbtStateEstimator estimator_rpy(tree_rpy_, X, ekf_bias, true);
+  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, X, ekf_bias,
+                                               true);
 
   VectorXd q_rpy = Eigen::VectorXd::Random(tree_rpy_.get_num_positions());
   MatrixXd R_rpy = estimator_rpy.ComputeRotationToeLeftWrtIMU(q_rpy);
@@ -284,12 +288,12 @@ TEST_F(CassieRbtStateEstimatorTest, TestRotationToeLeft) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestRotationToeRight) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator_rpy(tree_rpy_, ekf_x, ekf_bias, true);
-  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, ekf_x,
-                                               ekf_bias, true);
+  CassieRbtStateEstimator estimator_rpy(tree_rpy_, X, ekf_bias, true);
+  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, X, ekf_bias,
+                                               true);
 
   VectorXd q_rpy = VectorXd::Random(tree_rpy_.get_num_positions());
   MatrixXd R_rpy = estimator_rpy.ComputeRotationToeRightWrtIMU(q_rpy);
@@ -318,12 +322,12 @@ TEST_F(CassieRbtStateEstimatorTest, TestRotationToeRight) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestLeftToeJacobian) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator_rpy(tree_rpy_, ekf_x, ekf_bias, true);
-  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, ekf_x,
-                                               ekf_bias, true);
+  CassieRbtStateEstimator estimator_rpy(tree_rpy_, X, ekf_bias, true);
+  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, X, ekf_bias,
+                                               true);
 
   VectorXd q_rpy = VectorXd::Random(tree_rpy_.get_num_positions());
   VectorXd p_rpy = VectorXd::Random(3);
@@ -349,12 +353,12 @@ TEST_F(CassieRbtStateEstimatorTest, TestLeftToeJacobian) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestRightToeJacobian) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator_rpy(tree_rpy_, ekf_x, ekf_bias, true);
-  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, ekf_x,
-                                               ekf_bias, true);
+  CassieRbtStateEstimator estimator_rpy(tree_rpy_, X, ekf_bias, true);
+  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, X, ekf_bias,
+                                               true);
 
   VectorXd q_rpy = VectorXd::Random(tree_rpy_.get_num_positions());
   VectorXd p_rpy = VectorXd::Random(3);
@@ -380,12 +384,16 @@ TEST_F(CassieRbtStateEstimatorTest, TestRightToeJacobian) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestComputeX) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
+  // A valid state representation for this test. Manually filling in the zeros
+  // and the identity block
+  X.block(3, 0, 6, 9) = MatrixXd::Zero(6, 9);
+  X.block(3, 3, 6, 6) = MatrixXd::Identity(6, 6);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
 
-  MatrixXd X = estimator.ComputeX(ekf_x);
+  VectorXd ekf_x = estimator.ComputeEkfX(X);
 
   // Testing the other overloaded function.
   MatrixXd R = estimator.ExtractRotationMatrix(ekf_x);
@@ -396,61 +404,67 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeX) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestComputeEkfX) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
+  // A valid state representation for this test. Manually filling in the zeros
+  // and the identity block
+  X.block(3, 0, 6, 9) = MatrixXd::Zero(6, 9);
+  X.block(3, 3, 6, 6) = MatrixXd::Identity(6, 6);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
 
-  MatrixXd X = estimator.ComputeX(ekf_x);
-  VectorXd ekf_x_reconstructed = estimator.ComputeEkfX(X);
+  VectorXd ekf_x = estimator.ComputeEkfX(X);
+  VectorXd X_reconstructed = estimator.ComputeX(ekf_x);
 
-  ASSERT_TRUE(ekf_x.isApprox(ekf_x_reconstructed));
+  ASSERT_TRUE(X.isApprox(X_reconstructed));
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestComputeP) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
 
   VectorXd ekf_p = VectorXd::Random(25);
   MatrixXd P = estimator.ComputeP(ekf_p);
   VectorXd ekf_p_reconstructed = estimator.ComputeEkfP(P);
 
   ASSERT_TRUE(ekf_p.isApprox(ekf_p_reconstructed));
-
 }
 
 // TODO: Complete this test
 TEST_F(CassieRbtStateEstimatorTest, TestPredictX) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
+  VectorXd ekf_x = estimator.ComputeEkfX(X);
 
   VectorXd q_rpy = VectorXd::Random(tree_rpy_.get_num_positions());
   VectorXd u_rpy = VectorXd::Random(tree_rpy_.get_num_actuators());
   double dt = 0.001;
 
-  MatrixXd X = estimator.PredictX(ekf_x, ekf_bias, u_rpy, q_rpy, dt);
+  MatrixXd X_pred = estimator.PredictX(ekf_x, ekf_bias, u_rpy, q_rpy, dt);
 }
 
 // TODO: Complete this test
 TEST_F(CassieRbtStateEstimatorTest, TestAdjoint) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
+  VectorXd ekf_x = estimator.ComputeEkfX(X);
 
   MatrixXd adj = estimator.ComputeAdjointOperator(ekf_x);
 }
 
 // TODO: Complete this test
 TEST_F(CassieRbtStateEstimatorTest, TestA) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
+  VectorXd ekf_x = estimator.ComputeEkfX(X);
 
   MatrixXd A = estimator.ComputeA(ekf_x);
 
@@ -459,10 +473,10 @@ TEST_F(CassieRbtStateEstimatorTest, TestA) {
 
 // TODO: Complete this test
 TEST_F(CassieRbtStateEstimatorTest, TestCovariance) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
 
   VectorXd q = VectorXd::Random(tree_rpy_.get_num_positions());
 
@@ -472,11 +486,12 @@ TEST_F(CassieRbtStateEstimatorTest, TestCovariance) {
 
 // TODO: Complete this test
 TEST_F(CassieRbtStateEstimatorTest, TestPredictP) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
   VectorXd ekf_p = VectorXd::Random(27 * 27);
 
-  CassieRbtStateEstimator estimator(tree_rpy_, ekf_x, ekf_bias, true);
+  CassieRbtStateEstimator estimator(tree_rpy_, X, ekf_bias, true);
+  VectorXd ekf_x = estimator.ComputeEkfX(X);
 
   VectorXd q_rpy = VectorXd::Random(tree_rpy_.get_num_positions());
   double dt = 0.01;
@@ -485,13 +500,14 @@ TEST_F(CassieRbtStateEstimatorTest, TestPredictP) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestComputeUpdateParams) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
   VectorXd ekf_p = VectorXd::Random(27 * 27);
 
-  CassieRbtStateEstimator estimator_rpy(tree_rpy_, ekf_x, ekf_bias, true);
-  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, ekf_x,
-                                               ekf_bias, true);
+  CassieRbtStateEstimator estimator_rpy(tree_rpy_, X, ekf_bias, true);
+  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, X, ekf_bias,
+                                               true);
+  VectorXd ekf_x = estimator_rpy.ComputeEkfX(X);
 
   VectorXd q_rpy = VectorXd::Random(tree_rpy_.get_num_positions());
   VectorXd q_quaternion =
@@ -503,8 +519,8 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeUpdateParams) {
   // Testing the update parameters for various contact configurations
 
   // All contacts active
-  estimator_rpy.ComputeUpdateParams(ekf_x, ekf_p, q_rpy, y, b, H, N, Pi, X_full, S, K,
-                                    delta);
+  estimator_rpy.ComputeUpdateParams(ekf_x, ekf_p, q_rpy, y, b, H, N, Pi, X_full,
+                                    S, K, delta);
 
   ASSERT_TRUE(H.rows() == N.rows());
   ASSERT_TRUE(H.cols() == 27);
@@ -515,8 +531,8 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeUpdateParams) {
 
   // One contact active
   estimator_rpy.set_contacts(0, 1, 0, 0);
-  estimator_rpy.ComputeUpdateParams(ekf_x, ekf_p, q_rpy, y, b, H, N, Pi, X_full, S, K,
-                                    delta);
+  estimator_rpy.ComputeUpdateParams(ekf_x, ekf_p, q_rpy, y, b, H, N, Pi, X_full,
+                                    S, K, delta);
 
   ASSERT_TRUE(H.rows() == N.rows());
   ASSERT_TRUE(H.cols() == 27);
@@ -527,8 +543,8 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeUpdateParams) {
 
   // Two contacts active
   estimator_rpy.set_contacts(0, 1, 0, 1);
-  estimator_rpy.ComputeUpdateParams(ekf_x, ekf_p, q_rpy, y, b, H, N, Pi, X_full, S, K,
-                                    delta);
+  estimator_rpy.ComputeUpdateParams(ekf_x, ekf_p, q_rpy, y, b, H, N, Pi, X_full,
+                                    S, K, delta);
 
   ASSERT_TRUE(H.rows() == N.rows());
   ASSERT_TRUE(H.cols() == 27);
@@ -539,8 +555,8 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeUpdateParams) {
 
   // Three contacts active
   estimator_rpy.set_contacts(1, 1, 0, 1);
-  estimator_rpy.ComputeUpdateParams(ekf_x, ekf_p, q_rpy, y, b, H, N, Pi, X_full, S, K,
-                                    delta);
+  estimator_rpy.ComputeUpdateParams(ekf_x, ekf_p, q_rpy, y, b, H, N, Pi, X_full,
+                                    S, K, delta);
 
   ASSERT_TRUE(H.rows() == N.rows());
   ASSERT_TRUE(H.cols() == 27);
@@ -551,8 +567,8 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeUpdateParams) {
 
   // Similar tests for the quaternion base
   // All contacts active
-  estimator_quaternion.ComputeUpdateParams(ekf_x, ekf_p, q_quaternion, y, b, H, N, Pi,
-                                           X_full, S, K, delta);
+  estimator_quaternion.ComputeUpdateParams(ekf_x, ekf_p, q_quaternion, y, b, H,
+                                           N, Pi, X_full, S, K, delta);
 
   ASSERT_TRUE(H.rows() == N.rows());
   ASSERT_TRUE(H.cols() == 27);
@@ -563,8 +579,8 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeUpdateParams) {
 
   // One contact active
   estimator_quaternion.set_contacts(0, 1, 0, 0);
-  estimator_quaternion.ComputeUpdateParams(ekf_x, ekf_p, q_quaternion, y, b, H, N, Pi,
-                                           X_full, S, K, delta);
+  estimator_quaternion.ComputeUpdateParams(ekf_x, ekf_p, q_quaternion, y, b, H,
+                                           N, Pi, X_full, S, K, delta);
 
   ASSERT_TRUE(H.rows() == N.rows());
   ASSERT_TRUE(H.cols() == 27);
@@ -575,8 +591,8 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeUpdateParams) {
 
   // Two contacts active
   estimator_quaternion.set_contacts(0, 1, 0, 1);
-  estimator_quaternion.ComputeUpdateParams(ekf_x, ekf_p, q_quaternion, y, b, H, N, Pi,
-                                           X_full, S, K, delta);
+  estimator_quaternion.ComputeUpdateParams(ekf_x, ekf_p, q_quaternion, y, b, H,
+                                           N, Pi, X_full, S, K, delta);
 
   ASSERT_TRUE(H.rows() == N.rows());
   ASSERT_TRUE(H.cols() == 27);
@@ -587,8 +603,8 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeUpdateParams) {
 
   // Three contacts active
   estimator_quaternion.set_contacts(1, 1, 0, 1);
-  estimator_quaternion.ComputeUpdateParams(ekf_x, ekf_p, q_quaternion, y, b, H, N, Pi,
-                                           X_full, S, K, delta);
+  estimator_quaternion.ComputeUpdateParams(ekf_x, ekf_p, q_quaternion, y, b, H,
+                                           N, Pi, X_full, S, K, delta);
 
   ASSERT_TRUE(H.rows() == N.rows());
   ASSERT_TRUE(H.cols() == 27);
@@ -599,13 +615,14 @@ TEST_F(CassieRbtStateEstimatorTest, TestComputeUpdateParams) {
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestUpdateX) {
-  VectorXd ekf_x = VectorXd::Random(27);
+  MatrixXd X = MatrixXd::Random(9, 9);
   VectorXd ekf_bias = VectorXd::Random(6);
   VectorXd ekf_p = VectorXd::Random(27 * 27);
 
-  CassieRbtStateEstimator estimator_rpy(tree_rpy_, ekf_x, ekf_bias, true);
-  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, ekf_x,
-                                               ekf_bias, true);
+  CassieRbtStateEstimator estimator_rpy(tree_rpy_, X, ekf_bias, true);
+  CassieRbtStateEstimator estimator_quaternion(tree_quaternion_, X, ekf_bias,
+                                               true);
+  VectorXd ekf_x = estimator_rpy.ComputeEkfX(X);
 
   VectorXd q_rpy = VectorXd::Random(tree_rpy_.get_num_positions());
   VectorXd q_quaternion =
@@ -615,8 +632,8 @@ TEST_F(CassieRbtStateEstimatorTest, TestUpdateX) {
   VectorXd y, b, delta;
   MatrixXd H, N, Pi, X_full, S, K;
 
-  estimator_rpy.ComputeUpdateParams(ekf_x, ekf_p, q_rpy, y, b, H, N, Pi, X_full, S, K,
-                                    delta);
+  estimator_rpy.ComputeUpdateParams(ekf_x, ekf_p, q_rpy, y, b, H, N, Pi, X_full,
+                                    S, K, delta);
 
   MatrixXd X_updated_rpy =
       estimator_rpy.UpdateX(estimator_rpy.ComputeX(ekf_x), delta);
@@ -626,8 +643,8 @@ TEST_F(CassieRbtStateEstimatorTest, TestUpdateX) {
   ASSERT_TRUE(
       X_updated_rpy.block(3, 3, 6, 6).isApprox(MatrixXd::Identity(6, 6)));
 
-  estimator_quaternion.ComputeUpdateParams(ekf_x, ekf_p, q_quaternion, y, b, H, N, Pi,
-                                           X_full, S, K, delta);
+  estimator_quaternion.ComputeUpdateParams(ekf_x, ekf_p, q_quaternion, y, b, H,
+                                           N, Pi, X_full, S, K, delta);
 
   MatrixXd X_updated_quaternion =
       estimator_quaternion.UpdateX(estimator_quaternion.ComputeX(ekf_x), delta);

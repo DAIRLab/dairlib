@@ -15,6 +15,11 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/kuka_iiwa_arm/iiwa_controller_demo";
         host = "localhost";
     }
+
+    cmd "3.Visualizer" {
+        exec = "bazel-bin/examples/kuka_iiwa_arm/iiwa_visualizer";
+        host = "localhost";
+    }
 }
 
 group "2.lcm-tools" {

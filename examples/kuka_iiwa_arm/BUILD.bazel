@@ -36,10 +36,9 @@ cc_binary(
         "@drake//lcm",
         "@drake//systems/analysis",
         "@drake//systems/controllers:state_feedback_controller_interface",
-        "@drake//systems/primitives:discrete_derivative"
+        "@drake//systems/primitives:discrete_derivative",
     ],
 )
-
 
 cc_binary(
     name="iiwa_controller_demo",
@@ -55,5 +54,29 @@ cc_binary(
             "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
             "@drake//common",
             "@drake//systems/primitives:trajectory_source"
+    ]
+)
+
+cc_binary(
+    name = "iiwa_visualizer",
+    srcs = ["iiwa_visualizer.cc"],
+    data = [
+        "@drake//examples/kuka_iiwa_arm:models",
+        "@drake//manipulation/models/iiwa_description:models",
+    ],
+    deps = [
+            "//common:common",
+            "@drake//examples/kuka_iiwa_arm:iiwa_common",
+            "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
+            "@drake//examples/kuka_iiwa_arm:kuka_torque_controller",
+            "@drake//attic/manipulation/util:sim_diagram_builder",
+            "@drake//attic/multibody:rigid_body_tree_construction",
+            "@drake//attic/multibody/rigid_body_plant:frame_visualizer",
+            "@drake//attic/systems/controllers:rbt_inverse_dynamics_controller",
+            "@drake//common:text_logging_gflags",
+            "@drake//lcm",
+            "@drake//systems/analysis",
+            "@drake//systems/controllers:state_feedback_controller_interface",
+            "@drake//systems/primitives:discrete_derivative"
     ]
 )

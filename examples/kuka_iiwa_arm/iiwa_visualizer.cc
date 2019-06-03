@@ -15,7 +15,7 @@ namespace dairlib {
 using drake::systems::RigidBodyPlant;
 using drake::systems::Simulator;
 using drake::manipulation::util::SimDiagramBuilder;
-
+using drake::manipulation::kuka_iiwa::IiwaStatusReceiver;
 
 int doMain(int argc, char* argv[]) {
 
@@ -38,25 +38,27 @@ int doMain(int argc, char* argv[]) {
     num_joints = tree.get_num_positions();
   }
 
-  // Create state receiver.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   const std::string channel_x = "IIWA_STATUS";
 
+  // Create state subscriber and state receiver.
   auto state_sub = builder.AddSystem(
                      drake::systems::lcm::LcmSubscriberSystem::Make <
                      drake::lcmt_iiwa_status > (channel_x, lcm));
-  auto state_receiver = builder.AddSystem<drake::manipulation::kuka_iiwa::IiwaStatusReceiver>(num_joints);
-  builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port());
+  auto state_receiver = builder.AddSystem<IiwaStatusReceiver>(num_joints);
 
+  // Create visualizer
   auto visualizer = builder.AddSystem<drake::systems::DrakeVisualizer>(tree, lcm);
   visualizer->set_publish_period(1.0/30.0);
 
+  // Get the state from the LCM message and add it to the Visualizer
   auto desired_state_from_position = builder.AddSystem<
       drake::systems::StateInterpolatorWithDiscreteDerivative>(
           num_joints, 0.005);
   desired_state_from_position->set_name("desired_state_from_position");
 
+  builder.Connect(state_sub->get_output_port(),
+                  state_receiver->get_input_port());
   builder.Connect(state_receiver->get_position_commanded_output_port(),
                   desired_state_from_position->get_input_port());
   builder.Connect(desired_state_from_position->get_output_port(),

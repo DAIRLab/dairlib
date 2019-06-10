@@ -22,7 +22,7 @@ ContactToolkit<T>::ContactToolkit(const RigidBodyTree<double>& tree,
 
 template <typename T>
 drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
-    drake::VectorX<T> x) const {
+    drake::VectorX<T> x, bool in_terms_of_qdot) const {
   drake::VectorX<T> q = x.head(tree_.get_num_positions());
   drake::VectorX<T> v = x.tail(tree_.get_num_velocities());
 
@@ -56,18 +56,28 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
   for (int i = 0; i < num_contacts_; i++) {
     auto Ja = tree_.transformPointsJacobian(k_cache, contact_info_.xA.col(i),
                                             contact_info_.idxA.at(i), world_ind,
-                                            true);
+                                            in_terms_of_qdot);
 
     // Jb is zero
     J_diff.at(i) = Ja;
   }
 
   // Contact Jacobians
-  MatrixX<T> J(num_contacts_ * 3, tree_.get_num_positions());
+  MatrixX<T> J;
+  if (in_terms_of_qdot) {
+    J.resize(num_contacts_ * 3, tree_.get_num_positions());
+  } else {
+    J.resize(num_contacts_ * 3, tree_.get_num_velocities());
+  }
 
   for (int i = 0; i < num_contacts_; i++) {
     // Jacobian for the individual constraints
-    MatrixX<T> J_constraint(3, tree_.get_num_positions());
+    MatrixX<T> J_constraint;
+    if (in_terms_of_qdot) {
+      J_constraint.resize(3, tree_.get_num_positions());
+    } else {
+      J_constraint.resize(3, tree_.get_num_velocities());
+    }
     // Normal
     J_constraint.row(0) = normal.col(i).transpose() * J_diff.at(i);
     // Both the surface tangents
@@ -76,7 +86,7 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
     J_constraint.row(2) =
         tangents_map_vector.at(1).col(i).transpose() * J_diff.at(i);
 
-    J.block(i * 3, 0, 3, tree_.get_num_positions()) = J_constraint;
+    J.block(i * 3, 0, 3, tree_.get_num_velocities()) = J_constraint;
   }
 
   return J;
@@ -98,6 +108,7 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
   VectorX<T> v = x.tail(num_velocities);
 
   KinematicsCache<T> k_cache = tree_.doKinematics(q, v);
+
   const MatrixX<T> M = tree_.massMatrix(k_cache);
   const typename RigidBodyTree<T>::BodyToWrenchMap no_external_wrenches;
 
@@ -108,14 +119,14 @@ VectorX<T> ContactToolkit<T>::CalcMVDot(VectorX<T> x, VectorX<T> u,
     right_hand_side += tree_.B * u;
   }
 
-  // Position constraints Jacocbian
+  // Position constraints Jacocbian (Always in terms of v)
   if (num_position_constraints > 0) {
-    MatrixX<T> J_position = tree_.positionConstraintsJacobian(k_cache);
+    MatrixX<T> J_position = tree_.positionConstraintsJacobian(k_cache, false);
     right_hand_side +=
         J_position.transpose() * lambda.head(num_position_constraints);
   }
 
-  // Contact Jacobian
+  // Contact Jacobian (Always in terms of v)
   if (num_contacts_ > 0) {
     MatrixX<T> J_contact = CalcContactJacobian(x);
     right_hand_side += J_contact.transpose() * lambda.tail(num_contacts_ * 3);
@@ -166,4 +177,4 @@ void ContactToolkit<T>::set_contact_info(ContactInfo contact_info) {
 }  // namespace dairlib
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-class ::dairlib::multibody::ContactToolkit);
+    class ::dairlib::multibody::ContactToolkit);

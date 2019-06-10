@@ -7,7 +7,7 @@
 #include "examples/Cassie/cassie_utils.h"
 
 namespace dairlib {
-namespace systems {
+namespace multibody {
 namespace {
 
 using std::cout;
@@ -29,6 +29,7 @@ using drake::math::initializeAutoDiff;
 using drake::math::DiscardGradient;
 using drake::multibody::joints::FloatingBaseType;
 using drake::multibody::joints::kRollPitchYaw;
+using drake::multibody::joints::kQuaternion;
 using drake::multibody::joints::kFixed;
 using drake::multibody::AddFlatTerrainToWorld;
 using drake::solvers::MathematicalProgram;
@@ -51,150 +52,268 @@ class MultibodySolversTest : public ::testing::Test {
     std::srand((unsigned int)time(0));
 
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf";
-    buildCassieTree(tree_floating_, filename, kRollPitchYaw);
+    buildCassieTree(tree_rpy_, filename, kRollPitchYaw);
+    buildCassieTree(tree_quaternion_, filename, kQuaternion);
     buildCassieTree(tree_fixed_, filename, kFixed);
 
     // Adding the ground
-    AddFlatTerrainToWorld(&tree_floating_, 4, 0.05);
+    AddFlatTerrainToWorld(&tree_rpy_, 100, 0.2);
+    AddFlatTerrainToWorld(&tree_quaternion_, 100, 0.2);
 
     num_positions_fixed_ = tree_fixed_.get_num_positions();
     num_velocities_fixed_ = tree_fixed_.get_num_velocities();
     num_states_fixed_ = num_positions_fixed_ + num_velocities_fixed_;
     num_efforts_fixed_ = tree_fixed_.get_num_actuators();
 
-    num_positions_floating_ = tree_floating_.get_num_positions();
-    num_velocities_floating_ = tree_floating_.get_num_velocities();
-    num_states_floating_ = num_positions_floating_ + num_velocities_floating_;
-    num_efforts_floating_ = tree_floating_.get_num_actuators();
+    num_positions_rpy_ = tree_rpy_.get_num_positions();
+    num_velocities_rpy_ = tree_rpy_.get_num_velocities();
+    num_states_rpy_ = num_positions_rpy_ + num_velocities_rpy_;
+    num_efforts_rpy_ = tree_rpy_.get_num_actuators();
+
+    num_positions_quaternion_ = tree_quaternion_.get_num_positions();
+    num_velocities_quaternion_ = tree_quaternion_.get_num_velocities();
+    num_states_quaternion_ =
+        num_positions_quaternion_ + num_velocities_quaternion_;
+    num_efforts_quaternion_ = tree_quaternion_.get_num_actuators();
 
     // Setting the initial Cassie joint angles
-    map<string, int> position_map_fixed =
-        tree_fixed_.computePositionNameToIndexMap();
-    x0_fixed_ = VectorXd::Zero(num_states_floating_);
-    x0_fixed_(position_map_fixed.at("hip_roll_left")) = 0.1;
-    x0_fixed_(position_map_fixed.at("hip_roll_right")) = -0.1;
-    x0_fixed_(position_map_fixed.at("hip_yaw_left")) = 0.01;
-    x0_fixed_(position_map_fixed.at("hip_yaw_right")) = -0.01;
-    x0_fixed_(position_map_fixed.at("hip_pitch_left")) = .269;
-    x0_fixed_(position_map_fixed.at("hip_pitch_right")) = .269;
-    x0_fixed_(position_map_fixed.at("knee_left")) = -.744;
-    x0_fixed_(position_map_fixed.at("knee_right")) = -.744;
-    x0_fixed_(position_map_fixed.at("ankle_joint_left")) = .81;
-    x0_fixed_(position_map_fixed.at("ankle_joint_right")) = .81;
-    x0_fixed_(position_map_fixed.at("toe_left")) = 0;
-    x0_fixed_(position_map_fixed.at("toe_right")) = 0;
+    position_map_fixed_ = tree_fixed_.computePositionNameToIndexMap();
+    x0_fixed_ = VectorXd::Zero(num_states_fixed_);
+    x0_fixed_(position_map_fixed_.at("hip_roll_left")) = 0.1;
+    x0_fixed_(position_map_fixed_.at("hip_roll_right")) = -0.1;
+    x0_fixed_(position_map_fixed_.at("hip_yaw_left")) = 0.01;
+    x0_fixed_(position_map_fixed_.at("hip_yaw_right")) = -0.01;
+    x0_fixed_(position_map_fixed_.at("hip_pitch_left")) = .269;
+    x0_fixed_(position_map_fixed_.at("hip_pitch_right")) = .269;
+    x0_fixed_(position_map_fixed_.at("knee_left")) = -.744;
+    x0_fixed_(position_map_fixed_.at("knee_right")) = -.744;
+    x0_fixed_(position_map_fixed_.at("ankle_joint_left")) = .81;
+    x0_fixed_(position_map_fixed_.at("ankle_joint_right")) = .81;
+    x0_fixed_(position_map_fixed_.at("toe_left")) = 0;
+    x0_fixed_(position_map_fixed_.at("toe_right")) = 0;
 
-    map<string, int> position_map_floating =
-        tree_floating_.computePositionNameToIndexMap();
-    x0_floating_ = VectorXd::Zero(num_states_floating_);
-    x0_floating_(position_map_floating.at("base_z")) = 3;
-    x0_floating_(position_map_floating.at("hip_roll_left")) = 0.1;
-    x0_floating_(position_map_floating.at("hip_roll_right")) = -0.1;
-    x0_floating_(position_map_floating.at("hip_yaw_left")) = 0.01;
-    x0_floating_(position_map_floating.at("hip_yaw_right")) = -0.01;
-    x0_floating_(position_map_floating.at("hip_pitch_left")) = .269;
-    x0_floating_(position_map_floating.at("hip_pitch_right")) = .269;
-    x0_floating_(position_map_floating.at("knee_left")) = -.744;
-    x0_floating_(position_map_floating.at("knee_right")) = -.744;
-    x0_floating_(position_map_floating.at("ankle_joint_left")) = .81;
-    x0_floating_(position_map_floating.at("ankle_joint_right")) = .81;
-    x0_floating_(position_map_floating.at("toe_left")) = -60.0 * M_PI / 180.0;
-    x0_floating_(position_map_floating.at("toe_right")) = -60.0 * M_PI / 180.0;
+    position_map_rpy_ = tree_rpy_.computePositionNameToIndexMap();
+    x0_rpy_ = VectorXd::Zero(num_states_rpy_);
+    x0_rpy_(position_map_rpy_.at("base_z")) = 3;
+    x0_rpy_(position_map_rpy_.at("hip_roll_left")) = 0.1;
+    x0_rpy_(position_map_rpy_.at("hip_roll_right")) = -0.1;
+    x0_rpy_(position_map_rpy_.at("hip_yaw_left")) = 0.01;
+    x0_rpy_(position_map_rpy_.at("hip_yaw_right")) = -0.01;
+    x0_rpy_(position_map_rpy_.at("hip_pitch_left")) = .269;
+    x0_rpy_(position_map_rpy_.at("hip_pitch_right")) = .269;
+    x0_rpy_(position_map_rpy_.at("knee_left")) = -.744;
+    x0_rpy_(position_map_rpy_.at("knee_right")) = -.744;
+    x0_rpy_(position_map_rpy_.at("ankle_joint_left")) = .81;
+    x0_rpy_(position_map_rpy_.at("ankle_joint_right")) = .81;
+    x0_rpy_(position_map_rpy_.at("toe_left")) = -60.0 * M_PI / 180.0;
+    x0_rpy_(position_map_rpy_.at("toe_right")) = -60.0 * M_PI / 180.0;
 
-    // Setting up fixed_joints_vector_ and fixed_joints_map_
-    fixed_joints_vector_.push_back(position_map_floating.at("base_roll"));
-    fixed_joints_vector_.push_back(position_map_floating.at("base_yaw"));
-    fixed_joints_vector_.push_back(position_map_floating.at("hip_pitch_left"));
-    fixed_joints_vector_.push_back(position_map_floating.at("hip_pitch_right"));
+    position_map_quaternion_ = tree_quaternion_.computePositionNameToIndexMap();
+    x0_quaternion_ = VectorXd::Zero(num_states_quaternion_);
+    x0_quaternion_(position_map_quaternion_.at("base_z")) = 3;
+    x0_quaternion_(position_map_quaternion_.at("base_qw")) = 1.0;
+    x0_quaternion_(position_map_quaternion_.at("hip_roll_left")) = 0.1;
+    x0_quaternion_(position_map_quaternion_.at("hip_roll_right")) = -0.1;
+    x0_quaternion_(position_map_quaternion_.at("hip_yaw_left")) = 0.01;
+    x0_quaternion_(position_map_quaternion_.at("hip_yaw_right")) = -0.01;
+    x0_quaternion_(position_map_quaternion_.at("hip_pitch_left")) = .269;
+    x0_quaternion_(position_map_quaternion_.at("hip_pitch_right")) = .269;
+    x0_quaternion_(position_map_quaternion_.at("knee_left")) = -.744;
+    x0_quaternion_(position_map_quaternion_.at("knee_right")) = -.744;
+    x0_quaternion_(position_map_quaternion_.at("ankle_joint_left")) = .81;
+    x0_quaternion_(position_map_quaternion_.at("ankle_joint_right")) = .81;
+    x0_quaternion_(position_map_quaternion_.at("toe_left")) =
+        -60.0 * M_PI / 180.0;
+    x0_quaternion_(position_map_quaternion_.at("toe_right")) =
+        -60.0 * M_PI / 180.0;
 
-    for (auto& ind : fixed_joints_vector_) {
-      fixed_joints_map_[ind] = x0_floating_(ind);
+    // Setting up fixed_joints_vector_ and fixed_joints_map_ for the rpy
+    // floating base model
+    fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("base_roll"));
+    //fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("base_pitch"));
+    fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("base_yaw"));
+    fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("hip_pitch_left"));
+    fixed_joints_vector_rpy_.push_back(position_map_rpy_.at("hip_pitch_right"));
+
+    // Setting up fixed_joints_vector_ and fixed_joints_map_ for the quaternion
+    // floating base model
+    fixed_joints_vector_quaternion_.push_back(
+        position_map_quaternion_.at("base_qw"));
+    fixed_joints_vector_quaternion_.push_back(
+        position_map_quaternion_.at("base_qx"));
+    fixed_joints_vector_quaternion_.push_back(
+        position_map_quaternion_.at("base_qy"));
+    fixed_joints_vector_quaternion_.push_back(
+        position_map_quaternion_.at("base_qz"));
+    fixed_joints_vector_quaternion_.push_back(
+        position_map_quaternion_.at("hip_pitch_left"));
+    fixed_joints_vector_quaternion_.push_back(
+        position_map_quaternion_.at("hip_pitch_right"));
+
+    // Setting up the fixed joints map
+    for (auto& ind : fixed_joints_vector_rpy_) {
+      fixed_joints_map_rpy_[ind] = x0_rpy_(ind);
+    }
+
+    for (auto& ind : fixed_joints_vector_quaternion_) {
+      fixed_joints_map_quaternion_[ind] = x0_quaternion_(ind);
     }
 
     // Collison detect
-    // Contact information is specific to the floating base RBT
-    VectorXd phi_total;
-    Matrix3Xd normal_total, xA_total, xB_total;
-    vector<int> idxA_total, idxB_total;
-    KinematicsCache<double> k_cache = tree_floating_.doKinematics(
-        x0_floating_.head(num_positions_floating_),
-        x0_floating_.tail(num_velocities_floating_));
+    // Contact information for the rpy and quaternion models
+    VectorXd phi_total_rpy;
+    Matrix3Xd normal_total_rpy, xA_total_rpy, xB_total_rpy;
+    vector<int> idxA_total_rpy, idxB_total_rpy;
+    KinematicsCache<double> k_cache_rpy = tree_rpy_.doKinematics(
+        x0_rpy_.head(num_positions_rpy_), x0_rpy_.tail(num_velocities_rpy_));
 
-    tree_floating_.collisionDetect(k_cache, phi_total, normal_total, xA_total,
-                                   xB_total, idxA_total, idxB_total);
+    VectorXd phi_total_quaternion;
+    Matrix3Xd normal_total_quaternion, xA_total_quaternion, xB_total_quaternion;
+    vector<int> idxA_total_quaternion, idxB_total_quaternion;
+    KinematicsCache<double> k_cache_quaternion = tree_quaternion_.doKinematics(
+        x0_quaternion_.head(num_positions_quaternion_),
+        x0_quaternion_.tail(num_velocities_quaternion_));
 
-    const int world_ind = GetBodyIndexFromName(tree_floating_, "world");
-    const int toe_left_ind = GetBodyIndexFromName(tree_floating_, "toe_left");
-    const int toe_right_ind = GetBodyIndexFromName(tree_floating_, "toe_right");
+    tree_rpy_.collisionDetect(k_cache_rpy, phi_total_rpy, normal_total_rpy,
+                              xA_total_rpy, xB_total_rpy, idxA_total_rpy,
+                              idxB_total_rpy);
 
-    // Extracting information into the four contacts.
-    VectorXd phi(4);
-    Matrix3Xd normal(3, 4), xA(3, 4), xB(3, 4);
-    vector<int> idxA(4), idxB(4);
+    tree_quaternion_.collisionDetect(
+        k_cache_quaternion, phi_total_quaternion, normal_total_quaternion,
+        xA_total_quaternion, xB_total_quaternion, idxA_total_quaternion,
+        idxB_total_quaternion);
+
+    const int world_ind_rpy = GetBodyIndexFromName(tree_rpy_, "world");
+    const int toe_left_ind_rpy = GetBodyIndexFromName(tree_rpy_, "toe_left");
+    const int toe_right_ind_rpy = GetBodyIndexFromName(tree_rpy_, "toe_right");
+
+    const int world_ind_quaternion =
+        GetBodyIndexFromName(tree_quaternion_, "world");
+    const int toe_left_ind_quaternion =
+        GetBodyIndexFromName(tree_quaternion_, "toe_left");
+    const int toe_right_ind_quaternion =
+        GetBodyIndexFromName(tree_quaternion_, "toe_right");
+
+    // Extracting information into the four contacts for the floating base types
+    VectorXd phi_rpy(4);
+    Matrix3Xd normal_rpy(3, 4), xA_rpy(3, 4), xB_rpy(3, 4);
+    vector<int> idxA_rpy(4), idxB_rpy(4);
+
+    VectorXd phi_quaternion(4);
+    Matrix3Xd normal_quaternion(3, 4), xA_quaternion(3, 4), xB_quaternion(3, 4);
+    vector<int> idxA_quaternion(4), idxB_quaternion(4);
 
     int k = 0;
-    for (unsigned i = 0; i < idxA_total.size(); ++i) {
-      int ind_a = idxA_total.at(i);
-      int ind_b = idxB_total.at(i);
-      if ((ind_a == world_ind && ind_b == toe_left_ind) ||
-          (ind_a == world_ind && ind_b == toe_right_ind) ||
-          (ind_a == toe_left_ind && ind_b == world_ind) ||
-          (ind_a == toe_right_ind && ind_b == world_ind)) {
-        xA.col(k) = xA_total.col(i);
-        xB.col(k) = xB_total.col(i);
-        idxA.at(k) = idxA_total.at(i);
-        idxB.at(k) = idxB_total.at(i);
+    for (unsigned i = 0; i < idxA_total_rpy.size(); ++i) {
+      int ind_a = idxA_total_rpy.at(i);
+      int ind_b = idxB_total_rpy.at(i);
+      if ((ind_a == world_ind_rpy && ind_b == toe_left_ind_rpy) ||
+          (ind_a == world_ind_rpy && ind_b == toe_right_ind_rpy) ||
+          (ind_a == toe_left_ind_rpy && ind_b == world_ind_rpy) ||
+          (ind_a == toe_right_ind_rpy && ind_b == world_ind_rpy)) {
+        xA_rpy.col(k) = xA_total_rpy.col(i);
+        xB_rpy.col(k) = xB_total_rpy.col(i);
+        idxA_rpy.at(k) = idxA_total_rpy.at(i);
+        idxB_rpy.at(k) = idxB_total_rpy.at(i);
         ++k;
       }
     }
 
-    // Creating the contact info
+    k = 0;
+    for (unsigned i = 0; i < idxA_total_quaternion.size(); ++i) {
+      int ind_a = idxA_total_quaternion.at(i);
+      int ind_b = idxB_total_quaternion.at(i);
+      if ((ind_a == world_ind_quaternion && ind_b == toe_left_ind_quaternion) ||
+          (ind_a == world_ind_quaternion &&
+           ind_b == toe_right_ind_quaternion) ||
+          (ind_a == toe_left_ind_quaternion && ind_b == world_ind_quaternion) ||
+          (ind_a == toe_right_ind_quaternion &&
+           ind_b == world_ind_quaternion)) {
+        xA_quaternion.col(k) = xA_total_quaternion.col(i);
+        xB_quaternion.col(k) = xB_total_quaternion.col(i);
+        idxA_quaternion.at(k) = idxA_total_quaternion.at(i);
+        idxB_quaternion.at(k) = idxB_total_quaternion.at(i);
+        ++k;
+      }
+    }
+
+    // Creating the contact info for both the floating base types
     // idxB is the vector index for the body which is accessed through
     // ContactInfo.idxA
     // In this case xA corresponds to the points on the ground and hence xA
     // and
     // xB must be interchanged when constructing contact_info_
-    contact_info_ = {xB, idxB};
+    contact_info_rpy_ = {xB_rpy, idxB_rpy};
+    contact_info_quaternion_ = {xB_quaternion, idxB_quaternion};
 
-    num_contacts_ = contact_info_.num_contacts;
-    num_position_constraints_ = tree_floating_.getNumPositionConstraints();
-    num_forces_ = num_position_constraints_ + num_contacts_ * 3;
+    num_position_constraints_fixed_ = tree_fixed_.getNumPositionConstraints();
 
-    lambda_fixed_ = VectorXd::Zero(num_position_constraints_);
+    num_contacts_rpy_ = contact_info_rpy_.num_contacts;
+    num_position_constraints_rpy_ = tree_rpy_.getNumPositionConstraints();
+    num_forces_rpy_ = num_position_constraints_rpy_ + num_contacts_rpy_ * 3;
+
+    num_contacts_quaternion_ = contact_info_quaternion_.num_contacts;
+    num_position_constraints_quaternion_ =
+        tree_quaternion_.getNumPositionConstraints();
+    num_forces_quaternion_ =
+        num_position_constraints_quaternion_ + num_contacts_quaternion_ * 3;
 
     q_fixed_ = x0_fixed_.head(num_positions_fixed_);
     u_fixed_ = VectorXd::Zero(num_efforts_fixed_);
-    lambda_fixed_ = VectorXd::Zero(num_position_constraints_);
+    lambda_fixed_ = VectorXd::Zero(num_position_constraints_fixed_);
 
-    q_floating_ = x0_floating_.head(num_positions_floating_);
-    u_floating_ = VectorXd::Zero(num_efforts_floating_);
-    lambda_floating_ = VectorXd::Zero(num_forces_);
+    q_rpy_ = x0_rpy_.head(num_positions_rpy_);
+    u_rpy_ = VectorXd::Zero(num_efforts_rpy_);
+    lambda_rpy_ = VectorXd::Zero(num_forces_rpy_);
+
+    q_quaternion_ = x0_quaternion_.head(num_positions_quaternion_);
+    u_quaternion_ = VectorXd::Zero(num_efforts_quaternion_);
+    lambda_quaternion_ = VectorXd::Zero(num_forces_quaternion_);
   }
 
   RigidBodyTree<double> tree_fixed_;
-  RigidBodyTree<double> tree_floating_;
-  vector<int> fixed_joints_vector_;
-  map<int, double> fixed_joints_map_;
+  RigidBodyTree<double> tree_rpy_;
+  RigidBodyTree<double> tree_quaternion_;
+  map<string, int> position_map_fixed_;
+  map<string, int> position_map_rpy_;
+  map<string, int> position_map_quaternion_;
+  vector<int> fixed_joints_vector_rpy_;
+  vector<int> fixed_joints_vector_quaternion_;
+  map<int, double> fixed_joints_map_rpy_;
+  map<int, double> fixed_joints_map_quaternion_;
   int num_positions_fixed_;
-  int num_positions_floating_;
+  int num_positions_rpy_;
+  int num_positions_quaternion_;
   int num_velocities_fixed_;
-  int num_velocities_floating_;
+  int num_velocities_rpy_;
+  int num_velocities_quaternion_;
   int num_states_fixed_;
-  int num_states_floating_;
+  int num_states_rpy_;
+  int num_states_quaternion_;
   int num_efforts_fixed_;
-  int num_efforts_floating_;
-  int num_contacts_;
-  int num_position_constraints_;
-  int num_forces_;
-  ContactInfo contact_info_;
+  int num_efforts_rpy_;
+  int num_efforts_quaternion_;
+  int num_contacts_rpy_;
+  int num_contacts_quaternion_;
+  int num_position_constraints_fixed_;
+  int num_position_constraints_rpy_;
+  int num_position_constraints_quaternion_;
+  int num_forces_rpy_;
+  int num_forces_quaternion_;
+  ContactInfo contact_info_rpy_;
+  ContactInfo contact_info_quaternion_;
   VectorXd x0_fixed_;
-  VectorXd x0_floating_;
+  VectorXd x0_rpy_;
+  VectorXd x0_quaternion_;
   VectorXd q_fixed_;
-  VectorXd q_floating_;
+  VectorXd q_rpy_;
+  VectorXd q_quaternion_;
   VectorXd u_fixed_;
-  VectorXd u_floating_;
+  VectorXd u_rpy_;
+  VectorXd u_quaternion_;
   VectorXd lambda_fixed_;
-  VectorXd lambda_floating_;
+  VectorXd lambda_rpy_;
+  VectorXd lambda_quaternion_;
 };
 
 TEST_F(MultibodySolversTest, TestPositionConstraintInitialization) {
@@ -202,18 +321,23 @@ TEST_F(MultibodySolversTest, TestPositionConstraintInitialization) {
   // Position constraint
 
   PositionConstraint position_constraint_fixed(tree_fixed_);
-  PositionConstraint position_constraint_floating(tree_floating_);
+  PositionConstraint position_constraint_rpy(tree_rpy_);
+  PositionConstraint position_constraint_quaternion(tree_quaternion_);
 }
 
 TEST_F(MultibodySolversTest, TestContactConstraintInitialization) {
-  // Contact constraint
-  ContactConstraint contact_constraint(tree_floating_, contact_info_);
+  // Contact constraint for both floating bases
+  ContactConstraint contact_constraint_rpy(tree_rpy_, contact_info_rpy_);
+  ContactConstraint contact_constraint_quaternion(tree_quaternion_,
+                                                  contact_info_quaternion_);
 }
 
 TEST_F(MultibodySolversTest, TestFixedPointConstraintInitialization) {
   // Fixed point constraint with and without contact
-  FixedPointConstraint fp_constraint1(tree_fixed_);
-  FixedPointConstraint fp_constraint2(tree_floating_, contact_info_);
+  FixedPointConstraint fp_constraint_fixed(tree_fixed_);
+  FixedPointConstraint fp_constraint_rpy(tree_rpy_, contact_info_rpy_);
+  FixedPointConstraint fp_constraint_quaternion(tree_quaternion_,
+                                                contact_info_quaternion_);
 }
 
 TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
@@ -244,59 +368,114 @@ TEST_F(MultibodySolversTest, TestPositionSolverBasic) {
   ASSERT_EQ(position_solver_fixed2.get_major_tolerance(), 0.001);
   ASSERT_EQ(position_solver_fixed2.get_minor_tolerance(), 0.01);
 
-  // Constructor 3
-  PositionSolver position_solver_floating(tree_floating_, q_floating_);
-  position_solver_floating.set_filename("position_log");
-  position_solver_floating.set_major_tolerance(0.001);
-  position_solver_floating.set_minor_tolerance(0.01);
+  // Constructor 3 (both bases)
+  PositionSolver position_solver_rpy(tree_rpy_, q_rpy_);
+  position_solver_rpy.set_filename("position_log");
+  position_solver_rpy.set_major_tolerance(0.001);
+  position_solver_rpy.set_minor_tolerance(0.01);
 
-  shared_ptr<MathematicalProgram> prog_position_floating =
-      position_solver_floating.get_program();
+  PositionSolver position_solver_quaternion(tree_quaternion_, q_quaternion_);
+  position_solver_quaternion.set_filename("position_log");
+  position_solver_quaternion.set_major_tolerance(0.001);
+  position_solver_quaternion.set_minor_tolerance(0.01);
 
-  ASSERT_EQ(position_solver_floating.get_major_tolerance(), 0.001);
-  ASSERT_EQ(position_solver_floating.get_minor_tolerance(), 0.01);
+  shared_ptr<MathematicalProgram> prog_position_rpy =
+      position_solver_rpy.get_program();
+
+  shared_ptr<MathematicalProgram> prog_position_quaternion =
+      position_solver_quaternion.get_program();
+
+  ASSERT_EQ(position_solver_rpy.get_major_tolerance(), 0.001);
+  ASSERT_EQ(position_solver_rpy.get_minor_tolerance(), 0.01);
+
+  ASSERT_EQ(position_solver_quaternion.get_major_tolerance(), 0.001);
+  ASSERT_EQ(position_solver_quaternion.get_minor_tolerance(), 0.01);
 }
 
 TEST_F(MultibodySolversTest, TestContactSolverBasic) {
   // Testing basic getters and setters
-  // Only the floating base model is used for contact
+  // Only the floating base models are used for contact
   // Constructor 1
-  ContactSolver contact_solver1(tree_floating_, contact_info_);
-  contact_solver1.set_filename("contact_log");
-  contact_solver1.set_major_tolerance(0.002);
-  contact_solver1.set_minor_tolerance(0.02);
+  ContactSolver contact_solver_rpy1(tree_rpy_, contact_info_rpy_);
 
-  ASSERT_EQ(contact_solver1.get_major_tolerance(), 0.002);
-  ASSERT_EQ(contact_solver1.get_minor_tolerance(), 0.02);
+  ContactSolver contact_solver_quaternion1(tree_quaternion_,
+                                           contact_info_quaternion_);
+
+  contact_solver_rpy1.set_filename("contact_log");
+  contact_solver_rpy1.set_major_tolerance(0.002);
+  contact_solver_rpy1.set_minor_tolerance(0.02);
+
+  contact_solver_quaternion1.set_filename("contact_log");
+  contact_solver_quaternion1.set_major_tolerance(0.002);
+  contact_solver_quaternion1.set_minor_tolerance(0.02);
+
+  ASSERT_EQ(contact_solver_rpy1.get_major_tolerance(), 0.002);
+  ASSERT_EQ(contact_solver_rpy1.get_minor_tolerance(), 0.02);
+
+  ASSERT_EQ(contact_solver_quaternion1.get_major_tolerance(), 0.002);
+  ASSERT_EQ(contact_solver_quaternion1.get_minor_tolerance(), 0.02);
 
   // Testing mathematical program getter
-  shared_ptr<MathematicalProgram> prog_contact1 = contact_solver1.get_program();
+  shared_ptr<MathematicalProgram> prog_contact_rpy1 =
+      contact_solver_rpy1.get_program();
+  shared_ptr<MathematicalProgram> prog_contact_quaternion1 =
+      contact_solver_quaternion1.get_program();
 
   // Constructor 2
-  MatrixXd Q =
-      MatrixXd::Identity(num_positions_floating_, num_positions_floating_);
-  ContactSolver contact_solver2(tree_floating_, contact_info_, q_floating_, Q);
-  contact_solver2.set_filename("contact_log");
-  contact_solver2.set_major_tolerance(0.002);
-  contact_solver2.set_minor_tolerance(0.02);
+  MatrixXd Q_rpy = MatrixXd::Identity(num_positions_rpy_, num_positions_rpy_);
+  ContactSolver contact_solver_rpy2(tree_rpy_, contact_info_rpy_, q_rpy_,
+                                    Q_rpy);
 
-  ASSERT_EQ(contact_solver2.get_major_tolerance(), 0.002);
-  ASSERT_EQ(contact_solver2.get_minor_tolerance(), 0.02);
+  MatrixXd Q_quaternion =
+      MatrixXd::Identity(num_positions_quaternion_, num_positions_quaternion_);
+  ContactSolver contact_solver_quaternion2(
+      tree_quaternion_, contact_info_quaternion_, q_quaternion_, Q_quaternion);
+
+  contact_solver_rpy2.set_filename("contact_log");
+  contact_solver_rpy2.set_major_tolerance(0.002);
+  contact_solver_rpy2.set_minor_tolerance(0.02);
+
+  contact_solver_quaternion2.set_filename("contact_log");
+  contact_solver_quaternion2.set_major_tolerance(0.002);
+  contact_solver_quaternion2.set_minor_tolerance(0.02);
+
+  ASSERT_EQ(contact_solver_rpy2.get_major_tolerance(), 0.002);
+  ASSERT_EQ(contact_solver_rpy2.get_minor_tolerance(), 0.02);
+
+  ASSERT_EQ(contact_solver_quaternion2.get_major_tolerance(), 0.002);
+  ASSERT_EQ(contact_solver_quaternion2.get_minor_tolerance(), 0.02);
 
   // Testing mathematical program getter
-  shared_ptr<MathematicalProgram> prog_contact2 = contact_solver2.get_program();
+  shared_ptr<MathematicalProgram> prog_contact_rpy2 =
+      contact_solver_rpy2.get_program();
+  shared_ptr<MathematicalProgram> prog_contact_quaternion2 =
+      contact_solver_quaternion2.get_program();
 
   // Constructor 3
-  ContactSolver contact_solver3(tree_floating_, contact_info_, q_floating_);
-  contact_solver3.set_filename("contact_log");
-  contact_solver3.set_major_tolerance(0.002);
-  contact_solver3.set_minor_tolerance(0.02);
+  ContactSolver contact_solver_rpy3(tree_rpy_, contact_info_rpy_, q_rpy_);
 
-  ASSERT_EQ(contact_solver3.get_major_tolerance(), 0.002);
-  ASSERT_EQ(contact_solver3.get_minor_tolerance(), 0.02);
+  ContactSolver contact_solver_quaternion3(
+      tree_quaternion_, contact_info_quaternion_, q_quaternion_);
+
+  contact_solver_rpy3.set_filename("contact_log");
+  contact_solver_rpy3.set_major_tolerance(0.002);
+  contact_solver_rpy3.set_minor_tolerance(0.02);
+
+  contact_solver_quaternion3.set_filename("contact_log");
+  contact_solver_quaternion3.set_major_tolerance(0.002);
+  contact_solver_quaternion3.set_minor_tolerance(0.02);
+
+  ASSERT_EQ(contact_solver_rpy3.get_major_tolerance(), 0.002);
+  ASSERT_EQ(contact_solver_rpy3.get_minor_tolerance(), 0.02);
+
+  ASSERT_EQ(contact_solver_quaternion3.get_major_tolerance(), 0.002);
+  ASSERT_EQ(contact_solver_quaternion3.get_minor_tolerance(), 0.02);
 
   // Testing mathematical program getter
-  shared_ptr<MathematicalProgram> prog_contact3 = contact_solver3.get_program();
+  shared_ptr<MathematicalProgram> prog_contact_rpy3 =
+      contact_solver_rpy3.get_program();
+  shared_ptr<MathematicalProgram> prog_contact_quaternion3 =
+      contact_solver_quaternion3.get_program();
 }
 
 TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
@@ -337,46 +516,91 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverBasic) {
   shared_ptr<MathematicalProgram> prog_fp_fixed3 =
       fp_solver_fixed3.get_program();
 
-  // Floating base
+  // Floating base constructors
   // Constructor 4
-  FixedPointSolver fp_solver_floating1(tree_floating_, contact_info_);
-  fp_solver_floating1.set_filename("fp_log");
-  fp_solver_floating1.set_major_tolerance(0.003);
-  fp_solver_floating1.set_minor_tolerance(0.03);
+  FixedPointSolver fp_solver_rpy1(tree_rpy_, contact_info_rpy_);
 
-  shared_ptr<MathematicalProgram> prog_fp_floating1 =
-      fp_solver_floating1.get_program();
+  FixedPointSolver fp_solver_quaternion1(tree_quaternion_,
+                                         contact_info_quaternion_);
 
-  ASSERT_EQ(fp_solver_floating1.get_major_tolerance(), 0.003);
-  ASSERT_EQ(fp_solver_floating1.get_minor_tolerance(), 0.03);
+  fp_solver_rpy1.set_filename("fp_log");
+  fp_solver_rpy1.set_major_tolerance(0.003);
+  fp_solver_rpy1.set_minor_tolerance(0.03);
+
+  fp_solver_quaternion1.set_filename("fp_log");
+  fp_solver_quaternion1.set_major_tolerance(0.003);
+  fp_solver_quaternion1.set_minor_tolerance(0.03);
+
+  shared_ptr<MathematicalProgram> prog_fp_rpy1 = fp_solver_rpy1.get_program();
+
+  shared_ptr<MathematicalProgram> prog_fp_quaternion1 =
+      fp_solver_quaternion1.get_program();
+
+  ASSERT_EQ(fp_solver_rpy1.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_rpy1.get_minor_tolerance(), 0.03);
+
+  ASSERT_EQ(fp_solver_quaternion1.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_quaternion1.get_minor_tolerance(), 0.03);
 
   // Constructor 5
-  Q = MatrixXd::Identity(num_positions_floating_, num_positions_floating_);
-  U = MatrixXd::Identity(num_efforts_floating_, num_efforts_floating_);
-  FixedPointSolver fp_solver_floating2(tree_floating_, contact_info_,
-                                       q_floating_, u_floating_, Q, U);
-  fp_solver_floating2.set_filename("fp_log");
-  fp_solver_floating2.set_major_tolerance(0.003);
-  fp_solver_floating2.set_minor_tolerance(0.03);
+  MatrixXd Q_rpy = MatrixXd::Identity(num_positions_rpy_, num_positions_rpy_);
+  MatrixXd U_rpy = MatrixXd::Identity(num_efforts_rpy_, num_efforts_rpy_);
 
-  shared_ptr<MathematicalProgram> prog_fp_floating2 =
-      fp_solver_floating2.get_program();
+  MatrixXd Q_quaternion =
+      MatrixXd::Identity(num_positions_quaternion_, num_positions_quaternion_);
+  MatrixXd U_quaternion =
+      MatrixXd::Identity(num_efforts_quaternion_, num_efforts_quaternion_);
 
-  ASSERT_EQ(fp_solver_floating2.get_major_tolerance(), 0.003);
-  ASSERT_EQ(fp_solver_floating2.get_minor_tolerance(), 0.03);
+  FixedPointSolver fp_solver_rpy2(tree_rpy_, contact_info_rpy_, q_rpy_, u_rpy_,
+                                  Q_rpy, U_rpy);
+
+  FixedPointSolver fp_solver_quaternion2(
+      tree_quaternion_, contact_info_quaternion_, q_quaternion_, u_quaternion_,
+      Q_quaternion, U_quaternion);
+
+  fp_solver_rpy2.set_filename("fp_log");
+  fp_solver_rpy2.set_major_tolerance(0.003);
+  fp_solver_rpy2.set_minor_tolerance(0.03);
+
+  fp_solver_quaternion2.set_filename("fp_log");
+  fp_solver_quaternion2.set_major_tolerance(0.003);
+  fp_solver_quaternion2.set_minor_tolerance(0.03);
+
+  shared_ptr<MathematicalProgram> prog_fp_rpy2 = fp_solver_rpy2.get_program();
+
+  shared_ptr<MathematicalProgram> prog_fp_quaternion2 =
+      fp_solver_quaternion2.get_program();
+
+  ASSERT_EQ(fp_solver_rpy2.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_rpy2.get_minor_tolerance(), 0.03);
+
+  ASSERT_EQ(fp_solver_quaternion2.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_quaternion2.get_minor_tolerance(), 0.03);
 
   // Constructor 6
-  FixedPointSolver fp_solver_floating3(tree_floating_, contact_info_,
-                                       q_floating_, u_floating_);
-  fp_solver_floating3.set_filename("fp_log");
-  fp_solver_floating3.set_major_tolerance(0.003);
-  fp_solver_floating3.set_minor_tolerance(0.03);
+  FixedPointSolver fp_solver_rpy3(tree_rpy_, contact_info_rpy_, q_rpy_, u_rpy_);
 
-  shared_ptr<MathematicalProgram> prog_fp_floating3 =
-      fp_solver_floating3.get_program();
+  FixedPointSolver fp_solver_quaternion3(
+      tree_quaternion_, contact_info_quaternion_, q_quaternion_, u_quaternion_);
 
-  ASSERT_EQ(fp_solver_floating3.get_major_tolerance(), 0.003);
-  ASSERT_EQ(fp_solver_floating3.get_minor_tolerance(), 0.03);
+  fp_solver_rpy3.set_filename("fp_log");
+  fp_solver_rpy3.set_major_tolerance(0.003);
+  fp_solver_rpy3.set_minor_tolerance(0.03);
+
+  fp_solver_quaternion3.set_filename("fp_log");
+  fp_solver_quaternion3.set_major_tolerance(0.003);
+  fp_solver_quaternion3.set_minor_tolerance(0.03);
+
+  shared_ptr<MathematicalProgram> prog_fp_rpy3 = fp_solver_rpy3.get_program();
+
+  shared_ptr<MathematicalProgram> prog_fp_quaternion3 =
+      fp_solver_quaternion3.get_program();
+
+  ASSERT_EQ(fp_solver_rpy3.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_rpy3.get_minor_tolerance(), 0.03);
+
+  ASSERT_EQ(fp_solver_quaternion3.get_major_tolerance(), 0.003);
+  ASSERT_EQ(fp_solver_quaternion3.get_minor_tolerance(), 0.03);
 }
 
 TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
@@ -399,41 +623,93 @@ TEST_F(MultibodySolversTest, TestPositionSolverSolution) {
   ASSERT_TRUE(position_solver_fixed.CheckConstraint(q_sol_fixed));
 
   // Floating base
-  PositionSolver position_solver_floating(tree_floating_, q_floating_);
-  position_solver_floating.SetInitialGuessQ(q_floating_);
-  position_solver_floating.AddFixedJointsConstraint(fixed_joints_map_);
-  position_solver_floating.AddJointLimitConstraint(0.001);
+  // RPY base
+  PositionSolver position_solver_rpy(tree_rpy_, q_rpy_);
+  position_solver_rpy.SetInitialGuessQ(q_rpy_);
+  position_solver_rpy.AddFixedJointsConstraint(fixed_joints_map_rpy_);
+  position_solver_rpy.AddJointLimitConstraint(0.001);
 
-  MathematicalProgramResult program_result_floating =
-      position_solver_floating.Solve();
+  MathematicalProgramResult program_result_rpy = position_solver_rpy.Solve();
 
-  cout << "Position solver result (Floating base): "
-       << program_result_floating.get_solution_result() << endl;
+  cout << "Position solver result (Rpy floating base): "
+       << program_result_rpy.get_solution_result() << endl;
 
-  VectorXd q_sol_floating = position_solver_floating.GetSolutionQ();
+  VectorXd q_sol_rpy = position_solver_rpy.GetSolutionQ();
 
   // Solution dimension check
-  ASSERT_EQ(q_sol_floating.size(), num_positions_floating_);
+  ASSERT_EQ(q_sol_rpy.size(), num_positions_rpy_);
   // Checking if the solution constraints have been satisfied
-  ASSERT_TRUE(position_solver_floating.CheckConstraint(q_sol_floating));
+  ASSERT_TRUE(position_solver_rpy.CheckConstraint(q_sol_rpy));
+
+  // Quaternion base
+  PositionSolver position_solver_quaternion(tree_quaternion_, q_quaternion_);
+  position_solver_quaternion.SetInitialGuessQ(q_quaternion_);
+  position_solver_quaternion.AddUnitQuaternionConstraint(
+      position_map_quaternion_["base_qw"], position_map_quaternion_["base_qx"],
+      position_map_quaternion_["base_qy"], position_map_quaternion_["base_qz"]);
+  position_solver_quaternion.AddFixedJointsConstraint(
+      fixed_joints_map_quaternion_);
+  position_solver_quaternion.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_quaternion =
+      position_solver_quaternion.Solve();
+
+  cout << "Position solver result (Quaternion floating base): "
+       << program_result_quaternion.get_solution_result() << endl;
+
+  VectorXd q_sol_quaternion = position_solver_quaternion.GetSolutionQ();
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
+  // Checking if the solution constraints have been satisfied
+  ASSERT_TRUE(position_solver_quaternion.CheckConstraint(q_sol_quaternion));
 }
 
 TEST_F(MultibodySolversTest, TestContactSolverSolution) {
-  ContactSolver contact_solver(tree_floating_, contact_info_, q_floating_);
-  contact_solver.SetInitialGuessQ(q_floating_);
-  contact_solver.AddJointLimitConstraint(0.001);
+  // Contact solver for the floating base models
+  // RPY base
+  ContactSolver contact_solver_rpy(tree_rpy_, contact_info_rpy_, q_rpy_);
+  contact_solver_rpy.SetInitialGuessQ(q_rpy_);
+  contact_solver_rpy.AddFixedJointsConstraint(fixed_joints_map_rpy_);
+  contact_solver_rpy.AddJointLimitConstraint(0.001);
 
-  MathematicalProgramResult program_result = contact_solver.Solve();
+  MathematicalProgramResult program_result_rpy = contact_solver_rpy.Solve();
 
-  std::cout << "Contact solver result (Floating base): "
-            << program_result.get_solution_result() << std::endl;
+  std::cout << "Contact solver result (Rpy Floating base): "
+            << program_result_rpy.get_solution_result() << std::endl;
 
-  VectorXd q_sol_floating = contact_solver.GetSolutionQ();
+  VectorXd q_sol_rpy = contact_solver_rpy.GetSolutionQ();
 
   // Solution dimension check
-  ASSERT_EQ(q_sol_floating.size(), num_positions_floating_);
+  ASSERT_EQ(q_sol_rpy.size(), num_positions_rpy_);
   // Checking if the solution constraints have been satisfied
-  ASSERT_TRUE(contact_solver.CheckConstraint(q_sol_floating));
+  ASSERT_TRUE(contact_solver_rpy.CheckConstraint(q_sol_rpy));
+
+  // Quaternion base
+  ContactSolver contact_solver_quaternion(
+      tree_quaternion_, contact_info_quaternion_, q_quaternion_);
+  contact_solver_quaternion.SetInitialGuessQ(q_quaternion_);
+  contact_solver_quaternion.AddUnitQuaternionConstraint(
+      position_map_quaternion_["base_qw"], position_map_quaternion_["base_qx"],
+      position_map_quaternion_["base_qy"], position_map_quaternion_["base_qz"]);
+  contact_solver_quaternion.AddFixedJointsConstraint(
+      fixed_joints_map_quaternion_);
+  contact_solver_quaternion.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_quaternion =
+      contact_solver_quaternion.Solve();
+
+  std::cout << "Contact solver result (Quaternion Floating base): "
+            << program_result_quaternion.get_solution_result() << std::endl;
+
+  VectorXd q_sol_quaternion = contact_solver_quaternion.GetSolutionQ();
+
+  // std::cout << "q: " << std::endl << q_sol_quaternion << std::endl;
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
+  // Checking if the solution constraints have been satisfied
+  ASSERT_TRUE(contact_solver_quaternion.CheckConstraint(q_sol_quaternion));
 }
 
 TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
@@ -454,42 +730,70 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   // Solution dimension check
   ASSERT_EQ(q_sol_fixed.size(), num_positions_fixed_);
   ASSERT_EQ(u_sol_fixed.size(), num_efforts_fixed_);
-  ASSERT_EQ(lambda_sol_fixed.size(), num_position_constraints_);
+  ASSERT_EQ(lambda_sol_fixed.size(), num_position_constraints_fixed_);
   // Solution constraints check
   ASSERT_TRUE(fp_solver_fixed.CheckConstraint(q_sol_fixed, u_sol_fixed,
-                                              lambda_sol_fixed));
+                                              lambda_sol_fixed, 1e-8));
 
-  // Floating base
-  FixedPointSolver fp_solver_floating(tree_floating_, contact_info_,
-                                      q_floating_, u_floating_);
-  fp_solver_floating.SetInitialGuess(q_floating_, u_floating_,
-                                     lambda_floating_);
-  fp_solver_floating.AddSpreadNormalForcesCost();
-  fp_solver_floating.AddFrictionConeConstraint(0.8);
-  fp_solver_floating.AddFixedJointsConstraint(fixed_joints_map_);
-  fp_solver_floating.AddJointLimitConstraint(0.001);
+  // Rpy base
+  FixedPointSolver fp_solver_rpy(tree_rpy_, contact_info_rpy_, q_rpy_, u_rpy_);
+  fp_solver_rpy.SetInitialGuess(q_rpy_, u_rpy_, lambda_rpy_);
+  fp_solver_rpy.AddSpreadNormalForcesCost();
+  fp_solver_rpy.AddFrictionConeConstraint(0.8);
+  fp_solver_rpy.AddFixedJointsConstraint(fixed_joints_map_rpy_);
+  fp_solver_rpy.AddJointLimitConstraint(0.001);
 
-  MathematicalProgramResult program_result_floating =
-      fp_solver_floating.Solve();
+  MathematicalProgramResult program_result_rpy = fp_solver_rpy.Solve();
 
-  cout << "Fixed point solver result (Floating base): "
-       << program_result_floating.get_solution_result() << endl;
+  cout << "Fixed point solver result (Rpy base): "
+       << program_result_rpy.get_solution_result() << endl;
 
-  VectorXd q_sol_floating = fp_solver_floating.GetSolutionQ();
-  VectorXd u_sol_floating = fp_solver_floating.GetSolutionU();
-  VectorXd lambda_sol_floating = fp_solver_floating.GetSolutionLambda();
+  VectorXd q_sol_rpy = fp_solver_rpy.GetSolutionQ();
+  VectorXd u_sol_rpy = fp_solver_rpy.GetSolutionU();
+  VectorXd lambda_sol_rpy = fp_solver_rpy.GetSolutionLambda();
 
   // Solution dimension check
-  ASSERT_EQ(q_sol_floating.size(), num_positions_floating_);
-  ASSERT_EQ(u_sol_floating.size(), num_efforts_floating_);
-  ASSERT_EQ(lambda_sol_floating.size(), num_forces_);
+  ASSERT_EQ(q_sol_rpy.size(), num_positions_rpy_);
+  ASSERT_EQ(u_sol_rpy.size(), num_efforts_rpy_);
+  ASSERT_EQ(lambda_sol_rpy.size(), num_forces_rpy_);
   // Solution constraints check
-  ASSERT_TRUE(fp_solver_floating.CheckConstraint(q_sol_floating, u_sol_floating,
-                                                 lambda_sol_floating));
+  ASSERT_TRUE(
+      fp_solver_rpy.CheckConstraint(q_sol_rpy, u_sol_rpy, lambda_sol_rpy));
+
+  // Quaternion base
+  FixedPointSolver fp_solver_quaternion(
+      tree_quaternion_, contact_info_quaternion_, q_quaternion_, u_quaternion_);
+  fp_solver_quaternion.SetInitialGuess(q_quaternion_, u_quaternion_,
+                                       lambda_quaternion_);
+  fp_solver_quaternion.AddSpreadNormalForcesCost();
+  fp_solver_quaternion.AddUnitQuaternionConstraint(
+      position_map_quaternion_["base_qw"], position_map_quaternion_["base_qx"],
+      position_map_quaternion_["base_qy"], position_map_quaternion_["base_qz"]);
+  fp_solver_quaternion.AddFrictionConeConstraint(0.8);
+  fp_solver_quaternion.AddFixedJointsConstraint(fixed_joints_map_quaternion_);
+  fp_solver_quaternion.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_quaternion =
+      fp_solver_quaternion.Solve();
+
+  cout << "Fixed point solver result (Quaternion base): "
+       << program_result_quaternion.get_solution_result() << endl;
+
+  VectorXd q_sol_quaternion = fp_solver_quaternion.GetSolutionQ();
+  VectorXd u_sol_quaternion = fp_solver_quaternion.GetSolutionU();
+  VectorXd lambda_sol_quaternion = fp_solver_quaternion.GetSolutionLambda();
+
+  // Solution dimension check
+  ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
+  ASSERT_EQ(u_sol_quaternion.size(), num_efforts_quaternion_);
+  ASSERT_EQ(lambda_sol_quaternion.size(), num_forces_quaternion_);
+  // Solution constraints check
+  ASSERT_TRUE(fp_solver_quaternion.CheckConstraint(
+      q_sol_quaternion, u_sol_quaternion, lambda_sol_quaternion));
 }
 
 }  // namespace
-}  // namespace systems
+}  // namespace multibody
 }  // namespace dairlib
 
 int main(int argc, char** argv) {

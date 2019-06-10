@@ -14,6 +14,7 @@ cc_library(
   name = "cassie_udp_pub_sub",
   srcs = ["udp_serializer.cc",
           "cassie_udp_subscriber.cc",
+          "simple_cassie_udp_subscriber.cc",
           "cassie_udp_publisher.cc",
           "cassie_input_sender.cc",
           "cassie_input_receiver.cc",
@@ -22,6 +23,7 @@ cc_library(
           "cassie_output_receiver.cc"],
   hdrs = ["udp_serializer.h",
           "cassie_udp_subscriber.h",
+          "simple_cassie_udp_subscriber.h",
           "cassie_udp_publisher.h",
           "cassie_input_sender.h",
           "cassie_input_receiver.h",
@@ -37,6 +39,18 @@ cc_library(
     "//lcmtypes:lcmt_robot",
     "//multibody:utils",
     "//attic/multibody:utils",
+    ":simple_cassie_udp_subscriber"
+  ]
+)
+
+cc_library(
+  name = "simple_cassie_udp_subscriber",
+  srcs = ["simple_cassie_udp_subscriber.cc",
+          ],
+  hdrs = ["simple_cassie_udp_subscriber.h",],
+  deps = [
+    "@drake//common",
+    "//examples/Cassie/datatypes:cassie_inout_types",
   ]
 )
 

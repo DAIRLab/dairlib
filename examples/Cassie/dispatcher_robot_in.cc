@@ -2,7 +2,6 @@
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
-#include "drake/systems/lcm/lcm_driven_loop.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/analysis/simulator.h"
@@ -23,7 +22,6 @@ using drake::systems::Simulator;
 using drake::systems::Context;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
-using drake::systems::lcm::UtimeMessageToSeconds;
 using systems::RobotInputReceiver;
 using systems::RobotCommandSender;
 using drake::systems::TriggerType;
@@ -33,6 +31,8 @@ DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
 DEFINE_int64(port, 25000, "Port to publish to (UDP).");
 DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
 
+// Cassie model paramter
+DEFINE_bool(floating_base, false, "Fixed or floating base model");
 
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
@@ -46,14 +46,20 @@ int do_main(int argc, char* argv[]) {
 
   DiagramBuilder<double> builder;
 
-  std::unique_ptr<RigidBodyTree<double>> tree = makeCassieTreePointer();
+  std::unique_ptr<RigidBodyTree<double>> tree;
+  if (FLAGS_floating_base)
+    tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
+                                 drake::multibody::joints::kQuaternion);
+  else
+    tree = makeCassieTreePointer();
 
-  // Crate LCM subscriber/receiver for commands
-  auto command_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(channel_u,
-          &lcm_local));
+  // Create LCM receiver for commands
   auto command_receiver = builder.AddSystem<RobotInputReceiver>(*tree);
-  builder.Connect(*command_sub, *command_receiver);
+
+  // auto command_sub = builder.AddSystem(
+  //     LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(channel_u,
+  //         &lcm_local));
+  // builder.Connect(*command_sub, *command_receiver);
 
   // Create and connect translator
   auto input_translator =
@@ -77,17 +83,42 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(*net_command_sender, *net_command_pub);
 
-  auto diagram = builder.Build();
+  // Create the diagram, simulator, and context.
+  auto owned_diagram = builder.Build();
+  const auto& diagram = *owned_diagram;
+  drake::systems::Simulator<double> simulator(std::move(owned_diagram));
+  auto& diagram_context = simulator.get_mutable_context();
+  auto& command_receiver_context =
+      diagram.GetMutableSubsystemContext(*command_receiver, &diagram_context);
 
-  drake::systems::lcm::LcmDrivenLoop loop(*diagram, *command_sub, nullptr,
-      &lcm_local,
-      std::make_unique<UtimeMessageToSeconds<dairlib::lcmt_robot_input>>());
 
-  // caused an extra publish call?
-  loop.set_publish_on_every_received_message(true);
+  // Wait for the first message.
+  drake::log()->info("Waiting for first lcmt_robot_input");
+  drake::lcm::Subscriber<dairlib::lcmt_robot_input> command_sub(&lcm_local,
+      channel_u);
+  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+      return command_sub.count() > 0; });
 
-  // Starts the loop.
-  loop.RunToSecondsAssumingInitialized(1e6);
+  // Initialize the context based on the first message.
+  const double t0 = command_sub.message().utime * 1e-6;
+  diagram_context.SetTime(t0);
+  auto& command_value = command_receiver->get_input_port(0).FixValue(
+      &command_receiver_context, command_sub.message());
+
+
+  drake::log()->info("dispatcher_robot_in started");
+  while (true) {
+    // Wait for an lcmt_robot_input message.
+    command_sub.clear();
+    LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+        return command_sub.count() > 0; });
+    // Write the lcmt_robot_input message into the context and advance.
+    command_value.GetMutableData()->set_value(command_sub.message());
+    const double time = command_sub.message().utime * 1e-6;
+    simulator.AdvanceTo(time);
+    // Force-publish via the diagram
+    diagram.Publish(diagram_context);
+  }
   return 0;
 }
 

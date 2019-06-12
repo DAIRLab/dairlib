@@ -280,7 +280,7 @@ int testDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::VectorXd::Z
   //visualizer
   lcm::DrakeLcm lcm;
   systems::DiagramBuilder<double> builder;
-  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
+  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory(result);
   auto state_source = builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
   auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
   publisher->set_publish_period(1.0 / 60.0);
@@ -413,7 +413,7 @@ int testHybridDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::Vecto
   //visualizer
   lcm::DrakeLcm lcm;
   systems::DiagramBuilder<double> builder;
-  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
+  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory(result);
   auto state_source = builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
   auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
   publisher->set_publish_period(1.0 / 60.0);
@@ -567,7 +567,7 @@ int testHybridDirconJump(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::V
   //visualizer
   lcm::DrakeLcm lcm;
   systems::DiagramBuilder<double> builder;
-  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
+  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory(result);
   auto state_source = builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
   auto publisher = builder.AddSystem<systems::DrakeVisualizer>(tree, &lcm);
   publisher->set_publish_period(1.0 / 60.0);
@@ -708,7 +708,7 @@ int testDircol() {
   //visualizer
   lcm::DrakeLcm lcm;
   systems::DiagramBuilder<double> vis_builder;
-  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory();
+  const trajectories::PiecewisePolynomial<double> pp_xtraj = trajopt->ReconstructStateTrajectory(result);
   auto state_source = vis_builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
   auto publisher = vis_builder.AddSystem<systems::DrakeVisualizer>(plant->get_rigid_body_tree(), &lcm);
   publisher->set_publish_period(1.0 / 60.0);

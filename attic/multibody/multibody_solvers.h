@@ -146,6 +146,18 @@ class PositionSolver {
    * @param Q The Q matrix in the cost (size num_positions x num_positions).
    */
   void AddProgramCost(const Eigen::VectorXd q_desired, const Eigen::MatrixXd Q);
+
+  /*
+   * Function to enforce the unit quaternion constraint. The position indices of
+   * the quaternion are passed to the function. This is done so that the
+   * function is not urdf specific.
+   * @param qw_ind index of the quaternion's w coordinate
+   * @param qx_ind index of the quaternion's x coordinate
+   * @param qy_ind index of the quaternion's y coordinate
+   * @param qz_ind index of the quaternion's z coordinate
+   */
+  void AddUnitQuaternionConstraint(const int qw_ind, const int qx_ind,
+                                   const int qy_ind, const int qz_ind);
   /*
    * Function to fix the values of certain joints. The joints to be fixed are
    * passed as a map, together with the values. The indices are with respect to
@@ -182,7 +194,7 @@ class PositionSolver {
    * If the constraints are not satisfied, it prints the status of each
    * constraint to the standard output stream.
    */
-  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-10) const;
+  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-8) const;
 
   /*
    * Function to get a shared pointer to the Mathematical program that runs the
@@ -216,9 +228,8 @@ class PositionSolver {
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::MathematicalProgramResult program_result_;
-
-  double major_tolerance_ = 1.0e-13;
-  double minor_tolerance_ = 1.0e-13;
+  double major_tolerance_ = 1.0e-11;
+  double minor_tolerance_ = 1.0e-9;
 };
 
 /*
@@ -256,6 +267,17 @@ class ContactSolver {
    */
   void AddProgramCost(const Eigen::VectorXd q_desired, const Eigen::MatrixXd Q);
   /*
+   * Function to enforce the unit quaternion constraint. The position indices of
+   * the quaternion are passed to the function. This is done so that the
+   * function is not urdf specific.
+   * @param qw_ind index of the quaternion's w coordinate
+   * @param qx_ind index of the quaternion's x coordinate
+   * @param qy_ind index of the quaternion's y coordinate
+   * @param qz_ind index of the quaternion's z coordinate
+   */
+  void AddUnitQuaternionConstraint(const int qw_ind, const int qx_ind,
+                                   const int qy_ind, const int qz_ind);
+  /*
    * Function to fix the values of certain joints. The joints to be fixed are
    * passed as a map, together with the values. The indices are with respect to
    * the generalized positions q.
@@ -291,7 +313,7 @@ class ContactSolver {
    * If the constraints are not satisfied, it prints the status of each
    * constraint to the standard output stream.
    */
-  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-10) const;
+  bool CheckConstraint(Eigen::VectorXd q, double tolerance = 1.0e-8) const;
 
   /*
    * Function to get a shared pointer to the Mathematical program that runs the
@@ -326,8 +348,8 @@ class ContactSolver {
   std::shared_ptr<drake::solvers::MathematicalProgram> prog_;
   drake::solvers::VectorXDecisionVariable q_;
   drake::solvers::MathematicalProgramResult program_result_;
-  double major_tolerance_ = 1.0e-13;
-  double minor_tolerance_ = 1.0e-13;
+  double major_tolerance_ = 1.0e-11;
+  double minor_tolerance_ = 1.0e-9;
 };
 
 /*
@@ -415,6 +437,17 @@ class FixedPointSolver {
    */
   void AddSpreadNormalForcesCost();
   /*
+   * Function to enforce the unit quaternion constraint. The position indices of
+   * the quaternion are passed to the function. This is done so that the
+   * function is not urdf specific.
+   * @param qw_ind index of the quaternion's w coordinate
+   * @param qx_ind index of the quaternion's x coordinate
+   * @param qy_ind index of the quaternion's y coordinate
+   * @param qz_ind index of the quaternion's z coordinate
+   */
+  void AddUnitQuaternionConstraint(const int qw_ind, const int qx_ind,
+                                   const int qy_ind, const int qz_ind);
+  /*
    * Function to add friction cone constraints at all the the contact points.
    * The constraints take the form |fn_i| <= mu * ft_i, Where
    * fn_i = normal force at the ith contact point.
@@ -466,8 +499,7 @@ class FixedPointSolver {
    * constraint to the standard output stream.
    */
   bool CheckConstraint(Eigen::VectorXd q, Eigen::VectorXd u,
-                       Eigen::VectorXd lambda,
-                       double tolerance = 1.0e-10) const;
+                       Eigen::VectorXd lambda, double tolerance = 1.0e-8) const;
 
   /*
    * Function to get a shared pointer to the Mathematical program that runs the
@@ -514,8 +546,8 @@ class FixedPointSolver {
   drake::solvers::VectorXDecisionVariable u_;
   drake::solvers::VectorXDecisionVariable lambda_;
   drake::solvers::MathematicalProgramResult program_result_;
-  double major_tolerance_ = 1.0e-13;
-  double minor_tolerance_ = 1.0e-13;
+  double major_tolerance_ = 1.0e-11;
+  double minor_tolerance_ = 1.0e-9;
 };
 
 }  // namespace multibody

@@ -24,7 +24,7 @@ cc_test(
     deps = [
         "@drake//common",
         "@drake//solvers",
-        "@drake//solvers:mathematical_program",
+        "@drake//solvers:mathematical_program_lite",
         "@drake//common/test_utilities:eigen_matrix_compare",
         ":optimization_utils",
         "@gtest//:main",

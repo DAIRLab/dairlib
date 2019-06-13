@@ -43,7 +43,7 @@ cc_library(
         "@drake//manipulation/util",
         "@drake//multibody/parsing:parser",
         "@drake//solvers:constraint",
-        "@drake//solvers:mathematical_program",
+        "@drake//solvers:mathematical_program_lite",
         "@drake//lcm",
     ],
 )

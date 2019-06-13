@@ -55,7 +55,7 @@ cc_library(
     ],
     deps = [
         "@drake//attic/multibody:rigid_body_tree",
-        "@drake//solvers:mathematical_program",
+        "@drake//solvers:mathematical_program_lite",
         ":utils",
     ],
 )
@@ -84,7 +84,7 @@ cc_library(
     ],
     deps = [
         "@drake//attic/multibody:rigid_body_tree",
-        "@drake//solvers:mathematical_program",
+        "@drake//solvers:mathematical_program_lite",
         "@drake//solvers:solve",
         ":contact_toolkit",
         ":utils",

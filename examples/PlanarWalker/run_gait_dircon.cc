@@ -76,7 +76,7 @@ shared_ptr<HybridDircon<double>> runDircon(
       FindResourceOrThrow("examples/PlanarWalker/PlanarWalker.urdf");
   parser.AddModelFromFile(full_name);
 
-  plant.AddForceElement<drake::multibody::UniformGravityFieldElement>(
+  plant.mutable_gravity_field().set_gravity_vector(
       -9.81 * Eigen::Vector3d::UnitZ());
 
   plant.WeldFrames(

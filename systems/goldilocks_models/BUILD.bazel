@@ -16,8 +16,6 @@ cc_library(
         "symbolic_manifold.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//common",
-        "@drake//solvers",
+        "@drake//:drake_shared_library",
     ],
 )

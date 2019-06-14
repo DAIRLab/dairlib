@@ -116,7 +116,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const int num_contacts_ = 4;
   const int num_joints_ = 16;
 
-  std::vector<int> *contacts_;
+  std::vector<int> *contacts_curr_;
+  std::vector<int> *contacts_prev_;
+
+  bool *first_iteration_;
 
   Eigen::VectorXd local_collision_pt1_;
   Eigen::VectorXd local_collision_pt2_;
@@ -142,6 +145,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex ekf_bias_idx_;
   drake::systems::DiscreteStateIndex ekf_p_idx_;
   drake::systems::DiscreteStateIndex time_idx_;
+  drake::systems::DiscreteStateIndex u_prev_idx_;
+  drake::systems::DiscreteStateIndex u_curr_idx_;
+  drake::systems::DiscreteStateIndex q_prev_idx_;
+  drake::systems::DiscreteStateIndex q_curr_idx_;
 };
 
 }  // namespace systems

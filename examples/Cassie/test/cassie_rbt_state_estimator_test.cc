@@ -9,13 +9,21 @@ namespace systems {
 namespace {
 
 using std::abs;
+using std::map;
+using std::vector;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3Xd;
+using Eigen::Transform;
+using Eigen::Isometry;
+using dairlib::multibody::ContactInfo;
+using dairlib::multibody::ContactSolver;
+using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::multibody::PositionSolver;
 using drake::multibody::joints::kFixed;
 using drake::multibody::joints::kRollPitchYaw;
 using drake::multibody::joints::kQuaternion;
+using drake::solvers::MathematicalProgramResult;
 
 class CassieRbtStateEstimatorTest : public ::testing::Test {
  protected:
@@ -37,11 +45,76 @@ class CassieRbtStateEstimatorTest : public ::testing::Test {
     num_velocities_quaternion_ = tree_quaternion_.get_num_velocities();
     num_states_quaternion_ =
         num_positions_quaternion_ + num_velocities_quaternion_;
+
+    // Initial configuration for the solvers
+    map<string, int> position_map_rpy =
+        tree_rpy_.computePositionNameToIndexMap();
+    x0_rpy_ = VectorXd::Zero(num_states_rpy_);
+    x0_rpy_(position_map_rpy.at("base_z")) = 3;
+    x0_rpy_(position_map_rpy.at("hip_roll_left")) = 0.1;
+    x0_rpy_(position_map_rpy.at("hip_roll_right")) = -0.1;
+    x0_rpy_(position_map_rpy.at("hip_yaw_left")) = 0.01;
+    x0_rpy_(position_map_rpy.at("hip_yaw_right")) = -0.01;
+    x0_rpy_(position_map_rpy.at("hip_pitch_left")) = .269;
+    x0_rpy_(position_map_rpy.at("hip_pitch_right")) = .269;
+    x0_rpy_(position_map_rpy.at("knee_left")) = -.744;
+    x0_rpy_(position_map_rpy.at("knee_right")) = -.744;
+    x0_rpy_(position_map_rpy.at("ankle_joint_left")) = .81;
+    x0_rpy_(position_map_rpy.at("ankle_joint_right")) = .81;
+    x0_rpy_(position_map_rpy.at("toe_left")) = -60.0 * M_PI / 180.0;
+    x0_rpy_(position_map_rpy.at("toe_right")) = -60.0 * M_PI / 180.0;
+
+    map<string, int> position_map_quaternion =
+        tree_quaternion_.computePositionNameToIndexMap();
+    x0_quaternion_ = VectorXd::Zero(num_states_quaternion_);
+    x0_quaternion_(position_map_quaternion.at("base_z")) = 3;
+    x0_quaternion_(position_map_quaternion.at("base_qw")) = 1.0;
+    x0_quaternion_(position_map_quaternion.at("hip_roll_left")) = 0.1;
+    x0_quaternion_(position_map_quaternion.at("hip_roll_right")) = -0.1;
+    x0_quaternion_(position_map_quaternion.at("hip_yaw_left")) = 0.01;
+    x0_quaternion_(position_map_quaternion.at("hip_yaw_right")) = -0.01;
+    x0_quaternion_(position_map_quaternion.at("hip_pitch_left")) = .269;
+    x0_quaternion_(position_map_quaternion.at("hip_pitch_right")) = .269;
+    x0_quaternion_(position_map_quaternion.at("knee_left")) = -.744;
+    x0_quaternion_(position_map_quaternion.at("knee_right")) = -.744;
+    x0_quaternion_(position_map_quaternion.at("ankle_joint_left")) = .81;
+    x0_quaternion_(position_map_quaternion.at("ankle_joint_right")) = .81;
+    x0_quaternion_(position_map_quaternion.at("toe_left")) =
+        -60.0 * M_PI / 180.0;
+    x0_quaternion_(position_map_quaternion.at("toe_right")) =
+        -60.0 * M_PI / 180.0;
+
+    local_collision_pt1_.resize(3);
+    local_collision_pt2_.resize(3);
+    local_collision_pt1_ << -0.0457, 0.112, 0;
+    local_collision_pt2_ << 0.088, 0, 0;
+
+    MatrixXd xA(3, 4);
+    xA.col(0) = local_collision_pt1_;
+    xA.col(1) = local_collision_pt2_;
+    xA.col(2) = local_collision_pt1_;
+    xA.col(3) = local_collision_pt2_;
+
+    const int toe_left_ind = GetBodyIndexFromName(tree_rpy_, "toe_left");
+    const int toe_right_ind = GetBodyIndexFromName(tree_rpy_, "toe_right");
+
+    vector<int> idxA(4);
+    idxA.at(0) = toe_left_ind;
+    idxA.at(1) = toe_left_ind;
+    idxA.at(2) = toe_right_ind;
+    idxA.at(3) = toe_right_ind;
+
+    contact_info_ = {xA, idxA};
   }
 
   RigidBodyTree<double> tree_fixed_;
   RigidBodyTree<double> tree_rpy_;
   RigidBodyTree<double> tree_quaternion_;
+  ContactInfo contact_info_;
+  VectorXd x0_rpy_;
+  VectorXd x0_quaternion_;
+  VectorXd local_collision_pt1_;
+  VectorXd local_collision_pt2_;
   int num_positions_fixed_;
   int num_positions_rpy_;
   int num_positions_quaternion_;
@@ -220,6 +293,52 @@ TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeLeft) {
       T_rpy.isApprox(estimator_rpy.ComputeTransformationToeLeftWrtIMU(q_rpy)));
   ASSERT_TRUE(T_quaternion.isApprox(
       estimator_quaternion.ComputeTransformationToeLeftWrtIMU(q_quaternion)));
+
+  // Testing if the transformation matrix gives the correct transformation.
+  // First the contact solver is used to solve for a configuration that has the
+  // feet in contact. The transformation matrix is then used to verify if the
+  // local collision points when transformed lie on the ground plane.
+
+  VectorXd q0_rpy = x0_rpy_.head(num_positions_rpy_);
+  ContactSolver contact_solver_rpy(tree_rpy_, contact_info_, q0_rpy);
+  contact_solver_rpy.SetInitialGuessQ(q0_rpy);
+  contact_solver_rpy.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_rpy = contact_solver_rpy.Solve();
+  std::cout << "Contact solver result (Rpy Floating base): "
+            << program_result_rpy.get_solution_result() << std::endl;
+
+  VectorXd q_sol_rpy = contact_solver_rpy.GetSolutionQ();
+  MatrixXd T_sol_rpy =
+      estimator_rpy.ComputeTransformationToeLeftWrtIMU(q_sol_rpy);
+
+  // Rotation matrix between the pelvis and the world
+  KinematicsCache<double> cache_rpy = tree_rpy_.doKinematics(q_sol_rpy);
+  int world_ind = GetBodyIndexFromName(tree_rpy_, "world");
+  int pelvis_ind = GetBodyIndexFromName(tree_rpy_, "pelvis");
+  Transform<double, 3, Isometry> T =
+      tree_rpy_.relativeTransform(cache_rpy, world_ind, pelvis_ind);
+  MatrixXd R = T.matrix().block(0, 0, 3, 3);
+
+  // The local collision points in homogeneous coordinates
+  VectorXd local_collision_pt1_hom(4), local_collision_pt2_hom(4);
+  local_collision_pt1_hom.head(3) = local_collision_pt1_;
+  local_collision_pt1_hom(3) = 1;
+  local_collision_pt2_hom.head(3) = local_collision_pt2_;
+  local_collision_pt2_hom(3) = 1;
+
+  VectorXd d1_hom = T_sol_rpy * local_collision_pt1_hom;
+  VectorXd d2_hom = T_sol_rpy * local_collision_pt2_hom;
+  VectorXd d1 = d1_hom.head(3);
+  VectorXd d2 = d2_hom.head(3);
+
+  // Contact point in world coordinates
+  VectorXd p1 = R * d1 + q_sol_rpy.head(3);
+  VectorXd p2 = R * d2 + q_sol_rpy.head(3);
+
+  // Checking if the contact points in world frame are on the ground plane.
+  ASSERT_TRUE(p1(2) < 1e-6);
+  ASSERT_TRUE(p2(2) < 1e-6);
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeRight) {
@@ -251,6 +370,52 @@ TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeRight) {
       T_rpy.isApprox(estimator_rpy.ComputeTransformationToeRightWrtIMU(q_rpy)));
   ASSERT_TRUE(T_quaternion.isApprox(
       estimator_quaternion.ComputeTransformationToeRightWrtIMU(q_quaternion)));
+
+  // Testing if the transformation matrix gives the correct transformation.
+  // First the contact solver is used to solve for a configuration that has the
+  // feet in contact. The transformation matrix is then used to verify if the
+  // local collision points when transformed lie on the ground plane.
+
+  VectorXd q0_rpy = x0_rpy_.head(num_positions_rpy_);
+  ContactSolver contact_solver_rpy(tree_rpy_, contact_info_, q0_rpy);
+  contact_solver_rpy.SetInitialGuessQ(q0_rpy);
+  contact_solver_rpy.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_rpy = contact_solver_rpy.Solve();
+  std::cout << "Contact solver result (Rpy Floating base): "
+            << program_result_rpy.get_solution_result() << std::endl;
+
+  VectorXd q_sol_rpy = contact_solver_rpy.GetSolutionQ();
+  MatrixXd T_sol_rpy =
+      estimator_rpy.ComputeTransformationToeRightWrtIMU(q_sol_rpy);
+
+  // Rotation matrix between the pelvis and the world
+  KinematicsCache<double> cache_rpy = tree_rpy_.doKinematics(q_sol_rpy);
+  int world_ind = GetBodyIndexFromName(tree_rpy_, "world");
+  int pelvis_ind = GetBodyIndexFromName(tree_rpy_, "pelvis");
+  Transform<double, 3, Isometry> T =
+      tree_rpy_.relativeTransform(cache_rpy, world_ind, pelvis_ind);
+  MatrixXd R = T.matrix().block(0, 0, 3, 3);
+
+  // The local collision points in homogeneous coordinates
+  VectorXd local_collision_pt1_hom(4), local_collision_pt2_hom(4);
+  local_collision_pt1_hom.head(3) = local_collision_pt1_;
+  local_collision_pt1_hom(3) = 1;
+  local_collision_pt2_hom.head(3) = local_collision_pt2_;
+  local_collision_pt2_hom(3) = 1;
+
+  VectorXd d1_hom = T_sol_rpy * local_collision_pt1_hom;
+  VectorXd d2_hom = T_sol_rpy * local_collision_pt2_hom;
+  VectorXd d1 = d1_hom.head(3);
+  VectorXd d2 = d2_hom.head(3);
+
+  // Contact point in world coordinates
+  VectorXd p1 = R * d1 + q_sol_rpy.head(3);
+  VectorXd p2 = R * d2 + q_sol_rpy.head(3);
+
+  // Checking if the contact points in world frame are on the ground plane.
+  ASSERT_TRUE(p1(2) < 1e-6);
+  ASSERT_TRUE(p2(2) < 1e-6);
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestRotationToeLeft) {

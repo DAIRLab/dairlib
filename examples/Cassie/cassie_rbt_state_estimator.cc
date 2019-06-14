@@ -71,7 +71,10 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   ekf_bias_idx_ = DeclareDiscreteState(ekf_bias_init);  // estimated bias state
   ekf_p_idx_ = DeclareDiscreteState(ekf_p_init);  // estimated state covariance
   time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));  // previous time
-  // }
+  u_prev_idx_ = DeclareDiscreteState(VectorXd::Zero(6));
+  u_curr_idx_ = DeclareDiscreteState(VectorXd::Zero(6));
+  q_prev_idx_ = DeclareDiscreteState(VectorXd::Zero(tree_.get_num_positions()));
+  q_curr_idx_ = DeclareDiscreteState(VectorXd::Zero(tree_.get_num_positions()));
 
   // Initialize body indices
   left_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_left");
@@ -85,9 +88,13 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
   // Initializing the contact indicator vector. Initially we assume both the
   // feet to be in contact
-  contacts_ = new vector<int>(4, 1);
+  contacts_curr_ = new vector<int>(4, 1);
+  contacts_prev_ = new vector<int>(4, 1);
 
-  // The local collision coordinates wrt to the toe frames (Same for both legs)
+  first_iteration_ = new bool(true);
+
+  // The local collision coordinates wrt to the toe frames (Same for both
+  // legs)
   // It is obtained from the Cassie_v2 urdf.
   local_collision_pt1_.resize(3);
   local_collision_pt2_.resize(3);
@@ -230,7 +237,7 @@ VectorXd CassieRbtStateEstimator::ExtractFloatingBasePositions(
 }
 
 int CassieRbtStateEstimator::ComputeNumContacts() const {
-  return std::count(contacts_->begin(), contacts_->end(), 1);
+  return std::count(contacts_curr_->begin(), contacts_curr_->end(), 1);
 }
 
 MatrixXd CassieRbtStateEstimator::ExtractContactPositions(
@@ -352,7 +359,8 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeToeLeftJacobianWrtIMU(
   MatrixXd J =
       tree_.transformPointsJacobian(cache, p, toe_left_ind, pelvis_ind, false);
 
-  // Returning the columns that correspond to the angles (ignoring the floating
+  // Returning the columns that correspond to the angles (ignoring the
+  // floating
   // base coordinates) as the linearization only depends on the measured joint
   // angles and is independent of the floating base coordinates.
   return J.block(0, J.cols() - num_joints_, J.rows(), num_joints_);
@@ -369,7 +377,8 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeToeRightJacobianWrtIMU(
   MatrixXd J =
       tree_.transformPointsJacobian(cache, p, toe_right_ind, pelvis_ind, false);
 
-  // Returning the columns that correspond to the angles (ignoring the floating
+  // Returning the columns that correspond to the angles (ignoring the
+  // floating
   // base coordinates) as the linearization only depends on the measured joint
   // angles and is independent of the floating base coordinates.
   return J.block(0, J.cols() - num_joints_, J.rows(), num_joints_);
@@ -383,26 +392,7 @@ MatrixXd CassieRbtStateEstimator::ComputeX(VectorXd ekf_x) const {
   VectorXd p = ExtractFloatingBasePositions(ekf_x);
   MatrixXd d = ExtractContactPositions(ekf_x);
 
-  int n = 9;
-
-  MatrixXd X = MatrixXd::Zero(n, n);
-
-  X.block(0, 0, 3, 3) = ExtractRotationMatrix(ekf_x);
-
-  // Floating base velocitie
-  X.block(0, 3, 3, 1) = ExtractFloatingBaseVelocities(ekf_x);
-
-  // Floating base position
-  X.block(0, 4, 3, 1) = ExtractFloatingBasePositions(ekf_x);
-
-  // Contact points
-  X.block(0, 5, 3, num_contacts_) = d;
-
-  // Identity block
-  X.block(3, 3, num_contacts_ + 2, num_contacts_ + 2) =
-      MatrixXd::Identity(num_contacts_ + 2, num_contacts_ + 2);
-
-  return X;
+  return ComputeX(R, v, p, d);
 }
 
 MatrixXd CassieRbtStateEstimator::ComputeX(MatrixXd R, VectorXd v, VectorXd p,
@@ -497,9 +487,9 @@ MatrixXd CassieRbtStateEstimator::PredictX(VectorXd ekf_x, VectorXd ekf_bias,
   // Predicted components
   MatrixXd R_pred =
       R * (CreateSkewSymmetricMatrix(corrected_angular_velocity * dt).exp());
-  VectorXd v_pred = v + (R * corrected_linear_acceleration + g_) * dt;
+  VectorXd v_pred = v + (R * corrected_linear_acceleration - g_) * dt;
   VectorXd p_pred =
-      p + v * dt + 0.5 * (R * corrected_linear_acceleration + g_) * dt * dt;
+      p + v * dt + 0.5 * (R * corrected_linear_acceleration - g_) * dt * dt;
 
   // Contact prediction
   MatrixXd collision_pts_left = ComputeToeLeftCollisionPointsWrtIMU(q);
@@ -516,7 +506,7 @@ MatrixXd CassieRbtStateEstimator::PredictX(VectorXd ekf_x, VectorXd ekf_bias,
   // the prediction is unchanged. If not, the prediction is changed to the
   // computed predicted coordinate of the collision point.
   for (int i = 0; i < num_contacts_; ++i) {
-    if (!contacts_->at(i)) {
+    if (!contacts_prev_->at(i)) {
       d_pred.col(i) = p_pred + (R_pred * collision_pts.col(i));
     }
   }
@@ -626,19 +616,19 @@ Eigen::MatrixXd CassieRbtStateEstimator::ComputeCov(Eigen::VectorXd q) const {
   // no active contact.
   Cov.block(9, 9, 3, 3) =
       R_left *
-      (Qc + ((1 - contacts_->at(0)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      (Qc + ((1 - contacts_prev_->at(0)) * 1e4 * MatrixXd::Identity(3, 3))) *
       (R_left.transpose());
   Cov.block(12, 12, 3, 3) =
       R_left *
-      (Qc + ((1 - contacts_->at(1)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      (Qc + ((1 - contacts_prev_->at(1)) * 1e4 * MatrixXd::Identity(3, 3))) *
       (R_left.transpose());
   Cov.block(15, 15, 3, 3) =
       R_right *
-      (Qc + ((1 - contacts_->at(2)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      (Qc + ((1 - contacts_prev_->at(2)) * 1e4 * MatrixXd::Identity(3, 3))) *
       (R_right.transpose());
   Cov.block(18, 18, 3, 3) =
       R_right *
-      (Qc + ((1 - contacts_->at(3)) * 1e4 * MatrixXd::Identity(3, 3))) *
+      (Qc + ((1 - contacts_prev_->at(3)) * 1e4 * MatrixXd::Identity(3, 3))) *
       (R_right.transpose());
 
   // Bias covariances
@@ -715,7 +705,7 @@ void CassieRbtStateEstimator::ComputeUpdateParams(
     Qj(i, i) = pow(joints_noise_std_(i), 2);
   }
 
-  if (contacts_->at(0)) {
+  if (contacts_curr_->at(0)) {
     // Concatenating to the observation vector y
     y1 << collision_pts_left.col(0), 0, 1, VectorXd::Zero(num_contacts_);
     y1(5) = -1;
@@ -763,7 +753,7 @@ void CassieRbtStateEstimator::ComputeUpdateParams(
     X_full = X_full_tmp;
   }
 
-  if (contacts_->at(1)) {
+  if (contacts_curr_->at(1)) {
     // Concatenating to the observation vector y
     y2 << collision_pts_left.col(1), 0, 1, VectorXd::Zero(num_contacts_);
     y2(6) = -1;
@@ -811,7 +801,7 @@ void CassieRbtStateEstimator::ComputeUpdateParams(
     X_full = X_full_tmp;
   }
 
-  if (contacts_->at(2)) {
+  if (contacts_curr_->at(2)) {
     // Concatenating to the observation vector y
     y3 << collision_pts_right.col(0), 0, 1, VectorXd::Zero(num_contacts_);
     y3(7) = -1;
@@ -859,7 +849,7 @@ void CassieRbtStateEstimator::ComputeUpdateParams(
     X_full = X_full_tmp;
   }
 
-  if (contacts_->at(3)) {
+  if (contacts_curr_->at(3)) {
     // Concatenating to the observation vector y
     y4 << collision_pts_right.col(1), 0, 1, VectorXd::Zero(num_contacts_);
     y4(8) = -1;
@@ -922,7 +912,7 @@ MatrixXd CassieRbtStateEstimator::UpdateX(MatrixXd X_predicted,
   // Vector length to represent the state in the lie algebra
   int lie_dim = 3 * (3 + num_contacts_);
   MatrixXd dX = ComputeLieExponential(delta.head(lie_dim));
-  return X_predicted * dX;
+  return dX * X_predicted;
 }
 
 VectorXd CassieRbtStateEstimator::UpdateBias(VectorXd bias_predicted,
@@ -949,17 +939,17 @@ MatrixXd CassieRbtStateEstimator::UpdateP(VectorXd ekf_p_predicted, MatrixXd H,
 
 void CassieRbtStateEstimator::set_contacts(vector<int> contacts) {
   for (uint i = 0; i < contacts.size(); ++i) {
-    contacts_->at(i) = contacts.at(i);
+    contacts_curr_->at(i) = contacts.at(i);
   }
 }
 
 void CassieRbtStateEstimator::set_contacts(int left_contact1, int left_contact2,
                                            int right_contact1,
                                            int right_contact2) {
-  contacts_->at(0) = left_contact1;
-  contacts_->at(1) = left_contact2;
-  contacts_->at(2) = right_contact1;
-  contacts_->at(3) = right_contact2;
+  contacts_curr_->at(0) = left_contact1;
+  contacts_curr_->at(1) = left_contact2;
+  contacts_curr_->at(2) = right_contact1;
+  contacts_curr_->at(3) = right_contact2;
 }
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
@@ -1084,12 +1074,12 @@ EventStatus CassieRbtStateEstimator::Update(
       discrete_state->get_mutable_vector(ekf_p_idx_).get_mutable_value();
 
   // Reading the IMU values
-  VectorXd angular_velocity(3), linear_acceleration(3), u(6);
+  VectorXd angular_velocity(3), linear_acceleration(3), u_curr(6);
   for (int i = 0; i < 3; ++i) {
     angular_velocity(i) = cassie_out.pelvis.vectorNav.angularVelocity[i];
     linear_acceleration(i) = cassie_out.pelvis.vectorNav.linearAcceleration[i];
   }
-  u << angular_velocity, linear_acceleration;
+  u_curr << angular_velocity, linear_acceleration;
 
   // Testing
   // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
@@ -1127,22 +1117,44 @@ EventStatus CassieRbtStateEstimator::Update(
     AssignNonFloatingBaseToOutputVector(&output, cassie_out);
 
     // Current configuration
-    VectorXd q = output.GetMutablePositions();
+    VectorXd q_curr = output.GetMutablePositions();
     VectorXd q_zero = tree_.getZeroConfiguration();
 
     // The floating base values are not set and are thus nan.
     // Replacing the nan's with the tree's zero configuration.
     // RBT's zero configuration is used to provide a generic solution that
     // handles quaternions as well (Unit normal condition).
-    for (int i = 0; i < q.size(); ++i) {
-      if (std::isnan(q(i))) {
-        q(i) = q_zero(i);
+    for (int i = 0; i < q_curr.size(); ++i) {
+      if (std::isnan(q_curr(i))) {
+        q_curr(i) = q_zero(i);
       }
     }
 
     double left_heel_spring = 0;
     double right_heel_spring = 0;
-    solveFourbarLinkage(q, left_heel_spring, right_heel_spring);
+    solveFourbarLinkage(q_curr, left_heel_spring, right_heel_spring);
+
+    // Storing the control input and joint angles in the corresponding states
+
+    discrete_state->get_mutable_vector(u_curr_idx_).get_mutable_value() =
+        u_curr;
+    discrete_state->get_mutable_vector(q_curr_idx_).get_mutable_value() =
+        q_curr;
+
+    // Handling the prev value for the first iteration
+    if (*first_iteration_) {
+      discrete_state->get_mutable_vector(u_prev_idx_).get_mutable_value() =
+          u_curr;
+    }
+    if (*first_iteration_) {
+      discrete_state->get_mutable_vector(q_prev_idx_).get_mutable_value() =
+          q_curr;
+    }
+
+    VectorXd u_prev =
+        discrete_state->get_mutable_vector(u_prev_idx_).get_mutable_value();
+    VectorXd q_prev =
+        discrete_state->get_mutable_vector(q_prev_idx_).get_mutable_value();
 
     // TODO(yminchen):
     // You can test the contact force estimator here using fixed based.
@@ -1154,9 +1166,10 @@ EventStatus CassieRbtStateEstimator::Update(
     // Step 2 - EKF (Prediction step)
     // Prediction step
 
-    ekf_x_predicted = ComputeEkfX(PredictX(ekf_x, ekf_bias, u, q, dt));
+    ekf_x_predicted =
+        ComputeEkfX(PredictX(ekf_x, ekf_bias, u_prev, q_prev, dt));
     ekf_bias_predicted = PredictBias(ekf_bias, dt);
-    ekf_p_predicted = ComputeEkfP(PredictP(ekf_x, ekf_p, q, dt));
+    ekf_p_predicted = ComputeEkfP(PredictP(ekf_x, ekf_p, q_prev, dt));
     X_predicted = ComputeX(ekf_x_predicted);
     P_predicted = ComputeP(ekf_p_predicted);
 
@@ -1167,33 +1180,33 @@ EventStatus CassieRbtStateEstimator::Update(
       // Left leg in contact with the ground
       // Updating the contact indicator (Both colliders on the left leg are
       // assumed to be in contact.
-      contacts_->at(0) = 1;
-      contacts_->at(1) = 1;
+      contacts_curr_->at(0) = 1;
+      contacts_curr_->at(1) = 1;
       // std::cout << "LEFT ";
     } else {
       // Not in contact
-      contacts_->at(0) = 0;
-      contacts_->at(1) = 0;
+      contacts_curr_->at(0) = 0;
+      contacts_curr_->at(1) = 0;
     }
     if (std::abs(right_heel_spring) > right_spring_contact_threshold_) {
       // Right leg in contact with the ground
       // Updating the contact indicator (Both colliders on the right leg are
       // assumed to be in contact.
-      contacts_->at(2) = 1;
-      contacts_->at(3) = 1;
+      contacts_curr_->at(2) = 1;
+      contacts_curr_->at(3) = 1;
       // std::cout << "RIGHT ";
     } else {
       // Not in contact
-      contacts_->at(2) = 0;
-      contacts_->at(3) = 0;
+      contacts_curr_->at(2) = 0;
+      contacts_curr_->at(3) = 0;
     }
 
     // Step 4 - EKF (measurement step)
 
     if (ComputeNumContacts()) {
       // Computing update step parameters
-      ComputeUpdateParams(ekf_x_predicted, ekf_p_predicted, q, y, b, H, N, Pi,
-                          X_full, S, K, delta);
+      ComputeUpdateParams(ekf_x_predicted, ekf_p_predicted, q_curr, y, b, H, N,
+                          Pi, X_full, S, K, delta);
       X_updated = UpdateX(ComputeX(ekf_x_predicted), delta);
       ekf_bias_updated = UpdateBias(ekf_bias_predicted, delta);
       P_updated = UpdateP(ekf_p_predicted, H, K, N);
@@ -1208,11 +1221,24 @@ EventStatus CassieRbtStateEstimator::Update(
       ekf_p_updated = ekf_p_predicted;
     }
 
+    // ekf_x_updated = ekf_x_predicted;
+    // ekf_bias_updated = ekf_bias_predicted;
+    // ekf_p_updated = ekf_p_predicted;
+
+    // Updating the prev data
+    for (int i = 0; i < num_contacts_; ++i) {
+      contacts_prev_->at(i) = contacts_curr_->at(i);
+    }
+
     std::cout << "---------------" << std::endl;
-    //std::cout << ExtractFloatingBasePositions(ekf_x_updated) << std::endl;
-    //std::cout << X_updated << std::endl;
-    std::cout << q.transpose() << std::endl;
-    //std::cout << u.transpose() << std::endl;
+    // std::cout << ExtractFloatingBasePositions(ekf_x_updated) << std::endl;
+     std::cout << X_updated << std::endl;
+    // std::cout << P_updated << std::endl;
+    // std::cout << q_prev.transpose() << std::endl;
+    // std::cout << q_curr.transpose() << std::endl;
+    // std::cout << u_prev.transpose() << std::endl;
+    // std::cout << u_curr.transpose() << std::endl;
+    // std::cout << ekf_bias << std::endl;
     std::cout << "---------------" << std::endl;
 
     // Step 5 - Assign values to states
@@ -1222,12 +1248,12 @@ EventStatus CassieRbtStateEstimator::Update(
     // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() =
     // ...;
 
-    // discrete_state->get_mutable_vector(ekf_x_idx_).get_mutable_value() =
-    //    ekf_x_updated;
-    // discrete_state->get_mutable_vector(ekf_bias_idx_).get_mutable_value() =
-    //    ekf_bias_updated;
-    // discrete_state->get_mutable_vector(ekf_p_idx_).get_mutable_value() =
-    //    ekf_p_updated;
+    discrete_state->get_mutable_vector(ekf_x_idx_).get_mutable_value() =
+        ekf_x_updated;
+    discrete_state->get_mutable_vector(ekf_bias_idx_).get_mutable_value() =
+        ekf_bias_updated;
+    discrete_state->get_mutable_vector(ekf_p_idx_).get_mutable_value() =
+        ekf_p_updated;
 
     // You can convert a rotational matrix to quaternion using Eigen
     // https://stackoverflow.com/questions/21761909/eigen-convert-matrix3d-rotation-to-quaternion
@@ -1242,8 +1268,15 @@ EventStatus CassieRbtStateEstimator::Update(
 
     // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
 
-    // discrete_state->get_mutable_vector(time_idx_).get_mutable_value()(0) =
-    //    current_time;
+    discrete_state->get_mutable_vector(time_idx_).get_mutable_value()(0) =
+        current_time;
+
+    discrete_state->get_mutable_vector(u_prev_idx_).get_mutable_value() =
+        u_curr;
+    discrete_state->get_mutable_vector(q_prev_idx_).get_mutable_value() =
+        q_curr;
+
+    *first_iteration_ = false;
   }
 
   return EventStatus::Succeeded();
@@ -1298,7 +1331,8 @@ void CassieRbtStateEstimator::CopyStateOut(const Context<double>& context,
   // cout << "  In copyStateOut: lcm_time = "
   //     << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
   // cout << "  In copyStateOut: state_time = " << state_time << endl;
-  // cout << "  In copyStateOut: context_time = " << context.get_time() << endl;
+  // cout << "  In copyStateOut: context_time = " << context.get_time() <<
+  // endl;
 
   // Testing
   // cout << endl << "****bodies****" << endl;

@@ -28,10 +28,13 @@ namespace dairlib {
 
 using std::make_unique;
 using std::move;
+using std::pow;
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::Quaternion;
 
+using drake::math::RotationMatrix;
 using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
@@ -76,27 +79,86 @@ int doMain(int argc, char* argv[]) {
 
   // Estimator
   // Initial state and bias values
-  //MatrixXd R_init = MatrixXd::Identity(3, 3);
-  //VectorXd v_init = VectorXd::Zero(3);
-  //VectorXd p_init = VectorXd::Zero(3);
-  //MatrixXd d_init = MatrixXd::Zero(3, 4);
+  // MatrixXd R_init = MatrixXd::Identity(3, 3);
+  // VectorXd v_init = VectorXd::Zero(3);
+  // VectorXd p_init = VectorXd::Zero(3);
+  // MatrixXd d_init = MatrixXd::Zero(3, 4);
 
-  //VectorXd ekf_x_init = VectorXd::Zero(27);
-  //for (int i = 0; i < 3; ++i) {
+  // VectorXd ekf_x_init = VectorXd::Zero(27);
+  // for (int i = 0; i < 3; ++i) {
   //  ekf_x_init.segment(i * 3, 3) = R_init.row(i);
   //}
-  //ekf_x_init.segment(9, 3) = v_init;
-  //ekf_x_init.segment(12, 3) = p_init;
-  //for (int i = 0; i < num_contacts; ++i) {
+  // ekf_x_init.segment(9, 3) = v_init;
+  // ekf_x_init.segment(12, 3) = p_init;
+  // for (int i = 0; i < num_contacts; ++i) {
   //  ekf_x_init.segment(15 + i * 3, 3) = d_init.col(i);
   //}
 
+  VectorXd q_init_true(tree.get_num_positions());
+  q_init_true << 0.009396, -2.544e-4, 1.02419, 0.990074, 4.19486627e-4,
+      9.921595425e-4, 8.38942768e-4, -5.888e-4, -4.515e-4, -5.783e-4,
+      -0.0028665, 0.49619, 0.4960, -1.1493, -1.15012, -1.35571, -1.012425,
+      1.35291, 1.35386, 0.0, 0.0, -1.57, -1.57;
+  VectorXd x_init_true =
+      VectorXd::Zero(tree.get_num_positions() + tree.get_num_velocities());
+  x_init_true.head(tree.get_num_positions()) = q_init_true;
+  Quaternion<double> quat(q_init_true(3), q_init_true(4), q_init_true(5), q_init_true(6));
+  RotationMatrix<double> rotmat(quat);
+  MatrixXd R = rotmat.matrix();
+
+  // Initial X state
   MatrixXd X_init = MatrixXd::Identity(9, 9);
+  X_init.block(0, 0, 3, 3) = R;
+  X_init.block(0, 3, 3, 1) = VectorXd::Zero(3);
+  X_init.block(0, 4, 3, 1) = q_init_true.head(3);
+
   VectorXd ekf_bias_init = VectorXd::Zero(6);
-  MatrixXd P_init = 0.01 * MatrixXd::Identity(27, 27);
+  VectorXd gyro_noise_std = 0.002 * VectorXd::Ones(3);
+  VectorXd accel_noise_std = 0.04 * VectorXd::Ones(3);
+  VectorXd contact_noise_std = 0.05 * VectorXd::Ones(3);
+  VectorXd gyro_bias_noise_std = 0.001 * VectorXd::Ones(3);
+  VectorXd accel_bias_noise_std = 0.001 * VectorXd::Ones(3);
+  VectorXd joints_noise_std = ((M_PI * 0.5) / 180.0) * VectorXd::Ones(16);
+  VectorXd prior_base_pose_std = 0.01 * VectorXd::Ones(6);
+  VectorXd prior_base_velocity_std = 0.1 * VectorXd::Ones(3);
+  VectorXd prior_contact_position_std = 1.0 * VectorXd::Ones(3);
+  VectorXd prior_gyro_bias_std = 0.01 * VectorXd::Ones(3);
+  VectorXd prior_accel_bias_std = 0.1 * VectorXd::Ones(3);
+  VectorXd prior_forward_kinematics_std = 0.03 * VectorXd::Ones(3);
+
+  MatrixXd N_prior = MatrixXd::Identity(3, 3);
+  for (int i = 0; i < 3; ++i) {
+    N_prior(i, i) = pow(prior_forward_kinematics_std(i), 2);
+  }
+  MatrixXd Q_prior_base_position = MatrixXd::Zero(3, 3);
+  MatrixXd Q_prior_base_velocity = MatrixXd::Zero(3, 3);
+  MatrixXd Q_prior_base_orientation = MatrixXd::Zero(3, 3);
+  MatrixXd Q_prior_contact = MatrixXd::Zero(3, 3);
+  MatrixXd Q_prior_gyro_bias = MatrixXd::Zero(3, 3);
+  MatrixXd Q_prior_accel_bias = MatrixXd::Zero(3, 3);
+  for (int i = 0; i < 3; ++i) {
+    Q_prior_base_position(i, i) = pow(prior_base_pose_std(i), 2);
+    Q_prior_base_velocity(i, i) = pow(prior_base_velocity_std(i), 2);
+    Q_prior_base_orientation(i, i) = pow(prior_base_pose_std(i + 3), 2);
+    Q_prior_contact(i, i) = pow(prior_contact_position_std(i), 2);
+    Q_prior_gyro_bias(i, i) = pow(prior_gyro_bias_std(i), 2);
+    Q_prior_accel_bias(i, i) = pow(prior_accel_bias_std(i), 2);
+  }
+  MatrixXd P_init = MatrixXd::Zero(27, 27);
+  P_init.block(0, 0, 3, 3) = Q_prior_base_position;
+  P_init.block(3, 3, 3, 3) = Q_prior_base_velocity;
+  P_init.block(6, 6, 3, 3) = Q_prior_base_orientation;
+  P_init.block(9, 9, 3, 3) = Q_prior_contact;
+  P_init.block(12, 12, 3, 3) = Q_prior_contact;
+  P_init.block(15, 15, 3, 3) = Q_prior_contact;
+  P_init.block(18, 18, 3, 3) = Q_prior_contact;
+  P_init.block(21, 21, 3, 3) = Q_prior_gyro_bias;
+  P_init.block(24, 24, 3, 3) = Q_prior_accel_bias;
 
   auto estimator = builder.AddSystem<CassieRbtStateEstimator>(
-      tree, X_init, ekf_bias_init, true, P_init);
+      tree, X_init, ekf_bias_init, true, P_init, N_prior, gyro_noise_std,
+      accel_noise_std, contact_noise_std, gyro_bias_noise_std,
+      accel_bias_noise_std, joints_noise_std);
 
   // Connecting the estimator
   builder.Connect(cassie_output_receiver->get_output_port(0),

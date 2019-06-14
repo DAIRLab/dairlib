@@ -13,7 +13,7 @@ cc_library(
         "rigidbody_utils.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -37,11 +37,7 @@ cc_library(
     deps = [
          "//systems:robot_lcm_systems",
         "//systems/primitives:vector_aggregator",
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//lcm",
-        "@drake//systems/analysis:simulator",
-        "@drake//systems/framework:diagram_builder",
-        "@drake//systems/lcm",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -54,8 +50,7 @@ cc_library(
         "contact_toolkit.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//solvers:mathematical_program",
+        "@drake//:drake_shared_library",
         ":utils",
     ],
 )
@@ -83,9 +78,7 @@ cc_library(
         "multibody_solvers.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//solvers:mathematical_program",
-        "@drake//solvers:solve",
+        "@drake//:drake_shared_library",
         ":contact_toolkit",
         ":utils",
     ],
@@ -114,7 +107,7 @@ cc_library(
         "utility_systems.h",
     ],
     deps = [
-        "@drake//systems/framework:leaf_system",
+        "@drake//:drake_shared_library",
         "//systems:robot_lcm_systems",
         "//examples/Cassie:cassie_utils",
     ],

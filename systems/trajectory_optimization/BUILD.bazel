@@ -18,10 +18,7 @@ cc_library(
         "hybrid_dircon.h",
     ],
     deps = [
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//systems/framework",
-        "@drake//systems/trajectory_optimization",
+        "@drake//:drake_shared_library",
         ":dircon_kinematic_data",
         "//solvers:optimization_utils",
     ],
@@ -40,9 +37,7 @@ cc_library(
         "dircon_kinematic_data_set.h",
     ],
     deps = [
-        "@drake//multibody/plant",
-        "@drake//common",
-        "@drake//solvers",
+        "@drake//:drake_shared_library",
         "//multibody:utils",
     ],
 )

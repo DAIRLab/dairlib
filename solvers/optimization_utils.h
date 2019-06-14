@@ -1,6 +1,7 @@
 #pragma once
 
 #include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/mathematical_program_result.h"
 #include "drake/solvers/decision_variable.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"

@@ -11,11 +11,11 @@ def main():
                      floating_base_type=FloatingBaseType.kQuaternion)
     file = "/home/zhshen/workspace/dairlib/examples/LCM/data/Cassie_walking"
     channel = "CASSIE_STATE"
-    t = np.arange(6).reshape((6, 1))
-    x = np.zeros(6).reshape((3, 2))
-    u = np.zeros(6).reshape((3, 2))
-    [t, x, u] = parseLcmOutputLog(tree, file, channel, t, x, u, 10e6)
-    print(t)
+    [t, x, u] = parseLcmOutputLog(tree, file, channel, 10e6)
+    print(x)
+    print(t.shape)
+    print(x.shape)
+    print(u.shape)
 
 if __name__ == "__main__":
     main()

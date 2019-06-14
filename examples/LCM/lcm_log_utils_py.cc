@@ -1,4 +1,4 @@
-// python bindings for lcm_log_utils. Single function "parseLCMOutputLog" outputs a tuple containing t, x and u parsed from a .log file.
+// python bindings for lcm_log_utils. Single function "parseLCMOutputLog" outputs a tuple containing t, x and u
 
 #include "pybind11/pybind11.h"
 #include "pybind11/eigen.h"
@@ -13,19 +13,21 @@ namespace multibody {
 
 namespace py = drake::pydrake::py;
 using drake::pydrake::ToEigenRef;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
 
 PYBIND11_MODULE(lcm_log_utils, m){
 	m.doc() = "Binding function in the lcm_log_utils file";
 
 	pybind11::module::import("pydrake.multibody.rigid_body_tree");
 
-        // arguments and their types must be specified
 	m.def("parseLcmOutputLog", 
             [](const RigidBodyTree<double>& tree, std::string file,
-               std::string channel, Eigen::VectorXd* t, Eigen::MatrixXd* x,
-               Eigen::MatrixXd* u, double duration) {
-              parseLcmOutputLog(tree, file, channel, t, x, u, duration);
-              return py::make_tuple(*t, *x, *u);
+               std::string channel, double duration) {
+              VectorXd t;
+              MatrixXd x, u;
+              parseLcmOutputLog(tree, file, channel, &t, &x, &u, duration);
+              return py::make_tuple(t, x, u);
             });
 }
 }  // namespace multibody

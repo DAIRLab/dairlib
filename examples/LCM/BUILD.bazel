@@ -1,5 +1,3 @@
-# -*- python -*-
-
 load("@drake//tools/install:install.bzl", "install")
 
 load(
@@ -43,8 +41,40 @@ pybind_py_library(
     py_imports = ["."],
 )
 
-py_test(
-    name = "lcm_log_utils_py_test",
-    srcs = ["lcm_log_utils_py_test.py"],
+pybind_py_library(
+    name = "contact_toolkit_py",
+    cc_so_name = "contact_toolkit",
+    cc_srcs = ["contact_toolkit_py.cc"],
+    cc_deps = [
+	"//attic/multibody:contact_toolkit",
+        "@drake//bindings/pydrake/common:cpp_template_pybind",
+        "@drake//bindings/pydrake/systems:systems_pybind",
+	"@drake//:drake_shared_library",
+        "@drake//bindings/pydrake/common:eigen_pybind",
+    ],
+    py_deps = ["@drake//bindings/pydrake"],
+    py_imports = ["."],
+)
+
+py_binary(
+    name = "lcm_log_utils_py_example",
+    srcs = ["lcm_log_utils_py_example.py"],
     deps = [":lcm_log_utils_py"],
+)
+
+py_binary(
+    name = "inertia",
+    srcs = ["inertia.py"],
+    deps = [":lcm_log_utils_py",
+            "@drake//bindings/pydrake",
+    ],
+)
+
+py_binary(
+    name = "solver",
+    srcs = ["solver.py"],
+    deps = [":lcm_log_utils_py",
+            ":contact_toolkit_py",
+            "@drake//bindings/pydrake",
+    ],
 )

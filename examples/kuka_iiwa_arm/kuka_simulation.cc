@@ -210,7 +210,8 @@ int DoMain() {
   simulator.Initialize();
 
   Eigen::Matrix< double , 7 , 1> InitialPositions;
-  InitialPositions << 3.14/4, -3.14/2, (3.14)/2, 3.14/2, (3.14)/2, (3.14)/2, 1*(3.14)/4.;
+  //InitialPositions << 3.14/4, -3.14/2, (3.14)/2, 3.14/2, (3.14)/2, (3.14)/2, 1*(3.14)/4.;
+  InitialPositions << 0, 0, 0, 0, 0, 0, 0;
 
   command_receiver->set_initial_position(
       &sys->GetMutableSubsystemContext(*command_receiver,

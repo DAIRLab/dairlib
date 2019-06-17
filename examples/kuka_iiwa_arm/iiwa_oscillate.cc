@@ -1,13 +1,9 @@
-// Kp and 'Rotational' Kp
-#define K_P 1000
-#define K_OMEGA 50
-
-// Kd and 'Rotational' Kd
-#define K_D 25
-#define K_R 3
-
 #define NUM_JOINTS 7
 #define ENDEFFECTOR_BODY_ID 10
+
+#define AMPLITUDE 3
+#define FREQUENCY 3
+#define MAX_VELOCITY 3
 
 #include <vector>
 #include <iostream>
@@ -37,10 +33,11 @@
 
 //#include "systems/controllers/endeffector_velocity_controller.h"
 #include "systems/controllers/endeffector_position_controller.h"
+#include "systems/controllers/safe_velocity_controller.h"
 
 namespace dairlib {
 
-void setup_log(double amplitude, double frequency);
+void setup_log();
 
 int do_main(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm;
@@ -70,17 +67,17 @@ int do_main(int argc, char* argv[]) {
   // Setting command publisher publish period
   //command_publisher->set_publish_period(1.0/200.0);
   
-  Eigen::VectorXd zeros(6);
-  zeros << 0, 0, 0, 0, 0, 0;
+  Eigen::VectorXd zeros = Eigen::VectorXd::Zero(6);
   auto zeros_source = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros);
     
-  double amplitude = 30;
-  double frequency = 5;
-  auto sine_source = builder.AddSystem<drake::systems::Sine>(amplitude, frequency, 0, 1, true);
-  setup_log(amplitude, frequency);
+  auto sine_source = builder.AddSystem<drake::systems::Sine>(AMPLITUDE, FREQUENCY, 0, 1, true);
+  setup_log();
 
   std::vector<int> input_sizes = {6, 1};
   auto mux = builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
+
+  auto velocity_controller = builder.AddSystem<systems::SafeVelocityController>(
+      MAX_VELOCITY, NUM_JOINTS);
 
   builder.Connect(zeros_source->get_output_port(),
                   mux->get_input_port(0));
@@ -89,7 +86,14 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(status_subscriber->get_output_port(),
                   status_receiver->get_input_port());
+
   builder.Connect(mux->get_output_port(0),
+                  velocity_controller->get_joint_torques_input_port());
+
+  builder.Connect(status_receiver->get_velocity_estimated_output_port(),
+                velocity_controller->get_joint_velocities_input_port());
+
+  builder.Connect(velocity_controller->get_joint_torques_output_port(),
                   command_sender->get_torque_input_port());
 
   builder.Connect(status_receiver->get_position_measured_output_port(),
@@ -111,7 +115,7 @@ int do_main(int argc, char* argv[]) {
   return 0;
 }
 
-void setup_log(double amplitude, double frequency) {
+void setup_log() {
   auto t = std::time(nullptr);
   auto tm = *std::localtime(&t);
 
@@ -124,7 +128,8 @@ void setup_log(double amplitude, double frequency) {
   auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(file_str, true);
   drake::log()->sinks().push_back(file_sink);
 
-  drake::log()->info("Testing with amplitude {} and frequency {}", amplitude, frequency);
+  drake::log()->info("Testing with amplitude {} and frequency {}", AMPLITUDE, FREQUENCY);
+  drake::log()->info("Max velocity {}", MAX_VELOCITY);
   drake::log()->info("Has spdlog: {}", drake::logging::kHaveSpdlog);
   
 }

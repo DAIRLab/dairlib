@@ -113,6 +113,21 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "safe_velocity_controller",
+    srcs = ["safe_velocity_controller.cc"],
+    hdrs = ["safe_velocity_controller.h"],
+    deps = [
+            "//common",
+            "//systems/framework:vector",
+            "@drake//attic/multibody/rigid_body_plant:rigid_body_plant",
+            "@drake//attic/multibody/parsers",
+            "@drake//attic/multibody:rigid_body_tree",
+            "@drake//systems/framework:leaf_system",
+            "@drake//attic/manipulation/util:sim_diagram_builder",
+            "@drake//examples/kuka_iiwa_arm:iiwa_common",
+            ],
+)
 
 cc_library(
     name = "endeffector_velocity_controller",

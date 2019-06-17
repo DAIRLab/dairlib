@@ -53,7 +53,8 @@ cc_binary(
             "@drake//examples/kuka_iiwa_arm:iiwa_common",
             "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
             "@drake//common",
-            "@drake//systems/primitives:trajectory_source"
+            "@drake//systems/primitives:trajectory_source",
+            "@json"
     ]
 )
 

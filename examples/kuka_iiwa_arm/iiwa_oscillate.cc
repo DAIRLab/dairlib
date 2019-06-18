@@ -3,7 +3,7 @@
 
 #define AMPLITUDE 3
 #define FREQUENCY 3
-#define MAX_VELOCITY 3
+#define MAX_VELOCITY 5
 
 #include <vector>
 #include <iostream>
@@ -63,26 +63,31 @@ int do_main(int argc, char* argv[]) {
   auto command_sender = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaCommandSender>();
   auto command_publisher = builder.AddSystem(
     drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
-      "IIWA_COMMAND", &lcm, 1.0/200.0));
+      "IIWA_COMMAND", &lcm, 1.0/1000.0));
   // Setting command publisher publish period
   //command_publisher->set_publish_period(1.0/200.0);
-  
-  Eigen::VectorXd zeros = Eigen::VectorXd::Zero(6);
-  auto zeros_source = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros);
-    
+
+  Eigen::VectorXd zeros_low = Eigen::VectorXd::Zero(4);
+  auto zeros_low_source = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros_low);
+
+  Eigen::VectorXd zeros_high = Eigen::VectorXd::Zero(2);
+  auto zeros_high_source = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros_high);
+
   auto sine_source = builder.AddSystem<drake::systems::Sine>(AMPLITUDE, FREQUENCY, 0, 1, true);
   setup_log();
 
-  std::vector<int> input_sizes = {6, 1};
+  std::vector<int> input_sizes = {4, 1, 2};
   auto mux = builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
 
   auto velocity_controller = builder.AddSystem<systems::SafeVelocityController>(
       MAX_VELOCITY, NUM_JOINTS);
 
-  builder.Connect(zeros_source->get_output_port(),
+  builder.Connect(zeros_low_source->get_output_port(),
                   mux->get_input_port(0));
   builder.Connect(sine_source->get_output_port(0),
                   mux->get_input_port(1));
+  builder.Connect(zeros_high_source->get_output_port(),
+                  mux->get_input_port(2));
 
   builder.Connect(status_subscriber->get_output_port(),
                   status_receiver->get_input_port());
@@ -98,6 +103,7 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(status_receiver->get_position_measured_output_port(),
                   command_sender->get_position_input_port());
+
   builder.Connect(command_sender->get_output_port(),
                   command_publisher->get_input_port());
 
@@ -131,7 +137,7 @@ void setup_log() {
   drake::log()->info("Testing with amplitude {} and frequency {}", AMPLITUDE, FREQUENCY);
   drake::log()->info("Max velocity {}", MAX_VELOCITY);
   drake::log()->info("Has spdlog: {}", drake::logging::kHaveSpdlog);
-  
+
 }
 
 } // Namespace dairlib

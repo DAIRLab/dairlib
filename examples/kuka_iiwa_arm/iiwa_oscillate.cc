@@ -63,7 +63,7 @@ int do_main(int argc, char* argv[]) {
   auto command_sender = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaCommandSender>();
   auto command_publisher = builder.AddSystem(
     drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
-      "IIWA_COMMAND", &lcm, 1.0/1000.0));
+      "IIWA_COMMAND", &lcm, 1.0/200.0));
   // Setting command publisher publish period
   //command_publisher->set_publish_period(1.0/200.0);
 
@@ -81,6 +81,9 @@ int do_main(int argc, char* argv[]) {
 
   auto velocity_controller = builder.AddSystem<systems::SafeVelocityController>(
       MAX_VELOCITY, NUM_JOINTS);
+
+  Eigen::VectorXd zeros_seven = Eigen::VectorXd::Zero(7);
+  auto constant_position_src = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros_seven);
 
   builder.Connect(zeros_low_source->get_output_port(),
                   mux->get_input_port(0));
@@ -101,7 +104,10 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(velocity_controller->get_joint_torques_output_port(),
                   command_sender->get_torque_input_port());
 
-  builder.Connect(status_receiver->get_position_measured_output_port(),
+  // builder.Connect(status_receiver->get_position_measured_output_port(),
+  //                 command_sender->get_position_input_port());
+
+  builder.Connect(constant_position_src->get_output_port(),
                   command_sender->get_position_input_port());
 
   builder.Connect(command_sender->get_output_port(),

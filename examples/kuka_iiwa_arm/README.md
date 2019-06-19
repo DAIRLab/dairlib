@@ -27,21 +27,34 @@
 - See below example for specific file syntax:
   ```json
   {
-    "pi": 3.141,          // Stores number 3.141 under key "pi"
-    "gravity_comp": true, // Stores bool "true" under key "gravity-comp"
-    "name": "5895",       // Stores string "5895" under key "name"
-    "nothing": null,      // Stores value null under key "nothing"
-    "Gains": {            // Stores object "answer" as a series of other objects
-        "P": 30000,       // Stores number 30000 under key "P" within "Gains" object
-        "I": 0            //Stores 0 under key "I" within "Gains"
+    "pi": 3.141,
+    "gravity_comp": true,
+    "name": "5895",
+    "nothing": null,
+    "Gains": {
+        "P": 30000,
+        "I": 0
     },                    
-    "list": [1, 0, 2],    //Stores list of values [1, 0, 2] under key "list"
-    "object": {           //
-        "currency": "USD",//Stores another series of values under "object" object
-        "value": 42.99    //
+    "list": [1, 0, 2],
+    "object": {
+        "currency": "USD",
+        "value": 42.99
     }
   }
   ```
+- Example Notes:
+  - Stores value 3.141 to key "pi"
+  - Stores bool "true" to key "gravity-comp"
+  - Stores string "5895" to key "name"
+  - Stores value "null" to key "nothing"
+  - Stores two values under "Gains" object:
+    - Assigns 30000 to "P" 
+    - Assigns 0 to "I"
+  - Stores list [1, 0, 2] under key "list"
+  - Stores two values under "object" object:
+    - Assigns string "USD" to key "currency"
+    - Assigns 42.99 to key "value"
+  
 (See https://github.com/nlohmann/json/blob/develop/README.md#json-as-first-class-data-type to copy example json file)
 ## Json Parsing
 - First, initialize a json object and deserialize the json file using the json::parse(ifstream) function,

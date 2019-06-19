@@ -1,11 +1,3 @@
-// Kp and 'Rotational' Kp
-#define K_P 1000
-#define K_OMEGA 50
-
-// Kd and 'Rotational' Kd
-#define K_D 25
-#define K_R 3
-
 #define NUM_JOINTS 7
 #define ENDEFFECTOR_BODY_ID 10
 
@@ -25,10 +17,29 @@
 #include "systems/controllers/endeffector_velocity_controller.h"
 #include "systems/controllers/endeffector_position_controller.h"
 
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include <fstream>
+
+using json = nlohmann::json;
+
 namespace dairlib {
 
 int do_main(int argc, char* argv[]) {
+  
+  //Loads in joint gains json file
+  std::ifstream joint_gains_file("examples/kuka_iiwa_arm/joint_gains.json");
 
+  //Initializes joint_gains json object
+  json joint_gains = json::parse(joint_gains_file);
+
+  //Kp and 'Rotational' Kp
+  const double K_P = joint_gains["kuka_gains"]["K_P"];
+  const double K_OMEGA = joint_gains["kuka_gains"]["K_OMEGA"];
+
+  // Kd and 'Rotational' Kd
+  const double K_D = joint_gains["kuka_gains"]["K_D"];
+  const double K_R = joint_gains["kuka_gains"]["K_R"];
   drake::lcm::DrakeLcm lcm;
   drake::systems::DiagramBuilder<double> builder;
 

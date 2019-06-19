@@ -20,6 +20,47 @@
 - Add the json file to your current workspace.
 - Use an input file stream to acces the json file data. Use the full file name relative to the dairlib folder.
   ```cpp
-  std::ifstream joint_gains_file("folder1/folder2/file_name.json");
+  std::ifstream data_file("folder1/folder2/file_name.json");
   ```
-## File Parsing
+## Json File Example
+- The nlohmann package may be used to parse a variety of data ypes from a given json file.
+- See below example for specific file syntax:
+  ```json
+  {
+    "pi": 3.141,          // Stores number 3.141 under key "pi"
+    "gravity_comp": true, // Stores bool "true" under key "gravity-comp"
+    "name": "5895",       // Stores string "5895" under key "name"
+    "nothing": null,      // Stores value null under key "nothing"
+    "Gains": {            // Stores object "answer" as a series of other objects
+        "P": 30000,       // Stores number 30000 under key "P" within "Gains" object
+        "I": 0            //Stores 0 under key "I" within "Gains"
+    },                    
+    "list": [1, 0, 2],    //Stores list of values [1, 0, 2] under key "list"
+    "object": {           //
+        "currency": "USD",//Stores another series of values under "object" object
+        "value": 42.99    //
+    }
+  }
+  ```
+(See https://github.com/nlohmann/json/blob/develop/README.md#json-as-first-class-data-type to copy example json file)
+## Json Parsing
+- First, initialize a json object and deserialize the json file using the json::parse(ifstream) function,
+  ```cpp
+  json data = json::parse(data_file);
+  ```
+- **or** the overloaded >> operator.
+  ```cpp
+  json data;
+  data_file >> data;
+  ```
+- Once the json object has been initialized, the json file values are accessible as follows:
+  ```cpp
+  const float PI = data["pi"];
+  bool gravity_compensation = data["gravity_comp"];
+  string name = data["name"];
+  string noVal = data["nothing"];
+  const double P = data["Gains"]["P"]; //Accesses "P" within "Gains" object
+  int firstVal = data["list"][0]; //Accesses first element in "list"
+  int ca$hMoney = data["object"]["value"];
+  ```
+  Visit https://github.com/nlohmann/json for additional functionality.

@@ -55,7 +55,6 @@
     - Assigns string "USD" to key "currency"
     - Assigns 42.99 to key "value"
   
-(See https://github.com/nlohmann/json/blob/develop/README.md#json-as-first-class-data-type to copy example json file)
 ## Json Parsing
 - First, initialize a json object and deserialize the json file using the json::parse(ifstream) function,
   ```cpp
@@ -70,10 +69,10 @@
   ```cpp
   const float PI = data["pi"];
   bool gravity_compensation = data["gravity_comp"];
-  string name = data["name"];
-  string noVal = data["nothing"];
+  std::string name = data["name"];
+  std::string noVal = data["nothing"];
   const double P = data["Gains"]["P"]; //Accesses "P" within "Gains" object
   int firstVal = data["list"][0]; //Accesses first element in "list"
   int ca$hMoney = data["object"]["value"];
   ```
-  Visit https://github.com/nlohmann/json for additional functionality.
+Visit https://github.com/nlohmann/json for additional functionality.

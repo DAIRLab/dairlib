@@ -33,7 +33,7 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
   Parser parser(plant, scene_graph);
   parser.AddModelFromFile(full_name);
 
-  plant->AddForceElement<drake::multibody::UniformGravityFieldElement>(
+  plant->mutable_gravity_field().set_gravity_vector(
       -9.81 * Eigen::Vector3d::UnitZ());
 
   if (!floating_base) {

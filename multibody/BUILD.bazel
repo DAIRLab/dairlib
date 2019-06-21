@@ -27,10 +27,7 @@ cc_library(
         "visualization_utils.h",
     ],
     deps = [
-        "@drake//multibody/plant",
-        "@drake//geometry:geometry_visualization",
-        "@drake//systems/rendering:multibody_position_to_geometry_pose",        
-        "@drake//systems/primitives",
+        "@drake//:drake_shared_library",
          "//systems/primitives",
     ],
 )
@@ -44,7 +41,7 @@ cc_library(
         "contact_toolkit.h",
     ],
     deps = [
-        "@drake//multibody/plant",
+        "@drake//:drake_shared_library",
         ":utils",
     ],
 )
@@ -57,7 +54,7 @@ cc_test(
             ":utils",
             "//examples/Cassie:cassie_urdf",
             "//common",
-            "@drake//multibody/parsing",
+            "@drake//:drake_shared_library",
             "@gtest//:main",
             ],
     size = "small"

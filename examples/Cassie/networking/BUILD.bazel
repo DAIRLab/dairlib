@@ -31,10 +31,7 @@ cc_library(
           "cassie_output_sender.h",
           "cassie_output_receiver.h"],
   deps = [
-    "@drake//common",
-    "@drake//systems/lcm:lcm_pubsub_system",
-    "@drake//systems/framework",
-    "@drake//multibody/plant",
+    "@drake//:drake_shared_library",
     "//examples/Cassie/datatypes:cassie_inout_types",
     "//lcmtypes:lcmt_robot",
     "//multibody:utils",

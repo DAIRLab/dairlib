@@ -61,6 +61,25 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   DiscreteStateIndex ekf_X_idx_;
   DiscreteStateIndex time_idx_;
 
+  DiscreteStateIndex filtered_residue_double_idx_;
+  DiscreteStateIndex filtered_residue_left_idx_;
+  DiscreteStateIndex filtered_residue_right_idx_;
+  DiscreteStateIndex previous_acceleration_double_idx_;
+  DiscreteStateIndex previous_acceleration_left_idx_;
+  DiscreteStateIndex previous_acceleration_right_idx_;
+  DiscreteStateIndex previous_velocity_idx_;
+
+  DiscreteStateIndex ddq_double_init_idx_;
+  DiscreteStateIndex ddq_left_init_idx_;
+  DiscreteStateIndex ddq_right_init_idx_;
+  DiscreteStateIndex lambda_b_double_init_idx_;
+  DiscreteStateIndex lambda_b_left_init_idx_;
+  DiscreteStateIndex lambda_b_right_init_idx_;
+  DiscreteStateIndex lambda_cl_double_init_idx_;
+  DiscreteStateIndex lambda_cl_left_init_idx_;
+  DiscreteStateIndex lambda_cr_double_init_idx_;
+  DiscreteStateIndex lambda_cr_right_init_idx_;
+
   bool is_floating_base_;
 
   int cassie_out_input_port_;

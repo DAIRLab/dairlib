@@ -283,6 +283,7 @@ TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeLeft) {
 
   ASSERT_TRUE(T_rpy.rows() == 4);
   ASSERT_TRUE(T_rpy.cols() == 4);
+
   ASSERT_TRUE(T_quaternion.rows() == 4);
   ASSERT_TRUE(T_quaternion.cols() == 4);
 
@@ -299,6 +300,7 @@ TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeLeft) {
   // feet in contact. The transformation matrix is then used to verify if the
   // local collision points when transformed lie on the ground plane.
 
+  // Computing for rpy and quaternion base
   VectorXd q0_rpy = x0_rpy_.head(num_positions_rpy_);
   ContactSolver contact_solver_rpy(tree_rpy_, contact_info_, q0_rpy);
   contact_solver_rpy.SetInitialGuessQ(q0_rpy);
@@ -312,13 +314,37 @@ TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeLeft) {
   MatrixXd T_sol_rpy =
       estimator_rpy.ComputeTransformationToeLeftWrtIMU(q_sol_rpy);
 
+  VectorXd q0_quaternion = x0_quaternion_.head(num_positions_quaternion_);
+  ContactSolver contact_solver_quaternion(tree_quaternion_, contact_info_,
+                                          q0_quaternion);
+  contact_solver_quaternion.SetInitialGuessQ(q0_quaternion);
+  contact_solver_quaternion.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_quaternion =
+      contact_solver_quaternion.Solve();
+  std::cout << "Contact solver result (Quaternion Floating base): "
+            << program_result_quaternion.get_solution_result() << std::endl;
+
+  VectorXd q_sol_quaternion = contact_solver_quaternion.GetSolutionQ();
+  MatrixXd T_sol_quaternion =
+      estimator_quaternion.ComputeTransformationToeLeftWrtIMU(q_sol_quaternion);
+
   // Rotation matrix between the pelvis and the world
   KinematicsCache<double> cache_rpy = tree_rpy_.doKinematics(q_sol_rpy);
-  int world_ind = GetBodyIndexFromName(tree_rpy_, "world");
-  int pelvis_ind = GetBodyIndexFromName(tree_rpy_, "pelvis");
-  Transform<double, 3, Isometry> T =
-      tree_rpy_.relativeTransform(cache_rpy, world_ind, pelvis_ind);
-  MatrixXd R = T.matrix().block(0, 0, 3, 3);
+  int world_ind_rpy = GetBodyIndexFromName(tree_rpy_, "world");
+  int pelvis_ind_rpy = GetBodyIndexFromName(tree_rpy_, "pelvis");
+  Transform<double, 3, Isometry> transform_rpy =
+      tree_rpy_.relativeTransform(cache_rpy, world_ind_rpy, pelvis_ind_rpy);
+  MatrixXd R_rpy = transform_rpy.matrix().block(0, 0, 3, 3);
+
+  KinematicsCache<double> cache_quaternion =
+      tree_quaternion_.doKinematics(q_sol_quaternion);
+  int world_ind_quaternion = GetBodyIndexFromName(tree_quaternion_, "world");
+  int pelvis_ind_quaternion = GetBodyIndexFromName(tree_quaternion_, "pelvis");
+  Transform<double, 3, Isometry> transform_quaternion =
+      tree_quaternion_.relativeTransform(cache_quaternion, world_ind_quaternion,
+                                         pelvis_ind_quaternion);
+  MatrixXd R_quaternion = transform_quaternion.matrix().block(0, 0, 3, 3);
 
   // The local collision points in homogeneous coordinates
   VectorXd local_collision_pt1_hom(4), local_collision_pt2_hom(4);
@@ -327,18 +353,32 @@ TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeLeft) {
   local_collision_pt2_hom.head(3) = local_collision_pt2_;
   local_collision_pt2_hom(3) = 1;
 
-  VectorXd d1_hom = T_sol_rpy * local_collision_pt1_hom;
-  VectorXd d2_hom = T_sol_rpy * local_collision_pt2_hom;
-  VectorXd d1 = d1_hom.head(3);
-  VectorXd d2 = d2_hom.head(3);
+  VectorXd d1_hom_rpy = T_sol_rpy * local_collision_pt1_hom;
+  VectorXd d2_hom_rpy = T_sol_rpy * local_collision_pt2_hom;
+  VectorXd d1_rpy = d1_hom_rpy.head(3);
+  VectorXd d2_rpy = d2_hom_rpy.head(3);
 
-  // Contact point in world coordinates
-  VectorXd p1 = R * d1 + q_sol_rpy.head(3);
-  VectorXd p2 = R * d2 + q_sol_rpy.head(3);
+  VectorXd d1_hom_quaternion = T_sol_quaternion * local_collision_pt1_hom;
+  VectorXd d2_hom_quaternion = T_sol_quaternion * local_collision_pt2_hom;
+  VectorXd d1_quaternion = d1_hom_quaternion.head(3);
+  VectorXd d2_quaternion = d2_hom_quaternion.head(3);
+
+  // Contact point in world coordinates (Rpy base)
+  VectorXd p1_rpy = R_rpy * d1_rpy + q_sol_rpy.head(3);
+  VectorXd p2_rpy = R_rpy * d2_rpy + q_sol_rpy.head(3);
+
+  // Quaternion base
+  VectorXd p1_quaternion =
+      R_quaternion * d1_quaternion + q_sol_quaternion.head(3);
+  VectorXd p2_quaternion =
+      R_quaternion * d2_quaternion + q_sol_quaternion.head(3);
 
   // Checking if the contact points in world frame are on the ground plane.
-  ASSERT_TRUE(p1(2) < 1e-6);
-  ASSERT_TRUE(p2(2) < 1e-6);
+  ASSERT_TRUE(p1_rpy(2) < 1e-6);
+  ASSERT_TRUE(p2_rpy(2) < 1e-6);
+
+  ASSERT_TRUE(p1_quaternion(2) < 1e-6);
+  ASSERT_TRUE(p2_quaternion(2) < 1e-6);
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeRight) {
@@ -389,13 +429,38 @@ TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeRight) {
   MatrixXd T_sol_rpy =
       estimator_rpy.ComputeTransformationToeRightWrtIMU(q_sol_rpy);
 
+  VectorXd q0_quaternion = x0_quaternion_.head(num_positions_quaternion_);
+  ContactSolver contact_solver_quaternion(tree_quaternion_, contact_info_,
+                                          q0_quaternion);
+  contact_solver_quaternion.SetInitialGuessQ(q0_quaternion);
+  contact_solver_quaternion.AddJointLimitConstraint(0.001);
+
+  MathematicalProgramResult program_result_quaternion =
+      contact_solver_quaternion.Solve();
+  std::cout << "Contact solver result (Quaternion Floating base): "
+            << program_result_quaternion.get_solution_result() << std::endl;
+
+  VectorXd q_sol_quaternion = contact_solver_quaternion.GetSolutionQ();
+  MatrixXd T_sol_quaternion =
+      estimator_quaternion.ComputeTransformationToeRightWrtIMU(
+          q_sol_quaternion);
+
   // Rotation matrix between the pelvis and the world
   KinematicsCache<double> cache_rpy = tree_rpy_.doKinematics(q_sol_rpy);
-  int world_ind = GetBodyIndexFromName(tree_rpy_, "world");
-  int pelvis_ind = GetBodyIndexFromName(tree_rpy_, "pelvis");
-  Transform<double, 3, Isometry> T =
-      tree_rpy_.relativeTransform(cache_rpy, world_ind, pelvis_ind);
-  MatrixXd R = T.matrix().block(0, 0, 3, 3);
+  int world_ind_rpy = GetBodyIndexFromName(tree_rpy_, "world");
+  int pelvis_ind_rpy = GetBodyIndexFromName(tree_rpy_, "pelvis");
+  Transform<double, 3, Isometry> transform_rpy =
+      tree_rpy_.relativeTransform(cache_rpy, world_ind_rpy, pelvis_ind_rpy);
+  MatrixXd R_rpy = transform_rpy.matrix().block(0, 0, 3, 3);
+
+  KinematicsCache<double> cache_quaternion =
+      tree_quaternion_.doKinematics(q_sol_quaternion);
+  int world_ind_quaternion = GetBodyIndexFromName(tree_quaternion_, "world");
+  int pelvis_ind_quaternion = GetBodyIndexFromName(tree_quaternion_, "pelvis");
+  Transform<double, 3, Isometry> transform_quaternion =
+      tree_quaternion_.relativeTransform(cache_quaternion, world_ind_quaternion,
+                                         pelvis_ind_quaternion);
+  MatrixXd R_quaternion = transform_quaternion.matrix().block(0, 0, 3, 3);
 
   // The local collision points in homogeneous coordinates
   VectorXd local_collision_pt1_hom(4), local_collision_pt2_hom(4);
@@ -404,18 +469,30 @@ TEST_F(CassieRbtStateEstimatorTest, TestTransformationToeRight) {
   local_collision_pt2_hom.head(3) = local_collision_pt2_;
   local_collision_pt2_hom(3) = 1;
 
-  VectorXd d1_hom = T_sol_rpy * local_collision_pt1_hom;
-  VectorXd d2_hom = T_sol_rpy * local_collision_pt2_hom;
-  VectorXd d1 = d1_hom.head(3);
-  VectorXd d2 = d2_hom.head(3);
+  VectorXd d1_hom_rpy = T_sol_rpy * local_collision_pt1_hom;
+  VectorXd d2_hom_rpy = T_sol_rpy * local_collision_pt2_hom;
+  VectorXd d1_rpy = d1_hom_rpy.head(3);
+  VectorXd d2_rpy = d2_hom_rpy.head(3);
+
+  VectorXd d1_hom_quaternion = T_sol_quaternion * local_collision_pt1_hom;
+  VectorXd d2_hom_quaternion = T_sol_quaternion * local_collision_pt2_hom;
+  VectorXd d1_quaternion = d1_hom_quaternion.head(3);
+  VectorXd d2_quaternion = d2_hom_quaternion.head(3);
 
   // Contact point in world coordinates
-  VectorXd p1 = R * d1 + q_sol_rpy.head(3);
-  VectorXd p2 = R * d2 + q_sol_rpy.head(3);
+  VectorXd p1_rpy = R_rpy * d1_rpy + q_sol_rpy.head(3);
+  VectorXd p2_rpy = R_rpy * d2_rpy + q_sol_rpy.head(3);
+  VectorXd p1_quaternion =
+      R_quaternion * d1_quaternion + q_sol_quaternion.head(3);
+  VectorXd p2_quaternion =
+      R_quaternion * d2_quaternion + q_sol_quaternion.head(3);
 
   // Checking if the contact points in world frame are on the ground plane.
-  ASSERT_TRUE(p1(2) < 1e-6);
-  ASSERT_TRUE(p2(2) < 1e-6);
+  ASSERT_TRUE(p1_rpy(2) < 1e-6);
+  ASSERT_TRUE(p2_rpy(2) < 1e-6);
+
+  ASSERT_TRUE(p1_quaternion(2) < 1e-6);
+  ASSERT_TRUE(p2_quaternion(2) < 1e-6);
 }
 
 TEST_F(CassieRbtStateEstimatorTest, TestRotationToeLeft) {

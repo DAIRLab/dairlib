@@ -32,6 +32,8 @@ using std::pow;
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::Transform;
+using Eigen::Isometry;
 using Eigen::Quaternion;
 
 using drake::math::RotationMatrix;
@@ -41,6 +43,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::geometry::SceneGraph;
 using drake::systems::Simulator;
 
+using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::CassieOutputReceiver;
 using dairlib::systems::CassieRbtStateEstimator;
@@ -95,22 +98,68 @@ int doMain(int argc, char* argv[]) {
   //}
 
   VectorXd q_init_true(tree.get_num_positions());
-  q_init_true << 0.009396, -2.544e-4, 1.02419, 0.990074, 4.19486627e-4,
-      9.921595425e-4, 8.38942768e-4, -5.888e-4, -4.515e-4, -5.783e-4,
-      -0.0028665, 0.49619, 0.4960, -1.1493, -1.15012, -1.35571, -1.012425,
-      1.35291, 1.35386, 0.0, 0.0, -1.57, -1.57;
+  // q_init_true << 0.009396, -2.544e-4, 1.02419, 0.990074, 4.19486627e-4,
+  //    9.921595425e-4, 8.38942768e-4, -5.888e-4, -4.515e-4, -5.783e-4,
+  //    -0.0028665, 0.49619, 0.4960, -1.1493, -1.15012, -1.35571, -1.012425,
+  //    1.35291, 1.35386, 0.0, 0.0, -1.57, -1.57;
+  q_init_true << 0.0099661, -3.9034215e-4, 1.024195, 0.9900733818, 0.0011312659,
+      4.22333759e-4, -0.00127671, -2.18961743e-4, -0.002613358, 0.00739498351,
+      -0.001283292663, 0.419560600, 0.50164376189, -0.96138592208, -1.16847063,
+      -0.108358107, 0.0105772267, 1.33959816, 1.356108579, -0.027425756,
+      0.0019839027, -1.523433634, -1.570315611;
   VectorXd x_init_true =
       VectorXd::Zero(tree.get_num_positions() + tree.get_num_velocities());
   x_init_true.head(tree.get_num_positions()) = q_init_true;
-  Quaternion<double> quat(q_init_true(3), q_init_true(4), q_init_true(5), q_init_true(6));
+  Quaternion<double> quat(q_init_true(3), q_init_true(4), q_init_true(5),
+                          q_init_true(6));
   RotationMatrix<double> rotmat(quat);
   MatrixXd R = rotmat.matrix();
+
+  KinematicsCache<double> cache = tree.doKinematics(q_init_true);
+  int world_ind = GetBodyIndexFromName(tree, "world");
+  int pelvis_ind = GetBodyIndexFromName(tree, "pelvis");
+  int toe_left_ind = GetBodyIndexFromName(tree, "toe_left");
+  int toe_right_ind = GetBodyIndexFromName(tree, "toe_right");
+  Transform<double, 3, Isometry> transform_left =
+      tree.relativeTransform(cache, pelvis_ind, toe_left_ind);
+  Transform<double, 3, Isometry> transform_right =
+      tree.relativeTransform(cache, pelvis_ind, toe_right_ind);
+  MatrixXd T_left = transform_left.matrix();
+  MatrixXd T_right = transform_right.matrix();
+
+  VectorXd local_collision_pt1(3), local_collision_pt2(3);
+  local_collision_pt1 << -0.0457, 0.112, 0;
+  local_collision_pt2 << 0.088, 0, 0;
+
+  VectorXd local_collision_pt1_hom(4), local_collision_pt2_hom(4);
+  local_collision_pt1_hom.head(3) = local_collision_pt1;
+  local_collision_pt1_hom(3) = 1;
+  local_collision_pt2_hom.head(3) = local_collision_pt2;
+  local_collision_pt2_hom(3) = 1;
+
+  VectorXd d1_hom = T_left * local_collision_pt1_hom;
+  VectorXd d2_hom = T_left * local_collision_pt2_hom;
+  VectorXd d3_hom = T_right * local_collision_pt1_hom;
+  VectorXd d4_hom = T_right * local_collision_pt2_hom;
+  VectorXd d1 = d1_hom.head(3);
+  VectorXd d2 = d2_hom.head(3);
+  VectorXd d3 = d3_hom.head(3);
+  VectorXd d4 = d4_hom.head(3);
+
+  VectorXd p1 = R * d1 + q_init_true.head(3);
+  VectorXd p2 = R * d2 + q_init_true.head(3);
+  VectorXd p3 = R * d3 + q_init_true.head(3);
+  VectorXd p4 = R * d4 + q_init_true.head(3);
 
   // Initial X state
   MatrixXd X_init = MatrixXd::Identity(9, 9);
   X_init.block(0, 0, 3, 3) = R;
   X_init.block(0, 3, 3, 1) = VectorXd::Zero(3);
   X_init.block(0, 4, 3, 1) = q_init_true.head(3);
+  X_init.block(0, 5, 3, 1) = p1;
+  X_init.block(0, 6, 3, 1) = p2;
+  X_init.block(0, 7, 3, 1) = p3;
+  X_init.block(0, 8, 3, 1) = p4;
 
   VectorXd ekf_bias_init = VectorXd::Zero(6);
   VectorXd gyro_noise_std = 0.002 * VectorXd::Ones(3);

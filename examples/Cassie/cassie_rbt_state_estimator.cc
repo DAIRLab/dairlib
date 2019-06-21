@@ -473,11 +473,15 @@ MatrixXd CassieRbtStateEstimator::PredictX(VectorXd ekf_x, VectorXd ekf_bias,
   VectorXd p = ExtractFloatingBasePositions(ekf_x);
   MatrixXd d = ExtractContactPositions(ekf_x);
 
+  // std::cout << p << std::endl;
+
   VectorXd angular_velocity_bias = ekf_bias.head(3);
   VectorXd linear_acceleration_bias = ekf_bias.tail(3);
 
   VectorXd angular_velocity = u.head(3);
   VectorXd linear_acceleration = u.tail(3);
+
+  // std::cout << u << std::endl;
 
   VectorXd corrected_angular_velocity =
       angular_velocity - angular_velocity_bias;
@@ -490,6 +494,12 @@ MatrixXd CassieRbtStateEstimator::PredictX(VectorXd ekf_x, VectorXd ekf_bias,
   VectorXd v_pred = v + (R * corrected_linear_acceleration - g_) * dt;
   VectorXd p_pred =
       p + v * dt + 0.5 * (R * corrected_linear_acceleration - g_) * dt * dt;
+
+  // std::cout << v << std::endl;
+  // std::cout << R * corrected_linear_acceleration - g_ << std::endl;
+  // std::cout << dt << std::endl;
+  // std::cout << p_pred << std::endl;
+  // std::exit(0);
 
   // Contact prediction
   MatrixXd collision_pts_left = ComputeToeLeftCollisionPointsWrtIMU(q);
@@ -1081,6 +1091,13 @@ EventStatus CassieRbtStateEstimator::Update(
   }
   u_curr << angular_velocity, linear_acceleration;
 
+  // Returning if u is zero (measurement error)
+  if (u_curr.isZero()) {
+    discrete_state->get_mutable_vector(time_idx_).get_mutable_value()(0) =
+        current_time;
+    return EventStatus::Succeeded();
+  }
+
   // Testing
   // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
 
@@ -1203,43 +1220,52 @@ EventStatus CassieRbtStateEstimator::Update(
 
     // Step 4 - EKF (measurement step)
 
-    if (ComputeNumContacts()) {
-      // Computing update step parameters
-      ComputeUpdateParams(ekf_x_predicted, ekf_p_predicted, q_curr, y, b, H, N,
-                          Pi, X_full, S, K, delta);
-      X_updated = UpdateX(ComputeX(ekf_x_predicted), delta);
-      ekf_bias_updated = UpdateBias(ekf_bias_predicted, delta);
-      P_updated = UpdateP(ekf_p_predicted, H, K, N);
+    // if (ComputeNumContacts()) {
+    //  // Computing update step parameters
+    //  ComputeUpdateParams(ekf_x_predicted, ekf_p_predicted, q_curr, y, b, H,
+    //  N,
+    //                      Pi, X_full, S, K, delta);
+    //  X_updated = UpdateX(ComputeX(ekf_x_predicted), delta);
+    //  ekf_bias_updated = UpdateBias(ekf_bias_predicted, delta);
+    //  P_updated = UpdateP(ekf_p_predicted, H, K, N);
 
-      ekf_x_updated = ComputeEkfX(X_updated);
-      ekf_p_updated = ComputeEkfP(P_updated);
+    //  ekf_x_updated = ComputeEkfX(X_updated);
+    //  ekf_p_updated = ComputeEkfP(P_updated);
 
-    } else {
-      // If there are no contacts, there is no update step.
-      ekf_x_updated = ekf_x_predicted;
-      ekf_bias_updated = ekf_bias_predicted;
-      ekf_p_updated = ekf_p_predicted;
-    }
+    //} else {
+    //  // If there are no contacts, there is no update step.
+    //  ekf_x_updated = ekf_x_predicted;
+    //  ekf_bias_updated = ekf_bias_predicted;
+    //  ekf_p_updated = ekf_p_predicted;
+    //}
 
-    // ekf_x_updated = ekf_x_predicted;
-    // ekf_bias_updated = ekf_bias_predicted;
-    // ekf_p_updated = ekf_p_predicted;
+    ekf_x_updated = ekf_x_predicted;
+    ekf_bias_updated = ekf_bias_predicted;
+    ekf_p_updated = ekf_p_predicted;
 
     // Updating the prev data
     for (int i = 0; i < num_contacts_; ++i) {
       contacts_prev_->at(i) = contacts_curr_->at(i);
     }
 
-    std::cout << "---------------" << std::endl;
+    // std::cout << "---------------" << std::endl;
     // std::cout << ExtractFloatingBasePositions(ekf_x_updated) << std::endl;
-     std::cout << X_updated << std::endl;
+    // std::cout << X_predicted << std::endl;
+    // std::cout << X_updated << std::endl;
     // std::cout << P_updated << std::endl;
     // std::cout << q_prev.transpose() << std::endl;
     // std::cout << q_curr.transpose() << std::endl;
     // std::cout << u_prev.transpose() << std::endl;
     // std::cout << u_curr.transpose() << std::endl;
-    // std::cout << ekf_bias << std::endl;
-    std::cout << "---------------" << std::endl;
+    // std::cout << ekf_bias_predicted << std::endl;
+
+    // std::cout << contacts_curr_->at(0) << " " << contacts_curr_->at(1) << " "
+    //          << contacts_curr_->at(2) << " " << contacts_curr_->at(3)
+    //          << std::endl;
+    // std::cout << contacts_prev_->at(0) << " " << contacts_prev_->at(1) << " "
+    //          << contacts_prev_->at(2) << " " << contacts_prev_->at(3)
+    //          << std::endl;
+    // std::cout << "---------------" << std::endl;
 
     // Step 5 - Assign values to states
     // Below is how you should assign the state at the end of this Update

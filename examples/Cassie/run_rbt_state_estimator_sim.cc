@@ -175,6 +175,13 @@ int doMain(int argc, char* argv[]) {
   VectorXd prior_accel_bias_std = 0.1 * VectorXd::Ones(3);
   VectorXd prior_forward_kinematics_std = 0.03 * VectorXd::Ones(3);
 
+  prior_base_pose_std = 0.01 * prior_base_pose_std;
+  prior_base_velocity_std = 0.01 * prior_base_velocity_std;
+  prior_contact_position_std = 0.01 * prior_contact_position_std;
+  prior_gyro_bias_std = 0.01 * prior_gyro_bias_std;
+  prior_accel_bias_std = 0.01 * prior_accel_bias_std;
+  prior_forward_kinematics_std = 0.01 * prior_forward_kinematics_std;
+
   MatrixXd N_prior = MatrixXd::Identity(3, 3);
   for (int i = 0; i < 3; ++i) {
     N_prior(i, i) = pow(prior_forward_kinematics_std(i), 2);

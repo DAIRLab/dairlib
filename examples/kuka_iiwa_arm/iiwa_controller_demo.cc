@@ -20,16 +20,56 @@
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <string>
 
 using json = nlohmann::json;
-
 namespace dairlib {
+class Waypoints {
+    private:      
+        std::vector<std::vector<double>> points;
+    public:
+        Waypoints(std::string fileName) {
+            std::ifstream stream;
+            points.resize(4);
+            stream.open(fileName);
+            if (stream.is_open()) {
+              std :: cout << "CSV file opened successfully" << std::endl;
+            }
+            std::string line;
+            while (std::getline(stream, line)) {
+              std::stringstream lineStream(line);
+              std::string cell;
+              int col = 0;
+              while (std::getline(lineStream, cell, ',')) {
+                  points[col].push_back(std::stod(cell));
+                  col++;
+              }
+            }
+        }
+        std::vector<double> getTimes() {
+            return points[0];
+        }
+        int getLength() {
+            return points[0].size();
+        }
+        std::vector<Eigen::MatrixXd> getVectors() {
+          std::vector<Eigen::MatrixXd> trajectoryVectors;
+          for (int x = 0; x < getLength(); x++) {
+            Eigen::Vector3d temp;
+            temp << points[1][x], points[2][x], points[3][x];
+            trajectoryVectors.push_back(temp);
+          }
+          return trajectoryVectors;
+        }
 
+};
 int do_main(int argc, char* argv[]) {
-  
   //Loads in joint gains json file
   std::ifstream joint_gains_file("examples/kuka_iiwa_arm/joint_gains.json");
-
+  if (joint_gains_file.is_open()) {
+    std::cout << "Json file opened successfully." << std::endl;
+  }
   //Initializes joint_gains json object
   json joint_gains = json::parse(joint_gains_file);
 
@@ -45,13 +85,15 @@ int do_main(int argc, char* argv[]) {
 
   // Creating end effector trajectory
   // TODO make this modular
-  const std::vector<double> times {0.0, 25.0, 35.0, 45.0, 55.0, 65.0, 75.0, 85.0, 95.0, 105.0, 115};
 
-  std::vector<Eigen::MatrixXd> points(times.size());
+  Waypoints waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
+  //const std::vector<double> times {0.0, 25.0, 35.0, 45.0, 55.0, 65.0, 75.0, 85.0, 95.0, 105.0, 115};
 
-  Eigen::Vector3d AS, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9;
+  //std::vector<Eigen::MatrixXd> points(waypoints.getLength());
 
-  AS << -0.23, -0.2, 0.25;
+  //vector<Eigen::Vector3d> trajectories(waypoints.getLength());
+
+  /*AS << -0.23, -0.2, 0.25;
   A0 << -0.23, -0.2, 0.25;
 
   A1 << -0.23, -0.6, 0.25;
@@ -68,9 +110,9 @@ int do_main(int argc, char* argv[]) {
   A7 << -0.23, -0.2, 0.25;
 
   A8 << -0.23, -0.2, 0.25;
-  A9 << -0.23, -0.2, 0.25;
-
-  points[0] = AS;
+  A9 << -0.23, -0.2, 0.25; */
+  
+  /* points[0] = AS;
   points[1] = A0;
   points[2] = A1;
   points[3] = A2;
@@ -80,9 +122,9 @@ int do_main(int argc, char* argv[]) {
   points[7] = A6;
   points[8] = A7;
   points[9] = A8;
-  points[10] = A9;
+  points[10] = A9; */
 
-  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(times, points);
+  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(waypoints.getTimes(), waypoints.getVectors());
 
   // Creating end effector orientation trajectory
   const std::vector<double> orient_times {0, 115};
@@ -97,7 +139,7 @@ int do_main(int argc, char* argv[]) {
   auto orientation_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(orient_times, orient_points);
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
-  const char* kModelPath = "../drake/manipulation/models/iiwa_description/urdf/iiwa14_polytope_collision.urdf";
+  const char* kModelPath = "../../drake/manipulation/models/iiwa_description/urdf/iiwa14_polytope_collision.urdf";
   const std::string urdf = FindResourceOrThrow(kModelPath);
 
   // RigidBodyTrees are created here, then passed by reference to the controller blocks for

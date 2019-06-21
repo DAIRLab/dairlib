@@ -43,6 +43,7 @@ cc_binary(
 cc_binary(
     name="iiwa_controller_demo",
     srcs = ["iiwa_controller_demo.cc"],
+    data = glob(["**"]),
     deps = [
             "//systems/controllers:endeffector_velocity_controller",
             "//systems/controllers:endeffector_position_controller",

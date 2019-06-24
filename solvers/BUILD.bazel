@@ -12,8 +12,7 @@ cc_library(
         "optimization_utils.h",
     ],
     deps = [
-        "@drake//common",
-        "@drake//solvers",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -22,9 +21,6 @@ cc_test(
     size = "small",
     srcs = ["test/cost_constraint_approximation_test.cc"],
     deps = [
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//solvers:mathematical_program",
         "@drake//common/test_utilities:eigen_matrix_compare",
         ":optimization_utils",
         "@gtest//:main",

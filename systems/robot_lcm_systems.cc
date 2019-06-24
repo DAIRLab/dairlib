@@ -21,8 +21,10 @@ RobotOutputReceiver::RobotOutputReceiver(
     const drake::multibody::MultibodyPlant<double>& plant) {
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
+  num_efforts_ = plant.num_actuators();
   positionIndexMap_ = multibody::makeNameToPositionsMap(plant);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(plant);
+  effortIndexMap_ = multibody::makeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_output",
     drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(OutputVector<double>(
@@ -36,8 +38,10 @@ RobotOutputReceiver::RobotOutputReceiver(
     const RigidBodyTree<double>& tree) {
   num_positions_ = tree.get_num_positions();
   num_velocities_ = tree.get_num_velocities();
+  num_efforts_ = tree.get_num_actuators();
   positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
+  effortIndexMap_ = multibody::makeNameToActuatorsMap(tree);
   this->DeclareAbstractInputPort("lcmt_robot_output",
     drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(OutputVector<double>(
@@ -63,8 +67,15 @@ void RobotOutputReceiver::CopyOutput(
     int j = velocityIndexMap_.at(state_msg.velocity_names[i]);
     velocities(j) = state_msg.velocity[i];
   }
+  VectorXd efforts = VectorXd::Zero(num_efforts_);
+  for (int i = 0; i < state_msg.num_efforts; i++) {
+    int j = effortIndexMap_.at(state_msg.effort_names[i]);
+    efforts(j) = state_msg.effort[j];
+  }
+
   output->SetPositions(positions);
   output->SetVelocities(velocities);
+  output->SetEfforts(efforts);
   output->set_timestamp(state_msg.utime * 1.0e-6);
 }
 

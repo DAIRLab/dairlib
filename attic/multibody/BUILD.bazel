@@ -13,7 +13,31 @@ cc_library(
         "rigidbody_utils.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "parse_log_test",
+    srcs = ["test/parse_log_test.cc"],
+    deps = [
+        ":lcm_log_utils",
+        "//examples/Cassie:cassie_utils",
+    ]
+)
+
+cc_library(
+    name = "lcm_log_utils",
+    srcs = [
+        "lcm_log_utils.cc",
+    ],
+    hdrs = [
+        "lcm_log_utils.h",
+    ],
+    deps = [
+         "//systems:robot_lcm_systems",
+        "//systems/primitives:vector_aggregator",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -26,8 +50,7 @@ cc_library(
         "contact_toolkit.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//solvers:mathematical_program",
+        "@drake//:drake_shared_library",
         ":utils",
     ],
 )
@@ -55,9 +78,7 @@ cc_library(
         "multibody_solvers.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//solvers:mathematical_program",
-        "@drake//solvers:solve",
+        "@drake//:drake_shared_library",
         ":contact_toolkit",
         ":utils",
     ],
@@ -86,7 +107,7 @@ cc_library(
         "utility_systems.h",
     ],
     deps = [
-        "@drake//systems/framework:leaf_system",
+        "@drake//:drake_shared_library",
         "//systems:robot_lcm_systems",
         "//examples/Cassie:cassie_utils",
     ],

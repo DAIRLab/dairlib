@@ -89,15 +89,6 @@ int do_main(int argc, char* argv[]) {
         state_receiver->get_input_port(0));
     builder.Connect(state_receiver->get_output_port(0),
         state_estimator->get_input_port(1));
-
-    auto command_sub =
-        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-            "CASSIE_INPUT", &lcm_local));
-    auto command_receiver = builder.AddSystem<systems::RobotInputReceiver>(*tree);
-    builder.Connect(command_sub->get_output_port(),
-                  command_receiver->get_input_port(0));
-    builder.Connect(command_receiver->get_output_port(0),
-                    state_estimator->get_input_port(2));
   }
 
   // Create and connect RobotOutput publisher.

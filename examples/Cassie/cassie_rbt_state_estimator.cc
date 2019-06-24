@@ -34,9 +34,6 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
       OutputVector<double>(tree_.get_num_positions(),
                            tree_.get_num_velocities(), tree_.get_num_actuators())).get_index();
 
-  command_input_port_ = this->DeclareVectorInputPort(
-      TimestampedVector<double>(tree_.get_num_actuators())).get_index();
-
   this->DeclareVectorOutputPort(
     OutputVector<double>(tree.get_num_positions(),
                          tree.get_num_velocities(), tree.get_num_actuators()),
@@ -291,8 +288,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
     const OutputVector<double>* cassie_state = (OutputVector<double>*)
       this->EvalVectorInput(context, state_input_port_);
-    const TimestampedVector<double>* cassie_command = (TimestampedVector<double>*)
-      this->EvalVectorInput(context, command_input_port_);
+     
     // Perform State Estimation (in several steps)
 
     // Step 1 - Solve for the unknown joint angle
@@ -336,8 +332,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
                               cassie_state->GetVelocities()[4]); 
     output.SetVelocityAtIndex(velocityIndexMap_.at("base_vz"), 
                               cassie_state->GetVelocities()[5]); 
-
-    output.SetEfforts(cassie_command->get_data());
     
     solveFourbarLinkage(output.GetPositions(),
         left_heel_spring, right_heel_spring);

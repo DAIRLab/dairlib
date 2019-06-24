@@ -241,10 +241,7 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
                              , 0.0);
 
   // Copy actuators
-  // We don't need to copy the value of motor torque, since we are not passing
-  // it to the controller. However, we can pass it if we are doing torque
-  // control, for example.
-  /*output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_left_motor"),
+  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_left_motor"),
                            cassie_out.leftLeg.hipRollDrive.torque);
   output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_left_motor"),
                            cassie_out.leftLeg.hipYawDrive.torque);
@@ -264,7 +261,7 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
   output->SetEffortAtIndex(actuatorIndexMap_.at("knee_right_motor"),
                            cassie_out.rightLeg.kneeDrive.torque);
   output->SetEffortAtIndex(actuatorIndexMap_.at("toe_right_motor"),
-                           cassie_out.rightLeg.footDrive.torque);*/
+                           cassie_out.rightLeg.footDrive.torque);
 }
 
 EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,

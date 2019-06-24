@@ -80,6 +80,8 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(*input_receiver, *output_sender);
     builder.Connect(input_receiver->get_output_port(0), state_estimator->get_input_port(0));
 
+    // Adding "CASSIE_STATE" and "CASSIE_INPUT" ports for testing estimator
+    // TODO(yminchen): delete this part after finishing estimator
     auto state_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>("CASSIE_STATE", &lcm_local));
     auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*tree);
@@ -87,9 +89,9 @@ int do_main(int argc, char* argv[]) {
         state_receiver->get_input_port(0));
     builder.Connect(state_receiver->get_output_port(0),
         state_estimator->get_input_port(1));
-    
+
     auto command_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
             "CASSIE_INPUT", &lcm_local));
     auto command_receiver = builder.AddSystem<systems::RobotInputReceiver>(*tree);
     builder.Connect(command_sub->get_output_port(),

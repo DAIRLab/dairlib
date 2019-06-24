@@ -15,12 +15,7 @@ cc_library(
         "timestamped_vector.h",
     ],
     deps = [
-        "@drake//common:autodiff",
-        "@drake//common:default_scalars",
-        "@drake//common:dummy_value",
-        "@drake//common:essential",
-        "@drake//common:symbolic",
-        "@drake//systems/framework:vector",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -32,8 +27,7 @@ cc_test(
     ],
     deps = [
         ":vector",
-        "@drake//systems/framework",
-        "@drake//systems/framework/test_utilities",
+        "@drake//:drake_shared_library",
         "@gtest//:main",
     ],
 )
@@ -46,8 +40,7 @@ cc_test(
     ],
     deps = [
         ":vector",
-        "@drake//systems/framework",
-        "@drake//systems/framework/test_utilities",
+        "@drake//:drake_shared_library",
         "@gtest//:main",
     ],
 )

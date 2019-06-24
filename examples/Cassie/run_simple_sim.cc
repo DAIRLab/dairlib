@@ -168,6 +168,7 @@ int do_main(int argc, char* argv[]) {
   //   (*diagram, &sim_context);
   // integrator->set_maximum_step_size(FLAGS_timestep);
 
+  // Calculate initial condition for Cassie
   Eigen::VectorXd x0 =
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
@@ -262,6 +263,7 @@ int do_main(int argc, char* argv[]) {
     std::cout << q0 << std::endl;
   }
 
+  // Set initial condition
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state =
         context.get_mutable_continuous_state();

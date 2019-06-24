@@ -1,0 +1,9 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "log_sequence_rectifier",
+    srcs = ["log_sequence_rectifier.cc"],
+    deps = [
+        "@lcm"
+    ],
+)

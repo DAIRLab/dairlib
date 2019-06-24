@@ -74,6 +74,8 @@ DEFINE_double(dt, 1e-3,
               "'simulation_type=timestepping' (ignored for "
               "'simulation_type=compliant'");
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
+DEFINE_bool(publish_state, true,
+    "Publish state CASSIE_STATE (set to false when running w/dispatcher");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
@@ -83,6 +85,9 @@ DEFINE_string(state_channel, "CASSIE_STATE",
               "LCM channel for receiving the state");
 DEFINE_string(input_channel, "CASSIE_INPUT",
               "LCM channel for receiving the motor inputs");
+DEFINE_string(output_channel, "CASSIE_OUTPUT",
+              "LCM channel for receiving the motor inputs");
+DEFINE_bool(is_imu_sim, true, "With simulated imu sensor or not");
 
 /*
  * Function to run collisionDetect and return a ContactInfo object for the four
@@ -141,11 +146,14 @@ int do_main(int argc, char* argv[]) {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kQuaternion);
     // Adding a terrain for the floating base version.
-    AddFlatTerrainToWorld(tree.get(), 100, 0.1);
+    AddFlatTerrainToWorld(tree.get(), 100, 1);
   } else {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kFixed);
   }
+
+  // Add imu frame to Cassie's pelvis
+  if (FLAGS_is_imu_sim) addImuFrameToCassiePelvis(tree);
 
   const int num_positions = tree->get_num_positions();
   const int num_velocities = tree->get_num_velocities();
@@ -333,17 +341,6 @@ int do_main(int argc, char* argv[]) {
     x_start.head(num_positions) = position_solver->GetSolutionQ();
   }
 
-  // Creating a state publisher
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
-      plant->get_rigid_body_tree());
-  auto state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          FLAGS_state_channel, lcm, 1.0 / FLAGS_publish_rate));
-  builder.Connect(plant->state_output_port(),
-                  state_sender->get_input_port_state());
-  builder.Connect(state_sender->get_output_port(0),
-                  state_pub->get_input_port());
-
   // Input publisher
   auto input_sender = builder.AddSystem<systems::RobotCommandSender>(
       plant->get_rigid_body_tree());
@@ -415,6 +412,31 @@ int do_main(int argc, char* argv[]) {
                   passthrough->get_input_port());
   builder.Connect(passthrough->get_output_port(),
                   plant->actuator_command_input_port());
+
+
+  if (FLAGS_publish_state) {
+    // Create state publisher
+    auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+        plant->get_rigid_body_tree());
+    auto state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            FLAGS_state_channel, lcm, 1.0 / FLAGS_publish_rate));
+    builder.Connect(plant->state_output_port(),
+                    state_sender->get_input_port_state());
+    builder.Connect(state_sender->get_output_port(0),
+                    state_pub->get_input_port());
+  }
+
+  // Create cassie output (containing simulated sensor) publisher
+  if (FLAGS_is_imu_sim) {
+    auto cassie_sensor_aggregator =
+        addImuAndAggregatorToSimulation(builder, plant, passthrough);
+    auto cassie_sensor_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+            FLAGS_output_channel, lcm, 1.0 / FLAGS_publish_rate));
+    builder.Connect(cassie_sensor_aggregator->get_output_port(0),
+                    cassie_sensor_pub->get_input_port());
+  }
 
   // Building the diagram and starting the simulation.
   auto diagram = builder.Build();

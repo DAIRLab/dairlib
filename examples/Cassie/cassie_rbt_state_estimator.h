@@ -47,6 +47,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   void CopyStateOut(const Context<double>& context,
                     OutputVector<double>* output) const;
 
+  void contactEstimation(OutputVector<double>* output, 
+      const cassie_out_t& cassie_out, DiscreteValues<double>* discrete_state,
+      const double dt, int& left_contact, int& right_contact) const;
+
   const RigidBodyTree<double>& tree_;
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;
@@ -64,9 +68,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   DiscreteStateIndex filtered_residue_double_idx_;
   DiscreteStateIndex filtered_residue_left_idx_;
   DiscreteStateIndex filtered_residue_right_idx_;
-  DiscreteStateIndex previous_acceleration_double_idx_;
-  DiscreteStateIndex previous_acceleration_left_idx_;
-  DiscreteStateIndex previous_acceleration_right_idx_;
   DiscreteStateIndex previous_velocity_idx_;
 
   DiscreteStateIndex ddq_double_init_idx_;

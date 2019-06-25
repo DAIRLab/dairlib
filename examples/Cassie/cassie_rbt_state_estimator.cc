@@ -46,7 +46,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   ekf_X_idx_ = DeclareDiscreteState(27); // estimated EKF state
   time_idx_ = DeclareDiscreteState(VectorXd::Zero(1)); // previous time
   // }
-  
+
   filtered_residue_double_idx_ = DeclareDiscreteState(
       VectorXd::Zero(tree_.get_num_velocities(), 1));
   filtered_residue_left_idx_ = DeclareDiscreteState(
@@ -55,7 +55,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
       VectorXd::Zero(tree_.get_num_velocities(), 1));
   previous_velocity_idx_ = DeclareDiscreteState(
       VectorXd::Zero(tree_.get_num_velocities(), 1));
-  
+
   ddq_double_init_idx_ = DeclareDiscreteState(
       VectorXd::Zero(tree_.get_num_velocities(), 1));
   ddq_left_init_idx_ = DeclareDiscreteState(
@@ -266,7 +266,7 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
     q_init[i] = 0;
   }
   q_init[3] =  1;
-  
+
   double left_heel_spring = 0;
   double right_heel_spring = 0;
   solveFourbarLinkage(&left_heel_spring, &right_heel_spring, q_init);
@@ -284,7 +284,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
   if (!is_floating_base_) {
     return EventStatus::Succeeded();
   }
-  
+
   // Testing
   /*const auto& cassie_out =
       this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
@@ -315,39 +315,42 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     OutputVector<double> output(tree_.get_num_positions(),
                                 tree_.get_num_velocities(),
                                 tree_.get_num_actuators());
+    output.SetPositions(VectorXd::Zero(tree_.get_num_positions(), 1));
+    output.SetVelocities(VectorXd::Zero(tree_.get_num_velocities(), 1));
+    output.SetEfforts(VectorXd::Zero(tree_.get_num_actuators(), 1));
     AssignNonFloatingBaseToOutputVector(&output, cassie_out);
 
     // Fill output with info from cassie_state
     // Eventually, this should come from state estimation
-    output.SetPositionAtIndex(positionIndexMap_.at("base_x"), 
-                              cassie_state->GetPositions()[0]); 
-    output.SetPositionAtIndex(positionIndexMap_.at("base_y"), 
-                              cassie_state->GetPositions()[1]); 
-    output.SetPositionAtIndex(positionIndexMap_.at("base_z"), 
-                              cassie_state->GetPositions()[2]); 
-    output.SetPositionAtIndex(positionIndexMap_.at("base_qw"), 
-                              cassie_state->GetPositions()[3]); 
-    output.SetPositionAtIndex(positionIndexMap_.at("base_qx"), 
-                              cassie_state->GetPositions()[4]); 
-    output.SetPositionAtIndex(positionIndexMap_.at("base_qy"), 
-                              cassie_state->GetPositions()[5]); 
-    output.SetPositionAtIndex(positionIndexMap_.at("base_qz"), 
-                              cassie_state->GetPositions()[6]); 
-    
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_wx"), 
-                              cassie_state->GetVelocities()[0]); 
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_wy"), 
-                              cassie_state->GetVelocities()[1]); 
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_wz"), 
-                              cassie_state->GetVelocities()[2]); 
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_vx"), 
-                              cassie_state->GetVelocities()[3]); 
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_vy"), 
-                              cassie_state->GetVelocities()[4]); 
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_vz"), 
-                              cassie_state->GetVelocities()[5]); 
+    output.SetPositionAtIndex(positionIndexMap_.at("base_x"),
+                              cassie_state->GetPositions()[0]);
+    output.SetPositionAtIndex(positionIndexMap_.at("base_y"),
+                              cassie_state->GetPositions()[1]);
+    output.SetPositionAtIndex(positionIndexMap_.at("base_z"),
+                              cassie_state->GetPositions()[2]);
+    output.SetPositionAtIndex(positionIndexMap_.at("base_qw"),
+                              cassie_state->GetPositions()[3]);
+    output.SetPositionAtIndex(positionIndexMap_.at("base_qx"),
+                              cassie_state->GetPositions()[4]);
+    output.SetPositionAtIndex(positionIndexMap_.at("base_qy"),
+                              cassie_state->GetPositions()[5]);
+    output.SetPositionAtIndex(positionIndexMap_.at("base_qz"),
+                              cassie_state->GetPositions()[6]);
 
-    
+    output.SetVelocityAtIndex(velocityIndexMap_.at("base_wx"),
+                              cassie_state->GetVelocities()[0]);
+    output.SetVelocityAtIndex(velocityIndexMap_.at("base_wy"),
+                              cassie_state->GetVelocities()[1]);
+    output.SetVelocityAtIndex(velocityIndexMap_.at("base_wz"),
+                              cassie_state->GetVelocities()[2]);
+    output.SetVelocityAtIndex(velocityIndexMap_.at("base_vx"),
+                              cassie_state->GetVelocities()[3]);
+    output.SetVelocityAtIndex(velocityIndexMap_.at("base_vy"),
+                              cassie_state->GetVelocities()[4]);
+    output.SetVelocityAtIndex(velocityIndexMap_.at("base_vz"),
+                              cassie_state->GetVelocities()[5]);
+
+
     const double* imu_d = cassie_out.pelvis.vectorNav.linearAcceleration;
     output.SetIMUAccelerationAtIndex(0, imu_d[0]);
     output.SetIMUAccelerationAtIndex(1, imu_d[1]);
@@ -363,11 +366,9 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Step 3 - Estimate which foot/feet are in contact with the ground
     int left_contact = 0;
     int right_contact = 0;
-    contactEstimation(&left_contact, &right_contact, &output, 
+    contactEstimation(&left_contact, &right_contact, &output,
         discrete_state, dt);
-    cout << left_contact << endl;
-    cout << right_contact << endl;
-    
+
     // Step 4 - EKF (measurement step)
 
 
@@ -394,10 +395,11 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
   return EventStatus::Succeeded();
 }
 
-void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_contact,
-    OutputVector<double>* output, DiscreteValues<double>* discrete_state, 
+void CassieRbtStateEstimator::contactEstimation(
+    int* left_contact, int* right_contact,
+    OutputVector<double>* output, DiscreteValues<double>* discrete_state,
     const double dt) const {
-  
+
     // Contact Estimator assumes that the swing leg doesn't stop during single stance
     const int num_velocities = tree_.get_num_velocities();
 
@@ -469,7 +471,7 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
 
     double left_leg_velocity = (Jcl*output->GetVelocities()).norm();
     double right_leg_velocity = (Jcr*output->GetVelocities()).norm();
-    
+
     Eigen::Vector3d imu_pos;
     // TODO: change IMU file to include this as a variable
     imu_pos << 0.03155, 0, -0.07996; // IMU location wrt pelvis.
@@ -481,7 +483,7 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
     Eigen::Vector3d alpha_imu = output->GetIMUAccelerations();
 
     RigidBody<double>* pelvis_body = tree_.FindBody("pelvis");
-    Eigen::Isometry3d pelvis_pose = tree_.CalcBodyPoseInWorldFrame(cache, 
+    Eigen::Isometry3d pelvis_pose = tree_.CalcBodyPoseInWorldFrame(cache,
         *pelvis_body);
     Eigen::MatrixXd R_WB = pelvis_pose.linear();
     if(R_WB.array().isNaN().any()) {
@@ -493,10 +495,6 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
     Eigen::Vector3d gravity_in_pelvis_frame = R_WB.transpose()*gravity;
     alpha_imu -= gravity_in_pelvis_frame;
 
-    const double EPS = 0.5; // Error bounds for imu acceleration vs predicted acceleration
-    const double CONSTRAINT_COST = 100; // Soft constraint cost
-    const double ALPHA = 0.9; // Decay for residue calculation
-    const bool is_simulation = true; // Flag to print ground truth information
     std::vector<double> optimal_cost;
 
     /* Mathematical program - double contact */
@@ -515,23 +513,23 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
 
     Eigen::MatrixXd CL_coeff(Jcl.rows(), Jcl.cols() + 6);
     CL_coeff << Jcl, Eigen::MatrixXd::Identity(6, 6);
-    quadprog_double.AddLinearEqualityConstraint(CL_coeff, -1*Jcl_dot_times_v, 
+    quadprog_double.AddLinearEqualityConstraint(CL_coeff, -1*Jcl_dot_times_v,
         {ddq, eps_cl});
 
     Eigen::MatrixXd CR_coeff(Jcr.rows(), Jcr.cols() + 6);
     CR_coeff << Jcr, Eigen::MatrixXd::Identity(6, 6);
-    quadprog_double.AddLinearEqualityConstraint(CR_coeff, -1*Jcr_dot_times_v, 
+    quadprog_double.AddLinearEqualityConstraint(CR_coeff, -1*Jcr_dot_times_v,
         {ddq, eps_cr});
 
     Eigen::MatrixXd IMU_coeff(J_imu.rows(), J_imu.cols() + 3);
     IMU_coeff << J_imu, Eigen::MatrixXd::Identity(3, 3);
-    quadprog_double.AddLinearEqualityConstraint(IMU_coeff, 
+    quadprog_double.AddLinearEqualityConstraint(IMU_coeff,
         -1*J_imu_dot_times_v + alpha_imu, {ddq, eps_imu});
 
     /* Inequality constraint */
-    quadprog_double.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3), 
-        -EPS*Eigen::VectorXd::Ones(3, 1),
-        EPS*Eigen::VectorXd::Ones(6, 1), eps_imu);
+    quadprog_double.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3),
+        -imu_eps_*Eigen::VectorXd::Ones(3, 1),
+        imu_eps_*Eigen::VectorXd::Ones(6, 1), eps_imu);
 
     /* Cost */
     int A_cols = num_velocities + Jb.rows() + Jcl.rows() + Jcr.rows();
@@ -540,40 +538,42 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
     Eigen::VectorXd cost_b(num_velocities);
     cost_b = B*u - C;
 
-    quadprog_double.AddQuadraticCost(2*cost_A.transpose()*cost_A + 
+    quadprog_double.AddQuadraticCost(2*cost_A.transpose()*cost_A +
         1e-10*Eigen::MatrixXd::Identity(A_cols, A_cols),
         -2*cost_A.transpose()*cost_b, {ddq, lambda_b, lambda_cl, lambda_cr});
     quadprog_double.AddQuadraticCost(
-        CONSTRAINT_COST*Eigen::MatrixXd::Identity(6, 6), 
+        constraint_cost_*Eigen::MatrixXd::Identity(6, 6),
         Eigen::VectorXd::Zero(6, 1), eps_cl);
     quadprog_double.AddQuadraticCost(
-        CONSTRAINT_COST*Eigen::MatrixXd::Identity(6, 6), 
+        constraint_cost_*Eigen::MatrixXd::Identity(6, 6),
         Eigen::VectorXd::Zero(6, 1), eps_cr);
     quadprog_double.AddQuadraticCost(
-        CONSTRAINT_COST*Eigen::MatrixXd::Identity(3, 3),
+        constraint_cost_*Eigen::MatrixXd::Identity(3, 3),
         Eigen::VectorXd::Zero(3, 1), eps_imu);
 
     /* Initial guess */
-    quadprog_double.SetInitialGuess(ddq, 
+    quadprog_double.SetInitialGuess(ddq,
         discrete_state->get_vector(ddq_double_init_idx_).get_value());
-    quadprog_double.SetInitialGuess(lambda_b, 
+    quadprog_double.SetInitialGuess(lambda_b,
         discrete_state->get_vector(lambda_b_double_init_idx_).get_value());
-    quadprog_double.SetInitialGuess(lambda_cl, 
+    quadprog_double.SetInitialGuess(lambda_cl,
         discrete_state->get_vector(lambda_cl_double_init_idx_).get_value());
-    quadprog_double.SetInitialGuess(lambda_cr, 
+    quadprog_double.SetInitialGuess(lambda_cr,
         discrete_state->get_vector(lambda_cr_double_init_idx_).get_value());
 
     /* Solve the optimization problem */
-    const drake::solvers::MathematicalProgramResult result_double = 
+    const drake::solvers::MathematicalProgramResult result_double =
         drake::solvers::Solve(quadprog_double);
-    
+
     if (!result_double.is_success()) {
       optimal_cost.push_back(std::numeric_limits<double>::infinity());
-      
-      discrete_state->get_mutable_vector(ddq_double_init_idx_).get_mutable_value() << 
-        VectorXd::Zero(num_velocities, 1);
-      discrete_state->get_mutable_vector(lambda_b_double_init_idx_).get_mutable_value() << 
-        VectorXd::Zero(2, 1);
+
+      discrete_state->get_mutable_vector(
+          ddq_double_init_idx_).get_mutable_value() <<
+          VectorXd::Zero(num_velocities, 1);
+      discrete_state->get_mutable_vector(
+          lambda_b_double_init_idx_).get_mutable_value() <<
+          VectorXd::Zero(2, 1);
     discrete_state->get_mutable_vector(
         lambda_cl_double_init_idx_).get_mutable_value() <<
         VectorXd::Zero(6, 1);
@@ -581,33 +581,37 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
         lambda_cr_double_init_idx_).get_mutable_value() <<
         VectorXd::Zero(6, 1);
     } else {
-      optimal_cost.push_back(result_double.get_optimal_cost() + 
+      optimal_cost.push_back(result_double.get_optimal_cost() +
           cost_b.transpose()*cost_b);
-      
+
       VectorXd ddq_val = result_double.GetSolution(ddq);
       VectorXd left_force = result_double.GetSolution(lambda_cl);
       VectorXd right_force = result_double.GetSolution(lambda_cr);
 
       // Save current estimate for initial guess in the next iteration
-      discrete_state->get_mutable_vector(ddq_double_init_idx_).get_mutable_value() << 
-        ddq_val;
-      discrete_state->get_mutable_vector(lambda_b_double_init_idx_).get_mutable_value() << 
-        result_double.GetSolution(lambda_b);
-      discrete_state->get_mutable_vector(lambda_cl_double_init_idx_).get_mutable_value() <<
-        left_force;
-      discrete_state->get_mutable_vector(lambda_cr_double_init_idx_).get_mutable_value() <<
-        right_force;
+      discrete_state->get_mutable_vector(
+          ddq_double_init_idx_).get_mutable_value() <<
+          ddq_val;
+      discrete_state->get_mutable_vector(
+          lambda_b_double_init_idx_).get_mutable_value() <<
+          result_double.GetSolution(lambda_b);
+      discrete_state->get_mutable_vector(
+          lambda_cl_double_init_idx_).get_mutable_value() <<
+          left_force;
+      discrete_state->get_mutable_vector(
+          lambda_cr_double_init_idx_).get_mutable_value() <<
+          right_force;
 
       // Residue calculation
       VectorXd curr_residue = ddq_val*dt;
-      curr_residue -= (output->GetVelocities() - 
+      curr_residue -= (output->GetVelocities() -
           discrete_state->get_vector(previous_velocity_idx_).get_value());
       VectorXd filtered_residue_double = discrete_state->get_vector(
           filtered_residue_double_idx_).get_value();
-      filtered_residue_double = filtered_residue_double + 
-        ALPHA*(curr_residue - filtered_residue_double);
+      filtered_residue_double = filtered_residue_double +
+        alpha_*(curr_residue - filtered_residue_double);
       discrete_state->get_mutable_vector(
-          filtered_residue_double_idx_).get_mutable_value() << 
+          filtered_residue_double_idx_).get_mutable_value() <<
           filtered_residue_double;
     }
 
@@ -622,51 +626,51 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
     /** Constraints **/
     /* Equality constraints **/
     quadprog_left.AddLinearEqualityConstraint(Jb, -1*Jb_dot_times_v, ddq);
-    quadprog_left.AddLinearEqualityConstraint(CL_coeff, -1*Jcl_dot_times_v, 
+    quadprog_left.AddLinearEqualityConstraint(CL_coeff, -1*Jcl_dot_times_v,
         {ddq, eps_cl});
     quadprog_left.AddLinearEqualityConstraint(IMU_coeff, -1*J_imu_dot_times_v +
         alpha_imu, {ddq, eps_imu});
 
     /* Inequality constraint */
-    quadprog_left.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3), 
-        -EPS*Eigen::VectorXd::Ones(3, 1),
-        EPS*Eigen::VectorXd::Ones(3, 1), eps_imu);
+    quadprog_left.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3),
+        -imu_eps_*Eigen::VectorXd::Ones(3, 1),
+        imu_eps_*Eigen::VectorXd::Ones(3, 1), eps_imu);
 
     /* Cost */
     A_cols = M.cols() + Jb.rows() + Jcl.rows();
     Eigen::MatrixXd cost_A_left(M.rows(), A_cols);
     cost_A_left << M, -1*Jb.transpose(), -1*Jcl.transpose();
 
-    quadprog_left.AddQuadraticCost(2*cost_A_left.transpose()*cost_A_left + 
+    quadprog_left.AddQuadraticCost(2*cost_A_left.transpose()*cost_A_left +
         1e-10*Eigen::MatrixXd::Identity(A_cols, A_cols),
         -2*cost_A_left.transpose()*cost_b, {ddq, lambda_b, lambda_cl});
     quadprog_left.AddQuadraticCost(
-        CONSTRAINT_COST*Eigen::MatrixXd::Identity(6, 6), 
+        constraint_cost_*Eigen::MatrixXd::Identity(6, 6),
         Eigen::VectorXd::Zero(6, 1), eps_cl);
     quadprog_left.AddQuadraticCost(
-        CONSTRAINT_COST*Eigen::MatrixXd::Identity(3, 3),
+        constraint_cost_*Eigen::MatrixXd::Identity(3, 3),
         Eigen::VectorXd::Zero(3, 1), eps_imu);
 
     /* Initial guess */
-    quadprog_left.SetInitialGuess(ddq, 
+    quadprog_left.SetInitialGuess(ddq,
         discrete_state->get_vector(ddq_left_init_idx_).get_value());
-    quadprog_left.SetInitialGuess(lambda_b, 
+    quadprog_left.SetInitialGuess(lambda_b,
         discrete_state->get_vector(lambda_b_left_init_idx_).get_value());
-    quadprog_left.SetInitialGuess(lambda_cl, 
+    quadprog_left.SetInitialGuess(lambda_cl,
         discrete_state->get_vector(lambda_cl_left_init_idx_).get_value());
-    
+
     /* Solve the optimization problem */
     const drake::solvers::MathematicalProgramResult result_left =
         drake::solvers::Solve(quadprog_left);
-    
+
     if (!result_left.is_success()) {
       optimal_cost.push_back(std::numeric_limits<double>::infinity());
-      
+
       discrete_state->get_mutable_vector(
-          ddq_left_init_idx_).get_mutable_value() << 
+          ddq_left_init_idx_).get_mutable_value() <<
           VectorXd::Zero(num_velocities, 1);
       discrete_state->get_mutable_vector(
-          lambda_b_left_init_idx_).get_mutable_value() << 
+          lambda_b_left_init_idx_).get_mutable_value() <<
           VectorXd::Zero(2, 1);
       discrete_state->get_mutable_vector(
           lambda_cl_left_init_idx_).get_mutable_value() <<
@@ -674,29 +678,29 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
     } else {
       optimal_cost.push_back(result_left.get_optimal_cost() +
           cost_b.transpose()*cost_b);
-      
+
       VectorXd ddq_val = result_left.GetSolution(ddq);
       VectorXd left_force = result_left.GetSolution(lambda_cl);
-      
+
       discrete_state->get_mutable_vector(
-          ddq_left_init_idx_).get_mutable_value() << 
+          ddq_left_init_idx_).get_mutable_value() <<
           ddq_val;
       discrete_state->get_mutable_vector(
-          lambda_b_left_init_idx_).get_mutable_value() << 
+          lambda_b_left_init_idx_).get_mutable_value() <<
           result_left.GetSolution(lambda_b);
       discrete_state->get_mutable_vector(
-          lambda_cl_left_init_idx_).get_mutable_value() << 
+          lambda_cl_left_init_idx_).get_mutable_value() <<
           left_force;
-      
+
       VectorXd curr_residue = ddq_val*dt;
-      curr_residue -= (output->GetVelocities() - 
+      curr_residue -= (output->GetVelocities() -
           discrete_state->get_vector(previous_velocity_idx_).get_value());
       VectorXd filtered_residue_left = discrete_state->get_vector(
           filtered_residue_left_idx_).get_value();
-      filtered_residue_left = filtered_residue_left + 
-        ALPHA*(curr_residue - filtered_residue_left);
+      filtered_residue_left = filtered_residue_left +
+        alpha_*(curr_residue - filtered_residue_left);
       discrete_state->get_mutable_vector(
-          filtered_residue_left_idx_).get_mutable_value() << 
+          filtered_residue_left_idx_).get_mutable_value() <<
           filtered_residue_left;
     }
 
@@ -713,13 +717,13 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
     quadprog_right.AddLinearEqualityConstraint(Jb, -1*Jb_dot_times_v, ddq);
     quadprog_right.AddLinearEqualityConstraint(CR_coeff, -1*Jcr_dot_times_v,
         {ddq, eps_cr});
-    quadprog_right.AddLinearEqualityConstraint(IMU_coeff, -1*J_imu_dot_times_v + 
+    quadprog_right.AddLinearEqualityConstraint(IMU_coeff, -1*J_imu_dot_times_v +
         alpha_imu, {ddq, eps_imu});
 
     /* Inequality constraint */
     quadprog_right.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3),
-        -EPS*Eigen::MatrixXd::Identity(3, 1),
-        EPS*Eigen::MatrixXd::Identity(3, 1), eps_imu);
+        -imu_eps_*Eigen::MatrixXd::Identity(3, 1),
+        imu_eps_*Eigen::MatrixXd::Identity(3, 1), eps_imu);
 
     /* Cost */
     A_cols = M.cols() + Jb.rows() + Jcr.rows();
@@ -730,32 +734,32 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
         1e-10*Eigen::MatrixXd::Identity(A_cols, A_cols),
         -2*cost_A_right.transpose()*cost_b, {ddq, lambda_b, lambda_cr});
     quadprog_right.AddQuadraticCost(
-        CONSTRAINT_COST*Eigen::MatrixXd::Identity(6, 6),
+        constraint_cost_*Eigen::MatrixXd::Identity(6, 6),
         Eigen::VectorXd::Zero(6, 1), eps_cr);
     quadprog_right.AddQuadraticCost(
-        CONSTRAINT_COST*Eigen::MatrixXd::Identity(3, 3),
+        constraint_cost_*Eigen::MatrixXd::Identity(3, 3),
         Eigen::VectorXd::Zero(3, 1), eps_imu);
 
     /* Initial guess */
-    quadprog_right.SetInitialGuess(ddq, 
+    quadprog_right.SetInitialGuess(ddq,
         discrete_state->get_vector(ddq_right_init_idx_).get_value());
-    quadprog_right.SetInitialGuess(lambda_b, 
+    quadprog_right.SetInitialGuess(lambda_b,
         discrete_state->get_vector(lambda_b_right_init_idx_).get_value());
-    quadprog_right.SetInitialGuess(lambda_cr, 
+    quadprog_right.SetInitialGuess(lambda_cr,
         discrete_state->get_vector(lambda_cr_right_init_idx_).get_value());
-    
+
     /* Solve the optimization problem */
-    const drake::solvers::MathematicalProgramResult result_right = 
+    const drake::solvers::MathematicalProgramResult result_right =
       drake::solvers::Solve(quadprog_right);
-    
+
     if (!result_right.is_success()) {
       optimal_cost.push_back(std::numeric_limits<double>::infinity());
-      
+
       discrete_state->get_mutable_vector(
-          ddq_right_init_idx_).get_mutable_value() << 
+          ddq_right_init_idx_).get_mutable_value() <<
           VectorXd::Zero(num_velocities, 1);
       discrete_state->get_mutable_vector(
-          lambda_b_right_init_idx_).get_mutable_value() << 
+          lambda_b_right_init_idx_).get_mutable_value() <<
           VectorXd::Zero(2, 1);
       discrete_state->get_mutable_vector(
           lambda_cr_right_init_idx_).get_mutable_value() <<
@@ -763,33 +767,33 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
     } else {
       optimal_cost.push_back(result_right.get_optimal_cost() +
           cost_b.transpose()*cost_b);
-      
+
       VectorXd ddq_val = result_right.GetSolution(ddq);
       VectorXd right_force = result_right.GetSolution(lambda_cr);
-      
+
       discrete_state->get_mutable_vector(
-          ddq_right_init_idx_).get_mutable_value() << 
+          ddq_right_init_idx_).get_mutable_value() <<
           result_right.GetSolution(ddq);
       discrete_state->get_mutable_vector(
-          lambda_b_right_init_idx_).get_mutable_value() << 
+          lambda_b_right_init_idx_).get_mutable_value() <<
           result_right.GetSolution(lambda_b);
       discrete_state->get_mutable_vector(
           lambda_cr_right_init_idx_).get_mutable_value() <<
           right_force;
-      
+
       VectorXd curr_residue = ddq_val*dt;
-      curr_residue -= (output->GetVelocities() - 
+      curr_residue -= (output->GetVelocities() -
           discrete_state->get_vector(previous_velocity_idx_).get_value());
       VectorXd filtered_residue_right = discrete_state->get_vector(
           filtered_residue_right_idx_).get_value();
-      filtered_residue_right = filtered_residue_right + 
-        ALPHA*(curr_residue - filtered_residue_right);
+      filtered_residue_right = filtered_residue_right +
+        alpha_*(curr_residue - filtered_residue_right);
       discrete_state->get_mutable_vector(
-          filtered_residue_right_idx_).get_mutable_value() << 
+          filtered_residue_right_idx_).get_mutable_value() <<
         filtered_residue_right;
     }
 
-    std::map<std::string, int> position_index_map = 
+    std::map<std::string, int> position_index_map =
         multibody::makeNameToPositionsMap(tree_);
     double left_knee_spring = output->GetPositionAtIndex(
         position_index_map.at("knee_joint_left"));
@@ -800,10 +804,10 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
     double right_heel_spring = output->GetPositionAtIndex(
         position_index_map.at("ankle_spring_joint_right"));
 
-    auto min_it = std::min_element(std::next(optimal_cost.begin(), 1), 
+    auto min_it = std::min_element(std::next(optimal_cost.begin(), 1),
         optimal_cost.end());
     int min_index = std::distance(optimal_cost.begin(), min_it);
-    
+
     if((optimal_cost[0] >= 200 && optimal_cost[1] >= 200 &&
           optimal_cost[2] >= 200)) {
       *left_contact = 1;
@@ -813,7 +817,7 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
     } else if(min_index == 2) {
       *right_contact = 1;
     }
-    
+
     /* Using spring information */
     if (left_knee_spring < -0.015 || left_heel_spring < -0.03) {
       * left_contact = 1;
@@ -824,12 +828,12 @@ void CassieRbtStateEstimator::contactEstimation(int* left_contact, int* right_co
 
     discrete_state->get_mutable_vector(
         previous_velocity_idx_).get_mutable_value() << output->GetVelocities();
-    
-    if (is_simulation) {
+
+    if (is_simulation_) {
       RigidBodyTree<double>* tree_with_ground = nullptr;
       tree_with_ground = const_cast<RigidBodyTree<double>*>(&tree_);
       std::vector<drake::multibody::collision::PointPair<double>> pairs;
-      pairs = tree_with_ground->ComputeMaximumDepthCollisionPoints(cache, 
+      pairs = tree_with_ground->ComputeMaximumDepthCollisionPoints(cache,
           true, false);
       int gtl = 0;
       int gtr = 0;

@@ -48,7 +48,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                     OutputVector<double>* output) const;
 
   void contactEstimation(int* left_contact, int* right_contact,
-      OutputVector<double>* output, DiscreteValues<double>* discrete_state, 
+      OutputVector<double>* output, DiscreteValues<double>* discrete_state,
       const double dt) const;
 
   const RigidBodyTree<double>& tree_;
@@ -97,6 +97,13 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Vector3d rear_contact_disp_ = Vector3d(0.088, 0, 0);
   Vector3d imu_pos_ = Vector3d(0.03155, 0, -0.07996);  // IMU location wrt pelvis.
   Vector3d gravity_ = Vector3d(0, 0, -9.81);
+
+  // Contact Estimation Parameters
+  const double imu_eps_ = 0.5; // Error bounds for imu acceleration
+  const double constraint_cost_ = 100; // soft constraint cost
+  const double alpha_ = 0.9; // Decay for residue calculation
+  const bool is_simulation_ = true; // Flag to calculate ground truth contact
+
 };
 
 }  // namespace systems

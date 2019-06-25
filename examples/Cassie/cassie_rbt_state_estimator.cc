@@ -84,8 +84,8 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 }
 
 void CassieRbtStateEstimator::solveFourbarLinkage(
-    double * left_heel_spring, double * right_heel_spring,
-    const VectorXd & q_init) const {
+    double* left_heel_spring, double* right_heel_spring,
+    const VectorXd& q_init) const {
   // Get the rod length
   double spring_length = rod_on_heel_spring_.norm();
   // Spring rest angle offset
@@ -476,7 +476,7 @@ void CassieRbtStateEstimator::contactEstimation(
   const double EPS = 0.5; // Error bounds for imu acceleration vs predicted acceleration
   const double CONSTRAINT_COST = 100;  // Soft constraint cost
   const double ALPHA = 0.9;  // Decay for residue calculation
-  const bool is_simulation = true;  // Flag to print ground truth information
+  // const bool is_simulation = true;  // Flag to print ground truth information
   std::vector<double> optimal_cost;
 
   //////////////////* Mathematical program - double contact *///////////////////

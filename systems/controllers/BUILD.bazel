@@ -100,7 +100,7 @@ cc_library(
     hdrs = ["time_based_fsm.h"],
     deps = [
             "//systems/framework:vector",
-            "@drake//systems/framework:leaf_system",
+            "@drake//:drake_shared_library",
             ]
 )
 
@@ -110,9 +110,18 @@ cc_library(
     hdrs = ["lipm_traj_gen.h"],
     deps = [
             "//systems/framework:vector",
-            "@drake//attic/multibody:rigid_body_tree",
-            "@drake//systems/framework:leaf_system",
-            "@drake//common/trajectories:piecewise_polynomial",
+            "@drake//:drake_shared_library",
+            ]
+)
+
+cc_library(
+    name = "cp_traj_gen",
+    srcs = ["cp_traj_gen.cc",],
+    hdrs = ["cp_traj_gen.h"],
+    deps = [
+            "//examples/Cassie/lipm_cp_control:cp_control_common_func",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
             ]
 )
 

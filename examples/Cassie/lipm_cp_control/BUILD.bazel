@@ -35,8 +35,7 @@ cc_library(
             ":control_utils",
             ":cp_control_common_func",
             "//systems/framework:vector",
-            "@drake//attic/multibody:rigid_body_tree",
-            "@drake//systems/framework:leaf_system",
+            "@drake//:drake_shared_library",
             ]
 )
 

@@ -32,14 +32,14 @@ class FootPlacementControl : public LeafSystem<double> {
   void CalcFootPlacement(const Context<double>& context,
                          BasicVector<double>* output) const;
 
-  int state_port_;
-
   RigidBodyTree<double> * tree_;
-
-  bool is_quaternion_;
-
+  int pelvis_idx_;
   Vector2d global_target_position_;
   double circle_radius_of_no_turning_;
+
+  int state_port_;
+
+  bool is_quaternion_;
 
   double kp_pos_sagital_;
   double kd_pos_sagital_;

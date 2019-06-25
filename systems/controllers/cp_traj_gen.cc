@@ -18,35 +18,37 @@ namespace systems {
 
 CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
                                  double mid_foot_height,
-                                 double max_CoM_to_CP_dis,
+                                 double max_CoM_to_CP_dist,
                                  double stance_duration_per_leg,
                                  int left_stance_state,
                                  int right_stance_state,
                                  int left_foot_idx,
                                  int right_foot_idx,
+                                 int pelvis_idx,
                                  bool is_walking_position_control,
                                  bool is_feet_collision_avoid,
                                  bool is_print_info):
   tree_(tree),
   mid_foot_height_(mid_foot_height),
-  max_CoM_to_CP_dis_(max_CoM_to_CP_dis),
+  max_CoM_to_CP_dist_(max_CoM_to_CP_dist),
   stance_duration_per_leg_(stance_duration_per_leg),
   left_stance_(left_stance_state),
   right_stance_(right_stance_state),
   left_foot_idx_(left_foot_idx),
   right_foot_idx_(right_foot_idx),
+  pelvis_idx_(pelvis_idx),
   is_walking_position_control_(is_walking_position_control),
   is_feet_collision_avoid_(is_feet_collision_avoid),
   is_print_info_(is_print_info) {
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(
-                  OutputVector<double>(num_positions,
-                                       num_velocities,
-                                       num_inputs)).get_index();
+  state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
+                  tree->get_num_positions(),
+                  tree->get_num_velocities(),
+                  tree->get_num_actuators())).get_index();
 
   FSM_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
-  com_port_ = this->DeclareAbstractInputPort("CoMTraj",
+  com_port_ = this->DeclareAbstractInputPort("CoM_traj",
               drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
   fp_port_ = this->DeclareVectorInputPort(
                BasicVector<double>(2)).get_index();
@@ -120,7 +122,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
 
 
 void CPTrajGenerator::CalcTrajs(const Context<double>& context,
-                                PiecewisePolynomial* traj) const {
+                                PiecewisePolynomial<double>* traj) const {
 
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
@@ -167,9 +169,9 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   }
 
   // Get center of mass position and velocity
-  Vector3d CoM = tree_->centerOfMass(cache);
-  MatrixXd J = tree_->centerOfMassJacobian(cache);
-  Vector3d dCoM = J * currentVelocity;
+  // Vector3d CoM = tree_->centerOfMass(cache);
+  // MatrixXd J = tree_->centerOfMassJacobian(cache);
+  // Vector3d dCoM = J * currentVelocity;
   // std::cout<<"center of mass:\n"<<CoM<<"\n";
   // std::cout<<"dCoM:\n"<<dCoM<<"\n";
 
@@ -186,7 +188,7 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
 
   // CoM and dCoM at the end of the step (predicted)
   const drake::AbstractValue* com_traj_output =
-    this->EvalAbstractInput(context, Trajs_port_);
+    this->EvalAbstractInput(context, com_port_);
   DRAKE_ASSERT(com_traj_output != nullptr);
   const auto & com_traj = com_traj_output->get_value <
                           ExponentialPlusPiecewisePolynomial<double >> ();
@@ -212,12 +214,13 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     CP += speed_control;
   }
 
+  Vector2d pred_CoM_to_CP(CP(0) - pred_CoM(0), CP(1) - pred_CoM(1));
   if (is_feet_collision_avoid_) {
-    // Get roll pitch yaw angle of the base
-    double base_roll_pos = 0;
-    double base_pitch_pos = 0;
-    double base_yaw_pos = 0;
-    GetBaseRollPitchYawPos(base_roll_pos, base_pitch_pos, base_yaw_pos, q);
+    // Get proximated heading angle of pelvis
+    Vector3d pelvis_heading_vec = tree_->CalcBodyPoseInWorldFrame(
+                                    cache, tree_->get_body(pelvis_idx_)).linear().col(0);
+    double approx_pelvis_yaw = atan2(
+                                 pelvis_heading_vec(1), pelvis_heading_vec(0));
 
     // Shift the CP away from CoM since Cassie shouldn't step right below the
     // CoM when walking in place
@@ -226,14 +229,13 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     double shift_foothold_dist = 0.06; //meter
     Vector2d shift_foothold_dir;
     if (fsm_state(0) == right_stance_) { // right stance
-      shift_foothold_dir << cos(base_yaw_pos + PI * 1 / 2),
-                         sin(base_yaw_pos + PI * 1 / 2);
+      shift_foothold_dir << cos(approx_pelvis_yaw + PI * 1 / 2),
+                         sin(approx_pelvis_yaw + PI * 1 / 2);
     } else {
-      shift_foothold_dir << cos(base_yaw_pos + PI * 3 / 2),
-                         sin(base_yaw_pos + PI * 3 / 2);
+      shift_foothold_dir << cos(approx_pelvis_yaw + PI * 3 / 2),
+                         sin(approx_pelvis_yaw + PI * 3 / 2);
     }
 
-    Vector2d pred_CoM_to_CP(CP(0) - pred_CoM(0), CP(1) - pred_CoM(1));
     // const double distThreshold = 0.2;
     // const double speedThreshold = 0.5;
     // Vector2d dCoM_2D(dCoM(0),dCoM(1));
@@ -249,7 +251,7 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
 
     Vector2d pred_CoM_or_stance_foot;
     //TODO: could change below in the future if we have desired heading angle
-    Vector3d base_yaw_heading(cos(base_yaw_pos), sin(base_yaw_pos), 0);
+    Vector3d base_yaw_heading(cos(approx_pelvis_yaw), sin(approx_pelvis_yaw), 0);
     Vector3d pred_CoM_to_stance_foot(
       stance_foot_pos(0) - pred_CoM(0),
       stance_foot_pos(1) - pred_CoM(1),

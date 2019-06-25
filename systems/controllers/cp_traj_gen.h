@@ -31,12 +31,13 @@ class CPTrajGenerator : public LeafSystem<double> {
  public:
   CPTrajGenerator(RigidBodyTree<double> * tree,
                   double mid_foot_height,
-                  double max_CoM_to_CP_dis,
+                  double max_CoM_to_CP_dist,
                   double stance_duration_per_leg,
                   int left_stance_state,
                   int right_stance_state,
                   int left_foot_idx,
                   int right_foot_idx,
+                  int pelvis_idx,
                   bool is_walking_position_control,
                   bool is_feet_collision_avoid,
                   bool is_print_info);
@@ -58,7 +59,7 @@ class CPTrajGenerator : public LeafSystem<double> {
   EventStatus DiscreteVariableUpdate(const Context<double>& context,
                                      DiscreteValues<double>* discrete_state) const;
   void CalcTrajs(const Context<double>& context,
-                 PiecewisePolynomial* traj) const;
+                 PiecewisePolynomial<double>* traj) const;
 
   int state_port_;
   int FSM_port_;
@@ -73,12 +74,13 @@ class CPTrajGenerator : public LeafSystem<double> {
 
   RigidBodyTree<double> * tree_;
   double mid_foot_height_;
-  double max_CoM_to_CP_dis_;
+  double max_CoM_to_CP_dist_;
   double stance_duration_per_leg_;
   int left_stance_;
   int right_stance_;
   int left_foot_idx_;
   int right_foot_idx_;
+  int pelvis_idx_;
   bool is_walking_position_control_;
   bool is_feet_collision_avoid_;
   bool is_print_info_;

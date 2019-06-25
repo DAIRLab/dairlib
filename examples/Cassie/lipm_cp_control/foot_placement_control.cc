@@ -17,8 +17,10 @@ namespace cassie {
 namespace cp_control {
 
 FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
+    int pelvis_idx,
     Vector2d global_target_position, double circle_radius_of_no_turning) :
   tree_(tree),
+  pelvis_idx_(pelvis_idx),
   global_target_position_(global_target_position),
   circle_radius_of_no_turning_(circle_radius_of_no_turning) {
   // Input/Output Setup
@@ -79,20 +81,22 @@ void FootPlacementControl::CalcFootPlacement(
   // std::cout<<"center of mass:\n"<<CoM<<"\n";
   // std::cout<<"dCoM:\n"<<dCoM<<"\n";
 
-  // Get roll pitch yaw angle of the pelvis
-  double pelvis_roll_pos = 0;
-  double pelvis_pitch_pos = 0;
-  double pelvis_yaw_pos = 0;
-  GetBaseRollPitchYawPos(pelvis_roll_pos, pelvis_pitch_pos, pelvis_yaw_pos, q);
+  // Extract quaternion from floating base position
+  Eigen::Quaterniond floating_base_quat(q(3), q(4), q(5), q(6));
+
+  // Get proximated heading angle of pelvis
+  Vector3d pelvis_heading_vec = tree_->CalcBodyPoseInWorldFrame(
+      cache, tree_->get_body(pelvis_idx_)).linear().col(0);
+  double approx_pelvis_yaw = atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 
   // Get desried heading direction
   Vector2d global_CoM_to_target_pos =
     global_target_position_ - CoM.segment(2, 1);
-  double desried_heading_pos = GetDesiredHeadingPos(pelvis_yaw_pos,
+  double desried_heading_pos = getDesiredHeadingPos(approx_pelvis_yaw,
                                global_CoM_to_target_pos, circle_radius_of_no_turning_);
 
   // Walking control
-  double heading_error = desried_heading_pos - pelvis_yaw_pos;
+  double heading_error = desried_heading_pos - approx_pelvis_yaw;
   bool isPauseWalkingPositionControl = (heading_error > PI / 2 ||
                                         heading_error < -PI / 2) ? true : false;
 
@@ -102,14 +106,11 @@ void FootPlacementControl::CalcFootPlacement(
 
     Vector3d global_CoM_to_target_pos_3d;
     global_CoM_to_target_pos_3d << global_CoM_to_target_pos, 0;
-    Vector3d local_CoM_to_target_pos = rotate3DVecFromGlobalToLocalByRPY(
-                                         pelvis_roll_pos,
-                                         pelvis_pitch_pos,
-                                         pelvis_yaw_pos,
+    Vector3d local_CoM_to_target_pos = rotateVecFromGlobalToLocalByQuaternion(
+                                         floating_base_quat,
                                          global_CoM_to_target_pos_3d);
-    Vector3d local_dCoM = rotate3DVecFromGlobalToLocalByRPY(
-                            pelvis_roll_pos, pelvis_pitch_pos, pelvis_yaw_pos,
-                            dCoM);
+    Vector3d local_dCoM = rotateVecFromGlobalToLocalByQuaternion(
+                            floating_base_quat, dCoM);
     ///////////////////// Sagital /////////////////////
     // Position Control
     double dCoM_sagital = local_dCoM(0);
@@ -124,10 +125,8 @@ void FootPlacementControl::CalcFootPlacement(
       -k_footPlacement_ff_sagital_ * des_sagital_vel
       - k_footPlacement_fb_sagital_ * (des_sagital_vel - dCoM_sagital);
     Vector3d delta_CP_sagital_3D_local(delta_CP_sagital, 0, 0);
-    delta_CP_sagital_3D_global = rotate3DVecFromLocalToGlobalByRPY(
-                                   pelvis_roll_pos,
-                                   pelvis_pitch_pos,
-                                   pelvis_yaw_pos,
+    delta_CP_sagital_3D_global = rotateVecFromLocalToGlobalByQuaternion(
+                                   floating_base_quat,
                                    delta_CP_sagital_3D_local);
     // std::cout<<"(dCoM_sagital, des_sagital_vel) = "<<dCoM_sagital<<
     //     ", "<<des_sagital_vel<<"\n\n";
@@ -145,10 +144,8 @@ void FootPlacementControl::CalcFootPlacement(
       -k_footPlacement_ff_lateral_ * des_lateral_vel
       - k_footPlacement_fb_lateral_ * (des_lateral_vel - dCoM_lateral);
     Vector3d delta_CP_lateral_3D_local(0, delta_CP_lateral, 0);
-    delta_CP_lateral_3D_global = rotate3DVecFromLocalToGlobalByRPY(
-                                   pelvis_roll_pos,
-                                   pelvis_pitch_pos,
-                                   pelvis_yaw_pos,
+    delta_CP_lateral_3D_global = rotateVecFromLocalToGlobalByQuaternion(
+                                   floating_base_quat,
                                    delta_CP_lateral_3D_local);
     // std::cout<<"(dCoM_lateral, des_lateral_vel) = "<<dCoM_lateral<<
     //     ", "<<des_lateral_vel<<"\n\n";

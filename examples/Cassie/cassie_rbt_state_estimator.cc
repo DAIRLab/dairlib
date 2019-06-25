@@ -520,16 +520,16 @@ void CassieRbtStateEstimator::contactEstimation(
   VectorXd cost_b(n_v);
   cost_b = B * u - C;
 
-  quadprog_double.AddQuadraticCost(2 * cost_A.transpose()*cost_A + 1e-10 *
-                                   MatrixXd::Identity(A_cols, A_cols),
+  quadprog_double.AddQuadraticCost(2 * cost_A.transpose()*cost_A +
+                                   1e-10 * MatrixXd::Identity(A_cols, A_cols),
                                    -2 * cost_A.transpose()*cost_b,
                                    {ddq, lambda_b, lambda_cl, lambda_cr});
   quadprog_double.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(6, 6),
-      VectorXd::Zero(6, 1), eps_cl);
+                                   VectorXd::Zero(6, 1), eps_cl);
   quadprog_double.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(6, 6),
-      VectorXd::Zero(6, 1), eps_cr);
+                                   VectorXd::Zero(6, 1), eps_cr);
   quadprog_double.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(3, 3),
-      VectorXd::Zero(3, 1), eps_imu);
+                                   VectorXd::Zero(3, 1), eps_imu);
 
   /* Initial guess */
   quadprog_double.SetInitialGuess(ddq,
@@ -623,14 +623,14 @@ void CassieRbtStateEstimator::contactEstimation(
   MatrixXd cost_A_left(M.rows(), A_cols);
   cost_A_left << M, -1 * Jb.transpose(), -1 * Jcl.transpose();
 
-  quadprog_left.AddQuadraticCost(2 * cost_A_left.transpose()*cost_A_left + 1e-10 *
-                                 MatrixXd::Identity(A_cols, A_cols),
+  quadprog_left.AddQuadraticCost(2 * cost_A_left.transpose()*cost_A_left +
+                                 1e-10 * MatrixXd::Identity(A_cols, A_cols),
                                  -2 * cost_A_left.transpose()*cost_b,
                                  {ddq, lambda_b, lambda_cl});
-  quadprog_left.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(6,
-                                 6), VectorXd::Zero(6, 1), eps_cl);
-  quadprog_left.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(3,
-                                 3), VectorXd::Zero(3, 1), eps_imu);
+  quadprog_left.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(6, 6),
+                                 VectorXd::Zero(6, 1), eps_cl);
+  quadprog_left.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(3, 3),
+                                 VectorXd::Zero(3, 1), eps_imu);
 
   /* Initial guess */
   quadprog_left.SetInitialGuess(ddq,
@@ -712,10 +712,10 @@ void CassieRbtStateEstimator::contactEstimation(
                                   1e-10 * MatrixXd::Identity(A_cols, A_cols),
                                   -2 * cost_A_right.transpose()*cost_b,
                                   {ddq, lambda_b, lambda_cr});
-  quadprog_right.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(6,
-                                  6), VectorXd::Zero(6, 1), eps_cr);
-  quadprog_right.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(3,
-                                  3), VectorXd::Zero(3, 1), eps_imu);
+  quadprog_right.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(6, 6),
+                                  VectorXd::Zero(6, 1), eps_cr);
+  quadprog_right.AddQuadraticCost(CONSTRAINT_COST * MatrixXd::Identity(3, 3),
+                                  VectorXd::Zero(3, 1), eps_imu);
 
   /* Initial guess */
   quadprog_right.SetInitialGuess(ddq,

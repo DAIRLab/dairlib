@@ -48,8 +48,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                     OutputVector<double>* output) const;
 
   void contactEstimation(OutputVector<double>* output, 
-      const cassie_out_t& cassie_out, DiscreteValues<double>* discrete_state,
-      const double dt, int& left_contact, int& right_contact) const;
+      DiscreteValues<double>* discrete_state, const double dt,
+      int& left_contact, int& right_contact) const;
 
   const RigidBodyTree<double>& tree_;
   std::map<std::string, int> positionIndexMap_;

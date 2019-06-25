@@ -561,8 +561,8 @@ void CassieRbtStateEstimator::contactEstimation(
         lambda_cr_double_init_idx_).get_mutable_value() <<
         VectorXd::Zero(6, 1);
   } else {
-    optimal_cost.push_back(result_double.get_optimal_cost() + cost_b.transpose()
-                           *cost_b);
+    optimal_cost.push_back(result_double.get_optimal_cost() +
+                           cost_b.transpose() * cost_b);
 
     VectorXd ddq_val = result_double.GetSolution(ddq);
     VectorXd left_force = result_double.GetSolution(lambda_cl);
@@ -654,8 +654,8 @@ void CassieRbtStateEstimator::contactEstimation(
     discrete_state->get_mutable_vector(
         lambda_cl_left_init_idx_).get_mutable_value() << VectorXd::Zero(6, 1);
   } else {
-    optimal_cost.push_back(result_left.get_optimal_cost() + cost_b.transpose()
-                           *cost_b);
+    optimal_cost.push_back(result_left.get_optimal_cost() +
+                           cost_b.transpose() * cost_b);
 
     VectorXd ddq_val = result_left.GetSolution(ddq);
     VectorXd left_force = result_left.GetSolution(lambda_cl);
@@ -739,8 +739,8 @@ void CassieRbtStateEstimator::contactEstimation(
     discrete_state->get_mutable_vector(
         lambda_cr_right_init_idx_).get_mutable_value() << VectorXd::Zero(6 , 1);
   } else {
-    optimal_cost.push_back(result_right.get_optimal_cost() + cost_b.transpose()
-                           * cost_b);
+    optimal_cost.push_back(result_right.get_optimal_cost() +
+                           cost_b.transpose() * cost_b);
 
     VectorXd ddq_val = result_right.GetSolution(ddq);
     VectorXd right_force = result_right.GetSolution(lambda_cr);

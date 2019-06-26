@@ -14,6 +14,7 @@ namespace systems {
 
 CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
                                  double mid_foot_height,
+                                 double desired_final_foot_height,
                                  double max_CoM_to_CP_dist,
                                  double stance_duration_per_leg,
                                  int left_stance_state,
@@ -27,6 +28,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
                                  bool is_print_info):
   tree_(tree),
   mid_foot_height_(mid_foot_height),
+  desired_final_foot_height_(desired_final_foot_height),
   max_CoM_to_CP_dist_(max_CoM_to_CP_dist),
   stance_duration_per_leg_(stance_duration_per_leg),
   left_stance_(left_stance_state),
@@ -50,8 +52,9 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
     com_port_ = this->DeclareAbstractInputPort("CoM_traj",
                 drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
   }
-  fp_port_ = this->DeclareVectorInputPort(
-               BasicVector<double>(2)).get_index();
+  if (is_walking_position_control) {
+    fp_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
+  }
 
   this->DeclareAbstractOutputPort(&CPTrajGenerator::CalcTrajs);
 
@@ -82,7 +85,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
 
     auto swing_foot_pos_td = discrete_state->get_mutable_vector(
-                            prev_td_swing_foot_idx_).get_mutable_value();
+                               prev_td_swing_foot_idx_).get_mutable_value();
     auto prev_td_time = discrete_state->get_mutable_vector(
                           prev_td_time_idx_).get_mutable_value();
 
@@ -119,62 +122,35 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
 }
 
 
-
-void CPTrajGenerator::CalcTrajs(const Context<double>& context,
-                                PiecewisePolynomial<double>* traj) const {
-
-  // Read in current state
-  const OutputVector<double>* robot_output = (OutputVector<double>*)
-      this->EvalVectorInput(context, state_port_);
-  VectorXd v = robot_output->GetVelocities();
-
+Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
+    const OutputVector<double>* robot_output,
+    const double end_time_of_this_interval) const {
   // Read in finite state machine
   const BasicVector<double>* fsm_output = (BasicVector<double>*)
                                           this->EvalVectorInput(context, FSM_port_);
   VectorXd fsm_state = fsm_output->get_value();
 
-  // Get discrete states
-  const auto swing_foot_pos_td = context.get_discrete_state(
-                                prev_td_swing_foot_idx_).get_value();
-  const auto prev_td_time = context.get_discrete_state(
-                              prev_td_time_idx_).get_value();
-
-  // Get time
-  double timestamp = robot_output->get_timestamp();
-  double current_time = static_cast<double>(timestamp);
-
-  double start_time_of_this_interval = prev_td_time(0);
-  double end_time_of_this_interval = prev_td_time(0) + stance_duration_per_leg_;
-  // Ensure current_time < end_time_of_this_interval to avoid error in creating trajectory.
-  if ((end_time_of_this_interval <= current_time + 0.001)) {
-    end_time_of_this_interval = current_time + 0.002;
-  }
-
-  // Kinematics cache and indices
+  // Get stance foot position and index
   KinematicsCache<double> cache = tree_->CreateKinematicsCache();
   VectorXd q = robot_output->GetPositions();
-  // Modify the quaternion in the begining when the state is not received from the robot yet
-  // Always remember to check 0-norm quaternion when using doKinematics
+  // Modify the quaternion in the begining when the state is not received from
+  // the robot yet
   if (is_quaternion_ && q.segment(3, 4).norm() == 0)
     q(3) = 1;
   cache.initialize(q);
   tree_->doKinematics(cache);
   int stance_foot_index;
-  if (fsm_state(0) == right_stance_) { // right stance
+  if (fsm_state(0) == right_stance_) {  // right stance
     stance_foot_index = right_foot_idx_;
-  }
-  else {
+  } else {
     stance_foot_index = left_foot_idx_;
   }
-
-  // Stance foot position (Forward Kinematics)
   Eigen::Isometry3d stance_foot_pose =
     tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(stance_foot_index));
   Vector3d stance_foot_pos = stance_foot_pose.translation();
   // std::cout<<"stance_foot_pos^T = "<<stance_foot_pos.transpose()<<"\n";
 
-  /////////////////////// Swing Foot Traj //////////////////////////////////////
-
+  // Get CoM or predicted CoM
   Vector3d CoM;
   Vector3d dCoM;
   if (is_using_predicted_com_) {
@@ -189,14 +165,15 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   } else {
     // Get the current center of mass position and velocity
     MatrixXd J_com = tree_->centerOfMassJacobian(cache);
+    VectorXd v = robot_output->GetVelocities();
     CoM = tree_->centerOfMass(cache);
     dCoM = J_com * v;
   }
   // std::cout<<"CoM = "<<CoM.transpose()<<"\n";
   // std::cout<<"dCoM = "<<dCoM.transpose()<<"\n";
 
-  //////////// Capture Point
   double pred_omega = sqrt(9.81 / CoM(2));
+
   Vector2d CP;
   CP << (CoM(0) + dCoM(0) / pred_omega),
   (CoM(1) + dCoM(1) / pred_omega);
@@ -207,8 +184,7 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     // Read in foot placement
     const BasicVector<double>* fp_output = (BasicVector<double>*)
                                            this->EvalVectorInput(context, fp_port_);
-    Vector2d speed_control = fp_output->get_value();
-    CP += speed_control;
+    CP += fp_output->get_value();
   }
 
   Vector2d CoM_to_CP(CP(0) - CoM(0), CP(1) - CoM(1));
@@ -221,7 +197,6 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
 
     // Shift CP away from CoM since Cassie shouldn't step right below the CoM
     // Shift CP a little away from CoM line and toward the swing foot
-    double shift_foothold_dist = 0.06; //meter
     Vector2d shift_foothold_dir;
     if (fsm_state(0) == right_stance_) { // right stance
       shift_foothold_dir << cos(approx_pelvis_yaw + PI * 1 / 2),
@@ -230,7 +205,7 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
       shift_foothold_dir << cos(approx_pelvis_yaw + PI * 3 / 2),
                          sin(approx_pelvis_yaw + PI * 3 / 2);
     }
-    CP = CP + shift_foothold_dir * shift_foothold_dist;
+    CP = CP + shift_foothold_dir * shift_foothold_dist_;
 
     // The above CP shift might not be sufficient for leg collision avoidance,
     // so we add a guard to restrict CP in an area.
@@ -238,7 +213,6 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     // line (the edge of the halfplace) and the slope/direction of the line.
     // The point is either shifted CoM or shifted stance foot depending on the
     // motion of the robot. The direction of the line is the pelvis heading.
-    double shift_dist = 0.06; //(m)
 
     Vector3d base_yaw_heading(cos(approx_pelvis_yaw), sin(approx_pelvis_yaw), 0);
     Vector3d CoM_to_stance_foot(
@@ -261,8 +235,8 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
       CoM_or_stance_foot << CoM(0), CoM(1);
 
     Vector3d shifted_CoM_or_stance_foot(
-      CoM_or_stance_foot(0) + shift_foothold_dir(0)*shift_dist,
-      CoM_or_stance_foot(1) + shift_foothold_dir(1)*shift_dist,
+      CoM_or_stance_foot(0) + shift_foothold_dir(0)*center_line_shift_dist_,
+      CoM_or_stance_foot(1) + shift_foothold_dir(1)*center_line_shift_dist_,
       0);
     Vector3d CoM_or_stance_foot_to_CP(
       CP(0) - shifted_CoM_or_stance_foot(0),
@@ -300,10 +274,15 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     CP(1) = CoM(1) + normalized_CoM_to_CP(1) * max_CoM_to_CP_dist_;
   }
 
-  //////////// End of Capture Point
+  return CP;
+}
 
-  // Swing foot position at touchdown
-  Vector3d init_swing_foot_pos = swing_foot_pos_td;
+
+PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
+  const double start_time_of_this_interval,
+  const double end_time_of_this_interval,
+  const Vector3d & init_swing_foot_pos,
+  const Vector2d & CP) const {
 
   // Two segment of cubic polynomial with velocity constraints
   std::vector<double> T_waypoint = {start_time_of_this_interval,
@@ -325,11 +304,13 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   // z
   Y3[0](2, 0) = init_swing_foot_pos(2);
   Y3[1](2, 0) = mid_foot_height_;
-  Y3[2](2, 0) = 0.05; //Toe joint to the ground ~ 5cm
+  Y3[2](2, 0) = desired_final_foot_height_;
   // zero velocity at the start and the end for x y z
   MatrixXd Y3_dot_start = MatrixXd::Zero(3, 1);
-
   MatrixXd Y3_dot_end = MatrixXd::Zero(3, 1);
+
+  // TODO(yminchen): Update below spline so the swing foot doesn't stop in the
+  // middle of stance
   PiecewisePolynomial<double> swing_foot_spline =
     PiecewisePolynomial<double>::Cubic(T_waypoint, Y3, Y3_dot_start, Y3_dot_end);
   // std::cout<<"Notice that the trajectory is shifted in time (current time)"
@@ -337,15 +318,53 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   //  std::cout<<swing_foot_spline.value(d) <<" ";
   // }
   // std::cout<<std::endl;
-  // std::cout<<"FootTraj.value(current_time)^T = "<<swing_foot_spline.value(current_time).transpose()<<"\n";
+  // std::cout<<"FootTraj.value(current_time)^T = "<<
+  //   swing_foot_spline.value(current_time).transpose()<<"\n";
 
-  // Assign traj
-  *traj = swing_foot_spline;
+  return swing_foot_spline;
 }
 
 
+void CPTrajGenerator::CalcTrajs(const Context<double>& context,
+                                PiecewisePolynomial<double>* traj) const {
+  // Read in current state
+  const OutputVector<double>* robot_output = (OutputVector<double>*)
+      this->EvalVectorInput(context, state_port_);
 
-} //namespace systems
-} //namespace dairlib
+  // Get discrete states
+  const auto swing_foot_pos_td = context.get_discrete_state(
+                                   prev_td_swing_foot_idx_).get_value();
+  const auto prev_td_time = context.get_discrete_state(
+                              prev_td_time_idx_).get_value();
+
+  // Get current time
+  double timestamp = robot_output->get_timestamp();
+  double current_time = static_cast<double>(timestamp);
+
+  // Get the start time and the end time of the current stance phase
+  double start_time_of_this_interval = prev_td_time(0);
+  double end_time_of_this_interval = prev_td_time(0) + stance_duration_per_leg_;
+
+  // Ensure current_time < end_time_of_this_interval to avoid error in creating
+  // trajectory.
+  if ((end_time_of_this_interval <= current_time + 0.001)) {
+    end_time_of_this_interval = current_time + 0.002;
+  }
+
+  // Get Capture Point
+  Vector2d CP = calculateCapturePoint(context, robot_output,
+                                      end_time_of_this_interval);
+
+  // Swing foot position at touchdown
+  Vector3d init_swing_foot_pos = swing_foot_pos_td;
+
+  // Assign traj
+  *traj = createSplineForSwingFoot(start_time_of_this_interval,
+                                   end_time_of_this_interval,
+                                   init_swing_foot_pos,
+                                   CP);
+}
+}  // namespace systems
+}  // namespace dairlib
 
 

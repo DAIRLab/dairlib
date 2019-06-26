@@ -37,17 +37,18 @@ namespace kuka_iiwa_arm {
 
  using Eigen::Vector3d;
  using Eigen::VectorXd;
+
  using drake::geometry::SceneGraph;
+ using drake::manipulation::kuka_iiwa::IiwaCommandReceiver;
+ using drake::manipulation::kuka_iiwa::IiwaStatusSender;
  using drake::math::RigidTransform;
  using drake::math::RollPitchYaw;
  using drake::multibody::Joint;
  using drake::multibody::MultibodyPlant;
  using drake::multibody::RevoluteJoint;
  using drake::multibody::SpatialInertia;
- using drake::manipulation::kuka_iiwa::IiwaCommandReceiver;
- using drake::manipulation::kuka_iiwa::IiwaStatusSender;
- using drake::systems::StateInterpolatorWithDiscreteDerivative;
  using drake::multibody::ModelInstanceIndex;
+ using drake::systems::StateInterpolatorWithDiscreteDerivative;
 
 int DoMain() {
 

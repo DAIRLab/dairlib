@@ -7,9 +7,9 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/primitives/adder.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/primitives/pass_through.h"
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake/systems/primitives/constant_vector_source.h"
 
 #include "examples/kuka_iiwa_arm/kuka_torque_controller.h"
 

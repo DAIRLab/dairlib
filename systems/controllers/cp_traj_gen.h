@@ -83,6 +83,7 @@ class CPTrajGenerator : public LeafSystem<double> {
   int pelvis_idx_;
   bool is_walking_position_control_;
   bool is_feet_collision_avoid_;
+  bool is_using_predicted_com_;
   bool is_print_info_;
 };
 

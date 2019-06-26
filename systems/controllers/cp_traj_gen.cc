@@ -5,10 +5,6 @@
 #include <math.h>
 #define PI 3.14159265
 
-
-using Eigen::Vector3d;
-using Eigen::Vector4d;
-
 using std::cout;
 using std::endl;
 using std::string;
@@ -27,6 +23,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
                                  int pelvis_idx,
                                  bool is_walking_position_control,
                                  bool is_feet_collision_avoid,
+                                 bool is_using_predicted_com,
                                  bool is_print_info):
   tree_(tree),
   mid_foot_height_(mid_foot_height),
@@ -39,6 +36,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
   pelvis_idx_(pelvis_idx),
   is_walking_position_control_(is_walking_position_control),
   is_feet_collision_avoid_(is_feet_collision_avoid),
+  is_using_predicted_com_(is_using_predicted_com),
   is_print_info_(is_print_info) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
@@ -48,8 +46,10 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
 
   FSM_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
-  com_port_ = this->DeclareAbstractInputPort("CoM_traj",
-              drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
+  if (is_using_predicted_com) {
+    com_port_ = this->DeclareAbstractInputPort("CoM_traj",
+                drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
+  }
   fp_port_ = this->DeclareVectorInputPort(
                BasicVector<double>(2)).get_index();
 
@@ -81,7 +81,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
   if (fsm_state(0) != prev_fsm_state(0)) { //if at touchdown
     prev_fsm_state(0) = fsm_state(0);
 
-    auto prev_swingfoot = discrete_state->get_mutable_vector(
+    auto swing_foot_pos_td = discrete_state->get_mutable_vector(
                             prev_td_swing_foot_idx_).get_mutable_value();
     auto prev_td_time = discrete_state->get_mutable_vector(
                           prev_td_time_idx_).get_mutable_value();
@@ -89,7 +89,6 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     // Read in current state
     const OutputVector<double>* robot_output = (OutputVector<double>*)
         this->EvalVectorInput(context, state_port_);
-    VectorXd currentVelocity = robot_output->GetVelocities();
 
     // Get time
     double timestamp = robot_output->get_timestamp();
@@ -112,8 +111,8 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     // Swing foot position (Forward Kinematics) and velocity at touchdown
     Eigen::Isometry3d init_swing_foot_pose =
       tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(swing_foot_index));
-    Eigen::Vector3d init_swing_foot_pos = init_swing_foot_pose.translation();
-    prev_swingfoot = init_swing_foot_pos;
+    Vector3d init_swing_foot_pos = init_swing_foot_pose.translation();
+    swing_foot_pos_td = init_swing_foot_pos;
   }
 
   return EventStatus::Succeeded();
@@ -127,7 +126,7 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
-  VectorXd currentVelocity = robot_output->GetVelocities();
+  VectorXd v = robot_output->GetVelocities();
 
   // Read in finite state machine
   const BasicVector<double>* fsm_output = (BasicVector<double>*)
@@ -135,7 +134,7 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   VectorXd fsm_state = fsm_output->get_value();
 
   // Get discrete states
-  const auto prev_swingfoot = context.get_discrete_state(
+  const auto swing_foot_pos_td = context.get_discrete_state(
                                 prev_td_swing_foot_idx_).get_value();
   const auto prev_td_time = context.get_discrete_state(
                               prev_td_time_idx_).get_value();
@@ -168,32 +167,31 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     stance_foot_index = left_foot_idx_;
   }
 
-  // Get center of mass position and velocity
-  // Vector3d CoM = tree_->centerOfMass(cache);
-  // MatrixXd J = tree_->centerOfMassJacobian(cache);
-  // Vector3d dCoM = J * currentVelocity;
-  // std::cout<<"center of mass:\n"<<CoM<<"\n";
-  // std::cout<<"dCoM:\n"<<dCoM<<"\n";
-
   // Stance foot position (Forward Kinematics)
   Eigen::Isometry3d stance_foot_pose =
     tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(stance_foot_index));
-  Eigen::Vector3d stance_foot_pos = stance_foot_pose.translation();
+  Vector3d stance_foot_pos = stance_foot_pose.translation();
   // std::cout<<"stance_foot_pos^T = "<<stance_foot_pos.transpose()<<"\n";
-
-  // Swing foot position at touchdown
-  Eigen::Vector3d init_swing_foot_pos = prev_swingfoot;
 
   /////////////////////// Swing Foot Traj //////////////////////////////////////
 
-  // CoM and dCoM at the end of the step (predicted)
-  const drake::AbstractValue* com_traj_output =
-    this->EvalAbstractInput(context, com_port_);
-  DRAKE_ASSERT(com_traj_output != nullptr);
-  const auto & com_traj = com_traj_output->get_value <
-                          ExponentialPlusPiecewisePolynomial<double >> ();
-  Vector3d pred_CoM = com_traj.value(end_time_of_this_interval);
-  Vector3d pred_dCoM = com_traj.derivative().value(end_time_of_this_interval);
+  Vector3d pred_CoM;
+  Vector3d pred_dCoM;
+  if (is_using_predicted_com_) {
+    // CoM and dCoM at the end of the step (predicted)
+    const drake::AbstractValue* com_traj_output =
+      this->EvalAbstractInput(context, com_port_);
+    DRAKE_ASSERT(com_traj_output != nullptr);
+    const auto & com_traj = com_traj_output->get_value <
+                            ExponentialPlusPiecewisePolynomial<double >> ();
+    pred_CoM = com_traj.value(end_time_of_this_interval);
+    pred_dCoM = com_traj.derivative().value(end_time_of_this_interval);
+  } else {
+    // Get center of mass position and velocity
+    Vector3d CoM = tree_->centerOfMass(cache);
+    MatrixXd J = tree_->centerOfMassJacobian(cache);
+    Vector3d dCoM = J * v;
+  }
   // std::cout<<"pred_CoM = "<<pred_CoM.transpose()<<"\n";
   // std::cout<<"pred_dCoM = "<<pred_dCoM.transpose()<<"\n";
 
@@ -210,7 +208,6 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     const BasicVector<double>* fp_output = (BasicVector<double>*)
                                            this->EvalVectorInput(context, fp_port_);
     Vector2d speed_control = fp_output->get_value();
-
     CP += speed_control;
   }
 
@@ -222,10 +219,8 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     double approx_pelvis_yaw = atan2(
                                  pelvis_heading_vec(1), pelvis_heading_vec(0));
 
-    // Shift the CP away from CoM since Cassie shouldn't step right below the
-    // CoM when walking in place
-
-    // Testing (shift CP a little away from CoM line and toward the swing foot)
+    // Shift CP away from CoM since Cassie shouldn't step right below the CoM
+    // Shift CP a little away from CoM line and toward the swing foot
     double shift_foothold_dist = 0.06; //meter
     Vector2d shift_foothold_dir;
     if (fsm_state(0) == right_stance_) { // right stance
@@ -235,22 +230,16 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
       shift_foothold_dir << cos(approx_pelvis_yaw + PI * 3 / 2),
                          sin(approx_pelvis_yaw + PI * 3 / 2);
     }
-
-    // const double distThreshold = 0.2;
-    // const double speedThreshold = 0.5;
-    // Vector2d dCoM_2D(dCoM(0),dCoM(1));
-    // if(pred_CoM_to_CP.norm() <= distThreshold) std::cout<<"distance inside\n";
-    // if(dCoM_2D.norm() <= speedThreshold) std::cout<<       "                vel inside\n";
-    // if((pred_CoM_to_CP.norm() <= distThreshold) && (dCoM_2D.norm() <= speedThreshold)){
     CP = CP + shift_foothold_dir * shift_foothold_dist;
-    //   std::cout<<"CP (after shifted) = "<<CP.transpose()<<"\n";
-    // }
 
-    // Avoid legs collision (just keep the leg in the half side of the plane crossing CoM)
+    // The above CP shift might not be sufficient for leg collision avoidance,
+    // so we add a guard to restrict CP in an area.
+    // The safe area to step on is a halfplane which defined by a point on the
+    // line (the edge of the halfplace) and the slope/direction of the line.
+    // The point is either shifted CoM or shifted stance foot depending on the
+    // motion of the robot. The direction of the line is the pelvis heading.
     double shift_dist = 0.06; //(m)
 
-    Vector2d pred_CoM_or_stance_foot;
-    //TODO: could change below in the future if we have desired heading angle
     Vector3d base_yaw_heading(cos(approx_pelvis_yaw), sin(approx_pelvis_yaw), 0);
     Vector3d pred_CoM_to_stance_foot(
       stance_foot_pos(0) - pred_CoM(0),
@@ -260,6 +249,9 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
       base_yaw_heading.cross(pred_CoM_to_stance_foot);
     // std::cout<<"heading_cross_CoM_to_stance_foot = "<<
     //  heading_cross_CoM_to_stance_foot.transpose()<<"\n";
+
+    // Select the point which lies on the line
+    Vector2d pred_CoM_or_stance_foot;
     if ( ((fsm_state(0) == right_stance_) &&
           (heading_cross_CoM_to_stance_foot(2) > 0)) ||
          ((fsm_state(0) == left_stance_) &&
@@ -275,6 +267,8 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     Vector3d pred_CoM_or_stance_foot_to_CP(
       CP(0) - shifted_pred_CoM_or_stance_foot(0),
       CP(1) - shifted_pred_CoM_or_stance_foot(1), 0);
+
+    // Check if CP is in the halfplace. If not, we project it onto the line.
     Vector3d heading_cross_CoM_to_CP =
       base_yaw_heading.cross(pred_CoM_or_stance_foot_to_CP);
     // std::cout<<"heading_cross_CoM_to_CP = "<<
@@ -307,6 +301,9 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   }
 
   //////////// End of Capture Point
+
+  // Swing foot position at touchdown
+  Vector3d init_swing_foot_pos = swing_foot_pos_td;
 
   // Two segment of cubic polynomial with velocity constraints
   std::vector<double> T_waypoint = {start_time_of_this_interval,

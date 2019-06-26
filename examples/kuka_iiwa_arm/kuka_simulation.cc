@@ -30,7 +30,6 @@
 #include "drake/lcmt_iiwa_command.hpp"
 #include "drake/lcmt_iiwa_status.hpp"
 #include "examples/kuka_iiwa_arm/kuka_torque_controller.h"
-#include "systems/vector_scope.h"
 
 namespace dairlib {
 namespace examples {

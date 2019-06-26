@@ -68,7 +68,6 @@ class EndEffectorPositionController : public LeafSystem<double> {
    int endpoint_position_commanded_port;
    int endpoint_orientation_commanded_port;
    int endpoint_position_cmd_output_port;
-   int ee_frame_id;
 
 };
 

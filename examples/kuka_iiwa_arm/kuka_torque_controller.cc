@@ -12,7 +12,6 @@
 #include "drake/systems/primitives/constant_vector_source.h"
 
 #include "examples/kuka_iiwa_arm/kuka_torque_controller.h"
-#include "systems/vector_scope.h"
 
 namespace dairlib {
 namespace systems {
@@ -109,8 +108,8 @@ void KukaTorqueController<T>::SetUp(const VectorX<double>& stiffness,
 
 
   // Add gravity compensator.
-  auto gravity_comp =
-      builder.template AddSystem<InverseDynamics<T>>(&plant, InverseDynamics<T>::kGravityCompensation);
+  auto gravity_comp = builder.template AddSystem<InverseDynamics<T>>(
+      &plant, InverseDynamics<T>::kGravityCompensation);
 
   // Adds virtual springs.
   Eigen::VectorXd kd(dim);
@@ -161,7 +160,8 @@ void KukaTorqueController<T>::SetUp(const VectorX<double>& stiffness,
   // Exposes controller output.
   output_port_index_control_ = builder.ExportOutput(adder->get_output_port());
 
-  auto scope = builder.template AddSystem<dairlib::systems::VectorScope>(adder->get_output_port().size(), "torque output");
+  auto scope = builder.template AddSystem<dairlib::systems::VectorScope>(
+      adder->get_output_port().size(), "torque output");
   builder.Connect(adder->get_output_port(), scope->get_input_port(0));
 
   builder.BuildInto(this);

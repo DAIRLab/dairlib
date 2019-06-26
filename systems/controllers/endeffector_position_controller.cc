@@ -88,16 +88,6 @@ void EndEffectorPositionController::CalcOutputTwist(
       std::cout << "Set end effector velocity to " << currVel << std::endl;
   }
 
-  // for(int i = 0; i < 3; i++) {
-	//   double currSpeed = diff(i, 0);
-	//   if (diff(i, 0) > linear_speed_limit) {
-	// 	  diff(i, 0) = linear_speed_limit;
-	// 	  std::cout << "Warning: velocity of component " << i;
-	// 	  std::cout << " limited from " << currSpeed << " to ";
-	// 	  std::cout << linear_speed_limit << std::endl;
-	//   }
-  // }
-
   MatrixXd twist(6, 1);
   twist << angularVelocityWF, diff;
   output->set_value(twist);

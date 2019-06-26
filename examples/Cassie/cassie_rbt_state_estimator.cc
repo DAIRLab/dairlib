@@ -506,6 +506,9 @@ void CassieRbtStateEstimator::contactEstimation(
 
   // Mathematical program - double contact
   MathematicalProgram quadprog_double;
+
+  // Variables for the optimization
+  // These are shared across all three optimizations
   auto ddq = quadprog_double.NewContinuousVariables(n_v, "ddq");
   auto lambda_b = quadprog_double.NewContinuousVariables(2, "lambda_b");
   auto lambda_cl = quadprog_double.NewContinuousVariables(6, "lambda_cl");
@@ -573,8 +576,10 @@ void CassieRbtStateEstimator::contactEstimation(
       drake::solvers::Solve(quadprog_double);
 
   if (!result_double.is_success()) {
+    // If the optimization fails, push infinity into the optimal_cost vector
     optimal_cost.push_back(std::numeric_limits<double>::infinity());
 
+    // Initialize the optimization at the next time step with zeros
     discrete_state->get_mutable_vector(
         ddq_double_init_idx_).get_mutable_value() <<
         VectorXd::Zero(n_v, 1);
@@ -588,6 +593,7 @@ void CassieRbtStateEstimator::contactEstimation(
         lambda_cr_double_init_idx_).get_mutable_value() <<
         VectorXd::Zero(6, 1);
   } else {
+    // Push the optimal cost to the optimal_cost vector
     optimal_cost.push_back(result_double.get_optimal_cost() +
         cost_b.transpose()*cost_b);
 
@@ -671,8 +677,10 @@ void CassieRbtStateEstimator::contactEstimation(
       drake::solvers::Solve(quadprog_left);
 
   if (!result_left.is_success()) {
+    // Push infinity into optimal_costv vector if the optimization fails
     optimal_cost.push_back(std::numeric_limits<double>::infinity());
 
+    // Initialize the optimization with zero at the next time step
     discrete_state->get_mutable_vector(
         ddq_left_init_idx_).get_mutable_value() <<
         VectorXd::Zero(n_v, 1);
@@ -683,12 +691,14 @@ void CassieRbtStateEstimator::contactEstimation(
         lambda_cl_left_init_idx_).get_mutable_value() <<
         VectorXd::Zero(6, 1);
   } else {
+    // Push the optimal cost to the optimal_cost vector
     optimal_cost.push_back(result_left.get_optimal_cost() +
         cost_b.transpose()*cost_b);
 
     VectorXd ddq_val = result_left.GetSolution(ddq);
     VectorXd left_force = result_left.GetSolution(lambda_cl);
 
+    // Save current estimate for initial guess in the next iteration
     discrete_state->get_mutable_vector(
         ddq_left_init_idx_).get_mutable_value() <<
         ddq_val;
@@ -699,6 +709,7 @@ void CassieRbtStateEstimator::contactEstimation(
         lambda_cl_left_init_idx_).get_mutable_value() <<
         left_force;
 
+    // Residue calculation
     VectorXd curr_residue = ddq_val*dt;
     curr_residue -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
@@ -760,8 +771,10 @@ void CassieRbtStateEstimator::contactEstimation(
       drake::solvers::Solve(quadprog_right);
 
   if (!result_right.is_success()) {
+    // If the optimization fails, push infinity to the optimal_cost vector
     optimal_cost.push_back(std::numeric_limits<double>::infinity());
 
+    // Initialize the optimization with zero at the next time step
     discrete_state->get_mutable_vector(
         ddq_right_init_idx_).get_mutable_value() <<
         VectorXd::Zero(n_v, 1);
@@ -772,12 +785,14 @@ void CassieRbtStateEstimator::contactEstimation(
         lambda_cr_right_init_idx_).get_mutable_value() <<
         VectorXd::Zero(6 ,1);
   } else {
+    // Push the optimal cost to optimal_cost vector
     optimal_cost.push_back(result_right.get_optimal_cost() +
         cost_b.transpose()*cost_b);
 
     VectorXd ddq_val = result_right.GetSolution(ddq);
     VectorXd right_force = result_right.GetSolution(lambda_cr);
 
+    // Save current estimate for initial guess in the next iteration
     discrete_state->get_mutable_vector(
         ddq_right_init_idx_).get_mutable_value() <<
         result_right.GetSolution(ddq);
@@ -788,6 +803,7 @@ void CassieRbtStateEstimator::contactEstimation(
         lambda_cr_right_init_idx_).get_mutable_value() <<
         right_force;
 
+    // Residue calculation
     VectorXd curr_residue = ddq_val*dt;
     curr_residue -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
@@ -868,7 +884,7 @@ void CassieRbtStateEstimator::contactEstimation(
 }
 
 /// Workhorse state estimation function. Given a `cassie_out_t`, compute the
-/// esitmated state as an OutputVector
+/// estimated state as an OutputVector
 /// Since it needs to map from a struct to a vector, and no assumptions on the
 /// ordering of the vector are made, utilizies index maps to make this mapping.
 void CassieRbtStateEstimator::CopyStateOut(

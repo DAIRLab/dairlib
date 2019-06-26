@@ -284,6 +284,7 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   double right_heel_spring = 0;
   VectorXd q_init = output->GetMutablePositions();
   if (is_floating_base_) {
+    // Floating-base state doesn't affect the spring values
     for (int i = 0; i < 7; i++) {
       q_init[i] = 0;
     }
@@ -298,22 +299,22 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
 
 
 void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
-  OutputVector<double>* output, const VectorXd& state_est) const {
+  OutputVector<double>* output, const VectorXd& est_fb_state) const {
   // TODO(yminchen): Joints names need to be changed when we move to MBP
-  output->SetPositionAtIndex(positionIndexMap_.at("base_x"), state_est(0));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_y"), state_est(1));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_z"), state_est(2));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_qw"), state_est(3));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_qx"), state_est(4));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_qy"), state_est(5));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_qz"), state_est(6));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_x"), est_fb_state(0));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_y"), est_fb_state(1));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_z"), est_fb_state(2));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_qw"), est_fb_state(3));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_qx"), est_fb_state(4));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_qy"), est_fb_state(5));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_qz"), est_fb_state(6));
 
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wx"), state_est(7));
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wy"), state_est(8));
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wz"), state_est(9));
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vx"), state_est(10));
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vy"), state_est(11));
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vz"), state_est(12));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wx"), est_fb_state(7));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wy"), est_fb_state(8));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wz"), est_fb_state(9));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vx"), est_fb_state(10));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vy"), est_fb_state(11));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vz"), est_fb_state(12));
 }
 
 
@@ -711,7 +712,7 @@ void CassieRbtStateEstimator::contactEstimation(
       VectorXd filtered_residue_left = discrete_state->get_vector(
           filtered_residue_left_idx_).get_value();
       filtered_residue_left = filtered_residue_left +
-        alpha_*(curr_residue - filtered_residue_left);
+          alpha_*(curr_residue - filtered_residue_left);
       discrete_state->get_mutable_vector(
           filtered_residue_left_idx_).get_mutable_value() <<
           filtered_residue_left;
@@ -763,7 +764,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
     /* Solve the optimization problem */
     const drake::solvers::MathematicalProgramResult result_right =
-      drake::solvers::Solve(quadprog_right);
+        drake::solvers::Solve(quadprog_right);
 
     if (!result_right.is_success()) {
       optimal_cost.push_back(std::numeric_limits<double>::infinity());

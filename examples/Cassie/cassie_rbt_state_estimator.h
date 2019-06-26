@@ -51,15 +51,15 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                     OutputVector<double>* output) const;
 
   void contactEstimation(int* left_contact, int* right_contact,
-      OutputVector<double>* output, DiscreteValues<double>* discrete_state,
-      const double dt) const;
+    DiscreteValues<double>* discrete_state,
+    const OutputVector<double>& output, const double& dt) const;
 
   const RigidBodyTree<double>& tree_;
   const bool is_floating_base_;
 
-  std::map<std::string, int> positionIndexMap_;
-  std::map<std::string, int> velocityIndexMap_;
-  std::map<std::string, int> actuatorIndexMap_;
+  std::map<std::string, int> position_index_map_;
+  std::map<std::string, int> velocity_index_map_;
+  std::map<std::string, int> actuator_index_map_;
 
   // Body indices
   int left_thigh_ind_ = -1;

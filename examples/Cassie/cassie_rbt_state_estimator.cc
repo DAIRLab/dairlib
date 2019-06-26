@@ -387,8 +387,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Step 3 - Estimate which foot/feet are in contact with the ground
     int left_contact = 0;
     int right_contact = 0;
-    contactEstimation(&left_contact, &right_contact, &output,
-        discrete_state, dt);
+    contactEstimation(&left_contact, &right_contact, discrete_state,
+        output, dt);
 
     // Step 4 - EKF (measurement step)
 
@@ -419,8 +419,9 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 // Contact Estimator assumes that the swing leg doesn't stop during single stance
 void CassieRbtStateEstimator::contactEstimation(
     int* left_contact, int* right_contact,
-    OutputVector<double>* output, DiscreteValues<double>* discrete_state,
-    const double dt) const {
+    DiscreteValues<double>* discrete_state,
+    const OutputVector<double>& output,
+    const double& dt) const {
   const int n_v = tree_.get_num_velocities();
 
   // Indices
@@ -429,8 +430,8 @@ void CassieRbtStateEstimator::contactEstimation(
   const int pelvis_ind = GetBodyIndexFromName(tree_, "pelvis");
 
   // Cache
-  KinematicsCache<double> cache = tree_.doKinematics(output->GetPositions(),
-      output->GetVelocities(), true);
+  KinematicsCache<double> cache = tree_.doKinematics(output.GetPositions(),
+      output.GetVelocities(), true);
 
   // M, C and B matrices
   MatrixXd M = tree_.massMatrix(cache);
@@ -439,7 +440,7 @@ void CassieRbtStateEstimator::contactEstimation(
   MatrixXd B = tree_.B;
 
   // control input - obtained from cassie_input temporarily
-  VectorXd u = output->GetEfforts();
+  VectorXd u = output.GetEfforts();
 
   // Jb - Jacobian for fourbar linkage
   MatrixXd Jb = tree_.positionConstraintsJacobian(cache, false);
@@ -484,15 +485,15 @@ void CassieRbtStateEstimator::contactEstimation(
   Jcr_dot_times_v.head(3) = Jcrf_dot_times_v;
   Jcr_dot_times_v.tail(3) = Jcrr_dot_times_v;
 
-  // double left_leg_velocity = (Jcl*output->GetVelocities()).norm();
-  // double right_leg_velocity = (Jcr*output->GetVelocities()).norm();
+  // double left_leg_velocity = (Jcl*output.GetVelocities()).norm();
+  // double right_leg_velocity = (Jcr*output.GetVelocities()).norm();
 
   MatrixXd J_imu = tree_.transformPointsJacobian(cache,
       imu_pos_, pelvis_ind, 0, false);
   VectorXd J_imu_dot_times_v = tree_.transformPointsJacobianDotTimesV(
       cache, imu_pos_, pelvis_ind, 0);
 
-  Vector3d alpha_imu = output->GetIMUAccelerations();
+  Vector3d alpha_imu = output.GetIMUAccelerations();
 
   RigidBody<double>* pelvis_body = tree_.FindBody("pelvis");
   Isometry3d pelvis_pose = tree_.CalcBodyPoseInWorldFrame(cache,
@@ -610,7 +611,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
     // Residue calculation
     VectorXd curr_residue = ddq_val*dt;
-    curr_residue -= (output->GetVelocities() -
+    curr_residue -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
     VectorXd filtered_residue_double = discrete_state->get_vector(
         filtered_residue_double_idx_).get_value();
@@ -699,7 +700,7 @@ void CassieRbtStateEstimator::contactEstimation(
         left_force;
 
     VectorXd curr_residue = ddq_val*dt;
-    curr_residue -= (output->GetVelocities() -
+    curr_residue -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
     VectorXd filtered_residue_left = discrete_state->get_vector(
         filtered_residue_left_idx_).get_value();
@@ -788,7 +789,7 @@ void CassieRbtStateEstimator::contactEstimation(
         right_force;
 
     VectorXd curr_residue = ddq_val*dt;
-    curr_residue -= (output->GetVelocities() -
+    curr_residue -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
     VectorXd filtered_residue_right = discrete_state->get_vector(
         filtered_residue_right_idx_).get_value();
@@ -823,13 +824,13 @@ void CassieRbtStateEstimator::contactEstimation(
   // Update contact estimation based on spring deflection information
   // We say a foot is in contact with the ground if sprig deflection is over
   // a threshold.
-  double left_knee_spring = output->GetPositionAtIndex(
+  double left_knee_spring = output.GetPositionAtIndex(
       position_index_map_.at("knee_joint_left"));
-  double right_knee_spring = output->GetPositionAtIndex(
+  double right_knee_spring = output.GetPositionAtIndex(
       position_index_map_.at("knee_joint_right"));
-  double left_heel_spring = output->GetPositionAtIndex(
+  double left_heel_spring = output.GetPositionAtIndex(
       position_index_map_.at("ankle_spring_joint_left"));
-  double right_heel_spring = output->GetPositionAtIndex(
+  double right_heel_spring = output.GetPositionAtIndex(
       position_index_map_.at("ankle_spring_joint_right"));
   if (left_knee_spring < knee_spring_threshold_ ||
         left_heel_spring < heel_spring_threshold_) {
@@ -842,7 +843,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
   // Record previous velocity (used in residue)
   discrete_state->get_mutable_vector(
-      previous_velocity_idx_).get_mutable_value() << output->GetVelocities();
+      previous_velocity_idx_).get_mutable_value() << output.GetVelocities();
 
   // Ground truth of contact
   /*
@@ -887,6 +888,38 @@ void CassieRbtStateEstimator::CopyStateOut(
   if (is_floating_base_) {
     AssignFloatingBaseStateToOutputVector(output,
         context.get_discrete_state(state_idx_).get_value());
+
+    // Since we don't have EKF yet, we get the floating base state
+    // from ground truth (CASSIE_STATE)
+    // TODO(yminchen): delete this later
+    const OutputVector<double>* cassie_state = (OutputVector<double>*)
+        this->EvalVectorInput(context, state_input_port_);
+    output->SetPositionAtIndex(position_index_map_.at("base_x"),
+                              cassie_state->GetPositions()[0]);
+    output->SetPositionAtIndex(position_index_map_.at("base_y"),
+                              cassie_state->GetPositions()[1]);
+    output->SetPositionAtIndex(position_index_map_.at("base_z"),
+                              cassie_state->GetPositions()[2]);
+    output->SetPositionAtIndex(position_index_map_.at("base_qw"),
+                              cassie_state->GetPositions()[3]);
+    output->SetPositionAtIndex(position_index_map_.at("base_qx"),
+                              cassie_state->GetPositions()[4]);
+    output->SetPositionAtIndex(position_index_map_.at("base_qy"),
+                              cassie_state->GetPositions()[5]);
+    output->SetPositionAtIndex(position_index_map_.at("base_qz"),
+                              cassie_state->GetPositions()[6]);
+    output->SetVelocityAtIndex(velocity_index_map_.at("base_wx"),
+                              cassie_state->GetVelocities()[0]);
+    output->SetVelocityAtIndex(velocity_index_map_.at("base_wy"),
+                              cassie_state->GetVelocities()[1]);
+    output->SetVelocityAtIndex(velocity_index_map_.at("base_wz"),
+                              cassie_state->GetVelocities()[2]);
+    output->SetVelocityAtIndex(velocity_index_map_.at("base_vx"),
+                              cassie_state->GetVelocities()[3]);
+    output->SetVelocityAtIndex(velocity_index_map_.at("base_vy"),
+                              cassie_state->GetVelocities()[4]);
+    output->SetVelocityAtIndex(velocity_index_map_.at("base_vz"),
+                              cassie_state->GetVelocities()[5]);
   }
 
 

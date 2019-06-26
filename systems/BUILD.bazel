@@ -16,3 +16,16 @@ cc_library(
         "@lcm",
     ],
 )
+
+cc_library(
+    name = "vector_scope",
+    srcs = ["vector_scope.cc"],
+    hdrs = ["vector_scope.h"],
+    deps = [
+        "@drake//systems/framework:leaf_system",
+        "@drake//systems/framework:diagram_builder",
+        "@drake//systems/framework:vector",
+        "@drake//systems/framework:framework_common",
+        "@drake//systems/framework:event_collection"
+    ]
+)

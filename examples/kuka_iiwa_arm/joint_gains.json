@@ -1,0 +1,12 @@
+// JSON file for iiwa_controller_demo joint gains
+
+{
+    "kuka_gains": [
+        {
+            "K_P": 10,
+            "K_OMEGA": 10,
+            "K_D": 10,
+            "K_R": 10
+        }
+    ]
+}

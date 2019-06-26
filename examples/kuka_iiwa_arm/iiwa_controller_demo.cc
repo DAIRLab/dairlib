@@ -1,15 +1,15 @@
 // Kp and 'Rotational' Kp
-#define K_P 1000
-#define K_OMEGA 50
+#define K_P 25
+#define K_OMEGA 15
 
 // Kd and 'Rotational' Kd
-#define K_D 25
-#define K_R 3
+#define K_D 1
+#define K_R 0.3
 
 #define NUM_JOINTS 7
-#define ENDEFFECTOR_BODY_ID 10
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/lcm/drake_lcm.h"
@@ -18,19 +18,21 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/lcmt_iiwa_command.hpp"
 #include "drake/lcmt_iiwa_status.hpp"
-#include "drake/manipulation/util/sim_diagram_builder.h"
+#include "drake/systems/framework/diagram_builder.h"
 #include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
 #include "drake/systems/primitives/trajectory_source.h"
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 
 #include "systems/controllers/endeffector_velocity_controller.h"
 #include "systems/controllers/endeffector_position_controller.h"
+#include "systems/vector_scope.h"
 
 namespace dairlib {
 
 int do_main(int argc, char* argv[]) {
 
-  drake::lcm::DrakeLcm lcm;
-  drake::systems::DiagramBuilder<double> builder;
 
   // Creating end effector trajectory
   // TODO make this modular
@@ -86,19 +88,28 @@ int do_main(int argc, char* argv[]) {
   auto orientation_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(orient_times, orient_points);
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
-  const char* kModelPath = "../drake/manipulation/models/iiwa_description/urdf/iiwa14_polytope_collision.urdf";
-  const std::string urdf = FindResourceOrThrow(kModelPath);
+  const char* kModelPath = "../drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf";
+  const std::string urdf_string = FindResourceOrThrow(kModelPath);
 
-  // RigidBodyTrees are created here, then passed by reference to the controller blocks for
+  // MultibodyPlants are created here, then passed by reference to the controller blocks for
   // internal modelling.
-  std::unique_ptr<RigidBodyTree<double>> tree = std::make_unique<RigidBodyTree<double>>();
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-    urdf, drake::multibody::joints::kFixed, tree.get());
+  const auto X_WI = drake::math::RigidTransform<double>::Identity();
+  std::unique_ptr<MultibodyPlant<double>> owned_plant = std::make_unique<MultibodyPlant<double>>();
+  drake::multibody::MultibodyPlant<double>* plant = owned_plant.get();
+
+  drake::multibody::Parser plant_parser(plant);
+  plant_parser.AddModelFromFile(urdf_string, "iiwa");
+  plant->WeldFrames(owned_plant->world_frame(), owned_plant->GetFrameByName("iiwa_link_0"), X_WI);
+  owned_plant->Finalize();
+
+  drake::systems::DiagramBuilder<double> builder;
+
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   // Adding status subscriber and receiver blocks
   auto status_subscriber = builder.AddSystem(
     drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_status>(
-      "IIWA_STATUS", &lcm));
+      "IIWA_STATUS", lcm));
   auto status_receiver = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaStatusReceiver>();
 
   // The coordinates for the end effector with respect to the last joint,
@@ -106,35 +117,41 @@ int do_main(int argc, char* argv[]) {
   Eigen::Vector3d eeContactFrame;
   eeContactFrame << 0.0, 0, 0.09;
 
+  const std::string link_7 = "iiwa_link_7";
+
   // Adding position controller block
   auto position_controller = builder.AddSystem<systems::EndEffectorPositionController>(
-      *tree, ENDEFFECTOR_BODY_ID, eeContactFrame, NUM_JOINTS, K_P, K_OMEGA);
-
-  // The coordinates for the end effector with respect to the last joint,
-  // used to determine location of end effector, but in Isometry3d form
-  Eigen::Translation3d eeContactFrameTranslation(0, 0, 0.09);
-  Eigen::Isometry3d eeCFIsometry = Eigen::Isometry3d(eeContactFrameTranslation);
+      *plant, link_7, eeContactFrame, NUM_JOINTS, K_P, K_OMEGA);
 
   // Adding Velocity Controller block
   auto velocity_controller = builder.AddSystem<systems::EndEffectorVelocityController>(
-      *tree, eeCFIsometry, NUM_JOINTS, K_D, K_R);
+      *plant, link_7, eeContactFrame, NUM_JOINTS, K_D, K_R);
+
 
   // Adding linear position Trajectory Source
   auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(ee_trajectory);
   // Adding orientation Trajectory Source
   auto input_orientation = builder.AddSystem<drake::systems::TrajectorySource>(orientation_trajectory);
 
+
   // Adding command publisher and broadcaster blocks
   auto command_sender = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaCommandSender>();
   auto command_publisher = builder.AddSystem(
     drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
-      "IIWA_COMMAND", &lcm, 1.0/200.0));
-  // Setting command publisher publish period
-  //command_publisher->set_publish_period(1.0/200.0);
+      "IIWA_COMMAND", lcm, 1.0/200.0));
+
+  // Torque Controller-- includes virtual springs and damping.
+  VectorXd ConstPositionCommand;
+
+  // The virtual spring stiffness in Nm/rad.
+  ConstPositionCommand.resize(7);
+  ConstPositionCommand << 0, 0, 0, 0, 0, 0, 0;
+
+  auto positionCommand = builder.AddSystem<drake::systems::ConstantVectorSource>(ConstPositionCommand);
 
   builder.Connect(status_subscriber->get_output_port(),
                   status_receiver->get_input_port());
-  builder.Connect(status_receiver->get_position_commanded_output_port(),
+  builder.Connect(status_receiver->get_position_measured_output_port(),
                   velocity_controller->get_joint_pos_input_port());
   builder.Connect(status_receiver->get_velocity_estimated_output_port(),
                   velocity_controller->get_joint_vel_input_port());
@@ -154,22 +171,19 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(velocity_controller->get_endpoint_torque_output_port(),
                   command_sender->get_torque_input_port());
 
-  builder.Connect(status_receiver->get_position_measured_output_port(),
+  builder.Connect(positionCommand->get_output_port(),
                   command_sender->get_position_input_port());
   builder.Connect(command_sender->get_output_port(),
                   command_publisher->get_input_port());
 
   auto diagram = builder.Build();
+
   drake::systems::Simulator<double> simulator(*diagram);
 
   simulator.set_publish_every_time_step(false);
-  simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
-
-  lcm.StartReceiveThread();
-
-  simulator.StepTo(ee_trajectory.end_time());
+  simulator.AdvanceTo(ee_trajectory.end_time());
   return 0;
 }
 

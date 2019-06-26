@@ -113,11 +113,10 @@ cc_test(
     ],
 )
 
-
 cc_library(
-    name = "endeffector_velocity_controller",
-    srcs = ["endeffector_velocity_controller.cc"],
-    hdrs = ["endeffector_velocity_controller.h"],
+    name = "safe_velocity_controller",
+    srcs = ["safe_velocity_controller.cc"],
+    hdrs = ["safe_velocity_controller.h"],
     deps = [
             "//common",
             "//systems/framework:vector",
@@ -130,6 +129,7 @@ cc_library(
             ],
 )
 
+
 cc_library(
     name = "endeffector_position_controller",
     srcs = ["endeffector_position_controller.cc"],
@@ -137,12 +137,25 @@ cc_library(
     deps = [
             "//common",
             "//systems/framework:vector",
-            "@drake//attic/multibody/rigid_body_plant:rigid_body_plant",
-            "@drake//attic/multibody/parsers",
-            "@drake//attic/multibody:rigid_body_tree",
+            "@drake//multibody/plant:plant",
             "@drake//systems/framework:leaf_system",
-            "@drake//attic/manipulation/util:sim_diagram_builder",
             "@drake//examples/kuka_iiwa_arm:iiwa_common",
+            "@drake//multibody/tree:tree",
+    ]
+
+)
+
+cc_library(
+    name = "endeffector_velocity_controller",
+    srcs = ["endeffector_velocity_controller.cc"],
+    hdrs = ["endeffector_velocity_controller.h"],
+    deps = [
+            "//common",
+            "//systems/framework:vector",
+            "@drake//multibody/plant:plant",
+            "@drake//systems/framework:leaf_system",
+            "@drake//examples/kuka_iiwa_arm:iiwa_common",
+            "@drake//multibody/tree:tree",
     ]
 
 )

@@ -40,6 +40,7 @@ class CPTrajGenerator : public LeafSystem<double> {
                   int pelvis_idx,
                   bool is_walking_position_control,
                   bool is_feet_collision_avoid,
+                  bool is_using_predicted_com,
                   bool is_print_info);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {

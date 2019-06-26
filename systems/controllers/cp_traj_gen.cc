@@ -92,8 +92,8 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
 
     // Get time
     double timestamp = robot_output->get_timestamp();
-    double currentSimTime = static_cast<double>(timestamp);
-    prev_td_time(0) = currentSimTime;
+    double current_time = static_cast<double>(timestamp);
+    prev_td_time(0) = current_time;
 
     // Kinematics cache and indices
     KinematicsCache<double> cache = tree_->CreateKinematicsCache();
@@ -141,13 +141,13 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
 
   // Get time
   double timestamp = robot_output->get_timestamp();
-  double currentSimTime = static_cast<double>(timestamp);
+  double current_time = static_cast<double>(timestamp);
 
   double start_time_of_this_interval = prev_td_time(0);
   double end_time_of_this_interval = prev_td_time(0) + stance_duration_per_leg_;
-  // Ensure currentSimTime < end_time_of_this_interval to avoid error in creating trajectory.
-  if ((end_time_of_this_interval <= currentSimTime + 0.001)) {
-    end_time_of_this_interval = currentSimTime + 0.002;
+  // Ensure current_time < end_time_of_this_interval to avoid error in creating trajectory.
+  if ((end_time_of_this_interval <= current_time + 0.001)) {
+    end_time_of_this_interval = current_time + 0.002;
   }
 
   // Kinematics cache and indices
@@ -175,8 +175,8 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
 
   /////////////////////// Swing Foot Traj //////////////////////////////////////
 
-  Vector3d pred_CoM;
-  Vector3d pred_dCoM;
+  Vector3d CoM;
+  Vector3d dCoM;
   if (is_using_predicted_com_) {
     // CoM and dCoM at the end of the step (predicted)
     const drake::AbstractValue* com_traj_output =
@@ -184,22 +184,22 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     DRAKE_ASSERT(com_traj_output != nullptr);
     const auto & com_traj = com_traj_output->get_value <
                             ExponentialPlusPiecewisePolynomial<double >> ();
-    pred_CoM = com_traj.value(end_time_of_this_interval);
-    pred_dCoM = com_traj.derivative().value(end_time_of_this_interval);
+    CoM = com_traj.value(end_time_of_this_interval);
+    dCoM = com_traj.derivative().value(end_time_of_this_interval);
   } else {
-    // Get center of mass position and velocity
-    Vector3d CoM = tree_->centerOfMass(cache);
-    MatrixXd J = tree_->centerOfMassJacobian(cache);
-    Vector3d dCoM = J * v;
+    // Get the current center of mass position and velocity
+    MatrixXd J_com = tree_->centerOfMassJacobian(cache);
+    CoM = tree_->centerOfMass(cache);
+    dCoM = J_com * v;
   }
-  // std::cout<<"pred_CoM = "<<pred_CoM.transpose()<<"\n";
-  // std::cout<<"pred_dCoM = "<<pred_dCoM.transpose()<<"\n";
+  // std::cout<<"CoM = "<<CoM.transpose()<<"\n";
+  // std::cout<<"dCoM = "<<dCoM.transpose()<<"\n";
 
   //////////// Capture Point
-  double pred_omega = sqrt(9.81 / pred_CoM(2));
+  double pred_omega = sqrt(9.81 / CoM(2));
   Vector2d CP;
-  CP << (pred_CoM(0) + pred_dCoM(0) / pred_omega),
-  (pred_CoM(1) + pred_dCoM(1) / pred_omega);
+  CP << (CoM(0) + dCoM(0) / pred_omega),
+  (CoM(1) + dCoM(1) / pred_omega);
   // std::cout<<"CP = "<<CP.transpose()<<"\n";
 
   // Walking position control
@@ -211,7 +211,7 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     CP += speed_control;
   }
 
-  Vector2d pred_CoM_to_CP(CP(0) - pred_CoM(0), CP(1) - pred_CoM(1));
+  Vector2d CoM_to_CP(CP(0) - CoM(0), CP(1) - CoM(1));
   if (is_feet_collision_avoid_) {
     // Get proximated heading angle of pelvis
     Vector3d pelvis_heading_vec = tree_->CalcBodyPoseInWorldFrame(
@@ -241,36 +241,36 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
     double shift_dist = 0.06; //(m)
 
     Vector3d base_yaw_heading(cos(approx_pelvis_yaw), sin(approx_pelvis_yaw), 0);
-    Vector3d pred_CoM_to_stance_foot(
-      stance_foot_pos(0) - pred_CoM(0),
-      stance_foot_pos(1) - pred_CoM(1),
+    Vector3d CoM_to_stance_foot(
+      stance_foot_pos(0) - CoM(0),
+      stance_foot_pos(1) - CoM(1),
       0);
     Vector3d heading_cross_CoM_to_stance_foot =
-      base_yaw_heading.cross(pred_CoM_to_stance_foot);
+      base_yaw_heading.cross(CoM_to_stance_foot);
     // std::cout<<"heading_cross_CoM_to_stance_foot = "<<
     //  heading_cross_CoM_to_stance_foot.transpose()<<"\n";
 
     // Select the point which lies on the line
-    Vector2d pred_CoM_or_stance_foot;
+    Vector2d CoM_or_stance_foot;
     if ( ((fsm_state(0) == right_stance_) &&
           (heading_cross_CoM_to_stance_foot(2) > 0)) ||
          ((fsm_state(0) == left_stance_) &&
           (heading_cross_CoM_to_stance_foot(2) < 0)) )
-      pred_CoM_or_stance_foot << stance_foot_pos(0), stance_foot_pos(1);
+      CoM_or_stance_foot << stance_foot_pos(0), stance_foot_pos(1);
     else
-      pred_CoM_or_stance_foot << pred_CoM(0), pred_CoM(1);
+      CoM_or_stance_foot << CoM(0), CoM(1);
 
-    Vector3d shifted_pred_CoM_or_stance_foot(
-      pred_CoM_or_stance_foot(0) + shift_foothold_dir(0)*shift_dist,
-      pred_CoM_or_stance_foot(1) + shift_foothold_dir(1)*shift_dist,
+    Vector3d shifted_CoM_or_stance_foot(
+      CoM_or_stance_foot(0) + shift_foothold_dir(0)*shift_dist,
+      CoM_or_stance_foot(1) + shift_foothold_dir(1)*shift_dist,
       0);
-    Vector3d pred_CoM_or_stance_foot_to_CP(
-      CP(0) - shifted_pred_CoM_or_stance_foot(0),
-      CP(1) - shifted_pred_CoM_or_stance_foot(1), 0);
+    Vector3d CoM_or_stance_foot_to_CP(
+      CP(0) - shifted_CoM_or_stance_foot(0),
+      CP(1) - shifted_CoM_or_stance_foot(1), 0);
 
     // Check if CP is in the halfplace. If not, we project it onto the line.
     Vector3d heading_cross_CoM_to_CP =
-      base_yaw_heading.cross(pred_CoM_or_stance_foot_to_CP);
+      base_yaw_heading.cross(CoM_or_stance_foot_to_CP);
     // std::cout<<"heading_cross_CoM_to_CP = "<<
     //     heading_cross_CoM_to_CP.transpose()<<"\n";
     if ( ((fsm_state(0) == right_stance_) && (heading_cross_CoM_to_CP(2) < 0)) ||
@@ -278,26 +278,26 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
       Vector3d perp_heading_dir = heading_cross_CoM_to_CP.cross(base_yaw_heading);
       perp_heading_dir = perp_heading_dir / perp_heading_dir.norm();
       // std::cout<<"perp_heading_dir = "<<perp_heading_dir.transpose()<<"\n";
-      Vector3d projection_cf_pred_CoM_cr_stance_foot_to_CP =
-        (pred_CoM_or_stance_foot_to_CP.dot(perp_heading_dir)) * perp_heading_dir;
-      // std::cout<<"projection_cf_pred_CoM_cr_stance_foot_to_CP = "<<
-      //  projection_cf_pred_CoM_cr_stance_foot_to_CP.transpose()<<"\n";
-      CP(0) = CP(0) - projection_cf_pred_CoM_cr_stance_foot_to_CP(0);
-      CP(1) = CP(1) - projection_cf_pred_CoM_cr_stance_foot_to_CP(1);
+      Vector3d projection_cf_CoM_cr_stance_foot_to_CP =
+        (CoM_or_stance_foot_to_CP.dot(perp_heading_dir)) * perp_heading_dir;
+      // std::cout<<"projection_cf_CoM_cr_stance_foot_to_CP = "<<
+      //  projection_cf_CoM_cr_stance_foot_to_CP.transpose()<<"\n";
+      CP(0) = CP(0) - projection_cf_CoM_cr_stance_foot_to_CP(0);
+      CP(1) = CP(1) - projection_cf_CoM_cr_stance_foot_to_CP(1);
       // std::cout<<"CP = "<<CP.transpose()<<"\n";
     }
     // std::cout<<"CP = "<<CP.transpose()<<"\n";
   }
 
   // Cap the step length
-  if ( pred_CoM_to_CP.norm() > max_CoM_to_CP_dist_ ) {
+  if ( CoM_to_CP.norm() > max_CoM_to_CP_dist_ ) {
     if (is_print_info_) {
       std::cout << "Step length limit reached. It's " <<
-                pred_CoM_to_CP.norm() - max_CoM_to_CP_dist_ << " (m) more than max.\n";
+                CoM_to_CP.norm() - max_CoM_to_CP_dist_ << " (m) more than max.\n";
     }
-    Vector2d normalized_pred_CoM_to_CP = pred_CoM_to_CP.normalized();
-    CP(0) = pred_CoM(0) + normalized_pred_CoM_to_CP(0) * max_CoM_to_CP_dist_;
-    CP(1) = pred_CoM(1) + normalized_pred_CoM_to_CP(1) * max_CoM_to_CP_dist_;
+    Vector2d normalized_CoM_to_CP = CoM_to_CP.normalized();
+    CP(0) = CoM(0) + normalized_CoM_to_CP(0) * max_CoM_to_CP_dist_;
+    CP(1) = CoM(1) + normalized_CoM_to_CP(1) * max_CoM_to_CP_dist_;
   }
 
   //////////// End of Capture Point
@@ -337,7 +337,7 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   //  std::cout<<swing_foot_spline.value(d) <<" ";
   // }
   // std::cout<<std::endl;
-  // std::cout<<"FootTraj.value(currentSimTime)^T = "<<swing_foot_spline.value(currentSimTime).transpose()<<"\n";
+  // std::cout<<"FootTraj.value(current_time)^T = "<<swing_foot_spline.value(current_time).transpose()<<"\n";
 
   // Assign traj
   *traj = swing_foot_spline;

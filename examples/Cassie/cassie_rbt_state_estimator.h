@@ -37,7 +37,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                            const VectorXd& q_init) const;
 
  private:
-
   void AssignImuValueToOutputVector(
       OutputVector<double>* output, const cassie_out_t& cassie_out) const;
   void AssignNonFloatingBaseStateToOutputVector(
@@ -62,11 +61,17 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> velocityIndexMap_;
   std::map<std::string, int> actuatorIndexMap_;
 
+  // Body indices
   int left_thigh_ind_ = -1;
   int right_thigh_ind_ = -1;
   int left_heel_spring_ind_ = -1;
   int right_heel_spring_ind_ = -1;
 
+  // Input/output port indices
+  int cassie_out_input_port_;
+  int state_input_port_;
+
+  // State indices
   DiscreteStateIndex time_idx_;
 
   DiscreteStateIndex state_idx_;
@@ -89,9 +94,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   DiscreteStateIndex lambda_cr_double_init_idx_;
   DiscreteStateIndex lambda_cr_right_init_idx_;
 
-  int cassie_out_input_port_;
-  int state_input_port_;
-
   // Cassie parameters
   // TODO(yminchen): get the numbers below from tree
   double rod_length_ = 0.5012;  // from cassie_utils
@@ -107,11 +109,11 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const double cost_threshold_ = 200;
   const double knee_spring_threshold_ = -0.015;
   const double heel_spring_threshold_ = -0.03;
-  const double imu_eps_ = 0.5; // Error bounds for imu acceleration
-  const double constraint_cost_ = 100; // soft constraint cost
-  const double alpha_ = 0.9; // Decay for residue calculation
-  const bool is_simulation_ = true; // Flag to calculate ground truth contact
-
+  const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
+  const double eps_imu_ = 0.5;  // Error bounds for imu acceleration
+  const double constraint_cost_ = 100;  // soft constraint cost
+  const double alpha_ = 0.9;  // Decay for residue calculation
+  const bool is_simulation_ = true;  // Flag to calculate ground truth contact
 };
 
 }  // namespace systems

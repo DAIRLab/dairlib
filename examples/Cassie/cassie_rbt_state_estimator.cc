@@ -34,9 +34,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
       &CassieRbtStateEstimator::CopyStateOut);
 
   // Initialize index maps
-  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
-  positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
-  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
+  actuator_index_map_ = multibody::makeNameToActuatorsMap(tree);
+  position_index_map_ = multibody::makeNameToPositionsMap(tree);
+  velocity_index_map_ = multibody::makeNameToVelocitiesMap(tree);
 
   // Initialize body indices
   left_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_left");
@@ -184,95 +184,95 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   // Copy the robot state excluding floating base
   // TODO(yuming): check what cassie_out.leftLeg.footJoint.position is.
   // Similarly, the other leg and the velocity of these joints.
-  output->SetPositionAtIndex(positionIndexMap_.at("hip_roll_left"),
+  output->SetPositionAtIndex(position_index_map_.at("hip_roll_left"),
                              cassie_out.leftLeg.hipRollDrive.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("hip_yaw_left"),
+  output->SetPositionAtIndex(position_index_map_.at("hip_yaw_left"),
                              cassie_out.leftLeg.hipYawDrive.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("hip_pitch_left"),
+  output->SetPositionAtIndex(position_index_map_.at("hip_pitch_left"),
                              cassie_out.leftLeg.hipPitchDrive.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("knee_left"),
+  output->SetPositionAtIndex(position_index_map_.at("knee_left"),
                              cassie_out.leftLeg.kneeDrive.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("toe_left"),
+  output->SetPositionAtIndex(position_index_map_.at("toe_left"),
                              cassie_out.leftLeg.footDrive.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("knee_joint_left"),
+  output->SetPositionAtIndex(position_index_map_.at("knee_joint_left"),
                              cassie_out.leftLeg.shinJoint.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("ankle_joint_left"),
+  output->SetPositionAtIndex(position_index_map_.at("ankle_joint_left"),
                              cassie_out.leftLeg.tarsusJoint.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("ankle_spring_joint_left"),
+  output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_left"),
                              0.0);
 
-  output->SetPositionAtIndex(positionIndexMap_.at("hip_roll_right"),
+  output->SetPositionAtIndex(position_index_map_.at("hip_roll_right"),
                              cassie_out.rightLeg.hipRollDrive.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("hip_yaw_right"),
+  output->SetPositionAtIndex(position_index_map_.at("hip_yaw_right"),
                              cassie_out.rightLeg.hipYawDrive.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("hip_pitch_right"),
+  output->SetPositionAtIndex(position_index_map_.at("hip_pitch_right"),
                              cassie_out.rightLeg.hipPitchDrive.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("knee_right"),
+  output->SetPositionAtIndex(position_index_map_.at("knee_right"),
                              cassie_out.rightLeg.kneeDrive.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("toe_right"),
+  output->SetPositionAtIndex(position_index_map_.at("toe_right"),
                              cassie_out.rightLeg.footDrive.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("knee_joint_right"),
+  output->SetPositionAtIndex(position_index_map_.at("knee_joint_right"),
                              cassie_out.rightLeg.shinJoint.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("ankle_joint_right"),
+  output->SetPositionAtIndex(position_index_map_.at("ankle_joint_right"),
                              cassie_out.rightLeg.tarsusJoint.position);
-  output->SetPositionAtIndex(positionIndexMap_.at("ankle_spring_joint_right"),
+  output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_right"),
                              0.0);
 
-  output->SetVelocityAtIndex(velocityIndexMap_.at("hip_roll_leftdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("hip_roll_leftdot"),
                              cassie_out.leftLeg.hipRollDrive.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("hip_yaw_leftdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("hip_yaw_leftdot"),
                              cassie_out.leftLeg.hipYawDrive.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("hip_pitch_leftdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("hip_pitch_leftdot"),
                              cassie_out.leftLeg.hipPitchDrive.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("knee_leftdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("knee_leftdot"),
                              cassie_out.leftLeg.kneeDrive.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("toe_leftdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("toe_leftdot"),
                              cassie_out.leftLeg.footDrive.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("knee_joint_leftdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("knee_joint_leftdot"),
                              cassie_out.leftLeg.shinJoint.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_joint_leftdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("ankle_joint_leftdot"),
                              cassie_out.leftLeg.tarsusJoint.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_spring_joint_leftdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("ankle_spring_joint_leftdot"),
                              0.0);
 
-  output->SetVelocityAtIndex(velocityIndexMap_.at("hip_roll_rightdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("hip_roll_rightdot"),
                              cassie_out.rightLeg.hipRollDrive.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("hip_yaw_rightdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("hip_yaw_rightdot"),
                              cassie_out.rightLeg.hipYawDrive.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("hip_pitch_rightdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("hip_pitch_rightdot"),
                              cassie_out.rightLeg.hipPitchDrive.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("knee_rightdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("knee_rightdot"),
                              cassie_out.rightLeg.kneeDrive.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("toe_rightdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("toe_rightdot"),
                              cassie_out.rightLeg.footDrive.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("knee_joint_rightdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("knee_joint_rightdot"),
                              cassie_out.rightLeg.shinJoint.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_joint_rightdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("ankle_joint_rightdot"),
                              cassie_out.rightLeg.tarsusJoint.velocity);
-  output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_spring_joint_rightdot"),
+  output->SetVelocityAtIndex(velocity_index_map_.at("ankle_spring_joint_rightdot"),
                              0.0);
 
   // Copy actuators
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_left_motor"),
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_roll_left_motor"),
                            cassie_out.leftLeg.hipRollDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_left_motor"),
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_yaw_left_motor"),
                            cassie_out.leftLeg.hipYawDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_pitch_left_motor"),
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_pitch_left_motor"),
                            cassie_out.leftLeg.hipPitchDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("knee_left_motor"),
+  output->SetEffortAtIndex(actuator_index_map_.at("knee_left_motor"),
                            cassie_out.leftLeg.kneeDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("toe_left_motor"),
+  output->SetEffortAtIndex(actuator_index_map_.at("toe_left_motor"),
                            cassie_out.leftLeg.footDrive.torque);
 
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_right_motor"),
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_roll_right_motor"),
                            cassie_out.rightLeg.hipRollDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_yaw_right_motor"),
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_yaw_right_motor"),
                            cassie_out.rightLeg.hipYawDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("hip_pitch_right_motor"),
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_pitch_right_motor"),
                            cassie_out.rightLeg.hipPitchDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("knee_right_motor"),
+  output->SetEffortAtIndex(actuator_index_map_.at("knee_right_motor"),
                            cassie_out.rightLeg.kneeDrive.torque);
-  output->SetEffortAtIndex(actuatorIndexMap_.at("toe_right_motor"),
+  output->SetEffortAtIndex(actuator_index_map_.at("toe_right_motor"),
                            cassie_out.rightLeg.footDrive.torque);
 
   // Solve fourbar linkage for heel spring positions
@@ -287,9 +287,9 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
     q_init[3] =  1;
   }
   solveFourbarLinkage(&left_heel_spring, &right_heel_spring, q_init);
-  output->SetPositionAtIndex(positionIndexMap_.at("ankle_spring_joint_left"),
+  output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_left"),
                              left_heel_spring);
-  output->SetPositionAtIndex(positionIndexMap_.at("ankle_spring_joint_right"),
+  output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_right"),
                              right_heel_spring);
 }
 
@@ -297,20 +297,20 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
 void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
   OutputVector<double>* output, const VectorXd& est_fb_state) const {
   // TODO(yminchen): Joints names need to be changed when we move to MBP
-  output->SetPositionAtIndex(positionIndexMap_.at("base_x"), est_fb_state(0));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_y"), est_fb_state(1));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_z"), est_fb_state(2));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_qw"), est_fb_state(3));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_qx"), est_fb_state(4));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_qy"), est_fb_state(5));
-  output->SetPositionAtIndex(positionIndexMap_.at("base_qz"), est_fb_state(6));
+  output->SetPositionAtIndex(position_index_map_.at("base_x"), est_fb_state(0));
+  output->SetPositionAtIndex(position_index_map_.at("base_y"), est_fb_state(1));
+  output->SetPositionAtIndex(position_index_map_.at("base_z"), est_fb_state(2));
+  output->SetPositionAtIndex(position_index_map_.at("base_qw"), est_fb_state(3));
+  output->SetPositionAtIndex(position_index_map_.at("base_qx"), est_fb_state(4));
+  output->SetPositionAtIndex(position_index_map_.at("base_qy"), est_fb_state(5));
+  output->SetPositionAtIndex(position_index_map_.at("base_qz"), est_fb_state(6));
 
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wx"), est_fb_state(7));
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wy"), est_fb_state(8));
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wz"), est_fb_state(9));
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vx"), est_fb_state(10));
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vy"), est_fb_state(11));
-  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vz"), est_fb_state(12));
+  output->SetVelocityAtIndex(velocity_index_map_.at("base_wx"), est_fb_state(7));
+  output->SetVelocityAtIndex(velocity_index_map_.at("base_wy"), est_fb_state(8));
+  output->SetVelocityAtIndex(velocity_index_map_.at("base_wz"), est_fb_state(9));
+  output->SetVelocityAtIndex(velocity_index_map_.at("base_vx"), est_fb_state(10));
+  output->SetVelocityAtIndex(velocity_index_map_.at("base_vy"), est_fb_state(11));
+  output->SetVelocityAtIndex(velocity_index_map_.at("base_vz"), est_fb_state(12));
 }
 
 
@@ -350,31 +350,31 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // TODO(yminchen): delete this later
     const OutputVector<double>* cassie_state = (OutputVector<double>*)
         this->EvalVectorInput(context, state_input_port_);
-    output.SetPositionAtIndex(positionIndexMap_.at("base_x"),
+    output.SetPositionAtIndex(position_index_map_.at("base_x"),
                               cassie_state->GetPositions()[0]);
-    output.SetPositionAtIndex(positionIndexMap_.at("base_y"),
+    output.SetPositionAtIndex(position_index_map_.at("base_y"),
                               cassie_state->GetPositions()[1]);
-    output.SetPositionAtIndex(positionIndexMap_.at("base_z"),
+    output.SetPositionAtIndex(position_index_map_.at("base_z"),
                               cassie_state->GetPositions()[2]);
-    output.SetPositionAtIndex(positionIndexMap_.at("base_qw"),
+    output.SetPositionAtIndex(position_index_map_.at("base_qw"),
                               cassie_state->GetPositions()[3]);
-    output.SetPositionAtIndex(positionIndexMap_.at("base_qx"),
+    output.SetPositionAtIndex(position_index_map_.at("base_qx"),
                               cassie_state->GetPositions()[4]);
-    output.SetPositionAtIndex(positionIndexMap_.at("base_qy"),
+    output.SetPositionAtIndex(position_index_map_.at("base_qy"),
                               cassie_state->GetPositions()[5]);
-    output.SetPositionAtIndex(positionIndexMap_.at("base_qz"),
+    output.SetPositionAtIndex(position_index_map_.at("base_qz"),
                               cassie_state->GetPositions()[6]);
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_wx"),
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_wx"),
                               cassie_state->GetVelocities()[0]);
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_wy"),
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_wy"),
                               cassie_state->GetVelocities()[1]);
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_wz"),
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_wz"),
                               cassie_state->GetVelocities()[2]);
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_vx"),
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_vx"),
                               cassie_state->GetVelocities()[3]);
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_vy"),
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_vy"),
                               cassie_state->GetVelocities()[4]);
-    output.SetVelocityAtIndex(velocityIndexMap_.at("base_vz"),
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_vz"),
                               cassie_state->GetVelocities()[5]);
 
 
@@ -548,13 +548,13 @@ void CassieRbtStateEstimator::contactEstimation(
       eps_cost_*MatrixXd::Identity(A_cols, A_cols),
       -2*cost_A.transpose()*cost_b, {ddq, lambda_b, lambda_cl, lambda_cr});
   quadprog_double.AddQuadraticCost(
-      constraint_cost_*MatrixXd::Identity(6, 6),
+      w_soft_constraint_*MatrixXd::Identity(6, 6),
       VectorXd::Zero(6, 1), eps_cl);
   quadprog_double.AddQuadraticCost(
-      constraint_cost_*MatrixXd::Identity(6, 6),
+      w_soft_constraint_*MatrixXd::Identity(6, 6),
       VectorXd::Zero(6, 1), eps_cr);
   quadprog_double.AddQuadraticCost(
-      constraint_cost_*MatrixXd::Identity(3, 3),
+      w_soft_constraint_*MatrixXd::Identity(3, 3),
       VectorXd::Zero(3, 1), eps_imu);
 
   // Initial guess
@@ -621,7 +621,7 @@ void CassieRbtStateEstimator::contactEstimation(
         filtered_residue_double;
   }
 
-  // Mathematical program - left contac
+  // Mathematical program - left contact
   MathematicalProgram quadprog_left;
   ddq = quadprog_left.NewContinuousVariables(M.rows(), "ddq");
   lambda_b = quadprog_left.NewContinuousVariables(2, "lambda_b");
@@ -651,10 +651,10 @@ void CassieRbtStateEstimator::contactEstimation(
       eps_cost_*MatrixXd::Identity(A_cols, A_cols),
       -2*cost_A_left.transpose()*cost_b, {ddq, lambda_b, lambda_cl});
   quadprog_left.AddQuadraticCost(
-      constraint_cost_*MatrixXd::Identity(6, 6),
+      w_soft_constraint_*MatrixXd::Identity(6, 6),
       VectorXd::Zero(6, 1), eps_cl);
   quadprog_left.AddQuadraticCost(
-      constraint_cost_*MatrixXd::Identity(3, 3),
+      w_soft_constraint_*MatrixXd::Identity(3, 3),
       VectorXd::Zero(3, 1), eps_imu);
 
   // Initial guess
@@ -740,10 +740,10 @@ void CassieRbtStateEstimator::contactEstimation(
       eps_cost_*MatrixXd::Identity(A_cols, A_cols),
       -2*cost_A_right.transpose()*cost_b, {ddq, lambda_b, lambda_cr});
   quadprog_right.AddQuadraticCost(
-      constraint_cost_*MatrixXd::Identity(6, 6),
+      w_soft_constraint_*MatrixXd::Identity(6, 6),
       VectorXd::Zero(6, 1), eps_cr);
   quadprog_right.AddQuadraticCost(
-      constraint_cost_*MatrixXd::Identity(3, 3),
+      w_soft_constraint_*MatrixXd::Identity(3, 3),
       VectorXd::Zero(3, 1), eps_imu);
 
   // Initial guess
@@ -799,21 +799,16 @@ void CassieRbtStateEstimator::contactEstimation(
       filtered_residue_right;
   }
 
-  std::map<std::string, int> position_index_map =
-      multibody::makeNameToPositionsMap(tree_);
-  double left_knee_spring = output->GetPositionAtIndex(
-      position_index_map.at("knee_joint_left"));
-  double right_knee_spring = output->GetPositionAtIndex(
-      position_index_map.at("knee_joint_right"));
-  double left_heel_spring = output->GetPositionAtIndex(
-      position_index_map.at("ankle_spring_joint_left"));
-  double right_heel_spring = output->GetPositionAtIndex(
-      position_index_map.at("ankle_spring_joint_right"));
-
+  // Estimate contact based on optimization results
+  // The vector optimal_cost has double support, left support and right support
+  // costs in order. The corresponding indices are 0, 1, 2.
+  // Here we get the index of min of left and right support costs.
   auto min_it = std::min_element(std::next(optimal_cost.begin(), 1),
       optimal_cost.end());
   int min_index = std::distance(optimal_cost.begin(), min_it);
 
+  // If all three costs are high, we believe it's going through impact event,
+  // and we assume it's double support.
   if((optimal_cost[0] >= cost_threshold_ &&
         optimal_cost[1] >= cost_threshold_ &&
         optimal_cost[2] >= cost_threshold_)) {
@@ -825,7 +820,17 @@ void CassieRbtStateEstimator::contactEstimation(
     *right_contact = 1;
   }
 
-  // Using spring information
+  // Update contact estimation based on spring deflection information
+  // We say a foot is in contact with the ground if sprig deflection is over
+  // a threshold.
+  double left_knee_spring = output->GetPositionAtIndex(
+      position_index_map_.at("knee_joint_left"));
+  double right_knee_spring = output->GetPositionAtIndex(
+      position_index_map_.at("knee_joint_right"));
+  double left_heel_spring = output->GetPositionAtIndex(
+      position_index_map_.at("ankle_spring_joint_left"));
+  double right_heel_spring = output->GetPositionAtIndex(
+      position_index_map_.at("ankle_spring_joint_right"));
   if (left_knee_spring < knee_spring_threshold_ ||
         left_heel_spring < heel_spring_threshold_) {
     * left_contact = 1;
@@ -835,28 +840,30 @@ void CassieRbtStateEstimator::contactEstimation(
     *right_contact = 1;
   }
 
+  // Record previous velocity (used in residue)
   discrete_state->get_mutable_vector(
       previous_velocity_idx_).get_mutable_value() << output->GetVelocities();
 
-  if (is_simulation_) {
-    RigidBodyTree<double>* tree_with_ground = nullptr;
-    tree_with_ground = const_cast<RigidBodyTree<double>*>(&tree_);
-    std::vector<drake::multibody::collision::PointPair<double>> pairs;
-    pairs = tree_with_ground->ComputeMaximumDepthCollisionPoints(cache,
-        true, false);
-    int gtl = 0;
-    int gtr = 0;
-    for (const auto& pair: pairs) {
-      if (pair.distance < 0.0) {
-        if (pair.elementA->get_body()->get_body_index() == 18) {
-          gtl += 1;
-        }
-        if (pair.elementA->get_body()->get_body_index() == 20) {
-          gtr += 1;
-        }
+  // Ground truth of contact
+  /*
+  RigidBodyTree<double>* tree_with_ground = nullptr;
+  tree_with_ground = const_cast<RigidBodyTree<double>*>(&tree_);
+  std::vector<drake::multibody::collision::PointPair<double>> pairs;
+  pairs = tree_with_ground->ComputeMaximumDepthCollisionPoints(cache,
+      true, false);
+  int gtl = 0;
+  int gtr = 0;
+  for (const auto& pair: pairs) {
+    if (pair.distance < 0.0) {
+      if (pair.elementA->get_body()->get_body_index() == 18) {
+        gtl += 1;
+      }
+      if (pair.elementA->get_body()->get_body_index() == 20) {
+        gtr += 1;
       }
     }
   }
+  */
 }
 
 /// Workhorse state estimation function. Given a `cassie_out_t`, compute the

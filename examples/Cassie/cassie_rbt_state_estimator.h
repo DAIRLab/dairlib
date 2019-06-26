@@ -111,9 +111,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const double heel_spring_threshold_ = -0.03;
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
   const double eps_imu_ = 0.5;  // Error bounds for imu acceleration
-  const double constraint_cost_ = 100;  // soft constraint cost
+  const double w_soft_constraint_ = 100;  // soft constraint cost
   const double alpha_ = 0.9;  // Decay for residue calculation
-  const bool is_simulation_ = true;  // Flag to calculate ground truth contact
 };
 
 }  // namespace systems

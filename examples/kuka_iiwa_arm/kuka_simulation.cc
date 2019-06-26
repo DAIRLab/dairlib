@@ -14,7 +14,7 @@
 #include "drake/geometry/dev/scene_graph.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_command_receiver.h"
-#include <drake/manipulation/kuka_iiwa/iiwa_status_sender.h>
+#include "drake/manipulation/kuka_iiwa/iiwa_status_sender.h"
 #include "drake/math/rigid_transform.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/tree/revolute_joint.h"
@@ -143,8 +143,6 @@ int DoMain() {
   // Demuxing system state for status publisher
   auto demux = builder.AddSystem<drake::systems::Demultiplexer<double>>(
      2 * num_iiwa_positions, num_iiwa_positions);
-  // auto scope = builder.AddSystem<dairlib::systems::VectorScope>(
-  //     world_plant->get_state_output_port(iiwa_model).size(), "world plant state");
 
   builder.Connect(command_sub->get_output_port(),
                   command_receiver->get_input_port());

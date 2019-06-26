@@ -23,52 +23,24 @@ using drake::solvers::Solve;
 CassieRbtStateEstimator::CassieRbtStateEstimator(
     const RigidBodyTree<double>& tree, bool is_floating_base) :
     tree_(tree), is_floating_base_(is_floating_base) {
-  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
-  positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
-  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
-
+  // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort("cassie_out_t",
                            drake::Value<cassie_out_t> {}).get_index();
-
+  // TODO(yminchen): delete state_input_port after finishing testing
   state_input_port_ = this->DeclareVectorInputPort(
                         OutputVector<double>(tree_.get_num_positions(),
                             tree_.get_num_velocities(),
                             tree_.get_num_actuators())).get_index();
-
   this->DeclareVectorOutputPort(
-    OutputVector<double>(tree.get_num_positions(),
-                         tree.get_num_velocities(), tree.get_num_actuators()),
-    &CassieRbtStateEstimator::CopyStateOut);
+      OutputVector<double>(tree.get_num_positions(),
+                           tree.get_num_velocities(),
+                           tree.get_num_actuators()),
+      &CassieRbtStateEstimator::CopyStateOut);
 
-  // if (is_floating_base) {
-  DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
-  state_idx_ = DeclareDiscreteState(7 + 6); // estimated floating base
-  ekf_X_idx_ = DeclareDiscreteState(27); // estimated EKF state
-  time_idx_ = DeclareDiscreteState(VectorXd::Zero(1)); // previous time
-  // }
-
-  filtered_residue_double_idx_ = DeclareDiscreteState(
-      VectorXd::Zero(tree_.get_num_velocities(), 1));
-  filtered_residue_left_idx_ = DeclareDiscreteState(
-      VectorXd::Zero(tree_.get_num_velocities(), 1));
-  filtered_residue_right_idx_ = DeclareDiscreteState(
-      VectorXd::Zero(tree_.get_num_velocities(), 1));
-  previous_velocity_idx_ = DeclareDiscreteState(
-      VectorXd::Zero(tree_.get_num_velocities(), 1));
-
-  ddq_double_init_idx_ = DeclareDiscreteState(
-      VectorXd::Zero(tree_.get_num_velocities(), 1));
-  ddq_left_init_idx_ = DeclareDiscreteState(
-      VectorXd::Zero(tree_.get_num_velocities(), 1));
-  ddq_right_init_idx_ = DeclareDiscreteState(
-      VectorXd::Zero(tree_.get_num_velocities(), 1));
-  lambda_b_double_init_idx_ = DeclareDiscreteState(VectorXd::Zero(2, 1));
-  lambda_b_left_init_idx_ = DeclareDiscreteState(VectorXd::Zero(2, 1));
-  lambda_b_right_init_idx_ = DeclareDiscreteState(VectorXd::Zero(2, 1));
-  lambda_cl_double_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
-  lambda_cl_left_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
-  lambda_cr_double_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
-  lambda_cr_right_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
+  // Initialize index maps
+  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
+  positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
+  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
 
   // Initialize body indices
   left_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_left");
@@ -80,6 +52,43 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     std::cout << "In cassie_rbt_state_estimator.cc,"
               " body indices were not set correctly.\n";
 
+  if (is_floating_base) {
+    DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
+
+    time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));  // previous time
+
+    // states related to EKF
+    VectorXd init_floating_base_state = VectorXd::Zero(7 + 6);
+    init_floating_base_state(3) = 1;
+    state_idx_ = DeclareDiscreteState(
+        init_floating_base_state);  // estimated floating base
+    ekf_X_idx_ = DeclareDiscreteState(27);  // estimated EKF state
+
+    // states related to contact estimation
+    previous_velocity_idx_ = DeclareDiscreteState(
+        VectorXd::Zero(tree_.get_num_velocities(), 1));
+
+    filtered_residue_double_idx_ = DeclareDiscreteState(
+        VectorXd::Zero(tree_.get_num_velocities(), 1));
+    filtered_residue_left_idx_ = DeclareDiscreteState(
+        VectorXd::Zero(tree_.get_num_velocities(), 1));
+    filtered_residue_right_idx_ = DeclareDiscreteState(
+        VectorXd::Zero(tree_.get_num_velocities(), 1));
+
+    ddq_double_init_idx_ = DeclareDiscreteState(
+        VectorXd::Zero(tree_.get_num_velocities(), 1));
+    ddq_left_init_idx_ = DeclareDiscreteState(
+        VectorXd::Zero(tree_.get_num_velocities(), 1));
+    ddq_right_init_idx_ = DeclareDiscreteState(
+        VectorXd::Zero(tree_.get_num_velocities(), 1));
+    lambda_b_double_init_idx_ = DeclareDiscreteState(VectorXd::Zero(2, 1));
+    lambda_b_left_init_idx_ = DeclareDiscreteState(VectorXd::Zero(2, 1));
+    lambda_b_right_init_idx_ = DeclareDiscreteState(VectorXd::Zero(2, 1));
+    lambda_cl_double_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
+    lambda_cl_left_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
+    lambda_cr_double_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
+    lambda_cr_right_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
+  }
 }
 
 void CassieRbtStateEstimator::solveFourbarLinkage(
@@ -91,13 +100,13 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
   double spring_rest_offset = atan(
                               rod_on_heel_spring_(1) / rod_on_heel_spring_(0));
 
-  // Get the rod length projected to thigh-shin plane
   std::vector<Vector3d> rod_on_thigh{rod_on_thigh_left_, rod_on_thigh_right_};
   std::vector<int> thigh_ind{left_thigh_ind_, right_thigh_ind_};
   std::vector<int> heel_spring_ind{left_heel_spring_ind_,
                                    right_heel_spring_ind_};
 
   KinematicsCache<double> cache = tree_.doKinematics(q_init);
+
   for (int i = 0; i < 2; i++) {
     // Get thigh pose and heel spring pose
     const Isometry3d thigh_pose = tree_.CalcBodyPoseInWorldFrame(
@@ -165,7 +174,16 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 }
 
 
-void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
+void CassieRbtStateEstimator::AssignImuValueToOutputVector(
+    OutputVector<double>* output, const cassie_out_t& cassie_out) const {
+  const double* imu_d = cassie_out.pelvis.vectorNav.linearAcceleration;
+  output->SetIMUAccelerationAtIndex(0, imu_d[0]);
+  output->SetIMUAccelerationAtIndex(1, imu_d[1]);
+  output->SetIMUAccelerationAtIndex(2, imu_d[2]);
+}
+
+
+void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
     OutputVector<double>* output, const cassie_out_t& cassie_out) const {
   // Copy the robot state excluding floating base
   // TODO(yuming): check what cassie_out.leftLeg.footJoint.position is.
@@ -185,7 +203,7 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
   output->SetPositionAtIndex(positionIndexMap_.at("ankle_joint_left"),
                              cassie_out.leftLeg.tarsusJoint.position);
   output->SetPositionAtIndex(positionIndexMap_.at("ankle_spring_joint_left"),
-      0.0);
+                             0.0);
 
   output->SetPositionAtIndex(positionIndexMap_.at("hip_roll_right"),
                              cassie_out.rightLeg.hipRollDrive.position);
@@ -202,7 +220,7 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
   output->SetPositionAtIndex(positionIndexMap_.at("ankle_joint_right"),
                              cassie_out.rightLeg.tarsusJoint.position);
   output->SetPositionAtIndex(positionIndexMap_.at("ankle_spring_joint_right"),
-      0.0);
+                             0.0);
 
   output->SetVelocityAtIndex(velocityIndexMap_.at("hip_roll_leftdot"),
                              cassie_out.leftLeg.hipRollDrive.velocity);
@@ -219,7 +237,7 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
   output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_joint_leftdot"),
                              cassie_out.leftLeg.tarsusJoint.velocity);
   output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_spring_joint_leftdot"),
-      0.0);
+                             0.0);
 
   output->SetVelocityAtIndex(velocityIndexMap_.at("hip_roll_rightdot"),
                              cassie_out.rightLeg.hipRollDrive.velocity);
@@ -236,7 +254,7 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
   output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_joint_rightdot"),
                              cassie_out.rightLeg.tarsusJoint.velocity);
   output->SetVelocityAtIndex(velocityIndexMap_.at("ankle_spring_joint_rightdot"),
-      0.0);
+                             0.0);
 
   // Copy actuators
   output->SetEffortAtIndex(actuatorIndexMap_.at("hip_roll_left_motor"),
@@ -261,30 +279,46 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseToOutputVector(
   output->SetEffortAtIndex(actuatorIndexMap_.at("toe_right_motor"),
                            cassie_out.rightLeg.footDrive.torque);
 
-  VectorXd q_init = output->GetMutablePositions();
-  for (int i=0; i<7; i++) {
-    q_init[i] = 0;
-  }
-  q_init[3] =  1;
-
+  // Solve fourbar linkage for heel spring positions
   double left_heel_spring = 0;
   double right_heel_spring = 0;
+  VectorXd q_init = output->GetMutablePositions();
+  if (is_floating_base_) {
+    for (int i = 0; i < 7; i++) {
+      q_init[i] = 0;
+    }
+    q_init[3] =  1;
+  }
   solveFourbarLinkage(&left_heel_spring, &right_heel_spring, q_init);
-
   output->SetPositionAtIndex(positionIndexMap_.at("ankle_spring_joint_left"),
                              left_heel_spring);
   output->SetPositionAtIndex(positionIndexMap_.at("ankle_spring_joint_right"),
                              right_heel_spring);
 }
 
+
+void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
+  OutputVector<double>* output, const VectorXd& state_est) const {
+  // TODO(yminchen): Joints names need to be changed when we move to MBP
+  output->SetPositionAtIndex(positionIndexMap_.at("base_x"), state_est(0));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_y"), state_est(1));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_z"), state_est(2));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_qw"), state_est(3));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_qx"), state_est(4));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_qy"), state_est(5));
+  output->SetPositionAtIndex(positionIndexMap_.at("base_qz"), state_est(6));
+
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wx"), state_est(7));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wy"), state_est(8));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_wz"), state_est(9));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vx"), state_est(10));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vy"), state_est(11));
+  output->SetVelocityAtIndex(velocityIndexMap_.at("base_vz"), state_est(12));
+}
+
+
 EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-
-  // State Estimation is unnecessary for rigib base model
-  if (!is_floating_base_) {
-    return EventStatus::Succeeded();
-  }
-
   // Testing
   /*const auto& cassie_out =
       this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
@@ -294,7 +328,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
   // Get current time and previous time
   double current_time = context.get_time();
-  double prev_t = discrete_state->get_mutable_vector(time_idx_).get_value()(0);
+  double prev_t = discrete_state->get_vector(time_idx_).get_value()(0);
 
   // Testing
   // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
@@ -302,26 +336,23 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
   if (current_time > prev_t) {
     double dt = current_time - prev_t;
 
-    const OutputVector<double>* cassie_state = (OutputVector<double>*)
-        this->EvalVectorInput(context, state_input_port_);
-
-    // Perform State Estimation (in several steps)
-
-    // Step 1 - Solve for the unknown joint angle
-    //TODO(yminchen): Is there a way to avoid copying state two times?
-    //Currently, we copy in Update() and CopyStateOut().
-    const auto& cassie_out =
-        this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
+    // Initialize robot output vector
     OutputVector<double> output(tree_.get_num_positions(),
                                 tree_.get_num_velocities(),
                                 tree_.get_num_actuators());
-    output.SetPositions(VectorXd::Zero(tree_.get_num_positions(), 1));
-    output.SetVelocities(VectorXd::Zero(tree_.get_num_velocities(), 1));
-    output.SetEfforts(VectorXd::Zero(tree_.get_num_actuators(), 1));
-    AssignNonFloatingBaseToOutputVector(&output, cassie_out);
+    // Assign values to cassie output vector
+    const auto& cassie_out =
+        this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
+    AssignImuValueToOutputVector(&output, cassie_out);
+    AssignNonFloatingBaseStateToOutputVector(&output, cassie_out);
+    AssignFloatingBaseStateToOutputVector(&output,
+        context.get_discrete_state(state_idx_).get_value());
 
-    // Fill output with info from cassie_state
-    // Eventually, this should come from state estimation
+    // Since we don't have EKF yet, we get the floating base state
+    // from ground truth (CASSIE_STATE)
+    // TODO(yminchen): delete this later
+    const OutputVector<double>* cassie_state = (OutputVector<double>*)
+        this->EvalVectorInput(context, state_input_port_);
     output.SetPositionAtIndex(positionIndexMap_.at("base_x"),
                               cassie_state->GetPositions()[0]);
     output.SetPositionAtIndex(positionIndexMap_.at("base_y"),
@@ -336,7 +367,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
                               cassie_state->GetPositions()[5]);
     output.SetPositionAtIndex(positionIndexMap_.at("base_qz"),
                               cassie_state->GetPositions()[6]);
-
     output.SetVelocityAtIndex(velocityIndexMap_.at("base_wx"),
                               cassie_state->GetVelocities()[0]);
     output.SetVelocityAtIndex(velocityIndexMap_.at("base_wy"),
@@ -351,15 +381,9 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
                               cassie_state->GetVelocities()[5]);
 
 
-    const double* imu_d = cassie_out.pelvis.vectorNav.linearAcceleration;
-    output.SetIMUAccelerationAtIndex(0, imu_d[0]);
-    output.SetIMUAccelerationAtIndex(1, imu_d[1]);
-    output.SetIMUAccelerationAtIndex(2, imu_d[2]);
-
-
-    // TODO(yminchen):
-    // The concern when moving to floating based simulation:
-    // The simulatino update rate is about 30-60 Hz.
+    // Perform State Estimation (in several steps)
+    // Step 1 - Solve for the unknown joint angle
+    // This step is done in AssignNonFloatingBaseStateToOutputVector()
 
     // Step 2 - EKF (update step)
 
@@ -388,7 +412,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Question: Do we need to filter the gyro value?
     // We will get the bias (parameter) from EKF
 
-    // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() << ...
     discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
       current_time;
   }
@@ -401,7 +424,7 @@ void CassieRbtStateEstimator::contactEstimation(
     const double dt) const {
 
     // Contact Estimator assumes that the swing leg doesn't stop during single stance
-    const int num_velocities = tree_.get_num_velocities();
+    const int n_v = tree_.get_num_velocities();
 
     /* Indices */
     const int left_toe_ind = GetBodyIndexFromName(tree_, "toe_left");
@@ -413,93 +436,83 @@ void CassieRbtStateEstimator::contactEstimation(
         output->GetVelocities(), true);
 
     /* M, C and B matrices */
-    Eigen::MatrixXd M = tree_.massMatrix(cache);
+    MatrixXd M = tree_.massMatrix(cache);
     const typename RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
-    Eigen::MatrixXd C = tree_.dynamicsBiasTerm(cache, no_external_wrenches);
-    Eigen::MatrixXd B = tree_.B;
+    MatrixXd C = tree_.dynamicsBiasTerm(cache, no_external_wrenches);
+    MatrixXd B = tree_.B;
 
     /* control input - obtained from cassie_input temporarily */
-    Eigen::VectorXd u = output->GetEfforts();
+    VectorXd u = output->GetEfforts();
 
     /* Jb - Jacobian for fourbar linkage */
-    Eigen::MatrixXd Jb = tree_.positionConstraintsJacobian(cache, false);
-    Eigen::VectorXd Jb_dot_times_v = tree_.positionConstraintsJacDotTimesV(cache);
+    MatrixXd Jb = tree_.positionConstraintsJacobian(cache, false);
+    VectorXd Jb_dot_times_v = tree_.positionConstraintsJacDotTimesV(cache);
 
     /** Jc{l, r}{f, r} - contact Jacobians **/
     /* l - left; r - right; f - front; r - rear */
-    Eigen::Vector3d front_contact_disp;
-    front_contact_disp << -0.0457, 0.112, 0;
-    Eigen::Vector3d rear_contact_disp;
-    rear_contact_disp << 0.088, 0, 0;
+    MatrixXd Jclf = tree_.transformPointsJacobian(cache,
+        front_contact_disp_, left_toe_ind, 0, false);
+    MatrixXd Jclr = tree_.transformPointsJacobian(cache,
+        rear_contact_disp_, left_toe_ind, 0, false);
 
-    Eigen::MatrixXd Jclf = tree_.transformPointsJacobian(cache,
-        front_contact_disp, left_toe_ind, 0, false);
-    Eigen::MatrixXd Jclr = tree_.transformPointsJacobian(cache,
-        rear_contact_disp, left_toe_ind, 0, false);
-
-    Eigen::MatrixXd Jcl(3*2, Jclf.cols());
+    MatrixXd Jcl(3*2, Jclf.cols());
     Jcl.block(0, 0, 3, Jclf.cols()) = Jclf;
     Jcl.block(3, 0, 3, Jclr.cols()) = Jclr;
 
-    Eigen::MatrixXd Jcrf = tree_.transformPointsJacobian(cache,
-        front_contact_disp, right_toe_ind, 0, false);
-    Eigen::MatrixXd Jcrr = tree_.transformPointsJacobian(cache,
-        rear_contact_disp, right_toe_ind, 0, false);
+    MatrixXd Jcrf = tree_.transformPointsJacobian(cache,
+        front_contact_disp_, right_toe_ind, 0, false);
+    MatrixXd Jcrr = tree_.transformPointsJacobian(cache,
+        rear_contact_disp_, right_toe_ind, 0, false);
 
-    Eigen::MatrixXd Jcr(3*2, Jcrf.cols());
+    MatrixXd Jcr(3*2, Jcrf.cols());
     Jcr.block(0, 0, 3, Jcrf.cols()) = Jcrf;
     Jcr.block(3, 0, 3, Jcrr.cols()) = Jcrr;
 
     /* Contact jacobian dot times v */
-    Eigen::VectorXd Jclf_dot_times_v = tree_.transformPointsJacobianDotTimesV(
-        cache, front_contact_disp, left_toe_ind, 0);
-    Eigen::VectorXd Jclr_dot_times_v = tree_.transformPointsJacobianDotTimesV(
-        cache, rear_contact_disp, left_toe_ind, 0);
+    VectorXd Jclf_dot_times_v = tree_.transformPointsJacobianDotTimesV(
+        cache, front_contact_disp_, left_toe_ind, 0);
+    VectorXd Jclr_dot_times_v = tree_.transformPointsJacobianDotTimesV(
+        cache, rear_contact_disp_, left_toe_ind, 0);
 
-    Eigen::VectorXd Jcl_dot_times_v(6);
+    VectorXd Jcl_dot_times_v(6);
     Jcl_dot_times_v.head(3) = Jclf_dot_times_v;
     Jcl_dot_times_v.tail(3) = Jclr_dot_times_v;
 
-    Eigen::VectorXd Jcrf_dot_times_v = tree_.transformPointsJacobianDotTimesV(
-        cache, front_contact_disp, right_toe_ind, 0);
-    Eigen::VectorXd Jcrr_dot_times_v = tree_.transformPointsJacobianDotTimesV(
-        cache, rear_contact_disp, right_toe_ind, 0);
+    VectorXd Jcrf_dot_times_v = tree_.transformPointsJacobianDotTimesV(
+        cache, front_contact_disp_, right_toe_ind, 0);
+    VectorXd Jcrr_dot_times_v = tree_.transformPointsJacobianDotTimesV(
+        cache, rear_contact_disp_, right_toe_ind, 0);
 
-    Eigen::VectorXd Jcr_dot_times_v(6);
+    VectorXd Jcr_dot_times_v(6);
     Jcr_dot_times_v.head(3) = Jcrf_dot_times_v;
     Jcr_dot_times_v.tail(3) = Jcrr_dot_times_v;
 
-    double left_leg_velocity = (Jcl*output->GetVelocities()).norm();
-    double right_leg_velocity = (Jcr*output->GetVelocities()).norm();
+    // double left_leg_velocity = (Jcl*output->GetVelocities()).norm();
+    // double right_leg_velocity = (Jcr*output->GetVelocities()).norm();
 
-    Eigen::Vector3d imu_pos;
-    // TODO: change IMU file to include this as a variable
-    imu_pos << 0.03155, 0, -0.07996; // IMU location wrt pelvis.
-    Eigen::MatrixXd J_imu = tree_.transformPointsJacobian(cache,
-        imu_pos, pelvis_ind, 0, false);
-    Eigen::VectorXd J_imu_dot_times_v = tree_.transformPointsJacobianDotTimesV(
-        cache, imu_pos, pelvis_ind, 0);
+    MatrixXd J_imu = tree_.transformPointsJacobian(cache,
+        imu_pos_, pelvis_ind, 0, false);
+    VectorXd J_imu_dot_times_v = tree_.transformPointsJacobianDotTimesV(
+        cache, imu_pos_, pelvis_ind, 0);
 
-    Eigen::Vector3d alpha_imu = output->GetIMUAccelerations();
+    Vector3d alpha_imu = output->GetIMUAccelerations();
 
     RigidBody<double>* pelvis_body = tree_.FindBody("pelvis");
-    Eigen::Isometry3d pelvis_pose = tree_.CalcBodyPoseInWorldFrame(cache,
+    Isometry3d pelvis_pose = tree_.CalcBodyPoseInWorldFrame(cache,
         *pelvis_body);
-    Eigen::MatrixXd R_WB = pelvis_pose.linear();
+    MatrixXd R_WB = pelvis_pose.linear();
     if(R_WB.array().isNaN().any()) {
       cout << "Skipping due to NaNs" << endl;
       return;
     }
-    Eigen::Vector3d gravity;
-    gravity << 0, 0, -9.81;
-    Eigen::Vector3d gravity_in_pelvis_frame = R_WB.transpose()*gravity;
+    Vector3d gravity_in_pelvis_frame = R_WB.transpose()*gravity_;
     alpha_imu -= gravity_in_pelvis_frame;
 
     std::vector<double> optimal_cost;
 
     /* Mathematical program - double contact */
     MathematicalProgram quadprog_double;
-    auto ddq = quadprog_double.NewContinuousVariables(num_velocities, "ddq");
+    auto ddq = quadprog_double.NewContinuousVariables(n_v, "ddq");
     auto lambda_b = quadprog_double.NewContinuousVariables(2, "lambda_b");
     auto lambda_cl = quadprog_double.NewContinuousVariables(6, "lambda_cl");
     auto lambda_cr = quadprog_double.NewContinuousVariables(6, "lambda_cr");
@@ -511,45 +524,45 @@ void CassieRbtStateEstimator::contactEstimation(
     /* Equality constraint */
     quadprog_double.AddLinearEqualityConstraint(Jb, -1*Jb_dot_times_v, ddq);
 
-    Eigen::MatrixXd CL_coeff(Jcl.rows(), Jcl.cols() + 6);
-    CL_coeff << Jcl, Eigen::MatrixXd::Identity(6, 6);
+    MatrixXd CL_coeff(Jcl.rows(), Jcl.cols() + 6);
+    CL_coeff << Jcl, MatrixXd::Identity(6, 6);
     quadprog_double.AddLinearEqualityConstraint(CL_coeff, -1*Jcl_dot_times_v,
         {ddq, eps_cl});
 
-    Eigen::MatrixXd CR_coeff(Jcr.rows(), Jcr.cols() + 6);
-    CR_coeff << Jcr, Eigen::MatrixXd::Identity(6, 6);
+    MatrixXd CR_coeff(Jcr.rows(), Jcr.cols() + 6);
+    CR_coeff << Jcr, MatrixXd::Identity(6, 6);
     quadprog_double.AddLinearEqualityConstraint(CR_coeff, -1*Jcr_dot_times_v,
         {ddq, eps_cr});
 
-    Eigen::MatrixXd IMU_coeff(J_imu.rows(), J_imu.cols() + 3);
-    IMU_coeff << J_imu, Eigen::MatrixXd::Identity(3, 3);
+    MatrixXd IMU_coeff(J_imu.rows(), J_imu.cols() + 3);
+    IMU_coeff << J_imu, MatrixXd::Identity(3, 3);
     quadprog_double.AddLinearEqualityConstraint(IMU_coeff,
         -1*J_imu_dot_times_v + alpha_imu, {ddq, eps_imu});
 
     /* Inequality constraint */
-    quadprog_double.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3),
-        -imu_eps_*Eigen::VectorXd::Ones(3, 1),
-        imu_eps_*Eigen::VectorXd::Ones(6, 1), eps_imu);
+    quadprog_double.AddLinearConstraint(MatrixXd::Identity(3, 3),
+        -imu_eps_*VectorXd::Ones(3, 1),
+        imu_eps_*VectorXd::Ones(6, 1), eps_imu);
 
     /* Cost */
-    int A_cols = num_velocities + Jb.rows() + Jcl.rows() + Jcr.rows();
-    Eigen::MatrixXd cost_A(num_velocities, A_cols);
+    int A_cols = n_v + Jb.rows() + Jcl.rows() + Jcr.rows();
+    MatrixXd cost_A(n_v, A_cols);
     cost_A << M, -1*Jb.transpose(), -1*Jcl.transpose(), -1*Jcr.transpose();
-    Eigen::VectorXd cost_b(num_velocities);
+    VectorXd cost_b(n_v);
     cost_b = B*u - C;
 
     quadprog_double.AddQuadraticCost(2*cost_A.transpose()*cost_A +
-        1e-10*Eigen::MatrixXd::Identity(A_cols, A_cols),
+        1e-10*MatrixXd::Identity(A_cols, A_cols),
         -2*cost_A.transpose()*cost_b, {ddq, lambda_b, lambda_cl, lambda_cr});
     quadprog_double.AddQuadraticCost(
-        constraint_cost_*Eigen::MatrixXd::Identity(6, 6),
-        Eigen::VectorXd::Zero(6, 1), eps_cl);
+        constraint_cost_*MatrixXd::Identity(6, 6),
+        VectorXd::Zero(6, 1), eps_cl);
     quadprog_double.AddQuadraticCost(
-        constraint_cost_*Eigen::MatrixXd::Identity(6, 6),
-        Eigen::VectorXd::Zero(6, 1), eps_cr);
+        constraint_cost_*MatrixXd::Identity(6, 6),
+        VectorXd::Zero(6, 1), eps_cr);
     quadprog_double.AddQuadraticCost(
-        constraint_cost_*Eigen::MatrixXd::Identity(3, 3),
-        Eigen::VectorXd::Zero(3, 1), eps_imu);
+        constraint_cost_*MatrixXd::Identity(3, 3),
+        VectorXd::Zero(3, 1), eps_imu);
 
     /* Initial guess */
     quadprog_double.SetInitialGuess(ddq,
@@ -570,16 +583,16 @@ void CassieRbtStateEstimator::contactEstimation(
 
       discrete_state->get_mutable_vector(
           ddq_double_init_idx_).get_mutable_value() <<
-          VectorXd::Zero(num_velocities, 1);
+          VectorXd::Zero(n_v, 1);
       discrete_state->get_mutable_vector(
           lambda_b_double_init_idx_).get_mutable_value() <<
           VectorXd::Zero(2, 1);
-    discrete_state->get_mutable_vector(
-        lambda_cl_double_init_idx_).get_mutable_value() <<
-        VectorXd::Zero(6, 1);
-    discrete_state->get_mutable_vector(
-        lambda_cr_double_init_idx_).get_mutable_value() <<
-        VectorXd::Zero(6, 1);
+      discrete_state->get_mutable_vector(
+          lambda_cl_double_init_idx_).get_mutable_value() <<
+          VectorXd::Zero(6, 1);
+      discrete_state->get_mutable_vector(
+          lambda_cr_double_init_idx_).get_mutable_value() <<
+          VectorXd::Zero(6, 1);
     } else {
       optimal_cost.push_back(result_double.get_optimal_cost() +
           cost_b.transpose()*cost_b);
@@ -632,24 +645,24 @@ void CassieRbtStateEstimator::contactEstimation(
         alpha_imu, {ddq, eps_imu});
 
     /* Inequality constraint */
-    quadprog_left.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3),
-        -imu_eps_*Eigen::VectorXd::Ones(3, 1),
-        imu_eps_*Eigen::VectorXd::Ones(3, 1), eps_imu);
+    quadprog_left.AddLinearConstraint(MatrixXd::Identity(3, 3),
+        -imu_eps_*VectorXd::Ones(3, 1),
+        imu_eps_*VectorXd::Ones(3, 1), eps_imu);
 
     /* Cost */
     A_cols = M.cols() + Jb.rows() + Jcl.rows();
-    Eigen::MatrixXd cost_A_left(M.rows(), A_cols);
+    MatrixXd cost_A_left(M.rows(), A_cols);
     cost_A_left << M, -1*Jb.transpose(), -1*Jcl.transpose();
 
     quadprog_left.AddQuadraticCost(2*cost_A_left.transpose()*cost_A_left +
-        1e-10*Eigen::MatrixXd::Identity(A_cols, A_cols),
+        1e-10*MatrixXd::Identity(A_cols, A_cols),
         -2*cost_A_left.transpose()*cost_b, {ddq, lambda_b, lambda_cl});
     quadprog_left.AddQuadraticCost(
-        constraint_cost_*Eigen::MatrixXd::Identity(6, 6),
-        Eigen::VectorXd::Zero(6, 1), eps_cl);
+        constraint_cost_*MatrixXd::Identity(6, 6),
+        VectorXd::Zero(6, 1), eps_cl);
     quadprog_left.AddQuadraticCost(
-        constraint_cost_*Eigen::MatrixXd::Identity(3, 3),
-        Eigen::VectorXd::Zero(3, 1), eps_imu);
+        constraint_cost_*MatrixXd::Identity(3, 3),
+        VectorXd::Zero(3, 1), eps_imu);
 
     /* Initial guess */
     quadprog_left.SetInitialGuess(ddq,
@@ -668,7 +681,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
       discrete_state->get_mutable_vector(
           ddq_left_init_idx_).get_mutable_value() <<
-          VectorXd::Zero(num_velocities, 1);
+          VectorXd::Zero(n_v, 1);
       discrete_state->get_mutable_vector(
           lambda_b_left_init_idx_).get_mutable_value() <<
           VectorXd::Zero(2, 1);
@@ -721,24 +734,24 @@ void CassieRbtStateEstimator::contactEstimation(
         alpha_imu, {ddq, eps_imu});
 
     /* Inequality constraint */
-    quadprog_right.AddLinearConstraint(Eigen::MatrixXd::Identity(3, 3),
-        -imu_eps_*Eigen::MatrixXd::Identity(3, 1),
-        imu_eps_*Eigen::MatrixXd::Identity(3, 1), eps_imu);
+    quadprog_right.AddLinearConstraint(MatrixXd::Identity(3, 3),
+        -imu_eps_*MatrixXd::Identity(3, 1),
+        imu_eps_*MatrixXd::Identity(3, 1), eps_imu);
 
     /* Cost */
     A_cols = M.cols() + Jb.rows() + Jcr.rows();
-    Eigen::MatrixXd cost_A_right(M.rows(), A_cols);
+    MatrixXd cost_A_right(M.rows(), A_cols);
     cost_A_right << M, -1*Jb.transpose(), -1*Jcr.transpose();
 
     quadprog_right.AddQuadraticCost(2*cost_A_right.transpose()*cost_A_right +
-        1e-10*Eigen::MatrixXd::Identity(A_cols, A_cols),
+        1e-10*MatrixXd::Identity(A_cols, A_cols),
         -2*cost_A_right.transpose()*cost_b, {ddq, lambda_b, lambda_cr});
     quadprog_right.AddQuadraticCost(
-        constraint_cost_*Eigen::MatrixXd::Identity(6, 6),
-        Eigen::VectorXd::Zero(6, 1), eps_cr);
+        constraint_cost_*MatrixXd::Identity(6, 6),
+        VectorXd::Zero(6, 1), eps_cr);
     quadprog_right.AddQuadraticCost(
-        constraint_cost_*Eigen::MatrixXd::Identity(3, 3),
-        Eigen::VectorXd::Zero(3, 1), eps_imu);
+        constraint_cost_*MatrixXd::Identity(3, 3),
+        VectorXd::Zero(3, 1), eps_imu);
 
     /* Initial guess */
     quadprog_right.SetInitialGuess(ddq,
@@ -757,7 +770,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
       discrete_state->get_mutable_vector(
           ddq_right_init_idx_).get_mutable_value() <<
-          VectorXd::Zero(num_velocities, 1);
+          VectorXd::Zero(n_v, 1);
       discrete_state->get_mutable_vector(
           lambda_b_right_init_idx_).get_mutable_value() <<
           VectorXd::Zero(2, 1);
@@ -808,8 +821,9 @@ void CassieRbtStateEstimator::contactEstimation(
         optimal_cost.end());
     int min_index = std::distance(optimal_cost.begin(), min_it);
 
-    if((optimal_cost[0] >= 200 && optimal_cost[1] >= 200 &&
-          optimal_cost[2] >= 200)) {
+    if((optimal_cost[0] >= cost_threshold_ &&
+          optimal_cost[1] >= cost_threshold_ &&
+          optimal_cost[2] >= cost_threshold_)) {
       *left_contact = 1;
       *right_contact = 1;
     } else if(min_index == 1) {
@@ -819,10 +833,12 @@ void CassieRbtStateEstimator::contactEstimation(
     }
 
     /* Using spring information */
-    if (left_knee_spring < -0.015 || left_heel_spring < -0.03) {
+    if (left_knee_spring < knee_spring_threshold_ ||
+          left_heel_spring < heel_spring_threshold_) {
       * left_contact = 1;
     }
-    if (right_knee_spring < -0.015 || right_heel_spring < -0.03) {
+    if (right_knee_spring < knee_spring_threshold_ ||
+          right_heel_spring < heel_spring_threshold_) {
       *right_contact = 1;
     }
 
@@ -859,50 +875,19 @@ void CassieRbtStateEstimator::CopyStateOut(
   const auto& cassie_out =
     this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
 
-  // It's necessary for initialization. Might be a better way to initialize?
-  auto data = output->get_mutable_data(); // This doesn't affect timestamp value
+  // Ther might be a better way to initialize?
+  auto data = output->get_mutable_data();  // This doesn't affect timestamp value
   data = VectorXd::Zero(data.size());
-  data[3] = 1;
 
-  // Assign the values
-  // Copy the robot state excluding floating base
-  AssignNonFloatingBaseToOutputVector(output, cassie_out);
-
-  // Floating base coordinates
+  // Assign values robot output vector
+  // Copy imu values and robot state excluding floating base
+  AssignImuValueToOutputVector(output, cassie_out);
+  AssignNonFloatingBaseStateToOutputVector(output, cassie_out);
+  // Copy the floating base base state
   if (is_floating_base_) {
-    // Assign the values
-    auto state_est = context.get_discrete_state(state_idx_).get_value();
-
-    // TODO(yminchen): The name of the joitn name need to be change when we move to MBP
-    output->SetPositionAtIndex(positionIndexMap_.at("base_x"),
-                               state_est(0));
-    output->SetPositionAtIndex(positionIndexMap_.at("base_y"),
-                               state_est(1));
-    output->SetPositionAtIndex(positionIndexMap_.at("base_z"),
-                               state_est(2));
-    output->SetPositionAtIndex(positionIndexMap_.at("base_qw"),
-                               state_est(3));
-    output->SetPositionAtIndex(positionIndexMap_.at("base_qx"),
-                               state_est(4));
-    output->SetPositionAtIndex(positionIndexMap_.at("base_qy"),
-                               state_est(5));
-    output->SetPositionAtIndex(positionIndexMap_.at("base_qz"),
-                               state_est(6));
-
-    output->SetVelocityAtIndex(velocityIndexMap_.at("base_wx"),
-                               state_est(7));
-    output->SetVelocityAtIndex(velocityIndexMap_.at("base_wy"),
-                               state_est(8));
-    output->SetVelocityAtIndex(velocityIndexMap_.at("base_wz"),
-                               state_est(9));
-    output->SetVelocityAtIndex(velocityIndexMap_.at("base_vx"),
-                               state_est(10));
-    output->SetVelocityAtIndex(velocityIndexMap_.at("base_vy"),
-                               state_est(11));
-    output->SetVelocityAtIndex(velocityIndexMap_.at("base_vz"),
-                               state_est(12));
-  }  //  end if(is_floating_base)
-
+    AssignFloatingBaseStateToOutputVector(output,
+        context.get_discrete_state(state_idx_).get_value());
+  }
 
 
 

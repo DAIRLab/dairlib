@@ -66,11 +66,16 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   std::unique_ptr<RigidBodyTree<double>> tree;
-  if (FLAGS_floating_base)
+  if (!FLAGS_floating_base){
+    tree = makeCassieTreePointer();
+  } else {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kQuaternion);
-  else
-    tree = makeCassieTreePointer();
+    const double terrain_size = 100;
+    const double terrain_depth = 0.20;
+    drake::multibody::AddFlatTerrainToWorld(
+        tree.get(), terrain_size, terrain_depth);
+  }
 
   // Add imu frame to Cassie's pelvis
   if (FLAGS_is_imu_sim) addImuFrameToCassiePelvis(tree);
@@ -227,6 +232,13 @@ int do_main(int argc, char* argv[]) {
   x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
 
   std::cout << q0 << std::endl;
+
+  // If it's floating base and the initial height is 0, we adjust it to be above
+  // the ground.
+  if (FLAGS_floating_base){
+    if (x0(2) == 0)
+      x0(2) = 1.5;
+  }
 
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state =

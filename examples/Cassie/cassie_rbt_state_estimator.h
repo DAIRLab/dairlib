@@ -38,8 +38,12 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
 
  private:
 
-  void AssignNonFloatingBaseToOutputVector(
+  void AssignImuValueToOutputVector(
       OutputVector<double>* output, const cassie_out_t& cassie_out) const;
+  void AssignNonFloatingBaseStateToOutputVector(
+      OutputVector<double>* output, const cassie_out_t& cassie_out) const;
+  void AssignFloatingBaseStateToOutputVector(
+      OutputVector<double>* output, const VectorXd& state_est) const;
 
   EventStatus Update(const Context<double>& context,
                      DiscreteValues<double>* discrete_state) const;
@@ -63,14 +67,16 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   int left_heel_spring_ind_ = -1;
   int right_heel_spring_ind_ = -1;
 
+  DiscreteStateIndex time_idx_;
+
   DiscreteStateIndex state_idx_;
   DiscreteStateIndex ekf_X_idx_;
-  DiscreteStateIndex time_idx_;
+
+  DiscreteStateIndex previous_velocity_idx_;
 
   DiscreteStateIndex filtered_residue_double_idx_;
   DiscreteStateIndex filtered_residue_left_idx_;
   DiscreteStateIndex filtered_residue_right_idx_;
-  DiscreteStateIndex previous_velocity_idx_;
 
   DiscreteStateIndex ddq_double_init_idx_;
   DiscreteStateIndex ddq_left_init_idx_;
@@ -85,7 +91,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
 
   int cassie_out_input_port_;
   int state_input_port_;
-  int command_input_port_;
 
   // Cassie parameters
   // TODO(yminchen): get the numbers below from tree
@@ -99,6 +104,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Vector3d gravity_ = Vector3d(0, 0, -9.81);
 
   // Contact Estimation Parameters
+  const double cost_threshold_ = 200;
+  const double knee_spring_threshold_ = -0.015;
+  const double heel_spring_threshold_ = -0.03;
   const double imu_eps_ = 0.5; // Error bounds for imu acceleration
   const double constraint_cost_ = 100; // soft constraint cost
   const double alpha_ = 0.9; // Decay for residue calculation

@@ -79,6 +79,10 @@ group "4.gazebo" {
         exec = "bash ../cassie-gazebo-sim/cassie/launch_sim.sh";
         host = "localhost";
     }
+    cmd "0.launch-gazebo-fixed-base" {
+        exec = "bash ../cassie-gazebo-sim/cassie_fixed_base/launch_sim.sh";
+        host = "localhost";
+    }
 }
 
 script "start-operator" {
@@ -98,7 +102,7 @@ script "run-drake-pd-control" {
 
 script "run-gazebo-pd-control" {
     run_script "start-operator";
-    start cmd "0.launch-gazebo";
+    start cmd "0.launch-gazebo-fixed-base";
     start cmd "2.b.dispatcher-robot-out (gazebo)";
     start cmd "3.dispatcher-robot-in";
     start cmd "0.pd-controller";

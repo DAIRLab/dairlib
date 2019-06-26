@@ -1,6 +1,6 @@
 #include <algorithm>
 #include "examples/Cassie/networking/cassie_input_sender.h"
-
+#include "examples/Cassie/networking/udp_lcm_translator.h"
 
 namespace dairlib {
 namespace systems {
@@ -27,10 +27,7 @@ void CassieInputSender::Output(const Context<double>& context,
   const cassie_user_in_t& cassie_in =
     EvalAbstractInput(context, 0)->get_value<cassie_user_in_t>();
   // using the time from the context
-  output->utime = context.get_time() * 1e6;
-
-  copy_vector(cassie_in.torque, output->torque, 10);
-  copy_vector(cassie_in.telemetry, output->telemetry, 9);
+  cassieInToLcm(cassie_in, context.get_time(), output);
 }
 
 }  // namespace systems

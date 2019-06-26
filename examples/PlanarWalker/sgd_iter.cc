@@ -319,7 +319,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration,
   drake::lcm::DrakeLcm lcm;
   drake::systems::DiagramBuilder<double> builder;
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
-      trajopt->ReconstructStateTrajectory();
+      trajopt->ReconstructStateTrajectory(result);
   auto state_source = builder.AddSystem<drake::systems::TrajectorySource>(pp_xtraj);
   auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree, &lcm);
   publisher->set_publish_period(1.0 / 60.0);

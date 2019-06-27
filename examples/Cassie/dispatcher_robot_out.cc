@@ -81,7 +81,7 @@ int do_main(int argc, char* argv[]) {
       true);
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE_TEMP", &lcm_local,
+          "CASSIE_STATE", &lcm_local,
           {TriggerType::kForced}));
 
   // Create and connect RobotOutput publisher (low-rate for the network)

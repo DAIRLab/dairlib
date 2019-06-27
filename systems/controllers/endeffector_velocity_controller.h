@@ -31,7 +31,7 @@ class EndEffectorVelocityController : public LeafSystem<double> {
     EndEffectorVelocityController(const MultibodyPlant<double>& plant,
                                   std::string ee_frame_name,
                                   Eigen::Vector3d ee_contact_frame,
-                                  int num_joints, double k_d, double k_r);
+                                  double k_d, double k_r);
 
     // Getter methods for each of the individual input/output ports.
     const drake::systems::InputPort<double>& get_joint_pos_input_port() const {

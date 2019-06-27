@@ -59,7 +59,7 @@ int doMain(int argc, char* argv[]) {
 
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port());
-  builder.Connect(state_receiver->get_position_commanded_output_port(),
+  builder.Connect(state_receiver->get_position_measured_output_port(),
                   desired_state_from_position->get_input_port());
   builder.Connect(desired_state_from_position->get_output_port(),
                   visualizer->get_input_port(0));

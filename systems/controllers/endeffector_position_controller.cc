@@ -5,7 +5,7 @@ namespace systems{
 
 EndEffectorPositionController::EndEffectorPositionController(
 	const MultibodyPlant<double>& plant, std::string ee_frame_name,
-	Eigen::Vector3d ee_contact_frame, int num_joints, double k_p, double k_omega)
+	Eigen::Vector3d ee_contact_frame, double k_p, double k_omega)
 	: plant_(plant), plant_world_frame(plant_.world_frame()),
 	ee_contact_frame_(ee_contact_frame),
 	ee_joint_frame(plant_.GetFrameByName(ee_frame_name)){
@@ -13,7 +13,7 @@ EndEffectorPositionController::EndEffectorPositionController(
   // Set up this block's input and output ports
   // Input port values will be accessed via EvalVectorInput() later
   joint_position_measured_port = this->DeclareVectorInputPort(
-	  "joint_position_measured", BasicVector<double>(num_joints)).get_index();
+	  "joint_position_measured", BasicVector<double>(plant_.num_positions())).get_index();
   endpoint_position_commanded_port = this->DeclareVectorInputPort(
 	  "endpoint_position_commanded", BasicVector<double>(3)).get_index();
   endpoint_orientation_commanded_port = this->DeclareVectorInputPort(

@@ -5,8 +5,8 @@ namespace systems{
 
 EndEffectorVelocityController::EndEffectorVelocityController(
     const MultibodyPlant<double>& plant, std::string ee_frame_name,
-    Eigen::Vector3d ee_contact_frame, int num_joints, double k_d, double k_r)
-    : plant_(plant), num_joints_(num_joints),
+    Eigen::Vector3d ee_contact_frame, double k_d, double k_r)
+    : plant_(plant), num_joints_(plant_.num_positions()),
     ee_joint_frame(plant_.GetFrameByName(ee_frame_name)){
 
   // Set up this block's input and output ports

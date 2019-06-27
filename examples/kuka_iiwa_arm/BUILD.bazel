@@ -29,21 +29,14 @@ cc_binary(
         "@drake//common:find_resource",
         "@drake//geometry:scene_graph",
         "@drake//geometry/dev:scene_graph",
-        "@drake//geometry/dev/render:render_engine_vtk",
-        "@drake//manipulation/schunk_wsg:schunk_wsg_constants",
-        "@drake//manipulation/schunk_wsg:schunk_wsg_position_controller",
         "@drake//math:geometric_transform",
         "@drake//multibody/parsing",
         "@drake//multibody/plant",
-        "@drake//systems/controllers:inverse_dynamics_controller",
         "@drake//systems/framework",
-        "@drake//systems/sensors/dev:rgbd_camera",
         "@drake//systems/primitives:discrete_derivative",
         "@drake//manipulation/kuka_iiwa:kuka_iiwa",
         "@drake//systems/lcm:lcm_interface_system",
-        "@drake//systems/primitives:constant_vector_source",
-        "//examples/kuka_iiwa_arm:kuka_torque_controller",
-        "//systems:vector_scope",
+        ":kuka_torque_controller",
     ],
 )
 
@@ -55,7 +48,6 @@ cc_binary(
             "//systems/controllers:endeffector_velocity_controller",
             "//systems/controllers:endeffector_position_controller",
             "//systems/controllers:safe_velocity_controller",
-            "@drake//common/trajectories:piecewise_polynomial",
             "@drake//systems/analysis:simulator",
             "@drake//systems/framework",
             "@drake//systems/primitives:multiplexer",
@@ -65,7 +57,6 @@ cc_binary(
             "@drake//examples/kuka_iiwa_arm:iiwa_common",
             "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
             "@drake//common",
-            "@drake//systems/primitives:trajectory_source"
     ]
 )
 
@@ -108,7 +99,6 @@ cc_library(
         "@drake//systems/primitives:adder",
         "@drake//systems/primitives:pass_through",
         "@drake//systems/primitives:constant_vector_source",
-        "//systems:vector_scope",
     ],
 )
 
@@ -121,7 +111,6 @@ cc_binary(
             "@drake//common/trajectories:piecewise_polynomial",
             "@drake//systems/analysis:simulator",
             "@drake//systems/framework",
-            "@drake//lcm",
             "@drake//examples/kuka_iiwa_arm:iiwa_common",
             "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
             "@drake//common",
@@ -129,6 +118,5 @@ cc_binary(
             "@drake//systems/primitives:trajectory_source",
             "@drake//multibody/parsing",
             "@drake//systems/primitives:constant_vector_source",
-            "//systems:vector_scope",
     ]
 )

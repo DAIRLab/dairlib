@@ -6,8 +6,6 @@
 #define K_D 1
 #define K_R 0.3
 
-#define NUM_JOINTS 7
-
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -26,16 +24,18 @@
 
 #include "systems/controllers/endeffector_velocity_controller.h"
 #include "systems/controllers/endeffector_position_controller.h"
-#include "systems/vector_scope.h"
 
 namespace dairlib {
 
+// This function creates a controller for a Kuka LBR Iiwa arm by connecting an
+// EndEffectorPositionController to an EndEffectorVelocityController to control
+// the individual joint torques as to move the endeffector
+// to a desired position.
 int do_main(int argc, char* argv[]) {
-
-
   // Creating end effector trajectory
   // TODO make this modular
-  const std::vector<double> times {0.0, 25.0, 35.0, 45.0, 55.0, 65.0, 75.0, 85.0, 95.0, 105.0, 115};
+  const std::vector<double> times {0.0, 25.0, 35.0, 45.0, 55.0, 65.0,
+                                   75.0, 85.0, 95.0, 105.0, 115};
 
   std::vector<Eigen::MatrixXd> points(times.size());
 
@@ -72,7 +72,8 @@ int do_main(int argc, char* argv[]) {
   points[9] = A8;
   points[10] = A9;
 
-  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(times, points);
+  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<
+      double>::FirstOrderHold(times, points);
 
   // Creating end effector orientation trajectory
   const std::vector<double> orient_times {0, 115};
@@ -84,21 +85,24 @@ int do_main(int argc, char* argv[]) {
   orient_points[0] = start_o;
   orient_points[1] = end_o;
 
-  auto orientation_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(orient_times, orient_points);
+  auto orientation_trajectory = drake::trajectories::PiecewisePolynomial<
+      double>::FirstOrderHold(orient_times, orient_points);
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
-  const char* kModelPath = "../drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf";
+  std::string kModelPath = "../drake/manipulation/models/iiwa_description"
+                           "/iiwa7/iiwa7_no_collision.sdf";
   const std::string urdf_string = FindResourceOrThrow(kModelPath);
 
-  // MultibodyPlants are created here, then passed by reference to the controller blocks for
-  // internal modelling.
+  // MultibodyPlants are created here, then passed by reference
+  // to the controller blocks for internal modelling.
   const auto X_WI = drake::math::RigidTransform<double>::Identity();
-  std::unique_ptr<MultibodyPlant<double>> owned_plant = std::make_unique<MultibodyPlant<double>>();
-  drake::multibody::MultibodyPlant<double>* plant = owned_plant.get();
+  std::unique_ptr<MultibodyPlant<double>> owned_plant =
+      std::make_unique<MultibodyPlant<double>>();
 
-  drake::multibody::Parser plant_parser(plant);
+  drake::multibody::Parser plant_parser(owned_plant.get());
   plant_parser.AddModelFromFile(urdf_string, "iiwa");
-  plant->WeldFrames(owned_plant->world_frame(), owned_plant->GetFrameByName("iiwa_link_0"), X_WI);
+  owned_plant->WeldFrames(owned_plant->world_frame(),
+                          owned_plant->GetFrameByName("iiwa_link_0"), X_WI);
   owned_plant->Finalize();
 
   drake::systems::DiagramBuilder<double> builder;
@@ -107,9 +111,10 @@ int do_main(int argc, char* argv[]) {
 
   // Adding status subscriber and receiver blocks
   auto status_subscriber = builder.AddSystem(
-    drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_status>(
-      "IIWA_STATUS", lcm));
-  auto status_receiver = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaStatusReceiver>();
+      drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_status>(
+          "IIWA_STATUS", lcm));
+  auto status_receiver = builder.AddSystem<
+      drake::examples::kuka_iiwa_arm::IiwaStatusReceiver>();
 
   // The coordinates for the end effector with respect to the last joint,
   // used to determine location of end effector
@@ -119,25 +124,30 @@ int do_main(int argc, char* argv[]) {
   const std::string link_7 = "iiwa_link_7";
 
   // Adding position controller block
-  auto position_controller = builder.AddSystem<systems::EndEffectorPositionController>(
-      *plant, link_7, eeContactFrame, NUM_JOINTS, K_P, K_OMEGA);
+  auto position_controller = builder.AddSystem<
+      systems::EndEffectorPositionController>(
+          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA);
 
   // Adding Velocity Controller block
-  auto velocity_controller = builder.AddSystem<systems::EndEffectorVelocityController>(
-      *plant, link_7, eeContactFrame, NUM_JOINTS, K_D, K_R);
+  auto velocity_controller = builder.AddSystem<
+      systems::EndEffectorVelocityController>(
+          *owned_plant, link_7, eeContactFrame, K_D, K_R);
 
 
   // Adding linear position Trajectory Source
-  auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(ee_trajectory);
+  auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(
+      ee_trajectory);
   // Adding orientation Trajectory Source
-  auto input_orientation = builder.AddSystem<drake::systems::TrajectorySource>(orientation_trajectory);
+  auto input_orientation = builder.AddSystem<drake::systems::TrajectorySource>(
+      orientation_trajectory);
 
 
   // Adding command publisher and broadcaster blocks
-  auto command_sender = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaCommandSender>();
+  auto command_sender = builder.AddSystem<
+      drake::examples::kuka_iiwa_arm::IiwaCommandSender>();
   auto command_publisher = builder.AddSystem(
-    drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
-      "IIWA_COMMAND", lcm, 1.0/200.0));
+      drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
+          "IIWA_COMMAND", lcm, 1.0/200.0));
 
   // Torque Controller-- includes virtual springs and damping.
   VectorXd ConstPositionCommand;
@@ -146,7 +156,8 @@ int do_main(int argc, char* argv[]) {
   ConstPositionCommand.resize(7);
   ConstPositionCommand << 0, 0, 0, 0, 0, 0, 0;
 
-  auto positionCommand = builder.AddSystem<drake::systems::ConstantVectorSource>(ConstPositionCommand);
+  auto positionCommand = builder.AddSystem<
+      drake::systems::ConstantVectorSource>(ConstPositionCommand);
 
   builder.Connect(status_subscriber->get_output_port(),
                   status_receiver->get_input_port());

@@ -35,7 +35,7 @@ class EndEffectorPositionController : public LeafSystem<double> {
    // Constructor
    EndEffectorPositionController(const MultibodyPlant<double>& plant,
                                  std::string ee_frame_name,
-                                 Eigen::Vector3d ee_contact_frame, int num_joints,
+                                 Eigen::Vector3d ee_contact_frame,
                                  double k_p, double k_omega);
 
    // Getter methods for each of the individual input/output ports.

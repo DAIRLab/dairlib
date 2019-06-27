@@ -52,16 +52,16 @@ namespace kuka_iiwa_arm {
 
 int DoMain() {
 
-  std::unique_ptr<drake::multibody::MultibodyPlant<double>> owned_world_plant =
-      std::make_unique<drake::multibody::MultibodyPlant<double>>(0.0001);
-  std::unique_ptr<drake::multibody::MultibodyPlant<double>> owned_controller_plant =
-      std::make_unique<drake::multibody::MultibodyPlant<double>>();
+  std::unique_ptr<MultibodyPlant<double>> owned_world_plant =
+      std::make_unique<MultibodyPlant<double>>(0.0001);
+  std::unique_ptr<MultibodyPlant<double>> owned_controller_plant =
+      std::make_unique<MultibodyPlant<double>>();
   std::unique_ptr<drake::geometry::SceneGraph<double>> owned_scene_graph =
       std::make_unique<drake::geometry::SceneGraph<double>>();
 
-  drake::multibody::MultibodyPlant<double>* world_plant =
+  MultibodyPlant<double>* world_plant =
       owned_world_plant.get();
-  drake::multibody::MultibodyPlant<double>* controller_plant =
+  MultibodyPlant<double>* controller_plant =
       owned_controller_plant.get();
   drake::geometry::SceneGraph<double>* scene_graph =
       owned_scene_graph.get();
@@ -77,7 +77,8 @@ int DoMain() {
   drake::multibody::Parser world_plant_parser(world_plant);
   const drake::multibody::ModelInstanceIndex iiwa_model =
       world_plant_parser.AddModelFromFile(kuka_urdf, "iiwa");
-  world_plant->WeldFrames(owned_world_plant->world_frame(),
+  world_plant->WeldFrames(
+      owned_world_plant->world_frame(),
       owned_world_plant->GetFrameByName("iiwa_link_0", iiwa_model), X_WI);
 
   // Create and add a plant to the controller-specific model
@@ -93,6 +94,7 @@ int DoMain() {
   world_plant->Finalize();
 
   const int num_iiwa_positions = world_plant->num_positions();
+  const int num_iiwa_velocities = world_plant->num_velocities();
 
   drake::systems::DiagramBuilder<double> builder;
   builder.AddSystem(std::move(owned_world_plant));
@@ -119,14 +121,12 @@ int DoMain() {
   VectorXd stiffness, damping_ratio;
 
   // The virtual spring stiffness in Nm/rad.
-  stiffness.resize(7);
+  stiffness.resize(num_iiwa_positions);
   stiffness << 2, 2, 2, 2, 2, 2, 2;
 
   // A dimensionless damping ratio. See KukaTorqueController for details.
-  damping_ratio.resize(stiffness.size());
+  damping_ratio.resize(num_iiwa_positions);
   damping_ratio.setConstant(1.0);
-  stiffness = stiffness.replicate(1, 1);
-  damping_ratio = damping_ratio.replicate(1, 1);
   auto iiwa_controller = builder.AddSystem<
       dairlib::systems::KukaTorqueController<double>>(
           std::move(owned_controller_plant), stiffness, damping_ratio);
@@ -138,7 +138,7 @@ int DoMain() {
   // derivative of the position command input port.
   auto desired_state_from_position = builder.AddSystem<
       drake::systems::StateInterpolatorWithDiscreteDerivative<double>>(
-          7, world_plant->time_step());
+          num_iiwa_positions, world_plant->time_step());
 
   // Demuxing system state for status publisher
   auto demux = builder.AddSystem<drake::systems::Demultiplexer<double>>(
@@ -193,25 +193,22 @@ int DoMain() {
   drake::geometry::ConnectDrakeVisualizer(&builder, *scene_graph,
       scene_graph->get_pose_bundle_output_port());
 
-  // Set the iiwa default joint configuration.
-  drake::VectorX<double> q0_iiwa(num_iiwa_positions);
-  q0_iiwa << 0, 0, 0, 0, 0, 0, 0;
-  const auto iiwa_joint_indices = world_plant->GetJointIndices(iiwa_model);
-  int q0_index = 0;
-  for (const auto joint_index : iiwa_joint_indices) {
-    drake::multibody::RevoluteJoint<double>* joint =
-        dynamic_cast<drake::multibody::RevoluteJoint<double>*>(
-            &world_plant->get_mutable_joint(joint_index));
-    // Note: iiwa_joint_indices includes the WeldJoint at the base.  Only set
-    // the RevoluteJoints.
-    if (joint) {
-      joint->set_default_angle(q0_iiwa[q0_index++]);
-    }
-  }
-
   auto diagram = builder.Build();
-
   drake::systems::Simulator<double> simulator(*diagram);
+
+  // Set the iiwa default joint configuration.
+  drake::VectorX<double> q0_iiwa(num_iiwa_positions + num_iiwa_velocities);
+  q0_iiwa << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+
+  drake::systems::Context<double>& context =
+      diagram->GetMutableSubsystemContext(*world_plant,
+                                          &simulator.get_mutable_context());
+
+  drake::systems::BasicVector<double>& state =
+      context.get_mutable_discrete_state(0);
+  std::cout << "Discrete " << state.size() << std::endl;
+  state.SetFromVector(q0_iiwa);
+
   simulator.set_publish_every_time_step(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());

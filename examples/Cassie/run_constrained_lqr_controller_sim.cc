@@ -75,7 +75,8 @@ DEFINE_double(dt, 1e-3,
               "'simulation_type=compliant'");
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
 DEFINE_bool(publish_state, true,
-    "Publish state CASSIE_STATE (set to false when running w/dispatcher");
+    "Simulation publishs state CASSIE_STATE"
+    "Should set this to false when running w/ dispatcher");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
@@ -86,8 +87,7 @@ DEFINE_string(state_channel, "CASSIE_STATE",
 DEFINE_string(input_channel, "CASSIE_INPUT",
               "LCM channel for receiving the motor inputs");
 DEFINE_string(output_channel, "CASSIE_OUTPUT",
-              "LCM channel for receiving the motor inputs");
-DEFINE_bool(is_imu_sim, true, "With simulated imu sensor or not");
+              "LCM channel for publishing cassie_out");
 
 /*
  * Function to run collisionDetect and return a ContactInfo object for the four
@@ -153,7 +153,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   // Add imu frame to Cassie's pelvis
-  if (FLAGS_is_imu_sim) addImuFrameToCassiePelvis(tree);
+  if (!FLAGS_publish_state) addImuFrameToCassiePelvis(tree);
 
   const int num_positions = tree->get_num_positions();
   const int num_velocities = tree->get_num_velocities();
@@ -413,7 +413,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(passthrough->get_output_port(),
                   plant->actuator_command_input_port());
 
-
+  // Either publish lcmt_robot_output or publish lcmt_cassie_out
   if (FLAGS_publish_state) {
     // Create state publisher
     auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
@@ -425,10 +425,8 @@ int do_main(int argc, char* argv[]) {
                     state_sender->get_input_port_state());
     builder.Connect(state_sender->get_output_port(0),
                     state_pub->get_input_port());
-  }
-
-  // Create cassie output (containing simulated sensor) publisher
-  if (FLAGS_is_imu_sim) {
+  } else {
+    // Create cassie output (containing simulated sensor) publisher
     auto cassie_sensor_aggregator =
         addImuAndAggregatorToSimulation(builder, plant, passthrough);
     auto cassie_sensor_pub =

@@ -35,16 +35,16 @@ class EndEffectorVelocityController : public LeafSystem<double> {
 
     // Getter methods for each of the individual input/output ports.
     const drake::systems::InputPort<double>& get_joint_pos_input_port() const {
-      return this->get_input_port(joint_position_measured_port);
+      return this->get_input_port(joint_position_measured_port_);
     }
     const drake::systems::InputPort<double>& get_joint_vel_input_port() const {
-      return this->get_input_port(joint_velocity_measured_port);
+      return this->get_input_port(joint_velocity_measured_port_);
     }
     const drake::systems::InputPort<double>& get_endpoint_twist_input_port() const {
-      return this->get_input_port(endpoint_twist_commanded_port);
+      return this->get_input_port(endpoint_twist_commanded_port_);
     }
     const drake::systems::OutputPort<double>& get_endpoint_torque_output_port() const{
-      return this->get_output_port(endpoint_torque_output_port);
+      return this->get_output_port(endpoint_torque_output_port_);
     }
 
   private:
@@ -56,14 +56,14 @@ class EndEffectorVelocityController : public LeafSystem<double> {
 
     const MultibodyPlant<double>& plant_;
     int num_joints_;
-    const Frame<double>& ee_joint_frame;
-    Eigen::Vector3d ee_contact_frame;
-    int joint_position_measured_port;
-    int joint_velocity_measured_port;
-    int endpoint_twist_commanded_port;
-    int endpoint_torque_output_port;
-    double k_d;
-    double k_r;
+    const Frame<double>& ee_joint_frame_;
+    Eigen::Vector3d ee_contact_frame_;
+    int joint_position_measured_port_;
+    int joint_velocity_measured_port_;
+    int endpoint_twist_commanded_port_;
+    int endpoint_torque_output_port_;
+    double k_d_;
+    double k_r_;
 };
 
 

@@ -16,19 +16,26 @@ using drake::systems::BasicVector;
 using drake::systems::kVectorValued;
 using drake::systems::EventStatus;
 
-VectorScope::VectorScope(int size, std::string debugMessage) : msg_(debugMessage) {
+/*
+
+  A system that continuously prints out the (numerical) value of the
+  attached input port to the console.
+  @param size       Size of the input vector
+  @param debug      Message the message that's printed out before the number
+  @param message    Rate the rate at which messages are printed
+
+*/
+VectorScope::VectorScope(int size, std::string debugMessage, double publishRate)
+    : msg_(debugMessage) {
 
     this->DeclareVectorInputPort("debug: ", BasicVector<double>(size));
-    this->DeclarePeriodicPublishEvent(0.01, 0.0, &VectorScope::PrintOutput);
+    this->DeclarePeriodicPublishEvent(publishRate, 0.0, &VectorScope::PrintOutput);
 }
 
 EventStatus VectorScope::PrintOutput(const Context<double>& context) const {
     auto val = this->EvalVectorInput(context, 0)->get_value();
     std::cout << msg_ << std::endl;
     std::cout << val << std::endl;
-    // std::cout << "velocities:" << std::endl;
-    // std::cout << val.tail(7) << std::endl;
-
     return EventStatus::Succeeded();
 }
 

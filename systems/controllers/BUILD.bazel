@@ -114,12 +114,7 @@ cc_library(
     deps = [
             "//common",
             "//systems/framework:vector",
-            "@drake//attic/multibody/rigid_body_plant:rigid_body_plant",
-            "@drake//attic/multibody/parsers",
-            "@drake//attic/multibody:rigid_body_tree",
-            "@drake//systems/framework:leaf_system",
-            "@drake//attic/manipulation/util:sim_diagram_builder",
-            "@drake//examples/kuka_iiwa_arm:iiwa_common",
+            "@drake//:drake_shared_library",
             ],
 )
 
@@ -131,10 +126,7 @@ cc_library(
     deps = [
             "//common",
             "//systems/framework:vector",
-            "@drake//multibody/plant:plant",
-            "@drake//systems/framework:leaf_system",
-            "@drake//examples/kuka_iiwa_arm:iiwa_common",
-            "@drake//multibody/tree:tree",
+            "@drake//:drake_shared_library",
     ]
 
 )
@@ -146,10 +138,7 @@ cc_library(
     deps = [
             "//common",
             "//systems/framework:vector",
-            "@drake//multibody/plant:plant",
-            "@drake//systems/framework:leaf_system",
-            "@drake//examples/kuka_iiwa_arm:iiwa_common",
-            "@drake//multibody/tree:tree",
+            "@drake//:drake_shared_library",
     ]
 
 )

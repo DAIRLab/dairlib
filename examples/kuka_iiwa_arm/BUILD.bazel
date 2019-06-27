@@ -23,19 +23,8 @@ cc_binary(
         "@drake//manipulation/models/iiwa_description:models",
     ],
     deps = [
+        "@drake//:drake_shared_library",
         "//common:common",
-        "@drake//geometry:geometry_visualization",
-        "@drake//systems/analysis:simulator",
-        "@drake//common:find_resource",
-        "@drake//geometry:scene_graph",
-        "@drake//geometry/dev:scene_graph",
-        "@drake//math:geometric_transform",
-        "@drake//multibody/parsing",
-        "@drake//multibody/plant",
-        "@drake//systems/framework",
-        "@drake//systems/primitives:discrete_derivative",
-        "@drake//manipulation/kuka_iiwa:kuka_iiwa",
-        "@drake//systems/lcm:lcm_interface_system",
         ":kuka_torque_controller",
     ],
 )
@@ -45,18 +34,10 @@ cc_binary(
     name="iiwa_oscillate",
     srcs = ["iiwa_oscillate.cc"],
     deps = [
+            "@drake//:drake_shared_library",
             "//systems/controllers:endeffector_velocity_controller",
             "//systems/controllers:endeffector_position_controller",
             "//systems/controllers:safe_velocity_controller",
-            "@drake//systems/analysis:simulator",
-            "@drake//systems/framework",
-            "@drake//systems/primitives:multiplexer",
-            "@drake//systems/primitives:constant_vector_source",
-            "@drake//systems/primitives:sine",
-            "@drake//lcm",
-            "@drake//examples/kuka_iiwa_arm:iiwa_common",
-            "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
-            "@drake//common",
     ]
 )
 
@@ -68,19 +49,8 @@ cc_binary(
         "@drake//manipulation/models/iiwa_description:models",
     ],
     deps = [
+            "@drake//:drake_shared_library",
             "//common:common",
-            "@drake//examples/kuka_iiwa_arm:iiwa_common",
-            "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
-            "@drake//examples/kuka_iiwa_arm:kuka_torque_controller",
-            "@drake//attic/manipulation/util:sim_diagram_builder",
-            "@drake//attic/multibody:rigid_body_tree_construction",
-            "@drake//attic/multibody/rigid_body_plant:frame_visualizer",
-            "@drake//attic/systems/controllers:rbt_inverse_dynamics_controller",
-            "@drake//common:text_logging_gflags",
-            "@drake//lcm",
-            "@drake//systems/analysis",
-            "@drake//systems/controllers:state_feedback_controller_interface",
-            "@drake//systems/primitives:discrete_derivative"
     ]
 )
 
@@ -90,15 +60,7 @@ cc_library(
     hdrs = ["kuka_torque_controller.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "@drake//multibody/plant",
-        "@drake//systems/controllers:inverse_dynamics",
-        "@drake//systems/controllers:pid_controller",
-        "@drake//systems/controllers:state_feedback_controller_interface",
-        "@drake//systems/framework:diagram_builder",
-        "@drake//systems/framework:leaf_system",
-        "@drake//systems/primitives:adder",
-        "@drake//systems/primitives:pass_through",
-        "@drake//systems/primitives:constant_vector_source",
+            "@drake//:drake_shared_library",
     ],
 )
 
@@ -106,17 +68,8 @@ cc_binary(
     name="iiwa_controller_demo",
     srcs = ["iiwa_controller_demo.cc"],
     deps = [
+            "@drake//:drake_shared_library",
             "//systems/controllers:endeffector_velocity_controller",
             "//systems/controllers:endeffector_position_controller",
-            "@drake//common/trajectories:piecewise_polynomial",
-            "@drake//systems/analysis:simulator",
-            "@drake//systems/framework",
-            "@drake//examples/kuka_iiwa_arm:iiwa_common",
-            "@drake//examples/kuka_iiwa_arm:iiwa_lcm",
-            "@drake//common",
-            "@drake//multibody/plant:plant",
-            "@drake//systems/primitives:trajectory_source",
-            "@drake//multibody/parsing",
-            "@drake//systems/primitives:constant_vector_source",
     ]
 )

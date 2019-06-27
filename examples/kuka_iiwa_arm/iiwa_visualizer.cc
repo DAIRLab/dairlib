@@ -21,7 +21,6 @@ int doMain(int argc, char* argv[]) {
 
   drake::systems::DiagramBuilder<double> builder;
   // Adds a plant.
-  RigidBodyPlant<double>* plant = nullptr;
   const char* kModelPath =
       "drake/manipulation/models/iiwa_description/"
       "urdf/iiwa14_polytope_collision.urdf";

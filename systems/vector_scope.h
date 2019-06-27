@@ -9,7 +9,7 @@ using drake::systems::EventStatus;
 
 class VectorScope : public drake::systems::LeafSystem<double> {
  public:
-  VectorScope(int size, std::string debugMessage);
+  VectorScope(int size, std::string debugMessage, double publishRate);
 
  private:
   const std::string msg_;

@@ -85,7 +85,11 @@ int main(int argc, char **argv) {
       // Free and remove message
       free(buffer.front()->channel);
       free(buffer.front()->data);
+<<<<<<< HEAD
       free(buffer.front());
+=======
+      delete buffer.front();
+>>>>>>> cd0d629e7def063e4fe34918161397a819c4c65e
       buffer.pop_front();
       N--;
     }
@@ -116,7 +120,11 @@ int main(int argc, char **argv) {
     // Free and remove message
     free(buffer.front()->channel);
     free(buffer.front()->data);
+<<<<<<< HEAD
     free(buffer.front());
+=======
+    delete buffer.front();
+>>>>>>> cd0d629e7def063e4fe34918161397a819c4c65e
     buffer.pop_front();
     N--;
   }

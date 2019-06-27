@@ -39,6 +39,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  private:
   void AssignImuValueToOutputVector(
       OutputVector<double>* output, const cassie_out_t& cassie_out) const;
+  void AssignActuationFeedbackToOutputVector(
+      OutputVector<double>* output, const cassie_out_t& cassie_out) const;
   void AssignNonFloatingBaseStateToOutputVector(
       OutputVector<double>* output, const cassie_out_t& cassie_out) const;
   void AssignFloatingBaseStateToOutputVector(

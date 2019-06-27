@@ -22,11 +22,6 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort("cassie_out_t",
                            drake::Value<cassie_out_t> {}).get_index();
-  // TODO(yminchen): delete state_input_port after finishing testing
-  state_input_port_ = this->DeclareVectorInputPort(
-                        OutputVector<double>(tree_.get_num_positions(),
-                            tree_.get_num_velocities(),
-                            tree_.get_num_actuators())).get_index();
   this->DeclareVectorOutputPort(
       OutputVector<double>(tree.get_num_positions(),
                            tree.get_num_velocities(),
@@ -49,9 +44,18 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
               " body indices were not set correctly.\n";
 
   if (is_floating_base) {
+    // Declare input port receiving robot's state (simulation ground truth state)
+    // TODO(yminchen): delete this input port after finishing testing
+    state_input_port_ = this->DeclareVectorInputPort(
+                          OutputVector<double>(tree_.get_num_positions(),
+                              tree_.get_num_velocities(),
+                              tree_.get_num_actuators())).get_index();
+
+    // Declare update event for EKF
     DeclarePerStepDiscreteUpdateEvent(&CassieRbtStateEstimator::Update);
 
-    time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));  // previous time
+    // a state which stores previous timestamp
+    time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
 
     // states related to EKF
     VectorXd init_floating_base_state = VectorXd::Zero(7 + 6);
@@ -178,6 +182,31 @@ void CassieRbtStateEstimator::AssignImuValueToOutputVector(
   output->SetIMUAccelerationAtIndex(2, imu_d[2]);
 }
 
+void CassieRbtStateEstimator::AssignActuationFeedbackToOutputVector(
+    OutputVector<double>* output, const cassie_out_t& cassie_out) const {
+  // Copy actuators
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_roll_left_motor"),
+                           cassie_out.leftLeg.hipRollDrive.torque);
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_yaw_left_motor"),
+                           cassie_out.leftLeg.hipYawDrive.torque);
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_pitch_left_motor"),
+                           cassie_out.leftLeg.hipPitchDrive.torque);
+  output->SetEffortAtIndex(actuator_index_map_.at("knee_left_motor"),
+                           cassie_out.leftLeg.kneeDrive.torque);
+  output->SetEffortAtIndex(actuator_index_map_.at("toe_left_motor"),
+                           cassie_out.leftLeg.footDrive.torque);
+
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_roll_right_motor"),
+                           cassie_out.rightLeg.hipRollDrive.torque);
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_yaw_right_motor"),
+                           cassie_out.rightLeg.hipYawDrive.torque);
+  output->SetEffortAtIndex(actuator_index_map_.at("hip_pitch_right_motor"),
+                           cassie_out.rightLeg.hipPitchDrive.torque);
+  output->SetEffortAtIndex(actuator_index_map_.at("knee_right_motor"),
+                           cassie_out.rightLeg.kneeDrive.torque);
+  output->SetEffortAtIndex(actuator_index_map_.at("toe_right_motor"),
+                           cassie_out.rightLeg.footDrive.torque);
+}
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
     OutputVector<double>* output, const cassie_out_t& cassie_out) const {
@@ -252,41 +281,20 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   output->SetVelocityAtIndex(velocity_index_map_.at("ankle_spring_joint_rightdot"),
                              0.0);
 
-  // Copy actuators
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_roll_left_motor"),
-                           cassie_out.leftLeg.hipRollDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_yaw_left_motor"),
-                           cassie_out.leftLeg.hipYawDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_pitch_left_motor"),
-                           cassie_out.leftLeg.hipPitchDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("knee_left_motor"),
-                           cassie_out.leftLeg.kneeDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("toe_left_motor"),
-                           cassie_out.leftLeg.footDrive.torque);
-
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_roll_right_motor"),
-                           cassie_out.rightLeg.hipRollDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_yaw_right_motor"),
-                           cassie_out.rightLeg.hipYawDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_pitch_right_motor"),
-                           cassie_out.rightLeg.hipPitchDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("knee_right_motor"),
-                           cassie_out.rightLeg.kneeDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("toe_right_motor"),
-                           cassie_out.rightLeg.footDrive.torque);
-
   // Solve fourbar linkage for heel spring positions
   double left_heel_spring = 0;
   double right_heel_spring = 0;
-  VectorXd q_init = output->GetMutablePositions();
+  VectorXd q = output->GetMutablePositions();
   if (is_floating_base_) {
     // Floating-base state doesn't affect the spring values
+    // We assign the floating base of q in case output's floating base is
+    // not initialized.
     for (int i = 0; i < 7; i++) {
-      q_init[i] = 0;
+      q[i] = 0;
     }
-    q_init[3] =  1;
+    q[3] =  1;
   }
-  solveFourbarLinkage(&left_heel_spring, &right_heel_spring, q_init);
+  solveFourbarLinkage(&left_heel_spring, &right_heel_spring, q);
   output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_left"),
                              left_heel_spring);
   output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_right"),
@@ -333,18 +341,25 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
   if (current_time > prev_t) {
     double dt = current_time - prev_t;
 
-    // Initialize robot output vector
+    // Perform State Estimation (in several steps)
+    // Step 1 - Solve for the unknown joint angle
+    // This step is done in AssignNonFloatingBaseStateToOutputVector()
+
+    // Step 2 - EKF (update step)
+
+    // Step 3 - Estimate which foot/feet are in contact with the ground
+    // Create robot output vector for contact estimation
     OutputVector<double> output(tree_.get_num_positions(),
                                 tree_.get_num_velocities(),
                                 tree_.get_num_actuators());
-    // Assign values to cassie output vector
+    // Assign values to robot output vector
     const auto& cassie_out =
         this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
     AssignImuValueToOutputVector(&output, cassie_out);
+    AssignActuationFeedbackToOutputVector(&output, cassie_out);
     AssignNonFloatingBaseStateToOutputVector(&output, cassie_out);
     AssignFloatingBaseStateToOutputVector(&output,
         context.get_discrete_state(state_idx_).get_value());
-
     // Since we don't have EKF yet, we get the floating base state
     // from ground truth (CASSIE_STATE)
     // TODO(yminchen): delete this later
@@ -377,14 +392,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     output.SetVelocityAtIndex(velocity_index_map_.at("base_vz"),
                               cassie_state->GetVelocities()[5]);
 
-
-    // Perform State Estimation (in several steps)
-    // Step 1 - Solve for the unknown joint angle
-    // This step is done in AssignNonFloatingBaseStateToOutputVector()
-
-    // Step 2 - EKF (update step)
-
-    // Step 3 - Estimate which foot/feet are in contact with the ground
+    // Estimate feet contacts
     int left_contact = 0;
     int right_contact = 0;
     contactEstimation(&left_contact, &right_contact, discrete_state,
@@ -416,7 +424,9 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 }
 
 
-// Contact Estimator assumes that the swing leg doesn't stop during single stance
+// Contact Estimator assumes:
+// 1. the swing leg doesn't stop during single support
+// 2. the robot doesn't transition from flight to single support
 void CassieRbtStateEstimator::contactEstimation(
     int* left_contact, int* right_contact,
     DiscreteValues<double>* discrete_state,
@@ -825,7 +835,9 @@ void CassieRbtStateEstimator::contactEstimation(
   int min_index = std::distance(optimal_cost.begin(), min_it);
 
   // If all three costs are high, we believe it's going through impact event,
-  // and we assume it's double support.
+  // and we assume it's double support. (Therefore, it won't predict the case
+  // where the robot transition from flight phase to single support. It'd say
+  // it's double support.)
   if((optimal_cost[0] >= cost_threshold_ &&
         optimal_cost[1] >= cost_threshold_ &&
         optimal_cost[2] >= cost_threshold_)) {
@@ -839,7 +851,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
   // Update contact estimation based on spring deflection information
   // We say a foot is in contact with the ground if sprig deflection is over
-  // a threshold.
+  // a threshold. We don't update anything if it's under the threshold.
   double left_knee_spring = output.GetPositionAtIndex(
       position_index_map_.at("knee_joint_left"));
   double right_knee_spring = output.GetPositionAtIndex(
@@ -850,7 +862,7 @@ void CassieRbtStateEstimator::contactEstimation(
       position_index_map_.at("ankle_spring_joint_right"));
   if (left_knee_spring < knee_spring_threshold_ ||
         left_heel_spring < heel_spring_threshold_) {
-    * left_contact = 1;
+    *left_contact = 1;
   }
   if (right_knee_spring < knee_spring_threshold_ ||
         right_heel_spring < heel_spring_threshold_) {
@@ -892,13 +904,14 @@ void CassieRbtStateEstimator::CopyStateOut(
   const auto& cassie_out =
     this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
 
-  // Ther might be a better way to initialize?
+  // There might be a better way to initialize?
   auto data = output->get_mutable_data();  // This doesn't affect timestamp value
   data = VectorXd::Zero(data.size());
 
   // Assign values robot output vector
   // Copy imu values and robot state excluding floating base
   AssignImuValueToOutputVector(output, cassie_out);
+  AssignActuationFeedbackToOutputVector(output, cassie_out);
   AssignNonFloatingBaseStateToOutputVector(output, cassie_out);
   // Copy the floating base base state
   if (is_floating_base_) {

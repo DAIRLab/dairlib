@@ -438,14 +438,42 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 }
 
 
-// Contact Estimator assumes:
-// 1. the swing leg doesn't stop during single support
-// 2. the robot doesn't transition from flight to single support
 void CassieRbtStateEstimator::contactEstimation(
     const OutputVector<double>& output, const double& dt,
     DiscreteValues<double>* discrete_state,
     int* left_contact, int* right_contact) const {
   const int n_v = tree_.get_num_velocities();
+  /// contactEstimation determines which foot is in contact with the ground
+  /// based on the current configuration of the robot and the imu acceleration
+  ///
+  /// input: outputvector `output` containing the positions, velocities and
+  /// actuator torques of the robot; time `dt` elapsed between previous
+  /// iteration and current iteration; discretevalues `discrete_state` to store
+  /// states related to contact estimation
+  /// ouput: left contact `left_contact` and right contact `right_contact` that
+  /// indicate if the corresponding foot is in contact with the ground
+  ///
+  /// assumptions:
+  /// 1. the swing leg doesn't stop during single support
+  /// 2. flight mode is not present during the gait
+  ///
+  /// algorithm:
+  /// the contact is estimated based on
+  /// 1. compression in the spring
+  /// 2. three optimizations one for each double support, left support and
+  /// right support
+  /// if the compression in the left (right) heel/ankle spring is more than the
+  /// set threshold, the left (right) foot is estimated to be in contact with
+  /// the ground.
+  /// additionally, the optimal cost from the optimization is used to augument
+  /// the estimation from the spring. in each optimization, the residue of the
+  /// eom is calculated based on the assumption of the stance. the assumption of
+  /// stance is done by imposing a constraint for the acceleration of the stance
+  /// foot. the acceleration of the pelvis is also constrained to match the imu
+  /// acceleration. the cost from the three optimizations are compared. the
+  /// optimization with the least cost is assumed to be the actual stance.
+  /// during impact, both the legs have some non-zero acceleration and hence the
+  /// optimal costs will all be high. this case is assumed to be double stance.
 
   // Indices
   const int left_toe_ind = GetBodyIndexFromName(tree_, "toe_left");

@@ -55,27 +55,32 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuator_index_map_;
 
   // Body indices
-  int left_thigh_ind_ = -1;
-  int right_thigh_ind_ = -1;
-  int left_heel_spring_ind_ = -1;
-  int right_heel_spring_ind_ = -1;
+  int left_thigh_ind_;
+  int right_thigh_ind_;
+  int left_heel_spring_ind_;
+  int right_heel_spring_ind_;
 
   // Input/output port indices
   int cassie_out_input_port_;
   int state_input_port_;
 
-  // State indices
+  // Below are indices of system states:
+  // A state which stores previous timestamp
   drake::systems::DiscreteStateIndex time_idx_;
-
+  // States related to EKF
   drake::systems::DiscreteStateIndex state_idx_;
   drake::systems::DiscreteStateIndex ekf_X_idx_;
-
+  // A state related to contact estimation
+  // This state store the previous generalized velocity
   drake::systems::DiscreteStateIndex previous_velocity_idx_;
-
-  drake::systems::DiscreteStateIndex filtered_residue_double_idx_;
-  drake::systems::DiscreteStateIndex filtered_residue_left_idx_;
-  drake::systems::DiscreteStateIndex filtered_residue_right_idx_;
-
+  // States related to contact estimation
+  // The states stores the filtered difference between predicted acceleration
+  // and measured acceleration (derived by finite differencing)
+  drake::systems::DiscreteStateIndex filtered_residual_double_idx_;
+  drake::systems::DiscreteStateIndex filtered_residual_left_idx_;
+  drake::systems::DiscreteStateIndex filtered_residual_right_idx_;
+  // States related to contact estimation
+  // The states stores the previous QP solutions (acceleration and contact force)
   drake::systems::DiscreteStateIndex ddq_double_init_idx_;
   drake::systems::DiscreteStateIndex ddq_left_init_idx_;
   drake::systems::DiscreteStateIndex ddq_right_init_idx_;
@@ -105,8 +110,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const double heel_spring_threshold_ = -0.03;
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
   const double eps_imu_ = 0.5;  // Error bounds for imu acceleration
-  const double w_soft_constraint_ = 100;  // soft constraint cost
-  const double alpha_ = 0.9;  // Decay for residue calculation
+  const double w_soft_constraint_ = 100;  // Soft constraint cost
+  const double alpha_ = 0.9;  // Low-pass filter constant for the acceleration
+                              // residual. 0 < alpha_ < 1. The bigger alpha_ is,
+                              // the higher the cut-off frequency is.
 };
 
 }  // namespace systems

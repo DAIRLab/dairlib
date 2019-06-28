@@ -80,11 +80,11 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     previous_velocity_idx_ = DeclareDiscreteState(
         VectorXd::Zero(tree_.get_num_velocities(), 1));
 
-    filtered_residue_double_idx_ = DeclareDiscreteState(
+    filtered_residual_double_idx_ = DeclareDiscreteState(
         VectorXd::Zero(tree_.get_num_velocities(), 1));
-    filtered_residue_left_idx_ = DeclareDiscreteState(
+    filtered_residual_left_idx_ = DeclareDiscreteState(
         VectorXd::Zero(tree_.get_num_velocities(), 1));
-    filtered_residue_right_idx_ = DeclareDiscreteState(
+    filtered_residual_right_idx_ = DeclareDiscreteState(
         VectorXd::Zero(tree_.get_num_velocities(), 1));
 
     ddq_double_init_idx_ = DeclareDiscreteState(
@@ -336,6 +336,7 @@ void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
 
 EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
+  // TODO(yminchen): delete the testing code when you fix the time delay issue
   // Testing
   /*const auto& cassie_out =
       this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
@@ -347,6 +348,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
   double current_time = context.get_time();
   double prev_t = discrete_state->get_vector(time_idx_).get_value()(0);
 
+  // TODO(yminchen): delete the testing code when you fix the time delay issue
   // Testing
   // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
 
@@ -636,17 +638,17 @@ void CassieRbtStateEstimator::contactEstimation(
         lambda_cr_double_init_idx_).get_mutable_value() <<
         right_force;
 
-    // Residue calculation
-    VectorXd curr_residue = ddq_val*dt;
-    curr_residue -= (output.GetVelocities() -
+    // Residual calculation
+    VectorXd curr_residual = ddq_val*dt;
+    curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
-    VectorXd filtered_residue_double = discrete_state->get_vector(
-        filtered_residue_double_idx_).get_value();
-    filtered_residue_double = filtered_residue_double +
-      alpha_*(curr_residue - filtered_residue_double);
+    VectorXd filtered_residual_double = discrete_state->get_vector(
+        filtered_residual_double_idx_).get_value();
+    filtered_residual_double = filtered_residual_double +
+      alpha_*(curr_residual - filtered_residual_double);
     discrete_state->get_mutable_vector(
-        filtered_residue_double_idx_).get_mutable_value() <<
-        filtered_residue_double;
+        filtered_residual_double_idx_).get_mutable_value() <<
+        filtered_residual_double;
   }
 
   // Mathematical program - left contact
@@ -730,17 +732,17 @@ void CassieRbtStateEstimator::contactEstimation(
         lambda_cl_left_init_idx_).get_mutable_value() <<
         left_force;
 
-    // Residue calculation
-    VectorXd curr_residue = ddq_val*dt;
-    curr_residue -= (output.GetVelocities() -
+    // Residual calculation
+    VectorXd curr_residual = ddq_val*dt;
+    curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
-    VectorXd filtered_residue_left = discrete_state->get_vector(
-        filtered_residue_left_idx_).get_value();
-    filtered_residue_left = filtered_residue_left +
-        alpha_*(curr_residue - filtered_residue_left);
+    VectorXd filtered_residual_left = discrete_state->get_vector(
+        filtered_residual_left_idx_).get_value();
+    filtered_residual_left = filtered_residual_left +
+        alpha_*(curr_residual - filtered_residual_left);
     discrete_state->get_mutable_vector(
-        filtered_residue_left_idx_).get_mutable_value() <<
-        filtered_residue_left;
+        filtered_residual_left_idx_).get_mutable_value() <<
+        filtered_residual_left;
   }
 
   // Mathematical program - right contact
@@ -824,17 +826,17 @@ void CassieRbtStateEstimator::contactEstimation(
         lambda_cr_right_init_idx_).get_mutable_value() <<
         right_force;
 
-    // Residue calculation
-    VectorXd curr_residue = ddq_val*dt;
-    curr_residue -= (output.GetVelocities() -
+    // Residual calculation
+    VectorXd curr_residual = ddq_val*dt;
+    curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
-    VectorXd filtered_residue_right = discrete_state->get_vector(
-        filtered_residue_right_idx_).get_value();
-    filtered_residue_right = filtered_residue_right +
-      alpha_*(curr_residue - filtered_residue_right);
+    VectorXd filtered_residual_right = discrete_state->get_vector(
+        filtered_residual_right_idx_).get_value();
+    filtered_residual_right = filtered_residual_right +
+      alpha_*(curr_residual - filtered_residual_right);
     discrete_state->get_mutable_vector(
-        filtered_residue_right_idx_).get_mutable_value() <<
-      filtered_residue_right;
+        filtered_residual_right_idx_).get_mutable_value() <<
+      filtered_residual_right;
   }
 
   // Estimate contact based on optimization results
@@ -861,7 +863,7 @@ void CassieRbtStateEstimator::contactEstimation(
   }
 
   // Update contact estimation based on spring deflection information
-  // We say a foot is in contact with the ground if sprig deflection is over
+  // We say a foot is in contact with the ground if spring deflection is over
   // a threshold. We don't update anything if it's under the threshold.
   double left_knee_spring = output.GetPositionAtIndex(
       position_index_map_.at("knee_joint_left"));
@@ -880,7 +882,7 @@ void CassieRbtStateEstimator::contactEstimation(
     *right_contact = 1;
   }
 
-  // Record previous velocity (used in residue)
+  // Record previous velocity (used in acceleration residual)
   discrete_state->get_mutable_vector(
       previous_velocity_idx_).get_mutable_value() << output.GetVelocities();
 
@@ -911,9 +913,9 @@ void CassieRbtStateEstimator::contactEstimation(
 /// Since it needs to map from a struct to a vector, and no assumptions on the
 /// ordering of the vector are made, utilizies index maps to make this mapping.
 void CassieRbtStateEstimator::CopyStateOut(
-  const Context<double>& context, OutputVector<double>* output) const {
+    const Context<double>& context, OutputVector<double>* output) const {
   const auto& cassie_out =
-    this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
+      this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
 
   // There might be a better way to initialize?
   auto data = output->get_mutable_data();  // This doesn't affect timestamp value
@@ -962,31 +964,12 @@ void CassieRbtStateEstimator::CopyStateOut(
                               cassie_state->GetVelocities()[5]);
   }
 
-
-
+  // TODO(yminchen): delete the testing code when you fix the time delay issue
   // Testing
   // auto state_time = context.get_discrete_state(time_idx_).get_value();
   // cout << "  In copyStateOut: lcm_time = " << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
   // cout << "  In copyStateOut: state_time = " << state_time << endl;
   // cout << "  In copyStateOut: context_time = " << context.get_time() << endl;
-
-  // Testing
-  // cout << endl << "****bodies****" << endl;
-  // for (int i = 0; i < tree_.get_num_bodies(); i++)
-  //   cout << tree_.getBodyOrFrameName(i) << endl;
-  // cout << endl << "****actuators****" << endl;
-  // for (int i = 0; i < tree_.get_num_actuators(); i++)
-  //   cout << tree_.actuators[i].name_ << endl;
-  // cout << endl << "****positions****" << endl;
-  // for (int i = 0; i < tree_.get_num_positions(); i++)
-  //   cout << tree_.get_position_name(i) << endl;
-  // cout << endl << "****velocities****" << endl;
-  // for (int i = 0; i < tree_.get_num_velocities(); i++)
-  // cout << tree_.get_velocity_name(i) << endl;
-
-
-
-
 }
 
 }  // namespace systems

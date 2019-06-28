@@ -124,13 +124,13 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 ///  We want to find the intersections of a sphere S_r (with origin r_ball_joint
 ///  and radius rod_length_) and a circle C_s (with origin r_heel_spring_base
 ///  and radius spring_length). The way we solve it is that we convert the 3D
-///  problem into a 2D problem. Let the plane where C_s lies to be PL_C_s.
+///  problem into a 2D problem. Let PL_C_s to be the plane where C_s lies.
 ///  The interection of S_r and PL_C_s is another circle. Let's call this circle
-///  C_r. We can derived C_r's origin by projecting S_r's origin on PL_C_s, and
-///  we can derive C_r's radius by trigonometry.
+///  C_r. We can derived C_r's origin by projecting S_r's origin onto PL_C_s,
+///  and we can derive C_r's radius by trigonometry.
 ///  There will be two intersections between C_r and C_s, and only one of the
 ///  two soluations is physically feasible for Cassie. Let's call this feasible
-///  solution to be p.
+///  solution p.
 ///  Given p and the frame of the spring without deflection, we can calculate
 ///  the magnitude/direction of spring deflection.
 ///  One minor thing:

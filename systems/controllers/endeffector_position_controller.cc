@@ -5,7 +5,8 @@ namespace systems{
 
 EndEffectorPositionController::EndEffectorPositionController(
 	const MultibodyPlant<double>& plant, std::string ee_frame_name,
-	Eigen::Vector3d ee_contact_frame, double k_p, double k_omega)
+	Eigen::Vector3d ee_contact_frame, double k_p, double k_omega,
+    double max_linear_vel, double max_angular_vel)
 	: plant_(plant), plant_world_frame_(plant_.world_frame()),
 	ee_contact_frame_(ee_contact_frame),
 	ee_joint_frame_(plant_.GetFrameByName(ee_frame_name)){
@@ -25,6 +26,8 @@ EndEffectorPositionController::EndEffectorPositionController(
   // Eventually passed into transformPointsJacobian()
   k_p_ = k_p;
   k_omega_ = k_omega;
+  max_linear_vel_ = max_linear_vel;
+  max_angular_vel_ = max_angular_vel;
 }
 
 void EndEffectorPositionController::CalcOutputTwist(
@@ -74,31 +77,29 @@ void EndEffectorPositionController::CalcOutputTwist(
 	  *plant_context, ee_joint_frame_, plant_world_frame_).rotation() * angularVelocity;
 
   // Limit maximum commanded linear velocity
-  double linear_speed_limit = 0.5;
   double currVel = diff.norm();
 
-  if (currVel > linear_speed_limit) {
+  if (currVel > max_linear_vel_) {
       for (int i = 0; i < 3; i++) {
           // Setting max speed to linear_speed_limit
-          diff(i, 0) = diff(i, 0) * (linear_speed_limit/currVel);
+          diff(i, 0) = diff(i, 0) * (max_linear_vel_/currVel);
       }
       std::cout << "Warning: desired end effector velocity: " << currVel;
-      std::cout << " exceeded limit of " << linear_speed_limit << std::endl;
+      std::cout << " exceeded limit of " << max_linear_vel_ << std::endl;
       currVel = diff.norm();
       std::cout << "Set end effector velocity to " << currVel << std::endl;
   }
 
   // Limit maximum commanded angular velocity
-  double angular_speed_limit = 1.5;
   double currAngVel = angularVelocityWF.norm();
-  if (currAngVel > angular_speed_limit) {
+  if (currAngVel > max_angular_vel_) {
       for (int i = 0; i < 3; i++) {
           // Setting max speed to angular_speed_limit
           angularVelocityWF(i, 0) =
-              angularVelocityWF(i, 0) * (angular_speed_limit/currAngVel);
+              angularVelocityWF(i, 0) * (max_angular_vel_/currAngVel);
       }
       std::cout << "Warning: desired end effector velocity: " << currAngVel;
-      std::cout << " exceeded limit of " << angular_speed_limit << std::endl;
+      std::cout << " exceeded limit of " << max_angular_vel_ << std::endl;
       currAngVel = angularVelocityWF.norm();
       std::cout << "Set end effector angular velocity to " << currAngVel;
       std::cout << std::endl;

@@ -26,7 +26,7 @@
 using json = nlohmann::json;
 namespace dairlib {
 
-// CsvVector class: Takes CSV file as a parameter, 
+// CsvVector class: Takes CSV file as a parameter,
 // loads data into a 2D vector of doubles, provides
 // method to get the 2D vector.
 class CsvVector {
@@ -164,12 +164,12 @@ int do_main(int argc, char* argv[]) {
   // Adding position controller block
   auto position_controller = builder.AddSystem<
       systems::EndEffectorPositionController>(
-          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA);
+          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA, 0.5, 1.5);
 
   // Adding Velocity Controller block
   auto velocity_controller = builder.AddSystem<
       systems::EndEffectorVelocityController>(
-          *owned_plant, link_7, eeContactFrame, K_D, K_R);
+          *owned_plant, link_7, eeContactFrame, K_D, K_R, 0.5);
 
 
   // Adding linear position Trajectory Source

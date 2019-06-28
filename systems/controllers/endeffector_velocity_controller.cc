@@ -5,8 +5,9 @@ namespace systems{
 
 EndEffectorVelocityController::EndEffectorVelocityController(
     const MultibodyPlant<double>& plant, std::string ee_frame_name,
-    Eigen::Vector3d ee_contact_frame, double k_d, double k_r)
-    : plant_(plant), num_joints_(plant_.num_positions()),
+    Eigen::Vector3d ee_contact_frame, double k_d, double k_r,
+    double joint_torque_limit) : plant_(plant),
+    num_joints_(plant_.num_positions()),
     ee_joint_frame_(plant_.GetFrameByName(ee_frame_name)){
 
   // Set up this block's input and output ports
@@ -26,6 +27,7 @@ EndEffectorVelocityController::EndEffectorVelocityController(
   ee_contact_frame_ = ee_contact_frame;
   k_d_ = k_d;
   k_r_ = k_r;
+  joint_torque_limit_ = joint_torque_limit;
 }
 
 // Callback for DeclareVectorInputPort. No return value.
@@ -75,13 +77,12 @@ void EndEffectorVelocityController::CalcOutputTorques(
   VectorXd commandedTorques(num_joints_);
   commandedTorques = frameSpatialVelocityJacobian.transpose() * generalizedForces;
 
-  double max_torque_limit = 0.5;
   // Limit maximum commanded velocities
   for (int i = 0; i < num_joints_; i++) {
-      if (commandedTorques(i, 0) > max_torque_limit) {
-          commandedTorques(i, 0) = max_torque_limit;
+      if (commandedTorques(i, 0) > joint_torque_limit_) {
+          commandedTorques(i, 0) = joint_torque_limit_;
           std::cout << "Warning: joint " << i << " commanded torque exceeded ";
-          std::cout << "given limit of " << max_torque_limit << std::endl;
+          std::cout << "given limit of " << joint_torque_limit_ << std::endl;
       }
   }
 

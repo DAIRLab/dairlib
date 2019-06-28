@@ -26,14 +26,14 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                            const Eigen::VectorXd& q_init) const;
 
  private:
-  void AssignImuValueToOutputVector(
-      systems::OutputVector<double>* output, const cassie_out_t& cassie_out) const;
-  void AssignActuationFeedbackToOutputVector(
-      systems::OutputVector<double>* output, const cassie_out_t& cassie_out) const;
-  void AssignNonFloatingBaseStateToOutputVector(
-      systems::OutputVector<double>* output, const cassie_out_t& cassie_out) const;
-  void AssignFloatingBaseStateToOutputVector(
-      systems::OutputVector<double>* output, const Eigen::VectorXd& state_est) const;
+  void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
+      systems::OutputVector<double>* output) const;
+  void AssignActuationFeedbackToOutputVector(const cassie_out_t& cassie_out,
+      systems::OutputVector<double>* output) const;
+  void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
+      systems::OutputVector<double>* output) const;
+  void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
+      systems::OutputVector<double>* output) const;
 
   drake::systems::EventStatus Update(
       const drake::systems::Context<double>& context,
@@ -42,9 +42,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   void CopyStateOut(const drake::systems::Context<double>& context,
                     systems::OutputVector<double>* output) const;
 
-  void contactEstimation(int* left_contact, int* right_contact,
-    drake::systems::DiscreteValues<double>* discrete_state,
-    const systems::OutputVector<double>& output, const double& dt) const;
+  void contactEstimation(
+      const systems::OutputVector<double>& output, const double& dt,
+      drake::systems::DiscreteValues<double>* discrete_state,
+      int* left_contact, int* right_contact) const;
 
   const RigidBodyTree<double>& tree_;
   const bool is_floating_base_;

@@ -187,7 +187,7 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 
 
 void CassieRbtStateEstimator::AssignImuValueToOutputVector(
-    OutputVector<double>* output, const cassie_out_t& cassie_out) const {
+    const cassie_out_t& cassie_out, OutputVector<double>* output) const {
   const double* imu_d = cassie_out.pelvis.vectorNav.linearAcceleration;
   output->SetIMUAccelerationAtIndex(0, imu_d[0]);
   output->SetIMUAccelerationAtIndex(1, imu_d[1]);
@@ -195,7 +195,7 @@ void CassieRbtStateEstimator::AssignImuValueToOutputVector(
 }
 
 void CassieRbtStateEstimator::AssignActuationFeedbackToOutputVector(
-    OutputVector<double>* output, const cassie_out_t& cassie_out) const {
+    const cassie_out_t& cassie_out, OutputVector<double>* output) const {
   // Copy actuators
   output->SetEffortAtIndex(actuator_index_map_.at("hip_roll_left_motor"),
                            cassie_out.leftLeg.hipRollDrive.torque);
@@ -221,7 +221,7 @@ void CassieRbtStateEstimator::AssignActuationFeedbackToOutputVector(
 }
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
-    OutputVector<double>* output, const cassie_out_t& cassie_out) const {
+    const cassie_out_t& cassie_out, OutputVector<double>* output) const {
   // Copy the robot state excluding floating base
   // TODO(yuming): check what cassie_out.leftLeg.footJoint.position is.
   // Similarly, the other leg and the velocity of these joints.
@@ -315,7 +315,7 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
 
 
 void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
-  OutputVector<double>* output, const VectorXd& est_fb_state) const {
+    const VectorXd& est_fb_state, OutputVector<double>* output) const {
   // TODO(yminchen): Joints names need to be changed when we move to MBP
   output->SetPositionAtIndex(position_index_map_.at("base_x"), est_fb_state(0));
   output->SetPositionAtIndex(position_index_map_.at("base_y"), est_fb_state(1));
@@ -367,11 +367,11 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Assign values to robot output vector
     const auto& cassie_out =
         this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
-    AssignImuValueToOutputVector(&output, cassie_out);
-    AssignActuationFeedbackToOutputVector(&output, cassie_out);
-    AssignNonFloatingBaseStateToOutputVector(&output, cassie_out);
-    AssignFloatingBaseStateToOutputVector(&output,
-        context.get_discrete_state(state_idx_).get_value());
+    AssignImuValueToOutputVector(cassie_out, &output);
+    AssignActuationFeedbackToOutputVector(cassie_out, &output);
+    AssignNonFloatingBaseStateToOutputVector(cassie_out, &output);
+    AssignFloatingBaseStateToOutputVector(
+        context.get_discrete_state(state_idx_).get_value(), &output);
     // Since we don't have EKF yet, we get the floating base state
     // from ground truth (CASSIE_STATE)
     // TODO(yminchen): delete this later
@@ -407,8 +407,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Estimate feet contacts
     int left_contact = 0;
     int right_contact = 0;
-    contactEstimation(&left_contact, &right_contact, discrete_state,
-        output, dt);
+    contactEstimation(output, dt,
+        discrete_state, &left_contact, &right_contact);
 
     // Step 4 - EKF (measurement step)
 
@@ -440,10 +440,9 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 // 1. the swing leg doesn't stop during single support
 // 2. the robot doesn't transition from flight to single support
 void CassieRbtStateEstimator::contactEstimation(
-    int* left_contact, int* right_contact,
+    const OutputVector<double>& output, const double& dt,
     DiscreteValues<double>* discrete_state,
-    const OutputVector<double>& output,
-    const double& dt) const {
+    int* left_contact, int* right_contact) const {
   const int n_v = tree_.get_num_velocities();
 
   // Indices
@@ -922,13 +921,13 @@ void CassieRbtStateEstimator::CopyStateOut(
 
   // Assign values robot output vector
   // Copy imu values and robot state excluding floating base
-  AssignImuValueToOutputVector(output, cassie_out);
-  AssignActuationFeedbackToOutputVector(output, cassie_out);
-  AssignNonFloatingBaseStateToOutputVector(output, cassie_out);
+  AssignImuValueToOutputVector(cassie_out, output);
+  AssignActuationFeedbackToOutputVector(cassie_out, output);
+  AssignNonFloatingBaseStateToOutputVector(cassie_out, output);
   // Copy the floating base base state
   if (is_floating_base_) {
-    AssignFloatingBaseStateToOutputVector(output,
-        context.get_discrete_state(state_idx_).get_value());
+    AssignFloatingBaseStateToOutputVector(
+        context.get_discrete_state(state_idx_).get_value(), output);
 
     // Since we don't have EKF yet, we get the floating base state
     // from ground truth (CASSIE_STATE)

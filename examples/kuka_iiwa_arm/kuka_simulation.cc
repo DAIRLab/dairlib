@@ -68,6 +68,8 @@ int DoMain() {
   world_plant->RegisterAsSourceForSceneGraph(scene_graph);
 
   // Get the Iiwa model. TODO: grab this from pegged drake libraries
+  // Note: 'iiwa7_with_box_collision.sdf' is 'iiwa7_no_collision.sdf' in other
+  // branches aside from this one. Make this permenant?
   const char* kModelPath =
       "drake/manipulation/models/iiwa_description/iiwa7/iiwa7_with_box_collision.sdf";
   const std::string kuka_urdf = drake::FindResourceOrThrow(kModelPath);
@@ -96,6 +98,10 @@ int DoMain() {
   const drake::multibody::ModelInstanceIndex new_model = world_plant_parser.AddModelFromFile(sdf_path, "bin1");
   const auto& child_frame = world_plant->GetFrameByName("bin_base", new_model);
   world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
+  // Note: to add moving things to a simulation, mayhaps try checking out
+  // the ManipulationStation::AddManipulandFromFile function in
+  // drake's manipulation_station.cc 
+
 
   // Create and add a plant to the controller-specific model
   drake::multibody::Parser controller_plant_parser(controller_plant);

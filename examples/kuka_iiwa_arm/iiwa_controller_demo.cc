@@ -26,8 +26,9 @@
 using json = nlohmann::json;
 namespace dairlib {
 
-//CsvVector class: Takes CSV file as a parameter, loads data into a 2D vector of doubles, provides
-//method to get the 2D vector.
+// CsvVector class: Takes CSV file as a parameter, 
+// loads data into a 2D vector of doubles, provides
+// method to get the 2D vector.
 class CsvVector {
   private:
     std::vector<std::vector<double>> data;
@@ -100,11 +101,14 @@ int do_main(int argc, char* argv[]) {
   std::vector<Eigen::MatrixXd> trajectoryVectors;
   for (unsigned int x = 0; x < waypoints.getArray()[0].size(); x++) {
     Eigen::Vector3d temp;
-    temp << waypoints.getArray()[1][x], waypoints.getArray()[2][x], waypoints.getArray()[3][x];
+    temp << waypoints.getArray()[1][x], waypoints.getArray()[2][x],
+            waypoints.getArray()[3][x];
     trajectoryVectors.push_back(temp);
   }
 
-  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(waypoints.getArray()[0], trajectoryVectors);
+  auto ee_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          waypoints.getArray()[0], trajectoryVectors);
 
   // Processes EndEffectorOrientations CSV file.
   CsvVector orientations("examples/kuka_iiwa_arm/EndEffectorOrientations.csv");
@@ -113,11 +117,14 @@ int do_main(int argc, char* argv[]) {
   std::vector<Eigen::MatrixXd> orient_points;
   for (unsigned int y = 0; y < orientations.getArray()[0].size(); y++) {
     Eigen::Vector4d aPoint;
-    aPoint << orientations.getArray()[1][y], orientations.getArray()[2][y], orientations.getArray()[3][y], orientations.getArray()[4][y];
+    aPoint << orientations.getArray()[1][y], orientations.getArray()[2][y],
+              orientations.getArray()[3][y], orientations.getArray()[4][y];
     orient_points.push_back(aPoint);
   }
 
-  auto orientation_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(orientations.getArray()[0], orient_points);
+  auto orientation_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          orientations.getArray()[0], orient_points);
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
   std::string kModelPath = "../drake/manipulation/models/iiwa_description"

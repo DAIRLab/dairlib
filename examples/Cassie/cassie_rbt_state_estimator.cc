@@ -103,9 +103,42 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   }
 }
 
-void CassieRbtStateEstimator::solveFourbarLinkage(
-    double* left_heel_spring, double* right_heel_spring,
-    const VectorXd& q_init) const {
+/// solveFourbarLinkage() calculates the angle of heel spring joints given the
+/// configuration of Cassie which could be in either fixed-base or floating-
+/// base.
+/// Input: generalize position of the robot `q`
+/// Output: left heel spring angle `left_heel_spring` and right heel spring
+///         angle `right_heel_spring`.
+/// Assumption:
+///  The heel spring angle in `q` should be set to 0.
+/// Algorithm:
+///  We want to find where the achilles rod and the heel spring intersect.
+///  The achilles rod is attched to thigh with a ball joint, and the heel spring
+///  is fix to the heel. The heel spring (rotational spring) can deflect in
+///  only one dimension, meaning it rotates around the spring base where the
+///  spring is attched to the heel.
+///  Let the ball joint position in the world frame to be r_ball_joint, and the
+///  spring base position to be r_heel_spring_base.
+///  Let the length of the rod to be rod_length_, and the spring length to be
+///  spring_length.
+///  We want to find the intersections of a sphere S_r (with origin r_ball_joint
+///  and radius rod_length_) and a circle C_s (with origin r_heel_spring_base
+///  and radius spring_length). The way we solve it is that we convert the 3D
+///  problem into a 2D problem. Let the plane where C_s lies to be PL_C_s.
+///  The interection of S_r and PL_C_s is another circle. Let's call this circle
+///  C_r. We can derived C_r's origin by projecting S_r's origin on PL_C_s, and
+///  we can derive C_r's radius by trigonometry.
+///  There will be two intersections between C_r and C_s, and only one of the
+///  two soluations is physically feasible for Cassie. Let's call this feasible
+///  solution to be p.
+///  Given p and the frame of the spring without deflection, we can calculate
+///  the magnitude/direction of spring deflection.
+///  One minor thing:
+///   The connection point of the rod and the spring does not lie on the line
+///   where the spring lies. Instead, there is a small offset.
+///   We account for this offset by `spring_rest_offset`.
+void CassieRbtStateEstimator::solveFourbarLinkage(const VectorXd& q,
+    double* left_heel_spring, double* right_heel_spring) const {
   // Get the rod length
   double spring_length = rod_on_heel_spring_.norm();
   // Spring rest angle offset
@@ -117,7 +150,7 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
   std::vector<int> heel_spring_ind{left_heel_spring_ind_,
                                    right_heel_spring_ind_};
 
-  KinematicsCache<double> cache = tree_.doKinematics(q_init);
+  KinematicsCache<double> cache = tree_.doKinematics(q);
 
   for (int i = 0; i < 2; i++) {
     // Get thigh pose and heel spring pose
@@ -128,13 +161,13 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
 
     const Isometry3d heel_spring_pose = tree_.CalcBodyPoseInWorldFrame(cache,
                                         tree_.get_body(heel_spring_ind[i]));
-    const Vector3d heel_spring_pos = heel_spring_pose.translation();
+    const Vector3d r_heel_spring_base = heel_spring_pose.translation();
     const MatrixXd heel_spring_rot_mat = heel_spring_pose.linear();
 
     // Get r_heel_spring_base_to_thigh_ball_joint
-    Vector3d r_though_ball_joint = thigh_pos + thigh_rot_mat * rod_on_thigh[i];
+    Vector3d r_ball_joint = thigh_pos + thigh_rot_mat * rod_on_thigh[i];
     Vector3d r_heel_spring_base_to_thigh_ball_joint =
-        r_though_ball_joint - heel_spring_pos;
+        r_ball_joint - r_heel_spring_base;
     Vector3d r_thigh_ball_joint_wrt_heel_spring_base =
         heel_spring_rot_mat.transpose() * r_heel_spring_base_to_thigh_ball_joint;
 
@@ -165,6 +198,7 @@ void CassieRbtStateEstimator::solveFourbarLinkage(
     Vector3d sol_2_wrt_heel_base(x_sol_2, y_sol_2, 0);
     Vector3d sol_1_cross_sol_2 = sol_1_wrt_heel_base.cross(sol_2_wrt_heel_base);
 
+    // Pick the only physically feasible solution from the two intersections
     Vector3d r_sol_wrt_heel_base = (sol_1_cross_sol_2(2) >= 0) ?
                                    sol_2_wrt_heel_base : sol_1_wrt_heel_base;
 
@@ -306,7 +340,7 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
     }
     q[3] =  1;
   }
-  solveFourbarLinkage(&left_heel_spring, &right_heel_spring, q);
+  solveFourbarLinkage(q, &left_heel_spring, &right_heel_spring);
   output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_left"),
                              left_heel_spring);
   output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_right"),

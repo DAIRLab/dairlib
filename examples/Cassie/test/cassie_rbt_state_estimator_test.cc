@@ -41,8 +41,8 @@ TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
 
   // Get the angles analytically
   double calc_left_heel_spring, calc_right_heel_spring;
-  estimator.solveFourbarLinkage(&calc_left_heel_spring, &calc_right_heel_spring,
-                                q_init);
+  estimator.solveFourbarLinkage(q_init,
+      &calc_left_heel_spring, &calc_right_heel_spring);
 
   // Get the angles from nonlinear programming
   std::map<std::string, int> positionIndexMap =

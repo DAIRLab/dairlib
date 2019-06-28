@@ -21,9 +21,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
                                    bool is_floating_base);
-  void solveFourbarLinkage(double* left_heel_spring,
-                           double* right_heel_spring,
-                           const Eigen::VectorXd& q_init) const;
+  void solveFourbarLinkage(const Eigen::VectorXd& q_init,
+                           double* left_heel_spring,
+                           double* right_heel_spring) const;
 
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,

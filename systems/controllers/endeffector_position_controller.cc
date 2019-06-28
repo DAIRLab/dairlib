@@ -89,7 +89,7 @@ void EndEffectorPositionController::CalcOutputTwist(
   }
 
   // Limit maximum commanded angular velocity
-  double angular_speed_limit = 1.5;
+  double angular_speed_limit = 111.5;
   double currAngVel = angularVelocityWF.norm();
   if (currAngVel > angular_speed_limit) {
       for (int i = 0; i < 3; i++) {

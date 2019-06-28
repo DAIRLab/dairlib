@@ -26,7 +26,7 @@
 using json = nlohmann::json;
 namespace dairlib {
 
-// CsvVector class: Takes CSV file as a parameter, 
+// CsvVector class: Takes CSV file as a parameter,
 // loads data into a 2D vector of doubles, provides
 // method to get the 2D vector.
 class CsvVector {

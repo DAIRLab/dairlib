@@ -2,9 +2,9 @@
     "kuka_gains":
         {
             "K_P": 10,
-            "K_OMEGA": 5,
-            "K_D": 1,
-            "K_R": 1
+            "K_OMEGA": 0,
+            "K_D": 10,
+            "K_R": 0
         }
 
 }

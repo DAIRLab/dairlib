@@ -25,44 +25,49 @@
 
 using json = nlohmann::json;
 namespace dairlib {
-class Waypoints {
-    private:      
-        std::vector<std::vector<double>> points;
-    public:
-        Waypoints(std::string fileName) {
-            std::ifstream stream;
-            points.resize(4);
-            stream.open(fileName);
-            if (stream.is_open()) {
-              std :: cout << "CSV file opened successfully" << std::endl;
-            }
-            std::string line;
-            while (std::getline(stream, line)) {
-              std::stringstream lineStream(line);
-              std::string cell;
-              int col = 0;
-              while (std::getline(lineStream, cell, ',')) {
-                  points[col].push_back(std::stod(cell));
-                  col++;
-              }
-            }
-        }
-        std::vector<double> getTimes() {
-            return points[0];
-        }
-        int getLength() {
-            return points[0].size();
-        }
-        std::vector<Eigen::MatrixXd> getVectors() {
-          std::vector<Eigen::MatrixXd> trajectoryVectors;
-          for (int x = 0; x < getLength(); x++) {
-            Eigen::Vector3d temp;
-            temp << points[1][x], points[2][x], points[3][x];
-            trajectoryVectors.push_back(temp);
-          }
-          return trajectoryVectors;
-        }
+//CsvVector class: Takes CSV file as a parameter, loads data into a 2D vector of doubles, provides
+//method to get the 2D vector.
+class CsvVector {
+  private:
+    std::vector<std::vector<double>> data;
+  public:
+    CsvVector(std::string fileName) {
+      //Opens filestream to fileName.
+      std::ifstream stream;
+      stream.open(fileName);
 
+      //Checks to make sure it has been opened.
+      if (stream.is_open()) {
+        std::cout << "CSV file " + fileName + " opened successfully" << std::endl;
+      }
+
+      //Finds number of columns in CSV file to resize data vector.
+      std::string firstLine;
+      std::getline(stream, firstLine);
+      std::stringstream lineStream(firstLine);
+      std::string dat;
+      int length = 0;
+      while (std::getline(lineStream, dat, ',')) {
+        data.resize(data.size() + 1);
+        data[length].push_back(std::stod(dat));
+        length++;
+      }
+
+      //Loads CSV file contents into data vector.
+      while(std::getline(stream, firstLine)) {
+        int col = 0;
+        std::stringstream moreLines(firstLine);
+        while (std::getline(moreLines, dat, ',')) {
+          data[col].push_back(std::stod(dat));
+          col++;
+        }
+      }
+      stream.close();
+    }
+    //Returns the data array.
+    std::vector<std::vector<double>> getArray() {
+      return data;
+    }
 };
 int do_main(int argc, char* argv[]) {
   //Loads in joint gains json file
@@ -80,63 +85,35 @@ int do_main(int argc, char* argv[]) {
   // Kd and 'Rotational' Kd
   const double K_D = joint_gains["kuka_gains"]["K_D"];
   const double K_R = joint_gains["kuka_gains"]["K_R"];
+
   drake::lcm::DrakeLcm lcm;
   drake::systems::DiagramBuilder<double> builder;
 
-  // Creating end effector trajectory
-  // TODO make this modular
+  //Processes Trajectories CSV file.
+  CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
 
-  Waypoints waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
-  //const std::vector<double> times {0.0, 25.0, 35.0, 45.0, 55.0, 65.0, 75.0, 85.0, 95.0, 105.0, 115};
-
-  //std::vector<Eigen::MatrixXd> points(waypoints.getLength());
-
-  //vector<Eigen::Vector3d> trajectories(waypoints.getLength());
-
-  /*AS << -0.23, -0.2, 0.25;
-  A0 << -0.23, -0.2, 0.25;
-
-  A1 << -0.23, -0.6, 0.25;
-  A2 << 0.23, -0.6, 0.25;
-
-  A3 << 0.23, -0.2, 0.25;
-
-  A4 << 0.23, -0.2, 0.25;
-
-  A5 << 0.23, -0.6, 0.25;
-
-  A6 << -0.23, -0.6, 0.25;
-
-  A7 << -0.23, -0.2, 0.25;
-
-  A8 << -0.23, -0.2, 0.25;
-  A9 << -0.23, -0.2, 0.25; */
+  //Initializes demo trajectories to trajectoryVectors array.
+  std::vector<Eigen::MatrixXd> trajectoryVectors;
+  for (int x = 0; x < waypoints.getArray()[0].size(); x++) {
+    Eigen::Vector3d temp;
+    temp << waypoints.getArray()[1][x], waypoints.getArray()[2][x], waypoints.getArray()[3][x];
+    trajectoryVectors.push_back(temp);
+  }
   
-  /* points[0] = AS;
-  points[1] = A0;
-  points[2] = A1;
-  points[3] = A2;
-  points[4] = A3;
-  points[5] = A4;
-  points[6] = A5;
-  points[7] = A6;
-  points[8] = A7;
-  points[9] = A8;
-  points[10] = A9; */
+  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(waypoints.getArray()[0], trajectoryVectors);
 
-  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(waypoints.getTimes(), waypoints.getVectors());
+  // Processes EndEffectorOrientations CSV file.
+  CsvVector orientations("examples/kuka_iiwa_arm/EndEffectorOrientations.csv");
 
-  // Creating end effector orientation trajectory
-  const std::vector<double> orient_times {0, 115};
-  std::vector<Eigen::MatrixXd> orient_points(orient_times.size());
-  Eigen::Vector4d start_o, end_o;
-  start_o << 0, 0, 1, 0;
-  end_o << 0, 0, 1, 0;
+  //Initializes demo orientations to orient_points array.
+  std::vector<Eigen::MatrixXd> orient_points;
+  for (int y = 0; y < orientations.getArray()[0].size(); y++) {
+    Eigen::Vector4d aPoint;
+    aPoint << orientations.getArray()[1][y], orientations.getArray()[2][y], orientations.getArray()[3][y], orientations.getArray()[4][y];
+    orient_points.push_back(aPoint);
+  }
 
-  orient_points[0] = start_o;
-  orient_points[1] = end_o;
-
-  auto orientation_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(orient_times, orient_points);
+  auto orientation_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(orientations.getArray()[0], orient_points);
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
   const char* kModelPath = "../../drake/manipulation/models/iiwa_description/urdf/iiwa14_polytope_collision.urdf";

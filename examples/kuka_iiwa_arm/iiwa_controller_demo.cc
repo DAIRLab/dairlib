@@ -1,16 +1,3 @@
-// <<<<<<< HEAD
-// #define NUM_JOINTS 7
-// #define ENDEFFECTOR_BODY_ID 10
-// =======
-// // Kp and 'Rotational' Kp
-// #define K_P 25
-// #define K_OMEGA 15
-//
-// // Kd and 'Rotational' Kd
-// #define K_D 1
-// #define K_R 0.3
-// >>>>>>> master
-
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -38,6 +25,7 @@
 
 using json = nlohmann::json;
 namespace dairlib {
+
 class Waypoints {
     private:
         std::vector<std::vector<double>> points;
@@ -102,44 +90,10 @@ int do_main(int argc, char* argv[]) {
 
   // Creating end effector trajectory
   Waypoints waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
-  //const std::vector<double> times {0.0, 25.0, 35.0, 45.0, 55.0, 65.0, 75.0, 85.0, 95.0, 105.0, 115};
 
-  //std::vector<Eigen::MatrixXd> points(waypoints.getLength());
-
-  //vector<Eigen::Vector3d> trajectories(waypoints.getLength());
-
-  /*AS << -0.23, -0.2, 0.25;
-  A0 << -0.23, -0.2, 0.25;
-
-  A1 << -0.23, -0.6, 0.25;
-  A2 << 0.23, -0.6, 0.25;
-
-  A3 << 0.23, -0.2, 0.25;
-
-  A4 << 0.23, -0.2, 0.25;
-
-  A5 << 0.23, -0.6, 0.25;
-
-  A6 << -0.23, -0.6, 0.25;
-
-  A7 << -0.23, -0.2, 0.25;
-
-  A8 << -0.23, -0.2, 0.25;
-  A9 << -0.23, -0.2, 0.25; */
-
-  /* points[0] = AS;
-  points[1] = A0;
-  points[2] = A1;
-  points[3] = A2;
-  points[4] = A3;
-  points[5] = A4;
-  points[6] = A5;
-  points[7] = A6;
-  points[8] = A7;
-  points[9] = A8;
-  points[10] = A9; */
-
-  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(waypoints.getTimes(), waypoints.getVectors());
+  auto ee_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          waypoints.getTimes(), waypoints.getVectors());
 
   // Creating end effector orientation trajectory
   const std::vector<double> orient_times {0, 115};

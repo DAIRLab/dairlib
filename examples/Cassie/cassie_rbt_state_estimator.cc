@@ -10,11 +10,23 @@
 namespace dairlib {
 namespace systems {
 
-using multibody::GetBodyIndexFromName;
 using std::cout;
 using std::endl;
+
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using Eigen::Isometry3d;
+
+using drake::systems::Context;
+using drake::systems::EventStatus;
+using drake::systems::DiscreteValues;
+
 using drake::solvers::MathematicalProgram;
 using drake::solvers::Solve;
+
+using systems::OutputVector;
+using multibody::GetBodyIndexFromName;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
     const RigidBodyTree<double>& tree, bool is_floating_base) :

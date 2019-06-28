@@ -14,7 +14,7 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_pd_controller";
         host = "localhost";
     }
-    cmd "2.a.dispatcher-robot-out (drake)" {
+    cmd "2.a.dispatcher-robot-out (lcm)" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true --floating_base=false";
         host = "localhost";
     }
@@ -96,7 +96,7 @@ script "start-operator" {
 script "run-drake-pd-control" {
     run_script "start-operator";
     start cmd "1.simulator (dispatched)";
-    start cmd "2.a.dispatcher-robot-out (drake)";
+    start cmd "2.a.dispatcher-robot-out (lcm)";
     start cmd "0.pd-controller";
 }
 
@@ -107,6 +107,15 @@ script "run-gazebo-pd-control" {
     start cmd "3.dispatcher-robot-in";
     start cmd "0.pd-controller";
 }
+
+script "run-gazebo-lcm-pd-control" {
+    run_script "start-operator";
+    start cmd "0.launch-gazebo-fixed-base";
+    start cmd "2.a.dispatcher-robot-out (lcm)";
+    start cmd "3.dispatcher-robot-in";
+    start cmd "0.pd-controller";
+}
+
 
 script "start-operator-real-robot" {
     stop cmd "3.state-visualizer-real-robot";

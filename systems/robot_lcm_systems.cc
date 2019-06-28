@@ -83,9 +83,11 @@ void RobotOutputReceiver::CopyOutput(
 // methods implementation for RobotOutputSender.
 
 // RBT constructor--to be deprecated when move to MBP is complete
-RobotOutputSender::RobotOutputSender(const RigidBodyTree<double>& tree) {
+RobotOutputSender::RobotOutputSender(const RigidBodyTree<double>& tree,
+    const bool publish_efforts):publish_efforts_(publish_efforts) {
   num_positions_ = tree.get_num_positions();
   num_velocities_ = tree.get_num_velocities();
+  num_efforts_ = tree.get_num_actuators();
 
   for (int i = 0; i < num_positions_; i++) {
     ordered_position_names_.push_back(tree.get_position_name(i));
@@ -97,19 +99,36 @@ RobotOutputSender::RobotOutputSender(const RigidBodyTree<double>& tree) {
 
   positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
+  effortIndexMap_ = multibody::makeNameToActuatorsMap(tree);
+
+  for (int i = 0; i < num_efforts_; i++) {
+    for (auto& x : effortIndexMap_) {
+      if (x.second == i) {
+        ordered_effort_names_.push_back(x.first);
+        break;
+      }
+    }
+  }
 
   state_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
       num_positions_ + num_velocities_)).get_index();
+  if (publish_efforts_) {
+    effort_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
+          num_efforts_)).get_index();
+  }
   this->DeclareAbstractOutputPort(&RobotOutputSender::Output);
 }
 
 RobotOutputSender::RobotOutputSender(
-    const drake::multibody::MultibodyPlant<double>& plant) {
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const bool publish_efforts):publish_efforts_(publish_efforts) {
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
+  num_efforts_ = plant.num_actuators();
 
   positionIndexMap_ = multibody::makeNameToPositionsMap(plant);
   velocityIndexMap_ = multibody::makeNameToVelocitiesMap(plant);
+  effortIndexMap_ = multibody::makeNameToActuatorsMap(plant);
 
   // Loop through the maps to extract ordered names
   for (int i = 0; i < num_positions_; ++i) {
@@ -130,8 +149,21 @@ RobotOutputSender::RobotOutputSender(
     }
   }
 
+  for (int i = 0; i < num_efforts_; i++) {
+    for (auto& x : effortIndexMap_) {
+      if (x.second == i) {
+        ordered_effort_names_.push_back(x.first);
+        break;
+      }
+    }
+  }
+
   state_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
       num_positions_ + num_velocities_)).get_index();
+  if (publish_efforts_) {
+    effort_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
+          num_efforts_)).get_index();
+  }
   this->DeclareAbstractOutputPort(&RobotOutputSender::Output);
 }
 
@@ -157,6 +189,19 @@ void RobotOutputSender::Output(const Context<double>& context,
   for (int i = 0; i < num_velocities_; i++) {
     state_msg->velocity[i] = state->GetAtIndex(num_positions_ + i);
     state_msg->velocity_names[i] = ordered_velocity_names_[i];
+  }
+
+  if (publish_efforts_) {
+    const auto efforts = this->EvalVectorInput(context, effort_input_port_);
+
+    state_msg->num_efforts = num_efforts_;
+    state_msg->effort_names.resize(num_efforts_);
+    state_msg->effort.resize(num_efforts_);
+
+    for (int i = 0; i < num_efforts_; i++) {
+      state_msg->effort[i] = efforts->GetAtIndex(i);
+      state_msg->effort_names[i] = ordered_effort_names_[i];
+    }
   }
 }
 

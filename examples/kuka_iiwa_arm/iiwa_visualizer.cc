@@ -1,12 +1,12 @@
-#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/common/find_resource.h"
-#include "drake/manipulation/util/sim_diagram_builder.h"
-#include "drake/multibody/parsers/urdf_parser.h"
-#include "drake/systems/analysis/simulator.h"
-#include "drake/lcmt_iiwa_status.hpp"
 #include "drake/examples/kuka_iiwa_arm/iiwa_common.h"
 #include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
+#include "drake/lcmt_iiwa_status.hpp"
+#include "drake/manipulation/util/sim_diagram_builder.h"
+#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/multibody/parsers/urdf_parser.h"
+#include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/primitives/discrete_derivative.h"
@@ -21,7 +21,6 @@ int doMain(int argc, char* argv[]) {
 
   drake::systems::DiagramBuilder<double> builder;
   // Adds a plant.
-  RigidBodyPlant<double>* plant = nullptr;
   const char* kModelPath =
       "drake/manipulation/models/iiwa_description/"
       "urdf/iiwa14_polytope_collision.urdf";
@@ -59,7 +58,7 @@ int doMain(int argc, char* argv[]) {
 
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port());
-  builder.Connect(state_receiver->get_position_commanded_output_port(),
+  builder.Connect(state_receiver->get_position_measured_output_port(),
                   desired_state_from_position->get_input_port());
   builder.Connect(desired_state_from_position->get_output_port(),
                   visualizer->get_input_port(0));

@@ -3,66 +3,92 @@
 namespace dairlib{
 namespace systems{
 
-// Remember to use std::move on the rigid body tree argument.
 EndEffectorVelocityController::EndEffectorVelocityController(
-    const RigidBodyTree<double>& tree, Eigen::Isometry3d eeCFIsometry,
-    int num_joints, int k_d, int k_r) : tree(tree){
+    const MultibodyPlant<double>& plant, std::string ee_frame_name,
+    Eigen::Vector3d ee_contact_frame, double k_d, double k_r)
+    : plant_(plant), num_joints_(plant_.num_positions()),
+    ee_joint_frame_(plant_.GetFrameByName(ee_frame_name)){
 
   // Set up this block's input and output ports
   // Input port values will be accessed via EvalVectorInput() later
-  joint_position_measured_port = this->DeclareVectorInputPort(
-      "joint_position_measured", BasicVector<double>(num_joints)).get_index();
-  joint_velocity_measured_port = this->DeclareVectorInputPort(
-      "joint_velocity_measured", BasicVector<double>(num_joints)).get_index();
-  endpoint_twist_commanded_port = this->DeclareVectorInputPort(
+  joint_position_measured_port_ = this->DeclareVectorInputPort(
+      "joint_position_measured", BasicVector<double>(num_joints_)).get_index();
+  joint_velocity_measured_port_ = this->DeclareVectorInputPort(
+      "joint_velocity_measured", BasicVector<double>(num_joints_)).get_index();
+  endpoint_twist_commanded_port_ = this->DeclareVectorInputPort(
       "endpoint_twist_commanded", BasicVector<double>(6)).get_index();
 
   // Note that this function contains a pointer to the callback function below.
-  endpoint_torque_output_port = this->DeclareVectorOutputPort(
-      BasicVector<double>(num_joints),
+  endpoint_torque_output_port_ = this->DeclareVectorOutputPort(
+      BasicVector<double>(num_joints_),
       &EndEffectorVelocityController::CalcOutputTorques).get_index();
 
-  this->eeCFIsometry = eeCFIsometry;
-  this->num_joints = num_joints;
-  this->k_d = k_d;
-  this->k_r = k_r;
+  ee_contact_frame_ = ee_contact_frame;
+  k_d_ = k_d;
+  k_r_ = k_r;
 }
 
-// Callback for DeclareVectorInputPort. No return value. The parameter 'output' is the output.
-// This function is called many times a second, if I understand correctly.
+// Callback for DeclareVectorInputPort. No return value.
+// The parameter 'output' is the output.
+// This function is called many times a second.
 void EndEffectorVelocityController::CalcOutputTorques(
   const Context<double>& context, BasicVector<double>* output) const {
   // We read the above input ports with EvalVectorInput
-  // The purpose of CopyToVector().head(NUM_JOINTS) is to remove the timestamp from the vector input ports
-  VectorX<double> q = this->EvalVectorInput(context,
-      joint_position_measured_port)->CopyToVector().head(num_joints);
+  // The purpose of CopyToVector().head(NUM_JOINTS) is to remove the timestamp
+  // from the vector input ports
+  const TimestampedVector<double>* q_timestamped =
+      (TimestampedVector<double>*) this->EvalVectorInput(
+          context, joint_position_measured_port_);
+  VectorX<double> q = q_timestamped->get_data();
 
-  VectorX<double> q_dot = this->EvalVectorInput(context,
-      joint_velocity_measured_port)->CopyToVector().head(num_joints);
+  const TimestampedVector<double>* q_dot_timestamped =
+      (TimestampedVector<double>*) this->EvalVectorInput(
+          context, joint_velocity_measured_port_);
+  VectorX<double> q_dot = q_dot_timestamped->get_data();
 
-  VectorX<double> twist_desired = this->EvalVectorInput(context,
-      endpoint_twist_commanded_port)->CopyToVector();
+  const TimestampedVector<double>* twist_desired_timestamped =
+      (TimestampedVector<double>*) this->EvalVectorInput(
+          context, endpoint_twist_commanded_port_);
+  VectorX<double> twist_desired = twist_desired_timestamped->get_data();
+
+  const std::unique_ptr<Context<double>> plant_context = plant_.CreateDefaultContext();
+  plant_.SetPositions(plant_context.get(), q);
+  plant_.SetVelocities(plant_context.get(), q_dot);
 
   // Calculating the jacobian of the kuka arm
-  KinematicsCache<double> cache = tree.doKinematics(q, q_dot);
-  MatrixXd frameSpatialVelocityJacobian = tree.CalcFrameSpatialVelocityJacobianInWorldFrame(
-      cache, tree.get_body(10), eeCFIsometry);
+  Eigen::MatrixXd frameSpatialVelocityJacobian(6, num_joints_);
+  plant_.CalcFrameGeometricJacobianExpressedInWorld(
+      *plant_context, ee_joint_frame_, ee_contact_frame_,
+      &frameSpatialVelocityJacobian);
 
   // Using the jacobian, calculating the actual current velocities of the arm
   MatrixXd twist_actual = frameSpatialVelocityJacobian * q_dot;
 
   // Gains are placed in a diagonal matrix
   Eigen::DiagonalMatrix<double, 6> gains(6);
-  gains.diagonal() << k_r, k_r, k_r, k_d, k_d, k_d;
+  gains.diagonal() << k_r_, k_r_, k_r_, k_d_, k_d_, k_d_;
 
   // Calculating the error
   MatrixXd generalizedForces = gains * (twist_desired - twist_actual);
 
-  // Multiplying J^t x force to get torque outputs, then storing them in the output vector
-  output->set_value(frameSpatialVelocityJacobian.transpose() * generalizedForces); // (7 x 6) * (6 x 1) = 7 x 1
+  // Multiplying J^t x force to get torque outputs
+  VectorXd commandedTorques(num_joints_);
+  commandedTorques = frameSpatialVelocityJacobian.transpose() * generalizedForces;
 
-  // Getting last element for timestep since timestep is stored in last element
-  //output->set_timestamp(this->EvalVectorInput(context, joint_position_measured_port)->GetAtIndex(NUM_JOINTS));
+  double max_torque_limit = 0.5;
+  // Limit maximum commanded velocities
+  for (int i = 0; i < num_joints_; i++) {
+      if (commandedTorques(i, 0) > max_torque_limit) {
+          commandedTorques(i, 0) = max_torque_limit;
+          std::cout << "Warning: joint " << i << " commanded torque exceeded ";
+          std::cout << "given limit of " << max_torque_limit << std::endl;
+      }
+  }
+
+
+  // Storing them in the output vector
+  output->set_value(commandedTorques); // (7 x 6) * (6 x 1) = 7 x 1
+
 }
 
 } // namespace systems

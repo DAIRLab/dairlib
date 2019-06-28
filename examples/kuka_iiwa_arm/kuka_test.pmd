@@ -11,7 +11,12 @@ group "1.simulated-robot" {
         host = "localhost";
     }
 
-    cmd "2.iiwa_controller_demo" {
+    cmd "1a. rbp simulator" {
+        exec = "../drake/bazel-bin/examples/kuka_iiwa_arm/kuka_simulation";
+        host = "localhost";
+    }
+
+    cmd "2.position_broadcaster" {
         exec = "bazel-bin/examples/kuka_iiwa_arm/iiwa_controller_demo";
         host = "localhost";
     }

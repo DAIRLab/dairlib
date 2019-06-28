@@ -1,6 +1,3 @@
-#define NUM_JOINTS 7
-#define ENDEFFECTOR_BODY_ID 10
-
 #define AMPLITUDE 3
 #define FREQUENCY 3
 #define MAX_VELOCITY 5
@@ -12,13 +9,13 @@
 
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/lcm/drake_lcm.h"
 #include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/primitives/sine.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/lcmt_iiwa_command.hpp"
 #include "drake/lcmt_iiwa_status.hpp"
 #include "drake/manipulation/util/sim_diagram_builder.h"
@@ -31,8 +28,6 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/basic_file_sink.h"
 
-//#include "systems/controllers/endeffector_velocity_controller.h"
-#include "systems/controllers/endeffector_position_controller.h"
 #include "systems/controllers/safe_velocity_controller.h"
 
 namespace dairlib {
@@ -40,32 +35,20 @@ namespace dairlib {
 void setup_log();
 
 int do_main(int argc, char* argv[]) {
-  drake::lcm::DrakeLcm lcm;
   drake::systems::DiagramBuilder<double> builder;
-
-  // Initialize Kuka model URDF-- from Drake kuka simulation files
-  const char* kModelPath = "../drake/manipulation/models/iiwa_description/urdf/iiwa14_polytope_collision.urdf";
-  const std::string urdf = FindResourceOrThrow(kModelPath);
-
-  // RigidBodyTrees are created here, then passed by reference to the controller blocks for
-  // internal modelling.
-  std::unique_ptr<RigidBodyTree<double>> tree = std::make_unique<RigidBodyTree<double>>();
-  drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-    urdf, drake::multibody::joints::kFixed, tree.get());
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   // Adding status subscriber and receiver blocks
   auto status_subscriber = builder.AddSystem(
     drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_status>(
-      "IIWA_STATUS", &lcm));
+      "IIWA_STATUS", lcm));
   auto status_receiver = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaStatusReceiver>();
 
   // Adding command publisher and broadcaster blocks
   auto command_sender = builder.AddSystem<drake::examples::kuka_iiwa_arm::IiwaCommandSender>();
   auto command_publisher = builder.AddSystem(
     drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
-      "IIWA_COMMAND", &lcm, 1.0/200.0));
-  // Setting command publisher publish period
-  //command_publisher->set_publish_period(1.0/200.0);
+      "IIWA_COMMAND", lcm, 1.0/200.0));
 
   Eigen::VectorXd zeros_low = Eigen::VectorXd::Zero(4);
   auto zeros_low_source = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros_low);
@@ -79,8 +62,9 @@ int do_main(int argc, char* argv[]) {
   std::vector<int> input_sizes = {4, 1, 2};
   auto mux = builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
 
+  const int num_iiwa_joints = 7;
   auto velocity_controller = builder.AddSystem<systems::SafeVelocityController>(
-      MAX_VELOCITY, NUM_JOINTS);
+      MAX_VELOCITY, num_iiwa_joints);
 
   Eigen::VectorXd zeros_seven = Eigen::VectorXd::Zero(7);
   auto constant_position_src = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros_seven);
@@ -120,8 +104,6 @@ int do_main(int argc, char* argv[]) {
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
-
-  lcm.StartReceiveThread();
 
   simulator.StepTo(20);
   return 0;

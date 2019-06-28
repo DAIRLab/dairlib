@@ -11,6 +11,16 @@ load(
 )
 
 cc_library(
+  name = "udp_lcm_translator",
+  srcs = ["udp_lcm_translator.cc",],
+  hdrs = ["udp_lcm_translator.h"],
+  deps = [
+    "//examples/Cassie/datatypes:cassie_inout_types",
+    "//lcmtypes:lcmt_robot",
+  ]
+)
+
+cc_library(
   name = "cassie_udp_pub_sub",
   srcs = ["udp_serializer.cc",
           "cassie_udp_subscriber.cc",
@@ -31,15 +41,13 @@ cc_library(
           "cassie_output_sender.h",
           "cassie_output_receiver.h"],
   deps = [
-    "@drake//common",
-    "@drake//systems/lcm:lcm_pubsub_system",
-    "@drake//systems/framework",
-    "@drake//multibody/plant",
+    "@drake//:drake_shared_library",
     "//examples/Cassie/datatypes:cassie_inout_types",
     "//lcmtypes:lcmt_robot",
     "//multibody:utils",
     "//attic/multibody:utils",
-    ":simple_cassie_udp_subscriber"
+    ":simple_cassie_udp_subscriber",
+    ":udp_lcm_translator",
   ]
 )
 

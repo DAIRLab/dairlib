@@ -11,8 +11,16 @@ cc_library(
         "//attic/multibody:utils",
         "//multibody:utils",
         "//systems/framework:vector",
-        "@drake//systems/framework:leaf_system",
-        "@drake//multibody/plant",
+        "@drake//:drake_shared_library",
         "@lcm",
     ],
+)
+
+cc_library(
+    name = "vector_scope",
+    srcs = ["vector_scope.cc"],
+    hdrs = ["vector_scope.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ]
 )

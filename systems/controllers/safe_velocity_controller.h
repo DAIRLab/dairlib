@@ -10,9 +10,6 @@
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
 #include "drake/manipulation/util/sim_diagram_builder.h"
 
-#include <iostream>
-#include <fstream>
-
 using Eigen::VectorXd;
 using drake::systems::LeafSystem;
 using drake::systems::Context;
@@ -25,13 +22,13 @@ class SafeVelocityController : public LeafSystem<double> {
    SafeVelocityController(double max_velocity, int num_joints);
 
    const drake::systems::InputPort<double>& get_joint_torques_input_port() const {
-     return this->get_input_port(joint_torques_input_port);
+     return this->get_input_port(joint_torques_input_port_);
    }
    const drake::systems::InputPort<double>& get_joint_velocities_input_port() const {
-     return this->get_input_port(joint_velocities_input_port);
+     return this->get_input_port(joint_velocities_input_port_);
    }
    const drake::systems::OutputPort<double>& get_joint_torques_output_port() const {
-     return this->get_output_port(joint_torques_output_port);
+     return this->get_output_port(joint_torques_output_port_);
    }
 
  private:
@@ -43,12 +40,11 @@ class SafeVelocityController : public LeafSystem<double> {
            drake::systems::DiscreteValues<double>* next_state) const;
 
 
-   int joint_torques_input_port;
-   int joint_velocities_input_port;
-   int joint_torques_output_port;
+   int joint_torques_input_port_;
+   int joint_velocities_input_port_;
+   int joint_torques_output_port_;
 
-   double max_velocity;
+   double max_velocity_;
 };
 }
 }
-

@@ -45,8 +45,11 @@ void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
       body_.body_frame(), pt_cast, &pt_transform, &J3d);
 
   MatrixX<T> J3d_times_v =
-      this->plant_.CalcBiasForFrameGeometricJacobianExpressedInWorld(
-          context, body_.body_frame(), pt_cast).tail(3);
+      this->plant_.CalcBiasForJacobianSpatialVelocity(
+          context, drake::multibody::JacobianWrtVariable::kV,
+          body_.body_frame(), pt_cast,
+          this->plant_.world_frame(), this->plant_.world_frame()).tail(3);
+
   if (isXZ_) {
     this->c_ = TXZ_*pt_transform;
     this->J_ = TXZ_*J3d;

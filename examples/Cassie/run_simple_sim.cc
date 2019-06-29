@@ -210,6 +210,11 @@ int do_main(int argc, char* argv[]) {
       x0(3) = 1;
   }
 
+  // Set the initial height of the robot so that it's above the ground.
+  if (FLAGS_floating_base) {
+    x0(2) = 1.5;
+  }
+
   Eigen::VectorXd q0 =
       x0.head(plant->get_rigid_body_tree().get_num_positions());
   PositionSolver position_solver(plant->get_rigid_body_tree(), q0);
@@ -234,13 +239,6 @@ int do_main(int argc, char* argv[]) {
   x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
 
   std::cout << q0 << std::endl;
-
-  // If it's floating base and the initial height is 0, we adjust it to be above
-  // the ground.
-  if (FLAGS_floating_base){
-    if (x0(2) == 0)
-      x0(2) = 1.5;
-  }
 
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state =

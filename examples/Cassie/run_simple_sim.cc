@@ -270,7 +270,7 @@ int do_main(int argc, char* argv[]) {
   simulator.Initialize();
 
   simulator.StepTo(std::numeric_limits<double>::infinity());
-  // simulator.StepTo(.001);
+  // simulator.StepTo(.01);
   return 0;
 }
 

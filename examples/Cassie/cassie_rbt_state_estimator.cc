@@ -374,110 +374,6 @@ void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
 }
 
 
-EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
-    DiscreteValues<double>* discrete_state) const {
-  // TODO(yminchen): delete the testing code when you fix the time delay issue
-  // Testing
-  /*const auto& cassie_out =
-      this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
-  cout << "\nIn per-step update: lcm_time = " <<
-       cassie_out.pelvis.targetPc.taskExecutionTime << endl;
-  cout << "In per-step update: context_time = " << context.get_time() << endl;*/
-
-  // Get current time and previous time
-  double current_time = context.get_time();
-  double prev_t = discrete_state->get_vector(time_idx_).get_value()(0);
-
-  // TODO(yminchen): delete the testing code when you fix the time delay issue
-  // Testing
-  // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
-
-  if (current_time > prev_t) {
-    double dt = current_time - prev_t;
-
-    // Perform State Estimation (in several steps)
-    // Step 1 - Solve for the unknown joint angle
-    // This step is done in AssignNonFloatingBaseStateToOutputVector()
-
-    // Step 2 - EKF (update step)
-
-    // Step 3 - Estimate which foot/feet are in contact with the ground
-    // Create robot output vector for contact estimation
-    OutputVector<double> output(tree_.get_num_positions(),
-                                tree_.get_num_velocities(),
-                                tree_.get_num_actuators());
-    // Assign values to robot output vector
-    const auto& cassie_out =
-        this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
-    AssignImuValueToOutputVector(cassie_out, &output);
-    AssignActuationFeedbackToOutputVector(cassie_out, &output);
-    AssignNonFloatingBaseStateToOutputVector(cassie_out, &output);
-    AssignFloatingBaseStateToOutputVector(
-        context.get_discrete_state(state_idx_).get_value(), &output);
-    // Since we don't have EKF yet, we get the floating base state
-    // from ground truth (CASSIE_STATE)
-    // TODO(yminchen): delete this later
-    const OutputVector<double>* cassie_state = (OutputVector<double>*)
-        this->EvalVectorInput(context, state_input_port_);
-    output.SetPositionAtIndex(position_index_map_.at("base_x"),
-                              cassie_state->GetPositions()[0]);
-    output.SetPositionAtIndex(position_index_map_.at("base_y"),
-                              cassie_state->GetPositions()[1]);
-    output.SetPositionAtIndex(position_index_map_.at("base_z"),
-                              cassie_state->GetPositions()[2]);
-    output.SetPositionAtIndex(position_index_map_.at("base_qw"),
-                              cassie_state->GetPositions()[3]);
-    output.SetPositionAtIndex(position_index_map_.at("base_qx"),
-                              cassie_state->GetPositions()[4]);
-    output.SetPositionAtIndex(position_index_map_.at("base_qy"),
-                              cassie_state->GetPositions()[5]);
-    output.SetPositionAtIndex(position_index_map_.at("base_qz"),
-                              cassie_state->GetPositions()[6]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_wx"),
-                              cassie_state->GetVelocities()[0]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_wy"),
-                              cassie_state->GetVelocities()[1]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_wz"),
-                              cassie_state->GetVelocities()[2]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_vx"),
-                              cassie_state->GetVelocities()[3]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_vy"),
-                              cassie_state->GetVelocities()[4]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_vz"),
-                              cassie_state->GetVelocities()[5]);
-
-    // Estimate feet contacts
-    int left_contact = 0;
-    int right_contact = 0;
-    contactEstimation(output, dt,
-        discrete_state, &left_contact, &right_contact);
-
-    // Step 4 - EKF (measurement step)
-
-
-    // Step 5 - Assign values to states
-    // Below is how you should assign the state at the end of this Update
-    // discrete_state->get_mutable_vector(ekf_X_idx_).get_mutable_value() = ...;
-    // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() = ...;
-
-    // You can convert a rotational matrix to quaternion using Eigen
-    // https://stackoverflow.com/questions/21761909/eigen-convert-matrix3d-rotation-to-quaternion
-    // http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
-
-    // Then convert Eigen::Quaterion to (w,x,y,z) by drake's QuaternionToVectorWxyz()
-    // https://drake.mit.edu/doxygen_cxx/namespacedrake_1_1multibody.html#ad1b559878de179a7e363846fa67f58c0
-
-
-    // Question: Do we need to filter the gyro value?
-    // We will get the bias (parameter) from EKF
-
-    discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
-      current_time;
-  }
-  return EventStatus::Succeeded();
-}
-
-
 /// contactEstimation() determines which foot is in contact with the ground
 /// based on the state/input feedback of the robot and the imu acceleration
 ///
@@ -921,14 +817,14 @@ void CassieRbtStateEstimator::contactEstimation(
   // and we assume it's double support. (Therefore, it won't predict the case
   // where the robot transition from flight phase to single support. It'd say
   // it's double support.)
-  if((optimal_cost[0] >= cost_threshold_ &&
+  if ((optimal_cost[0] >= cost_threshold_ &&
         optimal_cost[1] >= cost_threshold_ &&
         optimal_cost[2] >= cost_threshold_)) {
     *left_contact = 1;
     *right_contact = 1;
-  } else if(min_index == 1) {
+  } else if (min_index == 1) {
     *left_contact = 1;
-  } else if(min_index == 2) {
+  } else if (min_index == 2) {
     *right_contact = 1;
   }
 
@@ -978,6 +874,111 @@ void CassieRbtStateEstimator::contactEstimation(
   */
 }
 
+
+EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  // TODO(yminchen): delete the testing code when you fix the time delay issue
+  // Testing
+  // const auto& cassie_out =
+  //     this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
+  // cout << "\nIn per-step update: lcm_time = " <<
+  //      cassie_out.pelvis.targetPc.taskExecutionTime << endl;
+  // cout << "In per-step update: context_time = " << context.get_time() << endl;
+
+  // Get current time and previous time
+  double current_time = context.get_time();
+  double prev_t = discrete_state->get_vector(time_idx_).get_value()(0);
+
+  // TODO(yminchen): delete the testing code when you fix the time delay issue
+  // Testing
+  // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
+
+  if (current_time > prev_t) {
+    double dt = current_time - prev_t;
+
+    // Perform State Estimation (in several steps)
+    // Step 1 - Solve for the unknown joint angle
+    // This step is done in AssignNonFloatingBaseStateToOutputVector()
+
+    // Step 2 - EKF (update step)
+
+    // Step 3 - Estimate which foot/feet are in contact with the ground
+    // Create robot output vector for contact estimation
+    OutputVector<double> output(tree_.get_num_positions(),
+                                tree_.get_num_velocities(),
+                                tree_.get_num_actuators());
+    // Assign values to robot output vector
+    const auto& cassie_out =
+        this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
+    AssignImuValueToOutputVector(cassie_out, &output);
+    AssignActuationFeedbackToOutputVector(cassie_out, &output);
+    AssignNonFloatingBaseStateToOutputVector(cassie_out, &output);
+    AssignFloatingBaseStateToOutputVector(
+        context.get_discrete_state(state_idx_).get_value(), &output);
+    // Since we don't have EKF yet, we get the floating base state
+    // from ground truth (CASSIE_STATE)
+    // TODO(yminchen): delete this later
+    const OutputVector<double>* cassie_state = (OutputVector<double>*)
+        this->EvalVectorInput(context, state_input_port_);
+    output.SetPositionAtIndex(position_index_map_.at("base_x"),
+                              cassie_state->GetPositions()[0]);
+    output.SetPositionAtIndex(position_index_map_.at("base_y"),
+                              cassie_state->GetPositions()[1]);
+    output.SetPositionAtIndex(position_index_map_.at("base_z"),
+                              cassie_state->GetPositions()[2]);
+    output.SetPositionAtIndex(position_index_map_.at("base_qw"),
+                              cassie_state->GetPositions()[3]);
+    output.SetPositionAtIndex(position_index_map_.at("base_qx"),
+                              cassie_state->GetPositions()[4]);
+    output.SetPositionAtIndex(position_index_map_.at("base_qy"),
+                              cassie_state->GetPositions()[5]);
+    output.SetPositionAtIndex(position_index_map_.at("base_qz"),
+                              cassie_state->GetPositions()[6]);
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_wx"),
+                              cassie_state->GetVelocities()[0]);
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_wy"),
+                              cassie_state->GetVelocities()[1]);
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_wz"),
+                              cassie_state->GetVelocities()[2]);
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_vx"),
+                              cassie_state->GetVelocities()[3]);
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_vy"),
+                              cassie_state->GetVelocities()[4]);
+    output.SetVelocityAtIndex(velocity_index_map_.at("base_vz"),
+                              cassie_state->GetVelocities()[5]);
+
+    // Estimate feet contacts
+    int left_contact = 0;
+    int right_contact = 0;
+    contactEstimation(output, dt,
+        discrete_state, &left_contact, &right_contact);
+
+    // Step 4 - EKF (measurement step)
+
+
+    // Step 5 - Assign values to states
+    // Below is how you should assign the state at the end of this Update
+    // discrete_state->get_mutable_vector(ekf_X_idx_).get_mutable_value() = ...;
+    // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() = ...;
+
+    // You can convert a rotational matrix to quaternion using Eigen
+    // https://stackoverflow.com/questions/21761909/eigen-convert-matrix3d-rotation-to-quaternion
+    // http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+
+    // Then convert Eigen::Quaterion to (w,x,y,z) by drake's QuaternionToVectorWxyz()
+    // https://drake.mit.edu/doxygen_cxx/namespacedrake_1_1multibody.html#ad1b559878de179a7e363846fa67f58c0
+
+
+    // Question: Do we need to filter the gyro value?
+    // We will get the bias (parameter) from EKF
+
+    discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
+      current_time;
+  }
+  return EventStatus::Succeeded();
+}
+
+
 /// Workhorse state estimation function. Given a `cassie_out_t`, compute the
 /// estimated state as an OutputVector
 /// Since it needs to map from a struct to a vector, and no assumptions on the
@@ -986,7 +987,6 @@ void CassieRbtStateEstimator::CopyStateOut(
     const Context<double>& context, OutputVector<double>* output) const {
   const auto& cassie_out =
       this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
-
   // There might be a better way to initialize?
   auto data = output->get_mutable_data();  // This doesn't affect timestamp value
   data = VectorXd::Zero(data.size());

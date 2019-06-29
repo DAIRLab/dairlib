@@ -94,6 +94,11 @@ int do_main(int argc, char* argv[]) {
   const double K_D = joint_gains["kuka_gains"]["K_D"];
   const double K_R = joint_gains["kuka_gains"]["K_R"];
 
+  //Safety Limits
+  const double MAX_LINEAR_VEL = joint_gains["limits"]["max_linear_velocity"];
+  const double MAX_ANGULAR_VEL = joint_gains["limits"]["max_angular_veloctiy"];
+  const double JOINT_TORQUE_LIMIT = joint_gains["limits"]["joint_torque_limit"];
+
   //Processes Trajectories CSV file.
   CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
 
@@ -164,12 +169,12 @@ int do_main(int argc, char* argv[]) {
   // Adding position controller block
   auto position_controller = builder.AddSystem<
       systems::EndEffectorPositionController>(
-          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA, 0.5, 1.5);
+          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA, MAX_LINEAR_VEL, MAX_ANGULAR_VEL);
 
   // Adding Velocity Controller block
   auto velocity_controller = builder.AddSystem<
       systems::EndEffectorVelocityController>(
-          *owned_plant, link_7, eeContactFrame, K_D, K_R, 0.5);
+          *owned_plant, link_7, eeContactFrame, K_D, K_R, JOINT_TORQUE_LIMIT);
 
 
   // Adding linear position Trajectory Source

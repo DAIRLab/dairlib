@@ -78,10 +78,14 @@ void EndEffectorVelocityController::CalcOutputTorques(
   // Limit maximum commanded torques
   double max_torque_limit = 0.5;
   for (int i = 0; i < num_joints_; i++) {
-      if (commandedTorques(i, 0) > max_torque_limit || commandedTorques(i, 0) < -max_torque_limit) {
+      if (commandedTorques(i, 0) > max_torque_limit) {
           commandedTorques(i, 0) = max_torque_limit;
           std::cout << "Warning: joint " << i << " commanded torque exceeded ";
           std::cout << "given limit of " << max_torque_limit << std::endl;
+      } else if (commandedTorques(i, 0) < -max_torque_limit) {
+          commandedTorques(i, 0) = -max_torque_limit;
+          std::cout << "Warning: joint " << i << " commanded torque exceeded ";
+          std::cout << "given limit of " << -max_torque_limit << std::endl;
       }
   }
 

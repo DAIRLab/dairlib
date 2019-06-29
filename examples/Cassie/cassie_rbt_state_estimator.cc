@@ -946,6 +946,12 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
                               cassie_state->GetVelocities()[4]);
     output.SetVelocityAtIndex(velocity_index_map_.at("base_vz"),
                               cassie_state->GetVelocities()[5]);
+    // We get 0's cassie_state in the beginning because dispatcher_robot_out is
+    // not triggerred by CASSIE_STATE message.
+    // This wouldn't be an issue when you don't use ground truth state.
+    if (output.GetPositions().head(7).norm() == 0){
+      output.SetPositionAtIndex(position_index_map_.at("base_qw"), 1);
+    }
 
     // Estimate feet contacts
     int left_contact = 0;
@@ -1032,6 +1038,12 @@ void CassieRbtStateEstimator::CopyStateOut(
                               cassie_state->GetVelocities()[4]);
     output->SetVelocityAtIndex(velocity_index_map_.at("base_vz"),
                               cassie_state->GetVelocities()[5]);
+    // We get 0's cassie_state in the beginning because dispatcher_robot_out is
+    // not triggerred by CASSIE_STATE message.
+    // This wouldn't be an issue when you don't use ground truth state.
+    if (output->GetPositions().head(7).norm()==0){
+      output->SetPositionAtIndex(position_index_map_.at("base_qw"), 1);
+    }
   }
 
   // TODO(yminchen): delete the testing code when you fix the time delay issue

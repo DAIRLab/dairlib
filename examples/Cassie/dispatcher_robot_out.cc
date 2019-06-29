@@ -36,6 +36,11 @@ DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,
     "Simulated or real robot (default=false, real robot)");
 
+// TODO(yminchen): delete the following flag after you finish testing
+// cassie_rbt_state_estimator
+DEFINE_string(state_channel_name, "CASSIE_STATE_TEMP",
+    "The name of the lcm channel that sends Cassie's state");
+
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
@@ -82,7 +87,8 @@ int do_main(int argc, char* argv[]) {
     // TODO(yminchen): delete this part after finishing estimator
     if(FLAGS_floating_base){
       auto state_sub = builder.AddSystem(
-          LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>("CASSIE_STATE", &lcm_local));
+          LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          FLAGS_state_channel_name, &lcm_local));
       auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*tree);
       builder.Connect(state_sub->get_output_port(),
           state_receiver->get_input_port(0));

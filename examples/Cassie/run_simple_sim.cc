@@ -57,6 +57,8 @@ DEFINE_double(dt, 1e-3,
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
 DEFINE_bool(publish_state, true,
     "Publish state CASSIE_STATE (set to false when running w/dispatcher");
+DEFINE_string(state_channel_name, "CASSIE_STATE",
+              "The name of the lcm channel that sends Cassie's state");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
@@ -126,7 +128,7 @@ int do_main(int argc, char* argv[]) {
         plant->get_rigid_body_tree());
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            "CASSIE_STATE", lcm, 1.0 / FLAGS_publish_rate));
+            FLAGS_state_channel_name, lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(plant->state_output_port(),
                     state_sender->get_input_port_state());
     builder.Connect(state_sender->get_output_port(0),

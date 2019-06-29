@@ -50,10 +50,8 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   right_thigh_ind_ = GetBodyIndexFromName(tree, "thigh_right");
   left_heel_spring_ind_ = GetBodyIndexFromName(tree, "heel_spring_left");
   right_heel_spring_ind_ = GetBodyIndexFromName(tree, "heel_spring_right");
-  if (left_thigh_ind_ == -1 || right_thigh_ind_ == -1 ||
-      left_heel_spring_ind_ == -1 || right_heel_spring_ind_ == -1 )
-    std::cout << "In cassie_rbt_state_estimator.cc,"
-              " body indices were not set correctly.\n";
+  DRAKE_DEMAND(left_thigh_ind_ != -1 && right_thigh_ind_ != -1 &&
+               left_heel_spring_ind_ != -1 && right_heel_spring_ind_ != -1);
 
   if (is_floating_base) {
     // Declare input port receiving robot's state (simulation ground truth state)

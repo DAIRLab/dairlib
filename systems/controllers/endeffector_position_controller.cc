@@ -73,15 +73,13 @@ void EndEffectorPositionController::CalcOutputTwist(
   VectorXd angularVelocityWF = plant_.CalcRelativeTransform(
 	  *plant_context, ee_joint_frame_, plant_world_frame_).rotation() * angularVelocity;
 
+  // TODO: parse these from the json file
   // Limit maximum commanded linear velocity
   double linear_speed_limit = 0.5;
   double currVel = diff.norm();
 
-  if (currVel > linear_speed_limit) {
-      for (int i = 0; i < 3; i++) {
-          // Setting max speed to linear_speed_limit
-          diff(i, 0) = diff(i, 0) * (linear_speed_limit/currVel);
-      }
+  if (currVel > linear_speed_limit || currVel < -linear_speed_limit) {
+      diff = diff * (linear_speed_limit/currVel);
       std::cout << "Warning: desired end effector velocity: " << currVel;
       std::cout << " exceeded limit of " << linear_speed_limit << std::endl;
       currVel = diff.norm();
@@ -91,12 +89,8 @@ void EndEffectorPositionController::CalcOutputTwist(
   // Limit maximum commanded angular velocity
   double angular_speed_limit = 1.5;
   double currAngVel = angularVelocityWF.norm();
-  if (currAngVel > angular_speed_limit) {
-      for (int i = 0; i < 3; i++) {
-          // Setting max speed to angular_speed_limit
-          angularVelocityWF(i, 0) =
-              angularVelocityWF(i, 0) * (angular_speed_limit/currAngVel);
-      }
+  if (currAngVel > angular_speed_limit || currAngVel < -angular_speed_limit) {
+      angularVelocityWF = angularVelocityWF * (angular_speed_limit/currAngVel);
       std::cout << "Warning: desired end effector velocity: " << currAngVel;
       std::cout << " exceeded limit of " << angular_speed_limit << std::endl;
       currAngVel = angularVelocityWF.norm();

@@ -4,25 +4,19 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
 
-using std::string;
-using Eigen::VectorXd;
-using drake::systems::LeafSystem;
-using drake::systems::Context;
-using drake::systems::BasicVector;
-
 namespace dairlib {
 namespace systems {
 
 // Time-based Two-state Finite State Machine
-class TimeBasedFiniteStateMachine : public LeafSystem<double> {
+class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
  public:
   TimeBasedFiniteStateMachine(int num_positions,
                               int num_velocities,
                               int num_inputs,
                               int first_state_number,
                               int second_state_number,
-                              string first_state_name,
-                              string second_state_name,
+                              std::string first_state_name,
+                              std::string second_state_name,
                               int start_state_number,
                               double duration_per_state,
                               double time_shift = 0);
@@ -32,15 +26,15 @@ class TimeBasedFiniteStateMachine : public LeafSystem<double> {
   }
 
  private:
-  void CalcFiniteState(const Context<double>& context,
-                       BasicVector<double>* fsm_state) const;
+  void CalcFiniteState(const drake::systems::Context<double>& context,
+                       drake::systems::BasicVector<double>* fsm_state) const;
 
   int state_port_;
 
   int first_state_number_;
   int second_state_number_;
-  string first_state_name_;
-  string second_state_name_;
+  std::string first_state_name_;
+  std::string second_state_name_;
   int start_state_number_;
   double duration_per_state_;
   double time_shift_;

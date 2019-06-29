@@ -4,42 +4,30 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
 
-using Eigen::Vector2d;
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-
-using drake::systems::LeafSystem;
-using drake::systems::Context;
-using drake::systems::BasicVector;
-
-
 namespace dairlib {
 namespace cassie {
 namespace cp_control {
 
-// For quaternion floating-based Cassie
-class FootPlacementControl : public LeafSystem<double> {
+// For quaternion floating-based Cassie only
+class FootPlacementControl : public drake::systems::LeafSystem<double> {
  public:
-  FootPlacementControl(RigidBodyTree<double> * tree,
-    Vector2d global_target_position, double circle_radius_of_no_turning);
+  FootPlacementControl(RigidBodyTree<double>* tree,
+    Eigen::Vector2d global_target_position, double circle_radius_of_no_turning);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
 
  private:
-  void CalcFootPlacement(const Context<double>& context,
-                         BasicVector<double>* output) const;
+  void CalcFootPlacement(const drake::systems::Context<double>& context,
+                         drake::systems::BasicVector<double>* output) const;
 
   RigidBodyTree<double> * tree_;
   int pelvis_idx_;
-  Vector2d global_target_position_;
+  Eigen::Vector2d global_target_position_;
   double circle_radius_of_no_turning_;
 
   int state_port_;
-
-  bool is_quaternion_;
 
   double kp_pos_sagital_;
   double kd_pos_sagital_;

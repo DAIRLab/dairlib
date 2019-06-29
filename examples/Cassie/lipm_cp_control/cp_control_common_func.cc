@@ -1,6 +1,8 @@
 #pragma once
 #include "examples/Cassie/lipm_cp_control/cp_control_common_func.h"
 
+using Eigen::Vector2d;
+
 namespace dairlib {
 namespace cassie {
 namespace cp_control {

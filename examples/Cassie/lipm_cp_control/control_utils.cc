@@ -1,5 +1,7 @@
 #include "examples/Cassie/lipm_cp_control/control_utils.h"
 
+using Eigen::Vector3d;
+
 namespace dairlib {
 
 // Rotate a 3D vector by quaternion which represent a roatation

@@ -8,25 +8,10 @@
 
 #include "systems/framework/output_vector.h"
 
-using Eigen::Vector2d;
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-
-using drake::systems::LeafSystem;
-using drake::systems::Context;
-using drake::systems::DiscreteValues;
-using drake::systems::DiscreteUpdateEvent;
-using drake::systems::EventStatus;
-using drake::systems::BasicVector;
-
-using drake::trajectories::PiecewisePolynomial;
-using drake::trajectories::ExponentialPlusPiecewisePolynomial;
-
 namespace dairlib {
 namespace systems {
 
-class LIPMTrajGenerator : public LeafSystem<double> {
+class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   LIPMTrajGenerator(RigidBodyTree<double> * tree,
                     double desiredCoMHeight,
@@ -44,10 +29,12 @@ class LIPMTrajGenerator : public LeafSystem<double> {
   }
 
  private:
-  EventStatus DiscreteVariableUpdate(const Context<double>& context,
-                     DiscreteValues<double>* discrete_state) const;
-  void CalcTraj(const Context<double>& context,
-                ExponentialPlusPiecewisePolynomial<double>* traj) const;
+  drake::systems::EventStatus DiscreteVariableUpdate(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const;
+  void CalcTraj(
+    const drake::systems::Context<double>& context,
+    drake::trajectories::ExponentialPlusPiecewisePolynomial<double>* traj) const;
 
   int state_port_;
   int FSM_port_;

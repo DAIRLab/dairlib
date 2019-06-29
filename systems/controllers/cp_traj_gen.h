@@ -7,25 +7,10 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 
-
-using Eigen::Vector2d;
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using drake::systems::LeafSystem;
-using drake::systems::Context;
-using drake::systems::DiscreteValues;
-using drake::systems::DiscreteUpdateEvent;
-using drake::systems::EventStatus;
-using drake::systems::BasicVector;
-
-using drake::trajectories::PiecewisePolynomial;
-using drake::trajectories::ExponentialPlusPiecewisePolynomial;
-
 namespace dairlib {
 namespace systems {
 
-class CPTrajGenerator : public LeafSystem<double> {
+class CPTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   CPTrajGenerator(RigidBodyTree<double>* tree,
                   double mid_foot_height,
@@ -56,21 +41,23 @@ class CPTrajGenerator : public LeafSystem<double> {
   }
 
  private:
-  EventStatus DiscreteVariableUpdate(const Context<double>& context,
-                                     DiscreteValues<double>* discrete_state) const;
+  drake::systems::EventStatus DiscreteVariableUpdate(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  Vector2d calculateCapturePoint(const Context<double>& context,
-                                 const OutputVector<double>* robot_output,
-                                 const double end_time_of_this_interval) const;
+  Eigen::Vector2d calculateCapturePoint(
+    const drake::systems::Context<double>& context,
+    const OutputVector<double>* robot_output,
+    const double end_time_of_this_interval) const;
 
-  PiecewisePolynomial<double> createSplineForSwingFoot(
+  drake::trajectories::PiecewisePolynomial<double> createSplineForSwingFoot(
     const double start_time_of_this_interval,
     const double end_time_of_this_interval,
-    const Vector3d & init_swing_foot_pos,
-    const Vector2d & CP) const;
+    const Eigen::Vector3d & init_swing_foot_pos,
+    const Eigen::Vector2d & CP) const;
 
-  void CalcTrajs(const Context<double>& context,
-                 PiecewisePolynomial<double>* traj) const;
+  void CalcTrajs(const drake::systems::Context<double>& context,
+                 drake::trajectories::PiecewisePolynomial<double>* traj) const;
 
   int state_port_;
   int FSM_port_;

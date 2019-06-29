@@ -7,6 +7,20 @@ using std::cout;
 using std::endl;
 using std::string;
 
+using Eigen::Vector2d;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+
+using drake::systems::Context;
+using drake::systems::DiscreteValues;
+using drake::systems::DiscreteUpdateEvent;
+using drake::systems::EventStatus;
+using drake::systems::BasicVector;
+
+using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::ExponentialPlusPiecewisePolynomial;
+
 namespace dairlib {
 namespace systems {
 

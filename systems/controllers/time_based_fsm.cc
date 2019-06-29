@@ -1,5 +1,10 @@
 #include "systems/controllers/time_based_fsm.h"
 
+using std::string;
+using Eigen::VectorXd;
+using drake::systems::Context;
+using drake::systems::BasicVector;
+
 namespace dairlib {
 namespace systems {
 

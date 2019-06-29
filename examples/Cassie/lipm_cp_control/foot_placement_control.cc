@@ -10,7 +10,16 @@ using std::cout;
 using std::endl;
 using std::string;
 
+using Eigen::Vector2d;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+
 using dairlib::systems::OutputVector;
+
+using drake::systems::LeafSystem;
+using drake::systems::Context;
+using drake::systems::BasicVector;
 
 namespace dairlib {
 namespace cassie {
@@ -30,9 +39,6 @@ FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
                   tree->get_num_actuators())).get_index();
   this->DeclareVectorOutputPort(BasicVector<double>(2),
                                 &FootPlacementControl::CalcFootPlacement);
-
-  is_quaternion_ = (tree->get_position_name(3).compare("base_qw") == 0) ?
-                   true : false;
 
   // Foot placement control (Sagital) parameters
   kp_pos_sagital_ = 1.0;
@@ -69,7 +75,7 @@ void FootPlacementControl::CalcFootPlacement(
   // Modify the quaternion in the begining when the state is not received from
   // the robot yet
   // Always remember to check 0-norm quaternion when using doKinematics
-  if (is_quaternion_ && q.segment(3, 4).norm() == 0)
+  if (q.segment(3, 4).norm() == 0)
     q(3) = 1;
   cache.initialize(q);
   tree_->doKinematics(cache);

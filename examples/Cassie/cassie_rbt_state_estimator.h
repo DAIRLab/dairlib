@@ -16,9 +16,9 @@ namespace dairlib {
 namespace systems {
 
 /// CassieRbtStateEstimator does the following things
-/// 1. read in cassie_out_t,
-/// 2. estimate floating-base state and feet contact
-/// 3. output OutputVector which contains
+/// 1. reads in cassie_out_t,
+/// 2. estimates floating-base state and feet contact
+/// 3. outputs OutputVector which contains
 ///    - the state of the robot
 ///    - the torque feedback
 ///    - imu accelerometer values

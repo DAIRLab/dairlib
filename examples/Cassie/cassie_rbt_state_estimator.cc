@@ -119,10 +119,10 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 ///
 /// Algorithm:
 ///  We want to find where the achilles rod and the heel spring intersect.
-///  The achilles rod is attched to thigh with a ball joint, and the heel spring
-///  is fix to the heel. The heel spring (rotational spring) can deflect in
-///  only one dimension, meaning it rotates around the spring base where the
-///  spring is attched to the heel.
+///  The achilles rod is attched to the thigh with a ball joint, and the heel
+///  spring is fixed to the heel. The heel spring (rotational spring) can
+///  deflect in only one dimension, meaning it rotates around the spring base
+///  where the spring is attched to the heel.
 ///  Let the ball joint position in the world frame to be r_ball_joint, and the
 ///  spring base position to be r_heel_spring_base.
 ///  Let the length of the rod to be rod_length_, and the spring length to be
@@ -145,7 +145,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 ///   We account for this offset by `spring_rest_offset`.
 void CassieRbtStateEstimator::solveFourbarLinkage(const VectorXd& q,
     double* left_heel_spring, double* right_heel_spring) const {
-  // Get the rod length
+  // Get the spring length
   double spring_length = rod_on_heel_spring_.norm();
   // Spring rest angle offset
   double spring_rest_offset = atan(

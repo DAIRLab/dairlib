@@ -59,6 +59,12 @@ public:
                                      num_velocities_, num_efforts_) = efforts;
   }
 
+  void SetIMUAccelerations(VectorX<T> imu_accelerations) {
+    this->get_mutable_data().segment(position_start_ + num_positions_  +
+                                     num_velocities_ + num_efforts_,
+                                     3) = imu_accelerations;
+  }
+
   void SetEffortAtIndex(int index, T value) {
     this->SetAtIndex(position_start_ + num_positions_ + num_velocities_ +
           index, value);
@@ -70,6 +76,11 @@ public:
 
   void SetVelocityAtIndex(int index, T value) {
     this->SetAtIndex(position_start_ + num_positions_ + index, value);
+  }
+
+  void SetIMUAccelerationAtIndex(int index, T value) {
+    this->SetAtIndex(position_start_ + num_positions_ + num_velocities_ + 
+                     num_efforts_ + index, value);
   }
 
   void SetState(VectorX<T> state) {
@@ -100,6 +111,12 @@ public:
                                     num_velocities_, num_efforts_);
   }
 
+  /// Returns a const imu accelerations vectors
+  const VectorX<T> GetIMUAccelerations() const {
+    return this->get_data().segment(position_start_ + num_positions_ + 
+                                    num_velocities_ + num_efforts_, 3);
+  }
+
   /// Returns a mutable state vector
   Eigen::Map<VectorX<T>> GetMutableState() {
     auto data = this->get_mutable_data().segment(position_start_,
@@ -127,12 +144,24 @@ public:
     return Eigen::Map<VectorX<T>>(&data(0), data.size());
   }
 
+  /// Returns a mutable imu acceleration vector
+  Eigen::Map<VectorX<T>> GetMutableIMUAccelerations() {
+    auto data = this->get_mutable_data().segment(
+        position_start_ + num_positions_ + num_velocities_ + num_efforts_, 3);
+    return Eigen::Map<VectorX<T>>(&data(0), data.size());
+  }
+
   T GetPositionAtIndex(int index) const {
     return this->GetAtIndex(position_start_ + index);
   }
 
   T GetVelocityAtIndex(int index) const {
     return this->GetAtIndex(position_start_ + num_positions_ + index);
+  }
+
+  T GetIMUAccelerationAtIndex(int index) const {
+    return this->GetAtIndex(position_start_ + num_positions_ + 
+                            num_velocities_ + num_efforts_ + index);
   }
 
 

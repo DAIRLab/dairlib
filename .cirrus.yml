@@ -7,6 +7,7 @@ build_task:
   test_script:
     - bazel build
       --ram_utilization_factor 50
+      --experimental_local_memory_estimate
       --spawn_strategy=sandboxed
       --strategy=Javac=sandboxed
       --genrule_strategy=sandboxed
@@ -14,6 +15,7 @@ build_task:
       //...
     - bazel test
       --ram_utilization_factor 50
+      --experimental_local_memory_estimate
       --spawn_strategy=sandboxed
       --strategy=Javac=sandboxed
       --genrule_strategy=sandboxed
@@ -31,6 +33,7 @@ drake_master_build_task:
     - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
     - bazel build
       --ram_utilization_factor 50
+      --experimental_local_memory_estimate
       --spawn_strategy=sandboxed
       --strategy=Javac=sandboxed
       --genrule_strategy=sandboxed
@@ -38,6 +41,7 @@ drake_master_build_task:
       //...
     - bazel test
       --ram_utilization_factor 50
+      --experimental_local_memory_estimate
       --spawn_strategy=sandboxed
       --strategy=Javac=sandboxed
       --genrule_strategy=sandboxed

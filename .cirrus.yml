@@ -6,7 +6,7 @@ build_task:
     memory: 24
   test_script:
     - bazel build
-      --ram_utilization_factor 50
+      --ram_utilization_factor 30
       --experimental_local_memory_estimate
       --spawn_strategy=sandboxed
       --strategy=Javac=sandboxed
@@ -32,7 +32,7 @@ drake_master_build_task:
     - git clone https://github.com/RobotLocomotion/drake.git ../drake
     - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
     - bazel build
-      --ram_utilization_factor 50
+      --ram_utilization_factor 10
       --experimental_local_memory_estimate
       --spawn_strategy=sandboxed
       --strategy=Javac=sandboxed

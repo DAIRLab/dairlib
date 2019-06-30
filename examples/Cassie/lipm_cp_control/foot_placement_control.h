@@ -22,7 +22,7 @@ class FootPlacementControl : public drake::systems::LeafSystem<double> {
   void CalcFootPlacement(const drake::systems::Context<double>& context,
                          drake::systems::BasicVector<double>* output) const;
 
-  RigidBodyTree<double> * tree_;
+  RigidBodyTree<double>* tree_;
   int pelvis_idx_;
   Eigen::Vector2d global_target_position_;
   double circle_radius_of_no_turning_;

@@ -49,7 +49,7 @@ FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
   k_footPlacement_ff_sagital_ = 0.16; // TODO: these are for going forward.
   //                                  // Should have parameters for going backward
   k_footPlacement_fb_sagital_ = 0.04;
-  target_position_offset_ = -0.16;  //Due to steady state error
+  target_position_offset_ = -0.16;  // Due to steady state error
 
   // Foot placement control (Lateral) parameters
   kp_pos_lateral_ = 0.5;

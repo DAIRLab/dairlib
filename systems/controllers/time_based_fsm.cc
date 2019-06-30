@@ -35,7 +35,6 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
                                 &TimeBasedFiniteStateMachine::CalcFiniteState);
 }
 
-
 void TimeBasedFiniteStateMachine::CalcFiniteState(
     const Context<double>& context,
     BasicVector<double>* fsm_state) const {

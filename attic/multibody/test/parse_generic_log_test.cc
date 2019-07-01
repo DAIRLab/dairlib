@@ -16,7 +16,8 @@ int main() {
     "/home/nanda/DAIR/dairlib/examples/Cassie/lcmlog-2019-05-21.02";
 
   dairlib::multibody::parseLcmLog<dairlib::lcmt_robot_input,
-    dairlib::systems::RobotInputReceiver>(tree, filename, channel, &t, &x, 2.0e6);
+    dairlib::systems::RobotInputReceiver>(tree, filename, channel, &t, &x,
+        2.0e6);
 
   std::cout << "*****t*****" << std::endl;
   std:: cout << t.rows() << " " << t.cols() << std::endl << std::endl;

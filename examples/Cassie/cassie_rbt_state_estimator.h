@@ -15,8 +15,15 @@
 namespace dairlib {
 namespace systems {
 
-/// Translates from a TimestamedVector of cassie torque commands into
-/// a cassie_user_in_t struct for transmission to the real robot.
+/// CassieRbtStateEstimator does the following things
+/// 1. reads in cassie_out_t,
+/// 2. estimates floating-base state and feet contact
+/// 3. outputs OutputVector which contains
+///    - the state of the robot
+///    - the torque feedback
+///    - imu accelerometer values
+///
+/// If the model is fixed-based, then it skips the second step.
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
@@ -36,17 +43,17 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
       systems::OutputVector<double>* output) const;
 
+  void contactEstimation(
+      const systems::OutputVector<double>& output, const double& dt,
+      drake::systems::DiscreteValues<double>* discrete_state,
+      int* left_contact, int* right_contact) const;
+
   drake::systems::EventStatus Update(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   void CopyStateOut(const drake::systems::Context<double>& context,
                     systems::OutputVector<double>* output) const;
-
-  void contactEstimation(
-      const systems::OutputVector<double>& output, const double& dt,
-      drake::systems::DiscreteValues<double>* discrete_state,
-      int* left_contact, int* right_contact) const;
 
   const RigidBodyTree<double>& tree_;
   const bool is_floating_base_;

@@ -36,6 +36,11 @@ DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,
     "Simulated or real robot (default=false, real robot)");
 
+// TODO(yminchen): delete the following flag after you finish testing
+// cassie_rbt_state_estimator
+DEFINE_string(state_channel_name, "CASSIE_STATE_TEMP",
+    "The name of the lcm channel that sends Cassie's state");
+
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
@@ -49,17 +54,15 @@ int do_main(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   std::unique_ptr<RigidBodyTree<double>> tree;
-  if (FLAGS_floating_base)
+  if (FLAGS_floating_base) {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kQuaternion);
-  else
+    drake::multibody::AddFlatTerrainToWorld(tree.get(), 100, 0.2);
+  } else {
     tree = makeCassieTreePointer();
-
-  drake::multibody::AddFlatTerrainToWorld(tree.get(), 100, 0.2);
+  }
 
   // Create state estimator
-  // Cassie State Estimator is unnecessary for fixed base
-  // The state from fixed base can be passed through to the next block
   auto state_estimator =
       builder.AddSystem<systems::CassieRbtStateEstimator>(*tree, FLAGS_floating_base);
 
@@ -82,13 +85,16 @@ int do_main(int argc, char* argv[]) {
 
     // Adding "CASSIE_STATE" and "CASSIE_INPUT" ports for testing estimator
     // TODO(yminchen): delete this part after finishing estimator
-    auto state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>("CASSIE_STATE", &lcm_local));
-    auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*tree);
-    builder.Connect(state_sub->get_output_port(),
-        state_receiver->get_input_port(0));
-    builder.Connect(state_receiver->get_output_port(0),
-        state_estimator->get_input_port(1));
+    if(FLAGS_floating_base){
+      auto state_sub = builder.AddSystem(
+          LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          FLAGS_state_channel_name, &lcm_local));
+      auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*tree);
+      builder.Connect(state_sub->get_output_port(),
+          state_receiver->get_input_port(0));
+      builder.Connect(state_receiver->get_output_port(0),
+          state_estimator->get_input_port(1));
+    }
   }
 
   // Create and connect RobotOutput publisher.

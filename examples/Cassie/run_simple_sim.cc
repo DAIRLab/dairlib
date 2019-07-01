@@ -57,6 +57,8 @@ DEFINE_double(dt, 1e-3,
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
 DEFINE_bool(publish_state, true,
     "Publish state CASSIE_STATE (set to false when running w/dispatcher");
+DEFINE_string(state_channel_name, "CASSIE_STATE",
+              "The name of the lcm channel that sends Cassie's state");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
@@ -126,7 +128,7 @@ int do_main(int argc, char* argv[]) {
         plant->get_rigid_body_tree());
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            "CASSIE_STATE", lcm, 1.0 / FLAGS_publish_rate));
+            FLAGS_state_channel_name, lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(plant->state_output_port(),
                     state_sender->get_input_port_state());
     builder.Connect(state_sender->get_output_port(0),
@@ -208,6 +210,11 @@ int do_main(int argc, char* argv[]) {
       x0(3) = 1;
   }
 
+  // Set the initial height of the robot so that it's above the ground.
+  if (FLAGS_floating_base) {
+    x0(2) = 1.5;
+  }
+
   Eigen::VectorXd q0 =
       x0.head(plant->get_rigid_body_tree().get_num_positions());
   PositionSolver position_solver(plant->get_rigid_body_tree(), q0);
@@ -232,13 +239,6 @@ int do_main(int argc, char* argv[]) {
   x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
 
   std::cout << q0 << std::endl;
-
-  // If it's floating base and the initial height is 0, we adjust it to be above
-  // the ground.
-  if (FLAGS_floating_base){
-    if (x0(2) == 0)
-      x0(2) = 1.5;
-  }
 
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state =
@@ -270,7 +270,7 @@ int do_main(int argc, char* argv[]) {
   simulator.Initialize();
 
   simulator.StepTo(std::numeric_limits<double>::infinity());
-  // simulator.StepTo(.001);
+  // simulator.StepTo(.01);
   return 0;
 }
 

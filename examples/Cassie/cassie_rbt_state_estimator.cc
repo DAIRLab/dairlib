@@ -101,7 +101,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
     // Contact Estimation - Quadratic Programing
     // MathematicalProgram
-    quadprog_ = new drake::solvers::MathematicalProgram();
+    quadprog_ = std::make_unique<drake::solvers::MathematicalProgram>();
     // Add variables to the optimization program
     double n_v = tree_.get_num_velocities();
     ddq_ = quadprog_->NewContinuousVariables(n_v, "ddq");
@@ -138,18 +138,6 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
         MatrixXd::Zero(3, 1), eps_imu_).
         evaluator().get();
   }
-}
-
-CassieRbtStateEstimator::~CassieRbtStateEstimator() {
-  delete quadprog_;
-  delete fourbar_constraint_;
-  delete left_contact_constraint_;
-  delete right_contact_constraint_;
-  delete imu_accel_constraint_;
-  delete quadcost_eom_;
-  delete quadcost_eps_cl_;
-  delete quadcost_eps_cr_;
-  delete quadcost_eps_imu_;
 }
 
 /// solveFourbarLinkage() calculates the angle of heel spring joints given the

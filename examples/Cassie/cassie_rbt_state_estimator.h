@@ -121,11 +121,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const double alpha_ = 0.9;  // Low-pass filter constant for the acceleration
                               // residual. 0 < alpha_ < 1. The bigger alpha_ is,
                               // the higher the cut-off frequency is.
-
-  // Pointer to optimization class
+  // Contact Estimation - Quadratic Programing
+  // MathematicalProgram
   drake::solvers::MathematicalProgram* quadprog_;
-
-  // Bindings for Optimization variables for cost and constraints
+  // Cost and constraints (Bindings)
   drake::solvers::LinearEqualityConstraint* fourbar_constraint_;
   drake::solvers::LinearEqualityConstraint* left_contact_constraint_;
   drake::solvers::LinearEqualityConstraint* right_contact_constraint_;
@@ -134,8 +133,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* quadcost_eps_cl_;
   drake::solvers::QuadraticCost* quadcost_eps_cr_;
   drake::solvers::QuadraticCost* quadcost_eps_imu_;
-
-  // Optimization decision variables
+  // Decision variables
   Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
       ddq_;
   Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>

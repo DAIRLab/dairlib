@@ -99,9 +99,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     lambda_cr_double_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
     lambda_cr_right_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
 
-    // Create new optimization class
+    // Contact Estimation - Quadratic Programing
+    // MathematicalProgram
     quadprog_ = new drake::solvers::MathematicalProgram();
-
     // Add variables to the optimization program
     double n_v = tree_.get_num_velocities();
     ddq_ = quadprog_->NewContinuousVariables(n_v, "ddq");
@@ -111,42 +111,32 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     eps_cl_ = quadprog_->NewContinuousVariables(6, "eps_cl");
     eps_cr_ = quadprog_->NewContinuousVariables(6, "eps_cr");
     eps_imu_ = quadprog_->NewContinuousVariables(3, "eps_imu");
-
     // Add equality constraints to the optimization program
     fourbar_constraint_ = quadprog_->AddLinearEqualityConstraint(
-        MatrixXd::Zero(2, n_v), MatrixXd::Zero(2, 1), ddq_)
-        .evaluator()
-        .get();
+        MatrixXd::Zero(2, n_v), MatrixXd::Zero(2, 1), ddq_).
+        evaluator().get();
     left_contact_constraint_ = quadprog_->AddLinearEqualityConstraint(
-        MatrixXd::Zero(6, n_v + 6), MatrixXd::Zero(6, 1), {ddq_, eps_cl_})
-        .evaluator()
-        .get();
+        MatrixXd::Zero(6, n_v + 6), MatrixXd::Zero(6, 1), {ddq_, eps_cl_}).
+        evaluator().get();
     right_contact_constraint_ = quadprog_->AddLinearEqualityConstraint(
-        MatrixXd::Zero(6, n_v + 6), MatrixXd::Zero(6, 1), {ddq_, eps_cr_})
-        .evaluator()
-        .get();
+        MatrixXd::Zero(6, n_v + 6), MatrixXd::Zero(6, 1), {ddq_, eps_cr_}).
+        evaluator().get();
     imu_accel_constraint_ = quadprog_->AddLinearEqualityConstraint(
-        MatrixXd::Zero(3, n_v + 3), MatrixXd::Zero(3, 1), {ddq_, eps_imu_})
-        .evaluator()
-        .get();
-
+        MatrixXd::Zero(3, n_v + 3), MatrixXd::Zero(3, 1), {ddq_, eps_imu_}).
+        evaluator().get();
     // Add costs to the optimization program
     quadcost_eom_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(n_v + 14, n_v + 14),
-        MatrixXd::Zero(n_v + 14, 1), {ddq_, lambda_b_, lambda_cl_, lambda_cr_})
-        .evaluator()
-        .get();
+        MatrixXd::Zero(n_v + 14, 1), {ddq_, lambda_b_, lambda_cl_, lambda_cr_}).
+        evaluator().get();
     quadcost_eps_cl_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(6, 6),
-        MatrixXd::Zero(6, 1), eps_cl_)
-        .evaluator()
-        .get();
+        MatrixXd::Zero(6, 1), eps_cl_).
+        evaluator().get();
     quadcost_eps_cr_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(6, 6),
-        MatrixXd::Zero(6, 1), eps_cr_)
-        .evaluator()
-        .get();
+        MatrixXd::Zero(6, 1), eps_cr_).
+        evaluator().get();
     quadcost_eps_imu_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(3, 3),
-        MatrixXd::Zero(3, 1), eps_imu_)
-        .evaluator()
-        .get();
+        MatrixXd::Zero(3, 1), eps_imu_).
+        evaluator().get();
   }
 }
 
@@ -553,7 +543,6 @@ void CassieRbtStateEstimator::contactEstimation(
   std::vector<double> optimal_cost;
 
   // Mathematical program - double contact
-  // Constraints
   // Equality constraint
   fourbar_constraint_->UpdateCoefficients(Jb, -1*Jb_dot_times_v);
 
@@ -658,7 +647,6 @@ void CassieRbtStateEstimator::contactEstimation(
   }
 
   // Mathematical program - left contact
-  // Constraints
   // Equality constraints
   fourbar_constraint_->UpdateCoefficients(Jb, -1*Jb_dot_times_v);
   left_contact_constraint_->UpdateCoefficients(CL_coeff, -1*Jcl_dot_times_v);
@@ -741,7 +729,6 @@ void CassieRbtStateEstimator::contactEstimation(
   }
 
   // Mathematical program - right contact
-  // Constraints
   // Equality constrtaint
   fourbar_constraint_->UpdateCoefficients(Jb, -1*Jb_dot_times_v);
   left_contact_constraint_->UpdateCoefficients(

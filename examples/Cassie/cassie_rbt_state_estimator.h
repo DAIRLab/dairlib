@@ -28,7 +28,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
                                    bool is_floating_base);
-  ~CassieRbtStateEstimator();
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
@@ -123,7 +122,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                               // the higher the cut-off frequency is.
   // Contact Estimation - Quadratic Programing
   // MathematicalProgram
-  drake::solvers::MathematicalProgram* quadprog_;
+  std::unique_ptr<drake::solvers::MathematicalProgram> quadprog_;
   // Cost and constraints (Bindings)
   drake::solvers::LinearEqualityConstraint* fourbar_constraint_;
   drake::solvers::LinearEqualityConstraint* left_contact_constraint_;

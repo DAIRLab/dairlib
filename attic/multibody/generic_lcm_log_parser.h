@@ -2,7 +2,6 @@
 
 #include <string>
 #include "drake/multibody/rigid_body.h"
-#include "attic/multibody/generic_lcm_log_parser.h"
 #include "drake/lcm/drake_lcm_log.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -14,6 +13,22 @@
 namespace dairlib {
 namespace multibody {
 
+  /// parseLcmLog() parses lcm log files where the information can
+  /// be represented as a vector
+  ///
+  /// Template T - lcmtype
+  /// Template U - class to convert lcm message to a vector
+  ///
+  /// Input:
+  ///   - RigidBodyTree `tree` to be passed as argument to the class `U`
+  ///   - string `file` with the path to the location of the log file
+  ///   - string `channel` with the name of the channel containing the lcm
+  ///     message of type `T`
+  ///   - optional `duration` till which the lcm messages should be parsed
+  ///
+  /// Output:
+  ///   - VectorXd `t` to store time
+  ///   - MatrixXd `x` to store the information in the lcm message
   template<typename T, typename U>
   void parseLcmLog(const RigidBodyTree<double>& tree,
       std::string file, std::string channel,
@@ -50,3 +65,4 @@ namespace multibody {
   }
 } // multibody
 } //dairlib
+

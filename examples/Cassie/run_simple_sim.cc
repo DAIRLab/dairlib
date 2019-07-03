@@ -57,10 +57,12 @@ DEFINE_double(dt, 1e-3,
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
 DEFINE_bool(publish_state, true,
     "Publish state CASSIE_STATE (set to false when running w/dispatcher");
+DEFINE_string(state_channel_name, "CASSIE_STATE",
+              "The name of the lcm channel that sends Cassie's state");
+DEFINE_bool(publish_cassie_output, true, "Publish simulated CASSIE_OUTPUT");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
-DEFINE_bool(is_imu_sim, true, "With simulated imu sensor or not");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -74,15 +76,15 @@ int do_main(int argc, char* argv[]) {
     const double terrain_size = 100;
     const double terrain_depth = 0.20;
     drake::multibody::AddFlatTerrainToWorld(
-      tree.get(), terrain_size, terrain_depth);
+        tree.get(), terrain_size, terrain_depth);
   }
 
   // Add imu frame to Cassie's pelvis
-  if (FLAGS_is_imu_sim) addImuFrameToCassiePelvis(tree);
+  if (FLAGS_publish_cassie_output) addImuFrameToCassiePelvis(tree);
 
   drake::systems::DiagramBuilder<double> builder;
 
-  if (!FLAGS_is_imu_sim && !FLAGS_publish_state) {
+  if (!FLAGS_publish_cassie_output && !FLAGS_publish_state) {
     throw std::logic_error(
         "Must publish either via CASSIE_OUTPUT or CASSIE_STATE");
   }
@@ -126,7 +128,7 @@ int do_main(int argc, char* argv[]) {
         plant->get_rigid_body_tree());
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            "CASSIE_STATE", lcm, 1.0 / FLAGS_publish_rate));
+            FLAGS_state_channel_name, lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(plant->state_output_port(),
                     state_sender->get_input_port_state());
     builder.Connect(state_sender->get_output_port(0),
@@ -134,7 +136,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   // Create cassie output (containing simulated sensor) publisher
-  if (FLAGS_is_imu_sim) {
+  if (FLAGS_publish_cassie_output) {
     auto cassie_sensor_aggregator =
         addImuAndAggregatorToSimulation(builder, plant, passthrough);
     auto cassie_sensor_pub =
@@ -168,102 +170,76 @@ int do_main(int argc, char* argv[]) {
   //   (*diagram, &sim_context);
   // integrator->set_maximum_step_size(FLAGS_timestep);
 
-  // Calculate initial condition for Cassie
   Eigen::VectorXd x0 =
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
 
-  if (FLAGS_floating_base) {  // in case the user enters 0-norm quaternion
-    if (x0.segment(3, 4).norm() == 0)
+  std::map<std::string, int> map =
+      plant->get_rigid_body_tree().computePositionNameToIndexMap();
+  x0(map.at("hip_pitch_left")) = .269;
+  x0(map.at("hip_pitch_right")) = .269;
+  // x0(map.at("achilles_hip_pitch_left")) = -.44;
+  // x0(map.at("achilles_hip_pitch_right")) = -.44;
+  // x0(map.at("achilles_heel_pitch_left")) = -.105;
+  // x0(map.at("achilles_heel_pitch_right")) = -.105;
+  x0(map.at("knee_left")) = -.644;
+  x0(map.at("knee_right")) = -.644;
+  x0(map.at("ankle_joint_left")) = .792;
+  x0(map.at("ankle_joint_right")) = .792;
+
+  // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
+  // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
+
+  // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
+  // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
+
+  x0(map.at("toe_left")) = -60.0 * M_PI / 180.0;
+  x0(map.at("toe_right")) = -60.0 * M_PI / 180.0;
+
+  std::vector<int> fixed_joints;
+  fixed_joints.push_back(map.at("hip_pitch_left"));
+  fixed_joints.push_back(map.at("hip_pitch_right"));
+  fixed_joints.push_back(map.at("knee_left"));
+  fixed_joints.push_back(map.at("knee_right"));
+
+  if (FLAGS_floating_base) {
+    double quaternion_norm = x0.segment(3, 4).norm();
+    if (quaternion_norm != 0)  // Unit Quaternion
+      x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
+    else  // in case the user enters 0-norm quaternion
       x0(3) = 1;
   }
 
-  if (!FLAGS_floating_base) {
-    std::map<std::string, int> map =
-        plant->get_rigid_body_tree().computePositionNameToIndexMap();
-    x0(map.at("hip_pitch_left")) = .269;
-    x0(map.at("hip_pitch_right")) = .269;
-    // x0(map.at("achilles_hip_pitch_left")) = -.44;
-    // x0(map.at("achilles_hip_pitch_right")) = -.44;
-    // x0(map.at("achilles_heel_pitch_left")) = -.105;
-    // x0(map.at("achilles_heel_pitch_right")) = -.105;
-    x0(map.at("knee_left")) = -.644;
-    x0(map.at("knee_right")) = -.644;
-    x0(map.at("ankle_joint_left")) = .792;
-    x0(map.at("ankle_joint_right")) = .792;
-
-    // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
-    // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
-
-    // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
-    // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
-
-    x0(map.at("toe_left")) = -60.0 * M_PI / 180.0;
-    x0(map.at("toe_right")) = -60.0 * M_PI / 180.0;
-
-    std::vector<int> fixed_joints;
-    fixed_joints.push_back(map.at("hip_pitch_left"));
-    fixed_joints.push_back(map.at("hip_pitch_right"));
-    fixed_joints.push_back(map.at("knee_left"));
-    fixed_joints.push_back(map.at("knee_right"));
-
-    Eigen::VectorXd q0 =
-        x0.head(plant->get_rigid_body_tree().get_num_positions());
-    PositionSolver position_solver(plant->get_rigid_body_tree(), q0);
-    position_solver.SetInitialGuessQ(q0);
-
-    // Creating the map for the fixed joints constraint
-    std::map<int, double> fixed_joints_map;
-    for (auto& ind : fixed_joints) {
-      fixed_joints_map[ind] = x0(ind);
-    }
-
-    position_solver.AddFixedJointsConstraint(fixed_joints_map);
-
-    MathematicalProgramResult program_result = position_solver.Solve();
-
-    if (!program_result.is_success()) {
-      std::cout << "Solver error: " << program_result.get_solution_result() << std::endl;
-      return 0;
-    }
-
-    q0 = position_solver.GetSolutionQ();
-    x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
-
-    std::cout << q0 << std::endl;
-
-  } else {
-    // Set the initial pose manually for now
-    Eigen::VectorXd q0(plant->get_rigid_body_tree().get_num_positions());
-    q0 << 0.00941775,
-       - 0.000302489,
-       1.02419,
-       0.990074,
-       0.000454745,
-       0.00115377,
-       0.000835731,
-       - 0.00061303,
-       - 0.000475175,
-       - 0.000578358,
-       - 0.00287131,
-       0.496291,
-       0.496113,
-       - 1.14917,
-       - 1.15002,
-       0,
-       0,
-       1.35286,
-       1.35389,
-       0,
-       0,
-       - 1.57,
-       - 1.57;
-    x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
-
-    std::cout << q0 << std::endl;
+  // Set the initial height of the robot so that it's above the ground.
+  if (FLAGS_floating_base) {
+    x0(2) = 1.5;
   }
 
-  // Set initial condition
+  Eigen::VectorXd q0 =
+      x0.head(plant->get_rigid_body_tree().get_num_positions());
+  PositionSolver position_solver(plant->get_rigid_body_tree(), q0);
+  position_solver.SetInitialGuessQ(q0);
+
+  // Creating the map for the fixed joints constraint
+  std::map<int, double> fixed_joints_map;
+  for (auto& ind : fixed_joints) {
+    fixed_joints_map[ind] = x0(ind);
+  }
+
+  position_solver.AddFixedJointsConstraint(fixed_joints_map);
+
+  MathematicalProgramResult program_result = position_solver.Solve();
+
+  if (!program_result.is_success()) {
+    std::cout << "Solver error: " << program_result.get_solution_result() << std::endl;
+    return 0;
+  }
+
+  q0 = position_solver.GetSolutionQ();
+  x0.head(plant->get_rigid_body_tree().get_num_positions()) = q0;
+
+  std::cout << q0 << std::endl;
+
   if (FLAGS_simulation_type != "timestepping") {
     drake::systems::ContinuousState<double>& state =
         context.get_mutable_continuous_state();
@@ -294,7 +270,7 @@ int do_main(int argc, char* argv[]) {
   simulator.Initialize();
 
   simulator.StepTo(std::numeric_limits<double>::infinity());
-  // simulator.StepTo(.001);
+  // simulator.StepTo(.01);
   return 0;
 }
 

@@ -18,6 +18,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_robot_input.hpp"
 
 namespace dairlib {
 
@@ -35,8 +36,13 @@ DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,
     "Simulated or real robot (default=false, real robot)");
 
+// TODO(yminchen): delete the following flag after you finish testing
+// cassie_rbt_state_estimator
+DEFINE_string(state_channel_name, "CASSIE_STATE_TEMP",
+    "The name of the lcm channel that sends Cassie's state");
+
 // Cassie model paramter
-DEFINE_bool(floating_base, false, "Fixed or floating base model");
+DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
@@ -48,15 +54,17 @@ int do_main(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   std::unique_ptr<RigidBodyTree<double>> tree;
-  if (FLAGS_floating_base)
+  if (FLAGS_floating_base) {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kQuaternion);
-  else
+    drake::multibody::AddFlatTerrainToWorld(tree.get(), 100, 0.2);
+  } else {
     tree = makeCassieTreePointer();
+  }
 
   // Create state estimator
   auto state_estimator =
-      builder.AddSystem<systems::CassieRbtStateEstimator>(*tree);
+      builder.AddSystem<systems::CassieRbtStateEstimator>(*tree, FLAGS_floating_base);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
@@ -73,11 +81,25 @@ int do_main(int argc, char* argv[]) {
     input_receiver =
         builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*input_receiver, *output_sender);
-    builder.Connect(*input_receiver, *state_estimator);
+    builder.Connect(input_receiver->get_output_port(0), state_estimator->get_input_port(0));
+
+    // Adding "CASSIE_STATE" and "CASSIE_INPUT" ports for testing estimator
+    // TODO(yminchen): delete this part after finishing estimator
+    if(FLAGS_floating_base){
+      auto state_sub = builder.AddSystem(
+          LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          FLAGS_state_channel_name, &lcm_local));
+      auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*tree);
+      builder.Connect(state_sub->get_output_port(),
+          state_receiver->get_input_port(0));
+      builder.Connect(state_receiver->get_output_port(0),
+          state_estimator->get_input_port(1));
+    }
   }
 
   // Create and connect RobotOutput publisher.
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(*tree);
+  auto robot_output_sender = builder.AddSystem<systems::RobotOutputSender>(*tree,
+      true);
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "CASSIE_STATE", &lcm_local,
@@ -90,16 +112,30 @@ int do_main(int argc, char* argv[]) {
           {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // Pass through to drop all but positions and velocities
-  auto passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
+  auto state_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
     state_estimator->get_output_port(0).size(),
     0,
-    state_sender->get_input_port(0).size());
+    robot_output_sender->get_input_port_state().size());
 
-  builder.Connect(*state_estimator, *passthrough);
-  builder.Connect(*passthrough, *state_sender);
-  builder.Connect(*state_sender, *state_pub);
+  // Passthrough to pass efforts
+  auto effort_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
+      state_estimator->get_output_port(0).size(),
+      robot_output_sender->get_input_port_state().size(),
+      robot_output_sender->get_input_port_effort().size());
 
-  builder.Connect(*state_sender, *net_state_pub);
+  builder.Connect(state_estimator->get_output_port(0),
+      state_passthrough->get_input_port());
+  builder.Connect(state_passthrough->get_output_port(),
+      robot_output_sender->get_input_port_state());
+
+  builder.Connect(state_estimator->get_output_port(0),
+      effort_passthrough->get_input_port());
+  builder.Connect(effort_passthrough->get_output_port(),
+      robot_output_sender->get_input_port_effort());
+
+  builder.Connect(*robot_output_sender, *state_pub);
+
+  builder.Connect(*robot_output_sender, *net_state_pub);
 
 
 

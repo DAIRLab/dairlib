@@ -116,11 +116,37 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const double knee_spring_threshold_ = -0.015;
   const double heel_spring_threshold_ = -0.03;
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
-  const double eps_imu_ = 0.5;  // Error bounds for imu acceleration
   const double w_soft_constraint_ = 100;  // Soft constraint cost
   const double alpha_ = 0.9;  // Low-pass filter constant for the acceleration
                               // residual. 0 < alpha_ < 1. The bigger alpha_ is,
                               // the higher the cut-off frequency is.
+  // Contact Estimation - Quadratic Programing
+  // MathematicalProgram
+  std::unique_ptr<drake::solvers::MathematicalProgram> quadprog_;
+  // Cost and constraints (Bindings)
+  drake::solvers::LinearEqualityConstraint* fourbar_constraint_;
+  drake::solvers::LinearEqualityConstraint* left_contact_constraint_;
+  drake::solvers::LinearEqualityConstraint* right_contact_constraint_;
+  drake::solvers::LinearEqualityConstraint* imu_accel_constraint_;
+  drake::solvers::QuadraticCost* quadcost_eom_;
+  drake::solvers::QuadraticCost* quadcost_eps_cl_;
+  drake::solvers::QuadraticCost* quadcost_eps_cr_;
+  drake::solvers::QuadraticCost* quadcost_eps_imu_;
+  // Decision variables
+  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
+      ddq_;
+  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
+      lambda_b_;
+  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
+      lambda_cl_;
+  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
+      lambda_cr_;
+  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
+      eps_cl_;
+  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
+      eps_cr_;
+  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
+      eps_imu_;
 };
 
 }  // namespace systems

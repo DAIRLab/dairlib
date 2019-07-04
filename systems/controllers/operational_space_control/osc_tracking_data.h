@@ -75,6 +75,7 @@ class OscTrackingData {
   // non-uniqueness RPY.
   // TODO: (need to test this) You should convert the relative quaternion to
   // roll-pitch-yaw, and do pd control.
+  // In this frame work, you can have differet cost wieght and gains for RPY.
 }
 
 }  // namespace controllers

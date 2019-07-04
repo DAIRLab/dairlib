@@ -23,6 +23,14 @@ int getInputPortIndex(OperationalSpaceControl* osc, std::string name) {
   DRAKE_DEMAND(index >= 0);  // name didn't match any of the trajs' names
 }
 
+// Convert rotational matrix to Eular angle (roll pitch yaw)
+void RotationalMatrixToRollPitchYaw(
+  const Eigen::MatrixXd& mat, double* roll, double* pitch, double* yaw);
+
+// Convert Quaternion to Eular angle (roll pitch yaw)
+void QuaternionToRollPitchYaw(
+  const Eigen::Quaterniond& q, double* roll, double* pitch, double* yaw);
+
 
 }  // namespace controllers
 }  // namespace systems

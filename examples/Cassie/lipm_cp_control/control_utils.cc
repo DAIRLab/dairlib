@@ -20,13 +20,13 @@ Vector3d rotateVecByQuaternion(
 // by floating-base's quaternion
 Vector3d rotateVecFromGlobalToLocalByQuaternion(
   const Eigen::Quaterniond& q, const Vector3d& v) {
-  return rotateVecByQuaternion(q, v);
+  return rotateVecByQuaternion(q.conjugate(), v);
 }
 // Rotate a 3D vector from local frame to global frame
 // by floating-base's quaternion
 Vector3d rotateVecFromLocalToGlobalByQuaternion(
   const Eigen::Quaterniond& q, const Vector3d& v) {
-  return rotateVecByQuaternion(q.conjugate(), v);
+  return rotateVecByQuaternion(q, v);
 }
 
 

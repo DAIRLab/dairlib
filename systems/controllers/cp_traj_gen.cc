@@ -278,6 +278,7 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   }
 
   // Cap the step length
+  CoM_to_CP = CP - CoM.head(2);  // update with the new CP
   if ( CoM_to_CP.norm() > max_CoM_to_CP_dist_ ) {
     if (is_print_info_) {
       std::cout << "Step length limit reached. It's " <<

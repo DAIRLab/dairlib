@@ -32,11 +32,14 @@ class OscConstraintSettings {
   // Actually you can get the input limit from tree:
   //    umax_ = tree_without_->actuators[1].effort_limit_max_;
 
+  // TODO(yminchen): Can you get it from RBT???
   // (flat ground) Contact constraints and friction cone cnostraints
   bool with_contact_constraints_;
   std::vector<int> body_index_;
   std::vector<Eigen::VectorXd> pt_on_body_;
   std::vector<double> mu_;  // Friction coefficients
+  std::vector<bool> is_soft_constraint_;
+
 }
 
 }  // namespace controllers

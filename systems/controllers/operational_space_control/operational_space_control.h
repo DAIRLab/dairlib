@@ -13,15 +13,17 @@ namespace controllers {
 // The difference between
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
-  OperationalSpaceControl(std::vector<OscTrackingData> tracking_data_vec);
+  OperationalSpaceControl(OscTrackingDataSet tracking_data_set,
+                          OscConstraintSettings constraint_settings,
+                          OscCostSettings cost_settings);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
 
 
-  std::vector<OscTrackingData> GetTrackingDataVector() {
-    return tracking_data_vec_;
+  OscTrackingDataSet GetTrackingDataSet() {
+    return tracking_data_set_;
   }
 
  private:
@@ -42,7 +44,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   //TODO: You'll send tree's in the function of CheckOscTrackingData to
   //calculate posistion, etc.:
 
-  std::vector<OscTrackingData> tracking_data_vec_;
+  OscTrackingDataSet tracking_data_set_;
 };
 
 

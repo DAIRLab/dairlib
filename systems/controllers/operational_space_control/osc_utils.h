@@ -11,12 +11,14 @@ namespace controllers {
 // After constructing the OSC, users need to connect trajectory output port to
 // OSC input port. This following function gives the index of the input port.
 int getInputPortIndex(OperationalSpaceControl* osc, std::string name) {
-  std::vector<OscTrackingData> data_vec = osc->GetTrackingDataVector();
+  OscTrackingDataSet data_set = osc->GetTrackingDataSet();
 
-  // We'll construct the input port by the order of std::vector<OscTrackingData>
+  std::vector<OscTrackingData> tracking_data_vec = data_set.GetAllTrackingData();
+
+  // We'll construct the input port by the order of OscTrackingDataSet
   int index = -1;
-  for (int i = 0; i < data_vec.size(); i++) {
-    if (data_vec[i].traj_name_.compare(name) == 0) {
+  for (int i = 0; i < tracking_data_vec->size(); i++) {
+    if (tracking_data_vec[i]->traj_name_.compare(name) == 0) {
       index = i;
     }
   }

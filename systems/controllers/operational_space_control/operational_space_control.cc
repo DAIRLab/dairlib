@@ -9,23 +9,8 @@ namespace dairlib {
 namespace systems {
 
 OperationalSpaceControl::OperationalSpaceControl(
-  int num_positions,
-  int num_velocities,
-  int num_inputs,
-  int first_state_number,
-  int second_state_number,
-  string first_state_name,
-  string second_state_name,
-  int start_state_number,
-  double duration_per_state,
-  double time_shift):
-  first_state_number_(first_state_number),
-  second_state_number_(second_state_number),
-  first_state_name_(first_state_name),
-  second_state_name_(second_state_name),
-  start_state_number_(start_state_number),
-  duration_per_state_(duration_per_state),
-  time_shift_(time_shift) {
+  OscTrackingDataSet tracking_data_set,
+  OscConstraintSettings constraint_settings) {
 
   // Construct input port
   // use a method, also in the beginning of the method, call num_input_ports()

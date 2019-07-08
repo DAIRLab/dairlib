@@ -12,6 +12,7 @@ namespace cp_control {
 class FootPlacementControl : public drake::systems::LeafSystem<double> {
  public:
   FootPlacementControl(RigidBodyTree<double>* tree,
+    int pelvis_idx,
     Eigen::Vector2d global_target_position, double circle_radius_of_no_turning);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -33,16 +34,16 @@ class FootPlacementControl : public drake::systems::LeafSystem<double> {
   double kd_pos_sagital_;
   double vel_max_sagital_;
   double vel_min_sagital_;
-  double k_footPlacement_ff_sagital_;
-  double k_footPlacement_fb_sagital_;
+  double k_fp_ff_sagital_;
+  double k_fp_fb_sagital_;
   double target_position_offset_;
 
   double kp_pos_lateral_;
   double kd_pos_lateral_;
   double vel_max_lateral_;
   double vel_min_lateral_;
-  double k_footPlacement_ff_lateral_;
-  double k_footPlacement_fb_lateral_;
+  double k_fp_ff_lateral_;
+  double k_fp_fb_lateral_;
 };
 
 }  // namespace cp_control

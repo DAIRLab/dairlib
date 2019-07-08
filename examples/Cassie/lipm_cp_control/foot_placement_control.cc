@@ -44,11 +44,11 @@ FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
   kp_pos_sagital_ = 1.0;
   kd_pos_sagital_ = 0.2;
   vel_max_sagital_ = 1;
-  vel_min_sagital_ = -1;         // TODO: need to test this
+  vel_min_sagital_ = -1;  // TODO: need to test this
 
-  k_footPlacement_ff_sagital_ = 0.16; // TODO: these are for going forward.
-  //                                  // Should have parameters for going backward
-  k_footPlacement_fb_sagital_ = 0.04;
+  k_fp_ff_sagital_ = 0.16;  // TODO: these are for going forward.
+  //                                // Should have parameters for going backward
+  k_fp_fb_sagital_ = 0.04;
   target_position_offset_ = -0.16;  // Due to steady state error
 
   // Foot placement control (Lateral) parameters
@@ -57,8 +57,8 @@ FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
   vel_max_lateral_ = 0.5;
   vel_min_lateral_ = -0.5;
 
-  k_footPlacement_ff_lateral_ = 0.08;
-  k_footPlacement_fb_lateral_ = 0.02;
+  k_fp_ff_lateral_ = 0.08;
+  k_fp_fb_lateral_ = 0.02;
 }
 
 void FootPlacementControl::CalcFootPlacement(
@@ -128,8 +128,8 @@ void FootPlacementControl::CalcFootPlacement(
     // std::cout<<"local_CoM_to_target_pos_x = "<<local_CoM_to_target_pos(0)<<"\n";
     // Velocity control
     double delta_CP_sagital =
-      -k_footPlacement_ff_sagital_ * des_sagital_vel
-      - k_footPlacement_fb_sagital_ * (des_sagital_vel - dCoM_sagital);
+      -k_fp_ff_sagital_ * des_sagital_vel
+      - k_fp_fb_sagital_ * (des_sagital_vel - dCoM_sagital);
     Vector3d delta_CP_sagital_3D_local(delta_CP_sagital, 0, 0);
     delta_CP_sagital_3D_global = rotateVecFromLocalToGlobalByQuaternion(
                                    floating_base_quat,
@@ -147,8 +147,8 @@ void FootPlacementControl::CalcFootPlacement(
     // std::cout<<"local_CoM_to_target_pos_x = "<<local_CoM_to_target_pos(0)<<"\n";
     // Velocity control
     double delta_CP_lateral =
-      -k_footPlacement_ff_lateral_ * des_lateral_vel
-      - k_footPlacement_fb_lateral_ * (des_lateral_vel - dCoM_lateral);
+      -k_fp_ff_lateral_ * des_lateral_vel
+      - k_fp_fb_lateral_ * (des_lateral_vel - dCoM_lateral);
     Vector3d delta_CP_lateral_3D_local(0, delta_CP_lateral, 0);
     delta_CP_lateral_3D_global = rotateVecFromLocalToGlobalByQuaternion(
                                    floating_base_quat,

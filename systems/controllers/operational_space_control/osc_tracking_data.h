@@ -29,7 +29,10 @@ class OscTrackingData {
   // Add constant trajectory
   // add system name as well, so that later we can all GetMutableSystems() from
   // DiagramBuilder and find the system by name, then connect the ports.
-  void AddConstantTraj(Eigen::VectorXd v);
+  void AddConstantTraj(Eigen::VectorXd v) {
+    // https://github.com/RobotLocomotion/drake/blob/1644e19001e1e6f013afe5ac04819890a1a9c814/systems/primitives/trajectory_source.h
+    // PiecewisePolynomial (const Eigen::MatrixBase< Derived > &constant_value)
+  }
 
  protected:
   // PD control gains
@@ -118,6 +121,10 @@ class RotationalTaskSpaceTrackingData : public OscTrackingData {
  private:
   std::vector<int> body_index_;
   std::vector<Eigen::VectorXd> pt_on_body_;
+
+  // TODO: can use this to get J and JdotTimesV
+  // https://drake.mit.edu/doxygen_cxx/class_rigid_body_tree.html#a3f4ec4dc3b053f6420a5fd449ff4d2c3
+
 
   // The RBT and desired position should use quaternion in case of
   // non-uniqueness RPY.

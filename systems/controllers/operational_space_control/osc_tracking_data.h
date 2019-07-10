@@ -8,75 +8,79 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
+// OscTrackingData is a virtual class
 class OscTrackingData {
  public:
-  OscTrackingData();
+  OscTrackingData(int n_r, std::string traj_name);
 
   OscTrackingData() {}  // Default constructor
 
+  void UpdateTrackingData(Eigen::VectorXd x, RigidBodyTree<double>* tree){
+    UpdateOutput(x, tree);
+    UpdateJ(x, tree);
+    UpdateJdotTimesV(x, tree);
+  }
+  Eigen::VectorXd GetOutput();
+  Eigen::VectorXd GetJ();
+  Eigen::VectorXd GetJdotTimesV();
+
   // A bunch of setters here
 
-  // 
-  virtual Eigen::VectorXd CalceDesiredAccel() = 0;
+  // Add constant trajectory
+  // add system name as well, so that later we can all GetMutableSystems() from
+  // DiagramBuilder and find the system by name, then connect the ports.
+  void AddConstantTraj(Eigen::VectorXd v);
 
  protected:
   // PD control gains
-  double* k_p_ = nullptr;
-  double* k_d_ = nullptr;
-  Eigen::MatrixXd* K_p_ = nullptr;
-  Eigen::MatrixXd* K_d_ = nullptr;
-  //TODO: note that the users don't need to track position only, it could be
-  // velocity only or acceleration only.
+  Eigen::MatrixXd K_p_;
+  Eigen::MatrixXd K_d_;
 
  private:
   // Run this function in OSC constructor to make sure that users constructed
   // OscTrackingData correctly.
   bool CheckOscTrackingData();
 
-  std::string traj_name_;
+  std::string name_;
   int n_r_;  // dimension of the traj
 
-  // Finite state machine
-  std::vector<int>* state_indices_ = nullptr;
+  // Feedback output, jacobian and dJ/dt * v (cache and update function)
+  Eigen::VectorXd y_;
+  Eigen::MatrixXd J_;
+  Eigen::VectorXd JdotTimesV_;
+  virtual void UpdateOutput(const Eigen::VectorXd& x,
+    RigidBodyTree<double>* tree) = 0;
+  virtual void UpdateJ(Eigen::VectorXd x) = 0;
+  virtual void UpdateJdotTimesV(Eigen::VectorXd x) = 0;
+
+  // Finite state machine (optional)
+  std::vector<int> state_indices_;
   // Whether to track the traj or not in each state in finite state machine
-  std::vector<bool>* do_track_ = nullptr;
+  std::vector<bool> do_track_;
 
   // Cost weights
-  bool cost_weight_is_matrix_;
-  double w_;
   Eigen::MatrixXd W_;
 
   // The source of desired traj
-  TrackingDataSource tracking_data_source_;
-
-  // A period when we don't apply control
-  double* no_control_period_ = nullptr;  // Starting at the time when fsm switches state.
-                                         // Unit: seconds.
-}
-
-
-class TrackingDataSource {
- public:
-  TrackingDataSource();
-
-  TrackingDataSource() {}  // Default constructor
-
-  bool traj_from_input_port_;
-  bool traj_stored_in_osc_;
+  bool traj_is_constant_ = false;
+  // TODO(yminchen): you probably don't need the above line, multiplying with zeros is fine
+  bool traj_has_exp_ = false;
     // You can use polymorphism, so you only need this in the code:
     //    drake::trajectories::Trajectory<double>* mother_traj;
     //    *mother_traj = readTrajFromInput();
     // value() and MakeDerivative() are the functions you need. (functions tested)
 
-  bool traj_in_drake_traj_class_;
-  bool traj_in_eigen_vector_class_;
+    // if traj is constant:
+    //   You look at kp, kd gains, if they are not empty, you track those
+    //   You don't track acceleration at all here.
+    //   TODO: check if you can get a constant velocity traj leaf system
+    // if traj is not constant:
+    //   You always get zeroth, first, second time derivatives
 
-  VectorXd* desired_pos_ = nullptr;
-  VectorXd* desired_vel_ = nullptr;
-  VectorXd* desired_accel_ = nullptr;
+  // A period when we don't apply control
+  double period_of_no_control_ = 0;  // Starting at the time when fsm switches state.
+                                     // Unit: seconds.
 }
-
-
 
 class TranslationalTaskSpaceTrackingData : public OscTrackingData {
  public:
@@ -86,13 +90,15 @@ class TranslationalTaskSpaceTrackingData : public OscTrackingData {
 
   // A bunch of setters here
 
-  Eigen::VectorXd CalceDesiredAccel() override;
+  void UpdateOutput(const Eigen::VectorXd& x, RigidBodyTree<double>* tree) override;
+  void UpdateJ(Eigen::VectorXd x) override;
+  void UpdateJdotTimesV(Eigen::VectorXd x) override;
 
  protected:
 
  private:
-  std::vector<int>* body_index_ = nullptr;
-  std::vector<Eigen::VectorXd>* pt_on_body_ = nullptr;
+  std::vector<int> body_index_;
+  std::vector<Eigen::VectorXd> pt_on_body_;
 }
 
 class RotationalTaskSpaceTrackingData : public OscTrackingData {
@@ -103,13 +109,15 @@ class RotationalTaskSpaceTrackingData : public OscTrackingData {
 
   // A bunch of setters here
 
-  Eigen::VectorXd CalceDesiredAccel() override;
+  void UpdateOutput(const Eigen::VectorXd& x, RigidBodyTree<double>* tree) override;
+  void UpdateJ(Eigen::VectorXd x) override;
+  void UpdateJdotTimesV(Eigen::VectorXd x) override;
 
  protected:
 
  private:
-  std::vector<int>* body_index_ = nullptr;
-  std::vector<Eigen::VectorXd>* pt_on_body_ = nullptr;
+  std::vector<int> body_index_;
+  std::vector<Eigen::VectorXd> pt_on_body_;
 
   // The RBT and desired position should use quaternion in case of
   // non-uniqueness RPY.
@@ -127,13 +135,15 @@ class JointSpaceTrackingData : public OscTrackingData {
 
   // A bunch of setters here
 
-  Eigen::VectorXd CalceDesiredAccel() override;
+  void UpdateOutput(const Eigen::VectorXd& x, RigidBodyTree<double>* tree) override;
+  void UpdateJ(Eigen::VectorXd x) override;
+  void UpdateJdotTimesV(Eigen::VectorXd x) override;
 
  protected:
 
  private:
-  std::vector<int>* joint_position_index_ = nullptr;
-  std::vector<int>* joint_velocity_index_ = nullptr;
+  std::vector<int> joint_position_index_;
+  std::vector<int> joint_velocity_index_;
 }
 
 
@@ -145,7 +155,9 @@ class AbstractTrackingData : public OscTrackingData {
 
   // A bunch of setters here
 
-  Eigen::VectorXd CalceDesiredAccel() override;
+  void UpdateOutput(const Eigen::VectorXd& x, RigidBodyTree<double>* tree) override;
+  void UpdateJ(Eigen::VectorXd x) override;
+  void UpdateJdotTimesV(Eigen::VectorXd x) override;
 
  protected:
 

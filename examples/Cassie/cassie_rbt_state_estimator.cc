@@ -578,8 +578,8 @@ void CassieRbtStateEstimator::contactEstimation(
       discrete_state->get_vector(lambda_cr_double_init_idx_).get_value());
 
   // Solve the optimization problem
-  const drake::solvers::MathematicalProgramResult result_double =
-      drake::solvers::Solve(*quadprog_);
+  drake::solvers::MathematicalProgramResult result_double =
+      osqp_solver.Solve(*(quadprog_.get()), {}, {});
 
   if (!result_double.is_success()) {
     // If the optimization fails, push infinity into the optimal_cost vector
@@ -667,8 +667,8 @@ void CassieRbtStateEstimator::contactEstimation(
       discrete_state->get_vector(lambda_cl_left_init_idx_).get_value());
 
   // Solve the optimization problem
-  const drake::solvers::MathematicalProgramResult result_left =
-      drake::solvers::Solve(*quadprog_);
+  drake::solvers::MathematicalProgramResult result_left =
+      osqp_solver.Solve(*(quadprog_.get()), {}, {});
 
   if (!result_left.is_success()) {
     // Push infinity into optimal_costv vector if the optimization fails
@@ -750,8 +750,8 @@ void CassieRbtStateEstimator::contactEstimation(
       discrete_state->get_vector(lambda_cr_right_init_idx_).get_value());
 
   // Solve the optimization problem
-  const drake::solvers::MathematicalProgramResult result_right =
-      drake::solvers::Solve(*quadprog_);
+  drake::solvers::MathematicalProgramResult result_right =
+      osqp_solver.Solve(*(quadprog_.get()), {}, {});
 
   if (!result_right.is_success()) {
     // If the optimization fails, push infinity to the optimal_cost vector

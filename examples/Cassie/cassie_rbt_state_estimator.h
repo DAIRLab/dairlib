@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "drake/systems/framework/leaf_system.h"
+#include "drake/solvers/osqp_solver.h"
 
 #include "attic/multibody/rigidbody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -32,6 +33,12 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                            double* left_heel_spring,
                            double* right_heel_spring) const;
 
+  // contactEstimtion is public in order to perform unit tests on it.
+  void contactEstimation(
+      const systems::OutputVector<double>& output, const double& dt,
+      drake::systems::DiscreteValues<double>* discrete_state,
+      int* left_contact, int* right_contact) const;
+
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
@@ -42,10 +49,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
       systems::OutputVector<double>* output) const;
 
-  void contactEstimation(
-      const systems::OutputVector<double>& output, const double& dt,
-      drake::systems::DiscreteValues<double>* discrete_state,
-      int* left_contact, int* right_contact) const;
 
   drake::systems::EventStatus Update(
       const drake::systems::Context<double>& context,
@@ -147,6 +150,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
       eps_cr_;
   Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
       eps_imu_;
+
+  drake::solvers::OsqpSolver osqp_solver;
 };
 
 }  // namespace systems

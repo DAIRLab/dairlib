@@ -26,6 +26,7 @@ namespace systems {
 
 OperationalSpaceControl::OperationalSpaceControl(
   OscTrackingDataSet tracking_data_set) {
+  this->set_name("OSC");
 
   // TODO: construct traj_name_to_port_index_map_
   vector<OscTrackingData*> tracking_data_vec = tracking_data_set.GetAllTrackingData();

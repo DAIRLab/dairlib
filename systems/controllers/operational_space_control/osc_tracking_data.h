@@ -11,7 +11,8 @@ namespace controllers {
 // OscTrackingData is a virtual class
 class OscTrackingData {
  public:
-  OscTrackingData(int n_r, std::string traj_name);
+  OscTrackingData(std::string traj_name, int n_r,
+    bool traj_is_const = false, bool traj_has_exp = false);
 
   OscTrackingData() {}  // Default constructor
 
@@ -20,7 +21,7 @@ class OscTrackingData {
   void UpdateDesiredOutput(
     const drake::trajectories::Trajectory<double>* traj, double t);
   Eigen::VectorXd GetDesiredOutputWithPdControl(Eigen::VectorXd q);
-  Eigen::MatrixXd GetWeight(int finite_state_machine_state){return W_};
+  Eigen::MatrixXd GetWeight(int finite_state_machine_state) {return W_};
 
   // Setters
   void SetPGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
@@ -28,13 +29,15 @@ class OscTrackingData {
   void SetWeight(Eigen::MatrixXd W);
 
   // Add finite state machine state
-  void AddFiniteMachineState(int state){
+  void AddFiniteMachineState(int state) {
     state_to_do_tracking_.push_back(state);
   }
 
   // Add constant trajectory
-  void AddConstantTraj(Eigen::VectorXd v,
-                       drake::systems::DiagramBuilder<double> & builder);
+  void SetConstantTraj(Eigen::VectorXd v);
+
+  // No control peirod
+  void SetNoControlPeriod(double duration) {period_of_no_control_ = duration;}
 
   // Run this function in OSC constructor to make sure that users constructed
   // OscTrackingData correctly.
@@ -76,11 +79,20 @@ class OscTrackingData {
   Eigen::MatrixXd W_;
 
   // The source of desired traj
-  bool traj_has_exp_ = false;
-  // You can use polymorphism, so you only need this in the code:
-  //    drake::trajectories::Trajectory<double>* mother_traj;
-  //    *mother_traj = readTrajFromInput();
-  // value() and MakeDerivative() are the functions you need. (functions tested)
+  bool traj_is_const_;
+  bool traj_has_exp_;
+  Eigen::VectorXd fixed_position_;
+// in constructor
+//   // Testing
+//   testing_input_port_ = this->DeclareAbstractInputPort("testing",
+//             drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
+// in update function that get the input
+//   // Testing
+//     const drake::AbstractValue* traj_intput =
+//       this->EvalAbstractInput(context, testing_input_port_);
+//     DRAKE_ASSERT(traj_intput != nullptr);
+//     const drake::trajectories::Trajectory<double> & testing_traj =
+//         traj_intput->get_value <ExponentialPlusPiecewisePolynomial<double >> ();
 
   // A period when we don't apply control
   // (starting at the time when fsm switches to a new state)

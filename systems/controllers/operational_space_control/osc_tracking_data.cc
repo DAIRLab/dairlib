@@ -10,12 +10,15 @@ namespace controllers {
 
 
 // OscTrackingData /////////////////////////////////////////////////////////////
-OscTrackingData::OscTrackingData(int n_r, std::string traj_name):
-  n_r_(n_r),
+OscTrackingData::OscTrackingData(std::string traj_name, int n_r,
+                                 bool traj_is_const, bool traj_has_exp):
   traj_name_(traj_name),
+  n_r_(n_r),
   K_p_(MatrixXd::Zero(n_r, n_r)),
   K_d_(MatrixXd::Zero(n_r, n_r)),
-  W_(MatrixXd::Zero(n_r, n_r)) {
+  W_(MatrixXd::Zero(n_r, n_r)),
+  traj_is_const_(traj_is_const),
+  traj_has_exp_(traj_has_exp) {
 }
 
 void OscTrackingData::UpdateFeedbackOutput(Eigen::VectorXd x,
@@ -51,20 +54,17 @@ Eigen::MatrixXd OscTrackingData::GetWeight(int finite_state_machine_state) {
 
 // Setters
 
-// Add constant trajectory
-void OscTrackingData::AddConstantTraj(Eigen::VectorXd v,
-                                      drake::systems::DiagramBuilder<double> & builder) {
-  // Create constant polynomial
-  PiecewisePolynomial const_polynomial(v);
-  // Create a block that outputs trajectory
-  auto traj_source = builder.AddSystem<drake::systems::TrajectorySource>
-                     (const_polynomial);
-  traj_source->set_name(name_);
+// Set constant trajectory
+void OscTrackingData::SetConstantTraj(Eigen::VectorXd v) {
+  fixed_position_ = v;
 }
 
 // Run this function in OSC constructor to make sure that users constructed
 // OscTrackingData correctly.
-bool OscTrackingData::CheckOscTrackingData();
+bool OscTrackingData::CheckOscTrackingData() {
+  DRAKE_DEMAND(!traj_is_const || traj_is_const && (fixed_position_.size() != 0));
+
+}
 
 
 

@@ -5,6 +5,8 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
 
+#include "systems/controllers/operational_space_control/osc_tracking_data_set.h"
+
 namespace dairlib {
 namespace systems {
 namespace controllers {
@@ -31,7 +33,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // TODO: when you set the joint accel cost, you should call a function which
   // checks if the user enter the right index.
   void SetAccelerationCost(int joint_velocity_index, double weight);
-  void SetAccelerationCostForAllJoints(MatrixXd weight);
+  void SetAccelerationCostForAllJoints(Eigen::MatrixXd weight);
 
   void checkCostSettings();
 
@@ -72,7 +74,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Cost settings /////////////////////////////////////////////////////////////
   // Input cost
-  MatrixXd W_input_;  //TODO: you can check the size of the MatrixXd to know if the user want to add the cost
+  Eigen::MatrixXd W_input_;  //TODO: you can check the size of the MatrixXd to know if the user want to add the cost
 
   // Joint acceleration cost
   std::vector<int> joint_velocity_index_;
@@ -91,7 +93,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<int> body_index_;
   std::vector<Eigen::VectorXd> pt_on_body_;
   double mu_;  // Friction coefficients
-  MatrixXd W_soft_constraints_;
+  Eigen::MatrixXd W_soft_constraints_;
 
   // Tracking data settings ////////////////////////////////////////////////////
   OscTrackingDataSet* tracking_data_set_;  // pointer because of caching

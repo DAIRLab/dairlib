@@ -1,8 +1,5 @@
-#pragma once
+#include "systems/controllers/operational_space_control/osc_utils.h"
 
-#include <Eigen/Dense>
-#include <string>
-#include <vector>
 
 using std::vector;
 using drake::systems::System;
@@ -11,6 +8,7 @@ using drake::trajectories::PiecewisePolynomial;
 namespace dairlib {
 namespace systems {
 namespace controllers {
+
 
 //TODO(yminchen): You can actually set the names of systems and connect them
 

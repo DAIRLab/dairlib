@@ -17,6 +17,7 @@
 using std::vector;
 using std::string;
 using Eigen::VectorXd;
+using Eigen::MatrixXd;
 using drake::systems::Context;
 using drake::systems::BasicVector;
 

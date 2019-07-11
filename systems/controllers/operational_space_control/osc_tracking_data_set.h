@@ -1,5 +1,6 @@
 #pragma once
 
+#include "systems/controllers/operational_space_control/osc_tracking_data.h"
 #include <Eigen/Dense>
 #include <vector>
 

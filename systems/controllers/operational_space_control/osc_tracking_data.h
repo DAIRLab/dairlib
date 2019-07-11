@@ -11,14 +11,11 @@ namespace controllers {
 // OscTrackingData is a virtual class
 class OscTrackingData {
  public:
-  OscTrackingData(std::string traj_name, int n_r, Eigen::MatrixXd K_p_,
-                  Eigen::MatrixXd K_d_,
-                  Eigen::MatrixXd W_,
-                  bool traj_is_const = false, bool traj_has_exp = false);
+  //OscTrackingData();
 
   OscTrackingData() {}  // Default constructor
 
-  // Updater and getter
+  // Updater and getters
   void Update(VectorXd x,
               RigidBodyTree<double>* tree,
               const drake::trajectories::Trajectory<double>* traj, double t,
@@ -31,10 +28,8 @@ class OscTrackingData {
   void SetPGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
   void SetDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
   void SetWeight(Eigen::MatrixXd W);
-
-  // Add constant trajectory
+  // Set constant trajectory
   void SetConstantTraj(Eigen::VectorXd v);
-
   // No control peirod
   void SetNoControlPeriod(double duration) {period_of_no_control_ = duration;}
 
@@ -51,6 +46,10 @@ class OscTrackingData {
   // PD control gains
   Eigen::MatrixXd K_p_;
   Eigen::MatrixXd K_d_;
+
+  // Trajectory info
+  bool traj_is_const_;
+  bool traj_has_exp_;
 
   // Cost weights
   Eigen::MatrixXd W_;
@@ -85,9 +84,7 @@ class OscTrackingData {
   Eigen::VectorXd dy_des_;
   Eigen::VectorXd ddy_des_;
 
-  // The source of desired traj
-  bool traj_is_const_;
-  bool traj_has_exp_;
+  //
   Eigen::VectorXd fixed_position_;
 // in constructor
 //   // Testing

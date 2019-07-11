@@ -18,7 +18,7 @@ class OscTrackingData {
   // Updater and getter
   void UpdateFeedbackOutput(Eigen::VectorXd x, RigidBodyTree<double>* tree);
   void UpdateDesiredOutput(
-    const drake::trajectories::Trajectory<double>* mother_traj, double t);
+    const drake::trajectories::Trajectory<double>* traj, double t);
   Eigen::VectorXd GetDesiredOutputWithPdControl(Eigen::VectorXd q);
   Eigen::MatrixXd GetWeight(int finite_state_machine_state){return W_};
 

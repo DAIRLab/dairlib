@@ -26,10 +26,10 @@ void OscTrackingData::UpdateFeedbackOutput(Eigen::VectorXd x,
   UpdateJdotTimesV(x, tree);
 }
 void OscTrackingData::UpdateDesiredOutput(
-  const drake::trajectories::Trajectory<double>* mother_traj, double t) {
-  y_des_ = mother_traj->value(t);
-  dy_des_ = mother_traj->MakeDerivative(1)->value(t);
-  ddy_des_ = mother_traj->MakeDerivative(2)->value(t);
+  const drake::trajectories::Trajectory<double>* traj, double t) {
+  y_des_ = traj->value(t);
+  dy_des_ = traj->MakeDerivative(1)->value(t);
+  ddy_des_ = traj->MakeDerivative(2)->value(t);
 }
 Eigen::VectorXd OscTrackingData::GetDesiredOutputWithPdControl(
   Eigen::VectorXd q) {

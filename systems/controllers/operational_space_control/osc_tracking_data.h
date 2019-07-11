@@ -15,74 +15,76 @@ class OscTrackingData {
 
   OscTrackingData() {}  // Default constructor
 
-  void UpdateTrackingData(Eigen::VectorXd x, RigidBodyTree<double>* tree){
-    UpdateOutput(x, tree);
-    UpdateJ(x, tree);
-    UpdateJdotTimesV(x, tree);
-  }
-  Eigen::VectorXd GetOutput();
-  Eigen::VectorXd GetJ();
-  Eigen::VectorXd GetJdotTimesV();
+  // Updater and getter
+  void UpdateFeedbackOutput(Eigen::VectorXd x, RigidBodyTree<double>* tree);
+  void UpdateDesiredOutput(
+    const drake::trajectories::Trajectory<double>* mother_traj, double t);
+  Eigen::VectorXd GetDesiredOutputWithPdControl(Eigen::VectorXd q);
+  Eigen::MatrixXd GetWeight(int finite_state_machine_state){return W_};
 
-  // A bunch of setters here
+  // Setters
+  void SetPGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
+  void SetDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
+  void SetWeight(Eigen::MatrixXd W);
+
+  // Add finite state machine state
+  void AddFiniteMachineState(int state){
+    state_to_do_tracking_.push_back(state);
+  }
 
   // Add constant trajectory
-  // add system name as well, so that later we can all GetMutableSystems() from
-  // DiagramBuilder and find the system by name, then connect the ports.
-  void AddConstantTraj(Eigen::VectorXd v) {
-    // https://github.com/RobotLocomotion/drake/blob/1644e19001e1e6f013afe5ac04819890a1a9c814/systems/primitives/trajectory_source.h
-    // PiecewisePolynomial (const Eigen::MatrixBase< Derived > &constant_value)
-  }
+  void AddConstantTraj(Eigen::VectorXd v,
+                       drake::systems::DiagramBuilder<double> & builder);
 
- protected:
-  // PD control gains
-  Eigen::MatrixXd K_p_;
-  Eigen::MatrixXd K_d_;
-
- private:
   // Run this function in OSC constructor to make sure that users constructed
   // OscTrackingData correctly.
   bool CheckOscTrackingData();
 
-  std::string name_;
-  int n_r_;  // dimension of the traj
-
-  // Feedback output, jacobian and dJ/dt * v (cache and update function)
+ protected:
+  // Feedback output, jacobian and dJ/dt * v
   Eigen::VectorXd y_;
   Eigen::MatrixXd J_;
   Eigen::VectorXd JdotTimesV_;
+
+ private:
+  std::string name_;
+  int n_r_;  // dimension of the traj
+
+  // Getters/updaters of feedback output, jacobian and dJ/dt * v
+  Eigen::VectorXd GetOutput() {return y_}
+  Eigen::VectorXd GetJ() {return J_}
+  Eigen::VectorXd GetJdotTimesV() {return JdotTimesV_}
   virtual void UpdateOutput(const Eigen::VectorXd& x,
-    RigidBodyTree<double>* tree) = 0;
+                            RigidBodyTree<double>* tree) = 0;
   virtual void UpdateJ(Eigen::VectorXd x) = 0;
   virtual void UpdateJdotTimesV(Eigen::VectorXd x) = 0;
 
-  // Finite state machine (optional)
-  std::vector<int> state_indices_;
-  // Whether to track the traj or not in each state in finite state machine
-  std::vector<bool> do_track_;
+  // Desired output
+  Eigen::VectorXd y_des_;
+  Eigen::VectorXd dy_des_;
+  Eigen::VectorXd ddy_des_;
+
+  // The states of finite state machine where the tracking is enabled
+  // If `state_to_do_tracking_` is empty, then the tracking is always on.
+  std::vector<int> state_to_do_tracking_;
+
+  // PD control gains
+  Eigen::MatrixXd K_p_;
+  Eigen::MatrixXd K_d_;
 
   // Cost weights
   Eigen::MatrixXd W_;
 
   // The source of desired traj
-  bool traj_is_constant_ = false;
-  // TODO(yminchen): you probably don't need the above line, multiplying with zeros is fine
   bool traj_has_exp_ = false;
-    // You can use polymorphism, so you only need this in the code:
-    //    drake::trajectories::Trajectory<double>* mother_traj;
-    //    *mother_traj = readTrajFromInput();
-    // value() and MakeDerivative() are the functions you need. (functions tested)
-
-    // if traj is constant:
-    //   You look at kp, kd gains, if they are not empty, you track those
-    //   You don't track acceleration at all here.
-    //   TODO: check if you can get a constant velocity traj leaf system
-    // if traj is not constant:
-    //   You always get zeroth, first, second time derivatives
+  // You can use polymorphism, so you only need this in the code:
+  //    drake::trajectories::Trajectory<double>* mother_traj;
+  //    *mother_traj = readTrajFromInput();
+  // value() and MakeDerivative() are the functions you need. (functions tested)
 
   // A period when we don't apply control
-  double period_of_no_control_ = 0;  // Starting at the time when fsm switches state.
-                                     // Unit: seconds.
+  // (starting at the time when fsm switches to a new state)
+  double period_of_no_control_ = 0;  // Unit: seconds
 }
 
 class TranslationalTaskSpaceTrackingData : public OscTrackingData {
@@ -93,7 +95,8 @@ class TranslationalTaskSpaceTrackingData : public OscTrackingData {
 
   // A bunch of setters here
 
-  void UpdateOutput(const Eigen::VectorXd& x, RigidBodyTree<double>* tree) override;
+  void UpdateOutput(const Eigen::VectorXd& x,
+                    RigidBodyTree<double>* tree) override;
   void UpdateJ(Eigen::VectorXd x) override;
   void UpdateJdotTimesV(Eigen::VectorXd x) override;
 
@@ -112,7 +115,8 @@ class RotationalTaskSpaceTrackingData : public OscTrackingData {
 
   // A bunch of setters here
 
-  void UpdateOutput(const Eigen::VectorXd& x, RigidBodyTree<double>* tree) override;
+  void UpdateOutput(const Eigen::VectorXd& x,
+                    RigidBodyTree<double>* tree) override;
   void UpdateJ(Eigen::VectorXd x) override;
   void UpdateJdotTimesV(Eigen::VectorXd x) override;
 
@@ -142,7 +146,8 @@ class JointSpaceTrackingData : public OscTrackingData {
 
   // A bunch of setters here
 
-  void UpdateOutput(const Eigen::VectorXd& x, RigidBodyTree<double>* tree) override;
+  void UpdateOutput(const Eigen::VectorXd& x,
+                    RigidBodyTree<double>* tree) override;
   void UpdateJ(Eigen::VectorXd x) override;
   void UpdateJdotTimesV(Eigen::VectorXd x) override;
 
@@ -162,7 +167,8 @@ class AbstractTrackingData : public OscTrackingData {
 
   // A bunch of setters here
 
-  void UpdateOutput(const Eigen::VectorXd& x, RigidBodyTree<double>* tree) override;
+  void UpdateOutput(const Eigen::VectorXd& x,
+                    RigidBodyTree<double>* tree) override;
   void UpdateJ(Eigen::VectorXd x) override;
   void UpdateJdotTimesV(Eigen::VectorXd x) override;
 

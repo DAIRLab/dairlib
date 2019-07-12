@@ -4,6 +4,7 @@
 #include <chrono>
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
+#include "drake/solvers/equality_constrained_qp_solver.h"
 #include "drake/math/orthonormal_basis.h"
 #include "drake/multibody/rigid_body_plant/contact_resultant_force_calculator.h"
 
@@ -578,8 +579,11 @@ void CassieRbtStateEstimator::contactEstimation(
       discrete_state->get_vector(lambda_cr_double_init_idx_).get_value());
 
   // Solve the optimization problem
-  drake::solvers::MathematicalProgramResult result_double =
-      osqp_solver.Solve(*(quadprog_.get()), {}, {});
+  drake::solvers::EqualityConstrainedQPSolver solver;
+  drake::solvers::SolverOptions solver_options;
+  solver_options.SetOption(drake::solvers::EqualityConstrainedQPSolver::id(),
+               "FeasibilityTol", 1e-6);
+  auto result_double = solver.Solve(*quadprog_.get(), {}, solver_options);
 
   if (!result_double.is_success()) {
     // If the optimization fails, push infinity into the optimal_cost vector
@@ -668,7 +672,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
   // Solve the optimization problem
   drake::solvers::MathematicalProgramResult result_left =
-      osqp_solver.Solve(*(quadprog_.get()), {}, {});
+      drake::solvers::Solve(*quadprog_);
 
   if (!result_left.is_success()) {
     // Push infinity into optimal_costv vector if the optimization fails
@@ -751,7 +755,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
   // Solve the optimization problem
   drake::solvers::MathematicalProgramResult result_right =
-      osqp_solver.Solve(*(quadprog_.get()), {}, {});
+      drake::solvers::Solve(*quadprog_);
 
   if (!result_right.is_success()) {
     // If the optimization fails, push infinity to the optimal_cost vector

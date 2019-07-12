@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "drake/systems/framework/leaf_system.h"
-#include "drake/solvers/osqp_solver.h"
 
 #include "attic/multibody/rigidbody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -150,8 +149,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
       eps_cr_;
   Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
       eps_imu_;
-
-  drake::solvers::OsqpSolver osqp_solver;
 };
 
 }  // namespace systems

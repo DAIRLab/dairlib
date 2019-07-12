@@ -13,55 +13,6 @@ using Eigen::VectorXd;
 
 class CassieRbtStateEstimatorTest : public ::testing::Test {};
 
-TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
-  RigidBodyTree<double> tree;
-  buildCassieTree(tree);
-  CassieRbtStateEstimator estimator(tree, false);
-
-  // Example position
-  VectorXd q_init(tree.get_num_positions());
-  q_init << -0.084017, 0.0826151, -0.00120735, 0.00217829, 0.366012, 0.365803,
-      -0.6305, -0.630502, 0.00205363, 0.00205356, 0.838878, 0.838882, 0, 0,
-      0.205351, 0.20456;
-
-  // Get the angles analytically
-  double calc_left_heel_spring, calc_right_heel_spring;
-  estimator.solveFourbarLinkage(q_init, &calc_left_heel_spring,
-                                &calc_right_heel_spring);
-
-  // Get the angles from nonlinear programming
-  std::map<std::string, int> positionIndexMap =
-      multibody::makeNameToPositionsMap(tree);
-  std::vector<int> fixed_joints;
-  fixed_joints.push_back(positionIndexMap.at("knee_left"));
-  fixed_joints.push_back(positionIndexMap.at("knee_joint_left"));
-  fixed_joints.push_back(positionIndexMap.at("ankle_joint_left"));
-  fixed_joints.push_back(positionIndexMap.at("knee_right"));
-  fixed_joints.push_back(positionIndexMap.at("knee_joint_right"));
-  fixed_joints.push_back(positionIndexMap.at("ankle_joint_right"));
-
-  PositionSolver position_solver(tree, q_init);
-  position_solver.SetInitialGuessQ(q_init);
-
-  std::map<int, double> fixed_joints_map;
-  for (auto& ind : fixed_joints) {
-    fixed_joints_map[ind] = q_init(ind);
-  }
-  position_solver.AddFixedJointsConstraint(fixed_joints_map);
-
-  position_solver.Solve();
-  VectorXd q_sol = position_solver.GetSolutionQ();
-  double nlp_left_heel_spring =
-      q_sol(positionIndexMap.at("ankle_spring_joint_left"));
-  double nlp_right_heel_spring =
-      q_sol(positionIndexMap.at("ankle_spring_joint_right"));
-
-  EXPECT_TRUE((calc_left_heel_spring - nlp_left_heel_spring) < 1e-10);
-  EXPECT_TRUE((calc_right_heel_spring - nlp_right_heel_spring) < 1e-10);
-  EXPECT_TRUE((calc_left_heel_spring - nlp_left_heel_spring) > -1e-10);
-  EXPECT_TRUE((calc_right_heel_spring - nlp_right_heel_spring) > -1e-10);
-}
-
 class ContactEstimationTest : public ::testing::Test {
  protected:
   ContactEstimationTest() {
@@ -140,6 +91,60 @@ class ContactEstimationTest : public ::testing::Test {
   int right_contact_;
 };
 
+TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
+  RigidBodyTree<double> tree;
+  buildCassieTree(tree);
+  CassieRbtStateEstimator estimator(tree, false);
+
+  // Example position
+  VectorXd q_init(tree.get_num_positions());
+  q_init << -0.084017, 0.0826151, -0.00120735, 0.00217829, 0.366012, 0.365803,
+      -0.6305, -0.630502, 0.00205363, 0.00205356, 0.838878, 0.838882, 0, 0,
+      0.205351, 0.20456;
+
+  // Get the angles analytically
+  double calc_left_heel_spring, calc_right_heel_spring;
+  estimator.solveFourbarLinkage(q_init, &calc_left_heel_spring,
+                                &calc_right_heel_spring);
+
+  // Get the angles from nonlinear programming
+  std::map<std::string, int> positionIndexMap =
+      multibody::makeNameToPositionsMap(tree);
+  std::vector<int> fixed_joints;
+  fixed_joints.push_back(positionIndexMap.at("knee_left"));
+  fixed_joints.push_back(positionIndexMap.at("knee_joint_left"));
+  fixed_joints.push_back(positionIndexMap.at("ankle_joint_left"));
+  fixed_joints.push_back(positionIndexMap.at("knee_right"));
+  fixed_joints.push_back(positionIndexMap.at("knee_joint_right"));
+  fixed_joints.push_back(positionIndexMap.at("ankle_joint_right"));
+
+  PositionSolver position_solver(tree, q_init);
+  position_solver.SetInitialGuessQ(q_init);
+
+  std::map<int, double> fixed_joints_map;
+  for (auto& ind : fixed_joints) {
+    fixed_joints_map[ind] = q_init(ind);
+  }
+  position_solver.AddFixedJointsConstraint(fixed_joints_map);
+
+  position_solver.Solve();
+  VectorXd q_sol = position_solver.GetSolutionQ();
+  double nlp_left_heel_spring =
+      q_sol(positionIndexMap.at("ankle_spring_joint_left"));
+  double nlp_right_heel_spring =
+      q_sol(positionIndexMap.at("ankle_spring_joint_right"));
+
+  EXPECT_TRUE((calc_left_heel_spring - nlp_left_heel_spring) < 1e-10);
+  EXPECT_TRUE((calc_right_heel_spring - nlp_right_heel_spring) < 1e-10);
+  EXPECT_TRUE((calc_left_heel_spring - nlp_left_heel_spring) > -1e-10);
+  EXPECT_TRUE((calc_right_heel_spring - nlp_right_heel_spring) > -1e-10);
+}
+
+// Double support contact estimation test
+// Checks if the contactEstimation returns the correct contacts for a
+// configuration of the robot in double stance.
+// This case is chosen in such a way that the stance can be estimated using just
+// springs.
 TEST_F(ContactEstimationTest, DoubleSupportContactEstimationTest) {
   VectorXd q(tree_.get_num_positions());
   VectorXd v(tree_.get_num_velocities());
@@ -180,6 +185,9 @@ TEST_F(ContactEstimationTest, DoubleSupportContactEstimationTest) {
       << "Right contact error during double support.";
 }
 
+// Left support contact estimation test
+// Checks if the contactEstimation returns the correct contacts for a
+// configuration of the robot in left stance.
 TEST_F(ContactEstimationTest, LeftSupportContactEstimationTest) {
   VectorXd q(tree_.get_num_positions());
   VectorXd v(tree_.get_num_velocities());
@@ -219,6 +227,9 @@ TEST_F(ContactEstimationTest, LeftSupportContactEstimationTest) {
       << "Right contact error during left support.";
 }
 
+// Right support contact estimation test
+// Checks if the contactEstimation returns the correct contacts for a
+// configuration of the robot in right stance.
 TEST_F(ContactEstimationTest, RightSupportContactEstimationTest) {
   VectorXd q(tree_.get_num_positions());
   VectorXd v(tree_.get_num_velocities());
@@ -248,7 +259,6 @@ TEST_F(ContactEstimationTest, RightSupportContactEstimationTest) {
 
   estimator_->contactEstimation(*output_, dt_, discrete_state_.get(),
                                 &left_contact_, &right_contact_);
-  std::cout << left_contact_ << " " << right_contact_ << std::endl;
 
   int gtl = 0;
   int gtr = 0;

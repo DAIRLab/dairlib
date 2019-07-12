@@ -583,7 +583,8 @@ void CassieRbtStateEstimator::contactEstimation(
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(drake::solvers::EqualityConstrainedQPSolver::id(),
                "FeasibilityTol", 1e-6);
-  auto result_double = solver.Solve(*quadprog_.get(), {}, solver_options);
+  drake::solvers::MathematicalProgramResult result_double =
+      solver.Solve(*quadprog_.get(), {}, solver_options);
 
   if (!result_double.is_success()) {
     // If the optimization fails, push infinity into the optimal_cost vector

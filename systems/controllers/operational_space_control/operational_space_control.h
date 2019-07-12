@@ -3,8 +3,10 @@
 #include <vector>
 #include <string>
 #include "drake/systems/framework/leaf_system.h"
-#include "systems/framework/output_vector.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 
+#include "systems/framework/output_vector.h"
 #include "systems/controllers/operational_space_control/osc_tracking_data_set.h"
 
 namespace dairlib {
@@ -14,7 +16,9 @@ namespace controllers {
 
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
-  OperationalSpaceControl(OscTrackingDataSet* tracking_data_set);
+  OperationalSpaceControl(OscTrackingDataSet* tracking_data_set,
+                          RigidBodyTree<double>* tree_with_springs,
+                          RigidBodyTree<double>* tree_without_springs);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -25,7 +29,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
     std::string name) const {
-    return this->get_input_port(traj_name_to_port_index_map_.find(name));
+    // int port_idx = traj_name_to_port_index_map_.find(name)->second;
+    return this->get_input_port(traj_name_to_port_index_map_.at(name));
   }
 
   // Cost methods //////////////////////////////////////////////////////////////
@@ -53,14 +58,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
  private:
   void CalcOptimalInput(const drake::systems::Context<double>& context,
-                        dairlab::systems::TimestampedVector<double>* control) const;
+                        systems::TimestampedVector<double>* control) const;
 
   // Input/Output ports
   int state_port_;
   int FSM_port_;
 
   //
-  map<string, int> traj_name_to_port_index_map_;
+  std::map<std::string, int> traj_name_to_port_index_map_;
 
   // RBT's. OSC calculates feedback position/velocity from tree with springs,
   // but in the optimization it uses tree without springs. The reason of using

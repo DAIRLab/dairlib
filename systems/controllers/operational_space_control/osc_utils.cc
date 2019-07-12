@@ -17,10 +17,10 @@ namespace controllers {
 // `TrackingData.name_`
 void ConnectPortsForNonConstTraj(OperationalSpaceControl* osc,
                                  drake::systems::DiagramBuilder<double> & builder) {
-  OscTrackingDataSet data_set = osc->GetTrackingDataSet();
-  vector<OscTrackingData> tracking_data_vec = data_set.GetAllTrackingData();
+  OscTrackingDataSet* data_set = osc->GetTrackingDataSet();
+  vector<OscTrackingData*> tracking_data_vec = data_set->GetAllTrackingData();
   for (auto tracking_data : tracking_data_vec) {
-    string traj_name = tracking_data->traj_name_;
+    string traj_name = tracking_data->GetName();
 
     bool connect_successfully = false;
     vector<System<double>*> system_vec = builder.GetMutableSystems();
@@ -43,36 +43,30 @@ void ConnectPortsForNonConstTraj(OperationalSpaceControl* osc,
   }  // end for (OscTrackingData's)
 }
 
-void AssignConstTrajToInputPorts(drake::systems::Diagram<double> diagram,
+void AssignConstTrajToInputPorts(OperationalSpaceControl* osc,
+                                 drake::systems::Diagram<double>* diagram,
                                  drake::systems::Context<double>* diagram_context) {
-  OscTrackingDataSet data_set = osc->GetTrackingDataSet();
-  vector<OscTrackingData> tracking_data_vec = data_set.GetAllTrackingData();
+  OscTrackingDataSet* data_set = osc->GetTrackingDataSet();
+  vector<OscTrackingData*> tracking_data_vec = data_set->GetAllTrackingData();
   for (auto tracking_data : tracking_data_vec) {
-    if (!tracking_data->traj_is_const_) continue;
+    if (!tracking_data->IsTrajConst()) continue;
 
-    string traj_name = tracking_data->traj_name_;
+    string traj_name = tracking_data->GetName();
 
     bool fix_port_value_successfully = false;
-    vector<const System<double>*> system_vec = diagram->GetSystems();
-    // Find OSC block
-    for (auto system : system_vec) {
-      if (system->get_name().compare("OSC") == 0) {
-        auto & osc_conext = diagram->GetMutableSubsystemContext(system,
-                            diagram_context);
-        // Find the correspond output port
-        for (int i = 0; i < system->num_input_ports(); i++) {
-          if (traj_name.compare(system->get_input_port(i).get_name()) == 0) {
-            osc_conext.FixInputPort(i /*system->get_input_port(i).get_index()*/,
-                                    drake::Value<PiecewisePolynomial<double>>(
-                                      tracking_data->fixed_position_));
-            fix_port_value_successfully = true;
-            break;
-          }
-        }  // end for (ports)
+    auto & osc_conext = diagram->GetMutableSubsystemContext(*osc,
+                        diagram_context);
+    // Find the correspond output port
+    for (int i = 0; i < osc->num_input_ports(); i++) {
+      if (traj_name.compare(osc->get_input_port(i).get_name()) == 0) {
+        osc_conext.FixInputPort(i /*osc->get_input_port(i).get_index()*/,
+                                drake::Value<PiecewisePolynomial<double>>(
+                                  tracking_data->GetFixedPosition()));
+        fix_port_value_successfully = true;
+        break;
       }
-      if (fix_port_value_successfully) break;
-    }  // end for (leaf systems)
-    DRAKE_DEMAND(connect_successfully);
+    }  // end for (ports)
+    DRAKE_DEMAND(fix_port_value_successfully);
   }  // end for (OscTrackingData's)
 }
 

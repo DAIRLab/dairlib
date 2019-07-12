@@ -11,7 +11,7 @@ namespace controllers {
 // OscTrackingDataSet is just a collection of OscTrackingData
 class OscTrackingDataSet {
  public:
-  OscTrackingDataSet();
+  // OscTrackingDataSet();
 
   OscTrackingDataSet() {}  // Default constructor
 
@@ -27,7 +27,7 @@ class OscTrackingDataSet {
  private:
   std::vector<OscTrackingData*> tracking_data_vec_;
   int num_tracking_data_;
-}
+};
 
 }  // namespace controllers
 }  // namespace systems

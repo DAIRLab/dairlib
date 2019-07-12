@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "systems/controllers/operational_space_control/operational_space_control.h"
 
@@ -17,9 +18,10 @@ namespace controllers {
 // The name of traj source block and its output port must have the same name as
 // `TrackingData.name_`
 void ConnectPortsForNonConstTraj(OperationalSpaceControl* osc,
-                                 drake::systems::DiagramBuilder<double> & builder);
+                                 drake::systems::DiagramBuilder<double>& builder);
 
-void AssignConstTrajToInputPorts(drake::systems::Diagram<double> diagram,
+void AssignConstTrajToInputPorts(OperationalSpaceControl* osc,
+                                 drake::systems::Diagram<double>* diagram,
                                  drake::systems::Context<double>* diagram_context);
 
 

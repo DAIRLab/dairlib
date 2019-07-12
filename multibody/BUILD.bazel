@@ -13,7 +13,7 @@ cc_library(
         "multibody_utils.h",
     ],
     deps = [
-        "@drake//multibody/plant",
+        "@drake//:drake_shared_library",
         ":visualization_utils"
     ],
 )

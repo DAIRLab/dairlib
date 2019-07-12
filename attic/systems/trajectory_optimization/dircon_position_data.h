@@ -20,6 +20,8 @@ class DirconPositionData : public DirconKinematicData<T> {
   // outside world
   void updateConstraint(const KinematicsCache<T>& cache);
 
+  drake::VectorX<T> Jdotv(const KinematicsCache<T>& cache);
+
   void addFixedNormalFrictionConstraints(Eigen::Vector3d normal, double mu);
 
  private:

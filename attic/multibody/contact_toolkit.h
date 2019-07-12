@@ -9,6 +9,14 @@
 namespace dairlib {
 namespace multibody {
 
+using std::vector;
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using drake::MatrixX;
+using drake::VectorX;
+using Eigen::Map;
+using Eigen::Matrix3Xd;
+
 /*
  * ContactInfo structure that holds all the required contact information.
  * xA: Positions on Body A (The robot) expressed in the frame of the robot.

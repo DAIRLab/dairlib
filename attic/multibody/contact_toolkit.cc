@@ -1,5 +1,9 @@
 #include "attic/multibody/contact_toolkit.h"
 
+#include <iostream>
+#include <string>
+#include <sstream>
+
 namespace dairlib {
 namespace multibody {
 
@@ -12,6 +16,8 @@ using drake::VectorX;
 using Eigen::Map;
 using Eigen::MatrixXd;
 using Eigen::Matrix3Xd;
+
+using namespace std;
 
 template <typename T>
 ContactToolkit<T>::ContactToolkit(const RigidBodyTree<double>& tree,
@@ -61,6 +67,10 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
     // Jb is zero
     J_diff.at(i) = Ja;
   }
+
+  //cout << "start";
+  //cout << contact_info_.idxA.at(3);
+  //cout << "end";
 
   // Contact Jacobians
   MatrixX<T> J;

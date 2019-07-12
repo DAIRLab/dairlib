@@ -22,7 +22,6 @@ cc_binary(
     srcs = ["test/parse_log_test.cc"],
     deps = [
         ":lcm_log_utils",
-        "//examples/Cassie:cassie_utils",
     ]
 )
 
@@ -61,7 +60,6 @@ cc_test(
         "test/contact_toolkit_test.cc",
     ],
     deps = [
-        "//examples/Cassie:cassie_utils",
         ":contact_toolkit",
         ":utils",
         "@gtest//:main",
@@ -90,7 +88,6 @@ cc_test(
         "test/multibody_solvers_test.cc",
     ],
     deps = [
-        "//examples/Cassie:cassie_utils",
         ":multibody_solvers",
         ":utils",
         "@gtest//:main",
@@ -109,6 +106,5 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
         "//systems:robot_lcm_systems",
-        "//examples/Cassie:cassie_utils",
     ],
 )

@@ -49,6 +49,31 @@ void DirconPositionData<T>::updateConstraint(const KinematicsCache<T>& cache) {
 }
 
 template <typename T>
+drake::VectorX<T> DirconPositionData<T>::Jdotv(const KinematicsCache<T>& cache) {
+  auto pts = this->tree_->transformPoints(cache, pt_, bodyIdx_, 0);
+
+  // TODO(mposa): implement some caching here, check cache.getV and cache.getQ
+  // before recomputing
+  auto v = cache.getV();
+  if (isXZ_) {
+    this->c_ = TXZ_*pts;
+    this->J_ = TXZ_*this->tree_->transformPointsJacobian(cache, pt_, bodyIdx_,
+                                                         0, true);
+    this->cdot_ = this->J_*v;
+    this->Jdotv_ = TXZ_*this->tree_->transformPointsJacobianDotTimesV(cache,
+        pt_, bodyIdx_, 0);
+  } else {
+    this->c_ = pts;
+    this->J_ = this->tree_->transformPointsJacobian(cache, pt_, bodyIdx_, 0,
+                                                    true);
+    this->cdot_ = this->J_*v;
+    this->Jdotv_ = this->tree_->transformPointsJacobianDotTimesV(cache, pt_,
+                                                                 bodyIdx_, 0);
+  }
+  return this->Jdotv_;
+}
+
+template <typename T>
 void DirconPositionData<T>::addFixedNormalFrictionConstraints(Vector3d normal,
                                                               double mu) {
   if (isXZ_) {
@@ -81,7 +106,6 @@ void DirconPositionData<T>::addFixedNormalFrictionConstraints(Vector3d normal,
     this->force_constraints_.push_back(force_constraint);
   }
 }
-
 
 // Explicitly instantiates on the most common scalar types.
 template class DirconPositionData<double>;

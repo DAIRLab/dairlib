@@ -11,6 +11,20 @@
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/parsers/urdf_parser.h"
 
+#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
+#include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/diagram.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
+
+#include "attic/multibody/multibody_solvers.h"
+
+#include "examples/Cassie/cassie_utils.h"
+
 namespace dairlib {
 
 using Eigen::VectorXd;
@@ -23,6 +37,19 @@ using drake::geometry::SceneGraph;
 using drake::multibody::Parser;
 using drake::multibody::RevoluteSpring;
 using drake::multibody::joints::FloatingBaseType;
+
+using std::map;
+using std::string;
+using std::vector;
+using std::unique_ptr;
+using std::make_unique;
+using Eigen::MatrixXd;
+using Eigen::Matrix3Xd;
+using dairlib::multibody::FixedPointSolver;
+using dairlib::multibody::PositionSolver;
+using dairlib::multibody::ContactInfo;
+using dairlib::multibody::GetBodyIndexFromName;
+
 
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
@@ -123,7 +150,7 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
   body = tree.get_mutable_body(body_index);
   RevoluteJoint& ankle_spring_joint_right =
       dynamic_cast<RevoluteJoint&>(body->get_mutable_joint());
-  ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2300 in URDF
+  ankle_spring_joint_right.SetSpringDynamics(1250.0, 0.0);  // 2000 in URDF
 }
 
 void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree){
@@ -204,6 +231,55 @@ systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
                                     accel_sim, gyro_sim);
 
   return cassie_sensor_aggregator;
+}
+
+multibody::ContactInfo ComputeCassieContactInfo(const RigidBodyTree<double>& tree,
+                                     const VectorXd& q0) {
+  VectorXd phi_total;
+  Matrix3Xd normal_total, xA_total, xB_total;
+  vector<int> idxA_total, idxB_total;
+  KinematicsCache<double> k_cache = tree.doKinematics(q0);
+
+  // The full collisionDetect solution.
+  const_cast<RigidBodyTree<double>&>(tree).collisionDetect(
+      k_cache, phi_total, normal_total, xA_total, xB_total, idxA_total,
+      idxB_total);
+
+  const int world_ind = GetBodyIndexFromName(tree, "world");
+  const int toe_left_ind = GetBodyIndexFromName(tree, "toe_left");
+  const int toe_right_ind = GetBodyIndexFromName(tree, "toe_right");
+
+  // Extracting information into the four contacts.
+  VectorXd phi(4);
+  Matrix3Xd normal(3, 4), xA(3, 4), xB(3, 4);
+  vector<int> idxA(4), idxB(4);
+
+  int k = 0;
+  for (unsigned i = 0; i < idxA_total.size(); ++i) {
+    int ind_a = idxA_total.at(i);
+    int ind_b = idxB_total.at(i);
+    if ((ind_a == world_ind && ind_b == toe_left_ind) ||
+        (ind_a == world_ind && ind_b == toe_right_ind) ||
+        (ind_a == toe_left_ind && ind_b == world_ind) ||
+        (ind_a == toe_right_ind && ind_b == world_ind)) {
+      xA.col(k) = xA_total.col(i);
+      xB.col(k) = xB_total.col(i);
+      idxA.at(k) = idxA_total.at(i);
+      idxB.at(k) = idxB_total.at(i);
+      ++k;
+    }
+  }
+
+  ContactInfo contact_info = {xB, idxB};
+  //std::cout<<xB<<std::endl;
+  //for (auto i : idxB)
+  //   std::cout<<i<<" ";
+  //   std::cout << std::endl;
+  return contact_info;
+}
+
+std::string getVelocityName(const RigidBodyTree<double>& tree, int index) {
+  return tree.get_velocity_name(index);
 }
 
 } // namespace dairlib

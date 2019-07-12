@@ -34,6 +34,7 @@ cc_library(
         "//systems/primitives",
         "//systems:robot_lcm_systems",
         "//systems/sensors:sim_cassie_sensor_aggregator",
+	"//attic/multibody:multibody_solvers",
         "@drake//:drake_shared_library",
     ],
 )
@@ -231,3 +232,62 @@ cc_binary(
         ]
 )
 
+cc_library(
+    name = "lcm_log_utils",
+    srcs = [
+        "lcm_log_utils.cc",
+    ],
+    hdrs = [
+        "lcm_log_utils.h",
+    ],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/primitives:vector_aggregator",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "utils",
+    srcs = [
+        "rigidbody_utils.cc",
+    ],
+    hdrs = [
+        "rigidbody_utils.h",
+    ],
+    deps = [
+        "//attic/multibody:rigidbody_utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "contact_toolkit",
+    srcs = [
+        "contact_toolkit.cc",
+    ],
+    hdrs = [
+        "contact_toolkit.h",
+    ],
+    deps = [
+        "//attic/multibody:contact_toolkit",
+        "@drake//:drake_shared_library",
+        ":utils",
+    ],
+)
+
+cc_library(
+    name = "multibody_solvers",
+    srcs = [
+        "multibody_solvers.cc",
+    ],
+    hdrs = [
+        "multibody_solvers.h",
+    ],
+    deps = [
+        "//attic/multibody:multibody_solvers",
+        "@drake//:drake_shared_library",
+        ":contact_toolkit",
+        ":utils",
+    ],
+)

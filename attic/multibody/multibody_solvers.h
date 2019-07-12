@@ -41,7 +41,7 @@ class PositionConstraint : public drake::solvers::Constraint {
 /*
  * ContactConstraint class for solving for point to plane contacts.
  * Specifically, the z-plane (ground plane). The constraint assumes that the
- * given contact information is for point-gound plane contacts and solves it
+ * given contact information is for point-ground plane contacts and solves it
  * accordingly.
  * The constraint solves for the generalized positions (q) (Not the whole state)
  * that satisfies the contact constraints.

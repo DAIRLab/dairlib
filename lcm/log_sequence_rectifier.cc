@@ -7,9 +7,7 @@
 /**
   This is a simple program to fix any LCM messages that may be out of sequence
   in a log file. The usage is:
-
     log_sequence_rectifier <file_in> <file_out>
-
   The program uses a max-length buffer, that must be large enough so that out of
   sequence messages must appear at most kBufferLength-messages apart. An error
   message will be generated if this assumption fails.

@@ -27,11 +27,26 @@
 #include "drake/systems/sensors/gyroscope.h"
 #include "systems/sensors/sim_cassie_sensor_aggregator.h"
 
+#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
+#include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/diagram.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
+
+#include "attic/multibody/multibody_solvers.h"
+
+#include "examples/Cassie/cassie_utils.h"
+
 namespace dairlib {
 
 using dairlib::systems::SubvectorPassThrough;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
+using namespace Eigen;
 
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
@@ -88,5 +103,13 @@ systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
     drake::systems::DiagramBuilder<double> & builder,
     drake::systems::RigidBodyPlant<double> * plant,
     SubvectorPassThrough<double> * passthrough);
+
+/// Calculate the ContactToolkit for the Cassie robot
+multibody::ContactInfo ComputeCassieContactInfo(
+    const RigidBodyTree<double>& tree, const VectorXd& q0);
+
+/// Binding for get_velocity_name
+std::string getVelocityName(
+    const RigidBodyTree<double>& tree, int index);
 
 } // namespace dairlib

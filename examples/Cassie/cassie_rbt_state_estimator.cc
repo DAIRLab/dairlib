@@ -569,6 +569,7 @@ void CassieRbtStateEstimator::contactEstimation(
       VectorXd::Zero(3, 1));
 
   // Initial guess
+  // TODO(Nanda): Remove the initial guess after testing on the real robot
   quadprog_->SetInitialGuess(ddq_,
       discrete_state->get_vector(ddq_double_init_idx_).get_value());
   quadprog_->SetInitialGuess(lambda_b_,
@@ -627,6 +628,8 @@ void CassieRbtStateEstimator::contactEstimation(
         right_force;
 
     // Residual calculation
+    // TODO(Nanda): Remove the residual calculation after testing on the real
+    // robot
     VectorXd curr_residual = ddq_val*dt;
     curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
@@ -664,6 +667,7 @@ void CassieRbtStateEstimator::contactEstimation(
       VectorXd::Zero(3, 1));
 
   // Initial guess
+  // TODO(Nanda): Remove the initial guess after testing on the real robot
   quadprog_->SetInitialGuess(ddq_,
       discrete_state->get_vector(ddq_left_init_idx_).get_value());
   quadprog_->SetInitialGuess(lambda_b_,
@@ -709,6 +713,8 @@ void CassieRbtStateEstimator::contactEstimation(
         left_force;
 
     // Residual calculation
+    // TODO(Nanda): Remove the residual calculation after testing on the real
+    // robot
     VectorXd curr_residual = ddq_val*dt;
     curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
@@ -747,6 +753,10 @@ void CassieRbtStateEstimator::contactEstimation(
       VectorXd::Zero(3, 1));
 
   // Initial guess
+  // TODO(Nanda): Remove the initial guess after testing on the real robot
+  // Even though EqualityConstrainedQP doesn't need an initial guess, they are
+  // retained for testing and will be removed once the code is tested on the
+  // real robot.
   quadprog_->SetInitialGuess(ddq_,
       discrete_state->get_vector(ddq_right_init_idx_).get_value());
   quadprog_->SetInitialGuess(lambda_b_,
@@ -792,6 +802,8 @@ void CassieRbtStateEstimator::contactEstimation(
         right_force;
 
     // Residual calculation
+    // TODO(Nanda): Remove the residual calculation after testing on the real
+    // robot
     VectorXd curr_residual = ddq_val*dt;
     curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());

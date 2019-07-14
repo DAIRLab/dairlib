@@ -81,7 +81,6 @@ OperationalSpaceControl::OperationalSpaceControl(
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   const drake::systems::Context<double>& context,
   drake::systems::DiscreteValues<double>* discrete_state) const {
-  // Read in finite state machine
   const TimestampedVector<double>* fsm_output = (TimestampedVector<double>*)
       this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_data();

@@ -91,7 +91,7 @@ int DoMain() {
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_input_port_state());
 
-  // Create CoM trajectory
+  // Create CoM trajectory generator
   double desired_com_height = 0.89;
   auto lipm_traj_generator =
     builder.AddSystem<systems::controllers::LIPMTrajGenerator>(&tree_with_springs,
@@ -103,14 +103,12 @@ int DoMain() {
         Eigen::VectorXd::Zero(3),
         right_toe_ind,
         Eigen::VectorXd::Zero(3));
-
-
-
-
   builder.Connect(fsm->get_output_port(0),
-                  lipm_traj_generator->get_input_port_FSM());
+                  lipm_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
+
+  // Create swing leg trajectory generator (capture point)
 
 
   // Create Operational space control

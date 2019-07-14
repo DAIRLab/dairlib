@@ -120,8 +120,8 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     VectorXd q = robot_output->GetPositions();
     // Modify the quaternion in the begining when the state is not received from
     // the robot yet (cannot have 0-norm quaternion when using doKinematics)
-    if (is_quaternion_){
-      q.segment(3,4) = NormalizeQuaternion(q.segment(3,4));
+    if (is_quaternion_) {
+      q.segment(3, 4) = NormalizeQuaternion(q.segment(3, 4));
     }
     cache.initialize(q);
     tree_->doKinematics(cache);

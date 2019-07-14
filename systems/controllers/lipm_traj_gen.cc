@@ -24,22 +24,6 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 namespace dairlib {
 namespace systems {
 
-/// This class creates prediced center of mass (COM) trajectory of a bepidel
-/// robot during single stance.
-/// The trajectories in horizontal directions (x and y axes) are prediected, and
-/// the traj in the vertical direction (z axis) is the disired height.
-
-/// Inputs:
-/// - rigid body tree
-/// - desired COM height
-/// - single stance duration
-/// - left stance state (of finite state machine)
-/// - right stance state (of finite state machine)
-/// - left foot body index
-/// - right foot body index
-/// - position of the contact point w.r.t. left foot body
-/// - position of the contact point w.r.t. right foot body
-
 LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
                                      double desired_com_height,
                                      double stance_duration_per_leg,

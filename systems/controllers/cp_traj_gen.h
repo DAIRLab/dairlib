@@ -33,7 +33,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
-  const drake::systems::InputPort<double>& get_input_port_FSM() const {
+  const drake::systems::InputPort<double>& get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_com() const {

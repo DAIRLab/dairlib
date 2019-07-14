@@ -25,7 +25,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_port_);
   }
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
-    return this->get_input_port(FSM_port_);
+    return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
     std::string name) const {
@@ -52,17 +52,20 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return tracking_data_set_;
   }
 
-  // I don't think we need this
-  // API for the user to add input ports if they create the traj source themselves
-  void AddTrackingDataInputPort(string name);
-
  private:
+  drake::systems::EventStatus DiscreteVariableUpdate(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const;
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
 
   // Input/Output ports
   int state_port_;
-  int FSM_port_;
+  int fsm_port_;
+
+  // Discrete update
+  int prev_fsm_state_idx_;
+  int prev_event_time_idx_;
 
   //
   std::map<std::string, int> traj_name_to_port_index_map_;
@@ -79,7 +82,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Cost settings /////////////////////////////////////////////////////////////
   // Input cost
-  Eigen::MatrixXd W_input_;  //TODO: you can check the size of the MatrixXd to know if the user want to add the cost
+  Eigen::MatrixXd
+  W_input_;  //TODO: you can check the size of the MatrixXd to know if the user want to add the cost
 
   // Joint acceleration cost
   std::vector<int> joint_velocity_index_;

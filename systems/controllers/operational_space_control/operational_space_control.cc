@@ -61,20 +61,42 @@ OperationalSpaceControl::OperationalSpaceControl(
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
                   OutputVector<double>(n_q, n_v, n_u)).get_index();
-  FSM_port_ = this->DeclareVectorInputPort(
+  fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
   this->DeclareVectorOutputPort(TimestampedVector<double>(n_u),
                                 &OperationalSpaceControl::CalcOptimalInput);
+
+  // Discrete update to record the last state event time
+  DeclarePerStepDiscreteUpdateEvent(
+    &OperationalSpaceControl::DiscreteVariableUpdate);
+  prev_fsm_state_idx_ = this->DeclareDiscreteState(1);
+  prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
 
   //
   checkConstraintSettings();
   checkCostSettings();
 }
 
-// I don't think we need this
-// API for the user to add input ports if they create the traj source themselves
-void OperationalSpaceControl::AddTrackingDataInputPort(string name) {
-  // you can call num_input_ports() for checking
+
+drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
+  const drake::systems::Context<double>& context,
+  drake::systems::DiscreteValues<double>* discrete_state) const {
+  // Read in finite state machine
+  const TimestampedVector<double>* fsm_output = (TimestampedVector<double>*)
+      this->EvalVectorInput(context, fsm_port_);
+  VectorXd fsm_state = fsm_output->get_data();
+  double tiemstamp = fsm_output->get_timestamp();
+
+  auto prev_fsm_state = discrete_state->get_mutable_vector(
+                          prev_fsm_state_idx_).get_mutable_value();
+
+  if (fsm_state(0) != prev_fsm_state(0)) {
+    prev_fsm_state(0) = fsm_state(0);
+
+    discrete_state->get_mutable_vector(
+      prev_event_time_idx_).get_mutable_value() << tiemstamp;
+  }
+  return drake::systems::EventStatus::Succeeded();
 }
 
 void OperationalSpaceControl::CalcOptimalInput(

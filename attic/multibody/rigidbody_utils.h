@@ -31,5 +31,9 @@ int GetBodyIndexFromName(const RigidBodyTree<double>& tree, std::string name);
 bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
                         double tolerance = 0.0);
 
+// Check whether a rigid body tree is floating based
+bool CheckFloatingBase(RigidBodyTree<double>* tree);
+
+
 }  // namespace multibody
 }  // namespace dairlib

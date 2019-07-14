@@ -7,6 +7,8 @@
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 
 #include "systems/framework/output_vector.h"
+#include "common/math_utils.h"
+#include "attic/multibody/rigidbody_utils.h"
 
 namespace dairlib {
 namespace systems {
@@ -14,12 +16,14 @@ namespace systems {
 class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   LIPMTrajGenerator(RigidBodyTree<double> * tree,
-                    double desiredCoMHeight,
+                    double desired_com_height,
                     double stance_duration_per_leg,
                     int left_stance_state,
                     int right_stance_state,
                     int left_foot_idx,
-                    int right_foot_idx);
+                    Eigen::Vector3d pt_on_left_foot,
+                    int right_foot_idx,
+                    Eigen::Vector3d pt_on_right_foot);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -41,7 +45,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
 
   RigidBodyTree<double> * tree_;
 
-  double desiredCoMHeight_;
+  double desired_com_height_;
 
   double stance_duration_per_leg_;
 
@@ -52,6 +56,9 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   int right_stance_state_;
   int left_foot_idx_;
   int right_foot_idx_;
+
+  Eigen::Vector3d pt_on_left_foot_;
+  Eigen::Vector3d pt_on_right_foot_;
 
   bool is_quaternion_;
 };

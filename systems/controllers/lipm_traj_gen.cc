@@ -24,20 +24,40 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 namespace dairlib {
 namespace systems {
 
+/// This class creates prediced center of mass (COM) trajectory of a bepidel
+/// robot during single stance.
+/// The trajectories in horizontal directions (x and y axes) are prediected, and
+/// the traj in the vertical direction (z axis) is the disired height.
+
+/// Inputs:
+/// - rigid body tree
+/// - desired COM height
+/// - single stance duration
+/// - left stance state (of finite state machine)
+/// - right stance state (of finite state machine)
+/// - left foot body index
+/// - right foot body index
+/// - position of the contact point w.r.t. left foot body
+/// - position of the contact point w.r.t. right foot body
+
 LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
-                                     double desiredCoMHeight,
+                                     double desired_com_height,
                                      double stance_duration_per_leg,
                                      int left_stance_state,
                                      int right_stance_state,
                                      int left_foot_idx,
-                                     int right_foot_idx) :
+                                     Vector3d pt_on_left_foot,
+                                     int right_foot_idx,
+                                     Vector3d pt_on_right_foot) :
     tree_(tree),
-    desiredCoMHeight_(desiredCoMHeight),
+    desired_com_height_(desired_com_height),
     stance_duration_per_leg_(stance_duration_per_leg),
     left_stance_state_(left_stance_state),
     right_stance_state_(right_stance_state),
     left_foot_idx_(left_foot_idx),
-    right_foot_idx_(right_foot_idx) {
+    right_foot_idx_(right_foot_idx),
+    pt_on_left_foot_(pt_on_left_foot),
+    pt_on_right_foot_(pt_on_right_foot) {
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
@@ -50,14 +70,13 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
 
   // Discrete state event
   DeclarePerStepDiscreteUpdateEvent(&LIPMTrajGenerator::DiscreteVariableUpdate);
-
   // The time of the last touch down
   prev_td_time_idx_ = this->DeclareDiscreteState(1);
   // The last state of FSM
   prev_fsm_state_idx_ = this->DeclareDiscreteState(-VectorXd::Ones(1));
 
-  is_quaternion_ = (tree->get_position_name(3).compare("base_qw")==0)?
-    true : false;
+  // Check if the model is floating based
+  is_quaternion_ = CheckFloatingBase(tree);
 }
 
 
@@ -90,8 +109,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
 }
 
 
-void LIPMTrajGenerator::CalcTraj(
-    const Context<double>& context,
+void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
     ExponentialPlusPiecewisePolynomial<double>* traj) const {
 
   // Read in current state
@@ -127,15 +145,17 @@ void LIPMTrajGenerator::CalcTraj(
   VectorXd q = robot_output->GetPositions();
 
   // Modify the quaternion in the begining when the state is not received from
-  // the robot yet
-  // Always remember to check 0-norm quaternion when using doKinematics
-  if (is_quaternion_ && q.segment(3,4).norm() == 0)
-    q(3) = 1;
+  // the robot yet (cannot have 0-norm quaternion when using doKinematics)
+  if (is_quaternion_){
+    q.segment(3,4) = NormalizeQuaternion(q.segment(3,4));
+  }
 
   cache.initialize(q);
   tree_->doKinematics(cache);
   int stance_foot_index = (fsm_state(0) == right_stance_state_) ?
                           right_foot_idx_ : left_foot_idx_;
+  Vector3d pt_on_stance_foot = (fsm_state(0) == right_stance_state_) ?
+                          pt_on_right_foot_ : pt_on_left_foot_;
 
   // Get center of mass position and velocity
   Vector3d CoM = tree_->centerOfMass(cache);
@@ -145,9 +165,12 @@ void LIPMTrajGenerator::CalcTraj(
   // std::cout<<"dCoM:\n"<<dCoM<<"\n";
 
   // Stance foot position (Forward Kinematics)
-  Eigen::Isometry3d stance_foot_pose =
-    tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(stance_foot_index));
-  Eigen::Vector3d stance_foot_pos = stance_foot_pose.translation();
+  Eigen::Isometry3d stance_foot_body_pose =
+      tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(stance_foot_index));
+  Vector3d stance_foot_body_pos = stance_foot_body_pose.translation();
+  Eigen::MatrixXd stance_foot_body_rot = stance_foot_body_pose.linear();
+  Vector3d stance_foot_pos = stance_foot_body_pos +
+      stance_foot_body_rot * pt_on_stance_foot;
   // std::cout<<"stance_foot_pos^T = "<<stance_foot_pos.transpose()<<"\n";
 
   // Get CoM_wrt_foot for LIPM
@@ -156,7 +179,7 @@ void LIPMTrajGenerator::CalcTraj(
   const double xCoM_wrt_foot = CoM(0) - stance_foot_pos(0);
   const double yCoM_wrt_foot = CoM(1) - stance_foot_pos(1);
   const double zCoM_wrt_foot =
-    (CoM(2) - stance_foot_pos(2)) ? (CoM(2) - stance_foot_pos(2)) : 1e-3;
+      (CoM(2) - stance_foot_pos(2)) ? (CoM(2) - stance_foot_pos(2)) : 1e-3;
   const double dxCoM_wrt_foot = dCoM(0);
   const double dyCoM_wrt_foot = dCoM(1);
   const double dzCoM_wrt_foot = dCoM(2);
@@ -172,8 +195,8 @@ void LIPMTrajGenerator::CalcTraj(
   Y[0](1, 0) = stance_foot_pos(1);
   Y[1](1, 0) = stance_foot_pos(1);
   Y[0](2, 0) = (CoM(2) > 0) ? CoM(2) : 1e-3;
-  // Y[0](2, 0) = desiredCoMHeight_;
-  Y[1](2, 0) = desiredCoMHeight_;
+  // Y[0](2, 0) = desired_com_height_;
+  Y[1](2, 0) = desired_com_height_;
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   Y_dot_start(2, 0) = dzCoM_wrt_foot;

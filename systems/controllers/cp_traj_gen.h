@@ -3,9 +3,12 @@
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/framework/leaf_system.h"
 
-#include "systems/framework/output_vector.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+
+#include "systems/framework/output_vector.h"
+#include "common/math_utils.h"
+#include "attic/multibody/rigidbody_utils.h"
 
 namespace dairlib {
 namespace systems {

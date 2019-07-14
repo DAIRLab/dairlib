@@ -80,6 +80,9 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
   prev_td_time_idx_ = this->DeclareDiscreteState(1);
   // The last state of FSM
   prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
+
+  // Check if the model is floating based
+  is_quaternion_ = CheckFloatingBase(tree);
 }
 
 
@@ -116,10 +119,10 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     KinematicsCache<double> cache = tree_->CreateKinematicsCache();
     VectorXd q = robot_output->GetPositions();
     // Modify the quaternion in the begining when the state is not received from
-    // the robot yet
-    // Always remember to check 0-norm quaternion when using doKinematics
-    if (is_quaternion_ && q.segment(3, 4).norm() == 0)
-      q(3) = 1;
+    // the robot yet (cannot have 0-norm quaternion when using doKinematics)
+    if (is_quaternion_){
+      q.segment(3,4) = NormalizeQuaternion(q.segment(3,4));
+    }
     cache.initialize(q);
     tree_->doKinematics(cache);
     int swing_foot_index = (fsm_state(0) == right_stance_) ?

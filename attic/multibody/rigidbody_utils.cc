@@ -63,5 +63,20 @@ bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
   return joints_within_limits;
 }
 
+bool CheckFloatingBase(RigidBodyTree<double>* tree){
+  for (int i = 0; i < tree->get_num_bodies(); i++) {
+    if (tree->get_body(i).has_parent_body()) {
+      if ("world".compare(tree->get_body(i).get_parent()->get_name()) == 0) {
+        if(tree->get_body(i).getJoint().is_floating()){
+          return true;
+        } else {
+          return false;
+        }
+      }
+    }
+  }
+}
+
+
 }  // namespace multibody
 }  // namespace dairlib

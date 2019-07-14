@@ -8,6 +8,7 @@ namespace dairlib {
 namespace systems {
 
 // Time-based Two-state Finite State Machine
+
 /// Constructor inputs:
 /// - rigid body tree
 /// - integer representing the first state

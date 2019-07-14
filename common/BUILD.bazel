@@ -11,3 +11,15 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "math_utils",
+    srcs = ["math_utils.cc"],
+    hdrs = [
+        "math_utils.h",
+    ],
+    deps = [
+    ],
+)
+
+

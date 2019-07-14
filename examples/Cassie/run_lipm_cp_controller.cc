@@ -30,12 +30,18 @@ int DoMain() {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
                "udpm://239.255.76.67:7667?ttl=0");
 
-  RigidBodyTree<double> tree;
-  buildCassieTree(tree, "examples/Cassie/urdf/cassie_v2.urdf",
+  RigidBodyTree<double> tree_with_springs;
+  RigidBodyTree<double> tree_without_springs;
+  buildCassieTree(tree_with_springs, "examples/Cassie/urdf/cassie_v2.urdf",
+                  drake::multibody::joints::kQuaternion);
+  buildCassieTree(tree_without_springs, "examples/Cassie/urdf/cassie_v2.urdf",
                   drake::multibody::joints::kQuaternion);
   const double terrain_size = 100;
   const double terrain_depth = 0.20;
-  drake::multibody::AddFlatTerrainToWorld(&tree, terrain_size, terrain_depth);
+  drake::multibody::AddFlatTerrainToWorld(&tree_with_springs,
+                                          terrain_size, terrain_depth);
+  drake::multibody::AddFlatTerrainToWorld(&tree_without_springs,
+                                          terrain_size, terrain_depth);
 
   const std::string channel_x = "CASSIE_STATE";
   const std::string channel_u = "CASSIE_INPUT";
@@ -44,7 +50,8 @@ int DoMain() {
   auto state_sub = builder.AddSystem(
                      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
                        channel_x, lcm));
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(tree);
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
+                          tree_with_springs);
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port(0));
 
@@ -52,13 +59,37 @@ int DoMain() {
   auto command_pub = builder.AddSystem(
                        LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
                          channel_u, lcm, 1.0 / 1000.0));
-  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(tree);
+  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
+                          tree_with_springs);
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
-  // Controller blocks
+  // Create finite state machine
+  int first_state_number = 2;
+  int second_state_number = 3;
+  int initial_state_number = 2;
+  double duration_per_state = 0.35;
+  double time_shift = 0;
+  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(tree,
+             first_state_number, second_state_number, initial_state_number,
+             duration_per_state, time_shift);
+  builder.Connect(state_receiver->get_output_port(0),
+                  fsm->get_input_port_state());
 
+  // Create CoM trajectory
+  auto lipm_traj_generator =
+    builder.AddSystem<systems::CPAndLIPMTrajGenerator>(
+      tree.get_num_positions(), tree.get_num_velocities(),
+      tree.get_num_actuators(), &tree, FLAGS_floating_base,
+      dairlib::systems::stance_duration_per_leg);
+  builder.Connect(fsm->get_output_port(0),
+                  lipm_traj_generator->get_input_port_FSM());
+  builder.Connect(state_receiver->get_output_port(0),
+                  lipm_traj_generator->get_input_port_state());
+
+
+  // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
                OscTrackingDataSet * tracking_data_set,
                &tree_with_springs,

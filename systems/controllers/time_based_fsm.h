@@ -8,16 +8,31 @@ namespace dairlib {
 namespace systems {
 
 // Time-based Two-state Finite State Machine
+/// Constructor inputs:
+/// - rigid body tree
+/// - integer representing the first state
+/// - integer representing the second state
+/// - initial state
+/// - duration of each state
+/// - offset of the time when the state switches
+
+/// There are three outcome of the states, beased on the current time t.
+/// If t < time_shift,
+///     state = `initial_state_number_`.
+/// If t is within [i * `duration_per_state` + `time_shift`,
+///                 (i+1) * `duration_per_state` + `time_shift`)
+///                where i is an even number,
+///     state = `first_state_number_`.
+/// If t is within [i * `duration_per_state` + `time_shift`,
+///                 (i+1) * `duration_per_state` + `time_shift`)
+///                where i is an odd number,
+///     state = `second_state_number_`.
 class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
  public:
-  TimeBasedFiniteStateMachine(int num_positions,
-                              int num_velocities,
-                              int num_inputs,
+  TimeBasedFiniteStateMachine(RigidBodyTree<double>* tree,
                               int first_state_number,
                               int second_state_number,
-                              std::string first_state_name,
-                              std::string second_state_name,
-                              int start_state_number,
+                              int initial_state_number,
                               double duration_per_state,
                               double time_shift = 0);
 
@@ -33,9 +48,7 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
 
   int first_state_number_;
   int second_state_number_;
-  std::string first_state_name_;
-  std::string second_state_name_;
-  int start_state_number_;
+  int initial_state_number_;
   double duration_per_state_;
   double time_shift_;
 };

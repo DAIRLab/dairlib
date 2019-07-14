@@ -9,28 +9,22 @@ namespace dairlib {
 namespace systems {
 
 TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
-    int num_positions,
-    int num_velocities,
-    int num_inputs,
+    RigidBodyTree<double>* tree,
     int first_state_number,
     int second_state_number,
-    string first_state_name,
-    string second_state_name,
-    int start_state_number,
+    int initial_state_number,
     double duration_per_state,
-    double time_shift):
+    double time_shift) :
   first_state_number_(first_state_number),
   second_state_number_(second_state_number),
-  first_state_name_(first_state_name),
-  second_state_name_(second_state_name),
-  start_state_number_(start_state_number),
+  initial_state_number_(initial_state_number),
   duration_per_state_(duration_per_state),
   time_shift_(time_shift) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-                  OutputVector<double>(num_positions,
-                                       num_velocities,
-                                       num_inputs)).get_index();
+                  OutputVector<double>(tree->get_num_positions(),
+                                       tree->get_num_velocities(),
+                                       tree->get_num_actuators())).get_index();
   this->DeclareVectorOutputPort(BasicVector<double>(1),
                                 &TimeBasedFiniteStateMachine::CalcFiniteState);
 }
@@ -53,7 +47,7 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
 
   // Get current finite tate
   VectorXd current_finite_state(1);
-  current_finite_state << start_state_number_;
+  current_finite_state << initial_state_number_;
   if (current_sim_time >= time_shift_) {
     if (phase < 1)
       current_finite_state(0) = first_state_number_;

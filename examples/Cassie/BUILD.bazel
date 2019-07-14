@@ -234,6 +234,21 @@ cc_test(
 
 
 cc_binary(
+    name = "run_lipm_cp_controller",
+    srcs = ["run_lipm_cp_controller.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//attic/multibody:utils",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "@gflags",
+        "@drake//:drake_shared_library",
+        ]
+)
+
+
+cc_binary(
     name = "cassie_state_visualizer",
     srcs = ["cassie_state_visualizer.cc"],
     deps = [

@@ -64,7 +64,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
                   tree->get_num_positions(),
                   tree->get_num_velocities(),
                   tree->get_num_actuators())).get_index();
-  FSM_port_ = this->DeclareVectorInputPort(
+  fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
   this->DeclareAbstractOutputPort(&LIPMTrajGenerator::CalcTraj);
 
@@ -86,7 +86,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
 
   // Read in finite state machine
   const BasicVector<double>* fsm_output = (BasicVector<double>*)
-      this->EvalVectorInput(context, FSM_port_);
+      this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
 
   auto prev_td_time = discrete_state->get_mutable_vector(
@@ -119,7 +119,7 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
 
   // Read in finite state machine
   const BasicVector<double>* fsm_output = (BasicVector<double>*)
-      this->EvalVectorInput(context, FSM_port_);
+      this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
 
   // Get discrete states
@@ -245,8 +245,6 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   // Assign traj
   *traj = exp_traj;
 }
-
-
 
 } //namespace systems
 } //namespace dairlib

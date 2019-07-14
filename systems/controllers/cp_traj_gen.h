@@ -34,7 +34,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_FSM() const {
-    return this->get_input_port(FSM_port_);
+    return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_com() const {
     return this->get_input_port(com_port_);
@@ -63,7 +63,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
                  drake::trajectories::PiecewisePolynomial<double>* traj) const;
 
   int state_port_;
-  int FSM_port_;
+  int fsm_port_;
   int com_port_;
   int fp_port_;
 

@@ -60,7 +60,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
                   tree->get_num_velocities(),
                   tree->get_num_actuators())).get_index();
 
-  FSM_port_ = this->DeclareVectorInputPort(
+  fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
   if (is_using_predicted_com) {
     com_port_ = this->DeclareAbstractInputPort("CoM_traj",
@@ -92,7 +92,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
 
   // Read in finite state machine
   const BasicVector<double>* fsm_output = (BasicVector<double>*)
-                                          this->EvalVectorInput(context, FSM_port_);
+                                          this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(
@@ -144,7 +144,7 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     const double end_time_of_this_interval) const {
   // Read in finite state machine
   const BasicVector<double>* fsm_output = (BasicVector<double>*)
-                                          this->EvalVectorInput(context, FSM_port_);
+                                          this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
 
   // Get stance foot position and index

@@ -65,24 +65,48 @@ int DoMain() {
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
+  // Get body indices for cassie with springs
+  int left_toe_ind = GetBodyIndexFromName(tree_with_springs, "toe_left");
+  int right_toe_ind = GetBodyIndexFromName(tree_with_springs, "toe_right");
+  int left_thigh_ind = GetBodyIndexFromName(tree_with_springs, "thigh_left");
+  int right_thigh_ind = GetBodyIndexFromName(tree_with_springs, "thigh_right");
+  int left_heel_spring_ind = GetBodyIndexFromName(tree_with_springs,
+                             "heel_spring_left");
+  int right_heel_spring_ind = GetBodyIndexFromName(tree_with_springs,
+                              "heel_spring_right");
+  DRAKE_DEMAND(left_toe_ind != -1 && right_toe_ind != -1 &&
+               left_thigh_ind != -1 && right_thigh_ind != -1 &&
+               left_heel_spring_ind != -1 && right_heel_spring_ind != -1);
+
   // Create finite state machine
-  int first_state_number = 2;
-  int second_state_number = 3;
+  int left_stance_state = 2;
+  int right_stance_state = 3;
   int initial_state_number = 2;
   double duration_per_state = 0.35;
   double time_shift = 0;
-  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(tree,
-             first_state_number, second_state_number, initial_state_number,
-             duration_per_state, time_shift);
+  auto fsm = builder.AddSystem<systems::controllers::TimeBasedFiniteStateMachine>(
+               &tree_with_springs,
+               left_stance_state, right_stance_state, initial_state_number,
+               duration_per_state, time_shift);
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_input_port_state());
 
   // Create CoM trajectory
+  double desired_com_height = 0.89;
   auto lipm_traj_generator =
-    builder.AddSystem<systems::CPAndLIPMTrajGenerator>(
-      tree.get_num_positions(), tree.get_num_velocities(),
-      tree.get_num_actuators(), &tree, FLAGS_floating_base,
-      dairlib::systems::stance_duration_per_leg);
+    builder.AddSystem<systems::controllers::LIPMTrajGenerator>(&tree_with_springs,
+        desired_com_height,
+        duration_per_state,
+        left_stance_state,
+        right_stance_state,
+        left_toe_ind,
+        Eigen::VectorXd::Zero(3),
+        right_toe_ind,
+        Eigen::VectorXd::Zero(3));
+
+
+
+
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_FSM());
   builder.Connect(state_receiver->get_output_port(0),

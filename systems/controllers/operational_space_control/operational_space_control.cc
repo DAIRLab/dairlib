@@ -2,6 +2,8 @@
 
 using std::vector;
 using std::string;
+using std::numeric_limits;
+
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
@@ -129,9 +131,16 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 MathematicalProgram OperationalSpaceControl::SetUpQp(VectorXd q_w_spr,
     VectorXd v_w_spr, VectorXd q_wo_spr, VectorXd v_wo_spr) const {
 
-  // Get data needed
   int n_h = tree_wo_spr_->getNumPositionConstraints();
-  int n_c = body_index_.size();
+  int n_c = 3 * body_index_.size();
+
+  // Get input limits
+  VectorXd u_min(n_u_);
+  VectorXd u_max(n_u_);
+  for (int i = 0; i < n_u_; i++) {
+    u_min(i) = tree_wo_spr_->actuators[i].effort_limit_min_;
+    u_max(i) = tree_wo_spr_->actuators[i].effort_limit_max_;
+  }
 
   // Get Kinematics Cache
   KinematicsCache<double> cache_w_spr = tree_w_spr_->doKinematics(
@@ -153,27 +162,29 @@ MathematicalProgram OperationalSpaceControl::SetUpQp(VectorXd q_w_spr,
 
   // Add decision variables
   auto u = prog.NewContinuousVariables(n_u_, "u");
-  auto lambda_c = prog.NewContinuousVariables(3 * n_c,
+  auto lambda_c = prog.NewContinuousVariables(n_c,
                   "lambda_contact");
   auto lambda_h = prog.NewContinuousVariables(n_h, "lambda_holonomic");
   auto dv = prog.NewContinuousVariables(n_v_, "dv");
-  auto epsilon = prog.NewContinuousVariables(3 * body_index_.size(), "epsilon");
+  if (w_soft_constraint_ > 0) {
+    auto epsilon = prog.NewContinuousVariables(n_c, "epsilon");
+  }
 
   // Add constraints
   // 1. Dynamics constraint
-  //    M*dv + bias == J_c^T*lambda_c + J_h^T*lambda_fourbar + B*u
-  // -> M*dv - J_c^T*lambda_c - J_h^T*lambda_fourbar - B*u == - bias
-  // -> [M, -J_c^T, -J_h^T, -B]*[dv, lambda_c, lambda_fourbar, u]^T = - bias
+  ///    M*dv + bias == J_c^T*lambda_c + J_h^T*lambda_fourbar + B*u
+  /// -> M*dv - J_c^T*lambda_c - J_h^T*lambda_fourbar - B*u == - bias
+  /// -> [M, -J_c^T, -J_h^T, -B]*[dv, lambda_c, lambda_fourbar, u]^T = - bias
   // std::cout<< "size of (M, -J_c.transpose(), -J_h.transpose(), -B):\n"
   //       << M.rows() << ", " << M.cols() << "\n"
   //       << J_c.transpose().rows() << ", " << J_c.transpose().cols() << "\n"
   //       << J_h.transpose().rows() << ", " << J_h.transpose().cols() << "\n"
   //       << B.rows() << ", " << B.cols() << "\n";
-  MatrixXd A_dyn = MatrixXd::Zero(n_v_, n_v_ + 3 * n_c + J_h.rows() + n_u_);
+  MatrixXd A_dyn = MatrixXd::Zero(n_v_, n_v_ + n_c + J_h.rows() + n_u_);
   A_dyn.block(0, 0, n_v_, n_v_) = M;
-  A_dyn.block(0, n_v_, n_v_, 3 * n_c) = -J_c.transpose();
-  A_dyn.block(0, n_v_ + 3 * n_c , n_v_, J_h.rows()) = -J_h.transpose();
-  A_dyn.block(0, n_v_ + 3 * n_c + J_h.rows(), n_v_, n_u_) = -B;
+  A_dyn.block(0, n_v_, n_v_, n_c) = -J_c.transpose();
+  A_dyn.block(0, n_v_ + n_c , n_v_, J_h.rows()) = -J_h.transpose();
+  A_dyn.block(0, n_v_ + n_c + J_h.rows(), n_v_, n_u_) = -B;
   // std::cout<< "M # of rows and cols = " <<M.rows()<<", "<<M.cols()<<std::endl;
   // std::cout<< "J_c.transpose() # of rows and cols = " <<J_c.transpose().rows()<<", "<<J_c.transpose().cols()<<std::endl;
   // std::cout<< "J_h.transpose() # of rows and cols = " <<J_h.transpose().rows()<<", "<<J_h.transpose().cols()<<std::endl;
@@ -182,43 +193,78 @@ MathematicalProgram OperationalSpaceControl::SetUpQp(VectorXd q_w_spr,
   prog.AddLinearConstraint(A_dyn, -bias, -bias, {dv, lambda_c, lambda_fourbar, u});
 
   // 2. Holonomic constraint
-  //    JDotTimesV_h + J_h*dv == 0
-  // -> J_h*dv == -JDotTimesV_h
-  prog.AddLinearConstraint(J_h,
-                           -JDotTimesV_h,
-                           -JDotTimesV_h,
-                           dv);
+  ///    JdotV_h + J_h*dv == 0
+  /// -> J_h*dv == -JdotV_h
+  prog.AddLinearConstraint(J_h, -JdotV_h, -JdotV_h, dv);
   // std::cout<< "J_h # of rows and cols = " <<J_h.rows()<<", "<<J_h.cols()<<std::endl;
-  // std::cout<< "JDotTimesV_h # of rows and cols = " <<JDotTimesV_h.rows()<<", "<<JDotTimesV_h.cols()<<std::endl;
+  // std::cout<< "JdotV_h # of rows and cols = " <<JdotV_h.rows()<<", "<<JdotV_h.cols()<<std::endl;
 
-
-    // 3. Contact constraint
-      if (body_index_.size() > 0) {
-    if (w_soft_constraint_ == -1) {
-        //    JDotTimesV_contact_constraint + J_contact_constraint*dv == 0
-        // -> J_contact_constraint*dv == -JDotTimesV_contact_constraint
-        prog.AddLinearConstraint( J_contact_constraint,
-                                  -JDotTimesV_contact_constraint,
-                                  -JDotTimesV_contact_constraint,
-                                  dv);
-        // std::cout<< "J_contact_constraint # of rows and cols = " <<J_contact_constraint.rows()<<", "<<J_contact_constraint.cols()<<std::endl;
-        // std::cout<< "JDotTimesV_contact_constraint # of rows and cols = " <<JDotTimesV_contact_constraint.rows()<<", "<<JDotTimesV_contact_constraint.cols()<<std::endl;
+  // 3. Contact constraint
+  if (body_index_.size() > 0) {
+    if (w_soft_constraint_ <= 0) {
+      ///    JdotV_c + J_c*dv == 0
+      /// -> J_c*dv == -JdotV_c
+      prog.AddLinearConstraint(J_c, -JdotV_c, -JdotV_c, dv);
+      // std::cout<< "J_c # of rows and cols = " <<J_c.rows()<<", "<<J_c.cols()<<std::endl;
+      // std::cout<< "JdotV_c # of rows and cols = " <<JdotV_c.rows()<<", "<<JdotV_c.cols()<<std::endl;
     }
     else {
       // Relaxed version:
-      //    JDotTimesV_contact_constraint + J_contact_constraint*dv == -epsilon
-      // -> J_contact_constraint*dv + I*epsilon == -JDotTimesV_contact_constraint
-      // -> [J_contact_constraint, I]* [dv, epsilon]^T == -JDotTimesV_contact_constraint
-      MatrixXd A_StFtConstraint = MatrixXd::Zero(3 * num_collision * num_stance_foot, n_v_ + 3 * num_collision * num_stance_foot);
-      A_StFtConstraint.block(0, 0, 3 * num_collision*num_stance_foot, n_v_) = J_contact_constraint;
-      A_StFtConstraint.block(0, n_v_, 3 * num_collision*num_stance_foot, 3 * num_collision*num_stance_foot) = MatrixXd::Identity(3 * num_collision * num_stance_foot, 3 * num_collision * num_stance_foot);
-      // std::cout<<"A_StFtConstraint: \n"<<A_StFtConstraint<<"\n";
-      prog.AddLinearConstraint( A_StFtConstraint,
-                                -JDotTimesV_contact_constraint,
-                                -JDotTimesV_contact_constraint,
-      {dv, epsilon});
-}
-      }
+      ///    JdotV_c + J_c*dv == -epsilon
+      /// -> J_c*dv + I*epsilon == -JdotV_c
+      /// -> [J_c, I]* [dv, epsilon]^T == -JdotV_c
+      MatrixXd A_c = MatrixXd::Zero(n_c, n_v_ + n_c);
+      A_c.block(0, 0, n_c, n_v_) = J_c;
+      A_c.block(0, n_v_, n_c, n_c) = MatrixXd::Identity(n_c, n_c);
+      // std::cout<<"A_c: \n"<<A_c<<"\n";
+      prog.AddLinearConstraint(A_c,
+                               -JdotV_c, -JdotV_c, {dv, epsilon});
+    }
+  }
+
+  // 4. Friction cone constraint (approximation)
+  /// For i = [0, ..., body_index_.size())
+  ///     mu_*lambda_c(3*i+2) >= lambda_c(3*i+0)
+  ///    -mu_*lambda_c(3*i+2) <= lambda_c(3*i+0)
+  ///     mu_*lambda_c(3*i+2) >= lambda_c(3*i+1)
+  ///    -mu_*lambda_c(3*i+2) <= lambda_c(3*i+1)
+  /// ->
+  ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
+  ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
+  ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
+  ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
+  if (body_index_.size() > 0) {
+    VectorXd mu_minus1(2); mu_minus1 << mu_, -1;
+    VectorXd mu_plus1(2); mu_plus1 << mu_, 1;
+
+    for (int i = 0; i < body_index_.size(); i++) {
+      prog.AddLinearConstraint(mu_minus1.transpose(),
+                               0, numeric_limits<double>::infinity(),
+      {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 0, 1)});
+      prog.AddLinearConstraint(mu_plus1.transpose(),
+                               0, numeric_limits<double>::infinity(),
+      {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 0, 1)});
+      prog.AddLinearConstraint(mu_minus1.transpose(),
+                               0, numeric_limits<double>::infinity(),
+      {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 1, 1)});
+      prog.AddLinearConstraint(mu_plus1.transpose(),
+                               0, numeric_limits<double>::infinity(),
+      {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 1, 1)});
+      prog.AddLinearConstraint(VectorXd::Ones(1).transpose(),
+                               0, numeric_limits<double>::infinity(),
+                               lambda_c.segment(3 * i + 2, 1));
+    }
+  }
+
+  // 5. Input constraint
+  if (with_input_constraints_) {
+    prog.AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min, u_max, u);
+  }
+
+  // No joint position constraint in this implementation
+
+  // Add costs
+
 
 
   return prog;

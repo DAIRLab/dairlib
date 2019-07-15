@@ -112,10 +112,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // OSC constraint members
   bool with_input_constraints_ = true;
-  // std::vector<double> u_min_;
-  // std::vector<double> u_max_;
-  // Actually you can get the input limit from tree:
-  //    umax_ = tree_without_->actuators[1].effort_limit_max_;
 
   // (flat ground) Contact constraints and friction cone cnostraints
   std::vector<int> body_index_ = {};

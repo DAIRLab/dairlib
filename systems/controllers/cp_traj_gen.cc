@@ -3,7 +3,6 @@
 #include <algorithm>    // std::min
 #include <string>
 #include <math.h>
-#define PI 3.14159265
 
 using std::cout;
 using std::endl;
@@ -29,31 +28,39 @@ namespace systems {
 CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
                                  double mid_foot_height,
                                  double desired_final_foot_height,
+                                 double desired_final_vertical_foot_velocity,
                                  double max_CoM_to_CP_dist,
                                  double stance_duration_per_leg,
                                  int left_stance_state,
                                  int right_stance_state,
                                  int left_foot_idx,
+                                 Eigen::Vector3d pt_on_left_foot,
                                  int right_foot_idx,
+                                 Eigen::Vector3d pt_on_right_foot,
                                  int pelvis_idx,
                                  bool is_walking_position_control,
                                  bool is_feet_collision_avoid,
                                  bool is_using_predicted_com,
-                                 bool is_print_info):
+                                 double cp_offset,
+                                 double center_line_offset) :
   tree_(tree),
   mid_foot_height_(mid_foot_height),
   desired_final_foot_height_(desired_final_foot_height),
+  desired_final_vertical_foot_velocity_(desired_final_vertical_foot_velocity),
   max_CoM_to_CP_dist_(max_CoM_to_CP_dist),
   stance_duration_per_leg_(stance_duration_per_leg),
   left_stance_(left_stance_state),
   right_stance_(right_stance_state),
   left_foot_idx_(left_foot_idx),
   right_foot_idx_(right_foot_idx),
+  pt_on_left_foot_(pt_on_left_foot),
+  pt_on_right_foot_(pt_on_right_foot),
   pelvis_idx_(pelvis_idx),
   is_walking_position_control_(is_walking_position_control),
   is_feet_collision_avoid_(is_feet_collision_avoid),
   is_using_predicted_com_(is_using_predicted_com),
-  is_print_info_(is_print_info) {
+  cp_offset_(cp_offset),
+  center_line_offset_(center_line_offset) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
                   tree->get_num_positions(),
@@ -125,14 +132,18 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     }
     cache.initialize(q);
     tree_->doKinematics(cache);
-    int swing_foot_index = (fsm_state(0) == right_stance_) ?
+    int swing_foot_idx = (fsm_state(0) == right_stance_) ?
                            left_foot_idx_ : right_foot_idx_;
+    Vector3d pt_on_swing_foot = (fsm_state(0) == right_stance_) ?
+                                pt_on_left_foot_ : pt_on_right_foot_;
 
     // Swing foot position (Forward Kinematics) and velocity at touchdown
-    Eigen::Isometry3d init_swing_foot_pose =
-      tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(swing_foot_index));
-    Vector3d init_swing_foot_pos = init_swing_foot_pose.translation();
-    swing_foot_pos_td = init_swing_foot_pos;
+    Eigen::Isometry3d swing_foot_body_pose =
+      tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(swing_foot_idx));
+    Vector3d swing_foot_body_pos = swing_foot_body_pose.translation();
+    Eigen::MatrixXd swing_foot_body_rot = swing_foot_body_pose.linear();
+    swing_foot_pos_td = swing_foot_body_pos +
+                        swing_foot_body_rot * pt_on_swing_foot;
   }
 
   return EventStatus::Succeeded();
@@ -156,16 +167,24 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     q(3) = 1;
   cache.initialize(q);
   tree_->doKinematics(cache);
-  int stance_foot_index;
-  if (fsm_state(0) == right_stance_) {  // right stance
-    stance_foot_index = right_foot_idx_;
+  int stance_foot_idx;
+  Vector3d pt_on_stance_foot;
+  if (fsm_state(0) == right_stance_) {
+    stance_foot_idx = right_foot_idx_;
+    pt_on_stance_foot = pt_on_right_foot;
   } else {
-    stance_foot_index = left_foot_idx_;
+    stance_foot_idx = left_foot_idx_;
+    pt_on_stance_foot = pt_on_left_foot;
   }
-  Eigen::Isometry3d stance_foot_pose =
-    tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(stance_foot_index));
-  Vector3d stance_foot_pos = stance_foot_pose.translation();
+  Eigen::Isometry3d stance_foot_body_pose =
+    tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(stance_foot_idx));
+  Vector3d stance_foot_body_pos = stance_foot_body_pose.translation();
+  Eigen::MatrixXd stance_foot_body_rot = stance_foot_body_pose.linear();
+  Vector3d stance_foot_pos = stance_foot_body_pos +
+                             stance_foot_body_rot * pt_on_stance_foot;
   // std::cout<<"stance_foot_pos^T = "<<stance_foot_pos.transpose()<<"\n";
+
+
 
   // Get CoM or predicted CoM
   Vector3d CoM;
@@ -216,13 +235,13 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     // Shift CP a little away from CoM line and toward the swing foot
     Vector2d shift_foothold_dir;
     if (fsm_state(0) == right_stance_) { // right stance
-      shift_foothold_dir << cos(approx_pelvis_yaw + PI * 1 / 2),
-                         sin(approx_pelvis_yaw + PI * 1 / 2);
+      shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 1 / 2),
+                         sin(approx_pelvis_yaw + M_PI * 1 / 2);
     } else {
-      shift_foothold_dir << cos(approx_pelvis_yaw + PI * 3 / 2),
-                         sin(approx_pelvis_yaw + PI * 3 / 2);
+      shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 3 / 2),
+                         sin(approx_pelvis_yaw + M_PI * 3 / 2);
     }
-    CP = CP + shift_foothold_dir * shift_foothold_dist_;
+    CP = CP + shift_foothold_dir * cp_offset_;
 
     // The above CP shift might not be sufficient for leg collision avoidance,
     // so we add a guard to restrict CP in an area.
@@ -252,8 +271,8 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
       CoM_or_stance_foot << CoM(0), CoM(1);
 
     Vector3d shifted_CoM_or_stance_foot(
-      CoM_or_stance_foot(0) + shift_foothold_dir(0)*center_line_shift_dist_,
-      CoM_or_stance_foot(1) + shift_foothold_dir(1)*center_line_shift_dist_,
+      CoM_or_stance_foot(0) + shift_foothold_dir(0)*center_line_offset_,
+      CoM_or_stance_foot(1) + shift_foothold_dir(1)*center_line_offset_,
       0);
     Vector3d CoM_or_stance_foot_to_CP(
       CP(0) - shifted_CoM_or_stance_foot(0),
@@ -283,7 +302,8 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   // Cap the step length
   CoM_to_CP = CP - CoM.head(2);  // update with the new CP
   if ( CoM_to_CP.norm() > max_CoM_to_CP_dist_ ) {
-    if (is_print_info_) {
+    if (true) {
+      // TODO(yminchen): delete this after you have cassie walk
       std::cout << "Step length limit reached. It's " <<
                 CoM_to_CP.norm() - max_CoM_to_CP_dist_ << " (m) more than max.\n";
     }
@@ -310,27 +330,35 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
   // std::cout<<"T_waypoint = "<<T_waypoint[0]<<", "<<T_waypoint[1]<<", "<<
   // T_waypoint[2]<<"\n";
 
-  std::vector<MatrixXd> Y3(T_waypoint.size(), MatrixXd::Zero(3, 1));
+  std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
   // x
-  Y3[0](0, 0) = init_swing_foot_pos(0);
-  Y3[1](0, 0) = (init_swing_foot_pos(0) + CP(0)) / 2;
-  Y3[2](0, 0) = CP(0);
+  Y[0](0, 0) = init_swing_foot_pos(0);
+  Y[1](0, 0) = (init_swing_foot_pos(0) + CP(0)) / 2;
+  Y[2](0, 0) = CP(0);
   // y
-  Y3[0](1, 0) = init_swing_foot_pos(1);
-  Y3[1](1, 0) = (init_swing_foot_pos(1) + CP(1)) / 2;
-  Y3[2](1, 0) = CP(1);
+  Y[0](1, 0) = init_swing_foot_pos(1);
+  Y[1](1, 0) = (init_swing_foot_pos(1) + CP(1)) / 2;
+  Y[2](1, 0) = CP(1);
   // z
-  Y3[0](2, 0) = init_swing_foot_pos(2);
-  Y3[1](2, 0) = mid_foot_height_;
-  Y3[2](2, 0) = desired_final_foot_height_;
-  // zero velocity at the start and the end for x y z
-  MatrixXd Y3_dot_start = MatrixXd::Zero(3, 1);
-  MatrixXd Y3_dot_end = MatrixXd::Zero(3, 1);
+  Y[0](2, 0) = init_swing_foot_pos(2);
+  Y[1](2, 0) = mid_foot_height_;
+  Y[2](2, 0) = desired_final_foot_height_;
 
-  // TODO(yminchen): Update below spline so the swing foot doesn't stop in the
-  // middle of stance
+  std::vector<MatrixXd> Y_dot(T_waypoint_cp.size(), MatrixXd::Zero(3, 1));
+  // x
+  Y_dot[0](0, 0) = 0;
+  Y_dot[1](0, 0) = (CP(0) - initSwingFootPos(0)) / stance_duration_per_leg_;
+  Y_dot[2](0, 0) = 0;
+  // y
+  Y_dot[0](1, 0) = 0;
+  Y_dot[1](1, 0) = (CP(1) - initSwingFootPos(1)) / stance_duration_per_leg_;
+  Y_dot[2](1, 0) = 0;
+  // z
+  Y_dot[0](2, 0) = 0;
+  Y_dot[1](2, 0) = 0;
+  Y_dot[2](2, 0) = desired_final_vertical_foot_velocity_;
   PiecewisePolynomial<double> swing_foot_spline =
-    PiecewisePolynomial<double>::Cubic(T_waypoint, Y3, Y3_dot_start, Y3_dot_end);
+    PiecewisePolynomial<double>::Cubic(T_waypoint, Y, Y_dot);
   // std::cout<<"Notice that the trajectory is shifted in time (current time)"
   // for(double d = 0; d<=2; d+=0.1){
   //  std::cout<<swing_foot_spline.value(d) <<" ";

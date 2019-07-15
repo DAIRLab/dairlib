@@ -4,7 +4,6 @@
 
 #include <math.h>
 #include <string>
-#define PI 3.14159265
 
 using std::cout;
 using std::endl;
@@ -103,8 +102,8 @@ void FootPlacementControl::CalcFootPlacement(
 
   // Walking control
   double heading_error = desried_heading_pos - approx_pelvis_yaw;
-  bool isPauseWalkingPositionControl = (heading_error > PI / 2 ||
-                                        heading_error < -PI / 2) ? true : false;
+  bool isPauseWalkingPositionControl = (heading_error > M_PI / 2 ||
+                                        heading_error < -M_PI / 2) ? true : false;
 
   Vector3d delta_CP_sagital_3D_global(0, 0, 0);
   Vector3d delta_CP_lateral_3D_global(0, 0, 0);

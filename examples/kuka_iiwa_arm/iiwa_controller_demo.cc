@@ -34,7 +34,7 @@ class CsvVector {
     std::vector<std::vector<double>> data;
   public:
     CsvVector(std::string fileName) {
-      //Opens filestream to fileName.
+      //Opens stream to fileName.
       std::ifstream stream;
       stream.open(fileName);
 
@@ -97,7 +97,7 @@ int do_main(int argc, char* argv[]) {
   //Processes Trajectories CSV file.
   CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
 
-  //Initializes demo trajectories to trajectoryVectors array.
+  //Initializes trajectories to trajectoryVectors array.
   std::vector<Eigen::MatrixXd> trajectoryVectors;
   for (unsigned int x = 0; x < waypoints.getArray()[0].size(); x++) {
     Eigen::Vector3d temp;
@@ -113,7 +113,7 @@ int do_main(int argc, char* argv[]) {
   // Processes EndEffectorOrientations CSV file.
   CsvVector orientations("examples/kuka_iiwa_arm/EndEffectorOrientations.csv");
 
-  //Initializes demo orientations to orient_points array.
+  //Initializes orientations to orient_points array.
   std::vector<Eigen::MatrixXd> orient_points;
   for (unsigned int y = 0; y < orientations.getArray()[0].size(); y++) {
     Eigen::Vector4d aPoint;
@@ -127,8 +127,7 @@ int do_main(int argc, char* argv[]) {
           orientations.getArray()[0], orient_points);
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
-  std::string kModelPath = "../drake/manipulation/models/iiwa_description"
-                           "/iiwa7/iiwa7_no_collision.sdf";
+  std::string kModelPath = "examples/kuka_iiwa_arm/urdf/iiwa7/iiwa7_no_collision.sdf";
   const std::string urdf_string = FindResourceOrThrow(kModelPath);
 
   // MultibodyPlants are created here, then passed by reference
@@ -142,6 +141,7 @@ int do_main(int argc, char* argv[]) {
   owned_plant->WeldFrames(owned_plant->world_frame(),
                           owned_plant->GetFrameByName("iiwa_link_0"), X_WI);
   owned_plant->Finalize();
+  object_ids_.push_back()
 
   drake::systems::DiagramBuilder<double> builder;
 

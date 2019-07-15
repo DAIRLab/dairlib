@@ -30,6 +30,13 @@
 #include "drake/lcmt_iiwa_command.hpp"
 #include "drake/lcmt_iiwa_status.hpp"
 #include "examples/kuka_iiwa_arm/kuka_torque_controller.h"
+#include "drake/examples/manipulation_station/manipulation_station.h"
+
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include <fstream>
+
+using json  = nlohmann::json;
 
 namespace dairlib {
 namespace examples {
@@ -102,6 +109,16 @@ int DoMain() {
   // the ManipulationStation::AddManipulandFromFile function in
   // drake's manipulation_station.cc 
 
+  //Loads in manipulands from json file to objects_vector
+  std::ifstream free_objects("examples/kuka_iiwa_arm/manipulands.json");
+  json manipulands = json::parse(free_objects);
+  const int num_manipulands = manipulands["numberOfObjects"];
+  std::vector<drake::multibody::ModelInstanceIndex> objects_vector;
+  objects_vector.resize(num_manipulands);
+  for (int objectNum = 0; objectNum < num_manipulands; objectNum++) {
+      std::string path = drake::FindResourceOrThrow(manipulands["Objects"][std::to_string(objectNum)]["file_name"]);
+      objects_vector[objectNum] = world_plant_parser.AddModelFromFile(path, path);
+  }
 
   // Create and add a plant to the controller-specific model
   drake::multibody::Parser controller_plant_parser(controller_plant);
@@ -115,8 +132,8 @@ int DoMain() {
   owned_controller_plant->Finalize();
   world_plant->Finalize();
 
-  const int num_iiwa_positions = world_plant->num_positions();
-  const int num_iiwa_velocities = world_plant->num_velocities();
+  const int num_iiwa_positions = controller_plant->num_positions();
+  const int num_iiwa_velocities = controller_plant->num_velocities();
 
   drake::systems::DiagramBuilder<double> builder;
   builder.AddSystem(std::move(owned_world_plant));
@@ -218,9 +235,16 @@ int DoMain() {
   auto diagram = builder.Build();
   drake::systems::Simulator<double> simulator(*diagram);
 
-  // Set the iiwa default joint configuration.
-  drake::VectorX<double> q0_iiwa(num_iiwa_positions + num_iiwa_velocities);
-  q0_iiwa << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+  // Set the iiwa default joint configuration. Number of zeros depends on number of objects in simulation.
+  drake::VectorX<double> q0_iiwa(world_plant->num_positions() + world_plant->num_velocities());
+  if (num_manipulands == 1) {
+     q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0; 
+  }
+  else if (num_manipulands == 2) {
+    q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+  } else if (num_manipulands == 3) {
+    q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+  }
 
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*world_plant,
@@ -231,6 +255,19 @@ int DoMain() {
   std::cout << "Discrete " << state.size() << std::endl;
   state.SetFromVector(q0_iiwa);
 
+  auto& state2 = diagram->GetMutableSubsystemState(*world_plant,
+                                          &simulator.get_mutable_context());
+  //Adjusts starting positions of manipulands
+  for (int x = 0; x < num_manipulands; x++) {
+    const auto indices = world_plant -> GetBodyIndices(objects_vector[x]);
+    world_plant -> SetFreeBodyPose(context, &state2, world_plant -> get_body(indices[0]), 
+    //RigidTransform<double>(Vector3d(dx_table_center_to_robot_base, 0, 3)));
+    RigidTransform<double>(Vector3d(manipulands["Objects"][std::to_string(x)]["q_init"][0], manipulands["Objects"][std::to_string(x)]["q_init"][1],
+    manipulands["Objects"][std::to_string(x)]["q_init"][2])));
+  }
+  for (double a : manipulands["Objects"]["0"]["q_init"]) {
+      std::cout << a << std::endl;
+  }
   simulator.set_publish_every_time_step(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());

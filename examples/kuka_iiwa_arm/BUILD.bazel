@@ -26,6 +26,7 @@ cc_binary(
         "@drake//:drake_shared_library",
         "//common:common",
         ":kuka_torque_controller",
+        "@json",
     ],
 )
 

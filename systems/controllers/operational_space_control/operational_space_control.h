@@ -9,6 +9,9 @@
 #include "systems/framework/output_vector.h"
 #include "systems/controllers/operational_space_control/osc_tracking_data.h"
 
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/solve.h"
+
 namespace dairlib {
 namespace systems {
 namespace controllers {
@@ -17,7 +20,6 @@ namespace controllers {
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
   OperationalSpaceControl(
-    std::vector<OscTrackingData*>* tracking_data_vec,
     RigidBodyTree<double>* tree_with_springs,
     RigidBodyTree<double>* tree_without_springs);
 
@@ -34,23 +36,25 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return this->get_input_port(traj_name_to_port_index_map_.at(name));
   }
 
-  // Cost methods //////////////////////////////////////////////////////////////
-  // Setters
-  // TODO: when you set the joint accel cost, you should call a function which
-  // checks if the user enter the right index.
-  void SetAccelerationCost(int joint_velocity_index, double weight);
-  void SetAccelerationCostForAllJoints(Eigen::MatrixXd weight);
+  // Cost methods
+  void SetInputCost(Eigen::MatrixXd W) {W_input_ = W;}
+  void SetAccelerationCostForAllJoints(Eigen::MatrixXd W) {W_joint_accel_ = W;}
+  void AddAccelerationCost(int joint_vel_idx, double w);
 
-  void checkCostSettings();
+  // Constraint methods
+  void DisableAcutationConstraint() {with_input_constraints_ = false;}
+  void SetContactFriction(double mu) {mu_ = mu;}
+  void SetWeightOfSoftContactConstraint(double w_soft_constraint) {
+    w_soft_constraint_ = w_soft_constraint;
+  }
+  void AddContactPoint(int body_index, Eigen::VectorXd pt_on_body);
+  void AddContactPoints(std::vector<int> body_index,
+                        std::vector<Eigen::VectorXd> pt_on_body);
 
-  // Constraint methods ////////////////////////////////////////////////////////
-  // Setters
-
-  void checkConstraintSettings();
-
-  // Tracking data methods /////////////////////////////////////////////////////
-  void AddTrackingData(OscTrackingData* tracking_data);
-
+  // Tracking data methods
+  void AddTrackingData(OscTrackingData* tracking_data){
+    tracking_data_vec_->push_back(tracking_data);
+  }
   std::vector<OscTrackingData*>* GetAllTrackingData() {
     return tracking_data_vec_.get();
   }
@@ -58,12 +62,21 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return tracking_data_vec_->at(index);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
+  // Osc constructor
+  void ConstructOSC();
 
  private:
+  // Osc checkers and constructor related methods
+  void CheckCostSettings();
+  void CheckConstraintSettings();
+  drake::solvers::MathematicalProgram SetUpQp() const;
+
+  // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  // Output function
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
 
@@ -75,7 +88,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int prev_fsm_state_idx_;
   int prev_event_time_idx_;
 
-  //
+  // Map from trajectory names to input port indices
   std::map<std::string, int> traj_name_to_port_index_map_;
 
   // RBT's. OSC calculates feedback position/velocity from tree with springs,
@@ -88,41 +101,32 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   //TODO: You'll send tree's in the function of CheckOscTrackingData to
   //calculate posistion, etc.:
 
+  // Size of position, velocity and input
   int n_q_;
   int n_v_;
   int n_u_;
 
-  // Cost settings /////////////////////////////////////////////////////////////
-  // Input cost
-  Eigen::MatrixXd
-  W_input_;  //TODO: you can check the size of the MatrixXd to know if the user want to add the cost
+  // OSC cost members
+  Eigen::MatrixXd W_input_;  // Input cost weight
+  Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
 
-  // Joint acceleration cost
-  std::vector<int> joint_velocity_index_;
-  std::vector<double> w_joint_acceleration_;  // cost weight
-
-  // Constraint settings ///////////////////////////////////////////////////////
-  // Input constraint
+  // OSC constraint members
   bool with_input_constraints_ = true;
   // std::vector<double> u_min_;
   // std::vector<double> u_max_;
   // Actually you can get the input limit from tree:
   //    umax_ = tree_without_->actuators[1].effort_limit_max_;
 
-  // TODO(yminchen): Can you get it from RBT???
   // (flat ground) Contact constraints and friction cone cnostraints
-  std::vector<int> body_index_;
-  std::vector<Eigen::VectorXd> pt_on_body_;
-  double mu_;  // Friction coefficients
-  Eigen::MatrixXd W_soft_constraints_;
+  std::vector<int> body_index_ = {};
+  std::vector<Eigen::VectorXd> pt_on_body_ = {};
+  double mu_ = -1;  // Friction coefficients
+  double w_soft_constraint_ = -1;
+  // TODO(yminchen): Can you get contact points from RBT???
 
-  // Tracking data settings ////////////////////////////////////////////////////
+  // OSC tracking data member (store pointer because of caching)
   std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =
-    std::make_unique<std::vector<OscTrackingData*>>(); // pointer because of caching
-  int num_tracking_data_;
-
-  //////////////////////////////////////////////////////////////////////////////
-
+        std::make_unique<std::vector<OscTrackingData*>>();
 };
 
 

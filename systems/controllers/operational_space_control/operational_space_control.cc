@@ -1,21 +1,4 @@
-//TODO(yminchen):
-// In constructor of OSC, you call checkConstraintSettings() function to check
-// that the user set the constraint correctly.
-// This function takes in RBT and check the following things:
-// - size of body_index_, pt_on_body_ and mu_ are the same
-// -
-
-//TODO(yminchen):
-// In constructor of OSC, you call checkCostSettings() function to check
-// that the user set the cost correctly.
-// This function takes in RBT and check the following things:
-// -
-
-
 #include "systems/controllers/operational_space_control/operational_space_control.h"
-
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/solve.h"
 
 using std::vector;
 using std::string;
@@ -36,33 +19,15 @@ namespace controllers {
 
 
 OperationalSpaceControl::OperationalSpaceControl(
-  std::vector<OscTrackingData*>* tracking_data_vec,
   RigidBodyTree<double>* tree_with_springs,
   RigidBodyTree<double>* tree_without_springs) :
   tree_with_springs_(tree_with_springs),
-  tree_without_springs_(tree_without_springs),
-  tracking_data_vec_(tracking_data_vec) {
+  tree_without_springs_(tree_without_springs) {
   this->set_name("OSC");
 
   n_q_ = tree_with_springs->get_num_positions();
   n_v_ = tree_with_springs->get_num_velocities();
   n_u_ = tree_with_springs->get_num_actuators();
-
-  // Construct traj_name_to_port_index_map_
-  // vector<OscTrackingData*> tracking_data_vec =
-  //   tracking_data_set->GetAllTrackingData();
-  for (auto tracking_data : *tracking_data_vec_) {
-    string traj_name = tracking_data->GetName();
-    int port_index;
-    if (tracking_data->DoesTrajHasExp()) {
-      port_index = this->DeclareAbstractInputPort(traj_name,
-                   drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
-    } else {
-      port_index = this->DeclareAbstractInputPort(traj_name,
-                   drake::Value<PiecewisePolynomial<double>> {}).get_index();
-    }
-    traj_name_to_port_index_map_[traj_name] = port_index;
-  }
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -77,12 +42,66 @@ OperationalSpaceControl::OperationalSpaceControl(
     &OperationalSpaceControl::DiscreteVariableUpdate);
   prev_fsm_state_idx_ = this->DeclareDiscreteState(1);
   prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
-
-  //
-  checkConstraintSettings();
-  checkCostSettings();
 }
 
+// Cost methods
+void OperationalSpaceControl::AddAccelerationCost(int joint_vel_idx, double w) {
+  if (W_joint_accel_.size() == 0) {
+    W_joint_accel_ = Eigen::MatrixXd::Zero(n_v_, n_v_);
+  }
+  W_joint_accel_(joint_vel_idx, joint_vel_idx) = w;
+}
+
+// Constraint methods
+void OperationalSpaceControl::AddContactPoint(int body_index,
+    Eigen::VectorXd pt_on_body) {
+  body_index_.push_back(body_index);
+  pt_on_body_.push_back(pt_on_body);
+}
+void OperationalSpaceControl::AddContactPoints(std::vector<int> body_index,
+    std::vector<Eigen::VectorXd> pt_on_body) {
+  body_index_.insert(body_index_.end(), body_index.begin(), body_index.end());
+  pt_on_body_.insert(pt_on_body_.end(), pt_on_body.begin(), pt_on_body.end());
+}
+
+// Osc checkers and constructor
+void OperationalSpaceControl::CheckCostSettings() {
+  if (W_input_.size() != 0) {
+    DRAKE_DEMAND((W_input_.rows() == n_u_) && (W_input_.cols() == n_u_));
+  }
+  if (W_joint_accel_.size() != 0) {
+    DRAKE_DEMAND((W_joint_accel_.rows() == n_u_) &&
+                 (W_joint_accel_.cols() == n_u_));
+  }
+}
+void OperationalSpaceControl::CheckConstraintSettings() {
+  if (!body_index_.empty()) {
+    DRAKE_DEMAND(mu_ != -1);
+    DRAKE_DEMAND(body_index_.size() == pt_on_body_.size());
+  }
+}
+
+void OperationalSpaceControl::ConstructOSC() {
+  // Checker
+  CheckCostSettings();
+  CheckConstraintSettings();
+
+  // Construct traj_name_to_port_index_map_
+  for (auto tracking_data : *tracking_data_vec_) {
+    string traj_name = tracking_data->GetName();
+    int port_index;
+    if (tracking_data->DoesTrajHasExp()) {
+      port_index = this->DeclareAbstractInputPort(traj_name,
+                   drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
+    } else {
+      port_index = this->DeclareAbstractInputPort(traj_name,
+                   drake::Value<PiecewisePolynomial<double>> {}).get_index();
+    }
+    traj_name_to_port_index_map_[traj_name] = port_index;
+  }
+
+  // TODO: construct the QP here. (will do so after the controller is working)
+}
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   const drake::systems::Context<double>& context,

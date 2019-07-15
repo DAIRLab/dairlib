@@ -89,7 +89,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
   prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
 
   // Check if the model is floating based
-  is_quaternion_ = CheckFloatingBase(tree);
+  is_quaternion_ = multibody::CheckFloatingBase(tree);
 }
 
 
@@ -171,10 +171,10 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   Vector3d pt_on_stance_foot;
   if (fsm_state(0) == right_stance_) {
     stance_foot_idx = right_foot_idx_;
-    pt_on_stance_foot = pt_on_right_foot;
+    pt_on_stance_foot = pt_on_right_foot_;
   } else {
     stance_foot_idx = left_foot_idx_;
-    pt_on_stance_foot = pt_on_left_foot;
+    pt_on_stance_foot = pt_on_left_foot_;
   }
   Eigen::Isometry3d stance_foot_body_pose =
     tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(stance_foot_idx));
@@ -344,14 +344,14 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
   Y[1](2, 0) = mid_foot_height_;
   Y[2](2, 0) = desired_final_foot_height_;
 
-  std::vector<MatrixXd> Y_dot(T_waypoint_cp.size(), MatrixXd::Zero(3, 1));
+  std::vector<MatrixXd> Y_dot(T_waypoint.size(), MatrixXd::Zero(3, 1));
   // x
   Y_dot[0](0, 0) = 0;
-  Y_dot[1](0, 0) = (CP(0) - initSwingFootPos(0)) / stance_duration_per_leg_;
+  Y_dot[1](0, 0) = (CP(0) - init_swing_foot_pos(0)) / stance_duration_per_leg_;
   Y_dot[2](0, 0) = 0;
   // y
   Y_dot[0](1, 0) = 0;
-  Y_dot[1](1, 0) = (CP(1) - initSwingFootPos(1)) / stance_duration_per_leg_;
+  Y_dot[1](1, 0) = (CP(1) - init_swing_foot_pos(1)) / stance_duration_per_leg_;
   Y_dot[2](1, 0) = 0;
   // z
   Y_dot[0](2, 0) = 0;

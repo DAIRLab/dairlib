@@ -30,7 +30,7 @@ Eigen::VectorXd NormalizeQuaternion(Eigen::VectorXd q) {
     q(0) = q(0) / n;
     q(1) = q(1) / n;
     q(2) = q(2) / n;
-    q(3) = z3() / n;
+    q(3) = q(3) / n;
   } else {
     q(0) = 1.0;
     q(1) = 0.0;

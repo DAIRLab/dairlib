@@ -13,9 +13,8 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_pd_config.hpp"
 #include "systems/robot_lcm_systems.h"
-#include "systems/controllers/linear_controller.h"
-#include "systems/controllers/pd_config_lcm.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "attic/multibody/rigidbody_utils.h"
 
 namespace dairlib {
 
@@ -23,6 +22,7 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::DiagramBuilder;
 
+using multibody::GetBodyIndexFromName;
 
 int DoMain() {
   DiagramBuilder<double> builder;
@@ -152,6 +152,23 @@ int DoMain() {
   builder.Connect(foot_placement_control->get_output_port(0),
                   cp_traj_generator->get_input_port_fp());
 
+  // Create tracking data for operational space control
+
+
+
+
+
+
+
+
+
+  // // Create Operational space control
+  // auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
+  //              OscTrackingDataSet * tracking_data_set,
+  //              &tree_with_springs,
+  //              &tree_without_springs);
+  // builder.Connect(state_receiver->get_output_port(0),
+  //                 osc->get_input_port_output());
 
 
 
@@ -162,27 +179,10 @@ int DoMain() {
 
 
 
-  // Create Operational space control
-  auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-               OscTrackingDataSet * tracking_data_set,
-               &tree_with_springs,
-               &tree_without_springs);
-  builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_input_port_output());
 
 
-
-
-
-
-
-
-
-
-
-
-  builder.Connect(osc->get_output_port(0),
-                  command_sender->get_input_port(0));
+  // builder.Connect(osc->get_output_port(0),
+  //                 command_sender->get_input_port(0));
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();

@@ -2,6 +2,7 @@
 
 #include <string>
 #include "drake/systems/framework/leaf_system.h"
+#include "drake/multibody/rigid_body_tree.h"
 #include "systems/framework/output_vector.h"
 
 namespace dairlib {

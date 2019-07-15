@@ -47,7 +47,7 @@ void AssignConstTrajToInputPorts(OperationalSpaceControl* osc,
                                  drake::systems::Context<double>* diagram_context) {
   vector<OscTrackingData*>* tracking_data_vec = osc->GetAllTrackingData();
   for (auto tracking_data : *tracking_data_vec) {
-    if (!tracking_data->IsTrajConst()) continue;
+    if (!tracking_data->TrajIsConst()) continue;
 
     string traj_name = tracking_data->GetName();
 

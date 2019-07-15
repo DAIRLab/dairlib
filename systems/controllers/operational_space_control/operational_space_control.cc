@@ -48,6 +48,28 @@ OperationalSpaceControl::OperationalSpaceControl(
     &OperationalSpaceControl::DiscreteVariableUpdate);
   prev_fsm_state_idx_ = this->DeclareDiscreteState(1);
   prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+
+  // Initialize the mapping from spring to no spring
+  map_position_from_spring_to_no_spring_ = MatrixXd::Zero(n_q_, n_q_w_spr);
+  for (int i = 0; i < n_q_; i++)
+    for (int j = 0; j < n_q_w_spr; j++) {
+      std::string name_wo_spr = tree_wo_spr_->get_position_name(i);
+      std::string name_w_spr = tree_w_spr_->get_position_name(j);
+      if (name_wo_spr.compare(0, name_wo_spr.size(), name_w_spr) == 0) {
+        map_position_from_spring_to_no_spring_(i, j) = 1;
+      }
+    }
+  // std::cout<<"map_position_from_spring_to_no_spring_ = \n"<<map_position_from_spring_to_no_spring_<<"\n";
+  map_velocity_from_spring_to_no_spring_ = MatrixXd::Zero(n_v_, n_v_w_spr);
+  for (int i = 0; i < n_v_; i++)
+    for (int j = 0; j < n_v_w_spr; j++) {
+      std::string name_wo_spr = tree_wo_spr_->get_velocity_name(i);
+      std::string name_w_spr = tree_w_spr_->get_velocity_name(j);
+      if (name_wo_spr.compare(0, name_wo_spr.size(), name_w_spr) == 0) {
+        map_velocity_from_spring_to_no_spring_(i, j) = 1;
+      }
+    }
+  // std::cout<<"map_position_from_spring_to_no_spring_ = \n"<<map_position_from_spring_to_no_spring_<<"\n";
 }
 
 // Cost methods
@@ -96,7 +118,7 @@ void OperationalSpaceControl::ConstructOSC() {
   for (auto tracking_data : *tracking_data_vec_) {
     string traj_name = tracking_data->GetName();
     int port_index;
-    if (tracking_data->DoesTrajHasExp()) {
+    if (tracking_data->TrajHasExp()) {
       port_index = this->DeclareAbstractInputPort(traj_name,
                    drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
     } else {
@@ -132,8 +154,10 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 
 // TODO(yminchen): currently construct the QP in every loop. Will modify this
 // once the code is working.
-MathematicalProgram OperationalSpaceControl::SetUpQp(VectorXd x_w_spr,
-    VectorXd x_wo_spr) const {
+VectorXd OperationalSpaceControl::SolveQp(
+  const drake::systems::Context<double>& context, double t,
+  int fsm_state, double time_since_last_state_switch,
+  VectorXd x_w_spr, VectorXd x_wo_spr) const {
 
   int n_h = tree_wo_spr_->getNumPositionConstraints();
   int n_c = 3 * body_index_.size();
@@ -287,39 +311,48 @@ MathematicalProgram OperationalSpaceControl::SetUpQp(VectorXd x_w_spr,
   }
 
   // 4. Tracking cost
-
   for (auto tracking_data : *tracking_data_vec_) {
     string traj_name = tracking_data->GetName();
     int port_index = traj_name_to_port_index_map_.at(traj_name);
 
-    // read in traj
+    // Read in traj
     const drake::AbstractValue* traj_intput =
       this->EvalAbstractInput(context, port_index);
-    DRAKE_ASSERT(traj_intput != nullptr);
-    if (tracking_data->DoesTrajHasExp()) {
-      const drake::trajectories::Trajectory<double> & traj =
-        traj_intput->get_value <ExponentialPlusPiecewisePolynomial<double >> ();
+    const drake::trajectories::Trajectory<double> & traj =
+      (tracking_data->TrajHasExp()) ?
+      traj_intput->get_value<ExponentialPlusPiecewisePolynomial<double>>() :
+      traj_intput->get_value<PiecewisePolynomial<double>>();
 
-    } else {
-      const drake::trajectories::Trajectory<double> & traj =
-        traj_intput->get_value <PiecewisePolynomial<double >> ();
+    bool track_or_not = tracking_data->Update(x_w_spr, tree_w_spr_,
+                        traj, t,
+                        fsm_state, time_since_last_state_switch);
+    if (track_or_not) {
+      VectorXd y_t = tracking_data->GetDesiredOutputWithPdControl(
+                             x_w_spr.head(tree_w_spr_.get_num_positions()));
+      MatrixXd W = tracking_data->GetWeight();
+      VectorXd J_t = tracking_data->GetJ();
+      MatrixXd JdotV_t = tracking_data->GetJdotTimesV();
 
+
+      // TODO: generalize below to joint space tracking
+      prog.AddQuadraticCost(2 * J_t.transpose()*W * J_t,
+                            2 * J_t.transpose()*W * (JdotV_t - y_t),
+                            dv);
     }
-
-    // Not done
-    tracking_data->Update(x_w_spr, tree_w_spr_,
-                          * traj,
-                          double t,
-                          int finite_state_machine_state,
-                          double time_since_last_state_switch);
-
-
-
-
   }
 
+  // Solve the QP
+  const MathematicalProgramResult result = Solve(prog);
+  SolutionResult solution_result = result.get_solution_result();
 
-  return prog;
+  // Extract solutions
+  VectorXd u_sol = result.GetSolution(u);
+  VectorXd lambda_contact_sol = result.GetSolution(lambda_contact);
+  VectorXd lambda_fourbar_sol = result.GetSolution(lambda_fourbar);
+  VectorXd dv_sol = result.GetSolution(dv);
+  VectorXd epsilon_sol = result.GetSolution(epsilon);
+
+  return u_sol;
 }
 
 
@@ -333,17 +366,30 @@ void OperationalSpaceControl::CalcOptimalInput(
   double timestamp = robot_output->get_timestamp();
   double current_sim_time = static_cast<double>(timestamp);
 
+  // Read in finite state machine
+  const BasicVector<double>* fsm_output = (BasicVector<double>*)
+                                          this->EvalVectorInput(context, fsm_port_);
+  VectorXd fsm_state = fsm_output->get_value();
+
+  // Get discrete states
+  const auto prev_event_time = context.get_discrete_state(
+                                 prev_event_time_idx_).get_value();
+
   // TODO(yminchen): currently construct the QP in every loop. Will modify this
   // once the code is working.
-
   // Set up the QP
-  // MathematicalProgram prog = SetUpQp();
+  VectorXd x_wo_spr <<
+                    map_position_from_spring_to_no_spring_ * robot_output->GetPosition(),
+                                                           map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocity();
+  // std::cout << "current_state = " << current_state.transpose() << endl;
+  // std::cout << "x_wo_spr = " << x_wo_spr.transpose() << endl;
+  VectorXd u_sol = SetUpQp(context, current_sim_time,
+                           fsm_state(0), time_since_last_state_switch,
+                           current_state, x_wo_spr);
 
 
-
-  VectorXd u;
   // Assign the control input
-  control->SetDataVector(u);
+  control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());
 }
 

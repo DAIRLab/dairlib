@@ -32,14 +32,14 @@ OscTrackingData::OscTrackingData(string name,
 }
 
 // Updater
-void OscTrackingData::Update(VectorXd x,
+bool OscTrackingData::Update(VectorXd x,
                              RigidBodyTree<double>* tree,
-                             const drake::trajectories::Trajectory<double>* traj,
+                             const drake::trajectories::Trajectory<double>& traj,
                              double t,
                              int finite_state_machine_state,
                              double time_since_last_state_switch) {
   TrackOrNot(finite_state_machine_state, time_since_last_state_switch);
-  if (!track_at_current_step_) return;
+  if (!track_at_current_step_) return track_at_current_step_;
 
   // Update Feedback Output (Calling virtual methods)
   UpdateOutput(x, tree);
@@ -47,9 +47,11 @@ void OscTrackingData::Update(VectorXd x,
   UpdateJdotTimesV(x, tree);
 
   // Update Desired Output
-  y_des_ = traj->value(t);
-  dy_des_ = traj->MakeDerivative(1)->value(t);
-  ddy_des_ = traj->MakeDerivative(2)->value(t);
+  y_des_ = traj.value(t);
+  dy_des_ = traj.MakeDerivative(1)->value(t);
+  ddy_des_ = traj.MakeDerivative(2)->value(t);
+
+  return track_at_current_step_;
 }
 
 // Getters

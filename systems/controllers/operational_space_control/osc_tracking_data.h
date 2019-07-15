@@ -27,18 +27,21 @@ class OscTrackingData {
   OscTrackingData() {}  // Default constructor
 
   // Updater and getters used by osc block
-  void Update(Eigen::VectorXd x,
+  bool Update(Eigen::VectorXd x,
               RigidBodyTree<double>* tree,
-              const drake::trajectories::Trajectory<double>* traj, double t,
+              const drake::trajectories::Trajectory<double>& traj, double t,
               int finite_state_machine_state,
               double time_since_last_state_switch);
+  Eigen::VectorXd GetOutput() {return y_;}
+  Eigen::VectorXd GetJ() {return J_;}
+  Eigen::VectorXd GetJdotTimesV() {return JdotTimesV_;}
   Eigen::VectorXd GetDesiredOutputWithPdControl(Eigen::VectorXd q);
   Eigen::MatrixXd GetWeight();
-  bool DoesTrajHasExp() {return traj_has_exp_;}
+  bool TrajHasExp() {return traj_has_exp_;}
   
   // Getters
   std::string GetName() {return name_;};
-  bool IsTrajConst() {return traj_is_const_;}
+  bool TrajIsConst() {return traj_is_const_;}
   Eigen::VectorXd GetFixedPosition() {return fixed_position_;}
 
   // Setters
@@ -69,10 +72,7 @@ class OscTrackingData {
   void TrackOrNot(int finite_state_machine_state,
                   double time_since_last_state_switch);
 
-  // Getters/updaters of feedback output, jacobian and dJ/dt * v
-  Eigen::VectorXd GetOutput() {return y_;}
-  Eigen::VectorXd GetJ() {return J_;}
-  Eigen::VectorXd GetJdotTimesV() {return JdotTimesV_;}
+  // Updaters of feedback output, jacobian and dJ/dt * v
   virtual void UpdateOutput(const Eigen::VectorXd& x,
                             RigidBodyTree<double>* tree) = 0;
   virtual void UpdateJ(const Eigen::VectorXd& x,

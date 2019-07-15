@@ -32,6 +32,12 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                            double* left_heel_spring,
                            double* right_heel_spring) const;
 
+  // contactEstimtion is public in order to perform unit tests on it.
+  void contactEstimation(
+      const systems::OutputVector<double>& output, const double& dt,
+      drake::systems::DiscreteValues<double>* discrete_state,
+      int* left_contact, int* right_contact) const;
+
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
@@ -42,10 +48,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
       systems::OutputVector<double>* output) const;
 
-  void contactEstimation(
-      const systems::OutputVector<double>& output, const double& dt,
-      drake::systems::DiscreteValues<double>* discrete_state,
-      int* left_contact, int* right_contact) const;
 
   drake::systems::EventStatus Update(
       const drake::systems::Context<double>& context,

@@ -1,0 +1,15 @@
+{
+    "numberOfObjects" : 2,
+    "Objects": {
+        "0": {
+            "name": "sphere",
+            "q_init": [-0.3, 0, 2],
+            "file_name": "drake/examples/manipulation_station/models/sphere.sdf"
+        },
+        "1": {
+            "name": "block",
+            "q_init": [-0.3, 0.2, 2],
+            "file_name": "drake/examples/manipulation_station/models/061_foam_brick.sdf"
+        }
+    }
+}

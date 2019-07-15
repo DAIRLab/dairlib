@@ -20,8 +20,8 @@ namespace controllers {
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
   OperationalSpaceControl(
-    RigidBodyTree<double>* tree_with_springs,
-    RigidBodyTree<double>* tree_without_springs);
+    RigidBodyTree<double>* tree_w_spr,
+    RigidBodyTree<double>* tree_wo_spr);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -96,8 +96,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // the one without spring is that the OSC cannot track desired acceleration
   // instantaneously when springs exist. (relative degrees of 4)
   // The springs here refer to the compliant components in the robots.
-  RigidBodyTree<double>* tree_with_springs_;
-  RigidBodyTree<double>* tree_without_springs_;
+  RigidBodyTree<double>* tree_w_spr_;
+  RigidBodyTree<double>* tree_wo_spr_;
   //TODO: You'll send tree's in the function of CheckOscTrackingData to
   //calculate posistion, etc.:
 

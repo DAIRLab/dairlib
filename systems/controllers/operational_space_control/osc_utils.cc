@@ -17,9 +17,8 @@ namespace controllers {
 // `TrackingData.name_`
 void ConnectPortsForNonConstTraj(OperationalSpaceControl* osc,
                                  drake::systems::DiagramBuilder<double> & builder) {
-  OscTrackingDataSet* data_set = osc->GetTrackingDataSet();
-  vector<OscTrackingData*> tracking_data_vec = data_set->GetAllTrackingData();
-  for (auto tracking_data : tracking_data_vec) {
+  vector<OscTrackingData*>* tracking_data_vec = osc->GetAllTrackingData();
+  for (auto tracking_data : *tracking_data_vec) {
     string traj_name = tracking_data->GetName();
 
     bool connect_successfully = false;
@@ -46,9 +45,8 @@ void ConnectPortsForNonConstTraj(OperationalSpaceControl* osc,
 void AssignConstTrajToInputPorts(OperationalSpaceControl* osc,
                                  drake::systems::Diagram<double>* diagram,
                                  drake::systems::Context<double>* diagram_context) {
-  OscTrackingDataSet* data_set = osc->GetTrackingDataSet();
-  vector<OscTrackingData*> tracking_data_vec = data_set->GetAllTrackingData();
-  for (auto tracking_data : tracking_data_vec) {
+  vector<OscTrackingData*>* tracking_data_vec = osc->GetAllTrackingData();
+  for (auto tracking_data : *tracking_data_vec) {
     if (!tracking_data->IsTrajConst()) continue;
 
     string traj_name = tracking_data->GetName();

@@ -11,7 +11,7 @@ cc_library(
         "operational_space_control.h",
     ],
     deps = [
-        ":osc_tracking_data_set",
+        ":osc_tracking_data",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -41,18 +41,6 @@ cc_library(
         "osc_tracking_data.h",
     ],
     deps = [
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "osc_tracking_data_set",
-    hdrs = [
-        "osc_tracking_data_set.h",
-    ],
-    deps = [
-        ":osc_tracking_data",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

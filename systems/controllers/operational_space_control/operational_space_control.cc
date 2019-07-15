@@ -14,6 +14,9 @@
 
 #include "systems/controllers/operational_space_control/operational_space_control.h"
 
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/solve.h"
+
 using std::vector;
 using std::string;
 using Eigen::VectorXd;
@@ -24,28 +27,31 @@ using drake::systems::BasicVector;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 
+using drake::solvers::MathematicalProgram;
+using drake::solvers::Solve;
+
 namespace dairlib {
 namespace systems {
 namespace controllers {
 
 
 OperationalSpaceControl::OperationalSpaceControl(
-  OscTrackingDataSet* tracking_data_set,
+  std::vector<OscTrackingData*>* tracking_data_vec,
   RigidBodyTree<double>* tree_with_springs,
   RigidBodyTree<double>* tree_without_springs) :
   tree_with_springs_(tree_with_springs),
   tree_without_springs_(tree_without_springs),
-  tracking_data_set_(tracking_data_set) {
+  tracking_data_vec_(tracking_data_vec) {
   this->set_name("OSC");
 
-  int n_q = tree_with_springs->get_num_positions();
-  int n_v = tree_with_springs->get_num_velocities();
-  int n_u = tree_with_springs->get_num_actuators();
+  n_q_ = tree_with_springs->get_num_positions();
+  n_v_ = tree_with_springs->get_num_velocities();
+  n_u_ = tree_with_springs->get_num_actuators();
 
-  // TODO: construct traj_name_to_port_index_map_
-  vector<OscTrackingData*> tracking_data_vec =
-    tracking_data_set->GetAllTrackingData();
-  for (auto tracking_data : tracking_data_vec) {
+  // Construct traj_name_to_port_index_map_
+  // vector<OscTrackingData*> tracking_data_vec =
+  //   tracking_data_set->GetAllTrackingData();
+  for (auto tracking_data : *tracking_data_vec_) {
     string traj_name = tracking_data->GetName();
     int port_index;
     if (tracking_data->DoesTrajHasExp()) {
@@ -60,10 +66,10 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-                  OutputVector<double>(n_q, n_v, n_u)).get_index();
+                  OutputVector<double>(n_q_, n_v_, n_u_)).get_index();
   fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
-  this->DeclareVectorOutputPort(TimestampedVector<double>(n_u),
+  this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_),
                                 &OperationalSpaceControl::CalcOptimalInput);
 
   // Discrete update to record the last state event time
@@ -98,6 +104,20 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
+
+// MathematicalProgram OperationalSpaceControl::SetUpQp() const {
+//   MathematicalProgram prog;
+
+//   // Add decision variables
+//   auto u = prog.NewContinuousVariables(n_u_, "u");
+//   auto lambda_contact = prog.NewContinuousVariables(3 * num_collision, "lambda_contact");
+//   auto lambda_fourbar = prog.NewContinuousVariables(J_fourbar.rows(), "lambda_fourbar");
+//   auto dv = prog.NewContinuousVariables(n_v_, "dv");
+//   auto epsilon = prog.NewContinuousVariables(3 * num_collision, "epsilon");
+
+//   return prog;
+// }
+
 void OperationalSpaceControl::CalcOptimalInput(
   const drake::systems::Context<double>& context,
   systems::TimestampedVector<double>* control) const {
@@ -108,6 +128,11 @@ void OperationalSpaceControl::CalcOptimalInput(
   double timestamp = robot_output->get_timestamp();
   double current_sim_time = static_cast<double>(timestamp);
 
+  // TODO(yminchen): currently construct the QP in every loop. Will modify this
+  // once the code is working.
+
+  // Set up the QP
+  // MathematicalProgram prog = SetUpQp();
 
 
 

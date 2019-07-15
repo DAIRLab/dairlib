@@ -16,6 +16,12 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/rigidbody_utils.h"
 
+#include "examples/Cassie/lipm_cp_control/foot_placement_control.h"
+#include "systems/controllers/cp_traj_gen.h"
+#include "systems/controllers/lipm_traj_gen.h"
+#include "systems/controllers/time_based_fsm.h"
+
+
 namespace dairlib {
 
 using drake::systems::lcm::LcmSubscriberSystem;
@@ -85,7 +91,7 @@ int DoMain() {
   int initial_state_number = 2;
   double duration_per_state = 0.35;
   double time_shift = 0;
-  auto fsm = builder.AddSystem<systems::controllers::TimeBasedFiniteStateMachine>(
+  auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
                &tree_with_springs,
                left_stance_state, right_stance_state, initial_state_number,
                duration_per_state, time_shift);
@@ -95,7 +101,7 @@ int DoMain() {
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
   auto lipm_traj_generator =
-    builder.AddSystem<systems::controllers::LIPMTrajGenerator>(&tree_with_springs,
+    builder.AddSystem<systems::LIPMTrajGenerator>(&tree_with_springs,
         desired_com_height,
         duration_per_state,
         left_stance_state,
@@ -113,7 +119,7 @@ int DoMain() {
   Eigen::Vector2d global_target_position(5, 0);
   double circle_radius_of_no_turning = 1;
   auto foot_placement_control =
-    builder.AddSystem<systems::controllers::FootPlacementControl>(
+    builder.AddSystem<cassie::cp_control::FootPlacementControl>(
       &tree_with_springs, pelvis_idx,
       global_target_position, circle_radius_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
@@ -127,7 +133,7 @@ int DoMain() {
   double cp_offset = 0.06;
   double center_line_offset = 0.06;
   auto cp_traj_generator =
-    builder.AddSystem<systems::controllers::CPTrajGenerator>(&tree_with_springs,
+    builder.AddSystem<systems::CPTrajGenerator>(&tree_with_springs,
         mid_foot_height,
         desired_final_foot_height,
         desired_final_vertical_foot_velocity,
@@ -153,7 +159,7 @@ int DoMain() {
                   cp_traj_generator->get_input_port_fp());
 
   // Create tracking data for operational space control
-
+  
 
 
 

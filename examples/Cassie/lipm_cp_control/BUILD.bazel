@@ -11,6 +11,7 @@ cc_library(
 )
 cc_library(
     name = "cp_control_common_func",
+    srcs = ["cp_control_common_func.cc",],
     hdrs = ["cp_control_common_func.h"],
     deps = [
             "//systems/framework:vector",

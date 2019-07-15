@@ -7,7 +7,7 @@
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 
 #include "systems/framework/output_vector.h"
-#include "systems/controllers/operational_space_control/osc_tracking_data_set.h"
+#include "systems/controllers/operational_space_control/osc_tracking_data.h"
 
 namespace dairlib {
 namespace systems {
@@ -16,9 +16,10 @@ namespace controllers {
 
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
-  OperationalSpaceControl(OscTrackingDataSet* tracking_data_set,
-                          RigidBodyTree<double>* tree_with_springs,
-                          RigidBodyTree<double>* tree_without_springs);
+  OperationalSpaceControl(
+    std::vector<OscTrackingData*>* tracking_data_vec,
+    RigidBodyTree<double>* tree_with_springs,
+    RigidBodyTree<double>* tree_without_springs);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -48,9 +49,16 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void checkConstraintSettings();
 
   // Tracking data methods /////////////////////////////////////////////////////
-  OscTrackingDataSet* GetTrackingDataSet() {
-    return tracking_data_set_;
+  void AddTrackingData(OscTrackingData* tracking_data);
+
+  std::vector<OscTrackingData*>* GetAllTrackingData() {
+    return tracking_data_vec_.get();
   }
+  OscTrackingData* GetTrackingDataByIndex(int index) {
+    return tracking_data_vec_->at(index);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -80,6 +88,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   //TODO: You'll send tree's in the function of CheckOscTrackingData to
   //calculate posistion, etc.:
 
+  int n_q_;
+  int n_v_;
+  int n_u_;
+
   // Cost settings /////////////////////////////////////////////////////////////
   // Input cost
   Eigen::MatrixXd
@@ -105,7 +117,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd W_soft_constraints_;
 
   // Tracking data settings ////////////////////////////////////////////////////
-  OscTrackingDataSet* tracking_data_set_;  // pointer because of caching
+  std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =
+    std::make_unique<std::vector<OscTrackingData*>>(); // pointer because of caching
+  int num_tracking_data_;
 
   //////////////////////////////////////////////////////////////////////////////
 

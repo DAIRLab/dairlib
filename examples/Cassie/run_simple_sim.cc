@@ -57,27 +57,34 @@ DEFINE_double(dt, 1e-3,
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
 DEFINE_bool(publish_state, true,
     "Publish state CASSIE_STATE (set to false when running w/dispatcher");
+DEFINE_string(state_channel_name, "CASSIE_STATE",
+              "The name of the lcm channel that sends Cassie's state");
+DEFINE_bool(publish_cassie_output, true, "Publish simulated CASSIE_OUTPUT");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
-DEFINE_bool(is_imu_sim, true, "With simulated imu sensor or not");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   std::unique_ptr<RigidBodyTree<double>> tree;
-  if (FLAGS_floating_base)
+  if (!FLAGS_floating_base){
+    tree = makeCassieTreePointer();
+  } else {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kQuaternion);
-  else
-    tree = makeCassieTreePointer();
+    const double terrain_size = 100;
+    const double terrain_depth = 0.20;
+    drake::multibody::AddFlatTerrainToWorld(
+        tree.get(), terrain_size, terrain_depth);
+  }
 
   // Add imu frame to Cassie's pelvis
-  if (FLAGS_is_imu_sim) addImuFrameToCassiePelvis(tree);
+  if (FLAGS_publish_cassie_output) addImuFrameToCassiePelvis(tree);
 
   drake::systems::DiagramBuilder<double> builder;
 
-  if (!FLAGS_is_imu_sim && !FLAGS_publish_state) {
+  if (!FLAGS_publish_cassie_output && !FLAGS_publish_state) {
     throw std::logic_error(
         "Must publish either via CASSIE_OUTPUT or CASSIE_STATE");
   }
@@ -121,7 +128,7 @@ int do_main(int argc, char* argv[]) {
         plant->get_rigid_body_tree());
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            "CASSIE_STATE", lcm, 1.0 / FLAGS_publish_rate));
+            FLAGS_state_channel_name, lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(plant->state_output_port(),
                     state_sender->get_input_port_state());
     builder.Connect(state_sender->get_output_port(0),
@@ -129,7 +136,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   // Create cassie output (containing simulated sensor) publisher
-  if (FLAGS_is_imu_sim) {
+  if (FLAGS_publish_cassie_output) {
     auto cassie_sensor_aggregator =
         addImuAndAggregatorToSimulation(builder, plant, passthrough);
     auto cassie_sensor_pub =
@@ -203,6 +210,11 @@ int do_main(int argc, char* argv[]) {
       x0(3) = 1;
   }
 
+  // Set the initial height of the robot so that it's above the ground.
+  if (FLAGS_floating_base) {
+    x0(2) = 1.5;
+  }
+
   Eigen::VectorXd q0 =
       x0.head(plant->get_rigid_body_tree().get_num_positions());
   PositionSolver position_solver(plant->get_rigid_body_tree(), q0);
@@ -258,7 +270,7 @@ int do_main(int argc, char* argv[]) {
   simulator.Initialize();
 
   simulator.StepTo(std::numeric_limits<double>::infinity());
-  // simulator.StepTo(.001);
+  // simulator.StepTo(.01);
   return 0;
 }
 

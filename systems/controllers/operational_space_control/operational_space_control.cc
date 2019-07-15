@@ -51,7 +51,7 @@ void OperationalSpaceControl::AddAccelerationCost(int joint_vel_idx, double w) {
   if (W_joint_accel_.size() == 0) {
     W_joint_accel_ = Eigen::MatrixXd::Zero(n_v_, n_v_);
   }
-  W_joint_accel_(joint_vel_idx, joint_vel_idx) = w;
+  W_joint_accel_(joint_vel_idx, joint_vel_idx) += w;
 }
 
 // Constraint methods
@@ -264,7 +264,24 @@ MathematicalProgram OperationalSpaceControl::SetUpQp(VectorXd q_w_spr,
   // No joint position constraint in this implementation
 
   // Add costs
+  // 1. input cost
+  if (W_input_.size() > 0) {
+    prog.AddQuadraticCost(2 * W_input_, VectorXd::Zero(n_u_), u);
+  }
 
+  // 2. acceleration cost
+  if (W_joint_accel_.size() > 0) {
+    prog.AddQuadraticCost(2 * W_joint_accel_, VectorXd::Zero(n_v_), dv);
+  }
+
+  // 3. Soft constraint cost
+  if (w_soft_constraint_ > 0) {
+    prog.AddQuadraticCost(2 * w_soft_constraint_ * MatrixXd::Identity(n_c, n_c),
+                          VectorXd::Zero(n_c),
+                          epsilon );
+  }
+
+  // 4. Tracking cost
 
 
   return prog;

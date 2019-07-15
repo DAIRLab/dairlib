@@ -32,7 +32,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
     std::string name) const {
-    // int port_idx = traj_name_to_port_index_map_.find(name)->second;
     return this->get_input_port(traj_name_to_port_index_map_.at(name));
   }
 
@@ -107,6 +106,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_u_;
 
   // OSC cost members
+  /// Using u cost would push the robot away from the fix point, so the user
+  /// can consider usnig acceleration cost instead.
   Eigen::MatrixXd W_input_;  // Input cost weight
   Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
 

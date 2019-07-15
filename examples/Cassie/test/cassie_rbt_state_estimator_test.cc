@@ -24,45 +24,6 @@ class ContactEstimationTest : public ::testing::Test {
     output_ = std::make_unique<OutputVector<double>>(tree_.get_num_positions(),
                                                      tree_.get_num_velocities(),
                                                      tree_.get_num_actuators());
-
-    std::vector<std::unique_ptr<BasicVector<double>>> discrete_values_;
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(1, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(13, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(27, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(22, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(22, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(22, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(22, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(22, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(22, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(22, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(2, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(2, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(2, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(6, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(6, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(6, 1)));
-    discrete_values_.push_back(
-        std::make_unique<BasicVector<double>>(VectorXd::Zero(6, 1)));
-
-    discrete_state_ = std::make_unique<drake::systems::DiscreteValues<double>>(
-        std::move(discrete_values_));
   }
 
   void calculateGroundTruth(int& gtl, int& gtr) {
@@ -85,7 +46,6 @@ class ContactEstimationTest : public ::testing::Test {
   RigidBodyTree<double> tree_;
   std::unique_ptr<CassieRbtStateEstimator> estimator_;
   std::unique_ptr<OutputVector<double>> output_;
-  std::unique_ptr<drake::systems::DiscreteValues<double>> discrete_state_;
   double dt_;
   int left_contact_;
   int right_contact_;
@@ -172,8 +132,10 @@ TEST_F(ContactEstimationTest, DoubleSupportContactEstimationTest) {
   left_contact_ = 0;
   right_contact_ = 0;
 
-  estimator_->contactEstimation(*output_, dt_, discrete_state_.get(),
-                                &left_contact_, &right_contact_);
+  auto context = estimator_->CreateDefaultContext();
+
+  estimator_->contactEstimation(*output_, dt_,
+      &context->get_mutable_discrete_state(), &left_contact_, &right_contact_);
 
   int gtl = 0;
   int gtr = 0;
@@ -214,8 +176,10 @@ TEST_F(ContactEstimationTest, LeftSupportContactEstimationTest) {
   left_contact_ = 0;
   right_contact_ = 0;
 
-  estimator_->contactEstimation(*output_, dt_, discrete_state_.get(),
-                                &left_contact_, &right_contact_);
+  auto context = estimator_->CreateDefaultContext();
+
+  estimator_->contactEstimation(*output_, dt_,
+      &context->get_mutable_discrete_state(), &left_contact_, &right_contact_);
 
   int gtl = 0;
   int gtr = 0;
@@ -257,8 +221,10 @@ TEST_F(ContactEstimationTest, RightSupportContactEstimationTest) {
   left_contact_ = 0;
   right_contact_ = 0;
 
-  estimator_->contactEstimation(*output_, dt_, discrete_state_.get(),
-                                &left_contact_, &right_contact_);
+  auto context = estimator_->CreateDefaultContext();
+
+  estimator_->contactEstimation(*output_, dt_,
+      &context->get_mutable_discrete_state(), &left_contact_, &right_contact_);
 
   int gtl = 0;
   int gtr = 0;

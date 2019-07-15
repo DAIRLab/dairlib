@@ -66,17 +66,18 @@ int DoMain() {
                   command_pub->get_input_port());
 
   // Get body indices for cassie with springs
-  int left_toe_ind = GetBodyIndexFromName(tree_with_springs, "toe_left");
-  int right_toe_ind = GetBodyIndexFromName(tree_with_springs, "toe_right");
-  int left_thigh_ind = GetBodyIndexFromName(tree_with_springs, "thigh_left");
-  int right_thigh_ind = GetBodyIndexFromName(tree_with_springs, "thigh_right");
-  int left_heel_spring_ind = GetBodyIndexFromName(tree_with_springs,
+  int pelvis_idx = GetBodyIndexFromName(tree_with_springs, "pelvis");
+  int left_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_left");
+  int right_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_right");
+  int left_thigh_idx = GetBodyIndexFromName(tree_with_springs, "thigh_left");
+  int right_thigh_idx = GetBodyIndexFromName(tree_with_springs, "thigh_right");
+  int left_heel_spring_idx = GetBodyIndexFromName(tree_with_springs,
                              "heel_spring_left");
-  int right_heel_spring_ind = GetBodyIndexFromName(tree_with_springs,
+  int right_heel_spring_idx = GetBodyIndexFromName(tree_with_springs,
                               "heel_spring_right");
-  DRAKE_DEMAND(left_toe_ind != -1 && right_toe_ind != -1 &&
-               left_thigh_ind != -1 && right_thigh_ind != -1 &&
-               left_heel_spring_ind != -1 && right_heel_spring_ind != -1);
+  DRAKE_DEMAND(left_toe_idx != -1 && right_toe_idx != -1 &&
+               left_thigh_idx != -1 && right_thigh_idx != -1 &&
+               left_heel_spring_idx != -1 && right_heel_spring_idx != -1);
 
   // Create finite state machine
   int left_stance_state = 2;
@@ -99,16 +100,66 @@ int DoMain() {
         duration_per_state,
         left_stance_state,
         right_stance_state,
-        left_toe_ind,
+        left_toe_idx,
         Eigen::VectorXd::Zero(3),
-        right_toe_ind,
+        right_toe_idx,
         Eigen::VectorXd::Zero(3));
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
 
+  // Create foot placement control block
+  Eigen::Vector2d global_target_position(5, 0);
+  double circle_radius_of_no_turning = 1;
+  auto foot_placement_control =
+    builder.AddSystem<systems::controllers::FootPlacementControl>(
+      &tree_with_springs, pelvis_idx,
+      global_target_position, circle_radius_of_no_turning);
+  builder.Connect(state_receiver->get_output_port(0),
+                  foot_placement_control->get_input_port_state());
+
   // Create swing leg trajectory generator (capture point)
+  double mid_foot_height = 0.1 + 0.05;
+  double desired_final_foot_height = -0.05; //0.05
+  double desired_final_vertical_foot_velocity = -1;
+  double max_CoM_to_CP_dist = 0.4;
+  double cp_offset = 0.06;
+  double center_line_offset = 0.06;
+  auto cp_traj_generator =
+    builder.AddSystem<systems::controllers::CPTrajGenerator>(&tree_with_springs,
+        mid_foot_height,
+        desired_final_foot_height,
+        desired_final_vertical_foot_velocity,
+        max_CoM_to_CP_dist,
+        duration_per_state,
+        left_stance_state,
+        right_stance_state,
+        left_toe_idx,
+        Eigen::VectorXd::Zero(3),
+        right_toe_idx,
+        Eigen::VectorXd::Zero(3),
+        pelvis_idx,
+        true, true, true,
+        cp_offset,
+        center_line_offset);
+  builder.Connect(fsm->get_output_port(0),
+                  cp_traj_generator->get_input_port_fsm());
+  builder.Connect(state_receiver->get_output_port(0),
+                  cp_traj_generator->get_input_port_state());
+  builder.Connect(lipm_traj_generator->get_output_port(0),
+                  cp_traj_generator->get_input_port_com());
+  builder.Connect(foot_placement_control->get_output_port(0),
+                  cp_traj_generator->get_input_port_fp());
+
+
+
+
+
+
+
+
+
 
 
   // Create Operational space control
@@ -118,6 +169,15 @@ int DoMain() {
                &tree_without_springs);
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_output());
+
+
+
+
+
+
+
+
+
 
 
 

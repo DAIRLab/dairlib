@@ -100,14 +100,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   //TODO: You'll send tree's in the function of CheckOscTrackingData to
   //calculate posistion, etc.:
 
-  // Size of position, velocity and input
+  // Size of position, velocity and input of the RBT without spring
   int n_q_;
   int n_v_;
   int n_u_;
 
   // OSC cost members
-  /// Using u cost would push the robot away from the fix point, so the user
-  /// can consider usnig acceleration cost instead.
+  /// Using u cost would push the robot away from the fixed point, so the user
+  /// could consider usnig acceleration cost instead.
   Eigen::MatrixXd W_input_;  // Input cost weight
   Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
 

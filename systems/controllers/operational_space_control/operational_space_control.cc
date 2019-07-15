@@ -21,22 +21,26 @@ namespace controllers {
 
 
 OperationalSpaceControl::OperationalSpaceControl(
-  RigidBodyTree<double>* tree_w_sprs,
+  RigidBodyTree<double>* tree_w_spr,
   RigidBodyTree<double>* tree_wo_spr) :
-  tree_w_sprs_(tree_w_sprs),
+  tree_w_spr_(tree_w_spr),
   tree_wo_spr_(tree_wo_spr) {
   this->set_name("OSC");
 
-  n_q_ = tree_w_sprs->get_num_positions();
-  n_v_ = tree_w_sprs->get_num_velocities();
-  n_u_ = tree_w_sprs->get_num_actuators();
+  n_q_ = tree_wo_spr->get_num_positions();
+  n_v_ = tree_wo_spr->get_num_velocities();
+  n_u_ = tree_wo_spr->get_num_actuators();
+
+  int n_q_w_spr = tree_w_spr->get_num_positions();
+  int n_v_w_spr = tree_w_spr->get_num_velocities();
+  int n_u_w_spr = tree_w_spr->get_num_actuators();
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-                  OutputVector<double>(n_q_, n_v_, n_u_)).get_index();
+                  OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr)).get_index();
   fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
-  this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_),
+  this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
                                 &OperationalSpaceControl::CalcOptimalInput);
 
   // Discrete update to record the last state event time
@@ -128,8 +132,8 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 
 // TODO(yminchen): currently construct the QP in every loop. Will modify this
 // once the code is working.
-MathematicalProgram OperationalSpaceControl::SetUpQp(VectorXd q_w_spr,
-    VectorXd v_w_spr, VectorXd q_wo_spr, VectorXd v_wo_spr) const {
+MathematicalProgram OperationalSpaceControl::SetUpQp(VectorXd x_w_spr,
+    VectorXd x_wo_spr) const {
 
   int n_h = tree_wo_spr_->getNumPositionConstraints();
   int n_c = 3 * body_index_.size();
@@ -144,9 +148,10 @@ MathematicalProgram OperationalSpaceControl::SetUpQp(VectorXd q_w_spr,
 
   // Get Kinematics Cache
   KinematicsCache<double> cache_w_spr = tree_w_spr_->doKinematics(
-                                          q_w_spr, v_w_spr);
+                                          x_w_spr.head(tree_w_spr_.get_num_positions()),
+                                          x_w_spr.tail(tree_w_spr_.get_num_velocities()));
   KinematicsCache<double> cache_wo_spr = tree_wo_spr_->doKinematics(
-      q_wo_spr, v_wo_spr);
+      x_wo_spr.head(n_q_), x_wo_spr.tail(n_v_));
 
   // Get M, f_cg, B matrices of the manipulator equation
   MatrixXd B = tree_wo_spr_->B;
@@ -282,6 +287,36 @@ MathematicalProgram OperationalSpaceControl::SetUpQp(VectorXd q_w_spr,
   }
 
   // 4. Tracking cost
+
+  for (auto tracking_data : *tracking_data_vec_) {
+    string traj_name = tracking_data->GetName();
+    int port_index = traj_name_to_port_index_map_.at(traj_name);
+
+    // read in traj
+    const drake::AbstractValue* traj_intput =
+      this->EvalAbstractInput(context, port_index);
+    DRAKE_ASSERT(traj_intput != nullptr);
+    if (tracking_data->DoesTrajHasExp()) {
+      const drake::trajectories::Trajectory<double> & traj =
+        traj_intput->get_value <ExponentialPlusPiecewisePolynomial<double >> ();
+
+    } else {
+      const drake::trajectories::Trajectory<double> & traj =
+        traj_intput->get_value <PiecewisePolynomial<double >> ();
+
+    }
+
+    // Not done
+    tracking_data->Update(x_w_spr, tree_w_spr_,
+                          * traj,
+                          double t,
+                          int finite_state_machine_state,
+                          double time_since_last_state_switch);
+
+
+
+
+  }
 
 
   return prog;

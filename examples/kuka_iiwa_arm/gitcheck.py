@@ -14,4 +14,6 @@ if "Changes to be committed" in out:
 if "Changes not staged for commit" in out:
     print("Unstaged file changes in workspace")
     exit()
+if "ahead of " in out:
+    print("Your branch is ahead of remote repository.")
 

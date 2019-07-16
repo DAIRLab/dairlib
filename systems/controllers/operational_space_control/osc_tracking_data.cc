@@ -1,12 +1,19 @@
 #include "systems/controllers/operational_space_control/osc_tracking_data.h"
+
 #include <Eigen/Dense>
 #include <string>
 #include <vector>
+
+#include "common/math_utils.h"
+
+using std::cout;
+using std::endl;
 
 using std::vector;
 using std::string;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 
 namespace dairlib {
 namespace systems {
@@ -186,6 +193,20 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
 void RotTaskSpaceTrackingData::UpdateError(const VectorXd& x,
     const KinematicsCache<double>& cache, RigidBodyTree<double>* tree) {
 
+  Eigen::Matrix3d rot_mat = tree->CalcBodyPoseInWorldFrame(
+                              cache, tree->get_body(body_index_.at(state_idx_))).linear();
+  Quaterniond y_quat(rot_mat);
+  y_ = y_quat.coeffs();
+  cout << "RotTaskSpaceTrackingData::UpdateError(): y_ = " << y_.transpose() <<
+       endl;
+  Quaterniond y_quat_des(y_des_);
+
+  // Get relative quaternion (from current to desired)
+  Quaterniond relative_qaut = NormalizeQuaternion(y_quat_des * y_quat.inverse());
+  double theta = 2 * acos(relative_qaut.w());
+  Vector3d rot_axis = relative_qaut.vec() / sin(theta / 2);
+
+  error_y_ = theta * rot_axis;
 }
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x,
                                        const KinematicsCache<double>& cache,
@@ -253,8 +274,8 @@ AbstractTrackingData::AbstractTrackingData(string name,
 }
 
 void AbstractTrackingData::UpdateError(const VectorXd& x,
-                                        const KinematicsCache<double>& cache,
-                                        RigidBodyTree<double>* tree) {
+                                       const KinematicsCache<double>& cache,
+                                       RigidBodyTree<double>* tree) {
 
 }
 void AbstractTrackingData::UpdateJ(const VectorXd& x,

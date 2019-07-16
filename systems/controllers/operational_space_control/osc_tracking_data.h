@@ -18,27 +18,28 @@ namespace controllers {
 class OscTrackingData {
  public:
   OscTrackingData(std::string name, int n_r,
-                       Eigen::MatrixXd K_p,
-                       Eigen::MatrixXd K_d,
-                       Eigen::MatrixXd W,
-                       bool traj_is_const = false,
-                       bool traj_has_exp = false);
+                  Eigen::MatrixXd K_p,
+                  Eigen::MatrixXd K_d,
+                  Eigen::MatrixXd W,
+                  bool traj_is_const = false,
+                  bool traj_has_exp = false);
 
   OscTrackingData() {}  // Default constructor
 
   // Updater and getters used by osc block
   bool Update(Eigen::VectorXd x,
+              const KinematicsCache<double>& cache,
               RigidBodyTree<double>* tree,
               const drake::trajectories::Trajectory<double>& traj, double t,
               int finite_state_machine_state,
               double time_since_last_state_switch);
   Eigen::VectorXd GetOutput() {return y_;}
   Eigen::VectorXd GetJ() {return J_;}
-  Eigen::VectorXd GetJdotTimesV() {return JdotTimesV_;}
-  Eigen::VectorXd GetDesiredOutputWithPdControl(Eigen::VectorXd q);
+  Eigen::VectorXd GetJdotTimesV() {return JdotV_;}
+  Eigen::VectorXd GetDesiredOutputWithPdControl(Eigen::VectorXd v);
   Eigen::MatrixXd GetWeight();
   bool TrajHasExp() {return traj_has_exp_;}
-  
+
   // Getters
   std::string GetName() {return name_;};
   bool TrajIsConst() {return traj_is_const_;}
@@ -61,7 +62,7 @@ class OscTrackingData {
   // Feedback output, jacobian and dJ/dt * v
   Eigen::VectorXd y_;
   Eigen::MatrixXd J_;
-  Eigen::VectorXd JdotTimesV_;
+  Eigen::VectorXd JdotV_;
 
   // The states of finite state machine where the tracking is enabled
   // If `state_to_do_tracking_` is empty, then the tracking is always on.
@@ -74,10 +75,13 @@ class OscTrackingData {
 
   // Updaters of feedback output, jacobian and dJ/dt * v
   virtual void UpdateOutput(const Eigen::VectorXd& x,
+                            const KinematicsCache<double>& cache,
                             RigidBodyTree<double>* tree) = 0;
   virtual void UpdateJ(const Eigen::VectorXd& x,
+                       const KinematicsCache<double>& cache,
                        RigidBodyTree<double>* tree) = 0;
-  virtual void UpdateJdotTimesV(const Eigen::VectorXd& x,
+  virtual void UpdateJdotV(const Eigen::VectorXd& x,
+                                const KinematicsCache<double>& cache,
                                 RigidBodyTree<double>* tree) = 0;
 
   std::string name_;
@@ -121,17 +125,18 @@ class OscTrackingData {
 
   // cache
   bool track_at_current_step_;
+  int state_to_do_tracking_idx_;
 };
 
 
 class TaskSpaceTrackingData : public OscTrackingData {
  public:
   TaskSpaceTrackingData(std::string name, int n_r,
-                       Eigen::MatrixXd K_p,
-                       Eigen::MatrixXd K_d,
-                       Eigen::MatrixXd W,
-                       bool traj_is_const = false,
-                       bool traj_has_exp = false);
+                        Eigen::MatrixXd K_p,
+                        Eigen::MatrixXd K_d,
+                        Eigen::MatrixXd W,
+                        bool traj_is_const = false,
+                        bool traj_has_exp = false);
 
   TaskSpaceTrackingData() {}  // Default constructor
 
@@ -145,10 +150,13 @@ class TaskSpaceTrackingData : public OscTrackingData {
   std::vector<Eigen::VectorXd> pt_on_body_;
 
   virtual void UpdateOutput(const Eigen::VectorXd& x,
+                            const KinematicsCache<double>& cache,
                             RigidBodyTree<double>* tree);
   virtual void UpdateJ(const Eigen::VectorXd& x,
+                       const KinematicsCache<double>& cache,
                        RigidBodyTree<double>* tree);
-  virtual void UpdateJdotTimesV(const Eigen::VectorXd& x,
+  virtual void UpdateJdotV(const Eigen::VectorXd& x,
+                                const KinematicsCache<double>& cache,
                                 RigidBodyTree<double>* tree);
 };
 
@@ -160,17 +168,23 @@ class TransTaskSpaceTrackingData : public TaskSpaceTrackingData {
                              Eigen::MatrixXd K_d,
                              Eigen::MatrixXd W,
                              bool traj_is_const = false,
-                             bool traj_has_exp = false);
+                             bool traj_has_exp = false,
+                             bool track_center_of_mass = false);
 
   TransTaskSpaceTrackingData() {}  // Default constructor
 
  private:
   void UpdateOutput(const Eigen::VectorXd& x,
+                    const KinematicsCache<double>& cache,
                     RigidBodyTree<double>* tree) override;
   void UpdateJ(const Eigen::VectorXd& x,
+               const KinematicsCache<double>& cache,
                RigidBodyTree<double>* tree) override;
-  void UpdateJdotTimesV(const Eigen::VectorXd& x,
+  void UpdateJdotV(const Eigen::VectorXd& x,
+                        const KinematicsCache<double>& cache,
                         RigidBodyTree<double>* tree) override;
+
+  bool track_center_of_mass_;
 };
 
 
@@ -187,10 +201,13 @@ class RotTaskSpaceTrackingData : public TaskSpaceTrackingData {
 
  private:
   void UpdateOutput(const Eigen::VectorXd& x,
+                    const KinematicsCache<double>& cache,
                     RigidBodyTree<double>* tree) override;
   void UpdateJ(const Eigen::VectorXd& x,
+               const KinematicsCache<double>& cache,
                RigidBodyTree<double>* tree) override;
-  void UpdateJdotTimesV(const Eigen::VectorXd& x,
+  void UpdateJdotV(const Eigen::VectorXd& x,
+                        const KinematicsCache<double>& cache,
                         RigidBodyTree<double>* tree) override;
   // TODO: can use this to get J and JdotTimesV
   // https://drake.mit.edu/doxygen_cxx/class_rigid_body_tree.html#a3f4ec4dc3b053f6420a5fd449ff4d2c3
@@ -226,10 +243,13 @@ class JointSpaceTrackingData : public OscTrackingData {
   std::vector<int> joint_velocity_index_;
 
   void UpdateOutput(const Eigen::VectorXd& x,
+                    const KinematicsCache<double>& cache,
                     RigidBodyTree<double>* tree) override;
   void UpdateJ(const Eigen::VectorXd& x,
+               const KinematicsCache<double>& cache,
                RigidBodyTree<double>* tree) override;
-  void UpdateJdotTimesV(const Eigen::VectorXd& x,
+  void UpdateJdotV(const Eigen::VectorXd& x,
+                        const KinematicsCache<double>& cache,
                         RigidBodyTree<double>* tree) override;
 };
 
@@ -249,10 +269,13 @@ class AbstractTrackingData : public OscTrackingData {
 
  private:
   void UpdateOutput(const Eigen::VectorXd& x,
+                    const KinematicsCache<double>& cache,
                     RigidBodyTree<double>* tree) override;
   void UpdateJ(const Eigen::VectorXd& x,
+               const KinematicsCache<double>& cache,
                RigidBodyTree<double>* tree) override;
-  void UpdateJdotTimesV(const Eigen::VectorXd& x,
+  void UpdateJdotV(const Eigen::VectorXd& x,
+                        const KinematicsCache<double>& cache,
                         RigidBodyTree<double>* tree) override;
 };
 

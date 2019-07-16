@@ -328,7 +328,7 @@ VectorXd OperationalSpaceControl::SolveQp(
                         fsm_state, time_since_last_state_switch);
     if (track_or_not) {
       VectorXd y_t = tracking_data->GetDesiredOutputWithPdControl(
-                             x_w_spr.head(tree_w_spr_.get_num_positions()));
+                             x_w_spr.tail(tree_w_spr_.get_num_velocities()));
       MatrixXd W = tracking_data->GetWeight();
       VectorXd J_t = tracking_data->GetJ();
       MatrixXd JdotV_t = tracking_data->GetJdotTimesV();

@@ -60,6 +60,7 @@ class OscTrackingData {
 
  protected:
   // Feedback output, jacobian and dJ/dt * v
+  Eigen::VectorXd error_y_;
   Eigen::VectorXd y_;
   Eigen::VectorXd ydot_;
   Eigen::MatrixXd J_;
@@ -75,7 +76,7 @@ class OscTrackingData {
                   double time_since_last_state_switch);
 
   // Updaters of feedback output, jacobian and dJ/dt * v
-  virtual void UpdateOutput(const Eigen::VectorXd& x,
+  virtual void UpdateError(const Eigen::VectorXd& x,
                             const KinematicsCache<double>& cache,
                             RigidBodyTree<double>* tree) = 0;
   virtual void UpdateJ(const Eigen::VectorXd& x,
@@ -150,7 +151,7 @@ class TaskSpaceTrackingData : public OscTrackingData {
   std::vector<int> body_index_;
   std::vector<Eigen::VectorXd> pt_on_body_;
 
-  virtual void UpdateOutput(const Eigen::VectorXd& x,
+  virtual void UpdateError(const Eigen::VectorXd& x,
                             const KinematicsCache<double>& cache,
                             RigidBodyTree<double>* tree);
   virtual void UpdateJ(const Eigen::VectorXd& x,
@@ -175,7 +176,7 @@ class TransTaskSpaceTrackingData : public TaskSpaceTrackingData {
   TransTaskSpaceTrackingData() {}  // Default constructor
 
  private:
-  void UpdateOutput(const Eigen::VectorXd& x,
+  void UpdateError(const Eigen::VectorXd& x,
                     const KinematicsCache<double>& cache,
                     RigidBodyTree<double>* tree) override;
   void UpdateJ(const Eigen::VectorXd& x,
@@ -202,7 +203,7 @@ class RotTaskSpaceTrackingData : public TaskSpaceTrackingData {
   RotTaskSpaceTrackingData() {}  // Default constructor
 
  private:
-  void UpdateOutput(const Eigen::VectorXd& x,
+  void UpdateError(const Eigen::VectorXd& x,
                     const KinematicsCache<double>& cache,
                     RigidBodyTree<double>* tree) override;
   void UpdateJ(const Eigen::VectorXd& x,
@@ -245,7 +246,7 @@ class JointSpaceTrackingData : public OscTrackingData {
   std::vector<int> joint_position_index_;
   std::vector<int> joint_velocity_index_;
 
-  void UpdateOutput(const Eigen::VectorXd& x,
+  void UpdateError(const Eigen::VectorXd& x,
                     const KinematicsCache<double>& cache,
                     RigidBodyTree<double>* tree) override;
   void UpdateJ(const Eigen::VectorXd& x,
@@ -271,7 +272,7 @@ class AbstractTrackingData : public OscTrackingData {
   // A bunch of setters here
 
  private:
-  void UpdateOutput(const Eigen::VectorXd& x,
+  void UpdateError(const Eigen::VectorXd& x,
                     const KinematicsCache<double>& cache,
                     RigidBodyTree<double>* tree) override;
   void UpdateJ(const Eigen::VectorXd& x,

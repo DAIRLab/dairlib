@@ -75,14 +75,14 @@ void OscTrackingData::SetConstantTraj(VectorXd v) {
 
 void OscTrackingData::TrackOrNot(int finite_state_machine_state,
                                  double time_since_last_state_switch) {
-  vector<int>::iterator it = find (state_to_do_tracking_.begin(),
-                                   state_to_do_tracking_.end(),
+  vector<int>::iterator it = find (state_.begin(),
+                                   state_.end(),
                                    finite_state_machine_state);
   // TODO: test the following line
-  state_to_do_tracking_idx_ = std::distance(state_to_do_tracking_.begin(), it);
+  state_idx_ = std::distance(state_.begin(), it);
   // Disable tracking by setting the weight to be zero when the current state
-  // is not found in `state_to_do_tracking_`
-  if (it != state_to_do_tracking_.end() &&
+  // is not found in `state_`
+  if (it != state_.end() &&
       time_since_last_state_switch >= period_of_no_control_) {
     track_at_current_step_ = true;
   } else {
@@ -95,6 +95,8 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
 void OscTrackingData::CheckOscTrackingData() {
   DRAKE_DEMAND(!traj_is_const_ ||
                (traj_is_const_ && (fixed_position_.size() != 0)));
+
+  //TODO: check the size of Kp Kd and W_. Should match with n_r
 }
 
 // TaskSpaceTrackingData ///////////////////////////////////////////////////////
@@ -113,14 +115,14 @@ void TaskSpaceTrackingData::AddPointToTrack(int body_index,
     int state) {
   body_index_.push_back(body_index);
   pt_on_body_.push_back(pt_on_body);
-  state_to_do_tracking_.push_back(state);
+  state_.push_back(state);
 }
 void TaskSpaceTrackingData::AddPointToTrack(vector<int> body_index,
     vector<VectorXd> pt_on_body,
     vector<int> state) {
   body_index_ = body_index;
   pt_on_body_ = pt_on_body;
-  state_to_do_tracking_ = state;
+  state_ = state;
 }
 // TransTaskSpaceTrackingData //////////////////////////////////////////
 TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(string name,
@@ -141,7 +143,7 @@ void TransTaskSpaceTrackingData::UpdateOutput(const VectorXd& x,
     y_ = tree->centerOfMass(cache);
   } else {
     y_ = tree->CalcBodyPoseInWorldFrame(
-           cache, tree->get_body(body_index_.at(state_to_do_tracking_idx_))).translation();
+           cache, tree->get_body(body_index_.at(state_idx_))).translation();
   }
 }
 void TransTaskSpaceTrackingData::UpdateJ(const VectorXd& x,
@@ -149,9 +151,9 @@ void TransTaskSpaceTrackingData::UpdateJ(const VectorXd& x,
   if (track_center_of_mass_) {
     J_ = tree->centerOfMassJacobian(cache);
   } else {
-    J_ = tree_->transformPointsJacobian(cache,
-                                        pt_on_body_.at(state_to_do_tracking_idx_),
-                                        body_index_.at(state_to_do_tracking_idx_), 0, false);
+    J_ = tree->transformPointsJacobian(cache,
+                                       pt_on_body_.at(state_idx_),
+                                       body_index_.at(state_idx_), 0, false);
   }
 }
 void TransTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x,
@@ -159,9 +161,9 @@ void TransTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x,
   if (track_center_of_mass_) {
     JdotV_ = tree->centerOfMassJacobianDotTimesV(cache);
   } else {
-    JdotV_ = tree_->transformPointsJacobianDotTimesV(cache,
-             pt_on_body_.at(state_to_do_tracking_idx_),
-             body_index_.at(state_to_do_tracking_idx_), 0);
+    JdotV_ = tree->transformPointsJacobianDotTimesV(cache,
+             pt_on_body_.at(state_idx_),
+             body_index_.at(state_idx_), 0);
   }
 }
 
@@ -173,8 +175,10 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
     Eigen::MatrixXd K_d,
     Eigen::MatrixXd W,
     bool traj_is_const,
-    bool traj_has_exp) : TaskSpaceTrackingData(name, n_r,
-          K_p, K_d, W, traj_is_const, traj_has_exp) {
+    bool traj_has_exp,
+    Eigen::Isometry3d isometry) : TaskSpaceTrackingData(name, n_r,
+          K_p, K_d, W, traj_is_const, traj_has_exp),
+  isometry_(isometry) {
 }
 
 void RotTaskSpaceTrackingData::UpdateOutput(const VectorXd& x,
@@ -184,13 +188,15 @@ void RotTaskSpaceTrackingData::UpdateOutput(const VectorXd& x,
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x,
                                        const KinematicsCache<double>& cache,
                                        RigidBodyTree<double>* tree) {
-
+  MatrixXd J_spatial = tree->CalcFrameSpatialVelocityJacobianInWorldFrame (cache,
+                       tree->get_body(body_index_.at(state_idx_)), isometry_);
+  J_ = J_spatial.block(0, 0, 3, J_spatial.cols());
 }
 void RotTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x,
     const KinematicsCache<double>& cache, RigidBodyTree<double>* tree) {
-
+  JdotV = tree->CalcFrameSpatialVelocityJacobianDotTimesVInWorldFrame (cache,
+          tree->get_body(body_index_.at(state_idx_)), isometry_).head(3);
 }
-
 
 // JointSpaceTrackingData //////////////////////////////////////////////////////
 JointSpaceTrackingData::JointSpaceTrackingData(string name,
@@ -223,14 +229,14 @@ void JointSpaceTrackingData::AddJointToTrack(int joint_position_index,
     int state) {
   joint_position_index_.push_back(joint_position_index);
   joint_velocity_index_.push_back(joint_velocity_index);
-  state_to_do_tracking_.push_back(state);
+  state_.push_back(state);
 }
 void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_position_index,
     vector<int> joint_velocity_index,
     vector<int> state) {
   joint_position_index_ = joint_position_index;
   joint_velocity_index_ = joint_velocity_index;
-  state_to_do_tracking_ = state;
+  state_ = state;
 }
 
 // AbstractTrackingData ////////////////////////////////////////////////////////

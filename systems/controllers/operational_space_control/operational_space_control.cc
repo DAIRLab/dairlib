@@ -113,6 +113,9 @@ void OperationalSpaceControl::ConstructOSC() {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();
+  for (auto tracking_data : *tracking_data_vec_) {
+    tracking_data->CheckOscTrackingData();
+  }
 
   // Construct traj_name_to_port_index_map_
   for (auto tracking_data : *tracking_data_vec_) {

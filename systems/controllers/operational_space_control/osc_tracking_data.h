@@ -269,8 +269,6 @@ class AbstractTrackingData : public OscTrackingData {
 
   AbstractTrackingData() {}  // Default constructor
 
-  // A bunch of setters here
-
  private:
   void UpdateError(const Eigen::VectorXd& x,
                     const KinematicsCache<double>& cache,

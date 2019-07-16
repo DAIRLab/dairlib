@@ -176,7 +176,6 @@ void TransTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x,
   }
 }
 
-
 // RotTaskSpaceTrackingData /////////////////////////////////////////////
 RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
     int n_r,
@@ -192,11 +191,11 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
 
 void RotTaskSpaceTrackingData::UpdateError(const VectorXd& x,
     const KinematicsCache<double>& cache, RigidBodyTree<double>* tree) {
-
+  // Get the quaternion in the form of Eigen::VectorXd
   Eigen::Matrix3d rot_mat = tree->CalcBodyPoseInWorldFrame(
                               cache, tree->get_body(body_index_.at(state_idx_))).linear();
   Quaterniond y_quat(rot_mat);
-  y_ = y_quat.coeffs();
+  y_ << y_quat.w(), y_quat.vec();
   cout << "RotTaskSpaceTrackingData::UpdateError(): y_ = " << y_.transpose() <<
        endl;
   Quaterniond y_quat_des(y_des_);
@@ -276,17 +275,17 @@ AbstractTrackingData::AbstractTrackingData(string name,
 void AbstractTrackingData::UpdateError(const VectorXd& x,
                                        const KinematicsCache<double>& cache,
                                        RigidBodyTree<double>* tree) {
-
+  // Not implemented yet
 }
 void AbstractTrackingData::UpdateJ(const VectorXd& x,
                                    const KinematicsCache<double>& cache,
                                    RigidBodyTree<double>* tree) {
-
+  // Not implemented yet
 }
 void AbstractTrackingData::UpdateJdotV(const VectorXd& x,
                                        const KinematicsCache<double>& cache,
                                        RigidBodyTree<double>* tree) {
-
+  // Not implemented yet
 }
 
 

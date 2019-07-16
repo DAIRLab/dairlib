@@ -71,7 +71,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd SolveQp(
     const drake::systems::Context<double>& context, double t,
     int fsm_state, double time_since_last_state_switch,
-    VectorXd x_w_spr, VectorXd x_wo_spr) const;
+    Eigen::VectorXd x_w_spr, Eigen::VectorXd x_wo_spr) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -91,8 +91,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int prev_event_time_idx_;
 
   // Map position/velocity from model with spring to without spring
-  MatrixXd map_position_from_spring_to_no_spring_;
-  MatrixXd map_velocity_from_spring_to_no_spring_;
+  Eigen::MatrixXd map_position_from_spring_to_no_spring_;
+  Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
   // Map from trajectory names to input port indices
   std::map<std::string, int> traj_name_to_port_index_map_;

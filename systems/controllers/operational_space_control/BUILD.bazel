@@ -41,6 +41,7 @@ cc_library(
         "osc_tracking_data.h",
     ],
     deps = [
+        "//common:math_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

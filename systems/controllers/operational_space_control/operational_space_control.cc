@@ -298,17 +298,17 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Add costs
   // 1. input cost
   if (W_input_.size() > 0) {
-    prog.AddQuadraticCost(2 * W_input_, VectorXd::Zero(n_u_), u);
+    prog.AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u);
   }
 
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
-    prog.AddQuadraticCost(2 * W_joint_accel_, VectorXd::Zero(n_v_), dv);
+    prog.AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv);
   }
 
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
-    prog.AddQuadraticCost(2 * w_soft_constraint_ * MatrixXd::Identity(n_c, n_c),
+    prog.AddQuadraticCost(w_soft_constraint_ * MatrixXd::Identity(n_c, n_c),
                           VectorXd::Zero(n_c),
                           epsilon );
   }
@@ -335,11 +335,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       MatrixXd W = tracking_data->GetWeight();
       VectorXd J_t = tracking_data->GetJ();
       MatrixXd JdotV_t = tracking_data->GetJdotTimesV();
-
-
-      // TODO: generalize below to joint space tracking
-      prog.AddQuadraticCost(2 * J_t.transpose()*W * J_t,
-                            2 * J_t.transpose()*W * (JdotV_t - y_t),
+      prog.AddQuadraticCost(J_t.transpose()*W * J_t,
+                            J_t.transpose()*W * (JdotV_t - y_t),
                             dv);
     }
   }

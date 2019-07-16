@@ -77,7 +77,7 @@ void EndEffectorVelocityController::CalcOutputTorques(
   commandedTorques = frameSpatialVelocityJacobian.transpose() * generalizedForces;
 
   // Limit maximum commanded torques
-  double max_torque_limit = 0.5;
+  double max_torque_limit = 3.0;
   for (int i = 0; i < num_joints_; i++) {
       if (commandedTorques(i, 0) > max_torque_limit) {
           commandedTorques(i, 0) = max_torque_limit;

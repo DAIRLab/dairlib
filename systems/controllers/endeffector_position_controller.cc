@@ -75,7 +75,7 @@ void EndEffectorPositionController::CalcOutputTwist(
 
   // TODO: parse these from the json file
   // Limit maximum commanded linear velocity
-  double linear_speed_limit = 0.5;
+  double linear_speed_limit = 3.0;
   double currVel = diff.norm();
 
   if (currVel > linear_speed_limit || currVel < -linear_speed_limit) {
@@ -87,7 +87,7 @@ void EndEffectorPositionController::CalcOutputTwist(
   }
 
   // Limit maximum commanded angular velocity
-  double angular_speed_limit = 1.5;
+  double angular_speed_limit = 3.0;
   double currAngVel = angularVelocityWF.norm();
   if (currAngVel > angular_speed_limit || currAngVel < -angular_speed_limit) {
       angularVelocityWF = angularVelocityWF * (angular_speed_limit/currAngVel);

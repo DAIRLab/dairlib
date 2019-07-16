@@ -206,7 +206,6 @@ int DoMain() {
 
   drake::systems::BasicVector<double>& state =
       context.get_mutable_discrete_state(0);
-  std::cout << "Discrete " << state.size() << std::endl;
   state.SetFromVector(q0_iiwa);
 
   simulator.set_publish_every_time_step(false);

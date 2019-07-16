@@ -85,8 +85,6 @@ void KukaTorqueController<T>::SetUp(const VectorX<double>& stiffness,
                                     const VectorX<double>& damping_ratio) {
   DiagramBuilder<T> builder;
   const MultibodyPlant<T>& plant = *robot_for_control_;
-  std::cout << plant.num_positions() << std::endl;
-  std::cout << stiffness.size() << std::endl;
   DRAKE_DEMAND(plant.num_positions() == stiffness.size());
   DRAKE_DEMAND(plant.num_positions() == damping_ratio.size());
 

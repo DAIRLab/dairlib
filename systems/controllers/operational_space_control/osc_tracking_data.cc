@@ -191,8 +191,10 @@ void TaskSpaceTrackingData::CheckDerivedOscTrackingData() {
   if (body_index_w_spr_.empty()) {
     body_index_w_spr_ = body_index_wo_spr_;
   }
+  DRAKE_DEMAND(body_index_w_spr_.size() == body_index_wo_spr_.size());
   DRAKE_DEMAND(pt_on_body_.size() == body_index_wo_spr_.size());
   DRAKE_DEMAND(pt_on_body_.size() == body_index_w_spr_.size());
+  DRAKE_DEMAND(state_.empty() || (state_.size() == pt_on_body_.size()));
 }
 
 // TransTaskSpaceTrackingData //////////////////////////////////////////
@@ -332,17 +334,52 @@ void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_wo_spr,
   state_.push_back(state);
   AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
 }
+void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_w_spr,
+    int joint_vel_idx_w_spr,
+    int joint_pos_idx_wo_spr,
+    int joint_vel_idx_wo_spr) {
+  joint_pos_idx_w_spr_.push_back(joint_pos_idx_w_spr);
+  joint_vel_idx_w_spr_.push_back(joint_vel_idx_w_spr);
+  AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
+}
+void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_w_spr,
+    int joint_vel_idx_w_spr,
+    int joint_pos_idx_wo_spr,
+    int joint_vel_idx_wo_spr,
+    int state) {
+  state_.push_back(state);
+  AddJointToTrack(joint_pos_idx_w_spr, joint_vel_idx_w_spr,
+                  joint_pos_idx_wo_spr, joint_vel_idx_wo_spr)
+}
+
 void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_wo_spr,
     vector<int> joint_vel_idx_wo_spr) {
   joint_pos_idx_wo_spr_.insert(joint_pos_idx_wo_spr_.end(),
-                        joint_pos_idx_wo_spr.begin(), joint_pos_idx_wo_spr.end());
+                               joint_pos_idx_wo_spr.begin(), joint_pos_idx_wo_spr.end());
   joint_vel_idx_wo_spr_.insert(joint_vel_idx_wo_spr_.end(),
-                        joint_vel_idx_wo_spr.begin(), joint_vel_idx_wo_spr.end());
+                               joint_vel_idx_wo_spr.begin(), joint_vel_idx_wo_spr.end());
 }
 void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_wo_spr,
     vector<int> joint_vel_idx_wo_spr, vector<int> state) {
   state_.insert(state_.end(), state.begin(), state.end());
   AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
+}
+void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_w_spr,
+    vector<int> joint_vel_idx_w_spr,
+    vector<int> joint_pos_idx_wo_spr,
+    vector<int> joint_vel_idx_wo_spr) {
+  joint_pos_idx_w_spr_.push_back(joint_pos_idx_w_spr);
+  joint_vel_idx_w_spr_.push_back(joint_vel_idx_w_spr);
+  AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
+}
+void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_w_spr,
+    vector<int> joint_vel_idx_w_spr,
+    vector<int> joint_pos_idx_wo_spr,
+    vector<int> joint_vel_idx_wo_spr,
+    vector<int> state) {
+  state_.insert(state_.end(), state.begin(), state.end());
+  AddJointToTrack(joint_pos_idx_w_spr, joint_vel_idx_w_spr,
+                  joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
 }
 
 void JointSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
@@ -365,6 +402,20 @@ void JointSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void JointSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
     KinematicsCache<double>& cache_wo_spr, RigidBodyTree<double>* tree_wo_spr) {
   JdotV_ = VectorXd::Zero(GetTrajDim());
+}
+
+void TaskSpaceTrackingData::CheckDerivedOscTrackingData() {
+  if (joint_pos_idx_w_spr_.empty()) {
+    joint_pos_idx_w_spr_ = joint_pos_idx_wo_spr_;
+  }
+  if (joint_vel_idx_w_spr_.empty()) {
+    joint_vel_idx_w_spr_ = joint_vel_idx_wo_spr_;
+  }
+  DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == joint_pos_idx_wo_spr_.size());
+  DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == joint_vel_idx_wo_spr_.size());
+  DRAKE_DEMAND(state_.empty() ||
+               (state_.size() == joint_pos_idx_wo_spr_.size()) &&
+               (state_.size() == joint_vel_idx_wo_spr_.size()));
 }
 
 // AbstractTrackingData ////////////////////////////////////////////////////////

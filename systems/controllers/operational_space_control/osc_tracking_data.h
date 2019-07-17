@@ -313,9 +313,13 @@ class JointSpaceTrackingData : public OscTrackingData {
   void AddJointToTrack(int joint_pos_idx_wo_spr,
                        int joint_vel_idx_wo_spr,
                        int state);
-  void AddJointToTrack(int joint_pos_idx_wo_spr,
+  void AddJointToTrack(int joint_pos_idx_w_spr,
+                       int joint_vel_idx_w_spr,
+                       int joint_pos_idx_wo_spr,
                        int joint_vel_idx_wo_spr);
-  void AddJointToTrack(int joint_pos_idx_wo_spr,
+  void AddJointToTrack(int joint_pos_idx_w_spr,
+                       int joint_vel_idx_w_spr,
+                       int joint_pos_idx_wo_spr,
                        int joint_vel_idx_wo_spr,
                        int state);
 
@@ -323,6 +327,15 @@ class JointSpaceTrackingData : public OscTrackingData {
   void AddJointToTrack(std::vector<int> joint_pos_idx_wo_spr,
                        std::vector<int> joint_vel_idx_wo_spr);
   void AddJointToTrack(std::vector<int> joint_pos_idx_wo_spr,
+                       std::vector<int> joint_vel_idx_wo_spr,
+                       std::vector<int> state);
+  void AddJointToTrack(std::vector<int> joint_pos_idx_w_spr,
+                       std::vector<int> joint_vel_idx_w_spr,
+                       std::vector<int> joint_pos_idx_wo_spr,
+                       std::vector<int> joint_vel_idx_wo_spr);
+  void AddJointToTrack(std::vector<int> joint_pos_idx_w_spr,
+                       std::vector<int> joint_vel_idx_w_spr,
+                       std::vector<int> joint_pos_idx_wo_spr,
                        std::vector<int> joint_vel_idx_wo_spr,
                        std::vector<int> state);
 

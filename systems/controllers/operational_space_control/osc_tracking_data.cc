@@ -122,8 +122,9 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
 void OscTrackingData::CheckOscTrackingData() {
   DRAKE_DEMAND(!traj_is_const_ ||
                (traj_is_const_ && (fixed_position_.size() != 0)));
-
-  //TODO: check the size of Kp Kd and W_. Should match with n_r
+  DRAKE_DEMAND((K_p_.rows() == n_r_)&&(K_p_.cols() == n_r_));
+  DRAKE_DEMAND((K_d_.rows() == n_r_)&&(K_d_.cols() == n_r_));
+  DRAKE_DEMAND((W_.rows() == n_r_)&&(W_.cols() == n_r_));
 }
 
 // TaskSpaceTrackingData ///////////////////////////////////////////////////////

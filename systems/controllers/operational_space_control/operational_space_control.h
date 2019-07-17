@@ -34,6 +34,8 @@ namespace controllers {
 /// Requirement:
 ///  - the joints name (except for the spring joints) in `tree_w_spr` must be
 ///    the same as those of `tree_wo_spr`
+///  - the bodies in both RBT's should be the same. (to get jacobian from
+///    both trees)
 
 /// If the robot doesn't have any spring, the user can just pass two identical
 /// RigidBodyTree into the constructor.

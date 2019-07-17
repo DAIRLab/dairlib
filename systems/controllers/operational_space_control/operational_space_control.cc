@@ -345,14 +345,16 @@ VectorXd OperationalSpaceControl::SolveQp(
 
     bool track_or_not = tracking_data->Update(x_w_spr,
                         cache_w_spr, tree_w_spr_,
+                        x_wo_spr,
+                        cache_wo_spr, tree_wo_spr_,
                         traj, t,
                         fsm_state, time_since_last_state_switch);
     if (track_or_not) {
-      VectorXd y_t = tracking_data->GetDesiredOutputWithPdControl(
-                       x_w_spr.tail(tree_w_spr_->get_num_velocities()));
+      VectorXd y_t = tracking_data->GetDesiredOutputWithPdControl();
       MatrixXd W = tracking_data->GetWeight();
       VectorXd J_t = tracking_data->GetJ();
       MatrixXd JdotV_t = tracking_data->GetJdotTimesV();
+      //TODO: later, if track_or_not = false, we can just update W
       prog.AddQuadraticCost(J_t.transpose()*W * J_t,
                             J_t.transpose()*W * (JdotV_t - y_t),
                             dv);

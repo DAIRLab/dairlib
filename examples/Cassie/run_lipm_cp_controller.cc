@@ -160,12 +160,46 @@ int DoMain() {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-               &tree_with_springs, &tree_without_springs);
+               &tree_with_springs, &tree_without_springs, true);
+  // Parameters for QP
+  R_ = 2 * .0001 * MatrixXd::Identity(n_u_, n_u_); // .01
+  R_acceleration_ = 2 * .00001 * MatrixXd::Identity(n_v_, n_v_);
+  w_swing_foot_ = 2 * 100;
+  w_com_ = 2 * 100;  //5
+  W_com_ = MatrixXd::Zero(3, 3);
+  W_com_(0, 0) = w_com_ * 0.01; W_com_(1, 1) = w_com_ * 0.01; W_com_(2, 2) = w_com_ * 10;
+  w_pelvis_balance_ = 2 * 100;
+  w_heading_ = 2 * 100; //10
+  w_contact_relax_ = 2 * 100; //100 // We don't want this to be too big, cause we want tracking error to be important
+  w_swing_toe_ = 2 * 1;
+  w_stance_toe_ = 2 * 1;
+  w_hip_yaw_ = 2 * 10;
+  w_toe_ = 2 * .05; //1
+  Q_ = 2 * 1 * MatrixXd::Identity(n_v_, n_v_);
+  // Paremeters for feedback control in QP
+  k_p_ft_ = 1.0 * 10 * 10;
+  k_d_ft_ = 0.1 * 10 * 10;
+  k_p_com_ = 1.0 * 10 * 5;
+  k_d_com_ = 0.2 * 10 * 5;
+  k_p_pelvis_balance_ = 1.0 * 10 * 10;
+  k_d_pelvis_balance_ = 0.8 * 10 * 10;
+  k_p_heading_ = 1.0 * 10 * 5;
+  k_d_heading_ = 0.8 * 10 * 5;
+  k_p_swing_toe_ = 1.0 * 10 * 100;
+  k_d_swing_toe_ = 0.1 * 10 * 100;
+  k_p_stance_toe_ = 1.0 * 10 * 10;
+  k_d_stance_toe_ = 0.2 * 10 * 10;
+  k_p_hip_yaw_ = 1.0 * 10 * 20;
+  k_d_hip_yaw_ = 0.8 * 10 * 20;
+  k_p_dv_ = 1;
+  k_d_dv_ = .2;
+  // Firction coefficient
+mu_ = 0.8;  
 
 
 
 
-  
+
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_output());
 

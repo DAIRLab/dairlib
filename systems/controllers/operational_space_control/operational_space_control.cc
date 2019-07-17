@@ -23,9 +23,11 @@ namespace controllers {
 
 OperationalSpaceControl::OperationalSpaceControl(
   RigidBodyTree<double>* tree_w_spr,
-  RigidBodyTree<double>* tree_wo_spr) :
+  RigidBodyTree<double>* tree_wo_spr,
+  bool used_with_finite_state_machine) :
   tree_w_spr_(tree_w_spr),
-  tree_wo_spr_(tree_wo_spr) {
+  tree_wo_spr_(tree_wo_spr),
+  used_with_finite_state_machine_(used_with_finite_state_machine) {
   this->set_name("OSC");
 
   n_q_ = tree_wo_spr->get_num_positions();
@@ -39,16 +41,18 @@ OperationalSpaceControl::OperationalSpaceControl(
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
                   OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr)).get_index();
-  fsm_port_ = this->DeclareVectorInputPort(
-                BasicVector<double>(1)).get_index();
   this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
                                 &OperationalSpaceControl::CalcOptimalInput);
+  if (used_with_finite_state_machine) {
+    fsm_port_ = this->DeclareVectorInputPort(
+                  BasicVector<double>(1)).get_index();
 
-  // Discrete update to record the last state event time
-  DeclarePerStepDiscreteUpdateEvent(
-    &OperationalSpaceControl::DiscreteVariableUpdate);
-  prev_fsm_state_idx_ = this->DeclareDiscreteState(1);
-  prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+    // Discrete update to record the last state event time
+    DeclarePerStepDiscreteUpdateEvent(
+      &OperationalSpaceControl::DiscreteVariableUpdate);
+    prev_fsm_state_idx_ = this->DeclareDiscreteState(1);
+    prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+  }
 
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ = MatrixXd::Zero(n_q_, n_q_w_spr);
@@ -159,9 +163,9 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 // TODO(yminchen): currently construct the QP in every loop. Will modify this
 // once the code is working.
 VectorXd OperationalSpaceControl::SolveQp(
+  VectorXd x_w_spr, VectorXd x_wo_spr,
   const drake::systems::Context<double>& context, double t,
-  int fsm_state, double time_since_last_state_switch,
-  VectorXd x_w_spr, VectorXd x_wo_spr) const {
+  int fsm_state, double time_since_last_state_switch) const {
 
   int n_h = tree_wo_spr_->getNumPositionConstraints();
   int n_c = 3 * body_index_.size();
@@ -381,15 +385,6 @@ void OperationalSpaceControl::CalcOptimalInput(
   double timestamp = robot_output->get_timestamp();
   double current_sim_time = static_cast<double>(timestamp);
 
-  // Read in finite state machine
-  const BasicVector<double>* fsm_output = (BasicVector<double>*)
-                                          this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_value();
-
-  // Get discrete states
-  const auto prev_event_time = context.get_discrete_state(
-                                 prev_event_time_idx_).get_value();
-
   // TODO(yminchen): currently construct the QP in every loop. Will modify this
   // once the code is working.
   // Set up the QP
@@ -400,9 +395,26 @@ void OperationalSpaceControl::CalcOptimalInput(
                                                   map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
   // std::cout << "current_state = " << current_state.transpose() << endl;
   // std::cout << "x_wo_spr = " << x_wo_spr.transpose() << endl;
-  VectorXd u_sol = SolveQp(context, current_sim_time,
-                           fsm_state(0), current_sim_time - prev_event_time(0),
-                           current_state, x_wo_spr);
+
+  VectorXd u_sol(n_u_);
+  if (used_with_finite_state_machine_) {
+    // Read in finite state machine
+    const BasicVector<double>* fsm_output = (BasicVector<double>*)
+                                            this->EvalVectorInput(context, fsm_port_);
+    VectorXd fsm_state = fsm_output->get_value();
+
+    // Get discrete states
+    const auto prev_event_time = context.get_discrete_state(
+                                   prev_event_time_idx_).get_value();
+
+    u_sol = SolveQp(current_state, x_wo_spr,
+                    context, current_sim_time,
+                    fsm_state(0), current_sim_time - prev_event_time(0));
+  } else {
+    u_sol = SolveQp(current_state, x_wo_spr,
+                    context, current_sim_time,
+                    -1, -1);
+  }
 
 
   // Assign the control input

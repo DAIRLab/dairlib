@@ -22,6 +22,8 @@ namespace controllers {
 /// Inputs of the constructor:
 ///  - `tree_w_spr` a RigidBodyTree with springs
 ///  - `tree_wo_spr` a RigidBodyTree without springs
+///  - `used_with_finite_state_machine` a flag indicating whehter using osc with
+///    finite state machine or not
 /// The springs here refer to the compliant components in the robots.
 
 /// OSC calculates feedback positions/velocities from `tree_w_spr`,
@@ -78,7 +80,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
   OperationalSpaceControl(
     RigidBodyTree<double>* tree_w_spr,
-    RigidBodyTree<double>* tree_wo_spr);
+    RigidBodyTree<double>* tree_wo_spr,
+    bool used_with_finite_state_machine = true);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -126,9 +129,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void CheckCostSettings();
   void CheckConstraintSettings();
   Eigen::VectorXd SolveQp(
+    Eigen::VectorXd x_w_spr, Eigen::VectorXd x_wo_spr,
     const drake::systems::Context<double>& context, double t,
-    int fsm_state, double time_since_last_state_switch,
-    Eigen::VectorXd x_w_spr, Eigen::VectorXd x_wo_spr) const;
+    int fsm_state, double time_since_last_state_switch) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -162,6 +165,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_q_;
   int n_v_;
   int n_u_;
+
+  // flag indicating whehter using osc with finite state machine or not
+  bool used_with_finite_state_machine_;
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user

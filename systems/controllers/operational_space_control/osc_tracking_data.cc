@@ -47,21 +47,31 @@ bool OscTrackingData::Update(VectorXd x,
                              double t,
                              int finite_state_machine_state,
                              double time_since_last_state_switch) {
-  TrackOrNot(finite_state_machine_state, time_since_last_state_switch);
-  if (!track_at_current_step_) return track_at_current_step_;
-  // Careful: must update y_des_ before calling UpdateError()
+  // Update track_at_current_step_
+  if (state_.empty()) {
+    track_at_current_step_ = true;
+  } else {
+    TrackOrNot(finite_state_machine_state, time_since_last_state_switch);
+  }
 
-  // Update Desired Output
-  y_des_ = traj.value(t);
-  dy_des_ = traj.MakeDerivative(1)->value(t);
-  ddy_des_ = traj.MakeDerivative(2)->value(t);
+  // Proceed based on the result of track_at_current_step_
+  if (!track_at_current_step_) {
+    return track_at_current_step_;
+  } else {
+    // Careful: must update y_des_ before calling UpdateError()
 
-  // Update Feedback Output (Calling virtual methods)
-  UpdateError(x, cache, tree);
-  UpdateJ(x, cache, tree);
-  UpdateJdotV(x, cache, tree);
+    // Update Desired Output
+    y_des_ = traj.value(t);
+    dy_des_ = traj.MakeDerivative(1)->value(t);
+    ddy_des_ = traj.MakeDerivative(2)->value(t);
 
-  return track_at_current_step_;
+    // Update Feedback Output (Calling virtual methods)
+    UpdateError(x, cache, tree);
+    UpdateJ(x, cache, tree);
+    UpdateJdotV(x, cache, tree);
+
+    return track_at_current_step_;
+  }
 }
 
 // Getters

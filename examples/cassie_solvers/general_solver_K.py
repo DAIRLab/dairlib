@@ -115,7 +115,7 @@ def main():
 
     print(X[0][:4]) # first 4 correspond to spring constants
     sol = X[0] # least squares solution using sparse matrix
-
+    print(sol.shape)
     lambdaMatrix = np.zeros((12, t.size - 1))
     i = 0
     while i < t.size - 1:
@@ -124,6 +124,9 @@ def main():
             lambdaMatrix[j, i] = sol[4 + 12 * i + j]
             j += 1
         i += 1
+
+    print(sol[4:16])
+    print(sol[1108:1110])
     
     print("---------------------------TESTING---------------------------")
 
@@ -170,6 +173,7 @@ def main():
         Jdotv = np.concatenate((JctDot, JcDot), axis = 0)
         y = np.concatenate((y, (Ja + Jdotv).reshape(numJ, 1)), axis = 1)
         ind += 1
+
     '''
     print("--------------------------- PLOTTING ACCELERATIONS ---------------------------")
     print(a[21,:])

@@ -124,3 +124,25 @@ py_binary(
             "@drake//bindings/pydrake",
     ],
 )
+
+py_binary(
+    name = "general_solver_a_full_rank",
+    srcs = ["general_solver_a_full_rank.py"],
+    deps = [":lcm_log_utils_py",
+            ":contact_toolkit_py",
+            ":cassie_utils_py",
+            ":dircon_position_data_py",
+            "@drake//bindings/pydrake",
+    ],
+)
+
+py_binary(
+    name = "debug",
+    srcs = ["debug.py"],
+    deps = [":lcm_log_utils_py",
+            ":contact_toolkit_py",
+            ":cassie_utils_py",
+            ":dircon_position_data_py",
+            "@drake//bindings/pydrake",
+    ],
+)

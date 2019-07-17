@@ -87,6 +87,10 @@ def main():
         dpd_toe_right2 = DirconPositionData(tree, 20, [0.088, 0, 0], False).Jdotv(cacheCurr)
 
         JctDotVCurr = np.concatenate((dpd_toe_left1, dpd_toe_left2, dpd_toe_right1, dpd_toe_right2), axis = 0)
+        # always very small (JcDotVCurr)
+        # always very small (JctDotVCurr)
+        # always very small (JcCurr)
+        # always very small (JctCurr)
 
         bCurr = np.concatenate((KqCurr + BuCurr - CCurr, -JctDotVCurr, -JcDotVCurr), axis = 0) # b
 
@@ -144,7 +148,7 @@ def main():
         plt.show()
         ind += 1
     '''
-
+    '''
 
     Jv = np.zeros((12, 1))
     time = 0
@@ -166,6 +170,62 @@ def main():
         plt.plot(t, Jv[ind,:])
         ind += 1
     plt.show()
+    '''
+
+    print("--------------------------------- t = 0 ------------------------------------")
+
+    x0 = x[:, 0]
+    q0 = x0[:numQ]
+    v0 = x0[numQ:]
+
+    lambda0 = [84.69107, 0.36542079, -2.88779, 87.37902, 0.54163, 1.571763, 79.42712, 1.06329, 3.43513, 104.7781, 1.0549, -3.465996, -455.95446, -469.77942379]
+
+    cache = tree.doKinematics(q0, v0) # 22 positions
+
+    CCurr = tree.dynamicsBiasTerm(cache, {}, True)
+
+    BuCurr = np.matmul(tree.B, (u[:, 0]))
+
+    MCurr = tree.massMatrix(cache)
+    MaCurr = np. matmul(MCurr, a[:, 0])
+
+    springsQCurr = [x[tree.get_body(tree.FindIndexOfChildBodyOfJoint("knee_joint_left")).get_position_start_index(), 0],
+                    x[tree.get_body(tree.FindIndexOfChildBodyOfJoint("knee_joint_right")).get_position_start_index(), ind],
+                    x[tree.get_body(tree.FindIndexOfChildBodyOfJoint("ankle_spring_joint_left")).get_position_start_index(), 0],
+                    x[tree.get_body(tree.FindIndexOfChildBodyOfJoint("ankle_spring_joint_right")).get_position_start_index(), 0]]
+
+    KqCurr = np.matmul(deltaK, springsQCurr) # Kq
+
+    cInfo = ComputeCassieContactInfo(tree, q0)
+    cToolkit = ContactToolkit(tree, cInfo)
+    JctCurr = cToolkit.CalcContactJacobian(xCurr, False)
+    JctTCurr = JctCurr.transpose() # contact jacobian transpose
+
+    JcCurr = tree.positionConstraintsJacobian(cache, False)
+    JcTCurr = JcCurr.transpose() # position constraint jacobian transpose
+
+    C = CCurr
+    Bu = BuCurr
+    JT = np.concatenate((JctTCurr, JcTCurr), axis = 1)
+    JTlambda = np.matmul(JT, lambda0)
+    Ma = MaCurr
+
+    JcDotVCurr = tree.positionConstraintsJacDotTimesV(cache) # JcDot
+
+    dpd_toe_left1 = DirconPositionData(tree, 18, [-0.0457, 0.112, 0], False).Jdotv(cache)
+    dpd_toe_left2 = DirconPositionData(tree, 18, [0.088, 0, 0], False).Jdotv(cache)
+    dpd_toe_right1 = DirconPositionData(tree, 20, [-0.0457, 0.112, 0], False).Jdotv(cache)
+    dpd_toe_right2 = DirconPositionData(tree, 20, [0.088, 0, 0], False).Jdotv(cache)
+
+    JctDotVCurr = np.concatenate((dpd_toe_left1, dpd_toe_left2, dpd_toe_right1, dpd_toe_right2), axis = 0)
+    
+    JDotVCurr = np.concatenate((JctDotVCurr, JcDotVCurr), axis = 0)
+
+    print(Ma + C - JTlambda - Bu - KqCurr)
+
+    J = np.concatenate((JctCurr, JcCurr), axis = 0)
+
+    print(np.matmul(J, a[:, 11]) - JDotVCurr)
 
     '''
     print("-------------------------- Solve backwards to find delta K's -------------------------")
@@ -241,8 +301,7 @@ def main():
     print(X[0][:4]) # first 4 correspond to spring constants
     print(X[1]) # success = 2
     print(X[3]) # norm(b - Ax)
-    '''
-    '''
+
     print("--------------------------- TESTING Jdotv + Ja ---------------------------")
     
     # using general_solver_a's accels
@@ -336,8 +395,7 @@ def main():
         Jdotv = np.concatenate((JctDot, JcDot), axis = 0)
         y2 = np.concatenate((y2, (Ja + Jdotv).reshape(numJ, 1)), axis = 1)
         ind += 1
-    '''
-    '''
+
     ind = 0
     while ind < numJ:
         plt.title("Plot of Jdotv + Ja residuals " + str(ind) + " (Position)")
@@ -345,9 +403,9 @@ def main():
         plt.ylim(-5, 5)
         plt.show()
         ind += 1
-    '''
-    print("--------------------------- TESTING Correct accels in matrix equation ---------------------------")
 
+    print("--------------------------- TESTING Correct accels in matrix equation ---------------------------")
+    '''
     # add test
 
 if __name__ == "__main__":

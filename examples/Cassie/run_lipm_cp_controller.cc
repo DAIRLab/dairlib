@@ -158,23 +158,16 @@ int DoMain() {
   builder.Connect(foot_placement_control->get_output_port(0),
                   cp_traj_generator->get_input_port_fp());
 
-  // Create tracking data for operational space control
+  // Create Operational space control
+  auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
+               &tree_with_springs, &tree_without_springs);
+
+
+
+
   
-
-
-
-
-
-
-
-
-  // // Create Operational space control
-  // auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-  //              OscTrackingDataSet * tracking_data_set,
-  //              &tree_with_springs,
-  //              &tree_without_springs);
-  // builder.Connect(state_receiver->get_output_port(0),
-  //                 osc->get_input_port_output());
+  builder.Connect(state_receiver->get_output_port(0),
+                  osc->get_input_port_output());
 
 
 

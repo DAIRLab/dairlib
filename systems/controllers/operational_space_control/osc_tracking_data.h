@@ -14,7 +14,7 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-// OscTrackingData is a virtual class
+/// OscTrackingData is a virtual class
 
 /// Input of the constructor:
 /// - dimension of the output/trajectory
@@ -165,15 +165,6 @@ class TaskSpaceTrackingData : public OscTrackingData {
   std::vector<Eigen::VectorXd> pt_on_body_;
 
  private:
-  virtual void UpdateError(const Eigen::VectorXd& x,
-                           KinematicsCache<double>& cache,
-                           RigidBodyTree<double>* tree);
-  virtual void UpdateJ(const Eigen::VectorXd& x,
-                       KinematicsCache<double>& cache,
-                       RigidBodyTree<double>* tree);
-  virtual void UpdateJdotV(const Eigen::VectorXd& x,
-                           KinematicsCache<double>& cache,
-                           RigidBodyTree<double>* tree);
 };
 
 

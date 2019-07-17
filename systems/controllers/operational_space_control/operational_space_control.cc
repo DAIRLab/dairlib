@@ -14,6 +14,8 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 
 using drake::solvers::MathematicalProgram;
 using drake::solvers::Solve;
+using drake::solvers::MathematicalProgramResult;
+using drake::solvers::SolutionResult;
 
 namespace dairlib {
 namespace systems {
@@ -175,8 +177,8 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Get Kinematics Cache
   KinematicsCache<double> cache_w_spr = tree_w_spr_->doKinematics(
-                                          x_w_spr.head(tree_w_spr_.get_num_positions()),
-                                          x_w_spr.tail(tree_w_spr_.get_num_velocities()));
+                                          x_w_spr.head(tree_w_spr_->get_num_positions()),
+                                          x_w_spr.tail(tree_w_spr_->get_num_velocities()));
   KinematicsCache<double> cache_wo_spr = tree_wo_spr_->doKinematics(
       x_wo_spr.head(n_q_), x_wo_spr.tail(n_v_));
 
@@ -189,6 +191,20 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd bias = tree_wo_spr_->dynamicsBiasTerm(cache_wo_spr,
                   no_external_wrenches);
 
+  // Get J and JdotV for holonomic constraint
+  MatrixXd J_h = tree_wo_spr_->positionConstraintsJacobian(cache_wo_spr, false);
+  VectorXd JdotV_h = tree_wo_spr_->positionConstraintsJacDotTimesV(cache_wo_spr);
+
+  // Get J and JdotV for contact constraint
+  MatrixXd J_c = MatrixXd::Zero(n_c, n_v_);
+  VectorXd JdotV_c = VectorXd::Zero(n_c);
+  for (unsigned int i = 0; i < body_index_.size(); i++) {
+    J_c.block(3 * i, 0, 3, n_v_) = tree_wo_spr_->transformPointsJacobian(
+                                     cache_wo_spr, pt_on_body_[i], body_index_[i], 0, false);
+    JdotV_c.segment(3 * i, 3) = tree_wo_spr_->transformPointsJacobianDotTimesV(
+                                  cache_wo_spr, pt_on_body_[i], body_index_[i], 0);
+  }
+
   // Construct QP
   MathematicalProgram prog;
 
@@ -198,15 +214,13 @@ VectorXd OperationalSpaceControl::SolveQp(
                   "lambda_contact");
   auto lambda_h = prog.NewContinuousVariables(n_h, "lambda_holonomic");
   auto dv = prog.NewContinuousVariables(n_v_, "dv");
-  if (w_soft_constraint_ > 0) {
-    auto epsilon = prog.NewContinuousVariables(n_c, "epsilon");
-  }
+  auto epsilon = prog.NewContinuousVariables(n_c, "epsilon");
 
   // Add constraints
   // 1. Dynamics constraint
-  ///    M*dv + bias == J_c^T*lambda_c + J_h^T*lambda_fourbar + B*u
-  /// -> M*dv - J_c^T*lambda_c - J_h^T*lambda_fourbar - B*u == - bias
-  /// -> [M, -J_c^T, -J_h^T, -B]*[dv, lambda_c, lambda_fourbar, u]^T = - bias
+  ///    M*dv + bias == J_c^T*lambda_c + J_h^T*lambda_h + B*u
+  /// -> M*dv - J_c^T*lambda_c - J_h^T*lambda_h - B*u == - bias
+  /// -> [M, -J_c^T, -J_h^T, -B]*[dv, lambda_c, lambda_h, u]^T = - bias
   // std::cout<< "size of (M, -J_c.transpose(), -J_h.transpose(), -B):\n"
   //       << M.rows() << ", " << M.cols() << "\n"
   //       << J_c.transpose().rows() << ", " << J_c.transpose().cols() << "\n"
@@ -222,7 +236,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // std::cout<< "J_h.transpose() # of rows and cols = " <<J_h.transpose().rows()<<", "<<J_h.transpose().cols()<<std::endl;
   // std::cout<< "B # of rows and cols = " <<B.rows()<<", "<<B.cols()<<std::endl;
   // std::cout<<"A_dyn = \n"<<A_dyn<<"\n";
-  prog.AddLinearConstraint(A_dyn, -bias, -bias, {dv, lambda_c, lambda_fourbar, u});
+  prog.AddLinearConstraint(A_dyn, -bias, -bias, {dv, lambda_c, lambda_h, u});
 
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
@@ -269,7 +283,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     VectorXd mu_minus1(2); mu_minus1 << mu_, -1;
     VectorXd mu_plus1(2); mu_plus1 << mu_, 1;
 
-    for (int i = 0; i < body_index_.size(); i++) {
+    for (unsigned int i = 0; i < body_index_.size(); i++) {
       prog.AddLinearConstraint(mu_minus1.transpose(),
                                0, numeric_limits<double>::infinity(),
       {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 0, 1)});
@@ -326,12 +340,13 @@ VectorXd OperationalSpaceControl::SolveQp(
       traj_intput->get_value<ExponentialPlusPiecewisePolynomial<double>>() :
       traj_intput->get_value<PiecewisePolynomial<double>>();
 
-    bool track_or_not = tracking_data->Update(x_w_spr, tree_w_spr_,
+    bool track_or_not = tracking_data->Update(x_w_spr,
+                        cache_w_spr, tree_w_spr_,
                         traj, t,
                         fsm_state, time_since_last_state_switch);
     if (track_or_not) {
       VectorXd y_t = tracking_data->GetDesiredOutputWithPdControl(
-                             x_w_spr.tail(tree_w_spr_.get_num_velocities()));
+                       x_w_spr.tail(tree_w_spr_->get_num_velocities()));
       MatrixXd W = tracking_data->GetWeight();
       VectorXd J_t = tracking_data->GetJ();
       MatrixXd JdotV_t = tracking_data->GetJdotTimesV();
@@ -344,11 +359,12 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Solve the QP
   const MathematicalProgramResult result = Solve(prog);
   SolutionResult solution_result = result.get_solution_result();
+  std::cout << to_string(solution_result) << std::endl;
 
   // Extract solutions
   VectorXd u_sol = result.GetSolution(u);
-  VectorXd lambda_contact_sol = result.GetSolution(lambda_contact);
-  VectorXd lambda_fourbar_sol = result.GetSolution(lambda_fourbar);
+  VectorXd lambda_c_sol = result.GetSolution(lambda_c);
+  VectorXd lambda_h_sol = result.GetSolution(lambda_h);
   VectorXd dv_sol = result.GetSolution(dv);
   VectorXd epsilon_sol = result.GetSolution(epsilon);
 
@@ -378,13 +394,15 @@ void OperationalSpaceControl::CalcOptimalInput(
   // TODO(yminchen): currently construct the QP in every loop. Will modify this
   // once the code is working.
   // Set up the QP
-  VectorXd x_wo_spr <<
-                    map_position_from_spring_to_no_spring_ * robot_output->GetPosition(),
-                                                           map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocity();
+  VectorXd x_wo_spr(map_position_from_spring_to_no_spring_.rows() +
+                    map_velocity_from_spring_to_no_spring_.rows());
+  x_wo_spr <<
+           map_position_from_spring_to_no_spring_ * robot_output->GetPositions(),
+                                                  map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
   // std::cout << "current_state = " << current_state.transpose() << endl;
   // std::cout << "x_wo_spr = " << x_wo_spr.transpose() << endl;
-  VectorXd u_sol = SetUpQp(context, current_sim_time,
-                           fsm_state(0), time_since_last_state_switch,
+  VectorXd u_sol = SolveQp(context, current_sim_time,
+                           fsm_state(0), current_sim_time - prev_event_time(0),
                            current_state, x_wo_spr);
 
 

@@ -106,3 +106,39 @@ cc_test(
         "@gtest//:main",
     ],
 )
+
+cc_library(
+    name = "safe_velocity_controller",
+    srcs = ["safe_velocity_controller.cc"],
+    hdrs = ["safe_velocity_controller.h"],
+    deps = [
+            "//common",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+            ],
+)
+
+
+cc_library(
+    name = "endeffector_position_controller",
+    srcs = ["endeffector_position_controller.cc"],
+    hdrs = ["endeffector_position_controller.h"],
+    deps = [
+            "//common",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+    ]
+
+)
+
+cc_library(
+    name = "endeffector_velocity_controller",
+    srcs = ["endeffector_velocity_controller.cc"],
+    hdrs = ["endeffector_velocity_controller.h"],
+    deps = [
+            "//common",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+    ]
+
+)

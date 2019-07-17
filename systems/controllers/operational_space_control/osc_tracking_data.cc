@@ -84,6 +84,14 @@ void OscTrackingData::SetConstantTraj(VectorXd v) {
 
 void OscTrackingData::TrackOrNot(int finite_state_machine_state,
                                  double time_since_last_state_switch) {
+  if (state_.empty()) {
+    if (time_since_last_state_switch >= period_of_no_control_) {
+      track_at_current_step_ = true;
+    } else {
+      track_at_current_step_ = false;
+    }
+  }
+
   vector<int>::iterator it = find (state_.begin(),
                                    state_.end(),
                                    finite_state_machine_state);
@@ -133,6 +141,17 @@ void TaskSpaceTrackingData::AddPointToTrack(vector<int> body_index,
   pt_on_body_.insert(pt_on_body_.end(), pt_on_body.begin(), pt_on_body.end());
   state_.insert(state_.end(), state.begin(), state.end());
 }
+void TaskSpaceTrackingData::AddPointToTrack(int body_index,
+    VectorXd pt_on_body) {
+  body_index_.push_back(body_index);
+  pt_on_body_.push_back(pt_on_body);
+}
+void TaskSpaceTrackingData::AddPointToTrack(vector<int> body_index,
+    vector<VectorXd> pt_on_body) {
+  body_index_.insert(body_index_.end(), body_index.begin(), body_index.end());
+  pt_on_body_.insert(pt_on_body_.end(), pt_on_body.begin(), pt_on_body.end());
+}
+
 // TransTaskSpaceTrackingData //////////////////////////////////////////
 TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(string name,
     int n_r,
@@ -219,7 +238,7 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x,
 void RotTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x,
     KinematicsCache<double>& cache, RigidBodyTree<double>* tree) {
   JdotV_ = tree->CalcFrameSpatialVelocityJacobianDotTimesVInWorldFrame (cache,
-          tree->get_body(body_index_.at(GetStateIdx())), isometry_).head(3);
+           tree->get_body(body_index_.at(GetStateIdx())), isometry_).head(3);
 }
 
 // JointSpaceTrackingData //////////////////////////////////////////////////////
@@ -249,6 +268,18 @@ void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx,
   joint_vel_idx_.insert(joint_vel_idx_.end(),
                         joint_vel_idx.begin(), joint_vel_idx.end());
   state_.insert(state_.end(), state.begin(), state.end());
+}
+void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx,
+    int joint_vel_idx) {
+  joint_pos_idx_.push_back(joint_pos_idx);
+  joint_vel_idx_.push_back(joint_vel_idx);
+}
+void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx,
+    vector<int> joint_vel_idx) {
+  joint_pos_idx_.insert(joint_pos_idx_.end(),
+                        joint_pos_idx.begin(), joint_pos_idx.end());
+  joint_vel_idx_.insert(joint_vel_idx_.end(),
+                        joint_vel_idx.begin(), joint_vel_idx.end());
 }
 
 void JointSpaceTrackingData::UpdateError(const VectorXd& x,

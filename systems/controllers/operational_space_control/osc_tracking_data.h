@@ -36,6 +36,14 @@ namespace controllers {
 
 /// error_y_, JdotV and J_ are implemented in the derived class.
 
+/// Users can implement their own derived class if the current implementation
+/// here is not comprehensive enough.
+
+/// Two methods for the users:
+/// - SetConstantTraj(), to set constant trajectory value
+/// - SetNoControlPeriod() to set a period of not tracking the desired traj (the
+///   period starts when the finite state machine switches to a new state)
+
 class OscTrackingData {
  public:
   OscTrackingData(std::string name, int n_r,
@@ -46,6 +54,10 @@ class OscTrackingData {
                   bool traj_has_exp = false);
 
   OscTrackingData() {}  // Default constructor
+
+  // Setters
+  void SetConstantTraj(Eigen::VectorXd v);
+  void SetNoControlPeriod(double duration) {period_of_no_control_ = duration;}
 
   // Updater and getters used by osc block
   bool Update(Eigen::VectorXd x,
@@ -60,6 +72,9 @@ class OscTrackingData {
   Eigen::VectorXd GetDesiredOutputWithPdControl(Eigen::VectorXd v);
   Eigen::MatrixXd GetWeight();
   bool TrajHasExp() {return traj_has_exp_;}
+  // void UpdatePGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
+  // void UpdateDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
+  // void UpdateWeight(Eigen::MatrixXd W);
 
   // Getters
   std::string GetName() {return name_;};
@@ -67,17 +82,8 @@ class OscTrackingData {
   bool TrajIsConst() {return traj_is_const_;}
   Eigen::VectorXd GetFixedPosition() {return fixed_position_;}
 
-  // Setters
-  void SetPGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
-  void SetDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
-  void SetWeight(Eigen::MatrixXd W);
-  // Set constant trajectory
-  void SetConstantTraj(Eigen::VectorXd v);
-  // No control peirod
-  void SetNoControlPeriod(double duration) {period_of_no_control_ = duration;}
-
-  // Run this function in OSC constructor to make sure that users constructed
-  // OscTrackingData correctly.
+  // Make sure that users constructed OscTrackingData correctly.
+  // (called in OSC constructor)
   void CheckOscTrackingData();
 
  protected:
@@ -115,9 +121,10 @@ class OscTrackingData {
                            KinematicsCache<double>& cache,
                            RigidBodyTree<double>* tree) = 0;
 
+  // Trajectory name
   std::string name_;
 
-  // dimension of the traj
+  // Dimension of the traj
   int n_r_;
 
   // PD control gains
@@ -144,6 +151,7 @@ class OscTrackingData {
 };
 
 
+// TaskSpaceTrackingData is still a virtual class
 class TaskSpaceTrackingData : public OscTrackingData {
  public:
   TaskSpaceTrackingData(std::string name, int n_r,
@@ -155,10 +163,18 @@ class TaskSpaceTrackingData : public OscTrackingData {
 
   TaskSpaceTrackingData() {}  // Default constructor
 
+  // `body_index` is the index of the body
+  // `pt_on_body` is the position w.r.t. the origin of the body
+  // `state` is the finite state machine state when the joint trajectory should
+  // be tracked
   void AddPointToTrack(int body_index, Eigen::VectorXd pt_on_body, int state);
   void AddPointToTrack(std::vector<int> body_index,
                        std::vector<Eigen::VectorXd> pt_on_body,
                        std::vector<int> state);
+
+  void AddPointToTrack(int body_index, Eigen::VectorXd pt_on_body);
+  void AddPointToTrack(std::vector<int> body_index,
+                       std::vector<Eigen::VectorXd> pt_on_body);
 
  protected:
   std::vector<int> body_index_;
@@ -168,6 +184,13 @@ class TaskSpaceTrackingData : public OscTrackingData {
 };
 
 
+/// TransTaskSpaceTrackingData is used when we want to track a trajectory
+/// (translational position) in the task space.
+
+/// `track_center_of_mass_` should be set to true when we track center of mass.
+
+/// AddPointToTrack() should be called to specify what is the point that tracks
+/// the desired trajectory
 class TransTaskSpaceTrackingData : public TaskSpaceTrackingData {
  public:
   TransTaskSpaceTrackingData(std::string name, int n_r,
@@ -194,6 +217,14 @@ class TransTaskSpaceTrackingData : public TaskSpaceTrackingData {
 };
 
 
+/// RotTaskSpaceTrackingData is used when we want to track a trajectory
+/// (rotational position) in the task space.
+
+/// isometry_ represent the frame (w.r.t. the body's origin ) which the users
+/// want to track
+
+/// AddPointToTrack() should be called to specify what is origin of the frame
+/// that tracks the desired trajectory
 class RotTaskSpaceTrackingData : public TaskSpaceTrackingData {
  public:
   RotTaskSpaceTrackingData(std::string name, int n_r,
@@ -220,6 +251,11 @@ class RotTaskSpaceTrackingData : public TaskSpaceTrackingData {
 };
 
 
+/// JointSpaceTrackingData is used when we want to track a trajectory
+/// in the joint space.
+
+/// AddJointToTrack() should be called to specify which joint to track.
+/// Note that one instance of `JointSpaceTrackingData` allows to track 1 joint.
 class JointSpaceTrackingData : public OscTrackingData {
  public:
   JointSpaceTrackingData(std::string name, int n_r,
@@ -231,12 +267,21 @@ class JointSpaceTrackingData : public OscTrackingData {
 
   JointSpaceTrackingData() {}  // Default constructor
 
+  // `joint_pos_idx` is the index of the joint position
+  // `joint_vel_idx` is the index of the joint velocity
+  // `state` is the finite state machine state when the joint trajectory should
+  // be tracked
   void AddJointToTrack(int joint_pos_idx,
                        int joint_vel_idx,
                        int state);
   void AddJointToTrack(std::vector<int> joint_pos_idx,
                        std::vector<int> joint_vel_idx,
                        std::vector<int> state);
+
+  void AddJointToTrack(int joint_pos_idx,
+                       int joint_vel_idx);
+  void AddJointToTrack(std::vector<int> joint_pos_idx,
+                       std::vector<int> joint_vel_idx);
 
  private:
   void UpdateError(const Eigen::VectorXd& x,

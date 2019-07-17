@@ -21,7 +21,6 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-
 OperationalSpaceControl::OperationalSpaceControl(
   RigidBodyTree<double>* tree_w_spr,
   RigidBodyTree<double>* tree_wo_spr) :

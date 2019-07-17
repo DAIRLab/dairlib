@@ -16,6 +16,63 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
+/// `OperationalSpaceControl` takes in desired trajectory and outputs torque
+/// command of the motors.
+
+/// Inputs of the constructor:
+///  - `tree_w_spr` a RigidBodyTree with springs
+///  - `tree_wo_spr` a RigidBodyTree without springs
+/// The springs here refer to the compliant components in the robots.
+
+/// OSC calculates feedback positions/velocities from `tree_w_spr`,
+/// but in the optimization it uses `tree_wo_spr`. The reason of using
+/// RigidBodyTree without spring is that the OSC cannot track desired
+/// acceleration instantaneously when springs exist. (relative degrees of 4)
+
+/// Requirement:
+///  - the joints name (except for the spring joints) in `tree_w_spr` must be
+///    the same as those of `tree_wo_spr`
+
+/// If the robot doesn't have any spring, the user can just pass two identical
+/// RigidBodyTree into the constructor.
+
+/// Users define
+///     costs,
+///     constraints,
+///     and the trajectories to track,
+/// and add them through `OperationalSpaceControl`'s' methods.
+
+/// Before adding desired trajectories to `OperationalSpaceControl`, users have
+/// to create
+///     `TransTaskSpaceTrackingData`,
+///     `RotTaskSpaceTrackingData`,
+///     `JointSpaceTrackingData`,
+///     and/or `AbstractTrackingData`.
+
+/// If the desired trajectory is constant, users don't need to connect the
+/// input ports of `OperationalSpaceControl` to trajectory source blocks.
+/// Instead, the users have to call the function AssignConstTrajToInputPorts()
+/// after drake::systems::Diagram is built.
+
+/// If the users want to create the desired trajectory source themselves,
+/// the outputs of trajectory blocks need to be of the derived classes of
+///     drake::trajectories::Trajectory<double>
+/// such as `PiecewisePolynomial` and `ExponentialPlusPiecewisePolynomial`.
+/// The users can connect the output ports of the desired trajecotry blocks to
+/// the corresponding input ports of `OperationalSpaceControl` by using
+/// the method get_tracking_data_input_port().
+/// Users can also call the utility function ConnectPortsForNonConstTraj() if
+/// they don't want to connect the input/output ports manually.
+
+/// The procedure of setting up `OperationalSpaceControl`:
+///   1. create an instance of `OperationalSpaceControl`
+///   2. add costs/constraints/desired trajectories
+///   3. call ConstructOSC()
+///   4. (if the users created desired trajectory blocks by themselves) connect
+///      `OperationalSpaceControl`'s input ports to corresponding output ports
+///      of the trajectory source.
+///   5. (if the users added constant trajectories) after creating Diagram,
+///      call AssignConstTrajToInputPorts().
 
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
@@ -61,11 +118,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return tracking_data_vec_->at(index);
   }
 
-  // Osc constructor
+  // Osc problem constructor
   void ConstructOSC();
 
  private:
-  // Osc checkers and constructor related methods
+  // Osc checkers and constructor-related methods
   void CheckCostSettings();
   void CheckConstraintSettings();
   Eigen::VectorXd SolveQp(
@@ -97,15 +154,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Map from trajectory names to input port indices
   std::map<std::string, int> traj_name_to_port_index_map_;
 
-  // RBT's. OSC calculates feedback position/velocity from tree with springs,
-  // but in the optimization it uses tree without springs. The reason of using
-  // the one without spring is that the OSC cannot track desired acceleration
-  // instantaneously when springs exist. (relative degrees of 4)
-  // The springs here refer to the compliant components in the robots.
+  // RBT's.
   RigidBodyTree<double>* tree_w_spr_;
   RigidBodyTree<double>* tree_wo_spr_;
-  //TODO: You'll send tree's in the function of CheckOscTrackingData to
-  //calculate posistion, etc.:
 
   // Size of position, velocity and input of the RBT without spring
   int n_q_;

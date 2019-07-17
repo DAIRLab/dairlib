@@ -1,3 +1,0 @@
-#!/bin/bash
-export SNOPT_PATH=$(dirname "$0")/archive/snopt7.6.tar.gz
-exec -a "$0" "${BAZEL_REAL}" "$@"

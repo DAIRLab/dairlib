@@ -225,12 +225,12 @@ void TransTaskSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
   if (track_center_of_mass_) {
     ydot_ = tree_w_spr->centerOfMassJacobian(cache_w_spr) *
-            x_w_spr.tail(x_w_spr.get_num_velocities());
+            x_w_spr.tail(tree_w_spr->get_num_velocities());
   } else {
     ydot_ = tree_w_spr->transformPointsJacobian(cache_w_spr,
             pt_on_body_.at(GetStateIdx()),
             body_index_w_spr_.at(GetStateIdx()), 0, false) *
-            x_w_spr.tail(x_w_spr.get_num_velocities());
+            x_w_spr.tail(tree_w_spr->get_num_velocities());
   }
 }
 void TransTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
@@ -295,7 +295,7 @@ void RotTaskSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
                          cache_w_spr,
                          tree_w_spr->get_body(body_index_w_spr_.at(GetStateIdx())), isometry_);
   ydot_ = J_spatial.block(0, 0, 3, J_spatial.cols()) *
-          x_w_spr.tail(x_w_spr.get_num_velocities());
+          x_w_spr.tail(tree_w_spr->get_num_velocities());
 }
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                        KinematicsCache<double>& cache_wo_spr,
@@ -368,8 +368,10 @@ void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_w_spr,
     vector<int> joint_vel_idx_w_spr,
     vector<int> joint_pos_idx_wo_spr,
     vector<int> joint_vel_idx_wo_spr) {
-  joint_pos_idx_w_spr_.push_back(joint_pos_idx_w_spr);
-  joint_vel_idx_w_spr_.push_back(joint_vel_idx_w_spr);
+  joint_pos_idx_w_spr_.insert(joint_pos_idx_w_spr_.end(),
+                              joint_pos_idx_w_spr.begin(), joint_pos_idx_w_spr.end());
+  joint_vel_idx_w_spr_.insert(joint_vel_idx_w_spr_.end(),
+                              joint_vel_idx_w_spr.begin(), joint_vel_idx_w_spr.end());
   AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
 }
 void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_w_spr,

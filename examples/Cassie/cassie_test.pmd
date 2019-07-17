@@ -74,13 +74,21 @@ group "3.cassie-robot" {
     }
 }
 
-group "4.gazebo" {
+group "4.other-simulators" {
     cmd "0.launch-gazebo" {
         exec = "bash ../cassie-gazebo-sim/cassie/launch_sim.sh";
         host = "localhost";
     }
-    cmd "0.launch-gazebo-fixed-base" {
+    cmd "1.launch-gazebo-fixed-base" {
         exec = "bash ../cassie-gazebo-sim/cassie_fixed_base/launch_sim.sh";
+        host = "localhost";
+    }
+    cmd "2.cassie-mujoco" {
+        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v";
+        host = "localhost";
+    }
+    cmd "3.cassie-mujoco-fixed-base" {
+        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v -h";
         host = "localhost";
     }
 }
@@ -102,7 +110,7 @@ script "run-drake-pd-control" {
 
 script "run-gazebo-pd-control" {
     run_script "start-operator";
-    start cmd "0.launch-gazebo-fixed-base";
+    start cmd "1.launch-gazebo-fixed-base";
     start cmd "2.b.dispatcher-robot-out (gazebo)";
     start cmd "3.dispatcher-robot-in";
     start cmd "0.pd-controller";
@@ -110,12 +118,19 @@ script "run-gazebo-pd-control" {
 
 script "run-gazebo-lcm-pd-control" {
     run_script "start-operator";
-    start cmd "0.launch-gazebo-fixed-base";
+    start cmd "1.launch-gazebo-fixed-base";
     start cmd "2.a.dispatcher-robot-out (lcm)";
     start cmd "3.dispatcher-robot-in";
     start cmd "0.pd-controller";
 }
 
+script "run-mujoco-lcm-pd-control" {
+    run_script "start-operator";
+    start cmd "3.cassie-mujoco-fixed-base";
+    start cmd "2.a.dispatcher-robot-out (lcm)";
+    start cmd "3.dispatcher-robot-in";
+    start cmd "0.pd-controller";
+}
 
 script "start-operator-real-robot" {
     stop cmd "3.state-visualizer-real-robot";

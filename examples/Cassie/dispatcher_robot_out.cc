@@ -171,6 +171,18 @@ int do_main(int argc, char* argv[]) {
       // Write the lcmt_robot_input message into the context and advance.
       input_value.GetMutableData()->set_value(input_sub.message());
       const double time = input_sub.message().utime * 1e-6;
+
+      // Check if we are very far ahead or behind
+      // (likely due to a restart of the driving clock)
+      if (time > simulator.get_context().get_time() + 1.0 ||
+          time < simulator.get_context().get_time() - 1.0) {
+        std::cout << "Dispatcher time is " << simulator.get_context().get_time()
+            << ", but stepping to " << time << std::endl;
+        std::cout << "Difference is too large, resetting dispatcher time." <<
+            std::endl;
+        simulator.get_mutable_context().SetTime(time);
+      }
+
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
       diagram.Publish(diagram_context);
@@ -200,6 +212,18 @@ int do_main(int argc, char* argv[]) {
       output_sender_value.GetMutableData()->set_value(udp_sub.message());
       state_estimator_value.GetMutableData()->set_value(udp_sub.message());
       const double time = udp_sub.message_time();
+
+      // Check if we are very far ahead or behind
+      // (likely due to a restart of the driving clock)
+      if (time > simulator.get_context().get_time() + 1.0 ||
+          time < simulator.get_context().get_time() - 1.0) {
+        std::cout << "Dispatcher time is " << simulator.get_context().get_time()
+            << ", but stepping to " << time << std::endl;
+        std::cout << "Difference is too large, resetting dispatcher time." <<
+            std::endl;
+        simulator.get_mutable_context().SetTime(time);
+      }
+
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
       diagram.Publish(diagram_context);

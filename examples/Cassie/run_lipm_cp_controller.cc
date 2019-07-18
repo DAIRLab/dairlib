@@ -24,11 +24,16 @@
 
 namespace dairlib {
 
+using Eigen::MatrixXd;
+
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::DiagramBuilder;
 
 using multibody::GetBodyIndexFromName;
+using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::RotTaskSpaceTrackingData;
+using systems::controllers::JointSpaceTrackingData;
 
 int DoMain() {
   DiagramBuilder<double> builder;
@@ -41,7 +46,7 @@ int DoMain() {
   buildCassieTree(tree_with_springs, "examples/Cassie/urdf/cassie_v2.urdf",
                   drake::multibody::joints::kQuaternion);
   buildCassieTree(tree_without_springs, "examples/Cassie/urdf/cassie_v2.urdf",
-                  drake::multibody::joints::kQuaternion);
+                  drake::multibody::joints::kQuaternion, false/*no spring*/);
   const double terrain_size = 100;
   const double terrain_depth = 0.20;
   drake::multibody::AddFlatTerrainToWorld(&tree_with_springs,
@@ -75,15 +80,7 @@ int DoMain() {
   int pelvis_idx = GetBodyIndexFromName(tree_with_springs, "pelvis");
   int left_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_left");
   int right_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_right");
-  int left_thigh_idx = GetBodyIndexFromName(tree_with_springs, "thigh_left");
-  int right_thigh_idx = GetBodyIndexFromName(tree_with_springs, "thigh_right");
-  int left_heel_spring_idx = GetBodyIndexFromName(tree_with_springs,
-                             "heel_spring_left");
-  int right_heel_spring_idx = GetBodyIndexFromName(tree_with_springs,
-                              "heel_spring_right");
-  DRAKE_DEMAND(left_toe_idx != -1 && right_toe_idx != -1 &&
-               left_thigh_idx != -1 && right_thigh_idx != -1 &&
-               left_heel_spring_idx != -1 && right_heel_spring_idx != -1);
+  DRAKE_DEMAND(pelvis_idx != -1 && left_toe_idx != -1 && right_toe_idx != -1);
 
   // Create finite state machine
   int left_stance_state = 2;
@@ -161,40 +158,51 @@ int DoMain() {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
                &tree_with_springs, &tree_without_springs, true);
-  // Parameters for QP
-  R_ = 2 * .0001 * MatrixXd::Identity(n_u_, n_u_); // .01
-  R_acceleration_ = 2 * .00001 * MatrixXd::Identity(n_v_, n_v_);
-  w_swing_foot_ = 2 * 100;
-  w_com_ = 2 * 100;  //5
-  W_com_ = MatrixXd::Zero(3, 3);
-  W_com_(0, 0) = w_com_ * 0.01; W_com_(1, 1) = w_com_ * 0.01; W_com_(2, 2) = w_com_ * 10;
-  w_pelvis_balance_ = 2 * 100;
-  w_heading_ = 2 * 100; //10
-  w_contact_relax_ = 2 * 100; //100 // We don't want this to be too big, cause we want tracking error to be important
-  w_swing_toe_ = 2 * 1;
-  w_stance_toe_ = 2 * 1;
-  w_hip_yaw_ = 2 * 10;
-  w_toe_ = 2 * .05; //1
-  Q_ = 2 * 1 * MatrixXd::Identity(n_v_, n_v_);
+  // Get body index
+  int left_toe_idx_w_spr = left_toe_idx;
+  int right_toe_idx_w_spr = right_toe_idx;
+  int left_toe_idx_wo_spr = GetBodyIndexFromName(tree_without_springs, "toe_left");
+  int right_toe_idx_wo_spr = GetBodyIndexFromName(tree_without_springs, "toe_right");
+
+  int n_v = tree_without_springs.get_num_velocities();
+  MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
+  osc->SetAccelerationCostForAllJoints(Q_accel);
+  double w_toe = 0.1;  // 1
+  osc->AddAccelerationCost(left_toe_idx_wo_spr, w_toe);
+  osc->AddAccelerationCost(right_toe_idx_wo_spr, w_toe);
+  double w_swing_foot = 200;
+  double k_p_ft = 100;
+  double k_d_ft = 10;
+  TransTaskSpaceTrackingData swing_foot("swing_foot", 3,
+                           Eigen::MatrixXd K_p,
+                           Eigen::MatrixXd K_d,
+                           Eigen::MatrixXd W);
+  MatrixXd W_com = 2 * MatrixXd::Identity(3, 3); W_com(2, 2) = 2000;
+  double w_pelvis_balance = 200;
+  double w_heading = 200;
+  double w_swing_toe = 2;
+  double w_stance_toe = 2;
+  double w_hip_yaw = 20;
+  // We don't want this to be too big, cause we want tracking error to be important
+  double w_contact_relax = 200;
   // Paremeters for feedback control in QP
-  k_p_ft_ = 1.0 * 10 * 10;
-  k_d_ft_ = 0.1 * 10 * 10;
-  k_p_com_ = 1.0 * 10 * 5;
-  k_d_com_ = 0.2 * 10 * 5;
-  k_p_pelvis_balance_ = 1.0 * 10 * 10;
-  k_d_pelvis_balance_ = 0.8 * 10 * 10;
-  k_p_heading_ = 1.0 * 10 * 5;
-  k_d_heading_ = 0.8 * 10 * 5;
-  k_p_swing_toe_ = 1.0 * 10 * 100;
-  k_d_swing_toe_ = 0.1 * 10 * 100;
-  k_p_stance_toe_ = 1.0 * 10 * 10;
-  k_d_stance_toe_ = 0.2 * 10 * 10;
-  k_p_hip_yaw_ = 1.0 * 10 * 20;
-  k_d_hip_yaw_ = 0.8 * 10 * 20;
-  k_p_dv_ = 1;
-  k_d_dv_ = .2;
+  double k_p_com = 50;
+  double k_d_com = 10;
+  double k_p_pelvis_balance = 100;
+  double k_d_pelvis_balance = 800;
+  double k_p_heading = 50;
+  double k_d_heading = 40;
+  double k_p_swing_toe = 1000;
+  double k_d_swing_toe = 100;
+  double k_p_stance_toe = 100;
+  double k_d_stance_toe = 20;
+  double k_p_hip_yaw = 200;
+  double k_d_hip_yaw = 160;
+  double k_p_dv = 1;
+  double k_d_dv = 0.2;
   // Firction coefficient
-mu_ = 0.8;  
+  double mu = 0.8;
+
 
 
 

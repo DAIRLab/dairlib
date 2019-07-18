@@ -221,12 +221,19 @@ class TaskSpaceTrackingData : public OscTrackingData {
 
 /// AddPointToTrack() should be called to specify what is the point that tracks
 /// the desired trajectory
-class TransTaskSpaceTrackingData : public TaskSpaceTrackingData {
+class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
   TransTaskSpaceTrackingData(std::string name, int n_r,
                              Eigen::MatrixXd K_p,
                              Eigen::MatrixXd K_d,
                              Eigen::MatrixXd W,
+                             bool traj_is_const = false,
+                             bool traj_has_exp = false,
+                             bool track_center_of_mass = false);
+  TransTaskSpaceTrackingData(std::string name, int n_r,
+                             double k_p,
+                             double k_d,
+                             double w,
                              bool traj_is_const = false,
                              bool traj_has_exp = false,
                              bool track_center_of_mass = false);
@@ -259,12 +266,19 @@ class TransTaskSpaceTrackingData : public TaskSpaceTrackingData {
 
 /// AddPointToTrack() should be called to specify what is origin of the frame
 /// that tracks the desired trajectory
-class RotTaskSpaceTrackingData : public TaskSpaceTrackingData {
+class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
   RotTaskSpaceTrackingData(std::string name, int n_r,
                            Eigen::MatrixXd K_p,
                            Eigen::MatrixXd K_d,
                            Eigen::MatrixXd W,
+                           bool traj_is_const = false,
+                           bool traj_has_exp = false,
+                           Eigen::Isometry3d isometry = Eigen::Isometry3d::Identity());
+  RotTaskSpaceTrackingData(std::string name, int n_r,
+                           double k_p,
+                           double k_d,
+                           double w,
                            bool traj_is_const = false,
                            bool traj_has_exp = false,
                            Eigen::Isometry3d isometry = Eigen::Isometry3d::Identity());
@@ -293,12 +307,18 @@ class RotTaskSpaceTrackingData : public TaskSpaceTrackingData {
 
 /// AddJointToTrack() should be called to specify which joint to track.
 /// Note that one instance of `JointSpaceTrackingData` allows to track 1 joint.
-class JointSpaceTrackingData : public OscTrackingData {
+class JointSpaceTrackingData final : public OscTrackingData {
  public:
   JointSpaceTrackingData(std::string name, int n_r,
                          Eigen::MatrixXd K_p,
                          Eigen::MatrixXd K_d,
                          Eigen::MatrixXd W,
+                         bool traj_is_const = false,
+                         bool traj_has_exp = false);
+  JointSpaceTrackingData(std::string name, int n_r,
+                         double k_p,
+                         double k_d,
+                         double w,
                          bool traj_is_const = false,
                          bool traj_has_exp = false);
 
@@ -362,7 +382,7 @@ class JointSpaceTrackingData : public OscTrackingData {
 };
 
 
-class AbstractTrackingData : public OscTrackingData {
+class AbstractTrackingData final : public OscTrackingData {
  public:
   AbstractTrackingData(std::string name, int n_r,
                        Eigen::MatrixXd K_p,

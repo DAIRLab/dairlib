@@ -418,7 +418,6 @@ void OperationalSpaceControl::CalcOptimalInput(
                     -1, -1);
   }
 
-
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());

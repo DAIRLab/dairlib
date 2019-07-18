@@ -42,6 +42,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
     right_foot_idx_(right_foot_idx),
     pt_on_left_foot_(pt_on_left_foot),
     pt_on_right_foot_(pt_on_right_foot) {
+  this->set_name("lipm_traj");
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
@@ -50,7 +51,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
                   tree->get_num_actuators())).get_index();
   fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
-  this->DeclareAbstractOutputPort(&LIPMTrajGenerator::CalcTraj);
+  this->DeclareAbstractOutputPort("lipm_traj", &LIPMTrajGenerator::CalcTraj);
 
   // Discrete state event
   DeclarePerStepDiscreteUpdateEvent(&LIPMTrajGenerator::DiscreteVariableUpdate);

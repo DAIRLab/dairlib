@@ -61,6 +61,8 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
   is_using_predicted_com_(is_using_predicted_com),
   cp_offset_(cp_offset),
   center_line_offset_(center_line_offset) {
+  this->set_name("cp_traj");
+
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
                   tree->get_num_positions(),
@@ -77,7 +79,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
     fp_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   }
 
-  this->DeclareAbstractOutputPort(&CPTrajGenerator::CalcTrajs);
+  this->DeclareAbstractOutputPort("cp_traj", &CPTrajGenerator::CalcTrajs);
 
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(&CPTrajGenerator::DiscreteVariableUpdate);

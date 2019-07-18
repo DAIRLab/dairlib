@@ -91,7 +91,7 @@ def main():
 
     # Runs lcm-logger, creates log final upon completion.
     print("Press ctrl + c to exit lcm-logger when experiment is complete.")
-    time = str(datetime.now())
+    time = str(datetime.now()).replace(" ", "")
     os.system('lcm-logger test' + str(len(column)) + time + '.log')
 
     # Uploads lcm log file to Google Drive.

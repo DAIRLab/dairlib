@@ -6,10 +6,10 @@
     ],
     "kuka_gains":
         {
-        "K_P": 1,
-        "K_OMEGA": 0.5,
-        "K_D": 1,
-        "K_R": 0.5
+        "K_P": 5,
+        "K_OMEGA": 0,
+        "K_D": 5,
+        "K_R": 0
     },
     "limits":
         {

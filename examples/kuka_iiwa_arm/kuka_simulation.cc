@@ -110,13 +110,13 @@ int DoMain() {
   // drake's manipulation_station.cc 
 
   //Loads in manipulands from json file to objects_vector
-  std::ifstream free_objects("examples/kuka_iiwa_arm/manipulands.json");
+  std::ifstream free_objects("examples/kuka_iiwa_arm/simulationsettings.json");
   json manipulands = json::parse(free_objects);
-  const int num_manipulands = manipulands["numberOfObjects"];
+  const int num_manipulands = manipulands["Objects"].size();
   std::vector<drake::multibody::ModelInstanceIndex> objects_vector;
   objects_vector.resize(num_manipulands);
   for (int objectNum = 0; objectNum < num_manipulands; objectNum++) {
-      std::string path = drake::FindResourceOrThrow(manipulands["Objects"][std::to_string(objectNum)]["file_name"]);
+      std::string path = drake::FindResourceOrThrow(manipulands["Objects"][objectNum][2]);
       objects_vector[objectNum] = world_plant_parser.AddModelFromFile(path, path);
   }
 
@@ -261,12 +261,7 @@ int DoMain() {
   for (int x = 0; x < num_manipulands; x++) {
     const auto indices = world_plant -> GetBodyIndices(objects_vector[x]);
     world_plant -> SetFreeBodyPose(context, &state2, world_plant -> get_body(indices[0]), 
-    //RigidTransform<double>(Vector3d(dx_table_center_to_robot_base, 0, 3)));
-    RigidTransform<double>(Vector3d(manipulands["Objects"][std::to_string(x)]["q_init"][0], manipulands["Objects"][std::to_string(x)]["q_init"][1],
-    manipulands["Objects"][std::to_string(x)]["q_init"][2])));
-  }
-  for (double a : manipulands["Objects"]["0"]["q_init"]) {
-      std::cout << a << std::endl;
+    RigidTransform<double>(Vector3d(manipulands["Objects"][x][1][0], manipulands["Objects"][x][1][1], manipulands["Objects"][x][1][2])));
   }
   simulator.set_publish_every_time_step(false);
   simulator.set_target_realtime_rate(1.0);

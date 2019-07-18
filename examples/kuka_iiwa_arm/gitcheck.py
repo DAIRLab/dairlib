@@ -91,10 +91,11 @@ def main():
 
     # Runs lcm-logger, creates log final upon completion.
     print("Press ctrl + c to exit lcm-logger when experiment is complete.")
-    os.system('lcm-logger test' + str(len(column)) + '.log')
+    time = str(datetime.now())
+    os.system('lcm-logger test' + str(len(column)) + time + '.log')
 
     # Uploads lcm log file to Google Drive.
-    fileName = 'test' + str(len(column)) + str(datetime.now()) + '.log'
+    fileName = 'test' + str(len(column)) + time + '.log'
     metadata = {'name': fileName}
     media = MediaFileUpload(fileName, mimetype='application/octet-stream')
     res = DRIVE.files().create(body=metadata, media_body=media, fields='id').execute()

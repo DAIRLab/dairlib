@@ -91,8 +91,6 @@ void EndEffectorPositionController::CalcOutputTwist(
   double currAngVel = angularVelocityWF.norm();
   if (currAngVel > max_angular_vel_) {
       angularVelocityWF = angularVelocityWF * (max_angular_vel_/currAngVel);
-=======
-
       std::cout << "Warning: desired end effector velocity: " << currAngVel;
       std::cout << " exceeded limit of " << max_angular_vel_ << std::endl;
       currAngVel = angularVelocityWF.norm();

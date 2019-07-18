@@ -7,8 +7,14 @@
     "kuka_gains":
         {
         "K_P": 1,
-        "K_OMEGA": 1,
+        "K_OMEGA": 0.5,
         "K_D": 1,
-        "K_R": 1
+        "K_R": 0.5
+    },
+    "limits":
+        {
+            "max_linear_velocity" : 3.0,
+            "max_angular_veloctiy" : 3.0,
+            "joint_torque_limit" : 7.0
         }
 }

@@ -96,6 +96,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
 
 void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
     ExponentialPlusPiecewisePolynomial<double>* traj) const {
+  cout << "start of LIPMTrajGenerator::CalcTraj()\n";
 
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
@@ -229,6 +230,7 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
 
   // Assign traj
   *traj = exp_traj;
+  cout << "end of LIPMTrajGenerator::CalcTraj()\n";
 }
 
 } //namespace systems

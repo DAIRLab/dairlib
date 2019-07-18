@@ -375,6 +375,7 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
 
 void CPTrajGenerator::CalcTrajs(const Context<double>& context,
                                 PiecewisePolynomial<double>* traj) const {
+  cout << "start of CPTrajGenerator::CalcTrajs()\n";
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -411,6 +412,7 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
                                    end_time_of_this_interval,
                                    init_swing_foot_pos,
                                    CP);
+  cout << "end of CPTrajGenerator::CalcTrajs()\n";
 }
 }  // namespace systems
 }  // namespace dairlib

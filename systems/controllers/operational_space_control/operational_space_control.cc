@@ -405,6 +405,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 void OperationalSpaceControl::CalcOptimalInput(
   const drake::systems::Context<double>& context,
   systems::TimestampedVector<double>* control) const {
+  cout << "start of OperationalSpaceControl::CalcOptimalInput()\n";
   // Read in current state and simulation time
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -452,6 +453,7 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());
+  cout << "end of OperationalSpaceControl::CalcOptimalInput()\n";
 }
 
 }  // namespace controllers

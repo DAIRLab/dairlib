@@ -53,6 +53,7 @@ cc_library(
     "//examples/Cassie/datatypes:cassie_out_t",
     "//examples/Cassie/datatypes:cassie_names",
     "//attic/multibody:utils",
+    ":cassie_utils",
   ]
 )
 
@@ -214,6 +215,20 @@ cc_binary(
         "@gflags",
         "@eigen",
         "//lcmtypes:lcmt_robot",
+    ],
+)
+
+
+cc_test(
+    name = "cassie_rbt_state_estimator_test",
+    size = "small",
+    srcs = ["test/cassie_rbt_state_estimator_test.cc"],
+    deps = [
+        ":cassie_rbt_state_estimator",
+        "//attic/multibody:multibody_solvers",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
     ],
 )
 

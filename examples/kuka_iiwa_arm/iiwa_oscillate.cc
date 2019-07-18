@@ -1,4 +1,4 @@
-#define AMPLITUDE 3
+#define AMPLITUDE 1
 #define FREQUENCY 3
 #define MAX_VELOCITY 5
 

@@ -80,10 +80,7 @@ void EndEffectorPositionController::CalcOutputTwist(
   double currVel = diff.norm();
 
   if (currVel > max_linear_vel_) {
-      for (int i = 0; i < 3; i++) {
-          // Setting max speed to linear_speed_limit
-          diff(i, 0) = diff(i, 0) * (max_linear_vel_/currVel);
-      }
+      diff = diff * (max_linear_vel_/currVel);
       std::cout << "Warning: desired end effector velocity: " << currVel;
       std::cout << " exceeded limit of " << max_linear_vel_ << std::endl;
       currVel = diff.norm();
@@ -93,11 +90,9 @@ void EndEffectorPositionController::CalcOutputTwist(
   // Limit maximum commanded angular velocity
   double currAngVel = angularVelocityWF.norm();
   if (currAngVel > max_angular_vel_) {
-      for (int i = 0; i < 3; i++) {
-          // Setting max speed to angular_speed_limit
-          angularVelocityWF(i, 0) =
-              angularVelocityWF(i, 0) * (max_angular_vel_/currAngVel);
-      }
+      angularVelocityWF = angularVelocityWF * (max_angular_vel_/currAngVel);
+=======
+
       std::cout << "Warning: desired end effector velocity: " << currAngVel;
       std::cout << " exceeded limit of " << max_angular_vel_ << std::endl;
       currAngVel = angularVelocityWF.norm();

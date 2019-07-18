@@ -38,22 +38,23 @@ void EndEffectorVelocityController::CalcOutputTorques(
   // We read the above input ports with EvalVectorInput
   // The purpose of CopyToVector().head(NUM_JOINTS) is to remove the timestamp
   // from the vector input ports
-  const TimestampedVector<double>* q_timestamped =
-      (TimestampedVector<double>*) this->EvalVectorInput(
+  const BasicVector<double>* q_timestamped =
+      (BasicVector<double>*) this->EvalVectorInput(
           context, joint_position_measured_port_);
-  VectorX<double> q = q_timestamped->get_data();
+  auto q = q_timestamped->get_value();
 
-  const TimestampedVector<double>* q_dot_timestamped =
-      (TimestampedVector<double>*) this->EvalVectorInput(
+  const BasicVector<double>* q_dot_timestamped =
+      (BasicVector<double>*) this->EvalVectorInput(
           context, joint_velocity_measured_port_);
-  VectorX<double> q_dot = q_dot_timestamped->get_data();
+  auto q_dot = q_dot_timestamped->get_value();
 
-  const TimestampedVector<double>* twist_desired_timestamped =
-      (TimestampedVector<double>*) this->EvalVectorInput(
+  const BasicVector<double>* twist_desired_timestamped =
+      (BasicVector<double>*) this->EvalVectorInput(
           context, endpoint_twist_commanded_port_);
-  VectorX<double> twist_desired = twist_desired_timestamped->get_data();
+  auto twist_desired = twist_desired_timestamped->get_value();
 
-  const std::unique_ptr<Context<double>> plant_context = plant_.CreateDefaultContext();
+  const std::unique_ptr<Context<double>> plant_context =
+      plant_.CreateDefaultContext();
   plant_.SetPositions(plant_context.get(), q);
   plant_.SetVelocities(plant_context.get(), q_dot);
 
@@ -83,6 +84,10 @@ void EndEffectorVelocityController::CalcOutputTorques(
           commandedTorques(i, 0) = joint_torque_limit_;
           std::cout << "Warning: joint " << i << " commanded torque exceeded ";
           std::cout << "given limit of " << joint_torque_limit_ << std::endl;
+      } else if (commandedTorques(i, 0) < -joint_torque_limit_) {
+          commandedTorques(i, 0) = -joint_torque_limit_;
+          std::cout << "Warning: joint " << i << " commanded torque exceeded ";
+          std::cout << "given limit of " << -joint_torque_limit_ << std::endl;
       }
   }
 

@@ -45,7 +45,7 @@ def main():
         print("Branch is up to date!")
     
     # Finds branch name
-    firstLine = "On branch"
+    firstLine = "On branch "
     branch = out[(out.find(firstLine) + len(firstLine)):out.find("\n")]
     
     # Finds location of current branch ie. "origin" or "upstream"

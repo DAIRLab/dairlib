@@ -15,6 +15,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Quaterniond;
+using Eigen::Isometry3d;
 
 namespace dairlib {
 namespace systems {
@@ -215,9 +216,11 @@ void TransTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
   if (track_center_of_mass_) {
     y_ = tree_w_spr->centerOfMass(cache_w_spr);
   } else {
-    y_ = tree_w_spr->CalcBodyPoseInWorldFrame(
-           cache_w_spr, tree_w_spr->get_body(body_index_w_spr_.at(
-                 GetStateIdx()))).translation();
+    Isometry3d body_pose = tree_w_spr->CalcBodyPoseInWorldFrame(cache_w_spr,
+                           tree_w_spr->get_body(
+                             body_index_w_spr_.at(GetStateIdx())));
+    y_ = body_pose.translation() +
+         body_pose.linear() * body_index_w_spr_.at(GetStateIdx());
   }
   error_y_ = y_des_ - y_;
 }
@@ -263,7 +266,7 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
     MatrixXd W,
     bool traj_is_const,
     bool traj_has_exp,
-    Eigen::Isometry3d isometry) : TaskSpaceTrackingData(name, n_r,
+    Isometry3d isometry) : TaskSpaceTrackingData(name, n_r,
           K_p, K_d, W, traj_is_const, traj_has_exp),
   isometry_(isometry) {
 }
@@ -274,7 +277,7 @@ void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
   Eigen::Matrix3d rot_mat = tree_w_spr->CalcBodyPoseInWorldFrame(
                               cache_w_spr, tree_w_spr->get_body(body_index_w_spr_.at(
                                     GetStateIdx()))).linear();
-  Quaterniond y_quat(rot_mat);
+  Quaterniond y_quat(rot_mat * isometry_.linear());
   y_ << y_quat.w(), y_quat.vec();
   cout << "RotTaskSpaceTrackingData::UpdateYAndError(): y_ = " << y_.transpose()
        << endl;

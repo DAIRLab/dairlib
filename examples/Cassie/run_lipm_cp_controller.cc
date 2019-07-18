@@ -24,6 +24,7 @@
 
 namespace dairlib {
 
+using Eigen::Vector3d;
 using Eigen::MatrixXd;
 
 using drake::systems::lcm::LcmSubscriberSystem;
@@ -193,6 +194,11 @@ int DoMain() {
       Eigen::MatrixXd K_p_sw_ft,
       Eigen::MatrixXd K_d_sw_ft,
       Eigen::MatrixXd W_swing_foot);
+  swing_foot_traj.AddPointToTrack(right_toe_idx_w_spr, right_toe_idx_wo_spr,
+                                  Vector3d::Zero(), left_stance_state);
+  swing_foot_traj.AddPointToTrack(left_toe_idx_w_spr, left_toe_idx_wo_spr,
+                                  Vector3d::Zero(), right_stance_state);
+  osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2;
@@ -201,7 +207,12 @@ int DoMain() {
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData center_of_mass_traj("center_of_mass_traj", 3,
-      K_p_com, K_d_com, W_com, false, true);
+      K_p_com, K_d_com, W_com, false, true, true);
+  swing_foot_traj.AddPointToTrack(right_toe_idx_w_spr, right_toe_idx_wo_spr,
+                                  Vector3d::Zero(), left_stance_state);
+  swing_foot_traj.AddPointToTrack(left_toe_idx_w_spr, left_toe_idx_wo_spr,
+                                  Vector3d::Zero(), right_stance_state);
+  osc->AddTrackingData(&swing_foot_traj);
   // Pelvis rotation tracking
   double w_pelvis_balance = 200;
   double w_heading = 200;
@@ -228,13 +239,13 @@ int DoMain() {
   MatrixXd K_p_swing_toe = 1000 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = 100 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj("swing_toe_traj", 1,
-      K_p_swing_toe, K_d_swing_toe, W_swing_toe, true);
+                                        K_p_swing_toe, K_d_swing_toe, W_swing_toe, true);
   // Stance toe joint tracking (Currently use fix position) TODO: change this
   MatrixXd W_stance_toe = 2 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_stance_toe = 100 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_stance_toe = 20 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData stance_toe_traj("stance_toe_traj", 1,
-      K_p_stance_toe, K_d_stance_toe, W_stance_toe, true);
+                                         K_p_stance_toe, K_d_stance_toe, W_stance_toe, true);
   // Swing hip yaw tracking
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);

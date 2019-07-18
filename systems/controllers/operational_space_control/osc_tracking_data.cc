@@ -209,21 +209,6 @@ TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(string name,
           K_p, K_d, W, traj_is_const, traj_has_exp),
   track_center_of_mass_(track_center_of_mass) {
 }
-TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(std::string name,
-    int n_r,
-    double k_p,
-    double k_d,
-    double w,
-    bool traj_is_const,
-    bool traj_has_exp,
-    bool track_center_of_mass) : TransTaskSpaceTrackingData(name,
-          k_p * MatrixXd::Identity(n_r, n_r),
-          k_d * MatrixXd::Identity(n_r, n_r),
-          w * MatrixXd::Identity(n_r, n_r),
-          traj_is_const,
-          traj_has_exp,
-          track_center_of_mass) {
-}
 
 void TransTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
@@ -282,21 +267,6 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
           K_p, K_d, W, traj_is_const, traj_has_exp),
   isometry_(isometry) {
 }
-RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(std::string name,
-    int n_r,
-    double k_p,
-    double k_d,
-    double w,
-    bool traj_is_const,
-    bool traj_has_exp,
-    Eigen::Isometry3d isometry) : RotTaskSpaceTrackingData(name,
-          k_p * MatrixXd::Identity(n_r, n_r),
-          k_d * MatrixXd::Identity(n_r, n_r),
-          w * MatrixXd::Identity(n_r, n_r),
-          traj_is_const,
-          traj_has_exp,
-          isometry) {
-}
 
 void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
@@ -351,19 +321,6 @@ JointSpaceTrackingData::JointSpaceTrackingData(string name,
     bool traj_has_exp) : OscTrackingData(name, n_r,
           K_p, K_d, W, traj_is_const, traj_has_exp) {
   DRAKE_DEMAND(n_r == 1);  // one joint at a time
-}
-JointSpaceTrackingData::JointSpaceTrackingData(std::string name,
-    int n_r,
-    double k_p,
-    double k_d,
-    double w,
-    bool traj_is_const,
-    bool traj_has_exp) : JointSpaceTrackingData(name,
-          k_p * MatrixXd::Identity(n_r, n_r),
-          k_d * MatrixXd::Identity(n_r, n_r),
-          w * MatrixXd::Identity(n_r, n_r),
-          traj_is_const,
-          traj_has_exp) {
 }
 
 void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_wo_spr,

@@ -230,13 +230,6 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
                              bool traj_is_const = false,
                              bool traj_has_exp = false,
                              bool track_center_of_mass = false);
-  TransTaskSpaceTrackingData(std::string name, int n_r,
-                             double k_p,
-                             double k_d,
-                             double w,
-                             bool traj_is_const = false,
-                             bool traj_has_exp = false,
-                             bool track_center_of_mass = false);
 
   TransTaskSpaceTrackingData() {}  // Default constructor
 
@@ -275,13 +268,6 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
                            bool traj_is_const = false,
                            bool traj_has_exp = false,
                            Eigen::Isometry3d isometry = Eigen::Isometry3d::Identity());
-  RotTaskSpaceTrackingData(std::string name, int n_r,
-                           double k_p,
-                           double k_d,
-                           double w,
-                           bool traj_is_const = false,
-                           bool traj_has_exp = false,
-                           Eigen::Isometry3d isometry = Eigen::Isometry3d::Identity());
 
   RotTaskSpaceTrackingData() {}  // Default constructor
 
@@ -313,12 +299,6 @@ class JointSpaceTrackingData final : public OscTrackingData {
                          Eigen::MatrixXd K_p,
                          Eigen::MatrixXd K_d,
                          Eigen::MatrixXd W,
-                         bool traj_is_const = false,
-                         bool traj_has_exp = false);
-  JointSpaceTrackingData(std::string name, int n_r,
-                         double k_p,
-                         double k_d,
-                         double w,
                          bool traj_is_const = false,
                          bool traj_has_exp = false);
 

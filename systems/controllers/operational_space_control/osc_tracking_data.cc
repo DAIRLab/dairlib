@@ -121,6 +121,7 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
 void OscTrackingData::CheckOscTrackingData() {
   CheckDerivedOscTrackingData();
 
+  DRAKE_DEMAND(!(traj_is_const_ && traj_has_exp_));
   DRAKE_DEMAND(!traj_is_const_ ||
                (traj_is_const_ && (fixed_position_.size() != 0)));
   DRAKE_DEMAND((K_p_.rows() == n_r_) && (K_p_.cols() == n_r_));
@@ -139,65 +140,6 @@ TaskSpaceTrackingData::TaskSpaceTrackingData(string name,
           K_p, K_d, W, traj_is_const, traj_has_exp) {
 }
 
-void TaskSpaceTrackingData::AddPointToTrack(int body_index_wo_spr,
-    VectorXd pt_on_body) {
-  body_index_wo_spr_.push_back(body_index_wo_spr);
-  pt_on_body_.push_back(pt_on_body);
-}
-void TaskSpaceTrackingData::AddPointToTrack(int body_index_wo_spr,
-    VectorXd pt_on_body, int state) {
-  state_.push_back(state);
-  AddPointToTrack(body_index_wo_spr, pt_on_body);
-}
-void TaskSpaceTrackingData::AddPointToTrack(int body_index_w_spr,
-    int body_index_wo_spr,
-    VectorXd pt_on_body) {
-  body_index_w_spr_.push_back(body_index_w_spr);
-  AddPointToTrack(body_index_wo_spr, pt_on_body);
-}
-void TaskSpaceTrackingData::AddPointToTrack(int body_index_w_spr,
-    int body_index_wo_spr,
-    VectorXd pt_on_body, int state) {
-  state_.push_back(state);
-  AddPointToTrack(body_index_w_spr, body_index_wo_spr, pt_on_body);
-}
-
-void TaskSpaceTrackingData::AddPointToTrack(vector<int> body_index_wo_spr,
-    vector<VectorXd> pt_on_body) {
-  body_index_wo_spr_.insert(body_index_wo_spr_.end(),
-                            body_index_wo_spr.begin(), body_index_wo_spr.end());
-  pt_on_body_.insert(pt_on_body_.end(), pt_on_body.begin(), pt_on_body.end());
-}
-void TaskSpaceTrackingData::AddPointToTrack(vector<int> body_index_wo_spr,
-    vector<VectorXd> pt_on_body, vector<int> state) {
-  state_.insert(state_.end(), state.begin(), state.end());
-  AddPointToTrack(body_index_wo_spr, pt_on_body);
-}
-void TaskSpaceTrackingData::AddPointToTrack(vector<int> body_index_w_spr,
-    vector<int> body_index_wo_spr,
-    vector<VectorXd> pt_on_body) {
-  body_index_w_spr_.insert(body_index_w_spr_.end(),
-                           body_index_w_spr.begin(), body_index_w_spr.end());
-  AddPointToTrack(body_index_wo_spr, pt_on_body);
-}
-void TaskSpaceTrackingData::AddPointToTrack(vector<int> body_index_w_spr,
-    vector<int> body_index_wo_spr,
-    vector<VectorXd> pt_on_body, vector<int> state) {
-  body_index_w_spr_.insert(body_index_w_spr_.end(),
-                           body_index_w_spr.begin(), body_index_w_spr.end());
-  AddPointToTrack(body_index_wo_spr, body_index_wo_spr, pt_on_body);
-}
-
-void TaskSpaceTrackingData::CheckDerivedOscTrackingData() {
-  if (body_index_w_spr_.empty()) {
-    body_index_w_spr_ = body_index_wo_spr_;
-  }
-  DRAKE_DEMAND(body_index_w_spr_.size() == body_index_wo_spr_.size());
-  DRAKE_DEMAND(pt_on_body_.size() == body_index_wo_spr_.size());
-  DRAKE_DEMAND(pt_on_body_.size() == body_index_w_spr_.size());
-  DRAKE_DEMAND(state_.empty() || (state_.size() == pt_on_body_.size()));
-}
-
 // TransTaskSpaceTrackingData //////////////////////////////////////////
 TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(string name,
     int n_r,
@@ -211,6 +153,53 @@ TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(string name,
   track_center_of_mass_(track_center_of_mass) {
 }
 
+void TransTaskSpaceTrackingData::AddPointToTrack(int body_index_wo_spr,
+    Vector3d pt_on_body) {
+  body_index_wo_spr_.push_back(body_index_wo_spr);
+  pt_on_body_.push_back(pt_on_body);
+}
+void TransTaskSpaceTrackingData::AddStateAndPointToTrack(int state,
+    int body_index_wo_spr, Vector3d pt_on_body) {
+  state_.push_back(state);
+  AddPointToTrack(body_index_wo_spr, pt_on_body);
+}
+void TransTaskSpaceTrackingData::AddPointToTrack(int body_index_w_spr,
+    int body_index_wo_spr,
+    Vector3d pt_on_body) {
+  body_index_w_spr_.push_back(body_index_w_spr);
+  AddPointToTrack(body_index_wo_spr, pt_on_body);
+}
+void TransTaskSpaceTrackingData::AddStateAndPointToTrack(int state,
+    int body_index_w_spr, int body_index_wo_spr, Vector3d pt_on_body) {
+  state_.push_back(state);
+  AddPointToTrack(body_index_w_spr, body_index_wo_spr, pt_on_body);
+}
+
+void TransTaskSpaceTrackingData::AddPointToTrack(vector<int> body_index_wo_spr,
+    vector<Vector3d> pt_on_body) {
+  body_index_wo_spr_.insert(body_index_wo_spr_.end(),
+                            body_index_wo_spr.begin(), body_index_wo_spr.end());
+  pt_on_body_.insert(pt_on_body_.end(), pt_on_body.begin(), pt_on_body.end());
+}
+void TransTaskSpaceTrackingData::AddStateAndPointToTrack(vector<int> state,
+    vector<int> body_index_wo_spr, vector<Vector3d> pt_on_body) {
+  state_.insert(state_.end(), state.begin(), state.end());
+  AddPointToTrack(body_index_wo_spr, pt_on_body);
+}
+void TransTaskSpaceTrackingData::AddPointToTrack(vector<int> body_index_w_spr,
+    vector<int> body_index_wo_spr,
+    vector<Vector3d> pt_on_body) {
+  body_index_w_spr_.insert(body_index_w_spr_.end(),
+                           body_index_w_spr.begin(), body_index_w_spr.end());
+  AddPointToTrack(body_index_wo_spr, pt_on_body);
+}
+void TransTaskSpaceTrackingData::AddStateAndPointToTrack(vector<int> state,
+    vector<int> body_index_w_spr, vector<int> body_index_wo_spr,
+    vector<Vector3d> pt_on_body) {
+  state_.insert(state_.end(), state.begin(), state.end());
+  AddPointToTrack(body_index_w_spr, body_index_wo_spr, pt_on_body);
+}
+
 void TransTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
   if (track_center_of_mass_) {
@@ -220,7 +209,7 @@ void TransTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
                            tree_w_spr->get_body(
                              body_index_w_spr_.at(GetStateIdx())));
     y_ = body_pose.translation() +
-         body_pose.linear() * body_index_w_spr_.at(GetStateIdx());
+         body_pose.linear() * pt_on_body_.at(GetStateIdx());
   }
   error_y_ = y_des_ - y_;
 }
@@ -258,6 +247,21 @@ void TransTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
   }
 }
 
+void TransTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
+  if (track_center_of_mass_) {
+    DRAKE_DEMAND(body_index_w_spr_.size() == 0);
+    DRAKE_DEMAND(body_index_wo_spr_.size() == 0);
+    DRAKE_DEMAND(pt_on_body_.size() == 0);
+  } else {
+    if (body_index_w_spr_.empty()) {
+      body_index_w_spr_ = body_index_wo_spr_;
+    }
+    DRAKE_DEMAND(body_index_w_spr_.size() == body_index_wo_spr_.size());
+    DRAKE_DEMAND(pt_on_body_.size() == body_index_wo_spr_.size());
+    DRAKE_DEMAND(state_.empty() || (state_.size() == pt_on_body_.size()));
+  }
+}
+
 // RotTaskSpaceTrackingData /////////////////////////////////////////////
 RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
     int n_r,
@@ -265,19 +269,64 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
     MatrixXd K_d,
     MatrixXd W,
     bool traj_is_const,
-    bool traj_has_exp,
-    Isometry3d isometry) : TaskSpaceTrackingData(name, n_r,
-          K_p, K_d, W, traj_is_const, traj_has_exp),
-  isometry_(isometry) {
+    bool traj_has_exp) : TaskSpaceTrackingData(name, n_r,
+          K_p, K_d, W, traj_is_const, traj_has_exp) {
+}
+
+void RotTaskSpaceTrackingData::AddFrameToTrack(int body_index_wo_spr,
+    Isometry3d frame_pose) {
+  body_index_wo_spr_.push_back(body_index_wo_spr);
+  frame_pose_.push_back(frame_pose);
+}
+void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(int state,
+    int body_index_wo_spr, Isometry3d frame_pose) {
+  state_.push_back(state);
+  AddFrameToTrack(body_index_wo_spr, frame_pose);
+}
+void RotTaskSpaceTrackingData::AddFrameToTrack(int body_index_w_spr,
+    int body_index_wo_spr,
+    Isometry3d frame_pose) {
+  body_index_w_spr_.push_back(body_index_w_spr);
+  AddFrameToTrack(body_index_wo_spr, frame_pose);
+}
+void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(int state,
+    int body_index_w_spr, int body_index_wo_spr, Isometry3d frame_pose) {
+  state_.push_back(state);
+  AddFrameToTrack(body_index_w_spr, body_index_wo_spr, frame_pose);
+}
+
+void RotTaskSpaceTrackingData::AddFrameToTrack(vector<int> body_index_wo_spr,
+    vector<Isometry3d> frame_pose) {
+  body_index_wo_spr_.insert(body_index_wo_spr_.end(),
+                            body_index_wo_spr.begin(), body_index_wo_spr.end());
+  frame_pose_.insert(frame_pose_.end(), frame_pose.begin(), frame_pose.end());
+}
+void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(vector<int> state,
+    vector<int> body_index_wo_spr, vector<Isometry3d> frame_pose) {
+  state_.insert(state_.end(), state.begin(), state.end());
+  AddFrameToTrack(body_index_wo_spr, frame_pose);
+}
+void RotTaskSpaceTrackingData::AddFrameToTrack(vector<int> body_index_w_spr,
+    vector<int> body_index_wo_spr,
+    vector<Isometry3d> frame_pose) {
+  body_index_w_spr_.insert(body_index_w_spr_.end(),
+                           body_index_w_spr.begin(), body_index_w_spr.end());
+  AddFrameToTrack(body_index_wo_spr, frame_pose);
+}
+void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(vector<int> state,
+    vector<int> body_index_w_spr, vector<int> body_index_wo_spr,
+    vector<Isometry3d> frame_pose) {
+  state_.insert(state_.end(), state.begin(), state.end());
+  AddFrameToTrack(body_index_w_spr, body_index_wo_spr, frame_pose);
 }
 
 void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
   // Get the quaternion in the form of VectorXd
   Eigen::Matrix3d rot_mat = tree_w_spr->CalcBodyPoseInWorldFrame(
-                              cache_w_spr, tree_w_spr->get_body(body_index_w_spr_.at(
-                                    GetStateIdx()))).linear();
-  Quaterniond y_quat(rot_mat * isometry_.linear());
+                              cache_w_spr, tree_w_spr->get_body(
+                                body_index_w_spr_.at(GetStateIdx()))).linear();
+  Quaterniond y_quat(rot_mat * frame_pose_.at(GetStateIdx()).linear());
   y_ << y_quat.w(), y_quat.vec();
   cout << "RotTaskSpaceTrackingData::UpdateYAndError(): y_ = " << y_.transpose()
        << endl;
@@ -295,7 +344,8 @@ void RotTaskSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
   MatrixXd J_spatial = tree_w_spr->CalcFrameSpatialVelocityJacobianInWorldFrame (
                          cache_w_spr,
-                         tree_w_spr->get_body(body_index_w_spr_.at(GetStateIdx())), isometry_);
+                         tree_w_spr->get_body(body_index_w_spr_.at(GetStateIdx())),
+                         frame_pose_.at(GetStateIdx()));
   ydot_ = J_spatial.block(0, 0, 3, J_spatial.cols()) *
           x_w_spr.tail(tree_w_spr->get_num_velocities());
 }
@@ -304,14 +354,25 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                        RigidBodyTree<double>* tree_wo_spr) {
   MatrixXd J_spatial = tree_wo_spr->CalcFrameSpatialVelocityJacobianInWorldFrame (
                          cache_wo_spr,
-                         tree_wo_spr->get_body(body_index_wo_spr_.at(GetStateIdx())), isometry_);
+                         tree_wo_spr->get_body(body_index_wo_spr_.at(GetStateIdx())),
+                         frame_pose_.at(GetStateIdx()));
   J_ = J_spatial.block(0, 0, 3, J_spatial.cols());
 }
 void RotTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
     KinematicsCache<double>& cache_wo_spr, RigidBodyTree<double>* tree_wo_spr) {
   JdotV_ = tree_wo_spr->CalcFrameSpatialVelocityJacobianDotTimesVInWorldFrame (
              cache_wo_spr,
-             tree_wo_spr->get_body(body_index_wo_spr_.at(GetStateIdx())), isometry_).head(3);
+             tree_wo_spr->get_body(body_index_wo_spr_.at(GetStateIdx())),
+             frame_pose_.at(GetStateIdx())).head(3);
+}
+
+void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
+  if (body_index_w_spr_.empty()) {
+    body_index_w_spr_ = body_index_wo_spr_;
+  }
+  DRAKE_DEMAND(body_index_w_spr_.size() == body_index_wo_spr_.size());
+  DRAKE_DEMAND(frame_pose_.size() == body_index_wo_spr_.size());
+  DRAKE_DEMAND(state_.empty() || (state_.size() == frame_pose_.size()));
 }
 
 // JointSpaceTrackingData //////////////////////////////////////////////////////
@@ -331,8 +392,8 @@ void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_wo_spr,
   joint_pos_idx_wo_spr_.push_back(joint_pos_idx_wo_spr);
   joint_vel_idx_wo_spr_.push_back(joint_vel_idx_wo_spr);
 }
-void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_wo_spr,
-    int joint_vel_idx_wo_spr, int state) {
+void JointSpaceTrackingData::AddStateAndJointToTrack(int state,
+    int joint_pos_idx_wo_spr, int joint_vel_idx_wo_spr) {
   state_.push_back(state);
   AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
 }
@@ -344,11 +405,11 @@ void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_w_spr,
   joint_vel_idx_w_spr_.push_back(joint_vel_idx_w_spr);
   AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
 }
-void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_w_spr,
+void JointSpaceTrackingData::AddStateAndJointToTrack(int state,
+    int joint_pos_idx_w_spr,
     int joint_vel_idx_w_spr,
     int joint_pos_idx_wo_spr,
-    int joint_vel_idx_wo_spr,
-    int state) {
+    int joint_vel_idx_wo_spr) {
   state_.push_back(state);
   AddJointToTrack(joint_pos_idx_w_spr, joint_vel_idx_w_spr,
                   joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
@@ -361,8 +422,9 @@ void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_wo_spr,
   joint_vel_idx_wo_spr_.insert(joint_vel_idx_wo_spr_.end(),
                                joint_vel_idx_wo_spr.begin(), joint_vel_idx_wo_spr.end());
 }
-void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_wo_spr,
-    vector<int> joint_vel_idx_wo_spr, vector<int> state) {
+void JointSpaceTrackingData::AddStateAndJointToTrack(vector<int> state,
+    vector<int> joint_pos_idx_wo_spr,
+    vector<int> joint_vel_idx_wo_spr) {
   state_.insert(state_.end(), state.begin(), state.end());
   AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
 }
@@ -376,11 +438,11 @@ void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_w_spr,
                               joint_vel_idx_w_spr.begin(), joint_vel_idx_w_spr.end());
   AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
 }
-void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_w_spr,
+void JointSpaceTrackingData::AddStateAndJointToTrack(vector<int> state,
+    vector<int> joint_pos_idx_w_spr,
     vector<int> joint_vel_idx_w_spr,
     vector<int> joint_pos_idx_wo_spr,
-    vector<int> joint_vel_idx_wo_spr,
-    vector<int> state) {
+    vector<int> joint_vel_idx_wo_spr) {
   state_.insert(state_.end(), state.begin(), state.end());
   AddJointToTrack(joint_pos_idx_w_spr, joint_vel_idx_w_spr,
                   joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);

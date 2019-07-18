@@ -194,10 +194,10 @@ int DoMain() {
       Eigen::MatrixXd K_p_sw_ft,
       Eigen::MatrixXd K_d_sw_ft,
       Eigen::MatrixXd W_swing_foot);
-  swing_foot_traj.AddPointToTrack(right_toe_idx_w_spr, right_toe_idx_wo_spr,
-                                  Vector3d::Zero(), left_stance_state);
-  swing_foot_traj.AddPointToTrack(left_toe_idx_w_spr, left_toe_idx_wo_spr,
-                                  Vector3d::Zero(), right_stance_state);
+  swing_foot_traj.AddPointToTrack(left_stance_state,
+                                  right_toe_idx_w_spr, right_toe_idx_wo_spr);
+  swing_foot_traj.AddPointToTrack(right_stance_state,
+                                  left_toe_idx_w_spr, left_toe_idx_wo_spr);
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
@@ -208,11 +208,7 @@ int DoMain() {
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData center_of_mass_traj("center_of_mass_traj", 3,
       K_p_com, K_d_com, W_com, false, true, true);
-  swing_foot_traj.AddPointToTrack(right_toe_idx_w_spr, right_toe_idx_wo_spr,
-                                  Vector3d::Zero(), left_stance_state);
-  swing_foot_traj.AddPointToTrack(left_toe_idx_w_spr, left_toe_idx_wo_spr,
-                                  Vector3d::Zero(), right_stance_state);
-  osc->AddTrackingData(&swing_foot_traj);
+  osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
   double w_pelvis_balance = 200;
   double w_heading = 200;
@@ -233,7 +229,9 @@ int DoMain() {
   K_d_pelvis(1, 1) = k_d_pelvis_balance;
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 1,
-      K_p_pelvis, K_d_pelvis, W_pelvis, false, true);
+      K_p_pelvis, K_d_pelvis, W_pelvis, false, false);
+  // pelvis_rot_traj.AddPointToTrack()
+  osc->AddTrackingData(&pelvis_rot_traj);
   // Swing toe joint tracking (Currently use fix position) TODO: change this
   MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = 1000 * MatrixXd::Identity(1, 1);

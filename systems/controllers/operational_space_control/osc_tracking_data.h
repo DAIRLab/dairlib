@@ -107,7 +107,7 @@ class OscTrackingData {
   Eigen::VectorXd dy_des_;
   Eigen::VectorXd ddy_des_;
 
-  // The states of finite state machine where the tracking is enabled
+  // `state_` is the finite state machine state when the tracking is enabled
   // If `state_` is empty, then the tracking is always on.
   std::vector<int> state_;
 
@@ -175,42 +175,14 @@ class TaskSpaceTrackingData : public OscTrackingData {
 
   TaskSpaceTrackingData() {}  // Default constructor
 
+ protected:
   // `body_index_w_spr` is the index of the body
   // `body_index_wo_spr` is the index of the body
-  // `pt_on_body` is the position w.r.t. the origin of the body
-  // `state` is the finite state machine state when the joint trajectory should
-  // be tracked
-  void AddPointToTrack(int body_index_wo_spr,
-                       Eigen::VectorXd pt_on_body);
-  void AddPointToTrack(int body_index_wo_spr,
-                       Eigen::VectorXd pt_on_body, int state);
-  void AddPointToTrack(int body_index_w_spr, int body_index_wo_spr,
-                       Eigen::VectorXd pt_on_body);
-  void AddPointToTrack(int body_index_w_spr, int body_index_wo_spr,
-                       Eigen::VectorXd pt_on_body, int state);
-
-  // A version for std::vector in case the users want it.
-  void AddPointToTrack(std::vector<int> body_index_wo_spr,
-                       std::vector<Eigen::VectorXd> pt_on_body);
-  void AddPointToTrack(std::vector<int> body_index_wo_spr,
-                       std::vector<Eigen::VectorXd> pt_on_body,
-                       std::vector<int> state);
-  void AddPointToTrack(std::vector<int> body_index_w_spr,
-                       std::vector<int> body_index_wo_spr,
-                       std::vector<Eigen::VectorXd> pt_on_body);
-  void AddPointToTrack(std::vector<int> body_index_w_spr,
-                       std::vector<int> body_index_wo_spr,
-                       std::vector<Eigen::VectorXd> pt_on_body,
-                       std::vector<int> state);
-
- protected:
   // If `body_index_w_spr_` is empty, `body_index_wo_spr_` replaces it.
   std::vector<int> body_index_w_spr_;
   std::vector<int> body_index_wo_spr_;
-  std::vector<Eigen::VectorXd> pt_on_body_;
 
  private:
-  void CheckDerivedOscTrackingData() final;
 };
 
 
@@ -219,8 +191,8 @@ class TaskSpaceTrackingData : public OscTrackingData {
 
 /// `track_center_of_mass_` should be set to true when we track center of mass.
 
-/// AddPointToTrack() should be called to specify what is the point that tracks
-/// the desired trajectory
+/// If `track_center_of_mass_` is false, AddPointToTrack() should be called
+/// to specify what is the point that tracks the desired trajectory
 class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
   TransTaskSpaceTrackingData(std::string name, int n_r,
@@ -233,6 +205,30 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
 
   TransTaskSpaceTrackingData() {}  // Default constructor
 
+  void AddPointToTrack(int body_index_wo_spr,
+                       Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
+  void AddStateAndPointToTrack(int state, int body_index_wo_spr,
+                               Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
+  void AddPointToTrack(int body_index_w_spr, int body_index_wo_spr,
+                       Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
+  void AddStateAndPointToTrack(int state, int body_index_w_spr,
+                               int body_index_wo_spr,
+                               Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
+
+  // A version for std::vector in case the users want it.
+  void AddPointToTrack(std::vector<int> body_index_wo_spr,
+                       std::vector<Eigen::Vector3d> pt_on_body);
+  void AddStateAndPointToTrack(std::vector<int> state,
+                               std::vector<int> body_index_wo_spr,
+                               std::vector<Eigen::Vector3d> pt_on_body);
+  void AddPointToTrack(std::vector<int> body_index_w_spr,
+                       std::vector<int> body_index_wo_spr,
+                       std::vector<Eigen::Vector3d> pt_on_body);
+  void AddStateAndPointToTrack(std::vector<int> state,
+                               std::vector<int> body_index_w_spr,
+                               std::vector<int> body_index_wo_spr,
+                               std::vector<Eigen::Vector3d> pt_on_body);
+
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
                        KinematicsCache<double>& cache_w_spr,
@@ -247,18 +243,21 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
                    KinematicsCache<double>& cache_wo_spr,
                    RigidBodyTree<double>* tree_wo_spr) final;
 
+  void CheckDerivedOscTrackingData() final;
+
+  // Whether or not we are tracking the center of mass of the robot
   bool track_center_of_mass_;
+
+  // `pt_on_body` is the position w.r.t. the origin of the body
+  std::vector<Eigen::Vector3d> pt_on_body_;
 };
 
 
 /// RotTaskSpaceTrackingData is used when we want to track a trajectory
 /// (rotational position) in the task space.
 
-/// isometry_ represent the frame (w.r.t. the body's origin ) which the users
-/// want to track
-
-/// AddPointToTrack() should be called to specify what is origin of the frame
-/// that tracks the desired trajectory
+/// AddFrameToTrack() should be called to specify what is the frame that
+/// follows the desired trajectory
 class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
   RotTaskSpaceTrackingData(std::string name, int n_r,
@@ -266,10 +265,33 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
                            Eigen::MatrixXd K_d,
                            Eigen::MatrixXd W,
                            bool traj_is_const = false,
-                           bool traj_has_exp = false,
-                           Eigen::Isometry3d isometry = Eigen::Isometry3d::Identity());
+                           bool traj_has_exp = false);
 
   RotTaskSpaceTrackingData() {}  // Default constructor
+
+  void AddFrameToTrack(int body_index_wo_spr,
+                       Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
+  void AddStateAndFrameToTrack(int state, int body_index_wo_spr,
+                               Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
+  void AddFrameToTrack(int body_index_w_spr, int body_index_wo_spr,
+                       Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
+  void AddStateAndFrameToTrack(int state, int body_index_w_spr,
+                               int body_index_wo_spr,
+                               Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
+
+  // A version for std::vector in case the users want it.
+  void AddFrameToTrack(std::vector<int> body_index_wo_spr,
+                       std::vector<Eigen::Isometry3d> frame_pose);
+  void AddStateAndFrameToTrack(std::vector<int> state,
+                               std::vector<int> body_index_wo_spr,
+                               std::vector<Eigen::Isometry3d> frame_pose);
+  void AddFrameToTrack(std::vector<int> body_index_w_spr,
+                       std::vector<int> body_index_wo_spr,
+                       std::vector<Eigen::Isometry3d> frame_pose);
+  void AddStateAndFrameToTrack(std::vector<int> state,
+                               std::vector<int> body_index_w_spr,
+                               std::vector<int> body_index_wo_spr,
+                               std::vector<Eigen::Isometry3d> frame_pose);
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
@@ -284,7 +306,12 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
                    KinematicsCache<double>& cache_wo_spr,
                    RigidBodyTree<double>* tree_wo_spr) final;
-  Eigen::Isometry3d isometry_;
+
+  void CheckDerivedOscTrackingData() final;
+
+  // frame_pose_ represents the pose of the frame (w.r.t. the body's frame)
+  // which follows the desired rotation.
+  std::vector<Eigen::Isometry3d> frame_pose_;
 };
 
 
@@ -304,40 +331,36 @@ class JointSpaceTrackingData final : public OscTrackingData {
 
   JointSpaceTrackingData() {}  // Default constructor
 
-  // `joint_pos_idx_wo_spr` is the index of the joint position
-  // `joint_vel_idx_wo_spr` is the index of the joint velocity
-  // `state` is the finite state machine state when the joint trajectory should
-  // be tracked
   void AddJointToTrack(int joint_pos_idx_wo_spr,
                        int joint_vel_idx_wo_spr);
-  void AddJointToTrack(int joint_pos_idx_wo_spr,
-                       int joint_vel_idx_wo_spr,
-                       int state);
+  void AddStateAndJointToTrack(int state,
+                               int joint_pos_idx_wo_spr,
+                               int joint_vel_idx_wo_spr);
   void AddJointToTrack(int joint_pos_idx_w_spr,
                        int joint_vel_idx_w_spr,
                        int joint_pos_idx_wo_spr,
                        int joint_vel_idx_wo_spr);
-  void AddJointToTrack(int joint_pos_idx_w_spr,
-                       int joint_vel_idx_w_spr,
-                       int joint_pos_idx_wo_spr,
-                       int joint_vel_idx_wo_spr,
-                       int state);
+  void AddStateAndJointToTrack(int state,
+                               int joint_pos_idx_w_spr,
+                               int joint_vel_idx_w_spr,
+                               int joint_pos_idx_wo_spr,
+                               int joint_vel_idx_wo_spr);
 
   // A version for std::vector in case the users want it.
   void AddJointToTrack(std::vector<int> joint_pos_idx_wo_spr,
                        std::vector<int> joint_vel_idx_wo_spr);
-  void AddJointToTrack(std::vector<int> joint_pos_idx_wo_spr,
-                       std::vector<int> joint_vel_idx_wo_spr,
-                       std::vector<int> state);
+  void AddStateAndJointToTrack(std::vector<int> state,
+                               std::vector<int> joint_pos_idx_wo_spr,
+                               std::vector<int> joint_vel_idx_wo_spr);
   void AddJointToTrack(std::vector<int> joint_pos_idx_w_spr,
                        std::vector<int> joint_vel_idx_w_spr,
                        std::vector<int> joint_pos_idx_wo_spr,
                        std::vector<int> joint_vel_idx_wo_spr);
-  void AddJointToTrack(std::vector<int> joint_pos_idx_w_spr,
-                       std::vector<int> joint_vel_idx_w_spr,
-                       std::vector<int> joint_pos_idx_wo_spr,
-                       std::vector<int> joint_vel_idx_wo_spr,
-                       std::vector<int> state);
+  void AddStateAndJointToTrack(std::vector<int> state,
+                               std::vector<int> joint_pos_idx_w_spr,
+                               std::vector<int> joint_vel_idx_w_spr,
+                               std::vector<int> joint_pos_idx_wo_spr,
+                               std::vector<int> joint_vel_idx_wo_spr);
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
@@ -355,6 +378,8 @@ class JointSpaceTrackingData final : public OscTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
+  // `joint_pos_idx_wo_spr` is the index of the joint position
+  // `joint_vel_idx_wo_spr` is the index of the joint velocity
   std::vector<int> joint_pos_idx_w_spr_;
   std::vector<int> joint_vel_idx_w_spr_;
   std::vector<int> joint_pos_idx_wo_spr_;

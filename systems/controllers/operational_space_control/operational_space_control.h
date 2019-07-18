@@ -16,8 +16,8 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-/// `OperationalSpaceControl` takes in desired trajectory and outputs torque
-/// command of the motors.
+/// `OperationalSpaceControl` takes in desired trajectory in world frame and
+/// outputs torque command of the motors.
 
 /// Inputs of the constructor:
 ///  - `tree_w_spr` a RigidBodyTree with springs

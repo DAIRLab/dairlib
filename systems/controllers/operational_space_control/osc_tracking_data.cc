@@ -349,7 +349,7 @@ void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_w_spr,
     int state) {
   state_.push_back(state);
   AddJointToTrack(joint_pos_idx_w_spr, joint_vel_idx_w_spr,
-                  joint_pos_idx_wo_spr, joint_vel_idx_wo_spr)
+                  joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
 }
 
 void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_wo_spr,
@@ -386,7 +386,7 @@ void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_w_spr,
 
 void JointSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
-  y_ = x.segment(joint_pos_idx_wo_spr_.at(GetStateIdx()), 1);
+  y_ = x_w_spr.segment(joint_pos_idx_wo_spr_.at(GetStateIdx()), 1);
   error_y_ = y_des_ - y_;
 }
 void JointSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
@@ -406,7 +406,7 @@ void JointSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
   JdotV_ = VectorXd::Zero(GetTrajDim());
 }
 
-void TaskSpaceTrackingData::CheckDerivedOscTrackingData() {
+void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
   if (joint_pos_idx_w_spr_.empty()) {
     joint_pos_idx_w_spr_ = joint_pos_idx_wo_spr_;
   }
@@ -416,8 +416,8 @@ void TaskSpaceTrackingData::CheckDerivedOscTrackingData() {
   DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == joint_pos_idx_wo_spr_.size());
   DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == joint_vel_idx_wo_spr_.size());
   DRAKE_DEMAND(state_.empty() ||
-               (state_.size() == joint_pos_idx_wo_spr_.size()) &&
-               (state_.size() == joint_vel_idx_wo_spr_.size()));
+               ((state_.size() == joint_pos_idx_wo_spr_.size()) &&
+                (state_.size() == joint_vel_idx_wo_spr_.size())));
 }
 
 // AbstractTrackingData ////////////////////////////////////////////////////////
@@ -449,6 +449,9 @@ void AbstractTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void AbstractTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
                                        KinematicsCache<double>& cache_wo_spr,
                                        RigidBodyTree<double>* tree_wo_spr) {
+  // Not implemented yet
+}
+void AbstractTrackingData::CheckDerivedOscTrackingData() {
   // Not implemented yet
 }
 

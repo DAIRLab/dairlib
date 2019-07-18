@@ -386,6 +386,8 @@ class AbstractTrackingData : public OscTrackingData {
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
                    KinematicsCache<double>& cache_wo_spr,
                    RigidBodyTree<double>* tree_wo_spr) final;
+
+  void CheckDerivedOscTrackingData() final;
 };
 
 

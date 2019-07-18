@@ -45,13 +45,13 @@ def main():
         print("Branch is up to date!")
     
     # Finds branch name
-    branch = out[(out.find("On branch") + 10):out.find("\n")]
+    firstLine = "On branch"
+    branch = out[(out.find(firstLine) + len(firstLine)):out.find("\n")]
     
     # Finds location of current branch ie. "origin" or "upstream"
-    start = out.find("Your branch is up to date with")
-    cut = out[(start + 32):]
-    final = cut[:(cut.find("'"))].replace(" ", "")
-    origin = final[:final.find("/")]
+    cut = out[out.find("'"):out.find(".")]
+    stripped = cut.strip("'")
+    origin = stripped[:stripped.find("/")]
     
     # Returns url of remote repo
     out1 = subprocess.getoutput(['git config --get remote.' + origin + '.url', 'l'])
@@ -94,7 +94,7 @@ def main():
     os.system('lcm-logger test' + str(len(column)) + '.log')
 
     # Uploads lcm log file to Google Drive.
-    fileName = 'test' + str(len(column)) + '.log'
+    fileName = 'test' + str(len(column)) + str(datetime.now()) + '.log'
     metadata = {'name': fileName}
     media = MediaFileUpload(fileName, mimetype='application/octet-stream')
     res = DRIVE.files().create(body=metadata, media_body=media, fields='id').execute()

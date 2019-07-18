@@ -120,7 +120,8 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
     } else {
       track_at_current_step_ = false;
     }
-    return ;
+    state_idx_ = 0;
+    return;
   }
 
   vector<int>::iterator it = find(state_.begin(),

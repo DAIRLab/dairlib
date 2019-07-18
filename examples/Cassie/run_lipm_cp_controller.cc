@@ -161,48 +161,90 @@ int DoMain() {
   // Get body index
   int left_toe_idx_w_spr = left_toe_idx;
   int right_toe_idx_w_spr = right_toe_idx;
-  int left_toe_idx_wo_spr = GetBodyIndexFromName(tree_without_springs, "toe_left");
-  int right_toe_idx_wo_spr = GetBodyIndexFromName(tree_without_springs, "toe_right");
+  int left_toe_idx_wo_spr = GetBodyIndexFromName(
+                              tree_without_springs, "toe_left");
+  int right_toe_idx_wo_spr = GetBodyIndexFromName(
+                               tree_without_springs, "toe_right");
 
   int n_v = tree_without_springs.get_num_velocities();
+  // Cost
   MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
   double w_toe = 0.1;  // 1
   osc->AddAccelerationCost(left_toe_idx_wo_spr, w_toe);
   osc->AddAccelerationCost(right_toe_idx_wo_spr, w_toe);
-  double w_swing_foot = 200;
-  double k_p_ft = 100;
-  double k_d_ft = 10;
-  TransTaskSpaceTrackingData swing_foot("swing_foot", 3,
-                           Eigen::MatrixXd K_p,
-                           Eigen::MatrixXd K_d,
-                           Eigen::MatrixXd W);
-  MatrixXd W_com = 2 * MatrixXd::Identity(3, 3); W_com(2, 2) = 2000;
+  // Soft constraint
+  double w_contact_relax = 200;
+  osc->SetWeightOfSoftContactConstraint(w_contact_relax);
+  // Firction coefficient
+  double mu = 0.8;
+  osc->SetContactFriction(mu);
+  Vector3d front_contact_disp(-0.0457, 0.112, 0);
+  Vector3d rear_contact_disp(0.088, 0, 0);
+  osc->AddContactPoint(left_toe_idx_w_spr, front_contact_disp);
+  osc->AddContactPoint(left_toe_idx_w_spr, rear_contact_disp);
+  osc->AddContactPoint(right_toe_idx_w_spr, front_contact_disp);
+  osc->AddContactPoint(right_toe_idx_w_spr, rear_contact_disp);
+  // Swing foot tracking
+  MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
+  MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
+  TransTaskSpaceTrackingData swing_foot_traj("swing_foot_traj", 3,
+      Eigen::MatrixXd K_p_sw_ft,
+      Eigen::MatrixXd K_d_sw_ft,
+      Eigen::MatrixXd W_swing_foot);
+  // Center of mass tracking
+  MatrixXd W_com = MatrixXd::Identity(3, 3);
+  W_com(0, 0) = 2;
+  W_com(1, 1) = 2;
+  W_com(2, 2) = 2000;
+  MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
+  TransTaskSpaceTrackingData center_of_mass_traj("center_of_mass_traj", 3,
+      K_p_com, K_d_com, W_com, false, true);
+  // Pelvis rotation tracking
   double w_pelvis_balance = 200;
   double w_heading = 200;
-  double w_swing_toe = 2;
-  double w_stance_toe = 2;
-  double w_hip_yaw = 20;
-  // We don't want this to be too big, cause we want tracking error to be important
-  double w_contact_relax = 200;
-  // Paremeters for feedback control in QP
-  double k_p_com = 50;
-  double k_d_com = 10;
   double k_p_pelvis_balance = 100;
   double k_d_pelvis_balance = 800;
   double k_p_heading = 50;
   double k_d_heading = 40;
-  double k_p_swing_toe = 1000;
-  double k_d_swing_toe = 100;
-  double k_p_stance_toe = 100;
-  double k_d_stance_toe = 20;
-  double k_p_hip_yaw = 200;
-  double k_d_hip_yaw = 160;
-  double k_p_dv = 1;
-  double k_d_dv = 0.2;
-  // Firction coefficient
-  double mu = 0.8;
+  Matrix3d W_pelvis = MatrixXd::Identity(3, 3);
+  W_pelvis(0, 0) = w_pelvis_balance;
+  W_pelvis(1, 1) = w_pelvis_balance;
+  W_pelvis(2, 2) = w_heading;
+  Matrix3d K_p_pelvis = MatrixXd::Identity(3, 3);
+  K_p_pelvis(0, 0) = k_p_pelvis_balance * 2;
+  K_p_pelvis(1, 1) = k_p_pelvis_balance * 2;
+  K_p_pelvis(2, 2) = k_p_heading;
+  Matrix3d K_d_pelvis = MatrixXd::Identity(3, 3);
+  K_d_pelvis(0, 0) = k_d_pelvis_balance;
+  K_d_pelvis(1, 1) = k_d_pelvis_balance;
+  K_d_pelvis(2, 2) = k_d_heading;
+  RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 1,
+      K_p_pelvis, K_d_pelvis, W_pelvis, false, true);
+  // Swing toe joint tracking (Currently use fix position) TODO: change this
+  MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_swing_toe = 1000 * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_swing_toe = 100 * MatrixXd::Identity(1, 1);
+  JointSpaceTrackingData swing_toe_traj("swing_toe_traj", 1,
+      K_p_swing_toe, K_d_swing_toe, W_swing_toe, true);
+  // Stance toe joint tracking (Currently use fix position) TODO: change this
+  MatrixXd W_stance_toe = 2 * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_stance_toe = 100 * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_stance_toe = 20 * MatrixXd::Identity(1, 1);
+  JointSpaceTrackingData stance_toe_traj("stance_toe_traj", 1,
+      K_p_stance_toe, K_d_stance_toe, W_stance_toe, true);
+  // Swing hip yaw tracking
+  MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
+  JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", 1,
+      K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw, true);
+  // We don't want this to be too big, cause we want tracking error to be important
 
+  // TODO: add body index and joint index and states
+  // TODO: add a block for toe angle control
 
 
 

@@ -170,7 +170,8 @@ int do_main(int argc, char* argv[]) {
   // Adding position controller block
   auto position_controller = builder.AddSystem<
       systems::EndEffectorPositionController>(
-          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA, MAX_LINEAR_VEL, MAX_ANGULAR_VEL);
+          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA, MAX_LINEAR_VEL,
+          MAX_ANGULAR_VEL);
 
   // Adding Velocity Controller block
   auto velocity_controller = builder.AddSystem<

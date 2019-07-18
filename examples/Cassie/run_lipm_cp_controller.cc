@@ -52,9 +52,11 @@ int DoMain() {
 
   RigidBodyTree<double> tree_with_springs;
   RigidBodyTree<double> tree_without_springs;
-  buildCassieTree(tree_with_springs, "examples/Cassie/urdf/cassie_v2.urdf",
+  buildCassieTree(tree_with_springs,
+                  "examples/Cassie/urdf/cassie_v2.urdf",
                   drake::multibody::joints::kQuaternion);
-  buildCassieTree(tree_without_springs, "examples/Cassie/urdf/cassie_v2.urdf",
+  buildCassieTree(tree_without_springs,
+                  "examples/Cassie/urdf/cassie_fixed_springs.urdf",
                   drake::multibody::joints::kQuaternion, false/*no spring*/);
   const double terrain_size = 100;
   const double terrain_depth = 0.20;
@@ -269,10 +271,13 @@ int DoMain() {
   K_d_pelvis(1, 1) = k_d_pelvis_balance;
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 3,
-      K_p_pelvis, K_d_pelvis, W_pelvis, false, false);
+      K_p_pelvis, K_d_pelvis, W_pelvis, true, false);
   pelvis_rot_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
   pelvis_rot_traj.SetNoControlPeriod(
     0.05); // TODO separate yaw from the rest /////////////////////////////////////////
+  VectorXd pelvis_desired_quat(4);
+  pelvis_desired_quat << 1, 0, 0, 0;
+  pelvis_rot_traj.SetConstantTraj(pelvis_desired_quat);
   osc->AddTrackingData(&pelvis_rot_traj);
   // Swing toe joint tracking (Currently use fix position) TODO: change this
   // cout << "Adding swing toe joint tracking\n";

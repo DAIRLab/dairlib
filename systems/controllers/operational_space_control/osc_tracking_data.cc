@@ -51,6 +51,7 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
                              double t,
                              int finite_state_machine_state,
                              double time_since_last_state_switch) {
+  cout << "Update data for " << name_ << endl;
   // Update track_at_current_step_
   if (state_.empty()) {
     track_at_current_step_ = true;
@@ -64,16 +65,29 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
   } else {
     // Careful: must update y_des_ before calling UpdateYAndError()
 
-    // Update Desired Output
+    // Update desired output
     y_des_ = traj.value(t);
-    dy_des_ = traj.MakeDerivative(1)->value(t);
-    ddy_des_ = traj.MakeDerivative(2)->value(t);
+    if (!traj_is_const_) {
+      dy_des_ = traj.MakeDerivative(1)->value(t);
+      ddy_des_ = traj.MakeDerivative(2)->value(t);
+    } else {
+      dy_des_ = VectorXd::Zero(n_r_);
+      ddy_des_ = VectorXd::Zero(n_r_);
+    }
+    cout << "y_des_ = " << y_des_.transpose() << endl;
+    cout << "dy_des_ = " << dy_des_.transpose() << endl;
+    cout << "ddy_des_ = " << ddy_des_.transpose() << endl;
 
-    // Update Feedback Output (Calling virtual methods)
+    // Update feedback output (Calling virtual methods)
+    cout << "UpdateYAndError...\n";
     UpdateYAndError(x_w_spr, cache_w_spr, tree_w_spr);
+    cout << "UpdateYdot...\n";
     UpdateYdot(x_w_spr, cache_w_spr, tree_w_spr);
+    cout << "UpdateJ...\n";
     UpdateJ(x_wo_spr, cache_wo_spr, tree_wo_spr);
+    cout << "UpdateJdotV...\n";
     UpdateJdotV(x_wo_spr, cache_wo_spr, tree_wo_spr);
+    cout << "Finished updating\n";
 
     return track_at_current_step_;
   }
@@ -81,6 +95,13 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
 
 // Getters
 VectorXd OscTrackingData::GetDesiredOutputWithPdControl() {
+  cout << "ddy_des_ = " << ddy_des_ << endl;
+  cout << "dy_des_ = " << dy_des_ << endl;
+  cout << "y_des_ = " << y_des_ << endl;
+  cout << "ydot_ = " << ydot_ << endl;
+  cout << "y_ = " << y_ << endl;
+  cout << "K_d_ = " << K_d_ << endl;
+  cout << "K_p_ = " << K_p_ << endl;
   return ddy_des_ + K_p_ * (error_y_) + K_d_ * (dy_des_ - ydot_);
 }
 MatrixXd OscTrackingData::GetWeight() {
@@ -99,6 +120,7 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
     } else {
       track_at_current_step_ = false;
     }
+    return ;
   }
 
   vector<int>::iterator it = find(state_.begin(),
@@ -257,9 +279,14 @@ void TransTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
     if (body_index_w_spr_.empty()) {
       body_index_w_spr_ = body_index_wo_spr_;
     }
-    DRAKE_DEMAND(body_index_w_spr_.size() == body_index_wo_spr_.size());
-    DRAKE_DEMAND(pt_on_body_.size() == body_index_wo_spr_.size());
+    DRAKE_DEMAND(body_index_w_spr_.size() == pt_on_body_.size());
+    DRAKE_DEMAND(body_index_wo_spr_.size() == pt_on_body_.size());
     DRAKE_DEMAND(state_.empty() || (state_.size() == pt_on_body_.size()));
+    if (state_.empty()) {
+      DRAKE_DEMAND(body_index_w_spr_.size() == 1);
+      DRAKE_DEMAND(body_index_wo_spr_.size() == 1);
+      DRAKE_DEMAND(pt_on_body_.size() == 1);
+    }
   }
 }
 
@@ -328,9 +355,9 @@ void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
                               cache_w_spr, tree_w_spr->get_body(
                                 body_index_w_spr_.at(GetStateIdx()))).linear();
   Quaterniond y_quat(rot_mat * frame_pose_.at(GetStateIdx()).linear());
-  y_ << y_quat.w(), y_quat.vec();
-  cout << "RotTaskSpaceTrackingData::UpdateYAndError(): y_ = " << y_.transpose()
-       << endl;
+  Eigen::Vector4d y_4d;
+  y_4d << y_quat.w(), y_quat.vec();
+  y_ = y_4d;
   Eigen::Vector4d y_des_4d = y_des_;
   Quaterniond y_quat_des(y_des_4d);
 
@@ -371,9 +398,14 @@ void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
   if (body_index_w_spr_.empty()) {
     body_index_w_spr_ = body_index_wo_spr_;
   }
-  DRAKE_DEMAND(body_index_w_spr_.size() == body_index_wo_spr_.size());
-  DRAKE_DEMAND(frame_pose_.size() == body_index_wo_spr_.size());
+  DRAKE_DEMAND(body_index_w_spr_.size() == frame_pose_.size());
+  DRAKE_DEMAND(body_index_wo_spr_.size() == frame_pose_.size());
   DRAKE_DEMAND(state_.empty() || (state_.size() == frame_pose_.size()));
+  if (state_.empty()) {
+    DRAKE_DEMAND(body_index_w_spr_.size() == 1);
+    DRAKE_DEMAND(body_index_wo_spr_.size() == 1);
+    DRAKE_DEMAND(frame_pose_.size() == 1);
+  }
 }
 
 // JointSpaceTrackingData //////////////////////////////////////////////////////
@@ -456,8 +488,9 @@ void JointSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
 }
 void JointSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
                                         KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
-  J_ = MatrixXd::Zero(1, tree_w_spr->get_num_velocities());
-  J_(0, joint_vel_idx_wo_spr_.at(GetStateIdx())) = 1;
+  MatrixXd J = MatrixXd::Zero(1, tree_w_spr->get_num_velocities());
+  J(0, joint_vel_idx_wo_spr_.at(GetStateIdx())) = 1;
+  ydot_ = J * x_w_spr.tail(tree_w_spr->get_num_velocities());
 }
 void JointSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                      KinematicsCache<double>& cache_wo_spr,
@@ -473,8 +506,6 @@ void JointSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
 void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
   if (joint_pos_idx_w_spr_.empty()) {
     joint_pos_idx_w_spr_ = joint_pos_idx_wo_spr_;
-  }
-  if (joint_vel_idx_w_spr_.empty()) {
     joint_vel_idx_w_spr_ = joint_vel_idx_wo_spr_;
   }
   DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == joint_pos_idx_wo_spr_.size());
@@ -482,6 +513,12 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
   DRAKE_DEMAND(state_.empty() ||
                ((state_.size() == joint_pos_idx_wo_spr_.size()) &&
                 (state_.size() == joint_vel_idx_wo_spr_.size())));
+  if (state_.empty()) {
+    DRAKE_DEMAND(joint_pos_idx_w_spr_.size() == 1);
+    DRAKE_DEMAND(joint_vel_idx_w_spr_.size() == 1);
+    DRAKE_DEMAND(joint_pos_idx_wo_spr_.size() == 1);
+    DRAKE_DEMAND(joint_vel_idx_wo_spr_.size() == 1);
+  }
 }
 
 // AbstractTrackingData ////////////////////////////////////////////////////////

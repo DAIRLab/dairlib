@@ -73,7 +73,7 @@ class OscTrackingData {
               int finite_state_machine_state,
               double time_since_last_state_switch);
   Eigen::VectorXd GetOutput() {return y_;}
-  Eigen::VectorXd GetJ() {return J_;}
+  Eigen::MatrixXd GetJ() {return J_;}
   Eigen::VectorXd GetJdotTimesV() {return JdotV_;}
   Eigen::VectorXd GetDesiredOutputWithPdControl();
   Eigen::MatrixXd GetWeight();
@@ -159,7 +159,7 @@ class OscTrackingData {
 
   // cache
   bool track_at_current_step_;
-  int state_idx_;
+  int state_idx_ = 0;
 };
 
 
@@ -254,7 +254,8 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
 
 
 /// RotTaskSpaceTrackingData is used when we want to track a trajectory
-/// (rotational position) in the task space.
+/// (rotational position) in the task space. The desired position must be
+/// expressed in quaternion (a 4d vector).
 
 /// AddFrameToTrack() should be called to specify what is the frame that
 /// follows the desired trajectory

@@ -1,5 +1,8 @@
 #include "systems/controllers/operational_space_control/operational_space_control.h"
 
+using std::cout;
+using std::endl;
+
 using std::vector;
 using std::string;
 using std::numeric_limits;
@@ -33,10 +36,16 @@ OperationalSpaceControl::OperationalSpaceControl(
   n_q_ = tree_wo_spr->get_num_positions();
   n_v_ = tree_wo_spr->get_num_velocities();
   n_u_ = tree_wo_spr->get_num_actuators();
+  cout << "n_q_ = " << n_q_ << endl;
+  cout << "n_v_ = " << n_v_ << endl;
+  cout << "n_u_ = " << n_u_ << endl;
 
   int n_q_w_spr = tree_w_spr->get_num_positions();
   int n_v_w_spr = tree_w_spr->get_num_velocities();
   int n_u_w_spr = tree_w_spr->get_num_actuators();
+  cout << "n_q_w_spr = " << n_q_w_spr << endl;
+  cout << "n_v_w_spr = " << n_v_w_spr << endl;
+  cout << "n_u_w_spr = " << n_u_w_spr << endl;
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -64,7 +73,7 @@ OperationalSpaceControl::OperationalSpaceControl(
         map_position_from_spring_to_no_spring_(i, j) = 1;
       }
     }
-  // std::cout<<"map_position_from_spring_to_no_spring_ = \n"<<map_position_from_spring_to_no_spring_<<"\n";
+  // cout<<"map_position_from_spring_to_no_spring_ = \n"<<map_position_from_spring_to_no_spring_<<"\n";
   map_velocity_from_spring_to_no_spring_ = MatrixXd::Zero(n_v_, n_v_w_spr);
   for (int i = 0; i < n_v_; i++)
     for (int j = 0; j < n_v_w_spr; j++) {
@@ -74,7 +83,7 @@ OperationalSpaceControl::OperationalSpaceControl(
         map_velocity_from_spring_to_no_spring_(i, j) = 1;
       }
     }
-  // std::cout<<"map_position_from_spring_to_no_spring_ = \n"<<map_position_from_spring_to_no_spring_<<"\n";
+  // cout<<"map_position_from_spring_to_no_spring_ = \n"<<map_position_from_spring_to_no_spring_<<"\n";
 }
 
 // Cost methods
@@ -188,8 +197,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Get M, f_cg, B matrices of the manipulator equation
   MatrixXd B = tree_wo_spr_->B;
   MatrixXd M = tree_wo_spr_->massMatrix(cache_wo_spr);
-  // std::cout<<"Matrix M dimension = "<< M.rows()<<" "<< M.cols()<<"\n\n";
-  // std::cout<< "M.row(18) = " << M.row(18) << std::endl;
+  // cout<<"Matrix M dimension = "<< M.rows()<<" "<< M.cols()<<"\n\n";
+  // cout<< "M.row(18) = " << M.row(18) <<  endl;
   const RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
   VectorXd bias = tree_wo_spr_->dynamicsBiasTerm(cache_wo_spr,
                   no_external_wrenches);
@@ -209,6 +218,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Construct QP
+  cout << "Constructing QP\n";
   MathematicalProgram prog;
 
   // Add decision variables
@@ -224,48 +234,52 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///    M*dv + bias == J_c^T*lambda_c + J_h^T*lambda_h + B*u
   /// -> M*dv - J_c^T*lambda_c - J_h^T*lambda_h - B*u == - bias
   /// -> [M, -J_c^T, -J_h^T, -B]*[dv, lambda_c, lambda_h, u]^T = - bias
-  // std::cout<< "size of (M, -J_c.transpose(), -J_h.transpose(), -B):\n"
+  // cout<< "size of (M, -J_c.transpose(), -J_h.transpose(), -B):\n"
   //       << M.rows() << ", " << M.cols() << "\n"
   //       << J_c.transpose().rows() << ", " << J_c.transpose().cols() << "\n"
   //       << J_h.transpose().rows() << ", " << J_h.transpose().cols() << "\n"
   //       << B.rows() << ", " << B.cols() << "\n";
+  cout << "Add dynamic constraint\n";
   MatrixXd A_dyn = MatrixXd::Zero(n_v_, n_v_ + n_c + J_h.rows() + n_u_);
   A_dyn.block(0, 0, n_v_, n_v_) = M;
   A_dyn.block(0, n_v_, n_v_, n_c) = -J_c.transpose();
   A_dyn.block(0, n_v_ + n_c , n_v_, J_h.rows()) = -J_h.transpose();
   A_dyn.block(0, n_v_ + n_c + J_h.rows(), n_v_, n_u_) = -B;
-  // std::cout<< "M # of rows and cols = " <<M.rows()<<", "<<M.cols()<<std::endl;
-  // std::cout<< "J_c.transpose() # of rows and cols = " <<J_c.transpose().rows()<<", "<<J_c.transpose().cols()<<std::endl;
-  // std::cout<< "J_h.transpose() # of rows and cols = " <<J_h.transpose().rows()<<", "<<J_h.transpose().cols()<<std::endl;
-  // std::cout<< "B # of rows and cols = " <<B.rows()<<", "<<B.cols()<<std::endl;
-  // std::cout<<"A_dyn = \n"<<A_dyn<<"\n";
+  // cout<< "M # of rows and cols = " <<M.rows()<<", "<<M.cols()<< endl;
+  // cout<< "J_c.transpose() # of rows and cols = " <<J_c.transpose().rows()<<", "<<J_c.transpose().cols()<< endl;
+  // cout<< "J_h.transpose() # of rows and cols = " <<J_h.transpose().rows()<<", "<<J_h.transpose().cols()<< endl;
+  // cout<< "B # of rows and cols = " <<B.rows()<<", "<<B.cols()<< endl;
+  // cout<<"A_dyn = \n"<<A_dyn<<"\n";
   prog.AddLinearConstraint(A_dyn, -bias, -bias, {dv, lambda_c, lambda_h, u});
 
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
   /// -> J_h*dv == -JdotV_h
+  cout << "Add holonomic constraint\n";
+  // cout<< "J_h # of rows and cols = " <<J_h.rows()<<", "<<J_h.cols()<< endl;
+  // cout<< "JdotV_h # of rows and cols = " <<JdotV_h.rows()<<", "<<JdotV_h.cols()<< endl;
   prog.AddLinearConstraint(J_h, -JdotV_h, -JdotV_h, dv);
-  // std::cout<< "J_h # of rows and cols = " <<J_h.rows()<<", "<<J_h.cols()<<std::endl;
-  // std::cout<< "JdotV_h # of rows and cols = " <<JdotV_h.rows()<<", "<<JdotV_h.cols()<<std::endl;
 
   // 3. Contact constraint
   if (body_index_.size() > 0) {
     if (w_soft_constraint_ <= 0) {
       ///    JdotV_c + J_c*dv == 0
       /// -> J_c*dv == -JdotV_c
+      cout << "Add contact constraint\n";
+      // cout<< "J_c # of rows and cols = " <<J_c.rows()<<", "<<J_c.cols()<< endl;
+      // cout<< "JdotV_c # of rows and cols = " <<JdotV_c.rows()<<", "<<JdotV_c.cols()<< endl;
       prog.AddLinearConstraint(J_c, -JdotV_c, -JdotV_c, dv);
-      // std::cout<< "J_c # of rows and cols = " <<J_c.rows()<<", "<<J_c.cols()<<std::endl;
-      // std::cout<< "JdotV_c # of rows and cols = " <<JdotV_c.rows()<<", "<<JdotV_c.cols()<<std::endl;
     }
     else {
       // Relaxed version:
       ///    JdotV_c + J_c*dv == -epsilon
       /// -> J_c*dv + I*epsilon == -JdotV_c
       /// -> [J_c, I]* [dv, epsilon]^T == -JdotV_c
+      cout << "Add soft contact constraint\n";
       MatrixXd A_c = MatrixXd::Zero(n_c, n_v_ + n_c);
       A_c.block(0, 0, n_c, n_v_) = J_c;
       A_c.block(0, n_v_, n_c, n_c) = MatrixXd::Identity(n_c, n_c);
-      // std::cout<<"A_c: \n"<<A_c<<"\n";
+      // cout<<"A_c: \n"<<A_c<<"\n";
       prog.AddLinearConstraint(A_c,
                                -JdotV_c, -JdotV_c, {dv, epsilon});
     }
@@ -283,6 +297,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   if (body_index_.size() > 0) {
+    cout << "Add friction constraint\n";
     VectorXd mu_minus1(2); mu_minus1 << mu_, -1;
     VectorXd mu_plus1(2); mu_plus1 << mu_, 1;
 
@@ -307,6 +322,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // 5. Input constraint
   if (with_input_constraints_) {
+    cout << "Add input constraint\n";
     prog.AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min, u_max, u);
   }
 
@@ -315,16 +331,19 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Add costs
   // 1. input cost
   if (W_input_.size() > 0) {
+    cout << "Add input cost\n";
     prog.AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u);
   }
 
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
+    cout << "Add joint accelration cost\n";
     prog.AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv);
   }
 
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
+    cout << "Add soft constraint cost\n";
     prog.AddQuadraticCost(w_soft_constraint_ * MatrixXd::Identity(n_c, n_c),
                           VectorXd::Zero(n_c),
                           epsilon );
@@ -333,11 +352,13 @@ VectorXd OperationalSpaceControl::SolveQp(
   // 4. Tracking cost
   for (auto tracking_data : *tracking_data_vec_) {
     string traj_name = tracking_data->GetName();
+    cout << "Add cost for " << traj_name << endl;
     int port_index = traj_name_to_port_index_map_.at(traj_name);
-
+    cout << "port_index = " << port_index << endl;
     // Read in traj
     const drake::AbstractValue* traj_intput =
       this->EvalAbstractInput(context, port_index);
+    DRAKE_DEMAND(traj_intput != nullptr);
     const drake::trajectories::Trajectory<double> & traj =
       (tracking_data->TrajHasExp()) ?
       traj_intput->get_value<ExponentialPlusPiecewisePolynomial<double>>() :
@@ -351,9 +372,13 @@ VectorXd OperationalSpaceControl::SolveQp(
                         fsm_state, time_since_last_state_switch);
     if (track_or_not) {
       VectorXd y_t = tracking_data->GetDesiredOutputWithPdControl();
+      cout << "y_t = \n" << y_t << endl;
       MatrixXd W = tracking_data->GetWeight();
-      VectorXd J_t = tracking_data->GetJ();
-      MatrixXd JdotV_t = tracking_data->GetJdotTimesV();
+      cout << "W = \n" << W << endl;
+      MatrixXd J_t = tracking_data->GetJ();
+      cout << "J_t = \n" << J_t << endl;
+      VectorXd JdotV_t = tracking_data->GetJdotTimesV();
+      cout << "JdotV_t = \n" << JdotV_t << endl;
       //TODO: later, if track_or_not = false, we can just update W
       prog.AddQuadraticCost(J_t.transpose()*W * J_t,
                             J_t.transpose()*W * (JdotV_t - y_t),
@@ -364,7 +389,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Solve the QP
   const MathematicalProgramResult result = Solve(prog);
   SolutionResult solution_result = result.get_solution_result();
-  std::cout << to_string(solution_result) << std::endl;
+  cout << to_string(solution_result) <<  endl;
 
   // Extract solutions
   VectorXd u_sol = result.GetSolution(u);
@@ -383,20 +408,26 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Read in current state and simulation time
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
-  VectorXd current_state = robot_output->GetState();
+  VectorXd q_w_spr = robot_output->GetPositions();
+  if (q_w_spr.norm() == 0) {
+    q_w_spr = tree_w_spr_->getZeroConfiguration();
+  }
+  VectorXd v_w_spr = robot_output->GetVelocities();
+  VectorXd x_w_spr(tree_w_spr_->get_num_positions() +
+                   tree_w_spr_->get_num_velocities());
+  x_w_spr << q_w_spr, v_w_spr;
+
   double timestamp = robot_output->get_timestamp();
   double current_sim_time = static_cast<double>(timestamp);
 
   // TODO(yminchen): currently construct the QP in every loop. Will modify this
   // once the code is working.
   // Set up the QP
-  VectorXd x_wo_spr(map_position_from_spring_to_no_spring_.rows() +
-                    map_velocity_from_spring_to_no_spring_.rows());
-  x_wo_spr <<
-           map_position_from_spring_to_no_spring_ * robot_output->GetPositions(),
-                                                  map_velocity_from_spring_to_no_spring_ * robot_output->GetVelocities();
-  // std::cout << "current_state = " << current_state.transpose() << endl;
-  // std::cout << "x_wo_spr = " << x_wo_spr.transpose() << endl;
+  VectorXd x_wo_spr(n_q_ + n_v_);
+  x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
+           map_velocity_from_spring_to_no_spring_ * v_w_spr;
+  cout << "x_w_spr = " << x_w_spr.transpose() << endl;
+  cout << "x_wo_spr = " << x_wo_spr.transpose() << endl;
 
   VectorXd u_sol(n_u_);
   if (used_with_finite_state_machine_) {
@@ -409,11 +440,11 @@ void OperationalSpaceControl::CalcOptimalInput(
     const auto prev_event_time = context.get_discrete_state(
                                    prev_event_time_idx_).get_value();
 
-    u_sol = SolveQp(current_state, x_wo_spr,
+    u_sol = SolveQp(x_w_spr, x_wo_spr,
                     context, current_sim_time,
                     fsm_state(0), current_sim_time - prev_event_time(0));
   } else {
-    u_sol = SolveQp(current_state, x_wo_spr,
+    u_sol = SolveQp(x_w_spr, x_wo_spr,
                     context, current_sim_time,
                     -1, -1);
   }

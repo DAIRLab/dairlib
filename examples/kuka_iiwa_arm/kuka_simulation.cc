@@ -252,7 +252,6 @@ int DoMain() {
 
   drake::systems::BasicVector<double>& state =
       context.get_mutable_discrete_state(0);
-  std::cout << "Discrete " << state.size() << std::endl;
   state.SetFromVector(q0_iiwa);
 
   auto& state2 = diagram->GetMutableSubsystemState(*world_plant,

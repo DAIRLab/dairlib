@@ -5,8 +5,20 @@ build_task:
     cpu: 8
     memory: 24
   test_script:
-    - bazel build ...
-    - bazel test ...
+    - bazel build
+      --local_resources=24000,8,1.0 --jobs=8 
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
+    - bazel test
+      --local_resources=24000,8,1.0 --jobs=8 
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
 drake_master_build_task:
   timeout_in: 120m
   container:
@@ -17,5 +29,17 @@ drake_master_build_task:
   test_script:
     - git clone https://github.com/RobotLocomotion/drake.git ../drake
     - export DAIRLIB_LOCAL_DRAKE_PATH=$PWD/../drake
-    - bazel build ...
-    - bazel test ...  
+    - bazel build
+      --local_resources=24000,8,1.0 --jobs=8 
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...
+    - bazel test
+      --local_resources=24000,8,1.0 --jobs=8 
+      --spawn_strategy=sandboxed
+      --strategy=Javac=sandboxed
+      --genrule_strategy=sandboxed
+      --remote_http_cache=http://$CIRRUS_HTTP_CACHE_HOST
+      //...

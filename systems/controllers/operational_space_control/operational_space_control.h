@@ -65,8 +65,6 @@ namespace controllers {
 /// The users can connect the output ports of the desired trajecotry blocks to
 /// the corresponding input ports of `OperationalSpaceControl` by using
 /// the method get_tracking_data_input_port().
-/// Users can also call the utility function ConnectPortsForNonConstTraj() if
-/// they don't want to connect the input/output ports manually.
 
 /// The procedure of setting up `OperationalSpaceControl`:
 ///   1. create an instance of `OperationalSpaceControl`

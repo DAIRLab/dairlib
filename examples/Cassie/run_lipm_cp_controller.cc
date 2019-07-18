@@ -27,6 +27,9 @@
 
 namespace dairlib {
 
+using std::cout;
+using std::endl;
+
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::Matrix3d;
@@ -221,6 +224,7 @@ int DoMain() {
   osc->AddContactPoint(right_toe_idx_w_spr, front_contact_disp);
   osc->AddContactPoint(right_toe_idx_w_spr, rear_contact_disp);
   // Swing foot tracking
+  // cout << "Adding swing foot tracking\n";
   MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
@@ -234,6 +238,7 @@ int DoMain() {
                                           left_toe_idx_wo_spr);
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
+  // cout << "Adding center of mass tracking\n";
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2;
   W_com(1, 1) = 2;
@@ -244,6 +249,7 @@ int DoMain() {
       K_p_com, K_d_com, W_com, false, true, true);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
+  // cout << "Adding pelvis rotation tracking\n";
   double w_pelvis_balance = 200;
   double w_heading = 200;
   double k_p_pelvis_balance = 100;
@@ -262,13 +268,14 @@ int DoMain() {
   K_d_pelvis(0, 0) = k_d_pelvis_balance;
   K_d_pelvis(1, 1) = k_d_pelvis_balance;
   K_d_pelvis(2, 2) = k_d_heading;
-  RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 1,
+  RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 3,
       K_p_pelvis, K_d_pelvis, W_pelvis, false, false);
   pelvis_rot_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
   pelvis_rot_traj.SetNoControlPeriod(
     0.05); // TODO separate yaw from the rest /////////////////////////////////////////
   osc->AddTrackingData(&pelvis_rot_traj);
   // Swing toe joint tracking (Currently use fix position) TODO: change this
+  // cout << "Adding swing toe joint tracking\n";
   MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = 1000 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = 100 * MatrixXd::Identity(1, 1);
@@ -288,6 +295,7 @@ int DoMain() {
   swing_toe_traj.SetConstantTraj(-M_PI * VectorXd::Ones(1));
   osc->AddTrackingData(&swing_toe_traj);
   // Stance toe joint tracking (Currently use fix position) TODO: change this
+  // cout << "Adding stance toe joint tracking\n";
   MatrixXd W_stance_toe = 2 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_stance_toe = 100 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_stance_toe = 20 * MatrixXd::Identity(1, 1);
@@ -307,6 +315,7 @@ int DoMain() {
   stance_toe_traj.SetConstantTraj(-M_PI * VectorXd::Ones(1));
   osc->AddTrackingData(&stance_toe_traj);
   // Swing hip yaw joint tracking
+  // cout << "Adding swing hip yaw joint tracking\n";
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
@@ -331,10 +340,12 @@ int DoMain() {
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0),
                   osc->get_fsm_input_port());
+  builder.Connect(lipm_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("lipm_traj"));
+  builder.Connect(cp_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("cp_traj"));
   builder.Connect(osc->get_output_port(0),
                   command_sender->get_input_port(0));
-  // Connect ports automatically for non-constant traj sources
-  systems::controllers::ConnectPortsForNonConstTraj(osc, builder);
 
 
   // TODO: add a block for toe angle control

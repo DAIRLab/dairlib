@@ -103,8 +103,8 @@ void OperationalSpaceControl::CheckCostSettings() {
     DRAKE_DEMAND((W_input_.rows() == n_u_) && (W_input_.cols() == n_u_));
   }
   if (W_joint_accel_.size() != 0) {
-    DRAKE_DEMAND((W_joint_accel_.rows() == n_u_) &&
-                 (W_joint_accel_.cols() == n_u_));
+    DRAKE_DEMAND((W_joint_accel_.rows() == n_v_) &&
+                 (W_joint_accel_.cols() == n_v_));
   }
 }
 void OperationalSpaceControl::CheckConstraintSettings() {

@@ -119,6 +119,7 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
 // Run this function in OSC constructor to make sure that users constructed
 // OscTrackingData correctly.
 void OscTrackingData::CheckOscTrackingData() {
+  cout << "Checking " << name_ << endl;
   CheckDerivedOscTrackingData();
 
   DRAKE_DEMAND(!(traj_is_const_ && traj_has_exp_));
@@ -466,7 +467,7 @@ void JointSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 }
 void JointSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
     KinematicsCache<double>& cache_wo_spr, RigidBodyTree<double>* tree_wo_spr) {
-  JdotV_ = VectorXd::Zero(GetTrajDim());
+  JdotV_ = VectorXd::Zero(1);
 }
 
 void JointSpaceTrackingData::CheckDerivedOscTrackingData() {

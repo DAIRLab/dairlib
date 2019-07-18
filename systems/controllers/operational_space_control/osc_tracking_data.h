@@ -53,8 +53,8 @@ class OscTrackingData {
                   Eigen::MatrixXd K_p,
                   Eigen::MatrixXd K_d,
                   Eigen::MatrixXd W,
-                  bool traj_is_const = false,
-                  bool traj_has_exp = false);
+                  bool traj_is_const,
+                  bool traj_has_exp);
 
   OscTrackingData() {}  // Default constructor
 
@@ -170,8 +170,8 @@ class TaskSpaceTrackingData : public OscTrackingData {
                         Eigen::MatrixXd K_p,
                         Eigen::MatrixXd K_d,
                         Eigen::MatrixXd W,
-                        bool traj_is_const = false,
-                        bool traj_has_exp = false);
+                        bool traj_is_const,
+                        bool traj_has_exp);
 
   TaskSpaceTrackingData() {}  // Default constructor
 

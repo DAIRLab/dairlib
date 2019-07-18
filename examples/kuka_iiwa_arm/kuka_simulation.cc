@@ -102,12 +102,13 @@ int DoMain() {
   //internal::AddAndWeldModelFrom(sdf_path, "table", plant_->world_frame()
   //                                "amazon_table", X_WT, plant_);
 
-  const drake::multibody::ModelInstanceIndex new_model = world_plant_parser.AddModelFromFile(sdf_path, "bin1");
+  const drake::multibody::ModelInstanceIndex new_model =
+      world_plant_parser.AddModelFromFile(sdf_path, "bin1");
   const auto& child_frame = world_plant->GetFrameByName("bin_base", new_model);
   world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
   // Note: to add moving things to a simulation, mayhaps try checking out
   // the ManipulationStation::AddManipulandFromFile function in
-  // drake's manipulation_station.cc 
+  // drake's manipulation_station.cc
 
   //Loads in manipulands from json file to objects_vector
   std::ifstream free_objects("examples/kuka_iiwa_arm/simulationsettings.json");
@@ -133,7 +134,7 @@ int DoMain() {
   world_plant->Finalize();
 
   const int num_iiwa_positions = controller_plant->num_positions();
-  const int num_iiwa_velocities = controller_plant->num_velocities();
+  //const int num_iiwa_velocities = controller_plant->num_velocities();
 
   drake::systems::DiagramBuilder<double> builder;
   builder.AddSystem(std::move(owned_world_plant));
@@ -236,15 +237,16 @@ int DoMain() {
   drake::systems::Simulator<double> simulator(*diagram);
 
   // Set the iiwa default joint configuration. Number of zeros depends on number of objects in simulation.
-  drake::VectorX<double> q0_iiwa(world_plant->num_positions() + world_plant->num_velocities());
-  if (num_manipulands == 1) {
-     q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0; 
-  }
-  else if (num_manipulands == 2) {
-    q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-  } else if (num_manipulands == 3) {
-    q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-  }
+  // TODO: Figure out how to set each individual object manually.
+  drake::VectorX<double> q0_iiwa = drake::VectorX<double>::Zero(world_plant->num_positions() + world_plant->num_velocities());
+  // if (num_manipulands == 1) {
+  //    q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+  // }
+  // else if (num_manipulands == 2) {
+  //   q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+  // } else if (num_manipulands == 3) {
+  //   q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+  // }
 
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*world_plant,
@@ -259,8 +261,10 @@ int DoMain() {
   //Adjusts starting positions of manipulands
   for (int x = 0; x < num_manipulands; x++) {
     const auto indices = world_plant -> GetBodyIndices(objects_vector[x]);
-    world_plant -> SetFreeBodyPose(context, &state2, world_plant -> get_body(indices[0]), 
-    RigidTransform<double>(Vector3d(manipulands["Objects"][x][1][0], manipulands["Objects"][x][1][1], manipulands["Objects"][x][1][2])));
+    world_plant -> SetFreeBodyPose(context, &state2, world_plant -> get_body(indices[0]),
+    RigidTransform<double>(Vector3d(manipulands["Objects"][x][1][0],
+                           manipulands["Objects"][x][1][1],
+                           manipulands["Objects"][x][1][2])));
   }
   simulator.set_publish_every_time_step(false);
   simulator.set_target_realtime_rate(1.0);

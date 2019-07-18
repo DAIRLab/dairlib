@@ -22,11 +22,14 @@
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
+#include "systems/controllers/operational_space_control/osc_utils.h"
 
 
 namespace dairlib {
 
 using Eigen::Vector3d;
+using Eigen::VectorXd;
+using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 
 using drake::systems::lcm::LcmSubscriberSystem;
@@ -222,9 +225,7 @@ int DoMain() {
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData swing_foot_traj("cp_traj", 3,
-      Eigen::MatrixXd K_p_sw_ft,
-      Eigen::MatrixXd K_d_sw_ft,
-      Eigen::MatrixXd W_swing_foot);
+      K_p_sw_ft, K_d_sw_ft, W_swing_foot);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state,
                                           right_toe_idx_w_spr,
                                           right_toe_idx_wo_spr);
@@ -263,8 +264,9 @@ int DoMain() {
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 1,
       K_p_pelvis, K_d_pelvis, W_pelvis, false, false);
-  pelvis_rot_traj.AddPointToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
-  pelvis_rot_traj.SetNoControlPeriod(); // TODO/////////////////////////////////////////
+  pelvis_rot_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
+  pelvis_rot_traj.SetNoControlPeriod(
+    0.05); // TODO separate yaw from the rest /////////////////////////////////////////
   osc->AddTrackingData(&pelvis_rot_traj);
   // Swing toe joint tracking (Currently use fix position) TODO: change this
   MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
@@ -277,12 +279,12 @@ int DoMain() {
                                          right_toe_pos_idx_w_spr,
                                          right_toe_vel_idx_w_spr,
                                          right_toe_pos_idx_wo_spr,
-                                         right_toe_vel_idx_wo_spr)
+                                         right_toe_vel_idx_wo_spr);
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state,
                                          left_toe_pos_idx_w_spr,
                                          left_toe_vel_idx_w_spr,
                                          left_toe_pos_idx_wo_spr,
-                                         left_toe_vel_idx_wo_spr)
+                                         left_toe_vel_idx_wo_spr);
   swing_toe_traj.SetConstantTraj(-M_PI * VectorXd::Ones(1));
   osc->AddTrackingData(&swing_toe_traj);
   // Stance toe joint tracking (Currently use fix position) TODO: change this
@@ -296,12 +298,12 @@ int DoMain() {
                                           left_toe_pos_idx_w_spr,
                                           left_toe_vel_idx_w_spr,
                                           left_toe_pos_idx_wo_spr,
-                                          left_toe_vel_idx_wo_spr)
+                                          left_toe_vel_idx_wo_spr);
   stance_toe_traj.AddStateAndJointToTrack(right_stance_state,
                                           right_toe_pos_idx_w_spr,
                                           right_toe_vel_idx_w_spr,
                                           right_toe_pos_idx_wo_spr,
-                                          right_toe_vel_idx_wo_spr)
+                                          right_toe_vel_idx_wo_spr);
   stance_toe_traj.SetConstantTraj(-M_PI * VectorXd::Ones(1));
   osc->AddTrackingData(&stance_toe_traj);
   // Swing hip yaw joint tracking
@@ -314,25 +316,25 @@ int DoMain() {
       right_hip_yaw_pos_idx_w_spr,
       right_hip_yaw_vel_idx_w_spr,
       right_hip_yaw_pos_idx_wo_spr,
-      right_hip_yaw_vel_idx_wo_spr)
+      right_hip_yaw_vel_idx_wo_spr);
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state,
       left_hip_yaw_pos_idx_w_spr,
       left_hip_yaw_vel_idx_w_spr,
       left_hip_yaw_pos_idx_wo_spr,
-      left_hip_yaw_vel_idx_wo_spr)
+      left_hip_yaw_vel_idx_wo_spr);
   swing_hip_yaw_traj.SetConstantTraj(VectorXd::Zero(1));
   osc->AddTrackingData(&swing_hip_yaw_traj);
   // Build OSC problem
   osc->ConstructOSC();
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_input_port_output());
+                  osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0),
                   osc->get_fsm_input_port());
   builder.Connect(osc->get_output_port(0),
                   command_sender->get_input_port(0));
   // Connect ports automatically for non-constant traj sources
-  ConnectPortsForNonConstTraj(osc, builder);
+  systems::controllers::ConnectPortsForNonConstTraj(osc, builder);
 
 
   // TODO: add a block for toe angle control
@@ -342,7 +344,8 @@ int DoMain() {
   auto context = diagram->CreateDefaultContext();
 
   // Assign fixed value to osc constant traj port
-  AssignConstTrajToInputPorts(osc, diagram, context);
+  systems::controllers::AssignConstTrajToInputPorts(osc,
+      diagram.get(), context.get());
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

@@ -244,6 +244,7 @@ cc_binary(
         "//systems/controllers:time_based_fsm",
         "//systems/controllers:lipm_traj_gen",
         "//systems/controllers:cp_traj_gen",
+        "//systems/controllers/operational_space_control:osc_utils",
         ":cassie_urdf",
         ":cassie_utils",
         "@gflags",

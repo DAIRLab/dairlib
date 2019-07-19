@@ -99,6 +99,13 @@ int do_main(int argc, char* argv[]) {
   const double MAX_ANGULAR_VEL = joint_gains["limits"]["max_angular_veloctiy"];
   const double JOINT_TORQUE_LIMIT = joint_gains["limits"]["joint_torque_limit"];
 
+  std::cout << "Using following parameters:" << std::endl;
+  std::cout << "K_P: " << K_P << " K_OMEGA: " << K_OMEGA << " K_D: " << K_D;
+  std::cout << "K_R: " << K_R << std::endl;
+  std::cout << "Linear Velocity Limit: " << MAX_LINEAR_VEL << std::endl;
+  std::cout << "Angular Velocity Limit: " << MAX_ANGULAR_VEL << std::endl;
+  std::cout << "Joint Torque Limit: " << JOINT_TORQUE_LIMIT << std::endl;
+
   //Processes Trajectories CSV file.
   CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
 

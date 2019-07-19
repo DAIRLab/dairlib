@@ -98,8 +98,6 @@ OperationalSpaceControl::OperationalSpaceControl(
   }
   u_min_ = u_min;
   u_max_ = u_max;
-  cout << "u_min_ = " << u_min_ << endl;
-  cout << "u_max_ = " << u_max_ << endl;
 
   // Check if the model is floating based
   is_quaternion_ = multibody::CheckFloatingBase(tree_w_spr);
@@ -518,7 +516,8 @@ void OperationalSpaceControl::CalcOptimalInput(
   x_w_spr << q_w_spr, v_w_spr;
 
   double timestamp = robot_output->get_timestamp();
-  double current_sim_time = static_cast<double>(timestamp);
+  double current_time = static_cast<double>(timestamp);
+  cout << "current_time = " << current_time << endl;
 
   // TODO(yminchen): currently construct the QP in every loop. Will modify this
   // once the code is working.
@@ -539,14 +538,14 @@ void OperationalSpaceControl::CalcOptimalInput(
     // Get discrete states
     const auto prev_event_time = context.get_discrete_state(
                                    prev_event_time_idx_).get_value();
-    cout << "prev_event_time = " << prev_event_time << endl;
+    // cout << "prev_event_time = " << prev_event_time << endl;
 
     u_sol = SolveQp(x_w_spr, x_wo_spr,
-                    context, current_sim_time,
-                    fsm_state(0), current_sim_time - prev_event_time(0));
+                    context, current_time,
+                    fsm_state(0), current_time - prev_event_time(0));
   } else {
     u_sol = SolveQp(x_w_spr, x_wo_spr,
-                    context, current_sim_time,
+                    context, current_time,
                     -1, -1);
   }
 

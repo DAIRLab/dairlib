@@ -30,7 +30,6 @@ cc_binary(
     ],
 )
 
-
 cc_binary(
     name="iiwa_controller_demo",
     srcs = ["iiwa_controller_demo.cc"],

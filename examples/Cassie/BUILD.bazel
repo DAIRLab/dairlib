@@ -234,16 +234,31 @@ cc_test(
 
 
 cc_binary(
-    name = "run_lipm_cp_controller",
-    srcs = ["run_lipm_cp_controller.cc"],
+    name = "run_osc_walking_controller",
+    srcs = ["run_osc_walking_controller.cc"],
     deps = [
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "//attic/multibody:utils",
-        "//examples/Cassie/lipm_cp_control:foot_placement_control",
+        "//examples/Cassie/osc_walking_control:foot_placement_control",
         "//systems/controllers:time_based_fsm",
         "//systems/controllers:lipm_traj_gen",
         "//systems/controllers:cp_traj_gen",
+        "//systems/controllers/operational_space_control:osc_utils",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "@gflags",
+        "@drake//:drake_shared_library",
+        ]
+)
+
+cc_binary(
+    name = "run_osc_standing_controller",
+    srcs = ["run_osc_standing_controller.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//attic/multibody:utils",
         "//systems/controllers/operational_space_control:osc_utils",
         ":cassie_urdf",
         ":cassie_utils",

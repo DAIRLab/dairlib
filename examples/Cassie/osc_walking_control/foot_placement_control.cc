@@ -1,6 +1,6 @@
-#include "examples/Cassie/lipm_cp_control/foot_placement_control.h"
-#include "examples/Cassie/lipm_cp_control/control_utils.h"
-#include "examples/Cassie/lipm_cp_control/cp_control_common_func.h"
+#include "examples/Cassie/osc_walking_control/foot_placement_control.h"
+#include "examples/Cassie/osc_walking_control/control_utils.h"
+#include "examples/Cassie/osc_walking_control/cp_control_common_func.h"
 
 #include <math.h>
 #include <string>

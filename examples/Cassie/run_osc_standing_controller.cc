@@ -18,7 +18,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/rigidbody_utils.h"
 
-#include "examples/Cassie/lipm_cp_control/foot_placement_control.h"
+#include "examples/Cassie/osc_walking_control/foot_placement_control.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"

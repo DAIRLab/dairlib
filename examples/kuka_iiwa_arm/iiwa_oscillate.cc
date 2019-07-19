@@ -57,7 +57,7 @@ int do_main(int argc, char* argv[]) {
   auto zeros_high_source = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros_high);
 
   auto sine_source = builder.AddSystem<drake::systems::Sine>(AMPLITUDE, FREQUENCY, 0, 1, true);
-  setup_log();
+  //setup_log();
 
   std::vector<int> input_sizes = {4, 1, 2};
   auto mux = builder.AddSystem<drake::systems::Multiplexer>(input_sizes);

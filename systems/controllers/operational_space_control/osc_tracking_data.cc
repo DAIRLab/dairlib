@@ -1,8 +1,6 @@
 #include "systems/controllers/operational_space_control/osc_tracking_data.h"
 
-#include <Eigen/Dense>
-#include <string>
-#include <vector>
+#include <algorithm>
 
 #include "common/math_utils.h"
 
@@ -161,6 +159,11 @@ void OscTrackingData::CheckOscTrackingData() {
   DRAKE_DEMAND((K_p_.rows() == n_r_) && (K_p_.cols() == n_r_));
   DRAKE_DEMAND((K_d_.rows() == n_r_) && (K_d_.cols() == n_r_));
   DRAKE_DEMAND((W_.rows() == n_r_) && (W_.cols() == n_r_));
+
+  // State_ cannot have repeated state
+  vector<int>::iterator it = std::unique(state_.begin(), state_.end());
+  bool all_state_are_different = (it == state_.end() );
+  DRAKE_DEMAND(all_state_are_different);
 }
 
 // TaskSpaceTrackingData ///////////////////////////////////////////////////////

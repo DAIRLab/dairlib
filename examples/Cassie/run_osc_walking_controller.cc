@@ -223,10 +223,14 @@ int DoMain() {
   osc->SetContactFriction(mu);
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
-  osc->AddContactPoint(left_toe_idx_w_spr, front_contact_disp);
-  osc->AddContactPoint(left_toe_idx_w_spr, rear_contact_disp);
-  osc->AddContactPoint(right_toe_idx_w_spr, front_contact_disp);
-  osc->AddContactPoint(right_toe_idx_w_spr, rear_contact_disp);
+  osc->AddStateAndContactPoint(left_stance_state,
+                               left_toe_idx_wo_spr, front_contact_disp);
+  osc->AddStateAndContactPoint(left_stance_state,
+                               left_toe_idx_wo_spr, rear_contact_disp);
+  osc->AddStateAndContactPoint(right_stance_state,
+                               right_toe_idx_wo_spr, front_contact_disp);
+  osc->AddStateAndContactPoint(right_stance_state,
+                               right_toe_idx_wo_spr, rear_contact_disp);
   // Swing foot tracking
   // cout << "Adding swing foot tracking\n";
   MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);

@@ -89,20 +89,28 @@ OperationalSpaceControl::OperationalSpaceControl(
     }
   // cout<<"map_position_from_spring_to_no_spring_ = \n"<<map_position_from_spring_to_no_spring_<<"\n";
 
+  // Get input limits
+  VectorXd u_min(n_u_);
+  VectorXd u_max(n_u_);
+  for (int i = 0; i < n_u_; i++) {
+    u_min(i) = tree_wo_spr_->actuators[i].effort_limit_min_;
+    u_max(i) = tree_wo_spr_->actuators[i].effort_limit_max_;
+  }
+  u_min_ = u_min;
+  u_max_ = u_max;
+  cout << "u_min_ = " << u_min_ << endl;
+  cout << "u_max_ = " << u_max_ << endl;
+
   // Check if the model is floating based
   is_quaternion_ = multibody::CheckFloatingBase(tree_w_spr);
 }
 
 // Cost methods
 void OperationalSpaceControl::AddAccelerationCost(int joint_vel_idx, double w) {
-  cout << "joint_vel_idx = " << joint_vel_idx << endl;
-  cout << "W_joint_accel_ =\n" << W_joint_accel_ << endl;
   if (W_joint_accel_.size() == 0) {
     W_joint_accel_ = Eigen::MatrixXd::Zero(n_v_, n_v_);
   }
-  cout << "W_joint_accel_ =\n" << W_joint_accel_ << endl;
   W_joint_accel_(joint_vel_idx, joint_vel_idx) += w;
-  cout << "W_joint_accel_ =\n" << W_joint_accel_ << endl;
 }
 
 // Constraint methods
@@ -111,10 +119,21 @@ void OperationalSpaceControl::AddContactPoint(int body_index,
   body_index_.push_back(body_index);
   pt_on_body_.push_back(pt_on_body);
 }
-void OperationalSpaceControl::AddContactPoints(std::vector<int> body_index,
+void OperationalSpaceControl::AddStateAndContactPoint(int state,
+    int body_index, Eigen::VectorXd pt_on_body) {
+  state_.push_back(state);
+  AddContactPoint(body_index, pt_on_body);
+}
+void OperationalSpaceControl::AddContactPoint(std::vector<int> body_index,
     std::vector<Eigen::VectorXd> pt_on_body) {
   body_index_.insert(body_index_.end(), body_index.begin(), body_index.end());
   pt_on_body_.insert(pt_on_body_.end(), pt_on_body.begin(), pt_on_body.end());
+}
+void OperationalSpaceControl::AddStateAndContactPoint(std::vector<int> state,
+    std::vector<int> body_index,
+    std::vector<Eigen::VectorXd> pt_on_body) {
+  state_.insert(state_.end(), state.begin(), state.end());
+  AddContactPoint(body_index, pt_on_body);
 }
 
 // Osc checkers and constructor
@@ -131,6 +150,9 @@ void OperationalSpaceControl::CheckConstraintSettings() {
   if (!body_index_.empty()) {
     DRAKE_DEMAND(mu_ != -1);
     DRAKE_DEMAND(body_index_.size() == pt_on_body_.size());
+  }
+  if (!state_.empty()) {
+    DRAKE_DEMAND(state_.size() == body_index_.size());
   }
 }
 
@@ -157,6 +179,21 @@ void OperationalSpaceControl::ConstructOSC() {
   }
 
   // TODO: construct the QP here. (will do so after the controller is working)
+}
+
+std::vector<int> OperationalSpaceControl::CalcActiveContactIndices(
+  int fsm_state) const {
+  std::vector<int> active_contact_idx;
+  for (unsigned int i = 0; i < body_index_.size(); i++) {
+    if (state_.empty()) {
+      active_contact_idx.push_back(i);
+    } else {
+      if (state_[i] == fsm_state) {
+        active_contact_idx.push_back(i);
+      }
+    }
+  }
+  return active_contact_idx;
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -189,16 +226,13 @@ VectorXd OperationalSpaceControl::SolveQp(
   const drake::systems::Context<double>& context, double t,
   int fsm_state, double time_since_last_state_switch) const {
 
-  int n_h = tree_wo_spr_->getNumPositionConstraints();
-  int n_c = 3 * body_index_.size();
+  vector<int> active_contact_idx = CalcActiveContactIndices(fsm_state);
 
-  // Get input limits
-  VectorXd u_min(n_u_);
-  VectorXd u_max(n_u_);
-  for (int i = 0; i < n_u_; i++) {
-    u_min(i) = tree_wo_spr_->actuators[i].effort_limit_min_;
-    u_max(i) = tree_wo_spr_->actuators[i].effort_limit_max_;
-  }
+  int n_h = tree_wo_spr_->getNumPositionConstraints();
+  int n_c = 3 * active_contact_idx.size();
+  // TODO: will need to use   int n_c = 3 * body_index_.size();
+  // when we construct the QP in OSC constructor
+  cout << "n_c = " << n_c << endl;
 
   // Get Kinematics Cache
   KinematicsCache<double> cache_w_spr = tree_w_spr_->doKinematics(
@@ -223,11 +257,13 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Get J and JdotV for contact constraint
   MatrixXd J_c = MatrixXd::Zero(n_c, n_v_);
   VectorXd JdotV_c = VectorXd::Zero(n_c);
-  for (unsigned int i = 0; i < body_index_.size(); i++) {
+  for (unsigned int i = 0; i < active_contact_idx.size(); i++) {
     J_c.block(3 * i, 0, 3, n_v_) = tree_wo_spr_->transformPointsJacobian(
-                                     cache_wo_spr, pt_on_body_[i], body_index_[i], 0, false);
+                                     cache_wo_spr, pt_on_body_[active_contact_idx[i]],
+                                     body_index_[active_contact_idx[i]], 0, false);
     JdotV_c.segment(3 * i, 3) = tree_wo_spr_->transformPointsJacobianDotTimesV(
-                                  cache_wo_spr, pt_on_body_[i], body_index_[i], 0);
+                                  cache_wo_spr, pt_on_body_[active_contact_idx[i]],
+                                  body_index_[active_contact_idx[i]], 0);
   }
 
   // Construct QP
@@ -274,7 +310,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   prog.AddLinearConstraint(J_h, -JdotV_h, -JdotV_h, dv);
 
   // 3. Contact constraint
-  if (body_index_.size() > 0) {
+  if (active_contact_idx.size() > 0) {
     if (w_soft_constraint_ <= 0) {
       ///    JdotV_c + J_c*dv == 0
       /// -> J_c*dv == -JdotV_c
@@ -299,22 +335,25 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // 4. Friction cone constraint (approximation)
-  /// For i = [0, ..., body_index_.size())
+  /// For i = active contact indices
   ///     mu_*lambda_c(3*i+2) >= lambda_c(3*i+0)
   ///    -mu_*lambda_c(3*i+2) <= lambda_c(3*i+0)
   ///     mu_*lambda_c(3*i+2) >= lambda_c(3*i+1)
   ///    -mu_*lambda_c(3*i+2) <= lambda_c(3*i+1)
+  ///         lambda_c(3*i+2) >= 0
   /// ->
   ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+0) >= 0
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+0) >= 0
   ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
+  ///                           lambda_c(3*i+2) >= 0
   if (body_index_.size() > 0) {
     // cout << "Add friction constraint\n";
     VectorXd mu_minus1(2); mu_minus1 << mu_, -1;
     VectorXd mu_plus1(2); mu_plus1 << mu_, 1;
-
-    for (unsigned int i = 0; i < body_index_.size(); i++) {
+    VectorXd one(1); one << 1;
+    for (unsigned int j = 0; j < active_contact_idx.size(); j++) {
+      int i = active_contact_idx[j];
       prog.AddLinearConstraint(mu_minus1.transpose(),
                                0, numeric_limits<double>::infinity(),
       {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 0, 1)});
@@ -327,7 +366,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       prog.AddLinearConstraint(mu_plus1.transpose(),
                                0, numeric_limits<double>::infinity(),
       {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 1, 1)});
-      prog.AddLinearConstraint(VectorXd::Ones(1).transpose(),
+      prog.AddLinearConstraint(one.transpose(),
                                0, numeric_limits<double>::infinity(),
                                lambda_c.segment(3 * i + 2, 1));
     }
@@ -336,7 +375,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // 5. Input constraint
   if (with_input_constraints_) {
     // cout << "Add input constraint\n";
-    prog.AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min, u_max, u);
+    prog.AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_, u);
   }
 
   // No joint position constraint in this implementation
@@ -410,6 +449,13 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd lambda_h_sol = result.GetSolution(lambda_h);
   VectorXd dv_sol = result.GetSolution(dv);
   VectorXd epsilon_sol = result.GetSolution(epsilon);
+  if (print_tracking_info_) {
+    cout << "u_sol = " << u_sol.transpose() << endl;
+    cout << "lambda_c_sol = " << lambda_c_sol.transpose() << endl;
+    cout << "lambda_h_sol = " << lambda_h_sol.transpose() << endl;
+    cout << "dv_sol = " << dv_sol.transpose() << endl;
+    cout << "epsilon_sol = " << epsilon_sol.transpose() << endl;
+  }
 
   // Print QP result
   if (print_tracking_info_) {

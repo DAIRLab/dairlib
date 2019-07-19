@@ -108,8 +108,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     w_soft_constraint_ = w_soft_constraint;
   }
   void AddContactPoint(int body_index, Eigen::VectorXd pt_on_body);
-  void AddContactPoints(std::vector<int> body_index,
-                        std::vector<Eigen::VectorXd> pt_on_body);
+  void AddStateAndContactPoint(int state,
+                               int body_index, Eigen::VectorXd pt_on_body);
+  // (A version for std::vector in case the users want it)
+  void AddContactPoint(std::vector<int> body_index,
+                       std::vector<Eigen::VectorXd> pt_on_body);
+  void AddStateAndContactPoint(std::vector<int> state,
+                               std::vector<int> body_index,
+                               std::vector<Eigen::VectorXd> pt_on_body);
 
   // Tracking data methods
   void AddTrackingData(OscTrackingData* tracking_data) {
@@ -167,6 +173,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_v_;
   int n_u_;
 
+  // robot input limits
+  Eigen::VectorXd u_min_;
+  Eigen::VectorXd u_max_;
+
   // flag indicating whehter using osc with finite state machine or not
   bool used_with_finite_state_machine_;
 
@@ -191,6 +201,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
   // TODO(yminchen): Can you get contact points from RBT???
+
+  // `state_` is the finite state machine state when the contact constraint is
+  // active. If `state_` is empty, then the constraint is always active.
+  std::vector<int> state_;
+
+  // CalcActiveContactIndices gives the indices of active contact (constraint)
+  std::vector<int> CalcActiveContactIndices(int fsm_state) const;
 
   // OSC tracking data member (store pointer because of caching)
   std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =

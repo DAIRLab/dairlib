@@ -106,9 +106,6 @@ int DoMain() {
       world_plant_parser.AddModelFromFile(sdf_path, "bin1");
   const auto& child_frame = world_plant->GetFrameByName("bin_base", new_model);
   world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
-  // Note: to add moving things to a simulation, mayhaps try checking out
-  // the ManipulationStation::AddManipulandFromFile function in
-  // drake's manipulation_station.cc
 
   //Loads in manipulands from json file to objects_vector
   std::ifstream free_objects("examples/kuka_iiwa_arm/simulationsettings.json");
@@ -236,25 +233,9 @@ int DoMain() {
   auto diagram = builder.Build();
   drake::systems::Simulator<double> simulator(*diagram);
 
-  // Set the iiwa default joint configuration. Number of zeros depends on number of objects in simulation.
-  // TODO: Figure out how to set each individual object manually.
-  drake::VectorX<double> q0_iiwa = drake::VectorX<double>::Zero(world_plant->num_positions() + world_plant->num_velocities());
-  // if (num_manipulands == 1) {
-  //    q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-  // }
-  // else if (num_manipulands == 2) {
-  //   q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-  // } else if (num_manipulands == 3) {
-  //   q0_iiwa << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-  // }
-
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*world_plant,
                                           &simulator.get_mutable_context());
-
-  drake::systems::BasicVector<double>& state =
-      context.get_mutable_discrete_state(0);
-  state.SetFromVector(q0_iiwa);
 
   auto& state2 = diagram->GetMutableSubsystemState(*world_plant,
                                           &simulator.get_mutable_context());

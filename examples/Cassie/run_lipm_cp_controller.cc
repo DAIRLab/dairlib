@@ -207,12 +207,14 @@ int DoMain() {
 
   int n_v = tree_without_springs.get_num_velocities();
   // Cost
+  cout << "Adding cost\n";
   MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
   double w_toe = 0.1;  // 1
-  osc->AddAccelerationCost(left_toe_idx_wo_spr, w_toe);
-  osc->AddAccelerationCost(right_toe_idx_wo_spr, w_toe);
+  osc->AddAccelerationCost(left_toe_vel_idx_wo_spr, w_toe);
+  osc->AddAccelerationCost(right_toe_vel_idx_wo_spr, w_toe);
   // Soft constraint
+  cout << "Adding constraint\n";
   // We don't want this to be too big, cause we want tracking error to be important
   double w_contact_relax = 200;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);

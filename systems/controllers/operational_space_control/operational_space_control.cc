@@ -88,10 +88,14 @@ OperationalSpaceControl::OperationalSpaceControl(
 
 // Cost methods
 void OperationalSpaceControl::AddAccelerationCost(int joint_vel_idx, double w) {
+  cout << "joint_vel_idx = " << joint_vel_idx << endl;
+  cout << "W_joint_accel_ =\n" << W_joint_accel_ << endl;
   if (W_joint_accel_.size() == 0) {
     W_joint_accel_ = Eigen::MatrixXd::Zero(n_v_, n_v_);
   }
+  cout << "W_joint_accel_ =\n" << W_joint_accel_ << endl;
   W_joint_accel_(joint_vel_idx, joint_vel_idx) += w;
+  cout << "W_joint_accel_ =\n" << W_joint_accel_ << endl;
 }
 
 // Constraint methods

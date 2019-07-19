@@ -81,7 +81,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   OperationalSpaceControl(
     RigidBodyTree<double>* tree_w_spr,
     RigidBodyTree<double>* tree_wo_spr,
-    bool used_with_finite_state_machine = true);
+    bool used_with_finite_state_machine = true,
+    bool print_tracking_info = false);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -168,6 +169,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // flag indicating whehter using osc with finite state machine or not
   bool used_with_finite_state_machine_;
+
+  // flag indicating whether to print the tracking related values or not
+  bool print_tracking_info_;
+
+  // floating base model flag
+  bool is_quaternion_;
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user

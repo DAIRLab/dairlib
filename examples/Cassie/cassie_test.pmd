@@ -34,6 +34,10 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000";
         host = "localhost";
     }
+    cmd "4.lipm-cp-controller" {
+        exec = "bazel-bin/examples/Cassie/run_lipm_cp_controller";
+        host = "localhost";
+    }
 }
 
 group "0.operator" {

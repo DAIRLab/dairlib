@@ -12,6 +12,8 @@ cc_library(
     ],
     deps = [
         ":osc_tracking_data",
+        "//common:math_utils",
+        "//attic/multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

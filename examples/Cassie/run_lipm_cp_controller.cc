@@ -168,7 +168,7 @@ int DoMain() {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-               &tree_with_springs, &tree_without_springs, true);
+               &tree_with_springs, &tree_without_springs, true, true);
   // Get body index
   int pelvis_idx_w_spr = pelvis_idx;
   int left_toe_idx_w_spr = left_toe_idx;
@@ -207,14 +207,14 @@ int DoMain() {
 
   int n_v = tree_without_springs.get_num_velocities();
   // Cost
-  cout << "Adding cost\n";
+  // cout << "Adding cost\n";
   MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
   double w_toe = 0.1;  // 1
   osc->AddAccelerationCost(left_toe_vel_idx_wo_spr, w_toe);
   osc->AddAccelerationCost(right_toe_vel_idx_wo_spr, w_toe);
   // Soft constraint
-  cout << "Adding constraint\n";
+  // cout << "Adding constraint\n";
   // We don't want this to be too big, cause we want tracking error to be important
   double w_contact_relax = 200;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
@@ -257,7 +257,7 @@ int DoMain() {
   double w_pelvis_balance = 200;
   double w_heading = 200;
   double k_p_pelvis_balance = 100;
-  double k_d_pelvis_balance = 800;
+  double k_d_pelvis_balance = 80;
   double k_p_heading = 50;
   double k_d_heading = 40;
   Matrix3d W_pelvis = MatrixXd::Identity(3, 3);

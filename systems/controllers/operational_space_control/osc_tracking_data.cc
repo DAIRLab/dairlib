@@ -51,7 +51,7 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
                              double t,
                              int finite_state_machine_state,
                              double time_since_last_state_switch) {
-  cout << "Update data for " << name_ << endl;
+  // cout << "Update data for " << name_ << endl;
   // Update track_at_current_step_
   if (state_.empty()) {
     track_at_current_step_ = true;
@@ -74,20 +74,20 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
       dy_des_ = VectorXd::Zero(n_r_);
       ddy_des_ = VectorXd::Zero(n_r_);
     }
-    cout << "y_des_ = " << y_des_.transpose() << endl;
-    cout << "dy_des_ = " << dy_des_.transpose() << endl;
-    cout << "ddy_des_ = " << ddy_des_.transpose() << endl;
+    // cout << "y_des_ = " << y_des_.transpose() << endl;
+    // cout << "dy_des_ = " << dy_des_.transpose() << endl;
+    // cout << "ddy_des_ = " << ddy_des_.transpose() << endl;
 
     // Update feedback output (Calling virtual methods)
-    cout << "UpdateYAndError...\n";
+    // cout << "UpdateYAndError...\n";
     UpdateYAndError(x_w_spr, cache_w_spr, tree_w_spr);
-    cout << "UpdateYdot...\n";
+    // cout << "UpdateYdot...\n";
     UpdateYdot(x_w_spr, cache_w_spr, tree_w_spr);
-    cout << "UpdateJ...\n";
+    // cout << "UpdateJ...\n";
     UpdateJ(x_wo_spr, cache_wo_spr, tree_wo_spr);
-    cout << "UpdateJdotV...\n";
+    // cout << "UpdateJdotV...\n";
     UpdateJdotV(x_wo_spr, cache_wo_spr, tree_wo_spr);
-    cout << "Finished updating\n";
+    // cout << "Finished updating\n";
 
     return track_at_current_step_;
   }
@@ -95,14 +95,14 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
 
 // Getters
 VectorXd OscTrackingData::GetDesiredOutputWithPdControl() {
-  cout << "ddy_des_ = " << ddy_des_ << endl;
-  cout << "dy_des_ = " << dy_des_ << endl;
-  cout << "y_des_ = " << y_des_ << endl;
-  cout << "ydot_ = " << ydot_ << endl;
-  cout << "y_ = " << y_ << endl;
-  cout << "K_d_ = " << K_d_ << endl;
-  cout << "K_p_ = " << K_p_ << endl;
-  return ddy_des_ + K_p_ * (error_y_) + K_d_ * (dy_des_ - ydot_);
+  // cout << "ddy_des_ = " << ddy_des_ << endl;
+  // cout << "dy_des_ = " << dy_des_ << endl;
+  // cout << "y_des_ = " << y_des_ << endl;
+  // cout << "dy_ = " << dy_ << endl;
+  // cout << "y_ = " << y_ << endl;
+  // cout << "K_d_ = " << K_d_ << endl;
+  // cout << "K_p_ = " << K_p_ << endl;
+  return ddy_des_ + K_p_ * (error_y_) + K_d_ * (dy_des_ - dy_);
 }
 MatrixXd OscTrackingData::GetWeight() {
   if (track_at_current_step_) {
@@ -137,6 +137,16 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
   } else {
     track_at_current_step_ = false;
   }
+}
+void OscTrackingData::PrintFeedbackAndDesiredValues() {
+  cout << name_ << ":\n";
+  // cout << "  y = " << y_.transpose() << endl;
+  // cout << "  y_des = " << y_des_.transpose() << endl;
+  // cout << "  dy = " << dy_.transpose() << endl;
+  // cout << "  dy_des = " << dy_des_.transpose() << endl;
+  // cout << "  ddy_des = " << ddy_des_.transpose() << endl;
+  cout << "  ddy_command = " << GetDesiredOutputWithPdControl().transpose() <<
+       endl;
 }
 
 // Run this function in OSC constructor to make sure that users constructed
@@ -240,13 +250,13 @@ void TransTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
 void TransTaskSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
   if (track_center_of_mass_) {
-    ydot_ = tree_w_spr->centerOfMassJacobian(cache_w_spr) *
-            x_w_spr.tail(tree_w_spr->get_num_velocities());
+    dy_ = tree_w_spr->centerOfMassJacobian(cache_w_spr) *
+          x_w_spr.tail(tree_w_spr->get_num_velocities());
   } else {
-    ydot_ = tree_w_spr->transformPointsJacobian(cache_w_spr,
-            pt_on_body_.at(GetStateIdx()),
-            body_index_w_spr_.at(GetStateIdx()), 0, false) *
-            x_w_spr.tail(tree_w_spr->get_num_velocities());
+    dy_ = tree_w_spr->transformPointsJacobian(cache_w_spr,
+          pt_on_body_.at(GetStateIdx()),
+          body_index_w_spr_.at(GetStateIdx()), 0, false) *
+          x_w_spr.tail(tree_w_spr->get_num_velocities());
   }
 }
 void TransTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
@@ -375,8 +385,8 @@ void RotTaskSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
                          cache_w_spr,
                          tree_w_spr->get_body(body_index_w_spr_.at(GetStateIdx())),
                          frame_pose_.at(GetStateIdx()));
-  ydot_ = J_spatial.block(0, 0, 3, J_spatial.cols()) *
-          x_w_spr.tail(tree_w_spr->get_num_velocities());
+  dy_ = J_spatial.block(0, 0, 3, J_spatial.cols()) *
+        x_w_spr.tail(tree_w_spr->get_num_velocities());
 }
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                        KinematicsCache<double>& cache_wo_spr,
@@ -491,7 +501,7 @@ void JointSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
                                         KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
   MatrixXd J = MatrixXd::Zero(1, tree_w_spr->get_num_velocities());
   J(0, joint_vel_idx_wo_spr_.at(GetStateIdx())) = 1;
-  ydot_ = J * x_w_spr.tail(tree_w_spr->get_num_velocities());
+  dy_ = J * x_w_spr.tail(tree_w_spr->get_num_velocities());
 }
 void JointSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                      KinematicsCache<double>& cache_wo_spr,

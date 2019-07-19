@@ -63,7 +63,6 @@ FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
 void FootPlacementControl::CalcFootPlacement(
   const Context<double>& context,
   BasicVector<double>* output) const {
-  cout << "start of FootPlacementControl::CalcFootPlacement()\n";
   // Read in current state
   const OutputVector<double>* robotOutput = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -162,7 +161,6 @@ void FootPlacementControl::CalcFootPlacement(
     delta_CP_sagital_3D_global(0) + delta_CP_lateral_3D_global(0),
     delta_CP_sagital_3D_global(1) + delta_CP_lateral_3D_global(1));
   output->get_mutable_value() = global_delta_CP_sagital_and_lateral;
-  cout << "end of FootPlacementControl::CalcFootPlacement()\n";
 }
 
 }  // namespace cp_control

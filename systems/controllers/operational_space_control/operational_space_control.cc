@@ -1,4 +1,6 @@
 #include "systems/controllers/operational_space_control/operational_space_control.h"
+#include "attic/multibody/rigidbody_utils.h"
+#include "common/math_utils.h"
 
 using std::cout;
 using std::endl;
@@ -27,10 +29,12 @@ namespace controllers {
 OperationalSpaceControl::OperationalSpaceControl(
   RigidBodyTree<double>* tree_w_spr,
   RigidBodyTree<double>* tree_wo_spr,
-  bool used_with_finite_state_machine) :
+  bool used_with_finite_state_machine,
+  bool print_tracking_info) :
   tree_w_spr_(tree_w_spr),
   tree_wo_spr_(tree_wo_spr),
-  used_with_finite_state_machine_(used_with_finite_state_machine) {
+  used_with_finite_state_machine_(used_with_finite_state_machine),
+  print_tracking_info_(print_tracking_info) {
   this->set_name("OSC");
 
   n_q_ = tree_wo_spr->get_num_positions();
@@ -84,6 +88,9 @@ OperationalSpaceControl::OperationalSpaceControl(
       }
     }
   // cout<<"map_position_from_spring_to_no_spring_ = \n"<<map_position_from_spring_to_no_spring_<<"\n";
+
+  // Check if the model is floating based
+  is_quaternion_ = multibody::CheckFloatingBase(tree_w_spr);
 }
 
 // Cost methods
@@ -224,7 +231,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Construct QP
-  cout << "Constructing QP\n";
+  // cout << "Constructing QP\n";
   MathematicalProgram prog;
 
   // Add decision variables
@@ -245,7 +252,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   //       << J_c.transpose().rows() << ", " << J_c.transpose().cols() << "\n"
   //       << J_h.transpose().rows() << ", " << J_h.transpose().cols() << "\n"
   //       << B.rows() << ", " << B.cols() << "\n";
-  cout << "Add dynamic constraint\n";
+  // cout << "Add dynamic constraint\n";
   MatrixXd A_dyn = MatrixXd::Zero(n_v_, n_v_ + n_c + J_h.rows() + n_u_);
   A_dyn.block(0, 0, n_v_, n_v_) = M;
   A_dyn.block(0, n_v_, n_v_, n_c) = -J_c.transpose();
@@ -261,7 +268,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
   /// -> J_h*dv == -JdotV_h
-  cout << "Add holonomic constraint\n";
+  // cout << "Add holonomic constraint\n";
   // cout<< "J_h # of rows and cols = " <<J_h.rows()<<", "<<J_h.cols()<< endl;
   // cout<< "JdotV_h # of rows and cols = " <<JdotV_h.rows()<<", "<<JdotV_h.cols()<< endl;
   prog.AddLinearConstraint(J_h, -JdotV_h, -JdotV_h, dv);
@@ -271,7 +278,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     if (w_soft_constraint_ <= 0) {
       ///    JdotV_c + J_c*dv == 0
       /// -> J_c*dv == -JdotV_c
-      cout << "Add contact constraint\n";
+      // cout << "Add contact constraint\n";
       // cout<< "J_c # of rows and cols = " <<J_c.rows()<<", "<<J_c.cols()<< endl;
       // cout<< "JdotV_c # of rows and cols = " <<JdotV_c.rows()<<", "<<JdotV_c.cols()<< endl;
       prog.AddLinearConstraint(J_c, -JdotV_c, -JdotV_c, dv);
@@ -281,7 +288,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       ///    JdotV_c + J_c*dv == -epsilon
       /// -> J_c*dv + I*epsilon == -JdotV_c
       /// -> [J_c, I]* [dv, epsilon]^T == -JdotV_c
-      cout << "Add soft contact constraint\n";
+      // cout << "Add soft contact constraint\n";
       MatrixXd A_c = MatrixXd::Zero(n_c, n_v_ + n_c);
       A_c.block(0, 0, n_c, n_v_) = J_c;
       A_c.block(0, n_v_, n_c, n_c) = MatrixXd::Identity(n_c, n_c);
@@ -303,7 +310,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   if (body_index_.size() > 0) {
-    cout << "Add friction constraint\n";
+    // cout << "Add friction constraint\n";
     VectorXd mu_minus1(2); mu_minus1 << mu_, -1;
     VectorXd mu_plus1(2); mu_plus1 << mu_, 1;
 
@@ -328,7 +335,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // 5. Input constraint
   if (with_input_constraints_) {
-    cout << "Add input constraint\n";
+    // cout << "Add input constraint\n";
     prog.AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min, u_max, u);
   }
 
@@ -337,19 +344,19 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Add costs
   // 1. input cost
   if (W_input_.size() > 0) {
-    cout << "Add input cost\n";
+    // cout << "Add input cost\n";
     prog.AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u);
   }
 
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
-    cout << "Add joint accelration cost\n";
+    // cout << "Add joint accelration cost\n";
     prog.AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv);
   }
 
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
-    cout << "Add soft constraint cost\n";
+    // cout << "Add soft constraint cost\n";
     prog.AddQuadraticCost(w_soft_constraint_ * MatrixXd::Identity(n_c, n_c),
                           VectorXd::Zero(n_c),
                           epsilon );
@@ -358,9 +365,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   // 4. Tracking cost
   for (auto tracking_data : *tracking_data_vec_) {
     string traj_name = tracking_data->GetName();
-    cout << "Add cost for " << traj_name << endl;
+    // cout << "Add cost for " << traj_name << endl;
     int port_index = traj_name_to_port_index_map_.at(traj_name);
-    cout << "port_index = " << port_index << endl;
+    // cout << "port_index = " << port_index << endl;
     // Read in traj
     const drake::AbstractValue* traj_intput =
       this->EvalAbstractInput(context, port_index);
@@ -377,17 +384,17 @@ VectorXd OperationalSpaceControl::SolveQp(
                         traj, t,
                         fsm_state, time_since_last_state_switch);
     if (track_or_not) {
-      VectorXd y_t = tracking_data->GetDesiredOutputWithPdControl();
-      cout << "y_t = \n" << y_t << endl;
+      VectorXd ddy_t = tracking_data->GetDesiredOutputWithPdControl();
+      // cout << "ddy_t = \n" << ddy_t << endl;
       MatrixXd W = tracking_data->GetWeight();
-      cout << "W = \n" << W << endl;
+      // cout << "W = \n" << W << endl;
       MatrixXd J_t = tracking_data->GetJ();
-      cout << "J_t = \n" << J_t << endl;
+      // cout << "J_t = \n" << J_t << endl;
       VectorXd JdotV_t = tracking_data->GetJdotTimesV();
-      cout << "JdotV_t = \n" << JdotV_t << endl;
+      // cout << "JdotV_t = \n" << JdotV_t << endl;
       //TODO: later, if track_or_not = false, we can just update W
       prog.AddQuadraticCost(J_t.transpose()*W * J_t,
-                            J_t.transpose()*W * (JdotV_t - y_t),
+                            J_t.transpose()*W * (JdotV_t - ddy_t),
                             dv);
     }
   }
@@ -404,6 +411,47 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd dv_sol = result.GetSolution(dv);
   VectorXd epsilon_sol = result.GetSolution(epsilon);
 
+  // Print QP result
+  if (print_tracking_info_) {
+    cout << "\n**********************\n";
+    // 1. input cost
+    if (W_input_.size() > 0) {
+      cout << "input cost = " << 0.5 * u_sol.transpose()*W_input_*u_sol << endl;
+    }
+    // 2. acceleration cost
+    if (W_joint_accel_.size() > 0) {
+      cout << "acceleration cost = " <<
+           0.5 * dv_sol.transpose()*W_joint_accel_*dv_sol << endl;
+    }
+    // 3. Soft constraint cost
+    if (w_soft_constraint_ > 0) {
+      cout << "soft constraint cost = " <<
+           0.5 * w_soft_constraint_*epsilon_sol.transpose()*epsilon_sol << endl;
+    }
+    // 4. Tracking cost
+    for (auto tracking_data : *tracking_data_vec_) {
+      if (tracking_data->GetTrackOrNot()) {
+        VectorXd ddy_t = tracking_data->GetDesiredOutputWithPdControl();
+        MatrixXd W = tracking_data->GetWeight();
+        MatrixXd J_t = tracking_data->GetJ();
+        VectorXd JdotV_t = tracking_data->GetJdotTimesV();
+        //TODO: later, if track_or_not = false, we can just update W
+        cout << "Tracking cost (" << tracking_data->GetName() << ") = " <<
+             dv_sol.transpose() * J_t.transpose()*W * (J_t * dv_sol +
+                 JdotV_t - ddy_t) << endl;
+      }
+    }
+
+    // Target acceleration
+    for (auto tracking_data : *tracking_data_vec_) {
+      if (tracking_data->GetTrackOrNot()) {
+        //TODO: later, if track_or_not = false, we can just update W
+        tracking_data->PrintFeedbackAndDesiredValues();
+      }
+    }
+    cout << "**********************\n\n";
+  }
+
   return u_sol;
 }
 
@@ -411,13 +459,12 @@ VectorXd OperationalSpaceControl::SolveQp(
 void OperationalSpaceControl::CalcOptimalInput(
   const drake::systems::Context<double>& context,
   systems::TimestampedVector<double>* control) const {
-  cout << "start of OperationalSpaceControl::CalcOptimalInput()\n";
   // Read in current state and simulation time
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
   VectorXd q_w_spr = robot_output->GetPositions();
-  if (q_w_spr.norm() == 0) {
-    q_w_spr = tree_w_spr_->getZeroConfiguration();
+  if (is_quaternion_) {
+    q_w_spr.segment(3, 4) = NormalizeQuaternion(q_w_spr.segment(3, 4));
   }
   VectorXd v_w_spr = robot_output->GetVelocities();
   VectorXd x_w_spr(tree_w_spr_->get_num_positions() +
@@ -433,8 +480,8 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd x_wo_spr(n_q_ + n_v_);
   x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
            map_velocity_from_spring_to_no_spring_ * v_w_spr;
-  cout << "x_w_spr = " << x_w_spr.transpose() << endl;
-  cout << "x_wo_spr = " << x_wo_spr.transpose() << endl;
+  // cout << "x_w_spr = " << x_w_spr.transpose() << endl;
+  // cout << "x_wo_spr = " << x_wo_spr.transpose() << endl;
 
   VectorXd u_sol(n_u_);
   if (used_with_finite_state_machine_) {
@@ -446,6 +493,7 @@ void OperationalSpaceControl::CalcOptimalInput(
     // Get discrete states
     const auto prev_event_time = context.get_discrete_state(
                                    prev_event_time_idx_).get_value();
+    cout << "prev_event_time = " << prev_event_time << endl;
 
     u_sol = SolveQp(x_w_spr, x_wo_spr,
                     context, current_sim_time,
@@ -459,7 +507,6 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());
-  cout << "end of OperationalSpaceControl::CalcOptimalInput()\n";
 }
 
 }  // namespace controllers

@@ -35,7 +35,6 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
 void TimeBasedFiniteStateMachine::CalcFiniteState(
     const Context<double>& context,
     BasicVector<double>* fsm_state) const {
-  cout << "start of TimeBasedFiniteStateMachine::CalcFiniteState()\n";
   // Read in current state and simulation time
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -59,9 +58,9 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
       current_finite_state(0) = second_state_number_;
   }
 
+  cout << "current_finite_state = " << current_finite_state << endl;
   // Assign fsm_state
   fsm_state->get_mutable_value() = current_finite_state;
-  cout << "end of TimeBasedFiniteStateMachine::CalcFiniteState()\n";
 }
 
 }  // namespace systems

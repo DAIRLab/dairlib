@@ -77,7 +77,6 @@ class OscTrackingData {
   Eigen::VectorXd GetJdotTimesV() {return JdotV_;}
   Eigen::VectorXd GetDesiredOutputWithPdControl();
   Eigen::MatrixXd GetWeight();
-  bool TrajHasExp() {return traj_has_exp_;}
   // void UpdatePGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
   // void UpdateDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
   // void UpdateWeight(Eigen::MatrixXd W);
@@ -86,7 +85,12 @@ class OscTrackingData {
   std::string GetName() {return name_;};
   int GetTrajDim() {return n_r_;};
   bool TrajIsConst() {return traj_is_const_;}
+  bool TrajHasExp() {return traj_has_exp_;}
   Eigen::VectorXd GetFixedPosition() {return fixed_position_;}
+  bool GetTrackOrNot() {return track_at_current_step_;}
+
+  // Print feedback and desired values
+  void PrintFeedbackAndDesiredValues();
 
   // Finalize and ensure that users construct OscTrackingData class correctly.
   // (called in OSC constructor)
@@ -98,7 +102,7 @@ class OscTrackingData {
   // Feedback output, jacobian and dJ/dt * v
   Eigen::VectorXd error_y_;
   Eigen::VectorXd y_;
-  Eigen::VectorXd ydot_;
+  Eigen::VectorXd dy_;
   Eigen::MatrixXd J_;
   Eigen::VectorXd JdotV_;
 

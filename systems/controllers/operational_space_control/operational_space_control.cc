@@ -155,10 +155,12 @@ void OperationalSpaceControl::ConstructOSC() {
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   const drake::systems::Context<double>& context,
   drake::systems::DiscreteValues<double>* discrete_state) const {
-  const TimestampedVector<double>* fsm_output = (TimestampedVector<double>*)
-      this->EvalVectorInput(context, fsm_port_);
-  VectorXd fsm_state = fsm_output->get_data();
-  double tiemstamp = fsm_output->get_timestamp();
+  const BasicVector<double>* fsm_output = (BasicVector<double>*)
+                                          this->EvalVectorInput(context, fsm_port_);
+  VectorXd fsm_state = fsm_output->get_value();
+  const OutputVector<double>* robot_output = (OutputVector<double>*)
+      this->EvalVectorInput(context, state_port_);
+  double timestamp = robot_output->get_timestamp();
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(
                           prev_fsm_state_idx_).get_mutable_value();
@@ -167,7 +169,7 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
 
     discrete_state->get_mutable_vector(
-      prev_event_time_idx_).get_mutable_value() << tiemstamp;
+      prev_event_time_idx_).get_mutable_value() << timestamp;
   }
   return drake::systems::EventStatus::Succeeded();
 }

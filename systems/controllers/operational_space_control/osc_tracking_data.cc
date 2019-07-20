@@ -138,11 +138,11 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
 }
 void OscTrackingData::PrintFeedbackAndDesiredValues() {
   cout << name_ << ":\n";
-  // cout << "  y = " << y_.transpose() << endl;
-  // cout << "  y_des = " << y_des_.transpose() << endl;
-  // cout << "  dy = " << dy_.transpose() << endl;
-  // cout << "  dy_des = " << dy_des_.transpose() << endl;
-  // cout << "  ddy_des = " << ddy_des_.transpose() << endl;
+  cout << "  y = " << y_.transpose() << endl;
+  cout << "  y_des = " << y_des_.transpose() << endl;
+  cout << "  dy = " << dy_.transpose() << endl;
+  cout << "  dy_des = " << dy_des_.transpose() << endl;
+  cout << "  ddy_des = " << ddy_des_.transpose() << endl;
   cout << "  ddy_command = " << GetDesiredOutputWithPdControl().transpose() <<
        endl;
 }

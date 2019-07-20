@@ -1,5 +1,7 @@
 #include <math.h>
 
+#include <gflags/gflags.h>
+
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
@@ -44,7 +46,11 @@ using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 
-int DoMain() {
+DEFINE_double(end_time, 0.01, "End time of simulation");
+
+int DoMain(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   DiagramBuilder<double> builder;
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
@@ -383,6 +389,7 @@ int DoMain() {
   drake::log()->info("controller started");
 
   stepper->StepTo(std::numeric_limits<double>::infinity());
+  stepper->StepTo(FLAGS_end_time);
 
   return 0;
 }
@@ -390,4 +397,4 @@ int DoMain() {
 
 }
 
-int main() { return dairlib::DoMain(); }
+int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }

@@ -1,4 +1,5 @@
 #include <math.h>
+#include <gflags/gflags.h>
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -40,11 +41,14 @@ using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 
-int DoMain() {
+DEFINE_double(end_time, 0.05, "End time of simulation");
+
+int DoMain(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   DiagramBuilder<double> builder;
 
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
-               "udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
   RigidBodyTree<double> tree_with_springs;
   RigidBodyTree<double> tree_without_springs;
@@ -65,18 +69,18 @@ int DoMain() {
   const std::string channel_u = "CASSIE_INPUT";
 
   // Create state receiver.
-  auto state_sub = builder.AddSystem(
-                     LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-                       channel_x, lcm));
+  // auto state_sub = builder.AddSystem(
+  //                    LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+  //                      channel_x, &lcm_local));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
                           tree_with_springs);
-  builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
+  // builder.Connect(state_sub->get_output_port(),
+                  // state_receiver->get_input_port(0));
 
   // Create command sender.
   auto command_pub = builder.AddSystem(
                        LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-                         channel_u, lcm, 1.0 / 1000.0));
+                         channel_u, &lcm_local, 1.0 / 1000.0));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
                           tree_with_springs);
 
@@ -86,8 +90,6 @@ int DoMain() {
   // Get body indices for cassie with springs
   int pelvis_idx = GetBodyIndexFromName(tree_with_springs, "pelvis");
   DRAKE_DEMAND(pelvis_idx != -1);
-
-  double time_shift = 0;
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -168,7 +170,7 @@ int DoMain() {
   builder.Connect(osc->get_output_port(0),
                   command_sender->get_input_port(0));
 
-  auto diagram = builder.Build();
+  /*auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
 
   // Assign fixed value to osc constant traj port
@@ -188,7 +190,59 @@ int DoMain() {
 
   drake::log()->info("controller started");
 
-  stepper->StepTo(std::numeric_limits<double>::infinity());
+  // stepper->StepTo(std::numeric_limits<double>::infinity());
+  stepper->StepTo(FLAGS_end_time);*/
+
+
+
+
+
+
+  // Create the diagram and context
+  auto owned_diagram = builder.Build();
+
+  // Assign fixed value to osc constant traj port
+  auto context = owned_diagram->CreateDefaultContext();
+  systems::controllers::AssignConstTrajToInputPorts(osc,
+      owned_diagram.get(), context.get());
+
+  // Create the simulator
+  const auto& diagram = *owned_diagram;
+  drake::systems::Simulator<double> simulator(std::move(owned_diagram),
+      std::move(context));
+  auto& diagram_context = simulator.get_mutable_context();
+
+  auto& state_receiver_context =
+    diagram.GetMutableSubsystemContext(*state_receiver, &diagram_context);
+
+  // Wait for the first message.
+  drake::log()->info("Waiting for first lcmt_robot_input");
+  drake::lcm::Subscriber<dairlib::lcmt_robot_input> input_sub(&lcm_local,
+      "CASSIE_STATE");
+  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+    return input_sub.count() > 0;
+  });
+
+  // Initialize the context based on the first message.
+  const double t0 = input_sub.message().utime * 1e-6;
+  diagram_context.SetTime(t0);
+  auto& input_value = state_receiver->get_input_port(0).FixValue(
+                        &state_receiver_context, input_sub.message());
+
+  drake::log()->info("controller started");
+  while (true) {
+    // Wait for an lcmt_robot_input message.
+    input_sub.clear();
+    LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+      return input_sub.count() > 0;
+    });
+    // Write the lcmt_robot_input message into the context and advance.
+    input_value.GetMutableData()->set_value(input_sub.message());
+    const double time = input_sub.message().utime * 1e-6;
+    simulator.AdvanceTo(time);
+    // Force-publish via the diagram
+    diagram.Publish(diagram_context);
+  }
 
   return 0;
 }
@@ -196,4 +250,4 @@ int DoMain() {
 
 }
 
-int main() { return dairlib::DoMain(); }
+int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }

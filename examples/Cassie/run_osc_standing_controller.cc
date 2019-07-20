@@ -85,60 +85,27 @@ int DoMain() {
 
   // Get body indices for cassie with springs
   int pelvis_idx = GetBodyIndexFromName(tree_with_springs, "pelvis");
-  int left_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_left");
-  int right_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_right");
-  DRAKE_DEMAND(pelvis_idx != -1 && left_toe_idx != -1 && right_toe_idx != -1);
+  DRAKE_DEMAND(pelvis_idx != -1);
 
   double time_shift = 0;
-  double desired_com_height = 0.89;
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-               &tree_with_springs, &tree_without_springs, true, true);
+               &tree_with_springs, &tree_without_springs, false, true);
   // Get body index
   int pelvis_idx_w_spr = pelvis_idx;
-  int left_toe_idx_w_spr = left_toe_idx;
-  int right_toe_idx_w_spr = right_toe_idx;
   int pelvis_idx_wo_spr = GetBodyIndexFromName(
                             tree_without_springs, "pelvis");
   int left_toe_idx_wo_spr = GetBodyIndexFromName(
                               tree_without_springs, "toe_left");
   int right_toe_idx_wo_spr = GetBodyIndexFromName(
                                tree_without_springs, "toe_right");
-  // Get position/velocity index
-  std::map<std::string, int> pos_idx_map_w_spr =
-    multibody::makeNameToPositionsMap(tree_with_springs);
-  std::map<std::string, int> vel_idx_map_w_spr =
-    multibody::makeNameToVelocitiesMap(tree_with_springs);
-  int left_toe_pos_idx_w_spr = pos_idx_map_w_spr.at("toe_left");
-  int right_toe_pos_idx_w_spr = pos_idx_map_w_spr.at("toe_right");
-  int left_hip_yaw_pos_idx_w_spr = pos_idx_map_w_spr.at("hip_yaw_left");
-  int right_hip_yaw_pos_idx_w_spr = pos_idx_map_w_spr.at("hip_yaw_right");
-  int left_toe_vel_idx_w_spr = vel_idx_map_w_spr.at("toe_leftdot");
-  int right_toe_vel_idx_w_spr = vel_idx_map_w_spr.at("toe_rightdot");
-  int left_hip_yaw_vel_idx_w_spr = vel_idx_map_w_spr.at("hip_yaw_leftdot");
-  int right_hip_yaw_vel_idx_w_spr = vel_idx_map_w_spr.at("hip_yaw_rightdot");
-  std::map<std::string, int> pos_idx_map_wo_spr =
-    multibody::makeNameToPositionsMap(tree_without_springs);
-  std::map<std::string, int> vel_idx_map_wo_spr =
-    multibody::makeNameToVelocitiesMap(tree_without_springs);
-  int left_toe_pos_idx_wo_spr = pos_idx_map_wo_spr.at("toe_left");
-  int right_toe_pos_idx_wo_spr = pos_idx_map_wo_spr.at("toe_right");
-  int left_hip_yaw_pos_idx_wo_spr = pos_idx_map_wo_spr.at("hip_yaw_left");
-  int right_hip_yaw_pos_idx_wo_spr = pos_idx_map_wo_spr.at("hip_yaw_right");
-  int left_toe_vel_idx_wo_spr = vel_idx_map_wo_spr.at("toe_leftdot");
-  int right_toe_vel_idx_wo_spr = vel_idx_map_wo_spr.at("toe_rightdot");
-  int left_hip_yaw_vel_idx_wo_spr = vel_idx_map_wo_spr.at("hip_yaw_leftdot");
-  int right_hip_yaw_vel_idx_wo_spr = vel_idx_map_wo_spr.at("hip_yaw_rightdot");
 
   int n_v = tree_without_springs.get_num_velocities();
   // Cost
   // cout << "Adding cost\n";
   MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
-  double w_toe = 0.1;  // 1
-  osc->AddAccelerationCost(left_toe_vel_idx_wo_spr, w_toe);
-  osc->AddAccelerationCost(right_toe_vel_idx_wo_spr, w_toe);
   // Soft constraint
   // cout << "Adding constraint\n";
   // We don't want this to be too big, cause we want tracking error to be important
@@ -149,26 +116,13 @@ int DoMain() {
   osc->SetContactFriction(mu);
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
-  osc->AddContactPoint(left_toe_idx_w_spr, front_contact_disp);
-  osc->AddContactPoint(left_toe_idx_w_spr, rear_contact_disp);
-  osc->AddContactPoint(right_toe_idx_w_spr, front_contact_disp);
-  osc->AddContactPoint(right_toe_idx_w_spr, rear_contact_disp);
-  // Swing foot tracking
-  // cout << "Adding swing foot tracking\n";
-  MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
-  MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData swing_foot_traj("cp_traj", 3,
-      K_p_sw_ft, K_d_sw_ft, W_swing_foot);
-  swing_foot_traj.AddStateAndPointToTrack(left_stance_state,
-                                          right_toe_idx_w_spr,
-                                          right_toe_idx_wo_spr);
-  swing_foot_traj.AddStateAndPointToTrack(right_stance_state,
-                                          left_toe_idx_w_spr,
-                                          left_toe_idx_wo_spr);
-  osc->AddTrackingData(&swing_foot_traj);
+  osc->AddContactPoint(left_toe_idx_wo_spr, front_contact_disp);
+  osc->AddContactPoint(left_toe_idx_wo_spr, rear_contact_disp);
+  osc->AddContactPoint(right_toe_idx_wo_spr, front_contact_disp);
+  osc->AddContactPoint(right_toe_idx_wo_spr, rear_contact_disp);
   // Center of mass tracking
   // cout << "Adding center of mass tracking\n";
+  Vector3d desired_com(0, 0, 0.89);
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2;
   W_com(1, 1) = 2;
@@ -176,7 +130,8 @@ int DoMain() {
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData center_of_mass_traj("lipm_traj", 3,
-      K_p_com, K_d_com, W_com, false, true, true);
+      K_p_com, K_d_com, W_com, true, false, true);
+  center_of_mass_traj.SetConstantTraj(desired_com);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
   // cout << "Adding pelvis rotation tracking\n";
@@ -201,88 +156,17 @@ int DoMain() {
   RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 3,
       K_p_pelvis, K_d_pelvis, W_pelvis, true, false);
   pelvis_rot_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
-  pelvis_rot_traj.SetNoControlPeriod(
-    0.05); // TODO separate yaw from the rest /////////////////////////////////////////
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
   pelvis_rot_traj.SetConstantTraj(pelvis_desired_quat);
   osc->AddTrackingData(&pelvis_rot_traj);
-  // Swing toe joint tracking (Currently use fix position) TODO: change this
-  // cout << "Adding swing toe joint tracking\n";
-  MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_swing_toe = 1000 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_swing_toe = 100 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_toe_traj("swing_toe_traj", 1,
-                                        K_p_swing_toe, K_d_swing_toe,
-                                        W_swing_toe, true);
-  swing_toe_traj.AddStateAndJointToTrack(left_stance_state,
-                                         right_toe_pos_idx_w_spr,
-                                         right_toe_vel_idx_w_spr,
-                                         right_toe_pos_idx_wo_spr,
-                                         right_toe_vel_idx_wo_spr);
-  swing_toe_traj.AddStateAndJointToTrack(right_stance_state,
-                                         left_toe_pos_idx_w_spr,
-                                         left_toe_vel_idx_w_spr,
-                                         left_toe_pos_idx_wo_spr,
-                                         left_toe_vel_idx_wo_spr);
-  swing_toe_traj.SetConstantTraj(-M_PI * VectorXd::Ones(1));
-  osc->AddTrackingData(&swing_toe_traj);
-  // Stance toe joint tracking (Currently use fix position) TODO: change this
-  // cout << "Adding stance toe joint tracking\n";
-  MatrixXd W_stance_toe = 2 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_stance_toe = 100 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_stance_toe = 20 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData stance_toe_traj("stance_toe_traj", 1,
-                                         K_p_stance_toe, K_d_stance_toe,
-                                         W_stance_toe, true);
-  stance_toe_traj.AddStateAndJointToTrack(left_stance_state,
-                                          left_toe_pos_idx_w_spr,
-                                          left_toe_vel_idx_w_spr,
-                                          left_toe_pos_idx_wo_spr,
-                                          left_toe_vel_idx_wo_spr);
-  stance_toe_traj.AddStateAndJointToTrack(right_stance_state,
-                                          right_toe_pos_idx_w_spr,
-                                          right_toe_vel_idx_w_spr,
-                                          right_toe_pos_idx_wo_spr,
-                                          right_toe_vel_idx_wo_spr);
-  stance_toe_traj.SetConstantTraj(-M_PI * VectorXd::Ones(1));
-  osc->AddTrackingData(&stance_toe_traj);
-  // Swing hip yaw joint tracking
-  // cout << "Adding swing hip yaw joint tracking\n";
-  MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", 1,
-      K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw, true);
-  swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state,
-      right_hip_yaw_pos_idx_w_spr,
-      right_hip_yaw_vel_idx_w_spr,
-      right_hip_yaw_pos_idx_wo_spr,
-      right_hip_yaw_vel_idx_wo_spr);
-  swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state,
-      left_hip_yaw_pos_idx_w_spr,
-      left_hip_yaw_vel_idx_w_spr,
-      left_hip_yaw_pos_idx_wo_spr,
-      left_hip_yaw_vel_idx_wo_spr);
-  swing_hip_yaw_traj.SetConstantTraj(VectorXd::Zero(1));
-  osc->AddTrackingData(&swing_hip_yaw_traj);
   // Build OSC problem
   osc->ConstructOSC();
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(fsm->get_output_port(0),
-                  osc->get_fsm_input_port());
-  builder.Connect(lipm_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("lipm_traj"));
-  builder.Connect(cp_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("cp_traj"));
   builder.Connect(osc->get_output_port(0),
                   command_sender->get_input_port(0));
-
-
-  // TODO: add a block for toe angle control
-
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();

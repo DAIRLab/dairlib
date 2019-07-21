@@ -52,11 +52,7 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
                              double time_since_last_state_switch) {
   // cout << "Update data for " << name_ << endl;
   // Update track_at_current_step_
-  if (state_.empty()) {
-    track_at_current_step_ = true;
-  } else {
-    TrackOrNot(finite_state_machine_state, time_since_last_state_switch);
-  }
+  TrackOrNot(finite_state_machine_state, time_since_last_state_switch);
 
   // Proceed based on the result of track_at_current_step_
   if (!track_at_current_step_) {
@@ -114,6 +110,8 @@ MatrixXd OscTrackingData::GetWeight() {
 void OscTrackingData::TrackOrNot(int finite_state_machine_state,
                                  double time_since_last_state_switch) {
   if (state_.empty()) {
+    // cout << "time_since_last_state_switch = " << time_since_last_state_switch << endl;
+    // cout << "period_of_no_control_ = " << period_of_no_control_ << endl;
     if (time_since_last_state_switch >= period_of_no_control_) {
       track_at_current_step_ = true;
     } else {

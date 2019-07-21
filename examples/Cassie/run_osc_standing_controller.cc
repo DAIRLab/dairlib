@@ -213,7 +213,6 @@ int DoMain(int argc, char* argv[]) {
   return 0;
 }
 
-
-}
+}  // namespace dairlib
 
 int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }

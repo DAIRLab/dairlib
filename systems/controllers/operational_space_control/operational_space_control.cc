@@ -428,7 +428,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   // 4. Tracking cost
   for (auto tracking_data : *tracking_data_vec_) {
     string traj_name = tracking_data->GetName();
-    // cout << "Add cost for " << traj_name << endl;
     int port_index = traj_name_to_port_index_map_.at(traj_name);
     // cout << "port_index = " << port_index << endl;
     // Read in traj
@@ -446,6 +445,7 @@ VectorXd OperationalSpaceControl::SolveQp(
                         cache_wo_spr, tree_wo_spr_,
                         traj, t,
                         fsm_state, time_since_last_state_switch);
+    // cout << "Track " << traj_name << "? " << track_or_not << endl;
     if (track_or_not) {
       VectorXd ddy_t = tracking_data->GetCommandOutput();
       // cout << "ddy_t = \n" << ddy_t << endl;
@@ -560,8 +560,9 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);
+  cout << "\n\ncurrent_time = " << current_time << endl;
   if (print_tracking_info_) {
-    cout << "\n\ncurrent_time = " << current_time << endl;
+    // cout << "\n\ncurrent_time = " << current_time << endl;
   }
 
   // TODO(yminchen): currently construct the QP in every loop. Will modify this
@@ -583,7 +584,7 @@ void OperationalSpaceControl::CalcOptimalInput(
     // Get discrete states
     const auto prev_event_time = context.get_discrete_state(
                                    prev_event_time_idx_).get_value();
-    cout << "prev_event_time = " << prev_event_time << endl;
+    // cout << "prev_event_time = " << prev_event_time << endl;
 
     u_sol = SolveQp(x_w_spr, x_wo_spr,
                     context, current_time,
@@ -601,7 +602,7 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
   auto duration = duration_cast<microseconds>( t2 - t1 ).count();
-  cout << "it took " << duration / 1000.0 << " (ms).\n";
+  // cout << "it took " << duration / 1000.0 << " (ms).\n";
 
 }
 

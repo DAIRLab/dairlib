@@ -216,8 +216,8 @@ int DoMain(int argc, char* argv[]) {
     diagram.GetMutableSubsystemContext(*state_receiver, &diagram_context);
 
   // Wait for the first message.
-  drake::log()->info("Waiting for first lcmt_robot_input");
-  drake::lcm::Subscriber<dairlib::lcmt_robot_input> input_sub(&lcm_local,
+  drake::log()->info("Waiting for first lcmt_robot_output");
+  drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(&lcm_local,
       "CASSIE_STATE");
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
     return input_sub.count() > 0;
@@ -231,12 +231,12 @@ int DoMain(int argc, char* argv[]) {
 
   drake::log()->info("controller started");
   while (true) {
-    // Wait for an lcmt_robot_input message.
+    // Wait for an lcmt_robot_output message.
     input_sub.clear();
     LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
       return input_sub.count() > 0;
     });
-    // Write the lcmt_robot_input message into the context and advance.
+    // Write the lcmt_robot_output message into the context and advance.
     input_value.GetMutableData()->set_value(input_sub.message());
     const double time = input_sub.message().utime * 1e-6;
     simulator.AdvanceTo(time);

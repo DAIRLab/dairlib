@@ -445,7 +445,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Solve the QP
   const MathematicalProgramResult result = Solve(prog);
   SolutionResult solution_result = result.get_solution_result();
-  if (print_tracking_info_ && ((*previous_time_) != t)) {
+  if (print_tracking_info_) {
     cout << to_string(solution_result) <<  endl;
   }
 
@@ -455,7 +455,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd lambda_h_sol = result.GetSolution(lambda_h);
   VectorXd dv_sol = result.GetSolution(dv);
   VectorXd epsilon_sol = result.GetSolution(epsilon);
-  if (print_tracking_info_ && ((*previous_time_) != t)) {
+  if (print_tracking_info_) {
     cout << "u_sol = " << u_sol.transpose() << endl;
     cout << "lambda_c_sol = " << lambda_c_sol.transpose() << endl;
     cout << "lambda_h_sol = " << lambda_h_sol.transpose() << endl;
@@ -464,7 +464,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // Print QP result
-  if (print_tracking_info_ && ((*previous_time_) != t)) {
+  if (print_tracking_info_) {
     cout << "\n**********************\n";
     // 1. input cost
     if (W_input_.size() > 0) {
@@ -512,10 +512,8 @@ void OperationalSpaceControl::CalcOptimalInput(
   const drake::systems::Context<double>& context,
   systems::TimestampedVector<double>* control) const {
 
-
   high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
-  cout << "*previous_time_ = " << *previous_time_ << endl;
 
   // Read in current state and simulation time
   const OutputVector<double>* robot_output = (OutputVector<double>*)
@@ -531,9 +529,7 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);
-  if (((*previous_time_) != current_time)) {
-    cout << "\n\ncurrent_time = " << current_time << endl;
-  }
+  cout << "\n\ncurrent_time = " << current_time << endl;
 
   // TODO(yminchen): currently construct the QP in every loop. Will modify this
   // once the code is working.
@@ -572,11 +568,8 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
   auto duration = duration_cast<microseconds>( t2 - t1 ).count();
-  if ((*previous_time_) != current_time) {
-    cout << "it took " << duration / 1000.0 << " (ms).\n";
-  }
+  cout << "it took " << duration / 1000.0 << " (ms).\n";
 
-  *previous_time_ = current_time;
 }
 
 }  // namespace controllers

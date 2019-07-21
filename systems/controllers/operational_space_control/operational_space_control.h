@@ -182,7 +182,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // flag indicating whether to print the tracking related values or not
   bool print_tracking_info_;
-  std::unique_ptr<double> previous_time_ = std::make_unique<double>(-1);
 
   // floating base model flag
   bool is_quaternion_;

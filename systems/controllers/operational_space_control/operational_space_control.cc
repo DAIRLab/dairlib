@@ -430,7 +430,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       VectorXd ddy_t = tracking_data->GetCommandOutput();
       // cout << "ddy_t = \n" << ddy_t << endl;
       MatrixXd W = tracking_data->GetWeight();
-      cout << "W = \n" << W << endl;
+      // cout << "W = \n" << W << endl;
       MatrixXd J_t = tracking_data->GetJ();
       // cout << "J_t = \n" << J_t << endl;
       VectorXd JdotV_t = tracking_data->GetJdotTimesV();
@@ -532,6 +532,7 @@ void OperationalSpaceControl::CalcOptimalInput(
   if (is_quaternion_) {
     q_w_spr.segment(3, 4) = NormalizeQuaternion(q_w_spr.segment(3, 4));
   }
+  // cout << "q_w_spr = " << q_w_spr.transpose() << endl;
   VectorXd v_w_spr = robot_output->GetVelocities();
   VectorXd x_w_spr(tree_w_spr_->get_num_positions() +
                    tree_w_spr_->get_num_velocities());
@@ -539,7 +540,9 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);
-  cout << "\n\ncurrent_time = " << current_time << endl;
+  if (print_tracking_info_) {
+    cout << "\n\ncurrent_time = " << current_time << endl;
+  }
 
   // TODO(yminchen): currently construct the QP in every loop. Will modify this
   // once the code is working.

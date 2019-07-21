@@ -506,13 +506,13 @@ void JointSpaceTrackingData::AddStateAndJointToTrack(vector<int> state,
 
 void JointSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
-  y_ = x_w_spr.segment(joint_pos_idx_wo_spr_.at(GetStateIdx()), 1);
+  y_ = x_w_spr.segment(joint_pos_idx_w_spr_.at(GetStateIdx()), 1);
   error_y_ = y_des_ - y_;
 }
 void JointSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
                                         KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
   MatrixXd J = MatrixXd::Zero(1, tree_w_spr->get_num_velocities());
-  J(0, joint_vel_idx_wo_spr_.at(GetStateIdx())) = 1;
+  J(0, joint_vel_idx_w_spr_.at(GetStateIdx())) = 1;
   dy_ = J * x_w_spr.tail(tree_w_spr->get_num_velocities());
 }
 void JointSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,

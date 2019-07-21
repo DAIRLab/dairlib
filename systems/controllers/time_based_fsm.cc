@@ -58,7 +58,6 @@ void TimeBasedFiniteStateMachine::CalcFiniteState(
       current_finite_state(0) = second_state_number_;
   }
 
-  cout << "current_finite_state = " << current_finite_state << endl;
   // Assign fsm_state
   fsm_state->get_mutable_value() = current_finite_state;
 }

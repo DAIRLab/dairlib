@@ -53,8 +53,7 @@ int DoMain(int argc, char* argv[]) {
 
   DiagramBuilder<double> builder;
 
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
-               "udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
   RigidBodyTree<double> tree_with_springs;
   RigidBodyTree<double> tree_without_springs;
@@ -75,18 +74,13 @@ int DoMain(int argc, char* argv[]) {
   const std::string channel_u = "CASSIE_INPUT";
 
   // Create state receiver.
-  auto state_sub = builder.AddSystem(
-                     LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-                       channel_x, lcm));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
                           tree_with_springs);
-  builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
 
   // Create command sender.
   auto command_pub = builder.AddSystem(
                        LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-                         channel_u, lcm, 1.0 / 1000.0));
+                         channel_u, &lcm_local, 1.0 / 1000.0));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
                           tree_with_springs);
 
@@ -309,7 +303,7 @@ int DoMain(int argc, char* argv[]) {
                                          left_toe_vel_idx_w_spr,
                                          left_toe_pos_idx_wo_spr,
                                          left_toe_vel_idx_wo_spr);
-  swing_toe_traj.SetConstantTraj(-M_PI * VectorXd::Ones(1));
+  swing_toe_traj.SetConstantTraj(-1.5 * VectorXd::Ones(1));
   osc->AddTrackingData(&swing_toe_traj);
   // Stance toe joint tracking (Currently use fix position) TODO: change this
   // cout << "Adding stance toe joint tracking\n";
@@ -329,7 +323,7 @@ int DoMain(int argc, char* argv[]) {
                                           right_toe_vel_idx_w_spr,
                                           right_toe_pos_idx_wo_spr,
                                           right_toe_vel_idx_wo_spr);
-  stance_toe_traj.SetConstantTraj(-M_PI * VectorXd::Ones(1));
+  stance_toe_traj.SetConstantTraj(-1.5 * VectorXd::Ones(1));
   osc->AddTrackingData(&stance_toe_traj);
   // Swing hip yaw joint tracking
   // cout << "Adding swing hip yaw joint tracking\n";
@@ -368,28 +362,52 @@ int DoMain(int argc, char* argv[]) {
   // TODO: add a block for toe angle control
 
 
-  auto diagram = builder.Build();
-  auto context = diagram->CreateDefaultContext();
+
+  // Create the diagram and context
+  auto owned_diagram = builder.Build();
 
   // Assign fixed value to osc constant traj port
+  auto context = owned_diagram->CreateDefaultContext();
   systems::controllers::AssignConstTrajToInputPorts(osc,
-      diagram.get(), context.get());
+      owned_diagram.get(), context.get());
 
-  /// Use the simulator to drive at a fixed rate
-  /// If set_publish_every_time_step is true, this publishes twice
-  /// Set realtime rate. Otherwise, runs as fast as possible
-  auto stepper = std::make_unique<drake::systems::Simulator<double>>(*diagram,
-                 std::move(context));
-  stepper->set_publish_every_time_step(false);
-  stepper->set_publish_at_initialization(false);
-  stepper->set_target_realtime_rate(1.0);
-  stepper->Initialize();
+  // Create the simulator
+  const auto& diagram = *owned_diagram;
+  drake::systems::Simulator<double> simulator(std::move(owned_diagram),
+      std::move(context));
+  auto& diagram_context = simulator.get_mutable_context();
 
+  auto& state_receiver_context =
+    diagram.GetMutableSubsystemContext(*state_receiver, &diagram_context);
+
+  // Wait for the first message.
+  drake::log()->info("Waiting for first lcmt_robot_output");
+  drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(&lcm_local,
+      "CASSIE_STATE");
+  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+    return input_sub.count() > 0;
+  });
+
+  // Initialize the context based on the first message.
+  const double t0 = input_sub.message().utime * 1e-6;
+  diagram_context.SetTime(t0);
+  auto& input_value = state_receiver->get_input_port(0).FixValue(
+                        &state_receiver_context, input_sub.message());
 
   drake::log()->info("controller started");
-
-  stepper->StepTo(std::numeric_limits<double>::infinity());
-  stepper->StepTo(FLAGS_end_time);
+  while (true) {
+    // Wait for an lcmt_robot_output message.
+    input_sub.clear();
+    LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+      return input_sub.count() > 0;
+    });
+    // Write the lcmt_robot_output message into the context and advance.
+    input_value.GetMutableData()->set_value(input_sub.message());
+    const double time = input_sub.message().utime * 1e-6;
+    simulator.AdvanceTo(time);
+    // Force-publish via the diagram
+    diagram.Publish(diagram_context);
+  }
 
   return 0;
 }

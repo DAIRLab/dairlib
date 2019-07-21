@@ -70,7 +70,8 @@ DEFINE_double(init_knee, -1.0, "Initial knee joint position");
 DEFINE_double(init_ankle, 1.3, "Initial ankle joint position");
 DEFINE_double(init_toe, -1.5, "Initial toe joint position");
 
-DEFINE_double(end_time, 0.01, "End time of simulation");
+DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
+    "End time of simulation");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -277,9 +278,8 @@ int do_main(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
 
-  // simulator.StepTo(std::numeric_limits<double>::infinity());
-  // simulator.StepTo(.01);
   simulator.StepTo(FLAGS_end_time);
+  // simulator.StepTo(.01);
   return 0;
 }
 

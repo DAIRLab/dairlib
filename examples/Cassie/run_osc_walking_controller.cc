@@ -46,8 +46,6 @@ using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 
-DEFINE_double(end_time, 0.01, "End time of simulation");
-
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -168,7 +166,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-               &tree_with_springs, &tree_without_springs, true, true);
+               &tree_with_springs, &tree_without_springs, true, false);
   // Get body index
   int pelvis_idx_w_spr = pelvis_idx;
   int left_toe_idx_w_spr = left_toe_idx;

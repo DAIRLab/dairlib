@@ -9,7 +9,6 @@ mkdir bundle_ws
 pushd bundle_ws
 
 rosinstall_generator \
-    --rosdistro melodic \
     --deps \
     --tar \
     --flat \

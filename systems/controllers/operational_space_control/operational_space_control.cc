@@ -69,7 +69,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     // Discrete update to record the last state event time
     DeclarePerStepDiscreteUpdateEvent(
       &OperationalSpaceControl::DiscreteVariableUpdate);
-    prev_fsm_state_idx_ = this->DeclareDiscreteState(1);
+    prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   }
 
@@ -212,7 +212,6 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(
                           prev_fsm_state_idx_).get_mutable_value();
-
   if (fsm_state(0) != prev_fsm_state(0)) {
     prev_fsm_state(0) = fsm_state(0);
 
@@ -231,6 +230,11 @@ VectorXd OperationalSpaceControl::SolveQp(
   int fsm_state, double time_since_last_state_switch) const {
 
   vector<int> active_contact_idx = CalcActiveContactIndices(fsm_state);
+  // cout << "active_contact_idx = ";
+  // for(auto i : active_contact_idx){
+  //   cout << i << ", ";
+  // }
+  // cout << endl;
 
   int n_h = tree_wo_spr_->getNumPositionConstraints();
   int n_c = 3 * active_contact_idx.size();
@@ -357,7 +361,22 @@ VectorXd OperationalSpaceControl::SolveQp(
     VectorXd mu_plus1(2); mu_plus1 << mu_, 1;
     VectorXd one(1); one << 1;
     for (unsigned int j = 0; j < active_contact_idx.size(); j++) {
-      int i = active_contact_idx[j];
+      prog.AddLinearConstraint(mu_minus1.transpose(),
+                               0, numeric_limits<double>::infinity(),
+      {lambda_c.segment(3 * j + 2, 1), lambda_c.segment(3 * j + 0, 1)});
+      prog.AddLinearConstraint(mu_plus1.transpose(),
+                               0, numeric_limits<double>::infinity(),
+      {lambda_c.segment(3 * j + 2, 1), lambda_c.segment(3 * j + 0, 1)});
+      prog.AddLinearConstraint(mu_minus1.transpose(),
+                               0, numeric_limits<double>::infinity(),
+      {lambda_c.segment(3 * j + 2, 1), lambda_c.segment(3 * j + 1, 1)});
+      prog.AddLinearConstraint(mu_plus1.transpose(),
+                               0, numeric_limits<double>::infinity(),
+      {lambda_c.segment(3 * j + 2, 1), lambda_c.segment(3 * j + 1, 1)});
+      prog.AddLinearConstraint(one.transpose(),
+                               0, numeric_limits<double>::infinity(),
+                               lambda_c.segment(3 * j + 2, 1));
+      /*int i = active_contact_idx[j];
       prog.AddLinearConstraint(mu_minus1.transpose(),
                                0, numeric_limits<double>::infinity(),
       {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 0, 1)});
@@ -372,7 +391,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 1, 1)});
       prog.AddLinearConstraint(one.transpose(),
                                0, numeric_limits<double>::infinity(),
-                               lambda_c.segment(3 * i + 2, 1));
+                               lambda_c.segment(3 * i + 2, 1));*/
     }
   }
 
@@ -394,6 +413,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
     // cout << "Add joint accelration cost\n";
+    // cout << "W_joint_accel_ = " << W_joint_accel_ << endl;
     prog.AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv);
   }
 
@@ -563,7 +583,7 @@ void OperationalSpaceControl::CalcOptimalInput(
     // Get discrete states
     const auto prev_event_time = context.get_discrete_state(
                                    prev_event_time_idx_).get_value();
-    // cout << "prev_event_time = " << prev_event_time << endl;
+    cout << "prev_event_time = " << prev_event_time << endl;
 
     u_sol = SolveQp(x_w_spr, x_wo_spr,
                     context, current_time,

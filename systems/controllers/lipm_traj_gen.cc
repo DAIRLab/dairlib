@@ -58,7 +58,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
   // The time of the last touch down
   prev_td_time_idx_ = this->DeclareDiscreteState(1);
   // The last state of FSM
-  prev_fsm_state_idx_ = this->DeclareDiscreteState(-VectorXd::Ones(1));
+  prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
 
   // Check if the model is floating based
   is_quaternion_ = multibody::CheckFloatingBase(tree);

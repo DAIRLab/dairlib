@@ -3,13 +3,18 @@
 
 namespace dairlib {
 
-// The functions here assume that Cassie is quaternion floating based.
+// Rotate a 3D vector by quaternion which represent a roatation
+Eigen::Vector3d RotateVecByQuaternion(
+  Eigen::Quaterniond q, const Eigen::Vector3d& v);
 
-Eigen::Vector3d rotateVecByQuaternion(
-  Eigen::Quaterniond& q, const Eigen::Vector3d& v);
-Eigen::Vector3d rotateVecFromGlobalToLocalByQuaternion(
+// Rotate a 3D vector from global frame to local frame
+// by floating-base's quaternion
+Eigen::Vector3d RotateVecFromGlobalToLocalByQuaternion(
   const Eigen::Quaterniond& q, const Eigen::Vector3d& v);
-Eigen::Vector3d rotateVecFromLocalToGlobalByQuaternion(
+
+// Rotate a 3D vector from local frame to global frame
+// by floating-base's quaternion
+Eigen::Vector3d RotateVecFromLocalToGlobalByQuaternion(
   const Eigen::Quaterniond& q, const Eigen::Vector3d& v);
 
 }  // namespace dairlib

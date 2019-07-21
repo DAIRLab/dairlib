@@ -184,7 +184,6 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   Eigen::MatrixXd stance_foot_body_rot = stance_foot_body_pose.linear();
   Vector3d stance_foot_pos = stance_foot_body_pos +
                              stance_foot_body_rot * pt_on_stance_foot;
-  // std::cout<<"stance_foot_pos^T = "<<stance_foot_pos.transpose()<<"\n";
 
 
 
@@ -207,15 +206,12 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     CoM = tree_->centerOfMass(cache);
     dCoM = J_com * v;
   }
-  // std::cout<<"CoM = "<<CoM.transpose()<<"\n";
-  // std::cout<<"dCoM = "<<dCoM.transpose()<<"\n";
 
   double pred_omega = sqrt(9.81 / CoM(2));
 
   Vector2d CP;
   CP << (CoM(0) + dCoM(0) / pred_omega),
   (CoM(1) + dCoM(1) / pred_omega);
-  // std::cout<<"CP = "<<CP.transpose()<<"\n";
 
   // Walking position control
   if (is_walking_position_control_) {
@@ -259,8 +255,6 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
       0);
     Vector3d heading_cross_CoM_to_stance_foot =
       base_yaw_heading.cross(CoM_to_stance_foot);
-    // std::cout<<"heading_cross_CoM_to_stance_foot = "<<
-    //  heading_cross_CoM_to_stance_foot.transpose()<<"\n";
 
     // Select the point which lies on the line
     Vector2d CoM_or_stance_foot;
@@ -283,22 +277,15 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     // Check if CP is in the halfplace. If not, we project it onto the line.
     Vector3d heading_cross_CoM_to_CP =
       base_yaw_heading.cross(CoM_or_stance_foot_to_CP);
-    // std::cout<<"heading_cross_CoM_to_CP = "<<
-    //     heading_cross_CoM_to_CP.transpose()<<"\n";
     if ( ((fsm_state(0) == right_stance_) && (heading_cross_CoM_to_CP(2) < 0)) ||
          ((fsm_state(0) == left_stance_) && (heading_cross_CoM_to_CP(2) > 0)) ) {
       Vector3d perp_heading_dir = heading_cross_CoM_to_CP.cross(base_yaw_heading);
       perp_heading_dir = perp_heading_dir / perp_heading_dir.norm();
-      // std::cout<<"perp_heading_dir = "<<perp_heading_dir.transpose()<<"\n";
       Vector3d projection_cf_CoM_cr_stance_foot_to_CP =
         (CoM_or_stance_foot_to_CP.dot(perp_heading_dir)) * perp_heading_dir;
-      // std::cout<<"projection_cf_CoM_cr_stance_foot_to_CP = "<<
-      //  projection_cf_CoM_cr_stance_foot_to_CP.transpose()<<"\n";
       CP(0) = CP(0) - projection_cf_CoM_cr_stance_foot_to_CP(0);
       CP(1) = CP(1) - projection_cf_CoM_cr_stance_foot_to_CP(1);
-      // std::cout<<"CP = "<<CP.transpose()<<"\n";
     }
-    // std::cout<<"CP = "<<CP.transpose()<<"\n";
   }
 
   // Cap the step length
@@ -329,8 +316,6 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
                                     (start_time_of_this_interval + end_time_of_this_interval) / 2,
                                     end_time_of_this_interval
                                    };
-  // std::cout<<"T_waypoint = "<<T_waypoint[0]<<", "<<T_waypoint[1]<<", "<<
-  // T_waypoint[2]<<"\n";
 
   std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
   // x
@@ -361,13 +346,6 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
   Y_dot[2](2, 0) = desired_final_vertical_foot_velocity_;
   PiecewisePolynomial<double> swing_foot_spline =
     PiecewisePolynomial<double>::Cubic(T_waypoint, Y, Y_dot);
-  // std::cout<<"Notice that the trajectory is shifted in time (current time)"
-  // for(double d = 0; d<=2; d+=0.1){
-  //  std::cout<<swing_foot_spline.value(d) <<" ";
-  // }
-  // std::cout<<std::endl;
-  // std::cout<<"FootTraj.value(current_time)^T = "<<
-  //   swing_foot_spline.value(current_time).transpose()<<"\n";
 
   return swing_foot_spline;
 }

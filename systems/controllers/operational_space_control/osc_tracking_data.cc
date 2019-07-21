@@ -50,7 +50,6 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
                              double t,
                              int finite_state_machine_state,
                              double time_since_last_state_switch) {
-  // cout << "Update data for " << name_ << endl;
   // Update track_at_current_step_
   TrackOrNot(finite_state_machine_state, time_since_last_state_switch);
 
@@ -69,29 +68,14 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
       dy_des_ = VectorXd::Zero(n_r_);
       ddy_des_ = VectorXd::Zero(n_r_);
     }
-    // cout << "y_des_ = " << y_des_.transpose() << endl;
-    // cout << "dy_des_ = " << dy_des_.transpose() << endl;
-    // cout << "ddy_des_ = " << ddy_des_.transpose() << endl;
 
     // Update feedback output (Calling virtual methods)
-    // cout << "UpdateYAndError...\n";
     UpdateYAndError(x_w_spr, cache_w_spr, tree_w_spr);
-    // cout << "UpdateYdot...\n";
     UpdateYdot(x_w_spr, cache_w_spr, tree_w_spr);
-    // cout << "UpdateJ...\n";
     UpdateJ(x_wo_spr, cache_wo_spr, tree_wo_spr);
-    // cout << "UpdateJdotV...\n";
     UpdateJdotV(x_wo_spr, cache_wo_spr, tree_wo_spr);
-    // cout << "Finished updating\n";
 
     // Update desired output with pd control
-    // cout << "ddy_des_ = " << ddy_des_ << endl;
-    // cout << "dy_des_ = " << dy_des_ << endl;
-    // cout << "y_des_ = " << y_des_ << endl;
-    // cout << "dy_ = " << dy_ << endl;
-    // cout << "y_ = " << y_ << endl;
-    // cout << "K_d_ = " << K_d_ << endl;
-    // cout << "K_p_ = " << K_p_ << endl;
     ddy_command_ = ddy_des_ + K_p_ * (error_y_) + K_d_ * (dy_des_ - dy_);
 
     return track_at_current_step_;
@@ -110,8 +94,6 @@ MatrixXd OscTrackingData::GetWeight() {
 void OscTrackingData::TrackOrNot(int finite_state_machine_state,
                                  double time_since_last_state_switch) {
   if (state_.empty()) {
-    // cout << "time_since_last_state_switch = " << time_since_last_state_switch << endl;
-    // cout << "period_of_no_control_ = " << period_of_no_control_ << endl;
     if (time_since_last_state_switch >= period_of_no_control_) {
       track_at_current_step_ = true;
     } else {
@@ -124,9 +106,7 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
   vector<int>::iterator it = find(state_.begin(),
                                   state_.end(),
                                   finite_state_machine_state);
-  // TODO: test the following line
   state_idx_ = std::distance(state_.begin(), it);
-  // cout << "state_idx_ = " << state_idx_ << endl;
   // Disable tracking by setting the weight to be zero when the current state
   // is not found in `state_`
   if (it != state_.end() &&
@@ -381,12 +361,6 @@ void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
   double theta = 2 * acos(relative_qaut.w());
   Vector3d rot_axis = relative_qaut.vec() / sin(theta / 2);
 
-  // cout << "y_quat = " << y_quat.w() << y_quat.vec().transpose() << endl;
-  // cout << "y_quat_des = " << y_quat_des.w() << " " << y_quat_des.vec().transpose() << endl;
-  // cout << "relative_qaut = " << relative_qaut.w() << relative_qaut.vec().transpose() << endl;
-  // cout << "theta = " << theta << endl;
-  // cout << "rot_axis = " << rot_axis.transpose() << endl;
-
   error_y_ = theta * rot_axis;
 }
 void RotTaskSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
@@ -548,9 +522,9 @@ AbstractTrackingData::AbstractTrackingData(string name,
     MatrixXd K_p,
     MatrixXd K_d,
     MatrixXd W,
-    bool traj_is_const,
-    bool traj_has_exp) : OscTrackingData(name, n_r,
-          K_p, K_d, W, traj_is_const, traj_has_exp) {
+    OscUserDefinedTraj* user_defined_traj) : OscTrackingData(name, n_r,
+          K_p, K_d, W, false, false),
+  user_defined_traj_(user_defined_traj) {
 }
 
 void AbstractTrackingData::UpdateYAndError(const VectorXd& x_w_spr,

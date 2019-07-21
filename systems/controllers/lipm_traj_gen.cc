@@ -121,9 +121,6 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   if ((end_time_of_this_interval <= current_time + 0.001)) {
     end_time_of_this_interval = current_time + 0.002;
   }
-  // cout << "current_time = " << current_time <<
-  // ", end_time_of_this_interval = " << end_time_of_this_interval << endl;
-  // std::cout<<"end_time_of_this_interval: "<<end_time_of_this_interval<<"\n";
 
   // Kinematics cache and indices
   KinematicsCache<double> cache = tree_->CreateKinematicsCache();
@@ -146,8 +143,6 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   Vector3d CoM = tree_->centerOfMass(cache);
   MatrixXd J = tree_->centerOfMassJacobian(cache);
   Vector3d dCoM = J * v;
-  // std::cout<<"center of mass:\n"<<CoM<<"\n";
-  // std::cout<<"dCoM:\n"<<dCoM<<"\n";
 
   // Stance foot position (Forward Kinematics)
   Eigen::Isometry3d stance_foot_body_pose =
@@ -156,7 +151,6 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   Eigen::MatrixXd stance_foot_body_rot = stance_foot_body_pose.linear();
   Vector3d stance_foot_pos = stance_foot_body_pos +
       stance_foot_body_rot * pt_on_stance_foot;
-  // std::cout<<"stance_foot_pos^T = "<<stance_foot_pos.transpose()<<"\n";
 
   // Get CoM_wrt_foot for LIPM
   // Prevent zCoM_wrt_foot from being non-positive (in simulation) cause of
@@ -168,8 +162,6 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   const double dxCoM_wrt_foot = dCoM(0);
   const double dyCoM_wrt_foot = dCoM(1);
   const double dzCoM_wrt_foot = dCoM(2);
-  // std::cout<<"(x,y,z,dx,dy) of CoM_wrt_foot = "<<xCoM_wrt_foot<<","<<
-  // yCoM_wrt_foot<<","<<zCoM_wrt_foot<<","<<dxCoM_wrt_foot<<","<<dyCoM_wrt_foot<<"\n";
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   std::vector<double> T_waypoint_com = {current_time, end_time_of_this_interval};
@@ -199,7 +191,6 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   double constx2 = 0.5 * (xCoM_wrt_foot - dxCoM_wrt_foot / omega_td);
   double consty1 = 0.5 * (yCoM_wrt_foot + dyCoM_wrt_foot / omega_td);
   double consty2 = 0.5 * (yCoM_wrt_foot - dyCoM_wrt_foot / omega_td);
-  // std::cout<<"omega_td = "<<omega_td<<"\n";
 
   // Sum of two exponential + one-segment 3D polynomial
   MatrixXd K = MatrixXd::Zero(3, 2);
@@ -214,24 +205,12 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
 
   auto exp_traj = ExponentialPlusPiecewisePolynomial<double>(
                     K, A, alpha, pp_part);
-  // std::cout<<"Notice that the trajectory is shifted in time (wrt current time) and space (wrt stance foot position)"
-  // std::cout<<"First dimension:\n  (from traj, from math.h)\n";
-  // for(double d = 0; d<=1; d+=0.1){
-  //   double fromMath = K(0,0)*exp(A(0,0)*d) + K(0,1)*exp(A(1,1)*d);
-  //   std::cout<<"  t="<<d<<": ("<<(exp_traj.value(d))(0) <<", "<<fromMath<<")\n";
-  // }
-  // std::cout<<"Second dimension:\n  (from traj, from math.h)\n";
-  // for(double d = 0; d<=1; d+=0.1){
-  //   double fromMath = K(1,0)*exp(A(0,0)*d) + K(1,1)*exp(A(1,1)*d);
-  //   std::cout<<"  t="<<d<<": ("<<(exp_traj.value(d))(1) <<", "<<fromMath<<")\n";
-  // }
-  // std::cout<<std::endl;
 
   // Assign traj
   *traj = exp_traj;
 }
 
-} //namespace systems
-} //namespace dairlib
+}  // namespace systems
+}  // namespace dairlib
 
 

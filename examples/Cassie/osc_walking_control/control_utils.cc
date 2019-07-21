@@ -4,8 +4,7 @@ using Eigen::Vector3d;
 
 namespace dairlib {
 
-// Rotate a 3D vector by quaternion which represent a roatation
-Vector3d rotateVecByQuaternion(
+Vector3d RotateVecByQuaternion(
   Eigen::Quaterniond q, const Vector3d& v) {
   q.normalize();
 
@@ -16,17 +15,15 @@ Vector3d rotateVecByQuaternion(
 
   return rotatedP.vec();
 }
-// Rotate a 3D vector from global frame to local frame
-// by floating-base's quaternion
-Vector3d rotateVecFromGlobalToLocalByQuaternion(
+
+Vector3d RotateVecFromGlobalToLocalByQuaternion(
   const Eigen::Quaterniond& q, const Vector3d& v) {
-  return rotateVecByQuaternion(q.conjugate(), v);
+  return RotateVecByQuaternion(q.conjugate(), v);
 }
-// Rotate a 3D vector from local frame to global frame
-// by floating-base's quaternion
-Vector3d rotateVecFromLocalToGlobalByQuaternion(
+
+Vector3d RotateVecFromLocalToGlobalByQuaternion(
   const Eigen::Quaterniond& q, const Vector3d& v) {
-  return rotateVecByQuaternion(q, v);
+  return RotateVecByQuaternion(q, v);
 }
 
 

@@ -43,10 +43,10 @@ FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
   kp_pos_sagital_ = 1.0;
   kd_pos_sagital_ = 0.2;
   vel_max_sagital_ = 1;
-  vel_min_sagital_ = -1;  // TODO: need to test this
+  vel_min_sagital_ = -1;  // TODO(yminchen): need to test this
 
-  k_fp_ff_sagital_ = 0.16;  // TODO: these are for going forward.
-  //                                // Should have parameters for going backward
+  k_fp_ff_sagital_ = 0.16;  // TODO(yminchen): these are for going forward.
+                            // Should have parameters for going backward
   k_fp_fb_sagital_ = 0.04;
   target_position_offset_ = -0.16;  // Due to steady state error
 
@@ -83,8 +83,6 @@ void FootPlacementControl::CalcFootPlacement(
   Vector3d CoM = tree_->centerOfMass(cache);
   MatrixXd J = tree_->centerOfMassJacobian(cache);
   Vector3d dCoM = J * v;
-  // std::cout<<"center of mass:\n"<<CoM<<"\n";
-  // std::cout<<"dCoM:\n"<<dCoM<<"\n";
 
   // Extract quaternion from floating base position
   Eigen::Quaterniond floating_base_quat(q(3), q(4), q(5), q(6));
@@ -111,12 +109,12 @@ void FootPlacementControl::CalcFootPlacement(
 
     Vector3d global_CoM_to_target_pos_3d;
     global_CoM_to_target_pos_3d << global_CoM_to_target_pos, 0;
-    Vector3d local_CoM_to_target_pos = rotateVecFromGlobalToLocalByQuaternion(
+    Vector3d local_CoM_to_target_pos = RotateVecFromGlobalToLocalByQuaternion(
                                          floating_base_quat,
                                          global_CoM_to_target_pos_3d);
-    Vector3d local_dCoM = rotateVecFromGlobalToLocalByQuaternion(
+    Vector3d local_dCoM = RotateVecFromGlobalToLocalByQuaternion(
                             floating_base_quat, dCoM);
-    ///////////////////// Sagital /////////////////////
+    //////////////////// Sagital ////////////////////
     // Position Control
     double dCoM_sagital = local_dCoM(0);
     double des_sagital_vel =
@@ -124,36 +122,30 @@ void FootPlacementControl::CalcFootPlacement(
       kd_pos_sagital_ * (-dCoM_sagital);
     des_sagital_vel = std::min(vel_max_sagital_,
                                std::max(vel_min_sagital_, des_sagital_vel));
-    // std::cout<<"local_CoM_to_target_pos_x = "<<local_CoM_to_target_pos(0)<<"\n";
     // Velocity control
     double delta_CP_sagital =
       -k_fp_ff_sagital_ * des_sagital_vel
       - k_fp_fb_sagital_ * (des_sagital_vel - dCoM_sagital);
     Vector3d delta_CP_sagital_3D_local(delta_CP_sagital, 0, 0);
-    delta_CP_sagital_3D_global = rotateVecFromLocalToGlobalByQuaternion(
+    delta_CP_sagital_3D_global = RotateVecFromLocalToGlobalByQuaternion(
                                    floating_base_quat,
                                    delta_CP_sagital_3D_local);
-    // std::cout<<"(dCoM_sagital, des_sagital_vel) = "<<dCoM_sagital<<
-    //     ", "<<des_sagital_vel<<"\n\n";
 
-    ///////////////////// Lateral /////////////////////  TODO: need to tune this
+    //////////////////// Lateral ////////////////////  TODO(yminchen): tune this
     // Position Control
     double dCoM_lateral = local_dCoM(1);
     double des_lateral_vel = kp_pos_lateral_ * (local_CoM_to_target_pos(1)) +
                              kd_pos_lateral_ * (-dCoM_lateral);
     des_lateral_vel = std::min(vel_max_lateral_,
                                std::max(vel_min_lateral_, des_lateral_vel));
-    // std::cout<<"local_CoM_to_target_pos_x = "<<local_CoM_to_target_pos(0)<<"\n";
     // Velocity control
     double delta_CP_lateral =
       -k_fp_ff_lateral_ * des_lateral_vel
       - k_fp_fb_lateral_ * (des_lateral_vel - dCoM_lateral);
     Vector3d delta_CP_lateral_3D_local(0, delta_CP_lateral, 0);
-    delta_CP_lateral_3D_global = rotateVecFromLocalToGlobalByQuaternion(
+    delta_CP_lateral_3D_global = RotateVecFromLocalToGlobalByQuaternion(
                                    floating_base_quat,
                                    delta_CP_lateral_3D_local);
-    // std::cout<<"(dCoM_lateral, des_lateral_vel) = "<<dCoM_lateral<<
-    //     ", "<<des_lateral_vel<<"\n\n";
   }
 
   // Assign foot placement

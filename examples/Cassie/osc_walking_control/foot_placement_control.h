@@ -8,8 +8,8 @@ namespace dairlib {
 namespace cassie {
 namespace cp_control {
 
-//TODO(yminchen): test: we can change the feedforward term to v*T/2 and overwrite cp.
-
+// TODO(yminchen): we can replace cp with raibert style control. (feedforward
+// term is v*T/2)
 
 
 /// FootPlacementControl calculates the deviation from capture point in order

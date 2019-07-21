@@ -200,7 +200,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<Eigen::VectorXd> pt_on_body_ = {};
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
-  // TODO(yminchen): Can you get contact points from RBT???
 
   // `state_` is the finite state machine state when the contact constraint is
   // active. If `state_` is empty, then the constraint is always active.

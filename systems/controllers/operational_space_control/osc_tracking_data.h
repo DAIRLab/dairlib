@@ -1,6 +1,3 @@
-//TODO: check if body_index_wo_spr is with spring or without spring
-
-
 #pragma once
 
 #include <Eigen/Dense>
@@ -12,6 +9,8 @@
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 
 #include "systems/framework/output_vector.h"
+
+#include "systems/controllers/operational_space_control/osc_user_defined_traj.h"
 
 namespace dairlib {
 namespace systems {
@@ -399,8 +398,7 @@ class AbstractTrackingData final : public OscTrackingData {
                        Eigen::MatrixXd K_p,
                        Eigen::MatrixXd K_d,
                        Eigen::MatrixXd W,
-                       bool traj_is_const = false,
-                       bool traj_has_exp = false);
+                       OscUserDefinedTraj* user_defined_traj);
 
   AbstractTrackingData() {}  // Default constructor
 
@@ -419,6 +417,8 @@ class AbstractTrackingData final : public OscTrackingData {
                    RigidBodyTree<double>* tree_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
+
+  OscUserDefinedTraj* user_defined_traj_;
 };
 
 

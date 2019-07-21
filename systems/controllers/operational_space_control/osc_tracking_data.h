@@ -75,7 +75,7 @@ class OscTrackingData {
   Eigen::VectorXd GetOutput() {return y_;}
   Eigen::MatrixXd GetJ() {return J_;}
   Eigen::VectorXd GetJdotTimesV() {return JdotV_;}
-  Eigen::VectorXd GetDesiredOutputWithPdControl();
+  Eigen::VectorXd GetCommandOutput() {return ddy_command_;}
   Eigen::MatrixXd GetWeight();
   // void UpdatePGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
   // void UpdateDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
@@ -90,7 +90,7 @@ class OscTrackingData {
   bool GetTrackOrNot() {return track_at_current_step_;}
 
   // Print feedback and desired values
-  void PrintFeedbackAndDesiredValues();
+  void PrintFeedbackAndDesiredValues(Eigen::VectorXd dv);
 
   // Finalize and ensure that users construct OscTrackingData class correctly.
   // (called in OSC constructor)
@@ -164,6 +164,7 @@ class OscTrackingData {
   // cache
   bool track_at_current_step_;
   int state_idx_ = 0;
+  Eigen::VectorXd ddy_command_;
 };
 
 

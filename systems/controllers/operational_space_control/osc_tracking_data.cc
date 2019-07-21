@@ -1,5 +1,6 @@
 #include "systems/controllers/operational_space_control/osc_tracking_data.h"
 
+#include <math.h>
 #include <algorithm>
 
 #include "common/math_utils.h"
@@ -87,21 +88,21 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
     UpdateJdotV(x_wo_spr, cache_wo_spr, tree_wo_spr);
     // cout << "Finished updating\n";
 
+    // Update desired output with pd control
+    // cout << "ddy_des_ = " << ddy_des_ << endl;
+    // cout << "dy_des_ = " << dy_des_ << endl;
+    // cout << "y_des_ = " << y_des_ << endl;
+    // cout << "dy_ = " << dy_ << endl;
+    // cout << "y_ = " << y_ << endl;
+    // cout << "K_d_ = " << K_d_ << endl;
+    // cout << "K_p_ = " << K_p_ << endl;
+    ddy_command_ = ddy_des_ + K_p_ * (error_y_) + K_d_ * (dy_des_ - dy_);
+
     return track_at_current_step_;
   }
 }
 
 // Getters
-VectorXd OscTrackingData::GetDesiredOutputWithPdControl() {
-  // cout << "ddy_des_ = " << ddy_des_ << endl;
-  // cout << "dy_des_ = " << dy_des_ << endl;
-  // cout << "y_des_ = " << y_des_ << endl;
-  // cout << "dy_ = " << dy_ << endl;
-  // cout << "y_ = " << y_ << endl;
-  // cout << "K_d_ = " << K_d_ << endl;
-  // cout << "K_p_ = " << K_p_ << endl;
-  return ddy_des_ + K_p_ * (error_y_) + K_d_ * (dy_des_ - dy_);
-}
 MatrixXd OscTrackingData::GetWeight() {
   if (track_at_current_step_) {
     return W_;
@@ -127,6 +128,7 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
                                   finite_state_machine_state);
   // TODO: test the following line
   state_idx_ = std::distance(state_.begin(), it);
+  // cout << "state_idx_ = " << state_idx_ << endl;
   // Disable tracking by setting the weight to be zero when the current state
   // is not found in `state_`
   if (it != state_.end() &&
@@ -136,15 +138,16 @@ void OscTrackingData::TrackOrNot(int finite_state_machine_state,
     track_at_current_step_ = false;
   }
 }
-void OscTrackingData::PrintFeedbackAndDesiredValues() {
+void OscTrackingData::PrintFeedbackAndDesiredValues(VectorXd dv) {
   cout << name_ << ":\n";
   cout << "  y = " << y_.transpose() << endl;
   cout << "  y_des = " << y_des_.transpose() << endl;
+  cout << "  error_y = " << error_y_.transpose() << endl;
   cout << "  dy = " << dy_.transpose() << endl;
   cout << "  dy_des = " << dy_des_.transpose() << endl;
   cout << "  ddy_des = " << ddy_des_.transpose() << endl;
-  cout << "  ddy_command = " << GetDesiredOutputWithPdControl().transpose() <<
-       endl;
+  cout << "  ddy_command = " << ddy_command_.transpose() << endl;
+  cout << "  ddy_command_sol = " << (J_ * dv + JdotV_).transpose() << endl;
 }
 
 // Run this function in OSC constructor to make sure that users constructed
@@ -372,13 +375,19 @@ void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
   y_ = y_4d;
-  Eigen::Vector4d y_des_4d = y_des_;
-  Quaterniond y_quat_des(y_des_4d);
+  DRAKE_DEMAND(y_des_.size() == 4);
+  Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
 
   // Get relative quaternion (from current to desired)
   Quaterniond relative_qaut = NormalizeQuaternion(y_quat_des * y_quat.inverse());
   double theta = 2 * acos(relative_qaut.w());
   Vector3d rot_axis = relative_qaut.vec() / sin(theta / 2);
+
+  // cout << "y_quat = " << y_quat.w() << y_quat.vec().transpose() << endl;
+  // cout << "y_quat_des = " << y_quat_des.w() << " " << y_quat_des.vec().transpose() << endl;
+  // cout << "relative_qaut = " << relative_qaut.w() << relative_qaut.vec().transpose() << endl;
+  // cout << "theta = " << theta << endl;
+  // cout << "rot_axis = " << rot_axis.transpose() << endl;
 
   error_y_ = theta * rot_axis;
 }

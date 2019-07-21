@@ -41,8 +41,6 @@ using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 
-DEFINE_double(end_time, 0.05, "End time of simulation");
-
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -69,13 +67,8 @@ int DoMain(int argc, char* argv[]) {
   const std::string channel_u = "CASSIE_INPUT";
 
   // Create state receiver.
-  // auto state_sub = builder.AddSystem(
-  //                    LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-  //                      channel_x, &lcm_local));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
                           tree_with_springs);
-  // builder.Connect(state_sub->get_output_port(),
-                  // state_receiver->get_input_port(0));
 
   // Create command sender.
   auto command_pub = builder.AddSystem(
@@ -126,9 +119,9 @@ int DoMain(int argc, char* argv[]) {
   // cout << "Adding center of mass tracking\n";
   Vector3d desired_com(0, 0, 0.89);
   MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 2;
-  W_com(1, 1) = 2;
-  W_com(2, 2) = 2000;
+  W_com(0, 0) = 2;//2
+  W_com(1, 1) = 2;//2
+  W_com(2, 2) = 2000;//2000
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData center_of_mass_traj("lipm_traj", 3,
@@ -169,33 +162,6 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(osc->get_output_port(0),
                   command_sender->get_input_port(0));
-
-  /*auto diagram = builder.Build();
-  auto context = diagram->CreateDefaultContext();
-
-  // Assign fixed value to osc constant traj port
-  systems::controllers::AssignConstTrajToInputPorts(osc,
-      diagram.get(), context.get());
-
-  /// Use the simulator to drive at a fixed rate
-  /// If set_publish_every_time_step is true, this publishes twice
-  /// Set realtime rate. Otherwise, runs as fast as possible
-  auto stepper = std::make_unique<drake::systems::Simulator<double>>(*diagram,
-                 std::move(context));
-  stepper->set_publish_every_time_step(false);
-  stepper->set_publish_at_initialization(false);
-  stepper->set_target_realtime_rate(1.0);
-  stepper->Initialize();
-
-
-  drake::log()->info("controller started");
-
-  // stepper->StepTo(std::numeric_limits<double>::infinity());
-  stepper->StepTo(FLAGS_end_time);*/
-
-
-
-
 
 
   // Create the diagram and context

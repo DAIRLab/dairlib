@@ -427,17 +427,22 @@ VectorXd OperationalSpaceControl::SolveQp(
                         traj, t,
                         fsm_state, time_since_last_state_switch);
     if (track_or_not) {
-      VectorXd ddy_t = tracking_data->GetDesiredOutputWithPdControl();
+      VectorXd ddy_t = tracking_data->GetCommandOutput();
       // cout << "ddy_t = \n" << ddy_t << endl;
       MatrixXd W = tracking_data->GetWeight();
-      // cout << "W = \n" << W << endl;
+      cout << "W = \n" << W << endl;
       MatrixXd J_t = tracking_data->GetJ();
       // cout << "J_t = \n" << J_t << endl;
       VectorXd JdotV_t = tracking_data->GetJdotTimesV();
       // cout << "JdotV_t = \n" << JdotV_t << endl;
       //TODO: later, if track_or_not = false, we can just update W
-      prog.AddQuadraticCost(J_t.transpose()*W * J_t,
-                            J_t.transpose()*W * (JdotV_t - ddy_t),
+      // The tracking cost is
+      // 0.5 * (J_*dv + JdotV - y_command)^T * W * (J_*dv + JdotV - y_command).
+      // We ignore the constant term
+      // 0.5 * (JdotV - y_command)^T * W * (JdotV - y_command),
+      // since it doesn't change the result of QP.
+      prog.AddQuadraticCost(J_t.transpose()* W * J_t,
+                            J_t.transpose()* W * (JdotV_t - ddy_t),
                             dv);
     }
   }
@@ -446,7 +451,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   const MathematicalProgramResult result = Solve(prog);
   SolutionResult solution_result = result.get_solution_result();
   if (print_tracking_info_) {
-    cout << to_string(solution_result) <<  endl;
+    cout << "\n" << to_string(solution_result) <<  endl;
   }
 
   // Extract solutions
@@ -456,6 +461,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd dv_sol = result.GetSolution(dv);
   VectorXd epsilon_sol = result.GetSolution(epsilon);
   if (print_tracking_info_) {
+    cout << "**********************\n";
     cout << "u_sol = " << u_sol.transpose() << endl;
     cout << "lambda_c_sol = " << lambda_c_sol.transpose() << endl;
     cout << "lambda_h_sol = " << lambda_h_sol.transpose() << endl;
@@ -465,7 +471,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Print QP result
   if (print_tracking_info_) {
-    cout << "\n**********************\n";
+    cout << "**********************\n";
     // 1. input cost
     if (W_input_.size() > 0) {
       cout << "input cost = " << 0.5 * u_sol.transpose()*W_input_*u_sol << endl;
@@ -483,22 +489,26 @@ VectorXd OperationalSpaceControl::SolveQp(
     // 4. Tracking cost
     for (auto tracking_data : *tracking_data_vec_) {
       if (tracking_data->GetTrackOrNot()) {
-        VectorXd ddy_t = tracking_data->GetDesiredOutputWithPdControl();
+        VectorXd ddy_t = tracking_data->GetCommandOutput();
         MatrixXd W = tracking_data->GetWeight();
         MatrixXd J_t = tracking_data->GetJ();
         VectorXd JdotV_t = tracking_data->GetJdotTimesV();
         //TODO: later, if track_or_not = false, we can just update W
+        // Note that the following cost also include the constant term, so that
+        // the user can differentiate which error norm is bigger. The constant
+        // term was not added to the QP since it doesn't change the result.
         cout << "Tracking cost (" << tracking_data->GetName() << ") = " <<
-             dv_sol.transpose() * J_t.transpose()*W * (J_t * dv_sol +
-                 JdotV_t - ddy_t) << endl;
+             0.5 * (J_t * dv_sol + JdotV_t - ddy_t).transpose() * W *
+             (J_t * dv_sol + JdotV_t - ddy_t) << endl;
       }
     }
 
     // Target acceleration
+    cout << "**********************\n";
     for (auto tracking_data : *tracking_data_vec_) {
       if (tracking_data->GetTrackOrNot()) {
         //TODO: later, if track_or_not = false, we can just update W
-        tracking_data->PrintFeedbackAndDesiredValues();
+        tracking_data->PrintFeedbackAndDesiredValues(dv_sol);
       }
     }
     cout << "**********************\n\n";

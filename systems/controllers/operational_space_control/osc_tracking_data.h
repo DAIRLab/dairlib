@@ -116,7 +116,7 @@ class OscTrackingData {
 
  private:
   // Check if we should do tracking in the current state
-  void TrackOrNot(int finite_state_machine_state,
+  void UpdateTrackingFalg(int finite_state_machine_state,
                   double time_since_last_state_switch);
 
   // Updaters of feedback output, jacobian and dJ/dt * v

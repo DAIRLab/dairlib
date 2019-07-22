@@ -51,7 +51,7 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
                              int finite_state_machine_state,
                              double time_since_last_state_switch) {
   // Update track_at_current_step_
-  TrackOrNot(finite_state_machine_state, time_since_last_state_switch);
+  UpdateTrackingFalg(finite_state_machine_state, time_since_last_state_switch);
 
   // Proceed based on the result of track_at_current_step_
   if (!track_at_current_step_) {
@@ -82,7 +82,7 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
   }
 }
 
-void OscTrackingData::TrackOrNot(int finite_state_machine_state,
+void OscTrackingData::UpdateTrackingFalg(int finite_state_machine_state,
                                  double time_since_last_state_switch) {
   if (state_.empty()) {
     if (time_since_last_state_switch >= period_of_no_control_) {

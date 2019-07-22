@@ -80,7 +80,7 @@ void DirconDistanceData<T>::updateConstraint(const Context<T>& context) {
   this->c_(0) = pt_delta.squaredNorm() - distance_ * distance_;
   this->J_ = 2*pt_delta.transpose()*(J1 - J2);
   this->Jdotv_ = 2*pt_delta.transpose()*(J1_times_v - J2dot_times_v);
-  this->Jdotv_(0) += (this->J_*pt_delta).squaredNorm();
+  this->Jdotv_(0) += 2*(((J1 - J2)*v)).squaredNorm();
   this->cdot_ = this->J_*v;
 }
 

@@ -179,7 +179,7 @@ int DoMain(int argc, char* argv[]) {
   auto& diagram_context = simulator.get_mutable_context();
 
   auto& state_receiver_context =
-    diagram.GetMutableSubsystemContext(*state_receiver, &diagram_context);
+      diagram.GetMutableSubsystemContext(*state_receiver, &diagram_context);
 
   // Wait for the first message.
   drake::log()->info("Waiting for first lcmt_robot_output");

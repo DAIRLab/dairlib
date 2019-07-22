@@ -61,8 +61,8 @@ FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
 }
 
 void FootPlacementControl::CalcFootPlacement(
-  const Context<double>& context,
-  BasicVector<double>* output) const {
+    const Context<double>& context,
+    BasicVector<double>* output) const {
   // Read in current state
   const OutputVector<double>* robotOutput = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -94,14 +94,14 @@ void FootPlacementControl::CalcFootPlacement(
 
   // Get desried heading direction
   Vector2d global_CoM_to_target_pos =
-    global_target_position_ - CoM.segment(0, 2);
+      global_target_position_ - CoM.segment(0, 2);
   double desried_heading_pos = GetDesiredHeadingPos(approx_pelvis_yaw,
-                               global_CoM_to_target_pos, circle_radius_of_no_turning_);
+      global_CoM_to_target_pos, circle_radius_of_no_turning_);
 
   // Walking control
   double heading_error = desried_heading_pos - approx_pelvis_yaw;
-  bool isPauseWalkingPositionControl = (heading_error > M_PI / 2 ||
-                                        heading_error < -M_PI / 2) ? true : false;
+  bool isPauseWalkingPositionControl =
+      (heading_error > M_PI / 2 || heading_error < -M_PI / 2) ? true : false;
 
   Vector3d delta_CP_sagital_3D_global(0, 0, 0);
   Vector3d delta_CP_lateral_3D_global(0, 0, 0);
@@ -118,14 +118,14 @@ void FootPlacementControl::CalcFootPlacement(
     // Position Control
     double dCoM_sagital = local_dCoM(0);
     double des_sagital_vel =
-      kp_pos_sagital_ * (local_CoM_to_target_pos(0) + target_position_offset_) +
-      kd_pos_sagital_ * (-dCoM_sagital);
+        kp_pos_sagital_ * (local_CoM_to_target_pos(0) + target_position_offset_) +
+        kd_pos_sagital_ * (-dCoM_sagital);
     des_sagital_vel = std::min(vel_max_sagital_,
                                std::max(vel_min_sagital_, des_sagital_vel));
     // Velocity control
     double delta_CP_sagital =
-      -k_fp_ff_sagital_ * des_sagital_vel
-      - k_fp_fb_sagital_ * (des_sagital_vel - dCoM_sagital);
+        - k_fp_ff_sagital_ * des_sagital_vel
+        - k_fp_fb_sagital_ * (des_sagital_vel - dCoM_sagital);
     Vector3d delta_CP_sagital_3D_local(delta_CP_sagital, 0, 0);
     delta_CP_sagital_3D_global = RotateVecFromLocalToGlobalByQuaternion(
                                    floating_base_quat,
@@ -140,8 +140,8 @@ void FootPlacementControl::CalcFootPlacement(
                                std::max(vel_min_lateral_, des_lateral_vel));
     // Velocity control
     double delta_CP_lateral =
-      -k_fp_ff_lateral_ * des_lateral_vel
-      - k_fp_fb_lateral_ * (des_lateral_vel - dCoM_lateral);
+        -k_fp_ff_lateral_ * des_lateral_vel
+        - k_fp_fb_lateral_ * (des_lateral_vel - dCoM_lateral);
     Vector3d delta_CP_lateral_3D_local(0, delta_CP_lateral, 0);
     delta_CP_lateral_3D_global = RotateVecFromLocalToGlobalByQuaternion(
                                    floating_base_quat,
@@ -150,8 +150,8 @@ void FootPlacementControl::CalcFootPlacement(
 
   // Assign foot placement
   Vector2d global_delta_CP_sagital_and_lateral(
-    delta_CP_sagital_3D_global(0) + delta_CP_lateral_3D_global(0),
-    delta_CP_sagital_3D_global(1) + delta_CP_lateral_3D_global(1));
+      delta_CP_sagital_3D_global(0) + delta_CP_lateral_3D_global(0),
+      delta_CP_sagital_3D_global(1) + delta_CP_lateral_3D_global(1));
   output->get_mutable_value() = global_delta_CP_sagital_and_lateral;
 }
 

@@ -28,14 +28,14 @@ namespace systems {
 namespace controllers {
 
 OperationalSpaceControl::OperationalSpaceControl(
-  RigidBodyTree<double>* tree_w_spr,
-  RigidBodyTree<double>* tree_wo_spr,
-  bool used_with_finite_state_machine,
-  bool print_tracking_info) :
-  tree_w_spr_(tree_w_spr),
-  tree_wo_spr_(tree_wo_spr),
-  used_with_finite_state_machine_(used_with_finite_state_machine),
-  print_tracking_info_(print_tracking_info) {
+    RigidBodyTree<double>* tree_w_spr,
+    RigidBodyTree<double>* tree_wo_spr,
+    bool used_with_finite_state_machine,
+    bool print_tracking_info) :
+        tree_w_spr_(tree_w_spr),
+        tree_wo_spr_(tree_wo_spr),
+        used_with_finite_state_machine_(used_with_finite_state_machine),
+        print_tracking_info_(print_tracking_info) {
   this->set_name("OSC");
 
   n_q_ = tree_wo_spr->get_num_positions();
@@ -54,7 +54,7 @@ OperationalSpaceControl::OperationalSpaceControl(
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-                  OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr)).get_index();
+      OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr)).get_index();
   this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
                                 &OperationalSpaceControl::CalcOptimalInput);
   if (used_with_finite_state_machine) {
@@ -63,7 +63,7 @@ OperationalSpaceControl::OperationalSpaceControl(
 
     // Discrete update to record the last state event time
     DeclarePerStepDiscreteUpdateEvent(
-      &OperationalSpaceControl::DiscreteVariableUpdate);
+        &OperationalSpaceControl::DiscreteVariableUpdate);
     prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   }
@@ -168,10 +168,10 @@ void OperationalSpaceControl::ConstructOSC() {
     int port_index;
     if (tracking_data->TrajHasExp()) {
       port_index = this->DeclareAbstractInputPort(traj_name,
-                   drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
+          drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
     } else {
       port_index = this->DeclareAbstractInputPort(traj_name,
-                   drake::Value<PiecewisePolynomial<double>> {}).get_index();
+          drake::Value<PiecewisePolynomial<double>> {}).get_index();
     }
     traj_name_to_port_index_map_[traj_name] = port_index;
   }
@@ -188,14 +188,13 @@ void OperationalSpaceControl::ConstructOSC() {
   lambda_h_ = prog_->NewContinuousVariables(n_h_, "lambda_holonomic");
   epsilon_ = prog_->NewContinuousVariables(n_c_, "epsilon");
 
-
   // Add constraints
   // 1. Dynamics constraint
   dynamics_constraint_ = prog_->AddLinearEqualityConstraint(
                            MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
                            VectorXd::Zero(n_v_),
-  {dv_, lambda_c_, lambda_h_, u_}).
-  evaluator().get();
+                           {dv_, lambda_c_, lambda_h_, u_}).
+                         evaluator().get();
   // 2. Holonomic constraint
   holonomic_constraint_ = prog_->AddLinearEqualityConstraint(
                             MatrixXd::Zero(n_h_, n_v_),
@@ -225,24 +224,24 @@ void OperationalSpaceControl::ConstructOSC() {
       friction_constraints_.push_back(prog_->AddLinearConstraint(
                                         mu_minus1.transpose(),
                                         0, numeric_limits<double>::infinity(),
-      {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 0, 1)}).
-      evaluator().get());
+          {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 0, 1)}).
+          evaluator().get());
 
       friction_constraints_.push_back(prog_->AddLinearConstraint(
                                         mu_plus1.transpose(),
                                         0, numeric_limits<double>::infinity(),
-      {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 0, 1)}).
-      evaluator().get());
+          {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 0, 1)}).
+          evaluator().get());
       friction_constraints_.push_back(prog_->AddLinearConstraint(
                                         mu_minus1.transpose(),
                                         0, numeric_limits<double>::infinity(),
-      {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 1, 1)}).
-      evaluator().get());
+          {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 1, 1)}).
+          evaluator().get());
       friction_constraints_.push_back(prog_->AddLinearConstraint(
                                         mu_plus1.transpose(),
                                         0, numeric_limits<double>::infinity(),
-      {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 1, 1)}).
-      evaluator().get());
+          {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 1, 1)}).
+          evaluator().get());
       friction_constraints_.push_back(prog_->AddLinearConstraint(one.transpose(),
                                       0, numeric_limits<double>::infinity(),
                                       lambda_c_.segment(3 * j + 2, 1)).
@@ -252,7 +251,7 @@ void OperationalSpaceControl::ConstructOSC() {
   // 5. Input constraint
   if (with_input_constraints_) {
     prog_->AddLinearConstraint(
-      MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_, u_);
+        MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_, u_);
   }
   // No joint position constraint in this implementation
 
@@ -264,15 +263,13 @@ void OperationalSpaceControl::ConstructOSC() {
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
-    prog_->AddQuadraticCost(
-      MatrixXd::Identity(n_v_, n_v_),
-      VectorXd::Zero(n_v_), dv_);
+    prog_->AddQuadraticCost(MatrixXd::Identity(n_v_, n_v_),
+        VectorXd::Zero(n_v_), dv_);
   }
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
-    prog_->AddQuadraticCost(
-      MatrixXd::Identity(n_c_, n_c_),
-      VectorXd::Zero(n_c_), epsilon_);
+    prog_->AddQuadraticCost(MatrixXd::Identity(n_c_, n_c_),
+        VectorXd::Zero(n_c_), epsilon_);
   }
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
@@ -284,7 +281,7 @@ void OperationalSpaceControl::ConstructOSC() {
 }
 
 std::vector<bool> OperationalSpaceControl::CalcActiveContactIndices(
-  int fsm_state) const {
+    int fsm_state) const {
   std::vector<bool> active_contact_flags;
   for (unsigned int i = 0; i < body_index_.size(); i++) {
     if (state_.empty()) {
@@ -301,8 +298,8 @@ std::vector<bool> OperationalSpaceControl::CalcActiveContactIndices(
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
-  const drake::systems::Context<double>& context,
-  drake::systems::DiscreteValues<double>* discrete_state) const {
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const {
   const BasicVector<double>* fsm_output = (BasicVector<double>*)
                                           this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
@@ -316,23 +313,23 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
 
     discrete_state->get_mutable_vector(
-      prev_event_time_idx_).get_mutable_value() << timestamp;
+        prev_event_time_idx_).get_mutable_value() << timestamp;
   }
   return drake::systems::EventStatus::Succeeded();
 }
 
 
 VectorXd OperationalSpaceControl::SolveQp(
-  VectorXd x_w_spr, VectorXd x_wo_spr,
-  const drake::systems::Context<double>& context, double t,
-  int fsm_state, double time_since_last_state_switch) const {
+    VectorXd x_w_spr, VectorXd x_wo_spr,
+    const drake::systems::Context<double>& context, double t,
+    int fsm_state, double time_since_last_state_switch) const {
 
   vector<bool> active_contact_flags = CalcActiveContactIndices(fsm_state);
 
   // Get Kinematics Cache
   KinematicsCache<double> cache_w_spr = tree_w_spr_->doKinematics(
-                                          x_w_spr.head(tree_w_spr_->get_num_positions()),
-                                          x_w_spr.tail(tree_w_spr_->get_num_velocities()));
+      x_w_spr.head(tree_w_spr_->get_num_positions()),
+      x_w_spr.tail(tree_w_spr_->get_num_velocities()));
   KinematicsCache<double> cache_wo_spr = tree_wo_spr_->doKinematics(
       x_wo_spr.head(n_q_), x_wo_spr.tail(n_v_));
 
@@ -412,26 +409,26 @@ VectorXd OperationalSpaceControl::SolveQp(
     for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
       if (active_contact_flags[i]) {
         friction_constraints_.at(5 * i)->UpdateCoefficients(
-          mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+            mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
         friction_constraints_.at(5 * i + 1)->UpdateCoefficients(
-          mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+            mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
         friction_constraints_.at(5 * i + 2)->UpdateCoefficients(
-          mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+            mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
         friction_constraints_.at(5 * i + 3)->UpdateCoefficients(
-          mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+            mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
         friction_constraints_.at(5 * i + 4)->UpdateCoefficients(
-          VectorXd::Ones(1).transpose(), VectorXd::Zero(1), inf_vectorxd);
+            VectorXd::Ones(1).transpose(), VectorXd::Zero(1), inf_vectorxd);
       } else {
         friction_constraints_.at(5 * i)->UpdateCoefficients(
-          Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
         friction_constraints_.at(5 * i + 1)->UpdateCoefficients(
-          Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
         friction_constraints_.at(5 * i + 2)->UpdateCoefficients(
-          Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
         friction_constraints_.at(5 * i + 3)->UpdateCoefficients(
-          Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
         friction_constraints_.at(5 * i + 4)->UpdateCoefficients(
-          VectorXd::Zero(1).transpose(), VectorXd::Zero(1), inf_vectorxd);
+            VectorXd::Zero(1).transpose(), VectorXd::Zero(1), inf_vectorxd);
       }
     }
   }
@@ -444,12 +441,12 @@ VectorXd OperationalSpaceControl::SolveQp(
     int port_index = traj_name_to_port_index_map_.at(traj_name);
     // Read in traj
     const drake::AbstractValue* traj_intput =
-      this->EvalAbstractInput(context, port_index);
+        this->EvalAbstractInput(context, port_index);
     DRAKE_DEMAND(traj_intput != nullptr);
     const drake::trajectories::Trajectory<double> & traj =
-      (tracking_data->TrajHasExp()) ?
-      traj_intput->get_value<ExponentialPlusPiecewisePolynomial<double>>() :
-      traj_intput->get_value<PiecewisePolynomial<double>>();
+        (tracking_data->TrajHasExp()) ?
+        traj_intput->get_value<ExponentialPlusPiecewisePolynomial<double>>() :
+        traj_intput->get_value<PiecewisePolynomial<double>>();
 
     bool track_or_not = tracking_data->Update(x_w_spr,
                         cache_w_spr, tree_w_spr_,
@@ -545,8 +542,8 @@ VectorXd OperationalSpaceControl::SolveQp(
 
 
 void OperationalSpaceControl::CalcOptimalInput(
-  const drake::systems::Context<double>& context,
-  systems::TimestampedVector<double>* control) const {
+    const drake::systems::Context<double>& context,
+    systems::TimestampedVector<double>* control) const {
   // Read in current state and simulation time
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -573,7 +570,7 @@ void OperationalSpaceControl::CalcOptimalInput(
   if (used_with_finite_state_machine_) {
     // Read in finite state machine
     const BasicVector<double>* fsm_output = (BasicVector<double>*)
-                                            this->EvalVectorInput(context, fsm_port_);
+        this->EvalVectorInput(context, fsm_port_);
     VectorXd fsm_state = fsm_output->get_value();
 
     // Get discrete states

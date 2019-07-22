@@ -79,11 +79,10 @@ namespace controllers {
 
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
-  OperationalSpaceControl(
-    RigidBodyTree<double>* tree_w_spr,
-    RigidBodyTree<double>* tree_wo_spr,
-    bool used_with_finite_state_machine = true,
-    bool print_tracking_info = false);
+  OperationalSpaceControl(RigidBodyTree<double>* tree_w_spr,
+                          RigidBodyTree<double>* tree_wo_spr,
+                          bool used_with_finite_state_machine = true,
+                          bool print_tracking_info = false);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
@@ -93,7 +92,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
-    std::string name) const {
+      std::string name) const {
     return this->get_input_port(traj_name_to_port_index_map_.at(name));
   }
 
@@ -136,15 +135,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Osc checkers and constructor-related methods
   void CheckCostSettings();
   void CheckConstraintSettings();
-  Eigen::VectorXd SolveQp(
-    Eigen::VectorXd x_w_spr, Eigen::VectorXd x_wo_spr,
-    const drake::systems::Context<double>& context, double t,
-    int fsm_state, double time_since_last_state_switch) const;
+  Eigen::VectorXd SolveQp(Eigen::VectorXd x_w_spr, Eigen::VectorXd x_wo_spr,
+      const drake::systems::Context<double>& context, double t,
+      int fsm_state, double time_since_last_state_switch) const;
 
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
-    const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double>* discrete_state) const;
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
   // Output function
   void CalcOptimalInput(const drake::systems::Context<double>& context,

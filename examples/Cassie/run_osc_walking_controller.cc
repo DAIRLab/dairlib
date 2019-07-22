@@ -107,15 +107,15 @@ int DoMain(int argc, char* argv[]) {
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
   auto lipm_traj_generator =
-    builder.AddSystem<systems::LIPMTrajGenerator>(&tree_with_springs,
-        desired_com_height,
-        duration_per_state,
-        left_stance_state,
-        right_stance_state,
-        left_toe_idx,
-        Eigen::VectorXd::Zero(3),
-        right_toe_idx,
-        Eigen::VectorXd::Zero(3));
+      builder.AddSystem<systems::LIPMTrajGenerator>(&tree_with_springs,
+          desired_com_height,
+          duration_per_state,
+          left_stance_state,
+          right_stance_state,
+          left_toe_idx,
+          Eigen::VectorXd::Zero(3),
+          right_toe_idx,
+          Eigen::VectorXd::Zero(3));
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
@@ -125,9 +125,9 @@ int DoMain(int argc, char* argv[]) {
   Eigen::Vector2d global_target_position(5, 0);
   double circle_radius_of_no_turning = 1;
   auto foot_placement_control =
-    builder.AddSystem<cassie::cp_control::FootPlacementControl>(
-      &tree_with_springs, pelvis_idx,
-      global_target_position, circle_radius_of_no_turning);
+      builder.AddSystem<cassie::cp_control::FootPlacementControl>(
+        &tree_with_springs, pelvis_idx,
+        global_target_position, circle_radius_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
                   foot_placement_control->get_input_port_state());
 
@@ -139,22 +139,22 @@ int DoMain(int argc, char* argv[]) {
   double cp_offset = 0.06;
   double center_line_offset = 0.06;
   auto cp_traj_generator =
-    builder.AddSystem<systems::CPTrajGenerator>(&tree_with_springs,
-        mid_foot_height,
-        desired_final_foot_height,
-        desired_final_vertical_foot_velocity,
-        max_CoM_to_CP_dist,
-        duration_per_state,
-        left_stance_state,
-        right_stance_state,
-        left_toe_idx,
-        Eigen::VectorXd::Zero(3),
-        right_toe_idx,
-        Eigen::VectorXd::Zero(3),
-        pelvis_idx,
-        true, true, true,
-        cp_offset,
-        center_line_offset);
+      builder.AddSystem<systems::CPTrajGenerator>(&tree_with_springs,
+          mid_foot_height,
+          desired_final_foot_height,
+          desired_final_vertical_foot_velocity,
+          max_CoM_to_CP_dist,
+          duration_per_state,
+          left_stance_state,
+          right_stance_state,
+          left_toe_idx,
+          Eigen::VectorXd::Zero(3),
+          right_toe_idx,
+          Eigen::VectorXd::Zero(3),
+          pelvis_idx,
+          true, true, true,
+          cp_offset,
+          center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   cp_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
@@ -179,9 +179,9 @@ int DoMain(int argc, char* argv[]) {
                                tree_without_springs, "toe_right");
   // Get position/velocity index
   std::map<std::string, int> pos_idx_map_w_spr =
-    multibody::makeNameToPositionsMap(tree_with_springs);
+      multibody::makeNameToPositionsMap(tree_with_springs);
   std::map<std::string, int> vel_idx_map_w_spr =
-    multibody::makeNameToVelocitiesMap(tree_with_springs);
+      multibody::makeNameToVelocitiesMap(tree_with_springs);
   int left_toe_pos_idx_w_spr = pos_idx_map_w_spr.at("toe_left");
   int right_toe_pos_idx_w_spr = pos_idx_map_w_spr.at("toe_right");
   int left_hip_yaw_pos_idx_w_spr = pos_idx_map_w_spr.at("hip_yaw_left");
@@ -191,9 +191,9 @@ int DoMain(int argc, char* argv[]) {
   int left_hip_yaw_vel_idx_w_spr = vel_idx_map_w_spr.at("hip_yaw_leftdot");
   int right_hip_yaw_vel_idx_w_spr = vel_idx_map_w_spr.at("hip_yaw_rightdot");
   std::map<std::string, int> pos_idx_map_wo_spr =
-    multibody::makeNameToPositionsMap(tree_without_springs);
+      multibody::makeNameToPositionsMap(tree_without_springs);
   std::map<std::string, int> vel_idx_map_wo_spr =
-    multibody::makeNameToVelocitiesMap(tree_without_springs);
+      multibody::makeNameToVelocitiesMap(tree_without_springs);
   int left_toe_pos_idx_wo_spr = pos_idx_map_wo_spr.at("toe_left");
   int right_toe_pos_idx_wo_spr = pos_idx_map_wo_spr.at("toe_right");
   int left_hip_yaw_pos_idx_wo_spr = pos_idx_map_wo_spr.at("hip_yaw_left");
@@ -353,7 +353,7 @@ int DoMain(int argc, char* argv[]) {
   auto& diagram_context = simulator.get_mutable_context();
 
   auto& state_receiver_context =
-    diagram.GetMutableSubsystemContext(*state_receiver, &diagram_context);
+      diagram.GetMutableSubsystemContext(*state_receiver, &diagram_context);
 
   // Wait for the first message.
   drake::log()->info("Waiting for first lcmt_robot_output");

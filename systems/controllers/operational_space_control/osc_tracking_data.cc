@@ -30,13 +30,13 @@ OscTrackingData::OscTrackingData(string name,
                                  MatrixXd W,
                                  bool traj_is_const,
                                  bool traj_has_exp) :
-  name_(name),
-  n_r_(n_r),
-  K_p_(K_p),
-  K_d_(K_d),
-  W_(W),
-  traj_is_const_(traj_is_const),
-  traj_has_exp_(traj_has_exp) {
+    name_(name),
+    n_r_(n_r),
+    K_p_(K_p),
+    K_d_(K_d),
+    W_(W),
+    traj_is_const_(traj_is_const),
+    traj_has_exp_(traj_has_exp) {
 }
 
 // Updater
@@ -437,9 +437,11 @@ void JointSpaceTrackingData::AddStateAndJointToTrack(int state,
 void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_wo_spr,
     vector<int> joint_vel_idx_wo_spr) {
   joint_pos_idx_wo_spr_.insert(joint_pos_idx_wo_spr_.end(),
-                               joint_pos_idx_wo_spr.begin(), joint_pos_idx_wo_spr.end());
+                               joint_pos_idx_wo_spr.begin(),
+                               joint_pos_idx_wo_spr.end());
   joint_vel_idx_wo_spr_.insert(joint_vel_idx_wo_spr_.end(),
-                               joint_vel_idx_wo_spr.begin(), joint_vel_idx_wo_spr.end());
+                               joint_vel_idx_wo_spr.begin(),
+                               joint_vel_idx_wo_spr.end());
 }
 void JointSpaceTrackingData::AddStateAndJointToTrack(vector<int> state,
     vector<int> joint_pos_idx_wo_spr,
@@ -452,9 +454,11 @@ void JointSpaceTrackingData::AddJointToTrack(vector<int> joint_pos_idx_w_spr,
     vector<int> joint_pos_idx_wo_spr,
     vector<int> joint_vel_idx_wo_spr) {
   joint_pos_idx_w_spr_.insert(joint_pos_idx_w_spr_.end(),
-                              joint_pos_idx_w_spr.begin(), joint_pos_idx_w_spr.end());
+                              joint_pos_idx_w_spr.begin(),
+                              joint_pos_idx_w_spr.end());
   joint_vel_idx_w_spr_.insert(joint_vel_idx_w_spr_.end(),
-                              joint_vel_idx_w_spr.begin(), joint_vel_idx_w_spr.end());
+                              joint_vel_idx_w_spr.begin(),
+                              joint_vel_idx_w_spr.end());
   AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
 }
 void JointSpaceTrackingData::AddStateAndJointToTrack(vector<int> state,
@@ -473,7 +477,7 @@ void JointSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
   error_y_ = y_des_ - y_;
 }
 void JointSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
-                                        KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
+    KinematicsCache<double>& cache_w_spr, RigidBodyTree<double>* tree_w_spr) {
   MatrixXd J = MatrixXd::Zero(1, tree_w_spr->get_num_velocities());
   J(0, joint_vel_idx_w_spr_.at(GetStateIdx())) = 1;
   dy_ = J * x_w_spr.tail(tree_w_spr->get_num_velocities());

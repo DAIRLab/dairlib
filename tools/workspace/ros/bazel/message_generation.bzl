@@ -51,7 +51,7 @@ def _genpy_impl(ctx):
     )
 
     # Generate the actual messages
-    ctx.action(
+    ctx.action.run(
         inputs=ctx.files.srcs,
         outputs=ctx.outputs.outs[:-2],
         executable=ctx.executable._gen_script,
@@ -69,7 +69,7 @@ def _genpy_impl(ctx):
     # Generate __init__.py for msg module
     # NOTE: it looks at the .py files in its output path, so it also
     # needs to depend on the previous step.
-    ctx.action(
+    ctx.action.run(
         inputs=ctx.files.srcs + ctx.outputs.outs[:-2],
         outputs=[ctx.outputs.outs[-2]],
         executable=ctx.executable._gen_script,

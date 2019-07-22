@@ -12,4 +12,5 @@ py_binary(
     deps=[
         ':msgs_py',
     ],
+    tags=["ros"],
 )

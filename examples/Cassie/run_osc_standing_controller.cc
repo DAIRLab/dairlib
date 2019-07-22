@@ -41,6 +41,12 @@ using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 
+// Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
+// publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
+// performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
+// Maybe we need to update the lcm driven loop to clear the queue of lcm message
+// if it's more than one message?
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -119,8 +125,8 @@ int DoMain(int argc, char* argv[]) {
   // cout << "Adding center of mass tracking\n";
   Vector3d desired_com(0, 0, 0.89);
   MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 2;//2
-  W_com(1, 1) = 2;//2
+  W_com(0, 0) = 200;//2
+  W_com(1, 1) = 200;//2
   W_com(2, 2) = 2000;//2000
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
@@ -205,6 +211,18 @@ int DoMain(int argc, char* argv[]) {
     // Write the lcmt_robot_output message into the context and advance.
     input_value.GetMutableData()->set_value(input_sub.message());
     const double time = input_sub.message().utime * 1e-6;
+
+    // Check if we are very far ahead or behind
+    // (likely due to a restart of the driving clock)
+    if (time > simulator.get_context().get_time() + 1.0 ||
+        time < simulator.get_context().get_time() - 1.0) {
+      std::cout << "Dispatcher time is " << simulator.get_context().get_time()
+          << ", but stepping to " << time << std::endl;
+      std::cout << "Difference is too large, resetting dispatcher time." <<
+          std::endl;
+      simulator.get_mutable_context().SetTime(time);
+    }
+
     simulator.AdvanceTo(time);
     // Force-publish via the diagram
     diagram.Publish(diagram_context);

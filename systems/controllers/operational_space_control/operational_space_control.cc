@@ -583,7 +583,7 @@ void OperationalSpaceControl::CalcOptimalInput(
   } else {
     u_sol = SolveQp(x_w_spr, x_wo_spr,
                     context, current_time,
-                    -1, -1);
+                    -1, current_time);
   }
 
   // Assign the control input

@@ -173,6 +173,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_v_;
   int n_u_;
 
+  // Size of holonomic constraint and total contact constraints
+  int n_h_;
+  int n_c_;
+
   // robot input limits
   Eigen::VectorXd u_min_;
   Eigen::VectorXd u_max_;
@@ -185,6 +189,21 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // floating base model flag
   bool is_quaternion_;
+
+  // MathematicalProgram
+  std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
+  // Decision variables
+  drake::solvers::VectorXDecisionVariable dv_;
+  drake::solvers::VectorXDecisionVariable u_;
+  drake::solvers::VectorXDecisionVariable lambda_c_;
+  drake::solvers::VectorXDecisionVariable lambda_h_;
+  drake::solvers::VectorXDecisionVariable epsilon_;
+  // Cost and constraints
+  drake::solvers::LinearEqualityConstraint* dynamics_constraint_;
+  drake::solvers::LinearEqualityConstraint* holonomic_constraint_;
+  drake::solvers::LinearEqualityConstraint* contact_constraints_;
+  std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
+  std::vector<drake::solvers::QuadraticCost*> tracking_cost_;
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user
@@ -205,12 +224,21 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // active. If `state_` is empty, then the constraint is always active.
   std::vector<int> state_;
 
-  // CalcActiveContactIndices gives the indices of active contact (constraint)
-  std::vector<int> CalcActiveContactIndices(int fsm_state) const;
+  // CalcActiveContactIndices gives a vector of flags indicating the active
+  // contact (constraint)
+  std::vector<bool> CalcActiveContactIndices(int fsm_state) const;
 
   // OSC tracking data member (store pointer because of caching)
   std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =
         std::make_unique<std::vector<OscTrackingData*>>();
+
+
+
+  // Testing
+  std::unique_ptr<double> filtered_solving_time_ =
+    std::make_unique<double>(1);
+
+
 };
 
 

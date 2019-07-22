@@ -15,6 +15,7 @@ using std::vector;
 using std::string;
 using std::numeric_limits;
 
+using Eigen::Vector2d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
@@ -155,6 +156,7 @@ void OperationalSpaceControl::CheckConstraintSettings() {
   }
   if (!state_.empty()) {
     DRAKE_DEMAND(state_.size() == body_index_.size());
+    DRAKE_DEMAND(state_.size() == pt_on_body_.size());
   }
 }
 
@@ -180,22 +182,128 @@ void OperationalSpaceControl::ConstructOSC() {
     traj_name_to_port_index_map_[traj_name] = port_index;
   }
 
-  // TODO: construct the QP here. (will do so after the controller is working)
+  // Construct QP
+  n_h_ = tree_wo_spr_->getNumPositionConstraints();
+  n_c_ = 3 * body_index_.size();
+  prog_ = std::make_unique<MathematicalProgram>();
+
+  // Add decision variables
+  dv_ = prog_->NewContinuousVariables(n_v_, "dv");
+  u_ = prog_->NewContinuousVariables(n_u_, "u");
+  lambda_c_ = prog_->NewContinuousVariables(n_c_, "lambda_contact");
+  lambda_h_ = prog_->NewContinuousVariables(n_h_, "lambda_holonomic");
+  epsilon_ = prog_->NewContinuousVariables(n_c_, "epsilon");
+
+
+  // Add constraints
+  // 1. Dynamics constraint
+  dynamics_constraint_ = prog_->AddLinearEqualityConstraint(
+                           MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
+                           VectorXd::Zero(n_v_),
+  {dv_, lambda_c_, lambda_h_, u_}).
+  evaluator().get();
+  // 2. Holonomic constraint
+  holonomic_constraint_ = prog_->AddLinearEqualityConstraint(
+                            MatrixXd::Zero(n_h_, n_v_),
+                            VectorXd::Zero(n_h_), dv_).
+                          evaluator().get();
+  // 3. Contact constraint
+  if (body_index_.size() > 0) {
+    if (w_soft_constraint_ <= 0) {
+      contact_constraints_ = prog_->AddLinearEqualityConstraint(
+                               MatrixXd::Zero(n_c_, n_v_),
+                               VectorXd::Zero(n_c_), dv_).
+                             evaluator().get();
+    } else {
+      // Relaxed version:
+      contact_constraints_ = prog_->AddLinearEqualityConstraint(
+                               MatrixXd::Zero(n_c_, n_v_ + n_c_),
+                               VectorXd::Zero(n_c_), {dv_, epsilon_}).
+                             evaluator().get();
+    }
+  }
+  // 4. Friction constraint (approximated firction cone)
+  if (body_index_.size() > 0) {
+    VectorXd mu_minus1(2); mu_minus1 << mu_, -1;
+    VectorXd mu_plus1(2); mu_plus1 << mu_, 1;
+    VectorXd one(1); one << 1;
+    for (unsigned int j = 0; j < body_index_.size(); j++) {
+      friction_constraints_.push_back(prog_->AddLinearConstraint(
+                                        mu_minus1.transpose(),
+                                        0, numeric_limits<double>::infinity(),
+      {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 0, 1)}).
+      evaluator().get());
+
+      friction_constraints_.push_back(prog_->AddLinearConstraint(
+                                        mu_plus1.transpose(),
+                                        0, numeric_limits<double>::infinity(),
+      {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 0, 1)}).
+      evaluator().get());
+      friction_constraints_.push_back(prog_->AddLinearConstraint(
+                                        mu_minus1.transpose(),
+                                        0, numeric_limits<double>::infinity(),
+      {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 1, 1)}).
+      evaluator().get());
+      friction_constraints_.push_back(prog_->AddLinearConstraint(
+                                        mu_plus1.transpose(),
+                                        0, numeric_limits<double>::infinity(),
+      {lambda_c_.segment(3 * j + 2, 1), lambda_c_.segment(3 * j + 1, 1)}).
+      evaluator().get());
+      friction_constraints_.push_back(prog_->AddLinearConstraint(one.transpose(),
+                                      0, numeric_limits<double>::infinity(),
+                                      lambda_c_.segment(3 * j + 2, 1)).
+                                      evaluator().get());
+    }
+  }
+  // 5. Input constraint
+  if (with_input_constraints_) {
+    prog_->AddLinearConstraint(
+      MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_, u_);
+  }
+  // No joint position constraint in this implementation
+
+  // Add costs
+  // 1. input cost
+  if (W_input_.size() > 0) {
+    prog_->AddQuadraticCost(MatrixXd::Identity(n_u_, n_u_),
+                            VectorXd::Zero(n_u_), u_);
+  }
+  // 2. acceleration cost
+  if (W_joint_accel_.size() > 0) {
+    prog_->AddQuadraticCost(
+      MatrixXd::Identity(n_v_, n_v_),
+      VectorXd::Zero(n_v_), dv_);
+  }
+  // 3. Soft constraint cost
+  if (w_soft_constraint_ > 0) {
+    prog_->AddQuadraticCost(
+      MatrixXd::Identity(n_c_, n_c_),
+      VectorXd::Zero(n_c_), epsilon_);
+  }
+  // 4. Tracking cost
+  for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
+    tracking_cost_.push_back(prog_->AddQuadraticCost(
+                               MatrixXd::Identity(n_v_, n_v_),
+                               VectorXd::Zero(n_v_), dv_).
+                             evaluator().get());
+  }
 }
 
-std::vector<int> OperationalSpaceControl::CalcActiveContactIndices(
+std::vector<bool> OperationalSpaceControl::CalcActiveContactIndices(
   int fsm_state) const {
-  std::vector<int> active_contact_idx;
+  std::vector<bool> active_contact_flags;
   for (unsigned int i = 0; i < body_index_.size(); i++) {
     if (state_.empty()) {
-      active_contact_idx.push_back(i);
+      active_contact_flags.push_back(true);
     } else {
       if (state_[i] == fsm_state) {
-        active_contact_idx.push_back(i);
+        active_contact_flags.push_back(true);
+      } else {
+        active_contact_flags.push_back(false);
       }
     }
   }
-  return active_contact_idx;
+  return active_contact_flags;
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -220,25 +328,12 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 }
 
 
-// TODO(yminchen): currently construct the QP in every loop. Will modify this
-// once the code is working.
 VectorXd OperationalSpaceControl::SolveQp(
   VectorXd x_w_spr, VectorXd x_wo_spr,
   const drake::systems::Context<double>& context, double t,
   int fsm_state, double time_since_last_state_switch) const {
 
-  vector<int> active_contact_idx = CalcActiveContactIndices(fsm_state);
-  // cout << "active_contact_idx = ";
-  // for(auto i : active_contact_idx){
-  //   cout << i << ", ";
-  // }
-  // cout << endl;
-
-  int n_h = tree_wo_spr_->getNumPositionConstraints();
-  int n_c = 3 * active_contact_idx.size();
-  // TODO: will need to use   int n_c = 3 * body_index_.size();
-  // when we construct the QP in OSC constructor
-  // cout << "n_c = " << n_c << endl;
+  vector<bool> active_contact_flags = CalcActiveContactIndices(fsm_state);
 
   // Get Kinematics Cache
   KinematicsCache<double> cache_w_spr = tree_w_spr_->doKinematics(
@@ -259,66 +354,51 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd JdotV_h = tree_wo_spr_->positionConstraintsJacDotTimesV(cache_wo_spr);
 
   // Get J and JdotV for contact constraint
-  MatrixXd J_c = MatrixXd::Zero(n_c, n_v_);
-  VectorXd JdotV_c = VectorXd::Zero(n_c);
-  for (unsigned int i = 0; i < active_contact_idx.size(); i++) {
-    J_c.block(3 * i, 0, 3, n_v_) = tree_wo_spr_->transformPointsJacobian(
-                                     cache_wo_spr, pt_on_body_[active_contact_idx[i]],
-                                     body_index_[active_contact_idx[i]], 0, false);
-    JdotV_c.segment(3 * i, 3) = tree_wo_spr_->transformPointsJacobianDotTimesV(
-                                  cache_wo_spr, pt_on_body_[active_contact_idx[i]],
-                                  body_index_[active_contact_idx[i]], 0);
+  MatrixXd J_c = MatrixXd::Zero(n_c_, n_v_);
+  VectorXd JdotV_c = VectorXd::Zero(n_c_);
+  for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
+    if (active_contact_flags[i]) {
+      J_c.block(3 * i, 0, 3, n_v_) = tree_wo_spr_->transformPointsJacobian(
+                                       cache_wo_spr, pt_on_body_[i],
+                                       body_index_[i], 0, false);
+      JdotV_c.segment(3 * i, 3) = tree_wo_spr_->transformPointsJacobianDotTimesV(
+                                    cache_wo_spr, pt_on_body_[i],
+                                    body_index_[i], 0);
+    }
   }
 
-  // Construct QP
-  MathematicalProgram prog;
-
-  // Add decision variables
-  auto u = prog.NewContinuousVariables(n_u_, "u");
-  auto lambda_c = prog.NewContinuousVariables(n_c,
-                  "lambda_contact");
-  auto lambda_h = prog.NewContinuousVariables(n_h, "lambda_holonomic");
-  auto dv = prog.NewContinuousVariables(n_v_, "dv");
-  auto epsilon = prog.NewContinuousVariables(n_c, "epsilon");
-
-  // Add constraints
+  // Update constraints
   // 1. Dynamics constraint
   ///    M*dv + bias == J_c^T*lambda_c + J_h^T*lambda_h + B*u
   /// -> M*dv - J_c^T*lambda_c - J_h^T*lambda_h - B*u == - bias
   /// -> [M, -J_c^T, -J_h^T, -B]*[dv, lambda_c, lambda_h, u]^T = - bias
-  MatrixXd A_dyn = MatrixXd::Zero(n_v_, n_v_ + n_c + J_h.rows() + n_u_);
+  MatrixXd A_dyn = MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_);
   A_dyn.block(0, 0, n_v_, n_v_) = M;
-  A_dyn.block(0, n_v_, n_v_, n_c) = -J_c.transpose();
-  A_dyn.block(0, n_v_ + n_c , n_v_, J_h.rows()) = -J_h.transpose();
-  A_dyn.block(0, n_v_ + n_c + J_h.rows(), n_v_, n_u_) = -B;
-  prog.AddLinearConstraint(A_dyn, -bias, -bias, {dv, lambda_c, lambda_h, u});
-
+  A_dyn.block(0, n_v_, n_v_, n_c_) = -J_c.transpose();
+  A_dyn.block(0, n_v_ + n_c_ , n_v_, n_h_) = -J_h.transpose();
+  A_dyn.block(0, n_v_ + n_c_ + n_h_, n_v_, n_u_) = -B;
+  dynamics_constraint_->UpdateCoefficients(A_dyn, -bias);
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
   /// -> J_h*dv == -JdotV_h
-  prog.AddLinearConstraint(J_h, -JdotV_h, -JdotV_h, dv);
-
+  holonomic_constraint_->UpdateCoefficients(J_h, -JdotV_h);
   // 3. Contact constraint
-  if (active_contact_idx.size() > 0) {
-    if (w_soft_constraint_ <= 0) {
-      ///    JdotV_c + J_c*dv == 0
-      /// -> J_c*dv == -JdotV_c
-      prog.AddLinearConstraint(J_c, -JdotV_c, -JdotV_c, dv);
-    }
-    else {
-      // Relaxed version:
-      ///    JdotV_c + J_c*dv == -epsilon
-      /// -> J_c*dv + I*epsilon == -JdotV_c
-      /// -> [J_c, I]* [dv, epsilon]^T == -JdotV_c
-      MatrixXd A_c = MatrixXd::Zero(n_c, n_v_ + n_c);
-      A_c.block(0, 0, n_c, n_v_) = J_c;
-      A_c.block(0, n_v_, n_c, n_c) = MatrixXd::Identity(n_c, n_c);
-      prog.AddLinearConstraint(A_c,
-                               -JdotV_c, -JdotV_c, {dv, epsilon});
-    }
+  if (w_soft_constraint_ <= 0) {
+    ///    JdotV_c + J_c*dv == 0
+    /// -> J_c*dv == -JdotV_c
+    contact_constraints_->UpdateCoefficients(J_c, -JdotV_c);
   }
-
-  // 4. Friction cone constraint (approximation)
+  else {
+    // Relaxed version:
+    ///    JdotV_c + J_c*dv == -epsilon
+    /// -> J_c*dv + I*epsilon == -JdotV_c
+    /// -> [J_c, I]* [dv, epsilon]^T == -JdotV_c
+    MatrixXd A_c = MatrixXd::Zero(n_c_, n_v_ + n_c_);
+    A_c.block(0, 0, n_c_, n_v_) = J_c;
+    A_c.block(0, n_v_, n_c_, n_c_) = MatrixXd::Identity(n_c_, n_c_);
+    contact_constraints_->UpdateCoefficients(A_c, -JdotV_c);
+  }
+  // 4. Friction constraint (approximated firction cone)
   /// For i = active contact indices
   ///     mu_*lambda_c(3*i+2) >= lambda_c(3*i+0)
   ///    -mu_*lambda_c(3*i+2) <= lambda_c(3*i+0)
@@ -334,69 +414,38 @@ VectorXd OperationalSpaceControl::SolveQp(
   if (body_index_.size() > 0) {
     VectorXd mu_minus1(2); mu_minus1 << mu_, -1;
     VectorXd mu_plus1(2); mu_plus1 << mu_, 1;
-    VectorXd one(1); one << 1;
-    for (unsigned int j = 0; j < active_contact_idx.size(); j++) {
-      prog.AddLinearConstraint(mu_minus1.transpose(),
-                               0, numeric_limits<double>::infinity(),
-      {lambda_c.segment(3 * j + 2, 1), lambda_c.segment(3 * j + 0, 1)});
-      prog.AddLinearConstraint(mu_plus1.transpose(),
-                               0, numeric_limits<double>::infinity(),
-      {lambda_c.segment(3 * j + 2, 1), lambda_c.segment(3 * j + 0, 1)});
-      prog.AddLinearConstraint(mu_minus1.transpose(),
-                               0, numeric_limits<double>::infinity(),
-      {lambda_c.segment(3 * j + 2, 1), lambda_c.segment(3 * j + 1, 1)});
-      prog.AddLinearConstraint(mu_plus1.transpose(),
-                               0, numeric_limits<double>::infinity(),
-      {lambda_c.segment(3 * j + 2, 1), lambda_c.segment(3 * j + 1, 1)});
-      prog.AddLinearConstraint(one.transpose(),
-                               0, numeric_limits<double>::infinity(),
-                               lambda_c.segment(3 * j + 2, 1));
-      /*int i = active_contact_idx[j];
-      prog.AddLinearConstraint(mu_minus1.transpose(),
-                               0, numeric_limits<double>::infinity(),
-      {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 0, 1)});
-      prog.AddLinearConstraint(mu_plus1.transpose(),
-                               0, numeric_limits<double>::infinity(),
-      {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 0, 1)});
-      prog.AddLinearConstraint(mu_minus1.transpose(),
-                               0, numeric_limits<double>::infinity(),
-      {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 1, 1)});
-      prog.AddLinearConstraint(mu_plus1.transpose(),
-                               0, numeric_limits<double>::infinity(),
-      {lambda_c.segment(3 * i + 2, 1), lambda_c.segment(3 * i + 1, 1)});
-      prog.AddLinearConstraint(one.transpose(),
-                               0, numeric_limits<double>::infinity(),
-                               lambda_c.segment(3 * i + 2, 1));*/
+    VectorXd inf_vectorxd(1); inf_vectorxd << numeric_limits<double>::infinity();
+    for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
+      if (active_contact_flags[i]) {
+        friction_constraints_.at(5 * i)->UpdateCoefficients(
+          mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 1)->UpdateCoefficients(
+          mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 2)->UpdateCoefficients(
+          mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 3)->UpdateCoefficients(
+          mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 4)->UpdateCoefficients(
+          VectorXd::Ones(1).transpose(), VectorXd::Zero(1), inf_vectorxd);
+      } else {
+        friction_constraints_.at(5 * i)->UpdateCoefficients(
+          Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 1)->UpdateCoefficients(
+          Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 2)->UpdateCoefficients(
+          Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 3)->UpdateCoefficients(
+          Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 4)->UpdateCoefficients(
+          VectorXd::Zero(1).transpose(), VectorXd::Zero(1), inf_vectorxd);
+      }
     }
   }
 
-  // 5. Input constraint
-  if (with_input_constraints_) {
-    prog.AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_, u);
-  }
-
-  // No joint position constraint in this implementation
-
-  // Add costs
-  // 1. input cost
-  if (W_input_.size() > 0) {
-    prog.AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u);
-  }
-
-  // 2. acceleration cost
-  if (W_joint_accel_.size() > 0) {
-    prog.AddQuadraticCost(W_joint_accel_, VectorXd::Zero(n_v_), dv);
-  }
-
-  // 3. Soft constraint cost
-  if (w_soft_constraint_ > 0) {
-    prog.AddQuadraticCost(w_soft_constraint_ * MatrixXd::Identity(n_c, n_c),
-                          VectorXd::Zero(n_c),
-                          epsilon );
-  }
-
+  // Update costs
   // 4. Tracking cost
-  for (auto tracking_data : *tracking_data_vec_) {
+  for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
+    auto tracking_data = tracking_data_vec_->at(i);
     string traj_name = tracking_data->GetName();
     int port_index = traj_name_to_port_index_map_.at(traj_name);
     // Read in traj
@@ -419,31 +468,32 @@ VectorXd OperationalSpaceControl::SolveQp(
       MatrixXd W = tracking_data->GetWeight();
       MatrixXd J_t = tracking_data->GetJ();
       VectorXd JdotV_t = tracking_data->GetJdotTimesV();
-      //TODO: later, if track_or_not = false, we can just update W
       // The tracking cost is
       // 0.5 * (J_*dv + JdotV - y_command)^T * W * (J_*dv + JdotV - y_command).
       // We ignore the constant term
       // 0.5 * (JdotV - y_command)^T * W * (JdotV - y_command),
       // since it doesn't change the result of QP.
-      prog.AddQuadraticCost(J_t.transpose()* W * J_t,
-                            J_t.transpose()* W * (JdotV_t - ddy_t),
-                            dv);
+      tracking_cost_.at(i)->UpdateCoefficients(J_t.transpose()* W * J_t,
+          J_t.transpose()* W * (JdotV_t - ddy_t));
+    } else {
+      tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Identity(n_v_, n_v_),
+                               VectorXd::Zero(n_v_));
     }
   }
 
   // Solve the QP
-  const MathematicalProgramResult result = Solve(prog);
+  const MathematicalProgramResult result = Solve(*prog_);
   SolutionResult solution_result = result.get_solution_result();
   if (print_tracking_info_) {
     cout << "\n" << to_string(solution_result) <<  endl;
   }
 
   // Extract solutions
-  VectorXd u_sol = result.GetSolution(u);
-  VectorXd lambda_c_sol = result.GetSolution(lambda_c);
-  VectorXd lambda_h_sol = result.GetSolution(lambda_h);
-  VectorXd dv_sol = result.GetSolution(dv);
-  VectorXd epsilon_sol = result.GetSolution(epsilon);
+  VectorXd u_sol = result.GetSolution(u_);
+  VectorXd lambda_c_sol = result.GetSolution(lambda_c_);
+  VectorXd lambda_h_sol = result.GetSolution(lambda_h_);
+  VectorXd dv_sol = result.GetSolution(dv_);
+  VectorXd epsilon_sol = result.GetSolution(epsilon_);
   if (print_tracking_info_) {
     cout << "**********************\n";
     cout << "u_sol = " << u_sol.transpose() << endl;
@@ -477,7 +527,6 @@ VectorXd OperationalSpaceControl::SolveQp(
         MatrixXd W = tracking_data->GetWeight();
         MatrixXd J_t = tracking_data->GetJ();
         VectorXd JdotV_t = tracking_data->GetJdotTimesV();
-        //TODO: later, if track_or_not = false, we can just update W
         // Note that the following cost also include the constant term, so that
         // the user can differentiate which error norm is bigger. The constant
         // term was not added to the QP since it doesn't change the result.
@@ -491,7 +540,6 @@ VectorXd OperationalSpaceControl::SolveQp(
     cout << "**********************\n";
     for (auto tracking_data : *tracking_data_vec_) {
       if (tracking_data->GetTrackOrNot()) {
-        //TODO: later, if track_or_not = false, we can just update W
         tracking_data->PrintFeedbackAndDesiredValues(dv_sol);
       }
     }
@@ -523,14 +571,10 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);
-  cout << "\n\ncurrent_time = " << current_time << endl;
   if (print_tracking_info_) {
-    // cout << "\n\ncurrent_time = " << current_time << endl;
+    cout << "\n\ncurrent_time = " << current_time << endl;
   }
 
-  // TODO(yminchen): currently construct the QP in every loop. Will modify this
-  // once the code is working.
-  // Set up the QP
   VectorXd x_wo_spr(n_q_ + n_v_);
   x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
            map_velocity_from_spring_to_no_spring_ * v_w_spr;
@@ -545,7 +589,6 @@ void OperationalSpaceControl::CalcOptimalInput(
     // Get discrete states
     const auto prev_event_time = context.get_discrete_state(
                                    prev_event_time_idx_).get_value();
-    // cout << "prev_event_time = " << prev_event_time << endl;
 
     u_sol = SolveQp(x_w_spr, x_wo_spr,
                     context, current_time,
@@ -563,8 +606,11 @@ void OperationalSpaceControl::CalcOptimalInput(
 
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
   auto duration = duration_cast<microseconds>( t2 - t1 ).count();
-  cout << "it took " << duration / 1000.0 << " (ms).\n";
+  // cout << "it took " << duration / 1000.0 << " (ms).\n";
 
+  *filtered_solving_time_ = 0.001 * (duration / 1000.0) +
+                            0.999 * (*filtered_solving_time_);
+  cout << "it took " << *filtered_solving_time_ << " (ms).\n";
 }
 
 }  // namespace controllers

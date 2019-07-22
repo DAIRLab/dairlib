@@ -82,15 +82,6 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
   }
 }
 
-// Getters
-MatrixXd OscTrackingData::GetWeight() {
-  if (track_at_current_step_) {
-    return W_;
-  } else {
-    return MatrixXd::Zero(n_r_, n_r_);
-  }
-}
-
 void OscTrackingData::TrackOrNot(int finite_state_machine_state,
                                  double time_since_last_state_switch) {
   if (state_.empty()) {

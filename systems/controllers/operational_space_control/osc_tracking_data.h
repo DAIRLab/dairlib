@@ -75,7 +75,7 @@ class OscTrackingData {
   Eigen::MatrixXd GetJ() {return J_;}
   Eigen::VectorXd GetJdotTimesV() {return JdotV_;}
   Eigen::VectorXd GetCommandOutput() {return ddy_command_;}
-  Eigen::MatrixXd GetWeight();
+  Eigen::MatrixXd GetWeight() {return W_;}
   // void UpdatePGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
   // void UpdateDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
   // void UpdateWeight(Eigen::MatrixXd W);

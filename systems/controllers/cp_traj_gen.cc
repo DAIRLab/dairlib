@@ -292,7 +292,6 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   CoM_to_CP = CP - CoM.head(2);  // update with the new CP
   if ( CoM_to_CP.norm() > max_CoM_to_CP_dist_ ) {
     if (true) {
-      // TODO(yminchen): delete this after you have cassie walk
       std::cout << "Step length limit reached. It's " <<
                 CoM_to_CP.norm() - max_CoM_to_CP_dist_ << " (m) more than max.\n";
     }

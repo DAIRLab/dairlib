@@ -26,6 +26,20 @@ cc_library(
     srcs = ["foot_placement_control.cc",],
     hdrs = ["foot_placement_control.h"],
     deps = [
+            "//common:math_utils",
+            ":control_utils",
+            ":cp_control_common_func",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+            ]
+)
+
+cc_library(
+    name = "heading_control",
+    srcs = ["heading_control.cc",],
+    hdrs = ["heading_control.h"],
+    deps = [
+            "//common:math_utils",
             ":control_utils",
             ":cp_control_common_func",
             "//systems/framework:vector",

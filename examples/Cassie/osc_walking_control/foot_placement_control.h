@@ -6,7 +6,7 @@
 
 namespace dairlib {
 namespace cassie {
-namespace cp_control {
+namespace osc_walking_control {
 
 // TODO(yminchen): we can replace cp with raibert style control. (feedforward
 // term is v*T/2)
@@ -53,7 +53,7 @@ class FootPlacementControl : public drake::systems::LeafSystem<double> {
   double k_fp_fb_lateral_;
 };
 
-}  // namespace cp_control
+}  // namespace osc_walking_control
 }  // namespace cassie
 }  // namespace dairlib
 

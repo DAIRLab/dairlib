@@ -1,8 +1,10 @@
 #include "systems/controllers/cp_traj_gen.h"
 
+#include <math.h>
 #include <algorithm>    // std::min
 #include <string>
-#include <math.h>
+
+#include "common/math_utils.h"
 
 using std::cout;
 using std::endl;
@@ -165,8 +167,9 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   VectorXd q = robot_output->GetPositions();
   // Modify the quaternion in the begining when the state is not received from
   // the robot yet
-  if (is_quaternion_ && q.segment(3, 4).norm() == 0)
-    q(3) = 1;
+  if (is_quaternion_){
+    q.segment(3, 4) = NormalizeQuaternion(q.segment(3, 4));
+  }
   cache.initialize(q);
   tree_->doKinematics(cache);
   int stance_foot_idx;

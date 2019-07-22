@@ -241,6 +241,7 @@ cc_binary(
         "//systems/primitives",
         "//attic/multibody:utils",
         "//examples/Cassie/osc_walking_control:foot_placement_control",
+        "//examples/Cassie/osc_walking_control:heading_control",
         "//systems/controllers:time_based_fsm",
         "//systems/controllers:lipm_traj_gen",
         "//systems/controllers:cp_traj_gen",

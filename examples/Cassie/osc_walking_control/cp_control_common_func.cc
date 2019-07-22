@@ -4,7 +4,7 @@ using Eigen::Vector2d;
 
 namespace dairlib {
 namespace cassie {
-namespace cp_control {
+namespace osc_walking_control {
 
 double GetDesiredHeadingPos(double pelvis_yaw_pos,
                             Vector2d global_CoM_to_target_pos,
@@ -17,7 +17,7 @@ double GetDesiredHeadingPos(double pelvis_yaw_pos,
   }
 }
 
-}  // namespace cp_control
+}  // namespace osc_walking_control
 }  // namespace cassie
 }  // namespace dairlib
 

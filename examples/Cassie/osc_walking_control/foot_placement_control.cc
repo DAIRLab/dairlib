@@ -1,9 +1,11 @@
 #include "examples/Cassie/osc_walking_control/foot_placement_control.h"
-#include "examples/Cassie/osc_walking_control/control_utils.h"
-#include "examples/Cassie/osc_walking_control/cp_control_common_func.h"
 
 #include <math.h>
 #include <string>
+
+#include "examples/Cassie/osc_walking_control/control_utils.h"
+#include "examples/Cassie/osc_walking_control/cp_control_common_func.h"
+#include "common/math_utils.h"
 
 using std::cout;
 using std::endl;
@@ -22,7 +24,7 @@ using drake::systems::BasicVector;
 
 namespace dairlib {
 namespace cassie {
-namespace cp_control {
+namespace osc_walking_control {
 
 FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
     int pelvis_idx,
@@ -74,8 +76,7 @@ void FootPlacementControl::CalcFootPlacement(
   // Modify the quaternion in the begining when the state is not received from
   // the robot yet
   // Always remember to check 0-norm quaternion when using doKinematics
-  if (q.segment(3, 4).norm() == 0)
-    q(3) = 1;
+  q.segment(3, 4) = NormalizeQuaternion(q.segment(3, 4));
   cache.initialize(q);
   tree_->doKinematics(cache);
 
@@ -155,7 +156,7 @@ void FootPlacementControl::CalcFootPlacement(
   output->get_mutable_value() = global_delta_CP_sagital_and_lateral;
 }
 
-}  // namespace cp_control
+}  // namespace osc_walking_control
 }  // namespace cassie
 }  // namespace dairlib
 

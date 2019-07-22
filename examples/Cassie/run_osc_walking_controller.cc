@@ -25,6 +25,7 @@
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/controllers/operational_space_control/osc_utils.h"
+#include "examples/Cassie/osc_walking_control/heading_control.h"
 
 
 namespace dairlib {
@@ -128,10 +129,10 @@ int DoMain(int argc, char* argv[]) {
                   lipm_traj_generator->get_input_port_state());
 
   // Create foot placement control block
-  Eigen::Vector2d global_target_position(5, 0);
+  Eigen::Vector2d global_target_position(5, 5);
   double circle_radius_of_no_turning = 1;
   auto foot_placement_control =
-      builder.AddSystem<cassie::cp_control::FootPlacementControl>(
+      builder.AddSystem<cassie::osc_walking_control::FootPlacementControl>(
         &tree_with_springs, pelvis_idx,
         global_target_position, circle_radius_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
@@ -169,6 +170,14 @@ int DoMain(int argc, char* argv[]) {
                   cp_traj_generator->get_input_port_com());
   builder.Connect(foot_placement_control->get_output_port(0),
                   cp_traj_generator->get_input_port_fp());
+
+  // Desired Heading Angle
+  auto heading_control =
+      builder.AddSystem<cassie::osc_walking_control::HeadingControl>(
+        &tree_with_springs, pelvis_idx,
+        global_target_position, circle_radius_of_no_turning);
+  builder.Connect(state_receiver->get_output_port(0),
+                  heading_control->get_input_port_state());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -271,11 +280,8 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis_balance(0, 0) = k_d_pelvis_balance;
   K_d_pelvis_balance(1, 1) = k_d_pelvis_balance;
   RotTaskSpaceTrackingData pelvis_balance_traj("pelvis_balance_traj", 3,
-      K_p_pelvis_balance, K_d_pelvis_balance, W_pelvis_balance, true, false);
+      K_p_pelvis_balance, K_d_pelvis_balance, W_pelvis_balance, false, false);
   pelvis_balance_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
-  VectorXd pelvis_desired_quat(4);
-  pelvis_desired_quat << 1, 0, 0, 0;
-  pelvis_balance_traj.SetConstantTraj(pelvis_desired_quat);
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
   double w_heading = 200;
@@ -288,10 +294,9 @@ int DoMain(int argc, char* argv[]) {
   Matrix3d K_d_pelvis_heading = MatrixXd::Zero(3, 3);
   K_d_pelvis_heading(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_heading_traj("pelvis_heading_traj", 3,
-      K_p_pelvis_heading, K_d_pelvis_heading, W_pelvis_heading, true, false);
+      K_p_pelvis_heading, K_d_pelvis_heading, W_pelvis_heading, false, false);
   pelvis_heading_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
   pelvis_heading_traj.SetNoControlPeriod(0.05);
-  pelvis_heading_traj.SetConstantTraj(pelvis_desired_quat);
   osc->AddTrackingData(&pelvis_heading_traj);
   // Swing toe joint tracking (Currently use fix position)
   MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
@@ -341,6 +346,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("lipm_traj"));
   builder.Connect(cp_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("cp_traj"));
+  builder.Connect(heading_control->get_output_port(0),
+                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
+  builder.Connect(heading_control->get_output_port(0),
+                  osc->get_tracking_data_input_port("pelvis_heading_traj"));
   builder.Connect(osc->get_output_port(0),
                   command_sender->get_input_port(0));
 

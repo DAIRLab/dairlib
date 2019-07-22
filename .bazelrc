@@ -50,3 +50,6 @@ build --action_env=CCACHE_DISABLE=1
 
 # build with snopt
 build --define=WITH_SNOPT=ON
+
+# use python3 by default
+build --python_path=python3

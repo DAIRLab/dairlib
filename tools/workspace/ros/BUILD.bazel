@@ -1,6 +1,6 @@
 # -*- python -*-
 
-# ROS packages built with Bazel
+# Demo programs
 
 cc_binary(
     name='main',
@@ -8,6 +8,7 @@ cc_binary(
     deps=[
         '@ros',
     ],
+    tags=["ros"],
 )
 
 py_binary(
@@ -16,6 +17,7 @@ py_binary(
     deps=[
         '@ros//:ros_python',
     ],
+    tags=["ros"],
 )
 
 py_binary(
@@ -24,4 +26,5 @@ py_binary(
     deps=[
         '@genpy_repo//:genpy',
     ],
+    tags=["ros"],
 )

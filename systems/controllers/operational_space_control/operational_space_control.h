@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <memory>
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
@@ -231,14 +232,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC tracking data member (store pointer because of caching)
   std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =
         std::make_unique<std::vector<OscTrackingData*>>();
-
-
-
-  // Testing
-  std::unique_ptr<double> filtered_solving_time_ =
-    std::make_unique<double>(1);
-
-
 };
 
 

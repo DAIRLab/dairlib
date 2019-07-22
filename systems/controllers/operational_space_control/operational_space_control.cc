@@ -2,12 +2,6 @@
 #include "attic/multibody/rigidbody_utils.h"
 #include "common/math_utils.h"
 
-#include <chrono>   // measuring runtime
-
-using std::chrono::high_resolution_clock;
-using std::chrono::microseconds;
-using std::chrono::duration_cast;
-
 using std::cout;
 using std::endl;
 
@@ -553,10 +547,6 @@ VectorXd OperationalSpaceControl::SolveQp(
 void OperationalSpaceControl::CalcOptimalInput(
   const drake::systems::Context<double>& context,
   systems::TimestampedVector<double>* control) const {
-
-  high_resolution_clock::time_point t1 = high_resolution_clock::now();
-
-
   // Read in current state and simulation time
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -602,15 +592,6 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());
-
-
-  high_resolution_clock::time_point t2 = high_resolution_clock::now();
-  auto duration = duration_cast<microseconds>( t2 - t1 ).count();
-  // cout << "it took " << duration / 1000.0 << " (ms).\n";
-
-  *filtered_solving_time_ = 0.001 * (duration / 1000.0) +
-                            0.999 * (*filtered_solving_time_);
-  cout << "it took " << *filtered_solving_time_ << " (ms).\n";
 }
 
 }  // namespace controllers

@@ -122,7 +122,7 @@ int DoMain(int argc, char* argv[]) {
                   lipm_traj_generator->get_input_port_state());
 
   // Create foot placement control block
-  Eigen::Vector2d global_target_position(0, 0);
+  Eigen::Vector2d global_target_position(5, 0);
   double circle_radius_of_no_turning = 1;
   auto foot_placement_control =
     builder.AddSystem<cassie::cp_control::FootPlacementControl>(

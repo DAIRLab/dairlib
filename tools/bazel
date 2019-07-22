@@ -7,8 +7,6 @@ while [[ "${WORKSPACE_DIR}" != / ]]; do
 done
 readonly WORKSPACE_DIR
 
-ls -l ${WORKSPACE_DIR}/noros.bazelrc
-
 if [ "${DAIRLIB_WITH_ROS}" == "ON" ] ; then
   exec -a "$0" "${BAZEL_REAL}" "$@"
 else

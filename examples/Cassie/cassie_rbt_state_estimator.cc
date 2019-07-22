@@ -136,8 +136,35 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
         MatrixXd::Zero(6, 1), eps_cr_).
         evaluator().get();
     quadcost_eps_imu_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(3, 3),
-        MatrixXd::Zero(3, 1), eps_imu_).
-        evaluator().get();
+        MatrixXd::Zero(3, 1), eps_imu_)
+        .evaluator().get();
+
+    // Initialize state mean
+    Eigen::Matrix3d R0;
+    Eigen::Vector3d v0, p0, bg0, ba0;
+    R0 << 1, 0, 0,  // initial orientation
+        0, 1, 0,   // IMU frame is rotated 90deg about the x-axis
+        0, 0, 1;
+    v0 << 0, 0, 0;   // initial velocity
+    p0 << 0, 0, 1;   // initial position
+    bg0 << 0, 0, 0;  // initial gyroscope bias
+    ba0 << 0, 0, 0;  // initial accelerometer bias
+    initial_state_.setRotation(R0);
+    initial_state_.setVelocity(v0);
+    initial_state_.setPosition(p0);
+    initial_state_.setGyroscopeBias(bg0);
+    initial_state_.setAccelerometerBias(ba0);
+
+    // Initialize state covariance
+    noise_params_.setGyroscopeNoise(0.02);
+    noise_params_.setAccelerometerNoise(0.04);
+    noise_params_.setGyroscopeBiasNoise(0.00001);
+    noise_params_.setAccelerometerBiasNoise(0.0001);
+    noise_params_.setContactNoise(0.01);
+
+    filter_ = std::make_unique<inekf::InEKF>(initial_state_, noise_params_);
+
+    prev_IMU_measurement_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
   }
 }
 
@@ -831,8 +858,8 @@ void CassieRbtStateEstimator::contactEstimation(
   if ((optimal_cost[0] >= cost_threshold_ &&
         optimal_cost[1] >= cost_threshold_ &&
         optimal_cost[2] >= cost_threshold_)) {
-    *left_contact = 1;
-    *right_contact = 1;
+    *left_contact = 0;
+    *right_contact = 0;
   } else if (min_index == 1) {
     *left_contact = 1;
   } else if (min_index == 2) {
@@ -911,86 +938,183 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Step 1 - Solve for the unknown joint angle
     // This step is done in AssignNonFloatingBaseStateToOutputVector()
 
-    // Step 2 - EKF (update step)
-
-    // Step 3 - Estimate which foot/feet are in contact with the ground
-    // Create robot output vector for contact estimation
-    OutputVector<double> output(tree_.get_num_positions(),
-                                tree_.get_num_velocities(),
-                                tree_.get_num_actuators());
-    // Assign values to robot output vector
+    // Get ground truth information
     const auto& cassie_out =
         this->EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
-    AssignImuValueToOutputVector(cassie_out, &output);
-    AssignActuationFeedbackToOutputVector(cassie_out, &output);
-    AssignNonFloatingBaseStateToOutputVector(cassie_out, &output);
-    AssignFloatingBaseStateToOutputVector(
-        context.get_discrete_state(state_idx_).get_value(), &output);
-    // Since we don't have EKF yet, we get the floating base state
-    // from ground truth (CASSIE_STATE)
-    // TODO(yminchen): delete this later
     const OutputVector<double>* cassie_state = (OutputVector<double>*)
         this->EvalVectorInput(context, state_input_port_);
-    output.SetPositionAtIndex(position_index_map_.at("base_x"),
-                              cassie_state->GetPositions()[0]);
-    output.SetPositionAtIndex(position_index_map_.at("base_y"),
-                              cassie_state->GetPositions()[1]);
-    output.SetPositionAtIndex(position_index_map_.at("base_z"),
-                              cassie_state->GetPositions()[2]);
-    output.SetPositionAtIndex(position_index_map_.at("base_qw"),
-                              cassie_state->GetPositions()[3]);
-    output.SetPositionAtIndex(position_index_map_.at("base_qx"),
-                              cassie_state->GetPositions()[4]);
-    output.SetPositionAtIndex(position_index_map_.at("base_qy"),
-                              cassie_state->GetPositions()[5]);
-    output.SetPositionAtIndex(position_index_map_.at("base_qz"),
-                              cassie_state->GetPositions()[6]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_wx"),
-                              cassie_state->GetVelocities()[0]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_wy"),
-                              cassie_state->GetVelocities()[1]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_wz"),
-                              cassie_state->GetVelocities()[2]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_vx"),
-                              cassie_state->GetVelocities()[3]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_vy"),
-                              cassie_state->GetVelocities()[4]);
-    output.SetVelocityAtIndex(velocity_index_map_.at("base_vz"),
-                              cassie_state->GetVelocities()[5]);
+
+    OutputVector<double> output_gt(tree_.get_num_positions(),
+                                   tree_.get_num_velocities(),
+                                   tree_.get_num_actuators());
+    AssignImuValueToOutputVector(cassie_out, &output_gt);
+    AssignActuationFeedbackToOutputVector(cassie_out, &output_gt);
+    AssignNonFloatingBaseStateToOutputVector(cassie_out, &output_gt);
+    VectorXd fb_state(13);
+    fb_state.head(7) = cassie_state->GetPositions().head(7);
+    fb_state.tail(6) = cassie_state->GetVelocities().head(6);
+    AssignFloatingBaseStateToOutputVector(fb_state, &output_gt);
+
     // We get 0's cassie_state in the beginning because dispatcher_robot_out is
     // not triggerred by CASSIE_STATE message.
     // This wouldn't be an issue when you don't use ground truth state.
-    if (output.GetPositions().head(7).norm() == 0){
-      output.SetPositionAtIndex(position_index_map_.at("base_qw"), 1);
+    if (output_gt.GetPositions().head(7).norm() == 0){
+      output_gt.SetPositionAtIndex(position_index_map_.at("base_qw"), 1);
     }
 
+    // Debugging info
+    cout << "Ground Truth: " << endl;
+    cout << "Positions: " << endl;
+    cout << output_gt.GetPositions().head(7).transpose() << endl;
+    cout << "Velocities: " << endl;
+    cout << output_gt.GetVelocities().head(6).transpose() << endl;
+    cout << endl;
+    std::ofstream ofile;
+    ofile.open("/home/nanda/DAIR/plotting/ekf.csv",
+               std::ios::out | std::ios::app);
+    for (int i = 0; i < 7; ++i) {
+      ofile << output_gt.GetPositions()[i] << ", ";
+    }
+    for (int i = 0; i < 6; ++i) {
+      ofile << output_gt.GetVelocities()[i] << ", ";
+    }
+
+    const int pelvis_index = GetBodyIndexFromName(tree_, "pelvis");
+    const int left_toe_ind = GetBodyIndexFromName(tree_, "toe_left");
+    const int right_toe_ind = GetBodyIndexFromName(tree_, "toe_right");
+    KinematicsCache<double> cache_gt = tree_.doKinematics(
+        output_gt.GetPositions(), output_gt.GetVelocities(), true);
+
+    // Step 2 - EKF (update step)
+    // Propagate step
+    VectorXd imu_measurement(6);
+    // Linear acceleration is assumed to be x -y -z.
+    // Test this assumption before moving the code to robot
+    const double* imu_linear_acceleration =
+        cassie_out.pelvis.vectorNav.linearAcceleration;
+    const double* imu_angular_velocity =
+        cassie_out.pelvis.vectorNav.angularVelocity;
+
+    Vector3d alpha_imu;
+    alpha_imu << imu_linear_acceleration[0], imu_linear_acceleration[1],
+    imu_linear_acceleration[2];
+    // Uncomment these lines to remove gravity vector from IMU acceleration
+    /*
+    RigidBody<double>* pelvis_body = tree_.FindBody("pelvis");
+    Isometry3d pelvis_pose =
+        tree_.CalcBodyPoseInWorldFrame(cache, *pelvis_body);
+    MatrixXd R_WB = pelvis_pose.linear();
+    Vector3d gravity_in_pelvis_frame = R_WB.transpose() * gravity_;
+    alpha_imu -= gravity_in_pelvis_frame;
+    */
+
+    imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
+        imu_angular_velocity[2], alpha_imu[0],
+        alpha_imu[1], alpha_imu[2];
+
+    filter_->Propagate(
+        context.get_discrete_state(prev_IMU_measurement_).get_value(), dt);
+
+    discrete_state->get_mutable_vector(prev_IMU_measurement_)
+            .get_mutable_value()
+        << imu_measurement;
+
+    // Estimated state
+    auto state = filter_.get()->getState();
+    Vector3d filtered_position = state.getPosition();
+    Eigen::Matrix3d filtered_orientation = state.getRotation();
+    Vector3d filtered_velocity = state.getVelocity();
+
+    OutputVector<double> filtered_output(tree_.get_num_positions(),
+                                   tree_.get_num_velocities(),
+                                   tree_.get_num_actuators());
+    AssignImuValueToOutputVector(cassie_out, &filtered_output);
+    AssignActuationFeedbackToOutputVector(cassie_out, &filtered_output);
+    AssignNonFloatingBaseStateToOutputVector(cassie_out, &filtered_output);
+
+    fb_state.head(3) = filtered_position;
+    Eigen::Quaterniond q(filtered_orientation);
+    q.normalize();
+    fb_state[3] = q.w();
+    fb_state.segment<3>(4) = q.vec();
+    fb_state.segment<3>(7) = filtered_velocity;
+    fb_state.tail(3) = output_gt.GetVelocities().segment<3>(3);
+    AssignFloatingBaseStateToOutputVector(fb_state, &filtered_output);
+
+    // Step 3 - Estimate which foot/feet are in contact with the ground
     // Estimate feet contacts
     int left_contact = 0;
     int right_contact = 0;
-    contactEstimation(output, dt,
+    contactEstimation(output_gt, dt,
         discrete_state, &left_contact, &right_contact);
 
-    // Step 4 - EKF (measurement step)
+    std::vector<std::pair<int, bool>> contacts;
+    contacts.push_back(std::pair<int ,bool>(0, left_contact));
+    contacts.push_back(std::pair<int ,bool>(1, right_contact));
 
+    filter_.get()->setContacts(contacts);
+
+    // Step 4 - EKF (measurement step)
+    KinematicsCache<double> cache =
+        tree_.doKinematics(filtered_output.GetPositions(), filtered_output.GetVelocities(), true);
+    Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
+    Eigen::Matrix<double, 6, 6> covariance = Eigen::MatrixXd::Identity(6, 6);
+    Eigen::Matrix<double, 22, 22> cov_w =
+        0.017 * Eigen::MatrixXd::Identity(22, 22);
+    std::vector<int> toe_indices = {left_toe_ind, right_toe_ind};
+
+    inekf::vectorKinematics measured_kinematics;
+    for (int i = 0; i < 2 ; i++) {
+      pose.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
+      pose.block<3, 1>(0, 3) = tree_.transformPoints(
+          cache_gt, Vector3d::Zero(), toe_indices[i], pelvis_index);
+      Eigen::MatrixXd J = tree_.transformPointsJacobian(
+          cache_gt, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
+      covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose();
+      inekf::Kinematics frame(i, pose, covariance);
+      measured_kinematics.push_back(frame);
+    }
+    filter_.get()->CorrectKinematics(measured_kinematics);
+
+    cout << "Prediction: " << endl;
+    cout << "Positions: " << endl;
+    cout << filter_.get()->getState().getPosition().transpose() << endl;
+    q = Eigen::Quaterniond(filter_.get()->getState().getRotation());
+    q.normalize();
+    cout << q.w() << " ";
+    cout << q.vec().transpose() << endl;
+    cout << "Velocities: " << endl;
+    cout << filter_.get()->getState().getVelocity().transpose() << endl;
+
+    for (int i = 0; i < 3; ++i) {
+      ofile << filter_.get()->getState().getPosition()[i] << ", ";
+    }
+    ofile << q.w() << ", " << q.vec()[0] << ", " << q.vec()[1] << ", " << q.vec()[2] << ", ";
+    for (int i = 0; i < 3; ++i) {
+      ofile << filter_.get()->getState().getVelocity()[i] << ", ";
+    }
+    ofile << "\n";
+    ofile.close();
 
     // Step 5 - Assign values to states
     // Below is how you should assign the state at the end of this Update
-    // discrete_state->get_mutable_vector(ekf_X_idx_).get_mutable_value() = ...;
-    // discrete_state->get_mutable_vector(time_idx_).get_mutable_value() = ...;
+    // discrete_state->get_mutable_vector(ekf_X_idx_).get_mutable_value() =
+    // ...; discrete_state->get_mutable_vector(time_idx_).get_mutable_value()
+    // = ...;
 
     // You can convert a rotational matrix to quaternion using Eigen
     // https://stackoverflow.com/questions/21761909/eigen-convert-matrix3d-rotation-to-quaternion
     // http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
 
-    // Then convert Eigen::Quaterion to (w,x,y,z) by drake's QuaternionToVectorWxyz()
+    // Then convert Eigen::Quaterion to (w,x,y,z) by drake's
+    // QuaternionToVectorWxyz()
     // https://drake.mit.edu/doxygen_cxx/namespacedrake_1_1multibody.html#ad1b559878de179a7e363846fa67f58c0
-
 
     // Question: Do we need to filter the gyro value?
     // We will get the bias (parameter) from EKF
 
-    discrete_state->get_mutable_vector(time_idx_).get_mutable_value() <<
-      current_time;
+    discrete_state->get_mutable_vector(time_idx_).get_mutable_value()
+        << current_time;
   }
   return EventStatus::Succeeded();
 }
@@ -1058,7 +1182,6 @@ void CassieRbtStateEstimator::CopyStateOut(
   }
 
   // TODO(yminchen): delete the testing code when you fix the time delay issue
-  // Testing
   // auto state_time = context.get_discrete_state(time_idx_).get_value();
   // cout << "  In copyStateOut: lcm_time = " << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
   // cout << "  In copyStateOut: state_time = " << state_time << endl;

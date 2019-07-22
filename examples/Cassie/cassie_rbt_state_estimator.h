@@ -3,9 +3,13 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <fstream>
 
 #include "drake/systems/framework/leaf_system.h"
 
+#include "InEKF.h"
+#include "RobotState.h"
+#include "NoiseParams.h"
 #include "attic/multibody/rigidbody_utils.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
@@ -101,6 +105,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex lambda_cr_double_init_idx_;
   drake::systems::DiscreteStateIndex lambda_cr_right_init_idx_;
 
+  drake::systems::DiscreteStateIndex prev_IMU_measurement_;
+
   // Cassie parameters
   // TODO(yminchen): get the numbers below from tree
   double rod_length_ = 0.5012;  // from cassie_utils
@@ -149,6 +155,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
       eps_cr_;
   Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
       eps_imu_;
+
+  inekf::RobotState initial_state_;
+  inekf::NoiseParams noise_params_;
+  std::unique_ptr<inekf::InEKF> filter_;
 };
 
 }  // namespace systems

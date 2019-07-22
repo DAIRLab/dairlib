@@ -38,7 +38,7 @@ DEFINE_bool(simulation, false,
 
 // TODO(yminchen): delete the following flag after you finish testing
 // cassie_rbt_state_estimator
-DEFINE_string(state_channel_name, "CASSIE_STATE_TEMP",
+DEFINE_string(state_channel_name, "CASSIE_STATE",
     "The name of the lcm channel that sends Cassie's state");
 
 // Cassie model paramter

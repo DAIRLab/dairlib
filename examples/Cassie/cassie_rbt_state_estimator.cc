@@ -143,8 +143,8 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     Eigen::Matrix3d R0;
     Eigen::Vector3d v0, p0, bg0, ba0;
     R0 << 1, 0, 0,  // initial orientation
-        0, 1, 0,   // IMU frame is rotated 90deg about the x-axis
-        0, 0, 1;
+        0, -1, 0,   // IMU frame is rotated 90deg about the x-axis
+        0, 0, -1;
     v0 << 0, 0, 0;   // initial velocity
     p0 << 0, 0, 1;   // initial position
     bg0 << 0, 0, 0;  // initial gyroscope bias
@@ -998,15 +998,17 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     Vector3d alpha_imu;
     alpha_imu << imu_linear_acceleration[0], imu_linear_acceleration[1],
     imu_linear_acceleration[2];
+    Eigen::Matrix3d R_imu = Eigen::Matrix3d::Identity();
+    R_imu(1, 1) = -1;
+    R_imu(2, 2) = -1;
     // Uncomment these lines to remove gravity vector from IMU acceleration
-    /*
     RigidBody<double>* pelvis_body = tree_.FindBody("pelvis");
     Isometry3d pelvis_pose =
-        tree_.CalcBodyPoseInWorldFrame(cache, *pelvis_body);
+        tree_.CalcBodyPoseInWorldFrame(cache_gt, *pelvis_body);
     MatrixXd R_WB = pelvis_pose.linear();
     Vector3d gravity_in_pelvis_frame = R_WB.transpose() * gravity_;
-    alpha_imu -= gravity_in_pelvis_frame;
-    */
+    alpha_imu -= 2*gravity_in_pelvis_frame;
+    alpha_imu = R_imu*alpha_imu;
 
     imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
         imu_angular_velocity[2], alpha_imu[0],
@@ -1066,10 +1068,11 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     inekf::vectorKinematics measured_kinematics;
     for (int i = 0; i < 2 ; i++) {
       pose.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
-      pose.block<3, 1>(0, 3) = tree_.transformPoints(
-          cache_gt, Vector3d::Zero(), toe_indices[i], pelvis_index);
+      pose.block<3, 1>(0, 3) = R_imu * tree_.transformPoints(
+          cache, Vector3d::Zero(), toe_indices[i], pelvis_index);
       Eigen::MatrixXd J = tree_.transformPointsJacobian(
-          cache_gt, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
+          cache, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
+      J = R_imu*J;
       covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose();
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);

@@ -10,9 +10,8 @@
 
 #include "ros/ros.h"
 
-namespace drake_ros_systems {
-
-using namespace drake;
+namespace dairlib {
+namespace systems {
 
 /**
  * Publishes an ROS message containing information from its input port.
@@ -20,7 +19,7 @@ using namespace drake;
  * @ingroup message_passing
  */
 template <typename RosMessage>
-class RosPublisherSystem : public systems::LeafSystem<double> {
+class RosPublisherSystem : public drake::systems::LeafSystem<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RosPublisherSystem)
 
@@ -58,7 +57,7 @@ class RosPublisherSystem : public systems::LeafSystem<double> {
 
     publisher_ = node_handle->advertise<RosMessage>(topic, 5);
 
-    DeclareAbstractInputPort("ros_message", Value<RosMessage>());
+    DeclareAbstractInputPort("ros_message", drake::Value<RosMessage>());
     set_name(make_name(topic_));
   }
 
@@ -85,11 +84,12 @@ class RosPublisherSystem : public systems::LeafSystem<double> {
    * it onto an ROS topic.
    */
   void DoPublish(
-      const systems::Context<double>& context,
-      const std::vector<const systems::PublishEvent<double>*>&) const override {
+      const drake::systems::Context<double>& context,
+      const std::vector<const drake::systems::PublishEvent<double>*>&)
+      const override {
     SPDLOG_TRACE(drake::log(), "Publishing ROS {} message", topic_);
 
-    const AbstractValue* const input_value =
+    const drake::AbstractValue* const input_value =
         this->EvalAbstractInput(context, kPortIndex);
     DRAKE_ASSERT(input_value != nullptr);
 
@@ -106,4 +106,5 @@ class RosPublisherSystem : public systems::LeafSystem<double> {
   const int kPortIndex = 0;
 };
 
-}  // namespace drake_ros_systems
+}  // namespace systems
+}  // namespace dairlib

@@ -1,25 +1,19 @@
 #include <memory>
 #include <signal.h>
 #include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/primitives/constant_value_source.h"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 
 #include "systems/ros/ros_publisher_system.h"
 
-using drake::AbstractValue;
+using drake::Value;
 using drake::systems::ConstantValueSource;
-using drake::systems::Context;
-using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
-using drake::systems::InputPort;
-using drake::systems::OutputPort;
 using drake::systems::Simulator;
 
-using namespace drake_ros_systems;
+using dairlib::systems::RosPublisherSystem;
 
 // Shutdown ROS gracefully and then exit
 void SigintHandler(int sig) {

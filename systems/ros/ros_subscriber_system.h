@@ -10,9 +10,8 @@
 
 #include "ros/ros.h"
 
-namespace drake_ros_systems {
-
-using namespace drake;
+namespace dairlib {
+namespace systems {
 
 /**
  * Receives ROS messages from a given topic and outputs them to a
@@ -33,7 +32,7 @@ using namespace drake;
  * (Direct clone of LcmSubscriberSystem with pared-down features.)
  */
 template <typename RosMessage>
-class RosSubscriberSystem : public systems::LeafSystem<double> {
+class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RosSubscriberSystem)
 
@@ -73,7 +72,8 @@ class RosSubscriberSystem : public systems::LeafSystem<double> {
         [this]() {
           return this->AllocateOutputValue();
         },
-        [this](const systems::Context<double>& context, AbstractValue* out) {
+        [this](const drake::systems::Context<double>& context,
+            drake::AbstractValue* out) {
           this->CalcOutputValue(context, out);
         });
 
@@ -112,62 +112,75 @@ class RosSubscriberSystem : public systems::LeafSystem<double> {
   }
 
   /**
+   * Returns the internal message counter. Meant to be used with
+   * `WaitForMessage`.
+   */
+  int GetInternalMessageCount() const {
+    std::unique_lock<std::mutex> lock(received_message_mutex_);
+    return received_message_count_;
+  }
+
+  /**
    * Returns the message counter stored in @p context.
    */
-  int GetMessageCount(const systems::Context<double>& context) const {
+  int GetMessageCount(const drake::systems::Context<double>& context) const {
     // Gets the last message count from abstract state.
     return context.get_abstract_state<int>(kStateIndexMessageCount);
   }
 
  protected:
-  void DoCalcNextUpdateTime(const systems::Context<double>& context,
-                            systems::CompositeEventCollection<double>* events,
-                            double* time) const override {
+  void DoCalcNextUpdateTime(const drake::systems::Context<double>& context,
+      drake::systems::CompositeEventCollection<double>* events, double* time)
+      const override {
+    // We do not support events other than our own message timing events.
+    LeafSystem<double>::DoCalcNextUpdateTime(context, events, time);
+    DRAKE_THROW_UNLESS(events->HasEvents() == false);
+    DRAKE_THROW_UNLESS(std::isinf(*time));
+
+    // Do nothing unless we have a new message.
     const int last_message_count = GetMessageCount(context);
-
-    const int received_message_count = [this]() {
-      std::unique_lock<std::mutex> lock(received_message_mutex_);
-      return received_message_count_;
-    }();
-
-    // Has a new message. Schedule an update event.
-    if (last_message_count != received_message_count) {
-      // TODO(siyuan): should be context.get_time() once #5725 is resolved.
-      *time = context.get_time() + 0.0001;
-
-      systems::EventCollection<systems::UnrestrictedUpdateEvent<double>>&
-          uu_events = events->get_mutable_unrestricted_update_events();
-      uu_events.add_event(
-          std::make_unique<systems::UnrestrictedUpdateEvent<double>>(
-              systems::Event<double>::TriggerType::kTimed));
+    const int received_message_count = GetInternalMessageCount();
+    if (last_message_count == received_message_count) {
+      return;
     }
+
+
+    *time = context.get_time();
+
+    drake::systems::EventCollection<
+        drake::systems::UnrestrictedUpdateEvent<double>>&
+        uu_events = events->get_mutable_unrestricted_update_events();
+    uu_events.add_event(
+        std::make_unique<drake::systems::UnrestrictedUpdateEvent<double>>(
+            drake::systems::Event<double>::TriggerType::kTimed));
   }
 
   void DoCalcUnrestrictedUpdate(
-      const systems::Context<double>&,
-      const std::vector<const systems::UnrestrictedUpdateEvent<double>*>&,
-      systems::State<double>* state) const override {
+      const drake::systems::Context<double>&, const std::vector<
+          const drake::systems::UnrestrictedUpdateEvent<double>*>&,
+      drake::systems::State<double>* state) const override {
     ProcessMessageAndStoreToAbstractState(&state->get_mutable_abstract_state());
   }
 
-  std::unique_ptr<systems::AbstractValues> AllocateAbstractState()
+  std::unique_ptr<drake::systems::AbstractValues> AllocateAbstractState()
       const override {
-    std::vector<std::unique_ptr<AbstractValue>> abstract_vals(2);
+    std::vector<std::unique_ptr<drake::AbstractValue>> abstract_vals(2);
     abstract_vals[kStateIndexMessage] =
         this->RosSubscriberSystem::AllocateOutputValue();
     abstract_vals[kStateIndexMessageCount] =
-        AbstractValue::Make<int>(0);
-    return std::make_unique<systems::AbstractValues>(std::move(abstract_vals));
+        drake::AbstractValue::Make<int>(0);
+    return std::make_unique<drake::systems::AbstractValues>(
+        std::move(abstract_vals));
   }
 
-  void SetDefaultState(const systems::Context<double>& context,
-                       systems::State<double>* state) const override {
+  void SetDefaultState(const drake::systems::Context<double>& context,
+                       drake::systems::State<double>* state) const override {
     ProcessMessageAndStoreToAbstractState(&state->get_mutable_abstract_state());
   };
 
  private:
   void ProcessMessageAndStoreToAbstractState(
-      systems::AbstractValues* abstract_state) const {
+      drake::systems::AbstractValues* abstract_state) const {
     std::lock_guard<std::mutex> lock(received_message_mutex_);
     abstract_state->get_mutable_value(kStateIndexMessage)
         .get_mutable_value<RosMessage>() = received_message_;
@@ -187,11 +200,11 @@ class RosSubscriberSystem : public systems::LeafSystem<double> {
 
   // This pair of methods is used for the output port when we're using a
   // serializer.
-  std::unique_ptr<AbstractValue> AllocateOutputValue() const {
-    return std::make_unique<Value<RosMessage>>(RosMessage{});
+  std::unique_ptr<drake::AbstractValue> AllocateOutputValue() const {
+    return std::make_unique<drake::Value<RosMessage>>(RosMessage{});
   }
-  void CalcOutputValue(const systems::Context<double>& context,
-                       AbstractValue* output_value) const {
+  void CalcOutputValue(const drake::systems::Context<double>& context,
+                       drake::AbstractValue* output_value) const {
     output_value->SetFrom(
         context.get_abstract_state().get_value(kStateIndexMessage));
   }
@@ -218,4 +231,5 @@ class RosSubscriberSystem : public systems::LeafSystem<double> {
   constexpr static int kStateIndexMessageCount = 1;
 };
 
-}  // namespace drake_ros_systems
+}  // namespace systems
+}  // namespace dairlib

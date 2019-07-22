@@ -129,6 +129,8 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
 void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree){
   // IMU position
   // source: https://github.com/osudrl/cassie-mujoco-sim/blob/master/model/cassie.xml#L86
+  // IMU is placed upside down according to UMich repository. Will double check
+  // this on Cassie hardware.
   Eigen::Isometry3d imu_pose_wrt_pelvis_origin;
   Eigen::Matrix3d imu_rotation = Eigen::Matrix3d::Identity();
   imu_rotation(1, 1) = -1;

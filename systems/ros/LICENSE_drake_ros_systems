@@ -1,9 +1,9 @@
-Original versions of //tools/workspace/ros are from 
-https://github.com/nicolov/ros-bazel
+Original versions of ros_publisher_system.h and ros_subscriber_system.h are from
+https://github.com/gizatt/drake_ros_systems
 
 MIT License
 
-Copyright (c) 2017 Nicolo Valigi
+Copyright (c) 2017 Gregory Izatt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

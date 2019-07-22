@@ -25,8 +25,7 @@ int DoMain(ros::NodeHandle& node_handle) {
   DiagramBuilder<double> builder;
 
   auto msg_publisher = builder.AddSystem(
-      RosPublisherSystem<std_msgs::String>::Make("chatter", &node_handle));
-  msg_publisher->set_publish_period(0.25);
+      RosPublisherSystem<std_msgs::String>::Make("chatter", &node_handle, .25));
 
   std_msgs::String msg;
   msg.data = "Hello world!";

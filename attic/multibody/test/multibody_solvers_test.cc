@@ -5,6 +5,7 @@
 #include "attic/multibody/multibody_solvers.h"
 #include "attic/multibody/rigidbody_utils.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "drake/solvers/snopt_solver.h"
 
 namespace dairlib {
 namespace multibody {
@@ -137,8 +138,8 @@ class MultibodySolversTest : public ::testing::Test {
 
     // Setting up fixed_joints_vector_ and fixed_joints_map_ for the quaternion
     // floating base model
-    fixed_joints_vector_quaternion_.push_back(
-        position_map_quaternion_.at("base_qw"));
+    // Not including base_qw here to avoid redundant constraints, which caused
+    // issues with IPOPT (though they worked with SNOPT)
     fixed_joints_vector_quaternion_.push_back(
         position_map_quaternion_.at("base_qx"));
     fixed_joints_vector_quaternion_.push_back(
@@ -733,7 +734,7 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   ASSERT_EQ(lambda_sol_fixed.size(), num_position_constraints_fixed_);
   // Solution constraints check
   ASSERT_TRUE(fp_solver_fixed.CheckConstraint(q_sol_fixed, u_sol_fixed,
-                                              lambda_sol_fixed, 1e-8));
+                                              lambda_sol_fixed, 1e-6));
 
   // Rpy base
   FixedPointSolver fp_solver_rpy(tree_rpy_, contact_info_rpy_, q_rpy_, u_rpy_);
@@ -757,39 +758,41 @@ TEST_F(MultibodySolversTest, TestFixedPointSolverSolution) {
   ASSERT_EQ(u_sol_rpy.size(), num_efforts_rpy_);
   ASSERT_EQ(lambda_sol_rpy.size(), num_forces_rpy_);
   // Solution constraints check
-  ASSERT_TRUE(
-      fp_solver_rpy.CheckConstraint(q_sol_rpy, u_sol_rpy, lambda_sol_rpy));
+  ASSERT_TRUE(fp_solver_rpy.CheckConstraint(q_sol_rpy, u_sol_rpy,
+      lambda_sol_rpy, 1e-5));
 
-  // Quaternion base
-  FixedPointSolver fp_solver_quaternion(
-      tree_quaternion_, contact_info_quaternion_, q_quaternion_, u_quaternion_);
-  fp_solver_quaternion.SetInitialGuess(q_quaternion_, u_quaternion_,
-                                       lambda_quaternion_);
-  fp_solver_quaternion.AddSpreadNormalForcesCost();
-  fp_solver_quaternion.AddUnitQuaternionConstraint(
-      position_map_quaternion_["base_qw"], position_map_quaternion_["base_qx"],
-      position_map_quaternion_["base_qy"], position_map_quaternion_["base_qz"]);
-  fp_solver_quaternion.AddFrictionConeConstraint(0.8);
-  fp_solver_quaternion.AddFixedJointsConstraint(fixed_joints_map_quaternion_);
-  fp_solver_quaternion.AddJointLimitConstraint(0.001);
+  // Quaternion base, only test if SNOPT is available
+  if (drake::solvers::SnoptSolver::is_available()) {
+    FixedPointSolver fp_solver_quaternion(
+        tree_quaternion_, contact_info_quaternion_, q_quaternion_, u_quaternion_);
+    fp_solver_quaternion.SetInitialGuess(q_quaternion_, u_quaternion_,
+                                         lambda_quaternion_);
+    fp_solver_quaternion.AddSpreadNormalForcesCost();
+    fp_solver_quaternion.AddUnitQuaternionConstraint(
+        position_map_quaternion_["base_qw"], position_map_quaternion_["base_qx"],
+        position_map_quaternion_["base_qy"], position_map_quaternion_["base_qz"]);
+    fp_solver_quaternion.AddFrictionConeConstraint(0.8);
+    fp_solver_quaternion.AddFixedJointsConstraint(fixed_joints_map_quaternion_);
+    fp_solver_quaternion.AddJointLimitConstraint(0.001);
 
-  MathematicalProgramResult program_result_quaternion =
-      fp_solver_quaternion.Solve();
+    MathematicalProgramResult program_result_quaternion =
+        fp_solver_quaternion.Solve();
 
-  cout << "Fixed point solver result (Quaternion base): "
-       << program_result_quaternion.get_solution_result() << endl;
+    cout << "Fixed point solver result (Quaternion base): "
+         << program_result_quaternion.get_solution_result() << endl;
 
-  VectorXd q_sol_quaternion = fp_solver_quaternion.GetSolutionQ();
-  VectorXd u_sol_quaternion = fp_solver_quaternion.GetSolutionU();
-  VectorXd lambda_sol_quaternion = fp_solver_quaternion.GetSolutionLambda();
+    VectorXd q_sol_quaternion = fp_solver_quaternion.GetSolutionQ();
+    VectorXd u_sol_quaternion = fp_solver_quaternion.GetSolutionU();
+    VectorXd lambda_sol_quaternion = fp_solver_quaternion.GetSolutionLambda();
 
-  // Solution dimension check
-  ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
-  ASSERT_EQ(u_sol_quaternion.size(), num_efforts_quaternion_);
-  ASSERT_EQ(lambda_sol_quaternion.size(), num_forces_quaternion_);
-  // Solution constraints check
-  ASSERT_TRUE(fp_solver_quaternion.CheckConstraint(
-      q_sol_quaternion, u_sol_quaternion, lambda_sol_quaternion));
+    // Solution dimension check
+    ASSERT_EQ(q_sol_quaternion.size(), num_positions_quaternion_);
+    ASSERT_EQ(u_sol_quaternion.size(), num_efforts_quaternion_);
+    ASSERT_EQ(lambda_sol_quaternion.size(), num_forces_quaternion_);
+    // Solution constraints check
+    ASSERT_TRUE(fp_solver_quaternion.CheckConstraint(
+        q_sol_quaternion, u_sol_quaternion, lambda_sol_quaternion));
+  }
 }
 
 }  // namespace

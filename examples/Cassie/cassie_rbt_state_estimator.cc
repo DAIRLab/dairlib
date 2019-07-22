@@ -4,6 +4,7 @@
 #include <chrono>
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
+#include "drake/solvers/equality_constrained_qp_solver.h"
 #include "drake/math/orthonormal_basis.h"
 #include "drake/multibody/rigid_body_plant/contact_resultant_force_calculator.h"
 
@@ -568,6 +569,7 @@ void CassieRbtStateEstimator::contactEstimation(
       VectorXd::Zero(3, 1));
 
   // Initial guess
+  // TODO(Nanda): Remove the initial guess after testing on the real robot
   quadprog_->SetInitialGuess(ddq_,
       discrete_state->get_vector(ddq_double_init_idx_).get_value());
   quadprog_->SetInitialGuess(lambda_b_,
@@ -578,8 +580,12 @@ void CassieRbtStateEstimator::contactEstimation(
       discrete_state->get_vector(lambda_cr_double_init_idx_).get_value());
 
   // Solve the optimization problem
-  const drake::solvers::MathematicalProgramResult result_double =
-      drake::solvers::Solve(*quadprog_);
+  drake::solvers::EqualityConstrainedQPSolver solver;
+  drake::solvers::SolverOptions solver_options;
+  solver_options.SetOption(drake::solvers::EqualityConstrainedQPSolver::id(),
+               "FeasibilityTol", 1e-6);
+  drake::solvers::MathematicalProgramResult result_double =
+      solver.Solve(*quadprog_.get(), {}, solver_options);
 
   if (!result_double.is_success()) {
     // If the optimization fails, push infinity into the optimal_cost vector
@@ -622,6 +628,8 @@ void CassieRbtStateEstimator::contactEstimation(
         right_force;
 
     // Residual calculation
+    // TODO(Nanda): Remove the residual calculation after testing on the real
+    // robot
     VectorXd curr_residual = ddq_val*dt;
     curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
@@ -659,6 +667,7 @@ void CassieRbtStateEstimator::contactEstimation(
       VectorXd::Zero(3, 1));
 
   // Initial guess
+  // TODO(Nanda): Remove the initial guess after testing on the real robot
   quadprog_->SetInitialGuess(ddq_,
       discrete_state->get_vector(ddq_left_init_idx_).get_value());
   quadprog_->SetInitialGuess(lambda_b_,
@@ -667,7 +676,7 @@ void CassieRbtStateEstimator::contactEstimation(
       discrete_state->get_vector(lambda_cl_left_init_idx_).get_value());
 
   // Solve the optimization problem
-  const drake::solvers::MathematicalProgramResult result_left =
+  drake::solvers::MathematicalProgramResult result_left =
       drake::solvers::Solve(*quadprog_);
 
   if (!result_left.is_success()) {
@@ -704,6 +713,8 @@ void CassieRbtStateEstimator::contactEstimation(
         left_force;
 
     // Residual calculation
+    // TODO(Nanda): Remove the residual calculation after testing on the real
+    // robot
     VectorXd curr_residual = ddq_val*dt;
     curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
@@ -742,6 +753,10 @@ void CassieRbtStateEstimator::contactEstimation(
       VectorXd::Zero(3, 1));
 
   // Initial guess
+  // TODO(Nanda): Remove the initial guess after testing on the real robot
+  // Even though EqualityConstrainedQP doesn't need an initial guess, they are
+  // retained for testing and will be removed once the code is tested on the
+  // real robot.
   quadprog_->SetInitialGuess(ddq_,
       discrete_state->get_vector(ddq_right_init_idx_).get_value());
   quadprog_->SetInitialGuess(lambda_b_,
@@ -750,7 +765,7 @@ void CassieRbtStateEstimator::contactEstimation(
       discrete_state->get_vector(lambda_cr_right_init_idx_).get_value());
 
   // Solve the optimization problem
-  const drake::solvers::MathematicalProgramResult result_right =
+  drake::solvers::MathematicalProgramResult result_right =
       drake::solvers::Solve(*quadprog_);
 
   if (!result_right.is_success()) {
@@ -787,6 +802,8 @@ void CassieRbtStateEstimator::contactEstimation(
         right_force;
 
     // Residual calculation
+    // TODO(Nanda): Remove the residual calculation after testing on the real
+    // robot
     VectorXd curr_residual = ddq_val*dt;
     curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());

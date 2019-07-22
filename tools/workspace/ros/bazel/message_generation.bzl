@@ -45,7 +45,7 @@ def _genpy_impl(ctx):
     outpath = ctx.outputs.outs[0].dirname
 
     # Generate __init__.py for package
-    ctx.file_action(
+    ctx.actions.write(
         output=ctx.outputs.outs[-1],
         content='',
     )

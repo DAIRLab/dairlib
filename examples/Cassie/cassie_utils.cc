@@ -129,9 +129,12 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
 void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree){
   // IMU position
   // source: https://github.com/osudrl/cassie-mujoco-sim/blob/master/model/cassie.xml#L86
-  Eigen::Isometry3d Imu_pos_wrt_pelvis_origin;
-  Imu_pos_wrt_pelvis_origin.linear() = Eigen::Matrix3d::Identity();;
-  Imu_pos_wrt_pelvis_origin.translation() =
+  Eigen::Isometry3d imu_pose_wrt_pelvis_origin;
+  Eigen::Matrix3d imu_rotation = Eigen::Matrix3d::Identity();
+  imu_rotation(1, 1) = -1;
+  imu_rotation(2, 2) = -1;
+  imu_pose_wrt_pelvis_origin.linear() = imu_rotation;
+  imu_pose_wrt_pelvis_origin.translation() =
       Eigen::Vector3d(0.03155, 0, -0.07996);
 
   std::shared_ptr<RigidBodyFrame<double>> imu_frame =
@@ -139,17 +142,17 @@ void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree){
                Eigen::aligned_allocator<RigidBodyFrame<double>>(),
                "imu frame",
                tree->FindBody("pelvis"),
-               Imu_pos_wrt_pelvis_origin);
+               imu_pose_wrt_pelvis_origin);
   tree->addFrame(imu_frame);
 }
-drake::systems::sensors::Accelerometer * addSimAccelerometer(
+systems::sensors::RbtAccelerometer * addSimAccelerometer(
     drake::systems::DiagramBuilder<double> & builder,
     drake::systems::RigidBodyPlant<double> * plant) {
 
   std::shared_ptr< RigidBodyFrame<double> > imu_frame_ptr =
       plant->get_rigid_body_tree().findFrame("imu frame");
 
-  auto accel_sim = builder.AddSystem<drake::systems::sensors::Accelerometer>(
+  auto accel_sim = builder.AddSystem<systems::sensors::RbtAccelerometer>(
                     "Simulated Accelerometer", *imu_frame_ptr,
                     plant->get_rigid_body_tree(), true);
   builder.Connect(plant->state_output_port(),
@@ -177,7 +180,7 @@ systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
     drake::systems::DiagramBuilder<double> & builder,
     drake::systems::RigidBodyPlant<double> * plant,
     SubvectorPassThrough<double> * passthrough,
-    drake::systems::sensors::Accelerometer * accel_sim,
+    systems::sensors::RbtAccelerometer * accel_sim,
     drake::systems::sensors::Gyroscope * gyro_sim) {
   auto cassie_sensor_aggregator =
     builder.AddSystem<systems::SimCassieSensorAggregator>(

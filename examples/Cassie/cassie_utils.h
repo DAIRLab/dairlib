@@ -26,6 +26,7 @@
 #include "drake/systems/sensors/accelerometer.h"
 #include "drake/systems/sensors/gyroscope.h"
 #include "systems/sensors/sim_cassie_sensor_aggregator.h"
+#include "systems/sensors/rbt_accelerometer.h"
 
 namespace dairlib {
 
@@ -67,7 +68,7 @@ void buildCassieTree(
 void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree);
 
 /// Add simulated accelerometer to the diagram
-drake::systems::sensors::Accelerometer * addSimAccelerometer(
+systems::sensors::RbtAccelerometer * addSimAccelerometer(
     drake::systems::DiagramBuilder<double> & builder,
     drake::systems::RigidBodyPlant<double> * plant);
 /// Add simulated gyroscope to the diagram
@@ -79,7 +80,7 @@ systems::SimCassieSensorAggregator * addSimCassieSensorAggregator(
     drake::systems::DiagramBuilder<double> & builder,
     drake::systems::RigidBodyPlant<double> * plant,
     SubvectorPassThrough<double> * passthrough,
-    drake::systems::sensors::Accelerometer * accel_sim,
+    systems::sensors::RbtAccelerometer * accel_sim,
     drake::systems::sensors::Gyroscope * gyro_sim);
 
 /// Add simulated gyroscope and accelerometer and create/publish an

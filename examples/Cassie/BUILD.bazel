@@ -34,6 +34,7 @@ cc_library(
         "//systems/primitives",
         "//systems:robot_lcm_systems",
         "//systems/sensors:sim_cassie_sensor_aggregator",
+        "//systems/sensors:rbt_accelerometer",
         "@drake//:drake_shared_library",
     ],
 )

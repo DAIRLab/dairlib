@@ -25,6 +25,9 @@ namespace systems {
 ///  - `CoM` current center of mass position
 ///  - `stance_foot_pos` current stance foot position
 ///  - `center_line_offset` offset of the center line
+///
+/// Requirement:
+///  - The controller is used with two-state finite state machine
 Eigen::Vector2d ImposeHalfplaneGaurd(Eigen::Vector2d foot_placement_pos,
     int left_stance_state, int right_stance_state, int state,
     double yaw, Eigen::Vector2d CoM, Eigen::Vector2d stance_foot_pos,

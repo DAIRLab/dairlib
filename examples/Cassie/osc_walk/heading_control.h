@@ -26,7 +26,7 @@ namespace osc_walk {
 /// Requirement: quaternion floating-based Cassie only
 class HeadingControl : public drake::systems::LeafSystem<double> {
  public:
-  HeadingControl(RigidBodyTree<double>* tree,
+  HeadingControl(const RigidBodyTree<double>& tree,
                  int pelvis_idx,
                  Eigen::Vector2d global_target_position,
                  Eigen::Vector2d params_of_no_turning);
@@ -39,7 +39,7 @@ class HeadingControl : public drake::systems::LeafSystem<double> {
   void CalcHeadingAngle(const drake::systems::Context<double>& context,
                  drake::trajectories::PiecewisePolynomial<double>* traj) const;
 
-  RigidBodyTree<double>* tree_;
+  const RigidBodyTree<double>& tree_;
   int pelvis_idx_;
   Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;

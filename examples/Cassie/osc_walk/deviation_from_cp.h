@@ -48,7 +48,7 @@ namespace osc_walk {
 /// Requirement: quaternion floating-based Cassie only
 class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
  public:
-  DeviationFromCapturePoint(RigidBodyTree<double>* tree,
+  DeviationFromCapturePoint(const RigidBodyTree<double>& tree,
       int pelvis_idx,
       Eigen::Vector2d global_target_position,
       Eigen::Vector2d params_of_no_turning);
@@ -61,7 +61,7 @@ class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
   void CalcFootPlacement(const drake::systems::Context<double>& context,
                          drake::systems::BasicVector<double>* output) const;
 
-  RigidBodyTree<double>* tree_;
+  const RigidBodyTree<double>& tree_;
   int pelvis_idx_;
   Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;

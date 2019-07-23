@@ -31,7 +31,7 @@ namespace systems {
 ///     state = `second_state_number_`.
 class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
  public:
-  TimeBasedFiniteStateMachine(RigidBodyTree<double>* tree,
+  TimeBasedFiniteStateMachine(const RigidBodyTree<double>& tree,
                               int first_state_number,
                               int second_state_number,
                               int initial_state_number,

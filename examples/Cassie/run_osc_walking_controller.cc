@@ -105,7 +105,7 @@ int DoMain(int argc, char* argv[]) {
   double duration_per_state = 0.35;
   double time_shift = 0;
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-               &tree_with_springs,
+               tree_with_springs,
                left_stance_state, right_stance_state, initial_state_number,
                duration_per_state, time_shift);
   builder.Connect(state_receiver->get_output_port(0),
@@ -137,7 +137,7 @@ int DoMain(int argc, char* argv[]) {
   //                     0.9993 when x = 2
   auto deviation_from_cp =
       builder.AddSystem<cassie::osc_walk::DeviationFromCapturePoint>(
-        &tree_with_springs, pelvis_idx,
+        tree_with_springs, pelvis_idx,
         global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
                   deviation_from_cp->get_input_port_state());
@@ -178,7 +178,7 @@ int DoMain(int argc, char* argv[]) {
   // Desired Heading Angle
   auto heading_control =
       builder.AddSystem<cassie::osc_walk::HeadingControl>(
-        &tree_with_springs, pelvis_idx,
+        tree_with_springs, pelvis_idx,
         global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
                   heading_control->get_input_port_state());

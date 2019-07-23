@@ -30,7 +30,7 @@ namespace cassie {
 namespace osc_walk {
 
 DeviationFromCapturePoint::DeviationFromCapturePoint(
-    RigidBodyTree<double> * tree, int pelvis_idx,
+    const RigidBodyTree<double>& tree, int pelvis_idx,
     Vector2d global_target_position, Eigen::Vector2d params_of_no_turning) :
         tree_(tree),
         pelvis_idx_(pelvis_idx),
@@ -38,9 +38,9 @@ DeviationFromCapturePoint::DeviationFromCapturePoint(
         params_of_no_turning_(params_of_no_turning) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
-                  tree->get_num_positions(),
-                  tree->get_num_velocities(),
-                  tree->get_num_actuators())).get_index();
+                  tree.get_num_positions(),
+                  tree.get_num_velocities(),
+                  tree.get_num_actuators())).get_index();
   this->DeclareVectorOutputPort(BasicVector<double>(2),
                                 &DeviationFromCapturePoint::CalcFootPlacement);
 
@@ -74,22 +74,22 @@ void DeviationFromCapturePoint::CalcFootPlacement(const Context<double>& context
   VectorXd v = robot_output->GetVelocities();
 
   // Kinematics cache and indices
-  KinematicsCache<double> cache = tree_->CreateKinematicsCache();
+  KinematicsCache<double> cache = tree_.CreateKinematicsCache();
   // Modify the quaternion in the begining when the state is not received from
   // the robot yet
   // Always remember to check 0-norm quaternion when using doKinematics
   q.segment(3, 4) = NormalizeQuaternion(q.segment(3, 4));
   cache.initialize(q);
-  tree_->doKinematics(cache);
+  tree_.doKinematics(cache);
 
   // Get center of mass position and velocity
-  Vector3d com_pos = tree_->centerOfMass(cache);
-  MatrixXd J = tree_->centerOfMassJacobian(cache);
+  Vector3d com_pos = tree_.centerOfMass(cache);
+  MatrixXd J = tree_.centerOfMassJacobian(cache);
   Vector3d com_vel = J * v;
 
   // Get proximated heading angle of pelvis
-  Vector3d pelvis_heading_vec = tree_->CalcBodyPoseInWorldFrame(
-      cache, tree_->get_body(pelvis_idx_)).linear().col(0);
+  Vector3d pelvis_heading_vec = tree_.CalcBodyPoseInWorldFrame(
+      cache, tree_.get_body(pelvis_idx_)).linear().col(0);
   double approx_pelvis_yaw = atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 
   // Get desired heading direction

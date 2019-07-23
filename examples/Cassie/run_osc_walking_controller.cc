@@ -399,9 +399,9 @@ int DoMain(int argc, char* argv[]) {
     // (likely due to a restart of the driving clock)
     if (time > simulator.get_context().get_time() + 1.0 ||
         time < simulator.get_context().get_time() - 1.0) {
-      std::cout << "Dispatcher time is " << simulator.get_context().get_time()
+      std::cout << "Controller time is " << simulator.get_context().get_time()
           << ", but stepping to " << time << std::endl;
-      std::cout << "Difference is too large, resetting dispatcher time." <<
+      std::cout << "Difference is too large, resetting controller time." <<
           std::endl;
       simulator.get_mutable_context().SetTime(time);
     }

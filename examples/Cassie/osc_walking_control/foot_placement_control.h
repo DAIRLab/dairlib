@@ -43,7 +43,7 @@ class FootPlacementControl : public drake::systems::LeafSystem<double> {
   double vel_min_sagital_;
   double k_fp_ff_sagital_;
   double k_fp_fb_sagital_;
-  double target_position_offset_;
+  double target_pos_offset_;
 
   double kp_pos_lateral_;
   double kd_pos_lateral_;

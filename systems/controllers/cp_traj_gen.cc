@@ -188,8 +188,6 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   Vector3d stance_foot_pos = stance_foot_body_pos +
                              stance_foot_body_rot * pt_on_stance_foot;
 
-
-
   // Get CoM or predicted CoM
   Vector3d CoM;
   Vector3d dCoM;
@@ -214,13 +212,13 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
 
   Vector2d CP;
   CP << (CoM(0) + dCoM(0) / pred_omega),
-  (CoM(1) + dCoM(1) / pred_omega);
+        (CoM(1) + dCoM(1) / pred_omega);
 
   // Walking position control
   if (is_walking_position_control_) {
     // Read in foot placement
     const BasicVector<double>* fp_output = (BasicVector<double>*)
-                                           this->EvalVectorInput(context, fp_port_);
+        this->EvalVectorInput(context, fp_port_);
     CP += fp_output->get_value();
   }
 
@@ -228,7 +226,7 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   if (is_feet_collision_avoid_) {
     // Get proximated heading angle of pelvis
     Vector3d pelvis_heading_vec = tree_->CalcBodyPoseInWorldFrame(
-                                    cache, tree_->get_body(pelvis_idx_)).linear().col(0);
+        cache, tree_->get_body(pelvis_idx_)).linear().col(0);
     double approx_pelvis_yaw = atan2(
                                  pelvis_heading_vec(1), pelvis_heading_vec(0));
 
@@ -296,7 +294,7 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   if ( CoM_to_CP.norm() > max_CoM_to_CP_dist_ ) {
     if (true) {
       std::cout << "Step length limit reached. It's " <<
-                CoM_to_CP.norm() - max_CoM_to_CP_dist_ << " (m) more than max.\n";
+          CoM_to_CP.norm() - max_CoM_to_CP_dist_ << " (m) more than max.\n";
     }
     Vector2d normalized_CoM_to_CP = CoM_to_CP.normalized();
     CP(0) = CoM(0) + normalized_CoM_to_CP(0) * max_CoM_to_CP_dist_;

@@ -145,12 +145,8 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   Vector3d dCoM = J * v;
 
   // Stance foot position (Forward Kinematics)
-  Eigen::Isometry3d stance_foot_body_pose =
-      tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(stance_foot_index));
-  Vector3d stance_foot_body_pos = stance_foot_body_pose.translation();
-  Eigen::MatrixXd stance_foot_body_rot = stance_foot_body_pose.linear();
-  Vector3d stance_foot_pos = stance_foot_body_pos +
-      stance_foot_body_rot * pt_on_stance_foot;
+  Vector3d stance_foot_pos = tree_->transformPoints(cache,
+      pt_on_stance_foot, stance_foot_index, 0);
 
   // Get CoM_wrt_foot for LIPM
   // Prevent zCoM_wrt_foot from being non-positive (in simulation) cause of

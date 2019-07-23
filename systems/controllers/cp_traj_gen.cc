@@ -142,12 +142,8 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
                                 pt_on_left_foot_ : pt_on_right_foot_;
 
     // Swing foot position (Forward Kinematics) and velocity at touchdown
-    Eigen::Isometry3d swing_foot_body_pose =
-        tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(swing_foot_idx));
-    Vector3d swing_foot_body_pos = swing_foot_body_pose.translation();
-    Eigen::MatrixXd swing_foot_body_rot = swing_foot_body_pose.linear();
-    swing_foot_pos_td = swing_foot_body_pos +
-                        swing_foot_body_rot * pt_on_swing_foot;
+    swing_foot_pos_td = tree_->transformPoints(cache,
+        pt_on_swing_foot, swing_foot_idx, 0);
   }
 
   return EventStatus::Succeeded();
@@ -181,12 +177,8 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     stance_foot_idx = left_foot_idx_;
     pt_on_stance_foot = pt_on_left_foot_;
   }
-  Eigen::Isometry3d stance_foot_body_pose =
-      tree_->CalcBodyPoseInWorldFrame(cache, tree_->get_body(stance_foot_idx));
-  Vector3d stance_foot_body_pos = stance_foot_body_pose.translation();
-  Eigen::MatrixXd stance_foot_body_rot = stance_foot_body_pose.linear();
-  Vector3d stance_foot_pos = stance_foot_body_pos +
-                             stance_foot_body_rot * pt_on_stance_foot;
+  Vector3d stance_foot_pos = tree_->transformPoints(cache,
+      pt_on_stance_foot, stance_foot_idx, 0);
 
   // Get CoM or predicted CoM
   Vector3d CoM;

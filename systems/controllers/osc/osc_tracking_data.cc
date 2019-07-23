@@ -214,11 +214,8 @@ void TransTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
   if (track_center_of_mass_) {
     y_ = tree_w_spr->centerOfMass(cache_w_spr);
   } else {
-    Isometry3d body_pose = tree_w_spr->CalcBodyPoseInWorldFrame(cache_w_spr,
-                           tree_w_spr->get_body(
-                             body_index_w_spr_.at(GetStateIdx())));
-    y_ = body_pose.translation() +
-         body_pose.linear() * pt_on_body_.at(GetStateIdx());
+    y_ = tree_w_spr->transformPoints(cache_w_spr, pt_on_body_.at(GetStateIdx()),
+        body_index_w_spr_.at(GetStateIdx()), 0);
   }
   error_y_ = y_des_ - y_;
 }

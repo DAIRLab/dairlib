@@ -9,8 +9,8 @@ namespace systems {
 /// it in a halfplane.
 /// The halfplane is defined by two things:
 ///  - A point on the line (the edge of the halfplace).
-///    The point is either CoM or stance foot depending on the motion of the
-///    robot. This point is also shifted by a distance `center_line_offset` in
+///    The point is either shifted CoM or stance foot depending on the motion of
+///    the robot. This CoM is shifted by a distance `center_line_offset` in
 ///    order to avoid foot collision.
 ///  - The slope/direction of the line.
 ///    The direction of the line is the robot's yaw angle.

@@ -215,7 +215,6 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     CP += fp_output->get_value();
   }
 
-  Vector2d CoM_to_CP(CP(0) - CoM(0), CP(1) - CoM(1));
   if (is_feet_collision_avoid_) {
     // Get proximated heading angle of pelvis
     Vector3d pelvis_heading_vec = tree_->CalcBodyPoseInWorldFrame(

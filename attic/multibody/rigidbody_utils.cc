@@ -63,8 +63,8 @@ bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
   return joints_within_limits;
 }
 
-bool IsFloatingBase(RigidBodyTree<double>* tree){
-  return tree->get_body(1).getJoint().is_floating();
+bool IsFloatingBase(const RigidBodyTree<double>& tree){
+  return tree.get_body(1).getJoint().is_floating();
 }
 
 

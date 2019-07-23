@@ -31,7 +31,7 @@ namespace systems {
 
 class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  LIPMTrajGenerator(RigidBodyTree<double> * tree,
+  LIPMTrajGenerator(const RigidBodyTree<double>& tree,
                     double desired_com_height,
                     double stance_duration_per_leg,
                     int left_stance_state,
@@ -64,7 +64,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   int prev_td_time_idx_;
   int prev_fsm_state_idx_;
 
-  RigidBodyTree<double>* tree_;
+  const RigidBodyTree<double>& tree_;
 
   double desired_com_height_;
   double stance_duration_per_leg_;

@@ -24,7 +24,7 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 namespace dairlib {
 namespace systems {
 
-LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
+LIPMTrajGenerator::LIPMTrajGenerator(const RigidBodyTree<double>& tree,
                                      double desired_com_height,
                                      double stance_duration_per_leg,
                                      int left_stance_state,
@@ -46,9 +46,9 @@ LIPMTrajGenerator::LIPMTrajGenerator(RigidBodyTree<double> * tree,
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
-                  tree->get_num_positions(),
-                  tree->get_num_velocities(),
-                  tree->get_num_actuators())).get_index();
+                  tree.get_num_positions(),
+                  tree.get_num_velocities(),
+                  tree.get_num_actuators())).get_index();
   fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
   this->DeclareAbstractOutputPort("lipm_traj", &LIPMTrajGenerator::CalcTraj);
@@ -123,7 +123,7 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   }
 
   // Kinematics cache and indices
-  KinematicsCache<double> cache = tree_->CreateKinematicsCache();
+  KinematicsCache<double> cache = tree_.CreateKinematicsCache();
   VectorXd q = robot_output->GetPositions();
 
   // Modify the quaternion in the begining when the state is not received from
@@ -133,19 +133,19 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   }
 
   cache.initialize(q);
-  tree_->doKinematics(cache);
+  tree_.doKinematics(cache);
   int stance_foot_index = (fsm_state(0) == right_stance_state_) ?
                           right_foot_idx_ : left_foot_idx_;
   Vector3d pt_on_stance_foot = (fsm_state(0) == right_stance_state_) ?
                           pt_on_right_foot_ : pt_on_left_foot_;
 
   // Get center of mass position and velocity
-  Vector3d CoM = tree_->centerOfMass(cache);
-  MatrixXd J = tree_->centerOfMassJacobian(cache);
+  Vector3d CoM = tree_.centerOfMass(cache);
+  MatrixXd J = tree_.centerOfMassJacobian(cache);
   Vector3d dCoM = J * v;
 
   // Stance foot position (Forward Kinematics)
-  Vector3d stance_foot_pos = tree_->transformPoints(cache,
+  Vector3d stance_foot_pos = tree_.transformPoints(cache,
       pt_on_stance_foot, stance_foot_index, 0);
 
   // Get CoM_wrt_foot for LIPM

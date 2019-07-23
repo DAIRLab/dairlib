@@ -28,7 +28,7 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 namespace dairlib {
 namespace systems {
 
-CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
+CPTrajGenerator::CPTrajGenerator(const RigidBodyTree<double>& tree,
                                  double mid_foot_height,
                                  double desired_final_foot_height,
                                  double desired_final_vertical_foot_velocity,
@@ -68,9 +68,9 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
-                  tree->get_num_positions(),
-                  tree->get_num_velocities(),
-                  tree->get_num_actuators())).get_index();
+                  tree.get_num_positions(),
+                  tree.get_num_velocities(),
+                  tree.get_num_actuators())).get_index();
 
   fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
@@ -128,7 +128,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     prev_td_time(0) = current_time;
 
     // Kinematics cache and indices
-    KinematicsCache<double> cache = tree_->CreateKinematicsCache();
+    KinematicsCache<double> cache = tree_.CreateKinematicsCache();
     VectorXd q = robot_output->GetPositions();
     // Modify the quaternion in the begining when the state is not received from
     // the robot yet (cannot have 0-norm quaternion when using doKinematics)
@@ -136,14 +136,14 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
       q.segment(3, 4) = NormalizeQuaternion(q.segment(3, 4));
     }
     cache.initialize(q);
-    tree_->doKinematics(cache);
+    tree_.doKinematics(cache);
     int swing_foot_idx = (fsm_state(0) == right_stance_) ?
                            left_foot_idx_ : right_foot_idx_;
     Vector3d pt_on_swing_foot = (fsm_state(0) == right_stance_) ?
                                 pt_on_left_foot_ : pt_on_right_foot_;
 
     // Swing foot position (Forward Kinematics) and velocity at touchdown
-    swing_foot_pos_td = tree_->transformPoints(cache,
+    swing_foot_pos_td = tree_.transformPoints(cache,
         pt_on_swing_foot, swing_foot_idx, 0);
   }
 
@@ -160,7 +160,7 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   VectorXd fsm_state = fsm_output->get_value();
 
   // Get stance foot position and index
-  KinematicsCache<double> cache = tree_->CreateKinematicsCache();
+  KinematicsCache<double> cache = tree_.CreateKinematicsCache();
   VectorXd q = robot_output->GetPositions();
   // Modify the quaternion in the begining when the state is not received from
   // the robot yet
@@ -168,7 +168,7 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     q.segment(3, 4) = NormalizeQuaternion(q.segment(3, 4));
   }
   cache.initialize(q);
-  tree_->doKinematics(cache);
+  tree_.doKinematics(cache);
   int stance_foot_idx;
   Vector3d pt_on_stance_foot;
   if (fsm_state(0) == right_stance_) {
@@ -178,7 +178,7 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     stance_foot_idx = left_foot_idx_;
     pt_on_stance_foot = pt_on_left_foot_;
   }
-  Vector3d stance_foot_pos = tree_->transformPoints(cache,
+  Vector3d stance_foot_pos = tree_.transformPoints(cache,
       pt_on_stance_foot, stance_foot_idx, 0);
 
   // Get CoM or predicted CoM
@@ -195,9 +195,9 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     dCoM = com_traj.derivative().value(end_time_of_this_interval);
   } else {
     // Get the current center of mass position and velocity
-    MatrixXd J_com = tree_->centerOfMassJacobian(cache);
+    MatrixXd J_com = tree_.centerOfMassJacobian(cache);
     VectorXd v = robot_output->GetVelocities();
-    CoM = tree_->centerOfMass(cache);
+    CoM = tree_.centerOfMass(cache);
     dCoM = J_com * v;
   }
 
@@ -217,8 +217,8 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
 
   if (is_feet_collision_avoid_) {
     // Get proximated heading angle of pelvis
-    Vector3d pelvis_heading_vec = tree_->CalcBodyPoseInWorldFrame(
-        cache, tree_->get_body(pelvis_idx_)).linear().col(0);
+    Vector3d pelvis_heading_vec = tree_.CalcBodyPoseInWorldFrame(
+        cache, tree_.get_body(pelvis_idx_)).linear().col(0);
     double approx_pelvis_yaw = atan2(
                                  pelvis_heading_vec(1), pelvis_heading_vec(0));
 

@@ -48,7 +48,7 @@ namespace systems {
 
 class CPTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  CPTrajGenerator(RigidBodyTree<double>* tree,
+  CPTrajGenerator(const RigidBodyTree<double>& tree,
                   double mid_foot_height,
                   double desired_final_foot_height,
                   double desired_final_vertical_foot_velocity,
@@ -110,7 +110,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
 
   bool is_quaternion_;
 
-  RigidBodyTree<double>* tree_;
+  const RigidBodyTree<double>& tree_;
   double mid_foot_height_;
   double desired_final_foot_height_;
   double desired_final_vertical_foot_velocity_;

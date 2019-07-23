@@ -29,11 +29,13 @@ cc_library(
     srcs = [
         "dircon_kinematic_data.cc",
         "dircon_position_data.cc",
+        "dircon_distance_data.cc",
         "dircon_kinematic_data_set.cc",
     ],
     hdrs = [
         "dircon_kinematic_data.h",
         "dircon_position_data.h",
+        "dircon_distance_data.h",
         "dircon_kinematic_data_set.h",
     ],
     deps = [
@@ -43,3 +45,15 @@ cc_library(
 )
 
 
+cc_binary(
+    name = "passive_constrained_pendulum_dircon",
+    srcs = ["test/passive_constrained_pendulum_dircon.cc"],
+    data = ["@drake//examples/acrobot:models"],
+    deps = [
+        "//systems/trajectory_optimization:dircon",
+        "//common",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

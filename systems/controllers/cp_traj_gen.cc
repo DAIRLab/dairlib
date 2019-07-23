@@ -41,7 +41,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
                                  int right_foot_idx,
                                  Eigen::Vector3d pt_on_right_foot,
                                  int pelvis_idx,
-                                 bool is_walking_position_control,
+                                 bool add_extra_control,
                                  bool is_feet_collision_avoid,
                                  bool is_using_predicted_com,
                                  double cp_offset,
@@ -59,7 +59,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
     pt_on_left_foot_(pt_on_left_foot),
     pt_on_right_foot_(pt_on_right_foot),
     pelvis_idx_(pelvis_idx),
-    is_walking_position_control_(is_walking_position_control),
+    add_extra_control_(add_extra_control),
     is_feet_collision_avoid_(is_feet_collision_avoid),
     is_using_predicted_com_(is_using_predicted_com),
     cp_offset_(cp_offset),
@@ -78,7 +78,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
     com_port_ = this->DeclareAbstractInputPort("CoM_traj",
         drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
   }
-  if (is_walking_position_control) {
+  if (add_extra_control) {
     fp_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   }
 
@@ -208,7 +208,7 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
         (CoM(1) + dCoM(1) / pred_omega);
 
   // Walking position control
-  if (is_walking_position_control_) {
+  if (add_extra_control_) {
     // Read in foot placement
     const BasicVector<double>* fp_output = (BasicVector<double>*)
         this->EvalVectorInput(context, fp_port_);

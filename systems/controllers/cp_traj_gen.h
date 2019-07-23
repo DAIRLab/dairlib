@@ -20,7 +20,10 @@ namespace systems {
 /// In the z direction, the start point is the swing foot position before it
 /// leaves the ground, and the mid point and end point are both specified by
 /// the user.
-
+/// The CP can be modified according to two flags
+///  - `add_extra_control`
+///  - `is_feet_collision_avoid`
+///
 /// Arguments of the constructor:
 /// - rigid body tree
 /// - desired height of the swing foot during mid swing phase
@@ -36,7 +39,7 @@ namespace systems {
 /// - position of the contact point w.r.t. left foot body
 /// - position of the contact point w.r.t. right foot body
 /// - pelvis body index (used to get the pelvis heading direction)
-/// - a flag enabling foot placement control
+/// - a flag enabling CP modification (e.g. walking speed control)
 /// - a flag enabling feet collision avoidance
 /// - a flag enabling the usage of prediction of center of mass
 ///     (use predicted center of mass position at touchdown to calculate CP)
@@ -58,7 +61,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
                   int right_foot_idx,
                   Eigen::Vector3d pt_on_right_foot,
                   int pelvis_idx,
-                  bool is_walking_position_control,
+                  bool add_extra_control,
                   bool is_feet_collision_avoid,
                   bool is_using_predicted_com,
                   double cp_offset,
@@ -120,7 +123,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   Eigen::Vector3d pt_on_left_foot_;
   Eigen::Vector3d pt_on_right_foot_;
   int pelvis_idx_;
-  bool is_walking_position_control_;
+  bool add_extra_control_;
   bool is_feet_collision_avoid_;
   bool is_using_predicted_com_;
 

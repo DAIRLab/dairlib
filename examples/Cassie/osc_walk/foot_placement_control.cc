@@ -68,10 +68,10 @@ FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
 void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
     BasicVector<double>* output) const {
   // Read in current state
-  const OutputVector<double>* robotOutput = (OutputVector<double>*)
+  const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
-  VectorXd q = robotOutput->GetPositions();
-  VectorXd v = robotOutput->GetVelocities();
+  VectorXd q = robot_output->GetPositions();
+  VectorXd v = robot_output->GetVelocities();
 
   // Kinematics cache and indices
   KinematicsCache<double> cache = tree_->CreateKinematicsCache();
@@ -87,12 +87,6 @@ void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
   MatrixXd J = tree_->centerOfMassJacobian(cache);
   Vector3d com_vel = J * v;
 
-  // Extract quaternion from floating base position
-  Quaterniond Quat(q(3), q(4), q(5), q(6));
-  Quaterniond Quat_conj = Quat.conjugate();
-  Vector4d quat(q.segment(3,4));
-  Vector4d quad_conj(Quat_conj.w(), Quat_conj.x(), Quat_conj.y(), Quat_conj.z());
-
   // Get proximated heading angle of pelvis
   Vector3d pelvis_heading_vec = tree_->CalcBodyPoseInWorldFrame(
       cache, tree_->get_body(pelvis_idx_)).linear().col(0);
@@ -106,18 +100,26 @@ void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
 
   // Walking control
   double heading_error = desired_heading_pos - approx_pelvis_yaw;
-  bool isPauseWalkingPositionControl =
+  bool pause_walking_position_control =
       (heading_error > M_PI / 2 || heading_error < -M_PI / 2) ? true : false;
 
   Vector3d delta_CP_sagital_3D_global(0, 0, 0);
   Vector3d delta_CP_lateral_3D_global(0, 0, 0);
-  if (!isPauseWalkingPositionControl) {
+  if (!pause_walking_position_control) {
+    // Extract quaternion from floating base position
+    Quaterniond Quat(q(3), q(4), q(5), q(6));
+    Quaterniond Quat_conj = Quat.conjugate();
+    Vector4d quat(q.segment(3,4));
+    Vector4d quad_conj(Quat_conj.w(), Quat_conj.x(),
+                       Quat_conj.y(), Quat_conj.z());
 
+    // Calculate local target position and com velocity
     Vector3d global_com_pos_to_target_pos_3d;
     global_com_pos_to_target_pos_3d << global_com_pos_to_target_pos, 0;
     Vector3d local_com_pos_to_target_pos =
         drake::math::quatRotateVec(quad_conj, global_com_pos_to_target_pos_3d);
     Vector3d local_com_vel = drake::math::quatRotateVec(quad_conj, com_vel);
+
     //////////////////// Sagital ////////////////////
     // Position Control
     double com_vel_sagital = local_com_vel(0);
@@ -151,10 +153,8 @@ void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
   }
 
   // Assign foot placement
-  Vector2d global_delta_CP_sagital_and_lateral(
-      delta_CP_sagital_3D_global(0) + delta_CP_lateral_3D_global(0),
-      delta_CP_sagital_3D_global(1) + delta_CP_lateral_3D_global(1));
-  output->get_mutable_value() = global_delta_CP_sagital_and_lateral;
+  output->get_mutable_value() =
+      (delta_CP_sagital_3D_global + delta_CP_lateral_3D_global).head(2);
 }
 
 }  // namespace osc_walk

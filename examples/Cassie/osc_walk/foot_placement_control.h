@@ -16,8 +16,26 @@ namespace osc_walk {
 
 /// FootPlacementControl calculates the deviation from capture point in order
 /// to track a desired velocity.
-
-
+///
+/// Controller desciprtion:
+///  Let delta_r be the output of FootPlacementControl.
+///  Since apply the same control law to sagital and lateral plane, we will only
+///  explain for the case of sagital plane. I.e., consider delta_r is 1D here.
+///  There are two levels of control, position control and velocity control.
+///  The position control is just a PD controller which output a desired
+///  velocity
+///    v_des = k_p * (r_des - r) + k_d * (- rdot),
+///  where r/r_des is the current/desired center of mass position, and
+///  k_p/k_d is the p/d gain of PD control.
+///  The desired velocity is further fed to the velocity control.
+///  The velocity controller is similar to Raibert's foot placement controller,
+///  except that the feedward term is a little bit different. In math, the
+///  output of the velocity controller is
+///    delta_r = k_ff * (-v_des) + k_fb * (v - v_des),
+///  where v/v_des is the current/desired center of mass velocity, and
+///  k_ff/k_fb is the gain of the feedforward/feedback term.
+///  (Raibert controller uses k_ff = T/2 where T is the stride duration.)
+///
 /// Requirement: quaternion floating-based Cassie only
 class FootPlacementControl : public drake::systems::LeafSystem<double> {
  public:

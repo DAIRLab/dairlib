@@ -5,6 +5,7 @@
 #include <string>
 
 #include "common/math_utils.h"
+#include "systems/controllers/control_utils.h"
 
 using std::cout;
 using std::endl;
@@ -222,10 +223,10 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     double approx_pelvis_yaw = atan2(
                                  pelvis_heading_vec(1), pelvis_heading_vec(0));
 
-    // Shift CP away from CoM since Cassie shouldn't step right below the CoM
-    // Shift CP a little away from CoM line and toward the swing foot
+    // Shift CP a little away from CoM line and toward the swing foot, so that
+    // the foot placement position at steady state is right below the hip joint
     Vector2d shift_foothold_dir;
-    if (fsm_state(0) == right_stance_) { // right stance
+    if (fsm_state(0) == right_stance_) {
       shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 1 / 2),
                          sin(approx_pelvis_yaw + M_PI * 1 / 2);
     } else {
@@ -234,64 +235,13 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     }
     CP = CP + shift_foothold_dir * cp_offset_;
 
-    // The above CP shift might not be sufficient for leg collision avoidance,
-    // so we add a guard to restrict CP in an area.
-    // The safe area to step on is a halfplane which defined by a point on the
-    // line (the edge of the halfplace) and the slope/direction of the line.
-    // The point is either shifted CoM or shifted stance foot depending on the
-    // motion of the robot. The direction of the line is the pelvis heading.
-
-    Vector3d base_yaw_heading(cos(approx_pelvis_yaw), sin(approx_pelvis_yaw), 0);
-    Vector3d CoM_to_stance_foot(stance_foot_pos(0) - CoM(0),
-                                stance_foot_pos(1) - CoM(1),
-                                0);
-    Vector3d heading_cross_CoM_to_stance_foot =
-        base_yaw_heading.cross(CoM_to_stance_foot);
-
-    // Select the point which lies on the line
-    Vector2d CoM_or_stance_foot;
-    if ( ((fsm_state(0) == right_stance_) &&
-          (heading_cross_CoM_to_stance_foot(2) > 0)) ||
-         ((fsm_state(0) == left_stance_) &&
-          (heading_cross_CoM_to_stance_foot(2) < 0)) )
-      CoM_or_stance_foot << stance_foot_pos(0), stance_foot_pos(1);
-    else
-      CoM_or_stance_foot << CoM(0), CoM(1);
-
-    Vector3d shifted_CoM_or_stance_foot(
-        CoM_or_stance_foot(0) + shift_foothold_dir(0)*center_line_offset_,
-        CoM_or_stance_foot(1) + shift_foothold_dir(1)*center_line_offset_,
-        0);
-    Vector3d CoM_or_stance_foot_to_CP(
-        CP(0) - shifted_CoM_or_stance_foot(0),
-        CP(1) - shifted_CoM_or_stance_foot(1),
-        0);
-
-    // Check if CP is in the halfplace. If not, we project it onto the line.
-    Vector3d heading_cross_CoM_to_CP =
-        base_yaw_heading.cross(CoM_or_stance_foot_to_CP);
-    if ( ((fsm_state(0) == right_stance_) && (heading_cross_CoM_to_CP(2) < 0)) ||
-         ((fsm_state(0) == left_stance_) && (heading_cross_CoM_to_CP(2) > 0)) ) {
-      Vector3d perp_heading_dir = heading_cross_CoM_to_CP.cross(base_yaw_heading);
-      perp_heading_dir = perp_heading_dir / perp_heading_dir.norm();
-      Vector3d projection_cf_CoM_cr_stance_foot_to_CP =
-          (CoM_or_stance_foot_to_CP.dot(perp_heading_dir)) * perp_heading_dir;
-      CP(0) = CP(0) - projection_cf_CoM_cr_stance_foot_to_CP(0);
-      CP(1) = CP(1) - projection_cf_CoM_cr_stance_foot_to_CP(1);
-    }
+    CP = ImposeHalfplaneGaurd(CP, left_stance_, right_stance_, fsm_state(0),
+      approx_pelvis_yaw, CoM.head(2), stance_foot_pos.head(2),
+      center_line_offset_);
   }
 
-  // Cap the step length
-  CoM_to_CP = CP - CoM.head(2);  // update with the new CP
-  if ( CoM_to_CP.norm() > max_CoM_to_CP_dist_ ) {
-    if (true) {
-      std::cout << "Step length limit reached. It's " <<
-          CoM_to_CP.norm() - max_CoM_to_CP_dist_ << " (m) more than max.\n";
-    }
-    Vector2d normalized_CoM_to_CP = CoM_to_CP.normalized();
-    CP(0) = CoM(0) + normalized_CoM_to_CP(0) * max_CoM_to_CP_dist_;
-    CP(1) = CoM(1) + normalized_CoM_to_CP(1) * max_CoM_to_CP_dist_;
-  }
+  // Cap by the step length
+  CP = ImposeStepLengthGaurd(CP, CoM.head(2), max_CoM_to_CP_dist_);
 
   return CP;
 }

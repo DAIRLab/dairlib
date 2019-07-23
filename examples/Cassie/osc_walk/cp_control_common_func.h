@@ -17,7 +17,7 @@ namespace osc_walk {
 ///
 /// We use logistic function to implement the weighting for the current position
 /// y_c and y_t.
-/// Logistic function = 1 / (1 + params_1*exp(x-params_2))
+/// Logistic function = 1 / (1 - params_1*exp(x-params_2))
 /// Function visualization: https://www.desmos.com/calculator/agxuc5gip8
 double GetDesiredHeadingPos(double pelvis_yaw_pos,
                             Eigen::Vector2d com_to_target_pos,

@@ -17,6 +17,7 @@ namespace osc_walk {
 /// FootPlacementControl calculates the deviation from capture point in order
 /// to track a desired velocity.
 
+
 /// Requirement: quaternion floating-based Cassie only
 class FootPlacementControl : public drake::systems::LeafSystem<double> {
  public:

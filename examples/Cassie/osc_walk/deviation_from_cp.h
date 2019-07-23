@@ -39,6 +39,12 @@ namespace osc_walk {
 ///  Additionally, we only apply the above control law when the robot is facing
 ///  the target position. Otherwise, delta_r = [0; 0].
 ///
+/// Input:
+///  - State of the robot
+///
+/// Output:
+///  - A 2D vector, delta_r.
+///
 /// Requirement: quaternion floating-based Cassie only
 class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
  public:

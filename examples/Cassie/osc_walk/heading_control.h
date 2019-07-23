@@ -9,8 +9,20 @@ namespace dairlib {
 namespace cassie {
 namespace osc_walk {
 
-/// HeadingControl calculates desired heading angle (yaw in global frame).
-
+/// `HeadingControl` calculates desired rotation (in global frame) of Cassie's
+/// pelvis.
+/// The desired angles are 0's for pitch and roll. As for yaw, the desired value
+/// is calculated in the function `GetDesiredYawAngle`. See the function for
+/// detailed documentation.
+/// The desired (roll, pitch, yaw) is further transformed into quaternion
+/// representation, and becomes the output of `HeadingControl`.
+///
+/// Input:
+///  - State of the robot
+///
+/// Output:
+///  - A 4D constant polynomial which contains quaterinon's w, x, y and z.
+///
 /// Requirement: quaternion floating-based Cassie only
 class HeadingControl : public drake::systems::LeafSystem<double> {
  public:

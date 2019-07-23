@@ -185,7 +185,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-               &tree_with_springs, &tree_without_springs, true, false);
+               tree_with_springs, tree_without_springs, true, false);
   // Get body index
   int pelvis_idx_w_spr = pelvis_idx;
   int left_toe_idx_w_spr = left_toe_idx;

@@ -79,8 +79,8 @@ namespace controllers {
 
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
-  OperationalSpaceControl(RigidBodyTree<double>* tree_w_spr,
-                          RigidBodyTree<double>* tree_wo_spr,
+  OperationalSpaceControl(const RigidBodyTree<double>& tree_w_spr,
+                          const RigidBodyTree<double>& tree_wo_spr,
                           bool used_with_finite_state_machine = true,
                           bool print_tracking_info = false);
 
@@ -164,8 +164,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> traj_name_to_port_index_map_;
 
   // RBT's.
-  RigidBodyTree<double>* tree_w_spr_;
-  RigidBodyTree<double>* tree_wo_spr_;
+  const RigidBodyTree<double>& tree_w_spr_;
+  const RigidBodyTree<double>& tree_wo_spr_;
 
   // Size of position, velocity and input of the RBT without spring
   int n_q_;

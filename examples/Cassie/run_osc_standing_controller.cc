@@ -92,7 +92,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-               &tree_with_springs, &tree_without_springs, false, false);
+               tree_with_springs, tree_without_springs, false, false);
   // Get body index
   int pelvis_idx_w_spr = pelvis_idx;
   int pelvis_idx_wo_spr = GetBodyIndexFromName(

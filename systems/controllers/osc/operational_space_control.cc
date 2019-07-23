@@ -28,8 +28,8 @@ namespace systems {
 namespace controllers {
 
 OperationalSpaceControl::OperationalSpaceControl(
-    RigidBodyTree<double>* tree_w_spr,
-    RigidBodyTree<double>* tree_wo_spr,
+    const RigidBodyTree<double>& tree_w_spr,
+    const RigidBodyTree<double>& tree_wo_spr,
     bool used_with_finite_state_machine,
     bool print_tracking_info) :
         tree_w_spr_(tree_w_spr),
@@ -38,16 +38,16 @@ OperationalSpaceControl::OperationalSpaceControl(
         print_tracking_info_(print_tracking_info) {
   this->set_name("OSC");
 
-  n_q_ = tree_wo_spr->get_num_positions();
-  n_v_ = tree_wo_spr->get_num_velocities();
-  n_u_ = tree_wo_spr->get_num_actuators();
+  n_q_ = tree_wo_spr.get_num_positions();
+  n_v_ = tree_wo_spr.get_num_velocities();
+  n_u_ = tree_wo_spr.get_num_actuators();
   cout << "n_q_ = " << n_q_ << endl;
   cout << "n_v_ = " << n_v_ << endl;
   cout << "n_u_ = " << n_u_ << endl;
 
-  int n_q_w_spr = tree_w_spr->get_num_positions();
-  int n_v_w_spr = tree_w_spr->get_num_velocities();
-  int n_u_w_spr = tree_w_spr->get_num_actuators();
+  int n_q_w_spr = tree_w_spr.get_num_positions();
+  int n_v_w_spr = tree_w_spr.get_num_velocities();
+  int n_u_w_spr = tree_w_spr.get_num_actuators();
   cout << "n_q_w_spr = " << n_q_w_spr << endl;
   cout << "n_v_w_spr = " << n_v_w_spr << endl;
   cout << "n_u_w_spr = " << n_u_w_spr << endl;
@@ -72,8 +72,8 @@ OperationalSpaceControl::OperationalSpaceControl(
   map_position_from_spring_to_no_spring_ = MatrixXd::Zero(n_q_, n_q_w_spr);
   for (int i = 0; i < n_q_; i++)
     for (int j = 0; j < n_q_w_spr; j++) {
-      std::string name_wo_spr = tree_wo_spr_->get_position_name(i);
-      std::string name_w_spr = tree_w_spr_->get_position_name(j);
+      std::string name_wo_spr = tree_wo_spr_.get_position_name(i);
+      std::string name_w_spr = tree_w_spr_.get_position_name(j);
       if (name_wo_spr.compare(0, name_wo_spr.size(), name_w_spr) == 0) {
         map_position_from_spring_to_no_spring_(i, j) = 1;
       }
@@ -81,8 +81,8 @@ OperationalSpaceControl::OperationalSpaceControl(
   map_velocity_from_spring_to_no_spring_ = MatrixXd::Zero(n_v_, n_v_w_spr);
   for (int i = 0; i < n_v_; i++)
     for (int j = 0; j < n_v_w_spr; j++) {
-      std::string name_wo_spr = tree_wo_spr_->get_velocity_name(i);
-      std::string name_w_spr = tree_w_spr_->get_velocity_name(j);
+      std::string name_wo_spr = tree_wo_spr_.get_velocity_name(i);
+      std::string name_w_spr = tree_w_spr_.get_velocity_name(j);
       if (name_wo_spr.compare(0, name_wo_spr.size(), name_w_spr) == 0) {
         map_velocity_from_spring_to_no_spring_(i, j) = 1;
       }
@@ -92,14 +92,14 @@ OperationalSpaceControl::OperationalSpaceControl(
   VectorXd u_min(n_u_);
   VectorXd u_max(n_u_);
   for (int i = 0; i < n_u_; i++) {
-    u_min(i) = tree_wo_spr_->actuators[i].effort_limit_min_;
-    u_max(i) = tree_wo_spr_->actuators[i].effort_limit_max_;
+    u_min(i) = tree_wo_spr_.actuators[i].effort_limit_min_;
+    u_max(i) = tree_wo_spr_.actuators[i].effort_limit_max_;
   }
   u_min_ = u_min;
   u_max_ = u_max;
 
   // Check if the model is floating based
-  is_quaternion_ = multibody::IsFloatingBase(*tree_w_spr);
+  is_quaternion_ = multibody::IsFloatingBase(tree_w_spr);
 }
 
 // Cost methods
@@ -177,7 +177,7 @@ void OperationalSpaceControl::ConstructOSC() {
   }
 
   // Construct QP
-  n_h_ = tree_wo_spr_->getNumPositionConstraints();
+  n_h_ = tree_wo_spr_.getNumPositionConstraints();
   n_c_ = 3 * body_index_.size();
   prog_ = std::make_unique<MathematicalProgram>();
 
@@ -327,32 +327,32 @@ VectorXd OperationalSpaceControl::SolveQp(
   vector<bool> active_contact_flags = CalcActiveContactIndices(fsm_state);
 
   // Get Kinematics Cache
-  KinematicsCache<double> cache_w_spr = tree_w_spr_->doKinematics(
-      x_w_spr.head(tree_w_spr_->get_num_positions()),
-      x_w_spr.tail(tree_w_spr_->get_num_velocities()));
-  KinematicsCache<double> cache_wo_spr = tree_wo_spr_->doKinematics(
+  KinematicsCache<double> cache_w_spr = tree_w_spr_.doKinematics(
+      x_w_spr.head(tree_w_spr_.get_num_positions()),
+      x_w_spr.tail(tree_w_spr_.get_num_velocities()));
+  KinematicsCache<double> cache_wo_spr = tree_wo_spr_.doKinematics(
       x_wo_spr.head(n_q_), x_wo_spr.tail(n_v_));
 
   // Get M, f_cg, B matrices of the manipulator equation
-  MatrixXd B = tree_wo_spr_->B;
-  MatrixXd M = tree_wo_spr_->massMatrix(cache_wo_spr);
+  MatrixXd B = tree_wo_spr_.B;
+  MatrixXd M = tree_wo_spr_.massMatrix(cache_wo_spr);
   const RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
-  VectorXd bias = tree_wo_spr_->dynamicsBiasTerm(cache_wo_spr,
+  VectorXd bias = tree_wo_spr_.dynamicsBiasTerm(cache_wo_spr,
                   no_external_wrenches);
 
   // Get J and JdotV for holonomic constraint
-  MatrixXd J_h = tree_wo_spr_->positionConstraintsJacobian(cache_wo_spr, false);
-  VectorXd JdotV_h = tree_wo_spr_->positionConstraintsJacDotTimesV(cache_wo_spr);
+  MatrixXd J_h = tree_wo_spr_.positionConstraintsJacobian(cache_wo_spr, false);
+  VectorXd JdotV_h = tree_wo_spr_.positionConstraintsJacDotTimesV(cache_wo_spr);
 
   // Get J and JdotV for contact constraint
   MatrixXd J_c = MatrixXd::Zero(n_c_, n_v_);
   VectorXd JdotV_c = VectorXd::Zero(n_c_);
   for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
     if (active_contact_flags[i]) {
-      J_c.block(3 * i, 0, 3, n_v_) = tree_wo_spr_->transformPointsJacobian(
+      J_c.block(3 * i, 0, 3, n_v_) = tree_wo_spr_.transformPointsJacobian(
                                        cache_wo_spr, pt_on_body_[i],
                                        body_index_[i], 0, false);
-      JdotV_c.segment(3 * i, 3) = tree_wo_spr_->transformPointsJacobianDotTimesV(
+      JdotV_c.segment(3 * i, 3) = tree_wo_spr_.transformPointsJacobianDotTimesV(
                                     cache_wo_spr, pt_on_body_[i],
                                     body_index_[i], 0);
     }
@@ -556,8 +556,8 @@ void OperationalSpaceControl::CalcOptimalInput(
     q_w_spr.segment(3, 4) = NormalizeQuaternion(q_w_spr.segment(3, 4));
   }
   VectorXd v_w_spr = robot_output->GetVelocities();
-  VectorXd x_w_spr(tree_w_spr_->get_num_positions() +
-                   tree_w_spr_->get_num_velocities());
+  VectorXd x_w_spr(tree_w_spr_.get_num_positions() +
+                   tree_w_spr_.get_num_velocities());
   x_w_spr << q_w_spr, v_w_spr;
 
   double timestamp = robot_output->get_timestamp();

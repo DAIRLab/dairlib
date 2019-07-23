@@ -20,9 +20,13 @@ using drake::AutoDiffXd;
 
 template <typename T>
 VectorX<T> getInput(const MultibodyPlant<T>& plant, const Context<T>& context) {
-  VectorX<T> input = plant.EvalEigenVectorInput(context,
+  if (plant.num_actuators() > 0) {
+    VectorX<T> input = plant.EvalEigenVectorInput(context,
         plant.get_actuation_input_port().get_index());
-  return input;
+    return input;
+  } else {
+    return VectorX<T>(0);
+  }
 }
 
 template <typename T>

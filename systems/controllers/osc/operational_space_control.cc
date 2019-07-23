@@ -99,7 +99,7 @@ OperationalSpaceControl::OperationalSpaceControl(
   u_max_ = u_max;
 
   // Check if the model is floating based
-  is_quaternion_ = multibody::CheckFloatingBase(tree_w_spr);
+  is_quaternion_ = multibody::IsFloatingBase(tree_w_spr);
 }
 
 // Cost methods

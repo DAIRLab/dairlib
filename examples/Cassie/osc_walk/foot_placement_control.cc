@@ -3,9 +3,10 @@
 #include <math.h>
 #include <string>
 
-#include "examples/Cassie/osc_walk/control_utils.h"
 #include "examples/Cassie/osc_walk/cp_control_common_func.h"
 #include "common/math_utils.h"
+
+#include "drake/math/quaternion.h"
 
 using std::cout;
 using std::endl;
@@ -13,8 +14,10 @@ using std::string;
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 
 using dairlib::systems::OutputVector;
 
@@ -85,7 +88,10 @@ void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
   Vector3d com_vel = J * v;
 
   // Extract quaternion from floating base position
-  Eigen::Quaterniond floating_base_quat(q(3), q(4), q(5), q(6));
+  Quaterniond Quat(q(3), q(4), q(5), q(6));
+  Quaterniond Quat_conj = Quat.conjugate();
+  Vector4d quat(q.segment(3,4));
+  Vector4d quad_conj(Quat_conj.w(), Quat_conj.x(), Quat_conj.y(), Quat_conj.z());
 
   // Get proximated heading angle of pelvis
   Vector3d pelvis_heading_vec = tree_->CalcBodyPoseInWorldFrame(
@@ -110,10 +116,8 @@ void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
     Vector3d global_com_pos_to_target_pos_3d;
     global_com_pos_to_target_pos_3d << global_com_pos_to_target_pos, 0;
     Vector3d local_com_pos_to_target_pos =
-        RotateVecFromGlobalToLocalByQuaternion(floating_base_quat,
-                                               global_com_pos_to_target_pos_3d);
-    Vector3d local_com_vel = RotateVecFromGlobalToLocalByQuaternion(
-                            floating_base_quat, com_vel);
+        drake::math::quatRotateVec(quad_conj, global_com_pos_to_target_pos_3d);
+    Vector3d local_com_vel = drake::math::quatRotateVec(quad_conj, com_vel);
     //////////////////// Sagital ////////////////////
     // Position Control
     double com_vel_sagital = local_com_vel(0);
@@ -127,9 +131,8 @@ void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
         - k_fp_ff_sagital_ * des_sagital_vel
         - k_fp_fb_sagital_ * (des_sagital_vel - com_vel_sagital);
     Vector3d delta_CP_sagital_3D_local(delta_CP_sagital, 0, 0);
-    delta_CP_sagital_3D_global = RotateVecFromLocalToGlobalByQuaternion(
-                                   floating_base_quat,
-                                   delta_CP_sagital_3D_local);
+    delta_CP_sagital_3D_global = drake::math::quatRotateVec(
+                                   quat, delta_CP_sagital_3D_local);
 
     //////////////////// Lateral ////////////////////  TODO(yminchen): tune this
     // Position Control
@@ -143,9 +146,8 @@ void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
         -k_fp_ff_lateral_ * des_lateral_vel
         - k_fp_fb_lateral_ * (des_lateral_vel - com_vel_lateral);
     Vector3d delta_CP_lateral_3D_local(0, delta_CP_lateral, 0);
-    delta_CP_lateral_3D_global = RotateVecFromLocalToGlobalByQuaternion(
-                                   floating_base_quat,
-                                   delta_CP_lateral_3D_local);
+    delta_CP_lateral_3D_global = drake::math::quatRotateVec(
+                                   quat, delta_CP_lateral_3D_local);
   }
 
   // Assign foot placement

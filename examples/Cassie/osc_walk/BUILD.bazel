@@ -12,22 +12,11 @@ cc_library(
 )
 
 cc_library(
-    name = "control_utils",
-    srcs = ["control_utils.cc",],
-    hdrs = ["control_utils.h"],
-    deps = [
-            "//systems/framework:vector",
-            "//examples/Cassie:cassie_utils",
-            ]
-)
-
-cc_library(
     name = "foot_placement_control",
     srcs = ["foot_placement_control.cc",],
     hdrs = ["foot_placement_control.h"],
     deps = [
             "//common:math_utils",
-            ":control_utils",
             ":cp_control_common_func",
             "//systems/framework:vector",
             "@drake//:drake_shared_library",
@@ -40,7 +29,6 @@ cc_library(
     hdrs = ["heading_control.h"],
     deps = [
             "//common:math_utils",
-            ":control_utils",
             ":cp_control_common_func",
             "//systems/framework:vector",
             "@drake//:drake_shared_library",

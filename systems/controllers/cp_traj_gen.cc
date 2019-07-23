@@ -93,7 +93,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
   prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
 
   // Check if the model is floating based
-  is_quaternion_ = multibody::CheckFloatingBase(tree);
+  is_quaternion_ = multibody::IsFloatingBase(tree);
 }
 
 

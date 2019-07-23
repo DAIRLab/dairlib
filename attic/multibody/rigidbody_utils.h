@@ -32,7 +32,7 @@ bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
                         double tolerance = 0.0);
 
 // Check whether a rigid body tree is floating based
-bool CheckFloatingBase(RigidBodyTree<double>* tree);
+bool IsFloatingBase(RigidBodyTree<double>* tree);
 
 
 }  // namespace multibody

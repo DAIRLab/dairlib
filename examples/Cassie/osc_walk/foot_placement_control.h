@@ -11,6 +11,8 @@ namespace osc_walk {
 // TODO(yminchen): we can replace cp with raibert style control. (feedforward
 // term is v*T/2)
 
+// TODO(yminchen): we can make global target position an input port of the
+// the system if it's needed in the future.
 
 /// FootPlacementControl calculates the deviation from capture point in order
 /// to track a desired velocity.

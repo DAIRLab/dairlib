@@ -3,7 +3,6 @@
 #include <math.h>
 #include <string>
 
-#include "examples/Cassie/osc_walk/control_utils.h"
 #include "examples/Cassie/osc_walk/cp_control_common_func.h"
 #include "common/math_utils.h"
 

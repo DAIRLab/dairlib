@@ -85,7 +85,7 @@ CPTrajGenerator::CPTrajGenerator(RigidBodyTree<double> * tree,
 
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(&CPTrajGenerator::DiscreteVariableUpdate);
-  // The swing foot position at touchdown
+  // The swing foot position in the beginning of the swing phase
   prev_td_swing_foot_idx_ = this->DeclareDiscreteState(3);
   // The time of the last touch down
   prev_td_time_idx_ = this->DeclareDiscreteState(1);

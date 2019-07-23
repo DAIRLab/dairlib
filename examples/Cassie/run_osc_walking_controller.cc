@@ -130,11 +130,15 @@ int DoMain(int argc, char* argv[]) {
 
   // Create foot placement control block
   Eigen::Vector2d global_target_position(5, 5);
-  double circle_radius_of_no_turning = 1;
+  Eigen::Vector2d params_of_no_turning(5, 1);
+  // Logistic function 1/(1+5*exp(x-1))
+  // The function ouputs 0.0007 when x = 0
+  //                     0.5    when x = 1
+  //                     0.9993 when x = 2
   auto foot_placement_control =
       builder.AddSystem<cassie::osc_walk::FootPlacementControl>(
         &tree_with_springs, pelvis_idx,
-        global_target_position, circle_radius_of_no_turning);
+        global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
                   foot_placement_control->get_input_port_state());
 
@@ -175,7 +179,7 @@ int DoMain(int argc, char* argv[]) {
   auto heading_control =
       builder.AddSystem<cassie::osc_walk::HeadingControl>(
         &tree_with_springs, pelvis_idx,
-        global_target_position, circle_radius_of_no_turning);
+        global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
                   heading_control->get_input_port_state());
 

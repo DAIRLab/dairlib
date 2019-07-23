@@ -31,11 +31,11 @@ namespace osc_walk {
 
 FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
     int pelvis_idx,
-    Vector2d global_target_position, double circle_radius_of_no_turning) :
+    Vector2d global_target_position, Eigen::Vector2d params_of_no_turning) :
   tree_(tree),
   pelvis_idx_(pelvis_idx),
   global_target_position_(global_target_position),
-  circle_radius_of_no_turning_(circle_radius_of_no_turning) {
+  params_of_no_turning_(params_of_no_turning) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
                   tree->get_num_positions(),
@@ -102,7 +102,7 @@ void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
   Vector2d global_com_pos_to_target_pos =
       global_target_position_ - com_pos.segment(0, 2);
   double desired_heading_pos = GetDesiredHeadingPos(approx_pelvis_yaw,
-      global_com_pos_to_target_pos, circle_radius_of_no_turning_);
+      global_com_pos_to_target_pos, params_of_no_turning_);
 
   // Walking control
   double heading_error = desired_heading_pos - approx_pelvis_yaw;

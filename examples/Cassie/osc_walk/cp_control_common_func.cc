@@ -7,14 +7,12 @@ namespace cassie {
 namespace osc_walk {
 
 double GetDesiredHeadingPos(double pelvis_yaw_pos,
-                            Vector2d global_CoM_to_target_pos,
-                            double circle_radius_of_no_turning) {
-  if (global_CoM_to_target_pos.norm() < circle_radius_of_no_turning) {
-    return pelvis_yaw_pos;
-  } else {
-    return atan2(global_CoM_to_target_pos(1),
-                 global_CoM_to_target_pos(0));
-  }
+                            Vector2d com_to_target_pos,
+                            Eigen::Vector2d params) {
+  double weight = 1 / (1 + exp(-params(0)*(com_to_target_pos.norm()-params(1))));
+  std::cout << weight << std::endl;
+  return (1-weight) * pelvis_yaw_pos +
+      weight * atan2(com_to_target_pos(1), com_to_target_pos(0));
 }
 
 }  // namespace osc_walk

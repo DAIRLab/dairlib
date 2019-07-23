@@ -1,4 +1,4 @@
-#include "systems/controllers/operational_space_control/operational_space_control.h"
+#include "systems/controllers/osc/operational_space_control.h"
 #include "attic/multibody/rigidbody_utils.h"
 #include "common/math_utils.h"
 
@@ -162,7 +162,7 @@ void OperationalSpaceControl::ConstructOSC() {
     tracking_data->CheckOscTrackingData();
   }
 
-  // Construct traj_name_to_port_index_map_
+  // Construct input ports and traj_name_to_port_index_map_
   for (auto tracking_data : *tracking_data_vec_) {
     string traj_name = tracking_data->GetName();
     int port_index;
@@ -407,6 +407,10 @@ VectorXd OperationalSpaceControl::SolveQp(
     VectorXd mu_plus1(2); mu_plus1 << mu_, 1;
     VectorXd inf_vectorxd(1); inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
+      // If the contact is inactive, we assign zeros to A matrix. (lb<=Ax<=ub)
+      //TODO(yminchen): ask Michael which is better:
+      // 1. assign zeros to A
+      // 2. make the lb = -inf
       if (active_contact_flags[i]) {
         friction_constraints_.at(5 * i)->UpdateCoefficients(
             mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);

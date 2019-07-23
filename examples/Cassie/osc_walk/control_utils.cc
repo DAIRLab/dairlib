@@ -1,4 +1,4 @@
-#include "examples/Cassie/osc_walking_control/control_utils.h"
+#include "examples/Cassie/osc_walk/control_utils.h"
 
 using Eigen::Vector3d;
 

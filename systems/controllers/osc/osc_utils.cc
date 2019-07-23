@@ -1,4 +1,4 @@
-#include "systems/controllers/operational_space_control/osc_utils.h"
+#include "systems/controllers/osc/osc_utils.h"
 
 
 using std::cout;

@@ -1,10 +1,10 @@
-#include "examples/Cassie/osc_walking_control/heading_control.h"
+#include "examples/Cassie/osc_walk/heading_control.h"
 
 #include <math.h>
 #include <string>
 
-#include "examples/Cassie/osc_walking_control/control_utils.h"
-#include "examples/Cassie/osc_walking_control/cp_control_common_func.h"
+#include "examples/Cassie/osc_walk/control_utils.h"
+#include "examples/Cassie/osc_walk/cp_control_common_func.h"
 #include "common/math_utils.h"
 
 using std::cout;
@@ -26,7 +26,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walking_control {
+namespace osc_walk {
 
 HeadingControl::HeadingControl(RigidBodyTree<double> * tree,
     int pelvis_idx,
@@ -83,7 +83,7 @@ void HeadingControl::CalcHeadingAngle(
   *traj = PiecewisePolynomial<double>(desired_pelvis_rotation);
 }
 
-}  // namespace osc_walking_control
+}  // namespace osc_walk
 }  // namespace cassie
 }  // namespace dairlib
 

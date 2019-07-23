@@ -1,10 +1,10 @@
-#include "examples/Cassie/osc_walking_control/foot_placement_control.h"
+#include "examples/Cassie/osc_walk/foot_placement_control.h"
 
 #include <math.h>
 #include <string>
 
-#include "examples/Cassie/osc_walking_control/control_utils.h"
-#include "examples/Cassie/osc_walking_control/cp_control_common_func.h"
+#include "examples/Cassie/osc_walk/control_utils.h"
+#include "examples/Cassie/osc_walk/cp_control_common_func.h"
 #include "common/math_utils.h"
 
 using std::cout;
@@ -24,7 +24,7 @@ using drake::systems::BasicVector;
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walking_control {
+namespace osc_walk {
 
 FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
     int pelvis_idx,
@@ -155,7 +155,7 @@ void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
   output->get_mutable_value() = global_delta_CP_sagital_and_lateral;
 }
 
-}  // namespace osc_walking_control
+}  // namespace osc_walk
 }  // namespace cassie
 }  // namespace dairlib
 

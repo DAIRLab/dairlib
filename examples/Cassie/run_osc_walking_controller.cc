@@ -20,12 +20,12 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/rigidbody_utils.h"
 
-#include "examples/Cassie/osc_walking_control/foot_placement_control.h"
+#include "examples/Cassie/osc_walk/foot_placement_control.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
-#include "systems/controllers/operational_space_control/osc_utils.h"
-#include "examples/Cassie/osc_walking_control/heading_control.h"
+#include "systems/controllers/osc/osc_utils.h"
+#include "examples/Cassie/osc_walk/heading_control.h"
 
 
 namespace dairlib {
@@ -132,7 +132,7 @@ int DoMain(int argc, char* argv[]) {
   Eigen::Vector2d global_target_position(5, 5);
   double circle_radius_of_no_turning = 1;
   auto foot_placement_control =
-      builder.AddSystem<cassie::osc_walking_control::FootPlacementControl>(
+      builder.AddSystem<cassie::osc_walk::FootPlacementControl>(
         &tree_with_springs, pelvis_idx,
         global_target_position, circle_radius_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
@@ -173,7 +173,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Desired Heading Angle
   auto heading_control =
-      builder.AddSystem<cassie::osc_walking_control::HeadingControl>(
+      builder.AddSystem<cassie::osc_walk::HeadingControl>(
         &tree_with_springs, pelvis_idx,
         global_target_position, circle_radius_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),

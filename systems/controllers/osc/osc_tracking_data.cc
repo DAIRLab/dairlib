@@ -1,4 +1,4 @@
-#include "systems/controllers/operational_space_control/osc_tracking_data.h"
+#include "systems/controllers/osc/osc_tracking_data.h"
 
 #include <math.h>
 #include <algorithm>

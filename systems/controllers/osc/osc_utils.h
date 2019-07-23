@@ -6,7 +6,7 @@
 
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "systems/controllers/operational_space_control/operational_space_control.h"
+#include "systems/controllers/osc/operational_space_control.h"
 
 namespace dairlib {
 namespace systems {

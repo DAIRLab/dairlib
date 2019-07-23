@@ -8,7 +8,7 @@
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 
 #include "systems/framework/output_vector.h"
-#include "systems/controllers/operational_space_control/osc_tracking_data.h"
+#include "systems/controllers/osc/osc_tracking_data.h"
 
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"

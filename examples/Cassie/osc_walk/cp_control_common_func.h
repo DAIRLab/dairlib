@@ -3,13 +3,13 @@
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walking_control {
+namespace osc_walk {
 
 double GetDesiredHeadingPos(double pelvis_yaw_pos,
                             Eigen::Vector2d global_CoM_to_target_pos,
                             double circle_radius_of_no_turning);
 
-}  // namespace osc_walking_control
+}  // namespace osc_walk
 }  // namespace cassie
 }  // namespace dairlib
 

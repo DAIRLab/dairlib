@@ -7,7 +7,7 @@
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walking_control {
+namespace osc_walk {
 
 /// HeadingControl calculates desired heading angle (yaw in global frame).
 
@@ -35,7 +35,7 @@ class HeadingControl : public drake::systems::LeafSystem<double> {
   int state_port_;
 };
 
-}  // namespace osc_walking_control
+}  // namespace osc_walk
 }  // namespace cassie
 }  // namespace dairlib
 

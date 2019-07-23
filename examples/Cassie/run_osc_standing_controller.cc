@@ -19,7 +19,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/rigidbody_utils.h"
 
-#include "systems/controllers/operational_space_control/osc_utils.h"
+#include "systems/controllers/osc/osc_utils.h"
 
 
 namespace dairlib {

@@ -123,7 +123,7 @@ cc_library(
     deps = [
             "//common:math_utils",
             "//attic/multibody:utils",
-            "//examples/Cassie/osc_walking_control:cp_control_common_func",
+            "//examples/Cassie/osc_walk:cp_control_common_func",
             "//systems/framework:vector",
             "@drake//:drake_shared_library",
             ]

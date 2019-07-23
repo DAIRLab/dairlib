@@ -1,4 +1,4 @@
-#include "examples/Cassie/osc_walk/foot_placement_control.h"
+#include "examples/Cassie/osc_walk/deviation_from_cp.h"
 
 #include <math.h>
 #include <string>
@@ -29,8 +29,8 @@ namespace dairlib {
 namespace cassie {
 namespace osc_walk {
 
-FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
-    int pelvis_idx,
+DeviationFromCapturePoint::DeviationFromCapturePoint(
+    RigidBodyTree<double> * tree, int pelvis_idx,
     Vector2d global_target_position, Eigen::Vector2d params_of_no_turning) :
   tree_(tree),
   pelvis_idx_(pelvis_idx),
@@ -42,7 +42,7 @@ FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
                   tree->get_num_velocities(),
                   tree->get_num_actuators())).get_index();
   this->DeclareVectorOutputPort(BasicVector<double>(2),
-                                &FootPlacementControl::CalcFootPlacement);
+                                &DeviationFromCapturePoint::CalcFootPlacement);
 
   // Foot placement control (Sagital) parameters
   kp_pos_sagital_ = 1.0;
@@ -65,7 +65,7 @@ FootPlacementControl::FootPlacementControl(RigidBodyTree<double> * tree,
   k_fp_fb_lateral_ = 0.02;
 }
 
-void FootPlacementControl::CalcFootPlacement(const Context<double>& context,
+void DeviationFromCapturePoint::CalcFootPlacement(const Context<double>& context,
     BasicVector<double>* output) const {
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)

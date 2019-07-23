@@ -12,9 +12,9 @@ cc_library(
 )
 
 cc_library(
-    name = "foot_placement_control",
-    srcs = ["foot_placement_control.cc",],
-    hdrs = ["foot_placement_control.h"],
+    name = "deviation_from_cp",
+    srcs = ["deviation_from_cp.cc",],
+    hdrs = ["deviation_from_cp.h"],
     deps = [
             "//common:math_utils",
             ":cp_control_common_func",

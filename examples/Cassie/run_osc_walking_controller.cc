@@ -20,7 +20,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/rigidbody_utils.h"
 
-#include "examples/Cassie/osc_walk/foot_placement_control.h"
+#include "examples/Cassie/osc_walk/deviation_from_cp.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
@@ -135,12 +135,12 @@ int DoMain(int argc, char* argv[]) {
   // The function ouputs 0.0007 when x = 0
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
-  auto foot_placement_control =
-      builder.AddSystem<cassie::osc_walk::FootPlacementControl>(
+  auto deviation_from_cp =
+      builder.AddSystem<cassie::osc_walk::DeviationFromCapturePoint>(
         &tree_with_springs, pelvis_idx,
         global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
-                  foot_placement_control->get_input_port_state());
+                  deviation_from_cp->get_input_port_state());
 
   // Create swing leg trajectory generator (capture point)
   double mid_foot_height = 0.1 + 0.05;
@@ -172,7 +172,7 @@ int DoMain(int argc, char* argv[]) {
                   cp_traj_generator->get_input_port_state());
   builder.Connect(lipm_traj_generator->get_output_port(0),
                   cp_traj_generator->get_input_port_com());
-  builder.Connect(foot_placement_control->get_output_port(0),
+  builder.Connect(deviation_from_cp->get_output_port(0),
                   cp_traj_generator->get_input_port_fp());
 
   // Desired Heading Angle

@@ -71,7 +71,7 @@ void HeadingControl::CalcHeadingAngle(
   // Get desried heading direction
   Vector2d global_CoM_to_target_pos =
       global_target_position_ - CoM.segment(0, 2);
-  double desried_heading_pos = GetDesiredHeadingPos(approx_pelvis_yaw,
+  double desried_heading_pos = GetDesiredYawAngle(approx_pelvis_yaw,
       global_CoM_to_target_pos, params_of_no_turning_);
 
   // Get quaternion

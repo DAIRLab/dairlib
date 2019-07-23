@@ -5,7 +5,7 @@ namespace dairlib {
 namespace cassie {
 namespace osc_walk {
 
-/// GetDesiredHeadingPos() calculates the disired yaw angle in global frame for
+/// GetDesiredYawAngle() calculates the disired yaw angle in global frame for
 /// Cassie pelvis.
 ///
 /// Control philosophy:
@@ -19,7 +19,7 @@ namespace osc_walk {
 /// y_c and y_t.
 /// Logistic function = 1 / (1 - params_1*exp(x-params_2))
 /// Function visualization: https://www.desmos.com/calculator/agxuc5gip8
-double GetDesiredHeadingPos(double pelvis_yaw_pos,
+double GetDesiredYawAngle(double pelvis_yaw_pos,
                             Eigen::Vector2d com_to_target_pos,
                             Eigen::Vector2d params);
 

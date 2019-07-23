@@ -6,7 +6,7 @@ namespace dairlib {
 namespace cassie {
 namespace osc_walk {
 
-double GetDesiredHeadingPos(double pelvis_yaw_pos,
+double GetDesiredYawAngle(double pelvis_yaw_pos,
                             Vector2d com_to_target_pos,
                             Eigen::Vector2d params) {
   double weight = 1 / (1 + exp(-params(0)*(com_to_target_pos.norm()-params(1))));

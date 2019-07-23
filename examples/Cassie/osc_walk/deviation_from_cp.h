@@ -36,6 +36,9 @@ namespace osc_walk {
 ///  k_ff/k_fb is the gain of the feedforward/feedback term.
 ///  (Raibert controller uses k_ff = T/2 where T is the stride duration.)
 ///
+///  Additionally, we only apply the above control law when the robot is facing
+///  the target position. Otherwise, delta_r = [0; 0].
+///
 /// Requirement: quaternion floating-based Cassie only
 class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
  public:

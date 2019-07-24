@@ -42,6 +42,17 @@ cc_binary(
 )
 
 cc_binary(
+    name="iiwa_estop",
+    srcs = ["iiwa_estop.cc"],
+    deps = [
+            "@drake//:drake_shared_library",
+            "//systems/controllers:endeffector_velocity_controller",
+            "//systems/controllers:endeffector_position_controller",
+            "//systems/controllers:safe_velocity_controller",
+    ]
+)
+
+cc_binary(
     name = "iiwa_visualizer",
     srcs = ["iiwa_visualizer.cc"],
     data = [

@@ -132,7 +132,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     // Modify the quaternion in the begining when the state is not received from
     // the robot yet (cannot have 0-norm quaternion when using doKinematics)
     if (is_quaternion_) {
-      CheckZeroQuaternion(&q);
+      multibody::CheckZeroQuaternion(&q);
     }
     cache.initialize(q);
     tree_.doKinematics(cache);
@@ -164,7 +164,7 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   // Modify the quaternion in the begining when the state is not received from
   // the robot yet
   if (is_quaternion_){
-    CheckZeroQuaternion(&q);
+    multibody::CheckZeroQuaternion(&q);
   }
   cache.initialize(q);
   tree_.doKinematics(cache);

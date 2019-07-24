@@ -4,6 +4,7 @@
 #include <string>
 
 #include "examples/Cassie/osc_walk/cp_control_common_func.h"
+#include "attic/multibody/rigidbody_utils.h"
 
 #include "drake/math/quaternion.h"
 
@@ -77,7 +78,7 @@ void DeviationFromCapturePoint::CalcFootPlacement(const Context<double>& context
   // Modify the quaternion in the begining when the state is not received from
   // the robot yet
   // Always remember to check 0-norm quaternion when using doKinematics
-  CheckZeroQuaternion(&q);
+  multibody::CheckZeroQuaternion(&q);
   cache.initialize(q);
   tree_.doKinematics(cache);
 

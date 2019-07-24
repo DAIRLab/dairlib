@@ -552,7 +552,7 @@ void OperationalSpaceControl::CalcOptimalInput(
       this->EvalVectorInput(context, state_port_);
   VectorXd q_w_spr = robot_output->GetPositions();
   if (is_quaternion_) {
-    CheckZeroQuaternion(&q_w_spr);
+    multibody::CheckZeroQuaternion(&q_w_spr);
   }
   VectorXd v_w_spr = robot_output->GetVelocities();
   VectorXd x_w_spr(tree_w_spr_.get_num_positions() +

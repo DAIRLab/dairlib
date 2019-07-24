@@ -17,6 +17,7 @@ cc_library(
     hdrs = ["deviation_from_cp.h"],
     deps = [
             ":cp_control_common_func",
+            "//attic/multibody:utils",
             "//systems/framework:vector",
             "@drake//:drake_shared_library",
             ]
@@ -28,6 +29,7 @@ cc_library(
     hdrs = ["heading_control.h"],
     deps = [
             ":cp_control_common_func",
+            "//attic/multibody:utils",
             "//systems/framework:vector",
             "@drake//:drake_shared_library",
             ]

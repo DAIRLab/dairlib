@@ -56,7 +56,7 @@ void HeadingControl::CalcHeadingAngle(
   // Modify the quaternion in the begining when the state is not received from
   // the robot yet
   // Always remember to check 0-norm quaternion when using doKinematics
-  q.segment(3, 4) = NormalizeQuaternion(q.segment(3, 4));
+  CheckZeroQuaternion(&q);
   cache.initialize(q);
   tree_.doKinematics(cache);
 

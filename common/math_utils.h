@@ -4,9 +4,8 @@
 
 namespace dairlib {
 
-// If the norm of quaternion is 0, set it to unit quaternion. Otherwise,
-// normalize it. Additionally, we make the first element to be always positive.
-Eigen::Quaterniond NormalizeQuaternion(Eigen::Quaterniond q);
-Eigen::VectorXd NormalizeQuaternion(Eigen::VectorXd q);
+// If the norm of quaternion is 0, set it to identity quaternion.
+// Input: the configuration of the robot which must be in floating-base
+void CheckZeroQuaternion(Eigen::VectorXd* q);
 
 }  // namespace dairlib

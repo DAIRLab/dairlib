@@ -26,6 +26,35 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
+// Static member function
+void OperationalSpaceControl::AssignConstTrajToInputPorts(
+    OperationalSpaceControl* osc,
+    drake::systems::Diagram<double>* diagram,
+    drake::systems::Context<double>* diagram_context) {
+  vector<OscTrackingData*>* tracking_data_vec = osc->GetAllTrackingData();
+  for (auto tracking_data : *tracking_data_vec) {
+    if (!tracking_data->TrajIsConst()) continue;
+
+    string traj_name = tracking_data->GetName();
+
+    bool fix_port_value_successfully = false;
+    auto & osc_conext = diagram->GetMutableSubsystemContext(*osc,
+                        diagram_context);
+    // Find the correspond output port
+    for (int i = 0; i < osc->num_input_ports(); i++) {
+      if (traj_name.compare(osc->get_input_port(i).get_name()) == 0) {
+        osc_conext.FixInputPort(i /*osc->get_input_port(i).get_index()*/,
+                                drake::Value<PiecewisePolynomial<double>>(
+                                  tracking_data->GetFixedPosition()));
+        fix_port_value_successfully = true;
+        break;
+      }
+    }  // end for (ports)
+    DRAKE_DEMAND(fix_port_value_successfully);
+  }  // end for (OscTrackingData's)
+}
+
+// Constructor
 OperationalSpaceControl::OperationalSpaceControl(
     const RigidBodyTree<double>& tree_w_spr,
     const RigidBodyTree<double>& tree_wo_spr,
@@ -117,7 +146,7 @@ void OperationalSpaceControl::AddContactPoint(int body_index,
 }
 void OperationalSpaceControl::AddStateAndContactPoint(int state,
     int body_index, Eigen::VectorXd pt_on_body) {
-  state_.push_back(state);
+  fsm_state_when_active_.push_back(state);
   AddContactPoint(body_index, pt_on_body);
 }
 void OperationalSpaceControl::AddContactPoint(std::vector<int> body_index,
@@ -128,7 +157,8 @@ void OperationalSpaceControl::AddContactPoint(std::vector<int> body_index,
 void OperationalSpaceControl::AddStateAndContactPoint(std::vector<int> state,
     std::vector<int> body_index,
     std::vector<Eigen::VectorXd> pt_on_body) {
-  state_.insert(state_.end(), state.begin(), state.end());
+  fsm_state_when_active_.insert(fsm_state_when_active_.end(),
+      state.begin(), state.end());
   AddContactPoint(body_index, pt_on_body);
 }
 
@@ -147,13 +177,13 @@ void OperationalSpaceControl::CheckConstraintSettings() {
     DRAKE_DEMAND(mu_ != -1);
     DRAKE_DEMAND(body_index_.size() == pt_on_body_.size());
   }
-  if (!state_.empty()) {
-    DRAKE_DEMAND(state_.size() == body_index_.size());
-    DRAKE_DEMAND(state_.size() == pt_on_body_.size());
+  if (!fsm_state_when_active_.empty()) {
+    DRAKE_DEMAND(fsm_state_when_active_.size() == body_index_.size());
+    DRAKE_DEMAND(fsm_state_when_active_.size() == pt_on_body_.size());
   }
 }
 
-void OperationalSpaceControl::ConstructOSC() {
+void OperationalSpaceControl::BuildOSC() {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();
@@ -283,10 +313,10 @@ std::vector<bool> OperationalSpaceControl::CalcActiveContactIndices(
     int fsm_state) const {
   std::vector<bool> active_contact_flags;
   for (unsigned int i = 0; i < body_index_.size(); i++) {
-    if (state_.empty()) {
+    if (fsm_state_when_active_.empty()) {
       active_contact_flags.push_back(true);
     } else {
-      if (state_[i] == fsm_state) {
+      if (fsm_state_when_active_[i] == fsm_state) {
         active_contact_flags.push_back(true);
       } else {
         active_contact_flags.push_back(false);

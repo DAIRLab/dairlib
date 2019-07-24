@@ -19,9 +19,6 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/rigidbody_utils.h"
 
-#include "systems/controllers/osc/osc_utils.h"
-
-
 namespace dairlib {
 
 using std::cout;
@@ -162,7 +159,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_traj.SetConstantTraj(pelvis_desired_quat);
   osc->AddTrackingData(&pelvis_rot_traj);
   // Build OSC problem
-  osc->ConstructOSC();
+  osc->BuildOSC();
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
@@ -175,8 +172,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Assign fixed value to osc constant traj port
   auto context = owned_diagram->CreateDefaultContext();
-  systems::controllers::AssignConstTrajToInputPorts(osc,
-      owned_diagram.get(), context.get());
+  systems::controllers::OperationalSpaceControl::AssignConstTrajToInputPorts(
+      osc, owned_diagram.get(), context.get());
 
   // Create the simulator
   const auto& diagram = *owned_diagram;

@@ -18,20 +18,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "osc_utils",
-    srcs = [
-        "osc_utils.cc",
-    ],
-    hdrs = [
-        "osc_utils.h",
-    ],
-    deps = [
-        ":operational_space_control",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
 
 cc_library(
     name = "osc_tracking_data",

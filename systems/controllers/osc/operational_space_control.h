@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include "drake/systems/framework/diagram.h"
+#include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
@@ -70,7 +72,7 @@ namespace controllers {
 /// The procedure of setting up `OperationalSpaceControl`:
 ///   1. create an instance of `OperationalSpaceControl`
 ///   2. add costs/constraints/desired trajectories
-///   3. call ConstructOSC()
+///   3. call BuildOSC()
 ///   4. (if the users created desired trajectory blocks by themselves) connect
 ///      `OperationalSpaceControl`'s input ports to corresponding output ports
 ///      of the trajectory source.
@@ -79,6 +81,13 @@ namespace controllers {
 
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
+  // AssignConstTrajToInputPorts() assigns fixed values to the input ports
+  // which corresponds to the constant desired trajectories.
+  static void AssignConstTrajToInputPorts(OperationalSpaceControl* osc,
+      drake::systems::Diagram<double>* diagram,
+      drake::systems::Context<double>* diagram_context);
+
+  // Constructor
   OperationalSpaceControl(const RigidBodyTree<double>& tree_w_spr,
                           const RigidBodyTree<double>& tree_wo_spr,
                           bool used_with_finite_state_machine = true,
@@ -129,7 +138,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   }
 
   // Osc problem constructor
-  void ConstructOSC();
+  void BuildOSC();
 
  private:
   // Osc checkers and constructor-related methods
@@ -219,9 +228,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
 
-  // `state_` is the finite state machine state when the contact constraint is
-  // active. If `state_` is empty, then the constraint is always active.
-  std::vector<int> state_;
+  // `fsm_state_when_active_` is the finite state machine state when the contact
+  // constraint is active. If `fsm_state_when_active_` is empty, then the
+  // constraint is always active.
+  std::vector<int> fsm_state_when_active_;
 
   // CalcActiveContactIndices gives a vector of flags indicating the active
   // contact (constraint)

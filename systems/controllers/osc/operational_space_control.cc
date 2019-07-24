@@ -149,18 +149,6 @@ void OperationalSpaceControl::AddStateAndContactPoint(int state,
   fsm_state_when_active_.push_back(state);
   AddContactPoint(body_index, pt_on_body);
 }
-void OperationalSpaceControl::AddContactPoint(std::vector<int> body_index,
-    std::vector<Eigen::VectorXd> pt_on_body) {
-  body_index_.insert(body_index_.end(), body_index.begin(), body_index.end());
-  pt_on_body_.insert(pt_on_body_.end(), pt_on_body.begin(), pt_on_body.end());
-}
-void OperationalSpaceControl::AddStateAndContactPoint(std::vector<int> state,
-    std::vector<int> body_index,
-    std::vector<Eigen::VectorXd> pt_on_body) {
-  fsm_state_when_active_.insert(fsm_state_when_active_.end(),
-      state.begin(), state.end());
-  AddContactPoint(body_index, pt_on_body);
-}
 
 // Osc checkers and constructor
 void OperationalSpaceControl::CheckCostSettings() {

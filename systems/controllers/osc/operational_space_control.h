@@ -119,12 +119,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddContactPoint(int body_index, Eigen::VectorXd pt_on_body);
   void AddStateAndContactPoint(int state,
                                int body_index, Eigen::VectorXd pt_on_body);
-  // (A version for std::vector in case the users want it)
-  void AddContactPoint(std::vector<int> body_index,
-                       std::vector<Eigen::VectorXd> pt_on_body);
-  void AddStateAndContactPoint(std::vector<int> state,
-                               std::vector<int> body_index,
-                               std::vector<Eigen::VectorXd> pt_on_body);
 
   // Tracking data methods
   void AddTrackingData(OscTrackingData* tracking_data) {

@@ -69,6 +69,7 @@ bool IsFloatingBase(const RigidBodyTree<double>& tree){
 
 void CheckZeroQuaternion(Eigen::VectorXd* q) {
   if (q->segment(3,4).norm() == 0.0) {
+    DRAKE_ASSERT(q->segment(3,4).norm() != 0);
     (*q)(3) = 1.0;
   }
 }

@@ -38,7 +38,7 @@ namespace controllers {
 
 /// error_y_, JdotV and J_ are implemented in the derived class.
 
-/// Users can implement their own derived class if the current implementation
+/// Users can implement their own derived classes if the current implementation
 /// here is not comprehensive enough.
 
 /// Two methods for the users:
@@ -153,7 +153,8 @@ class OscTrackingData {
   bool traj_is_const_;
   bool traj_has_exp_;
 
-  // Store the fixed position if the traj is a const
+  // `fixed_position_` stores the fixed position and pass it to input port if
+  // the traj is a const
   Eigen::VectorXd fixed_position_;
 
   // A period when we don't apply control

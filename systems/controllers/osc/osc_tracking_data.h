@@ -349,36 +349,6 @@ class JointSpaceTrackingData final : public OscTrackingData {
 };
 
 
-class AbstractTrackingData final : public OscTrackingData {
- public:
-  AbstractTrackingData(std::string name, int n_r,
-                       Eigen::MatrixXd K_p,
-                       Eigen::MatrixXd K_d,
-                       Eigen::MatrixXd W,
-                       OscUserDefinedTraj* user_defined_traj);
-
-  AbstractTrackingData() {}  // Default constructor
-
- private:
-  void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       KinematicsCache<double>& cache_w_spr,
-                       const RigidBodyTree<double>& tree_w_spr) final;
-  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
-                  KinematicsCache<double>& cache_w_spr,
-                  const RigidBodyTree<double>& tree_w_spr) final;
-  void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               KinematicsCache<double>& cache_wo_spr,
-               const RigidBodyTree<double>& tree_wo_spr) final;
-  void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   KinematicsCache<double>& cache_wo_spr,
-                   const RigidBodyTree<double>& tree_wo_spr) final;
-
-  void CheckDerivedOscTrackingData() final;
-
-  OscUserDefinedTraj* user_defined_traj_;
-};
-
-
 
 }  // namespace controllers
 }  // namespace systems

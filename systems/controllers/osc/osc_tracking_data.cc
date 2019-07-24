@@ -20,7 +20,6 @@ namespace systems {
 namespace controllers {
 
 
-// In each loop, run Update() before calling any getters.
 // OscTrackingData /////////////////////////////////////////////////////////////
 OscTrackingData::OscTrackingData(string name,
                                  int n_r,
@@ -39,6 +38,7 @@ OscTrackingData::OscTrackingData(string name,
 }
 
 // Updater
+// In each loop, run Update() before calling any getters.
 bool OscTrackingData::Update(VectorXd x_w_spr,
     KinematicsCache<double>& cache_w_spr,
     const RigidBodyTree<double>& tree_w_spr,
@@ -424,42 +424,6 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
     DRAKE_DEMAND(joint_vel_idx_wo_spr_.size() == 1);
   }
 }
-
-// AbstractTrackingData ////////////////////////////////////////////////////////
-AbstractTrackingData::AbstractTrackingData(string name,
-    int n_r,
-    MatrixXd K_p,
-    MatrixXd K_d,
-    MatrixXd W,
-    OscUserDefinedTraj* user_defined_traj) : OscTrackingData(name, n_r,
-          K_p, K_d, W, false, false),
-  user_defined_traj_(user_defined_traj) {
-}
-
-void AbstractTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
-    KinematicsCache<double>& cache_w_spr,
-    const RigidBodyTree<double>& tree_w_spr) {
-  // Not implemented yet
-}
-void AbstractTrackingData::UpdateYdot(const VectorXd& x_w_spr,
-                                      KinematicsCache<double>& cache_w_spr,
-                                      const RigidBodyTree<double>& tree_w_spr) {
-  // Not implemented yet
-}
-void AbstractTrackingData::UpdateJ(const VectorXd& x_wo_spr,
-                                   KinematicsCache<double>& cache_wo_spr,
-                                   const RigidBodyTree<double>& tree_wo_spr) {
-  // Not implemented yet
-}
-void AbstractTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
-    KinematicsCache<double>& cache_wo_spr,
-    const RigidBodyTree<double>& tree_wo_spr) {
-  // Not implemented yet
-}
-void AbstractTrackingData::CheckDerivedOscTrackingData() {
-  // Not implemented yet
-}
-
 
 
 }  // namespace controllers

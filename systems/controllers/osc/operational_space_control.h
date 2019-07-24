@@ -53,8 +53,7 @@ namespace controllers {
 /// method `AddTrackingData`, users have to create
 ///     `TransTaskSpaceTrackingData`,
 ///     `RotTaskSpaceTrackingData`,
-///     `JointSpaceTrackingData`,
-///     and/or `AbstractTrackingData`.
+///     and/or `JointSpaceTrackingData`.
 
 /// If the desired trajectory is constant, users don't need to connect the
 /// input ports of `OperationalSpaceControl` to trajectory source blocks.

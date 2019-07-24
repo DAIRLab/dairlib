@@ -1,0 +1,19 @@
+package dairlib;
+
+// Flattened structure for now, we can consider recreating the 
+// ros tree structure if we start using them often enough.
+// Note that Covariance is missing, but we can add it back 
+// easily enough if needed.
+// Also note the use of double's instead of float64's.
+
+struct lcmt_ros_odometry
+{
+  dairlib.lcmt_ros_header header;
+  string child_frame_id;      
+
+  double pose_point[3];       // x, y, z
+  double pose_quat[4];  // w, x, y, z
+
+  double twist_linear[3];     // x, y, z
+  double twist_angular[3];    // x, y, z
+}

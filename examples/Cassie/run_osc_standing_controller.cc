@@ -15,9 +15,10 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_pd_config.hpp"
-#include "systems/robot_lcm_systems.h"
-#include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/rigidbody_utils.h"
+#include "examples/Cassie/cassie_utils.h"
+#include "systems/robot_lcm_systems.h"
+#include "systems/controllers/osc/operational_space_control.h"
 
 namespace dairlib {
 

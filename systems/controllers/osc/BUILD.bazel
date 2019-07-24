@@ -28,21 +28,6 @@ cc_library(
         "osc_tracking_data.h",
     ],
     deps = [
-        ":osc_user_defined_traj",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "osc_user_defined_traj",
-    srcs = [
-        "osc_user_defined_traj.cc",
-    ],
-    hdrs = [
-        "osc_user_defined_traj.h",
-    ],
-    deps = [
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

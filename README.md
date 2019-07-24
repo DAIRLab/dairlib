@@ -12,6 +12,17 @@ Warning! This is very much "development-level" code and is provided as-is. APIs 
 git clone https://github.com/DAIRLab/dairlib.git
 ```
 
+2. Download and setup SNOPT
+
+dairlib, by default, assumes that users have access to SNOPT(https://web.stanford.edu/group/SOL/snopt.htm), though it is not required. **If you do not have SNOPT**, you will need to edit `.bazelrc` and change `build --define=WITH_SNOPT=ON` to `build --define=WITH_SNOPT=OFF`
+
+For users at Penn, download SNOPT (https://www.seas.upenn.edu/~posa/snopt/snopt7.6.tar.gz) and add the following line to your `~/.bashrc`
+```
+export SNOPT_PATH=<the directory you downloaded to>/snopt7.6.tar.gz
+```
+
+There is no need to extract the tar.
+
 ### Build Drake
 The library is meant to be built with Drake (see http://drake.mit.edu/ for more details). There are two ways to use Drake within dairlib:
 #### Option 1: use pegged revision

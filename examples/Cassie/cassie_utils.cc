@@ -282,4 +282,8 @@ std::string getVelocityName(const RigidBodyTree<double>& tree, int index) {
   return tree.get_velocity_name(index);
 }
 
+std::string getPositionName(const RigidBodyTree<double>& tree, int index) {
+  return tree.get_position_name(index);
+}
+
 } // namespace dairlib

@@ -3,6 +3,7 @@
 
 #include "drake/systems/framework/leaf_system.h"
 
+#include "examples/Cassie/cassie_utils.h"
 #include "systems/robot_lcm_systems.h"
 
 namespace dairlib {

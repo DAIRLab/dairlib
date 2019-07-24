@@ -112,4 +112,8 @@ multibody::ContactInfo ComputeCassieContactInfo(
 std::string getVelocityName(
     const RigidBodyTree<double>& tree, int index);
 
+/// Binding for get_position_name
+std::string getPositionName(
+    const RigidBodyTree<double>& tree, int index);
+
 } // namespace dairlib

@@ -140,14 +140,16 @@ def main():
         ind += 1
 
     print("--------------------------- PLOTTING ACCELERATIONS WITH CONTACT FORCES---------------------------")
-    '''
+    
     ind = 0
     while ind < numV:
         plt.title("Plot of acceleration of " + getVelocityName(tree, ind) + " (index = " + str(ind) + ") vs t (t.size = " + str(t.size) + ")")
-        plt.plot((t[:t.size - 1]), aMatrix[ind,:t.size - 1], 'r', (t[:t.size - 1]), a[ind,:], 'g') # calculated accel vs approx accel of position against t
+        plt.plot((t[:t.size - 1]), aMatrix[ind,:t.size - 1], 'r', label = 'matrix solution')
+        plt.plot((t[:t.size - 1]), a[ind,:], 'g', label = 'limit solution') # calculated accel vs approx accel of position against t
+        plt.legend()
         plt.show()
         ind += 1
-    '''
+    
     '''
 
     Jv = np.zeros((12, 1))
@@ -227,7 +229,7 @@ def main():
 
     print(np.matmul(J, a[:, 11]) - JDotVCurr)
 
-    '''
+    
     print("-------------------------- Solve backwards to find delta K's -------------------------")
 
     data_begin = True
@@ -301,7 +303,7 @@ def main():
     print(X[0][:4]) # first 4 correspond to spring constants
     print(X[1]) # success = 2
     print(X[3]) # norm(b - Ax)
-
+    '''
     print("--------------------------- TESTING Jdotv + Ja ---------------------------")
     
     # using general_solver_a's accels

@@ -115,7 +115,8 @@ def main():
 
     print(X[0][:4]) # first 4 correspond to spring constants
     sol = X[0] # least squares solution using sparse matrix
-    print(sol.shape)
+    print(sol[:4])
+    print(X[3]) # norm(b - Ax)
     lambdaMatrix = np.zeros((12, t.size - 1))
     i = 0
     while i < t.size - 1:
@@ -124,9 +125,6 @@ def main():
             lambdaMatrix[j, i] = sol[4 + 12 * i + j]
             j += 1
         i += 1
-
-    print(sol[4:16])
-    print(sol[1108:1110])
     
     print("---------------------------TESTING---------------------------")
 

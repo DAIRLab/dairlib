@@ -7,3 +7,5 @@ __pycache__/
 *.DS_Store*
 attic/multibody/solver_log/
 *.vscode*
+/bundle_ws
+/tools/workspace/ros

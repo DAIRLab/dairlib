@@ -15,7 +15,7 @@ namespace systems {
 /// This class creates prediced center of mass (COM) trajectory of a bepidel
 /// robot during single stance.
 /// The trajectories in horizontal directions (x and y axes) are prediected, and
-/// the traj in the vertical direction (z axis) is the disired height.
+/// the traj in the vertical direction (z axis) is the desired height.
 
 /// Inputs:
 /// - rigid body tree

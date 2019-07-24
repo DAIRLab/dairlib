@@ -245,6 +245,7 @@ cc_binary(
         "//systems/controllers:time_based_fsm",
         "//systems/controllers:lipm_traj_gen",
         "//systems/controllers:cp_traj_gen",
+        "//systems/controllers/osc:operational_space_control",
         ":cassie_urdf",
         ":cassie_utils",
         "@gflags",
@@ -256,6 +257,7 @@ cc_binary(
     name = "run_osc_standing_controller",
     srcs = ["run_osc_standing_controller.cc"],
     deps = [
+        "//systems/controllers/osc:operational_space_control",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "//attic/multibody:utils",

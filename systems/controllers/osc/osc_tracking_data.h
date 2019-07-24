@@ -116,7 +116,7 @@ class OscTrackingData {
 
  private:
   // Check if we should do tracking in the current state
-  void UpdateTrackingFalg(int finite_state_machine_state,
+  void UpdateTrackingFlag(int finite_state_machine_state,
                   double time_since_last_state_switch);
 
   // Updaters of feedback output, jacobian and dJ/dt * v
@@ -211,28 +211,14 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
   TransTaskSpaceTrackingData() {}  // Default constructor
 
   void AddPointToTrack(int body_index_wo_spr,
-                       Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
+      Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
   void AddStateAndPointToTrack(int state, int body_index_wo_spr,
-                               Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
+      Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
   void AddPointToTrack(int body_index_w_spr, int body_index_wo_spr,
-                       Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
+      Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
   void AddStateAndPointToTrack(int state, int body_index_w_spr,
-                               int body_index_wo_spr,
-                               Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
-
-  // (A version for std::vector in case the users want it)
-  void AddPointToTrack(std::vector<int> body_index_wo_spr,
-                       std::vector<Eigen::Vector3d> pt_on_body);
-  void AddStateAndPointToTrack(std::vector<int> state,
-                               std::vector<int> body_index_wo_spr,
-                               std::vector<Eigen::Vector3d> pt_on_body);
-  void AddPointToTrack(std::vector<int> body_index_w_spr,
-                       std::vector<int> body_index_wo_spr,
-                       std::vector<Eigen::Vector3d> pt_on_body);
-  void AddStateAndPointToTrack(std::vector<int> state,
-                               std::vector<int> body_index_w_spr,
-                               std::vector<int> body_index_wo_spr,
-                               std::vector<Eigen::Vector3d> pt_on_body);
+      int body_index_wo_spr,
+      Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
@@ -276,28 +262,14 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
   RotTaskSpaceTrackingData() {}  // Default constructor
 
   void AddFrameToTrack(int body_index_wo_spr,
-                       Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
+      Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
   void AddStateAndFrameToTrack(int state, int body_index_wo_spr,
-                               Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
+      Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
   void AddFrameToTrack(int body_index_w_spr, int body_index_wo_spr,
-                       Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
+      Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
   void AddStateAndFrameToTrack(int state, int body_index_w_spr,
-                               int body_index_wo_spr,
-                               Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
-
-  // (A version for std::vector in case the users want it)
-  void AddFrameToTrack(std::vector<int> body_index_wo_spr,
-                       std::vector<Eigen::Isometry3d> frame_pose);
-  void AddStateAndFrameToTrack(std::vector<int> state,
-                               std::vector<int> body_index_wo_spr,
-                               std::vector<Eigen::Isometry3d> frame_pose);
-  void AddFrameToTrack(std::vector<int> body_index_w_spr,
-                       std::vector<int> body_index_wo_spr,
-                       std::vector<Eigen::Isometry3d> frame_pose);
-  void AddStateAndFrameToTrack(std::vector<int> state,
-                               std::vector<int> body_index_w_spr,
-                               std::vector<int> body_index_wo_spr,
-                               std::vector<Eigen::Isometry3d> frame_pose);
+      int body_index_wo_spr,
+      Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
@@ -351,22 +323,6 @@ class JointSpaceTrackingData final : public OscTrackingData {
                                int joint_vel_idx_w_spr,
                                int joint_pos_idx_wo_spr,
                                int joint_vel_idx_wo_spr);
-
-  // (A version for std::vector in case the users want it)
-  void AddJointToTrack(std::vector<int> joint_pos_idx_wo_spr,
-                       std::vector<int> joint_vel_idx_wo_spr);
-  void AddStateAndJointToTrack(std::vector<int> state,
-                               std::vector<int> joint_pos_idx_wo_spr,
-                               std::vector<int> joint_vel_idx_wo_spr);
-  void AddJointToTrack(std::vector<int> joint_pos_idx_w_spr,
-                       std::vector<int> joint_vel_idx_w_spr,
-                       std::vector<int> joint_pos_idx_wo_spr,
-                       std::vector<int> joint_vel_idx_wo_spr);
-  void AddStateAndJointToTrack(std::vector<int> state,
-                               std::vector<int> joint_pos_idx_w_spr,
-                               std::vector<int> joint_vel_idx_w_spr,
-                               std::vector<int> joint_pos_idx_wo_spr,
-                               std::vector<int> joint_vel_idx_wo_spr);
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,

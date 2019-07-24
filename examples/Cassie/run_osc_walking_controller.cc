@@ -21,10 +21,11 @@
 #include "attic/multibody/rigidbody_utils.h"
 
 #include "examples/Cassie/osc_walk/deviation_from_cp.h"
+#include "examples/Cassie/osc_walk/heading_control.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
-#include "examples/Cassie/osc_walk/heading_control.h"
+#include "systems/controllers/osc/operational_space_control.h"
 
 
 namespace dairlib {

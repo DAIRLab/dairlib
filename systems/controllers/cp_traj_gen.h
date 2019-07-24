@@ -7,7 +7,6 @@
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 
 #include "systems/framework/output_vector.h"
-#include "common/math_utils.h"
 #include "attic/multibody/rigidbody_utils.h"
 
 namespace dairlib {

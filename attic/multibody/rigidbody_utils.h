@@ -34,6 +34,14 @@ bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
 // Check whether a rigid body tree is floating based
 bool IsFloatingBase(const RigidBodyTree<double>& tree);
 
+/// `CheckZeroQuaternion` check if the norm of quaternion is 0. If it is, set it
+/// to identity quaternion.
+/// TODO(yminchen): Shouldn't use this function in the long run. Should fix
+/// whatever is causing the 0 quaternion state in the controller.
+///
+/// Input: the configuration of the robot which must be in floating-base
+void CheckZeroQuaternion(Eigen::VectorXd* q);
+
 
 }  // namespace multibody
 }  // namespace dairlib

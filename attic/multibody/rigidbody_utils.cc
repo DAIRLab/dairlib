@@ -67,6 +67,11 @@ bool IsFloatingBase(const RigidBodyTree<double>& tree){
   return tree.get_body(1).getJoint().is_floating();
 }
 
+void CheckZeroQuaternion(Eigen::VectorXd* q) {
+  if (q->segment(3,4).norm() == 0.0) {
+    (*q)(3) = 1.0;
+  }
+}
 
 }  // namespace multibody
 }  // namespace dairlib

@@ -122,7 +122,6 @@ cc_library(
     srcs = ["lipm_traj_gen.cc",],
     hdrs = ["lipm_traj_gen.h"],
     deps = [
-            "//common:math_utils",
             "//attic/multibody:utils",
             "//systems/framework:vector",
             "@drake//:drake_shared_library",
@@ -135,7 +134,6 @@ cc_library(
     hdrs = ["cp_traj_gen.h"],
     deps = [
             ":control_utils",
-            "//common:math_utils",
             "//attic/multibody:utils",
             "//examples/Cassie/osc_walk:cp_control_common_func",
             "//systems/framework:vector",

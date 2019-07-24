@@ -1,6 +1,5 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "attic/multibody/rigidbody_utils.h"
-#include "common/math_utils.h"
 
 using std::cout;
 using std::endl;

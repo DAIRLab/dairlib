@@ -16,7 +16,6 @@ cc_library(
     srcs = ["deviation_from_cp.cc",],
     hdrs = ["deviation_from_cp.h"],
     deps = [
-            "//common:math_utils",
             ":cp_control_common_func",
             "//systems/framework:vector",
             "@drake//:drake_shared_library",
@@ -28,7 +27,6 @@ cc_library(
     srcs = ["heading_control.cc",],
     hdrs = ["heading_control.h"],
     deps = [
-            "//common:math_utils",
             ":cp_control_common_func",
             "//systems/framework:vector",
             "@drake//:drake_shared_library",

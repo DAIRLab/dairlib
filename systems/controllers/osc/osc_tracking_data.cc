@@ -3,7 +3,6 @@
 #include <math.h>
 #include <algorithm>
 
-#include "common/math_utils.h"
 
 using std::cout;
 using std::endl;

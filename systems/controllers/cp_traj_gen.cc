@@ -4,7 +4,6 @@
 #include <algorithm>    // std::min
 #include <string>
 
-#include "common/math_utils.h"
 #include "systems/controllers/control_utils.h"
 
 using std::cout;

@@ -521,7 +521,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         MatrixXd W = tracking_data->GetWeight();
         MatrixXd J_t = tracking_data->GetJ();
         VectorXd JdotV_t = tracking_data->GetJdotTimesV();
-        // Note that the following cost also include the constant term, so that
+        // Note that the following cost also includes the constant term, so that
         // the user can differentiate which error norm is bigger. The constant
         // term was not added to the QP since it doesn't change the result.
         cout << "Tracking cost (" << tracking_data->GetName() << ") = " <<

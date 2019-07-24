@@ -47,8 +47,8 @@ namespace controllers {
 ///     and the trajectories to track,
 /// and add them through `OperationalSpaceControl`'s' methods.
 
-/// Before adding desired trajectories to `OperationalSpaceControl`, users have
-/// to create
+/// Before adding desired trajectories to `OperationalSpaceControl` with the
+/// method `AddTrackingData`, users have to create
 ///     `TransTaskSpaceTrackingData`,
 ///     `RotTaskSpaceTrackingData`,
 ///     `JointSpaceTrackingData`,

@@ -1,5 +1,7 @@
 # -*- python -*-
 
+package(default_visibility = ["//visibility:public"])
+
 cc_library(
   name="ros_pubsub_systems",
   hdrs=["ros_publisher_system.h",
@@ -22,5 +24,18 @@ cc_binary(
   name = "test_ros_subscriber_system",
   srcs = ["test/test_ros_subscriber_system.cc"],
   deps = [":ros_pubsub_systems"],
+  tags=["ros"],
+)
+
+cc_library(
+  name = "ros2lcm_odometry_system",
+  srcs = ["ros2lcm_odometry.cc"],
+  hdrs = ["ros2lcm_odometry.h"],
+  deps=[
+    "@ros",
+    "@drake//:drake_shared_library",
+    "@lcm",
+    "//lcmtypes:lcmt_robot",
+  ],
   tags=["ros"],
 )

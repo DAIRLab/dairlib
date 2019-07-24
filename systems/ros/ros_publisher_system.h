@@ -101,7 +101,10 @@ class RosPublisherSystem : public drake::systems::LeafSystem<double> {
         (trigger == TriggerType::kPerStep));
     }
 
+    // Outgoing queue size chosen to be small, but 5 is arbitrary
     publisher_ = node_handle->advertise<RosMessage>(topic, 5);
+    // check that publisher is not empty
+    DRAKE_THROW_UNLESS(publisher_);
 
     DeclareAbstractInputPort("ros_message", drake::Value<RosMessage>());
     set_name(make_name(topic_));

@@ -1,11 +1,3 @@
-// Kp and 'Rotational' Kp
-#define K_P 1
-#define K_OMEGA 0.7
-
-// Kd and 'Rotational' Kd
-#define K_D 1
-#define K_R 0.3
-
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -25,68 +17,126 @@
 #include "systems/controllers/endeffector_velocity_controller.h"
 #include "systems/controllers/endeffector_position_controller.h"
 
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+
+using json = nlohmann::json;
 namespace dairlib {
+
+// CsvVector class: Takes CSV file as a parameter,
+// loads data into a 2D vector of doubles, provides
+// method to get the 2D vector.
+class CsvVector {
+  private:
+    std::vector<std::vector<double>> data;
+  public:
+    CsvVector(std::string fileName) {
+      //Opens stream to fileName.
+      std::ifstream stream;
+      stream.open(fileName);
+
+      //Checks to make sure it has been opened.
+      if (stream.is_open()) {
+        std::cout << "CSV file " + fileName + " opened successfully" << std::endl;
+      }
+
+      //Finds number of columns in CSV file to resize data vector.
+      std::string firstLine;
+      std::getline(stream, firstLine);
+      std::stringstream lineStream(firstLine);
+      std::string dat;
+      int length = 0;
+      while (std::getline(lineStream, dat, ',')) {
+        data.resize(data.size() + 1);
+        data[length].push_back(std::stod(dat));
+        length++;
+      }
+
+      //Loads CSV file contents into data vector.
+      while(std::getline(stream, firstLine)) {
+        int col = 0;
+        std::stringstream moreLines(firstLine);
+        while (std::getline(moreLines, dat, ',')) {
+          data[col].push_back(std::stod(dat));
+          col++;
+        }
+      }
+      stream.close();
+    }
+    //Returns the data array.
+    std::vector<std::vector<double>> getArray() {
+      return data;
+    }
+};
 
 // This function creates a controller for a Kuka LBR Iiwa arm by connecting an
 // EndEffectorPositionController to an EndEffectorVelocityController to control
 // the individual joint torques as to move the endeffector
 // to a desired position.
+
 int do_main(int argc, char* argv[]) {
-  // Creating end effector trajectory
-  // TODO make this modular
-  const std::vector<double> times {0.0, 25.0, 35.0, 45.0, 55.0, 65.0,
-                                   75.0, 85.0, 95.0, 105.0, 115};
+  //Loads in joint gains json file
+  std::ifstream joint_gains_file("examples/kuka_iiwa_arm/simulationsettings.json");
+  if (joint_gains_file.is_open()) {
+    std::cout << "Json file opened successfully." << std::endl;
+  }
+  //Initializes joint_gains json object
+  json joint_gains = json::parse(joint_gains_file);
 
-  std::vector<Eigen::MatrixXd> points(times.size());
+  //Kp and 'Rotational' Kp
+  const double K_P = joint_gains["kuka_gains"]["K_P"];
+  const double K_OMEGA = joint_gains["kuka_gains"]["K_OMEGA"];
 
-  Eigen::Vector3d AS, A0, A1, A2, A3, A4, A5, A6, A7, A8, A9;
+  // Kd and 'Rotational' Kd
+  const double K_D = joint_gains["kuka_gains"]["K_D"];
+  const double K_R = joint_gains["kuka_gains"]["K_R"];
 
-  AS << -0.23, -0.2, 0.25;
-  A0 << -0.23, -0.2, 0.25;
+  //Safety Limits
+  const double MAX_LINEAR_VEL = joint_gains["limits"]["max_linear_velocity"];
+  const double MAX_ANGULAR_VEL = joint_gains["limits"]["max_angular_veloctiy"];
+  const double JOINT_TORQUE_LIMIT = joint_gains["limits"]["joint_torque_limit"];
 
-  A1 << -0.23, -0.6, 0.25;
-  A2 << 0.23, -0.6, 0.25;
+  std::cout << "Using following parameters:" << std::endl;
+  std::cout << "K_P: " << K_P << " | K_OMEGA: " << K_OMEGA << " | K_D: " << K_D;
+  std::cout << " | K_R: " << K_R << std::endl;
+  std::cout << "Linear Velocity Limit: " << MAX_LINEAR_VEL << std::endl;
+  std::cout << "Angular Velocity Limit: " << MAX_ANGULAR_VEL << std::endl;
+  std::cout << "Joint Torque Limit: " << JOINT_TORQUE_LIMIT << std::endl;
 
-  A3 << 0.23, -0.2, 0.25;
+  //Processes Trajectories CSV file.
+  CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
 
-  A4 << 0.23, -0.2, 0.25;
+  //Initializes trajectories to trajectoryVectors array.
+  std::vector<Eigen::MatrixXd> trajectoryVectors;
+  for (unsigned int x = 0; x < waypoints.getArray()[0].size(); x++) {
+    Eigen::Vector3d temp;
+    temp << waypoints.getArray()[1][x], waypoints.getArray()[2][x],
+            waypoints.getArray()[3][x];
+    trajectoryVectors.push_back(temp);
+  }
 
-  A5 << 0.23, -0.6, 0.25;
+  auto ee_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          waypoints.getArray()[0], trajectoryVectors);
 
-  A6 << -0.23, -0.6, 0.25;
+  // Processes EndEffectorOrientations CSV file.
+  CsvVector orientations("examples/kuka_iiwa_arm/EndEffectorOrientations.csv");
 
-  A7 << -0.23, -0.2, 0.25;
+  //Initializes orientations to orient_points array.
+  std::vector<Eigen::MatrixXd> orient_points;
+  for (unsigned int y = 0; y < orientations.getArray()[0].size(); y++) {
+    Eigen::Vector4d aPoint;
+    aPoint << orientations.getArray()[1][y], orientations.getArray()[2][y],
+              orientations.getArray()[3][y], orientations.getArray()[4][y];
+    orient_points.push_back(aPoint);
+  }
 
-  A8 << -0.23, -0.2, 0.25;
-  A9 << -0.23, -0.2, 0.25;
-
-  points[0] = AS;
-  points[1] = A0;
-  points[2] = A1;
-  points[3] = A2;
-  points[4] = A3;
-  points[5] = A4;
-  points[6] = A5;
-  points[7] = A6;
-  points[8] = A7;
-  points[9] = A8;
-  points[10] = A9;
-
-  auto ee_trajectory = drake::trajectories::PiecewisePolynomial<
-      double>::FirstOrderHold(times, points);
-
-  // Creating end effector orientation trajectory
-  const std::vector<double> orient_times {0, 115};
-  std::vector<Eigen::MatrixXd> orient_points(orient_times.size());
-  Eigen::Vector4d start_o, end_o;
-  start_o << 0, 0, 1, 0;
-  end_o << 0, 0, 1, 0;
-
-  orient_points[0] = start_o;
-  orient_points[1] = end_o;
-
-  auto orientation_trajectory = drake::trajectories::PiecewisePolynomial<
-      double>::FirstOrderHold(orient_times, orient_points);
+  auto orientation_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          orientations.getArray()[0], orient_points);
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
   std::string kModelPath = "../drake/manipulation/models/iiwa_description"
@@ -126,12 +176,13 @@ int do_main(int argc, char* argv[]) {
   // Adding position controller block
   auto position_controller = builder.AddSystem<
       systems::EndEffectorPositionController>(
-          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA);
+          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA, MAX_LINEAR_VEL,
+          MAX_ANGULAR_VEL);
 
   // Adding Velocity Controller block
   auto velocity_controller = builder.AddSystem<
       systems::EndEffectorVelocityController>(
-          *owned_plant, link_7, eeContactFrame, K_D, K_R);
+          *owned_plant, link_7, eeContactFrame, K_D, K_R, JOINT_TORQUE_LIMIT);
 
 
   // Adding linear position Trajectory Source

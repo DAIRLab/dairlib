@@ -26,9 +26,21 @@ cc_binary(
         "@drake//:drake_shared_library",
         "//common:common",
         ":kuka_torque_controller",
+        "@json",
     ],
 )
 
+cc_binary(
+    name="iiwa_controller_demo",
+    srcs = ["iiwa_controller_demo.cc"],
+    data = glob(["**"]),
+    deps = [
+            "@json",
+            "@drake//:drake_shared_library",
+            "//systems/controllers:endeffector_velocity_controller",
+            "//systems/controllers:endeffector_position_controller",
+    ]
+)
 
 cc_binary(
     name="iiwa_oscillate",
@@ -62,14 +74,4 @@ cc_library(
     deps = [
             "@drake//:drake_shared_library",
     ],
-)
-
-cc_binary(
-    name="iiwa_controller_demo",
-    srcs = ["iiwa_controller_demo.cc"],
-    deps = [
-            "@drake//:drake_shared_library",
-            "//systems/controllers:endeffector_velocity_controller",
-            "//systems/controllers:endeffector_position_controller",
-    ]
 )

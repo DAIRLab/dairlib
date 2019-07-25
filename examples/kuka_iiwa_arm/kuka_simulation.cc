@@ -30,6 +30,13 @@
 #include "drake/lcmt_iiwa_command.hpp"
 #include "drake/lcmt_iiwa_status.hpp"
 #include "examples/kuka_iiwa_arm/kuka_torque_controller.h"
+#include "drake/examples/manipulation_station/manipulation_station.h"
+
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include <fstream>
+
+using json  = nlohmann::json;
 
 namespace dairlib {
 namespace examples {
@@ -68,8 +75,10 @@ int DoMain() {
   world_plant->RegisterAsSourceForSceneGraph(scene_graph);
 
   // Get the Iiwa model. TODO: grab this from pegged drake libraries
+  // Note: 'iiwa7_with_box_collision.sdf' is 'iiwa7_no_collision.sdf' in other
+  // branches aside from this one. Make this permenant?
   const char* kModelPath =
-      "drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf";
+      "drake/manipulation/models/iiwa_description/iiwa7/iiwa7_with_box_collision.sdf";
   const std::string kuka_urdf = drake::FindResourceOrThrow(kModelPath);
   const auto X_WI = RigidTransform<double>::Identity();
 
@@ -80,6 +89,34 @@ int DoMain() {
   world_plant->WeldFrames(
       owned_world_plant->world_frame(),
       owned_world_plant->GetFrameByName("iiwa_link_0", iiwa_model), X_WI);
+
+
+  // Add Table to Simulation
+  const double dx_table_center_to_robot_base = -0.3257;
+  const double dz_table_top_robot_base = 0.0127;
+  const std::string sdf_path = drake::FindResourceOrThrow(
+    "drake/examples/manipulation_station/models/bin.sdf");
+
+  RigidTransform<double> X_WT(Vector3d(dx_table_center_to_robot_base, 0,
+                              -dz_table_top_robot_base));
+  //internal::AddAndWeldModelFrom(sdf_path, "table", plant_->world_frame()
+  //                                "amazon_table", X_WT, plant_);
+
+  const drake::multibody::ModelInstanceIndex new_model =
+      world_plant_parser.AddModelFromFile(sdf_path, "bin1");
+  const auto& child_frame = world_plant->GetFrameByName("bin_base", new_model);
+  world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
+
+  //Loads in manipulands from json file to objects_vector
+  std::ifstream free_objects("examples/kuka_iiwa_arm/simulationsettings.json");
+  json manipulands = json::parse(free_objects);
+  const int num_manipulands = manipulands["Objects"].size();
+  std::vector<drake::multibody::ModelInstanceIndex> objects_vector;
+  objects_vector.resize(num_manipulands);
+  for (int objectNum = 0; objectNum < num_manipulands; objectNum++) {
+      std::string path = drake::FindResourceOrThrow(manipulands["Objects"][objectNum][2]);
+      objects_vector[objectNum] = world_plant_parser.AddModelFromFile(path, path);
+  }
 
   // Create and add a plant to the controller-specific model
   drake::multibody::Parser controller_plant_parser(controller_plant);
@@ -93,8 +130,8 @@ int DoMain() {
   owned_controller_plant->Finalize();
   world_plant->Finalize();
 
-  const int num_iiwa_positions = world_plant->num_positions();
-  const int num_iiwa_velocities = world_plant->num_velocities();
+  const int num_iiwa_positions = controller_plant->num_positions();
+  //const int num_iiwa_velocities = controller_plant->num_velocities();
 
   drake::systems::DiagramBuilder<double> builder;
   builder.AddSystem(std::move(owned_world_plant));
@@ -196,18 +233,20 @@ int DoMain() {
   auto diagram = builder.Build();
   drake::systems::Simulator<double> simulator(*diagram);
 
-  // Set the iiwa default joint configuration.
-  drake::VectorX<double> q0_iiwa(num_iiwa_positions + num_iiwa_velocities);
-  q0_iiwa << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
-
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*world_plant,
                                           &simulator.get_mutable_context());
 
-  drake::systems::BasicVector<double>& state =
-      context.get_mutable_discrete_state(0);
-  state.SetFromVector(q0_iiwa);
-
+  auto& state2 = diagram->GetMutableSubsystemState(*world_plant,
+                                          &simulator.get_mutable_context());
+  //Adjusts starting positions of manipulands
+  for (int x = 0; x < num_manipulands; x++) {
+    const auto indices = world_plant -> GetBodyIndices(objects_vector[x]);
+    world_plant -> SetFreeBodyPose(context, &state2, world_plant -> get_body(indices[0]),
+    RigidTransform<double>(Vector3d(manipulands["Objects"][x][1][0],
+                           manipulands["Objects"][x][1][1],
+                           manipulands["Objects"][x][1][2])));
+  }
   simulator.set_publish_every_time_step(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());

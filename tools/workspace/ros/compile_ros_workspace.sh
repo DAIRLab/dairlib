@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+BASE_DIR="$PWD"
+
+cd $(dirname "$BASH_SOURCE")
 
 set -e
 
@@ -26,3 +29,5 @@ catkin config \
     --no-extend
 
 catkin build
+
+cd $BASE_DIR

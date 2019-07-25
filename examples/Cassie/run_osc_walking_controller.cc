@@ -262,7 +262,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
   ComTrackingData center_of_mass_traj("lipm_traj", 3,
-      K_p_com, K_d_com, W_com, false, true);
+      K_p_com, K_d_com, W_com, false);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;
@@ -278,7 +278,7 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis_balance(0, 0) = k_d_pelvis_balance;
   K_d_pelvis_balance(1, 1) = k_d_pelvis_balance;
   RotTaskSpaceTrackingData pelvis_balance_traj("pelvis_balance_traj", 3,
-      K_p_pelvis_balance, K_d_pelvis_balance, W_pelvis_balance, false, false);
+      K_p_pelvis_balance, K_d_pelvis_balance, W_pelvis_balance, false);
   pelvis_balance_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
@@ -292,7 +292,7 @@ int DoMain(int argc, char* argv[]) {
   Matrix3d K_d_pelvis_heading = MatrixXd::Zero(3, 3);
   K_d_pelvis_heading(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_heading_traj("pelvis_heading_traj", 3,
-      K_p_pelvis_heading, K_d_pelvis_heading, W_pelvis_heading, false, false);
+      K_p_pelvis_heading, K_d_pelvis_heading, W_pelvis_heading, false);
   pelvis_heading_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
   pelvis_heading_traj.SetNoControlPeriod(0.05);
   osc->AddTrackingData(&pelvis_heading_traj);

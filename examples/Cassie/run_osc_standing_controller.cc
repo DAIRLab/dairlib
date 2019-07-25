@@ -35,6 +35,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::DiagramBuilder;
 
 using multibody::GetBodyIndexFromName;
+using systems::controllers::ComTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
@@ -128,8 +129,8 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;//2000
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData center_of_mass_traj("lipm_traj", 3,
-      K_p_com, K_d_com, W_com, true, false, true);
+  ComTrackingData center_of_mass_traj("lipm_traj", 3,
+      K_p_com, K_d_com, W_com, true);
   center_of_mass_traj.SetConstantTraj(desired_com);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
@@ -153,7 +154,7 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis(1, 1) = k_d_pelvis_balance;
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 3,
-      K_p_pelvis, K_d_pelvis, W_pelvis, true, false);
+      K_p_pelvis, K_d_pelvis, W_pelvis, true);
   pelvis_rot_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;

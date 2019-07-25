@@ -50,8 +50,7 @@ class OscTrackingData {
                   Eigen::MatrixXd K_p,
                   Eigen::MatrixXd K_d,
                   Eigen::MatrixXd W,
-                  bool traj_is_const,
-                  bool traj_has_exp);
+                  bool traj_is_const);
 
   OscTrackingData() {}  // Default constructor
 
@@ -82,7 +81,6 @@ class OscTrackingData {
   std::string GetName() {return name_;};
   int GetTrajDim() {return n_r_;};
   bool TrajIsConst() {return traj_is_const_;}
-  bool TrajHasExp() {return traj_has_exp_;}
   Eigen::VectorXd GetFixedPosition() {return fixed_position_;}
   bool GetTrackOrNot() {return track_at_current_step_;}
 
@@ -149,7 +147,6 @@ class OscTrackingData {
 
   // Trajectory info
   bool traj_is_const_;
-  bool traj_has_exp_;
 
   // `fixed_position_` stores the fixed position and pass it to input port if
   // the traj is a const
@@ -173,8 +170,7 @@ class ComTrackingData final : public OscTrackingData {
                              Eigen::MatrixXd K_p,
                              Eigen::MatrixXd K_d,
                              Eigen::MatrixXd W,
-                             bool traj_is_const = false,
-                             bool traj_has_exp = false);
+                             bool traj_is_const = false);
 
   ComTrackingData() {}  // Default constructor
 
@@ -203,8 +199,7 @@ class TaskSpaceTrackingData : public OscTrackingData {
                         Eigen::MatrixXd K_p,
                         Eigen::MatrixXd K_d,
                         Eigen::MatrixXd W,
-                        bool traj_is_const,
-                        bool traj_has_exp);
+                        bool traj_is_const);
 
   TaskSpaceTrackingData() {}  // Default constructor
 
@@ -228,8 +223,7 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
                              Eigen::MatrixXd K_p,
                              Eigen::MatrixXd K_d,
                              Eigen::MatrixXd W,
-                             bool traj_is_const = false,
-                             bool traj_has_exp = false);
+                             bool traj_is_const = false);
 
   TransTaskSpaceTrackingData() {}  // Default constructor
 
@@ -276,8 +270,7 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
                            Eigen::MatrixXd K_p,
                            Eigen::MatrixXd K_d,
                            Eigen::MatrixXd W,
-                           bool traj_is_const = false,
-                           bool traj_has_exp = false);
+                           bool traj_is_const = false);
 
   RotTaskSpaceTrackingData() {}  // Default constructor
 
@@ -324,8 +317,7 @@ class JointSpaceTrackingData final : public OscTrackingData {
                          Eigen::MatrixXd K_p,
                          Eigen::MatrixXd K_d,
                          Eigen::MatrixXd W,
-                         bool traj_is_const = false,
-                         bool traj_has_exp = false);
+                         bool traj_is_const = false);
 
   JointSpaceTrackingData() {}  // Default constructor
 

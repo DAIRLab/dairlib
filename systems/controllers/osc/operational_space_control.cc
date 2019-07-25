@@ -121,6 +121,20 @@ void OperationalSpaceControl::AddStateAndContactPoint(int state,
   AddContactPoint(body_index, pt_on_body);
 }
 
+// Tracking data methods
+void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
+                                              double duration) {
+  tracking_data_vec_->push_back(tracking_data);
+  fixed_position_vec_.push_back(Eigen::VectorXd(0));
+  period_of_no_control_vec_.push_back(duration);
+}
+void OperationalSpaceControl::AddConstTrackingData(
+    OscTrackingData* tracking_data, Eigen::VectorXd v, double duration) {
+  tracking_data_vec_->push_back(tracking_data);
+  fixed_position_vec_.push_back(v);
+  period_of_no_control_vec_.push_back(duration);
+}
+
 // Osc checkers and constructor
 void OperationalSpaceControl::CheckCostSettings() {
   if (W_input_.size() != 0) {
@@ -147,14 +161,15 @@ void OperationalSpaceControl::BuildOSC() {
   CheckCostSettings();
   CheckConstraintSettings();
   for (auto tracking_data : *tracking_data_vec_) {
-    tracking_data.first->CheckOscTrackingData();
+    tracking_data->CheckOscTrackingData();
   }
 
   // Construct input ports and traj_name_to_port_index_map_ for non-constant
   // trajectories
-  for (auto tracking_data : *tracking_data_vec_) {
-    if (tracking_data.second.size() == 0) {
-      string traj_name = tracking_data.first->GetName();
+  for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
+    auto tracking_data = tracking_data_vec_->at(i);
+    if (fixed_position_vec_[i].size() == 0) {
+      string traj_name = tracking_data->GetName();
       int port_index;
       port_index = this->DeclareAbstractInputPort(traj_name,
           drake::Value<TrajectoryWrapper> ()).get_index();
@@ -426,15 +441,15 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Update costs
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    auto tracking_data = tracking_data_vec_->at(i).first;
+    auto tracking_data = tracking_data_vec_->at(i);
 
     // Check whether or not it is a constant trajectory, and update TrackingData
-    if (tracking_data_vec_->at(i).second.size() > 0){
+    if (fixed_position_vec_.at(i).size() > 0){
       // Create constant trajectory and update
       tracking_data->Update(x_w_spr, cache_w_spr, tree_w_spr_,
           x_wo_spr, cache_wo_spr, tree_wo_spr_,
-          PiecewisePolynomial<double>(tracking_data_vec_->at(i).second), t,
-          fsm_state, time_since_last_state_switch);
+          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
+          fsm_state);
     } else {
       // Read in traj from input port
       string traj_name = tracking_data->GetName();
@@ -448,10 +463,11 @@ VectorXd OperationalSpaceControl::SolveQp(
       tracking_data->Update(x_w_spr, cache_w_spr, tree_w_spr_,
                           x_wo_spr, cache_wo_spr, tree_wo_spr_,
                           traj, t,
-                          fsm_state, time_since_last_state_switch);
+                          fsm_state);
     }
 
-    if (tracking_data->GetTrackOrNot()) {
+    if (tracking_data->GetTrackOrNot() &&
+        time_since_last_state_switch >= period_of_no_control_vec_[i]) {
       VectorXd ddy_t = tracking_data->GetCommandOutput();
       MatrixXd W = tracking_data->GetWeight();
       MatrixXd J_t = tracking_data->GetJ();
@@ -510,7 +526,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
     // 4. Tracking cost
     for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-      auto tracking_data = tracking_data_vec_->at(i).first;
+      auto tracking_data = tracking_data_vec_->at(i);
       if (tracking_data->GetTrackOrNot()) {
         VectorXd ddy_t = tracking_data->GetCommandOutput();
         MatrixXd W = tracking_data->GetWeight();
@@ -528,8 +544,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     // Target acceleration
     cout << "**********************\n";
     for (auto tracking_data : *tracking_data_vec_) {
-      if (tracking_data.first->GetTrackOrNot()) {
-        tracking_data.first->PrintFeedbackAndDesiredValues(dv_sol);
+      if (tracking_data->GetTrackOrNot()) {
+        tracking_data->PrintFeedbackAndDesiredValues(dv_sol);
       }
     }
     cout << "**********************\n\n";

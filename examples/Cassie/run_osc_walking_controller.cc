@@ -294,8 +294,7 @@ int DoMain(int argc, char* argv[]) {
   RotTaskSpaceTrackingData pelvis_heading_traj("pelvis_heading_traj", 3,
       K_p_pelvis_heading, K_d_pelvis_heading, W_pelvis_heading);
   pelvis_heading_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
-  pelvis_heading_traj.SetNoControlPeriod(0.05);
-  osc->AddTrackingData(&pelvis_heading_traj);
+  osc->AddTrackingData(&pelvis_heading_traj, 0.05);
   // Swing toe joint tracking (Currently use fix position)
   MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = 1000 * MatrixXd::Identity(1, 1);

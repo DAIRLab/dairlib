@@ -130,7 +130,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
   ComTrackingData center_of_mass_traj("lipm_traj", 3,
-      K_p_com, K_d_com, W_com, true);
+      K_p_com, K_d_com, W_com);
   osc->AddConstTrackingData(&center_of_mass_traj, desired_com);
   // Pelvis rotation tracking
   // cout << "Adding pelvis rotation tracking\n";
@@ -153,7 +153,7 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis(1, 1) = k_d_pelvis_balance;
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 3,
-      K_p_pelvis, K_d_pelvis, W_pelvis, true);
+      K_p_pelvis, K_d_pelvis, W_pelvis);
   pelvis_rot_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
@@ -165,7 +165,6 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(osc->get_output_port(0),
                   command_sender->get_input_port(0));
-
 
   // Create the diagram and context
   auto owned_diagram = builder.Build();

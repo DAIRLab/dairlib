@@ -42,9 +42,9 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
     KinematicsCache<double>& cache_wo_spr,
     const RigidBodyTree<double>& tree_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t,
-    int finite_state_machine_state, double time_since_last_state_switch) {
+    int finite_state_machine_state) {
   // Update track_at_current_step_
-  UpdateTrackingFlag(finite_state_machine_state, time_since_last_state_switch);
+  UpdateTrackingFlag(finite_state_machine_state);
 
   // Proceed based on the result of track_at_current_step_
   if (!track_at_current_step_) {
@@ -70,14 +70,9 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
   }
 }
 
-void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state,
-                                 double time_since_last_state_switch) {
+void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
   if (state_.empty()) {
-    if (time_since_last_state_switch >= period_of_no_control_) {
-      track_at_current_step_ = true;
-    } else {
-      track_at_current_step_ = false;
-    }
+    track_at_current_step_ = true;
     state_idx_ = 0;
     return;
   }
@@ -86,10 +81,7 @@ void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state,
                                   state_.end(),
                                   finite_state_machine_state);
   state_idx_ = std::distance(state_.begin(), it);
-  // Disable tracking by setting the weight to be zero when the current state
-  // is not found in `state_`
-  if (it != state_.end() &&
-      time_since_last_state_switch >= period_of_no_control_) {
+  if (it != state_.end()) {
     track_at_current_step_ = true;
   } else {
     track_at_current_step_ = false;

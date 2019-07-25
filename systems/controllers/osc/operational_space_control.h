@@ -114,18 +114,17 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                                int body_index, Eigen::VectorXd pt_on_body);
 
   // Tracking data methods
-  void AddTrackingData(OscTrackingData* tracking_data) {
-    tracking_data_vec_->push_back(
-        std::make_pair(tracking_data, Eigen::VectorXd(0)));
-  }
-  void AddConstTrackingData(OscTrackingData* tracking_data, Eigen::VectorXd v) {
-    tracking_data_vec_->push_back(std::make_pair(tracking_data, v));
-  }
-  std::vector<std::pair<OscTrackingData*,Eigen::VectorXd>>* GetAllTrackingData(){
+  /// The third argument is used to set a period in which OSC does not track the
+  /// desired traj (the period starts when the finite state machine switches to
+  /// a new state)
+  void AddTrackingData(OscTrackingData* tracking_data, double duration = 0);
+  void AddConstTrackingData(OscTrackingData* tracking_data, Eigen::VectorXd v,
+      double duration = 0);
+  std::vector<OscTrackingData*>* GetAllTrackingData(){
     return tracking_data_vec_.get();
   }
   OscTrackingData* GetTrackingDataByIndex(int index) {
-    return tracking_data_vec_->at(index).first;
+    return tracking_data_vec_->at(index);
   }
 
   // Osc problem constructor
@@ -228,11 +227,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // contact (constraint)
   std::vector<bool> CalcActiveContactIndices(int fsm_state) const;
 
-  // OSC tracking data member (stored as a pointer because of caching)
-  std::unique_ptr<std::vector<std::pair<OscTrackingData*, Eigen::VectorXd>>>
-      tracking_data_vec_ =
-      std::make_unique<
-          std::vector<std::pair<OscTrackingData*, Eigen::VectorXd>>>();
+  // OSC tracking data (stored as a pointer because of caching)
+  std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =
+      std::make_unique<std::vector<OscTrackingData*>>();
+  // Fixed position of constant trajectories
+  std::vector<Eigen::VectorXd> fixed_position_vec_;
+  // A period when we don't apply control (Unit: seconds)
+  // The period startd at the time when fsm switches to a new state.
+  std::vector<double> period_of_no_control_vec_;
 };
 
 

@@ -39,10 +39,6 @@ namespace controllers {
 /// Users can implement their own derived classes if the current implementation
 /// here is not comprehensive enough.
 
-/// Two methods for the users:
-/// - SetNoControlPeriod() to set a period of not tracking the desired traj (the
-///   period starts when the finite state machine switches to a new state)
-
 class OscTrackingData {
  public:
   OscTrackingData(std::string name, int n_r,
@@ -52,9 +48,6 @@ class OscTrackingData {
 
   OscTrackingData() {}  // Default constructor
 
-  // Setters
-  void SetNoControlPeriod(double duration) {period_of_no_control_ = duration;}
-
   // Updater and getters used by osc block
   bool Update(Eigen::VectorXd x_w_spr,
               KinematicsCache<double>& cache_w_spr,
@@ -63,8 +56,7 @@ class OscTrackingData {
               KinematicsCache<double>& cache_wo_spr,
               const RigidBodyTree<double>& tree_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
-              int finite_state_machine_state,
-              double time_since_last_state_switch);
+              int finite_state_machine_state);
   Eigen::VectorXd GetOutput() {return y_;}
   Eigen::MatrixXd GetJ() {return J_;}
   Eigen::VectorXd GetJdotTimesV() {return JdotV_;}
@@ -107,8 +99,7 @@ class OscTrackingData {
 
  private:
   // Check if we should do tracking in the current state
-  void UpdateTrackingFlag(int finite_state_machine_state,
-                  double time_since_last_state_switch);
+  void UpdateTrackingFlag(int finite_state_machine_state);
 
   // Updaters of feedback output, jacobian and dJ/dt * v
   virtual void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
@@ -139,10 +130,6 @@ class OscTrackingData {
 
   // Cost weights
   Eigen::MatrixXd W_;
-
-  // A period when we don't apply control
-  // (starting at the time when fsm switches to a new state)
-  double period_of_no_control_ = 0;  // Unit: seconds
 
   // cache
   bool track_at_current_step_;

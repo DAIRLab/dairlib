@@ -232,9 +232,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // contact (constraint)
   std::vector<bool> CalcActiveContactIndices(int fsm_state) const;
 
-  // OSC tracking data member (store pointer because of caching)
-  std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =
-        std::make_unique<std::vector<OscTrackingData*>>();
+  // OSC tracking data member (stored as a pointer because of caching)
+  std::unique_ptr<std::vector<std::pair<OscTrackingData*, Eigen::VectorXd>>>
+      tracking_data_vec_ =
+      std::make_unique<
+          std::vector<std::pair<OscTrackingData*, Eigen::VectorXd>>>();
 };
 
 

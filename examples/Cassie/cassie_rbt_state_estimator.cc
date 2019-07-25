@@ -143,10 +143,10 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     Eigen::Matrix3d R0;
     Eigen::Vector3d v0, p0, bg0, ba0;
     R0 << 1, 0, 0,  // initial orientation
-        0, -1, 0,   // IMU frame is rotated 90deg about the x-axis
-        0, 0, -1;
+        0, 1, 0,   // IMU frame is rotated 90deg about the x-axis
+        0, 0, 1;
     v0 << 0, 0, 0;   // initial velocity
-    p0 << 0, 0, 1;   // initial position
+    p0 << 0, 0, 1.015;   // initial position
     bg0 << 0, 0, 0;  // initial gyroscope bias
     ba0 << 0, 0, 0;  // initial accelerometer bias
     initial_state_.setRotation(R0);
@@ -156,15 +156,17 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     initial_state_.setAccelerometerBias(ba0);
 
     // Initialize state covariance
-    noise_params_.setGyroscopeNoise(0.02);
-    noise_params_.setAccelerometerNoise(0.04);
+    noise_params_.setGyroscopeNoise(0.01);
+    noise_params_.setAccelerometerNoise(0.1);
     noise_params_.setGyroscopeBiasNoise(0.00001);
     noise_params_.setAccelerometerBiasNoise(0.0001);
-    noise_params_.setContactNoise(0.01);
+    noise_params_.setContactNoise(0.1);
 
     filter_ = std::make_unique<inekf::InEKF>(initial_state_, noise_params_);
 
-    prev_IMU_measurement_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
+    Eigen::VectorXd prev_IMU_measurement(6);
+    prev_IMU_measurement << 0, 0, 0, 0, 0, 9.81;
+    prev_IMU_measurement_ = DeclareDiscreteState(prev_IMU_measurement);
   }
 }
 
@@ -270,8 +272,8 @@ void CassieRbtStateEstimator::solveFourbarLinkage(const VectorXd& q,
     Vector3d sol_1_cross_sol_2 = sol_1_wrt_heel_base.cross(sol_2_wrt_heel_base);
 
     // Pick the only physically feasible solution from the two intersections
-    Vector3d r_sol_wrt_heel_base = (sol_1_cross_sol_2(2) >= 0) ?
-                                   sol_2_wrt_heel_base : sol_1_wrt_heel_base;
+    Vector3d r_sol_wrt_heel_base =
+        (sol_1_cross_sol_2(2) >= 0) ? sol_2_wrt_heel_base : sol_1_wrt_heel_base;
 
     // Get the heel spring deflection direction and magnitude
     const Vector3d spring_rest_dir(1, 0, 0);
@@ -856,8 +858,9 @@ void CassieRbtStateEstimator::contactEstimation(
   // where the robot transition from flight phase to single support. It'd say
   // it's double support.)
   if ((optimal_cost[0] >= cost_threshold_ &&
-        optimal_cost[1] >= cost_threshold_ &&
-        optimal_cost[2] >= cost_threshold_)) {
+       optimal_cost[1] >= cost_threshold_ &&
+       optimal_cost[2] >= cost_threshold_ &&
+       0)) {  // Disable double support while testing EKF (Remove before commit)
     *left_contact = 0;
     *right_contact = 0;
   } else if (min_index == 1) {
@@ -932,7 +935,10 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
   // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
 
   if (current_time > prev_t) {
+
     double dt = current_time - prev_t;
+    cout << "dt: " << endl;
+    cout << dt << endl;
 
     // Perform State Estimation (in several steps)
     // Step 1 - Solve for the unknown joint angle
@@ -962,16 +968,19 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       output_gt.SetPositionAtIndex(position_index_map_.at("base_qw"), 1);
     }
 
-    // Debugging info
+    // Debugging print statements
     cout << "Ground Truth: " << endl;
     cout << "Positions: " << endl;
-    cout << output_gt.GetPositions().head(7).transpose() << endl;
+    cout << output_gt.GetPositions().head(3).transpose() << endl;
+    cout << "Orientation (quaternion) : " << endl;
+    cout << output_gt.GetPositions().segment<4>(3).transpose() << endl;
     cout << "Velocities: " << endl;
     cout << output_gt.GetVelocities().head(6).transpose() << endl;
-    cout << endl;
+
     std::ofstream ofile;
     ofile.open("/home/nanda/DAIR/plotting/ekf.csv",
                std::ios::out | std::ios::app);
+    ofile << current_time << ", ";
     for (int i = 0; i < 7; ++i) {
       ofile << output_gt.GetPositions()[i] << ", ";
     }
@@ -985,11 +994,19 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     KinematicsCache<double> cache_gt = tree_.doKinematics(
         output_gt.GetPositions(), output_gt.GetVelocities(), true);
 
+    // Debugging print statements
+    cout << "Leg positions: " << endl;
+    cout << tree_.transformPoints(cache_gt, Vector3d::Zero(), left_toe_ind, 0)
+                .transpose()
+         << endl;
+    cout << tree_.transformPoints(cache_gt, Vector3d::Zero(), right_toe_ind, 0)
+                .transpose()
+         << endl;
+    cout << endl;
+
     // Step 2 - EKF (update step)
     // Propagate step
     VectorXd imu_measurement(6);
-    // Linear acceleration is assumed to be x -y -z.
-    // Test this assumption before moving the code to robot
     const double* imu_linear_acceleration =
         cassie_out.pelvis.vectorNav.linearAcceleration;
     const double* imu_angular_velocity =
@@ -998,9 +1015,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     Vector3d alpha_imu;
     alpha_imu << imu_linear_acceleration[0], imu_linear_acceleration[1],
     imu_linear_acceleration[2];
-    Eigen::Matrix3d R_imu = Eigen::Matrix3d::Identity();
-    R_imu(1, 1) = -1;
-    R_imu(2, 2) = -1;
     // Uncomment these lines to remove gravity vector from IMU acceleration
     RigidBody<double>* pelvis_body = tree_.FindBody("pelvis");
     Isometry3d pelvis_pose =
@@ -1008,7 +1022,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     MatrixXd R_WB = pelvis_pose.linear();
     Vector3d gravity_in_pelvis_frame = R_WB.transpose() * gravity_;
     alpha_imu -= 2*gravity_in_pelvis_frame;
-    alpha_imu = R_imu*alpha_imu;
 
     imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
         imu_angular_velocity[2], alpha_imu[0],
@@ -1020,6 +1033,20 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     discrete_state->get_mutable_vector(prev_IMU_measurement_)
             .get_mutable_value()
         << imu_measurement;
+
+    // Debugging print statements
+    cout << "Prediction: " << endl;
+    cout << "Positions: " << endl;
+    cout << filter_.get()->getState().getPosition().transpose() << endl;
+    cout << "Orientation (quaternion) : " << endl;
+    Eigen::Quaterniond q_prop = Eigen::Quaterniond(filter_.get()->getState().getRotation());
+    q_prop.normalize();
+    cout << q_prop.w() << " ";
+    cout << q_prop.vec().transpose() << endl;
+    cout << "Velocities: " << endl;
+    cout << filter_.get()->getState().getVelocity().transpose() << endl;
+    cout << "X: " << endl;
+    cout << filter_.get()->getState().getX() << endl;
 
     // Estimated state
     auto state = filter_.get()->getState();
@@ -1057,37 +1084,62 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     filter_.get()->setContacts(contacts);
 
     // Step 4 - EKF (measurement step)
-    KinematicsCache<double> cache =
-        tree_.doKinematics(filtered_output.GetPositions(), filtered_output.GetVelocities(), true);
+    KinematicsCache<double> cache = tree_.doKinematics(
+        filtered_output.GetPositions(), filtered_output.GetVelocities(), true);
+    Eigen::Vector3d d, p;
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
     Eigen::Matrix<double, 6, 6> covariance = Eigen::MatrixXd::Identity(6, 6);
     Eigen::Matrix<double, 22, 22> cov_w =
         0.017 * Eigen::MatrixXd::Identity(22, 22);
     std::vector<int> toe_indices = {left_toe_ind, right_toe_ind};
 
+    // Debugging print statements
+    cout << "Rotation differences: " << endl;
+    cout << "Rotation matrix from EKF: " << endl;
+    cout << filter_.get()->getState().getRotation() << endl;
+    cout << "Ground truth rotation: " << endl;
+    Eigen::Quaterniond q_real;
+    q_real.w() = output_gt.GetPositions()[3];
+    q_real.vec() = output_gt.GetPositions().segment<3>(4);
+    Eigen::MatrixXd R_actual = q_real.toRotationMatrix();
+    cout << R_actual << endl;
+
     inekf::vectorKinematics measured_kinematics;
     for (int i = 0; i < 2 ; i++) {
       pose.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
-      pose.block<3, 1>(0, 3) = R_imu * tree_.transformPoints(
-          cache, Vector3d::Zero(), toe_indices[i], pelvis_index);
+      pose.block<3, 1>(0, 3) = tree_.transformPoints(
+          cache, Vector3d::Zero(), toe_indices[i], pelvis_index) - imu_pos_;
+
+      // Debugging print statements
+      cout << "Pose: " << endl;
+      cout << pose.block<3, 1>(0, 3).transpose() << endl;
+
+      // Jacobian is not right - fix this before porting to the robot
       Eigen::MatrixXd J = tree_.transformPointsJacobian(
           cache, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
-      J = R_imu*J;
       covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose();
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);
     }
     filter_.get()->CorrectKinematics(measured_kinematics);
 
-    cout << "Prediction: " << endl;
+    // Debugging print statements
+    cout << "Update: " << endl;
     cout << "Positions: " << endl;
     cout << filter_.get()->getState().getPosition().transpose() << endl;
+    cout << "Orientation (quaternion) : " << endl;
     q = Eigen::Quaterniond(filter_.get()->getState().getRotation());
     q.normalize();
     cout << q.w() << " ";
     cout << q.vec().transpose() << endl;
     cout << "Velocities: " << endl;
     cout << filter_.get()->getState().getVelocity().transpose() << endl;
+    // cout << "P: " << endl;
+    // cout << filter_.get()->getState().getP() << endl;
+    cout << "X: " << endl;
+    cout << filter_.get()->getState().getX() << endl;
+    cout << "Theta: " << endl;
+    cout << filter_.get()->getState().getTheta() << endl;
 
     for (int i = 0; i < 3; ++i) {
       ofile << filter_.get()->getState().getPosition()[i] << ", ";
@@ -1098,6 +1150,13 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     }
     ofile << "\n";
     ofile.close();
+    cout << "------------------------------\n";
+    cout << endl;
+
+    // Use these three lines to stop the program after n iterations
+    // int n = 10;
+    // static int iterations = 0;
+    // if (iterations++ >= n - 1) exit(EXIT_FAILURE);
 
     // Step 5 - Assign values to states
     // Below is how you should assign the state at the end of this Update

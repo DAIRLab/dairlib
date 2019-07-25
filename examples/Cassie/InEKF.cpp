@@ -123,11 +123,13 @@ void InEKF::Propagate(const Eigen::Matrix<double, 6, 1>& m, double dt) {
   Eigen::Vector3d v = state_.getVelocity();
   Eigen::Vector3d p = state_.getPosition();
 
+  cout << "R*a + g_: (from InEKF)" << endl;
+  cout << (R*a + g_).transpose() << endl;
   // Strapdown IMU motion model
   Eigen::Vector3d phi = w * dt;
   Eigen::Matrix3d R_pred = R * Exp_SO3(phi);
-  Eigen::Vector3d v_pred = v + ((R * a) + g_) * dt;
-  Eigen::Vector3d p_pred = p + v * dt + 0.5 * ((R * a) + g_) * dt * dt;
+  Eigen::Vector3d v_pred = v + (R * a + g_) * dt;
+  Eigen::Vector3d p_pred = p + v * dt + 0.5 * (R * a + g_) * dt * dt;
 
   // Set new state (bias has constant dynamics)
   state_.setRotation(R_pred);
@@ -200,11 +202,15 @@ void InEKF::Correct(const Observation& obs) {
 
   // Compute correction terms
   Eigen::MatrixXd Z = BigX * obs.Y - obs.b;
-  cout << "Z: " << endl;
-  cout << Z << endl;
+  cout << "Z: (from InEKF) " << endl;
+  cout << Z.transpose() << endl;
   Eigen::VectorXd delta = K * obs.PI * Z;
   Eigen::MatrixXd dX =
       Exp_SEK3(delta.segment(0, delta.rows() - state_.dimTheta()));
+  // cout << "dX: " << endl;
+  // cout << dX << endl;
+  // cout << "X from InEKF: " << endl;
+  // cout << state_.getX() << endl;
   Eigen::VectorXd dTheta =
       delta.segment(delta.rows() - state_.dimTheta(), state_.dimTheta());
 
@@ -432,6 +438,7 @@ void InEKF::CorrectKinematics(const vectorKinematics& measured_kinematics) {
     // issues in InEKF::Correct)
     if (find(used_contact_ids.begin(), used_contact_ids.end(), it->id) !=
         used_contact_ids.end()) {
+      cout << "Duplicate contact ID detected! Skipping measurement.\n";
       continue;
     } else {
       used_contact_ids.push_back(it->id);
@@ -610,6 +617,7 @@ void InEKF::CorrectKinematics(const vectorKinematics& measured_kinematics) {
       estimated_contact_positions_.insert(pair<int, int>(it->id, startIndex));
     }
   }
+
   return;
 }
 

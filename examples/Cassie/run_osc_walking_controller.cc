@@ -262,7 +262,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
   ComTrackingData center_of_mass_traj("lipm_traj", 3,
-      K_p_com, K_d_com, W_com, false);
+      K_p_com, K_d_com, W_com);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;
@@ -278,7 +278,7 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis_balance(0, 0) = k_d_pelvis_balance;
   K_d_pelvis_balance(1, 1) = k_d_pelvis_balance;
   RotTaskSpaceTrackingData pelvis_balance_traj("pelvis_balance_traj", 3,
-      K_p_pelvis_balance, K_d_pelvis_balance, W_pelvis_balance, false);
+      K_p_pelvis_balance, K_d_pelvis_balance, W_pelvis_balance);
   pelvis_balance_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
@@ -292,7 +292,7 @@ int DoMain(int argc, char* argv[]) {
   Matrix3d K_d_pelvis_heading = MatrixXd::Zero(3, 3);
   K_d_pelvis_heading(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_heading_traj("pelvis_heading_traj", 3,
-      K_p_pelvis_heading, K_d_pelvis_heading, W_pelvis_heading, false);
+      K_p_pelvis_heading, K_d_pelvis_heading, W_pelvis_heading);
   pelvis_heading_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
   pelvis_heading_traj.SetNoControlPeriod(0.05);
   osc->AddTrackingData(&pelvis_heading_traj);
@@ -302,7 +302,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_swing_toe = 100 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj("swing_toe_traj", 1,
                                         K_p_swing_toe, K_d_swing_toe,
-                                        W_swing_toe, true);
+                                        W_swing_toe);
   swing_toe_traj.AddStateAndJointToTrack(left_stance_state,
                                          right_toe_pos_idx_w_spr,
                                          right_toe_vel_idx_w_spr,
@@ -313,14 +313,13 @@ int DoMain(int argc, char* argv[]) {
                                          left_toe_vel_idx_w_spr,
                                          left_toe_pos_idx_wo_spr,
                                          left_toe_vel_idx_wo_spr);
-  swing_toe_traj.SetConstantTraj(-1.5 * VectorXd::Ones(1));
-  osc->AddTrackingData(&swing_toe_traj);
+  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1));
   // Swing hip yaw joint tracking
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_hip_yaw_traj("swing_hip_yaw_traj", 1,
-      K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw, true);
+      K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw);
   swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state,
       right_hip_yaw_pos_idx_w_spr,
       right_hip_yaw_vel_idx_w_spr,
@@ -331,8 +330,7 @@ int DoMain(int argc, char* argv[]) {
       left_hip_yaw_vel_idx_w_spr,
       left_hip_yaw_pos_idx_wo_spr,
       left_hip_yaw_vel_idx_wo_spr);
-  swing_hip_yaw_traj.SetConstantTraj(VectorXd::Zero(1));
-  osc->AddTrackingData(&swing_hip_yaw_traj);
+  osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
   // Build OSC problem
   osc->BuildOSC();
   // Connect ports
@@ -353,11 +351,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create the diagram and context
   auto owned_diagram = builder.Build();
-
-  // Assign fixed value to osc constant traj port
   auto context = owned_diagram->CreateDefaultContext();
-  systems::controllers::OperationalSpaceControl::AssignConstTrajToInputPorts(
-      osc, owned_diagram.get(), context.get());
 
   // Create the simulator
   const auto& diagram = *owned_diagram;

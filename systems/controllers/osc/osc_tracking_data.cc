@@ -25,14 +25,12 @@ OscTrackingData::OscTrackingData(string name,
                                  int n_r,
                                  MatrixXd K_p,
                                  MatrixXd K_d,
-                                 MatrixXd W,
-                                 bool traj_is_const) :
+                                 MatrixXd W) :
     name_(name),
     n_r_(n_r),
     K_p_(K_p),
     K_d_(K_d),
-    W_(W),
-    traj_is_const_(traj_is_const) {
+    W_(W) {
 }
 
 // Updater
@@ -56,13 +54,8 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
 
     // Update desired output
     y_des_ = traj.value(t);
-    if (!traj_is_const_) {
-      dy_des_ = traj.MakeDerivative(1)->value(t);
-      ddy_des_ = traj.MakeDerivative(2)->value(t);
-    } else {
-      dy_des_ = VectorXd::Zero(n_r_);
-      ddy_des_ = VectorXd::Zero(n_r_);
-    }
+    dy_des_ = traj.MakeDerivative(1)->value(t);
+    ddy_des_ = traj.MakeDerivative(2)->value(t);
 
     // Update feedback output (Calling virtual methods)
     UpdateYAndError(x_w_spr, cache_w_spr, tree_w_spr);
@@ -120,8 +113,6 @@ void OscTrackingData::CheckOscTrackingData() {
   cout << "Checking " << name_ << endl;
   CheckDerivedOscTrackingData();
 
-  DRAKE_DEMAND(!traj_is_const_ ||
-               (traj_is_const_ && (fixed_position_.size() != 0)));
   DRAKE_DEMAND((K_p_.rows() == n_r_) && (K_p_.cols() == n_r_));
   DRAKE_DEMAND((K_d_.rows() == n_r_) && (K_d_.cols() == n_r_));
   DRAKE_DEMAND((W_.rows() == n_r_) && (W_.cols() == n_r_));
@@ -138,9 +129,8 @@ ComTrackingData::ComTrackingData(string name,
     int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
-    MatrixXd W,
-    bool traj_is_const) : OscTrackingData(name, n_r,
-          K_p, K_d, W, traj_is_const) {
+    MatrixXd W) : OscTrackingData(name, n_r,
+          K_p, K_d, W) {
 }
 
 void ComTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
@@ -175,9 +165,8 @@ TaskSpaceTrackingData::TaskSpaceTrackingData(string name,
     int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
-    MatrixXd W,
-    bool traj_is_const) : OscTrackingData(name, n_r,
-          K_p, K_d, W, traj_is_const) {
+    MatrixXd W) : OscTrackingData(name, n_r,
+          K_p, K_d, W) {
 }
 
 // TransTaskSpaceTrackingData //////////////////////////////////////////////////
@@ -185,9 +174,8 @@ TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(string name,
     int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
-    MatrixXd W,
-    bool traj_is_const) : TaskSpaceTrackingData(name, n_r,
-          K_p, K_d, W, traj_is_const) {
+    MatrixXd W) : TaskSpaceTrackingData(name, n_r,
+          K_p, K_d, W) {
 }
 
 void TransTaskSpaceTrackingData::AddPointToTrack(int body_index_wo_spr,
@@ -261,9 +249,8 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
     int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
-    MatrixXd W,
-    bool traj_is_const) : TaskSpaceTrackingData(name, n_r,
-          K_p, K_d, W, traj_is_const) {
+    MatrixXd W) : TaskSpaceTrackingData(name, n_r,
+          K_p, K_d, W) {
 }
 
 void RotTaskSpaceTrackingData::AddFrameToTrack(int body_index_wo_spr,
@@ -354,9 +341,8 @@ JointSpaceTrackingData::JointSpaceTrackingData(string name,
     int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
-    MatrixXd W,
-    bool traj_is_const) : OscTrackingData(name, n_r,
-          K_p, K_d, W, traj_is_const) {
+    MatrixXd W) : OscTrackingData(name, n_r,
+          K_p, K_d, W) {
   DRAKE_DEMAND(n_r == 1);  // one joint at a time
 }
 

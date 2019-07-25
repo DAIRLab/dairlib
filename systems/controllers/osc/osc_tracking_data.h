@@ -40,7 +40,6 @@ namespace controllers {
 /// here is not comprehensive enough.
 
 /// Two methods for the users:
-/// - SetConstantTraj(), to set constant trajectory value
 /// - SetNoControlPeriod() to set a period of not tracking the desired traj (the
 ///   period starts when the finite state machine switches to a new state)
 
@@ -49,13 +48,11 @@ class OscTrackingData {
   OscTrackingData(std::string name, int n_r,
                   Eigen::MatrixXd K_p,
                   Eigen::MatrixXd K_d,
-                  Eigen::MatrixXd W,
-                  bool traj_is_const);
+                  Eigen::MatrixXd W);
 
   OscTrackingData() {}  // Default constructor
 
   // Setters
-  void SetConstantTraj(Eigen::VectorXd v) {fixed_position_ = v;}
   void SetNoControlPeriod(double duration) {period_of_no_control_ = duration;}
 
   // Updater and getters used by osc block
@@ -80,8 +77,6 @@ class OscTrackingData {
   // Getters
   std::string GetName() {return name_;};
   int GetTrajDim() {return n_r_;};
-  bool TrajIsConst() {return traj_is_const_;}
-  Eigen::VectorXd GetFixedPosition() {return fixed_position_;}
   bool GetTrackOrNot() {return track_at_current_step_;}
 
   // Print feedback and desired values
@@ -145,13 +140,6 @@ class OscTrackingData {
   // Cost weights
   Eigen::MatrixXd W_;
 
-  // Trajectory info
-  bool traj_is_const_;
-
-  // `fixed_position_` stores the fixed position and pass it to input port if
-  // the traj is a const
-  Eigen::VectorXd fixed_position_;
-
   // A period when we don't apply control
   // (starting at the time when fsm switches to a new state)
   double period_of_no_control_ = 0;  // Unit: seconds
@@ -169,8 +157,7 @@ class ComTrackingData final : public OscTrackingData {
   ComTrackingData(std::string name, int n_r,
                              Eigen::MatrixXd K_p,
                              Eigen::MatrixXd K_d,
-                             Eigen::MatrixXd W,
-                             bool traj_is_const = false);
+                             Eigen::MatrixXd W);
 
   ComTrackingData() {}  // Default constructor
 
@@ -198,8 +185,7 @@ class TaskSpaceTrackingData : public OscTrackingData {
   TaskSpaceTrackingData(std::string name, int n_r,
                         Eigen::MatrixXd K_p,
                         Eigen::MatrixXd K_d,
-                        Eigen::MatrixXd W,
-                        bool traj_is_const);
+                        Eigen::MatrixXd W);
 
   TaskSpaceTrackingData() {}  // Default constructor
 
@@ -222,8 +208,7 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
   TransTaskSpaceTrackingData(std::string name, int n_r,
                              Eigen::MatrixXd K_p,
                              Eigen::MatrixXd K_d,
-                             Eigen::MatrixXd W,
-                             bool traj_is_const = false);
+                             Eigen::MatrixXd W);
 
   TransTaskSpaceTrackingData() {}  // Default constructor
 
@@ -269,8 +254,7 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
   RotTaskSpaceTrackingData(std::string name, int n_r,
                            Eigen::MatrixXd K_p,
                            Eigen::MatrixXd K_d,
-                           Eigen::MatrixXd W,
-                           bool traj_is_const = false);
+                           Eigen::MatrixXd W);
 
   RotTaskSpaceTrackingData() {}  // Default constructor
 
@@ -316,8 +300,7 @@ class JointSpaceTrackingData final : public OscTrackingData {
   JointSpaceTrackingData(std::string name, int n_r,
                          Eigen::MatrixXd K_p,
                          Eigen::MatrixXd K_d,
-                         Eigen::MatrixXd W,
-                         bool traj_is_const = false);
+                         Eigen::MatrixXd W);
 
   JointSpaceTrackingData() {}  // Default constructor
 

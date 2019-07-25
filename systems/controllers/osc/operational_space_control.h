@@ -1,5 +1,6 @@
 #pragma once
 
+#include <utility>
 #include <vector>
 #include <string>
 #include <memory>
@@ -59,8 +60,8 @@ namespace controllers {
 
 /// If the desired trajectory is constant, users don't need to connect the
 /// input ports of `OperationalSpaceControl` to trajectory source blocks.
-/// Instead, the users have to call the function AssignConstTrajToInputPorts()
-/// after drake::systems::Diagram is built.
+/// Instead, the users have to call the function AddConstTrackingData() when
+/// adding TrackingData to OperationalSpaceControl.
 
 /// If the users want to create the desired trajectory source themselves,
 /// the outputs of trajectory blocks need to be of the derived classes of
@@ -77,18 +78,9 @@ namespace controllers {
 ///   4. (if the users created desired trajectory blocks by themselves) connect
 ///      `OperationalSpaceControl`'s input ports to corresponding output ports
 ///      of the trajectory source.
-///   5. (if the users added constant trajectories) after creating Diagram,
-///      call AssignConstTrajToInputPorts().
 
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
-  // AssignConstTrajToInputPorts() assigns fixed values to the input ports
-  // which corresponds to the constant desired trajectories.
-  static void AssignConstTrajToInputPorts(OperationalSpaceControl* osc,
-      drake::systems::Diagram<double>* diagram,
-      drake::systems::Context<double>* diagram_context);
-
-  // Constructor
   OperationalSpaceControl(const RigidBodyTree<double>& tree_w_spr,
                           const RigidBodyTree<double>& tree_wo_spr,
                           bool used_with_finite_state_machine = true,
@@ -123,13 +115,17 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Tracking data methods
   void AddTrackingData(OscTrackingData* tracking_data) {
-    tracking_data_vec_->push_back(tracking_data);
+    tracking_data_vec_->push_back(
+        std::make_pair(tracking_data, Eigen::VectorXd(0)));
   }
-  std::vector<OscTrackingData*>* GetAllTrackingData() {
+  void AddConstTrackingData(OscTrackingData* tracking_data, Eigen::VectorXd v) {
+    tracking_data_vec_->push_back(std::make_pair(tracking_data, v));
+  }
+  std::vector<std::pair<OscTrackingData*,Eigen::VectorXd>>* GetAllTrackingData(){
     return tracking_data_vec_.get();
   }
   OscTrackingData* GetTrackingDataByIndex(int index) {
-    return tracking_data_vec_->at(index);
+    return tracking_data_vec_->at(index).first;
   }
 
   // Osc problem constructor
@@ -164,7 +160,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd map_position_from_spring_to_no_spring_;
   Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
-  // Map from trajectory names to input port indices
+  // Map from (non-const) trajectory names to input port indices
   std::map<std::string, int> traj_name_to_port_index_map_;
 
   // RBT's.

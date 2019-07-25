@@ -131,8 +131,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
   ComTrackingData center_of_mass_traj("lipm_traj", 3,
       K_p_com, K_d_com, W_com, true);
-  center_of_mass_traj.SetConstantTraj(desired_com);
-  osc->AddTrackingData(&center_of_mass_traj);
+  osc->AddConstTrackingData(&center_of_mass_traj, desired_com);
   // Pelvis rotation tracking
   // cout << "Adding pelvis rotation tracking\n";
   double w_pelvis_balance = 200;
@@ -158,8 +157,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
-  pelvis_rot_traj.SetConstantTraj(pelvis_desired_quat);
-  osc->AddTrackingData(&pelvis_rot_traj);
+  osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);
   // Build OSC problem
   osc->BuildOSC();
   // Connect ports
@@ -171,11 +169,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create the diagram and context
   auto owned_diagram = builder.Build();
-
-  // Assign fixed value to osc constant traj port
   auto context = owned_diagram->CreateDefaultContext();
-  systems::controllers::OperationalSpaceControl::AssignConstTrajToInputPorts(
-      osc, owned_diagram.get(), context.get());
 
   // Create the simulator
   const auto& diagram = *owned_diagram;

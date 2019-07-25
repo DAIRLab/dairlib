@@ -132,6 +132,13 @@ void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
   tracking_data_vec_->push_back(tracking_data);
   fixed_position_vec_.push_back(Eigen::VectorXd(0));
   period_of_no_control_vec_.push_back(duration);
+
+  // Construct input ports and add element to traj_name_to_port_index_map_
+  string traj_name = tracking_data->GetName();
+  int port_index;
+  port_index = this->DeclareAbstractInputPort(traj_name,
+      drake::Value<TrajectoryWrapper> ()).get_index();
+  traj_name_to_port_index_map_[traj_name] = port_index;
 }
 void OperationalSpaceControl::AddConstTrackingData(
     OscTrackingData* tracking_data, Eigen::VectorXd v, double duration) {
@@ -167,19 +174,6 @@ void OperationalSpaceControl::BuildOSC() {
   CheckConstraintSettings();
   for (auto tracking_data : *tracking_data_vec_) {
     tracking_data->CheckOscTrackingData();
-  }
-
-  // Construct input ports and traj_name_to_port_index_map_ for non-constant
-  // trajectories
-  for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    auto tracking_data = tracking_data_vec_->at(i);
-    if (fixed_position_vec_[i].size() == 0) {
-      string traj_name = tracking_data->GetName();
-      int port_index;
-      port_index = this->DeclareAbstractInputPort(traj_name,
-          drake::Value<TrajectoryWrapper> ()).get_index();
-      traj_name_to_port_index_map_[traj_name] = port_index;
-    }
   }
 
   // Construct QP

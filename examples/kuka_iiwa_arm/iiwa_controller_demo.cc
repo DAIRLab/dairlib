@@ -232,7 +232,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(velocity_controller->get_endpoint_torque_output_port(),
                   command_sender->get_torque_input_port());
 
-  builder.Connect(positionCommand->get_output_port(),
+  builder.Connect(status_receiver->get_position_measured_output_port(),
                   command_sender->get_position_input_port());
   builder.Connect(command_sender->get_output_port(),
                   command_publisher->get_input_port());

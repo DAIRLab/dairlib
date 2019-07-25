@@ -52,6 +52,9 @@ void EndEffectorPositionController::CalcOutputTwist(
 
   VectorXd diff = k_p_ * (x_desired - x_actual);
 
+  std::cout << "desired:\n" << x_desired << std::endl;
+	std::cout << "actual:\n" << x_actual << std::endl;
+
   // Quaternion for rotation from base to end effector
   Eigen::Quaternion<double> quat_n_a = plant_.CalcRelativeTransform(
 	  *plant_context, plant_world_frame_, ee_joint_frame_).rotation().ToQuaternion();

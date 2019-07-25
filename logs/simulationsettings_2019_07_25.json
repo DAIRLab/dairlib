@@ -1,0 +1,19 @@
+{
+    "numberOfObjects" : 0,
+    "Objects": [
+        
+    ],
+    "kuka_gains":
+        {
+        "K_P": 300,
+        "K_OMEGA": 20,
+        "K_D": 0.25,
+        "K_R": 0.25
+    },
+    "limits":
+        {
+            "max_linear_velocity" : 20.0,
+            "max_angular_veloctiy" : 20.0,
+            "joint_torque_limit" : 20.0
+        }
+}

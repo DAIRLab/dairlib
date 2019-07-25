@@ -122,8 +122,8 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   bool is_using_predicted_com_;
 
   // Parameters
-  const double cp_offset_ = 0.06;  // meter
-  const double center_line_offset_ = 0.06;  // meter
+  const double cp_offset_;  // in meters
+  const double center_line_offset_;  // in meters
 
   // left stance state (of finite state machine)
   // right stance state (of finite state machine)

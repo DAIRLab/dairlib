@@ -4,6 +4,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "systems/framework/output_vector.h"
+#include "systems/controllers/control_utils.h"
 
 namespace dairlib {
 namespace cassie {
@@ -37,7 +38,7 @@ class HeadingControl : public drake::systems::LeafSystem<double> {
 
  private:
   void CalcHeadingAngle(const drake::systems::Context<double>& context,
-                 drake::trajectories::PiecewisePolynomial<double>* traj) const;
+                 systems::TrajectoryWrapper* traj) const;
 
   const RigidBodyTree<double>& tree_;
   int pelvis_idx_;

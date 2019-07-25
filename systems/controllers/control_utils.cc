@@ -8,8 +8,21 @@ using std::endl;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 
+using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::ExponentialPlusPiecewisePolynomial;
+
 namespace dairlib {
 namespace systems {
+
+
+TrajectoryWrapper::TrajectoryWrapper() :
+    value(std::make_unique<PiecewisePolynomial<double>>()) {}
+TrajectoryWrapper::TrajectoryWrapper(PiecewisePolynomial<double> traj) :
+    value(std::make_unique<PiecewisePolynomial<double>>(traj)) {}
+TrajectoryWrapper::TrajectoryWrapper(
+        ExponentialPlusPiecewisePolynomial<double> traj) :
+    value(std::make_unique<ExponentialPlusPiecewisePolynomial<double>>(traj)) {}
+
 
 Vector2d ImposeHalfplaneGaurd(Vector2d foot_placement_pos,
     int left_stance_state, int right_stance_state, int state,

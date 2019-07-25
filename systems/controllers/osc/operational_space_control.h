@@ -9,14 +9,16 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 
-#include "systems/framework/output_vector.h"
-#include "systems/controllers/osc/osc_tracking_data.h"
-
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
 
+#include "systems/framework/output_vector.h"
+#include "systems/controllers/osc/osc_tracking_data.h"
+#include "systems/controllers/control_utils.h"
+
 namespace dairlib {
 namespace systems {
+
 namespace controllers {
 
 /// `OperationalSpaceControl` takes in desired trajectory in world frame and

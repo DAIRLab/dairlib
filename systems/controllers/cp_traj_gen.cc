@@ -71,7 +71,7 @@ CPTrajGenerator::CPTrajGenerator(const RigidBodyTree<double>& tree,
                 BasicVector<double>(1)).get_index();
   if (is_using_predicted_com) {
     com_port_ = this->DeclareAbstractInputPort("CoM_traj",
-        drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
+        drake::Value<TrajectoryWrapper> {}).get_index();
   }
   if (add_extra_control) {
     fp_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
@@ -184,10 +184,10 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     const drake::AbstractValue* com_traj_output =
         this->EvalAbstractInput(context, com_port_);
     DRAKE_ASSERT(com_traj_output != nullptr);
-    const auto & com_traj = com_traj_output->get_value <
-                            ExponentialPlusPiecewisePolynomial<double >> ();
+    const auto & com_traj = *(com_traj_output->get_value <
+                                TrajectoryWrapper>().value);
     CoM = com_traj.value(end_time_of_this_interval);
-    dCoM = com_traj.derivative().value(end_time_of_this_interval);
+    dCoM = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
   } else {
     // Get the current center of mass position and velocity
     MatrixXd J_com = tree_.centerOfMassJacobian(cache);
@@ -287,7 +287,7 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
 
 
 void CPTrajGenerator::CalcTrajs(const Context<double>& context,
-                                PiecewisePolynomial<double>* traj) const {
+                                TrajectoryWrapper* traj) const {
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -320,10 +320,10 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   Vector3d init_swing_foot_pos = swing_foot_pos_td;
 
   // Assign traj
-  *traj = createSplineForSwingFoot(start_time_of_this_interval,
+  *traj = TrajectoryWrapper(createSplineForSwingFoot(start_time_of_this_interval,
                                    end_time_of_this_interval,
                                    init_swing_foot_pos,
-                                   CP);
+                                   CP));
 }
 }  // namespace systems
 }  // namespace dairlib

@@ -1,9 +1,28 @@
 #pragma once
 
+#include <memory>
 #include <Eigen/Dense>
+
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+#include "drake/common/copyable_unique_ptr.h"
 
 namespace dairlib {
 namespace systems {
+
+/// `TrajectoryWrapper` allows us to achieve polymorphic input/output ports for
+/// drake::trajectories::Trajectory<double>.
+class TrajectoryWrapper {
+ public:
+  DRAKE_DEFAULT_COPY_AND_MOVE_AND_ASSIGN(TrajectoryWrapper);
+  TrajectoryWrapper();
+  TrajectoryWrapper(drake::trajectories::PiecewisePolynomial<double> traj);
+  TrajectoryWrapper(
+      drake::trajectories::ExponentialPlusPiecewisePolynomial<double> traj);
+
+  drake::copyable_unique_ptr<drake::trajectories::Trajectory<double>> value;
+};
+
 
 /// ImposeHalfplaneGaurd() updates the foot placement position by restricting
 /// it in a halfplane.

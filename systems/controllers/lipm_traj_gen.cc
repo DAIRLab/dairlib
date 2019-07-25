@@ -91,7 +91,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
 
 
 void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
-    ExponentialPlusPiecewisePolynomial<double>* traj) const {
+    TrajectoryWrapper* traj) const {
 
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
@@ -198,11 +198,9 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
        0    , -omega;
   alpha << 1, 1;
 
-  auto exp_traj = ExponentialPlusPiecewisePolynomial<double>(
-                    K, A, alpha, pp_part);
-
   // Assign traj
-  *traj = exp_traj;
+  *traj = TrajectoryWrapper(ExponentialPlusPiecewisePolynomial<double>(
+                    K, A, alpha, pp_part));
 }
 
 }  // namespace systems

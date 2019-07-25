@@ -30,6 +30,7 @@ cc_library(
     deps = [
             ":cp_control_common_func",
             "//attic/multibody:utils",
+            "//systems/controllers:control_utils",
             "//systems/framework:vector",
             "@drake//:drake_shared_library",
             ]

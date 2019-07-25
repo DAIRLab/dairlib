@@ -44,8 +44,8 @@ void OperationalSpaceControl::AssignConstTrajToInputPorts(
     for (int i = 0; i < osc->num_input_ports(); i++) {
       if (traj_name.compare(osc->get_input_port(i).get_name()) == 0) {
         osc_conext.FixInputPort(i /*osc->get_input_port(i).get_index()*/,
-                                drake::Value<PiecewisePolynomial<double>>(
-                                  tracking_data->GetFixedPosition()));
+            drake::Value<TrajectoryWrapper>(
+            PiecewisePolynomial<double>(tracking_data->GetFixedPosition())));
         fix_port_value_successfully = true;
         break;
       }
@@ -183,13 +183,8 @@ void OperationalSpaceControl::BuildOSC() {
   for (auto tracking_data : *tracking_data_vec_) {
     string traj_name = tracking_data->GetName();
     int port_index;
-    if (tracking_data->TrajHasExp()) {
-      port_index = this->DeclareAbstractInputPort(traj_name,
-          drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
-    } else {
-      port_index = this->DeclareAbstractInputPort(traj_name,
-          drake::Value<PiecewisePolynomial<double>> {}).get_index();
-    }
+    port_index = this->DeclareAbstractInputPort(traj_name,
+        drake::Value<TrajectoryWrapper> ()).get_index();
     traj_name_to_port_index_map_[traj_name] = port_index;
   }
 
@@ -465,9 +460,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         this->EvalAbstractInput(context, port_index);
     DRAKE_DEMAND(traj_intput != nullptr);
     const drake::trajectories::Trajectory<double> & traj =
-        (tracking_data->TrajHasExp()) ?
-        traj_intput->get_value<ExponentialPlusPiecewisePolynomial<double>>() :
-        traj_intput->get_value<PiecewisePolynomial<double>>();
+        *(traj_intput->get_value<TrajectoryWrapper>().value);
 
     bool track_or_not = tracking_data->Update(x_w_spr,
                         cache_w_spr, tree_w_spr_,

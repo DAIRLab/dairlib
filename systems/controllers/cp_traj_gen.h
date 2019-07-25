@@ -8,6 +8,7 @@
 
 #include "systems/framework/output_vector.h"
 #include "attic/multibody/rigidbody_utils.h"
+#include "systems/controllers/control_utils.h"
 
 namespace dairlib {
 namespace systems {
@@ -92,7 +93,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
     const Eigen::Vector2d & CP) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
-                 drake::trajectories::PiecewisePolynomial<double>* traj) const;
+                 TrajectoryWrapper* traj) const;
 
   int state_port_;
   int fsm_port_;

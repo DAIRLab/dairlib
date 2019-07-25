@@ -44,7 +44,7 @@ HeadingControl::HeadingControl(const RigidBodyTree<double>& tree,
 
 void HeadingControl::CalcHeadingAngle(
     const Context<double>& context,
-    PiecewisePolynomial<double>* traj) const {
+    systems::TrajectoryWrapper* traj) const {
   // Read in current state
   const OutputVector<double>* robotOutput = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);

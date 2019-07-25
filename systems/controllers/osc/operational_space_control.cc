@@ -446,8 +446,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     // Check whether or not it is a constant trajectory, and update TrackingData
     if (fixed_position_vec_.at(i).size() > 0){
       // Create constant trajectory and update
-      tracking_data->Update(x_w_spr, cache_w_spr, tree_w_spr_,
-          x_wo_spr, cache_wo_spr, tree_wo_spr_,
+      tracking_data->Update(x_w_spr, cache_w_spr,
+          x_wo_spr, cache_wo_spr,
           PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
           fsm_state);
     } else {
@@ -460,8 +460,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       const drake::trajectories::Trajectory<double> & traj =
           *(traj_intput->get_value<TrajectoryWrapper>().value);
       // Update
-      tracking_data->Update(x_w_spr, cache_w_spr, tree_w_spr_,
-                          x_wo_spr, cache_wo_spr, tree_wo_spr_,
+      tracking_data->Update(x_w_spr, cache_w_spr,
+                          x_wo_spr, cache_wo_spr,
                           traj, t,
                           fsm_state);
     }

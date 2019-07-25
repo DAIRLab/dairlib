@@ -25,7 +25,11 @@ OscTrackingData::OscTrackingData(string name,
                                  int n_r,
                                  MatrixXd K_p,
                                  MatrixXd K_d,
-                                 MatrixXd W) :
+                                 MatrixXd W,
+                                 const RigidBodyTree<double>* tree_w_spr,
+                                 const RigidBodyTree<double>* tree_wo_spr) :
+    tree_w_spr_(tree_w_spr),
+    tree_wo_spr_(tree_wo_spr),
     name_(name),
     n_r_(n_r),
     K_p_(K_p),
@@ -37,10 +41,8 @@ OscTrackingData::OscTrackingData(string name,
 // In each loop, run Update() before calling any getters.
 bool OscTrackingData::Update(VectorXd x_w_spr,
     KinematicsCache<double>& cache_w_spr,
-    const RigidBodyTree<double>& tree_w_spr,
     VectorXd x_wo_spr,
     KinematicsCache<double>& cache_wo_spr,
-    const RigidBodyTree<double>& tree_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t,
     int finite_state_machine_state) {
   // Update track_at_current_step_
@@ -58,10 +60,10 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
     ddy_des_ = traj.MakeDerivative(2)->value(t);
 
     // Update feedback output (Calling virtual methods)
-    UpdateYAndError(x_w_spr, cache_w_spr, tree_w_spr);
-    UpdateYdot(x_w_spr, cache_w_spr, tree_w_spr);
-    UpdateJ(x_wo_spr, cache_wo_spr, tree_wo_spr);
-    UpdateJdotV(x_wo_spr, cache_wo_spr, tree_wo_spr);
+    UpdateYAndError(x_w_spr, cache_w_spr);
+    UpdateYdot(x_w_spr, cache_w_spr);
+    UpdateJ(x_wo_spr, cache_wo_spr);
+    UpdateJdotV(x_wo_spr, cache_wo_spr);
 
     // Update desired output with pd control
     ddy_command_ = ddy_des_ + K_p_ * (error_y_) + K_d_ * (dy_des_ - dy_);
@@ -121,31 +123,29 @@ ComTrackingData::ComTrackingData(string name,
     int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
-    MatrixXd W) : OscTrackingData(name, n_r,
-          K_p, K_d, W) {
+    MatrixXd W,
+    const RigidBodyTree<double>* tree_w_spr,
+    const RigidBodyTree<double>* tree_wo_spr) : OscTrackingData(name, n_r,
+          K_p, K_d, W, tree_w_spr, tree_wo_spr) {
 }
 
 void ComTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
-    KinematicsCache<double>& cache_w_spr,
-    const RigidBodyTree<double>& tree_w_spr) {
-  y_ = tree_w_spr.centerOfMass(cache_w_spr);
+    KinematicsCache<double>& cache_w_spr) {
+  y_ = tree_w_spr_->centerOfMass(cache_w_spr);
   error_y_ = y_des_ - y_;
 }
 void ComTrackingData::UpdateYdot(const VectorXd& x_w_spr,
-    KinematicsCache<double>& cache_w_spr,
-    const RigidBodyTree<double>& tree_w_spr) {
-  dy_ = tree_w_spr.centerOfMassJacobian(cache_w_spr) *
-        x_w_spr.tail(tree_w_spr.get_num_velocities());
+    KinematicsCache<double>& cache_w_spr) {
+  dy_ = tree_w_spr_->centerOfMassJacobian(cache_w_spr) *
+        x_w_spr.tail(tree_w_spr_->get_num_velocities());
 }
 void ComTrackingData::UpdateJ(const VectorXd& x_wo_spr,
-    KinematicsCache<double>& cache_wo_spr,
-    const RigidBodyTree<double>& tree_wo_spr) {
-  J_ = tree_wo_spr.centerOfMassJacobian(cache_wo_spr);
+    KinematicsCache<double>& cache_wo_spr) {
+  J_ = tree_wo_spr_->centerOfMassJacobian(cache_wo_spr);
 }
 void ComTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
-    KinematicsCache<double>& cache_wo_spr,
-    const RigidBodyTree<double>& tree_wo_spr) {
-  JdotV_ = tree_wo_spr.centerOfMassJacobianDotTimesV(cache_wo_spr);
+    KinematicsCache<double>& cache_wo_spr) {
+  JdotV_ = tree_wo_spr_->centerOfMassJacobianDotTimesV(cache_wo_spr);
 }
 
 void ComTrackingData::CheckDerivedOscTrackingData() {
@@ -157,8 +157,10 @@ TaskSpaceTrackingData::TaskSpaceTrackingData(string name,
     int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
-    MatrixXd W) : OscTrackingData(name, n_r,
-          K_p, K_d, W) {
+    MatrixXd W,
+    const RigidBodyTree<double>* tree_w_spr,
+    const RigidBodyTree<double>* tree_wo_spr) : OscTrackingData(name, n_r,
+          K_p, K_d, W, tree_w_spr, tree_wo_spr) {
 }
 
 // TransTaskSpaceTrackingData //////////////////////////////////////////////////
@@ -166,8 +168,10 @@ TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(string name,
     int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
-    MatrixXd W) : TaskSpaceTrackingData(name, n_r,
-          K_p, K_d, W) {
+    MatrixXd W,
+    const RigidBodyTree<double>* tree_w_spr,
+    const RigidBodyTree<double>* tree_wo_spr) : TaskSpaceTrackingData(name, n_r,
+          K_p, K_d, W, tree_w_spr, tree_wo_spr) {
 }
 
 void TransTaskSpaceTrackingData::AddPointToTrack(int body_index_wo_spr,
@@ -193,31 +197,27 @@ void TransTaskSpaceTrackingData::AddStateAndPointToTrack(int state,
 }
 
 void TransTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
-    KinematicsCache<double>& cache_w_spr,
-    const RigidBodyTree<double>& tree_w_spr) {
-  y_ = tree_w_spr.transformPoints(cache_w_spr, pt_on_body_.at(GetStateIdx()),
+    KinematicsCache<double>& cache_w_spr) {
+  y_ = tree_w_spr_->transformPoints(cache_w_spr, pt_on_body_.at(GetStateIdx()),
       body_index_w_spr_.at(GetStateIdx()), 0);
   error_y_ = y_des_ - y_;
 }
 void TransTaskSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
-    KinematicsCache<double>& cache_w_spr,
-    const RigidBodyTree<double>& tree_w_spr) {
-  dy_ = tree_w_spr.transformPointsJacobian(cache_w_spr,
+    KinematicsCache<double>& cache_w_spr) {
+  dy_ = tree_w_spr_->transformPointsJacobian(cache_w_spr,
         pt_on_body_.at(GetStateIdx()),
         body_index_w_spr_.at(GetStateIdx()), 0, false) *
-        x_w_spr.tail(tree_w_spr.get_num_velocities());
+        x_w_spr.tail(tree_w_spr_->get_num_velocities());
 }
 void TransTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
-    KinematicsCache<double>& cache_wo_spr,
-    const RigidBodyTree<double>& tree_wo_spr) {
-  J_ = tree_wo_spr.transformPointsJacobian(cache_wo_spr,
+    KinematicsCache<double>& cache_wo_spr) {
+  J_ = tree_wo_spr_->transformPointsJacobian(cache_wo_spr,
        pt_on_body_.at(GetStateIdx()),
        body_index_wo_spr_.at(GetStateIdx()), 0, false);
 }
 void TransTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
-    KinematicsCache<double>& cache_wo_spr,
-    const RigidBodyTree<double>& tree_wo_spr) {
-  JdotV_ = tree_wo_spr.transformPointsJacobianDotTimesV(cache_wo_spr,
+    KinematicsCache<double>& cache_wo_spr) {
+  JdotV_ = tree_wo_spr_->transformPointsJacobianDotTimesV(cache_wo_spr,
            pt_on_body_.at(GetStateIdx()),
            body_index_wo_spr_.at(GetStateIdx()), 0);
 }
@@ -241,8 +241,10 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
     int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
-    MatrixXd W) : TaskSpaceTrackingData(name, n_r,
-          K_p, K_d, W) {
+    MatrixXd W,
+    const RigidBodyTree<double>* tree_w_spr,
+    const RigidBodyTree<double>* tree_wo_spr) : TaskSpaceTrackingData(name, n_r,
+          K_p, K_d, W, tree_w_spr, tree_wo_spr) {
 }
 
 void RotTaskSpaceTrackingData::AddFrameToTrack(int body_index_wo_spr,
@@ -268,11 +270,10 @@ void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(int state,
 }
 
 void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
-    KinematicsCache<double>& cache_w_spr,
-    const RigidBodyTree<double>& tree_w_spr) {
+    KinematicsCache<double>& cache_w_spr) {
   // Get the quaternion in the form of VectorXd
-  Eigen::Matrix3d rot_mat = tree_w_spr.CalcBodyPoseInWorldFrame(
-                              cache_w_spr, tree_w_spr.get_body(
+  Eigen::Matrix3d rot_mat = tree_w_spr_->CalcBodyPoseInWorldFrame(
+                              cache_w_spr, tree_w_spr_->get_body(
                                 body_index_w_spr_.at(GetStateIdx()))).linear();
   Quaterniond y_quat(rot_mat * frame_pose_.at(GetStateIdx()).linear());
   Eigen::Vector4d y_4d;
@@ -289,28 +290,25 @@ void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
   error_y_ = theta * rot_axis;
 }
 void RotTaskSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
-    KinematicsCache<double>& cache_w_spr,
-    const RigidBodyTree<double>& tree_w_spr) {
-  MatrixXd J_spatial = tree_w_spr.CalcFrameSpatialVelocityJacobianInWorldFrame(
-      cache_w_spr, tree_w_spr.get_body(body_index_w_spr_.at(GetStateIdx())),
+    KinematicsCache<double>& cache_w_spr) {
+  MatrixXd J_spatial = tree_w_spr_->CalcFrameSpatialVelocityJacobianInWorldFrame(
+      cache_w_spr, tree_w_spr_->get_body(body_index_w_spr_.at(GetStateIdx())),
       frame_pose_.at(GetStateIdx()));
   dy_ = J_spatial.block(0, 0, 3, J_spatial.cols()) *
-        x_w_spr.tail(tree_w_spr.get_num_velocities());
+        x_w_spr.tail(tree_w_spr_->get_num_velocities());
 }
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
-    KinematicsCache<double>& cache_wo_spr,
-    const RigidBodyTree<double>& tree_wo_spr) {
-  MatrixXd J_spatial = tree_wo_spr.CalcFrameSpatialVelocityJacobianInWorldFrame(
-      cache_wo_spr, tree_wo_spr.get_body(body_index_wo_spr_.at(GetStateIdx())),
+    KinematicsCache<double>& cache_wo_spr) {
+  MatrixXd J_spatial = tree_wo_spr_->CalcFrameSpatialVelocityJacobianInWorldFrame(
+      cache_wo_spr, tree_wo_spr_->get_body(body_index_wo_spr_.at(GetStateIdx())),
       frame_pose_.at(GetStateIdx()));
   J_ = J_spatial.block(0, 0, 3, J_spatial.cols());
 }
 void RotTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
-    KinematicsCache<double>& cache_wo_spr,
-    const RigidBodyTree<double>& tree_wo_spr) {
-  JdotV_ = tree_wo_spr.CalcFrameSpatialVelocityJacobianDotTimesVInWorldFrame (
+    KinematicsCache<double>& cache_wo_spr) {
+  JdotV_ = tree_wo_spr_->CalcFrameSpatialVelocityJacobianDotTimesVInWorldFrame (
              cache_wo_spr,
-             tree_wo_spr.get_body(body_index_wo_spr_.at(GetStateIdx())),
+             tree_wo_spr_->get_body(body_index_wo_spr_.at(GetStateIdx())),
              frame_pose_.at(GetStateIdx())).head(3);
 }
 
@@ -330,12 +328,13 @@ void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
 
 // JointSpaceTrackingData //////////////////////////////////////////////////////
 JointSpaceTrackingData::JointSpaceTrackingData(string name,
-    int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
-    MatrixXd W) : OscTrackingData(name, n_r,
-          K_p, K_d, W) {
-  DRAKE_DEMAND(n_r == 1);  // one joint at a time
+    MatrixXd W,
+    const RigidBodyTree<double>* tree_w_spr,
+    const RigidBodyTree<double>* tree_wo_spr) : OscTrackingData(name, 1,
+          K_p, K_d, W, tree_w_spr, tree_wo_spr) {
+          // n_r = 1, one joint at a time
 }
 
 void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_wo_spr,
@@ -367,27 +366,23 @@ void JointSpaceTrackingData::AddStateAndJointToTrack(int state,
 }
 
 void JointSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
-    KinematicsCache<double>& cache_w_spr,
-    const RigidBodyTree<double>& tree_w_spr) {
+    KinematicsCache<double>& cache_w_spr) {
   y_ = x_w_spr.segment(joint_pos_idx_w_spr_.at(GetStateIdx()), 1);
   error_y_ = y_des_ - y_;
 }
 void JointSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
-    KinematicsCache<double>& cache_w_spr,
-    const RigidBodyTree<double>& tree_w_spr) {
-  MatrixXd J = MatrixXd::Zero(1, tree_w_spr.get_num_velocities());
+    KinematicsCache<double>& cache_w_spr) {
+  MatrixXd J = MatrixXd::Zero(1, tree_w_spr_->get_num_velocities());
   J(0, joint_vel_idx_w_spr_.at(GetStateIdx())) = 1;
-  dy_ = J * x_w_spr.tail(tree_w_spr.get_num_velocities());
+  dy_ = J * x_w_spr.tail(tree_w_spr_->get_num_velocities());
 }
 void JointSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
-                                     KinematicsCache<double>& cache_wo_spr,
-                                     const RigidBodyTree<double>& tree_wo_spr) {
-  J_ = MatrixXd::Zero(1, tree_wo_spr.get_num_velocities());
+                                     KinematicsCache<double>& cache_wo_spr) {
+  J_ = MatrixXd::Zero(1, tree_wo_spr_->get_num_velocities());
   J_(0, joint_vel_idx_wo_spr_.at(GetStateIdx())) = 1;
 }
 void JointSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
-    KinematicsCache<double>& cache_wo_spr,
-    const RigidBodyTree<double>& tree_wo_spr) {
+    KinematicsCache<double>& cache_wo_spr) {
   JdotV_ = VectorXd::Zero(1);
 }
 

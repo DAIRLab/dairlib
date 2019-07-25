@@ -26,6 +26,9 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
+using multibody::GetBodyIndexFromName;
+using multibody::makeNameToVelocitiesMap;
+
 OperationalSpaceControl::OperationalSpaceControl(
     const RigidBodyTree<double>& tree_w_spr,
     const RigidBodyTree<double>& tree_wo_spr,
@@ -102,23 +105,25 @@ OperationalSpaceControl::OperationalSpaceControl(
 }
 
 // Cost methods
-void OperationalSpaceControl::AddAccelerationCost(int joint_vel_idx, double w) {
+void OperationalSpaceControl::AddAccelerationCost(std::string joint_vel_name,
+                                                  double w) {
   if (W_joint_accel_.size() == 0) {
     W_joint_accel_ = Eigen::MatrixXd::Zero(n_v_, n_v_);
   }
-  W_joint_accel_(joint_vel_idx, joint_vel_idx) += w;
+  int idx = makeNameToVelocitiesMap(tree_wo_spr_).at(joint_vel_name);
+  W_joint_accel_(idx, idx) += w;
 }
 
 // Constraint methods
-void OperationalSpaceControl::AddContactPoint(int body_index,
+void OperationalSpaceControl::AddContactPoint(std::string body_name,
     Eigen::VectorXd pt_on_body) {
-  body_index_.push_back(body_index);
+  body_index_.push_back(GetBodyIndexFromName(tree_wo_spr_, body_name));
   pt_on_body_.push_back(pt_on_body);
 }
 void OperationalSpaceControl::AddStateAndContactPoint(int state,
-    int body_index, Eigen::VectorXd pt_on_body) {
+    std::string body_name, Eigen::VectorXd pt_on_body) {
   fsm_state_when_active_.push_back(state);
-  AddContactPoint(body_index, pt_on_body);
+  AddContactPoint(body_name, pt_on_body);
 }
 
 // Tracking data methods

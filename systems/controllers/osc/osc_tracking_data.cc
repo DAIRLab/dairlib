@@ -3,6 +3,7 @@
 #include <math.h>
 #include <algorithm>
 
+#include "attic/multibody/rigidbody_utils.h"
 
 using std::cout;
 using std::endl;
@@ -19,6 +20,9 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
+using multibody::GetBodyIndexFromName;
+using multibody::makeNameToPositionsMap;
+using multibody::makeNameToVelocitiesMap;
 
 // OscTrackingData /////////////////////////////////////////////////////////////
 OscTrackingData::OscTrackingData(string name,
@@ -174,26 +178,18 @@ TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(string name,
           K_p, K_d, W, tree_w_spr, tree_wo_spr) {
 }
 
-void TransTaskSpaceTrackingData::AddPointToTrack(int body_index_wo_spr,
+void TransTaskSpaceTrackingData::AddPointToTrack(std::string body_name,
     Vector3d pt_on_body) {
-  body_index_wo_spr_.push_back(body_index_wo_spr);
+  DRAKE_DEMAND(GetBodyIndexFromName(*tree_w_spr_, body_name) >= 0);
+  DRAKE_DEMAND(GetBodyIndexFromName(*tree_wo_spr_, body_name) >= 0);
+  body_index_w_spr_.push_back(GetBodyIndexFromName(*tree_w_spr_, body_name));
+  body_index_wo_spr_.push_back(GetBodyIndexFromName(*tree_wo_spr_, body_name));
   pt_on_body_.push_back(pt_on_body);
 }
 void TransTaskSpaceTrackingData::AddStateAndPointToTrack(int state,
-    int body_index_wo_spr, Vector3d pt_on_body) {
+    std::string body_name, Vector3d pt_on_body) {
   state_.push_back(state);
-  AddPointToTrack(body_index_wo_spr, pt_on_body);
-}
-void TransTaskSpaceTrackingData::AddPointToTrack(int body_index_w_spr,
-    int body_index_wo_spr,
-    Vector3d pt_on_body) {
-  body_index_w_spr_.push_back(body_index_w_spr);
-  AddPointToTrack(body_index_wo_spr, pt_on_body);
-}
-void TransTaskSpaceTrackingData::AddStateAndPointToTrack(int state,
-    int body_index_w_spr, int body_index_wo_spr, Vector3d pt_on_body) {
-  state_.push_back(state);
-  AddPointToTrack(body_index_w_spr, body_index_wo_spr, pt_on_body);
+  AddPointToTrack(body_name, pt_on_body);
 }
 
 void TransTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
@@ -247,26 +243,18 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
           K_p, K_d, W, tree_w_spr, tree_wo_spr) {
 }
 
-void RotTaskSpaceTrackingData::AddFrameToTrack(int body_index_wo_spr,
+void RotTaskSpaceTrackingData::AddFrameToTrack(std::string body_name,
     Isometry3d frame_pose) {
-  body_index_wo_spr_.push_back(body_index_wo_spr);
+  DRAKE_DEMAND(GetBodyIndexFromName(*tree_w_spr_, body_name) >= 0);
+  DRAKE_DEMAND(GetBodyIndexFromName(*tree_wo_spr_, body_name) >= 0);
+  body_index_w_spr_.push_back(GetBodyIndexFromName(*tree_w_spr_, body_name));
+  body_index_wo_spr_.push_back(GetBodyIndexFromName(*tree_wo_spr_, body_name));
   frame_pose_.push_back(frame_pose);
 }
 void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(int state,
-    int body_index_wo_spr, Isometry3d frame_pose) {
+    std::string body_name, Isometry3d frame_pose) {
   state_.push_back(state);
-  AddFrameToTrack(body_index_wo_spr, frame_pose);
-}
-void RotTaskSpaceTrackingData::AddFrameToTrack(int body_index_w_spr,
-    int body_index_wo_spr,
-    Isometry3d frame_pose) {
-  body_index_w_spr_.push_back(body_index_w_spr);
-  AddFrameToTrack(body_index_wo_spr, frame_pose);
-}
-void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(int state,
-    int body_index_w_spr, int body_index_wo_spr, Isometry3d frame_pose) {
-  state_.push_back(state);
-  AddFrameToTrack(body_index_w_spr, body_index_wo_spr, frame_pose);
+  AddFrameToTrack(body_name, frame_pose);
 }
 
 void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
@@ -337,32 +325,21 @@ JointSpaceTrackingData::JointSpaceTrackingData(string name,
           // n_r = 1, one joint at a time
 }
 
-void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_wo_spr,
-    int joint_vel_idx_wo_spr) {
-  joint_pos_idx_wo_spr_.push_back(joint_pos_idx_wo_spr);
-  joint_vel_idx_wo_spr_.push_back(joint_vel_idx_wo_spr);
+void JointSpaceTrackingData::AddJointToTrack(std::string joint_pos_name,
+    std::string joint_vel_name) {
+  joint_pos_idx_w_spr_.push_back(
+      makeNameToPositionsMap(*tree_w_spr_).at(joint_pos_name));
+  joint_vel_idx_w_spr_.push_back(
+      makeNameToVelocitiesMap(*tree_w_spr_).at(joint_vel_name));
+  joint_pos_idx_wo_spr_.push_back(
+      makeNameToPositionsMap(*tree_wo_spr_).at(joint_pos_name));
+  joint_vel_idx_wo_spr_.push_back(
+      makeNameToVelocitiesMap(*tree_wo_spr_).at(joint_vel_name));
 }
 void JointSpaceTrackingData::AddStateAndJointToTrack(int state,
-    int joint_pos_idx_wo_spr, int joint_vel_idx_wo_spr) {
+    std::string joint_pos_name, std::string joint_vel_name) {
   state_.push_back(state);
-  AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
-}
-void JointSpaceTrackingData::AddJointToTrack(int joint_pos_idx_w_spr,
-    int joint_vel_idx_w_spr,
-    int joint_pos_idx_wo_spr,
-    int joint_vel_idx_wo_spr) {
-  joint_pos_idx_w_spr_.push_back(joint_pos_idx_w_spr);
-  joint_vel_idx_w_spr_.push_back(joint_vel_idx_w_spr);
-  AddJointToTrack(joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
-}
-void JointSpaceTrackingData::AddStateAndJointToTrack(int state,
-    int joint_pos_idx_w_spr,
-    int joint_vel_idx_w_spr,
-    int joint_pos_idx_wo_spr,
-    int joint_vel_idx_wo_spr) {
-  state_.push_back(state);
-  AddJointToTrack(joint_pos_idx_w_spr, joint_vel_idx_w_spr,
-                  joint_pos_idx_wo_spr, joint_vel_idx_wo_spr);
+  AddJointToTrack(joint_pos_name, joint_vel_name);
 }
 
 void JointSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,

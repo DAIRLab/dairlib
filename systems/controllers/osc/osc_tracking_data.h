@@ -204,14 +204,9 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
 
   TransTaskSpaceTrackingData() {}  // Default constructor
 
-  void AddPointToTrack(int body_index_wo_spr,
+  void AddPointToTrack(std::string body_name,
       Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
-  void AddStateAndPointToTrack(int state, int body_index_wo_spr,
-      Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
-  void AddPointToTrack(int body_index_w_spr, int body_index_wo_spr,
-      Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
-  void AddStateAndPointToTrack(int state, int body_index_w_spr,
-      int body_index_wo_spr,
+  void AddStateAndPointToTrack(int state, std::string body_name,
       Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
 
  private:
@@ -248,14 +243,9 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
 
   RotTaskSpaceTrackingData() {}  // Default constructor
 
-  void AddFrameToTrack(int body_index_wo_spr,
+  void AddFrameToTrack(std::string body_name,
       Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
-  void AddStateAndFrameToTrack(int state, int body_index_wo_spr,
-      Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
-  void AddFrameToTrack(int body_index_w_spr, int body_index_wo_spr,
-      Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
-  void AddStateAndFrameToTrack(int state, int body_index_w_spr,
-      int body_index_wo_spr,
+  void AddStateAndFrameToTrack(int state, std::string body_name,
       Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
 
  private:
@@ -292,20 +282,11 @@ class JointSpaceTrackingData final : public OscTrackingData {
 
   JointSpaceTrackingData() {}  // Default constructor
 
-  void AddJointToTrack(int joint_pos_idx_wo_spr,
-                       int joint_vel_idx_wo_spr);
+  void AddJointToTrack(std::string joint_pos_name,
+                       std::string joint_vel_name);
   void AddStateAndJointToTrack(int state,
-                               int joint_pos_idx_wo_spr,
-                               int joint_vel_idx_wo_spr);
-  void AddJointToTrack(int joint_pos_idx_w_spr,
-                       int joint_vel_idx_w_spr,
-                       int joint_pos_idx_wo_spr,
-                       int joint_vel_idx_wo_spr);
-  void AddStateAndJointToTrack(int state,
-                               int joint_pos_idx_w_spr,
-                               int joint_vel_idx_w_spr,
-                               int joint_pos_idx_wo_spr,
-                               int joint_vel_idx_wo_spr);
+                               std::string joint_pos_name,
+                               std::string joint_vel_name);
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,

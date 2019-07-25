@@ -180,49 +180,14 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
                tree_with_springs, tree_without_springs, true, false);
-  // Get body index
-  int pelvis_idx_w_spr = pelvis_idx;
-  int left_toe_idx_w_spr = left_toe_idx;
-  int right_toe_idx_w_spr = right_toe_idx;
-  int pelvis_idx_wo_spr = GetBodyIndexFromName(
-                            tree_without_springs, "pelvis");
-  int left_toe_idx_wo_spr = GetBodyIndexFromName(
-                              tree_without_springs, "toe_left");
-  int right_toe_idx_wo_spr = GetBodyIndexFromName(
-                               tree_without_springs, "toe_right");
-  // Get position/velocity index
-  std::map<std::string, int> pos_idx_map_w_spr =
-      multibody::makeNameToPositionsMap(tree_with_springs);
-  std::map<std::string, int> vel_idx_map_w_spr =
-      multibody::makeNameToVelocitiesMap(tree_with_springs);
-  int left_toe_pos_idx_w_spr = pos_idx_map_w_spr.at("toe_left");
-  int right_toe_pos_idx_w_spr = pos_idx_map_w_spr.at("toe_right");
-  int left_hip_yaw_pos_idx_w_spr = pos_idx_map_w_spr.at("hip_yaw_left");
-  int right_hip_yaw_pos_idx_w_spr = pos_idx_map_w_spr.at("hip_yaw_right");
-  int left_toe_vel_idx_w_spr = vel_idx_map_w_spr.at("toe_leftdot");
-  int right_toe_vel_idx_w_spr = vel_idx_map_w_spr.at("toe_rightdot");
-  int left_hip_yaw_vel_idx_w_spr = vel_idx_map_w_spr.at("hip_yaw_leftdot");
-  int right_hip_yaw_vel_idx_w_spr = vel_idx_map_w_spr.at("hip_yaw_rightdot");
-  std::map<std::string, int> pos_idx_map_wo_spr =
-      multibody::makeNameToPositionsMap(tree_without_springs);
-  std::map<std::string, int> vel_idx_map_wo_spr =
-      multibody::makeNameToVelocitiesMap(tree_without_springs);
-  int left_toe_pos_idx_wo_spr = pos_idx_map_wo_spr.at("toe_left");
-  int right_toe_pos_idx_wo_spr = pos_idx_map_wo_spr.at("toe_right");
-  int left_hip_yaw_pos_idx_wo_spr = pos_idx_map_wo_spr.at("hip_yaw_left");
-  int right_hip_yaw_pos_idx_wo_spr = pos_idx_map_wo_spr.at("hip_yaw_right");
-  int left_toe_vel_idx_wo_spr = vel_idx_map_wo_spr.at("toe_leftdot");
-  int right_toe_vel_idx_wo_spr = vel_idx_map_wo_spr.at("toe_rightdot");
-  int left_hip_yaw_vel_idx_wo_spr = vel_idx_map_wo_spr.at("hip_yaw_leftdot");
-  int right_hip_yaw_vel_idx_wo_spr = vel_idx_map_wo_spr.at("hip_yaw_rightdot");
 
-  int n_v = tree_without_springs.get_num_velocities();
   // Cost
+  int n_v = tree_without_springs.get_num_velocities();
   MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
   double w_toe = 0.1;  // 1
-  osc->AddAccelerationCost(left_toe_vel_idx_wo_spr, w_toe);
-  osc->AddAccelerationCost(right_toe_vel_idx_wo_spr, w_toe);
+  osc->AddAccelerationCost("toe_leftdot", w_toe);
+  osc->AddAccelerationCost("toe_rightdot", w_toe);
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
@@ -234,13 +199,13 @@ int DoMain(int argc, char* argv[]) {
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
   osc->AddStateAndContactPoint(left_stance_state,
-                               left_toe_idx_wo_spr, front_contact_disp);
+                               "toe_left", front_contact_disp);
   osc->AddStateAndContactPoint(left_stance_state,
-                               left_toe_idx_wo_spr, rear_contact_disp);
+                               "toe_left", rear_contact_disp);
   osc->AddStateAndContactPoint(right_stance_state,
-                               right_toe_idx_wo_spr, front_contact_disp);
+                               "toe_right", front_contact_disp);
   osc->AddStateAndContactPoint(right_stance_state,
-                               right_toe_idx_wo_spr, rear_contact_disp);
+                               "toe_right", rear_contact_disp);
   // Swing foot tracking
   MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
@@ -248,12 +213,8 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingData swing_foot_traj("cp_traj", 3,
       K_p_sw_ft, K_d_sw_ft, W_swing_foot,
       &tree_with_springs, &tree_without_springs);
-  swing_foot_traj.AddStateAndPointToTrack(left_stance_state,
-                                          right_toe_idx_w_spr,
-                                          right_toe_idx_wo_spr);
-  swing_foot_traj.AddStateAndPointToTrack(right_stance_state,
-                                          left_toe_idx_w_spr,
-                                          left_toe_idx_wo_spr);
+  swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "toe_right");
+  swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "toe_left");
   osc->AddTrackingData(&swing_foot_traj);
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
@@ -282,7 +243,7 @@ int DoMain(int argc, char* argv[]) {
   RotTaskSpaceTrackingData pelvis_balance_traj("pelvis_balance_traj", 3,
       K_p_pelvis_balance, K_d_pelvis_balance, W_pelvis_balance,
       &tree_with_springs, &tree_without_springs);
-  pelvis_balance_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
+  pelvis_balance_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_balance_traj);
   // Pelvis rotation tracking (yaw)
   double w_heading = 200;
@@ -297,7 +258,7 @@ int DoMain(int argc, char* argv[]) {
   RotTaskSpaceTrackingData pelvis_heading_traj("pelvis_heading_traj", 3,
       K_p_pelvis_heading, K_d_pelvis_heading, W_pelvis_heading,
       &tree_with_springs, &tree_without_springs);
-  pelvis_heading_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
+  pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj, 0.05);
   // Swing toe joint tracking (Currently use fix position)
   MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
@@ -307,15 +268,9 @@ int DoMain(int argc, char* argv[]) {
       K_p_swing_toe, K_d_swing_toe, W_swing_toe,
       &tree_with_springs, &tree_without_springs);
   swing_toe_traj.AddStateAndJointToTrack(left_stance_state,
-                                         right_toe_pos_idx_w_spr,
-                                         right_toe_vel_idx_w_spr,
-                                         right_toe_pos_idx_wo_spr,
-                                         right_toe_vel_idx_wo_spr);
+                                         "toe_right", "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state,
-                                         left_toe_pos_idx_w_spr,
-                                         left_toe_vel_idx_w_spr,
-                                         left_toe_pos_idx_wo_spr,
-                                         left_toe_vel_idx_wo_spr);
+                                         "toe_left", "toe_leftdot");
   osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1));
   // Swing hip yaw joint tracking
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
@@ -325,15 +280,9 @@ int DoMain(int argc, char* argv[]) {
       K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw,
       &tree_with_springs, &tree_without_springs);
   swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state,
-      right_hip_yaw_pos_idx_w_spr,
-      right_hip_yaw_vel_idx_w_spr,
-      right_hip_yaw_pos_idx_wo_spr,
-      right_hip_yaw_vel_idx_wo_spr);
+      "hip_yaw_right", "hip_yaw_rightdot");
   swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state,
-      left_hip_yaw_pos_idx_w_spr,
-      left_hip_yaw_vel_idx_w_spr,
-      left_hip_yaw_pos_idx_wo_spr,
-      left_hip_yaw_vel_idx_wo_spr);
+      "hip_yaw_left", "hip_yaw_leftdot");
   osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
   // Build OSC problem
   osc->BuildOSC();

@@ -101,7 +101,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Cost methods
   void SetInputCost(Eigen::MatrixXd W) {W_input_ = W;}
   void SetAccelerationCostForAllJoints(Eigen::MatrixXd W) {W_joint_accel_ = W;}
-  void AddAccelerationCost(int joint_vel_idx, double w);
+  void AddAccelerationCost(std::string joint_vel_name, double w);
 
   // Constraint methods
   void DisableAcutationConstraint() {with_input_constraints_ = false;}
@@ -109,9 +109,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetWeightOfSoftContactConstraint(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
   }
-  void AddContactPoint(int body_index, Eigen::VectorXd pt_on_body);
+  void AddContactPoint(std::string body_name, Eigen::VectorXd pt_on_body);
   void AddStateAndContactPoint(int state,
-                               int body_index, Eigen::VectorXd pt_on_body);
+                               std::string body_name,
+                               Eigen::VectorXd pt_on_body);
 
   // Tracking data methods
   /// The third argument is used to set a period in which OSC does not track the

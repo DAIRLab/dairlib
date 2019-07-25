@@ -92,18 +92,10 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
                tree_with_springs, tree_without_springs, false, false);
-  // Get body index
-  int pelvis_idx_w_spr = pelvis_idx;
-  int pelvis_idx_wo_spr = GetBodyIndexFromName(
-                            tree_without_springs, "pelvis");
-  int left_toe_idx_wo_spr = GetBodyIndexFromName(
-                              tree_without_springs, "toe_left");
-  int right_toe_idx_wo_spr = GetBodyIndexFromName(
-                               tree_without_springs, "toe_right");
 
-  int n_v = tree_without_springs.get_num_velocities();
   // Cost
   // cout << "Adding cost\n";
+  int n_v = tree_without_springs.get_num_velocities();
   MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Soft constraint
@@ -116,10 +108,10 @@ int DoMain(int argc, char* argv[]) {
   osc->SetContactFriction(mu);
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
-  osc->AddContactPoint(left_toe_idx_wo_spr, front_contact_disp);
-  osc->AddContactPoint(left_toe_idx_wo_spr, rear_contact_disp);
-  osc->AddContactPoint(right_toe_idx_wo_spr, front_contact_disp);
-  osc->AddContactPoint(right_toe_idx_wo_spr, rear_contact_disp);
+  osc->AddContactPoint("toe_left", front_contact_disp);
+  osc->AddContactPoint("toe_left", rear_contact_disp);
+  osc->AddContactPoint("toe_right", front_contact_disp);
+  osc->AddContactPoint("toe_right", rear_contact_disp);
   // Center of mass tracking
   // cout << "Adding center of mass tracking\n";
   Vector3d desired_com(0, 0, 0.89);
@@ -156,7 +148,7 @@ int DoMain(int argc, char* argv[]) {
   RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 3,
       K_p_pelvis, K_d_pelvis, W_pelvis,
       &tree_with_springs, &tree_without_springs);
-  pelvis_rot_traj.AddFrameToTrack(pelvis_idx_w_spr, pelvis_idx_wo_spr);
+  pelvis_rot_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
   osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);

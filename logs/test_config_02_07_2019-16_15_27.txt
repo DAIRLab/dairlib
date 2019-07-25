@@ -1,0 +1,3 @@
+[2019-07-02 16:15:27.386] [console] [info] Testing with amplitude 0.05 and frequency 10
+[2019-07-02 16:15:27.386] [console] [info] Max velocity 100
+[2019-07-02 16:15:27.386] [console] [info] Has spdlog: true

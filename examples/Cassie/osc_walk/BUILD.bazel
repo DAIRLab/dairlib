@@ -34,7 +34,3 @@ cc_library(
             "@drake//:drake_shared_library",
             ]
 )
-
-
-
-

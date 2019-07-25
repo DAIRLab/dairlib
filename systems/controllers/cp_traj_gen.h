@@ -31,8 +31,6 @@ namespace systems {
 /// - maximum distance between center of mass and CP
 ///     (used to restrict the CP within an area)
 /// - duration of the swing phase
-/// - left stance state (of finite state machine)
-/// - right stance state (of finite state machine)
 /// - left foot body index
 /// - right foot body index
 /// - position of the contact point w.r.t. left foot body
@@ -53,8 +51,6 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
                   double desired_final_vertical_foot_velocity,
                   double max_CoM_to_CP_dist,
                   double stance_duration_per_leg,
-                  int left_stance_state,
-                  int right_stance_state,
                   int left_foot_idx,
                   Eigen::Vector3d pt_on_left_foot,
                   int right_foot_idx,
@@ -115,8 +111,6 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   double desired_final_vertical_foot_velocity_;
   double max_CoM_to_CP_dist_;
   double stance_duration_per_leg_;
-  int left_stance_;
-  int right_stance_;
   int left_foot_idx_;
   int right_foot_idx_;
   Eigen::Vector3d pt_on_left_foot_;
@@ -129,6 +123,11 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   // Parameters
   const double cp_offset_ = 0.06;  // meter
   const double center_line_offset_ = 0.06;  // meter
+
+  // left stance state (of finite state machine)
+  // right stance state (of finite state machine)
+  const int left_stance_ = 0;
+  const int right_stance_ = 1;
 };
 
 }  // namespace systems

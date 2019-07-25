@@ -99,17 +99,12 @@ int DoMain(int argc, char* argv[]) {
   DRAKE_DEMAND(pelvis_idx != -1 && left_toe_idx != -1 && right_toe_idx != -1);
 
   // Create finite state machine
-  int left_stance_state = 2;
-  int right_stance_state = 3;
-  int initial_state_number = 2;
+  int left_stance_state = 0;
+  int right_stance_state = 1;
   double duration_per_state = 0.35;
   double time_shift = 0;
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-               tree_with_springs,
-               left_stance_state, right_stance_state, initial_state_number,
-               duration_per_state, time_shift);
-  builder.Connect(state_receiver->get_output_port(0),
-                  fsm->get_input_port_state());
+      duration_per_state, time_shift);
 
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
@@ -117,8 +112,6 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::LIPMTrajGenerator>(tree_with_springs,
           desired_com_height,
           duration_per_state,
-          left_stance_state,
-          right_stance_state,
           left_toe_idx,
           Eigen::VectorXd::Zero(3),
           right_toe_idx,
@@ -156,8 +149,6 @@ int DoMain(int argc, char* argv[]) {
           desired_final_vertical_foot_velocity,
           max_CoM_to_CP_dist,
           duration_per_state,
-          left_stance_state,
-          right_stance_state,
           left_toe_idx,
           Eigen::VectorXd::Zero(3),
           right_toe_idx,

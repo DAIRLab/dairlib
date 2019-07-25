@@ -27,8 +27,6 @@ namespace systems {
 LIPMTrajGenerator::LIPMTrajGenerator(const RigidBodyTree<double>& tree,
                                      double desired_com_height,
                                      double stance_duration_per_leg,
-                                     int left_stance_state,
-                                     int right_stance_state,
                                      int left_foot_idx,
                                      Vector3d pt_on_left_foot,
                                      int right_foot_idx,
@@ -36,8 +34,6 @@ LIPMTrajGenerator::LIPMTrajGenerator(const RigidBodyTree<double>& tree,
     tree_(tree),
     desired_com_height_(desired_com_height),
     stance_duration_per_leg_(stance_duration_per_leg),
-    left_stance_state_(left_stance_state),
-    right_stance_state_(right_stance_state),
     left_foot_idx_(left_foot_idx),
     right_foot_idx_(right_foot_idx),
     pt_on_left_foot_(pt_on_left_foot),
@@ -149,15 +145,13 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
       pt_on_stance_foot, stance_foot_index, 0);
 
   // Get CoM_wrt_foot for LIPM
-  // Prevent zCoM_wrt_foot from being non-positive (in simulation) cause of
-  // calculation of omega
-  const double xCoM_wrt_foot = CoM(0) - stance_foot_pos(0);
-  const double yCoM_wrt_foot = CoM(1) - stance_foot_pos(1);
-  const double zCoM_wrt_foot =
-      (CoM(2) - stance_foot_pos(2)) ? (CoM(2) - stance_foot_pos(2)) : 1e-3;
-  const double dxCoM_wrt_foot = dCoM(0);
-  const double dyCoM_wrt_foot = dCoM(1);
-  const double dzCoM_wrt_foot = dCoM(2);
+  const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
+  const double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
+  const double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
+  const double dCoM_wrt_foot_x = dCoM(0);
+  const double dCoM_wrt_foot_y = dCoM(1);
+  const double dCoM_wrt_foot_z = dCoM(2);
+  DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   std::vector<double> T_waypoint_com = {current_time, end_time_of_this_interval};
@@ -167,12 +161,12 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   Y[1](0, 0) = stance_foot_pos(0);
   Y[0](1, 0) = stance_foot_pos(1);
   Y[1](1, 0) = stance_foot_pos(1);
-  Y[0](2, 0) = (CoM(2) > 0) ? CoM(2) : 1e-3;
+  Y[0](2, 0) = CoM(2);
   // Y[0](2, 0) = desired_com_height_;
   Y[1](2, 0) = desired_com_height_;
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
-  Y_dot_start(2, 0) = dzCoM_wrt_foot;
+  Y_dot_start(2, 0) = dCoM_wrt_foot_z;
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
 
   PiecewisePolynomial<double> pp_part = PiecewisePolynomial<double>::Cubic(
@@ -181,22 +175,27 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
                                           Y_dot_end);
 
   // Dynamics of LIPM
-  // ddy = 9.81/zCoM_wrt_foot*y, which has an analytical solution
-  double omega_td = sqrt(9.81 / zCoM_wrt_foot);
-  double constx1 = 0.5 * (xCoM_wrt_foot + dxCoM_wrt_foot / omega_td);
-  double constx2 = 0.5 * (xCoM_wrt_foot - dxCoM_wrt_foot / omega_td);
-  double consty1 = 0.5 * (yCoM_wrt_foot + dyCoM_wrt_foot / omega_td);
-  double consty2 = 0.5 * (yCoM_wrt_foot - dyCoM_wrt_foot / omega_td);
+  // ddy = 9.81/CoM_wrt_foot_z*y, which has an analytical solution.
+  // Let omega^2 = 9.81/CoM_wrt_foot_z.
+  // Let y0 and dy0 be the intial position and velocity. Then the solution is
+  //   y = k_1 * exp(w*t) + k_2 * exp(-w*t)
+  // where k_1 = (y0 + dy0/w)/2
+  //       k_2 = (y0 - dy0/w)/2.
+  double omega = sqrt(9.81 / CoM_wrt_foot_z);
+  double k1x = 0.5 * (CoM_wrt_foot_x + dCoM_wrt_foot_x / omega);
+  double k2x = 0.5 * (CoM_wrt_foot_x - dCoM_wrt_foot_x / omega);
+  double k1y = 0.5 * (CoM_wrt_foot_y + dCoM_wrt_foot_y / omega);
+  double k2y = 0.5 * (CoM_wrt_foot_y - dCoM_wrt_foot_y / omega);
 
   // Sum of two exponential + one-segment 3D polynomial
   MatrixXd K = MatrixXd::Zero(3, 2);
   MatrixXd A = MatrixXd::Zero(2, 2);
   MatrixXd alpha = MatrixXd::Zero(2, 1);
-  K << constx1, constx2,
-  consty1, consty2,
-  0,       0      ;
-  A << omega_td,  0,
-  0,     -omega_td;
+  K << k1x, k2x,
+       k1y, k2y,
+       0      , 0      ;
+  A << omega, 0,
+       0    , -omega;
   alpha << 1, 1;
 
   auto exp_traj = ExponentialPlusPiecewisePolynomial<double>(

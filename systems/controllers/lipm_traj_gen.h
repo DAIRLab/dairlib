@@ -21,8 +21,6 @@ namespace systems {
 /// - rigid body tree
 /// - desired COM height
 /// - single stance duration
-/// - left stance state (of finite state machine)
-/// - right stance state (of finite state machine)
 /// - left foot body index
 /// - right foot body index
 /// - position of the contact point w.r.t. left foot body
@@ -33,8 +31,6 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   LIPMTrajGenerator(const RigidBodyTree<double>& tree,
                     double desired_com_height,
                     double stance_duration_per_leg,
-                    int left_stance_state,
-                    int right_stance_state,
                     int left_foot_idx,
                     Eigen::Vector3d pt_on_left_foot,
                     int right_foot_idx,
@@ -68,14 +64,17 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   double desired_com_height_;
   double stance_duration_per_leg_;
 
-  int left_stance_state_;
-  int right_stance_state_;
   int left_foot_idx_;
   int right_foot_idx_;
   Eigen::Vector3d pt_on_left_foot_;
   Eigen::Vector3d pt_on_right_foot_;
 
   bool is_quaternion_;
+
+  // left stance state (of finite state machine)
+  // right stance state (of finite state machine)
+  const int left_stance_state_ = 0;
+  const int right_stance_state_ = 1;
 };
 
 }  // namespace systems

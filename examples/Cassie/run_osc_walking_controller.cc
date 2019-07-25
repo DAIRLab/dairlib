@@ -104,7 +104,9 @@ int DoMain(int argc, char* argv[]) {
   double duration_per_state = 0.35;
   double time_shift = 0;
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      duration_per_state, time_shift);
+      tree_with_springs, duration_per_state, time_shift);
+  builder.Connect(state_receiver->get_output_port(0),
+                  fsm->get_input_port_state());
 
   // Create CoM trajectory generator
   double desired_com_height = 0.89;

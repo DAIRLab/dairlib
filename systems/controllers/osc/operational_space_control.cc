@@ -565,7 +565,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 void OperationalSpaceControl::CalcOptimalInput(
     const drake::systems::Context<double>& context,
     systems::TimestampedVector<double>* control) const {
-  // Read in current state and simulation time
+  // Read in current state and time
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
   VectorXd q_w_spr = robot_output->GetPositions();

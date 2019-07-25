@@ -166,6 +166,36 @@ class OscTrackingData {
 };
 
 
+/// ComTrackingData is used when we want to track center of mass trajectory.
+class ComTrackingData final : public OscTrackingData {
+ public:
+  ComTrackingData(std::string name, int n_r,
+                             Eigen::MatrixXd K_p,
+                             Eigen::MatrixXd K_d,
+                             Eigen::MatrixXd W,
+                             bool traj_is_const = false,
+                             bool traj_has_exp = false);
+
+  ComTrackingData() {}  // Default constructor
+
+ private:
+  void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
+                       KinematicsCache<double>& cache_w_spr,
+                       const RigidBodyTree<double>& tree_w_spr) final;
+  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
+                  KinematicsCache<double>& cache_w_spr,
+                  const RigidBodyTree<double>& tree_w_spr) final;
+  void UpdateJ(const Eigen::VectorXd& x_wo_spr,
+               KinematicsCache<double>& cache_wo_spr,
+               const RigidBodyTree<double>& tree_wo_spr) final;
+  void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
+                   KinematicsCache<double>& cache_wo_spr,
+                   const RigidBodyTree<double>& tree_wo_spr) final;
+
+  void CheckDerivedOscTrackingData() final;
+};
+
+
 // TaskSpaceTrackingData is still a virtual class
 class TaskSpaceTrackingData : public OscTrackingData {
  public:
@@ -184,18 +214,14 @@ class TaskSpaceTrackingData : public OscTrackingData {
   // If `body_index_w_spr_` is empty, `body_index_wo_spr_` replaces it.
   std::vector<int> body_index_w_spr_;
   std::vector<int> body_index_wo_spr_;
-
- private:
 };
 
 
 /// TransTaskSpaceTrackingData is used when we want to track a trajectory
 /// (translational position) in the task space.
 
-/// `track_center_of_mass_` should be set to true when we track center of mass.
-
-/// If `track_center_of_mass_` is false, AddPointToTrack() should be called
-/// to specify what is the point that tracks the desired trajectory
+/// AddPointToTrack() should be called to specify what is the point that
+/// follows the desired trajectory
 class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
   TransTaskSpaceTrackingData(std::string name, int n_r,
@@ -203,8 +229,7 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
                              Eigen::MatrixXd K_d,
                              Eigen::MatrixXd W,
                              bool traj_is_const = false,
-                             bool traj_has_exp = false,
-                             bool track_center_of_mass = false);
+                             bool traj_has_exp = false);
 
   TransTaskSpaceTrackingData() {}  // Default constructor
 
@@ -233,9 +258,6 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
                    const RigidBodyTree<double>& tree_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
-
-  // Whether or not we are tracking the center of mass of the robot
-  bool track_center_of_mass_;
 
   // `pt_on_body` is the position w.r.t. the origin of the body
   std::vector<Eigen::Vector3d> pt_on_body_;

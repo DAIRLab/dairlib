@@ -43,6 +43,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::DiagramBuilder;
 
 using multibody::GetBodyIndexFromName;
+using systems::controllers::ComTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
@@ -260,8 +261,8 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  TransTaskSpaceTrackingData center_of_mass_traj("lipm_traj", 3,
-      K_p_com, K_d_com, W_com, false, true, true);
+  ComTrackingData center_of_mass_traj("lipm_traj", 3,
+      K_p_com, K_d_com, W_com, false, true);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking (pitch and roll)
   double w_pelvis_balance = 200;

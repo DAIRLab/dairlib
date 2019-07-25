@@ -135,6 +135,45 @@ void OscTrackingData::CheckOscTrackingData() {
   DRAKE_DEMAND(all_state_are_different);
 }
 
+
+// ComTrackingData /////////////////////////////////////////////////////////////
+ComTrackingData::ComTrackingData(string name,
+    int n_r,
+    MatrixXd K_p,
+    MatrixXd K_d,
+    MatrixXd W,
+    bool traj_is_const,
+    bool traj_has_exp) : OscTrackingData(name, n_r,
+          K_p, K_d, W, traj_is_const, traj_has_exp) {
+}
+
+void ComTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
+    KinematicsCache<double>& cache_w_spr,
+    const RigidBodyTree<double>& tree_w_spr) {
+  y_ = tree_w_spr.centerOfMass(cache_w_spr);
+  error_y_ = y_des_ - y_;
+}
+void ComTrackingData::UpdateYdot(const VectorXd& x_w_spr,
+    KinematicsCache<double>& cache_w_spr,
+    const RigidBodyTree<double>& tree_w_spr) {
+  dy_ = tree_w_spr.centerOfMassJacobian(cache_w_spr) *
+        x_w_spr.tail(tree_w_spr.get_num_velocities());
+}
+void ComTrackingData::UpdateJ(const VectorXd& x_wo_spr,
+    KinematicsCache<double>& cache_wo_spr,
+    const RigidBodyTree<double>& tree_wo_spr) {
+  J_ = tree_wo_spr.centerOfMassJacobian(cache_wo_spr);
+}
+void ComTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
+    KinematicsCache<double>& cache_wo_spr,
+    const RigidBodyTree<double>& tree_wo_spr) {
+  JdotV_ = tree_wo_spr.centerOfMassJacobianDotTimesV(cache_wo_spr);
+}
+
+void ComTrackingData::CheckDerivedOscTrackingData() {
+}
+
+
 // TaskSpaceTrackingData ///////////////////////////////////////////////////////
 TaskSpaceTrackingData::TaskSpaceTrackingData(string name,
     int n_r,
@@ -146,17 +185,15 @@ TaskSpaceTrackingData::TaskSpaceTrackingData(string name,
           K_p, K_d, W, traj_is_const, traj_has_exp) {
 }
 
-// TransTaskSpaceTrackingData //////////////////////////////////////////
+// TransTaskSpaceTrackingData //////////////////////////////////////////////////
 TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(string name,
     int n_r,
     MatrixXd K_p,
     MatrixXd K_d,
     MatrixXd W,
     bool traj_is_const,
-    bool traj_has_exp,
-    bool track_center_of_mass) : TaskSpaceTrackingData(name, n_r,
-          K_p, K_d, W, traj_is_const, traj_has_exp),
-  track_center_of_mass_(track_center_of_mass) {
+    bool traj_has_exp) : TaskSpaceTrackingData(name, n_r,
+          K_p, K_d, W, traj_is_const, traj_has_exp) {
 }
 
 void TransTaskSpaceTrackingData::AddPointToTrack(int body_index_wo_spr,
@@ -184,71 +221,48 @@ void TransTaskSpaceTrackingData::AddStateAndPointToTrack(int state,
 void TransTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr,
     const RigidBodyTree<double>& tree_w_spr) {
-  if (track_center_of_mass_) {
-    y_ = tree_w_spr.centerOfMass(cache_w_spr);
-  } else {
-    y_ = tree_w_spr.transformPoints(cache_w_spr, pt_on_body_.at(GetStateIdx()),
-        body_index_w_spr_.at(GetStateIdx()), 0);
-  }
+  y_ = tree_w_spr.transformPoints(cache_w_spr, pt_on_body_.at(GetStateIdx()),
+      body_index_w_spr_.at(GetStateIdx()), 0);
   error_y_ = y_des_ - y_;
 }
 void TransTaskSpaceTrackingData::UpdateYdot(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr,
     const RigidBodyTree<double>& tree_w_spr) {
-  if (track_center_of_mass_) {
-    dy_ = tree_w_spr.centerOfMassJacobian(cache_w_spr) *
-          x_w_spr.tail(tree_w_spr.get_num_velocities());
-  } else {
-    dy_ = tree_w_spr.transformPointsJacobian(cache_w_spr,
-          pt_on_body_.at(GetStateIdx()),
-          body_index_w_spr_.at(GetStateIdx()), 0, false) *
-          x_w_spr.tail(tree_w_spr.get_num_velocities());
-  }
+  dy_ = tree_w_spr.transformPointsJacobian(cache_w_spr,
+        pt_on_body_.at(GetStateIdx()),
+        body_index_w_spr_.at(GetStateIdx()), 0, false) *
+        x_w_spr.tail(tree_w_spr.get_num_velocities());
 }
 void TransTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
     KinematicsCache<double>& cache_wo_spr,
     const RigidBodyTree<double>& tree_wo_spr) {
-  if (track_center_of_mass_) {
-    J_ = tree_wo_spr.centerOfMassJacobian(cache_wo_spr);
-  } else {
-    J_ = tree_wo_spr.transformPointsJacobian(cache_wo_spr,
-         pt_on_body_.at(GetStateIdx()),
-         body_index_wo_spr_.at(GetStateIdx()), 0, false);
-  }
+  J_ = tree_wo_spr.transformPointsJacobian(cache_wo_spr,
+       pt_on_body_.at(GetStateIdx()),
+       body_index_wo_spr_.at(GetStateIdx()), 0, false);
 }
 void TransTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
     KinematicsCache<double>& cache_wo_spr,
     const RigidBodyTree<double>& tree_wo_spr) {
-  if (track_center_of_mass_) {
-    JdotV_ = tree_wo_spr.centerOfMassJacobianDotTimesV(cache_wo_spr);
-  } else {
-    JdotV_ = tree_wo_spr.transformPointsJacobianDotTimesV(cache_wo_spr,
-             pt_on_body_.at(GetStateIdx()),
-             body_index_wo_spr_.at(GetStateIdx()), 0);
-  }
+  JdotV_ = tree_wo_spr.transformPointsJacobianDotTimesV(cache_wo_spr,
+           pt_on_body_.at(GetStateIdx()),
+           body_index_wo_spr_.at(GetStateIdx()), 0);
 }
 
 void TransTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
-  if (track_center_of_mass_) {
-    DRAKE_DEMAND(body_index_w_spr_.size() == 0);
-    DRAKE_DEMAND(body_index_wo_spr_.size() == 0);
-    DRAKE_DEMAND(pt_on_body_.size() == 0);
-  } else {
-    if (body_index_w_spr_.empty()) {
-      body_index_w_spr_ = body_index_wo_spr_;
-    }
-    DRAKE_DEMAND(body_index_w_spr_.size() == pt_on_body_.size());
-    DRAKE_DEMAND(body_index_wo_spr_.size() == pt_on_body_.size());
-    DRAKE_DEMAND(state_.empty() || (state_.size() == pt_on_body_.size()));
-    if (state_.empty()) {
-      DRAKE_DEMAND(body_index_w_spr_.size() == 1);
-      DRAKE_DEMAND(body_index_wo_spr_.size() == 1);
-      DRAKE_DEMAND(pt_on_body_.size() == 1);
-    }
+  if (body_index_w_spr_.empty()) {
+    body_index_w_spr_ = body_index_wo_spr_;
+  }
+  DRAKE_DEMAND(body_index_w_spr_.size() == pt_on_body_.size());
+  DRAKE_DEMAND(body_index_wo_spr_.size() == pt_on_body_.size());
+  DRAKE_DEMAND(state_.empty() || (state_.size() == pt_on_body_.size()));
+  if (state_.empty()) {
+    DRAKE_DEMAND(body_index_w_spr_.size() == 1);
+    DRAKE_DEMAND(body_index_wo_spr_.size() == 1);
+    DRAKE_DEMAND(pt_on_body_.size() == 1);
   }
 }
 
-// RotTaskSpaceTrackingData /////////////////////////////////////////////
+// RotTaskSpaceTrackingData ////////////////////////////////////////////////////
 RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(string name,
     int n_r,
     MatrixXd K_p,

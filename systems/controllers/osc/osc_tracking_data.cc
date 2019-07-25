@@ -42,7 +42,6 @@ OscTrackingData::OscTrackingData(string name,
 }
 
 // Updater
-// In each loop, run Update() before calling any getters.
 bool OscTrackingData::Update(VectorXd x_w_spr,
     KinematicsCache<double>& cache_w_spr,
     VectorXd x_wo_spr,
@@ -69,7 +68,7 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
     UpdateJ(x_wo_spr, cache_wo_spr);
     UpdateJdotV(x_wo_spr, cache_wo_spr);
 
-    // Update desired output with pd control
+    // Update command output (desired output with pd control)
     ddy_command_ = ddy_des_ + K_p_ * (error_y_) + K_d_ * (dy_des_ - dy_);
 
     return track_at_current_step_;
@@ -93,6 +92,7 @@ void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
     track_at_current_step_ = false;
   }
 }
+
 void OscTrackingData::PrintFeedbackAndDesiredValues(VectorXd dv) {
   cout << name_ << ":\n";
   cout << "  y = " << y_.transpose() << endl;

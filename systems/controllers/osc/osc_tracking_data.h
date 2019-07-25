@@ -50,13 +50,26 @@ class OscTrackingData {
 
   OscTrackingData() {}  // Default constructor
 
-  // Updater and getters used by osc block
+  // Update() updates the caches. It does the following things in order:
+  //  - update track_at_current_step_
+  //  - update desired output
+  //  - update feedback output (Calling virtual methods)
+  //  - update command output (desired output with pd control)
+  // Inputs/Arguments:
+  //  - `x_w_spr`, state of the robot (with spring)
+  //  - `cache_w_spr`, kinematics cache of the robot (without spring)
+  //  - `x_wo_spr`, state of the robot (with spring)
+  //  - `cache_wo_spr`, kinematics cache of the robot (without spring)
+  //  - `traj`, desired trajectory
+  //  - `t`, current time
+  //  - `finite_state_machine_state`, current finite state machine state
   bool Update(Eigen::VectorXd x_w_spr,
               KinematicsCache<double>& cache_w_spr,
               Eigen::VectorXd x_wo_spr,
               KinematicsCache<double>& cache_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
               int finite_state_machine_state);
+  // Getters used by osc block
   Eigen::VectorXd GetOutput() {return y_;}
   Eigen::MatrixXd GetJ() {return J_;}
   Eigen::VectorXd GetJdotTimesV() {return JdotV_;}
@@ -75,7 +88,6 @@ class OscTrackingData {
   void PrintFeedbackAndDesiredValues(Eigen::VectorXd dv);
 
   // Finalize and ensure that users construct OscTrackingData class correctly.
-  // (called in OSC constructor)
   void CheckOscTrackingData();
 
  protected:

@@ -128,13 +128,15 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return tracking_data_vec_->at(index);
   }
 
-  // Osc problem constructor
+  // Osc leafsystem builder
   void BuildOSC();
 
  private:
   // Osc checkers and constructor-related methods
   void CheckCostSettings();
   void CheckConstraintSettings();
+
+  // Get solution of OSC
   Eigen::VectorXd SolveQp(Eigen::VectorXd x_w_spr, Eigen::VectorXd x_wo_spr,
       const drake::systems::Context<double>& context, double t,
       int fsm_state, double time_since_last_state_switch) const;

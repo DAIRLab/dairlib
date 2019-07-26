@@ -22,6 +22,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cstdlib>
 
 using json = nlohmann::json;
 namespace dairlib {
@@ -230,8 +231,8 @@ int do_main(int argc, char* argv[]) {
                   velocity_controller->get_endpoint_twist_input_port());
 
   builder.Connect(velocity_controller->get_endpoint_torque_output_port(),
-                  command_sender->get_torque_input_port());
 
+  command_sender->get_torque_input_port());
   builder.Connect(status_receiver->get_position_measured_output_port(),
                   command_sender->get_position_input_port());
   builder.Connect(command_sender->get_output_port(),

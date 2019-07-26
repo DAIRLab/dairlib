@@ -1,4 +1,5 @@
 #include "systems/controllers/endeffector_position_controller.h"
+#include <cstdlib>
 
 namespace dairlib{
 namespace systems{
@@ -41,6 +42,17 @@ void EndEffectorPositionController::CalcOutputTwist(
 
   VectorX<double> orientation_desired = this->EvalVectorInput(context,
 	  endpoint_orientation_commanded_port_)->CopyToVector();
+
+  VectorXd jointLimits(7);
+	jointLimits << 170 - 5, 120 - 5, 170 - 5, 120 - 5, 170 - 5, 120 - 5, 175 - 5;
+	jointLimits = jointLimits * 3.14159265358 / 180;
+  for (int i = 0; i < 7; i++) {
+		std::cout << q_actual * 180 / 3.14159265358 << std::endl;
+		if (abs(q_actual(i)) > jointLimits(i)) {
+			std::cout << "joint limit exceeded on joint " << i+1 << std::endl;
+			exit(0);
+	  }
+	}
 
 
   Eigen::Vector3d x_actual;

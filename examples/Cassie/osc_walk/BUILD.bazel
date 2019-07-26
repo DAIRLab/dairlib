@@ -3,6 +3,18 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "osc_walk",
+    deps = [
+            "//examples/Cassie/osc_walk:deviation_from_cp",
+            "//examples/Cassie/osc_walk:heading_control",
+            "//systems/controllers:time_based_fsm",
+            "//systems/controllers:lipm_traj_gen",
+            "//systems/controllers:cp_traj_gen",
+            "//systems/controllers/osc:operational_space_control",
+    ],
+)
+
+cc_library(
     name = "cp_control_common_func",
     srcs = ["cp_control_common_func.cc",],
     hdrs = ["cp_control_common_func.h"],

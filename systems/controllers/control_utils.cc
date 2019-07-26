@@ -14,16 +14,6 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 namespace dairlib {
 namespace systems {
 
-
-TrajectoryWrapper::TrajectoryWrapper() :
-    value(std::make_unique<PiecewisePolynomial<double>>()) {}
-TrajectoryWrapper::TrajectoryWrapper(PiecewisePolynomial<double> traj) :
-    value(std::make_unique<PiecewisePolynomial<double>>(traj)) {}
-TrajectoryWrapper::TrajectoryWrapper(
-        ExponentialPlusPiecewisePolynomial<double> traj) :
-    value(std::make_unique<ExponentialPlusPiecewisePolynomial<double>>(traj)) {}
-
-
 Vector2d ImposeHalfplaneGaurd(Vector2d foot_placement_pos,
     int left_stance_state, int right_stance_state, int state,
     double yaw, Vector2d CoM, Vector2d stance_foot_pos,

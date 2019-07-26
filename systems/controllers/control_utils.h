@@ -10,20 +10,6 @@
 namespace dairlib {
 namespace systems {
 
-/// `TrajectoryWrapper` allows us to achieve polymorphic input/output ports for
-/// drake::trajectories::Trajectory<double>.
-class TrajectoryWrapper {
- public:
-  DRAKE_DEFAULT_COPY_AND_MOVE_AND_ASSIGN(TrajectoryWrapper);
-  TrajectoryWrapper();
-  TrajectoryWrapper(drake::trajectories::PiecewisePolynomial<double> traj);
-  TrajectoryWrapper(
-      drake::trajectories::ExponentialPlusPiecewisePolynomial<double> traj);
-
-  drake::copyable_unique_ptr<drake::trajectories::Trajectory<double>> value;
-};
-
-
 /// ImposeHalfplaneGaurd() updates the foot placement position by restricting
 /// it in a halfplane.
 /// The halfplane is defined by two things:

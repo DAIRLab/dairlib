@@ -179,13 +179,24 @@ void OperationalSpaceControl::BuildOSC() {
     tracking_data->CheckOscTrackingData();
   }
 
+
+
+
+
+
+  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>(VectorXd::Zero(3));
+
+
+
+
+
   // Construct input ports and traj_name_to_port_index_map_
   for (auto tracking_data : *tracking_data_vec_) {
     string traj_name = tracking_data->GetName();
     int port_index;
     if (tracking_data->TrajHasExp()) {
       port_index = this->DeclareAbstractInputPort(traj_name,
-          drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
+          drake::Value<drake::trajectories::Trajectory<double>>(pp)).get_index();
     } else {
       port_index = this->DeclareAbstractInputPort(traj_name,
           drake::Value<PiecewisePolynomial<double>> {}).get_index();

@@ -96,7 +96,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
     const Eigen::Vector2d & CP) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
-                 drake::trajectories::PiecewisePolynomial<double>* traj) const;
+                 drake::trajectories::Trajectory<double>* traj) const;
 
   int state_port_;
   int fsm_port_;

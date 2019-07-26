@@ -291,7 +291,7 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
 
 
 void CPTrajGenerator::CalcTrajs(const Context<double>& context,
-                                PiecewisePolynomial<double>* traj) const {
+                                drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -323,11 +323,17 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   // Swing foot position at touchdown
   Vector3d init_swing_foot_pos = swing_foot_pos_td;
 
-  // Assign traj
-  *traj = createSplineForSwingFoot(start_time_of_this_interval,
+  PiecewisePolynomial<double> pp = createSplineForSwingFoot(start_time_of_this_interval,
                                    end_time_of_this_interval,
                                    init_swing_foot_pos,
                                    CP);
+
+  // Assign traj
+  PiecewisePolynomial<double> & output = (PiecewisePolynomial<double>) dynamic_cast<PiecewisePolynomial<double>> (*traj);
+  output = pp;
+
+  // *traj = drake::trajectories::Trajectory<double>(pp);
+  *traj = drake::trajectories::Trajectory<double>(pp);
 }
 }  // namespace systems
 }  // namespace dairlib

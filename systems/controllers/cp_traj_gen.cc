@@ -73,15 +73,35 @@ CPTrajGenerator::CPTrajGenerator(const RigidBodyTree<double>& tree,
 
   fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
+
+
+
+
+
+  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>(VectorXd::Zero(3));
+
+
+
+
   if (is_using_predicted_com) {
     com_port_ = this->DeclareAbstractInputPort("CoM_traj",
-        drake::Value<ExponentialPlusPiecewisePolynomial<double>> {}).get_index();
+        drake::Value<drake::trajectories::Trajectory<double>>(pp)).get_index();
   }
   if (add_extra_control) {
     fp_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   }
 
-  this->DeclareAbstractOutputPort("cp_traj", &CPTrajGenerator::CalcTrajs);
+
+
+
+
+
+
+  drake::trajectories::Trajectory<double>& traj_inst = pp;
+
+
+
+  this->DeclareAbstractOutputPort("cp_traj", traj_inst, &CPTrajGenerator::CalcTrajs);
 
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(&CPTrajGenerator::DiscreteVariableUpdate);
@@ -189,9 +209,9 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
         this->EvalAbstractInput(context, com_port_);
     DRAKE_ASSERT(com_traj_output != nullptr);
     const auto & com_traj = com_traj_output->get_value <
-                            ExponentialPlusPiecewisePolynomial<double >> ();
+                            drake::trajectories::Trajectory<double >> ();
     CoM = com_traj.value(end_time_of_this_interval);
-    dCoM = com_traj.derivative().value(end_time_of_this_interval);
+    dCoM = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
   } else {
     // Get the current center of mass position and velocity
     MatrixXd J_com = tree_.centerOfMassJacobian(cache);
@@ -329,11 +349,11 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
                                    CP);
 
   // Assign traj
-  PiecewisePolynomial<double> & output = (PiecewisePolynomial<double>) dynamic_cast<PiecewisePolynomial<double>> (*traj);
-  output = pp;
+  PiecewisePolynomial<double>* output = (PiecewisePolynomial<double>*) dynamic_cast<PiecewisePolynomial<double>*> (traj);
+  *output = pp;
 
   // *traj = drake::trajectories::Trajectory<double>(pp);
-  *traj = drake::trajectories::Trajectory<double>(pp);
+  // *traj = drake::trajectories::Trajectory<double>(pp);
 }
 }  // namespace systems
 }  // namespace dairlib

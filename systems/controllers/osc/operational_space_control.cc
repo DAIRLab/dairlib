@@ -43,9 +43,11 @@ void OperationalSpaceControl::AssignConstTrajToInputPorts(
     // Find the correspond output port
     for (int i = 0; i < osc->num_input_ports(); i++) {
       if (traj_name.compare(osc->get_input_port(i).get_name()) == 0) {
+        PiecewisePolynomial<double> pp = PiecewisePolynomial<double>(tracking_data->GetFixedPosition());
+        drake::trajectories::Trajectory<double>& traj_inst = pp;
         osc_conext.FixInputPort(i /*osc->get_input_port(i).get_index()*/,
-                                drake::Value<PiecewisePolynomial<double>>(
-                                  tracking_data->GetFixedPosition()));
+                                drake::Value<drake::trajectories::Trajectory<double>>(
+                                  traj_inst));
         fix_port_value_successfully = true;
         break;
       }
@@ -199,7 +201,7 @@ void OperationalSpaceControl::BuildOSC() {
           drake::Value<drake::trajectories::Trajectory<double>>(pp)).get_index();
     } else {
       port_index = this->DeclareAbstractInputPort(traj_name,
-          drake::Value<PiecewisePolynomial<double>> {}).get_index();
+          drake::Value<drake::trajectories::Trajectory<double>>(pp)).get_index();
     }
     traj_name_to_port_index_map_[traj_name] = port_index;
   }
@@ -475,10 +477,13 @@ VectorXd OperationalSpaceControl::SolveQp(
     const drake::AbstractValue* traj_intput =
         this->EvalAbstractInput(context, port_index);
     DRAKE_DEMAND(traj_intput != nullptr);
+    // const drake::trajectories::Trajectory<double> & traj =
+    //     (tracking_data->TrajHasExp()) ?
+    //     traj_intput->get_value<ExponentialPlusPiecewisePolynomial<double>>() :
+    //     traj_intput->get_value<PiecewisePolynomial<double>>();
+
     const drake::trajectories::Trajectory<double> & traj =
-        (tracking_data->TrajHasExp()) ?
-        traj_intput->get_value<ExponentialPlusPiecewisePolynomial<double>>() :
-        traj_intput->get_value<PiecewisePolynomial<double>>();
+        traj_intput->get_value<drake::trajectories::Trajectory<double>>();
 
     bool track_or_not = tracking_data->Update(x_w_spr,
                         cache_w_spr, tree_w_spr_,

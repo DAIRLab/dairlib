@@ -37,7 +37,7 @@ class HeadingControl : public drake::systems::LeafSystem<double> {
 
  private:
   void CalcHeadingAngle(const drake::systems::Context<double>& context,
-                 drake::trajectories::PiecewisePolynomial<double>* traj) const;
+                 drake::trajectories::Trajectory<double>* traj) const;
 
   const RigidBodyTree<double>& tree_;
   int pelvis_idx_;

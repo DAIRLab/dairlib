@@ -51,7 +51,17 @@ LIPMTrajGenerator::LIPMTrajGenerator(const RigidBodyTree<double>& tree,
                   tree.get_num_actuators())).get_index();
   fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
-  this->DeclareAbstractOutputPort("lipm_traj", &LIPMTrajGenerator::CalcTraj);
+
+
+  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>(VectorXd::Zero(3));
+  drake::trajectories::Trajectory<double>& traj_inst = pp;
+
+
+
+
+
+
+  this->DeclareAbstractOutputPort("lipm_traj", traj_inst, &LIPMTrajGenerator::CalcTraj);
 
   // Discrete state event
   DeclarePerStepDiscreteUpdateEvent(&LIPMTrajGenerator::DiscreteVariableUpdate);
@@ -95,7 +105,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
 
 
 void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
-    ExponentialPlusPiecewisePolynomial<double>* traj) const {
+    drake::trajectories::Trajectory<double>* traj) const {
 
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
@@ -203,7 +213,13 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
                     K, A, alpha, pp_part);
 
   // Assign traj
-  *traj = exp_traj;
+  // *traj = exp_traj;
+
+  ExponentialPlusPiecewisePolynomial<double>* output = (ExponentialPlusPiecewisePolynomial<double>*) dynamic_cast<ExponentialPlusPiecewisePolynomial<double>*> (traj);
+  *output = exp_traj;
+
+
+
 }
 
 }  // namespace systems

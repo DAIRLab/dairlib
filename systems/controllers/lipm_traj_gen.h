@@ -55,7 +55,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
 
   void CalcTraj(
     const drake::systems::Context<double>& context,
-    drake::trajectories::ExponentialPlusPiecewisePolynomial<double>* traj) const;
+    drake::trajectories::Trajectory<double>* traj) const;
 
   int state_port_;
   int fsm_port_;

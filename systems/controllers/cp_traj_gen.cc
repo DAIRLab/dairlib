@@ -66,18 +66,21 @@ CPTrajGenerator::CPTrajGenerator(const RigidBodyTree<double>& tree,
                   tree.get_num_positions(),
                   tree.get_num_velocities(),
                   tree.get_num_actuators())).get_index();
-
   fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
+
+  PiecewisePolynomial<double> pp(VectorXd::Zero(0));
   if (is_using_predicted_com) {
     com_port_ = this->DeclareAbstractInputPort("CoM_traj",
-        drake::Value<TrajectoryWrapper> {}).get_index();
+        drake::Value<drake::trajectories::Trajectory<double>>(pp)).get_index();
   }
   if (add_extra_control) {
     fp_port_ = this->DeclareVectorInputPort(BasicVector<double>(2)).get_index();
   }
-
-  this->DeclareAbstractOutputPort("cp_traj", &CPTrajGenerator::CalcTrajs);
+  // Provide an instance to allocate the memory first (for the output)
+  drake::trajectories::Trajectory<double>& traj_instance = pp;
+  this->DeclareAbstractOutputPort("cp_traj", traj_instance,
+      &CPTrajGenerator::CalcTrajs);
 
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(&CPTrajGenerator::DiscreteVariableUpdate);
@@ -184,8 +187,8 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     const drake::AbstractValue* com_traj_output =
         this->EvalAbstractInput(context, com_port_);
     DRAKE_ASSERT(com_traj_output != nullptr);
-    const auto & com_traj = *(com_traj_output->get_value <
-                                TrajectoryWrapper>().value);
+    const auto & com_traj = com_traj_output->get_value <
+                            drake::trajectories::Trajectory<double >> ();
     CoM = com_traj.value(end_time_of_this_interval);
     dCoM = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
   } else {
@@ -287,7 +290,7 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
 
 
 void CPTrajGenerator::CalcTrajs(const Context<double>& context,
-                                TrajectoryWrapper* traj) const {
+                                drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -320,10 +323,12 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   Vector3d init_swing_foot_pos = swing_foot_pos_td;
 
   // Assign traj
-  *traj = TrajectoryWrapper(createSplineForSwingFoot(start_time_of_this_interval,
-                                   end_time_of_this_interval,
-                                   init_swing_foot_pos,
-                                   CP));
+  PiecewisePolynomial<double>* casted_traj = (PiecewisePolynomial<double>*)
+      dynamic_cast<PiecewisePolynomial<double>*> (traj);
+  *casted_traj = createSplineForSwingFoot(start_time_of_this_interval,
+                                          end_time_of_this_interval,
+                                          init_swing_foot_pos,
+                                          CP);
 }
 }  // namespace systems
 }  // namespace dairlib

@@ -143,9 +143,9 @@ void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
 
   // Construct input ports and add element to traj_name_to_port_index_map_
   string traj_name = tracking_data->GetName();
-  int port_index;
-  port_index = this->DeclareAbstractInputPort(traj_name,
-      drake::Value<TrajectoryWrapper> ()).get_index();
+  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
+  int port_index = this->DeclareAbstractInputPort(traj_name,
+      drake::Value<drake::trajectories::Trajectory<double>> (pp)).get_index();
   traj_name_to_port_index_map_[traj_name] = port_index;
 }
 void OperationalSpaceControl::AddConstTrackingData(
@@ -465,7 +465,7 @@ VectorXd OperationalSpaceControl::SolveQp(
           this->EvalAbstractInput(context, port_index);
       DRAKE_DEMAND(traj_intput != nullptr);
       const drake::trajectories::Trajectory<double> & traj =
-          *(traj_intput->get_value<TrajectoryWrapper>().value);
+          traj_intput->get_value<drake::trajectories::Trajectory<double>>();
       // Update
       tracking_data->Update(x_w_spr, cache_w_spr,
                           x_wo_spr, cache_wo_spr,

@@ -47,7 +47,15 @@ LIPMTrajGenerator::LIPMTrajGenerator(const RigidBodyTree<double>& tree,
                   tree.get_num_actuators())).get_index();
   fsm_port_ = this->DeclareVectorInputPort(
                 BasicVector<double>(1)).get_index();
-  this->DeclareAbstractOutputPort("lipm_traj", &LIPMTrajGenerator::CalcTraj);
+  // Provide an instance to allocate the memory first (for the output)
+  PiecewisePolynomial<double> pp_part(VectorXd(0));
+  MatrixXd K = MatrixXd::Ones(0,0);
+  MatrixXd A = MatrixXd::Identity(0, 0);
+  MatrixXd alpha = MatrixXd::Ones(0, 0);
+  ExponentialPlusPiecewisePolynomial<double> exp(K, A, alpha, pp_part);
+  drake::trajectories::Trajectory<double>& traj_inst = exp;
+  this->DeclareAbstractOutputPort("lipm_traj", traj_inst,
+      &LIPMTrajGenerator::CalcTraj);
 
   // Discrete state event
   DeclarePerStepDiscreteUpdateEvent(&LIPMTrajGenerator::DiscreteVariableUpdate);
@@ -91,7 +99,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
 
 
 void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
-    TrajectoryWrapper* traj) const {
+    drake::trajectories::Trajectory<double>* traj) const {
 
   // Read in current state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
@@ -193,14 +201,16 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   MatrixXd alpha = MatrixXd::Zero(2, 1);
   K << k1x, k2x,
        k1y, k2y,
-       0      , 0      ;
+       0  , 0  ;
   A << omega, 0,
        0    , -omega;
   alpha << 1, 1;
 
   // Assign traj
-  *traj = TrajectoryWrapper(ExponentialPlusPiecewisePolynomial<double>(
-                    K, A, alpha, pp_part));
+  ExponentialPlusPiecewisePolynomial<double>* casted_traj =
+      (ExponentialPlusPiecewisePolynomial<double>*)
+      dynamic_cast<ExponentialPlusPiecewisePolynomial<double>*> (traj);
+  *casted_traj = ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
 }
 
 }  // namespace systems

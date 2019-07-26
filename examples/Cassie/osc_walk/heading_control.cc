@@ -39,12 +39,16 @@ HeadingControl::HeadingControl(const RigidBodyTree<double>& tree,
                   tree.get_num_positions(),
                   tree.get_num_velocities(),
                   tree.get_num_actuators())).get_index();
-  this->DeclareAbstractOutputPort(&HeadingControl::CalcHeadingAngle);
+  // Provide an instance to allocate the memory first (for the output)
+  PiecewisePolynomial<double> pp(VectorXd(0));
+  drake::trajectories::Trajectory<double>& traj_inst = pp;
+  this->DeclareAbstractOutputPort("heading_traj", traj_inst,
+      &HeadingControl::CalcHeadingAngle);
 }
 
 void HeadingControl::CalcHeadingAngle(
     const Context<double>& context,
-    systems::TrajectoryWrapper* traj) const {
+    drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
   const OutputVector<double>* robotOutput = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
@@ -79,7 +83,11 @@ void HeadingControl::CalcHeadingAngle(
                                           0,
                                           0,
                                           sin(desried_heading_pos/2));
-  *traj = PiecewisePolynomial<double>(desired_pelvis_rotation);
+
+  // Assign traj
+  PiecewisePolynomial<double>* casted_traj = (PiecewisePolynomial<double>*)
+      dynamic_cast<PiecewisePolynomial<double>*> (traj);
+  *casted_traj = PiecewisePolynomial<double>(desired_pelvis_rotation);
 }
 
 }  // namespace osc_walk

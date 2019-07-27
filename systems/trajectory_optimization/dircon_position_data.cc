@@ -41,14 +41,19 @@ void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
   const auto v = x.tail(this->plant_.num_velocities());
 
   VectorX<T> pt_cast = pt_.template cast<T>();
-  this->plant_.CalcPointsGeometricJacobianExpressedInWorld(context,
-      body_.body_frame(), pt_cast, &pt_transform, &J3d);
+  const drake::multibody::Frame<T>& world = this->plant_.world_frame();
+
+  this->plant_.CalcPointsPositions(context, body_.body_frame(), pt_cast,
+      world, &pt_transform);
+  this->plant_.CalcJacobianTranslationalVelocity(
+      context, drake::multibody::JacobianWrtVariable::kV,
+      body_.body_frame(), pt_cast, world, world, &J3d);
 
   MatrixX<T> J3d_times_v =
       this->plant_.CalcBiasForJacobianSpatialVelocity(
           context, drake::multibody::JacobianWrtVariable::kV,
           body_.body_frame(), pt_cast,
-          this->plant_.world_frame(), this->plant_.world_frame()).tail(3);
+          world, world).tail(3);
 
   if (isXZ_) {
     this->c_ = TXZ_*pt_transform;

@@ -1,0 +1,26 @@
+# -*- python -*-
+
+cc_library(
+  name="ros_pubsub_systems",
+  hdrs=["ros_publisher_system.h",
+        "ros_subscriber_system.h"],
+  deps=[
+    "@ros",
+    "@drake//:drake_shared_library",
+  ],
+  tags=["ros"],
+)
+
+cc_binary(
+  name = "test_ros_publisher_system",
+  srcs = ["test/test_ros_publisher_system.cc"],
+  deps = [":ros_pubsub_systems"],
+  tags=["ros"],
+)
+
+cc_binary(
+  name = "test_ros_subscriber_system",
+  srcs = ["test/test_ros_subscriber_system.cc"],
+  deps = [":ros_pubsub_systems"],
+  tags=["ros"],
+)

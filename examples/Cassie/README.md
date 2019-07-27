@@ -14,6 +14,16 @@ The following steps will launch a PD controller and simulation:
 3. Right-click and start `pd-controller` and `dispatcher`
 4. Start the Gazebo simulation
 
+### Mujoco simulation
+You will first need to install Mujoco and the Cassie simulator. Instructions for installation are here: https://github.com/DAIRLab/cassie-mujoco-sim
+
+**It is recommended that you use the mujoco200 branch**
+
+The default Agility simulation has been modified in a few ways. Most critically, it also outputs LCM messages alongside the UDP message.
+The simulation can be run via the `cassie_test.pmd` procman script.
+
+See `cassiesim.c` for a full list of options.
+
 ### Gazebo simulation
 You will first need to install Gazebo and the Cassie simulator. Instructions for installation are here: https://github.com/DAIRLab/cassie-gazebo-sim
 

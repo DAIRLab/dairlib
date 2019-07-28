@@ -162,6 +162,10 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     noise_params_.setAccelerometerBiasNoise(0.0001);
     noise_params_.setContactNoise(0.1);
 
+    auto P = initial_state_.getP();
+    P.block(P.rows() - 6, P.rows() - 6, 6, 6) = .01*Eigen::MatrixXd::Identity(6, 6);
+    initial_state_.setP(P);
+
     filter_ = std::make_unique<inekf::InEKF>(initial_state_, noise_params_);
 
     Eigen::VectorXd prev_IMU_measurement(6);
@@ -1090,7 +1094,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
     Eigen::Matrix<double, 6, 6> covariance = Eigen::MatrixXd::Identity(6, 6);
     Eigen::Matrix<double, 22, 22> cov_w =
-        0.017 * Eigen::MatrixXd::Identity(22, 22);
+        0.000289 * Eigen::MatrixXd::Identity(22, 22);
     std::vector<int> toe_indices = {left_toe_ind, right_toe_ind};
 
     // Debugging print statements
@@ -1117,7 +1121,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       // Jacobian is not right - fix this before porting to the robot
       Eigen::MatrixXd J = tree_.transformPointsJacobian(
           cache, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
-      covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose();
+      covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .0001*Vector3d::Identity();
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);
     }
@@ -1248,6 +1252,12 @@ void CassieRbtStateEstimator::CopyStateOut(
   // cout << "  In copyStateOut: lcm_time = " << cassie_out.pelvis.targetPc.taskExecutionTime << endl;
   // cout << "  In copyStateOut: state_time = " << state_time << endl;
   // cout << "  In copyStateOut: context_time = " << context.get_time() << endl;
+}
+
+void CassieRbtStateEstimator::setPreviousTime(Context<double>* context,
+    double time) {
+    context->get_mutable_discrete_state(time_idx_).get_mutable_value()
+        << time;
 }
 
 }  // namespace systems

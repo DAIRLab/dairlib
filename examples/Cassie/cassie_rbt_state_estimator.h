@@ -42,6 +42,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state,
       int* left_contact, int* right_contact) const;
 
+  void setPreviousTime(drake::systems::Context<double>* context, double time);
+
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;

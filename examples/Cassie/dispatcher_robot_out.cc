@@ -162,6 +162,11 @@ int do_main(int argc, char* argv[]) {
     auto& input_value = input_receiver->get_input_port(0).FixValue(
         &input_receiver_context, input_sub.message());
 
+    // Set EKF previous time
+    auto& state_estimator_context =
+      diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
+    state_estimator->setPreviousTime(&state_estimator_context, t0);
+
     drake::log()->info("dispatcher_robot_out started");
     while (true) {
       // Wait for an lcmt_cassie_out message.

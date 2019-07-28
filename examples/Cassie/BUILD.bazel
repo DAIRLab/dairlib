@@ -92,15 +92,6 @@ cc_library(
 )
 
 cc_binary(
-  name = "kinematics",
-  srcs = ["kinematics.cpp"],
-  deps = [
-      "//examples/Cassie:InEKF",
-      "@drake//:drake_shared_library"
-  ]
-)
-
-cc_binary(
     name = "run_udp_dummy_server",
     srcs = ["run_udp_dummy_server.c"],
     deps = [

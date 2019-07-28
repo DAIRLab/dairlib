@@ -106,6 +106,7 @@ void OscTrackingData::PrintFeedbackAndDesiredValues(VectorXd dv) {
 }
 
 void OscTrackingData::AddState(int state) {
+  // Avoid repeated states
   for (auto const & element : state_) {
     DRAKE_DEMAND(element != state);
   }

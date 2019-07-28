@@ -105,6 +105,13 @@ void OscTrackingData::PrintFeedbackAndDesiredValues(VectorXd dv) {
   cout << "  ddy_command_sol = " << (J_ * dv + JdotV_).transpose() << endl;
 }
 
+void OscTrackingData::AddState(int state) {
+  for (auto const & element : state_) {
+    DRAKE_DEMAND(element != state);
+  }
+  state_.push_back(state);
+}
+
 // Run this function in OSC constructor to make sure that users constructed
 // OscTrackingData correctly.
 void OscTrackingData::CheckOscTrackingData() {
@@ -188,7 +195,7 @@ void TransTaskSpaceTrackingData::AddPointToTrack(std::string body_name,
 }
 void TransTaskSpaceTrackingData::AddStateAndPointToTrack(int state,
     std::string body_name, Vector3d pt_on_body) {
-  state_.push_back(state);
+  AddState(state);
   AddPointToTrack(body_name, pt_on_body);
 }
 
@@ -253,7 +260,7 @@ void RotTaskSpaceTrackingData::AddFrameToTrack(std::string body_name,
 }
 void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(int state,
     std::string body_name, Isometry3d frame_pose) {
-  state_.push_back(state);
+  AddState(state);
   AddFrameToTrack(body_name, frame_pose);
 }
 
@@ -338,7 +345,7 @@ void JointSpaceTrackingData::AddJointToTrack(std::string joint_pos_name,
 }
 void JointSpaceTrackingData::AddStateAndJointToTrack(int state,
     std::string joint_pos_name, std::string joint_vel_name) {
-  state_.push_back(state);
+  AddState(state);
   AddJointToTrack(joint_pos_name, joint_vel_name);
 }
 

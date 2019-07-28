@@ -153,7 +153,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_desired_quat << 1, 0, 0, 0;
   osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);
   // Build OSC problem
-  osc->BuildOSC();
+  osc->Build();
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());

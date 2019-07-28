@@ -13,9 +13,9 @@
 namespace dairlib {
 namespace systems {
 
-/// This class creates prediced center of mass (COM) trajectory of a bepidel
+/// This class creates predicted center of mass (COM) trajectory of a bipedal
 /// robot during single stance.
-/// The trajectories in horizontal directions (x and y axes) are prediected, and
+/// The trajectories in horizontal directions (x and y axes) are predicted, and
 /// the traj in the vertical direction (z axis) is the desired height.
 
 /// Inputs:

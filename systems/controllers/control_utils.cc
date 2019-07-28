@@ -14,13 +14,13 @@ using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 namespace dairlib {
 namespace systems {
 
-Vector2d ImposeHalfplaneGaurd(Vector2d foot_placement_pos,
-    int left_stance_state, int right_stance_state, int state,
+Vector2d ImposeHalfplaneGuard(Vector2d foot_placement_pos,
+    bool left_or_right_stance,
     double yaw, Vector2d CoM, Vector2d stance_foot_pos,
     double center_line_offset){
   // Get the shifting direction of the center line
   Vector2d shift_foothold_dir;
-  if (state == right_stance_state) {
+  if (!left_or_right_stance) {
     shift_foothold_dir << cos(yaw + M_PI * 1 / 2),
                        sin(yaw + M_PI * 1 / 2);
   } else {
@@ -37,9 +37,9 @@ Vector2d ImposeHalfplaneGaurd(Vector2d foot_placement_pos,
 
   // Select the point which lies on the line
   Vector2d CoM_or_stance_foot;
-  if ( ((state == right_stance_state) &&
+  if ( ((!left_or_right_stance) &&
         (heading_cross_CoM_to_stance_foot(2) > 0)) ||
-       ((state == left_stance_state) &&
+       ((left_or_right_stance) &&
         (heading_cross_CoM_to_stance_foot(2) < 0)) ) {
     CoM_or_stance_foot << stance_foot_pos(0), stance_foot_pos(1);
   } else {
@@ -58,8 +58,8 @@ Vector2d ImposeHalfplaneGaurd(Vector2d foot_placement_pos,
   // project it onto the line.
   Vector3d heading_cross_CoM_to_fp =
       yaw_heading.cross(CoM_or_stance_foot_to_fp);
-  if ( ((state == right_stance_state) && (heading_cross_CoM_to_fp(2) < 0)) ||
-       ((state == left_stance_state) && (heading_cross_CoM_to_fp(2) > 0)) ) {
+  if ( ((!left_or_right_stance) && (heading_cross_CoM_to_fp(2) < 0)) ||
+       ((left_or_right_stance) && (heading_cross_CoM_to_fp(2) > 0)) ) {
     Vector3d perp_heading_dir = heading_cross_CoM_to_fp.cross(yaw_heading);
     perp_heading_dir.normalize();
     Vector3d projection_of_CoM_or_stance_foot_to_fp =
@@ -72,7 +72,7 @@ Vector2d ImposeHalfplaneGaurd(Vector2d foot_placement_pos,
 }
 
 
-Vector2d ImposeStepLengthGaurd(Vector2d foot_placement_pos,
+Vector2d ImposeStepLengthGuard(Vector2d foot_placement_pos,
     Vector2d CoM, double max_dist){
   Vector2d com_to_fp = foot_placement_pos - CoM.head(2);
   if ( com_to_fp.norm() > max_dist ) {

@@ -43,16 +43,10 @@ OperationalSpaceControl::OperationalSpaceControl(
   n_q_ = tree_wo_spr.get_num_positions();
   n_v_ = tree_wo_spr.get_num_velocities();
   n_u_ = tree_wo_spr.get_num_actuators();
-  cout << "n_q_ = " << n_q_ << endl;
-  cout << "n_v_ = " << n_v_ << endl;
-  cout << "n_u_ = " << n_u_ << endl;
 
   int n_q_w_spr = tree_w_spr.get_num_positions();
   int n_v_w_spr = tree_w_spr.get_num_velocities();
   int n_u_w_spr = tree_w_spr.get_num_actuators();
-  cout << "n_q_w_spr = " << n_q_w_spr << endl;
-  cout << "n_v_w_spr = " << n_v_w_spr << endl;
-  cout << "n_u_w_spr = " << n_u_w_spr << endl;
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -176,7 +170,7 @@ void OperationalSpaceControl::CheckConstraintSettings() {
   }
 }
 
-void OperationalSpaceControl::BuildOSC() {
+void OperationalSpaceControl::Build() {
   // Checker
   CheckCostSettings();
   CheckConstraintSettings();
@@ -411,36 +405,21 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   ///                           lambda_c(3*i+2) >= 0
   if (body_index_.size() > 0) {
-    VectorXd mu_minus1(2); mu_minus1 << mu_, -1;
-    VectorXd mu_plus1(2); mu_plus1 << mu_, 1;
     VectorXd inf_vectorxd(1); inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
       // If the contact is inactive, we assign zeros to A matrix. (lb<=Ax<=ub)
-      //TODO(yminchen): ask Michael which is better:
-      // 1. assign zeros to A
-      // 2. make the lb = -inf
       if (active_contact_flags[i]) {
-        friction_constraints_.at(5 * i)->UpdateCoefficients(
-            mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 1)->UpdateCoefficients(
-            mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 2)->UpdateCoefficients(
-            mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 3)->UpdateCoefficients(
-            mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 4)->UpdateCoefficients(
-            VectorXd::Ones(1).transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i)->UpdateLowerBound(VectorXd::Zero(1));
+        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(VectorXd::Zero(1));
+        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(VectorXd::Zero(1));
+        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(VectorXd::Zero(1));
+        friction_constraints_.at(5 * i + 4)->UpdateLowerBound(VectorXd::Zero(1));
       } else {
-        friction_constraints_.at(5 * i)->UpdateCoefficients(
-            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 1)->UpdateCoefficients(
-            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 2)->UpdateCoefficients(
-            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 3)->UpdateCoefficients(
-            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 4)->UpdateCoefficients(
-            VectorXd::Zero(1).transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i)->UpdateLowerBound(-inf_vectorxd);
+        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(-inf_vectorxd);
+        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(-inf_vectorxd);
+        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(-inf_vectorxd);
+        friction_constraints_.at(5 * i + 4)->UpdateLowerBound(-inf_vectorxd);
       }
     }
   }

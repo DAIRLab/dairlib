@@ -232,13 +232,13 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
     }
     CP = CP + shift_foothold_dir * cp_offset_;
 
-    CP = ImposeHalfplaneGaurd(CP, left_stance_, right_stance_, fsm_state(0),
+    CP = ImposeHalfplaneGuard(CP, (left_stance_==fsm_state(0)),
       approx_pelvis_yaw, CoM.head(2), stance_foot_pos.head(2),
       center_line_offset_);
   }
 
   // Cap by the step length
-  CP = ImposeStepLengthGaurd(CP, CoM.head(2), max_CoM_to_CP_dist_);
+  CP = ImposeStepLengthGuard(CP, CoM.head(2), max_CoM_to_CP_dist_);
 
   return CP;
 }

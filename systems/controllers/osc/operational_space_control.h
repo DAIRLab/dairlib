@@ -74,7 +74,7 @@ namespace controllers {
 /// The procedure of setting up `OperationalSpaceControl`:
 ///   1. create an instance of `OperationalSpaceControl`
 ///   2. add costs/constraints/desired trajectories
-///   3. call BuildOSC()
+///   3. call Build()
 ///   4. (if the users created desired trajectory blocks by themselves) connect
 ///      `OperationalSpaceControl`'s input ports to corresponding output ports
 ///      of the trajectory source.
@@ -129,7 +129,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   }
 
   // Osc leafsystem builder
-  void BuildOSC();
+  void Build();
 
  private:
   // Osc checkers and constructor-related methods
@@ -224,6 +224,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // `fsm_state_when_active_` is the finite state machine state when the contact
   // constraint is active. If `fsm_state_when_active_` is empty, then the
   // constraint is always active.
+  // The states here can repeat, since there might be multipel contact points
+  // in a state of the finite state machine.
   std::vector<int> fsm_state_when_active_;
 
   // CalcActiveContactIndices gives a vector of flags indicating the active

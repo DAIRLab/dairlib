@@ -10,7 +10,7 @@
 namespace dairlib {
 namespace systems {
 
-/// ImposeHalfplaneGaurd() updates the foot placement position by restricting
+/// ImposeHalfplaneGuard() updates the foot placement position by restricting
 /// it in a halfplane.
 /// The halfplane is defined by two things:
 ///  - A point on the line (the edge of the halfplace).
@@ -23,23 +23,23 @@ namespace systems {
 /// Inputs:
 ///  - `foot_placement_pos` planned foot placement position
 ///  - `CoM` center of mass position
-///  - `left_stance_state` left stance state (of finite state machine)
-///  - `right_stance_state` right stance state (of finite state machine)
-///  - `state` current state of finite state machine
+///  - `left_or_right_stance` a flag that indicates whether it's currently
+///     in left stance (left_or_right_stance = true) or
+///     in right stance (left_or_right_stance = false).
 ///  - `yaw` current yaw angle
 ///  - `CoM` current center of mass position
 ///  - `stance_foot_pos` current stance foot position
 ///  - `center_line_offset` offset of the center line
 ///
 /// Requirement:
-///  - The controller is used with two-state finite state machine
-Eigen::Vector2d ImposeHalfplaneGaurd(Eigen::Vector2d foot_placement_pos,
-    int left_stance_state, int right_stance_state, int state,
+///  - This function is designed for bipedal robots.
+Eigen::Vector2d ImposeHalfplaneGuard(Eigen::Vector2d foot_placement_pos,
+    bool left_or_right_stance,
     double yaw, Eigen::Vector2d CoM, Eigen::Vector2d stance_foot_pos,
     double center_line_offset);
 
 
-/// ImposeStepLengthGaurd() updates the foot placement position by imposing a
+/// ImposeStepLengthGuard() updates the foot placement position by imposing a
 /// step length limit.
 ///
 /// Inputs:
@@ -47,7 +47,7 @@ Eigen::Vector2d ImposeHalfplaneGaurd(Eigen::Vector2d foot_placement_pos,
 ///  - `CoM` center of mass position
 ///  - `max_dist` maximum distance from center of mass to foot placement
 ///    position
-Eigen::Vector2d ImposeStepLengthGaurd(Eigen::Vector2d foot_placement_pos,
+Eigen::Vector2d ImposeStepLengthGuard(Eigen::Vector2d foot_placement_pos,
     Eigen::Vector2d CoM, double max_dist);
 }  // namespace systems
 }  // namespace dairlib

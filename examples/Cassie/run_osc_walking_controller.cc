@@ -285,7 +285,7 @@ int DoMain(int argc, char* argv[]) {
       "hip_yaw_left", "hip_yaw_leftdot");
   osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
   // Build OSC problem
-  osc->BuildOSC();
+  osc->Build();
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());

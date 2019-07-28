@@ -1,0 +1,3 @@
+TODO:
+-finish neutral_analysis by adding gazebo and mujoco info using their own libraries (NOT Drake's)
+-determine reason for mujoco's deviation

@@ -1,3 +1,7 @@
+# various debugging functions to compare accelerations from matrix equations method and results from limits method
+# note that Cassie must be floating base quaternion on ground
+
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pydrake.common import FindResourceOrThrow
@@ -15,29 +19,239 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 from scipy.linalg import block_diag
 from scipy.sparse.linalg import lsqr
 
+# comparing accelerations
+def plotAccels(t, a_a, aLim, tree, numV):
+
+    ind = 0
+    while ind < numV:
+        plt.title("Plot of acceleration of " + getVelocityName(tree, ind) + " (index = " + str(ind) + ") vs t (t.size = " + str(t.size) + ")")
+        plt.plot((t[:t.size - 1]), a_a[ind,:t.size - 1], 'r', label = 'matrix solution')
+        plt.plot((t[:t.size - 1]), aLim[ind,:], 'g', label = 'limit solution') # calculated accel vs approx accel of position against t
+        plt.minorticks_on()
+        plt.grid(which = 'major', linestyle = '-', linewidth = '0.5', color ='black')
+        plt.grid(which = 'minor', linestyle = ':', linewidth = '0.5', color = 'blue')
+        plt.legend()
+        plt.show()
+        ind += 1
+
+# comparing lambdas
+def plotLambdas(t, a_lambda, K_lambda, tree):
+
+    lambdaNames = ["toe_left_contact_1_z", "toe_left_contact_1_x", "toe_left_contact_1_y", "toe_left_contact_2_z", "toe_left_contact_2_x", "toe_left_contact_2_y",
+                   "toe_right_contact_1_z", "toe_right_contact_1_x", "toe_right_contact_1_y", "toe_right_contact_2_z", "toe_right_contact_2_x", "toe_right_contact_2_y",
+                   "geo_constraint_1", "geo_constraint_2"]
+
+    ind = 0
+    while ind < 14:
+        plt.title("Plot of lambda of " + str(lambdaNames[ind]) + " (index = " + str(ind) + ") vs t (t.size = " + str(t.size) + ")")
+        plt.plot(t[:t.size - 1], a_lambda[ind, :], 'r', label = 'matrix solution')
+        plt.plot(t[:t.size - 1], K_lambda[ind, :], 'g', label = 'limit solution')
+        plt.minorticks_on()
+        plt.grid(which = 'major', linestyle = '-', linewidth = '0.5', color ='black')
+        plt.grid(which = 'minor', linestyle = ':', linewidth = '0.5', color = 'blue')
+        plt.legend()
+        plt.show()
+        ind += 1
+
+# comparing manipulator equation
+def compareManipulatorEq(t, x, a_a, a_lambda, K_a, K_lambda, tree, numQ, numV):
+
+    # a_method - solve for Kq (ignore the C and Bu terms)
+
+    RHS_a = np.zeros(22)
+
+    ind_a = 0
+    while ind_a < t.size - 1:
+        xCurr = x[:, ind_a]
+        q = xCurr[:numQ]
+        v = xCurr[numQ:]
+
+        cacheCurr = tree.doKinematics(q, v)
+        MCurr = tree.massMatrix(cacheCurr) # M
+
+        cInfoCurr = ComputeCassieContactInfo(tree, q)
+        cToolkitCurr = ContactToolkit(tree, cInfoCurr)
+        JctCurr = cToolkitCurr.CalcContactJacobian(xCurr, False)
+        JctTCurr = JctCurr.transpose() # contact jacobian transpose
+
+        JcCurr = tree.positionConstraintsJacobian(cacheCurr, False)
+        JcTCurr = JcCurr.transpose() # position constraint jacobian transpose
+
+        JTCurr = np.concatenate((JctTCurr, JcTCurr), axis = 1)
+
+        RHSCurr = (np.matmul(MCurr, a_a[:, ind_a]) - np.matmul(JTCurr, a_lambda[:, ind_a])).reshape(22, 1)
+
+        if ind_a == 0:
+            RHS_a = RHSCurr
+        else:
+            RHS_a = np.concatenate((RHS_a, RHSCurr), axis = 1)
+        ind_a += 1
+
+    # K_method - solve for Kq (ignore the C and Bu terms)
+
+    RHS_K = np.zeros(22)
+
+    ind_K = 0
+    while ind_K < t.size - 1:
+        xCurr = x[:, ind_K]
+        q = xCurr[:numQ]
+        v = xCurr[numQ:]
+
+        cacheCurr = tree.doKinematics(q, v)
+        MCurr = tree.massMatrix(cacheCurr) # M
+
+        cInfoCurr = ComputeCassieContactInfo(tree, q)
+        cToolkitCurr = ContactToolkit(tree, cInfoCurr)
+        JctCurr = cToolkitCurr.CalcContactJacobian(xCurr, False)
+        JctTCurr = JctCurr.transpose() # contact jacobian transpose
+
+        JcCurr = tree.positionConstraintsJacobian(cacheCurr, False)
+        JcTCurr = JcCurr.transpose() # position constraint jacobian transpose
+
+        JTCurr = np.concatenate((JctTCurr, JcTCurr), axis = 1)
+
+        RHSCurr = (np.matmul(MCurr, K_a[:, ind_K]) - np.matmul(JTCurr, K_lambda[:, ind_K])).reshape(22, 1)
+
+        if ind_K == 0:
+            RHS_K = RHSCurr
+        else:
+            RHS_K = np.concatenate((RHS_K, RHSCurr), axis = 1)
+        ind_K += 1
+
+    ind = 0
+    while ind < numV:
+        plt.title("Plot of manipulator eq difference abs. value " + getVelocityName(tree, ind) + " (index = " + str(ind) + ") vs t (t.size = " + str(t.size) + ")")
+        plt.plot(t[:t.size - 1], np.absolute(RHS_a - RHS_K)[ind, :])
+        plt.minorticks_on()
+        plt.grid(which = 'major', linestyle = '-', linewidth = '0.5', color ='black')
+        plt.grid(which = 'minor', linestyle = ':', linewidth = '0.5', color = 'blue')
+        plt.show()
+        ind += 1
+    
+# comparing constraint equation
+def compareConstraintEq(t, x, tree, numQ, a_a, K_a, JDotV):
+
+    Ja_a = np.array([])
+    Ja_K = np.array([])
+
+    ind = 0
+    while ind < t.size - 1:
+        xCurr = x[:, ind]
+        q = xCurr[:numQ]
+        v = xCurr[numQ:]
+
+        cacheCurr = tree.doKinematics(q, v)
+
+        cInfoCurr = ComputeCassieContactInfo(tree, q)
+        cToolkitCurr = ContactToolkit(tree, cInfoCurr)
+        JctCurr = cToolkitCurr.CalcContactJacobian(xCurr, False)
+
+        JcCurr = tree.positionConstraintsJacobian(cacheCurr, False)
+
+        JCurr = np.concatenate((JctCurr, JcCurr), axis = 0)
+
+        Ja_aCurr = np.matmul(JCurr, a_a[:, ind]).reshape(14, 1)
+        Ja_KCurr = np.matmul(JCurr, K_a[:, ind]).reshape(14, 1)
+
+        if ind == 0:
+            Ja_a = Ja_aCurr
+            Ja_K = Ja_KCurr
+        else:
+            Ja_a = np.concatenate((Ja_a, Ja_aCurr), axis = 1)
+            Ja_K = np.concatenate((Ja_K, Ja_KCurr), axis = 1)
+        ind += 1
+    
+    ind = 0
+    while ind < 14:
+        plt.title("Plot of " + str(ind) + " JDotV + Ja (t.size = " + str(t.size) + ")")
+        plt.plot(t[:t.size - 1], (JDotV[ind, :] + Ja_a[ind, :]), 'r', label = 'matrix solution')
+        plt.plot(t[:t.size - 1], (JDotV[ind, :] + Ja_K[ind, :]), 'g', label = 'limit solution')
+        plt.minorticks_on()
+        plt.grid(which = 'major', linestyle = '-', linewidth = '0.5', color ='black')
+        plt.grid(which = 'minor', linestyle = ':', linewidth = '0.5', color = 'blue')
+        plt.legend()
+        plt.show()
+        ind += 1
+
+# show mass matrix
+def showMassMatrix(t, x, tree, numQ):
+
+    ############# CUSTOMIZE THIS TO OBTAIN MASS MATRIX AT DESIRED TIME #############
+    ############# CUSTOMIZE THIS TO OBTAIN MASS MATRIX AT DESIRED TIME #############
+    ind = 0
+    ############# CUSTOMIZE THIS TO OBTAIN MASS MATRIX AT DESIRED TIME #############
+    ############# CUSTOMIZE THIS TO OBTAIN MASS MATRIX AT DESIRED TIME #############
+
+    xCurr = x[:, ind]
+    q = xCurr[:numQ]
+    v = xCurr[numQ:]
+
+    cacheCurr = tree.doKinematics(q, v)
+    MCurr = tree.massMatrix(cacheCurr)
+    print("Mass matrix at t = " + str(ind) + ":")
+    print(MCurr)
+
+# compare Ma
+def compareMa(t, x, tree, a_a, K_a, numQ, numV):
+
+    Ma_a = np.array([])
+    Ma_K = np.array([])
+
+    ind = 0
+    while ind < t.size - 1:
+        xCurr = x[:, ind]
+        q = xCurr[:numQ]
+        v = xCurr[numQ:]
+
+        cacheCurr = tree.doKinematics(q, v)
+
+        MCurr = tree.massMatrix(cacheCurr) # M
+        MaCurr_a = np.matmul(MCurr, a_a[:, ind]).reshape(22, 1)
+        MaCurr_K = np.matmul(MCurr, K_a[:, ind]).reshape(22, 1)
+
+        if ind == 0:
+            Ma_a = MaCurr_a
+            Ma_K = MaCurr_K
+        else:
+            Ma_a = np.concatenate((Ma_a, MaCurr_a), axis = 1)
+            Ma_K = np.concatenate((Ma_K, MaCurr_K), axis = 1)
+        ind += 1
+    
+    ind = 0
+    while ind < numV:
+        plt.title("Plot of Ma of " + getVelocityName(tree, ind) + " (index = " + str(ind) + ") vs t (t.size = " + str(t.size) + ")")
+        plt.plot(t[:t.size - 1], Ma_a[ind, :], 'r', label = 'matrix solution')
+        plt.plot(t[:t.size - 1], Ma_K[ind, :], 'g', label = 'limit solution')
+        plt.minorticks_on()
+        plt.grid(which = 'major', linestyle = '-', linewidth = '0.5', color ='black')
+        plt.grid(which = 'minor', linestyle = ':', linewidth = '0.5', color = 'blue')
+        plt.show()
+        ind += 1
+
+# main
 def main():
+
+    script = sys.argv[0]
+    filename = sys.argv[1]
+
+    ############# CHANGE THIS TO CHOOSE WHICH FUNCTION TO RUN #############
+    ############# CHANGE THIS TO CHOOSE WHICH FUNCTION TO RUN #############
+    selection = 5
+    ############# CHANGE THIS TO CHOOSE WHICH FUNCTION TO RUN #############
+    ############# CHANGE THIS TO CHOOSE WHICH FUNCTION TO RUN #############
+
     urdf_path = "examples/Cassie/urdf/cassie_v2.urdf"
     tree = RigidBodyTree()
     buildCassieTree(tree, urdf_path, FloatingBaseType.kQuaternion)
     AddFlatTerrainToWorld(tree, 100, 0.1)
-    file = "/home/zhshen/workspace/dairlib/examples/cassie_solvers/data/Cassie_5"
     channel = "CASSIE_STATE"
-    [t, x, u] = parseLcmOutputLog(tree, file, channel, 10e6)
-
-    # EDIT THIS TO CHANGE RANGE OF DATA TO BE USED
-    '''
-    t = t[78:93]
-    x = x[:, 78:93]
-    u = u[:, 78:93]
-    '''
-    # EDIT THIS TO CHANGE RANGE OF DATA TO BE USED
+    [t, x, u] = parseLcmOutputLog(tree, filename, channel, 10e6)
 
     numQ = tree.get_num_positions()
     numV = tree.get_num_velocities()
     numJ = 14
 
-    print("------------------------------- acceleration using limits ------------------------------") ##################################### LIMITS
-
+    # accelerations found through limits method
     aLim = np.zeros((numV, t.size - 1)) # discard last data set eventually to accomodate for acceleration calculation
     
     ind = 0
@@ -47,8 +261,8 @@ def main():
             aLim[ind, time] = (x[numQ + ind, time + 1] - x[numQ + ind, time]) / (t[time + 1] - t[time])
             time += 1
         ind += 1
-    
-    print("----------------------------- solve for acceleration and lambda -------------------------") ##################################### GENERAL_SOLVER_A
+
+    # accelerations found through matrix equations method
 
     deltaK = np.zeros((numV, 4))
     deltaK[14, 0] = 0.0
@@ -59,7 +273,6 @@ def main():
     A_a = np.array([])
     JDotV = np.array([])
 
-    data_begin_a = True
     ind_a = 0
     while ind_a < t.size - 1:
         xCurr = x[:, ind_a]
@@ -99,11 +312,10 @@ def main():
 
         bCurr = np.concatenate((Kq_a + BuCurr - CCurr, -JctDotVCurr, -JcDotVCurr), axis = 0) # b
 
-        if data_begin_a == True:
+        if ind_a == 0:
             A_a = ACurr
             b_a = bCurr
             JDotV = np.concatenate((JctDotVCurr.reshape(12, 1), JcDotVCurr.reshape(2, 1)), axis = 0)
-            data_begin_a = False
         else:
             A_a = block_diag(A_a, ACurr)
             b_a = np.concatenate((b_a, bCurr), axis = 0)
@@ -133,21 +345,8 @@ def main():
             j += 1
         i += 1
 
-    a_JDotV = JDotV # saving JDotV
+    # solve for lambdas given accelerations found through limits
 
-    print("------------------------------ plotting ----------------------------------")
-    '''
-    ind = 0
-    while ind < numV:
-        plt.title("Plot of acceleration of " + getVelocityName(tree, ind) + " (index = " + str(ind) + ") vs t (t.size = " + str(t.size) + ")")
-        plt.plot((t[:t.size - 1]), a_a[ind,:], 'r', (t[:t.size - 1]), aLim[ind,:], 'g') # calculated accel vs approx accel of position against t
-        plt.ylim(-4, 4)
-        plt.show()
-        ind += 1
-    '''
-    print("----------------------------- solve for K and lambda -------------------------") ##################################### GENERAL_SOLVER_K
-
-    data_begin_K = True
     C = np.array([])
     Bu = np.array([])
     Ma = np.array([])
@@ -178,13 +377,12 @@ def main():
         JcCurr = tree.positionConstraintsJacobian(cache, False)
         JcTCurr = JcCurr.transpose() # position constraint jacobian transpose
 
-        if data_begin_K == True:
+        if ind_K == 0:
             C = CCurr
             Bu = BuCurr
             JctT = JctTCurr
             JcT = JcTCurr
             Ma = MaCurr
-            data_begin_K = False
         else:
             C = np.concatenate((C, CCurr), axis = 0)
             Bu = np.concatenate((Bu, BuCurr), axis = 0)
@@ -214,7 +412,7 @@ def main():
     A_K = np.concatenate((qMat_K, JctT, JcT), axis = 1)
 
     X_K = lsqr(A_K, b_K, iter_lim = 1000) # least squares solution using sparse matrix
-    sol_K = X_K[0] # least squares solution using sparse matrix
+    sol_K = X_K[0]
 
     #### SAVING K_DATA (DISCARD LAST SET FOR CONSISTENCY) ####
 
@@ -242,297 +440,26 @@ def main():
 
     K_lambda = np.concatenate((K_Jct, K_Jc), axis = 0) # saving lambdas
 
-    print("--------------------------------- COMPARE ------------------------------------") ##################################### DIFFERENCE
-
-    #### comparing lambdas ####
-    
-    delta_lambda = np.divide(np.absolute(a_lambda - K_lambda), np.absolute(K_lambda))
-
-    ind = 0
-    while ind < 14:
-        plt.title("Plot of " + str(ind) + " delta_lambda of 2 methods vs t (t.size = " + str(t.size) + ")")
-        plt.plot(t[:t.size - 1], delta_lambda[ind, :])
-        plt.show()
-        ind += 1
-    
-    print(a_lambda[:, 0]) # all lambdas at t = 0
-    print(K_lambda[:, 0])
-    print(np.divide(delta_lambda[:, 0], a_lambda[:, 0]))
-    print(np.divide(delta_lambda[:, 0], K_lambda[:, 0]))
-    
-    #### plotting lambdas ####
-    
-    ind = 0
-    while ind < 14:
-        plt.title("Plot of " + str(ind) + " lambdas of 2 methods vs t (t.size = " + str(t.size) + ")")
-        plt.plot(t[:t.size - 1], a_lambda[ind, :], 'r', t[:t.size - 1], K_lambda[ind, :], 'g')
-        plt.show()
-        ind += 1
-    
-    #### comparing JTlambdas ####
-
-    x0 = x[:, 0]
-    q0 = x0[:numQ]
-    v0 = x0[numQ:]
-
-    cache0 = tree.doKinematics(q0, v0)
-
-    cInfo0 = ComputeCassieContactInfo(tree, q0)
-    cToolkit0 = ContactToolkit(tree, cInfo0)
-    Jct0 = cToolkit0.CalcContactJacobian(x0, False)
-    JctT0 = Jct0.transpose() # contact jacobian transpose
-    
-    Jc0 = tree.positionConstraintsJacobian(cache0, False)
-    JcT0 = Jc0.transpose() # position constraint jacobian transpose
-
-    a_JTL = np.matmul(JctT0, a_lambda[:12, 0]) + np.matmul(JcT0, a_lambda[12:14, 0])
-    K_JTL = np.matmul(JctT0, K_lambda[:12, 0]) + np.matmul(JcT0, K_lambda[12:14, 0])
-
-    a_JTL = np.matmul(np.concatenate((JctT0, JcT0), axis = 1), a_lambda[:, 0])
-    K_JTL = np.matmul(np.concatenate((JctT0, JcT0), axis = 1), K_lambda[:, 0])
-
-    '''
-    ind = 0
-    while ind < 14:
-        print(np.absolute(a_JTL - K_JTL)[ind])
-        ind += 1
-    '''
-
-    print("---------------------------- Seeing if first equations match ------------------------------")
-
-    # a_method - solve for Kq (ignore the C and Bu terms)
-
-    RHS_a = np.zeros(22)
-
-    data_begin_a = True
-    ind_a = 0
-    while ind_a < t.size - 1:
-        xCurr = x[:, ind_a]
-        q = xCurr[:numQ]
-        v = xCurr[numQ:]
-
-        cacheCurr = tree.doKinematics(q, v)
-        MCurr = tree.massMatrix(cacheCurr) # M
-        if ind_a < 1:
-            print(MCurr)
-
-        cInfoCurr = ComputeCassieContactInfo(tree, q)
-        cToolkitCurr = ContactToolkit(tree, cInfoCurr)
-        JctCurr = cToolkitCurr.CalcContactJacobian(xCurr, False)
-        JctTCurr = JctCurr.transpose() # contact jacobian transpose
-
-        JcCurr = tree.positionConstraintsJacobian(cacheCurr, False)
-        JcTCurr = JcCurr.transpose() # position constraint jacobian transpose
-
-        JTCurr = np.concatenate((JctTCurr, JcTCurr), axis = 1)
-
-        RHSCurr = (np.matmul(MCurr, a_a[:, ind_a]) - np.matmul(JTCurr, a_lambda[:, ind_a])).reshape(22, 1)
-
-        if data_begin_a == True:
-            RHS_a = RHSCurr
-            data_begin_a = False
-        else:
-            RHS_a = np.concatenate((RHS_a, RHSCurr), axis = 1)
-        ind_a += 1
-
-    # K_method - solve for Kq (ignore the C and Bu terms)
-
-    RHS_K = np.zeros(22)
-
-    data_begin_K = True
-    ind_K = 0
-    while ind_K < t.size - 1:
-        xCurr = x[:, ind_K]
-        q = xCurr[:numQ]
-        v = xCurr[numQ:]
-
-        cacheCurr = tree.doKinematics(q, v)
-        MCurr = tree.massMatrix(cacheCurr) # M
-
-        cInfoCurr = ComputeCassieContactInfo(tree, q)
-        cToolkitCurr = ContactToolkit(tree, cInfoCurr)
-        JctCurr = cToolkitCurr.CalcContactJacobian(xCurr, False)
-        JctTCurr = JctCurr.transpose() # contact jacobian transpose
-
-        JcCurr = tree.positionConstraintsJacobian(cacheCurr, False)
-        JcTCurr = JcCurr.transpose() # position constraint jacobian transpose
-
-        JTCurr = np.concatenate((JctTCurr, JcTCurr), axis = 1)
-
-        RHSCurr = (np.matmul(MCurr, K_a[:, ind_K]) - np.matmul(JTCurr, K_lambda[:, ind_K])).reshape(22, 1)
-
-        if data_begin_K == True:
-            RHS_K = RHSCurr
-            data_begin_K = False
-        else:
-            RHS_K = np.concatenate((RHS_K, RHSCurr), axis = 1)
-        ind_K += 1
-
-    '''
-    ind = 0
-    while ind < 22:
-        plt.title("Plot of " + str(ind) + " diff in first eq RHS vs t (t.size = " + str(t.size) + ")")
-        plt.plot(t[:t.size - 1], np.absolute(RHS_a - RHS_K)[ind, :])
-        plt.show()
-        ind += 1
-    '''
-    ################################################## no more than 0.37 diff; most very small ####################################################
-
-    print("----------------------------- seeing if JDotV + Ja = 0 for both ------------------------------")
-
-    Ja_a = np.array([])
-    Ja_K = np.array([])
-
-    data_begin = True
-    ind = 0
-    while ind < t.size - 1:
-        xCurr = x[:, ind]
-        q = xCurr[:numQ]
-        v = xCurr[numQ:]
-
-        cacheCurr = tree.doKinematics(q, v)
-
-        cInfoCurr = ComputeCassieContactInfo(tree, q)
-        cToolkitCurr = ContactToolkit(tree, cInfoCurr)
-        JctCurr = cToolkitCurr.CalcContactJacobian(xCurr, False)
-
-        JcCurr = tree.positionConstraintsJacobian(cacheCurr, False)
-
-        JCurr = np.concatenate((JctCurr, JcCurr), axis = 0)
-
-        Ja_aCurr = np.matmul(JCurr, a_a[:, ind]).reshape(14, 1)
-        Ja_KCurr = np.matmul(JCurr, K_a[:, ind]).reshape(14, 1)
-
-        if data_begin == True:
-            Ja_a = Ja_aCurr
-            Ja_K = Ja_KCurr
-            data_begin = False
-        else:
-            Ja_a = np.concatenate((Ja_a, Ja_aCurr), axis = 1)
-            Ja_K = np.concatenate((Ja_K, Ja_KCurr), axis = 1)
-        ind += 1
-    '''
-    ind = 0
-    while ind < 14:
-        plt.title("Plot of " + str(ind) + " JDotV + Ja (t.size = " + str(t.size) + ")")
-        plt.plot(t[:t.size - 1], (a_JDotV[ind, :] + Ja_a[ind, :]), 'r', t[:t.size - 1], (a_JDotV[ind, :] + Ja_K[ind, :]), 'g')
-        plt.show()
-        ind += 1
-    '''
-    #################################################### VERY SMALL FOR ALL 14 ##################################################
-
-    print("---------------------------- checking M and Ma ----------------------------")
-
-    Ma_a = np.array([])
-    Ma_K = np.array([])
-
-    data_begin = True
-    ind = 0
-    while ind < t.size - 1:
-        xCurr = x[:, ind]
-        q = xCurr[:numQ]
-        v = xCurr[numQ:]
-
-        MCurr = tree.massMatrix(cacheCurr) # M
-        MaCurr_a = np.matmul(MCurr, a_a[:, ind]).reshape(22, 1)
-        MaCurr_K = np.matmul(MCurr, K_a[:, ind]).reshape(22, 1)
-
-        if data_begin == True:
-            Ma_a = MaCurr_a
-            Ma_K = MaCurr_K
-            data_begin = False
-        else:
-            Ma_a = np.concatenate((Ma_a, MaCurr_a), axis = 1)
-            Ma_K = np.concatenate((Ma_K, MaCurr_K), axis = 1)
-        ind += 1
-    '''
-    ind = 0
-    while ind < 22:
-        plt.title("Plot of " + str(ind) + " Ma (t.size = " + str(t.size) + ")")
-        plt.plot(t[:t.size - 1], Ma_a[ind, :], 'r', t[:t.size - 1], Ma_K[ind, :], 'g')
-        plt.show()
-        ind += 1
-    '''
-    ################################################# M remains the same regardless of time, thus Ma mirrors a's shape with less disturbance ###########################################
-    print("---------------------------- JTL plots ------------------------------")
-    '''
-    delta_JTlambda12_matrix = np.zeros(22)
-    delta_JTlambda2_matrix = np.zeros(22)
-    a_JTlambda12 = np.zeros(22)
-    a_JTlambda2 = np.zeros(22)
-    K_JTlambda12 = np.zeros(22)
-    K_JTlambda2 = np.zeros(22)
-    begin_concat = True
-    ind = 0
-    while ind < t.size - 1:
-
-        xCurr = x[:, ind]
-        q = xCurr[:numQ]
-        v = xCurr[numQ:]
-
-        cache = tree.doKinematics(q, v)
-
-        cInfo = ComputeCassieContactInfo(tree, q)
-        cToolkit = ContactToolkit(tree, cInfo)
-        JctCurr = cToolkit.CalcContactJacobian(xCurr, False)
-        JctTCurr = JctCurr.transpose() # contact jacobian transpose
-        
-        JcCurr = tree.positionConstraintsJacobian(cache, False)
-        JcTCurr = JcCurr.transpose() # position constraint jacobian transpose
-
-        JTL_a12 = np.matmul(JctTCurr, a_lambda[:12, ind]).reshape(22,1)
-        JTL_a2 = np.matmul(JcTCurr, a_lambda[12:14, ind]).reshape(22,1)
-        JTL_K12 = np.matmul(JctTCurr, K_lambda[:12, ind]).reshape(22,1)
-        JTL_K2 = np.matmul(JcTCurr, K_lambda[12:14, ind]).reshape(22,1)
-
-        DJTL_12 = np.absolute(np.matmul(JctTCurr, a_lambda[:12, ind]) - np.matmul(JctTCurr, K_lambda[:12, ind])).reshape(22,1)
-        DJTL_2 = np.absolute(np.matmul(JcTCurr, a_lambda[12:14, ind]) - np.matmul(JcTCurr, K_lambda[12:14, ind])).reshape(22,1)
-
-        if begin_concat == True:
-            delta_JTlambda12_matrix = DJTL_12
-            delta_JTlambda2_matrix = DJTL_2
-            a_JTlambda12 = JTL_a12
-            a_JTlambda2 = JTL_a2
-            K_JTlambda12 = JTL_K12
-            K_JTlambda2 = JTL_K2
-            begin_concat = False
-        else:
-            delta_JTlambda12_matrix = np.concatenate((delta_JTlambda12_matrix, DJTL_12), axis = 1)
-            delta_JTlambda2_matrix = np.concatenate((delta_JTlambda12_matrix, DJTL_2), axis = 1)
-            a_JTlambda12 = np.concatenate((a_JTlambda12, JTL_a12), axis = 1)
-            a_JTlambda2 = np.concatenate((a_JTlambda2, JTL_a2), axis = 1)
-            K_JTlambda12 = np.concatenate((K_JTlambda12, JTL_K12), axis = 1)
-            K_JTlambda2 = np.concatenate((K_JTlambda2, JTL_K2), axis = 1)
-        ind += 1
-
-    ind = 0
-    while ind < 12:
-        plt.title("Plot of 12 " + str(ind) + "JTlambdas of 2 methods vs t (t.size = " + str(t.size) + ")")
-        plt.plot(t[:t.size - 1], a_JTlambda12[ind, :], 'r', t[:t.size - 1], K_JTlambda12[ind, :], 'g')
-        plt.show()
-        ind += 1
-
-    ind = 0
-    while ind < 2:
-        plt.title("Plot of 2 " + str(ind) + " JTlambdas of 2 methods vs t (t.size = " + str(t.size) + ")")
-        plt.plot(t[:t.size - 1], a_JTlambda2[ind, :], 'r', t[:t.size - 1], K_JTlambda2[ind, :], 'g')
-        plt.show()
-        ind += 1
-
-    #### plotting JTlambdas ####
-
-    ind = 0
-    while ind < 14:
-        plt.title("Plot of " + str(ind) + " lambdas of 2 methods vs t (t.size = " + str(t.size) + ")")
-        plt.plot(t[:t.size - 1], a_lambda[ind, :], 'r', t[:t.size - 1], K_lambda[ind, :], 'g')
-        plt.show()
-        ind += 1
-    '''
-    print("--------------------------------------- Optimization ---------------------------------------")
-
-    
-
-
+    if selection == 0:
+        plotAccels(t, a_a, aLim, tree, numV)
+    elif selection == 1:
+        plotLambdas(t, a_lambda, K_lambda, tree)
+    elif selection == 2:
+        compareManipulatorEq(t, x, a_a, a_lambda, K_a, K_lambda, tree, numQ, numV)
+    elif selection == 3:
+        compareConstraintEq(t, x, tree, numQ, a_a, K_a, JDotV)
+    elif selection == 4:
+        showMassMatrix(t, x ,tree, numQ)
+    elif selection == 5:
+        compareMa(t, x, tree, a_a, K_a, numQ, numV)
+    else:
+        print("Select a valid function:")
+        print("0: plot accels from both methods onto same graph")
+        print("1: plot lambdas from both methods onto same graph")
+        print("2: plot difference in manipulator equation Ma + C = Bu + Kq + JTlambda from both methods onto same graph")
+        print("3: plot difference in constraint equation Ja + Jdotv = 0 from both methods onto same graph")
+        print("4: show mass matrices of both methods at specified time")
+        print("5: plot difference in Ma of both methods onto same graph")
 
 if __name__ == "__main__":
     main()

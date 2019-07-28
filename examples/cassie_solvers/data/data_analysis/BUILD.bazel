@@ -69,19 +69,17 @@ pybind_py_library(
 )
 
 py_binary(
-    name = "data_comparison",
-    srcs = ["data_comparison.py"],
+    name = "time_trajectories",
+    srcs = ["time_trajectories.py"],
     deps = [":lcm_log_utils_py",
             ":cassie_utils_py",
     ]
 )
 
 py_binary(
-    name = "static_analysis",
-    srcs = ["static_analysis.py"],
+    name = "neutral_analysis",
+    srcs = ["neutral_analysis.py"],
     deps = [":lcm_log_utils_py",
-            ":contact_toolkit_py",
             ":cassie_utils_py",
-            "@drake//bindings/pydrake",
-    ],
+    ]
 )

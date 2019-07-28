@@ -80,43 +80,32 @@ pybind_py_library(
 )
 
 py_binary(
-    name = "lcm_log_utils_py_example",
-    srcs = ["lcm_log_utils_py_example.py"],
+    name = "parseLcmLog",
+    srcs = ["parseLcmLog.py"],
     deps = [":lcm_log_utils_py"],
 )
 
 py_binary(
-    name = "inertia_example",
-    srcs = ["inertia_example.py"],
+    name = "massMatrix0",
+    srcs = ["massMatrix0.py"],
     deps = [":lcm_log_utils_py",
             "@drake//bindings/pydrake",
     ],
 )
 
 py_binary(
-    name = "zero_v_solver",
-    srcs = ["zero_v_solver.py"],
-    deps = [":lcm_log_utils_py",
-            ":contact_toolkit_py",
-            ":cassie_utils_py",
-            "@drake//bindings/pydrake",
-    ],
-)
-
-py_binary(
-    name = "general_solver_K",
-    srcs = ["general_solver_K.py"],
+    name = "calcKStationary",
+    srcs = ["calcKStationary.py"],
     deps = [":lcm_log_utils_py",
             ":contact_toolkit_py",
             ":cassie_utils_py",
-            ":dircon_position_data_py",
             "@drake//bindings/pydrake",
     ],
 )
 
 py_binary(
-    name = "general_solver_a",
-    srcs = ["general_solver_a.py"],
+    name = "calcK",
+    srcs = ["calcK.py"],
     deps = [":lcm_log_utils_py",
             ":contact_toolkit_py",
             ":cassie_utils_py",
@@ -126,8 +115,19 @@ py_binary(
 )
 
 py_binary(
-    name = "general_solver_a_full_rank",
-    srcs = ["general_solver_a_full_rank.py"],
+    name = "calcAccel",
+    srcs = ["calcAccel.py"],
+    deps = [":lcm_log_utils_py",
+            ":contact_toolkit_py",
+            ":cassie_utils_py",
+            ":dircon_position_data_py",
+            "@drake//bindings/pydrake",
+    ],
+)
+
+py_binary(
+    name = "calcAccelFullRank",
+    srcs = ["calcAccelFullRank.py"],
     deps = [":lcm_log_utils_py",
             ":contact_toolkit_py",
             ":cassie_utils_py",

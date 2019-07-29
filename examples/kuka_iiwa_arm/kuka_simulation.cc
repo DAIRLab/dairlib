@@ -95,20 +95,20 @@ int DoMain() {
 
 
   // Add Table to Simulation
-  const double dx_table_center_to_robot_base = -0.3257;
-  const double dz_table_top_robot_base = 0.0127;
-  const std::string sdf_path = drake::FindResourceOrThrow(
-    "drake/examples/manipulation_station/models/bin.sdf");
-
-  RigidTransform<double> X_WT(Vector3d(dx_table_center_to_robot_base, 0,
-                              -dz_table_top_robot_base));
-  //internal::AddAndWeldModelFrom(sdf_path, "table", plant_->world_frame()
-  //                                "amazon_table", X_WT, plant_);
-
-  const drake::multibody::ModelInstanceIndex new_model =
-      world_plant_parser.AddModelFromFile(sdf_path, "bin1");
-  const auto& child_frame = world_plant->GetFrameByName("bin_base", new_model);
-  world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
+  // const double dx_table_center_to_robot_base = -0.3257;
+  // const double dz_table_top_robot_base = 0.0127;
+  // const std::string sdf_path = drake::FindResourceOrThrow(
+  //   "drake/examples/manipulation_station/models/bin.sdf");
+  //
+  // RigidTransform<double> X_WT(Vector3d(dx_table_center_to_robot_base, 0,
+  //                             -dz_table_top_robot_base));
+  // //internal::AddAndWeldModelFrom(sdf_path, "table", plant_->world_frame()
+  // //                                "amazon_table", X_WT, plant_);
+  //
+  // const drake::multibody::ModelInstanceIndex new_model =
+  //     world_plant_parser.AddModelFromFile(sdf_path, "bin1");
+  // const auto& child_frame = world_plant->GetFrameByName("bin_base", new_model);
+  // world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
 
   //Loads in manipulands from json file to objects_vector
   const int num_manipulands = settings["objects"].size();
@@ -180,7 +180,7 @@ int DoMain() {
 
   // The virtual spring stiffness in Nm/rad.
   stiffness.resize(num_iiwa_positions);
-  stiffness << 2, 2, 2, 2, 2, 2, 2;
+  stiffness << 5, 5, 5, 2.5, 2.5, 2.5, 2.5;
 
   // A dimensionless damping ratio. See KukaTorqueController for details.
   damping_ratio.resize(num_iiwa_positions);
@@ -254,12 +254,22 @@ int DoMain() {
   auto diagram = builder.Build();
   drake::systems::Simulator<double> simulator(*diagram);
 
+  // Set the iiwa default joint configuration.
+  drake::VectorX<double> q0_iiwa(num_iiwa_positions + num_iiwa_positions);
+  q0_iiwa << 0, 0.75, 0, -1.7, 0, 1.3, 0, 0, 0, 0, 0, 0, 0, 0;
+
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*world_plant,
                                           &simulator.get_mutable_context());
 
+  drake::systems::BasicVector<double>& state =
+      context.get_mutable_discrete_state(0);
+  state.SetFromVector(q0_iiwa);
+
+
   auto& state2 = diagram->GetMutableSubsystemState(*world_plant,
                                           &simulator.get_mutable_context());
+
   //Adjusts starting positions of manipulands
   for (int x = 0; x < num_manipulands; x++) {
     const auto indices = world_plant -> GetBodyIndices(objects_vector[x]);

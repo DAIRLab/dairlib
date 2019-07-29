@@ -36,6 +36,7 @@ cc_binary(
     data = glob(["**"]),
     deps = [
             "@json",
+            "@lcm",
             "@drake//:drake_shared_library",
             "//systems/controllers:endeffector_velocity_controller",
             "//systems/controllers:endeffector_position_controller",
@@ -45,6 +46,17 @@ cc_binary(
 cc_binary(
     name="iiwa_oscillate",
     srcs = ["iiwa_oscillate.cc"],
+    deps = [
+            "@drake//:drake_shared_library",
+            "//systems/controllers:endeffector_velocity_controller",
+            "//systems/controllers:endeffector_position_controller",
+            "//systems/controllers:safe_velocity_controller",
+    ]
+)
+
+cc_binary(
+    name="iiwa_estop",
+    srcs = ["iiwa_estop.cc"],
     deps = [
             "@drake//:drake_shared_library",
             "//systems/controllers:endeffector_velocity_controller",

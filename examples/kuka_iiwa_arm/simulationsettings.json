@@ -1,13 +1,15 @@
 {
-    "numberOfObjects" : 0,
+    "numberOfObjects" : 2,
     "Objects": [
+        ["sphere", [-0.3, 0, 2], "drake/examples/manipulation_station/models/sphere.sdf"],
+        ["block", [-0.3, 0.2, 2], "drake/examples/manipulation_station/models/061_foam_brick.sdf"]
     ],
     "kuka_gains":
         {
-            "K_P": 200,
-            "K_OMEGA": 50,
-            "K_D": 0.25,
-            "K_R": 0.25
+        "K_P": 300,
+        "K_OMEGA": 20,
+        "K_D": 0.15,
+        "K_R": 0.15
     },
     "limits":
         {

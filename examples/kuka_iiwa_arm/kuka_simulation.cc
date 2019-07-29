@@ -133,6 +133,27 @@ int DoMain() {
   const int num_iiwa_positions = controller_plant->num_positions();
   //const int num_iiwa_velocities = controller_plant->num_velocities();
 
+  // Set the iiwa default joint configuration.
+  drake::VectorX<double> q0_iiwa(num_iiwa_positions);
+  q0_iiwa << 0, 0.75, 0, -1.7, 0, 1.3, 0;
+
+  const auto iiwa_joint_indices =
+      world_plant->GetJointIndices(iiwa_model);
+  std::cout << iiwa_joint_indices.size() << std::endl;
+
+  int q0_index = 0;
+  for (const auto joint_index : iiwa_joint_indices) {
+      drake::multibody::RevoluteJoint<double>* joint =
+        dynamic_cast<drake::multibody::RevoluteJoint<double>*>(
+            &world_plant->get_mutable_joint(joint_index));
+      std::cout << "name: " << joint->type_name() << std::endl;
+    // Note: iiwa_joint_indices includes the WeldJoint at the base.  Only set
+    // the RevoluteJoints.
+    if (joint) {
+      joint->set_default_angle(q0_iiwa[q0_index++]);
+    }
+  }
+
   drake::systems::DiagramBuilder<double> builder;
   builder.AddSystem(std::move(owned_world_plant));
   builder.AddSystem(std::move(owned_scene_graph));

@@ -17,5 +17,5 @@
             "max_angular_veloctiy" : 50.0,
             "joint_torque_limit" : 70.0
     },
-    "default_config": [0, 1.57, 1.57, -1.57, 1.57, 1.57, 0]
+    "default_config": [0, 0.75, 0, 0, 0, 1.57, 0]
 }

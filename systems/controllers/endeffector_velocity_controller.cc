@@ -59,24 +59,33 @@ void EndEffectorVelocityController::CalcOutputTorques(
   plant_.SetVelocities(plant_context.get(), q_dot);
 
   // Calculating the jacobian of the kuka arm
-  Eigen::MatrixXd frameSpatialVelocityJacobian(6, num_joints_);
+  Eigen::MatrixXd J(6, num_joints_);
   plant_.CalcFrameGeometricJacobianExpressedInWorld(
       *plant_context, ee_joint_frame_, ee_contact_frame_,
-      &frameSpatialVelocityJacobian);
+      &J);
 
   // Using the jacobian, calculating the actual current velocities of the arm
-  MatrixXd twist_actual = frameSpatialVelocityJacobian * q_dot;
+  MatrixXd twist_actual = J * q_dot;
 
   // Gains are placed in a diagonal matrix
   Eigen::DiagonalMatrix<double, 6> gains(6);
   gains.diagonal() << k_r_, k_r_, k_r_, k_d_, k_d_, k_d_;
 
+  // Calculating Mass Matrix
+  Eigen::MatrixXd H(plant_.num_positions(), plant_.num_positions());
+  plant_.CalcMassMatrixViaInverseDynamics(*plant_context.get(), &H);
+  MatrixXd Hee = J * H.inverse() * J.transpose();
+
   // Calculating the error
-  MatrixXd generalizedForces = gains * (twist_desired - twist_actual);
+  MatrixXd error = gains * (twist_desired - twist_actual);
+
+  MatrixXd generalizedForces = Hee.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(error);
 
   // Multiplying J^t x force to get torque outputs
   VectorXd commandedTorques(num_joints_);
-  commandedTorques = frameSpatialVelocityJacobian.transpose() * generalizedForces;
+  commandedTorques = J.transpose() * generalizedForces;
+
+  std::cout << generalizedForces << std::endl;
 
   // Limit maximum commanded velocities
   for (int i = 0; i < num_joints_; i++) {

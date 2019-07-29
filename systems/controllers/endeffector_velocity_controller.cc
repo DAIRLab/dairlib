@@ -71,21 +71,12 @@ void EndEffectorVelocityController::CalcOutputTorques(
   Eigen::DiagonalMatrix<double, 6> gains(6);
   gains.diagonal() << k_r_, k_r_, k_r_, k_d_, k_d_, k_d_;
 
-  // Calculating Mass Matrix
-  Eigen::MatrixXd H(plant_.num_positions(), plant_.num_positions());
-  plant_.CalcMassMatrixViaInverseDynamics(*plant_context.get(), &H);
-  MatrixXd Hee = J * H.inverse() * J.transpose();
-
   // Calculating the error
   MatrixXd error = gains * (twist_desired - twist_actual);
 
-  MatrixXd generalizedForces = Hee.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(error);
-
   // Multiplying J^t x force to get torque outputs
   VectorXd commandedTorques(num_joints_);
-  commandedTorques = J.transpose() * generalizedForces;
-
-  std::cout << generalizedForces << std::endl;
+  commandedTorques = J.transpose() * error;
 
   // Limit maximum commanded velocities
   for (int i = 0; i < num_joints_; i++) {

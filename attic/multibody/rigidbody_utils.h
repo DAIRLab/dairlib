@@ -39,7 +39,9 @@ bool IsFloatingBase(const RigidBodyTree<double>& tree);
 /// TODO(yminchen): Shouldn't use this function in the long run. Should fix
 /// whatever is causing the 0 quaternion state in the controller.
 ///
-/// Input: the configuration of the robot which must be in floating-base
+/// Input:
+///  - `q` the configuration of the robot which must be in floating-base.
+///    That is, the quaternion is expected to be located at q.segment(3,4).
 void SetZeroQuaternionToIdentity(Eigen::VectorXd* q);
 
 

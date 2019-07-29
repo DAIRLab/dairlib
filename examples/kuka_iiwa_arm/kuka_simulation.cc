@@ -139,14 +139,12 @@ int DoMain() {
 
   const auto iiwa_joint_indices =
       world_plant->GetJointIndices(iiwa_model);
-  std::cout << iiwa_joint_indices.size() << std::endl;
-
+      
   int q0_index = 0;
   for (const auto joint_index : iiwa_joint_indices) {
       drake::multibody::RevoluteJoint<double>* joint =
         dynamic_cast<drake::multibody::RevoluteJoint<double>*>(
             &world_plant->get_mutable_joint(joint_index));
-      std::cout << "name: " << joint->type_name() << std::endl;
     // Note: iiwa_joint_indices includes the WeldJoint at the base.  Only set
     // the RevoluteJoints.
     if (joint) {

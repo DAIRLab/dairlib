@@ -109,7 +109,7 @@ class InitialPosHandler {
 
 int do_main(int argc, char* argv[]) {
   //Loads in joint gains json file
-  std::ifstream joint_gains_file("examples/kuka_iiwa_arm/simulationsettings.json");
+  std::ifstream joint_gains_file("examples/kuka_iiwa_arm/simulation_settings.json");
   if (joint_gains_file.is_open()) {
     std::cout << "Json file opened successfully." << std::endl;
   }

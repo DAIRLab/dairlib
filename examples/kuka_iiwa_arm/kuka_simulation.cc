@@ -141,7 +141,7 @@ int DoMain() {
 
   const auto iiwa_joint_indices =
       world_plant->GetJointIndices(iiwa_model);
-      
+
   int q0_index = 0;
   for (const auto joint_index : iiwa_joint_indices) {
       drake::multibody::RevoluteJoint<double>* joint =
@@ -254,18 +254,9 @@ int DoMain() {
   auto diagram = builder.Build();
   drake::systems::Simulator<double> simulator(*diagram);
 
-  // Set the iiwa default joint configuration.
-  drake::VectorX<double> q0_iiwa(num_iiwa_positions + num_iiwa_positions);
-  q0_iiwa << 0, 0.75, 0, -1.7, 0, 1.3, 0, 0, 0, 0, 0, 0, 0, 0;
-
   drake::systems::Context<double>& context =
       diagram->GetMutableSubsystemContext(*world_plant,
                                           &simulator.get_mutable_context());
-
-  drake::systems::BasicVector<double>& state =
-      context.get_mutable_discrete_state(0);
-  state.SetFromVector(q0_iiwa);
-
 
   auto& state2 = diagram->GetMutableSubsystemState(*world_plant,
                                           &simulator.get_mutable_context());

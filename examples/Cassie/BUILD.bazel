@@ -234,6 +234,37 @@ cc_test(
 
 
 cc_binary(
+    name = "run_osc_walking_controller",
+    srcs = ["run_osc_walking_controller.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//attic/multibody:utils",
+        "//examples/Cassie/osc_walk:osc_walk",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "@gflags",
+        "@drake//:drake_shared_library",
+        ]
+)
+
+cc_binary(
+    name = "run_osc_standing_controller",
+    srcs = ["run_osc_standing_controller.cc"],
+    deps = [
+        "//systems/controllers/osc:operational_space_control",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//attic/multibody:utils",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "@gflags",
+        "@drake//:drake_shared_library",
+        ]
+)
+
+
+cc_binary(
     name = "cassie_state_visualizer",
     srcs = ["cassie_state_visualizer.cc"],
     deps = [

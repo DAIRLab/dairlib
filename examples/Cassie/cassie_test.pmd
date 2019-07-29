@@ -30,8 +30,20 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false --publish_state=true";
         host = "localhost";
     }
+    cmd "1.simulator (no dispatcher) for OSC controller" {
+        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=true --publish_state=true --publish_rate=200";
+        host = "localhost";
+    }
     cmd "3.dispatcher-robot-in" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000";
+        host = "localhost";
+    }
+    cmd "4.osc-walking-controller" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
+        host = "localhost";
+    }
+    cmd "4.osc-standing-controller" {
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller";
         host = "localhost";
     }
 }
@@ -93,7 +105,7 @@ group "4.other-simulators" {
     }
 }
 
-script "start-operator" {
+script "start-operator-MBP" {
     stop cmd "1.state-visualizer";
     stop cmd "0.drake-director";
     start cmd "0.drake-director";
@@ -101,15 +113,35 @@ script "start-operator" {
     start cmd "1.state-visualizer";
 }
 
+script "start-operator-RBP" {
+    stop cmd "4.state-visualizer-RBT";
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 3000;
+    start cmd "4.state-visualizer-RBT";
+}
+
 script "run-drake-pd-control" {
-    run_script "start-operator";
+    run_script "start-operator-MBP";
     start cmd "1.simulator (dispatched)";
     start cmd "2.a.dispatcher-robot-out (lcm)";
     start cmd "0.pd-controller";
 }
 
+script "run-drake-osc-standing-control" {
+    run_script "start-operator-RBP";
+    start cmd "1.simulator (no dispatcher) for OSC controller";
+    start cmd "4.osc-standing-controller";
+}
+
+script "run-drake-osc-walking-control" {
+    run_script "start-operator-RBP";
+    start cmd "1.simulator (no dispatcher) for OSC controller";
+    start cmd "4.osc-walking-controller";
+}
+
 script "run-gazebo-pd-control" {
-    run_script "start-operator";
+    run_script "start-operator-MBP";
     start cmd "1.launch-gazebo-fixed-base";
     start cmd "2.b.dispatcher-robot-out (gazebo)";
     start cmd "3.dispatcher-robot-in";
@@ -117,7 +149,7 @@ script "run-gazebo-pd-control" {
 }
 
 script "run-gazebo-lcm-pd-control" {
-    run_script "start-operator";
+    run_script "start-operator-MBP";
     start cmd "1.launch-gazebo-fixed-base";
     start cmd "2.a.dispatcher-robot-out (lcm)";
     start cmd "3.dispatcher-robot-in";
@@ -125,7 +157,7 @@ script "run-gazebo-lcm-pd-control" {
 }
 
 script "run-mujoco-lcm-pd-control" {
-    run_script "start-operator";
+    run_script "start-operator-MBP";
     start cmd "3.cassie-mujoco-fixed-base";
     start cmd "2.a.dispatcher-robot-out (lcm)";
     start cmd "3.dispatcher-robot-in";

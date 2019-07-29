@@ -60,7 +60,8 @@ void buildCassieTree(
     RigidBodyTree<double>& tree,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf",
     drake::multibody::joints::FloatingBaseType base_type =
-        drake::multibody::joints::kFixed);
+        drake::multibody::joints::kFixed,
+    bool is_with_springs = true);
 
 // Add a frame to the pelvis so that we can use it for accelerometer and
 // gyroscope simulation.

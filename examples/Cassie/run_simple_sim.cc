@@ -63,6 +63,15 @@ DEFINE_bool(publish_cassie_output, true, "Publish simulated CASSIE_OUTPUT");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
+// Cassie inital positions
+DEFINE_double(init_height, 1.05, "Initial height of the pelvis");
+DEFINE_double(init_hip_pitch, .4, "Initial hip pitch angle");
+DEFINE_double(init_knee, -1.0, "Initial knee joint position");
+DEFINE_double(init_ankle, 1.3, "Initial ankle joint position");
+DEFINE_double(init_toe, -1.5, "Initial toe joint position");
+
+DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
+    "End time of simulation");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -176,16 +185,16 @@ int do_main(int argc, char* argv[]) {
 
   std::map<std::string, int> map =
       plant->get_rigid_body_tree().computePositionNameToIndexMap();
-  x0(map.at("hip_pitch_left")) = .269;
-  x0(map.at("hip_pitch_right")) = .269;
+  x0(map.at("hip_pitch_left")) = FLAGS_init_hip_pitch;
+  x0(map.at("hip_pitch_right")) = FLAGS_init_hip_pitch;
   // x0(map.at("achilles_hip_pitch_left")) = -.44;
   // x0(map.at("achilles_hip_pitch_right")) = -.44;
   // x0(map.at("achilles_heel_pitch_left")) = -.105;
   // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  x0(map.at("knee_left")) = -.644;
-  x0(map.at("knee_right")) = -.644;
-  x0(map.at("ankle_joint_left")) = .792;
-  x0(map.at("ankle_joint_right")) = .792;
+  x0(map.at("knee_left")) = FLAGS_init_knee;
+  x0(map.at("knee_right")) = FLAGS_init_knee;
+  x0(map.at("ankle_joint_left")) = FLAGS_init_ankle;
+  x0(map.at("ankle_joint_right")) = FLAGS_init_ankle;
 
   // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
   // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
@@ -193,8 +202,8 @@ int do_main(int argc, char* argv[]) {
   // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
   // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
 
-  x0(map.at("toe_left")) = -60.0 * M_PI / 180.0;
-  x0(map.at("toe_right")) = -60.0 * M_PI / 180.0;
+  x0(map.at("toe_left")) = FLAGS_init_toe;
+  x0(map.at("toe_right")) = FLAGS_init_toe;
 
   std::vector<int> fixed_joints;
   fixed_joints.push_back(map.at("hip_pitch_left"));
@@ -212,7 +221,7 @@ int do_main(int argc, char* argv[]) {
 
   // Set the initial height of the robot so that it's above the ground.
   if (FLAGS_floating_base) {
-    x0(2) = 1.5;
+    x0(2) = FLAGS_init_height;
   }
 
   Eigen::VectorXd q0 =
@@ -269,7 +278,7 @@ int do_main(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
 
-  simulator.StepTo(std::numeric_limits<double>::infinity());
+  simulator.StepTo(FLAGS_end_time);
   // simulator.StepTo(.01);
   return 0;
 }

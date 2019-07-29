@@ -32,7 +32,7 @@ group "1.simulated-robot" {
     }
 
     cmd "5.E-Stop" {
-        exec = "bazel-bin/examples/kuka_iiwa_arm/iiw_estop";
+        exec = "bazel-bin/examples/kuka_iiwa_arm/iiwa_estop";
         host= "localhost";
     }
 }

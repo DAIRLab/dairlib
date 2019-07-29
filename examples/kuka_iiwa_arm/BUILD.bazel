@@ -36,6 +36,7 @@ cc_binary(
     data = glob(["**"]),
     deps = [
             "@json",
+            "@lcm",
             "@drake//:drake_shared_library",
             "//systems/controllers:endeffector_velocity_controller",
             "//systems/controllers:endeffector_position_controller",

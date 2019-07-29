@@ -16,6 +16,7 @@
 
 #include "systems/controllers/endeffector_velocity_controller.h"
 #include "systems/controllers/endeffector_position_controller.h"
+#include <lcm/lcm-cpp.hpp>
 
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -70,6 +71,35 @@ class CsvVector {
     std::vector<std::vector<double>> getArray() {
       return data;
     }
+
+    int knotSize() {
+        return data[0].size();
+    }
+};
+
+class InitialPosHandler {
+    public:
+        InitialPosHandler(){
+            messageReceived = false;
+        }
+
+        ~InitialPosHandler() {}
+
+        void handleMessage(const lcm::ReceiveBuffer* rbuf,
+                           const std::string& chan,
+                           const drake::lcmt_iiwa_status* msg) {
+            initialPositions << (double)msg->joint_position_measured[0],
+                                (double)msg->joint_position_measured[1],
+                                (double)msg->joint_position_measured[2],
+                                (double)msg->joint_position_measured[3],
+                                (double)msg->joint_position_measured[4],
+                                (double)msg->joint_position_measured[5],
+                                (double)msg->joint_position_measured[6];
+            messageReceived = true;
+        }
+
+        bool messageReceived;
+        Eigen::VectorXd initialPositions = Eigen::VectorXd(7);
 };
 
 // This function creates a controller for a Kuka LBR Iiwa arm by connecting an
@@ -105,38 +135,6 @@ int do_main(int argc, char* argv[]) {
   std::cout << "Linear Velocity Limit: " << MAX_LINEAR_VEL << std::endl;
   std::cout << "Angular Velocity Limit: " << MAX_ANGULAR_VEL << std::endl;
   std::cout << "Joint Torque Limit: " << JOINT_TORQUE_LIMIT << std::endl;
-
-  //Processes Trajectories CSV file.
-  CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
-
-  //Initializes trajectories to trajectoryVectors array.
-  std::vector<Eigen::MatrixXd> trajectoryVectors;
-  for (unsigned int x = 0; x < waypoints.getArray()[0].size(); x++) {
-    Eigen::Vector3d temp;
-    temp << waypoints.getArray()[1][x], waypoints.getArray()[2][x],
-            waypoints.getArray()[3][x];
-    trajectoryVectors.push_back(temp);
-  }
-
-  auto ee_trajectory =
-      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-          waypoints.getArray()[0], trajectoryVectors);
-
-  // Processes EndEffectorOrientations CSV file.
-  CsvVector orientations("examples/kuka_iiwa_arm/EndEffectorOrientations.csv");
-
-  //Initializes orientations to orient_points array.
-  std::vector<Eigen::MatrixXd> orient_points;
-  for (unsigned int y = 0; y < orientations.getArray()[0].size(); y++) {
-    Eigen::Vector4d aPoint;
-    aPoint << orientations.getArray()[1][y], orientations.getArray()[2][y],
-              orientations.getArray()[3][y], orientations.getArray()[4][y];
-    orient_points.push_back(aPoint);
-  }
-
-  auto orientation_trajectory =
-      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-          orientations.getArray()[0], orient_points);
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
   std::string kModelPath = "../drake/manipulation/models/iiwa_description"
@@ -184,6 +182,70 @@ int do_main(int argc, char* argv[]) {
       systems::EndEffectorVelocityController>(
           *owned_plant, link_7, eeContactFrame, K_D, K_R, JOINT_TORQUE_LIMIT);
 
+  //Processes Trajectories CSV file.
+  CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
+
+  // Listens for LCM message then performs invKin to get traj initial position.
+  lcm::LCM lcm_;
+  if (!lcm_.good()) return 1;
+
+  Eigen::Vector3d x_initial;
+  InitialPosHandler handler;
+  lcm_.subscribe("IIWA_STATUS", &InitialPosHandler::handleMessage, &handler);
+  while (lcm_.handle() == 0 && !handler.messageReceived);
+
+  const std::unique_ptr<Context<double>> plant_context =
+      owned_plant->CreateDefaultContext();
+  owned_plant->SetPositions(plant_context.get(), handler.initialPositions);
+  owned_plant->CalcPointsPositions(*plant_context, owned_plant->GetFrameByName(link_7),
+                             eeContactFrame, owned_plant->world_frame(), &x_initial);
+
+  Eigen::Vector3d checkpointTwo;
+  checkpointTwo << waypoints.getArray()[1][0], waypoints.getArray()[2][0],
+                   waypoints.getArray()[3][0];
+
+  // 1/second m/s movement speed
+  const int seconds = 20;
+  int firstMovementTime = (x_initial - checkpointTwo).norm() * seconds;
+
+  //Initializes trajectories to trajectoryVectors array.
+  std::vector<Eigen::MatrixXd> trajectoryVectors;
+  if (firstMovementTime > 0.0){
+      trajectoryVectors.push_back(x_initial);
+  }
+  for (unsigned int x = 0; x < waypoints.getArray()[0].size(); x++) {
+    Eigen::Vector3d temp;
+    temp << waypoints.getArray()[1][x], waypoints.getArray()[2][x],
+            waypoints.getArray()[3][x];
+    trajectoryVectors.push_back(temp);
+  }
+
+  std::vector<double> timeKnots = waypoints.getArray()[0];
+  // Add the movement time to every timestep
+  if (firstMovementTime > 0.0) {
+      for (double& d : timeKnots) d += abs(firstMovementTime);
+      std::cout << firstMovementTime << std::endl;
+      timeKnots.insert(timeKnots.begin(), 0.0);
+  }
+  auto ee_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          timeKnots, trajectoryVectors);
+
+  // Processes EndEffectorOrientations CSV file.
+  CsvVector orientations("examples/kuka_iiwa_arm/EndEffectorOrientations.csv");
+
+  //Initializes orientations to orient_points array.
+  std::vector<Eigen::MatrixXd> orient_points;
+  for (int y = 0; y < orientations.knotSize(); y++) {
+    Eigen::Vector4d aPoint;
+    aPoint << orientations.getArray()[1][y], orientations.getArray()[2][y],
+              orientations.getArray()[3][y], orientations.getArray()[4][y];
+    orient_points.push_back(aPoint);
+  }
+
+  auto orientation_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          orientations.getArray()[0], orient_points);
 
   // Adding linear position Trajectory Source
   auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(

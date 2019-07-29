@@ -31,7 +31,7 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
   }
   c_ = VectorX<T>(constraint_count_);
   cdot_ = VectorX<T>(constraint_count_);
-  J_ = MatrixX<T>(constraint_count_, num_positions_);
+  J_ = MatrixX<T>(constraint_count_, num_velocities_);
   Jdotv_ = VectorX<T>(constraint_count_);
   cddot_ = VectorX<T>(constraint_count_);
   vdot_ = VectorX<T>(num_velocities_);
@@ -73,7 +73,7 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
       n = (*constraints_)[i]->getLength();
       c_.segment(index, n) = (*constraints_)[i]->getC();
       cdot_.segment(index, n) = (*constraints_)[i]->getCDot();
-      J_.block(index, 0, n, num_positions_) = (*constraints_)[i]->getJ();
+      J_.block(index, 0, n, num_velocities_) = (*constraints_)[i]->getJ();
       Jdotv_.segment(index, n) = (*constraints_)[i]->getJdotv();
 
       index += n;

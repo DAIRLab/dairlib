@@ -58,6 +58,9 @@ namespace kuka_iiwa_arm {
  using drake::systems::StateInterpolatorWithDiscreteDerivative;
 
 int DoMain() {
+  // Initializes json object from simulation_settings.json
+  std::ifstream settings_file("examples/kuka_iiwa_arm/simulation_settings.json");
+  json settings = json::parse(settings_file);
 
   std::unique_ptr<MultibodyPlant<double>> owned_world_plant =
       std::make_unique<MultibodyPlant<double>>(0.0001);
@@ -108,13 +111,11 @@ int DoMain() {
   // world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
 
   //Loads in manipulands from json file to objects_vector
-  std::ifstream free_objects("examples/kuka_iiwa_arm/simulationsettings.json");
-  json manipulands = json::parse(free_objects);
-  const int num_manipulands = manipulands["Objects"].size();
+  const int num_manipulands = settings["objects"].size();
   std::vector<drake::multibody::ModelInstanceIndex> objects_vector;
   objects_vector.resize(num_manipulands);
   for (int objectNum = 0; objectNum < num_manipulands; objectNum++) {
-      std::string path = drake::FindResourceOrThrow(manipulands["Objects"][objectNum][2]);
+      std::string path = drake::FindResourceOrThrow(settings["objects"][objectNum][2]);
       objects_vector[objectNum] = world_plant_parser.AddModelFromFile(path, path);
   }
 
@@ -135,18 +136,17 @@ int DoMain() {
 
   // Set the iiwa default joint configuration.
   drake::VectorX<double> q0_iiwa(num_iiwa_positions);
-  q0_iiwa << 0, 0.75, 0, -1.7, 0, 1.3, 0;
+  q0_iiwa << settings["default_config"][0], settings["default_config"][1], settings["default_config"][2],
+  settings["default_config"][3], settings["default_config"][4], settings["default_config"][5], settings["default_config"][6];
 
   const auto iiwa_joint_indices =
       world_plant->GetJointIndices(iiwa_model);
-  std::cout << iiwa_joint_indices.size() << std::endl;
-
+      
   int q0_index = 0;
   for (const auto joint_index : iiwa_joint_indices) {
       drake::multibody::RevoluteJoint<double>* joint =
         dynamic_cast<drake::multibody::RevoluteJoint<double>*>(
             &world_plant->get_mutable_joint(joint_index));
-      std::cout << "name: " << joint->type_name() << std::endl;
     // Note: iiwa_joint_indices includes the WeldJoint at the base.  Only set
     // the RevoluteJoints.
     if (joint) {
@@ -265,9 +265,9 @@ int DoMain() {
   for (int x = 0; x < num_manipulands; x++) {
     const auto indices = world_plant -> GetBodyIndices(objects_vector[x]);
     world_plant -> SetFreeBodyPose(context, &state2, world_plant -> get_body(indices[0]),
-    RigidTransform<double>(Vector3d(manipulands["Objects"][x][1][0],
-                           manipulands["Objects"][x][1][1],
-                           manipulands["Objects"][x][1][2])));
+    RigidTransform<double>(Vector3d(settings["objects"][x][1][0],
+                           settings["objects"][x][1][1],
+                           settings["objects"][x][1][2])));
   }
   simulator.set_publish_every_time_step(false);
   simulator.set_target_realtime_rate(1.0);

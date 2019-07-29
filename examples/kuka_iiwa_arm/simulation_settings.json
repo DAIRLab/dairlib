@@ -1,6 +1,6 @@
 {
     "numberOfObjects" : 2,
-    "Objects": [
+    "objects": [
         ["sphere", [-0.3, 0, 2], "drake/examples/manipulation_station/models/sphere.sdf"],
         ["block", [-0.3, 0.2, 2], "drake/examples/manipulation_station/models/061_foam_brick.sdf"]
     ],
@@ -12,9 +12,10 @@
         "K_R": 0
     },
     "limits":
-        {
-            "max_linear_velocity" : 20.0,
-            "max_angular_veloctiy" : 20.0,
+    {
+            "max_linear_velocity" : 50.0,
+            "max_angular_veloctiy" : 50.0,
             "joint_torque_limit" : 70.0
-        }
+    },
+    "default_config": [0, 1.57, 1.57, -1.57, 1.57, 1.57, 0]
 }

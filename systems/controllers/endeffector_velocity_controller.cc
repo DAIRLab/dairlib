@@ -63,6 +63,7 @@ void EndEffectorVelocityController::CalcOutputTorques(
   plant_.CalcFrameGeometricJacobianExpressedInWorld(
       *plant_context, ee_joint_frame_, ee_contact_frame_,
       &J);
+  Eigen::MatrixXd Jt = J.transpose();
 
   // Using the jacobian, calculating the actual current velocities of the arm
   MatrixXd twist_actual = J * q_dot;
@@ -75,8 +76,19 @@ void EndEffectorVelocityController::CalcOutputTorques(
   MatrixXd error = gains * (twist_desired - twist_actual);
 
   // Multiplying J^t x force to get torque outputs
+  VectorXd torques(num_joints_);
   VectorXd commandedTorques(num_joints_);
-  commandedTorques = J.transpose() * error;
+
+  torques = J.transpose() * error;
+
+  Eigen::DiagonalMatrix<double, 7> T2(6);
+  T2.diagonal() << 3600, 3600, 3600, 900, 144, 144, 36;
+
+  // Calculating Mass Matrix
+  Eigen::MatrixXd H(plant_.num_positions(), plant_.num_positions());
+  plant_.CalcMassMatrixViaInverseDynamics(*plant_context.get(), &H);
+  Eigen::MatrixXd Hi = H.inverse();
+  commandedTorques = T2 * Hi * Jt * (J * Hi * T2 * Hi * Jt).inverse() * J * Hi * torques;
 
   // Limit maximum commanded velocities
   for (int i = 0; i < num_joints_; i++) {

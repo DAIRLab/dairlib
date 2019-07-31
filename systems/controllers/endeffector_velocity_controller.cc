@@ -81,14 +81,21 @@ void EndEffectorVelocityController::CalcOutputTorques(
 
   torques = J.transpose() * error;
 
-  Eigen::DiagonalMatrix<double, 7> T2(6);
-  T2.diagonal() << 3600, 3600, 3600, 900, 144, 144, 36;
-
   // Calculating Mass Matrix
   Eigen::MatrixXd H(plant_.num_positions(), plant_.num_positions());
   plant_.CalcMassMatrixViaInverseDynamics(*plant_context.get(), &H);
   Eigen::MatrixXd Hi = H.inverse();
+
+  double alpha = 0.9;
+
+  Eigen::MatrixXd T = (alpha * Eigen::MatrixXd::Identity(7, 7) + (1-alpha)*Hi).inverse();
+
+  Eigen::MatrixXd T2 = T * T;
+
+  // Eigen::DiagonalMatrix<double, 7> T2(6);
+  // T2.diagonal() << 3600, 3600, 3600, 900, 144, 144, 36;
   commandedTorques = T2 * Hi * Jt * (J * Hi * T2 * Hi * Jt).inverse() * J * Hi * torques;
+  //commandedTorques =  H * Jt * (J * Jt).inverse() * J * Hi * torques;
 
   // Limit maximum commanded velocities
   for (int i = 0; i < num_joints_; i++) {

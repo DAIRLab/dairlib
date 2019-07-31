@@ -118,11 +118,11 @@ int do_main(int argc, char* argv[]) {
 
   //Kp and 'Rotational' Kp
   const double K_P = joint_gains["kuka_gains"]["K_P"];
-  const double K_OMEGA = joint_gains["kuka_gains"]["K_OMEGA"];
+  const double K_R = joint_gains["kuka_gains"]["K_R"];
 
   // Kd and 'Rotational' Kd
   const double K_D = joint_gains["kuka_gains"]["K_D"];
-  const double K_R = joint_gains["kuka_gains"]["K_R"];
+  const double K_OMEGA = joint_gains["kuka_gains"]["K_OMEGA"];
 
   //Safety Limits
   const double MAX_LINEAR_VEL = joint_gains["limits"]["max_linear_velocity"];
@@ -130,8 +130,8 @@ int do_main(int argc, char* argv[]) {
   const double JOINT_TORQUE_LIMIT = joint_gains["limits"]["joint_torque_limit"];
 
   std::cout << "Using following parameters:" << std::endl;
-  std::cout << "K_P: " << K_P << " | K_OMEGA: " << K_OMEGA << " | K_D: " << K_D;
-  std::cout << " | K_R: " << K_R << std::endl;
+  std::cout << "K_P: " << K_P << " | K_R: " << K_R << " | K_D: " << K_D;
+  std::cout << " | K_OMEGA: " << K_OMEGA << std::endl;
   std::cout << "Linear Velocity Limit: " << MAX_LINEAR_VEL << std::endl;
   std::cout << "Angular Velocity Limit: " << MAX_ANGULAR_VEL << std::endl;
   std::cout << "Joint Torque Limit: " << JOINT_TORQUE_LIMIT << std::endl;
@@ -174,13 +174,13 @@ int do_main(int argc, char* argv[]) {
   // Adding position controller block
   auto position_controller = builder.AddSystem<
       systems::EndEffectorPositionController>(
-          *owned_plant, link_7, eeContactFrame, K_P, K_OMEGA, MAX_LINEAR_VEL,
+          *owned_plant, link_7, eeContactFrame, K_P, K_R, MAX_LINEAR_VEL,
           MAX_ANGULAR_VEL);
 
   // Adding Velocity Controller block
   auto velocity_controller = builder.AddSystem<
       systems::EndEffectorVelocityController>(
-          *owned_plant, link_7, eeContactFrame, K_D, K_R, JOINT_TORQUE_LIMIT);
+          *owned_plant, link_7, eeContactFrame, K_D, K_OMEGA, JOINT_TORQUE_LIMIT);
 
   //Processes Trajectories CSV file.
   CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
@@ -230,6 +230,7 @@ int do_main(int argc, char* argv[]) {
   auto ee_trajectory =
       drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
           timeKnots, trajectoryVectors);
+  auto ee_velocity = ee_trajectory.derivative(1);
 
   // Processes EndEffectorOrientations CSV file.
   CsvVector orientations("examples/kuka_iiwa_arm/EndEffectorOrientations.csv");
@@ -250,6 +251,8 @@ int do_main(int argc, char* argv[]) {
   // Adding linear position Trajectory Source
   auto input_trajectory = builder.AddSystem<drake::systems::TrajectorySource>(
       ee_trajectory);
+  auto input_velocity = builder.AddSystem<drake::systems::TrajectorySource>(
+      ee_velocity);
   // Adding orientation Trajectory Source
   auto input_orientation = builder.AddSystem<drake::systems::TrajectorySource>(
       orientation_trajectory);
@@ -284,6 +287,8 @@ int do_main(int argc, char* argv[]) {
   //Connecting x_desired input from trajectory to position controller
   builder.Connect(input_trajectory->get_output_port(),
                   position_controller->get_endpoint_pos_input_port());
+  builder.Connect(input_velocity->get_output_port(),
+                  position_controller->get_endpoint_vel_input_port());
   //Connecting desired orientation to position controller
   builder.Connect(input_orientation->get_output_port(),
                   position_controller->get_endpoint_orient_input_port());

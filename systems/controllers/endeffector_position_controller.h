@@ -46,6 +46,9 @@ class EndEffectorPositionController : public LeafSystem<double> {
    const drake::systems::InputPort<double>& get_endpoint_pos_input_port() const {
      return this->get_input_port(endpoint_position_commanded_port_);
    }
+   const drake::systems::InputPort<double>& get_endpoint_vel_input_port() const {
+       return this->get_input_port(endpoint_velocity_commanded_port_);
+   }
    const drake::systems::InputPort<double>& get_endpoint_orient_input_port() const {
      return this->get_input_port(endpoint_orientation_commanded_port_);
    }
@@ -69,6 +72,7 @@ class EndEffectorPositionController : public LeafSystem<double> {
    double max_angular_vel_;
    int joint_position_measured_port_;
    int endpoint_position_commanded_port_;
+   int endpoint_velocity_commanded_port_;
    int endpoint_orientation_commanded_port_;
    int endpoint_twist_cmd_output_port_;
 

@@ -17,6 +17,8 @@ EndEffectorPositionController::EndEffectorPositionController(
 	  "joint_position_measured", BasicVector<double>(plant_.num_positions())).get_index();
   endpoint_position_commanded_port_ = this->DeclareVectorInputPort(
 	  "endpoint_position_commanded", BasicVector<double>(3)).get_index();
+  endpoint_velocity_commanded_port_ = this->DeclareVectorInputPort(
+      "endpoint_velocity_commanded", BasicVector<double>(3)).get_index();
   endpoint_orientation_commanded_port_ = this->DeclareVectorInputPort(
 	  "endpoint_orientation_commanded", BasicVector<double>(4)).get_index();
   endpoint_twist_cmd_output_port_ = this->DeclareVectorOutputPort(
@@ -39,6 +41,9 @@ void EndEffectorPositionController::CalcOutputTwist(
   VectorX<double> x_desired = this->EvalVectorInput(context,
 	  endpoint_position_commanded_port_)->CopyToVector();
 
+  VectorX<double> xdot_desired = this->EvalVectorInput(context,
+      endpoint_velocity_commanded_port_)->CopyToVector();
+
   VectorX<double> orientation_desired = this->EvalVectorInput(context,
 	  endpoint_orientation_commanded_port_)->CopyToVector();
 
@@ -50,7 +55,7 @@ void EndEffectorPositionController::CalcOutputTwist(
   plant_.CalcPointsPositions(*plant_context, ee_joint_frame_, ee_contact_frame_,
 	                         plant_world_frame_, &x_actual);
 
-  VectorXd diff = k_p_ * (x_desired - x_actual);
+  VectorXd diff = k_p_ * (x_desired - x_actual) + xdot_desired;
 
   std::cout << "desired:\n" << x_desired << std::endl;
 	std::cout << "actual:\n" << x_actual << std::endl;

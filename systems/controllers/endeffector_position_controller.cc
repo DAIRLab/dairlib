@@ -75,13 +75,18 @@ void EndEffectorPositionController::CalcOutputTwist(
   std::cout << "rot: " << std::endl;
   std::cout << rot_a_a_des << std::endl;
   Eigen::Vector3d skewInverse;
-  skewInverse << rot_a_a_des(3, 2), rot_a_a_des(1, 3), rot_a_a_des(2, 1);
+  skewInverse << rot_a_a_des(2, 1), rot_a_a_des(0, 2), rot_a_a_des(1, 0);
+  std::cout << rot_a_a_des(2, 1) << std::endl;
+
 
   // Angle Axis Representation for the given quaternion
   // Eigen::AngleAxis<double> angleaxis_a_a_des =
   //     Eigen::AngleAxis<double>(quat_a_a_des);
   // MatrixXd axis = angleaxis_a_a_des.axis();
   MatrixXd angularVelocity = k_omega_ * skewInverse;
+
+  std::cout << "angvel: " << std::endl;
+  std::cout << angularVelocity << std::endl;
 
   // Transforming angular velocity from joint frame to world frame
   VectorXd angularVelocityWF = plant_.CalcRelativeTransform(

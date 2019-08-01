@@ -60,25 +60,28 @@ void EndEffectorPositionController::CalcOutputTwist(
   std::cout << "desired:\n" << x_desired << std::endl;
 	std::cout << "actual:\n" << x_actual << std::endl;
 
-  // Quaternion for rotation from base to end effector
-  Eigen::Quaternion<double> quat_n_a = plant_.CalcRelativeTransform(
-	  *plant_context, plant_world_frame_, ee_joint_frame_).rotation().ToQuaternion();
+  // Rotation Matrix for rotation from base to end effector
+  drake::Matrix3<double> rot_n_a = plant_.CalcRelativeTransform(
+	  *plant_context, plant_world_frame_, ee_joint_frame_).rotation().matrix();
 
   // Quaternion for rotation from world frame to desired end effector attitude.
-  Eigen::Quaternion<double> quat_n_a_des = Eigen::Quaternion<double>(
-	  orientation_desired(0), orientation_desired(1), orientation_desired(2),
-	  orientation_desired(3));
+  drake::Matrix3<double> rot_n_a_des = Eigen::Quaternion<double>(
+      orientation_desired(0), orientation_desired(1), orientation_desired(2),
+	  orientation_desired(3)).toRotationMatrix();
 
-  // Quaternion for rotation
-  // from end effector attitude to desired end effector attitude.
-  Eigen::Quaternion<double> quat_a_a_des =
-      quat_n_a.conjugate().operator*(quat_n_a_des);
+  // Rotation Matrix from end effector attitude to desired end effector attitude.
+  drake::Matrix3<double> rot_a_a_des = rot_n_a.transpose() * rot_n_a_des ;
+  rot_a_a_des = 0.5 * (rot_a_a_des - rot_a_a_des.transpose());
+  std::cout << "rot: " << std::endl;
+  std::cout << rot_a_a_des << std::endl;
+  Eigen::Vector3d skewInverse;
+  skewInverse << rot_a_a_des(3, 2), rot_a_a_des(1, 3), rot_a_a_des(2, 1);
 
   // Angle Axis Representation for the given quaternion
-  Eigen::AngleAxis<double> angleaxis_a_a_des =
-      Eigen::AngleAxis<double>(quat_a_a_des);
-  MatrixXd axis = angleaxis_a_a_des.axis();
-  MatrixXd angularVelocity = k_omega_ * axis * angleaxis_a_a_des.angle();
+  // Eigen::AngleAxis<double> angleaxis_a_a_des =
+  //     Eigen::AngleAxis<double>(quat_a_a_des);
+  // MatrixXd axis = angleaxis_a_a_des.axis();
+  MatrixXd angularVelocity = k_omega_ * skewInverse;
 
   // Transforming angular velocity from joint frame to world frame
   VectorXd angularVelocityWF = plant_.CalcRelativeTransform(

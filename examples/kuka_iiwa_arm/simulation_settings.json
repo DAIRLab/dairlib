@@ -6,9 +6,9 @@
     ],
     "kuka_gains":
         {
-        "K_P": 10,
+        "K_P": 0,
         "K_R": 20,
-        "K_D": 10,
+        "K_D": 0,
         "K_OMEGA": 0.15
     },
     "limits":
@@ -17,5 +17,5 @@
             "max_angular_veloctiy" : 50.0,
             "joint_torque_limit" : 70.0
     },
-    "default_config": [0, 0.75, 0, 0, 0, 1.57, 0]
+    "default_config": [0, 1.54, 0, 0, 0, 1.57, 0]
 }

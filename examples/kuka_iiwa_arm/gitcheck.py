@@ -48,6 +48,7 @@ def main():
     firstLine = "On branch "
     branch = out[(out.find(firstLine) + len(firstLine)):out.find("\n")]
 
+    """
     # Finds location of current branch ie. "origin" or "upstream"
     cut = out[out.find("'"):out.find(".")]
     stripped = cut.strip("'")
@@ -57,6 +58,7 @@ def main():
     out1 = subprocess.getoutput(['git config --get remote.' + origin + '.url', 'l'])
     repo = out1.replace(".git", "").replace("https://github.com/", "")
     print(branch + " " + repo)
+    """
 
     # Return first six digits of hash
     sha = subprocess.getoutput(['git rev-parse HEAD', 'l'])[:6]
@@ -115,11 +117,12 @@ def main():
     lcmfile = 'test' + str(len(column)) + '.log'
     configfile = input("Test Config Log File: ")
     result = input("Result: ")
+    git_repository = input("Git Repository: ")
 
     # Initializes body of the update (organizes each value into columns)
     body = {
     "values": [
-        [testNum, date, time, description, simulated, lcmfile, configfile, result, repo, branch, sha]
+        [testNum, date, time, description, simulated, lcmfile, configfile, result, git_repository, branch, sha]
     ],
     "majorDimension": "ROWS",
     "range": printRange

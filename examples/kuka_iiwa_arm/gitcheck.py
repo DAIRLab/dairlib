@@ -43,16 +43,16 @@ def main():
         exit()
     else:
         print("Branch is up to date!")
-    
+
     # Finds branch name
     firstLine = "On branch "
     branch = out[(out.find(firstLine) + len(firstLine)):out.find("\n")]
-    
+
     # Finds location of current branch ie. "origin" or "upstream"
     cut = out[out.find("'"):out.find(".")]
     stripped = cut.strip("'")
     origin = stripped[:stripped.find("/")]
-    
+
     # Returns url of remote repo
     out1 = subprocess.getoutput(['git config --get remote.' + origin + '.url', 'l'])
     repo = out1.replace(".git", "").replace("https://github.com/", "")
@@ -92,7 +92,7 @@ def main():
     # Runs lcm-logger, creates log final upon completion.
     print("Press ctrl + c to exit lcm-logger when experiment is complete.")
     time = str(datetime.now()).replace(" ", "")
-    os.system('lcm-logger test' + str(len(column)) + '@' + time + '.log')
+    os.system('/opt/lcm/1.3.95.20180523/bin/lcm-logger test' + str(len(column)) + '@' + time + '.log')
 
     # Uploads lcm log file to Google Drive.
     fileName = 'test' + str(len(column)) + '@' + time + '.log'
@@ -102,7 +102,7 @@ def main():
 
     # Creates the print range for the next test log (the next unedited row)
     printRange = 'Sheet1!A' + str(len(column) + 1) + ':K' + str(len(column) + 1)
-    
+
     # Automatically creates test number, date, and time
     testNum = str(len(column))
     date = datetime.now().strftime('%m/%d/%y')

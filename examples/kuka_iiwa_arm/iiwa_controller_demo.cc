@@ -170,7 +170,7 @@ int do_main(int argc, char* argv[]) {
   // The coordinates for the end effector with respect to the last joint,
   // used to determine location of end effector
   Eigen::Vector3d eeContactFrame;
-  eeContactFrame << 0.0, 0, 0.09;
+  eeContactFrame << 0.0, 0, 0.0;
 
   const std::string link_7 = "iiwa_link_7";
 

@@ -79,17 +79,27 @@ void EndEffectorPositionController::CalcOutputTwist(
   // Quaternion for rotation
   // from end effector attitude to desired end effector attitude.
   Eigen::Quaternion<double> quat_a_a_des =
-      quat_n_a.conjugate().operator*(quat_n_a_des);
+      quat_n_a.conjugate() * (quat_n_a_des);
 
   // Angle Axis Representation for the given quaternion
   Eigen::AngleAxis<double> angleaxis_a_a_des =
       Eigen::AngleAxis<double>(quat_a_a_des);
   MatrixXd axis = angleaxis_a_a_des.axis();
   MatrixXd angularVelocity = k_omega_ * axis * angleaxis_a_a_des.angle();
+	std::cout << "angular error: " << std::endl;
+	std::cout << angleaxis_a_a_des.angle() << std::endl;
 
   // Transforming angular velocity from joint frame to world frame
   VectorXd angularVelocityWF = plant_.CalcRelativeTransform(
-	  *plant_context, ee_joint_frame_, plant_world_frame_).rotation() * angularVelocity;
+	  *plant_context, plant_world_frame_, ee_joint_frame_).rotation() * angularVelocity;
+
+				// std::cout << "angular error WTF: " << std::endl;
+				// std::cout << plant_.CalcRelativeTransform(
+				//   *plant_context, plant_world_frame_, ee_joint_frame_).rotation() * Eigen::MatrixXd::Identity(3, 3) << std::endl;
+
+		// std::cout << "angular error WF: " << std::endl;
+		// std::cout << plant_.CalcRelativeTransform(
+		//   *plant_context, plant_world_frame_, ee_joint_frame_).rotation() * axis * angleaxis_a_a_des.angle()  << std::endl;
 
   // Limit maximum commanded linear velocity
   double currVel = diff.norm();

@@ -28,21 +28,26 @@ def main():
     #os.system("git fetch")
     #print("git fetch")
     out = subprocess.getoutput(['git status', 'l'])
+    git_updated = True
 
     if "untracked files present" in out:
-        print ("Untracked Files Present. Please add and commit file changes.")
-        exit()
+        print ("Untracked Files Present.")
+        git_updated = False
     if "Changes to be committed" in out:
         print("Uncommitted changes in local workspace.")
-        exit()
+        git_updated = False
     if "Changes not staged for commit" in out:
         print("Unstaged file changes in workspace")
-        exit()
+        git_updated = False
     if "ahead of " in out:
         print("Your branch is ahead of remote repository.")
-        exit()
-    else:
+        git_updated = False
+    if git_updated:
         print("Branch is up to date!")
+    else:
+        decision = input("Enter 'yes' to continue :")
+        if decision != "yes":
+            exit()
 
     # Finds branch name
     firstLine = "On branch "
@@ -97,9 +102,39 @@ def main():
     os.system('/opt/lcm/1.3.95.20180523/bin/lcm-logger test' + str(len(column)) + '@' + time + '.log')
 
     # Uploads lcm log file to Google Drive.
-    fileName = 'test' + str(len(column)) + '@' + time + '.log'
-    metadata = {'name': fileName}
-    media = MediaFileUpload(fileName, mimetype='application/octet-stream')
+    lcmfileName = 'test' + str(len(column)) + '@' + time + '.log'
+    folder_id = '10DH0fMYXZZ03kRClNkVQhP8KMUBzJPtF'
+    metadata = {
+        'name': lcmfileName,
+        'parents': [folder_id]
+    }
+    media = MediaFileUpload(lcmfileName, mimetype='application/octet-stream')
+    res = DRIVE.files().create(body=metadata, media_body=media, fields='id').execute()
+
+    # Initalizes formatted date and time strings
+    date = datetime.now().strftime('%m_%d_%y')
+    time = datetime.now().strftime('%I:%M %p')
+
+    # Uploads kuka settings file to Google Drive.
+    config_file = 'simulation_settings.json'
+    folder_id1 = '10O80Ue9wcQOEu4EKbQW7IG4Rnj55oaRm'
+    config_drive_file_name = config_file + date + time
+    metadata = {
+        'name' : config_drive_file_name,
+        'parents': [folder_id1]
+    }
+    media = MediaFileUpload(config_file, mimetype='text/plain')
+    res = DRIVE.files().create(body=metadata, media_body=media, fields='id').execute()
+
+    trajectories_file = 'Trajectories.csv'
+    folder_id2 = '1uvtnitohhBak9PavuX2jhznHjuFSYAR7'
+    trajectories_drive_name = trajectories_file + "_" + date + "_" + time
+    metadata = {
+        'name': trajectories_drive_name,
+        'parents': [folder_id2]
+    }
+
+    media = MediaFileUpload(trajectories_file, mimetype='text/plain')
     res = DRIVE.files().create(body=metadata, media_body=media, fields='id').execute()
 
     # Creates the print range for the next test log (the next unedited row)
@@ -107,22 +142,18 @@ def main():
 
     # Automatically creates test number, date, and time
     testNum = str(len(column))
-    date = datetime.now().strftime('%m/%d/%y')
-    time = datetime.now().strftime('%I:%M %p')
 
     # Prompts the user for missing data.
     print("Test #" + str(len(column)) + ": ")
     description = input("Description: ")
     simulated = input("Simulated Before?: ")
-    lcmfile = 'test' + str(len(column)) + '.log'
-    configfile = input("Test Config Log File: ")
     result = input("Result: ")
     git_repository = input("Git Repository: ")
 
     # Initializes body of the update (organizes each value into columns)
     body = {
     "values": [
-        [testNum, date, time, description, simulated, lcmfile, configfile, result, git_repository, branch, sha]
+        [testNum, date, time, description, simulated, lcmfileName, config_drive_file_name, result, git_repository, branch, sha]
     ],
     "majorDimension": "ROWS",
     "range": printRange

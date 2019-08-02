@@ -49,7 +49,7 @@ def main():
     if git_updated:
         print("Branch is up to date!")
     else:
-        decision = input("Enter 'yes' to continue :")
+        decision = input("Enter 'yes' to continue: ")
         if decision != "yes":
             exit()
 

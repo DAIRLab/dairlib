@@ -15,21 +15,23 @@ from apiclient.http import MediaFileUpload
 
 # ONLY COMPATIBLE WITH PYTHON3
 
-# If modifying these scopes, delete the file token.pickle.
+# Determines the range of authorization for this program. Currently, this file can manipulate drive files and edit google sheets.
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file'
 
 # Log spreadsheet ID
 SPREADSHEET_ID = '1oZMdnEAaeDzIHSmzrWswwlkcAY0fknxTYA6QMBn1-JM'
-# Search range used to find current test number (All numbers in first column)
-RANGE_NAME = 'Sheet1!A1:A100'
+# Search range used to find current test number (Basically all numbers in first column)
+RANGE_NAME = 'Sheet1!A1:A1000'
 
 def main():
-    #Checks status of local branch in relation to remote branch.
-    #os.system("git fetch")
-    #print("git fetch")
-    out = subprocess.getoutput(['git status', 'l'])
-    git_updated = True
+    # fetches most recent remote repo
+    os.system("git fetch")
 
+    # Checks status of local branch in relation to remote branch by calling 'git status' in the terminal
+    git_updated = True
+    out = subprocess.getoutput(['git status', 'l'])
+
+    # Checks for various keywords that would indicate the local repo is not up to date
     if "untracked files present" in out:
         print ("Untracked Files Present.")
         git_updated = False
@@ -42,6 +44,8 @@ def main():
     if "ahead of " in out:
         print("Your branch is ahead of remote repository.")
         git_updated = False
+
+    # If the local repo is not up to date, gives the user the option to continue anyway.
     if git_updated:
         print("Branch is up to date!")
     else:
@@ -126,6 +130,7 @@ def main():
     media = MediaFileUpload(config_file, mimetype='text/plain')
     res = DRIVE.files().create(body=metadata, media_body=media, fields='id').execute()
 
+    # Uploads trajectories file to Google Drive.
     trajectories_file = 'Trajectories.csv'
     folder_id2 = '1uvtnitohhBak9PavuX2jhznHjuFSYAR7'
     trajectories_drive_name = trajectories_file + "_" + date + "_" + time
@@ -133,14 +138,13 @@ def main():
         'name': trajectories_drive_name,
         'parents': [folder_id2]
     }
-
     media = MediaFileUpload(trajectories_file, mimetype='text/plain')
     res = DRIVE.files().create(body=metadata, media_body=media, fields='id').execute()
 
-    # Creates the print range for the next test log (the next unedited row)
+    # Creates google sheets print range for the next test log (the next unedited row)
     printRange = 'Sheet1!A' + str(len(column) + 1) + ':K' + str(len(column) + 1)
 
-    # Automatically creates test number, date, and time
+    # Initializes test number variable
     testNum = str(len(column))
 
     # Prompts the user for missing data.

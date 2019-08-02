@@ -16,8 +16,10 @@ using std::endl;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::Isometry3d;
+using Eigen::Quaterniond;
 
 using drake::systems::Context;
 using drake::systems::EventStatus;
@@ -140,11 +142,11 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
         .evaluator().get();
 
     // Initialize state mean
-    Eigen::Matrix3d R0;
+    Matrix3d R0;
     Eigen::Vector3d v0, p0, bg0, ba0;
     R0 << 1, 0, 0,  // initial orientation
-        0, 1, 0,   // IMU frame is rotated 90deg about the x-axis
-        0, 0, 1;
+          0, 1, 0,
+          0, 0, 1;
     v0 << 0, 0, 0;   // initial velocity
     p0 << 0, 0, 1.015;   // initial position
     bg0 << 0, 0, 0;  // initial gyroscope bias
@@ -163,7 +165,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     noise_params_.setContactNoise(0.1);
 
     auto P = initial_state_.getP();
-    P.block(P.rows() - 6, P.rows() - 6, 6, 6) = .01*Eigen::MatrixXd::Identity(6, 6);
+    P.block(P.rows() - 6, P.rows() - 6, 6, 6) = .01*MatrixXd::Identity(6, 6);
     initial_state_.setP(P);
 
     filter_ = std::make_unique<inekf::InEKF>(initial_state_, noise_params_);
@@ -560,7 +562,7 @@ void CassieRbtStateEstimator::contactEstimation(
       *pelvis_body);
   MatrixXd R_WB = pelvis_pose.linear();
   Vector3d gravity_in_pelvis_frame = R_WB.transpose()*gravity_;
-  alpha_imu -= gravity_in_pelvis_frame;
+  alpha_imu -= gravity_in_pelvis_frame;  // TODO(yminchen): should be plus sign
 
   std::vector<double> optimal_cost;
 
@@ -972,31 +974,46 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       output_gt.SetPositionAtIndex(position_index_map_.at("base_qw"), 1);
     }
 
-    // Debugging print statements
-    cout << "Ground Truth: " << endl;
-    cout << "Positions: " << endl;
-    cout << output_gt.GetPositions().head(3).transpose() << endl;
-    cout << "Orientation (quaternion) : " << endl;
-    cout << output_gt.GetPositions().segment<4>(3).transpose() << endl;
-    cout << "Velocities: " << endl;
-    cout << output_gt.GetVelocities().head(6).transpose() << endl;
-
-    std::ofstream ofile;
-    ofile.open("/home/nanda/DAIR/plotting/ekf.csv",
-               std::ios::out | std::ios::app);
-    ofile << current_time << ", ";
-    for (int i = 0; i < 7; ++i) {
-      ofile << output_gt.GetPositions()[i] << ", ";
-    }
-    for (int i = 0; i < 6; ++i) {
-      ofile << output_gt.GetVelocities()[i] << ", ";
-    }
-
+    // Get kinematics cache for ground truth
     const int pelvis_index = GetBodyIndexFromName(tree_, "pelvis");
     const int left_toe_ind = GetBodyIndexFromName(tree_, "toe_left");
     const int right_toe_ind = GetBodyIndexFromName(tree_, "toe_right");
     KinematicsCache<double> cache_gt = tree_.doKinematics(
         output_gt.GetPositions(), output_gt.GetVelocities(), true);
+
+    // Debugging print statements
+    VectorXd imu_pos_wrt_world(7);
+    imu_pos_wrt_world.head(3) = tree_.transformPoints(
+        cache_gt, imu_pos_, pelvis_index, 0);
+    imu_pos_wrt_world.tail(4) = output_gt.GetPositions().segment<4>(3);
+    VectorXd imu_vel_wrt_world(6);
+    imu_vel_wrt_world.head(3) = output_gt.GetVelocities().head(3);
+    imu_vel_wrt_world.tail(3) = tree_.transformPointsJacobian(
+        cache_gt, imu_pos_, pelvis_index, 0, false)*output_gt.GetVelocities();
+    cout << "Ground Truth: " << endl;
+    cout << "Positions: " << endl;
+    // cout << output_gt.GetPositions().head(3).transpose() << endl;
+    cout << imu_pos_wrt_world.transpose() << endl;
+    cout << "Orientation (quaternion) : " << endl;
+    cout << output_gt.GetPositions().segment<4>(3).transpose() << endl;
+    cout << "Velocities: " << endl;
+    // cout << output_gt.GetVelocities().head(6).transpose() << endl;
+    cout << imu_vel_wrt_world.transpose() << endl;
+
+    std::ofstream ofile;
+    // ofile.open("/home/nanda/DAIR/plotting/ekf.csv",
+    //            std::ios::out | std::ios::app);
+    ofile.open("/home/yu-ming/Documents/workspace/plotting/ekf.csv",
+               std::ios::out | std::ios::app);
+    ofile << current_time << ", ";
+    for (int i = 0; i < 7; ++i) {
+      // ofile << output_gt.GetPositions()[i] << ", ";
+      ofile << imu_pos_wrt_world[i] << ", ";
+    }
+    for (int i = 0; i < 6; ++i) {
+      // ofile << output_gt.GetVelocities()[i] << ", ";
+      ofile << imu_vel_wrt_world[i] << ", ";
+    }
 
     // Debugging print statements
     cout << "Leg positions: " << endl;
@@ -1026,6 +1043,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     MatrixXd R_WB = pelvis_pose.linear();
     Vector3d gravity_in_pelvis_frame = R_WB.transpose() * gravity_;
     alpha_imu -= 2*gravity_in_pelvis_frame;
+    // TODO(yminchen): no need to have above 6 lines of code once you are using
+    // the log file from the correct simultion.
 
     imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
         imu_angular_velocity[2], alpha_imu[0],
@@ -1041,21 +1060,21 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Debugging print statements
     cout << "Prediction: " << endl;
     cout << "Positions: " << endl;
-    cout << filter_.get()->getState().getPosition().transpose() << endl;
+    cout << filter_->getState().getPosition().transpose() << endl;
     cout << "Orientation (quaternion) : " << endl;
-    Eigen::Quaterniond q_prop = Eigen::Quaterniond(filter_.get()->getState().getRotation());
+    Quaterniond q_prop = Quaterniond(filter_->getState().getRotation());
     q_prop.normalize();
     cout << q_prop.w() << " ";
     cout << q_prop.vec().transpose() << endl;
     cout << "Velocities: " << endl;
-    cout << filter_.get()->getState().getVelocity().transpose() << endl;
+    cout << filter_->getState().getVelocity().transpose() << endl;
     cout << "X: " << endl;
-    cout << filter_.get()->getState().getX() << endl;
+    cout << filter_->getState().getX() << endl;
 
     // Estimated state
-    auto state = filter_.get()->getState();
+    auto state = filter_->getState();
     Vector3d filtered_position = state.getPosition();
-    Eigen::Matrix3d filtered_orientation = state.getRotation();
+    Matrix3d filtered_orientation = state.getRotation();
     Vector3d filtered_velocity = state.getVelocity();
 
     OutputVector<double> filtered_output(tree_.get_num_positions(),
@@ -1066,12 +1085,14 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     AssignNonFloatingBaseStateToOutputVector(cassie_out, &filtered_output);
 
     fb_state.head(3) = filtered_position;
-    Eigen::Quaterniond q(filtered_orientation);
+    Quaterniond q(filtered_orientation);
     q.normalize();
     fb_state[3] = q.w();
     fb_state.segment<3>(4) = q.vec();
-    fb_state.segment<3>(7) = filtered_velocity;
-    fb_state.tail(3) = output_gt.GetVelocities().segment<3>(3);
+    // fb_state.segment<3>(7) = filtered_velocity;
+    fb_state.segment<3>(7) = imu_measurement.head(3);
+    // fb_state.tail(3) = output_gt.GetVelocities().segment<3>(3);
+    fb_state.tail(3) = filtered_velocity;  //TODO(yminchen) convert imu vel to pelvis vel
     AssignFloatingBaseStateToOutputVector(fb_state, &filtered_output);
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
@@ -1085,32 +1106,32 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     contacts.push_back(std::pair<int ,bool>(0, left_contact));
     contacts.push_back(std::pair<int ,bool>(1, right_contact));
 
-    filter_.get()->setContacts(contacts);
+    filter_->setContacts(contacts);  // TODO(yminchen): double check the usage
 
     // Step 4 - EKF (measurement step)
     KinematicsCache<double> cache = tree_.doKinematics(
         filtered_output.GetPositions(), filtered_output.GetVelocities(), true);
     Eigen::Vector3d d, p;
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
-    Eigen::Matrix<double, 6, 6> covariance = Eigen::MatrixXd::Identity(6, 6);
+    Eigen::Matrix<double, 6, 6> covariance = MatrixXd::Identity(6, 6);
     Eigen::Matrix<double, 22, 22> cov_w =
-        0.000289 * Eigen::MatrixXd::Identity(22, 22);
+        0.000289 * MatrixXd::Identity(22, 22);
     std::vector<int> toe_indices = {left_toe_ind, right_toe_ind};
 
     // Debugging print statements
     cout << "Rotation differences: " << endl;
     cout << "Rotation matrix from EKF: " << endl;
-    cout << filter_.get()->getState().getRotation() << endl;
+    cout << filter_->getState().getRotation() << endl;
     cout << "Ground truth rotation: " << endl;
-    Eigen::Quaterniond q_real;
+    Quaterniond q_real;
     q_real.w() = output_gt.GetPositions()[3];
     q_real.vec() = output_gt.GetPositions().segment<3>(4);
-    Eigen::MatrixXd R_actual = q_real.toRotationMatrix();
+    MatrixXd R_actual = q_real.toRotationMatrix();
     cout << R_actual << endl;
 
     inekf::vectorKinematics measured_kinematics;
     for (int i = 0; i < 2 ; i++) {
-      pose.block<3, 3>(0, 0) = Eigen::Matrix3d::Identity();
+      pose.block<3, 3>(0, 0) = Matrix3d::Identity();
       pose.block<3, 1>(0, 3) = tree_.transformPoints(
           cache, Vector3d::Zero(), toe_indices[i], pelvis_index) - imu_pos_;
 
@@ -1119,38 +1140,38 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       cout << pose.block<3, 1>(0, 3).transpose() << endl;
 
       // Jacobian is not right - fix this before porting to the robot
-      Eigen::MatrixXd J = tree_.transformPointsJacobian(
+      MatrixXd J = tree_.transformPointsJacobian(
           cache, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
       covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .0001*Vector3d::Identity();
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);
     }
-    filter_.get()->CorrectKinematics(measured_kinematics);
+    filter_->CorrectKinematics(measured_kinematics);
 
     // Debugging print statements
     cout << "Update: " << endl;
     cout << "Positions: " << endl;
-    cout << filter_.get()->getState().getPosition().transpose() << endl;
+    cout << filter_->getState().getPosition().transpose() << endl;
     cout << "Orientation (quaternion) : " << endl;
-    q = Eigen::Quaterniond(filter_.get()->getState().getRotation());
+    q = Quaterniond(filter_->getState().getRotation());
     q.normalize();
     cout << q.w() << " ";
     cout << q.vec().transpose() << endl;
     cout << "Velocities: " << endl;
-    cout << filter_.get()->getState().getVelocity().transpose() << endl;
+    cout << filter_->getState().getVelocity().transpose() << endl;
     // cout << "P: " << endl;
-    // cout << filter_.get()->getState().getP() << endl;
+    // cout << filter_->getState().getP() << endl;
     cout << "X: " << endl;
-    cout << filter_.get()->getState().getX() << endl;
+    cout << filter_->getState().getX() << endl;
     cout << "Theta: " << endl;
-    cout << filter_.get()->getState().getTheta() << endl;
+    cout << filter_->getState().getTheta() << endl;
 
     for (int i = 0; i < 3; ++i) {
-      ofile << filter_.get()->getState().getPosition()[i] << ", ";
+      ofile << filter_->getState().getPosition()[i] << ", ";
     }
     ofile << q.w() << ", " << q.vec()[0] << ", " << q.vec()[1] << ", " << q.vec()[2] << ", ";
     for (int i = 0; i < 3; ++i) {
-      ofile << filter_.get()->getState().getVelocity()[i] << ", ";
+      ofile << filter_->getState().getVelocity()[i] << ", ";
     }
     ofile << "\n";
     ofile.close();

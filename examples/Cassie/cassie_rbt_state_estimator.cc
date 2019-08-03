@@ -157,8 +157,8 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     initial_state_.setGyroscopeBias(bg0);
     initial_state_.setAccelerometerBias(ba0);
 
-    // Testing
-    initial_state_.setPosition(Vector3d(0.0565299, -0.000190686, 0.935761));
+    // Testing (TODO(yminchen): delete this)
+    initial_state_.setPosition(Vector3d(0.0318638, 0,  0.969223));
 
     // Initialize state covariance
     noise_params_.setGyroscopeNoise(0.01);
@@ -558,14 +558,12 @@ void CassieRbtStateEstimator::contactEstimation(
   VectorXd J_imu_dot_times_v = tree_.transformPointsJacobianDotTimesV(
       cache, imu_pos_, pelvis_ind, 0);
 
-  Vector3d alpha_imu = output.GetIMUAccelerations();
-
   RigidBody<double>* pelvis_body = tree_.FindBody("pelvis");
-  Isometry3d pelvis_pose = tree_.CalcBodyPoseInWorldFrame(cache,
-      *pelvis_body);
+  Isometry3d pelvis_pose = tree_.CalcBodyPoseInWorldFrame(cache, *pelvis_body);
   MatrixXd R_WB = pelvis_pose.linear();
-  Vector3d gravity_in_pelvis_frame = R_WB.transpose()*gravity_;
-  alpha_imu -= gravity_in_pelvis_frame;  // TODO(yminchen): should be plus sign
+  // Vector3d gravity_in_pelvis_frame = R_WB.transpose()*gravity_;
+  // Vector3d alpha_imu = output.GetIMUAccelerations() + gravity_in_pelvis_frame;
+  Vector3d alpha_imu = R_WB * output.GetIMUAccelerations() + gravity_;
 
   std::vector<double> optimal_cost;
 
@@ -945,6 +943,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
   if (current_time > prev_t) {
 
+    cout << "current_time = " << current_time << endl;
     double dt = current_time - prev_t;
     cout << "dt: " << dt << endl;
 
@@ -1034,23 +1033,9 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
         cassie_out.pelvis.vectorNav.linearAcceleration;
     const double* imu_angular_velocity =
         cassie_out.pelvis.vectorNav.angularVelocity;
-
-    Vector3d alpha_imu;
-    alpha_imu << imu_linear_acceleration[0], imu_linear_acceleration[1],
-    imu_linear_acceleration[2];
-    // Uncomment these lines to remove gravity vector from IMU acceleration
-    RigidBody<double>* pelvis_body = tree_.FindBody("pelvis");
-    Isometry3d pelvis_pose =
-        tree_.CalcBodyPoseInWorldFrame(cache_gt, *pelvis_body);
-    MatrixXd R_WB = pelvis_pose.linear();
-    Vector3d gravity_in_pelvis_frame = R_WB.transpose() * gravity_;
-    alpha_imu -= 2*gravity_in_pelvis_frame;
-    // TODO(yminchen): no need to have above 6 lines of code once you are using
-    // the log file from the correct simultion.
-
     imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
-        imu_angular_velocity[2], alpha_imu[0],
-        alpha_imu[1], alpha_imu[2];
+        imu_angular_velocity[2], imu_linear_acceleration[0],
+        imu_linear_acceleration[1], imu_linear_acceleration[2];
 
     filter_->Propagate(
         context.get_discrete_state(prev_IMU_measurement_).get_value(), dt);
@@ -1058,6 +1043,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     discrete_state->get_mutable_vector(prev_IMU_measurement_)
             .get_mutable_value()
         << imu_measurement;
+    cout << "imu_measurement = " << imu_measurement.transpose() << endl;
 
     // Debugging print statements
     // cout << "Prediction: " << endl;
@@ -1111,6 +1097,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     int right_contact = 0;
     contactEstimation(output_gt, dt,
         discrete_state, &left_contact, &right_contact);  // TODO(yminchen): check why the algorithm was changed
+    cout << "left right contacts = " << left_contact << ", " << right_contact << endl;
 
     std::vector<std::pair<int, bool>> contacts;
     contacts.push_back(std::pair<int ,bool>(0, left_contact));

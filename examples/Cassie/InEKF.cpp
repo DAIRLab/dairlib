@@ -124,7 +124,7 @@ void InEKF::Propagate(const Eigen::Matrix<double, 6, 1>& m, double dt) {
   Eigen::Vector3d p = state_.getPosition();
 
   // cout << "R*a + g_: (from InEKF)" << endl;
-  cout << (R*a + g_).transpose() << endl;
+  // cout << (R*a + g_).transpose() << endl;
   // Strapdown IMU motion model
   Eigen::Vector3d phi = w * dt;
   Eigen::Matrix3d R_pred = R * Exp_SO3(phi);

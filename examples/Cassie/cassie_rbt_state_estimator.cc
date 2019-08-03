@@ -157,6 +157,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     initial_state_.setGyroscopeBias(bg0);
     initial_state_.setAccelerometerBias(ba0);
 
+    // Testing
+    initial_state_.setPosition(Vector3d(0.0565299, -0.000190686, 0.935761));
+
     // Initialize state covariance
     noise_params_.setGyroscopeNoise(0.01);
     noise_params_.setAccelerometerNoise(0.1);
@@ -943,8 +946,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
   if (current_time > prev_t) {
 
     double dt = current_time - prev_t;
-    cout << "dt: " << endl;
-    cout << dt << endl;
+    cout << "dt: " << dt << endl;
 
     // Perform State Estimation (in several steps)
     // Step 1 - Solve for the unknown joint angle
@@ -990,15 +992,15 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     imu_vel_wrt_world.head(3) = output_gt.GetVelocities().head(3);
     imu_vel_wrt_world.tail(3) = tree_.transformPointsJacobian(
         cache_gt, imu_pos_, pelvis_index, 0, false)*output_gt.GetVelocities();
-    cout << "Ground Truth: " << endl;
-    cout << "Positions: " << endl;
-    // cout << output_gt.GetPositions().head(3).transpose() << endl;
-    cout << imu_pos_wrt_world.transpose() << endl;
-    cout << "Orientation (quaternion) : " << endl;
-    cout << output_gt.GetPositions().segment<4>(3).transpose() << endl;
-    cout << "Velocities: " << endl;
-    // cout << output_gt.GetVelocities().head(6).transpose() << endl;
-    cout << imu_vel_wrt_world.transpose() << endl;
+    // cout << "Ground Truth: " << endl;
+    // cout << "Positions: " << endl;
+    // // cout << output_gt.GetPositions().head(3).transpose() << endl;
+    // cout << imu_pos_wrt_world.transpose() << endl;
+    // cout << "Orientation (quaternion) : " << endl;
+    // cout << output_gt.GetPositions().segment<4>(3).transpose() << endl;
+    // cout << "Velocities: " << endl;
+    // // cout << output_gt.GetVelocities().head(6).transpose() << endl;
+    // cout << imu_vel_wrt_world.transpose() << endl;
 
     std::ofstream ofile;
     // ofile.open("/home/nanda/DAIR/plotting/ekf.csv",
@@ -1016,14 +1018,14 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     }
 
     // Debugging print statements
-    cout << "Leg positions: " << endl;
-    cout << tree_.transformPoints(cache_gt, Vector3d::Zero(), left_toe_ind, 0)
-                .transpose()
-         << endl;
-    cout << tree_.transformPoints(cache_gt, Vector3d::Zero(), right_toe_ind, 0)
-                .transpose()
-         << endl;
-    cout << endl;
+    // cout << "Leg positions: " << endl;
+    // cout << tree_.transformPoints(cache_gt, Vector3d::Zero(), left_toe_ind, 0)
+    //             .transpose()
+    //      << endl;
+    // cout << tree_.transformPoints(cache_gt, Vector3d::Zero(), right_toe_ind, 0)
+    //             .transpose()
+    //      << endl;
+    // cout << endl;
 
     // Step 2 - EKF (update step)
     // Propagate step
@@ -1058,18 +1060,18 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
         << imu_measurement;
 
     // Debugging print statements
-    cout << "Prediction: " << endl;
-    cout << "Positions: " << endl;
-    cout << filter_->getState().getPosition().transpose() << endl;
-    cout << "Orientation (quaternion) : " << endl;
-    Quaterniond q_prop = Quaterniond(filter_->getState().getRotation());
-    q_prop.normalize();
-    cout << q_prop.w() << " ";
-    cout << q_prop.vec().transpose() << endl;
-    cout << "Velocities: " << endl;
-    cout << filter_->getState().getVelocity().transpose() << endl;
-    cout << "X: " << endl;
-    cout << filter_->getState().getX() << endl;
+    // cout << "Prediction: " << endl;
+    // cout << "Positions: " << endl;
+    // cout << filter_->getState().getPosition().transpose() << endl;
+    // cout << "Orientation (quaternion) : " << endl;
+    // Quaterniond q_prop = Quaterniond(filter_->getState().getRotation());
+    // q_prop.normalize();
+    // cout << q_prop.w() << " ";
+    // cout << q_prop.vec().transpose() << endl;
+    // cout << "Velocities: " << endl;
+    // cout << filter_->getState().getVelocity().transpose() << endl;
+    // cout << "X: " << endl;
+    // cout << filter_->getState().getX() << endl;
 
     // Estimated floating base state
     VectorXd fb_state_est(13);
@@ -1123,20 +1125,22 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // rotation part of pose and covariance is unused in EKF
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
     Eigen::Matrix<double, 6, 6> covariance = MatrixXd::Identity(6, 6);
+    // Eigen::Matrix<double, 22, 22> cov_w =
+    //     0.000289 * MatrixXd::Identity(22, 22); // nosie of joints measurement
     Eigen::Matrix<double, 22, 22> cov_w =
-        0.000289 * MatrixXd::Identity(22, 22); // nosie of joints measurement
+        0.0 * MatrixXd::Identity(22, 22); // nosie of joints measurement
     std::vector<int> toe_indices = {left_toe_ind, right_toe_ind};
 
     // Debugging print statements
-    cout << "Rotation differences: " << endl;
-    cout << "Rotation matrix from EKF: " << endl;
-    cout << filter_->getState().getRotation() << endl;
-    cout << "Ground truth rotation: " << endl;
+    // cout << "Rotation differences: " << endl;
+    // cout << "Rotation matrix from EKF: " << endl;
+    // cout << filter_->getState().getRotation() << endl;
+    // cout << "Ground truth rotation: " << endl;
     Quaterniond q_real;
     q_real.w() = output_gt.GetPositions()[3];
     q_real.vec() = output_gt.GetPositions().segment<3>(4);
     MatrixXd R_actual = q_real.toRotationMatrix();
-    cout << R_actual << endl;
+    // cout << R_actual << endl;
 
     inekf::vectorKinematics measured_kinematics;
     for (int i = 0; i < 2 ; i++) {
@@ -1145,36 +1149,37 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
           cache, Vector3d::Zero(), toe_indices[i], pelvis_index) - imu_pos_;
 
       // Debugging print statements
-      cout << "Pose: " << endl;
-      cout << pose.block<3, 1>(0, 3).transpose() << endl;
+      // cout << "Pose: " << endl;
+      // cout << pose.block<3, 1>(0, 3).transpose() << endl;
 
       // TODO(yminchen): the jacobian here should be J_imu_to_toe viewed in imu
       // frame. Need to fix this.
       MatrixXd J = tree_.transformPointsJacobian(
           cache, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
-      covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .0001*Vector3d::Identity();
+      // covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .0001*Vector3d::Identity();
+      covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .00001*Vector3d::Identity();
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);
     }
     filter_->CorrectKinematics(measured_kinematics);
 
     // Debugging print statements
-    cout << "Update: " << endl;
-    cout << "Positions: " << endl;
-    cout << filter_->getState().getPosition().transpose() << endl;
-    cout << "Orientation (quaternion) : " << endl;
     q = Quaterniond(filter_->getState().getRotation());
     q.normalize();
-    cout << q.w() << " ";
-    cout << q.vec().transpose() << endl;
-    cout << "Velocities: " << endl;
-    cout << filter_->getState().getVelocity().transpose() << endl;
-    // cout << "P: " << endl;
-    // cout << filter_->getState().getP() << endl;
-    cout << "X: " << endl;
-    cout << filter_->getState().getX() << endl;
-    cout << "Theta: " << endl;
-    cout << filter_->getState().getTheta() << endl;
+    // cout << "Update: " << endl;
+    // cout << "Positions: " << endl;
+    // cout << filter_->getState().getPosition().transpose() << endl;
+    // cout << "Orientation (quaternion) : " << endl;
+    // cout << q.w() << " ";
+    // cout << q.vec().transpose() << endl;
+    // cout << "Velocities: " << endl;
+    // cout << filter_->getState().getVelocity().transpose() << endl;
+    // // cout << "P: " << endl;
+    // // cout << filter_->getState().getP() << endl;
+    // cout << "X: " << endl;
+    // cout << filter_->getState().getX() << endl;
+    // cout << "Theta: " << endl;
+    // cout << filter_->getState().getTheta() << endl;
 
     for (int i = 0; i < 3; ++i) {
       ofile << filter_->getState().getPosition()[i] << ", ";

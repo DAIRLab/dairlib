@@ -63,5 +63,16 @@ bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
   return joints_within_limits;
 }
 
+bool IsFloatingBase(const RigidBodyTree<double>& tree){
+  return tree.get_body(1).getJoint().is_floating();
+}
+
+void SetZeroQuaternionToIdentity(Eigen::VectorXd* q) {
+  if (q->segment(3,4).norm() == 0.0) {
+    DRAKE_ASSERT(q->segment(3,4).norm() != 0);
+    (*q)(3) = 1.0;
+  }
+}
+
 }  // namespace multibody
 }  // namespace dairlib

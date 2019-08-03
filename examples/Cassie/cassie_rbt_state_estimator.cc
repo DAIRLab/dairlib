@@ -143,7 +143,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
     // Initialize state mean
     Matrix3d R0;
-    Eigen::Vector3d v0, p0, bg0, ba0;
+    Vector3d v0, p0, bg0, ba0;
     R0 << 1, 0, 0,  // initial orientation
           0, 1, 0,
           0, 0, 1;
@@ -962,10 +962,10 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     AssignImuValueToOutputVector(cassie_out, &output_gt);
     AssignActuationFeedbackToOutputVector(cassie_out, &output_gt);
     AssignNonFloatingBaseStateToOutputVector(cassie_out, &output_gt);
-    VectorXd fb_state(13);
-    fb_state.head(7) = cassie_state->GetPositions().head(7);
-    fb_state.tail(6) = cassie_state->GetVelocities().head(6);
-    AssignFloatingBaseStateToOutputVector(fb_state, &output_gt);
+    VectorXd fb_state_gt(13);
+    fb_state_gt.head(7) = cassie_state->GetPositions().head(7);
+    fb_state_gt.tail(6) = cassie_state->GetVelocities().head(6);
+    AssignFloatingBaseStateToOutputVector(fb_state_gt, &output_gt);
 
     // We get 0's cassie_state in the beginning because dispatcher_robot_out is
     // not triggerred by CASSIE_STATE message.
@@ -1003,7 +1003,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     std::ofstream ofile;
     // ofile.open("/home/nanda/DAIR/plotting/ekf.csv",
     //            std::ios::out | std::ios::app);
-    ofile.open("/home/yu-ming/Documents/workspace/plotting/ekf.csv",
+    ofile.open("/home/yuming/Documents/workspace/plotting/ekf.csv",
                std::ios::out | std::ios::app);
     ofile << current_time << ", ";
     for (int i = 0; i < 7; ++i) {
@@ -1071,36 +1071,44 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     cout << "X: " << endl;
     cout << filter_->getState().getX() << endl;
 
-    // Estimated state
+    // Estimated floating base state
+    VectorXd fb_state_est(13);
+
     auto state = filter_->getState();
     Vector3d filtered_position = state.getPosition();
     Matrix3d filtered_orientation = state.getRotation();
     Vector3d filtered_velocity = state.getVelocity();
 
+    fb_state_est.head(3) = filtered_position;
+    Quaterniond q(filtered_orientation);
+    q.normalize();
+    fb_state_est[3] = q.w();
+    fb_state_est.segment<3>(4) = q.vec();
+    // fb_state_est.segment<3>(7) = filtered_velocity;
+    fb_state_est.segment<3>(7) = imu_measurement.head(3);
+    // fb_state_est.tail(3) = output_gt.GetVelocities().segment<3>(3);
+    Vector3d r_imu_to_pelvis_global =
+        Quaterniond(q.w(), q.x(), q.y(), q.z()) * (-imu_pos_);
+    Vector3d omega_global =
+        Quaterniond(q.w(), q.x(), q.y(), q.z()) * imu_measurement.head(3);
+    fb_state_est.tail(3) = filtered_velocity +
+        omega_global.cross(r_imu_to_pelvis_global);
+
+    // Estimated robot output
     OutputVector<double> filtered_output(tree_.get_num_positions(),
                                    tree_.get_num_velocities(),
                                    tree_.get_num_actuators());
     AssignImuValueToOutputVector(cassie_out, &filtered_output);
     AssignActuationFeedbackToOutputVector(cassie_out, &filtered_output);
     AssignNonFloatingBaseStateToOutputVector(cassie_out, &filtered_output);
-
-    fb_state.head(3) = filtered_position;
-    Quaterniond q(filtered_orientation);
-    q.normalize();
-    fb_state[3] = q.w();
-    fb_state.segment<3>(4) = q.vec();
-    // fb_state.segment<3>(7) = filtered_velocity;
-    fb_state.segment<3>(7) = imu_measurement.head(3);
-    // fb_state.tail(3) = output_gt.GetVelocities().segment<3>(3);
-    fb_state.tail(3) = filtered_velocity;  //TODO(yminchen) convert imu vel to pelvis vel
-    AssignFloatingBaseStateToOutputVector(fb_state, &filtered_output);
+    AssignFloatingBaseStateToOutputVector(fb_state_est, &filtered_output);
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
     // Estimate feet contacts
     int left_contact = 0;
     int right_contact = 0;
     contactEstimation(output_gt, dt,
-        discrete_state, &left_contact, &right_contact);
+        discrete_state, &left_contact, &right_contact);  // TODO(yminchen): check why the algorithm was changed
 
     std::vector<std::pair<int, bool>> contacts;
     contacts.push_back(std::pair<int ,bool>(0, left_contact));
@@ -1111,11 +1119,12 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Step 4 - EKF (measurement step)
     KinematicsCache<double> cache = tree_.doKinematics(
         filtered_output.GetPositions(), filtered_output.GetVelocities(), true);
-    Eigen::Vector3d d, p;
+    Vector3d d, p;
+    // rotation part of pose and covariance is unused in EKF
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
     Eigen::Matrix<double, 6, 6> covariance = MatrixXd::Identity(6, 6);
     Eigen::Matrix<double, 22, 22> cov_w =
-        0.000289 * MatrixXd::Identity(22, 22);
+        0.000289 * MatrixXd::Identity(22, 22); // nosie of joints measurement
     std::vector<int> toe_indices = {left_toe_ind, right_toe_ind};
 
     // Debugging print statements
@@ -1139,7 +1148,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       cout << "Pose: " << endl;
       cout << pose.block<3, 1>(0, 3).transpose() << endl;
 
-      // Jacobian is not right - fix this before porting to the robot
+      // TODO(yminchen): the jacobian here should be J_imu_to_toe viewed in imu
+      // frame. Need to fix this.
       MatrixXd J = tree_.transformPointsJacobian(
           cache, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
       covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .0001*Vector3d::Identity();

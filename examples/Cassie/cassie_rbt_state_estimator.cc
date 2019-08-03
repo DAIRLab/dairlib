@@ -1004,8 +1004,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
         cache_gt, imu_pos_, pelvis_index, 0);
     imu_pos_wrt_world.tail(4) = output_gt.GetPositions().segment<4>(3);
     VectorXd imu_vel_wrt_world(6);
-    imu_vel_wrt_world.head(3) = output_gt.GetVelocities().head(3);
-    imu_vel_wrt_world.tail(3) = tree_.transformPointsJacobian(
+    imu_vel_wrt_world.tail(3) = output_gt.GetVelocities().head(3);
+    imu_vel_wrt_world.head(3) = tree_.transformPointsJacobian(
         cache_gt, imu_pos_, pelvis_index, 0, false)*output_gt.GetVelocities();
     // cout << "Ground Truth: " << endl;
     // cout << "Positions: " << endl;
@@ -1112,7 +1112,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     int left_contact = 0;
     int right_contact = 0;
     contactEstimation(output_gt, dt,
-        discrete_state, &left_contact, &right_contact);  // TODO(yminchen): check why the algorithm was changed
+        discrete_state, &left_contact, &right_contact);
     cout << "left/right contacts = " << left_contact << ", " << right_contact << endl;
 
     std::vector<std::pair<int, bool>> contacts;

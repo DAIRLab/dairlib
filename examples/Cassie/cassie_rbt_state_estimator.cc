@@ -173,8 +173,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
     filter_ = std::make_unique<inekf::InEKF>(initial_state_, noise_params_);
 
-    Eigen::VectorXd prev_IMU_measurement(6);
-    prev_IMU_measurement << 0, 0, 0, 0, 0, 9.81;
+    // If the robot is droppedfrom the air, then initial imu would be all 0.
+    VectorXd prev_IMU_measurement = VectorXd::Zero(6);
+    // prev_IMU_measurement << 0, 0, 0, 0, 0, 9.81;
     prev_IMU_measurement_ = DeclareDiscreteState(prev_IMU_measurement);
   }
 }
@@ -562,10 +563,8 @@ void CassieRbtStateEstimator::contactEstimation(
   Isometry3d pelvis_pose = tree_.CalcBodyPoseInWorldFrame(cache, *pelvis_body);
   MatrixXd R_WB = pelvis_pose.linear();
   // Vector3d gravity_in_pelvis_frame = R_WB.transpose()*gravity_;
-  // Vector3d alpha_imu = output.GetIMUAccelerations() + gravity_in_pelvis_frame;
-  Vector3d alpha_imu = R_WB * output.GetIMUAccelerations() + gravity_;
-
-  std::vector<double> optimal_cost;
+  // Vector3d imu_accel_wrt_world = output.GetIMUAccelerations() + gravity_in_pelvis_frame;
+  Vector3d imu_accel_wrt_world = R_WB * output.GetIMUAccelerations() + gravity_;
 
   // Mathematical program - double contact
   // Equality constraint
@@ -582,7 +581,7 @@ void CassieRbtStateEstimator::contactEstimation(
   MatrixXd IMU_coeff(J_imu.rows(), J_imu.cols() + 3);
   IMU_coeff << J_imu, MatrixXd::Identity(3, 3);
   imu_accel_constraint_->UpdateCoefficients(IMU_coeff,
-      -1*J_imu_dot_times_v + alpha_imu);
+      -1*J_imu_dot_times_v + imu_accel_wrt_world);
 
   // Cost
   int A_cols = n_v + Jb.rows() + Jcl.rows() + Jcr.rows();
@@ -625,7 +624,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
   if (!result_double.is_success()) {
     // If the optimization fails, push infinity into the optimal_cost vector
-    optimal_cost.push_back(std::numeric_limits<double>::infinity());
+    optimal_cost->at(0) = std::numeric_limits<double>::infinity();
 
     // Initialize the optimization at the next time step with zeros
     discrete_state->get_mutable_vector(
@@ -642,8 +641,8 @@ void CassieRbtStateEstimator::contactEstimation(
         VectorXd::Zero(6, 1);
   } else {
     // Push the optimal cost to the optimal_cost vector
-    optimal_cost.push_back(result_double.get_optimal_cost() +
-        cost_b.transpose()*cost_b);
+    optimal_cost->at(0) = result_double.get_optimal_cost() +
+        cost_b.transpose()*cost_b;  // TODO(yminchen): ask nanda why adding cost_b?
 
     VectorXd ddq_val = result_double.GetSolution(ddq_);
     VectorXd left_force = result_double.GetSolution(lambda_cl_);
@@ -685,7 +684,7 @@ void CassieRbtStateEstimator::contactEstimation(
   right_contact_constraint_->UpdateCoefficients(MatrixXd::Zero(6, n_v + 6),
       VectorXd::Zero(6, 1));
   imu_accel_constraint_->UpdateCoefficients(IMU_coeff,
-      -1*J_imu_dot_times_v + alpha_imu);
+      -1*J_imu_dot_times_v + imu_accel_wrt_world);
 
   // Cost
   cost_A << M, -1*Jb.transpose(), -1*Jcl.transpose(), MatrixXd::Zero(n_v, 6);
@@ -717,7 +716,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
   if (!result_left.is_success()) {
     // Push infinity into optimal_costv vector if the optimization fails
-    optimal_cost.push_back(std::numeric_limits<double>::infinity());
+    optimal_cost->at(1) = std::numeric_limits<double>::infinity();
 
     // Initialize the optimization with zero at the next time step
     discrete_state->get_mutable_vector(
@@ -731,8 +730,8 @@ void CassieRbtStateEstimator::contactEstimation(
         VectorXd::Zero(6, 1);
   } else {
     // Push the optimal cost to the optimal_cost vector
-    optimal_cost.push_back(result_left.get_optimal_cost() +
-        cost_b.transpose()*cost_b);
+    optimal_cost->at(1) = result_left.get_optimal_cost() +
+        cost_b.transpose()*cost_b;
 
     VectorXd ddq_val = result_left.GetSolution(ddq_);
     VectorXd left_force = result_left.GetSolution(lambda_cl_);
@@ -771,7 +770,7 @@ void CassieRbtStateEstimator::contactEstimation(
   right_contact_constraint_->UpdateCoefficients(
       CR_coeff, -1*Jcr_dot_times_v);
   imu_accel_constraint_->UpdateCoefficients(IMU_coeff,
-      -1*J_imu_dot_times_v + alpha_imu);
+      -1*J_imu_dot_times_v + imu_accel_wrt_world);
 
   // Cost
   cost_A << M, -1*Jb.transpose(), MatrixXd::Zero(n_v, 6), -1*Jcr.transpose();
@@ -806,7 +805,7 @@ void CassieRbtStateEstimator::contactEstimation(
 
   if (!result_right.is_success()) {
     // If the optimization fails, push infinity to the optimal_cost vector
-    optimal_cost.push_back(std::numeric_limits<double>::infinity());
+    optimal_cost->at(2) = std::numeric_limits<double>::infinity();
 
     // Initialize the optimization with zero at the next time step
     discrete_state->get_mutable_vector(
@@ -820,8 +819,8 @@ void CassieRbtStateEstimator::contactEstimation(
         VectorXd::Zero(6 ,1);
   } else {
     // Push the optimal cost to optimal_cost vector
-    optimal_cost.push_back(result_right.get_optimal_cost() +
-        cost_b.transpose()*cost_b);
+    optimal_cost->at(2) = result_right.get_optimal_cost() +
+        cost_b.transpose()*cost_b;
 
     VectorXd ddq_val = result_right.GetSolution(ddq_);
     VectorXd right_force = result_right.GetSolution(lambda_cr_);
@@ -852,21 +851,27 @@ void CassieRbtStateEstimator::contactEstimation(
       filtered_residual_right;
   }
 
+  // TODO: separate this function into three:
+  // - updateQpCostForContactEstimation
+  // - getContactEstimateForEkf
+  // - getContactEstimateForController
+
+
   // Estimate contact based on optimization results
   // The vector optimal_cost has double support, left support and right support
   // costs in order. The corresponding indices are 0, 1, 2.
   // Here we get the index of min of left and right support costs.
-  auto min_it = std::min_element(std::next(optimal_cost.begin(), 1),
-      optimal_cost.end());
-  int min_index = std::distance(optimal_cost.begin(), min_it);
+  auto min_it = std::min_element(std::next(optimal_cost->begin(), 1),
+      optimal_cost->end());
+  int min_index = std::distance(optimal_cost->begin(), min_it);
 
   // If all three costs are high, we believe it's going through impact event,
   // and we assume it's double support. (Therefore, it won't predict the case
   // where the robot transition from flight phase to single support. It'd say
   // it's double support.)
-  if ((optimal_cost[0] >= cost_threshold_ &&
-       optimal_cost[1] >= cost_threshold_ &&
-       optimal_cost[2] >= cost_threshold_ &&
+  if ((optimal_cost->at(0) >= cost_threshold_ &&
+       optimal_cost->at(1) >= cost_threshold_ &&
+       optimal_cost->at(2) >= cost_threshold_ &&
        0)) {  // Disable double support while testing EKF (Remove before commit)
     *left_contact = 0;
     *right_contact = 0;
@@ -875,6 +880,10 @@ void CassieRbtStateEstimator::contactEstimation(
   } else if (min_index == 2) {
     *right_contact = 1;
   }
+  cout << "optimal_cost[0][1][3], threshold = " <<
+      optimal_cost->at(0) << ", " << optimal_cost->at(1) << ", " << optimal_cost->at(2) <<
+      ", " << cost_threshold_ << endl;
+  cout << "left/right contacts = " << *left_contact << ", " << *right_contact << endl;
 
   // Update contact estimation based on spring deflection information
   // We say a foot is in contact with the ground if spring deflection is over
@@ -887,14 +896,21 @@ void CassieRbtStateEstimator::contactEstimation(
       position_index_map_.at("ankle_spring_joint_left"));
   double right_heel_spring = output.GetPositionAtIndex(
       position_index_map_.at("ankle_spring_joint_right"));
-  if (left_knee_spring < knee_spring_threshold_ ||
+  if (left_knee_spring < knee_spring_threshold_ &&
         left_heel_spring < heel_spring_threshold_) {
     *left_contact = 1;
   }
-  if (right_knee_spring < knee_spring_threshold_ ||
+  if (right_knee_spring < knee_spring_threshold_ &&
         right_heel_spring < heel_spring_threshold_) {
     *right_contact = 1;
   }
+  cout << "left/right knee spring, threshold = " << left_knee_spring << ", ";
+  cout << right_knee_spring << ", ";
+  cout << knee_spring_threshold_ << endl;
+  cout << "left/right heel spring, threshold = " << left_heel_spring << ", ";
+  cout << right_heel_spring << ", ";
+  cout << heel_spring_threshold_ << endl;
+  cout << "left/right contacts = " << *left_contact << ", " << *right_contact << endl;
 
   // Record previous velocity (used in acceleration residual)
   discrete_state->get_mutable_vector(
@@ -1097,7 +1113,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     int right_contact = 0;
     contactEstimation(output_gt, dt,
         discrete_state, &left_contact, &right_contact);  // TODO(yminchen): check why the algorithm was changed
-    cout << "left right contacts = " << left_contact << ", " << right_contact << endl;
+    cout << "left/right contacts = " << left_contact << ", " << right_contact << endl;
 
     std::vector<std::pair<int, bool>> contacts;
     contacts.push_back(std::pair<int ,bool>(0, left_contact));

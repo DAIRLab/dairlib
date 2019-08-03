@@ -124,7 +124,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   // Contact Estimation Parameters
   const double cost_threshold_ = 200;
   const double knee_spring_threshold_ = -0.015;
-  const double heel_spring_threshold_ = -0.03;
+  const double heel_spring_threshold_ = -0.015;  // TODO(yminchen): ask nanda why this was 0.03 originally
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
   const double w_soft_constraint_ = 100;  // Soft constraint cost
   const double alpha_ = 0.9;  // Low-pass filter constant for the acceleration
@@ -143,20 +143,16 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* quadcost_eps_cr_;
   drake::solvers::QuadraticCost* quadcost_eps_imu_;
   // Decision variables
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      ddq_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      lambda_b_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      lambda_cl_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      lambda_cr_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      eps_cl_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      eps_cr_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      eps_imu_;
+  drake::solvers::VectorXDecisionVariable ddq_;
+  drake::solvers::VectorXDecisionVariable lambda_b_;
+  drake::solvers::VectorXDecisionVariable lambda_cl_;
+  drake::solvers::VectorXDecisionVariable lambda_cr_;
+  drake::solvers::VectorXDecisionVariable eps_cl_;
+  drake::solvers::VectorXDecisionVariable eps_cr_;
+  drake::solvers::VectorXDecisionVariable eps_imu_;
+  // Optimal costs
+  std::unique_ptr<std::vector<double>> optimal_cost =
+      std::make_unique<std::vector<double>>(3, 0.0);
 
   inekf::RobotState initial_state_;
   inekf::NoiseParams noise_params_;

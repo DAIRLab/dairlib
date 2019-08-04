@@ -634,7 +634,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
   } else {
     // Push the optimal cost to the optimal_cost vector
     optimal_cost->at(0) = result_double.get_optimal_cost() +
-        cost_b.transpose()*cost_b;  // TODO(yminchen): ask nanda why adding cost_b?
+        cost_b.transpose()*cost_b;  // the second term is the cosntant term
 
     VectorXd ddq_val = result_double.GetSolution(ddq_);
     VectorXd left_force = result_double.GetSolution(lambda_cl_);
@@ -921,7 +921,7 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
     } else if (min_index == 2) {
       *right_contact = 1;
     }
-    cout << "optimal_cost[0][1][3], threshold = " <<
+    cout << "optimal_cost[0][1][2], threshold = " <<
         optimal_cost->at(0) << ", " << optimal_cost->at(1) << ", " << optimal_cost->at(2) <<
         ", " << cost_threshold_ekf_ << endl;
     cout << "left/right contacts = " << *left_contact << ", " << *right_contact << endl;
@@ -1165,6 +1165,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // cout << filter_->getState().getVelocity().transpose() << endl;
     // cout << "X: " << endl;
     // cout << filter_->getState().getX() << endl;
+    cout << "z difference: " << filter_->getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
 
     // Estimated floating base state
     VectorXd fb_state_est(13);
@@ -1200,11 +1201,12 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
     // Estimate feet contacts
+    // TODO(yminchen): change this to output_estimate (filtered_output)
     int left_contact = 0;
     int right_contact = 0;
     UpdateContactEstimationCosts(output_gt, dt, discrete_state);
     EstimateContactForEkf(output_gt, &left_contact, &right_contact);
-    cout << "left/right contacts = " << left_contact << ", " << right_contact << endl;
+    // cout << "left/right contacts = " << left_contact << ", " << right_contact << endl;
 
     std::vector<std::pair<int, bool>> contacts;
     contacts.push_back(std::pair<int ,bool>(0, left_contact));
@@ -1252,6 +1254,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
           cache, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
       // covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .0001*Vector3d::Identity();
       covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose();
+      // cout << "covariance.block<3, 3>(3, 3) = \n" << covariance.block<3, 3>(3, 3) << endl;
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);
     }
@@ -1274,6 +1277,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // cout << filter_->getState().getX() << endl;
     // cout << "Theta: " << endl;
     // cout << filter_->getState().getTheta() << endl;
+    cout << "z difference: " << filter_->getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
 
     for (int i = 0; i < 3; ++i) {
       ofile << filter_->getState().getPosition()[i] << ", ";

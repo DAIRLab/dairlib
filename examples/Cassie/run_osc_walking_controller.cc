@@ -193,19 +193,21 @@ int DoMain(int argc, char* argv[]) {
   // important
   double w_contact_relax = 200;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
-  // Firction coefficient
-  double mu = 0.8;
+  // Friction coefficient
+  double mu = 0.4;
+  double mu_low = 0.4;  // avoid slipping in the beginning of stance (in drake
+                        // simulation)
   osc->SetContactFriction(mu);
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
   osc->AddStateAndContactPoint(left_stance_state,
-                               "toe_left", front_contact_disp);
+                               "toe_left", front_contact_disp, mu_low, 0.05);
   osc->AddStateAndContactPoint(left_stance_state,
-                               "toe_left", rear_contact_disp);
+                               "toe_left", rear_contact_disp, mu_low, 0.05);
   osc->AddStateAndContactPoint(right_stance_state,
-                               "toe_right", front_contact_disp);
+                               "toe_right", front_contact_disp, mu_low, 0.05);
   osc->AddStateAndContactPoint(right_stance_state,
-                               "toe_right", rear_contact_disp);
+                               "toe_right", rear_contact_disp, mu_low, 0.05);
   // Swing foot tracking
   MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
@@ -259,7 +261,7 @@ int DoMain(int argc, char* argv[]) {
       K_p_pelvis_heading, K_d_pelvis_heading, W_pelvis_heading,
       &tree_with_springs, &tree_without_springs);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_heading_traj, 0.05);
+  osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
   // Swing toe joint tracking (Currently use fix position)
   MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = 1000 * MatrixXd::Identity(1, 1);
@@ -271,7 +273,8 @@ int DoMain(int argc, char* argv[]) {
                                          "toe_right", "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state,
                                          "toe_left", "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1));
+  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1),
+      0, 0.3);
   // Swing hip yaw joint tracking
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);

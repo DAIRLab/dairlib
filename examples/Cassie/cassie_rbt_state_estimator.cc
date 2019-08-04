@@ -151,7 +151,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
           0, 1, 0,
           0, 0, 1;
     v0 << 0, 0, 0;   // initial velocity
-    p0 << 0, 0, 1.015;   // initial position
+    p0 << 0.0318638, 0,  0.969223;   // initial position
     bg0 << 0, 0, 0;  // initial gyroscope bias
     ba0 << 0, 0, 0;  // initial accelerometer bias
     initial_state_.setRotation(R0);
@@ -160,18 +160,21 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     initial_state_.setGyroscopeBias(bg0);
     initial_state_.setAccelerometerBias(ba0);
 
-    // Testing (TODO(yminchen): delete this)
-    initial_state_.setPosition(Vector3d(0.0318638, 0,  0.969223));
+    // TODO(yminchen): don't hard code initial position p0 here
 
     // Initialize state covariance
-    noise_params_.setGyroscopeNoise(0.01);
-    noise_params_.setAccelerometerNoise(0.1);
-    noise_params_.setGyroscopeBiasNoise(0.00001);
-    noise_params_.setAccelerometerBiasNoise(0.0001);
-    noise_params_.setContactNoise(0.1);
+    noise_params_.setGyroscopeNoise(0.002);
+    noise_params_.setAccelerometerNoise(0.04);
+    noise_params_.setGyroscopeBiasNoise(0.001);
+    noise_params_.setAccelerometerBiasNoise(0.001);
+    noise_params_.setContactNoise(0.05);
 
-    auto P = initial_state_.getP();
-    P.block(P.rows() - 6, P.rows() - 6, 6, 6) = .01*MatrixXd::Identity(6, 6);
+    MatrixXd P = MatrixXd::Identity(15, 15);
+    P.block<3, 3>(0, 0) = 0.0001*MatrixXd::Identity(3, 3);  // rotation
+    P.block<3, 3>(3, 3) = 0.01*MatrixXd::Identity(3, 3);  // velocity
+    P.block<3, 3>(6, 6) = 0.0001*MatrixXd::Identity(3, 3);  // position
+    P.block<3, 3>(9, 9) = 0.0001*MatrixXd::Identity(3, 3);  // gyro bias
+    P.block<3, 3>(12, 12) = 0.01*MatrixXd::Identity(3, 3);  // accel bias
     initial_state_.setP(P);
 
     filter_ = std::make_unique<inekf::InEKF>(initial_state_, noise_params_);
@@ -1147,7 +1150,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     discrete_state->get_mutable_vector(prev_IMU_measurement_)
             .get_mutable_value()
         << imu_measurement;
-    cout << "imu_measurement = " << imu_measurement.transpose() << endl;
+    // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
 
     // Debugging print statements
     // cout << "Prediction: " << endl;
@@ -1216,10 +1219,10 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // rotation part of pose and covariance is unused in EKF
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
     Eigen::Matrix<double, 6, 6> covariance = MatrixXd::Identity(6, 6);
-    // Eigen::Matrix<double, 22, 22> cov_w =
-    //     0.000289 * MatrixXd::Identity(22, 22); // nosie of joints measurement
     Eigen::Matrix<double, 22, 22> cov_w =
-        0.0 * MatrixXd::Identity(22, 22); // nosie of joints measurement
+        0.000289 * MatrixXd::Identity(22, 22); // nosie of joints measurement
+    // Eigen::Matrix<double, 22, 22> cov_w =
+    //     0.0 * MatrixXd::Identity(22, 22); // nosie of joints measurement
     std::vector<int> toe_indices = {left_toe_ind, right_toe_ind};
 
     // Debugging print statements
@@ -1248,7 +1251,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       MatrixXd J = tree_.transformPointsJacobian(
           cache, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
       // covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .0001*Vector3d::Identity();
-      covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .00001*Vector3d::Identity();
+      covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose();
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);
     }

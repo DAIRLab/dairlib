@@ -451,8 +451,11 @@ void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
 }
 
 
-/// contactEstimation() determines which foot is in contact with the ground
-/// based on the state/input feedback of the robot and the imu acceleration
+/// UpdateContactEstimationCosts() updates the optimal costs of the quadratic
+/// programs for contact estimations. There are three QPs in total which assume
+/// double supprot, left support and right support in order.
+/// The QP's are solved with the state/input feedback of the robot and the imu
+/// linear acceleration.
 ///
 /// Input:
 ///  - OutputVector `output` containing the positions, velocities and
@@ -460,34 +463,17 @@ void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
 ///  - time `dt` elapsed between previous iteration and current iteration
 ///  - discretevalues `discrete_state` to store states related to contact
 ///    estimation
-/// Ouput: left contact `left_contact` and right contact `right_contact` that
-///  indicate if the corresponding foot is in contact with the ground
 ///
-/// Assumptions:
-///  1. the swing leg doesn't stop during single support
-///  2. flight mode is not present during the gait
-///
-/// Algorithm:
-///  The contact is estimated based on
-///   1. compression in the spring
-///   2. three optimizations one for each double support, left support and
-///   right support
-///  If the compression in the left (right) heel/ankle spring is more than the
-///  set threshold, the left (right) foot is estimated to be in contact with
-///  the ground.
-///  Additionally, the optimal cost from the optimization is used to augument
-///  the estimation from the spring. In each optimization, the residual of the
-///  EoM is calculated based on the assumption of the stance. the assumption of
+/// In each optimization, the residual of the
+///  EoM is calculated based on the assumption of the stance. The assumption of
 ///  stance is done by imposing a constraint for the acceleration of the stance
 ///  foot. The acceleration of the pelvis is also constrained to match the imu
-///  acceleration. The cost from the three optimizations are compared. The
-///  optimization with the least cost is assumed to be the actual stance.
-///  During impact, both the legs have some non-zero acceleration and hence the
-///  optimal costs will all be high. This case is assumed to be double stance.
-void CassieRbtStateEstimator::contactEstimation(
+///  acceleration. The cost from the three optimizations are compared. In
+///  general, the optimization with the least cost is assumed to be the actual
+///  stance.
+void CassieRbtStateEstimator::UpdateContactEstimationCosts(
     const OutputVector<double>& output, const double& dt,
-    DiscreteValues<double>* discrete_state,
-    int* left_contact, int* right_contact) const {
+    DiscreteValues<double>* discrete_state) const {
   const int n_v = tree_.get_num_velocities();
 
   // Indices
@@ -851,67 +837,6 @@ void CassieRbtStateEstimator::contactEstimation(
       filtered_residual_right;
   }
 
-  // TODO: separate this function into three:
-  // - updateQpCostForContactEstimation
-  // - getContactEstimateForEkf
-  // - getContactEstimateForController
-
-
-  // Estimate contact based on optimization results
-  // The vector optimal_cost has double support, left support and right support
-  // costs in order. The corresponding indices are 0, 1, 2.
-  // Here we get the index of min of left and right support costs.
-  auto min_it = std::min_element(std::next(optimal_cost->begin(), 1),
-      optimal_cost->end());
-  int min_index = std::distance(optimal_cost->begin(), min_it);
-
-  // If all three costs are high, we believe it's going through impact event,
-  // and we assume it's double support. (Therefore, it won't predict the case
-  // where the robot transition from flight phase to single support. It'd say
-  // it's double support.)
-  if ((optimal_cost->at(0) >= cost_threshold_ &&
-       optimal_cost->at(1) >= cost_threshold_ &&
-       optimal_cost->at(2) >= cost_threshold_ &&
-       0)) {  // Disable double support while testing EKF (Remove before commit)
-    *left_contact = 0;
-    *right_contact = 0;
-  } else if (min_index == 1) {
-    *left_contact = 1;
-  } else if (min_index == 2) {
-    *right_contact = 1;
-  }
-  cout << "optimal_cost[0][1][3], threshold = " <<
-      optimal_cost->at(0) << ", " << optimal_cost->at(1) << ", " << optimal_cost->at(2) <<
-      ", " << cost_threshold_ << endl;
-  cout << "left/right contacts = " << *left_contact << ", " << *right_contact << endl;
-
-  // Update contact estimation based on spring deflection information
-  // We say a foot is in contact with the ground if spring deflection is over
-  // a threshold. We don't update anything if it's under the threshold.
-  double left_knee_spring = output.GetPositionAtIndex(
-      position_index_map_.at("knee_joint_left"));
-  double right_knee_spring = output.GetPositionAtIndex(
-      position_index_map_.at("knee_joint_right"));
-  double left_heel_spring = output.GetPositionAtIndex(
-      position_index_map_.at("ankle_spring_joint_left"));
-  double right_heel_spring = output.GetPositionAtIndex(
-      position_index_map_.at("ankle_spring_joint_right"));
-  if (left_knee_spring < knee_spring_threshold_ &&
-        left_heel_spring < heel_spring_threshold_) {
-    *left_contact = 1;
-  }
-  if (right_knee_spring < knee_spring_threshold_ &&
-        right_heel_spring < heel_spring_threshold_) {
-    *right_contact = 1;
-  }
-  cout << "left/right knee spring, threshold = " << left_knee_spring << ", ";
-  cout << right_knee_spring << ", ";
-  cout << knee_spring_threshold_ << endl;
-  cout << "left/right heel spring, threshold = " << left_heel_spring << ", ";
-  cout << right_heel_spring << ", ";
-  cout << heel_spring_threshold_ << endl;
-  cout << "left/right contacts = " << *left_contact << ", " << *right_contact << endl;
-
   // Record previous velocity (used in acceleration residual)
   discrete_state->get_mutable_vector(
       previous_velocity_idx_).get_mutable_value() << output.GetVelocities();
@@ -936,6 +861,166 @@ void CassieRbtStateEstimator::contactEstimation(
     }
   }
   */
+}
+
+
+/// EstimateContactForEkf(). Conservative estimation.
+/// EKF is updated based on the assumption of the stance foot are stationary.
+/// The estimated state would get very inaccurate if the stance foot is moving.
+///
+/// Input:
+///  - OutputVector `output` containing the positions, velocities and
+///    actuator torques of the robot
+/// Ouput: left contact `left_contact` and right contact `right_contact` that
+///  indicate if the corresponding foot is in contact with the ground
+///
+/// Assumptions:
+///  1. the swing leg doesn't stop during single support
+///  2. flight mode is not present during the gait
+///
+/// Algorithm:
+///  The contact is estimated based on
+///   1. compression in the spring
+///   2. three optimizations one for each double support, left support and
+///   right support
+///  If the compression in the left (right) heel/ankle spring is more than the
+///  set threshold, the left (right) foot is estimated to be in contact with
+///  the ground.
+///  Additionally, the optimal cost from the optimization is used to augument
+///  the estimation from the spring.
+///  During impact, both the legs have some non-zero acceleration and hence the
+///  optimal costs will all be high. This case is assumed to be no stance.
+void CassieRbtStateEstimator::EstimateContactForEkf(
+    const OutputVector<double>& output,
+    int* left_contact, int* right_contact) const {
+  // Estimate contact based on optimization results
+  // The vector optimal_cost has double support, left support and right support
+  // costs in order. The corresponding indices are 0, 1, 2.
+  // Here we get the index of min of left and right support costs.
+  auto min_it = std::min_element(std::next(optimal_cost->begin(), 1),
+      optimal_cost->end());
+  int min_index = std::distance(optimal_cost->begin(), min_it);
+
+  // If all three costs are high, we believe it's going through impact event,
+  // and we assume there is no support legs because we don't want moving feet
+  // to screw up the EKF.
+  if ((optimal_cost->at(0) >= cost_threshold_ekf_) &&
+      (optimal_cost->at(1) >= cost_threshold_ekf_) &&
+      (optimal_cost->at(2) >= cost_threshold_ekf_)) {
+    *left_contact = 0;
+    *right_contact = 0;
+  } else {
+    if (min_index == 1) {
+      *left_contact = 1;
+    } else if (min_index == 2) {
+      *right_contact = 1;
+    }
+    cout << "optimal_cost[0][1][3], threshold = " <<
+        optimal_cost->at(0) << ", " << optimal_cost->at(1) << ", " << optimal_cost->at(2) <<
+        ", " << cost_threshold_ekf_ << endl;
+    cout << "left/right contacts = " << *left_contact << ", " << *right_contact << endl;
+
+    // Update contact estimation based on spring deflection information
+    // We say a foot is in contact with the ground if spring deflection is over
+    // a threshold. We don't update anything if it's under the threshold.
+    double left_knee_spring = output.GetPositionAtIndex(
+        position_index_map_.at("knee_joint_left"));
+    double right_knee_spring = output.GetPositionAtIndex(
+        position_index_map_.at("knee_joint_right"));
+    double left_heel_spring = output.GetPositionAtIndex(
+        position_index_map_.at("ankle_spring_joint_left"));
+    double right_heel_spring = output.GetPositionAtIndex(
+        position_index_map_.at("ankle_spring_joint_right"));
+    if (left_knee_spring < knee_spring_threshold_ &&
+          left_heel_spring < heel_spring_threshold_ekf_) {
+      *left_contact = 1;
+    }
+    if (right_knee_spring < knee_spring_threshold_ &&
+          right_heel_spring < heel_spring_threshold_ekf_) {
+      *right_contact = 1;
+    }
+
+    // Debugging
+    cout << "left/right knee spring, threshold = " << left_knee_spring << ", ";
+    cout << right_knee_spring << ", ";
+    cout << knee_spring_threshold_ << endl;
+    cout << "left/right heel spring, threshold = " << left_heel_spring << ", ";
+    cout << right_heel_spring << ", ";
+    cout << heel_spring_threshold_ekf_ << endl;
+    cout << "left/right contacts = " << *left_contact << ", " << *right_contact << endl;
+  }
+}
+
+
+/// EstimateContactForController(). Less conservative.
+///
+/// Input:
+///  - OutputVector `output` containing the positions, velocities and
+///    actuator torques of the robot
+/// Ouput: left contact `left_contact` and right contact `right_contact` that
+///  indicate if the corresponding foot is in contact with the ground
+///
+/// Assumptions:
+///  1. the swing leg doesn't stop during single support
+///  2. flight mode is not present during the gait
+///
+/// Algorithm:
+///  The contact is estimated based on
+///   1. compression in the spring
+///   2. three optimizations one for each double support, left support and
+///   right support
+///  If the compression in the left (right) heel/ankle spring is more than the
+///  set threshold, the left (right) foot is estimated to be in contact with
+///  the ground.
+///  Additionally, the optimal cost from the optimization is used to augument
+///  the estimation from the spring.
+///  During impact, both the legs have some non-zero acceleration and hence the
+///  optimal costs will all be high. This case is assumed to be double stance.
+void CassieRbtStateEstimator::EstimateContactForController(
+    const OutputVector<double>& output,
+    int* left_contact, int* right_contact) const {
+  // Estimate contact based on optimization results
+  // The vector optimal_cost has double support, left support and right support
+  // costs in order. The corresponding indices are 0, 1, 2.
+  // Here we get the index of min of left and right support costs.
+  auto min_it = std::min_element(std::next(optimal_cost->begin(), 1),
+      optimal_cost->end());
+  int min_index = std::distance(optimal_cost->begin(), min_it);
+
+  // If all three costs are high, we believe it's going through impact event,
+  // and we assume it's double support. (Therefore, it won't predict the case
+  // where the robot transition from flight phase to single support. It'd say
+  // it's double support.)
+  if ((optimal_cost->at(0) >= cost_threshold_ctrl_) &&
+      (optimal_cost->at(1) >= cost_threshold_ctrl_) &&
+      (optimal_cost->at(2) >= cost_threshold_ctrl_)) {
+    *left_contact = 0;
+    *right_contact = 0;
+  } else if (min_index == 1) {
+    *left_contact = 1;
+  } else if (min_index == 2) {
+    *right_contact = 1;
+  }
+
+  // Update contact estimation based on spring deflection information
+  // We say a foot is in contact with the ground if spring deflection is over
+  // a threshold. We don't update anything if it's under the threshold.
+  double left_knee_spring = output.GetPositionAtIndex(
+      position_index_map_.at("knee_joint_left"));
+  double right_knee_spring = output.GetPositionAtIndex(
+      position_index_map_.at("knee_joint_right"));
+  double left_heel_spring = output.GetPositionAtIndex(
+      position_index_map_.at("ankle_spring_joint_left"));
+  double right_heel_spring = output.GetPositionAtIndex(
+      position_index_map_.at("ankle_spring_joint_right"));
+  if (left_knee_spring < knee_spring_threshold_ ||
+        left_heel_spring < heel_spring_threshold_ctrl_) {
+    *left_contact = 1;
+  }
+  if (right_knee_spring < knee_spring_threshold_ ||
+        right_heel_spring < heel_spring_threshold_ctrl_) {
+    *right_contact = 1;
+  }
 }
 
 
@@ -1111,8 +1196,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Estimate feet contacts
     int left_contact = 0;
     int right_contact = 0;
-    contactEstimation(output_gt, dt,
-        discrete_state, &left_contact, &right_contact);
+    UpdateContactEstimationCosts(output_gt, dt, discrete_state);
+    EstimateContactForEkf(output_gt, &left_contact, &right_contact);
     cout << "left/right contacts = " << left_contact << ", " << right_contact << endl;
 
     std::vector<std::pair<int, bool>> contacts;

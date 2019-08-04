@@ -36,10 +36,21 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                            double* left_heel_spring,
                            double* right_heel_spring) const;
 
-  // contactEstimtion is public in order to perform unit tests on it.
-  void contactEstimation(
+  /// UpdateContactEstimationCosts() updates the optimal costs of the quadratic
+  /// programs, and EstimateContactForEkf() and EstimateContactForController()
+  /// estimate the ground contacts based on the optimal costs and spring
+  /// deflections.
+  /// Estimation from EstimateContactForEkf() is more conservative compared to
+  /// EstimateContactForController(). See the cc file for more detail.
+  /// The methods are set to be public in order to unit test them.
+  void UpdateContactEstimationCosts(
       const systems::OutputVector<double>& output, const double& dt,
-      drake::systems::DiscreteValues<double>* discrete_state,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+  void EstimateContactForEkf(
+      const systems::OutputVector<double>& output,
+      int* left_contact, int* right_contact) const;
+  void EstimateContactForController(
+      const systems::OutputVector<double>& output,
       int* left_contact, int* right_contact) const;
 
   void setPreviousTime(drake::systems::Context<double>* context, double time);
@@ -122,9 +133,11 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::Vector3d gravity_ = Eigen::Vector3d(0, 0, -9.81);
 
   // Contact Estimation Parameters
-  const double cost_threshold_ = 200;
+  const double cost_threshold_ctrl_ = 200;
+  const double cost_threshold_ekf_ = 25;
   const double knee_spring_threshold_ = -0.015;
-  const double heel_spring_threshold_ = -0.015;  // TODO(yminchen): ask nanda why this was 0.03 originally
+  const double heel_spring_threshold_ctrl_ = -0.03;  // TODO(yminchen): ask nanda why this is 0.03
+  const double heel_spring_threshold_ekf_ = -0.015;
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
   const double w_soft_constraint_ = 100;  // Soft constraint cost
   const double alpha_ = 0.9;  // Low-pass filter constant for the acceleration

@@ -134,8 +134,10 @@ TEST_F(ContactEstimationTest, DoubleSupportContactEstimationTest) {
 
   auto context = estimator_->CreateDefaultContext();
 
-  estimator_->contactEstimation(*output_, dt_,
-      &context->get_mutable_discrete_state(), &left_contact_, &right_contact_);
+  estimator_->UpdateContactEstimationCosts(*output_, dt_,
+      &context->get_mutable_discrete_state());
+  estimator_->EstimateContactForController(*output_,
+      &left_contact_, &right_contact_);
 
   int gtl = 0;
   int gtr = 0;
@@ -178,8 +180,10 @@ TEST_F(ContactEstimationTest, LeftSupportContactEstimationTest) {
 
   auto context = estimator_->CreateDefaultContext();
 
-  estimator_->contactEstimation(*output_, dt_,
-      &context->get_mutable_discrete_state(), &left_contact_, &right_contact_);
+  estimator_->UpdateContactEstimationCosts(*output_, dt_,
+      &context->get_mutable_discrete_state());
+  estimator_->EstimateContactForController(*output_,
+      &left_contact_, &right_contact_);
 
   int gtl = 0;
   int gtr = 0;
@@ -223,8 +227,10 @@ TEST_F(ContactEstimationTest, RightSupportContactEstimationTest) {
 
   auto context = estimator_->CreateDefaultContext();
 
-  estimator_->contactEstimation(*output_, dt_,
-      &context->get_mutable_discrete_state(), &left_contact_, &right_contact_);
+  estimator_->UpdateContactEstimationCosts(*output_, dt_,
+      &context->get_mutable_discrete_state());
+  estimator_->EstimateContactForController(*output_,
+      &left_contact_, &right_contact_);
 
   int gtl = 0;
   int gtr = 0;

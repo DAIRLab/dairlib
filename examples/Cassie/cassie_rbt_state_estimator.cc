@@ -164,14 +164,14 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
     // Initialize state covariance
     noise_params_.setGyroscopeNoise(0.002);
-    noise_params_.setAccelerometerNoise(0.4);  // 0.04
+    noise_params_.setAccelerometerNoise(0.04);
     noise_params_.setGyroscopeBiasNoise(0.001);
     noise_params_.setAccelerometerBiasNoise(0.001);
     noise_params_.setContactNoise(0.05);
 
     MatrixXd P = MatrixXd::Identity(15, 15);
     P.block<3, 3>(0, 0) = 0.0001*MatrixXd::Identity(3, 3);  // rotation
-    P.block<3, 3>(3, 3) = 0.01*MatrixXd::Identity(3, 3);  //0.01 // velocity
+    P.block<3, 3>(3, 3) = 0.01*MatrixXd::Identity(3, 3);    // velocity
     P.block<3, 3>(6, 6) = 0.0001*MatrixXd::Identity(3, 3);  // position
     P.block<3, 3>(9, 9) = 0.0001*MatrixXd::Identity(3, 3);  // gyro bias
     P.block<3, 3>(12, 12) = 0.01*MatrixXd::Identity(3, 3);  // accel bias

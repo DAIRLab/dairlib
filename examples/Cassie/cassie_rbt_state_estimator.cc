@@ -57,6 +57,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
                left_heel_spring_ind_ != -1 && right_heel_spring_ind_ != -1);
 
   if (is_floating_base) {
+    // Middle point between the front and the rear contact points
+    mid_contact_disp_ = (front_contact_disp_ + rear_contact_disp_)/2;
+
     // Declare input port receiving robot's state (simulation ground truth state)
     // TODO(yminchen): delete this input port after finishing testing
     state_input_port_ = this->DeclareVectorInputPort(
@@ -173,7 +176,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
     filter_ = std::make_unique<inekf::InEKF>(initial_state_, noise_params_);
 
-    // If the robot is droppedfrom the air, then initial imu would be all 0.
+    // If the robot is dropped from the air, then initial imu would be all 0.
     VectorXd prev_IMU_measurement = VectorXd::Zero(6);
     // prev_IMU_measurement << 0, 0, 0, 0, 0, 9.81;
     prev_IMU_measurement_ = DeclareDiscreteState(prev_IMU_measurement);
@@ -1234,7 +1237,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     for (int i = 0; i < 2 ; i++) {
       pose.block<3, 3>(0, 0) = Matrix3d::Identity();
       pose.block<3, 1>(0, 3) = tree_.transformPoints(
-          cache, Vector3d::Zero(), toe_indices[i], pelvis_index) - imu_pos_;
+          cache, mid_contact_disp_, toe_indices[i], pelvis_index) - imu_pos_;
 
       // Debugging print statements
       // cout << "Pose: " << endl;

@@ -128,6 +128,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::Vector3d rod_on_thigh_right_ = Eigen::Vector3d(0.0, 0.0, -0.045);
   Eigen::Vector3d front_contact_disp_ = Eigen::Vector3d(-0.0457, 0.112, 0);
   Eigen::Vector3d rear_contact_disp_ = Eigen::Vector3d(0.088, 0, 0);
+  Eigen::Vector3d mid_contact_disp_;
   // IMU location wrt pelvis
   Eigen::Vector3d imu_pos_ = Eigen::Vector3d(0.03155, 0, -0.07996);
   Eigen::Vector3d gravity_ = Eigen::Vector3d(0, 0, -9.81);

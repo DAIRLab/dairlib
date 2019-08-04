@@ -164,14 +164,14 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
     // Initialize state covariance
     noise_params_.setGyroscopeNoise(0.002);
-    noise_params_.setAccelerometerNoise(0.04);
+    noise_params_.setAccelerometerNoise(0.4);  // 0.04
     noise_params_.setGyroscopeBiasNoise(0.001);
     noise_params_.setAccelerometerBiasNoise(0.001);
     noise_params_.setContactNoise(0.05);
 
     MatrixXd P = MatrixXd::Identity(15, 15);
     P.block<3, 3>(0, 0) = 0.0001*MatrixXd::Identity(3, 3);  // rotation
-    P.block<3, 3>(3, 3) = 0.01*MatrixXd::Identity(3, 3);  // velocity
+    P.block<3, 3>(3, 3) = 0.01*MatrixXd::Identity(3, 3);  //0.01 // velocity
     P.block<3, 3>(6, 6) = 0.0001*MatrixXd::Identity(3, 3);  // position
     P.block<3, 3>(9, 9) = 0.0001*MatrixXd::Identity(3, 3);  // gyro bias
     P.block<3, 3>(12, 12) = 0.01*MatrixXd::Identity(3, 3);  // accel bias
@@ -916,11 +916,13 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
     *left_contact = 0;
     *right_contact = 0;
   } else {
-    if (min_index == 1) {
-      *left_contact = 1;
-    } else if (min_index == 2) {
-      *right_contact = 1;
-    }
+    // Commented the code below out. Only use spring to determine the contact
+    // (we want to say a toe is on the ground when it is *flat* on the ground.)
+    // if (min_index == 1) {
+    //   *left_contact = 1;
+    // } else if (min_index == 2) {
+    //   *right_contact = 1;
+    // }
     cout << "optimal_cost[0][1][2], threshold = " <<
         optimal_cost->at(0) << ", " << optimal_cost->at(1) << ", " << optimal_cost->at(2) <<
         ", " << cost_threshold_ekf_ << endl;
@@ -1153,18 +1155,20 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
 
     // Debugging print statements
-    // cout << "Prediction: " << endl;
-    // cout << "Positions: " << endl;
-    // cout << filter_->getState().getPosition().transpose() << endl;
+    cout << "Prediction: " << endl;
     // cout << "Orientation (quaternion) : " << endl;
     // Quaterniond q_prop = Quaterniond(filter_->getState().getRotation());
     // q_prop.normalize();
     // cout << q_prop.w() << " ";
     // cout << q_prop.vec().transpose() << endl;
-    // cout << "Velocities: " << endl;
-    // cout << filter_->getState().getVelocity().transpose() << endl;
+    cout << "Velocities: " << endl;
+    cout << filter_->getState().getVelocity().transpose() << endl;
+    cout << "Positions: " << endl;
+    cout << filter_->getState().getPosition().transpose() << endl;
     // cout << "X: " << endl;
     // cout << filter_->getState().getX() << endl;
+    // cout << "P: " << endl;
+    // cout << filter_->getState().getP() << endl;
     cout << "z difference: " << filter_->getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
 
     // Estimated floating base state
@@ -1242,7 +1246,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     for (int i = 0; i < 2 ; i++) {
       pose.block<3, 3>(0, 0) = Matrix3d::Identity();
       pose.block<3, 1>(0, 3) = tree_.transformPoints(
-          cache, mid_contact_disp_, toe_indices[i], pelvis_index) - imu_pos_;
+          cache, rear_contact_disp_, toe_indices[i], pelvis_index) - imu_pos_;
 
       // Debugging print statements
       // cout << "Pose: " << endl;
@@ -1251,7 +1255,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       // TODO(yminchen): the jacobian here should be J_imu_to_toe viewed in imu
       // frame. Need to fix this.
       MatrixXd J = tree_.transformPointsJacobian(
-          cache, Vector3d::Zero(), toe_indices[i], pelvis_index, false);
+          cache, rear_contact_disp_, toe_indices[i], pelvis_index, false);
       // covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .0001*Vector3d::Identity();
       covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose();
       // cout << "covariance.block<3, 3>(3, 3) = \n" << covariance.block<3, 3>(3, 3) << endl;
@@ -1264,19 +1268,19 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     q = Quaterniond(filter_->getState().getRotation());
     q.normalize();
     // cout << "Update: " << endl;
-    // cout << "Positions: " << endl;
-    // cout << filter_->getState().getPosition().transpose() << endl;
     // cout << "Orientation (quaternion) : " << endl;
     // cout << q.w() << " ";
     // cout << q.vec().transpose() << endl;
-    // cout << "Velocities: " << endl;
-    // cout << filter_->getState().getVelocity().transpose() << endl;
-    // // cout << "P: " << endl;
-    // // cout << filter_->getState().getP() << endl;
+    cout << "Velocities: " << endl;
+    cout << filter_->getState().getVelocity().transpose() << endl;
+    cout << "Positions: " << endl;
+    cout << filter_->getState().getPosition().transpose() << endl;
     // cout << "X: " << endl;
     // cout << filter_->getState().getX() << endl;
     // cout << "Theta: " << endl;
     // cout << filter_->getState().getTheta() << endl;
+    // cout << "P: " << endl;
+    // cout << filter_->getState().getP() << endl;
     cout << "z difference: " << filter_->getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
 
     for (int i = 0; i < 3; ++i) {

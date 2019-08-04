@@ -125,7 +125,7 @@ int DoMain(int argc, char* argv[]) {
                   lipm_traj_generator->get_input_port_state());
 
   // Create foot placement control block
-  Eigen::Vector2d global_target_position(5, 0);
+  Eigen::Vector2d global_target_position(10, 0);
   Eigen::Vector2d params_of_no_turning(5, 1);
   // Logistic function 1/(1+5*exp(x-1))
   // The function ouputs 0.0007 when x = 0

@@ -135,7 +135,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
 
   // Contact Estimation Parameters
   const double cost_threshold_ctrl_ = 200;
-  const double cost_threshold_ekf_ = 20;
+  const double cost_threshold_ekf_ = 200;
   const double knee_spring_threshold_ = -0.015;
   const double heel_spring_threshold_ctrl_ = -0.03;  // TODO(yminchen): ask nanda why this is 0.03
   const double heel_spring_threshold_ekf_ = -0.015;

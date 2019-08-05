@@ -35,6 +35,8 @@ DEFINE_int64(port, 25001, "Port to receive on.");
 DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,
     "Simulated or real robot (default=false, real robot)");
+DEFINE_bool(test_with_ground_truth_state, false,
+    "Get floating base from ground truth state for testing");
 
 // TODO(yminchen): delete the following flag after you finish testing
 // cassie_rbt_state_estimator
@@ -63,8 +65,8 @@ int do_main(int argc, char* argv[]) {
   }
 
   // Create state estimator
-  auto state_estimator =
-      builder.AddSystem<systems::CassieRbtStateEstimator>(*tree, FLAGS_floating_base);
+  auto state_estimator = builder.AddSystem<systems::CassieRbtStateEstimator>(
+      *tree, FLAGS_floating_base, FLAGS_test_with_ground_truth_state);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
@@ -81,11 +83,12 @@ int do_main(int argc, char* argv[]) {
     input_receiver =
         builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*input_receiver, *output_sender);
-    builder.Connect(input_receiver->get_output_port(0), state_estimator->get_input_port(0));
+    builder.Connect(input_receiver->get_output_port(0),
+                    state_estimator->get_input_port(0));
 
     // Adding "CASSIE_STATE" and "CASSIE_INPUT" ports for testing estimator
     // TODO(yminchen): delete this part after finishing estimator
-    if(FLAGS_floating_base){
+    if(FLAGS_floating_base && FLAGS_test_with_ground_truth_state){
       auto state_sub = builder.AddSystem(
           LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_state_channel_name, &lcm_local));
@@ -166,6 +169,10 @@ int do_main(int argc, char* argv[]) {
     auto& state_estimator_context =
       diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
     state_estimator->setPreviousTime(&state_estimator_context, t0);
+    state_estimator->setInitialImuPosition(&state_estimator_context,
+        Eigen::Vector3d(0.0318638, 0,  0.969223));
+    state_estimator->setInitialImuQuaternion(&state_estimator_context,
+        Eigen::Vector4d(1, 0, 0, 0));
 
     drake::log()->info("dispatcher_robot_out started");
     while (true) {

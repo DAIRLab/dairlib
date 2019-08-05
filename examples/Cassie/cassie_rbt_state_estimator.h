@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 #include <fstream>
+#include <memory>
 
 #include "drake/systems/framework/leaf_system.h"
 
@@ -31,7 +32,8 @@ namespace systems {
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
-                                   bool is_floating_base);
+                                   bool is_floating_base,
+                                   bool test_with_ground_truth_state = false);
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
@@ -54,6 +56,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
       int* left_contact, int* right_contact) const;
 
   void setPreviousTime(drake::systems::Context<double>* context, double time);
+  void setInitialImuPosition(drake::systems::Context<double>* context,
+                             Eigen::Vector3d p);
+  void setInitialImuQuaternion(drake::systems::Context<double>* context,
+                               Eigen::Vector4d q);
 
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
@@ -68,10 +74,13 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
 
   drake::systems::EventStatus Update(
       const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
+      drake::systems::State<double>* state) const;
 
   void CopyStateOut(const drake::systems::Context<double>& context,
                     systems::OutputVector<double>* output) const;
+
+  // flag for testing
+  bool test_with_ground_truth_state_;
 
   const RigidBodyTree<double>& tree_;
   const bool is_floating_base_;
@@ -81,10 +90,13 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuator_index_map_;
 
   // Body indices
-  int left_thigh_ind_;
-  int right_thigh_ind_;
-  int left_heel_spring_ind_;
-  int right_heel_spring_ind_;
+  int left_thigh_idx_;
+  int right_thigh_idx_;
+  int left_heel_spring_idx_;
+  int right_heel_spring_idx_;
+  int left_toe_idx_;
+  int right_toe_idx_;
+  int pelvis_idx_;
 
   // Input/output port indices
   int cassie_out_input_port_;
@@ -95,7 +107,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex time_idx_;
   // States related to EKF
   drake::systems::DiscreteStateIndex state_idx_;
-  drake::systems::DiscreteStateIndex ekf_X_idx_;
+  drake::systems::AbstractStateIndex ekf_idx_;
   // A state related to contact estimation
   // This state store the previous generalized velocity
   drake::systems::DiscreteStateIndex previous_velocity_idx_;
@@ -118,7 +130,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex lambda_cr_double_init_idx_;
   drake::systems::DiscreteStateIndex lambda_cr_right_init_idx_;
 
-  drake::systems::DiscreteStateIndex prev_IMU_measurement_;
+  drake::systems::DiscreteStateIndex prev_imu_idx_;
 
   // Cassie parameters
   // TODO(yminchen): get the numbers below from tree
@@ -167,10 +179,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   // Optimal costs
   std::unique_ptr<std::vector<double>> optimal_cost =
       std::make_unique<std::vector<double>>(3, 0.0);
-
-  inekf::RobotState initial_state_;
-  inekf::NoiseParams noise_params_;
-  std::unique_ptr<inekf::InEKF> filter_;
 };
 
 }  // namespace systems

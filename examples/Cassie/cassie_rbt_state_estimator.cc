@@ -1357,6 +1357,9 @@ void CassieRbtStateEstimator::CopyStateOut(
           context.get_discrete_state(fb_state_idx_).get_value().transpose()
           << endl;
     }
+    cout << "Assign floating base state of the imu. " <<
+        context.get_discrete_state(fb_state_idx_).get_value().transpose()
+        << endl;
   }
 
   // TODO(yminchen): delete the testing code when you fix the time delay issue

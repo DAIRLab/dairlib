@@ -118,17 +118,18 @@ void OperationalSpaceControl::AddAccelerationCost(std::string joint_vel_name,
 
 // Constraint methods
 void OperationalSpaceControl::AddContactPoint(std::string body_name,
-    VectorXd pt_on_body) {
+    VectorXd pt_on_body, double mu_low_friction, double period_of_low_friction){
   body_index_.push_back(GetBodyIndexFromName(tree_wo_spr_, body_name));
   pt_on_body_.push_back(pt_on_body);
+  mu_low_friction_.push_back(mu_low_friction);
+  period_of_low_friction_.push_back(period_of_low_friction);
 }
 void OperationalSpaceControl::AddStateAndContactPoint(int state,
     std::string body_name, VectorXd pt_on_body,
     double mu_low_friction, double period_of_low_friction) {
   fsm_state_when_active_.push_back(state);
-  mu_low_friction_.push_back(mu_low_friction);
-  period_of_low_friction_.push_back(period_of_low_friction);
-  AddContactPoint(body_name, pt_on_body);
+  AddContactPoint(body_name, pt_on_body,
+      mu_low_friction, period_of_low_friction);
 }
 
 // Tracking data methods
@@ -416,7 +417,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
       // If the contact is inactive, we assign zeros to A matrix. (lb<=Ax<=ub)
       if (active_contact_flags[i]) {
-        if(time_since_last_state_switch < period_of_low_friction_[i]){
+        if (time_since_last_state_switch < period_of_low_friction_[i]) {
           mu_minus1 << mu_low_friction_[i], -1;
           mu_plus1 << mu_low_friction_[i], 1;
         } else {
@@ -577,6 +578,7 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd x_w_spr(tree_w_spr_.get_num_positions() +
                    tree_w_spr_.get_num_velocities());
   x_w_spr << q_w_spr, v_w_spr;
+  cout << "x_w_spr = " << x_w_spr.transpose() << endl;
 
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);

@@ -1,5 +1,6 @@
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
 #include <math.h>
+#include <utility>
 #include <fstream>
 #include <chrono>
 #include "drake/solvers/mathematical_program.h"
@@ -34,11 +35,12 @@ using multibody::GetBodyIndexFromName;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
     const RigidBodyTree<double>& tree, bool is_floating_base,
-    bool test_with_ground_truth_state) :
+    bool test_with_ground_truth_state, bool print_info_to_terminal) :
         tree_(tree),
         is_floating_base_(is_floating_base) {
-  // A flag for testing
+  // Flags for testing and tuning
   test_with_ground_truth_state_ = test_with_ground_truth_state;
+  print_info_to_terminal_ = print_info_to_terminal;
 
   // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort("cassie_out_t",
@@ -876,7 +878,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 
 
 /// EstimateContactForEkf(). Conservative estimation.
-/// EKF is updated based on the assumption of the stance foot are stationary.
+/// EKF is updated based on the assumption of stance foot being stationary.
 /// The estimated state would get very inaccurate if the stance foot is moving.
 ///
 /// Input:
@@ -884,10 +886,6 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 ///    actuator torques of the robot
 /// Ouput: left contact `left_contact` and right contact `right_contact` that
 ///  indicate if the corresponding foot is in contact with the ground
-///
-/// Assumptions:
-///  1. the swing leg doesn't stop during single support
-///  2. flight mode is not present during the gait
 ///
 /// Algorithm:
 ///  The contact is estimated based on
@@ -897,45 +895,34 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 ///  If the compression in the left (right) heel/ankle spring is more than the
 ///  set threshold, the left (right) foot is estimated to be in contact with
 ///  the ground.
-///  Additionally, the optimal cost from the optimization is used to augument
-///  the estimation from the spring.
 ///  During impact, both the legs have some non-zero acceleration and hence the
-///  optimal costs will all be high. This case is assumed to be no stance.
+///  optimal costs will all be high. This case is assumed to be *no* stance.
 void CassieRbtStateEstimator::EstimateContactForEkf(
     const OutputVector<double>& output,
     int* left_contact, int* right_contact) const {
-  // Estimate contact based on optimization results
-  // The vector optimal_cost has double support, left support and right support
-  // costs in order. The corresponding indices are 0, 1, 2.
-  // Here we get the index of min of left and right support costs.
-  // auto min_it = std::min_element(std::next(optimal_cost->begin(), 1),
-  //     optimal_cost->end());
-  // int min_index = std::distance(optimal_cost->begin(), min_it);
-
-  // If all three costs are high, we believe it's going through impact event,
+  // If all three costs are high, we believe it's going through impact event (
+  // big ground contact point acceleration),
   // and we assume there is no support legs because we don't want moving feet
-  // to screw up the EKF.
+  // to mess up EKF.
   if ((optimal_cost->at(0) >= cost_threshold_ekf_) &&
       (optimal_cost->at(1) >= cost_threshold_ekf_) &&
       (optimal_cost->at(2) >= cost_threshold_ekf_)) {
     *left_contact = 0;
     *right_contact = 0;
   } else {
-    // Commented the code below out. Only use spring to determine the contact
-    // (we want to say a toe is on the ground when it is *flat* on the ground.)
-    // if (min_index == 1) {
-    //   *left_contact = 1;
-    // } else if (min_index == 2) {
-    //   *right_contact = 1;
-    // }
-    cout << "optimal_cost[0][1][2], threshold = " <<
-        optimal_cost->at(0) << ", " << optimal_cost->at(1) << ", " << optimal_cost->at(2) <<
-        ", " << cost_threshold_ekf_ << endl;
-    cout << "left/right contacts = " << *left_contact << ", " << *right_contact << endl;
+    if (print_info_to_terminal_) {
+      cout << "optimal_cost[0][1][2], threshold = " <<
+          optimal_cost->at(0) << ", " << optimal_cost->at(1) << ", " <<
+          optimal_cost->at(2) << ", " << cost_threshold_ekf_ << endl;
+      cout << "left/right contacts = " <<
+          *left_contact << ", " << *right_contact << endl;
+    }
 
-    // Update contact estimation based on spring deflection information
-    // We say a foot is in contact with the ground if spring deflection is over
-    // a threshold. We don't update anything if it's under the threshold.
+    // Only use spring to determine the contact (we want to say a toe is on the
+    // ground when it is *flat* on the ground.)
+    // We say a foot is in contact with the ground if knee and heel spring
+    // deflections are *both* over some thresholds. We don't update anything
+    // if it's under the threshold.
     double left_knee_spring = output.GetPositionAtIndex(
         position_index_map_.at("knee_joint_left"));
     double right_knee_spring = output.GetPositionAtIndex(
@@ -944,23 +931,25 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
         position_index_map_.at("ankle_spring_joint_left"));
     double right_heel_spring = output.GetPositionAtIndex(
         position_index_map_.at("ankle_spring_joint_right"));
-    if (left_knee_spring < knee_spring_threshold_ &&
+    if (left_knee_spring < knee_spring_threshold_ekf_ &&
           left_heel_spring < heel_spring_threshold_ekf_) {
       *left_contact = 1;
     }
-    if (right_knee_spring < knee_spring_threshold_ &&
+    if (right_knee_spring < knee_spring_threshold_ekf_ &&
           right_heel_spring < heel_spring_threshold_ekf_) {
       *right_contact = 1;
     }
 
-    // Debugging
-    cout << "left/right knee spring, threshold = " << left_knee_spring << ", ";
-    cout << right_knee_spring << ", ";
-    cout << knee_spring_threshold_ << endl;
-    cout << "left/right heel spring, threshold = " << left_heel_spring << ", ";
-    cout << right_heel_spring << ", ";
-    cout << heel_spring_threshold_ekf_ << endl;
-    cout << "left/right contacts = " << *left_contact << ", " << *right_contact << endl;
+    if (print_info_to_terminal_) {
+      cout << "left/right knee spring, threshold = " <<
+          left_knee_spring << ", " << right_knee_spring << ", " <<
+          knee_spring_threshold_ekf_ << endl;
+      cout << "left/right heel spring, threshold = " <<
+          left_heel_spring << ", " << right_heel_spring << ", " <<
+          heel_spring_threshold_ekf_ << endl;
+      cout << "left/right contacts = " <<
+          *left_contact << ", " << *right_contact << endl;
+    }
   }
 }
 
@@ -1016,8 +1005,9 @@ void CassieRbtStateEstimator::EstimateContactForController(
   }
 
   // Update contact estimation based on spring deflection information
-  // We say a foot is in contact with the ground if spring deflection is over
-  // a threshold. We don't update anything if it's under the threshold.
+  // We say a foot is in contact with the ground if either knee or heel spring
+  // deflection is over a threshold. We don't update anything if it's under
+  // the threshold.
   double left_knee_spring = output.GetPositionAtIndex(
       position_index_map_.at("knee_joint_left"));
   double right_knee_spring = output.GetPositionAtIndex(
@@ -1026,11 +1016,11 @@ void CassieRbtStateEstimator::EstimateContactForController(
       position_index_map_.at("ankle_spring_joint_left"));
   double right_heel_spring = output.GetPositionAtIndex(
       position_index_map_.at("ankle_spring_joint_right"));
-  if (left_knee_spring < knee_spring_threshold_ ||
+  if (left_knee_spring < knee_spring_threshold_ctrl_ ||
         left_heel_spring < heel_spring_threshold_ctrl_) {
     *left_contact = 1;
   }
-  if (right_knee_spring < knee_spring_threshold_ ||
+  if (right_knee_spring < knee_spring_threshold_ctrl_ ||
         right_heel_spring < heel_spring_threshold_ctrl_) {
     *right_contact = 1;
   }
@@ -1059,10 +1049,11 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
   // current_time = cassie_out.pelvis.targetPc.taskExecutionTime;
 
   if (current_time > prev_t) {
-
-    cout << "current_time = " << current_time << endl;
     double dt = current_time - prev_t;
-    cout << "dt: " << dt << endl;
+    if (print_info_to_terminal_) {
+      cout << "current_time = " << current_time << endl;
+      cout << "dt: " << dt << endl;
+    }
 
     // Perform State Estimation (in several steps)
     // Step 1 - Solve for the unknown joint angle
@@ -1098,22 +1089,22 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       KinematicsCache<double> cache_gt = tree_.doKinematics(
           output_gt.GetPositions(), output_gt.GetVelocities(), true);
 
-      // Debugging print statements
       imu_pos_wrt_world.head(3) = tree_.transformPoints(
           cache_gt, imu_pos_, pelvis_idx_, 0);
       imu_pos_wrt_world.tail(4) = output_gt.GetPositions().segment<4>(3);
       imu_vel_wrt_world.tail(3) = output_gt.GetVelocities().head(3);
       imu_vel_wrt_world.head(3) = tree_.transformPointsJacobian(
           cache_gt, imu_pos_, pelvis_idx_, 0, false)*output_gt.GetVelocities();
-      // cout << "Ground Truth: " << endl;
-      // cout << "Positions: " << endl;
-      // // cout << output_gt.GetPositions().head(3).transpose() << endl;
-      // cout << imu_pos_wrt_world.transpose() << endl;
-      // cout << "Orientation (quaternion) : " << endl;
-      // cout << output_gt.GetPositions().segment<4>(3).transpose() << endl;
-      // cout << "Velocities: " << endl;
-      // // cout << output_gt.GetVelocities().head(6).transpose() << endl;
-      // cout << imu_vel_wrt_world.transpose() << endl;
+      if (print_info_to_terminal_) {
+        // Debugging print statements
+        cout << "Ground Truth: " << endl;
+        cout << "Positions: " << endl;
+        cout << imu_pos_wrt_world.transpose() << endl;
+        cout << "Orientation (quaternion) : " << endl;
+        cout << output_gt.GetPositions().segment<4>(3).transpose() << endl;
+        cout << "Velocities: " << endl;
+        cout << imu_vel_wrt_world.transpose() << endl;
+      }
 
       // ofile.open("/home/nanda/DAIR/plotting/ekf.csv",
       //            std::ios::out | std::ios::app);
@@ -1121,23 +1112,21 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
                  std::ios::out | std::ios::app);
       ofile << current_time << ", ";
       for (int i = 0; i < 7; ++i) {
-        // ofile << output_gt.GetPositions()[i] << ", ";
         ofile << imu_pos_wrt_world[i] << ", ";
       }
       for (int i = 0; i < 6; ++i) {
-        // ofile << output_gt.GetVelocities()[i] << ", ";
         ofile << imu_vel_wrt_world[i] << ", ";
       }
 
-      // Debugging print statements
-      // cout << "Leg positions: " << endl;
-      // cout << tree_.transformPoints(cache_gt, Vector3d::Zero(), left_toe_idx_, 0)
-      //             .transpose()
-      //      << endl;
-      // cout << tree_.transformPoints(cache_gt, Vector3d::Zero(), right_toe_idx_, 0)
-      //             .transpose()
-      //      << endl;
-      // cout << endl;
+      if (print_info_to_terminal_) {
+        // Debugging print statements
+        // cout << "Leg positions: " << endl;
+        // cout << tree_.transformPoints(
+        //     cache_gt, Vector3d::Zero(), left_toe_idx_, 0).transpose() << endl;
+        // cout << tree_.transformPoints(
+        //     cache_gt, Vector3d::Zero(), right_toe_idx_, 0).transpose() << endl;
+        // cout << endl;
+      }
     }
 
     // Step 2 - EKF (Propagate step)
@@ -1157,26 +1146,30 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
     state->get_mutable_discrete_state().get_mutable_vector(prev_imu_idx_)
         .get_mutable_value() << imu_measurement;
-    // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
+    if (print_info_to_terminal_) {
+      // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
+    }
 
     // Debugging print statements
-    cout << "Prediction: " << endl;
-    // cout << "Orientation (quaternion) : " << endl;
-    // Quaterniond q_prop = Quaterniond(filter.getState().getRotation());
-    // q_prop.normalize();
-    // cout << q_prop.w() << " ";
-    // cout << q_prop.vec().transpose() << endl;
-    cout << "Velocities: " << endl;
-    cout << filter.getState().getVelocity().transpose() << endl;
-    cout << "Positions: " << endl;
-    cout << filter.getState().getPosition().transpose() << endl;
-    // cout << "X: " << endl;
-    // cout << filter.getState().getX() << endl;
-    // cout << "P: " << endl;
-    // cout << filter.getState().getP() << endl;
-    if (test_with_ground_truth_state_) {
-      cout << "z difference: " <<
-          filter.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
+    if (print_info_to_terminal_) {
+      cout << "Prediction: " << endl;
+      // cout << "Orientation (quaternion) : " << endl;
+      // Quaterniond q_prop = Quaterniond(filter.getState().getRotation());
+      // q_prop.normalize();
+      // cout << q_prop.w() << " ";
+      // cout << q_prop.vec().transpose() << endl;
+      cout << "Velocities: " << endl;
+      cout << filter.getState().getVelocity().transpose() << endl;
+      cout << "Positions: " << endl;
+      cout << filter.getState().getPosition().transpose() << endl;
+      // cout << "X: " << endl;
+      // cout << filter.getState().getX() << endl;
+      // cout << "P: " << endl;
+      // cout << filter.getState().getP() << endl;
+      if (test_with_ground_truth_state_) {
+        cout << "z difference: " <<
+            filter.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
+      }
     }
 
     // Estimated floating base state
@@ -1205,7 +1198,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
     // Estimate feet contacts
-    // TODO(yminchen): change this to output_estimate (filtered_output)
     int left_contact = 0;
     int right_contact = 0;
     if (test_with_ground_truth_state_){
@@ -1217,13 +1209,11 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
           &(state->get_mutable_discrete_state()));
       EstimateContactForEkf(filtered_output, &left_contact, &right_contact);
     }
-    // cout << "left/right contacts = " << left_contact << ", " << right_contact << endl;
 
     std::vector<std::pair<int, bool>> contacts;
-    contacts.push_back(std::pair<int ,bool>(0, left_contact));
-    contacts.push_back(std::pair<int ,bool>(1, right_contact));
-
-    filter.setContacts(contacts);  // TODO(yminchen): double check the usage
+    contacts.push_back(std::pair<int, bool>(0, left_contact));
+    contacts.push_back(std::pair<int, bool>(1, right_contact));
+    filter.setContacts(contacts);
 
     // Step 4 - EKF (measurement step)
     KinematicsCache<double> cache = tree_.doKinematics(
@@ -1240,15 +1230,17 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
     if (test_with_ground_truth_state_) {
       // Debugging print statements
-      // cout << "Rotation differences: " << endl;
-      // cout << "Rotation matrix from EKF: " << endl;
-      // cout << filter.getState().getRotation() << endl;
-      // cout << "Ground truth rotation: " << endl;
-      Quaterniond q_real;
-      q_real.w() = output_gt.GetPositions()[3];
-      q_real.vec() = output_gt.GetPositions().segment<3>(4);
-      MatrixXd R_actual = q_real.toRotationMatrix();
-      // cout << R_actual << endl;
+      if (print_info_to_terminal_) {
+        cout << "Rotation differences: " << endl;
+        cout << "Rotation matrix from EKF: " << endl;
+        cout << filter.getState().getRotation() << endl;
+        cout << "Ground truth rotation: " << endl;
+        Quaterniond q_real;
+        q_real.w() = output_gt.GetPositions()[3];
+        q_real.vec() = output_gt.GetPositions().segment<3>(4);
+        MatrixXd R_actual = q_real.toRotationMatrix();
+        cout << R_actual << endl;
+      }
     }
 
     inekf::vectorKinematics measured_kinematics;
@@ -1258,40 +1250,50 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
           cache, rear_contact_disp_, toe_indices[i], pelvis_idx_) - imu_pos_;
 
       // Debugging print statements
-      // cout << "Pose: " << endl;
-      // cout << pose.block<3, 1>(0, 3).transpose() << endl;
+      if (print_info_to_terminal_) {
+        // cout << "Pose: " << endl;
+        // cout << pose.block<3, 1>(0, 3).transpose() << endl;
+      }
 
       // TODO(yminchen): the jacobian here should be J_imu_to_toe viewed in imu
-      // frame. Need to fix this.
+      // frame. Currently it doesn't seem to be a problem for estimation.
+      // Should fix this once moved to MBP (which has the API).
       MatrixXd J = tree_.transformPointsJacobian(
           cache, rear_contact_disp_, toe_indices[i], pelvis_idx_, false);
-      // covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose() +  .0001*Vector3d::Identity();
       covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose();
-      // cout << "covariance.block<3, 3>(3, 3) = \n" << covariance.block<3, 3>(3, 3) << endl;
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);
+
+      if (print_info_to_terminal_) {
+        cout << "covariance.block<3, 3>(3, 3) = \n" <<
+            covariance.block<3, 3>(3, 3) << endl;
+      }
     }
     filter.CorrectKinematics(measured_kinematics);
 
     // Debugging print statements
-    q = Quaterniond(filter.getState().getRotation()).normalized();
-    cout << "Update: " << endl;
-    // cout << "Orientation (quaternion) : " << endl;
-    // cout << q.w() << " ";
-    // cout << q.vec().transpose() << endl;
-    cout << "Velocities: " << endl;
-    cout << filter.getState().getVelocity().transpose() << endl;
-    cout << "Positions: " << endl;
-    cout << filter.getState().getPosition().transpose() << endl;
-    // cout << "X: " << endl;
-    // cout << filter.getState().getX() << endl;
-    // cout << "Theta: " << endl;
-    // cout << filter.getState().getTheta() << endl;
-    // cout << "P: " << endl;
-    // cout << filter.getState().getP() << endl;
+    if (print_info_to_terminal_) {
+      q = Quaterniond(filter.getState().getRotation()).normalized();
+      cout << "Update: " << endl;
+      // cout << "Orientation (quaternion) : " << endl;
+      // cout << q.w() << " ";
+      // cout << q.vec().transpose() << endl;
+      cout << "Velocities: " << endl;
+      cout << filter.getState().getVelocity().transpose() << endl;
+      cout << "Positions: " << endl;
+      cout << filter.getState().getPosition().transpose() << endl;
+      // cout << "X: " << endl;
+      // cout << filter.getState().getX() << endl;
+      // cout << "Theta: " << endl;
+      // cout << filter.getState().getTheta() << endl;
+      // cout << "P: " << endl;
+      // cout << filter.getState().getP() << endl;
+    }
     if (test_with_ground_truth_state_) {
-      cout << "z difference: " <<
-          filter.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
+      if (print_info_to_terminal_) {
+        cout << "z difference: " <<
+            filter.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
+      }
 
       for (int i = 0; i < 3; ++i) {
         ofile << filter.getState().getPosition()[i] << ", ";
@@ -1302,6 +1304,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       }
       ofile << "\n";
       ofile.close();
+    }
+    if (print_info_to_terminal_) {
       cout << "------------------------------\n";
       cout << endl;
     }
@@ -1356,46 +1360,9 @@ void CassieRbtStateEstimator::CopyStateOut(
   if (is_floating_base_) {
     AssignFloatingBaseStateToOutputVector(
         context.get_discrete_state(state_idx_).get_value(), output);
-    cout << "Assign floating base state. " << context.get_discrete_state(state_idx_).get_value().transpose() << endl;
-
-    // (for testing EKF) we get the floating base state
-    // from ground truth (CASSIE_STATE)
-    if (test_with_ground_truth_state_) {
-      // TODO(yminchen): delete this later
-      const OutputVector<double>* cassie_state = (OutputVector<double>*)
-          this->EvalVectorInput(context, state_input_port_);
-      output->SetPositionAtIndex(position_index_map_.at("base_x"),
-                                cassie_state->GetPositions()[0]);
-      output->SetPositionAtIndex(position_index_map_.at("base_y"),
-                                cassie_state->GetPositions()[1]);
-      output->SetPositionAtIndex(position_index_map_.at("base_z"),
-                                cassie_state->GetPositions()[2]);
-      output->SetPositionAtIndex(position_index_map_.at("base_qw"),
-                                cassie_state->GetPositions()[3]);
-      output->SetPositionAtIndex(position_index_map_.at("base_qx"),
-                                cassie_state->GetPositions()[4]);
-      output->SetPositionAtIndex(position_index_map_.at("base_qy"),
-                                cassie_state->GetPositions()[5]);
-      output->SetPositionAtIndex(position_index_map_.at("base_qz"),
-                                cassie_state->GetPositions()[6]);
-      output->SetVelocityAtIndex(velocity_index_map_.at("base_wx"),
-                                cassie_state->GetVelocities()[0]);
-      output->SetVelocityAtIndex(velocity_index_map_.at("base_wy"),
-                                cassie_state->GetVelocities()[1]);
-      output->SetVelocityAtIndex(velocity_index_map_.at("base_wz"),
-                                cassie_state->GetVelocities()[2]);
-      output->SetVelocityAtIndex(velocity_index_map_.at("base_vx"),
-                                cassie_state->GetVelocities()[3]);
-      output->SetVelocityAtIndex(velocity_index_map_.at("base_vy"),
-                                cassie_state->GetVelocities()[4]);
-      output->SetVelocityAtIndex(velocity_index_map_.at("base_vz"),
-                                cassie_state->GetVelocities()[5]);
-      // We get 0's cassie_state in the beginning because dispatcher_robot_out
-      // is not triggerred by CASSIE_STATE message.
-      // This wouldn't be an issue when you don't use ground truth state.
-      if (output->GetPositions().head(7).norm() == 0) {
-        output->SetPositionAtIndex(position_index_map_.at("base_qw"), 1);
-      }
+    if (print_info_to_terminal_) {
+      cout << "Assign floating base state. " <<
+          context.get_discrete_state(state_idx_).get_value().transpose() << endl;
     }
   }
 

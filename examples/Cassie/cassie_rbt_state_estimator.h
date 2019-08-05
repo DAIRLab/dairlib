@@ -33,7 +33,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
                                    bool is_floating_base,
-                                   bool test_with_ground_truth_state = false);
+                                   bool test_with_ground_truth_state = false,
+                                   bool print_info_to_terminal = false);
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
@@ -79,8 +80,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   void CopyStateOut(const drake::systems::Context<double>& context,
                     systems::OutputVector<double>* output) const;
 
-  // flag for testing
+  // flag for testing and tuning
   bool test_with_ground_truth_state_;
+  bool print_info_to_terminal_;
 
   const RigidBodyTree<double>& tree_;
   const bool is_floating_base_;
@@ -148,7 +150,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   // Contact Estimation Parameters
   const double cost_threshold_ctrl_ = 200;
   const double cost_threshold_ekf_ = 200;
-  const double knee_spring_threshold_ = -0.015;
+  const double knee_spring_threshold_ctrl_ = -0.015;
+  const double knee_spring_threshold_ekf_ = -0.015;
   const double heel_spring_threshold_ctrl_ = -0.03;  // TODO(yminchen): ask nanda why this is 0.03
   const double heel_spring_threshold_ekf_ = -0.015;
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix

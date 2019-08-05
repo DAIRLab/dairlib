@@ -83,17 +83,21 @@ class Observation {
 class InEKF {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   InEKF();
   InEKF(NoiseParams params);
   InEKF(RobotState state);
   InEKF(RobotState state, NoiseParams params);
 
-  RobotState getState();
-  NoiseParams getNoiseParams();
-  mapIntVector3d getPriorLandmarks();
-  std::map<int, int> getEstimatedLandmarks();
-  std::map<int, bool> getContacts();
-  std::map<int, int> getEstimatedContactPositions();
+  // assignment operator (needed for drake abstract value)
+  InEKF& operator = (const InEKF&);
+
+  RobotState getState() const;
+  NoiseParams getNoiseParams() const;
+  mapIntVector3d getPriorLandmarks() const;
+  std::map<int, int> getEstimatedLandmarks() const;
+  std::map<int, bool> getContacts() const;
+  std::map<int, int> getEstimatedContactPositions() const;
   void setState(RobotState state);
   void setNoiseParams(NoiseParams params);
   void setPriorLandmarks(const mapIntVector3d& prior_landmarks);
@@ -107,11 +111,11 @@ class InEKF {
  private:
   RobotState state_;
   NoiseParams noise_params_;
-  const Eigen::Vector3d g_;  // Gravity
   mapIntVector3d prior_landmarks_;
   std::map<int, int> estimated_landmarks_;
   std::map<int, bool> contacts_;
   std::map<int, int> estimated_contact_positions_;
+  const Eigen::Vector3d g_ = Eigen::Vector3d(0, 0, -9.81);  // Gravity
 };
 
 }  // namespace inekf

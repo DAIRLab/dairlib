@@ -42,37 +42,46 @@ ostream& operator<<(ostream& os, const Observation& o) {
 
 // ------------ InEKF -------------
 // Default constructor
-InEKF::InEKF() : g_((Eigen::VectorXd(3) << 0, 0, -9.81).finished()) {}
+InEKF::InEKF() {}
 
 // Constructor with noise params
 InEKF::InEKF(NoiseParams params)
-    : g_((Eigen::VectorXd(3) << 0, 0, -9.81).finished()),
-      noise_params_(params) {}
+    : noise_params_(params) {}
 
 // Constructor with initial state
 InEKF::InEKF(RobotState state)
-    : g_((Eigen::VectorXd(3) << 0, 0, -9.81).finished()), state_(state) {}
+    : state_(state) {}
 
 // Constructor with initial state and noise params
 InEKF::InEKF(RobotState state, NoiseParams params)
-    : g_((Eigen::VectorXd(3) << 0, 0, -9.81).finished()),
-      state_(state),
+    : state_(state),
       noise_params_(params) {}
 
+// Assignment operator
+InEKF& InEKF::operator = (const InEKF& old_inekf) {
+  state_ = old_inekf.getState();
+  noise_params_ = old_inekf.getNoiseParams();
+  prior_landmarks_ = old_inekf.getPriorLandmarks();
+  estimated_landmarks_ = old_inekf.getEstimatedLandmarks();
+  contacts_ = old_inekf.getContacts();
+  estimated_contact_positions_ = old_inekf.getEstimatedContactPositions();
+  return *this;
+}
+
 // Return robot's current state
-RobotState InEKF::getState() { return state_; }
+RobotState InEKF::getState() const { return state_; }
 
 // Sets the robot's current state
 void InEKF::setState(RobotState state) { state_ = state; }
 
 // Return noise params
-NoiseParams InEKF::getNoiseParams() { return noise_params_; }
+NoiseParams InEKF::getNoiseParams() const { return noise_params_; }
 
 // Sets the filter's noise parameters
 void InEKF::setNoiseParams(NoiseParams params) { noise_params_ = params; }
 
 // Return filter's prior (static) landmarks
-mapIntVector3d InEKF::getPriorLandmarks() { return prior_landmarks_; }
+mapIntVector3d InEKF::getPriorLandmarks() const { return prior_landmarks_; }
 
 // Set the filter's prior (static) landmarks
 void InEKF::setPriorLandmarks(const mapIntVector3d& prior_landmarks) {
@@ -80,12 +89,12 @@ void InEKF::setPriorLandmarks(const mapIntVector3d& prior_landmarks) {
 }
 
 // Return filter's estimated landmarks
-map<int, int> InEKF::getEstimatedLandmarks() {
+map<int, int> InEKF::getEstimatedLandmarks() const {
   return estimated_landmarks_;
 }
 
 // Return filter's estimated landmarks
-map<int, int> InEKF::getEstimatedContactPositions() {
+map<int, int> InEKF::getEstimatedContactPositions() const {
   return estimated_contact_positions_;
 }
 
@@ -104,7 +113,7 @@ void InEKF::setContacts(vector<pair<int, bool> > contacts) {
 }
 
 // Return the filter's contact state
-std::map<int, bool> InEKF::getContacts() {
+std::map<int, bool> InEKF::getContacts() const {
   return contacts_;
 }
 

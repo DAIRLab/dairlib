@@ -1050,6 +1050,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
   if (current_time > prev_t) {
     double dt = current_time - prev_t;
+    cout << "current_time = " << current_time << endl;
     if (print_info_to_terminal_) {
       cout << "current_time = " << current_time << endl;
       cout << "dt: " << dt << endl;
@@ -1108,7 +1109,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
       // ofile.open("/home/nanda/DAIR/plotting/ekf.csv",
       //            std::ios::out | std::ios::app);
-      ofile.open("/home/yuming/Documents/workspace/plotting/ekf.csv",
+      ofile.open("/home/yu-ming/Documents/workspace/plotting/ekf.csv",
                  std::ios::out | std::ios::app);
       ofile << current_time << ", ";
       for (int i = 0; i < 7; ++i) {

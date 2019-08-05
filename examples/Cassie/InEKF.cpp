@@ -211,8 +211,8 @@ void InEKF::Correct(const Observation& obs) {
 
   // Compute correction terms
   Eigen::MatrixXd Z = BigX * obs.Y - obs.b;
-  cout << "Z: (from InEKF) " << endl;
-  cout << Z.transpose() << endl;
+  // cout << "Z: (from InEKF) " << endl;
+  // cout << Z.transpose() << endl;
   Eigen::VectorXd delta = K * obs.PI * Z;
   Eigen::MatrixXd dX =
       Exp_SEK3(delta.segment(0, delta.rows() - state_.dimTheta()));
@@ -228,7 +228,7 @@ void InEKF::Correct(const Observation& obs) {
   Eigen::VectorXd Theta_new = state_.getTheta() + dTheta;
   state_.setX(X_new);
   state_.setTheta(Theta_new);
-  cout << "contact point = " << X_new.block(0,5,3,1).transpose() << endl;
+  // cout << "contact point = " << X_new.block(0,5,3,1).transpose() << endl;
 
   // Update Covariance
   Eigen::MatrixXd IKH =
@@ -597,7 +597,8 @@ void InEKF::CorrectKinematics(const vectorKinematics& measured_kinematics) {
           Eigen::MatrixXd::Zero(startIndex, 1);
       X_aug(startIndex, startIndex) = 1;
       X_aug.block(0, startIndex, 3, 1) = p + R * it->pose.block<3, 1>(0, 3);
-      cout << "new contact position = " << (p + R * it->pose.block<3, 1>(0, 3)).transpose() << endl;
+      // cout << "new contact position = " <<
+      //     (p + R * it->pose.block<3, 1>(0, 3)).transpose() << endl;
 
       // Initialize new landmark covariance - TODO:speed up
       Eigen::MatrixXd F =

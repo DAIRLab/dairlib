@@ -54,41 +54,8 @@ cc_library(
     "//examples/Cassie/datatypes:cassie_names",
     "//attic/multibody:utils",
     ":cassie_utils",
-    ":InEKF"
+    "//examples/Cassie/inekf:InEKF",
   ]
-)
-
-cc_library(
-    name = "LieGroup",
-    srcs = ["LieGroup.cpp"],
-    hdrs = ["LieGroup.h"],
-    deps = ["@drake//:drake_shared_library"]
-)
-
-cc_library(
-    name = "RobotState",
-    srcs = ["RobotState.cpp"],
-    hdrs = ["RobotState.h"],
-    deps = [
-        ":LieGroup"
-    ]
-)
-
-cc_library(
-    name = "NoiseParams",
-    srcs = ["NoiseParams.cpp"],
-    hdrs = ["NoiseParams.h"],
-    deps = ["//examples/Cassie:LieGroup"]
-)
-
-cc_library(
-    name = "InEKF",
-    srcs = ["InEKF.cpp"],
-    hdrs = ["InEKF.h"],
-    deps = [
-        "//examples/Cassie:RobotState",
-        "//examples/Cassie:NoiseParams",
-    ]
 )
 
 cc_binary(

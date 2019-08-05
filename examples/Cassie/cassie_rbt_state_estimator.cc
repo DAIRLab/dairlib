@@ -1,3 +1,8 @@
+// TODO(yminchen): do we need to filter the gyro value before we publish?
+// We can get the bias (parameter) from EKF
+
+// TODO(yminchen): ask nanda why heel_spring_threshold_ctrl_ is 0.03?
+
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
 #include <math.h>
 #include <utility>
@@ -76,7 +81,6 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
                  left_toe_idx_ != -1 && right_toe_idx_ != -1);
 
     // Declare input port receiving robot's state (simulation ground truth state)
-    // TODO(yminchen): delete this input port after finishing testing
     if (test_with_ground_truth_state_) {
       state_input_port_ = this->DeclareVectorInputPort(
                             OutputVector<double>(tree_.get_num_positions(),
@@ -91,26 +95,18 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
 
     // states related to EKF
+    // 1. estimated floating base
     VectorXd init_floating_base_state = VectorXd::Zero(7 + 6);
     init_floating_base_state(3) = 1;
-    state_idx_ = DeclareDiscreteState(
-        init_floating_base_state);  // estimated floating base
+    fb_state_idx_ = DeclareDiscreteState(init_floating_base_state);
 
-    // initialize ekf state mean
+    // initialize ekf state mean and covariance
     inekf::RobotState initial_state;
     initial_state.setRotation(Matrix3d::Identity());
     initial_state.setVelocity(Vector3d::Zero());
     initial_state.setPosition(Vector3d::Zero());
     initial_state.setGyroscopeBias(Vector3d::Zero());
     initial_state.setAccelerometerBias(Vector3d::Zero());
-    // initialize ekf input noise
-    inekf::NoiseParams noise_params;
-    noise_params.setGyroscopeNoise(0.002);
-    noise_params.setAccelerometerNoise(0.04);
-    noise_params.setGyroscopeBiasNoise(0.001);
-    noise_params.setAccelerometerBiasNoise(0.001);
-    noise_params.setContactNoise(0.05);
-    // initialize ekf state covariance
     MatrixXd P = MatrixXd::Identity(15, 15);
     P.block<3, 3>(0, 0) = 0.0001*MatrixXd::Identity(3, 3);  // rotation
     P.block<3, 3>(3, 3) = 0.01*MatrixXd::Identity(3, 3);    // velocity
@@ -118,19 +114,23 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     P.block<3, 3>(9, 9) = 0.0001*MatrixXd::Identity(3, 3);  // gyro bias
     P.block<3, 3>(12, 12) = 0.01*MatrixXd::Identity(3, 3);  // accel bias
     initial_state.setP(P);
-    // estimated EKF state
-    // filter_ = std::make_unique<inekf::InEKF>(initial_state, noise_params);
+    // initialize ekf input noise
+    inekf::NoiseParams noise_params;
+    noise_params.setGyroscopeNoise(0.002);
+    noise_params.setAccelerometerNoise(0.04);
+    noise_params.setGyroscopeBiasNoise(0.001);
+    noise_params.setAccelerometerBiasNoise(0.001);
+    noise_params.setContactNoise(0.05);
+    // 2. estimated EKF state
     inekf::InEKF value(initial_state, noise_params);
-
-    // drake::Value<inekf::InEKF> drake_value(value);
-    // ekf_idx_ = DeclareAbstractState(drake_value.Clone());
-
     ekf_idx_ = DeclareAbstractState(AbstractValue::Make<inekf::InEKF>(value));
 
-    // If the robot is dropped from the air, then initial imu would be all 0.
-    VectorXd prev_imu_idx = VectorXd::Zero(6);
-    // prev_imu_idx << 0, 0, 0, 0, 0, 9.81;
-    prev_imu_idx_ = DeclareDiscreteState(prev_imu_idx);
+    // 3. state for previous imu value
+    // Measured accelrometer should point toward positive z when the robot rests
+    // on the ground.
+    VectorXd init_prev_imu_value = VectorXd::Zero(6);
+    init_prev_imu_value << 0, 0, 0, 0, 0, 9.81;
+    prev_imu_idx_ = DeclareDiscreteState(init_prev_imu_value);
 
     // states related to contact estimation
     previous_velocity_idx_ = DeclareDiscreteState(
@@ -1056,6 +1056,19 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       cout << "dt: " << dt << endl;
     }
 
+    // Extract imu measurement
+    VectorXd imu_measurement(6);
+    const double* imu_linear_acceleration =
+        cassie_out.pelvis.vectorNav.linearAcceleration;
+    const double* imu_angular_velocity =
+        cassie_out.pelvis.vectorNav.angularVelocity;
+    imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
+        imu_angular_velocity[2], imu_linear_acceleration[0],
+        imu_linear_acceleration[1], imu_linear_acceleration[2];
+    if (print_info_to_terminal_) {
+      // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
+    }
+
     // Perform State Estimation (in several steps)
     // Step 1 - Solve for the unknown joint angle
     // This step is done in AssignNonFloatingBaseStateToOutputVector()
@@ -1132,24 +1145,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
     // Step 2 - EKF (Propagate step)
     auto& filter = state->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
-
-    VectorXd imu_measurement(6);
-    const double* imu_linear_acceleration =
-        cassie_out.pelvis.vectorNav.linearAcceleration;
-    const double* imu_angular_velocity =
-        cassie_out.pelvis.vectorNav.angularVelocity;
-    imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
-        imu_angular_velocity[2], imu_linear_acceleration[0],
-        imu_linear_acceleration[1], imu_linear_acceleration[2];
-
     filter.Propagate(
         context.get_discrete_state(prev_imu_idx_).get_value(), dt);
-
-    state->get_mutable_discrete_state().get_mutable_vector(prev_imu_idx_)
-        .get_mutable_value() << imu_measurement;
-    if (print_info_to_terminal_) {
-      // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
-    }
 
     // Debugging print statements
     if (print_info_to_terminal_) {
@@ -1225,8 +1222,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     Eigen::Matrix<double, 6, 6> covariance = MatrixXd::Identity(6, 6);
     Eigen::Matrix<double, 22, 22> cov_w =
         0.000289 * MatrixXd::Identity(22, 22); // nosie of joints measurement
-    // Eigen::Matrix<double, 22, 22> cov_w =
-    //     0.0 * MatrixXd::Identity(22, 22); // nosie of joints measurement
     std::vector<int> toe_indices = {left_toe_idx_, right_toe_idx_};
 
     if (test_with_ground_truth_state_) {
@@ -1299,7 +1294,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       for (int i = 0; i < 3; ++i) {
         ofile << filter.getState().getPosition()[i] << ", ";
       }
-      ofile << q.w() << ", " << q.vec()[0] << ", " << q.vec()[1] << ", " << q.vec()[2] << ", ";
+      ofile << q.w() << ", " << q.vec()[0] << ", " << q.vec()[1] << ", " <<
+          q.vec()[2] << ", ";
       for (int i = 0; i < 3; ++i) {
         ofile << filter.getState().getVelocity()[i] << ", ";
       }
@@ -1311,11 +1307,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       cout << endl;
     }
 
-    // Use these three lines to stop the program after n iterations
-    // int n = 10;
-    // static int iterations = 0;
-    // if (iterations++ >= n - 1) exit(EXIT_FAILURE);
-
     // Step 5 - Assign values to floating base state
     fb_state_est.head(3) = filter.getState().getPosition();
     q = Quaterniond(filter.getState().getRotation()).normalized();
@@ -1326,13 +1317,13 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     omega_global = filter.getState().getRotation() * imu_measurement.head(3);
     fb_state_est.tail(3) = filter.getState().getVelocity() +
         omega_global.cross(r_imu_to_pelvis_global);
-    state->get_mutable_discrete_state().get_mutable_vector(state_idx_)
+    state->get_mutable_discrete_state().get_mutable_vector(fb_state_idx_)
         .get_mutable_value() << fb_state_est;
 
-    // TODO(yminchen): Question -- do we need to filter the gyro value?
-    // We will get the bias (parameter) from EKF
-
-    // Assign current time to discrete state
+    // Store imu measurement
+    state->get_mutable_discrete_state().get_mutable_vector(prev_imu_idx_)
+        .get_mutable_value() << imu_measurement;
+    // Store current time
     state->get_mutable_discrete_state().get_mutable_vector(time_idx_)
         .get_mutable_value() << current_time;
   }
@@ -1360,10 +1351,10 @@ void CassieRbtStateEstimator::CopyStateOut(
   // Copy the floating base base state
   if (is_floating_base_) {
     AssignFloatingBaseStateToOutputVector(
-        context.get_discrete_state(state_idx_).get_value(), output);
+        context.get_discrete_state(fb_state_idx_).get_value(), output);
     if (print_info_to_terminal_) {
       cout << "Assign floating base state. " <<
-          context.get_discrete_state(state_idx_).get_value().transpose() << endl;
+          context.get_discrete_state(fb_state_idx_).get_value().transpose() << endl;
     }
   }
 
@@ -1380,7 +1371,7 @@ void CassieRbtStateEstimator::setPreviousTime(Context<double>* context,
 }
 void CassieRbtStateEstimator::setInitialImuPosition(Context<double>* context,
     Vector3d p) {
-  context->get_mutable_discrete_state(state_idx_).get_mutable_value()
+  context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value()
       .head(3) << p;
   // Update EKF state
   auto& filter = context->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
@@ -1390,13 +1381,18 @@ void CassieRbtStateEstimator::setInitialImuPosition(Context<double>* context,
 }
 void CassieRbtStateEstimator::setInitialImuQuaternion(Context<double>* context,
     Eigen::Vector4d q) {
-  context->get_mutable_discrete_state(state_idx_).get_mutable_value()
+  context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value()
       .segment(3, 4) << q;
   // Update EKF state
   auto& filter = context->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
   auto state = filter.getState();
   state.setRotation(Quaterniond(q[0], q[1], q[2], q[3]).toRotationMatrix());
   filter.setState(state);
+}
+void CassieRbtStateEstimator::setPreviousImuMeasurement(Context<double>* context,
+    VectorXd imu_value) {
+  context->get_mutable_discrete_state(prev_imu_idx_).get_mutable_value()
+      << imu_value;
 }
 
 }  // namespace systems

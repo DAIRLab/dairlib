@@ -59,7 +59,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                              Eigen::Vector3d p);
   void setInitialImuQuaternion(drake::systems::Context<double>* context,
                                Eigen::Vector4d q);
-
+  void setPreviousImuMeasurement(drake::systems::Context<double>* context,
+                                 Eigen::VectorXd imu_value);
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
@@ -106,8 +107,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   // A state which stores previous timestamp
   drake::systems::DiscreteStateIndex time_idx_;
   // States related to EKF
-  drake::systems::DiscreteStateIndex state_idx_;
+  drake::systems::DiscreteStateIndex fb_state_idx_;
   drake::systems::AbstractStateIndex ekf_idx_;
+  drake::systems::DiscreteStateIndex prev_imu_idx_;
   // A state related to contact estimation
   // This state store the previous generalized velocity
   drake::systems::DiscreteStateIndex previous_velocity_idx_;
@@ -130,8 +132,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex lambda_cr_double_init_idx_;
   drake::systems::DiscreteStateIndex lambda_cr_right_init_idx_;
 
-  drake::systems::DiscreteStateIndex prev_imu_idx_;
-
   // Cassie parameters
   // TODO(yminchen): get the numbers below from tree
   double rod_length_ = 0.5012;  // from cassie_utils
@@ -150,7 +150,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const double cost_threshold_ekf_ = 200;
   const double knee_spring_threshold_ctrl_ = -0.015;
   const double knee_spring_threshold_ekf_ = -0.015;
-  const double heel_spring_threshold_ctrl_ = -0.03;  // TODO(yminchen): ask nanda why this is 0.03
+  const double heel_spring_threshold_ctrl_ = -0.03;
   const double heel_spring_threshold_ekf_ = -0.015;
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
   const double w_soft_constraint_ = 100;  // Soft constraint cost

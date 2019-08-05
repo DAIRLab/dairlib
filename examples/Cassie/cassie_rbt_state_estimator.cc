@@ -119,6 +119,10 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     // estimated EKF state
     // filter_ = std::make_unique<inekf::InEKF>(initial_state, noise_params);
     inekf::InEKF value(initial_state, noise_params);
+
+    // drake::Value<inekf::InEKF> drake_value(value);
+    // ekf_idx_ = DeclareAbstractState(drake_value.Clone());
+
     ekf_idx_ = DeclareAbstractState(AbstractValue::Make<inekf::InEKF>(value));
 
     // If the robot is dropped from the air, then initial imu would be all 0.

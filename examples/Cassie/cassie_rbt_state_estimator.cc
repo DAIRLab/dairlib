@@ -95,7 +95,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
 
     // states related to EKF
-    // 1. estimated floating base
+    // 1. estimated floating base state (pelvis)
     VectorXd init_floating_base_state = VectorXd::Zero(7 + 6);
     init_floating_base_state(3) = 1;
     fb_state_idx_ = DeclareDiscreteState(init_floating_base_state);
@@ -121,7 +121,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     noise_params.setGyroscopeBiasNoise(0.001);
     noise_params.setAccelerometerBiasNoise(0.001);
     noise_params.setContactNoise(0.05);
-    // 2. estimated EKF state
+    // 2. estimated EKF state (imu frame)
     inekf::InEKF value(initial_state, noise_params);
     ekf_idx_ = DeclareAbstractState(AbstractValue::Make<inekf::InEKF>(value));
 
@@ -561,8 +561,6 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
   RigidBody<double>* pelvis_body = tree_.FindBody("pelvis");
   Isometry3d pelvis_pose = tree_.CalcBodyPoseInWorldFrame(cache, *pelvis_body);
   MatrixXd R_WB = pelvis_pose.linear();
-  // Vector3d gravity_in_pelvis_frame = R_WB.transpose()*gravity_;
-  // Vector3d imu_accel_wrt_world = output.GetIMUAccelerations() + gravity_in_pelvis_frame;
   Vector3d imu_accel_wrt_world = R_WB * output.GetIMUAccelerations() + gravity_;
 
   // Mathematical program - double contact
@@ -1170,16 +1168,17 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       }
     }
 
-    // Estimated floating base state
+    // Estimated floating base state (pelvis)
     VectorXd fb_state_est(13);
-    fb_state_est.head(3) = filter.getState().getPosition();
+    Vector3d r_imu_to_pelvis_global =
+        filter.getState().getRotation() * (-imu_pos_);
+    fb_state_est.head(3) =
+        filter.getState().getPosition() + r_imu_to_pelvis_global;
     Quaterniond q(filter.getState().getRotation());
     q.normalize();
     fb_state_est[3] = q.w();
     fb_state_est.segment<3>(4) = q.vec();
     fb_state_est.segment<3>(7) = imu_measurement.head(3);
-    Vector3d r_imu_to_pelvis_global =
-        filter.getState().getRotation() * (-imu_pos_);
     Vector3d omega_global =
         filter.getState().getRotation() * imu_measurement.head(3);
     fb_state_est.tail(3) = filter.getState().getVelocity() +
@@ -1307,13 +1306,14 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       cout << endl;
     }
 
-    // Step 5 - Assign values to floating base state
-    fb_state_est.head(3) = filter.getState().getPosition();
+    // Step 5 - Assign values to floating base state (pelvis)
+    r_imu_to_pelvis_global = filter.getState().getRotation() * (-imu_pos_);
+    fb_state_est.head(3) =
+        filter.getState().getPosition() + r_imu_to_pelvis_global;
     q = Quaterniond(filter.getState().getRotation()).normalized();
     fb_state_est[3] = q.w();
     fb_state_est.segment<3>(4) = q.vec();
     fb_state_est.segment<3>(7) = imu_measurement.head(3);
-    r_imu_to_pelvis_global = filter.getState().getRotation() * (-imu_pos_);
     omega_global = filter.getState().getRotation() * imu_measurement.head(3);
     fb_state_est.tail(3) = filter.getState().getVelocity() +
         omega_global.cross(r_imu_to_pelvis_global);
@@ -1353,8 +1353,9 @@ void CassieRbtStateEstimator::CopyStateOut(
     AssignFloatingBaseStateToOutputVector(
         context.get_discrete_state(fb_state_idx_).get_value(), output);
     if (print_info_to_terminal_) {
-      cout << "Assign floating base state. " <<
-          context.get_discrete_state(fb_state_idx_).get_value().transpose() << endl;
+      cout << "Assign floating base state of the imu. " <<
+          context.get_discrete_state(fb_state_idx_).get_value().transpose()
+          << endl;
     }
   }
 

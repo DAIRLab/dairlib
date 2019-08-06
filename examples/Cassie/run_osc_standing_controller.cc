@@ -19,6 +19,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/osc/operational_space_control.h"
+#include "examples/Cassie/osc/standing_com_traj.h"
 
 namespace dairlib {
 
@@ -50,6 +51,9 @@ DEFINE_string(channel, "CASSIE_STATE_SIMULATION",
     "LCM channel for receiving state. "
     "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
     "use CASSIE_STATE_DISPATCHER to get state from state estimator");
+
+DEFINE_double(cost_weight_multiplier, 0.001,
+    "A cosntant times with cost weight of OSC traj tracking");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -92,7 +96,16 @@ int DoMain(int argc, char* argv[]) {
 
   // Get body indices for cassie with springs
   int pelvis_idx = GetBodyIndexFromName(tree_with_springs, "pelvis");
-  DRAKE_DEMAND(pelvis_idx != -1);
+  int left_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_left");
+  int right_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_right");
+  DRAKE_DEMAND(pelvis_idx != -1 && left_toe_idx != -1 && right_toe_idx != -1);
+
+  // Create desired center of mass traj
+  auto com_traj_generator =
+      builder.AddSystem<cassie::osc::StandingComTraj>(
+        tree_with_springs, pelvis_idx, left_toe_idx, right_toe_idx);
+  builder.Connect(state_receiver->get_output_port(0),
+                  com_traj_generator->get_input_port_state());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -119,17 +132,16 @@ int DoMain(int argc, char* argv[]) {
   osc->AddContactPoint("toe_right", rear_contact_disp);
   // Center of mass tracking
   // cout << "Adding center of mass tracking\n";
-  Vector3d desired_com(0, 0, 0.89);
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 200;//2
   W_com(1, 1) = 200;//2
   W_com(2, 2) = 2000;//2000
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  ComTrackingData center_of_mass_traj("lipm_traj", 3,
-      K_p_com, K_d_com, W_com,
+  ComTrackingData center_of_mass_traj("com_traj", 3,
+      K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
       &tree_with_springs, &tree_without_springs);
-  osc->AddConstTrackingData(&center_of_mass_traj, desired_com);
+  osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
   // cout << "Adding pelvis rotation tracking\n";
   double w_pelvis_balance = 200;
@@ -151,12 +163,27 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis(1, 1) = k_d_pelvis_balance;
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 3,
-      K_p_pelvis, K_d_pelvis, W_pelvis,
+      K_p_pelvis, K_d_pelvis, W_pelvis * FLAGS_cost_weight_multiplier,
       &tree_with_springs, &tree_without_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
   osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);
+  // Left hip yaw joint tracking
+  MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
+  JointSpaceTrackingData left_hip_yaw_traj("left_hip_yaw_traj",
+      K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw * FLAGS_cost_weight_multiplier,
+      &tree_with_springs, &tree_without_springs);
+  left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+  osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
+  // right hip yaw joint tracking
+  JointSpaceTrackingData right_hip_yaw_traj("right_hip_yaw_traj",
+      K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw * FLAGS_cost_weight_multiplier,
+      &tree_with_springs, &tree_without_springs);
+  right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+  osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
   // Build OSC problem
   osc->Build();
   // Connect ports
@@ -164,6 +191,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(osc->get_output_port(0),
                   command_sender->get_input_port(0));
+  builder.Connect(com_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("com_traj"));
 
   // Create the diagram and context
   auto owned_diagram = builder.Build();

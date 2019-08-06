@@ -242,7 +242,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "//attic/multibody:utils",
-        "//examples/Cassie/osc_walk:osc_walk",
+        "//examples/Cassie/osc:osc",
         ":cassie_urdf",
         ":cassie_utils",
         "@gflags",
@@ -255,6 +255,7 @@ cc_binary(
     srcs = ["run_osc_standing_controller.cc"],
     deps = [
         "//systems/controllers/osc:operational_space_control",
+        "//examples/Cassie/osc:osc",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "//attic/multibody:utils",

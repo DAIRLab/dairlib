@@ -136,7 +136,7 @@ cc_library(
     deps = [
             ":control_utils",
             "//attic/multibody:utils",
-            "//examples/Cassie/osc_walk:cp_control_common_func",
+            "//examples/Cassie/osc:cp_control_common_func",
             "//systems/framework:vector",
             "@drake//:drake_shared_library",
             ]

@@ -1,9 +1,9 @@
-#include "examples/Cassie/osc_walk/heading_control.h"
+#include "examples/Cassie/osc/heading_control.h"
 
 #include <math.h>
 #include <string>
 
-#include "examples/Cassie/osc_walk/cp_control_common_func.h"
+#include "examples/Cassie/osc/cp_control_common_func.h"
 #include "attic/multibody/rigidbody_utils.h"
 
 using std::cout;
@@ -25,7 +25,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walk {
+namespace osc {
 
 HeadingControl::HeadingControl(const RigidBodyTree<double>& tree,
     int pelvis_idx,
@@ -90,7 +90,7 @@ void HeadingControl::CalcHeadingAngle(
   *casted_traj = PiecewisePolynomial<double>(desired_pelvis_rotation);
 }
 
-}  // namespace osc_walk
+}  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib
 

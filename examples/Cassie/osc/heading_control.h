@@ -8,7 +8,7 @@
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walk {
+namespace osc {
 
 /// `HeadingControl` calculates desired rotation (in global frame) of Cassie's
 /// pelvis.
@@ -48,7 +48,7 @@ class HeadingControl : public drake::systems::LeafSystem<double> {
   int state_port_;
 };
 
-}  // namespace osc_walk
+}  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib
 

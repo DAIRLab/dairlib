@@ -1222,9 +1222,12 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     }
 
     // just temporary. testing on hardware
-    if (test_mode_ == 0){
+    if (test_mode_ == 0) {
       left_contact = 1;
       right_contact = 1;
+    } else if (test_mode_ == 1) {
+      left_contact = 0;
+      right_contact = 0;
     }
 
     std::vector<std::pair<int, bool>> contacts;

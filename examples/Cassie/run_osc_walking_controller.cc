@@ -20,8 +20,8 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/rigidbody_utils.h"
 
-#include "examples/Cassie/osc_walk/deviation_from_cp.h"
-#include "examples/Cassie/osc_walk/heading_control.h"
+#include "examples/Cassie/osc/deviation_from_cp.h"
+#include "examples/Cassie/osc/heading_control.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
@@ -137,7 +137,7 @@ int DoMain(int argc, char* argv[]) {
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
   auto deviation_from_cp =
-      builder.AddSystem<cassie::osc_walk::DeviationFromCapturePoint>(
+      builder.AddSystem<cassie::osc::DeviationFromCapturePoint>(
         tree_with_springs, pelvis_idx,
         global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
@@ -176,7 +176,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Desired Heading Angle
   auto heading_control =
-      builder.AddSystem<cassie::osc_walk::HeadingControl>(
+      builder.AddSystem<cassie::osc::HeadingControl>(
         tree_with_springs, pelvis_idx,
         global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),

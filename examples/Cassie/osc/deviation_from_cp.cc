@@ -1,9 +1,9 @@
-#include "examples/Cassie/osc_walk/deviation_from_cp.h"
+#include "examples/Cassie/osc/deviation_from_cp.h"
 
 #include <math.h>
 #include <string>
 
-#include "examples/Cassie/osc_walk/cp_control_common_func.h"
+#include "examples/Cassie/osc/cp_control_common_func.h"
 #include "attic/multibody/rigidbody_utils.h"
 
 #include "drake/math/quaternion.h"
@@ -27,7 +27,7 @@ using drake::systems::BasicVector;
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walk {
+namespace osc {
 
 DeviationFromCapturePoint::DeviationFromCapturePoint(
     const RigidBodyTree<double>& tree, int pelvis_idx,
@@ -160,7 +160,7 @@ void DeviationFromCapturePoint::CalcFootPlacement(const Context<double>& context
       (delta_CP_sagital_3D_global + delta_CP_lateral_3D_global).head(2);
 }
 
-}  // namespace osc_walk
+}  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib
 

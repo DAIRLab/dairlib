@@ -3,7 +3,7 @@
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walk {
+namespace osc {
 
 /// GetDesiredYawAngle() calculates the disired yaw angle in global frame for
 /// Cassie pelvis.
@@ -23,7 +23,7 @@ double GetDesiredYawAngle(double pelvis_yaw_pos,
                             Eigen::Vector2d com_to_target_pos,
                             Eigen::Vector2d params);
 
-}  // namespace osc_walk
+}  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib
 

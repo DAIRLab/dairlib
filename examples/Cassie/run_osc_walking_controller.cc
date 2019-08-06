@@ -54,6 +54,11 @@ using systems::controllers::JointSpaceTrackingData;
 // Maybe we need to update the lcm driven loop to clear the queue of lcm message
 // if it's more than one message?
 
+DEFINE_string(channel, "CASSIE_STATE_SIMULATION",
+    "LCM channel for receiving state. "
+    "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
+    "use CASSIE_STATE_DISPATCHER to get state from state estimator");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -76,7 +81,7 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::AddFlatTerrainToWorld(&tree_without_springs,
                                           terrain_size, terrain_depth);
 
-  const std::string channel_x = "CASSIE_STATE";
+  const std::string channel_x = FLAGS_channel;
   const std::string channel_u = "CASSIE_INPUT";
 
   // Create state receiver.
@@ -321,7 +326,7 @@ int DoMain(int argc, char* argv[]) {
   // Wait for the first message.
   drake::log()->info("Waiting for first lcmt_robot_output");
   drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(&lcm_local,
-      "CASSIE_STATE");
+      channel_x);
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
     return input_sub.count() > 0;
   });

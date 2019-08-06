@@ -1092,7 +1092,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       AssignFloatingBaseStateToOutputVector(fb_state_gt, &output_gt);
 
       // We get 0's cassie_state in the beginning because dispatcher_robot_out
-      // is not triggerred by CASSIE_STATE message.
+      // is not triggerred by CASSIE_STATE_SIMULATION message.
       // This wouldn't be an issue when you don't use ground truth state.
       if (output_gt.GetPositions().head(7).norm() == 0){
         output_gt.SetPositionAtIndex(position_index_map_.at("base_qw"), 1);
@@ -1340,20 +1340,15 @@ void CassieRbtStateEstimator::CopyStateOut(
     const Context<double>& context, OutputVector<double>* output) const {
   const auto& cassie_out = this->EvalAbstractInput(
       context, cassie_out_input_port_)->get_value<cassie_out_t>();
-  cout << "here\n";
   // There might be a better way to initialize?
   auto data = output->get_mutable_data();  // This doesn't affect timestamp value
   data = VectorXd::Zero(data.size());
 
   // Assign values robot output vector
   // Copy imu values and robot state excluding floating base
-  cout << "here\n";
   AssignImuValueToOutputVector(cassie_out, output);
-  cout << "here\n";
   AssignActuationFeedbackToOutputVector(cassie_out, output);
-  cout << "here\n";
   AssignNonFloatingBaseStateToOutputVector(cassie_out, output);
-  cout << "here\n";
   // Copy the floating base base state
   if (is_floating_base_) {
     AssignFloatingBaseStateToOutputVector(

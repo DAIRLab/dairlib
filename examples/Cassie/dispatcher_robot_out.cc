@@ -40,7 +40,7 @@ DEFINE_bool(test_with_ground_truth_state, false,
 
 // TODO(yminchen): delete the following flag after you finish testing
 // cassie_rbt_state_estimator
-DEFINE_string(state_channel_name, "CASSIE_STATE",
+DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
     "The name of the lcm channel that sends Cassie's state");
 
 // Cassie model paramter
@@ -86,7 +86,7 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(input_receiver->get_output_port(0),
                     state_estimator->get_input_port(0));
 
-    // Adding "CASSIE_STATE" and "CASSIE_INPUT" ports for testing estimator
+    // Adding "CASSIE_STATE_SIMULATION" and "CASSIE_INPUT" ports for testing estimator
     // TODO(yminchen): delete this part after finishing estimator
     if(FLAGS_floating_base && FLAGS_test_with_ground_truth_state){
       auto state_sub = builder.AddSystem(
@@ -105,13 +105,13 @@ int do_main(int argc, char* argv[]) {
       true);
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE", &lcm_local,
+          "CASSIE_STATE_DISPATCHER", &lcm_local,
           {TriggerType::kForced}));
 
   // Create and connect RobotOutput publisher (low-rate for the network)
   auto net_state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "NETWORK_CASSIE_STATE", &lcm_network,
+          "NETWORK_CASSIE_STATE_DISPATCHER", &lcm_network,
           {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // Pass through to drop all but positions and velocities

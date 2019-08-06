@@ -32,7 +32,8 @@ int ParseLog(string filename) {
   builder.AddSystem<drake::systems::lcm::LcmLogPlaybackSystem>(&r_log);
 
   auto state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<lcmt_robot_output>("CASSIE_STATE", &r_log));
+      LcmSubscriberSystem::Make<lcmt_robot_output>(
+          "CASSIE_STATE_SIMULATION", &r_log));
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(tree);
   builder.Connect(state_sub->get_output_port(),

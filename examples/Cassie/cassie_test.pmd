@@ -26,31 +26,31 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=false";
         host = "localhost";
     }
-    cmd "1.simulator (dispatched)" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false --publish_state=false";
+    cmd "1.simulator" {
+        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false";
         host = "localhost";
     }
-    cmd "1.simulator (no dispatcher)" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false --publish_state=true";
-        host = "localhost";
-    }
-    cmd "1.simulator (dispatched) for OSC controller" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=true --publish_state=false --publish_rate=200";
-        host = "localhost";
-    }
-    cmd "1.simulator (no dispatcher) for OSC controller" {
-        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=true --publish_state=true --publish_rate=200";
+    cmd "1.simulator for OSC controller" {
+        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=true --publish_rate=200";
         host = "localhost";
     }
     cmd "3.dispatcher-robot-in" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000";
         host = "localhost";
     }
-    cmd "4.osc-walking-controller" {
+    cmd "4.osc-walking-controller (dispatched)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller --channel=CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
+    cmd "4.osc-walking-controller (no dispatcher)" {
         exec = "bazel-bin/examples/Cassie/run_osc_walking_controller";
         host = "localhost";
     }
-    cmd "4.osc-standing-controller" {
+    cmd "4.osc-standing-controller (dispatched)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel=CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
+    cmd "4.osc-standing-controller (no dispatcher)" {
         exec = "bazel-bin/examples/Cassie/run_osc_standing_controller";
         host = "localhost";
     }
@@ -58,7 +58,7 @@ group "1.simulated-robot" {
 
 group "0.operator" {
     cmd "3.state-visualizer-real-robot" {
-        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false --channel NETWORK_CASSIE_STATE";
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false --channel NETWORK_CASSIE_STATE_DISPATCHER";
         host = "localhost";
     }
     cmd "2.drake-director-real-robot" {
@@ -73,7 +73,11 @@ group "0.operator" {
         exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
         host = "localhost";
     }
-    cmd "4.state-visualizer-RBT" {
+    cmd "4.state-visualizer-RBT (from dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/cassie_state_visualizer --floating_base=true --channel=CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
+    cmd "4.state-visualizer-RBT (from simulation)" {
         exec = "bazel-bin/examples/Cassie/cassie_state_visualizer --floating_base=true";
         host = "localhost";
     }
@@ -114,44 +118,51 @@ group "4.other-simulators" {
 }
 
 script "start-operator-MBP" {
-    stop cmd "1.state-visualizer";
-    stop cmd "0.drake-director";
     start cmd "0.drake-director";
     wait ms 3000;
     start cmd "1.state-visualizer";
 }
 
-script "start-operator-RBP" {
-    stop cmd "4.state-visualizer-RBT";
-    stop cmd "0.drake-director";
+script "start-operator-RBP (dispatched)" {
     start cmd "0.drake-director";
     wait ms 3000;
-    start cmd "4.state-visualizer-RBT";
+    start cmd "4.state-visualizer-RBT (from simulation)";
+}
+script "start-operator-RBP (no dispatcher)" {
+    start cmd "0.drake-director";
+    wait ms 3000;
+    start cmd "4.state-visualizer-RBT (from simulation)";
 }
 
 script "run-drake-pd-control" {
     run_script "start-operator-MBP";
-    start cmd "1.simulator (dispatched)";
+    start cmd "1.simulator";
     start cmd "2.a.dispatcher-robot-out (lcm, fixed-base)";
     start cmd "0.pd-controller";
 }
 
 script "run-drake-osc-standing-wo-ekf" {
-    run_script "start-operator-RBP";
-    start cmd "1.simulator (no dispatcher) for OSC controller";
-    start cmd "4.osc-standing-controller";
+    run_script "start-operator-RBP (no dispatcher)";
+    start cmd "1.simulator for OSC controller";
+    start cmd "4.osc-standing-controller (no dispatcher)";
 }
 script "run-drake-osc-standing-w-ekf" {
-    run_script "start-operator-RBP";
+    run_script "start-operator-RBP (dispatched)";
     start cmd "2.a.dispatcher-robot-out (lcm, floating-base)";
-    start cmd "1.simulator (dispatched) for OSC controller";
-    start cmd "4.osc-standing-controller";
+    start cmd "1.simulator for OSC controller";
+    start cmd "4.osc-standing-controller (dispatched)";
 }
 
-script "run-drake-osc-walking" {
-    run_script "start-operator-RBP";
-    start cmd "1.simulator (no dispatcher) for OSC controller";
-    start cmd "4.osc-walking-controller";
+script "run-drake-osc-walking-wo-ekf" {
+    run_script "start-operator-RBP (no dispatcher)";
+    start cmd "1.simulator for OSC controller";
+    start cmd "4.osc-walking-controller (no dispatcher)";
+}
+script "run-drake-osc-walking-w-ekf" {
+    run_script "start-operator-RBP (dispatched)";
+    start cmd "2.a.dispatcher-robot-out (lcm, floating-base)";
+    start cmd "1.simulator for OSC controller";
+    start cmd "4.osc-walking-controller (dispatched)";
 }
 
 script "run-gazebo-pd-control" {
@@ -179,8 +190,6 @@ script "run-mujoco-lcm-pd-control" {
 }
 
 script "start-operator-real-robot" {
-    stop cmd "3.state-visualizer-real-robot";
-    stop cmd "2.drake-director-real-robot";
     start cmd "2.drake-director-real-robot";
     wait ms 3000;
     start cmd "3.state-visualizer-real-robot";

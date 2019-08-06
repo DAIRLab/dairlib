@@ -11,7 +11,7 @@ int main() {
 
   RigidBodyTree<double> tree;
   dairlib::buildCassieTree(tree);
-  std::string channel = "CASSIE_STATE";
+  std::string channel = "CASSIE_STATE_SIMULATION";
   std::string file = "/home/posa/workspace/logs/constrained_lqr.log";
   dairlib::multibody::parseLcmOutputLog(tree, file, channel, &t, &x, &u);
 

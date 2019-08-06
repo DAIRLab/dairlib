@@ -16,7 +16,10 @@
 namespace dairlib {
 
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
-DEFINE_string(channel, "CASSIE_STATE", "LCM channel for receiving state.");
+DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
+    "LCM channel for receiving state. "
+    "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
+    "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 
 using std::endl;
 using std::cout;

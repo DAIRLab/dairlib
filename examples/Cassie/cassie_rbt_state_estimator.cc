@@ -1340,15 +1340,20 @@ void CassieRbtStateEstimator::CopyStateOut(
     const Context<double>& context, OutputVector<double>* output) const {
   const auto& cassie_out = this->EvalAbstractInput(
       context, cassie_out_input_port_)->get_value<cassie_out_t>();
+  cout << "here\n";
   // There might be a better way to initialize?
   auto data = output->get_mutable_data();  // This doesn't affect timestamp value
   data = VectorXd::Zero(data.size());
 
   // Assign values robot output vector
   // Copy imu values and robot state excluding floating base
+  cout << "here\n";
   AssignImuValueToOutputVector(cassie_out, output);
+  cout << "here\n";
   AssignActuationFeedbackToOutputVector(cassie_out, output);
+  cout << "here\n";
   AssignNonFloatingBaseStateToOutputVector(cassie_out, output);
+  cout << "here\n";
   // Copy the floating base base state
   if (is_floating_base_) {
     AssignFloatingBaseStateToOutputVector(

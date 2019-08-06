@@ -132,17 +132,23 @@ script "start-operator-RBP" {
 script "run-drake-pd-control" {
     run_script "start-operator-MBP";
     start cmd "1.simulator (dispatched)";
-    start cmd "2.a.dispatcher-robot-out (lcm)";
+    start cmd "2.a.dispatcher-robot-out (lcm, fixed-base)";
     start cmd "0.pd-controller";
 }
 
-script "run-drake-osc-standing-control" {
+script "run-drake-osc-standing-wo-ekf" {
     run_script "start-operator-RBP";
     start cmd "1.simulator (no dispatcher) for OSC controller";
     start cmd "4.osc-standing-controller";
 }
+script "run-drake-osc-standing-w-ekf" {
+    run_script "start-operator-RBP";
+    start cmd "2.a.dispatcher-robot-out (lcm, floating-base)";
+    start cmd "1.simulator (dispatched) for OSC controller";
+    start cmd "4.osc-standing-controller";
+}
 
-script "run-drake-osc-walking-control" {
+script "run-drake-osc-walking" {
     run_script "start-operator-RBP";
     start cmd "1.simulator (no dispatcher) for OSC controller";
     start cmd "4.osc-walking-controller";
@@ -159,7 +165,7 @@ script "run-gazebo-pd-control" {
 script "run-gazebo-lcm-pd-control" {
     run_script "start-operator-MBP";
     start cmd "1.launch-gazebo-fixed-base";
-    start cmd "2.a.dispatcher-robot-out (lcm)";
+    start cmd "2.a.dispatcher-robot-out (lcm, fixed-base)";
     start cmd "3.dispatcher-robot-in";
     start cmd "0.pd-controller";
 }
@@ -167,7 +173,7 @@ script "run-gazebo-lcm-pd-control" {
 script "run-mujoco-lcm-pd-control" {
     run_script "start-operator-MBP";
     start cmd "3.cassie-mujoco-fixed-base";
-    start cmd "2.a.dispatcher-robot-out (lcm)";
+    start cmd "2.a.dispatcher-robot-out (lcm, fixed-base)";
     start cmd "3.dispatcher-robot-in";
     start cmd "0.pd-controller";
 }

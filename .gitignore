@@ -12,3 +12,4 @@ attic/multibody/solver_log/
 *.pickle*
 /examples/kuka_iiwa_arm/*.log
 logs/lcm/
+/examples/kuka_iiwa_arm/simulation_settings.json

@@ -46,6 +46,10 @@ DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
+// Testing mode
+DEFINE_int64(test_mode, -1, "-1: Regular EKF (not testing mode). "
+                            "0: both feet always in contact with ground. ");
+
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
 int do_main(int argc, char* argv[]) {
@@ -66,7 +70,8 @@ int do_main(int argc, char* argv[]) {
 
   // Create state estimator
   auto state_estimator = builder.AddSystem<systems::CassieRbtStateEstimator>(
-      *tree, FLAGS_floating_base, FLAGS_test_with_ground_truth_state);
+      *tree, FLAGS_floating_base, FLAGS_test_with_ground_truth_state,
+      false/*print_info_to_terminal*/, FLAGS_test_mode);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot

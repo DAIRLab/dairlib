@@ -40,12 +40,14 @@ using multibody::GetBodyIndexFromName;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
     const RigidBodyTree<double>& tree, bool is_floating_base,
-    bool test_with_ground_truth_state, bool print_info_to_terminal) :
+    bool test_with_ground_truth_state, bool print_info_to_terminal,
+    int test_mode) :
         tree_(tree),
         is_floating_base_(is_floating_base) {
   // Flags for testing and tuning
   test_with_ground_truth_state_ = test_with_ground_truth_state;
   print_info_to_terminal_ = print_info_to_terminal;
+  test_mode_ = test_mode;
 
   // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort("cassie_out_t",
@@ -1144,8 +1146,19 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
     // Step 2 - EKF (Propagate step)
     auto& filter = state->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
+
+    // Testing
+    // cout << "*counter_for_testing_ = " << *counter_for_testing_ << endl;
+    if((*counter_for_testing_)%100 == 0){
+      cout << "pos = " << filter.getState().getPosition().transpose() << endl;
+    }
+
+
     filter.Propagate(
         context.get_discrete_state(prev_imu_idx_).get_value(), dt);
+
+
+
 
     // Debugging print statements
     if (print_info_to_terminal_) {
@@ -1209,8 +1222,10 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     }
 
     // just temporary. testing on hardware
-    left_contact = 1;
-    right_contact = 1;
+    if (test_mode_ == 0){
+      left_contact = 1;
+      right_contact = 1;
+    }
 
     std::vector<std::pair<int, bool>> contacts;
     contacts.push_back(std::pair<int, bool>(0, left_contact));
@@ -1331,6 +1346,9 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Store current time
     state->get_mutable_discrete_state().get_mutable_vector(time_idx_)
         .get_mutable_value() << current_time;
+
+    // for testing
+    *counter_for_testing_ = *counter_for_testing_ + 1;
   }
   return EventStatus::Succeeded();
 }

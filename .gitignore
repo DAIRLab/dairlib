@@ -10,4 +10,5 @@ attic/multibody/solver_log/
 /bundle_ws
 /tools/workspace/ros
 /examples/kuka_iiwa_arm/logtoken1.pickle
+/examples/kuka_iiwa_arm/*.log
 logs/lcm/

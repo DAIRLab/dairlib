@@ -86,6 +86,10 @@ void EndEffectorVelocityController::CalcOutputTorques(
   plant_.CalcMassMatrixViaInverseDynamics(*plant_context.get(), &H);
   Eigen::MatrixXd Hi = H.inverse();
 
+  // Bias Term 'C'
+  Eigen::VectorXd Cv(plant_.num_velocities());
+  plant_.CalcBiasTerm(*plant_context.get(), &Cv);
+
   double alpha = 0.9;
 
   Eigen::MatrixXd T = (alpha * Eigen::MatrixXd::Identity(7, 7) + (1-alpha)*Hi).inverse();
@@ -94,8 +98,20 @@ void EndEffectorVelocityController::CalcOutputTorques(
 
   // Eigen::DiagonalMatrix<double, 7> T2(6);
   // T2.diagonal() << 3600, 3600, 3600, 900, 144, 144, 36;
-  commandedTorques = T2 * Hi * Jt * (J * Hi * T2 * Hi * Jt).inverse() * J * Hi * torques;
+  //commandedTorques = T2 * Hi * Jt * (J * Hi * T2 * Hi * Jt).inverse() * J * Hi * torques;
   //commandedTorques =  H * Jt * (J * Jt).inverse() * J * Hi * torques;
+
+  Eigen::VectorXd G = plant_.CalcGravityGeneralizedForces(*plant_context.get());
+
+  commandedTorques =  Jt * (J * Hi * Jt).inverse() * (error);
+
+  std::cout << "outputnorm: " << commandedTorques.norm() << std::endl;
+  std::cout << "error norm: " << error.norm() << std::endl;
+
+  std::cout << "Ratio:" << std::endl;
+
+  std::cout << commandedTorques.norm() / error.norm() << std::endl;
+
 
   // Limit maximum commanded velocities
   for (int i = 0; i < num_joints_; i++) {

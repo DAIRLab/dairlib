@@ -1208,6 +1208,10 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       EstimateContactForEkf(filtered_output, &left_contact, &right_contact);
     }
 
+    // just temporary. testing on hardware
+    left_contact = 1;
+    right_contact = 1;
+
     std::vector<std::pair<int, bool>> contacts;
     contacts.push_back(std::pair<int, bool>(0, left_contact));
     contacts.push_back(std::pair<int, bool>(1, right_contact));

@@ -1070,6 +1070,15 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
     }
 
+    // Get ekf state
+    auto& filter = state->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
+
+    // Testing
+    // cout << "*counter_for_testing_ = " << *counter_for_testing_ << endl;
+    if((*counter_for_testing_)%100 == 0){
+      cout << "pos = " << filter.getState().getPosition().transpose() << endl;
+    }
+
     // Perform State Estimation (in several steps)
     // Step 1 - Solve for the unknown joint angle
     // This step is done in AssignNonFloatingBaseStateToOutputVector()
@@ -1145,15 +1154,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     }
 
     // Step 2 - EKF (Propagate step)
-    auto& filter = state->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
-
-    // Testing
-    // cout << "*counter_for_testing_ = " << *counter_for_testing_ << endl;
-    if((*counter_for_testing_)%100 == 0){
-      cout << "pos = " << filter.getState().getPosition().transpose() << endl;
-    }
-
-
     filter.Propagate(
         context.get_discrete_state(prev_imu_idx_).get_value(), dt);
 
@@ -1402,6 +1402,8 @@ void CassieRbtStateEstimator::setInitialImuPosition(Context<double>* context,
   auto state = filter.getState();
   state.setPosition(p);
   filter.setState(state);
+  cout << "Set initial position to " <<
+      filter.getState().getPosition().transpose() << endl;
 }
 void CassieRbtStateEstimator::setInitialImuQuaternion(Context<double>* context,
     Eigen::Vector4d q) {

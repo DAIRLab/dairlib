@@ -116,7 +116,7 @@ def main():
     res = DRIVE.files().create(body=metadata, media_body=media, fields='id').execute()
 
     # Initalizes formatted date and time strings
-    date = datetime.now().strftime('%m_%d_%y')
+    date = datetime.now().strftime('%y-%m-%d ')
     time = datetime.now().strftime('%I:%M %p')
 
     # Uploads kuka settings file to Google Drive.

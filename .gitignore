@@ -9,6 +9,6 @@ attic/multibody/solver_log/
 *.vscode*
 /bundle_ws
 /tools/workspace/ros
-/examples/kuka_iiwa_arm/logtoken1.pickle
+*.pickle*
 /examples/kuka_iiwa_arm/*.log
 logs/lcm/

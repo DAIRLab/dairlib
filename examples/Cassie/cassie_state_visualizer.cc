@@ -36,9 +36,9 @@ int doMain(int argc, char* argv[]) {
   } else {
     buildCassieTree(tree, "examples/Cassie/urdf/cassie_v2.urdf",
                     drake::multibody::joints::kQuaternion);
-    const double terrain_size = 100;
-    const double terrain_depth = 0.20;
-    drake::multibody::AddFlatTerrainToWorld(&tree, terrain_size, terrain_depth);
+    // const double terrain_size = 100;
+    // const double terrain_depth = 0.20;
+    // drake::multibody::AddFlatTerrainToWorld(&tree, terrain_size, terrain_depth);
   }
 
   drake::systems::DiagramBuilder<double> builder;

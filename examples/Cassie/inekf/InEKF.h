@@ -119,5 +119,3 @@ class InEKF {
 };
 
 }  // namespace inekf
-
-class_a instance = another_inst;

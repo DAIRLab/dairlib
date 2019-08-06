@@ -578,7 +578,6 @@ void OperationalSpaceControl::CalcOptimalInput(
   VectorXd x_w_spr(tree_w_spr_.get_num_positions() +
                    tree_w_spr_.get_num_velocities());
   x_w_spr << q_w_spr, v_w_spr;
-  cout << "x_w_spr = " << x_w_spr.transpose() << endl;
 
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);

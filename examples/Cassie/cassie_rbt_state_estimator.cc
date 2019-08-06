@@ -1028,8 +1028,10 @@ void CassieRbtStateEstimator::EstimateContactForController(
 EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     drake::systems::State<double>* state) const {
   // Get cassie output
-  const auto& cassie_out = this->EvalAbstractInput(
-      context, cassie_out_input_port_)->get_value<cassie_out_t>();
+  const drake::AbstractValue* cassie_out_input = this->EvalAbstractInput(
+      context, cassie_out_input_port_);
+  DRAKE_DEMAND(cassie_out_input != nullptr);
+  const auto& cassie_out = cassie_out_input->get_value<cassie_out_t>();
 
   // TODO(yminchen): delete the testing code when you fix the time delay issue
   // Testing
@@ -1048,7 +1050,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
   if (current_time > prev_t) {
     double dt = current_time - prev_t;
-    cout << "current_time = " << current_time << endl;
     if (print_info_to_terminal_) {
       cout << "current_time = " << current_time << endl;
       cout << "dt: " << dt << endl;
@@ -1357,9 +1358,6 @@ void CassieRbtStateEstimator::CopyStateOut(
           context.get_discrete_state(fb_state_idx_).get_value().transpose()
           << endl;
     }
-    cout << "Assign floating base state of the imu. " <<
-        context.get_discrete_state(fb_state_idx_).get_value().transpose()
-        << endl;
   }
 
   // TODO(yminchen): delete the testing code when you fix the time delay issue

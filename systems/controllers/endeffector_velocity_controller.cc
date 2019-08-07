@@ -94,7 +94,7 @@ void EndEffectorVelocityController::CalcOutputTorques(
 
   // Eigen::DiagonalMatrix<double, 7> T2(6);
   // T2.diagonal() << 3600, 3600, 3600, 900, 144, 144, 36;
-  commandedTorques = T2 * Hi * Jt * (J * Hi * T2 * Hi * Jt).inverse() * J * Hi * torques;
+  commandedTorques =  Jt * (J * Hi * Jt).inverse() * (error);
   //commandedTorques =  H * Jt * (J * Jt).inverse() * J * Hi * torques;
 
   // Limit maximum commanded velocities

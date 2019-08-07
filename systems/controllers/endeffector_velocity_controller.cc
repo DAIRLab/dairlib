@@ -89,8 +89,6 @@ void EndEffectorVelocityController::CalcOutputTorques(
   // torqueCost << 1, 0.1, 1, 0.1, 1, 1, 1;
   // Input after construction
 
-  Eigen::MatrixXd T = ((1-alpha)*Hi + alpha * MatrixXd(tm.asDiagonal())).inverse();
-
   // Multiplying J^t x force to get torque outputs
   VectorXd torques(num_joints_);
   VectorXd commandedTorques(num_joints_);

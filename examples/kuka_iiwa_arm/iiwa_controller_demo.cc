@@ -136,38 +136,6 @@ int do_main(int argc, char* argv[]) {
   std::cout << "Angular Velocity Limit: " << MAX_ANGULAR_VEL << std::endl;
   std::cout << "Joint Torque Limit: " << JOINT_TORQUE_LIMIT << std::endl;
 
-  //Processes Trajectories CSV file.
-  CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
-
-  //Initializes trajectories to trajectoryVectors array.
-  std::vector<Eigen::MatrixXd> trajectoryVectors;
-  for (unsigned int x = 0; x < waypoints.getArray()[0].size(); x++) {
-    Eigen::Vector3d temp;
-    temp << waypoints.getArray()[1][x], waypoints.getArray()[2][x],
-            waypoints.getArray()[3][x];
-    trajectoryVectors.push_back(temp);
-  }
-
-  auto ee_trajectory =
-      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-          waypoints.getArray()[0], trajectoryVectors);
-
-  // Processes EndEffectorOrientations CSV file.
-  CsvVector orientations("examples/kuka_iiwa_arm/EndEffectorOrientations.csv");
-
-  //Initializes orientations to orient_points array.
-  std::vector<Eigen::MatrixXd> orient_points;
-  for (unsigned int y = 0; y < orientations.getArray()[0].size(); y++) {
-    Eigen::Vector4d aPoint;
-    aPoint << orientations.getArray()[1][y], orientations.getArray()[2][y],
-              orientations.getArray()[3][y], orientations.getArray()[4][y];
-    orient_points.push_back(aPoint);
-  }
-
-  auto orientation_trajectory =
-      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-          orientations.getArray()[0], orient_points);
-
   // Initialize Kuka model URDF-- from Drake kuka simulation files
   std::string kModelPath = "../drake/manipulation/models/iiwa_description"
                            "/iiwa7/iiwa7_no_collision.sdf";

@@ -52,7 +52,6 @@ void EndEffectorPositionController::CalcOutputTwist(
 	jointLimits << 170 - 5, 120 - 5, 170 - 5, 120 - 5, 170 - 5, 120 - 5, 175 - 5;
 	jointLimits = jointLimits * 3.14159265358 / 180;
   for (int i = 0; i < 7; i++) {
-		std::cout << q_actual * 180 / 3.14159265358 << std::endl;
 		if (abs(q_actual(i)) > jointLimits(i)) {
 			std::cout << "joint limit exceeded on joint " << i+1 << std::endl;
 			exit(0);
@@ -91,8 +90,8 @@ void EndEffectorPositionController::CalcOutputTwist(
       Eigen::AngleAxis<double>(quat_a_a_des);
   MatrixXd axis = angleaxis_a_a_des.axis();
   MatrixXd angularVelocity = k_omega_ * axis * angleaxis_a_a_des.angle();
-	std::cout << "angular error: " << std::endl;
-	std::cout << angleaxis_a_a_des.angle() << std::endl;
+  std::cout << "angular error: " << std::endl;
+  std::cout << angleaxis_a_a_des.angle() << std::endl;
 
   // Transforming angular velocity from joint frame to world frame
   VectorXd angularVelocityWF = plant_.CalcRelativeTransform(

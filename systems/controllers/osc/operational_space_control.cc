@@ -567,48 +567,54 @@ VectorXd OperationalSpaceControl::SolveQp(
 void OperationalSpaceControl::CalcOptimalInput(
     const drake::systems::Context<double>& context,
     systems::TimestampedVector<double>* control) const {
-  // Read in current state and time
+  // Read in current time and state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
-  VectorXd q_w_spr = robot_output->GetPositions();
-  if (is_quaternion_) {
-    multibody::SetZeroQuaternionToIdentity(&q_w_spr);
-  }
-  VectorXd v_w_spr = robot_output->GetVelocities();
-  VectorXd x_w_spr(tree_w_spr_.get_num_positions() +
-                   tree_w_spr_.get_num_velocities());
-  x_w_spr << q_w_spr, v_w_spr;
-
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);
+  cout << "\n\ncurrent_time = " << current_time << endl;
   if (print_tracking_info_) {
     cout << "\n\ncurrent_time = " << current_time << endl;
   }
 
-  VectorXd x_wo_spr(n_q_ + n_v_);
-  x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
-           map_velocity_from_spring_to_no_spring_ * v_w_spr;
-
   VectorXd u_sol(n_u_);
-  if (used_with_finite_state_machine_) {
-    // Read in finite state machine
-    const BasicVector<double>* fsm_output = (BasicVector<double>*)
-        this->EvalVectorInput(context, fsm_port_);
-    VectorXd fsm_state = fsm_output->get_value();
-
-    // Get discrete states
-    const auto prev_event_time = context.get_discrete_state(
-                                   prev_event_time_idx_).get_value();
-
-    u_sol = SolveQp(x_w_spr, x_wo_spr,
-                    context, current_time,
-                    fsm_state(0), current_time - prev_event_time(0));
+  if (current_time == 0) {
+    u_sol = VectorXd::Zero(n_u_);
   } else {
-    u_sol = SolveQp(x_w_spr, x_wo_spr,
-                    context, current_time,
-                    -1, current_time);
+    VectorXd q_w_spr = robot_output->GetPositions();
+    if (is_quaternion_) {
+      multibody::SetZeroQuaternionToIdentity(&q_w_spr);
+    }
+    VectorXd v_w_spr = robot_output->GetVelocities();
+    VectorXd x_w_spr(tree_w_spr_.get_num_positions() +
+                     tree_w_spr_.get_num_velocities());
+    x_w_spr << q_w_spr, v_w_spr;
+
+    VectorXd x_wo_spr(n_q_ + n_v_);
+    x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
+             map_velocity_from_spring_to_no_spring_ * v_w_spr;
+
+    if (used_with_finite_state_machine_) {
+      // Read in finite state machine
+      const BasicVector<double>* fsm_output = (BasicVector<double>*)
+          this->EvalVectorInput(context, fsm_port_);
+      VectorXd fsm_state = fsm_output->get_value();
+
+      // Get discrete states
+      const auto prev_event_time = context.get_discrete_state(
+                                     prev_event_time_idx_).get_value();
+
+      u_sol = SolveQp(x_w_spr, x_wo_spr,
+                      context, current_time,
+                      fsm_state(0), current_time - prev_event_time(0));
+    } else {
+      u_sol = SolveQp(x_w_spr, x_wo_spr,
+                      context, current_time,
+                      -1, current_time);
+    }
   }
 
+  cout << "u_sol = " << u_sol.transpose() << endl;
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());

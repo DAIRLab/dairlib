@@ -42,10 +42,12 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
-// publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
+// publish rate of the robot state needs to be less than 200 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
 // Maybe we need to update the lcm driven loop to clear the queue of lcm message
 // if it's more than one message?
+
+DEFINE_double(publish_rate, 200, "Publishing frequency (Hz)");
 
 DEFINE_string(channel, "CASSIE_STATE_SIMULATION",
     "LCM channel for receiving state. "
@@ -55,12 +57,16 @@ DEFINE_string(channel, "CASSIE_STATE_SIMULATION",
 DEFINE_double(cost_weight_multiplier, 0.001,
     "A cosntant times with cost weight of OSC traj tracking");
 
+DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
+    "Stop time of the controller");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   DiagramBuilder<double> builder;
 
-  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+      "udpm://239.255.76.67:7667?ttl=0");
 
   RigidBodyTree<double> tree_with_springs;
   RigidBodyTree<double> tree_without_springs;
@@ -81,13 +87,18 @@ int DoMain(int argc, char* argv[]) {
   const std::string channel_u = "CASSIE_INPUT";
 
   // Create state receiver.
+  auto state_sub = builder.AddSystem(
+                     LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+                       channel_x, lcm));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
                           tree_with_springs);
+  builder.Connect(state_sub->get_output_port(),
+                  state_receiver->get_input_port(0));
 
   // Create command sender.
   auto command_pub = builder.AddSystem(
                        LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-                         channel_u, &lcm_local, 1.0 / 1000.0));
+                         channel_u, lcm, 1.0 / FLAGS_publish_rate));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
                           tree_with_springs);
 
@@ -169,21 +180,21 @@ int DoMain(int argc, char* argv[]) {
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
   osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);
-  // Left hip yaw joint tracking
-  MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
-  JointSpaceTrackingData left_hip_yaw_traj("left_hip_yaw_traj",
-      K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw * FLAGS_cost_weight_multiplier,
-      &tree_with_springs, &tree_without_springs);
-  left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
-  // right hip yaw joint tracking
-  JointSpaceTrackingData right_hip_yaw_traj("right_hip_yaw_traj",
-      K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw * FLAGS_cost_weight_multiplier,
-      &tree_with_springs, &tree_without_springs);
-  right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
+  // // Left hip yaw joint tracking
+  // MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
+  // MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
+  // MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
+  // JointSpaceTrackingData left_hip_yaw_traj("left_hip_yaw_traj",
+  //     K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw * FLAGS_cost_weight_multiplier,
+  //     &tree_with_springs, &tree_without_springs);
+  // left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+  // osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
+  // // right hip yaw joint tracking
+  // JointSpaceTrackingData right_hip_yaw_traj("right_hip_yaw_traj",
+  //     K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw * FLAGS_cost_weight_multiplier,
+  //     &tree_with_springs, &tree_without_springs);
+  // right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+  // osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
   // Build OSC problem
   osc->Build();
   // Connect ports
@@ -195,58 +206,21 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("com_traj"));
 
   // Create the diagram and context
-  auto owned_diagram = builder.Build();
-  auto context = owned_diagram->CreateDefaultContext();
+  auto diagram = builder.Build();
+  auto context = diagram->CreateDefaultContext();
 
-  // Create the simulator
-  const auto& diagram = *owned_diagram;
-  drake::systems::Simulator<double> simulator(std::move(owned_diagram),
-      std::move(context));
-  auto& diagram_context = simulator.get_mutable_context();
-
-  auto& state_receiver_context =
-      diagram.GetMutableSubsystemContext(*state_receiver, &diagram_context);
-
-  // Wait for the first message.
-  drake::log()->info("Waiting for first lcmt_robot_output");
-  drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(&lcm_local,
-      channel_x);
-  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-    return input_sub.count() > 0;
-  });
-
-  // Initialize the context based on the first message.
-  const double t0 = input_sub.message().utime * 1e-6;
-  diagram_context.SetTime(t0);
-  auto& input_value = state_receiver->get_input_port(0).FixValue(
-                        &state_receiver_context, input_sub.message());
+  /// Use the simulator to drive at a fixed rate
+  /// If set_publish_every_time_step is true, this publishes twice
+  /// Set realtime rate. Otherwise, runs as fast as possible
+  auto stepper = std::make_unique<drake::systems::Simulator<double>>(*diagram,
+                 std::move(context));
+  stepper->set_publish_every_time_step(false);
+  stepper->set_publish_at_initialization(false);
+  stepper->set_target_realtime_rate(1.0);
+  stepper->Initialize();
 
   drake::log()->info("controller started");
-  while (true) {
-    // Wait for an lcmt_robot_output message.
-    input_sub.clear();
-    LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-      return input_sub.count() > 0;
-    });
-    // Write the lcmt_robot_output message into the context and advance.
-    input_value.GetMutableData()->set_value(input_sub.message());
-    const double time = input_sub.message().utime * 1e-6;
-
-    // Check if we are very far ahead or behind
-    // (likely due to a restart of the driving clock)
-    if (time > simulator.get_context().get_time() + 1.0 ||
-        time < simulator.get_context().get_time() - 1.0) {
-      std::cout << "Controller time is " << simulator.get_context().get_time()
-          << ", but stepping to " << time << std::endl;
-      std::cout << "Difference is too large, resetting controller time." <<
-          std::endl;
-      simulator.get_mutable_context().SetTime(time);
-    }
-
-    simulator.AdvanceTo(time);
-    // Force-publish via the diagram
-    diagram.Publish(diagram_context);
-  }
+  stepper->StepTo(FLAGS_end_time);
 
   return 0;
 }

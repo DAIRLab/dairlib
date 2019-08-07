@@ -47,11 +47,11 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "4.osc-standing-controller (dispatched)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel=CASSIE_STATE_DISPATCHER";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel=CASSIE_STATE_DISPATCHER --cost_weight_multiplier=1";
         host = "localhost";
     }
     cmd "4.osc-standing-controller (no dispatcher)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --cost_weight_multiplier=1";
         host = "localhost";
     }
 }

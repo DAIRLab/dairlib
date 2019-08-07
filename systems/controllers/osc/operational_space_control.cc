@@ -572,7 +572,7 @@ void OperationalSpaceControl::CalcOptimalInput(
       this->EvalVectorInput(context, state_port_);
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);
-  cout << "\n\ncurrent_time = " << current_time << endl;
+  // cout << "\n\ncurrent_time = " << current_time << endl;
   if (print_tracking_info_) {
     cout << "\n\ncurrent_time = " << current_time << endl;
   }
@@ -614,7 +614,7 @@ void OperationalSpaceControl::CalcOptimalInput(
     }
   }
 
-  cout << "u_sol = " << u_sol.transpose() << endl;
+  // cout << "u_sol = " << u_sol.transpose() << endl;
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());

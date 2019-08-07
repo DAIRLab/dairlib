@@ -74,6 +74,22 @@ void EndEffectorVelocityController::CalcOutputTorques(
   // Calculating the error
   MatrixXd error = gains * (twist_desired - twist_actual);
 
+  VectorXd tm(num_joints_); //= Eigen::DiagonalMatrix<double>(7, 7);
+  tm << 1, 0.1, 1, 0.1, 1, 2, 1;
+
+  // auto torqueCost = Eigen::MatrixXd<7, 7>;
+  // torqueCost(1,1) = 0.1;
+  // torqueCost(1,1) = 0.1;
+  // torqueCost(1,1) = 0.1;
+  // torqueCost(1,1) = 0.1;
+  // torqueCost(1,1) = 0.1;
+  // torqueCost(1,1) = 0.1;
+  // torqueCost(1,1) = 0.1;
+  // torqueCost << 1, 0.1, 1, 0.1, 1, 1, 1;
+  // Input after construction
+
+  Eigen::MatrixXd T = ((1-alpha)*Hi + alpha * MatrixXd(tm.asDiagonal())).inverse();
+
   // Multiplying J^t x force to get torque outputs
   VectorXd commandedTorques(num_joints_);
   commandedTorques = J.transpose() * error;

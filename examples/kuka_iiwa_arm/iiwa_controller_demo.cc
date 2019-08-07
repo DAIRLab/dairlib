@@ -16,13 +16,13 @@
 
 #include "systems/controllers/endeffector_velocity_controller.h"
 #include "systems/controllers/endeffector_position_controller.h"
-#include <lcm/lcm-cpp.hpp>
 
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cstdlib>
 
 using json = nlohmann::json;
 namespace dairlib {
@@ -136,6 +136,38 @@ int do_main(int argc, char* argv[]) {
   std::cout << "Angular Velocity Limit: " << MAX_ANGULAR_VEL << std::endl;
   std::cout << "Joint Torque Limit: " << JOINT_TORQUE_LIMIT << std::endl;
 
+  //Processes Trajectories CSV file.
+  CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
+
+  //Initializes trajectories to trajectoryVectors array.
+  std::vector<Eigen::MatrixXd> trajectoryVectors;
+  for (unsigned int x = 0; x < waypoints.getArray()[0].size(); x++) {
+    Eigen::Vector3d temp;
+    temp << waypoints.getArray()[1][x], waypoints.getArray()[2][x],
+            waypoints.getArray()[3][x];
+    trajectoryVectors.push_back(temp);
+  }
+
+  auto ee_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          waypoints.getArray()[0], trajectoryVectors);
+
+  // Processes EndEffectorOrientations CSV file.
+  CsvVector orientations("examples/kuka_iiwa_arm/EndEffectorOrientations.csv");
+
+  //Initializes orientations to orient_points array.
+  std::vector<Eigen::MatrixXd> orient_points;
+  for (unsigned int y = 0; y < orientations.getArray()[0].size(); y++) {
+    Eigen::Vector4d aPoint;
+    aPoint << orientations.getArray()[1][y], orientations.getArray()[2][y],
+              orientations.getArray()[3][y], orientations.getArray()[4][y];
+    orient_points.push_back(aPoint);
+  }
+
+  auto orientation_trajectory =
+      drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+          orientations.getArray()[0], orient_points);
+
   // Initialize Kuka model URDF-- from Drake kuka simulation files
   std::string kModelPath = "../drake/manipulation/models/iiwa_description"
                            "/iiwa7/iiwa7_no_collision.sdf";
@@ -167,7 +199,7 @@ int do_main(int argc, char* argv[]) {
   // The coordinates for the end effector with respect to the last joint,
   // used to determine location of end effector
   Eigen::Vector3d eeContactFrame;
-  eeContactFrame << 0.0, 0, 0.09;
+  eeContactFrame << 0.0, 0, 0.0;
 
   const std::string link_7 = "iiwa_link_7";
 
@@ -292,8 +324,8 @@ int do_main(int argc, char* argv[]) {
                   velocity_controller->get_endpoint_twist_input_port());
 
   builder.Connect(velocity_controller->get_endpoint_torque_output_port(),
-                  command_sender->get_torque_input_port());
 
+  command_sender->get_torque_input_port());
   builder.Connect(status_receiver->get_position_measured_output_port(),
                   command_sender->get_position_input_port());
   builder.Connect(command_sender->get_output_port(),

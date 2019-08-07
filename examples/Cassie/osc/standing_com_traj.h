@@ -34,6 +34,9 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
 
   Eigen::Vector3d front_contact_disp_ = Eigen::Vector3d(-0.0457, 0.112, 0);
   Eigen::Vector3d rear_contact_disp_ = Eigen::Vector3d(0.088, 0, 0);
+
+  //testing
+  std::unique_ptr<double> first_msg_time_;
 };
 
 }  // namespace osc

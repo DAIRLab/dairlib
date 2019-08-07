@@ -42,16 +42,20 @@ StandingComTraj::StandingComTraj(const RigidBodyTree<double>& tree,
   drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("com_traj", traj_inst,
       &StandingComTraj::CalcDesiredTraj);
+
+  // Testing
+  first_msg_time_ = std::make_unique<double>();
+  *first_msg_time_ = -1;
 }
 
 void StandingComTraj::CalcDesiredTraj(
     const Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
-  const OutputVector<double>* robotOutput = (OutputVector<double>*)
+  const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
-  VectorXd q = robotOutput->GetPositions();
-  VectorXd v = robotOutput->GetVelocities();
+  VectorXd q = robot_output->GetPositions();
+  VectorXd v = robot_output->GetVelocities();
 
   // Kinematics cache and indices
   KinematicsCache<double> cache = tree_.CreateKinematicsCache();

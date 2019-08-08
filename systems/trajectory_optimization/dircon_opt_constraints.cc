@@ -172,7 +172,10 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   auto contextcol = multibody::createContext(plant_, xcol, ucol);
   constraints_->updateData(*contextcol, lc);
   auto g = constraints_->getXDot();
-  g.head(num_positions_) += constraints_->getJ().transpose()*vc;
+  VectorX<T> vc_in_qdot_space(num_positions_);
+  plant_.MapVelocityToQDot(*contextcol,
+      constraints_->getJ().transpose()*vc, &vc_in_qdot_space);
+  g.head(num_positions_) += vc_in_qdot_space;
   *y = xdotcol - g;
 }
 

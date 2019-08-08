@@ -43,7 +43,7 @@ group "2.lcm-tools" {
         host = "localhost";
     }
     cmd "1.signal-scope" {
-        exec = "bazel-bin/director/signal-scope";
+        exec = "bazel-bin/signalscope/signal-scope";
         host = "localhost";
     }
 }

@@ -96,11 +96,11 @@ group "4.other-simulators" {
         host = "localhost";
     }
     cmd "2.cassie-mujoco" {
-        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v";
+        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v -s";
         host = "localhost";
     }
     cmd "3.cassie-mujoco-fixed-base" {
-        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v -h";
+        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v -h -s";
         host = "localhost";
     }
 }
@@ -177,4 +177,10 @@ script "run-real-robot-pd-control" {
     start cmd "0.dispatcher-robot-out-real-robot";
     start cmd "1.dispatcher-robot-in-real-robot";
     start cmd "2.pd-controller-real-robot";
+}
+
+script "mujoco-osc-standing" {
+    start cmd "2.cassie-mujoco";
+    start cmd "3.dispatcher-robot-in";
+    start cmd "4.osc-standing-controller";
 }

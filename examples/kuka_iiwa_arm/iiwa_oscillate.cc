@@ -106,11 +106,11 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(velocity_controller->get_joint_torques_output_port(),
                   command_sender->get_torque_input_port());
 
-  // builder.Connect(status_receiver->get_position_measured_output_port(),
-  //                 command_sender->get_position_input_port());
-
-  builder.Connect(constant_position_src->get_output_port(),
+  builder.Connect(status_receiver->get_position_measured_output_port(),
                   command_sender->get_position_input_port());
+
+  // builder.Connect(constant_position_src->get_output_port(),
+  //                 command_sender->get_position_input_port());
 
   builder.Connect(command_sender->get_output_port(),
                   command_publisher->get_input_port());

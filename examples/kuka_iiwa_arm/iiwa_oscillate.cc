@@ -1,5 +1,6 @@
 #define AMPLITUDE 1
 #define FREQUENCY 3
+#define JOINT 6
 #define MAX_VELOCITY 5
 
 #include <vector>
@@ -50,16 +51,17 @@ int do_main(int argc, char* argv[]) {
     drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
       "IIWA_COMMAND", lcm, 1.0/200.0));
 
-  Eigen::VectorXd zeros_low = Eigen::VectorXd::Zero(4);
+  Eigen::VectorXd zeros_low = Eigen::VectorXd::Zero(JOINT);
   auto zeros_low_source = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros_low);
 
-  Eigen::VectorXd zeros_high = Eigen::VectorXd::Zero(2);
+  Eigen::VectorXd zeros_high = Eigen::VectorXd::Zero(6 - JOINT);
   auto zeros_high_source = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros_high);
 
   auto sine_source = builder.AddSystem<drake::systems::Sine>(AMPLITUDE, FREQUENCY, 0, 1, true);
   //setup_log();
 
-  std::vector<int> input_sizes = {4, 1, 2};
+  std::vector<int> input_sizes = {JOINT, 1, 6 - JOINT};
+
   auto mux = builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
 
   const int num_iiwa_joints = 7;

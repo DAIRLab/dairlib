@@ -48,6 +48,7 @@ cc_binary(
     srcs = ["iiwa_oscillate.cc"],
     deps = [
             "@drake//:drake_shared_library",
+            "@json",
             "//systems/controllers:endeffector_velocity_controller",
             "//systems/controllers:endeffector_position_controller",
             "//systems/controllers:safe_velocity_controller",

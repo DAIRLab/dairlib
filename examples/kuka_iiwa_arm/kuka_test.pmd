@@ -32,7 +32,7 @@ group "1.simulated-robot" {
     }
 
     cmd "LCM Physical Interface" {
-        exec = "../drake-iiwa-driver/build/bin/kuka_driver";
+        exec = "../drake-iiwa-driver/build/bin/kuka_driver --restart_fri";
         host = "localhost";
     }
 

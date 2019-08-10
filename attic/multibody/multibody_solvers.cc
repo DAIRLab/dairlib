@@ -250,8 +250,12 @@ void PositionSolver::AddJointLimitConstraint(const double tolerance) {
 
   for (int i = 0; i < joint_min.size(); ++i) {
     // Adding minimum and maximum joint angle constraints.
-    prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
-    prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
+    // Ignoring the floating base coordinates if any.
+    // We assume all floating base positions start with "base"
+    if (tree_.get_position_name(i).substr(0, 4) != "base") {
+      prog_->AddBoundingBoxConstraint(joint_min(i) + tolerance,
+        joint_max(i) - tolerance, q_(i));
+    }
   }
 }
 
@@ -381,10 +385,15 @@ void ContactSolver::AddJointLimitConstraint(const double tolerance) {
 
   for (int i = 0; i < joint_min.size(); ++i) {
     // Adding minimum and maximum joint angle constraints.
-    prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
-    prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
+    // Ignoring the floating base coordinates if any.
+    // We assume all floating base positions start with "base"
+    if (tree_.get_position_name(i).substr(0, 4) != "base") {
+      prog_->AddBoundingBoxConstraint(joint_min(i) + tolerance,
+        joint_max(i) - tolerance, q_(i));
+    }
   }
 }
+
 
 MathematicalProgramResult ContactSolver::Solve() {
   // The initial guess for q needs to be set up separately before calling

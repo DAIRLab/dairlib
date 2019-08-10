@@ -169,15 +169,14 @@ class PositionSolver {
   void AddFixedJointsConstraint(std::map<int, double> fixed_joints);
   /*
    * Function to add joint limit constraints.
-   * The joint limits are obtained from the tree that the PositionSolver object
-   * was created with. The tolerance specifies the amount of relaxation required
+   * The joint limits are obtained from the tree object.
+   * @param margin Specifies a required margin
    * from the min or max values. This can be used to prevent the solutions from
    * being too close to the extreme values which may be unstable.
    * The constraint is computed as:
-   * (min + tolerance) <= q_i <= (max - tolerance) for each value in q.
-   * @param tolerance Requried tolerance value
+   * (min + margin) <= q_i <= (max - margin) for each value in q.
    */
-  void AddJointLimitConstraint(const double tolerance);
+  void AddJointLimitConstraint(const double margin = 0);
   /*
    * Function to solve the problem after all the required initial values and
    * other constraints have been set.
@@ -288,15 +287,14 @@ class ContactSolver {
   void AddFixedJointsConstraint(std::map<int, double> fixed_joints);
   /*
    * Function to add joint limit constraints.
-   * The joint limits are obtained from the tree that the ContactSolver object
-   * was created with. The tolerance specifies the amount of relaxation required
+   * The joint limits are obtained from the tree object.
+   * @param margin Specifies a required margin
    * from the min or max values. This can be used to prevent the solutions from
    * being too close to the extreme values which may be unstable.
    * The constraint is computed as:
-   * (min + tolerance) <= q_i <= (max - tolerance) for each value in q.
-   * @param tolerance Requried tolerance value
+   * (min + margin) <= q_i <= (max - margin) for each value in q.
    */
-  void AddJointLimitConstraint(const double tolerance);
+  void AddJointLimitConstraint(const double margin = 0);
   /*
    * Function to solve the problem after all the required initial values and
    * other constraints have been set.
@@ -467,16 +465,14 @@ class FixedPointSolver {
   void AddFixedJointsConstraint(std::map<int, double> fixed_joints);
   /*
    * Function to add joint limit constraints.
-   * The joint limits are obtained from the tree that the FixedPointSolver
-   * object
-   * was created with. The tolerance specifies the amount of relaxation required
+   * The joint limits are obtained from the tree object.
+   * @param margin Specifies a required margin
    * from the min or max values. This can be used to prevent the solutions from
    * being too close to the extreme values which may be unstable.
    * The constraint is computed as:
-   * (min + tolerance) <= q_i <= (max - tolerance) for each value in q.
-   * @param tolerance Requried tolerance value
+   * (min + margin) <= q_i <= (max - margin) for each value in q.
    */
-  void AddJointLimitConstraint(const double tolerance);
+  void AddJointLimitConstraint(const double margin = 0);
   /*
    * Function to solve the problem after all the required initial values and
    * other constraints have been set.

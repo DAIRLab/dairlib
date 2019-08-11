@@ -270,7 +270,12 @@ void OperationalSpaceControl::Build() {
   }
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
-    prog_->AddQuadraticCost(w_soft_constraint_*MatrixXd::Identity(n_c_, n_c_),
+    // HACK (NOT TO BE COMMITTED TO MASTER): sets cost associated with linearly
+    // dependent contact constraint violations to be zero
+    MatrixXd weight = w_soft_constraint_*MatrixXd::Identity(n_c_, n_c_);
+    weight(5, 5) = 0;
+    weight(11, 11) = 0;
+    prog_->AddQuadraticCost(weight,
         VectorXd::Zero(n_c_), epsilon_);
   }
   // 4. Tracking cost

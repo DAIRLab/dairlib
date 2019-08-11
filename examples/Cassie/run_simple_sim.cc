@@ -16,6 +16,8 @@
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/multibody/rigid_body_plant/contact_results_to_lcm.h"
+#include "drake/lcmt_contact_results_for_viz.hpp"
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -36,6 +38,7 @@ using dairlib::multibody::PositionSolver;
 using drake::solvers::MathematicalProgramResult;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::ContactResultsToLcmSystem;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
@@ -103,6 +106,21 @@ int do_main(int argc, char* argv[]) {
       std::move(tree), FLAGS_dt);
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+
+  // contact force visualization
+  ContactResultsToLcmSystem<double>& contact_viz =
+      *builder.template AddSystem<ContactResultsToLcmSystem<double>>(
+          plant->get_rigid_body_tree());
+  contact_viz.set_name("contact_visualization");
+  auto& contact_results_publisher = *builder.AddSystem(
+      LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
+          "CONTACT_RESULTS", lcm, 1.0 / FLAGS_publish_rate));
+  contact_results_publisher.set_name("contact_results_publisher");
+  // Contact results to lcm msg.
+  builder.Connect(plant->contact_results_output_port(),
+                  contact_viz.get_input_port(0));
+  builder.Connect(contact_viz.get_output_port(0),
+                  contact_results_publisher.get_input_port());
 
   // Note: this sets identical contact parameters across all object pairs:
   drake::systems::CompliantMaterial default_material;

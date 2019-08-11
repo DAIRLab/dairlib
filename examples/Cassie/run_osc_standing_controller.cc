@@ -20,6 +20,8 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/osc/operational_space_control.h"
 
+DEFINE_double(height, .89, "The desired height (m)");
+
 namespace dairlib {
 
 using std::cout;
@@ -39,6 +41,7 @@ using systems::controllers::ComTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
+using drake::systems::TriggerType;
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -78,7 +81,7 @@ int DoMain(int argc, char* argv[]) {
   // Create command sender.
   auto command_pub = builder.AddSystem(
                        LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-                         channel_u, &lcm_local, 1.0 / 1000.0));
+                         channel_u, &lcm_local, {TriggerType::kForced}));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
                           tree_with_springs);
 
@@ -96,12 +99,12 @@ int DoMain(int argc, char* argv[]) {
   // Cost
   // cout << "Adding cost\n";
   int n_v = tree_without_springs.get_num_velocities();
-  MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q_accel = 10 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Soft constraint
   // cout << "Adding constraint\n";
   // We don't want this to be too big, cause we want tracking error to be important
-  double w_contact_relax = 200;
+  double w_contact_relax = 20000;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
   // Firction coefficient
   double mu = 0.8;
@@ -112,15 +115,31 @@ int DoMain(int argc, char* argv[]) {
   osc->AddContactPoint("toe_left", rear_contact_disp);
   osc->AddContactPoint("toe_right", front_contact_disp);
   osc->AddContactPoint("toe_right", rear_contact_disp);
+
   // Center of mass tracking
   // cout << "Adding center of mass tracking\n";
-  Vector3d desired_com(0, 0, 0.89);
+  Vector3d desired_com(-.01, 0, FLAGS_height);
+  // Weighting x-y higher than z, as they are more important to balancing
   MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 200;//2
-  W_com(1, 1) = 200;//2
-  W_com(2, 2) = 2000;//2000
-  MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
+  W_com(0, 0) = 2000;
+  W_com(1, 1) = 2000;
+  W_com(2, 2) = 200;
+
+  // Set xy PD gains so they do not effect  passive LIPM dynamics at capture
+  // point, when x = sqrt(l/g) * xdot
+  // Passive dynamics: xddot =- g/l * x
+  //
+  // Kp * x + Kd * xdot =
+  // Kp * x - Kd * sqrt(g/l) * x = g/l * x
+  // Kp = sqrt(g/l) * Kd + g/l
+  double xy_scale = 10;
+  double g_over_l = 9.81/FLAGS_height;
+  MatrixXd K_p_com = (xy_scale*sqrt(g_over_l)  + g_over_l) *
+      MatrixXd::Identity(3, 3);
+  MatrixXd K_d_com = xy_scale * MatrixXd::Identity(3, 3);
+
+  K_p_com(2, 2) = 10;
+  K_d_com(2, 2) = 10;
   ComTrackingData center_of_mass_traj("lipm_traj", 3,
       K_p_com, K_d_com, W_com,
       &tree_with_springs, &tree_without_springs);
@@ -129,10 +148,10 @@ int DoMain(int argc, char* argv[]) {
   // cout << "Adding pelvis rotation tracking\n";
   double w_pelvis_balance = 200;
   double w_heading = 200;
-  double k_p_pelvis_balance = 100;
-  double k_d_pelvis_balance = 80;
-  double k_p_heading = 50;
-  double k_d_heading = 40;
+  double k_p_pelvis_balance = 10;
+  double k_d_pelvis_balance = 10;
+  double k_p_heading = 10;
+  double k_d_heading = 10;
   Matrix3d W_pelvis = MatrixXd::Identity(3, 3);
   W_pelvis(0, 0) = w_pelvis_balance;
   W_pelvis(1, 1) = w_pelvis_balance;

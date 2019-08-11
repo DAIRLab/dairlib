@@ -43,7 +43,7 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "4.osc-standing-controller" {
-        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --height=.85";
         host = "localhost";
     }
 }

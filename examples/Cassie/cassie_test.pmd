@@ -61,12 +61,12 @@ group "0.operator" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
         host = "localhost";
     }
-    cmd "0.drake-director" {
-        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
+    cmd "4.state-visualizer-floating" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true";
         host = "localhost";
     }
-    cmd "4.state-visualizer-RBT" {
-        exec = "bazel-bin/examples/Cassie/cassie_state_visualizer --floating_base=true";
+    cmd "0.drake-director" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py";
         host = "localhost";
     }
 }
@@ -114,11 +114,11 @@ script "start-operator-MBP" {
 }
 
 script "start-operator-RBP" {
-    stop cmd "4.state-visualizer-RBT";
+    stop cmd "4.state-visualizer-floating";
     stop cmd "0.drake-director";
     start cmd "0.drake-director";
     wait ms 3000;
-    start cmd "4.state-visualizer-RBT";
+    start cmd "4.state-visualizer-floating";
 }
 
 script "run-drake-pd-control" {

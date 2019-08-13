@@ -45,15 +45,5 @@ void SubvectorPassThrough<T>::DoCalcVectorOutput(
   output->SetFromVector(input.get_value().segment(start_, length_));
 }
 
-template <typename T>
-drake::optional<bool> SubvectorPassThrough<T>::DoHasDirectFeedthrough(
-    int input_port, int output_port) const {
-  DRAKE_DEMAND(input_port == 0);
-  DRAKE_DEMAND(output_port == 0);
-  // By definition, a pass-through will have direct feedthrough, as the
-  // output depends directly on the input.
-  return true;
-}
-
 }  // namespace systems
 }  // namespace dairlib

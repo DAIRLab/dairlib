@@ -89,6 +89,7 @@ cc_binary(
             "@drake//:drake_shared_library",
             ":cassie_utils",
             "@gflags",
+            "//multibody:utils",
             ]
 )
 

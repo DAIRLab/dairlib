@@ -169,7 +169,8 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
   }
 
   auto floating_bodies = plant.GetFloatingBaseBodies();
-  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);  //remove once RBT deprecated
+  // Remove throw once RBT deprecated
+  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
     int start = body.floating_velocities_start() - plant.num_positions();
@@ -183,10 +184,6 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
     for (int i = 0; i < 6; i++) {
       index_set.insert(start + i);
     }
-  }
-
-  for (auto elem : name_to_index_map) {
-    std::cout << elem.first << " " << elem.second << std::endl;
   }
 
   for (int i = 0; i < plant.num_velocities(); ++i) {

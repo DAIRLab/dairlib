@@ -43,11 +43,15 @@ drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
 
   MatrixX<T> Ji(3, plant_.num_positions());
 
+  const drake::multibody::Frame<T>& world = plant_.world_frame();
   for (int i = 0; i < num_contacts_; i++) {
     // .template cast<T> converts xA, as a double, into type T
     VectorX<T> xA_i = contact_info_.xA.col(i).template cast<T>();
-    plant_.CalcPointsGeometricJacobianExpressedInWorld(context,
-      *contact_info_.frameA.at(i), xA_i, &Ji);
+
+    plant_.CalcJacobianTranslationalVelocity(
+      context, drake::multibody::JacobianWrtVariable::kV,
+      *contact_info_.frameA.at(i), xA_i, world, world, &Ji);
+
     J.row(i*3) = normal.transpose() * Ji;
     J.row(i*3) = t_hat_1.transpose() * Ji;
     J.row(i*3) = t_hat_2.transpose() * Ji;

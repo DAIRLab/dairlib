@@ -105,7 +105,6 @@ int do_main(int argc, char* argv[]) {
   auto& command_value = command_receiver->get_input_port(0).FixValue(
       &command_receiver_context, command_sub.message());
 
-
   drake::log()->info("dispatcher_robot_in started");
   while (true) {
     // Wait for an lcmt_robot_input message.
@@ -115,6 +114,18 @@ int do_main(int argc, char* argv[]) {
     // Write the lcmt_robot_input message into the context and advance.
     command_value.GetMutableData()->set_value(command_sub.message());
     const double time = command_sub.message().utime * 1e-6;
+
+    // Check if we are very far ahead or behind
+    // (likely due to a restart of the driving clock)
+    if (time > simulator.get_context().get_time() + 1.0 ||
+        time < simulator.get_context().get_time() - 1.0) {
+      std::cout << "Dispatcher time is " << simulator.get_context().get_time()
+          << ", but stepping to " << time << std::endl;
+      std::cout << "Difference is too large, resetting dispatcher time." <<
+          std::endl;
+      simulator.get_mutable_context().SetTime(time);
+    }
+
     simulator.AdvanceTo(time);
     // Force-publish via the diagram
     diagram.Publish(diagram_context);

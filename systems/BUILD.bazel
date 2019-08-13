@@ -15,3 +15,12 @@ cc_library(
         "@lcm",
     ],
 )
+
+cc_library(
+    name = "vector_scope",
+    srcs = ["vector_scope.cc"],
+    hdrs = ["vector_scope.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ]
+)

@@ -79,7 +79,7 @@ DEFINE_bool(publish_state, true,
     "Should set this to false when running w/ dispatcher");
 
 // Cassie model paramter
-DEFINE_bool(floating_base, false, "Fixed or floating base model");
+DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
 // LCM channels
 DEFINE_string(state_channel, "CASSIE_STATE",
@@ -434,6 +434,18 @@ int do_main(int argc, char* argv[]) {
             FLAGS_output_channel, lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(cassie_sensor_aggregator->get_output_port(0),
                     cassie_sensor_pub->get_input_port());
+
+    // TODO(yminchen): Delete the following after testing cassie state estimator
+    // Create state publisher (for ground-truth floating-base state)
+    auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+        plant->get_rigid_body_tree());
+    auto state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "CASSIE_STATE_TEMP", lcm, 1.0 / FLAGS_publish_rate));
+    builder.Connect(plant->state_output_port(),
+                    state_sender->get_input_port_state());
+    builder.Connect(state_sender->get_output_port(0),
+                    state_pub->get_input_port());
   }
 
   // Building the diagram and starting the simulation.

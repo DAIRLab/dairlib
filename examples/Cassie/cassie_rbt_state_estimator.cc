@@ -4,6 +4,7 @@
 #include <chrono>
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
+#include "drake/solvers/equality_constrained_qp_solver.h"
 #include "drake/math/orthonormal_basis.h"
 #include "drake/multibody/rigid_body_plant/contact_resultant_force_calculator.h"
 
@@ -98,6 +99,45 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     lambda_cl_left_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
     lambda_cr_double_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
     lambda_cr_right_init_idx_ = DeclareDiscreteState(VectorXd::Zero(6, 1));
+
+    // Contact Estimation - Quadratic Programing
+    // MathematicalProgram
+    quadprog_ = std::make_unique<drake::solvers::MathematicalProgram>();
+    // Add variables to the optimization program
+    double n_v = tree_.get_num_velocities();
+    ddq_ = quadprog_->NewContinuousVariables(n_v, "ddq");
+    lambda_b_ = quadprog_->NewContinuousVariables(2, "lambda_b");
+    lambda_cl_ = quadprog_->NewContinuousVariables(6, "lambda_cl");
+    lambda_cr_ = quadprog_->NewContinuousVariables(6, "lambda_cr");
+    eps_cl_ = quadprog_->NewContinuousVariables(6, "eps_cl");
+    eps_cr_ = quadprog_->NewContinuousVariables(6, "eps_cr");
+    eps_imu_ = quadprog_->NewContinuousVariables(3, "eps_imu");
+    // Add equality constraints to the optimization program
+    fourbar_constraint_ = quadprog_->AddLinearEqualityConstraint(
+        MatrixXd::Zero(2, n_v), MatrixXd::Zero(2, 1), ddq_).
+        evaluator().get();
+    left_contact_constraint_ = quadprog_->AddLinearEqualityConstraint(
+        MatrixXd::Zero(6, n_v + 6), MatrixXd::Zero(6, 1), {ddq_, eps_cl_}).
+        evaluator().get();
+    right_contact_constraint_ = quadprog_->AddLinearEqualityConstraint(
+        MatrixXd::Zero(6, n_v + 6), MatrixXd::Zero(6, 1), {ddq_, eps_cr_}).
+        evaluator().get();
+    imu_accel_constraint_ = quadprog_->AddLinearEqualityConstraint(
+        MatrixXd::Zero(3, n_v + 3), MatrixXd::Zero(3, 1), {ddq_, eps_imu_}).
+        evaluator().get();
+    // Add costs to the optimization program
+    quadcost_eom_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(n_v + 14, n_v + 14),
+        MatrixXd::Zero(n_v + 14, 1), {ddq_, lambda_b_, lambda_cl_, lambda_cr_}).
+        evaluator().get();
+    quadcost_eps_cl_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(6, 6),
+        MatrixXd::Zero(6, 1), eps_cl_).
+        evaluator().get();
+    quadcost_eps_cr_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(6, 6),
+        MatrixXd::Zero(6, 1), eps_cr_).
+        evaluator().get();
+    quadcost_eps_imu_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(3, 3),
+        MatrixXd::Zero(3, 1), eps_imu_).
+        evaluator().get();
   }
 }
 
@@ -492,41 +532,21 @@ void CassieRbtStateEstimator::contactEstimation(
   std::vector<double> optimal_cost;
 
   // Mathematical program - double contact
-  MathematicalProgram quadprog_double;
-
-  // Variables for the optimization
-  // These are shared across all three optimizations
-  auto ddq = quadprog_double.NewContinuousVariables(n_v, "ddq");
-  auto lambda_b = quadprog_double.NewContinuousVariables(2, "lambda_b");
-  auto lambda_cl = quadprog_double.NewContinuousVariables(6, "lambda_cl");
-  auto lambda_cr = quadprog_double.NewContinuousVariables(6, "lambda_cr");
-  auto eps_cl = quadprog_double.NewContinuousVariables(6, "eps_cl");
-  auto eps_cr = quadprog_double.NewContinuousVariables(6, "eps_cr");
-  auto eps_imu = quadprog_double.NewContinuousVariables(3, "eps_imu");
-
-  // Constraints
   // Equality constraint
-  quadprog_double.AddLinearEqualityConstraint(Jb, -1*Jb_dot_times_v, ddq);
+  fourbar_constraint_->UpdateCoefficients(Jb, -1*Jb_dot_times_v);
 
   MatrixXd CL_coeff(Jcl.rows(), Jcl.cols() + 6);
   CL_coeff << Jcl, MatrixXd::Identity(6, 6);
-  quadprog_double.AddLinearEqualityConstraint(CL_coeff, -1*Jcl_dot_times_v,
-      {ddq, eps_cl});
+  left_contact_constraint_->UpdateCoefficients(CL_coeff, -1*Jcl_dot_times_v);
 
   MatrixXd CR_coeff(Jcr.rows(), Jcr.cols() + 6);
   CR_coeff << Jcr, MatrixXd::Identity(6, 6);
-  quadprog_double.AddLinearEqualityConstraint(CR_coeff, -1*Jcr_dot_times_v,
-      {ddq, eps_cr});
+  right_contact_constraint_->UpdateCoefficients(CR_coeff, -1*Jcr_dot_times_v);
 
   MatrixXd IMU_coeff(J_imu.rows(), J_imu.cols() + 3);
   IMU_coeff << J_imu, MatrixXd::Identity(3, 3);
-  quadprog_double.AddLinearEqualityConstraint(IMU_coeff,
-      -1*J_imu_dot_times_v + alpha_imu, {ddq, eps_imu});
-
-  // Inequality constraint
-  quadprog_double.AddLinearConstraint(MatrixXd::Identity(3, 3),
-      -eps_imu_*VectorXd::Ones(3, 1),
-      eps_imu_*VectorXd::Ones(6, 1), eps_imu);
+  imu_accel_constraint_->UpdateCoefficients(IMU_coeff,
+      -1*J_imu_dot_times_v + alpha_imu);
 
   // Cost
   int A_cols = n_v + Jb.rows() + Jcl.rows() + Jcr.rows();
@@ -535,32 +555,37 @@ void CassieRbtStateEstimator::contactEstimation(
   VectorXd cost_b(n_v);
   cost_b = B*u - C;
 
-  quadprog_double.AddQuadraticCost(2*cost_A.transpose()*cost_A +
+  quadcost_eom_->UpdateCoefficients(2*cost_A.transpose()*cost_A +
       eps_cost_*MatrixXd::Identity(A_cols, A_cols),
-      -2*cost_A.transpose()*cost_b, {ddq, lambda_b, lambda_cl, lambda_cr});
-  quadprog_double.AddQuadraticCost(
+      -2*cost_A.transpose()*cost_b);
+  quadcost_eps_cl_->UpdateCoefficients(
       w_soft_constraint_*MatrixXd::Identity(6, 6),
-      VectorXd::Zero(6, 1), eps_cl);
-  quadprog_double.AddQuadraticCost(
+      VectorXd::Zero(6, 1));
+  quadcost_eps_cr_->UpdateCoefficients(
       w_soft_constraint_*MatrixXd::Identity(6, 6),
-      VectorXd::Zero(6, 1), eps_cr);
-  quadprog_double.AddQuadraticCost(
+      VectorXd::Zero(6, 1));
+  quadcost_eps_imu_->UpdateCoefficients(
       w_soft_constraint_*MatrixXd::Identity(3, 3),
-      VectorXd::Zero(3, 1), eps_imu);
+      VectorXd::Zero(3, 1));
 
   // Initial guess
-  quadprog_double.SetInitialGuess(ddq,
+  // TODO(Nanda): Remove the initial guess after testing on the real robot
+  quadprog_->SetInitialGuess(ddq_,
       discrete_state->get_vector(ddq_double_init_idx_).get_value());
-  quadprog_double.SetInitialGuess(lambda_b,
+  quadprog_->SetInitialGuess(lambda_b_,
       discrete_state->get_vector(lambda_b_double_init_idx_).get_value());
-  quadprog_double.SetInitialGuess(lambda_cl,
+  quadprog_->SetInitialGuess(lambda_cl_,
       discrete_state->get_vector(lambda_cl_double_init_idx_).get_value());
-  quadprog_double.SetInitialGuess(lambda_cr,
+  quadprog_->SetInitialGuess(lambda_cr_,
       discrete_state->get_vector(lambda_cr_double_init_idx_).get_value());
 
   // Solve the optimization problem
-  const drake::solvers::MathematicalProgramResult result_double =
-      drake::solvers::Solve(quadprog_double);
+  drake::solvers::EqualityConstrainedQPSolver solver;
+  drake::solvers::SolverOptions solver_options;
+  solver_options.SetOption(drake::solvers::EqualityConstrainedQPSolver::id(),
+               "FeasibilityTol", 1e-6);
+  drake::solvers::MathematicalProgramResult result_double =
+      solver.Solve(*quadprog_.get(), {}, solver_options);
 
   if (!result_double.is_success()) {
     // If the optimization fails, push infinity into the optimal_cost vector
@@ -584,9 +609,9 @@ void CassieRbtStateEstimator::contactEstimation(
     optimal_cost.push_back(result_double.get_optimal_cost() +
         cost_b.transpose()*cost_b);
 
-    VectorXd ddq_val = result_double.GetSolution(ddq);
-    VectorXd left_force = result_double.GetSolution(lambda_cl);
-    VectorXd right_force = result_double.GetSolution(lambda_cr);
+    VectorXd ddq_val = result_double.GetSolution(ddq_);
+    VectorXd left_force = result_double.GetSolution(lambda_cl_);
+    VectorXd right_force = result_double.GetSolution(lambda_cr_);
 
     // Save current estimate for initial guess in the next iteration
     discrete_state->get_mutable_vector(
@@ -594,7 +619,7 @@ void CassieRbtStateEstimator::contactEstimation(
         ddq_val;
     discrete_state->get_mutable_vector(
         lambda_b_double_init_idx_).get_mutable_value() <<
-        result_double.GetSolution(lambda_b);
+        result_double.GetSolution(lambda_b_);
     discrete_state->get_mutable_vector(
         lambda_cl_double_init_idx_).get_mutable_value() <<
         left_force;
@@ -603,6 +628,8 @@ void CassieRbtStateEstimator::contactEstimation(
         right_force;
 
     // Residual calculation
+    // TODO(Nanda): Remove the residual calculation after testing on the real
+    // robot
     VectorXd curr_residual = ddq_val*dt;
     curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
@@ -616,52 +643,41 @@ void CassieRbtStateEstimator::contactEstimation(
   }
 
   // Mathematical program - left contact
-  MathematicalProgram quadprog_left;
-  ddq = quadprog_left.NewContinuousVariables(M.rows(), "ddq");
-  lambda_b = quadprog_left.NewContinuousVariables(2, "lambda_b");
-  lambda_cl = quadprog_left.NewContinuousVariables(6, "lambda_cl");
-  eps_cl = quadprog_left.NewContinuousVariables(6, "eps_cl");
-  eps_imu = quadprog_left.NewContinuousVariables(3, "eps_imu");
-
-  // Constraints
   // Equality constraints
-  quadprog_left.AddLinearEqualityConstraint(Jb, -1*Jb_dot_times_v, ddq);
-  quadprog_left.AddLinearEqualityConstraint(CL_coeff, -1*Jcl_dot_times_v,
-      {ddq, eps_cl});
-  quadprog_left.AddLinearEqualityConstraint(IMU_coeff, -1*J_imu_dot_times_v +
-      alpha_imu, {ddq, eps_imu});
-
-  // Inequality constraint
-  quadprog_left.AddLinearConstraint(MatrixXd::Identity(3, 3),
-      -eps_imu_*VectorXd::Ones(3, 1),
-      eps_imu_*VectorXd::Ones(3, 1), eps_imu);
+  fourbar_constraint_->UpdateCoefficients(Jb, -1*Jb_dot_times_v);
+  left_contact_constraint_->UpdateCoefficients(CL_coeff, -1*Jcl_dot_times_v);
+  right_contact_constraint_->UpdateCoefficients(MatrixXd::Zero(6, n_v + 6),
+      VectorXd::Zero(6, 1));
+  imu_accel_constraint_->UpdateCoefficients(IMU_coeff,
+      -1*J_imu_dot_times_v + alpha_imu);
 
   // Cost
-  A_cols = M.cols() + Jb.rows() + Jcl.rows();
-  MatrixXd cost_A_left(M.rows(), A_cols);
-  cost_A_left << M, -1*Jb.transpose(), -1*Jcl.transpose();
+  cost_A << M, -1*Jb.transpose(), -1*Jcl.transpose(), MatrixXd::Zero(n_v, 6);
 
-  quadprog_left.AddQuadraticCost(2*cost_A_left.transpose()*cost_A_left +
+  quadcost_eom_->UpdateCoefficients(2*cost_A.transpose()*cost_A +
       eps_cost_*MatrixXd::Identity(A_cols, A_cols),
-      -2*cost_A_left.transpose()*cost_b, {ddq, lambda_b, lambda_cl});
-  quadprog_left.AddQuadraticCost(
+      -2*cost_A.transpose()*cost_b);
+  quadcost_eps_cl_->UpdateCoefficients(
       w_soft_constraint_*MatrixXd::Identity(6, 6),
-      VectorXd::Zero(6, 1), eps_cl);
-  quadprog_left.AddQuadraticCost(
+      VectorXd::Zero(6, 1));
+  quadcost_eps_cr_->UpdateCoefficients(
+      MatrixXd::Zero(6, 6), VectorXd::Zero(6, 1));
+  quadcost_eps_imu_->UpdateCoefficients(
       w_soft_constraint_*MatrixXd::Identity(3, 3),
-      VectorXd::Zero(3, 1), eps_imu);
+      VectorXd::Zero(3, 1));
 
   // Initial guess
-  quadprog_left.SetInitialGuess(ddq,
+  // TODO(Nanda): Remove the initial guess after testing on the real robot
+  quadprog_->SetInitialGuess(ddq_,
       discrete_state->get_vector(ddq_left_init_idx_).get_value());
-  quadprog_left.SetInitialGuess(lambda_b,
+  quadprog_->SetInitialGuess(lambda_b_,
       discrete_state->get_vector(lambda_b_left_init_idx_).get_value());
-  quadprog_left.SetInitialGuess(lambda_cl,
+  quadprog_->SetInitialGuess(lambda_cl_,
       discrete_state->get_vector(lambda_cl_left_init_idx_).get_value());
 
   // Solve the optimization problem
-  const drake::solvers::MathematicalProgramResult result_left =
-      drake::solvers::Solve(quadprog_left);
+  drake::solvers::MathematicalProgramResult result_left =
+      drake::solvers::Solve(*quadprog_);
 
   if (!result_left.is_success()) {
     // Push infinity into optimal_costv vector if the optimization fails
@@ -682,8 +698,8 @@ void CassieRbtStateEstimator::contactEstimation(
     optimal_cost.push_back(result_left.get_optimal_cost() +
         cost_b.transpose()*cost_b);
 
-    VectorXd ddq_val = result_left.GetSolution(ddq);
-    VectorXd left_force = result_left.GetSolution(lambda_cl);
+    VectorXd ddq_val = result_left.GetSolution(ddq_);
+    VectorXd left_force = result_left.GetSolution(lambda_cl_);
 
     // Save current estimate for initial guess in the next iteration
     discrete_state->get_mutable_vector(
@@ -691,12 +707,14 @@ void CassieRbtStateEstimator::contactEstimation(
         ddq_val;
     discrete_state->get_mutable_vector(
         lambda_b_left_init_idx_).get_mutable_value() <<
-        result_left.GetSolution(lambda_b);
+        result_left.GetSolution(lambda_b_);
     discrete_state->get_mutable_vector(
         lambda_cl_left_init_idx_).get_mutable_value() <<
         left_force;
 
     // Residual calculation
+    // TODO(Nanda): Remove the residual calculation after testing on the real
+    // robot
     VectorXd curr_residual = ddq_val*dt;
     curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());
@@ -710,52 +728,45 @@ void CassieRbtStateEstimator::contactEstimation(
   }
 
   // Mathematical program - right contact
-  MathematicalProgram quadprog_right;
-  ddq = quadprog_right.NewContinuousVariables(M.rows(), "ddq");
-  lambda_b = quadprog_right.NewContinuousVariables(2, "lambda_b");
-  lambda_cr = quadprog_right.NewContinuousVariables(6, "lambda_cr");
-  eps_cr = quadprog_right.NewContinuousVariables(6, "eps_cr");
-  eps_imu = quadprog_right.NewContinuousVariables(3, "eps_imu");
-
-  // Constraints
   // Equality constrtaint
-  quadprog_right.AddLinearEqualityConstraint(Jb, -1*Jb_dot_times_v, ddq);
-  quadprog_right.AddLinearEqualityConstraint(CR_coeff, -1*Jcr_dot_times_v,
-      {ddq, eps_cr});
-  quadprog_right.AddLinearEqualityConstraint(IMU_coeff, -1*J_imu_dot_times_v +
-      alpha_imu, {ddq, eps_imu});
-
-  // Inequality constraint
-  quadprog_right.AddLinearConstraint(MatrixXd::Identity(3, 3),
-      -eps_imu_*MatrixXd::Identity(3, 1),
-      eps_imu_*MatrixXd::Identity(3, 1), eps_imu);
+  fourbar_constraint_->UpdateCoefficients(Jb, -1*Jb_dot_times_v);
+  left_contact_constraint_->UpdateCoefficients(
+      MatrixXd::Zero(6, n_v + 6), VectorXd::Zero(6, 1));
+  right_contact_constraint_->UpdateCoefficients(
+      CR_coeff, -1*Jcr_dot_times_v);
+  imu_accel_constraint_->UpdateCoefficients(IMU_coeff,
+      -1*J_imu_dot_times_v + alpha_imu);
 
   // Cost
-  A_cols = M.cols() + Jb.rows() + Jcr.rows();
-  MatrixXd cost_A_right(M.rows(), A_cols);
-  cost_A_right << M, -1*Jb.transpose(), -1*Jcr.transpose();
+  cost_A << M, -1*Jb.transpose(), MatrixXd::Zero(n_v, 6), -1*Jcr.transpose();
 
-  quadprog_right.AddQuadraticCost(2*cost_A_right.transpose()*cost_A_right +
+  quadcost_eom_->UpdateCoefficients(2*cost_A.transpose()*cost_A +
       eps_cost_*MatrixXd::Identity(A_cols, A_cols),
-      -2*cost_A_right.transpose()*cost_b, {ddq, lambda_b, lambda_cr});
-  quadprog_right.AddQuadraticCost(
+      -2*cost_A.transpose()*cost_b);
+  quadcost_eps_cl_->UpdateCoefficients(
+      MatrixXd::Zero(6, 6), VectorXd::Zero(6, 1));
+  quadcost_eps_cr_->UpdateCoefficients(
       w_soft_constraint_*MatrixXd::Identity(6, 6),
-      VectorXd::Zero(6, 1), eps_cr);
-  quadprog_right.AddQuadraticCost(
+      VectorXd::Zero(6, 1));
+  quadcost_eps_imu_->UpdateCoefficients(
       w_soft_constraint_*MatrixXd::Identity(3, 3),
-      VectorXd::Zero(3, 1), eps_imu);
+      VectorXd::Zero(3, 1));
 
   // Initial guess
-  quadprog_right.SetInitialGuess(ddq,
+  // TODO(Nanda): Remove the initial guess after testing on the real robot
+  // Even though EqualityConstrainedQP doesn't need an initial guess, they are
+  // retained for testing and will be removed once the code is tested on the
+  // real robot.
+  quadprog_->SetInitialGuess(ddq_,
       discrete_state->get_vector(ddq_right_init_idx_).get_value());
-  quadprog_right.SetInitialGuess(lambda_b,
+  quadprog_->SetInitialGuess(lambda_b_,
       discrete_state->get_vector(lambda_b_right_init_idx_).get_value());
-  quadprog_right.SetInitialGuess(lambda_cr,
+  quadprog_->SetInitialGuess(lambda_cr_,
       discrete_state->get_vector(lambda_cr_right_init_idx_).get_value());
 
   // Solve the optimization problem
-  const drake::solvers::MathematicalProgramResult result_right =
-      drake::solvers::Solve(quadprog_right);
+  drake::solvers::MathematicalProgramResult result_right =
+      drake::solvers::Solve(*quadprog_);
 
   if (!result_right.is_success()) {
     // If the optimization fails, push infinity to the optimal_cost vector
@@ -776,21 +787,23 @@ void CassieRbtStateEstimator::contactEstimation(
     optimal_cost.push_back(result_right.get_optimal_cost() +
         cost_b.transpose()*cost_b);
 
-    VectorXd ddq_val = result_right.GetSolution(ddq);
-    VectorXd right_force = result_right.GetSolution(lambda_cr);
+    VectorXd ddq_val = result_right.GetSolution(ddq_);
+    VectorXd right_force = result_right.GetSolution(lambda_cr_);
 
     // Save current estimate for initial guess in the next iteration
     discrete_state->get_mutable_vector(
         ddq_right_init_idx_).get_mutable_value() <<
-        result_right.GetSolution(ddq);
+        ddq_val;
     discrete_state->get_mutable_vector(
         lambda_b_right_init_idx_).get_mutable_value() <<
-        result_right.GetSolution(lambda_b);
+        result_right.GetSolution(lambda_b_);
     discrete_state->get_mutable_vector(
         lambda_cr_right_init_idx_).get_mutable_value() <<
         right_force;
 
     // Residual calculation
+    // TODO(Nanda): Remove the residual calculation after testing on the real
+    // robot
     VectorXd curr_residual = ddq_val*dt;
     curr_residual -= (output.GetVelocities() -
         discrete_state->get_vector(previous_velocity_idx_).get_value());

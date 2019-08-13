@@ -1,0 +1,44 @@
+group "0.operator" {
+    cmd "1.drake-director" {
+        exec = "bazel-bin/director/drake-director --script examples/kuka_iiwa_arm/signal_scope_panel.py";
+        host = "localhost";
+    }
+}
+
+group "1.simulated-robot" {
+    cmd "1.simulator" {
+        exec = "bazel-bin/examples/kuka_iiwa_arm/kuka_simulation";
+        host = "localhost";
+    }
+
+    cmd "1a. rbp simulator" {
+        exec = "../drake/bazel-bin/examples/kuka_iiwa_arm/kuka_simulation";
+        host = "localhost";
+    }
+
+    cmd "2.position_broadcaster" {
+        exec = "bazel-bin/examples/kuka_iiwa_arm/iiwa_controller_demo";
+        host = "localhost";
+    }
+
+    cmd "3.iiwa_oscillate" {
+        exec = "bazel-bin/examples/kuka_iiwa_arm/iiwa_oscillate";
+        host = "localhost";
+    }
+
+    cmd "4.Visualizer" {
+        exec = "bazel-bin/examples/kuka_iiwa_arm/iiwa_visualizer";
+        host = "localhost";
+    }
+}
+
+group "2.lcm-tools" {
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/director/signal-scope";
+        host = "localhost";
+    }
+}

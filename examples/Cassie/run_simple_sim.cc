@@ -59,10 +59,10 @@ DEFINE_bool(publish_state, true,
     "Publish state CASSIE_STATE (set to false when running w/dispatcher");
 DEFINE_string(state_channel_name, "CASSIE_STATE",
               "The name of the lcm channel that sends Cassie's state");
+DEFINE_bool(publish_cassie_output, true, "Publish simulated CASSIE_OUTPUT");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
-DEFINE_bool(is_imu_sim, true, "With simulated imu sensor or not");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -80,11 +80,11 @@ int do_main(int argc, char* argv[]) {
   }
 
   // Add imu frame to Cassie's pelvis
-  if (FLAGS_is_imu_sim) addImuFrameToCassiePelvis(tree);
+  if (FLAGS_publish_cassie_output) addImuFrameToCassiePelvis(tree);
 
   drake::systems::DiagramBuilder<double> builder;
 
-  if (!FLAGS_is_imu_sim && !FLAGS_publish_state) {
+  if (!FLAGS_publish_cassie_output && !FLAGS_publish_state) {
     throw std::logic_error(
         "Must publish either via CASSIE_OUTPUT or CASSIE_STATE");
   }
@@ -136,7 +136,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   // Create cassie output (containing simulated sensor) publisher
-  if (FLAGS_is_imu_sim) {
+  if (FLAGS_publish_cassie_output) {
     auto cassie_sensor_aggregator =
         addImuAndAggregatorToSimulation(builder, plant, passthrough);
     auto cassie_sensor_pub =

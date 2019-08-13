@@ -122,7 +122,8 @@ int DoMain() {
 
   // The virtual spring stiffness in Nm/rad.
   stiffness.resize(num_iiwa_positions);
-  stiffness << 2, 2, 2, 2, 2, 2, 2;
+  //stiffness << 2, 2, 2, 2, 2, 2, 2;
+  stiffness << 20, 20, 20, 20, 20, 20, 20;
 
   // A dimensionless damping ratio. See KukaTorqueController for details.
   damping_ratio.resize(num_iiwa_positions);

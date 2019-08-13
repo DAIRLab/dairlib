@@ -39,7 +39,7 @@ int do_main(int argc, char* argv[]) {
   MultibodyPlant<double> plant;
 
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+    // multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
   }
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);

@@ -7,7 +7,7 @@
 /**
  *  @file   LieGroup.h
  *  @author Ross Hartley
- *  @brief  Header file for various Lie Group functions 
+ *  @brief  Header file for various Lie Group functions
  *  @date   September 25, 2018
  **/
 

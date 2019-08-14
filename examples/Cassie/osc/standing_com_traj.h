@@ -15,7 +15,8 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   StandingComTraj(const RigidBodyTree<double>& tree,
                    int pelvis_idx,
                    int left_foot_idx,
-                   int right_foot_idx);
+                   int right_foot_idx,
+                   double height = 0.9);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -29,6 +30,7 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   int pelvis_idx_;
   int left_foot_idx_;
   int right_foot_idx_;
+  double height_;
 
   int state_port_;
 

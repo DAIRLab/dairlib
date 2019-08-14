@@ -112,7 +112,8 @@ int DoMain(int argc, char* argv[]) {
   // Create desired center of mass traj
   auto com_traj_generator =
       builder.AddSystem<cassie::osc::StandingComTraj>(
-        tree_with_springs, pelvis_idx, left_toe_idx, right_toe_idx);
+          tree_with_springs, pelvis_idx, left_toe_idx, right_toe_idx,
+          FLAGS_height);
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
 
@@ -141,8 +142,6 @@ int DoMain(int argc, char* argv[]) {
   osc->AddContactPoint("toe_right", rear_contact_disp);
 
   // Center of mass tracking
-  // cout << "Adding center of mass tracking\n";
-  Vector3d desired_com(-.01, 0, FLAGS_height);
   // Weighting x-y higher than z, as they are more important to balancing
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2000;
@@ -165,7 +164,7 @@ int DoMain(int argc, char* argv[]) {
   K_p_com(2, 2) = 10;
   K_d_com(2, 2) = 10;
 
-    ComTrackingData center_of_mass_traj("com_traj", 3,
+  ComTrackingData center_of_mass_traj("com_traj", 3,
       K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
       &tree_with_springs, &tree_without_springs);
   osc->AddTrackingData(&center_of_mass_traj);

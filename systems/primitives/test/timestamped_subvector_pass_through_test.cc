@@ -79,11 +79,6 @@ TEST_F(SubvectorPassThroughTest, PassThroughIsStateless) {
   EXPECT_EQ(0, context_->get_discrete_state().num_groups());
 }
 
-// Tests that SubvectorPassThroughTest is direct feedthrough.
-TEST_F(SubvectorPassThroughTest, DirectFeedthrough) {
-  EXPECT_TRUE(pass_through_->HasAnyDirectFeedthrough());
-}
-
 TEST_F(SubvectorPassThroughTest, ToAutoDiff) {
   EXPECT_TRUE(is_autodiffxd_convertible(*pass_through_));
 }

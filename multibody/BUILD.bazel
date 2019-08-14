@@ -8,9 +8,11 @@ cc_library(
     name = "utils",
     srcs = [
         "multibody_utils.cc",
+        "com_pose_system.cc",
     ],
     hdrs = [
         "multibody_utils.h",
+        "com_pose_system.h",
     ],
     deps = [
         "@drake//multibody/plant",

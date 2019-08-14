@@ -109,7 +109,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetWeightOfSoftContactConstraint(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
   }
-  void AddContactPoint(std::string body_name, Eigen::VectorXd pt_on_body);
+  void AddContactPoint(std::string body_name, Eigen::VectorXd pt_on_body,
+      double mu_low_friction = -1, double period_of_low_friction = 0);
   void AddStateAndContactPoint(int state,
                                std::string body_name,
                                Eigen::VectorXd pt_on_body,

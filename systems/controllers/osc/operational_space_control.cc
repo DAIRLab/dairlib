@@ -118,10 +118,13 @@ void OperationalSpaceControl::AddAccelerationCost(std::string joint_vel_name,
 
 // Constraint methods
 void OperationalSpaceControl::AddContactPoint(std::string body_name,
-    VectorXd pt_on_body) {
+    VectorXd pt_on_body, double mu_low_friction, double period_of_low_friction){
   body_index_.push_back(GetBodyIndexFromName(tree_wo_spr_, body_name));
   pt_on_body_.push_back(pt_on_body);
+  mu_low_friction_.push_back(mu_low_friction);
+  period_of_low_friction_.push_back(period_of_low_friction);
 }
+
 void OperationalSpaceControl::AddStateAndContactPoint(int state,
     std::string body_name, VectorXd pt_on_body,
     double mu_low_friction, double period_of_low_friction) {

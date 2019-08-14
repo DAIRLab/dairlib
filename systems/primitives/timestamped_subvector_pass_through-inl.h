@@ -46,15 +46,5 @@ void TSSubvectorPassThrough<T>::DoCalcVectorOutput(
   output->set_timestamp(input.get_timestamp());
 }
 
-template <typename T>
-drake::optional<bool> TSSubvectorPassThrough<T>::DoHasDirectFeedthrough(
-    int input_port, int output_port) const {
-  DRAKE_DEMAND(input_port == 0);
-  DRAKE_DEMAND(output_port == 0);
-  // By definition, a pass-through will have direct feedthrough, as the
-  // output depends directly on the input.
-  return true;
-}
-
 }  // namespace systems
 }  // namespace dairlib

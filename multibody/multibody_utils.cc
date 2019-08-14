@@ -100,10 +100,29 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
     }
   }
 
+  auto floating_bodies = plant.GetFloatingBaseBodies();
+  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);  //remove once RBT deprecated
+  for (auto body_index : floating_bodies) {
+    const auto& body = plant.get_body(body_index);
+    DRAKE_ASSERT(body.has_quaternion_dofs());
+    int start = body.floating_positions_start();
+    std::string name = "base";  // should be body.name() once RBT is deprecated
+    name_to_index_map[name + "_qw"] = start;
+    name_to_index_map[name + "_qx"] = start + 1;
+    name_to_index_map[name + "_qy"] = start + 2;
+    name_to_index_map[name + "_qz"] = start + 3;
+    name_to_index_map[name + "_x"] = start + 4;
+    name_to_index_map[name + "_y"] = start + 5;
+    name_to_index_map[name + "_z"] = start + 6;
+    for (int i = 0; i < 7; i++) {
+      index_set.insert(start + i);
+    }
+  }
+
   for (int i = 0; i < plant.num_positions(); ++i) {
-    // if index has not already been captured, add it
+    // if index has not already been captured, throw an error
     if (index_set.find(i) == index_set.end()) {
-      name_to_index_map["position[" + std::to_string(i) + "]"] = i;
+      DRAKE_THROW_UNLESS(false);
     }
   }
 
@@ -149,10 +168,28 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
     }
   }
 
+  auto floating_bodies = plant.GetFloatingBaseBodies();
+  // Remove throw once RBT deprecated
+  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
+  for (auto body_index : floating_bodies) {
+    const auto& body = plant.get_body(body_index);
+    int start = body.floating_velocities_start() - plant.num_positions();
+    std::string name = "base";  // should be body.name() once RBT is deprecated
+    name_to_index_map[name + "_wx"] = start;
+    name_to_index_map[name + "_wy"] = start + 1;
+    name_to_index_map[name + "_wz"] = start + 2;
+    name_to_index_map[name + "_vx"] = start + 3;
+    name_to_index_map[name + "_vy"] = start + 4;
+    name_to_index_map[name + "_vz"] = start + 5;
+    for (int i = 0; i < 6; i++) {
+      index_set.insert(start + i);
+    }
+  }
+
   for (int i = 0; i < plant.num_velocities(); ++i) {
-    // if index has not already been captured, add it
+    // if index has not already been captured, throw an error
     if (index_set.find(i) == index_set.end()) {
-      name_to_index_map["velocity[" + std::to_string(i) + "]"] = i;
+      DRAKE_THROW_UNLESS(false);
     }
   }
 

@@ -265,17 +265,17 @@ void OperationalSpaceControl::Build() {
   // Add costs
   // 1. input cost
   if (W_input_.size() > 0) {
-    prog_->AddQuadraticCost(MatrixXd::Identity(n_u_, n_u_),
+    prog_->AddQuadraticCost(W_input_,
                             VectorXd::Zero(n_u_), u_);
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
-    prog_->AddQuadraticCost(MatrixXd::Identity(n_v_, n_v_),
+    prog_->AddQuadraticCost(W_joint_accel_,
         VectorXd::Zero(n_v_), dv_);
   }
   // 3. Soft constraint cost
   if (w_soft_constraint_ > 0) {
-    prog_->AddQuadraticCost(MatrixXd::Identity(n_c_, n_c_),
+    prog_->AddQuadraticCost(w_soft_constraint_*MatrixXd::Identity(n_c_, n_c_),
         VectorXd::Zero(n_c_), epsilon_);
   }
   // 4. Tracking cost

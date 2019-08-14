@@ -11,7 +11,7 @@
 #include <utility>
 
 #include "drake/common/find_resource.h"
-#include "drake/geometry/dev/scene_graph.h"
+#include "drake/geometry/scene_graph.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_command_receiver.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_status_sender.h"

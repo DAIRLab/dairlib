@@ -65,9 +65,9 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
 }
 
 std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(
-    std::string filename, FloatingBaseType base_type) {
+    std::string filename, FloatingBaseType base_type, bool is_with_springs) {
   auto tree = std::make_unique<RigidBodyTree<double>>();
-  buildCassieTree(*tree.get(), filename, base_type);
+  buildCassieTree(*tree.get(), filename, base_type, is_with_springs);
   return tree;
 }
 

@@ -75,14 +75,14 @@ DEFINE_double(dt, 1e-3,
               "'simulation_type=compliant'");
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
 DEFINE_bool(publish_state, true,
-    "Simulation publishs state CASSIE_STATE"
+    "Simulation publishs state CASSIE_STATE_SIMULATION"
     "Should set this to false when running w/ dispatcher");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
 // LCM channels
-DEFINE_string(state_channel, "CASSIE_STATE",
+DEFINE_string(state_channel, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving the state");
 DEFINE_string(input_channel, "CASSIE_INPUT",
               "LCM channel for receiving the motor inputs");
@@ -441,7 +441,7 @@ int do_main(int argc, char* argv[]) {
         plant->get_rigid_body_tree());
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            "CASSIE_STATE_TEMP", lcm, 1.0 / FLAGS_publish_rate));
+            "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(plant->state_output_port(),
                     state_sender->get_input_port_state());
     builder.Connect(state_sender->get_output_port(0),

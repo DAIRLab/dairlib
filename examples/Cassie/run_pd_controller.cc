@@ -1,3 +1,5 @@
+#include <gflags/gflags.h>
+
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
@@ -20,8 +22,14 @@ using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;
 using drake::systems::DiagramBuilder;
 
+DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
+    "LCM channel for receiving state. "
+    "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
+    "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 
-int doMain() {
+int DoMain(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   DiagramBuilder<double> builder;
   DiagramBuilder<double> builder_null;
 
@@ -36,7 +44,7 @@ int doMain() {
   addCassieMultibody(&plant, &scene_graph, false);
   plant.Finalize();
 
-  const std::string channel_x = "CASSIE_STATE";
+  const std::string channel_x = FLAGS_channel;
   const std::string channel_u = "CASSIE_INPUT";
   const std::string channel_config = "PD_CONFIG";
 
@@ -101,4 +109,4 @@ int doMain() {
 
 }
 
-int main() { return dairlib::doMain(); }
+int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }

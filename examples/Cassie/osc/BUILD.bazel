@@ -1,0 +1,62 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "osc",
+    deps = [
+            "//examples/Cassie/osc:deviation_from_cp",
+            "//examples/Cassie/osc:heading_control",
+            "//examples/Cassie/osc:standing_com_traj",
+            "//systems/controllers:time_based_fsm",
+            "//systems/controllers:lipm_traj_gen",
+            "//systems/controllers:cp_traj_gen",
+            "//systems/controllers/osc:operational_space_control",
+    ],
+)
+
+cc_library(
+    name = "cp_control_common_func",
+    srcs = ["cp_control_common_func.cc",],
+    hdrs = ["cp_control_common_func.h"],
+    deps = [
+            "//systems/framework:vector",
+            ]
+)
+
+cc_library(
+    name = "deviation_from_cp",
+    srcs = ["deviation_from_cp.cc",],
+    hdrs = ["deviation_from_cp.h"],
+    deps = [
+            ":cp_control_common_func",
+            "//attic/multibody:utils",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+            ]
+)
+
+cc_library(
+    name = "heading_control",
+    srcs = ["heading_control.cc",],
+    hdrs = ["heading_control.h"],
+    deps = [
+            ":cp_control_common_func",
+            "//attic/multibody:utils",
+            "//systems/controllers:control_utils",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+            ]
+)
+
+cc_library(
+    name = "standing_com_traj",
+    srcs = ["standing_com_traj.cc",],
+    hdrs = ["standing_com_traj.h"],
+    deps = [
+            "//attic/multibody:utils",
+            "//systems/controllers:control_utils",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+            ]
+)

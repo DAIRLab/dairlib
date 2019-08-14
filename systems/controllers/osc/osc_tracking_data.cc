@@ -281,7 +281,7 @@ void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
   // Get relative quaternion (from current to desired)
   Quaterniond relative_qaut = (y_quat_des * y_quat.inverse()).normalized();
   double theta = 2 * acos(relative_qaut.w());
-  Vector3d rot_axis = relative_qaut.vec() / sin(theta / 2);
+  Vector3d rot_axis = relative_qaut.vec().normalized();
 
   error_y_ = theta * rot_axis;
 }

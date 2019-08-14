@@ -19,6 +19,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/osc/operational_space_control.h"
+#include "examples/Cassie/osc/standing_com_traj.h"
 
 DEFINE_double(height, .89, "The desired height (m)");
 
@@ -44,17 +45,31 @@ using systems::controllers::JointSpaceTrackingData;
 using drake::systems::TriggerType;
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
-// publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
+// publish rate of the robot state needs to be less than 200 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
 // Maybe we need to update the lcm driven loop to clear the queue of lcm message
 // if it's more than one message?
+
+DEFINE_double(publish_rate, 200, "Publishing frequency (Hz)");
+
+DEFINE_string(channel, "CASSIE_STATE_SIMULATION",
+    "LCM channel for receiving state. "
+    "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
+    "use CASSIE_STATE_DISPATCHER to get state from state estimator");
+
+DEFINE_double(cost_weight_multiplier, 0.001,
+    "A cosntant times with cost weight of OSC traj tracking");
+
+DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
+    "Stop time of the controller");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   DiagramBuilder<double> builder;
 
-  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+      "udpm://239.255.76.67:7667?ttl=0");
 
   RigidBodyTree<double> tree_with_springs;
   RigidBodyTree<double> tree_without_springs;
@@ -71,7 +86,7 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::AddFlatTerrainToWorld(&tree_without_springs,
                                           terrain_size, terrain_depth);
 
-  const std::string channel_x = "CASSIE_STATE";
+  const std::string channel_x = FLAGS_channel;
   const std::string channel_u = "CASSIE_INPUT";
 
   // Create state receiver.
@@ -81,7 +96,7 @@ int DoMain(int argc, char* argv[]) {
   // Create command sender.
   auto command_pub = builder.AddSystem(
                        LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-                         channel_u, &lcm_local, {TriggerType::kForced}));
+                         channel_u, lcm, {TriggerType::kForced}));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
                           tree_with_springs);
 
@@ -90,7 +105,16 @@ int DoMain(int argc, char* argv[]) {
 
   // Get body indices for cassie with springs
   int pelvis_idx = GetBodyIndexFromName(tree_with_springs, "pelvis");
-  DRAKE_DEMAND(pelvis_idx != -1);
+  int left_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_left");
+  int right_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_right");
+  DRAKE_DEMAND(pelvis_idx != -1 && left_toe_idx != -1 && right_toe_idx != -1);
+
+  // Create desired center of mass traj
+  auto com_traj_generator =
+      builder.AddSystem<cassie::osc::StandingComTraj>(
+        tree_with_springs, pelvis_idx, left_toe_idx, right_toe_idx);
+  builder.Connect(state_receiver->get_output_port(0),
+                  com_traj_generator->get_input_port_state());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -141,10 +165,10 @@ int DoMain(int argc, char* argv[]) {
   K_p_com(2, 2) = 10;
   K_d_com(2, 2) = 10;
 
-  ComTrackingData center_of_mass_traj("lipm_traj", 3,
-      K_p_com, K_d_com, W_com,
+    ComTrackingData center_of_mass_traj("com_traj", 3,
+      K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
       &tree_with_springs, &tree_without_springs);
-  osc->AddConstTrackingData(&center_of_mass_traj, desired_com);
+  osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
   // cout << "Adding pelvis rotation tracking\n";
   double w_pelvis_balance = 200;
@@ -166,12 +190,27 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis(1, 1) = k_d_pelvis_balance;
   K_d_pelvis(2, 2) = k_d_heading;
   RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 3,
-      K_p_pelvis, K_d_pelvis, W_pelvis,
+      K_p_pelvis, K_d_pelvis, W_pelvis * FLAGS_cost_weight_multiplier,
       &tree_with_springs, &tree_without_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
   osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);
+  // // Left hip yaw joint tracking
+  // MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
+  // MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
+  // MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
+  // JointSpaceTrackingData left_hip_yaw_traj("left_hip_yaw_traj",
+  //     K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw * FLAGS_cost_weight_multiplier,
+  //     &tree_with_springs, &tree_without_springs);
+  // left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
+  // osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
+  // // right hip yaw joint tracking
+  // JointSpaceTrackingData right_hip_yaw_traj("right_hip_yaw_traj",
+  //     K_p_hip_yaw, K_d_hip_yaw, W_hip_yaw * FLAGS_cost_weight_multiplier,
+  //     &tree_with_springs, &tree_without_springs);
+  // right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+  // osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
   // Build OSC problem
   osc->Build();
   // Connect ports
@@ -179,6 +218,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(osc->get_output_port(0),
                   command_sender->get_input_port(0));
+  builder.Connect(com_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("com_traj"));
 
   // Create the diagram and context
   auto owned_diagram = builder.Build();
@@ -194,29 +235,29 @@ int DoMain(int argc, char* argv[]) {
       diagram.GetMutableSubsystemContext(*state_receiver, &diagram_context);
 
   // Wait for the first message.
-  drake::log()->info("Waiting for first lcmt_robot_output");
-  drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(&lcm_local,
-      "CASSIE_STATE");
-  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-    return input_sub.count() > 0;
+  drake::log()->info("Waiting for first state message on " + channel_x);
+  drake::lcm::Subscriber<dairlib::lcmt_robot_output> state_sub(lcm,
+      channel_x);
+  LcmHandleSubscriptionsUntil(lcm, [&]() {
+    return state_sub.count() > 0;
   });
 
   // Initialize the context based on the first message.
-  const double t0 = input_sub.message().utime * 1e-6;
+  const double t0 = state_sub.message().utime * 1e-6;
   diagram_context.SetTime(t0);
   auto& input_value = state_receiver->get_input_port(0).FixValue(
-                        &state_receiver_context, input_sub.message());
+                        &state_receiver_context, state_sub.message());
 
   drake::log()->info("controller started");
   while (true) {
     // Wait for an lcmt_robot_output message.
-    input_sub.clear();
-    LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-      return input_sub.count() > 0;
+    state_sub.clear();
+    LcmHandleSubscriptionsUntil(lcm, [&]() {
+      return state_sub.count() > 0;
     });
     // Write the lcmt_robot_output message into the context and advance.
-    input_value.GetMutableData()->set_value(input_sub.message());
-    const double time = input_sub.message().utime * 1e-6;
+    input_value.GetMutableData()->set_value(state_sub.message());
+    const double time = state_sub.message().utime * 1e-6;
 
     // Check if we are very far ahead or behind
     // (likely due to a restart of the driving clock)

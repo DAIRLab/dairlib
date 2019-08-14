@@ -11,8 +11,8 @@ DEFINE_int64(max_count, 5000, "Max number of messages to read.");
 
 // A quick script to evaluate the delay caused by dispatcher_robot_out.
 // Measures the difference between the logged time and the lcm utime field
-// for bot CASSIE_OUTPUT (into the dispatcher) and CASSIE_STATE (out of the
-// dispatcher). The difference between these two deltas is roughly the delay
+// for bot CASSIE_OUTPUT (into the dispatcher) and CASSIE_STATE_DISPATCHER (out of
+// the dispatcher). The difference between these two deltas is roughly the delay
 // in the dispatcher. This approach to calculating delay does not require
 // finding the one-to-one matches between messages on each channel, but instead
 // relies on the fact that the message utime field should be identical.
@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
       count_cassie_output++;
     }
 
-    if (event->channel == "CASSIE_STATE") {
+    if (event->channel == "CASSIE_STATE_DISPATCHER") {
       dairlib::lcmt_robot_output msg;
       msg.decode(event->data, 0, event->datalen);
       diff_cassie_state(count_cassie_state) = event->timestamp - msg.utime;
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
 
   std::cout << "CASSIE_OUTPUT (timestamp - utime) mean: " <<
       diff_cassie_output.mean() << std::endl;
-  std::cout << "CASSIE_STATE (timestamp - utime) mean: " <<
+  std::cout << "CASSIE_STATE_DISPATCHER (timestamp - utime) mean: " <<
       diff_cassie_state.mean() << std::endl;
   std::cout << "Difference of means (delay estimate, us): " <<
       diff_cassie_state.mean() - diff_cassie_output.mean() << std::endl;

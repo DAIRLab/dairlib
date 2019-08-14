@@ -54,12 +54,12 @@ pos_names = msg.position_names
 vel_names = msg.velocity_names
 eff_names = msg.effort_names
 addPlot()
-addSignals('CASSIE_STATE', msg.utime, msg.position, position_names, keyLookup=pos_names)
+addSignals('CASSIE_STATE_SIMULATION', msg.utime, msg.position, position_names, keyLookup=pos_names)
 
 
 # you can assign the plot to a variable and reference it later
 p=addPlot()
-addSignals('CASSIE_STATE', msg.utime, msg.velocity, velocity_names, keyLookup=vel_names, plot=p)
+addSignals('CASSIE_STATE_SIMULATION', msg.utime, msg.velocity, velocity_names, keyLookup=vel_names, plot=p)
 
 
 p3 = addPlot()

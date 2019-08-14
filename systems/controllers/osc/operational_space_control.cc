@@ -118,22 +118,27 @@ void OperationalSpaceControl::AddAccelerationCost(std::string joint_vel_name,
 
 // Constraint methods
 void OperationalSpaceControl::AddContactPoint(std::string body_name,
-    Eigen::VectorXd pt_on_body) {
+    VectorXd pt_on_body, double mu_low_friction, double period_of_low_friction){
   body_index_.push_back(GetBodyIndexFromName(tree_wo_spr_, body_name));
   pt_on_body_.push_back(pt_on_body);
+  mu_low_friction_.push_back(mu_low_friction);
+  period_of_low_friction_.push_back(period_of_low_friction);
 }
 void OperationalSpaceControl::AddStateAndContactPoint(int state,
-    std::string body_name, Eigen::VectorXd pt_on_body) {
+    std::string body_name, VectorXd pt_on_body,
+    double mu_low_friction, double period_of_low_friction) {
   fsm_state_when_active_.push_back(state);
-  AddContactPoint(body_name, pt_on_body);
+  AddContactPoint(body_name, pt_on_body,
+      mu_low_friction, period_of_low_friction);
 }
 
 // Tracking data methods
 void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
-                                              double duration) {
+    double t_lb, double t_ub) {
   tracking_data_vec_->push_back(tracking_data);
-  fixed_position_vec_.push_back(Eigen::VectorXd(0));
-  period_of_no_control_vec_.push_back(duration);
+  fixed_position_vec_.push_back(VectorXd::Zero(0));
+  t_s_vec_.push_back(t_lb);
+  t_e_vec_.push_back(t_ub);
 
   // Construct input ports and add element to traj_name_to_port_index_map_
   string traj_name = tracking_data->GetName();
@@ -143,10 +148,11 @@ void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
   traj_name_to_port_index_map_[traj_name] = port_index;
 }
 void OperationalSpaceControl::AddConstTrackingData(
-    OscTrackingData* tracking_data, Eigen::VectorXd v, double duration) {
+    OscTrackingData* tracking_data, VectorXd v, double t_lb, double t_ub) {
   tracking_data_vec_->push_back(tracking_data);
   fixed_position_vec_.push_back(v);
-  period_of_no_control_vec_.push_back(duration);
+  t_s_vec_.push_back(t_lb);
+  t_e_vec_.push_back(t_ub);
 }
 
 // Osc checkers and constructor
@@ -410,20 +416,37 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   ///                           lambda_c(3*i+2) >= 0
   if (body_index_.size() > 0) {
+    VectorXd mu_minus1(2);
+    VectorXd mu_plus1(2);
     VectorXd inf_vectorxd(1); inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
       // If the contact is inactive, we assign zeros to A matrix. (lb<=Ax<=ub)
       if (active_contact_flags[i]) {
-        friction_constraints_.at(5 * i)->UpdateLowerBound(VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(VectorXd::Zero(1));
-        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(VectorXd::Zero(1));
+        if (time_since_last_state_switch < period_of_low_friction_[i]) {
+          mu_minus1 << mu_low_friction_[i], -1;
+          mu_plus1 << mu_low_friction_[i], 1;
+        } else {
+          mu_minus1 << mu_, -1;
+          mu_plus1 << mu_, 1;
+        }
+        friction_constraints_.at(5 * i)->UpdateCoefficients(
+            mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 1)->UpdateCoefficients(
+            mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 2)->UpdateCoefficients(
+            mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 3)->UpdateCoefficients(
+            mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
         friction_constraints_.at(5 * i + 4)->UpdateLowerBound(VectorXd::Zero(1));
       } else {
-        friction_constraints_.at(5 * i)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(-inf_vectorxd);
-        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(-inf_vectorxd);
+        friction_constraints_.at(5 * i)->UpdateCoefficients(
+            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 1)->UpdateCoefficients(
+            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 2)->UpdateCoefficients(
+            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i + 3)->UpdateCoefficients(
+            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
         friction_constraints_.at(5 * i + 4)->UpdateLowerBound(-inf_vectorxd);
       }
     }
@@ -439,8 +462,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       // Create constant trajectory and update
       tracking_data->Update(x_w_spr, cache_w_spr,
           x_wo_spr, cache_wo_spr,
-          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-          fsm_state);
+          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state);
     } else {
       // Read in traj from input port
       string traj_name = tracking_data->GetName();
@@ -458,7 +480,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
 
     if (tracking_data->GetTrackOrNot() &&
-        time_since_last_state_switch >= period_of_no_control_vec_[i]) {
+        time_since_last_state_switch >= t_s_vec_.at(i) &&
+        time_since_last_state_switch <= t_e_vec_.at(i)) {
       VectorXd ddy_t = tracking_data->GetCommandOutput();
       MatrixXd W = tracking_data->GetWeight();
       MatrixXd J_t = tracking_data->GetJ();
@@ -471,7 +494,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       tracking_cost_.at(i)->UpdateCoefficients(J_t.transpose()* W * J_t,
           J_t.transpose()* W * (JdotV_t - ddy_t));
     } else {
-      tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Identity(n_v_, n_v_),
+      tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                VectorXd::Zero(n_v_));
     }
   }
@@ -549,48 +572,54 @@ VectorXd OperationalSpaceControl::SolveQp(
 void OperationalSpaceControl::CalcOptimalInput(
     const drake::systems::Context<double>& context,
     systems::TimestampedVector<double>* control) const {
-  // Read in current state and time
+  // Read in current time and state
   const OutputVector<double>* robot_output = (OutputVector<double>*)
       this->EvalVectorInput(context, state_port_);
-  VectorXd q_w_spr = robot_output->GetPositions();
-  if (is_quaternion_) {
-    multibody::SetZeroQuaternionToIdentity(&q_w_spr);
-  }
-  VectorXd v_w_spr = robot_output->GetVelocities();
-  VectorXd x_w_spr(tree_w_spr_.get_num_positions() +
-                   tree_w_spr_.get_num_velocities());
-  x_w_spr << q_w_spr, v_w_spr;
-
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);
+  // cout << "\n\ncurrent_time = " << current_time << endl;
   if (print_tracking_info_) {
     cout << "\n\ncurrent_time = " << current_time << endl;
   }
 
-  VectorXd x_wo_spr(n_q_ + n_v_);
-  x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
-           map_velocity_from_spring_to_no_spring_ * v_w_spr;
-
   VectorXd u_sol(n_u_);
-  if (used_with_finite_state_machine_) {
-    // Read in finite state machine
-    const BasicVector<double>* fsm_output = (BasicVector<double>*)
-        this->EvalVectorInput(context, fsm_port_);
-    VectorXd fsm_state = fsm_output->get_value();
-
-    // Get discrete states
-    const auto prev_event_time = context.get_discrete_state(
-                                   prev_event_time_idx_).get_value();
-
-    u_sol = SolveQp(x_w_spr, x_wo_spr,
-                    context, current_time,
-                    fsm_state(0), current_time - prev_event_time(0));
+  if (current_time == 0) {
+    u_sol = VectorXd::Zero(n_u_);
   } else {
-    u_sol = SolveQp(x_w_spr, x_wo_spr,
-                    context, current_time,
-                    -1, current_time);
+    VectorXd q_w_spr = robot_output->GetPositions();
+    if (is_quaternion_) {
+      multibody::SetZeroQuaternionToIdentity(&q_w_spr);
+    }
+    VectorXd v_w_spr = robot_output->GetVelocities();
+    VectorXd x_w_spr(tree_w_spr_.get_num_positions() +
+                     tree_w_spr_.get_num_velocities());
+    x_w_spr << q_w_spr, v_w_spr;
+
+    VectorXd x_wo_spr(n_q_ + n_v_);
+    x_wo_spr << map_position_from_spring_to_no_spring_ * q_w_spr,
+             map_velocity_from_spring_to_no_spring_ * v_w_spr;
+
+    if (used_with_finite_state_machine_) {
+      // Read in finite state machine
+      const BasicVector<double>* fsm_output = (BasicVector<double>*)
+          this->EvalVectorInput(context, fsm_port_);
+      VectorXd fsm_state = fsm_output->get_value();
+
+      // Get discrete states
+      const auto prev_event_time = context.get_discrete_state(
+                                     prev_event_time_idx_).get_value();
+
+      u_sol = SolveQp(x_w_spr, x_wo_spr,
+                      context, current_time,
+                      fsm_state(0), current_time - prev_event_time(0));
+    } else {
+      u_sol = SolveQp(x_w_spr, x_wo_spr,
+                      context, current_time,
+                      -1, current_time);
+    }
   }
 
+  // cout << "u_sol = " << u_sol.transpose() << endl;
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());

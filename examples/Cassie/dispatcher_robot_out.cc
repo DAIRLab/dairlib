@@ -30,7 +30,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::TriggerType;
 
 // Simulation parameters.
-DEFINE_string(address, "127.0.0.1", "IPv4 address to receive from.");
+DEFINE_string(address, "127.0.0.1", "IPv4 address to receive on.");
 DEFINE_int64(port, 25001, "Port to receive on.");
 DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,

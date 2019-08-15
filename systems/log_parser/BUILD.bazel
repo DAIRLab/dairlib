@@ -1,0 +1,26 @@
+# -*- python -*-
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "parse_generic_log_test",
+    srcs = ["test/parse_generic_log_test.cc"],
+    deps = [
+        ":generic_lcm_log_parser",
+        "//examples/Cassie:cassie_utils",
+        "//systems:robot_lcm_systems",
+    ]
+)
+
+cc_library(
+    name = "generic_lcm_log_parser",
+    hdrs = [
+        "generic_lcm_log_parser.h",
+    ],
+    deps = [
+        "//systems/primitives:vector_aggregator",
+        "@drake//:drake_shared_library",
+    ],
+)

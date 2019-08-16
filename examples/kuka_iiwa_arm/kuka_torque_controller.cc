@@ -116,7 +116,7 @@ void KukaTorqueController<T>::SetUp(const VectorX<double>& stiffness,
   kd.setZero();
   ki.setZero();
   kp.setZero();
-  auto spring = builder.template AddSystem<PidController<T>>(kp, kd, ki);
+  auto spring = builder.template AddSystem<PidController<T>>(stiffness, kd, ki);
 
   // Adds virtual damper.
   auto damper = builder.template AddSystem<StateDependentDamper<T>>(

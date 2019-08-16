@@ -58,59 +58,91 @@ void EndEffectorVelocityController::CalcOutputTorques(
   plant_.SetPositions(plant_context.get(), q);
   plant_.SetVelocities(plant_context.get(), q_dot);
 
+  Eigen::Vector3d xactual_joint4;
+  Eigen::Vector3d xactual_ee;
+  Eigen::Vector3d zeros3d;
+  Eigen::Vector3d joint4offset;
+  joint4offset << 0, 0, 0.57;
+  zeros3d.setZero();
+  plant_.CalcPointsPositions(*plant_context, plant_.GetFrameByName("iiwa_link_4"), zeros3d,
+	                         plant_.world_frame(), &xactual_joint4);
+  plant_.CalcPointsPositions(*plant_context, plant_.GetFrameByName("iiwa_link_7"), ee_contact_frame_,
+	                         plant_.world_frame(), &xactual_ee);
+
+  Eigen::Vector3d joint4_contact_frame = xactual_ee - xactual_joint4;
+
   // Calculating the jacobian of the kuka arm
   Eigen::MatrixXd J(6, num_joints_);
   plant_.CalcFrameGeometricJacobianExpressedInWorld(
-      *plant_context, ee_joint_frame_, ee_contact_frame_,
+      *plant_context, plant_.GetFrameByName("iiwa_link_4"), joint4_contact_frame,
       &J);
   Eigen::MatrixXd Jt = J.transpose();
+
+  // std::cout << "J" << std::endl;
+  // std::cout << J << std::endl;
 
   // Using the jacobian, calculating the actual current velocities of the arm
   MatrixXd twist_actual = J * q_dot;
 
+  // std::cout << "twist_actual" << std::endl;
+  // std::cout << twist_actual << std::endl;
+  //
+  // std::cout << "actual_ee" << std::endl;
+  // std::cout << xactual_ee << std::endl;
+  //
+  // std::cout << "actual_link4" << std::endl;
+  // std::cout << xactual_joint4 << std::endl;
+  //
+  // std::cout << "joint4 contact frame" << std::endl;
+  // std::cout << joint4_contact_frame << std::endl;
+
   // Gains are placed in a diagonal matrix
   Eigen::DiagonalMatrix<double, 6> gains(6);
   gains.diagonal() << k_r_, k_r_, k_r_, k_d_, k_d_, k_d_;
+  Eigen::DiagonalMatrix<double, 6> gains2(6);
+  gains.diagonal() << 0, 0, 0, 1, 1, 1;
 
   // Calculating the error
-  MatrixXd error = gains * (twist_desired - twist_actual);
+  // MatrixXd error = gains * (twist_desired - twist_actual);
+  MatrixXd error = gains*(twist_desired - twist_actual);
 
   // Multiplying J^t x force to get torque outputs
   VectorXd torques(num_joints_);
   VectorXd commandedTorques(num_joints_);
 
   torques = J.transpose() * error;
+  std::cout << torques << std::endl;
 
   // Calculating Mass Matrix
-  Eigen::MatrixXd H(plant_.num_positions(), plant_.num_positions());
-  plant_.CalcMassMatrixViaInverseDynamics(*plant_context.get(), &H);
-  Eigen::MatrixXd Hi = H.inverse();
-
-  // Bias Term 'C'
-  Eigen::VectorXd Cv(plant_.num_velocities());
-  plant_.CalcBiasTerm(*plant_context.get(), &Cv);
-
-  double alpha = 0.9;
-
-  Eigen::MatrixXd T = (alpha * Eigen::MatrixXd::Identity(7, 7) + (1-alpha)*Hi).inverse();
-
-  Eigen::MatrixXd T2 = T * T;
-
-  // Eigen::DiagonalMatrix<double, 7> T2(6);
-  // T2.diagonal() << 3600, 3600, 3600, 900, 144, 144, 36;
-  //commandedTorques = T2 * Hi * Jt * (J * Hi * T2 * Hi * Jt).inverse() * J * Hi * torques;
-  //commandedTorques =  H * Jt * (J * Jt).inverse() * J * Hi * torques;
-
-  Eigen::VectorXd G = plant_.CalcGravityGeneralizedForces(*plant_context.get());
-
-  commandedTorques =  Jt * (J * Hi * Jt).inverse() * (error);
-
-  std::cout << "outputnorm: " << commandedTorques.norm() << std::endl;
-  std::cout << "error norm: " << error.norm() << std::endl;
-
-  std::cout << "Ratio:" << std::endl;
-
-  std::cout << commandedTorques.norm() / error.norm() << std::endl;
+  // Eigen::MatrixXd H(plant_.num_positions(), plant_.num_positions());
+  // plant_.CalcMassMatrixViaInverseDynamics(*plant_context.get(), &H);
+  // Eigen::MatrixXd Hi = H.inverse();
+  //
+  // // Bias Term 'C'
+  // Eigen::VectorXd Cv(plant_.num_velocities());
+  // plant_.CalcBiasTerm(*plant_context.get(), &Cv);
+  //
+  // double alpha = 0.9;
+  //
+  // Eigen::MatrixXd T = (alpha * Eigen::MatrixXd::Identity(7, 7) + (1-alpha)*Hi).inverse();
+  //
+  // Eigen::MatrixXd T2 = T * T;
+  //
+  // // Eigen::DiagonalMatrix<double, 7> T2(6);
+  // // T2.diagonal() << 3600, 3600, 3600, 900, 144, 144, 36;
+  // //commandedTorques = T2 * Hi * Jt * (J * Hi * T2 * Hi * Jt).inverse() * J * Hi * torques;
+  // //commandedTorques =  H * Jt * (J * Jt).inverse() * J * Hi * torques;
+  //
+  // Eigen::VectorXd G = plant_.CalcGravityGeneralizedForces(*plant_context.get());
+  //
+  // commandedTorques =  Jt * (J * Hi * Jt).inverse() * (error);
+  //
+  // std::cout << "outputnorm: " << commandedTorques.norm() << std::endl;
+  // std::cout << "error norm: " << error.norm() << std::endl;
+  //
+  // std::cout << "Ratio:" << std::endl;
+  //
+  // std::cout << commandedTorques.norm() / error.norm() << std::endl;
 
 
   // Limit maximum commanded velocities
@@ -126,9 +158,15 @@ void EndEffectorVelocityController::CalcOutputTorques(
       }
   }
 
+  VectorXd zeros(7);
+  zeros << 0, 0, 0, 0, 0, 0, 0;
 
   // Storing them in the output vector
-  output->set_value(commandedTorques); // (7 x 6) * (6 x 1) = 7 x 1
+  //output->set_value(commandedTorques); // (7 x 6) * (6 x 1) = 7 x 1
+  std::cout << torques << std::endl;
+  // output->set_value(torques);
+  output->set_value(zeros);
+
 
 }
 

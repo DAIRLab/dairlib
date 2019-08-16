@@ -13,6 +13,9 @@
 #include "drake/lcmt_iiwa_status.hpp"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/multibody/parsing/parser.h"
+#include "drake/systems/primitives/multiplexer.h"
+#include "drake/systems/primitives/demultiplexer.h"
+
 
 #include "systems/controllers/endeffector_velocity_controller.h"
 #include "systems/controllers/endeffector_position_controller.h"
@@ -272,8 +275,16 @@ int do_main(int argc, char* argv[]) {
   ConstPositionCommand.resize(7);
   ConstPositionCommand << 0, 0, 0, 0, 0, 0, 0;
 
-  auto positionCommand = builder.AddSystem<
-      drake::systems::ConstantVectorSource>(ConstPositionCommand);
+  auto positionCommand = builder.AddSystem<drake::systems::ConstantVectorSource>(ConstPositionCommand);
+
+  std::vector<int> demuxDorsalPos = {4, 3};
+  auto dorsalPosCmd = builder.AddSystem<drake::systems::Demultiplexer>(demuxDorsalPos);
+
+  std::vector<int> demuxDistalPos = {3, 3};
+  auto distalPosCmd = builder.AddSystem<drake::systems::Demultiplexer>(demuxDistalPos);
+
+  std::vector<int> muxPosCmd = {4, 3};
+  auto combPosCmd = builder.AddSystem<drake::systems::Multiplexer>(muxPosCmd);
 
   builder.Connect(status_subscriber->get_output_port(),
                   status_receiver->get_input_port());
@@ -300,6 +311,16 @@ int do_main(int argc, char* argv[]) {
                   command_sender->get_torque_input_port());
 
   builder.Connect(status_receiver->get_position_measured_output_port(),
+                  dorsalPosCmd->get_input_port(0));
+  builder.Connect(position_controller->get_endpoint_cmd_output_port(),
+                  distalPosCmd->get_input_port(0));
+
+  builder.Connect(dorsalPosCmd->get_output_port(0),
+                  combPosCmd->get_input_port(0));
+  builder.Connect(distalPosCmd->get_output_port(0),
+                  combPosCmd->get_input_port(1));
+
+  builder.Connect(combPosCmd->get_output_port(0),
                   command_sender->get_position_input_port());
   builder.Connect(command_sender->get_output_port(),
                   command_publisher->get_input_port());

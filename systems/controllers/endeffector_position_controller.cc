@@ -100,7 +100,7 @@ void EndEffectorPositionController::CalcOutputTwist(
 
   MatrixXd rot_4_7 = m*(plant_.GetBodyByName("iiwa_link_4").EvalPoseInWorld(*plant_context).rotation().matrix().inverse() * rot_n_a_des);
 
-  Eigen::Vector3d eulerangles = (m*(plant_.GetBodyByName("iiwa_link_4").EvalPoseInWorld(*plant_context).rotation().matrix().inverse() * rot_n_a_des)).eulerAngles(2,1,2);
+  Eigen::Vector3d eulerangles; // = (m*(plant_.GetBodyByName("iiwa_link_4").EvalPoseInWorld(*plant_context).rotation().matrix().inverse() * rot_n_a_des)).eulerAngles(2,1,2);
   // std::cout << (plant_.CalcRelativeTransform(
 	//   *plant_context, plant_.GetFrameByName("iiwa_link_0"), plant_.GetFrameByName("iiwa_link_4")).rotation() * rot_n_a_des).eulerAngles(2, 1, 2) << std::endl;
 
@@ -111,6 +111,8 @@ void EndEffectorPositionController::CalcOutputTwist(
   std::cout << atan2(rot_4_7(1, 2), rot_4_7(0, 2)) << std::endl;
   std::cout << acos(rot_4_7(2, 2)) << std::endl;
   std::cout << atan2(rot_4_7(2, 1), -1*rot_4_7(2, 0)) << std::endl;
+
+  eulerangles << atan2(rot_4_7(1, 2), rot_4_7(0, 2)), acos(rot_4_7(2, 2)), atan2(rot_4_7(2, 1), -1*rot_4_7(2, 0));
 
   std::cout << "eulerangles" << std::endl;
   std::cout << eulerangles << std::endl;

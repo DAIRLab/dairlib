@@ -77,7 +77,7 @@ void EndEffectorPositionController::CalcOutputTwist(
   // std::cout << rot_a_a_des << std::endl;
   Eigen::Vector3d skewInverse;
   skewInverse << rot_a_a_des(2, 1), rot_a_a_des(0, 2), rot_a_a_des(1, 0);
-  std::cout << rot_a_a_des(2, 1) << std::endl;
+  //std::cout << rot_a_a_des(2, 1) << std::endl;
 
 
   // Angle Axis Representation for the given quaternion
@@ -86,8 +86,8 @@ void EndEffectorPositionController::CalcOutputTwist(
   // MatrixXd axis = angleaxis_a_a_des.axis();
   MatrixXd angularVelocity = k_omega_ * skewInverse;
 
-  std::cout << "angvel: " << std::endl;
-  std::cout << angularVelocity << std::endl;
+  // std::cout << "angvel: " << std::endl;
+  // std::cout << angularVelocity << std::endl;
 
   // Transforming angular velocity from joint frame to world frame
   VectorXd angularVelocityWF = plant_.CalcRelativeTransform(
@@ -100,25 +100,33 @@ void EndEffectorPositionController::CalcOutputTwist(
 
   MatrixXd rot_4_7 = m*(plant_.GetBodyByName("iiwa_link_4").EvalPoseInWorld(*plant_context).rotation().matrix().inverse() * rot_n_a_des);
 
-  Eigen::Vector3d eulerangles = (m*(plant_.GetBodyByName("iiwa_link_4").EvalPoseInWorld(*plant_context).rotation().matrix().inverse() * rot_n_a_des)).eulerAngles(2,1,2);
+  std::cout << "rot_4_7" << std::endl;
+  std::cout << rot_4_7 << std::endl;
+
+  std::cout << "rot_n_a_des" << std::endl;
+  std::cout << rot_n_a_des << std::endl;
+
+  Eigen::Vector3d eulerangles;// = (m*(plant_.GetBodyByName("iiwa_link_4").EvalPoseInWorld(*plant_context).rotation().matrix().inverse() * rot_n_a_des)).eulerAngles(2,1,2);
+  eulerangles << atan2(rot_4_7(1, 2), rot_4_7(0, 2)), acos(rot_4_7(2, 2)), atan2(rot_4_7(2, 1), -1*rot_4_7(2, 0));
+
   // std::cout << (plant_.CalcRelativeTransform(
 	//   *plant_context, plant_.GetFrameByName("iiwa_link_0"), plant_.GetFrameByName("iiwa_link_4")).rotation() * rot_n_a_des).eulerAngles(2, 1, 2) << std::endl;
 
-  std::cout << "Matrix from 0 to 4" << std::endl;
-  std::cout << plant_.GetBodyByName("iiwa_link_0").EvalPoseInWorld(*plant_context).rotation().matrix().inverse() * plant_.GetBodyByName("iiwa_link_4").EvalPoseInWorld(*plant_context).rotation().matrix();
-
-  std::cout << "wanted angles: " << std::endl;
-  std::cout << atan2(rot_4_7(1, 2), rot_4_7(0, 2)) << std::endl;
-  std::cout << acos(rot_4_7(2, 2)) << std::endl;
-  std::cout << atan2(rot_4_7(2, 1), -1*rot_4_7(2, 0)) << std::endl;
-
-  std::cout << "eulerangles" << std::endl;
-  std::cout << eulerangles << std::endl;
-
-  std::cout << "last three angles: " << std::endl;
-  std::cout << q_actual[4] << std::endl;
-  std::cout << q_actual[5] << std::endl;
-  std::cout << q_actual[6] << std::endl;
+  // std::cout << "Matrix from 0 to 4" << std::endl;
+  // std::cout << plant_.GetBodyByName("iiwa_link_0").EvalPoseInWorld(*plant_context).rotation().matrix().inverse() * plant_.GetBodyByName("iiwa_link_4").EvalPoseInWorld(*plant_context).rotation().matrix();
+  //
+  // std::cout << "wanted angles: " << std::endl;
+  // std::cout << atan2(rot_4_7(1, 2), rot_4_7(0, 2)) << std::endl;
+  // std::cout << acos(rot_4_7(2, 2)) << std::endl;
+  // std::cout << atan2(rot_4_7(2, 1), -1*rot_4_7(2, 0)) << std::endl;
+  //
+  // std::cout << "eulerangles" << std::endl;
+  // std::cout << eulerangles << std::endl;
+  //
+  // std::cout << "last three angles: " << std::endl;
+  // std::cout << q_actual[4] << std::endl;
+  // std::cout << q_actual[5] << std::endl;
+  // std::cout << q_actual[6] << std::endl;
   // Limit maximum commanded linear velocity
   double currVel = diff.norm();
 
@@ -143,8 +151,8 @@ void EndEffectorPositionController::CalcOutputTwist(
 
   MatrixXd twist(6, 1);
   twist << eulerangles, diff;
-  std::cout << "angularvel" << std::endl;
-  std::cout << angularVelocityWF << std::endl;
+  // std::cout << "angularvel" << std::endl;
+  // std::cout << angularVelocityWF << std::endl;
   output->set_value(twist);
 }
 

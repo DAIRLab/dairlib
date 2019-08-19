@@ -63,7 +63,7 @@ int DoMain() {
   json settings = json::parse(settings_file);
 
   std::unique_ptr<MultibodyPlant<double>> owned_world_plant =
-      std::make_unique<MultibodyPlant<double>>(0.0001);
+      std::make_unique<MultibodyPlant<double>>(0.001);
   std::unique_ptr<MultibodyPlant<double>> owned_controller_plant =
       std::make_unique<MultibodyPlant<double>>();
   std::unique_ptr<drake::geometry::SceneGraph<double>> owned_scene_graph =
@@ -141,7 +141,7 @@ int DoMain() {
 
   const auto iiwa_joint_indices =
       world_plant->GetJointIndices(iiwa_model);
-      
+
   int q0_index = 0;
   for (const auto joint_index : iiwa_joint_indices) {
       drake::multibody::RevoluteJoint<double>* joint =
@@ -180,7 +180,7 @@ int DoMain() {
 
   // The virtual spring stiffness in Nm/rad.
   stiffness.resize(num_iiwa_positions);
-  stiffness << 5, 5, 5, 2.5, 2.5, 2.5, 2.5;
+  stiffness << 0, 0, 0, 0, 20, 20, 20;
 
   // A dimensionless damping ratio. See KukaTorqueController for details.
   damping_ratio.resize(num_iiwa_positions);

@@ -1,4 +1,5 @@
 #include "systems/controllers/endeffector_velocity_controller.h"
+#include <math.h>
 
 namespace dairlib{
 namespace systems{
@@ -52,6 +53,7 @@ void EndEffectorVelocityController::CalcOutputTorques(
       (BasicVector<double>*) this->EvalVectorInput(
           context, endpoint_twist_commanded_port_);
   auto twist_desired = twist_desired_timestamped->get_value();
+  auto vel_desired = twist_desired.tail(3);
 
   const std::unique_ptr<Context<double>> plant_context =
       plant_.CreateDefaultContext();
@@ -72,78 +74,66 @@ void EndEffectorVelocityController::CalcOutputTorques(
   Eigen::Vector3d joint4_contact_frame = xactual_ee - xactual_joint4;
 
   // Calculating the jacobian of the kuka arm
-  Eigen::MatrixXd J(6, num_joints_);
+  Eigen::MatrixXd Jee(6, num_joints_);
   plant_.CalcFrameGeometricJacobianExpressedInWorld(
-      *plant_context, plant_.GetFrameByName("iiwa_link_4"), joint4_contact_frame,
-      &J);
+      *plant_context, plant_.GetFrameByName("iiwa_link_7"), ee_contact_frame_,
+      &Jee);
+
+  Eigen::MatrixXd Jeet = Jee.transpose();
+
+  Eigen::MatrixXd Jee_1 = Jee.block(0, 0, 6, 4);
+  Eigen::MatrixXd Jee_2 = Jee.block(0, 4, 6, 3);
+
+  double a = q[0];
+  double b = q[1];
+  double c = q[2];
+  double d = q[3];
+
+  MatrixXd Jf(3, 4);
+  Jf << 0,
+       (sin(c)*sin(d))/(pow(cos(b),2)*pow(sin(d),2) + pow(sin(b),2)*pow(sin(c),2) + pow(cos(c),2)*pow(cos(d),2)*pow(sin(b),2) - 2*cos(b)*cos(c)*cos(d)*sin(b)*sin(d)),
+       (pow(cos(b),2)*cos(d) - cos(d) + cos(b)*cos(c)*sin(b)*sin(d))/(pow(cos(b),2)*pow(sin(d),2) + pow(sin(b),2)*pow(sin(c),2) + pow(cos(c),2)*pow(cos(d),2)*pow(sin(b),2) - 2*cos(b)*cos(c)*cos(d)*sin(b)*sin(d)),
+       -(sin(b)*sin(c)*(cos(b)*cos(d) + cos(c)*sin(b)*sin(d)))/(pow((cos(b)*sin(d) - cos(c)*cos(d)*sin(b)),2) + pow(sin(b),2)*pow(sin(c),2)),
+       0,
+       -(cos(d)*sin(b) - cos(b)*cos(c)*sin(d))/(pow((1 - pow((cos(b)*cos(d) + cos(c)*sin(b)*sin(d)),2)),(0.5))),
+       -(sin(b)*sin(c)*sin(d))/(pow((1 - pow((cos(b)*cos(d) + cos(c)*sin(b)*sin(d)),2)),(0.5))),
+       -(cos(b)*sin(d) - cos(c)*cos(d)*sin(b))/(pow((1 - pow((cos(b)*cos(d) + cos(c)*sin(b)*sin(d)),2)),(0.5))),
+       1,
+       (sin(c)*sin(d)*(cos(b)*cos(d) + cos(c)*sin(b)*sin(d)))/(pow(cos(d),2)*pow(sin(b),2) + pow(sin(c),2)*pow(sin(d),2) + pow(cos(b),2)*pow(cos(c),2)*pow(sin(d),2) - 2*cos(b)*cos(c)*cos(d)*sin(b)*sin(d)),
+       -(cos(b)*pow(cos(d),2) - cos(b) + cos(c)*cos(d)*sin(b)*sin(d))/(pow(cos(d),2)*pow(sin(b),2) + pow(sin(c),2)*pow(sin(d),2) + pow(cos(b),2)*pow(cos(c),2)*pow(sin(d),2) - 2*cos(b)*cos(c)*cos(d)*sin(b)*sin(d)),
+       -(sin(b)*sin(c))/(pow(cos(d),2)*pow(sin(b),2) + pow(sin(c),2)*pow(sin(d),2) + pow(cos(b),2)*pow(cos(c),2)*pow(sin(d),2) - 2*cos(b)*cos(c)*cos(d)*sin(b)*sin(d));
+
+  Eigen::MatrixXd J = (Jee_1 + Jee_2 * Jf).block(3, 0, 3, 4);
   Eigen::MatrixXd Jt = J.transpose();
 
   // std::cout << "J" << std::endl;
   // std::cout << J << std::endl;
 
-  // Using the jacobian, calculating the actual current velocities of the arm
-  MatrixXd twist_actual = J * q_dot;
 
-  // std::cout << "twist_actual" << std::endl;
-  // std::cout << twist_actual << std::endl;
-  //
-  // std::cout << "actual_ee" << std::endl;
-  // std::cout << xactual_ee << std::endl;
-  //
-  // std::cout << "actual_link4" << std::endl;
-  // std::cout << xactual_joint4 << std::endl;
-  //
-  // std::cout << "joint4 contact frame" << std::endl;
-  // std::cout << joint4_contact_frame << std::endl;
+  // Calculating Mass Matrix
+  Eigen::MatrixXd H(plant_.num_positions(), plant_.num_positions());
+  plant_.CalcMassMatrixViaInverseDynamics(*plant_context.get(), &H);
+  Eigen::MatrixXd Hi = H.inverse();
+  Eigen::MatrixXd H1 = Hi.block(0, 0, 4, 4);
+
+  // Using the jacobian, calculating the actual current velocities of the arm
+  MatrixXd vel_actual = J * q_dot.head(4);
 
   // Gains are placed in a diagonal matrix
-  Eigen::DiagonalMatrix<double, 6> gains(6);
-  gains.diagonal() << k_r_, k_r_, k_r_, k_d_, k_d_, k_d_;
-  Eigen::DiagonalMatrix<double, 6> gains2(6);
-  gains.diagonal() << 0, 0, 0, 1, 1, 1;
+  Eigen::DiagonalMatrix<double, 3> gains(3);
+  gains.diagonal() << k_d_, k_d_, k_d_;
 
   // Calculating the error
   // MatrixXd error = gains * (twist_desired - twist_actual);
-  MatrixXd error = gains*(twist_desired - twist_actual);
+  VectorXd error = gains*(vel_desired - vel_actual);
 
   // Multiplying J^t x force to get torque outputs
   VectorXd torques(num_joints_);
   VectorXd commandedTorques(num_joints_);
 
-  torques = J.transpose() * error;
-  std::cout << torques << std::endl;
-
-  // Calculating Mass Matrix
-  // Eigen::MatrixXd H(plant_.num_positions(), plant_.num_positions());
-  // plant_.CalcMassMatrixViaInverseDynamics(*plant_context.get(), &H);
-  // Eigen::MatrixXd Hi = H.inverse();
-  //
-  // // Bias Term 'C'
-  // Eigen::VectorXd Cv(plant_.num_velocities());
-  // plant_.CalcBiasTerm(*plant_context.get(), &Cv);
-  //
-  // double alpha = 0.9;
-  //
-  // Eigen::MatrixXd T = (alpha * Eigen::MatrixXd::Identity(7, 7) + (1-alpha)*Hi).inverse();
-  //
-  // Eigen::MatrixXd T2 = T * T;
-  //
-  // // Eigen::DiagonalMatrix<double, 7> T2(6);
-  // // T2.diagonal() << 3600, 3600, 3600, 900, 144, 144, 36;
-  // //commandedTorques = T2 * Hi * Jt * (J * Hi * T2 * Hi * Jt).inverse() * J * Hi * torques;
-  // //commandedTorques =  H * Jt * (J * Jt).inverse() * J * Hi * torques;
-  //
-  // Eigen::VectorXd G = plant_.CalcGravityGeneralizedForces(*plant_context.get());
-  //
-  // commandedTorques =  Jt * (J * Hi * Jt).inverse() * (error);
-  //
-  // std::cout << "outputnorm: " << commandedTorques.norm() << std::endl;
-  // std::cout << "error norm: " << error.norm() << std::endl;
-  //
-  // std::cout << "Ratio:" << std::endl;
-  //
-  // std::cout << commandedTorques.norm() / error.norm() << std::endl;
-
+  commandedTorques << Jt * (J * H1 * Jt).inverse() * error, 0, 0, 0;
+  std::cout << "commandedTorques" << std::endl;
+  std::cout << commandedTorques << std::endl;
 
   // Limit maximum commanded velocities
   for (int i = 0; i < num_joints_; i++) {
@@ -158,14 +148,11 @@ void EndEffectorVelocityController::CalcOutputTorques(
       }
   }
 
-  VectorXd zeros(7);
-  zeros << 0, 0, 0, 0, 0, 0, 0;
-
   // Storing them in the output vector
   //output->set_value(commandedTorques); // (7 x 6) * (6 x 1) = 7 x 1
-  std::cout << torques << std::endl;
+  //std::cout << commandedTorques << std::endl;
   // output->set_value(torques);
-  output->set_value(zeros);
+  output->set_value(commandedTorques);
 
 
 }

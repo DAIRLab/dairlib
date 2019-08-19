@@ -127,6 +127,9 @@ void EndEffectorVelocityController::CalcOutputTorques(
   // MatrixXd error = gains * (twist_desired - twist_actual);
   VectorXd error = gains*(vel_desired - vel_actual);
 
+  std::cout << "error" << std::endl;
+  std::cout << error << std::endl;
+
   // Multiplying J^t x force to get torque outputs
   VectorXd torques(num_joints_);
   VectorXd commandedTorques(num_joints_);

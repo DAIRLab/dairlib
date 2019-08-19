@@ -107,7 +107,6 @@ void EndEffectorPositionController::CalcOutputTwist(
   std::cout << "rot_n_a_des" << std::endl;
   std::cout << rot_n_a_des << std::endl;
 
-  Eigen::Vector3d eulerangles;// = (m*(plant_.GetBodyByName("iiwa_link_4").EvalPoseInWorld(*plant_context).rotation().matrix().inverse() * rot_n_a_des)).eulerAngles(2,1,2);
   eulerangles << atan2(rot_4_7(1, 2), rot_4_7(0, 2)), acos(rot_4_7(2, 2)), atan2(rot_4_7(2, 1), -1*rot_4_7(2, 0));
 
   // std::cout << (plant_.CalcRelativeTransform(

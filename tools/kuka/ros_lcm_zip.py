@@ -8,7 +8,7 @@ import sys
 from PythonLCM import lcmt_iiwa_status
 # from scipy.spatial.transform import Rotation as R
 
-from scipy import interpolate
+from scipy import interpolate, signal
 
 if len(sys.argv) < 3:
     print("usage: python[2] ros_lcm_zip.py [ROSBAG] [LCMLOG]")
@@ -91,6 +91,27 @@ cube_ros = cube_ros[:,com_times]
 
 f = interpolate.interp1d(t_lcm, kuka_lcm)
 kuka_ros = f(t_ros)
+
+
+# FILTERING
+fs = 40.
+fc_w = 1.  # Cut-off frequency of the filter
+w_w = np.clip((fc_w / (fs / 2)), a_min = 0.000001, a_max = 0.999999) # Normalize the frequency
+#pdb.set_trace()
+print(w_w)
+b, a = signal.butter(2, w_w, 'low')
+for i in range(3):
+    cube_ros[7+i,:] = signal.filtfilt(b, a, cube_ros[7+i,:],padtype='even',padlen=100)
+
+fc_v = 1.  # Cut-off frequency of the filter
+w_v = np.clip((fc_v / (fs / 2)), a_min = 0.000001, a_max = 0.999999) # Normalize the frequency
+print(w_w)
+b, a = signal.butter(2, w_v, 'low')
+for i in range(3):
+    cube_ros[10+i,:] = signal.filtfilt(b, a, cube_ros[10+i,:],padtype='even',padlen=100)
+
+
+
 data = np.concatenate((np.expand_dims(t_ros, axis=0),kuka_ros,cube_ros),axis=0)
 data = data.T
 np.savetxt('test66.csv', data, delimiter=',')

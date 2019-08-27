@@ -10,6 +10,9 @@ attic/multibody/solver_log/
 /bundle_ws
 /tools/workspace/ros
 *.pickle*
-/examples/kuka_iiwa_arm/*.log
+*.log
+*.bag
+*.pyc
+*.swp
 logs/lcm/
 /examples/kuka_iiwa_arm/simulation_settings.json

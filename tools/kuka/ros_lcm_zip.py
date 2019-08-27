@@ -10,8 +10,8 @@ from PythonLCM import lcmt_iiwa_status
 
 from scipy import interpolate, signal
 
-if len(sys.argv) < 3:
-    print("usage: python[2] ros_lcm_zip.py [ROSBAG] [LCMLOG]")
+if len(sys.argv) < 4:
+    print("usage: python[2] ros_lcm_zip.py [ROSBAG] [LCMLOG] [CSV_OUT]")
     print(str(sys.argv))
     sys.exit()
 
@@ -27,6 +27,7 @@ def quatmult(quaternion1, quaternion0):
 #inbag = '2019-08-22-16-18-51.odom.bag'
 inbag = sys.argv[1]
 inlog = sys.argv[2]
+outcsv = sys.argv[3]
 cube_topic = '/tagslam/odom/body_cube'
 CUBE_CONFIG = 7
 CUBE_VELOCITY = 6
@@ -114,4 +115,4 @@ for i in range(3):
 
 data = np.concatenate((np.expand_dims(t_ros, axis=0),kuka_ros,cube_ros),axis=0)
 data = data.T
-np.savetxt('test66.csv', data, delimiter=',')
+np.savetxt(outcsv, data, delimiter=',')

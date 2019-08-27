@@ -3,11 +3,17 @@ import rosbag
 import subprocess, yaml
 import numpy as np
 import pdb
+import sys
 
 from PythonLCM import lcmt_iiwa_status
 # from scipy.spatial.transform import Rotation as R
 
 from scipy import interpolate
+
+if len(sys.argv) < 3:
+    print("usage: python[2] ros_lcm_zip.py [ROSBAG] [LCMLOG]")
+    print(str(sys.argv))
+    sys.exit()
 
 def quatmult(quaternion1, quaternion0):
     x0, y0, z0, w0 = quaternion0
@@ -18,7 +24,9 @@ def quatmult(quaternion1, quaternion0):
                      -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0], dtype=np.float64)
 
 
-inbag = '2019-08-22-16-18-51.odom.bag'
+#inbag = '2019-08-22-16-18-51.odom.bag'
+inbag = sys.argv[1]
+inlog = sys.argv[2]
 cube_topic = '/tagslam/odom/body_cube'
 CUBE_CONFIG = 7
 CUBE_VELOCITY = 6
@@ -56,7 +64,7 @@ for i in range(num_msg-1):
 cube_ros[7:10,-1] = cube_ros[7:10,-2]
 #pdb.set_trace()
 # print(cube_ros[:7,:8])
-log = lcm.EventLog("test66.log", "r")
+log = lcm.EventLog(inlog, "r")
 #print(lcm.EventLog.size(log))
 num_lcm = 0
 for event in log:

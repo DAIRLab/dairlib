@@ -12,7 +12,7 @@ from scipy import interpolate, signal
 
 if len(sys.argv) < 4:
     print("usage: python[2] ros_lcm_zip.py [ROSBAG] [LCMLOG] [CSV_OUT]")
-    print(str(sys.argv))
+    #print(str(sys.argv))
     sys.exit()
 
 def quatmult(quaternion1, quaternion0):
@@ -61,7 +61,7 @@ for i in range(num_msg-1):
     qbar = cube_ros[:4,i]
     qbar[:3] = -qbar[:3]
     cube_ros[7:10,i] = 2*quatmult(qdot[:,i],qbar)[:3]
-    print(cube_ros[7:10,i])
+    #print(cube_ros[7:10,i])
 cube_ros[7:10,-1] = cube_ros[7:10,-2]
 #pdb.set_trace()
 # print(cube_ros[:7,:8])

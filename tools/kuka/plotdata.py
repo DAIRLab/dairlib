@@ -61,18 +61,21 @@ b, a = signal.butter(2, w_v, 'low')
 v_t = signal.filtfilt(b, a, v_t,padtype='even',padlen=100)
 
 '''
-
+f = plt.figure(1)
 t = t - t[0]
 plt.plot(t,w_t.T)
 plt.xlabel('x')
 plt.ylabel('y')
 plt.title('Cube Rotational Velocity')
 plt.legend(['wx','wy','wz'])
-plt.show()
+f.show()
 
+g = plt.figure(2)
 plt.plot(t,v_t.T)
 plt.xlabel('x')
 plt.ylabel('y')
 plt.title('Cube Translational Velocity')
 plt.legend(['vx','vy','vz'])
-plt.show()
+g.show()
+
+raw_input()

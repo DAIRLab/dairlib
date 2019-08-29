@@ -152,8 +152,11 @@ def main():
     description = input("Description: ")
     simulated = input("Simulated Before?: ")
     result = input("Result: ")
-    git_repository = input("Git Repository: ")
-
+    # git_repository = input("Git Repository: ")
+    giturl = subprocess.getoutput(['git config --get remote.origin.url'])
+    giturl = giturl[(giturl.find(':')+1):]
+    giturl = giturl[:giturl.find('.')]
+    git_repository = giturl
     # Initializes body of the update (organizes each value into columns)
     body = {
     "values": [

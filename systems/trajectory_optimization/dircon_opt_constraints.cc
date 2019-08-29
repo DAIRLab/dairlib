@@ -272,7 +272,7 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
   // Set relative map in the same loop
   if (type == kAll) {
     relative_map_ = MatrixXd::Zero(num_kinematic_constraints_, n_relative_);
-    int j = 0;
+    int k = 0;
 
     for (int i = 0; i < num_kinematic_constraints_; i++) {
       for (int j = 0; j < num_positions_; j++) {
@@ -280,12 +280,12 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       }
 
       if (is_constraint_relative_[i]) {
-        relative_map_(i, j) = 1;
-        // ith constraint depends on jth offset variable
+        relative_map_(i, k) = 1;
+        // ith constraint depends on kth offset variable
         sparsity.push_back({i + 2* num_kinematic_constraints_,
-            num_states_ + num_inputs_ + num_kinematic_constraints_ + j});
+            num_states_ + num_inputs_ + num_kinematic_constraints_ + k});
 
-        j++;
+        k++;
       }
     }
   }

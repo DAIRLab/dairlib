@@ -35,9 +35,8 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
   int total_count = constraint_count_;  // includes skipped constraints
 
   // We will not include indices givein in skip_constraint_inds
-  constraint_count_ -= skip_constraint_inds.size();
-  constraint_map_ = MatrixXd::Zero(constraint_count_,
-      constraint_count_ + skip_constraint_inds.size());
+  constraint_map_ = MatrixXd::Zero(
+    constraint_count_ - skip_constraint_inds.size(), constraint_count_);
   int j = 0;
   for (int i = 0; i < constraint_count_; i++) {
     if (std::find(skip_constraint_inds.begin(),
@@ -47,6 +46,8 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
       j++;
     }
   }
+
+  constraint_count_ -= skip_constraint_inds.size();
 
   c_ = VectorX<T>(total_count);
   cdot_ = VectorX<T>(total_count);

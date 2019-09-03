@@ -381,6 +381,58 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
   *y = M*(v1 - v0) - constraints_->getJ().transpose()*impulse;
 }
 
+
+template <typename T>
+PositionKinematicConstraint<T>::PositionKinematicConstraint(
+    const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
+    std::vector<bool> is_constraint_relative, const VectorXd& offset) :
+    DirconAbstractConstraint<T>(constraints.countConstraints(),
+        plant.num_positions() +
+        std::count(is_constraint_relative.begin(),
+                   is_constraint_relative.end(), true),
+        offset, offset),
+      plant_(plant),
+      constraints_(&constraints),
+      num_kinematic_constraints_(constraints.countConstraints()),
+      is_constraint_relative_{is_constraint_relative},
+      n_relative_{static_cast<int>(std::count(is_constraint_relative.begin(),
+      is_constraint_relative.end(), true))} {
+  // Set relative map
+  relative_map_ = MatrixXd::Zero(num_kinematic_constraints_, n_relative_);
+  int k = 0;
+
+  for (int i = 0; i < num_kinematic_constraints_; i++) {
+    if (is_constraint_relative_[i]) {
+      relative_map_(i, k) = 1;
+      k++;
+    }
+  }
+}
+
+template <typename T>
+void PositionKinematicConstraint<T>::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
+  DRAKE_ASSERT(x.size() == plant_.num_positions() + n_relative_);
+
+  const VectorX<T> q = x.head(plant_.num_positions());
+  const VectorX<T> offset = x.tail(n_relative_);
+
+  const VectorX<T> v =
+      VectorXd::Zero(plant_.num_velocities()).template cast<T>();
+  const VectorX<T> u =
+      VectorXd::Zero(plant_.num_actuators()).template cast<T>();
+  const VectorX<T> force =
+      VectorXd::Zero(num_kinematic_constraints_).template cast<T>();
+
+  VectorX<T> state(plant_.num_positions() + plant_.num_velocities());
+  state << q, v;
+  auto context = multibody::createContext(plant_, state, u);
+  constraints_->updateData(*context, force);
+  *y = constraints_->getC() + relative_map_*offset;
+
+  // std::cout << constraints_->getC() << std::endl << std::endl;
+}
+
 // Explicitly instantiates on the most common scalar types.
 template class DirconDynamicConstraint<double>;
 template class DirconDynamicConstraint<AutoDiffXd>;
@@ -388,7 +440,8 @@ template class DirconKinematicConstraint<double>;
 template class DirconKinematicConstraint<AutoDiffXd>;
 template class DirconImpactConstraint<double>;
 template class DirconImpactConstraint<AutoDiffXd>;
-
+template class PositionKinematicConstraint<double>;
+template class PositionKinematicConstraint<AutoDiffXd>;
 
 }  // namespace trajectory_optimization
 }  // namespace systems

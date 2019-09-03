@@ -194,6 +194,29 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
   const int num_velocities_{0};
 };
 
+
+template <typename T>
+class PositionKinematicConstraint : public DirconAbstractConstraint<T> {
+ public:
+  PositionKinematicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+    DirconKinematicDataSet<T>& constraint_data,
+    std::vector<bool> is_constraint_relative,
+    const Eigen::VectorXd& offset);
+
+  ~PositionKinematicConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
+                          drake::VectorX<T>* y) const override;
+
+ private:
+  const drake::multibody::MultibodyPlant<T>& plant_;
+  DirconKinematicDataSet<T>* constraints_;
+  double num_kinematic_constraints_;
+  const std::vector<bool> is_constraint_relative_;
+  const int n_relative_;
+  Eigen::MatrixXd relative_map_;
+};
+
 }  // namespace trajectory_optimization
 }  // namespace systems
 }  // namespace dairlib

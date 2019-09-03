@@ -292,3 +292,19 @@ cc_binary(
         "@gflags",
         ],
 )
+
+cc_binary(
+    name = "lipm_inverse_kinematics",
+    srcs = ["lipm_inverse_kinematics.cc"],
+    deps = [
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "//systems:robot_lcm_systems",
+        "//lcmtypes:lcmt_robot",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "@gflags",
+        "@drake//:drake_shared_library",
+        ]
+)
+

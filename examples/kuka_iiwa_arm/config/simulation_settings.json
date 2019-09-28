@@ -1,0 +1,20 @@
+{
+    "objects": [
+        ["sphere", [0.6, 0.2, 0.5], "drake/examples/manipulation_station/models/sphere.sdf"],
+        ["block", [0.65, 0, 0.1], "drake/examples/manipulation_station/models/061_foam_brick.sdf"]
+    ],
+    "kuka_gains":
+        {
+        "K_P": 1,
+        "K_R": 0,
+        "K_D": 10,
+        "K_OMEGA": 0
+    },
+    "limits":
+    {
+            "max_linear_velocity" : 50.0,
+            "max_angular_veloctiy" : 50.0,
+            "joint_torque_limit" : 30.0
+    },
+    "iiwa_q0": [0, 0.85707, -0.14844, -1.6309, 0.17992, 0.67515225, -0.132288]
+}

@@ -112,7 +112,8 @@ class InitialPosHandler {
 
 int do_main(int argc, char* argv[]) {
   //Loads in joint gains json file
-  std::ifstream joint_gains_file("examples/kuka_iiwa_arm/simulation_settings.json");
+  std::ifstream joint_gains_file(
+      "examples/kuka_iiwa_arm/config/simulation_settings.json");
   if (joint_gains_file.is_open()) {
     std::cout << "Json file opened successfully." << std::endl;
   }
@@ -186,7 +187,7 @@ int do_main(int argc, char* argv[]) {
           *owned_plant, link_7, eeContactFrame, K_D, K_OMEGA, JOINT_TORQUE_LIMIT);
 
   //Processes Trajectories CSV file.
-  CsvVector waypoints("examples/kuka_iiwa_arm/Trajectories.csv");
+  CsvVector waypoints("examples/kuka_iiwa_arm/config/Trajectories.csv");
 
   // Listens for LCM message then performs invKin to get traj initial position.
   lcm::LCM lcm_;
@@ -200,8 +201,10 @@ int do_main(int argc, char* argv[]) {
   const std::unique_ptr<Context<double>> plant_context =
       owned_plant->CreateDefaultContext();
   owned_plant->SetPositions(plant_context.get(), handler.initialPositions);
-  owned_plant->CalcPointsPositions(*plant_context, owned_plant->GetFrameByName(link_7),
-                             eeContactFrame, owned_plant->world_frame(), &x_initial);
+  owned_plant->CalcPointsPositions(*plant_context,
+                                   owned_plant->GetFrameByName(link_7),
+                                   eeContactFrame, owned_plant->world_frame(),
+                                   &x_initial);
 
   Eigen::Vector3d checkpointTwo;
   checkpointTwo << waypoints.getArray()[1][0], waypoints.getArray()[2][0],
@@ -236,7 +239,7 @@ int do_main(int argc, char* argv[]) {
   auto ee_velocity = ee_trajectory.derivative(1);
 
   // Processes EndEffectorOrientations CSV file.
-  CsvVector orientations("examples/kuka_iiwa_arm/EndEffectorOrientations.csv");
+  CsvVector orientations("examples/kuka_iiwa_arm/config/EndEffectorOrientations.csv");
 
   //Initializes orientations to orient_points array.
   std::vector<Eigen::MatrixXd> orient_points;
@@ -275,13 +278,18 @@ int do_main(int argc, char* argv[]) {
   ConstPositionCommand.resize(7);
   ConstPositionCommand << 0, 0, 0, 0, 0, 0, 0;
 
-  auto positionCommand = builder.AddSystem<drake::systems::ConstantVectorSource>(ConstPositionCommand);
+  auto positionCommand =
+      builder.AddSystem<drake::systems::ConstantVectorSource>(
+          ConstPositionCommand);
 
   std::vector<int> demuxDorsalPos = {4, 3};
-  auto dorsalPosCmd = builder.AddSystem<drake::systems::Demultiplexer>(demuxDorsalPos);
+  auto dorsalPosCmd =
+      builder.AddSystem<drake::systems::Demultiplexer>(
+          demuxDorsalPos);
 
   std::vector<int> demuxDistalPos = {3, 3};
-  auto distalPosCmd = builder.AddSystem<drake::systems::Demultiplexer>(demuxDistalPos);
+  auto distalPosCmd =
+      builder.AddSystem<drake::systems::Demultiplexer>(demuxDistalPos);
 
   std::vector<int> muxPosCmd = {4, 3};
   auto combPosCmd = builder.AddSystem<drake::systems::Multiplexer>(muxPosCmd);

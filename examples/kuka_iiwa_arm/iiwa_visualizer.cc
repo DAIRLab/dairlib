@@ -76,7 +76,7 @@ int doMain(int argc, char* argv[]) {
 
   drake::log()->info("visualizer started");
 
-  stepper->StepTo(std::numeric_limits<double>::infinity());
+  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }

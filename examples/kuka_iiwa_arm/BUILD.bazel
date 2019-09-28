@@ -21,19 +21,21 @@ cc_binary(
     srcs = ["kuka_simulation.cc"],
     data = [
         "@drake//manipulation/models/iiwa_description:models",
+        "models/endeffector_attachment.sdf",
     ],
     deps = [
         "@drake//:drake_shared_library",
         "//common:common",
         ":kuka_torque_controller",
         "@json",
+        "@gflags",
     ],
 )
 
 cc_binary(
     name="iiwa_controller_demo",
     srcs = ["iiwa_controller_demo.cc"],
-    data = glob(["**"]),
+    data = glob(["config/**"]),
     deps = [
             "@json",
             "@lcm",
@@ -46,6 +48,7 @@ cc_binary(
 cc_binary(
     name="iiwa_oscillate",
     srcs = ["iiwa_oscillate.cc"],
+    data = glob(["config/**"]),
     deps = [
             "@drake//:drake_shared_library",
             "@json",

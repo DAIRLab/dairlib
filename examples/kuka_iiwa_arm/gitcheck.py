@@ -85,7 +85,7 @@ def main():
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                'realupwrite.json', SCOPES)
+                'config/realupwrite.json', SCOPES)
             creds = flow.run_local_server()
         # Saves the credentials to logtoken1.pickle
         with open('logtoken1.pickle', 'wb') as token:

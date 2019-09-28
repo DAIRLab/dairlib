@@ -9,9 +9,10 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <gflags/gflags.h>
 
 #include "drake/common/find_resource.h"
-#include "drake/geometry/dev/scene_graph.h"
+#include "drake/geometry/scene_graph.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_command_receiver.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_status_sender.h"
@@ -42,24 +43,26 @@ namespace dairlib {
 namespace examples {
 namespace kuka_iiwa_arm {
 
- using Eigen::Vector3d;
- using Eigen::VectorXd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
 
- using drake::geometry::SceneGraph;
- using drake::manipulation::kuka_iiwa::IiwaCommandReceiver;
- using drake::manipulation::kuka_iiwa::IiwaStatusSender;
- using drake::math::RigidTransform;
- using drake::math::RollPitchYaw;
- using drake::multibody::Joint;
- using drake::multibody::MultibodyPlant;
- using drake::multibody::RevoluteJoint;
- using drake::multibody::SpatialInertia;
- using drake::multibody::ModelInstanceIndex;
- using drake::systems::StateInterpolatorWithDiscreteDerivative;
+using drake::geometry::SceneGraph;
+using drake::manipulation::kuka_iiwa::IiwaCommandReceiver;
+using drake::manipulation::kuka_iiwa::IiwaStatusSender;
+using drake::math::RigidTransform;
+using drake::math::RollPitchYaw;
+using drake::multibody::Joint;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::RevoluteJoint;
+using drake::multibody::SpatialInertia;
+using drake::multibody::ModelInstanceIndex;
+using drake::systems::StateInterpolatorWithDiscreteDerivative;
+
+DEFINE_bool(props, true, "Include props (table, pushable items, etc.)");
+DEFINE_bool(ee, true, "Include End-Effector in Model");
 
 int DoMain() {
-  // Initializes json object from simulation_settings.json
-  std::ifstream settings_file("examples/kuka_iiwa_arm/simulation_settings.json");
+  std::ifstream settings_file("examples/kuka_iiwa_arm/config/simulation_settings.json");
   json settings = json::parse(settings_file);
 
   std::unique_ptr<MultibodyPlant<double>> owned_world_plant =
@@ -77,9 +80,7 @@ int DoMain() {
       owned_scene_graph.get();
   world_plant->RegisterAsSourceForSceneGraph(scene_graph);
 
-  // Get the Iiwa model. TODO: grab this from pegged drake libraries
-  // Note: 'iiwa7_with_box_collision.sdf' is 'iiwa7_no_collision.sdf' in other
-  // branches aside from this one. Make this permenant?
+  // Get the Iiwa model.
   const char* kModelPath =
       "drake/manipulation/models/iiwa_description/iiwa7/iiwa7_with_box_collision.sdf";
   const std::string kuka_urdf = drake::FindResourceOrThrow(kModelPath);
@@ -93,32 +94,6 @@ int DoMain() {
       owned_world_plant->world_frame(),
       owned_world_plant->GetFrameByName("iiwa_link_0", iiwa_model), X_WI);
 
-
-  // Add Table to Simulation
-  // const double dx_table_center_to_robot_base = -0.3257;
-  // const double dz_table_top_robot_base = 0.0127;
-  // const std::string sdf_path = drake::FindResourceOrThrow(
-  //   "drake/examples/manipulation_station/models/bin.sdf");
-  //
-  // RigidTransform<double> X_WT(Vector3d(dx_table_center_to_robot_base, 0,
-  //                             -dz_table_top_robot_base));
-  // //internal::AddAndWeldModelFrom(sdf_path, "table", plant_->world_frame()
-  // //                                "amazon_table", X_WT, plant_);
-  //
-  // const drake::multibody::ModelInstanceIndex new_model =
-  //     world_plant_parser.AddModelFromFile(sdf_path, "bin1");
-  // const auto& child_frame = world_plant->GetFrameByName("bin_base", new_model);
-  // world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
-
-  //Loads in manipulands from json file to objects_vector
-  const int num_manipulands = settings["objects"].size();
-  std::vector<drake::multibody::ModelInstanceIndex> objects_vector;
-  objects_vector.resize(num_manipulands);
-  for (int objectNum = 0; objectNum < num_manipulands; objectNum++) {
-      std::string path = drake::FindResourceOrThrow(settings["objects"][objectNum][2]);
-      objects_vector[objectNum] = world_plant_parser.AddModelFromFile(path, path);
-  }
-
   // Create and add a plant to the controller-specific model
   drake::multibody::Parser controller_plant_parser(controller_plant);
   const auto controller_iiwa_model = controller_plant_parser.AddModelFromFile(
@@ -127,17 +102,61 @@ int DoMain() {
       owned_controller_plant->GetFrameByName("iiwa_link_0", controller_iiwa_model),
       X_WI);
 
+  // Get and add EE Model to the Iiwa Model and Controller Model.
+  if(FLAGS_ee){
+      const std::string ee_sdf =
+          "examples/kuka_iiwa_arm/models/endeffector_attachment.sdf";
+      const drake::multibody::ModelInstanceIndex ee_model =
+          world_plant_parser.AddModelFromFile(ee_sdf, "ee_rod");
+      world_plant->WeldFrames(
+          owned_world_plant->GetFrameByName("iiwa_link_7", iiwa_model),
+          owned_world_plant->GetFrameByName("ee_body", ee_model), X_WI);
+
+      const drake::multibody::ModelInstanceIndex ee_model2 =
+          controller_plant_parser.AddModelFromFile(ee_sdf, "ee_rod");
+      owned_controller_plant->WeldFrames(
+          owned_controller_plant->GetFrameByName("iiwa_link_7", iiwa_model),
+          owned_controller_plant->GetFrameByName("ee_body", ee_model2), X_WI);
+  }
+
+  const int num_manipulands = settings["objects"].size();
+  std::vector<drake::multibody::ModelInstanceIndex> objects_vector;
+  objects_vector.resize(num_manipulands);
+  if(FLAGS_props){
+      // Add Table to Simulation
+      const double dx_table_center_to_robot_base = 0.6257;
+      const double dz_table_top_robot_base = 0.0127;
+      const std::string sdf_path = drake::FindResourceOrThrow(
+        "drake/examples/manipulation_station/models/bin.sdf");
+
+      RigidTransform<double> X_WT(Vector3d(dx_table_center_to_robot_base, 0,
+                                  -dz_table_top_robot_base));
+
+      const drake::multibody::ModelInstanceIndex new_model =
+          world_plant_parser.AddModelFromFile(sdf_path, "bin1");
+      const auto& child_frame = world_plant->GetFrameByName("bin_base", new_model);
+      world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
+
+      //Loads in manipulands from json file to objects_vector
+      for (int objectNum = 0; objectNum < num_manipulands; objectNum++) {
+          std::string path =
+              drake::FindResourceOrThrow(settings["objects"][objectNum][2]);
+          objects_vector[objectNum] =
+              world_plant_parser.AddModelFromFile(path, path);
+      }
+  }
+
   // Finalize the plants to begin adding them to a system
   owned_controller_plant->Finalize();
   world_plant->Finalize();
 
-  const int num_iiwa_positions = controller_plant->num_positions();
-  //const int num_iiwa_velocities = controller_plant->num_velocities();
-
   // Set the iiwa default joint configuration.
+  const int num_iiwa_positions = controller_plant->num_positions();
   drake::VectorX<double> q0_iiwa(num_iiwa_positions);
-  q0_iiwa << settings["default_config"][0], settings["default_config"][1], settings["default_config"][2],
-  settings["default_config"][3], settings["default_config"][4], settings["default_config"][5], settings["default_config"][6];
+  q0_iiwa << settings["iiwa_q0"][0], settings["iiwa_q0"][1],
+             settings["iiwa_q0"][2], settings["iiwa_q0"][3],
+             settings["iiwa_q0"][4], settings["iiwa_q0"][5],
+             settings["iiwa_q0"][6];
 
   const auto iiwa_joint_indices =
       world_plant->GetJointIndices(iiwa_model);
@@ -158,13 +177,13 @@ int DoMain() {
   builder.AddSystem(std::move(owned_world_plant));
   builder.AddSystem(std::move(owned_scene_graph));
 
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
-
   // Create the command subscriber and status publisher.
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto command_sub = builder.AddSystem(
       drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_command>(
           "IIWA_COMMAND", lcm));
   command_sub->set_name("command_subscriber");
+
   auto command_receiver =
       builder.AddSystem<IiwaCommandReceiver>(num_iiwa_positions);
   command_receiver->set_name("command_receiver");
@@ -173,12 +192,10 @@ int DoMain() {
   const double kIiwaLcmStatusPeriod = 0.005;
   auto iiwa_status_publisher = builder.AddSystem(
       drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_status>(
-          "IIWA_STATUS", lcm, kIiwaLcmStatusPeriod /* publish period */));
+          "IIWA_STATUS", lcm, kIiwaLcmStatusPeriod));
 
   // Torque Controller-- includes virtual springs and damping.
   VectorXd stiffness, damping_ratio;
-
-  // The virtual spring stiffness in Nm/rad.
   stiffness.resize(num_iiwa_positions);
   stiffness << 0, 0, 0, 0, 20, 20, 20;
 
@@ -189,11 +206,7 @@ int DoMain() {
       dairlib::systems::KukaTorqueController<double>>(
           std::move(owned_controller_plant), stiffness, damping_ratio);
 
-  // Creating status sender
   auto iiwa_status = builder.AddSystem<IiwaStatusSender>(num_iiwa_positions);
-
-  // Creating system to approximate desired state command from a discrete
-  // derivative of the position command input port.
   auto desired_state_from_position = builder.AddSystem<
       drake::systems::StateInterpolatorWithDiscreteDerivative<double>>(
           num_iiwa_positions, world_plant->time_step());
@@ -202,18 +215,13 @@ int DoMain() {
   auto demux = builder.AddSystem<drake::systems::Demultiplexer<double>>(
      2 * num_iiwa_positions, num_iiwa_positions);
 
+  // Hook up controller to model
   builder.Connect(command_sub->get_output_port(),
                   command_receiver->get_input_port());
-
-  // Connecting iiwa input ports
   builder.Connect(iiwa_controller->get_output_port_control(),
                   world_plant->get_actuation_input_port(iiwa_model));
-
-  // Interpolating desired positions into desired velocities for controller.
   builder.Connect(command_receiver->get_commanded_position_output_port(),
                   desired_state_from_position->get_input_port());
-
-  // Connecting iiwa controller input ports
   builder.Connect(world_plant->get_state_output_port(iiwa_model),
                   iiwa_controller->get_input_port_estimated_state());
   builder.Connect(desired_state_from_position->get_output_port(),
@@ -254,21 +262,24 @@ int DoMain() {
   auto diagram = builder.Build();
   drake::systems::Simulator<double> simulator(*diagram);
 
-  drake::systems::Context<double>& context =
-      diagram->GetMutableSubsystemContext(*world_plant,
-                                          &simulator.get_mutable_context());
+  if(FLAGS_props){
+      drake::systems::Context<double>& context =
+          diagram->GetMutableSubsystemContext(*world_plant,
+                                              &simulator.get_mutable_context());
 
-  auto& state2 = diagram->GetMutableSubsystemState(*world_plant,
-                                          &simulator.get_mutable_context());
-
-  //Adjusts starting positions of manipulands
-  for (int x = 0; x < num_manipulands; x++) {
-    const auto indices = world_plant -> GetBodyIndices(objects_vector[x]);
-    world_plant -> SetFreeBodyPose(context, &state2, world_plant -> get_body(indices[0]),
-    RigidTransform<double>(Vector3d(settings["objects"][x][1][0],
-                           settings["objects"][x][1][1],
-                           settings["objects"][x][1][2])));
+      auto& state2 = diagram->GetMutableSubsystemState(*world_plant,
+                                              &simulator.get_mutable_context());
+      //Adjusts starting positions of manipulands
+      for (int x = 0; x < num_manipulands; x++) {
+        const auto indices = world_plant -> GetBodyIndices(objects_vector[x]);
+        world_plant -> SetFreeBodyPose(
+            context, &state2, world_plant -> get_body(indices[0]),
+        RigidTransform<double>(Vector3d(settings["objects"][x][1][0],
+                               settings["objects"][x][1][1],
+                               settings["objects"][x][1][2])));
+      }
   }
+
   simulator.set_publish_every_time_step(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());
@@ -281,5 +292,6 @@ int DoMain() {
 }  // namespace drake
 
 int main(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   return dairlib::examples::kuka_iiwa_arm::DoMain();
 }

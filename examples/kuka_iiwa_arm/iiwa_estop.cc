@@ -92,7 +92,7 @@ int do_main(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
 
-  simulator.StepTo(0.5);
+  simulator.AdvanceTo(0.5);
   return 0;
 }
 

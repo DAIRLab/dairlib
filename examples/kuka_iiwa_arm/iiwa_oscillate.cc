@@ -35,7 +35,7 @@ void setup_log();
 
 int do_main(int argc, char* argv[]) {
   //Loads in joint gains json file
-  std::ifstream joint_gains_file("examples/kuka_iiwa_arm/oscillator_settings.json");
+  std::ifstream joint_gains_file("examples/kuka_iiwa_arm/config/oscillator_settings.json");
   if (joint_gains_file.is_open()) {
     std::cout << "Json file opened successfully." << std::endl;
   }
@@ -85,7 +85,6 @@ int do_main(int argc, char* argv[]) {
       MAX_VELOCITY, num_iiwa_joints);
 
   Eigen::VectorXd zeros_seven = Eigen::VectorXd::Zero(7);
-  auto constant_position_src = builder.AddSystem<drake::systems::ConstantVectorSource>(zeros_seven);
 
   builder.Connect(zeros_low_source->get_output_port(),
                   mux->get_input_port(0));
@@ -123,7 +122,7 @@ int do_main(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
 
-  simulator.StepTo(20);
+  simulator.AdvanceTo(20);
   return 0;
 }
 

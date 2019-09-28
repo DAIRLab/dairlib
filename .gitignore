@@ -14,5 +14,5 @@ attic/multibody/solver_log/
 *.bag
 *.pyc
 *.swp
-logs/lcm/
+logs/*
 /examples/kuka_iiwa_arm/simulation_settings.json

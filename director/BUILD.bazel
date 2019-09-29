@@ -4,7 +4,6 @@ py_binary(
     name = "drake_director_py",
     srcs = ["//tools/workspace/drake_visualizer:drake_visualizer.py"],
     data = [
-        "@drake//automotive/models:prod_models",
         "@drake//examples:prod_models",
         "@drake_visualizer",
         "@drake_visualizer//:lcm_python2",

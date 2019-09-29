@@ -166,6 +166,9 @@ class ComTrackingData final : public OscTrackingData {
 
   ComTrackingData() {}  // Default constructor
 
+  // If state is not specified, it will track COM for all states
+  void AddStateToTrack(int state);
+
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
                        KinematicsCache<double>& cache_w_spr) final;

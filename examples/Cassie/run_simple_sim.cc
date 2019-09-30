@@ -278,8 +278,8 @@ int do_main(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
 
-  simulator.StepTo(FLAGS_end_time);
-  // simulator.StepTo(.01);
+  simulator.AdvanceTo(FLAGS_end_time);
+  // simulator.AdvanceTo(.01);
   return 0;
 }
 

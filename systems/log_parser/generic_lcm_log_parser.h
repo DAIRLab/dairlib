@@ -57,7 +57,7 @@ void parseLcmLog(std::unique_ptr<U> system, std::string file,
 
   drake::systems::Simulator<double> sim(*diagram);
 
-  sim.StepTo(r_log.GetNextMessageTime() + duration);
+  sim.AdvanceTo(r_log.GetNextMessageTime() + duration);
 
   *t = output_aggregator->BuildTimestampVector();
 

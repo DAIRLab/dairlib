@@ -93,7 +93,7 @@ int doMain() {
 
   drake::log()->info("controller started");
 
-  stepper->StepTo(std::numeric_limits<double>::infinity());
+  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }

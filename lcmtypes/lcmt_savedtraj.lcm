@@ -1,0 +1,30 @@
+package dairlib;
+package savedtraj;
+
+struct trajectory_t 
+{
+	string trajectory_name;
+
+	int32_t num_points;
+	int32_t num_datatypes;
+	double time_vec[num_points];
+	double data_points[num_points][num_datatypes];
+	string datatypes[num_datatypes];
+}
+
+struct metadata_t 
+{
+	bool git_dirty_flag;
+	string datatime;
+	string name;
+	string description;
+	string git_commit_hash;
+}
+
+struct lcmt_trajectory
+{
+	metadata_t metadata;
+	int32_t num_trajectories;
+	trajectory_t trajectories[num_trajectories];
+	string trajectory_names[num_trajectories];  
+}

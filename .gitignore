@@ -8,7 +8,6 @@ __pycache__/
 attic/multibody/solver_log/
 *.vscode*
 /bundle_ws
-/tools/workspace/ros
 *.pickle*
 *.log
 *.bag

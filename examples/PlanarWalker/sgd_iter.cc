@@ -333,7 +333,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration,
     drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(1);
     simulator.Initialize();
-    simulator.StepTo(pp_xtraj.end_time());
+    simulator.AdvanceTo(pp_xtraj.end_time());
   // }
 
   return trajopt;

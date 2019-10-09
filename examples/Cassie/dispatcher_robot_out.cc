@@ -216,7 +216,7 @@ int do_main(int argc, char* argv[]) {
       // Check if we are very far ahead or behind
       // (likely due to a restart of the driving clock)
       if (time > simulator.get_context().get_time() + 1.0 ||
-          time < simulator.get_context().get_time() - 1.0) {
+          time < simulator.get_context().get_time()) {
         std::cout << "Dispatcher time is " << simulator.get_context().get_time()
             << ", but stepping to " << time << std::endl;
         std::cout << "Difference is too large, resetting dispatcher time." <<

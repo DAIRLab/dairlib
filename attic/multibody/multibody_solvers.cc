@@ -1,4 +1,6 @@
+#include <limits>
 #include "attic/multibody/multibody_solvers.h"
+
 
 namespace dairlib {
 namespace multibody {
@@ -248,8 +250,12 @@ void PositionSolver::AddJointLimitConstraint(const double tolerance) {
 
   for (int i = 0; i < joint_min.size(); ++i) {
     // Adding minimum and maximum joint angle constraints.
-    prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
-    prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
+    // Ignoring the floating base coordinates if any.
+    // We assume all floating base positions start with "base"
+    if (tree_.get_position_name(i).substr(0, 4) != "base") {
+      prog_->AddBoundingBoxConstraint(joint_min(i) + tolerance,
+        joint_max(i) - tolerance, q_(i));
+    }
   }
 }
 
@@ -379,10 +385,15 @@ void ContactSolver::AddJointLimitConstraint(const double tolerance) {
 
   for (int i = 0; i < joint_min.size(); ++i) {
     // Adding minimum and maximum joint angle constraints.
-    prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
-    prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
+    // Ignoring the floating base coordinates if any.
+    // We assume all floating base positions start with "base"
+    if (tree_.get_position_name(i).substr(0, 4) != "base") {
+      prog_->AddBoundingBoxConstraint(joint_min(i) + tolerance,
+        joint_max(i) - tolerance, q_(i));
+    }
   }
 }
+
 
 MathematicalProgramResult ContactSolver::Solve() {
   // The initial guess for q needs to be set up separately before calling
@@ -629,13 +640,14 @@ void FixedPointSolver::AddFrictionConeConstraint(const double mu) {
                              lambda_(i * 3 + 2 + num_position_constraints) *
                                  lambda_(i * 3 + 2 + num_position_constraints));
     // Normal forces need to be positive
-    prog_->AddConstraint(lambda_(i * 3 + num_position_constraints) >= 0);
+    prog_->AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(),
+        lambda_(i * 3 + num_position_constraints));
   }
 }
 
 void FixedPointSolver::AddFixedJointsConstraint(map<int, double> fixed_joints) {
   for (auto it = fixed_joints.begin(); it != fixed_joints.end(); ++it) {
-    prog_->AddConstraint(q_(it->first) == it->second);
+    prog_->AddBoundingBoxConstraint(it->second, it->second, q_(it->first));
   }
 }
 
@@ -648,8 +660,8 @@ void FixedPointSolver::AddJointLimitConstraint(const double tolerance) {
     // Ignoring the floating base coordinates if any.
     // We assume all floating base positions start with "base"
     if (tree_.get_position_name(i).substr(0, 4) != "base") {
-      prog_->AddConstraint(q_(i) >= (joint_min(i) + tolerance));
-      prog_->AddConstraint(q_(i) <= (joint_max(i) - tolerance));
+      prog_->AddBoundingBoxConstraint(joint_min(i) + tolerance,
+        joint_max(i) - tolerance, q_(i));
     }
   }
 }

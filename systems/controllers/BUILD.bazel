@@ -3,6 +3,19 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "control_utils",
+    srcs = [
+        "control_utils.cc",
+    ],
+    hdrs = [
+        "control_utils.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "pd_config_lcm",
     srcs = ["pd_config_lcm.cc"],
     hdrs = ["pd_config_lcm.h"],
@@ -91,6 +104,42 @@ cc_test(
         ":controllers",
         "@gtest//:main",
     ],
+)
+
+
+cc_library(
+    name = "time_based_fsm",
+    srcs = ["time_based_fsm.cc",],
+    hdrs = ["time_based_fsm.h"],
+    deps = [
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+            ]
+)
+
+cc_library(
+    name = "lipm_traj_gen",
+    srcs = ["lipm_traj_gen.cc",],
+    hdrs = ["lipm_traj_gen.h"],
+    deps = [
+            ":control_utils",
+            "//attic/multibody:utils",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+            ]
+)
+
+cc_library(
+    name = "cp_traj_gen",
+    srcs = ["cp_traj_gen.cc",],
+    hdrs = ["cp_traj_gen.h"],
+    deps = [
+            ":control_utils",
+            "//attic/multibody:utils",
+            "//examples/Cassie/osc_walk:cp_control_common_func",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+            ]
 )
 
 cc_test(

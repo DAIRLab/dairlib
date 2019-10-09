@@ -66,7 +66,7 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
     DRAKE_DEMAND(node_handle_);
 
     subscriber_ = node_handle->subscribe(
-        topic, 100, &RosSubscriberSystem<RosMessage>::HandleMessage, this);
+        topic, 1, &RosSubscriberSystem<RosMessage>::HandleMessage, this);
 
     DeclareAbstractOutputPort(
         [this]() {
@@ -186,11 +186,11 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
         .get_mutable_value<RosMessage>() = received_message_;
     abstract_state->get_mutable_value(kStateIndexMessageCount)
         .get_mutable_value<int>() = received_message_count_;
-  };
+  }
 
-  // Callback entry point from ROS into this class. Also wakes up one thread
-  // block on notification_ if it's not nullptr.
-  void HandleMessage(const RosMessage& message) {
+  // Callback entry point from ROS into this class.
+
+void HandleMessage(const RosMessage& message) {
     SPDLOG_TRACE(drake::log(), "Receiving ROS {} message", topic_);
     std::lock_guard<std::mutex> lock(received_message_mutex_);
     received_message_ = message;

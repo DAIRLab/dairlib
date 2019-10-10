@@ -1,0 +1,12 @@
+package dairlib;
+
+struct lcmt_trajectory_block
+{
+  string trajectory_name;
+  
+  int32_t num_points;
+  int32_t num_datatypes;
+  double time_vec[num_points];
+  double data_points[num_points][num_datatypes];
+  string datatypes[num_datatypes];
+}

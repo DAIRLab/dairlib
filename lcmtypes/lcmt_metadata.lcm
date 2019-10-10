@@ -1,0 +1,10 @@
+package dairlib;
+
+struct lcmt_metadata 
+{
+  boolean git_dirty_flag;
+  string datatime;
+  string name;
+  string description;
+  string git_commit_hash;
+}

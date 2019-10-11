@@ -6,31 +6,31 @@
 
 #include "dairlib/lcmt_saved_traj.hpp"
 
-static const int MAX_FILE_SIZE_IN_BYTES = 10000000;
-
 namespace dairlib{
 
 class LcmTrajectory{
 public:
 	struct Trajectory{
+		Trajectory();
+		Trajectory(std::string traj_name, const lcmt_trajectory_block& traj_block);
 		std::string traj_name;
 		Eigen::VectorXd time_vector;
 		Eigen::MatrixXd datapoints;
 		std::vector<std::string> datatypes;
 	};
 
-	LcmTrajectory(std::vector<Trajectory> trajectories, 
-								std::vector<std::string> trajectory_names, 
-								std::string name = "DEFAULT_NAME", 
-								std::string description = "DEFAULT_DESCRIPTION");
+	LcmTrajectory(const std::vector<Trajectory>& trajectories, 
+								const std::vector<std::string>& trajectory_names, 
+								const std::string& name = "DEFAULT_NAME", 
+								const std::string& description = "DEFAULT_DESCRIPTION");
 
-	LcmTrajectory(lcmt_saved_traj trajectory);
+	LcmTrajectory(const lcmt_saved_traj& traj);
 
 	lcmt_saved_traj generateLcmObject() const;
 
 	void writeToFile(std::string filepath);
 
-	LcmTrajectory loadFromFile(std::string filepath);
+	lcmt_saved_traj loadFromFile(std::string filepath);
 
 private:
 	lcmt_metadata constructMetadataObject(	std::string name, 

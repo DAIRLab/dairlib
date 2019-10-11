@@ -24,7 +24,23 @@ LcmTrajectory::LcmTrajectory(const vector<Trajectory>& trajectories,
 				const string& name, 
 				const string& description):
 				trajectory_names_(trajectory_names){
+	int index = 0;
+	for (string name : trajectory_names_){
+		trajectories_[name] = trajectories[index++];
+	}
 	metadata_ = constructMetadataObject(name, description);
+	// serializer = Serializer<lcmt_saved_traj>();
+}
+
+LcmTrajectory::LcmTrajectory(const lcmt_saved_traj& traj){
+	metadata_ = traj.metadata;
+	trajectories_ = unordered_map<string, Trajectory>();
+	trajectory_names_ = vector<std::string>();
+	for (int i = 0; i < traj.num_trajectories; ++i) {
+		string traj_name = traj.trajectory_names[i];
+		trajectory_names_.push_back(traj_name);
+		trajectories_[traj_name] = Trajectory(traj_name, traj.trajectories[i]);
+	}
 	// serializer = Serializer<lcmt_saved_traj>();
 }
 
@@ -40,19 +56,6 @@ LcmTrajectory::Trajectory::Trajectory(string traj_name, const lcmt_trajectory_bl
 		this->datapoints.row(i) = VectorXd::Map(&traj_block.datapoints[i][0], 
 																						num_datatypes);
 	}
-	// this->datapoints = Map<const Matrix<double, Dynamic, Dynamic, RowMajor>>(traj_block.datapoints.data(), num_points, num_datatypes);
-}
-
-LcmTrajectory::LcmTrajectory(const lcmt_saved_traj& traj){
-	metadata_ = traj.metadata;
-	trajectories_ = unordered_map<string, Trajectory>();
-	trajectory_names_ = vector<std::string>();
-	for (int i = 0; i < traj.num_trajectories; ++i) {
-		string traj_name = traj.trajectory_names[i];
-		trajectory_names_.push_back(traj_name);
-		trajectories_[traj_name] = Trajectory(traj_name, traj.trajectories[i]);
-	}
-	// serializer = Serializer<lcmt_saved_traj>();
 }
 
 lcmt_saved_traj LcmTrajectory::generateLcmObject() const{

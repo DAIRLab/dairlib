@@ -81,7 +81,10 @@ HybridDircon<T>::HybridDircon(
       impulse_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraints(), "impulse[" + std::to_string(i) + "]"));
     }
 
-    auto constraint = std::make_shared<DirconDynamicConstraint<T>>(plant_, *constraints_[i]);
+    // slack variable for unit norm constraint of quaternion floating-base
+    int num_quat_slack = (multibody::isQuaternion(plant))? 1 : 0;
+
+    auto constraint = std::make_shared<DirconDynamicConstraint<T>>(plant_, *constraints_[i], num_quat_slack);
 
     DRAKE_ASSERT(static_cast<int>(constraint->num_constraints()) == num_states());
 
@@ -94,6 +97,9 @@ HybridDircon<T>::HybridDircon(
       int time_index = mode_start_[i] + j;
       vector<VectorXDecisionVariable> x_next;
 
+      // gamma is slack variable used to scale quaternion norm to 1.
+      auto gamma = NewContinuousVariables(num_quat_slack, "gamma_"+ std::to_string(i) + "_" + std::to_string(j));
+
       AddConstraint(constraint,
                     {h_vars().segment(time_index,1),
                      state_vars_by_mode(i, j),
@@ -101,7 +107,8 @@ HybridDircon<T>::HybridDircon(
                      u_vars().segment(time_index * num_inputs(), num_inputs() * 2),
                      force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i) * 2),
                      collocation_force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
-                     collocation_slack_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i))});
+                     collocation_slack_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
+                     gamma});
 
     }
 
@@ -126,25 +133,28 @@ HybridDircon<T>::HybridDircon(
                    force_vars(i).segment(0, num_kinematic_constraints(i)),
                    offset_vars(i)});
 
+    // Only add the end constraint if the length inside the mode is greater than 1.
+    // (The first and the last timestamp are the same, if the length inside the mode is 1.)
+    if (mode_lengths_[i] > 1) {
+      auto kinematic_constraint_end = std::make_shared<DirconKinematicConstraint<T>>(plant_, *constraints_[i],
+        options[i].getConstraintsRelative(), options[i].getEndType());
+      AddConstraint(kinematic_constraint_end,
+                    {state_vars_by_mode(i, mode_lengths_[i] - 1),
+                     u_vars().segment((mode_start_[i] + mode_lengths_[i] - 1) * num_inputs(), num_inputs()),
+                     force_vars(i).segment((mode_lengths_[i]-1) * num_kinematic_constraints(i), num_kinematic_constraints(i)),
+                     offset_vars(i)});
+    }
 
-    auto kinematic_constraint_end = std::make_shared<DirconKinematicConstraint<T>>(plant_, *constraints_[i],
-      options[i].getConstraintsRelative(), options[i].getEndType());
-    AddConstraint(kinematic_constraint_end,
-                  {state_vars_by_mode(i, mode_lengths_[i] - 1),
-                   u_vars().segment((mode_start_[i] + mode_lengths_[i] - 1) * num_inputs(), num_inputs()),
-                   force_vars(i).segment((mode_lengths_[i]-1) * num_kinematic_constraints(i), num_kinematic_constraints(i)),
-                   offset_vars(i)});
 
-
-    //Add constraints on force and impulse variables
-    for (int l = 0; l < mode_lengths_[i] - 1; l++) {
+    //Add constraints on force
+    for (int l = 0; l < mode_lengths_[i]; l++) {
       int start_index = l*num_kinematic_constraints(i);
       for (int j = 0; j < constraints_[i]->getNumConstraintObjects(); j++) {
         DirconKinematicData<T>* constraint_j = constraints_[i]->getConstraint(j);
-        start_index += constraint_j->getLength();
         for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
           AddConstraint(constraint_j->getForceConstraint(k), force_vars(i).segment(start_index, constraint_j->getLength()));
         }
+        start_index += constraint_j->getLength();
       }
     }
 

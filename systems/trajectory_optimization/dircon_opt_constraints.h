@@ -53,7 +53,8 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
 
  public:
   DirconDynamicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                          DirconKinematicDataSet<T>& constraints);
+                          DirconKinematicDataSet<T>& constraints,
+                          int num_quat_slack = 0);
 
   ~DirconDynamicConstraint() override = default;
 
@@ -69,7 +70,8 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
   DirconDynamicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                           DirconKinematicDataSet<T>& constraints,
                           int num_positions, int num_velocities, int num_inputs,
-                          int num_kinematic_constraints);
+                          int num_kinematic_constraints,
+                          int num_quat_slack);
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   DirconKinematicDataSet<T>* constraints_;
@@ -78,6 +80,7 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
   const int num_kinematic_constraints_{0};
   const int num_positions_{0};
   const int num_velocities_{0};
+  const int num_quat_slack_{0};
 };
 
 

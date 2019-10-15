@@ -19,3 +19,15 @@ cc_library(
         "@lcm"
     ],
 )
+
+cc_test(
+    name = "lcm_trajectory_saver_test",
+    srcs = ["test/lcm_trajectory_test.cc"],
+    deps = [
+            "@gtest//:main",
+            "//lcm:lcm_trajectory_saver",
+            "//common",
+            "@drake//:drake_shared_library",
+            ],
+    size = "small"
+)

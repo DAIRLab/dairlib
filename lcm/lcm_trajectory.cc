@@ -83,6 +83,7 @@ lcmt_saved_traj LcmTrajectory::generateLcmObject() const{
 
 void LcmTrajectory::writeToFile(string filepath){
 	std::vector<uint8_t> bytes;
+	drake::systems::lcm::Serializer<lcmt_saved_traj> serializer;
 	serializer.Serialize(*AbstractValue::Make(generateLcmObject()), &bytes);
 
 	std::ofstream fout(filepath);
@@ -93,7 +94,7 @@ void LcmTrajectory::writeToFile(string filepath){
 lcmt_saved_traj LcmTrajectory::loadFromFile(string filepath){
 	// std::vector<uint8_t> bytes( std::istreambuf_iterator<char>(infile),
 														// std::istreambuf_iterator<char>());
-
+	drake::systems::lcm::Serializer<lcmt_saved_traj> serializer;
 	std::ifstream inFile(filepath, std::ios_base::binary);
 
 	inFile.seekg(0, std::ios_base::end);

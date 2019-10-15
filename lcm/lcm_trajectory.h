@@ -20,9 +20,9 @@ public:
 	};
 
 	LcmTrajectory(const std::vector<Trajectory>& trajectories, 
-								const std::vector<std::string>& trajectory_names, 
-								const std::string& name = "DEFAULT_NAME", 
-								const std::string& description = "DEFAULT_DESCRIPTION");
+				const std::vector<std::string>& trajectory_names, 
+				const std::string& name = "DEFAULT_NAME", 
+				const std::string& description = "DEFAULT_DESCRIPTION");
 
 	LcmTrajectory(const lcmt_saved_traj& traj);
 
@@ -34,9 +34,8 @@ public:
 
 private:
 	lcmt_metadata constructMetadataObject(	std::string name, 
-																			std::string description) const;
+											std::string description) const;
 
-	drake::systems::lcm::Serializer<lcmt_saved_traj> serializer;
 	lcmt_metadata metadata_;
 	std::unordered_map<std::string, Trajectory> trajectories_;
 	std::vector<std::string> trajectory_names_;

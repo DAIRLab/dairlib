@@ -237,7 +237,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   drake::systems::Simulator<double> simulator(*diagram);
   simulator.set_target_realtime_rate(1);
   simulator.Initialize();
-  simulator.StepTo(0.5);
+  simulator.AdvanceTo(0.5);
 }
 
 
@@ -677,13 +677,13 @@ void DoMain(double stride_length,
   //   cout << element.first << " = " << element.second << endl;
   // cout << "\n";
 
-  // position[0] = 0
-  // position[1] = 1
-  // position[2] = 2
-  // position[3] = 3
-  // position[4] = 4
-  // position[5] = 5
-  // position[6] = 6
+  // base_qw = 0
+  // base_qx = 1
+  // base_qy = 2
+  // base_qz = 3
+  // base_x = 4
+  // base_y = 5
+  // base_z = 6
   // hip_roll_left = 7
   // hip_roll_right = 8
   // hip_yaw_left = 9
@@ -743,9 +743,6 @@ void DoMain(double stride_length,
   // Set up contact/distance constraints and construct dircon
   // parameters
   bool is_quaternion = multibody::isQuaternion(plant);
-  bool standing = true;
-  bool set_second_contact_manually = false;
-  bool set_both_contact_pos_manually = false;
 
   // Scaling paramters
   // double omega_scale = 10;  // 10
@@ -764,15 +761,15 @@ void DoMain(double stride_length,
   Vector3d pt_front_contact(-0.0457, 0.112, 0);
   Vector3d pt_rear_contact(0.088, 0, 0);
   bool isXZ = false;
-  Eigen::Vector2d ground_rp(0, ground_incline);  // gournd incline in roll pitch
+  // Eigen::Vector2d ground_rp(0, ground_incline);  // gournd incline in roll pitch
   auto left_toe_front_constraint = DirconPositionData<double>(plant, toe_left,
-                                   pt_front_contact, isXZ, ground_rp);
+                                   pt_front_contact, isXZ/*, ground_rp*/);
   auto left_toe_rear_constraint = DirconPositionData<double>(plant, toe_left,
-                                  pt_rear_contact, isXZ, ground_rp);
+                                  pt_rear_contact, isXZ/*, ground_rp*/);
   auto right_toe_front_constraint = DirconPositionData<double>(plant, toe_right,
-                                    pt_front_contact, isXZ, ground_rp);
+                                    pt_front_contact, isXZ/*, ground_rp*/);
   auto right_toe_rear_constraint = DirconPositionData<double>(plant, toe_right,
-                                   pt_rear_contact, isXZ, ground_rp);
+                                   pt_rear_contact, isXZ/*, ground_rp*/);
   Vector3d normal(0, 0, 1);
   double mu = 1;
   left_toe_front_constraint.addFixedNormalFrictionConstraints(normal, mu);
@@ -797,72 +794,34 @@ void DoMain(double stride_length,
                                    heel_spring_right, pt_on_heel_spring,
                                    rod_length);
 
-  // Relaxed constraint of rear contact point
-  std::vector<bool> row_idx_set_to_0(3, false);
-  row_idx_set_to_0[0] = true;
-  auto left_toe_rear_indpt_constraint = DirconPositionData<double>(plant,
-                                        toe_left, pt_rear_contact, isXZ,
-                                        ground_rp, false, row_idx_set_to_0);
-  auto right_toe_rear_indpt_constraint = DirconPositionData<double>(plant,
-                                         toe_right, pt_rear_contact, isXZ,
-                                         ground_rp, false, row_idx_set_to_0);
-  left_toe_rear_indpt_constraint.addFixedNormalFrictionConstraints(normal, mu);
-  right_toe_rear_indpt_constraint.addFixedNormalFrictionConstraints(normal, mu);
+  // get rid of redundant constraint
+  vector<int> skip_constraint_inds;
+  skip_constraint_inds.push_back(3);
+  skip_constraint_inds.push_back(9);
 
-  // Compose different types of stance (we call front contact toe and rear
-  // contact heel here)
   // Double stance all four contacts
+  // 0 1 2 | 3 4 5 | 6 7 8 | 9 10 11 | 12 13
+  // 0 1 2 |   4 5 | 6 7 8 |   10 11 | 12 13
+  // 0 1 2 |   3 4 | 5 6 7 |   8  9  | 10 11
+
   vector<DirconKinematicData<double>*> double_stance_all_constraint;
   double_stance_all_constraint.push_back(&left_toe_front_constraint);
-  double_stance_all_constraint.push_back(&left_toe_rear_indpt_constraint);
+  double_stance_all_constraint.push_back(&left_toe_rear_constraint);
   double_stance_all_constraint.push_back(&right_toe_front_constraint);
-  double_stance_all_constraint.push_back(&right_toe_rear_indpt_constraint);
+  double_stance_all_constraint.push_back(&right_toe_rear_constraint);
   double_stance_all_constraint.push_back(&distance_constraint_left);
   double_stance_all_constraint.push_back(&distance_constraint_right);
   auto double_all_dataset = DirconKinematicDataSet<double>(plant,
-                            &double_stance_all_constraint);
+                            &double_stance_all_constraint, skip_constraint_inds);
   auto double_all_options = DirconOptions(double_all_dataset.countConstraints());
   double dist = (pt_front_contact - pt_rear_contact).norm();
-  if (set_both_contact_pos_manually) {
-    double_all_options.setConstraintRelative(0, false);
-    double_all_options.setConstraintRelative(1, false);
-    double_all_options.setPhiValue(0, 0);
-    double_all_options.setPhiValue(1, 0.12);
-    double_all_options.setConstraintRelative(3, false);
-    double_all_options.setConstraintRelative(4, false);
-    double_all_options.setPhiValue(3, -dist);
-    double_all_options.setPhiValue(4, 0.12);
-    double_all_options.setConstraintRelative(6, false);
-    double_all_options.setConstraintRelative(7, false);
-    double_all_options.setPhiValue(6, 0);
-    double_all_options.setPhiValue(7, -0.12);
-    double_all_options.setConstraintRelative(9, false);
-    double_all_options.setConstraintRelative(10, false);
-    double_all_options.setPhiValue(9, -dist);
-    double_all_options.setPhiValue(10, -0.12);
-  } else if (set_second_contact_manually) {
-    double_all_options.setConstraintRelative(0, false);
-    double_all_options.setConstraintRelative(1, false);
-    double_all_options.setPhiValue(0, 0);
-    double_all_options.setPhiValue(1, 0.12);
-    double_all_options.setConstraintRelative(3, true);
-    double_all_options.setConstraintRelative(4, true);
-    double_all_options.setConstraintRelative(6, false);
-    double_all_options.setConstraintRelative(7, false);
-    double_all_options.setPhiValue(6, 0);
-    double_all_options.setPhiValue(7, -0.12);
-    double_all_options.setConstraintRelative(9, true);
-    double_all_options.setConstraintRelative(10, true);
-  } else {
-    double_all_options.setConstraintRelative(0, true);
-    double_all_options.setConstraintRelative(1, true);
-    double_all_options.setConstraintRelative(3, true);
-    double_all_options.setConstraintRelative(4, true);
-    double_all_options.setConstraintRelative(6, true);
-    double_all_options.setConstraintRelative(7, true);
-    double_all_options.setConstraintRelative(9, true);
-    double_all_options.setConstraintRelative(10, true);
-  }
+  double_all_options.setConstraintRelative(0, true);
+  double_all_options.setConstraintRelative(1, true);
+  double_all_options.setConstraintRelative(3, true);
+  double_all_options.setConstraintRelative(5, true);
+  double_all_options.setConstraintRelative(6, true);
+  double_all_options.setConstraintRelative(8, true);
+  cout << "DOUBLE CHECK if you are setting the relative constraint correctly.\n";
 
   // Stated in the MultipleShooting class:
   vector<int> num_time_samples;
@@ -945,11 +904,41 @@ void DoMain(double stride_length,
   }
 
   // hieght constraint
-  trajopt->AddLinearConstraint(x0(positions_map.at("position[6]")) == 1);
-  trajopt->AddLinearConstraint(xmid(positions_map.at("position[6]")) == 0.75);
+  trajopt->AddLinearConstraint(x0(positions_map.at("base_z")) == 1);
+  trajopt->AddLinearConstraint(xmid(positions_map.at("base_z")) == 0.75);
 
   // periodic constraints
   trajopt->AddLinearConstraint(x0 == xf);
+
+  // create joint/motor names
+  vector<std::pair<string, string>> l_r_pairs {
+    std::pair<string, string>("_left", "_right"),
+    std::pair<string, string>("_right", "_left"),
+  };
+  vector<string> asy_joint_names {
+    "hip_roll",
+    "hip_yaw",
+  };
+  vector<string> sym_joint_names {
+    "hip_pitch",
+    "knee",
+    "ankle_joint",
+    "toe"
+  };
+  vector<string> joint_names {};
+  vector<string> motor_names {};
+  for (auto l_r_pair : l_r_pairs) {
+    for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
+      joint_names.push_back(asy_joint_names[i] + l_r_pair.first);
+      motor_names.push_back(asy_joint_names[i] + l_r_pair.first + "_motor");
+    }
+    for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
+      joint_names.push_back(sym_joint_names[i] + l_r_pair.first);
+      if (sym_joint_names[i].compare("ankle_joint") != 0) {
+        motor_names.push_back(sym_joint_names[i] + l_r_pair.first + "_motor");
+      }
+    }
+  }
 
   // joint limits
   for (const auto & member : joint_names) {
@@ -1132,14 +1121,20 @@ void DoMain(double stride_length,
       xi_init << q_init.head(4) / quaternion_scale,
               q_init.tail(n_q - 4),
               VectorXd::Zero(n_v);
+      // cout << "xi.size() = " << xi.size() << endl;
+      // cout << "xi_init.size() = " << xi_init.size() << endl;
       trajopt->SetInitialGuess(xi, xi_init);
 
       auto ui = trajopt->input(i);
+      // cout << "ui.size() = " << ui.size() << endl;
+      // cout << "u_init.size() = " << u_init.size() << endl;
       trajopt->SetInitialGuess(ui, u_init / input_scale);
     }
     for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
       for (int index = 0; index < num_time_samples[mode]; index++) {
         auto lambdai = trajopt->force(mode, index);
+        // cout << "lambdai.size() = " << lambdai.size() << endl;
+        // cout << "lambda_init.size() = " << lambda_init.size() << endl;
         trajopt->SetInitialGuess(lambdai, lambda_init / force_scale);
       }
     }
@@ -1238,7 +1233,7 @@ void DoMain(double stride_length,
     drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(.1);
     simulator.Initialize();
-    simulator.StepTo(pp_xtraj.end_time());
+    simulator.AdvanceTo(pp_xtraj.end_time());
   }
 
   return;

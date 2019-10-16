@@ -8,8 +8,10 @@ namespace dairlib {
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
+using Eigen::VectorXd;
 using Eigen::Matrix3d;
 using Eigen::Matrix2d;
+using Eigen::MatrixXd;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::multibody::Body;

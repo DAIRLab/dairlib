@@ -47,6 +47,7 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
     }
   }
 
+  constraint_count_without_skipping_ = constraint_count_;
   constraint_count_ -= skip_constraint_inds.size();
 
   c_ = VectorX<T>(total_count);
@@ -109,7 +110,10 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
     right_hand_side_ = -right_hand_side_ +
         plant_.MakeActuationMatrix() * input +
         plant_.CalcGravityGeneralizedForces(context) +
-        getJ().transpose() * forces;
+        J_.transpose() * forces;
+    std::cout << "forces.size() = " << forces.size() << std::endl;
+    std::cout << "getJ().rows() = " << getJ().rows() << std::endl;
+    std::cout << "getJ().cols() = " << getJ().cols() << std::endl;
 
     vdot_ = M_.llt().solve(right_hand_side_);
 
@@ -128,6 +132,11 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
 template <typename T>
 int DirconKinematicDataSet<T>::countConstraints() {
   return constraint_count_;
+}
+
+template <typename T>
+int DirconKinematicDataSet<T>::countConstraintsWithoutSkipping() {
+  return constraint_count_without_skipping_;
 }
 
 template <typename T>
@@ -151,6 +160,11 @@ MatrixX<T> DirconKinematicDataSet<T>::getJ() {
 }
 
 template <typename T>
+MatrixX<T> DirconKinematicDataSet<T>::getJWithoutSkipping() {
+  return J_;
+}
+
+template <typename T>
 VectorX<T> DirconKinematicDataSet<T>::getJdotv() {
   return constraint_map_ * Jdotv_;
 }
@@ -168,6 +182,11 @@ VectorX<T> DirconKinematicDataSet<T>::getVDot() {
 template <typename T>
 VectorX<T> DirconKinematicDataSet<T>::getXDot() {
   return xdot_;
+}
+
+template <typename T>
+MatrixX<double> DirconKinematicDataSet<T>::getConstraintMap() {
+  return constraint_map_;
 }
 
 template <typename T>

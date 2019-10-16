@@ -22,15 +22,19 @@ class DirconKinematicDataSet {
   drake::VectorX<T> getC();
   drake::VectorX<T> getCDot();
   drake::MatrixX<T> getJ();
+  drake::MatrixX<T> getJWithoutSkipping();
   drake::VectorX<T> getJdotv();
   drake::VectorX<T> getCDDot();
   drake::VectorX<T> getVDot();
   drake::VectorX<T> getXDot();
 
+  drake::MatrixX<double> getConstraintMap();
+
   DirconKinematicData<T>* getConstraint(int index);
 
   int getNumConstraintObjects();
   int countConstraints();
+  int countConstraintsWithoutSkipping();
 
  private:
   // Key for the data cache--note that these are VectorXd, and not VectorX<T>
@@ -118,6 +122,7 @@ class DirconKinematicDataSet {
   int num_positions_;
   int num_velocities_;
   int constraint_count_;
+  int constraint_count_without_skipping_;
   drake::VectorX<T> c_;
   drake::VectorX<T> cdot_;
   drake::MatrixX<T> J_;

@@ -114,7 +114,7 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
     int num_quat_slack) :
   DirconDynamicConstraint(plant, constraints, plant.num_positions(),
                           plant.num_velocities(), plant.num_actuators(),
-                          constraints.countConstraints(),
+                          constraints.countConstraintsWithoutSkipping(),
                           num_quat_slack) {}
 
 template <typename T>
@@ -181,7 +181,7 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   auto g = constraints_->getXDot();
   VectorX<T> vc_in_qdot_space(num_positions_);
   plant_.MapVelocityToQDot(*contextcol,
-      constraints_->getJ().transpose()*vc, &vc_in_qdot_space);
+      constraints_->getJWithoutSkipping().transpose()*vc, &vc_in_qdot_space);
   g.head(num_positions_) += vc_in_qdot_space;
 
   // The slack variable allows the quaternion to stay on a unit sphere.
@@ -345,7 +345,7 @@ DirconImpactConstraint<T>::DirconImpactConstraint(
     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints) :
   DirconImpactConstraint(plant, constraints, plant.num_positions(),
                          plant.num_velocities(),
-                         constraints.countConstraints()) {}
+                         constraints.countConstraintsWithoutSkipping()) {}
 
 template <typename T>
 DirconImpactConstraint<T>::DirconImpactConstraint(
@@ -390,7 +390,7 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
   MatrixX<T> M(num_velocities_, num_velocities_);
   plant_.CalcMassMatrixViaInverseDynamics(*context, &M);
 
-  *y = M*(v1 - v0) - constraints_->getJ().transpose()*impulse;
+  *y = M*(v1 - v0) - constraints_->getJWithoutSkipping().transpose()*impulse;
 }
 
 // Explicitly instantiates on the most common scalar types.

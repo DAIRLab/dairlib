@@ -815,6 +815,7 @@ void DoMain(double stride_length,
                             &double_stance_all_constraint, skip_constraint_inds);
   auto double_all_options = DirconOptions(double_all_dataset.countConstraints());
   double dist = (pt_front_contact - pt_rear_contact).norm();
+  // Be careful in setting relative constraint, because we also skip constraints.
   double_all_options.setConstraintRelative(0, true);
   double_all_options.setConstraintRelative(1, true);
   double_all_options.setConstraintRelative(3, true);

@@ -1,3 +1,5 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
@@ -25,7 +27,7 @@ cc_test(
     srcs = ["test/lcm_trajectory_test.cc"],
     deps = [
             "@gtest//:main",
-            "//lcm:lcm_trajectory_saver",
+            ":lcm_trajectory_saver",
             "//common",
             "@drake//:drake_shared_library",
             ],

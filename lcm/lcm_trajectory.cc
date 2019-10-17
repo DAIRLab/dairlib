@@ -1,9 +1,12 @@
 #include <chrono>
+#include <algorithm>
+#include <memory>
+#include <utility>
 #include <cstring>
 #include <fstream>
 
 #include "drake/common/value.h"
-#include "lcm_trajectory.h"
+#include "lcm/lcm_trajectory.h"
 
 using drake::AbstractValue;
 using std::vector;
@@ -43,7 +46,7 @@ LcmTrajectory::LcmTrajectory(const lcmt_saved_traj& traj) {
 }
 
 LcmTrajectory::LcmTrajectory(const string& filepath) {
-  return LcmTrajectory(loadFromFile(filepath));
+  LcmTrajectory(loadFromFile(filepath));
 }
 
 LcmTrajectory::Trajectory::Trajectory(string traj_name,
@@ -109,13 +112,14 @@ lcmt_saved_traj LcmTrajectory::loadFromFile(const std::string filepath) {
 
   std::vector<uint8_t> bytes;
   bytes.reserve(length);
-  std::copy( std::istreambuf_iterator<char>(inFile),
-             std::istreambuf_iterator<char>(),
-             std::back_inserter(bytes) );
+  std::copy(std::istreambuf_iterator<char>(inFile),
+            std::istreambuf_iterator<char>(),
+            std::back_inserter(bytes) );
 
   lcmt_saved_traj traj;
   std::unique_ptr<AbstractValue> traj_value = AbstractValue::Make(traj);
-  serializer.Deserialize((void *)bytes.data(), (int)bytes.size(),
+  serializer.Deserialize(reinterpret_cast<void*>(bytes.data()),
+                         static_cast<int>(bytes.size()),
                          traj_value.release());
   return traj_value->get_value<lcmt_saved_traj>();
 }
@@ -126,8 +130,8 @@ lcmt_metadata LcmTrajectory::constructMetadataObject(string name,
 
   metadata.name = name;
   metadata.description = description;
-  // TODO: autofill git details
+  // TODO(yangwill): autofill git details
   return metadata;
 }
 
-} // dairlib
+}  // namespace dairlib

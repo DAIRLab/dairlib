@@ -1,7 +1,9 @@
+#pragma once
+
+#include <Eigen/Dense>
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include <Eigen/Dense>
 #include "drake/systems/lcm/serializer.h"
 
 #include "dairlib/lcmt_saved_traj.hpp"
@@ -18,15 +20,15 @@ class LcmTrajectory {
     Eigen::MatrixXd datapoints;
     std::vector<std::string> datatypes;
   };
-
+  LcmTrajectory();
   LcmTrajectory(const std::vector<Trajectory>& trajectories,
                 const std::vector<std::string>& trajectory_names,
                 const std::string& name = "DEFAULT_NAME",
                 const std::string& description = "DEFAULT_DESCRIPTION");
 
-  LcmTrajectory(const lcmt_saved_traj& traj);
+  explicit LcmTrajectory(const lcmt_saved_traj& traj);
 
-  LcmTrajectory(const std::string filepath);
+  explicit LcmTrajectory(const std::string& filepath);
 
   lcmt_saved_traj generateLcmObject() const;
 
@@ -35,11 +37,13 @@ class LcmTrajectory {
   lcmt_metadata metadata_;
   std::unordered_map<std::string, Trajectory> trajectories_;
   std::vector<std::string> trajectory_names_;
- private:
-  lcmt_metadata constructMetadataObject(	std::string name,
-                                          std::string description) const;
+
   lcmt_saved_traj loadFromFile(const std::string filepath);
+
+ private:
+  lcmt_metadata constructMetadataObject(std::string name,
+                                        std::string description) const;
 };
 
 
-} // dairlib
+}  // namespace dairlib

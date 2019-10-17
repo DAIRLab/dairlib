@@ -49,12 +49,13 @@ cc_library(
   hdrs = ["cassie_rbt_state_estimator.h",],
   deps = [
     "@drake//:drake_shared_library",
+    "@inekf//src:InEKF",
     "//systems/framework:vector",
     "//examples/Cassie/datatypes:cassie_out_t",
     "//examples/Cassie/datatypes:cassie_names",
     "//attic/multibody:utils",
     ":cassie_utils",
-    "//examples/Cassie/inekf:InEKF",
+    # "//examples/Cassie/inekf:InEKF",
   ]
 )
 

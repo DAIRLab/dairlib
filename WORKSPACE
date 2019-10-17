@@ -8,7 +8,7 @@ workspace(name = "dairlib")
 # If the environment variable DAIRLIB_LOCAL_DRAKE_PATH is set, it will use
 # a local version, ad the specified path. Otherwise, it will get a pegged
 # revision from github.
-# As an example, 
+# As an example,
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
@@ -84,3 +84,50 @@ http_archive(
     urls = ['https://github.com/ros/genpy/archive/0.6.5.tar.gz'],
     strip_prefix='genpy-0.6.5',
 )
+
+
+# dairlib can use either a local version of invariant-ekf or a pegged revision
+# If the environment variable DAIRLIB_LOCAL_INEKF_PATH is set, it will use
+# a local version, ad the specified path. Otherwise, it will get a pegged
+# revision from github.
+# As an example,
+#  export DAIRLIB_LOCAL_INEKF_PATH=/home/user/workspace/invariant-ekf
+
+# Choose a revision of Drake to use.
+INEKF_COMMIT = "3622dbebb8a4a8e3f11b5ae43b613eb04602bcb0"
+INEKF_CHECKSUM = "e1e2377dfb3648f0989b392d603cec5640c01e575fb6526e573a2896399115db"
+
+# Before changing the COMMIT, temporarily uncomment the next line so that Bazel
+# displays the suggested new value for the CHECKSUM.
+# INEKF_CHECKSUM = "0" * 64
+
+# Load an environment variable.
+environ_repository(name = "environ_inekf", vars = ["DAIRLIB_LOCAL_INEKF_PATH"])
+load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
+
+# The WORKSPACE file does not permit `if` statements, so we handle the local
+# option by toying with the repository names.  The selected repository is named
+# "@inekf", the other is named "@inekf_ignored".
+(_http_inekf_repo_name, _local_inekf_repo_name) = (
+    "inekf_ignored" if DAIRLIB_LOCAL_INEKF_PATH else "inekf",
+    "inekf" if DAIRLIB_LOCAL_INEKF_PATH else "inekf_ignored",
+)
+
+# Maybe download Drake.
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = _http_inekf_repo_name,
+    urls = [x.format(INEKF_COMMIT) for x in [
+        "https://github.com/DAIRLab/invariant-ekf/archive/{}.tar.gz",
+    ]],
+    sha256 = INEKF_CHECKSUM,
+    strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
+)
+
+# Maybe use a local checkout of Drake.
+print("Using DAIRLIB_LOCAL_INEKF_PATH={}".format(DAIRLIB_LOCAL_INEKF_PATH)) if DAIRLIB_LOCAL_INEKF_PATH else None  # noqa
+local_repository(
+    name = _local_inekf_repo_name,
+    path = DAIRLIB_LOCAL_INEKF_PATH,
+)
+

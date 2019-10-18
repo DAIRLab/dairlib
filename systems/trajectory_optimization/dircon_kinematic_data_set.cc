@@ -8,6 +8,7 @@
 namespace dairlib {
 
 using std::vector;
+using Eigen::MatrixXd;
 using drake::VectorX;
 using drake::MatrixX;
 using drake::AutoDiffXd;
@@ -18,7 +19,8 @@ using drake::math::DiscardGradient;
 template <typename T>
 DirconKinematicDataSet<T>::DirconKinematicDataSet(
     const MultibodyPlant<T>& plant,
-    vector<DirconKinematicData<T>*>* constraints) :
+    vector<DirconKinematicData<T>*>* constraints,
+    vector<int> skip_constraint_inds) :
     plant_(plant),
     constraints_(constraints),
     num_positions_(plant.num_positions()),
@@ -29,11 +31,29 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
   for (uint i=0; i < constraints_->size(); i++) {
     constraint_count_ += (*constraints_)[i]->getLength();
   }
-  c_ = VectorX<T>(constraint_count_);
-  cdot_ = VectorX<T>(constraint_count_);
-  J_ = MatrixX<T>(constraint_count_, num_velocities_);
-  Jdotv_ = VectorX<T>(constraint_count_);
-  cddot_ = VectorX<T>(constraint_count_);
+
+  int total_count = constraint_count_;  // includes skipped constraints
+
+  // We will not include indices givein in skip_constraint_inds
+  constraint_map_ = MatrixXd::Zero(
+    constraint_count_ - skip_constraint_inds.size(), constraint_count_);
+  int j = 0;
+  for (int i = 0; i < constraint_count_; i++) {
+    if (std::find(skip_constraint_inds.begin(),
+        skip_constraint_inds.end(), i) == skip_constraint_inds.end()) {
+      // skip_constraint_inds does not contain i
+      constraint_map_(j, i) = 1;
+      j++;
+    }
+  }
+
+  constraint_count_ -= skip_constraint_inds.size();
+
+  c_ = VectorX<T>(total_count);
+  cdot_ = VectorX<T>(total_count);
+  J_ = MatrixX<T>(total_count, num_velocities_);
+  Jdotv_ = VectorX<T>(total_count);
+  cddot_ = VectorX<T>(total_count);
   vdot_ = VectorX<T>(num_velocities_);
   xdot_ = VectorX<T>(num_positions_ + num_velocities_);
   M_ = MatrixX<T>(num_velocities_, num_velocities_);
@@ -117,27 +137,27 @@ int DirconKinematicDataSet<T>::getNumConstraintObjects() {
 
 template <typename T>
 VectorX<T> DirconKinematicDataSet<T>::getC() {
-  return c_;
+  return constraint_map_ * c_;
 }
 
 template <typename T>
 VectorX<T> DirconKinematicDataSet<T>::getCDot() {
-  return cdot_;
+  return constraint_map_ * cdot_;
 }
 
 template <typename T>
 MatrixX<T> DirconKinematicDataSet<T>::getJ() {
-  return J_;
+  return constraint_map_.cast<T>() * J_;
 }
 
 template <typename T>
 VectorX<T> DirconKinematicDataSet<T>::getJdotv() {
-  return Jdotv_;
+  return constraint_map_ * Jdotv_;
 }
 
 template <typename T>
 VectorX<T> DirconKinematicDataSet<T>::getCDDot() {
-  return cddot_;
+  return constraint_map_ * cddot_;
 }
 
 template <typename T>

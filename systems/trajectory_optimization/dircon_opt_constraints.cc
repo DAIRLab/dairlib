@@ -62,7 +62,7 @@ void DirconAbstractConstraint<T>::DoEval(
 template <>
 void DirconAbstractConstraint<AutoDiffXd>::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
-  EvaluateConstraint(x,y);
+  EvaluateConstraint(x, y);
 }
 
 template <>
@@ -72,17 +72,19 @@ void DirconAbstractConstraint<double>::DoEval(
     double dx = 1e-8;
 
     VectorXd x_val = autoDiffToValueMatrix(x);
-    VectorXd y0,yi;
-    EvaluateConstraint(x_val,&y0);
+    VectorXd y0, yi;
+    EvaluateConstraint(x_val, &y0);
 
-    MatrixXd dy = MatrixXd(y0.size(),x_val.size());
+    MatrixXd dy = MatrixXd(y0.size(), x_val.size());
     for (int i=0; i < x_val.size(); i++) {
       x_val(i) += dx;
-      EvaluateConstraint(x_val,&yi);
+      EvaluateConstraint(x_val, &yi);
       x_val(i) -= dx;
       dy.col(i) = (yi - y0)/dx;
     }
     drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy, *y);
+
+    // std::cout << dy << std::endl  << std::endl << std::endl;
 
     // // central differencing
     // double dx = 1e-8;
@@ -119,7 +121,7 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
     int num_positions, int num_velocities, int num_inputs,
     int num_kinematic_constraints)
     : DirconAbstractConstraint<T>(num_positions + num_velocities,
-          1 + 2 *(num_positions+ num_velocities) + (2 * num_inputs) +
+          1 + 2 *(num_positions + num_velocities) + (2 * num_inputs) +
           (4 * num_kinematic_constraints),
           Eigen::VectorXd::Zero(num_positions + num_velocities),
           Eigen::VectorXd::Zero(num_positions + num_velocities)),
@@ -172,7 +174,10 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   auto contextcol = multibody::createContext(plant_, xcol, ucol);
   constraints_->updateData(*contextcol, lc);
   auto g = constraints_->getXDot();
-  g.head(num_positions_) += constraints_->getJ().transpose()*vc;
+  VectorX<T> vc_in_qdot_space(num_positions_);
+  plant_.MapVelocityToQDot(*contextcol,
+      constraints_->getJ().transpose()*vc, &vc_in_qdot_space);
+  g.head(num_positions_) += vc_in_qdot_space;
   *y = xdotcol - g;
 }
 
@@ -245,14 +250,47 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       type_{type}, is_constraint_relative_{is_constraint_relative},
       n_relative_{static_cast<int>(std::count(is_constraint_relative.begin(),
       is_constraint_relative.end(), true))} {
-  relative_map_ = MatrixXd::Zero(num_kinematic_constraints_, n_relative_);
-  int j = 0;
-  for (int i=0; i < num_kinematic_constraints_; i++) {
-    if (is_constraint_relative_[i]) {
-      relative_map_(i, j) = 1;
-      j++;
+  // ***Set sparsity pattern***
+  std::vector<std::pair<int, int>> sparsity;
+  // Acceleration constraints are dense in decision variables
+  for (int i = 0; i < num_kinematic_constraints_; i++) {
+    for (int j = 0; j < this->num_vars(); j++) {
+      sparsity.push_back({i, j});
     }
   }
+
+  // Velocity constraint depends on q and v only
+  if (type_ == kAll || type == kAccelAndVel) {
+    for (int i = 0; i < num_kinematic_constraints_; i++) {
+      for (int j = 0; j < num_states_; j++) {
+        sparsity.push_back({i + num_kinematic_constraints_, j});
+      }
+    }
+  }
+
+  // Position constraint only depends on q and any offset variables
+  // Set relative map in the same loop
+  if (type == kAll) {
+    relative_map_ = MatrixXd::Zero(num_kinematic_constraints_, n_relative_);
+    int k = 0;
+
+    for (int i = 0; i < num_kinematic_constraints_; i++) {
+      for (int j = 0; j < num_positions_; j++) {
+        sparsity.push_back({i + 2* num_kinematic_constraints_, j});
+      }
+
+      if (is_constraint_relative_[i]) {
+        relative_map_(i, k) = 1;
+        // ith constraint depends on kth offset variable
+        sparsity.push_back({i + 2* num_kinematic_constraints_,
+            num_states_ + num_inputs_ + num_kinematic_constraints_ + k});
+
+        k++;
+      }
+    }
+  }
+
+  this->SetGradientSparsityPattern(sparsity);
 }
 
 template <typename T>
@@ -276,12 +314,12 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
   switch (type_) {
     case kAll:
       *y = VectorX<T>(3*num_kinematic_constraints_);
-      *y << constraints_->getC() + relative_map_*offset,
-            constraints_->getCDot(), constraints_->getCDDot();
+      *y << constraints_->getCDDot(), constraints_->getCDot(),
+            constraints_->getC() + relative_map_*offset;
       break;
     case kAccelAndVel:
       *y = VectorX<T>(2*num_kinematic_constraints_);
-      *y << constraints_->getCDot(), constraints_->getCDDot();
+      *y << constraints_->getCDDot(), constraints_->getCDot();
       break;
     case kAccelOnly:
       *y = VectorX<T>(1*num_kinematic_constraints_);

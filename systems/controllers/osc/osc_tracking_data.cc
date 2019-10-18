@@ -141,6 +141,10 @@ ComTrackingData::ComTrackingData(string name,
           K_p, K_d, W, tree_w_spr, tree_wo_spr) {
 }
 
+void ComTrackingData::AddStateToTrack(int state){
+    AddState(state);
+}
+
 void ComTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr) {
   y_ = tree_w_spr_->centerOfMass(cache_w_spr);
@@ -281,7 +285,7 @@ void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
   // Get relative quaternion (from current to desired)
   Quaterniond relative_qaut = (y_quat_des * y_quat.inverse()).normalized();
   double theta = 2 * acos(relative_qaut.w());
-  Vector3d rot_axis = relative_qaut.vec() / sin(theta / 2);
+  Vector3d rot_axis = relative_qaut.vec().normalized();
 
   error_y_ = theta * rot_axis;
 }

@@ -34,6 +34,8 @@ LcmTrajectory::LcmTrajectory(const vector<Trajectory>& trajectories,
   metadata_ = constructMetadataObject(name, description);
 }
 
+LcmTrajectory::LcmTrajectory() {}
+
 LcmTrajectory::LcmTrajectory(const lcmt_saved_traj& traj) {
   metadata_ = traj.metadata;
   trajectories_ = unordered_map<string, Trajectory>();
@@ -49,6 +51,8 @@ LcmTrajectory::LcmTrajectory(const string& filepath) {
   LcmTrajectory(loadFromFile(filepath));
 }
 
+LcmTrajectory::Trajectory::Trajectory() {}
+
 LcmTrajectory::Trajectory::Trajectory(string traj_name,
                                       const lcmt_trajectory_block& traj_block) {
   int num_points = traj_block.num_points;
@@ -57,7 +61,7 @@ LcmTrajectory::Trajectory::Trajectory(string traj_name,
   this->datatypes = vector<string>(traj_block.datatypes);
   this->time_vector = VectorXd::Map(traj_block.time_vec.data(),
                                     num_points);
-  // this->datapoints = MatrixXd(num_points, num_datatypes);
+  this->datapoints = MatrixXd(num_points, num_datatypes);
   for (int i = 0; i < num_points; ++i) {
     this->datapoints.row(i) = VectorXd::Map(&traj_block.datapoints[i][0],
                                             num_datatypes);
@@ -65,14 +69,16 @@ LcmTrajectory::Trajectory::Trajectory(string traj_name,
 }
 
 lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
-  lcmt_saved_traj traj;
-  traj.num_trajectories = trajectories_.size();
+  lcmt_saved_traj traj = { };
   traj.metadata = metadata_;
+  traj.num_trajectories = trajectories_.size();
+  traj.trajectories.resize(trajectories_.size());
+  traj.trajectory_names = vector<string>();
 
-  int index = 0;
-  for (std::pair<string, Trajectory> traj_el : trajectories_) {
+  // int index = 0;
+  for (auto & traj_el : trajectories_) {
     lcmt_trajectory_block traj_block;
-    Trajectory* cpp_traj = &traj_el.second;
+    const Trajectory* cpp_traj = &traj_el.second;
 
     traj_block.num_points = cpp_traj->time_vector.size();
     traj_block.num_datatypes = cpp_traj->datatypes.size();
@@ -83,9 +89,9 @@ lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
     memcpy(&traj_block.datapoints, cpp_traj->datapoints.data(),
            sizeof(traj_block.datapoints));
 
-    traj.trajectories[index] = traj_block;
-    traj.trajectory_names[index] = traj_el.first;
-    ++index;
+    traj.trajectories.push_back(traj_block);
+    traj.trajectory_names.push_back(traj_el.first);
+    // ++index;
   }
   return traj;
 }
@@ -94,7 +100,7 @@ void LcmTrajectory::writeToFile(string filepath) {
   std::vector<uint8_t> bytes;
   drake::systems::lcm::Serializer<lcmt_saved_traj> serializer;
   serializer.Serialize(*AbstractValue::Make(generateLcmObject()), &bytes);
-
+  std::cout << "Serializer lcm object";
   std::ofstream fout(filepath);
   fout << bytes.data();
   fout.close();

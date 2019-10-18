@@ -13,14 +13,16 @@ namespace dairlib {
 class LcmTrajectory {
  public:
   struct Trajectory {
-    Trajectory();
+    Trajectory() {}
     Trajectory(std::string traj_name, const lcmt_trajectory_block& traj_block);
+
     std::string traj_name;
     Eigen::VectorXd time_vector;
     Eigen::MatrixXd datapoints;
     std::vector<std::string> datatypes;
   };
-  LcmTrajectory();
+
+  LcmTrajectory() {}
   LcmTrajectory(const std::vector<Trajectory>& trajectories,
                 const std::vector<std::string>& trajectory_names,
                 const std::string& name = "DEFAULT_NAME",
@@ -28,19 +30,18 @@ class LcmTrajectory {
 
   explicit LcmTrajectory(const lcmt_saved_traj& traj);
 
-  // explicit LcmTrajectory(const std::string& filepath);
-
-  lcmt_saved_traj generateLcmObject() const;
-
+  // Writes this LcmTrajectory object to a file specified by filepath
   void writeToFile(std::string filepath);
+
+  // Loads a saved trajectory to a lcmt_saved_traj
+  static lcmt_saved_traj loadFromFile(const std::string filepath);
 
   lcmt_metadata metadata_;
   std::unordered_map<std::string, Trajectory> trajectories_;
   std::vector<std::string> trajectory_names_;
 
-  static lcmt_saved_traj loadFromFile(const std::string filepath);
-
  private:
+  lcmt_saved_traj generateLcmObject() const;
   lcmt_metadata constructMetadataObject(std::string name,
                                         std::string description) const;
 };

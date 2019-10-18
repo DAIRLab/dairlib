@@ -28,7 +28,7 @@ class LcmTrajectory {
 
   explicit LcmTrajectory(const lcmt_saved_traj& traj);
 
-  explicit LcmTrajectory(const std::string& filepath);
+  // explicit LcmTrajectory(const std::string& filepath);
 
   lcmt_saved_traj generateLcmObject() const;
 
@@ -38,7 +38,7 @@ class LcmTrajectory {
   std::unordered_map<std::string, Trajectory> trajectories_;
   std::vector<std::string> trajectory_names_;
 
-  lcmt_saved_traj loadFromFile(const std::string filepath);
+  static lcmt_saved_traj loadFromFile(const std::string filepath);
 
  private:
   lcmt_metadata constructMetadataObject(std::string name,

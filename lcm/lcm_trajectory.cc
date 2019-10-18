@@ -47,9 +47,9 @@ LcmTrajectory::LcmTrajectory(const lcmt_saved_traj& traj) {
   }
 }
 
-LcmTrajectory::LcmTrajectory(const string& filepath) {
-  LcmTrajectory(loadFromFile(filepath));
-}
+// LcmTrajectory::LcmTrajectory(const string& filepath) {
+//   LcmTrajectory(loadFromFile(filepath));
+// }
 
 LcmTrajectory::Trajectory::Trajectory() {}
 
@@ -69,10 +69,10 @@ LcmTrajectory::Trajectory::Trajectory(string traj_name,
 }
 
 lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
-  lcmt_saved_traj traj = { };
+  lcmt_saved_traj traj;
   traj.metadata = metadata_;
   traj.num_trajectories = trajectories_.size();
-  traj.trajectories.resize(trajectories_.size());
+  // traj.trajectories.resize(trajectories_.size());
   traj.trajectory_names = vector<string>();
 
   // int index = 0;
@@ -80,15 +80,27 @@ lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
     lcmt_trajectory_block traj_block;
     const Trajectory* cpp_traj = &traj_el.second;
 
+    traj_block.trajectory_name = cpp_traj->traj_name;
     traj_block.num_points = cpp_traj->time_vector.size();
     traj_block.num_datatypes = cpp_traj->datatypes.size();
-    memcpy(&traj_block.time_vec, cpp_traj->time_vector.data(),
-           sizeof(traj_block.time_vec));
-    memcpy(&traj_block.datatypes, cpp_traj->datatypes.data(),
-           sizeof(traj_block.datatypes));
-    memcpy(&traj_block.datapoints, cpp_traj->datapoints.data(),
-           sizeof(traj_block.datapoints));
-
+    traj_block.time_vec.reserve(traj_block.num_points);
+    traj_block.datatypes.reserve(traj_block.num_datatypes);
+    traj_block.datapoints = vector<vector<double>>(traj_block.num_points,
+                            vector<double>(traj_block.num_datatypes));
+    traj_block.time_vec = vector<double>(cpp_traj->time_vector.data(),
+                                         cpp_traj->time_vector.data() +
+                                         cpp_traj->time_vector.size());
+    // memcpy(traj_block.time_vec.data(), cpp_traj->time_vector.data(),
+           // sizeof(double) * traj_block.num_points);
+    // traj_block.time_vec = vector<double>(cpp_traj->time_vector);
+    traj_block.datatypes = vector<string>(cpp_traj->datatypes);
+    // memcpy(traj_block.datatypes.data(), cpp_traj->datatypes.data(),
+    //        sizeof(double) * traj_block.num_datatypes);
+    for (int i = 0; i < traj_block.num_points; ++i) {
+      memcpy(traj_block.datapoints[i].data(),
+             cpp_traj->datapoints.data() + i * traj_block.num_datatypes,
+             sizeof(double) * traj_block.num_datatypes);
+    }
     traj.trajectories.push_back(traj_block);
     traj.trajectory_names.push_back(traj_el.first);
     // ++index;
@@ -100,9 +112,9 @@ void LcmTrajectory::writeToFile(string filepath) {
   std::vector<uint8_t> bytes;
   drake::systems::lcm::Serializer<lcmt_saved_traj> serializer;
   serializer.Serialize(*AbstractValue::Make(generateLcmObject()), &bytes);
-  std::cout << "Serializer lcm object";
   std::ofstream fout(filepath);
-  fout << bytes.data();
+  fout.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+  // fout << bytes.data();
   fout.close();
 }
 
@@ -126,7 +138,7 @@ lcmt_saved_traj LcmTrajectory::loadFromFile(const std::string filepath) {
   std::unique_ptr<AbstractValue> traj_value = AbstractValue::Make(traj);
   serializer.Deserialize(reinterpret_cast<void*>(bytes.data()),
                          static_cast<int>(bytes.size()),
-                         traj_value.release());
+                         traj_value.get());
   return traj_value->get_value<lcmt_saved_traj>();
 }
 

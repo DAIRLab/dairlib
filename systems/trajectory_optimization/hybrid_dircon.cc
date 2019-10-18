@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "drake/solvers/decision_variable.h"
 #include "drake/math/autodiff.h"
@@ -29,6 +30,8 @@ using drake::symbolic::Expression;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using std::vector;
+using std::cout;
+using std::endl;
 
 template <typename T>
 HybridDircon<T>::HybridDircon(
@@ -70,29 +73,30 @@ HybridDircon<T>::HybridDircon(
     }
 
     // initialize constraint lengths
+    num_kinematic_constraints_wo_skipping_.push_back(constraints_[i]->countConstraintsWithoutSkipping());
     num_kinematic_constraints_.push_back(constraints_[i]->countConstraints());
 
     // initialize decision variables
-    force_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraints() * num_time_samples[i], "lambda[" + std::to_string(i) + "]"));
-    collocation_force_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraints() * (num_time_samples[i] - 1), "lambda_c[" + std::to_string(i) + "]"));
-    collocation_slack_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraints() * (num_time_samples[i] - 1), "v_c[" + std::to_string(i) + "]"));
+    force_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraintsWithoutSkipping() * num_time_samples[i], "lambda[" + std::to_string(i) + "]"));
+    collocation_force_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraintsWithoutSkipping() * (num_time_samples[i] - 1), "lambda_c[" + std::to_string(i) + "]"));
+    collocation_slack_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraintsWithoutSkipping() * (num_time_samples[i] - 1), "v_c[" + std::to_string(i) + "]"));
     offset_vars_.push_back(NewContinuousVariables(options[i].getNumRelative(), "offset[" + std::to_string(i) + "]"));
     if (i > 0) {
-      impulse_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraints(), "impulse[" + std::to_string(i) + "]"));
+      impulse_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraintsWithoutSkipping(), "impulse[" + std::to_string(i) + "]"));
     }
 
     // slack variable for unit norm constraint of quaternion floating-base
     int num_quat_slack = (multibody::isQuaternion(plant))? 1 : 0;
-
-    auto constraint = std::make_shared<DirconDynamicConstraint<T>>(plant_, *constraints_[i], num_quat_slack);
-
-    DRAKE_ASSERT(static_cast<int>(constraint->num_constraints()) == num_states());
+    std::cout << "num_quat_slack = " << num_quat_slack << std::endl;
 
     // For N-1 timesteps, add a constraint which depends on the knot
     // value along with the state and input vectors at that knot and the
     // next.
 
     //Adding dynamic constraints
+    std::cout << "Adding dircon dynamics constraint...\n";
+    auto constraint = std::make_shared<DirconDynamicConstraint<T>>(plant_, *constraints_[i], num_quat_slack);
+    DRAKE_ASSERT(static_cast<int>(constraint->num_constraints()) == num_states());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
       vector<VectorXDecisionVariable> x_next;
@@ -105,14 +109,14 @@ HybridDircon<T>::HybridDircon(
                      state_vars_by_mode(i, j),
                      state_vars_by_mode(i, j+1),
                      u_vars().segment(time_index * num_inputs(), num_inputs() * 2),
-                     force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i) * 2),
-                     collocation_force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
-                     collocation_slack_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
+                     force_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i) * 2),
+                     collocation_force_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i)),
+                     collocation_slack_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i)),
                      gamma});
-
     }
 
     // Adding kinematic constraints
+    cout << "Adding dircon kinematics constraint...\n";
     auto kinematic_constraint = std::make_shared<DirconKinematicConstraint<T>>(plant_, *constraints_[i],
       options[i].getConstraintsRelative());
     for (int j = 1; j < mode_lengths_[i] - 1; j++) {
@@ -120,38 +124,45 @@ HybridDircon<T>::HybridDircon(
       AddConstraint(kinematic_constraint,
                     {state_vars_by_mode(i,j),
                      u_vars().segment(time_index * num_inputs(), num_inputs()),
-                     force_vars(i).segment(j * num_kinematic_constraints(i), num_kinematic_constraints(i)),
+                     force_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i)),
                      offset_vars(i)});
     }
 
     // special case first and last timestep based on options
+    cout << "Adding dircon kinematics constraint at the first timestep...\n";
     auto kinematic_constraint_start = std::make_shared<DirconKinematicConstraint<T>>(plant_, *constraints_[i],
       options[i].getConstraintsRelative(), options[i].getStartType());
     AddConstraint(kinematic_constraint_start,
                   {state_vars_by_mode(i,0),
                    u_vars().segment(mode_start_[i], num_inputs()),
-                   force_vars(i).segment(0, num_kinematic_constraints(i)),
+                   force_vars(i).segment(0, num_kinematic_constraints_wo_skipping(i)),
                    offset_vars(i)});
 
     // Only add the end constraint if the length inside the mode is greater than 1.
     // (The first and the last timestamp are the same, if the length inside the mode is 1.)
     if (mode_lengths_[i] > 1) {
+      cout << "Adding dircon kinematics constraint at last timestep...\n";
       auto kinematic_constraint_end = std::make_shared<DirconKinematicConstraint<T>>(plant_, *constraints_[i],
         options[i].getConstraintsRelative(), options[i].getEndType());
       AddConstraint(kinematic_constraint_end,
                     {state_vars_by_mode(i, mode_lengths_[i] - 1),
                      u_vars().segment((mode_start_[i] + mode_lengths_[i] - 1) * num_inputs(), num_inputs()),
-                     force_vars(i).segment((mode_lengths_[i]-1) * num_kinematic_constraints(i), num_kinematic_constraints(i)),
+                     force_vars(i).segment((mode_lengths_[i]-1) * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i)),
                      offset_vars(i)});
     }
 
 
     //Add constraints on force
+    cout << "Add force constraint...\n";
     for (int l = 0; l < mode_lengths_[i]; l++) {
-      int start_index = l*num_kinematic_constraints(i);
+      // cout << "l = " << l << endl;
+      int start_index = l*num_kinematic_constraints_wo_skipping(i);
       for (int j = 0; j < constraints_[i]->getNumConstraintObjects(); j++) {
+        // cout << "  j = " << j << endl;
         DirconKinematicData<T>* constraint_j = constraints_[i]->getConstraint(j);
+        // cout << "    constraint_j->getLength() = " << constraint_j->getLength() << endl;
         for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
+          // cout << "    (add constraint)\n";
           AddConstraint(constraint_j->getForceConstraint(k), force_vars(i).segment(start_index, constraint_j->getLength()));
         }
         start_index += constraint_j->getLength();
@@ -159,16 +170,18 @@ HybridDircon<T>::HybridDircon(
     }
 
     //Force cost option
+    cout << "Add force cost\n";
     if (options[i].getForceCost() != 0) {
-      auto A = options[i].getForceCost()*MatrixXd::Identity(num_kinematic_constraints(i),num_kinematic_constraints(i));
-      auto b = MatrixXd::Zero(num_kinematic_constraints(i),1);
+      auto A = options[i].getForceCost()*MatrixXd::Identity(num_kinematic_constraints_wo_skipping(i),num_kinematic_constraints_wo_skipping(i));
+      auto b = MatrixXd::Zero(num_kinematic_constraints_wo_skipping(i),1);
       for (int j=0; j <  mode_lengths_[i]; j++) {
         AddL2NormCost(A,b,force(i,j));
       }
     }
 
     if (i > 0) {
-      if (num_kinematic_constraints(i) > 0) {
+      if (num_kinematic_constraints_wo_skipping(i) > 0) {
+        cout << "Add impact dynamics constraint\n";
         auto impact_constraint = std::make_shared<DirconImpactConstraint<T>>(plant_, *constraints_[i]);
         AddConstraint(impact_constraint,
                 {state_vars_by_mode(i-1, mode_lengths_[i-1] - 1), // last state from previous mode
@@ -176,6 +189,7 @@ HybridDircon<T>::HybridDircon(
                  v_post_impact_vars_by_mode(i-1)});
 
         //Add constraints on impulse variables
+        cout << "Add impact impluse constraint\n";
         int start_index = 0;
         for (int j = 0; j < constraints_[i]->getNumConstraintObjects(); j++) {
           DirconKinematicData<T>* constraint_j = constraints_[i]->getConstraint(j);
@@ -193,6 +207,7 @@ HybridDircon<T>::HybridDircon(
 
     counter += mode_lengths_[i] - 1;
   }
+  cout << "completed construction\n";
 }
 
 template <typename T>

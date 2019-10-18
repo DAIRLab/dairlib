@@ -60,7 +60,7 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
 
   int num_states() const { return num_states_; }
   int num_inputs() const { return num_inputs_; }
-  int num_kinematic_constraints() const { return num_kinematic_constraints_; }
+  int num_kinematic_constraints_wo_skipping() const { return num_kinematic_constraints_wo_skipping_; }
 
  public:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -70,14 +70,14 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
   DirconDynamicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                           DirconKinematicDataSet<T>& constraints,
                           int num_positions, int num_velocities, int num_inputs,
-                          int num_kinematic_constraints,
+                          int num_kinematic_constraints_wo_skipping,
                           int num_quat_slack);
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   DirconKinematicDataSet<T>* constraints_;
   const int num_states_{0};
   const int num_inputs_{0};
-  const int num_kinematic_constraints_{0};
+  const int num_kinematic_constraints_wo_skipping_{0};
   const int num_positions_{0};
   const int num_velocities_{0};
   const int num_quat_slack_{0};
@@ -127,7 +127,8 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
                             std::vector<bool> is_constraint_relative,
                             DirconKinConstraintType type, int num_positions,
                             int num_velocities, int num_inputs,
-                            int num_kinematic_constraints);
+                            int num_kinematic_constraints,
+                            int num_kinematic_constraints_wo_skipping);
 
 
   const drake::multibody::MultibodyPlant<T>& plant_;
@@ -136,6 +137,7 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
   const int num_states_{0};
   const int num_inputs_{0};
   const int num_kinematic_constraints_{0};
+  const int num_kinematic_constraints_wo_skipping_{0};
   const int num_positions_{0};
   const int num_velocities_{0};
   const DirconKinConstraintType type_{kAll};
@@ -185,14 +187,14 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
   DirconImpactConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                          DirconKinematicDataSet<T>& constraint_data,
                          int num_positions, int num_velocities,
-                         int num_kinematic_constraints);
+                         int num_kinematic_constraints_wo_skipping);
 
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   DirconKinematicDataSet<T>* constraints_;
 
   const int num_states_{0};
-  const int num_kinematic_constraints_{0};
+  const int num_kinematic_constraints_wo_skipping_{0};
   const int num_positions_{0};
   const int num_velocities_{0};
 };

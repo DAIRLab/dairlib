@@ -80,6 +80,9 @@ class HybridDircon :
   int num_kinematic_constraints(int mode) const {
     return num_kinematic_constraints_[mode];
   }
+  int num_kinematic_constraints_wo_skipping(int mode) const {
+    return num_kinematic_constraints_wo_skipping_[mode];
+  }
 
   const drake::solvers::VectorXDecisionVariable& force_vars(int mode) const {
     return force_vars_[mode];
@@ -114,8 +117,8 @@ class HybridDircon :
 
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable> force(
         int mode, int index) const {
-    return force_vars_[mode].segment(index * num_kinematic_constraints_[mode],
-                                     num_kinematic_constraints_[mode]);
+    return force_vars_[mode].segment(index * num_kinematic_constraints_wo_skipping_[mode],
+                                     num_kinematic_constraints_wo_skipping_[mode]);
   }
 
   drake::VectorX<drake::symbolic::Expression> SubstitutePlaceholderVariables(
@@ -141,6 +144,7 @@ class HybridDircon :
   std::vector<drake::solvers::VectorXDecisionVariable> offset_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> impulse_vars_;
   std::vector<int> num_kinematic_constraints_;
+  std::vector<int> num_kinematic_constraints_wo_skipping_;
 };
 
 }  // namespace trajectory_optimization

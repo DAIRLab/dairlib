@@ -111,9 +111,6 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
         plant_.MakeActuationMatrix() * input +
         plant_.CalcGravityGeneralizedForces(context) +
         J_.transpose() * forces;
-    std::cout << "forces.size() = " << forces.size() << std::endl;
-    std::cout << "getJ().rows() = " << getJ().rows() << std::endl;
-    std::cout << "getJ().cols() = " << getJ().cols() << std::endl;
 
     vdot_ = M_.llt().solve(right_hand_side_);
 

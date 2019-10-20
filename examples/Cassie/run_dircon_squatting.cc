@@ -49,6 +49,8 @@
 
 #include "attic/multibody/multibody_solvers.h"
 
+#include "multibody/com_pose_system.h"
+
 using std::vector;
 using std::shared_ptr;
 using std::cout;
@@ -79,6 +81,11 @@ using drake::geometry::SceneGraph;
 using drake::multibody::Body;
 using drake::multibody::Parser;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
+// using drake::multibody::RigidBody;
+using drake::multibody::SpatialInertia;
+using drake::multibody::UnitInertia;
+using drake::math::RigidTransformd;
+using drake::geometry::Sphere;
 
 using drake::multibody::JointActuator;
 using drake::multibody::JointActuatorIndex;
@@ -814,7 +821,6 @@ void DoMain(double stride_length,
   auto double_all_dataset = DirconKinematicDataSet<double>(plant,
                             &double_stance_all_constraint, skip_constraint_inds);
   auto double_all_options = DirconOptions(double_all_dataset.countConstraints());
-  double dist = (pt_front_contact - pt_rear_contact).norm();
   // Be careful in setting relative constraint, because we also skip constraints.
   double_all_options.setConstraintRelative(0, true);
   double_all_options.setConstraintRelative(1, true);
@@ -877,8 +883,8 @@ void DoMain(double stride_length,
   // Get the decision varaibles that will be used
   auto u = trajopt->input();
   auto x = trajopt->state();
-  auto u0 = trajopt->input(0);
-  auto uf = trajopt->input(N - 1);
+  // auto u0 = trajopt->input(0);
+  // auto uf = trajopt->input(N - 1);
   auto x0 = trajopt->initial_state();
   auto xf = trajopt->state_vars_by_mode(num_time_samples.size() - 1,
                                         num_time_samples[num_time_samples.size() - 1] - 1);
@@ -887,11 +893,6 @@ void DoMain(double stride_length,
 
   // Fix the time duration
   cout << "duration = " << duration << endl;
-  // if (standing) {
-  //   trajopt->AddDurationBounds(duration / time_scale, duration / time_scale);
-  // }
-
-  // Fix time duration
   trajopt->AddDurationBounds(duration / time_scale, duration / time_scale);
 
   // quaterion norm constraint
@@ -906,7 +907,17 @@ void DoMain(double stride_length,
 
   // hieght constraint
   trajopt->AddLinearConstraint(x0(positions_map.at("base_z")) == 1);
-  trajopt->AddLinearConstraint(xmid(positions_map.at("base_z")) == 0.75);
+  // trajopt->AddLinearConstraint(xmid(positions_map.at("base_z")) == 0.95);
+
+  // initial pose condition
+  // trajopt->AddLinearConstraint(x0(positions_map.at("base_qw")) == 1);
+  // trajopt->AddLinearConstraint(x0(positions_map.at("base_qx")) == 0);
+  // trajopt->AddLinearConstraint(x0(positions_map.at("base_qy")) == 0);
+  // trajopt->AddLinearConstraint(x0(positions_map.at("base_qz")) == 0);
+  trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qw")) == 1);
+  trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qx")) == 0);
+  trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qy")) == 0);
+  trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qz")) == 0);
 
   // periodic constraints
   trajopt->AddLinearConstraint(x0 == xf);
@@ -965,130 +976,14 @@ void DoMain(double stride_length,
       ui);
   }
 
-  // make sure it's left stance
-  // trajopt->AddLinearConstraint(x0(positions_map.at("hip_pitch_left")) <=
-  //                              x0(positions_map.at("hip_pitch_right")));
-
-
-
-  // // Testing
-  // int total_rows = 0;
-  // auto constraint_binding_vec = trajopt->GetAllConstraints();
-  // for (unsigned int i = 0; i < constraint_binding_vec.size(); i++) {
-  //   const auto & binding = constraint_binding_vec[i];
-  //   cout << "Constraint row " << total_rows << " to row " <<
-  //        total_rows + binding.evaluator()->num_constraints() << ". Vars: " <<
-  //        binding.variables().transpose() << endl;
-  //   total_rows += binding.evaluator()->num_constraints();
-  // }
-  // cout << "total_rows = " << total_rows << endl;
-
-  // auto z_all = trajopt->decision_variables();
-  // for (int i = 0; i < z_all.size(); i++) {
-  //   cout << i << " , " << z_all(i) << endl;
-  // }
-
-
-
-
-
-
-
-  // Create timesteps manually
-  // vector<double> timestep_vector{0.0119019, 0.028669, 0};  // we don't use the third element, so set it to be any number
-  // for (unsigned int i = 0; i < timestep_vector.size(); i++) {
-  //   timestep_vector[i] /= time_scale;
-  // }
-  // DRAKE_DEMAND(timestep_vector.size() == num_time_samples.size());
-  // VectorXd timesteps(N-1);
-  // int counter = 0;
-  // for (unsigned int i = 0; i < num_time_samples.size(); i++) {
-  //   for (int j=0; j <  num_time_samples[i] - 1; j++) {
-  //     int index = counter + j;
-  //     timesteps(index) = timestep_vector[i];
-  //   }
-  //   counter += num_time_samples[i] - 1;
-  // }
-  // Fix the timestep sizes
-  // counter = 0;
-  // for (unsigned int i = 0; i < num_time_samples.size(); i++) {
-  //   // for (int j=0; j <  num_time_samples[i]; j++) {
-  //   //   int index = counter + j;
-  //   //   trajopt->AddLinearConstraint(trajopt->timestep(index) == timesteps(index));
-  //   // }
-
-  //   if (counter >= N-1) break;
-  //   trajopt->AddBoundingBoxConstraint(timestep_vector[counter], timestep_vector[counter],
-  //                                     trajopt->timestep(counter));
-  //   counter += num_time_samples[i] - 1;
-  // }
-  // make all timestep sizes the same
-  int counter = 0;
-  for (unsigned int i = 0; i < num_time_samples.size(); i++) {
-    if (i > 0 && num_time_samples[i] > 1) {
-      trajopt->AddLinearConstraint(trajopt->timestep(counter - 1) ==
-                                   trajopt->timestep(counter));
-    }
-    counter += num_time_samples[i] - 1;
-  }
 
   // add cost
   const MatrixXd Q = 10 * 12.5 *
                      omega_scale * omega_scale * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 12.5 *
                      input_scale * input_scale * MatrixXd::Identity(n_u, n_u);
-  // trajopt->AddRunningCost(x.tail(n_v).transpose()* Q * x.tail(n_v));
-  // trajopt->AddRunningCost(x.segment(n_q,3).transpose() * 10.0 * x.segment(n_q,3));
-  // trajopt->AddRunningCost(u.transpose()* R * u);
-
-  // state cost
-  // trajopt->AddQuadraticCost(Q * timesteps(0) / 2, VectorXd::Zero(n_x), x0.tail(n_v));
-  // for (int i = 1; i <= N - 2; i++) {
-  //   auto xi = trajopt->state(i);
-  //   trajopt->AddQuadraticCost(Q * (timesteps(i-1)+timesteps(i))/2, VectorXd::Zero(n_x), xi.tail(n_v));
-  // }
-  // trajopt->AddQuadraticCost(Q * timesteps(N-2) / 2, VectorXd::Zero(n_x), xf.tail(n_v));
-  // input cost
-  // trajopt->AddQuadraticCost(R * timesteps(0) / 2, VectorXd::Zero(n_u), u0);
-  // for (int i = 1; i <= N - 2; i++) {
-  //   auto ui = trajopt->input(i);
-  //   trajopt->AddQuadraticCost(R * (timesteps(i-1)+timesteps(i))/2, VectorXd::Zero(n_u), ui);
-  // }
-  // trajopt->AddQuadraticCost(R * timesteps(N-2) / 2, VectorXd::Zero(n_u), uf);
-
-  // if all timesteps are the same
-  double fixed_dt = duration / (N - 1);
-  // trajopt->AddQuadraticCost(Q * fixed_dt / 2, VectorXd::Zero(n_v), x0.tail(n_v));
-  trajopt->AddQuadraticCost(R * fixed_dt / 2, VectorXd::Zero(n_u), u0);
-  for (int i = 1; i <= N - 2; i++) {
-    // auto xi = trajopt->state(i);
-    auto ui = trajopt->input(i);
-    // trajopt->AddQuadraticCost(Q * fixed_dt, VectorXd::Zero(n_v), xi.tail(n_v));
-    trajopt->AddQuadraticCost(R * fixed_dt, VectorXd::Zero(n_u), ui);
-  }
-  // trajopt->AddQuadraticCost(Q * fixed_dt / 2, VectorXd::Zero(n_v), xf.tail(n_v));
-  trajopt->AddQuadraticCost(R * fixed_dt / 2, VectorXd::Zero(n_u), uf);
-
-
-
-
-
-
-
-  // Testing (add initial guess from xi, ui)
-  // MatrixXd x_i_input = readCSV(data_directory + "x_i.csv");
-  // MatrixXd u_i_input = readCSV(data_directory + "u_i.csv");
-  // for (int i = 0; i < N; i++) {
-  //   auto xi = trajopt->state(i);
-  //   trajopt->SetInitialGuess(xi, x_i_input.col(i));
-  //   auto ui = trajopt->input(i);
-  //   trajopt->SetInitialGuess(ui, u_i_input.col(i));
-  // }
-
-
-
-
-
+  trajopt->AddRunningCost(x.tail(n_v).transpose()* Q * x.tail(n_v));
+  trajopt->AddRunningCost(u.transpose()* R * u);
 
 
   // initial guess
@@ -1106,7 +1001,7 @@ void DoMain(double stride_length,
     drake::multibody::AddFlatTerrainToWorld(&tree,
                                             terrain_size, terrain_depth);
 
-    Vector3d pelvis_position(-dist / 2, 0, 1);
+    Vector3d pelvis_position(0, 0, 1);
     VectorXd q_init;
     VectorXd u_init;
     VectorXd lambda_init;
@@ -1156,9 +1051,6 @@ void DoMain(double stride_length,
   cout << "Choose the best solver: " <<
        drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
 
-  cout << "\n WARNING: make sure that you turn on the scaling in "
-       "dircon_opt_constraints.cc file\n";
-
   cout << "Solving DIRCON\n\n";
   auto start = std::chrono::high_resolution_clock::now();
   const auto result = Solve(*trajopt, trajopt->initial_guess());
@@ -1175,17 +1067,17 @@ void DoMain(double stride_length,
   cout << "Solver: " << result.get_solver_id().name() << endl;
 
   // Testing - check if the nonilnear constraints are all satisfied
-  bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt, result,
-                              1e-5);
-  cout << "constraint_satisfied = " << constraint_satisfied << endl;
+  // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt, result,
+  //                             tol);
+  // cout << "constraint_satisfied = " << constraint_satisfied << endl;
 
   // store the solution of the decision variable
   VectorXd z = result.GetSolution(trajopt->decision_variables());
   writeCSV(data_directory + output_prefix + string("z.csv"), z);
-  for (int i = 0; i < z.size(); i++) {
-    cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
-  }
-  cout << endl;
+  // for (int i = 0; i < z.size(); i++) {
+  //   cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
+  // }
+  // cout << endl;
 
   // store the time, state, and input at knot points
   VectorXd time_at_knots = trajopt->GetSampleTimes(result);
@@ -1210,7 +1102,7 @@ void DoMain(double stride_length,
   // Also store lambda. We might need to look at it in the future!
   // (save it so we don't need to rerun)
   std::ofstream ofile;
-  ofile.open("examples/Cassie/trajopt_data/lambda.txt",
+  ofile.open("../dairlib_data/examples/Cassie/trajopt_data/lambda.txt",
              std::ofstream::out);
   cout << "lambda_sol = \n";
   for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
@@ -1225,8 +1117,67 @@ void DoMain(double stride_length,
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =
     trajopt->ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
-                                         pp_xtraj);
+
+  auto traj_source = builder.AddSystem<drake::systems::TrajectorySource>(
+        pp_xtraj);
+  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
+    plant.num_positions() + plant.num_velocities(), 0,
+    plant.num_positions());
+  builder.Connect(traj_source->get_output_port(),
+                  passthrough->get_input_port());
+  auto to_pose =
+      builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
+  builder.Connect(passthrough->get_output_port(), to_pose->get_input_port());
+
+  builder.Connect(to_pose->get_output_port(),
+      scene_graph.get_source_pose_port(plant.get_source_id().value()));
+
+  // multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
+  //                                        pp_xtraj);
+
+  // *******Add COM visualization**********
+  bool plot_com = true;
+  bool com_on_ground = true;
+  auto ball_plant = std::make_unique<MultibodyPlant<double>>();
+  if (plot_com) {
+    double radius = .02;
+    UnitInertia<double> G_Bcm = UnitInertia<double>::SolidSphere(radius);
+    SpatialInertia<double> M_Bcm(1, Eigen::Vector3d::Zero(), G_Bcm);
+
+    const drake::multibody::RigidBody<double>& ball = ball_plant->AddRigidBody("Ball", M_Bcm);
+
+    ball_plant->RegisterAsSourceForSceneGraph(&scene_graph);
+    // Add visual for the COM.
+    const Eigen::Vector4d orange(1.0, 0.55, 0.0, 1.0);
+    const RigidTransformd X_BS = RigidTransformd::Identity();
+    ball_plant->RegisterVisualGeometry(ball, X_BS, Sphere(radius), "visual",
+        orange);
+    ball_plant->Finalize();
+
+    // connect
+    auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      plant.num_positions() + plant.num_velocities(), 0, plant.num_positions());
+    builder.Connect(traj_source->get_output_port(),
+                    q_passthrough->get_input_port());
+    auto rbt_passthrough =
+      builder.AddSystem<multibody::ComPoseSystem>(plant);
+
+    auto ball_to_pose =
+        builder.AddSystem<MultibodyPositionToGeometryPose<double>>(*ball_plant);
+    builder.Connect(*q_passthrough, *rbt_passthrough);
+    if (com_on_ground) {
+      builder.Connect(rbt_passthrough->get_xy_com_output_port(),
+          ball_to_pose->get_input_port());
+    } else {
+      builder.Connect(rbt_passthrough->get_com_output_port(),
+          ball_to_pose->get_input_port());
+    }
+    builder.Connect(ball_to_pose->get_output_port(),
+        scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
+  }
+
+  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  // **************************************
 
   auto diagram = builder.Build();
 
@@ -1247,7 +1198,7 @@ int main(int argc, char* argv[]) {
 
   double duration = FLAGS_duration; //0.5
   int iter = FLAGS_max_iter;
-  string data_directory = "examples/Cassie/trajopt_data/";
+  string data_directory = "../dairlib_data/examples/Cassie/trajopt_data/";
   string init_file = FLAGS_init_file;
   // string init_file = "testing_z.csv";
   string output_prefix = "";

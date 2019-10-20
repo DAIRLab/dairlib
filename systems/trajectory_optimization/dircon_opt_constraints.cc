@@ -268,7 +268,6 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       type_{type}, is_constraint_relative_{is_constraint_relative},
       n_relative_{static_cast<int>(std::count(is_constraint_relative.begin(),
       is_constraint_relative.end(), true))} {
-  cout << "TODO: check num_kinematic_constraints_ in sparsity pattern is used correctly.\n";
 
   // ***Set sparsity pattern***
   std::vector<std::pair<int, int>> sparsity;

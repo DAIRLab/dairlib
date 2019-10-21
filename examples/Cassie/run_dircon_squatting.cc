@@ -127,9 +127,8 @@ DEFINE_double(tol, 1e-4,
 
 namespace dairlib {
 
-/// Currently, MBP doesn't support close-loop linkage, so we add distance
-/// constraints in trajectory optimization (dircon).
-/// This file runs trajectory optimization for fixed-spring cassie
+/// Trajectory optimization of fixed-spring cassie squating
+/// With the default initial guess, the solving time is about 120-140 seconds.
 
 // Constraint to fix the position of a point on a body (for initial guess)
 class BodyPonitPositionConstraint : public DirconAbstractConstraint<double> {
@@ -297,11 +296,11 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
                       "Print file", "../snopt.out");
   // target nonlinear constraint violation
-  mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                      "Major optimality tolerance", 1e-5);
+  // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  //                     "Major optimality tolerance", 1e-6);
   // target complementarity gap
   mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                      "Major feasibility tolerance", 1e-5);
+                      "Major feasibility tolerance", 1e-8);
 
   // solve for the standing pose
   cout << "Solving for fixed point...\n";
@@ -324,6 +323,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   VectorXd lambda_sol_contact = lambda_sol.tail(3 * idxa.size());
   for (unsigned int i = 0; i < idxa.size(); i++) {
     // We need to reorder cause contact toolkit's lambda ordering is different
+    // from dircon order
     VectorXd lambda_dummy = lambda_sol_contact.segment(3 * i, 3);
     lambda_sol_contact(0 + 3 * i) = lambda_dummy(1);
     lambda_sol_contact(1 + 3 * i) = -lambda_dummy(2);
@@ -354,7 +354,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   drake::systems::Simulator<double> simulator(*diagram);
   simulator.set_target_realtime_rate(1);
   simulator.Initialize();
-  simulator.AdvanceTo(0.5);
+  simulator.AdvanceTo(0.25);
 }
 
 
@@ -744,8 +744,7 @@ void DoMain(double duration, int max_iter,
 
   // Store lambda
   std::ofstream ofile;
-  ofile.open("../dairlib_data/examples/Cassie/trajopt_data/lambda.txt",
-             std::ofstream::out);
+  ofile.open(data_directory + "lambda.txt", std::ofstream::out);
   cout << "lambda_sol = \n";
   for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
     for (int index = 0; index < num_time_samples[mode]; index++) {
@@ -774,9 +773,6 @@ void DoMain(double duration, int max_iter,
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
-
-  // multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
-  //                                        pp_xtraj);
 
   // *******Add COM visualization**********
   bool plot_com = true;

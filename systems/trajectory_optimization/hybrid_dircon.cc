@@ -158,17 +158,7 @@ HybridDircon<T>::HybridDircon(
         start_index += constraint_j->getLength();
       }
     }
-    //Add constraints on force (at collocation)
-    // for (int l = 0; l < mode_lengths_[i] - 1; l++) {
-    //   int start_index = l*num_kinematic_constraints_wo_skipping(i);
-    //   for (int j = 0; j < constraints_[i]->getNumConstraintObjects(); j++) {
-    //     DirconKinematicData<T>* constraint_j = constraints_[i]->getConstraint(j);
-    //     for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
-    //       AddConstraint(constraint_j->getForceConstraint(k), collocation_force_vars(i).segment(start_index, constraint_j->getLength()));
-    //     }
-    //     start_index += constraint_j->getLength();
-    //   }
-    // }
+
 
     //Force cost option
     if (options[i].getForceCost() != 0) {

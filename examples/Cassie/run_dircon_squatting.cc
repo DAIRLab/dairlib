@@ -117,11 +117,6 @@ DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
               "directory to save/read data");
 DEFINE_int32(max_iter, 100000, "Iteration limit");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
-DEFINE_double(omega_scale, 1, "Variable scaling");
-DEFINE_double(input_scale, 1, "Variable scaling");
-DEFINE_double(force_scale, 1, "Variable scaling");
-DEFINE_double(time_scale, 1, "Variable scaling");
-DEFINE_double(quaternion_scale, 1, "Variable scaling");
 DEFINE_double(tol, 1e-4,
               "Tolerance for constraint violation and dual gap");
 
@@ -360,33 +355,26 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
 
 class QuaternionNormConstraint : public DirconAbstractConstraint<double> {
  public:
-  QuaternionNormConstraint(double quaternion_scale) :
+  QuaternionNormConstraint() :
     DirconAbstractConstraint<double>(1, 4,
                                      VectorXd::Zero(1), VectorXd::Zero(1),
-                                     "quaternion_norm_constraint"),
-    quaternion_scale_(quaternion_scale) {
+                                     "quaternion_norm_constraint") {
   }
   ~QuaternionNormConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override {
     VectorX<double> output(1);
-    output << quaternion_scale_ * x.norm() - 1;
+    output << x.norm() - 1;
     *y = output;
   };
  private:
-  double quaternion_scale_;
 };
 
 
 void DoMain(double duration, int max_iter,
             string data_directory,
             string init_file,
-            double omega_scale,
-            double input_scale,
-            double force_scale,
-            double time_scale,
-            double quaternion_scale,
             double tol) {
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
@@ -412,11 +400,6 @@ void DoMain(double duration, int max_iter,
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
   // int n_x = n_q + n_v;
-
-  // Scaling paramters
-  // vector<double> var_scale = {omega_scale, input_scale, force_scale,
-  //                             time_scale, quaternion_scale
-  //                            };
 
   // Set up contact/distance constraints
   const Body<double>& toe_left = plant.GetBodyByName("toe_left");
@@ -536,8 +519,7 @@ void DoMain(double duration, int max_iter,
 
   // quaterion norm constraint
   if (multibody::isQuaternion(plant)) {
-    auto quat_norm_constraint = std::make_shared<QuaternionNormConstraint>
-                                (quaternion_scale);
+    auto quat_norm_constraint = std::make_shared<QuaternionNormConstraint>();
     for (int i = 0; i < N; i++) {
       auto xi = trajopt->state(i);
       trajopt->AddConstraint(quat_norm_constraint, xi.head(4));
@@ -614,17 +596,15 @@ void DoMain(double duration, int max_iter,
   for (int i = 0; i < N; i++) {
     auto ui = trajopt->input(i);
     trajopt->AddBoundingBoxConstraint(
-        VectorXd::Constant(n_u, -300 / input_scale),
-        VectorXd::Constant(n_u, +300 / input_scale),
+        VectorXd::Constant(n_u, -300),
+        VectorXd::Constant(n_u, +300),
         ui);
   }
 
 
   // add cost
-  const MatrixXd Q = 10 * 12.5 *
-                     omega_scale * omega_scale * MatrixXd::Identity(n_v, n_v);
-  const MatrixXd R = 12.5 *
-                     input_scale * input_scale * MatrixXd::Identity(n_u, n_u);
+  const MatrixXd Q = 10 * 12.5 * MatrixXd::Identity(n_v, n_v);
+  const MatrixXd R = 12.5 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose()* Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose()* R * u);
 
@@ -661,18 +641,18 @@ void DoMain(double duration, int max_iter,
       // guess for state
       auto xi = trajopt->state(i);
       VectorXd xi_init(n_q + n_v);
-      xi_init << q_init.head(4) / quaternion_scale,
+      xi_init << q_init.head(4),
               q_init.tail(n_q - 4),
               VectorXd::Zero(n_v);
       trajopt->SetInitialGuess(xi, xi_init);
 
       // guess for input
       auto ui = trajopt->input(i);
-      trajopt->SetInitialGuess(ui, u_init / input_scale);
+      trajopt->SetInitialGuess(ui, u_init);
 
       // guess for constraint force
       auto lambdai = trajopt->force(0, i);
-      trajopt->SetInitialGuess(lambdai, lambda_init / force_scale);
+      trajopt->SetInitialGuess(lambdai, lambda_init);
 
       // guess for constraint force at collocation points
       // prev_lambda_init = lambda_init;
@@ -684,7 +664,7 @@ void DoMain(double duration, int max_iter,
     auto xi = trajopt->state(i);
     if ((trajopt->GetInitialGuess(xi.head(4)).norm() == 0) ||
         std::isnan(trajopt->GetInitialGuess(xi.head(4)).norm())) {
-      trajopt->SetInitialGuess(xi(0), 1 / quaternion_scale);
+      trajopt->SetInitialGuess(xi(0), 1);
       trajopt->SetInitialGuess(xi(1), 0);
       trajopt->SetInitialGuess(xi(2), 0);
       trajopt->SetInitialGuess(xi(3), 0);
@@ -727,13 +707,6 @@ void DoMain(double duration, int max_iter,
   MatrixXd state_at_knots = trajopt->GetStateSamples(result);
   MatrixXd input_at_knots = trajopt->GetInputSamples(result);
   state_at_knots.col(N - 1) = result.GetSolution(xf);
-  time_at_knots *= time_scale;
-  state_at_knots
-      << state_at_knots.block(0, 0, 4, state_at_knots.cols()) * quaternion_scale,
-      state_at_knots.block(4, 0, n_q - 4, state_at_knots.cols()),
-      state_at_knots.block(n_q, 0, n_v, state_at_knots.cols()) * omega_scale;
-  cout << "you'll need to update state_at_knots if it's multiple modes\n";
-  input_at_knots *= input_scale;
   writeCSV(data_directory + string("t_i.csv"), time_at_knots);
   writeCSV(data_directory + string("x_i.csv"), state_at_knots);
   writeCSV(data_directory + string("u_i.csv"), input_at_knots);
@@ -749,8 +722,8 @@ void DoMain(double duration, int max_iter,
   for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
     for (int index = 0; index < num_time_samples[mode]; index++) {
       auto lambdai = trajopt->force(mode, index);
-      cout << result.GetSolution(lambdai).transpose() * force_scale << endl;
-      ofile << result.GetSolution(lambdai).transpose() * force_scale << endl;
+      cout << result.GetSolution(lambdai).transpose() << endl;
+      ofile << result.GetSolution(lambdai).transpose() << endl;
     }
   }
   ofile.close();
@@ -839,10 +812,5 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   dairlib::DoMain(FLAGS_duration, FLAGS_max_iter,
                   FLAGS_data_directory, FLAGS_init_file,
-                  FLAGS_omega_scale,
-                  FLAGS_input_scale,
-                  FLAGS_force_scale,
-                  FLAGS_time_scale,
-                  FLAGS_quaternion_scale,
                   FLAGS_tol);
 }

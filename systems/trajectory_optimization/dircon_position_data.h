@@ -13,7 +13,8 @@ class DirconPositionData : public DirconKinematicData<T> {
  public:
   DirconPositionData(const drake::multibody::MultibodyPlant<T>& plant,
     const drake::multibody::Body<T>& body,
-    Eigen::Vector3d pt, bool isXZ = false);
+    Eigen::Vector3d pt, bool isXZ = false,
+    Eigen::Vector2d surface_slope_roll_pitch = Eigen::Vector2d::Zero());
   ~DirconPositionData();
 
   // The workhorse function, updates and caches everything needed by the
@@ -27,5 +28,7 @@ class DirconPositionData : public DirconKinematicData<T> {
     Eigen::Vector3d pt_;
     bool isXZ_;
     Eigen::Matrix<double, 2, 3> TXZ_;
+    Eigen::Matrix3d T_ground_incline_;
+    Eigen::Matrix<double, 2, 3> TXZ_and_ground_incline_;
 };
 }  // namespace dairlib

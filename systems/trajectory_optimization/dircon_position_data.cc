@@ -20,13 +20,22 @@ using drake::MatrixX;
 
 template <typename T>
 DirconPositionData<T>::DirconPositionData(const MultibodyPlant<T>& plant,
-    const Body<T>& body, Vector3d pt, bool isXZ) :
-    DirconKinematicData<T>(plant, isXZ ? 2 : 3),
-    body_(body),
-    pt_(pt),
-    isXZ_(isXZ) {
+    const Body<T>& body, Vector3d pt, bool isXZ,
+    Vector2d surface_slope_roll_pitch) :
+        DirconKinematicData<T>(plant, isXZ ? 2 : 3),
+        body_(body),
+        pt_(pt),
+        isXZ_(isXZ) {
   TXZ_ << 1, 0, 0,
           0, 0, 1;
+
+  Eigen::AngleAxisd rollAngle(surface_slope_roll_pitch(0), Vector3d::UnitX());
+  Eigen::AngleAxisd pitchAngle(surface_slope_roll_pitch(1), Vector3d::UnitY());
+  Eigen::AngleAxisd yawAngle(0, Vector3d::UnitZ());
+  Eigen::Quaterniond q = yawAngle * pitchAngle * rollAngle;
+
+  T_ground_incline_ = q.matrix().transpose();  // inverse of rotational matrix
+  TXZ_and_ground_incline_ = TXZ_ * T_ground_incline_;
 }
 
 template <typename T>
@@ -58,13 +67,13 @@ void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
           world, world).tail(3);
 
   if (isXZ_) {
-    this->c_ = TXZ_*pt_transform;
-    this->J_ = TXZ_*J3d;
-    this->Jdotv_ = TXZ_*J3d_times_v;
+    this->c_ = TXZ_and_ground_incline_ * pt_transform;
+    this->J_ = TXZ_and_ground_incline_ * J3d;
+    this->Jdotv_ = TXZ_and_ground_incline_ * J3d_times_v;
   } else {
-    this->c_ = pt_transform;
-    this->J_ = J3d;
-    this->Jdotv_ = J3d_times_v;
+    this->c_ = T_ground_incline_ * pt_transform;
+    this->J_ = T_ground_incline_ * J3d;
+    this->Jdotv_ = T_ground_incline_ * J3d_times_v;
   }
   this->cdot_ = this->J_*v;
 }

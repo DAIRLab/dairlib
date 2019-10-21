@@ -250,11 +250,11 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
 
 class QuaternionNormConstraint : public DirconAbstractConstraint<double> {
  public:
-  QuaternionNormConstraint(vector<double> var_scale) :
+  QuaternionNormConstraint(double quaternion_scale) :
     DirconAbstractConstraint<double>(1, 4,
                                      VectorXd::Zero(1), VectorXd::Zero(1),
                                      "quaternion_norm_constraint"),
-    quaternion_scale_(var_scale[4]) {
+    quaternion_scale_(quaternion_scale) {
   }
   ~QuaternionNormConstraint() override = default;
 
@@ -269,380 +269,6 @@ class QuaternionNormConstraint : public DirconAbstractConstraint<double> {
 };
 
 
-// class ComHeightConstraint : public DirconAbstractConstraint<double> {
-//  public:
-//   ComHeightConstraint(const MultibodyPlant<double>* plant,
-//                       vector<double> var_scale) :
-//     DirconAbstractConstraint<double>(
-//       1, 2 * (plant->num_positions() + plant->num_velocities()),
-//       VectorXd::Zero(1), VectorXd::Zero(1),
-//       "com_height_constraint"),
-//     plant_(plant),
-//     n_q_(plant->num_positions()),
-//     n_v_(plant->num_velocities()),
-//     quaternion_scale_(var_scale[4]) {
-//   }
-//   ~ComHeightConstraint() override = default;
-
-//   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-//                           drake::VectorX<double>* y) const override {
-//     VectorXd q1 = x.head(n_q_);
-//     VectorXd q2 = x.segment(n_q_ + n_v_, n_q_);
-//     q1.head(4) *= quaternion_scale_;
-//     q2.head(4) *= quaternion_scale_;
-
-//     std::unique_ptr<drake::systems::Context<double>> context =
-//           plant_->CreateDefaultContext();
-//     plant_->SetPositions(context.get(), q1);
-//     VectorXd CoM_z1 = plant_->CalcCenterOfMassPosition(*context).tail(1);
-//     plant_->SetPositions(context.get(), q2);
-//     VectorXd CoM_z2 = plant_->CalcCenterOfMassPosition(*context).tail(1);
-
-//     *y = CoM_z1 - CoM_z2;
-//   };
-//  private:
-//   const MultibodyPlant<double>* plant_;
-//   int n_q_;
-//   int n_v_;
-//   double quaternion_scale_;
-// };
-
-// class ComHeightZeroVelConstraint : public DirconAbstractConstraint<double> {
-//  public:
-//   ComHeightZeroVelConstraint(const MultibodyPlant<double>* plant,
-//                              vector<double> var_scale) :
-//     DirconAbstractConstraint<double>(
-//       1, plant->num_positions() + plant->num_velocities(),
-//       VectorXd::Zero(1), VectorXd::Zero(1),
-//       "zero_com_height_vel_constraint"),
-//     plant_(plant),
-//     n_q_(plant->num_positions()),
-//     n_v_(plant->num_velocities()),
-//     omega_scale_(var_scale[0]),
-//     quaternion_scale_(var_scale[4]) {
-
-//     DRAKE_DEMAND(plant->num_bodies() > 1);
-//     DRAKE_DEMAND(plant->num_model_instances() > 1);
-
-//     // Get all body indices
-//     std::vector<ModelInstanceIndex> model_instances;
-//     for (ModelInstanceIndex model_instance_index(1);
-//          model_instance_index < plant->num_model_instances();
-//          ++model_instance_index)
-//       model_instances.push_back(model_instance_index);
-//     for (auto model_instance : model_instances) {
-//       const std::vector<BodyIndex> body_index_in_instance =
-//         plant->GetBodyIndices(model_instance);
-//       for (BodyIndex body_index : body_index_in_instance)
-//         body_indexes_.push_back(body_index);
-//     }
-//     // Get total mass
-//     std::unique_ptr<drake::systems::Context<double>> context =
-//           plant->CreateDefaultContext();
-//     for (BodyIndex body_index : body_indexes_) {
-//       if (body_index == 0) continue;
-//       const Body<double>& body = plant_->get_body(body_index);
-
-//       // Calculate composite_mass_.
-//       const double& body_mass = body.get_mass(*context);
-//       // composite_mass_ = ∑ mᵢ
-//       composite_mass_ += body_mass;
-//     }
-//     if (!(composite_mass_ > 0)) {
-//       throw std::runtime_error(
-//         "The total mass must larger than zero.");
-//     }
-//   }
-//   ~ComHeightZeroVelConstraint() override = default;
-
-//   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-//                           drake::VectorX<double>* y) const override {
-//     VectorXd q = x.head(n_q_);
-//     q.head(4) *= quaternion_scale_;
-//     VectorXd v = x.tail(n_v_) * omega_scale_;
-
-//     std::unique_ptr<drake::systems::Context<double>> context =
-//           plant_->CreateDefaultContext();
-//     plant_->SetPositions(context.get(), q);
-//     plant_->SetVelocities(context.get(), v);
-
-//     const drake::multibody::Frame<double>& world = plant_->world_frame();
-
-//     // Get com jacobian
-//     MatrixXd Jcom = MatrixXd::Zero(3, n_v_);
-//     for (BodyIndex body_index : body_indexes_) {
-//       if (body_index == 0) continue;
-
-//       const Body<double>& body = plant_->get_body(body_index);
-//       const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context);
-
-//       // Calculate M * J in world frame.
-//       const double& body_mass = body.get_mass(*context);
-//       // Jcom = ∑ mᵢ * Ji
-//       MatrixXd Jcom_i(3, n_v_);
-//       plant_->CalcJacobianTranslationalVelocity(
-//         *context, drake::multibody::JacobianWrtVariable::kV,
-//         body.body_frame(), pi_BoBcm, world, world, &Jcom_i);
-//       Jcom += body_mass * Jcom_i;
-//       // cout << "body_mass = " << body_mass << endl;
-//       // cout << "Jcom_i = " << Jcom_i << endl;
-//     }
-//     Jcom /= composite_mass_;
-
-//     *y = Jcom.row(2) * v;
-//   };
-//  private:
-//   const MultibodyPlant<double>* plant_;
-//   int n_q_;
-//   int n_v_;
-//   double omega_scale_;
-//   double quaternion_scale_;
-
-//   std::vector<BodyIndex> body_indexes_;
-//   double composite_mass_;
-// };
-
-// class ComHeightVelConstraint : public DirconAbstractConstraint<double> {
-//  public:
-//   ComHeightVelConstraint(const MultibodyPlant<double>* plant,
-//                          vector<double> var_scale) :
-//     DirconAbstractConstraint<double>(
-//       1, 2 * (plant->num_positions() + plant->num_velocities()),
-//       VectorXd::Zero(1), VectorXd::Zero(1),
-//       "com_height_vel_constraint"),
-//     plant_(plant),
-//     n_q_(plant->num_positions()),
-//     n_v_(plant->num_velocities()),
-//     omega_scale_(var_scale[0]),
-//     quaternion_scale_(var_scale[4]) {
-
-//     DRAKE_DEMAND(plant->num_bodies() > 1);
-//     DRAKE_DEMAND(plant->num_model_instances() > 1);
-
-//     // Get all body indices
-//     std::vector<ModelInstanceIndex> model_instances;
-//     for (ModelInstanceIndex model_instance_index(1);
-//          model_instance_index < plant->num_model_instances();
-//          ++model_instance_index)
-//       model_instances.push_back(model_instance_index);
-//     for (auto model_instance : model_instances) {
-//       const std::vector<BodyIndex> body_index_in_instance =
-//         plant->GetBodyIndices(model_instance);
-//       for (BodyIndex body_index : body_index_in_instance)
-//         body_indexes_.push_back(body_index);
-//     }
-//     // Get total mass
-//     std::unique_ptr<drake::systems::Context<double>> context =
-//           plant->CreateDefaultContext();
-//     for (BodyIndex body_index : body_indexes_) {
-//       if (body_index == 0) continue;
-//       const Body<double>& body = plant_->get_body(body_index);
-
-//       // Calculate composite_mass_.
-//       const double& body_mass = body.get_mass(*context);
-//       // composite_mass_ = ∑ mᵢ
-//       composite_mass_ += body_mass;
-//     }
-//     if (!(composite_mass_ > 0)) {
-//       throw std::runtime_error(
-//         "The total mass must larger than zero.");
-//     }
-//   }
-//   ~ComHeightVelConstraint() override = default;
-
-//   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-//                           drake::VectorX<double>* y) const override {
-//     VectorXd q1 = x.head(n_q_);
-//     q1.head(4) *= quaternion_scale_;
-//     VectorXd v1 = x.segment(n_q_, n_v_) * omega_scale_;
-//     VectorXd q2 = x.segment(n_q_ + n_v_, n_q_);
-//     q2.head(4) *= quaternion_scale_;
-//     VectorXd v2 = x.segment(2 * n_q_ + n_v_, n_v_) * omega_scale_;
-
-//     std::unique_ptr<drake::systems::Context<double>> context =
-//           plant_->CreateDefaultContext();
-//     plant_->SetPositions(context.get(), q1);
-//     plant_->SetVelocities(context.get(), v1);
-
-//     const drake::multibody::Frame<double>& world = plant_->world_frame();
-
-//     // Get com jacobian for x1
-//     MatrixXd Jcom1 = MatrixXd::Zero(3, n_v_);
-//     for (BodyIndex body_index : body_indexes_) {
-//       if (body_index == 0) continue;
-
-//       const Body<double>& body = plant_->get_body(body_index);
-//       const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context);
-
-//       // Calculate M * J in world frame.
-//       const double& body_mass = body.get_mass(*context);
-//       // Jcom = ∑ mᵢ * Ji
-//       MatrixXd Jcom_i(3, n_v_);
-//       plant_->CalcJacobianTranslationalVelocity(
-//         *context, drake::multibody::JacobianWrtVariable::kV,
-//         body.body_frame(), pi_BoBcm, world, world, &Jcom_i);
-//       Jcom1 += body_mass * Jcom_i;
-//       // cout << "body_mass = " << body_mass << endl;
-//       // cout << "Jcom_i = " << Jcom_i << endl;
-//     }
-//     Jcom1 /= composite_mass_;
-
-//     // Get com jacobian for x2
-//     plant_->SetPositions(context.get(), q1);
-//     plant_->SetVelocities(context.get(), v1);
-//     MatrixXd Jcom2 = MatrixXd::Zero(3, n_v_);
-//     for (BodyIndex body_index : body_indexes_) {
-//       if (body_index == 0) continue;
-
-//       const Body<double>& body = plant_->get_body(body_index);
-//       const Vector3d pi_BoBcm = body.CalcCenterOfMassInBodyFrame(*context);
-
-//       // Calculate M * J in world frame.
-//       const double& body_mass = body.get_mass(*context);
-//       // Jcom = ∑ mᵢ * Ji
-//       MatrixXd Jcom_i(3, n_v_);
-//       plant_->CalcJacobianTranslationalVelocity(
-//         *context, drake::multibody::JacobianWrtVariable::kV,
-//         body.body_frame(), pi_BoBcm, world, world, &Jcom_i);
-//       Jcom2 += body_mass * Jcom_i;
-//       // cout << "body_mass = " << body_mass << endl;
-//       // cout << "Jcom_i = " << Jcom_i << endl;
-//     }
-//     Jcom2 /= composite_mass_;
-
-
-//     *y = Jcom1.row(2) * v1 - Jcom2.row(2) * v2;
-//   };
-//  private:
-//   const MultibodyPlant<double>* plant_;
-//   int n_q_;
-//   int n_v_;
-//   double omega_scale_;
-//   double quaternion_scale_;
-
-//   std::vector<BodyIndex> body_indexes_;
-//   double composite_mass_;
-// };
-
-// class LeftFootYConstraint : public DirconAbstractConstraint<double> {
-//  public:
-//   LeftFootYConstraint(const MultibodyPlant<double>* plant,
-//                       vector<double> var_scale) :
-//     DirconAbstractConstraint<double>(
-//       1, plant->num_positions(),
-//       VectorXd::Ones(1) * 0.03,
-//       VectorXd::Ones(1) * std::numeric_limits<double>::infinity(),
-//       "left_foot_constraint"),
-//     plant_(plant),
-//     body_(plant->GetBodyByName("toe_left")),
-//     quaternion_scale_(var_scale[4]) {
-//   }
-//   ~LeftFootYConstraint() override = default;
-
-//   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-//                           drake::VectorX<double>* y) const override {
-//     VectorXd q = x;
-//     q.head(4) *= quaternion_scale_;
-
-//     std::unique_ptr<drake::systems::Context<double>> context =
-//           plant_->CreateDefaultContext();
-//     plant_->SetPositions(context.get(), q);
-
-//     VectorX<double> pt(3);
-//     this->plant_->CalcPointsPositions(*context,
-//                                       body_.body_frame(), Vector3d::Zero(),
-//                                       plant_->world_frame(), &pt);
-//     *y = pt.segment(1, 1);
-//   };
-//  private:
-//   const MultibodyPlant<double>* plant_;
-//   const drake::multibody::Body<double>& body_;
-//   double quaternion_scale_;
-// };
-// class RightFootYConstraint : public DirconAbstractConstraint<double> {
-//  public:
-//   RightFootYConstraint(const MultibodyPlant<double>* plant,
-//                        vector<double> var_scale) :
-//     DirconAbstractConstraint<double>(
-//       1, plant->num_positions(),
-//       VectorXd::Ones(1) * (-std::numeric_limits<double>::infinity()),
-//       VectorXd::Ones(1) * (-0.03),
-//       "right_foot_constraint"),
-//     plant_(plant),
-//     body_(plant->GetBodyByName("toe_right")),
-//     quaternion_scale_(var_scale[4]) {
-//   }
-//   ~RightFootYConstraint() override = default;
-
-//   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-//                           drake::VectorX<double>* y) const override {
-//     VectorXd q = x;
-//     q.head(4) *= quaternion_scale_;
-
-//     std::unique_ptr<drake::systems::Context<double>> context =
-//           plant_->CreateDefaultContext();
-//     plant_->SetPositions(context.get(), q);
-
-//     VectorX<double> pt(3);
-//     this->plant_->CalcPointsPositions(*context,
-//                                       body_.body_frame(), Vector3d::Zero(),
-//                                       plant_->world_frame(), &pt);
-//     *y = pt.segment(1, 1);
-//   };
-//  private:
-//   const MultibodyPlant<double>* plant_;
-//   const drake::multibody::Body<double>& body_;
-//   double quaternion_scale_;
-// };
-
-// class RightFootZConstraint : public DirconAbstractConstraint<double> {
-//  public:
-//   RightFootZConstraint(const MultibodyPlant<double>* plant,
-//                        double ground_incline,
-//                        vector<double> var_scale) :
-//     DirconAbstractConstraint<double>(
-//       1, plant->num_positions(),
-//       VectorXd::Ones(1) * 0.05,
-//       VectorXd::Ones(1) * std::numeric_limits<double>::infinity(),
-//       "right_foot_height_constraint"),
-//     plant_(plant),
-//     body_(plant->GetBodyByName("toe_right")),
-//     quaternion_scale_(var_scale[4]) {
-
-//     Eigen::AngleAxisd rollAngle(0, Vector3d::UnitX());
-//     Eigen::AngleAxisd pitchAngle(ground_incline, Vector3d::UnitY());
-//     Eigen::AngleAxisd yawAngle(0, Vector3d::UnitZ());
-//     Eigen::Quaterniond q = yawAngle * pitchAngle * rollAngle;
-//     Eigen::Matrix3d inv_rot_mat_ground = q.matrix().transpose();
-
-//     T_ground_incline_ = inv_rot_mat_ground;
-//   }
-//   ~RightFootZConstraint() override = default;
-
-//   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-//                           drake::VectorX<double>* y) const override {
-//     VectorXd q = x;
-//     q.head(4) *= quaternion_scale_;
-
-//     std::unique_ptr<drake::systems::Context<double>> context =
-//           plant_->CreateDefaultContext();
-//     plant_->SetPositions(context.get(), q);
-
-//     VectorX<double> pt(3);
-//     this->plant_->CalcPointsPositions(*context,
-//                                       body_.body_frame(), Vector3d::Zero(),
-//                                       plant_->world_frame(), &pt);
-//     *y = (T_ground_incline_ * pt).tail(1);
-//   };
-//  private:
-//   const MultibodyPlant<double>* plant_;
-//   const drake::multibody::Body<double>& body_;
-//   double quaternion_scale_;
-
-//   Eigen::Matrix3d T_ground_incline_;
-// };
-
-
 void DoMain(double stride_length,
             double ground_incline,
             double duration, int iter,
@@ -655,12 +281,12 @@ void DoMain(double stride_length,
             double time_scale,
             double quaternion_scale,
             double tol) {
+  // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double> plant;
-  // multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
   Parser parser(&plant, &scene_graph);
 
   string full_name =
@@ -674,109 +300,35 @@ void DoMain(double stride_length,
   map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> velocities_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> actuators_map = multibody::makeNameToActuatorsMap(plant);
-  // for (auto const& element : positions_map)
-  //   cout << element.first << " = " << element.second << endl;
-  // cout << "\n";
-  // for (auto const& element : velocities_map)
-  //   cout << element.first << " = " << element.second << endl;
-  // cout << "\n";
-  // for (auto const& element : actuators_map)
-  //   cout << element.first << " = " << element.second << endl;
-  // cout << "\n";
-
-  // base_qw = 0
-  // base_qx = 1
-  // base_qy = 2
-  // base_qz = 3
-  // base_x = 4
-  // base_y = 5
-  // base_z = 6
-  // hip_roll_left = 7
-  // hip_roll_right = 8
-  // hip_yaw_left = 9
-  // hip_yaw_right = 10
-  // hip_pitch_left = 11
-  // hip_pitch_right = 12
-  // knee_left = 13
-  // knee_right = 14
-  // ankle_joint_left = 15
-  // ankle_joint_right = 16
-  // toe_left = 17
-  // toe_right = 18
-
-  // velocity[0] = 0
-  // velocity[1] = 1
-  // velocity[2] = 2
-  // velocity[3] = 3
-  // velocity[4] = 4
-  // velocity[5] = 5
-  // hip_roll_leftdot = 6
-  // hip_roll_rightdot = 7
-  // hip_yaw_leftdot = 8
-  // hip_yaw_rightdot = 9
-  // hip_pitch_leftdot = 10
-  // hip_pitch_rightdot = 11
-  // knee_leftdot = 12
-  // knee_rightdot = 13
-  // ankle_joint_leftdot = 14
-  // ankle_joint_rightdot = 15
-  // toe_leftdot = 16
-  // toe_rightdot = 17
-
-  // hip_roll_left_motor = 0
-  // hip_roll_right_motor = 1
-  // hip_yaw_left_motor = 2
-  // hip_yaw_right_motor = 3
-  // hip_pitch_left_motor = 4
-  // hip_pitch_right_motor = 5
-  // knee_left_motor = 6
-  // knee_right_motor = 7
-  // toe_left_motor = 8
-  // toe_right_motor = 9
 
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
   // int n_x = n_q + n_v;
-  // cout << "n_q = " << n_q << "\n";
-  // cout << "n_v = " << n_v << "\n";
-  // cout << "n_x = " << n_x << "\n";
-  // cout << "n_u = " << n_u << "\n";
-  // cout << "floating_positions_start = " <<
-  //      plant.GetBodyByName("pelvis").floating_positions_start() << endl;
-  // cout << "floating_velocities_start = " <<
-  //      plant.GetBodyByName("pelvis").floating_velocities_start() << endl;
 
   // Set up contact/distance constraints and construct dircon
   // parameters
   bool is_quaternion = multibody::isQuaternion(plant);
 
   // Scaling paramters
-  // double omega_scale = 10;  // 10
-  // double input_scale = 100;
-  // double force_scale = 1000;  // 400
-  // double time_scale = 0.008;  // 0.01
-  // double quaternion_scale = 0.5;  // 1
-  // double trans_pos_scale = 1;
-  // double rot_pos_scale = 1;
-  vector<double> var_scale = {omega_scale, input_scale, force_scale, time_scale,
-                              quaternion_scale
-                             };
+  // vector<double> var_scale = {omega_scale, input_scale, force_scale, time_scale,
+  //                             quaternion_scale
+  //                            };
 
   const Body<double>& toe_left = plant.GetBodyByName("toe_left");
   const Body<double>& toe_right = plant.GetBodyByName("toe_right");
   Vector3d pt_front_contact(-0.0457, 0.112, 0);
   Vector3d pt_rear_contact(0.088, 0, 0);
   bool isXZ = false;
-  // Eigen::Vector2d ground_rp(0, ground_incline);  // gournd incline in roll pitch
+  Eigen::Vector2d ground_rp(0, ground_incline);  // gournd incline in roll pitch
   auto left_toe_front_constraint = DirconPositionData<double>(plant, toe_left,
-                                   pt_front_contact, isXZ/*, ground_rp*/);
+                                   pt_front_contact, isXZ, ground_rp);
   auto left_toe_rear_constraint = DirconPositionData<double>(plant, toe_left,
-                                  pt_rear_contact, isXZ/*, ground_rp*/);
+                                  pt_rear_contact, isXZ, ground_rp);
   auto right_toe_front_constraint = DirconPositionData<double>(plant, toe_right,
-                                    pt_front_contact, isXZ/*, ground_rp*/);
+                                    pt_front_contact, isXZ, ground_rp);
   auto right_toe_rear_constraint = DirconPositionData<double>(plant, toe_right,
-                                   pt_rear_contact, isXZ/*, ground_rp*/);
+                                   pt_rear_contact, isXZ, ground_rp);
   Vector3d normal(0, 0, 1);
   double mu = 1;
   left_toe_front_constraint.addFixedNormalFrictionConstraints(normal, mu);
@@ -806,11 +358,7 @@ void DoMain(double stride_length,
   skip_constraint_inds.push_back(3);
   skip_constraint_inds.push_back(9);
 
-  // Double stance all four contacts
-  // 0 1 2 | 3 4 5 | 6 7 8 | 9 10 11 | 12 13
-  // 0 1 2 |   4 5 | 6 7 8 |   10 11 | 12 13
-  // 0 1 2 |   3 4 | 5 6 7 |   8  9  | 10 11
-
+  // Double stance (all four contact points)
   vector<DirconKinematicData<double>*> double_stance_all_constraint;
   double_stance_all_constraint.push_back(&left_toe_front_constraint);
   double_stance_all_constraint.push_back(&left_toe_rear_constraint);
@@ -822,26 +370,26 @@ void DoMain(double stride_length,
                             &double_stance_all_constraint, skip_constraint_inds);
   auto double_all_options = DirconOptions(double_all_dataset.countConstraints());
   // Be careful in setting relative constraint, because we also skip constraints.
+  // lf    | lr    | rf    | rr      | fourbar
+  // 0 1 2 | 3 4 5 | 6 7 8 | 9 10 11 | 12 13
+  // 0 1 2 |   4 5 | 6 7 8 |   10 11 | 12 13
+  // 0 1 2 |   3 4 | 5 6 7 |   8  9  | 10 11
   double_all_options.setConstraintRelative(0, true);
   double_all_options.setConstraintRelative(1, true);
   double_all_options.setConstraintRelative(3, true);
   double_all_options.setConstraintRelative(5, true);
   double_all_options.setConstraintRelative(6, true);
   double_all_options.setConstraintRelative(8, true);
-  cout << "DOUBLE CHECK if you are setting the relative constraint correctly.\n";
 
-  // Stated in the MultipleShooting class:
-  vector<int> num_time_samples;
+  // timesteps and modes setting
   vector<double> min_dt;
   vector<double> max_dt;
-  vector<DirconKinematicDataSet<double>*> dataset_list;
-  vector<DirconOptions> options_list;
-  // num_time_samples.push_back(int(40.0 * duration));  // 40 nodes per second
-  // Be careful that the nodes per second cannot be too high be cause you have
-  // min_dt bound.
   min_dt.push_back(.01);
   max_dt.push_back(.3);
-  num_time_samples.push_back(int(40.0 * duration));  // 40 nodes per second
+  vector<int> num_time_samples;
+  num_time_samples.push_back(20);
+  vector<DirconKinematicDataSet<double>*> dataset_list;
+  vector<DirconOptions> options_list;
   dataset_list.push_back(&double_all_dataset);
   options_list.push_back(double_all_options);
 
@@ -858,8 +406,9 @@ void DoMain(double stride_length,
   auto trajopt = std::make_shared<HybridDircon<double>>(plant,
                  num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
+  // Snopt settings
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Print file", "snopt.out");
+                           "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", iter);
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -867,7 +416,7 @@ void DoMain(double stride_length,
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Verify level", 0);  // 0
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
-                           2);  // 0 // snopt doc said try 2 if seeing snopta exit 40
+                           0);  // 0 // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance", tol);  // target nonlinear constraint violation
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -877,8 +426,16 @@ void DoMain(double stride_length,
   for (uint i = 0; i < num_time_samples.size(); i++)
     N += num_time_samples[i];
   N -= num_time_samples.size() - 1;  // because of overlaps between modes
-  cout << "N = " << N << endl;
 
+  // quaterion norm constraint
+  if (is_quaternion) {
+    auto quat_norm_constraint = std::make_shared<QuaternionNormConstraint>
+                                (quaternion_scale);
+    for (int i = 0; i < N; i++) {
+      auto xi = trajopt->state(i);
+      trajopt->AddConstraint(quat_norm_constraint, xi.head(4));
+    }
+  }
 
   // Get the decision varaibles that will be used
   auto u = trajopt->input();
@@ -891,36 +448,20 @@ void DoMain(double stride_length,
   auto xmid = trajopt->state_vars_by_mode(num_time_samples.size() - 1,
                                           num_time_samples[num_time_samples.size() - 1] / 2);
 
-  // Fix the time duration
-  cout << "duration = " << duration << endl;
-  trajopt->AddDurationBounds(duration / time_scale, duration / time_scale);
-
-  // quaterion norm constraint
-  if (is_quaternion) {
-    auto quat_norm_constraint = std::make_shared<QuaternionNormConstraint>
-                                (var_scale);
-    for (int i = 0; i < N; i++) {
-      auto xi = trajopt->state(i);
-      trajopt->AddConstraint(quat_norm_constraint, xi.head(4));
-    }
-  }
-
   // hieght constraint
   trajopt->AddLinearConstraint(x0(positions_map.at("base_z")) == 1);
-  // trajopt->AddLinearConstraint(xmid(positions_map.at("base_z")) == 0.95);
+  // trajopt->AddLinearConstraint(xmid(positions_map.at("base_z")) == 1.1);
+  trajopt->AddLinearConstraint(xf(positions_map.at("base_z")) == 1.1);
 
   // initial pose condition
-  // trajopt->AddLinearConstraint(x0(positions_map.at("base_qw")) == 1);
-  // trajopt->AddLinearConstraint(x0(positions_map.at("base_qx")) == 0);
-  // trajopt->AddLinearConstraint(x0(positions_map.at("base_qy")) == 0);
-  // trajopt->AddLinearConstraint(x0(positions_map.at("base_qz")) == 0);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qw")) == 1);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qx")) == 0);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qy")) == 0);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qz")) == 0);
 
-  // periodic constraints
-  trajopt->AddLinearConstraint(x0 == xf);
+  // start/end velocity constraints
+  trajopt->AddLinearConstraint(x0.tail(n_v) == VectorXd::Zero(n_v));
+  trajopt->AddLinearConstraint(xf.tail(n_v) == VectorXd::Zero(n_v));
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs {
@@ -963,11 +504,6 @@ void DoMain(double stride_length,
   }
 
   // u limit
-  // for (const auto & member : motor_names) {
-  // trajopt->AddConstraintToAllKnotPoints(u(actuators_map.at(member)) <= 300/input_scale);
-  // trajopt->AddConstraintToAllKnotPoints(u(actuators_map.at(member)) >= -300/input_scale);
-  // }
-  // Since the limit are the same, we don't need to loop over motor_names
   for (int i = 0; i < N; i++) {
     auto ui = trajopt->input(i);
     trajopt->AddBoundingBoxConstraint(
@@ -1017,20 +553,14 @@ void DoMain(double stride_length,
       xi_init << q_init.head(4) / quaternion_scale,
               q_init.tail(n_q - 4),
               VectorXd::Zero(n_v);
-      // cout << "xi.size() = " << xi.size() << endl;
-      // cout << "xi_init.size() = " << xi_init.size() << endl;
       trajopt->SetInitialGuess(xi, xi_init);
 
       auto ui = trajopt->input(i);
-      // cout << "ui.size() = " << ui.size() << endl;
-      // cout << "u_init.size() = " << u_init.size() << endl;
       trajopt->SetInitialGuess(ui, u_init / input_scale);
     }
     for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
       for (int index = 0; index < num_time_samples[mode]; index++) {
         auto lambdai = trajopt->force(mode, index);
-        // cout << "lambdai.size() = " << lambdai.size() << endl;
-        // cout << "lambda_init.size() = " << lambda_init.size() << endl;
         trajopt->SetInitialGuess(lambdai, lambda_init / force_scale);
       }
     }
@@ -1063,7 +593,7 @@ void DoMain(double stride_length,
   cout << "Solve time:" << elapsed.count() << std::endl;
   cout << "Cost:" << result.get_optimal_cost() << std::endl;
 
-  // Check which solver we are using
+  // Check which solver was used
   cout << "Solver: " << result.get_solver_id().name() << endl;
 
   // Testing - check if the nonilnear constraints are all satisfied
@@ -1175,10 +705,9 @@ void DoMain(double stride_length,
     builder.Connect(ball_to_pose->get_output_port(),
         scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
   }
-
-  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
   // **************************************
 
+  drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
   auto diagram = builder.Build();
 
   while (true) {
@@ -1196,11 +725,10 @@ void DoMain(double stride_length,
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  double duration = FLAGS_duration; //0.5
+  double duration = FLAGS_duration;
   int iter = FLAGS_max_iter;
   string data_directory = "../dairlib_data/examples/Cassie/trajopt_data/";
   string init_file = FLAGS_init_file;
-  // string init_file = "testing_z.csv";
   string output_prefix = "";
 
   dairlib::DoMain(FLAGS_stride_length, FLAGS_ground_incline,

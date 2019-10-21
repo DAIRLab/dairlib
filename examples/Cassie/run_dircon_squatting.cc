@@ -113,10 +113,10 @@ using dairlib::multibody::ContactInfo;
 using dairlib::multibody::FixedPointSolver;
 
 DEFINE_string(init_file, "", "the file name of initial guess");
+DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
+              "directory to save/read data");
 DEFINE_int32(max_iter, 100000, "Iteration limit");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
-DEFINE_double(stride_length, 0.2, "Duration of the walking gait (s)");
-DEFINE_double(ground_incline, 0.0, "Duration of the walking gait (s)");
 DEFINE_double(omega_scale, 1, "Variable scaling");
 DEFINE_double(input_scale, 1, "Variable scaling");
 DEFINE_double(force_scale, 1, "Variable scaling");
@@ -228,11 +228,9 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
                              VectorXd::Zero(n_u),
                              MatrixXd::Zero(n_q, n_q),
                              MatrixXd::Identity(n_u, n_u));
-  // fp_solver.AddUnitQuaternionConstraint(3, 4, 5, 6);
   fp_solver.AddFrictionConeConstraint(0.8);
   fp_solver.AddJointLimitConstraint(0); //0.1
   fp_solver.AddFixedJointsConstraint(fixed_joints);
-  // fp_solver.SetInitialGuessQ(q_desired);
   fp_solver.AddSpreadNormalForcesCost();
 
   // get mathematicalprogram to add constraint ourselves
@@ -381,12 +379,9 @@ class QuaternionNormConstraint : public DirconAbstractConstraint<double> {
 };
 
 
-void DoMain(double stride_length,
-            double ground_incline,
-            double duration, int iter,
+void DoMain(double duration, int max_iter,
             string data_directory,
             string init_file,
-            string output_prefix,
             double omega_scale,
             double input_scale,
             double force_scale,
@@ -418,21 +413,18 @@ void DoMain(double stride_length,
   int n_u = plant.num_actuators();
   // int n_x = n_q + n_v;
 
-  // Set up contact/distance constraints and construct dircon
-  // parameters
-  bool is_quaternion = multibody::isQuaternion(plant);
-
   // Scaling paramters
   // vector<double> var_scale = {omega_scale, input_scale, force_scale,
   //                             time_scale, quaternion_scale
   //                            };
 
+  // Set up contact/distance constraints
   const Body<double>& toe_left = plant.GetBodyByName("toe_left");
   const Body<double>& toe_right = plant.GetBodyByName("toe_right");
   Vector3d pt_front_contact(-0.0457, 0.112, 0);
   Vector3d pt_rear_contact(0.088, 0, 0);
   bool isXZ = false;
-  Eigen::Vector2d ground_rp(0, ground_incline);  // gournd incline in roll pitch
+  Eigen::Vector2d ground_rp(0, 0);  // gournd incline in roll pitch
   auto left_toe_front_constraint = DirconPositionData<double>(plant, toe_left,
                                    pt_front_contact, isXZ, ground_rp);
   auto left_toe_rear_constraint = DirconPositionData<double>(plant, toe_left,
@@ -505,15 +497,15 @@ void DoMain(double stride_length,
   dataset_list.push_back(&double_all_dataset);
   options_list.push_back(double_all_options);
 
-  cout << "options_list.size() = " << options_list.size() << endl;
-  for (uint i = 0; i < options_list.size(); i ++) {
-    cout << "mode # " << i << endl;
-    for (auto member : options_list[i].getConstraintsRelative()) {
-      cout << member << ", ";
-    }
-    cout << endl;
-  }
-  cout << endl;
+  // cout << "options_list.size() = " << options_list.size() << endl;
+  // for (uint i = 0; i < options_list.size(); i ++) {
+  //   cout << "mode # " << i << endl;
+  //   for (auto member : options_list[i].getConstraintsRelative()) {
+  //     cout << member << ", ";
+  //   }
+  //   cout << endl;
+  // }
+  // cout << endl;
 
   auto trajopt = std::make_shared<HybridDircon<double>>(plant,
                  num_time_samples, min_dt, max_dt, dataset_list, options_list);
@@ -522,7 +514,7 @@ void DoMain(double stride_length,
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", iter);
+                           "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -543,7 +535,7 @@ void DoMain(double stride_length,
   N -= num_time_samples.size() - 1;  // because of overlaps between modes
 
   // quaterion norm constraint
-  if (is_quaternion) {
+  if (multibody::isQuaternion(plant)) {
     auto quat_norm_constraint = std::make_shared<QuaternionNormConstraint>
                                 (quaternion_scale);
     for (int i = 0; i < N; i++) {
@@ -555,8 +547,6 @@ void DoMain(double stride_length,
   // Get the decision varaibles that will be used
   auto u = trajopt->input();
   auto x = trajopt->state();
-  // auto u0 = trajopt->input(0);
-  // auto uf = trajopt->input(N - 1);
   auto x0 = trajopt->initial_state();
   auto xf = trajopt->state_vars_by_mode(
               num_time_samples.size() - 1,
@@ -726,7 +716,7 @@ void DoMain(double stride_length,
 
   // store the solution of the decision variable
   VectorXd z = result.GetSolution(trajopt->decision_variables());
-  writeCSV(data_directory + output_prefix + string("z.csv"), z);
+  writeCSV(data_directory + string("z.csv"), z);
   // for (int i = 0; i < z.size(); i++) {
   //   cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
   // }
@@ -752,8 +742,7 @@ void DoMain(double stride_length,
   cout << "state_at_knots.size() = " << state_at_knots.size() << endl;
   cout << "input_at_knots = \n" << input_at_knots << "\n";
 
-  // Also store lambda. We might need to look at it in the future!
-  // (save it so we don't need to rerun)
+  // Store lambda
   std::ofstream ofile;
   ofile.open("../dairlib_data/examples/Cassie/trajopt_data/lambda.txt",
              std::ofstream::out);
@@ -852,16 +841,8 @@ void DoMain(double stride_length,
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  double duration = FLAGS_duration;
-  int iter = FLAGS_max_iter;
-  string data_directory = "../dairlib_data/examples/Cassie/trajopt_data/";
-  string init_file = FLAGS_init_file;
-  string output_prefix = "";
-
-  dairlib::DoMain(FLAGS_stride_length, FLAGS_ground_incline,
-                  duration, iter,
-                  data_directory, init_file, output_prefix,
+  dairlib::DoMain(FLAGS_duration, FLAGS_max_iter,
+                  FLAGS_data_directory, FLAGS_init_file,
                   FLAGS_omega_scale,
                   FLAGS_input_scale,
                   FLAGS_force_scale,

@@ -47,6 +47,7 @@
 
 #include "examples/Cassie/cassie_utils.h"
 
+#include "attic/multibody/rigidbody_utils.h"
 #include "attic/multibody/multibody_solvers.h"
 
 #include "multibody/com_pose_system.h"
@@ -130,6 +131,40 @@ namespace dairlib {
 /// constraints in trajectory optimization (dircon).
 /// This file runs trajectory optimization for fixed-spring cassie
 
+// Constraints to fix the position of a point on a body
+class BodyPonitPositionConstraint : public DirconAbstractConstraint<double> {
+ public:
+  BodyPonitPositionConstraint(const RigidBodyTree<double>& tree,
+                              string body_name,
+                              Vector3d translation,
+                              Vector3d desired_pos) :
+    DirconAbstractConstraint<double>(
+      3, tree.get_num_positions(),
+      VectorXd::Zero(3),
+      VectorXd::Zero(3),
+      body_name + "_position_constraint"),
+    tree_(tree),
+    body_idx_(multibody::GetBodyIndexFromName(tree, body_name)),
+    translation_(translation),
+    desired_pos_(desired_pos) {
+  }
+  ~BodyPonitPositionConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    VectorXd q = x;
+    KinematicsCache<double> cache = tree_.doKinematics(q);
+    VectorXd pt = tree_.transformPoints(cache, translation_, body_idx_, 0);
+
+    *y = pt - desired_pos_;
+  };
+ private:
+  const RigidBodyTree<double>& tree_;
+  const int body_idx_;
+  const Vector3d translation_;
+  const Vector3d desired_pos_;
+};
+
 // Use fixed-point solver to get configuration guess (for standing in place)
 void GetInitFixedPointGuess(const Vector3d& pelvis_position,
                             const RigidBodyTree<double>& tree,
@@ -186,19 +221,94 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   fixed_joints[5] = 0;
   fixed_joints[6] = 0;
 
+  fixed_joints[9] = 0;
+  fixed_joints[10] = 0;
+
   FixedPointSolver fp_solver(tree, contact_info, q_desired, VectorXd::Zero(n_u),
                              MatrixXd::Zero(n_q, n_q), MatrixXd::Identity(n_u, n_u));
   // fp_solver.AddUnitQuaternionConstraint(3, 4, 5, 6);
   fp_solver.AddFrictionConeConstraint(0.8);
-  fp_solver.AddJointLimitConstraint(0.1);
+  fp_solver.AddJointLimitConstraint(0); //0.1
   fp_solver.AddFixedJointsConstraint(fixed_joints);
-  fp_solver.SetInitialGuessQ(q_desired);
+  // fp_solver.SetInitialGuessQ(q_desired);
   fp_solver.AddSpreadNormalForcesCost();
 
+  // get mathematicalprogram to add constraint ourselves
+  shared_ptr<MathematicalProgram> mp = fp_solver.get_program();
+  auto& q_var = mp->decision_variables().head(
+                  n_q);  // Assume q is located at the start
+  Vector3d desired_left_toe_pos(0.05, 0.15, 0);
+  Vector3d desired_right_toe_pos(0.05, -0.15, 0);
+  auto left_foot_constraint = std::make_shared<BodyPonitPositionConstraint>(
+                                tree, "toe_left", pt_front_contact,
+                                desired_left_toe_pos);
+  auto right_foot_constraint = std::make_shared<BodyPonitPositionConstraint>(
+                                 tree, "toe_right", pt_front_contact,
+                                 desired_right_toe_pos);
+  mp->AddConstraint(left_foot_constraint, q_var);
+  mp->AddConstraint(right_foot_constraint, q_var);
+
+  VectorXd init_guess = VectorXd::Random(mp->decision_variables().size());
+  init_guess <<           0,
+             0,
+             1.03158,
+             1,
+             0,
+             0,
+             0,
+             0.00476715,
+             -0.00476718,
+             0.293,
+             -0.293,
+             0.353856,
+             0.353856,
+             -1.10274,
+             -1.10274,
+             1.32657,
+             1.32657,
+             -1.45255,
+             -1.45255,
+             -2.9108,
+             2.93222,
+             -0.0957757,
+             0.0882644,
+             -6.47907,
+             -6.43824,
+             41.9363,
+             41.8368,
+             -13.5949,
+             -13.5762,
+             -445.273,
+             -444.084,
+             139.909,
+             17.1385,
+             -7.52987,
+             22.1902,
+             -17.1116,
+             4.72572,
+             139.657,
+             -1.27836,
+             1.9417,
+             22.0241,
+             1.2515,
+             0.862448;
+  mp->SetInitialGuessForAllVariables(init_guess);
+
+  mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                      "Print file", "../snopt.out");
+  // target nonlinear constraint violation
+  mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                      "Major optimality tolerance", 1e-5);
+  // target complementarity gap
+  mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                      "Major feasibility tolerance", 1e-5);
+
+  // solve for the standing pose
   cout << "Solving for fixed point...\n";
   const auto result = fp_solver.Solve();
   SolutionResult solution_result = result.get_solution_result();
   cout << to_string(solution_result) << endl;
+  cout << result.GetSolution() << endl;
 
   VectorXd q_sol = fp_solver.GetSolutionQ();
   VectorXd u_sol = fp_solver.GetSolutionU();
@@ -529,7 +639,7 @@ void DoMain(double stride_length,
   } else {
     // Add random initial guess first
     trajopt->SetInitialGuessForAllVariables(
-        VectorXd::Random(trajopt->decision_variables().size()));
+      VectorXd::Random(trajopt->decision_variables().size()));
 
     // Use RBT fixed point solver for state/input/force
     RigidBodyTree<double> tree;
@@ -547,7 +657,7 @@ void DoMain(double stride_length,
     VectorXd prev_lambda_init;
 
     for (int i = 0; i < N; i++) {
-      Vector3d pelvis_position(0, 0, 1 + 0.1*i/(N-1));
+      Vector3d pelvis_position(0, 0, 1 + 0.1 * i / (N - 1));
       GetInitFixedPointGuess(pelvis_position, tree,
                              &q_init, &u_init, &lambda_init);
 
@@ -655,18 +765,18 @@ void DoMain(double stride_length,
     trajopt->ReconstructStateTrajectory(result);
 
   auto traj_source = builder.AddSystem<drake::systems::TrajectorySource>(
-        pp_xtraj);
+                       pp_xtraj);
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-    plant.num_positions() + plant.num_velocities(), 0,
-    plant.num_positions());
+                       plant.num_positions() + plant.num_velocities(), 0,
+                       plant.num_positions());
   builder.Connect(traj_source->get_output_port(),
                   passthrough->get_input_port());
   auto to_pose =
-      builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
+    builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
   builder.Connect(passthrough->get_output_port(), to_pose->get_input_port());
 
   builder.Connect(to_pose->get_output_port(),
-      scene_graph.get_source_pose_port(plant.get_source_id().value()));
+                  scene_graph.get_source_pose_port(plant.get_source_id().value()));
 
   // multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
   //                                        pp_xtraj);
@@ -680,36 +790,37 @@ void DoMain(double stride_length,
     UnitInertia<double> G_Bcm = UnitInertia<double>::SolidSphere(radius);
     SpatialInertia<double> M_Bcm(1, Eigen::Vector3d::Zero(), G_Bcm);
 
-    const drake::multibody::RigidBody<double>& ball = ball_plant->AddRigidBody("Ball", M_Bcm);
+    const drake::multibody::RigidBody<double>& ball =
+      ball_plant->AddRigidBody("Ball", M_Bcm);
 
     ball_plant->RegisterAsSourceForSceneGraph(&scene_graph);
     // Add visual for the COM.
     const Eigen::Vector4d orange(1.0, 0.55, 0.0, 1.0);
     const RigidTransformd X_BS = RigidTransformd::Identity();
     ball_plant->RegisterVisualGeometry(ball, X_BS, Sphere(radius), "visual",
-        orange);
+                                       orange);
     ball_plant->Finalize();
 
     // connect
     auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      plant.num_positions() + plant.num_velocities(), 0, plant.num_positions());
+                           plant.num_positions() + plant.num_velocities(), 0, plant.num_positions());
     builder.Connect(traj_source->get_output_port(),
                     q_passthrough->get_input_port());
     auto rbt_passthrough =
       builder.AddSystem<multibody::ComPoseSystem>(plant);
 
     auto ball_to_pose =
-        builder.AddSystem<MultibodyPositionToGeometryPose<double>>(*ball_plant);
+      builder.AddSystem<MultibodyPositionToGeometryPose<double>>(*ball_plant);
     builder.Connect(*q_passthrough, *rbt_passthrough);
     if (com_on_ground) {
       builder.Connect(rbt_passthrough->get_xy_com_output_port(),
-          ball_to_pose->get_input_port());
+                      ball_to_pose->get_input_port());
     } else {
       builder.Connect(rbt_passthrough->get_com_output_port(),
-          ball_to_pose->get_input_port());
+                      ball_to_pose->get_input_port());
     }
     builder.Connect(ball_to_pose->get_output_port(),
-        scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
+                    scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
   }
   // **************************************
 

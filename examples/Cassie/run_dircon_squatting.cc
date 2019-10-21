@@ -112,7 +112,7 @@ using dairlib::multibody::ContactInfo;
 using dairlib::multibody::FixedPointSolver;
 
 DEFINE_string(init_file, "", "the file name of initial guess");
-DEFINE_int32(max_iter, 10000, "Iteration limit");
+DEFINE_int32(max_iter, 100000, "Iteration limit");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
 DEFINE_double(stride_length, 0.2, "Duration of the walking gait (s)");
 DEFINE_double(ground_incline, 0.0, "Duration of the walking gait (s)");
@@ -178,9 +178,9 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
             -1.6072;
 
   std::map<int, double> fixed_joints;
-  // for (int i = 0; i < 3; i++) {
-  //   fixed_joints[i] = pelvis_position[i];
-  // }
+  for (int i = 0; i < 3; i++) {
+    fixed_joints[i] = pelvis_position[i];
+  }
   fixed_joints[3] = 1;
   fixed_joints[4] = 0;
   fixed_joints[5] = 0;
@@ -411,8 +411,8 @@ void DoMain(double stride_length,
                            "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", iter);
-  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                          "Iterations limit", 100000);  // QP subproblems
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Verify level", 0);  // 0
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
@@ -527,7 +527,11 @@ void DoMain(double stride_length,
     MatrixXd z0 = readCSV(data_directory + init_file);
     trajopt->SetInitialGuessForAllVariables(z0);
   } else {
-    // Use RBT fixed point solver
+    // Add random initial guess first
+    trajopt->SetInitialGuessForAllVariables(
+        VectorXd::Random(trajopt->decision_variables().size()));
+
+    // Use RBT fixed point solver for state/input/force
     RigidBodyTree<double> tree;
     buildCassieTree(tree,
                     "examples/Cassie/urdf/cassie_fixed_springs.urdf",
@@ -537,17 +541,17 @@ void DoMain(double stride_length,
     drake::multibody::AddFlatTerrainToWorld(&tree,
                                             terrain_size, terrain_depth);
 
-    Vector3d pelvis_position(0, 0, 1);
     VectorXd q_init;
     VectorXd u_init;
     VectorXd lambda_init;
-    GetInitFixedPointGuess(pelvis_position, tree,
-                           &q_init, &u_init, &lambda_init);
-    cout << "q_init from fixed-point solver = " << q_init << endl;
-    cout << "u_init from fixed-point solver = " << u_init << endl;
-    cout << "lambda_init from fixed-point solver = " << lambda_init << endl;
+    VectorXd prev_lambda_init;
 
     for (int i = 0; i < N; i++) {
+      Vector3d pelvis_position(0, 0, 1 + 0.1*i/(N-1));
+      GetInitFixedPointGuess(pelvis_position, tree,
+                             &q_init, &u_init, &lambda_init);
+
+      // guess for state
       auto xi = trajopt->state(i);
       VectorXd xi_init(n_q + n_v);
       xi_init << q_init.head(4) / quaternion_scale,
@@ -555,14 +559,16 @@ void DoMain(double stride_length,
               VectorXd::Zero(n_v);
       trajopt->SetInitialGuess(xi, xi_init);
 
+      // guess for input
       auto ui = trajopt->input(i);
       trajopt->SetInitialGuess(ui, u_init / input_scale);
-    }
-    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
-      for (int index = 0; index < num_time_samples[mode]; index++) {
-        auto lambdai = trajopt->force(mode, index);
-        trajopt->SetInitialGuess(lambdai, lambda_init / force_scale);
-      }
+
+      // guess for constraint force
+      auto lambdai = trajopt->force(0, i);
+      trajopt->SetInitialGuess(lambdai, lambda_init / force_scale);
+
+      // guess for constraint force at collocation points
+      // prev_lambda_init = lambda_init;
     }
   }
   // Careful: MUST set the initial guess for quaternion, since 0-norm quaterion

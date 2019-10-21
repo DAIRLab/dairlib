@@ -314,8 +314,8 @@ void HybridDircon<T>::SetInitialForceTrajectory(int mode,
     guess_force.fill(0);  // Start with 0
   } else {
     for (int i = 0; i < mode_lengths_[mode]; ++i) {
-      guess_force.segment(num_kinematic_constraints_[mode] * i,
-                          num_kinematic_constraints_[mode]) =
+      guess_force.segment(num_kinematic_constraints_wo_skipping_[mode] * i,
+                          num_kinematic_constraints_wo_skipping_[mode]) =
           traj_init_l.value(start_time + i * h);
     }
   }
@@ -326,8 +326,8 @@ void HybridDircon<T>::SetInitialForceTrajectory(int mode,
     guess_collocation_force.fill(0);  // Start with 0
   } else {
     for (int i = 0; i < mode_lengths_[mode]-1; ++i) {
-      guess_collocation_force.segment(num_kinematic_constraints_[mode] * i,
-                                      num_kinematic_constraints_[mode]) =
+      guess_collocation_force.segment(num_kinematic_constraints_wo_skipping_[mode] * i,
+                                      num_kinematic_constraints_wo_skipping_[mode]) =
           traj_init_lc.value(start_time + (i + 0.5) * h);
     }
   }
@@ -338,8 +338,8 @@ void HybridDircon<T>::SetInitialForceTrajectory(int mode,
     guess_collocation_slack.fill(0);  // Start with 0
   } else {
     for (int i = 0; i < mode_lengths_[mode]-1; ++i) {
-      guess_collocation_slack.segment(num_kinematic_constraints_[mode] * i,
-                                      num_kinematic_constraints_[mode]) =
+      guess_collocation_slack.segment(num_kinematic_constraints_wo_skipping_[mode] * i,
+                                      num_kinematic_constraints_wo_skipping_[mode]) =
           traj_init_vc.value(start_time + (i + 0.5) * h);
     }
   }

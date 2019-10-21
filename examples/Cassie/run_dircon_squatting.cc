@@ -131,18 +131,18 @@ namespace dairlib {
 /// constraints in trajectory optimization (dircon).
 /// This file runs trajectory optimization for fixed-spring cassie
 
-// Constraints to fix the position of a point on a body
+// Constraint to fix the position of a point on a body (for initial guess)
 class BodyPonitPositionConstraint : public DirconAbstractConstraint<double> {
  public:
   BodyPonitPositionConstraint(const RigidBodyTree<double>& tree,
                               string body_name,
                               Vector3d translation,
                               Vector3d desired_pos) :
-    DirconAbstractConstraint<double>(
-      3, tree.get_num_positions(),
-      VectorXd::Zero(3),
-      VectorXd::Zero(3),
-      body_name + "_position_constraint"),
+    DirconAbstractConstraint<double>(3,
+                                     tree.get_num_positions(),
+                                     VectorXd::Zero(3),
+                                     VectorXd::Zero(3),
+                                     body_name + "_position_constraint"),
     tree_(tree),
     body_idx_(multibody::GetBodyIndexFromName(tree, body_name)),
     translation_(translation),
@@ -224,8 +224,10 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   fixed_joints[9] = 0;
   fixed_joints[10] = 0;
 
-  FixedPointSolver fp_solver(tree, contact_info, q_desired, VectorXd::Zero(n_u),
-                             MatrixXd::Zero(n_q, n_q), MatrixXd::Identity(n_u, n_u));
+  FixedPointSolver fp_solver(tree, contact_info, q_desired,
+                             VectorXd::Zero(n_u),
+                             MatrixXd::Zero(n_q, n_q),
+                             MatrixXd::Identity(n_u, n_u));
   // fp_solver.AddUnitQuaternionConstraint(3, 4, 5, 6);
   fp_solver.AddFrictionConeConstraint(0.8);
   fp_solver.AddJointLimitConstraint(0); //0.1
@@ -399,11 +401,11 @@ void DoMain(double stride_length,
   MultibodyPlant<double> plant;
   Parser parser(&plant, &scene_graph);
 
-  string full_name =
-    FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+  string full_name = FindResourceOrThrow(
+                       "examples/Cassie/urdf/cassie_fixed_springs.urdf");
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(
-    -9.81 * Eigen::Vector3d::UnitZ());
+  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
+      Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
   // Create maps for joints
@@ -421,8 +423,8 @@ void DoMain(double stride_length,
   bool is_quaternion = multibody::isQuaternion(plant);
 
   // Scaling paramters
-  // vector<double> var_scale = {omega_scale, input_scale, force_scale, time_scale,
-  //                             quaternion_scale
+  // vector<double> var_scale = {omega_scale, input_scale, force_scale,
+  //                             time_scale, quaternion_scale
   //                            };
 
   const Body<double>& toe_left = plant.GetBodyByName("toe_left");
@@ -525,12 +527,15 @@ void DoMain(double stride_length,
                            "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Verify level", 0);  // 0
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
-                           0);  // 0 // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major optimality tolerance", tol);  // target nonlinear constraint violation
+                           "Scale option",
+                           0);  // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major feasibility tolerance", tol);  // target complementarity gap
+                           "Major optimality tolerance",
+                           tol);  // target nonlinear constraint violation
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Major feasibility tolerance",
+                           tol);  // target complementarity gap
 
   int N = 0;
   for (uint i = 0; i < num_time_samples.size(); i++)
@@ -553,10 +558,12 @@ void DoMain(double stride_length,
   // auto u0 = trajopt->input(0);
   // auto uf = trajopt->input(N - 1);
   auto x0 = trajopt->initial_state();
-  auto xf = trajopt->state_vars_by_mode(num_time_samples.size() - 1,
-                                        num_time_samples[num_time_samples.size() - 1] - 1);
-  auto xmid = trajopt->state_vars_by_mode(num_time_samples.size() - 1,
-                                          num_time_samples[num_time_samples.size() - 1] / 2);
+  auto xf = trajopt->state_vars_by_mode(
+              num_time_samples.size() - 1,
+              num_time_samples[num_time_samples.size() - 1] - 1);
+  auto xmid = trajopt->state_vars_by_mode(
+                num_time_samples.size() - 1,
+                num_time_samples[num_time_samples.size() - 1] / 2);
 
   // hieght constraint
   trajopt->AddLinearConstraint(x0(positions_map.at("base_z")) == 1);
@@ -606,20 +613,20 @@ void DoMain(double stride_length,
   // joint limits
   for (const auto & member : joint_names) {
     trajopt->AddConstraintToAllKnotPoints(
-      x(positions_map.at(member)) <=
-      plant.GetJointByName(member).position_upper_limits()(0));
+        x(positions_map.at(member)) <=
+        plant.GetJointByName(member).position_upper_limits()(0));
     trajopt->AddConstraintToAllKnotPoints(
-      x(positions_map.at(member)) >=
-      plant.GetJointByName(member).position_lower_limits()(0));
+        x(positions_map.at(member)) >=
+        plant.GetJointByName(member).position_lower_limits()(0));
   }
 
   // u limit
   for (int i = 0; i < N; i++) {
     auto ui = trajopt->input(i);
     trajopt->AddBoundingBoxConstraint(
-      VectorXd::Constant(n_u, -300 / input_scale),
-      VectorXd::Constant(n_u, +300 / input_scale),
-      ui);
+        VectorXd::Constant(n_u, -300 / input_scale),
+        VectorXd::Constant(n_u, +300 / input_scale),
+        ui);
   }
 
 
@@ -639,7 +646,7 @@ void DoMain(double stride_length,
   } else {
     // Add random initial guess first
     trajopt->SetInitialGuessForAllVariables(
-      VectorXd::Random(trajopt->decision_variables().size()));
+        VectorXd::Random(trajopt->decision_variables().size()));
 
     // Use RBT fixed point solver for state/input/force
     RigidBodyTree<double> tree;
@@ -713,8 +720,8 @@ void DoMain(double stride_length,
   cout << "Solver: " << result.get_solver_id().name() << endl;
 
   // Testing - check if the nonilnear constraints are all satisfied
-  // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt, result,
-  //                             tol);
+  // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt,
+  //                             result, tol);
   // cout << "constraint_satisfied = " << constraint_satisfied << endl;
 
   // store the solution of the decision variable
@@ -762,7 +769,7 @@ void DoMain(double stride_length,
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =
-    trajopt->ReconstructStateTrajectory(result);
+      trajopt->ReconstructStateTrajectory(result);
 
   auto traj_source = builder.AddSystem<drake::systems::TrajectorySource>(
                        pp_xtraj);
@@ -772,11 +779,12 @@ void DoMain(double stride_length,
   builder.Connect(traj_source->get_output_port(),
                   passthrough->get_input_port());
   auto to_pose =
-    builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
+      builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
   builder.Connect(passthrough->get_output_port(), to_pose->get_input_port());
 
-  builder.Connect(to_pose->get_output_port(),
-                  scene_graph.get_source_pose_port(plant.get_source_id().value()));
+  builder.Connect(
+      to_pose->get_output_port(),
+      scene_graph.get_source_pose_port(plant.get_source_id().value()));
 
   // multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
   //                                        pp_xtraj);
@@ -791,7 +799,7 @@ void DoMain(double stride_length,
     SpatialInertia<double> M_Bcm(1, Eigen::Vector3d::Zero(), G_Bcm);
 
     const drake::multibody::RigidBody<double>& ball =
-      ball_plant->AddRigidBody("Ball", M_Bcm);
+        ball_plant->AddRigidBody("Ball", M_Bcm);
 
     ball_plant->RegisterAsSourceForSceneGraph(&scene_graph);
     // Add visual for the COM.
@@ -803,14 +811,16 @@ void DoMain(double stride_length,
 
     // connect
     auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
-                           plant.num_positions() + plant.num_velocities(), 0, plant.num_positions());
+                           plant.num_positions() + plant.num_velocities(),
+                           0,
+                           plant.num_positions());
     builder.Connect(traj_source->get_output_port(),
                     q_passthrough->get_input_port());
     auto rbt_passthrough =
-      builder.AddSystem<multibody::ComPoseSystem>(plant);
+        builder.AddSystem<multibody::ComPoseSystem>(plant);
 
     auto ball_to_pose =
-      builder.AddSystem<MultibodyPositionToGeometryPose<double>>(*ball_plant);
+        builder.AddSystem<MultibodyPositionToGeometryPose<double>>(*ball_plant);
     builder.Connect(*q_passthrough, *rbt_passthrough);
     if (com_on_ground) {
       builder.Connect(rbt_passthrough->get_xy_com_output_port(),
@@ -820,7 +830,8 @@ void DoMain(double stride_length,
                       ball_to_pose->get_input_port());
     }
     builder.Connect(ball_to_pose->get_output_port(),
-                    scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
+                    scene_graph.get_source_pose_port(
+                      ball_plant->get_source_id().value()));
   }
   // **************************************
 

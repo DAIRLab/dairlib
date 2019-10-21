@@ -248,6 +248,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   mp->AddConstraint(right_foot_constraint, q_var);
 
   VectorXd init_guess = VectorXd::Random(mp->decision_variables().size());
+  // Provide initial guess to shorten the runtime
   init_guess <<           0,
              0,
              1.03158,
@@ -307,7 +308,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   const auto result = fp_solver.Solve();
   SolutionResult solution_result = result.get_solution_result();
   cout << to_string(solution_result) << endl;
-  cout << result.GetSolution() << endl;
+  // cout << result.GetSolution() << endl;
 
   VectorXd q_sol = fp_solver.GetSolutionQ();
   VectorXd u_sol = fp_solver.GetSolutionU();
@@ -354,7 +355,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   drake::systems::Simulator<double> simulator(*diagram);
   simulator.set_target_realtime_rate(1);
   simulator.Initialize();
-  simulator.AdvanceTo(0.25);
+  simulator.AdvanceTo(0.1);
 }
 
 

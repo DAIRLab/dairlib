@@ -24,23 +24,13 @@ cc_library(
     ],
 )
 
-cc_binary(
-    name = "lcm_trajectory_saver_test",
-    srcs = ["lcm_trajectory_test.cc"],
-    deps = [
-      ":lcm_trajectory_saver",
-      "@drake//:drake_shared_library",
-    ]
-)
-
 cc_test(
-    name = "TEMP_lcm_trajectory_saver_test",
+    name = "lcm_trajectory_saver_test",
     srcs = ["test/lcm_trajectory_test.cc"],
     deps = [
       ":lcm_trajectory_saver", 
       "@drake//:drake_shared_library",
       "@gtest//:main",
     ],
-    linkstatic = 0,
     size = "small",
 )

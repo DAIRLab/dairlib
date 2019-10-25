@@ -30,9 +30,28 @@ using drake::symbolic::Expression;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using std::vector;
-using std::cout;
-using std::endl;
 
+// Unit-norm quaternion constraint
+class QuaternionNormConstraint : public DirconAbstractConstraint<double> {
+ public:
+  QuaternionNormConstraint() :
+    DirconAbstractConstraint<double>(1, 4,
+                                     VectorXd::Zero(1), VectorXd::Zero(1),
+                                     "quaternion_norm_constraint") {
+  }
+  ~QuaternionNormConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    VectorX<double> output(1);
+    output << x.norm() - 1;
+    *y = output;
+  };
+ private:
+};
+
+
+// HybridDircon constructor
 template <typename T>
 HybridDircon<T>::HybridDircon(
     const MultibodyPlant<T>& plant,
@@ -85,22 +104,29 @@ HybridDircon<T>::HybridDircon(
       impulse_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraintsWithoutSkipping(), "impulse[" + std::to_string(i) + "]"));
     }
 
-    // slack variable for unit norm constraint of quaternion floating-base
-    int num_quat_slack = (multibody::isQuaternion(plant))? 1 : 0;
 
     // For N-1 timesteps, add a constraint which depends on the knot
     // value along with the state and input vectors at that knot and the
     // next.
 
+
+    //Adding quaternion norm constraint
+    if (multibody::isQuaternion(plant)) {
+      auto quat_norm_constraint = std::make_shared<QuaternionNormConstraint>();
+      for (int j = (i==0)? 0: 1; j < mode_lengths_[i]; j++) {
+        AddConstraint(quat_norm_constraint, state_vars_by_mode(i, j).head(4));
+      }
+    }
+
     //Adding dynamic constraints
-    auto constraint = std::make_shared<DirconDynamicConstraint<T>>(plant_, *constraints_[i], num_quat_slack);
+    auto constraint = std::make_shared<DirconDynamicConstraint<T>>(plant_, *constraints_[i], multibody::isQuaternion(plant));
     DRAKE_ASSERT(static_cast<int>(constraint->num_constraints()) == num_states());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
       vector<VectorXDecisionVariable> x_next;
 
       // gamma is slack variable used to scale quaternion norm to 1.
-      auto gamma = NewContinuousVariables(num_quat_slack, "gamma_"+ std::to_string(i) + "_" + std::to_string(j));
+      auto gamma = NewContinuousVariables(constraint->num_quat_slack(), "gamma_"+ std::to_string(i) + "_" + std::to_string(j));
 
       AddConstraint(constraint,
                     {h_vars().segment(time_index,1),

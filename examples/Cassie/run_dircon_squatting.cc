@@ -122,13 +122,13 @@ DEFINE_double(tol, 1e-4,
 
 namespace dairlib {
 
-/// Trajectory optimization of fixed-spring cassie squating
+/// Trajectory optimization of fixed-spring cassie squatting
 /// With the default initial guess, the solving time is about 100 seconds.
 
 // Constraint to fix the position of a point on a body (for initial guess)
-class BodyPonitPositionConstraint : public DirconAbstractConstraint<double> {
+class BodyPointPositionConstraint : public DirconAbstractConstraint<double> {
  public:
-  BodyPonitPositionConstraint(const RigidBodyTree<double>& tree,
+  BodyPointPositionConstraint(const RigidBodyTree<double>& tree,
                               string body_name,
                               Vector3d translation,
                               Vector3d desired_pos) :
@@ -142,7 +142,7 @@ class BodyPonitPositionConstraint : public DirconAbstractConstraint<double> {
     translation_(translation),
     desired_pos_(desired_pos) {
   }
-  ~BodyPonitPositionConstraint() override = default;
+  ~BodyPointPositionConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override {
@@ -159,7 +159,7 @@ class BodyPonitPositionConstraint : public DirconAbstractConstraint<double> {
   const Vector3d desired_pos_;
 };
 
-// Use fixed-point solver to get configuration guess (for standing in place)
+// Use fixed-point solver to get initial guess
 void GetInitFixedPointGuess(const Vector3d& pelvis_position,
                             const RigidBodyTree<double>& tree,
                             VectorXd* q_init,
@@ -186,35 +186,39 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   ContactInfo contact_info(xa, idxa);
 
   VectorXd q_desired = VectorXd::Zero(n_q);
-  q_desired << -0.0872062,
-            1.56883E-13,
-            1,
-            1,
-            1.9884E-13,
-            1.30167E-14,
-            -2.10728E-14,
-            -0.0104994,
-            0.0104994,
-            -3.42713E-07,
-            -3.30511E-07,
-            0.509601,
-            0.509602,
-            -1.2219,
-            -1.22191,
-            1.44602,
-            1.44602,
-            -1.6072,
-            -1.6072;
+  q_desired <<         0,
+                       0,
+                   1.057,
+                       1,
+                       0,
+                       0,
+                       0,
+                  0.0185,
+                 -0.0185,
+                       0,
+                       0,
+                   0.383,
+                   0.383,
+                   -1.02,
+                   -1.02,
+                    1.24,
+                    1.24,
+                   -1.48,
+                   -1.48;
+  // The above numbers comes from one (FixedPointSolver) solution of cassie
+  // standing
 
   std::map<int, double> fixed_joints;
+  // floating base x, y z position
   for (int i = 0; i < 3; i++) {
     fixed_joints[i] = pelvis_position[i];
   }
+  // floating base quaternion
   fixed_joints[3] = 1;
   fixed_joints[4] = 0;
   fixed_joints[5] = 0;
   fixed_joints[6] = 0;
-
+  // hip yaw position
   fixed_joints[9] = 0;
   fixed_joints[10] = 0;
 
@@ -231,12 +235,12 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   shared_ptr<MathematicalProgram> mp = fp_solver.get_program();
   auto& q_var = mp->decision_variables().head(
                   n_q);  // Assume q is located at the start
-  Vector3d desired_left_toe_pos(0.05, 0.15, 0);
-  Vector3d desired_right_toe_pos(0.05, -0.15, 0);
-  auto left_foot_constraint = std::make_shared<BodyPonitPositionConstraint>(
+  Vector3d desired_left_toe_pos(0.06, 0.15, 0);
+  Vector3d desired_right_toe_pos(0.06, -0.15, 0);
+  auto left_foot_constraint = std::make_shared<BodyPointPositionConstraint>(
                                 tree, "toe_left", pt_front_contact,
                                 desired_left_toe_pos);
-  auto right_foot_constraint = std::make_shared<BodyPonitPositionConstraint>(
+  auto right_foot_constraint = std::make_shared<BodyPointPositionConstraint>(
                                  tree, "toe_right", pt_front_contact,
                                  desired_right_toe_pos);
   mp->AddConstraint(left_foot_constraint, q_var);
@@ -244,49 +248,50 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
 
   VectorXd init_guess = VectorXd::Random(mp->decision_variables().size());
   // Provide initial guess to shorten the runtime
-  init_guess <<           0,
-             0,
-             1.03158,
-             1,
-             0,
-             0,
-             0,
-             0.00476715,
-             -0.00476718,
-             0.293,
-             -0.293,
-             0.353856,
-             0.353856,
-             -1.10274,
-             -1.10274,
-             1.32657,
-             1.32657,
-             -1.45255,
-             -1.45255,
-             -2.9108,
-             2.93222,
-             -0.0957757,
-             0.0882644,
-             -6.47907,
-             -6.43824,
-             41.9363,
-             41.8368,
-             -13.5949,
-             -13.5762,
-             -445.273,
-             -444.084,
-             139.909,
-             17.1385,
-             -7.52987,
-             22.1902,
-             -17.1116,
-             4.72572,
-             139.657,
-             -1.27836,
-             1.9417,
-             22.0241,
-             1.2515,
-             0.862448;
+  // The numbers comes from one (FixedPointSolver) solution of cassie standing
+  init_guess <<        0,
+                       0,
+                 1.05263,
+                       1,
+                       0,
+                       0,
+                       0,
+               0.0185236,
+              -0.0185236,
+                       0,
+                       0,
+                  0.3836,
+                  0.3836,
+                  -1.026,
+                  -1.026,
+                   1.249,
+                   1.249,
+                  -1.480,
+                  -1.480,
+                 -0.1535,
+                  0.1682,
+                  0.1407,
+                 -0.1843,
+                  -6.124,
+                  -5.841,
+                   35.76,
+                   35.79,
+                   -5.46,
+                  -5.439,
+                  -398.5,
+                  -396.3,
+                   93.49,
+                   17.75,
+                   1.521,
+                   68.57,
+                  -17.61,
+                  -1.503,
+                   93.28,
+                 -0.7926,
+                  -1.762,
+                   68.42,
+                   0.652,
+                   1.744;
   mp->SetInitialGuessForAllVariables(init_guess);
 
   mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -313,8 +318,8 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   q_sol_reorder << q_sol.segment(3, 4),
                 q_sol.segment(0, 3),
                 q_sol.tail(12);
-  // Careful that the contact ordering should be consistent with those you set
-  // up in DIRCON
+  // Careful that the contact constraint ordering should be consistent with
+  // those you set in DIRCON
   VectorXd lambda_sol_reorder(lambda_sol.size());
   VectorXd lambda_sol_contact = lambda_sol.tail(3 * idxa.size());
   for (unsigned int i = 0; i < idxa.size(); i++) {
@@ -350,28 +355,50 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   drake::systems::Simulator<double> simulator(*diagram);
   simulator.set_target_realtime_rate(1);
   simulator.Initialize();
-  simulator.AdvanceTo(0.1);
+  simulator.AdvanceTo(0.2);
 }
 
 
-class QuaternionNormConstraint : public DirconAbstractConstraint<double> {
+// Position constraint of a body origin in one dimension (x, y, or z)
+class OneDimRelativeBodyPosConstraint : public DirconAbstractConstraint<double> {
  public:
-  QuaternionNormConstraint() :
-    DirconAbstractConstraint<double>(1, 4,
-                                     VectorXd::Zero(1), VectorXd::Zero(1),
-                                     "quaternion_norm_constraint") {
+  OneDimRelativeBodyPosConstraint(const MultibodyPlant<double>* plant,
+                      string body_name,
+                      int xyz_idx,
+                      double lb,
+                      double ub) :
+    DirconAbstractConstraint<double>(
+      1, plant->num_positions(),
+      VectorXd::Ones(1) * lb,
+      VectorXd::Ones(1) * ub,
+      body_name + "_constraint"),
+    plant_(plant),
+    body_(plant->GetBodyByName(body_name)),
+    xyz_idx_(xyz_idx) {
   }
-  ~QuaternionNormConstraint() override = default;
+  ~OneDimRelativeBodyPosConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override {
-    VectorX<double> output(1);
-    output << x.norm() - 1;
-    *y = output;
+    VectorXd q = x;
+
+    std::unique_ptr<drake::systems::Context<double>> context =
+          plant_->CreateDefaultContext();
+    plant_->SetPositions(context.get(), q);
+
+    VectorX<double> pt(3);
+    this->plant_->CalcPointsPositions(*context,
+                                      body_.body_frame(), Vector3d::Zero(),
+                                      plant_->world_frame(), &pt);
+    *y = pt.segment(xyz_idx_, 1) - q.segment(5,1);
   };
  private:
+  const MultibodyPlant<double>* plant_;
+  const drake::multibody::Body<double>& body_;
+  // xyz_idx_ takes value of 0, 1 or 2.
+  // 0 is x, 1 is y and 2 is z component of the position vector.
+  const int xyz_idx_;
 };
-
 
 void DoMain(double duration, int max_iter,
             string data_directory,
@@ -408,7 +435,7 @@ void DoMain(double duration, int max_iter,
   Vector3d pt_front_contact(-0.0457, 0.112, 0);
   Vector3d pt_rear_contact(0.088, 0, 0);
   bool isXZ = false;
-  Eigen::Vector2d ground_rp(0, 0);  // gournd incline in roll pitch
+  Eigen::Vector2d ground_rp(0, 0);  // ground incline in roll pitch
   auto left_toe_front_constraint = DirconPositionData<double>(plant, toe_left,
                                    pt_front_contact, isXZ, ground_rp);
   auto left_toe_rear_constraint = DirconPositionData<double>(plant, toe_left,
@@ -518,16 +545,7 @@ void DoMain(double duration, int max_iter,
     N += num_time_samples[i];
   N -= num_time_samples.size() - 1;  // because of overlaps between modes
 
-  // quaterion norm constraint
-  if (multibody::isQuaternion(plant)) {
-    auto quat_norm_constraint = std::make_shared<QuaternionNormConstraint>();
-    for (int i = 0; i < N; i++) {
-      auto xi = trajopt->state(i);
-      trajopt->AddConstraint(quat_norm_constraint, xi.head(4));
-    }
-  }
-
-  // Get the decision varaibles that will be used
+  // Get the decision variables that will be used
   auto u = trajopt->input();
   auto x = trajopt->state();
   auto x0 = trajopt->initial_state();
@@ -538,12 +556,15 @@ void DoMain(double duration, int max_iter,
                 num_time_samples.size() - 1,
                 num_time_samples[num_time_samples.size() - 1] / 2);
 
-  // hieght constraint
+  // height constraint
   trajopt->AddLinearConstraint(x0(positions_map.at("base_z")) == 1);
   // trajopt->AddLinearConstraint(xmid(positions_map.at("base_z")) == 1.1);
   trajopt->AddLinearConstraint(xf(positions_map.at("base_z")) == 1.1);
 
-  // initial pose condition
+  // initial pelvis position
+  // trajopt->AddLinearConstraint(x0(positions_map.at("base_y")) == 0);
+
+  // pelvis pose constraints
   trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qw")) == 1);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qx")) == 0);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qy")) == 0);
@@ -602,6 +623,20 @@ void DoMain(double duration, int max_iter,
         ui);
   }
 
+  // toe position constraint in y direction (avoid leg crossing)
+  auto left_foot_constraint = std::make_shared<OneDimRelativeBodyPosConstraint>(
+                                &plant, "toe_left", 1,
+                                0.05,
+                                std::numeric_limits<double>::infinity());
+  auto right_foot_constraint = std::make_shared<OneDimRelativeBodyPosConstraint>(
+                                &plant, "toe_right", 1,
+                                -std::numeric_limits<double>::infinity(),
+                                -0.05);
+  for (int index = 0; index < num_time_samples[0]; index++) {
+    auto x = trajopt->state(index);
+    trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
+    trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
+  }
 
   // add cost
   const MatrixXd Q = 10 * 12.5 * MatrixXd::Identity(n_v, n_v);
@@ -659,7 +694,7 @@ void DoMain(double duration, int max_iter,
       // prev_lambda_init = lambda_init;
     }
   }
-  // Careful: MUST set the initial guess for quaternion, since 0-norm quaterion
+  // Careful: MUST set the initial guess for quaternion, since 0-norm quaternion
   // produces NAN value in some calculation.
   for (int i = 0; i < N; i++) {
     auto xi = trajopt->state(i);
@@ -690,7 +725,7 @@ void DoMain(double duration, int max_iter,
   // Check which solver was used
   cout << "Solver: " << result.get_solver_id().name() << endl;
 
-  // Testing - check if the nonilnear constraints are all satisfied
+  // Testing - check if the nonlinear constraints are all satisfied
   // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt,
   //                             result, tol);
   // cout << "constraint_satisfied = " << constraint_satisfied << endl;

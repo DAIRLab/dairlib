@@ -26,8 +26,9 @@ using drake::VectorX;
 using drake::MatrixX;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
-using std::cout;
-using std::endl;
+
+using std::map;
+using std::string;
 
 template <typename T>
 DirconAbstractConstraint<T>::DirconAbstractConstraint(int num_constraints, int num_vars,
@@ -113,11 +114,21 @@ void DirconAbstractConstraint<double>::DoEval(
 template <typename T>
 DirconDynamicConstraint<T>::DirconDynamicConstraint(
     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
-    int num_quat_slack) :
+    bool is_quaternion) :
   DirconDynamicConstraint(plant, constraints, plant.num_positions(),
                           plant.num_velocities(), plant.num_actuators(),
                           constraints.countConstraintsWithoutSkipping(),
-                          num_quat_slack) {}
+                          (is_quaternion)? 1 : 0) {
+    // If the MBP is in quaternion floating-base, demand that the quaternion
+    // is located at the first four element of the generalized position
+    if (is_quaternion) {
+      map<string, int> positions_map = multibody::makeNameToPositionsMap(plant);
+      DRAKE_DEMAND(positions_map.at("base_qw") == 0);
+      DRAKE_DEMAND(positions_map.at("base_qx") == 1);
+      DRAKE_DEMAND(positions_map.at("base_qy") == 2);
+      DRAKE_DEMAND(positions_map.at("base_qz") == 3);
+    }
+  }
 
 template <typename T>
 DirconDynamicConstraint<T>::DirconDynamicConstraint(
@@ -188,7 +199,6 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
 
   // The slack variable allows the quaternion to stay on a unit sphere.
   if (num_quat_slack_ > 0) {
-    // Assume the floating base coordinates is in the first four elements.
     g.head(4) += xcol.head(4) * gamma;
   }
 

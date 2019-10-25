@@ -54,13 +54,15 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
  public:
   DirconDynamicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                           DirconKinematicDataSet<T>& constraints,
-                          int num_quat_slack = 0);
+                          bool is_quaternion = false);
 
   ~DirconDynamicConstraint() override = default;
 
   int num_states() const { return num_states_; }
   int num_inputs() const { return num_inputs_; }
   int num_kinematic_constraints_wo_skipping() const { return num_kinematic_constraints_wo_skipping_; }
+
+  int num_quat_slack() const { return num_quat_slack_; }
 
  public:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -80,6 +82,9 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
   const int num_kinematic_constraints_wo_skipping_{0};
   const int num_positions_{0};
   const int num_velocities_{0};
+  // num_quat_slack_ is the dimension of the slack variable for the constraint
+  // of unit norm quaternion (of the floating base)
+  // It's 1 if the MBP is in quaternion floating-base. It's 0 otherwise.
   const int num_quat_slack_{0};
 };
 

@@ -295,8 +295,8 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
                    1.744;
   mp->SetInitialGuessForAllVariables(init_guess);
 
-  mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                      "Print file", "../snopt.out");
+  // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  //                     "Print file", "../snopt.out");
   // target nonlinear constraint violation
   // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
   //                     "Major optimality tolerance", 1e-6);
@@ -522,8 +522,8 @@ void DoMain(double duration, int max_iter,
                  num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Print file", "../snopt.out");
+  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  //                          "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),

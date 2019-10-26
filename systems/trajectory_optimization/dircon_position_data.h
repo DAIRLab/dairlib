@@ -14,14 +14,14 @@ class DirconPositionData : public DirconKinematicData<T> {
   DirconPositionData(const drake::multibody::MultibodyPlant<T>& plant,
     const drake::multibody::Body<T>& body,
     Eigen::Vector3d pt, bool isXZ = false,
-    Eigen::Vector2d surface_slope_roll_pitch = Eigen::Vector2d::Zero());
+    Eigen::Vector3d surface_normal = Eigen::Vector3d(0,0,1));
   ~DirconPositionData();
 
   // The workhorse function, updates and caches everything needed by the
   // outside world
   void updateConstraint(const drake::systems::Context<T>& context);
 
-  void addFixedNormalFrictionConstraints(Eigen::Vector3d normal, double mu);
+  void addFixedNormalFrictionConstraints(double mu);
 
  private:
     const drake::multibody::Body<T>& body_;

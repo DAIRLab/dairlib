@@ -115,6 +115,7 @@ using dairlib::multibody::FixedPointSolver;
 DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
               "directory to save/read data");
+DEFINE_bool(store_data, false, "To store soluation or not");
 DEFINE_int32(max_iter, 100000, "Iteration limit");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
 DEFINE_double(tol, 1e-4,
@@ -403,7 +404,7 @@ class OneDimRelativeBodyPosConstraint : public DirconAbstractConstraint<double> 
 void DoMain(double duration, int max_iter,
             string data_directory,
             string init_file,
-            double tol) {
+            double tol, bool to_store_data) {
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -435,21 +436,20 @@ void DoMain(double duration, int max_iter,
   Vector3d pt_front_contact(-0.0457, 0.112, 0);
   Vector3d pt_rear_contact(0.088, 0, 0);
   bool isXZ = false;
-  Eigen::Vector2d ground_rp(0, 0);  // ground incline in roll pitch
+  Vector3d ground_normal(0, 0, 1);
   auto left_toe_front_constraint = DirconPositionData<double>(plant, toe_left,
-                                   pt_front_contact, isXZ, ground_rp);
+                                   pt_front_contact, isXZ, ground_normal);
   auto left_toe_rear_constraint = DirconPositionData<double>(plant, toe_left,
-                                  pt_rear_contact, isXZ, ground_rp);
+                                  pt_rear_contact, isXZ, ground_normal);
   auto right_toe_front_constraint = DirconPositionData<double>(plant, toe_right,
-                                    pt_front_contact, isXZ, ground_rp);
+                                    pt_front_contact, isXZ, ground_normal);
   auto right_toe_rear_constraint = DirconPositionData<double>(plant, toe_right,
-                                   pt_rear_contact, isXZ, ground_rp);
-  Vector3d normal(0, 0, 1);
+                                   pt_rear_contact, isXZ, ground_normal);
   double mu = 1;
-  left_toe_front_constraint.addFixedNormalFrictionConstraints(normal, mu);
-  left_toe_rear_constraint.addFixedNormalFrictionConstraints(normal, mu);
-  right_toe_front_constraint.addFixedNormalFrictionConstraints(normal, mu);
-  right_toe_rear_constraint.addFixedNormalFrictionConstraints(normal, mu);
+  left_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
+  left_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
+  right_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
+  right_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
 
   const auto & thigh_left = plant.GetBodyByName("thigh_left");
   const auto & heel_spring_left = plant.GetBodyByName("heel_spring_left");
@@ -732,7 +732,9 @@ void DoMain(double duration, int max_iter,
 
   // store the solution of the decision variable
   VectorXd z = result.GetSolution(trajopt->decision_variables());
-  writeCSV(data_directory + string("z.csv"), z);
+  if (to_store_data) {
+    writeCSV(data_directory + string("z.csv"), z);
+  }
   // for (int i = 0; i < z.size(); i++) {
   //   cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
   // }
@@ -743,13 +745,15 @@ void DoMain(double duration, int max_iter,
   MatrixXd state_at_knots = trajopt->GetStateSamples(result);
   MatrixXd input_at_knots = trajopt->GetInputSamples(result);
   state_at_knots.col(N - 1) = result.GetSolution(xf);
-  writeCSV(data_directory + string("t_i.csv"), time_at_knots);
-  writeCSV(data_directory + string("x_i.csv"), state_at_knots);
-  writeCSV(data_directory + string("u_i.csv"), input_at_knots);
   cout << "time_at_knots = \n" << time_at_knots << "\n";
   cout << "state_at_knots = \n" << state_at_knots << "\n";
   cout << "state_at_knots.size() = " << state_at_knots.size() << endl;
   cout << "input_at_knots = \n" << input_at_knots << "\n";
+  if (to_store_data) {
+    writeCSV(data_directory + string("t_i.csv"), time_at_knots);
+    writeCSV(data_directory + string("x_i.csv"), state_at_knots);
+    writeCSV(data_directory + string("u_i.csv"), input_at_knots);
+  }
 
   // Store lambda
   std::ofstream ofile;
@@ -848,5 +852,5 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   dairlib::DoMain(FLAGS_duration, FLAGS_max_iter,
                   FLAGS_data_directory, FLAGS_init_file,
-                  FLAGS_tol);
+                  FLAGS_tol, FLAGS_store_data);
 }

@@ -21,7 +21,7 @@ using drake::MatrixX;
 template <typename T>
 DirconPositionData<T>::DirconPositionData(const MultibodyPlant<T>& plant,
     const Body<T>& body, Vector3d pt, bool isXZ,
-    Vector2d surface_slope_roll_pitch) :
+    Vector3d surface_normal) :
         DirconKinematicData<T>(plant, isXZ ? 2 : 3),
         body_(body),
         pt_(pt),
@@ -29,11 +29,10 @@ DirconPositionData<T>::DirconPositionData(const MultibodyPlant<T>& plant,
   TXZ_ << 1, 0, 0,
           0, 0, 1;
 
-  Eigen::AngleAxisd rollAngle(surface_slope_roll_pitch(0), Vector3d::UnitX());
-  Eigen::AngleAxisd pitchAngle(surface_slope_roll_pitch(1), Vector3d::UnitY());
-  Eigen::AngleAxisd yawAngle(0, Vector3d::UnitZ());
-  Eigen::Quaterniond q = yawAngle * pitchAngle * rollAngle;
-
+  Vector3d z_hat(0,0,1);
+  surface_normal.normalize();
+  Eigen::Quaterniond q;
+  q.setFromTwoVectors(z_hat, surface_normal);
   T_ground_incline_ = q.matrix().transpose();  // inverse of rotational matrix
   TXZ_and_ground_incline_ = TXZ_ * T_ground_incline_;
 }
@@ -79,14 +78,11 @@ void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
 }
 
 template <typename T>
-void DirconPositionData<T>::addFixedNormalFrictionConstraints(Vector3d normal,
-                                                              double mu) {
+void DirconPositionData<T>::addFixedNormalFrictionConstraints(double mu) {
   if (isXZ_) {
-    // specifically builds the basis for the x-axis
-    Vector2d normal_xz, d_xz;
-    double L = sqrt(normal(0)*normal(0) + normal(2)*normal(2));
-    normal_xz << normal(0)/L, normal(2)/L;
-    d_xz << -normal_xz(1), normal_xz(0);
+    // builds the basis
+    Vector2d normal_xz(0,1);
+    Vector2d d_xz(1,0);
 
     Matrix2d A_fric;
     A_fric << (mu*normal_xz + d_xz).transpose(),
@@ -97,8 +93,7 @@ void DirconPositionData<T>::addFixedNormalFrictionConstraints(Vector3d normal,
     A.block(0,0,2,2) = A_fric;
     A(2,1) = 1;
     Vector3d lb = Vector3d::Zero();
-    Vector3d ub = Vector3d::Constant(
-        std::numeric_limits<double>::infinity());
+    Vector3d ub = Vector3d::Constant(std::numeric_limits<double>::infinity());
     auto force_constraint = std::make_shared<drake::solvers::LinearConstraint>(
         A, lb, ub);
     this->force_constraints_.push_back(force_constraint);

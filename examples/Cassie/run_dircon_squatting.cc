@@ -124,7 +124,7 @@ DEFINE_double(tol, 1e-4,
 namespace dairlib {
 
 /// Trajectory optimization of fixed-spring cassie squatting
-/// With the default initial guess, the solving time is about 5 mins.
+/// With the default initial guess, the solving time is about 2 mins.
 
 // Constraint to fix the position of a point on a body (for initial guess)
 class BodyPointPositionConstraint : public DirconAbstractConstraint<double> {
@@ -220,8 +220,8 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   fixed_joints[5] = 0;
   fixed_joints[6] = 0;
   // hip yaw position
-  fixed_joints[9] = 0;
-  fixed_joints[10] = 0;
+  // fixed_joints[9] = 0;
+  // fixed_joints[10] = 0;
 
   FixedPointSolver fp_solver(tree, contact_info, q_desired,
                              VectorXd::Zero(n_u),
@@ -236,8 +236,8 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   shared_ptr<MathematicalProgram> mp = fp_solver.get_program();
   auto& q_var = mp->decision_variables().head(
                   n_q);  // Assume q is located at the start
-  Vector3d desired_left_toe_pos(0.06, 0.15, 0);
-  Vector3d desired_right_toe_pos(0.06, -0.15, 0);
+  Vector3d desired_left_toe_pos(0.06, 0.4, 0);
+  Vector3d desired_right_toe_pos(0.06, -0.4, 0);
   auto left_foot_constraint = std::make_shared<BodyPointPositionConstraint>(
                                 tree, "toe_left", pt_front_contact,
                                 desired_left_toe_pos);
@@ -624,8 +624,8 @@ void DoMain(double duration, int max_iter,
                                 -0.05);
   for (int index = 0; index < num_time_samples[0]; index++) {
     auto x = trajopt->state(index);
-    trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
-    trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
+    // trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
+    // trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
   }
 
   // add cost

@@ -361,9 +361,9 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
 
 
 // Position constraint of a body origin in one dimension (x, y, or z)
-class OneDimRelativeBodyPosConstraint : public DirconAbstractConstraint<double> {
+class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
  public:
-  OneDimRelativeBodyPosConstraint(const MultibodyPlant<double>* plant,
+  OneDimBodyPosConstraint(const MultibodyPlant<double>* plant,
                       string body_name,
                       int xyz_idx,
                       double lb,
@@ -377,7 +377,7 @@ class OneDimRelativeBodyPosConstraint : public DirconAbstractConstraint<double> 
     body_(plant->GetBodyByName(body_name)),
     xyz_idx_(xyz_idx) {
   }
-  ~OneDimRelativeBodyPosConstraint() override = default;
+  ~OneDimBodyPosConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override {
@@ -391,7 +391,7 @@ class OneDimRelativeBodyPosConstraint : public DirconAbstractConstraint<double> 
     this->plant_->CalcPointsPositions(*context,
                                       body_.body_frame(), Vector3d::Zero(),
                                       plant_->world_frame(), &pt);
-    *y = pt.segment(xyz_idx_, 1) - q.segment(5,1);
+    *y = pt.segment(xyz_idx_, 1);
   };
  private:
   const MultibodyPlant<double>* plant_;
@@ -522,8 +522,8 @@ void DoMain(double duration, int max_iter,
                  num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                          "Print file", "../snopt.out");
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -624,11 +624,11 @@ void DoMain(double duration, int max_iter,
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  auto left_foot_constraint = std::make_shared<OneDimRelativeBodyPosConstraint>(
+  auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
                                 &plant, "toe_left", 1,
                                 0.05,
                                 std::numeric_limits<double>::infinity());
-  auto right_foot_constraint = std::make_shared<OneDimRelativeBodyPosConstraint>(
+  auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
                                 &plant, "toe_right", 1,
                                 -std::numeric_limits<double>::infinity(),
                                 -0.05);
@@ -707,7 +707,7 @@ void DoMain(double duration, int max_iter,
     }
   }
 
-  cout << "Choose the best solver: " <<
+  cout << "\nChoose the best solver: " <<
        drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
 
   cout << "Solving DIRCON\n\n";

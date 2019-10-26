@@ -124,7 +124,7 @@ DEFINE_double(tol, 1e-4,
 namespace dairlib {
 
 /// Trajectory optimization of fixed-spring cassie squatting
-/// With the default initial guess, the solving time is about 100 seconds.
+/// With the default initial guess, the solving time is about 240 seconds.
 
 // Constraint to fix the position of a point on a body (for initial guess)
 class BodyPointPositionConstraint : public DirconAbstractConstraint<double> {

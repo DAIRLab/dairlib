@@ -124,7 +124,7 @@ DEFINE_double(tol, 1e-4,
 namespace dairlib {
 
 /// Trajectory optimization of fixed-spring cassie squatting
-/// With the default initial guess, the solving time is about 240 seconds.
+/// With the default initial guess, the solving time is about 5 mins.
 
 // Constraint to fix the position of a point on a body (for initial guess)
 class BodyPointPositionConstraint : public DirconAbstractConstraint<double> {
@@ -508,22 +508,12 @@ void DoMain(double duration, int max_iter,
   dataset_list.push_back(&double_all_dataset);
   options_list.push_back(double_all_options);
 
-  // cout << "options_list.size() = " << options_list.size() << endl;
-  // for (uint i = 0; i < options_list.size(); i ++) {
-  //   cout << "mode # " << i << endl;
-  //   for (auto member : options_list[i].getConstraintsRelative()) {
-  //     cout << member << ", ";
-  //   }
-  //   cout << endl;
-  // }
-  // cout << endl;
-
   auto trajopt = std::make_shared<HybridDircon<double>>(plant,
                  num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Print file", "../snopt.out");
+  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  //                          "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),

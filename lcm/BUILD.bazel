@@ -17,8 +17,8 @@ cc_library(
     srcs = ["lcm_trajectory.cc"],
     hdrs = ["lcm_trajectory.h"],
     deps = [
-		  "//lcmtypes:lcmt_robot",
-	    "@eigen",
+      "//lcmtypes:lcmt_robot",
+      "@eigen",
       "@drake//systems/lcm",
       "@lcm"
     ],

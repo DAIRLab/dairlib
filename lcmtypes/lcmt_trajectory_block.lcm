@@ -7,6 +7,6 @@ struct lcmt_trajectory_block
   int32_t num_points;
   int32_t num_datatypes;
   double time_vec[num_points];
-  double datapoints[num_points][num_datatypes];
+  double datapoints[num_datatypes][num_points];
   string datatypes[num_datatypes];
 }

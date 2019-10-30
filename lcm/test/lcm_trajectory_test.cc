@@ -27,7 +27,6 @@ using Eigen::RowMajor;
 using Eigen::Map;
 
 static const char TEST_FILEPATH[] = "TEST_FILEPATH";
-static const char INVALID_FILEPATH[] = "/INVALID_FILEPATH";
 static const char TEST_TRAJ_NAME_1[] = "TEST_TRAJ_NAME_1";
 static const char TEST_TRAJ_NAME_2[] = "TEST_TRAJ_NAME_2";
 static const char TEST_NAME[] = "TEST_NAME";
@@ -38,7 +37,6 @@ static const char DATATYPE_3[] = "DATATYPE_3";
 static const int NUM_DATAPOINTS = 5;
 static const int NUM_DATATYPES = 3;
 static const int NUM_TRAJECTORIES = 2;
-
 
 class LcmTrajectoryTest : public ::testing::Test {
  protected:
@@ -89,7 +87,7 @@ TEST_F(LcmTrajectoryTest, TestSavingAndLoadingTrajectory) {
   lcm_traj_.writeToFile(TEST_FILEPATH);
 
   lcmt_saved_traj loaded_lcm_traj = LcmTrajectory::loadFromFile(
-                                      TEST_FILEPATH);
+      TEST_FILEPATH);
 
   EXPECT_EQ(loaded_lcm_traj.num_trajectories, NUM_TRAJECTORIES);
   EXPECT_EQ(loaded_lcm_traj.trajectory_names.size(), NUM_TRAJECTORIES);
@@ -106,36 +104,30 @@ TEST_F(LcmTrajectoryTest, TestConstructorFromLcmTObject) {
   lcm_traj_.writeToFile(TEST_FILEPATH);
 
   LcmTrajectory loaded_traj = LcmTrajectory(LcmTrajectory::loadFromFile(
-                                TEST_FILEPATH));
+      TEST_FILEPATH));
   EXPECT_TRUE(
-    loaded_traj.getTrajectory(TEST_TRAJ_NAME_1).time_vector.isApprox(
-      lcm_traj_.getTrajectory(TEST_TRAJ_NAME_1).time_vector));
+      loaded_traj.getTrajectory(TEST_TRAJ_NAME_1).time_vector.isApprox(
+          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_1).time_vector));
   EXPECT_TRUE(
-    loaded_traj.getTrajectory(TEST_TRAJ_NAME_1).datapoints.isApprox(
-      lcm_traj_.getTrajectory(TEST_TRAJ_NAME_1).datapoints));
+      loaded_traj.getTrajectory(TEST_TRAJ_NAME_1).datapoints.isApprox(
+          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_1).datapoints));
   EXPECT_TRUE(
-    loaded_traj.getTrajectory(TEST_TRAJ_NAME_1).datatypes ==
-    lcm_traj_.getTrajectory(TEST_TRAJ_NAME_1).datatypes);
+      loaded_traj.getTrajectory(TEST_TRAJ_NAME_1).datatypes ==
+          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_1).datatypes);
   EXPECT_TRUE(
-    loaded_traj.getTrajectory(TEST_TRAJ_NAME_2).time_vector.isApprox(
-      lcm_traj_.getTrajectory(TEST_TRAJ_NAME_2).time_vector));
+      loaded_traj.getTrajectory(TEST_TRAJ_NAME_2).time_vector.isApprox(
+          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_2).time_vector));
   EXPECT_TRUE(
-    loaded_traj.getTrajectory(TEST_TRAJ_NAME_2).datapoints.isApprox(
-      lcm_traj_.getTrajectory(TEST_TRAJ_NAME_2).datapoints));
+      loaded_traj.getTrajectory(TEST_TRAJ_NAME_2).datapoints.isApprox(
+          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_2).datapoints));
   EXPECT_TRUE(
-    loaded_traj.getTrajectory(TEST_TRAJ_NAME_2).datatypes ==
-    lcm_traj_.getTrajectory(TEST_TRAJ_NAME_2).datatypes);
-}
-
-TEST_F(LcmTrajectoryTest, TestFailureOnReadAndWrite) {
-  EXPECT_THROW(lcm_traj_.writeToFile(INVALID_FILEPATH), std::exception);
-  EXPECT_THROW(LcmTrajectory::loadFromFile(INVALID_FILEPATH),
-               std::exception);
+      loaded_traj.getTrajectory(TEST_TRAJ_NAME_2).datatypes ==
+          lcm_traj_.getTrajectory(TEST_TRAJ_NAME_2).datatypes);
 }
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

@@ -1,5 +1,9 @@
 package dairlib;
 
+/*  lcmtype analog for LcmTrajectory to enable using a LcmSerializer to 
+    save/load trajectories
+*/
+
 struct lcmt_saved_traj
 {
   dairlib.lcmt_metadata metadata;

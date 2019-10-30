@@ -1,15 +1,14 @@
 #pragma once
 
+#include "drake/systems/lcm/serializer.h"
 #include <Eigen/Dense>
-#include <vector>
 #include <string>
 #include <unordered_map>
-#include "drake/systems/lcm/serializer.h"
+#include <vector>
 
 #include "dairlib/lcmt_saved_traj.hpp"
 
 namespace dairlib {
-
 
 /*
  * Used for saving/loading trajectories.
@@ -21,7 +20,7 @@ namespace dairlib {
  * filepath of the previously saved LcmTrajectory object
  */
 class LcmTrajectory {
-public:
+ public:
   /*
    * Simple struct used for saving trajectories
    * lcmt_trajectory_block is the lcmtype analog
@@ -40,8 +39,7 @@ public:
   LcmTrajectory() {}
   LcmTrajectory(const std::vector<Trajectory>& trajectories,
                 const std::vector<std::string>& trajectory_names,
-                const std::string& name,
-                const std::string& description);
+                const std::string& name, const std::string& description);
 
   explicit LcmTrajectory(const lcmt_saved_traj& traj);
 
@@ -51,25 +49,24 @@ public:
   // Loads a saved trajectory to a lcmt_saved_traj
   static lcmt_saved_traj loadFromFile(const std::string& filepath);
 
-  const lcmt_metadata &getMetadata() const { return metadata_; }
+  const lcmt_metadata& getMetadata() const { return metadata_; }
 
   Trajectory getTrajectory(const std::string& trajectory_name) const {
     return trajectories_.at(trajectory_name);
   }
 
-  const std::vector<std::string> &getTrajectoryNames() const {
+  const std::vector<std::string>& getTrajectoryNames() const {
     return trajectory_names_;
   }
 
-private:
-    lcmt_saved_traj generateLcmObject() const;
-    lcmt_metadata constructMetadataObject(std::string name,
+ private:
+  lcmt_saved_traj generateLcmObject() const;
+  lcmt_metadata constructMetadataObject(std::string name,
                                         std::string description) const;
 
-    lcmt_metadata metadata_;
-    std::unordered_map<std::string, Trajectory> trajectories_;
-    std::vector<std::string> trajectory_names_;
+  lcmt_metadata metadata_;
+  std::unordered_map<std::string, Trajectory> trajectories_;
+  std::vector<std::string> trajectory_names_;
 };
 
-
-}  // namespace dairlib
+} // namespace dairlib

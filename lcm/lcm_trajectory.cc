@@ -1,26 +1,39 @@
-#include <chrono>
 #include <algorithm>
-#include <memory>
-#include <utility>
+#include <chrono>
 #include <cstring>
 #include <fstream>
+#include <memory>
+#include <utility>
 
 #include "drake/common/value.h"
 #include "lcm/lcm_trajectory.h"
 
 using drake::AbstractValue;
-using std::vector;
+using drake::systems::lcm::Serializer;
+using Eigen::Dynamic;
+using Eigen::Map;
+using Eigen::Matrix;
+using Eigen::MatrixXd;
+using Eigen::RowMajor;
+using Eigen::VectorXd;
 using std::string;
 using std::unordered_map;
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using Eigen::Matrix;
-using Eigen::Dynamic;
-using Eigen::RowMajor;
-using Eigen::Map;
-using drake::systems::lcm::Serializer;
+using std::vector;
 
 namespace dairlib {
+
+std::string exec(const char *cmd) {
+  std::array<char, 128> buffer{};
+  std::string result;
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+  if (!pipe) {
+    throw std::runtime_error("popen() failed!");
+  }
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+    result += buffer.data();
+  }
+  return result;
+}
 
 LcmTrajectory::Trajectory::Trajectory(string traj_name,
                                       const lcmt_trajectory_block& traj_block) {
@@ -28,22 +41,20 @@ LcmTrajectory::Trajectory::Trajectory(string traj_name,
   int num_datatypes = traj_block.num_datatypes;
   this->traj_name = traj_name;
   this->datatypes = vector<string>(traj_block.datatypes);
-  this->time_vector = VectorXd::Map(traj_block.time_vec.data(),
-                                    num_points);
+  this->time_vector = VectorXd::Map(traj_block.time_vec.data(), num_points);
   this->datapoints = MatrixXd(num_datatypes, num_points);
 
   // Convert vector<vector<double>> to EigenMatrix
   for (int i = 0; i < num_datatypes; ++i) {
-    this->datapoints.row(i) = VectorXd::Map(&traj_block.datapoints[i][0],
-                                            num_points);
+    this->datapoints.row(i) =
+        VectorXd::Map(&traj_block.datapoints[i][0], num_points);
   }
 }
 
 LcmTrajectory::LcmTrajectory(const vector<Trajectory>& trajectories,
                              const vector<string>& trajectory_names,
-                             const string& name,
-                             const string& description):
-  trajectory_names_(trajectory_names) {
+                             const string& name, const string& description)
+    : trajectory_names_(trajectory_names) {
   int index = 0;
   for (const string& traj_name : trajectory_names_) {
     trajectories_[traj_name] = trajectories[index++];
@@ -68,9 +79,9 @@ lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
   traj.num_trajectories = trajectories_.size();
 
   // For each trajectory
-  for (auto & traj_el : trajectories_) {
+  for (auto& traj_el : trajectories_) {
     lcmt_trajectory_block traj_block;
-    const Trajectory* cpp_traj = &traj_el.second;
+    const Trajectory *cpp_traj = &traj_el.second;
 
     traj_block.trajectory_name = cpp_traj->traj_name;
     traj_block.num_points = cpp_traj->time_vector.size();
@@ -79,13 +90,13 @@ lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
     // Reserve space for vectors
     traj_block.time_vec.reserve(traj_block.num_points);
     traj_block.datatypes.reserve(traj_block.num_datatypes);
-    traj_block.datapoints = vector<vector<double>>(traj_block.num_datatypes,
-                            vector<double>(traj_block.num_points));
+    traj_block.datapoints = vector<vector<double>>(
+        traj_block.num_datatypes, vector<double>(traj_block.num_points));
 
     // Copy Eigentypes to std::vector
     traj_block.time_vec = vector<double>(cpp_traj->time_vector.data(),
                                          cpp_traj->time_vector.data() +
-                                         cpp_traj->time_vector.size());
+                                             cpp_traj->time_vector.size());
     traj_block.datatypes = vector<string>(cpp_traj->datatypes);
     for (int i = 0; i < traj_block.num_datatypes; ++i) {
       // Temporary copy due to underlying data of Eigen::Matrix
@@ -94,7 +105,6 @@ lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
       memcpy(traj_block.datapoints[i].data(), tempRow.data(),
              sizeof(double) * traj_block.num_points);
     }
-
 
     traj.trajectories.push_back(traj_block);
     traj.trajectory_names.push_back(traj_el.first);
@@ -105,7 +115,7 @@ lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
 void LcmTrajectory::writeToFile(const string& filepath) {
   try {
     std::ofstream fout(filepath);
-    if (!fout.is_open()) {
+    if (!fout) {
       throw std::bad_alloc();
     }
 
@@ -113,11 +123,11 @@ void LcmTrajectory::writeToFile(const string& filepath) {
     drake::systems::lcm::Serializer<lcmt_saved_traj> serializer;
     serializer.Serialize(*AbstractValue::Make(generateLcmObject()), &bytes);
 
-    fout.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+    fout.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
     fout.close();
-  } catch (std::exception &e) {
-    std::cerr << "Could not open file: " << filepath << "\nException: "
-              << e.what() << std::endl;;
+  } catch (std::exception& e) {
+    std::cerr << "Could not open file: " << filepath
+              << "\nException: " << e.what() << std::endl;;
     throw e;
   }
 }
@@ -135,36 +145,34 @@ lcmt_saved_traj LcmTrajectory::loadFromFile(const std::string& filepath) {
 
     bytes.reserve(length);
     std::copy(std::istreambuf_iterator<char>(inFile),
-              std::istreambuf_iterator<char>(),
-              std::back_inserter(bytes) );
+              std::istreambuf_iterator<char>(), std::back_inserter(bytes));
     inFile.close();
-  } catch (std::exception &e) {
-    std::cerr << "Could not open file: " << filepath << "\nException: "
-              << e.what() << std::endl;;
+  } catch (std::exception& e) {
+    std::cerr << "Could not open file: " << filepath
+              << "\nException: " << e.what() << std::endl;;
     throw e;
   }
   // Deserialization process
   lcmt_saved_traj traj;
   std::unique_ptr<AbstractValue> traj_value = AbstractValue::Make(traj);
-  serializer.Deserialize(reinterpret_cast<void*>(bytes.data()),
-                         static_cast<int>(bytes.size()),
-                         traj_value.get());
+  serializer.Deserialize(reinterpret_cast<void *>(bytes.data()),
+                         static_cast<int>(bytes.size()), traj_value.get());
   return traj_value->get_value<lcmt_saved_traj>();
 }
 
 lcmt_metadata LcmTrajectory::constructMetadataObject(string name,
-    string description) const {
+                                                     string description) const {
   lcmt_metadata metadata;
 
-  std::time_t t = std::time(nullptr);   // get time now
+  std::time_t t = std::time(nullptr); // get time now
 
   // convert now to string form
   metadata.datetime = asctime(std::localtime(&t));
-  metadata.git_dirty_flag = false;
+  metadata.git_dirty_flag = (!exec("git diff-index HEAD").empty());
   metadata.name = name;
   metadata.description = description;
-  // TODO(yangwill): autofill git details
+  metadata.git_commit_hash = exec("git rev-parse HEAD");
   return metadata;
 }
 
-}  // namespace dairlib
+} // namespace dairlib

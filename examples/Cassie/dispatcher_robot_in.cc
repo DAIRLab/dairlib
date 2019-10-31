@@ -1,4 +1,5 @@
 #include <memory>
+#include <limits>
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
@@ -31,7 +32,11 @@ using drake::systems::TriggerType;
 DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
 DEFINE_int64(port, 25000, "Port to publish to (UDP).");
 DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
-DEFINE_double(max_joint_velocity, 10, "Maximum joint velocity before error is triggered");
+DEFINE_double(max_joint_velocity, 10,
+    "Maximum joint velocity before error is triggered");
+DEFINE_double(input_limit, -1, "Maximum torque limit. Negative values are inf.");
+DEFINE_int64(supervisor_N, 10,
+    "Maximum allowed consecutive failures of velocity limit.");
 DEFINE_string(state_channel_name, "CASSIE_STATE",
     "The name of the lcm channel that sends Cassie's state");
 
@@ -67,9 +72,15 @@ int do_main(int argc, char* argv[]) {
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*tree);
   builder.Connect(*state_sub, *state_receiver);
 
-  double input_supervisor_update_period = 1.0/100.0;
+  double input_supervisor_update_period = 1.0/1000.0;
+  double input_limit = FLAGS_input_limit;
+  if (input_limit < 0) {
+    input_limit = std::numeric_limits<double>::max();
+  }
+
   auto input_supervisor = builder.AddSystem<InputSupervisor>(*tree,
-      FLAGS_max_joint_velocity, input_supervisor_update_period);
+      FLAGS_max_joint_velocity, input_supervisor_update_period,
+      FLAGS_supervisor_N, input_limit);
   builder.Connect(state_receiver->get_output_port(0),
       input_supervisor->get_input_port_state());
   builder.Connect(command_receiver->get_output_port(0),
@@ -93,7 +104,7 @@ int do_main(int argc, char* argv[]) {
           "NETWORK_CASSIE_INPUT", &lcm_network,
           {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
-  builder.Connect(*command_receiver, *net_command_sender);
+  builder.Connect(*input_supervisor, *net_command_sender);
 
   builder.Connect(*net_command_sender, *net_command_pub);
 

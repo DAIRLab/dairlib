@@ -1,3 +1,7 @@
+# -*- python -*-
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
@@ -6,4 +10,27 @@ cc_binary(
     deps = [
         "@lcm"
     ],
+)
+
+cc_library(
+    name = "lcm_trajectory_saver",
+    srcs = ["lcm_trajectory.cc"],
+    hdrs = ["lcm_trajectory.h"],
+    deps = [
+      "//lcmtypes:lcmt_robot",
+      "@eigen",
+      "@drake//systems/lcm",
+      "@lcm"
+    ],
+)
+
+cc_test(
+    name = "lcm_trajectory_saver_test",
+    srcs = ["test/lcm_trajectory_test.cc"],
+    deps = [
+      ":lcm_trajectory_saver", 
+      "@drake//:drake_shared_library",
+      "@gtest//:main",
+    ],
+    size = "small",
 )

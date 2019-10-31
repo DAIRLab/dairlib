@@ -22,7 +22,7 @@ using std::vector;
 
 namespace dairlib {
 
-std::string exec(const char *cmd) {
+std::string exec(const char* cmd) {
   std::array<char, 128> buffer{};
   std::string result;
   std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
@@ -81,7 +81,7 @@ lcmt_saved_traj LcmTrajectory::generateLcmObject() const {
   // For each trajectory
   for (auto& traj_el : trajectories_) {
     lcmt_trajectory_block traj_block;
-    const Trajectory *cpp_traj = &traj_el.second;
+    const Trajectory* cpp_traj = &traj_el.second;
 
     traj_block.trajectory_name = cpp_traj->traj_name;
     traj_block.num_points = cpp_traj->time_vector.size();
@@ -116,14 +116,14 @@ void LcmTrajectory::writeToFile(const string& filepath) {
   try {
     std::ofstream fout(filepath);
     if (!fout) {
-      throw std::bad_alloc();
+      throw std::exception();
     }
 
     std::vector<uint8_t> bytes;
     drake::systems::lcm::Serializer<lcmt_saved_traj> serializer;
     serializer.Serialize(*AbstractValue::Make(generateLcmObject()), &bytes);
 
-    fout.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
+    fout.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
     fout.close();
   } catch (std::exception& e) {
     std::cerr << "Could not open file: " << filepath
@@ -155,7 +155,7 @@ lcmt_saved_traj LcmTrajectory::loadFromFile(const std::string& filepath) {
   // Deserialization process
   lcmt_saved_traj traj;
   std::unique_ptr<AbstractValue> traj_value = AbstractValue::Make(traj);
-  serializer.Deserialize(reinterpret_cast<void *>(bytes.data()),
+  serializer.Deserialize(reinterpret_cast<void*>(bytes.data()),
                          static_cast<int>(bytes.size()), traj_value.get());
   return traj_value->get_value<lcmt_saved_traj>();
 }

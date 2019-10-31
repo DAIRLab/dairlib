@@ -7,6 +7,8 @@ package dairlib;
 
 struct lcmt_metadata 
 {
+  /* git_dirty_flag is set to true if there are any uncommitted changes
+  */
   boolean git_dirty_flag;
   string datetime;
   string name;

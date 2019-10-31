@@ -10,43 +10,45 @@
 
 namespace dairlib {
 
-/*
- * Used for saving/loading trajectories.
- * To save a LcmTrajectory object, create one or multiple
- * LcmTrajectory::Trajectory structs and wrap them using the LcmTrajectory
- * constructor. Finally call writeToFile() with the desired relative filepath
- *
- * To load a saved LcmTrajectory object, call the loadFromFile() with relative
- * filepath of the previously saved LcmTrajectory object
- */
+
+/// Used for saving/loading trajectories.
+/// To save a LcmTrajectory object, create one or multiple
+/// LcmTrajectory::Trajectory structs and wrap them using the LcmTrajectory
+/// constructor. Finally call writeToFile() with the desired relative filepath
+///
+/// To load a saved LcmTrajectory object, call the loadFromFile() with relative
+/// filepath of the previously saved LcmTrajectory object
+
 class LcmTrajectory {
  public:
-  /*
-   * Simple struct used for saving trajectories
-   * lcmt_trajectory_block is the lcmtype analog
-   */
+  /// Simple struct used for saving trajectories
+  /// lcmt_trajectory_block is the lcmtype analog
   struct Trajectory {
     Trajectory() = default;
     Trajectory(std::string traj_name, const lcmt_trajectory_block& traj_block);
 
     std::string traj_name;
     Eigen::VectorXd time_vector;
-    Eigen::MatrixXd datapoints; // Rows correspond to datatypes, Cols
-    // correspond to different time indices
+    // Rows correspond to datatypes
+    // Cols correspond to different time indices
+    Eigen::MatrixXd datapoints;
+
     std::vector<std::string> datatypes;
   };
 
-  LcmTrajectory() {}
+  LcmTrajectory() = default;
   LcmTrajectory(const std::vector<Trajectory>& trajectories,
                 const std::vector<std::string>& trajectory_names,
                 const std::string& name, const std::string& description);
 
   explicit LcmTrajectory(const lcmt_saved_traj& traj);
 
-  // Writes this LcmTrajectory object to a file specified by filepath
+  /// Writes this LcmTrajectory object to a file specified by filepath
+  /// @throws std::exception along with the invalid filepath if unable to open the file
   void writeToFile(const std::string& filepath);
 
-  // Loads a saved trajectory to a lcmt_saved_traj
+  /// Loads a previously saved LcmTrajectory object from the file specified by filepath
+  /// @throws std::exception along with the invalid filepath if error reading/opening the file
   static lcmt_saved_traj loadFromFile(const std::string& filepath);
 
   const lcmt_metadata& getMetadata() const { return metadata_; }
@@ -61,6 +63,8 @@ class LcmTrajectory {
 
  private:
   lcmt_saved_traj generateLcmObject() const;
+  /// Constructs a lcmt_metadata object with a specified name and description
+  /// Other relevant metadata details such as datatime and git status are automatically generated
   lcmt_metadata constructMetadataObject(std::string name,
                                         std::string description) const;
 

@@ -127,7 +127,7 @@ TEST_F(LcmTrajectoryTest, TestConstructorFromLcmTObject) {
 
 }  // namespace dairlib
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

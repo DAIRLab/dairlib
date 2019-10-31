@@ -6,8 +6,8 @@ package dairlib;
 
 struct lcmt_saved_traj
 {
-  dairlib.lcmt_metadata metadata;
+  lcmt_metadata metadata;
   int32_t num_trajectories;
-  dairlib.lcmt_trajectory_block trajectories[num_trajectories];
+  lcmt_trajectory_block trajectories[num_trajectories];
   string trajectory_names[num_trajectories];
 }

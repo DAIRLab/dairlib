@@ -133,15 +133,15 @@ class BodyPointPositionConstraint : public DirconAbstractConstraint<double> {
                               string body_name,
                               Vector3d translation,
                               Vector3d desired_pos) :
-    DirconAbstractConstraint<double>(3,
-                                     tree.get_num_positions(),
-                                     VectorXd::Zero(3),
-                                     VectorXd::Zero(3),
-                                     body_name + "_position_constraint"),
-    tree_(tree),
-    body_idx_(multibody::GetBodyIndexFromName(tree, body_name)),
-    translation_(translation),
-    desired_pos_(desired_pos) {
+      DirconAbstractConstraint<double>(3,
+                                       tree.get_num_positions(),
+                                       VectorXd::Zero(3),
+                                       VectorXd::Zero(3),
+                                       body_name + "_position_constraint"),
+      tree_(tree),
+      body_idx_(multibody::GetBodyIndexFromName(tree, body_name)),
+      translation_(translation),
+      desired_pos_(desired_pos) {
   }
   ~BodyPointPositionConstraint() override = default;
 
@@ -187,25 +187,25 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   ContactInfo contact_info(xa, idxa);
 
   VectorXd q_desired = VectorXd::Zero(n_q);
-  q_desired <<         0,
-                       0,
-                   1.057,
-                       1,
-                       0,
-                       0,
-                       0,
-                  0.0185,
-                 -0.0185,
-                       0,
-                       0,
-                   0.383,
-                   0.383,
-                   -1.02,
-                   -1.02,
-                    1.24,
-                    1.24,
-                   -1.48,
-                   -1.48;
+  q_desired << 0,
+      0,
+      1.057,
+      1,
+      0,
+      0,
+      0,
+      0.0185,
+      -0.0185,
+      0,
+      0,
+      0.383,
+      0.383,
+      -1.02,
+      -1.02,
+      1.24,
+      1.24,
+      -1.48,
+      -1.48;
   // The above numbers comes from one (FixedPointSolver) solution of cassie
   // standing
 
@@ -235,64 +235,64 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   // get mathematicalprogram to add constraint ourselves
   shared_ptr<MathematicalProgram> mp = fp_solver.get_program();
   auto& q_var = mp->decision_variables().head(
-                  n_q);  // Assume q is located at the start
+      n_q);  // Assume q is located at the start
   Vector3d desired_left_toe_pos(0.06, 0.4, 0);
   Vector3d desired_right_toe_pos(0.06, -0.4, 0);
   auto left_foot_constraint = std::make_shared<BodyPointPositionConstraint>(
-                                tree, "toe_left", pt_front_contact,
-                                desired_left_toe_pos);
+      tree, "toe_left", pt_front_contact,
+      desired_left_toe_pos);
   auto right_foot_constraint = std::make_shared<BodyPointPositionConstraint>(
-                                 tree, "toe_right", pt_front_contact,
-                                 desired_right_toe_pos);
+      tree, "toe_right", pt_front_contact,
+      desired_right_toe_pos);
   mp->AddConstraint(left_foot_constraint, q_var);
   mp->AddConstraint(right_foot_constraint, q_var);
 
   VectorXd init_guess = VectorXd::Random(mp->decision_variables().size());
   // Provide initial guess to shorten the runtime
   // The numbers comes from one (FixedPointSolver) solution of cassie standing
-  init_guess <<        0,
-                       0,
-                 1.05263,
-                       1,
-                       0,
-                       0,
-                       0,
-               0.0185236,
-              -0.0185236,
-                       0,
-                       0,
-                  0.3836,
-                  0.3836,
-                  -1.026,
-                  -1.026,
-                   1.249,
-                   1.249,
-                  -1.480,
-                  -1.480,
-                 -0.1535,
-                  0.1682,
-                  0.1407,
-                 -0.1843,
-                  -6.124,
-                  -5.841,
-                   35.76,
-                   35.79,
-                   -5.46,
-                  -5.439,
-                  -398.5,
-                  -396.3,
-                   93.49,
-                   17.75,
-                   1.521,
-                   68.57,
-                  -17.61,
-                  -1.503,
-                   93.28,
-                 -0.7926,
-                  -1.762,
-                   68.42,
-                   0.652,
-                   1.744;
+  init_guess << 0,
+      0,
+      1.05263,
+      1,
+      0,
+      0,
+      0,
+      0.0185236,
+      -0.0185236,
+      0,
+      0,
+      0.3836,
+      0.3836,
+      -1.026,
+      -1.026,
+      1.249,
+      1.249,
+      -1.480,
+      -1.480,
+      -0.1535,
+      0.1682,
+      0.1407,
+      -0.1843,
+      -6.124,
+      -5.841,
+      35.76,
+      35.79,
+      -5.46,
+      -5.439,
+      -398.5,
+      -396.3,
+      93.49,
+      17.75,
+      1.521,
+      68.57,
+      -17.61,
+      -1.503,
+      93.28,
+      -0.7926,
+      -1.762,
+      68.42,
+      0.652,
+      1.744;
   mp->SetInitialGuessForAllVariables(init_guess);
 
   // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -317,8 +317,8 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
 
   VectorXd q_sol_reorder(n_q);
   q_sol_reorder << q_sol.segment(3, 4),
-                q_sol.segment(0, 3),
-                q_sol.tail(12);
+      q_sol.segment(0, 3),
+      q_sol.tail(12);
   // Careful that the contact constraint ordering should be consistent with
   // those you set in DIRCON
   VectorXd lambda_sol_reorder(lambda_sol.size());
@@ -332,7 +332,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
     lambda_sol_contact(2 + 3 * i) = lambda_dummy(0);
   }
   lambda_sol_reorder << lambda_sol_contact,
-                     lambda_sol.head(tree.getNumPositionConstraints());
+      lambda_sol.head(tree.getNumPositionConstraints());
 
   *q_init = q_sol_reorder;
   *u_init = u_sol;
@@ -345,9 +345,9 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   drake::systems::DiagramBuilder<double> builder;
   const PiecewisePolynomial<double> pp_xtraj = PiecewisePolynomial<double>(x);
   auto state_source = builder.AddSystem<drake::systems::TrajectorySource>
-                      (pp_xtraj);
+      (pp_xtraj);
   auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree,
-                   &lcm);
+                                                                      &lcm);
   publisher->set_publish_period(1.0 / 60.0);
   builder.Connect(state_source->get_output_port(),
                   publisher->get_input_port(0));
@@ -359,23 +359,22 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   simulator.AdvanceTo(0.2);
 }
 
-
 // Position constraint of a body origin in one dimension (x, y, or z)
 class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
  public:
   OneDimBodyPosConstraint(const MultibodyPlant<double>* plant,
-                      string body_name,
-                      int xyz_idx,
-                      double lb,
-                      double ub) :
-    DirconAbstractConstraint<double>(
-      1, plant->num_positions(),
-      VectorXd::Ones(1) * lb,
-      VectorXd::Ones(1) * ub,
-      body_name + "_constraint"),
-    plant_(plant),
-    body_(plant->GetBodyByName(body_name)),
-    xyz_idx_(xyz_idx) {
+                          string body_name,
+                          int xyz_idx,
+                          double lb,
+                          double ub) :
+      DirconAbstractConstraint<double>(
+          1, plant->num_positions(),
+          VectorXd::Ones(1) * lb,
+          VectorXd::Ones(1) * ub,
+          body_name + "_constraint"),
+      plant_(plant),
+      body_(plant->GetBodyByName(body_name)),
+      xyz_idx_(xyz_idx) {
   }
   ~OneDimBodyPosConstraint() override = default;
 
@@ -384,7 +383,7 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
     VectorXd q = x;
 
     std::unique_ptr<drake::systems::Context<double>> context =
-          plant_->CreateDefaultContext();
+        plant_->CreateDefaultContext();
     plant_->SetPositions(context.get(), q);
 
     VectorX<double> pt(3);
@@ -414,7 +413,7 @@ void DoMain(double duration, int max_iter,
   Parser parser(&plant, &scene_graph);
 
   string full_name = FindResourceOrThrow(
-                       "examples/Cassie/urdf/cassie_fixed_springs.urdf");
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf");
   parser.AddModelFromFile(full_name);
   plant.mutable_gravity_field().set_gravity_vector(-9.81 *
       Eigen::Vector3d::UnitZ());
@@ -437,36 +436,50 @@ void DoMain(double duration, int max_iter,
   Vector3d pt_rear_contact(0.088, 0, 0);
   bool isXZ = false;
   Vector3d ground_normal(0, 0, 1);
-  auto left_toe_front_constraint = DirconPositionData<double>(plant, toe_left,
-                                   pt_front_contact, isXZ, ground_normal);
-  auto left_toe_rear_constraint = DirconPositionData<double>(plant, toe_left,
-                                  pt_rear_contact, isXZ, ground_normal);
-  auto right_toe_front_constraint = DirconPositionData<double>(plant, toe_right,
-                                    pt_front_contact, isXZ, ground_normal);
-  auto right_toe_rear_constraint = DirconPositionData<double>(plant, toe_right,
-                                   pt_rear_contact, isXZ, ground_normal);
+  auto left_toe_front_constraint =
+      DirconPositionData<double>(plant, toe_left,
+                                 pt_front_contact, isXZ, ground_normal);
+  auto left_toe_rear_constraint = DirconPositionData<double>(plant,
+                                                             toe_left,
+                                                             pt_rear_contact,
+                                                             isXZ,
+                                                             ground_normal);
+  auto right_toe_front_constraint = DirconPositionData<double>(plant,
+                                                               toe_right,
+                                                               pt_front_contact,
+                                                               isXZ,
+                                                               ground_normal);
+  auto right_toe_rear_constraint = DirconPositionData<double>(plant,
+                                                              toe_right,
+                                                              pt_rear_contact,
+                                                              isXZ,
+                                                              ground_normal);
   double mu = 1;
   left_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
   left_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
   right_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
   right_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
 
-  const auto & thigh_left = plant.GetBodyByName("thigh_left");
-  const auto & heel_spring_left = plant.GetBodyByName("heel_spring_left");
-  const auto & thigh_right = plant.GetBodyByName("thigh_right");
-  const auto & heel_spring_right = plant.GetBodyByName("heel_spring_right");
+  const auto& thigh_left = plant.GetBodyByName("thigh_left");
+  const auto& heel_spring_left = plant.GetBodyByName("heel_spring_left");
+  const auto& thigh_right = plant.GetBodyByName("thigh_right");
+  const auto& heel_spring_right = plant.GetBodyByName("heel_spring_right");
   double rod_length = 0.5012;  // from cassie_utils
   Vector3d pt_on_heel_spring = Vector3d(.11877, -.01, 0.0);
   Vector3d pt_on_thigh_left = Vector3d(0.0, 0.0, 0.045);
   Vector3d pt_on_thigh_right = Vector3d(0.0, 0.0, -0.045);
   auto distance_constraint_left = DirconDistanceData<double>(plant,
-                                  thigh_left, pt_on_thigh_left,
-                                  heel_spring_left, pt_on_heel_spring,
-                                  rod_length);
+                                                             thigh_left,
+                                                             pt_on_thigh_left,
+                                                             heel_spring_left,
+                                                             pt_on_heel_spring,
+                                                             rod_length);
   auto distance_constraint_right = DirconDistanceData<double>(plant,
-                                   thigh_right, pt_on_thigh_right,
-                                   heel_spring_right, pt_on_heel_spring,
-                                   rod_length);
+                                                              thigh_right,
+                                                              pt_on_thigh_right,
+                                                              heel_spring_right,
+                                                              pt_on_heel_spring,
+                                                              rod_length);
 
   // get rid of redundant constraint
   vector<int> skip_constraint_inds;
@@ -481,9 +494,12 @@ void DoMain(double duration, int max_iter,
   double_stance_all_constraint.push_back(&right_toe_rear_constraint);
   double_stance_all_constraint.push_back(&distance_constraint_left);
   double_stance_all_constraint.push_back(&distance_constraint_right);
-  auto double_all_dataset = DirconKinematicDataSet<double>(plant,
-                            &double_stance_all_constraint, skip_constraint_inds);
-  auto double_all_options = DirconOptions(double_all_dataset.countConstraints());
+  auto double_all_dataset =
+      DirconKinematicDataSet<double>(plant,
+                                     &double_stance_all_constraint,
+                                     skip_constraint_inds);
+  auto double_all_options =
+      DirconOptions(double_all_dataset.countConstraints());
   // Be careful in setting relative constraint, because we also skip constraints.
   // lf    | lr    | rf    | rr      | fourbar
   // 0 1 2 | 3 4 5 | 6 7 8 | 9 10 11 | 12 13
@@ -509,7 +525,11 @@ void DoMain(double duration, int max_iter,
   options_list.push_back(double_all_options);
 
   auto trajopt = std::make_shared<HybridDircon<double>>(plant,
-                 num_time_samples, min_dt, max_dt, dataset_list, options_list);
+                                                        num_time_samples,
+                                                        min_dt,
+                                                        max_dt,
+                                                        dataset_list,
+                                                        options_list);
 
   // Snopt settings
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -540,11 +560,11 @@ void DoMain(double duration, int max_iter,
   auto x = trajopt->state();
   auto x0 = trajopt->initial_state();
   auto xf = trajopt->state_vars_by_mode(
-              num_time_samples.size() - 1,
-              num_time_samples[num_time_samples.size() - 1] - 1);
+      num_time_samples.size() - 1,
+      num_time_samples[num_time_samples.size() - 1] - 1);
   auto xmid = trajopt->state_vars_by_mode(
-                num_time_samples.size() - 1,
-                num_time_samples[num_time_samples.size() - 1] / 2);
+      num_time_samples.size() - 1,
+      num_time_samples[num_time_samples.size() - 1] / 2);
 
   // height constraint
   trajopt->AddLinearConstraint(x0(positions_map.at("base_z")) == 1);
@@ -565,22 +585,22 @@ void DoMain(double duration, int max_iter,
   trajopt->AddLinearConstraint(xf.tail(n_v) == VectorXd::Zero(n_v));
 
   // create joint/motor names
-  vector<std::pair<string, string>> l_r_pairs {
-    std::pair<string, string>("_left", "_right"),
-    std::pair<string, string>("_right", "_left"),
+  vector<std::pair<string, string>> l_r_pairs{
+      std::pair<string, string>("_left", "_right"),
+      std::pair<string, string>("_right", "_left"),
   };
-  vector<string> asy_joint_names {
-    "hip_roll",
-    "hip_yaw",
+  vector<string> asy_joint_names{
+      "hip_roll",
+      "hip_yaw",
   };
-  vector<string> sym_joint_names {
-    "hip_pitch",
-    "knee",
-    "ankle_joint",
-    "toe"
+  vector<string> sym_joint_names{
+      "hip_pitch",
+      "knee",
+      "ankle_joint",
+      "toe"
   };
-  vector<string> joint_names {};
-  vector<string> motor_names {};
+  vector<string> joint_names{};
+  vector<string> motor_names{};
   for (auto l_r_pair : l_r_pairs) {
     for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
       joint_names.push_back(asy_joint_names[i] + l_r_pair.first);
@@ -595,13 +615,13 @@ void DoMain(double duration, int max_iter,
   }
 
   // joint limits
-  for (const auto & member : joint_names) {
+  for (const auto& member : joint_names) {
     trajopt->AddConstraintToAllKnotPoints(
         x(positions_map.at(member)) <=
-        plant.GetJointByName(member).position_upper_limits()(0));
+            plant.GetJointByName(member).position_upper_limits()(0));
     trajopt->AddConstraintToAllKnotPoints(
         x(positions_map.at(member)) >=
-        plant.GetJointByName(member).position_lower_limits()(0));
+            plant.GetJointByName(member).position_lower_limits()(0));
   }
 
   // u limit
@@ -615,13 +635,13 @@ void DoMain(double duration, int max_iter,
 
   // toe position constraint in y direction (avoid leg crossing)
   auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-                                &plant, "toe_left", 1,
-                                0.05,
-                                std::numeric_limits<double>::infinity());
+      &plant, "toe_left", 1,
+      0.05,
+      std::numeric_limits<double>::infinity());
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-                                &plant, "toe_right", 1,
-                                -std::numeric_limits<double>::infinity(),
-                                -0.05);
+      &plant, "toe_right", 1,
+      -std::numeric_limits<double>::infinity(),
+      -0.05);
   for (int index = 0; index < num_time_samples[0]; index++) {
     auto x = trajopt->state(index);
     // trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
@@ -631,8 +651,8 @@ void DoMain(double duration, int max_iter,
   // add cost
   const MatrixXd Q = 10 * 12.5 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 12.5 * MatrixXd::Identity(n_u, n_u);
-  trajopt->AddRunningCost(x.tail(n_v).transpose()* Q * x.tail(n_v));
-  trajopt->AddRunningCost(u.transpose()* R * u);
+  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
+  trajopt->AddRunningCost(u.transpose() * R * u);
 
 
   // initial guess
@@ -668,8 +688,8 @@ void DoMain(double duration, int max_iter,
       auto xi = trajopt->state(i);
       VectorXd xi_init(n_q + n_v);
       xi_init << q_init.head(4),
-              q_init.tail(n_q - 4),
-              VectorXd::Zero(n_v);
+          q_init.tail(n_q - 4),
+          VectorXd::Zero(n_v);
       trajopt->SetInitialGuess(xi, xi_init);
 
       // guess for input
@@ -707,7 +727,7 @@ void DoMain(double duration, int max_iter,
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   // trajopt->PrintSolution();
-  for (int i = 0; i < 100; i++) {cout << '\a';}  // making noise to notify
+  for (int i = 0; i < 100; i++) { cout << '\a'; }  // making noise to notify
   cout << "\n" << to_string(solution_result) << endl;
   cout << "Solve time:" << elapsed.count() << std::endl;
   cout << "Cost:" << result.get_optimal_cost() << std::endl;
@@ -763,10 +783,10 @@ void DoMain(double duration, int max_iter,
       trajopt->ReconstructStateTrajectory(result);
 
   auto traj_source = builder.AddSystem<drake::systems::TrajectorySource>(
-                       pp_xtraj);
+      pp_xtraj);
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-                       plant.num_positions() + plant.num_velocities(), 0,
-                       plant.num_positions());
+      plant.num_positions() + plant.num_velocities(), 0,
+      plant.num_positions());
   builder.Connect(traj_source->get_output_port(),
                   passthrough->get_input_port());
   auto to_pose =
@@ -799,9 +819,9 @@ void DoMain(double duration, int max_iter,
 
     // connect
     auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
-                           plant.num_positions() + plant.num_velocities(),
-                           0,
-                           plant.num_positions());
+        plant.num_positions() + plant.num_velocities(),
+        0,
+        plant.num_positions());
     builder.Connect(traj_source->get_output_port(),
                     q_passthrough->get_input_port());
     auto rbt_passthrough =
@@ -819,7 +839,7 @@ void DoMain(double duration, int max_iter,
     }
     builder.Connect(ball_to_pose->get_output_port(),
                     scene_graph.get_source_pose_port(
-                      ball_plant->get_source_id().value()));
+                        ball_plant->get_source_id().value()));
   }
   // **************************************
 

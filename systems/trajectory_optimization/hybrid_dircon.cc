@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
-#include <iostream>
 
 #include "drake/solvers/decision_variable.h"
 #include "drake/math/autodiff.h"
@@ -30,25 +29,6 @@ using drake::symbolic::Expression;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using std::vector;
-
-// Unit-norm quaternion constraint
-class QuaternionNormConstraint : public DirconAbstractConstraint<double> {
- public:
-  QuaternionNormConstraint() :
-    DirconAbstractConstraint<double>(1, 4,
-                                     VectorXd::Zero(1), VectorXd::Zero(1),
-                                     "quaternion_norm_constraint") {
-  }
-  ~QuaternionNormConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override {
-    VectorX<double> output(1);
-    output << x.norm() - 1;
-    *y = output;
-  };
- private:
-};
 
 
 // HybridDircon constructor
@@ -112,7 +92,7 @@ HybridDircon<T>::HybridDircon(
 
     //Adding quaternion norm constraint
     if (multibody::isQuaternion(plant)) {
-      auto quat_norm_constraint = std::make_shared<QuaternionNormConstraint>();
+      auto quat_norm_constraint = std::make_shared<QuaternionNormConstraint<T>>();
       for (int j = (i==0)? 0: 1; j < mode_lengths_[i]; j++) {
         AddConstraint(quat_norm_constraint, state_vars_by_mode(i, j).head(4));
       }

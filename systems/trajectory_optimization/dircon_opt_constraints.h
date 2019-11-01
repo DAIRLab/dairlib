@@ -41,6 +41,19 @@ class DirconAbstractConstraint : public drake::solvers::Constraint {
 
 enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
 
+
+/// Unit-norm quaternion constraint
+template <typename T>
+class QuaternionNormConstraint : public DirconAbstractConstraint<T> {
+ public:
+  QuaternionNormConstraint();
+  ~QuaternionNormConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
+                          drake::VectorX<T>* y) const override;
+};
+
+
 /// Implements the direct collocation constraints for a first-order hold on
 /// the input and a cubic polynomial representation of the state trajectories.
 /// This class is based on the similar constraint used by DirectCollocation,

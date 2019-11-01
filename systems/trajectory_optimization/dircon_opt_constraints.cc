@@ -110,6 +110,20 @@ void DirconAbstractConstraint<double>::DoEval(
 }
 
 
+template <typename T>
+QuaternionNormConstraint<T>::QuaternionNormConstraint() :
+    DirconAbstractConstraint<T>(1, 4,
+                                       VectorXd::Zero(1),
+                                       VectorXd::Zero(1),
+                                       "quaternion_norm_constraint") {}
+template <typename T>
+void QuaternionNormConstraint<T>::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
+    VectorX<T> output(1);
+    output << x.norm() - 1;
+    *y = output;
+}
+
 
 template <typename T>
 DirconDynamicConstraint<T>::DirconDynamicConstraint(
@@ -412,6 +426,8 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
 
 // Explicitly instantiates on the most common scalar types.
 template class DirconAbstractConstraint<double>;
+template class QuaternionNormConstraint<double>;
+template class QuaternionNormConstraint<AutoDiffXd>;
 template class DirconDynamicConstraint<double>;
 template class DirconDynamicConstraint<AutoDiffXd>;
 template class DirconKinematicConstraint<double>;

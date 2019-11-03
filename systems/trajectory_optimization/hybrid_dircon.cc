@@ -54,6 +54,7 @@ HybridDircon<T>::HybridDircon(
   DRAKE_ASSERT(maximum_timestep.size() == num_modes_);
   DRAKE_ASSERT(constraints.size() == num_modes_);
 
+  bool is_quaternion = multibody::isQuaternion(plant);
 
   // Initialization is looped over the modes
   int counter = 0;
@@ -79,6 +80,8 @@ HybridDircon<T>::HybridDircon(
     force_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraintsWithoutSkipping() * num_time_samples[i], "lambda[" + std::to_string(i) + "]"));
     collocation_force_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraintsWithoutSkipping() * (num_time_samples[i] - 1), "lambda_c[" + std::to_string(i) + "]"));
     collocation_slack_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraintsWithoutSkipping() * (num_time_samples[i] - 1), "v_c[" + std::to_string(i) + "]"));
+    // slack variables used to scale quaternion norm to 1 in the dynamic constraints.
+    quaternion_slack_vars_.push_back(NewContinuousVariables(is_quaternion? num_time_samples[i] - 1: 0, "gamma_"+ std::to_string(i)));
     offset_vars_.push_back(NewContinuousVariables(options[i].getNumRelative(), "offset[" + std::to_string(i) + "]"));
     if (i > 0) {
       impulse_vars_.push_back(NewContinuousVariables(constraints_[i]->countConstraintsWithoutSkipping(), "impulse[" + std::to_string(i) + "]"));
@@ -99,16 +102,12 @@ HybridDircon<T>::HybridDircon(
     }
 
     //Adding dynamic constraints
-    auto constraint = std::make_shared<DirconDynamicConstraint<T>>(plant_, *constraints_[i], multibody::isQuaternion(plant));
-    DRAKE_ASSERT(static_cast<int>(constraint->num_constraints()) == num_states());
+    auto dynamic_constraint = std::make_shared<DirconDynamicConstraint<T>>(plant_, *constraints_[i], is_quaternion);
+    DRAKE_ASSERT(static_cast<int>(dynamic_constraint->num_constraints()) == num_states());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
-      vector<VectorXDecisionVariable> x_next;
 
-      // gamma is slack variable used to scale quaternion norm to 1.
-      auto gamma = NewContinuousVariables(constraint->num_quat_slack(), "gamma_"+ std::to_string(i) + "_" + std::to_string(j));
-
-      AddConstraint(constraint,
+      AddConstraint(dynamic_constraint,
                     {h_vars().segment(time_index,1),
                      state_vars_by_mode(i, j),
                      state_vars_by_mode(i, j+1),
@@ -116,7 +115,7 @@ HybridDircon<T>::HybridDircon(
                      force_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i) * 2),
                      collocation_force_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i)),
                      collocation_slack_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i)),
-                     gamma});
+                     quaternion_slack_vars(i).segment(j, is_quaternion?1:0)});
     }
 
     // Adding kinematic constraints

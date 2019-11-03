@@ -22,17 +22,12 @@
 #include "drake/solvers/constraint.h"
 #include "drake/solvers/choose_best_solver.h"
 
-#include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
-
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/rigid_body_plant/drake_visualizer.h"
-#include "drake/systems/primitives/trajectory_source.h"
 
 #include "common/find_resource.h"
-#include "systems/primitives/subvector_pass_through.h"
 
-#include "solvers/optimization_utils.h"
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
@@ -40,9 +35,7 @@
 #include "systems/trajectory_optimization/hybrid_dircon.h"
 
 #include "multibody/multibody_utils.h"
-#include "multibody/visualization_utils.h"
 
-#include "systems/goldilocks_models/symbolic_manifold.h"
 #include "systems/goldilocks_models/file_utils.h"
 
 #include "examples/Cassie/cassie_utils.h"

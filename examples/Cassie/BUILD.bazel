@@ -66,6 +66,16 @@ cc_binary(
     ],
 )
 
+cc_library(
+  name = "input_supervisor",
+  srcs = ["input_supervisor.cc"],
+  hdrs = ["input_supervisor.h"],
+  deps = [
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "run_pd_controller",
     srcs = ["run_pd_controller.cc"],
@@ -193,6 +203,7 @@ cc_binary(
           ":cassie_utils",
           ":cassie_rbt_state_estimator",
           ":cassie_urdf",
+          ":input_supervisor",
           "@gflags",
          ],
 )

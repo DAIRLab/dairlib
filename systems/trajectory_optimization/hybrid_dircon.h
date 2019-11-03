@@ -33,8 +33,8 @@ namespace trajectory_optimization {
 /// and corresponding acceleration, velocity, and position constraints.
 
 template <typename T>
-class HybridDircon :
-    public drake::systems::trajectory_optimization::MultipleShooting {
+class HybridDircon
+    : public drake::systems::trajectory_optimization::MultipleShooting {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(HybridDircon)
 

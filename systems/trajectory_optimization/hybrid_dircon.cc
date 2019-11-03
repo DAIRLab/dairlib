@@ -29,24 +29,27 @@ using std::vector;
 
 // HybridDircon constructor
 template <typename T>
-HybridDircon<T>::HybridDircon(
-    const MultibodyPlant<T>& plant,
-    vector<int> num_time_samples,
-    vector<double> minimum_timestep,
-    vector<double> maximum_timestep,
-    vector<DirconKinematicDataSet<T>*> constraints,
-    vector<DirconOptions> options) :
-    MultipleShooting(plant.num_actuators(),
-                     plant.num_positions() + plant.num_velocities(),
-                     std::accumulate(num_time_samples.begin(),
-                                     num_time_samples.end(), 0)
-                         - num_time_samples.size() + 1, 1e-8, 1e8),
-    plant_(plant),
-    constraints_(constraints),
-    num_modes_(num_time_samples.size()),
-    mode_lengths_(num_time_samples),
-    v_post_impact_vars_(NewContinuousVariables(plant.num_velocities() *
-        (num_time_samples.size() - 1), "v_p")) {
+HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
+                              vector<int> num_time_samples,
+                              vector<double> minimum_timestep,
+                              vector<double> maximum_timestep,
+                              vector<DirconKinematicDataSet<T>*> constraints,
+                              vector<DirconOptions> options)
+    : MultipleShooting(plant.num_actuators(),
+                       plant.num_positions() + plant.num_velocities(),
+                       std::accumulate(num_time_samples.begin(),
+                                       num_time_samples.end(),
+                                       0) - num_time_samples.size() + 1,
+                       1e-8,
+                       1e8),
+      plant_(plant),
+      constraints_(constraints),
+      num_modes_(num_time_samples.size()),
+      mode_lengths_(num_time_samples),
+      v_post_impact_vars_(NewContinuousVariables(
+          plant.num_velocities() *
+              (num_time_samples.size() - 1),
+          "v_p")) {
   DRAKE_ASSERT(minimum_timestep.size() == num_modes_);
   DRAKE_ASSERT(maximum_timestep.size() == num_modes_);
   DRAKE_ASSERT(constraints.size() == num_modes_);

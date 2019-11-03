@@ -532,8 +532,8 @@ void DoMain(double duration, int max_iter,
                                                         options_list);
 
   // Snopt settings
-  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                          "Print file", "../snopt.out");
+//   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+//                            "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -644,8 +644,8 @@ void DoMain(double duration, int max_iter,
       -0.05);
   for (int index = 0; index < num_time_samples[0]; index++) {
     auto x = trajopt->state(index);
-    // trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
-    // trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
+     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
+     trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
   }
 
   // add cost

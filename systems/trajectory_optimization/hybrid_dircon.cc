@@ -115,7 +115,7 @@ HybridDircon<T>::HybridDircon(
                      force_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i) * 2),
                      collocation_force_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i)),
                      collocation_slack_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i), num_kinematic_constraints_wo_skipping(i)),
-                     quaternion_slack_vars(i).segment(j, is_quaternion?1:0)});
+                     (is_quaternion)? quaternion_slack_vars(i).segment(j, 1) : quaternion_slack_vars(i).segment(0, 0)});
     }
 
     // Adding kinematic constraints

@@ -20,16 +20,18 @@ using drake::MatrixX;
 
 template <typename T>
 DirconPositionData<T>::DirconPositionData(const MultibodyPlant<T>& plant,
-    const Body<T>& body, Vector3d pt, bool isXZ,
-    Vector3d surface_normal) :
-        DirconKinematicData<T>(plant, isXZ ? 2 : 3),
-        body_(body),
-        pt_(pt),
-        isXZ_(isXZ) {
+                                          const Body<T>& body,
+                                          Vector3d pt,
+                                          bool isXZ,
+                                          Vector3d surface_normal)
+    : DirconKinematicData<T>(plant, isXZ ? 2 : 3),
+      body_(body),
+      pt_(pt),
+      isXZ_(isXZ) {
   TXZ_ << 1, 0, 0,
-          0, 0, 1;
+      0, 0, 1;
 
-  Vector3d z_hat(0,0,1);
+  Vector3d z_hat(0, 0, 1);
   surface_normal.normalize();
   Eigen::Quaterniond q;
   q.setFromTwoVectors(z_hat, surface_normal);
@@ -45,25 +47,23 @@ template <typename T>
 void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
   VectorX<T> pt_transform(3);
   MatrixX<T> J3d(3, this->plant_.num_velocities());
-  const auto x =
-      dynamic_cast<const drake::systems::BasicVector<T>&>(
-          context.get_continuous_state_vector()).get_value();
+  const auto x = dynamic_cast<const drake::systems::BasicVector<T>&>(
+      context.get_continuous_state_vector()).get_value();
   const auto v = x.tail(this->plant_.num_velocities());
 
   VectorX<T> pt_cast = pt_.template cast<T>();
   const drake::multibody::Frame<T>& world = this->plant_.world_frame();
 
   this->plant_.CalcPointsPositions(context, body_.body_frame(), pt_cast,
-      world, &pt_transform);
+                                   world, &pt_transform);
   this->plant_.CalcJacobianTranslationalVelocity(
       context, drake::multibody::JacobianWrtVariable::kV,
       body_.body_frame(), pt_cast, world, world, &J3d);
 
-  MatrixX<T> J3d_times_v =
-      this->plant_.CalcBiasForJacobianSpatialVelocity(
-          context, drake::multibody::JacobianWrtVariable::kV,
-          body_.body_frame(), pt_cast,
-          world, world).tail(3);
+  MatrixX<T> J3d_times_v = this->plant_.CalcBiasForJacobianSpatialVelocity(
+      context, drake::multibody::JacobianWrtVariable::kV,
+      body_.body_frame(), pt_cast,
+      world, world).tail(3);
 
   if (isXZ_) {
     this->c_ = TXZ_and_ground_incline_ * pt_transform;
@@ -74,24 +74,24 @@ void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
     this->J_ = T_ground_incline_ * J3d;
     this->Jdotv_ = T_ground_incline_ * J3d_times_v;
   }
-  this->cdot_ = this->J_*v;
+  this->cdot_ = this->J_ * v;
 }
 
 template <typename T>
 void DirconPositionData<T>::addFixedNormalFrictionConstraints(double mu) {
   if (isXZ_) {
     // builds the basis
-    Vector2d normal_xz(0,1);
-    Vector2d d_xz(1,0);
+    Vector2d normal_xz(0, 1);
+    Vector2d d_xz(1, 0);
 
     Matrix2d A_fric;
-    A_fric << (mu*normal_xz + d_xz).transpose(),
-              (mu*normal_xz - d_xz).transpose();
+    A_fric << (mu * normal_xz + d_xz).transpose(),
+        (mu * normal_xz - d_xz).transpose();
 
     // Adding one more row for positive normal force constraint
-    MatrixXd A = MatrixXd::Zero(3,2);
-    A.block(0,0,2,2) = A_fric;
-    A(2,1) = 1;
+    MatrixXd A = MatrixXd::Zero(3, 2);
+    A.block(0, 0, 2, 2) = A_fric;
+    A(2, 1) = 1;
     Vector3d lb = Vector3d::Zero();
     Vector3d ub = Vector3d::Constant(std::numeric_limits<double>::infinity());
     auto force_constraint = std::make_shared<drake::solvers::LinearConstraint>(
@@ -105,13 +105,13 @@ void DirconPositionData<T>::addFixedNormalFrictionConstraints(double mu) {
     ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
     ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
     ///                           lambda_c(3*i+2) >= 0
-    MatrixXd A = MatrixXd::Zero(5,3);
-    A.block(0,2,4,1) = mu * VectorXd::Ones(4,1);
-    A(0,0) = -1;
-    A(1,0) = 1;
-    A(2,1) = -1;
-    A(3,1) = 1;
-    A(4,2) = 1;
+    MatrixXd A = MatrixXd::Zero(5, 3);
+    A.block(0, 2, 4, 1) = mu * VectorXd::Ones(4, 1);
+    A(0, 0) = -1;
+    A(1, 0) = 1;
+    A(2, 1) = -1;
+    A(3, 1) = 1;
+    A(4, 2) = 1;
     VectorXd lb = VectorXd::Zero(5);
     VectorXd ub = VectorXd::Ones(5) * std::numeric_limits<double>::infinity();
     auto force_constraint = std::make_shared<drake::solvers::LinearConstraint>(
@@ -119,7 +119,6 @@ void DirconPositionData<T>::addFixedNormalFrictionConstraints(double mu) {
     this->force_constraints_.push_back(force_constraint);
   }
 }
-
 
 // Explicitly instantiates on the most common scalar types.
 template class DirconPositionData<double>;

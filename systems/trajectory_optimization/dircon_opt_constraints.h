@@ -36,11 +36,10 @@ class DirconAbstractConstraint : public drake::solvers::Constraint {
       drake::VectorX<drake::symbolic::Expression>*) const override;
 
   virtual void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
-              drake::VectorX<T>* y) const = 0;
+                                  drake::VectorX<T>* y) const = 0;
 };
 
 enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
-
 
 /// Unit-norm quaternion constraint
 template <typename T>
@@ -73,7 +72,9 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
 
   int num_states() const { return num_states_; }
   int num_inputs() const { return num_inputs_; }
-  int num_kinematic_constraints_wo_skipping() const { return num_kinematic_constraints_wo_skipping_; }
+  int num_kinematic_constraints_wo_skipping() const {
+    return num_kinematic_constraints_wo_skipping_;
+  }
 
   int num_quat_slack() const { return num_quat_slack_; }
 
@@ -82,6 +83,9 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
                           drake::VectorX<T>* y) const override;
 
  private:
+  // num_quat_slack is the dimension of the slack variable for the constraint
+  // of unit norm quaternion (of the floating base)
+  // It's 1 if the MBP is in quaternion floating-base. It's 0 otherwise.
   DirconDynamicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                           DirconKinematicDataSet<T>& constraints,
                           int num_positions, int num_velocities, int num_inputs,
@@ -95,12 +99,8 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
   const int num_kinematic_constraints_wo_skipping_{0};
   const int num_positions_{0};
   const int num_velocities_{0};
-  // num_quat_slack_ is the dimension of the slack variable for the constraint
-  // of unit norm quaternion (of the floating base)
-  // It's 1 if the MBP is in quaternion floating-base. It's 0 otherwise.
   const int num_quat_slack_{0};
 };
-
 
 /// Implements the kinematic constraints used by Dircon
 /// For constraints given by c(q), enforces the three constraints
@@ -122,17 +122,17 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
   /// @param DirconKinematicDataSet the set of kinematic constraints
   /// @param type the constraint type. All (default), accel and vel, accel only.
   DirconKinematicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-    DirconKinematicDataSet<T>& constraint_data,
-    DirconKinConstraintType type = DirconKinConstraintType::kAll);
+                            DirconKinematicDataSet<T>& constraint_data,
+                            DirconKinConstraintType type = DirconKinConstraintType::kAll);
   /// Constructor
   /// @param plant the MultibodyPlant
   /// @param DirconKinematicDataSet the set of kinematic constraints
   /// @param is_constraint_relative vector of booleans
   /// @param type the constraint type. All (default), accel and vel, accel only.
   DirconKinematicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-    DirconKinematicDataSet<T>& constraint_data,
-    std::vector<bool> is_constraint_relative,
-    DirconKinConstraintType type = DirconKinConstraintType::kAll);
+                            DirconKinematicDataSet<T>& constraint_data,
+                            std::vector<bool> is_constraint_relative,
+                            DirconKinConstraintType type = DirconKinConstraintType::kAll);
 
   ~DirconKinematicConstraint() override = default;
 
@@ -147,7 +147,6 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
                             int num_velocities, int num_inputs,
                             int num_kinematic_constraints,
                             int num_kinematic_constraints_wo_skipping);
-
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   DirconKinematicDataSet<T>* constraints_;
@@ -185,7 +184,6 @@ drake::solvers::Binding<drake::solvers::Constraint> AddDirconConstraint(
     const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>& collocation_position_slack,
     drake::solvers::MathematicalProgram* prog);
 
-
 /// Implements the hybrid impact constraints used by Dircon
 /// Enforces the impact constraint that vp = vm + M^{-1}*J^T*Lambda
 template <typename T>
@@ -206,7 +204,6 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
                          DirconKinematicDataSet<T>& constraint_data,
                          int num_positions, int num_velocities,
                          int num_kinematic_constraints_wo_skipping);
-
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   DirconKinematicDataSet<T>* constraints_;

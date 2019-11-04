@@ -89,9 +89,13 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         constraints_[i]->countConstraintsWithoutSkipping()
             * (num_time_samples[i] - 1), "v_c[" + std::to_string(i) + "]"));
     // slack variables used to scale quaternion norm to 1 in the dynamic constraints.
-    quaternion_slack_vars_.push_back(NewContinuousVariables(
-        is_quaternion ? num_time_samples[i] - 1 : 0,
-        "gamma_" + std::to_string(i)));
+    if (is_quaternion) {
+      quaternion_slack_vars_.push_back(NewContinuousVariables(
+          num_time_samples[i] - 1, "gamma_" + std::to_string(i)));
+    } else {
+      quaternion_slack_vars_.push_back(NewContinuousVariables(
+          0, "gamma_" + std::to_string(i)));
+    }
     offset_vars_.push_back(NewContinuousVariables(
         options[i].getNumRelative(), "offset[" + std::to_string(i) + "]"));
     if (i > 0) {
@@ -107,9 +111,12 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
 
 
     //Adding quaternion norm constraint
-    if (multibody::isQuaternion(plant)) {
+    if (is_quaternion) {
       auto quat_norm_constraint =
           std::make_shared<QuaternionNormConstraint<T>>();
+      // If the current mode is not the first mode, start with the first knot.
+      // Otherwise, start with the second knot in order to avoid imposing the
+      // same constraint twice.
       for (int j = (i == 0) ? 0 : 1; j < mode_lengths_[i]; j++) {
         AddConstraint(quat_norm_constraint, state_vars_by_mode(i, j).head(4));
       }

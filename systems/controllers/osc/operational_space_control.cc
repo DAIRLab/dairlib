@@ -276,7 +276,7 @@ void OperationalSpaceControl::Build() {
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     tracking_cost_.push_back(prog_->AddQuadraticCost(
-                               MatrixXd::Identity(n_v_, n_v_),
+                               MatrixXd::Zero(n_v_, n_v_),
                                VectorXd::Zero(n_v_), dv_).
                              evaluator().get());
   }
@@ -466,7 +466,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       tracking_cost_.at(i)->UpdateCoefficients(J_t.transpose()* W * J_t,
           J_t.transpose()* W * (JdotV_t - ddy_t));
     } else {
-      tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Identity(n_v_, n_v_),
+      tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                VectorXd::Zero(n_v_));
     }
   }

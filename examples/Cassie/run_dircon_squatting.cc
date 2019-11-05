@@ -653,7 +653,7 @@ void DoMain(double duration, int max_iter,
     MatrixXd z0 = readCSV(data_directory + init_file);
     trajopt->SetInitialGuessForAllVariables(z0);
   } else {
-    // Add random initial guess first
+    // Add random initial guess first (the seed for RNG is fixed)
     trajopt->SetInitialGuessForAllVariables(
         VectorXd::Random(trajopt->decision_variables().size()));
 

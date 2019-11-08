@@ -5,8 +5,8 @@
 #include <optional>
 
 #include "drake/lcmt_drake_signal.hpp"
+#include "drake/common/drake_optional.h"
 #include "drake/lcm/drake_mock_lcm.h"
-#include "drake/lcm/lcmt_drake_signal_utils.h"
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/analysis/simulator.h"
@@ -32,7 +32,7 @@ struct SampleData {
     std::vector<uint8_t> buffer(num_bytes);
     value.encode(buffer.data(), 0, num_bytes);
     lcm->Publish(channel_name, (const void*)buffer.data(), (int)num_bytes,
-        std::optional<double>());
+        drake::optional<double>());
     lcm->HandleSubscriptions(0);
   }
 };

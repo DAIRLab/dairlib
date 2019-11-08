@@ -11,8 +11,7 @@ cc_library(
         "lcm_subscriber_multiplexer.h",
     ],
     deps = [
-        "@drake//systems/framework",
-        "@drake//systems/lcm:lcm_pubsub_system",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -24,11 +23,7 @@ cc_test(
     ],
     deps = [
         ":lcm_subscriber_multiplexer",
-        "@drake//lcm:lcmt_drake_signal_utils",
-        "@drake//lcm:mock",
-        "@drake//systems/analysis:simulator",
-        "@drake//systems/framework",
-        "@drake//systems/framework/test_utilities",
+        "@drake//:drake_shared_library",
         "@gtest//:main",
     ],
 )

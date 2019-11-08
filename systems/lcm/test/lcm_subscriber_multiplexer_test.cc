@@ -2,11 +2,12 @@
 
 #include <memory>
 #include <utility>
+#include <optional>
 
 #include "drake/lcmt_drake_signal.hpp"
 #include "drake/lcm/drake_mock_lcm.h"
 #include "drake/lcm/lcmt_drake_signal_utils.h"
-#include "drake/systems/lcm/lcmt_drake_signal_translator.h"
+
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/analysis/simulator.h"
 
@@ -27,10 +28,12 @@ struct SampleData {
 
   void MockPublish(
       drake::lcm::DrakeMockLcm* lcm, const std::string& channel_name) const {
-    const int num_bytes = value.getEncodedSize();
+    int num_bytes = value.getEncodedSize();
     std::vector<uint8_t> buffer(num_bytes);
     value.encode(buffer.data(), 0, num_bytes);
-    lcm->InduceSubscriberCallback(channel_name, buffer.data(), num_bytes);
+    lcm->Publish(channel_name, (const void*)buffer.data(), (int)num_bytes,
+        std::optional<double>());
+    lcm->HandleSubscriptions(0);
   }
 };
 
@@ -69,7 +72,8 @@ GTEST_TEST(LcmSubscriberMultiplexerTest, SerializerTest) {
 
   sim.Initialize();
 
-  sim.StepTo(1);
+
+  sim.AdvanceTo(1);
   auto& context_1 = sim.get_mutable_context();
   std::unique_ptr<SystemOutput<double>> output_1 = mux->AllocateOutput();
 
@@ -88,7 +92,8 @@ GTEST_TEST(LcmSubscriberMultiplexerTest, SerializerTest) {
   mux_context_1.FixInputPort(mux->get_channel_input_port().get_index(),
       std::make_unique<drake::Value<std::string>>(channel_2));
 
-  sim.StepTo(2);
+
+  sim.AdvanceTo(2);
   auto& context_2 = sim.get_mutable_context();
   std::unique_ptr<SystemOutput<double>> output_2 = mux->AllocateOutput();
 

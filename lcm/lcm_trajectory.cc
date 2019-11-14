@@ -1,12 +1,13 @@
+#include "lcm/lcm_trajectory.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <fstream>
 #include <memory>
-#include <utility>
 
+#include <utility>
 #include "drake/common/value.h"
-#include "lcm/lcm_trajectory.h"
 
 using drake::AbstractValue;
 using drake::systems::lcm::Serializer;
@@ -127,7 +128,7 @@ void LcmTrajectory::writeToFile(const string& filepath) {
     fout.close();
   } catch (std::exception& e) {
     std::cerr << "Could not open file: " << filepath
-              << "\nException: " << e.what() << std::endl;;
+        << "\nException: " << e.what() << std::endl;;
     throw e;
   }
 }
@@ -149,7 +150,7 @@ lcmt_saved_traj LcmTrajectory::loadFromFile(const std::string& filepath) {
     inFile.close();
   } catch (std::exception& e) {
     std::cerr << "Could not open file: " << filepath
-              << "\nException: " << e.what() << std::endl;;
+        << "\nException: " << e.what() << std::endl;;
     throw e;
   }
   // Deserialization process

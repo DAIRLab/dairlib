@@ -1,14 +1,37 @@
 # -*- python -*-
-
-load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+load("@drake//tools/install:install.bzl", "install")
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+)
+load(
+    "@drake//tools/skylark:drake_cc.bzl",
+    "drake_cc_library",
+)
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
 
 package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
 
 cc_binary(
     name = "log_sequence_rectifier",
     srcs = ["log_sequence_rectifier.cc"],
     deps = [
-        "@lcm"
+        "@lcm",
     ],
 )
 
@@ -17,20 +40,30 @@ cc_library(
     srcs = ["lcm_trajectory.cc"],
     hdrs = ["lcm_trajectory.h"],
     deps = [
-      "//lcmtypes:lcmt_robot",
-      "@eigen",
-      "@drake//systems/lcm",
-      "@lcm"
+        "//lcmtypes:lcmt_robot",
+        "@drake//systems/lcm",
+        "@eigen",
+        "@lcm",
     ],
 )
 
 cc_test(
     name = "lcm_trajectory_saver_test",
+    size = "small",
     srcs = ["test/lcm_trajectory_test.cc"],
     deps = [
-      ":lcm_trajectory_saver", 
-      "@drake//:drake_shared_library",
-      "@gtest//:main",
+        ":lcm_trajectory_saver",
+        "@gtest//:main",
     ],
-    size = "small",
+)
+
+pybind_py_library(
+    name = "lcm_trajectory_saver_py",
+    cc_deps = [
+        ":lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "lcm_trajectory_saver",
+    cc_srcs = ["lcm_trajectory_saver_py.cc"],
+    py_imports = ["."],
 )

@@ -17,6 +17,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_controller_switch.hpp"
 
 namespace dairlib {
 using drake::systems::DiagramBuilder;
@@ -27,6 +28,10 @@ using drake::systems::lcm::LcmPublisherSystem;
 using systems::RobotInputReceiver;
 using systems::RobotCommandSender;
 using drake::systems::TriggerType;
+using drake::lcm::Subscriber;
+
+using std::map;
+using std::string;
 
 // Simulation parameters.
 DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
@@ -47,8 +52,6 @@ DEFINE_bool(floating_base, false, "Fixed or floating base model");
 /// Re-publishes any received messages as LCM
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  const std::string channel_u = "CASSIE_INPUT";
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
@@ -116,29 +119,66 @@ int do_main(int argc, char* argv[]) {
   auto& command_receiver_context =
       diagram.GetMutableSubsystemContext(*command_receiver, &diagram_context);
 
+  // Channel name of the input switch
+  std::string switch_channel = "INPUT_SWITCH";
+  // Channel names of the controllers
+  std::vector<std::string> input_channels;
+  input_channels.push_back("CASSIE_INPUT");
+  input_channels.push_back("PD_CONTROLLER");
+  input_channels.push_back("OSC_CONTROLLER");
+  std::string active_channel = input_channels.at(0);
+
+  // Create subscribers
+  Subscriber<dairlib::lcmt_controller_switch> input_switch_sub(&lcm_local,
+                                                         switch_channel);
+  map<string, Subscriber<dairlib::lcmt_robot_input>> name_to_sub_map;
+  for (auto name : input_channels) {
+    // TODO: double check that the scope of the next line is correct for
+    // Subscriber (it's created locally, but should be copied to map)
+    name_to_sub_map.insert(std::make_pair(name,
+        Subscriber<dairlib::lcmt_robot_input>(&lcm_local,name)));
+  }
 
   // Wait for the first message.
   drake::log()->info("Waiting for first lcmt_robot_input");
-  drake::lcm::Subscriber<dairlib::lcmt_robot_input> command_sub(&lcm_local,
-      channel_u);
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-      return command_sub.count() > 0; });
+      return name_to_sub_map.at(active_channel).count() > 0; });
 
   // Initialize the context based on the first message.
-  const double t0 = command_sub.message().utime * 1e-6;
+  const double t0 = name_to_sub_map.at(active_channel).message().utime * 1e-6;
   diagram_context.SetTime(t0);
   auto& command_value = command_receiver->get_input_port(0).FixValue(
-      &command_receiver_context, command_sub.message());
+      &command_receiver_context, name_to_sub_map.at(active_channel).message());
+
+  // "Simulator" time
+  double time = 0; // initialize the current time to 0
+  const double end_time = std::numeric_limits<double>::infinity();
+  double message_time;
 
   drake::log()->info("dispatcher_robot_in started");
-  while (true) {
+  while (time < end_time) {
+    // Update active channel name
+    if (input_switch_sub.count() > 0) {
+      active_channel = input_switch_sub.message().channel;
+      input_switch_sub.clear();
+    }
+
     // Wait for an lcmt_robot_input message.
-    command_sub.clear();
+    name_to_sub_map.at(active_channel).clear();
     LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-        return command_sub.count() > 0; });
-    // Write the lcmt_robot_input message into the context and advance.
-    command_value.GetMutableData()->set_value(command_sub.message());
-    const double time = command_sub.message().utime * 1e-6;
+      return (name_to_sub_map.at(active_channel).count() > 0); });
+
+    // Write the lcmt_robot_input message into the context.
+    command_value.GetMutableData()->set_value(
+        name_to_sub_map.at(active_channel).message());
+
+    // Get message time from the active channel to advance
+    message_time = name_to_sub_map.at(active_channel).message().utime * 1e-6;
+    // We cap the time from bottom just in case the message time is older around
+    // the instant when we switch to a different controller
+    if (message_time >= time) {
+      time = message_time;
+    }
 
     // Check if we are very far ahead or behind
     // (likely due to a restart of the driving clock)

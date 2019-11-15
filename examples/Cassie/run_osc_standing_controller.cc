@@ -40,6 +40,11 @@ using systems::controllers::TransTaskSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 
+DEFINE_string(channel_x, "CASSIE_STATE",
+              "The name of the channel which receives state");
+DEFINE_string(channel_u, "CASSIE_INPUT",
+              "The name of the channel which publishes command");
+
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
@@ -68,9 +73,6 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::AddFlatTerrainToWorld(&tree_without_springs,
                                           terrain_size, terrain_depth);
 
-  const std::string channel_x = "CASSIE_STATE";
-  const std::string channel_u = "CASSIE_INPUT";
-
   // Create state receiver.
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
                           tree_with_springs);
@@ -78,7 +80,7 @@ int DoMain(int argc, char* argv[]) {
   // Create command sender.
   auto command_pub = builder.AddSystem(
                        LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-                         channel_u, &lcm_local, 1.0 / 1000.0));
+                           FLAGS_channel_u, &lcm_local, 1.0 / 1000.0));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
                           tree_with_springs);
 
@@ -176,7 +178,7 @@ int DoMain(int argc, char* argv[]) {
   // Wait for the first message.
   drake::log()->info("Waiting for first lcmt_robot_output");
   drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(&lcm_local,
-      "CASSIE_STATE");
+      FLAGS_channel_x);
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
     return input_sub.count() > 0;
   });

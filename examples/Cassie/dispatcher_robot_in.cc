@@ -15,7 +15,6 @@
 #include "examples/Cassie/networking/cassie_udp_publisher.h"
 #include "examples/Cassie/networking/cassie_input_translator.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_controller_switch.hpp"
 
@@ -38,15 +37,23 @@ DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
 DEFINE_int64(port, 25000, "Port to publish to (UDP).");
 DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
 DEFINE_double(max_joint_velocity, 10,
-    "Maximum joint velocity before error is triggered");
-DEFINE_double(input_limit, -1, "Maximum torque limit. Negative values are inf.");
+              "Maximum joint velocity before error is triggered");
+DEFINE_double(input_limit,
+              -1,
+              "Maximum torque limit. Negative values are inf.");
 DEFINE_int64(supervisor_N, 10,
-    "Maximum allowed consecutive failures of velocity limit.");
+             "Maximum allowed consecutive failures of velocity limit.");
 DEFINE_string(state_channel_name, "CASSIE_STATE",
-    "The name of the lcm channel that sends Cassie's state");
+              "The name of the lcm channel that sends Cassie's state");
+DEFINE_string(control_channel_name_1, "PD_CONTROLLER",
+              "The name of the lcm channel that sends Cassie's state");
+DEFINE_string(control_channel_name_2, "OSC_STANDING",
+              "The name of the lcm channel that sends Cassie's state");
+DEFINE_string(control_channel_name_3, "OSC_WALKING",
+              "The name of the lcm channel that sends Cassie's state");
 
-// Cassie model paramter
-DEFINE_bool(floating_base, false, "Fixed or floating base model");
+// Cassie model parameter
+DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
@@ -68,26 +75,29 @@ int do_main(int argc, char* argv[]) {
   // Create LCM receiver for commands
   auto command_receiver = builder.AddSystem<RobotInputReceiver>(*tree);
 
-    // Create state estimate receiver, used for safety checks
+  // Create state estimate receiver, used for safety checks
   auto state_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_state_channel_name, &lcm_local));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*tree);
   builder.Connect(*state_sub, *state_receiver);
 
-  double input_supervisor_update_period = 1.0/1000.0;
+  double input_supervisor_update_period = 1.0 / 1000.0;
   double input_limit = FLAGS_input_limit;
   if (input_limit < 0) {
     input_limit = std::numeric_limits<double>::max();
   }
 
-  auto input_supervisor = builder.AddSystem<InputSupervisor>(*tree,
-      FLAGS_max_joint_velocity, input_supervisor_update_period,
-      FLAGS_supervisor_N, input_limit);
+  auto input_supervisor =
+      builder.AddSystem<InputSupervisor>(*tree,
+                                         FLAGS_max_joint_velocity,
+                                         input_supervisor_update_period,
+                                         FLAGS_supervisor_N,
+                                         input_limit);
   builder.Connect(state_receiver->get_output_port(0),
-      input_supervisor->get_input_port_state());
+                  input_supervisor->get_input_port_state());
   builder.Connect(command_receiver->get_output_port(0),
-      input_supervisor->get_input_port_command());
+                  input_supervisor->get_input_port_command());
 
   // Create and connect translator
   auto input_translator =
@@ -97,7 +107,7 @@ int do_main(int argc, char* argv[]) {
   // Create and connect input publisher.
   auto input_pub = builder.AddSystem(
       systems::CassieUDPPublisher::Make(FLAGS_address, FLAGS_port,
-          {TriggerType::kForced}));
+                                        {TriggerType::kForced}));
   builder.Connect(*input_translator, *input_pub);
 
   // Create and connect LCM command echo to network
@@ -123,32 +133,38 @@ int do_main(int argc, char* argv[]) {
   std::string switch_channel = "INPUT_SWITCH";
   // Channel names of the controllers
   std::vector<std::string> input_channels;
-  input_channels.push_back("CASSIE_INPUT");
-  input_channels.push_back("PD_CONTROLLER");
-  input_channels.push_back("OSC_CONTROLLER");
+  input_channels.push_back(FLAGS_control_channel_name_1);
+  input_channels.push_back(FLAGS_control_channel_name_2);
+  input_channels.push_back(FLAGS_control_channel_name_3);
   std::string active_channel = input_channels.at(0);
 
   // Create subscribers
   Subscriber<dairlib::lcmt_controller_switch> input_switch_sub(&lcm_local,
-                                                         switch_channel);
+                                                               switch_channel);
   map<string, Subscriber<dairlib::lcmt_robot_input>> name_to_sub_map;
   for (auto name : input_channels) {
-    // TODO: double check that the scope of the next line is correct for
-    // Subscriber (it's created locally, but should be copied to map)
+    std::cout << "Constructing subscriber for " << name << std::endl;
     name_to_sub_map.insert(std::make_pair(name,
-        Subscriber<dairlib::lcmt_robot_input>(&lcm_local,name)));
+                                          Subscriber<dairlib::lcmt_robot_input>(
+                                              &lcm_local,
+                                              name)));
   }
 
   // Wait for the first message.
   drake::log()->info("Waiting for first lcmt_robot_input");
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-      return name_to_sub_map.at(active_channel).count() > 0; });
+    return name_to_sub_map.at(active_channel).count() > 0;
+  });
 
   // Initialize the context based on the first message.
   const double t0 = name_to_sub_map.at(active_channel).message().utime * 1e-6;
   diagram_context.SetTime(t0);
   auto& command_value = command_receiver->get_input_port(0).FixValue(
       &command_receiver_context, name_to_sub_map.at(active_channel).message());
+
+  // Store robot input
+  dairlib::lcmt_robot_input previous_input =
+      name_to_sub_map.at(active_channel).message();
 
   // "Simulator" time
   double time = 0; // initialize the current time to 0
@@ -159,14 +175,20 @@ int do_main(int argc, char* argv[]) {
   while (time < end_time) {
     // Update active channel name
     if (input_switch_sub.count() > 0) {
-      active_channel = input_switch_sub.message().channel;
+      // Check if the channel name is a key of the map
+      if (name_to_sub_map.count(input_switch_sub.message().channel) == 1) {
+        active_channel = input_switch_sub.message().channel;
+      } else {
+        std::cout << input_switch_sub.message().channel << " doesn't exist\n";
+      }
       input_switch_sub.clear();
     }
 
-    // Wait for an lcmt_robot_input message.
+    // Wait for an lcmt_robot_input or an lcmt_controller_switch message.
     name_to_sub_map.at(active_channel).clear();
-    LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-      return (name_to_sub_map.at(active_channel).count() > 0); });
+    LcmHandleSubscriptionsUntil(
+        &lcm_local,
+        [&]() { return (name_to_sub_map.at(active_channel).count() > 0); });
 
     // Write the lcmt_robot_input message into the context.
     command_value.GetMutableData()->set_value(
@@ -185,9 +207,9 @@ int do_main(int argc, char* argv[]) {
     if (time > simulator.get_context().get_time() + 1.0 ||
         time < simulator.get_context().get_time()) {
       std::cout << "Dispatcher time is " << simulator.get_context().get_time()
-          << ", but stepping to " << time << std::endl;
+                << ", but stepping to " << time << std::endl;
       std::cout << "Difference is too large, resetting dispatcher time." <<
-          std::endl;
+                std::endl;
       simulator.get_mutable_context().SetTime(time);
     }
 

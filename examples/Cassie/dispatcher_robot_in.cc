@@ -55,6 +55,9 @@ DEFINE_string(control_channel_name_3, "OSC_WALKING",
 // Cassie model parameter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
+void LcmDrivenLoop(drake::lcm::DrakeLcm* lcm_local,
+                   DiagramBuilder<double>* builder,
+                   const drake::systems::LeafSystem<double>* command_receiver);
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
 int do_main(int argc, char* argv[]) {
@@ -120,9 +123,15 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*input_supervisor, *net_command_sender);
 
   builder.Connect(*net_command_sender, *net_command_pub);
+  LcmDrivenLoop(&lcm_local, &builder, command_receiver);
 
-  // Create the diagram, simulator, and context.
-  auto owned_diagram = builder.Build();
+  return 0;
+}
+
+void LcmDrivenLoop(drake::lcm::DrakeLcm* lcm_local,
+                   DiagramBuilder<double>* builder,
+                   const drake::systems::LeafSystem<double>* command_receiver) {// Create the diagram, simulator, and context.
+  auto owned_diagram = builder->Build();
   const auto& diagram = *owned_diagram;
   drake::systems::Simulator<double> simulator(std::move(owned_diagram));
   auto& diagram_context = simulator.get_mutable_context();
@@ -139,20 +148,21 @@ int do_main(int argc, char* argv[]) {
   std::string active_channel = input_channels.at(0);
 
   // Create subscribers
-  Subscriber<dairlib::lcmt_controller_switch> input_switch_sub(&lcm_local,
-                                                               switch_channel);
-  map<string, Subscriber<dairlib::lcmt_robot_input>> name_to_sub_map;
+  drake::lcm::Subscriber<lcmt_controller_switch> input_switch_sub(lcm_local,
+                                                                  switch_channel);
+  std::map<string, drake::lcm::Subscriber<lcmt_robot_input>> name_to_sub_map;
   for (auto name : input_channels) {
     std::cout << "Constructing subscriber for " << name << std::endl;
     name_to_sub_map.insert(std::make_pair(name,
-                                          Subscriber<dairlib::lcmt_robot_input>(
-                                              &lcm_local,
+                                          drake::lcm::Subscriber<
+                                              lcmt_robot_input>(
+                                              lcm_local,
                                               name)));
   }
 
   // Wait for the first message.
   drake::log()->info("Waiting for first lcmt_robot_input");
-  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+  LcmHandleSubscriptionsUntil(lcm_local, [&]() {
     return name_to_sub_map.at(active_channel).count() > 0;
   });
 
@@ -163,7 +173,7 @@ int do_main(int argc, char* argv[]) {
       &command_receiver_context, name_to_sub_map.at(active_channel).message());
 
   // Store robot input
-  dairlib::lcmt_robot_input previous_input =
+  lcmt_robot_input previous_input =
       name_to_sub_map.at(active_channel).message();
 
   // "Simulator" time
@@ -187,7 +197,7 @@ int do_main(int argc, char* argv[]) {
     // Wait for an lcmt_robot_input or an lcmt_controller_switch message.
     name_to_sub_map.at(active_channel).clear();
     LcmHandleSubscriptionsUntil(
-        &lcm_local,
+        lcm_local,
         [&]() { return (name_to_sub_map.at(active_channel).count() > 0); });
 
     // Write the lcmt_robot_input message into the context.
@@ -217,7 +227,6 @@ int do_main(int argc, char* argv[]) {
     // Force-publish via the diagram
     diagram.Publish(diagram_context);
   }
-  return 0;
 }
 
 }  // namespace dairlib

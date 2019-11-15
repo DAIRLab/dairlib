@@ -44,3 +44,17 @@ cc_test(
         "@gtest//:main",
     ],
 )
+
+
+cc_library(
+    name = "lcm_driven_loop",
+    srcs = [
+        "lcm_driven_loop.cc",
+    ],
+    hdrs = [
+        "lcm_driven_loop.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

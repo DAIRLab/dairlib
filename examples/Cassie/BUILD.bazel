@@ -204,6 +204,7 @@ cc_binary(
         "//examples/Cassie/networking:cassie_udp_pub_sub",
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -319,21 +320,11 @@ cc_binary(
     ],
 )
 
-cc_library(
-    name = "controller_channel_sender",
-    srcs = ["controller_channel_sender.cc"],
-    hdrs = ["controller_channel_sender.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "@drake//:drake_shared_library",
-    ],
-)
-
 cc_binary(
     name = "run_controller_switch",
     srcs = ["run_controller_switch.cc"],
     deps = [
-        ":controller_channel_sender",
+        "//systems/framework:controller_channel_sender",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

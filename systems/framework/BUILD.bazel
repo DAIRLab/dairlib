@@ -45,7 +45,6 @@ cc_test(
     ],
 )
 
-
 cc_library(
     name = "lcm_driven_loop",
     srcs = [
@@ -55,6 +54,17 @@ cc_library(
         "lcm_driven_loop.h",
     ],
     deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "controller_channel_sender",
+    srcs = ["controller_channel_sender.cc"],
+    hdrs = ["controller_channel_sender.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
     ],
 )

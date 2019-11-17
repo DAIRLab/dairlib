@@ -6,13 +6,14 @@
 
 namespace dairlib {
 
+template <typename MessageType>
 class ControllerChannelSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ControllerChannelSender(const std::string& channel_name);
 
  private:
   void Output(const drake::systems::Context<double>& context,
-              dairlib::lcmt_controller_switch* output) const;
+              MessageType* output) const;
   std::string channel_name_;
 };
 

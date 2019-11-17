@@ -7,7 +7,7 @@
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 
-#include "examples/Cassie/controller_channel_sender.h"
+#include "systems/framework/controller_channel_sender.h"
 #include "dairlib/lcmt_controller_switch.hpp"
 
 namespace dairlib {
@@ -28,8 +28,9 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   // Create publisher
-  auto channel_sender =
-      builder.AddSystem<ControllerChannelSender>(FLAGS_controller_channel);
+  auto channel_sender = builder.AddSystem<
+      ControllerChannelSender<dairlib::lcmt_controller_switch>>(
+          FLAGS_controller_channel);
   auto name_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_switch>(
           "INPUT_SWITCH", lcm, 1.0 / FLAGS_publish_rate));

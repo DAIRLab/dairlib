@@ -49,12 +49,15 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_input_port_);
   }
 
- private:
   void SetMotorTorques(const drake::systems::Context<double>& context,
     systems::TimestampedVector<double>* output) const;
-
   void UpdateErrorFlag(const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  void SetStatus(const drake::systems::Context<double>& context,
+                 systems::TimestampedVector<double>* output) const;
+
+ private:
 
   const RigidBodyTree<double>& tree_;
   const int num_actuators_;
@@ -62,10 +65,13 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   const int num_velocities_;
   const int min_consecutive_failures_;
   double max_joint_velocity_;
-  double input_limit_;
-  int state_input_port_;
-  int command_input_port_;
 
+  double input_limit_;
+  int n_consecutive_fails_index_;
+  int status_index_;
+  int state_input_port_;
+
+  int command_input_port_;
 };
 
 

@@ -5,6 +5,7 @@ using drake::systems::Context;
 using drake::systems::DiscreteValues;
 
 namespace dairlib {
+
 using systems::TimestampedVector;
 using systems::OutputVector;
 
@@ -29,8 +30,13 @@ InputSupervisor::InputSupervisor(const RigidBodyTree<double>& tree,
   this->DeclareVectorOutputPort(TimestampedVector<double>(num_actuators_),
       &InputSupervisor::SetMotorTorques);
 
+  // Create output port for status
+  this->DeclareVectorOutputPort(TimestampedVector<double>(1),
+      &InputSupervisor::SetStatus);
+
   // Create error flag as discrete state
-  DeclareDiscreteState(1);
+  n_consecutive_fails_index_ = DeclareDiscreteState(1);
+  status_index_ = DeclareDiscreteState(1);
 
   // Create update for error flag
   DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
@@ -40,6 +46,7 @@ InputSupervisor::InputSupervisor(const RigidBodyTree<double>& tree,
 
 void InputSupervisor::SetMotorTorques(const Context<double>& context,
     TimestampedVector<double>* output) const {
+
   const TimestampedVector<double>* command = (TimestampedVector<double>*)
       this->EvalVectorInput(context, command_input_port_);
 
@@ -69,8 +76,28 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     output->set_timestamp(command->get_timestamp());
     output->SetDataVector(Eigen::VectorXd::Zero(num_actuators_));
   }
+}
 
+// Sets the status bit to the current status
+// 0b00 if no limits are being applied
+// 0b01 if velocity has exceeded threshold
+// 0b10 if actuator limits are being applied
+// 0b11 if both limits have been exceeded
+void InputSupervisor::SetStatus(const Context<double>& context,
+                                      TimestampedVector<double>* output) const {
+  const TimestampedVector<double>* command = (TimestampedVector<double>*)
+      this->EvalVectorInput(context, command_input_port_);
 
+  output->get_mutable_value()(0) = context.get_discrete_state(status_index_)[0];
+  if (input_limit_ != std::numeric_limits<double>::max()) {
+    for (int i = 0; i < command->get_data().size(); i++) {
+      double command_value = command->get_data()(i);
+      if (command_value > input_limit_ || command_value < -input_limit_) {
+        output->get_mutable_value()(0) += 2;
+        break;
+      }
+    }
+  }
 }
 
 void InputSupervisor::UpdateErrorFlag(const Context<double>& context,
@@ -87,6 +114,7 @@ void InputSupervisor::UpdateErrorFlag(const Context<double>& context,
     if (is_velocity_error) {
       // Increment counter
       (*discrete_state)[0]++;
+      discrete_state->get_mutable_vector(status_index_)[0] = true;
       std::cout << "Error! Velocity has exceeded the threshold of " <<
           max_joint_velocity_ << std::endl;
       std::cout << "Consecutive error " << (*discrete_state)[0] << " of " <<
@@ -96,6 +124,7 @@ void InputSupervisor::UpdateErrorFlag(const Context<double>& context,
     } else {
       // Reset counter
       (*discrete_state)[0] = 0;
+      discrete_state->get_mutable_vector(status_index_)[0] = false;
     }
   }
 }

@@ -315,3 +315,20 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "run_dircon_squatting",
+    srcs = ["run_dircon_squatting.cc"],
+    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    deps = [
+        ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
+        "//common",
+        "//solvers:optimization_utils",
+        "//systems/goldilocks_models",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

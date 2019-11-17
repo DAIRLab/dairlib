@@ -44,6 +44,8 @@ HeadingControl::HeadingControl(const RigidBodyTree<double>& tree,
   drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("heading_traj", traj_inst,
       &HeadingControl::CalcHeadingAngle);
+  this->DeclareVectorOutputPort(BasicVector<double>(2),
+      &HeadingControl::CalcDesiredVel);
 }
 
 void HeadingControl::CalcHeadingAngle(
@@ -89,6 +91,48 @@ void HeadingControl::CalcHeadingAngle(
       dynamic_cast<PiecewisePolynomial<double>*> (traj);
   *casted_traj = PiecewisePolynomial<double>(desired_pelvis_rotation);
 }
+
+void HeadingControl::CalcDesiredVel(const Context<double>& context,
+                                    BasicVector<double>* yaw_angle) const {
+  const OutputVector<double>* robotOutput = (OutputVector<double>*)
+      this->EvalVectorInput(context, state_port_);
+  VectorXd q = robotOutput->GetPositions();
+  VectorXd v = robotOutput->GetVelocities();
+
+  // Kinematics cache and indices
+  KinematicsCache<double> cache = tree_.CreateKinematicsCache();
+  // Modify the quaternion in the begining when the state is not received from
+  // the robot yet
+  // Always remember to check 0-norm quaternion when using doKinematics
+  multibody::SetZeroQuaternionToIdentity(&q);
+  cache.initialize(q);
+  tree_.doKinematics(cache);
+
+  // Get center of mass position and velocity
+  Vector3d CoM = tree_.centerOfMass(cache);
+
+  // Get proximated heading angle of pelvis
+  Vector3d pelvis_heading_vec = tree_.CalcBodyPoseInWorldFrame(
+      cache, tree_.get_body(pelvis_idx_)).linear().col(0);
+  double
+      approx_pelvis_yaw = atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
+
+  double desired_vel = 0.3;
+
+  Vector2d global_CoM_to_target_pos =
+      global_target_position_ - CoM.segment(0, 2);
+
+  desired_vel = std::min(0.4, global_CoM_to_target_pos.norm());
+
+  Vector2d output;
+
+  output << approx_pelvis_yaw,
+      desired_vel;
+  yaw_angle->get_mutable_value() = output;
+}
+
+
+
 
 }  // namespace osc
 }  // namespace cassie

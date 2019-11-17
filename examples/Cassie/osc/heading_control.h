@@ -40,11 +40,14 @@ class HeadingControl : public drake::systems::LeafSystem<double> {
   void CalcHeadingAngle(const drake::systems::Context<double>& context,
                  drake::trajectories::Trajectory<double>* traj) const;
 
+  void CalcDesiredVel(const drake::systems::Context<double>& context,
+                      systems::BasicVector<double>* yaw_angle) const;
+
   const RigidBodyTree<double>& tree_;
   int pelvis_idx_;
   Eigen::Vector2d global_target_position_;
-  Eigen::Vector2d params_of_no_turning_;
 
+  Eigen::Vector2d params_of_no_turning_;
   int state_port_;
 };
 

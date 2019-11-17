@@ -3,6 +3,7 @@
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 
 namespace dairlib {
 namespace cassie {
@@ -49,13 +50,21 @@ namespace osc {
 class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
  public:
   DeviationFromCapturePoint(const RigidBodyTree<double>& tree,
-      int pelvis_idx,
-      Eigen::Vector2d global_target_position,
-      Eigen::Vector2d params_of_no_turning);
+                            int pelvis_idx,
+                            Eigen::Vector2d global_target_position,
+                            Eigen::Vector2d params_of_no_turning);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
+
+  const drake::systems::InputPort<double>& get_input_heading_angle() const {
+    return this->get_input_port(heading_angle_port_);
+  }
+
+  //  const drake::systems::InputPort<double>& get_input_port_vel() const {
+  //    return this->get_input_port(transverse_vel_port_);
+  //  }
 
  private:
   void CalcFootPlacement(const drake::systems::Context<double>& context,
@@ -67,6 +76,8 @@ class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
   Eigen::Vector2d params_of_no_turning_;
 
   int state_port_;
+  int heading_angle_port_;
+  //  int transverse_vel_port_;
 
   double kp_pos_sagital_;
   double kd_pos_sagital_;
@@ -74,8 +85,8 @@ class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
   double vel_min_sagital_;
   double k_fp_ff_sagital_;
   double k_fp_fb_sagital_;
-  double target_pos_offset_;
 
+  double target_pos_offset_;
   double kp_pos_lateral_;
   double kd_pos_lateral_;
   double vel_max_lateral_;

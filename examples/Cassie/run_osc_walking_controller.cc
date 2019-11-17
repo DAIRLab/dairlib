@@ -1,6 +1,8 @@
 #include <math.h>
 
 #include <gflags/gflags.h>
+#include "drake/geometry/scene_graph.h"
+#include "drake/multibody/plant/multibody_plant.h"
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -22,11 +24,11 @@
 
 #include "examples/Cassie/osc/deviation_from_cp.h"
 #include "examples/Cassie/osc/heading_control.h"
+#include "examples/Cassie/simulator_drift.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/controllers/osc/operational_space_control.h"
-
 
 namespace dairlib {
 
@@ -65,6 +67,9 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   DiagramBuilder<double> builder;
+  drake::geometry::SceneGraph<double>
+      & scene_graph = *builder.AddSystem<drake::geometry::SceneGraph>();
+  scene_graph.set_name("scene_graph");
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
       "udpm://239.255.76.67:7667?ttl=0");
@@ -72,39 +77,39 @@ int DoMain(int argc, char* argv[]) {
   RigidBodyTree<double> tree_with_springs;
   RigidBodyTree<double> tree_without_springs;
   buildCassieTree(tree_with_springs,
-                  "examples/Cassie/urdf/cassie_v2.urdf",
-                  drake::multibody::joints::kQuaternion);
+      "examples/Cassie/urdf/cassie_v2.urdf",
+      drake::multibody::joints::kQuaternion);
   buildCassieTree(tree_without_springs,
-                  "examples/Cassie/urdf/cassie_fixed_springs.urdf",
-                  drake::multibody::joints::kQuaternion, false/*no spring*/);
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf",
+      drake::multibody::joints::kQuaternion, false/*no spring*/);
   const double terrain_size = 100;
   const double terrain_depth = 0.20;
   drake::multibody::AddFlatTerrainToWorld(&tree_with_springs,
-                                          terrain_size, terrain_depth);
+      terrain_size, terrain_depth);
   drake::multibody::AddFlatTerrainToWorld(&tree_without_springs,
-                                          terrain_size, terrain_depth);
+      terrain_size, terrain_depth);
 
   const std::string channel_x = FLAGS_channel;
   const std::string channel_u = "CASSIE_INPUT";
 
   // Create state receiver.
   auto state_sub = builder.AddSystem(
-                     LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-                       channel_x, lcm));
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          channel_x, lcm));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
-                          tree_with_springs);
+      tree_with_springs);
   builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
+      state_receiver->get_input_port(0));
 
   // Create command sender.
   auto command_pub = builder.AddSystem(
-                       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-                         channel_u, lcm, 1.0 / FLAGS_publish_rate));
+      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          channel_u, lcm, 1.0 / FLAGS_publish_rate));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
-                          tree_with_springs);
+      tree_with_springs);
 
   builder.Connect(command_sender->get_output_port(0),
-                  command_pub->get_input_port());
+      command_pub->get_input_port());
 
   // Get body indices for cassie with springs
   int pelvis_idx = GetBodyIndexFromName(tree_with_springs, "pelvis");
@@ -119,8 +124,19 @@ int DoMain(int argc, char* argv[]) {
   double time_shift = 0;
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       tree_with_springs, duration_per_state, time_shift);
+
+  int num_positions = tree_without_springs.get_num_positions();
+  MatrixXd drift_rate = MatrixXd::Zero(num_positions, num_positions);
+  drake::multibody::MultibodyPlant<double>& plant =
+      *builder.AddSystem<drake::multibody::MultibodyPlant>(0.01);
+  addCassieMultibody(&plant, &scene_graph, true);
+  plant.Finalize();
+  auto simulator_drift = builder.AddSystem<SimulatorDrift>(
+      plant, drift_rate);
   builder.Connect(state_receiver->get_output_port(0),
-                  fsm->get_input_port_state());
+      simulator_drift->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(0),
+      fsm->get_input_port_state());
 
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
@@ -133,9 +149,9 @@ int DoMain(int argc, char* argv[]) {
           right_toe_idx,
           Eigen::VectorXd::Zero(3));
   builder.Connect(fsm->get_output_port(0),
-                  lipm_traj_generator->get_input_port_fsm());
+      lipm_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
-                  lipm_traj_generator->get_input_port_state());
+      lipm_traj_generator->get_input_port_state());
 
   // Create foot placement control block
   Eigen::Vector2d global_target_position(10, 0);
@@ -146,10 +162,11 @@ int DoMain(int argc, char* argv[]) {
   //                     0.9993 when x = 2
   auto deviation_from_cp =
       builder.AddSystem<cassie::osc::DeviationFromCapturePoint>(
-        tree_with_springs, pelvis_idx,
-        global_target_position, params_of_no_turning);
+          tree_with_springs, pelvis_idx,
+          global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
-                  deviation_from_cp->get_input_port_state());
+      deviation_from_cp->get_input_port_state());
+
 
   // Create swing leg trajectory generator (capture point)
   double mid_foot_height = 0.1 + 0.05;
@@ -174,25 +191,25 @@ int DoMain(int argc, char* argv[]) {
           cp_offset,
           center_line_offset);
   builder.Connect(fsm->get_output_port(0),
-                  cp_traj_generator->get_input_port_fsm());
+      cp_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
-                  cp_traj_generator->get_input_port_state());
+      cp_traj_generator->get_input_port_state());
   builder.Connect(lipm_traj_generator->get_output_port(0),
-                  cp_traj_generator->get_input_port_com());
+      cp_traj_generator->get_input_port_com());
   builder.Connect(deviation_from_cp->get_output_port(0),
-                  cp_traj_generator->get_input_port_fp());
+      cp_traj_generator->get_input_port_fp());
 
   // Desired Heading Angle
   auto heading_control =
       builder.AddSystem<cassie::osc::HeadingControl>(
-        tree_with_springs, pelvis_idx,
-        global_target_position, params_of_no_turning);
+          tree_with_springs, pelvis_idx,
+          global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
-                  heading_control->get_input_port_state());
+      heading_control->get_input_port_state());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-               tree_with_springs, tree_without_springs, true, false);
+      tree_with_springs, tree_without_springs, true, false);
 
   // Cost
   int n_v = tree_without_springs.get_num_velocities();
@@ -209,18 +226,18 @@ int DoMain(int argc, char* argv[]) {
   // Friction coefficient
   double mu = 0.4;
   double mu_low = 0.4;  // avoid slipping in the beginning of stance (in drake
-                        // simulation)
+  // simulation)
   osc->SetContactFriction(mu);
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
   osc->AddStateAndContactPoint(left_stance_state,
-                               "toe_left", front_contact_disp, mu_low, 0.05);
+      "toe_left", front_contact_disp, mu_low, 0.05);
   osc->AddStateAndContactPoint(left_stance_state,
-                               "toe_left", rear_contact_disp, mu_low, 0.05);
+      "toe_left", rear_contact_disp, mu_low, 0.05);
   osc->AddStateAndContactPoint(right_stance_state,
-                               "toe_right", front_contact_disp, mu_low, 0.05);
+      "toe_right", front_contact_disp, mu_low, 0.05);
   osc->AddStateAndContactPoint(right_stance_state,
-                               "toe_right", rear_contact_disp, mu_low, 0.05);
+      "toe_right", rear_contact_disp, mu_low, 0.05);
   // Swing foot tracking
   MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
@@ -283,9 +300,9 @@ int DoMain(int argc, char* argv[]) {
       K_p_swing_toe, K_d_swing_toe, W_swing_toe,
       &tree_with_springs, &tree_without_springs);
   swing_toe_traj.AddStateAndJointToTrack(left_stance_state,
-                                         "toe_right", "toe_rightdot");
+      "toe_right", "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state,
-                                         "toe_left", "toe_leftdot");
+      "toe_left", "toe_leftdot");
   osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1),
       0, 0.3);
   // Swing hip yaw joint tracking
@@ -303,20 +320,22 @@ int DoMain(int argc, char* argv[]) {
   // Build OSC problem
   osc->Build();
   // Connect ports
+  builder.Connect(heading_control->get_output_port(1),
+      deviation_from_cp->get_input_heading_angle());
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
+      osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0),
-                  osc->get_fsm_input_port());
+      osc->get_fsm_input_port());
   builder.Connect(lipm_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("lipm_traj"));
+      osc->get_tracking_data_input_port("lipm_traj"));
   builder.Connect(cp_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("cp_traj"));
+      osc->get_tracking_data_input_port("cp_traj"));
   builder.Connect(heading_control->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
+      osc->get_tracking_data_input_port("pelvis_balance_traj"));
   builder.Connect(heading_control->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_heading_traj"));
+      osc->get_tracking_data_input_port("pelvis_heading_traj"));
   builder.Connect(osc->get_output_port(0),
-                  command_sender->get_input_port(0));
+      command_sender->get_input_port(0));
 
   // Create the diagram and context
   auto diagram = builder.Build();
@@ -326,14 +345,14 @@ int DoMain(int argc, char* argv[]) {
   /// If set_publish_every_time_step is true, this publishes twice
   /// Set realtime rate. Otherwise, runs as fast as possible
   auto stepper = std::make_unique<drake::systems::Simulator<double>>(*diagram,
-                 std::move(context));
+      std::move(context));
   stepper->set_publish_every_time_step(false);
   stepper->set_publish_at_initialization(false);
   stepper->set_target_realtime_rate(1.0);
   stepper->Initialize();
 
   drake::log()->info("controller started");
-  stepper->StepTo(std::numeric_limits<double>::infinity());
+  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }

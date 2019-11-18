@@ -93,7 +93,7 @@ class LcmDrivenLoop {
   std::map<std::string, drake::lcm::Subscriber<InputMessageType>>
       name_to_input_sub_map_;
 
-  bool is_multiple_inputs = false;
+  bool is_multiple_inputs_ = false;
 };
 
 }  // namespace systems

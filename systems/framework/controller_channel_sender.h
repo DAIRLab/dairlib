@@ -6,6 +6,9 @@
 
 namespace dairlib {
 
+/// ControllerChannelSender is a single-output block that assigns a string
+/// to the lcm message, MessageType.
+
 template <typename MessageType>
 class ControllerChannelSender : public drake::systems::LeafSystem<double> {
  public:

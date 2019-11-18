@@ -19,7 +19,6 @@
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "systems/framework/lcm_driven_loop.h"
 
-
 namespace dairlib {
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
@@ -56,10 +55,6 @@ DEFINE_string(control_channel_name_3, "OSC_WALKING",
 
 // Cassie model parameter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
-
-//void LcmDrivenLoop(drake::lcm::DrakeLcm* lcm_local,
-//                   DiagramBuilder<double>* builder,
-//                   const drake::systems::LeafSystem<double>* command_receiver);
 
 /// Runs UDP driven loop for 10 seconds
 /// Re-publishes any received messages as LCM
@@ -124,9 +119,10 @@ int do_main(int argc, char* argv[]) {
           {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   builder.Connect(*input_supervisor, *net_command_sender);
-
   builder.Connect(*net_command_sender, *net_command_pub);
 
+  // Finish building the diagram
+  auto owned_diagram = builder.Build();
 
   // Channel name of the input switch
   std::string switch_channel = "INPUT_SWITCH";
@@ -136,116 +132,18 @@ int do_main(int argc, char* argv[]) {
   input_channels.push_back(FLAGS_control_channel_name_2);
   input_channels.push_back(FLAGS_control_channel_name_3);
 
-  systems::LcmDrivenLoop loop(&lcm_local, &builder, command_receiver);
-  loop.SetSwitchChannelName(switch_channel);
-  loop.SetMultipleInputChannelName(input_channels);
+  // Run lcm-driven simulation
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_input,
+                         dairlib::lcmt_controller_switch> loop
+      (&lcm_local,
+       std::move(owned_diagram),
+       command_receiver,
+       switch_channel,
+       input_channels);
   loop.Simulate();
-//  LcmDrivenLoop(&lcm_local, &builder, command_receiver);
 
   return 0;
 }
-
-
-//void LcmDrivenLoop(drake::lcm::DrakeLcm* lcm_local,
-//                   DiagramBuilder<double>* builder,
-//                   const drake::systems::LeafSystem<double>* command_receiver) {// Create the diagram, simulator, and context.
-//  auto owned_diagram = builder->Build();
-//  const auto& diagram = *owned_diagram;
-//  drake::systems::Simulator<double> simulator(std::move(owned_diagram));
-//  auto& diagram_context = simulator.get_mutable_context();
-//  auto& command_receiver_context =
-//      diagram.GetMutableSubsystemContext(*command_receiver, &diagram_context);
-//
-//  // Channel name of the input switch
-//  std::string switch_channel = "INPUT_SWITCH";
-//  // Channel names of the controllers
-//  std::vector<std::string> input_channels;
-//  input_channels.push_back(FLAGS_control_channel_name_1);
-//  input_channels.push_back(FLAGS_control_channel_name_2);
-//  input_channels.push_back(FLAGS_control_channel_name_3);
-//  std::string active_channel = input_channels.at(0);
-//
-//  // Create subscribers
-//  drake::lcm::Subscriber<lcmt_controller_switch> input_switch_sub(lcm_local,
-//                                                                  switch_channel);
-//  std::map<string, drake::lcm::Subscriber<lcmt_robot_input>> name_to_sub_map;
-//  for (auto name : input_channels) {
-//    std::cout << "Constructing subscriber for " << name << std::endl;
-//    name_to_sub_map.insert(std::make_pair(name,
-//                                          drake::lcm::Subscriber<
-//                                              lcmt_robot_input>(
-//                                              lcm_local,
-//                                              name)));
-//  }
-//
-//  // Wait for the first message.
-//  drake::log()->info("Waiting for first lcmt_robot_input");
-//  LcmHandleSubscriptionsUntil(lcm_local, [&]() {
-//    return name_to_sub_map.at(active_channel).count() > 0;
-//  });
-//
-//  // Initialize the context based on the first message.
-//  const double t0 = name_to_sub_map.at(active_channel).message().utime * 1e-6;
-//  diagram_context.SetTime(t0);
-//  auto& command_value = command_receiver->get_input_port(0).FixValue(
-//      &command_receiver_context, name_to_sub_map.at(active_channel).message());
-//
-//  // Store robot input
-//  lcmt_robot_input previous_input =
-//      name_to_sub_map.at(active_channel).message();
-//
-//  // "Simulator" time
-//  double time = 0; // initialize the current time to 0
-//  const double end_time = std::numeric_limits<double>::infinity();
-//  double message_time;
-//
-//  drake::log()->info("dispatcher_robot_in started");
-//  while (time < end_time) {
-//    // Update active channel name
-//    if (input_switch_sub.count() > 0) {
-//      // Check if the channel name is a key of the map
-//      if (name_to_sub_map.count(input_switch_sub.message().channel) == 1) {
-//        active_channel = input_switch_sub.message().channel;
-//      } else {
-//        std::cout << input_switch_sub.message().channel << " doesn't exist\n";
-//      }
-//      input_switch_sub.clear();
-//    }
-//
-//    // Wait for an lcmt_robot_input or an lcmt_controller_switch message.
-//    name_to_sub_map.at(active_channel).clear();
-//    LcmHandleSubscriptionsUntil(
-//        lcm_local,
-//        [&]() { return (name_to_sub_map.at(active_channel).count() > 0); });
-//
-//    // Write the lcmt_robot_input message into the context.
-//    command_value.GetMutableData()->set_value(
-//        name_to_sub_map.at(active_channel).message());
-//
-//    // Get message time from the active channel to advance
-//    message_time = name_to_sub_map.at(active_channel).message().utime * 1e-6;
-//    // We cap the time from bottom just in case the message time is older around
-//    // the instant when we switch to a different controller
-//    if (message_time >= time) {
-//      time = message_time;
-//    }
-//
-//    // Check if we are very far ahead or behind
-//    // (likely due to a restart of the driving clock)
-//    if (time > simulator.get_context().get_time() + 1.0 ||
-//        time < simulator.get_context().get_time()) {
-//      std::cout << "Dispatcher time is " << simulator.get_context().get_time()
-//                << ", but stepping to " << time << std::endl;
-//      std::cout << "Difference is too large, resetting dispatcher time." <<
-//                std::endl;
-//      simulator.get_mutable_context().SetTime(time);
-//    }
-//
-//    simulator.AdvanceTo(time);
-//    // Force-publish via the diagram
-//    diagram.Publish(diagram_context);
-//  }
-//}
 
 }  // namespace dairlib
 

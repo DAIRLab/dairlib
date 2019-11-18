@@ -20,6 +20,9 @@ DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
 DEFINE_string(controller_channel, "PD_CONTROLLER",
               "The name of the lcm channel that dispatcher_in listens to");
 
+/// This diagram publishes a string which tells dispatcher_robot_in which
+/// channel to listen to.
+
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 

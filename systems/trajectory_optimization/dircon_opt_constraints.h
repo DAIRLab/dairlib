@@ -24,7 +24,6 @@ class DirconAbstractConstraint : public drake::solvers::Constraint {
                            const Eigen::VectorXd& ub,
                            const std::string& description = "");
 
- public:
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
               Eigen::VectorXd* y) const override;
 
@@ -35,8 +34,17 @@ class DirconAbstractConstraint : public drake::solvers::Constraint {
       const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>&,
       drake::VectorX<drake::symbolic::Expression>*) const override;
 
+  void AddConstraintScaling(double scale, int row_start, int row_end);
+
   virtual void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                                   drake::VectorX<T>* y) const = 0;
+
+ private:
+  template <typename U>
+  void ScaleConstraint(drake::VectorX<U>* y) const;
+
+  int num_constraints_;
+  std::vector<std::pair<int, double>> constraint_sacling_;
 };
 
 enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };

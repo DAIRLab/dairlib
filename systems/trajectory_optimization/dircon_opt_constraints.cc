@@ -1,5 +1,4 @@
 #include "dircon_opt_constraints.h"
-#include <cstddef>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -36,7 +35,28 @@ DirconAbstractConstraint<T>::DirconAbstractConstraint(int num_constraints,
                                                       const VectorXd& lb,
                                                       const VectorXd& ub,
                                                       const std::string& description)
-    : Constraint(num_constraints, num_vars, lb, ub, description) {
+    : Constraint(num_constraints, num_vars, lb, ub, description),
+      num_constraints_(num_constraints) {
+}
+
+template <typename T>
+void DirconAbstractConstraint<T>::AddConstraintScaling(double scale,
+                                                       int row_start,
+                                                       int row_end) {
+  DRAKE_DEMAND(row_start <= row_end);
+  DRAKE_DEMAND(row_end < num_constraints_);
+
+  for (int i = row_start; i <= row_end; i++) {
+    constraint_sacling_.push_back(std::pair<int, double>(i, scale));
+  }
+}
+
+template <typename T>
+template <typename U>
+void DirconAbstractConstraint<T>::ScaleConstraint(drake::VectorX<U>* y) const {
+  for (const auto& member : constraint_sacling_) {
+    (*y)(member.first) *= member.second;
+  }
 }
 
 template <>
@@ -44,6 +64,7 @@ void DirconAbstractConstraint<double>::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x,
     Eigen::VectorXd* y) const {
   EvaluateConstraint(x, y);
+  this->ScaleConstraint<double>(y);
 }
 
 template <>
@@ -53,6 +74,7 @@ void DirconAbstractConstraint<AutoDiffXd>::DoEval(
   AutoDiffVecXd y_t;
   EvaluateConstraint(initializeAutoDiff(x), &y_t);
   *y = autoDiffToValueMatrix(y_t);
+  this->ScaleConstraint<double>(y);
 }
 
 template <typename T>
@@ -67,6 +89,7 @@ template <>
 void DirconAbstractConstraint<AutoDiffXd>::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
   EvaluateConstraint(x, y);
+  this->ScaleConstraint<AutoDiffXd>(y);
 }
 
 template <>
@@ -108,6 +131,8 @@ void DirconAbstractConstraint<double>::DoEval(
   // }
   // EvaluateConstraint(x_val,y0);
   // initializeAutoDiffGivenGradientMatrix(y0, dy, y);
+
+  this->ScaleConstraint<AutoDiffXd>(y);
 }
 
 template <typename T>
@@ -149,12 +174,15 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
     int num_positions, int num_velocities, int num_inputs,
     int num_kinematic_constraints_wo_skipping,
     int num_quat_slack)
-    : DirconAbstractConstraint<T>(
-          num_positions + num_velocities,
-          1 + 2 * (num_positions + num_velocities) + (2 * num_inputs)
-              + (4 * num_kinematic_constraints_wo_skipping) + num_quat_slack,
-          Eigen::VectorXd::Zero(num_positions + num_velocities),
-          Eigen::VectorXd::Zero(num_positions + num_velocities)),
+    : DirconAbstractConstraint<T>(num_positions + num_velocities,
+                                  1 + 2 * (num_positions + num_velocities)
+                                      + (2 * num_inputs)
+                                      + (4 * num_kinematic_constraints_wo_skipping)
+                                      + num_quat_slack,
+                                  Eigen::VectorXd::Zero(
+                                      num_positions + num_velocities),
+                                  Eigen::VectorXd::Zero(
+                                      num_positions + num_velocities)),
       plant_(plant),
       constraints_(&constraints),
       num_states_{num_positions + num_velocities}, num_inputs_{num_inputs},
@@ -454,7 +482,8 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
   MatrixX<T> M(num_velocities_, num_velocities_);
   plant_.CalcMassMatrixViaInverseDynamics(*context, &M);
 
-  *y = M * (v1 - v0) - constraints_->getJWithoutSkipping().transpose() * impulse;
+  *y =
+      M * (v1 - v0) - constraints_->getJWithoutSkipping().transpose() * impulse;
 }
 
 // Explicitly instantiates on the most common scalar types.

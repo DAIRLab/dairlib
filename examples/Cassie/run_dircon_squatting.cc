@@ -1,49 +1,38 @@
-#include <gflags/gflags.h>
-
-#include <memory>
 #include <chrono>
-#include <string>
 #include <fstream>
+#include <memory>
+#include <string>
 
+#include <gflags/gflags.h>
+#include "attic/multibody/multibody_solvers.h"
+#include "attic/multibody/rigidbody_utils.h"
+#include "common/find_resource.h"
+#include "examples/Cassie/cassie_utils.h"
+#include "multibody/com_pose_system.h"
+#include "multibody/multibody_utils.h"
+#include "systems/goldilocks_models/file_utils.h"
+#include "systems/trajectory_optimization/dircon_distance_data.h"
+#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "systems/trajectory_optimization/dircon_position_data.h"
+#include "systems/trajectory_optimization/hybrid_dircon.h"
+
+#include "drake/geometry/geometry_visualization.h"
+#include "drake/lcm/drake_lcm.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/multibody/rigid_body_plant/drake_visualizer.h"
+#include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/solvers/choose_best_solver.h"
+#include "drake/solvers/constraint.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/trajectory_source.h"
-
-#include "drake/lcm/drake_lcm.h"
-
-#include "drake/multibody/parsing/parser.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-#include "drake/geometry/geometry_visualization.h"
-
-#include "drake/solvers/solve.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/constraint.h"
-#include "drake/solvers/choose_best_solver.h"
-
-#include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/multibody/rigid_body_tree.h"
-#include "drake/multibody/rigid_body_plant/drake_visualizer.h"
-
-#include "common/find_resource.h"
-
-#include "systems/trajectory_optimization/dircon_position_data.h"
-#include "systems/trajectory_optimization/dircon_distance_data.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
-#include "systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "systems/trajectory_optimization/hybrid_dircon.h"
-
-#include "multibody/multibody_utils.h"
-
-#include "systems/goldilocks_models/file_utils.h"
-
-#include "examples/Cassie/cassie_utils.h"
-
-#include "attic/multibody/rigidbody_utils.h"
-#include "attic/multibody/multibody_solvers.h"
-
-#include "multibody/com_pose_system.h"
 
 using std::vector;
 using std::shared_ptr;

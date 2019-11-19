@@ -27,6 +27,12 @@ namespace systems {
 /// which tells LcmDrivenLoop the channel that it should listen to for the
 /// simulation update.
 
+/// Procedures to use LcmDrivenLoop:
+/// 1. construct LcmDrivenLoop
+/// 2. (if it's multi-input) the user can set the initial channel that
+///    LcmDrivenLoop listens to by calling SetInitActiveChannel().
+/// 3. run Simulate()
+
 // We set a default value for SwitchMessageType so that we can generalize this
 // to both single and multi inputs. (for template instantiation)
 template <typename InputMessageType,
@@ -47,12 +53,6 @@ class LcmDrivenLoop {
   ///     first_leafsystem: the first block of the diagram
   ///     switch_channel: the name of the switch channel
   ///     input_channels: the names of the input channels
-
-  /// Procedures to use LcmDrivenLoop:
-  /// 1. construct LcmDrivenLoop
-  /// 2. (if it's multi-input) the user can set the initial channel that
-  ///    LcmDrivenLoop listens to by calling SetInitActiveChannel().
-  /// 3. run Simulate()
 
   // Lcm driven loop for single input
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,

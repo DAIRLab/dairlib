@@ -1,8 +1,10 @@
 #pragma once
 
 #include <string>
-#include "drake/systems/framework/leaf_system.h"
+
 #include "dairlib/lcmt_controller_switch.hpp"
+
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 

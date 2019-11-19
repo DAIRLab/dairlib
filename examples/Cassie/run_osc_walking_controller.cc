@@ -1,25 +1,22 @@
 #include <gflags/gflags.h>
-
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-
-#include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/multibody/joints/floating_base_types.h"
-#include "drake/multibody/rigid_body_tree.h"
-
-#include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_robot_input.hpp"
-#include "systems/robot_lcm_systems.h"
-#include "examples/Cassie/cassie_utils.h"
 #include "attic/multibody/rigidbody_utils.h"
-
+#include "dairlib/lcmt_robot_input.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc_walk/deviation_from_cp.h"
 #include "examples/Cassie/osc_walk/heading_control.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
-#include "systems/controllers/time_based_fsm.h"
 #include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/robot_lcm_systems.h"
+
+#include "drake/multibody/joints/floating_base_types.h"
+#include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
 
 namespace dairlib {
 

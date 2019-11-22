@@ -299,6 +299,7 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
+        ":simulator_drift",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",

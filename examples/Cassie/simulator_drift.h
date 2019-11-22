@@ -33,7 +33,7 @@
 class SimulatorDrift : public drake::systems::LeafSystem<double> {
 
  public:
-  SimulatorDrift(const drake::multibody::MultibodyPlant<double>& plant,
+  SimulatorDrift(const RigidBodyTree<double>& tree,
                  const Eigen::VectorXd& drift_mean,
                  const Eigen::MatrixXd& drift_cov);
 
@@ -49,8 +49,9 @@ class SimulatorDrift : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  int time_idx_;
   int accumulated_drift_index_;
-  const drake::multibody::MultibodyPlant<double>& plant_;
+  const RigidBodyTree<double>& tree_;
   Eigen::VectorXd drift_mean_;
   Eigen::MatrixXd drift_cov_;
   int state_port_;

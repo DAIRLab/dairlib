@@ -11,11 +11,13 @@
 
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/simulator_drift.h"
 #include "systems/robot_lcm_systems.h"
 
 namespace dairlib {
 
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
+DEFINE_double(drift_rate, 0.0, "Drift rate for simulator");
 DEFINE_string(channel, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
@@ -51,7 +53,22 @@ int doMain(int argc, char* argv[]) {
                         dairlib::lcmt_robot_output>(FLAGS_channel, lcm));
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(tree);
   builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
+      state_receiver->get_input_port(0));
+
+  Eigen::VectorXd drift_mean = Eigen::VectorXd::Zero(tree.get_num_positions());
+  Eigen::MatrixXd drift_cov =
+      Eigen::MatrixXd::Zero(tree.get_num_positions(), tree.get_num_positions());
+
+  drift_mean(0) = FLAGS_drift_rate; //x
+  drift_mean(1) = FLAGS_drift_rate; //y
+  drift_mean(2) = FLAGS_drift_rate; //z
+
+  drift_cov(0,0) = FLAGS_drift_rate;
+  drift_cov(1,1) = FLAGS_drift_rate;
+  drift_cov(2,2) = FLAGS_drift_rate;
+
+  auto simulator_drift =
+      builder.AddSystem<SimulatorDrift>(tree, drift_mean, drift_cov);
 
   auto publisher =
       builder.AddSystem<drake::systems::DrakeVisualizer>(tree, lcm);
@@ -60,14 +77,21 @@ int doMain(int argc, char* argv[]) {
       state_receiver->get_output_port(0).size(), 0,
       publisher->get_input_port(0).size());
 
+//  builder.Connect(state_receiver->get_output_port(0),
+//                  passthrough->get_input_port());
   builder.Connect(state_receiver->get_output_port(0),
-                  passthrough->get_input_port());
+      simulator_drift->get_input_port_state());
+  builder.Connect(simulator_drift->get_output_port(0),
+      passthrough->get_input_port());
+
   builder.Connect(passthrough->get_output_port(), publisher->get_input_port(0));
 
   publisher->set_publish_period(1.0 / 30.0);
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
+
+  std::cout << "Built diagram" << std::endl;
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

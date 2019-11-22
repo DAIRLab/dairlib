@@ -126,13 +126,10 @@ int DoMain(int argc, char* argv[]) {
       tree_with_springs, duration_per_state, time_shift);
 
   int num_positions = tree_without_springs.get_num_positions();
-  MatrixXd drift_rate = MatrixXd::Zero(num_positions, num_positions);
-  drake::multibody::MultibodyPlant<double>& plant =
-      *builder.AddSystem<drake::multibody::MultibodyPlant>(0.01);
-  addCassieMultibody(&plant, &scene_graph, true);
-  plant.Finalize();
+  VectorXd drift_mean = VectorXd::Zero(num_positions);
+  MatrixXd drift_cov = MatrixXd::Zero(num_positions, num_positions);
   auto simulator_drift = builder.AddSystem<SimulatorDrift>(
-      plant, drift_rate);
+      tree_with_springs, drift_mean, drift_cov);
   builder.Connect(state_receiver->get_output_port(0),
       simulator_drift->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),

@@ -73,7 +73,8 @@ class LcmDrivenLoop {
   /// Constructor for multi-input LcmDrivenLoop
   ///     @param drake_lcm DrakeLcm
   ///     @param diagram A Drake diagram
-  ///     @param lcm_parser The first block of the diagram
+  ///     @param lcm_parser The LeafSystem of the diagram that parses the
+  ///     incoming lcm message
   ///     @param switch_channel The name of the switch channel
   ///     @param input_channels The names of the input channels
   ///     @param active_channel The name of the initial active input channel

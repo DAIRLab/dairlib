@@ -141,6 +141,10 @@ ComTrackingData::ComTrackingData(string name,
           K_p, K_d, W, tree_w_spr, tree_wo_spr) {
 }
 
+void ComTrackingData::AddStateToTrack(int state){
+    AddState(state);
+}
+
 void ComTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
     KinematicsCache<double>& cache_w_spr) {
   y_ = tree_w_spr_->centerOfMass(cache_w_spr);

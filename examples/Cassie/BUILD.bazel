@@ -81,6 +81,16 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "input_supervisor",
+    srcs = ["input_supervisor.cc"],
+    hdrs = ["input_supervisor.h"],
+    deps = [
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "run_pd_controller",
     srcs = ["run_pd_controller.cc"],
@@ -207,6 +217,7 @@ cc_binary(
         ":cassie_rbt_state_estimator",
         ":cassie_urdf",
         ":cassie_utils",
+        ":input_supervisor",
         "//examples/Cassie/networking:cassie_udp_pub_sub",
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
@@ -290,6 +301,38 @@ cc_binary(
         ":cassie_utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "benchmark_dynamics",
+    srcs = ["test/benchmark_dynamics.cc"],
+    deps = [
+        ":cassie_urdf",
+        "//common",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//systems/sensors:sim_cassie_sensor_aggregator",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_dircon_squatting",
+    srcs = ["run_dircon_squatting.cc"],
+    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    deps = [
+        ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
+        "//common",
+        "//solvers:optimization_utils",
+        "//systems/goldilocks_models",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

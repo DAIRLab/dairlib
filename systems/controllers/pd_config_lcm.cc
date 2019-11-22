@@ -62,8 +62,6 @@ PDConfigReceiver::PDConfigReceiver(const RigidBodyTree<double>& tree) {
     }
     if (index_q != -1)
       actuatorToPositionIndexMap_[j] = index_q;
-    std::cout << "Map u_ind:" << j << " q_ind: " << index_q << " v_ind: " <<
-                  index << std::endl;
   }
 
   // Velocity map:
@@ -126,8 +124,6 @@ PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
     }
     if (index_q != -1)
       actuatorToPositionIndexMap_[j] = index_q;
-    std::cout << "Map u_ind:" << j << " q_ind: " << index_q << " v_ind: " <<
-                  index << std::endl;
   }
 
   // Velocity map:
@@ -150,8 +146,6 @@ void PDConfigReceiver::CopyConfig(const Context<double>& context,
   VectorXd desired_state = VectorXd::Zero(num_positions_ + num_velocities_);
 
   for (int i = 0; i < config_msg.num_joints; i++) {
-    std::cout << "i: " << i << "u_ind: " << u_ind << std::endl; 
-    std::cout << "config_msg.joint_names[i] = " << config_msg.joint_names[i] << std::endl; 
     int u_ind = actuatorIndexMap_.at(config_msg.joint_names[i]);
     // Need to generate position and velocity indices
     int q_ind = actuatorToPositionIndexMap_.at(u_ind);

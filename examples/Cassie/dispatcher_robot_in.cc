@@ -1,4 +1,5 @@
 #include <memory>
+#include <limits>
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
@@ -10,6 +11,7 @@
 
 #include "attic/multibody/rigidbody_utils.h"
 #include "systems/robot_lcm_systems.h"
+#include "examples/Cassie/input_supervisor.h"
 #include "examples/Cassie/networking/cassie_udp_publisher.h"
 #include "examples/Cassie/networking/cassie_input_translator.h"
 #include "examples/Cassie/cassie_utils.h"
@@ -30,6 +32,13 @@ using drake::systems::TriggerType;
 DEFINE_string(address, "127.0.0.1", "IPv4 address to publish to (UDP).");
 DEFINE_int64(port, 25000, "Port to publish to (UDP).");
 DEFINE_double(pub_rate, .02, "Network LCM pubishing period (s).");
+DEFINE_double(max_joint_velocity, 10,
+    "Maximum joint velocity before error is triggered");
+DEFINE_double(input_limit, -1, "Maximum torque limit. Negative values are inf.");
+DEFINE_int64(supervisor_N, 10,
+    "Maximum allowed consecutive failures of velocity limit.");
+DEFINE_string(state_channel_name, "CASSIE_STATE",
+    "The name of the lcm channel that sends Cassie's state");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
@@ -56,15 +65,31 @@ int do_main(int argc, char* argv[]) {
   // Create LCM receiver for commands
   auto command_receiver = builder.AddSystem<RobotInputReceiver>(*tree);
 
-  // auto command_sub = builder.AddSystem(
-  //     LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(channel_u,
-  //         &lcm_local));
-  // builder.Connect(*command_sub, *command_receiver);
+    // Create state estimate receiver, used for safety checks
+  auto state_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          FLAGS_state_channel_name, &lcm_local));
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*tree);
+  builder.Connect(*state_sub, *state_receiver);
+
+  double input_supervisor_update_period = 1.0/1000.0;
+  double input_limit = FLAGS_input_limit;
+  if (input_limit < 0) {
+    input_limit = std::numeric_limits<double>::max();
+  }
+
+  auto input_supervisor = builder.AddSystem<InputSupervisor>(*tree,
+      FLAGS_max_joint_velocity, input_supervisor_update_period,
+      FLAGS_supervisor_N, input_limit);
+  builder.Connect(state_receiver->get_output_port(0),
+      input_supervisor->get_input_port_state());
+  builder.Connect(command_receiver->get_output_port(0),
+      input_supervisor->get_input_port_command());
 
   // Create and connect translator
   auto input_translator =
       builder.AddSystem<systems::CassieInputTranslator>(*tree);
-  builder.Connect(*command_receiver, *input_translator);
+  builder.Connect(*input_supervisor, *input_translator);
 
   // Create and connect input publisher.
   auto input_pub = builder.AddSystem(
@@ -79,7 +104,7 @@ int do_main(int argc, char* argv[]) {
           "NETWORK_CASSIE_INPUT", &lcm_network,
           {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
-  builder.Connect(*command_receiver, *net_command_sender);
+  builder.Connect(*input_supervisor, *net_command_sender);
 
   builder.Connect(*net_command_sender, *net_command_pub);
 

@@ -287,7 +287,7 @@ void OperationalSpaceControl::Build() {
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     tracking_cost_.push_back(prog_->AddQuadraticCost(
-                               MatrixXd::Identity(n_v_, n_v_),
+                               MatrixXd::Zero(n_v_, n_v_),
                                VectorXd::Zero(n_v_), dv_).
                              evaluator().get());
   }

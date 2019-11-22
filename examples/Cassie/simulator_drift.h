@@ -34,7 +34,8 @@ class SimulatorDrift : public drake::systems::LeafSystem<double> {
 
  public:
   SimulatorDrift(const drake::multibody::MultibodyPlant<double>& plant,
-                 const Eigen::MatrixXd& drift_rate);
+                 const Eigen::VectorXd& drift_mean,
+                 const Eigen::MatrixXd& drift_cov);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -50,7 +51,8 @@ class SimulatorDrift : public drake::systems::LeafSystem<double> {
 
   int accumulated_drift_index_;
   const drake::multibody::MultibodyPlant<double>& plant_;
-  Eigen::MatrixXd drift_rate_;
+  Eigen::VectorXd drift_mean_;
+  Eigen::MatrixXd drift_cov_;
   int state_port_;
 };
 

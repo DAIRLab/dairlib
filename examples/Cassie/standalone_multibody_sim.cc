@@ -128,7 +128,7 @@ int do_main(int argc, char* argv[]) {
 
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
-  simulator.StepTo(std::numeric_limits<double>::infinity());
+  simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }

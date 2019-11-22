@@ -18,8 +18,8 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true --floating_base=false";
         host = "localhost";
     }
-    cmd "2.a.dispatcher-robot-out (lcm, floating-base)" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true";
+    cmd "2.b.dispatcher-robot-out (gazebo)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=false --floating_base=false";
         host = "localhost";
     }
     cmd "2.b.dispatcher-robot-out (gazebo)" {

@@ -190,12 +190,9 @@ class LcmDrivenLoop {
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::LeafSystem<double>* lcm_parser)
       : drake_lcm_(drake_lcm), lcm_parser_(lcm_parser) {
-    std::cout << "here\n";
-    std::cout << diagram->get_name() << std::endl;
     if (!diagram->get_name().empty()) {
       diagram_name_ = diagram->get_name();
     }
-    std::cout << "here\n";
 
     diagram_ptr_ = diagram.get();
     simulator_ =

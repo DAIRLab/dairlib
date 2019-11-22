@@ -18,7 +18,7 @@ namespace dairlib {
 namespace systems {
 
 /// LcmDrivenLoop runs the simulation of a diagram (the whole system) of which
-/// update is triggered by the incoming lcm messages.
+/// the update is triggered by the incoming lcm messages.
 /// It can handle single and multiple incoming lcm message types.
 /// In the case of single message type, the diagram is triggered by this lcm
 /// trivially.
@@ -41,7 +41,7 @@ namespace systems {
 /// know what MessageTypes are beforehand.
 
 // We set a default value for SwitchMessageType so that we can generalize this
-// to both single and multi inputs. (for template instantiation)
+// to both single and multi inputs.
 template <typename InputMessageType,
           typename SwitchMessageType = dairlib::lcmt_controller_switch>
 class LcmDrivenLoop {

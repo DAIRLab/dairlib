@@ -1,14 +1,14 @@
 #include <string>
 
 #include <gflags/gflags.h>
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
 
-#include "systems/framework/controller_channel_sender.h"
 #include "dairlib/lcmt_controller_switch.hpp"
+#include "systems/framework/controller_channel_sender.h"
 
 namespace dairlib {
 
@@ -31,9 +31,10 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   // Create publisher
-  auto channel_sender = builder.AddSystem<
-      ControllerChannelSender<dairlib::lcmt_controller_switch>>(
-          FLAGS_controller_channel);
+  auto channel_sender =
+      builder
+          .AddSystem<ControllerChannelSender<dairlib::lcmt_controller_switch>>(
+              FLAGS_controller_channel);
   auto name_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_switch>(
           "INPUT_SWITCH", lcm, 1.0 / FLAGS_publish_rate));

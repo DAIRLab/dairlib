@@ -157,6 +157,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create the diagram
   auto owned_diagram = builder.Build();
+  owned_diagram->set_name(("osc standing controller"));
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop
@@ -164,7 +165,6 @@ int DoMain(int argc, char* argv[]) {
        std::move(owned_diagram),
        state_receiver,
        FLAGS_channel_x);
-  loop.SetName("osc standing controller");
   loop.Simulate();
 
   return 0;

@@ -122,6 +122,7 @@ int do_main(int argc, char* argv[]) {
 
   // Finish building the diagram
   auto owned_diagram = builder.Build();
+  owned_diagram->set_name("dispatcher_robot_in");
 
   // Channel name of the input switch
   std::string switch_channel = "INPUT_SWITCH";
@@ -138,7 +139,8 @@ int do_main(int argc, char* argv[]) {
        std::move(owned_diagram),
        command_receiver,
        switch_channel,
-       input_channels);
+       input_channels,
+       FLAGS_control_channel_name_1);
   loop.Simulate();
 
   return 0;

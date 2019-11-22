@@ -2,9 +2,9 @@
 
 namespace dairlib {
 
-using std::string;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
+using std::string;
 
 template <typename MessageType>
 ControllerChannelSender<MessageType>::ControllerChannelSender(
@@ -14,8 +14,8 @@ ControllerChannelSender<MessageType>::ControllerChannelSender(
 }
 
 template <typename MessageType>
-void ControllerChannelSender<MessageType>::Output(const Context<double>& context,
-                                                  MessageType* msg) const {
+void ControllerChannelSender<MessageType>::Output(
+    const Context<double>& context, MessageType* msg) const {
   msg->channel = channel_name_;
 }
 

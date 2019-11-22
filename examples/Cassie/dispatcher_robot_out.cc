@@ -139,6 +139,7 @@ int do_main(int argc, char* argv[]) {
 
   // Create the diagram.
   auto owned_diagram = builder.Build();
+  owned_diagram->set_name("dispatcher_robot_out");
 
   if (FLAGS_simulation) {
     // Run lcm-driven simulation
@@ -147,7 +148,6 @@ int do_main(int argc, char* argv[]) {
          std::move(owned_diagram),
          input_receiver,
          "CASSIE_OUTPUT");
-    loop.SetName("dispatcher_robot_out");
     loop.Simulate();
 
   } else {

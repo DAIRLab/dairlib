@@ -19,13 +19,13 @@ namespace systems {
 
 /// LcmDrivenLoop runs the simulation of a diagram (the whole system) of which
 /// update is triggered by the incoming lcm messages.
-/// It can handle single and multiple incoming lcm messages.
-/// In the case of single message, the diagram is triggered by this lcm
+/// It can handle single and multiple incoming lcm message types.
+/// In the case of single message type, the diagram is triggered by this lcm
 /// trivially.
-/// In the case of multiple incoming messages (we call them input messages),
-/// the user has to provide one extra lcm message (we call it switch message)
-/// which tells LcmDrivenLoop the channel that it should listen to for the
-/// simulation update.
+/// In the case of multiple message types (we call these messages the input
+/// messages), the user has to provide one extra lcm message type (we call this
+/// message the switch message) which tells LcmDrivenLoop the channel that it
+/// should listen to for the simulation update.
 
 /// WARNING: Currently, we update the value of the first InputPort of
 /// `lcm_parser` with the incoming lcm message. This would cause a problem if

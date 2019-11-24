@@ -79,6 +79,10 @@ int DoMain(int argc, char* argv[]) {
   const std::string channel_x = "CASSIE_STATE";
   const std::string channel_u = "CASSIE_INPUT";
 
+  // Cassie parameters
+  Vector3d front_contact_disp(-0.0457, 0.112, 0);
+  Vector3d rear_contact_disp(0.088, 0, 0);
+
   // Create state receiver.
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
                           tree_with_springs);
@@ -116,9 +120,9 @@ int DoMain(int argc, char* argv[]) {
           desired_com_height,
           duration_per_state,
           left_toe_idx,
-          Eigen::VectorXd::Zero(3),
+          (front_contact_disp + rear_contact_disp) / 2,
           right_toe_idx,
-          Eigen::VectorXd::Zero(3));
+          (front_contact_disp + rear_contact_disp) / 2);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
@@ -196,8 +200,6 @@ int DoMain(int argc, char* argv[]) {
   // Firction coefficient
   double mu = 0.8;
   osc->SetContactFriction(mu);
-  Vector3d front_contact_disp(-0.0457, 0.112, 0);
-  Vector3d rear_contact_disp(0.088, 0, 0);
   osc->AddStateAndContactPoint(left_stance_state,
                                "toe_left", front_contact_disp);
   osc->AddStateAndContactPoint(left_stance_state,

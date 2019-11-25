@@ -130,7 +130,7 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   KinematicsCache<double> cache = tree_.CreateKinematicsCache();
   VectorXd q = robot_output->GetPositions();
 
-  // Modify the quaternion in the begining when the state is not received from
+  // Modify the quaternion in the beginning when the state is not received from
   // the robot yet (cannot have 0-norm quaternion when using doKinematics)
   if (is_quaternion_){
     multibody::SetZeroQuaternionToIdentity(&q);

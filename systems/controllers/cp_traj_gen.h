@@ -78,19 +78,21 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
-    const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double>* discrete_state) const;
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  Eigen::Vector2d calculateCapturePoint(
-    const drake::systems::Context<double>& context,
-    const OutputVector<double>* robot_output,
-    const double end_time_of_this_interval) const;
+  void calcCpAndStanceFootHeight(
+      const drake::systems::Context<double>& context,
+      const OutputVector<double>* robot_output,
+      const double end_time_of_this_interval,
+      Eigen::Vector2d* final_CP, Eigen::VectorXd* stance_foot_height) const;
 
   drake::trajectories::PiecewisePolynomial<double> createSplineForSwingFoot(
-    const double start_time_of_this_interval,
-    const double end_time_of_this_interval,
-    const Eigen::Vector3d & init_swing_foot_pos,
-    const Eigen::Vector2d & CP) const;
+      const double start_time_of_this_interval,
+      const double end_time_of_this_interval,
+      const Eigen::Vector3d & init_swing_foot_pos,
+      const Eigen::Vector2d & CP,
+      const Eigen::VectorXd & stance_foot_height) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
                  drake::trajectories::Trajectory<double>* traj) const;

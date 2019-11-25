@@ -21,7 +21,8 @@
 #include "attic/multibody/rigidbody_utils.h"
 
 #include "examples/Cassie/osc_walk/deviation_from_cp.h"
-#include "examples/Cassie/osc_walk/heading_control.h"
+#include "examples/Cassie/osc_walk/human_command.h"
+#include "examples/Cassie/osc_walk/heading_traj_generator.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
@@ -82,6 +83,7 @@ int DoMain(int argc, char* argv[]) {
   // Cassie parameters
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
+  Vector3d mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2;
 
   // Create state receiver.
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
@@ -103,6 +105,26 @@ int DoMain(int argc, char* argv[]) {
   int right_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_right");
   DRAKE_DEMAND(pelvis_idx != -1 && left_toe_idx != -1 && right_toe_idx != -1);
 
+  // Create human high-level control
+  Eigen::Vector2d global_target_position(5, 5);
+  Eigen::Vector2d params_of_no_turning(5, 1);
+  // Logistic function 1/(1+5*exp(x-1))
+  // The function ouputs 0.0007 when x = 0
+  //                     0.5    when x = 1
+  //                     0.9993 when x = 2
+  auto humand_command =
+      builder.AddSystem<cassie::osc_walk::HumanCommand>(
+          tree_with_springs, pelvis_idx,
+          global_target_position, params_of_no_turning);
+  builder.Connect(state_receiver->get_output_port(0),
+                  humand_command->get_state_input_port());
+
+  // Create heading traj generator
+  auto head_traj_gen =
+      builder.AddSystem<cassie::osc_walk::HeadingTrajGenerator>();
+  builder.Connect(humand_command->get_yaw_output_port(),
+                  head_traj_gen->get_yaw_input_port());
+
   // Create finite state machine
   int left_stance_state = 0;
   int right_stance_state = 1;
@@ -120,31 +142,26 @@ int DoMain(int argc, char* argv[]) {
           desired_com_height,
           duration_per_state,
           left_toe_idx,
-          (front_contact_disp + rear_contact_disp) / 2,
+          mid_contact_disp,
           right_toe_idx,
-          (front_contact_disp + rear_contact_disp) / 2);
+          mid_contact_disp);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
                   lipm_traj_generator->get_input_port_state());
 
-  // Create foot placement control block
-  Eigen::Vector2d global_target_position(5, 5);
-  Eigen::Vector2d params_of_no_turning(5, 1);
-  // Logistic function 1/(1+5*exp(x-1))
-  // The function ouputs 0.0007 when x = 0
-  //                     0.5    when x = 1
-  //                     0.9993 when x = 2
+  // Create velocity control by foot placement
   auto deviation_from_cp =
       builder.AddSystem<cassie::osc_walk::DeviationFromCapturePoint>(
-        tree_with_springs, pelvis_idx,
-        global_target_position, params_of_no_turning);
+        tree_with_springs, pelvis_idx);
+  builder.Connect(humand_command->get_xy_output_port(),
+                  deviation_from_cp->get_input_port_des_hor_vel());
   builder.Connect(state_receiver->get_output_port(0),
                   deviation_from_cp->get_input_port_state());
 
   // Create swing leg trajectory generator (capture point)
-  double mid_foot_height = 0.1 + 0.05;
-  double desired_final_foot_height = 0.05;//-0.05;
+  double mid_foot_height = 0.1;
+  double desired_final_foot_height = 0;//-0.05;
   double desired_final_vertical_foot_velocity = 0;//-1;
   double max_CoM_to_CP_dist = 0.4;
   double cp_offset = 0.06;
@@ -172,14 +189,6 @@ int DoMain(int argc, char* argv[]) {
                   cp_traj_generator->get_input_port_com());
   builder.Connect(deviation_from_cp->get_output_port(0),
                   cp_traj_generator->get_input_port_fp());
-
-  // Desired Heading Angle
-  auto heading_control =
-      builder.AddSystem<cassie::osc_walk::HeadingControl>(
-        tree_with_springs, pelvis_idx,
-        global_target_position, params_of_no_turning);
-  builder.Connect(state_receiver->get_output_port(0),
-                  heading_control->get_input_port_state());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
@@ -297,9 +306,9 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("lipm_traj"));
   builder.Connect(cp_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("cp_traj"));
-  builder.Connect(heading_control->get_output_port(0),
+  builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_balance_traj"));
-  builder.Connect(heading_control->get_output_port(0),
+  builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
   builder.Connect(osc->get_output_port(0),
                   command_sender->get_input_port(0));

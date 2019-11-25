@@ -112,7 +112,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state(0);
 
     auto swing_foot_pos_td = discrete_state->get_mutable_vector(
-                               prev_td_swing_foot_idx_).get_mutable_value();
+        prev_td_swing_foot_idx_).get_mutable_value();
     auto prev_td_time = discrete_state->get_mutable_vector(
                           prev_td_time_idx_).get_mutable_value();
 
@@ -140,7 +140,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     Vector3d pt_on_swing_foot = (fsm_state(0) == right_stance_) ?
                                 pt_on_left_foot_ : pt_on_right_foot_;
 
-    // Swing foot position (Forward Kinematics) and velocity at touchdown
+    // Swing foot position (Forward Kinematics) at touchdown
     swing_foot_pos_td = tree_.transformPoints(cache,
         pt_on_swing_foot, swing_foot_idx, 0);
   }
@@ -149,9 +149,10 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
 }
 
 
-Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
+void CPTrajGenerator::calcCpAndStanceFootHeight(const Context<double>& context,
     const OutputVector<double>* robot_output,
-    const double end_time_of_this_interval) const {
+    const double end_time_of_this_interval,
+    Vector2d* final_CP, VectorXd* stance_foot_height) const {
   // Read in finite state machine
   const BasicVector<double>* fsm_output = (BasicVector<double>*)
       this->EvalVectorInput(context, fsm_port_);
@@ -214,7 +215,7 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   }
 
   if (is_feet_collision_avoid_) {
-    // Get proximated heading angle of pelvis
+    // Get approximated heading angle of pelvis
     Vector3d pelvis_heading_vec = tree_.CalcBodyPoseInWorldFrame(
         cache, tree_.get_body(pelvis_idx_)).linear().col(0);
     double approx_pelvis_yaw = atan2(
@@ -240,7 +241,9 @@ Vector2d CPTrajGenerator::calculateCapturePoint(const Context<double>& context,
   // Cap by the step length
   CP = ImposeStepLengthGuard(CP, CoM.head(2), max_CoM_to_CP_dist_);
 
-  return CP;
+  // Assignment
+  (*stance_foot_height)(0) = stance_foot_pos(2);
+  *final_CP = CP;
 }
 
 
@@ -248,7 +251,8 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
     const double start_time_of_this_interval,
     const double end_time_of_this_interval,
     const Vector3d & init_swing_foot_pos,
-    const Vector2d & CP) const {
+    const Vector2d & CP,
+    const VectorXd & stance_foot_height) const {
   // Two segment of cubic polynomial with velocity constraints
   std::vector<double> T_waypoint =
       {start_time_of_this_interval,
@@ -266,8 +270,8 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
   Y[2](1, 0) = CP(1);
   // z
   Y[0](2, 0) = init_swing_foot_pos(2);
-  Y[1](2, 0) = mid_foot_height_;
-  Y[2](2, 0) = desired_final_foot_height_;
+  Y[1](2, 0) = mid_foot_height_ + stance_foot_height(0);
+  Y[2](2, 0) = desired_final_foot_height_ + stance_foot_height(0);
 
   std::vector<MatrixXd> Y_dot(T_waypoint.size(), MatrixXd::Zero(3, 1));
   // x
@@ -316,8 +320,10 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   }
 
   // Get Capture Point
-  Vector2d CP = calculateCapturePoint(context, robot_output,
-                                      end_time_of_this_interval);
+  VectorXd stance_foot_height = VectorXd::Zero(1);
+  Vector2d CP(0,0);
+  calcCpAndStanceFootHeight(context, robot_output, end_time_of_this_interval,
+      &CP, &stance_foot_height);
 
   // Swing foot position at touchdown
   Vector3d init_swing_foot_pos = swing_foot_pos_td;
@@ -328,7 +334,8 @@ void CPTrajGenerator::CalcTrajs(const Context<double>& context,
   *casted_traj = createSplineForSwingFoot(start_time_of_this_interval,
                                           end_time_of_this_interval,
                                           init_swing_foot_pos,
-                                          CP);
+                                          CP,
+                                          stance_foot_height);
 }
 }  // namespace systems
 }  // namespace dairlib

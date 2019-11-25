@@ -93,13 +93,7 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   PiecewisePolynomial<double>* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  // *casted_traj = pp;
-  // There is a bug in rotation velocity tracking in OSC currently (dy_des and
-  // ddy_des are 4D not 3D), so we use create a constant position trajectory
-  // below.
-
-  // Temporary solution
-  *casted_traj = PiecewisePolynomial<double>(pelvis_rotation_1);
+   *casted_traj = pp;
 }
 
 }  // namespace osc_walk

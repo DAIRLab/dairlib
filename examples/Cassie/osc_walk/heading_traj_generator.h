@@ -16,7 +16,7 @@ namespace osc_walk {
 /// output of `HeadingTrajGenerator`.
 ///
 /// Input:
-///  - Desired yaw position
+///  - Desired yaw velocity
 ///
 /// Output:
 ///  - A 4D constant polynomial which contains quaterinon's w, x, y and z.

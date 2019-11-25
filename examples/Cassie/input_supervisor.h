@@ -54,6 +54,12 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   void UpdateErrorFlag(const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  // Sets the status bit to the current status
+  // 0b00  if no limits are being applied
+  // 0b01  if velocity has exceeded threshold
+  // 0b10  if actuator limits are being applied
+  // 0b11  if both limits have been exceeded
+  // ob1xx if velocity shutdown has been applied
   void SetStatus(const drake::systems::Context<double>& context,
                  systems::TimestampedVector<double>* output) const;
 

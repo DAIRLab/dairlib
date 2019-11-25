@@ -9,16 +9,18 @@ namespace dairlib {
 using systems::OutputVector;
 using systems::TimestampedVector;
 
-InputSupervisor::InputSupervisor(const RigidBodyTree<double> &tree,
+InputSupervisor::InputSupervisor(const RigidBodyTree<double>& tree,
                                  double max_joint_velocity,
                                  double update_period,
                                  int min_consecutive_failures,
                                  double input_limit)
-    : tree_(tree), num_actuators_(tree_.get_num_actuators()),
+    : tree_(tree),
+      num_actuators_(tree_.get_num_actuators()),
       num_positions_(tree_.get_num_positions()),
       num_velocities_(tree_.get_num_velocities()),
       min_consecutive_failures_(min_consecutive_failures),
-      max_joint_velocity_(max_joint_velocity), input_limit_(input_limit) {
+      max_joint_velocity_(max_joint_velocity),
+      input_limit_(input_limit) {
   // Create input ports
   command_input_port_ =
       this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_))
@@ -45,12 +47,11 @@ InputSupervisor::InputSupervisor(const RigidBodyTree<double> &tree,
                                      &InputSupervisor::UpdateErrorFlag);
 }
 
-void InputSupervisor::SetMotorTorques(const Context<double> &context,
-                                      TimestampedVector<double> *output) const {
-
-  const TimestampedVector<double> *command =
-      (TimestampedVector<double> *)this->EvalVectorInput(context,
-                                                         command_input_port_);
+void InputSupervisor::SetMotorTorques(const Context<double>& context,
+                                      TimestampedVector<double>* output) const {
+  const TimestampedVector<double>* command =
+      (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                        command_input_port_);
 
   bool is_error = context.get_discrete_state(0)[0] >= min_consecutive_failures_;
 
@@ -80,11 +81,11 @@ void InputSupervisor::SetMotorTorques(const Context<double> &context,
   }
 }
 
-void InputSupervisor::SetStatus(const Context<double> &context,
-                                TimestampedVector<double> *output) const {
-  const TimestampedVector<double> *command =
-      (TimestampedVector<double> *)this->EvalVectorInput(context,
-                                                         command_input_port_);
+void InputSupervisor::SetStatus(const Context<double>& context,
+                                TimestampedVector<double>* output) const {
+  const TimestampedVector<double>* command =
+      (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                        command_input_port_);
 
   output->get_mutable_value()(0) = context.get_discrete_state(status_index_)[0];
   if (input_limit_ != std::numeric_limits<double>::max()) {
@@ -106,12 +107,12 @@ void InputSupervisor::SetStatus(const Context<double> &context,
 }
 
 void InputSupervisor::UpdateErrorFlag(
-    const Context<double> &context,
-    DiscreteValues<double> *discrete_state) const {
-  const OutputVector<double> *state =
-      (OutputVector<double> *)this->EvalVectorInput(context, state_input_port_);
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  const OutputVector<double>* state =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
 
-  const Eigen::VectorXd &velocities = state->GetVelocities();
+  const Eigen::VectorXd& velocities = state->GetVelocities();
 
   if ((*discrete_state)[0] < min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
@@ -136,4 +137,4 @@ void InputSupervisor::UpdateErrorFlag(
   }
 }
 
-} // namespace dairlib
+}  // namespace dairlib

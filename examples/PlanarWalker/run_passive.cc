@@ -45,13 +45,13 @@ int do_main(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm;
   auto tree = std::make_unique<RigidBodyTree<double>>();
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "PlanarWalker.urdf",
+      "PlanarWalkerWithTorsoAndFeet.urdf",
       drake::multibody::joints::kFixed, tree.get());
 
-  drake::multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);  
+  drake::multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);
 
 //  manipulation::util::SimDiagramBuilder<double> builder;
-  drake::systems::DiagramBuilder<double> builder;  
+  drake::systems::DiagramBuilder<double> builder;
 
   //auto plant = biulder.template AddSystem<systems::RigidBodyPlant<double>>(std::move(tree));
   //systems::RigidBodyPlant<double>* plant = builder.AddPlant(std::move(tree));
@@ -74,13 +74,13 @@ int do_main(int argc, char* argv[]) {
   model_parameters.v_stiction_tolerance = FLAGS_v_tol;
   plant->set_contact_model_parameters(model_parameters);
 
-  
+
 
   // Creates and adds LCM publisher for visualization.
   //builder.AddVisualizer(&lcm);
-  auto visualizer = builder.AddSystem<drake::systems::DrakeVisualizer>(plant->get_rigid_body_tree(), &lcm);  
+  auto visualizer = builder.AddSystem<drake::systems::DrakeVisualizer>(plant->get_rigid_body_tree(), &lcm);
   // Raw state vector to visualizer.
-  builder.Connect(plant->state_output_port(), visualizer->get_input_port(0));  
+  builder.Connect(plant->state_output_port(), visualizer->get_input_port(0));
 
   auto diagram = builder.Build();
 
@@ -89,30 +89,30 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*plant, &simulator.get_mutable_context());
 
   if (FLAGS_simulation_type != "timestepping") {
-    drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state(); 
+    drake::systems::ContinuousState<double>& state = context.get_mutable_continuous_state();
     std::cout << "Continuous " << state.size() << std::endl;
     state[1] = 1.5;
     state[3] = 1;
     state[4] = 2;
   } else {
     std::cout << "ngroups "<< context.num_discrete_state_groups() <<  std::endl;
-    drake::systems::BasicVector<double>& state = context.get_mutable_discrete_state(0); 
+    drake::systems::BasicVector<double>& state = context.get_mutable_discrete_state(0);
     std::cout << "Discrete " << state.size() << std::endl;
     state[1] = 1;
     state[3] = 1;
-    state[4] = 2;    
+    state[4] = 2;
   }
 
   int num_u = plant->get_num_actuators();
   auto zero_input = Eigen::MatrixXd::Zero(num_u,1);
   context.FixInputPort(0, zero_input);
 
-  
+
 
 
   simulator.set_target_realtime_rate(FLAGS_realtime_factor);
   simulator.Initialize();
-  //simulator.AdvanceTo(10);
+  simulator.AdvanceTo(10);
   return 0;
 }
 

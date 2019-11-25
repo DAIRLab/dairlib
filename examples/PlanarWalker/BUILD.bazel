@@ -4,7 +4,7 @@
 cc_binary(
     name = "run_passive",
     srcs = ["run_passive.cc"],
-    data = ["PlanarWalker.urdf"],
+    data = ["PlanarWalkerWithTorso.urdf"],
     deps = [
         "@drake//:drake_shared_library",
         "@gflags",
@@ -112,6 +112,104 @@ cc_binary(
         ":sgd_iter",
         "//systems/goldilocks_models",
         "//attic/systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "lyapunov_csvs",
+    data = glob(["csv/**"]),
+)
+
+cc_library(
+    name = "create_lyapunov_polynomial",
+    srcs = ["create_lyapunov_polynomial.cc"],
+    hdrs = ["create_lyapunov_polynomial.h"],
+    deps = [
+        "//common",
+        ":lyapunov_csvs",
+        "@drake//common:polynomial",
+    ],
+)
+
+# TODO: Remove this after using the class in a different file
+cc_binary(
+    name = "create_lyapunov_polynomial_test",
+    srcs = ["create_lyapunov_polynomial_test.cc"],
+    deps = ["create_lyapunov_polynomial"],
+)
+
+cc_library(
+    name = "hybrid_system",
+    srcs = ["hybrid_system.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "LIPM_swing_leg",
+    srcs = ["LIPM_swing_leg.cc"],
+    hdrs = ["LIPM_swing_leg.h"],
+    deps = [
+        ":hybrid_system"
+    ],
+)
+
+cc_library(
+    name = "safe_traj_gen",
+    srcs = ["safe_traj_gen.cc"],
+    hdrs = ["safe_traj_gen.h"],
+    deps = [
+        ":create_lyapunov_polynomial",
+        ":LIPM_swing_leg",
+        "//systems/framework:vector",
+        "//attic/multibody:utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "state_based_fsm",
+    srcs = ["state_based_fsm.cc"],
+    hdrs = ["state_based_fsm.h"],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "planar_walker_urdfs",
+    data = glob(["urdf/**"]),
+)
+
+cc_binary(
+    name = "run_osc_balancing_controller",
+    srcs = ["run_osc_balancing_controller.cc"],
+    deps = [
+        ":planar_walker_urdfs",
+        ":state_based_fsm",
+        ":safe_traj_gen",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//systems/controllers/osc:operational_space_control",
+        "//attic/multibody:utils",
+        "//multibody:utils",
+        "@gflags",
+        "@drake//:drake_shared_library",
+        ]
+)
+
+cc_binary(
+    name = "run_simple_sim",
+    srcs = ["run_simple_sim.cc"],
+    deps = [
+        "//attic/multibody:multibody_solvers",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

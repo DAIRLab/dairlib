@@ -21,7 +21,7 @@
 #include "attic/multibody/rigidbody_utils.h"
 
 #include "examples/Cassie/osc_walk/deviation_from_cp.h"
-#include "examples/Cassie/osc_walk/human_command.h"
+#include "examples/Cassie/osc_walk/high_level_command.h"
 #include "examples/Cassie/osc_walk/heading_traj_generator.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
@@ -112,12 +112,12 @@ int DoMain(int argc, char* argv[]) {
   // The function ouputs 0.0007 when x = 0
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
-  auto human_command =
-      builder.AddSystem<cassie::osc_walk::HumanCommand>(
+  auto high_level_command =
+      builder.AddSystem<cassie::osc_walk::HighLevelCommand>(
           tree_with_springs, pelvis_idx,
           global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
-                  human_command->get_state_input_port());
+                  high_level_command->get_state_input_port());
 
   // Create heading traj generator
   auto head_traj_gen =
@@ -125,7 +125,7 @@ int DoMain(int argc, char* argv[]) {
           tree_with_springs, pelvis_idx);
   builder.Connect(state_receiver->get_output_port(0),
                   head_traj_gen->get_state_input_port());
-  builder.Connect(human_command->get_yaw_output_port(),
+  builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
 
   // Create finite state machine
@@ -157,7 +157,7 @@ int DoMain(int argc, char* argv[]) {
   auto deviation_from_cp =
       builder.AddSystem<cassie::osc_walk::DeviationFromCapturePoint>(
         tree_with_springs, pelvis_idx);
-  builder.Connect(human_command->get_xy_output_port(),
+  builder.Connect(high_level_command->get_xy_output_port(),
                   deviation_from_cp->get_input_port_des_hor_vel());
   builder.Connect(state_receiver->get_output_port(0),
                   deviation_from_cp->get_input_port_state());

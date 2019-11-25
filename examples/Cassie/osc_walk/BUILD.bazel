@@ -7,7 +7,7 @@ cc_library(
     deps = [
         "//examples/Cassie/osc_walk:deviation_from_cp",
         "//examples/Cassie/osc_walk:heading_traj_generator",
-        "//examples/Cassie/osc_walk:human_command",
+        "//examples/Cassie/osc_walk:high_level_command",
         "//systems/controllers:cp_traj_gen",
         "//systems/controllers:lipm_traj_gen",
         "//systems/controllers:time_based_fsm",
@@ -27,9 +27,9 @@ cc_library(
 )
 
 cc_library(
-    name = "human_command",
-    srcs = ["human_command.cc"],
-    hdrs = ["human_command.h"],
+    name = "high_level_command",
+    srcs = ["high_level_command.cc"],
+    hdrs = ["high_level_command.h"],
     deps = [
         "//attic/multibody:utils",
         "//systems/controllers:control_utils",

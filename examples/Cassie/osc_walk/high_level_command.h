@@ -10,7 +10,7 @@ namespace dairlib {
 namespace cassie {
 namespace osc_walk {
 
-/// `HumanCommand` calculates desired velocity (~in local frame) and desired
+/// `HighLevelCommand` calculates desired velocity (~in local frame) and desired
 /// horizontal velocity (in local frame) of Cassie's pelvis.
 ///
 /// Control philosophy for yaw angle:
@@ -36,9 +36,9 @@ namespace osc_walk {
 ///
 /// Assumption: the roll and pitch angles are close to 0.
 /// Requirement: quaternion floating-based Cassie only
-class HumanCommand : public drake::systems::LeafSystem<double> {
+class HighLevelCommand : public drake::systems::LeafSystem<double> {
  public:
-  HumanCommand(const RigidBodyTree<double>& tree, int pelvis_idx,
+  HighLevelCommand(const RigidBodyTree<double>& tree, int pelvis_idx,
                const Eigen::Vector2d& global_target_position,
                const Eigen::Vector2d& params_of_no_turning);
 

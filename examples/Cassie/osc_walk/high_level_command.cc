@@ -1,4 +1,4 @@
-#include "examples/Cassie/osc_walk/human_command.h"
+#include "examples/Cassie/osc_walk/high_level_command.h"
 
 #include <math.h>
 #include <string>
@@ -33,7 +33,7 @@ namespace dairlib {
 namespace cassie {
 namespace osc_walk {
 
-HumanCommand::HumanCommand(const RigidBodyTree<double>& tree, int pelvis_idx,
+HighLevelCommand::HighLevelCommand(const RigidBodyTree<double>& tree, int pelvis_idx,
                            const Vector2d& global_target_position,
                            const Vector2d& params_of_no_turning)
     : tree_(tree),
@@ -47,15 +47,15 @@ HumanCommand::HumanCommand(const RigidBodyTree<double>& tree, int pelvis_idx,
                         tree.get_num_actuators()))
                     .get_index();
   yaw_port_ = this->DeclareVectorOutputPort(BasicVector<double>(1),
-                                            &HumanCommand::CopyHeadingAngle)
+                                            &HighLevelCommand::CopyHeadingAngle)
                   .get_index();
   xy_port_ =
       this->DeclareVectorOutputPort(BasicVector<double>(2),
-                                    &HumanCommand::CopyDesiredHorizontalVel)
+                                    &HighLevelCommand::CopyDesiredHorizontalVel)
           .get_index();
 
   // Declare update event
-  DeclarePerStepDiscreteUpdateEvent(&HumanCommand::DiscreteVariableUpdate);
+  DeclarePerStepDiscreteUpdateEvent(&HighLevelCommand::DiscreteVariableUpdate);
 
   // Discrete state which stores previous timestamp
   prev_time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
@@ -67,7 +67,7 @@ HumanCommand::HumanCommand(const RigidBodyTree<double>& tree, int pelvis_idx,
   des_horizontal_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(2));
 }
 
-EventStatus HumanCommand::DiscreteVariableUpdate(
+EventStatus HighLevelCommand::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   double current_time = context.get_time();
@@ -186,7 +186,7 @@ EventStatus HumanCommand::DiscreteVariableUpdate(
   return EventStatus::Succeeded();
 }
 
-void HumanCommand::CopyHeadingAngle(const Context<double>& context,
+void HighLevelCommand::CopyHeadingAngle(const Context<double>& context,
                                     BasicVector<double>* output) const {
   double desried_heading_pos =
       context.get_discrete_state(des_yaw_vel_idx_).get_value()(0);
@@ -195,7 +195,7 @@ void HumanCommand::CopyHeadingAngle(const Context<double>& context,
   output->get_mutable_value() << desried_heading_pos;
 }
 
-void HumanCommand::CopyDesiredHorizontalVel(const Context<double>& context,
+void HighLevelCommand::CopyDesiredHorizontalVel(const Context<double>& context,
                                             BasicVector<double>* output) const {
   auto delta_CP_3D_global =
       context.get_discrete_state(des_horizontal_vel_idx_).get_value();

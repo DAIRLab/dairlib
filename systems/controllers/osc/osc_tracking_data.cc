@@ -70,7 +70,7 @@ bool OscTrackingData::Update(VectorXd x_w_spr,
     UpdateJdotV(x_wo_spr, cache_wo_spr);
 
     // Update command output (desired output with pd control)
-    ddy_command_ = ddy_des_ + K_p_ * (error_y_) + K_d_ * (error_dy_);
+    ddy_command_ = ddy_des_converted_ + K_p_ * (error_y_) + K_d_ * (error_dy_);
 
     return track_at_current_step_;
   }
@@ -103,6 +103,7 @@ void OscTrackingData::PrintFeedbackAndDesiredValues(VectorXd dv) {
   cout << "  dy_des = " << dy_des_.transpose() << endl;
   cout << "  error_dy_ = " << error_dy_.transpose() << endl;
   cout << "  ddy_des = " << ddy_des_.transpose() << endl;
+  cout << "  ddy_des_converted = " << ddy_des_converted_.transpose() << endl;
   cout << "  ddy_command = " << ddy_command_.transpose() << endl;
   cout << "  ddy_command_sol = " << (J_ * dv + JdotV_).transpose() << endl;
 }

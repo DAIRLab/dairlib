@@ -112,17 +112,20 @@ int DoMain(int argc, char* argv[]) {
   // The function ouputs 0.0007 when x = 0
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
-  auto humand_command =
+  auto human_command =
       builder.AddSystem<cassie::osc_walk::HumanCommand>(
           tree_with_springs, pelvis_idx,
           global_target_position, params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
-                  humand_command->get_state_input_port());
+                  human_command->get_state_input_port());
 
   // Create heading traj generator
   auto head_traj_gen =
-      builder.AddSystem<cassie::osc_walk::HeadingTrajGenerator>();
-  builder.Connect(humand_command->get_yaw_output_port(),
+      builder.AddSystem<cassie::osc_walk::HeadingTrajGenerator>(
+          tree_with_springs, pelvis_idx);
+  builder.Connect(state_receiver->get_output_port(0),
+                  head_traj_gen->get_state_input_port());
+  builder.Connect(human_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
 
   // Create finite state machine
@@ -154,7 +157,7 @@ int DoMain(int argc, char* argv[]) {
   auto deviation_from_cp =
       builder.AddSystem<cassie::osc_walk::DeviationFromCapturePoint>(
         tree_with_springs, pelvis_idx);
-  builder.Connect(humand_command->get_xy_output_port(),
+  builder.Connect(human_command->get_xy_output_port(),
                   deviation_from_cp->get_input_port_des_hor_vel());
   builder.Connect(state_receiver->get_output_port(0),
                   deviation_from_cp->get_input_port_state());

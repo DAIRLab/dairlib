@@ -10,10 +10,8 @@ namespace dairlib {
 namespace cassie {
 namespace osc_walk {
 
-/// `HumanCommand` calculates desired rotation (in global frame) and desired
+/// `HumanCommand` calculates desired velocity (~in local frame) and desired
 /// horizontal velocity (in local frame) of Cassie's pelvis.
-///
-/// The desired angles are 0's for pitch and roll.
 ///
 /// Control philosophy for yaw angle:
 ///   If the current center of mass (com) position is close to the target
@@ -27,15 +25,16 @@ namespace osc_walk {
 /// Logistic function = 1 / (1 - params_1*exp(x-params_2))
 /// Function visualization: https://www.desmos.com/calculator/agxuc5gip8
 ///
-/// The horizontal velocity is based on PD position control.
+/// The desired velocities are derived based on PD position control.
 ///
 /// Input:
 ///  - State of the robot
 ///
 /// Output:
-///  - Desired yaw angle (a 1D Vector).
+///  - Desired yaw velocity (a 1D Vector).
 ///  - Desired horizontal velocity (a 2D Vector).
 ///
+/// Assumption: the roll and pitch angles are close to 0.
 /// Requirement: quaternion floating-based Cassie only
 class HumanCommand : public drake::systems::LeafSystem<double> {
  public:
@@ -78,17 +77,23 @@ class HumanCommand : public drake::systems::LeafSystem<double> {
 
   // Indices for the discrete states of this leafsystem
   drake::systems::DiscreteStateIndex prev_time_idx_;
-  drake::systems::DiscreteStateIndex des_yaw_idx_;
+  drake::systems::DiscreteStateIndex des_yaw_vel_idx_;
   drake::systems::DiscreteStateIndex des_horizontal_vel_idx_;
 
-  // Foot placement control (Sagital) parameters
+  // Rotation control (yaw) parameters
+  double kp_yaw_ = 1;
+  double kd_yaw_ = 0.2;
+  double vel_max_yaw_ = 0.5;
+  double vel_min_yaw_ = -0.5;
+
+  // Position control (sagital plane) parameters
   double kp_pos_sagital_ = 1.0;
   double kd_pos_sagital_ = 0.2;
   double vel_max_sagital_ = 1;
   double vel_min_sagital_ = -1;       // TODO(yminchen): need to test this
   double target_pos_offset_ = -0.16;  // Due to steady state error
 
-  // Foot placement control (Lateral) parameters
+  // Position control (frontal plane) parameters
   double kp_pos_lateral_ = 0.5;
   double kd_pos_lateral_ = 0.1;
   double vel_max_lateral_ = 0.5;

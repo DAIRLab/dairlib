@@ -161,7 +161,13 @@ int DoMain(int argc, char* argv[]) {
 
   // Create swing leg trajectory generator (capture point)
   double mid_foot_height = 0.1;
-  double desired_final_foot_height = 0;//-0.05;
+  // Since the ground is soft in the simulation, we raise the desired final
+  // foot height by 1 cm. The controller is sensitive to this number, should
+  // tune this every time we change the simulation parameter or when we move
+  // to the hardware testing.
+  // Additionally, implementing a double support phase might mitigate the
+  // instability around state transition.
+  double desired_final_foot_height = 0.01;
   double desired_final_vertical_foot_velocity = 0;//-1;
   double max_CoM_to_CP_dist = 0.4;
   double cp_offset = 0.06;

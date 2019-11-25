@@ -1,7 +1,3 @@
-//
-// Created by yangwill on 11/15/19.
-//
-
 #include "simulator_drift.h"
 
 using dairlib::systems::OutputVector;

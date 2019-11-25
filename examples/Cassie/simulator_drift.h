@@ -1,34 +1,12 @@
-//
-// Created by yangwill on 11/15/19.
-//
 #pragma once
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "common/find_resource.h"
-#include "drake/math/autodiff_gradient.h"
-#include "drake/multibody/joints/revolute_joint.h"
-#include "drake/multibody/parsers/urdf_parser.h"
-#include "drake/multibody/plant/multibody_plant.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/solvers/constraint.h"
-#include "drake/solvers/mathematical_program.h"
-
-#include "drake/multibody/rigid_body_tree_construction.h"
-
-#include "systems/primitives/subvector_pass_through.h"
-#include "systems/robot_lcm_systems.h"
-#include "drake/lcm/drake_lcm.h"
-#include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
-
-#include "systems/sensors/sim_cassie_sensor_aggregator.h"
-#include "drake/systems/sensors/accelerometer.h"
-#include "drake/systems/sensors/gyroscope.h"
+#include "drake/multibody/rigid_body_tree.h"
+#include "drake/systems/framework/leaf_system.h"
+#include "systems/framework/output_vector.h"
 
 class SimulatorDrift : public drake::systems::LeafSystem<double> {
  public:

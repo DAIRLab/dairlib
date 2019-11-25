@@ -33,8 +33,8 @@ namespace trajectory_optimization {
 /// and corresponding acceleration, velocity, and position constraints.
 
 template <typename T>
-class HybridDircon :
-    public drake::systems::trajectory_optimization::MultipleShooting {
+class HybridDircon
+    : public drake::systems::trajectory_optimization::MultipleShooting {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(HybridDircon)
 
@@ -70,15 +70,17 @@ class HybridDircon :
   /// @param traj_init_l contact forces lambda (interpreted at knot points)
   /// @param traj_init_lc contact forces (interpretted at collocation points)
   /// @param traj_init_vc velocity constraint slack variables (at collocation)
-  void SetInitialForceTrajectory(int mode,
+  void SetInitialForceTrajectory(
+      int mode,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_l,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_lc,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_vc);
 
-
-
   int num_kinematic_constraints(int mode) const {
     return num_kinematic_constraints_[mode];
+  }
+  int num_kinematic_constraints_wo_skipping(int mode) const {
+    return num_kinematic_constraints_wo_skipping_[mode];
   }
 
   const drake::solvers::VectorXDecisionVariable& force_vars(int mode) const {
@@ -89,33 +91,41 @@ class HybridDircon :
     return offset_vars_[mode];
   }
 
-  const drake::solvers::VectorXDecisionVariable& collocation_force_vars(int mode)
-      const { return collocation_force_vars_[mode]; }
+  const drake::solvers::VectorXDecisionVariable& collocation_force_vars(int mode) const {
+    return collocation_force_vars_[mode];
+  }
 
-  const drake::solvers::VectorXDecisionVariable& collocation_slack_vars(int mode)
-      const { return collocation_slack_vars_[mode]; }
+  const drake::solvers::VectorXDecisionVariable& collocation_slack_vars(int mode) const {
+    return collocation_slack_vars_[mode];
+  }
+
+  const drake::solvers::VectorXDecisionVariable& quaternion_slack_vars(int mode) const {
+    return quaternion_slack_vars_[mode];
+  }
 
   const drake::solvers::VectorXDecisionVariable& v_post_impact_vars() const {
     return v_post_impact_vars_;
   }
 
-  const drake::solvers::VectorXDecisionVariable& impulse_vars(int mode)
-      const { return impulse_vars_[mode]; }
+  const drake::solvers::VectorXDecisionVariable& impulse_vars(int mode) const {
+    return impulse_vars_[mode];
+  }
 
   const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
-      v_post_impact_vars_by_mode(int mode) const;
+  v_post_impact_vars_by_mode(int mode) const;
 
   /// Get the state decision variables given a mode and a time_index
   /// (time_index is w.r.t that particular mode). This will use the
   ///  v_post_impact_vars_ if needed. Otherwise, it just returns the standard
   /// x_vars element
   drake::solvers::VectorXDecisionVariable state_vars_by_mode(int mode,
-      int time_index) const;
+                                                             int time_index) const;
 
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable> force(
-        int mode, int index) const {
-    return force_vars_[mode].segment(index * num_kinematic_constraints_[mode],
-                                     num_kinematic_constraints_[mode]);
+      int mode, int index) const {
+    return force_vars_[mode].segment(
+        index * num_kinematic_constraints_wo_skipping_[mode],
+        num_kinematic_constraints_wo_skipping_[mode]);
   }
 
   drake::VectorX<drake::symbolic::Expression> SubstitutePlaceholderVariables(
@@ -140,7 +150,9 @@ class HybridDircon :
   std::vector<drake::solvers::VectorXDecisionVariable> collocation_slack_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> offset_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> impulse_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> quaternion_slack_vars_;
   std::vector<int> num_kinematic_constraints_;
+  std::vector<int> num_kinematic_constraints_wo_skipping_;
 };
 
 }  // namespace trajectory_optimization

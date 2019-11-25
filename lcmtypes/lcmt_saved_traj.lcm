@@ -1,0 +1,13 @@
+package dairlib;
+
+/*  lcmtype analog for LcmTrajectory to enable using a LcmSerializer to 
+    save/load trajectories
+*/
+
+struct lcmt_saved_traj
+{
+  lcmt_metadata metadata;
+  int32_t num_trajectories;
+  lcmt_trajectory_block trajectories[num_trajectories];
+  string trajectory_names[num_trajectories];
+}

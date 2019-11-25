@@ -66,6 +66,16 @@ cc_binary(
     ],
 )
 
+cc_library(
+  name = "input_supervisor",
+  srcs = ["input_supervisor.cc"],
+  hdrs = ["input_supervisor.h"],
+  deps = [
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "run_pd_controller",
     srcs = ["run_pd_controller.cc"],
@@ -193,6 +203,7 @@ cc_binary(
           ":cassie_utils",
           ":cassie_rbt_state_estimator",
           ":cassie_urdf",
+          ":input_supervisor",
           "@gflags",
          ],
 )
@@ -292,3 +303,22 @@ cc_binary(
         "@gflags",
         ],
 )
+
+
+cc_binary(
+    name = "run_dircon_squatting",
+    srcs = ["run_dircon_squatting.cc"],
+    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    deps = [
+        ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
+        "//common",
+        "//systems/primitives",
+        "//systems/goldilocks_models",
+        "//systems/trajectory_optimization:dircon",
+        "//solvers:optimization_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+

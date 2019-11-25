@@ -248,6 +248,21 @@ bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
   return joints_within_limits;
 }
 
+
+
+bool isQuaternion(const drake::multibody::MultibodyPlant<double>& plant) {
+  auto unordered_index_set = plant.GetFloatingBaseBodies();
+  if (unordered_index_set.empty()) {
+    return false;
+  }
+
+  auto first_body_idx = unordered_index_set.begin();
+  return plant.get_body(*first_body_idx).has_quaternion_dofs();
+}
+
+
+
+
 template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT

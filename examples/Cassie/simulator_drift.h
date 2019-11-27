@@ -8,6 +8,11 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
 
+
+/// SimulatorDrift emulates drift in the position data by executing a 
+/// random walk governed by the drift rate mean/covariance in m/s
+/// mean/covariance must be of the same size as the number of n_positions/
+/// n_positions x n_positions.
 class SimulatorDrift : public drake::systems::LeafSystem<double> {
  public:
   SimulatorDrift(const RigidBodyTree<double>& tree,

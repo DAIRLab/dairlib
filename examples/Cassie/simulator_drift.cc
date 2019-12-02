@@ -56,4 +56,6 @@ void SimulatorDrift::CalcAdjustedState(
 
   output->GetMutablePositions() << robotOutput->GetPositions() + 
                                     accumulated_drift;
+  output->SetVelocities(robotOutput->GetVelocities());
+  output->SetEfforts(robotOutput->GetEfforts());
 }

@@ -114,13 +114,11 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
 
     // Get current yaw velocity
     double yaw_vel = v(2);
-    std::cout << "yaw_vel = " << yaw_vel << std::endl;
 
     // PD position control
     double des_yaw_vel =
         kp_yaw_ * (desired_yaw - approx_pelvis_yaw) + kd_yaw_ * (-yaw_vel);
     des_yaw_vel = std::min(vel_max_yaw_, std::max(vel_min_yaw_, des_yaw_vel));
-    std::cout << "des_yaw_vel = " << des_yaw_vel << std::endl;
 
     // Weigh between the desired yaw vel and 0 vel
     double weight = 1 / (1 + exp(-params_of_no_turning_(0) *

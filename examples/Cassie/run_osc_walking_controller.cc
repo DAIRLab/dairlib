@@ -112,11 +112,11 @@ int DoMain(int argc, char* argv[]) {
   Eigen::MatrixXd drift_cov =
       Eigen::MatrixXd::Zero(tree_with_springs.get_num_positions(),
                             tree_with_springs.get_num_positions());
+  drift_cov(0, 0) = FLAGS_drift_rate;  // x
+  drift_cov(1, 1) = FLAGS_drift_rate;  // y
   drift_cov(2, 2) = FLAGS_drift_rate;  // z
-  drift_cov(3, 3) = FLAGS_drift_rate;  // qw
-  drift_cov(4, 4) = FLAGS_drift_rate;  // qx
-  drift_cov(5, 5) = FLAGS_drift_rate;  // qy
-  drift_cov(6, 6) = FLAGS_drift_rate;  // qz
+  // Note that we didn't add drift to yaw angle here because it requires
+  // changing SimulatorDrift.
 
   auto simulator_drift = builder.AddSystem<SimulatorDrift>(
       tree_with_springs, drift_mean, drift_cov);

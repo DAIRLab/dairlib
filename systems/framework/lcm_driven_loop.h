@@ -58,39 +58,40 @@ class LcmDrivenLoop {
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::LeafSystem<double>* lcm_parser,
                 const std::string& input_channel)
-      : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser) {
-    is_multiple_inputs_ = false;
-
-    // Create subscribers for inputs
-    std::cout << "Constructing subscriber for " << input_channel << std::endl;
-    name_to_input_sub_map_.insert(std::make_pair(
-        input_channel,
-        drake::lcm::Subscriber<InputMessageType>(drake_lcm_, input_channel)));
-
-    active_channel_ = input_channel;
-  };
+      : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
+                      std::vector<std::string>(1, input_channel), input_channel,
+                      ""){};
 
   /// Constructor for multi-input LcmDrivenLoop
   ///     @param drake_lcm DrakeLcm
   ///     @param diagram A Drake diagram
   ///     @param lcm_parser The LeafSystem of the diagram that parses the
   ///     incoming lcm message
-  ///     @param switch_channel The name of the switch channel
   ///     @param input_channels The names of the input channels
   ///     @param active_channel The name of the initial active input channel
+  ///     @param switch_channel The name of the switch channel
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::LeafSystem<double>* lcm_parser,
-                const std::string& switch_channel,
                 std::vector<std::string> input_channels,
-                const std::string& active_channel)
-      : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser) {
-    DRAKE_DEMAND(!input_channels.empty());
-    is_multiple_inputs_ = true;
+                const std::string& active_channel,
+                const std::string& switch_channel)
+      : drake_lcm_(drake_lcm), lcm_parser_(lcm_parser) {
+    // Move simulator
+    if (!diagram->get_name().empty()) {
+      diagram_name_ = diagram->get_name();
+    }
+    diagram_ptr_ = diagram.get();
+    simulator_ =
+        std::make_unique<drake::systems::Simulator<double>>(std::move(diagram));
 
-    // Create subscriber for the switch
-    switch_sub_ = std::make_unique<drake::lcm::Subscriber<SwitchMessageType>>(
-        drake_lcm_, switch_channel);
+    // Create subscriber for the switch (in the case of multi-input)
+    DRAKE_DEMAND(!input_channels.empty());
+    if (input_channels.size() > 1) {
+      DRAKE_DEMAND(!switch_channel.empty());
+      switch_sub_ = std::make_unique<drake::lcm::Subscriber<SwitchMessageType>>(
+          drake_lcm_, switch_channel);
+    }
 
     // Create subscribers for inputs
     for (const auto& name : input_channels) {
@@ -99,7 +100,17 @@ class LcmDrivenLoop {
           name, drake::lcm::Subscriber<InputMessageType>(drake_lcm_, name)));
     }
 
-    // Default initial active channel
+    // Make sure input_channels contains active_channel, and then set initial
+    // active channel
+    bool is_name_match = false;
+    for (const auto& name : input_channels) {
+      if (name.compare(active_channel) == 0) {
+        is_name_match = true;
+        break;
+      }
+    }
+    DRAKE_DEMAND(is_name_match);
+
     active_channel_ = active_channel;
   };
 
@@ -132,7 +143,7 @@ class LcmDrivenLoop {
     // Run the simulation until end_time
     while (time < end_time) {
       // Update the name of the active channel if there are multiple inputs
-      if (is_multiple_inputs_) {
+      if (switch_sub_ != nullptr) {
         if (switch_sub_->count() > 0) {
           // Check if the channel name is a key of the map. If it is, we update
           // the active channel name and clear switch_sub_'s message. If it is
@@ -186,19 +197,6 @@ class LcmDrivenLoop {
   };
 
  private:
-  LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
-                std::unique_ptr<drake::systems::Diagram<double>> diagram,
-                const drake::systems::LeafSystem<double>* lcm_parser)
-      : drake_lcm_(drake_lcm), lcm_parser_(lcm_parser) {
-    if (!diagram->get_name().empty()) {
-      diagram_name_ = diagram->get_name();
-    }
-
-    diagram_ptr_ = diagram.get();
-    simulator_ =
-        std::make_unique<drake::systems::Simulator<double>>(std::move(diagram));
-  };
-
   drake::lcm::DrakeLcm* drake_lcm_;
   drake::systems::Diagram<double>* diagram_ptr_;
   const drake::systems::LeafSystem<double>* lcm_parser_;
@@ -206,11 +204,10 @@ class LcmDrivenLoop {
 
   std::string diagram_name_ = "diagram";
   std::string active_channel_;
-  std::unique_ptr<drake::lcm::Subscriber<SwitchMessageType>> switch_sub_;
+  std::unique_ptr<drake::lcm::Subscriber<SwitchMessageType>> switch_sub_ =
+      nullptr;
   std::map<std::string, drake::lcm::Subscriber<InputMessageType>>
       name_to_input_sub_map_;
-
-  bool is_multiple_inputs_ = false;
 };
 
 }  // namespace systems

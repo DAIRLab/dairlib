@@ -138,9 +138,9 @@ int do_main(int argc, char* argv[]) {
       (&lcm_local,
        std::move(owned_diagram),
        command_receiver,
-       switch_channel,
        input_channels,
-       FLAGS_control_channel_name_1);
+       FLAGS_control_channel_name_1,
+       switch_channel);
   loop.Simulate();
 
   return 0;

@@ -159,14 +159,26 @@ class LcmDrivenLoop {
       }
 
       // Wait for an InputMessageType message.
+      bool is_new_input_message = false;
+      bool is_new_switch_message = false;
       name_to_input_sub_map_.at(active_channel_).clear();
       LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
-        return (name_to_input_sub_map_.at(active_channel_).count() > 0);
+        if (name_to_input_sub_map_.at(active_channel_).count() > 0) {
+          is_new_input_message = true;
+        }
+        if (switch_sub_ != nullptr) {
+          if (switch_sub_->count() > 0) {
+            is_new_switch_message = true;
+          }
+        }
+        return is_new_input_message || is_new_switch_message;
       });
 
       // Write the InputMessageType message into the context.
-      input_value.GetMutableData()->set_value(
-          name_to_input_sub_map_.at(active_channel_).message());
+      if (is_new_input_message) {
+        input_value.GetMutableData()->set_value(
+            name_to_input_sub_map_.at(active_channel_).message());
+      }
 
       // Get message time from the active channel to advance
       message_time =

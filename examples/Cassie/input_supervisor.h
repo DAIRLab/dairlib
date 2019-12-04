@@ -1,9 +1,9 @@
 #pragma once
 #include <limits>
 
+#include "systems/framework/timestamped_vector.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
 
@@ -34,39 +34,48 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // @param input_limit (default = inf) to threshold all commands
   // If necessary, the max_joint_velocity and input_limit could be
   // replaced with a joint-specific vectors.
-  explicit InputSupervisor(const RigidBodyTree<double>& tree,
-      double max_joint_velocity, double update_period,
-      int min_consecutive_failures = 1,
+  explicit InputSupervisor(
+      const RigidBodyTree<double>& tree, double max_joint_velocity,
+      double update_period, int min_consecutive_failures = 1,
       double input_limit = std::numeric_limits<double>::max());
 
-  const drake::systems::InputPort<double>& get_input_port_command()
-      const {
+  const drake::systems::InputPort<double>& get_input_port_command() const {
     return this->get_input_port(command_input_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_state()
-      const {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_);
   }
 
- private:
   void SetMotorTorques(const drake::systems::Context<double>& context,
-    systems::TimestampedVector<double>* output) const;
+                       systems::TimestampedVector<double>* output) const;
+  void UpdateErrorFlag(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  void UpdateErrorFlag(const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double>* discrete_state) const;
+  // Sets the status bit to the current status
+  // 0b00  if no limits are being applied
+  // 0b01  if velocity has exceeded threshold
+  // 0b10  if actuator limits are being applied
+  // 0b11  if both limits have been exceeded
+  // ob1xx if velocity shutdown has been applied
+  void SetStatus(const drake::systems::Context<double>& context,
+                 systems::TimestampedVector<double>* output) const;
 
+ private:
   const RigidBodyTree<double>& tree_;
   const int num_actuators_;
   const int num_positions_;
   const int num_velocities_;
   const int min_consecutive_failures_;
   double max_joint_velocity_;
+
   double input_limit_;
+  int n_consecutive_fails_index_;
+  int status_index_;
   int state_input_port_;
+
   int command_input_port_;
-
 };
-
 
 }  // namespace dairlib

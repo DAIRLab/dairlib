@@ -142,6 +142,19 @@ class LcmDrivenLoop {
 
     drake::log()->info(diagram_name_ + " started");
     // Run the simulation until end_time
+    /// Structure of the code:
+    ///  While() {
+    ///    Wait for new InputMessageType and SwitchMessageType.
+    ///
+    ///    if(there is new InputMessageType message) {
+    ///      Update diagram context and advance time.
+    ///    }
+    ///
+    ///    if(there is new SwitchMessageType message) {
+    ///      Update active input channel name.
+    ///      Clear message in new active input channel.
+    ///    }
+    ///  }
     while (time < end_time) {
       // Wait for new InputMessageType messages and SwitchMessageType messages.
       bool is_new_input_message = false;

@@ -138,30 +138,14 @@ class LcmDrivenLoop {
     // "Simulator" time
     double time = 0;  // initialize the current time with 0
     double message_time;
+    std::string previous_active_channel_name = active_channel_;
 
     drake::log()->info(diagram_name_ + " started");
     // Run the simulation until end_time
     while (time < end_time) {
-      // Update the name of the active channel if there are multiple inputs
-      if (switch_sub_ != nullptr) {
-        if (switch_sub_->count() > 0) {
-          // Check if the channel name is a key of the map. If it is, we update
-          // the active channel name and clear switch_sub_'s message. If it is
-          // not we do not update the active channel name.
-          if (name_to_input_sub_map_.count(switch_sub_->message().channel) ==
-              1) {
-            active_channel_ = switch_sub_->message().channel;
-          } else {
-            std::cout << switch_sub_->message().channel << " doesn't exist\n";
-          }
-          switch_sub_->clear();
-        }
-      }
-
       // Wait for new InputMessageType messages and SwitchMessageType messages.
       bool is_new_input_message = false;
       bool is_new_switch_message = false;
-      name_to_input_sub_map_.at(active_channel_).clear();
       LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
         if (name_to_input_sub_map_.at(active_channel_).count() > 0) {
           is_new_input_message = true;
@@ -183,9 +167,9 @@ class LcmDrivenLoop {
         // Get message time from the active channel to advance
         message_time =
             name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
-        // We cap the time from below just in case after we switch to a different
-        // input channel, the message time from the new channel is smaller then
-        // the current diagram time
+        // We cap the time from below just in case after we switch to a
+        // different input channel, the message time from the new channel is
+        // smaller then the current diagram time
         if (message_time >= time) {
           time = message_time;
         }
@@ -198,14 +182,41 @@ class LcmDrivenLoop {
                     << simulator_->get_context().get_time()
                     << ", but stepping to " << time << std::endl;
           std::cout << "Difference is too large, resetting " + diagram_name_ +
-              " time.\n";
+                           " time.\n";
           simulator_->get_mutable_context().SetTime(time);
         }
 
         simulator_->AdvanceTo(time);
         // Force-publish via the diagram
         diagram_ptr_->Publish(diagram_context);
+
+        // Clear messages in the current input channel
+        name_to_input_sub_map_.at(active_channel_).clear();
       }
+
+      // Update the name of the active channel if there are multiple inputs and
+      // there is new switch message
+      if (is_new_switch_message) {
+        // Check if the channel name is a key of the map. If it is, we update
+        // the active channel name and clear switch_sub_'s message. If it is
+        // not we do not update the active channel name.
+        if (name_to_input_sub_map_.count(switch_sub_->message().channel) == 1) {
+          active_channel_ = switch_sub_->message().channel;
+        } else {
+          std::cout << switch_sub_->message().channel << " doesn't exist\n";
+        }
+
+        // Clear messages in the switch channel
+        name_to_input_sub_map_.at(active_channel_).clear();
+        switch_sub_->clear();
+
+        // Clear messages in the new input channel if we just switched input
+        // channel in the current loop
+        if (previous_active_channel_name.compare(active_channel_) != 0) {
+          name_to_input_sub_map_.at(active_channel_).clear();
+        }
+      }
+      previous_active_channel_name = active_channel_;
     }
   };
 

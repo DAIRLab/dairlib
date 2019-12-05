@@ -138,9 +138,9 @@ class LcmDrivenLoop {
     // "Simulator" time
     double time = 0;  // initialize the current time with 0
     double message_time;
+    // Variable needed for the driven loop
     std::string previous_active_channel_name = active_channel_;
 
-    drake::log()->info(diagram_name_ + " started");
     // Run the simulation until end_time
     /// Structure of the code:
     ///  While() {
@@ -155,6 +155,7 @@ class LcmDrivenLoop {
     ///      Clear message in new active input channel.
     ///    }
     ///  }
+    drake::log()->info(diagram_name_ + " started");
     while (time < end_time) {
       // Wait for new InputMessageType messages and SwitchMessageType messages.
       bool is_new_input_message = false;

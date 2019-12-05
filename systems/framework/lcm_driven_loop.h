@@ -148,11 +148,15 @@ class LcmDrivenLoop {
     ///
     ///    if(there is new InputMessageType message) {
     ///      Update diagram context and advance time.
+    ///      Clear input channel messages.
     ///    }
     ///
     ///    if(there is new SwitchMessageType message) {
     ///      Update active input channel name.
-    ///      Clear message in new active input channel.
+    ///      Clear switch channel messages.
+    ///      if(switch to a new input channel) {
+    ///         Clear message in new active input channel.
+    ///      }
     ///    }
     ///  }
     drake::log()->info(diagram_name_ + " started");

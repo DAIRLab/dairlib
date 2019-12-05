@@ -25,18 +25,21 @@ InputSupervisor::InputSupervisor(const RigidBodyTree<double>& tree,
   command_input_port_ =
       this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_))
           .get_index();
-  state_input_port_ = this
-                          ->DeclareVectorInputPort(OutputVector<double>(
+  state_input_port_ = this->DeclareVectorInputPort(OutputVector<double>(
                               num_positions_, num_velocities_, num_actuators_))
                           .get_index();
 
-  // Create output port
-  this->DeclareVectorOutputPort(TimestampedVector<double>(num_actuators_),
-                                &InputSupervisor::SetMotorTorques);
+  // Create output port for commands
+  command_output_port_ =
+      this->DeclareVectorOutputPort(TimestampedVector<double>(num_actuators_),
+                                    &InputSupervisor::SetMotorTorques)
+          .get_index();
 
   // Create output port for status
-  this->DeclareVectorOutputPort(TimestampedVector<double>(1),
-                                &InputSupervisor::SetStatus);
+  status_output_port_ =
+      this->DeclareVectorOutputPort(TimestampedVector<double>(1),
+                                    &InputSupervisor::SetStatus)
+          .get_index();
 
   // Create error flag as discrete state
   n_consecutive_fails_index_ = DeclareDiscreteState(1);

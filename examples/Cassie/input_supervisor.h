@@ -47,6 +47,15 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_input_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_command() const {
+    return this->get_output_port(command_output_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port_status() const {
+    return this->get_output_port(status_output_port_);
+  }
+
+
   void SetMotorTorques(const drake::systems::Context<double>& context,
                        systems::TimestampedVector<double>* output) const;
   void UpdateErrorFlag(
@@ -74,8 +83,9 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   int n_consecutive_fails_index_;
   int status_index_;
   int state_input_port_;
-
   int command_input_port_;
+  int command_output_port_;
+  int status_output_port_;
 };
 
 }  // namespace dairlib

@@ -221,7 +221,6 @@ class LcmDrivenLoop {
         }
 
         // Clear messages in the switch channel
-        name_to_input_sub_map_.at(active_channel_).clear();
         switch_sub_->clear();
 
         // Clear messages in the new input channel if we just switched input

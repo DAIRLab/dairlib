@@ -43,6 +43,17 @@ cc_library(
 )
 
 cc_library(
+    name = "simulator_drift",
+    srcs = ["simulator_drift.cc"],
+    hdrs = ["simulator_drift.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "cassie_rbt_state_estimator",
     srcs = ["cassie_rbt_state_estimator.cc"],
     hdrs = ["cassie_rbt_state_estimator.h"],

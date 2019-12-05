@@ -102,7 +102,7 @@ int do_main(int argc, char* argv[]) {
   // Create and connect translator
   auto input_translator =
       builder.AddSystem<systems::CassieInputTranslator>(*tree);
-  builder.Connect(input_supervisor->get_output_port(0),
+  builder.Connect(input_supervisor->get_output_port_command(),
       input_translator->get_input_port(0));
 
   // Create and connect input publisher.
@@ -118,7 +118,7 @@ int do_main(int argc, char* argv[]) {
           "NETWORK_CASSIE_INPUT", &lcm_network,
           {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
-  builder.Connect(input_supervisor->get_output_port(0),
+  builder.Connect(input_supervisor->get_output_port_command(),
       net_command_sender->get_input_port(0));
 
   builder.Connect(*net_command_sender, *net_command_pub);

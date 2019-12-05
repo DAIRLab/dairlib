@@ -158,7 +158,7 @@ class LcmDrivenLoop {
         }
       }
 
-      // Wait for an InputMessageType message.
+      // Wait for new InputMessageType messages and SwitchMessageType messages.
       bool is_new_input_message = false;
       bool is_new_switch_message = false;
       name_to_input_sub_map_.at(active_channel_).clear();
@@ -174,37 +174,38 @@ class LcmDrivenLoop {
         return is_new_input_message || is_new_switch_message;
       });
 
-      // Write the InputMessageType message into the context.
+      // Update the diagram context when there is new input message
       if (is_new_input_message) {
+        // Write the InputMessageType message into the context.
         input_value.GetMutableData()->set_value(
             name_to_input_sub_map_.at(active_channel_).message());
-      }
 
-      // Get message time from the active channel to advance
-      message_time =
-          name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
-      // We cap the time from below just in case after we switch to a different
-      // input channel, the message time from the new channel is smaller then
-      // the current diagram time
-      if (message_time >= time) {
-        time = message_time;
-      }
+        // Get message time from the active channel to advance
+        message_time =
+            name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
+        // We cap the time from below just in case after we switch to a different
+        // input channel, the message time from the new channel is smaller then
+        // the current diagram time
+        if (message_time >= time) {
+          time = message_time;
+        }
 
-      // Check if we are very far ahead or behind
-      // (likely due to a restart of the driving clock)
-      if (time > simulator_->get_context().get_time() + 1.0 ||
-          time < simulator_->get_context().get_time()) {
-        std::cout << diagram_name_ + " time is "
-                  << simulator_->get_context().get_time()
-                  << ", but stepping to " << time << std::endl;
-        std::cout << "Difference is too large, resetting " + diagram_name_ +
-                         " time.\n";
-        simulator_->get_mutable_context().SetTime(time);
-      }
+        // Check if we are very far ahead or behind
+        // (likely due to a restart of the driving clock)
+        if (time > simulator_->get_context().get_time() + 1.0 ||
+            time < simulator_->get_context().get_time()) {
+          std::cout << diagram_name_ + " time is "
+                    << simulator_->get_context().get_time()
+                    << ", but stepping to " << time << std::endl;
+          std::cout << "Difference is too large, resetting " + diagram_name_ +
+              " time.\n";
+          simulator_->get_mutable_context().SetTime(time);
+        }
 
-      simulator_->AdvanceTo(time);
-      // Force-publish via the diagram
-      diagram_ptr_->Publish(diagram_context);
+        simulator_->AdvanceTo(time);
+        // Force-publish via the diagram
+        diagram_ptr_->Publish(diagram_context);
+      }
     }
   };
 

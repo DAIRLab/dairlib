@@ -144,7 +144,7 @@ class LcmDrivenLoop {
     // Run the simulation until end_time
     /// Structure of the code:
     ///  While() {
-    ///    Wait for new InputMessageType and SwitchMessageType.
+    ///    Wait for new InputMessageType and SwitchMessageType messages.
     ///
     ///    if(there is new InputMessageType message) {
     ///      Update diagram context and advance time.

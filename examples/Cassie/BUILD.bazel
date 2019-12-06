@@ -353,6 +353,8 @@ cc_binary(
     srcs = ["run_controller_switch.cc"],
     deps = [
         "//systems/framework:controller_channel_sender",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

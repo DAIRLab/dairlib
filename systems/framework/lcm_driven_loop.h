@@ -114,12 +114,22 @@ class LcmDrivenLoop {
     active_channel_ = active_channel;
   };
 
+  /// Constructor for single-input LcmDrivenLoop without lcm_parser
+  ///     @param drake_lcm DrakeLcm
+  ///     @param diagram A Drake diagram
+  ///     @param input_channel The name of the input channel
+  /// The use case is that the user only need the time from lcm message.
+  LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
+                std::unique_ptr<drake::systems::Diagram<double>> diagram,
+                const std::string& input_channel)
+      : LcmDrivenLoop(drake_lcm, std::move(diagram), nullptr,
+                      std::vector<std::string>(1, input_channel), input_channel,
+                      ""){};
+
   // Start simulating the diagram
   void Simulate(double end_time = std::numeric_limits<double>::infinity()) {
     // Get mutable contexts
     auto& diagram_context = simulator_->get_mutable_context();
-    auto& lcm_parser_context = diagram_ptr_->GetMutableSubsystemContext(
-        *lcm_parser_, &diagram_context);
 
     // Wait for the first message.
     drake::log()->info("Waiting for first lcm input message");
@@ -127,13 +137,10 @@ class LcmDrivenLoop {
       return name_to_input_sub_map_.at(active_channel_).count() > 0;
     });
 
-    // Initialize the context based on the first message.
+    // Initialize the context time.
     const double t0 =
         name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
     diagram_context.SetTime(t0);
-    auto& input_value = lcm_parser_->get_input_port(0).FixValue(
-        &lcm_parser_context,
-        name_to_input_sub_map_.at(active_channel_).message());
 
     // "Simulator" time
     double time = 0;  // initialize the current time with 0
@@ -178,9 +185,14 @@ class LcmDrivenLoop {
 
       // Update the diagram context when there is new input message
       if (is_new_input_message) {
-        // Write the InputMessageType message into the context.
-        input_value.GetMutableData()->set_value(
-            name_to_input_sub_map_.at(active_channel_).message());
+        // Write the InputMessageType message into the context if lcm_parser is
+        // provided
+        if (lcm_parser_ != nullptr) {
+          lcm_parser_->get_input_port(0).FixValue(
+              &(diagram_ptr_->GetMutableSubsystemContext(*lcm_parser_,
+                                                         &diagram_context)),
+              name_to_input_sub_map_.at(active_channel_).message());
+        }
 
         // Get message time from the active channel to advance
         message_time =

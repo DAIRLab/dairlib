@@ -1,14 +1,12 @@
 #include <string>
-
 #include <gflags/gflags.h>
-#include "drake/multibody/rigid_body_tree.h"
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-
 #include "dairlib/lcmt_controller_switch.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
 #include "systems/framework/controller_channel_sender.h"
+#include "systems/framework/lcm_driven_loop.h"
+#include "drake/multibody/rigid_body_tree.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
 
 namespace dairlib {
 
@@ -17,8 +15,13 @@ using drake::systems::lcm::LcmPublisherSystem;
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time of simulation");
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
+DEFINE_string(channel_x, "CASSIE_STATE",
+              "The name of the channel which receives state");
 DEFINE_string(controller_channel, "PD_CONTROLLER",
               "The name of the lcm channel that dispatcher_in listens to");
+DEFINE_double(time_delay, -1.0,
+              "Delay to publish the switch lcm"
+              "Negative value means to time delay");
 
 /// This diagram publishes a string which tells dispatcher_robot_in which
 /// channel to listen to.
@@ -30,28 +33,28 @@ int do_main(int argc, char* argv[]) {
 
   drake::systems::DiagramBuilder<double> builder;
 
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
   // Create publisher
   auto channel_sender =
       builder
           .AddSystem<ControllerChannelSender<dairlib::lcmt_controller_switch>>(
-              FLAGS_controller_channel);
+              FLAGS_controller_channel, FLAGS_time_delay);
   auto name_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_switch>(
-          "INPUT_SWITCH", lcm, 1.0 / FLAGS_publish_rate));
+          "INPUT_SWITCH", &lcm_local, 1.0 / FLAGS_publish_rate));
   builder.Connect(channel_sender->get_output_port(0),
                   name_pub->get_input_port());
 
-  auto diagram = builder.Build();
-  drake::systems::Simulator<double> simulator(*diagram);
+  // Create the diagram
+  auto owned_diagram = builder.Build();
+  owned_diagram->set_name(("switch publisher"));
 
-  simulator.set_publish_every_time_step(false);
-  simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(1.0);
-  simulator.Initialize();
+  // Run lcm-driven simulation
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+      &lcm_local, std::move(owned_diagram), FLAGS_channel_x);
+  loop.Simulate();
 
-  simulator.AdvanceTo(FLAGS_end_time);
   return 0;
 }
 

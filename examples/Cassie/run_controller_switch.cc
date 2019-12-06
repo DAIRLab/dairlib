@@ -19,9 +19,12 @@ DEFINE_string(channel_x, "CASSIE_STATE",
               "The name of the channel which receives state");
 DEFINE_string(controller_channel, "PD_CONTROLLER",
               "The name of the lcm channel that dispatcher_in listens to");
-DEFINE_double(time_delay, -1.0,
-              "Delay to publish the switch lcm"
-              "Negative value means to time delay");
+DEFINE_int32(n_fsm_period, -1,
+             "Number of period (of the time-based finite state machine) with "
+             "which we delay to publish the switch lcm."
+             "Negative value means no time delay");
+DEFINE_double(period, -1.0,
+              "The period of the time-based finite state machine");
 
 /// This diagram publishes a string which tells dispatcher_robot_in which
 /// channel to listen to.
@@ -39,7 +42,7 @@ int do_main(int argc, char* argv[]) {
   auto channel_sender =
       builder
           .AddSystem<ControllerChannelSender<dairlib::lcmt_controller_switch>>(
-              FLAGS_controller_channel, FLAGS_time_delay);
+              FLAGS_controller_channel, FLAGS_n_fsm_period, FLAGS_period);
   auto name_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_switch>(
           "INPUT_SWITCH", &lcm_local, 1.0 / FLAGS_publish_rate));

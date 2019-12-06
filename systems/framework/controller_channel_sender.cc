@@ -1,4 +1,5 @@
 #include "systems/framework/controller_channel_sender.h"
+#include <math.h>
 
 namespace dairlib {
 
@@ -14,12 +15,21 @@ using systems::OutputVector;
 
 template <typename MessageType>
 ControllerChannelSender<MessageType>::ControllerChannelSender(
-    const string& channel_name, double t_delay)
-    : channel_name_(channel_name), t_delay_(t_delay) {
+    const string& channel_name, int n_fsm_period, double period,
+    double fsm_offset)
+    : channel_name_(channel_name),
+      n_fsm_period_(n_fsm_period),
+      period_(period),
+      fsm_offset_(fsm_offset) {
+  // Ensure that if (n_fsm_period >= 0), then (period > 0).
+  DRAKE_DEMAND((n_fsm_period < 0) || (period > 0));
+  // offset has to be positive
+  DRAKE_DEMAND(fsm_offset >= 0);
+
   // Create output
   this->DeclareAbstractOutputPort(&ControllerChannelSender::Output);
 
-  if (t_delay >= 0) {
+  if (n_fsm_period >= 0) {
     // Create per-step update
     DeclarePerStepDiscreteUpdateEvent(
         &ControllerChannelSender<MessageType>::DiscreteVariableUpdate);
@@ -33,10 +43,9 @@ EventStatus ControllerChannelSender<MessageType>::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   // Update the initial time if it has not been initialized
-  auto t_init =
-      discrete_state->get_mutable_vector(time_idx_).get_mutable_value();
-  if (t_init(0) < 0) {
-    t_init << context.get_time();
+  if (discrete_state->get_vector(time_idx_).get_value()(0) < 0) {
+    discrete_state->get_mutable_vector(time_idx_).get_mutable_value()
+        << context.get_time();
   }
   return EventStatus::Succeeded();
 }
@@ -46,14 +55,17 @@ void ControllerChannelSender<MessageType>::Output(
     const Context<double>& context, MessageType* msg) const {
   auto t_init = context.get_discrete_state(time_idx_).get_value();
 
-  // If t_delay is not set (that is, the user is not using the delay-publish
-  // feature), then we publish the switch channel name all the time.
-  if (t_delay_ < 0) {
+  // If n_fsm_period is not set (that is, the user is not using the
+  // delay-publish feature), then we publish the switch channel name all the
+  // time.
+  if (n_fsm_period_ < 0) {
     msg->channel = channel_name_;
   } else {
     // If the t_init is initialized and the current time is bigger than
     if ((t_init(0) >= 0) &&
-        (context.get_time() >= (t_init(0) + t_delay_))) {
+        (context.get_time() >=
+         (floor(t_init(0) / period_) + n_fsm_period_) * period_ +
+             fsm_offset_)) {
       msg->channel = channel_name_;
     } else {
       msg->channel = "";

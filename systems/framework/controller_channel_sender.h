@@ -11,20 +11,29 @@ namespace dairlib {
 
 /// ControllerChannelSender is a single-output block that assigns a string
 /// to the lcm message, MessageType.
-/// The user can choose to publish the string with or without a delay. If no
-/// delay, this class outputs the channel name all the time. In the case of
-/// delay, the user has to provide a time delay t_delay. Let the time of the
-/// simulator/robot be t_init when we started running the diagram containing
-/// this class. And let t_current be the current diagram time. This class
-/// outputs the channel name only when t_current >= t_init + t_delay. That is,
-/// the current time has to be bigger than the initial diagram time plus the
-/// delay.
+/// The user can choose to publish the string with or without a delay. The delay
+/// is added so that we can sync the publish with the TIME-BASED finite state
+/// machine in the controller.
+/// If no delay, this class outputs the channel name all the time.
+/// In the case of delay, the user has to provide
+///   - n_fsm_period, the number of period with which the user wants to delay
+///   the publish
+///   - period, the period of the time-based fsm
+///   - (optional) fsm_offset, which is the offset of the time-based fsm.
+/// Let t_init be the time of the simulator/robot when we started running the
+/// diagram containing this class. And let t_current be the current diagram
+/// time. This class outputs the channel name only when
+///   t_current >= (floor(t_init/period) + n_fsm_period) * period + fsm_offset.
+/// That is, the current time has to be bigger than the initial diagram
+/// time plus the delay.
 
 template <typename MessageType>
 class ControllerChannelSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ControllerChannelSender(const std::string& channel_name,
-                                   double t_delay = -1);
+                                   int n_fsm_period = -1,
+                                   double period = -1,
+                                   double fsm_offset = 0);
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -35,7 +44,9 @@ class ControllerChannelSender : public drake::systems::LeafSystem<double> {
               MessageType* output) const;
   std::string channel_name_;
   drake::systems::DiscreteStateIndex time_idx_;
-  double t_delay_;
+  int n_fsm_period_;
+  double period_;
+  double fsm_offset_;
 };
 
 }  // namespace dairlib

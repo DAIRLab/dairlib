@@ -22,6 +22,8 @@ DEFINE_string(controller_channel, "PD_CONTROLLER",
 
 /// This diagram publishes a string which tells dispatcher_robot_in which
 /// channel to listen to.
+/// This is a one-time-use switch. If the user wants to publish a different
+/// channel name, then he/she has to rerun this program.
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

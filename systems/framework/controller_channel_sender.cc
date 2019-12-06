@@ -2,21 +2,63 @@
 
 namespace dairlib {
 
+using drake::systems::BasicVector;
 using drake::systems::Context;
+using drake::systems::DiscreteUpdateEvent;
+using drake::systems::DiscreteValues;
+using drake::systems::EventStatus;
 using drake::systems::LeafSystem;
+using Eigen::VectorXd;
 using std::string;
+using systems::OutputVector;
 
 template <typename MessageType>
 ControllerChannelSender<MessageType>::ControllerChannelSender(
-    const string& channel_name)
-    : channel_name_(channel_name) {
+    const string& channel_name, double t_delay)
+    : channel_name_(channel_name), t_delay_(t_delay) {
+  // Create output
   this->DeclareAbstractOutputPort(&ControllerChannelSender::Output);
+
+  if (t_delay >= 0) {
+    // Create per-step update
+    DeclarePerStepDiscreteUpdateEvent(
+        &ControllerChannelSender<MessageType>::DiscreteVariableUpdate);
+    // A state to store initial time
+    time_idx_ = DeclareDiscreteState(-VectorXd::Ones(1));
+  }
+}
+
+template <typename MessageType>
+EventStatus ControllerChannelSender<MessageType>::DiscreteVariableUpdate(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  // Update the initial time if it has not been initialized
+  auto t_init =
+      discrete_state->get_mutable_vector(time_idx_).get_mutable_value();
+  if (t_init(0) < 0) {
+    t_init << context.get_time();
+  }
+  return EventStatus::Succeeded();
 }
 
 template <typename MessageType>
 void ControllerChannelSender<MessageType>::Output(
     const Context<double>& context, MessageType* msg) const {
-  msg->channel = channel_name_;
+  auto t_init = context.get_discrete_state(time_idx_).get_value();
+
+  // If t_delay is not set (that is, the user is not using the delay-publish
+  // feature), then we publish the switch channel name all the time.
+  if (t_delay_ < 0) {
+    msg->channel = channel_name_;
+  } else {
+    // If the t_init is initialized and the current time is bigger than
+    if ((t_init(0) >= 0) &&
+        (context.get_time() >= (t_init(0) + t_delay_))) {
+      msg->channel = channel_name_;
+    } else {
+      msg->channel = "";
+    }
+  }
 }
 
 template class ControllerChannelSender<dairlib::lcmt_controller_switch>;

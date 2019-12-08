@@ -62,6 +62,8 @@ void ControllerChannelSender<MessageType>::Output(
     msg->channel = channel_name_;
   } else {
     // If the t_init is initialized and the current time is bigger than
+    // (floor(t_init/period) + n_fsm_period) * period + fsm_offset,
+    // then we publish the switch channel name.
     if ((t_init(0) >= 0) &&
         (context.get_time() >=
          (floor(t_init(0) / period_) + n_fsm_period_) * period_ +

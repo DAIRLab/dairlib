@@ -1,4 +1,5 @@
 #include <gflags/gflags.h>
+<<<<<<< HEAD
 
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -9,12 +10,17 @@
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/rigid_body_tree_construction.h"
 
+=======
+>>>>>>> master
 #include "attic/multibody/rigidbody_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+<<<<<<< HEAD
 #include "systems/robot_lcm_systems.h"
 
+=======
+>>>>>>> master
 #include "examples/Cassie/osc_walk/deviation_from_cp.h"
 #include "examples/Cassie/osc_walk/heading_traj_generator.h"
 #include "examples/Cassie/osc_walk/high_level_command.h"
@@ -23,6 +29,17 @@
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/time_based_fsm.h"
+<<<<<<< HEAD
+=======
+#include "systems/framework/lcm_driven_loop.h"
+#include "systems/robot_lcm_systems.h"
+
+#include "drake/multibody/joints/floating_base_types.h"
+#include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+>>>>>>> master
 
 namespace dairlib {
 
@@ -45,6 +62,11 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
+
+DEFINE_string(channel_x, "CASSIE_STATE",
+              "The name of the channel which receives state");
+DEFINE_string(channel_u, "CASSIE_INPUT",
+              "The name of the channel which publishes command");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -73,9 +95,6 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::AddFlatTerrainToWorld(&tree_without_springs, terrain_size,
                                           terrain_depth);
 
-  const std::string channel_x = "CASSIE_STATE";
-  const std::string channel_u = "CASSIE_INPUT";
-
   // Cassie parameters
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
@@ -86,11 +105,11 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(tree_with_springs);
 
   // Create command sender.
-  auto command_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          channel_u, &lcm_local, 1.0 / 1000.0));
-  auto command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(tree_with_springs);
+  auto command_pub = builder.AddSystem(
+                       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+                           FLAGS_channel_u, &lcm_local, 1.0 / 1000.0));
+  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
+                          tree_with_springs);
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
@@ -319,57 +338,18 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
 
-  // Create the diagram and context
+  // Create the diagram
   auto owned_diagram = builder.Build();
-  auto context = owned_diagram->CreateDefaultContext();
+  owned_diagram->set_name("osc walking controller");
 
-  // Create the simulator
-  const auto& diagram = *owned_diagram;
-  drake::systems::Simulator<double> simulator(std::move(owned_diagram),
-                                              std::move(context));
-  auto& diagram_context = simulator.get_mutable_context();
+  // Run lcm-driven simulation
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop
+      (&lcm_local,
+       std::move(owned_diagram),
+       state_receiver,
+       FLAGS_channel_x);
+  loop.Simulate();
 
-  auto& state_receiver_context =
-      diagram.GetMutableSubsystemContext(*state_receiver, &diagram_context);
-
-  // Wait for the first message.
-  drake::log()->info("Waiting for first lcmt_robot_output");
-  drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(&lcm_local,
-                                                               "CASSIE_STATE");
-  LcmHandleSubscriptionsUntil(&lcm_local,
-                              [&]() { return input_sub.count() > 0; });
-
-  // Initialize the context based on the first message.
-  const double t0 = input_sub.message().utime * 1e-6;
-  diagram_context.SetTime(t0);
-  auto& input_value = state_receiver->get_input_port(0).FixValue(
-      &state_receiver_context, input_sub.message());
-
-  drake::log()->info("controller started");
-  while (true) {
-    // Wait for an lcmt_robot_output message.
-    input_sub.clear();
-    LcmHandleSubscriptionsUntil(&lcm_local,
-                                [&]() { return input_sub.count() > 0; });
-    // Write the lcmt_robot_output message into the context and advance.
-    input_value.GetMutableData()->set_value(input_sub.message());
-    const double time = input_sub.message().utime * 1e-6;
-
-    // Check if we are very far ahead or behind
-    // (likely due to a restart of the driving clock)
-    if (time > simulator.get_context().get_time() + 1.0 ||
-        time < simulator.get_context().get_time() - 1.0) {
-      std::cout << "Controller time is " << simulator.get_context().get_time()
-                << ", but stepping to " << time << std::endl;
-      std::cout << "Difference is too large, resetting controller time."
-                << std::endl;
-      simulator.get_mutable_context().SetTime(time);
-    }
-
-    simulator.AdvanceTo(time);
-    // Force-publish via the diagram
-    diagram.Publish(diagram_context);
-  }
 
   return 0;
 }

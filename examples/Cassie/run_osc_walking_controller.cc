@@ -1,26 +1,8 @@
 #include <gflags/gflags.h>
-<<<<<<< HEAD
-
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-
-#include "drake/multibody/joints/floating_base_types.h"
-#include "drake/multibody/rigid_body_tree.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
-
-=======
->>>>>>> master
 #include "attic/multibody/rigidbody_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-<<<<<<< HEAD
-#include "systems/robot_lcm_systems.h"
-
-=======
->>>>>>> master
 #include "examples/Cassie/osc_walk/deviation_from_cp.h"
 #include "examples/Cassie/osc_walk/heading_traj_generator.h"
 #include "examples/Cassie/osc_walk/high_level_command.h"
@@ -29,17 +11,13 @@
 #include "systems/controllers/lipm_traj_gen.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/time_based_fsm.h"
-<<<<<<< HEAD
-=======
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
-
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
->>>>>>> master
 
 namespace dairlib {
 
@@ -105,11 +83,11 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(tree_with_springs);
 
   // Create command sender.
-  auto command_pub = builder.AddSystem(
-                       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-                           FLAGS_channel_u, &lcm_local, 1.0 / 1000.0));
-  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
-                          tree_with_springs);
+  auto command_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          FLAGS_channel_u, &lcm_local, 1.0 / 1000.0));
+  auto command_sender =
+      builder.AddSystem<systems::RobotCommandSender>(tree_with_springs);
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
@@ -343,13 +321,9 @@ int DoMain(int argc, char* argv[]) {
   owned_diagram->set_name("osc walking controller");
 
   // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop
-      (&lcm_local,
-       std::move(owned_diagram),
-       state_receiver,
-       FLAGS_channel_x);
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+      &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x);
   loop.Simulate();
-
 
   return 0;
 }

@@ -15,21 +15,21 @@ using systems::OutputVector;
 
 template <typename MessageType>
 ControllerChannelSender<MessageType>::ControllerChannelSender(
-    const string& channel_name, int n_fsm_period, double period,
+    const string& channel_name, int n_state_switch, double period,
     double fsm_offset)
     : channel_name_(channel_name),
-      n_fsm_period_(n_fsm_period),
+      n_state_switch_(n_state_switch),
       period_(period),
       fsm_offset_(fsm_offset) {
-  // Ensure that if (n_fsm_period >= 0), then (period > 0).
-  DRAKE_DEMAND((n_fsm_period < 0) || (period > 0));
+  // Ensure that if (n_state_switch >= 0), then (period > 0).
+  DRAKE_DEMAND((n_state_switch < 0) || (period > 0));
   // offset has to be positive
   DRAKE_DEMAND(fsm_offset >= 0);
 
   // Create output
   this->DeclareAbstractOutputPort(&ControllerChannelSender::Output);
 
-  if (n_fsm_period >= 0) {
+  if (n_state_switch >= 0) {
     // Create per-step update
     DeclarePerStepDiscreteUpdateEvent(
         &ControllerChannelSender<MessageType>::DiscreteVariableUpdate);
@@ -55,18 +55,18 @@ void ControllerChannelSender<MessageType>::Output(
     const Context<double>& context, MessageType* msg) const {
   auto t_init = context.get_discrete_state(time_idx_).get_value();
 
-  // If n_fsm_period is not set (that is, the user is not using the
+  // If n_state_switch is not set (that is, the user is not using the
   // delay-publish feature), then we publish the switch channel name all the
   // time.
-  if (n_fsm_period_ < 0) {
+  if (n_state_switch_ < 0) {
     msg->channel = channel_name_;
   } else {
     // If the t_init is initialized and the current time is bigger than
-    // (floor(t_init/period) + n_fsm_period) * period + fsm_offset,
+    // (floor(t_init/period) + n_state_switch) * period + fsm_offset,
     // then we publish the switch channel name.
     if ((t_init(0) >= 0) &&
         (context.get_time() >=
-         (floor(t_init(0) / period_) + n_fsm_period_) * period_ +
+         (floor(t_init(0) / period_) + n_state_switch_) * period_ +
              fsm_offset_)) {
       msg->channel = channel_name_;
     } else {

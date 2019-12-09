@@ -12,10 +12,12 @@ namespace dairlib {
 /// ControllerChannelSender is a LeafSystem that assigns a string
 /// to the lcm message MessageType, and outputs the lcm message.
 ///
-/// The class is extended so that the output starts when
-/// `TimeBasedFiniteStateMachine` switches to a new state. This requires that
-/// the users provides two (or three) more arguments to the constructors besides
-/// `channel_name`:
+/// The class is extended so that it could be used with
+/// `TimeBasedFiniteStateMachine`. More specifically, the string assigment
+/// starts when `TimeBasedFiniteStateMachine` switches to a new state (sometimes
+/// we don't want to switch to a new controller when the new controller is in a
+/// middle of a discrete state). This requires that the users provides two (or
+/// three) more arguments to the constructors besides `channel_name`:
 ///   - n_state_switch, the number of state-switch after the start of the
 ///   simulator containing this diagram
 ///   - period, has to be the same as `duration_per_state` in

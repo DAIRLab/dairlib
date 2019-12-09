@@ -13,8 +13,8 @@ using Eigen::VectorXd;
 using std::string;
 using systems::OutputVector;
 
-template <typename MessageType>
-ControllerChannelSender<MessageType>::ControllerChannelSender(
+template <typename SwitchMessageType>
+ControllerChannelSender<SwitchMessageType>::ControllerChannelSender(
     const string& channel_name, int n_state_switch, double period,
     double fsm_offset)
     : channel_name_(channel_name),
@@ -32,14 +32,14 @@ ControllerChannelSender<MessageType>::ControllerChannelSender(
   if (n_state_switch >= 0) {
     // Create per-step update
     DeclarePerStepDiscreteUpdateEvent(
-        &ControllerChannelSender<MessageType>::DiscreteVariableUpdate);
+        &ControllerChannelSender<SwitchMessageType>::DiscreteVariableUpdate);
     // A state to store initial time
     time_idx_ = DeclareDiscreteState(-VectorXd::Ones(1));
   }
 }
 
-template <typename MessageType>
-EventStatus ControllerChannelSender<MessageType>::DiscreteVariableUpdate(
+template <typename SwitchMessageType>
+EventStatus ControllerChannelSender<SwitchMessageType>::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   // Update the initial time if it has not been initialized
@@ -50,9 +50,9 @@ EventStatus ControllerChannelSender<MessageType>::DiscreteVariableUpdate(
   return EventStatus::Succeeded();
 }
 
-template <typename MessageType>
-void ControllerChannelSender<MessageType>::Output(
-    const Context<double>& context, MessageType* msg) const {
+template <typename SwitchMessageType>
+void ControllerChannelSender<SwitchMessageType>::Output(
+    const Context<double>& context, SwitchMessageType* msg) const {
   auto t_init = context.get_discrete_state(time_idx_).get_value();
 
   // If n_state_switch is not set (that is, the user is not using the

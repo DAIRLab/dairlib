@@ -10,7 +10,7 @@
 namespace dairlib {
 
 /// ControllerChannelSender is a LeafSystem that assigns a string
-/// to the lcm message MessageType, and outputs the lcm message.
+/// to the lcm message SwitchMessageType, and outputs the lcm message.
 ///
 /// The class is extended so that it could be used with
 /// `TimeBasedFiniteStateMachine`. More specifically, the string assigment
@@ -22,7 +22,7 @@ namespace dairlib {
 ///   simulator containing this diagram
 ///   @param period, has to be the same as `duration_per_state` in
 ///   `TimeBasedFiniteStateMachine`
-///   (optional) @param fsm_offset, has to be the same as `time_shift` in
+///   @param fsm_offset, has to be the same as `time_shift` in
 ///   `TimeBasedFiniteStateMachine`
 ///
 /// Let t_init be the time of the simulator/robot when we started running the
@@ -35,7 +35,7 @@ namespace dairlib {
 /// `n_state_switch`-th times after we start running the simulator that contains
 /// `ControllerChannelSender`.
 
-template <typename MessageType>
+template <typename SwitchMessageType>
 class ControllerChannelSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ControllerChannelSender(const std::string& channel_name,
@@ -48,7 +48,7 @@ class ControllerChannelSender : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   void Output(const drake::systems::Context<double>& context,
-              MessageType* output) const;
+              SwitchMessageType* output) const;
   std::string channel_name_;
   drake::systems::DiscreteStateIndex time_idx_;
   int n_state_switch_;

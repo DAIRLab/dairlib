@@ -30,8 +30,7 @@ HeadingTrajGenerator::HeadingTrajGenerator(const RigidBodyTree<double>& tree,
                                            int pelvis_idx)
     : tree_(tree), pelvis_idx_(pelvis_idx) {
   // Input/Output Setup
-  state_port_ = this
-                    ->DeclareVectorInputPort(OutputVector<double>(
+  state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
                         tree.get_num_positions(), tree.get_num_velocities(),
                         tree.get_num_actuators()))
                     .get_index();

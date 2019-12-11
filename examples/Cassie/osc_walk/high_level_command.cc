@@ -186,11 +186,11 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
 
 void HighLevelCommand::CopyHeadingAngle(const Context<double>& context,
                                     BasicVector<double>* output) const {
-  double desried_heading_pos =
+  double desired_heading_pos =
       context.get_discrete_state(des_yaw_vel_idx_).get_value()(0);
 
   // Assign
-  output->get_mutable_value() << desried_heading_pos;
+  output->get_mutable_value() << desired_heading_pos;
 }
 
 void HighLevelCommand::CopyDesiredHorizontalVel(const Context<double>& context,

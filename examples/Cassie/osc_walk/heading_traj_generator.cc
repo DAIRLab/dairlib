@@ -71,29 +71,32 @@ void HeadingTrajGenerator::CalcHeadingTraj(
       tree_.CalcBodyPoseInWorldFrame(cache, tree_.get_body(pelvis_idx_))
           .linear()
           .col(0);
-  double approx_pelvis_yaw =
+  double approx_pelvis_yaw_i =
       atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 
   // Construct the PiecewisePolynomial.
-  const double one_sec = 1;
-  double approx_pelvis_in_one_second =
-      approx_pelvis_yaw + des_yaw_vel(0) * one_sec;
-  Eigen::Vector4d pelvis_rotation_0(q(3), q(4), q(5), q(6));
-  Eigen::Vector4d pelvis_rotation_1(cos(approx_pelvis_in_one_second / 2), 0, 0,
-                                    sin(approx_pelvis_in_one_second / 2));
+  /// Given position and velocity, we want to generate affine functions for
+  /// the desired trajectory (in R^4, quaternion space). We use FirstOrderHold()
+  /// to approximately generate the function, so we need to generate the
+  /// endpoint of the trajectory. We generate the endpoint by looking ahead what
+  /// the position is in 0.1 second.
+  double approx_pelvis_yaw_f = approx_pelvis_yaw_i + des_yaw_vel(0) * 0.1;
+  Eigen::Vector4d pelvis_rotation_i(q(3), q(4), q(5), q(6));
+  Eigen::Vector4d pelvis_rotation_f(cos(approx_pelvis_yaw_f / 2), 0, 0,
+                                    sin(approx_pelvis_yaw_f / 2));
 
   const std::vector<double> breaks = {context.get_time(),
-                                      context.get_time() + one_sec};
+                                      context.get_time() + 0.1};
   std::vector<MatrixXd> knots(breaks.size(), MatrixXd::Zero(4, 1));
-  knots[0] = pelvis_rotation_0;
-  knots[1] = pelvis_rotation_1;
+  knots[0] = pelvis_rotation_i;
+  knots[1] = pelvis_rotation_f;
   const auto pp = PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
 
   // Assign traj
   PiecewisePolynomial<double>* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-   *casted_traj = pp;
+  *casted_traj = pp;
 }
 
 }  // namespace osc_walk

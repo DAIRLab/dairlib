@@ -75,11 +75,13 @@ void HeadingTrajGenerator::CalcHeadingTraj(
       atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 
   // Construct the PiecewisePolynomial.
-  /// Given position and velocity, we want to generate affine functions for
-  /// the desired trajectory (in R^4, quaternion space). We use FirstOrderHold()
-  /// to approximately generate the function, so we need to generate the
-  /// endpoint of the trajectory. We generate the endpoint by looking ahead what
-  /// the position is in 0.1 second.
+  /// Given yaw position p_i and velocity v_i, we want to generate affine
+  /// functions, p_i + v_i*t, for the desired trajectory. We use
+  /// FirstOrderHold() to approximately generate the function, so we need to
+  /// have the endpoint of the trajectory. We generate the endpoint by
+  /// looking ahead what the position is in 0.1 second with fixed velocity v_i.
+  /// Note that we construct trajectories in R^4 (quaternion space), so we need
+  /// to transform the yaw trajectory into quaternion representation.
   double approx_pelvis_yaw_f = approx_pelvis_yaw_i + des_yaw_vel(0) * 0.1;
   Eigen::Vector4d pelvis_rotation_i(q(3), q(4), q(5), q(6));
   Eigen::Vector4d pelvis_rotation_f(cos(approx_pelvis_yaw_f / 2), 0, 0,

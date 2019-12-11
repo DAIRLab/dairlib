@@ -292,6 +292,7 @@ void RotTaskSpaceTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
   y_ = y_4d;
   DRAKE_DEMAND(y_des_.size() == 4);
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
+  y_quat_des.normalize();
 
   // Get relative quaternion (from current to desired)
   Quaterniond relative_qaut = (y_quat_des * y_quat.inverse()).normalized();

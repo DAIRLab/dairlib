@@ -24,10 +24,10 @@ TOSS_BALL_H = 10
 # far edge of board in board coordinates (y-axis)
 BOARD_EDGE_Y = 0.6
 
-# true if datapoint is over the board
+# false if datapoint is over the board
 OFFBOARD_CONDITION = lambda data, i: data[i,1] > BOARD_EDGE_Y
 
-# false if datapoint is over the board
+# true if datapoint is over the board
 ONBOARD_CONDITION = lambda data, i: not OFFBOARD_CONDITION(data, i)
 
 # true if block moves significantly over horizon H

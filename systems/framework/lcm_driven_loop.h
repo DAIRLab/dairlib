@@ -227,10 +227,13 @@ class LcmDrivenLoop {
 
         simulator_->AdvanceTo(time);
         // Force-publish via the diagram
-        // Notice that diagram.Publish() is for dispatching the publish of
-        // TriggerType::kForced type. Therefore, periodic/per-step publishes are
-        // not dispatched in the code below, but in AdvanceTo() above.
-        diagram_ptr_->Publish(diagram_context);
+        /// Notice that diagram.Publish() is for dispatching the publish of
+        /// TriggerType::kForced type. In LcmPublisherSystem, both periodic and
+        /// per-step publishes are also forced publish.
+        /// https://github.com/RobotLocomotion/drake/blob/03fe7e4/systems/lcm/lcm_publisher_system.h#L54-L56
+        /// Therefore, we should not run diagram.Publish() after AdvanceTo().
+        /// Otherwise, we double publish.
+        // diagram_ptr_->Publish(diagram_context);
 
         // Clear messages in the current input channel
         name_to_input_sub_map_.at(active_channel_).clear();

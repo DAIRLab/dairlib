@@ -227,6 +227,9 @@ class LcmDrivenLoop {
 
         simulator_->AdvanceTo(time);
         // Force-publish via the diagram
+        // Notice that diagram.Publish() is for dispatching the publish of
+        // TriggerType::kForced type. Therefore, periodic/per-step publishes are
+        // not dispatched in the code below, but in AdvanceTo() above.
         diagram_ptr_->Publish(diagram_context);
 
         // Clear messages in the current input channel

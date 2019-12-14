@@ -256,7 +256,7 @@ shared_ptr<HybridDircon<double>> runDircon(
     drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(.5);
     simulator.Initialize();
-    simulator.StepTo(pp_xtraj.end_time());
+    simulator.AdvanceTo(pp_xtraj.end_time());
   }
 
   return trajopt;
@@ -283,13 +283,14 @@ int main(int argc, char* argv[]) {
 
   plant.Finalize();
 
-  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(plant.num_positions() +
-                       plant.num_velocities());
-
+  
+    int N = 10;
   Eigen::VectorXd init_l_vec(2);
   init_l_vec << 0, 20*9.81;
-  int nu = 3;
-  int N = 10;
+  int nu = plant.num_actuators();
+  int nx = plant.num_positions() + plant.num_velocities();
+
+  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(nx);
 
   std::vector<MatrixXd> init_x;
   std::vector<MatrixXd> init_u;
@@ -301,7 +302,7 @@ int main(int argc, char* argv[]) {
   std::vector<double> init_time;
   for (int i = 0; i < 2*N-1; i++) {
     init_time.push_back(i*.2);
-    init_x.push_back(x0);
+    init_x.push_back(x0 + .1*VectorXd::Random(nx));
     init_u.push_back(VectorXd::Random(nu));
   }
   auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_x);

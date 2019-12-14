@@ -13,7 +13,8 @@ template <typename T>
 class DirconKinematicDataSet {
  public:
   DirconKinematicDataSet(const drake::multibody::MultibodyPlant<T>& plant,
-                         std::vector<DirconKinematicData<T>*>* constraints);
+      std::vector<DirconKinematicData<T>*>* constraints,
+      std::vector<int> skip_constraint_inds = std::vector<int>());
 
   void updateData(const drake::systems::Context<T>& context,
                   const drake::VectorX<T>& forces);
@@ -128,6 +129,8 @@ class DirconKinematicDataSet {
   drake::VectorX<T> xdot_;
   drake::MatrixX<T> M_;
   drake::VectorX<T> right_hand_side_;
+
+  Eigen::MatrixXd constraint_map_;
 
   Cache cache_;
 };

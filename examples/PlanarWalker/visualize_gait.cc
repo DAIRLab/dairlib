@@ -204,7 +204,7 @@ void visualizeGait(std::string file, int steps, double rate) {
     drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(rate);
     simulator.Initialize();
-    simulator.StepTo(pp_xtraj_repeated.end_time());
+    simulator.AdvanceTo(pp_xtraj_repeated.end_time());
   }
 
   return;

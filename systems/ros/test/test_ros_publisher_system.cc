@@ -45,7 +45,7 @@ int DoMain(ros::NodeHandle& node_handle) {
 
   signal(SIGINT, SigintHandler);
 
-  simulator.StepTo(std::numeric_limits<double>::infinity());
+  simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }

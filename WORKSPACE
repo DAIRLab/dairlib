@@ -93,9 +93,9 @@ http_archive(
 # As an example,
 #  export DAIRLIB_LOCAL_INEKF_PATH=/home/user/workspace/invariant-ekf
 
-# Choose a revision of Drake to use.
-INEKF_COMMIT = "3622dbebb8a4a8e3f11b5ae43b613eb04602bcb0"
-INEKF_CHECKSUM = "e1e2377dfb3648f0989b392d603cec5640c01e575fb6526e573a2896399115db"
+# Choose a revision of InEKF to use.
+INEKF_COMMIT = "7fde9f84dbe536ba9439a3b8c319efb51ff760dd"
+INEKF_CHECKSUM = "f87e3262b0c9c9237881fcd539acd1c60000f97dfdfa47b0ae53cb7a0f3256e4"
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
@@ -113,7 +113,7 @@ load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
     "inekf" if DAIRLIB_LOCAL_INEKF_PATH else "inekf_ignored",
 )
 
-# Maybe download Drake.
+# Maybe download InEKF.
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = _http_inekf_repo_name,
@@ -124,7 +124,7 @@ http_archive(
     strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
 )
 
-# Maybe use a local checkout of Drake.
+# Maybe use a local checkout of InEKF.
 print("Using DAIRLIB_LOCAL_INEKF_PATH={}".format(DAIRLIB_LOCAL_INEKF_PATH)) if DAIRLIB_LOCAL_INEKF_PATH else None  # noqa
 local_repository(
     name = _local_inekf_repo_name,

@@ -14,7 +14,6 @@
 #include "systems/framework/timestamped_vector.h"
 #include "examples/Cassie/datatypes/cassie_out_t.h"
 #include "examples/Cassie/cassie_utils.h"
-// #include "examples/Cassie/inekf/InEKF.h"
 
 namespace dairlib {
 namespace systems {

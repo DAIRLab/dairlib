@@ -481,7 +481,7 @@ void DoMain(double duration, int max_iter,
                                      &double_stance_all_constraint,
                                      skip_constraint_inds);
   auto double_all_options =
-      DirconOptions(double_all_dataset.countConstraints());
+      DirconOptions(double_all_dataset.countConstraints(), &plant);
   // Be careful in setting relative constraint, because we also skip constraints.
   // lf    | lr    | rf    | rr      | fourbar
   // 0 1 2 | 3 4 5 | 6 7 8 | 9 10 11 | 12 13

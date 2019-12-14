@@ -28,79 +28,105 @@ DEFINE_double(fsm_offset, 0.0,
               "has to be the same as `time_shift` in "
               "`TimeBasedFiniteStateMachine`");
 
-/// This diagram publishes a string which tells dispatcher_robot_in which
-/// channel to listen to.
-/// This is a one-time-use switch. If the user wants to publish a different
-/// channel name, then he/she has to rerun this program.
+/// This program is a one-time-use switch that tells dispatcher_robot_in which
+/// channel to listen to. It publishes the lcm message, PublishMessageType,
+/// which contains a string of the channel name.
+
+/// The program is extended so that it could be used with
+/// `TimeBasedFiniteStateMachine`. More specifically, the string assigment
+/// starts when `TimeBasedFiniteStateMachine` switches to a new state (because
+/// we don't want to switch to a new controller when the new controller is in a
+/// middle of a discrete state). This requires that the users provide two (or
+/// three) more arguments to the constructors besides `controller_channel`:
+///   @param n_fsm_period, the number of state-switch after the start of the
+///   simulator containing this diagram
+///   @param fsm_period, has to be the same as `duration_per_state` in
+///   `TimeBasedFiniteStateMachine`
+///   @param fsm_offset, has to be the same as `time_shift` in
+///   `TimeBasedFiniteStateMachine`
+///
+/// Let t0 be the time of the simulator/robot when we started running the
+/// diagram containing this class. And let t_current be the current diagram
+/// time. This class outputs the channel name only when
+///   t_current >= (floor(t0/fsm_period) + n_fsm_period) * fsm_period +
+///   fsm_offset.
+/// That is, this thread starts outputting the new channel name when
+/// `TimeBasedFiniteStateMachine` switches to a new state for the
+/// `n_fsm_period`-th times after it starts running.
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  drake::systems::DiagramBuilder<double> builder;
+  // Ensure that if (n_fsm_period >= 0), then (period > 0).
+  DRAKE_DEMAND((FLAGS_n_fsm_period < 0) || (FLAGS_fsm_period > 0));
+  // offset has to be positive
+  DRAKE_DEMAND(FLAGS_fsm_offset >= 0);
 
+  // Parameters
+  using PublishMessageType = dairlib::lcmt_controller_switch;
+  using TriggerMessageType = dairlib::lcmt_robot_output;
+  std::string switch_channel = "INPUT_SWITCH";
+  int n_publishes = 10;
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
-  // Create forced publisher
-  auto name_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_controller_switch>(
-          "INPUT_SWITCH", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
-
-  // Create the diagram
+  // Build the diagram
+  drake::systems::DiagramBuilder<double> builder;
+  auto name_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<PublishMessageType>(
+          switch_channel, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("switch publisher"));
 
-  // Move simulator
-  drake::systems::Diagram<double>* diagram_ptr_ = owned_diagram.get();
-  drake::systems::Simulator<double> simulator_(std::move(owned_diagram));
+  // Create simulator
+  drake::systems::Diagram<double>* diagram_ptr = owned_diagram.get();
+  drake::systems::Simulator<double> simulator(std::move(owned_diagram));
+  auto& diagram_context = simulator.get_mutable_context();
 
-  // Create subscriber
-  using InputMessageType = dairlib::lcmt_robot_output;
-  drake::lcm::Subscriber<InputMessageType> input_sub_(
-          &lcm_local, FLAGS_channel_x);
+  // Create subscriber for lcm driven loop
+  drake::lcm::Subscriber<TriggerMessageType> input_sub(&lcm_local,
+                                                       FLAGS_channel_x);
 
-  // Get mutable contexts
-  auto& diagram_context = simulator_.get_mutable_context();
-
-  // Wait for the first message.
+  // Wait for the first message and initialize the context time..
   drake::log()->info("Waiting for first lcm input message");
   LcmHandleSubscriptionsUntil(&lcm_local,
-                              [&]() { return input_sub_.count() > 0; });
-
-  // Initialize the context time.
-  const double t0 = input_sub_.message().utime * 1e-6;
+                              [&]() { return input_sub.count() > 0; });
+  const double t0 = input_sub.message().utime * 1e-6;
   diagram_context.SetTime(t0);
 
-  // Run the simulation until it publishes `n_publishes` times
-  int n_publishes = 10;
-  int total_pub = 0;
-  drake::log()->info(diagram_ptr_->get_name() + " started");
-  while (total_pub < n_publishes) {
+  // Set the threshold time
+  double t_threshold = t0;
+  if (FLAGS_n_fsm_period > 0) {
+    t_threshold =
+        (floor(t0 / FLAGS_fsm_period) + FLAGS_n_fsm_period) * FLAGS_fsm_period +
+        FLAGS_fsm_offset;
+  }
+  // Create output message
+  PublishMessageType msg;
+  msg.channel = FLAGS_controller_channel;
+
+  // Run the simulation until it publishes the channel name `n_publishes` times
+  drake::log()->info(diagram_ptr->get_name() + " started");
+  for (int i = 0; i < n_publishes; i++) {
     // Wait for input message.
-    input_sub_.clear();
+    input_sub.clear();
     LcmHandleSubscriptionsUntil(&lcm_local,
-                                [&]() { return input_sub_.count() > 0; });
+                                [&]() { return input_sub.count() > 0; });
 
     // Get message time from the input channel
-    double current_time = input_sub_.message().utime * 1e-6;
-    if (current_time >=
-        (floor(t0 / FLAGS_fsm_period) + FLAGS_n_fsm_period) * FLAGS_fsm_period +
-            FLAGS_fsm_offset) {
-      dairlib::lcmt_controller_switch msg;
-      msg.channel = FLAGS_controller_channel;
-
+    double t_current = input_sub.message().utime * 1e-6;
+    if (t_current >= t_threshold) {
       name_pub->get_input_port().FixValue(
-          &(diagram_ptr_->GetMutableSubsystemContext(*name_pub,
-                                                     &diagram_context)),
+          &(diagram_ptr->GetMutableSubsystemContext(*name_pub,
+                                                    &diagram_context)),
           msg);
 
       // Force-publish via the diagram
       /// We don't need AdvanceTo(time) because we manually force publish lcm
       /// message, and there is nothing in the diagram that needs to be updated.
-      diagram_ptr_->Publish(diagram_context);
-
-      total_pub++;
+      diagram_ptr->Publish(diagram_context);
     }
   }
+  drake::log()->info(diagram_ptr->get_name() + " ended");
 
   return 0;
 }

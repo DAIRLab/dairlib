@@ -106,7 +106,8 @@ int do_main(int argc, char* argv[]) {
 
   // Run the simulation until it publishes the channel name `n_publishes` times
   drake::log()->info(diagram_ptr->get_name() + " started");
-  for (int i = 0; i < n_publishes; i++) {
+  int pub_count = 0;
+  while (pub_count < n_publishes) {
     // Wait for input message.
     input_sub.clear();
     LcmHandleSubscriptionsUntil(&lcm_local,
@@ -124,6 +125,8 @@ int do_main(int argc, char* argv[]) {
       /// We don't need AdvanceTo(time) because we manually force publish lcm
       /// message, and there is nothing in the diagram that needs to be updated.
       diagram_ptr->Publish(diagram_context);
+
+      pub_count++;
     }
   }
   drake::log()->info(diagram_ptr->get_name() + " ended");

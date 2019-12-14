@@ -100,16 +100,16 @@ shared_ptr<HybridDircon<double>> runDircon(
   pt << 0, 0, -.5;
   bool isXZ = true;
 
-  auto leftFootConstraint = DirconPositionData<double>(plant, left_lower_leg,
-                                                       pt, isXZ);
-  auto rightFootConstraint = DirconPositionData<double>(plant, right_lower_leg,
-                                                        pt, isXZ);
-
   Vector3d normal;
   normal << 0, 0, 1;
+  auto leftFootConstraint = DirconPositionData<double>(plant, left_lower_leg,
+                                                       pt, isXZ, normal);
+  auto rightFootConstraint = DirconPositionData<double>(plant, right_lower_leg,
+                                                        pt, isXZ, normal);
+
   double mu = 1;
-  leftFootConstraint.addFixedNormalFrictionConstraints(normal, mu);
-  rightFootConstraint.addFixedNormalFrictionConstraints(normal, mu);
+  leftFootConstraint.addFixedNormalFrictionConstraints(mu);
+  rightFootConstraint.addFixedNormalFrictionConstraints(mu);
 
   std::vector<DirconKinematicData<double>*> leftConstraints;
   leftConstraints.push_back(&leftFootConstraint);

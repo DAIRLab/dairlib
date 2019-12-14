@@ -58,9 +58,11 @@ void EndEffectorVelocityController::CalcOutputTorques(
 
   // Calculating the jacobian of the kuka arm
   Eigen::MatrixXd frameSpatialVelocityJacobian(6, num_joints_);
-  plant_.CalcFrameGeometricJacobianExpressedInWorld(
-      *plant_context, ee_joint_frame_, ee_contact_frame_,
-      &frameSpatialVelocityJacobian);
+
+  plant_.CalcJacobianSpatialVelocity(*plant_context,
+      drake::multibody::JacobianWrtVariable::kV,
+      ee_joint_frame_, ee_contact_frame_, plant_.world_frame(),
+      plant_.world_frame(), &frameSpatialVelocityJacobian);
 
   // Using the jacobian, calculating the actual current velocities of the arm
   MatrixXd twist_actual = frameSpatialVelocityJacobian * q_dot;

@@ -44,5 +44,9 @@ std::map<std::string, int> makeNameToActuatorsMap(
 bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
                         Eigen::VectorXd positions, double tolerance = 0.0);
 
+// Check whether a MultibodyPlant contains quaternion floating-base joint or not
+// WARNING: This function assumes there is only one plant
+bool isQuaternion(const drake::multibody::MultibodyPlant<double>& plant);
+
 }  // namespace multibody
 }  // namespace dairlib

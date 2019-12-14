@@ -19,7 +19,7 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "2.b.dispatcher-robot-out (gazebo)" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=false";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=false --floating_base=false";
         host = "localhost";
     }
     cmd "1.simulator (dispatched)" {
@@ -39,7 +39,7 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "3.dispatcher-robot-in" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --floating_base=true";
         host = "localhost";
     }
     cmd "4.osc-walking-controller" {
@@ -81,7 +81,7 @@ group "3.cassie-robot" {
         host = "dair-cassie";
     }
     cmd "1.dispatcher-robot-in-real-robot" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3 --floating_base=true";
         host = "dair-cassie";
     }
     cmd "2.pd-controller-real-robot" {

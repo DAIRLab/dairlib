@@ -17,14 +17,17 @@ class DirconOptions {
                 drake::multibody::MultibodyPlant<drake::AutoDiffXd>* plant);
 
   // Setters/getters for constraint scaling
+  /// The impact constraint is for the impact at the beginning of the mode
   void setDynConstraintScaling(double scale, int row_start, int row_end);
-  void setKinConstraintScaling(double scale, int row_start, int row_end);
   void setImpConstraintScaling(double scale, int row_start, int row_end);
+  void setKinConstraintScaling(double scale, int row_start, int row_end);
+  void setKinConstraintScalingPos(double scale);
+  void setKinConstraintScalingVel(double scale);
   std::vector<std::pair<int, double>>& getDynConstraintScaling();
+  std::vector<std::pair<int, double>>& getImpConstraintScaling();
   std::vector<std::pair<int, double>>& getKinConstraintScaling();
   std::vector<std::pair<int, double>>& getKinConstraintScalingStart();
   std::vector<std::pair<int, double>>& getKinConstraintScalingEnd();
-  std::vector<std::pair<int, double>>& getImpConstraintScaling();
 
   // Setters/getters for relativity of kinematic constraint
   void setAllConstraintsRelative(bool relative);
@@ -55,10 +58,12 @@ class DirconOptions {
 
   // Constraint scaling
   std::vector<std::pair<int, double>> dyn_constraint_scaling_;
+  std::vector<std::pair<int, double>> imp_constraint_scaling_;
   std::vector<std::pair<int, double>> kin_constraint_scaling_;
   std::vector<std::pair<int, double>> kin_constraint_scaling_2_;
   std::vector<std::pair<int, double>> kin_constraint_scaling_3_;
-  std::vector<std::pair<int, double>> imp_constraint_scaling_;
+  double kin_constraint_scaling_pos_ = 1;
+  double kin_constraint_scaling_vel_ = 1;
   int n_v_ = -1;
   int n_x_ = -1;
 

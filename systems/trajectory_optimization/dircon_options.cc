@@ -56,9 +56,18 @@ void DirconOptions::addConstraintScaling(
     list->push_back(std::pair<int, double>(i, scale));
   }
 }
+void DirconOptions::setKinConstraintScalingPos(double scale) {
+  kin_constraint_scaling_pos_ = scale;
+}
+void DirconOptions::setKinConstraintScalingVel(double scale) {
+  kin_constraint_scaling_vel_ = scale;
+}
 
 vector<std::pair<int, double>>& DirconOptions::getDynConstraintScaling() {
   return dyn_constraint_scaling_;
+}
+vector<std::pair<int, double>>& DirconOptions::getImpConstraintScaling() {
+  return imp_constraint_scaling_;
 }
 vector<std::pair<int, double>>& DirconOptions::getKinConstraintScaling() {
   return getKinConstraintScaling(kAll);
@@ -68,9 +77,6 @@ vector<std::pair<int, double>>& DirconOptions::getKinConstraintScalingStart() {
 }
 vector<std::pair<int, double>>& DirconOptions::getKinConstraintScalingEnd() {
   return getKinConstraintScaling(end_constraint_type_);
-}
-vector<std::pair<int, double>>& DirconOptions::getImpConstraintScaling() {
-  return imp_constraint_scaling_;
 }
 vector<std::pair<int, double>>& DirconOptions::getKinConstraintScaling(
     DirconKinConstraintType type) {
@@ -84,7 +90,8 @@ vector<std::pair<int, double>>& DirconOptions::getKinConstraintScaling(
       for (auto& member : kin_constraint_scaling_) {
         kin_constraint_scaling_2_.push_back(member);
         kin_constraint_scaling_2_.emplace_back(
-            member.first + n_kin_constraints_, member.second);
+            member.first + n_kin_constraints_,
+            member.second * kin_constraint_scaling_vel_);
       }
     }
     return kin_constraint_scaling_2_;
@@ -95,9 +102,11 @@ vector<std::pair<int, double>>& DirconOptions::getKinConstraintScaling(
       for (auto& member : kin_constraint_scaling_) {
         kin_constraint_scaling_3_.push_back(member);
         kin_constraint_scaling_3_.emplace_back(
-            member.first + n_kin_constraints_, member.second);
+            member.first + n_kin_constraints_,
+            member.second * kin_constraint_scaling_vel_);
         kin_constraint_scaling_3_.emplace_back(
-            member.first + 2 * n_kin_constraints_, member.second);
+            member.first + 2 * n_kin_constraints_,
+            member.second * kin_constraint_scaling_pos_);
       }
     }
     return kin_constraint_scaling_3_;

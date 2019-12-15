@@ -7,6 +7,8 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 
+#include "systems/goldilocks_models/file_utils.h"  // writeCSV
+
 namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
@@ -15,6 +17,7 @@ using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::MatrixX;
 using drake::VectorX;
+using drake::math::autoDiffToGradientMatrix;
 using drake::math::autoDiffToValueMatrix;
 using drake::math::initializeAutoDiff;
 using drake::multibody::MultibodyPlant;
@@ -122,6 +125,53 @@ void DirconAbstractConstraint<double>::DoEval(
   // initializeAutoDiffGivenGradientMatrix(y0, dy, y);
 
   this->ScaleConstraint<AutoDiffXd>(y);
+
+  // Testing - looking at gradient values (to tune variable/constraint scaling)
+  auto gradient = autoDiffToGradientMatrix(*y);
+  double max_element = gradient(0, 0);
+  double max_idx_i = 0;
+  double max_idx_j = 0;
+  for (int i = 0; i < gradient.rows(); i++)
+    for (int j = 0; j < gradient.cols(); j++) {
+      if (gradient(i, j) > max_element) {
+        max_element = gradient(i, j);
+        max_idx_i = i;
+        max_idx_j = j;
+      }
+    }
+  if (max_element > 1e3) {
+    std::cout << this->get_description();
+    std::cout << ":  gradient = " << max_element;
+    std::cout << ",  max_idx_i = " << max_idx_i;
+    std::cout << ",  max_idx_j = " << max_idx_j << std::endl;
+  }
+  if (this->get_description().compare("dynamics_constraint") == 0) {
+    goldilocks_models::writeCSV("dyn_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("kinematics_constraint") == 0) {
+    goldilocks_models::writeCSV("kin_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("impact_constraint") == 0) {
+    goldilocks_models::writeCSV("impact_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("quaternion_norm_constraint") == 0) {
+    goldilocks_models::writeCSV("quat_norm_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("rom_dyn_constraint") == 0) {
+    goldilocks_models::writeCSV("rom_dyn_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("com_height_constraint") == 0) {
+    goldilocks_models::writeCSV("com_height_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("com_height_vel_constraint") == 0) {
+    goldilocks_models::writeCSV("com_height_vel_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("toe_right_constraint") == 0) {
+    goldilocks_models::writeCSV("toe_right_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("toe_left_constraint") == 0) {
+    goldilocks_models::writeCSV("toe_left_constraint_grad.csv", gradient);
+  }
 }
 
 template <typename T>
@@ -165,7 +215,8 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
           1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
               (4 * num_kinematic_constraints_wo_skipping) + num_quat_slack,
           Eigen::VectorXd::Zero(num_positions + num_velocities),
-          Eigen::VectorXd::Zero(num_positions + num_velocities)),
+          Eigen::VectorXd::Zero(num_positions + num_velocities),
+          "dynamics_constraint"),
       plant_(plant),
       constraints_(&constraints),
       num_states_{num_positions + num_velocities},
@@ -308,7 +359,8 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
               std::count(is_constraint_relative.begin(),
                          is_constraint_relative.end(), true),
           VectorXd::Zero(type * num_kinematic_constraints),
-          VectorXd::Zero(type * num_kinematic_constraints)),
+          VectorXd::Zero(type * num_kinematic_constraints),
+          "kinematics_constraint"),
       plant_(plant),
       constraints_(&constraints),
       num_states_{num_positions + num_velocities},
@@ -420,7 +472,8 @@ DirconImpactConstraint<T>::DirconImpactConstraint(
                                   num_positions + 2 * num_velocities +
                                       num_kinematic_constraints_wo_skipping,
                                   VectorXd::Zero(num_velocities),
-                                  VectorXd::Zero(num_velocities)),
+                                  VectorXd::Zero(num_velocities),
+                                  "impact_constraint"),
       plant_(plant),
       constraints_(&constraints),
       num_states_{num_positions + num_velocities},

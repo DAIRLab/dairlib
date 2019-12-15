@@ -126,8 +126,8 @@ void DirconAbstractConstraint<double>::DoEval(
 
   this->ScaleConstraint<AutoDiffXd>(y);
 
-  // Testing - looking at gradient values (to tune variable/constraint scaling)
-  auto gradient = autoDiffToGradientMatrix(*y);
+  // hacky way to read gradient values (to tune variable/constraint scaling)
+  /*auto gradient = autoDiffToGradientMatrix(*y);
   double max_element = gradient(0, 0);
   double max_idx_i = 0;
   double max_idx_j = 0;
@@ -171,7 +171,7 @@ void DirconAbstractConstraint<double>::DoEval(
   }
   else if (this->get_description().compare("toe_left_constraint") == 0) {
     goldilocks_models::writeCSV("toe_left_constraint_grad.csv", gradient);
-  }
+  }*/
 }
 
 template <typename T>

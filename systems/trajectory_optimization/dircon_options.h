@@ -24,8 +24,6 @@ class DirconOptions {
   std::vector<std::pair<int, double>>& getKinConstraintScaling();
   std::vector<std::pair<int, double>>& getKinConstraintScalingStart();
   std::vector<std::pair<int, double>>& getKinConstraintScalingEnd();
-  std::vector<std::pair<int, double>>& getKinConstraintScaling(
-      DirconKinConstraintType type);
   std::vector<std::pair<int, double>>& getImpConstraintScaling();
 
   // Setters/getters for relativity of kinematic constraint
@@ -49,8 +47,11 @@ class DirconOptions {
   double getForceCost();
 
  private:
+  // methods for constraint scaling
   static void addConstraintScaling(std::vector<std::pair<int, double>>* list,
                                    double scale, int row_start, int row_end);
+  std::vector<std::pair<int, double>>& getKinConstraintScaling(
+      DirconKinConstraintType type);
 
   // Constraint scaling
   std::vector<std::pair<int, double>> dyn_constraint_scaling_;

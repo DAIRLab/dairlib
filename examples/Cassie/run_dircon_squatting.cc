@@ -101,6 +101,9 @@ DEFINE_int32(max_iter, 100000, "Iteration limit");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
 DEFINE_double(tol, 1e-4, "Tolerance for constraint violation and dual gap");
 
+// Parameters which enable dircon-improving features
+DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
+
 namespace dairlib {
 
 /// Trajectory optimization of fixed-spring cassie squatting
@@ -401,16 +404,19 @@ void DoMain(double duration, int max_iter, string data_directory,
   double_all_options.setConstraintRelative(6, true);
   double_all_options.setConstraintRelative(8, true);
   // Constraint scaling
-  double one_fifty = 150;
-  double_all_options.setDynConstraintScaling(1.0/one_fifty, 0, 14);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty/3.0*10, 15, 16);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty, 17, 28);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty/10, 29, 34);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty/15.0, 35, 36);
-  double_all_options.setKinConstraintScaling(1.0/500.0, 0, 9);
-  double_all_options.setKinConstraintScaling(2.0/50.0, 10, 11);
-  double_all_options.setKinConstraintScalingVel(500);
-  double_all_options.setKinConstraintScalingPos(1000);
+  if (FLAGS_is_scale_constraint) {
+    double one_fifty = 150;
+    double_all_options.setDynConstraintScaling(1.0 / one_fifty, 0, 14);
+    double_all_options.setDynConstraintScaling(1.0 / one_fifty / 3.0 * 10, 15,
+                                               16);
+    double_all_options.setDynConstraintScaling(1.0 / one_fifty, 17, 28);
+    double_all_options.setDynConstraintScaling(1.0 / one_fifty / 10, 29, 34);
+    double_all_options.setDynConstraintScaling(1.0 / one_fifty / 15.0, 35, 36);
+    double_all_options.setKinConstraintScaling(1.0 / 500.0, 0, 9);
+    double_all_options.setKinConstraintScaling(2.0 / 50.0, 10, 11);
+    double_all_options.setKinConstraintScalingVel(500);
+    double_all_options.setKinConstraintScalingPos(1000);
+  }
 
   // timesteps and modes setting
   vector<double> min_dt;
@@ -525,11 +531,12 @@ void DoMain(double duration, int max_iter, string data_directory,
       &plant, "toe_left", 1, 0.05, std::numeric_limits<double>::infinity());
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
-  // scaling
-  std::vector<std::pair<int, double>> odbp_constraint_scale;
-  odbp_constraint_scale.emplace_back(0, 0.5);
-  left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
-  right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+  if (FLAGS_is_scale_constraint) {
+    std::vector<std::pair<int, double>> odbp_constraint_scale;
+    odbp_constraint_scale.emplace_back(0, 0.5);
+    left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+    right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+  }
   for (int index = 0; index < num_time_samples[0]; index++) {
     auto x = trajopt->state(index);
     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));

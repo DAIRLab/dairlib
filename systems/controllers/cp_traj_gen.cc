@@ -269,6 +269,9 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
   Y[1](1, 0) = (init_swing_foot_pos(1) + CP(1)) / 2;
   Y[2](1, 0) = CP(1);
   // z
+  /// We added stance_foot_height because we want the desired trajectory to be
+  /// relative to the stance foot in case the floating base state estimation
+  /// drifts.
   Y[0](2, 0) = init_swing_foot_pos(2);
   Y[1](2, 0) = mid_foot_height_ + stance_foot_height(0);
   Y[2](2, 0) = desired_final_foot_height_ + stance_foot_height(0);

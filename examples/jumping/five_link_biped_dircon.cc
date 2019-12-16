@@ -238,9 +238,9 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   trajopt->AddConstraintToAllKnotPoints(u(3) <= 300);
 
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_roty"]) >=
-                                        -0.25);
+                                        -0.15);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_roty"]) <=
-                                        0.25);
+                                        0.15);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_x"]) >= -0.5);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_x"]) <= 0.5);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["left_knee_pin"]) >=

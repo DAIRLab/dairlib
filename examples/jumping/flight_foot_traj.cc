@@ -80,7 +80,7 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
   // find a function that calculates the center of mass for a rigidbodytree
 
   Vector3d center_of_mass = tree_.centerOfMass(cache);
-  Vector3d com_velocity = tree_.centerOfMassJacobian(cache) * (*v);
+//  Vector3d com_velocity = tree_.centerOfMassJacobian(cache) * (*v);
   //  std::cout << "COM: " << center_of_mass << std::endl;
   //  std::cout << "COM jacobian: " << com_velocity << std::endl;
   //  VectorXd

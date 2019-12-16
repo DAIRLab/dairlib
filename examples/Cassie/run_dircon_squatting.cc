@@ -96,7 +96,7 @@ using dairlib::multibody::GetBodyIndexFromName;
 DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
               "directory to save/read data");
-DEFINE_bool(store_data, false, "To store soluation or not");
+DEFINE_bool(store_data, false, "To store solution or not");
 DEFINE_int32(max_iter, 100000, "Iteration limit");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
 DEFINE_double(tol, 1e-4, "Tolerance for constraint violation and dual gap");

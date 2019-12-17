@@ -31,8 +31,8 @@ TorsoTraj::TorsoTraj(const RigidBodyTree<double>& tree,
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
 
-  this->set_name("torso_traj");
-  this->DeclareAbstractOutputPort("torso_traj", traj_inst,
+  this->set_name("pelvis_rot_traj");
+  this->DeclareAbstractOutputPort("pelvis_rot_traj", traj_inst,
                                   &TorsoTraj::CalcTraj);
 
   // Input/Output Setup

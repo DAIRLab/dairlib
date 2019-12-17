@@ -176,10 +176,10 @@ int doMain(int argc, char* argv[]) {
   r_foot_traj_block.time_vector = time_matrix;
   r_foot_traj_block.datatypes = {"r_foot_x", "r_foot_y", "r_foot_z"};
   LcmTrajectory::Trajectory torso_angle_traj_block;
-  r_foot_traj_block.traj_name = "torso_trajectory";
-  r_foot_traj_block.datapoints = torso_angle_mat;
-  r_foot_traj_block.time_vector = time_matrix;
-  r_foot_traj_block.datatypes = {"planar_roty"};
+  torso_angle_traj_block.traj_name = "torso_trajectory";
+  torso_angle_traj_block.datapoints = torso_angle_mat;
+  torso_angle_traj_block.time_vector = time_matrix;
+  torso_angle_traj_block.datatypes = {"planar_roty"};
   std::vector<LcmTrajectory::Trajectory> trajectories;
   trajectories.push_back(com_traj_block);
   trajectories.push_back(l_foot_traj_block);

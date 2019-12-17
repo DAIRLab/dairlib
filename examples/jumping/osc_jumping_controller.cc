@@ -130,9 +130,6 @@ int doMain(int argc, char* argv[]) {
   const LcmTrajectory::Trajectory& lcm_torso_traj =
       loaded_traj.getTrajectory("torso_trajectory");
 
-  std::cout << lcm_torso_traj.datapoints.size() << std::endl;
-
-  cout << lcm_r_foot_traj.time_vector.size();
   const PiecewisePolynomial<double>& center_of_mass_traj =
       PiecewisePolynomial<double>::Pchip(com_traj.time_vector,
                                          com_traj.datapoints);
@@ -261,7 +258,7 @@ int doMain(int argc, char* argv[]) {
       &tree_with_springs);
   pelvis_rot_traj.AddStateAndFrameToTrack(NEUTRAL, "torso");
   pelvis_rot_traj.AddStateAndFrameToTrack(CROUCH, "torso");
-  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
+  //  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
   pelvis_rot_traj.AddStateAndFrameToTrack(LAND, "torso");
   osc->AddTrackingData(&pelvis_rot_traj);
 
@@ -299,6 +296,8 @@ int doMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   r_foot_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
+                  torso_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_state_input_port());
@@ -308,6 +307,8 @@ int doMain(int argc, char* argv[]) {
                   l_foot_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
                   r_foot_traj_generator->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(0),
+                  torso_traj_generator->get_fsm_input_port());
   builder.Connect(traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
@@ -343,7 +344,7 @@ int doMain(int argc, char* argv[]) {
   return 0;
 }
 
-}  // namespace examples
+}  // namespace examples::jumping::osc
 }  // namespace dairlib
 
 int main(int argc, char* argv[]) {

@@ -88,11 +88,12 @@ int doMain(int argc, char* argv[]) {
   std::cout << "l_foot_idx: " << l_foot_idx << std::endl;
   std::cout << "r_foot_idx: " << r_foot_idx << std::endl;
 
-  std::vector<double> points;
+  std::vector<double> com_points;
   std::vector<double> l_foot_points;
   std::vector<double> r_foot_points;
+  std::vector<double> torso_angle;
   std::vector<double> times;
-  points.reserve(10000);
+  com_points.reserve(10000);
   times.reserve(10000);
 
   for (int i = 0; i < FLAGS_resolution; ++i) {
@@ -109,8 +110,9 @@ int doMain(int argc, char* argv[]) {
                  .linear()
                  .col(0);
     times.push_back(i * FLAGS_time_offset / FLAGS_resolution);
+    torso_angle.push_back(q(2));
     for (int j = 0; j < 3; ++j) {
-      points.push_back(center_of_mass(j));
+      com_points.push_back(center_of_mass(j));
       l_foot_points.push_back(l_foot(j) - center_of_mass(j));
       r_foot_points.push_back(r_foot(j) - center_of_mass(j));
     }
@@ -132,8 +134,10 @@ int doMain(int argc, char* argv[]) {
     r_foot = tree.transformPoints(cache, pt_on_foot, r_foot_idx, 0);
 
     times.push_back(i * end_time / FLAGS_resolution + time_offset);
+    torso_angle.push_back(q(2));
+
     for (int j = 0; j < 3; ++j) {
-      points.push_back(center_of_mass(j));
+      com_points.push_back(center_of_mass(j));
       l_foot_points.push_back(l_foot(j) - center_of_mass(j));
       r_foot_points.push_back(r_foot(j) - center_of_mass(j));
     }
@@ -142,17 +146,19 @@ int doMain(int argc, char* argv[]) {
   std::cout << "Creating matrix " << std::endl;
 
   MatrixXd com_pos_matrix = Eigen::Map<const Matrix<double, Dynamic, Dynamic>>(
-      points.data(), 3, points.size() / 3);
+      com_points.data(), 3, com_points.size() / 3);
   MatrixXd l_foot_matrix = Eigen::Map<const Matrix<double, Dynamic, Dynamic>>(
       l_foot_points.data(), 3, l_foot_points.size() / 3);
   MatrixXd r_foot_matrix = Eigen::Map<const Matrix<double, Dynamic, Dynamic>>(
       r_foot_points.data(), 3, r_foot_points.size() / 3);
+  MatrixXd torso_angle_mat = Eigen::Map<const Matrix<double, Dynamic, Dynamic>>(
+      torso_angle.data(), 1, torso_angle.size());
   VectorXd time_matrix = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
       times.data(), times.size());
 
   std::cout << "l_foot_matrix size: " << l_foot_matrix.size() << std::endl;
+  std::cout << "torso_angle_mat size: " << torso_angle_mat.size() << std::endl;
   std::cout << "time_matrix size: " << time_matrix.size() << std::endl;
-
 
   LcmTrajectory::Trajectory com_traj_block;
   com_traj_block.traj_name = "center_of_mass_trajectory";
@@ -169,40 +175,25 @@ int doMain(int argc, char* argv[]) {
   r_foot_traj_block.datapoints = r_foot_matrix;
   r_foot_traj_block.time_vector = time_matrix;
   r_foot_traj_block.datatypes = {"r_foot_x", "r_foot_y", "r_foot_z"};
+  LcmTrajectory::Trajectory torso_angle_traj_block;
+  r_foot_traj_block.traj_name = "torso_trajectory";
+  r_foot_traj_block.datapoints = torso_angle_mat;
+  r_foot_traj_block.time_vector = time_matrix;
+  r_foot_traj_block.datatypes = {"planar_roty"};
   std::vector<LcmTrajectory::Trajectory> trajectories;
   trajectories.push_back(com_traj_block);
   trajectories.push_back(l_foot_traj_block);
   trajectories.push_back(r_foot_traj_block);
+  trajectories.push_back(torso_angle_traj_block);
   std::vector<std::string> trajectory_names;
   trajectory_names.push_back("center_of_mass_trajectory");
   trajectory_names.push_back("left_foot_trajectory");
   trajectory_names.push_back("right_foot_trajectory");
+  trajectory_names.push_back("torso_trajectory");
   LcmTrajectory saved_traj(trajectories, trajectory_names, "jumping_trajectory",
                            "Center of mass, and feet trajectory for "
                            "jumping");
   saved_traj.writeToFile("examples/jumping/saved_trajs/" + FLAGS_filename);
-  //
-  //  {
-  //    std::ofstream fout;
-  //    fout.open("examples/jumping/saved_trajs/com_traj/squat.csv");
-  //    int count = 0;
-  //    for (double pt : points) {
-  //      fout << pt;
-  //      if (count++ % 4 == 2) {
-  //        fout << "\n";
-  //      } else {
-  //        fout << ", ";
-  //      }
-  //    }
-  //    fout.close();
-  //    fout.open("examples/jumping/saved_trajs/com_traj/squat_times");
-  //    for (double t : times) {
-  //      fout << t << " ";
-  //    }
-  //    fout.flush();
-  //    fout.close();
-  //    std::cout << "Wrote Matrix " << std::endl;
-  //  }
   return 0;
 }
 

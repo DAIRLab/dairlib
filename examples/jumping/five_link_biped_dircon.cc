@@ -170,7 +170,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   auto trajopt = std::make_shared<HybridDircon<double>>(
       *plant, timesteps, min_dt, max_dt, contact_mode_list, options_list);
 
-  trajopt->AddDurationBounds(FLAGS_max_duration, 2.0* FLAGS_max_duration);
+  trajopt->AddDurationBounds(FLAGS_max_duration, 2.0 * FLAGS_max_duration);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
                            "five_link_biped_snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -204,6 +204,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   int n = plant->num_positions();
   auto lambda_init = trajopt->force_vars(0);
   auto lambda_final = trajopt->force_vars(2);
+  auto x_pre_flight = trajopt->state(FLAGS_knot_points + 1);
   //  auto lambda_init = trajopt->force(0, 1);
 
   Eigen::VectorXd fixed_initial_conds(14);
@@ -213,10 +214,15 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   trajopt->AddLinearConstraint(xf == fixed_initial_conds);
   trajopt->AddLinearConstraint(x_mid_point(positions_map["planar_x"]) ==
                                (x0(positions_map["planar_x"])));
+  //  trajopt->AddLinearConstraint(xf(positions_map["planar_x"]) ==
+  //                               (x0(positions_map["planar_x"])));
   trajopt->AddLinearConstraint(x_mid_point(positions_map["planar_z"]) ==
                                (x0(positions_map["planar_z"]) + FLAGS_height));
   trajopt->AddLinearConstraint(xf(positions_map["planar_z"]) ==
                                (x0(positions_map["planar_z"])));
+  trajopt->AddLinearConstraint(x_pre_flight(positions_map["planar_z"]) >=
+                               x0(positions_map["planar_z"]));
+  // Enforce that the flight phase starts after the feet have left the ground
   trajopt->AddLinearConstraint(x0.tail(n) == VectorXd::Zero(n));
   trajopt->AddLinearConstraint(xf.tail(n) == VectorXd::Zero(n));
 
@@ -238,15 +244,15 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   trajopt->AddConstraintToAllKnotPoints(u(3) <= 300);
 
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_roty"]) >=
-                                        -0.15);
+                                        -0.20);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_roty"]) <=
-                                        0.15);
+                                        0.20);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_x"]) >= -0.5);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_x"]) <= 0.5);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["left_knee_pin"]) >=
-                                        0.2);
+                                        0.1);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["right_knee_pin"]) >=
-                                        0.2);
+                                        0.1);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["left_knee_pin"]) <= 2);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["right_knee_pin"]) <=
                                         2);
@@ -324,6 +330,15 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
                       "examples/jumping/saved_trajs/state_traj.txt");
   writeTimeTrajToFile(trajopt->ReconstructInputTrajectory(result),
                       "examples/jumping/saved_trajs/input_traj.txt");
+  //  for (double t : state_traj.get_segment_times()) {
+  //    std::cout << "t: " << t << std::endl;
+  //  }
+  std::cout << "mode change: "
+            << state_traj.get_segment_times().at(FLAGS_knot_points)
+            << std::endl;
+  std::cout << "mode change: "
+            << state_traj.get_segment_times().at(2 * FLAGS_knot_points)
+            << std::endl;
   return trajopt->ReconstructStateTrajectory(result);
 }
 

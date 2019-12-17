@@ -37,6 +37,18 @@ cc_library(
 )
 
 cc_library(
+    name = "torso_traj",
+    srcs = ["torso_traj.cc"],
+    hdrs = ["torso_traj.h"],
+    deps = [
+        "//attic/multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "jumping_fsm",
     srcs = ["jumping_fsm.cc"],
     hdrs = ["jumping_fsm.h"],
@@ -85,6 +97,7 @@ cc_binary(
         ":com_traj",
         ":flight_foot_traj",
         ":jumping_fsm",
+        ":torso_traj",
         ":traj_logger",
         "//attic/multibody:utils",
         "//common",

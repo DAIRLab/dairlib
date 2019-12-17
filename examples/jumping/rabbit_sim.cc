@@ -132,7 +132,7 @@ int do_main(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           "RABBIT_STATE_SIMULATION",
           lcm,
-          1.0 / 10000.0
+          1.0 / 1000.0
       ));
 
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);

@@ -31,23 +31,21 @@ OFFBOARD_CONDITION = lambda data, i: data[i,1] > BOARD_EDGE_Y
 ONBOARD_CONDITION = lambda data, i: not OFFBOARD_CONDITION(data, i)
 
 # true if block moves significantly over horizon H
-MOVING_CONDITION = lambda data, i: minBallOverHorizon(data[i:,:], TOSS_BALL_H) > TOSS_BALL_TOLERANCE
+MOVING_CONDITION = lambda data, i: maxDeltaOverHorizon(data[i:,:], TOSS_BALL_H) > TOSS_BALL_TOLERANCE
 
 # false if block moves significantly over horizon H
 STOPPED_CONDITION = lambda data, i: not MOVING_CONDITION(data, i)
 
-# returns minium ||\delta x|\ over a horizon of H in data
-def minBallOverHorizon(data, H):
+# returns maximum ||\delta x|\ over a horizon of H in data
+def maxDeltaOverHorizon(data, H):
     diff_data = data[1:H,:] - data[0:(H-1),:]
     return np.max(np.linalg.norm(diff_data,axis=1))
 
 # find first index of data for which condition() returns true
 def get_first_true(data,condition,H):
-    i = 0
-    while i<(data.shape[0]-(H-1)):
+    for i in range(0, data.shape[0] - (H-1)):
         if condition(data, i):
             return i
-        i = i+1
     return -1
 
 # finds first toss in data, return (-1, 0) if no experiment found
@@ -67,9 +65,7 @@ def get_first_experiment(data):
 # permutation of get_first_experiment to start at index start
 def get_first_experiment_after(start, data):
     (s,e) = get_first_experiment(data[start:,:])
-    s = s + start
-    e = e + start
-    return (s,e)
+    return (s + start, e + start)
 
 def extract_experiments(data):
     starts = []
@@ -103,8 +99,7 @@ outcsv = sys.argv[2]
 num_t = 0
 with open(csvfn,'r') as csvfile:
     plots = csv.reader(csvfile, delimiter=',')
-    for row in plots:
-        num_t = num_t + 1
+    num_t = sum(1 for row in plots)
 
 # read CSV trajectory
 t = np.zeros(num_t)
@@ -115,14 +110,13 @@ bq_t = np.zeros((4,num_t))
 i = 0
 with open(csvfn,'r') as csvfile:
     plots = csv.reader(csvfile, delimiter=',')
-    for row in plots:
+    for (i, row) in enumerate(plots):
         row = np.asarray([float(e) for e in row])
         t[i] = row[0]
         q_t[:,i] = row[1:5]
         p_t[:,i] = row[5:8]
         bq_t[:,i] = row[8:12]
         bp_t[:,i] = row[12:15]
-        i = i + 1
 
 # clean up temporary CSV
 os.system('rm ./' + csvfn)

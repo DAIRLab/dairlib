@@ -17,8 +17,11 @@ if len(sys.argv) < 3:
 inbag = sys.argv[1]
 outcsv = sys.argv[2]
 
+# open rosbag
+bag = rosbag.Bag(inbag)
+
 # get summary info from rosbag as a dictionary
-info_dict = yaml.load(subprocess.Popen(['rosbag', 'info', '--yaml', inbag], stdout=subprocess.PIPE).communicate()[0])
+info_dict = yaml.load(bag._get_yaml_info())
 
 # extract metadata from cube and board topics
 cube_topic = [topic for topic in info_dict['topics'] if topic['topic'] == CUBE_TOPIC_STRING][0]
@@ -29,14 +32,12 @@ num_msg = cube_topic['messages']
 if not num_msg == board_topic['messages']:
     raise Exception('Missing odom messages for board and/or cube!')
 
-# open rosbag
-bag = rosbag.Bag(inbag)
-
 # extract cube pose data
 t_ros = np.zeros(num_msg)
 cube_ros = np.zeros((7,num_msg))
 i = 0
-for topic, msg, t in bag.read_messages(topics=[CUBE_TOPIC_STRING]):
+for i, tmt in enumerate(bag.read_messages(topics=[CUBE_TOPIC_STRING])):
+    topic, msg, t = tmt
     tstamp = msg.header.stamp
     t_ros[i] = tstamp.secs + tstamp.nsecs*1e-9
     cube_pose = msg.pose.pose
@@ -49,7 +50,8 @@ for topic, msg, t in bag.read_messages(topics=[CUBE_TOPIC_STRING]):
 # extract board pose data
 board_ros = np.zeros((7,num_msg))
 i = 0
-for topic, msg, t in bag.read_messages(topics=[BOARD_TOPIC_STRING]):
+for i, tmt in enumerate(bag.read_messages(topics=[BOARD_TOPIC_STRING])):
+    topic, msg, t = tmt
     board_pose = msg.pose.pose
     board_pos = np.asarray([board_pose.position.x, board_pose.position.y, board_pose.position.z])
     board_quat = np.asarray([board_pose.orientation.x, board_pose.orientation.y, board_pose.orientation.z, board_pose.orientation.w])

@@ -141,10 +141,12 @@ int DoMain(int argc, char* argv[]) {
   // Create finite state machine
   int left_stance_state = 0;
   int right_stance_state = 1;
+  std::vector<int> fsm_states({left_stance_state, right_stance_state});
   double duration_per_state = 0.35;
+  std::vector<double> state_druations(2, duration_per_state);
   double time_shift = 0;
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      tree_with_springs, duration_per_state, time_shift);
+      tree_with_springs, fsm_states, state_druations, time_shift);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
 

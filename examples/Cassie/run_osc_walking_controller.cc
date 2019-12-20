@@ -138,19 +138,30 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
 
+  double duration_per_state = 0.35;
   // Create finite state machine
   int left_stance_state = 0;
   int right_stance_state = 1;
-  std::vector<int> fsm_states({left_stance_state, right_stance_state});
-  double duration_per_state = 0.35;
-  std::vector<double> state_druations(2, duration_per_state);
-  double time_shift = 0;
+  int double_support_state = 2;
+  std::vector<int> fsm_states({left_stance_state, double_support_state,
+                               right_stance_state, double_support_state});
+  double left_support_duration = 0.35;
+  double right_support_duration = 0.35;
+  double double_support_duration = 0.1;
+  std::vector<double> state_druations(
+      {left_support_duration, double_support_duration, right_support_duration,
+       double_support_duration});
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      tree_with_springs, fsm_states, state_druations, time_shift);
+      tree_with_springs, fsm_states, state_druations);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
 
   // Create CoM trajectory generator
+  // TODO: modify LIPMTrajGenerator and CPTrajGenerator
+  // To make LIPMTrajGenerator general to n# of states, you can probably pass in
+  // states ([0,1,2] version, not [0,2,1,2]), state_durations and corresponding
+  // indices/displacement (this would be vector of vector because you might have
+  // multiple indices).
   double desired_com_height = 0.89;
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       tree_with_springs, desired_com_height, duration_per_state, left_toe_idx,

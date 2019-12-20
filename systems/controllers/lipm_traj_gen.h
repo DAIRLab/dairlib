@@ -72,10 +72,10 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
 
   bool is_quaternion_;
 
-  // left stance state (of finite state machine)
-  // right stance state (of finite state machine)
+  // states of finite state machine (hard-coded)
   const int left_stance_state_ = 0;
   const int right_stance_state_ = 1;
+  const int double_stance_state_ = 2;
 };
 
 }  // namespace systems

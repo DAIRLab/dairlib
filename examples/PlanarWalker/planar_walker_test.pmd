@@ -1,0 +1,59 @@
+group "2.lcm-tools" {
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/signalscope/signal-scope";
+        host = "localhost";
+    }
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "1.simulated_robot" {
+    cmd "0.simulator (dispatched)" {
+        exec = "bazel-bin/examples/PlanarWalker/run_simple_sim --publish_state=false";
+        host = "localhost";
+    }
+    cmd "1.simulator (no dispatcher)" {
+        exec = "bazel-bin/examples/PlanarWalker/run_simple_sim --publish_state=true";
+        host = "localhost";
+    }
+    cmd "2.simulator (no dispatcher) for OSC controller" {
+        exec = "bazel-bin/examples/PlanarWalker/run_simple_sim --publish_state=true --publish_rate=200";
+        host = "localhost";
+    }
+    cmd "3.osc-balancing-controller" {
+        exec = "bazel-bin/examples/PlanarWalker/run_osc_balancing_controller";
+        host = "localhost";
+    }
+    cmd "3.osc-balancing-controller debug" {
+        exec = "valgrind --tool=callgrind bazel-bin/examples/PlanarWalker/run_osc_balancing_controller";
+        host = "localhost";
+    }
+}
+
+group "0.operator" {
+    cmd "0.drake-director" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+}
+
+script "start-operator-RBP" {
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 3000;
+}
+
+script "run-drake-osc-standing-control" {
+    run_script "start-operator-RBP";
+    start cmd "2.simulator (no dispatcher) for OSC controller";
+    start cmd "3.osc-balancing-controller";
+}
+
+script "run-drake-osc-standing-control debug mode" {
+    run_script "start-operator-RBP";
+    start cmd "2.simulator (no dispatcher) for OSC controller";
+    start cmd "3.osc-balancing-controller debug";
+    start cmd "0.lcm-spy";
+}

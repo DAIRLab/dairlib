@@ -4,7 +4,11 @@
 cc_binary(
     name = "run_passive",
     srcs = ["run_passive.cc"],
-    data = ["PlanarWalkerWithTorso.urdf"],
+    data = [
+        "PlanarWalker.urdf",
+        "PlanarWalkerWithTorso.urdf",
+        "PlanarWalkerWithTorsoAndFeet.urdf",
+    ],
     deps = [
         "@drake//:drake_shared_library",
         "@gflags",
@@ -182,7 +186,11 @@ cc_library(
 
 cc_library(
     name = "planar_walker_urdfs",
-    data = glob(["urdf/**"]),
+    data = [
+        "PlanarWalker.urdf",
+        "PlanarWalkerWithTorso.urdf",
+        "PlanarWalkerWithTorsoAndFeet.urdf",
+    ],
 )
 
 cc_binary(
@@ -190,6 +198,7 @@ cc_binary(
     srcs = ["run_osc_balancing_controller.cc"],
     deps = [
         ":planar_walker_urdfs",
+        ":lyapunov_csvs",
         ":state_based_fsm",
         ":safe_traj_gen",
         "//common",
@@ -206,6 +215,11 @@ cc_binary(
 cc_binary(
     name = "run_simple_sim",
     srcs = ["run_simple_sim.cc"],
+    data = [
+        "PlanarWalker.urdf",
+        "PlanarWalkerWithTorso.urdf",
+        "PlanarWalkerWithTorsoAndFeet.urdf",
+    ],
     deps = [
         "//attic/multibody:multibody_solvers",
         "//systems:robot_lcm_systems",

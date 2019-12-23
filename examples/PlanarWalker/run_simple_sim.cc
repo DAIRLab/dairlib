@@ -6,20 +6,20 @@
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/runge_kutta3_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
 
+#include "attic/multibody/multibody_solvers.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "attic/multibody/multibody_solvers.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -31,11 +31,11 @@
 
 namespace dairlib {
 
-using dairlib::systems::SubvectorPassThrough;
 using dairlib::multibody::PositionSolver;
+using dairlib::systems::SubvectorPassThrough;
 using drake::solvers::MathematicalProgramResult;
-using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::LcmSubscriberSystem;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
@@ -55,9 +55,10 @@ DEFINE_double(dt, 1e-3,
               "'simulation_type=timestepping' (ignored for "
               "'simulation_type=compliant'");
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
-DEFINE_bool(publish_state, true,
+DEFINE_bool(
+    publish_state, true,
     "Publish state PLANAR_STATE (set to false when running w/dispatcher");
-DEFINE_string(state_channel_name, "CASSIE_STATE",
+DEFINE_string(state_channel_name, "PLANAR_STATE",
               "The name of the lcm channel that sends Cassie's state");
 DEFINE_bool(publish_output, true, "Publish simulated PLANAR_OUTPUT");
 
@@ -69,24 +70,24 @@ DEFINE_double(init_ankle, 1.3, "Initial ankle joint position");
 DEFINE_double(init_toe, -1.5, "Initial toe joint position");
 
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
-    "End time of simulation");
+              "End time of simulation");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   auto tree = std::make_unique<RigidBodyTree<double>>();
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "PlanarWalkerWithTorsoAndFeet.urdf",
+      "examples/PlanarWalker/PlanarWalkerWithTorsoAndFeet.urdf",
       drake::multibody::joints::kFixed, tree.get());
 
-  for(int i=0; i<tree.get()->get_num_positions(); i++) {
+  for (int i = 0; i < tree.get()->get_num_positions(); i++) {
     std::cout << tree.get()->get_position_name(i) << std::endl;
   }
 
   const double terrain_size = 100;
   const double terrain_depth = 0.20;
-  drake::multibody::AddFlatTerrainToWorld(
-      tree.get(), terrain_size, terrain_depth);
+  drake::multibody::AddFlatTerrainToWorld(tree.get(), terrain_size,
+                                          terrain_depth);
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -121,7 +122,6 @@ int do_main(int argc, char* argv[]) {
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,
       plant->get_input_port(0).size());
-  std::cout << "Hello!" << std::endl;
   // To get rid of the timestamp which is at the tail of a timestapedVector
   builder.Connect(input_sub->get_output_port(),
                   input_receiver->get_input_port(0));
@@ -168,7 +168,7 @@ int do_main(int argc, char* argv[]) {
                                           &simulator.get_mutable_context());
 
   // drake::systems::Context<double>& sim_context =
-      // simulator.get_mutable_context();
+  // simulator.get_mutable_context();
   // auto integrator =
   //     simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
   //         *diagram, FLAGS_timestep, &sim_context);
@@ -181,42 +181,42 @@ int do_main(int argc, char* argv[]) {
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
 
-  std::map<std::string, int> map =
-      plant->get_rigid_body_tree().computePositionNameToIndexMap();
-  x0(map.at("hip_pitch_left")) = FLAGS_init_hip_pitch;
-  x0(map.at("hip_pitch_right")) = FLAGS_init_hip_pitch;
-  // x0(map.at("achilles_hip_pitch_left")) = -.44;
-  // x0(map.at("achilles_hip_pitch_right")) = -.44;
-  // x0(map.at("achilles_heel_pitch_left")) = -.105;
-  // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  x0(map.at("knee_left")) = FLAGS_init_knee;
-  x0(map.at("knee_right")) = FLAGS_init_knee;
-  x0(map.at("ankle_joint_left")) = FLAGS_init_ankle;
-  x0(map.at("ankle_joint_right")) = FLAGS_init_ankle;
+  // std::map<std::string, int> map =
+  //     plant->get_rigid_body_tree().computePositionNameToIndexMap();
+  // x0(map.at("hip_pitch_left")) = FLAGS_init_hip_pitch;
+  // x0(map.at("hip_pitch_right")) = FLAGS_init_hip_pitch;
+  // // x0(map.at("achilles_hip_pitch_left")) = -.44;
+  // // x0(map.at("achilles_hip_pitch_right")) = -.44;
+  // // x0(map.at("achilles_heel_pitch_left")) = -.105;
+  // // x0(map.at("achilles_heel_pitch_right")) = -.105;
+  // x0(map.at("knee_left")) = FLAGS_init_knee;
+  // x0(map.at("knee_right")) = FLAGS_init_knee;
+  // x0(map.at("ankle_joint_left")) = FLAGS_init_ankle;
+  // x0(map.at("ankle_joint_right")) = FLAGS_init_ankle;
 
-  // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
-  // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
+  // // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
+  // // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
 
-  // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
-  // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
+  // // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
+  // // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
 
-  x0(map.at("toe_left")) = FLAGS_init_toe;
-  x0(map.at("toe_right")) = FLAGS_init_toe;
+  // x0(map.at("toe_left")) = FLAGS_init_toe;
+  // x0(map.at("toe_right")) = FLAGS_init_toe;
 
   std::vector<int> fixed_joints;
-  fixed_joints.push_back(map.at("hip_pitch_left"));
-  fixed_joints.push_back(map.at("hip_pitch_right"));
-  fixed_joints.push_back(map.at("knee_left"));
-  fixed_joints.push_back(map.at("knee_right"));
+  // fixed_joints.push_back(map.at("hip_pitch_left"));
+  // fixed_joints.push_back(map.at("hip_pitch_right"));
+  // fixed_joints.push_back(map.at("knee_left"));
+  // fixed_joints.push_back(map.at("knee_right"));
 
-  double quaternion_norm = x0.segment(3, 4).norm();
-  if (quaternion_norm != 0)  // Unit Quaternion
-    x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
-  else  // in case the user enters 0-norm quaternion
-    x0(3) = 1;
+  // double quaternion_norm = x0.segment(3, 4).norm();
+  // if (quaternion_norm != 0)  // Unit Quaternion
+  //   x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
+  // else  // in case the user enters 0-norm quaternion
+  //   x0(3) = 1;
 
   // Set the initial height of the robot so that it's above the ground.
-  x0(2) = FLAGS_init_height;
+  x0(1) = FLAGS_init_height;
 
   Eigen::VectorXd q0 =
       x0.head(plant->get_rigid_body_tree().get_num_positions());
@@ -234,7 +234,8 @@ int do_main(int argc, char* argv[]) {
   MathematicalProgramResult program_result = position_solver.Solve();
 
   if (!program_result.is_success()) {
-    std::cout << "Solver error: " << program_result.get_solution_result() << std::endl;
+    std::cout << "Solver error: " << program_result.get_solution_result()
+              << std::endl;
     return 0;
   }
 
@@ -247,17 +248,14 @@ int do_main(int argc, char* argv[]) {
     drake::systems::ContinuousState<double>& state =
         context.get_mutable_continuous_state();
     std::cout << "Continuous " << state.size() << std::endl;
-    state.SetFromVector(x0);
-    // state[4] = 1;
-    // state[3] = 0;
-    // state[4] = 0;
+    // state.SetFromVector(x0);
+    // state[1] = 1.0;
   } else {
-    std::cout << "ngroups " << context.num_discrete_state_groups()
-              << std::endl;
+    std::cout << "ngroups " << context.num_discrete_state_groups() << std::endl;
     drake::systems::BasicVector<double>& state =
         context.get_mutable_discrete_state(0);
     std::cout << "Discrete " << state.size() << std::endl;
-    state.SetFromVector(x0);
+    // state.SetFromVector(x0);
     // state[4] = 1;
     // state[3] = 0;
     // state[4] = 0;

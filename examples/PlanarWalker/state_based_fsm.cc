@@ -24,18 +24,23 @@ StateBasedFiniteStateMachine::StateBasedFiniteStateMachine(
 
   this->DeclareVectorOutputPort(systems::BasicVector<double>(1),
                                 &StateBasedFiniteStateMachine::CalcFiniteState);
+
+  std::cout << "State based FSM is being defined!" << std::endl;
 }
 
 void StateBasedFiniteStateMachine::CalcFiniteState(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* fsm_state) const {
+  std::cout << "From StateBasedFiniteStateMachine: " << std::endl;
   // const OutputVector<double>* robot_output =
   //     (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
   Eigen::VectorXd current_finite_state(1);
   current_finite_state << initial_state_number_;
+  std::cout << "Current state: " << current_finite_state << std::endl;
 
   fsm_state->get_mutable_value() = current_finite_state;
+  std::cout << "End of StateBasedFiniteStateMachine" << std::endl;
 }
 
 }  // namespace dairlib

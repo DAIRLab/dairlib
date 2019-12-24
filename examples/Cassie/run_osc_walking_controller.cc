@@ -218,9 +218,9 @@ int DoMain(int argc, char* argv[]) {
   auto cp_traj_generator = builder.AddSystem<systems::CPTrajGenerator>(
       tree_with_springs, mid_foot_height, desired_final_foot_height,
       desired_final_vertical_foot_velocity, max_CoM_to_CP_dist,
-      duration_per_state, left_toe_idx, Eigen::VectorXd::Zero(3), right_toe_idx,
-      Eigen::VectorXd::Zero(3), pelvis_idx, true, true, true, cp_offset,
-      center_line_offset);
+      duration_per_state, left_stance_state, right_stance_state, left_toe_idx,
+      Eigen::VectorXd::Zero(3), right_toe_idx, Eigen::VectorXd::Zero(3),
+      pelvis_idx, true, true, true, cp_offset, center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   cp_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),

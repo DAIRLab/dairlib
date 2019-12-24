@@ -3,12 +3,12 @@
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/framework/leaf_system.h"
 
-#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 
-#include "systems/framework/output_vector.h"
 #include "attic/multibody/rigidbody_utils.h"
 #include "systems/controllers/control_utils.h"
+#include "systems/framework/output_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -32,6 +32,8 @@ namespace systems {
 /// - maximum distance between center of mass and CP
 ///     (used to restrict the CP within an area)
 /// - duration of the swing phase
+/// - left stance state of finite state machine
+/// - right stance state of finite state machine
 /// - left foot body index
 /// - right foot body index
 /// - position of the contact point w.r.t. left foot body
@@ -46,21 +48,15 @@ namespace systems {
 
 class CPTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  CPTrajGenerator(const RigidBodyTree<double>& tree,
-                  double mid_foot_height,
+  CPTrajGenerator(const RigidBodyTree<double>& tree, double mid_foot_height,
                   double desired_final_foot_height,
                   double desired_final_vertical_foot_velocity,
-                  double max_CoM_to_CP_dist,
-                  double stance_duration_per_leg,
-                  int left_foot_idx,
-                  Eigen::Vector3d pt_on_left_foot,
-                  int right_foot_idx,
-                  Eigen::Vector3d pt_on_right_foot,
-                  int pelvis_idx,
-                  bool add_extra_control,
-                  bool is_feet_collision_avoid,
-                  bool is_using_predicted_com,
-                  double cp_offset,
+                  double max_CoM_to_CP_dist, double stance_duration_per_leg,
+                  int left_stance, int right_stance, int left_foot_idx,
+                  Eigen::Vector3d pt_on_left_foot, int right_foot_idx,
+                  Eigen::Vector3d pt_on_right_foot, int pelvis_idx,
+                  bool add_extra_control, bool is_feet_collision_avoid,
+                  bool is_using_predicted_com, double cp_offset,
                   double center_line_offset);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -81,18 +77,17 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  void calcCpAndStanceFootHeight(
-      const drake::systems::Context<double>& context,
-      const OutputVector<double>* robot_output,
-      const double end_time_of_this_interval,
-      Eigen::Vector2d* final_CP, Eigen::VectorXd* stance_foot_height) const;
+  void calcCpAndStanceFootHeight(const drake::systems::Context<double>& context,
+                                 const OutputVector<double>* robot_output,
+                                 const double end_time_of_this_interval,
+                                 Eigen::Vector2d* final_CP,
+                                 Eigen::VectorXd* stance_foot_height) const;
 
   drake::trajectories::PiecewisePolynomial<double> createSplineForSwingFoot(
       const double start_time_of_this_interval,
       const double end_time_of_this_interval,
-      const Eigen::Vector3d & init_swing_foot_pos,
-      const Eigen::Vector2d & CP,
-      const Eigen::VectorXd & stance_foot_height) const;
+      const Eigen::Vector3d& init_swing_foot_pos, const Eigen::Vector2d& CP,
+      const Eigen::VectorXd& stance_foot_height) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
                  drake::trajectories::Trajectory<double>* traj) const;
@@ -114,6 +109,8 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   double desired_final_vertical_foot_velocity_;
   double max_CoM_to_CP_dist_;
   double stance_duration_per_leg_;
+  const int left_stance_;
+  const int right_stance_;
   int left_foot_idx_;
   int right_foot_idx_;
   Eigen::Vector3d pt_on_left_foot_;
@@ -124,16 +121,9 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   bool is_using_predicted_com_;
 
   // Parameters
-  const double cp_offset_;  // in meters
+  const double cp_offset_;           // in meters
   const double center_line_offset_;  // in meters
-
-  // left stance state of finite state machine (hard coded)
-  // right stance state of finite state machine (hard coded)
-  const int left_stance_ = 0;
-  const int right_stance_ = 1;
 };
 
 }  // namespace systems
 }  // namespace dairlib
-
-

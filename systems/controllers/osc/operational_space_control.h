@@ -215,7 +215,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC constraint members
   bool with_input_constraints_ = true;
 
-  // (flat ground) Contact constraints and friction cone cnostraints
+  // (flat ground) Contact constraints and friction cone constraints
   std::vector<int> body_index_ = {};
   std::vector<Eigen::VectorXd> pt_on_body_ = {};
   double mu_ = -1;  // Friction coefficients
@@ -224,7 +224,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // `fsm_state_when_active_` is the finite state machine state when the contact
   // constraint is active. If `fsm_state_when_active_` is empty, then the
   // constraint is always active.
-  // The states here can repeat, since there might be multipel contact points
+  // The states here can repeat, since there might be multiple contact points
   // in a state of the finite state machine.
   std::vector<int> fsm_state_when_active_;
 

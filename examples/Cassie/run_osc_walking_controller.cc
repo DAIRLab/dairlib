@@ -55,6 +55,8 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  bool is_two_phase = true;
+
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
@@ -143,18 +145,22 @@ int DoMain(int argc, char* argv[]) {
   int left_stance_state = 0;
   int right_stance_state = 1;
   int double_support_state = 2;
-  std::vector<int> fsm_states({left_stance_state, right_stance_state});
-  //  std::vector<int> fsm_states({left_stance_state, double_support_state,
-  //                               right_stance_state, double_support_state});
   double left_support_duration = 0.35;
   double right_support_duration = 0.35;
   double double_support_duration = 0.1;
-  std::vector<double> state_druations(
-      {left_support_duration, right_support_duration});
-  //  std::vector<double> state_druations(
-  //      {left_support_duration, double_support_duration,
-  //      right_support_duration,
-  //       double_support_duration});
+  std::vector<int> fsm_states;
+  std::vector<double> state_druations;
+  if (is_two_phase) {
+    fsm_states = std::vector<int>({left_stance_state, right_stance_state});
+    state_druations =
+        std::vector<double>({left_support_duration, right_support_duration});
+  } else {
+    fsm_states = std::vector<int>({left_stance_state, double_support_state,
+                                   right_stance_state, double_support_state});
+    state_druations =
+        std::vector<double>({left_support_duration, double_support_duration,
+                             right_support_duration, double_support_duration});
+  }
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       tree_with_springs, fsm_states, state_druations);
   builder.Connect(simulator_drift->get_output_port(0),
@@ -162,29 +168,32 @@ int DoMain(int argc, char* argv[]) {
 
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
-  std::vector<int> unordered_fsm_states(
-      {left_stance_state, right_stance_state});
-  std::vector<double> unordered_state_druations(
-      {left_support_duration, right_support_duration});
+  std::vector<int> unordered_fsm_states;
+  std::vector<double> unordered_state_druations;
   std::vector<std::vector<int>> body_indices;
-  body_indices.push_back(std::vector<int>({left_toe_idx}));
-  body_indices.push_back(std::vector<int>({right_toe_idx}));
   std::vector<std::vector<Vector3d>> pts_on_bodies;
-  pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
-  pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
-  //  std::vector<int> unordered_fsm_states(
-  //      {left_stance_state, right_stance_state, double_support_state});
-  //  std::vector<double> unordered_state_druations(
-  //      {left_support_duration, right_support_duration,
-  //      double_support_duration});
-  //  std::vector<std::vector<int>> body_indices;
-  //  body_indices.push_back(std::vector<int>({left_toe_idx}));
-  //  body_indices.push_back(std::vector<int>({right_toe_idx}));
-  //  body_indices.push_back(std::vector<int>({left_toe_idx, right_toe_idx}));
-  //  std::vector<std::vector<Vector3d>> pts_on_bodies;
-  //  pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
-  //  pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
-  //  pts_on_bodies.push_back(std::vector<Vector3d>(2, mid_contact_disp));
+  if (is_two_phase) {
+    unordered_fsm_states =
+        std::vector<int>({left_stance_state, right_stance_state});
+    unordered_state_druations =
+        std::vector<double>({left_support_duration, right_support_duration});
+    body_indices.push_back(std::vector<int>({left_toe_idx}));
+    body_indices.push_back(std::vector<int>({right_toe_idx}));
+    pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+    pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+  } else {
+    unordered_fsm_states = std::vector<int>(
+        {left_stance_state, right_stance_state, double_support_state});
+    unordered_state_druations =
+        std::vector<double>({left_support_duration, right_support_duration,
+                             double_support_duration});
+    body_indices.push_back(std::vector<int>({left_toe_idx}));
+    body_indices.push_back(std::vector<int>({right_toe_idx}));
+    body_indices.push_back(std::vector<int>({left_toe_idx, right_toe_idx}));
+    pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+    pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+    pts_on_bodies.push_back(std::vector<Vector3d>(2, mid_contact_disp));
+  }
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       tree_with_springs, desired_com_height, unordered_fsm_states,
       unordered_state_druations, body_indices, pts_on_bodies);
@@ -257,6 +266,16 @@ int DoMain(int argc, char* argv[]) {
                                front_contact_disp);
   osc->AddStateAndContactPoint(right_stance_state, "toe_right",
                                rear_contact_disp);
+  if (!is_two_phase) {
+    osc->AddStateAndContactPoint(double_support_state, "toe_left",
+                                 front_contact_disp);
+    osc->AddStateAndContactPoint(double_support_state, "toe_left",
+                                 rear_contact_disp);
+    osc->AddStateAndContactPoint(double_support_state, "toe_right",
+                                 front_contact_disp);
+    osc->AddStateAndContactPoint(double_support_state, "toe_right",
+                                 rear_contact_disp);
+  }
   // Swing foot tracking
   MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);

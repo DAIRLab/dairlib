@@ -17,6 +17,8 @@ TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
     : states_(states),
       state_durations_(state_durations),
       t0_(t0) {
+  DRAKE_DEMAND(states.size() == state_durations.size());
+
   // Input/Output Setup
   state_port_ = this
                     ->DeclareVectorInputPort(OutputVector<double>(

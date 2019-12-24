@@ -143,14 +143,18 @@ int DoMain(int argc, char* argv[]) {
   int left_stance_state = 0;
   int right_stance_state = 1;
   int double_support_state = 2;
-  std::vector<int> fsm_states({left_stance_state, double_support_state,
-                               right_stance_state, double_support_state});
+  std::vector<int> fsm_states({left_stance_state, right_stance_state});
+  //  std::vector<int> fsm_states({left_stance_state, double_support_state,
+  //                               right_stance_state, double_support_state});
   double left_support_duration = 0.35;
   double right_support_duration = 0.35;
   double double_support_duration = 0.1;
   std::vector<double> state_druations(
-      {left_support_duration, double_support_duration, right_support_duration,
-       double_support_duration});
+      {left_support_duration, right_support_duration});
+  //  std::vector<double> state_druations(
+  //      {left_support_duration, double_support_duration,
+  //      right_support_duration,
+  //       double_support_duration});
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       tree_with_springs, fsm_states, state_druations);
   builder.Connect(simulator_drift->get_output_port(0),
@@ -163,9 +167,32 @@ int DoMain(int argc, char* argv[]) {
   // indices/displacement (this would be vector of vector because you might have
   // multiple indices).
   double desired_com_height = 0.89;
+  std::vector<int> unordered_fsm_states(
+      {left_stance_state, right_stance_state});
+  std::vector<double> unordered_state_druations(
+      {left_support_duration, right_support_duration});
+  std::vector<std::vector<int>> body_indices;
+  body_indices.push_back(std::vector<int>({left_toe_idx}));
+  body_indices.push_back(std::vector<int>({right_toe_idx}));
+  std::vector<std::vector<Vector3d>> pts_on_bodies;
+  pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+  pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+  //  std::vector<int> unordered_fsm_states(
+  //      {left_stance_state, right_stance_state, double_support_state});
+  //  std::vector<double> unordered_state_druations(
+  //      {left_support_duration, right_support_duration,
+  //      double_support_duration});
+  //  std::vector<std::vector<int>> body_indices;
+  //  body_indices.push_back(std::vector<int>({left_toe_idx}));
+  //  body_indices.push_back(std::vector<int>({right_toe_idx}));
+  //  body_indices.push_back(std::vector<int>({left_toe_idx, right_toe_idx}));
+  //  std::vector<std::vector<Vector3d>> pts_on_bodies;
+  //  pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+  //  pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+  //  pts_on_bodies.push_back(std::vector<Vector3d>(2, mid_contact_disp));
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
-      tree_with_springs, desired_com_height, duration_per_state, left_toe_idx,
-      mid_contact_disp, right_toe_idx, mid_contact_disp);
+      tree_with_springs, desired_com_height, unordered_fsm_states,
+      unordered_state_druations, body_indices, pts_on_bodies);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),

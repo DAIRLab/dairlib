@@ -127,8 +127,8 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   const double cp_offset_;  // in meters
   const double center_line_offset_;  // in meters
 
-  // left stance state (of finite state machine)
-  // right stance state (of finite state machine)
+  // left stance state of finite state machine (hard coded)
+  // right stance state of finite state machine (hard coded)
   const int left_stance_ = 0;
   const int right_stance_ = 1;
 };

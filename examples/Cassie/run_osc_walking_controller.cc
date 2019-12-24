@@ -161,11 +161,6 @@ int DoMain(int argc, char* argv[]) {
                   fsm->get_input_port_state());
 
   // Create CoM trajectory generator
-  // TODO: modify LIPMTrajGenerator and CPTrajGenerator
-  // To make LIPMTrajGenerator general to n# of states, you can probably pass in
-  // states ([0,1,2] version, not [0,2,1,2]), state_durations and corresponding
-  // indices/displacement (this would be vector of vector because you might have
-  // multiple indices).
   double desired_com_height = 0.89;
   std::vector<int> unordered_fsm_states(
       {left_stance_state, right_stance_state});

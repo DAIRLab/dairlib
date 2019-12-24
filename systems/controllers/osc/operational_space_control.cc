@@ -135,12 +135,19 @@ void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
   fixed_position_vec_.push_back(Eigen::VectorXd(0));
   period_of_no_control_vec_.push_back(duration);
 
-  // Construct input ports and add element to traj_name_to_port_index_map_
+  // Construct input ports and add element to traj_name_to_port_index_map_ if
+  // the port for the traj is not created yet
   string traj_name = tracking_data->GetName();
-  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
-  int port_index = this->DeclareAbstractInputPort(traj_name,
-      drake::Value<drake::trajectories::Trajectory<double>> (pp)).get_index();
-  traj_name_to_port_index_map_[traj_name] = port_index;
+  if (traj_name_to_port_index_map_.find(traj_name) ==
+      traj_name_to_port_index_map_.end()) {
+    PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
+    int port_index =
+        this->DeclareAbstractInputPort(
+                traj_name,
+                drake::Value<drake::trajectories::Trajectory<double>>(pp))
+            .get_index();
+    traj_name_to_port_index_map_[traj_name] = port_index;
+  }
 }
 void OperationalSpaceControl::AddConstTrackingData(
     OscTrackingData* tracking_data, Eigen::VectorXd v, double duration) {

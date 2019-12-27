@@ -483,6 +483,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   SolutionResult solution_result = result.get_solution_result();
   if (print_tracking_info_) {
     cout << "\n" << to_string(solution_result) <<  endl;
+    cout << "fsm_state = " << fsm_state << endl;
   }
 
   // Extract solutions
@@ -493,10 +494,10 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd epsilon_sol = result.GetSolution(epsilon_);
   if (print_tracking_info_) {
     cout << "**********************\n";
-//    cout << "u_sol = " << u_sol.transpose() << endl;
+    cout << "u_sol = " << u_sol.transpose() << endl;
 //    cout << "lambda_c_sol = " << lambda_c_sol.transpose() << endl;
 //    cout << "lambda_h_sol = " << lambda_h_sol.transpose() << endl;
-//    cout << "dv_sol = " << dv_sol.transpose() << endl;
+    cout << "dv_sol = " << dv_sol.transpose() << endl;
 //    cout << "epsilon_sol = " << epsilon_sol.transpose() << endl;
   }
 

@@ -30,13 +30,15 @@ LIPMTrajGenerator::LIPMTrajGenerator(
     const vector<int>& unordered_fsm_states,
     const vector<double>& unordered_state_durations,
     const vector<vector<int>>& body_indices,
-    const vector<vector<Eigen::Vector3d>>& pts_on_bodies)
+    const vector<vector<Eigen::Vector3d>>& pts_on_bodies,
+    const vector<int>& constant_height_states)
     : tree_(tree),
       desired_com_height_(desired_com_height),
       unordered_fsm_states_(unordered_fsm_states),
       unordered_state_durations_(unordered_state_durations),
       body_indices_(body_indices),
-      pts_on_bodies_(pts_on_bodies) {
+      pts_on_bodies_(pts_on_bodies),
+      constant_height_states_(constant_height_states) {
   this->set_name("lipm_traj");
 
   // Checking vector dimension
@@ -189,8 +191,14 @@ void LIPMTrajGenerator::CalcTraj(
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   Y[0](2, 0) = CoM(2);
-  // Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
-  Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
+  // if the current fsm state is not in constant_height_states_, then we track
+  // the desired height. Otherwise, we maintain at the constant height
+  if (find(constant_height_states_.begin(), constant_height_states_.end(),
+           int(fsm_state(0))) == unordered_fsm_states_.end()) {
+    Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
+  } else {
+    Y[1](2, 0) = CoM(2);
+  }
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   Y_dot_start(2, 0) = dCoM_wrt_foot_z;

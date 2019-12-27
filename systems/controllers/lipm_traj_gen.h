@@ -30,6 +30,8 @@ namespace systems {
 ///         or more indices, we get the average of the positions.
 ///  @param pts_on_bodies, position of the points on the bodies for calculating
 ///         the stance foot position (of each state in unordered_fsm_states).
+///  @param constant_height_states, the fsm state in which the robot stays at
+///         the height of touchdown.
 /// The last four parameters must have the same size.
 
 class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
@@ -39,7 +41,8 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<int>& unordered_fsm_states,
       const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<int>>& body_indices,
-      const std::vector<std::vector<Eigen::Vector3d>>& pts_on_bodies);
+      const std::vector<std::vector<Eigen::Vector3d>>& pts_on_bodies,
+      const vector<int>& constant_height_states);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -73,6 +76,7 @@ class LIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   std::vector<double> unordered_state_durations_;
   std::vector<std::vector<int>> body_indices_;
   std::vector<std::vector<Eigen::Vector3d>> pts_on_bodies_;
+  std::vector<int> constant_height_states_;
 };
 
 }  // namespace systems

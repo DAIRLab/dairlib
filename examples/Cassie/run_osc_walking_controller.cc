@@ -30,9 +30,9 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::systems::DiagramBuilder;
+using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::TriggerType;
 using drake::systems::lcm::TriggerTypeSet;
 
 using multibody::GetBodyIndexFromName;
@@ -198,9 +198,12 @@ int DoMain(int argc, char* argv[]) {
     pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
     pts_on_bodies.push_back(std::vector<Vector3d>(2, mid_contact_disp));
   }
+  std::vector<int> constant_height_states =
+      std::vector<int>({double_support_state});
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       tree_with_springs, desired_com_height, unordered_fsm_states,
-      unordered_state_druations, body_indices, pts_on_bodies);
+      unordered_state_druations, body_indices, pts_on_bodies,
+      constant_height_states);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -245,19 +248,24 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      tree_with_springs, tree_without_springs, true, FLAGS_print_osc /*print_tracking_info*/);
+      tree_with_springs, tree_without_springs, true,
+      FLAGS_print_osc /*print_tracking_info*/);
+
+  // TODO:
+  // decrease the acceleration of toe for all phases
+  // make the desired height of double support be the com height at touchdown
 
   // Cost
   int n_v = tree_without_springs.get_num_velocities();
-  MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q_accel = 2 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
-  double w_toe = 0.1;  // 1
-  osc->AddAccelerationCost("toe_leftdot", w_toe);
-  osc->AddAccelerationCost("toe_rightdot", w_toe);
+  double w_toe = 10;  // 0.1
+//  osc->AddAccelerationCost("toe_leftdot", w_toe);
+//  osc->AddAccelerationCost("toe_rightdot", w_toe);
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
-  double w_contact_relax = 200;
+  double w_contact_relax = 2000;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
   // Firction coefficient
   double mu = 0.8;
@@ -281,7 +289,7 @@ int DoMain(int argc, char* argv[]) {
                                  rear_contact_disp);
   }
   // Swing foot tracking
-  MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
+  MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData swing_foot_traj("cp_traj", 3, K_p_sw_ft, K_d_sw_ft,
@@ -335,9 +343,9 @@ int DoMain(int argc, char* argv[]) {
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj, 0.05);
   // Swing toe joint tracking (Currently use fix position)
-  MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_swing_toe = 1000 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_swing_toe = 100 * MatrixXd::Identity(1, 1);
+  MatrixXd W_swing_toe = 200 * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_swing_toe = 10 * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_swing_toe = 2 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj(
       "swing_toe_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
       &tree_with_springs, &tree_without_springs);

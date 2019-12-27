@@ -96,8 +96,8 @@ void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
 
 void OscTrackingData::PrintFeedbackAndDesiredValues(VectorXd dv) {
   cout << name_ << ":\n";
-//  cout << "  y = " << y_.transpose() << endl;
-//  cout << "  y_des = " << y_des_.transpose() << endl;
+  cout << "  y = " << y_.transpose() << endl;
+  cout << "  y_des = " << y_des_.transpose() << endl;
   cout << "  error_y = " << error_y_.transpose() << endl;
   cout << "  dy = " << dy_.transpose() << endl;
   cout << "  dy_des = " << dy_des_.transpose() << endl;

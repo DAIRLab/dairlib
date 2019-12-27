@@ -151,7 +151,7 @@ int DoMain(int argc, char* argv[]) {
   int double_support_state = 2;
   double left_support_duration = 0.35;
   double right_support_duration = 0.35;
-  double double_support_duration = 0.01;
+  double double_support_duration = 0.02;
   std::vector<int> fsm_states;
   std::vector<double> state_druations;
   if (is_two_phase) {
@@ -251,17 +251,10 @@ int DoMain(int argc, char* argv[]) {
       tree_with_springs, tree_without_springs, true,
       FLAGS_print_osc /*print_tracking_info*/);
 
-  // TODO:
-  // decrease the acceleration of toe for all phases
-  // make the desired height of double support be the com height at touchdown
-
   // Cost
   int n_v = tree_without_springs.get_num_velocities();
   MatrixXd Q_accel = 2 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
-  double w_toe = 10;  // 0.1
-//  osc->AddAccelerationCost("toe_leftdot", w_toe);
-//  osc->AddAccelerationCost("toe_rightdot", w_toe);
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
@@ -344,7 +337,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&pelvis_heading_traj, 0.05);
   // Swing toe joint tracking (Currently use fix position)
   MatrixXd W_swing_toe = 200 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_swing_toe = 10 * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_swing_toe = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = 2 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj(
       "swing_toe_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,

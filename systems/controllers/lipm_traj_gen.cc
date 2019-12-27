@@ -45,7 +45,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
   DRAKE_DEMAND(unordered_fsm_states.size() == body_indices.size());
   DRAKE_DEMAND(unordered_fsm_states.size() == pts_on_bodies.size());
-  for (int i = 0; i < body_indices.size(); i++) {
+  for (unsigned int i = 0; i < body_indices.size(); i++) {
     DRAKE_DEMAND(body_indices.size() == pts_on_bodies.size());
   }
 
@@ -176,10 +176,12 @@ void LIPMTrajGenerator::CalcTraj(
   const double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
   const double dCoM_wrt_foot_x = dCoM(0);
   const double dCoM_wrt_foot_y = dCoM(1);
-  const double dCoM_wrt_foot_z = dCoM(2);
+  // const double dCoM_wrt_foot_z = dCoM(2);
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
+  // Note that the start time in T_waypoint_com is also used by
+  // ExponentialPlusPiecewisePolynomial.
   std::vector<double> T_waypoint_com = {current_time,
                                         end_time_of_this_fsm_state};
 
@@ -190,18 +192,10 @@ void LIPMTrajGenerator::CalcTraj(
   Y[1](1, 0) = stance_foot_pos(1);
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
-  Y[0](2, 0) = CoM(2);
-  // if the current fsm state is not in constant_height_states_, then we track
-  // the desired height. Otherwise, we maintain at the constant height
-  if (find(constant_height_states_.begin(), constant_height_states_.end(),
-           int(fsm_state(0))) == unordered_fsm_states_.end()) {
-    Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
-  } else {
-    Y[1](2, 0) = CoM(2);
-  }
+  Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
+  Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
-  Y_dot_start(2, 0) = dCoM_wrt_foot_z;
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
 
   PiecewisePolynomial<double> pp_part = PiecewisePolynomial<double>::Cubic(

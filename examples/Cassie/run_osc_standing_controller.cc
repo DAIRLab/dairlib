@@ -26,6 +26,8 @@ using Eigen::MatrixXd;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::DiagramBuilder;
+using drake::systems::TriggerType;
+using drake::systems::lcm::TriggerTypeSet;
 
 using multibody::GetBodyIndexFromName;
 using systems::controllers::ComTrackingData;
@@ -73,7 +75,8 @@ int DoMain(int argc, char* argv[]) {
   // Create command sender.
   auto command_pub = builder.AddSystem(
                        LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-                           FLAGS_channel_u, &lcm_local, 1.0 / 1000.0));
+                           FLAGS_channel_u, &lcm_local,
+                           TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
                           tree_with_springs);
 

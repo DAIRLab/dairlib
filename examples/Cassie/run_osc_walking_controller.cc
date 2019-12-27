@@ -32,6 +32,8 @@ using Eigen::VectorXd;
 using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::TriggerType;
+using drake::systems::lcm::TriggerTypeSet;
 
 using multibody::GetBodyIndexFromName;
 using systems::controllers::ComTrackingData;
@@ -45,6 +47,8 @@ DEFINE_string(channel_x, "CASSIE_STATE",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
+
+DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -87,7 +91,7 @@ int DoMain(int argc, char* argv[]) {
   // Create command sender.
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm_local, 1.0 / 1000.0));
+          FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(tree_with_springs);
 
@@ -241,7 +245,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      tree_with_springs, tree_without_springs, true, true /*print_tracking_info*/);
+      tree_with_springs, tree_without_springs, true, FLAGS_print_osc /*print_tracking_info*/);
 
   // Cost
   int n_v = tree_without_springs.get_num_velocities();

@@ -55,7 +55,7 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  bool is_two_phase = true;
+  bool is_two_phase = false;
 
   DiagramBuilder<double> builder;
 
@@ -147,7 +147,7 @@ int DoMain(int argc, char* argv[]) {
   int double_support_state = 2;
   double left_support_duration = 0.35;
   double right_support_duration = 0.35;
-  double double_support_duration = 0.1;
+  double double_support_duration = 0.01;
   std::vector<int> fsm_states;
   std::vector<double> state_druations;
   if (is_two_phase) {
@@ -241,7 +241,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      tree_with_springs, tree_without_springs, true, false);
+      tree_with_springs, tree_without_springs, true, true /*print_tracking_info*/);
 
   // Cost
   int n_v = tree_without_springs.get_num_velocities();

@@ -549,6 +549,26 @@ void DoMain(double duration, int max_iter, string data_directory,
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
 
+
+
+
+
+  // TODO:
+  // You can create five functions (t, x, u, lambda, impulse) in dircon for scaling
+  // Use FindDecisionVariableIndex in the functions to find index
+
+  // playing
+  cout << "size = " << trajopt->decision_variables().size() << endl;
+  for (int i=0; i < trajopt->decision_variables().size() ; i++) {
+    cout << trajopt->decision_variable(i) << ", ";
+    cout << trajopt->decision_variable(i).get_id() << ", ";
+    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i)) << endl;
+  }
+
+
+
+
+
   // initial guess
   if (!init_file.empty()) {
     MatrixXd z0 = readCSV(data_directory + init_file);

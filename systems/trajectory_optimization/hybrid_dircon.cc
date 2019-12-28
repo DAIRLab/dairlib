@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
+#include <algorithm>    // std::max
 
 #include "multibody/multibody_utils.h"
 #include "drake/math/autodiff.h"
@@ -416,6 +417,74 @@ void HybridDircon<T>::SetInitialForceTrajectory(
   }
   // call superclass method
   SetInitialGuess(collocation_slack_vars_[mode], guess_collocation_slack);
+}
+
+template <typename T>
+void HybridDircon<T>::ScaleTimeVariables(double scale) {
+  this->SetVariableScaling(
+      scale, this->FindDecisionVariableIndex(this->h_vars()(0)),
+      this->FindDecisionVariableIndex(this->h_vars().tail(1)(0)));
+}
+template <typename T>
+void HybridDircon<T>::ScaleStateVariables(double scale, int idx_start,
+                                          int idx_end) {
+  int n_x = this->num_states();
+  DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_x));
+
+  // x_vars_ in MathematicalProgram
+  int idx_0 = this->FindDecisionVariableIndex(this->x_vars()(0));
+  for (int j_knot = 0; j_knot < N(); j_knot++) {
+    this->SetVariableScaling(scale, idx_0 + idx_start + n_x * j_knot,
+                             idx_0 + idx_end + n_x * j_knot);
+  }
+
+  // v_post_impact_vars_
+  int n_v = plant_.num_velocities();
+  if ((idx_end >= n_v) && (num_modes_ > 1)) {
+    idx_start = std::max(idx_start, n_v) - n_v;
+    idx_end -= n_v;
+    idx_0 = this->FindDecisionVariableIndex(v_post_impact_vars_(0));
+    for (int mode = 0; mode < num_modes_ - 1; mode++) {
+      this->SetVariableScaling(scale, idx_0 + idx_start + n_v * mode,
+                               idx_0 + idx_end + n_v * mode);
+    }
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleInputVariables(double scale, int idx_start,
+                                          int idx_end) {
+  int n_u = this->num_inputs();
+  DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_u));
+
+  // u_vars_ in MathematicalProgram
+  int idx_0 = this->FindDecisionVariableIndex(this->u_vars()(0));
+  for (int j_knot = 0; j_knot < N(); j_knot++) {
+    this->SetVariableScaling(scale, idx_0 + idx_start + n_u * j_knot,
+                             idx_0 + idx_end + n_u * j_knot);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleForceVariables(double scale, int mode, int idx_start,
+                                          int idx_end) {
+  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_));
+  int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
+  DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_lambda));
+
+  int idx_0 = this->FindDecisionVariableIndex(force_vars(mode)(0));
+  for (int i = 0; i < mode_lengths_[mode]; i++) {
+    this->SetVariableScaling(scale, idx_0 + idx_start + n_lambda * i,
+                             idx_0 + idx_end + n_lambda * i);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleImpulseVariables(double scale, int mode,
+                                            int idx_start, int idx_end) {
+  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_ - 1));
+  int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
+  DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_lambda));
+
+  int idx_0 = this->FindDecisionVariableIndex(impulse_vars(mode)(0));
+  this->SetVariableScaling(scale, idx_0 + idx_start, idx_0 + idx_end);
 }
 
 template class HybridDircon<double>;

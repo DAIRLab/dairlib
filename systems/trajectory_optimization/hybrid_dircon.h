@@ -136,6 +136,13 @@ class HybridDircon
   using drake::systems::trajectory_optimization::MultipleShooting::
         SubstitutePlaceholderVariables;
 
+  void ScaleTimeVariables(double scale);
+  void ScaleStateVariables(double scale, int idx_start, int idx_end);
+  void ScaleInputVariables(double scale, int idx_start, int idx_end);
+  void ScaleForceVariables(double scale, int mode, int idx_start, int idx_end);
+  void ScaleImpulseVariables(double scale, int mode, int idx_start,
+                             int idx_end);
+
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
   const drake::multibody::MultibodyPlant<T>& plant_;

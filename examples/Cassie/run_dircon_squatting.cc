@@ -556,6 +556,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   // TODO:
   // You can create five functions (t, x, u, lambda, impulse) in dircon for scaling
   // Use FindDecisionVariableIndex in the functions to find index
+  // Go to your goldilock models branch to see which varibles you scaled.
 
   // playing
   cout << "size = " << trajopt->decision_variables().size() << endl;

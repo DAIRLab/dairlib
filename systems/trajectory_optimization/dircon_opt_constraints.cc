@@ -87,6 +87,8 @@ void DirconAbstractConstraint<AutoDiffXd>::DoEval(
 template <>
 void DirconAbstractConstraint<double>::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
+  MatrixXd original_grad = autoDiffToGradientMatrix(x);
+
   // forward differencing
   double dx = 1e-8;
 
@@ -101,7 +103,7 @@ void DirconAbstractConstraint<double>::DoEval(
     x_val(i) -= dx;
     dy.col(i) = (yi - y0) / dx;
   }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy, *y);
+  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy*original_grad, *y);
 
   // std::cout << dy << std::endl  << std::endl << std::endl;
 

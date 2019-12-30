@@ -103,6 +103,7 @@ DEFINE_double(tol, 1e-4, "Tolerance for constraint violation and dual gap");
 
 // Parameters which enable dircon-improving features
 DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
+DEFINE_bool(is_scale_variable, true, "Scale the decision variable");
 
 namespace dairlib {
 
@@ -215,8 +216,19 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
       -1.762, 68.42, 0.652, 1.744;
   mp->SetInitialGuessForAllVariables(init_guess);
 
-  // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                     "Print file", "../snopt.out");
+  // Test scaling
+  // Assume that lambda is located in the end of decision variables
+//  auto lambda_var = mp->decision_variables().tail(14);
+//  for (int i = 0; i < lambda_var.size(); i++) {
+//    mp->SetVariableScaling(100, mp->FindDecisionVariableIndex(lambda_var(i)));
+//  }
+//  auto u_var = mp->decision_variables().segment(n_q, n_u);
+//  for (int i = 0; i < u_var.size(); i++) {
+//    mp->SetVariableScaling(10, mp->FindDecisionVariableIndex(u_var(i)));
+//  }
+
+//  mp->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+//                      "../snopt.out");
   // target nonlinear constraint violation
   // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
   //                     "Major optimality tolerance", 1e-6);
@@ -229,7 +241,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   const auto result = fp_solver.Solve();
   SolutionResult solution_result = result.get_solution_result();
   cout << to_string(solution_result) << endl;
-  // cout << result.GetSolution() << endl;
+   cout << result.GetSolution() << endl;
 
   VectorXd q_sol = fp_solver.GetSolutionQ();
   VectorXd u_sol = fp_solver.GetSolutionU();
@@ -434,8 +446,8 @@ void DoMain(double duration, int max_iter, string data_directory,
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-  //   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                            "Print file", "../snopt.out");
+     trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                              "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -559,16 +571,33 @@ void DoMain(double duration, int max_iter, string data_directory,
   // Go to your goldilocks models branch to see which variables you scaled.
 
   // playing
-  cout << "size = " << trajopt->decision_variables().size() << endl;
-  for (int i=0; i < trajopt->decision_variables().size() ; i++) {
-    cout << trajopt->decision_variable(i) << ", ";
-    cout << trajopt->decision_variable(i).get_id() << ", ";
-    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i)) << endl;
+//  cout << "size = " << trajopt->decision_variables().size() << endl;
+//  for (int i=0; i < trajopt->decision_variables().size() ; i++) {
+//    cout << trajopt->decision_variable(i) << ", ";
+//    cout << trajopt->decision_variable(i).get_id() << ", ";
+//    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i)) << endl;
+//  }
+
+  // Testing
+  if (FLAGS_is_scale_variable) {
+    trajopt->ScaleTimeVariables(0.015);
+    trajopt->ScaleStateVariables(5, n_q, n_q + n_v - 1);
+    trajopt->ScaleInputVariables(50, 0, n_u - 1);
+    trajopt->ScaleForceVariables(
+        500, 0, 0, double_all_dataset.countConstraintsWithoutSkipping() - 1);
+
+    for (int i=0; i < trajopt->decision_variables().size() ; i++) {
+      cout << trajopt->decision_variable(i) << ", ";
+      cout << trajopt->decision_variable(i).get_id() << ", ";
+      cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i)) << ", ";
+      auto scale_map = trajopt->GetVariableScaling();
+      auto it = scale_map.find(i);
+      if (it != scale_map.end()) {
+        cout << it->second;
+      }
+      cout << endl;
+    }
   }
-
-
-
-
 
   // initial guess
   if (!init_file.empty()) {

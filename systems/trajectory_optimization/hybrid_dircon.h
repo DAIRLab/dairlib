@@ -142,6 +142,8 @@ class HybridDircon
   void ScaleForceVariables(double scale, int mode, int idx_start, int idx_end);
   void ScaleImpulseVariables(double scale, int mode, int idx_start,
                              int idx_end);
+  void ScaleQuaternionSlackVariables(double scale);
+  void ScaleKinConstraintSlackVariables(double scale);
 
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.

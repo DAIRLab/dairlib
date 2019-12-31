@@ -470,8 +470,15 @@ void HybridDircon<T>::ScaleForceVariables(double scale, int mode, int idx_start,
   int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
   DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_lambda));
 
+  // Force at knot points
   int idx_0 = this->FindDecisionVariableIndex(force_vars(mode)(0));
   for (int i = 0; i < mode_lengths_[mode]; i++) {
+    this->SetVariableScaling(scale, idx_0 + idx_start + n_lambda * i,
+                             idx_0 + idx_end + n_lambda * i);
+  }
+  // Force at collocation pints
+  idx_0 = this->FindDecisionVariableIndex(collocation_force_vars(mode)(0));
+  for (int i = 0; i < mode_lengths_[mode] - 1; i++) {
     this->SetVariableScaling(scale, idx_0 + idx_start + n_lambda * i,
                              idx_0 + idx_end + n_lambda * i);
   }
@@ -485,6 +492,26 @@ void HybridDircon<T>::ScaleImpulseVariables(double scale, int mode,
 
   int idx_0 = this->FindDecisionVariableIndex(impulse_vars(mode)(0));
   this->SetVariableScaling(scale, idx_0 + idx_start, idx_0 + idx_end);
+}
+template <typename T>
+void HybridDircon<T>::ScaleQuaternionSlackVariables(double scale) {
+  DRAKE_DEMAND(multibody::isQuaternion(plant_));
+
+  for (size_t mode = 0; mode < mode_lengths_.size(); mode++) {
+    for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
+      this->SetVariableScaling(scale, this->FindDecisionVariableIndex(
+                                          quaternion_slack_vars_[mode](j)));
+    }
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleKinConstraintSlackVariables(double scale) {
+  for (size_t mode = 0; mode < mode_lengths_.size(); mode++) {
+    int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
+    int idx_0 = FindDecisionVariableIndex(collocation_slack_vars(mode)(0));
+    this->SetVariableScaling(scale, idx_0,
+                             idx_0 + n_lambda * (mode_lengths_[mode] - 1) - 1);
+  }
 }
 
 template class HybridDircon<double>;

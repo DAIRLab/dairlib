@@ -417,17 +417,25 @@ void DoMain(double duration, int max_iter, string data_directory,
   double_all_options.setConstraintRelative(8, true);
   // Constraint scaling
   if (FLAGS_is_scale_constraint) {
+    // Dynamic constraints
+    double s_dyn_1 = (FLAGS_is_scale_variable)? 2.0 : 1.0;
+    double s_dyn_2 = (FLAGS_is_scale_variable)? 6.0 : 1.0;
+    double s_dyn_3 = (FLAGS_is_scale_variable)? 85.0 : 1.0;
     double one_fifty = 150;
     double_all_options.setDynConstraintScaling(1.0 / one_fifty, 0, 14);
-    double_all_options.setDynConstraintScaling(1.0 / one_fifty / 3.0 * 10, 15,
+    double_all_options.setDynConstraintScaling(1.0 / one_fifty / 3.33 / s_dyn_1, 15,
                                                16);
-    double_all_options.setDynConstraintScaling(1.0 / one_fifty, 17, 28);
+    double_all_options.setDynConstraintScaling(1.0 / one_fifty, 17, 18);
+    double_all_options.setDynConstraintScaling(1.0 / one_fifty / s_dyn_1, 19, 26);
+    double_all_options.setDynConstraintScaling(1.0 / one_fifty / s_dyn_2, 27, 28);
     double_all_options.setDynConstraintScaling(1.0 / one_fifty / 10, 29, 34);
-    double_all_options.setDynConstraintScaling(1.0 / one_fifty / 15.0, 35, 36);
-    double_all_options.setKinConstraintScaling(1.0 / 500.0, 0, 9);
-    double_all_options.setKinConstraintScaling(2.0 / 50.0, 10, 11);
-    double_all_options.setKinConstraintScalingVel(500);
-    double_all_options.setKinConstraintScalingPos(1000);
+    double_all_options.setDynConstraintScaling(1.0 / one_fifty / 15.0 / s_dyn_3, 35, 36);
+    // Kinematic constraints
+    double s_kin = (FLAGS_is_scale_variable)? 10.0 : 1.0;
+    double_all_options.setKinConstraintScaling(1.0 / 500.0 / s_kin, 0, 9);
+    double_all_options.setKinConstraintScaling(2.0 / 50.0 / s_kin, 10, 11);
+    double_all_options.setKinConstraintScalingVel(1000);
+    double_all_options.setKinConstraintScalingPos(2000);
   }
 
   // timesteps and modes setting
@@ -580,11 +588,30 @@ void DoMain(double duration, int max_iter, string data_directory,
 
   // Testing
   if (FLAGS_is_scale_variable) {
+    // time
     trajopt->ScaleTimeVariables(0.015);
-    trajopt->ScaleStateVariables(5, n_q, n_q + n_v - 1);
-    trajopt->ScaleInputVariables(50, 0, n_u - 1);
-    trajopt->ScaleForceVariables(
-        500, 0, 0, double_all_dataset.countConstraintsWithoutSkipping() - 1);
+    // state
+    trajopt->ScaleStateVariables(6, n_q, n_q + 9);
+    trajopt->ScaleStateVariables(3, n_q + 10, n_q + n_v - 1);
+    // input
+    trajopt->ScaleInputVariables(60, 0, 1);
+    trajopt->ScaleInputVariables(300, 2, 3); //300
+    trajopt->ScaleInputVariables(60, 4, 7);
+    trajopt->ScaleInputVariables(600, 8, 9); //600
+    // force
+    trajopt->ScaleForceVariables(10, 0, 0, 1);
+    trajopt->ScaleForceVariables(1000, 0, 2, 2); //1000
+    trajopt->ScaleForceVariables(10, 0, 3, 4);
+    trajopt->ScaleForceVariables(1000, 0, 5, 5);
+    trajopt->ScaleForceVariables(10, 0, 6, 7);
+    trajopt->ScaleForceVariables(1000, 0, 8, 8);
+    trajopt->ScaleForceVariables(10, 0, 9, 10);
+    trajopt->ScaleForceVariables(1000, 0, 11, 11);
+    trajopt->ScaleForceVariables(600, 0, 12, 13);
+//    trajopt->ScaleForceVariables(
+//        600, 0, 0, double_all_dataset.countConstraintsWithoutSkipping() - 1);
+//    trajopt->ScaleQuaternionSlackVariables(0.5);
+//    trajopt->ScaleKinConstraintSlackVariables(0.1);
 
     for (int i=0; i < trajopt->decision_variables().size() ; i++) {
       cout << trajopt->decision_variable(i) << ", ";

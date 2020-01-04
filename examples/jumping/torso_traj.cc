@@ -36,7 +36,8 @@ TorsoTraj::TorsoTraj(const RigidBodyTree<double>& tree,
                                   &TorsoTraj::CalcTraj);
 
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
+  state_port_ = this
+                    ->DeclareVectorInputPort(OutputVector<double>(
                         tree.get_num_positions(), tree.get_num_velocities(),
                         tree.get_num_actuators()))
                     .get_index();
@@ -61,7 +62,6 @@ void TorsoTraj::CalcTraj(const drake::systems::Context<double>& context,
   PiecewisePolynomial<double>* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-
   *casted_traj = torso_angle_traj_;
 }
 

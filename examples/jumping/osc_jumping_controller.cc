@@ -129,7 +129,6 @@ int doMain(int argc, char* argv[]) {
       loaded_traj.getTrajectory("right_foot_trajectory");
   const LcmTrajectory::Trajectory& lcm_torso_traj =
       loaded_traj.getTrajectory("torso_trajectory");
-
   const PiecewisePolynomial<double>& center_of_mass_traj =
       PiecewisePolynomial<double>::Pchip(com_traj.time_vector,
                                          com_traj.datapoints);
@@ -258,7 +257,7 @@ int doMain(int argc, char* argv[]) {
       &tree_with_springs);
   pelvis_rot_traj.AddStateAndFrameToTrack(NEUTRAL, "torso");
   pelvis_rot_traj.AddStateAndFrameToTrack(CROUCH, "torso");
-  //  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
+//  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
   pelvis_rot_traj.AddStateAndFrameToTrack(LAND, "torso");
   osc->AddTrackingData(&pelvis_rot_traj);
 

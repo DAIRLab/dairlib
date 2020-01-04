@@ -35,8 +35,10 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::trajectories::PiecewisePolynomial;
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+using Eigen::AngleAxisd;
 using std::cout;
 using std::endl;
 using std::vector;
@@ -61,7 +63,7 @@ int doMain(int argc, char* argv[]) {
 
   KinematicsCache<double> cache = tree.CreateKinematicsCache();
   const LcmTrajectory& loaded_traj = LcmTrajectory(LcmTrajectory::loadFromFile(
-      "examples/jumping/saved_trajs/jumping_12_16"));
+      "examples/jumping/saved_trajs/jumping_1_4"));
   const LcmTrajectory::Trajectory& jumping_traj =
       loaded_traj.getTrajectory("jumping_trajectory_x_u");
   int num_positions = tree.get_num_positions();
@@ -110,7 +112,16 @@ int doMain(int argc, char* argv[]) {
                  .linear()
                  .col(0);
     times.push_back(i * FLAGS_time_offset / FLAGS_resolution);
-    torso_angle.push_back(q(2));
+    //    VectorXd torso_quat(4);
+    //    torso_quat << 1, 0, q(2), 0;
+    Quaterniond quat;
+    quat = AngleAxisd(0, Vector3d::UnitX())
+        * AngleAxisd(q(2), Vector3d::UnitY())
+        * AngleAxisd(0, Vector3d::UnitZ());
+    torso_angle.push_back(quat.w());
+    torso_angle.push_back(quat.x());
+    torso_angle.push_back(quat.y());
+    torso_angle.push_back(quat.z());
     for (int j = 0; j < 3; ++j) {
       com_points.push_back(center_of_mass(j));
       l_foot_points.push_back(l_foot(j) - center_of_mass(j));
@@ -134,8 +145,14 @@ int doMain(int argc, char* argv[]) {
     r_foot = tree.transformPoints(cache, pt_on_foot, r_foot_idx, 0);
 
     times.push_back(i * end_time / FLAGS_resolution + time_offset);
-    torso_angle.push_back(q(2));
-
+    Quaterniond quat;
+    quat = AngleAxisd(0, Vector3d::UnitX())
+        * AngleAxisd(q(2), Vector3d::UnitY())
+        * AngleAxisd(0, Vector3d::UnitZ());
+    torso_angle.push_back(quat.w());
+    torso_angle.push_back(quat.x());
+    torso_angle.push_back(quat.y());
+    torso_angle.push_back(quat.z());
     for (int j = 0; j < 3; ++j) {
       com_points.push_back(center_of_mass(j));
       l_foot_points.push_back(l_foot(j) - center_of_mass(j));
@@ -152,7 +169,7 @@ int doMain(int argc, char* argv[]) {
   MatrixXd r_foot_matrix = Eigen::Map<const Matrix<double, Dynamic, Dynamic>>(
       r_foot_points.data(), 3, r_foot_points.size() / 3);
   MatrixXd torso_angle_mat = Eigen::Map<const Matrix<double, Dynamic, Dynamic>>(
-      torso_angle.data(), 1, torso_angle.size());
+      torso_angle.data(), 4, torso_angle.size() / 4);
   VectorXd time_matrix = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
       times.data(), times.size());
 
@@ -179,7 +196,13 @@ int doMain(int argc, char* argv[]) {
   torso_angle_traj_block.traj_name = "torso_trajectory";
   torso_angle_traj_block.datapoints = torso_angle_mat;
   torso_angle_traj_block.time_vector = time_matrix;
-  torso_angle_traj_block.datatypes = {"planar_roty"};
+  torso_angle_traj_block.datatypes = {"quat_w", "quat_x", "quat_y", "quat_z"};
+
+  std::cout << "torso_angle_mat rows: "
+            << torso_angle_traj_block.datapoints.rows() << std::endl;
+  std::cout << "torso_angle_mat cols: "
+            << torso_angle_traj_block.datapoints.cols() << std::endl;
+
   std::vector<LcmTrajectory::Trajectory> trajectories;
   trajectories.push_back(com_traj_block);
   trajectories.push_back(l_foot_traj_block);

@@ -171,6 +171,9 @@ int doMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotCommandSender>(tree_with_springs);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       tree_with_springs, tree_with_springs, true, true);
+  //  auto osc =
+  //  builder.AddSystem<systems::controllers::OperationalSpaceControl>(
+  //      tree_with_springs, tree_with_springs, true, false);
 
   //   Acceleration Cost
   int n_v = tree_with_springs.get_num_velocities();
@@ -224,8 +227,8 @@ int doMain(int argc, char* argv[]) {
   double w_heading = 200;
   double k_p_pelvis_balance = 10;
   double k_d_pelvis_balance = 10;
-  double k_p_heading = 10;
-  double k_d_heading = 10;
+  double k_p_heading = 64;
+  double k_d_heading = 16;
   Matrix3d W_pelvis = MatrixXd::Identity(3, 3);
   W_pelvis(0, 0) = w_pelvis_balance;
   W_pelvis(1, 1) = w_pelvis_balance;
@@ -245,7 +248,7 @@ int doMain(int argc, char* argv[]) {
   //      W_pelvis * FLAGS_torso_orientation_cost, &tree_with_springs,
   //      &tree_with_springs);
   //  pelvis_rot_traj.AddStateAndFrameToTrack(NEUTRAL, "torso");
-  ////  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
+  //  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
   //  pelvis_rot_traj.AddStateAndFrameToTrack(LAND, "torso");
   //  VectorXd pelvis_desired_quat(4);
   //  pelvis_desired_quat << 1, 0, 0, 0;
@@ -257,8 +260,8 @@ int doMain(int argc, char* argv[]) {
       &tree_with_springs);
   pelvis_rot_traj.AddStateAndFrameToTrack(NEUTRAL, "torso");
   pelvis_rot_traj.AddStateAndFrameToTrack(CROUCH, "torso");
-//  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
-  pelvis_rot_traj.AddStateAndFrameToTrack(LAND, "torso");
+  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
+  //  pelvis_rot_traj.AddStateAndFrameToTrack(LAND, "torso");
   osc->AddTrackingData(&pelvis_rot_traj);
 
   // ****** Feet tracking term ******

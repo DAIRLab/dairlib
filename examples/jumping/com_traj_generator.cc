@@ -34,11 +34,11 @@
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::trajectories::PiecewisePolynomial;
+using Eigen::AngleAxisd;
 using Eigen::MatrixXd;
 using Eigen::Quaterniond;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using Eigen::AngleAxisd;
 using std::cout;
 using std::endl;
 using std::vector;
@@ -62,8 +62,8 @@ int doMain(int argc, char* argv[]) {
       FindResourceOrThrow(filename), drake::multibody::joints::kFixed, &tree);
 
   KinematicsCache<double> cache = tree.CreateKinematicsCache();
-  const LcmTrajectory& loaded_traj = LcmTrajectory(LcmTrajectory::loadFromFile(
-      "examples/jumping/saved_trajs/jumping_1_4"));
+  const LcmTrajectory& loaded_traj = LcmTrajectory(
+      LcmTrajectory::loadFromFile("examples/jumping/saved_trajs/jumping_1_4"));
   const LcmTrajectory::Trajectory& jumping_traj =
       loaded_traj.getTrajectory("jumping_trajectory_x_u");
   int num_positions = tree.get_num_positions();
@@ -83,12 +83,16 @@ int doMain(int argc, char* argv[]) {
   Vector3d center_of_mass;
   Vector3d l_foot;
   Vector3d r_foot;
+  Vector3d torso_center;
+  Vector3d hip;
   Vector3d pt_on_foot = VectorXd::Zero(3);
   int l_foot_idx = multibody::GetBodyIndexFromName(tree, "left_foot");
   int r_foot_idx = multibody::GetBodyIndexFromName(tree, "right_foot");
+  int torso_idx = multibody::GetBodyIndexFromName(tree, "torso");
 
   std::cout << "l_foot_idx: " << l_foot_idx << std::endl;
   std::cout << "r_foot_idx: " << r_foot_idx << std::endl;
+  std::cout << "torso_idx: " << torso_idx << std::endl;
 
   std::vector<double> com_points;
   std::vector<double> l_foot_points;
@@ -104,28 +108,32 @@ int doMain(int argc, char* argv[]) {
     dairlib::multibody::SetZeroQuaternionToIdentity(&q);
     cache.initialize(q);
     tree.doKinematics(cache);
+
     center_of_mass = tree.centerOfMass(cache);
-    l_foot = tree.CalcBodyPoseInWorldFrame(cache, tree.get_body(l_foot_idx))
-                 .linear()
-                 .col(0);
-    r_foot = tree.CalcBodyPoseInWorldFrame(cache, tree.get_body(r_foot_idx))
-                 .linear()
-                 .col(0);
+    l_foot = tree.transformPoints(cache, pt_on_foot, l_foot_idx, 0);
+    r_foot = tree.transformPoints(cache, pt_on_foot, r_foot_idx, 0);
+    torso_center = tree.transformPoints(cache, pt_on_foot, torso_idx, 0);
+
+    hip = torso_center;
+    hip(0) += -0.2*sin(q(2));
+    hip(2) += -0.2*cos(q(2));
     times.push_back(i * FLAGS_time_offset / FLAGS_resolution);
     //    VectorXd torso_quat(4);
     //    torso_quat << 1, 0, q(2), 0;
     Quaterniond quat;
-    quat = AngleAxisd(0, Vector3d::UnitX())
-        * AngleAxisd(q(2), Vector3d::UnitY())
-        * AngleAxisd(0, Vector3d::UnitZ());
+    quat = AngleAxisd(0, Vector3d::UnitX()) *
+           AngleAxisd(q(2), Vector3d::UnitY()) *
+           AngleAxisd(0, Vector3d::UnitZ());
     torso_angle.push_back(quat.w());
     torso_angle.push_back(quat.x());
     torso_angle.push_back(quat.y());
     torso_angle.push_back(quat.z());
     for (int j = 0; j < 3; ++j) {
       com_points.push_back(center_of_mass(j));
-      l_foot_points.push_back(l_foot(j) - center_of_mass(j));
-      r_foot_points.push_back(r_foot(j) - center_of_mass(j));
+//      l_foot_points.push_back(l_foot(j) - center_of_mass(j));
+//      r_foot_points.push_back(l_foot(j) - center_of_mass(j));
+      l_foot_points.push_back(r_foot(j) - hip(j));
+      r_foot_points.push_back(r_foot(j) - hip(j));
     }
   }
   double time_offset =
@@ -139,24 +147,31 @@ int doMain(int argc, char* argv[]) {
     dairlib::multibody::SetZeroQuaternionToIdentity(&q);
     cache.initialize(q);
     tree.doKinematics(cache);
-    center_of_mass = tree.centerOfMass(cache);
 
+    center_of_mass = tree.centerOfMass(cache);
     l_foot = tree.transformPoints(cache, pt_on_foot, l_foot_idx, 0);
     r_foot = tree.transformPoints(cache, pt_on_foot, r_foot_idx, 0);
+    torso_center = tree.transformPoints(cache, pt_on_foot, torso_idx, 0);
+
+    hip = torso_center;
+    hip(0) += -0.2*sin(q(2));
+    hip(2) += -0.2*cos(q(2));
 
     times.push_back(i * end_time / FLAGS_resolution + time_offset);
     Quaterniond quat;
-    quat = AngleAxisd(0, Vector3d::UnitX())
-        * AngleAxisd(q(2), Vector3d::UnitY())
-        * AngleAxisd(0, Vector3d::UnitZ());
+    quat = AngleAxisd(0, Vector3d::UnitX()) *
+           AngleAxisd(q(2), Vector3d::UnitY()) *
+           AngleAxisd(0, Vector3d::UnitZ());
     torso_angle.push_back(quat.w());
     torso_angle.push_back(quat.x());
     torso_angle.push_back(quat.y());
     torso_angle.push_back(quat.z());
     for (int j = 0; j < 3; ++j) {
       com_points.push_back(center_of_mass(j));
-      l_foot_points.push_back(l_foot(j) - center_of_mass(j));
-      r_foot_points.push_back(r_foot(j) - center_of_mass(j));
+//      l_foot_points.push_back(l_foot(j) - center_of_mass(j));
+//      r_foot_points.push_back(r_foot(j) - center_of_mass(j));
+      l_foot_points.push_back(l_foot(j) - hip(j));
+      r_foot_points.push_back(r_foot(j) - hip(j));
     }
   }
 

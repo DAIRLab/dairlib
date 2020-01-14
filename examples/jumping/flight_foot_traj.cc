@@ -83,8 +83,16 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
   // Vector3d pt_on_foot = Eigen::VectorXd::Zero(3);
   // find a function that calculates the center of mass for a rigidbodytree
 
-  Vector3d center_of_mass = tree_.centerOfMass(cache);
-  Vector3d com_velocity = tree_.centerOfMassJacobian(cache) * (*v);
+//  Vector3d center_of_mass = tree_.centerOfMass(cache);
+//  Vector3d com_velocity = tree_.centerOfMassJacobian(cache) * (*v);
+
+  Vector3d torso_offset;
+  torso_offset << 0, 0, -0.2;
+  Vector3d hip =
+      tree_.transformPoints(cache, torso_offset, hip_idx_, 0);
+  Vector3d hip_vel =
+      tree_.transformPointsJacobian(cache, torso_offset, hip_idx_, 0,
+          false) * (*v);
 
   //  std::cout << "COM: " << center_of_mass << std::endl;
   //  std::cout << "COM jacobian: " << com_velocity << std::endl;
@@ -97,7 +105,8 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
   //    center_of_mass(0) + com_velocity(0) * 1 - foot_offset_,
   //    center_of_mass(1),
   //    center_of_mass(2) + com_velocity(2) * 1 - height_);
-  int segment_idx = -1; // because times start at 0
+
+  int segment_idx = -1;  // because times start at 0
   for (double t0 : foot_traj_.get_segment_times()) {
     if (t0 > t) {
       break;
@@ -114,11 +123,15 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
   //  MatrixXd com_pos(3, breaks.size());
   double dt = breaks[1] - breaks[0];
-  MatrixXd com_pos(3, 2);
-  com_pos << center_of_mass, center_of_mass + com_velocity * dt;
-  PiecewisePolynomial<double> com_offset =
-      PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, com_pos);
-  return foot_traj_segment + com_offset;
+//  MatrixXd com_pos(3, 2);
+//  com_pos << center_of_mass, center_of_mass + com_velocity * dt;
+//  PiecewisePolynomial<double> com_offset =
+//      PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, com_pos);
+  MatrixXd hip_pos(3, 2);
+  hip_pos << hip, hip + hip_vel * dt;
+  PiecewisePolynomial<double> hip_offset =
+      PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, hip_pos);
+  return foot_traj_segment + hip_offset;
   //  return torso_angle_traj_;
 
   //  return PiecewisePolynomial<double>(desired_foot_pos);

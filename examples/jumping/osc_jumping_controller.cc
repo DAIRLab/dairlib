@@ -127,17 +127,28 @@ int doMain(int argc, char* argv[]) {
       loaded_traj.getTrajectory("left_foot_trajectory");
   const LcmTrajectory::Trajectory& lcm_r_foot_traj =
       loaded_traj.getTrajectory("right_foot_trajectory");
+  const LcmTrajectory::Trajectory& com_vel_traj =
+      loaded_traj.getTrajectory("center_of_mass_vel_trajectory");
+  const LcmTrajectory::Trajectory& lcm_l_foot_vel_traj =
+      loaded_traj.getTrajectory("left_foot_vel_trajectory");
+  const LcmTrajectory::Trajectory& lcm_r_foot_vel_traj =
+      loaded_traj.getTrajectory("right_foot_vel_trajectory");
   const LcmTrajectory::Trajectory& lcm_torso_traj =
       loaded_traj.getTrajectory("torso_trajectory");
+  cout << "com_vel:" << com_vel_traj.datapoints.size() << endl;
+  cout << "l_foot_vel: " << lcm_l_foot_vel_traj.datapoints.size() << endl;
+  cout << "r_foot_vel: " << lcm_r_foot_vel_traj.datapoints.size() << endl;
   const PiecewisePolynomial<double>& center_of_mass_traj =
-      PiecewisePolynomial<double>::Pchip(com_traj.time_vector,
-                                         com_traj.datapoints);
+      PiecewisePolynomial<double>::Cubic(
+          com_traj.time_vector, com_traj.datapoints, com_vel_traj.datapoints);
   const PiecewisePolynomial<double>& l_foot_trajectory =
-      PiecewisePolynomial<double>::Pchip(lcm_l_foot_traj.time_vector,
-                                         lcm_l_foot_traj.datapoints);
+      PiecewisePolynomial<double>::Cubic(lcm_l_foot_traj.time_vector,
+                                         lcm_l_foot_traj.datapoints,
+                                         lcm_l_foot_vel_traj.datapoints);
   const PiecewisePolynomial<double>& r_foot_trajectory =
-      PiecewisePolynomial<double>::Pchip(lcm_r_foot_traj.time_vector,
-                                         lcm_r_foot_traj.datapoints);
+      PiecewisePolynomial<double>::Cubic(lcm_r_foot_traj.time_vector,
+                                         lcm_r_foot_traj.datapoints,
+                                         lcm_r_foot_vel_traj.datapoints);
   const PiecewisePolynomial<double>& torso_trajectory =
       PiecewisePolynomial<double>::Pchip(lcm_torso_traj.time_vector,
                                          lcm_torso_traj.datapoints);
@@ -231,7 +242,7 @@ int doMain(int argc, char* argv[]) {
   double k_d_heading = 16;
   Matrix3d W_pelvis = MatrixXd::Identity(3, 3);
   W_pelvis(0, 0) = w_pelvis_balance;
-  W_pelvis(1, 1) = w_pelvis_balance;
+  W_pelvis(1, 1) = 0;
   W_pelvis(2, 2) = w_heading;
   Matrix3d K_p_pelvis = MatrixXd::Identity(3, 3);
   K_p_pelvis(0, 0) = k_p_pelvis_balance * 2;
@@ -259,8 +270,8 @@ int doMain(int argc, char* argv[]) {
       W_pelvis * FLAGS_torso_orientation_cost, &tree_with_springs,
       &tree_with_springs);
   pelvis_rot_traj.AddStateAndFrameToTrack(NEUTRAL, "torso");
-  pelvis_rot_traj.AddStateAndFrameToTrack(CROUCH, "torso");
-  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
+  //  pelvis_rot_traj.AddStateAndFrameToTrack(CROUCH, "torso");
+  //  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
   //  pelvis_rot_traj.AddStateAndFrameToTrack(LAND, "torso");
   osc->AddTrackingData(&pelvis_rot_traj);
 

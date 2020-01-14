@@ -204,7 +204,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   int n = plant->num_positions();
   auto lambda_init = trajopt->force_vars(0);
   auto lambda_final = trajopt->force_vars(2);
-//  auto x_pre_flight = trajopt->state(FLAGS_knot_points + 1);
+  //  auto x_pre_flight = trajopt->state(FLAGS_knot_points + 1);
   //  auto lambda_init = trajopt->force(0, 1);
 
   Eigen::VectorXd fixed_initial_conds(14);
@@ -220,18 +220,17 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
                                (x0(positions_map["planar_z"]) + FLAGS_height));
   trajopt->AddLinearConstraint(xf(positions_map["planar_z"]) ==
                                (x0(positions_map["planar_z"])));
-//  trajopt->AddLinearConstraint(x_pre_flight(positions_map["planar_z"]) >=
-//                               x0(positions_map["planar_z"]));
-  // Enforce that the flight phase starts after the feet have left the ground
   trajopt->AddLinearConstraint(x0.tail(n) == VectorXd::Zero(n));
   trajopt->AddLinearConstraint(xf.tail(n) == VectorXd::Zero(n));
 
   auto x = trajopt->state();
 
   std::cout << "lambda size: " << lambda_init.size() << std::endl;
-  for (int i = 1; i < lambda_init.size(); i += 2) {
-    trajopt->AddLinearConstraint(lambda_init(i) >= 0.6 * 15 * FLAGS_gravity);
-    trajopt->AddLinearConstraint(lambda_final(i) <= 10 * 15 * FLAGS_gravity);
+  for (int i = 1; i < lambda_init.size() * 3 / 4;
+       i += 2) {  // NOT APPLIED TO ALL KNOTS ONLY FIRST 3/4
+    // Total mass is about 30, so 15 is per leg
+    trajopt->AddLinearConstraint(lambda_init(i) >= 0.5 * 15 * FLAGS_gravity);
+    trajopt->AddLinearConstraint(lambda_final(i) <= 3 * 15 * FLAGS_gravity);
   }
   //  input constraints
   trajopt->AddConstraintToAllKnotPoints(u(0) >= -300);
@@ -309,9 +308,11 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   traj_block.time_vector = generate_time_matrix(state_traj, 1000);
   traj_block.datapoints = generate_state_input_matrix(state_traj, input_traj,
                                                       traj_block.time_vector);
-  traj_block.datatypes = {"planar_x",  "planar_z",  "planar_roty", "left_hip",
-                          "right_hip", "left_knee", "right_knee",  "u_lh",
-                          "u_rh",      "u_lk",      "u_rk"};
+  traj_block.datatypes = {
+      "planar_x",  "planar_z",   "planar_roty", "left_hip",    "right_hip",
+      "left_knee", "right_knee", "planar_xdot", "planar_zdot", "planar_rotydot",
+      "lhipdot",   "rhipdot",    "lkneedot",    "rkneedot",    "u_lh",
+      "u_rh",      "u_lk",       "u_rk"};
   //  traj_block.datatypes = multibody::makeStateNamesVector(plant);
   std::vector<LcmTrajectory::Trajectory> trajectories;
   trajectories.push_back(traj_block);

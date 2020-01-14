@@ -120,7 +120,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
         kp_yaw_ * (desired_yaw - approx_pelvis_yaw) + kd_yaw_ * (-yaw_vel);
     des_yaw_vel = std::min(vel_max_yaw_, std::max(vel_min_yaw_, des_yaw_vel));
 
-    // Weigh between the desired yaw vel and 0 vel
+    // Convex combination of 0 and desired yaw velocity
     double weight = 1 / (1 + exp(-params_of_no_turning_(0) *
         (global_com_pos_to_target_pos.norm() -
             params_of_no_turning_(1))));

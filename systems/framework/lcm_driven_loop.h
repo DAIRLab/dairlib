@@ -143,8 +143,13 @@ class LcmDrivenLoop {
                       "", is_forced_publish){};
 
   // Start simulating the diagram
-  void Simulate() { Simulate(std::numeric_limits<double>::infinity(), true); }
+  void SimulateForever() {
+    Simulate(std::numeric_limits<double>::infinity(), true);
+  }
+  void SimulateTo(double time) { Simulate(time, true); }
+  void SimulateDuration(double time) { Simulate(time, false); }
 
+ private:
   // Start simulating the diagram
   /// @param is_end_time_or_duration, true if `time_in` is the end time of the
   /// simulation, and false if `time_in` is the duration for which the
@@ -276,7 +281,6 @@ class LcmDrivenLoop {
     }
   };
 
- private:
   drake::lcm::DrakeLcm* drake_lcm_;
   drake::systems::Diagram<double>* diagram_ptr_;
   const drake::systems::LeafSystem<double>* lcm_parser_;

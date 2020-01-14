@@ -305,7 +305,7 @@ int DoMain(int argc, char* argv[]) {
        state_receiver,
        FLAGS_channel_x,
        false);
-  loop.Simulate();
+  loop.SimulateForever();
 
 
   return 0;

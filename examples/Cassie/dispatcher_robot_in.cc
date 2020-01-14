@@ -145,7 +145,7 @@ int do_main(int argc, char* argv[]) {
        FLAGS_control_channel_name_1,
        switch_channel,
        false);
-  loop.Simulate();
+  loop.SimulateForever();
 
   return 0;
 }

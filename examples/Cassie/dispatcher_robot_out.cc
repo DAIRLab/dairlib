@@ -147,7 +147,8 @@ int do_main(int argc, char* argv[]) {
         (&lcm_local,
          std::move(owned_diagram),
          input_receiver,
-         "CASSIE_OUTPUT");
+         "CASSIE_OUTPUT",
+         false);
     loop.Simulate();
 
   } else {

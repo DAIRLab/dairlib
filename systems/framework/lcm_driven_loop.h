@@ -31,6 +31,17 @@ namespace systems {
 /// `lcm_parser` with the incoming lcm message. This would cause a problem if
 /// the user has a `lcm_parser` with multiple InputPort's.
 
+/// Notice that diagram.Publish() is for dispatching the publish of
+/// TriggerType::kForced type. In LcmPublisherSystem, both periodic and
+/// per-step publishes are also forced publish.
+/// https://github.com/RobotLocomotion/drake/blob/03fe7e4/systems/lcm/lcm_publisher_system.h#L54-L56
+/// Therefore, in the case of periodic and per-step publishes, we should
+/// not run diagram.Publish() after AdvanceTo(). Otherwise, we double
+/// publish.
+/// With the above things being said, the parameter is_forced_publish_ should be
+/// set to true only when LcmPublisher is of TriggerType::kForced type and NOT
+/// other types.
+
 /// Procedures to use LcmDrivenLoop:
 /// 1. construct LcmDrivenLoop
 /// 2. (if it's multi-input) the user can set the initial channel that
@@ -54,13 +65,14 @@ class LcmDrivenLoop {
   ///     @param lcm_parser The LeafSystem of the diagram that parses the
   ///     incoming lcm message
   ///     @param input_channel The name of the input channel
+  ///     @param is_forced_publish A flag which enables publishing via diagram.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::LeafSystem<double>* lcm_parser,
-                const std::string& input_channel)
+                const std::string& input_channel, bool is_forced_publish)
       : LcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
                       std::vector<std::string>(1, input_channel), input_channel,
-                      ""){};
+                      "", is_forced_publish){};
 
   /// Constructor for multi-input LcmDrivenLoop
   ///     @param drake_lcm DrakeLcm
@@ -70,13 +82,16 @@ class LcmDrivenLoop {
   ///     @param input_channels The names of the input channels
   ///     @param active_channel The name of the initial active input channel
   ///     @param switch_channel The name of the switch channel
+  ///     @param is_forced_publish A flag which enables publishing via diagram.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
                 const drake::systems::LeafSystem<double>* lcm_parser,
                 std::vector<std::string> input_channels,
                 const std::string& active_channel,
-                const std::string& switch_channel)
-      : drake_lcm_(drake_lcm), lcm_parser_(lcm_parser) {
+                const std::string& switch_channel, bool is_forced_publish)
+      : drake_lcm_(drake_lcm),
+        lcm_parser_(lcm_parser),
+        is_forced_publish_(is_forced_publish) {
     // Move simulator
     if (!diagram->get_name().empty()) {
       diagram_name_ = diagram->get_name();
@@ -118,13 +133,14 @@ class LcmDrivenLoop {
   ///     @param drake_lcm DrakeLcm
   ///     @param diagram A Drake diagram
   ///     @param input_channel The name of the input channel
+  ///     @param is_forced_publish A flag which enables publishing via diagram.
   /// The use case is that the user only need the time from lcm message.
   LcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
                 std::unique_ptr<drake::systems::Diagram<double>> diagram,
-                const std::string& input_channel)
+                const std::string& input_channel, bool is_forced_publish)
       : LcmDrivenLoop(drake_lcm, std::move(diagram), nullptr,
                       std::vector<std::string>(1, input_channel), input_channel,
-                      ""){};
+                      "", is_forced_publish){};
 
   // Start simulating the diagram
   void Simulate() { Simulate(std::numeric_limits<double>::infinity(), true); }
@@ -226,14 +242,10 @@ class LcmDrivenLoop {
         }
 
         simulator_->AdvanceTo(time);
-        // Force-publish via the diagram
-        /// Notice that diagram.Publish() is for dispatching the publish of
-        /// TriggerType::kForced type. In LcmPublisherSystem, both periodic and
-        /// per-step publishes are also forced publish.
-        /// https://github.com/RobotLocomotion/drake/blob/03fe7e4/systems/lcm/lcm_publisher_system.h#L54-L56
-        /// Therefore, we should not run diagram.Publish() after AdvanceTo().
-        /// Otherwise, we double publish.
-        // diagram_ptr_->Publish(diagram_context);
+        if (is_forced_publish_) {
+          // Force-publish via the diagram
+          diagram_ptr_->Publish(diagram_context);
+        }
 
         // Clear messages in the current input channel
         name_to_input_sub_map_.at(active_channel_).clear();
@@ -276,6 +288,8 @@ class LcmDrivenLoop {
       nullptr;
   std::map<std::string, drake::lcm::Subscriber<InputMessageType>>
       name_to_input_sub_map_;
+
+  bool is_forced_publish_;
 };
 
 }  // namespace systems

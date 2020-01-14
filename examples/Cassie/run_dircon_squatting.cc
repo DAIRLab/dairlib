@@ -431,11 +431,12 @@ void DoMain(double duration, int max_iter, string data_directory,
     double_all_options.setDynConstraintScaling(1.0 / one_fifty / 10, 29, 34);
     double_all_options.setDynConstraintScaling(1.0 / one_fifty / 15.0 / s_dyn_3, 35, 36);
     // Kinematic constraints
-    double s_kin = (FLAGS_is_scale_variable)? 10.0 : 1.0;
-    double_all_options.setKinConstraintScaling(1.0 / 500.0 / s_kin, 0, 9);
-    double_all_options.setKinConstraintScaling(2.0 / 50.0 / s_kin, 10, 11);
-    double_all_options.setKinConstraintScalingVel(1000);
-    double_all_options.setKinConstraintScalingPos(2000);
+    double s_kin_1 = (FLAGS_is_scale_variable)? 10.0 : 1.0;
+    double s_kin_2 = (FLAGS_is_scale_variable)? 2.0 : 1.0;
+    double_all_options.setKinConstraintScaling(1.0 / 500.0 / s_kin_1, 0, 9);
+    double_all_options.setKinConstraintScaling(2.0 / 50.0 / s_kin_1, 10, 11);
+    double_all_options.setKinConstraintScalingVel(500 * s_kin_2);
+    double_all_options.setKinConstraintScalingPos(1000 * s_kin_2);
   }
 
   // timesteps and modes setting

@@ -96,6 +96,7 @@ class OscTrackingData {
 
   // Feedback output, jacobian and dJ/dt * v
   Eigen::VectorXd error_y_;
+  Eigen::VectorXd error_dy_;
   Eigen::VectorXd y_;
   Eigen::VectorXd dy_;
   Eigen::MatrixXd J_;
@@ -105,6 +106,7 @@ class OscTrackingData {
   Eigen::VectorXd y_des_;
   Eigen::VectorXd dy_des_;
   Eigen::VectorXd ddy_des_;
+  Eigen::VectorXd ddy_des_converted_;
 
   // `state_` is the finite state machine state when the tracking is enabled
   // If `state_` is empty, then the tracking is always on.
@@ -124,8 +126,9 @@ class OscTrackingData {
   // Updaters of feedback output, jacobian and dJ/dt * v
   virtual void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
                                KinematicsCache<double>& cache_w_spr) = 0;
-  virtual void UpdateYdot(const Eigen::VectorXd& x_w_spr,
-                          KinematicsCache<double>& cache_w_spr) = 0;
+  virtual void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
+                                  KinematicsCache<double>& cache_w_spr) = 0;
+  virtual void UpdateYddotDes() = 0;
   virtual void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                        KinematicsCache<double>& cache_wo_spr) = 0;
   virtual void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -172,8 +175,9 @@ class ComTrackingData final : public OscTrackingData {
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
                        KinematicsCache<double>& cache_w_spr) final;
-  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
-                  KinematicsCache<double>& cache_w_spr) final;
+  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
+                          KinematicsCache<double>& cache_w_spr) final;
+  void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                KinematicsCache<double>& cache_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -236,8 +240,9 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
                        KinematicsCache<double>& cache_w_spr) final;
-  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
+  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
                   KinematicsCache<double>& cache_w_spr) final;
+  void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                KinematicsCache<double>& cache_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -283,8 +288,9 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
                        KinematicsCache<double>& cache_w_spr) final;
-  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
+  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
                   KinematicsCache<double>& cache_w_spr) final;
+  void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                KinematicsCache<double>& cache_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -331,8 +337,9 @@ class JointSpaceTrackingData final : public OscTrackingData {
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
                        KinematicsCache<double>& cache_w_spr) final;
-  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
+  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
                   KinematicsCache<double>& cache_w_spr) final;
+  void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                KinematicsCache<double>& cache_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,

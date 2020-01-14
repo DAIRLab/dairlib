@@ -130,7 +130,7 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   KinematicsCache<double> cache = tree_.CreateKinematicsCache();
   VectorXd q = robot_output->GetPositions();
 
-  // Modify the quaternion in the begining when the state is not received from
+  // Modify the quaternion in the beginning when the state is not received from
   // the robot yet (cannot have 0-norm quaternion when using doKinematics)
   if (is_quaternion_){
     multibody::SetZeroQuaternionToIdentity(&q);
@@ -169,9 +169,11 @@ void LIPMTrajGenerator::CalcTraj(const Context<double>& context,
   Y[1](0, 0) = stance_foot_pos(0);
   Y[0](1, 0) = stance_foot_pos(1);
   Y[1](1, 0) = stance_foot_pos(1);
+  // We add stance_foot_pos(2) to desired COM height to account for state
+  // drifting
   Y[0](2, 0) = CoM(2);
-  // Y[0](2, 0) = desired_com_height_;
-  Y[1](2, 0) = desired_com_height_;
+  // Y[0](2, 0) = desired_com_height_ + stance_foot_pos(2);
+  Y[1](2, 0) = desired_com_height_ + stance_foot_pos(2);
 
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   Y_dot_start(2, 0) = dCoM_wrt_foot_z;

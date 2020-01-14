@@ -103,3 +103,4 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
 }  // namespace osc_walk
 }  // namespace cassie
 }  // namespace dairlib
+

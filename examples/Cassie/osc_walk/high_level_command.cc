@@ -205,3 +205,4 @@ void HighLevelCommand::CopyDesiredHorizontalVel(const Context<double>& context,
 }  // namespace osc_walk
 }  // namespace cassie
 }  // namespace dairlib
+

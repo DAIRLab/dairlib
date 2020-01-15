@@ -22,19 +22,17 @@ DEFINE_string(switch_channel, "INPUT_SWITCH",
 DEFINE_string(new_channel, "PD_CONTROLLER",
               "The name of the new lcm channel that dispatcher_in listens to "
               "after switch");
-DEFINE_int32(n_fsm_period, -1,
-             "the number of state-switch after the start of the"
-             "simulator containing this diagram"
-             "Negative value means no time delay");
+DEFINE_int32(n_period_delay, -1,
+             "the number of periods before we start publishing the new channel "
+             "name. If the value is non-positive, the channel name is published"
+             "right after the start of the program.");
 DEFINE_int32(n_publishes, 10,
              "The simulation gets updated until it publishes the channel name "
              "n_publishes times");
-DEFINE_double(fsm_period, -1.0,
-              "has to be the same as `duration_per_state` in "
-              "`TimeBasedFiniteStateMachine`");
+DEFINE_double(fsm_period, -1.0, " the period of TimeBasedFiniteStateMachine");
 DEFINE_double(fsm_offset, 0.0,
-              "has to be the same as `time_shift` in "
-              "`TimeBasedFiniteStateMachine`");
+              "a constant that's used to determined the publish time see the "
+              "documentation below for details");
 
 /// This program is a one-time-use switch that tells dispatcher_robot_in which
 /// channel to listen to. It publishes the lcm message,
@@ -42,32 +40,34 @@ DEFINE_double(fsm_offset, 0.0,
 /// name.
 
 /// The program is extended so that it could be used with
-/// `TimeBasedFiniteStateMachine`. More specifically, the string assigment
-/// starts when `TimeBasedFiniteStateMachine` switches to a new state (because
-/// we don't want to switch to a new controller when the new controller is in a
-/// middle of a discrete state). This requires that the users provide two (or
-/// three) more arguments to the constructors besides `new_channel`:
-///   @param n_fsm_period, the number of state-switch after the start of the
-///   simulator containing this diagram
-///   @param fsm_period, has to be the same as `duration_per_state` in
-///   `TimeBasedFiniteStateMachine`
-///   @param fsm_offset, has to be the same as `time_shift` in
-///   `TimeBasedFiniteStateMachine`
+/// `TimeBasedFiniteStateMachine`. More specifically, we want the string
+/// assigment starts at the moment when `TimeBasedFiniteStateMachine` switches
+/// to a new state (because we don't want to switch to a new controller when the
+/// new controller is still in a middle of a discrete state). This requires that
+/// the users provide two (or three) more arguments to the constructors besides
+/// `new_channel`:
+///   @param n_period_delay, the number of periods before we start publishing
+///   the new channel name
+///   @param fsm_period, the period of `TimeBasedFiniteStateMachine`
+///   @param fsm_offset, a constant that's used to determined the publish time
+///   (see below for details)
 ///
 /// Let t0 be the time of the simulator/robot when we started running the
-/// diagram containing this class. And let t_current be the current diagram
-/// time. This class outputs the channel name only when
-///   t_current >= (floor(t0/fsm_period) + n_fsm_period) * fsm_period +
+/// simulation of the diagram in this program. And let t_current be the current
+/// diagram time.
+/// If n_period_delay is positive, this diagram starts publishing the channel
+/// name after
+///   t_current >= (floor(t0/fsm_period) + n_period_delay) * fsm_period +
 ///   fsm_offset.
-/// That is, this thread starts outputting the new channel name when
-/// `TimeBasedFiniteStateMachine` switches to a new state for the
-/// `n_fsm_period`-th times after it starts running.
+/// If n_period_delay is not positive, then it starts publishing the name right
+/// after the start of the program. i.e.
+///   t_current >= t0
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  // Ensure that if (n_fsm_period >= 0), then (period > 0).
-  DRAKE_DEMAND((FLAGS_n_fsm_period < 0) || (FLAGS_fsm_period > 0));
+  // Ensure that if (n_period_delay >= 0), then (period > 0).
+  DRAKE_DEMAND((FLAGS_n_period_delay < 0) || (FLAGS_fsm_period > 0));
   // offset has to be positive
   DRAKE_DEMAND(FLAGS_fsm_offset >= 0);
 
@@ -101,10 +101,10 @@ int do_main(int argc, char* argv[]) {
 
   // Set the threshold time
   double t_threshold = t0;
-  if (FLAGS_n_fsm_period > 0) {
-    t_threshold =
-        (floor(t0 / FLAGS_fsm_period) + FLAGS_n_fsm_period) * FLAGS_fsm_period +
-        FLAGS_fsm_offset;
+  if (FLAGS_n_period_delay > 0) {
+    t_threshold = (floor(t0 / FLAGS_fsm_period) + FLAGS_n_period_delay) *
+                      FLAGS_fsm_period +
+                  FLAGS_fsm_offset;
   }
   // Create output message
   dairlib::lcmt_controller_switch msg;

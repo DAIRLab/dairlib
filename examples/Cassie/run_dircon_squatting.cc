@@ -401,11 +401,11 @@ void DoMain(double duration, int max_iter, string data_directory,
   double_all_options.setConstraintRelative(6, true);
   double_all_options.setConstraintRelative(8, true);
   // Constraint scaling
-  double_all_options.setDynConstraintScaling(1.0/150, 0, 14);
-  double_all_options.setDynConstraintScaling(1.0/150/3.0*10, 15, 16);
-  double_all_options.setDynConstraintScaling(1.0/150, 17, 28);
-  double_all_options.setDynConstraintScaling(1.0/150/10, 29, 34);
-  double_all_options.setDynConstraintScaling(1.0/150/15.0, 35, 36);
+  double_all_options.setDynConstraintScaling(1.0/150.0, 0, 14);
+  double_all_options.setDynConstraintScaling(1.0/150.0/3.0*10, 15, 16);
+  double_all_options.setDynConstraintScaling(1.0/150.0, 17, 28);
+  double_all_options.setDynConstraintScaling(1.0/150.0/10.0, 29, 34);
+  double_all_options.setDynConstraintScaling(1.0/150.0/15.0, 35, 36);
   double_all_options.setKinConstraintScaling(1.0/500.0, 0, 9);
   double_all_options.setKinConstraintScaling(2.0/50.0, 10, 11);
   double_all_options.setKinConstraintScalingVel(500);

@@ -106,11 +106,11 @@ const unordered_map<int, double>& DirconOptions::getKinConstraintScaling(
   else {
     if (kin_constraint_scaling_3_.empty()) {
       for (auto& member : kin_constraint_scaling_) {
-        kin_constraint_scaling_2_.insert(member);
-        kin_constraint_scaling_2_.insert(std::pair<int, double>(
+        kin_constraint_scaling_3_.insert(member);
+        kin_constraint_scaling_3_.insert(std::pair<int, double>(
             member.first + n_kin_constraints_,
             member.second * kin_constraint_scaling_vel_));
-        kin_constraint_scaling_2_.insert(std::pair<int, double>(
+        kin_constraint_scaling_3_.insert(std::pair<int, double>(
             member.first + 2 * n_kin_constraints_,
             member.second * kin_constraint_scaling_pos_));
         //        kin_constraint_scaling_3_.push_back(member);

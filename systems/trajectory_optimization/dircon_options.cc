@@ -1,5 +1,6 @@
 #include "systems/trajectory_optimization/dircon_options.h"
 
+using std::unordered_map;
 using std::vector;
 
 namespace dairlib {
@@ -42,9 +43,9 @@ void DirconOptions::setImpConstraintScaling(double scale, int row_start,
   DRAKE_DEMAND(row_end < n_v_);
   addConstraintScaling(&imp_constraint_scaling_, scale, row_start, row_end);
 }
-void DirconOptions::addConstraintScaling(
-    std::vector<std::pair<int, double>>* list, double scale, int row_start,
-    int row_end) {
+void DirconOptions::addConstraintScaling(std::unordered_map<int, double>* list,
+                                         double scale, int row_start,
+                                         int row_end) {
   DRAKE_DEMAND(0 <= row_start);
   DRAKE_DEMAND(row_start <= row_end);
   for (int i = row_start; i <= row_end; i++) {
@@ -53,7 +54,7 @@ void DirconOptions::addConstraintScaling(
       DRAKE_DEMAND(i != member.first);
     }
     // Add scaling
-    list->push_back(std::pair<int, double>(i, scale));
+    list->insert(std::pair<int, double>(i, scale));
   }
 }
 void DirconOptions::setKinConstraintScalingPos(double scale) {
@@ -63,22 +64,23 @@ void DirconOptions::setKinConstraintScalingVel(double scale) {
   kin_constraint_scaling_vel_ = scale;
 }
 
-vector<std::pair<int, double>>& DirconOptions::getDynConstraintScaling() {
+const unordered_map<int, double>& DirconOptions::getDynConstraintScaling() {
   return dyn_constraint_scaling_;
 }
-vector<std::pair<int, double>>& DirconOptions::getImpConstraintScaling() {
+const unordered_map<int, double>& DirconOptions::getImpConstraintScaling() {
   return imp_constraint_scaling_;
 }
-vector<std::pair<int, double>>& DirconOptions::getKinConstraintScaling() {
+const unordered_map<int, double>& DirconOptions::getKinConstraintScaling() {
   return getKinConstraintScaling(kAll);
 }
-vector<std::pair<int, double>>& DirconOptions::getKinConstraintScalingStart() {
+const unordered_map<int, double>&
+DirconOptions::getKinConstraintScalingStart() {
   return getKinConstraintScaling(start_constraint_type_);
 }
-vector<std::pair<int, double>>& DirconOptions::getKinConstraintScalingEnd() {
+const unordered_map<int, double>& DirconOptions::getKinConstraintScalingEnd() {
   return getKinConstraintScaling(end_constraint_type_);
 }
-vector<std::pair<int, double>>& DirconOptions::getKinConstraintScaling(
+const unordered_map<int, double>& DirconOptions::getKinConstraintScaling(
     DirconKinConstraintType type) {
   // type == kAccelOnly
   if (type == kAccelOnly) {
@@ -88,10 +90,14 @@ vector<std::pair<int, double>>& DirconOptions::getKinConstraintScaling(
   else if (type == kAccelAndVel) {
     if (kin_constraint_scaling_2_.empty()) {
       for (auto& member : kin_constraint_scaling_) {
-        kin_constraint_scaling_2_.push_back(member);
-        kin_constraint_scaling_2_.emplace_back(
+        kin_constraint_scaling_2_.insert(member);
+        kin_constraint_scaling_2_.insert(std::pair<int, double>(
             member.first + n_kin_constraints_,
-            member.second * kin_constraint_scaling_vel_);
+            member.second * kin_constraint_scaling_vel_));
+        //        kin_constraint_scaling_2_.push_back(member);
+        //        kin_constraint_scaling_2_.emplace_back(
+        //            member.first + n_kin_constraints_,
+        //            member.second * kin_constraint_scaling_vel_);
       }
     }
     return kin_constraint_scaling_2_;
@@ -100,13 +106,20 @@ vector<std::pair<int, double>>& DirconOptions::getKinConstraintScaling(
   else {
     if (kin_constraint_scaling_3_.empty()) {
       for (auto& member : kin_constraint_scaling_) {
-        kin_constraint_scaling_3_.push_back(member);
-        kin_constraint_scaling_3_.emplace_back(
+        kin_constraint_scaling_2_.insert(member);
+        kin_constraint_scaling_2_.insert(std::pair<int, double>(
             member.first + n_kin_constraints_,
-            member.second * kin_constraint_scaling_vel_);
-        kin_constraint_scaling_3_.emplace_back(
+            member.second * kin_constraint_scaling_vel_));
+        kin_constraint_scaling_2_.insert(std::pair<int, double>(
             member.first + 2 * n_kin_constraints_,
-            member.second * kin_constraint_scaling_pos_);
+            member.second * kin_constraint_scaling_pos_));
+        //        kin_constraint_scaling_3_.push_back(member);
+        //        kin_constraint_scaling_3_.emplace_back(
+        //            member.first + n_kin_constraints_,
+        //            member.second * kin_constraint_scaling_vel_);
+        //        kin_constraint_scaling_3_.emplace_back(
+        //            member.first + 2 * n_kin_constraints_,
+        //            member.second * kin_constraint_scaling_pos_);
       }
     }
     return kin_constraint_scaling_3_;

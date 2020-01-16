@@ -401,12 +401,11 @@ void DoMain(double duration, int max_iter, string data_directory,
   double_all_options.setConstraintRelative(6, true);
   double_all_options.setConstraintRelative(8, true);
   // Constraint scaling
-  double one_fifty = 150;
-  double_all_options.setDynConstraintScaling(1.0/one_fifty, 0, 14);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty/3.0*10, 15, 16);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty, 17, 28);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty/10, 29, 34);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty/15.0, 35, 36);
+  double_all_options.setDynConstraintScaling(1.0/150, 0, 14);
+  double_all_options.setDynConstraintScaling(1.0/150/3.0*10, 15, 16);
+  double_all_options.setDynConstraintScaling(1.0/150, 17, 28);
+  double_all_options.setDynConstraintScaling(1.0/150/10, 29, 34);
+  double_all_options.setDynConstraintScaling(1.0/150/15.0, 35, 36);
   double_all_options.setKinConstraintScaling(1.0/500.0, 0, 9);
   double_all_options.setKinConstraintScaling(2.0/50.0, 10, 11);
   double_all_options.setKinConstraintScalingVel(500);
@@ -526,8 +525,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
-  std::vector<std::pair<int, double>> odbp_constraint_scale;
-  odbp_constraint_scale.emplace_back(0, 0.5);
+  std::unordered_map<int, double> odbp_constraint_scale;
+  odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
   left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
   right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
   for (int index = 0; index < num_time_samples[0]; index++) {

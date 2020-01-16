@@ -408,8 +408,10 @@ void DoMain(double duration, int max_iter, string data_directory,
   double_all_options.setDynConstraintScaling(1.0/150.0/15.0, 35, 36);
   double_all_options.setKinConstraintScaling(1.0/500.0, 0, 9);
   double_all_options.setKinConstraintScaling(2.0/50.0, 10, 11);
-  double_all_options.setKinConstraintScalingVel(500);
-  double_all_options.setKinConstraintScalingPos(1000);
+  double_all_options.setKinConstraintScaling(1.0/500.0* 500, 12 + 0, 12 + 9);
+  double_all_options.setKinConstraintScaling(2.0/50.0* 500, 12 + 10, 12 + 11);
+  double_all_options.setKinConstraintScaling(1.0/500.0 * 1000, 24 + 0, 24 + 9);
+  double_all_options.setKinConstraintScaling(2.0/50.0 * 1000, 24 + 10, 24 + 11);
 
   // timesteps and modes setting
   vector<double> min_dt;

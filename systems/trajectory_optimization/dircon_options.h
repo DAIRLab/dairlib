@@ -21,8 +21,6 @@ class DirconOptions {
   void setDynConstraintScaling(double scale, int row_start, int row_end);
   void setImpConstraintScaling(double scale, int row_start, int row_end);
   void setKinConstraintScaling(double scale, int row_start, int row_end);
-  void setKinConstraintScalingPos(double scale);
-  void setKinConstraintScalingVel(double scale);
   const std::unordered_map<int, double>& getDynConstraintScaling();
   const std::unordered_map<int, double>& getImpConstraintScaling();
   const std::unordered_map<int, double>& getKinConstraintScaling();
@@ -59,11 +57,9 @@ class DirconOptions {
   // Constraint scaling
   std::unordered_map<int, double> dyn_constraint_scaling_;
   std::unordered_map<int, double> imp_constraint_scaling_;
-  std::unordered_map<int, double> kin_constraint_scaling_;
-  std::unordered_map<int, double> kin_constraint_scaling_2_;
-  std::unordered_map<int, double> kin_constraint_scaling_3_;
-  double kin_constraint_scaling_pos_ = 1;
-  double kin_constraint_scaling_vel_ = 1;
+  std::unordered_map<int, double> kin_constraint_scaling_accel_;
+  std::unordered_map<int, double> kin_constraint_scaling_accel_vel_;
+  std::unordered_map<int, double> kin_constraint_scaling_accel_vel_pos_;
   int n_v_ = -1;
   int n_x_ = -1;
 

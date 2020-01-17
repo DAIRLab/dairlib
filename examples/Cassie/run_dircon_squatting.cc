@@ -421,22 +421,23 @@ void DoMain(double duration, int max_iter, string data_directory,
     double s_dyn_1 = (FLAGS_is_scale_variable)? 2.0 : 1.0;
     double s_dyn_2 = (FLAGS_is_scale_variable)? 6.0 : 1.0;
     double s_dyn_3 = (FLAGS_is_scale_variable)? 85.0 : 1.0;
-    double one_fifty = 150;
-    double_all_options.setDynConstraintScaling(1.0 / one_fifty, 0, 14);
-    double_all_options.setDynConstraintScaling(1.0 / one_fifty / 3.33 / s_dyn_1, 15,
+    double_all_options.setDynConstraintScaling(1.0 / 150.0, 0, 14);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 3.33 / s_dyn_1, 15,
                                                16);
-    double_all_options.setDynConstraintScaling(1.0 / one_fifty, 17, 18);
-    double_all_options.setDynConstraintScaling(1.0 / one_fifty / s_dyn_1, 19, 26);
-    double_all_options.setDynConstraintScaling(1.0 / one_fifty / s_dyn_2, 27, 28);
-    double_all_options.setDynConstraintScaling(1.0 / one_fifty / 10, 29, 34);
-    double_all_options.setDynConstraintScaling(1.0 / one_fifty / 15.0 / s_dyn_3, 35, 36);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0, 17, 18);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_1, 19, 26);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_2, 27, 28);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 10, 29, 34);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 15.0 / s_dyn_3, 35, 36);
     // Kinematic constraints
     double s_kin_1 = (FLAGS_is_scale_variable)? 10.0 : 1.0;
     double s_kin_2 = (FLAGS_is_scale_variable)? 2.0 : 1.0;
-    double_all_options.setKinConstraintScaling(1.0 / 500.0 / s_kin_1, 0, 9);
-    double_all_options.setKinConstraintScaling(2.0 / 50.0 / s_kin_1, 10, 11);
-    double_all_options.setKinConstraintScalingVel(500 * s_kin_2);
-    double_all_options.setKinConstraintScalingPos(1000 * s_kin_2);
+    double_all_options.setKinConstraintScaling(1.0/500.0 / s_kin_1, 0, 9);
+    double_all_options.setKinConstraintScaling(2.0/50.0 / s_kin_1, 10, 11);
+    double_all_options.setKinConstraintScaling(1.0/500.0* 500 * s_kin_2 / s_kin_1, 12 + 0, 12 + 9);
+    double_all_options.setKinConstraintScaling(2.0/50.0* 500 * s_kin_2 / s_kin_1, 12 + 10, 12 + 11);
+    double_all_options.setKinConstraintScaling(1.0/500.0 * 1000 * s_kin_2 / s_kin_1, 24 + 0, 24 + 9);
+    double_all_options.setKinConstraintScaling(2.0/50.0 * 1000 * s_kin_2 / s_kin_1, 24 + 10, 24 + 11);
   }
 
   // timesteps and modes setting
@@ -552,9 +553,10 @@ void DoMain(double duration, int max_iter, string data_directory,
       &plant, "toe_left", 1, 0.05, std::numeric_limits<double>::infinity());
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
+  // scaling
   if (FLAGS_is_scale_constraint) {
-    std::vector<std::pair<int, double>> odbp_constraint_scale;
-    odbp_constraint_scale.emplace_back(0, 0.5);
+    std::unordered_map<int, double> odbp_constraint_scale;
+    odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
     left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
     right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
   }

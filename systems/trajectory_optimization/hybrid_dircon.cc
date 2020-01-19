@@ -421,10 +421,10 @@ void HybridDircon<T>::SetInitialForceTrajectory(
 
 template <typename T>
 void HybridDircon<T>::ScaleTimeVariables(double scale) {
-  int var_idx_start = this->FindDecisionVariableIndex(this->h_vars()(0));
-  int var_idx_end = this->FindDecisionVariableIndex(this->h_vars().tail(1)(0));
-  DRAKE_DEMAND(this->IsVariableScalingUnset(var_idx_start, var_idx_end));
-  this->SetVariableScaling(scale, var_idx_start, var_idx_end);
+  for (int i = 0; i < h_vars().size(); i++) {
+    DRAKE_DEMAND(IsVariableScalingUnset(h_vars()(i)));
+    this->SetVariableScaling(h_vars()(i), scale);
+  }
 }
 template <typename T>
 void HybridDircon<T>::ScaleStateVariables(double scale, int idx_start,
@@ -433,25 +433,25 @@ void HybridDircon<T>::ScaleStateVariables(double scale, int idx_start,
   DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_x));
 
   // x_vars_ in MathematicalProgram
-  int idx_0 = this->FindDecisionVariableIndex(this->x_vars()(0));
   for (int j_knot = 0; j_knot < N(); j_knot++) {
-    int var_idx_start = idx_0 + idx_start + n_x * j_knot;
-    int var_idx_end = idx_0 + idx_end + n_x * j_knot;
-    DRAKE_DEMAND(this->IsVariableScalingUnset(var_idx_start, var_idx_end));
-    this->SetVariableScaling(scale, var_idx_start, var_idx_end);
+    auto vars = this->state(j_knot);
+    for (int i = idx_start; i <= idx_end; i++) {
+      DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
+      this->SetVariableScaling(vars(i), scale);
+    }
   }
 
   // v_post_impact_vars_
-  int n_v = plant_.num_velocities();
-  if ((idx_end >= n_v) && (num_modes_ > 1)) {
-    idx_start = std::max(idx_start, n_v) - n_v;
-    idx_end -= n_v;
-    idx_0 = this->FindDecisionVariableIndex(v_post_impact_vars_(0));
+  int n_q = plant_.num_positions();
+  if ((idx_end >= n_q) && (num_modes_ > 1)) {
+    idx_start = std::max(idx_start, n_q) - n_q;
+    idx_end -= n_q;
     for (int mode = 0; mode < num_modes_ - 1; mode++) {
-      int var_idx_start = idx_0 + idx_start + n_v * mode;
-      int var_idx_end = idx_0 + idx_end + n_v * mode;
-      DRAKE_DEMAND(this->IsVariableScalingUnset(var_idx_start, var_idx_end));
-      this->SetVariableScaling(scale, var_idx_start, var_idx_end);
+      auto vars = v_post_impact_vars_by_mode(mode);
+      for (int i = idx_start; i <= idx_end; i++) {
+        DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
+        this->SetVariableScaling(vars(i), scale);
+      }
     }
   }
 }
@@ -462,12 +462,12 @@ void HybridDircon<T>::ScaleInputVariables(double scale, int idx_start,
   DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_u));
 
   // u_vars_ in MathematicalProgram
-  int idx_0 = this->FindDecisionVariableIndex(this->u_vars()(0));
   for (int j_knot = 0; j_knot < N(); j_knot++) {
-    int var_idx_start = idx_0 + idx_start + n_u * j_knot;
-    int var_idx_end = idx_0 + idx_end + n_u * j_knot;
-    DRAKE_DEMAND(this->IsVariableScalingUnset(var_idx_start, var_idx_end));
-    this->SetVariableScaling(scale, var_idx_start, var_idx_end);
+    auto vars = this->input(j_knot);
+    for (int i = idx_start; i <= idx_end; i++) {
+      DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
+      this->SetVariableScaling(vars(i), scale);
+    }
   }
 }
 template <typename T>
@@ -478,20 +478,20 @@ void HybridDircon<T>::ScaleForceVariables(double scale, int mode, int idx_start,
   DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_lambda));
 
   // Force at knot points
-  int idx_0 = this->FindDecisionVariableIndex(force_vars(mode)(0));
-  for (int i = 0; i < mode_lengths_[mode]; i++) {
-    int var_idx_start = idx_0 + idx_start + n_lambda * i;
-    int var_idx_end = idx_0 + idx_end + n_lambda * i;
-    DRAKE_DEMAND(this->IsVariableScalingUnset(var_idx_start, var_idx_end));
-    this->SetVariableScaling(scale, var_idx_start, var_idx_end);
+  auto vars = force_vars(mode);
+  for (int j = 0; j < mode_lengths_[mode]; j++) {
+    for (int i = idx_start; i <= idx_end; i++) {
+      DRAKE_DEMAND(IsVariableScalingUnset(vars(n_lambda * j + i)));
+      this->SetVariableScaling(vars(n_lambda * j + i), scale);
+    }
   }
   // Force at collocation pints
-  idx_0 = this->FindDecisionVariableIndex(collocation_force_vars(mode)(0));
-  for (int i = 0; i < mode_lengths_[mode] - 1; i++) {
-    int var_idx_start = idx_0 + idx_start + n_lambda * i;
-    int var_idx_end = idx_0 + idx_end + n_lambda * i;
-    DRAKE_DEMAND(this->IsVariableScalingUnset(var_idx_start, var_idx_end));
-    this->SetVariableScaling(scale, var_idx_start, var_idx_end);
+  auto vars_2 = collocation_force_vars(mode);
+  for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
+    for (int i = idx_start; i <= idx_end; i++) {
+      DRAKE_DEMAND(IsVariableScalingUnset(vars_2(n_lambda * j + i)));
+      this->SetVariableScaling(vars_2(n_lambda * j + i), scale);
+    }
   }
 }
 template <typename T>
@@ -501,22 +501,19 @@ void HybridDircon<T>::ScaleImpulseVariables(double scale, int mode,
   int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
   DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_lambda));
 
-  int idx_0 = this->FindDecisionVariableIndex(impulse_vars(mode)(0));
-  int var_idx_start = idx_0 + idx_start;
-  int var_idx_end = idx_0 + idx_end;
-  DRAKE_DEMAND(this->IsVariableScalingUnset(var_idx_start, var_idx_end));
-  this->SetVariableScaling(scale, var_idx_start, var_idx_end);
+  auto vars = impulse_vars(mode);
+  for (int i = idx_start; i <= idx_end; i++) {
+    DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
+    this->SetVariableScaling(vars(i), scale);
+  }
 }
 template <typename T>
 void HybridDircon<T>::ScaleQuaternionSlackVariables(double scale) {
   DRAKE_DEMAND(multibody::isQuaternion(plant_));
-
   for (size_t mode = 0; mode < mode_lengths_.size(); mode++) {
     for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
-      int var_idx_start =
-          this->FindDecisionVariableIndex(quaternion_slack_vars_[mode](j));
-      DRAKE_DEMAND(this->IsVariableScalingUnset(var_idx_start, var_idx_start));
-      this->SetVariableScaling(scale, var_idx_start, var_idx_start);
+      DRAKE_DEMAND(IsVariableScalingUnset(quaternion_slack_vars_[mode](j)));
+      this->SetVariableScaling(quaternion_slack_vars_[mode](j), scale);
     }
   }
 }
@@ -524,13 +521,24 @@ template <typename T>
 void HybridDircon<T>::ScaleKinConstraintSlackVariables(double scale) {
   for (size_t mode = 0; mode < mode_lengths_.size(); mode++) {
     int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
-    int idx_0 = FindDecisionVariableIndex(collocation_slack_vars(mode)(0));
-    int var_idx_start = idx_0;
-    int var_idx_end = idx_0 + n_lambda * (mode_lengths_[mode] - 1) - 1;
-    DRAKE_DEMAND(this->IsVariableScalingUnset(var_idx_start, var_idx_end));
-    this->SetVariableScaling(scale, var_idx_start, var_idx_end);
+    auto vars = collocation_slack_vars(mode);
+    for (int i = 0; i< vars.size(); i++) {
+      DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
+      this->SetVariableScaling(vars(i), scale);
+    }
+    // Testing
+    DRAKE_DEMAND(vars.size() == n_lambda * (mode_lengths_[mode] - 1));
   }
 }
+
+template <typename T>
+bool HybridDircon<T>::IsVariableScalingUnset(
+    const drake::symbolic::Variable& var) {
+  int idx = FindDecisionVariableIndex(var);
+  auto & scale_map = this->GetVariableScaling();
+  return (scale_map.find(idx) == scale_map.end());
+}
+
 
 template class HybridDircon<double>;
 // template class HybridDircon<AutoDiffXd>;

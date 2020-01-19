@@ -145,6 +145,17 @@ class HybridDircon
   void ScaleQuaternionSlackVariables(double scale);
   void ScaleKinConstraintSlackVariables(double scale);
 
+  /**
+   * Check whether the scaling of decision variables starting from index @p
+   * idx_start to @p idx_end (including @p idx_end) is set or not .
+   * @param idx_start index of the start of the decision variables.
+   * @param idx_end index of the end of the decision variables.
+   * @return true if all corresponding scaling factors are not set yet.
+   *
+   * See @ref variable_scaling "Variable scaling" for more information.
+   */
+  bool IsVariableScalingUnset(const drake::symbolic::Variable& var);
+
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.
   const drake::multibody::MultibodyPlant<T>& plant_;

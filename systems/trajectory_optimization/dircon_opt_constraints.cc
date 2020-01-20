@@ -74,18 +74,33 @@ void DirconAbstractConstraint<T>::ConstructSparsityPattern() {
     }
   }
   // Method 2: using random numbers
-  /*VectorX<double> rand = VectorX<double>::Random(this->num_vars());
-  VectorX<double> y0;
-  EvaluateConstraint(rand, &y0);
-  for (int i = 0; i < this->num_vars(); i++) {
-    VectorX<double> input = rand;
-    input(i) += 0.1;
-    VectorX<double> y1;
-    EvaluateConstraint(input, &y1);
+  /*std::srand((unsigned int) time(0));
+  for (int count = 0; count < 5; count++) {
+    VectorX<double> rand = VectorX<double>::Random(this->num_vars());
+    std::cout << rand.transpose() << std::endl;
+    VectorX<double> y0;
+    EvaluateConstraint(rand, &y0);
+    for (int i = 0; i < this->num_vars(); i++) {
+      VectorX<double> input = rand;
+      input(i) += 0.1;
+      VectorX<double> y1;
+      EvaluateConstraint(input, &y1);
 
-    for (int j = 0; j < num_constraints(); j++) {
-      if (y1(j) != y0(j)) {
-        sparsity.push_back({j, i});
+      for (int j = 0; j < num_constraints(); j++) {
+        if (y1(j) != y0(j)) {
+          // Check if the sparsity element already exist. If not, add it.
+          bool exist = false;
+          for (auto member : sparsity) {
+            if ((member.first == j) && (member.second == i)) {
+              exist = true;
+              break;
+            }
+          }
+          if (!exist) {
+            sparsity.push_back({j, i});
+            if (count > 0) std::cout << "didn't exist in previous loops\n";
+          }
+        }
       }
     }
   }*/

@@ -1,4 +1,5 @@
 #include "dircon_opt_constraints.h"
+#include <cmath>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -53,6 +54,58 @@ void DirconAbstractConstraint<T>::ScaleConstraint(drake::VectorX<U>* y) const {
   }
 }
 
+template <typename T>
+void DirconAbstractConstraint<T>::ConstructSparsityPattern() {
+  drake::log()->warn(
+      "Constraint cannot contain any if-statement conditioned on input values");
+  std::vector<std::pair<int, int>> sparsity;
+
+  // Method 1: using NaN
+  for (int i = 0; i < this->num_vars(); i++) {
+    VectorX<double> input = VectorX<double>::Ones(this->num_vars());
+    input(i) = std::numeric_limits<double>::quiet_NaN();
+    VectorX<double> y;
+    EvaluateConstraint(input, &y);
+
+    for (int j = 0; j < num_constraints(); j++) {
+      if (std::isnan(y(j))) {
+        sparsity.push_back({j, i});
+      }
+    }
+  }
+  // Method 2: using random numbers
+  /*VectorX<double> rand = VectorX<double>::Random(this->num_vars());
+  VectorX<double> y0;
+  EvaluateConstraint(rand, &y0);
+  for (int i = 0; i < this->num_vars(); i++) {
+    VectorX<double> input = rand;
+    input(i) += 0.1;
+    VectorX<double> y1;
+    EvaluateConstraint(input, &y1);
+
+    for (int j = 0; j < num_constraints(); j++) {
+      if (y1(j) != y0(j)) {
+        sparsity.push_back({j, i});
+      }
+    }
+  }*/
+
+  MatrixXd m_sp = MatrixXd::Zero(num_constraints(), num_vars());
+  for (auto member : sparsity) {
+    m_sp(member.first, member.second) = 1;
+  }
+  //  std::cout << m_sp << std::endl;
+  /*if (this->get_description().compare("dynamics_constraint") == 0) {
+    goldilocks_models::writeCSV("../dyn_constraint_sparsity.csv", m_sp);
+  } else if (this->get_description().compare("kinematics_constraint") == 0) {
+    goldilocks_models::writeCSV("../kin_constraint_sparsity.csv", m_sp);
+  } else if (this->get_description().compare("impact_constraint") == 0) {
+    goldilocks_models::writeCSV("../impact_constraint_sparsity.csv", m_sp);
+  }*/
+
+  this->SetGradientSparsityPattern(sparsity);
+}
+
 template <>
 void DirconAbstractConstraint<double>::DoEval(
     const Eigen::Ref<const Eigen::VectorXd>& x, Eigen::VectorXd* y) const {
@@ -103,7 +156,8 @@ void DirconAbstractConstraint<double>::DoEval(
     x_val(i) -= dx;
     dy.col(i) = (yi - y0) / dx;
   }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy*original_grad, *y);
+  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
+                                                     *y);
 
   // std::cout << dy << std::endl  << std::endl << std::endl;
 
@@ -330,7 +384,7 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       n_relative_{
           static_cast<int>(std::count(is_constraint_relative.begin(),
                                       is_constraint_relative.end(), true))} {
-  // ***Set sparsity pattern***
+  /*// ***Set sparsity pattern***
   std::vector<std::pair<int, int>> sparsity;
   // Acceleration constraints are dense in decision variables
   for (int i = 0; i < num_kinematic_constraints_; i++) {
@@ -346,7 +400,7 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
         sparsity.push_back({i + num_kinematic_constraints_, j});
       }
     }
-  }
+  }*/
 
   // Position constraint only depends on q and any offset variables
   // Set relative map in the same loop
@@ -355,23 +409,23 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
     int k = 0;
 
     for (int i = 0; i < num_kinematic_constraints_; i++) {
-      for (int j = 0; j < num_positions_; j++) {
+      /*for (int j = 0; j < num_positions_; j++) {
         sparsity.push_back({i + 2 * num_kinematic_constraints_, j});
-      }
+      }*/
 
       if (is_constraint_relative_[i]) {
         relative_map_(i, k) = 1;
         // ith constraint depends on kth offset variable
-        sparsity.push_back({i + 2 * num_kinematic_constraints_,
+        /*sparsity.push_back({i + 2 * num_kinematic_constraints_,
                             num_states_ + num_inputs_ +
-                                num_kinematic_constraints_wo_skipping + k});
+                                num_kinematic_constraints_wo_skipping + k});*/
 
         k++;
       }
     }
   }
 
-  this->SetGradientSparsityPattern(sparsity);
+//  this->SetGradientSparsityPattern(sparsity);
 }
 
 template <typename T>

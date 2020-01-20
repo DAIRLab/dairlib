@@ -2,6 +2,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <algorithm>
 
 #include <gflags/gflags.h>
 #include "attic/multibody/multibody_solvers.h"
@@ -241,7 +242,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   const auto result = fp_solver.Solve();
   SolutionResult solution_result = result.get_solution_result();
   cout << to_string(solution_result) << endl;
-   cout << result.GetSolution() << endl;
+//   cout << result.GetSolution() << endl;
 
   VectorXd q_sol = fp_solver.GetSolutionQ();
   VectorXd u_sol = fp_solver.GetSolutionU();
@@ -588,6 +589,30 @@ void DoMain(double duration, int max_iter, string data_directory,
 //    cout << trajopt->decision_variable(i).get_id() << ", ";
 //    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i)) << endl;
 //  }
+
+  // playing with nan
+//  double nan = std::numeric_limits<drake::AutoDiffXd>::quiet_NaN();
+//  double nan = std::numeric_limits<double>::quiet_NaN();
+//  cout << nan + 1 << endl;
+//  cout << nan * 1.0 << endl;
+//  cout << 1.0 / nan << endl;
+//  cout << sin(nan) << endl;
+//  cout << pow(nan, 2) << endl;
+//  Vector3d vec(nan,0,0);
+//  cout << vec.transpose() << endl;
+//  Vector3d ones(1, 1, 1);
+//  cout << (vec + ones).transpose() << endl;
+//  cout << vec.transpose() * ones << endl;
+//  Eigen::MatrixXd m_ones = Eigen::MatrixXd::Ones(3,3);
+//  cout << (m_ones * vec).transpose() << endl;
+//  cout << (Eigen::MatrixXd::Identity(3,3) * vec).transpose() << endl;
+//  // the following has issues
+//  (nan > 0) ? cout << "(nan > 0) true\n" : cout << "(nan > 0) false\n";
+//  (nan < 0) ? cout << "(nan < 0) true\n" : cout << "(nan < 0) false\n";
+//  (nan == 0) ? cout << "(nan == 0) true\n" : cout << "(nan == 0) false\n";
+//  cout << std::max(nan, 0.0) << endl;
+//  cout << std::max(0.0, nan) << endl;
+//  return;
 
   // Testing
   if (FLAGS_is_scale_variable) {

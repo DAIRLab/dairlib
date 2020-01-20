@@ -38,6 +38,7 @@ using Eigen::AngleAxisd;
 using Eigen::MatrixXd;
 using Eigen::Quaterniond;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::VectorXd;
 using std::cout;
 using std::endl;
@@ -132,15 +133,15 @@ int doMain(int argc, char* argv[]) {
     l_foot = tree.transformPoints(cache, pt_on_foot, l_foot_idx, 0);
     r_foot = tree.transformPoints(cache, pt_on_foot, r_foot_idx, 0);
 
-    std::cout << "state at time 0: " << datapoints.value(0) << std::endl;
-
     hip = tree.transformPoints(cache, hip_offset, torso_idx, 0);
 
     times.push_back(i * FLAGS_time_offset / FLAGS_resolution);
-    Quaterniond quat;
-    quat = AngleAxisd(0, Vector3d::UnitX()) *
-           AngleAxisd(q(2), Vector3d::UnitY()) *
-           AngleAxisd(0, Vector3d::UnitZ());
+    Eigen::Matrix3d rot_mat =
+        tree.CalcBodyPoseInWorldFrame(cache, tree.get_body(torso_idx)).linear();
+    Quaterniond quat(rot_mat);
+    //    quat = AngleAxisd(0, Vector3d::UnitX()) *
+    //           AngleAxisd(q(2), Vector3d::UnitY()) *
+    //           AngleAxisd(0, Vector3d::UnitZ());
     torso_angle.push_back(quat.w());
     torso_angle.push_back(quat.x());
     torso_angle.push_back(quat.y());
@@ -187,10 +188,13 @@ int doMain(int argc, char* argv[]) {
         v;
 
     times.push_back(i * end_time / FLAGS_resolution + time_offset);
-    Quaterniond quat;
-    quat = AngleAxisd(0, Vector3d::UnitX()) *
-           AngleAxisd(q(2), Vector3d::UnitY()) *
-           AngleAxisd(0, Vector3d::UnitZ());
+    //    Vector4d quat = tree.relativeQuaternion(cache, torso_idx, 0);
+    Eigen::Matrix3d rot_mat =
+        tree.CalcBodyPoseInWorldFrame(cache, tree.get_body(torso_idx)).linear();
+    Quaterniond quat(rot_mat);
+    //    quat = AngleAxisd(0, Vector3d::UnitX()) *
+    //           AngleAxisd(q(2), Vector3d::UnitY()) *
+    //           AngleAxisd(0, Vector3d::UnitZ());
     torso_angle.push_back(quat.w());
     torso_angle.push_back(quat.x());
     torso_angle.push_back(quat.y());
@@ -203,7 +207,9 @@ int doMain(int argc, char* argv[]) {
       r_foot_points.push_back(r_foot(j) - hip(j));
 
       com_vel_points.push_back(com_vel(j));
+      //      l_foot_vel_points.push_back(l_foot_vel(j));
       l_foot_vel_points.push_back(l_foot_vel(j) - hip_vel(j));
+      //      r_foot_vel_points.push_back(r_foot_vel(j));
       r_foot_vel_points.push_back(r_foot_vel(j) - hip_vel(j));
     }
   }

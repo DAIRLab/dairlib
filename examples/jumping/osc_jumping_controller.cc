@@ -135,9 +135,9 @@ int doMain(int argc, char* argv[]) {
       loaded_traj.getTrajectory("right_foot_vel_trajectory");
   const LcmTrajectory::Trajectory& lcm_torso_traj =
       loaded_traj.getTrajectory("torso_trajectory");
-  cout << "com_vel:" << com_vel_traj.datapoints.size() << endl;
-  cout << "l_foot_vel: " << lcm_l_foot_vel_traj.datapoints.size() << endl;
-  cout << "r_foot_vel: " << lcm_r_foot_vel_traj.datapoints.size() << endl;
+  //  cout << "com_vel:" << com_vel_traj.datapoints.size() << endl;
+  //  cout << "l_foot_vel: " << lcm_l_foot_vel_traj.datapoints.size() << endl;
+  //  cout << "r_foot_vel: " << lcm_r_foot_vel_traj.datapoints.size() << endl;
   const PiecewisePolynomial<double>& center_of_mass_traj =
       PiecewisePolynomial<double>::Cubic(
           com_traj.time_vector, com_traj.datapoints, com_vel_traj.datapoints);
@@ -152,6 +152,27 @@ int doMain(int argc, char* argv[]) {
   const PiecewisePolynomial<double>& torso_trajectory =
       PiecewisePolynomial<double>::Pchip(lcm_torso_traj.time_vector,
                                          lcm_torso_traj.datapoints);
+
+  //  std::ofstream* fout = new std::ofstream("out.txt");
+  //  double timesteps = 500.0;
+  //  for (double t = 0; t < l_foot_trajectory.end_time();
+  //       t += l_foot_trajectory.end_time() / timesteps) {
+  //    (*fout) << t << " ";
+  //    (*fout) << l_foot_trajectory.MakeDerivative(1)->value(t).transpose() <<
+  //    " ";
+  //    (*fout) << center_of_mass_traj.MakeDerivative(1)->value(t).transpose();
+  //    (*fout) << "\n";
+  //  }
+  // std::vector<double> times = traj.get_segment_times();
+
+  // for(size_t i = 0; i < times.size(); ++i){
+  //     (*fout) << times[i] << " ";
+  //     (*fout) << traj.value(times[i]).transpose();
+  //     (*fout) << "\n";
+  // }
+  //  fout->flush();
+  //  fout->close();
+  //  delete fout;
 
   // Create Operational space control
   // Create state receiver.
@@ -180,15 +201,15 @@ int doMain(int argc, char* argv[]) {
           channel_u, lcm, 1.0 / FLAGS_publish_rate));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(tree_with_springs);
-  auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      tree_with_springs, tree_with_springs, true, true);
   //  auto osc =
   //  builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-  //      tree_with_springs, tree_with_springs, true, false);
+  //      tree_with_springs, tree_with_springs, true, true);
+  auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
+      tree_with_springs, tree_with_springs, true, false);
 
   //   Acceleration Cost
   int n_v = tree_with_springs.get_num_velocities();
-  MatrixXd Q_accel = 0.1 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q_accel = 0.001 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
 
   // Contact Constraint Slack Variables
@@ -270,9 +291,9 @@ int doMain(int argc, char* argv[]) {
       W_pelvis * FLAGS_torso_orientation_cost, &tree_with_springs,
       &tree_with_springs);
   pelvis_rot_traj.AddStateAndFrameToTrack(NEUTRAL, "torso");
-  //  pelvis_rot_traj.AddStateAndFrameToTrack(CROUCH, "torso");
-  //  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
-  //  pelvis_rot_traj.AddStateAndFrameToTrack(LAND, "torso");
+  pelvis_rot_traj.AddStateAndFrameToTrack(CROUCH, "torso");
+  pelvis_rot_traj.AddStateAndFrameToTrack(FLIGHT, "torso");
+  pelvis_rot_traj.AddStateAndFrameToTrack(LAND, "torso");
   osc->AddTrackingData(&pelvis_rot_traj);
 
   // ****** Feet tracking term ******

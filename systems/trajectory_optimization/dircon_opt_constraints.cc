@@ -56,7 +56,7 @@ void DirconAbstractConstraint<T>::ScaleConstraint(drake::VectorX<U>* y) const {
 
 template <typename T>
 void DirconAbstractConstraint<T>::ConstructSparsityPattern() {
-  drake::log()->warn(
+  static const drake::logging::Warn log_once(
       "Constraint cannot contain any if-statement conditioned on input values");
   std::vector<std::pair<int, int>> sparsity;
 

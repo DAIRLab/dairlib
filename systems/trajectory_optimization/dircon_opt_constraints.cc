@@ -176,24 +176,25 @@ void DirconAbstractConstraint<double>::DoEval(
 
   // std::cout << dy << std::endl  << std::endl << std::endl;
 
-  // // central differencing
-  // double dx = 1e-8;
+  // central differencing
+  /*double dx = 1e-6;
 
-  // VectorXd x_val = autoDiffToValueMatrix(x);
-  // VectorXd y0,yi;
-  // EvaluateConstraint(x_val,y0);
+  VectorXd x_val = autoDiffToValueMatrix(x);
+  VectorXd y0, yi;
+  EvaluateConstraint(x_val, &y0);
 
-  // MatrixXd dy = MatrixXd(y0.size(),x_val.size());
-  // for (int i=0; i < x_val.size(); i++) {
-  //   x_val(i) -= dx/2;
-  //   EvaluateConstraint(x_val,y0);
-  //   x_val(i) += dx;
-  //   EvaluateConstraint(x_val,yi);
-  //   x_val(i) -= dx/2;
-  //   dy.col(i) = (yi - y0)/dx;
-  // }
-  // EvaluateConstraint(x_val,y0);
-  // initializeAutoDiffGivenGradientMatrix(y0, dy, y);
+  MatrixXd dy = MatrixXd(y0.size(), x_val.size());
+  for (int i = 0; i < x_val.size(); i++) {
+    x_val(i) -= dx / 2;
+    EvaluateConstraint(x_val, &y0);
+    x_val(i) += dx;
+    EvaluateConstraint(x_val, &yi);
+    x_val(i) -= dx / 2;
+    dy.col(i) = (yi - y0) / dx;
+  }
+  EvaluateConstraint(x_val, &y0);
+  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
+                                                     *y);*/
 
   this->ScaleConstraint<AutoDiffXd>(y);
 }
@@ -440,7 +441,7 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
     }
   }
 
-//  this->SetGradientSparsityPattern(sparsity);
+  //  this->SetGradientSparsityPattern(sparsity);
 }
 
 template <typename T>

@@ -167,7 +167,7 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
     q_ik_guess = q_sol_normd;
     q_init_guess.push_back(q_sol_normd);
 
-    bool visualize_init_traj = true;
+    bool visualize_init_traj = false;
     if (visualize_init_traj) {
       // Build temporary diagram for visualization
       drake::systems::DiagramBuilder<double> builder_ik;
@@ -398,18 +398,27 @@ void DoMain(double duration, int max_iter, string data_directory,
   if (FLAGS_is_scale_constraint) {
     for (int i = 0; i < 2; i++) {
       // Dynamic constraints
-      options_list[i].setDynConstraintScaling(1.0 / 60.0, 0, n_q - 1);
-      options_list[i].setDynConstraintScaling(1.0 / 1200.0, n_q, n_x - 1);
+      options_list[i].setDynConstraintScaling(1.0 / 30.0, 0, 3);
+      options_list[i].setDynConstraintScaling(1.0 / 60.0, 4, 16);
+      options_list[i].setDynConstraintScaling(1.0 / 300.0, 17, 18);
+      options_list[i].setDynConstraintScaling(1.0 / 600.0, 19, 28);
+      options_list[i].setDynConstraintScaling(1.0 / 3000.0, 29, 34);
+      options_list[i].setDynConstraintScaling(1.0 / 60000.0, 35, 36);
       // Kinematic constraints
-      options_list[i].setKinConstraintScaling(1.0 / 600.0, 0, 4);
+      options_list[i].setKinConstraintScaling(1.0 / 6000.0, 0, 4);
       options_list[i].setKinConstraintScaling(1.0 / 600.0 * 2, 5, 6);
       options_list[i].setKinConstraintScaling(1.0 / 10.0, 7 + 0, 7 + 4);
-      options_list[i].setKinConstraintScaling(1.0 / 10.0, 7 + 5, 7 + 6);
+      options_list[i].setKinConstraintScaling(1.0, 7 + 5, 7 + 6);
       options_list[i].setKinConstraintScaling(1.0, 14 + 0, 14 + 4);
       options_list[i].setKinConstraintScaling(1.0 * 20, 14 + 5, 14 + 6);
       // Impact constraints
-      options_list[i].setImpConstraintScaling(1.0 / 12.0 / 50.0, 0, 2);
-      options_list[i].setImpConstraintScaling(1.0 / 12.0, 3, n_v - 1);
+      options_list[i].setImpConstraintScaling(1.0 / 50.0, 0, 2);
+      options_list[i].setImpConstraintScaling(1.0 / 300.0, 3, 5);
+      options_list[i].setImpConstraintScaling(1.0 / 24.0, 6, 7);
+      options_list[i].setImpConstraintScaling(1.0 / 6.0, 8, 9);
+      options_list[i].setImpConstraintScaling(1.0 / 12.0, 10, 13);
+      options_list[i].setImpConstraintScaling(1.0 / 2.0, 14, 15);
+      options_list[i].setImpConstraintScaling(1.0, 16, n_v - 1);
     }
   }
 
@@ -588,9 +597,9 @@ void DoMain(double duration, int max_iter, string data_directory,
   }*/
 
   // add cost
-  const MatrixXd Q = 10 * 12.5 * MatrixXd::Identity(n_v, n_v);
+//  const MatrixXd Q = 10 * 12.5 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 12.5 * MatrixXd::Identity(n_u, n_u);
-  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
+//  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
 
   // Scale decision variable
@@ -609,7 +618,7 @@ void DoMain(double duration, int max_iter, string data_directory,
         1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
     // impulse
     trajopt->ScaleImpulseVariables(
-        0.1, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
+        10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1); //0.1
     // quaternion slack
     //    trajopt->ScaleQuaternionSlackVariables(0.5);
     // Constraint slack
@@ -693,10 +702,10 @@ void DoMain(double duration, int max_iter, string data_directory,
   if (to_store_data) {
     writeCSV(data_directory + string("z.csv"), z);
   }
-  // for (int i = 0; i < z.size(); i++) {
-  //   cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
-  // }
-  // cout << endl;
+  for (int i = 0; i < z.size(); i++) {
+    cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
+  }
+  cout << endl;
 
   // store the time, state, and input at knot points
   VectorXd time_at_knots = trajopt->GetSampleTimes(result);

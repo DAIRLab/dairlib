@@ -66,3 +66,16 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "rabbit_sim",
+    srcs = ["rabbit_sim.cc"],
+    data = ["five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

@@ -44,7 +44,7 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
           std::shared_ptr<drake::trajectories::Trajectory<double>>>&
           input_trajs,
       const std::vector<double>& impact_times, bool naive_approach = false,
-      bool using_min_coords = false);
+      bool using_min_coords = false, bool calcP = false);
 
   //  const drake::systems::InputPort<double>& get_input_port_params() const {
   //    return this->get_input_port(input_port_params_index_);

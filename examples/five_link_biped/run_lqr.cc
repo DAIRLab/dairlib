@@ -56,6 +56,8 @@ DEFINE_bool(minimal_coords, false,
             "lqr");
 DEFINE_bool(contact_driven, false,
             "Set to true if want to use contact_driven fsm");
+DEFINE_bool(recalculateP, false,
+            "Set to true if necessary to recalculate P(t) - for new trajs");
 
 DEFINE_double(time_offset, 0.0, "offset added to FSM switching");
 
@@ -116,7 +118,7 @@ int doMain(int argc, char* argv[]) {
   //  LcmTrajectory(LcmTrajectory::loadFromFile(
   //      "../projects/hybrid_lqr/saved_trajs/2_step_walking_from_rest"));
   const LcmTrajectory& loaded_traj = LcmTrajectory(LcmTrajectory::loadFromFile(
-      "../projects/hybrid_lqr/saved_trajs/2_step_walking_1_8"));
+      "../projects/hybrid_lqr/saved_trajs/2_step_walking_1_20"));
   std::cout << "Saved trajectory names: " << std::endl;
   for (auto name : loaded_traj.getTrajectoryNames()) {
     std::cout << name << std::endl;
@@ -195,11 +197,18 @@ int doMain(int argc, char* argv[]) {
   MatrixXd Qf = Q;
   MatrixXd R = 0.01 * MatrixXd::Identity(nu, nu);
 
-  std::vector<double> impact_times(contact_modes.size() + 1);
+//  std::vector<double> impact_times(contact_modes.size() + 1);
+//  impact_times[0] = state_trajs[0]->start_time();
+//  impact_times[1] = state_trajs[1]->start_time();
+//  impact_times[2] = state_trajs[2]->start_time();
+//  impact_times[3] = state_trajs[2]->end_time();
+  std::vector<double> impact_times(contact_modes.size() * 2);
   impact_times[0] = state_trajs[0]->start_time();
-  impact_times[1] = state_trajs[1]->start_time();
-  impact_times[2] = state_trajs[2]->start_time();
-  impact_times[3] = state_trajs[2]->end_time();
+  impact_times[1] = state_trajs[0]->end_time();
+  impact_times[2] = state_trajs[1]->start_time();
+  impact_times[3] = state_trajs[1]->end_time();
+  impact_times[4] = state_trajs[2]->start_time();
+  impact_times[5] = state_trajs[2]->end_time();
 
   // Create Operational space control
   // Create state receiver.
@@ -230,7 +239,7 @@ int doMain(int argc, char* argv[]) {
   auto lqr = builder.AddSystem<systems::HybridLQRController>(
       plant, *plant_autodiff, contact_modes, contact_modes_ad, Q, R, Qf,
       state_trajs, input_trajs, impact_times, FLAGS_naive,
-      FLAGS_minimal_coords);
+      FLAGS_minimal_coords, FLAGS_recalculateP);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Took " << elapsed.count() << "s to create LQR controller"

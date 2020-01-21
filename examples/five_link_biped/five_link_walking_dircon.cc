@@ -210,11 +210,11 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   auto u = trajopt->input();
   auto x = trajopt->state();
 
-  //  Eigen::VectorXd fixed_initial_conds(14);
-  //  fixed_initial_conds << 0, 0.7642691913, 0, -0.3, -0.3, 0.6, 0.65, 0, 0,
-  //  0, 0,
-  //      0, 0, 0;
-  //  trajopt->AddLinearConstraint(x0 == fixed_initial_conds);
+//  Eigen::VectorXd fixed_initial_conds(14);
+//  fixed_initial_conds << 0, 0.798974, -0.00197771, -0.0560623, -0.316157, 0.1,
+//      0.75, 0.221125, 0.00177739, 0.149304, 0.127445, -0.787641, 2.55158e-05,
+//      0.0816434;
+//  trajopt->AddLinearConstraint(x0 == fixed_initial_conds);
   //  trajopt->AddLinearConstraint(x0 == fixed_initial_conds);
 
   // "forward" constraints
@@ -225,6 +225,8 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   // periodicity constraints
   trajopt->AddLinearConstraint(xf(positions_map["planar_z"]) ==
                                (x0(positions_map["planar_z"])));
+//  trajopt->AddLinearConstraint(xf(positions_map["planar_roty"]) ==
+//                               (x0(positions_map["planar_roty"])));
   trajopt->AddLinearConstraint(xf(positions_map["left_hip_pin"]) ==
                                (x0(positions_map["left_hip_pin"])));
   trajopt->AddLinearConstraint(xf(positions_map["right_hip_pin"]) ==
@@ -295,19 +297,27 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
 
   if (FLAGS_save_traj) {
     int num_modes = 3;
-    Vector3d segment_times(num_modes + 1);
-    segment_times << 0, state_traj.get_segment_times().at(FLAGS_knot_points),
-        state_traj.get_segment_times().at(2 * FLAGS_knot_points),
-        state_traj.end_time();
+    //    Vector3d segment_times(num_modes + 1);
+    //    segment_times << 0,
+    //    state_traj.get_segment_times().at(FLAGS_knot_points),
+    //        state_traj.get_segment_times().at(2 * FLAGS_knot_points),
+    //        state_traj.end_time();
     std::vector<LcmTrajectory::Trajectory> trajectories;
     std::vector<std::string> trajectory_names;
+
+    VectorXd segment_times(2 * num_modes);
+    segment_times << 0,
+        state_traj.get_segment_times().at(FLAGS_knot_points - 1),
+        state_traj.get_segment_times().at(FLAGS_knot_points),
+        state_traj.get_segment_times().at(2 * FLAGS_knot_points - 1),
+        state_traj.get_segment_times().at(2 * FLAGS_knot_points),
+        state_traj.end_time();
     for (int mode = 0; mode < num_modes; ++mode) {
       LcmTrajectory::Trajectory traj_block;
-      traj_block.traj_name =
-          "walking_trajectory_x_u" + std::to_string(mode);
+      traj_block.traj_name = "walking_trajectory_x_u" + std::to_string(mode);
       //      traj_block.time_vector = generate_time_matrix(state_traj, 1000);
-      traj_block.time_vector = VectorXd::LinSpaced(1000, segment_times(mode),
-                                                   segment_times(mode + 1));
+      traj_block.time_vector = VectorXd::LinSpaced(1000, segment_times(2*mode),
+                                                   segment_times(2*mode + 1));
       traj_block.datapoints = generate_state_input_matrix(
           state_traj, input_traj, traj_block.time_vector);
       traj_block.datatypes = {"planar_x",       "planar_z",      "planar_roty",
@@ -367,7 +377,7 @@ int doMain(int argc, char* argv[]) {
 
   plant.Finalize();
 
-//  print_state_map(&plant);
+  //  print_state_map(&plant);
 
   // Generate guesses for states, inputs, and contact forces
   std::srand(time(0));  // Initialize random number generator.

@@ -397,28 +397,44 @@ void DoMain(double duration, int max_iter, string data_directory,
   // Constraint scaling
   if (FLAGS_is_scale_constraint) {
     for (int i = 0; i < 2; i++) {
+      double s = 100; // scale everything together
       // Dynamic constraints
-      options_list[i].setDynConstraintScaling(1.0 / 30.0, 0, 3);
-      options_list[i].setDynConstraintScaling(1.0 / 60.0, 4, 16);
-      options_list[i].setDynConstraintScaling(1.0 / 300.0, 17, 18);
-      options_list[i].setDynConstraintScaling(1.0 / 600.0, 19, 28);
-      options_list[i].setDynConstraintScaling(1.0 / 3000.0, 29, 34);
-      options_list[i].setDynConstraintScaling(1.0 / 60000.0, 35, 36);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 28);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
       // Kinematic constraints
-      options_list[i].setKinConstraintScaling(1.0 / 6000.0, 0, 4);
+      options_list[i].setKinConstraintScaling(s * 1.0 / 6000.0, 0, 4);
+      options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
+      options_list[i].setKinConstraintScaling(s * 1.0 / 10.0, 7 + 0, 7 + 4);
+      options_list[i].setKinConstraintScaling(s * 1.0, 7 + 5, 7 + 6);
+      options_list[i].setKinConstraintScaling(s * 1.0, 14 + 0, 14 + 4);
+      options_list[i].setKinConstraintScaling(s * 1.0 * 20, 14 + 5, 14 + 6);
+      // Impact constraints
+      options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 24.0, 6, 7);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 6.0, 8, 9);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
+      options_list[i].setImpConstraintScaling(s * 1.0, 16, n_v - 1);
+
+      /* // old scaling from goldilocks model branch
+      // Dynamic constraints
+      options_list[i].setDynConstraintScaling(1.0 / 60.0, 0, n_q - 1);
+      options_list[i].setDynConstraintScaling(1.0 / 1200.0, n_q, n_x - 1);
+      // Kinematic constraints
+      options_list[i].setKinConstraintScaling(1.0 / 600.0, 0, 4);
       options_list[i].setKinConstraintScaling(1.0 / 600.0 * 2, 5, 6);
       options_list[i].setKinConstraintScaling(1.0 / 10.0, 7 + 0, 7 + 4);
-      options_list[i].setKinConstraintScaling(1.0, 7 + 5, 7 + 6);
+      options_list[i].setKinConstraintScaling(1.0 / 10.0, 7 + 5, 7 + 6);
       options_list[i].setKinConstraintScaling(1.0, 14 + 0, 14 + 4);
       options_list[i].setKinConstraintScaling(1.0 * 20, 14 + 5, 14 + 6);
       // Impact constraints
-      options_list[i].setImpConstraintScaling(1.0 / 50.0, 0, 2);
-      options_list[i].setImpConstraintScaling(1.0 / 300.0, 3, 5);
-      options_list[i].setImpConstraintScaling(1.0 / 24.0, 6, 7);
-      options_list[i].setImpConstraintScaling(1.0 / 6.0, 8, 9);
-      options_list[i].setImpConstraintScaling(1.0 / 12.0, 10, 13);
-      options_list[i].setImpConstraintScaling(1.0 / 2.0, 14, 15);
-      options_list[i].setImpConstraintScaling(1.0, 16, n_v - 1);
+      options_list[i].setImpConstraintScaling(1.0 / 12.0 / 50.0, 0, 2);
+      options_list[i].setImpConstraintScaling(1.0 / 12.0, 3, n_v - 1);*/
     }
   }
 

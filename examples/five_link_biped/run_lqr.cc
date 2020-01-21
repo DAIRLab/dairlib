@@ -197,11 +197,11 @@ int doMain(int argc, char* argv[]) {
   MatrixXd Qf = Q;
   MatrixXd R = 0.01 * MatrixXd::Identity(nu, nu);
 
-//  std::vector<double> impact_times(contact_modes.size() + 1);
-//  impact_times[0] = state_trajs[0]->start_time();
-//  impact_times[1] = state_trajs[1]->start_time();
-//  impact_times[2] = state_trajs[2]->start_time();
-//  impact_times[3] = state_trajs[2]->end_time();
+  //  std::vector<double> impact_times(contact_modes.size() + 1);
+  //  impact_times[0] = state_trajs[0]->start_time();
+  //  impact_times[1] = state_trajs[1]->start_time();
+  //  impact_times[2] = state_trajs[2]->start_time();
+  //  impact_times[3] = state_trajs[2]->end_time();
   std::vector<double> impact_times(contact_modes.size() * 2);
   impact_times[0] = state_trajs[0]->start_time();
   impact_times[1] = state_trajs[0]->end_time();
@@ -218,8 +218,7 @@ int doMain(int argc, char* argv[]) {
   //      plant, impact_times[1] + FLAGS_time_offset,
   //      impact_times[2] + FLAGS_time_offset, false);
   auto fsm = builder.AddSystem<WalkingFiniteStateMachine>(
-      plant, impact_times[1] + FLAGS_time_offset,
-      impact_times[2] + FLAGS_time_offset, true);
+      plant, impact_times[1], impact_times[2], FLAGS_time_offset, true);
   // Create state receiver.
   auto state_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, lcm));
@@ -238,8 +237,8 @@ int doMain(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   auto lqr = builder.AddSystem<systems::HybridLQRController>(
       plant, *plant_autodiff, contact_modes, contact_modes_ad, Q, R, Qf,
-      state_trajs, input_trajs, impact_times, FLAGS_naive,
-      FLAGS_minimal_coords, FLAGS_recalculateP);
+      state_trajs, input_trajs, impact_times, FLAGS_naive, FLAGS_minimal_coords,
+      FLAGS_recalculateP);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Took " << elapsed.count() << "s to create LQR controller"

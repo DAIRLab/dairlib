@@ -16,10 +16,11 @@ namespace examples {
 
 WalkingFiniteStateMachine::WalkingFiniteStateMachine(
     const MultibodyPlant<double>& plant, double r_impact_time,
-    double l_impact_time, bool contact_driven)
+    double l_impact_time, double delay_time, bool contact_driven)
     : plant_(plant),
       r_impact_time_(r_impact_time),
       l_impact_time_(l_impact_time),
+      delay_time_(delay_time),
       contact_driven_(contact_driven) {
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
@@ -36,7 +37,8 @@ WalkingFiniteStateMachine::WalkingFiniteStateMachine(
       &WalkingFiniteStateMachine::DiscreteVariableUpdate);
   // indices for discrete variables in drake leafsystem
   initial_timestamp_ = 0.0;
-  time_idx_ = this->DeclareDiscreteState(1);
+  prev_time_idx_ = this->DeclareDiscreteState(1);
+  contact_time_idx_ = this->DeclareDiscreteState(1);
   fsm_idx_ = this->DeclareDiscreteState(1);
 }
 
@@ -52,12 +54,14 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
   const auto& contact_info_msg =
       input->get_value<drake::lcmt_contact_results_for_viz>();
   auto prev_time =
-      discrete_state->get_mutable_vector(time_idx_).get_mutable_value();
+      discrete_state->get_mutable_vector(prev_time_idx_).get_mutable_value();
+  auto contact_time =
+      discrete_state->get_mutable_vector(contact_time_idx_).get_mutable_value();
 
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double timestamp = robot_output->get_timestamp();
-  double current_time = static_cast<double>(timestamp);
+  auto current_time = static_cast<double>(timestamp);
 
   if (current_time < prev_time(0)) {  // Simulator has restarted
     std::cout << "Simulator has restarted!" << std::endl;
@@ -70,6 +74,11 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
       case (LEFT_FOOT):
         if (contact_info_msg.num_point_pair_contacts != 1 &&
             (current_time - prev_time(0)) > 0.05) {
+          if(current_time - contact_time(0) > 0.15)
+            contact_time(0) = current_time;
+          contact_time(0) = current_time;
+        }
+        if (current_time - contact_time(0) > delay_time_) {
           fsm_state << RIGHT_FOOT;
           std::cout << "Setting fsm to RIGHT_FOOT" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
@@ -79,6 +88,10 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
       case (RIGHT_FOOT):
         if (contact_info_msg.num_point_pair_contacts != 1 &&
             (current_time - prev_time(0)) > 0.05) {
+          if(current_time - contact_time(0) > 0.15)
+            contact_time(0) = current_time;
+        }
+        if (current_time - contact_time(0) > delay_time_) {
           fsm_state << LEFT_FOOT_2;
           std::cout << "Setting fsm to LEFT_FOOT_2" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
@@ -88,6 +101,9 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
       case (LEFT_FOOT_2):
         if (contact_info_msg.num_point_pair_contacts != 1 &&
             (current_time - prev_time(0)) > 0.05) {
+          contact_time(0) = current_time;
+        }
+        if (current_time - contact_time(0) > delay_time_) {
           fsm_state << LEFT_FOOT;
           std::cout << "Setting fsm to LEFT_FOOT" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;

@@ -397,7 +397,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   // Constraint scaling
   if (FLAGS_is_scale_constraint) {
     for (int i = 0; i < 2; i++) {
-      double s = 100; // scale everything together
+      double s = 1; // scale everything together
       // Dynamic constraints
       options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
       options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
@@ -613,9 +613,9 @@ void DoMain(double duration, int max_iter, string data_directory,
   }*/
 
   // add cost
-//  const MatrixXd Q = 10 * 12.5 * MatrixXd::Identity(n_v, n_v);
-  const MatrixXd R = 12.5 * MatrixXd::Identity(n_u, n_u);
-//  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
+  const MatrixXd Q = MatrixXd::Identity(n_v, n_v);
+  const MatrixXd R = 0.1 * MatrixXd::Identity(n_u, n_u);
+  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
 
   // Scale decision variable

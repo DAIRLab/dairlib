@@ -43,6 +43,7 @@ class WalkingFiniteStateMachine : public drake::systems::LeafSystem<double> {
 
   int prev_time_idx_;
   int contact_time_idx_;
+  int contact_flag_idx_;
   int fsm_idx_;
   double timestamp_;
 

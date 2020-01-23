@@ -39,6 +39,7 @@ WalkingFiniteStateMachine::WalkingFiniteStateMachine(
   initial_timestamp_ = 0.0;
   prev_time_idx_ = this->DeclareDiscreteState(1);
   contact_time_idx_ = this->DeclareDiscreteState(1);
+  contact_flag_idx_ = this->DeclareDiscreteState(1);
   fsm_idx_ = this->DeclareDiscreteState(1);
 }
 
@@ -57,6 +58,8 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
       discrete_state->get_mutable_vector(prev_time_idx_).get_mutable_value();
   auto contact_time =
       discrete_state->get_mutable_vector(contact_time_idx_).get_mutable_value();
+  auto contact_flag =
+      discrete_state->get_mutable_vector(contact_flag_idx_).get_mutable_value();
 
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -72,41 +75,48 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
   if (contact_driven_) {
     switch ((FSM_STATE)fsm_state(0)) {
       case (LEFT_FOOT):
-        if (contact_info_msg.num_point_pair_contacts != 1 &&
+        if (contact_info_msg.num_point_pair_contacts != 1 && !contact_flag(0) &&
             (current_time - prev_time(0)) > 0.05) {
-          if(current_time - contact_time(0) > 0.15)
-            contact_time(0) = current_time;
           contact_time(0) = current_time;
+          contact_flag(0) = true;
         }
-        if (current_time - contact_time(0) > delay_time_) {
+        if (current_time - contact_time(0) >= delay_time_ && contact_flag(0)) {
+          std::cout << "current time: " << current_time << std::endl;
+          std::cout << "contact time: " << contact_time(0) << std::endl;
           fsm_state << RIGHT_FOOT;
           std::cout << "Setting fsm to RIGHT_FOOT" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+          contact_flag(0) = false;
           prev_time(0) = current_time;
         }
         break;
       case (RIGHT_FOOT):
-        if (contact_info_msg.num_point_pair_contacts != 1 &&
+        if (contact_info_msg.num_point_pair_contacts != 1 && !contact_flag(0) &&
             (current_time - prev_time(0)) > 0.05) {
-          if(current_time - contact_time(0) > 0.15)
-            contact_time(0) = current_time;
+          contact_time(0) = current_time;
+          contact_flag(0) = true;
         }
-        if (current_time - contact_time(0) > delay_time_) {
+        if (current_time - contact_time(0) >= delay_time_ && contact_flag(0)) {
+          std::cout << "current time: " << current_time << std::endl;
+          std::cout << "contact time: " << contact_time(0) << std::endl;
           fsm_state << LEFT_FOOT_2;
           std::cout << "Setting fsm to LEFT_FOOT_2" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+          contact_flag(0) = false;
           prev_time(0) = current_time;
         }
         break;
       case (LEFT_FOOT_2):
-        if (contact_info_msg.num_point_pair_contacts != 1 &&
+        if (contact_info_msg.num_point_pair_contacts != 1 && !contact_flag(0) &&
             (current_time - prev_time(0)) > 0.05) {
           contact_time(0) = current_time;
+          contact_flag(0) = true;
         }
-        if (current_time - contact_time(0) > delay_time_) {
+        if (current_time - contact_time(0) >= delay_time_&& contact_flag(0)) {
           fsm_state << LEFT_FOOT;
           std::cout << "Setting fsm to LEFT_FOOT" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+          contact_flag(0) = false;
           prev_time(0) = current_time;
         }
         break;

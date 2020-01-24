@@ -63,8 +63,6 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
   right_thigh_idx_ = GetBodyIndexFromName(tree, "thigh_right");
   left_heel_spring_idx_ = GetBodyIndexFromName(tree, "heel_spring_left");
   right_heel_spring_idx_ = GetBodyIndexFromName(tree, "heel_spring_right");
-  DRAKE_DEMAND(left_thigh_idx_ != -1 && right_thigh_idx_ != -1 &&
-               left_heel_spring_idx_ != -1 && right_heel_spring_idx_ != -1);
 
   if (is_floating_base) {
     // Middle point between the front and the rear contact points
@@ -74,8 +72,6 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     pelvis_idx_ = GetBodyIndexFromName(tree_, "pelvis");
     left_toe_idx_ = GetBodyIndexFromName(tree_, "toe_left");
     right_toe_idx_ = GetBodyIndexFromName(tree_, "toe_right");
-    DRAKE_DEMAND(pelvis_idx_ != -1 &&
-                 left_toe_idx_ != -1 && right_toe_idx_ != -1);
 
     // Declare input port receiving robot's state (simulation ground truth state)
     if (test_with_ground_truth_state_) {

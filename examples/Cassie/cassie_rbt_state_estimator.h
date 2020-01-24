@@ -149,6 +149,12 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::Matrix<double, 16, 16> cov_w_;
 
   // Contact Estimation Parameters
+  // The values of spring threshold are based on walking and standing values in
+  // simulation.
+  // Walking: https://drive.google.com/open?id=1vMIKAed8RHIFF1fbjTqBHtbgkPrHuzkS
+  //          https://drive.google.com/open?id=1UqiZSXhd9-4A6YwHArh-xPBMa16RyUGm
+  // Spring deflection of standing:
+  //
   const double cost_threshold_ctrl_ = 200;
   const double cost_threshold_ekf_ = 200;
   const double knee_spring_threshold_ctrl_ = -0.015;

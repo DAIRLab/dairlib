@@ -468,13 +468,13 @@ void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
 
 /// UpdateContactEstimationCosts() updates the optimal costs of the quadratic
 /// programs for contact estimations. There are three QPs in total which assume
-/// double supprot, left support and right support in order.
+/// double support, left support and right support in order.
 /// The QP's are solved with the state/input feedback of the robot and the imu
 /// linear acceleration.
 ///
 /// Input:
-///  - OutputVector `output` containing the positions, velocities and
-///    actuator torques of the robot
+///  - OutputVector `output` containing the state, input and imu accleration of
+///    the robot
 ///  - time `dt` elapsed between previous iteration and current iteration
 ///  - discretevalues `discrete_state` to store states related to contact
 ///    estimation
@@ -1073,7 +1073,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
                                    tree_.get_num_actuators());
     VectorXd imu_pos_wrt_world(7);
     VectorXd imu_vel_wrt_world(6);
-    std::ofstream ofile;
     if(test_with_ground_truth_state_){
       const OutputVector<double>* cassie_state = (OutputVector<double>*)
           this->EvalVectorInput(context, state_input_port_);
@@ -1104,7 +1103,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       imu_vel_wrt_world.head(3) = tree_.transformPointsJacobian(
           cache_gt, imu_pos_, pelvis_idx_, 0, false)*output_gt.GetVelocities();
       if (print_info_to_terminal_) {
-        // Debugging print statements
+        // Print for debugging
         cout << "Ground Truth: " << endl;
         cout << "Positions: " << endl;
         cout << imu_pos_wrt_world.transpose() << endl;
@@ -1112,22 +1111,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
         cout << output_gt.GetPositions().segment<4>(3).transpose() << endl;
         cout << "Velocities: " << endl;
         cout << imu_vel_wrt_world.transpose() << endl;
-      }
 
-      // ofile.open("/home/nanda/DAIR/plotting/ekf.csv",
-      //            std::ios::out | std::ios::app);
-      ofile.open("/home/yu-ming/Documents/workspace/plotting/ekf.csv",
-                 std::ios::out | std::ios::app);
-      ofile << current_time << ", ";
-      for (int i = 0; i < 7; ++i) {
-        ofile << imu_pos_wrt_world[i] << ", ";
-      }
-      for (int i = 0; i < 6; ++i) {
-        ofile << imu_vel_wrt_world[i] << ", ";
-      }
-
-      if (print_info_to_terminal_) {
-        // Debugging print statements
         // cout << "Leg positions: " << endl;
         // cout << tree_.transformPoints(
         //     cache_gt, Vector3d::Zero(), left_toe_idx_, 0).transpose() << endl;
@@ -1142,7 +1126,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     ekf.Propagate(
         context.get_discrete_state(prev_imu_idx_).get_value(), dt);
 
-    // Debugging print statements
+    // Print for debugging
     if (print_info_to_terminal_) {
       cout << "Prediction: " << endl;
       // cout << "Orientation (quaternion) : " << endl;
@@ -1215,12 +1199,10 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // rotation part of pose and covariance is unused in EKF
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
     Eigen::Matrix<double, 6, 6> covariance = MatrixXd::Identity(6, 6);
-    Eigen::Matrix<double, 22, 22> cov_w =
-        0.000289 * MatrixXd::Identity(22, 22); // nosie of joints measurement
     std::vector<int> toe_indices = {left_toe_idx_, right_toe_idx_};
 
     if (test_with_ground_truth_state_) {
-      // Debugging print statements
+      // Print for debugging
       if (print_info_to_terminal_) {
         cout << "Rotation differences: " << endl;
         cout << "Rotation matrix from EKF: " << endl;
@@ -1240,8 +1222,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       pose.block<3, 1>(0, 3) = tree_.transformPoints(
           cache, rear_contact_disp_, toe_indices[i], pelvis_idx_) - imu_pos_;
 
-      // Debugging print statements
       if (print_info_to_terminal_) {
+        // Print for debugging
         // cout << "Pose: " << endl;
         // cout << pose.block<3, 1>(0, 3).transpose() << endl;
       }
@@ -1251,7 +1233,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       // Should fix this once moved to MBP (which has the API).
       MatrixXd J = tree_.transformPointsJacobian(
           cache, rear_contact_disp_, toe_indices[i], pelvis_idx_, false);
-      covariance.block<3, 3>(3, 3) = J*cov_w*J.transpose();
+      covariance.block<3, 3>(3, 3) = J * cov_w_ * J.transpose();
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);
 
@@ -1262,8 +1244,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     }
     ekf.CorrectKinematics(measured_kinematics);
 
-    // Debugging print statements
     if (print_info_to_terminal_) {
+      // Print for debugging
       q = Quaterniond(ekf.getState().getRotation()).normalized();
       cout << "Update: " << endl;
       // cout << "Orientation (quaternion) : " << endl;
@@ -1285,17 +1267,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
         cout << "z difference: " <<
              ekf.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
       }
-
-      for (int i = 0; i < 3; ++i) {
-        ofile << ekf.getState().getPosition()[i] << ", ";
-      }
-      ofile << q.w() << ", " << q.vec()[0] << ", " << q.vec()[1] << ", " <<
-          q.vec()[2] << ", ";
-      for (int i = 0; i < 3; ++i) {
-        ofile << ekf.getState().getVelocity()[i] << ", ";
-      }
-      ofile << "\n";
-      ofile.close();
     }
     if (print_info_to_terminal_) {
       cout << "------------------------------\n";

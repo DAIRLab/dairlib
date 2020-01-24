@@ -145,6 +145,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::Vector3d imu_pos_ = Eigen::Vector3d(0.03155, 0, -0.07996);
   Eigen::Vector3d gravity_ = Eigen::Vector3d(0, 0, -9.81);
 
+  // EKF parameters
+  Eigen::Matrix<double, 22, 22> cov_w_ =
+      0.000289 * Eigen::MatrixXd::Identity(22, 22);
+
   // Contact Estimation Parameters
   const double cost_threshold_ctrl_ = 200;
   const double cost_threshold_ekf_ = 200;

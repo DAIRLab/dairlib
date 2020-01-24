@@ -113,6 +113,10 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
     }
     ++segment_idx;
   }
+
+  if(segment_idx == foot_traj_.get_number_of_segments()){
+    segment_idx--;
+  }
   //  std::vector<double> breaks = {0.0, 0.001};
   //  VectorXd breaks(2);
   //  breaks << 0, 1;
@@ -129,6 +133,7 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
 //      PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, com_pos);
   MatrixXd hip_pos(3, 2);
   hip_pos << hip, hip + hip_vel * dt;
+//  hip_pos << hip, hip;
   PiecewisePolynomial<double> hip_offset =
       PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, hip_pos);
   return foot_traj_segment + hip_offset;

@@ -1,6 +1,7 @@
 #include <chrono>
 #include <thread>
 
+#include <drake/lcmt_contact_results_for_viz.hpp>
 #include <gflags/gflags.h>
 
 #include "drake/lcm/drake_lcm.h"
@@ -67,8 +68,7 @@ DEFINE_double(kd, 20.0, "Kd gain for COM tracking");
 
 DEFINE_double(torso_orientation_cost, 0.1,
               "Weight to scale the torso orientation cost");
-DEFINE_bool(should_publish, false,
-              "Whether or not to publish osc data");
+DEFINE_bool(should_publish, false, "Whether or not to publish osc data");
 
 // using drake::multibody::MultibodyPlant;
 using drake::multibody::Body;
@@ -155,31 +155,13 @@ int doMain(int argc, char* argv[]) {
       PiecewisePolynomial<double>::Pchip(lcm_torso_traj.time_vector,
                                          lcm_torso_traj.datapoints);
 
-  //  std::ofstream* fout = new std::ofstream("out.txt");
-  //  double timesteps = 500.0;
-  //  for (double t = 0; t < l_foot_trajectory.end_time();
-  //       t += l_foot_trajectory.end_time() / timesteps) {
-  //    (*fout) << t << " ";
-  //    (*fout) << l_foot_trajectory.MakeDerivative(1)->value(t).transpose() <<
-  //    " ";
-  //    (*fout) << center_of_mass_traj.MakeDerivative(1)->value(t).transpose();
-  //    (*fout) << "\n";
-  //  }
-  // std::vector<double> times = traj.get_segment_times();
-
-  // for(size_t i = 0; i < times.size(); ++i){
-  //     (*fout) << times[i] << " ";
-  //     (*fout) << traj.value(times[i]).transpose();
-  //     (*fout) << "\n";
-  // }
-  //  fout->flush();
-  //  fout->close();
-  //  delete fout;
-
   // Create Operational space control
   // Create state receiver.
   // Create command sender.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  auto contact_results_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
+          "CONTACT_RESULTS", lcm));
   // Create state receiver.
   auto state_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, lcm));
@@ -257,26 +239,23 @@ int doMain(int argc, char* argv[]) {
   osc->AddTrackingData(&com_tracking_data);
 
   // ***** Torso balance term ******
-  double w_pelvis_balance = 300;
-  double w_heading = 200;
-  double k_p_pelvis_balance = 64;
-  double k_d_pelvis_balance = 16;
-  double k_p_heading = 64;
-  double k_d_heading = 16;
+  double w_heading = 600;
+  double k_p_torso = 64;
+  double k_d_torso = 16;
   Matrix3d W_pelvis = MatrixXd::Identity(3, 3);
-  W_pelvis(0, 0) = w_pelvis_balance;
+  W_pelvis(0, 0) = 0;
   W_pelvis(1, 1) = w_heading;
-  W_pelvis(2, 2) = w_heading;
+  W_pelvis(2, 2) = 0;
   Matrix3d K_p_pelvis = MatrixXd::Identity(3, 3);
-  K_p_pelvis(0, 0) = k_p_pelvis_balance * 2;
-    K_p_pelvis(1, 1) = k_p_pelvis_balance * 2;
-//  K_p_pelvis(1, 1) = 0;
-  K_p_pelvis(2, 2) = k_p_heading;
+  K_p_pelvis(0, 0) = 0;
+  K_p_pelvis(1, 1) = k_p_torso;
+  //  K_p_pelvis(1, 1) = 0;
+  K_p_pelvis(2, 2) = 0;
   Matrix3d K_d_pelvis = MatrixXd::Identity(3, 3);
-  K_d_pelvis(0, 0) = k_d_pelvis_balance;
-    K_d_pelvis(1, 1) = k_d_pelvis_balance;
-//  K_d_pelvis(1, 1) = 0;
-  K_d_pelvis(2, 2) = k_d_heading;
+  K_d_pelvis(0, 0) = 0;
+  K_d_pelvis(1, 1) = k_d_torso;
+  //  K_d_pelvis(1, 1) = 0;
+  K_d_pelvis(2, 2) = 0;
   //  RotTaskSpaceTrackingData pelvis_rot_traj(
   //      "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis,
   //      W_pelvis * FLAGS_torso_orientation_cost, &tree_with_springs,
@@ -337,6 +316,8 @@ int doMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_state_input_port());
+  builder.Connect(contact_results_sub->get_output_port(),
+                  fsm->get_contact_input_port());
   builder.Connect(fsm->get_output_port(0),
                   traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),

@@ -277,6 +277,7 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
+        ":simulator_drift",
         "//attic/multibody:utils",
         "//examples/Cassie/osc_walk",
         "//systems:robot_lcm_systems",

@@ -211,7 +211,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   fixed_initial_conds << 0, 0.778109, 0, -.3112, -.231, 0.427, 0.4689, 0, 0, 0,
       0, 0, 0, 0;
   trajopt->AddLinearConstraint(x0 == fixed_initial_conds);
-  trajopt->AddLinearConstraint(xf == fixed_initial_conds);
+//  trajopt->AddLinearConstraint(xf == fixed_initial_conds);
   trajopt->AddLinearConstraint(x_mid_point(positions_map["planar_x"]) ==
                                (x0(positions_map["planar_x"])));
   //  trajopt->AddLinearConstraint(xf(positions_map["planar_x"]) ==
@@ -220,7 +220,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
                                (x0(positions_map["planar_z"]) + FLAGS_height));
   trajopt->AddLinearConstraint(xf(positions_map["planar_z"]) ==
                                (x0(positions_map["planar_z"])));
-  trajopt->AddLinearConstraint(x0.tail(n) == VectorXd::Zero(n));
+//  trajopt->AddLinearConstraint(x0.tail(n) == VectorXd::Zero(n));
   trajopt->AddLinearConstraint(xf.tail(n) == VectorXd::Zero(n));
 
   auto x = trajopt->state();
@@ -230,7 +230,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
        i += 2) {  // NOT APPLIED TO ALL KNOTS ONLY FIRST 3/4
     // Total mass is about 30, so 15 is per leg
     trajopt->AddLinearConstraint(lambda_init(i) >= 0.5 * 15 * FLAGS_gravity);
-    trajopt->AddLinearConstraint(lambda_final(i) <= 3 * 15 * FLAGS_gravity);
+    trajopt->AddLinearConstraint(lambda_final(i) <= 2 * 15 * FLAGS_gravity);
   }
   //  input constraints
   trajopt->AddConstraintToAllKnotPoints(u(0) >= -300);
@@ -243,11 +243,11 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   trajopt->AddConstraintToAllKnotPoints(u(3) <= 300);
 
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_roty"]) >=
-                                        -0.20);
+                                        -0.2);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_roty"]) <=
-                                        0.20);
-  trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_x"]) >= -0.5);
-  trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_x"]) <= 0.5);
+                                        0.2);
+  trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_x"]) >= -1);
+  trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_x"]) <= 1);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["left_knee_pin"]) >=
                                         0.2);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["right_knee_pin"]) >=
@@ -268,8 +268,9 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   const double R = 1;
   MatrixXd Q = MatrixXd::Zero(2 * n, 2 * n);
   for (int i = 0; i < n; i++) {
-    Q(i + n, i + n) = 1;
+    Q(i + n, i + n) = 0.1;
   }
+  Q(7+2,7+2) = 100;
   trajopt->AddRunningCost(u.transpose() * R * u);
   trajopt->AddRunningCost(x.transpose() * Q * x);
 

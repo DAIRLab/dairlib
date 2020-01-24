@@ -67,7 +67,7 @@ EventStatus JumpingFiniteStateMachine::DiscreteVariableUpdate(
       }
       break;
     case (FLIGHT):
-      if (current_time > prev_time(0) + 0.380451) {
+      if (current_time > prev_time(0) + 0.2920) {
 //      if (current_time > prev_time(0) + 0.8) {
         fsm_state << LAND;
         std::cout << "Setting fsm to LAND" << std::endl;

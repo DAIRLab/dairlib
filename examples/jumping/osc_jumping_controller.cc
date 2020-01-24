@@ -67,6 +67,8 @@ DEFINE_double(kd, 20.0, "Kd gain for COM tracking");
 
 DEFINE_double(torso_orientation_cost, 0.1,
               "Weight to scale the torso orientation cost");
+DEFINE_bool(should_publish, false,
+              "Whether or not to publish osc data");
 
 // using drake::multibody::MultibodyPlant;
 using drake::multibody::Body;
@@ -205,7 +207,7 @@ int doMain(int argc, char* argv[]) {
   //  builder.AddSystem<systems::controllers::OperationalSpaceControl>(
   //      tree_with_springs, tree_with_springs, true, true);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      tree_with_springs, tree_with_springs, true, false);
+      tree_with_springs, tree_with_springs, true, FLAGS_should_publish);
 
   //   Acceleration Cost
   int n_v = tree_with_springs.get_num_velocities();
@@ -257,23 +259,23 @@ int doMain(int argc, char* argv[]) {
   // ***** Torso balance term ******
   double w_pelvis_balance = 300;
   double w_heading = 200;
-  double k_p_pelvis_balance = 10;
-  double k_d_pelvis_balance = 10;
+  double k_p_pelvis_balance = 64;
+  double k_d_pelvis_balance = 16;
   double k_p_heading = 64;
   double k_d_heading = 16;
   Matrix3d W_pelvis = MatrixXd::Identity(3, 3);
   W_pelvis(0, 0) = w_pelvis_balance;
-  W_pelvis(1, 1) = 0;
+  W_pelvis(1, 1) = w_heading;
   W_pelvis(2, 2) = w_heading;
   Matrix3d K_p_pelvis = MatrixXd::Identity(3, 3);
   K_p_pelvis(0, 0) = k_p_pelvis_balance * 2;
-  //  K_p_pelvis(1, 1) = k_p_pelvis_balance * 2;
-  K_p_pelvis(1, 1) = 0;
+    K_p_pelvis(1, 1) = k_p_pelvis_balance * 2;
+//  K_p_pelvis(1, 1) = 0;
   K_p_pelvis(2, 2) = k_p_heading;
   Matrix3d K_d_pelvis = MatrixXd::Identity(3, 3);
   K_d_pelvis(0, 0) = k_d_pelvis_balance;
-  //  K_d_pelvis(1, 1) = k_d_pelvis_balance;
-  K_d_pelvis(1, 1) = 0;
+    K_d_pelvis(1, 1) = k_d_pelvis_balance;
+//  K_d_pelvis(1, 1) = 0;
   K_d_pelvis(2, 2) = k_d_heading;
   //  RotTaskSpaceTrackingData pelvis_rot_traj(
   //      "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis,

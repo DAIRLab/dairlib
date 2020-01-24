@@ -87,6 +87,7 @@ EventStatus CoMTraj::DiscreteVariableUpdate(
     cache.initialize(q, v);
     tree_.doKinematics(cache);
     com_x_offset(0) = tree_.centerOfMass(cache)(0);
+    std::cout << "x offset: " << com_x_offset(0) << std::endl;
   }
   return EventStatus::Succeeded();
 }
@@ -106,13 +107,14 @@ PiecewisePolynomial<double> CoMTraj::generateCrouchTraj(
 PiecewisePolynomial<double> CoMTraj::generateLandingTraj(
     const drake::systems::Context<double>& context, VectorXd& q,
     VectorXd& v) const {
-  const VectorXd com_x_offset =
-      this->EvalVectorInput(context, com_x_offset_idx_)->get_value();
-
-  Vector3d offset;
-  offset << com_x_offset(0), 0, 0;
+//  const VectorXd com_x_offset =
+//      this->EvalVectorInput(context, com_x_offset_idx_)->get_value();
+  const VectorXd com_x_offset = context.get_discrete_state().get_vector(
+      com_x_offset_idx_).get_value();
 
   // Only offset the x-position
+  Vector3d offset;
+  offset << com_x_offset(0), 0, 0;
 
   std::vector<double> breaks = crouch_traj_.get_segment_times();
   MatrixXd offset_matrix = offset.replicate(1, breaks.size());

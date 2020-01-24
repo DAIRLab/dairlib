@@ -853,9 +853,9 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 /// The estimated state would get very inaccurate if the stance foot is moving.
 ///
 /// Input:
-///  - OutputVector `output` containing the positions, velocities and
-///    actuator torques of the robot
-/// Ouput: left contact `left_contact` and right contact `right_contact` that
+///  - OutputVector `output` containing the state, input and imu accleration of
+///    the robot
+/// Output: left contact `left_contact` and right contact `right_contact` that
 ///  indicate if the corresponding foot is in contact with the ground
 ///
 /// Algorithm:
@@ -868,6 +868,9 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 ///  the ground.
 ///  During impact, both the legs have some non-zero acceleration and hence the
 ///  optimal costs will all be high. This case is assumed to be *no* stance.
+///
+/// Warnnig: UpdateContactEstimationCosts() should be called to update the costs
+/// before calling EstimateContactForEkf().
 void CassieRbtStateEstimator::EstimateContactForEkf(
     const OutputVector<double>& output,
     int* left_contact, int* right_contact) const {
@@ -889,8 +892,7 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
           *left_contact << ", " << *right_contact << endl;
     }
 
-    // Only use spring to determine the contact (we want to say a toe is on the
-    // ground when it is *flat* on the ground.)
+    // Only use spring to determine the contact
     // We say a foot is in contact with the ground if knee and heel spring
     // deflections are *both* over some thresholds. We don't update anything
     // if it's under the threshold.
@@ -928,9 +930,9 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
 /// EstimateContactForController(). Less conservative.
 ///
 /// Input:
-///  - OutputVector `output` containing the positions, velocities and
-///    actuator torques of the robot
-/// Ouput: left contact `left_contact` and right contact `right_contact` that
+///  - OutputVector `output` containing the state, input and imu accleration of
+///    the robot
+/// Output: left contact `left_contact` and right contact `right_contact` that
 ///  indicate if the corresponding foot is in contact with the ground
 ///
 /// Assumptions:
@@ -949,6 +951,9 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
 ///  the estimation from the spring.
 ///  During impact, both the legs have some non-zero acceleration and hence the
 ///  optimal costs will all be high. This case is assumed to be double stance.
+///
+/// Warnnig: UpdateContactEstimationCosts() should be called to update the costs
+/// before calling EstimateContactForController().
 void CassieRbtStateEstimator::EstimateContactForController(
     const OutputVector<double>& output,
     int* left_contact, int* right_contact) const {
@@ -967,8 +972,8 @@ void CassieRbtStateEstimator::EstimateContactForController(
   if ((optimal_cost_->at(0) >= cost_threshold_ctrl_) &&
       (optimal_cost_->at(1) >= cost_threshold_ctrl_) &&
       (optimal_cost_->at(2) >= cost_threshold_ctrl_)) {
-    *left_contact = 0;
-    *right_contact = 0;
+    *left_contact = 1;
+    *right_contact = 1;
   } else if (min_index == 1) {
     *left_contact = 1;
   } else if (min_index == 2) {

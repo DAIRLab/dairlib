@@ -1,6 +1,3 @@
-// TODO(yminchen): do we need to filter the gyro value before we publish?
-// We can get the bias (parameter) from EKF
-
 // TODO(yminchen): ask nanda why heel_spring_threshold_ctrl_ is 0.03?
 
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
@@ -1141,46 +1138,46 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     }
 
     // Step 2 - EKF (Propagate step)
-    auto& filter = state->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
-    filter.Propagate(
+    auto& ekf = state->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
+    ekf.Propagate(
         context.get_discrete_state(prev_imu_idx_).get_value(), dt);
 
     // Debugging print statements
     if (print_info_to_terminal_) {
       cout << "Prediction: " << endl;
       // cout << "Orientation (quaternion) : " << endl;
-      // Quaterniond q_prop = Quaterniond(filter.getState().getRotation());
+      // Quaterniond q_prop = Quaterniond(ekf.getState().getRotation());
       // q_prop.normalize();
       // cout << q_prop.w() << " ";
       // cout << q_prop.vec().transpose() << endl;
       cout << "Velocities: " << endl;
-      cout << filter.getState().getVelocity().transpose() << endl;
+      cout << ekf.getState().getVelocity().transpose() << endl;
       cout << "Positions: " << endl;
-      cout << filter.getState().getPosition().transpose() << endl;
+      cout << ekf.getState().getPosition().transpose() << endl;
       // cout << "X: " << endl;
-      // cout << filter.getState().getX() << endl;
+      // cout << ekf.getState().getX() << endl;
       // cout << "P: " << endl;
-      // cout << filter.getState().getP() << endl;
+      // cout << ekf.getState().getP() << endl;
       if (test_with_ground_truth_state_) {
         cout << "z difference: " <<
-            filter.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
+             ekf.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
       }
     }
 
     // Estimated floating base state (pelvis)
     VectorXd fb_state_est(13);
     Vector3d r_imu_to_pelvis_global =
-        filter.getState().getRotation() * (-imu_pos_);
+        ekf.getState().getRotation() * (-imu_pos_);
     fb_state_est.head(3) =
-        filter.getState().getPosition() + r_imu_to_pelvis_global;
-    Quaterniond q(filter.getState().getRotation());
+        ekf.getState().getPosition() + r_imu_to_pelvis_global;
+    Quaterniond q(ekf.getState().getRotation());
     q.normalize();
     fb_state_est[3] = q.w();
     fb_state_est.segment<3>(4) = q.vec();
     fb_state_est.segment<3>(7) = imu_measurement.head(3);
     Vector3d omega_global =
-        filter.getState().getRotation() * imu_measurement.head(3);
-    fb_state_est.tail(3) = filter.getState().getVelocity() +
+        ekf.getState().getRotation() * imu_measurement.head(3);
+    fb_state_est.tail(3) = ekf.getState().getVelocity() +
         omega_global.cross(r_imu_to_pelvis_global);
 
     // Estimated robot output
@@ -1209,7 +1206,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     std::vector<std::pair<int, bool>> contacts;
     contacts.push_back(std::pair<int, bool>(0, left_contact));
     contacts.push_back(std::pair<int, bool>(1, right_contact));
-    filter.setContacts(contacts);
+    ekf.setContacts(contacts);
 
     // Step 4 - EKF (measurement step)
     KinematicsCache<double> cache = tree_.doKinematics(
@@ -1227,7 +1224,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       if (print_info_to_terminal_) {
         cout << "Rotation differences: " << endl;
         cout << "Rotation matrix from EKF: " << endl;
-        cout << filter.getState().getRotation() << endl;
+        cout << ekf.getState().getRotation() << endl;
         cout << "Ground truth rotation: " << endl;
         Quaterniond q_real;
         q_real.w() = output_gt.GetPositions()[3];
@@ -1263,39 +1260,39 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
             covariance.block<3, 3>(3, 3) << endl;
       }
     }
-    filter.CorrectKinematics(measured_kinematics);
+    ekf.CorrectKinematics(measured_kinematics);
 
     // Debugging print statements
     if (print_info_to_terminal_) {
-      q = Quaterniond(filter.getState().getRotation()).normalized();
+      q = Quaterniond(ekf.getState().getRotation()).normalized();
       cout << "Update: " << endl;
       // cout << "Orientation (quaternion) : " << endl;
       // cout << q.w() << " ";
       // cout << q.vec().transpose() << endl;
       cout << "Velocities: " << endl;
-      cout << filter.getState().getVelocity().transpose() << endl;
+      cout << ekf.getState().getVelocity().transpose() << endl;
       cout << "Positions: " << endl;
-      cout << filter.getState().getPosition().transpose() << endl;
+      cout << ekf.getState().getPosition().transpose() << endl;
       // cout << "X: " << endl;
-      // cout << filter.getState().getX() << endl;
+      // cout << ekf.getState().getX() << endl;
       // cout << "Theta: " << endl;
-      // cout << filter.getState().getTheta() << endl;
+      // cout << ekf.getState().getTheta() << endl;
       // cout << "P: " << endl;
-      // cout << filter.getState().getP() << endl;
+      // cout << ekf.getState().getP() << endl;
     }
     if (test_with_ground_truth_state_) {
       if (print_info_to_terminal_) {
         cout << "z difference: " <<
-            filter.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
+             ekf.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
       }
 
       for (int i = 0; i < 3; ++i) {
-        ofile << filter.getState().getPosition()[i] << ", ";
+        ofile << ekf.getState().getPosition()[i] << ", ";
       }
       ofile << q.w() << ", " << q.vec()[0] << ", " << q.vec()[1] << ", " <<
           q.vec()[2] << ", ";
       for (int i = 0; i < 3; ++i) {
-        ofile << filter.getState().getVelocity()[i] << ", ";
+        ofile << ekf.getState().getVelocity()[i] << ", ";
       }
       ofile << "\n";
       ofile.close();
@@ -1306,15 +1303,17 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     }
 
     // Step 5 - Assign values to floating base state (pelvis)
-    r_imu_to_pelvis_global = filter.getState().getRotation() * (-imu_pos_);
+    // We get the angular velocity directly from the IMU without filtering
+    // because the magnitude of noise is about 2e-3.
+    r_imu_to_pelvis_global = ekf.getState().getRotation() * (-imu_pos_);
     fb_state_est.head(3) =
-        filter.getState().getPosition() + r_imu_to_pelvis_global;
-    q = Quaterniond(filter.getState().getRotation()).normalized();
+        ekf.getState().getPosition() + r_imu_to_pelvis_global;
+    q = Quaterniond(ekf.getState().getRotation()).normalized();
     fb_state_est[3] = q.w();
     fb_state_est.segment<3>(4) = q.vec();
     fb_state_est.segment<3>(7) = imu_measurement.head(3);
-    omega_global = filter.getState().getRotation() * imu_measurement.head(3);
-    fb_state_est.tail(3) = filter.getState().getVelocity() +
+    omega_global = ekf.getState().getRotation() * imu_measurement.head(3);
+    fb_state_est.tail(3) = ekf.getState().getVelocity() +
         omega_global.cross(r_imu_to_pelvis_global);
     state->get_mutable_discrete_state().get_mutable_vector(fb_state_idx_)
         .get_mutable_value() << fb_state_est;

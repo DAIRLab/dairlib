@@ -613,8 +613,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   }*/
 
   // add cost
-  const MatrixXd Q = MatrixXd::Identity(n_v, n_v);
-  const MatrixXd R = 0.1 * MatrixXd::Identity(n_u, n_u);
+  const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
+  const MatrixXd R = 0.1 * 0.01 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
 

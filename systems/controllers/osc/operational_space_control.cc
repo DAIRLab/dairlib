@@ -118,19 +118,14 @@ void OperationalSpaceControl::AddAccelerationCost(std::string joint_vel_name,
 
 // Constraint methods
 void OperationalSpaceControl::AddContactPoint(std::string body_name,
-    VectorXd pt_on_body, double mu_low_friction, double period_of_low_friction){
+    VectorXd pt_on_body){
   body_index_.push_back(GetBodyIndexFromName(tree_wo_spr_, body_name));
   pt_on_body_.push_back(pt_on_body);
-  mu_low_friction_.push_back(mu_low_friction);
-  period_of_low_friction_.push_back(period_of_low_friction);
 }
 
 void OperationalSpaceControl::AddStateAndContactPoint(int state,
-    std::string body_name, VectorXd pt_on_body,
-    double mu_low_friction, double period_of_low_friction) {
+    std::string body_name, VectorXd pt_on_body) {
   fsm_state_when_active_.push_back(state);
-  mu_low_friction_.push_back(mu_low_friction);
-  period_of_low_friction_.push_back(period_of_low_friction);
   AddContactPoint(body_name, pt_on_body);
 }
 
@@ -413,37 +408,20 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   ///                           lambda_c(3*i+2) >= 0
   if (body_index_.size() > 0) {
-    VectorXd mu_minus1(2);
-    VectorXd mu_plus1(2);
     VectorXd inf_vectorxd(1); inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
       // If the contact is inactive, we assign zeros to A matrix. (lb<=Ax<=ub)
       if (active_contact_flags[i]) {
-        if(time_since_last_state_switch < period_of_low_friction_[i]){
-          mu_minus1 << mu_low_friction_[i], -1;
-          mu_plus1 << mu_low_friction_[i], 1;
-        } else {
-          mu_minus1 << mu_, -1;
-          mu_plus1 << mu_, 1;
-        }
-        friction_constraints_.at(5 * i)->UpdateCoefficients(
-            mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 1)->UpdateCoefficients(
-            mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 2)->UpdateCoefficients(
-            mu_minus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 3)->UpdateCoefficients(
-            mu_plus1.transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i)->UpdateLowerBound(VectorXd::Zero(1));
+        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(VectorXd::Zero(1));
+        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(VectorXd::Zero(1));
+        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(VectorXd::Zero(1));
         friction_constraints_.at(5 * i + 4)->UpdateLowerBound(VectorXd::Zero(1));
       } else {
-        friction_constraints_.at(5 * i)->UpdateCoefficients(
-            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 1)->UpdateCoefficients(
-            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 2)->UpdateCoefficients(
-            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
-        friction_constraints_.at(5 * i + 3)->UpdateCoefficients(
-            Vector2d::Zero().transpose(), VectorXd::Zero(1), inf_vectorxd);
+        friction_constraints_.at(5 * i)->UpdateLowerBound(-inf_vectorxd);
+        friction_constraints_.at(5 * i + 1)->UpdateLowerBound(-inf_vectorxd);
+        friction_constraints_.at(5 * i + 2)->UpdateLowerBound(-inf_vectorxd);
+        friction_constraints_.at(5 * i + 3)->UpdateLowerBound(-inf_vectorxd);
         friction_constraints_.at(5 * i + 4)->UpdateLowerBound(-inf_vectorxd);
       }
     }

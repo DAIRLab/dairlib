@@ -109,13 +109,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetWeightOfSoftContactConstraint(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
   }
-  void AddContactPoint(std::string body_name, Eigen::VectorXd pt_on_body,
-      double mu_low_friction = -1, double period_of_low_friction = 0);
+  void AddContactPoint(std::string body_name, Eigen::VectorXd pt_on_body);
   void AddStateAndContactPoint(int state,
                                std::string body_name,
-                               Eigen::VectorXd pt_on_body,
-                               double mu_low_friction = -1,
-                               double period_of_low_friction = 0);
+                               Eigen::VectorXd pt_on_body);
 
   // Tracking data methods
   /// The third argument is used to set a period in which OSC does not track the
@@ -228,11 +225,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // `fsm_state_when_active_` is the finite state machine state when the contact
   // constraint is active. If `fsm_state_when_active_` is empty, then the
   // constraint is always active.
-  // The states here can repeat, since there might be multipel contact points
+  // The states here can repeat, since there might be multiple contact points
   // in a state of the finite state machine.
   std::vector<int> fsm_state_when_active_;
-  std::vector<double> mu_low_friction_;
-  std::vector<double> period_of_low_friction_;
 
   // CalcActiveContactIndices gives a vector of flags indicating the active
   // contact (constraint)

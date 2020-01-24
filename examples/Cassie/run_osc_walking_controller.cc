@@ -117,7 +117,7 @@ int DoMain(int argc, char* argv[]) {
                   lipm_traj_generator->get_input_port_state());
 
   // Create foot placement control block
-  Eigen::Vector2d global_target_position(10, 0);
+  Eigen::Vector2d global_target_position(5, 5);
   Eigen::Vector2d params_of_no_turning(5, 1);
   // Logistic function 1/(1+5*exp(x-1))
   // The function ouputs 0.0007 when x = 0
@@ -187,19 +187,17 @@ int DoMain(int argc, char* argv[]) {
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
   // Friction coefficient
   double mu = 0.4;
-  double mu_low = 0.4;  // avoid slipping in the beginning of stance (in drake
-                        // simulation)
   osc->SetContactFriction(mu);
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
   osc->AddStateAndContactPoint(left_stance_state,
-                               "toe_left", front_contact_disp, mu_low, 0.05);
+                               "toe_left", front_contact_disp);
   osc->AddStateAndContactPoint(left_stance_state,
-                               "toe_left", rear_contact_disp, mu_low, 0.05);
+                               "toe_left", rear_contact_disp);
   osc->AddStateAndContactPoint(right_stance_state,
-                               "toe_right", front_contact_disp, mu_low, 0.05);
+                               "toe_right", front_contact_disp);
   osc->AddStateAndContactPoint(right_stance_state,
-                               "toe_right", rear_contact_disp, mu_low, 0.05);
+                               "toe_right", rear_contact_disp);
   // Swing foot tracking
   MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);

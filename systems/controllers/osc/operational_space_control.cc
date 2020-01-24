@@ -411,6 +411,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     VectorXd inf_vectorxd(1); inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
       // If the contact is inactive, we assign zeros to A matrix. (lb<=Ax<=ub)
+      // The number "5" in "5 * i" below comes from the fact that there are five
+      // constraints for each contact point.
       if (active_contact_flags[i]) {
         friction_constraints_.at(5 * i)->UpdateLowerBound(VectorXd::Zero(1));
         friction_constraints_.at(5 * i + 1)->UpdateLowerBound(VectorXd::Zero(1));

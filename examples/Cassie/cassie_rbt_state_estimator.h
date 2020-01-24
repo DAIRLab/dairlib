@@ -178,7 +178,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable eps_cr_;
   drake::solvers::VectorXDecisionVariable eps_imu_;
   // Optimal costs
-  std::unique_ptr<std::vector<double>> optimal_cost =
+  std::unique_ptr<std::vector<double>> optimal_cost_ =
       std::make_unique<std::vector<double>>(3, 0.0);
 };
 

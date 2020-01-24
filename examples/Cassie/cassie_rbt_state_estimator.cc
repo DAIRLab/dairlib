@@ -193,8 +193,8 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
         MatrixXd::Zero(6, 1), eps_cr_).
         evaluator().get();
     quadcost_eps_imu_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(3, 3),
-        MatrixXd::Zero(3, 1), eps_imu_)
-        .evaluator().get();
+        MatrixXd::Zero(3, 1), eps_imu_).
+        evaluator().get();
   }
 }
 
@@ -621,7 +621,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 
   if (!result_double.is_success()) {
     // If the optimization fails, push infinity into the optimal_cost vector
-    optimal_cost->at(0) = std::numeric_limits<double>::infinity();
+    optimal_cost_->at(0) = std::numeric_limits<double>::infinity();
 
     // Initialize the optimization at the next time step with zeros
     discrete_state->get_mutable_vector(
@@ -638,7 +638,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
         VectorXd::Zero(6, 1);
   } else {
     // Push the optimal cost to the optimal_cost vector
-    optimal_cost->at(0) = result_double.get_optimal_cost() +
+    optimal_cost_->at(0) = result_double.get_optimal_cost() +
         cost_b.transpose()*cost_b;  // the second term is the cosntant term
 
     VectorXd ddq_val = result_double.GetSolution(ddq_);
@@ -713,7 +713,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 
   if (!result_left.is_success()) {
     // Push infinity into optimal_costv vector if the optimization fails
-    optimal_cost->at(1) = std::numeric_limits<double>::infinity();
+    optimal_cost_->at(1) = std::numeric_limits<double>::infinity();
 
     // Initialize the optimization with zero at the next time step
     discrete_state->get_mutable_vector(
@@ -727,7 +727,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
         VectorXd::Zero(6, 1);
   } else {
     // Push the optimal cost to the optimal_cost vector
-    optimal_cost->at(1) = result_left.get_optimal_cost() +
+    optimal_cost_->at(1) = result_left.get_optimal_cost() +
         cost_b.transpose()*cost_b;
 
     VectorXd ddq_val = result_left.GetSolution(ddq_);
@@ -802,7 +802,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 
   if (!result_right.is_success()) {
     // If the optimization fails, push infinity to the optimal_cost vector
-    optimal_cost->at(2) = std::numeric_limits<double>::infinity();
+    optimal_cost_->at(2) = std::numeric_limits<double>::infinity();
 
     // Initialize the optimization with zero at the next time step
     discrete_state->get_mutable_vector(
@@ -816,7 +816,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
         VectorXd::Zero(6 ,1);
   } else {
     // Push the optimal cost to optimal_cost vector
-    optimal_cost->at(2) = result_right.get_optimal_cost() +
+    optimal_cost_->at(2) = result_right.get_optimal_cost() +
         cost_b.transpose()*cost_b;
 
     VectorXd ddq_val = result_right.GetSolution(ddq_);
@@ -902,16 +902,16 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
   // big ground contact point acceleration),
   // and we assume there is no support legs because we don't want moving feet
   // to mess up EKF.
-  if ((optimal_cost->at(0) >= cost_threshold_ekf_) &&
-      (optimal_cost->at(1) >= cost_threshold_ekf_) &&
-      (optimal_cost->at(2) >= cost_threshold_ekf_)) {
+  if ((optimal_cost_->at(0) >= cost_threshold_ekf_) &&
+      (optimal_cost_->at(1) >= cost_threshold_ekf_) &&
+      (optimal_cost_->at(2) >= cost_threshold_ekf_)) {
     *left_contact = 0;
     *right_contact = 0;
   } else {
     if (print_info_to_terminal_) {
       cout << "optimal_cost[0][1][2], threshold = " <<
-          optimal_cost->at(0) << ", " << optimal_cost->at(1) << ", " <<
-          optimal_cost->at(2) << ", " << cost_threshold_ekf_ << endl;
+          optimal_cost_->at(0) << ", " << optimal_cost_->at(1) << ", " <<
+          optimal_cost_->at(2) << ", " << cost_threshold_ekf_ << endl;
       cout << "left/right contacts = " <<
           *left_contact << ", " << *right_contact << endl;
     }
@@ -983,17 +983,17 @@ void CassieRbtStateEstimator::EstimateContactForController(
   // The vector optimal_cost has double support, left support and right support
   // costs in order. The corresponding indices are 0, 1, 2.
   // Here we get the index of min of left and right support costs.
-  auto min_it = std::min_element(std::next(optimal_cost->begin(), 1),
-      optimal_cost->end());
-  int min_index = std::distance(optimal_cost->begin(), min_it);
+  auto min_it = std::min_element(std::next(optimal_cost_->begin(), 1),
+      optimal_cost_->end());
+  int min_index = std::distance(optimal_cost_->begin(), min_it);
 
   // If all three costs are high, we believe it's going through impact event,
   // and we assume it's double support. (Therefore, it won't predict the case
   // where the robot transition from flight phase to single support. It'd say
   // it's double support.)
-  if ((optimal_cost->at(0) >= cost_threshold_ctrl_) &&
-      (optimal_cost->at(1) >= cost_threshold_ctrl_) &&
-      (optimal_cost->at(2) >= cost_threshold_ctrl_)) {
+  if ((optimal_cost_->at(0) >= cost_threshold_ctrl_) &&
+      (optimal_cost_->at(1) >= cost_threshold_ctrl_) &&
+      (optimal_cost_->at(2) >= cost_threshold_ctrl_)) {
     *left_contact = 0;
     *right_contact = 0;
   } else if (min_index == 1) {
@@ -1048,7 +1048,6 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
   if (current_time > prev_t) {
     double dt = current_time - prev_t;
-    cout << "current_time = " << current_time << endl;
     if (print_info_to_terminal_) {
       cout << "current_time = " << current_time << endl;
       cout << "dt: " << dt << endl;

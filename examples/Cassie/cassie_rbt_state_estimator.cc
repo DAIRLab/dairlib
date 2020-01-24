@@ -849,27 +849,6 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
   // Record previous velocity (used in acceleration residual)
   discrete_state->get_mutable_vector(
       previous_velocity_idx_).get_mutable_value() << output.GetVelocities();
-
-  // Ground truth of contact
-  /*
-  RigidBodyTree<double>* tree_with_ground = nullptr;
-  tree_with_ground = const_cast<RigidBodyTree<double>*>(&tree_);
-  std::vector<drake::multibody::collision::PointPair<double>> pairs;
-  pairs = tree_with_ground->ComputeMaximumDepthCollisionPoints(cache,
-      true, false);
-  int gtl = 0;
-  int gtr = 0;
-  for (const auto& pair: pairs) {
-    if (pair.distance < 0.0) {
-      if (pair.elementA->get_body()->get_body_index() == 18) {
-        gtl += 1;
-      }
-      if (pair.elementA->get_body()->get_body_index() == 20) {
-        gtr += 1;
-      }
-    }
-  }
-  */
 }
 
 
@@ -1233,7 +1212,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       // frame. Currently it doesn't seem to be a problem for estimation.
       // Should fix this once moved to MBP (which has the API).
       MatrixXd J = tree_.transformPointsJacobian(
-          cache, rear_contact_disp_, toe_indices[i], pelvis_idx_, false).block(0, 6, 3, 16);
+          cache, rear_contact_disp_, toe_indices[i], pelvis_idx_, false).
+              block(0, 6, 3, 16);
       covariance.block<3, 3>(3, 3) = J * cov_w_ * J.transpose();
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);

@@ -112,6 +112,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     P.block<3, 3>(12, 12) = 0.01*MatrixXd::Identity(3, 3);  // accel bias
     initial_state.setP(P);
     // initialize ekf input noise
+    cov_w_ = 0.000289 * Eigen::MatrixXd::Identity(16, 16);
     inekf::NoiseParams noise_params;
     noise_params.setGyroscopeNoise(0.002);
     noise_params.setAccelerometerNoise(0.04);
@@ -1050,29 +1051,12 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       cout << "dt: " << dt << endl;
     }
 
-    // Extract imu measurement
-    VectorXd imu_measurement(6);
-    const double* imu_linear_acceleration =
-        cassie_out.pelvis.vectorNav.linearAcceleration;
-    const double* imu_angular_velocity =
-        cassie_out.pelvis.vectorNav.angularVelocity;
-    imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
-        imu_angular_velocity[2], imu_linear_acceleration[0],
-        imu_linear_acceleration[1], imu_linear_acceleration[2];
-    if (print_info_to_terminal_) {
-      // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
-    }
-
-    // Perform State Estimation (in several steps)
-    // Step 1 - Solve for the unknown joint angle
-    // This step is done in AssignNonFloatingBaseStateToOutputVector()
-
     // Get ground truth information
     OutputVector<double> output_gt(tree_.get_num_positions(),
                                    tree_.get_num_velocities(),
                                    tree_.get_num_actuators());
-    VectorXd imu_pos_wrt_world(7);
-    VectorXd imu_vel_wrt_world(6);
+    VectorXd imu_pos_wrt_world_gt(7);
+    VectorXd imu_vel_wrt_world_gt(6);
     if(test_with_ground_truth_state_){
       const OutputVector<double>* cassie_state = (OutputVector<double>*)
           this->EvalVectorInput(context, state_input_port_);
@@ -1096,21 +1080,21 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       KinematicsCache<double> cache_gt = tree_.doKinematics(
           output_gt.GetPositions(), output_gt.GetVelocities(), true);
 
-      imu_pos_wrt_world.head(3) = tree_.transformPoints(
+      imu_pos_wrt_world_gt.head(3) = tree_.transformPoints(
           cache_gt, imu_pos_, pelvis_idx_, 0);
-      imu_pos_wrt_world.tail(4) = output_gt.GetPositions().segment<4>(3);
-      imu_vel_wrt_world.tail(3) = output_gt.GetVelocities().head(3);
-      imu_vel_wrt_world.head(3) = tree_.transformPointsJacobian(
+      imu_pos_wrt_world_gt.tail(4) = output_gt.GetPositions().segment<4>(3);
+      imu_vel_wrt_world_gt.tail(3) = output_gt.GetVelocities().head(3);
+      imu_vel_wrt_world_gt.head(3) = tree_.transformPointsJacobian(
           cache_gt, imu_pos_, pelvis_idx_, 0, false)*output_gt.GetVelocities();
       if (print_info_to_terminal_) {
         // Print for debugging
         cout << "Ground Truth: " << endl;
         cout << "Positions: " << endl;
-        cout << imu_pos_wrt_world.transpose() << endl;
+        cout << imu_pos_wrt_world_gt.transpose() << endl;
         cout << "Orientation (quaternion) : " << endl;
         cout << output_gt.GetPositions().segment<4>(3).transpose() << endl;
         cout << "Velocities: " << endl;
-        cout << imu_vel_wrt_world.transpose() << endl;
+        cout << imu_vel_wrt_world_gt.transpose() << endl;
 
         // cout << "Leg positions: " << endl;
         // cout << tree_.transformPoints(
@@ -1120,6 +1104,23 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
         // cout << endl;
       }
     }
+
+    // Extract imu measurement
+    VectorXd imu_measurement(6);
+    const double* imu_linear_acceleration =
+        cassie_out.pelvis.vectorNav.linearAcceleration;
+    const double* imu_angular_velocity =
+        cassie_out.pelvis.vectorNav.angularVelocity;
+    imu_measurement << imu_angular_velocity[0], imu_angular_velocity[1],
+        imu_angular_velocity[2], imu_linear_acceleration[0],
+        imu_linear_acceleration[1], imu_linear_acceleration[2];
+    if (print_info_to_terminal_) {
+      // cout << "imu_measurement = " << imu_measurement.transpose() << endl;
+    }
+
+    // Perform State Estimation (in several steps)
+    // Step 1 - Solve for the unknown joint angle
+    // This step is done in AssignNonFloatingBaseStateToOutputVector()
 
     // Step 2 - EKF (Propagate step)
     auto& ekf = state->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
@@ -1144,24 +1145,24 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       // cout << ekf.getState().getP() << endl;
       if (test_with_ground_truth_state_) {
         cout << "z difference: " <<
-             ekf.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
+             ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[2] << endl;
       }
     }
 
     // Estimated floating base state (pelvis)
-    VectorXd fb_state_est(13);
+    VectorXd estimated_fb_state(13);
     Vector3d r_imu_to_pelvis_global =
         ekf.getState().getRotation() * (-imu_pos_);
-    fb_state_est.head(3) =
+    estimated_fb_state.head(3) =
         ekf.getState().getPosition() + r_imu_to_pelvis_global;
     Quaterniond q(ekf.getState().getRotation());
     q.normalize();
-    fb_state_est[3] = q.w();
-    fb_state_est.segment<3>(4) = q.vec();
-    fb_state_est.segment<3>(7) = imu_measurement.head(3);
+    estimated_fb_state[3] = q.w();
+    estimated_fb_state.segment<3>(4) = q.vec();
+    estimated_fb_state.segment<3>(7) = imu_measurement.head(3);
     Vector3d omega_global =
         ekf.getState().getRotation() * imu_measurement.head(3);
-    fb_state_est.tail(3) = ekf.getState().getVelocity() +
+    estimated_fb_state.tail(3) = ekf.getState().getVelocity() +
         omega_global.cross(r_imu_to_pelvis_global);
 
     // Estimated robot output
@@ -1171,7 +1172,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     AssignImuValueToOutputVector(cassie_out, &filtered_output);
     AssignActuationFeedbackToOutputVector(cassie_out, &filtered_output);
     AssignNonFloatingBaseStateToOutputVector(cassie_out, &filtered_output);
-    AssignFloatingBaseStateToOutputVector(fb_state_est, &filtered_output);
+    AssignFloatingBaseStateToOutputVector(estimated_fb_state, &filtered_output);
 
     // Step 3 - Estimate which foot/feet are in contact with the ground
     // Estimate feet contacts
@@ -1232,7 +1233,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       // frame. Currently it doesn't seem to be a problem for estimation.
       // Should fix this once moved to MBP (which has the API).
       MatrixXd J = tree_.transformPointsJacobian(
-          cache, rear_contact_disp_, toe_indices[i], pelvis_idx_, false);
+          cache, rear_contact_disp_, toe_indices[i], pelvis_idx_, false).block(0, 6, 3, 16);
       covariance.block<3, 3>(3, 3) = J * cov_w_ * J.transpose();
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);
@@ -1265,7 +1266,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     if (test_with_ground_truth_state_) {
       if (print_info_to_terminal_) {
         cout << "z difference: " <<
-             ekf.getState().getPosition()[2] - imu_pos_wrt_world[2] << endl;
+             ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[2] << endl;
       }
     }
     if (print_info_to_terminal_) {
@@ -1277,17 +1278,17 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // We get the angular velocity directly from the IMU without filtering
     // because the magnitude of noise is about 2e-3.
     r_imu_to_pelvis_global = ekf.getState().getRotation() * (-imu_pos_);
-    fb_state_est.head(3) =
+    estimated_fb_state.head(3) =
         ekf.getState().getPosition() + r_imu_to_pelvis_global;
     q = Quaterniond(ekf.getState().getRotation()).normalized();
-    fb_state_est[3] = q.w();
-    fb_state_est.segment<3>(4) = q.vec();
-    fb_state_est.segment<3>(7) = imu_measurement.head(3);
+    estimated_fb_state[3] = q.w();
+    estimated_fb_state.segment<3>(4) = q.vec();
+    estimated_fb_state.segment<3>(7) = imu_measurement.head(3);
     omega_global = ekf.getState().getRotation() * imu_measurement.head(3);
-    fb_state_est.tail(3) = ekf.getState().getVelocity() +
+    estimated_fb_state.tail(3) = ekf.getState().getVelocity() +
         omega_global.cross(r_imu_to_pelvis_global);
     state->get_mutable_discrete_state().get_mutable_vector(fb_state_idx_)
-        .get_mutable_value() << fb_state_est;
+        .get_mutable_value() << estimated_fb_state;
 
     // Store imu measurement
     state->get_mutable_discrete_state().get_mutable_vector(prev_imu_idx_)

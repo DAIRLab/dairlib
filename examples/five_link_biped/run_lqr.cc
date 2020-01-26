@@ -143,6 +143,9 @@ int doMain(int argc, char* argv[]) {
             state_and_input.time_vector,
             state_and_input.datapoints.bottomRows(nu))));
   }
+
+  std::cout << "x at time .6: " << state_trajs[1]->value(.6).transpose()
+            << std::endl;
   //  const PiecewisePolynomial<double>& state_traj =
   //      PiecewisePolynomial<double>::Pchip(
   //          state_and_input.time_vector,

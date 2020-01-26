@@ -33,7 +33,6 @@
 
 namespace dairlib {
 
-
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::Body;
@@ -49,15 +48,12 @@ using drake::systems::Simulator;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 
-
 // Simulation parameters.
-// DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
-DEFINE_double(x_initial, 0, "The initial x position of the torso");
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
-DEFINE_bool(time_stepping, false,
+DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
             "If 'false', the plant is modeled as a continuous system.");
@@ -72,16 +68,17 @@ DEFINE_string(init_state, "Jumping",
               "The stored initial state for the simulator");
 DEFINE_double(sim_time, std::numeric_limits<double>::infinity(),
               "The length of time to run the simulation");
-DEFINE_bool(visualize, false, "Whether or not to connect to Drake visualizer");
+DEFINE_double(start_time, 0.0, "Time to start the simulator at.");
 DEFINE_double(penetration_allowance, 0.001,
-    "Penetration allowance (m) for the contact model.");
+              "Penetration allowance (m) for the contact model.");
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   DiagramBuilder<double> builder;
-  // drake::lcm::DrakeLcm lcm;
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
+
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   Parser parser(&plant, &scene_graph);
@@ -94,20 +91,17 @@ int do_main(int argc, char* argv[]) {
                                                    Eigen::Vector3d::UnitZ());
   multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);  // Add ground
   plant.Finalize();
+
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   // Create input receiver.
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_input_channel, lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
-  builder.Connect(*input_sub, *input_receiver);
   // connect input receiver
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,
       plant.get_actuation_input_port().size());
-  builder.Connect(*input_receiver, *passthrough);
-  builder.Connect(passthrough->get_output_port(),
-                  plant.get_actuation_input_port());
   // Create state publisher.
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
@@ -119,17 +113,21 @@ int do_main(int argc, char* argv[]) {
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CONTACT_RESULTS", lcm, 1.0 / 1000.0));
   contact_results_publisher.set_name("contact_results_publisher");
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
   // Contact results to lcm msg.
+  //  auto contact_pub =
+  //      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+  //          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 10000.0));
+  //  auto contact_sender = builder.AddSystem<systems::>(plant);
+  // connect state publisher
+  builder.Connect(*input_sub, *input_receiver);
+  builder.Connect(*input_receiver, *passthrough);
+  builder.Connect(passthrough->get_output_port(),
+                  plant.get_actuation_input_port());
   builder.Connect(plant.get_contact_results_output_port(),
                   contact_viz.get_input_port(0));
   builder.Connect(contact_viz.get_output_port(0),
                   contact_results_publisher.get_input_port());
-  //  auto contact_pub =
-  //      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-  //          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 10000.0));
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
-  //  auto contact_sender = builder.AddSystem<systems::>(plant);
-  // connect state publisher
   builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
   builder.Connect(state_sender->get_output_port(0),
@@ -139,9 +137,9 @@ int do_main(int argc, char* argv[]) {
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
-//  if (FLAGS_visualize) {
-//    drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
-//  }
+  //  if (FLAGS_visualize) {
+  //    drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
+  //  }
 
   auto diagram = builder.Build();
   // Create a context for this system:
@@ -152,19 +150,24 @@ int do_main(int argc, char* argv[]) {
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
-
   Eigen::VectorXd x0(14);
 
   if (FLAGS_init_state == "Jumping") {
-    x0 << FLAGS_x_initial, 0.778109, 0, -.3112, -.231, 0.427, 0.4689, 0, 0, 0,
-        0, 0, 0, 0;
+    x0 << 0, 0.778109, 0, -.3112, -.231, 0.427, 0.4689, 0, 0, 0, 0, 0, 0, 0;
   } else if (FLAGS_init_state == "Walking") {
     x0 << 0, 0.798986, -0.00175796, -0.0541245, -0.320418, 0.1, 0.75, 0.225025,
         0.00132182, 0.145054, 0.136536, -0.746619, 9.46774e-05, -0.0115747;
-    //    x0 << 0, 0.797399, 0.0435607, -0.0888324, 0.0707006, 0.15, 0.15,
-    //        0, 0, 0, 0, 0, 0, 0;
+  } else if (FLAGS_init_state == "Walking_2") {
+    x0 << 0.0513778, 0.797215, -0.00535773, 0.00426651, -0.277203, 0.119151,
+        0.448676, 0.440274, -0.0455353, -0.236525, 0.3761, 1.49267, 0.82827,
+        -4.01244;
+  } else if (FLAGS_init_state == "Walking_3") {
+    x0 << 0.17696, 0.798739, 0.00405198, -0.337437, -0.0280155, 0.648008,
+        0.099669, 0.33931, -0.00910572, -0.061163, 0.472764, 0.477749, -2.2539,
+        0.016462;
   }
   plant.SetPositionsAndVelocities(&plant_context, x0);
+  diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
   //  if (!FLAGS_time_stepping) {
   //    //
@@ -177,7 +180,7 @@ int do_main(int argc, char* argv[]) {
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
-  simulator.AdvanceTo(FLAGS_sim_time);
+  simulator.AdvanceTo(FLAGS_start_time + FLAGS_sim_time);
   return 0;
 }
 }  // namespace dairlib

@@ -68,15 +68,45 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
 
   if (current_time < prev_time(0)) {  // Simulator has restarted
     std::cout << "Simulator has restarted!" << std::endl;
-    fsm_state << LEFT_FOOT;
+    fsm_state << RIGHT_FOOT;
     prev_time(0) = current_time;
   }
 
   if (contact_driven_) {
     switch ((FSM_STATE)fsm_state(0)) {
       case (LEFT_FOOT):
-        if (contact_info_msg.num_point_pair_contacts != 1 && !contact_flag(0) &&
+        if (contact_info_msg.num_point_pair_contacts != 1 &&
             (current_time - prev_time(0)) > 0.05) {
+          fsm_state << RIGHT_FOOT;
+          std::cout << "Setting fsm to RIGHT_FOOT" << std::endl;
+          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+          prev_time(0) = current_time;
+        }
+        break;
+      case (RIGHT_FOOT):
+        if (contact_info_msg.num_point_pair_contacts != 1 &&
+            (current_time - prev_time(0)) > 0.05) {
+          fsm_state << LEFT_FOOT_2;
+          std::cout << "Setting fsm to LEFT_FOOT_2" << std::endl;
+          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+          prev_time(0) = current_time;
+        }
+        break;
+      case (LEFT_FOOT_2):
+        if (contact_info_msg.num_point_pair_contacts != 1 &&
+            (current_time - prev_time(0)) > 0.05) {
+          fsm_state << LEFT_FOOT;
+          std::cout << "Setting fsm to LEFT_FOOT" << std::endl;
+          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+          prev_time(0) = current_time;
+        }
+        break;
+    }
+  } else if (!contact_driven_) {
+    switch ((FSM_STATE)fsm_state(0)) {
+      case (LEFT_FOOT):
+        if (contact_info_msg.num_point_pair_contacts != 1 && !contact_flag(0) &&
+            (current_time - prev_time(0)) > 0.02) {
           contact_time(0) = current_time;
           contact_flag(0) = true;
         }
@@ -112,7 +142,7 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
           contact_time(0) = current_time;
           contact_flag(0) = true;
         }
-        if (current_time - contact_time(0) >= delay_time_&& contact_flag(0)) {
+        if (current_time - contact_time(0) >= delay_time_ && contact_flag(0)) {
           fsm_state << LEFT_FOOT;
           std::cout << "Setting fsm to LEFT_FOOT" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;

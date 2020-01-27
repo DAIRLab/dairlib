@@ -2,8 +2,16 @@
 Contains a Kuka LBR Iiwa simulation using MultibodyPlant (updated from Drake's RigidbodyPlant sim)
 and a controller that moves the Iiwa endeffector around.
 
-To run: After building, run `bot-procman-sheriff -l /examples/kuka_iiwa_arm/kuka_test.pmd` from the
-dairlab root directory.
+## Running simulation test
+
+1. After building dairlib, from the dairlib root directory run `bot-procman-sheriff -l /examples/kuka_iiwa_arm/kuka_test.pmd`. A new window should open.
+2. Start `operator: drake-director` by expanding the "Operator" list and right clicking `drake-director`. A new window should open.
+3. Start `simulated-robot: simulator`. A robot should appear in the drake-director window.
+4. Start `simulated-robot: position _broadcaster`. The robot should start moving.
+5. To restart a test, stop and then start the `simulator` and `position_broadcaster`.
+
+To change the path taken by the robot, modify the file `Trajectories.csv` (in the `kuka_iiwa_arm` directory). This file is formated as a list of waypoints, where each row is the time and position `(t,x,y,z)`.
+
 
 ## Configuration Files
 * Trajectories.csv

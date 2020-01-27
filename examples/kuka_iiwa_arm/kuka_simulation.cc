@@ -95,20 +95,20 @@ int DoMain() {
 
 
   // Add Table to Simulation
-  // const double dx_table_center_to_robot_base = -0.3257;
-  // const double dz_table_top_robot_base = 0.0127;
-  // const std::string sdf_path = drake::FindResourceOrThrow(
-  //   "drake/examples/manipulation_station/models/bin.sdf");
-  //
-  // RigidTransform<double> X_WT(Vector3d(dx_table_center_to_robot_base, 0,
-  //                             -dz_table_top_robot_base));
-  // //internal::AddAndWeldModelFrom(sdf_path, "table", plant_->world_frame()
-  // //                                "amazon_table", X_WT, plant_);
-  //
-  // const drake::multibody::ModelInstanceIndex new_model =
-  //     world_plant_parser.AddModelFromFile(sdf_path, "bin1");
-  // const auto& child_frame = world_plant->GetFrameByName("bin_base", new_model);
-  // world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
+  const double dx_table_center_to_robot_base = -0.3257;
+  const double dz_table_top_robot_base = 0.0127;
+  const std::string sdf_path = drake::FindResourceOrThrow(
+    "drake/examples/manipulation_station/models/bin.sdf");
+  
+  RigidTransform<double> X_WT(Vector3d(dx_table_center_to_robot_base, 0,
+                              -dz_table_top_robot_base));
+  //internal::AddAndWeldModelFrom(sdf_path, "table", plant_->world_frame()
+  //                                "amazon_table", X_WT, plant_);
+  
+  const drake::multibody::ModelInstanceIndex new_model =
+      world_plant_parser.AddModelFromFile(sdf_path, "bin1");
+  const auto& child_frame = world_plant->GetFrameByName("bin_base", new_model);
+  world_plant->WeldFrames(world_plant->world_frame(), child_frame, X_WT);
 
   //Loads in manipulands from json file to objects_vector
   const int num_manipulands = settings["objects"].size();

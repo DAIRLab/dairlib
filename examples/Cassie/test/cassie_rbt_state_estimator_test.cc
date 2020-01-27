@@ -134,9 +134,10 @@ TEST_F(ContactEstimationTest, DoubleSupportContactEstimationTest) {
 
   auto context = estimator_->CreateDefaultContext();
 
+  std::vector<double> optimal_cost(3, 0.0);
   estimator_->UpdateContactEstimationCosts(*output_, dt_,
-      &context->get_mutable_discrete_state());
-  estimator_->EstimateContactForController(*output_,
+      &context->get_mutable_discrete_state(), &optimal_cost);
+  estimator_->EstimateContactForController(*output_, optimal_cost,
       &left_contact_, &right_contact_);
 
   int gtl = 0;
@@ -182,9 +183,10 @@ TEST_F(ContactEstimationTest, LeftSupportContactEstimationTest) {
 
   auto context = estimator_->CreateDefaultContext();
 
+  std::vector<double> optimal_cost(3, 0.0);
   estimator_->UpdateContactEstimationCosts(*output_, dt_,
-      &context->get_mutable_discrete_state());
-  estimator_->EstimateContactForController(*output_,
+      &context->get_mutable_discrete_state(), &optimal_cost);
+  estimator_->EstimateContactForController(*output_, optimal_cost,
       &left_contact_, &right_contact_);
 
   int gtl = 0;
@@ -231,9 +233,10 @@ TEST_F(ContactEstimationTest, RightSupportContactEstimationTest) {
 
   auto context = estimator_->CreateDefaultContext();
 
+  std::vector<double> optimal_cost(3, 0.0);
   estimator_->UpdateContactEstimationCosts(*output_, dt_,
-      &context->get_mutable_discrete_state());
-  estimator_->EstimateContactForController(*output_,
+      &context->get_mutable_discrete_state(), &optimal_cost);
+  estimator_->EstimateContactForController(*output_, optimal_cost,
       &left_contact_, &right_contact_);
 
   int gtl = 0;

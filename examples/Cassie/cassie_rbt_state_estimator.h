@@ -46,12 +46,15 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   /// The methods are set to be public in order to unit test them.
   void UpdateContactEstimationCosts(
       const systems::OutputVector<double>& output, const double& dt,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
+      drake::systems::DiscreteValues<double>* discrete_state,
+      std::vector<double>* optimal_cost) const;
   void EstimateContactForEkf(
       const systems::OutputVector<double>& output,
+      const std::vector<double>&  optimal_cost,
       int* left_contact, int* right_contact) const;
   void EstimateContactForController(
       const systems::OutputVector<double>& output,
+      const std::vector<double>&  optimal_cost,
       int* left_contact, int* right_contact) const;
 
   void setPreviousTime(drake::systems::Context<double>* context, double time);
@@ -189,9 +192,6 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable eps_cl_;
   drake::solvers::VectorXDecisionVariable eps_cr_;
   drake::solvers::VectorXDecisionVariable eps_imu_;
-  // Optimal costs
-  std::unique_ptr<std::vector<double>> optimal_cost_ =
-      std::make_unique<std::vector<double>>(3, 0.0);
 };
 
 }  // namespace systems

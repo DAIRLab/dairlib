@@ -460,7 +460,6 @@ void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
   output->SetVelocityAtIndex(velocity_idx_map_.at("base_vz"), est_fb_state(12));
 }
 
-
 /// UpdateContactEstimationCosts() updates the optimal costs of the quadratic
 /// programs for contact estimations. There are three QPs in total which assume
 /// double support, left support and right support in order.
@@ -483,7 +482,8 @@ void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
 ///  stance.
 void CassieRbtStateEstimator::UpdateContactEstimationCosts(
     const OutputVector<double>& output, const double& dt,
-    DiscreteValues<double>* discrete_state) const {
+    DiscreteValues<double>* discrete_state,
+    std::vector<double>* optimal_cost) const {
   const int n_v = tree_.get_num_velocities();
 
   // Cache
@@ -613,7 +613,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 
   if (!result_double.is_success()) {
     // If the optimization fails, push infinity into the optimal_cost vector
-    optimal_cost_->at(0) = std::numeric_limits<double>::infinity();
+    optimal_cost->at(0) = std::numeric_limits<double>::infinity();
 
     // Initialize the optimization at the next time step with zeros
     discrete_state->get_mutable_vector(
@@ -630,7 +630,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
         VectorXd::Zero(6, 1);
   } else {
     // Push the optimal cost to the optimal_cost vector
-    optimal_cost_->at(0) = result_double.get_optimal_cost() +
+    optimal_cost->at(0) = result_double.get_optimal_cost() +
         cost_b.transpose()*cost_b;  // the second term is the cosntant term
 
     VectorXd ddq_val = result_double.GetSolution(ddq_);
@@ -705,7 +705,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 
   if (!result_left.is_success()) {
     // Push infinity into optimal_costv vector if the optimization fails
-    optimal_cost_->at(1) = std::numeric_limits<double>::infinity();
+    optimal_cost->at(1) = std::numeric_limits<double>::infinity();
 
     // Initialize the optimization with zero at the next time step
     discrete_state->get_mutable_vector(
@@ -719,7 +719,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
         VectorXd::Zero(6, 1);
   } else {
     // Push the optimal cost to the optimal_cost vector
-    optimal_cost_->at(1) = result_left.get_optimal_cost() +
+    optimal_cost->at(1) = result_left.get_optimal_cost() +
         cost_b.transpose()*cost_b;
 
     VectorXd ddq_val = result_left.GetSolution(ddq_);
@@ -794,7 +794,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 
   if (!result_right.is_success()) {
     // If the optimization fails, push infinity to the optimal_cost vector
-    optimal_cost_->at(2) = std::numeric_limits<double>::infinity();
+    optimal_cost->at(2) = std::numeric_limits<double>::infinity();
 
     // Initialize the optimization with zero at the next time step
     discrete_state->get_mutable_vector(
@@ -808,7 +808,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
         VectorXd::Zero(6 ,1);
   } else {
     // Push the optimal cost to optimal_cost vector
-    optimal_cost_->at(2) = result_right.get_optimal_cost() +
+    optimal_cost->at(2) = result_right.get_optimal_cost() +
         cost_b.transpose()*cost_b;
 
     VectorXd ddq_val = result_right.GetSolution(ddq_);
@@ -883,6 +883,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 /// before calling EstimateContactForEkf().
 void CassieRbtStateEstimator::EstimateContactForEkf(
     const OutputVector<double>& output,
+    const std::vector<double>& optimal_cost,
     int* left_contact, int* right_contact) const {
   // Initialize
   *left_contact = 0;
@@ -892,17 +893,17 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
   // The vector optimal_cost has double support, left support and right support
   // costs in order. The corresponding indices are 0, 1, 2.
   // Here we get the index of min of left and right support costs.
-  auto min_it = std::min_element(std::next(optimal_cost_->begin(), 0),
-                                 optimal_cost_->end());
-  int min_index = std::distance(optimal_cost_->begin(), min_it);
+  auto min_it = std::min_element(std::next(optimal_cost.begin(), 0),
+                                 optimal_cost.end());
+  int min_index = std::distance(optimal_cost.begin(), min_it);
 
   // If all three costs are high, we believe it's going through impact event (
   // big ground contact point acceleration),
   // and we assume there is no support legs because we don't want moving feet
   // to mess up EKF.
-  bool qp_informative = !((optimal_cost_->at(0) >= cost_threshold_ekf_) &&
-                          (optimal_cost_->at(1) >= cost_threshold_ekf_) &&
-                          (optimal_cost_->at(2) >= cost_threshold_ekf_));
+  bool qp_informative = !((optimal_cost.at(0) >= cost_threshold_ekf_) &&
+                          (optimal_cost.at(1) >= cost_threshold_ekf_) &&
+                          (optimal_cost.at(2) >= cost_threshold_ekf_));
   bool double_contact_qp = (min_index == 0);
   bool left_contact_qp = (min_index == 1);
   bool right_contact_qp = (min_index == 2);
@@ -943,8 +944,8 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
 
   if (print_info_to_terminal_) {
     cout << "optimal_cost[0][1][2], threshold = " <<
-         optimal_cost_->at(0) << ", " << optimal_cost_->at(1) << ", " <<
-         optimal_cost_->at(2) << ", " << cost_threshold_ekf_ << endl;
+         optimal_cost.at(0) << ", " << optimal_cost.at(1) << ", " <<
+         optimal_cost.at(2) << ", " << cost_threshold_ekf_ << endl;
 
     cout << "left/right knee spring, threshold = " <<
          left_knee_spring << ", " << right_knee_spring << ", " <<
@@ -981,6 +982,7 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
 /// before calling EstimateContactForController().
 void CassieRbtStateEstimator::EstimateContactForController(
     const OutputVector<double>& output,
+    const std::vector<double>& optimal_cost,
     int* left_contact, int* right_contact) const {
   // Initialize
   *left_contact = 0;
@@ -990,15 +992,15 @@ void CassieRbtStateEstimator::EstimateContactForController(
   // The vector optimal_cost has double support, left support and right support
   // costs in order. The corresponding indices are 0, 1, 2.
   // Here we get the index of min of left and right support costs.
-  auto min_it = std::min_element(std::next(optimal_cost_->begin(), 0),
-      optimal_cost_->end());
-  int min_index = std::distance(optimal_cost_->begin(), min_it);
+  auto min_it = std::min_element(std::next(optimal_cost.begin(), 0),
+      optimal_cost.end());
+  int min_index = std::distance(optimal_cost.begin(), min_it);
 
   // If all three costs are high, we believe it's going through impact event.
   // Since it's not very informative, we don't set any contact.
-  bool qp_informative = !((optimal_cost_->at(0) >= cost_threshold_ctrl_) &&
-                          (optimal_cost_->at(1) >= cost_threshold_ctrl_) &&
-                          (optimal_cost_->at(2) >= cost_threshold_ctrl_));
+  bool qp_informative = !((optimal_cost.at(0) >= cost_threshold_ctrl_) &&
+                          (optimal_cost.at(1) >= cost_threshold_ctrl_) &&
+                          (optimal_cost.at(2) >= cost_threshold_ctrl_));
   bool double_contact_qp = (min_index == 0);
   bool left_contact_qp = (min_index == 1);
   bool right_contact_qp = (min_index == 2);
@@ -1188,14 +1190,18 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     // Estimate feet contacts
     int left_contact = 0;
     int right_contact = 0;
-    if (test_with_ground_truth_state_){
-      UpdateContactEstimationCosts(output_gt, dt,
-          &(state->get_mutable_discrete_state()));
-      EstimateContactForEkf(output_gt, &left_contact, &right_contact);
+    std::vector<double> optimal_cost(3, 0.0);
+    if (test_with_ground_truth_state_) {
+      UpdateContactEstimationCosts(
+          output_gt, dt, &(state->get_mutable_discrete_state()), &optimal_cost);
+      EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
+                            &right_contact);
     } else {
       UpdateContactEstimationCosts(filtered_output, dt,
-          &(state->get_mutable_discrete_state()));
-      EstimateContactForEkf(filtered_output, &left_contact, &right_contact);
+                                   &(state->get_mutable_discrete_state()),
+                                   &optimal_cost);
+      EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
+                            &right_contact);
     }
 
     std::vector<std::pair<int, bool>> contacts;

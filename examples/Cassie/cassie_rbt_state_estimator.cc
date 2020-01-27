@@ -966,10 +966,6 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
 /// Output: left contact `left_contact` and right contact `right_contact` that
 ///  indicate if the corresponding foot is in contact with the ground
 ///
-/// Assumptions:
-///  1. the swing leg doesn't stop during single support
-///  2. flight mode is not present during the gait
-///
 /// Algorithm:
 ///  The contact is estimated based on
 ///   1. compression in the spring
@@ -978,10 +974,8 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
 ///  If the compression in the left (right) heel/ankle spring is more than the
 ///  set threshold, the left (right) foot is estimated to be in contact with
 ///  the ground.
-///  Additionally, the optimal cost from the optimization is used to refine
-///  the estimation from the spring.
 ///  During impact, both the legs have some non-zero acceleration and hence the
-///  optimal costs will all be high. This case is assumed to be double stance.
+///  optimal costs will all be high.
 ///
 /// Warning: UpdateContactEstimationCosts() should be called to update the costs
 /// before calling EstimateContactForController().
@@ -1000,18 +994,14 @@ void CassieRbtStateEstimator::EstimateContactForController(
       optimal_cost_->end());
   int min_index = std::distance(optimal_cost_->begin(), min_it);
 
-  // If all three costs are high, we believe it's going through impact event,
-  // and we assume it's double support. (Therefore, it won't predict the case
-  // where the robot transition from flight phase to single support. It'd say
-  // it's double support.)
+  // If all three costs are high, we believe it's going through impact event.
+  // Since it's not very informative, we don't set any contact.
   bool qp_informative = !((optimal_cost_->at(0) >= cost_threshold_ctrl_) &&
                           (optimal_cost_->at(1) >= cost_threshold_ctrl_) &&
                           (optimal_cost_->at(2) >= cost_threshold_ctrl_));
   bool double_contact_qp = (min_index == 0);
   bool left_contact_qp = (min_index == 1);
   bool right_contact_qp = (min_index == 2);
-  // TODO(yminchen): ask nanda why we didn't set it to be double support when
-  //  the costs are all high
 
   // Contact estimation based on spring deflection information
   // We say a foot is in contact with the ground if either knee OR heel spring

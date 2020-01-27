@@ -105,7 +105,6 @@ TEST_F(CassieRbtStateEstimatorTest, solveFourbarLinkageTest) {
 // configuration of the robot in double stance.
 // This case is chosen in such a way that the stance can be estimated using just
 // springs.
-// TODO (yminchen): Ask nanda where are these three data points on the plot?
 TEST_F(ContactEstimationTest, DoubleSupportContactEstimationTest) {
   VectorXd q(tree_.get_num_positions());
   VectorXd v(tree_.get_num_velocities());
@@ -153,6 +152,8 @@ TEST_F(ContactEstimationTest, DoubleSupportContactEstimationTest) {
 // Left support contact estimation test
 // Checks if the contactEstimation returns the correct contacts for a
 // configuration of the robot in left stance.
+// This case is chosen in such a way that the stance can be estimated using just
+// springs.
 TEST_F(ContactEstimationTest, LeftSupportContactEstimationTest) {
   VectorXd q(tree_.get_num_positions());
   VectorXd v(tree_.get_num_velocities());
@@ -199,6 +200,8 @@ TEST_F(ContactEstimationTest, LeftSupportContactEstimationTest) {
 // Right support contact estimation test
 // Checks if the contactEstimation returns the correct contacts for a
 // configuration of the robot in right stance.
+// This case is chosen in such a way that the stance can be estimated using just
+// springs.
 TEST_F(ContactEstimationTest, RightSupportContactEstimationTest) {
   VectorXd q(tree_.get_num_positions());
   VectorXd v(tree_.get_num_velocities());

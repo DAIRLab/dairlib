@@ -86,9 +86,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const RigidBodyTree<double>& tree_;
   const bool is_floating_base_;
 
-  std::map<std::string, int> position_index_map_;
-  std::map<std::string, int> velocity_index_map_;
-  std::map<std::string, int> actuator_index_map_;
+  std::map<std::string, int> position_idx_map_;
+  std::map<std::string, int> velocity_idx_map_;
+  std::map<std::string, int> actuator_idx_map_;
 
   // Body indices
   int left_thigh_idx_;
@@ -154,7 +154,10 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   // Walking: https://drive.google.com/open?id=1vMIKAed8RHIFF1fbjTqBHtbgkPrHuzkS
   //          https://drive.google.com/open?id=1UqiZSXhd9-4A6YwHArh-xPBMa16RyUGm
   // Spring deflection of standing:
-  //
+  //     Knee ~-0.032
+  //     Heel ~???
+  //          https://drive.google.com/file/d/1o7QS4ZksU91EBIpwtNnKpunob93BKiX_
+  //          https://drive.google.com/file/d/1mlDzi0fa-YHopeRHaa-z88fPGuI2Aziv
   const double cost_threshold_ctrl_ = 200;
   const double cost_threshold_ekf_ = 200;
   const double knee_spring_threshold_ctrl_ = -0.015;

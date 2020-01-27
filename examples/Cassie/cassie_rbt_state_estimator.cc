@@ -1,5 +1,3 @@
-// TODO(yminchen): ask nanda why heel_spring_threshold_ctrl_ is 0.03?
-
 #include "examples/Cassie/cassie_rbt_state_estimator.h"
 #include <math.h>
 #include <utility>
@@ -54,9 +52,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
       &CassieRbtStateEstimator::CopyStateOut);
 
   // Initialize index maps
-  actuator_index_map_ = multibody::makeNameToActuatorsMap(tree);
-  position_index_map_ = multibody::makeNameToPositionsMap(tree);
-  velocity_index_map_ = multibody::makeNameToVelocitiesMap(tree);
+  actuator_idx_map_ = multibody::makeNameToActuatorsMap(tree);
+  position_idx_map_ = multibody::makeNameToPositionsMap(tree);
+  velocity_idx_map_ = multibody::makeNameToVelocitiesMap(tree);
 
   // Initialize body indices
   left_thigh_idx_ = GetBodyIndexFromName(tree, "thigh_left");
@@ -326,26 +324,26 @@ void CassieRbtStateEstimator::AssignImuValueToOutputVector(
 void CassieRbtStateEstimator::AssignActuationFeedbackToOutputVector(
     const cassie_out_t& cassie_out, OutputVector<double>* output) const {
   // Copy actuators
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_roll_left_motor"),
+  output->SetEffortAtIndex(actuator_idx_map_.at("hip_roll_left_motor"),
                            cassie_out.leftLeg.hipRollDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_yaw_left_motor"),
+  output->SetEffortAtIndex(actuator_idx_map_.at("hip_yaw_left_motor"),
                            cassie_out.leftLeg.hipYawDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_pitch_left_motor"),
+  output->SetEffortAtIndex(actuator_idx_map_.at("hip_pitch_left_motor"),
                            cassie_out.leftLeg.hipPitchDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("knee_left_motor"),
+  output->SetEffortAtIndex(actuator_idx_map_.at("knee_left_motor"),
                            cassie_out.leftLeg.kneeDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("toe_left_motor"),
+  output->SetEffortAtIndex(actuator_idx_map_.at("toe_left_motor"),
                            cassie_out.leftLeg.footDrive.torque);
 
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_roll_right_motor"),
+  output->SetEffortAtIndex(actuator_idx_map_.at("hip_roll_right_motor"),
                            cassie_out.rightLeg.hipRollDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_yaw_right_motor"),
+  output->SetEffortAtIndex(actuator_idx_map_.at("hip_yaw_right_motor"),
                            cassie_out.rightLeg.hipYawDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("hip_pitch_right_motor"),
+  output->SetEffortAtIndex(actuator_idx_map_.at("hip_pitch_right_motor"),
                            cassie_out.rightLeg.hipPitchDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("knee_right_motor"),
+  output->SetEffortAtIndex(actuator_idx_map_.at("knee_right_motor"),
                            cassie_out.rightLeg.kneeDrive.torque);
-  output->SetEffortAtIndex(actuator_index_map_.at("toe_right_motor"),
+  output->SetEffortAtIndex(actuator_idx_map_.at("toe_right_motor"),
                            cassie_out.rightLeg.footDrive.torque);
 }
 
@@ -354,72 +352,72 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   // Copy the robot state excluding floating base
   // TODO(yuming): check what cassie_out.leftLeg.footJoint.position is.
   // Similarly, the other leg and the velocity of these joints.
-  output->SetPositionAtIndex(position_index_map_.at("hip_roll_left"),
+  output->SetPositionAtIndex(position_idx_map_.at("hip_roll_left"),
                              cassie_out.leftLeg.hipRollDrive.position);
-  output->SetPositionAtIndex(position_index_map_.at("hip_yaw_left"),
+  output->SetPositionAtIndex(position_idx_map_.at("hip_yaw_left"),
                              cassie_out.leftLeg.hipYawDrive.position);
-  output->SetPositionAtIndex(position_index_map_.at("hip_pitch_left"),
+  output->SetPositionAtIndex(position_idx_map_.at("hip_pitch_left"),
                              cassie_out.leftLeg.hipPitchDrive.position);
-  output->SetPositionAtIndex(position_index_map_.at("knee_left"),
+  output->SetPositionAtIndex(position_idx_map_.at("knee_left"),
                              cassie_out.leftLeg.kneeDrive.position);
-  output->SetPositionAtIndex(position_index_map_.at("toe_left"),
+  output->SetPositionAtIndex(position_idx_map_.at("toe_left"),
                              cassie_out.leftLeg.footDrive.position);
-  output->SetPositionAtIndex(position_index_map_.at("knee_joint_left"),
+  output->SetPositionAtIndex(position_idx_map_.at("knee_joint_left"),
                              cassie_out.leftLeg.shinJoint.position);
-  output->SetPositionAtIndex(position_index_map_.at("ankle_joint_left"),
+  output->SetPositionAtIndex(position_idx_map_.at("ankle_joint_left"),
                              cassie_out.leftLeg.tarsusJoint.position);
-  output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_left"),
+  output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_left"),
                              0.0);
 
-  output->SetPositionAtIndex(position_index_map_.at("hip_roll_right"),
+  output->SetPositionAtIndex(position_idx_map_.at("hip_roll_right"),
                              cassie_out.rightLeg.hipRollDrive.position);
-  output->SetPositionAtIndex(position_index_map_.at("hip_yaw_right"),
+  output->SetPositionAtIndex(position_idx_map_.at("hip_yaw_right"),
                              cassie_out.rightLeg.hipYawDrive.position);
-  output->SetPositionAtIndex(position_index_map_.at("hip_pitch_right"),
+  output->SetPositionAtIndex(position_idx_map_.at("hip_pitch_right"),
                              cassie_out.rightLeg.hipPitchDrive.position);
-  output->SetPositionAtIndex(position_index_map_.at("knee_right"),
+  output->SetPositionAtIndex(position_idx_map_.at("knee_right"),
                              cassie_out.rightLeg.kneeDrive.position);
-  output->SetPositionAtIndex(position_index_map_.at("toe_right"),
+  output->SetPositionAtIndex(position_idx_map_.at("toe_right"),
                              cassie_out.rightLeg.footDrive.position);
-  output->SetPositionAtIndex(position_index_map_.at("knee_joint_right"),
+  output->SetPositionAtIndex(position_idx_map_.at("knee_joint_right"),
                              cassie_out.rightLeg.shinJoint.position);
-  output->SetPositionAtIndex(position_index_map_.at("ankle_joint_right"),
+  output->SetPositionAtIndex(position_idx_map_.at("ankle_joint_right"),
                              cassie_out.rightLeg.tarsusJoint.position);
-  output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_right"),
+  output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_right"),
                              0.0);
 
-  output->SetVelocityAtIndex(velocity_index_map_.at("hip_roll_leftdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("hip_roll_leftdot"),
                              cassie_out.leftLeg.hipRollDrive.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("hip_yaw_leftdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("hip_yaw_leftdot"),
                              cassie_out.leftLeg.hipYawDrive.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("hip_pitch_leftdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("hip_pitch_leftdot"),
                              cassie_out.leftLeg.hipPitchDrive.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("knee_leftdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("knee_leftdot"),
                              cassie_out.leftLeg.kneeDrive.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("toe_leftdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("toe_leftdot"),
                              cassie_out.leftLeg.footDrive.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("knee_joint_leftdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("knee_joint_leftdot"),
                              cassie_out.leftLeg.shinJoint.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("ankle_joint_leftdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_joint_leftdot"),
                              cassie_out.leftLeg.tarsusJoint.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("ankle_spring_joint_leftdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_spring_joint_leftdot"),
                              0.0);
 
-  output->SetVelocityAtIndex(velocity_index_map_.at("hip_roll_rightdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("hip_roll_rightdot"),
                              cassie_out.rightLeg.hipRollDrive.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("hip_yaw_rightdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("hip_yaw_rightdot"),
                              cassie_out.rightLeg.hipYawDrive.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("hip_pitch_rightdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("hip_pitch_rightdot"),
                              cassie_out.rightLeg.hipPitchDrive.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("knee_rightdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("knee_rightdot"),
                              cassie_out.rightLeg.kneeDrive.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("toe_rightdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("toe_rightdot"),
                              cassie_out.rightLeg.footDrive.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("knee_joint_rightdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("knee_joint_rightdot"),
                              cassie_out.rightLeg.shinJoint.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("ankle_joint_rightdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_joint_rightdot"),
                              cassie_out.rightLeg.tarsusJoint.velocity);
-  output->SetVelocityAtIndex(velocity_index_map_.at("ankle_spring_joint_rightdot"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_spring_joint_rightdot"),
                              0.0);
 
   // Solve fourbar linkage for heel spring positions
@@ -436,9 +434,9 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
     q[3] =  1;
   }
   solveFourbarLinkage(q, &left_heel_spring, &right_heel_spring);
-  output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_left"),
+  output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_left"),
                              left_heel_spring);
-  output->SetPositionAtIndex(position_index_map_.at("ankle_spring_joint_right"),
+  output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_right"),
                              right_heel_spring);
 }
 
@@ -446,20 +444,20 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
 void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
     const VectorXd& est_fb_state, OutputVector<double>* output) const {
   // TODO(yminchen): Joints names need to be changed when we move to MBP
-  output->SetPositionAtIndex(position_index_map_.at("base_x"), est_fb_state(0));
-  output->SetPositionAtIndex(position_index_map_.at("base_y"), est_fb_state(1));
-  output->SetPositionAtIndex(position_index_map_.at("base_z"), est_fb_state(2));
-  output->SetPositionAtIndex(position_index_map_.at("base_qw"), est_fb_state(3));
-  output->SetPositionAtIndex(position_index_map_.at("base_qx"), est_fb_state(4));
-  output->SetPositionAtIndex(position_index_map_.at("base_qy"), est_fb_state(5));
-  output->SetPositionAtIndex(position_index_map_.at("base_qz"), est_fb_state(6));
+  output->SetPositionAtIndex(position_idx_map_.at("base_x"), est_fb_state(0));
+  output->SetPositionAtIndex(position_idx_map_.at("base_y"), est_fb_state(1));
+  output->SetPositionAtIndex(position_idx_map_.at("base_z"), est_fb_state(2));
+  output->SetPositionAtIndex(position_idx_map_.at("base_qw"), est_fb_state(3));
+  output->SetPositionAtIndex(position_idx_map_.at("base_qx"), est_fb_state(4));
+  output->SetPositionAtIndex(position_idx_map_.at("base_qy"), est_fb_state(5));
+  output->SetPositionAtIndex(position_idx_map_.at("base_qz"), est_fb_state(6));
 
-  output->SetVelocityAtIndex(velocity_index_map_.at("base_wx"), est_fb_state(7));
-  output->SetVelocityAtIndex(velocity_index_map_.at("base_wy"), est_fb_state(8));
-  output->SetVelocityAtIndex(velocity_index_map_.at("base_wz"), est_fb_state(9));
-  output->SetVelocityAtIndex(velocity_index_map_.at("base_vx"), est_fb_state(10));
-  output->SetVelocityAtIndex(velocity_index_map_.at("base_vy"), est_fb_state(11));
-  output->SetVelocityAtIndex(velocity_index_map_.at("base_vz"), est_fb_state(12));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wx"), est_fb_state(7));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wy"), est_fb_state(8));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wz"), est_fb_state(9));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vx"), est_fb_state(10));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vy"), est_fb_state(11));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vz"), est_fb_state(12));
 }
 
 
@@ -853,7 +851,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 /// The estimated state would get very inaccurate if the stance foot is moving.
 ///
 /// Input:
-///  - OutputVector `output` containing the state, input and imu accleration of
+///  - OutputVector `output` containing the state, input and imu acceleration of
 ///    the robot
 /// Output: left contact `left_contact` and right contact `right_contact` that
 ///  indicate if the corresponding foot is in contact with the ground
@@ -869,60 +867,93 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
 ///  During impact, both the legs have some non-zero acceleration and hence the
 ///  optimal costs will all be high. This case is assumed to be *no* stance.
 ///
-/// Warnnig: UpdateContactEstimationCosts() should be called to update the costs
+/// Observation:
+///  Using both spring and Qp results in better prediction.
+///   1. Around impact events, Qp's can sometimes predict correctly, whereas
+///      the springs can not.
+///   2. If the swing foot is not accelerating and stopping in the air, then QP
+///      might predict double support. In this case, spring can predict it
+///      better.
+///  The above two cases are not comprehensive. E.g. there is another extreme
+///  case where during single support phase, the double support cost suddenly
+///  became the lowest cost among the three (and at the next time step, the cost
+///  went back) Maybe it came from instability of the old walking controller.
+///
+/// Warning: UpdateContactEstimationCosts() should be called to update the costs
 /// before calling EstimateContactForEkf().
 void CassieRbtStateEstimator::EstimateContactForEkf(
     const OutputVector<double>& output,
     int* left_contact, int* right_contact) const {
+  // Initialize
+  *left_contact = 0;
+  *right_contact = 0;
+
+  // Estimate contact based on optimization results
+  // The vector optimal_cost has double support, left support and right support
+  // costs in order. The corresponding indices are 0, 1, 2.
+  // Here we get the index of min of left and right support costs.
+  auto min_it = std::min_element(std::next(optimal_cost_->begin(), 1),
+                                 optimal_cost_->end());
+  int min_index = std::distance(optimal_cost_->begin(), min_it);
+
   // If all three costs are high, we believe it's going through impact event (
   // big ground contact point acceleration),
   // and we assume there is no support legs because we don't want moving feet
   // to mess up EKF.
-  if ((optimal_cost_->at(0) >= cost_threshold_ekf_) &&
-      (optimal_cost_->at(1) >= cost_threshold_ekf_) &&
-      (optimal_cost_->at(2) >= cost_threshold_ekf_)) {
-    *left_contact = 0;
-    *right_contact = 0;
-  } else {
-    if (print_info_to_terminal_) {
-      cout << "optimal_cost[0][1][2], threshold = " <<
-          optimal_cost_->at(0) << ", " << optimal_cost_->at(1) << ", " <<
-          optimal_cost_->at(2) << ", " << cost_threshold_ekf_ << endl;
-      cout << "left/right contacts = " <<
-          *left_contact << ", " << *right_contact << endl;
-    }
+  bool qp_informative = !((optimal_cost_->at(0) >= cost_threshold_ekf_) &&
+                          (optimal_cost_->at(1) >= cost_threshold_ekf_) &&
+                          (optimal_cost_->at(2) >= cost_threshold_ekf_));
+  bool double_contact_qp = (min_index == 0);
+  bool left_contact_qp = (min_index == 1);
+  bool right_contact_qp = (min_index == 2);
 
-    // Only use spring to determine the contact
-    // We say a foot is in contact with the ground if knee and heel spring
-    // deflections are *both* over some thresholds. We don't update anything
-    // if it's under the threshold.
-    double left_knee_spring = output.GetPositionAtIndex(
-        position_index_map_.at("knee_joint_left"));
-    double right_knee_spring = output.GetPositionAtIndex(
-        position_index_map_.at("knee_joint_right"));
-    double left_heel_spring = output.GetPositionAtIndex(
-        position_index_map_.at("ankle_spring_joint_left"));
-    double right_heel_spring = output.GetPositionAtIndex(
-        position_index_map_.at("ankle_spring_joint_right"));
-    if (left_knee_spring < knee_spring_threshold_ekf_ &&
-          left_heel_spring < heel_spring_threshold_ekf_) {
-      *left_contact = 1;
-    }
-    if (right_knee_spring < knee_spring_threshold_ekf_ &&
-          right_heel_spring < heel_spring_threshold_ekf_) {
-      *right_contact = 1;
-    }
+  // Use spring as a necessary guard to determine the contact (that is, in the
+  // case where QP says right stance but left spring deflection is not big
+  // enough, the algorithm doesn't set the phase to be right support phase)
+  // The reason is that the above case might happen when the rear contact
+  // point is on the ground but not the front contact point.
 
-    if (print_info_to_terminal_) {
-      cout << "left/right knee spring, threshold = " <<
-          left_knee_spring << ", " << right_knee_spring << ", " <<
-          knee_spring_threshold_ekf_ << endl;
-      cout << "left/right heel spring, threshold = " <<
-          left_heel_spring << ", " << right_heel_spring << ", " <<
-          heel_spring_threshold_ekf_ << endl;
-      cout << "left/right contacts = " <<
-          *left_contact << ", " << *right_contact << endl;
-    }
+  // We say a foot is in contact with the ground if knee and heel spring
+  // deflections are *both* over some thresholds. We don't update anything
+  // if it's under the threshold.
+  const double & left_knee_spring = output.GetPositionAtIndex(
+      position_idx_map_.at("knee_joint_left"));
+  const double & right_knee_spring = output.GetPositionAtIndex(
+      position_idx_map_.at("knee_joint_right"));
+  const double & left_heel_spring = output.GetPositionAtIndex(
+      position_idx_map_.at("ankle_spring_joint_left"));
+  const double & right_heel_spring = output.GetPositionAtIndex(
+      position_idx_map_.at("ankle_spring_joint_right"));
+  bool left_contact_spring =
+      (left_knee_spring < knee_spring_threshold_ekf_ &&
+          left_heel_spring < heel_spring_threshold_ekf_);
+  bool right_contact_spring =
+      (right_knee_spring < knee_spring_threshold_ekf_ &&
+          right_heel_spring < heel_spring_threshold_ekf_);
+
+  // Determine contacts based on both spring deflation and QP cost
+  if (qp_informative && (double_contact_qp || left_contact_qp) &&
+      left_contact_spring) {
+    *left_contact = 1;
+  }
+  if (qp_informative && (double_contact_qp || right_contact_qp) &&
+      right_contact_spring) {
+    *right_contact = 1;
+  }
+
+  if (print_info_to_terminal_) {
+    cout << "optimal_cost[0][1][2], threshold = " <<
+         optimal_cost_->at(0) << ", " << optimal_cost_->at(1) << ", " <<
+         optimal_cost_->at(2) << ", " << cost_threshold_ekf_ << endl;
+
+    cout << "left/right knee spring, threshold = " <<
+         left_knee_spring << ", " << right_knee_spring << ", " <<
+         knee_spring_threshold_ekf_ << endl;
+    cout << "left/right heel spring, threshold = " <<
+         left_heel_spring << ", " << right_heel_spring << ", " <<
+         heel_spring_threshold_ekf_ << endl;
+    cout << "left/right contacts = " <<
+         *left_contact << ", " << *right_contact << endl;
   }
 }
 
@@ -930,7 +961,7 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
 /// EstimateContactForController(). Less conservative.
 ///
 /// Input:
-///  - OutputVector `output` containing the state, input and imu accleration of
+///  - OutputVector `output` containing the state, input and imu acceleration of
 ///    the robot
 /// Output: left contact `left_contact` and right contact `right_contact` that
 ///  indicate if the corresponding foot is in contact with the ground
@@ -947,16 +978,20 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
 ///  If the compression in the left (right) heel/ankle spring is more than the
 ///  set threshold, the left (right) foot is estimated to be in contact with
 ///  the ground.
-///  Additionally, the optimal cost from the optimization is used to augument
+///  Additionally, the optimal cost from the optimization is used to refine
 ///  the estimation from the spring.
 ///  During impact, both the legs have some non-zero acceleration and hence the
 ///  optimal costs will all be high. This case is assumed to be double stance.
 ///
-/// Warnnig: UpdateContactEstimationCosts() should be called to update the costs
+/// Warning: UpdateContactEstimationCosts() should be called to update the costs
 /// before calling EstimateContactForController().
 void CassieRbtStateEstimator::EstimateContactForController(
     const OutputVector<double>& output,
     int* left_contact, int* right_contact) const {
+  // Initialize
+  *left_contact = 0;
+  *right_contact = 0;
+
   // Estimate contact based on optimization results
   // The vector optimal_cost has double support, left support and right support
   // costs in order. The corresponding indices are 0, 1, 2.
@@ -969,35 +1004,40 @@ void CassieRbtStateEstimator::EstimateContactForController(
   // and we assume it's double support. (Therefore, it won't predict the case
   // where the robot transition from flight phase to single support. It'd say
   // it's double support.)
-  if ((optimal_cost_->at(0) >= cost_threshold_ctrl_) &&
-      (optimal_cost_->at(1) >= cost_threshold_ctrl_) &&
-      (optimal_cost_->at(2) >= cost_threshold_ctrl_)) {
-    *left_contact = 0;
-    *right_contact = 0;
-  } else if (min_index == 1) {
-    *left_contact = 1;
-  } else if (min_index == 2) {
-    *right_contact = 1;
-  }
+  bool qp_informative = !((optimal_cost_->at(0) >= cost_threshold_ctrl_) &&
+                          (optimal_cost_->at(1) >= cost_threshold_ctrl_) &&
+                          (optimal_cost_->at(2) >= cost_threshold_ctrl_));
+  bool double_contact_qp = (min_index == 0);
+  bool left_contact_qp = (min_index == 1);
+  bool right_contact_qp = (min_index == 2);
+  // TODO(yminchen): ask nanda why we didn't set it to be double support when
+  //  the costs are all high
 
-  // Update contact estimation based on spring deflection information
-  // We say a foot is in contact with the ground if either knee or heel spring
+  // Contact estimation based on spring deflection information
+  // We say a foot is in contact with the ground if either knee OR heel spring
   // deflection is over a threshold. We don't update anything if it's under
   // the threshold.
-  double left_knee_spring = output.GetPositionAtIndex(
-      position_index_map_.at("knee_joint_left"));
-  double right_knee_spring = output.GetPositionAtIndex(
-      position_index_map_.at("knee_joint_right"));
-  double left_heel_spring = output.GetPositionAtIndex(
-      position_index_map_.at("ankle_spring_joint_left"));
-  double right_heel_spring = output.GetPositionAtIndex(
-      position_index_map_.at("ankle_spring_joint_right"));
-  if (left_knee_spring < knee_spring_threshold_ctrl_ ||
-        left_heel_spring < heel_spring_threshold_ctrl_) {
+  const double & left_knee_spring = output.GetPositionAtIndex(
+      position_idx_map_.at("knee_joint_left"));
+  const double & right_knee_spring = output.GetPositionAtIndex(
+      position_idx_map_.at("knee_joint_right"));
+  const double & left_heel_spring = output.GetPositionAtIndex(
+      position_idx_map_.at("ankle_spring_joint_left"));
+  const double& right_heel_spring = output.GetPositionAtIndex(
+      position_idx_map_.at("ankle_spring_joint_right"));
+  bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ctrl_ ||
+                              left_heel_spring < heel_spring_threshold_ctrl_);
+  bool right_contact_spring =
+      (right_knee_spring < knee_spring_threshold_ctrl_ ||
+       right_heel_spring < heel_spring_threshold_ctrl_);
+
+  // Determine contacts based on both spring deflation and QP cost
+  if ((qp_informative && (double_contact_qp || left_contact_qp)) ||
+      left_contact_spring) {
     *left_contact = 1;
   }
-  if (right_knee_spring < knee_spring_threshold_ctrl_ ||
-        right_heel_spring < heel_spring_threshold_ctrl_) {
+  if ((qp_informative && (double_contact_qp || right_contact_qp)) ||
+      right_contact_spring) {
     *right_contact = 1;
   }
 }
@@ -1053,7 +1093,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       // is not triggerred by CASSIE_STATE message.
       // This wouldn't be an issue when you don't use ground truth state.
       if (output_gt.GetPositions().head(7).norm() == 0){
-        output_gt.SetPositionAtIndex(position_index_map_.at("base_qw"), 1);
+        output_gt.SetPositionAtIndex(position_idx_map_.at("base_qw"), 1);
       }
 
       // Get kinematics cache for ground truth

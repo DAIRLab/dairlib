@@ -153,7 +153,7 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     // MathematicalProgram
     quadprog_ = std::make_unique<drake::solvers::MathematicalProgram>();
     // Add variables to the optimization program
-    double n_v = tree_.get_num_velocities();
+    int n_v = tree_.get_num_velocities();
     ddq_ = quadprog_->NewContinuousVariables(n_v, "ddq");
     lambda_b_ = quadprog_->NewContinuousVariables(2, "lambda_b");
     lambda_cl_ = quadprog_->NewContinuousVariables(6, "lambda_cl");
@@ -206,10 +206,10 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 ///
 /// Algorithm:
 ///  We want to find where the achilles rod and the heel spring intersect.
-///  The achilles rod is attched to the thigh with a ball joint, and the heel
+///  The achilles rod is attached to the thigh with a ball joint, and the heel
 ///  spring is fixed to the heel. The heel spring (rotational spring) can
 ///  deflect in only one dimension, meaning it rotates around the spring base
-///  where the spring is attched to the heel.
+///  where the spring is attached to the heel.
 ///  Let the ball joint position in the world frame to be r_ball_joint, and the
 ///  spring base position to be r_heel_spring_base.
 ///  Let the length of the rod to be rod_length_, and the spring length to be
@@ -218,11 +218,11 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 ///  and radius rod_length_) and a circle C_s (with origin r_heel_spring_base
 ///  and radius spring_length). The way we solve it is that we convert the 3D
 ///  problem into a 2D problem. Let PL_C_s to be the plane where C_s lies.
-///  The interection of S_r and PL_C_s is another circle. Let's call this circle
-///  C_r. We can derived C_r's origin by projecting S_r's origin onto PL_C_s,
-///  and we can derive C_r's radius by trigonometry.
+///  The intersection of S_r and PL_C_s is another circle. Let's call this
+///  circle C_r. We can derived C_r's origin by projecting S_r's origin onto
+///  PL_C_s, and we can derive C_r's radius by trigonometry.
 ///  There will be two intersections between C_r and C_s, and only one of the
-///  two soluations is physically feasible for Cassie. Let's call this feasible
+///  two solutions is physically feasible for Cassie. Let's call this feasible
 ///  solution p.
 ///  Given p and the frame of the spring without deflection, we can calculate
 ///  the magnitude/direction of spring deflection.
@@ -467,7 +467,7 @@ void CassieRbtStateEstimator::AssignFloatingBaseStateToOutputVector(
 /// linear acceleration.
 ///
 /// Input:
-///  - OutputVector `output` containing the state, input and imu accleration of
+///  - OutputVector `output` containing the state, input and imu acceleration of
 ///    the robot
 ///  - time `dt` elapsed between previous iteration and current iteration
 ///  - discretevalues `discrete_state` to store states related to contact
@@ -704,7 +704,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
       drake::solvers::Solve(*quadprog_);
 
   if (!result_left.is_success()) {
-    // Push infinity into optimal_costv vector if the optimization fails
+    // Push infinity into optimal_cost vector if the optimization fails
     optimal_cost->at(1) = std::numeric_limits<double>::infinity();
 
     // Initialize the optimization with zero at the next time step
@@ -752,7 +752,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
   }
 
   // Mathematical program - right contact
-  // Equality constrtaint
+  // Equality constraint
   fourbar_constraint_->UpdateCoefficients(Jb, -1*Jb_dot_times_v);
   left_contact_constraint_->UpdateCoefficients(
       MatrixXd::Zero(6, n_v + 6), VectorXd::Zero(6, 1));
@@ -1321,7 +1321,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 /// Workhorse state estimation function. Given a `cassie_out_t`, compute the
 /// estimated state as an OutputVector
 /// Since it needs to map from a struct to a vector, and no assumptions on the
-/// ordering of the vector are made, utilizies index maps to make this mapping.
+/// ordering of the vector are made, utilizes index maps to make this mapping.
 void CassieRbtStateEstimator::CopyStateOut(
     const Context<double>& context, OutputVector<double>* output) const {
   const auto& cassie_out = this->EvalAbstractInput(

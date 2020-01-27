@@ -972,8 +972,8 @@ void CassieRbtStateEstimator::EstimateContactForController(
   if ((optimal_cost_->at(0) >= cost_threshold_ctrl_) &&
       (optimal_cost_->at(1) >= cost_threshold_ctrl_) &&
       (optimal_cost_->at(2) >= cost_threshold_ctrl_)) {
-    *left_contact = 1;
-    *right_contact = 1;
+    *left_contact = 0;
+    *right_contact = 0;
   } else if (min_index == 1) {
     *left_contact = 1;
   } else if (min_index == 2) {

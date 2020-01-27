@@ -892,7 +892,7 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
   // The vector optimal_cost has double support, left support and right support
   // costs in order. The corresponding indices are 0, 1, 2.
   // Here we get the index of min of left and right support costs.
-  auto min_it = std::min_element(std::next(optimal_cost_->begin(), 1),
+  auto min_it = std::min_element(std::next(optimal_cost_->begin(), 0),
                                  optimal_cost_->end());
   int min_index = std::distance(optimal_cost_->begin(), min_it);
 
@@ -996,7 +996,7 @@ void CassieRbtStateEstimator::EstimateContactForController(
   // The vector optimal_cost has double support, left support and right support
   // costs in order. The corresponding indices are 0, 1, 2.
   // Here we get the index of min of left and right support costs.
-  auto min_it = std::min_element(std::next(optimal_cost_->begin(), 1),
+  auto min_it = std::min_element(std::next(optimal_cost_->begin(), 0),
       optimal_cost_->end());
   int min_index = std::distance(optimal_cost_->begin(), min_it);
 

@@ -239,9 +239,9 @@ int doMain(int argc, char* argv[]) {
   osc->AddTrackingData(&com_tracking_data);
 
   // ***** Torso balance term ******
-  double w_heading = 600;
-  double k_p_torso = 64;
-  double k_d_torso = 16;
+  double w_heading = 150;
+  double k_p_torso = 100;
+  double k_d_torso = 20;
   Matrix3d W_pelvis = MatrixXd::Identity(3, 3);
   W_pelvis(0, 0) = 0;
   W_pelvis(1, 1) = w_heading;

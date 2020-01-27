@@ -86,7 +86,8 @@ EventStatus CoMTraj::DiscreteVariableUpdate(
     multibody::SetZeroQuaternionToIdentity(&q);
     cache.initialize(q, v);
     tree_.doKinematics(cache);
-    com_x_offset(0) = tree_.centerOfMass(cache)(0);
+    com_x_offset(0) = tree_.centerOfMass(cache)(0) - crouch_traj_.value
+        (crouch_traj_.end_time())(0);
     std::cout << "x offset: " << com_x_offset(0) << std::endl;
   }
   return EventStatus::Succeeded();

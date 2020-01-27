@@ -219,14 +219,15 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   trajopt->AddLinearConstraint(x_mid_point(positions_map["planar_z"]) ==
                                (x0(positions_map["planar_z"]) + FLAGS_height));
   trajopt->AddLinearConstraint(xf(positions_map["planar_z"]) ==
-                               (x0(positions_map["planar_z"])));
+                               (x0(positions_map["planar_z"])) - 0.025);
+  trajopt->AddLinearConstraint(xf(positions_map["right_hip_pin"]) == 0.1);
 //  trajopt->AddLinearConstraint(x0.tail(n) == VectorXd::Zero(n));
   trajopt->AddLinearConstraint(xf.tail(n) == VectorXd::Zero(n));
 
   auto x = trajopt->state();
 
   std::cout << "lambda size: " << lambda_init.size() << std::endl;
-  for (int i = 1; i < lambda_init.size() * 3 / 4;
+  for (int i = 1; i < lambda_init.size() * 2 / 4;
        i += 2) {  // NOT APPLIED TO ALL KNOTS ONLY FIRST 3/4
     // Total mass is about 30, so 15 is per leg
     trajopt->AddLinearConstraint(lambda_init(i) >= 0.5 * 15 * FLAGS_gravity);

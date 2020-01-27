@@ -16,12 +16,14 @@ namespace examples {
 
 WalkingFiniteStateMachine::WalkingFiniteStateMachine(
     const MultibodyPlant<double>& plant, double r_impact_time,
-    double l_impact_time, double delay_time, bool contact_driven)
+    double l_impact_time, double delay_time, bool contact_driven,
+    int init_state)
     : plant_(plant),
       r_impact_time_(r_impact_time),
       l_impact_time_(l_impact_time),
       delay_time_(delay_time),
-      contact_driven_(contact_driven) {
+      contact_driven_(contact_driven),
+      init_state_((FSM_STATE)init_state) {
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
@@ -36,7 +38,6 @@ WalkingFiniteStateMachine::WalkingFiniteStateMachine(
   DeclarePerStepDiscreteUpdateEvent(
       &WalkingFiniteStateMachine::DiscreteVariableUpdate);
   // indices for discrete variables in drake leafsystem
-  initial_timestamp_ = 0.0;
   prev_time_idx_ = this->DeclareDiscreteState(1);
   contact_time_idx_ = this->DeclareDiscreteState(1);
   contact_flag_idx_ = this->DeclareDiscreteState(1);
@@ -68,7 +69,7 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
 
   if (current_time < prev_time(0)) {  // Simulator has restarted
     std::cout << "Simulator has restarted!" << std::endl;
-    fsm_state << RIGHT_FOOT;
+    fsm_state << init_state_;
     prev_time(0) = current_time;
   }
 

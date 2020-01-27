@@ -58,8 +58,8 @@ DEFINE_bool(contact_driven, false,
             "Set to true if want to use contact_driven fsm");
 DEFINE_bool(recalculateP, false,
             "Set to true if necessary to recalculate P(t) - for new trajs");
-
 DEFINE_double(time_offset, 0.0, "offset added to FSM switching");
+DEFINE_double(init_fsm_state, 0, "Initial FSM state.");
 
 // using drake::multibody::MultibodyPlant;
 using drake::multibody::Body;
@@ -144,7 +144,7 @@ int doMain(int argc, char* argv[]) {
             state_and_input.datapoints.bottomRows(nu))));
   }
 
-  std::cout << "x at time .6: " << state_trajs[1]->value(.6).transpose()
+  std::cout << "x at time .21: " << state_trajs[0]->value(.21).transpose()
             << std::endl;
   //  const PiecewisePolynomial<double>& state_traj =
   //      PiecewisePolynomial<double>::Pchip(
@@ -221,7 +221,8 @@ int doMain(int argc, char* argv[]) {
   //      plant, impact_times[1] + FLAGS_time_offset,
   //      impact_times[2] + FLAGS_time_offset, false);
   auto fsm = builder.AddSystem<WalkingFiniteStateMachine>(
-      plant, impact_times[1], impact_times[2], FLAGS_time_offset, true);
+      plant, impact_times[1], impact_times[2], FLAGS_time_offset, true,
+      FLAGS_init_fsm_state);
   // Create state receiver.
   auto state_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, lcm));
@@ -297,7 +298,7 @@ int doMain(int argc, char* argv[]) {
 
   drake::log()->info("controller started");
   //  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
-  stepper->AdvanceTo(7.0);
+  stepper->AdvanceTo(3.0);
 
   // Write all dataloggers to a CSV
   MatrixXd value_function = value_function_logger->data();

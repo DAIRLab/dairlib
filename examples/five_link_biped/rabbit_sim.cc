@@ -70,7 +70,9 @@ DEFINE_double(sim_time, std::numeric_limits<double>::infinity(),
               "The length of time to run the simulation");
 DEFINE_double(start_time, 0.0, "Time to start the simulator at.");
 DEFINE_double(penetration_allowance, 0.001,
-              "Penetration allowance (m) for the contact model.");
+              "Penetration allowance for the contact model. It's a penalty "
+              "method so there aren't any physical units");
+DEFINE_double(stiction, 0.001, "Stiction tolerance for the contact model.");
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -92,6 +94,8 @@ int do_main(int argc, char* argv[]) {
   multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);  // Add ground
   plant.Finalize();
 
+  // Contact model parameters
+  plant.set_stiction_tolerance(FLAGS_stiction);
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
   // Create input receiver.
   auto input_sub =
@@ -158,9 +162,9 @@ int do_main(int argc, char* argv[]) {
     x0 << 0, 0.798986, -0.00175796, -0.0541245, -0.320418, 0.1, 0.75, 0.225025,
         0.00132182, 0.145054, 0.136536, -0.746619, 9.46774e-05, -0.0115747;
   } else if (FLAGS_init_state == "Walking_2") {
-    x0 << 0.0513778, 0.797215, -0.00535773, 0.00426651, -0.277203, 0.119151,
-        0.448676, 0.440274, -0.0455353, -0.236525, 0.3761, 1.49267, 0.82827,
-        -4.01244;
+    x0 << 0.075032, 0.79286, -0.0200404, 0.0081442, -0.184221, 0.200742,
+        0.215107, 0.501089, -0.148784, -0.340658, -0.312183, 2.19227, 2.59285,
+        -5.28952;
   } else if (FLAGS_init_state == "Walking_3") {
     x0 << 0.17696, 0.798739, 0.00405198, -0.337437, -0.0280155, 0.648008,
         0.099669, 0.33931, -0.00910572, -0.061163, 0.472764, 0.477749, -2.2539,

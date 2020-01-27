@@ -15,7 +15,7 @@ class WalkingFiniteStateMachine : public drake::systems::LeafSystem<double> {
   WalkingFiniteStateMachine(
       const drake::multibody::MultibodyPlant<double>& plant,
       double r_impact_time, double l_impact_time, double delay_time = 0.0,
-      bool contact_driven = true);
+      bool contact_driven = true, int init_state = 0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -45,10 +45,8 @@ class WalkingFiniteStateMachine : public drake::systems::LeafSystem<double> {
   int contact_time_idx_;
   int contact_flag_idx_;
   int fsm_idx_;
-  double timestamp_;
 
-  double initial_timestamp_;
-  const FSM_STATE init_state_ = LEFT_FOOT;
+  const FSM_STATE init_state_;
 };
 
 }  // namespace examples

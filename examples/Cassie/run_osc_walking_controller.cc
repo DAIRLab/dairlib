@@ -211,8 +211,8 @@ int DoMain(int argc, char* argv[]) {
   // important
   double w_contact_relax = 200;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
-  // Firction coefficient
-  double mu = 0.8;
+  // Friction coefficient
+  double mu = 0.4;
   osc->SetContactFriction(mu);
   osc->AddStateAndContactPoint(left_stance_state, "toe_left",
                                front_contact_disp);
@@ -275,8 +275,10 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_heading_traj", 3, K_p_pelvis_heading, K_d_pelvis_heading,
       W_pelvis_heading, &tree_with_springs, &tree_without_springs);
   pelvis_heading_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_heading_traj, 0.05);
+  osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
   // Swing toe joint tracking (Currently use fix position)
+  // The desired position, -1.5, was derived heuristically. It is roughly the toe
+  // angle when Cassie stands on the ground.
   MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = 1000 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = 100 * MatrixXd::Identity(1, 1);
@@ -287,7 +289,8 @@ int DoMain(int argc, char* argv[]) {
                                          "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
                                          "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1));
+  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1),
+      0, 0.3);
   // Swing hip yaw joint tracking
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);

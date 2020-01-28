@@ -94,18 +94,6 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
       tree_.transformPointsJacobian(cache, torso_offset, hip_idx_, 0,
           false) * (*v);
 
-  //  std::cout << "COM: " << center_of_mass << std::endl;
-  //  std::cout << "COM jacobian: " << com_velocity << std::endl;
-  //  VectorXd
-  //  Vector3d desired_foot_pos(
-  //    center_of_mass(0) - foot_offset_,
-  //    center_of_mass(1),
-  //    center_of_mass(2) - height_);
-  //  Vector3d desired_foot_pos_post(
-  //    center_of_mass(0) + com_velocity(0) * 1 - foot_offset_,
-  //    center_of_mass(1),
-  //    center_of_mass(2) + com_velocity(2) * 1 - height_);
-
   int segment_idx = -1;  // because times start at 0
   for (double t0 : foot_traj_.get_segment_times()) {
     if (t0 > t) {
@@ -113,14 +101,10 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
     }
     ++segment_idx;
   }
-
   if(segment_idx == foot_traj_.get_number_of_segments()){
     segment_idx--;
   }
-  //  std::vector<double> breaks = {0.0, 0.001};
-  //  VectorXd breaks(2);
-  //  breaks << 0, 1;
-  //  knots << desired_foot_pos, desired_foot_pos_post;
+
   const PiecewisePolynomial<double>& foot_traj_segment =
       foot_traj_.slice(segment_idx, 1);
   std::vector<double> breaks = foot_traj_segment.get_segment_times();
@@ -137,10 +121,6 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
   PiecewisePolynomial<double> hip_offset =
       PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, hip_pos);
   return foot_traj_segment + hip_offset;
-  //  return torso_angle_traj_;
-
-  //  return PiecewisePolynomial<double>(desired_foot_pos);
-  //  return PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
 }
 
 void FlightFootTraj::CalcTraj(

@@ -88,7 +88,7 @@ EventStatus CoMTraj::DiscreteVariableUpdate(
     tree_.doKinematics(cache);
     com_x_offset(0) = tree_.centerOfMass(cache)(0) - crouch_traj_.value
         (crouch_traj_.end_time())(0);
-    std::cout << "x offset: " << com_x_offset(0) << std::endl;
+//    std::cout << "x offset: " << com_x_offset(0) << std::endl;
   }
   return EventStatus::Succeeded();
 }
@@ -102,14 +102,31 @@ PiecewisePolynomial<double> CoMTraj::generateNeutralTraj(
 PiecewisePolynomial<double> CoMTraj::generateCrouchTraj(
     const drake::systems::Context<double>& context, VectorXd& q,
     VectorXd& v) const {
-  return crouch_traj_;
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  double t = robot_output->get_timestamp();
+
+  int segment_idx = -1;  // because times start at 0
+  for (double t0 : crouch_traj_.get_segment_times()) {
+    if (t0 > t) {
+      break;
+    }
+    ++segment_idx;
+  }
+
+  if(segment_idx == crouch_traj_.get_number_of_segments()){
+    segment_idx--;
+  }
+  return crouch_traj_.slice(segment_idx,1);
 }
 
 PiecewisePolynomial<double> CoMTraj::generateLandingTraj(
     const drake::systems::Context<double>& context, VectorXd& q,
     VectorXd& v) const {
-//  const VectorXd com_x_offset =
-//      this->EvalVectorInput(context, com_x_offset_idx_)->get_value();
+
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  double t = robot_output->get_timestamp();
   const VectorXd com_x_offset = context.get_discrete_state().get_vector(
       com_x_offset_idx_).get_value();
 
@@ -117,12 +134,24 @@ PiecewisePolynomial<double> CoMTraj::generateLandingTraj(
   Vector3d offset;
   offset << com_x_offset(0), 0, 0;
 
-  std::vector<double> breaks = crouch_traj_.get_segment_times();
+  int segment_idx = -1;  // because times start at 0
+  for (double t0 : crouch_traj_.get_segment_times()) {
+    if (t0 > t) {
+      break;
+    }
+    ++segment_idx;
+  }
+
+  if(segment_idx == crouch_traj_.get_number_of_segments()){
+    segment_idx--;
+  }
+  auto traj_segment = crouch_traj_.slice(segment_idx,1);
+  std::vector<double> breaks = traj_segment.get_segment_times();
   MatrixXd offset_matrix = offset.replicate(1, breaks.size());
   VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
   PiecewisePolynomial<double> com_offset =
       PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, offset_matrix);
-  return crouch_traj_ + com_offset;
+  return traj_segment + com_offset;
 }
 PiecewisePolynomial<double> CoMTraj::generateBalancingComTraj(
     VectorXd& q) const {  // Kinematics cache and indices
@@ -139,7 +168,6 @@ PiecewisePolynomial<double> CoMTraj::generateBalancingComTraj(
   Vector3d l_foot = tree_.transformPoints(cache, pt_on_foot, left_foot_idx_, 0);
   Vector3d r_foot =
       tree_.transformPoints(cache, pt_on_foot, right_foot_idx_, 0);
-  // Vector3d center_of_mass = tree_.centerOfMass(cache);
 
   Vector3d feet_center = (l_foot + r_foot) / 2;
 
@@ -169,15 +197,9 @@ void CoMTraj::CalcTraj(const drake::systems::Context<double>& context,
   switch (static_cast<int>(fsm_state(0))) {
     case (0):  //  NEUTRAL
       *casted_traj = generateNeutralTraj(context, q, v);
-      // std::cout << "Generated com for netural traj: " <<
-      // casted_traj->getPolynomialMatrix(0) << std::endl;
       break;
     case (1):  //  CROUCH
       *casted_traj = generateCrouchTraj(context, q, v);
-      break;
-    case (2):  //  FLIGHT
-      // *casted_traj = generateFlightTraj(context, q, v);
-      // does nothing in flight
       break;
     case (3):  //  LAND
       *casted_traj = generateLandingTraj(context, q, v);

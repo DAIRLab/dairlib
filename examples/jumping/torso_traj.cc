@@ -53,8 +53,19 @@ void TorsoTraj::CalcTraj(const drake::systems::Context<double>& context,
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
-  double timestamp = robot_output->get_timestamp();
+  double t = robot_output->get_timestamp();
 
+  int segment_idx = -1;  // because times start at 0
+  for (double t0 : torso_angle_traj_.get_segment_times()) {
+    if (t0 > t) {
+      break;
+    }
+    ++segment_idx;
+  }
+
+  if(segment_idx == torso_angle_traj_.get_number_of_segments()){
+    segment_idx--;
+  }
   // Read in finite state machine
   const BasicVector<double>* fsm_output =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
@@ -62,7 +73,7 @@ void TorsoTraj::CalcTraj(const drake::systems::Context<double>& context,
   PiecewisePolynomial<double>* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *casted_traj = torso_angle_traj_;
+  *casted_traj = torso_angle_traj_.slice(segment_idx,1);
 }
 
 }  // namespace osc

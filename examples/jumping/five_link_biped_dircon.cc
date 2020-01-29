@@ -219,7 +219,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   trajopt->AddLinearConstraint(x_mid_point(positions_map["planar_z"]) ==
                                (x0(positions_map["planar_z"]) + FLAGS_height));
   trajopt->AddLinearConstraint(xf(positions_map["planar_z"]) ==
-                               (x0(positions_map["planar_z"])) - 0.025);
+                               (x0(positions_map["planar_z"])) - 0.02);
   trajopt->AddLinearConstraint(xf(positions_map["right_hip_pin"]) == 0.1);
 //  trajopt->AddLinearConstraint(x0.tail(n) == VectorXd::Zero(n));
   trajopt->AddLinearConstraint(xf.tail(n) == VectorXd::Zero(n));
@@ -244,15 +244,15 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   trajopt->AddConstraintToAllKnotPoints(u(3) <= 300);
 
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_roty"]) >=
-                                        -0.2);
+                                        -0.15);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_roty"]) <=
-                                        0.2);
+                                        0.15);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_x"]) >= -1);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["planar_x"]) <= 1);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["left_knee_pin"]) >=
-                                        0.2);
+                                        0.3);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["right_knee_pin"]) >=
-                                        0.2);
+                                        0.3);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["left_knee_pin"]) <= 2);
   trajopt->AddConstraintToAllKnotPoints(x(positions_map["right_knee_pin"]) <=
                                         2);

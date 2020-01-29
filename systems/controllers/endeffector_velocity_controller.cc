@@ -78,17 +78,6 @@ void EndEffectorVelocityController::CalcOutputTorques(
   VectorXd tm(num_joints_); //= Eigen::DiagonalMatrix<double>(7, 7);
   tm << 1, 0.1, 1, 0.1, 1, 2, 1;
 
-  // auto torqueCost = Eigen::MatrixXd<7, 7>;
-  // torqueCost(1,1) = 0.1;
-  // torqueCost(1,1) = 0.1;
-  // torqueCost(1,1) = 0.1;
-  // torqueCost(1,1) = 0.1;
-  // torqueCost(1,1) = 0.1;
-  // torqueCost(1,1) = 0.1;
-  // torqueCost(1,1) = 0.1;
-  // torqueCost << 1, 0.1, 1, 0.1, 1, 1, 1;
-  // Input after construction
-
   // Multiplying J^t x force to get torque outputs
   VectorXd torques(num_joints_);
   VectorXd commandedTorques(num_joints_);
@@ -103,13 +92,8 @@ void EndEffectorVelocityController::CalcOutputTorques(
   double alpha = 0.9;
 
   Eigen::MatrixXd T = (alpha * Eigen::MatrixXd::Identity(7, 7) + (1-alpha)*Hi).inverse();
-
   Eigen::MatrixXd T2 = T * T;
-
-  // Eigen::DiagonalMatrix<double, 7> T2(6);
-  // T2.diagonal() << 3600, 3600, 3600, 900, 144, 144, 36;
   commandedTorques =  Jt * (J * Hi * Jt).inverse() * (error);
-  //commandedTorques =  H * Jt * (J * Jt).inverse() * J * Hi * torques;
 
   // Limit maximum commanded velocities
   for (int i = 0; i < num_joints_; i++) {
@@ -123,7 +107,6 @@ void EndEffectorVelocityController::CalcOutputTorques(
           std::cout << "given limit of " << -joint_torque_limit_ << std::endl;
       }
   }
-
 
   // Storing them in the output vector
   output->set_value(commandedTorques); // (7 x 6) * (6 x 1) = 7 x 1

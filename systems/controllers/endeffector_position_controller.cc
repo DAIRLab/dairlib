@@ -25,8 +25,6 @@ EndEffectorPositionController::EndEffectorPositionController(
   endpoint_twist_cmd_output_port_ = this->DeclareVectorOutputPort(
 	  BasicVector<double>(6), &EndEffectorPositionController::CalcOutputTwist).get_index();
 
-  // The coordinates for the end effector with respect to the last joint.
-  // Eventually passed into transformPointsJacobian()
   k_p_ = k_p;
   k_omega_ = k_omega;
   max_linear_vel_ = max_linear_vel;
@@ -54,10 +52,10 @@ void EndEffectorPositionController::CalcOutputTwist(
   for (int i = 0; i < 7; i++) {
 		if (abs(q_actual(i)) > jointLimits(i)) {
 			std::cout << "joint limit exceeded on joint " << i+1 << std::endl;
+            std::cout << "quitting..." << std::endl;
 			exit(0);
 	  }
 	}
-
 
   Eigen::Vector3d x_actual;
   const std::unique_ptr<Context<double>> plant_context =
@@ -68,9 +66,6 @@ void EndEffectorPositionController::CalcOutputTwist(
 
   VectorXd diff = k_p_ * (x_desired - x_actual) + xdot_desired;
 
-  std::cout << "desired:\n" << x_desired << std::endl;
-	std::cout << "actual:\n" << x_actual << std::endl;
-
   // Quaternion for rotation from base to end effector
   Eigen::Quaternion<double> quat_n_a = plant_.CalcRelativeTransform(
 	  *plant_context, plant_world_frame_, ee_joint_frame_).rotation().ToQuaternion();
@@ -80,8 +75,8 @@ void EndEffectorPositionController::CalcOutputTwist(
 	  orientation_desired(0), orientation_desired(1), orientation_desired(2),
 	  orientation_desired(3));
 
-  // Quaternion for rotation
-  // from end effector attitude to desired end effector attitude.
+  // Quaternion for rotation from end effector attitude
+  // to desired end effector attitude.
   Eigen::Quaternion<double> quat_a_a_des =
       quat_n_a.conjugate() * (quat_n_a_des);
 
@@ -89,47 +84,30 @@ void EndEffectorPositionController::CalcOutputTwist(
   Eigen::AngleAxis<double> angleaxis_a_a_des =
       Eigen::AngleAxis<double>(quat_a_a_des);
   MatrixXd axis = angleaxis_a_a_des.axis();
-  MatrixXd angularVelocity = k_omega_ * axis * angleaxis_a_a_des.angle();
-  std::cout << "angular error: " << std::endl;
+  MatrixXd omega = k_omega_ * axis * angleaxis_a_a_des.angle();
   std::cout << angleaxis_a_a_des.angle() << std::endl;
 
   // Transforming angular velocity from joint frame to world frame
-  VectorXd angularVelocityWF = plant_.CalcRelativeTransform(
-	  *plant_context, plant_world_frame_, ee_joint_frame_).rotation() * angularVelocity;
+  VectorXd omegaWF = plant_.CalcRelativeTransform(
+	  *plant_context, plant_world_frame_, ee_joint_frame_).rotation() * omega;
 
-				// std::cout << "angular error WTF: " << std::endl;
-				// std::cout << plant_.CalcRelativeTransform(
-				//   *plant_context, plant_world_frame_, ee_joint_frame_).rotation() * Eigen::MatrixXd::Identity(3, 3) << std::endl;
-
-		// std::cout << "angular error WF: " << std::endl;
-		// std::cout << plant_.CalcRelativeTransform(
-		//   *plant_context, plant_world_frame_, ee_joint_frame_).rotation() * axis * angleaxis_a_a_des.angle()  << std::endl;
-
-  // Limit maximum commanded linear velocity
-  double currVel = diff.norm();
-
-  if (currVel > max_linear_vel_) {
-      diff = diff * (max_linear_vel_/currVel);
-      std::cout << "Warning: desired end effector velocity: " << currVel;
-      std::cout << " exceeded limit of " << max_linear_vel_ << std::endl;
-      currVel = diff.norm();
-      std::cout << "Set end effector velocity to " << currVel << std::endl;
-  }
-
-  // Limit maximum commanded angular velocity
-  double currAngVel = angularVelocityWF.norm();
-  if (currAngVel > max_angular_vel_) {
-      angularVelocityWF = angularVelocityWF * (max_angular_vel_/currAngVel);
-      std::cout << "Warning: desired end effector velocity: " << currAngVel;
-      std::cout << " exceeded limit of " << max_angular_vel_ << std::endl;
-      currAngVel = angularVelocityWF.norm();
-      std::cout << "Set end effector angular velocity to " << currAngVel;
-      std::cout << std::endl;
-  }
+  diff = clampToNorm(diff, max_linear_vel_, "des. lin. vel");
+  omegaWF = clampToNorm(omegaWF, max_angular_vel_, "des. ang. vel");
 
   MatrixXd twist(6, 1);
-  twist << angularVelocityWF, diff;
+  twist << omegaWF, diff;
   output->set_value(twist);
+}
+
+Eigen::VectorXd EndEffectorPositionController::clampToNorm(Eigen::VectorXd v,
+    double maxNorm, std::string msg) const {
+    double currNorm = v.norm();
+    if (currNorm > maxNorm) {
+        v = v * (maxNorm/currNorm);
+        std::cout << "Warning: clamped vector '" << msg;
+        std::cout << "' norm to " << maxNorm << std::endl;
+    }
+    return v;
 }
 
 } // namespace systems

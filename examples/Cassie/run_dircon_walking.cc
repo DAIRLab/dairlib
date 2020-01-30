@@ -595,7 +595,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  /*auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
+  auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_left", 1, 0.05, std::numeric_limits<double>::infinity());
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
@@ -610,7 +610,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     auto x = trajopt->state(index);
     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
     trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
-  }*/
+  }
 
   // add cost
   const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
@@ -739,17 +739,52 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // Store lambda
-  std::ofstream ofile;
-  ofile.open(data_directory + "lambda.txt", std::ofstream::out);
-  cout << "lambda_sol = \n";
-  for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
-    for (int index = 0; index < num_time_samples[mode]; index++) {
-      auto lambdai = trajopt->force(mode, index);
-      cout << result.GetSolution(lambdai).transpose() << endl;
-      ofile << result.GetSolution(lambdai).transpose() << endl;
+  if (to_store_data) {
+    std::ofstream ofile;
+    ofile.open(data_directory + "lambda.txt", std::ofstream::out);
+    cout << "lambda_sol = \n";
+    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+      for (int index = 0; index < num_time_samples[mode]; index++) {
+        auto lambdai = trajopt->force(mode, index);
+        cout << result.GetSolution(lambdai).transpose() << endl;
+        ofile << result.GetSolution(lambdai).transpose() << endl;
+      }
+    }
+    ofile.close();
+  }
+
+  // Calculate each term of the cost
+  double cost_x = 0;
+  for (int i = 0; i < N - 1; i++) {
+    auto v0 = state_at_knots.col(i).tail(n_v);
+    auto v1 = state_at_knots.col(i + 1).tail(n_v);
+    auto h = time_at_knots(i);
+    cost_x += ((v0.transpose() * Q * v0) * h / 2)(0);
+    cost_x += ((v1.transpose() * Q * v1) * h / 2)(0);
+  }
+  cout << "N = " << N << endl;
+  cout << "Q = " << Q << endl;
+  cout << "cost_x = " << cost_x << endl;
+  double cost_u = 0;
+  for (int i = 0; i < N - 1; i++) {
+    auto u0 = input_at_knots.col(i);
+    auto u1 = input_at_knots.col(i + 1);
+    auto h = time_at_knots(i);
+    cost_u += ((u0.transpose() * R * u0) * h / 2)(0);
+    cost_u += ((u1.transpose() * R * u1) * h / 2)(0);
+  }
+  cout << "R = " << R << endl;
+  cout << "cost_u = " << cost_u << endl;
+  double cost_lambda = 0;
+  for (int i = 0; i < num_time_samples.size(); i++) {
+    for (int j = 0; j < num_time_samples[i]; j++) {
+      auto lambda = result.GetSolution(trajopt->force(i, j));
+      cost_lambda += (options_list[i].getForceCost() * lambda).squaredNorm();
     }
   }
-  ofile.close();
+  cout << "cost_lambda = " << cost_lambda << endl;
+  cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u + cost_lambda
+       << endl;
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =

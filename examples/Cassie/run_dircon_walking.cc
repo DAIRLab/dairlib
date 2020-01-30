@@ -397,7 +397,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   // Constraint scaling
   if (FLAGS_is_scale_constraint) {
     for (int i = 0; i < 2; i++) {
-      double s = 1; // scale everything together
+      double s = 1;  // scale everything together
       // Dynamic constraints
       options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
       options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
@@ -615,8 +615,22 @@ void DoMain(double duration, int max_iter, string data_directory,
   // add cost
   const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 0.1 * 0.01 * MatrixXd::Identity(n_u, n_u);
-  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
-  trajopt->AddRunningCost(u.transpose() * R * u);
+  //  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
+  //  trajopt->AddRunningCost(u.transpose() * R * u);
+  //  for (int i = 0; i < N - 1; i++) {
+  //    auto v0 = trajopt->state(i).tail(n_v);
+  //    auto v1 = trajopt->state(i+1).tail(n_v);
+  //    auto h = 0.4/15.0;
+  //    trajopt->AddCost(((v0.transpose() * Q * v0) * h / 2)(0));
+  //    trajopt->AddCost(((v1.transpose() * Q * v1) * h / 2)(0));
+  //  }
+  for (int i = 0; i < N - 1; i++) {
+    auto u0 = trajopt->input(i);
+    auto u1 = trajopt->input(i + 1);
+    auto h = 0.4 / 15.0;
+    trajopt->AddCost(((u0.transpose() * R * u0) * h / 2)(0));
+    trajopt->AddCost(((u1.transpose() * R * u1) * h / 2)(0));
+  }
 
   // Scale decision variable
   if (FLAGS_is_scale_variable) {
@@ -634,7 +648,7 @@ void DoMain(double duration, int max_iter, string data_directory,
         1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
     // impulse
     trajopt->ScaleImpulseVariables(
-        10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1); //0.1
+        10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
     // quaternion slack
     //    trajopt->ScaleQuaternionSlackVariables(0.5);
     // Constraint slack
@@ -754,7 +768,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // Calculate each term of the cost
-  double cost_x = 0;
+  /*double cost_x = 0;
   for (int i = 0; i < N - 1; i++) {
     auto v0 = state_at_knots.col(i).tail(n_v);
     auto v1 = state_at_knots.col(i + 1).tail(n_v);
@@ -764,7 +778,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
   cout << "N = " << N << endl;
   cout << "Q = " << Q << endl;
-  cout << "cost_x = " << cost_x << endl;
+  cout << "cost_x = " << cost_x << endl;*/
   double cost_u = 0;
   for (int i = 0; i < N - 1; i++) {
     auto u0 = input_at_knots.col(i);
@@ -783,8 +797,10 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
   cout << "cost_lambda = " << cost_lambda << endl;
-  cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u + cost_lambda
-       << endl;
+  //  cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u +
+  //  cost_lambda
+  //       << endl;
+  cout << "cost_u + cost_lambda = " << cost_u + cost_lambda << endl;
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =

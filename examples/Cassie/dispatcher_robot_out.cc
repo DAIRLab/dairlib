@@ -149,7 +149,7 @@ int do_main(int argc, char* argv[]) {
          input_receiver,
          "CASSIE_OUTPUT",
          false);
-    loop.SimulateForever();
+    loop.Simulate();
 
   } else {
     // Create simulator and context

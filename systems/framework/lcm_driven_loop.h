@@ -143,18 +143,7 @@ class LcmDrivenLoop {
                       "", is_forced_publish){};
 
   // Start simulating the diagram
-  void SimulateForever() {
-    Simulate(std::numeric_limits<double>::infinity(), true);
-  }
-  void SimulateTo(double time) { Simulate(time, true); }
-  void SimulateDuration(double time) { Simulate(time, false); }
-
- private:
-  // Start simulating the diagram
-  /// @param is_end_time_or_duration, true if `time_in` is the end time of the
-  /// simulation, and false if `time_in` is the duration for which the
-  /// simulation runs
-  void Simulate(double time_in, bool is_end_time_or_duration) {
+  void Simulate(double end_time = std::numeric_limits<double>::infinity()) {
     // Get mutable contexts
     auto& diagram_context = simulator_->get_mutable_context();
 
@@ -168,9 +157,6 @@ class LcmDrivenLoop {
     const double t0 =
         name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
     diagram_context.SetTime(t0);
-
-    // Set end time
-    double end_time = (is_end_time_or_duration) ? time_in : t0 + time_in;
 
     // "Simulator" time
     double time = 0;  // initialize the current time with 0
@@ -281,6 +267,7 @@ class LcmDrivenLoop {
     }
   };
 
+ private:
   drake::lcm::DrakeLcm* drake_lcm_;
   drake::systems::Diagram<double>* diagram_ptr_;
   const drake::systems::LeafSystem<double>* lcm_parser_;

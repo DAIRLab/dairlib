@@ -109,13 +109,13 @@ int do_main(int argc, char* argv[]) {
   // Create state publisher.
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 1000.0));
+          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 2000.0));
   ContactResultsToLcmSystem<double>& contact_viz =
       *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CONTACT_RESULTS", lcm, 1.0 / 1000.0));
+          "CONTACT_RESULTS", lcm, 1.0 / 2000.0));
   contact_results_publisher.set_name("contact_results_publisher");
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
   // Contact results to lcm msg.

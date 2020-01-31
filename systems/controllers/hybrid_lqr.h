@@ -62,9 +62,22 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
     return this->get_output_port(cost_output_port_);
   }
 
-  int get_state_input_port() { return state_port_; }
+  const drake::systems::InputPort<double>& get_state_input_port() const {
+    return this->get_input_port(state_port_);
+  }
 
-  int get_fsm_input_port() { return fsm_port_; }
+  const drake::systems::InputPort<double>& get_fsm_input_port() const {
+    return this->get_input_port(fsm_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_contact_input_port() const {
+    return this->get_input_port(contact_port_);
+  }
+
+
+//  int get_state_input_port() { return state_port_; }
+//  int get_fsm_input_port() { return fsm_port_; }
+//  int get_contact_port() { return contact_port_; }
 
   //  int get_
 
@@ -138,6 +151,7 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   //  int fsm_index_;
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;
+  drake::systems::InputPortIndex contact_port_;
   drake::systems::OutputPortIndex control_output_port_;
   drake::systems::OutputPortIndex cost_output_port_;
 };

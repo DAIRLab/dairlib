@@ -732,10 +732,10 @@ void DoMain(double duration, int max_iter, string data_directory,
   if (to_store_data) {
     writeCSV(data_directory + string("z.csv"), z);
   }
-  for (int i = 0; i < z.size(); i++) {
+  /*for (int i = 0; i < z.size(); i++) {
     cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
   }
-  cout << endl;
+  cout << endl;*/
 
   // store the time, state, and input at knot points
   VectorXd time_at_knots = trajopt->GetSampleTimes(result);
@@ -768,24 +768,32 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // Calculate each term of the cost
-  /*double cost_x = 0;
+  double cost_x = 0;
   for (int i = 0; i < N - 1; i++) {
     auto v0 = state_at_knots.col(i).tail(n_v);
     auto v1 = state_at_knots.col(i + 1).tail(n_v);
-    auto h = time_at_knots(i);
+    auto h = time_at_knots(i+1) - time_at_knots(i);
     cost_x += ((v0.transpose() * Q * v0) * h / 2)(0);
     cost_x += ((v1.transpose() * Q * v1) * h / 2)(0);
   }
   cout << "N = " << N << endl;
   cout << "Q = " << Q << endl;
-  cout << "cost_x = " << cost_x << endl;*/
+  cout << "cost_x = " << cost_x << endl;
   double cost_u = 0;
+  int cost_number = 0;
   for (int i = 0; i < N - 1; i++) {
     auto u0 = input_at_knots.col(i);
     auto u1 = input_at_knots.col(i + 1);
-    auto h = time_at_knots(i);
+    auto h = time_at_knots(i+1) - time_at_knots(i);
     cost_u += ((u0.transpose() * R * u0) * h / 2)(0);
+    cout << "  u = " << u0.transpose() << endl;
+    cout << "  cost #" << cost_number << ": sub cost = " << ((u0.transpose() * R * u0) * h / 2)(0) << endl;
+    cout << "((u0.transpose() * R * u0) * h / 2) = " << ((u0.transpose() * R * u0) * h / 2) << endl;
+    cost_number++;
     cost_u += ((u1.transpose() * R * u1) * h / 2)(0);
+    cout << "  u = " << u1.transpose() << endl;
+    cout << "  cost #" << cost_number << ": sub cost = " << ((u1.transpose() * R * u1) * h / 2)(0) << endl;
+    cost_number++;
   }
   cout << "R = " << R << endl;
   cout << "cost_u = " << cost_u << endl;

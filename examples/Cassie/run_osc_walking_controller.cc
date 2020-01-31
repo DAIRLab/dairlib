@@ -49,6 +49,9 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
 
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
+DEFINE_bool(is_two_phase, false,
+            "true: only right/left single support"
+            "false: both double and single support");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -58,8 +61,6 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  bool is_two_phase = false;
 
   DiagramBuilder<double> builder;
 
@@ -153,33 +154,33 @@ int DoMain(int argc, char* argv[]) {
   double right_support_duration = 0.35;
   double double_support_duration = 0.02;
   std::vector<int> fsm_states;
-  std::vector<double> state_druations;
-  if (is_two_phase) {
+  std::vector<double> state_durations;
+  if (FLAGS_is_two_phase) {
     fsm_states = std::vector<int>({left_stance_state, right_stance_state});
-    state_druations =
+    state_durations =
         std::vector<double>({left_support_duration, right_support_duration});
   } else {
     fsm_states = std::vector<int>({left_stance_state, double_support_state,
                                    right_stance_state, double_support_state});
-    state_druations =
+    state_durations =
         std::vector<double>({left_support_duration, double_support_duration,
                              right_support_duration, double_support_duration});
   }
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      tree_with_springs, fsm_states, state_druations);
+      tree_with_springs, fsm_states, state_durations);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
 
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
   std::vector<int> unordered_fsm_states;
-  std::vector<double> unordered_state_druations;
+  std::vector<double> unordered_state_durations;
   std::vector<std::vector<int>> body_indices;
   std::vector<std::vector<Vector3d>> pts_on_bodies;
-  if (is_two_phase) {
+  if (FLAGS_is_two_phase) {
     unordered_fsm_states =
         std::vector<int>({left_stance_state, right_stance_state});
-    unordered_state_druations =
+    unordered_state_durations =
         std::vector<double>({left_support_duration, right_support_duration});
     body_indices.push_back(std::vector<int>({left_toe_idx}));
     body_indices.push_back(std::vector<int>({right_toe_idx}));
@@ -188,7 +189,7 @@ int DoMain(int argc, char* argv[]) {
   } else {
     unordered_fsm_states = std::vector<int>(
         {left_stance_state, right_stance_state, double_support_state});
-    unordered_state_druations =
+    unordered_state_durations =
         std::vector<double>({left_support_duration, right_support_duration,
                              double_support_duration});
     body_indices.push_back(std::vector<int>({left_toe_idx}));
@@ -202,7 +203,7 @@ int DoMain(int argc, char* argv[]) {
       std::vector<int>({double_support_state});
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
       tree_with_springs, desired_com_height, unordered_fsm_states,
-      unordered_state_druations, body_indices, pts_on_bodies,
+      unordered_state_durations, body_indices, pts_on_bodies,
       constant_height_states);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
@@ -271,7 +272,7 @@ int DoMain(int argc, char* argv[]) {
                                front_contact_disp);
   osc->AddStateAndContactPoint(right_stance_state, "toe_right",
                                rear_contact_disp);
-  if (!is_two_phase) {
+  if (!FLAGS_is_two_phase) {
     osc->AddStateAndContactPoint(double_support_state, "toe_left",
                                  front_contact_disp);
     osc->AddStateAndContactPoint(double_support_state, "toe_left",

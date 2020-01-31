@@ -118,22 +118,24 @@ void OperationalSpaceControl::AddAccelerationCost(std::string joint_vel_name,
 
 // Constraint methods
 void OperationalSpaceControl::AddContactPoint(std::string body_name,
-    Eigen::VectorXd pt_on_body) {
+    VectorXd pt_on_body){
   body_index_.push_back(GetBodyIndexFromName(tree_wo_spr_, body_name));
   pt_on_body_.push_back(pt_on_body);
 }
+
 void OperationalSpaceControl::AddStateAndContactPoint(int state,
-    std::string body_name, Eigen::VectorXd pt_on_body) {
+    std::string body_name, VectorXd pt_on_body) {
   fsm_state_when_active_.push_back(state);
   AddContactPoint(body_name, pt_on_body);
 }
 
 // Tracking data methods
 void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
-                                              double duration) {
+    double t_lb, double t_ub) {
   tracking_data_vec_->push_back(tracking_data);
-  fixed_position_vec_.push_back(Eigen::VectorXd(0));
-  period_of_no_control_vec_.push_back(duration);
+  fixed_position_vec_.push_back(VectorXd::Zero(0));
+  t_s_vec_.push_back(t_lb);
+  t_e_vec_.push_back(t_ub);
 
   // Construct input ports and add element to traj_name_to_port_index_map_ if
   // the port for the traj is not created yet
@@ -150,10 +152,11 @@ void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
   }
 }
 void OperationalSpaceControl::AddConstTrackingData(
-    OscTrackingData* tracking_data, Eigen::VectorXd v, double duration) {
+    OscTrackingData* tracking_data, VectorXd v, double t_lb, double t_ub) {
   tracking_data_vec_->push_back(tracking_data);
   fixed_position_vec_.push_back(v);
-  period_of_no_control_vec_.push_back(duration);
+  t_s_vec_.push_back(t_lb);
+  t_e_vec_.push_back(t_ub);
 }
 
 // Osc checkers and constructor
@@ -415,6 +418,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     VectorXd inf_vectorxd(1); inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
       // If the contact is inactive, we assign zeros to A matrix. (lb<=Ax<=ub)
+      // The number "5" in "5 * i" below comes from the fact that there are five
+      // constraints for each contact point.
       if (active_contact_flags[i]) {
         friction_constraints_.at(5 * i)->UpdateLowerBound(VectorXd::Zero(1));
         friction_constraints_.at(5 * i + 1)->UpdateLowerBound(VectorXd::Zero(1));
@@ -441,8 +446,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       // Create constant trajectory and update
       tracking_data->Update(x_w_spr, cache_w_spr,
           x_wo_spr, cache_wo_spr,
-          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-          fsm_state);
+          PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state);
     } else {
       // Read in traj from input port
       string traj_name = tracking_data->GetName();
@@ -460,7 +464,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
 
     if (tracking_data->GetTrackOrNot() &&
-        time_since_last_state_switch >= period_of_no_control_vec_[i]) {
+        time_since_last_state_switch >= t_s_vec_.at(i) &&
+        time_since_last_state_switch <= t_e_vec_.at(i)) {
       VectorXd ddy_t = tracking_data->GetCommandOutput();
       MatrixXd W = tracking_data->GetWeight();
       MatrixXd J_t = tracking_data->GetJ();

@@ -49,12 +49,13 @@ namespace osc_walk {
 class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
  public:
   DeviationFromCapturePoint(const RigidBodyTree<double>& tree,
-      int pelvis_idx,
-      Eigen::Vector2d global_target_position,
-      Eigen::Vector2d params_of_no_turning);
+      int pelvis_idx);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_des_hor_vel() const {
+    return this->get_input_port(xy_port_);
   }
 
  private:
@@ -67,21 +68,16 @@ class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
   Eigen::Vector2d params_of_no_turning_;
 
   int state_port_;
+  int xy_port_;
 
-  double kp_pos_sagital_;
-  double kd_pos_sagital_;
-  double vel_max_sagital_;
-  double vel_min_sagital_;
-  double k_fp_ff_sagital_;
-  double k_fp_fb_sagital_;
-  double target_pos_offset_;
+  // Foot placement control (Sagital) parameters
+  double k_fp_ff_sagital_ = 0.16;  // TODO(yminchen): these are for going forward.
+  // Should have parameters for going backward
+  double k_fp_fb_sagital_ = 0.04;
 
-  double kp_pos_lateral_;
-  double kd_pos_lateral_;
-  double vel_max_lateral_;
-  double vel_min_lateral_;
-  double k_fp_ff_lateral_;
-  double k_fp_fb_lateral_;
+  // Foot placement control (Lateral) parameters
+  double k_fp_ff_lateral_ = 0.08;
+  double k_fp_fb_lateral_ = 0.02;
 };
 
 }  // namespace osc_walk

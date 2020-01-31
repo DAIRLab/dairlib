@@ -57,13 +57,3 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
-
-cc_library(
-    name = "controller_channel_sender",
-    srcs = ["controller_channel_sender.cc"],
-    hdrs = ["controller_channel_sender.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "@drake//:drake_shared_library",
-    ],
-)

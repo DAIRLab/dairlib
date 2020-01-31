@@ -615,22 +615,23 @@ void DoMain(double duration, int max_iter, string data_directory,
   // add cost
   const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 0.1 * 0.01 * MatrixXd::Identity(n_u, n_u);
-  //  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
-  //  trajopt->AddRunningCost(u.transpose() * R * u);
-  //  for (int i = 0; i < N - 1; i++) {
-  //    auto v0 = trajopt->state(i).tail(n_v);
-  //    auto v1 = trajopt->state(i+1).tail(n_v);
-  //    auto h = 0.4/15.0;
-  //    trajopt->AddCost(((v0.transpose() * Q * v0) * h / 2)(0));
-  //    trajopt->AddCost(((v1.transpose() * Q * v1) * h / 2)(0));
-  //  }
+  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
+  trajopt->AddRunningCost(u.transpose() * R * u);
+  /* // Add cost without time
+  for (int i = 0; i < N - 1; i++) {
+    auto v0 = trajopt->state(i).tail(n_v);
+    auto v1 = trajopt->state(i + 1).tail(n_v);
+    auto h = 0.4 / 15.0;
+    trajopt->AddCost(((v0.transpose() * Q * v0) * h / 2)(0));
+    trajopt->AddCost(((v1.transpose() * Q * v1) * h / 2)(0));
+  }
   for (int i = 0; i < N - 1; i++) {
     auto u0 = trajopt->input(i);
     auto u1 = trajopt->input(i + 1);
     auto h = 0.4 / 15.0;
     trajopt->AddCost(((u0.transpose() * R * u0) * h / 2)(0));
     trajopt->AddCost(((u1.transpose() * R * u1) * h / 2)(0));
-  }
+  }*/
 
   // Scale decision variable
   if (FLAGS_is_scale_variable) {
@@ -769,33 +770,27 @@ void DoMain(double duration, int max_iter, string data_directory,
 
   // Calculate each term of the cost
   double cost_x = 0;
+  int n_cost = 0;
   for (int i = 0; i < N - 1; i++) {
     auto v0 = state_at_knots.col(i).tail(n_v);
     auto v1 = state_at_knots.col(i + 1).tail(n_v);
-    auto h = time_at_knots(i+1) - time_at_knots(i);
+    auto h = time_at_knots(i + 1) - time_at_knots(i);
+    cout << "  #" << n_cost << ": sub_cost = " << ((v0.transpose() * Q * v0) * h / 2)(0) << endl;
+    n_cost++;
     cost_x += ((v0.transpose() * Q * v0) * h / 2)(0);
+    cout << "  #" << n_cost << ": sub_cost = " << ((v0.transpose() * Q * v0) * h / 2)(0) << endl;
+    n_cost++;
     cost_x += ((v1.transpose() * Q * v1) * h / 2)(0);
   }
-  cout << "N = " << N << endl;
-  cout << "Q = " << Q << endl;
   cout << "cost_x = " << cost_x << endl;
   double cost_u = 0;
-  int cost_number = 0;
   for (int i = 0; i < N - 1; i++) {
     auto u0 = input_at_knots.col(i);
     auto u1 = input_at_knots.col(i + 1);
-    auto h = time_at_knots(i+1) - time_at_knots(i);
+    auto h = time_at_knots(i + 1) - time_at_knots(i);
     cost_u += ((u0.transpose() * R * u0) * h / 2)(0);
-    cout << "  u = " << u0.transpose() << endl;
-    cout << "  cost #" << cost_number << ": sub cost = " << ((u0.transpose() * R * u0) * h / 2)(0) << endl;
-    cout << "((u0.transpose() * R * u0) * h / 2) = " << ((u0.transpose() * R * u0) * h / 2) << endl;
-    cost_number++;
     cost_u += ((u1.transpose() * R * u1) * h / 2)(0);
-    cout << "  u = " << u1.transpose() << endl;
-    cout << "  cost #" << cost_number << ": sub cost = " << ((u1.transpose() * R * u1) * h / 2)(0) << endl;
-    cost_number++;
   }
-  cout << "R = " << R << endl;
   cout << "cost_u = " << cost_u << endl;
   double cost_lambda = 0;
   for (int i = 0; i < num_time_samples.size(); i++) {
@@ -805,10 +800,11 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
   cout << "cost_lambda = " << cost_lambda << endl;
-  //  cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u +
-  //  cost_lambda
-  //       << endl;
-  cout << "cost_u + cost_lambda = " << cost_u + cost_lambda << endl;
+  cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u + cost_lambda
+       << endl;
+  //  cout << "cost_u + cost_lambda = " << cost_u + cost_lambda << endl;
+  cout << "cost_x + cost_u = " << cost_x + cost_u
+       << endl;
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =

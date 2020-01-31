@@ -28,28 +28,26 @@ namespace dairlib {
 namespace systems {
 
 CPTrajGenerator::CPTrajGenerator(
-    const RigidBodyTree<double>& tree, double mid_foot_height,
-    double desired_final_foot_height,
+    const RigidBodyTree<double>& tree,
+    std::vector<int> left_right_support_fsm_states,
+    std::vector<double> left_right_support_state_durations,
+    std::vector<int> left_right_foot_body_indices,
+    std::vector<Vector3d> left_right_foot_pts_on_bodies, int pelvis_idx,
+    double mid_foot_height, double desired_final_foot_height,
     double desired_final_vertical_foot_velocity, double max_CoM_to_CP_dist,
-    double stance_duration_per_leg, int left_stance, int right_stance,
-    int left_foot_idx, Eigen::Vector3d pt_on_left_foot, int right_foot_idx,
-    Eigen::Vector3d pt_on_right_foot, int pelvis_idx, bool add_extra_control,
-    bool is_feet_collision_avoid, bool is_using_predicted_com, double cp_offset,
-    double center_line_offset)
+    bool add_extra_control, bool is_feet_collision_avoid,
+    bool is_using_predicted_com, double cp_offset, double center_line_offset)
     : tree_(tree),
+      left_right_support_fsm_states_(left_right_support_fsm_states),
+      left_right_support_state_durations_(left_right_support_state_durations),
+      left_right_foot_body_indices_(left_right_foot_body_indices),
+      left_right_foot_pts_on_bodies_(left_right_foot_pts_on_bodies),
+      pelvis_idx_(pelvis_idx),
       mid_foot_height_(mid_foot_height),
       desired_final_foot_height_(desired_final_foot_height),
       desired_final_vertical_foot_velocity_(
           desired_final_vertical_foot_velocity),
       max_CoM_to_CP_dist_(max_CoM_to_CP_dist),
-      stance_duration_per_leg_(stance_duration_per_leg),
-      left_stance_(left_stance),
-      right_stance_(right_stance),
-      left_foot_idx_(left_foot_idx),
-      right_foot_idx_(right_foot_idx),
-      pt_on_left_foot_(pt_on_left_foot),
-      pt_on_right_foot_(pt_on_right_foot),
-      pelvis_idx_(pelvis_idx),
       add_extra_control_(add_extra_control),
       is_feet_collision_avoid_(is_feet_collision_avoid),
       is_using_predicted_com_(is_using_predicted_com),
@@ -133,10 +131,13 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     }
     cache.initialize(q);
     tree_.doKinematics(cache);
-    int swing_foot_idx =
-        (fsm_state(0) == right_stance_) ? left_foot_idx_ : right_foot_idx_;
+    int swing_foot_idx = (fsm_state(0) == left_right_support_fsm_states_[1])
+                             ? left_right_foot_body_indices_[0]
+                             : left_right_foot_body_indices_[1];
     Vector3d pt_on_swing_foot =
-        (fsm_state(0) == right_stance_) ? pt_on_left_foot_ : pt_on_right_foot_;
+        (fsm_state(0) == left_right_support_fsm_states_[1])
+            ? left_right_foot_pts_on_bodies_[0]
+            : left_right_foot_pts_on_bodies_[1];
 
     // Swing foot position (Forward Kinematics) at touchdown
     swing_foot_pos_td =
@@ -165,14 +166,15 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
   }
   cache.initialize(q);
   tree_.doKinematics(cache);
+
   int stance_foot_idx;
   Vector3d pt_on_stance_foot;
-  if (fsm_state(0) == right_stance_) {
-    stance_foot_idx = right_foot_idx_;
-    pt_on_stance_foot = pt_on_right_foot_;
+  if (fsm_state(0) == left_right_support_fsm_states_[1]) {
+    stance_foot_idx = left_right_foot_body_indices_[1];
+    pt_on_stance_foot = left_right_foot_pts_on_bodies_[1];
   } else {
-    stance_foot_idx = left_foot_idx_;
-    pt_on_stance_foot = pt_on_left_foot_;
+    stance_foot_idx = left_right_foot_body_indices_[0];
+    pt_on_stance_foot = left_right_foot_pts_on_bodies_[0];
   }
   Vector3d stance_foot_pos =
       tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
@@ -222,7 +224,7 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
     // Shift CP a little away from CoM line and toward the swing foot, so that
     // the foot placement position at steady state is right below the hip joint
     Vector2d shift_foothold_dir;
-    if (fsm_state(0) == right_stance_) {
+    if (fsm_state(0) == left_right_support_fsm_states_[1]) {
       shift_foothold_dir << cos(approx_pelvis_yaw + M_PI * 1 / 2),
           sin(approx_pelvis_yaw + M_PI * 1 / 2);
     } else {
@@ -231,9 +233,10 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
     }
     CP = CP + shift_foothold_dir * cp_offset_;
 
-    CP = ImposeHalfplaneGuard(CP, (left_stance_ == fsm_state(0)),
-                              approx_pelvis_yaw, CoM.head(2),
-                              stance_foot_pos.head(2), center_line_offset_);
+    CP = ImposeHalfplaneGuard(
+        CP, (fsm_state(0) == left_right_support_fsm_states_[0]),
+        approx_pelvis_yaw, CoM.head(2), stance_foot_pos.head(2),
+        center_line_offset_);
   }
 
   // Cap by the step length
@@ -246,8 +249,9 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
 
 PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
     const double start_time_of_this_interval,
-    const double end_time_of_this_interval, const Vector3d& init_swing_foot_pos,
-    const Vector2d& CP, const VectorXd& stance_foot_height) const {
+    const double end_time_of_this_interval, const double stance_duration,
+    const Vector3d& init_swing_foot_pos, const Vector2d& CP,
+    const VectorXd& stance_foot_height) const {
   // Two segment of cubic polynomial with velocity constraints
   std::vector<double> T_waypoint = {
       start_time_of_this_interval,
@@ -274,11 +278,11 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
   std::vector<MatrixXd> Y_dot(T_waypoint.size(), MatrixXd::Zero(3, 1));
   // x
   Y_dot[0](0, 0) = 0;
-  Y_dot[1](0, 0) = (CP(0) - init_swing_foot_pos(0)) / stance_duration_per_leg_;
+  Y_dot[1](0, 0) = (CP(0) - init_swing_foot_pos(0)) / stance_duration;
   Y_dot[2](0, 0) = 0;
   // y
   Y_dot[0](1, 0) = 0;
-  Y_dot[1](1, 0) = (CP(1) - init_swing_foot_pos(1)) / stance_duration_per_leg_;
+  Y_dot[1](1, 0) = (CP(1) - init_swing_foot_pos(1)) / stance_duration;
   Y_dot[2](1, 0) = 0;
   // z
   Y_dot[0](2, 0) = 0;
@@ -308,8 +312,14 @@ void CPTrajGenerator::CalcTrajs(
   const BasicVector<double>* fsm_output =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
-  bool is_swing_phase =
-      (fsm_state(0) == left_stance_) || (fsm_state(0) == right_stance_);
+
+  // Find fsm_state in left_right_support_fsm_states
+  auto it = find(left_right_support_fsm_states_.begin(),
+                 left_right_support_fsm_states_.end(), int(fsm_state(0)));
+  int index = std::distance(left_right_support_fsm_states_.begin(), it);
+
+  // swing phase if current state is in left_right_support_fsm_states_
+  bool is_swing_phase = !(it == left_right_support_fsm_states_.end());
 
   // Generate trajectory based on CP if it's currently in swing phase.
   // Otherwise, generate a constant trajectory in case the user still tracks
@@ -326,7 +336,7 @@ void CPTrajGenerator::CalcTrajs(
     // Get the start time and the end time of the current stance phase
     double start_time_of_this_interval = prev_td_time(0);
     double end_time_of_this_interval =
-        prev_td_time(0) + stance_duration_per_leg_;
+        prev_td_time(0) + left_right_support_state_durations_[index];
 
     // Ensure current_time < end_time_of_this_interval to avoid error in
     // creating trajectory.
@@ -346,7 +356,8 @@ void CPTrajGenerator::CalcTrajs(
     // Assign traj
     *casted_traj = createSplineForSwingFoot(
         start_time_of_this_interval, end_time_of_this_interval,
-        init_swing_foot_pos, CP, stance_foot_height);
+        left_right_support_state_durations_[index], init_swing_foot_pos, CP,
+        stance_foot_height);
 
   } else {
     // Assign a constant traj

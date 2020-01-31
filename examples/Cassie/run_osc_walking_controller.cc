@@ -145,7 +145,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(high_level_command->get_yaw_output_port(),
                   head_traj_gen->get_yaw_input_port());
 
-  double duration_per_state = 0.35;
   // Create finite state machine
   int left_stance_state = 0;
   int right_stance_state = 1;
@@ -232,12 +231,21 @@ int DoMain(int argc, char* argv[]) {
   double max_CoM_to_CP_dist = 0.4;
   double cp_offset = 0.06;
   double center_line_offset = 0.06;
+  std::vector<int> left_right_support_fsm_states =
+      std::vector<int>({left_stance_state, right_stance_state});
+  std::vector<double> left_right_support_state_durations =
+      std::vector<double>({left_support_duration, right_support_duration});
+  std::vector<int> left_right_foot_body_indices =
+      std::vector<int>({left_toe_idx, right_toe_idx});
+  std::vector<Vector3d> left_right_foot_pts_on_bodies;
+  left_right_foot_pts_on_bodies.push_back(Eigen::VectorXd::Zero(3));
+  left_right_foot_pts_on_bodies.push_back(Eigen::VectorXd::Zero(3));
   auto cp_traj_generator = builder.AddSystem<systems::CPTrajGenerator>(
-      tree_with_springs, mid_foot_height, desired_final_foot_height,
-      desired_final_vertical_foot_velocity, max_CoM_to_CP_dist,
-      duration_per_state, left_stance_state, right_stance_state, left_toe_idx,
-      Eigen::VectorXd::Zero(3), right_toe_idx, Eigen::VectorXd::Zero(3),
-      pelvis_idx, true, true, true, cp_offset, center_line_offset);
+      tree_with_springs, left_right_support_fsm_states,
+      left_right_support_state_durations, left_right_foot_body_indices,
+      left_right_foot_pts_on_bodies, pelvis_idx, mid_foot_height,
+      desired_final_foot_height, desired_final_vertical_foot_velocity,
+      max_CoM_to_CP_dist, true, true, true, cp_offset, center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   cp_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -337,8 +345,8 @@ int DoMain(int argc, char* argv[]) {
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
   // Swing toe joint tracking (Currently use fix position)
-  // The desired position, -1.5, was derived heuristically. It is roughly the toe
-  // angle when Cassie stands on the ground.
+  // The desired position, -1.5, was derived heuristically. It is roughly the
+  // toe angle when Cassie stands on the ground.
   MatrixXd W_swing_toe = 200 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = 200 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = 20 * MatrixXd::Identity(1, 1);
@@ -349,8 +357,7 @@ int DoMain(int argc, char* argv[]) {
                                          "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
                                          "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1),
-      0, 0.3);
+  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0, 0.3);
   // Swing hip yaw joint tracking
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);

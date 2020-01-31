@@ -3,8 +3,11 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <fstream>
+#include <memory>
 
 #include "drake/systems/framework/leaf_system.h"
+#include "src/InEKF.h"
 
 #include "attic/multibody/rigidbody_utils.h"
 #include "systems/framework/output_vector.h"
@@ -27,17 +30,40 @@ namespace systems {
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
-                                   bool is_floating_base);
+                                   bool is_floating_base,
+                                   bool test_with_ground_truth_state = false,
+                                   bool print_info_to_terminal = false);
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
 
-  // contactEstimtion is public in order to perform unit tests on it.
-  void contactEstimation(
+  /// UpdateContactEstimationCosts() updates the optimal costs of the quadratic
+  /// programs, and EstimateContactForEkf() and EstimateContactForController()
+  /// estimate the ground contacts based on the optimal costs and spring
+  /// deflections.
+  /// Estimation from EstimateContactForEkf() is more conservative compared to
+  /// EstimateContactForController(). See the cc file for more detail.
+  /// The methods are set to be public in order to unit test them.
+  void UpdateContactEstimationCosts(
       const systems::OutputVector<double>& output, const double& dt,
       drake::systems::DiscreteValues<double>* discrete_state,
+      std::vector<double>* optimal_cost) const;
+  void EstimateContactForEkf(
+      const systems::OutputVector<double>& output,
+      const std::vector<double>&  optimal_cost,
+      int* left_contact, int* right_contact) const;
+  void EstimateContactForController(
+      const systems::OutputVector<double>& output,
+      const std::vector<double>&  optimal_cost,
       int* left_contact, int* right_contact) const;
 
+  void setPreviousTime(drake::systems::Context<double>* context, double time);
+  void setInitialImuPosition(drake::systems::Context<double>* context,
+                             Eigen::Vector3d p);
+  void setInitialImuQuaternion(drake::systems::Context<double>* context,
+                               Eigen::Vector4d q);
+  void setPreviousImuMeasurement(drake::systems::Context<double>* context,
+                                 Eigen::VectorXd imu_value);
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
@@ -51,23 +77,30 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
 
   drake::systems::EventStatus Update(
       const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
+      drake::systems::State<double>* state) const;
 
   void CopyStateOut(const drake::systems::Context<double>& context,
                     systems::OutputVector<double>* output) const;
 
+  // flag for testing and tuning
+  bool test_with_ground_truth_state_;
+  bool print_info_to_terminal_;
+
   const RigidBodyTree<double>& tree_;
   const bool is_floating_base_;
 
-  std::map<std::string, int> position_index_map_;
-  std::map<std::string, int> velocity_index_map_;
-  std::map<std::string, int> actuator_index_map_;
+  std::map<std::string, int> position_idx_map_;
+  std::map<std::string, int> velocity_idx_map_;
+  std::map<std::string, int> actuator_idx_map_;
 
   // Body indices
-  int left_thigh_ind_;
-  int right_thigh_ind_;
-  int left_heel_spring_ind_;
-  int right_heel_spring_ind_;
+  int left_thigh_idx_;
+  int right_thigh_idx_;
+  int left_heel_spring_idx_;
+  int right_heel_spring_idx_;
+  int left_toe_idx_;
+  int right_toe_idx_;
+  int pelvis_idx_;
 
   // Input/output port indices
   int cassie_out_input_port_;
@@ -77,8 +110,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   // A state which stores previous timestamp
   drake::systems::DiscreteStateIndex time_idx_;
   // States related to EKF
-  drake::systems::DiscreteStateIndex state_idx_;
-  drake::systems::DiscreteStateIndex ekf_X_idx_;
+  drake::systems::DiscreteStateIndex fb_state_idx_;
+  drake::systems::AbstractStateIndex ekf_idx_;
+  drake::systems::DiscreteStateIndex prev_imu_idx_;
   // A state related to contact estimation
   // This state store the previous generalized velocity
   drake::systems::DiscreteStateIndex previous_velocity_idx_;
@@ -109,14 +143,30 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::Vector3d rod_on_thigh_right_ = Eigen::Vector3d(0.0, 0.0, -0.045);
   Eigen::Vector3d front_contact_disp_ = Eigen::Vector3d(-0.0457, 0.112, 0);
   Eigen::Vector3d rear_contact_disp_ = Eigen::Vector3d(0.088, 0, 0);
+  Eigen::Vector3d mid_contact_disp_;
   // IMU location wrt pelvis
   Eigen::Vector3d imu_pos_ = Eigen::Vector3d(0.03155, 0, -0.07996);
   Eigen::Vector3d gravity_ = Eigen::Vector3d(0, 0, -9.81);
 
+  // EKF encoder noise
+  Eigen::Matrix<double, 16, 16> cov_w_;
+
   // Contact Estimation Parameters
-  const double cost_threshold_ = 200;
-  const double knee_spring_threshold_ = -0.015;
-  const double heel_spring_threshold_ = -0.03;
+  // The values of spring threshold are based on walking and standing values in
+  // simulation.
+  // Walking: https://drive.google.com/open?id=1vMIKAed8RHIFF1fbjTqBHtbgkPrHuzkS
+  //          https://drive.google.com/open?id=1UqiZSXhd9-4A6YwHArh-xPBMa16RyUGm
+  // Spring deflection of standing:
+  //     Knee ~-0.032
+  //     Heel ~???
+  //          https://drive.google.com/file/d/1o7QS4ZksU91EBIpwtNnKpunob93BKiX_
+  //          https://drive.google.com/file/d/1mlDzi0fa-YHopeRHaa-z88fPGuI2Aziv
+  const double cost_threshold_ctrl_ = 200;
+  const double cost_threshold_ekf_ = 200;
+  const double knee_spring_threshold_ctrl_ = -0.015;
+  const double knee_spring_threshold_ekf_ = -0.015;
+  const double heel_spring_threshold_ctrl_ = -0.03;
+  const double heel_spring_threshold_ekf_ = -0.015;
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
   const double w_soft_constraint_ = 100;  // Soft constraint cost
   const double alpha_ = 0.9;  // Low-pass filter constant for the acceleration
@@ -135,20 +185,13 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* quadcost_eps_cr_;
   drake::solvers::QuadraticCost* quadcost_eps_imu_;
   // Decision variables
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      ddq_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      lambda_b_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      lambda_cl_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      lambda_cr_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      eps_cl_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      eps_cr_;
-  Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
-      eps_imu_;
+  drake::solvers::VectorXDecisionVariable ddq_;
+  drake::solvers::VectorXDecisionVariable lambda_b_;
+  drake::solvers::VectorXDecisionVariable lambda_cl_;
+  drake::solvers::VectorXDecisionVariable lambda_cr_;
+  drake::solvers::VectorXDecisionVariable eps_cl_;
+  drake::solvers::VectorXDecisionVariable eps_cr_;
+  drake::solvers::VectorXDecisionVariable eps_imu_;
 };
 
 }  // namespace systems

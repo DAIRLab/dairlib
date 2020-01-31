@@ -2,9 +2,8 @@ from __future__ import print_function
 
 import argparse
 import os
-from os.path import exists, join
-import subprocess
 import sys
+from os.path import exists, join
 
 
 def resolve_path(relpath):

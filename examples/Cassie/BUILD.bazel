@@ -43,25 +43,26 @@ cc_library(
 )
 
 cc_library(
+  name = "cassie_rbt_state_estimator",
+  srcs = ["cassie_rbt_state_estimator.cc",],
+  hdrs = ["cassie_rbt_state_estimator.h",],
+  deps = [
+    "@drake//:drake_shared_library",
+    "@inekf//src:InEKF",
+    "//systems/framework:vector",
+    "//examples/Cassie/datatypes:cassie_out_t",
+    "//examples/Cassie/datatypes:cassie_names",
+    "//attic/multibody:utils",
+    ":cassie_utils",
+  ],
+)
+
+cc_library(
     name = "simulator_drift",
     srcs = ["simulator_drift.cc"],
     hdrs = ["simulator_drift.h"],
     deps = [
         "//common",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "cassie_rbt_state_estimator",
-    srcs = ["cassie_rbt_state_estimator.cc"],
-    hdrs = ["cassie_rbt_state_estimator.h"],
-    deps = [
-        ":cassie_utils",
-        "//attic/multibody:utils",
-        "//examples/Cassie/datatypes:cassie_names",
-        "//examples/Cassie/datatypes:cassie_out_t",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -353,7 +354,8 @@ cc_binary(
     name = "run_controller_switch",
     srcs = ["run_controller_switch.cc"],
     deps = [
-        "//systems/framework:controller_channel_sender",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

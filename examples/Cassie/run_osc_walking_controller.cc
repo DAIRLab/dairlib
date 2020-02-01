@@ -30,8 +30,10 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::systems::DiagramBuilder;
+using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::lcm::TriggerTypeSet;
 
 using multibody::GetBodyIndexFromName;
 using systems::controllers::ComTrackingData;
@@ -45,6 +47,11 @@ DEFINE_string(channel_x, "CASSIE_STATE",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
+
+DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
+DEFINE_bool(is_two_phase, false,
+            "true: only right/left single support"
+            "false: both double and single support");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -85,7 +92,7 @@ int DoMain(int argc, char* argv[]) {
   // Create command sender.
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm_local, 1.0 / 1000.0));
+          FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(tree_with_springs);
 
@@ -141,18 +148,62 @@ int DoMain(int argc, char* argv[]) {
   // Create finite state machine
   int left_stance_state = 0;
   int right_stance_state = 1;
-  double duration_per_state = 0.35;
-  double time_shift = 0;
+  int double_support_state = 2;
+  double left_support_duration = 0.35;
+  double right_support_duration = 0.35;
+  double double_support_duration = 0.02;
+  std::vector<int> fsm_states;
+  std::vector<double> state_durations;
+  if (FLAGS_is_two_phase) {
+    fsm_states = std::vector<int>({left_stance_state, right_stance_state});
+    state_durations =
+        std::vector<double>({left_support_duration, right_support_duration});
+  } else {
+    fsm_states = std::vector<int>({left_stance_state, double_support_state,
+                                   right_stance_state, double_support_state});
+    state_durations =
+        std::vector<double>({left_support_duration, double_support_duration,
+                             right_support_duration, double_support_duration});
+  }
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
-      tree_with_springs, duration_per_state, time_shift);
+      tree_with_springs, fsm_states, state_durations);
   builder.Connect(simulator_drift->get_output_port(0),
                   fsm->get_input_port_state());
 
   // Create CoM trajectory generator
   double desired_com_height = 0.89;
+  std::vector<int> unordered_fsm_states;
+  std::vector<double> unordered_state_durations;
+  std::vector<std::vector<int>> body_indices;
+  std::vector<std::vector<Vector3d>> pts_on_bodies;
+  if (FLAGS_is_two_phase) {
+    unordered_fsm_states =
+        std::vector<int>({left_stance_state, right_stance_state});
+    unordered_state_durations =
+        std::vector<double>({left_support_duration, right_support_duration});
+    body_indices.push_back(std::vector<int>({left_toe_idx}));
+    body_indices.push_back(std::vector<int>({right_toe_idx}));
+    pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+    pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+  } else {
+    unordered_fsm_states = std::vector<int>(
+        {left_stance_state, right_stance_state, double_support_state});
+    unordered_state_durations =
+        std::vector<double>({left_support_duration, right_support_duration,
+                             double_support_duration});
+    body_indices.push_back(std::vector<int>({left_toe_idx}));
+    body_indices.push_back(std::vector<int>({right_toe_idx}));
+    body_indices.push_back(std::vector<int>({left_toe_idx, right_toe_idx}));
+    pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+    pts_on_bodies.push_back(std::vector<Vector3d>(1, mid_contact_disp));
+    pts_on_bodies.push_back(std::vector<Vector3d>(2, mid_contact_disp));
+  }
+  std::vector<int> constant_height_states =
+      std::vector<int>({double_support_state});
   auto lipm_traj_generator = builder.AddSystem<systems::LIPMTrajGenerator>(
-      tree_with_springs, desired_com_height, duration_per_state, left_toe_idx,
-      mid_contact_disp, right_toe_idx, mid_contact_disp);
+      tree_with_springs, desired_com_height, unordered_fsm_states,
+      unordered_state_durations, body_indices, pts_on_bodies,
+      constant_height_states);
   builder.Connect(fsm->get_output_port(0),
                   lipm_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -180,12 +231,21 @@ int DoMain(int argc, char* argv[]) {
   double max_CoM_to_CP_dist = 0.4;
   double cp_offset = 0.06;
   double center_line_offset = 0.06;
+  std::vector<int> left_right_support_fsm_states =
+      std::vector<int>({left_stance_state, right_stance_state});
+  std::vector<double> left_right_support_state_durations =
+      std::vector<double>({left_support_duration, right_support_duration});
+  std::vector<int> left_right_foot_body_indices =
+      std::vector<int>({left_toe_idx, right_toe_idx});
+  std::vector<Vector3d> left_right_foot_pts_on_bodies;
+  left_right_foot_pts_on_bodies.push_back(Eigen::VectorXd::Zero(3));
+  left_right_foot_pts_on_bodies.push_back(Eigen::VectorXd::Zero(3));
   auto cp_traj_generator = builder.AddSystem<systems::CPTrajGenerator>(
-      tree_with_springs, mid_foot_height, desired_final_foot_height,
-      desired_final_vertical_foot_velocity, max_CoM_to_CP_dist,
-      duration_per_state, left_toe_idx, Eigen::VectorXd::Zero(3), right_toe_idx,
-      Eigen::VectorXd::Zero(3), pelvis_idx, true, true, true, cp_offset,
-      center_line_offset);
+      tree_with_springs, left_right_support_fsm_states,
+      left_right_support_state_durations, left_right_foot_body_indices,
+      left_right_foot_pts_on_bodies, pelvis_idx, mid_foot_height,
+      desired_final_foot_height, desired_final_vertical_foot_velocity,
+      max_CoM_to_CP_dist, true, true, true, cp_offset, center_line_offset);
   builder.Connect(fsm->get_output_port(0),
                   cp_traj_generator->get_input_port_fsm());
   builder.Connect(simulator_drift->get_output_port(0),
@@ -197,19 +257,17 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      tree_with_springs, tree_without_springs, true, false);
+      tree_with_springs, tree_without_springs, true,
+      FLAGS_print_osc /*print_tracking_info*/);
 
   // Cost
   int n_v = tree_without_springs.get_num_velocities();
-  MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q_accel = 2 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
-  double w_toe = 0.1;  // 1
-  osc->AddAccelerationCost("toe_leftdot", w_toe);
-  osc->AddAccelerationCost("toe_rightdot", w_toe);
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
-  double w_contact_relax = 200;
+  double w_contact_relax = 2000;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
   // Friction coefficient
   double mu = 0.4;
@@ -222,8 +280,18 @@ int DoMain(int argc, char* argv[]) {
                                front_contact_disp);
   osc->AddStateAndContactPoint(right_stance_state, "toe_right",
                                rear_contact_disp);
+  if (!FLAGS_is_two_phase) {
+    osc->AddStateAndContactPoint(double_support_state, "toe_left",
+                                 front_contact_disp);
+    osc->AddStateAndContactPoint(double_support_state, "toe_left",
+                                 rear_contact_disp);
+    osc->AddStateAndContactPoint(double_support_state, "toe_right",
+                                 front_contact_disp);
+    osc->AddStateAndContactPoint(double_support_state, "toe_right",
+                                 rear_contact_disp);
+  }
   // Swing foot tracking
-  MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
+  MatrixXd W_swing_foot = 400 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 10 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData swing_foot_traj("cp_traj", 3, K_p_sw_ft, K_d_sw_ft,
@@ -277,11 +345,11 @@ int DoMain(int argc, char* argv[]) {
   pelvis_heading_traj.AddFrameToTrack("pelvis");
   osc->AddTrackingData(&pelvis_heading_traj, 0.1);  // 0.05
   // Swing toe joint tracking (Currently use fix position)
-  // The desired position, -1.5, was derived heuristically. It is roughly the toe
-  // angle when Cassie stands on the ground.
-  MatrixXd W_swing_toe = 2 * MatrixXd::Identity(1, 1);
-  MatrixXd K_p_swing_toe = 1000 * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_swing_toe = 100 * MatrixXd::Identity(1, 1);
+  // The desired position, -1.5, was derived heuristically. It is roughly the
+  // toe angle when Cassie stands on the ground.
+  MatrixXd W_swing_toe = 200 * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_swing_toe = 200 * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_swing_toe = 20 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData swing_toe_traj(
       "swing_toe_traj", K_p_swing_toe, K_d_swing_toe, W_swing_toe,
       &tree_with_springs, &tree_without_springs);
@@ -289,8 +357,7 @@ int DoMain(int argc, char* argv[]) {
                                          "toe_rightdot");
   swing_toe_traj.AddStateAndJointToTrack(right_stance_state, "toe_left",
                                          "toe_leftdot");
-  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1),
-      0, 0.3);
+  osc->AddConstTrackingData(&swing_toe_traj, -1.5 * VectorXd::Ones(1), 0, 0.3);
   // Swing hip yaw joint tracking
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);

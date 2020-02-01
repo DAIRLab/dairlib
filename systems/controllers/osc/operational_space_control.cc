@@ -137,12 +137,19 @@ void OperationalSpaceControl::AddTrackingData(OscTrackingData* tracking_data,
   t_s_vec_.push_back(t_lb);
   t_e_vec_.push_back(t_ub);
 
-  // Construct input ports and add element to traj_name_to_port_index_map_
+  // Construct input ports and add element to traj_name_to_port_index_map_ if
+  // the port for the traj is not created yet
   string traj_name = tracking_data->GetName();
-  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
-  int port_index = this->DeclareAbstractInputPort(traj_name,
-      drake::Value<drake::trajectories::Trajectory<double>> (pp)).get_index();
-  traj_name_to_port_index_map_[traj_name] = port_index;
+  if (traj_name_to_port_index_map_.find(traj_name) ==
+      traj_name_to_port_index_map_.end()) {
+    PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
+    int port_index =
+        this->DeclareAbstractInputPort(
+                traj_name,
+                drake::Value<drake::trajectories::Trajectory<double>>(pp))
+            .get_index();
+    traj_name_to_port_index_map_[traj_name] = port_index;
+  }
 }
 void OperationalSpaceControl::AddConstTrackingData(
     OscTrackingData* tracking_data, VectorXd v, double t_lb, double t_ub) {
@@ -481,6 +488,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   SolutionResult solution_result = result.get_solution_result();
   if (print_tracking_info_) {
     cout << "\n" << to_string(solution_result) <<  endl;
+    cout << "fsm_state = " << fsm_state << endl;
   }
 
   // Extract solutions

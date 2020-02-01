@@ -68,7 +68,7 @@ shared_ptr<HybridDircon<double>> runDircon(
     vector<PiecewisePolynomial<double>> init_vc_traj) {
 
   drake::systems::DiagramBuilder<double> builder;
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   Parser parser(&plant, &scene_graph);
 
@@ -269,7 +269,7 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::srand(time(0));  // Initialize random number generator.
 
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   SceneGraph<double> scene_graph;
   Parser parser(&plant, &scene_graph);
   std::string full_name =

@@ -391,8 +391,12 @@ int DoMain(int argc, char* argv[]) {
   owned_diagram->set_name("osc walking controller");
 
   // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x);
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop
+      (&lcm_local,
+       std::move(owned_diagram),
+       state_receiver,
+       FLAGS_channel_x,
+       false);
   loop.Simulate();
 
   return 0;

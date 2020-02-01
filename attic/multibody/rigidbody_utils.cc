@@ -36,13 +36,14 @@ map<string, int> makeNameToActuatorsMap(const RigidBodyTree<double>& tree) {
 }
 
 int GetBodyIndexFromName(const RigidBodyTree<double>& tree, std::string name) {
+  int idx = -1;
   for (int i = 0; i < tree.get_num_bodies(); i++) {
     if (!tree.get_body(i).get_name().compare(name)) {
-      return i;
+      idx = i;
     }
   }
-  // Return -1 if none of the names match
-  return -1;
+  DRAKE_DEMAND(idx >= 0);
+  return idx;
 }
 
 bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,

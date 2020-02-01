@@ -30,6 +30,10 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false --publish_state=true";
         host = "localhost";
     }
+    cmd "1.simulator (dispatched) for OSC controller" {
+        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=true --publish_state=false --publish_rate=200";
+        host = "localhost";
+    }
     cmd "1.simulator (no dispatcher) for OSC controller" {
         exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=true --publish_state=true --publish_rate=200";
         host = "localhost";

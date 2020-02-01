@@ -10,6 +10,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <thread>
 
 #include "drake/common/drake_copyable.h"
 #include "drake/common/drake_deprecated.h"

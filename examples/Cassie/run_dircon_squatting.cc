@@ -391,7 +391,7 @@ void DoMain(double duration, int max_iter,
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, &scene_graph);
 
   string full_name = FindResourceOrThrow(

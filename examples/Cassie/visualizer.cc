@@ -48,7 +48,7 @@ int do_main(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
   multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8);

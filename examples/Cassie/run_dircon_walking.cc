@@ -397,7 +397,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   // Constraint scaling
   if (FLAGS_is_scale_constraint) {
     for (int i = 0; i < 2; i++) {
-      double s = 1; // scale everything together
+      double s = 1;  // scale everything together
       // Dynamic constraints
       options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
       options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
@@ -595,7 +595,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  /*auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
+  auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_left", 1, 0.05, std::numeric_limits<double>::infinity());
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
@@ -610,13 +610,28 @@ void DoMain(double duration, int max_iter, string data_directory,
     auto x = trajopt->state(index);
     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
     trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
-  }*/
+  }
 
   // add cost
   const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 0.1 * 0.01 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
+  /* // Add cost without time
+  for (int i = 0; i < N - 1; i++) {
+    auto v0 = trajopt->state(i).tail(n_v);
+    auto v1 = trajopt->state(i + 1).tail(n_v);
+    auto h = 0.4 / 15.0;
+    trajopt->AddCost(((v0.transpose() * Q * v0) * h / 2)(0));
+    trajopt->AddCost(((v1.transpose() * Q * v1) * h / 2)(0));
+  }
+  for (int i = 0; i < N - 1; i++) {
+    auto u0 = trajopt->input(i);
+    auto u1 = trajopt->input(i + 1);
+    auto h = 0.4 / 15.0;
+    trajopt->AddCost(((u0.transpose() * R * u0) * h / 2)(0));
+    trajopt->AddCost(((u1.transpose() * R * u1) * h / 2)(0));
+  }*/
 
   // Scale decision variable
   if (FLAGS_is_scale_variable) {
@@ -634,7 +649,7 @@ void DoMain(double duration, int max_iter, string data_directory,
         1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
     // impulse
     trajopt->ScaleImpulseVariables(
-        10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1); //0.1
+        10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
     // quaternion slack
     //    trajopt->ScaleQuaternionSlackVariables(0.5);
     // Constraint slack
@@ -718,10 +733,10 @@ void DoMain(double duration, int max_iter, string data_directory,
   if (to_store_data) {
     writeCSV(data_directory + string("z.csv"), z);
   }
-  for (int i = 0; i < z.size(); i++) {
+  /*for (int i = 0; i < z.size(); i++) {
     cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
   }
-  cout << endl;
+  cout << endl;*/
 
   // store the time, state, and input at knot points
   VectorXd time_at_knots = trajopt->GetSampleTimes(result);
@@ -739,17 +754,57 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // Store lambda
-  std::ofstream ofile;
-  ofile.open(data_directory + "lambda.txt", std::ofstream::out);
-  cout << "lambda_sol = \n";
-  for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
-    for (int index = 0; index < num_time_samples[mode]; index++) {
-      auto lambdai = trajopt->force(mode, index);
-      cout << result.GetSolution(lambdai).transpose() << endl;
-      ofile << result.GetSolution(lambdai).transpose() << endl;
+  if (to_store_data) {
+    std::ofstream ofile;
+    ofile.open(data_directory + "lambda.txt", std::ofstream::out);
+    cout << "lambda_sol = \n";
+    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+      for (int index = 0; index < num_time_samples[mode]; index++) {
+        auto lambdai = trajopt->force(mode, index);
+        cout << result.GetSolution(lambdai).transpose() << endl;
+        ofile << result.GetSolution(lambdai).transpose() << endl;
+      }
+    }
+    ofile.close();
+  }
+
+  // Calculate each term of the cost
+  double cost_x = 0;
+  int n_cost = 0;
+  for (int i = 0; i < N - 1; i++) {
+    auto v0 = state_at_knots.col(i).tail(n_v);
+    auto v1 = state_at_knots.col(i + 1).tail(n_v);
+    auto h = time_at_knots(i + 1) - time_at_knots(i);
+    cout << "  #" << n_cost << ": sub_cost = " << ((v0.transpose() * Q * v0) * h / 2)(0) << endl;
+    n_cost++;
+    cost_x += ((v0.transpose() * Q * v0) * h / 2)(0);
+    cout << "  #" << n_cost << ": sub_cost = " << ((v0.transpose() * Q * v0) * h / 2)(0) << endl;
+    n_cost++;
+    cost_x += ((v1.transpose() * Q * v1) * h / 2)(0);
+  }
+  cout << "cost_x = " << cost_x << endl;
+  double cost_u = 0;
+  for (int i = 0; i < N - 1; i++) {
+    auto u0 = input_at_knots.col(i);
+    auto u1 = input_at_knots.col(i + 1);
+    auto h = time_at_knots(i + 1) - time_at_knots(i);
+    cost_u += ((u0.transpose() * R * u0) * h / 2)(0);
+    cost_u += ((u1.transpose() * R * u1) * h / 2)(0);
+  }
+  cout << "cost_u = " << cost_u << endl;
+  double cost_lambda = 0;
+  for (int i = 0; i < num_time_samples.size(); i++) {
+    for (int j = 0; j < num_time_samples[i]; j++) {
+      auto lambda = result.GetSolution(trajopt->force(i, j));
+      cost_lambda += (options_list[i].getForceCost() * lambda).squaredNorm();
     }
   }
-  ofile.close();
+  cout << "cost_lambda = " << cost_lambda << endl;
+  cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u + cost_lambda
+       << endl;
+  //  cout << "cost_u + cost_lambda = " << cost_u + cost_lambda << endl;
+  cout << "cost_x + cost_u = " << cost_x + cost_u
+       << endl;
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =

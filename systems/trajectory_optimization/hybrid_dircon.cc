@@ -226,6 +226,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
                                   num_kinematic_constraints_wo_skipping(i));
       auto b = MatrixXd::Zero(num_kinematic_constraints_wo_skipping(i), 1);
       for (int j = 0; j < mode_lengths_[i]; j++) {
+        // Add || Ax - b ||^2
         AddL2NormCost(A, b, force(i, j));
       }
     }
@@ -314,6 +315,9 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
   // g_{N-1}*h_{N-2}/2.0.
 
+  // Here, we add the cost using symbolic expression. The expression is a
+  // polynomial of degree 3 which Drake can handle, although the
+  // documentation says it only supports up to second order.
   AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, 0) * h_vars()(0) /
           2);
   for (int i = 1; i <= N() - 2; i++) {
@@ -527,7 +531,7 @@ void HybridDircon<T>::ScaleKinConstraintSlackVariables(double scale) {
   for (size_t mode = 0; mode < mode_lengths_.size(); mode++) {
     int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
     auto vars = collocation_slack_vars(mode);
-    for (int i = 0; i< vars.size(); i++) {
+    for (int i = 0; i < vars.size(); i++) {
       DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
       this->SetVariableScaling(vars(i), scale);
     }
@@ -540,10 +544,9 @@ template <typename T>
 bool HybridDircon<T>::IsVariableScalingUnset(
     const drake::symbolic::Variable& var) {
   int idx = FindDecisionVariableIndex(var);
-  auto & scale_map = this->GetVariableScaling();
+  auto& scale_map = this->GetVariableScaling();
   return (scale_map.find(idx) == scale_map.end());
 }
-
 
 template class HybridDircon<double>;
 // template class HybridDircon<AutoDiffXd>;

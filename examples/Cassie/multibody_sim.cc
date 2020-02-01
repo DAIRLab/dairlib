@@ -146,7 +146,7 @@ int do_main(int argc, char* argv[]) {
     // simulator.get_mutable_integrator()->set_target_accuracy(1e-1);
     // simulator.get_mutable_integrator()->set_fixed_step_mode(true);
     simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
-      *diagram, FLAGS_dt, &simulator.get_mutable_context());
+      FLAGS_dt);
   }
 
   simulator.set_publish_every_time_step(false);

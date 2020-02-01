@@ -50,7 +50,7 @@ static const char* const kDoublePendulumSdfPath =
 void runDircon() {
   const std::string sdf_path =
       drake::FindResourceOrThrow(kDoublePendulumSdfPath);
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
 
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();

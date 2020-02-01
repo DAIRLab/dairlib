@@ -173,7 +173,7 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       drake::systems::DiagramBuilder<double> builder_ik;
       SceneGraph<double>& scene_graph_ik = *builder_ik.AddSystem<SceneGraph>();
       scene_graph_ik.set_name("scene_graph_ik");
-      MultibodyPlant<double> plant_ik;
+      MultibodyPlant<double> plant_ik(0.0);
       multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
@@ -280,7 +280,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, &scene_graph);
 
   string full_name =

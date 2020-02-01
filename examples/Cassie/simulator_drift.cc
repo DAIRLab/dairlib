@@ -54,8 +54,8 @@ void SimulatorDrift::CalcAdjustedState(
   auto accumulated_drift =
       context.get_discrete_state(accumulated_drift_index_).get_value();
 
-  output->GetMutablePositions() << robotOutput->GetPositions() + 
-                                    accumulated_drift;
-  output->SetVelocities(robotOutput->GetVelocities());
-  output->SetEfforts(robotOutput->GetEfforts());
+  VectorXd data = robotOutput->get_data();
+  data.head(tree_.get_num_positions()) += accumulated_drift;
+  output->SetDataVector(data);
+  output->set_timestamp(robotOutput->get_timestamp());
 }

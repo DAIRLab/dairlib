@@ -382,9 +382,18 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto rs_dataset = DirconKinematicDataSet<double>(plant, &rs_constraint,
                                                    skip_constraint_inds);
 
+  // Disable kinematic constraint at the second node
+  bool is_disable_kin_constraint_at_last_node = true;
+
+  // Set up options
   std::vector<DirconOptions> options_list;
   options_list.push_back(DirconOptions(ls_dataset.countConstraints(), &plant));
   options_list.push_back(DirconOptions(rs_dataset.countConstraints(), &plant));
+
+  if (is_disable_kin_constraint_at_last_node) {
+    options_list[1].setSinglePeriodicEndNode(true);
+  }
+
   // Be careful in setting relative constraint, because we skip constraints
   ///                 || lf/rf | lr/rr | fourbar
   /// Before skipping || 0 1 2 | 3 4 5 | 6 7
@@ -645,8 +654,10 @@ void DoMain(double duration, int max_iter, string data_directory,
     // force
     trajopt->ScaleForceVariables(
         1000, 0, 0, ls_dataset.countConstraintsWithoutSkipping() - 1);
-    trajopt->ScaleForceVariables(
-        1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
+    if (!is_disable_kin_constraint_at_last_node) {
+      trajopt->ScaleForceVariables(
+          1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
+    }
     // impulse
     trajopt->ScaleImpulseVariables(
         10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
@@ -655,6 +666,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     // Constraint slack
     trajopt->ScaleKinConstraintSlackVariables(0.1);
 
+    // Printing
     for (int i = 0; i < trajopt->decision_variables().size(); i++) {
       cout << trajopt->decision_variable(i) << ", ";
       cout << trajopt->decision_variable(i).get_id() << ", ";
@@ -734,7 +746,8 @@ void DoMain(double duration, int max_iter, string data_directory,
     writeCSV(data_directory + string("z.csv"), z);
   }
   for (int i = 0; i < z.size(); i++) {
-    cout << i << ": " << trajopt->decision_variables()[i] << ", " << z[i] << endl;
+    cout << i << ": " << trajopt->decision_variables()[i] << ", " << z[i]
+         << endl;
   }
   cout << endl;
 

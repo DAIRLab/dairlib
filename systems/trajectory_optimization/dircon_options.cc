@@ -145,6 +145,10 @@ int DirconOptions::getNumRelative() {
                                      is_constraints_relative_.end(), true));
 }
 
+void DirconOptions::setSinglePeriodicEndNode(bool is_single_periodic_end_node) {
+  is_single_periodic_end_node_ = is_single_periodic_end_node;
+}
+
 }  // namespace trajectory_optimization
 }  // namespace systems
 }  // namespace dairlib

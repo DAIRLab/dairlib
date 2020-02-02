@@ -40,6 +40,10 @@ class DirconOptions {
   DirconKinConstraintType getStartType();
   DirconKinConstraintType getEndType();
 
+  // Setter/getter for is_single_periodic_end_node_ flag
+  void setSinglePeriodicEndNode(bool is_single_periodic_end_node);
+  bool isSinglePeriodicEndNode() const { return is_single_periodic_end_node_; }
+
   // Getter for size of kinematic constraint
   int getNumConstraints();
 
@@ -71,6 +75,24 @@ class DirconOptions {
 
   // Force cost
   double force_cost_;
+
+  // is_single_periodic_end_node_ is set true when
+  //  1. the mode with this flag being set to true is the last mode of the
+  //  hybrid system,
+  //  2. the # of nodes in this mode is 1,
+  //  3. and the user want to impose the constraint on the state at this node
+  //  himself/herself.
+  // If is_single_periodic_end_node_ is true, Dircon will impose impact
+  //  constraint but not kinematics constraint.
+  // One use case:
+  //  When getting periodic walking gait of a bipedal robot, the user only
+  //  implement one stride in Dircon and impose a periodic (and mirror)
+  //  constraint between the states at the first node and the end node. In this
+  //  case, since the state at the end node (both position and velocity) is
+  //  constrained by the first node (and hence the kinematic constraint at the
+  //  first node as well), there is no need to impose kinematic constraint on
+  //  the end node.
+  bool is_single_periodic_end_node_ = false;
 };
 
 }  // namespace trajectory_optimization

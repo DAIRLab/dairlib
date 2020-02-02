@@ -400,7 +400,7 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       n_relative_{
           static_cast<int>(std::count(is_constraint_relative.begin(),
                                       is_constraint_relative.end(), true))} {
-  /*// ***Set sparsity pattern***
+  // Set sparsity pattern and relative map
   std::vector<std::pair<int, int>> sparsity;
   // Acceleration constraints are dense in decision variables
   for (int i = 0; i < num_kinematic_constraints_; i++) {
@@ -416,7 +416,7 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
         sparsity.push_back({i + num_kinematic_constraints_, j});
       }
     }
-  }*/
+  }
 
   // Position constraint only depends on q and any offset variables
   // Set relative map in the same loop
@@ -425,23 +425,23 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
     int k = 0;
 
     for (int i = 0; i < num_kinematic_constraints_; i++) {
-      /*for (int j = 0; j < num_positions_; j++) {
+      for (int j = 0; j < num_positions_; j++) {
         sparsity.push_back({i + 2 * num_kinematic_constraints_, j});
-      }*/
+      }
 
       if (is_constraint_relative_[i]) {
         relative_map_(i, k) = 1;
         // ith constraint depends on kth offset variable
-        /*sparsity.push_back({i + 2 * num_kinematic_constraints_,
+        sparsity.push_back({i + 2 * num_kinematic_constraints_,
                             num_states_ + num_inputs_ +
-                                num_kinematic_constraints_wo_skipping + k});*/
+                                num_kinematic_constraints_wo_skipping + k});
 
         k++;
       }
     }
   }
 
-  //  this->SetGradientSparsityPattern(sparsity);
+  this->SetGradientSparsityPattern(sparsity);
 }
 
 template <typename T>

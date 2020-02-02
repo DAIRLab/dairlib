@@ -733,20 +733,20 @@ void DoMain(double duration, int max_iter, string data_directory,
   if (to_store_data) {
     writeCSV(data_directory + string("z.csv"), z);
   }
-  /*for (int i = 0; i < z.size(); i++) {
-    cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
+  for (int i = 0; i < z.size(); i++) {
+    cout << i << ": " << trajopt->decision_variables()[i] << ", " << z[i] << endl;
   }
-  cout << endl;*/
+  cout << endl;
 
   // store the time, state, and input at knot points
   VectorXd time_at_knots = trajopt->GetSampleTimes(result);
   MatrixXd state_at_knots = trajopt->GetStateSamples(result);
   MatrixXd input_at_knots = trajopt->GetInputSamples(result);
   //  state_at_knots.col(N - 1) = result.GetSolution(xf);
-  //  cout << "time_at_knots = \n" << time_at_knots << "\n";
-  //  cout << "state_at_knots = \n" << state_at_knots << "\n";
-  //  cout << "state_at_knots.size() = " << state_at_knots.size() << endl;
-  //  cout << "input_at_knots = \n" << input_at_knots << "\n";
+  cout << "time_at_knots = \n" << time_at_knots << "\n";
+  cout << "state_at_knots = \n" << state_at_knots << "\n";
+  cout << "state_at_knots.size() = " << state_at_knots.size() << endl;
+  cout << "input_at_knots = \n" << input_at_knots << "\n";
   if (to_store_data) {
     writeCSV(data_directory + string("t_i.csv"), time_at_knots);
     writeCSV(data_directory + string("x_i.csv"), state_at_knots);
@@ -761,8 +761,8 @@ void DoMain(double duration, int max_iter, string data_directory,
     for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
       for (int index = 0; index < num_time_samples[mode]; index++) {
         auto lambdai = trajopt->force(mode, index);
-        //        cout << result.GetSolution(lambdai).transpose() << endl;
-        //        ofile << result.GetSolution(lambdai).transpose() << endl;
+        cout << result.GetSolution(lambdai).transpose() << endl;
+        ofile << result.GetSolution(lambdai).transpose() << endl;
       }
     }
     ofile.close();
@@ -770,17 +770,10 @@ void DoMain(double duration, int max_iter, string data_directory,
 
   // Calculate each term of the cost
   double cost_x = 0;
-  //  int n_cost = 0;
   for (int i = 0; i < N - 1; i++) {
     auto v0 = state_at_knots.col(i).tail(n_v);
     auto v1 = state_at_knots.col(i + 1).tail(n_v);
     auto h = time_at_knots(i + 1) - time_at_knots(i);
-    /*cout << "  #" << n_cost
-         << ": sub_cost = " << ((v0.transpose() * Q * v0) * h / 2)(0) << endl;
-    n_cost++;*/
-    /*cout << "  #" << n_cost
-         << ": sub_cost = " << ((v1.transpose() * Q * v1) * h / 2)(0) << endl;
-    n_cost++;*/
     cost_x += ((v0.transpose() * Q * v0) * h / 2)(0);
     cost_x += ((v1.transpose() * Q * v1) * h / 2)(0);
   }
@@ -790,12 +783,6 @@ void DoMain(double duration, int max_iter, string data_directory,
     auto u0 = input_at_knots.col(i);
     auto u1 = input_at_knots.col(i + 1);
     auto h = time_at_knots(i + 1) - time_at_knots(i);
-    /*cout << "  #" << n_cost
-         << ": sub_cost = " << ((u0.transpose() * R * u0) * h / 2)(0) << endl;
-    n_cost++;
-    cout << "  #" << n_cost
-         << ": sub_cost = " << ((u1.transpose() * R * u1) * h / 2)(0) << endl;
-    n_cost++;*/
     cost_u += ((u0.transpose() * R * u0) * h / 2)(0);
     cost_u += ((u1.transpose() * R * u1) * h / 2)(0);
   }
@@ -811,7 +798,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u + cost_lambda
        << endl;
   //  cout << "cost_u + cost_lambda = " << cost_u + cost_lambda << endl;
-  cout << "cost_x + cost_u = " << cost_x + cost_u << endl;
+  //  cout << "cost_x + cost_u = " << cost_x + cost_u << endl;
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =

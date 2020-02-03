@@ -621,6 +621,29 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
   }
 
+  // Testing -- constraint on initial floating base
+//  trajopt->AddConstraint(x0(0) == 1);
+
+  // Testing -- constraint on the forces magnitude
+  /*for (int i = 0; i < N; i++) {
+    auto lambda = trajopt->force(0, i);
+    trajopt->AddLinearConstraint(lambda(2) <= 700);
+    trajopt->AddLinearConstraint(lambda(5) <= 700);
+    trajopt->AddLinearConstraint(lambda(6) >= -1000);  // left leg four bar
+    trajopt->AddLinearConstraint(lambda(6) <= 1000);   // left leg four bar
+    trajopt->AddLinearConstraint(lambda(7) >= -500);   // left leg four bar
+    trajopt->AddLinearConstraint(lambda(7) <= 500);    // left leg four bar
+  }*/
+  /*for (int i = 0; i < N - 1; i++) {
+    auto lambda = trajopt->collocation_force(0, i);
+    trajopt->AddLinearConstraint(lambda(2) <= 700);
+    trajopt->AddLinearConstraint(lambda(5) <= 700);
+    trajopt->AddLinearConstraint(lambda(6) >= -1000);  // left leg four bar
+    trajopt->AddLinearConstraint(lambda(6) <= 1000);   // left leg four bar
+    trajopt->AddLinearConstraint(lambda(7) >= -500);   // left leg four bar
+    trajopt->AddLinearConstraint(lambda(7) <= 500);    // left leg four bar
+  }*/
+
   // add cost
   const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 0.1 * 0.01 * MatrixXd::Identity(n_u, n_u);
@@ -640,6 +663,13 @@ void DoMain(double duration, int max_iter, string data_directory,
     auto h = 0.4 / 15.0;
     trajopt->AddCost(((u0.transpose() * R * u0) * h / 2)(0));
     trajopt->AddCost(((u1.transpose() * R * u1) * h / 2)(0));
+  }*/
+  // add constraint force difference wrt time to cost
+  double Q_lamb_diff = 0;  // 0.00001;
+  /*for (int i = 0; i < N - 1; i++) {
+    auto lambda0 = trajopt->force(0, i);
+    auto lambda1 = trajopt->force(0, i + 1);
+    trajopt->AddCost(Q_lamb_diff * (lambda0 - lambda1).dot(lambda0 - lambda1));
   }*/
 
   // Scale decision variable
@@ -664,21 +694,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     // quaternion slack
     //    trajopt->ScaleQuaternionSlackVariables(0.5);
     // Constraint slack
-    trajopt->ScaleKinConstraintSlackVariables(10); //1 seems better //0.1
-
-    // Printing
-    for (int i = 0; i < trajopt->decision_variables().size(); i++) {
-      cout << trajopt->decision_variable(i) << ", ";
-      cout << trajopt->decision_variable(i).get_id() << ", ";
-      cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
-           << ", ";
-      auto scale_map = trajopt->GetVariableScaling();
-      auto it = scale_map.find(i);
-      if (it != scale_map.end()) {
-        cout << it->second;
-      }
-      cout << endl;
-    }
+    trajopt->ScaleKinConstraintSlackVariables(0.1);  // 1 seems better //0.1
   }
 
   // initial guess
@@ -701,6 +717,87 @@ void DoMain(double duration, int max_iter, string data_directory,
       xi_seed << q_seed.at(i), v_seed.at(i);
       trajopt->SetInitialGuess(xi, xi_seed);
     }
+
+    /*// Testing -- initial guess for input
+    // These guesses are from a good solution
+    for (int i = 0; i < N; i++) {
+      auto u = trajopt->input(i);
+      trajopt->SetInitialGuess(u(0), 20);
+      trajopt->SetInitialGuess(u(2), -30);
+      trajopt->SetInitialGuess(u(4), 30);
+      trajopt->SetInitialGuess(u(6), 50);
+      trajopt->SetInitialGuess(u(8), 20);
+    }
+    // Testing -- initial guess for force (also forces at collocation)
+    for (int i = 0; i < N; i++) {
+      auto lambda = trajopt->force(0, i);
+      //      trajopt->SetInitialGuess(lambda(0), 0);
+      //      trajopt->SetInitialGuess(lambda(1), 0);
+      trajopt->SetInitialGuess(lambda(2), 170);
+      //      trajopt->SetInitialGuess(lambda(3), 0);
+      //      trajopt->SetInitialGuess(lambda(4), 0);
+      trajopt->SetInitialGuess(lambda(5), 170);
+      trajopt->SetInitialGuess(lambda(6), -500);
+      trajopt->SetInitialGuess(lambda(7), 50);
+    }
+    for (int i = 0; i < N - 1; i++) {
+      auto lambda0 = trajopt->GetInitialGuess(trajopt->force(0, i));
+      auto lambda1 = trajopt->GetInitialGuess(trajopt->force(0, i + 1));
+      auto collocation_lambda = trajopt->collocation_force(0, i);
+      trajopt->SetInitialGuess(collocation_lambda, (lambda0 + lambda1) / 2);
+    }
+    // Testing -- initial guess for slack
+    auto vars_kinematics = trajopt->collocation_slack_vars(0 *//*mode*//*);
+    for (int i = 0; i < vars_kinematics.size(); i++) {
+      trajopt->SetInitialGuess(vars_kinematics(i), 0);
+    }
+    auto vars_quaternion = trajopt->quaternion_slack_vars(0 *//*mode*//*);
+    for (int i = 0; i < vars_quaternion.size(); i++) {
+      trajopt->SetInitialGuess(vars_quaternion(i), 0);
+    }
+    // Testing -- initial condition for timestep
+    for (int i = 0; i < N - 1; i++) {
+      auto h_var = trajopt->timestep(i);
+      trajopt->SetInitialGuess(h_var(0), duration / (N - 1));
+    }
+    // Testing -- initial condition for post impact velocity
+    auto vp_var = trajopt->v_post_impact_vars_by_mode(0 *//*mode*//*);
+    trajopt->SetInitialGuess(
+        vp_var(vel_map.at("base_wx")),
+        trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_wx"))));
+    trajopt->SetInitialGuess(
+        vp_var(vel_map.at("base_wy")),
+        -trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_wy"))));
+    trajopt->SetInitialGuess(
+        vp_var(vel_map.at("base_wz")),
+        trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_wz"))));
+    trajopt->SetInitialGuess(
+        vp_var(vel_map.at("base_vx")),
+        trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_vx"))));
+    trajopt->SetInitialGuess(
+        vp_var(vel_map.at("base_vy")),
+        -trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_vy"))));
+    trajopt->SetInitialGuess(
+        vp_var(vel_map.at("base_vz")),
+        trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_vz"))));
+    for (auto l_r_pair : l_r_pairs) {
+      for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
+        // velocities
+        trajopt->SetInitialGuess(
+            vp_var(vel_map.at(asy_joint_names[i] + l_r_pair.second + "dot")),
+            -trajopt->GetInitialGuess(
+                x0(n_q +
+                   vel_map.at(asy_joint_names[i] + l_r_pair.first + "dot"))));
+      }
+      for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
+        // velocities
+        trajopt->SetInitialGuess(
+            vp_var(vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")),
+            trajopt->GetInitialGuess(
+                x0(n_q +
+                   vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot"))));
+      }
+    }  // end for (l_r_pairs)*/
   }
   // Careful: MUST set the initial guess for quaternion, since 0-norm quaternion
   // produces NAN value in some calculation.
@@ -713,6 +810,24 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt->SetInitialGuess(xi(2), 0);
       trajopt->SetInitialGuess(xi(3), 0);
     }
+  }
+
+  // Printing
+  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
+    cout << trajopt->decision_variable(i) << ", ";
+    cout << trajopt->decision_variable(i).get_id() << ", ";
+    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
+         << ", ";
+    auto scale_map = trajopt->GetVariableScaling();
+    auto it = scale_map.find(i);
+    if (it != scale_map.end()) {
+      cout << it->second;
+    } else {
+      cout << "none";
+    }
+    cout << ", ";
+    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
+    cout << endl;
   }
 
   cout << "\nChoose the best solver: "
@@ -812,6 +927,17 @@ void DoMain(double duration, int max_iter, string data_directory,
        << endl;
   //  cout << "cost_u + cost_lambda = " << cost_u + cost_lambda << endl;
   //  cout << "cost_x + cost_u = " << cost_x + cost_u << endl;
+  // constraint force difference wrt time
+  double cost_lambda_diff = 0;
+  for (int i = 0; i < N - 1; i++) {
+    auto lambda0 = result.GetSolution(trajopt->force(0, i));
+    auto lambda1 = result.GetSolution(trajopt->force(0, i + 1));
+    cost_lambda_diff +=
+        Q_lamb_diff * (lambda0 - lambda1).dot(lambda0 - lambda1);
+  }
+  cout << "cost_lambda_diff = " << cost_lambda_diff << endl;
+  cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff = "
+       << cost_x + cost_u + cost_lambda + cost_lambda_diff << endl;
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =

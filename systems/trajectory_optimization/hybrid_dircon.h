@@ -126,7 +126,15 @@ class HybridDircon
 
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable> force(
       int mode, int index) const {
+    DRAKE_DEMAND(index < mode_lengths_[mode]);
     return force_vars_[mode].segment(
+        index * num_kinematic_constraints_wo_skipping_[mode],
+        num_kinematic_constraints_wo_skipping_[mode]);
+  }
+  Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
+      collocation_force(int mode, int index) const {
+    DRAKE_DEMAND(index < mode_lengths_[mode] - 1);
+    return collocation_force_vars_[mode].segment(
         index * num_kinematic_constraints_wo_skipping_[mode],
         num_kinematic_constraints_wo_skipping_[mode]);
   }

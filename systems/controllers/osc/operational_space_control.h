@@ -216,7 +216,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC constraint members
   bool with_input_constraints_ = true;
 
-  // (flat ground) Contact constraints and friction cone cnostraints
+  // (flat ground) Contact constraints and friction cone constraints
   std::vector<int> body_index_ = {};
   std::vector<Eigen::VectorXd> pt_on_body_ = {};
   double mu_ = -1;  // Friction coefficients

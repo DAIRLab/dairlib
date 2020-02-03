@@ -102,7 +102,7 @@ void OscTrackingData::PrintFeedbackAndDesiredValues(VectorXd dv) {
   cout << "  dy = " << dy_.transpose() << endl;
   cout << "  dy_des = " << dy_des_.transpose() << endl;
   cout << "  error_dy_ = " << error_dy_.transpose() << endl;
-  cout << "  ddy_des = " << ddy_des_.transpose() << endl;
+//  cout << "  ddy_des = " << ddy_des_.transpose() << endl;
   cout << "  ddy_des_converted = " << ddy_des_converted_.transpose() << endl;
   cout << "  ddy_command = " << ddy_command_.transpose() << endl;
   cout << "  ddy_command_sol = " << (J_ * dv + JdotV_).transpose() << endl;

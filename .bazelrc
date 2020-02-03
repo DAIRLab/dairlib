@@ -54,4 +54,3 @@ build --define=WITH_SNOPT=ON
 # use python3 by default
 build --python_path=python3
 
-build --jobs=10

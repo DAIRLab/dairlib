@@ -134,8 +134,11 @@ TEST_F(ContactEstimationTest, DoubleSupportContactEstimationTest) {
 
   auto context = estimator_->CreateDefaultContext();
 
-  estimator_->contactEstimation(*output_, dt_,
-      &context->get_mutable_discrete_state(), &left_contact_, &right_contact_);
+  std::vector<double> optimal_cost(3, 0.0);
+  estimator_->UpdateContactEstimationCosts(*output_, dt_,
+      &context->get_mutable_discrete_state(), &optimal_cost);
+  estimator_->EstimateContactForController(*output_, optimal_cost,
+      &left_contact_, &right_contact_);
 
   int gtl = 0;
   int gtr = 0;
@@ -150,6 +153,8 @@ TEST_F(ContactEstimationTest, DoubleSupportContactEstimationTest) {
 // Left support contact estimation test
 // Checks if the contactEstimation returns the correct contacts for a
 // configuration of the robot in left stance.
+// This case is chosen in such a way that the stance can be estimated using just
+// springs.
 TEST_F(ContactEstimationTest, LeftSupportContactEstimationTest) {
   VectorXd q(tree_.get_num_positions());
   VectorXd v(tree_.get_num_velocities());
@@ -178,8 +183,11 @@ TEST_F(ContactEstimationTest, LeftSupportContactEstimationTest) {
 
   auto context = estimator_->CreateDefaultContext();
 
-  estimator_->contactEstimation(*output_, dt_,
-      &context->get_mutable_discrete_state(), &left_contact_, &right_contact_);
+  std::vector<double> optimal_cost(3, 0.0);
+  estimator_->UpdateContactEstimationCosts(*output_, dt_,
+      &context->get_mutable_discrete_state(), &optimal_cost);
+  estimator_->EstimateContactForController(*output_, optimal_cost,
+      &left_contact_, &right_contact_);
 
   int gtl = 0;
   int gtr = 0;
@@ -194,6 +202,8 @@ TEST_F(ContactEstimationTest, LeftSupportContactEstimationTest) {
 // Right support contact estimation test
 // Checks if the contactEstimation returns the correct contacts for a
 // configuration of the robot in right stance.
+// This case is chosen in such a way that the stance can be estimated using just
+// springs.
 TEST_F(ContactEstimationTest, RightSupportContactEstimationTest) {
   VectorXd q(tree_.get_num_positions());
   VectorXd v(tree_.get_num_velocities());
@@ -223,8 +233,11 @@ TEST_F(ContactEstimationTest, RightSupportContactEstimationTest) {
 
   auto context = estimator_->CreateDefaultContext();
 
-  estimator_->contactEstimation(*output_, dt_,
-      &context->get_mutable_discrete_state(), &left_contact_, &right_contact_);
+  std::vector<double> optimal_cost(3, 0.0);
+  estimator_->UpdateContactEstimationCosts(*output_, dt_,
+      &context->get_mutable_discrete_state(), &optimal_cost);
+  estimator_->EstimateContactForController(*output_, optimal_cost,
+      &left_contact_, &right_contact_);
 
   int gtl = 0;
   int gtr = 0;

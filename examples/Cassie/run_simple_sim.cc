@@ -39,7 +39,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
-DEFINE_double(youngs_modulus, 1e8, "The contact model's Young's modulus (Pa)");
+DEFINE_double(youngs_modulus, 1e9, "The contact model's Young's modulus (Pa)");
 DEFINE_double(us, 0.7, "The static coefficient of friction");
 DEFINE_double(ud, 0.7, "The dynamic coefficient of friction");
 DEFINE_double(v_tol, 0.01,

@@ -667,7 +667,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->AddCost(((u1.transpose() * R * u1) * h / 2)(0));
   }*/
   // add cost on force difference wrt time
-  double Q_lamb_diff = 0.000001;
+  double Q_lamb_diff = (0.001) * (0.001);
   if (Q_lamb_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto lambda0 = trajopt->force(0, i);
@@ -741,7 +741,7 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt->SetInitialGuess(xi, xi_seed);
     }
 
-    /*// Testing -- initial guess for input
+    // Testing -- initial guess for input
     // These guesses are from a good solution
     for (int i = 0; i < N; i++) {
       auto u = trajopt->input(i);
@@ -820,7 +820,7 @@ void DoMain(double duration, int max_iter, string data_directory,
                 x0(n_q +
                    vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot"))));
       }
-    }  // end for (l_r_pairs)*/
+    }  // end for (l_r_pairs)
   }
   // Careful: MUST set the initial guess for quaternion, since 0-norm quaternion
   // produces NAN value in some calculation.
@@ -946,10 +946,6 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
   cout << "cost_lambda = " << cost_lambda << endl;
-  cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u + cost_lambda
-       << endl;
-  //  cout << "cost_u + cost_lambda = " << cost_u + cost_lambda << endl;
-  //  cout << "cost_x + cost_u = " << cost_x + cost_u << endl;
   // cost on force difference wrt time
   double cost_lambda_diff = 0;
   for (int i = 0; i < N - 1; i++) {
@@ -959,8 +955,6 @@ void DoMain(double duration, int max_iter, string data_directory,
         Q_lamb_diff * (lambda0 - lambda1).dot(lambda0 - lambda1);
   }
   cout << "cost_lambda_diff = " << cost_lambda_diff << endl;
-  cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff = "
-       << cost_x + cost_u + cost_lambda + cost_lambda_diff << endl;
   // cost on vel difference wrt time
   double cost_vel_diff = 0;
   for (int i = 0; i < N - 1; i++) {
@@ -969,9 +963,6 @@ void DoMain(double duration, int max_iter, string data_directory,
     cost_vel_diff += Q_v_diff * (v0 - v1).dot(v0 - v1);
   }
   cout << "cost_vel_diff = " << cost_vel_diff << endl;
-  cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff = "
-       << cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff
-       << endl;
   // cost on input difference wrt time
   double cost_u_diff = 0;
   for (int i = 0; i < N - 1; i++) {
@@ -980,6 +971,15 @@ void DoMain(double duration, int max_iter, string data_directory,
     cost_u_diff += Q_u_diff * (u0 - u1).dot(u0 - u1);
   }
   cout << "cost_u_diff = " << cost_u_diff << endl;
+
+  //  cout << "cost_x + cost_u = " << cost_x + cost_u << endl;
+  cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u + cost_lambda
+       << endl;
+  cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff = "
+       << cost_x + cost_u + cost_lambda + cost_lambda_diff << endl;
+  cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff = "
+       << cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff
+       << endl;
   cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff + "
           "cost_u_diff = "
        << cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff +

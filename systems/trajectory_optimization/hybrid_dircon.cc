@@ -150,7 +150,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         plant_, *constraints_[i], is_quaternion);
     DRAKE_ASSERT(static_cast<int>(dynamic_constraint->num_constraints()) ==
                  num_states());
-    //    dynamic_constraint->ConstructSparsityPattern();
+//        dynamic_constraint->ConstructSparsityPattern();
     dynamic_constraint->SetConstraintScaling(
         options[i].getDynConstraintScaling());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
@@ -175,7 +175,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     // Adding kinematic constraints (interior nodes of the mode)
     auto kinematic_constraint = std::make_shared<DirconKinematicConstraint<T>>(
         plant_, *constraints_[i], options[i].getConstraintsRelative());
-    //    kinematic_constraint->ConstructSparsityPattern();
+//        kinematic_constraint->ConstructSparsityPattern();
     kinematic_constraint->SetConstraintScaling(
         options[i].getKinConstraintScaling());
     for (int j = 1; j < mode_lengths_[i] - 1; j++) {
@@ -195,7 +195,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           std::make_shared<DirconKinematicConstraint<T>>(
               plant_, *constraints_[i], options[i].getConstraintsRelative(),
               options[i].getStartType());
-      //      kinematic_constraint_start->ConstructSparsityPattern();
+//            kinematic_constraint_start->ConstructSparsityPattern();
       kinematic_constraint_start->SetConstraintScaling(
           options[i].getKinConstraintScalingStart());
       AddConstraint(
@@ -215,7 +215,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           std::make_shared<DirconKinematicConstraint<T>>(
               plant_, *constraints_[i], options[i].getConstraintsRelative(),
               options[i].getEndType());
-      //      kinematic_constraint_end->ConstructSparsityPattern();
+//            kinematic_constraint_end->ConstructSparsityPattern();
       kinematic_constraint_end->SetConstraintScaling(
           options[i].getKinConstraintScalingEnd());
       AddConstraint(
@@ -264,7 +264,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       if (constraints_[i]->countConstraintsWithoutSkipping() > 0) {
         auto impact_constraint = std::make_shared<DirconImpactConstraint<T>>(
             plant_, *constraints_[i]);
-        //        impact_constraint->ConstructSparsityPattern();
+//                impact_constraint->ConstructSparsityPattern();
         impact_constraint->SetConstraintScaling(
             options[i].getImpConstraintScaling());
         AddConstraint(impact_constraint,

@@ -577,7 +577,7 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt->AddLinearConstraint(
           x0(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) ==
           xf(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")));
-      // inputs
+      // inputs (ankle joint is not actuated)
       if (sym_joint_names[i].compare("ankle_joint") != 0) {
         trajopt->AddLinearConstraint(
             u0(act_map.at(sym_joint_names[i] + l_r_pair.first + "_motor")) ==

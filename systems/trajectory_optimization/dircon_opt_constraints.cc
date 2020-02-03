@@ -250,7 +250,44 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
           num_kinematic_constraints_wo_skipping},
       num_positions_{num_positions},
       num_velocities_{num_velocities},
-      num_quat_slack_{num_quat_slack} {}
+      num_quat_slack_{num_quat_slack} {
+  /*
+  // Not sure why after adding sparsity pattern for dynamic constraint (tested,
+  th eimplementation is correct), the solve time and solution quality went
+  down...
+
+  // Set sparsity pattern (conservative, independent of the robot)
+  std::vector<std::pair<int, int>> sparsity;
+  int j = 0;
+  while (j < 1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
+                 (2 * num_kinematic_constraints_wo_skipping)) {
+    for (int i = 0; i < num_positions + num_velocities; i++) {
+      sparsity.push_back({i, j});
+    }
+    j++;
+  }
+  while (j < 1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
+                 (3 * num_kinematic_constraints_wo_skipping)) {
+    for (int i = num_positions; i < num_positions + num_velocities; i++) {
+      sparsity.push_back({i, j});
+    }
+    j++;
+  }
+  while (j < 1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
+                 (4 * num_kinematic_constraints_wo_skipping)) {
+    for (int i = 0; i < num_positions; i++) {
+      sparsity.push_back({i, j});
+    }
+    j++;
+  }
+  if (num_quat_slack) {
+    for (int i = 0; i < 4; i++) {
+      sparsity.push_back({i, j});
+    }
+  }
+
+  this->SetGradientSparsityPattern(sparsity);*/
+}
 
 // The format of the input to the eval() function is the
 // tuple { timestep, state 0, state 1, input 0, input 1, force 0, force 1},

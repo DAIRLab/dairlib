@@ -645,6 +645,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   }*/
 
   // add cost
+  //  const MatrixXd Q = MatrixXd::Zero(n_v, n_v);
+  //  const MatrixXd R = MatrixXd::Zero(n_u, n_u);
   const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 0.1 * 0.01 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
@@ -665,18 +667,32 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->AddCost(((u1.transpose() * R * u1) * h / 2)(0));
   }*/
   // add cost on force difference wrt time
-  double Q_lamb_diff = 0.00001;
-  for (int i = 0; i < N - 1; i++) {
-    auto lambda0 = trajopt->force(0, i);
-    auto lambda1 = trajopt->force(0, i + 1);
-    trajopt->AddCost(Q_lamb_diff * (lambda0 - lambda1).dot(lambda0 - lambda1));
+  double Q_lamb_diff = 0.000001;
+  if (Q_lamb_diff) {
+    for (int i = 0; i < N - 1; i++) {
+      auto lambda0 = trajopt->force(0, i);
+      auto lambda1 = trajopt->force(0, i + 1);
+      trajopt->AddCost(Q_lamb_diff *
+                       (lambda0 - lambda1).dot(lambda0 - lambda1));
+    }
   }
   // add cost on vel difference wrt time
   double Q_v_diff = 0.01;
-  for (int i = 0; i < N - 1; i++) {
-    auto v0 = trajopt->state(i).tail(n_v);
-    auto v1 = trajopt->state(i + 1).tail(n_v);
-    trajopt->AddCost(Q_v_diff * (v0 - v1).dot(v0 - v1));
+  if (Q_v_diff) {
+    for (int i = 0; i < N - 1; i++) {
+      auto v0 = trajopt->state(i).tail(n_v);
+      auto v1 = trajopt->state(i + 1).tail(n_v);
+      trajopt->AddCost(Q_v_diff * (v0 - v1).dot(v0 - v1));
+    }
+  }
+  // add cost on input difference wrt time
+  double Q_u_diff = 0.0001;
+  if (Q_u_diff) {
+    for (int i = 0; i < N - 1; i++) {
+      auto u0 = trajopt->input(i);
+      auto u1 = trajopt->input(i + 1);
+      trajopt->AddCost(Q_u_diff * (u0 - u1).dot(u0 - u1));
+    }
   }
 
   // Scale decision variable
@@ -955,6 +971,19 @@ void DoMain(double duration, int max_iter, string data_directory,
   cout << "cost_vel_diff = " << cost_vel_diff << endl;
   cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff = "
        << cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff
+       << endl;
+  // cost on input difference wrt time
+  double cost_u_diff = 0;
+  for (int i = 0; i < N - 1; i++) {
+    auto u0 = result.GetSolution(trajopt->input(i));
+    auto u1 = result.GetSolution(trajopt->input(i + 1));
+    cost_u_diff += Q_u_diff * (u0 - u1).dot(u0 - u1);
+  }
+  cout << "cost_u_diff = " << cost_u_diff << endl;
+  cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff + "
+          "cost_u_diff = "
+       << cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff +
+              cost_u_diff
        << endl;
 
   // visualizer

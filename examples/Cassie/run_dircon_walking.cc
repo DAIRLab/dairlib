@@ -87,6 +87,9 @@ DEFINE_bool(store_data, false, "To store solution or not");
 DEFINE_int32(max_iter, 100000, "Iteration limit");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
 DEFINE_double(tol, 1e-4, "Tolerance for constraint violation and dual gap");
+DEFINE_int32(scale_option, 0,
+             "Scale option of SNOPT"
+             "Use 2 if seeing snopta exit 40 in log file");
 
 // Parameters which enable dircon-improving features
 DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
@@ -269,7 +272,8 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
 };
 
 void DoMain(double duration, int max_iter, string data_directory,
-            string init_file, double tol, bool to_store_data) {
+            string init_file, double tol, bool to_store_data,
+            int scale_option) {
   // parameters
   // double duration = 0.4;
   double stride_length = 0.2;
@@ -473,8 +477,9 @@ void DoMain(double duration, int max_iter, string data_directory,
                            "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);  // 0
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
-                           0);  // snopt doc said try 2 if seeing snopta exit 40
+  trajopt->SetSolverOption(
+      drake::solvers::SnoptSolver::id(), "Scale option",
+      scale_option);  // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance",
                            tol);  // target nonlinear constraint violation
@@ -1065,5 +1070,6 @@ void DoMain(double duration, int max_iter, string data_directory,
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   dairlib::DoMain(FLAGS_duration, FLAGS_max_iter, FLAGS_data_directory,
-                  FLAGS_init_file, FLAGS_tol, FLAGS_store_data);
+                  FLAGS_init_file, FLAGS_tol, FLAGS_store_data,
+                  FLAGS_scale_option);
 }

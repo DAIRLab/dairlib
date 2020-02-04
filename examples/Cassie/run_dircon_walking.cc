@@ -747,7 +747,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     // quaternion slack
     //    trajopt->ScaleQuaternionSlackVariables(0.5);
     // Constraint slack
-    trajopt->ScaleKinConstraintSlackVariables(0.1);  // 1 seems better //0.1
+    trajopt->ScaleKinConstraintSlackVariables(50);  // 1 seems better //0.1
   }
 
   // initial guess

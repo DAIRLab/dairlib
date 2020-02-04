@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include <thread>
 #include <condition_variable>
 #include <memory>
 #include <mutex>

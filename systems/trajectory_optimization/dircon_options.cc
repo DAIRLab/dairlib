@@ -12,7 +12,7 @@ DirconOptions::DirconOptions(int n_kin_constraints) {
   is_constraints_relative_ = vector<bool>(n_kin_constraints_, false);
   start_constraint_type_ = DirconKinConstraintType::kAll;
   end_constraint_type_ = DirconKinConstraintType::kAll;
-  force_cost_ = 3.0e-4;
+  force_cost_ = 1.0e-3;
 }
 DirconOptions::DirconOptions(int n_constraints,
                              drake::multibody::MultibodyPlant<double>* plant)

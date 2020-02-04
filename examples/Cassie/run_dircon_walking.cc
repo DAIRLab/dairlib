@@ -648,11 +648,18 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->AddLinearConstraint(lambda(7) >= -500);   // left leg four bar
     trajopt->AddLinearConstraint(lambda(7) <= 500);    // left leg four bar
   }*/
+  // Testing -- constraint on normal force
+
+  // Testing -- constraint on u
+  for (int i = 0; i < N; i++) {
+    auto ui = trajopt->input(i);
+    trajopt->AddLinearConstraint(ui(6) >= 0);
+  }
 
   // add cost
   //  const MatrixXd Q = MatrixXd::Zero(n_v, n_v);
   //  const MatrixXd R = MatrixXd::Zero(n_u, n_u);
-  const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
+  const MatrixXd Q = 5 * 0.1 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 0.1 * 0.01 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
@@ -672,17 +679,26 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->AddCost(((u1.transpose() * R * u1) * h / 2)(0));
   }*/
   // add cost on force difference wrt time
-  double Q_lamb_diff = (0.001) * (0.001);
+  bool diff_with_force_at_collocation = false;
+  double Q_lamb_diff = 0.000001;
   if (Q_lamb_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto lambda0 = trajopt->force(0, i);
       auto lambda1 = trajopt->force(0, i + 1);
-      trajopt->AddCost(Q_lamb_diff *
-                       (lambda0 - lambda1).dot(lambda0 - lambda1));
+      auto lambdac = trajopt->collocation_force(0, i);
+      if (diff_with_force_at_collocation) {
+        trajopt->AddCost(Q_lamb_diff *
+                         (lambda0 - lambdac).dot(lambda0 - lambdac));
+        trajopt->AddCost(Q_lamb_diff *
+                         (lambdac - lambda1).dot(lambdac - lambda1));
+      } else {
+        trajopt->AddCost(Q_lamb_diff *
+                         (lambda0 - lambda1).dot(lambda0 - lambda1));
+      }
     }
   }
   // add cost on vel difference wrt time
-  double Q_v_diff = 0.01;
+  double Q_v_diff = 0.01 * 5;
   if (Q_v_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto v0 = trajopt->state(i).tail(n_v);
@@ -691,7 +707,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
   // add cost on input difference wrt time
-  double Q_u_diff = 0.0001;
+  double Q_u_diff = 0.00001;
   if (Q_u_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto u0 = trajopt->input(i);
@@ -699,6 +715,15 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt->AddCost(Q_u_diff * (u0 - u1).dot(u0 - u1));
     }
   }
+  // add cost on joint position
+  double Q_q_hip_roll = 1;
+  if (Q_q_hip_roll) {
+    for (int i = 0; i < N; i++) {
+      auto q = trajopt->state(i).segment(7, 2);
+      trajopt->AddCost(Q_q_hip_roll * q.transpose() * q);
+    }
+  }
+  double Q_q_hip_yaw = 1;
 
   // Scale decision variable
   if (FLAGS_is_scale_variable) {
@@ -746,7 +771,7 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt->SetInitialGuess(xi, xi_seed);
     }
 
-    // Testing -- initial guess for input
+    /*// Testing -- initial guess for input
     // These guesses are from a good solution
     for (int i = 0; i < N; i++) {
       auto u = trajopt->input(i);
@@ -825,7 +850,7 @@ void DoMain(double duration, int max_iter, string data_directory,
                 x0(n_q +
                    vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot"))));
       }
-    }  // end for (l_r_pairs)
+    }  // end for (l_r_pairs)*/
   }
   // Careful: MUST set the initial guess for quaternion, since 0-norm quaternion
   // produces NAN value in some calculation.
@@ -956,8 +981,16 @@ void DoMain(double duration, int max_iter, string data_directory,
   for (int i = 0; i < N - 1; i++) {
     auto lambda0 = result.GetSolution(trajopt->force(0, i));
     auto lambda1 = result.GetSolution(trajopt->force(0, i + 1));
-    cost_lambda_diff +=
-        Q_lamb_diff * (lambda0 - lambda1).dot(lambda0 - lambda1);
+    auto lambdac = result.GetSolution(trajopt->collocation_force(0, i));
+    if (diff_with_force_at_collocation) {
+      cost_lambda_diff +=
+          Q_lamb_diff * (lambda0 - lambdac).dot(lambda0 - lambdac);
+      cost_lambda_diff +=
+          Q_lamb_diff * (lambdac - lambda1).dot(lambdac - lambda1);
+    } else {
+      cost_lambda_diff +=
+          Q_lamb_diff * (lambda0 - lambda1).dot(lambda0 - lambda1);
+    }
   }
   cout << "cost_lambda_diff = " << cost_lambda_diff << endl;
   // cost on vel difference wrt time
@@ -976,6 +1009,13 @@ void DoMain(double duration, int max_iter, string data_directory,
     cost_u_diff += Q_u_diff * (u0 - u1).dot(u0 - u1);
   }
   cout << "cost_u_diff = " << cost_u_diff << endl;
+  // add cost on joint position
+  double cost_q_hip_roll = 0;
+  for (int i = 0; i < N; i++) {
+    auto q = result.GetSolution(trajopt->state(i).segment(7, 2));
+    cost_q_hip_roll += Q_q_hip_roll * q.transpose() * q;
+  }
+  cout << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
 
   //  cout << "cost_x + cost_u = " << cost_x + cost_u << endl;
   cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u + cost_lambda

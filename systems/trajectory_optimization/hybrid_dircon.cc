@@ -562,15 +562,19 @@ void HybridDircon<T>::ScaleQuaternionSlackVariables(double scale) {
   }
 }
 template <typename T>
-void HybridDircon<T>::ScaleKinConstraintSlackVariables(double scale) {
-  for (size_t mode = 0; mode < mode_lengths_.size(); mode++) {
-    int n_lambda = num_kinematic_constraints_wo_skipping_[mode];
-    auto vars = collocation_slack_vars(mode);
-    for (int i = 0; i < vars.size(); i++) {
-      DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
-      this->SetVariableScaling(vars(i), scale);
+void HybridDircon<T>::ScaleKinConstraintSlackVariables(double scale, int mode,
+                                                       int idx_start,
+                                                       int idx_end) {
+  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_ - 1));
+  int n_lambda = num_kinematic_constraints_wo_skipping_[mode];
+  DRAKE_DEMAND(idx_end < n_lambda);
+
+  auto vars = collocation_slack_vars(mode);
+  for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
+    for (int i = idx_start; i <= idx_end; i++) {
+      DRAKE_DEMAND(IsVariableScalingUnset(vars(n_lambda * j + i)));
+      this->SetVariableScaling(vars(n_lambda * j + i), scale);
     }
-    DRAKE_DEMAND(vars.size() == n_lambda * (mode_lengths_[mode] - 1));
   }
 }
 

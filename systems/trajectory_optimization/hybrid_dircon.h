@@ -154,7 +154,8 @@ class HybridDircon
   void ScaleImpulseVariables(double scale, int mode, int idx_start,
                              int idx_end);
   void ScaleQuaternionSlackVariables(double scale);
-  void ScaleKinConstraintSlackVariables(double scale);
+  void ScaleKinConstraintSlackVariables(double scale, int mode, int idx_start,
+                                        int idx_end);
 
   /**
    * Check whether the scaling of decision variable @p var is set or not .

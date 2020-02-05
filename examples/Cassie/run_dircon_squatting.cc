@@ -639,7 +639,7 @@ void DoMain(double duration, int max_iter, string data_directory,
 //    trajopt->ScaleForceVariables(
 //        600, 0, 0, double_all_dataset.countConstraintsWithoutSkipping() - 1);
 //    trajopt->ScaleQuaternionSlackVariables(0.5);
-//    trajopt->ScaleKinConstraintSlackVariables(0.1);
+//    trajopt->ScaleKinConstraintSlackVariables(0.1, 0, 0, 13);
 
     for (int i=0; i < trajopt->decision_variables().size() ; i++) {
       cout << trajopt->decision_variable(i) << ", ";

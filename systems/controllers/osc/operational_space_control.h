@@ -118,9 +118,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   /// The third argument is used to set a period in which OSC does not track the
   /// desired traj (the period starts when the finite state machine switches to
   /// a new state)
-  void AddTrackingData(OscTrackingData* tracking_data, double duration = 0);
+  void AddTrackingData(OscTrackingData* tracking_data,
+      double t_lb = 0, double t_ub = std::numeric_limits<double>::infinity());
   void AddConstTrackingData(OscTrackingData* tracking_data, Eigen::VectorXd v,
-      double duration = 0);
+      double t_lb = 0, double t_ub = std::numeric_limits<double>::infinity());
   std::vector<OscTrackingData*>* GetAllTrackingData(){
     return tracking_data_vec_.get();
   }
@@ -215,7 +216,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC constraint members
   bool with_input_constraints_ = true;
 
-  // (flat ground) Contact constraints and friction cone cnostraints
+  // (flat ground) Contact constraints and friction cone constraints
   std::vector<int> body_index_ = {};
   std::vector<Eigen::VectorXd> pt_on_body_ = {};
   double mu_ = -1;  // Friction coefficients
@@ -224,7 +225,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // `fsm_state_when_active_` is the finite state machine state when the contact
   // constraint is active. If `fsm_state_when_active_` is empty, then the
   // constraint is always active.
-  // The states here can repeat, since there might be multipel contact points
+  // The states here can repeat, since there might be multiple contact points
   // in a state of the finite state machine.
   std::vector<int> fsm_state_when_active_;
 
@@ -237,9 +238,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       std::make_unique<std::vector<OscTrackingData*>>();
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;
-  // A period when we don't apply control (Unit: seconds)
-  // The period startd at the time when fsm switches to a new state.
-  std::vector<double> period_of_no_control_vec_;
+
+  // Set a period during which we apply control (Unit: seconds)
+  // Let t be the elapsed time since fsm switched to a new state.
+  // We only apply the control when t_s <= t <= t_e
+  std::vector<double> t_s_vec_;
+  std::vector<double> t_e_vec_;
 };
 
 

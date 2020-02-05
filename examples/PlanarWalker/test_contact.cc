@@ -10,7 +10,6 @@
 #include "drake/multibody/kinematics_cache.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
-#include "drake/systems/controllers/controlUtil.h"
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -148,13 +147,13 @@ int do_main(int argc, char* argv[]) {
   tree.get()->surfaceTangents(n_world, d_world);
 
   Eigen::Matrix<double,3,2> d;
-  surfaceTangents(normal.col(0),d);
+  //  surfaceTangents(normal.col(0),d);
 
   cout << "*********** d ***********" << endl;
-  cout << d << endl;  
+  cout << d << endl;
 
   cout << "*********** d_again ***********" << endl;
-  cout << d_world[1] << endl;  
+  cout << d_world[1] << endl;
 
   // see https://github.com/RobotLocomotion/drake/blob/master/multibody/rigid_body_constraint.cc#L1930~L1959
   // for how to generat ejacobian

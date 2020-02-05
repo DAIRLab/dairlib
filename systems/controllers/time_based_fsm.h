@@ -1,36 +1,43 @@
 #pragma once
 
 #include <string>
-#include "drake/systems/framework/leaf_system.h"
-#include "drake/multibody/rigid_body_tree.h"
 #include "systems/framework/output_vector.h"
+#include "drake/multibody/rigid_body_tree.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
 
-// Time-based Two-state Finite State Machine
+// Time-based Finite State Machine
+/// TimeBasedFiniteStateMachine is a time-triggered finite state machine. Given
+/// n number of states with n number of durations, TimeBasedFiniteStateMachine
+/// goes through each state in order, and the time it stays in each state for is
+/// specified by the corresponding duration.
 
-/// Constructor inputs:
-/// - rigid body tree
-/// - duration of each state
-/// - offset of the time when the state switches
+/// Constructor:
+///  @param tree, rigid body tree
+///  @param states, integer representation of each state
+///  @param state_durations, duration of each state
+///  @param t0, time offset of the whole finite state machine
 
-/// There are three outcome of the states, beased on the current time t.
-/// If t < time_shift,
-///     state = `initial_state_number_`.
-/// If t is within [i * `duration_per_state` + `time_shift`,
-///                 (i+1) * `duration_per_state` + `time_shift`)
-///                where i is an even number,
-///     state = `first_state_number_`.
-/// If t is within [i * `duration_per_state` + `time_shift`,
-///                 (i+1) * `duration_per_state` + `time_shift`)
-///                where i is an odd number,
-///     state = `second_state_number_`.
+/// Assigment of the state:
+/// If t < t0,
+///     state = `init_state_`.
+/// else
+///     If t is within [`t0`,
+///                     `t0` + state_durations[0])
+///         state = states[0].
+///     else if t is within [`t0`, + state_durations[0]
+///                          `t0` + state_durations[0] + + state_durations[1])
+///         state = states[1]
+///     else if ... (recursively)
+///
 class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
  public:
   TimeBasedFiniteStateMachine(const RigidBodyTree<double>& tree,
-                              double duration_per_state,
-                              double time_shift = 0);
+                              const std::vector<int>& states,
+                              const std::vector<double>& state_durations,
+                              double t0 = 0);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -42,15 +49,14 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
 
   int state_port_;
 
-  int first_state_number_ = 0;
-  int second_state_number_ = 1;
-  int initial_state_number_ = -1;
-  double duration_per_state_;
-  double time_shift_;
-};
+  std::vector<int> states_;
+  std::vector<double> state_durations_;
+  int initial_state_ = -1;
+  double t0_;
 
+  std::vector<double> accu_state_durations_;
+  double period_;
+};
 
 }  // namespace systems
 }  // namespace dairlib
-
-

@@ -45,7 +45,7 @@ int do_main(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm;
   auto tree = std::make_unique<RigidBodyTree<double>>();
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "PlanarWalker.urdf",
+      "examples/PlanarWalker/PlanarWalker.urdf",
       drake::multibody::joints::kFixed, tree.get());
 
   drake::multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);  

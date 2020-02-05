@@ -774,6 +774,12 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt->AddCost(Q_q_hip_roll * q.transpose() * q);
     }
   }
+  if (Q_q_hip_yaw) {
+    for (int i = 0; i < N; i++) {
+      auto q = trajopt->state(i).segment(9, 2);
+      trajopt->AddCost(Q_q_hip_yaw * q.transpose() * q);
+    }
+  }
   if (Q_q_quat_xyz) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(1, 3);

@@ -649,7 +649,11 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->AddLinearConstraint(lambda(7) <= 500);    // left leg four bar
   }*/
   // Testing -- constraint on normal force
-
+  for (int i = 0; i < N; i++) {
+    auto lambda = trajopt->force(0, i);
+    trajopt->AddLinearConstraint(lambda(2) >= 10);
+    trajopt->AddLinearConstraint(lambda(5) >= 10);
+  }
   // Testing -- constraint on u
   for (int i = 0; i < N; i++) {
     auto ui = trajopt->input(i);
@@ -717,9 +721,17 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->AddCost(((u0.transpose() * R * u0) * h / 2)(0));
     trajopt->AddCost(((u1.transpose() * R * u1) * h / 2)(0));
   }*/
+
+  // Other costs
+  double Q_lamb_diff = 0.000001;
+  double Q_v_diff_double = 0.01 * 5;
+  double Q_u_diff = 0.00001;
+  double Q_q_hip_roll = 1;
+  double Q_q_hip_yaw = 1;
+  double Q_q_quat_xyz = 0;
+
   // add cost on force difference wrt time
   bool diff_with_force_at_collocation = false;
-  double Q_lamb_diff = 0.000001;
   if (Q_lamb_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto lambda0 = trajopt->force(0, i);
@@ -737,7 +749,6 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
   // add cost on vel difference wrt time
-  double Q_v_diff_double = 0.01 * 5;
   MatrixXd Q_v_diff = Q_v_diff_double * MatrixXd::Identity(n_v, n_v);
   Q_v_diff(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
   Q_v_diff(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
@@ -749,7 +760,6 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
   // add cost on input difference wrt time
-  double Q_u_diff = 0.00001;
   if (Q_u_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto u0 = trajopt->input(i);
@@ -758,14 +768,18 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
   // add cost on joint position
-  double Q_q_hip_roll = 1;
   if (Q_q_hip_roll) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(7, 2);
       trajopt->AddCost(Q_q_hip_roll * q.transpose() * q);
     }
   }
-  double Q_q_hip_yaw = 1;
+  if (Q_q_quat_xyz) {
+    for (int i = 0; i < N; i++) {
+      auto q = trajopt->state(i).segment(1, 3);
+      trajopt->AddCost(Q_q_quat_xyz * q.transpose() * q);
+    }
+  }
 
   // initial guess
   if (!init_file.empty()) {
@@ -967,6 +981,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // Calculate each term of the cost
+  double total_cost = 0;
   double cost_x = 0;
   for (int i = 0; i < N - 1; i++) {
     auto v0 = state_at_knots.col(i).tail(n_v);
@@ -975,6 +990,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     cost_x += ((v0.transpose() * Q * v0) * h / 2)(0);
     cost_x += ((v1.transpose() * Q * v1) * h / 2)(0);
   }
+  total_cost += cost_x;
   cout << "cost_x = " << cost_x << endl;
   double cost_u = 0;
   for (int i = 0; i < N - 1; i++) {
@@ -984,6 +1000,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     cost_u += ((u0.transpose() * R * u0) * h / 2)(0);
     cost_u += ((u1.transpose() * R * u1) * h / 2)(0);
   }
+  total_cost += cost_u;
   cout << "cost_u = " << cost_u << endl;
   double cost_lambda = 0;
   for (int i = 0; i < num_time_samples.size(); i++) {
@@ -992,6 +1009,7 @@ void DoMain(double duration, int max_iter, string data_directory,
       cost_lambda += (options_list[i].getForceCost() * lambda).squaredNorm();
     }
   }
+  total_cost += cost_lambda;
   cout << "cost_lambda = " << cost_lambda << endl;
   // cost on force difference wrt time
   double cost_lambda_diff = 0;
@@ -1009,6 +1027,7 @@ void DoMain(double duration, int max_iter, string data_directory,
           Q_lamb_diff * (lambda0 - lambda1).dot(lambda0 - lambda1);
     }
   }
+  total_cost += cost_lambda_diff;
   cout << "cost_lambda_diff = " << cost_lambda_diff << endl;
   // cost on vel difference wrt time
   double cost_vel_diff = 0;
@@ -1017,6 +1036,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     auto v1 = result.GetSolution(trajopt->state(i + 1).tail(n_v));
     cost_vel_diff += (v0 - v1).dot(Q_v_diff * (v0 - v1));
   }
+  total_cost += cost_vel_diff;
   cout << "cost_vel_diff = " << cost_vel_diff << endl;
   // cost on input difference wrt time
   double cost_u_diff = 0;
@@ -1025,6 +1045,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     auto u1 = result.GetSolution(trajopt->input(i + 1));
     cost_u_diff += Q_u_diff * (u0 - u1).dot(u0 - u1);
   }
+  total_cost += cost_u_diff;
   cout << "cost_u_diff = " << cost_u_diff << endl;
   // add cost on joint position
   double cost_q_hip_roll = 0;
@@ -1032,26 +1053,18 @@ void DoMain(double duration, int max_iter, string data_directory,
     auto q = result.GetSolution(trajopt->state(i).segment(7, 2));
     cost_q_hip_roll += Q_q_hip_roll * q.transpose() * q;
   }
+  total_cost += cost_q_hip_roll;
   cout << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
+  // add cost on quaternion
+  double cost_q_quat_xyz = 0;
+  for (int i = 0; i < N; i++) {
+    auto q = result.GetSolution(trajopt->state(i).segment(1, 3));
+    cost_q_quat_xyz += Q_q_quat_xyz * q.transpose() * q;
+  }
+  total_cost += cost_q_quat_xyz;
+  cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
 
-  //  cout << "cost_x + cost_u = " << cost_x + cost_u << endl;
-  cout << "cost_x + cost_u + cost_lambda = " << cost_x + cost_u + cost_lambda
-       << endl;
-  cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff = "
-       << cost_x + cost_u + cost_lambda + cost_lambda_diff << endl;
-  cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff = "
-       << cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff
-       << endl;
-  cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff + "
-          "cost_u_diff = "
-       << cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff +
-              cost_u_diff
-       << endl;
-  cout << "cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff + "
-          "cost_u_diff + cost_q_hip_roll = "
-       << cost_x + cost_u + cost_lambda + cost_lambda_diff + cost_vel_diff +
-              cost_u_diff + cost_q_hip_roll
-       << endl;
+  cout << "total_cost = " << total_cost << endl;
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =

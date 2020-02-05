@@ -655,10 +655,10 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->AddLinearConstraint(lambda(5) >= 10);
   }
   // Testing -- constraint on u
-  for (int i = 0; i < N; i++) {
+  /*for (int i = 0; i < N; i++) {
     auto ui = trajopt->input(i);
     trajopt->AddLinearConstraint(ui(6) >= 0);
-  }
+  }*/
 
   // Scale decision variable
   double s_q_toe = 1;
@@ -723,9 +723,9 @@ void DoMain(double duration, int max_iter, string data_directory,
   }*/
 
   // Other costs
-  double Q_lamb_diff = 0.000001;
-  double Q_v_diff_double = 0.01 * 5;
-  double Q_u_diff = 0.00001;
+  double Q_lamb_diff = 0;//0.000001;
+  double Q_v_diff_double = 0;//0.01 * 5;
+  double Q_u_diff = 0;//0.00001;
   double Q_q_hip_roll = 1;
   double Q_q_hip_yaw = 1;
   double Q_q_quat_xyz = 0;

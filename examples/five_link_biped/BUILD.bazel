@@ -74,6 +74,7 @@ cc_binary(
     deps = [
         "//common",
         "//systems:robot_lcm_systems",
+        "//systems/goldilocks_models",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",

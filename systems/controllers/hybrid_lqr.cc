@@ -609,7 +609,6 @@ void HybridLQRController::CalcCost(
           state_traj_[2]->value(current_time),
           state_traj_[mode]->value(current_time),
           grf;
-      //          x_error0, x_error1, x_error2;
       return;  // TODO: clean up
     } else {
       VectorXd x_error =

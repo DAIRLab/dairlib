@@ -1,11 +1,13 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <drake/systems/primitives/signal_logger.h>
 #include <gflags/gflags.h>
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/multibody_utils.h"
+#include "systems/goldilocks_models/file_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "drake/geometry/geometry_visualization.h"
@@ -47,6 +49,7 @@ using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using Eigen::MatrixXd;
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -109,15 +112,19 @@ int do_main(int argc, char* argv[]) {
   // Create state publisher.
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 2000.0));
+          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 4000.0));
   ContactResultsToLcmSystem<double>& contact_viz =
       *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CONTACT_RESULTS", lcm, 1.0 / 2000.0));
+          "CONTACT_RESULTS", lcm, 1.0 / 4000.0));
   contact_results_publisher.set_name("contact_results_publisher");
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
+  auto input_logger =
+      drake::systems::LogOutput(passthrough->get_output_port(), &builder);
+  input_logger->set_publish_period(0.00025);  // 1000Hz
+
   // Contact results to lcm msg.
   //  auto contact_pub =
   //      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
@@ -141,6 +148,7 @@ int do_main(int argc, char* argv[]) {
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
+
   //  if (FLAGS_visualize) {
   //    drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
   //  }
@@ -185,6 +193,17 @@ int do_main(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
   simulator.AdvanceTo(FLAGS_start_time + FLAGS_sim_time);
+
+  MatrixXd input_matrix = input_logger->data().transpose();
+  MatrixXd times = input_logger->sample_times();
+  std::cout << input_matrix.cols() << std::endl;
+  std::cout << times.cols() << std::endl;
+  DRAKE_ASSERT(input_matrix.rows() == times.rows());
+  MatrixXd inputs_and_times(input_matrix.rows(),
+                            input_matrix.cols() + times.cols());
+  inputs_and_times << times , input_matrix;
+  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/inputs.csv",
+                              inputs_and_times);
   return 0;
 }
 }  // namespace dairlib

@@ -253,12 +253,12 @@ int doMain(int argc, char* argv[]) {
       drake::systems::LogOutput(lqr_cost->get_output_port(0), &builder);
   auto value_function_logger =
       drake::systems::LogOutput(lqr->get_output_port(1), &builder);
-  auto input_logger =
-      drake::systems::LogOutput(lqr->get_output_port(0), &builder);
+//  auto input_logger =
+//      drake::systems::LogOutput(lqr->get_output_port(0), &builder);
 
-  value_function_logger->set_publish_period(0.0005);  // 1000Hz
+  value_function_logger->set_publish_period(0.00025);  // 1000Hz
   lqr_cost_logger->set_publish_period(0.002);        // 1000Hz
-  input_logger->set_publish_period(0.001);           // 1000Hz
+//  input_logger->set_publish_period(0.00025);           // 1000Hz
 
   // ******End of osc configuration*******
 
@@ -304,14 +304,14 @@ int doMain(int argc, char* argv[]) {
   // Write all dataloggers to a CSV
   MatrixXd value_function = value_function_logger->data();
   MatrixXd estimated_cost = lqr_cost_logger->data();
-  MatrixXd input_matrix = input_logger->data();
+//  MatrixXd input_matrix = input_logger->data();
 
   goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/V.csv",
                               value_function.transpose());
   goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/lqr.csv",
                               estimated_cost.transpose());
-  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/inputs.csv",
-                              input_matrix.transpose());
+//  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/inputs.csv",
+//                              input_matrix.transpose());
 
   return 0;
 }

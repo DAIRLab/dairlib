@@ -745,10 +745,10 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->ScaleImpulseVariables(
         10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
     // quaternion slack
-    //    trajopt->ScaleQuaternionSlackVariables(0.5);
+    trajopt->ScaleQuaternionSlackVariables(30);
     // Constraint slack
     trajopt->ScaleKinConstraintSlackVariables(50, 0, 0, 5);
-    trajopt->ScaleKinConstraintSlackVariables(50, 0, 6, 7);
+    trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
   }
 
   // initial guess

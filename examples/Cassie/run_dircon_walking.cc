@@ -771,7 +771,7 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt->SetInitialGuess(xi, xi_seed);
     }
 
-    // Testing -- initial guess for input
+    /*// Testing -- initial guess for input
     // These guesses are from a good solution
     for (int i = 0; i < N; i++) {
       auto u = trajopt->input(i);
@@ -850,7 +850,7 @@ void DoMain(double duration, int max_iter, string data_directory,
                 x0(n_q +
                    vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot"))));
       }
-    }  // end for (l_r_pairs)
+    }  // end for (l_r_pairs)*/
   }
   // Careful: MUST set the initial guess for quaternion, since 0-norm quaternion
   // produces NAN value in some calculation.

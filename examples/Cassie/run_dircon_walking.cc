@@ -656,11 +656,50 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->AddLinearConstraint(ui(6) >= 0);
   }
 
+  // Scale decision variable
+  double s_q_toe = 1;
+  double s_v_toe_l = 1;
+  double s_v_toe_r = 1;
+  if (FLAGS_is_scale_variable) {
+    // time
+    trajopt->ScaleTimeVariables(0.008);
+    // state
+    // TODO: try increase the toe position by a factor of 10
+    trajopt->ScaleStateVariables(0.5, 0, 3);
+    if (s_q_toe > 1) {
+      trajopt->ScaleStateVariables(s_q_toe, n_q - 2, n_q - 1);
+    }
+    trajopt->ScaleStateVariables(10, n_q, n_q + n_v - 3);
+    trajopt->ScaleStateVariables(10 * s_v_toe_l, n_q + n_v - 2, n_q + n_v - 2);
+    trajopt->ScaleStateVariables(10 * s_v_toe_r, n_q + n_v - 1, n_q + n_v - 1);
+    // input
+    trajopt->ScaleInputVariables(100, 0, 9);
+    // force
+    // TODO: try increase lambda 7 and 8 by 3 times
+    trajopt->ScaleForceVariables(
+        1000, 0, 0, ls_dataset.countConstraintsWithoutSkipping() - 1);
+    if (!is_disable_kin_constraint_at_last_node) {
+      trajopt->ScaleForceVariables(
+          1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
+    }
+    // impulse
+    // TODO: try increase impulse 7 and 8 by 2 times
+    trajopt->ScaleImpulseVariables(
+        10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
+    // quaternion slack
+    trajopt->ScaleQuaternionSlackVariables(30);
+    // Constraint slack
+    trajopt->ScaleKinConstraintSlackVariables(50, 0, 0, 5);
+    trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
+  }
+
   // add cost
   //  const MatrixXd Q = MatrixXd::Zero(n_v, n_v);
   //  const MatrixXd R = MatrixXd::Zero(n_u, n_u);
-  const MatrixXd Q = 5 * 0.1 * MatrixXd::Identity(n_v, n_v);
-  const MatrixXd R = 0.1 * 0.01 * MatrixXd::Identity(n_u, n_u);
+  MatrixXd Q = 5 * 0.1 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd R = 0.1 * 0.01 * MatrixXd::Identity(n_u, n_u);
+  Q(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
+  Q(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
   /*// Add cost without time
@@ -698,12 +737,15 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
   // add cost on vel difference wrt time
-  double Q_v_diff = 0.01 * 5;
-  if (Q_v_diff) {
+  double Q_v_diff_double = 0.01 * 5;
+  MatrixXd Q_v_diff = Q_v_diff_double * MatrixXd::Identity(n_v, n_v);
+  Q_v_diff(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
+  Q_v_diff(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
+  if (Q_v_diff_double) {
     for (int i = 0; i < N - 1; i++) {
       auto v0 = trajopt->state(i).tail(n_v);
       auto v1 = trajopt->state(i + 1).tail(n_v);
-      trajopt->AddCost(Q_v_diff * (v0 - v1).dot(v0 - v1));
+      trajopt->AddCost((v0 - v1).dot(Q_v_diff * (v0 - v1)));
     }
   }
   // add cost on input difference wrt time
@@ -724,32 +766,6 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
   double Q_q_hip_yaw = 1;
-
-  // Scale decision variable
-  if (FLAGS_is_scale_variable) {
-    // time
-    trajopt->ScaleTimeVariables(0.008);
-    // state
-    trajopt->ScaleStateVariables(0.5, 0, 3);
-    trajopt->ScaleStateVariables(10, n_q, n_q + n_v - 1);
-    // input
-    trajopt->ScaleInputVariables(100, 0, 9);
-    // force
-    trajopt->ScaleForceVariables(
-        1000, 0, 0, ls_dataset.countConstraintsWithoutSkipping() - 1);
-    if (!is_disable_kin_constraint_at_last_node) {
-      trajopt->ScaleForceVariables(
-          1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
-    }
-    // impulse
-    trajopt->ScaleImpulseVariables(
-        10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
-    // quaternion slack
-    trajopt->ScaleQuaternionSlackVariables(30);
-    // Constraint slack
-    trajopt->ScaleKinConstraintSlackVariables(50, 0, 0, 5);
-    trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
-  }
 
   // initial guess
   if (!init_file.empty()) {
@@ -999,7 +1015,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   for (int i = 0; i < N - 1; i++) {
     auto v0 = result.GetSolution(trajopt->state(i).tail(n_v));
     auto v1 = result.GetSolution(trajopt->state(i + 1).tail(n_v));
-    cost_vel_diff += Q_v_diff * (v0 - v1).dot(v0 - v1);
+    cost_vel_diff += (v0 - v1).dot(Q_v_diff * (v0 - v1));
   }
   cout << "cost_vel_diff = " << cost_vel_diff << endl;
   // cost on input difference wrt time

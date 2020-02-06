@@ -299,11 +299,13 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   double w_q_hip_yaw = 1;
   double w_q_quat_xyz = 0;
 
-  // optional constraints
-  // This seems to be important at high speeds
+  // Optional constraints
+  // This seems to be important at higher walking speeds
   bool constrain_stance_leg_fourbar_force = false;
 
   // Disable kinematic constraint at the second node
+  // (Snopt solves 5 times faster if you disable constraint at the last node.)
+  // We can disable it because we have periodic constraint on state and input.
   bool is_disable_kin_constraint_at_last_node = true;
 
   // Create fix-spring Cassie MBP

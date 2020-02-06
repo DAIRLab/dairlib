@@ -84,12 +84,18 @@ DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
               "directory to save/read data");
 DEFINE_bool(store_data, false, "To store solution or not");
+
+// SNOPT parameters
 DEFINE_int32(max_iter, 100000, "Iteration limit");
-DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
 DEFINE_double(tol, 1e-4, "Tolerance for constraint violation and dual gap");
 DEFINE_int32(scale_option, 0,
              "Scale option of SNOPT"
              "Use 2 if seeing snopta exit 40 in log file");
+
+// Gait parameters
+DEFINE_bool(is_fix_time, true, "Whether to fix the duration of gait or not");
+DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
+DEFINE_double(stride_length, 0.2, "stride length of the walking");
 
 // Parameters which enable dircon-improving features
 DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
@@ -271,12 +277,10 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
   const int xyz_idx_;
 };
 
-void DoMain(double duration, int max_iter, string data_directory,
-            string init_file, double tol, bool to_store_data,
-            int scale_option) {
+void DoMain(double duration, double stride_length, bool is_fix_time,
+            int max_iter, string data_directory, string init_file, double tol,
+            bool to_store_data, int scale_option) {
   // parameters
-  // double duration = 0.4;
-  double stride_length = 0.2;
   double ground_incline = 0;
 
   // Create fix-spring Cassie MBP
@@ -502,7 +506,9 @@ void DoMain(double duration, int max_iter, string data_directory,
       num_time_samples[num_time_samples.size() - 1] - 1);
 
   // Fix time duration
-  trajopt->AddDurationBounds(duration, duration);
+  if (is_fix_time) {
+    trajopt->AddDurationBounds(duration, duration);
+  }
 
   // x position constraint
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
@@ -723,9 +729,9 @@ void DoMain(double duration, int max_iter, string data_directory,
   }*/
 
   // Other costs
-  double Q_lamb_diff = 0;//0.000001;
-  double Q_v_diff_double = 0;//0.01 * 5;
-  double Q_u_diff = 0;//0.00001;
+  double Q_lamb_diff = 0;      // 0.000001;
+  double Q_v_diff_double = 0;  // 0.01 * 5;
+  double Q_u_diff = 0;         // 0.00001;
   double Q_q_hip_roll = 1;
   double Q_q_hip_yaw = 1;
   double Q_q_quat_xyz = 0;
@@ -808,86 +814,90 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt->SetInitialGuess(xi, xi_seed);
     }
 
-    /*// Testing -- initial guess for input
-    // These guesses are from a good solution
-    for (int i = 0; i < N; i++) {
-      auto u = trajopt->input(i);
-      trajopt->SetInitialGuess(u(0), 20);
-      trajopt->SetInitialGuess(u(2), -30);
-      trajopt->SetInitialGuess(u(4), 30);
-      trajopt->SetInitialGuess(u(6), 50);
-      trajopt->SetInitialGuess(u(8), 20);
-    }
-    // Testing -- initial guess for force (also forces at collocation)
-    for (int i = 0; i < N; i++) {
-      auto lambda = trajopt->force(0, i);
-      //      trajopt->SetInitialGuess(lambda(0), 0);
-      //      trajopt->SetInitialGuess(lambda(1), 0);
-      trajopt->SetInitialGuess(lambda(2), 170);
-      //      trajopt->SetInitialGuess(lambda(3), 0);
-      //      trajopt->SetInitialGuess(lambda(4), 0);
-      trajopt->SetInitialGuess(lambda(5), 170);
-      trajopt->SetInitialGuess(lambda(6), -500);
-      trajopt->SetInitialGuess(lambda(7), 50);
-    }
-    for (int i = 0; i < N - 1; i++) {
-      auto lambda0 = trajopt->GetInitialGuess(trajopt->force(0, i));
-      auto lambda1 = trajopt->GetInitialGuess(trajopt->force(0, i + 1));
-      auto collocation_lambda = trajopt->collocation_force(0, i);
-      trajopt->SetInitialGuess(collocation_lambda, (lambda0 + lambda1) / 2);
-    }
-    // Testing -- initial guess for slack
-    auto vars_kinematics = trajopt->collocation_slack_vars(0);
-    for (int i = 0; i < vars_kinematics.size(); i++) {
-      trajopt->SetInitialGuess(vars_kinematics(i), 0);
-    }
-    auto vars_quaternion = trajopt->quaternion_slack_vars(0);
-    for (int i = 0; i < vars_quaternion.size(); i++) {
-      trajopt->SetInitialGuess(vars_quaternion(i), 0);
-    }
-    // Testing -- initial condition for timestep
-    for (int i = 0; i < N - 1; i++) {
-      auto h_var = trajopt->timestep(i);
-      trajopt->SetInitialGuess(h_var(0), duration / (N - 1));
-    }
-    // Testing -- initial condition for post impact velocity
-    auto vp_var = trajopt->v_post_impact_vars_by_mode(0);
-    trajopt->SetInitialGuess(
-        vp_var(vel_map.at("base_wx")),
-        trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_wx"))));
-    trajopt->SetInitialGuess(
-        vp_var(vel_map.at("base_wy")),
-        -trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_wy"))));
-    trajopt->SetInitialGuess(
-        vp_var(vel_map.at("base_wz")),
-        trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_wz"))));
-    trajopt->SetInitialGuess(
-        vp_var(vel_map.at("base_vx")),
-        trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_vx"))));
-    trajopt->SetInitialGuess(
-        vp_var(vel_map.at("base_vy")),
-        -trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_vy"))));
-    trajopt->SetInitialGuess(
-        vp_var(vel_map.at("base_vz")),
-        trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_vz"))));
-    for (auto l_r_pair : l_r_pairs) {
-      for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
-        // velocities
-        trajopt->SetInitialGuess(
-            vp_var(vel_map.at(asy_joint_names[i] + l_r_pair.second + "dot")),
-            -trajopt->GetInitialGuess(
-                x0(n_q +
-                   vel_map.at(asy_joint_names[i] + l_r_pair.first + "dot"))));
+    // Add more initial guess
+    // A better initial guess is necessary if we don't restrict the duration
+    if (!is_fix_time) {
+      // initial guess for input
+      // These guesses are from a good solution
+      for (int i = 0; i < N; i++) {
+        auto u = trajopt->input(i);
+        trajopt->SetInitialGuess(u(0), 20);
+        trajopt->SetInitialGuess(u(2), -30);
+        trajopt->SetInitialGuess(u(4), 30);
+        trajopt->SetInitialGuess(u(6), 50);
+        trajopt->SetInitialGuess(u(8), 20);
       }
-      for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
-        // velocities
-        trajopt->SetInitialGuess(
-            vp_var(vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")),
-            trajopt->GetInitialGuess(
-                x0(n_q +
-                   vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot"))));
+      // initial guess for force (also forces at collocation)
+      for (int i = 0; i < N; i++) {
+        auto lambda = trajopt->force(0, i);
+        //      trajopt->SetInitialGuess(lambda(0), 0);
+        //      trajopt->SetInitialGuess(lambda(1), 0);
+        trajopt->SetInitialGuess(lambda(2), 170);
+        //      trajopt->SetInitialGuess(lambda(3), 0);
+        //      trajopt->SetInitialGuess(lambda(4), 0);
+        trajopt->SetInitialGuess(lambda(5), 170);
+        trajopt->SetInitialGuess(lambda(6), -500);
+        trajopt->SetInitialGuess(lambda(7), 50);
       }
-    }  // end for (l_r_pairs)*/
+      for (int i = 0; i < N - 1; i++) {
+        auto lambda0 = trajopt->GetInitialGuess(trajopt->force(0, i));
+        auto lambda1 = trajopt->GetInitialGuess(trajopt->force(0, i + 1));
+        auto collocation_lambda = trajopt->collocation_force(0, i);
+        trajopt->SetInitialGuess(collocation_lambda, (lambda0 + lambda1) / 2);
+      }
+      // initial guess for slack
+      auto vars_kinematics = trajopt->collocation_slack_vars(0);
+      for (int i = 0; i < vars_kinematics.size(); i++) {
+        trajopt->SetInitialGuess(vars_kinematics(i), 0);
+      }
+      auto vars_quaternion = trajopt->quaternion_slack_vars(0);
+      for (int i = 0; i < vars_quaternion.size(); i++) {
+        trajopt->SetInitialGuess(vars_quaternion(i), 0);
+      }
+      // initial condition for timestep
+      for (int i = 0; i < N - 1; i++) {
+        auto h_var = trajopt->timestep(i);
+        trajopt->SetInitialGuess(h_var(0), duration / (N - 1));
+      }
+      // initial condition for post impact velocity
+      auto vp_var = trajopt->v_post_impact_vars_by_mode(0);
+      trajopt->SetInitialGuess(
+          vp_var(vel_map.at("base_wx")),
+          trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_wx"))));
+      trajopt->SetInitialGuess(
+          vp_var(vel_map.at("base_wy")),
+          -trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_wy"))));
+      trajopt->SetInitialGuess(
+          vp_var(vel_map.at("base_wz")),
+          trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_wz"))));
+      trajopt->SetInitialGuess(
+          vp_var(vel_map.at("base_vx")),
+          trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_vx"))));
+      trajopt->SetInitialGuess(
+          vp_var(vel_map.at("base_vy")),
+          -trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_vy"))));
+      trajopt->SetInitialGuess(
+          vp_var(vel_map.at("base_vz")),
+          trajopt->GetInitialGuess(x0(n_q + vel_map.at("base_vz"))));
+      for (auto l_r_pair : l_r_pairs) {
+        for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
+          // velocities
+          trajopt->SetInitialGuess(
+              vp_var(vel_map.at(asy_joint_names[i] + l_r_pair.second + "dot")),
+              -trajopt->GetInitialGuess(
+                  x0(n_q +
+                     vel_map.at(asy_joint_names[i] + l_r_pair.first + "dot"))));
+        }
+        for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
+          // velocities
+          trajopt->SetInitialGuess(
+              vp_var(vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")),
+              trajopt->GetInitialGuess(
+                  x0(n_q +
+                     vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot"))));
+        }
+      }  // end for (l_r_pairs)
+    }
   }
   // Careful: MUST set the initial guess for quaternion, since 0-norm quaternion
   // produces NAN value in some calculation.
@@ -1150,7 +1160,7 @@ void DoMain(double duration, int max_iter, string data_directory,
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  dairlib::DoMain(FLAGS_duration, FLAGS_max_iter, FLAGS_data_directory,
-                  FLAGS_init_file, FLAGS_tol, FLAGS_store_data,
-                  FLAGS_scale_option);
+  dairlib::DoMain(FLAGS_duration, FLAGS_stride_length, FLAGS_is_fix_time,
+                  FLAGS_max_iter, FLAGS_data_directory, FLAGS_init_file,
+                  FLAGS_tol, FLAGS_store_data, FLAGS_scale_option);
 }

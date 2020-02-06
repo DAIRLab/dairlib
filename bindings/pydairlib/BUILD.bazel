@@ -1,0 +1,30 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+pybind_py_library(
+    name = "lcm_trajectory_saver_py",
+    cc_deps = [
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "lcm_trajectory_saver",
+    cc_srcs = ["lcm_trajectory_py.cc"],
+    py_deps = ["@drake//bindings/pydrake"],
+    py_imports = ["."],
+)
+
+py_binary(
+    name = "lcm_trajectory_plotter",
+    srcs = ["lcm_trajectory_plotter.py"],
+    deps = [":lcm_trajectory_saver_py"],
+)

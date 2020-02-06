@@ -94,10 +94,13 @@ DEFINE_int32(scale_option, 0,
 
 // Gait parameters
 DEFINE_bool(is_fix_time, true, "Whether to fix the duration of gait or not");
-DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
+DEFINE_double(duration, 0.4,
+              "Duration of the single support phase (s)."
+              "If is_fix_time = false, then duration is only used in initial "
+              "guess calculation");
 DEFINE_double(stride_length, 0.2, "stride length of the walking");
 
-// Parameters which enable dircon-improving features
+// Parameters which enable scaling to improve solving speed
 DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
 DEFINE_bool(is_scale_variable, true, "Scale the decision variable");
 
@@ -283,6 +286,22 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   // parameters
   double ground_incline = 0;
 
+  // Cost on state and input
+  double w_Q = 5 * 0.1;
+  double w_R = 0.1 * 0.01;
+  // Cost on force
+  double w_lambda = 1.0e-4;
+  // Other costs
+  double w_lambda_diff = 0;  // 0.000001;
+  double w_v_diff = 0;       // 0.01 * 5;
+  double w_u_diff = 0;       // 0.00001;
+  double w_q_hip_roll = 1;
+  double w_q_hip_yaw = 1;
+  double w_q_quat_xyz = 0;
+
+  // Disable kinematic constraint at the second node
+  bool is_disable_kin_constraint_at_last_node = true;
+
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -390,9 +409,6 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   auto rs_dataset = DirconKinematicDataSet<double>(plant, &rs_constraint,
                                                    skip_constraint_inds);
 
-  // Disable kinematic constraint at the second node
-  bool is_disable_kin_constraint_at_last_node = true;
-
   // Set up options
   std::vector<DirconOptions> options_list;
   options_list.push_back(DirconOptions(ls_dataset.countConstraints(), &plant));
@@ -400,6 +416,11 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
 
   if (is_disable_kin_constraint_at_last_node) {
     options_list[1].setSinglePeriodicEndNode(true);
+  }
+
+  // set force cost weight
+  for (int i = 0; i < 2; i++) {
+    options_list[i].setForceCost(w_lambda);
   }
 
   // Be careful in setting relative constraint, because we skip constraints
@@ -437,21 +458,6 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
       options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
       options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
       options_list[i].setImpConstraintScaling(s * 1.0, 16, n_v - 1);
-
-      /* // old scaling from goldilocks model branch
-      // Dynamic constraints
-      options_list[i].setDynConstraintScaling(1.0 / 60.0, 0, n_q - 1);
-      options_list[i].setDynConstraintScaling(1.0 / 1200.0, n_q, n_x - 1);
-      // Kinematic constraints
-      options_list[i].setKinConstraintScaling(1.0 / 600.0, 0, 4);
-      options_list[i].setKinConstraintScaling(1.0 / 600.0 * 2, 5, 6);
-      options_list[i].setKinConstraintScaling(1.0 / 10.0, 7 + 0, 7 + 4);
-      options_list[i].setKinConstraintScaling(1.0 / 10.0, 7 + 5, 7 + 6);
-      options_list[i].setKinConstraintScaling(1.0, 14 + 0, 14 + 4);
-      options_list[i].setKinConstraintScaling(1.0 * 20, 14 + 5, 14 + 6);
-      // Impact constraints
-      options_list[i].setImpConstraintScaling(1.0 / 12.0 / 50.0, 0, 2);
-      options_list[i].setImpConstraintScaling(1.0 / 12.0, 3, n_v - 1);*/
     }
   }
 
@@ -634,7 +640,6 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
 
   // Testing -- constraint on initial floating base
   trajopt->AddConstraint(x0(0) == 1);
-
   // Testing -- constraint on the forces magnitude
   /*for (int i = 0; i < N; i++) {
     auto lambda = trajopt->force(0, i);
@@ -642,8 +647,8 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
     trajopt->AddLinearConstraint(lambda(5) <= 700);
     trajopt->AddLinearConstraint(lambda(6) >= -1000);  // left leg four bar
     trajopt->AddLinearConstraint(lambda(6) <= 1000);   // left leg four bar
-    trajopt->AddLinearConstraint(lambda(7) >= -500);   // left leg four bar
-    trajopt->AddLinearConstraint(lambda(7) <= 500);    // left leg four bar
+    trajopt->AddLinearConstraint(lambda(7) >= -500);   // right leg four bar
+    trajopt->AddLinearConstraint(lambda(7) <= 500);    // right leg four bar
   }*/
   /*for (int i = 0; i < N - 1; i++) {
     auto lambda = trajopt->collocation_force(0, i);
@@ -651,8 +656,8 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
     trajopt->AddLinearConstraint(lambda(5) <= 700);
     trajopt->AddLinearConstraint(lambda(6) >= -1000);  // left leg four bar
     trajopt->AddLinearConstraint(lambda(6) <= 1000);   // left leg four bar
-    trajopt->AddLinearConstraint(lambda(7) >= -500);   // left leg four bar
-    trajopt->AddLinearConstraint(lambda(7) <= 500);    // left leg four bar
+    trajopt->AddLinearConstraint(lambda(7) >= -500);   // right leg four bar
+    trajopt->AddLinearConstraint(lambda(7) <= 500);    // right leg four bar
   }*/
   // Testing -- constraint on normal force
   for (int i = 0; i < N; i++) {
@@ -664,6 +669,11 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   /*for (int i = 0; i < N; i++) {
     auto ui = trajopt->input(i);
     trajopt->AddLinearConstraint(ui(6) >= 0);
+  }*/
+  // Testing -- constraint left four-bar force (seems to help in high speed)
+  /*for (int i = 0; i < N; i++) {
+    auto lambda = trajopt->force(0, i);
+    trajopt->AddLinearConstraint(lambda(6) <= 0);  // left leg four bar
   }*/
 
   // Scale decision variable
@@ -704,61 +714,51 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   }
 
   // add cost
-  //  const MatrixXd Q = MatrixXd::Zero(n_v, n_v);
-  //  const MatrixXd R = MatrixXd::Zero(n_u, n_u);
-  MatrixXd Q = 5 * 0.1 * MatrixXd::Identity(n_v, n_v);
-  MatrixXd R = 0.1 * 0.01 * MatrixXd::Identity(n_u, n_u);
-  Q(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
-  Q(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
-  trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
-  trajopt->AddRunningCost(u.transpose() * R * u);
+  MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
+  MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
+  W_Q(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
+  W_Q(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
+  trajopt->AddRunningCost(x.tail(n_v).transpose() * W_Q * x.tail(n_v));
+  trajopt->AddRunningCost(u.transpose() * W_R * u);
   /*// Add cost without time
   for (int i = 0; i < N - 1; i++) {
     auto v0 = trajopt->state(i).tail(n_v);
     auto v1 = trajopt->state(i + 1).tail(n_v);
     auto h = 0.4 / 15.0;
-    trajopt->AddCost(((v0.transpose() * Q * v0) * h / 2)(0));
-    trajopt->AddCost(((v1.transpose() * Q * v1) * h / 2)(0));
+    trajopt->AddCost(((v0.transpose() * W_Q * v0) * h / 2)(0));
+    trajopt->AddCost(((v1.transpose() * W_Q * v1) * h / 2)(0));
   }
   for (int i = 0; i < N - 1; i++) {
     auto u0 = trajopt->input(i);
     auto u1 = trajopt->input(i + 1);
     auto h = 0.4 / 15.0;
-    trajopt->AddCost(((u0.transpose() * R * u0) * h / 2)(0));
-    trajopt->AddCost(((u1.transpose() * R * u1) * h / 2)(0));
+    trajopt->AddCost(((u0.transpose() * W_R * u0) * h / 2)(0));
+    trajopt->AddCost(((u1.transpose() * W_R * u1) * h / 2)(0));
   }*/
-
-  // Other costs
-  double Q_lamb_diff = 0;      // 0.000001;
-  double Q_v_diff_double = 0;  // 0.01 * 5;
-  double Q_u_diff = 0;         // 0.00001;
-  double Q_q_hip_roll = 1;
-  double Q_q_hip_yaw = 1;
-  double Q_q_quat_xyz = 0;
 
   // add cost on force difference wrt time
   bool diff_with_force_at_collocation = false;
-  if (Q_lamb_diff) {
+  if (w_lambda_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto lambda0 = trajopt->force(0, i);
       auto lambda1 = trajopt->force(0, i + 1);
       auto lambdac = trajopt->collocation_force(0, i);
       if (diff_with_force_at_collocation) {
-        trajopt->AddCost(Q_lamb_diff *
+        trajopt->AddCost(w_lambda_diff *
                          (lambda0 - lambdac).dot(lambda0 - lambdac));
-        trajopt->AddCost(Q_lamb_diff *
+        trajopt->AddCost(w_lambda_diff *
                          (lambdac - lambda1).dot(lambdac - lambda1));
       } else {
-        trajopt->AddCost(Q_lamb_diff *
+        trajopt->AddCost(w_lambda_diff *
                          (lambda0 - lambda1).dot(lambda0 - lambda1));
       }
     }
   }
   // add cost on vel difference wrt time
-  MatrixXd Q_v_diff = Q_v_diff_double * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q_v_diff = w_v_diff * MatrixXd::Identity(n_v, n_v);
   Q_v_diff(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
   Q_v_diff(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
-  if (Q_v_diff_double) {
+  if (w_v_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto v0 = trajopt->state(i).tail(n_v);
       auto v1 = trajopt->state(i + 1).tail(n_v);
@@ -766,30 +766,30 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
     }
   }
   // add cost on input difference wrt time
-  if (Q_u_diff) {
+  if (w_u_diff) {
     for (int i = 0; i < N - 1; i++) {
       auto u0 = trajopt->input(i);
       auto u1 = trajopt->input(i + 1);
-      trajopt->AddCost(Q_u_diff * (u0 - u1).dot(u0 - u1));
+      trajopt->AddCost(w_u_diff * (u0 - u1).dot(u0 - u1));
     }
   }
   // add cost on joint position
-  if (Q_q_hip_roll) {
+  if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(7, 2);
-      trajopt->AddCost(Q_q_hip_roll * q.transpose() * q);
+      trajopt->AddCost(w_q_hip_roll * q.transpose() * q);
     }
   }
-  if (Q_q_hip_yaw) {
+  if (w_q_hip_yaw) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(9, 2);
-      trajopt->AddCost(Q_q_hip_yaw * q.transpose() * q);
+      trajopt->AddCost(w_q_hip_yaw * q.transpose() * q);
     }
   }
-  if (Q_q_quat_xyz) {
+  if (w_q_quat_xyz) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(1, 3);
-      trajopt->AddCost(Q_q_quat_xyz * q.transpose() * q);
+      trajopt->AddCost(w_q_quat_xyz * q.transpose() * q);
     }
   }
 
@@ -1003,8 +1003,8 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
     auto v0 = state_at_knots.col(i).tail(n_v);
     auto v1 = state_at_knots.col(i + 1).tail(n_v);
     auto h = time_at_knots(i + 1) - time_at_knots(i);
-    cost_x += ((v0.transpose() * Q * v0) * h / 2)(0);
-    cost_x += ((v1.transpose() * Q * v1) * h / 2)(0);
+    cost_x += ((v0.transpose() * W_Q * v0) * h / 2)(0);
+    cost_x += ((v1.transpose() * W_Q * v1) * h / 2)(0);
   }
   total_cost += cost_x;
   cout << "cost_x = " << cost_x << endl;
@@ -1013,8 +1013,8 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
     auto u0 = input_at_knots.col(i);
     auto u1 = input_at_knots.col(i + 1);
     auto h = time_at_knots(i + 1) - time_at_knots(i);
-    cost_u += ((u0.transpose() * R * u0) * h / 2)(0);
-    cost_u += ((u1.transpose() * R * u1) * h / 2)(0);
+    cost_u += ((u0.transpose() * W_R * u0) * h / 2)(0);
+    cost_u += ((u1.transpose() * W_R * u1) * h / 2)(0);
   }
   total_cost += cost_u;
   cout << "cost_u = " << cost_u << endl;
@@ -1035,12 +1035,12 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
     auto lambdac = result.GetSolution(trajopt->collocation_force(0, i));
     if (diff_with_force_at_collocation) {
       cost_lambda_diff +=
-          Q_lamb_diff * (lambda0 - lambdac).dot(lambda0 - lambdac);
+          w_lambda_diff * (lambda0 - lambdac).dot(lambda0 - lambdac);
       cost_lambda_diff +=
-          Q_lamb_diff * (lambdac - lambda1).dot(lambdac - lambda1);
+          w_lambda_diff * (lambdac - lambda1).dot(lambdac - lambda1);
     } else {
       cost_lambda_diff +=
-          Q_lamb_diff * (lambda0 - lambda1).dot(lambda0 - lambda1);
+          w_lambda_diff * (lambda0 - lambda1).dot(lambda0 - lambda1);
     }
   }
   total_cost += cost_lambda_diff;
@@ -1059,7 +1059,7 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   for (int i = 0; i < N - 1; i++) {
     auto u0 = result.GetSolution(trajopt->input(i));
     auto u1 = result.GetSolution(trajopt->input(i + 1));
-    cost_u_diff += Q_u_diff * (u0 - u1).dot(u0 - u1);
+    cost_u_diff += w_u_diff * (u0 - u1).dot(u0 - u1);
   }
   total_cost += cost_u_diff;
   cout << "cost_u_diff = " << cost_u_diff << endl;
@@ -1067,7 +1067,7 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   double cost_q_hip_roll = 0;
   for (int i = 0; i < N; i++) {
     auto q = result.GetSolution(trajopt->state(i).segment(7, 2));
-    cost_q_hip_roll += Q_q_hip_roll * q.transpose() * q;
+    cost_q_hip_roll += w_q_hip_roll * q.transpose() * q;
   }
   total_cost += cost_q_hip_roll;
   cout << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
@@ -1075,7 +1075,7 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   double cost_q_quat_xyz = 0;
   for (int i = 0; i < N; i++) {
     auto q = result.GetSolution(trajopt->state(i).segment(1, 3));
-    cost_q_quat_xyz += Q_q_quat_xyz * q.transpose() * q;
+    cost_q_quat_xyz += w_q_quat_xyz * q.transpose() * q;
   }
   total_cost += cost_q_quat_xyz;
   cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;

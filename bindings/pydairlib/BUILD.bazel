@@ -12,12 +12,12 @@ load(
 )
 
 pybind_py_library(
-    name = "lcm_trajectory_saver_py",
+    name = "lcm_trajectory_py",
     cc_deps = [
         "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "lcm_trajectory_saver",
+    cc_so_name = "lcm_trajectory",
     cc_srcs = ["lcm_trajectory_py.cc"],
     py_deps = ["@drake//bindings/pydrake"],
     py_imports = ["."],
@@ -26,5 +26,21 @@ pybind_py_library(
 py_binary(
     name = "lcm_trajectory_plotter",
     srcs = ["lcm_trajectory_plotter.py"],
-    deps = [":lcm_trajectory_saver_py"],
+    deps = [":lcm_trajectory_py",
+             ":module_py"],
+)
+
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+    ],
 )

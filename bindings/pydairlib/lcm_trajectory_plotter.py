@@ -3,11 +3,12 @@
 # import dairlib.bindings.pydairlib
 # from bindings.pydairlib.lcm_trajectory_saver import loadFromFile
 # from bindings.pydairlib import lcm_trajectory_saver
-import bindings.pydairlib.lcm_trajectory_saver
+# import bindings.pydairlib.lcm_trajectory_saver
+import pydairlib.lcm_trajectory
 
 def main():
-    help(bindings.pydairlib)
-    data = dairlib.bindings.loadFromFile("")
+    help(pydairlib.lcm_trajectory)
+    data = pydairlib.lcm_trajectory.loadFromFile("")
 
 
 if __name__ == "__main__":

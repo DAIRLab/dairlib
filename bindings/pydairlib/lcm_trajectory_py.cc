@@ -7,12 +7,14 @@
 
 namespace py = pybind11;
 
+namespace dairlib {
 namespace pydairlib {
 
 PYBIND11_MODULE(lcm_trajectory, m) {
   m.doc() = "Binding functions for saving/loading trajectories";
   //  py::module::import("pydrake");
-  m.def("loadFromFile", &dairlib::LcmTrajectory::loadFromFile);
+  m.def("loadFromFile", &LcmTrajectory::loadFromFile);
 }
 
-}
+} // namespace pydairlib
+} // namespace dairlib

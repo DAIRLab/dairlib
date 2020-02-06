@@ -8,12 +8,12 @@ workspace(name = "dairlib")
 # If the environment variable DAIRLIB_LOCAL_DRAKE_PATH is set, it will use
 # a local version, ad the specified path. Otherwise, it will get a pegged
 # revision from github.
-# As an example, 
+# As an example,
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "7c6ce6603feaf512162aa0b586d45f1817b27387"
-DRAKE_CHECKSUM = "94cf2307beb86b21ed3c09b141579d72ea420371e13a38e89c3861a1f40f00ee"
+DRAKE_COMMIT = "097f77083908d029e98bc081b822a4a3b4951619"
+DRAKE_CHECKSUM = "34b72caad302a07332499a54406efa0d69e4d80f58fea9f60e8108edf3064494"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 # DRAKE_CHECKSUM = "0" * 64
@@ -83,4 +83,50 @@ http_archive(
     sha256='35e5cd2032f52a1f77190df5c31c02134dc460bfeda3f28b5a860a95309342b9',
     urls = ['https://github.com/ros/genpy/archive/0.6.5.tar.gz'],
     strip_prefix='genpy-0.6.5',
+)
+
+
+# dairlib can use either a local version of invariant-ekf or a pegged revision
+# If the environment variable DAIRLIB_LOCAL_INEKF_PATH is set, it will use
+# a local version, ad the specified path. Otherwise, it will get a pegged
+# revision from github.
+# As an example,
+#  export DAIRLIB_LOCAL_INEKF_PATH=/home/user/workspace/invariant-ekf
+
+# Choose a revision of InEKF to use.
+INEKF_COMMIT = "7fde9f84dbe536ba9439a3b8c319efb51ff760dd"
+INEKF_CHECKSUM = "f87e3262b0c9c9237881fcd539acd1c60000f97dfdfa47b0ae53cb7a0f3256e4"
+
+# Before changing the COMMIT, temporarily uncomment the next line so that Bazel
+# displays the suggested new value for the CHECKSUM.
+# INEKF_CHECKSUM = "0" * 64
+
+# Load an environment variable.
+environ_repository(name = "environ_inekf", vars = ["DAIRLIB_LOCAL_INEKF_PATH"])
+load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
+
+# The WORKSPACE file does not permit `if` statements, so we handle the local
+# option by toying with the repository names.  The selected repository is named
+# "@inekf", the other is named "@inekf_ignored".
+(_http_inekf_repo_name, _local_inekf_repo_name) = (
+    "inekf_ignored" if DAIRLIB_LOCAL_INEKF_PATH else "inekf",
+    "inekf" if DAIRLIB_LOCAL_INEKF_PATH else "inekf_ignored",
+)
+
+# Maybe download InEKF.
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = _http_inekf_repo_name,
+    urls = [x.format(INEKF_COMMIT) for x in [
+        "https://github.com/DAIRLab/invariant-ekf/archive/{}.tar.gz",
+    ]],
+    sha256 = INEKF_CHECKSUM,
+    strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
+)
+
+# Maybe use a local checkout of InEKF.
+print("Using DAIRLIB_LOCAL_INEKF_PATH={}".format(DAIRLIB_LOCAL_INEKF_PATH)) if DAIRLIB_LOCAL_INEKF_PATH else None  # noqa
+local_repository(
+    name = _local_inekf_repo_name,
+    path = DAIRLIB_LOCAL_INEKF_PATH,
 )

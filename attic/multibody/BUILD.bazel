@@ -17,15 +17,6 @@ cc_library(
     ],
 )
 
-cc_binary(
-    name = "parse_log_test",
-    srcs = ["test/parse_log_test.cc"],
-    deps = [
-        ":lcm_log_utils",
-        "//examples/Cassie:cassie_utils",
-    ]
-)
-
 cc_library(
     name = "lcm_log_utils",
     srcs = [

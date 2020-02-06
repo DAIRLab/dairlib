@@ -1,0 +1,6 @@
+package dairlib;
+
+struct lcmt_controller_switch
+{
+  string channel;
+}

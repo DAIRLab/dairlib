@@ -32,7 +32,7 @@ The only specific action needed here is to install all of Drake's prerequisites.
 
 bazel will automatically download the pegged revision, specified in the WORKSPACE file. dairlib developers hope to keep this pegged revision current, and ensure that the pegged version will always work with a specific version of dairlib.
 
-This option is recommended for users who are not currently editing any source code in Drake itself. 
+This option is recommended for users who are not currently editing any source code in Drake itself.
 #### Option 2: source install of Drake
 Install Drake from source into `"my-workspace"/drake` http://drake.mit.edu/from_source.html. You do not need to build it, but prerequisites should also be installed. You will need `git` to start.
 
@@ -42,7 +42,7 @@ export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/my-workspace/drake
 ```
 
 ### Other dependencies
-These dependencies are necessary for some advanced visualization and process management. Many examples will work without a full installation of Director or libbot, but (for lab members), these are ultimately recommended. 
+These dependencies are necessary for some advanced visualization and process management. Many examples will work without a full installation of Director or libbot, but (for lab members), these are ultimately recommended.
 
 #### LCM and libbot
 Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation from Drake should add the proper repo for these. (This likely require's Drake's prerequisites to be installed from a source copy).
@@ -53,7 +53,7 @@ To integrate with ROS (tested on ROS Melodic), the following steps are required.
 2. Do not forget to setup your environment. For instance, add these lines to `~/.bashrc`
 ```
 export ROS_MASTER_URI=http://localhost:11311
-source /opt/ros/melodic/setup.bash 
+source /opt/ros/melodic/setup.bash
 ```
 3. Install additional dependencies
 ```
@@ -67,6 +67,14 @@ cd tools/workspace/ros
 5. Set the environment variable `DAIRLIB_WITH_ROS` to `ON`. For instance, add to `~/.bashrc`
 ```
 export DAIRLIB_WITH_ROS=ON
+```
+
+#### Invariant-EKF
+State Estimation for Cassie is done using contact-aided invariant-EKF. `invariant-ekf` is an external repository forked from Ross Hartley's repository of the same name. By default, a pegged version of this forked repository is used i.e. the `bazel` branch of DAIR lab's fork of `invariant-ekf` is automatically downloaded and used. However, to make changes to the files, the [DAIR Lab's fork of invariant-ekf](https://github.com/DAIRLab/invariant-ekf/tree/bazel "DAIR Lab's fork of invariant-ekf") can be cloned as a local repository.
+
+To use local version of `invariant-ekf`, set the environment variable `DAIRLIB_LOCAL_INEKF_PATH`, e.g.
+```
+export DAIRLIB_LOCAL_INEKF_PATH=/home/user/my-workspace/invariant-ekf
 ```
 
 ### Notes for macOS
@@ -84,7 +92,7 @@ A modern Drake implementation of the DIRCON constrained trajectory optimization 
 
 Based off the publication
 
-Michael Posa, Scott Kuindersma, Russ Tedrake. "Optimization and Stabilization of Trajectories for Constrained Dynamical Systems." Proceedings of the International Conference on Robotics and Automation (ICRA), 2016. 
+Michael Posa, Scott Kuindersma, Russ Tedrake. "Optimization and Stabilization of Trajectories for Constrained Dynamical Systems." Proceedings of the International Conference on Robotics and Automation (ICRA), 2016.
 
 Available online at https://posa.seas.upenn.edu/wp-content/uploads/Posa16a.pdf
 

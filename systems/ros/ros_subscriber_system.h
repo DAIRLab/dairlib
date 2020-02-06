@@ -65,8 +65,9 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
       : topic_(topic), node_handle_(node_handle) {
     DRAKE_DEMAND(node_handle_);
 
+
     subscriber_ = node_handle->subscribe(
-        topic, 100, &RosSubscriberSystem<RosMessage>::HandleMessage, this);
+        topic, 1, &RosSubscriberSystem<RosMessage>::HandleMessage, this);
 
     DeclareAbstractOutputPort(
         [this]() {

@@ -293,7 +293,7 @@ int testDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::VectorXd::Z
 
   simulator.set_target_realtime_rate(1);
   simulator.Initialize();
-  simulator.StepTo(pp_xtraj.end_time());
+  simulator.AdvanceTo(pp_xtraj.end_time());
   return 0;
 }
 
@@ -426,7 +426,7 @@ int testHybridDircon(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::Vecto
 
   simulator.set_target_realtime_rate(1);
   simulator.Initialize();
-  simulator.StepTo(pp_xtraj.end_time());
+  simulator.AdvanceTo(pp_xtraj.end_time());
   return 0;
 }
 
@@ -581,7 +581,7 @@ int testHybridDirconJump(bool addForceConstraints, Eigen::VectorXd x0 = Eigen::V
     systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(1);
     simulator.Initialize();
-    simulator.StepTo(pp_xtraj.end_time());
+    simulator.AdvanceTo(pp_xtraj.end_time());
   }
   return 0;
 }
@@ -719,7 +719,7 @@ int testDircol() {
 
   simulator.set_target_realtime_rate(1);
   simulator.Initialize();
-  simulator.StepTo(pp_xtraj.end_time());
+  simulator.AdvanceTo(pp_xtraj.end_time());
   return 0;
 
 }

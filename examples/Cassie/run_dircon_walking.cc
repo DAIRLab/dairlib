@@ -100,6 +100,9 @@ DEFINE_double(duration, 0.4,
               "If is_fix_time = false, then duration is only used in initial "
               "guess calculation");
 DEFINE_double(stride_length, 0.2, "stride length of the walking");
+DEFINE_double(ground_incline, 0.0,
+              "incline level of the ground"
+              "(not implemented yet)");
 
 // Parameters which enable scaling to improve solving speed
 DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
@@ -280,11 +283,13 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
   const int xyz_idx_;
 };
 
-void DoMain(double duration, double stride_length, bool is_fix_time, int n_node,
-            int max_iter, string data_directory, string init_file, double tol,
-            bool to_store_data, int scale_option) {
-  // parameters
-  double ground_incline = 0;
+void DoMain(double duration, double stride_length, double ground_incline,
+            bool is_fix_time, int n_node, int max_iter, string data_directory,
+            string init_file, double tol, bool to_store_data,
+            int scale_option) {
+  // Dircon parameter
+  double minimum_timestep = 0.01;
+  DRAKE_DEMAND(duration / (n_node - 1) >= minimum_timestep);
 
   // Cost on velocity and input
   double w_Q = 5 * 0.1;
@@ -471,8 +476,8 @@ void DoMain(double duration, double stride_length, bool is_fix_time, int n_node,
   // timesteps and modes setting
   vector<double> min_dt;
   vector<double> max_dt;
-  min_dt.push_back(.01);
-  min_dt.push_back(.01);
+  min_dt.push_back(minimum_timestep);
+  min_dt.push_back(minimum_timestep);
   max_dt.push_back(.3);
   max_dt.push_back(.3);
   vector<int> num_time_samples;
@@ -1184,8 +1189,8 @@ void DoMain(double duration, double stride_length, bool is_fix_time, int n_node,
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  dairlib::DoMain(FLAGS_duration, FLAGS_stride_length, FLAGS_is_fix_time,
-                  FLAGS_n_node, FLAGS_max_iter, FLAGS_data_directory,
-                  FLAGS_init_file, FLAGS_tol, FLAGS_store_data,
-                  FLAGS_scale_option);
+  dairlib::DoMain(FLAGS_duration, FLAGS_stride_length, FLAGS_ground_incline,
+                  FLAGS_is_fix_time, FLAGS_n_node, FLAGS_max_iter,
+                  FLAGS_data_directory, FLAGS_init_file, FLAGS_tol,
+                  FLAGS_store_data, FLAGS_scale_option);
 }

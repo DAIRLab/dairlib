@@ -92,7 +92,8 @@ DEFINE_int32(scale_option, 0,
              "Scale option of SNOPT"
              "Use 2 if seeing snopta exit 40 in log file");
 
-// Gait parameters
+// Gait and traj opt parameters
+DEFINE_int32(n_node, 16, "Number of nodes");
 DEFINE_bool(is_fix_time, true, "Whether to fix the duration of gait or not");
 DEFINE_double(duration, 0.4,
               "Duration of the single support phase (s)."
@@ -279,7 +280,7 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
   const int xyz_idx_;
 };
 
-void DoMain(double duration, double stride_length, bool is_fix_time,
+void DoMain(double duration, double stride_length, bool is_fix_time, int n_node,
             int max_iter, string data_directory, string init_file, double tol,
             bool to_store_data, int scale_option) {
   // parameters
@@ -475,7 +476,7 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   max_dt.push_back(.3);
   max_dt.push_back(.3);
   vector<int> num_time_samples;
-  num_time_samples.push_back(16);  // 20
+  num_time_samples.push_back(n_node);
   num_time_samples.push_back(1);
   vector<DirconKinematicDataSet<double>*> dataset_list;
   dataset_list.push_back(&ls_dataset);
@@ -691,7 +692,7 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
     for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
       for (int index = 0; index < num_time_samples[mode]; index++) {
         if (!(is_disable_kin_constraint_at_last_node &&
-            (mode == num_time_samples.size() - 1))) {
+              (mode == num_time_samples.size() - 1))) {
           auto lambda = trajopt->force(mode, index);
           trajopt->AddLinearConstraint(lambda(6) <= 0);  // left leg four bar
         }
@@ -1184,6 +1185,7 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   dairlib::DoMain(FLAGS_duration, FLAGS_stride_length, FLAGS_is_fix_time,
-                  FLAGS_max_iter, FLAGS_data_directory, FLAGS_init_file,
-                  FLAGS_tol, FLAGS_store_data, FLAGS_scale_option);
+                  FLAGS_n_node, FLAGS_max_iter, FLAGS_data_directory,
+                  FLAGS_init_file, FLAGS_tol, FLAGS_store_data,
+                  FLAGS_scale_option);
 }

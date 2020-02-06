@@ -107,7 +107,6 @@ DEFINE_bool(is_scale_variable, true, "Scale the decision variable");
 namespace dairlib {
 
 /// Trajectory optimization of fixed-spring cassie walking
-/// With the default initial guess, the solving time is about 2 mins.
 
 // Do inverse kinematics to get configuration guess
 vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
@@ -286,18 +285,23 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   // parameters
   double ground_incline = 0;
 
-  // Cost on state and input
+  // Cost on velocity and input
   double w_Q = 5 * 0.1;
   double w_R = 0.1 * 0.01;
   // Cost on force
   double w_lambda = 1.0e-4;
-  // Other costs
+  // Cost on difference over time
   double w_lambda_diff = 0;  // 0.000001;
   double w_v_diff = 0;       // 0.01 * 5;
   double w_u_diff = 0;       // 0.00001;
+  // Cost on position
   double w_q_hip_roll = 1;
   double w_q_hip_yaw = 1;
   double w_q_quat_xyz = 0;
+
+  // optional constraints
+  // This seems to be important at high speeds
+  bool constrain_stance_leg_fourbar_force = false;
 
   // Disable kinematic constraint at the second node
   bool is_disable_kin_constraint_at_last_node = true;
@@ -641,14 +645,19 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
   // Testing -- constraint on initial floating base
   trajopt->AddConstraint(x0(0) == 1);
   // Testing -- constraint on the forces magnitude
-  /*for (int i = 0; i < N; i++) {
-    auto lambda = trajopt->force(0, i);
-    trajopt->AddLinearConstraint(lambda(2) <= 700);
-    trajopt->AddLinearConstraint(lambda(5) <= 700);
-    trajopt->AddLinearConstraint(lambda(6) >= -1000);  // left leg four bar
-    trajopt->AddLinearConstraint(lambda(6) <= 1000);   // left leg four bar
-    trajopt->AddLinearConstraint(lambda(7) >= -500);   // right leg four bar
-    trajopt->AddLinearConstraint(lambda(7) <= 500);    // right leg four bar
+  /*for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+    for (int index = 0; index < num_time_samples[mode]; index++) {
+      if (!(is_disable_kin_constraint_at_last_node &&
+            (mode == num_time_samples.size() - 1))) {
+        auto lambda = trajopt->force(mode, index);
+        trajopt->AddLinearConstraint(lambda(2) <= 700);
+        trajopt->AddLinearConstraint(lambda(5) <= 700);
+        trajopt->AddLinearConstraint(lambda(6) >= -1000);  // left leg four bar
+        trajopt->AddLinearConstraint(lambda(6) <= 1000);   // left leg four bar
+        trajopt->AddLinearConstraint(lambda(7) >= -500);   // right leg four bar
+        trajopt->AddLinearConstraint(lambda(7) <= 500);    // right leg four bar
+      }
+    }
   }*/
   /*for (int i = 0; i < N - 1; i++) {
     auto lambda = trajopt->collocation_force(0, i);
@@ -660,10 +669,15 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
     trajopt->AddLinearConstraint(lambda(7) <= 500);    // right leg four bar
   }*/
   // Testing -- constraint on normal force
-  for (int i = 0; i < N; i++) {
-    auto lambda = trajopt->force(0, i);
-    trajopt->AddLinearConstraint(lambda(2) >= 10);
-    trajopt->AddLinearConstraint(lambda(5) >= 10);
+  for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+    for (int index = 0; index < num_time_samples[mode]; index++) {
+      if (!(is_disable_kin_constraint_at_last_node &&
+            (mode == num_time_samples.size() - 1))) {
+        auto lambda = trajopt->force(mode, index);
+        trajopt->AddLinearConstraint(lambda(2) >= 10);
+        trajopt->AddLinearConstraint(lambda(5) >= 10);
+      }
+    }
   }
   // Testing -- constraint on u
   /*for (int i = 0; i < N; i++) {
@@ -671,10 +685,17 @@ void DoMain(double duration, double stride_length, bool is_fix_time,
     trajopt->AddLinearConstraint(ui(6) >= 0);
   }*/
   // Testing -- constraint left four-bar force (seems to help in high speed)
-  /*for (int i = 0; i < N; i++) {
-    auto lambda = trajopt->force(0, i);
-    trajopt->AddLinearConstraint(lambda(6) <= 0);  // left leg four bar
-  }*/
+  if (constrain_stance_leg_fourbar_force) {
+    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+      for (int index = 0; index < num_time_samples[mode]; index++) {
+        if (!(is_disable_kin_constraint_at_last_node &&
+            (mode == num_time_samples.size() - 1))) {
+          auto lambda = trajopt->force(mode, index);
+          trajopt->AddLinearConstraint(lambda(6) <= 0);  // left leg four bar
+        }
+      }
+    }
+  }
 
   // Scale decision variable
   double s_q_toe = 1;

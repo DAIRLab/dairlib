@@ -25,13 +25,15 @@ namespace osc {
 
 StandingComTraj::StandingComTraj(const RigidBodyTree<double>& tree,
                                  int pelvis_idx, int left_foot_idx,
-                                 int right_foot_idx)
+                                 int right_foot_idx, double height)
     : tree_(tree),
       pelvis_idx_(pelvis_idx),
       left_foot_idx_(left_foot_idx),
-      right_foot_idx_(right_foot_idx) {
+      right_foot_idx_(right_foot_idx),
+      height_(height) {
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
+  state_port_ = this
+                    ->DeclareVectorInputPort(OutputVector<double>(
                         tree.get_num_positions(), tree.get_num_velocities(),
                         tree.get_num_actuators()))
                     .get_index();
@@ -72,16 +74,8 @@ void StandingComTraj::CalcDesiredTraj(
   Vector3d feet_center =
       (left_front + left_rear + right_front + right_rear) / 4;
 
-  // desired hieght from the stance feet
-  // (set it manually for now)
-  double h = 0.9;
-
-  const double h_min = 0.3;
-  if (h < h_min) {
-    h = h_min;
-  }
-
-  Vector3d desired_com_pos(feet_center(0), feet_center(1), feet_center(2) + h);
+  Vector3d desired_com_pos(feet_center(0), feet_center(1),
+                           feet_center(2) + height_);
   // cout << "desired_com_pos = " << desired_com_pos.transpose() << endl;
 
   // Assign traj

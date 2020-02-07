@@ -97,9 +97,8 @@ int DoMain(int argc, char* argv[]) {
   DRAKE_DEMAND(pelvis_idx != -1 && left_toe_idx != -1 && right_toe_idx != -1);
 
   // Create desired center of mass traj
-  auto com_traj_generator =
-      builder.AddSystem<cassie::osc::StandingComTraj>(
-          tree_with_springs, pelvis_idx, left_toe_idx, right_toe_idx);
+  auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
+      tree_with_springs, pelvis_idx, left_toe_idx, right_toe_idx, FLAGS_height);
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
 

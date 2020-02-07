@@ -177,7 +177,7 @@ int DoMain(int argc, char* argv[]) {
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
   osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);
-  // Left hip yaw joint tracking
+  /*// Left hip yaw joint tracking
   MatrixXd W_hip_yaw = 20 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_hip_yaw = 200 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
@@ -193,7 +193,7 @@ int DoMain(int argc, char* argv[]) {
       W_hip_yaw * FLAGS_cost_weight_multiplier, &tree_with_springs,
       &tree_without_springs);
   right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));
+  osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));*/
   // Build OSC problem
   osc->Build();
   // Connect ports

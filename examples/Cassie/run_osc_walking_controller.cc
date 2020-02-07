@@ -43,8 +43,10 @@ using systems::controllers::TransTaskSpaceTrackingData;
 
 DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 
-DEFINE_string(channel_x, "CASSIE_STATE",
-              "The name of the channel which receives state");
+DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
+              "LCM channel for receiving state. "
+              "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
+              "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
 
@@ -396,7 +398,7 @@ int DoMain(int argc, char* argv[]) {
        std::move(owned_diagram),
        state_receiver,
        FLAGS_channel_x,
-       false);
+       true);
   loop.Simulate();
 
   return 0;

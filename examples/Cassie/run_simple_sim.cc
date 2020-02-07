@@ -55,9 +55,7 @@ DEFINE_double(dt, 1e-3,
               "'simulation_type=timestepping' (ignored for "
               "'simulation_type=compliant'");
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
-DEFINE_bool(publish_state, true,
-    "Publish state CASSIE_STATE (set to false when running w/dispatcher");
-DEFINE_string(state_channel_name, "CASSIE_STATE",
+DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
               "The name of the lcm channel that sends Cassie's state");
 DEFINE_bool(publish_cassie_output, true, "Publish simulated CASSIE_OUTPUT");
 
@@ -93,11 +91,6 @@ int do_main(int argc, char* argv[]) {
 
   drake::systems::DiagramBuilder<double> builder;
 
-  if (!FLAGS_publish_cassie_output && !FLAGS_publish_state) {
-    throw std::logic_error(
-        "Must publish either via CASSIE_OUTPUT or CASSIE_STATE");
-  }
-
   if (FLAGS_simulation_type != "timestepping") FLAGS_dt = 0.0;
   auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(
       std::move(tree), FLAGS_dt);
@@ -131,18 +124,16 @@ int do_main(int argc, char* argv[]) {
                   passthrough->get_input_port());
   builder.Connect(passthrough->get_output_port(), plant->get_input_port(0));
 
-  if (FLAGS_publish_state) {
-    // Create state publisher
-    auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
-        plant->get_rigid_body_tree());
-    auto state_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            FLAGS_state_channel_name, lcm, 1.0 / FLAGS_publish_rate));
-    builder.Connect(plant->state_output_port(),
-                    state_sender->get_input_port_state());
-    builder.Connect(state_sender->get_output_port(0),
-                    state_pub->get_input_port());
-  }
+  // Create state publisher
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
+      plant->get_rigid_body_tree());
+  auto state_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+          FLAGS_state_channel_name, lcm, 1.0 / FLAGS_publish_rate));
+  builder.Connect(plant->state_output_port(),
+                  state_sender->get_input_port_state());
+  builder.Connect(state_sender->get_output_port(0),
+                  state_pub->get_input_port());
 
   // Create cassie output (containing simulated sensor) publisher
   if (FLAGS_publish_cassie_output) {

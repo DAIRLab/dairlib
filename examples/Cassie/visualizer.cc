@@ -21,7 +21,10 @@ DEFINE_bool(com, true, "Visualize the COM as a sphere");
 DEFINE_bool(com_ground, true,
     "If com=true, sets whether the COM should be shown on the ground (z=0)"
     " or at the correct height.");
-DEFINE_string(channel, "CASSIE_STATE", "LCM channel for receiving state.");
+DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
+              "LCM channel for receiving state. "
+              "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
+              "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 
 using std::endl;
 using std::cout;

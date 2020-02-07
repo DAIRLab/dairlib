@@ -22,8 +22,13 @@ class TimeVisualizer(object):
         if (self._subscriber is not None):
             return
 
+        if 'pd_panel_state_channel' in globals():
+            channel = pd_panel_state_channel
+        else:
+            channel = "CASSIE_STATE_SIMULATION"
+
         self._subscriber = lcmUtils.addSubscriber(
-            'CASSIE_STATE',
+            channel,
             messageClass=dairlib.lcmt_robot_output,
             callback=self.handle_message)
 

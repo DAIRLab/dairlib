@@ -16,6 +16,10 @@
 namespace dairlib {
 
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
+DEFINE_string(channel, "CASSIE_STATE_SIMULATION",
+              "LCM channel for receiving state. "
+              "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
+              "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 
 using std::endl;
 using std::cout;
@@ -40,12 +44,10 @@ int doMain(int argc, char* argv[]) {
   drake::systems::DiagramBuilder<double> builder;
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
-  const std::string channel_x = "CASSIE_STATE";
-
   // Create state receiver.
   auto state_sub = builder.AddSystem(
                      drake::systems::lcm::LcmSubscriberSystem::Make <
-                     dairlib::lcmt_robot_output > (channel_x, lcm));
+                     dairlib::lcmt_robot_output > (FLAGS_channel, lcm));
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(tree);
   builder.Connect(state_sub->get_output_port(),
                   state_receiver->get_input_port(0));

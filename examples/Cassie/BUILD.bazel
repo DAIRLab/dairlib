@@ -111,6 +111,7 @@ cc_binary(
         "//systems/controllers",
         "//systems/controllers:pd_config_lcm",
         "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 

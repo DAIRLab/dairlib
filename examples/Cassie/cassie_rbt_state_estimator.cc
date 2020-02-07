@@ -1082,7 +1082,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       AssignFloatingBaseStateToOutputVector(fb_state_gt, &output_gt);
 
       // We get 0's cassie_state in the beginning because dispatcher_robot_out
-      // is not triggerred by CASSIE_STATE message.
+      // is not triggered by CASSIE_STATE_SIMULATION message.
       // This wouldn't be an issue when you don't use ground truth state.
       if (output_gt.GetPositions().head(7).norm() == 0){
         output_gt.SetPositionAtIndex(position_idx_map_.at("base_qw"), 1);

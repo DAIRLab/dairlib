@@ -85,7 +85,8 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(input_receiver->get_output_port(0),
                     state_estimator->get_input_port(0));
 
-    // Adding "CASSIE_STATE" and "CASSIE_INPUT" ports for testing estimator
+    // Adding "CASSIE_STATE_SIMULATION" and "CASSIE_INPUT" ports for testing
+    // estimator
     // TODO(yminchen): delete this part after finishing estimator
     if(FLAGS_floating_base && FLAGS_test_with_ground_truth_state){
       auto state_sub = builder.AddSystem(
@@ -104,13 +105,13 @@ int do_main(int argc, char* argv[]) {
       true);
   auto state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE", &lcm_local,
+          "CASSIE_STATE_DISPATCHER", &lcm_local,
           {TriggerType::kForced}));
 
   // Create and connect RobotOutput publisher (low-rate for the network)
   auto net_state_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "NETWORK_CASSIE_STATE", &lcm_network,
+          "NETWORK_CASSIE_STATE_DISPATCHER", &lcm_network,
           {TriggerType::kPeriodic}, FLAGS_pub_rate));
 
   // Pass through to drop all but positions and velocities
@@ -164,16 +165,18 @@ int do_main(int argc, char* argv[]) {
         &input_receiver_context, input_sub.message());
 
     // Set EKF previous time
-    auto& state_estimator_context =
-        diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
-    state_estimator->setPreviousTime(&state_estimator_context, t0);
-    state_estimator->setInitialImuPosition(&state_estimator_context,
-                                           Eigen::Vector3d(0.0318638, 0,  0.969223));
-    state_estimator->setInitialImuQuaternion(&state_estimator_context,
-                                             Eigen::Vector4d(1, 0, 0, 0));
-    // Initial imu values are all 0 if the robot is dropped from the air.
-    state_estimator->setPreviousImuMeasurement(&state_estimator_context,
-                                               Eigen::VectorXd::Zero(6));
+    if (FLAGS_floating_base) {
+      auto& state_estimator_context = diagram.GetMutableSubsystemContext(
+          *state_estimator, &diagram_context);
+      state_estimator->setPreviousTime(&state_estimator_context, t0);
+      state_estimator->setInitialImuPosition(
+          &state_estimator_context, Eigen::Vector3d(0.0318638, 0, 0.969223));
+      state_estimator->setInitialImuQuaternion(&state_estimator_context,
+                                               Eigen::Vector4d(1, 0, 0, 0));
+      // Initial imu values are all 0 if the robot is dropped from the air.
+      state_estimator->setPreviousImuMeasurement(&state_estimator_context,
+                                                 Eigen::VectorXd::Zero(6));
+    }
 
     drake::log()->info("dispatcher_robot_out started");
     while (true) {

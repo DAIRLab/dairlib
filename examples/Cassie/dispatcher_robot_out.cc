@@ -47,7 +47,8 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
 // Testing mode
 DEFINE_int64(test_mode, -1, "-1: Regular EKF (not testing mode). "
-                            "0: both feet always in contact with ground. ");
+                            "0: both feet always in contact with ground. "
+                            "1: both feet never in contact with ground. ");
 
 void setInitialEkfState(const drake::systems::Diagram<double>& diagram,
                         systems::CassieRbtStateEstimator* state_estimator,

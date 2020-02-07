@@ -3,11 +3,12 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "osc_walk",
+    name = "osc",
     deps = [
-        "//examples/Cassie/osc_walk:deviation_from_cp",
-        "//examples/Cassie/osc_walk:heading_traj_generator",
-        "//examples/Cassie/osc_walk:high_level_command",
+        "//examples/Cassie/osc:deviation_from_cp",
+        "//examples/Cassie/osc:heading_traj_generator",
+        "//examples/Cassie/osc:high_level_command",
+        "//examples/Cassie/osc:standing_com_traj",
         "//systems/controllers:cp_traj_gen",
         "//systems/controllers:lipm_traj_gen",
         "//systems/controllers:time_based_fsm",
@@ -48,4 +49,16 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
+)
+
+cc_library(
+    name = "standing_com_traj",
+    srcs = ["standing_com_traj.cc",],
+    hdrs = ["standing_com_traj.h"],
+    deps = [
+            "//attic/multibody:utils",
+            "//systems/controllers:control_utils",
+            "//systems/framework:vector",
+            "@drake//:drake_shared_library",
+            ]
 )

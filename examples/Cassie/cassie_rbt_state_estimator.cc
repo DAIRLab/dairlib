@@ -1215,6 +1215,9 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
         cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
       }
       *counter_for_testing_ = *counter_for_testing_ + 1;
+    } else if (hardware_test_mode_ == 1) {
+      left_contact = 0;
+      right_contact = 0;
     }
 
     std::vector<std::pair<int, bool>> contacts;

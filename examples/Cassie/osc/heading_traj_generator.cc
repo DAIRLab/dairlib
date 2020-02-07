@@ -1,4 +1,4 @@
-#include "examples/Cassie/osc_walk/heading_traj_generator.h"
+#include "examples/Cassie/osc/heading_traj_generator.h"
 
 #include <math.h>
 #include <string>
@@ -24,7 +24,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walk {
+namespace osc {
 
 HeadingTrajGenerator::HeadingTrajGenerator(const RigidBodyTree<double>& tree,
                                            int pelvis_idx)
@@ -100,6 +100,6 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   *casted_traj = pp;
 }
 
-}  // namespace osc_walk
+}  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib

@@ -135,14 +135,14 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 200;
   // Set xy PD gains so they do not effect  passive LIPM dynamics at capture
   // point, when x = sqrt(l/g) * xdot
-  // Passive dynamics: xddot =- g/l * x
+  // Passive dynamics: xddot = g/l * x
   //
-  // Kp * x + Kd * xdot =
-  // Kp * x - Kd * sqrt(g/l) * x = g/l * x
-  // Kp = sqrt(g/l) * Kd + g/l
+  // -Kp * x - Kd * xdot =
+  // -Kp * x + Kd * sqrt(g/l) * x = g/l * x
+  // Kp = sqrt(g/l) * Kd - g/l
   double xy_scale = 10;
   double g_over_l = 9.81/FLAGS_height;
-  MatrixXd K_p_com = (xy_scale*sqrt(g_over_l)  + g_over_l) *
+  MatrixXd K_p_com = (xy_scale*sqrt(g_over_l)  - g_over_l) *
       MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = xy_scale * MatrixXd::Identity(3, 3);
   K_p_com(2, 2) = 10;

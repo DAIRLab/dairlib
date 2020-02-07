@@ -35,12 +35,14 @@ using multibody::GetBodyIndexFromName;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
     const RigidBodyTree<double>& tree, bool is_floating_base,
-    bool test_with_ground_truth_state, bool print_info_to_terminal) :
+    bool test_with_ground_truth_state, bool print_info_to_terminal,
+    int hardware_test_mode) :
         tree_(tree),
         is_floating_base_(is_floating_base) {
   // Flags for testing and tuning
   test_with_ground_truth_state_ = test_with_ground_truth_state;
   print_info_to_terminal_ = print_info_to_terminal;
+  hardware_test_mode_ = hardware_test_mode;
 
   // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort("cassie_out_t",
@@ -1204,6 +1206,17 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
                             &right_contact);
     }
 
+    // Testing on hardware
+    if (hardware_test_mode_ == 0){
+      left_contact = 1;
+      right_contact = 1;
+
+      if((*counter_for_testing_)%5000 == 0){
+        cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
+      }
+      *counter_for_testing_ = *counter_for_testing_ + 1;
+    }
+
     std::vector<std::pair<int, bool>> contacts;
     contacts.push_back(std::pair<int, bool>(0, left_contact));
     contacts.push_back(std::pair<int, bool>(1, right_contact));
@@ -1366,6 +1379,8 @@ void CassieRbtStateEstimator::setInitialImuPosition(Context<double>* context,
   auto state = filter.getState();
   state.setPosition(p);
   filter.setState(state);
+  cout << "Set initial IMU position to " <<
+       filter.getState().getPosition().transpose() << endl;
 }
 void CassieRbtStateEstimator::setInitialImuQuaternion(Context<double>* context,
     Eigen::Vector4d q) {

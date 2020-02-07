@@ -45,8 +45,26 @@ DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
-/// Runs UDP driven loop for 10 seconds
-/// Re-publishes any received messages as LCM
+// Testing mode
+DEFINE_int64(test_mode, -1, "-1: Regular EKF (not testing mode). "
+                            "0: both feet always in contact with ground. ");
+
+void setInitialEkfState(const drake::systems::Diagram<double>& diagram,
+                        systems::CassieRbtStateEstimator* state_estimator,
+                        drake::systems::Context<double>& diagram_context,
+                        double t0) {
+  auto& state_estimator_context =
+      diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
+  state_estimator->setPreviousTime(&state_estimator_context, t0);
+  state_estimator->setInitialImuPosition(
+      &state_estimator_context, Eigen::Vector3d(0.0318638, 0, 0.969223));
+  state_estimator->setInitialImuQuaternion(&state_estimator_context,
+                                           Eigen::Vector4d(1, 0, 0, 0));
+  // Initial imu values are all 0 if the robot is dropped from the air.
+  state_estimator->setPreviousImuMeasurement(&state_estimator_context,
+                                             Eigen::VectorXd::Zero(6));
+}
+
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -65,7 +83,8 @@ int do_main(int argc, char* argv[]) {
 
   // Create state estimator
   auto state_estimator = builder.AddSystem<systems::CassieRbtStateEstimator>(
-      *tree, FLAGS_floating_base, FLAGS_test_with_ground_truth_state);
+      *tree, FLAGS_floating_base, FLAGS_test_with_ground_truth_state,
+      false/*print_info_to_terminal*/, FLAGS_test_mode);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
@@ -166,16 +185,7 @@ int do_main(int argc, char* argv[]) {
 
     // Set EKF previous time
     if (FLAGS_floating_base) {
-      auto& state_estimator_context = diagram.GetMutableSubsystemContext(
-          *state_estimator, &diagram_context);
-      state_estimator->setPreviousTime(&state_estimator_context, t0);
-      state_estimator->setInitialImuPosition(
-          &state_estimator_context, Eigen::Vector3d(0.0318638, 0, 0.969223));
-      state_estimator->setInitialImuQuaternion(&state_estimator_context,
-                                               Eigen::Vector4d(1, 0, 0, 0));
-      // Initial imu values are all 0 if the robot is dropped from the air.
-      state_estimator->setPreviousImuMeasurement(&state_estimator_context,
-                                                 Eigen::VectorXd::Zero(6));
+      setInitialEkfState(diagram, state_estimator, diagram_context, t0);
     }
 
     drake::log()->info("dispatcher_robot_out started");
@@ -216,6 +226,10 @@ int do_main(int argc, char* argv[]) {
 
     // Initialize the context based on the first message.
     const double t0 = udp_sub.message_time();
+    if (FLAGS_floating_base) {
+      // Set EKF initial states
+      setInitialEkfState(diagram, state_estimator, diagram_context, t0);
+    }
     diagram_context.SetTime(t0);
     auto& output_sender_value = output_sender->get_input_port(0).FixValue(
         &output_sender_context, udp_sub.message());

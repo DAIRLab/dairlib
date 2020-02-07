@@ -32,7 +32,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
                                    bool is_floating_base,
                                    bool test_with_ground_truth_state = false,
-                                   bool print_info_to_terminal = false);
+                                   bool print_info_to_terminal = false,
+                                   int hardware_test_mode = -1);
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
@@ -85,6 +86,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   // flag for testing and tuning
   bool test_with_ground_truth_state_;
   bool print_info_to_terminal_;
+  int hardware_test_mode_;
+  std::unique_ptr<int> counter_for_testing_ =
+      std::make_unique<int>(0);
 
   const RigidBodyTree<double>& tree_;
   const bool is_floating_base_;

@@ -48,11 +48,11 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "4.osc-standing-controller (dispatched)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --channel_x=CASSIE_STATE_DISPATCHER  --height=.85 --cost_weight_multiplier=1";
         host = "localhost";
     }
     cmd "4.osc-standing-controller (no dispatcher)" {
-        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller";
+        exec = "bazel-bin/examples/Cassie/run_osc_standing_controller  --height=.85 --cost_weight_multiplier=1 ";
         host = "localhost";
     }
 }
@@ -101,7 +101,11 @@ group "3.cassie-robot" {
         exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller";
         host = "dair-cassie";
     }
-    cmd "3.walking-controller-real-robot" {
+    cmd "3.standing-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel=CASSIE_STATE_DISPATCHER";
+        host = "dair-cassie";
+    }
+    cmd "4.walking-controller-real-robot" {
         exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel=CASSIE_STATE_DISPATCHER";
         host = "dair-cassie";
     }

@@ -46,10 +46,10 @@ void StandingComTraj::CalcDesiredTraj(
     const Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
-  const OutputVector<double>* robotOutput =
+  const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd q = robotOutput->GetPositions();
-  VectorXd v = robotOutput->GetVelocities();
+  VectorXd q = robot_output->GetPositions();
+  VectorXd v = robot_output->GetVelocities();
 
   // Kinematics cache and indices
   KinematicsCache<double> cache = tree_.CreateKinematicsCache();

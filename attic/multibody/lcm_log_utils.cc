@@ -48,7 +48,7 @@ void parseLcmOutputLog(const RigidBodyTree<double>& tree, string file,
   drake::systems::Simulator<double> sim(*diagram);
 
   // 1000 is the duration to playback (in seconds)
-  sim.StepTo(r_log.GetNextMessageTime() + duration);
+  sim.AdvanceTo(r_log.GetNextMessageTime() + duration);
 
   *t = output_aggregator->BuildTimestampVector();
 

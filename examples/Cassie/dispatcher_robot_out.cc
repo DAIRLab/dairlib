@@ -10,7 +10,6 @@
 
 #include "attic/multibody/rigidbody_utils.h"
 #include "systems/robot_lcm_systems.h"
-#include "systems/primitives/subvector_pass_through.h"
 #include "examples/Cassie/networking/simple_cassie_udp_subscriber.h"
 #include "examples/Cassie/networking/cassie_output_sender.h"
 #include "examples/Cassie/networking/cassie_output_receiver.h"
@@ -18,7 +17,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_robot_input.hpp"
+#include "systems/framework/lcm_driven_loop.h"
 
 namespace dairlib {
 
@@ -35,10 +34,12 @@ DEFINE_int64(port, 25001, "Port to receive on.");
 DEFINE_double(pub_rate, 0.02, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,
     "Simulated or real robot (default=false, real robot)");
+DEFINE_bool(test_with_ground_truth_state, false,
+    "Get floating base from ground truth state for testing");
 
 // TODO(yminchen): delete the following flag after you finish testing
 // cassie_rbt_state_estimator
-DEFINE_string(state_channel_name, "CASSIE_STATE_TEMP",
+DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
     "The name of the lcm channel that sends Cassie's state");
 
 // Cassie model paramter
@@ -63,8 +64,8 @@ int do_main(int argc, char* argv[]) {
   }
 
   // Create state estimator
-  auto state_estimator =
-      builder.AddSystem<systems::CassieRbtStateEstimator>(*tree, FLAGS_floating_base);
+  auto state_estimator = builder.AddSystem<systems::CassieRbtStateEstimator>(
+      *tree, FLAGS_floating_base, FLAGS_test_with_ground_truth_state);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
@@ -81,11 +82,12 @@ int do_main(int argc, char* argv[]) {
     input_receiver =
         builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*input_receiver, *output_sender);
-    builder.Connect(input_receiver->get_output_port(0), state_estimator->get_input_port(0));
+    builder.Connect(input_receiver->get_output_port(0),
+                    state_estimator->get_input_port(0));
 
     // Adding "CASSIE_STATE" and "CASSIE_INPUT" ports for testing estimator
     // TODO(yminchen): delete this part after finishing estimator
-    if(FLAGS_floating_base){
+    if(FLAGS_floating_base && FLAGS_test_with_ground_truth_state){
       auto state_sub = builder.AddSystem(
           LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_state_channel_name, &lcm_local));
@@ -138,7 +140,6 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*robot_output_sender, *net_state_pub);
 
 
-
   // Create the diagram, simulator, and context.
   auto owned_diagram = builder.Build();
   const auto& diagram = *owned_diagram;
@@ -147,14 +148,14 @@ int do_main(int argc, char* argv[]) {
 
   if (FLAGS_simulation) {
     auto& input_receiver_context =
-      diagram.GetMutableSubsystemContext(*input_receiver, &diagram_context);
+        diagram.GetMutableSubsystemContext(*input_receiver, &diagram_context);
 
     // Wait for the first message.
     drake::log()->info("Waiting for first lcmt_cassie_out");
     drake::lcm::Subscriber<dairlib::lcmt_cassie_out> input_sub(&lcm_local,
-        "CASSIE_OUTPUT");
+                                                               "CASSIE_OUTPUT");
     LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-        return input_sub.count() > 0; });
+      return input_sub.count() > 0; });
 
     // Initialize the context based on the first message.
     const double t0 = input_sub.message().utime * 1e-6;
@@ -162,12 +163,24 @@ int do_main(int argc, char* argv[]) {
     auto& input_value = input_receiver->get_input_port(0).FixValue(
         &input_receiver_context, input_sub.message());
 
+    // Set EKF previous time
+    auto& state_estimator_context =
+        diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
+    state_estimator->setPreviousTime(&state_estimator_context, t0);
+    state_estimator->setInitialImuPosition(&state_estimator_context,
+                                           Eigen::Vector3d(0.0318638, 0,  0.969223));
+    state_estimator->setInitialImuQuaternion(&state_estimator_context,
+                                             Eigen::Vector4d(1, 0, 0, 0));
+    // Initial imu values are all 0 if the robot is dropped from the air.
+    state_estimator->setPreviousImuMeasurement(&state_estimator_context,
+                                               Eigen::VectorXd::Zero(6));
+
     drake::log()->info("dispatcher_robot_out started");
     while (true) {
       // Wait for an lcmt_cassie_out message.
       input_sub.clear();
       LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-          return input_sub.count() > 0; });
+        return input_sub.count() > 0; });
       // Write the lcmt_robot_input message into the context and advance.
       input_value.GetMutableData()->set_value(input_sub.message());
       const double time = input_sub.message().utime * 1e-6;
@@ -177,9 +190,9 @@ int do_main(int argc, char* argv[]) {
       if (time > simulator.get_context().get_time() + 1.0 ||
           time < simulator.get_context().get_time() - 1.0) {
         std::cout << "Dispatcher time is " << simulator.get_context().get_time()
-            << ", but stepping to " << time << std::endl;
+                  << ", but stepping to " << time << std::endl;
         std::cout << "Difference is too large, resetting dispatcher time." <<
-            std::endl;
+                  std::endl;
         simulator.get_mutable_context().SetTime(time);
       }
 
@@ -216,7 +229,7 @@ int do_main(int argc, char* argv[]) {
       // Check if we are very far ahead or behind
       // (likely due to a restart of the driving clock)
       if (time > simulator.get_context().get_time() + 1.0 ||
-          time < simulator.get_context().get_time() - 1.0) {
+          time < simulator.get_context().get_time()) {
         std::cout << "Dispatcher time is " << simulator.get_context().get_time()
             << ", but stepping to " << time << std::endl;
         std::cout << "Difference is too large, resetting dispatcher time." <<

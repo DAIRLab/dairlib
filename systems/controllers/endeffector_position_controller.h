@@ -24,11 +24,10 @@ using drake::multibody::Frame;
 namespace dairlib{
 namespace systems{
 
-// PD Controller for end effector position.
-// Takes in desired end effector position and orientation,
-// orientation as quaternion, position as 3-vector.
-// outputs appropriate velocity (twist) as 6-vector: first three indices
-// are desired angular velocity, next three are desired linear velocity.
+// PD Controller for end effector position -- Written specifically for
+// Kuka Iiwa robot arm, but will work for other robot arms with a bit of work.
+// Takes in desired end effector pos (3-vector) and orientation (quaternion),
+// outputs appropriate desired velocity (twist) as 6-vector: [angular | linear]
 
 class EndEffectorPositionController : public LeafSystem<double> {
  public:
@@ -61,6 +60,8 @@ class EndEffectorPositionController : public LeafSystem<double> {
    // Twist combines linear and angular velocities.
    void CalcOutputTwist(const Context<double> &context,
                         BasicVector<double>* output) const;
+
+    Eigen::VectorXd clampToNorm(Eigen::VectorXd v, double norm, std::string msg) const;
 
    const MultibodyPlant<double>& plant_;
    const Frame<double>& plant_world_frame_;

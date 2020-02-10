@@ -1,0 +1,18 @@
+package dairlib;
+
+/*  lcmtype analog for LcmTrajectory::Trajectory
+    For more details consult lcm_trajectory.cc
+*/
+struct lcmt_trajectory_block
+{
+  string trajectory_name;
+  
+  int32_t num_points;
+  int32_t num_datatypes;
+  double time_vec[num_points];
+  /*  Generic 2d matrix of time series data
+      Data type is indexed by row, point in time is indexed by column
+  */
+  double datapoints[num_datatypes][num_points];
+  string datatypes[num_datatypes];
+}

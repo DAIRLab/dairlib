@@ -36,13 +36,14 @@ map<string, int> makeNameToActuatorsMap(const RigidBodyTree<double>& tree) {
 }
 
 int GetBodyIndexFromName(const RigidBodyTree<double>& tree, std::string name) {
+  int idx = -1;
   for (int i = 0; i < tree.get_num_bodies(); i++) {
     if (!tree.get_body(i).get_name().compare(name)) {
-      return i;
+      idx = i;
     }
   }
-  // Return -1 if none of the names match
-  return -1;
+  DRAKE_DEMAND(idx >= 0);
+  return idx;
 }
 
 bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
@@ -61,6 +62,17 @@ bool JointsWithinLimits(const RigidBodyTree<double>& tree, Eigen::VectorXd x,
     }
   }
   return joints_within_limits;
+}
+
+bool IsFloatingBase(const RigidBodyTree<double>& tree){
+  return tree.get_body(1).getJoint().is_floating();
+}
+
+void SetZeroQuaternionToIdentity(Eigen::VectorXd* q) {
+  if (q->segment(3,4).norm() == 0.0) {
+    DRAKE_ASSERT(q->segment(3,4).norm() != 0);
+    (*q)(3) = 1.0;
+  }
 }
 
 }  // namespace multibody

@@ -54,7 +54,7 @@ int DoMain(ros::NodeHandle& node_handle, std::string rostopic,
     spinner.start();
     signal(SIGINT, SigintHandler);
 
-    simulator.StepTo(std::numeric_limits<double>::infinity());
+    simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
     return 0;
 }

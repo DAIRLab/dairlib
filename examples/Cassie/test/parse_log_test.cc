@@ -62,7 +62,7 @@ int ParseLog(string filename) {
   drake::systems::Simulator<double> sim(*diagram);
 
   // 1000 is the duration to playback (in seconds)
-  sim.StepTo(r_log.GetNextMessageTime() + 0.1);
+  sim.AdvanceTo(r_log.GetNextMessageTime() + 0.1);
 
   std::cout << "*****timestamps*****" << std::endl;
   const std::vector<double> timestamps =

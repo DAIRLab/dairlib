@@ -6,16 +6,16 @@ RUN apt install -y python-rosinstall-generator python-catkin-tools
 RUN set -eux \
   && apt-get install --no-install-recommends  locales \
   && locale-gen en_US.UTF-8
-RUN if type sudo 2>/dev/null; then \ 
+RUN if type sudo 2>/dev/null; then \
      echo "The sudo command already exists... Skipping."; \
     else \
      echo -e "#!/bin/sh\n\${@}" > /usr/sbin/sudo; \
      chmod +x /usr/sbin/sudo; \
     fi
 RUN  set -eux \
-  && wget https://github.com/bazelbuild/bazel/releases/download/0.28.0/bazel-0.28.0-installer-linux-x86_64.sh  \
-  && chmod +x bazel-0.28.0-installer-linux-x86_64.sh \
-  && ./bazel-0.28.0-installer-linux-x86_64.sh 
+  && wget https://github.com/bazelbuild/bazel/releases/download/0.29.0/bazel-0.29.0-installer-linux-x86_64.sh  \
+  && chmod +x bazel-0.29.0-installer-linux-x86_64.sh \
+  && ./bazel-0.29.0-installer-linux-x86_64.sh
 RUN set -eux \
   && export DEBIAN_FRONTEND=noninteractive \
   && yes | install/install_prereqs_ubuntu.sh \

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
+BASE_DIR="$PWD"
 
+cd $(dirname "$BASH_SOURCE")
 set -e
 
 PACKAGES="roscpp rospy nav_msgs tf"
@@ -26,3 +28,5 @@ catkin config \
     --no-extend
 
 catkin build
+
+cd $BASE_DIR

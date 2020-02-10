@@ -1,6 +1,7 @@
 #include "drake/common/find_resource.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
+#include "drake/manipulation/kuka_iiwa/iiwa_status_receiver.h"
+#include "drake/manipulation/kuka_iiwa/iiwa_command_sender.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -163,7 +164,7 @@ int do_main(int argc, char* argv[]) {
       drake::systems::lcm::LcmSubscriberSystem::Make<drake::lcmt_iiwa_status>(
           "IIWA_STATUS", lcm));
   auto status_receiver = builder.AddSystem<
-      drake::examples::kuka_iiwa_arm::IiwaStatusReceiver>();
+      drake::manipulation::kuka_iiwa::IiwaStatusReceiver>();
 
   // The coordinates for the end effector with respect to the last joint,
   // used to determine location of end effector
@@ -261,7 +262,7 @@ int do_main(int argc, char* argv[]) {
 
   // Adding command publisher and broadcaster blocks
   auto command_sender = builder.AddSystem<
-      drake::examples::kuka_iiwa_arm::IiwaCommandSender>();
+      drake::manipulation::kuka_iiwa::IiwaCommandSender>();
   auto command_publisher = builder.AddSystem(
       drake::systems::lcm::LcmPublisherSystem::Make<drake::lcmt_iiwa_command>(
           "IIWA_COMMAND", lcm, 1.0/200.0));

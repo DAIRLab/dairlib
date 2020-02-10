@@ -1,6 +1,5 @@
 #include "drake/common/find_resource.h"
-#include "drake/examples/kuka_iiwa_arm/iiwa_common.h"
-#include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
+#include "drake/manipulation/kuka_iiwa/iiwa_status_receiver.h"
 #include "drake/lcmt_iiwa_status.hpp"
 #include "drake/manipulation/util/sim_diagram_builder.h"
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
@@ -9,6 +8,7 @@
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_derivative.h"
 
 namespace dairlib {
@@ -76,7 +76,7 @@ int doMain(int argc, char* argv[]) {
 
   drake::log()->info("visualizer started");
 
-  stepper->StepTo(std::numeric_limits<double>::infinity());
+  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }

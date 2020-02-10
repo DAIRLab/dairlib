@@ -28,8 +28,7 @@ int DoMain(ros::NodeHandle& node_handle) {
           "chatter", &node_handle));
 
   auto msg_publisher = builder.AddSystem(
-      RosPublisherSystem<std_msgs::String>::Make("echo", &node_handle));
-  msg_publisher->set_publish_period(0.25);
+      RosPublisherSystem<std_msgs::String>::Make("echo", &node_handle, .25));
 
   builder.Connect(*msg_subscriber, *msg_publisher);
 
@@ -43,7 +42,7 @@ int DoMain(ros::NodeHandle& node_handle) {
   spinner.start();
   signal(SIGINT, SigintHandler);
 
-  simulator.StepTo(std::numeric_limits<double>::infinity());
+  simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }

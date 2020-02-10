@@ -33,7 +33,8 @@ cc_binary(
 cc_binary(
     name="iiwa_controller_demo",
     srcs = ["iiwa_controller_demo.cc"],
-    data = glob(["**"]),
+    data = glob(["**"]) + 
+            ["@drake//manipulation/models/iiwa_description:models"],
     deps = [
             "@json",
             "@drake//:drake_shared_library",

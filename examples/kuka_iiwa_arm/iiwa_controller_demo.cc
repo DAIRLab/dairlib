@@ -1,3 +1,4 @@
+#include "drake/common/find_resource.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -137,9 +138,9 @@ int do_main(int argc, char* argv[]) {
   std::cout << "Joint Torque Limit: " << JOINT_TORQUE_LIMIT << std::endl;
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
-  std::string kModelPath = "../drake/manipulation/models/iiwa_description"
+  std::string kModelPath = "drake/manipulation/models/iiwa_description"
                            "/iiwa7/iiwa7_no_collision.sdf";
-  const std::string urdf_string = FindResourceOrThrow(kModelPath);
+  const std::string urdf_string = drake::FindResourceOrThrow(kModelPath);
 
   // MultibodyPlants are created here, then passed by reference
   // to the controller blocks for internal modelling.

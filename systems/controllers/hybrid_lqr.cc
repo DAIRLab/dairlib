@@ -424,10 +424,10 @@ void HybridLQRController::calcLinearResetMap(double t, int contact_mode,
 
   AutoDiffVecXd C(n_v_);
   plant_ad_.CalcBiasTerm(*context, &C);
-//  std::cout << "M: " << M << std::endl;
-//  std::cout << "J: " << J << std::endl;
-//  std::cout << "B: " << plant_.MakeActuationMatrix() << std::endl;
-//  std::cout << "Coriolis: " << autoDiffToValueMatrix(C) << std::endl;
+  //  std::cout << "M: " << M << std::endl;
+  //  std::cout << "J: " << J << std::endl;
+  //  std::cout << "B: " << plant_.MakeActuationMatrix() << std::endl;
+  //  std::cout << "Coriolis: " << autoDiffToValueMatrix(C) << std::endl;
 }
 
 VectorXd HybridLQRController::calcLdot(double t, const VectorXd& l,
@@ -595,20 +595,35 @@ void HybridLQRController::CalcCost(
       //          contact_info_msg.point_pair_contact_info[0].contact_force, 3);
       VectorXd grf(6);
       if (contact_info_msg.num_point_pair_contacts == 2) {
-        grf << Vector3d(
-            contact_info_msg.point_pair_contact_info[0].contact_force),
-            Vector3d(contact_info_msg.point_pair_contact_info[1].contact_force);
-      }
-      else{
-        grf << Vector3d(contact_info_msg.point_pair_contact_info[0]
-        .contact_force), 0, 0, 0;
+        if (contact_info_msg.point_pair_contact_info[0].body1_name ==
+            "left_lower_leg(2)") {
+          grf << Vector3d(
+              contact_info_msg.point_pair_contact_info[0].contact_force),
+              Vector3d(
+                  contact_info_msg.point_pair_contact_info[1].contact_force);
+        } else {
+          grf << Vector3d(
+              contact_info_msg.point_pair_contact_info[1].contact_force),
+              Vector3d(
+                  contact_info_msg.point_pair_contact_info[0].contact_force);
+        }
+      } else {
+        if (contact_info_msg.point_pair_contact_info[0].body1_name ==
+            "left_lower_leg(2)") {
+          grf << Vector3d(
+              contact_info_msg.point_pair_contact_info[0].contact_force),
+              0, 0, 0;
+        } else {
+          grf << 0, 0, 0,
+              Vector3d(
+                  contact_info_msg.point_pair_contact_info[0].contact_force);
+        }
       }
       output->get_mutable_value() << current_time, cost0, cost1, cost2,
           current_state->GetState(), state_traj_[0]->value(current_time),
           state_traj_[1]->value(current_time),
           state_traj_[2]->value(current_time),
-          state_traj_[mode]->value(current_time),
-          grf;
+          state_traj_[mode]->value(current_time), grf;
       return;  // TODO: clean up
     } else {
       VectorXd x_error =

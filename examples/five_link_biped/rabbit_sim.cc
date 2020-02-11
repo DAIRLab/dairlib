@@ -196,8 +196,6 @@ int do_main(int argc, char* argv[]) {
 
   MatrixXd input_matrix = input_logger->data().transpose();
   MatrixXd times = input_logger->sample_times();
-  std::cout << input_matrix.cols() << std::endl;
-  std::cout << times.cols() << std::endl;
   DRAKE_ASSERT(input_matrix.rows() == times.rows());
   MatrixXd inputs_and_times(input_matrix.rows(),
                             input_matrix.cols() + times.cols());

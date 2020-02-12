@@ -21,13 +21,11 @@ PYBIND11_MODULE(lcm_trajectory, m) {
 
   py::class_<LcmTrajectory>(m, "LcmTrajectory")
       .def(py::init<>())
-      //      .def(py::init<>(&LcmTrajectory::LcmTrajectory))
       .def("loadFromFile", &LcmTrajectory::loadFromFile,
            py::arg("trajectory_name"))
       .def("getTrajectoryNames", &LcmTrajectory::getTrajectoryNames)
       .def("getTrajectory", &LcmTrajectory::getTrajectory,
            py::arg("trajectory_name"));
-
 }
 
 }  // namespace pydairlib

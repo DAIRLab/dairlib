@@ -1,5 +1,4 @@
 import pydairlib.lcm_trajectory
-import dairlib.lcmt_saved_traj
 import matplotlib.pyplot as plt
 
 def main():

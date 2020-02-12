@@ -1,15 +1,14 @@
 #pragma once
 
-#include "drake/systems/lcm/serializer.h"
-#include <Eigen/Dense>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <Eigen/Dense>
+#include "drake/systems/lcm/serializer.h"
 
 #include "dairlib/lcmt_saved_traj.hpp"
 
 namespace dairlib {
-
 
 /// Used for saving/loading trajectories.
 /// To save a LcmTrajectory object, create one or multiple
@@ -43,13 +42,20 @@ class LcmTrajectory {
 
   explicit LcmTrajectory(const lcmt_saved_traj& traj);
 
+  explicit LcmTrajectory(const std::string& filepath) {
+    loadFromFile(filepath);
+  }
+
   /// Writes this LcmTrajectory object to a file specified by filepath
-  /// @throws std::exception along with the invalid filepath if unable to open the file
+  /// @throws std::exception along with the invalid filepath if unable to open
+  /// the file
   void writeToFile(const std::string& filepath);
 
-  /// Loads a previously saved LcmTrajectory object from the file specified by filepath
-  /// @throws std::exception along with the invalid filepath if error reading/opening the file
-  static lcmt_saved_traj loadFromFile(const std::string& filepath);
+  /// Loads a previously saved LcmTrajectory object from the file specified by
+  /// filepath
+  /// @throws std::exception along with the invalid filepath if error
+  /// reading/opening the file
+  void loadFromFile(const std::string& filepath);
 
   const lcmt_metadata& getMetadata() const { return metadata_; }
 
@@ -64,7 +70,8 @@ class LcmTrajectory {
  private:
   lcmt_saved_traj generateLcmObject() const;
   /// Constructs a lcmt_metadata object with a specified name and description
-  /// Other relevant metadata details such as datatime and git status are automatically generated
+  /// Other relevant metadata details such as datatime and git status are
+  /// automatically generated
   lcmt_metadata constructMetadataObject(std::string name,
                                         std::string description) const;
 
@@ -73,4 +80,4 @@ class LcmTrajectory {
   std::vector<std::string> trajectory_names_;
 };
 
-} // namespace dairlib
+}  // namespace dairlib

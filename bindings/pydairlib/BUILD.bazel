@@ -26,10 +26,12 @@ pybind_py_library(
 py_binary(
     name = "lcm_trajectory_plotter",
     srcs = ["lcm_trajectory_plotter.py"],
-    deps = [":lcm_trajectory_py",
-             ":module_py"],
+    deps = [
+        ":lcm_trajectory_py",
+        ":module_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
 )
-
 
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.

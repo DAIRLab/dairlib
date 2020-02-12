@@ -1,15 +1,18 @@
-# from pydairlib.lcm_trajectory import loadFromFile
-# from dairlib.lcm_trajectory import loadFromFile
-# import dairlib.bindings.pydairlib
-# from bindings.pydairlib.lcm_trajectory_saver import loadFromFile
-# from bindings.pydairlib import lcm_trajectory_saver
-# import bindings.pydairlib.lcm_trajectory_saver
 import pydairlib.lcm_trajectory
+import dairlib.lcmt_saved_traj
+import matplotlib.pyplot as plt
 
 def main():
-    help(pydairlib.lcm_trajectory)
-    data = pydairlib.lcm_trajectory.loadFromFile("")
-
+    data = pydairlib.lcm_trajectory.LcmTrajectory()
+    data.loadFromFile(
+        "/home/yangwill/Documents/research/dairlib/examples/jumping"
+        "/saved_trajs/jumping_12_16")
+    print(data.getTrajectoryNames())
+    traj_name = data.getTrajectoryNames()[0]
+    traj = data.getTrajectory(traj_name)
+    print(traj.datapoints)
+    plt.plot(traj.time_vector, traj.datapoints.T)
+    plt.show()
 
 if __name__ == "__main__":
     main()

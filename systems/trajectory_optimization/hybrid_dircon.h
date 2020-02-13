@@ -1,20 +1,20 @@
 #pragma once
 
-#include <memory.h>
 #include <vector>
+#include <memory.h>
 
 #include "drake/common/drake_copyable.h"
+#include "drake/common/symbolic.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/solvers/constraint.h"
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/system.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/common/symbolic.h"
 
-#include "systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "systems/trajectory_optimization/dircon_options.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "systems/trajectory_optimization/dircon_options.h"
 
 namespace dairlib {
 namespace systems {
@@ -91,15 +91,18 @@ class HybridDircon
     return offset_vars_[mode];
   }
 
-  const drake::solvers::VectorXDecisionVariable& collocation_force_vars(int mode) const {
+  const drake::solvers::VectorXDecisionVariable& collocation_force_vars(
+      int mode) const {
     return collocation_force_vars_[mode];
   }
 
-  const drake::solvers::VectorXDecisionVariable& collocation_slack_vars(int mode) const {
+  const drake::solvers::VectorXDecisionVariable& collocation_slack_vars(
+      int mode) const {
     return collocation_slack_vars_[mode];
   }
 
-  const drake::solvers::VectorXDecisionVariable& quaternion_slack_vars(int mode) const {
+  const drake::solvers::VectorXDecisionVariable& quaternion_slack_vars(
+      int mode) const {
     return quaternion_slack_vars_[mode];
   }
 
@@ -118,12 +121,20 @@ class HybridDircon
   /// (time_index is w.r.t that particular mode). This will use the
   ///  v_post_impact_vars_ if needed. Otherwise, it just returns the standard
   /// x_vars element
-  drake::solvers::VectorXDecisionVariable state_vars_by_mode(int mode,
-                                                             int time_index) const;
+  drake::solvers::VectorXDecisionVariable state_vars_by_mode(
+      int mode, int time_index) const;
 
   Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable> force(
       int mode, int index) const {
+    DRAKE_DEMAND(index < mode_lengths_[mode]);
     return force_vars_[mode].segment(
+        index * num_kinematic_constraints_wo_skipping_[mode],
+        num_kinematic_constraints_wo_skipping_[mode]);
+  }
+  Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
+      collocation_force(int mode, int index) const {
+    DRAKE_DEMAND(index < mode_lengths_[mode] - 1);
+    return collocation_force_vars_[mode].segment(
         index * num_kinematic_constraints_wo_skipping_[mode],
         num_kinematic_constraints_wo_skipping_[mode]);
   }
@@ -134,7 +145,27 @@ class HybridDircon
 
   using drake::systems::trajectory_optimization::MultipleShooting::N;
   using drake::systems::trajectory_optimization::MultipleShooting::
-        SubstitutePlaceholderVariables;
+      SubstitutePlaceholderVariables;
+
+  void ScaleTimeVariables(double scale);
+  void ScaleStateVariables(double scale, int idx_start, int idx_end);
+  void ScaleInputVariables(double scale, int idx_start, int idx_end);
+  void ScaleForceVariables(double scale, int mode, int idx_start, int idx_end);
+  void ScaleImpulseVariables(double scale, int mode, int idx_start,
+                             int idx_end);
+  void ScaleQuaternionSlackVariables(double scale);
+  void ScaleKinConstraintSlackVariables(double scale, int mode, int idx_start,
+                                        int idx_end);
+
+  /**
+   * Check whether the scaling of decision variable @p var is set or not .
+   * @param var the decision variable
+   * @return true if all corresponding scaling factors are not set yet.
+   *
+   * See section "Variable scaling" in the documentation of MathematicalProgram
+   * for more information.
+   */
+  bool IsVariableScalingUnset(const drake::symbolic::Variable& var);
 
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.

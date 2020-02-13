@@ -189,7 +189,7 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       SceneGraph<double>& scene_graph_ik = *builder_ik.AddSystem<SceneGraph>();
       scene_graph_ik.set_name("scene_graph_ik");
       MultibodyPlant<double> plant_ik(0.0);
-      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8);
+      multibody::addTerrain(&plant_ik, &scene_graph_ik, .8, .8);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
@@ -251,13 +251,16 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_seed, double dt,
 class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
  public:
   OneDimBodyPosConstraint(const MultibodyPlant<double>* plant, string body_name,
-                          int xyz_idx, double lb, double ub)
+                          const Eigen::Matrix3d& rot_mat, int xyz_idx,
+                          double lb, double ub)
       : DirconAbstractConstraint<double>(
             1, plant->num_positions(), VectorXd::Ones(1) * lb,
-            VectorXd::Ones(1) * ub, body_name + "_constraint"),
+            VectorXd::Ones(1) * ub,
+            body_name + "_constraint_" + std::to_string(xyz_idx)),
         plant_(plant),
         body_(plant->GetBodyByName(body_name)),
-        xyz_idx_(xyz_idx) {}
+        xyz_idx_(xyz_idx),
+        rot_mat_(rot_mat) {}
   ~OneDimBodyPosConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
@@ -272,7 +275,7 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
     this->plant_->CalcPointsPositions(*context, body_.body_frame(),
                                       Vector3d::Zero(), plant_->world_frame(),
                                       &pt);
-    *y = pt.segment(xyz_idx_, 1);
+    *y = (rot_mat_ * pt).segment(xyz_idx_, 1);
   };
 
  private:
@@ -281,6 +284,7 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
   // xyz_idx_ takes value of 0, 1 or 2.
   // 0 is x, 1 is y and 2 is z component of the position vector.
   const int xyz_idx_;
+  Eigen::Matrix3d rot_mat_;
 };
 
 void DoMain(double duration, double stride_length, double ground_incline,
@@ -290,20 +294,25 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // Dircon parameter
   double minimum_timestep = 0.01;
   DRAKE_DEMAND(duration / (n_node - 1) >= minimum_timestep);
+  // If the node density is too low, it's harder for SNOPT to converge well.
+  double minimum_distance_per_node = 0.2 / 16;
+  DRAKE_DEMAND(stride_length / n_node >= minimum_distance_per_node);
 
   // Cost on velocity and input
   double w_Q = 5 * 0.1;
+  double w_Q_swing_toe = w_Q * 1;  // prevent the swing toe from rocking
   double w_R = 0.1 * 0.01;
+  double w_R_swing_toe = w_R * 1;  // prevent the swing toe from rocking
   // Cost on force
   double w_lambda = 1.0e-4;
   // Cost on difference over time
-  double w_lambda_diff = 0;  // 0.000001;
-  double w_v_diff = 0;       // 0.01 * 5;
-  double w_u_diff = 0;       // 0.00001;
+  double w_lambda_diff = 0.000001 * 0.1;
+  double w_v_diff = 0.01 * 5 * 0.1;
+  double w_u_diff = 0.00001 * 0.1;
   // Cost on position
-  double w_q_hip_roll = 1;
-  double w_q_hip_yaw = 1;
-  double w_q_quat_xyz = 0;
+  double w_q_hip_roll = 1 * 5;
+  double w_q_hip_yaw = 1 * 5;
+  double w_q_quat_xyz = 1 * 5;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -312,7 +321,16 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // Disable kinematic constraint at the second node
   // (Snopt solves 5 times faster if you disable constraint at the last node.)
   // We can disable it because we have periodic constraint on state and input.
-  bool is_disable_kin_constraint_at_last_node = true;
+  bool is_disable_kin_constraint_at_last_node = false;
+  // Cannot use is_disable_kin_constraint_at_last_node on inclined ground
+  DRAKE_DEMAND(!is_disable_kin_constraint_at_last_node ||
+               (ground_incline == 0));
+
+  // Temporary solution for get rid of redundant four bar constraint in the
+  // second mode (since we have periodic constraints on state and input, it's
+  // fine to just ignore the four bar constraint (position, velocity and
+  // acceleration levels))
+  bool four_bar_in_right_support = false;
 
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
@@ -320,6 +338,10 @@ void DoMain(double duration, double stride_length, double ground_incline,
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double> plant(0.0);
+
+  Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
+  multibody::addTerrain(&plant, &scene_graph, 1, 1, ground_normal);
+
   Parser parser(&plant, &scene_graph);
 
   string full_name =
@@ -370,7 +392,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
   Vector3d pt_front_contact(-0.0457, 0.112, 0);
   Vector3d pt_rear_contact(0.088, 0, 0);
   bool isXZ = false;
-  Vector3d ground_normal(0, 0, 1);
   auto left_toe_front_constraint = DirconPositionData<double>(
       plant, toe_left, pt_front_contact, isXZ, ground_normal);
   auto left_toe_rear_constraint = DirconPositionData<double>(
@@ -416,8 +437,10 @@ void DoMain(double duration, double stride_length, double ground_incline,
   vector<DirconKinematicData<double>*> rs_constraint;
   rs_constraint.push_back(&right_toe_front_constraint);
   rs_constraint.push_back(&right_toe_rear_constraint);
-  rs_constraint.push_back(&distance_constraint_left);
-  rs_constraint.push_back(&distance_constraint_right);
+  if (four_bar_in_right_support) {
+    rs_constraint.push_back(&distance_constraint_left);
+    rs_constraint.push_back(&distance_constraint_right);
+  }
   auto rs_dataset = DirconKinematicDataSet<double>(plant, &rs_constraint,
                                                    skip_constraint_inds);
 
@@ -456,12 +479,17 @@ void DoMain(double duration, double stride_length, double ground_incline,
       options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
       options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
       // Kinematic constraints
+      int n_l = options_list[i].getNumConstraints();
       options_list[i].setKinConstraintScaling(s * 1.0 / 6000.0, 0, 4);
-      options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
-      options_list[i].setKinConstraintScaling(s * 1.0 / 10.0, 7 + 0, 7 + 4);
-      options_list[i].setKinConstraintScaling(s * 1.0, 7 + 5, 7 + 6);
-      options_list[i].setKinConstraintScaling(s * 1.0, 14 + 0, 14 + 4);
-      options_list[i].setKinConstraintScaling(s * 1.0 * 20, 14 + 5, 14 + 6);
+      options_list[i].setKinConstraintScaling(s * 1.0 / 10.0, n_l + 0, n_l + 4);
+      options_list[i].setKinConstraintScaling(s * 1.0, 2 * n_l + 0,
+                                              2 * n_l + 4);
+      if (i == 0 || four_bar_in_right_support) {
+        options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
+        options_list[i].setKinConstraintScaling(s * 1.0, n_l + 5, n_l + 6);
+        options_list[i].setKinConstraintScaling(s * 1.0 * 20, 2 * n_l + 5,
+                                                2 * n_l + 6);
+      }
       // Impact constraints
       options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
       options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
@@ -634,9 +662,11 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   // toe position constraint in y direction (avoid leg crossing)
   auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_left", 1, 0.05, std::numeric_limits<double>::infinity());
+      &plant, "toe_left", MatrixXd::Identity(3, 3), 1, 0.05,
+      std::numeric_limits<double>::infinity());
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
+      &plant, "toe_right", MatrixXd::Identity(3, 3), 1,
+      -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
   if (FLAGS_is_scale_constraint) {
     std::unordered_map<int, double> odbp_constraint_scale;
@@ -649,9 +679,21 @@ void DoMain(double duration, double stride_length, double ground_incline,
     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
     trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
   }
+  // toe height constraint (avoid foot scuffing)
+  Vector3d z_hat(0, 0, 1);
+  Eigen::Quaterniond q;
+  q.setFromTwoVectors(z_hat, ground_normal);
+  Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
+  auto right_foot_constraint_z = std::make_shared<OneDimBodyPosConstraint>(
+      &plant, "toe_right", T_ground_incline, 2, 0.08,
+      std::numeric_limits<double>::infinity());
+  auto x_mid = trajopt->state(num_time_samples[0] / 2);
+  trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
 
   // Testing -- constraint on initial floating base
-  trajopt->AddConstraint(x0(0) == 1);
+  if (true /*&& ground_incline == 0*/) {
+    trajopt->AddConstraint(x0(0) == 1);
+  }
   // Testing -- constraint on the forces magnitude
   /*for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
     for (int index = 0; index < num_time_samples[mode]; index++) {
@@ -699,7 +741,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
         if (!(is_disable_kin_constraint_at_last_node &&
               (mode == num_time_samples.size() - 1))) {
           auto lambda = trajopt->force(mode, index);
-          trajopt->AddLinearConstraint(lambda(6) <= 0);  // left leg four bar
+          if (four_bar_in_right_support) {
+            trajopt->AddLinearConstraint(lambda(6) <= 0);  // left leg four bar
+          }
         }
       }
     }
@@ -744,7 +788,10 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   // add cost
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
+  W_Q(n_v - 1, n_v - 1) = w_Q_swing_toe;
   MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
+  W_R(n_u - 1, n_u - 1) = w_R_swing_toe;
+
   W_Q(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
   W_Q(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * W_Q * x.tail(n_v));
@@ -972,12 +1019,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
   for (int i = 0; i < 100; i++) {
     cout << '\a';
   }  // making noise to notify
-  cout << "\n" << to_string(solution_result) << endl;
-  cout << "Solve time:" << elapsed.count() << std::endl;
-  cout << "Cost:" << result.get_optimal_cost() << std::endl;
-
-  // Check which solver was used
-  cout << "Solver: " << result.get_solver_id().name() << endl;
 
   // Testing - check if the nonlinear constraints are all satisfied
   // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt,
@@ -989,6 +1030,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
   if (to_store_data) {
     writeCSV(data_directory + string("z.csv"), z);
   }
+
+  // Print the solution
   for (int i = 0; i < z.size(); i++) {
     cout << i << ": " << trajopt->decision_variables()[i] << ", " << z[i]
          << endl;
@@ -1024,6 +1067,26 @@ void DoMain(double duration, double stride_length, double ground_incline,
     }
     ofile.close();
   }
+
+  // Print weight
+  cout << "\nw_Q = " << w_Q << endl;
+  cout << "w_Q_swing_toe = " << w_Q_swing_toe << endl;
+  cout << "w_R = " << w_R << endl;
+  cout << "w_R_swing_toe = " << w_R_swing_toe << endl;
+  cout << "w_lambda = " << w_lambda << endl;
+  cout << "w_lambda_diff = " << w_lambda_diff << endl;
+  cout << "w_v_diff = " << w_v_diff << endl;
+  cout << "w_u_diff = " << w_u_diff << endl;
+  cout << "w_q_hip_roll = " << w_q_hip_roll << endl;
+  cout << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
+  cout << "w_q_quat_xyz = " << w_q_quat_xyz << endl;
+
+  // Print the result
+  cout << "\n" << to_string(solution_result) << endl;
+  cout << "Solve time:" << elapsed.count() << std::endl;
+  cout << "Cost:" << result.get_optimal_cost() << std::endl;
+  // Check which solver was used
+  cout << "Solver: " << result.get_solver_id().name() << "\n\n";
 
   // Calculate each term of the cost
   double total_cost = 0;
@@ -1100,6 +1163,13 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
   total_cost += cost_q_hip_roll;
   cout << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
+  double cost_q_hip_yaw = 0;
+  for (int i = 0; i < N; i++) {
+    auto q = result.GetSolution(trajopt->state(i).segment(9, 2));
+    cost_q_hip_yaw += w_q_hip_yaw * q.transpose() * q;
+  }
+  total_cost += cost_q_hip_yaw;
+  cout << "cost_q_hip_yaw = " << cost_q_hip_yaw << endl;
   // add cost on quaternion
   double cost_q_quat_xyz = 0;
   for (int i = 0; i < N; i++) {

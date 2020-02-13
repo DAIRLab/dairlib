@@ -16,16 +16,12 @@ std::unique_ptr<drake::systems::Context<T>> createContext(
     const drake::multibody::MultibodyPlant<T>& plant,
     const drake::VectorX<T>& state, const drake::VectorX<T>& input);
 
-/// Add flat terrain to an initialized, but not finalized, MultibodyPlant
+/// Add terrain to an initialized, but not finalized, MultibodyPlant
 /// and scene graph. Uses the given values for coefficients of friction
-template <typename T>
-void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
-                    drake::geometry::SceneGraph<T>* scene_graph,
-                    double mu_static, double mu_kinetic);
 template <typename T>
 void addTerrain(drake::multibody::MultibodyPlant<T>* plant,
                 drake::geometry::SceneGraph<T>* scene_graph,
-                double mu_static = 0.8, double mu_kinetic = 0.8,
+                double mu_static, double mu_kinetic,
                 Eigen::Vector3d normal_W = Eigen::Vector3d::Zero());
 
 /// Given a MultiBodyTree, builds a map from position name to position index

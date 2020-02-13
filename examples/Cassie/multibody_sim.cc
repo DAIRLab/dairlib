@@ -59,7 +59,7 @@ int do_main(int argc, char* argv[]) {
       *builder.AddSystem<MultibodyPlant>(time_step);
 
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+    multibody::addTerrain(&plant, &scene_graph, .8, .8);
   }
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);

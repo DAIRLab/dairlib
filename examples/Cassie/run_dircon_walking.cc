@@ -294,6 +294,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // Dircon parameter
   double minimum_timestep = 0.01;
   DRAKE_DEMAND(duration / (n_node - 1) >= minimum_timestep);
+  // If the node density is too low, it's harder for SNOPT to converge well.
+  double minimum_distance_per_node = 0.2 / 16;
+  DRAKE_DEMAND(stride_length / n_node >= minimum_distance_per_node);
 
   // Cost on velocity and input
   double w_Q = 5 * 0.1;
@@ -309,7 +312,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // Cost on position
   double w_q_hip_roll = 1 * 5;
   double w_q_hip_yaw = 1 * 5;
-  double w_q_quat_xyz = 1;
+  double w_q_quat_xyz = 1 * 5;
 
   // Optional constraints
   // This seems to be important at higher walking speeds

@@ -251,8 +251,8 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_seed, double dt,
 class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
  public:
   OneDimBodyPosConstraint(const MultibodyPlant<double>* plant, string body_name,
-                          const Eigen::Matrix3d & rot_mat,
-                          int xyz_idx, double lb, double ub)
+                          const Eigen::Matrix3d& rot_mat, int xyz_idx,
+                          double lb, double ub)
       : DirconAbstractConstraint<double>(
             1, plant->num_positions(), VectorXd::Ones(1) * lb,
             VectorXd::Ones(1) * ub,
@@ -260,7 +260,7 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
         plant_(plant),
         body_(plant->GetBodyByName(body_name)),
         xyz_idx_(xyz_idx),
-        rot_mat_(rot_mat){}
+        rot_mat_(rot_mat) {}
   ~OneDimBodyPosConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
@@ -297,19 +297,19 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   // Cost on velocity and input
   double w_Q = 5 * 0.1;
-  double w_Q_swing_toe = w_Q * 1; // prevent the swing toe from rocking
+  double w_Q_swing_toe = w_Q * 1;  // prevent the swing toe from rocking
   double w_R = 0.1 * 0.01;
-  double w_R_swing_toe = w_R * 1; // prevent the swing toe from rocking
+  double w_R_swing_toe = w_R * 1;  // prevent the swing toe from rocking
   // Cost on force
   double w_lambda = 1.0e-4;
   // Cost on difference over time
-  double w_lambda_diff =  0.000001;
-  double w_v_diff =  0.01 * 5;
-  double w_u_diff =  0.00001;
+  double w_lambda_diff = 0.000001 * 0.1;
+  double w_v_diff = 0.01 * 5 * 0.1;
+  double w_u_diff = 0.00001 * 0.1;
   // Cost on position
   double w_q_hip_roll = 1 * 5;
   double w_q_hip_yaw = 1 * 5;
-  double w_q_quat_xyz = 0;
+  double w_q_quat_xyz = 1;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -319,6 +319,15 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // (Snopt solves 5 times faster if you disable constraint at the last node.)
   // We can disable it because we have periodic constraint on state and input.
   bool is_disable_kin_constraint_at_last_node = false;
+  // Cannot use is_disable_kin_constraint_at_last_node on inclined ground
+  DRAKE_DEMAND(!is_disable_kin_constraint_at_last_node ||
+               (ground_incline == 0));
+
+  // Temporary solution for get rid of redundant four bar constraint in the
+  // second mode (since we have periodic constraints on state and input, it's
+  // fine to just ignore the four bar constraint (position, velocity and
+  // acceleration levels))
+  bool four_bar_in_right_support = false;
 
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
@@ -425,8 +434,10 @@ void DoMain(double duration, double stride_length, double ground_incline,
   vector<DirconKinematicData<double>*> rs_constraint;
   rs_constraint.push_back(&right_toe_front_constraint);
   rs_constraint.push_back(&right_toe_rear_constraint);
-  rs_constraint.push_back(&distance_constraint_left);
-  rs_constraint.push_back(&distance_constraint_right);
+  if (four_bar_in_right_support) {
+    rs_constraint.push_back(&distance_constraint_left);
+    rs_constraint.push_back(&distance_constraint_right);
+  }
   auto rs_dataset = DirconKinematicDataSet<double>(plant, &rs_constraint,
                                                    skip_constraint_inds);
 
@@ -465,12 +476,17 @@ void DoMain(double duration, double stride_length, double ground_incline,
       options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
       options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
       // Kinematic constraints
+      int n_l = options_list[i].getNumConstraints();
       options_list[i].setKinConstraintScaling(s * 1.0 / 6000.0, 0, 4);
-      options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
-      options_list[i].setKinConstraintScaling(s * 1.0 / 10.0, 7 + 0, 7 + 4);
-      options_list[i].setKinConstraintScaling(s * 1.0, 7 + 5, 7 + 6);
-      options_list[i].setKinConstraintScaling(s * 1.0, 14 + 0, 14 + 4);
-      options_list[i].setKinConstraintScaling(s * 1.0 * 20, 14 + 5, 14 + 6);
+      options_list[i].setKinConstraintScaling(s * 1.0 / 10.0, n_l + 0, n_l + 4);
+      options_list[i].setKinConstraintScaling(s * 1.0, 2 * n_l + 0,
+                                              2 * n_l + 4);
+      if (i == 0 || four_bar_in_right_support) {
+        options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
+        options_list[i].setKinConstraintScaling(s * 1.0, n_l + 5, n_l + 6);
+        options_list[i].setKinConstraintScaling(s * 1.0 * 20, 2 * n_l + 5,
+                                                2 * n_l + 6);
+      }
       // Impact constraints
       options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
       options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
@@ -668,7 +684,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   auto right_foot_constraint_z = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_right", T_ground_incline, 2, 0.08,
       std::numeric_limits<double>::infinity());
-  auto x_mid = trajopt->state(num_time_samples[0]/2);
+  auto x_mid = trajopt->state(num_time_samples[0] / 2);
   trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
 
   // Testing -- constraint on initial floating base
@@ -722,7 +738,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
         if (!(is_disable_kin_constraint_at_last_node &&
               (mode == num_time_samples.size() - 1))) {
           auto lambda = trajopt->force(mode, index);
-          trajopt->AddLinearConstraint(lambda(6) <= 0);  // left leg four bar
+          if (four_bar_in_right_support) {
+            trajopt->AddLinearConstraint(lambda(6) <= 0);  // left leg four bar
+          }
         }
       }
     }
@@ -1046,6 +1064,19 @@ void DoMain(double duration, double stride_length, double ground_incline,
     }
     ofile.close();
   }
+
+  // Print weight
+  cout << "\nw_Q = " << w_Q << endl;
+  cout << "w_Q_swing_toe = " << w_Q_swing_toe << endl;
+  cout << "w_R = " << w_R << endl;
+  cout << "w_R_swing_toe = " << w_R_swing_toe << endl;
+  cout << "w_lambda = " << w_lambda << endl;
+  cout << "w_lambda_diff = " << w_lambda_diff << endl;
+  cout << "w_v_diff = " << w_v_diff << endl;
+  cout << "w_u_diff = " << w_u_diff << endl;
+  cout << "w_q_hip_roll = " << w_q_hip_roll << endl;
+  cout << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
+  cout << "w_q_quat_xyz = " << w_q_quat_xyz << endl;
 
   // Print the result
   cout << "\n" << to_string(solution_result) << endl;

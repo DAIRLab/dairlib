@@ -12,13 +12,12 @@ cc_library(
     ],
     deps = [
         ":osc_tracking_data",
-        "//systems/controllers:control_utils",
         "//attic/multibody:utils",
+        "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_library(
     name = "osc_tracking_data",
@@ -29,8 +28,22 @@ cc_library(
         "osc_tracking_data.h",
     ],
     deps = [
+        ":osc_user_defined_traj",
         "//attic/multibody:utils",
         "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "osc_user_defined_traj",
+    srcs = [
+        "osc_user_defined_traj.cc",
+    ],
+    hdrs = [
+        "osc_user_defined_traj.h",
+    ],
+    deps = [
         "@drake//:drake_shared_library",
     ],
 )

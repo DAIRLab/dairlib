@@ -1,0 +1,31 @@
+cc_binary(
+    name = "solve_linear_sys_test",
+    srcs = ["solve_linear_sys_test.cc"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+
+cc_binary(
+    name = "symbolic_traj_test",
+    srcs = ["symbolic_traj_test.cc"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//systems/trajectory_optimization:dircon",
+        "//solvers:optimization_utils",
+    ],
+)
+
+
+cc_binary(
+    name = "foot_jacobian_test",
+    srcs = ["foot_jacobian_test.cc"],
+    deps = [
+        "//common",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+

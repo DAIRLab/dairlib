@@ -1,0 +1,132 @@
+package(default_visibility = ["//visibility:public"])
+
+
+cc_binary(
+    name = "simple_traj_opt_MBP",
+    srcs = ["simple_traj_opt_MBP.cc"],
+    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        "//common",
+        "//systems/primitives",
+        "//systems/goldilocks_models",
+        "//systems/trajectory_optimization:dircon",
+        "//solvers:optimization_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",     
+    ],
+)
+
+
+
+cc_binary(
+    name = "find_goldilocks_models",
+    srcs = ["find_goldilocks_models.cc"],
+    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
+        "//systems/goldilocks_models",
+        "//systems/trajectory_optimization:dircon",
+        ":kinematics_expression",
+        ":dynamics_expression",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "plan_with_RoM_FoM",
+    srcs = ["plan_with_RoM_FoM.cc"],
+    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        "//systems/goldilocks_models",
+        "//common",
+        "@drake//:drake_shared_library",
+        "@gflags",
+        ":kinematics_expression",
+        ":dynamics_expression",
+        "//examples/goldilocks_models/planning:RoM_planning_traj_opt",
+    ],
+)
+
+
+
+
+cc_library(
+    name = "kinematics_expression",
+    srcs = [
+        "kinematics_expression.cc",
+    ],
+    hdrs = [
+        "kinematics_expression.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+    ],
+)
+
+
+cc_library(
+    name = "dynamics_expression",
+    srcs = [
+        "dynamics_expression.cc",
+    ],
+    hdrs = [
+        "dynamics_expression.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+# cc_binary(
+#     name = "kinematics_expression_test",
+#     srcs = ["kinematics_expression_test.cc"],
+#     deps = [
+#         ":kinematics_expression",
+#         "//common",
+#         "@drake//:drake_shared_library",
+#     ],
+# )
+
+
+# cc_binary(
+#     name = "dynamics_expression_test",
+#     srcs = ["dynamics_expression_test.cc"],
+#     deps = [
+#         ":dynamics_expression",
+#     ],
+# )
+
+
+
+
+cc_library(
+    name = "dummy_constraint",
+    srcs = [
+        "dummy_constraint.cc",
+    ],
+    hdrs = [
+        "dummy_constraint.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+    ],
+)
+
+
+cc_library(
+    name = "goldilocks_utils",
+    srcs = [
+        "goldilocks_utils.cc",
+    ],
+    hdrs = [
+        "goldilocks_utils.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//systems/goldilocks_models",
+    ],
+)

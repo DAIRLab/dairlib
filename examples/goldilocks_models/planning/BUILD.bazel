@@ -1,0 +1,193 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "RoM_planning_traj_opt",
+    srcs = ["RoM_planning_traj_opt.cc"],
+    hdrs = ["RoM_planning_traj_opt.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//examples/goldilocks_models:kinematics_expression",
+        "//examples/goldilocks_models:dynamics_expression",
+        ":kinematics_constraint",
+        ":dynamics_constraint",
+        ":FoM_guard_constraint",
+        ":FoM_reset_map_constraint",
+        ":FoM_stance_foot_constraint",
+        ":FoM_stride_length_constraint",
+    ],
+)
+
+cc_library(
+    name = "dynamics_constraint",
+    srcs = [
+        "dynamics_constraint.cc",
+    ],
+    hdrs = [
+        "dynamics_constraint.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+        "//examples/goldilocks_models:kinematics_expression",
+        "//examples/goldilocks_models:dynamics_expression",
+    ],
+)
+
+cc_library(
+    name = "kinematics_constraint",
+    srcs = [
+        "kinematics_constraint.cc",
+    ],
+    hdrs = [
+        "kinematics_constraint.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+        "//examples/goldilocks_models:kinematics_expression",
+    ],
+)
+cc_library(
+    name = "kinematics_constraint_only_pos",
+    srcs = [
+        "kinematics_constraint_only_pos.cc",
+    ],
+    hdrs = [
+        "kinematics_constraint_only_pos.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+        "//examples/goldilocks_models:kinematics_expression",
+    ],
+)
+cc_library(
+    name = "kinematics_constraint_given_r",
+    srcs = [
+        "kinematics_constraint_given_r.cc",
+    ],
+    hdrs = [
+        "kinematics_constraint_given_r.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+        "//examples/goldilocks_models:kinematics_expression",
+    ],
+)
+cc_library(
+    name = "kinematics_constraint_cost",
+    srcs = [
+        "kinematics_constraint_cost.cc",
+    ],
+    hdrs = [
+        "kinematics_constraint_cost.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+        "//examples/goldilocks_models:kinematics_expression",
+    ],
+)
+
+
+cc_library(
+    name = "FoM_guard_constraint",
+    srcs = [
+        "FoM_guard_constraint.cc",
+    ],
+    hdrs = [
+        "FoM_guard_constraint.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+    ],
+)
+
+cc_library(
+    name = "FoM_reset_map_constraint",
+    srcs = [
+        "FoM_reset_map_constraint.cc",
+    ],
+    hdrs = [
+        "FoM_reset_map_constraint.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+    ],
+)
+
+cc_library(
+    name = "FoM_stance_foot_constraint",
+    srcs = [
+        "FoM_stance_foot_constraint.cc",
+    ],
+    hdrs = [
+        "FoM_stance_foot_constraint.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+    ],
+)
+cc_library(
+    name = "FoM_stance_foot_constraint_given_pos",
+    srcs = [
+        "FoM_stance_foot_constraint_given_pos.cc",
+    ],
+    hdrs = [
+        "FoM_stance_foot_constraint_given_pos.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+    ],
+)
+
+cc_library(
+    name = "FoM_stride_length_constraint",
+    srcs = [
+        "FoM_stride_length_constraint.cc",
+    ],
+    hdrs = [
+        "FoM_stride_length_constraint.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
+    ],
+)
+
+
+cc_binary(
+    name = "visualize_FoM_pose_MBP",
+    srcs = ["visualize_FoM_pose_MBP.cc"],
+    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        "//common",
+        "//systems/primitives",
+        "//systems/goldilocks_models",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",     
+    ],
+)
+cc_binary(
+    name = "visualize_FoM_traj_MBP",
+    srcs = ["visualize_FoM_traj_MBP.cc"],
+    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        "//common",
+        "//systems/primitives",
+        "//systems/goldilocks_models",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",     
+        ":kinematics_constraint_cost",
+        ":kinematics_constraint_given_r",
+        ":kinematics_constraint_only_pos",
+        ":FoM_stance_foot_constraint_given_pos",
+    ],
+)

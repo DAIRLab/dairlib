@@ -1,0 +1,55 @@
+cc_library(
+    name = "run_sample_qp",
+    srcs = ["run_sample_qp.cc"],
+    hdrs = ["run_sample_qp.h"],
+    deps = [
+        "//common",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/goldilocks_models",
+        "//solvers:optimization_utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_binary(
+    name = "run_multithread_qp",
+    srcs = ["run_multithread_qp.cc"],
+    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        "//examples/goldilocks_models/misc/snopt_multithread_test:run_sample_qp",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/goldilocks_models",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "run_sample_trajopt",
+    srcs = ["run_sample_trajopt.cc"],
+    hdrs = ["run_sample_trajopt.h"],
+    deps = [
+        "//common",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/goldilocks_models",
+        "//solvers:optimization_utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_binary(
+    name = "run_multithread_trajopt",
+    srcs = ["run_multithread_trajopt.cc"],
+    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        "//examples/goldilocks_models/misc/snopt_multithread_test:run_sample_trajopt",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/goldilocks_models",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

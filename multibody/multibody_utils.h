@@ -22,6 +22,11 @@ template <typename T>
 void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     drake::geometry::SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic);
+template <typename T>
+void addTerrain(drake::multibody::MultibodyPlant<T>* plant,
+                drake::geometry::SceneGraph<T>* scene_graph,
+                double mu_static = 0.8, double mu_kinetic = 0.8,
+                Eigen::Vector3d normal_W = Eigen::Vector3d::Zero());
 
 /// Given a MultiBodyTree, builds a map from position name to position index
 std::map<std::string, int> makeNameToPositionsMap(

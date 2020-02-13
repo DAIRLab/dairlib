@@ -1,5 +1,8 @@
 #include "solvers/optimization_utils.h"
 
+using std::cout;
+using std::endl;
+
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using drake::solvers::Constraint;
@@ -105,9 +108,11 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
 
   int constraint_index = 0;
   auto constraints = prog.GetAllConstraints();
-
+  int i = 0;
   for (auto const& binding : constraints) {
+    // cout << "i = " << i << ": ";
     auto const& c = binding.evaluator();
+    // std::cout << c->get_description() << std::endl;
     int n = c->num_constraints();
     lb->segment(constraint_index, n) = c->lower_bound();
     ub->segment(constraint_index, n) = c->upper_bound();
@@ -115,8 +120,18 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
     auto variables = binding.variables();
 
     // Initialize AutoDiff vector for result
+    // Warning: there is a bug in initializeAutoDiff.
+    // You cannot use it if gradient.rows() > gradient.cols(). (it'll write outside the range)
+    // AutoDiffVecXd y_val = initializeAutoDiff(
+    //     VectorXd::Zero(c->num_constraints()), variables.size());
+    // if (c->num_constraints() > variables.size()) {
+    //   cout << c->get_description() << " has thin-tall jacobian matrix.\n";
+    // }
     AutoDiffVecXd y_val = initializeAutoDiff(
-        VectorXd::Zero(c->num_constraints()), variables.size());
+        VectorXd::Zero(c->num_constraints()));
+    MatrixXd grad = MatrixXd::Zero(c->num_constraints(),variables.size());
+    drake::math::initializeAutoDiffGivenGradientMatrix(
+        VectorXd::Zero(c->num_constraints()), grad, y_val);
 
     // Extract subset of decision variable vector
     VectorXd x_binding(variables.size());
@@ -136,6 +151,7 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
     }
 
     constraint_index += n;
+    i++;
   }
 }
 

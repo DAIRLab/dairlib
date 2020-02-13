@@ -1,21 +1,3 @@
-// TODO(yminchen) if you want to get model for Cassie, there are several things
-// that you should change.
-// - the rom parameters here (in this file), since it depends on Kinematics and
-//   dynamics expressions
-// - the location of where you store the data.
-//   I think maybe you can create folder which has the same name as the urdf
-//   so that in the future you can extend more if you want.
-// - The setup of the trajectory optimiazion (the basic ones not the rom
-//   constraint part.)
-// - Kinematics/Dynamics expression should be changed
-//
-// I'm still thinking what's the best structure for the code. (not done yet)
-//
-// Before you test on Cassie, you need to rewrite your constriant first,
-// because you don't want to use MBP in traj opt (it's slow).
-// I think rewriting the constraint is easy. You just have to create autodiff
-// to get gradient yourself??
-
 #include <gflags/gflags.h>
 #include <stdio.h>  // For removing files
 #include <thread>  // multi-threading

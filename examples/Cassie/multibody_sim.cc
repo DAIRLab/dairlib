@@ -42,6 +42,7 @@ DEFINE_bool(time_stepping, false, "If 'true', the plant is modeled as a "
     "discrete system with periodic updates. "
     "If 'false', the plant is modeled as a continuous system.");
 DEFINE_double(dt, 1e-4, "The step size to use for compliant, ignored for time_stepping)");
+DEFINE_double(penetration_allowance, 1e-4, "Penalty for discrete time model");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -66,6 +67,7 @@ int do_main(int argc, char* argv[]) {
 
   plant.Finalize();
 
+  plant.set_penetration_allowance(FLAGS_penetration_allowance);
   // Create input receiver.
   auto input_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>("CASSIE_INPUT",

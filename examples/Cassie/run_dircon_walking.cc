@@ -182,7 +182,7 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
     q_ik_guess = q_sol_normd;
     q_init_guess.push_back(q_sol_normd);
 
-    bool visualize_init_traj = false;
+    bool visualize_init_traj = true;
     if (visualize_init_traj) {
       // Build temporary diagram for visualization
       drake::systems::DiagramBuilder<double> builder_ik;
@@ -861,9 +861,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
         auto lambda = trajopt->force(0, i);
         //      trajopt->SetInitialGuess(lambda(0), 0);
         //      trajopt->SetInitialGuess(lambda(1), 0);
-        trajopt->SetInitialGuess(lambda(2), 170);
         //      trajopt->SetInitialGuess(lambda(3), 0);
         //      trajopt->SetInitialGuess(lambda(4), 0);
+        trajopt->SetInitialGuess(lambda(2), 170);
         trajopt->SetInitialGuess(lambda(5), 170);
         trajopt->SetInitialGuess(lambda(6), -500);
         trajopt->SetInitialGuess(lambda(7), 50);

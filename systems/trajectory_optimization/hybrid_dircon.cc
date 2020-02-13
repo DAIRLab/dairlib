@@ -51,12 +51,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
   DRAKE_ASSERT(maximum_timestep.size() == num_modes_);
   DRAKE_ASSERT(constraints.size() == num_modes_);
   DRAKE_ASSERT(options.size() == num_modes_);
-  for (int i = 0; i < num_modes_ - 1; i++) {
-    DRAKE_DEMAND(!(options[i].isSinglePeriodicEndNode()));
-  }
-  if (options[num_modes_ - 1].isSinglePeriodicEndNode()) {
-    DRAKE_DEMAND(num_time_samples[num_modes_ - 1] == 1);
-  }
 
   bool is_quaternion = multibody::isQuaternion(plant);
 
@@ -77,26 +71,16 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     }
 
     // initialize constraint lengths
-    if (options[i].isSinglePeriodicEndNode()) {
-      num_kinematic_constraints_wo_skipping_.push_back(0);
-      num_kinematic_constraints_.push_back(0);
-    } else {
-      num_kinematic_constraints_wo_skipping_.push_back(
-          constraints_[i]->countConstraintsWithoutSkipping());
-      num_kinematic_constraints_.push_back(constraints_[i]->countConstraints());
-    }
+    num_kinematic_constraints_wo_skipping_.push_back(
+        constraints_[i]->countConstraintsWithoutSkipping());
+    num_kinematic_constraints_.push_back(constraints_[i]->countConstraints());
 
     // initialize decision variables
     // force_vars_, collocation_force_vars_ and collocation_slack_vars_
-    if (options[i].isSinglePeriodicEndNode()) {
-      force_vars_.push_back(
-          NewContinuousVariables(0, "lambda[" + std::to_string(i) + "]"));
-    } else {
-      force_vars_.push_back(NewContinuousVariables(
-          constraints_[i]->countConstraintsWithoutSkipping() *
-              num_time_samples[i],
-          "lambda[" + std::to_string(i) + "]"));
-    }
+    force_vars_.push_back(NewContinuousVariables(
+        constraints_[i]->countConstraintsWithoutSkipping() *
+            num_time_samples[i],
+        "lambda[" + std::to_string(i) + "]"));
     collocation_force_vars_.push_back(NewContinuousVariables(
         constraints_[i]->countConstraintsWithoutSkipping() *
             (num_time_samples[i] - 1),
@@ -115,13 +99,8 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           NewContinuousVariables(0, "gamma_" + std::to_string(i)));
     }
     // offset_vars_
-    if (options[i].isSinglePeriodicEndNode()) {
-      offset_vars_.push_back(
-          NewContinuousVariables(0, "offset[" + std::to_string(i) + "]"));
-    } else {
-      offset_vars_.push_back(NewContinuousVariables(
-          options[i].getNumRelative(), "offset[" + std::to_string(i) + "]"));
-    }
+    offset_vars_.push_back(NewContinuousVariables(
+        options[i].getNumRelative(), "offset[" + std::to_string(i) + "]"));
     // impulse_vars_
     if (i > 0) {
       impulse_vars_.push_back(NewContinuousVariables(
@@ -134,7 +113,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     // next.
 
     // Adding quaternion norm constraint
-    if (is_quaternion && !(options[i].isSinglePeriodicEndNode())) {
+    if (is_quaternion) {
       auto quat_norm_constraint =
           std::make_shared<QuaternionNormConstraint<T>>();
       // If the current mode is not the first mode, start with the first knot.
@@ -190,21 +169,19 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     }
 
     // Adding kinematic constraints (start node of the mode)
-    if (!(options[i].isSinglePeriodicEndNode())) {
-      auto kinematic_constraint_start =
-          std::make_shared<DirconKinematicConstraint<T>>(
-              plant_, *constraints_[i], options[i].getConstraintsRelative(),
-              options[i].getStartType());
-      //            kinematic_constraint_start->ConstructSparsityPattern();
-      kinematic_constraint_start->SetConstraintScaling(
-          options[i].getKinConstraintScalingStart());
-      AddConstraint(
-          kinematic_constraint_start,
-          {state_vars_by_mode(i, 0),
-           u_vars().segment(mode_start_[i], num_inputs()),
-           force_vars(i).segment(0, num_kinematic_constraints_wo_skipping(i)),
-           offset_vars(i)});
-    }
+    auto kinematic_constraint_start =
+        std::make_shared<DirconKinematicConstraint<T>>(
+            plant_, *constraints_[i], options[i].getConstraintsRelative(),
+            options[i].getStartType());
+    //            kinematic_constraint_start->ConstructSparsityPattern();
+    kinematic_constraint_start->SetConstraintScaling(
+        options[i].getKinConstraintScalingStart());
+    AddConstraint(
+        kinematic_constraint_start,
+        {state_vars_by_mode(i, 0),
+         u_vars().segment(mode_start_[i], num_inputs()),
+         force_vars(i).segment(0, num_kinematic_constraints_wo_skipping(i)),
+         offset_vars(i)});
 
     // Adding kinematic constraints (end node of the mode)
     // Only add the end constraint if the length inside the mode is greater
@@ -231,31 +208,28 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     }
 
     // Add constraints on force
-    if (!(options[i].isSinglePeriodicEndNode())) {
-      for (int l = 0; l < mode_lengths_[i]; l++) {
-        int start_index = l * num_kinematic_constraints_wo_skipping(i);
-        for (int j = 0; j < constraints_[i]->getNumConstraintObjects(); j++) {
-          DirconKinematicData<T>* constraint_j =
-              constraints_[i]->getConstraint(j);
-          for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
-            AddConstraint(
-                constraint_j->getForceConstraint(k),
-                force_vars(i).segment(start_index, constraint_j->getLength()));
-            // Testing -- Add constraints on force at collocation points
-            /*if (l != (mode_lengths_[i] - 1)) {
-              AddConstraint(constraint_j->getForceConstraint(k),
-                            collocation_force_vars(i).segment(
-                                start_index, constraint_j->getLength()));
-            }*/
-          }
-          start_index += constraint_j->getLength();
+    for (int l = 0; l < mode_lengths_[i]; l++) {
+      int start_index = l * num_kinematic_constraints_wo_skipping(i);
+      for (int j = 0; j < constraints_[i]->getNumConstraintObjects(); j++) {
+        DirconKinematicData<T>* constraint_j =
+            constraints_[i]->getConstraint(j);
+        for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
+          AddConstraint(
+              constraint_j->getForceConstraint(k),
+              force_vars(i).segment(start_index, constraint_j->getLength()));
+          // Testing -- Add constraints on force at collocation points
+          /*if (l != (mode_lengths_[i] - 1)) {
+            AddConstraint(constraint_j->getForceConstraint(k),
+                          collocation_force_vars(i).segment(
+                              start_index, constraint_j->getLength()));
+          }*/
         }
+        start_index += constraint_j->getLength();
       }
     }
 
     // Add force to cost function
-    if ((options[i].getForceCost() != 0) &&
-        !(options[i].isSinglePeriodicEndNode())) {
+    if ((options[i].getForceCost() != 0)) {
       auto A = options[i].getForceCost() *
                MatrixXd::Identity(num_kinematic_constraints_wo_skipping(i),
                                   num_kinematic_constraints_wo_skipping(i));

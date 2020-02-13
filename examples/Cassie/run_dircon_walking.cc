@@ -295,8 +295,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
   double minimum_timestep = 0.01;
   DRAKE_DEMAND(duration / (n_node - 1) >= minimum_timestep);
   // If the node density is too low, it's harder for SNOPT to converge well.
-  double minimum_distance_per_node = 0.2 / 16;
-  DRAKE_DEMAND(stride_length / n_node >= minimum_distance_per_node);
+  double max_distance_per_node = 0.2 / 16;
+  DRAKE_DEMAND((stride_length / n_node) <= max_distance_per_node);
 
   // Cost on velocity and input
   double w_Q = 5 * 0.1;
@@ -317,14 +317,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // Optional constraints
   // This seems to be important at higher walking speeds
   bool constrain_stance_leg_fourbar_force = false;
-
-  // Disable kinematic constraint at the second node
-  // (Snopt solves 5 times faster if you disable constraint at the last node.)
-  // We can disable it because we have periodic constraint on state and input.
-  bool is_disable_kin_constraint_at_last_node = false;
-  // Cannot use is_disable_kin_constraint_at_last_node on inclined ground
-  DRAKE_DEMAND(!is_disable_kin_constraint_at_last_node ||
-               (ground_incline == 0));
 
   // Temporary solution for get rid of redundant four bar constraint in the
   // second mode (since we have periodic constraints on state and input, it's
@@ -448,10 +440,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
   std::vector<DirconOptions> options_list;
   options_list.push_back(DirconOptions(ls_dataset.countConstraints(), &plant));
   options_list.push_back(DirconOptions(rs_dataset.countConstraints(), &plant));
-
-  if (is_disable_kin_constraint_at_last_node) {
-    options_list[1].setSinglePeriodicEndNode(true);
-  }
 
   // set force cost weight
   for (int i = 0; i < 2; i++) {
@@ -697,16 +685,13 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // Testing -- constraint on the forces magnitude
   /*for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
     for (int index = 0; index < num_time_samples[mode]; index++) {
-      if (!(is_disable_kin_constraint_at_last_node &&
-            (mode == num_time_samples.size() - 1))) {
-        auto lambda = trajopt->force(mode, index);
-        trajopt->AddLinearConstraint(lambda(2) <= 700);
-        trajopt->AddLinearConstraint(lambda(5) <= 700);
-        trajopt->AddLinearConstraint(lambda(6) >= -1000);  // left leg four bar
-        trajopt->AddLinearConstraint(lambda(6) <= 1000);   // left leg four bar
-        trajopt->AddLinearConstraint(lambda(7) >= -500);   // right leg four bar
-        trajopt->AddLinearConstraint(lambda(7) <= 500);    // right leg four bar
-      }
+      auto lambda = trajopt->force(mode, index);
+      trajopt->AddLinearConstraint(lambda(2) <= 700);
+      trajopt->AddLinearConstraint(lambda(5) <= 700);
+      trajopt->AddLinearConstraint(lambda(6) >= -1000);  // left leg four bar
+      trajopt->AddLinearConstraint(lambda(6) <= 1000);   // left leg four bar
+      trajopt->AddLinearConstraint(lambda(7) >= -500);   // right leg four bar
+      trajopt->AddLinearConstraint(lambda(7) <= 500);    // right leg four bar
     }
   }*/
   /*for (int i = 0; i < N - 1; i++) {
@@ -721,12 +706,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // Testing -- constraint on normal force
   for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
     for (int index = 0; index < num_time_samples[mode]; index++) {
-      if (!(is_disable_kin_constraint_at_last_node &&
-            (mode == num_time_samples.size() - 1))) {
-        auto lambda = trajopt->force(mode, index);
-        trajopt->AddLinearConstraint(lambda(2) >= 10);
-        trajopt->AddLinearConstraint(lambda(5) >= 10);
-      }
+      auto lambda = trajopt->force(mode, index);
+      trajopt->AddLinearConstraint(lambda(2) >= 10);
+      trajopt->AddLinearConstraint(lambda(5) >= 10);
     }
   }
   // Testing -- constraint on u
@@ -738,12 +720,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
   if (constrain_stance_leg_fourbar_force) {
     for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
       for (int index = 0; index < num_time_samples[mode]; index++) {
-        if (!(is_disable_kin_constraint_at_last_node &&
-              (mode == num_time_samples.size() - 1))) {
+        if (four_bar_in_right_support) {
           auto lambda = trajopt->force(mode, index);
-          if (four_bar_in_right_support) {
-            trajopt->AddLinearConstraint(lambda(6) <= 0);  // left leg four bar
-          }
+          trajopt->AddLinearConstraint(lambda(6) <= 0);  // left leg four bar
         }
       }
     }
@@ -771,10 +750,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
     // TODO: try increase lambda 7 and 8 by 3 times
     trajopt->ScaleForceVariables(
         1000, 0, 0, ls_dataset.countConstraintsWithoutSkipping() - 1);
-    if (!is_disable_kin_constraint_at_last_node) {
-      trajopt->ScaleForceVariables(
-          1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
-    }
+    trajopt->ScaleForceVariables(
+        1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
     // impulse
     // TODO: try increase impulse 7 and 8 by 2 times
     trajopt->ScaleImpulseVariables(

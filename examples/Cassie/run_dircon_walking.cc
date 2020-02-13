@@ -251,13 +251,16 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_seed, double dt,
 class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
  public:
   OneDimBodyPosConstraint(const MultibodyPlant<double>* plant, string body_name,
+                          const Eigen::Matrix3d & rot_mat,
                           int xyz_idx, double lb, double ub)
       : DirconAbstractConstraint<double>(
             1, plant->num_positions(), VectorXd::Ones(1) * lb,
-            VectorXd::Ones(1) * ub, body_name + "_constraint"),
+            VectorXd::Ones(1) * ub,
+            body_name + "_constraint_" + std::to_string(xyz_idx)),
         plant_(plant),
         body_(plant->GetBodyByName(body_name)),
-        xyz_idx_(xyz_idx) {}
+        xyz_idx_(xyz_idx),
+        rot_mat_(rot_mat){}
   ~OneDimBodyPosConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
@@ -272,7 +275,7 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
     this->plant_->CalcPointsPositions(*context, body_.body_frame(),
                                       Vector3d::Zero(), plant_->world_frame(),
                                       &pt);
-    *y = pt.segment(xyz_idx_, 1);
+    *y = (rot_mat_ * pt).segment(xyz_idx_, 1);
   };
 
  private:
@@ -281,6 +284,7 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
   // xyz_idx_ takes value of 0, 1 or 2.
   // 0 is x, 1 is y and 2 is z component of the position vector.
   const int xyz_idx_;
+  Eigen::Matrix3d rot_mat_;
 };
 
 void DoMain(double duration, double stride_length, double ground_incline,
@@ -293,9 +297,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   // Cost on velocity and input
   double w_Q = 5 * 0.1;
-  double w_Q_swing_toe = w_Q * 1; // prevent the swing two from rocking
+  double w_Q_swing_toe = w_Q * 1; // prevent the swing toe from rocking
   double w_R = 0.1 * 0.01;
-  double w_R_swing_toe = w_R * 1; // prevent the swing two from rocking
+  double w_R_swing_toe = w_R * 1; // prevent the swing toe from rocking
   // Cost on force
   double w_lambda = 1.0e-4;
   // Cost on difference over time
@@ -303,8 +307,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
   double w_v_diff =  0.01 * 5;
   double w_u_diff =  0.00001;
   // Cost on position
-  double w_q_hip_roll = 1;
-  double w_q_hip_yaw = 1;
+  double w_q_hip_roll = 1 * 5;
+  double w_q_hip_yaw = 1 * 5;
   double w_q_quat_xyz = 0;
 
   // Optional constraints
@@ -639,9 +643,11 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   // toe position constraint in y direction (avoid leg crossing)
   auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_left", 1, 0.05, std::numeric_limits<double>::infinity());
+      &plant, "toe_left", MatrixXd::Identity(3, 3), 1, 0.05,
+      std::numeric_limits<double>::infinity());
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
+      &plant, "toe_right", MatrixXd::Identity(3, 3), 1,
+      -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
   if (FLAGS_is_scale_constraint) {
     std::unordered_map<int, double> odbp_constraint_scale;
@@ -654,6 +660,16 @@ void DoMain(double duration, double stride_length, double ground_incline,
     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
     trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
   }
+  // toe height constraint (avoid foot scuffing)
+  Vector3d z_hat(0, 0, 1);
+  Eigen::Quaterniond q;
+  q.setFromTwoVectors(z_hat, ground_normal);
+  Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
+  auto right_foot_constraint_z = std::make_shared<OneDimBodyPosConstraint>(
+      &plant, "toe_right", T_ground_incline, 2, 0.08,
+      std::numeric_limits<double>::infinity());
+  auto x_mid = trajopt->state(num_time_samples[0]/2);
+  trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
 
   // Testing -- constraint on initial floating base
   if (true /*&& ground_incline == 0*/) {
@@ -1036,7 +1052,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   cout << "Solve time:" << elapsed.count() << std::endl;
   cout << "Cost:" << result.get_optimal_cost() << std::endl;
   // Check which solver was used
-  cout << "Solver: " << result.get_solver_id().name() << endl;
+  cout << "Solver: " << result.get_solver_id().name() << "\n\n";
 
   // Calculate each term of the cost
   double total_cost = 0;

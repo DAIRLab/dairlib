@@ -15,9 +15,10 @@ PYBIND11_MODULE(lcm_trajectory, m) {
   m.doc() = "Binding functions for saving/loading trajectories";
 
   py::class_<LcmTrajectory::Trajectory>(m, "Trajectory")
+      .def_readwrite("traj_name", &LcmTrajectory::Trajectory::traj_name)
       .def_readwrite("time_vector", &LcmTrajectory::Trajectory::time_vector)
       .def_readwrite("datapoints", &LcmTrajectory::Trajectory::datapoints)
-      .def_readwrite("traj_name", &LcmTrajectory::Trajectory::traj_name);
+      .def_readwrite("datatypes", &LcmTrajectory::Trajectory::datatypes);
 
   py::class_<LcmTrajectory>(m, "LcmTrajectory")
       .def(py::init<>())

@@ -31,7 +31,6 @@ class LcmTrajectory {
     // Rows correspond to datatypes
     // Cols correspond to different time indices
     Eigen::MatrixXd datapoints;
-
     std::vector<std::string> datatypes;
   };
 
@@ -57,7 +56,7 @@ class LcmTrajectory {
   /// reading/opening the file
   void loadFromFile(const std::string& filepath);
 
-  const lcmt_metadata& getMetadata() const { return metadata_; }
+  const lcmt_metadata getMetadata() const { return metadata_; }
 
   Trajectory getTrajectory(const std::string& trajectory_name) const {
     return trajectories_.at(trajectory_name);

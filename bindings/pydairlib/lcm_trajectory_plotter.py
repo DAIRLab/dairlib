@@ -1,15 +1,15 @@
-import pydairlib.lcm_trajectory
 import matplotlib.pyplot as plt
+import pydairlib.lcm_trajectory
 
 def main():
-    data = pydairlib.lcm_trajectory.LcmTrajectory()
-    data.loadFromFile(
+    loadedTrajs = pydairlib.lcm_trajectory.LcmTrajectory()
+    loadedTrajs.loadFromFile(
         "/home/yangwill/Documents/research/dairlib/examples/jumping"
-        "/saved_trajs/jumping_12_16")
-    print(data.getTrajectoryNames())
-    traj_name = data.getTrajectoryNames()[0]
-    traj = data.getTrajectory(traj_name)
-    print(traj.datapoints)
+        "/saved_trajs/jumping_1_14")
+    print(loadedTrajs.getTrajectoryNames())
+    traj_name = loadedTrajs.getTrajectoryNames()[0]
+    traj = loadedTrajs.getTrajectory(traj_name)
+    print(traj.datatypes)
     plt.plot(traj.time_vector, traj.datapoints.T)
     plt.show()
 

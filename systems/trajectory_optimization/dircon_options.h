@@ -12,9 +12,10 @@ class DirconOptions {
  public:
   explicit DirconOptions(int n_constraints);
   DirconOptions(int n_constraints,
-                drake::multibody::MultibodyPlant<double>* plant);
-  DirconOptions(int n_constraints,
-                drake::multibody::MultibodyPlant<drake::AutoDiffXd>* plant);
+                const drake::multibody::MultibodyPlant<double>& plant);
+  DirconOptions(
+      int n_constraints,
+      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant);
 
   // Setters/getters for constraint scaling
   /// The impact constraint is for the impact at the beginning of the mode

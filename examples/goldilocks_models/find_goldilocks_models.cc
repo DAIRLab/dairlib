@@ -790,7 +790,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // init_file = "w0_with_z.csv";
   string prefix = "";
 
-  // Parametres for tasks (stride length and ground incline)
+  // Parameters for tasks (stride length and ground incline)
   cout << "\nTasks settings:\n";
   int N_sample_sl = FLAGS_N_sample_sl;
   int N_sample_gi = FLAGS_N_sample_gi;

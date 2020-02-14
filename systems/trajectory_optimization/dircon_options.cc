@@ -15,17 +15,17 @@ DirconOptions::DirconOptions(int n_kin_constraints) {
   force_cost_ = 1.0e-4;
 }
 DirconOptions::DirconOptions(int n_constraints,
-                             drake::multibody::MultibodyPlant<double>* plant)
+                             const drake::multibody::MultibodyPlant<double>& plant)
     : DirconOptions(n_constraints) {
-  n_v_ = plant->num_velocities();
-  n_x_ = plant->num_positions() + plant->num_velocities();
+  n_v_ = plant.num_velocities();
+  n_x_ = plant.num_positions() + plant.num_velocities();
 }
 DirconOptions::DirconOptions(
     int n_constraints,
-    drake::multibody::MultibodyPlant<drake::AutoDiffXd>* plant)
+    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant)
     : DirconOptions(n_constraints) {
-  n_v_ = plant->num_velocities();
-  n_x_ = plant->num_positions() + plant->num_velocities();
+  n_v_ = plant.num_velocities();
+  n_x_ = plant.num_positions() + plant.num_velocities();
 }
 
 void DirconOptions::setDynConstraintScaling(double scale, int row_start,

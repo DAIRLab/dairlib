@@ -76,127 +76,44 @@ void augmentConstraintToFixThetaScaling(MatrixXd & B, MatrixXd & A,
                                         int n_s, int n_feature_s,
                                         const VectorXd & theta_s, int batch);
 
-class QuaternionNormConstraint : public DirconAbstractConstraint<double> {
+// Position constraint of a body origin in one dimension (x, y, or z)
+class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
  public:
-  QuaternionNormConstraint() :
-    DirconAbstractConstraint<double>(1, 4,
-                                     VectorXd::Zero(1), VectorXd::Zero(1),
-                                     "quaternion_norm_constraint"){
-  }
-  ~QuaternionNormConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override {
-    VectorX<double> output(1);
-    output << x.norm() - 1;
-    *y = output;
-  };
- private:
-};
-
-class LeftFootYConstraint : public DirconAbstractConstraint<double> {
- public:
-  LeftFootYConstraint(const MultibodyPlant<double>* plant) :
-    DirconAbstractConstraint<double>(
-      1, plant->num_positions(),
-      VectorXd::Ones(1) * 0.03,
-      VectorXd::Ones(1) * std::numeric_limits<double>::infinity(),
-      "left_foot_constraint"),
-    plant_(plant),
-    body_(plant->GetBodyByName("toe_left")) {
-  }
-  ~LeftFootYConstraint() override = default;
+  OneDimBodyPosConstraint(const MultibodyPlant<double>* plant, string body_name,
+                          const Eigen::Matrix3d& rot_mat, int xyz_idx,
+                          double lb, double ub)
+      : DirconAbstractConstraint<double>(
+      1, plant->num_positions(), VectorXd::Ones(1) * lb,
+      VectorXd::Ones(1) * ub,
+      body_name + "_constraint_" + std::to_string(xyz_idx)),
+        plant_(plant),
+        body_(plant->GetBodyByName(body_name)),
+        xyz_idx_(xyz_idx),
+        rot_mat_(rot_mat) {}
+  ~OneDimBodyPosConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override {
     VectorXd q = x;
 
     std::unique_ptr<drake::systems::Context<double>> context =
-          plant_->CreateDefaultContext();
+        plant_->CreateDefaultContext();
     plant_->SetPositions(context.get(), q);
 
     VectorX<double> pt(3);
-    this->plant_->CalcPointsPositions(*context,
-                                      body_.body_frame(), Vector3d::Zero(),
-                                      plant_->world_frame(), &pt);
-    *y = pt.segment(1, 1);
+    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
+                                      Vector3d::Zero(), plant_->world_frame(),
+                                      &pt);
+    *y = (rot_mat_ * pt).segment(xyz_idx_, 1);
   };
+
  private:
   const MultibodyPlant<double>* plant_;
   const drake::multibody::Body<double>& body_;
-};
-class RightFootYConstraint : public DirconAbstractConstraint<double> {
- public:
-  RightFootYConstraint(const MultibodyPlant<double>* plant) :
-    DirconAbstractConstraint<double>(
-      1, plant->num_positions(),
-      VectorXd::Ones(1) * (-std::numeric_limits<double>::infinity()),
-      VectorXd::Ones(1) * (-0.03),
-      "right_foot_constraint"),
-    plant_(plant),
-    body_(plant->GetBodyByName("toe_right")){
-  }
-  ~RightFootYConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override {
-    VectorXd q = x;
-
-    std::unique_ptr<drake::systems::Context<double>> context =
-          plant_->CreateDefaultContext();
-    plant_->SetPositions(context.get(), q);
-
-    VectorX<double> pt(3);
-    this->plant_->CalcPointsPositions(*context,
-                                      body_.body_frame(), Vector3d::Zero(),
-                                      plant_->world_frame(), &pt);
-    *y = pt.segment(1, 1);
-  };
- private:
-  const MultibodyPlant<double>* plant_;
-  const drake::multibody::Body<double>& body_;
-};
-class RightFootZConstraint : public DirconAbstractConstraint<double> {
- public:
-  RightFootZConstraint(const MultibodyPlant<double>* plant,
-                       double ground_incline) :
-    DirconAbstractConstraint<double>(
-      1, plant->num_positions(),
-      VectorXd::Ones(1) * 0.05,
-      VectorXd::Ones(1) * std::numeric_limits<double>::infinity(),
-      "right_foot_height_constraint"),
-    plant_(plant),
-    body_(plant->GetBodyByName("toe_right")) {
-
-    Eigen::AngleAxisd rollAngle(0, Vector3d::UnitX());
-    Eigen::AngleAxisd pitchAngle(ground_incline, Vector3d::UnitY());
-    Eigen::AngleAxisd yawAngle(0, Vector3d::UnitZ());
-    Eigen::Quaterniond q = yawAngle * pitchAngle * rollAngle;
-    Eigen::Matrix3d inv_rot_mat_ground = q.matrix().transpose();
-
-    T_ground_incline_ = inv_rot_mat_ground;
-  }
-  ~RightFootZConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override {
-    VectorXd q = x;
-
-    std::unique_ptr<drake::systems::Context<double>> context =
-          plant_->CreateDefaultContext();
-    plant_->SetPositions(context.get(), q);
-
-    VectorX<double> pt(3);
-    this->plant_->CalcPointsPositions(*context,
-                                      body_.body_frame(), Vector3d::Zero(),
-                                      plant_->world_frame(), &pt);
-    *y = (T_ground_incline_ * pt).tail(1);
-  };
- private:
-  const MultibodyPlant<double>* plant_;
-  const drake::multibody::Body<double>& body_;
-
-  Eigen::Matrix3d T_ground_incline_;
+  // xyz_idx_ takes value of 0, 1 or 2.
+  // 0 is x, 1 is y and 2 is z component of the position vector.
+  const int xyz_idx_;
+  Eigen::Matrix3d rot_mat_;
 };
 
 class ComHeightVelConstraint : public DirconAbstractConstraint<double> {

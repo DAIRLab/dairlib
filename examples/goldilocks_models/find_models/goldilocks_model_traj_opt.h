@@ -83,7 +83,6 @@ class GoldilocksModelTrajOpt {
       const std::vector<int>& num_time_samples,
       bool is_get_nominal,
       bool is_add_tau_in_cost,
-      vector<double> var_scale,
       int robot_option);
   GoldilocksModelTrajOpt() {};
 

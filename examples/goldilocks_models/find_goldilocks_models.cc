@@ -123,33 +123,7 @@ void createMBP(MultibodyPlant<double>* plant, int robot_option) {
     plant->Finalize();
   }
 }
-void setDecisionVarScaling(vector<double>* var_scale, int robot_option) {
-  if (robot_option == 0) {
-    var_scale->push_back(1.0);
-    var_scale->push_back(1.0);
-    var_scale->push_back(1.0);
-    var_scale->push_back(1.0);
-    var_scale->push_back(1.0);
-    var_scale->push_back(1.0);
-  } else if (robot_option == 1) {
-    double omega_scale = 10;  // 10
-    double input_scale = 100;
-    double force_scale = 1000;  // 400
-    double time_scale = 0.008;  // 0.01
-    double quaternion_scale = 0.5;  // 1
-    double tau_scale = 10;
-    // double trans_pos_scale = 1;
-    // double rot_pos_scale = 1;
-    var_scale->push_back(omega_scale);
-    var_scale->push_back(input_scale);
-    var_scale->push_back(force_scale);
-    var_scale->push_back(time_scale);
-    var_scale->push_back(quaternion_scale);
-    var_scale->push_back(tau_scale);
-  }
-}
-void setCostWeight(double* Q, double* R, vector<double> var_scale,
-                   int robot_option) {
+void setCostWeight(double* Q, double* R, int robot_option) {
   if (robot_option == 0) {
     *Q = 10;
     *R = 10;
@@ -797,7 +771,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   // Create MBP
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   createMBP(&plant, FLAGS_robot_option);
 
   // Create autoDiff version of the plant
@@ -916,19 +890,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Paramters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
-  vector<double> var_scale;
-  setDecisionVarScaling(&var_scale, FLAGS_robot_option);
   double Q = 0; // Cost on velocity
   double R = 0;  // Cost on input effort
-  setCostWeight(&Q, &R, var_scale, FLAGS_robot_option);
+  setCostWeight(&Q, &R, FLAGS_robot_option);
   cout << "\nOptimization setting (inner loop):\n";
-  cout << "var_scale = "
-       << var_scale[0] << ", "
-       << var_scale[1] << ", "
-       << var_scale[2] << ", "
-       << var_scale[3] << ", "
-       << var_scale[4] << ", "
-       << var_scale[5] << endl;
   cout << "max_inner_iter = " << max_inner_iter << endl;
   cout << "major_optimality_tolerance = " << FLAGS_major_feasibility_tol << endl;
   cout << "major_feasibility_tolerance = " << FLAGS_major_feasibility_tol << endl;
@@ -1139,13 +1104,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // setup for each iteration
-    bool is_get_nominal = iter == 0 ? true : false;
+    bool is_get_nominal = iter == 0;
     // int n_sample = is_get_nominal ? 1 : N_sample;
     int n_sample = N_sample;
     int max_inner_iter_pass_in = is_get_nominal ? 1000 : max_inner_iter;
     bool extend_model_this_iter =
-      (extend_model && (iter == extend_model_iter) && !has_visit_this_iter) ?
-      true : false;
+        extend_model && (iter == extend_model_iter) && !has_visit_this_iter;
     if (iter == extend_model_iter) has_visit_this_iter = true;
 
     // store initial parameter values
@@ -1238,7 +1202,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
               stride_length, ground_incline,
               duration, max_inner_iter_pass_in,
               FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
-              var_scale,
               dir, init_file_pass_in, prefix,
               Q, R,
               eps_regularization,

@@ -14,7 +14,6 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     const std::vector<int> & num_time_samples,
     bool is_get_nominal,
     bool is_add_tau_in_cost,
-    vector<double> var_scale,
     int robot_option):
   n_s_(n_s),
   n_sDDot_(n_sDDot),
@@ -36,14 +35,13 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
   // (Since VectorX allows 0-size vector, the trajectory optimization works even
   // when n_tau = 0.)
   tau_vars_ = dircon->NewContinuousVariables(n_tau * N, "tau");
-  double tau_scale = var_scale[5];
 
   // Add cost for the input tau
   if (is_add_tau_in_cost) {
     for (int i = 0; i < N; i++) {
       auto tau_i = reduced_model_input(i, n_tau);
       tau_cost_bindings.push_back(dircon->AddQuadraticCost(
-                                    tau_scale * tau_scale * MatrixXd::Identity(n_tau, n_tau),
+                                    MatrixXd::Identity(n_tau, n_tau),
                                     VectorXd::Zero(n_tau),
                                     tau_i));
     }
@@ -56,13 +54,13 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
                                     n_s, n_feature_s, theta_s,
                                     n_sDDot, n_feature_sDDot, theta_sDDot,
                                     n_tau, B_tau, plant, plant_double,
-                                    var_scale, tau_scale, true,
+                                    true,
                                     robot_option);
     // dynamics_constraint_at_tail = make_shared<find_models::DynamicsConstraint>(
     //                                n_s, n_feature_s, theta_s,
     //                                n_sDDot, n_feature_sDDot, theta_sDDot,
     //                                n_tau, B_tau, plant, plant_double,
-    //                                var_scale, tau_scale, false,
+    //                                false,
     //                                robot_option);
 
     // Add dynamics constraint for all segments (between knots)

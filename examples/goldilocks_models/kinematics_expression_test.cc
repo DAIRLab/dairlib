@@ -103,7 +103,7 @@ int main() {
   // Test the autoDiff plant
   // Get the position of the foot and check the gradient wrt state
 
-  /*MultibodyPlant<double> plant;
+  /*MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
 
   std::string full_name =

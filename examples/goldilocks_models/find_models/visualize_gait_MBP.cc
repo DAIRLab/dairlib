@@ -246,7 +246,7 @@ void visualizeGait(int argc, char* argv[]) {
 
     // Create MBP
     drake::systems::DiagramBuilder<double> builder;
-    MultibodyPlant<double> plant;
+    MultibodyPlant<double> plant(0.0);
     SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
     Vector3d ground_normal(sin(FLAGS_ground_incline), 0, cos(FLAGS_ground_incline));
     multibody::addTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);

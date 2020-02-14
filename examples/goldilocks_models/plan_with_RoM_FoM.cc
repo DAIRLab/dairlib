@@ -66,7 +66,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Create MBP
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
   std::string full_name = FindResourceOrThrow(
                             "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");

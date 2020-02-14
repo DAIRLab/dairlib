@@ -89,7 +89,7 @@ DEFINE_double(realtime_factor, 1, "Visualization realtime factor");
 map<string, int> doMakeNameToPositionsMap() {
   // Create a plant
   drake::systems::DiagramBuilder<double> builder;
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   Parser parser(&plant, &scene_graph);
   std::string full_name = FindResourceOrThrow(
@@ -424,7 +424,7 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
 
   // Create MBP
   drake::systems::DiagramBuilder<double> builder;
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   Vector3d ground_normal(0, 0, 1);
   multibody::addTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);

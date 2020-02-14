@@ -66,8 +66,6 @@ class DynamicsConstraint : public DirconAbstractConstraint<double> {
                      MatrixXd B_tau,
                      const MultibodyPlant<AutoDiffXd> * plant,
                      const MultibodyPlant<double> * plant_double,
-                     vector<double> var_scale,
-                     double tau_scale,
                      bool is_head,
                      int robot_option,
                      const std::string& description = "rom_dyn_constraint");
@@ -144,11 +142,6 @@ class DynamicsConstraint : public DirconAbstractConstraint<double> {
   vector<double> cd_shift_vec_{ -eps_cd_ / 2, eps_cd_ / 2};  // central difference
   vector<double> ho_shift_vec_{ -eps_ho_ / 2, -eps_ho_ / 4,
                                 eps_ho_ / 4, eps_ho_ / 2};
-
-  // Scaling
-  double quaternion_scale_;
-  double omega_scale_;
-  double tau_scale_;  // reduced order model input
 };
 
 

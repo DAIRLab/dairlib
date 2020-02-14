@@ -160,8 +160,8 @@ vector<VectorXd> GetCassieInitGuessForQ(int N,
       drake::systems::DiagramBuilder<double> builder_ik;
       SceneGraph<double>& scene_graph_ik = *builder_ik.AddSystem<SceneGraph>();
       scene_graph_ik.set_name("scene_graph_ik");
-      MultibodyPlant<double> plant_ik;
-      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8);
+      MultibodyPlant<double> plant_ik(0.0);
+      multibody::addTerrain(&plant_ik, &scene_graph_ik, .8, .8);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
         FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");

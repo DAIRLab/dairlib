@@ -79,7 +79,7 @@ void simpleTrajOpt(double stride_length, double duration, int iter,
                    string output_prefix) {
 
   drake::systems::DiagramBuilder<double> builder;
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   Parser parser(&plant, &scene_graph);
 

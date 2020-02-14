@@ -97,7 +97,7 @@ void visualizeFullOrderModelPose(int argc, char* argv[]) {
 
     // Create MBP
     drake::systems::DiagramBuilder<double> builder;
-    MultibodyPlant<double> plant;
+    MultibodyPlant<double> plant(0.0);
     SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
     Parser parser(&plant, &scene_graph);
     std::string full_name = FindResourceOrThrow(

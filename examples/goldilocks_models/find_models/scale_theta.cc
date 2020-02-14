@@ -115,7 +115,7 @@ int doMain(int argc, char* argv[]) {
   VectorXd theta_sDDot = readCSV(prefix + string("_theta_sDDot.csv")).col(0);
 
   // Create MBP for setup
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
   std::string full_name = FindResourceOrThrow(
                             "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");

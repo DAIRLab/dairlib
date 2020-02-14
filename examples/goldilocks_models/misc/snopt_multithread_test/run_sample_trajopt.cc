@@ -78,7 +78,7 @@ void runSampleTrajopt(/*const MultibodyPlant<double> & plant,
                       string prefix) {
 
   // Create MBP
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
   std::string full_name = FindResourceOrThrow(
                             "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");

@@ -438,8 +438,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   // Set up options
   std::vector<DirconOptions> options_list;
-  options_list.push_back(DirconOptions(ls_dataset.countConstraints(), &plant));
-  options_list.push_back(DirconOptions(rs_dataset.countConstraints(), &plant));
+  options_list.push_back(DirconOptions(ls_dataset.countConstraints(), plant));
+  options_list.push_back(DirconOptions(rs_dataset.countConstraints(), plant));
 
   // set force cost weight
   for (int i = 0; i < 2; i++) {

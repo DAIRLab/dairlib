@@ -405,7 +405,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto double_all_dataset = DirconKinematicDataSet<double>(
       plant, &double_stance_all_constraint, skip_constraint_inds);
   auto double_all_options =
-      DirconOptions(double_all_dataset.countConstraints(), &plant);
+      DirconOptions(double_all_dataset.countConstraints(), plant);
   // Be careful in setting relative constraint, because we skip constraints
   ///                 || lf    | lr    | rf    | rr      | fourbar
   /// Before skipping || 0 1 2 | 3 4 5 | 6 7 8 | 9 10 11 | 12 13

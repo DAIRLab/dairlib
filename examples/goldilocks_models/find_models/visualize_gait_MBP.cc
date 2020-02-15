@@ -58,7 +58,6 @@ DEFINE_int32(iter_end, -1, "The iter #");
 DEFINE_int32(batch, 0, "The batch #");
 DEFINE_double(realtime_factor, 1, "Rate of which the traj is played back");
 DEFINE_int32(n_step, 3, "# of foot steps");
-DEFINE_double(ground_incline, 0, "Pitch angle of ground");
 
 DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 
@@ -85,6 +84,11 @@ void visualizeGait(int argc, char* argv[]) {
 
   // Looping through the iterations
   for (int iter = iter_start; iter <= iter_end; iter++) {
+    // Read in ground incline
+    double ground_incline = goldilocks_models::readCSV(
+        directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
+        string("_ground_incline.csv"))(0, 0);
+
     // Read in trajecotry
     VectorXd time_mat =
       goldilocks_models::readCSV(directory + to_string(iter) + string("_") +
@@ -250,7 +254,7 @@ void visualizeGait(int argc, char* argv[]) {
     drake::systems::DiagramBuilder<double> builder;
     MultibodyPlant<double> plant(0.0);
     SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
-    Vector3d ground_normal(sin(FLAGS_ground_incline), 0, cos(FLAGS_ground_incline));
+    Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
     multibody::addTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
     Parser parser(&plant, &scene_graph);
     std::string full_name;

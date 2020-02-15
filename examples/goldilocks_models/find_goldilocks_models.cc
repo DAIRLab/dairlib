@@ -820,12 +820,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "stride_length_0 = " << stride_length_0 << endl;
   cout << "delta_ground_incline = " << delta_ground_incline << endl;
   cout << "ground_incline_0 = " << ground_incline_0 << endl;
+  double min_stride_length =
+      stride_length_0 - delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5);
+  double max_stride_length =
+      stride_length_0 + delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5);
   if (FLAGS_is_stochastic) {
-    cout << "stride length ranges from "
-         << stride_length_0 - delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5)
-         << " to "
-         << stride_length_0 + delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5)
-         << endl;
+    cout << "stride length ranges from " << min_stride_length << " to "
+         << max_stride_length << endl;
     cout << "ground incline ranges from "
          << ground_incline_0 - delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
          << " to "
@@ -835,7 +836,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   VectorXd previous_ground_incline = VectorXd::Zero(N_sample);
   VectorXd previous_stride_length = VectorXd::Zero(N_sample);
 
-  // Paramters for the outer loop optimization
+  // Parameters for the outer loop optimization
   cout << "\nOptimization setting (outer loop):\n";
   int iter_start = FLAGS_iter_start;
   int max_outer_iter = FLAGS_max_outer_iter;
@@ -893,10 +894,22 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double Q = 0; // Cost on velocity
   double R = 0;  // Cost on input effort
   setCostWeight(&Q, &R, FLAGS_robot_option);
+  int n_node = 20;
+  if (FLAGS_robot_option == 0) {
+    n_node = 20;
+  } else if (FLAGS_robot_option == 1) {
+    n_node = 24;
+  }
   cout << "\nOptimization setting (inner loop):\n";
   cout << "max_inner_iter = " << max_inner_iter << endl;
   cout << "major_optimality_tolerance = " << FLAGS_major_feasibility_tol << endl;
   cout << "major_feasibility_tolerance = " << FLAGS_major_feasibility_tol << endl;
+  cout << "n_node = " << n_node << endl;
+  if (FLAGS_robot_option == 1) {
+    // If the node density is too low, it's harder for SNOPT to converge well.
+    double max_distance_per_node = 0.2 / 16;
+    DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
+  }
 
 
   // Reduced order model parameters
@@ -1200,7 +1213,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               n_feature_s, n_feature_sDDot, B_tau,
               std::ref(theta_s), std::ref(theta_sDDot),
               stride_length, ground_incline,
-              duration, max_inner_iter_pass_in,
+              duration, n_node, max_inner_iter_pass_in,
               FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
               dir, init_file_pass_in, prefix,
               Q, R,

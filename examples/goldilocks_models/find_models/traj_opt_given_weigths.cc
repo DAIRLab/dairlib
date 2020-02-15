@@ -1036,7 +1036,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           MatrixXd B_tau,
                           const VectorXd & theta_s, const VectorXd & theta_sDDot,
                           double stride_length, double ground_incline,
-                          double duration, int max_iter,
+                          double duration, int n_node, int max_iter,
                           string directory,
                           string init_file, string prefix,
                           double Q_double, double R_double,
@@ -1097,8 +1097,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                       &rightConstraints);
 
   auto leftOptions = DirconOptions(leftDataSet.countConstraints());
-  leftOptions.setConstraintRelative(0,
-                                    true); //TODO: ask what is relative constraint here?
+  leftOptions.setConstraintRelative(0, true);
   // std::cout<<"leftDataSet.countConstraints() = "<<leftDataSet.countConstraints()<<"\n";
 
   auto rightOptions = DirconOptions(rightDataSet.countConstraints());
@@ -1109,13 +1108,11 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // and that the trajectory is discretized into timesteps h (N-1 of these),
   // state x (N of these), and control input u (N of these).
   std::vector<int> num_time_samples;
-  num_time_samples.push_back(20); // First mode (20 sample points)
-  num_time_samples.push_back(1);  // Second mode (1 sample point)
+  num_time_samples.push_back(n_node);
+  num_time_samples.push_back(1);
   std::vector<double> min_dt;
-  min_dt.push_back(
-    .01);   // bound for time difference between adjacent samples in the first mode // See HybridDircon constructor
-  min_dt.push_back(
-    .01);   // bound for time difference between adjacent samples in the second mode
+  min_dt.push_back(.01);
+  min_dt.push_back(.01);
   std::vector<double> max_dt;
   max_dt.push_back(.3);
   max_dt.push_back(.3);
@@ -1353,7 +1350,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    MatrixXd B_tau,
                    const VectorXd & theta_s, const VectorXd & theta_sDDot,
                    double stride_length, double ground_incline,
-                   double duration, int max_iter,
+                   double duration, int n_node, int max_iter,
                    double major_optimality_tol,
                    double major_feasibility_tol,
                    string directory,
@@ -1367,13 +1364,8 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    int batch,
                    int robot_option) {
   // Dircon parameter
-  DRAKE_DEMAND(false); //TODO: Move the following to find_goldilocks_model.cc
-  int n_node = int(40.0 * duration);  // 40 nodes per second
   double minimum_timestep = 0.01;
   DRAKE_DEMAND(duration / (n_node - 1) >= minimum_timestep);
-  // If the node density is too low, it's harder for SNOPT to converge well.
-  double max_distance_per_node = 0.2 / 16;
-  DRAKE_DEMAND((stride_length / n_node) <= max_distance_per_node);
 
   // Walking modes
   int walking_mode = 0; // 0: instant change of support
@@ -1982,7 +1974,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          MatrixXd B_tau,
                          const VectorXd & theta_s, const VectorXd & theta_sDDot,
                          double stride_length, double ground_incline,
-                         double duration, int max_iter,
+                         double duration, int n_node, int max_iter,
                          double major_optimality_tol,
                          double major_feasibility_tol,
                          string directory,
@@ -2007,7 +1999,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                          theta_s, theta_sDDot,
                          stride_length, ground_incline,
-                         duration, max_iter,
+                         duration, n_node, max_iter,
                          directory, init_file, prefix,
                          Q_double, R_double, eps_reg,
                          is_get_nominal, is_zero_touchdown_impact,
@@ -2018,7 +2010,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                   n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                   theta_s, theta_sDDot,
                   stride_length, ground_incline,
-                  duration, max_iter,
+                  duration, n_node, max_iter,
                   major_optimality_tol, major_feasibility_tol,
                   directory, init_file, prefix,
                   Q_double, R_double, eps_reg,

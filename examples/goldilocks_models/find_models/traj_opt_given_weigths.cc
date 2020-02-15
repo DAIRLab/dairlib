@@ -1371,9 +1371,10 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   // Cost on velocity and input
   double scale_all_cost = 1;//0.2;
   double w_Q = Q_double * scale_all_cost;
-  double w_Q_swing_toe = w_Q * 1;  // prevent the swing toe from rocking
+  double w_Q_vy = w_Q * 1;  // prevent the pelvis from rocking in y
+  double w_Q_swing_toe = w_Q * 1;  // prevent the swing toe from shaking
   double w_R = R_double * scale_all_cost;
-  double w_R_swing_toe = w_R * 1;  // prevent the swing toe from rocking
+  double w_R_swing_toe = w_R * 1;  // prevent the swing toe from shaking
   // Cost on force (the final weight is w_lambda^2)
   double w_lambda = 1.0e-4 * scale_all_cost * scale_all_cost;
   // Cost on difference over time
@@ -1694,13 +1695,16 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   }
 
   if (is_get_nominal) {
-    /*cout << "Adding zero COM height acceleration constraint\n";
+    cout << "Adding zero COM height acceleration constraint\n";
     auto com_vel_constraint = std::make_shared<ComHeightVelConstraint>(&plant);
+    std::unordered_map<int, double> com_vel_constraint_scale;
+    com_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
+    com_vel_constraint->SetConstraintScaling(com_vel_constraint_scale);
     for (int index = 0; index < num_time_samples[0] - 1; index++) {
       auto x0 = trajopt->state(index);
       auto x1 = trajopt->state(index + 1);
       trajopt->AddConstraint(com_vel_constraint, {x0, x1});
-    }*/
+    }
   }
 
   // toe position constraint in y direction (avoid leg crossing)
@@ -1711,10 +1715,10 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
       &plant, "toe_right", MatrixXd::Identity(3, 3), 1,
       -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
-  std::unordered_map<int, double> odbp_constraint_scale;
+  /*std::unordered_map<int, double> odbp_constraint_scale;
   odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
   left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
-  right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+  right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);*/
   for (int index = 0; index < num_time_samples[0]; index++) {
     auto x = trajopt->state(index);
     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
@@ -1726,7 +1730,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   q.setFromTwoVectors(z_hat, ground_normal);
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
   auto right_foot_constraint_z = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", T_ground_incline, 2, 0.08,
+      &plant, "toe_right", T_ground_incline, 2, 0.1,
       std::numeric_limits<double>::infinity());
   auto x_mid = trajopt->state(num_time_samples[0] / 2);
   trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
@@ -1781,7 +1785,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 
   // add cost
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
-//  W_Q(4, 4) *= 10;
+  W_Q(4, 4) *= w_Q_vy;
   W_Q(n_v - 1, n_v - 1) = w_Q_swing_toe;
   MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
   W_R(n_u - 1, n_u - 1) = w_R_swing_toe;
@@ -1953,7 +1957,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                  batch,
                  robot_option);
 
-  bool is_print_for_debugging = false;
+  bool is_print_for_debugging = true;
   if (is_print_for_debugging) {
     // Print the solution
 //    VectorXd z = result.GetSolution(gm_traj_opt.dircon->decision_variables());

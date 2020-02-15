@@ -288,8 +288,8 @@ class ComHeightVelConstraint : public DirconAbstractConstraint<double> {
     Jcom1 /= composite_mass_;
 
     // Get com jacobian for x2
-    plant_->SetPositions(context.get(), q1);
-    plant_->SetVelocities(context.get(), v1);
+    plant_->SetPositions(context.get(), q2);
+    plant_->SetVelocities(context.get(), v2);
     MatrixXd Jcom2 = MatrixXd::Zero(3, n_v_);
     for (BodyIndex body_index : body_indexes_) {
       if (body_index == 0) continue;

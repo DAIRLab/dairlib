@@ -73,11 +73,10 @@ void DynamicsConstraint::EvaluateConstraint(
   VectorXd tau_iplus1 = x.segment(2 * (n_q_ + n_v_) + n_tau_, n_tau_);
   const VectorXd h_i = x.tail(1);
 
-  double model_scale = 10;
   *y = getConstraintValueInDouble(x_i, tau_i,
                                   x_iplus1, tau_iplus1,
                                   h_i,
-                                  theta_s_, theta_sDDot_)/* / model_scale*/;
+                                  theta_s_, theta_sDDot_);
 }
 
 VectorXd DynamicsConstraint::getConstraintValueInDouble(

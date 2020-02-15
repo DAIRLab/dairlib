@@ -2,34 +2,25 @@
 
 #include <memory>
 #include <chrono>
-
 #include <string>
 
+#include "common/find_resource.h"
+#include "examples/goldilocks_models/dynamics_expression.h"
+#include "examples/goldilocks_models/find_models/traj_opt_helper_func.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "multibody/visualization_utils.h"
+#include "systems/goldilocks_models/file_utils.h"
+#include "systems/goldilocks_models/symbolic_manifold.h"
+#include "systems/primitives/subvector_pass_through.h"
+#include "drake/geometry/geometry_visualization.h"
+#include "drake/lcm/drake_lcm.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/solvers/choose_best_solver.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/trajectory_source.h"
-
-#include "drake/lcm/drake_lcm.h"
-
-#include "drake/multibody/parsing/parser.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-#include "drake/geometry/geometry_visualization.h"
-
-#include "common/find_resource.h"
-#include "systems/primitives/subvector_pass_through.h"
-
-#include "multibody/visualization_utils.h"
-
-#include "systems/goldilocks_models/symbolic_manifold.h"
-#include "systems/goldilocks_models/file_utils.h"
-
-#include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/dynamics_expression.h"
-
-#include "drake/solvers/choose_best_solver.h"
-
-#include "examples/goldilocks_models/find_models/traj_opt_helper_func.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -579,7 +570,7 @@ void postProcessing(const VectorXd& w_sol,
 
 
 
-    // Below are all for debugging
+    // Below are all for debugging /////////////////////////////////////////////
 
     // Checking B
     // BTW, the code only work in the case of s = q_1 ^2 and dds = s^3
@@ -1378,20 +1369,21 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   //    in the first phase, etc)
 
   // Cost on velocity and input
-  double w_Q = 5 * 0.1;
+  double scale_all_cost = 1;//0.2;
+  double w_Q = Q_double * scale_all_cost;
   double w_Q_swing_toe = w_Q * 1;  // prevent the swing toe from rocking
-  double w_R = 0.1 * 0.01;
+  double w_R = R_double * scale_all_cost;
   double w_R_swing_toe = w_R * 1;  // prevent the swing toe from rocking
-  // Cost on force
-  double w_lambda = 1.0e-4;
+  // Cost on force (the final weight is w_lambda^2)
+  double w_lambda = 1.0e-4 * scale_all_cost * scale_all_cost;
   // Cost on difference over time
-  double w_lambda_diff = 0.000001 * 0.1;
-  double w_v_diff = 0.01 * 5 * 0.1;
-  double w_u_diff = 0.00001 * 0.1;
+  double w_lambda_diff = 0.000001 * 0.1 * scale_all_cost;
+  double w_v_diff = 0.01 * 5 * 0.1 * scale_all_cost;
+  double w_u_diff = 0.00001 * 0.1 * scale_all_cost;
   // Cost on position
-  double w_q_hip_roll = 1 * 5;
-  double w_q_hip_yaw = 1 * 5;
-  double w_q_quat_xyz = 1 * 5;
+  double w_q_hip_roll = 1 * 5 * scale_all_cost;
+  double w_q_hip_yaw = 1 * 5 * scale_all_cost;
+  double w_q_quat_xyz = 1 * 5 * scale_all_cost;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -1702,13 +1694,13 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   }
 
   if (is_get_nominal) {
-    cout << "Adding zero COM height acceleration constraint\n";
+    /*cout << "Adding zero COM height acceleration constraint\n";
     auto com_vel_constraint = std::make_shared<ComHeightVelConstraint>(&plant);
     for (int index = 0; index < num_time_samples[0] - 1; index++) {
       auto x0 = trajopt->state(index);
       auto x1 = trajopt->state(index + 1);
       trajopt->AddConstraint(com_vel_constraint, {x0, x1});
-    }
+    }*/
   }
 
   // toe position constraint in y direction (avoid leg crossing)
@@ -1729,7 +1721,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
   }
   // toe height constraint (avoid foot scuffing)
-  /*Vector3d z_hat(0, 0, 1);
+  Vector3d z_hat(0, 0, 1);
   Eigen::Quaterniond q;
   q.setFromTwoVectors(z_hat, ground_normal);
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
@@ -1737,7 +1729,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
       &plant, "toe_right", T_ground_incline, 2, 0.08,
       std::numeric_limits<double>::infinity());
   auto x_mid = trajopt->state(num_time_samples[0] / 2);
-  trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));*/
+  trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
 
   // Testing -- constraint on initial floating base
   if (true /*&& ground_incline == 0*/) {
@@ -1789,6 +1781,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 
   // add cost
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
+//  W_Q(4, 4) *= 10;
   W_Q(n_v - 1, n_v - 1) = w_Q_swing_toe;
   MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
   W_R(n_u - 1, n_u - 1) = w_R_swing_toe;
@@ -1959,6 +1952,139 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                  extend_model, is_add_tau_in_cost,
                  batch,
                  robot_option);
+
+  bool is_print_for_debugging = false;
+  if (is_print_for_debugging) {
+    // Print the solution
+//    VectorXd z = result.GetSolution(gm_traj_opt.dircon->decision_variables());
+//    for (int i = 0; i < z.size(); i++) {
+//      cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
+//           << z[i] << endl;
+//    }
+//    cout << endl;
+
+    // Extract result for printing
+    VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);
+    MatrixXd state_at_knots = gm_traj_opt.dircon->GetStateSamples(result);
+    MatrixXd input_at_knots = gm_traj_opt.dircon->GetInputSamples(result);
+
+    cout << "time_at_knots = \n" << time_at_knots << "\n";
+    cout << "state_at_knots = \n" << state_at_knots << "\n";
+    cout << "input_at_knots = \n" << input_at_knots << "\n";
+    cout << "lambda_sol = \n";
+    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+      for (int index = 0; index < num_time_samples[mode]; index++) {
+        auto lambdai = gm_traj_opt.dircon->force(mode, index);
+        cout << result.GetSolution(lambdai).transpose() << endl;
+      }
+    }
+
+    // Print weight
+    cout << "\nw_Q = " << w_Q << endl;
+    cout << "w_Q_swing_toe = " << w_Q_swing_toe << endl;
+    cout << "w_R = " << w_R << endl;
+    cout << "w_R_swing_toe = " << w_R_swing_toe << endl;
+    cout << "w_lambda = " << w_lambda << endl;
+    cout << "w_lambda_diff = " << w_lambda_diff << endl;
+    cout << "w_v_diff = " << w_v_diff << endl;
+    cout << "w_u_diff = " << w_u_diff << endl;
+    cout << "w_q_hip_roll = " << w_q_hip_roll << endl;
+    cout << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
+    cout << "w_q_quat_xyz = " << w_q_quat_xyz << endl;
+
+    // Calculate each term of the cost
+    double total_cost = 0;
+    double cost_x = 0;
+    for (int i = 0; i < N - 1; i++) {
+      auto v0 = state_at_knots.col(i).tail(n_v);
+      auto v1 = state_at_knots.col(i + 1).tail(n_v);
+      auto h = time_at_knots(i + 1) - time_at_knots(i);
+      cost_x += ((v0.transpose() * W_Q * v0) * h / 2)(0);
+      cost_x += ((v1.transpose() * W_Q * v1) * h / 2)(0);
+    }
+    total_cost += cost_x;
+    cout << "cost_x = " << cost_x << endl;
+    double cost_u = 0;
+    for (int i = 0; i < N - 1; i++) {
+      auto u0 = input_at_knots.col(i);
+      auto u1 = input_at_knots.col(i + 1);
+      auto h = time_at_knots(i + 1) - time_at_knots(i);
+      cost_u += ((u0.transpose() * W_R * u0) * h / 2)(0);
+      cost_u += ((u1.transpose() * W_R * u1) * h / 2)(0);
+    }
+    total_cost += cost_u;
+    cout << "cost_u = " << cost_u << endl;
+    double cost_lambda = 0;
+    for (int i = 0; i < num_time_samples.size(); i++) {
+      for (int j = 0; j < num_time_samples[i]; j++) {
+        auto lambda = result.GetSolution(gm_traj_opt.dircon->force(i, j));
+        cost_lambda += (options_list[i].getForceCost() * lambda).squaredNorm();
+      }
+    }
+    total_cost += cost_lambda;
+    cout << "cost_lambda = " << cost_lambda << endl;
+    // cost on force difference wrt time
+    double cost_lambda_diff = 0;
+    for (int i = 0; i < N - 1; i++) {
+      auto lambda0 = result.GetSolution(gm_traj_opt.dircon->force(0, i));
+      auto lambda1 = result.GetSolution(gm_traj_opt.dircon->force(0, i + 1));
+      auto lambdac = result.GetSolution(gm_traj_opt.dircon->collocation_force(0, i));
+      if (diff_with_force_at_collocation) {
+        cost_lambda_diff +=
+            w_lambda_diff * (lambda0 - lambdac).dot(lambda0 - lambdac);
+        cost_lambda_diff +=
+            w_lambda_diff * (lambdac - lambda1).dot(lambdac - lambda1);
+      } else {
+        cost_lambda_diff +=
+            w_lambda_diff * (lambda0 - lambda1).dot(lambda0 - lambda1);
+      }
+    }
+    total_cost += cost_lambda_diff;
+    cout << "cost_lambda_diff = " << cost_lambda_diff << endl;
+    // cost on vel difference wrt time
+    double cost_vel_diff = 0;
+    for (int i = 0; i < N - 1; i++) {
+      auto v0 = result.GetSolution(gm_traj_opt.dircon->state(i).tail(n_v));
+      auto v1 = result.GetSolution(gm_traj_opt.dircon->state(i + 1).tail(n_v));
+      cost_vel_diff += (v0 - v1).dot(Q_v_diff * (v0 - v1));
+    }
+    total_cost += cost_vel_diff;
+    cout << "cost_vel_diff = " << cost_vel_diff << endl;
+    // cost on input difference wrt time
+    double cost_u_diff = 0;
+    for (int i = 0; i < N - 1; i++) {
+      auto u0 = result.GetSolution(gm_traj_opt.dircon->input(i));
+      auto u1 = result.GetSolution(gm_traj_opt.dircon->input(i + 1));
+      cost_u_diff += w_u_diff * (u0 - u1).dot(u0 - u1);
+    }
+    total_cost += cost_u_diff;
+    cout << "cost_u_diff = " << cost_u_diff << endl;
+    // add cost on joint position
+    double cost_q_hip_roll = 0;
+    for (int i = 0; i < N; i++) {
+      auto q = result.GetSolution(gm_traj_opt.dircon->state(i).segment(7, 2));
+      cost_q_hip_roll += w_q_hip_roll * q.transpose() * q;
+    }
+    total_cost += cost_q_hip_roll;
+    cout << "cost_q_hip_roll = " << cost_q_hip_roll << endl;
+    double cost_q_hip_yaw = 0;
+    for (int i = 0; i < N; i++) {
+      auto q = result.GetSolution(gm_traj_opt.dircon->state(i).segment(9, 2));
+      cost_q_hip_yaw += w_q_hip_yaw * q.transpose() * q;
+    }
+    total_cost += cost_q_hip_yaw;
+    cout << "cost_q_hip_yaw = " << cost_q_hip_yaw << endl;
+    // add cost on quaternion
+    double cost_q_quat_xyz = 0;
+    for (int i = 0; i < N; i++) {
+      auto q = result.GetSolution(gm_traj_opt.dircon->state(i).segment(1, 3));
+      cost_q_quat_xyz += w_q_quat_xyz * q.transpose() * q;
+    }
+    total_cost += cost_q_quat_xyz;
+    cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
+
+    cout << "total_cost (only the nominal traj cost terms) = " << total_cost << endl;
+  }
 
   // For multithreading purpose. Indicate this function has ended.
   VectorXd thread_finished(1);

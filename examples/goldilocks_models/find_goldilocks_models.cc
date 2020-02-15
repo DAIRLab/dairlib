@@ -5,7 +5,8 @@
 #include <ctime>
 #include <queue>  // First in first out
 #include <utility>  // std::pair, std::make_pair
-#include <sys/stat.h>  // Checking the existence of a file
+#include <sys/stat.h>  // Check the existence of a file/folder
+#include <cstdlib>  // System call to create folder (and also parent directory)
 
 #include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
 #include "systems/goldilocks_models/file_utils.h"
@@ -87,6 +88,7 @@ DEFINE_int32(max_inner_iter, 1000, "Max iteration # for traj opt");
 DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
 DEFINE_double(h_step, -1, "The step size for outer loop");
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
+DEFINE_int32(n_node, -1, "# of nodes for traj opt");
 
 // Not sure why using the below function caused a problem.
 // Valgrind said: Conditional jump or move depends on uninitialised value(s)
@@ -128,8 +130,8 @@ void setCostWeight(double* Q, double* R, int robot_option) {
     *Q = 10;
     *R = 10;
   } else if (robot_option == 1) {
-    *Q = 10 * 12.5;
-    *R = 12.5;
+    *Q = 5 * 0.1;
+    *R = 0.1 * 0.01;
   }
 }
 void setRomDim(int* n_s, int* n_tau, int robot_option) {
@@ -240,6 +242,23 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     // stride_length = 0.314706; ground_incline = -0.0553895; *init_file = string("1_2_w.csv");
     // stride_length = 0.294027; ground_incline = -0.00499089; *init_file = string("1_4_w.csv");
     // stride_length = 0.27763; ground_incline = 0.0635912; *init_file = string("1_6_w.csv");
+  }
+}
+
+bool folder_exist (const std::string & pathname_string) {
+  // Convert string to char
+  const char * pathname = pathname_string.c_str();
+
+  struct stat info;
+  if( stat( pathname, &info ) != 0 ) {
+    printf( "cannot access %s\n", pathname );
+    return false;
+  } else if( info.st_mode & S_IFDIR ) {
+    printf( "%s is a directory\n", pathname );
+    return true;
+  } else {
+    printf( "%s is no directory\n", pathname );
+    return false;
   }
 }
 
@@ -723,27 +742,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   if (FLAGS_is_multithread) {
-    cout << "If you intend to use multiple threads, "
-         "make sure that you have built this file with "
-         "--config=snopt_fortran flag.\n"
-         "That is, you have bazel build --config=snopt_fortran [location]\n"
-         "Also, in .bazelrc file, have the following code\n"
-         "    ```\n"
-         "    #build --define=WITH_SNOPT=ON\n"
-         "    build:snopt_fortran --define=WITH_SNOPT_FORTRAN=ON\n"
-         "    ```\n"
-         "Lastly, make sure that there is no thread_finished file in data folder"
-         ".\nProceed? (Y/N)\n";
-    char answer[1];
-    cin >> answer;
-    if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-      cout << "Ending the program.\n";
-      return 0;
-    } else {
-      cout << "Continue constructing the problem...\n\n";
-    }
-  }
-  if (FLAGS_is_multithread) {
     cout << "Make sure that you turned off snopt log and constraint jacobian "
          "writing.\nProceed? (Y/N)\n";
     char answer[1];
@@ -754,20 +752,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
     } else {
       cout << "Continue constructing the problem...\n";
     }
-  }
-
-  if (FLAGS_robot_option == 0) {
-    cout << "Make sure to turn off scaling in dircon (TURN OFF the hackings!). (Y/N)\n";
-  } else if (FLAGS_robot_option == 1) {
-    cout << "Make sure to turn on scaling in dircon. (Y/N)\n";
-  }
-  char answer[1];
-  cin >> answer;
-  if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-    cout << "Ending the program.\n";
-    return 0;
-  } else {
-    cout << "Continue constructing the problem...\n\n";
   }
 
   // Create MBP
@@ -784,11 +768,35 @@ int findGoldilocksModels(int argc, char* argv[]) {
   std::default_random_engine e2(randgen2());
 
   // Files parameters
-  const string dir = "examples/goldilocks_models/find_models/data/robot_" +
+  /*const string dir = "examples/goldilocks_models/find_models/data/robot_" +
+      to_string(FLAGS_robot_option) + "/";*/
+  const string dir = "../dairlib_data/goldilocks_models/find_models/robot_" +
                      to_string(FLAGS_robot_option) + "/";
   string init_file = FLAGS_init_file;
   // init_file = "w0_with_z.csv";
   string prefix = "";
+  if (!folder_exist(dir)) {
+    cout << dir
+         << " doesn't exsit. We will create the folder.\nProceed? (Y/N)\n";
+    char answer[1];
+    cin >> answer;
+    if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
+      cout << "Ending the program.\n";
+      return 0;
+    }
+
+    // Creating a directory
+    // This method probably only works in Linux/Unix?
+    // See: https://codeyarns.com/2014/08/07/how-to-create-directory-using-c-on-linux/
+    // It will create parent directories as well.
+    std::string string_for_system_call = "mkdir -p " + dir;
+    if (system(string_for_system_call.c_str()) == -1) {
+      printf("Error creating directory!n");
+      return 0;
+    } else {
+      cout << "This folder has been created: " << dir << endl;
+    }
+  }
 
   // Parameters for tasks (stride length and ground incline)
   cout << "\nTasks settings:\n";
@@ -889,7 +897,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "# of reun after finding a solution = " << n_rerun << endl;
   cout << "Failure rate threshold = " << fail_threshold << endl;
 
-  // Paramters for the inner loop optimization
+  // Parameters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
   double Q = 0; // Cost on velocity
   double R = 0;  // Cost on input effort
@@ -898,8 +906,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_robot_option == 0) {
     n_node = 20;
   } else if (FLAGS_robot_option == 1) {
-    n_node = 24;
+    n_node = 20;
   }
+  if (FLAGS_n_node > 0) n_node = FLAGS_n_node;
   cout << "\nOptimization setting (inner loop):\n";
   cout << "max_inner_iter = " << max_inner_iter << endl;
   cout << "major_optimality_tolerance = " << FLAGS_major_feasibility_tol << endl;
@@ -907,10 +916,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "n_node = " << n_node << endl;
   if (FLAGS_robot_option == 1) {
     // If the node density is too low, it's harder for SNOPT to converge well.
-    double max_distance_per_node = 0.2 / 16;
+    // The ratio 0.2/16 is fine for snopt. Loosen it to 0.25. Hope it's fine.
+    double max_distance_per_node = 0.25 / 16;
     DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
   }
-
 
   // Reduced order model parameters
   cout << "\nReduced-order model setting:\n";
@@ -1203,7 +1212,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                           previous_iter_is_success, has_been_all_success,
                           FLAGS_is_debug);
 
-          // Trajectory optimization with fixed model paramters
+          // Trajectory optimization with fixed model parameters
           string string_to_be_print = "Adding sample #" + to_string(sample) +
                                       " to thread #" + to_string(availible_thread_idx.front()) + "...\n";
           // cout << string_to_be_print;

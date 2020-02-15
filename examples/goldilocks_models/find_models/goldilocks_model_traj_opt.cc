@@ -63,6 +63,14 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     //                                false,
     //                                robot_option);
 
+    // Constraint scaling
+    // TODO: need to tune scaling
+    std::unordered_map<int, double> constraint_scale_map;
+    for (int j = 0; j < n_sDDot; j++) {
+      constraint_scale_map.insert(std::pair<int, double>(j, 0.1));
+    }
+    dynamics_constraint_at_head->SetConstraintScaling(constraint_scale_map);
+
     // Add dynamics constraint for all segments (between knots)
     int N_accum = 0;
     for (unsigned int i = 0; i < num_time_samples.size() ; i++) {

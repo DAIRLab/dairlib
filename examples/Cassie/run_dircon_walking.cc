@@ -391,8 +391,8 @@ void DoMain(double duration, int max_iter, string data_directory,
 
   // Set up options
   std::vector<DirconOptions> options_list;
-  options_list.push_back(DirconOptions(ls_dataset.countConstraints(), &plant));
-  options_list.push_back(DirconOptions(rs_dataset.countConstraints(), &plant));
+  options_list.push_back(DirconOptions(ls_dataset.countConstraints(), plant));
+  options_list.push_back(DirconOptions(rs_dataset.countConstraints(), plant));
 
   if (is_disable_kin_constraint_at_last_node) {
     options_list[1].setSinglePeriodicEndNode(true);

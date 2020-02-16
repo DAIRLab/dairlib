@@ -160,7 +160,8 @@ void extractResult(VectorXd& w_sol,
                    bool extend_model,
                    bool is_add_tau_in_cost,
                    int batch,
-                   int robot_option) {
+                   int robot_option,
+                   vector<DirconKinematicDataSet<double>*> dataset_list) {
   //
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
@@ -222,6 +223,18 @@ void extractResult(VectorXd& w_sol,
 
   // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt, result, 1e-5);
   // cout << "constraint_satisfied = " << constraint_satisfied << endl;
+
+  // Store time, state, and its derivatives for cubic spline reconstruction
+  VectorXd t_cubic_spline;
+  MatrixXd x_cubic_spline;
+  MatrixXd xdot_cubic_spline;
+  gm_traj_opt.ConstructStateCubicSplineInfo(
+      result, plant, num_time_samples, dataset_list, &t_cubic_spline,
+      &x_cubic_spline, &xdot_cubic_spline);
+  writeCSV(directory + prefix + string("t_cubic_spline.csv"), t_cubic_spline);
+  writeCSV(directory + prefix + string("x_cubic_spline.csv"), x_cubic_spline);
+  writeCSV(directory + prefix + string("xdot_cubic_spline.csv"),
+           xdot_cubic_spline);
 
   // Store the time, state, and input at knot points
   VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);
@@ -1311,7 +1324,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                 is_get_nominal, is_zero_touchdown_impact,
                 extend_model, is_add_tau_in_cost,
                 batch,
-                robot_option);
+                robot_option,
+                dataset_list);
   postProcessing(w_sol, gm_traj_opt, result, elapsed,
                  num_time_samples, N,
                  plant, plant_autoDiff,
@@ -1942,7 +1956,8 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                 is_get_nominal, is_zero_touchdown_impact,
                 extend_model, is_add_tau_in_cost,
                 batch,
-                robot_option);
+                robot_option,
+                dataset_list);
   postProcessing(w_sol, gm_traj_opt, result, elapsed,
                  num_time_samples, N,
                  plant, plant_autoDiff,

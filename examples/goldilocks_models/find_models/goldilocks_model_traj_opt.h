@@ -34,32 +34,32 @@
 #include "examples/goldilocks_models/find_models/kinematics_constraint.h"
 #include "examples/goldilocks_models/find_models/dynamics_constraint.h"
 
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using Eigen::Matrix3Xd;
+using std::cout;
+using std::endl;
+using std::map;
+using std::string;
+using std::vector;
+
 using drake::VectorX;
-using drake::systems::trajectory_optimization::MultipleShooting;
-using drake::trajectories::PiecewisePolynomial;
+using drake::geometry::SceneGraph;
+using drake::multibody::Body;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::solvers::Binding;
 using drake::solvers::Constraint;
 using drake::solvers::Cost;
-using drake::solvers::VectorXDecisionVariable;
+using drake::solvers::MathematicalProgramResult;
 using drake::solvers::MatrixXDecisionVariable;
-using drake::symbolic::Variable;
+using drake::solvers::VectorXDecisionVariable;
 using drake::symbolic::Expression;
-using std::vector;
-using std::cout;
-using std::endl;
-using std::string;
-using std::map;
-
-using drake::multibody::MultibodyPlant;
-using drake::geometry::SceneGraph;
-using drake::multibody::Body;
-using drake::multibody::Parser;
+using drake::symbolic::Variable;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
-
+using drake::systems::trajectory_optimization::MultipleShooting;
+using drake::trajectories::PiecewisePolynomial;
+using Eigen::Matrix3Xd;
+using Eigen::MatrixXd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -100,6 +100,14 @@ class GoldilocksModelTrajOpt {
   // std::vector<Binding<Constraint>> dynamics_constraint_at_tail_bindings;
 
   std::vector<Binding<Cost>> tau_cost_bindings;
+
+  void ConstructStateCubicSplineInfo(
+      const MathematicalProgramResult& result,
+      const MultibodyPlant<double>& plant,
+      const std::vector<int>& num_time_samples,
+      vector<DirconKinematicDataSet<double>*> constraints,
+      Eigen::VectorXd* times, Eigen::MatrixXd* states,
+      Eigen::MatrixXd* derivatives) const;
 
  private:
   int num_knots_;

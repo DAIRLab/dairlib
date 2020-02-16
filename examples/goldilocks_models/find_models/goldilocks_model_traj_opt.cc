@@ -111,6 +111,54 @@ GoldilocksModelTrajOpt::reduced_model_input(int index, int n_tau) const {
 //   return s_vars_.segment(index * n_s, n_s);
 // }
 
+// (This is modified from HybridDircon::ReconstructStateTrajectory)
+// Instead of returning a trajectory class, we
+// create time, state and its derivatives required for reconstructing the cubic
+// spline
+void GoldilocksModelTrajOpt::ConstructStateCubicSplineInfo(
+    const MathematicalProgramResult& result,
+    const MultibodyPlant<double>& plant,
+    const std::vector<int>& num_time_samples,
+    vector<DirconKinematicDataSet<double>*> constraints, Eigen::VectorXd* times,
+    Eigen::MatrixXd* states, Eigen::MatrixXd* derivatives) const {
+  int num_modes = num_time_samples.size();
+
+  int N = 0;
+  for (uint i = 0; i < num_time_samples.size(); i++) N += num_time_samples[i];
+  N -= num_time_samples.size() - 1;  // because of overlaps between modes
+
+  VectorXd times_all(dircon->GetSampleTimes(result));
+  times->resize(N + num_modes - 1);
+
+  states->resize(plant.num_positions() + plant.num_velocities(),
+                 N + num_modes - 1);
+  derivatives->resize(plant.num_positions() + plant.num_velocities(),
+                      N + num_modes - 1);
+  MatrixXd inputs(plant.num_actuators(), N + num_modes - 1);
+
+  int mode_start = 0;
+  for (int i = 0; i < num_modes; i++) {
+    for (int j = 0; j < num_time_samples[i]; j++) {
+      int k = mode_start + j + i;
+      int k_data = mode_start + j;
+      (*times)(k) = times_all(k_data);
+
+      // False timestep to match velocities
+      if (i > 0 && j == 0) {
+        (*times)(k) += +1e-6;
+      }
+      VectorX<double> xk = result.GetSolution(dircon->state_vars_by_mode(i, j));
+      VectorX<double> uk = result.GetSolution(dircon->input(k_data));
+      states->col(k) = xk;
+      inputs.col(k) = uk;
+      auto context = multibody::createContext(plant, xk, uk);
+      constraints[i]->updateData(*context, result.GetSolution(dircon->force(i, j)));
+      derivatives->col(k) =
+          drake::math::DiscardGradient(constraints[i]->getXDot());
+    }
+    mode_start += num_time_samples[i] -1;
+  }
+}
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

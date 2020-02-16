@@ -100,7 +100,8 @@ void extractResult(VectorXd& w_sol,
                    bool extend_model,
                    bool is_add_tau_in_cost,
                    int batch,
-                   int robot_option);
+                   int robot_option,
+                   vector<DirconKinematicDataSet<double>*> dataset_list);
 void postProcessing(const VectorXd& w_sol,
                     GoldilocksModelTrajOpt& gm_traj_opt,
                     const MathematicalProgramResult& result,

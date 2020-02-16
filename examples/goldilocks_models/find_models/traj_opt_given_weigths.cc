@@ -1890,7 +1890,8 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     setInitialGuessFromFile(directory, init_file, gm_traj_opt);
   } else {
     // Do inverse kinematics to get q initial guess
-    vector<VectorXd> q_seed = GetCassieInitGuessForQ(N, stride_length, plant);
+    vector<VectorXd> q_seed =
+        GetCassieInitGuessForQ(N, stride_length, ground_incline, plant);
     // Do finite differencing to get v initial guess
     vector<VectorXd> v_seed = GetCassieInitGuessForV(
                                 q_seed, duration / (N - 1), plant);

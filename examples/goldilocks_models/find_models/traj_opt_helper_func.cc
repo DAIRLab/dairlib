@@ -61,8 +61,8 @@ namespace dairlib {
 namespace goldilocks_models {
 
 // Do inverse kinematics to get configuration guess
-vector<VectorXd> GetCassieInitGuessForQ(int N,
-                                        double stride_length,
+vector<VectorXd> GetCassieInitGuessForQ(int N, double stride_length,
+                                        double ground_incline,
                                         const MultibodyPlant<double>& plant) {
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
@@ -98,12 +98,13 @@ vector<VectorXd> GetCassieInitGuessForQ(int N,
     Vector3d pelvis_pos(stride_length * i / (N - 1),
                         0.0,
                         1.0);
-    Vector3d stance_toe_pos(stride_length / 2,
-                            0.12,
-                            0.05);
-    Vector3d swing_toe_pos(-stride_length / 2 + 2 * stride_length * i / (N - 1),
-                           -0.12,
-                           0.05 + 0.1 * (-abs((i - N / 2.0) / (N / 2.0)) + 1));
+    double stance_toe_pos_x = stride_length / 2;
+    Vector3d stance_toe_pos(stance_toe_pos_x, 0.12,
+                            0.05 + tan(-ground_incline) * stance_toe_pos_x);
+    double swing_toe_pos_x = -stride_length / 2 + 2 * stride_length * i / (N - 1);
+    Vector3d swing_toe_pos(swing_toe_pos_x, -0.12,
+                           0.05 + 0.1 * (-abs((i - N / 2.0) / (N / 2.0)) + 1) +
+                               tan(-ground_incline) * swing_toe_pos_x);
     // cout << "swing foot height = " <<
     //      0.05 + 0.1 * (-abs((i - N / 2.0) / (N / 2.0)) + 1);
 
@@ -161,7 +162,8 @@ vector<VectorXd> GetCassieInitGuessForQ(int N,
       SceneGraph<double>& scene_graph_ik = *builder_ik.AddSystem<SceneGraph>();
       scene_graph_ik.set_name("scene_graph_ik");
       MultibodyPlant<double> plant_ik(0.0);
-      multibody::addTerrain(&plant_ik, &scene_graph_ik, .8, .8);
+      Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
+      multibody::addTerrain(&plant_ik, &scene_graph_ik, .8, .8, ground_normal);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
         FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");

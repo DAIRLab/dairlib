@@ -50,8 +50,8 @@ namespace dairlib {
 namespace goldilocks_models {
 
 // Do inverse kinematics to get configuration guess
-vector<VectorXd> GetCassieInitGuessForQ(int N,
-                                        double stride_length,
+vector<VectorXd> GetCassieInitGuessForQ(int N, double stride_length,
+                                        double ground_incline,
                                         const MultibodyPlant<double>& plant);
 // Get v by finite differencing q
 vector<VectorXd> GetCassieInitGuessForV(const vector<VectorXd>& q_seed,

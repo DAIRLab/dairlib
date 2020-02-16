@@ -803,23 +803,29 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int N_sample_sl = FLAGS_N_sample_sl;
   int N_sample_gi = FLAGS_N_sample_gi;
   int N_sample = N_sample_sl * N_sample_gi;  // 1;
-  double delta_stride_length = 0.03 / 2;
-  double stride_length_0 = 0.3;
-  if (FLAGS_robot_option == 1) {
-    delta_stride_length = 0.033;
+  double delta_stride_length;
+  double stride_length_0;
+  if (FLAGS_robot_option == 0) {
+    delta_stride_length = 0.03 / 2;
+    stride_length_0 = 0.3;
+  } else if (FLAGS_robot_option == 1) {
+    delta_stride_length = 0.1 * 2 / 3; // 0.033;
     stride_length_0 = 0.2;  //0.15
   }
-  double delta_ground_incline = 0.1 / 2;
+  double delta_ground_incline;
   double ground_incline_0 = 0;
-  if (FLAGS_robot_option == 1) {
-    delta_ground_incline = 0.08;
+  if (FLAGS_robot_option == 0) {
+    delta_ground_incline = 0.1;
+  } else if (FLAGS_robot_option == 1) {
+    delta_ground_incline = 0.1 * 2 / 3; // 0.08;
   }
-  double duration;
+  double duration = 0.4;
   if (FLAGS_robot_option == 0) {
     duration = 0.746;  // Fix the duration now since we add cost ourselves
   } else if (FLAGS_robot_option == 1) {
-    duration = 0.4;
+    duration = 0.4; // 0.4;
   }
+  cout << "duration = " << duration << endl;
   DRAKE_DEMAND(N_sample_sl % 2 == 1);
   DRAKE_DEMAND(N_sample_gi % 2 == 1);
   cout << "N_sample_sl = " << N_sample_sl << endl;

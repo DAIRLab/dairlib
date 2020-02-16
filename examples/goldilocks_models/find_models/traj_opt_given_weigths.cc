@@ -1972,7 +1972,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                  batch,
                  robot_option);
 
-  bool is_print_for_debugging = true;
+  bool is_print_for_debugging = false;
   if (is_print_for_debugging) {
     // Print the solution
 //    VectorXd z = result.GetSolution(gm_traj_opt.dircon->decision_variables());

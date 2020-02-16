@@ -171,15 +171,18 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 // Position constraint of a body origin in one dimension (x, y, or z)
 class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
  public:
-  OneDimBodyPosConstraint(const MultibodyPlant<double>* plant, string body_name,
+  OneDimBodyPosConstraint(const MultibodyPlant<double>* plant,
+                          const string& body_name,
+                          const Vector3d& point_wrt_body,
                           const Eigen::Matrix3d& rot_mat, int xyz_idx,
                           double lb, double ub)
       : DirconAbstractConstraint<double>(
-      1, plant->num_positions(), VectorXd::Ones(1) * lb,
-      VectorXd::Ones(1) * ub,
-      body_name + "_constraint_" + std::to_string(xyz_idx)),
+            1, plant->num_positions(), VectorXd::Ones(1) * lb,
+            VectorXd::Ones(1) * ub,
+            body_name + "_constraint_" + std::to_string(xyz_idx)),
         plant_(plant),
         body_(plant->GetBodyByName(body_name)),
+        point_wrt_body_(point_wrt_body),
         xyz_idx_(xyz_idx),
         rot_mat_(rot_mat) {}
   ~OneDimBodyPosConstraint() override = default;
@@ -194,7 +197,7 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
 
     VectorX<double> pt(3);
     this->plant_->CalcPointsPositions(*context, body_.body_frame(),
-                                      Vector3d::Zero(), plant_->world_frame(),
+                                      point_wrt_body_, plant_->world_frame(),
                                       &pt);
     *y = (rot_mat_ * pt).segment(xyz_idx_, 1);
   };
@@ -202,6 +205,7 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
  private:
   const MultibodyPlant<double>* plant_;
   const drake::multibody::Body<double>& body_;
+  const Vector3d point_wrt_body_;
   // xyz_idx_ takes value of 0, 1 or 2.
   // 0 is x, 1 is y and 2 is z component of the position vector.
   const int xyz_idx_;

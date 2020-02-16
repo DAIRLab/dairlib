@@ -1723,10 +1723,10 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 
   // toe position constraint in y direction (avoid leg crossing)
   auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_left", MatrixXd::Identity(3, 3), 1, 0.05,
+      &plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3), 1, 0.05,
       std::numeric_limits<double>::infinity());
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", MatrixXd::Identity(3, 3), 1,
+      &plant, "toe_right", Vector3d::Zero(),MatrixXd::Identity(3, 3), 1,
       -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
   /*std::unordered_map<int, double> odbp_constraint_scale;
@@ -1738,16 +1738,39 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
     trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
   }
-  // toe height constraint (avoid foot scuffing)
+  // toe height constraint at mid stance (avoid foot scuffing)
   Vector3d z_hat(0, 0, 1);
   Eigen::Quaterniond q;
   q.setFromTwoVectors(z_hat, ground_normal);
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
-  auto right_foot_constraint_z = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", T_ground_incline, 2, 0.1,
+/*  auto right_foot_constraint_z0 = std::make_shared<OneDimBodyPosConstraint>(
+      &plant, "toe_right", Vector3d::Zero(), T_ground_incline, 2, 0.1,
       std::numeric_limits<double>::infinity());
   auto x_mid = trajopt->state(num_time_samples[0] / 2);
-  trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
+  trajopt->AddConstraint(right_foot_constraint_z0, x_mid.head(n_q));*/
+
+  // testing -- swing foot contact point height constraint
+  auto right_foot_constraint_z1 = std::make_shared<OneDimBodyPosConstraint>(
+      &plant, "toe_right", pt_front_contact, T_ground_incline, 2,
+      0 , std::numeric_limits<double>::infinity());
+  auto right_foot_constraint_z2 = std::make_shared<OneDimBodyPosConstraint>(
+      &plant, "toe_right", pt_rear_contact, T_ground_incline, 2,
+      0 , std::numeric_limits<double>::infinity());
+  for (int index = 1; index < num_time_samples[0] - 1; index++) {
+    auto x = trajopt->state(index);
+    trajopt->AddConstraint(right_foot_constraint_z1, x.head(n_q));
+    trajopt->AddConstraint(right_foot_constraint_z2, x.head(n_q));
+  }
+
+  // testing -- lock the swing toe joint position (otherwise it shakes too much)
+  // Somehow the swing toe doesn't shake that much anymore after adding
+  // constraint such that the two contact points has to be above the ground?
+  /*auto d = trajopt->NewContinuousVariables(1, "d_toe");
+  for (int index = 0; index < num_time_samples[0] - 1; index++) {
+    auto x0 = trajopt->state(index);
+    auto x1 = trajopt->state(index + 1);
+    trajopt->AddLinearConstraint(x0(n_q - 1) + d(0) == x1(n_q - 1));
+  }*/
 
   // Testing -- constraint on initial floating base
   if (true /*&& ground_incline == 0*/) {

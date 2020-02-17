@@ -114,6 +114,10 @@ class HybridDircon
     return impulse_vars_[mode];
   }
 
+  const std::vector<int> mode_lengths() const {
+    return this->mode_lengths_;
+  }
+
   const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
   v_post_impact_vars_by_mode(int mode) const;
 

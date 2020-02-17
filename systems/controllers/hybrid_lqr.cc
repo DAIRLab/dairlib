@@ -116,21 +116,16 @@ HybridLQRController::HybridLQRController(
                           drake::Value<drake::lcmt_contact_results_for_viz>{})
                       .get_index();
 
-  //  DeclarePerStepDiscreteUpdateEvent(
-  //      &HybridLQRController::DiscreteVariableUpdate);
-  //  fsm_index_ = this->DeclareDiscreteState(1);
-
   l_trajs_ = std::vector<std::unique_ptr<drake::systems::DenseOutput<double>>>(
       contact_info.size());
   p_t_ = std::vector<std::unique_ptr<drake::systems::DenseOutput<double>>>(
       contact_info.size());
-  //  p_traj_ = std::vector<PiecewisePolynomial<double>*>(contact_info.size());
 
   MatrixXd S_f;
   if (using_min_coords_) {
     if (!calcP) {
-      const LcmTrajectory& P_traj = LcmTrajectory(LcmTrajectory::loadFromFile(
-          "../projects/hybrid_lqr/saved_trajs/P_traj"));
+      const LcmTrajectory& P_traj =
+          LcmTrajectory("../projects/hybrid_lqr/saved_trajs/P_traj");
 
       const LcmTrajectory::Trajectory& P_mode0 = P_traj.getTrajectory("P0");
       const LcmTrajectory::Trajectory& P_mode1 = P_traj.getTrajectory("P1");
@@ -497,6 +492,21 @@ MatrixXd HybridLQRController::getSAtTimestamp(double t,
   return L * L.transpose();
 }
 
+bool duringImpact(const drake::lcmt_contact_results_for_viz& contact_info) {
+  double threshold = 400;
+  if (contact_info.num_point_pair_contacts == 2) {
+    return (abs(contact_info.point_pair_contact_info[0].contact_force[2]) >
+                threshold ||
+            abs(contact_info.point_pair_contact_info[1].contact_force[2]) >
+                threshold);
+  } else if (contact_info.num_point_pair_contacts == 1) {
+    return abs(contact_info.point_pair_contact_info[0].contact_force[2]) >
+           threshold;
+  } else {
+    return false;
+  }
+}
+
 void HybridLQRController::CalcControl(
     const drake::systems::Context<double>& context,
     TimestampedVector<double>* output) const {
@@ -504,12 +514,18 @@ void HybridLQRController::CalcControl(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   const BasicVector<double>* fsm_state =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+  auto* contact_info = this->EvalAbstractInput(context, contact_port_);
+  const auto& contact_info_msg =
+      contact_info->get_value<drake::lcmt_contact_results_for_viz>();
 
   double timestamp = current_state->get_timestamp();
   auto current_time = static_cast<double>(timestamp);
   int mode = (int)fsm_state->get_value()(0);
   VectorXd u_sol(n_u_);
-  if (current_time == 0) {
+  if (current_time < 1e-7) {
+    u_sol = VectorXd::Zero(n_u_);
+  } else if (duringImpact(contact_info_msg)) {
+    std::cout << "During impact: " << std::endl;
     u_sol = VectorXd::Zero(n_u_);
   } else {
     VectorXd x_error =
@@ -527,26 +543,20 @@ void HybridLQRController::CalcControl(
     MatrixXd S = getSAtTimestamp(current_time, mode);
     if (using_min_coords_) {
       MatrixXd P = calcMinimalCoordBasis(current_time, mode);
-      //      cout << "mode: " << fsm_state->get_value()(0) << endl;
-      //      cout << "P at time t: " << current_time << "\n" << P << endl;
-      //      cout << "P PT : " << P * P.transpose() << endl;
-      //      K = -R_.inverse() * B_linear.transpose() * S * P
       MatrixXd K_minimal = -R_.inverse() * (P * B_linear).transpose() * S;
-      //      cout << "K cols: " << K_minimal.cols() << "K rows: " <<
-      //      K_minimal.rows()
-      //           << endl;
       u_sol = K_minimal * (P * x_error);
     } else {
       MatrixXd K = -R_.inverse() * B_linear.transpose() * S;
       u_sol = K * (x_error);
     }
   }
+
   for (int i = 0; i < u_sol.size(); ++i) {  // cap the actuator inputs
     u_sol(i) = std::min<double>(300, std::max<double>(-300, u_sol(i)));
   }
   output->SetDataVector(u_sol);
   output->set_timestamp(current_state->get_timestamp());
-}
+}  // namespace dairlib::systems
 
 void HybridLQRController::CalcCost(
     const drake::systems::Context<double>& context,

@@ -117,8 +117,8 @@ int doMain(int argc, char* argv[]) {
   //  const LcmTrajectory& loaded_traj =
   //  LcmTrajectory(LcmTrajectory::loadFromFile(
   //      "../projects/hybrid_lqr/saved_trajs/2_step_walking_from_rest"));
-  const LcmTrajectory& loaded_traj = LcmTrajectory(LcmTrajectory::loadFromFile(
-      "../projects/hybrid_lqr/saved_trajs/2_step_walking_1_20"));
+  const LcmTrajectory& loaded_traj = LcmTrajectory(
+      "../projects/hybrid_lqr/saved_trajs/2_step_walking_1_20");
   std::cout << "Saved trajectory names: " << std::endl;
   for (auto name : loaded_traj.getTrajectoryNames()) {
     std::cout << name << std::endl;

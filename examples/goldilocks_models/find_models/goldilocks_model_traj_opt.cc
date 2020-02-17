@@ -63,30 +63,41 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     //                                false,
     //                                robot_option);
 
+    // variable scaling
+    // TODO: need to tune variable as well.
+
     // Constraint scaling
-    // TODO: need to tune scaling
     std::unordered_map<int, double> constraint_scale_map;
-    for (int j = 0; j < n_sDDot; j++) {
-      constraint_scale_map.insert(std::pair<int, double>(j, 0.1));
+    if (n_sDDot == 0) {
+      // no constraint, so we don't need to scale
+    } else if (robot_option == 0) {
+      // no need to scale for five-link robot case, but can add it.
+      // TODO: add constraint scaling for five link robot
+    } else if ((robot_option == 1) && (n_sDDot == 2)) {
+      constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 26000.0));
+      constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 3200.0));
+    } else {
+      // The scaling of others hasn't tuned yet
+      DRAKE_DEMAND(false);
     }
     dynamics_constraint_at_head->SetConstraintScaling(constraint_scale_map);
 
     // Add dynamics constraint for all segments (between knots)
     int N_accum = 0;
-    for (unsigned int i = 0; i < num_time_samples.size() ; i++) {
+    for (unsigned int i = 0; i < num_time_samples.size(); i++) {
       // cout << "i = " << i << endl;
       // cout << "N_accum = " << N_accum << endl;
-      for (int j = 0; j < num_time_samples[i] - 1 ; j++) {
+      for (int j = 0; j < num_time_samples[i] - 1; j++) {
         // cout << "    j = " << j << endl;
         auto x_at_knot_k = dircon->state_vars_by_mode(i, j);
         auto tau_at_knot_k = reduced_model_input(N_accum + j, n_tau);
         auto x_at_knot_kplus1 = dircon->state_vars_by_mode(i, j + 1);
         auto tau_at_knot_kplus1 = reduced_model_input(N_accum + j + 1, n_tau);
         auto h_btwn_knot_k_iplus1 = dircon->timestep(N_accum + j);
-        dynamics_constraint_at_head_bindings.push_back(dircon->AddConstraint(
-              dynamics_constraint_at_head, {x_at_knot_k, tau_at_knot_k,
-                                            x_at_knot_kplus1, tau_at_knot_kplus1, h_btwn_knot_k_iplus1
-                                           }));
+        dynamics_constraint_at_head_bindings.push_back(
+            dircon->AddConstraint(dynamics_constraint_at_head,
+                                  {x_at_knot_k, tau_at_knot_k, x_at_knot_kplus1,
+                                   tau_at_knot_kplus1, h_btwn_knot_k_iplus1}));
         // dynamics_constraint_at_tail_bindings.push_back(dircon->AddConstraint(
         //   dynamics_constraint_at_tail, {x_at_knot_k, tau_at_knot_k,
         //     x_at_knot_kplus1, tau_at_knot_kplus1, h_btwn_knot_k_iplus1}));

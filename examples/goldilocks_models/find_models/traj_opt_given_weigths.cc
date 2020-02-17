@@ -1585,7 +1585,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   // Snopt settings
   /*cout << "WARNING: you are printing snopt log.\n";
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                           "../snopt.out");*/
+                           "../snopt_sample#"+to_string(batch)+".out");*/
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),

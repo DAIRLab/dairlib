@@ -60,7 +60,7 @@ DEFINE_string(init_file, "w0.csv", "Initial Guess for Trajectory Optimization");
 DEFINE_bool(is_newton, false, "Newton method or gradient descent");
 DEFINE_bool(is_stochastic, false, "Random tasks or fixed tasks");
 DEFINE_bool(is_debug, false, "Debugging or not");
-DEFINE_bool(start_with_adjusting_stepsize, false, "");
+DEFINE_bool(start_program_with_adjusting_stepsize, false, "");
 DEFINE_bool(extend_model, false, "Extend the model in iteration # iter_start "
             "which is not equal to 0.");
 DEFINE_int32(extend_model_iter, -1, "The starting iteration #");
@@ -224,7 +224,7 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
 
   // Testing:
   if (is_to_improve_solution) {
-    // cout << "testing with manual init file: ";
+    cout << "testing with manual init file: ";
     *init_file = to_string(iter) +  "_" +
                  to_string(sample) + string("_w.csv");
     cout << *init_file << endl;
@@ -1057,8 +1057,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     step_direction = step_direction_mat.col(0);
   }
 
-  bool start_with_adjusting_stepsize = FLAGS_start_with_adjusting_stepsize;
-  if (start_with_adjusting_stepsize) {
+  bool start_program_with_adjusting_stepsize = FLAGS_start_program_with_adjusting_stepsize;
+  if (start_program_with_adjusting_stepsize) {
     MatrixXd prev_theta_s_mat =
       readCSV(dir + to_string(iter_start - 1) + string("_theta_s.csv"));
     MatrixXd prev_theta_sDDot_mat =
@@ -1164,9 +1164,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // Run trajectory optimization for different tasks first
     bool samples_are_success = true;
     bool a_sample_is_success = false;
-    if (start_with_adjusting_stepsize) {
+    if (start_program_with_adjusting_stepsize) {
       samples_are_success = false;
-      start_with_adjusting_stepsize = false;
+      start_program_with_adjusting_stepsize = false;
     } else {
       // Create vector of threads for multithreading
       vector<std::thread *> threads(std::min(CORES, n_sample));
@@ -1296,16 +1296,24 @@ int findGoldilocksModels(int argc, char* argv[]) {
           //   break;
           // }
           // If failure rate is higher than threshold, stop evaluating.
-          if ((has_been_all_success && (!samples_are_success)) || FLAGS_is_debug) {
+          if (has_been_all_success && (!samples_are_success)) {
             // Wait for the assigned threads to join, and then break;
             cout << failed_sample << " # of samples failed to find solution."
                  " Wait for all threads to join and stop current iteration.\n";
             waitForAllThreadsToJoin(&threads, &assigned_thread_idx, dir, iter);
             break;
           }
+          // If in debug mode, stop evaluating.
+          if (FLAGS_is_debug) {
+            // Wait for the assigned threads to join, and then break;
+            cout << "In debug mode. Wait for all threads to join and stop "
+                    "current iteration.\n";
+            waitForAllThreadsToJoin(&threads, &assigned_thread_idx, dir, iter);
+            break;
+          }
         }
       }  // while(sample < n_sample)
-    }  // end if-else (start_with_adjusting_stepsize)
+    }  // end if-else (start_program_with_adjusting_stepsize)
     if (FLAGS_is_debug) break;
 
     // cout << "Only run for 1 iteration. for testing.\n";

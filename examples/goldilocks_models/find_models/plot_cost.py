@@ -23,17 +23,22 @@ if len(sys.argv) == 3:
 n_sampel_sl = 3  # should be > 0
 n_sampel_gi = 3  # should be > 0
 batch_max = n_sampel_sl * n_sampel_gi
-delta_dist = 0.015
-min_dist = 0.3 - (n_sampel_sl - 1)/2.0
-delta_incline = 0.05
-min_incline = -0.05
+
+dist_0 = 0.2
+delta_dist = 0.033
+incline_0 = 0.0
+delta_incline = 0.033
 
 robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
-directory = 'data/robot_' + str(robot_option) + '/'
+# directory = 'data/robot_' + str(robot_option) + '/'
+directory = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/'
 
 # file_name = 'c.csv'
 file_name = 'c_without_tau.csv'
 
+# preprocess
+min_dist = dist_0 - delta_dist * (n_sampel_sl - 1)/2.0
+min_incline = incline_0 - delta_incline * (n_sampel_gi - 1)/2.0
 
 # get nomial cost
 nominal_cost = 0.0

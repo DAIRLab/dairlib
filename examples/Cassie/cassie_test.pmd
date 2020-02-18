@@ -30,12 +30,16 @@ group "1.simulated-robot" {
         exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=false --publish_state=true";
         host = "localhost";
     }
+    cmd "1.simulator (dispatched) for OSC controller" {
+        exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=true --publish_state=false --publish_rate=200";
+        host = "localhost";
+    }
     cmd "1.simulator (no dispatcher) for OSC controller" {
         exec = "bazel-bin/examples/Cassie/run_simple_sim --floating_base=true --publish_state=true --publish_rate=200";
         host = "localhost";
     }
     cmd "3.dispatcher-robot-in" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --floating_base=true";
         host = "localhost";
     }
     cmd "4.osc-walking-controller" {
@@ -77,7 +81,7 @@ group "3.cassie-robot" {
         host = "dair-cassie";
     }
     cmd "1.dispatcher-robot-in-real-robot" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3 --floating_base=true";
         host = "dair-cassie";
     }
     cmd "2.pd-controller-real-robot" {

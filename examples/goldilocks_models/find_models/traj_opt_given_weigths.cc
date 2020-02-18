@@ -1938,7 +1938,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     }
   }
 
-  // Printing
+  // Print variable scaling
   /*for (int i = 0; i < gm_traj_opt.dircon->decision_variables().size(); i++) {
     cout << gm_traj_opt.dircon->decision_variable(i) << ", ";
     cout << gm_traj_opt.dircon->decision_variable(i).get_id() << ", ";

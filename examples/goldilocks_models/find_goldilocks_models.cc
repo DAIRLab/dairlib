@@ -140,11 +140,11 @@ void setRomDim(int* n_s, int* n_tau, int robot_option) {
   } else if (robot_option == 1) {
   }
   // 2D -- lipm
-  *n_s = 2;
-  *n_tau = 0;
+//  *n_s = 2;
+//  *n_tau = 0;
   // 4D -- lipm + swing foot
-//  *n_s = 4;
-//  *n_tau = 2;
+  *n_s = 4;
+  *n_tau = 2;
 }
 void setRomBMatrix(MatrixXd* B_tau, int robot_option) {
   if (robot_option == 0) {
@@ -204,8 +204,8 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     *init_file = "0_" +
                  to_string(sample) + string("_w.csv");
   }
-  else if ((iter == 1) && rerun_current_iteration) {
-    *init_file = "1_" +
+  else if (rerun_current_iteration) {
+    *init_file = to_string(iter) +  "_" +
         to_string(sample) + string("_w.csv");
   }
   else if (!has_been_all_success && !rerun_current_iteration) {
@@ -221,10 +221,6 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     // *init_file = to_string(iter) +  "_" +
     //              to_string(sample) + string("_w.csv");
     // cout << *init_file << endl;
-  }
-  else if (!has_been_all_success && rerun_current_iteration) {
-    *init_file = to_string(iter) +  "_" +
-        to_string(sample) + string("_w.csv");
   }
   else if (iter == 1) {
     *init_file = string("0_0_w.csv");
@@ -758,7 +754,7 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     H_ext.block(nw_i, 0, nl_i, nw_i) = A_active_vec[sample];
     H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
 
-    MatrixXd inv_H_ext = MoorePenrosePseudoInverse(H_ext);
+    MatrixXd inv_H_ext = MoorePenrosePseudoInverse(H_ext, 1e-6);
 
     MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
     MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
@@ -1008,7 +1004,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
   double fail_threshold = FLAGS_fail_threshold;
-  const int method_to_solve_system_of_equations = 2;
+  const int method_to_solve_system_of_equations = 3;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
@@ -1570,9 +1566,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
                                    n_succ_sample, dir);
         // Print out elapsed time
         auto finish_time_extract = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed_extract =
+            finish_time_extract - start_time_extract;
         cout << "Time for extracting active (and independent rows) of A = "
-             << to_string((start_time_extract - finish_time_extract).count())
-             << endl;
+             << to_string(int(elapsed_extract.count())) << " seconds\n";
         cout << endl;
 
 
@@ -1639,9 +1636,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
                      n_succ_sample, dir);
         // Print out elapsed time
         auto finish_time_calc_w = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed_calc_w =
+            finish_time_calc_w - start_time_calc_w;
         cout << "Time for getting w in terms of theta = "
-             << to_string((start_time_calc_w - finish_time_calc_w).count())
-             << endl;
+             << to_string(int(elapsed_calc_w.count())) << " seconds\n";
         cout << endl;
 
 

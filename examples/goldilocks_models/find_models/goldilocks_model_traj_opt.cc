@@ -36,17 +36,6 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
   // when n_tau = 0.)
   tau_vars_ = dircon->NewContinuousVariables(n_tau * N, "tau");
 
-  // Add cost for the input tau
-  double w_tau = 1e-6;
-  if (is_add_tau_in_cost) {
-    for (int i = 0; i < N; i++) {
-      auto tau_i = reduced_model_input(i, n_tau);
-      tau_cost_bindings.push_back(
-          dircon->AddQuadraticCost(w_tau * MatrixXd::Identity(n_tau, n_tau),
-                                   VectorXd::Zero(n_tau), tau_i));
-    }
-  }
-
   // Constraints
   if (!is_get_nominal) {
     // Create dynamics constraint (pointer)
@@ -63,10 +52,8 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     //                                false,
     //                                robot_option);
 
-    // variable scaling
-    // TODO: need to tune variable as well.
-
     // Constraint scaling
+    // TODO: re-tune this after you remove at_head and at_tail
     std::unordered_map<int, double> constraint_scale_map;
     if (n_sDDot == 0) {
       // no constraint, so we don't need to scale
@@ -86,6 +73,36 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
       DRAKE_DEMAND(false);
     }
     dynamics_constraint_at_head->SetConstraintScaling(constraint_scale_map);
+
+    // variable scaling
+    // TODO: need to tune variable as well.
+    double tau1_scale = 26000.0;
+    double tau2_scale = 4000.0;
+    if ((robot_option == 1) && (n_sDDot == 4)) {
+      cout << "scale tau variables\n";
+      for (int i = 0; i < N; i++) {
+        auto tau_i = tau_vars_.segment(i * n_tau, n_tau);
+        dircon->SetVariableScaling(tau_i(0), tau1_scale);
+        dircon->SetVariableScaling(tau_i(1), tau2_scale);
+      }
+    }
+
+    // Add cost for the input tau
+    double w_tau = 1e-6;
+    if (is_add_tau_in_cost) {
+      for (int i = 0; i < N; i++) {
+        MatrixXd W = w_tau * MatrixXd::Identity(n_tau, n_tau);
+
+        if ((robot_option == 1) && (n_sDDot == 4)) {
+          W(0, 0) /= (tau1_scale * tau1_scale);
+          W(1, 1) /= (tau2_scale * tau2_scale);
+        }
+
+        auto tau_i = reduced_model_input(i, n_tau);
+        tau_cost_bindings.push_back(
+            dircon->AddQuadraticCost(W, VectorXd::Zero(n_tau), tau_i));
+      }
+    }
 
     // Add dynamics constraint for all segments (between knots)
     int N_accum = 0;

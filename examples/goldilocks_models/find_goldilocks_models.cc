@@ -85,7 +85,11 @@ DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
 
 DEFINE_double(major_feasibility_tol, 1e-4,
               "nonlinear constraint violation tol");
-DEFINE_int32(max_inner_iter, 1000, "Max iteration # for traj opt");
+DEFINE_int32(
+    max_inner_iter, 200,
+    "Max iteration # for traj opt. Sometimes, snopt takes very small steps "
+    "(TODO: find out why), so maybe it's better to stop at some iterations and "
+    "resolve again.");
 DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
 DEFINE_double(h_step, -1, "The step size for outer loop");
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4

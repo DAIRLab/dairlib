@@ -205,8 +205,8 @@ T DynamicsExpression::getFeature(const T & s, const T & ds) const {
     T feature(46);  // 1 + 1 + 8 + (8Choose2 + 8) = 1 + 1 + 8 + 36 = 46
     T first_element(1);
     if (s(1) == 0) {
-      cout << "here\n";
-      first_element << (9.80665 / (s(1) + 1e-8))*s(0); // avoid sigularity
+      cout << "here in dynamics_expression\n";
+      first_element << (9.80665 / (s(1) + 1e-8))*s(0); // avoid singularity
     }
     else
       first_element << (9.80665 / s(1))*s(0);

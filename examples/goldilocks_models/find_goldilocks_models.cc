@@ -139,16 +139,18 @@ void setRomDim(int* n_s, int* n_tau, int robot_option) {
   if (robot_option == 0) {
   } else if (robot_option == 1) {
   }
-  *n_s = 2;
-  *n_tau = 0;
+//  *n_s = 4;
+//  *n_tau = 2;
 }
 void setRomBMatrix(MatrixXd* B_tau, int robot_option) {
   if (robot_option == 0) {
   } else if (robot_option == 1) {
   }
   // *B_tau = MatrixXd::Identity(2, 2);
-  // (*B_tau)(2, 0) = 1;
-  // (*B_tau)(3, 1) = 1;
+  if (B_tau->rows() == 4) {
+    (*B_tau)(2, 0) = 1;
+    (*B_tau)(3, 1) = 1;
+  }
 }
 void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
                      int n_feature_s, int robot_option) {

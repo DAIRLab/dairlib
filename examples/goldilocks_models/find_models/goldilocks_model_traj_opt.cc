@@ -37,13 +37,13 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
   tau_vars_ = dircon->NewContinuousVariables(n_tau * N, "tau");
 
   // Add cost for the input tau
+  double w_tau = 1e-6;
   if (is_add_tau_in_cost) {
     for (int i = 0; i < N; i++) {
       auto tau_i = reduced_model_input(i, n_tau);
-      tau_cost_bindings.push_back(dircon->AddQuadraticCost(
-                                    MatrixXd::Identity(n_tau, n_tau),
-                                    VectorXd::Zero(n_tau),
-                                    tau_i));
+      tau_cost_bindings.push_back(
+          dircon->AddQuadraticCost(w_tau * MatrixXd::Identity(n_tau, n_tau),
+                                   VectorXd::Zero(n_tau), tau_i));
     }
   }
 
@@ -76,6 +76,11 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     } else if ((robot_option == 1) && (n_sDDot == 2)) {
       constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 26000.0));
       constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 3200.0));
+    } else if ((robot_option == 1) && (n_sDDot == 4)) {
+      constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 26000.0));
+      constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 3200.0));
+      constraint_scale_map.insert(std::pair<int, double>(2, 1.0 / 26000.0));
+      constraint_scale_map.insert(std::pair<int, double>(3, 1.0 / 4000.0));
     } else {
       // The scaling of others hasn't tuned yet
       DRAKE_DEMAND(false);

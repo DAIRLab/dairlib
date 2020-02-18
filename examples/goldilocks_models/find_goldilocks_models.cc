@@ -984,7 +984,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Without tau:
       //  1e-4: doesn't always decrease with a fixed task  // This is with  h_step / sqrt(norm_grad_cost(0));
       //  1e-5: barely increase with a fixed task   // This is with  h_step / sqrt(norm_grad_cost(0));
-      h_step = 1e-3;
+
+      // Both with and without tau (I believe)
+      // h_step = 1e-3;  // This is with h_step / norm_grad_cost_double. (and with old traj opt)
+      h_step = 1e-4;
     }
   }
   double eps_regularization = FLAGS_eps_regularization;
@@ -1568,7 +1571,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         auto finish_time_extract = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_extract =
             finish_time_extract - start_time_extract;
-        cout << "Time for extracting active (and independent rows) of A = "
+        cout << "Time spent on extracting active (and independent rows) of A: "
              << to_string(int(elapsed_extract.count())) << " seconds\n";
         cout << endl;
 
@@ -1638,7 +1641,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         auto finish_time_calc_w = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed_calc_w =
             finish_time_calc_w - start_time_calc_w;
-        cout << "Time for getting w in terms of theta = "
+        cout << "Time spent on getting w in terms of theta: "
              << to_string(int(elapsed_calc_w.count())) << " seconds\n";
         cout << endl;
 
@@ -1706,7 +1709,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         // Get gradient of the cost wrt theta (assume H_vec[sample] symmetric)
         cout << "Calculating gradient\n";
         VectorXd gradient_cost = VectorXd::Zero(theta.size());
-        for (int sample = 0; sample < n_succ_sample; sample++) {
+        for (sample = 0; sample < n_succ_sample; sample++) {
           gradient_cost += P_vec[sample].transpose() * b_vec[sample] / n_succ_sample;
           // gradient_cost +=
           // P_vec[sample].transpose() * (b_vec[sample] + H_vec[sample] * q_vec[sample]);
@@ -1717,7 +1720,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         // See your IOE611 lecture notes on page 7-17 to page 7-20
         // cout << "Getting Newton step\n";
         MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
-        for (int sample = 0; sample < n_succ_sample; sample++) {
+        for (sample = 0; sample < n_succ_sample; sample++) {
           Q_theta +=
             P_vec[sample].transpose() * H_vec[sample] * P_vec[sample] / n_succ_sample;
         }

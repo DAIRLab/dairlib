@@ -81,7 +81,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     if ((robot_option == 1) && (n_sDDot == 4)) {
       cout << "scale tau variables\n";
       for (int i = 0; i < N; i++) {
-        auto tau_i = tau_vars_.segment(i * n_tau, n_tau);
+        auto tau_i = reduced_model_input(i, n_tau);
         dircon->SetVariableScaling(tau_i(0), tau1_scale);
         dircon->SetVariableScaling(tau_i(1), tau2_scale);
       }

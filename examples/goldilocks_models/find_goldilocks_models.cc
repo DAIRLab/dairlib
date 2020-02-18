@@ -873,7 +873,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
     delta_stride_length = 0.015;
     stride_length_0 = 0.3;
   } else if (FLAGS_robot_option == 1) {
-    delta_stride_length = 0.066; // 0.066 might be too big;
+    if (FLAGS_is_stochastic) {
+      delta_stride_length = 0.066; // 0.066 might be too big;
+    } else {
+      delta_stride_length = 0.1;
+    }
     stride_length_0 = 0.2;  //0.15
   } else {
     DRAKE_DEMAND(false);
@@ -885,7 +889,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_robot_option == 0) {
     delta_ground_incline = 0.05;
   } else if (FLAGS_robot_option == 1) {
-    delta_ground_incline = 0.066; // 0.066 might be too big
+    if (FLAGS_is_stochastic) {
+      delta_ground_incline = 0.066; // 0.066 might be too big
+    } else {
+      delta_ground_incline = 0.08;
+    }
   } else {
     DRAKE_DEMAND(false);
     delta_ground_incline = 0;

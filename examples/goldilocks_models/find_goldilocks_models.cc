@@ -68,7 +68,8 @@ DEFINE_bool(is_manual_initial_theta, false,
             "Assign initial theta of our choice");
 DEFINE_bool(proceed_with_failure, false, "In the beginning, update theta even"
             "if there is a failed task");
-DEFINE_bool(previous_iter_is_success, true, "Is the previous iter successful?");
+DEFINE_bool(rerun_current_iteration, false,
+            "whether to re-run the current iteration or not");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
@@ -181,9 +182,9 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 
 void getInitFileName(string * init_file, const string & nominal_traj_init_file,
                      int iter, int sample, bool is_get_nominal,
-                     bool previous_iter_is_success, bool has_been_all_success,
+                     bool rerun_current_iteration, bool has_been_all_success,
                      bool is_debug) {
-  if (is_get_nominal && previous_iter_is_success) {
+  if (is_get_nominal && !rerun_current_iteration) {
     *init_file = nominal_traj_init_file;
 
     // Testing:
@@ -192,12 +193,16 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     //              to_string(sample) + string("_w.csv");
     // cout << *init_file << endl;
   }
-  else if (is_get_nominal && !previous_iter_is_success) {
+  else if (is_get_nominal && rerun_current_iteration) {
     // *init_file = string("0_0_w.csv");
     *init_file = "0_" +
                  to_string(sample) + string("_w.csv");
   }
-  else if (!has_been_all_success && previous_iter_is_success) {
+  else if ((iter == 1) && rerun_current_iteration) {
+    *init_file = "1_" +
+        to_string(sample) + string("_w.csv");
+  }
+  else if (!has_been_all_success && !rerun_current_iteration) {
     *init_file = string("0_0_w.csv");  // Use nominal traj
     // *init_file = string("");  // No initial guess for the first iter
     // *init_file = string("w0.csv");  // w0 as initial guess for the first iter
@@ -211,9 +216,10 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     //              to_string(sample) + string("_w.csv");
     // cout << *init_file << endl;
   }
-  else if (!has_been_all_success && !previous_iter_is_success)
+  else if (!has_been_all_success && rerun_current_iteration) {
     *init_file = to_string(iter) +  "_" +
-                 to_string(sample) + string("_w.csv");
+        to_string(sample) + string("_w.csv");
+  }
   else if (iter == 1) {
     *init_file = string("0_0_w.csv");
   }
@@ -297,7 +303,7 @@ int selectThreadIdxToWait(const vector<pair<int, int>> & assigned_thread_idx,
 
 void waitForAllThreadsToJoin(vector<std::thread*> * threads,
                              vector<pair<int, int>> * assigned_thread_idx,
-                             string dir, int iter) {
+                             const string& dir, int iter) {
   //TODO: can I kill the thread instead of waiting for it to finish?
 
   while (!assigned_thread_idx->empty()) {
@@ -446,7 +452,8 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
                                      const vector<VectorXd> & lb_vec,
                                      const vector<VectorXd> & ub_vec,
                                      const vector<VectorXd> & y_vec,
-                                     const vector<VectorXd> & w_sol_vec) {
+                                     const vector<VectorXd> & w_sol_vec,
+                                     int method_to_solve_system_of_equations) {
   string prefix = to_string(sample) + "_";
 
   DRAKE_ASSERT(b_vec[sample].cols() == 1);
@@ -511,64 +518,78 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
     }
   }
 
-  // Only add the rows that are linearly independent
-  cout << "n_w = " << nw_i << endl;
-  cout << "Start extracting independent rows of A (# of rows = " << nl_i << ")\n";
-  vector<int> full_row_rank_idx;
-  full_row_rank_idx.push_back(0);
-  for (int i = 1; i < nl_i; i++) {
-    // cout << "total i = " << nl_i;
-    // cout << ", i = " << i << endl;
-    // Construct test matrix
-    int n_current_rows = full_row_rank_idx.size();
-    MatrixXd A_test(n_current_rows + 1, nw_i);
-    for (unsigned int j = 0 ; j < full_row_rank_idx.size(); j++) {
-      A_test.block(j, 0, 1, nw_i) =
-        A_active.row(full_row_rank_idx[j]);
-    }
-    A_test.block(n_current_rows, 0, 1, nw_i) = A_active.row(i);
+  // Only add the rows that are linearly independent if the method requires A to
+  // be positive definite
+  if (method_to_solve_system_of_equations != 3) {
+    cout << "n_w = " << nw_i << endl;
+    cout << "Start extracting independent rows of A (# of rows = " << nl_i << ")\n";
+    vector<int> full_row_rank_idx;
+    full_row_rank_idx.push_back(0);
+    for (int i = 1; i < nl_i; i++) {
+      // cout << "total i = " << nl_i;
+      // cout << ", i = " << i << endl;
+      // Construct test matrix
+      int n_current_rows = full_row_rank_idx.size();
+      MatrixXd A_test(n_current_rows + 1, nw_i);
+      for (unsigned int j = 0 ; j < full_row_rank_idx.size(); j++) {
+        A_test.block(j, 0, 1, nw_i) =
+            A_active.row(full_row_rank_idx[j]);
+      }
+      A_test.block(n_current_rows, 0, 1, nw_i) = A_active.row(i);
 
-    // Perform svd to check rank
-    Eigen::BDCSVD<MatrixXd> svd(A_test);
-    // double sigular_value = svd.singularValues()(n_current_rows);
-    if (svd.singularValues()(n_current_rows) > indpt_row_tol) {
-      full_row_rank_idx.push_back(i);
+      // Perform svd to check rank
+      Eigen::BDCSVD<MatrixXd> svd(A_test);
+      // double sigular_value = svd.singularValues()(n_current_rows);
+      if (svd.singularValues()(n_current_rows) > indpt_row_tol) {
+        full_row_rank_idx.push_back(i);
+      }
+
+      if (full_row_rank_idx.size() == nw_i) {
+        cout << "# of A's row is the same as the # of col. So stop adding rows.\n";
+        break;
+      }
+    }
+    nl_i = full_row_rank_idx.size();
+    cout << "Finished extracting independent rows of A (# of rows = " << nl_i <<
+         ")\n\n";
+
+    // Assign the rows
+    MatrixXd A_processed(nl_i, nw_i);
+    MatrixXd B_processed(nl_i, nt_i);
+    VectorXd y_processed(nl_i);
+    for (int i = 0; i < nl_i; i++) {
+      A_processed.row(i) = A_active.row(full_row_rank_idx[i]);
+      B_processed.row(i) = B_active.row(full_row_rank_idx[i]);
+      y_processed(i) = y_active(full_row_rank_idx[i]);
     }
 
-    if (full_row_rank_idx.size() == nw_i) {
-      cout << "# of A's row is the same as the # of col. So stop adding rows.\n";
-      break;
-    }
+    // Store the results in csv files
+    VectorXd nw_i_VectorXd(1); nw_i_VectorXd << nw_i;
+    VectorXd nl_i_VectorXd(1); nl_i_VectorXd << nl_i;
+    writeCSV(dir + prefix + string("nw_i.csv"), nw_i_VectorXd);
+    writeCSV(dir + prefix + string("nl_i.csv"), nl_i_VectorXd);
+    writeCSV(dir + prefix + string("A_processed.csv"), A_processed);
+    writeCSV(dir + prefix + string("B_processed.csv"), B_processed);
+    writeCSV(dir + prefix + string("y_processed.csv"), y_processed);
+
+    // cout << "sample #" << sample;
+    // cout << "    A active and independent rows = " << nl_i << endl;
+  } else {
+    // No need to extract independent rows, so store the result right away
+
+    // Store the results in csv files
+    VectorXd nw_i_VectorXd(1); nw_i_VectorXd << nw_i;
+    VectorXd nl_i_VectorXd(1); nl_i_VectorXd << nl_i;
+    writeCSV(dir + prefix + string("nw_i.csv"), nw_i_VectorXd);
+    writeCSV(dir + prefix + string("nl_i.csv"), nl_i_VectorXd);
+    writeCSV(dir + prefix + string("A_processed.csv"), A_active);
+    writeCSV(dir + prefix + string("B_processed.csv"), B_active);
+    writeCSV(dir + prefix + string("y_processed.csv"), y_active);
   }
-  nl_i = full_row_rank_idx.size();
-  cout << "Finished extracting independent rows of A (# of rows = " << nl_i <<
-       ")\n\n";
-
-  // Assign the rows
-  MatrixXd A_full_row_rank(nl_i, nw_i);
-  MatrixXd B_full_row_rank(nl_i, nt_i);
-  VectorXd y_full_row_rank(nl_i);
-  for (int i = 0; i < nl_i; i++) {
-    A_full_row_rank.row(i) = A_active.row(full_row_rank_idx[i]);
-    B_full_row_rank.row(i) = B_active.row(full_row_rank_idx[i]);
-    y_full_row_rank(i) = y_active(full_row_rank_idx[i]);
-  }
-
-  // Store the results in csv files
-  VectorXd nw_i_VectorXd(1); nw_i_VectorXd << nw_i;
-  VectorXd nl_i_VectorXd(1); nl_i_VectorXd << nl_i;
-  writeCSV(dir + prefix + string("nw_i.csv"), nw_i_VectorXd);
-  writeCSV(dir + prefix + string("nl_i.csv"), nl_i_VectorXd);
-  writeCSV(dir + prefix + string("A_full_row_rank.csv"), A_full_row_rank);
-  writeCSV(dir + prefix + string("B_full_row_rank.csv"), B_full_row_rank);
-  writeCSV(dir + prefix + string("y_full_row_rank.csv"), y_full_row_rank);
-
-  // cout << "sample #" << sample;
-  // cout << "    A active and independent rows = " << nl_i << endl;
 }
 
-void readNonredundentMatrixFile(vector<double> * nw_vec,
-                                vector<double> * nl_vec,
+void readNonredundentMatrixFile(vector<int> * nw_vec,
+                                vector<int> * nl_vec,
                                 vector<MatrixXd> * A_active_vec,
                                 vector<MatrixXd> * B_active_vec,
                                 vector<VectorXd> * y_active_vec,
@@ -576,18 +597,18 @@ void readNonredundentMatrixFile(vector<double> * nw_vec,
   for (int sample = 0; sample < n_succ_sample; sample++) {
     string prefix = to_string(sample) + "_";
 
-    nw_vec->push_back(readCSV(dir + prefix + string("nw_i.csv"))(0));
-    nl_vec->push_back(readCSV(dir + prefix + string("nl_i.csv"))(0));
-    A_active_vec->push_back(readCSV(dir + prefix + string("A_full_row_rank.csv")));
-    B_active_vec->push_back(readCSV(dir + prefix + string("B_full_row_rank.csv")));
-    y_active_vec->push_back(readCSV(dir + prefix + string("y_full_row_rank.csv")));
+    nw_vec->push_back(int(readCSV(dir + prefix + string("nw_i.csv"))(0)));
+    nl_vec->push_back(int(readCSV(dir + prefix + string("nl_i.csv"))(0)));
+    A_active_vec->push_back(readCSV(dir + prefix + string("A_processed.csv")));
+    B_active_vec->push_back(readCSV(dir + prefix + string("B_processed.csv")));
+    y_active_vec->push_back(readCSV(dir + prefix + string("y_processed.csv")));
 
     bool rm = true;
     rm = (remove((dir + prefix + string("nw_i.csv")).c_str()) == 0) & rm;
     rm = (remove((dir + prefix + string("nl_i.csv")).c_str()) == 0) & rm;
-    rm = (remove((dir + prefix + string("A_full_row_rank.csv")).c_str()) == 0) & rm;
-    rm = (remove((dir + prefix + string("B_full_row_rank.csv")).c_str()) == 0) & rm;
-    rm = (remove((dir + prefix + string("y_full_row_rank.csv")).c_str()) == 0) & rm;
+    rm = (remove((dir + prefix + string("A_processed.csv")).c_str()) == 0) & rm;
+    rm = (remove((dir + prefix + string("B_processed.csv")).c_str()) == 0) & rm;
+    rm = (remove((dir + prefix + string("y_processed.csv")).c_str()) == 0) & rm;
     if ( !rm )
       cout << "Error deleting files\n";
   }
@@ -612,90 +633,133 @@ MatrixXd solveInvATimesB(const MatrixXd & A, const MatrixXd & B) {
 //   return X;
 // }
 
-void calcWInTermsOfTheta(int sample, string dir,
-                         const vector<double> & nl_vec,
-                         const vector<double> & nw_vec,
+MatrixXd MoorePenrosePseudoInverse(const MatrixXd& mat,
+                                   double singular_tolerance = 1e-8) {
+  Eigen::BDCSVD<MatrixXd> svd(mat, Eigen::ComputeFullU | Eigen::ComputeFullV);
+  const auto& singular_values = svd.singularValues();
+  Eigen::MatrixXd inv_singular_values(mat.cols(), mat.rows());
+  inv_singular_values.setZero();
+  for (unsigned int i = 0; i < singular_values.size(); ++i) {
+    if (singular_values(i) > singular_tolerance) {
+      inv_singular_values(i, i) = 1.0 / singular_values(i);
+    } else {
+      inv_singular_values(i, i) = 0;
+    }
+  }
+  return svd.matrixV() * inv_singular_values * svd.matrixU().adjoint();
+}
+
+void calcWInTermsOfTheta(int sample, const string& dir,
+                         const vector<int> & nl_vec,
+                         const vector<int> & nw_vec,
                          const vector<MatrixXd> & A_active_vec,
                          const vector<MatrixXd> & B_active_vec,
                          const vector<MatrixXd> & H_vec,
-                         const vector<VectorXd> & b_vec) {
+                         const vector<VectorXd> & b_vec,
+                         int method_to_solve_system_of_equations) {
   string prefix = to_string(sample) + "_";
 
-  // Method 1: use optimization program to solve it??? /////////////////////////
-
-  // Method 2: use schur complement (see notes) ////////////////////////////////
-  /*
-  // This one requires the Hessian H to be pd.
-  // Also, although this method might be more computationally efficient, the
-  // accuracy is not as high as when we use inverse() directly. The reason is
-  // that the condition number of A and invH is high, so AinvHA' makes it very
-  // ill-conditioned.
-  MatrixXd AinvHA = A_active_vec[sample] * solveInvATimesB(
-                      H_vec[sample], A_active_vec[sample].transpose());
-  VectorXd invQc = solveInvATimesB(H_vec[sample], b_vec[sample]);
-  MatrixXd E = solveInvATimesB(AinvHA, B_active_vec[sample]);
-  VectorXd F = -solveInvATimesB(AinvHA, A_active_vec[sample] * invQc);
-  // Testing
-  Eigen::BDCSVD<MatrixXd> svd(AinvHA);
-  cout << "AinvHA':\n";
-  cout << "  biggest singular value is " << svd.singularValues()(0) << endl;
-  cout << "  smallest singular value is "
-          << svd.singularValues().tail(1) << endl;
-  cout << "The condition number of A and invH are large. That's why AinvHA'"
-          "is ill-conditioned.\n";
-  // cout << "singular values are \n" << svd.singularValues() << endl;
-
-  MatrixXd Pi = -solveInvATimesB(H_vec[sample],
-                                 A_active_vec[sample].transpose() * E);
-  VectorXd qi = -solveInvATimesB(H_vec[sample],
-                        b_vec[sample] + A_active_vec[sample].transpose() * F);
-  cout << "qi norm (this number should be close to 0) = "
-       << qi.norm() << endl;
-  P_vec.push_back(Pi);
-  q_vec.push_back(qi);
-  */
-
-  // Method 3: use inverse() directly //////////////////////////////////////////
-  // H_ext = [H A'; A 0]
-  int nl_i = nl_vec[sample];
-  int nw_i = nw_vec[sample];
-  MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
-  H_ext.block(0, 0, nw_i, nw_i) = H_vec[sample];
-  H_ext.block(0, nw_i, nw_i, nl_i) = A_active_vec[sample].transpose();
-  H_ext.block(nw_i, 0, nl_i, nw_i) = A_active_vec[sample];
-  H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
-
-  // Testing
-  // Eigen::BDCSVD<MatrixXd> svd(H_vec[sample]);
-  // cout << "H:\n";
-  // cout << "  biggest singular value is " << svd.singularValues()(0) << endl;
-  // cout << "  smallest singular value is "
-  //         << svd.singularValues().tail(1) << endl;
-  // // cout << "singular values are \n" << svd.singularValues() << endl;
-  // // Testing
-  if (sample == 0) {
-    Eigen::BDCSVD<MatrixXd> svd_3(H_ext);
-    cout << "H_ext:\n";
-    cout << "  biggest singular value is " <<
-         svd_3.singularValues()(0) << endl;
+  MatrixXd Pi(nw_vec[sample], B_active_vec[sample].cols());
+  VectorXd qi(nw_vec[sample]);
+  if (method_to_solve_system_of_equations == 0) {
+    // Method 1: use optimization program to solve it??? ///////////////////////
+    DRAKE_DEMAND(false);  // not implemented yet
+  } else if (method_to_solve_system_of_equations == 1) {
+    // Method 2: use schur complement (see notes) //////////////////////////////
+    // This one requires the Hessian H to be pd.
+    // Also, although this method might be more computationally efficient, the
+    // accuracy is not as high as when we use inverse() directly. The reason is
+    // that the condition number of A and invH is high, so AinvHA' makes it very
+    // ill-conditioned.
+    MatrixXd AinvHA = A_active_vec[sample] * solveInvATimesB(
+        H_vec[sample], A_active_vec[sample].transpose());
+    VectorXd invQc = solveInvATimesB(H_vec[sample], b_vec[sample]);
+    MatrixXd E = solveInvATimesB(AinvHA, B_active_vec[sample]);
+    VectorXd F = -solveInvATimesB(AinvHA, A_active_vec[sample] * invQc);
+    // Testing
+    Eigen::BDCSVD<MatrixXd> svd(AinvHA);
+    cout << "AinvHA':\n";
+    cout << "  biggest singular value is " << svd.singularValues()(0) << endl;
     cout << "  smallest singular value is "
-         << svd_3.singularValues().tail(1) << endl;
+         << svd.singularValues().tail(1) << endl;
+    cout << "The condition number of A and invH are large. That's why AinvHA'"
+            "is ill-conditioned.\n";
+    // cout << "singular values are \n" << svd.singularValues() << endl;
+
+    Pi = -solveInvATimesB(H_vec[sample],
+                          A_active_vec[sample].transpose() * E);
+    qi = -solveInvATimesB(H_vec[sample],
+                          b_vec[sample] + A_active_vec[sample].transpose() * F);
+    cout << "qi norm (this number should be close to 0) = "
+         << qi.norm() << endl;
+  } else if (method_to_solve_system_of_equations == 2) {
+    // Method 3: use inverse() directly ////////////////////////////////////////
+    // (This one requires the Hessian H to be pd.)
+    // This method has been working pretty well, but it requires H to be pd. And
+    // in order to get pd H, we need to extract independent row of matrix A,
+    // which takes too much time in the current method.
+
+    // H_ext = [H A'; A 0]
+    int nl_i = nl_vec[sample];
+    int nw_i = nw_vec[sample];
+    MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
+    H_ext.block(0, 0, nw_i, nw_i) = H_vec[sample];
+    H_ext.block(0, nw_i, nw_i, nl_i) = A_active_vec[sample].transpose();
+    H_ext.block(nw_i, 0, nl_i, nw_i) = A_active_vec[sample];
+    H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
+
+    // Testing
+    // Eigen::BDCSVD<MatrixXd> svd(H_vec[sample]);
+    // cout << "H:\n";
+    // cout << "  biggest singular value is " << svd.singularValues()(0) <<
+    // endl; cout << "  smallest singular value is "
+    //         << svd.singularValues().tail(1) << endl;
+    // // cout << "singular values are \n" << svd.singularValues() << endl;
+    // // Testing
+    if (sample == 0) {
+      Eigen::BDCSVD<MatrixXd> svd_3(H_ext);
+      cout << "H_ext:\n";
+      cout << "  biggest singular value is " << svd_3.singularValues()(0)
+           << endl;
+      cout << "  smallest singular value is " << svd_3.singularValues().tail(1)
+           << endl;
+    }
+
+    // cout << "\nStart inverting the matrix.\n";
+    MatrixXd inv_H_ext = H_ext.inverse();
+    // cout << "Finsihed inverting the matrix.\n";
+    // // Testing
+    // Eigen::BDCSVD<MatrixXd> svd_5(inv_H_ext);
+    // cout << "inv_H_ext:\n";
+    // cout << "  biggest singular value is " << svd_5.singularValues()(0) <<
+    // endl; cout << "  smallest singular value is "
+    //      << svd_5.singularValues().tail(1) << endl;
+
+    MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
+    MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
+
+    Pi = -inv_H_ext12 * B_active_vec[sample];
+    qi = -inv_H_ext11 * b_vec[sample];
+  } else if (method_to_solve_system_of_equations == 3) {
+    // Method 4: use Moore–Penrose pseudo inverse //////////////////////////////
+
+    // H_ext = [H A'; A 0]
+    int nl_i = nl_vec[sample];
+    int nw_i = nw_vec[sample];
+    MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
+    H_ext.block(0, 0, nw_i, nw_i) = H_vec[sample];
+    H_ext.block(0, nw_i, nw_i, nl_i) = A_active_vec[sample].transpose();
+    H_ext.block(nw_i, 0, nl_i, nw_i) = A_active_vec[sample];
+    H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
+
+    MatrixXd inv_H_ext = MoorePenrosePseudoInverse(H_ext);
+
+    MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
+    MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
+
+    Pi = -inv_H_ext12 * B_active_vec[sample];
+    qi = -inv_H_ext11 * b_vec[sample];
   }
-  // cout << "\nStart inverting the matrix.\n";
-  MatrixXd inv_H_ext = H_ext.inverse();
-  // cout << "Finsihed inverting the matrix.\n";
-  // // Testing
-  // Eigen::BDCSVD<MatrixXd> svd_5(inv_H_ext);
-  // cout << "inv_H_ext:\n";
-  // cout << "  biggest singular value is " << svd_5.singularValues()(0) << endl;
-  // cout << "  smallest singular value is "
-  //      << svd_5.singularValues().tail(1) << endl;
-
-  MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
-  MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
-
-  MatrixXd Pi = -inv_H_ext12 * B_active_vec[sample];
-  VectorXd qi = -inv_H_ext11 * b_vec[sample];
   writeCSV(dir + prefix + string("Pi.csv"), Pi);
   writeCSV(dir + prefix + string("qi.csv"), qi);
 
@@ -721,7 +785,7 @@ void calcWInTermsOfTheta(int sample, string dir,
 }
 
 void readPiQiFile(vector<MatrixXd> * P_vec, vector<VectorXd> * q_vec,
-                  int n_succ_sample, string dir) {
+                  int n_succ_sample, const string& dir) {
   for (int sample = 0; sample < n_succ_sample; sample++) {
     string prefix = to_string(sample) + "_";
 
@@ -806,18 +870,25 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double delta_stride_length;
   double stride_length_0;
   if (FLAGS_robot_option == 0) {
-    delta_stride_length = 0.03 / 2;
+    delta_stride_length = 0.015;
     stride_length_0 = 0.3;
   } else if (FLAGS_robot_option == 1) {
-    delta_stride_length = 0.1 * 2 / 3; // 0.033;
+    delta_stride_length = 0.066; // 0.066 might be too big;
     stride_length_0 = 0.2;  //0.15
+  } else {
+    DRAKE_DEMAND(false);
+    delta_stride_length = 0;
+    stride_length_0 = 0;
   }
   double delta_ground_incline;
   double ground_incline_0 = 0;
   if (FLAGS_robot_option == 0) {
-    delta_ground_incline = 0.1;
+    delta_ground_incline = 0.05;
   } else if (FLAGS_robot_option == 1) {
-    delta_ground_incline = 0.1 * 2 / 3; // 0.08;
+    delta_ground_incline = 0.066; // 0.066 might be too big
+  } else {
+    DRAKE_DEMAND(false);
+    delta_ground_incline = 0;
   }
   double duration = 0.4;
   if (FLAGS_robot_option == 0) {
@@ -849,6 +920,25 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   VectorXd previous_ground_incline = VectorXd::Zero(N_sample);
   VectorXd previous_stride_length = VectorXd::Zero(N_sample);
+  if (FLAGS_rerun_current_iteration) {
+    for (int i = 0; i < N_sample; i++) {
+      previous_ground_incline(i) =
+          readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
+                  string("_ground_incline.csv"))(0);
+      previous_stride_length(i) =
+          readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
+                  string("_stride_length.csv"))(0);
+    }
+    // print
+    /*for (int i = 0; i < N_sample; i++) {
+      cout << previous_ground_incline(i) << ", ";
+    }
+    cout << endl;
+    for (int i = 0; i < N_sample; i++) {
+      cout << previous_stride_length(i) << ", ";
+    }
+    cout << endl;*/
+  }
 
   // Parameters for the outer loop optimization
   cout << "\nOptimization setting (outer loop):\n";
@@ -893,15 +983,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
   double fail_threshold = FLAGS_fail_threshold;
+  const int method_to_solve_system_of_equations = 3;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
-  is_stochastic ? cout << "Stocastic\n" : cout << "Non-stochastic\n";
+  is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
   cout << "eps_regularization = " << eps_regularization << endl;
   cout << "is_add_tau_in_cost = " << FLAGS_is_add_tau_in_cost << endl;
   FLAGS_is_zero_touchdown_impact ? cout << "Zero touchdown impact\n" :
                                         cout << "Non-zero touchdown impact\n";
-  cout << "# of reun after finding a solution = " << n_rerun << endl;
+  cout << "# of re-run after finding a solution = " << n_rerun << endl;
   cout << "Failure rate threshold = " << fail_threshold << endl;
+  cout << "method_to_solve_system_of_equations = "
+       << method_to_solve_system_of_equations << endl;
 
   // Parameters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
@@ -1040,13 +1133,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
   VectorXd theta(n_theta);
   theta << theta_s, theta_sDDot;
   VectorXd prev_theta = theta;
-  bool previous_iter_is_success = FLAGS_previous_iter_is_success;
+  bool rerun_current_iteration = FLAGS_rerun_current_iteration;
   bool has_been_all_success;
   if (FLAGS_proceed_with_failure || (iter_start <= 1))
     has_been_all_success = false;
   else
     has_been_all_success = true;
   cout << "has_been_all_success = " << has_been_all_success << endl;
+  cout << "rerun_current_iteration = " << rerun_current_iteration << endl;
 
   double current_iter_step_size = h_step;
   VectorXd step_direction;
@@ -1092,7 +1186,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     cout << n_extend << " dimension.\n";
 
     cout << "Make sure that you include both old and new version of dynamics "
-         "feasture.\nProceed? (Y/N)\n";
+         "feature.\nProceed? (Y/N)\n";
     char answer[1];
     cin >> answer;
     if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
@@ -1103,7 +1197,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
 
-  cout << "Start the iterating...\n";
+  cout << "Start iterating...\n";
   // Start the gradient descent
   int iter;
   for (iter = iter_start; iter <= max_outer_iter; iter++)  {
@@ -1171,18 +1265,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Create vector of threads for multithreading
       vector<std::thread *> threads(std::min(CORES, n_sample));
 
-      // Create a index list indicating which thread is availible for use
-      std::queue<int> availible_thread_idx;
+      // Create a index list indicating which thread is available for use
+      std::queue<int> available_thread_idx;
       for (int i = 0; i < CORES; i++)
-        availible_thread_idx.push(i);
+        available_thread_idx.push(i);
       vector<pair<int, int>> assigned_thread_idx;
 
       // Evaluate samples
       int sample = 0;
       int failed_sample = 0;
       while ((sample < n_sample) || !assigned_thread_idx.empty()) {
-        // Evaluate a sample when there is an availible thread. Otherwise, wait.
-        if ((sample < n_sample) && !availible_thread_idx.empty()) {
+        // Evaluate a sample when there is an available thread. Otherwise, wait.
+        if ((sample < n_sample) && !available_thread_idx.empty()) {
           // setup for each sample
           // double stride_length = is_get_nominal ? stride_length_0 :
           //                        stride_length_0 + delta_stride_length_vec[sample % N_sample_sl];
@@ -1197,7 +1291,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
             ground_incline += dist_gi(e2);
           }
           // Store the tasks or overwrite it with previous tasks
-          if (current_rerun == 0) {
+          if (current_rerun == 0 && !rerun_current_iteration) {
             previous_stride_length(sample) = stride_length;
             previous_ground_incline(sample) = ground_incline;
           } else {
@@ -1215,14 +1309,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
           string init_file_pass_in;
           getInitFileName(&init_file_pass_in, init_file, iter, sample,
                           is_get_nominal,
-                          previous_iter_is_success, has_been_all_success,
+                          rerun_current_iteration, has_been_all_success,
                           FLAGS_is_debug);
 
           // Trajectory optimization with fixed model parameters
           string string_to_be_print = "Adding sample #" + to_string(sample) +
-                                      " to thread #" + to_string(availible_thread_idx.front()) + "...\n";
+                                      " to thread #" + to_string(available_thread_idx.front()) + "...\n";
           // cout << string_to_be_print;
-          threads[availible_thread_idx.front()] = new std::thread(trajOptGivenWeights,
+          threads[available_thread_idx.front()] = new std::thread(trajOptGivenWeights,
               std::ref(plant), std::ref(plant_autoDiff),
               n_s, n_sDDot, n_tau,
               n_feature_s, n_feature_sDDot, B_tau,
@@ -1240,11 +1334,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
               sample,
               FLAGS_robot_option);
           string_to_be_print = "Finished adding sample #" + to_string(sample) +
-                               " to thread # " + to_string(availible_thread_idx.front()) + ".\n";
+                               " to thread # " + to_string(available_thread_idx.front()) + ".\n";
           // cout << string_to_be_print;
           assigned_thread_idx.push_back(
-            std::make_pair(availible_thread_idx.front(), sample));
-          availible_thread_idx.pop();
+            std::make_pair(available_thread_idx.front(), sample));
+          available_thread_idx.pop();
           sample++;
         } else {
           // Select the thread to join
@@ -1264,7 +1358,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                                " has joined.\n";
           // cout << string_to_be_print;
 
-          availible_thread_idx.push(thread_to_wait_idx);
+          available_thread_idx.push(thread_to_wait_idx);
           assigned_thread_idx.erase(assigned_thread_idx.begin() + selected_idx);
 
           // Record success history
@@ -1335,7 +1429,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       current_iter_is_success = has_been_all_success ?
                                 samples_are_success : a_sample_is_success;
     }
-    previous_iter_is_success = current_iter_is_success;
+    rerun_current_iteration = !current_iter_is_success;
 
     //
     if (is_get_nominal) {
@@ -1356,7 +1450,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
            "is infeasible.\n";
       iter -= 1;
       has_been_all_success = false;
-      previous_iter_is_success = false;
+      rerun_current_iteration = true;
 
       // Never extend model again (we just extend it once)
       extend_model = false;
@@ -1409,13 +1503,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
         current_rerun++;
         iter -= 1;
         has_been_all_success = false;
-        previous_iter_is_success = false;
+        rerun_current_iteration = true;
       } else {
         current_rerun = 0;
 
         // Extract active and independent constraints (multithreading)
+        auto start_time_extract = std::chrono::high_resolution_clock::now();
         vector<std::thread *> threads(std::min(CORES, n_succ_sample));
-        cout << "Extracting active and independent rows of A...\n";
+        cout << "Extracting active (and independent rows) of A...\n";
         int sample = 0;
         while (sample < n_succ_sample) {
           int sample_end = (sample + CORES >= n_succ_sample) ?
@@ -1427,7 +1522,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
               sample_i, indpt_row_tol, dir,
               std::ref(B_vec), std::ref(A_vec), std::ref(H_vec),
               std::ref(b_vec), std::ref(lb_vec), std::ref(ub_vec),
-              std::ref(y_vec), std::ref(w_sol_vec));
+              std::ref(y_vec), std::ref(w_sol_vec),
+              method_to_solve_system_of_equations);
             thread_idx++;
           }
           thread_idx = 0;
@@ -1439,11 +1535,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
           sample = sample_end;
         }
         // Read the matrices after extractions
-        vector<double> nw_vec;  // size of decision var of traj opt for all tasks
-        vector<double> nl_vec;  // # of rows of active constraints for all tasks
+        vector<int> nw_vec;  // size of decision var of traj opt for all tasks
+        vector<int> nl_vec;  // # of rows of active constraints for all tasks
         readNonredundentMatrixFile(&nw_vec, &nl_vec,
                                    &A_active_vec, &B_active_vec, &y_active_vec,
                                    n_succ_sample, dir);
+        // Print out elapsed time
+        auto finish_time_extract = std::chrono::high_resolution_clock::now();
+        cout << "Time for extracting active (and independent rows) of A = "
+             << to_string((start_time_extract - finish_time_extract).count())
+             << endl;
         cout << endl;
 
 
@@ -1479,6 +1580,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         // Get w in terms of theta (Get P_i and q_i where w = P_i * theta + q_i)
         // cout << "Getting P matrix and q vecotr\n";
         // vector<std::thread *> threads(std::min(CORES, n_succ_sample));
+        auto start_time_calc_w = std::chrono::high_resolution_clock::now();
         sample = 0;
         while (sample < n_succ_sample) {
           int sample_end = (sample + CORES >= n_succ_sample) ?
@@ -1490,7 +1592,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
               sample_i, dir,
               std::ref(nl_vec), std::ref(nw_vec),
               std::ref(A_active_vec), std::ref(B_active_vec),
-              std::ref(H_vec), std::ref(b_vec));
+              std::ref(H_vec), std::ref(b_vec),
+              method_to_solve_system_of_equations);
             thread_idx++;
           }
           thread_idx = 0;
@@ -1506,6 +1609,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
         vector<VectorXd> q_vec;
         readPiQiFile(&P_vec, &q_vec,
                      n_succ_sample, dir);
+        // Print out elapsed time
+        auto finish_time_calc_w = std::chrono::high_resolution_clock::now();
+        cout << "Time for getting w in terms of theta = "
+             << to_string((start_time_calc_w - finish_time_calc_w).count())
+             << endl;
         cout << endl;
 
 
@@ -1624,10 +1732,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           current_iter_step_size = h_step;
         }
         cout << "step size = " << current_iter_step_size << "\n\n";
-        if (is_newton)
-          theta = theta + current_iter_step_size * step_direction;
-        else
-          theta = theta + current_iter_step_size * step_direction;
+        theta = theta + current_iter_step_size * step_direction;
 
         // Assign theta_s and theta_sDDot
         theta_s = theta.head(n_theta_s);
@@ -1646,7 +1751,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
         }
 
-        for (int i = 0; i < 100; i++) {cout << '\a';}  // making noise to notify
+        cout << '\a';  // making noise to notify
       }  // end if
     }  // end if(!is_get_nominal)
   }  // end for

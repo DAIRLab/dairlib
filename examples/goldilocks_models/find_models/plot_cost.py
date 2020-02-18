@@ -6,7 +6,7 @@ import time
 import sys
 plt.rcParams.update({'font.size': 18})
 
-only_plot_average_cost = True
+only_plot_average_cost = False
 normalize_by_nominal_cost = True
 
 iter_start = 1
@@ -103,6 +103,7 @@ while 1:
     if not only_plot_average_cost:
         plt.title('Cost over iterations')
         plt.legend()
+
     plt.draw()
 
     # so that the label is not cut off by the window

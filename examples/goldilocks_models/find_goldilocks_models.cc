@@ -203,21 +203,14 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     //              to_string(sample) + string("_w.csv");
     // cout << *init_file << endl;
   }
-  else if (is_get_nominal && rerun_current_iteration) {
-    // *init_file = string("0_0_w.csv");
-    *init_file = "0_" +
-                 to_string(sample) + string("_w.csv");
-  }
   else if (rerun_current_iteration) {
-    *init_file = to_string(iter) +  "_" +
-        to_string(sample) + string("_w.csv");
+    *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   }
-  else if (!has_been_all_success && !rerun_current_iteration) {
-    *init_file = string("0_0_w.csv");  // Use nominal traj
+  else if (!has_been_all_success) {
+    // *init_file = string("0_0_w.csv");  // Use nominal traj
     // *init_file = string("");  // No initial guess for the first iter
     // *init_file = string("w0.csv");  // w0 as initial guess for the first iter
-    *init_file = "0_" +
-                 to_string(sample) + string("_w.csv");
+    *init_file = "0_" + to_string(sample) + string("_w.csv");
 
     // Testing:
     // cout << "testing with manual init file: ";
@@ -225,9 +218,6 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     // *init_file = to_string(iter) +  "_" +
     //              to_string(sample) + string("_w.csv");
     // cout << *init_file << endl;
-  }
-  else if (iter == 1) {
-    *init_file = string("0_0_w.csv");
   }
   else {
     *init_file = to_string(iter - 1) +  "_" +
@@ -1464,12 +1454,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
       current_iter_is_success = has_been_all_success ?
                                 samples_are_success : a_sample_is_success;
     }
+    // Rerun the current iteration when the iteration was not successful
     rerun_current_iteration = !current_iter_is_success;
 
     //
     if (is_get_nominal) {
-      if (!current_iter_is_success)
+      if (rerun_current_iteration) {
         iter -= 1;
+      }
     } else if (extend_model_this_iter) {  // Extend the model
       cout << "Start extending model...\n";
       extendModel(dir, iter, n_feature_s,
@@ -1491,7 +1483,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       extend_model = false;
       continue;
 
-    } else {  // Update parameters
+    }  // end if extend_model_this_iter
+    else {  // Update parameters
       // Read in w_sol_vec, A_vec, H_vec, y_vec, lb_vec, ub_vec, b_vec, c_vec, B_vec;
       readApproxQpFiles(&w_sol_vec, &A_vec, &H_vec, &y_vec, &lb_vec, &ub_vec,
                         &b_vec, &c_vec, &B_vec,
@@ -1501,7 +1494,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Get the total cost if it's successful
       double total_cost = 0;
-      if (current_iter_is_success) {
+      if (!rerun_current_iteration) {
         for (int sample = 0; sample < n_succ_sample; sample++)
           total_cost += c_vec[sample](0) / n_succ_sample;
         if (total_cost <= min_so_far) min_so_far = total_cost;
@@ -1509,7 +1502,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
              min_so_far << ")\n\n";
       }
 
-      if (!current_iter_is_success) {
+      if (rerun_current_iteration) {
         iter -= 1;
         if (has_been_all_success || (current_rerun > 0)) {
           current_iter_step_size = current_iter_step_size / 2;

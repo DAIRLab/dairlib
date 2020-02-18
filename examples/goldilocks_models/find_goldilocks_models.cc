@@ -66,10 +66,11 @@ DEFINE_bool(extend_model, false, "Extend the model in iteration # iter_start "
 DEFINE_int32(extend_model_iter, -1, "The starting iteration #");
 DEFINE_bool(is_manual_initial_theta, false,
             "Assign initial theta of our choice");
-DEFINE_bool(proceed_with_failure, false, "In the beginning, update theta even"
-            "if there is a failed task");
-DEFINE_bool(rerun_current_iteration, false,
-            "whether to re-run the current iteration or not");
+DEFINE_bool(proceed_with_failure, false,
+            "Update theta even if there is a failed task");
+DEFINE_bool(start_current_iter_as_rerun, false,
+            "Is `iter_start` a rerun? If it is, then you start with the stored "
+            "tasks and use previous solution as initial guess");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
@@ -935,7 +936,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << max_ground_incline << endl;
   VectorXd previous_ground_incline = VectorXd::Zero(N_sample);
   VectorXd previous_stride_length = VectorXd::Zero(N_sample);
-  if (FLAGS_rerun_current_iteration) {
+  if (FLAGS_start_current_iter_as_rerun) {
     for (int i = 0; i < N_sample; i++) {
       previous_ground_incline(i) =
           readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
@@ -1158,14 +1159,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
   VectorXd theta(n_theta);
   theta << theta_s, theta_sDDot;
   VectorXd prev_theta = theta;
-  bool rerun_current_iteration = FLAGS_rerun_current_iteration;
+  bool rerun_current_iteration = FLAGS_start_current_iter_as_rerun;
   bool has_been_all_success;
   if (FLAGS_proceed_with_failure || (iter_start <= 1))
     has_been_all_success = false;
   else
     has_been_all_success = true;
   cout << "has_been_all_success = " << has_been_all_success << endl;
-  cout << "rerun_current_iteration = " << rerun_current_iteration << endl;
+  cout << "current iteration is a rerun? " << rerun_current_iteration << endl;
 
   double current_iter_step_size = h_step;
   VectorXd step_direction;
@@ -1505,21 +1506,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
         theta_s = theta.head(n_theta_s);
         theta_sDDot = theta.tail(n_theta_sDDot);
 
-        // for the case of (current_rerun > 0)
+        // for the case of (current_rerun > 0)  //TODO: why do we need this?
         has_been_all_success = true;
         current_rerun = 0;
       }
     }  // end if rerun_current_iteration
-    else if (current_rerun < n_rerun) {
-      current_rerun++;
-      iter -= 1;
-      has_been_all_success = false;
-      rerun_current_iteration = true;
-    }
-    else {  // Update parameters
-      current_rerun = 0;
-
-      // Read in the following files if the traj opt is successful:
+    else {
+      // Read in the following files of the successful samples:
       // w_sol_vec, A_vec, H_vec, y_vec, lb_vec, ub_vec, b_vec, c_vec, B_vec;
       readApproxQpFiles(&w_sol_vec, &A_vec, &H_vec, &y_vec, &lb_vec, &ub_vec,
                         &b_vec, &c_vec, &B_vec,
@@ -1527,7 +1520,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       int n_succ_sample = c_vec.size();
 
-      // Get the total cost if it's successful
+      // Print the total cost of this iteration
       double total_cost = 0;
       for (int sample = 0; sample < n_succ_sample; sample++)
         total_cost += c_vec[sample](0) / n_succ_sample;
@@ -1535,253 +1528,262 @@ int findGoldilocksModels(int argc, char* argv[]) {
       cout << "total_cost = " << total_cost << " (min so far: " <<
            min_so_far << ")\n\n";
 
-      // Extract active and independent constraints (multithreading)
-      auto start_time_extract = std::chrono::high_resolution_clock::now();
-      vector<std::thread *> threads(std::min(CORES, n_succ_sample));
-      cout << "Extracting active (and independent rows) of A...\n";
-      int sample = 0;
-      while (sample < n_succ_sample) {
-        int sample_end = (sample + CORES >= n_succ_sample) ?
-                         n_succ_sample : sample + CORES;
-        int thread_idx = 0;
-        for (int sample_i = sample; sample_i < sample_end; sample_i++) {
-          threads[thread_idx] = new std::thread(
-            extractActiveAndIndependentRows,
-            sample_i, indpt_row_tol, dir,
-            std::ref(B_vec), std::ref(A_vec), std::ref(H_vec),
-            std::ref(b_vec), std::ref(lb_vec), std::ref(ub_vec),
-            std::ref(y_vec), std::ref(w_sol_vec),
-            method_to_solve_system_of_equations);
-          thread_idx++;
+      if (current_rerun < n_rerun) {
+        current_rerun++;
+        iter -= 1;
+        has_been_all_success = false;
+        rerun_current_iteration = true;
+      } else {  // Update parameters
+        current_rerun = 0;
+
+        // Extract active and independent constraints (multithreading)
+        auto start_time_extract = std::chrono::high_resolution_clock::now();
+        vector<std::thread *> threads(std::min(CORES, n_succ_sample));
+        cout << "Extracting active (and independent rows) of A...\n";
+        int sample = 0;
+        while (sample < n_succ_sample) {
+          int sample_end = (sample + CORES >= n_succ_sample) ?
+                           n_succ_sample : sample + CORES;
+          int thread_idx = 0;
+          for (int sample_i = sample; sample_i < sample_end; sample_i++) {
+            threads[thread_idx] = new std::thread(
+                extractActiveAndIndependentRows,
+                sample_i, indpt_row_tol, dir,
+                std::ref(B_vec), std::ref(A_vec), std::ref(H_vec),
+                std::ref(b_vec), std::ref(lb_vec), std::ref(ub_vec),
+                std::ref(y_vec), std::ref(w_sol_vec),
+                method_to_solve_system_of_equations);
+            thread_idx++;
+          }
+          thread_idx = 0;
+          for (int sample_i = sample; sample_i < sample_end; sample_i++) {
+            threads[thread_idx]->join();
+            delete threads[thread_idx];
+            thread_idx++;
+          }
+          sample = sample_end;
         }
-        thread_idx = 0;
-        for (int sample_i = sample; sample_i < sample_end; sample_i++) {
-          threads[thread_idx]->join();
-          delete threads[thread_idx];
-          thread_idx++;
+        // Read the matrices after extractions
+        vector<int> nw_vec;  // size of decision var of traj opt for all tasks
+        vector<int> nl_vec;  // # of rows of active constraints for all tasks
+        readNonredundentMatrixFile(&nw_vec, &nl_vec,
+                                   &A_active_vec, &B_active_vec, &y_active_vec,
+                                   n_succ_sample, dir);
+        // Print out elapsed time
+        auto finish_time_extract = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed_extract =
+            finish_time_extract - start_time_extract;
+        cout << "Time spent on extracting active (and independent rows) of A: "
+             << to_string(int(elapsed_extract.count())) << " seconds\n";
+        cout << endl;
+
+
+        // Reference for solving a sparse linear system
+        // https://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
+        // https://eigen.tuxfamily.org/dox/group__LeastSquares.html
+
+        // Our calculation below is based on the fact that the H matrices are pd and
+        // symmetric, so we check them here.
+        // However, H turned out not to be psd, since we have timestep h as decision
+        // variable. (It came from running cost. ~h*u'*R*u, etc)
+        // Fixed it by adding running cost by hand (but the timestep is fixed now).
+        // Now H is always pd because we also added a regularization term.
+        /*cout << "Checking if H is pd and symmetric\n";
+        for (int sample = 0; sample < n_succ_sample; sample++) {
+          // Check if H is symmetric
+          VectorXd One_w = VectorXd::Ones(nw_vec[sample]);
+          double sum =
+            One_w.transpose() * (H_vec[sample] - H_vec[sample].transpose()) * One_w;
+          if (sum != 0) cout << "H is not symmetric\n";
+
+          // Check if H is pd
+          VectorXd eivals_real = H_vec[sample].eigenvalues().real();
+          for (int i = 0; i < eivals_real.size(); i++) {
+            if (eivals_real(i) <= 0)
+              cout << "H is not positive definite (with e-value = "
+                   << eivals_real(i) << ")\n";
+          }
         }
-        sample = sample_end;
-      }
-      // Read the matrices after extractions
-      vector<int> nw_vec;  // size of decision var of traj opt for all tasks
-      vector<int> nl_vec;  // # of rows of active constraints for all tasks
-      readNonredundentMatrixFile(&nw_vec, &nl_vec,
-                                 &A_active_vec, &B_active_vec, &y_active_vec,
-                                 n_succ_sample, dir);
-      // Print out elapsed time
-      auto finish_time_extract = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> elapsed_extract =
-          finish_time_extract - start_time_extract;
-      cout << "Time spent on extracting active (and independent rows) of A: "
-           << to_string(int(elapsed_extract.count())) << " seconds\n";
-      cout << endl;
+        cout << "Finished checking\n\n";*/
 
 
-      // Reference for solving a sparse linear system
-      // https://eigen.tuxfamily.org/dox/group__TopicSparseSystems.html
-      // https://eigen.tuxfamily.org/dox/group__LeastSquares.html
+        // Get w in terms of theta (Get P_i and q_i where w = P_i * theta + q_i)
+        // cout << "Getting P matrix and q vecotr\n";
+        // vector<std::thread *> threads(std::min(CORES, n_succ_sample));
+        auto start_time_calc_w = std::chrono::high_resolution_clock::now();
+        sample = 0;
+        while (sample < n_succ_sample) {
+          int sample_end = (sample + CORES >= n_succ_sample) ?
+                           n_succ_sample : sample + CORES;
+          int thread_idx = 0;
+          for (int sample_i = sample; sample_i < sample_end; sample_i++) {
+            threads[thread_idx] = new std::thread(
+                calcWInTermsOfTheta,
+                sample_i, dir,
+                std::ref(nl_vec), std::ref(nw_vec),
+                std::ref(A_active_vec), std::ref(B_active_vec),
+                std::ref(H_vec), std::ref(b_vec),
+                method_to_solve_system_of_equations);
+            thread_idx++;
+          }
+          thread_idx = 0;
+          for (int sample_i = sample; sample_i < sample_end; sample_i++) {
+            threads[thread_idx]->join();
+            delete threads[thread_idx];
+            thread_idx++;
+          }
+          sample = sample_end;
+        }
+        // Read P_i and q_i
+        vector<MatrixXd> P_vec;
+        vector<VectorXd> q_vec;
+        readPiQiFile(&P_vec, &q_vec,
+                     n_succ_sample, dir);
+        // Print out elapsed time
+        auto finish_time_calc_w = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed_calc_w =
+            finish_time_calc_w - start_time_calc_w;
+        cout << "Time spent on getting w in terms of theta: "
+             << to_string(int(elapsed_calc_w.count())) << " seconds\n";
+        cout << endl;
 
-      // Our calculation below is based on the fact that the H matrices are pd and
-      // symmetric, so we check them here.
-      // However, H turned out not to be psd, since we have timestep h as decision
-      // variable. (It came from running cost. ~h*u'*R*u, etc)
-      // Fixed it by adding running cost by hand (but the timestep is fixed now).
-      // Now H is always pd because we also added a regularization term.
-      /*cout << "Checking if H is pd and symmetric\n";
-      for (int sample = 0; sample < n_succ_sample; sample++) {
-        // Check if H is symmetric
-        VectorXd One_w = VectorXd::Ones(nw_vec[sample]);
-        double sum =
-          One_w.transpose() * (H_vec[sample] - H_vec[sample].transpose()) * One_w;
-        if (sum != 0) cout << "H is not symmetric\n";
 
-        // Check if H is pd
-        VectorXd eivals_real = H_vec[sample].eigenvalues().real();
+
+
+        // // Testing
+        // MatrixXd invH = H_vec[0].inverse();
+        // Eigen::BDCSVD<MatrixXd> svd_4(invH);
+        // cout << "invH:\n";
+        // cout << "  biggest singular value is " << svd_4.singularValues()(0) << endl;
+        // cout << "  smallest singular value is "
+        //         << svd_4.singularValues().tail(1) << endl;
+        // // Testing
+        // Eigen::BDCSVD<MatrixXd> svd_2(A_active_vec[0]);
+        // cout << "A:\n";
+        // cout << "  biggest singular value is " << svd_2.singularValues()(0) << endl;
+        // cout << "  smallest singular value is "
+        //         << svd_2.singularValues().tail(1) << endl;
+        // // cout << "singular values are \n" << svd_2.singularValues() << endl;
+
+
+        // Run a quadprog to check if the solution to the following problem is 0
+        // Theoratically, it should be 0. Otherwise, something is wrong
+        // min 0.5*w^T Q w + c^T w
+        // st  A w = 0
+        /*cout << "Run traj opt to check if your quadratic approximation is correct\n";
+        int nl_i = nl_vec[0];
+        int nw_i = nw_vec[0];
+        MathematicalProgram quadprog;
+        auto w = quadprog.NewContinuousVariables(nw_i, "w");
+        quadprog.AddLinearConstraint( A_active_vec[0],
+                                  VectorXd::Zero(nl_i),
+                                  VectorXd::Zero(nl_i),
+                                  w);
+        quadprog.AddQuadraticCost(H_vec[0],b_vec[0],w);
+        const auto result = Solve(quadprog);
+        auto solution_result = result.get_solution_result();
+        cout << solution_result << endl;
+        cout << "Cost:" << result.get_optimal_cost() << endl;
+        VectorXd w_sol = result.GetSolution(quadprog.decision_variables());
+        cout << "w_sol norm:" << w_sol.norm() << endl;
+        cout << "Finished traj opt\n\n";*/
+
+
+        /*// Check if Q_theta is pd
+        cout << "Checking if Q_theta is psd...\n";
+        MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
+        for (int sample = 0; sample < n_succ_sample; sample++)
+          Q_theta += P_vec[sample].transpose()*H_vec[sample]*P_vec[sample];
+        VectorXd eivals_real = Q_theta.eigenvalues().real();
         for (int i = 0; i < eivals_real.size(); i++) {
           if (eivals_real(i) <= 0)
-            cout << "H is not positive definite (with e-value = "
+            cout << "Q_theta is not positive definite (with e-value = "
                  << eivals_real(i) << ")\n";
         }
-      }
-      cout << "Finished checking\n\n";*/
+        cout << endl;*/
 
 
-      // Get w in terms of theta (Get P_i and q_i where w = P_i * theta + q_i)
-      // cout << "Getting P matrix and q vecotr\n";
-      // vector<std::thread *> threads(std::min(CORES, n_succ_sample));
-      auto start_time_calc_w = std::chrono::high_resolution_clock::now();
-      sample = 0;
-      while (sample < n_succ_sample) {
-        int sample_end = (sample + CORES >= n_succ_sample) ?
-                         n_succ_sample : sample + CORES;
-        int thread_idx = 0;
-        for (int sample_i = sample; sample_i < sample_end; sample_i++) {
-          threads[thread_idx] = new std::thread(
-            calcWInTermsOfTheta,
-            sample_i, dir,
-            std::ref(nl_vec), std::ref(nw_vec),
-            std::ref(A_active_vec), std::ref(B_active_vec),
-            std::ref(H_vec), std::ref(b_vec),
-            method_to_solve_system_of_equations);
-          thread_idx++;
+
+
+
+
+
+        // Get gradient of the cost wrt theta (assume H_vec[sample] symmetric)
+        cout << "Calculating gradient\n";
+        VectorXd gradient_cost = VectorXd::Zero(theta.size());
+        for (sample = 0; sample < n_succ_sample; sample++) {
+          gradient_cost += P_vec[sample].transpose() * b_vec[sample] / n_succ_sample;
+          // gradient_cost +=
+          // P_vec[sample].transpose() * (b_vec[sample] + H_vec[sample] * q_vec[sample]);
         }
-        thread_idx = 0;
-        for (int sample_i = sample; sample_i < sample_end; sample_i++) {
-          threads[thread_idx]->join();
-          delete threads[thread_idx];
-          thread_idx++;
+        // cout << "gradient_cost = \n" << gradient_cost;
+
+        // Newton's method (not exactly the same, cause Q_theta is not pd but psd)
+        // See your IOE611 lecture notes on page 7-17 to page 7-20
+        // cout << "Getting Newton step\n";
+        MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
+        for (sample = 0; sample < n_succ_sample; sample++) {
+          Q_theta +=
+              P_vec[sample].transpose() * H_vec[sample] * P_vec[sample] / n_succ_sample;
         }
-        sample = sample_end;
-      }
-      // Read P_i and q_i
-      vector<MatrixXd> P_vec;
-      vector<VectorXd> q_vec;
-      readPiQiFile(&P_vec, &q_vec,
-                   n_succ_sample, dir);
-      // Print out elapsed time
-      auto finish_time_calc_w = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> elapsed_calc_w =
-          finish_time_calc_w - start_time_calc_w;
-      cout << "Time spent on getting w in terms of theta: "
-           << to_string(int(elapsed_calc_w.count())) << " seconds\n";
-      cout << endl;
+        double mu = 1e-4; // 1e-6 caused unstable and might diverge
+        MatrixXd inv_Q_theta = (Q_theta + mu * MatrixXd::Identity(n_theta,
+                                                                  n_theta)).inverse();
+        VectorXd newton_step = -inv_Q_theta * gradient_cost;
+        // Testing
+        /*Eigen::BDCSVD<MatrixXd> svd(inv_Q_theta);
+        cout << "inv_Q_theta's smallest and biggest singular value " <<
+             svd.singularValues().tail(1) << ", " <<
+             svd.singularValues()(0) << endl;*/
+        // Newton decrement (can be a criterion to terminate your newton steps)
+        double lambda_square = -gradient_cost.transpose() * newton_step;
+
+        // step_direction
+        step_direction = is_newton ? newton_step : -gradient_cost;
+        prefix = to_string(iter) +  "_";
+        writeCSV(dir + prefix + string("step_direction.csv"), step_direction);
 
 
+        // Calculate lambda and gradient norm
+        VectorXd lambda_square_vecXd(1); lambda_square_vecXd << lambda_square;
+        VectorXd norm_grad_cost(1); norm_grad_cost << gradient_cost.norm();
+        writeCSV(dir + prefix + string("norm_grad_cost.csv"), norm_grad_cost);
+        writeCSV(dir + prefix + string("lambda_square.csv"), lambda_square_vecXd);
+        cout << "lambda_square = " << lambda_square << endl;
+        cout << "gradient_cost norm: " << norm_grad_cost << endl << endl;
 
-
-      // // Testing
-      // MatrixXd invH = H_vec[0].inverse();
-      // Eigen::BDCSVD<MatrixXd> svd_4(invH);
-      // cout << "invH:\n";
-      // cout << "  biggest singular value is " << svd_4.singularValues()(0) << endl;
-      // cout << "  smallest singular value is "
-      //         << svd_4.singularValues().tail(1) << endl;
-      // // Testing
-      // Eigen::BDCSVD<MatrixXd> svd_2(A_active_vec[0]);
-      // cout << "A:\n";
-      // cout << "  biggest singular value is " << svd_2.singularValues()(0) << endl;
-      // cout << "  smallest singular value is "
-      //         << svd_2.singularValues().tail(1) << endl;
-      // // cout << "singular values are \n" << svd_2.singularValues() << endl;
-
-
-      // Run a quadprog to check if the solution to the following problem is 0
-      // Theoratically, it should be 0. Otherwise, something is wrong
-      // min 0.5*w^T Q w + c^T w
-      // st  A w = 0
-      /*cout << "Run traj opt to check if your quadratic approximation is correct\n";
-      int nl_i = nl_vec[0];
-      int nw_i = nw_vec[0];
-      MathematicalProgram quadprog;
-      auto w = quadprog.NewContinuousVariables(nw_i, "w");
-      quadprog.AddLinearConstraint( A_active_vec[0],
-                                VectorXd::Zero(nl_i),
-                                VectorXd::Zero(nl_i),
-                                w);
-      quadprog.AddQuadraticCost(H_vec[0],b_vec[0],w);
-      const auto result = Solve(quadprog);
-      auto solution_result = result.get_solution_result();
-      cout << solution_result << endl;
-      cout << "Cost:" << result.get_optimal_cost() << endl;
-      VectorXd w_sol = result.GetSolution(quadprog.decision_variables());
-      cout << "w_sol norm:" << w_sol.norm() << endl;
-      cout << "Finished traj opt\n\n";*/
-
-
-      /*// Check if Q_theta is pd
-      cout << "Checking if Q_theta is psd...\n";
-      MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
-      for (int sample = 0; sample < n_succ_sample; sample++)
-        Q_theta += P_vec[sample].transpose()*H_vec[sample]*P_vec[sample];
-      VectorXd eivals_real = Q_theta.eigenvalues().real();
-      for (int i = 0; i < eivals_real.size(); i++) {
-        if (eivals_real(i) <= 0)
-          cout << "Q_theta is not positive definite (with e-value = "
-               << eivals_real(i) << ")\n";
-      }
-      cout << endl;*/
-
-
-
-
-
-
-
-      // Get gradient of the cost wrt theta (assume H_vec[sample] symmetric)
-      cout << "Calculating gradient\n";
-      VectorXd gradient_cost = VectorXd::Zero(theta.size());
-      for (sample = 0; sample < n_succ_sample; sample++) {
-        gradient_cost += P_vec[sample].transpose() * b_vec[sample] / n_succ_sample;
-        // gradient_cost +=
-        // P_vec[sample].transpose() * (b_vec[sample] + H_vec[sample] * q_vec[sample]);
-      }
-      // cout << "gradient_cost = \n" << gradient_cost;
-
-      // Newton's method (not exactly the same, cause Q_theta is not pd but psd)
-      // See your IOE611 lecture notes on page 7-17 to page 7-20
-      // cout << "Getting Newton step\n";
-      MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
-      for (sample = 0; sample < n_succ_sample; sample++) {
-        Q_theta +=
-          P_vec[sample].transpose() * H_vec[sample] * P_vec[sample] / n_succ_sample;
-      }
-      double mu = 1e-4; // 1e-6 caused unstable and might diverge
-      MatrixXd inv_Q_theta = (Q_theta + mu * MatrixXd::Identity(n_theta,
-                              n_theta)).inverse();
-      VectorXd newton_step = -inv_Q_theta * gradient_cost;
-      // Testing
-      /*Eigen::BDCSVD<MatrixXd> svd(inv_Q_theta);
-      cout << "inv_Q_theta's smallest and biggest singular value " <<
-           svd.singularValues().tail(1) << ", " <<
-           svd.singularValues()(0) << endl;*/
-      // Newton decrement (can be a criterion to terminate your newton steps)
-      double lambda_square = -gradient_cost.transpose() * newton_step;
-
-      // step_direction
-      step_direction = is_newton ? newton_step : -gradient_cost;
-      prefix = to_string(iter) +  "_";
-      writeCSV(dir + prefix + string("step_direction.csv"), step_direction);
-
-
-      // Calculate lambda and gradient norm
-      VectorXd lambda_square_vecXd(1); lambda_square_vecXd << lambda_square;
-      VectorXd norm_grad_cost(1); norm_grad_cost << gradient_cost.norm();
-      writeCSV(dir + prefix + string("norm_grad_cost.csv"), norm_grad_cost);
-      writeCSV(dir + prefix + string("lambda_square.csv"), lambda_square_vecXd);
-      cout << "lambda_square = " << lambda_square << endl;
-      cout << "gradient_cost norm: " << norm_grad_cost << endl << endl;
-
-      // Gradient descent
-      prev_theta = theta;
-      // current_iter_step_size = h_step;
-      double norm_grad_cost_double = norm_grad_cost(0);
-      if (norm_grad_cost_double > 1) {
-        // current_iter_step_size = h_step / sqrt(norm_grad_cost(0));  // Heuristic
-        current_iter_step_size = h_step / norm_grad_cost_double;  // Heuristic
-      } else {
-        current_iter_step_size = h_step;
-      }
-      cout << "step size = " << current_iter_step_size << "\n\n";
-      theta = theta + current_iter_step_size * step_direction;
-
-      // Assign theta_s and theta_sDDot
-      theta_s = theta.head(n_theta_s);
-      theta_sDDot = theta.tail(n_theta_sDDot);
-
-      // Check optimality
-      if (is_newton) {
-        if (lambda_square < stopping_threshold) {
-          cout << "Found optimal theta.\n\n";
-          break;
+        // Gradient descent
+        prev_theta = theta;
+        // current_iter_step_size = h_step;
+        double norm_grad_cost_double = norm_grad_cost(0);
+        if (norm_grad_cost_double > 1) {
+          // current_iter_step_size = h_step / sqrt(norm_grad_cost(0));  // Heuristic
+          current_iter_step_size = h_step / norm_grad_cost_double;  // Heuristic
+        } else {
+          current_iter_step_size = h_step;
         }
-      } else {
-        if (norm_grad_cost(0) < stopping_threshold) {
-          cout << "Found optimal theta.\n\n";
-          break;
-        }
-      }
+        cout << "step size = " << current_iter_step_size << "\n\n";
+        theta = theta + current_iter_step_size * step_direction;
 
-      cout << '\a';  // making noise to notify
+        // Assign theta_s and theta_sDDot
+        theta_s = theta.head(n_theta_s);
+        theta_sDDot = theta.tail(n_theta_sDDot);
+
+        // Check optimality
+        if (is_newton) {
+          if (lambda_square < stopping_threshold) {
+            cout << "Found optimal theta.\n\n";
+            break;
+          }
+        } else {
+          if (norm_grad_cost(0) < stopping_threshold) {
+            cout << "Found optimal theta.\n\n";
+            break;
+          }
+        }
+
+        cout << '\a';  // making noise to notify
+      }
     }  // end if(!is_get_nominal)
   }  // end for
 

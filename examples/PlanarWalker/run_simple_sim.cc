@@ -6,10 +6,9 @@
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
+#include "drake/multibody/rigid_body_plant/drake_visualizer.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/systems/analysis/runge_kutta2_integrator.h"
-#include "drake/systems/analysis/runge_kutta3_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -23,11 +22,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
-// #include "examples/Cassie/cassie_utils.h"
-
-// #include "drake/systems/sensors/accelerometer.h"
-// #include "drake/systems/sensors/gyroscope.h"
-// #include "systems/sensors/sim_cassie_sensor_aggregator.h"
+#include "drake/lcm/drake_lcm.h"
 
 namespace dairlib {
 
@@ -62,12 +57,23 @@ DEFINE_string(state_channel_name, "PLANAR_STATE",
               "The name of the lcm channel that sends Cassie's state");
 DEFINE_bool(publish_output, true, "Publish simulated PLANAR_OUTPUT");
 
-// Cassie inital positions
-DEFINE_double(init_height, 1.05, "Initial height of the pelvis");
-DEFINE_double(init_hip_pitch, .4, "Initial hip pitch angle");
-DEFINE_double(init_knee, -1.0, "Initial knee joint position");
-DEFINE_double(init_ankle, 1.3, "Initial ankle joint position");
-DEFINE_double(init_toe, -1.5, "Initial toe joint position");
+DEFINE_double(target_realtime_rate, 1.0,
+              "The target realtime rate for the simulation");
+
+// Planar Walker inital positions
+DEFINE_double(init_height, 0.855, "Initial height of the pelvis");
+DEFINE_double(left_hip_pin, 0.58234,
+              "Initial angle between torso and left upper link");
+DEFINE_double(left_knee_pin, -1.16473,
+              "Initial angle between left upper link and left lower link");
+DEFINE_double(left_ankle, 0.58234,
+              "Initial angle between left lower link and left foot");
+DEFINE_double(right_hip_pin, 0.58234,
+              "Initial angle between torso and right upper link");
+DEFINE_double(right_knee_pin, -1.16473,
+              "Initial angle between right upper link and right lower link");
+DEFINE_double(right_ankle, 0.58234,
+              "Initial angle between right lower link and right foot");
 
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time of simulation");
@@ -122,6 +128,7 @@ int do_main(int argc, char* argv[]) {
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,
       plant->get_input_port(0).size());
+
   // To get rid of the timestamp which is at the tail of a timestapedVector
   builder.Connect(input_sub->get_output_port(),
                   input_receiver->get_input_port(0));
@@ -142,23 +149,11 @@ int do_main(int argc, char* argv[]) {
                     state_pub->get_input_port());
   }
 
-  // Create cassie output (containing simulated sensor) publisher
-  // if (FLAGS_publish_output) {
-  //   auto cassie_sensor_aggregator =
-  //       addImuAndAggregatorToSimulation(builder, plant, passthrough);
-  //   auto cassie_sensor_pub =
-  //       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
-  //           "PLANAR_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
-  //   builder.Connect(cassie_sensor_aggregator->get_output_port(0),
-  //                   cassie_sensor_pub->get_input_port());
-  // }
-
-  // Creates and adds LCM publisher for visualization.
-  // builder.AddVisualizer(&lcm);
-  // auto visualizer = builder.AddSystem<systems::DrakeVisualizer>
-  //                   (plant->get_rigid_body_tree(), &lcm);
+  drake::lcm::DrakeLcm drake_lcm;
+  auto visualizer = builder.AddSystem<drake::systems::DrakeVisualizer>(
+      plant->get_rigid_body_tree(), &drake_lcm);
   // Raw state vector to visualizer.
-  // builder.Connect(plant->state_output_port(), visualizer->get_input_port(0));
+  builder.Connect(plant->state_output_port(), visualizer->get_input_port(0));
 
   auto diagram = builder.Build();
 
@@ -167,53 +162,22 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*plant,
                                           &simulator.get_mutable_context());
 
-  // drake::systems::Context<double>& sim_context =
-  // simulator.get_mutable_context();
-  // auto integrator =
-  //     simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
-  //         *diagram, FLAGS_timestep, &sim_context);
-  // auto integrator =
-  //   simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>
-  //   (*diagram, &sim_context);
-  // integrator->set_maximum_step_size(FLAGS_timestep);
-
   Eigen::VectorXd x0 =
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
 
-  // std::map<std::string, int> map =
-  //     plant->get_rigid_body_tree().computePositionNameToIndexMap();
-  // x0(map.at("hip_pitch_left")) = FLAGS_init_hip_pitch;
-  // x0(map.at("hip_pitch_right")) = FLAGS_init_hip_pitch;
-  // // x0(map.at("achilles_hip_pitch_left")) = -.44;
-  // // x0(map.at("achilles_hip_pitch_right")) = -.44;
-  // // x0(map.at("achilles_heel_pitch_left")) = -.105;
-  // // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  // x0(map.at("knee_left")) = FLAGS_init_knee;
-  // x0(map.at("knee_right")) = FLAGS_init_knee;
-  // x0(map.at("ankle_joint_left")) = FLAGS_init_ankle;
-  // x0(map.at("ankle_joint_right")) = FLAGS_init_ankle;
-
-  // // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
-  // // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
-
-  // // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
-  // // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
-
-  // x0(map.at("toe_left")) = FLAGS_init_toe;
-  // x0(map.at("toe_right")) = FLAGS_init_toe;
+  std::map<std::string, int> map =
+      plant->get_rigid_body_tree().computePositionNameToIndexMap();
+  x0(map.at("left_ankle")) = FLAGS_left_ankle;
+  x0(map.at("left_knee_pin")) = FLAGS_left_knee_pin;
+  x0(map.at("left_hip_pin")) = FLAGS_left_hip_pin;
+  x0(map.at("right_ankle")) = FLAGS_right_ankle;
+  x0(map.at("right_knee_pin")) = FLAGS_right_knee_pin;
+  x0(map.at("right_hip_pin")) = FLAGS_right_hip_pin;
 
   std::vector<int> fixed_joints;
-  // fixed_joints.push_back(map.at("hip_pitch_left"));
-  // fixed_joints.push_back(map.at("hip_pitch_right"));
   // fixed_joints.push_back(map.at("knee_left"));
   // fixed_joints.push_back(map.at("knee_right"));
-
-  // double quaternion_norm = x0.segment(3, 4).norm();
-  // if (quaternion_norm != 0)  // Unit Quaternion
-  //   x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
-  // else  // in case the user enters 0-norm quaternion
-  //   x0(3) = 1;
 
   // Set the initial height of the robot so that it's above the ground.
   x0(1) = FLAGS_init_height;
@@ -248,26 +212,23 @@ int do_main(int argc, char* argv[]) {
     drake::systems::ContinuousState<double>& state =
         context.get_mutable_continuous_state();
     std::cout << "Continuous " << state.size() << std::endl;
-    // state.SetFromVector(x0);
-    // state[1] = 1.0;
+    x0[1] = FLAGS_init_height;
+    state.SetFromVector(x0);
   } else {
     std::cout << "ngroups " << context.num_discrete_state_groups() << std::endl;
     drake::systems::BasicVector<double>& state =
         context.get_mutable_discrete_state(0);
     std::cout << "Discrete " << state.size() << std::endl;
-    // state.SetFromVector(x0);
-    // state[4] = 1;
-    // state[3] = 0;
-    // state[4] = 0;
+    state.SetFromVector(x0);
   }
 
   // int num_u = plant->get_num_actuators();
-  // auto zero_input = Eigen::MatrixXd::Zero(num_u,1);
+  // auto zero_input = Eigen::MatrixXd::Zero(num_u, 1);
   // context.FixInputPort(0, zero_input);
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(1.0);
+  simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
 
   simulator.AdvanceTo(FLAGS_end_time);

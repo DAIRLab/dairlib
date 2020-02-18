@@ -43,22 +43,20 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
   void CalcSwingTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
 
-  bool should_step(Eigen::Vector3d reduced_order_state) const;
+  bool should_step(double current_time, double prev_td_time,
+                   Eigen::Vector3d reduced_order_state) const;
 
-  void find_next_stance_location(Eigen::Vector3d CoM_wrt_foot,
-                                 Eigen::Vector3d dCoM,
-                                 Eigen::Vector3d swing_foot_pos,
-                                 Eigen::Vector3d& next_stance_pos,
+  void find_next_stance_location(const Eigen::Vector3d& reduced_order_state,
+                                 double& next_stance_loc,
                                  double& t) const;
+
+  Eigen::Vector3d solveQP(const Eigen::Vector3d& reduced_order_state) const;
 
   drake::trajectories::PiecewisePolynomial<double> createSplineForSwingFoot(
       const double start_time_of_this_interval,
       const double end_time_of_this_interval,
       const Eigen::Vector3d& init_swing_foot_pos,
       const Eigen::Vector3d& CP) const;
-
-  Eigen::Vector3d solveQP(Eigen::Vector3d CoM_wrt_foot, Eigen::Vector3d dCoM,
-                          Eigen::Vector3d swing_leg_pos) const;
 
   int state_port_;
   int fsm_port_;
@@ -103,6 +101,7 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd P_;
   Eigen::MatrixXd S_;
+  double dt_;
 
   // Mahematical Program
   std::unique_ptr<drake::solvers::MathematicalProgram> quadprog_;
@@ -115,7 +114,7 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
 
   // Constraints
   drake::solvers::LinearConstraint* input_constraint_;
-  // drake::solvers::LinearConstraint* barrier_constraint_;
+  drake::solvers::LinearConstraint* barrier_constraint_;
   drake::solvers::LinearEqualityConstraint* acceleration_constraint_;
 
   // Variables
@@ -125,6 +124,19 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
       dx_;
   Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
       rho_;
+
+  // Testing
+  std::unique_ptr<std::vector<double>> time_hist_;
+  std::unique_ptr<std::vector<double>> CoM_hist_x_;
+  std::unique_ptr<std::vector<double>> CoM_hist_z_;
+  std::unique_ptr<std::vector<double>> desired_CoM_hist_x_;
+  std::unique_ptr<std::vector<double>> desired_CoM_hist_z_;
+  std::unique_ptr<std::vector<double>> swing_pos_x_hist_;
+  std::unique_ptr<std::vector<double>> swing_pos_y_hist_;
+  std::unique_ptr<std::vector<double>> swing_pos_z_hist_;
+  std::unique_ptr<std::vector<double>> desired_swing_pos_x_hist_;
+  std::unique_ptr<std::vector<double>> desired_swing_pos_y_hist_;
+  std::unique_ptr<std::vector<double>> desired_swing_pos_z_hist_;
 };
 
 } // namespace dairlib

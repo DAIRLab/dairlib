@@ -1,7 +1,9 @@
 #include "examples/PlanarWalker/safe_traj_gen.h"
+#include "matplotlibcpp.h"
 
 #include <math.h>
 #include <string>
+#include <new>
 
 #include "drake/solvers/solve.h"
 
@@ -25,6 +27,9 @@ using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
+
+// TODO(nanda): Remove matplotlibcpp related files after testing
+namespace plt = matplotlibcpp;
 
 namespace dairlib {
 
@@ -79,11 +84,12 @@ SafeTrajGenerator::SafeTrajGenerator(
   rho_ = quadprog_->NewContinuousVariables(1, "rho");
 
   // Cost Matrices
-  R_ = 0.1 * Matrix2d::Identity();
-  Q_ = MatrixXd::Identity(1, 1);
+  R_ = 2 * 0.1 * Matrix2d::Identity();
+  Q_ = 2 * MatrixXd::Identity(1, 1);
 
   S_ = MatrixXd::Identity(1, 1);
   P_ = 10 * MatrixXd::Identity(1, 1);
+  dt_ = 0.01;
 
   // Cost
   quadcost_input_ = quadprog_->AddQuadraticCost(R_, Vector2d::Zero(), input_)
@@ -96,11 +102,12 @@ SafeTrajGenerator::SafeTrajGenerator(
           .get();
 
   // This cost will be modified in the solveQP function
-  quadcost_swing_leg_ = quadprog_
-                            ->AddQuadraticErrorCost(P_, VectorXd::Zero(1),
-                                                    input_.block<1, 1>(1, 0))
-                            .evaluator()
-                            .get();
+  quadcost_swing_leg_ =
+      quadprog_
+          ->AddQuadraticCost(2 * P_ * dt_ * dt_, -2 * P_ * dt_ * 0,
+                             input_.block<1, 1>(1, 0))
+          .evaluator()
+          .get();
 
   // This cost gets modified in the solveQP function
   lincost_rho_ = quadprog_->AddLinearCost(S_, 0, rho_).evaluator().get();
@@ -116,19 +123,20 @@ SafeTrajGenerator::SafeTrajGenerator(
   // This constraint will be modified in the solveQP function
   acceleration_constraint_ =
       quadprog_
-          ->AddLinearEqualityConstraint(MatrixXd::Identity(1, 2),
-                                        MatrixXd::Identity(1, 1), input_)
+          ->AddLinearEqualityConstraint(MatrixXd::Identity(1, 3),
+                                        MatrixXd::Identity(1, 1),
+                                        {input_, dx_.block<1, 1>(1, 0)})
           .evaluator()
           .get();
 
   // This constraint will be modified in the solveQP function
-  // barrier_constraint_ =
-  //     quadprog_
-  //         ->AddLinearConstraint((MatrixXd::Identity(1, 2) * input_).array()
-  //         <=
-  //                               MatrixXd::Identity(1, 1).array())
-  //         .evaluator()
-  //         .get();
+  barrier_constraint_ =
+      quadprog_
+          ->AddLinearConstraint(MatrixXd::Identity(1, 3), 0,
+                                std::numeric_limits<double>::infinity(),
+                                {rho_, input_})
+          .evaluator()
+          .get();
 
   // Output port
   PiecewisePolynomial<double> pp_traj(VectorXd(0));
@@ -145,46 +153,60 @@ SafeTrajGenerator::SafeTrajGenerator(
   // The time of the last touch down
   prev_td_time_idx_ = this->DeclareDiscreteState(0 * VectorXd::Ones(1));
   // Duration of stance
-  duration_of_stance_idx_ = this->DeclareDiscreteState(0.35 * VectorXd::Ones(1));
+  duration_of_stance_idx_ = this->DeclareDiscreteState(0.5 * VectorXd::Ones(1));
   // The last state of FSM
-  prev_fsm_state_idx_ = this->DeclareDiscreteState(0 * VectorXd::Ones(1));
+  prev_fsm_state_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
   // The swing foot position in the beginning of the swing phase
   prev_td_swing_foot_idx_ = this->DeclareDiscreteState(3);
 
-  foot_position_idx_ = DeclareDiscreteState(VectorXd::Zero(3));
-  last_calculation_time_idx_ = DeclareDiscreteState(0);
+  foot_position_idx_ = this->DeclareDiscreteState(VectorXd::Zero(3));
+  last_calculation_time_idx_ =
+      this->DeclareDiscreteState(-1 * VectorXd::Zero(1));
 
   // Check if the model is floating based
   is_quaternion_ = multibody::IsFloatingBase(tree);
-  std::cout << "SafeTrajGenerator is defined!" << std::endl;
+
+  // Testing variables
+  time_hist_ = std::make_unique<std::vector<double>>();
+  CoM_hist_x_ = std::make_unique<std::vector<double>>();
+  CoM_hist_z_ = std::make_unique<std::vector<double>>();
+  desired_CoM_hist_x_ = std::make_unique<std::vector<double>>();
+  desired_CoM_hist_z_ = std::make_unique<std::vector<double>>();
+  swing_pos_x_hist_ = std::make_unique<std::vector<double>>();
+  swing_pos_y_hist_ = std::make_unique<std::vector<double>>();
+  swing_pos_z_hist_ = std::make_unique<std::vector<double>>();
+  desired_swing_pos_x_hist_ = std::make_unique<std::vector<double>>();
+  desired_swing_pos_y_hist_ = std::make_unique<std::vector<double>>();
+  desired_swing_pos_z_hist_ = std::make_unique<std::vector<double>>();
+
+  // Test private methods here
 }
 
 EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  std::cout << "Inside DeclareDiscreteState" << std::endl;
+
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
   const BasicVector<double>* fsm_output =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
 
   VectorXd fsm_state = fsm_output->get_value();
-  std::cout << "fsm_state:" << std::endl;
-  std::cout << fsm_state << std::endl;
+  // std::cout << "fsm_state:" << std::endl;
+  // std::cout << fsm_state << std::endl;
 
   auto prev_td_time =
       discrete_state->get_mutable_vector(prev_td_time_idx_).get_mutable_value();
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
                             .get_mutable_value();
 
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);
 
-  std::cout << "current_time:" << std::endl;
-  std::cout << current_time << std::endl;
+  std::cout << "current_time:" << current_time << std::endl;
 
+  // TODO(nanda): Modify this if condition to incorporate time
   if (fsm_state(0) != prev_fsm_state(0)) {
     prev_fsm_state(0) = fsm_state(0);
     prev_td_time(0) = current_time;
@@ -197,6 +219,7 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
     /* Redo this computation if sufficient time has passed */
     auto last_calc_time =
         discrete_state->get_vector(last_calculation_time_idx_).get_value();
+    // std::cout << "last_calc_time: " << last_calc_time << std::endl;
     if (current_time - last_calc_time(0) > 0.1) {
       KinematicsCache<double> cache = tree_.CreateKinematicsCache();
       VectorXd q = robot_output->GetPositions();
@@ -228,6 +251,9 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
 
       Vector3d stance_foot_pos =
           tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
+      Vector3d swing_foot_pos =
+          tree_.transformPoints(cache, pt_on_swing_foot, swing_foot_idx, 0);
+      swing_foot_pos(0) -= stance_foot_pos(0);
 
       Vector3d CoM_wrt_foot = CoM - stance_foot_pos;
       const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
@@ -235,108 +261,143 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
       const double CoM_wrt_foot_z = CoM(2) - stance_foot_pos(2);
       DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
-      Vector3d stance_location = Vector3d::Zero();
+      double stance_location;
       double step_duration = 0;
-      find_next_stance_location(CoM_wrt_foot, dCoM, pt_on_swing_foot,
+      Vector3d reduced_order_state;
+      reduced_order_state << CoM_wrt_foot(0), dCoM(0),
+          (swing_foot_pos - stance_foot_pos)[0];
+      find_next_stance_location(reduced_order_state,
                                 stance_location, step_duration);
 
+      std::cout << "step_duration: " << step_duration << std::endl;
+      std::cout << "stance_location: " << stance_location << std::endl;
+      Vector3d stance_pos;
+      swing_foot_pos << stance_foot_pos(0) + stance_location, 0, 0;
       discrete_state->get_mutable_vector(duration_of_stance_idx_)
               .get_mutable_value()
           << step_duration;
       discrete_state->get_mutable_vector(foot_position_idx_).get_mutable_value()
-          << stance_location;
+          << stance_foot_pos;
       discrete_state->get_mutable_vector(last_calculation_time_idx_)
               .get_mutable_value()
           << current_time;
+      exit(EXIT_FAILURE);
     }
   }
-  std::cout << "At the end of DiscreteVariableUpdate" << std::endl;
 
   return EventStatus::Succeeded();
 }
 
-Vector3d SafeTrajGenerator::solveQP(Vector3d CoM_wrt_foot, Vector3d dCoM,
-                                    Vector3d swing_foot_pos) const {
-  std::cout << "At the start of SolveQP" << std::endl;
+Vector3d SafeTrajGenerator::solveQP(const Vector3d& reduced_order_state) const {
   std::map<Polynomiald::VarType, double> var_values;
-  var_values[x[0].GetSimpleVariable()] = CoM_wrt_foot(0);
-  var_values[x[1].GetSimpleVariable()] = dCoM(0);
-  var_values[x[2].GetSimpleVariable()] = swing_foot_pos(0);
+  var_values[x[0].GetSimpleVariable()] = reduced_order_state(0);
+  var_values[x[1].GetSimpleVariable()] = reduced_order_state(1);
+  var_values[x[2].GetSimpleVariable()] = reduced_order_state(2);
 
   double V0_val = V0_.EvaluateMultivariate(var_values);
   double V1_val = V1_.EvaluateMultivariate(var_values);
 
   double multiplication_factor_S = 1;
-  if (V0_val <= 1 || V1_val <= 1) {
+  if (V0_val <= 1.0 || V1_val <= 1.0) {
     multiplication_factor_S *= 10;
   } else {
     multiplication_factor_S *= 0.1;
   }
+  // cout << "multiplication_factor_S: " << multiplication_factor_S << endl;
+  // cout << "Reduced-order state: " << reduced_order_state.transpose() << endl;
 
   // Swing foot cost
   double omega = lipm_model_.get_omega();
-  double capture_point = CoM_wrt_foot(0) + dCoM(0) / omega;
+  // cout << "Omega: " << omega << endl;
   VectorXd desired_swing_foot_position(1);
-  desired_swing_foot_position << capture_point - swing_foot_pos(0);
-  std::cout << desired_swing_foot_position << std::endl;
-  quadcost_swing_leg_->UpdateCoefficients(P_, desired_swing_foot_position);
+  desired_swing_foot_position
+      << reduced_order_state(0) + (reduced_order_state(1) / omega) - reduced_order_state(2);
+  // std::cout << "swing_foot_pos: " << swing_foot_pos << std::endl;
+  // std::cout << "Capture point: "  << desired_swing_foot_position << std::endl;
+  quadcost_swing_leg_->UpdateCoefficients(
+      2 * P_ * dt_ * dt_, -2 * P_ * dt_ * desired_swing_foot_position);
 
   // rho cost
   lincost_rho_->UpdateCoefficients(S_ * multiplication_factor_S, 0);
 
   // Acceleration constraint
-  VectorXd x_reduced_order(3);
-  x_reduced_order << CoM_wrt_foot(0), dCoM(0), swing_foot_pos(0);
   VectorXd f = Vector3d::Zero();
   MatrixXd g = MatrixXd::Zero(3, 2);
-  lipm_model_.controlAffineDynamics(0, x_reduced_order, f, g);
-  acceleration_constraint_->UpdateCoefficients(g.block<1, 2>(1, 0),
-                                               f.segment<1>(1));
+  lipm_model_.controlAffineDynamics(0, reduced_order_state, f, g);
+  MatrixXd A_eq(1, 3);
+  A_eq(0, 0) = g(1, 0);
+  A_eq(0, 1) = g(1, 1);
+  A_eq(0, 2) = -1;
+  acceleration_constraint_->UpdateCoefficients(A_eq, -f.segment<1>(1));
 
   // Barrier constraint
+  // cout << "V0_val: " << " " << V0_val << endl;
+  // cout << "V1_val: " << " " << V1_val << endl;
+  MatrixXd A_ineq(1, 3);
+  MatrixXd lb_ineq(1, 1);
   if (V0_val <= 1) {
+    // cout << "Inside 0-step!" << endl;
     MatrixXd partial_V0_val(1, 3);
     partial_V0_val << partial_V0_[0].EvaluateMultivariate(var_values),
         partial_V0_[1].EvaluateMultivariate(var_values),
         partial_V0_[2].EvaluateMultivariate(var_values);
+    // cout << "partial_V0_val: " << endl;
+    // cout << partial_V0_val << endl;
 
     auto dV_g = partial_V0_val * g;
+    A_ineq << 1, -dV_g;
     auto dV_f = partial_V0_val * f;
-    quadprog_->AddLinearConstraint((dV_f + dV_g * input_).array() <=
-                                   rho_.array());
+    lb_ineq << dV_f;
+    // cout << "dV_g: " << dV_g << endl;
+    // cout << "dV_f: " << dV_f << endl;
   } else {
+    // cout << "Inside 1-step!" << endl;
     MatrixXd partial_V1_val(1, 3);
     partial_V1_val << partial_V1_[0].EvaluateMultivariate(var_values),
         partial_V1_[1].EvaluateMultivariate(var_values),
         partial_V1_[2].EvaluateMultivariate(var_values);
-    auto dV_g = partial_V1_val * g;
-    auto dV_f = partial_V1_val * f;
-    quadprog_->AddLinearConstraint((dV_f + dV_g * input_).array() <=
-                                   rho_.array());
-  }
+    // cout << "partial_V1_val: " << endl;
+    // cout << partial_V1_val << endl;
 
+    auto dV_g = partial_V1_val * g;
+    A_ineq << 1, -dV_g;
+    auto dV_f = partial_V1_val * f;
+    lb_ineq << dV_f;
+    // cout << "dV_g: " << dV_g << endl;
+    // cout << "dV_f: " << dV_f << endl;
+  }
+  MatrixXd ub_ineq(1, 1);
+  ub_ineq << std::numeric_limits<double>::infinity();
+  barrier_constraint_->UpdateCoefficients(
+      A_ineq, lb_ineq, ub_ineq);
+
+  auto constraints = quadprog_->GetAllConstraints();
+  // cout << "Number of Constraint: " << endl;
+  // cout << constraints.size() << endl;
+  auto costs = quadprog_->GetAllCosts();
+  // cout << "Number of Costs: " << endl;
+  // cout << costs.size() << endl;
   drake::solvers::MathematicalProgramResult result =
       drake::solvers::Solve(*quadprog_);
 
   if (result.is_success()) {
     VectorXd input_val = result.GetSolution(input_);
-    std::cout << "input_val: " << std::endl;
-    std::cout << input_val << std::endl;
+    // std::cout << "input_val: " << input_val.transpose() << std::endl;
 
     VectorXd state_dot = f + g * input_val;
+    // std::cout << "state_dot: " << state_dot.transpose() << std::endl;
 
-    std::cout << "At the end of SolveQP" << std::endl;
     return state_dot;
   }
+  cout << result.get_solution_result() << endl;
 
   std::cout << "SolveQP failed!" << endl;
-  std::cout << "At the end of SolveQP" << std::endl;
-  DRAKE_ASSERT(0 > 1);
+  exit(EXIT_FAILURE);
   return Vector3d::Zero();
 }
 
-bool SafeTrajGenerator::should_step(Vector3d reduced_order_state) const {
-  std::cout << "At the start of should_step" << std::endl;
+bool SafeTrajGenerator::should_step(double current_time, double prev_td_time,
+                                    Vector3d reduced_order_state) const {
   std::map<Polynomiald::VarType, double> var_values;
   var_values[x[0].GetSimpleVariable()] = reduced_order_state(0);
   var_values[x[1].GetSimpleVariable()] = reduced_order_state(1);
@@ -345,51 +406,55 @@ bool SafeTrajGenerator::should_step(Vector3d reduced_order_state) const {
   double V0_val = V0_.EvaluateMultivariate(var_values);
   double V1_val = V1_.EvaluateMultivariate(var_values);
   double W0_val = W0_.EvaluateMultivariate(var_values);
-  std::cout << "At the end of should_step" << std::endl;
-  if (W0_val <= 1 && V0_val > 1) return true;
+  if (W0_val <= 1 && V0_val > 1) {
+    cout << "reduced_order_state: " << endl;
+    cout << reduced_order_state << endl;
+    std::cout << "Step!" << endl;
+    return true;
+  }
   return false;
 }
 
+// Use values of V here to see when the while loop can be stopped
+// Runs for a prohibitively long time - depends on the initial condition
 void SafeTrajGenerator::find_next_stance_location(
-    Eigen::Vector3d CoM_wrt_foot, Eigen::Vector3d dCoM,
-    Eigen::Vector3d swing_foot_pos, Eigen::Vector3d& next_stance_pos,
+    const Eigen::Vector3d& reduced_order_state, double& next_stance_loc,
     double& t) const {
-  std::cout << "At the start of find_next_stance_location" << std::endl;
   double dt = 0.01;
   double total_time = 0;
   Vector3d state_dot;
   Vector3d next_state;
-  next_state << CoM_wrt_foot(0), dCoM(0), swing_foot_pos(0);
+  next_state << reduced_order_state(0), reduced_order_state(1),
+      reduced_order_state(2);
+  cout << "Current state: " << next_state.transpose() << endl;
+
   int num_steps = 0;
   while (true) {
-    state_dot = solveQP(CoM_wrt_foot, dCoM, swing_foot_pos);
+    state_dot = solveQP(next_state);
 
     // Euler Integration
     next_state += state_dot * dt;
     total_time += dt;
-    CoM_wrt_foot(0) = next_state(0);
-    dCoM(0) = next_state(1);
-    swing_foot_pos(0) = next_state(2);
+    num_steps++;
 
-    if (should_step(next_state)) {
+    if (should_step(total_time, 0, next_state)) { // Change time here
       break;
     }
     if (num_steps > 200) {
       break;
     }
   }
-  next_stance_pos = swing_foot_pos;
+  next_stance_loc = next_state(2);
   if (num_steps > 200) {
     t = -1;
   } else {
     t = total_time;
   }
-  std::cout << "At the end of find_next_stance_location" << std::endl;
+  return;
 }
 
 void SafeTrajGenerator::CalcTraj(const Context<double>& context,
                                  Trajectory<double>* traj) const {
-  std::cout << "At the start of CalcTraj" << std::endl;
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd v = robot_output->GetVelocities();
@@ -431,58 +496,87 @@ void SafeTrajGenerator::CalcTraj(const Context<double>& context,
 
   Vector3d stance_foot_pos =
       tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
+  Vector3d swing_foot_pos =
+      tree_.transformPoints(cache, pt_on_swing_foot, swing_foot_idx, 0);
 
   Vector3d CoM_wrt_foot = CoM - stance_foot_pos;
-  const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
-  const double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
-  const double CoM_wrt_foot_z = CoM(2) - stance_foot_pos(2);
-  std::cout << "CoM_wrt_foot_x: " << std::endl;
-  std::cout << CoM_wrt_foot_x << std::endl;
-  std::cout << "CoM_wrt_foot_z: " << std::endl;
-  std::cout << CoM_wrt_foot_z << std::endl;
+  const double CoM_wrt_foot_x = CoM_wrt_foot(0);
+  const double CoM_wrt_foot_z = CoM_wrt_foot(2);
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   const std::vector<double> breaks = {
-      current_time, current_time + 0.35};  // Think about this line
+      current_time-0.02, prev_td_time(0) + 0.5};  // Think about this line
 
-  Vector3d state_dot = solveQP(CoM_wrt_foot, dCoM, pt_on_swing_foot);
+  Vector3d reduced_order_state;
+  reduced_order_state << CoM_wrt_foot(0), dCoM(0), swing_foot_pos(0);
+  Vector3d state_dot = solveQP(reduced_order_state);
 
   Polynomiald t("t");
   drake::MatrixX<Polynomiald> polynomial_matrix(3, 1);
-  polynomial_matrix(0, 0) = CoM_wrt_foot_x + dCoM(0) * t + state_dot(1) * t * t;
-  polynomial_matrix(1, 0) = stance_foot_pos(1) + 0 * t + 0 * t * t;
+  polynomial_matrix(0, 0) =
+      CoM(0) + dCoM(0) * t + state_dot(1) * pow(t, 2);
+  polynomial_matrix(1, 0) = stance_foot_pos(1) + 0 * t + 0 * pow(t, 2);
 
   std::vector<MatrixXd> Y(breaks.size(), MatrixXd::Zero(1, 1));
-  Y[0](0, 0) = CoM(2);
+  Y[0](0, 0) = lipm_model_.get_desired_com_height();
   Y[1](0, 0) = lipm_model_.get_desired_com_height();
+  // cout << "Actual height vs desired height: " << endl;
+  // cout << CoM(2) << endl;
+  // cout << lipm_model_.get_desired_com_height() << endl;
 
   MatrixXd Y_dot_start = MatrixXd::Zero(1, 1);
-  Y_dot_start(1, 0) = dCoM(2);
+  Y_dot_start(1, 0) = 0.0;
   MatrixXd Y_dot_end = MatrixXd::Zero(1, 1);
+  Y_dot_end(1, 0) = 0.0; // Remove this maybe?
 
   PiecewisePolynomial<double> pp_part =
       PiecewisePolynomial<double>::Cubic(breaks, Y, Y_dot_start, Y_dot_end);
 
   polynomial_matrix(2, 0) = pp_part.getPolynomial(0, 0, 0);
-  std::cout << "GetPolynomial!" << std::endl;
 
   const std::vector<drake::MatrixX<Polynomiald>> polynomials = {
       polynomial_matrix};
-  std::cout << "Polynomials!" << std::endl;
 
   PiecewisePolynomial<double>* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  std::cout << "Casted traj created!" << std::endl;
   *casted_traj = PiecewisePolynomial<double>(polynomials, breaks);
-  std::cout << "At the end of CalcTraj" << std::endl;
+
+  // plt::figure(0);
+  // plt::clf();
+  // Vector3d com_pos = casted_traj->value(current_time);
+  // Vector3d com_ddpos = casted_traj->derivative(2).value(current_time);
+
+  // time_hist_->push_back(current_time);
+  // desired_CoM_hist_x_->push_back(com_pos(0));
+  // desired_CoM_hist_z_->push_back(com_pos(2));
+  // CoM_hist_x_->push_back(CoM(0));
+  // CoM_hist_z_->push_back(CoM(2));
+
+  // plt::named_plot("Center of Mass x", *time_hist_, *CoM_hist_x_);
+  // plt::named_plot("Desired Center of Mass x", *time_hist_, *desired_CoM_hist_x_);
+  // plt::quiver(std::vector<double>{(*time_hist_)[time_hist_->size() - 1]},
+  //             std::vector<double>{CoM_wrt_foot_x}, std::vector<double>{0},
+  //             std::vector<double>{com_ddpos(0)});
+  // plt::legend();
+  // plt::pause(0.01);
+
+  // plt::figure(1);
+  // plt::clf();
+
+  // plt::named_plot("Center of Mass z", *time_hist_, *CoM_hist_z_);
+  // plt::named_plot("Desired Center of Mass z", *time_hist_, *desired_CoM_hist_z_);
+  // plt::quiver(std::vector<double>{(*time_hist_)[time_hist_->size() - 1]},
+  //             std::vector<double>{CoM(2)}, std::vector<double>{0},
+  //             std::vector<double>{com_ddpos(2)});
+  // plt::legend();
+  // plt::pause(0.01);
 }
 
 PiecewisePolynomial<double> SafeTrajGenerator::createSplineForSwingFoot(
     const double start_time_of_this_interval,
     const double end_time_of_this_interval, const Vector3d& init_swing_foot_pos,
     const Vector3d& CP) const {
-  std::cout << "At the start of createSplineForSwingFoot" << std::endl;
 
   // Two segment of cubic polynomial with velocity constraints
   std::vector<double> T_waypoint = {
@@ -521,13 +615,11 @@ PiecewisePolynomial<double> SafeTrajGenerator::createSplineForSwingFoot(
   Y_dot[2](2, 0) = desired_final_vertical_foot_velocity_;
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::Cubic(T_waypoint, Y, Y_dot);
-  std::cout << "At the end of createSplineForSwingFoot" << std::endl;
   return swing_foot_spline;
 }
 
 void SafeTrajGenerator::CalcSwingTraj(const Context<double>& context,
                                       Trajectory<double>* traj) const {
-  std::cout << "At the start of CalcSwingTraj" << std::endl;
 
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -543,7 +635,7 @@ void SafeTrajGenerator::CalcSwingTraj(const Context<double>& context,
   double stance_duration = duration_of_stance(0);
   if (stance_duration < 0) {
     cout << "There is no solution!" << endl;
-    stance_duration = 0.35;
+    stance_duration = 0.5;
   }
 
   // Get current time
@@ -574,7 +666,42 @@ void SafeTrajGenerator::CalcSwingTraj(const Context<double>& context,
   *casted_traj = createSplineForSwingFoot(start_time_of_this_interval,
                                           end_time_of_this_interval,
                                           init_swing_foot_pos, next_stance_pos);
-  std::cout << "At the end of CalcSwingTraj" << std::endl;
+
+  KinematicsCache<double> cache = tree_.CreateKinematicsCache();
+  VectorXd q = robot_output->GetPositions();
+
+  cache.initialize(q);
+  tree_.doKinematics(cache);
+
+  int stance_foot_idx = left_foot_idx_;
+  Vector3d pt_on_stance_foot = pt_on_left_foot_;
+  int swing_foot_idx = right_foot_idx_;
+  Vector3d pt_on_swing_foot = pt_on_right_foot_;
+
+  Vector3d stance_foot_pos =
+      tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
+  Vector3d swing_foot_pos =
+      tree_.transformPoints(cache, pt_on_swing_foot, swing_foot_idx, 0);
+
+  plt::clf();
+  time_hist_->push_back(current_time);
+  swing_pos_x_hist_->push_back(swing_foot_pos[0] - stance_foot_pos[0]);
+  swing_pos_y_hist_->push_back(swing_foot_pos[1] - stance_foot_pos[1]);
+  swing_pos_z_hist_->push_back(swing_foot_pos[2] - stance_foot_pos[2]);
+
+  Vector3d desired_swing_pos = casted_traj->value(current_time);
+  desired_swing_pos_x_hist_->push_back(desired_swing_pos[0]);
+  desired_swing_pos_y_hist_->push_back(desired_swing_pos[1]);
+  desired_swing_pos_z_hist_->push_back(desired_swing_pos[2]);
+
+  plt::named_plot("Desred swing leg x", *time_hist_, *desired_swing_pos_x_hist_);
+  plt::named_plot("Desired swing leg y", *time_hist_, *desired_swing_pos_y_hist_);
+  plt::named_plot("Desired swing leg z", *time_hist_, *desired_swing_pos_z_hist_);
+  plt::named_plot("Swing leg x", *time_hist_, *swing_pos_x_hist_);
+  plt::named_plot("Swing leg y", *time_hist_, *swing_pos_y_hist_);
+  plt::named_plot("Swing leg z", *time_hist_, *swing_pos_z_hist_);
+  plt::legend();
+  plt::pause(0.01);
 }
 
 }  // namespace dairlib

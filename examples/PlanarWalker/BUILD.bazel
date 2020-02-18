@@ -165,12 +165,15 @@ cc_library(
     name = "safe_traj_gen",
     srcs = ["safe_traj_gen.cc"],
     hdrs = ["safe_traj_gen.h"],
+    copts = ["-I/usr/include/python2.7/"], # TODO(nanda): Remove this line after testing
+    linkopts = ["-lpython2.7"], # TODO(nanda): Remove this line after testing
     deps = [
         ":create_lyapunov_polynomial",
         ":LIPM_swing_leg",
         "//systems/framework:vector",
         "//attic/multibody:utils",
         "@drake//:drake_shared_library",
+        ":matplotlibcpp", # TODO(nanda): Remove this line after testing
     ],
 )
 
@@ -228,3 +231,24 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_library(
+    name = "matplotlibcpp",
+    hdrs = ["matplotlibcpp.h"],
+)
+
+# cc_test(
+#   name = "safe_traj_gen_test",
+#   size = "small",
+#   srcs = ["test/safe_traj_gen_test.cc"],
+#   deps = [
+#       ":planar_walker_urdfs",
+#       ":safe_traj_gen",
+#       ":create_lyapunov_polynomial",
+#       ":LIPM_swing_leg",
+#       "//systems/framework:vector",
+#       "//attic/multibody:utils",
+#       "@drake//:drake_shared_library",
+#       "@gtest//:main",
+#   ],
+# )

@@ -31,16 +31,23 @@ StateBasedFiniteStateMachine::StateBasedFiniteStateMachine(
 void StateBasedFiniteStateMachine::CalcFiniteState(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* fsm_state) const {
-  std::cout << "From StateBasedFiniteStateMachine: " << std::endl;
-  // const OutputVector<double>* robot_output =
-  //     (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
   Eigen::VectorXd current_finite_state(1);
-  current_finite_state << initial_state_number_;
-  std::cout << "Current state: " << current_finite_state << std::endl;
+
+  // Currently this class is a time-based FSM
+  double timestamp = robot_output->get_timestamp();
+  double current_time = static_cast<double>(timestamp);
+
+  if(int((current_time - fmod(current_time, 0.5))/0.5) % 2 == 0) {
+    current_finite_state << 0;
+  } else {
+    current_finite_state << 1;
+  }
+  // current_finite_state << 0;
 
   fsm_state->get_mutable_value() = current_finite_state;
-  std::cout << "End of StateBasedFiniteStateMachine" << std::endl;
 }
 
 }  // namespace dairlib

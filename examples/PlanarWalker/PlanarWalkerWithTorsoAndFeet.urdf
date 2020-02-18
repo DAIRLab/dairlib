@@ -66,12 +66,12 @@
         <color rgba="1 0 0 1"/>
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 -0.5"/>
-      <geometry>
-        <sphere radius="0"/>
-      </geometry>
-    </collision>
+    <!-- <collision> -->
+    <!--   <origin xyz="0 0 -0.5"/> -->
+    <!--   <geometry> -->
+    <!--     <sphere radius="0"/> -->
+    <!--   </geometry> -->
+    <!-- </collision> -->
   </link>
   <link name="left_lower_leg_mass">
     <visual>
@@ -99,6 +99,20 @@
         <color rgba="1 0 0 1"/>
       </material>
     </visual>
+    <!-- Delete from here -->
+    <visual>
+      <origin xyz="0 0 0.075"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 0 -0.075"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+    </visual>
+    <!-- Till here -->
     <collision>
       <origin xyz="0 0 0.075"/>
       <geometry>
@@ -165,12 +179,12 @@
         <color rgba="0 0 1 1"/>
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 -0.5"/>
-      <geometry>
-        <sphere radius="0"/>
-      </geometry>
-    </collision>
+    <!-- <collision> -->
+    <!--   <origin xyz="0 0 -0.5"/> -->
+    <!--   <geometry> -->
+    <!--     <sphere radius="0"/> -->
+    <!--   </geometry> -->
+    <!-- </collision> -->
   </link>
   <link name="right_lower_leg_mass">
     <visual>
@@ -198,6 +212,20 @@
         <color rgba="0 0 1 1"/>
       </material>
     </visual>
+    <!-- Delete from here -->
+    <visual>
+      <origin xyz="0 0 0.075"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0 0 -0.075"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+    </visual>
+    <!-- Till here -->
     <collision>
       <origin xyz="0 0 0.075"/>
       <geometry>

@@ -19,7 +19,11 @@ group "1.simulated_robot" {
         host = "localhost";
     }
     cmd "2.simulator (no dispatcher) for OSC controller" {
-        exec = "bazel-bin/examples/PlanarWalker/run_simple_sim --publish_state=true --publish_rate=200";
+        exec = "bazel-bin/examples/PlanarWalker/run_simple_sim \
+                --publish_state=true --publish_rate=200 --init_height=0.85 \
+                --left_hip_pin=-0.58234 --left_knee_pin=1.16473 --left_ankle=-0.58234 \
+                --right_hip_pin=-0.58234 --right_knee_pin=1.16473 --right_ankle=-0.58234 \
+                --end_time=10.0 --target_realtime_rate=0.01";
         host = "localhost";
     }
     cmd "3.osc-balancing-controller" {
@@ -47,13 +51,15 @@ script "start-operator-RBP" {
 
 script "run-drake-osc-standing-control" {
     run_script "start-operator-RBP";
-    start cmd "2.simulator (no dispatcher) for OSC controller";
     start cmd "3.osc-balancing-controller";
+    wait ms 3000;
+    start cmd "2.simulator (no dispatcher) for OSC controller";
 }
 
 script "run-drake-osc-standing-control debug mode" {
     run_script "start-operator-RBP";
-    start cmd "2.simulator (no dispatcher) for OSC controller";
-    start cmd "3.osc-balancing-controller debug";
     start cmd "0.lcm-spy";
+    start cmd "3.osc-balancing-controller debug";
+    wait ms 3000;
+    start cmd "2.simulator (no dispatcher) for OSC controller";
 }

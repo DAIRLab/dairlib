@@ -56,8 +56,8 @@ DynamicsConstraint::DynamicsConstraint(
   DRAKE_DEMAND(n_sDDot * n_feature_sDDot == theta_sDDot.size());
 
   // Check the feature size implemented in the model expression
-  VectorXd s_temp = VectorXd::Zero(n_sDDot);
-  VectorXd ds_temp = VectorXd::Zero(n_sDDot);
+  VectorXd s_temp = VectorXd::Ones(n_sDDot);
+  VectorXd ds_temp = VectorXd::Ones(n_sDDot);
   DRAKE_DEMAND(n_feature_sDDot ==
                dyn_expression_.getFeature(s_temp, ds_temp).size());
 }

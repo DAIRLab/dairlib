@@ -139,6 +139,10 @@ void setRomDim(int* n_s, int* n_tau, int robot_option) {
   if (robot_option == 0) {
   } else if (robot_option == 1) {
   }
+  // 2D -- lipm
+  *n_s = 2;
+  *n_tau = 0;
+  // 4D -- lipm + swing foot
 //  *n_s = 4;
 //  *n_tau = 2;
 }
@@ -1062,7 +1066,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   KinematicsExpression<double> kin_expression(n_s, 0, &plant, FLAGS_robot_option);
   DynamicsExpression dyn_expression(n_sDDot, 0, FLAGS_robot_option);
   VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
-  VectorXd dummy_s = VectorXd::Zero(n_s);
+  VectorXd dummy_s = VectorXd::Ones(n_s);
   int n_feature_s = kin_expression.getFeature(dummy_q).size();
   int n_feature_sDDot =
     dyn_expression.getFeature(dummy_s, dummy_s).size();

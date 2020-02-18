@@ -176,7 +176,8 @@ T DynamicsExpression::getFeature(const T & s, const T & ds) const {
     T feature(16);  // 1 + 1 + 4 + (4Choose2 + 4) = 1 + 1 + 4 + 10 = 16
     T first_element(1);
     if (s(1) == 0) {
-      first_element << (9.80665 / (s(1) + 1e-8))*s(0); // avoid sigularity
+      cout << "here in dynamics_expression\n";
+      first_element << (9.80665 / (s(1) + 1e-8))*s(0); // avoid singularity
     } else {
       first_element << (9.80665 / s(1))*s(0);
     }
@@ -207,9 +208,9 @@ T DynamicsExpression::getFeature(const T & s, const T & ds) const {
     if (s(1) == 0) {
       cout << "here in dynamics_expression\n";
       first_element << (9.80665 / (s(1) + 1e-8))*s(0); // avoid singularity
-    }
-    else
+    } else {
       first_element << (9.80665 / s(1))*s(0);
+    }
     feature << first_element(0),
             1,   // constant
             s(0),

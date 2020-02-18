@@ -25,9 +25,9 @@ n_sampel_gi = 3  # should be > 0
 batch_max = n_sampel_sl * n_sampel_gi
 
 dist_0 = 0.2
-delta_dist = 0.033
+delta_dist = 0.1
 incline_0 = 0.0
-delta_incline = 0.033
+delta_incline = 0.08
 
 robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
 # directory = 'data/robot_' + str(robot_option) + '/'

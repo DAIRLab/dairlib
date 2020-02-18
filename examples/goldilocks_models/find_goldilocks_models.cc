@@ -914,18 +914,29 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "delta_ground_incline = " << delta_ground_incline << endl;
   cout << "ground_incline_0 = " << ground_incline_0 << endl;
   double min_stride_length =
-      stride_length_0 - delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5);
+      (FLAGS_is_stochastic)
+          ? stride_length_0 -
+                delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5)
+          : stride_length_0 - delta_stride_length * ((N_sample_sl - 1) / 2);
   double max_stride_length =
-      stride_length_0 + delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5);
-  if (FLAGS_is_stochastic) {
-    cout << "stride length ranges from " << min_stride_length << " to "
-         << max_stride_length << endl;
-    cout << "ground incline ranges from "
-         << ground_incline_0 - delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
-         << " to "
-         << ground_incline_0 + delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
-         << endl;
-  }
+      (FLAGS_is_stochastic)
+          ? stride_length_0 +
+                delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5)
+          : stride_length_0 + delta_stride_length * ((N_sample_sl - 1) / 2);
+  double min_ground_incline =
+      (FLAGS_is_stochastic)
+          ? ground_incline_0 -
+                delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
+          : ground_incline_0 - delta_ground_incline * ((N_sample_gi - 1) / 2);
+  double max_ground_incline =
+      (FLAGS_is_stochastic)
+          ? ground_incline_0 +
+                delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
+          : ground_incline_0 + delta_ground_incline * ((N_sample_gi - 1) / 2);
+  cout << "stride length ranges from " << min_stride_length << " to "
+       << max_stride_length << endl;
+  cout << "ground incline ranges from " << min_ground_incline << " to "
+       << max_ground_incline << endl;
   VectorXd previous_ground_incline = VectorXd::Zero(N_sample);
   VectorXd previous_stride_length = VectorXd::Zero(N_sample);
   if (FLAGS_rerun_current_iteration) {
@@ -991,7 +1002,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
   double fail_threshold = FLAGS_fail_threshold;
-  const int method_to_solve_system_of_equations = 3;
+  const int method_to_solve_system_of_equations = 2;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
@@ -1023,8 +1034,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "n_node = " << n_node << endl;
   if (FLAGS_robot_option == 1) {
     // If the node density is too low, it's harder for SNOPT to converge well.
-    // The ratio 0.2/16 is fine for snopt. Loosen it to 0.25. Hope it's fine.
-    double max_distance_per_node = 0.25 / 16;
+    // The ratio of distance per nodes = 0.2/16 is fine for snopt, but
+    // 0.3 / 16 is too high.
+    // However, currently it takes too much time to compute with many nodes, so
+    // we try 0.3/24.
+    double max_distance_per_node = 0.3 / 16;
     DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
   }
 

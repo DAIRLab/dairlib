@@ -86,7 +86,7 @@ DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
 DEFINE_double(major_feasibility_tol, 1e-4,
               "nonlinear constraint violation tol");
 DEFINE_int32(
-    max_inner_iter, 200,
+    max_inner_iter, 150,
     "Max iteration # for traj opt. Sometimes, snopt takes very small steps "
     "(TODO: find out why), so maybe it's better to stop at some iterations and "
     "resolve again.");
@@ -985,13 +985,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // 1e-1 caused divergence when close to optimal sol
       h_step = 1e-4;
     } else if (FLAGS_robot_option == 1) {
-      // Without tau:
-      //  1e-4: doesn't always decrease with a fixed task  // This is with  h_step / sqrt(norm_grad_cost(0));
-      //  1e-5: barely increase with a fixed task   // This is with  h_step / sqrt(norm_grad_cost(0));
+      // Without tau: (This is with  h_step / sqrt(norm_grad_cost(0));)
+      //  1e-4: doesn't always decrease with a fixed task
+      //  1e-5: barely increase with a fixed task
 
       // Both with and without tau (I believe)
-      // h_step = 1e-3;  // This is with h_step / norm_grad_cost_double. (and with old traj opt)
-      h_step = 1e-4;
+      // h_step = 1e-3;  // This is with h_step / norm_grad_cost_double. (and with
+                      // old traj opt)
+
+      // (20200216) After using new traj opt
+      h_step = 1e-4;  // maybe h_step shouldn't be too high, because rom
+                      // constraint is the constraint that is hard to satisfy?
     }
   }
   double eps_regularization = FLAGS_eps_regularization;
@@ -1309,10 +1313,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
         // Evaluate a sample when there is an available thread. Otherwise, wait.
         if ((sample < n_sample) && !available_thread_idx.empty()) {
           // setup for each sample
-          // double stride_length = is_get_nominal ? stride_length_0 :
-          //                        stride_length_0 + delta_stride_length_vec[sample % N_sample_sl];
-          // double ground_incline = is_get_nominal ? ground_incline_0 :
-          //                         ground_incline_0 + delta_ground_incline_vec[sample / N_sample_sl];
           double stride_length = stride_length_0 + delta_stride_length_vec[sample %
                                  N_sample_sl];
           double ground_incline = ground_incline_0 + delta_ground_incline_vec[sample /
@@ -1342,6 +1342,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
                           is_get_nominal,
                           rerun_current_iteration, has_been_all_success,
                           FLAGS_is_debug);
+
+          // Set up feasibility and optimality tolerance
+          // TODO: tighten tolerance at the last rerun for getting better
+          //  solution?
 
           // Trajectory optimization with fixed model parameters
           string string_to_be_print = "Adding sample #" + to_string(sample) +

@@ -92,9 +92,11 @@ DEFINE_double(fail_threshold, 0.2,
 DEFINE_bool(
     read_previous_step_size, true,
     "We need the previous step size, if it fails to evaluate at `iter_start`");
-DEFINE_bool(start_iterations_with_adjusting_stepsize, false,
+DEFINE_bool(start_iterations_with_shrinking_stepsize, false,
             "Start the iterations with shrinking step size. Skip the smaple "
             "evaluation steps.");
+DEFINE_double(initial_extra_shrink_factor, -1,
+              "shrinking factor for the step size");
 DEFINE_bool(is_debug, false, "Debugging or not");
 DEFINE_bool(is_manual_initial_theta, false,
             "Assign initial theta of our choice");
@@ -209,7 +211,7 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 void getInitFileName(string * init_file, const string & nominal_traj_init_file,
                      int iter, int sample, bool is_get_nominal,
                      bool rerun_current_iteration, bool has_been_all_success,
-                     bool step_size_shrinked_last_iter,
+                     bool step_size_shrinked_last_loop,
                      bool is_debug) {
   if (is_get_nominal && !rerun_current_iteration) {
     *init_file = nominal_traj_init_file;
@@ -219,7 +221,7 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     // *init_file = "0_" +
     //              to_string(sample) + string("_w.csv");
     // cout << *init_file << endl;
-  } else if (step_size_shrinked_last_iter) {  // this iter is a rerun and the
+  } else if (step_size_shrinked_last_loop) {  // this iter is a rerun and the
                                               // step size was shrink in
                                               // previous iter
     *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
@@ -943,7 +945,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << max_ground_incline << endl;
   VectorXd previous_ground_incline = VectorXd::Zero(N_sample);
   VectorXd previous_stride_length = VectorXd::Zero(N_sample);
-  if (FLAGS_start_current_iter_as_rerun) {
+  if (FLAGS_start_current_iter_as_rerun ||
+      FLAGS_start_iterations_with_shrinking_stepsize) {
     for (int i = 0; i < N_sample; i++) {
       previous_ground_incline(i) =
           readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
@@ -1203,14 +1206,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
     prev_theta << prev_theta_s_mat.col(0), prev_theta_sDDot_mat.col(0);
   }
 
-  bool start_iterations_with_adjusting_stepsize =
-      FLAGS_start_iterations_with_adjusting_stepsize;
-  if (FLAGS_start_iterations_with_adjusting_stepsize) {
+  bool start_iterations_with_shrinking_stepsize =
+      FLAGS_start_iterations_with_shrinking_stepsize;
+  if (FLAGS_start_iterations_with_shrinking_stepsize) {
     DRAKE_DEMAND(FLAGS_read_previous_step_size);
   }
 
+  if (FLAGS_initial_extra_shrink_factor > 0) {
+    DRAKE_DEMAND(FLAGS_start_iterations_with_shrinking_stepsize);
+    current_iter_step_size /= FLAGS_initial_extra_shrink_factor;
+  }
+
   int n_rerun_after_success = 0;
-  bool step_size_shrinked_last_iter = false;
+  bool step_size_shrinked_last_loop = false;
 
   bool extend_model = FLAGS_extend_model;
   int extend_model_iter = (FLAGS_extend_model_iter == -1) ?
@@ -1301,7 +1309,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     bool all_samples_are_success = true;
     bool a_sample_is_success = false;
     bool success_rate_is_high_enough = true;
-    if (start_iterations_with_adjusting_stepsize) {
+    if (start_iterations_with_shrinking_stepsize) {
       // skip the sample evaluation
     } else {
       // Create vector of threads for multithreading
@@ -1330,12 +1338,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
           // Store the tasks or overwrite it with previous tasks
           // TODO: keep an eye on if you need "n_rerun_after_success == 0" in the logic
-          if (/*n_rerun_after_success == 0 && */!rerun_current_iteration) {
-            previous_stride_length(sample) = stride_length;
-            previous_ground_incline(sample) = ground_incline;
-          } else {
+          if (rerun_current_iteration) {
             stride_length = previous_stride_length(sample);
             ground_incline = previous_ground_incline(sample);
+          } else {
+            previous_stride_length(sample) = stride_length;
+            previous_ground_incline(sample) = ground_incline;
           }
           // Store tasks in files so we can use it in visualization
           prefix = to_string(iter) +  "_" + to_string(sample) + "_";
@@ -1349,7 +1357,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           getInitFileName(&init_file_pass_in, init_file, iter, sample,
                           is_get_nominal,
                           rerun_current_iteration, has_been_all_success,
-                          step_size_shrinked_last_iter,
+                          step_size_shrinked_last_loop,
                           FLAGS_is_debug);
 
           // Set up feasibility and optimality tolerance
@@ -1447,7 +1455,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
         }
       }  // while(sample < n_sample)
-    }  // end if-else (start_iterations_with_adjusting_stepsize)
+    }  // end if-else (start_iterations_with_shrinking_stepsize)
     if (FLAGS_is_debug) break;
 
     // cout << "Only run for 1 iteration. for testing.\n";
@@ -1461,7 +1469,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // Logic for how to iterate
-    if (start_iterations_with_adjusting_stepsize) {
+    if (start_iterations_with_shrinking_stepsize) {
       rerun_current_iteration = true;
     } else {
       if (success_rate_is_high_enough && !is_get_nominal) {
@@ -1477,7 +1485,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // Some checks to prevent wrong logic
-    if (start_iterations_with_adjusting_stepsize) {
+    if (start_iterations_with_shrinking_stepsize) {
       DRAKE_DEMAND(
           !extend_model_this_iter);  // shouldn't extend model while starting
                                      // the program with adjusting step size
@@ -1485,7 +1493,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // Update parameters, adjusting step size or extend model
-    step_size_shrinked_last_iter = false;
+    step_size_shrinked_last_loop = false;
     if (is_get_nominal) {
       if (rerun_current_iteration) {
         iter -= 1;
@@ -1515,7 +1523,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       iter -= 1;
       // If has_been_all_success=false, should maintain the step size and keep
       // solving? (this could be a infinite loop. TODO: fix this)
-      if (start_iterations_with_adjusting_stepsize || has_been_all_success ||
+      if (start_iterations_with_shrinking_stepsize || has_been_all_success ||
           (n_rerun_after_success > 0)) {
         current_iter_step_size = current_iter_step_size / 2;
         // if(current_iter_step_size<1e-5){
@@ -1525,9 +1533,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
         cout << "Step size shrinks to " << current_iter_step_size <<
              ". Redo this iteration.\n\n";
 
-        if (iter + 1 == iter_start)
-          cout << "Step_direction might have not been defined yet. "
-                  "Next line might give segmentation fault\n";
         // Descent
         theta = prev_theta + current_iter_step_size * step_direction;
 
@@ -1539,10 +1544,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
         has_been_all_success = true;  // so you can re-enter here again?
         n_rerun_after_success = 0;
 
-        // for start_iterations_with_adjusting_stepsize
-        start_iterations_with_adjusting_stepsize = false;
+        // for start_iterations_with_shrinking_stepsize
+        start_iterations_with_shrinking_stepsize = false;
 
-        step_size_shrinked_last_iter = true;
+        step_size_shrinked_last_loop = true;
       }
     }  // end if rerun_current_iteration
     else {
@@ -1575,11 +1580,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // We require that ALL the samples were evaluated successfully when
       // shrinking the step size based on cost.
       if (!FLAGS_is_stochastic && (iter > 2) && all_samples_are_success) {
+        // print
+        if (total_cost > min_so_far) {
+          cout << "The cost went up by "
+               << (total_cost - min_so_far) / min_so_far * 100 << "%.\n";
+        }
+
         // If cost goes up, we restart the iteration and shrink the step size.
-        if (((total_cost > min_so_far) && (n_rerun_after_success == 0)) ||
+        // It seems to be unavoidable that the cost goes up even when we fix the
+        // tasks. Maybe it is caused by the calculation error in step direction?
+        if (((total_cost > 1.01 * min_so_far) && (n_rerun_after_success == 0)) ||
             ((total_cost > 1.01 * min_so_far) && (n_rerun_after_success > 0))) {
-          cout << "The cost went up.\n\n";
-          start_iterations_with_adjusting_stepsize = true;
+          cout << "The cost went up too much. Shrink the step size.\n\n";
+          start_iterations_with_shrinking_stepsize = true;
           iter--;
           continue;
         }

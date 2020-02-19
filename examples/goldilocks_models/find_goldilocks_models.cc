@@ -50,40 +50,18 @@ using dairlib::FindResourceOrThrow;
 namespace dairlib {
 namespace goldilocks_models {
 
-// Not tested yet. So backup before you try this.
-bool is_to_improve_solution = false;
-
-// Flags
+// Robot models
 DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
-DEFINE_int32(iter_start, 1, "The starting iteration #. 0 is nominal traj.");
-DEFINE_string(init_file, "w0.csv", "Initial Guess for Trajectory Optimization");
-DEFINE_bool(is_newton, false, "Newton method or gradient descent");
-DEFINE_bool(is_stochastic, false, "Random tasks or fixed tasks");
-DEFINE_bool(is_debug, false, "Debugging or not");
-DEFINE_bool(start_program_with_adjusting_stepsize, false, "");
-DEFINE_bool(extend_model, false, "Extend the model in iteration # iter_start "
-            "which is not equal to 0.");
-DEFINE_int32(extend_model_iter, -1, "The starting iteration #");
-DEFINE_bool(is_manual_initial_theta, false,
-            "Assign initial theta of our choice");
-DEFINE_bool(proceed_with_failure, false,
-            "Update theta even if there is a failed task");
-DEFINE_bool(start_current_iter_as_rerun, false,
-            "Is `iter_start` a rerun? If it is, then you start with the stored "
-            "tasks and use previous solution as initial guess");
+
+// tasks
+DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
+DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
-DEFINE_bool(is_multithread, true, "Use multi-thread or not");
-DEFINE_int32(n_thread_to_use, -1, "# of threads you want to use");
-DEFINE_int32(n_rerun, -1, "snopt might settle down at a bad sub-optimal"
-             " solution, so we rerun");
-DEFINE_double(fail_threshold, 0.2,
-              "Maximum acceptable failure rate of samples");
 
-DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
-DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
-
+// inner loop
+DEFINE_string(init_file, "w0.csv", "Initial Guess for Trajectory Optimization");
 DEFINE_double(major_feasibility_tol, 1e-4,
               "nonlinear constraint violation tol");
 DEFINE_int32(
@@ -91,10 +69,42 @@ DEFINE_int32(
     "Max iteration # for traj opt. Sometimes, snopt takes very small steps "
     "(TODO: find out why), so maybe it's better to stop at some iterations and "
     "resolve again.");
-DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
-DEFINE_double(h_step, -1, "The step size for outer loop");
-DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
 DEFINE_int32(n_node, -1, "# of nodes for traj opt");
+DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
+
+// outer loop
+DEFINE_int32(iter_start, 1, "The starting iteration #. 0 is nominal traj.");
+DEFINE_bool(is_stochastic, false, "Random tasks or fixed tasks");
+DEFINE_bool(is_newton, false, "Newton method or gradient descent");
+DEFINE_double(h_step, -1, "The step size for outer loop");
+DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
+
+// How to update the model iterations
+DEFINE_bool(start_current_iter_as_rerun, false,
+            "Is `iter_start` a rerun? If it is, then you start with the stored "
+            "tasks and use previous solution as initial guess");
+DEFINE_int32(N_rerun, -1, "snopt might settle down at a bad sub-optimal"
+                          " solution, so we rerun after it found solution");
+DEFINE_double(fail_threshold, 0.2,
+              "Maximum acceptable failure rate of samples");
+
+// Other features for how to start the program
+DEFINE_bool(is_debug, false, "Debugging or not");
+DEFINE_bool(start_program_with_adjusting_stepsize, false, "");
+DEFINE_bool(is_manual_initial_theta, false,
+            "Assign initial theta of our choice");
+
+// Extend model from passive to actuated
+DEFINE_bool(extend_model, false, "Extend the model in iteration # iter_start "
+                                 "which is not equal to 0.");
+DEFINE_int32(extend_model_iter, -1, "The starting iteration #");
+
+// Multithread
+DEFINE_bool(is_multithread, true, "Use multi-thread or not");
+DEFINE_int32(n_thread_to_use, -1, "# of threads you want to use");
+
+// Not tested yet. So backup before you try this.
+bool is_to_improve_solution = false;
 
 // Not sure why using the below function caused a problem.
 // Valgrind said: Conditional jump or move depends on uninitialised value(s)
@@ -145,11 +155,11 @@ void setRomDim(int* n_s, int* n_tau, int robot_option) {
   } else if (robot_option == 1) {
   }
   // 2D -- lipm
-//  *n_s = 2;
-//  *n_tau = 0;
+  *n_s = 2;
+  *n_tau = 0;
   // 4D -- lipm + swing foot
-  *n_s = 4;
-  *n_tau = 2;
+//  *n_s = 4;
+//  *n_tau = 2;
 }
 void setRomBMatrix(MatrixXd* B_tau, int robot_option) {
   if (robot_option == 0) {
@@ -993,19 +1003,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double indpt_row_tol = 1e-6;//1e-6
   bool is_newton = FLAGS_is_newton;
   bool is_stochastic = FLAGS_is_stochastic;
-  int n_rerun;
-  if (FLAGS_n_rerun > -1) {
-    n_rerun = FLAGS_n_rerun;
+  int N_rerun;
+  if (FLAGS_N_rerun > -1) {
+    N_rerun = FLAGS_N_rerun;
   } else {
     if (FLAGS_robot_option == 0) {
-      n_rerun = 1;
+      N_rerun = 1;
     } else if (FLAGS_robot_option == 1) {
-      n_rerun = 2;
+      N_rerun = 2;
     } else {
-      n_rerun = 0;
+      N_rerun = 0;
     }
   }
-  double fail_threshold = FLAGS_fail_threshold;
   const int method_to_solve_system_of_equations = 3;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
@@ -1014,8 +1023,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "is_add_tau_in_cost = " << FLAGS_is_add_tau_in_cost << endl;
   FLAGS_is_zero_touchdown_impact ? cout << "Zero touchdown impact\n" :
                                         cout << "Non-zero touchdown impact\n";
-  cout << "# of re-run after finding a solution = " << n_rerun << endl;
-  cout << "Failure rate threshold = " << fail_threshold << endl;
+  cout << "# of re-run after finding a solution = " << N_rerun << endl;
+  cout << "Failure rate threshold = " << FLAGS_fail_threshold << endl;
   cout << "method_to_solve_system_of_equations = "
        << method_to_solve_system_of_equations << endl;
 
@@ -1160,11 +1169,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   theta << theta_s, theta_sDDot;
   VectorXd prev_theta = theta;
   bool rerun_current_iteration = FLAGS_start_current_iter_as_rerun;
-  bool has_been_all_success;
-  if (FLAGS_proceed_with_failure || (iter_start <= 1))
-    has_been_all_success = false;
-  else
-    has_been_all_success = true;
+  bool has_been_all_success = iter_start > 1;
   cout << "has_been_all_success = " << has_been_all_success << endl;
   cout << "current iteration is a rerun? " << rerun_current_iteration << endl;
 
@@ -1177,7 +1182,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     step_direction = step_direction_mat.col(0);
   }
 
-  bool start_program_with_adjusting_stepsize = FLAGS_start_program_with_adjusting_stepsize;
+  bool start_program_with_adjusting_stepsize =
+      FLAGS_start_program_with_adjusting_stepsize;
   if (start_program_with_adjusting_stepsize) {
     MatrixXd prev_theta_s_mat =
       readCSV(dir + to_string(iter_start - 1) + string("_theta_s.csv"));
@@ -1194,14 +1200,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
     cout << "current_iter_step_size = " << current_iter_step_size << endl;
   }
 
-  int current_rerun = 0;
+  int n_rerun_after_success = 0;
 
   cout << endl;
   bool extend_model = FLAGS_extend_model;
   int extend_model_iter = (FLAGS_extend_model_iter == -1) ?
                           iter_start : FLAGS_extend_model_iter;
   extend_model_iter = (extend_model_iter == 0) ? 1 : extend_model_iter;
-  bool has_visit_this_iter = false;
+  bool has_visit_this_iter_for_model_extension = false;
   if (extend_model) {
     cout << "\nWill extend the model at iteration # " << extend_model_iter <<
          " by ";
@@ -1241,11 +1247,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
     auto end = std::chrono::system_clock::now();
     std::time_t end_time = std::chrono::system_clock::to_time_t(end);
     cout << "Current time: " << std::ctime(&end_time);
-    if (current_rerun == 0) {
+    if (n_rerun_after_success == 0) {
       cout << "************ Iteration " << iter << " *************" << endl;
     } else {
       cout << "************ Iteration " << iter <<
-           " (rerun = " << current_rerun << ") *************" << endl;
+           " (rerun = " << n_rerun_after_success << ") *************" << endl;
     }
     if (iter != 0) {
       cout << "theta_sDDot.head(6) = " << theta_sDDot.head(6).transpose() << endl;
@@ -1256,9 +1262,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // int n_sample = is_get_nominal ? 1 : N_sample;
     int n_sample = N_sample;
     int max_inner_iter_pass_in = is_get_nominal ? 1000 : max_inner_iter;
-    bool extend_model_this_iter =
-        extend_model && (iter == extend_model_iter) && !has_visit_this_iter;
-    if (iter == extend_model_iter) has_visit_this_iter = true;
+    bool extend_model_this_iter = extend_model && (iter == extend_model_iter) &&
+                                  !has_visit_this_iter_for_model_extension;
+    if (iter == extend_model_iter)
+      has_visit_this_iter_for_model_extension = true;
 
     // store initial parameter values
     prefix = to_string(iter) +  "_";
@@ -1282,11 +1289,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
     w_sol_vec.clear();
 
     // Run trajectory optimization for different tasks first
-    bool samples_are_success = true;
     bool a_sample_is_success = false;
+    bool success_rate_is_high_enough = true;
     if (start_program_with_adjusting_stepsize) {
-      samples_are_success = false;
-      start_program_with_adjusting_stepsize = false;
+      // skip the sample evalution
     } else {
       // Create vector of threads for multithreading
       vector<std::thread *> threads(std::min(CORES, n_sample));
@@ -1299,7 +1305,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Evaluate samples
       int sample = 0;
-      int failed_sample = 0;
+      int n_failed_sample = 0;
       while ((sample < n_sample) || !assigned_thread_idx.empty()) {
         // Evaluate a sample when there is an available thread. Otherwise, wait.
         if ((sample < n_sample) && !available_thread_idx.empty()) {
@@ -1313,7 +1319,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
             ground_incline += dist_gi(e2);
           }
           // Store the tasks or overwrite it with previous tasks
-          if (current_rerun == 0 && !rerun_current_iteration) {
+          if (n_rerun_after_success == 0 && !rerun_current_iteration) {
             previous_stride_length(sample) = stride_length;
             previous_ground_incline(sample) = ground_incline;
           } else {
@@ -1394,35 +1400,28 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Accumulate failed samples
           if (sample_success != 1) {
-            failed_sample++;
+            n_failed_sample++;
           }
 
           // Logic of fail or success
           a_sample_is_success = (a_sample_is_success | (sample_success == 1));
-          // samples_are_success = (samples_are_success & (sample_success == 1));
-          double fail_rate = double(failed_sample) / double(n_sample);
-          if (fail_rate > fail_threshold) {
-            samples_are_success = false;
+          double fail_rate = double(n_failed_sample) / double(n_sample);
+          if (fail_rate > FLAGS_fail_threshold) {
+            success_rate_is_high_enough = false;
           } else if ((fail_rate > 0) && is_get_nominal) {
-            samples_are_success = false;
+            success_rate_is_high_enough = false;
           }
 
-          // If a sample failed, stop evaluating.
-          // if ((has_been_all_success && !samples_are_success) || FLAGS_is_debug) {
-          //   // Wait for the assigned threads to join, and then break;
-          //   cout << "Sameple #" << corresponding_sample << " was not successful."
-          //        " Wait for all threads to join and stop current iteration.\n";
-          //   waitForAllThreadsToJoin(&threads, &assigned_thread_idx, dir, iter);
-          //   break;
-          // }
           // If failure rate is higher than threshold, stop evaluating.
-          if (has_been_all_success && (!samples_are_success)) {
+          if (has_been_all_success && (!success_rate_is_high_enough)) {
             // Wait for the assigned threads to join, and then break;
-            cout << failed_sample << " # of samples failed to find solution."
-                 " Wait for all threads to join and stop current iteration.\n";
+            cout << n_failed_sample << " # of samples failed to find solution."
+                 " Latest failed sample is sample#" << corresponding_sample <<
+                 ". Wait for all threads to join and stop current iteration.\n";
             waitForAllThreadsToJoin(&threads, &assigned_thread_idx, dir, iter);
             break;
           }
+
           // If in debug mode, stop evaluating.
           if (FLAGS_is_debug) {
             // Wait for the assigned threads to join, and then break;
@@ -1447,18 +1446,28 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // Logic for how to iterate
-    if (samples_are_success && !is_get_nominal) has_been_all_success = true;
-    bool current_iter_is_success;
-    if (!FLAGS_proceed_with_failure) {
-      current_iter_is_success = samples_are_success;
-    } else {
-      current_iter_is_success = has_been_all_success ?
-                                samples_are_success : a_sample_is_success;
+    if (success_rate_is_high_enough && !is_get_nominal) {
+      has_been_all_success = true;
     }
+    bool current_iter_is_success = has_been_all_success
+                                       ? success_rate_is_high_enough
+                                       : a_sample_is_success;
     // Rerun the current iteration when the iteration was not successful
     rerun_current_iteration = !current_iter_is_success;
 
-    //
+    if (start_program_with_adjusting_stepsize) {
+      rerun_current_iteration = true;
+    }
+
+    // Some checks to prevent wrong logic
+    if (start_program_with_adjusting_stepsize) {
+      DRAKE_DEMAND(
+          !extend_model_this_iter);  // shouldn't extend model while starting
+                                     // the program with adjusting step size
+      DRAKE_DEMAND(iter > 1);  // shouldn't be iter 0 or 1
+    }
+
+    // Update parameters, adjusting step size or extend model
     if (is_get_nominal) {
       if (rerun_current_iteration) {
         iter -= 1;
@@ -1487,7 +1496,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }  // end if extend_model_this_iter
     else if (rerun_current_iteration) {  // rerun the current iteration
       iter -= 1;
-      if (has_been_all_success || (current_rerun > 0)) {
+      if (start_program_with_adjusting_stepsize || has_been_all_success ||
+          (n_rerun_after_success > 0)) {
         current_iter_step_size = current_iter_step_size / 2;
         // if(current_iter_step_size<1e-5){
         //   cout<<"switch to the other method.";
@@ -1506,9 +1516,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
         theta_s = theta.head(n_theta_s);
         theta_sDDot = theta.tail(n_theta_sDDot);
 
-        // for the case of (current_rerun > 0)  //TODO: why do we need this?
+        // for the case of (n_rerun_after_success > 0)  //TODO: why do we need this?
         has_been_all_success = true;
-        current_rerun = 0;
+        n_rerun_after_success = 0;
+
+        // for start_program_with_adjusting_stepsize
+        start_program_with_adjusting_stepsize = false;
       }
     }  // end if rerun_current_iteration
     else {
@@ -1528,13 +1541,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
       cout << "total_cost = " << total_cost << " (min so far: " <<
            min_so_far << ")\n\n";
 
-      if (current_rerun < n_rerun) {
-        current_rerun++;
+      if (n_rerun_after_success < N_rerun) {
+        n_rerun_after_success++;
         iter -= 1;
         has_been_all_success = false;
         rerun_current_iteration = true;
       } else {  // Update parameters
-        current_rerun = 0;
+        n_rerun_after_success = 0;
 
         // Extract active and independent constraints (multithreading)
         auto start_time_extract = std::chrono::high_resolution_clock::now();

@@ -1055,6 +1055,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "n_s = " << n_s << ", n_tau = " << n_tau << endl;
   cout << "B_tau = \n" << B_tau << endl;
   writeCSV(dir + string("B_tau.csv"), B_tau);
+  cout << "Make sure that n_s and B_tau are correct.\nProceed? (Y/N)\n";
+  char answer[1];
+  cin >> answer;
+  if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
+    cout << "Ending the program.\n";
+    return 0;
+  } else {
+    cout << "Continue constructing the problem...\n";
+  }
 
   // Reduced order model setup
   KinematicsExpression<double> kin_expression(n_s, 0, &plant, FLAGS_robot_option);

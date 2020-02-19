@@ -1562,6 +1562,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
             ((total_cost > 1.01 * min_so_far) && (n_rerun_after_success > 0))) {
           cout << "The cost went up.\n";
           start_iterations_with_adjusting_stepsize = true;
+          iter--;
           continue;
         }
       }

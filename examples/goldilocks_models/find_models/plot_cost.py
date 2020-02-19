@@ -59,8 +59,23 @@ while 1:
     fig1 = plt.figure(1)
     ax1 = fig1.gca()
 
+    # Get the length of the cost first (in case the lengths of different samples are the not the same). This is for plotting the average cost
+    len_total_cost = 0
+    for batch in reversed(range(batch_max)):
+        cost = []
+        iteration = iter_start
+        while os.path.isfile(directory+str(iteration)+'_'+str(batch)+'_'+file_name):
+            matrix = np.genfromtxt (directory+str(iteration)+'_'+str(batch)+'_'+file_name, delimiter=",") / nominal_cost
+            cost.append(matrix)
+            if is_iter_end & (iteration == iter_end):
+                break;
+            iteration+=1
+        if len_total_cost == 0:
+            len_total_cost = len(cost)
+        else:
+            len_total_cost = min(len_total_cost, len(cost))
+
     total_cost = []
-    len_total_cost = 0;
     for batch in reversed(range(batch_max)):
         cost = []
         iteration = iter_start
@@ -87,7 +102,6 @@ while 1:
 
         # plot total cost
         if batch == batch_max-1:
-            len_total_cost = len(cost)
             total_cost = cost
         else:
             total_cost = [x + y for x, y in zip(total_cost, cost[0:len_total_cost])]

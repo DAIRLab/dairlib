@@ -997,6 +997,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // (20200216) After using new traj opt
       h_step = 1e-4;  // maybe h_step shouldn't be too high, because rom
                       // constraint is the constraint that is hard to satisfy?
+      if (!FLAGS_is_stochastic) {
+        h_step = 1e-3;  // we can always shrink steps if the cost goes up with
+                        // fixed tasks (it should go down theoratically)
+      }
     }
   }
   double eps_regularization = FLAGS_eps_regularization;

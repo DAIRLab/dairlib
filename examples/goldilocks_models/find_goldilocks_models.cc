@@ -89,8 +89,13 @@ DEFINE_double(fail_threshold, 0.2,
               "Maximum acceptable failure rate of samples");
 
 // Other features for how to start the program
+DEFINE_bool(
+    read_previous_step_size, true,
+    "We need the previous step size, if it fails to evaluate at `iter_start`");
+DEFINE_bool(start_iterations_with_adjusting_stepsize, false,
+            "Start the iterations with shrinking step size. Skip the smaple "
+            "evaluation steps.");
 DEFINE_bool(is_debug, false, "Debugging or not");
-DEFINE_bool(start_iterations_with_adjusting_stepsize, false, "");
 DEFINE_bool(is_manual_initial_theta, false,
             "Assign initial theta of our choice");
 
@@ -1163,42 +1168,44 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int n_theta = n_theta_s + n_theta_sDDot;
   VectorXd theta(n_theta);
   theta << theta_s, theta_sDDot;
-  VectorXd prev_theta = theta;
   bool rerun_current_iteration = FLAGS_start_current_iter_as_rerun;
   bool has_been_all_success = iter_start > 1;
   cout << "has_been_all_success = " << has_been_all_success << endl;
   cout << "current iteration is a rerun? " << rerun_current_iteration << endl;
 
-  double current_iter_step_size = h_step;
   VectorXd step_direction;
   if (iter_start > 1) {
-    cout << "Reading previous step direction... (will get memory issue if the file doesn't exist)\n";
+    cout << "Reading previous step direction... (will get memory issue if the "
+            "file doesn't exist)\n";
     MatrixXd step_direction_mat =
       readCSV(dir + to_string(iter_start - 1) + string("_step_direction.csv"));
     step_direction = step_direction_mat.col(0);
   }
+  double current_iter_step_size = h_step;
+  if ((iter_start > 1) && FLAGS_read_previous_step_size) {
+    cout << "Reading previous step size... (will get memory issue if the file "
+            "doesn't exist)\n";
+    current_iter_step_size = readCSV(dir + to_string(iter_start - 1) +
+                                     string("_step_size.csv"))(0, 0);
+  }
 
-  bool start_iterations_with_adjusting_stepsize =
-      FLAGS_start_iterations_with_adjusting_stepsize;
-  if (start_iterations_with_adjusting_stepsize) {
+  VectorXd prev_theta = theta;
+  if (iter_start > 1) {
     MatrixXd prev_theta_s_mat =
       readCSV(dir + to_string(iter_start - 1) + string("_theta_s.csv"));
     MatrixXd prev_theta_sDDot_mat =
       readCSV(dir + to_string(iter_start - 1) + string("_theta_sDDot.csv"));
     prev_theta << prev_theta_s_mat.col(0), prev_theta_sDDot_mat.col(0);
+  }
 
-    // Below only works for Gradient Descent method (not Newton's method)
-    // current_iter_step_size = h_step / sqrt(step_direction.norm());  // Heuristic
-    double step_dir_norm = step_direction.norm();
-    if (step_dir_norm > 1) {
-      current_iter_step_size = h_step / step_direction.norm();  // Heuristic
-    }
-    cout << "current_iter_step_size = " << current_iter_step_size << endl;
+  bool start_iterations_with_adjusting_stepsize =
+      FLAGS_start_iterations_with_adjusting_stepsize;
+  if (FLAGS_start_iterations_with_adjusting_stepsize) {
+    DRAKE_DEMAND(FLAGS_read_previous_step_size);
   }
 
   int n_rerun_after_success = 0;
 
-  cout << endl;
   bool extend_model = FLAGS_extend_model;
   int extend_model_iter = (FLAGS_extend_model_iter == -1) ?
                           iter_start : FLAGS_extend_model_iter;
@@ -1225,7 +1232,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
 
-  cout << "Start iterating...\n";
+  cout << "\nStart iterating...\n";
   // Start the gradient descent
   int iter;
   for (iter = iter_start; iter <= max_outer_iter; iter++)  {
@@ -1560,7 +1567,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         // If cost goes up, we restart the iteration and shrink the step size.
         if (((total_cost > min_so_far) && (n_rerun_after_success == 0)) ||
             ((total_cost > 1.01 * min_so_far) && (n_rerun_after_success > 0))) {
-          cout << "The cost went up.\n";
+          cout << "The cost went up.\n\n";
           start_iterations_with_adjusting_stepsize = true;
           iter--;
           continue;
@@ -1775,23 +1782,21 @@ int findGoldilocksModels(int argc, char* argv[]) {
              svd.singularValues()(0) << endl;*/
         // Newton decrement (can be a criterion to terminate your newton steps)
         double lambda_square = -gradient_cost.transpose() * newton_step;
+        VectorXd lambda_square_vecXd(1); lambda_square_vecXd << lambda_square;
+        writeCSV(dir + prefix + string("lambda_square.csv"), lambda_square_vecXd);
+        cout << "lambda_square = " << lambda_square << endl;
 
-        // step_direction
+        // Calculate gradient norm
+        VectorXd norm_grad_cost(1); norm_grad_cost << gradient_cost.norm();
+        writeCSV(dir + prefix + string("norm_grad_cost.csv"), norm_grad_cost);
+        cout << "gradient_cost norm: " << norm_grad_cost << endl << endl;
+
+        // Calculate step_direction
         step_direction = is_newton ? newton_step : -gradient_cost;
         prefix = to_string(iter) +  "_";
         writeCSV(dir + prefix + string("step_direction.csv"), step_direction);
 
-
-        // Calculate lambda and gradient norm
-        VectorXd lambda_square_vecXd(1); lambda_square_vecXd << lambda_square;
-        VectorXd norm_grad_cost(1); norm_grad_cost << gradient_cost.norm();
-        writeCSV(dir + prefix + string("norm_grad_cost.csv"), norm_grad_cost);
-        writeCSV(dir + prefix + string("lambda_square.csv"), lambda_square_vecXd);
-        cout << "lambda_square = " << lambda_square << endl;
-        cout << "gradient_cost norm: " << norm_grad_cost << endl << endl;
-
-        // Gradient descent
-        prev_theta = theta;
+        // Calculate step size
         // current_iter_step_size = h_step;
         double norm_grad_cost_double = norm_grad_cost(0);
         if (norm_grad_cost_double > 1) {
@@ -1800,7 +1805,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
         } else {
           current_iter_step_size = h_step;
         }
+        VectorXd step_size(1); step_size << current_iter_step_size;
+        writeCSV(dir + prefix + string("step_size.csv"), step_size);
         cout << "step size = " << current_iter_step_size << "\n\n";
+
+        // Gradient descent
+        prev_theta = theta;
         theta = theta + current_iter_step_size * step_direction;
 
         // Assign theta_s and theta_sDDot

@@ -1558,10 +1558,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // shrinking the step size based on cost.
       if (!FLAGS_is_stochastic && (iter > 2) && all_samples_are_success) {
         // If cost goes up, we restart the iteration and shrink the step size.
-        if (total_cost > min_so_far) {
+        if (((total_cost > min_so_far) && (n_rerun_after_success == 0)) ||
+            ((total_cost > 1.01 * min_so_far) && (n_rerun_after_success > 0))) {
           cout << "The cost went up.\n";
           start_iterations_with_adjusting_stepsize = true;
-          break;
+          continue;
         }
       }
 

@@ -209,6 +209,7 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 void getInitFileName(string * init_file, const string & nominal_traj_init_file,
                      int iter, int sample, bool is_get_nominal,
                      bool rerun_current_iteration, bool has_been_all_success,
+                     bool step_size_shrinked_last_iter,
                      bool is_debug) {
   if (is_get_nominal && !rerun_current_iteration) {
     *init_file = nominal_traj_init_file;
@@ -218,6 +219,10 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     // *init_file = "0_" +
     //              to_string(sample) + string("_w.csv");
     // cout << *init_file << endl;
+  } else if (step_size_shrinked_last_iter) {  // this iter is a rerun and the
+                                              // step size was shrink in
+                                              // previous iter
+    *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
   }
   else if (rerun_current_iteration) {
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
@@ -1205,6 +1210,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   int n_rerun_after_success = 0;
+  bool step_size_shrinked_last_iter = false;
 
   bool extend_model = FLAGS_extend_model;
   int extend_model_iter = (FLAGS_extend_model_iter == -1) ?
@@ -1323,7 +1329,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
             ground_incline += dist_gi(e2);
           }
           // Store the tasks or overwrite it with previous tasks
-          if (n_rerun_after_success == 0 && !rerun_current_iteration) {
+          // TODO: keep an eye on if you need "n_rerun_after_success == 0" in the logic
+          if (/*n_rerun_after_success == 0 && */!rerun_current_iteration) {
             previous_stride_length(sample) = stride_length;
             previous_ground_incline(sample) = ground_incline;
           } else {
@@ -1342,6 +1349,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           getInitFileName(&init_file_pass_in, init_file, iter, sample,
                           is_get_nominal,
                           rerun_current_iteration, has_been_all_success,
+                          step_size_shrinked_last_iter,
                           FLAGS_is_debug);
 
           // Set up feasibility and optimality tolerance
@@ -1477,6 +1485,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // Update parameters, adjusting step size or extend model
+    step_size_shrinked_last_iter = false;
     if (is_get_nominal) {
       if (rerun_current_iteration) {
         iter -= 1;
@@ -1532,6 +1541,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
         // for start_iterations_with_adjusting_stepsize
         start_iterations_with_adjusting_stepsize = false;
+
+        step_size_shrinked_last_iter = true;
       }
     }  // end if rerun_current_iteration
     else {

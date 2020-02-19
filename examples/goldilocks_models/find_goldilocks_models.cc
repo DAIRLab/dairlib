@@ -90,7 +90,7 @@ DEFINE_double(fail_threshold, 0.2,
 
 // Other features for how to start the program
 DEFINE_bool(is_debug, false, "Debugging or not");
-DEFINE_bool(start_program_with_adjusting_stepsize, false, "");
+DEFINE_bool(start_iterations_with_adjusting_stepsize, false, "");
 DEFINE_bool(is_manual_initial_theta, false,
             "Assign initial theta of our choice");
 
@@ -216,19 +216,6 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
   }
   else if (rerun_current_iteration) {
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
-  }
-  else if (!has_been_all_success) {
-    // *init_file = string("0_0_w.csv");  // Use nominal traj
-    // *init_file = string("");  // No initial guess for the first iter
-    // *init_file = string("w0.csv");  // w0 as initial guess for the first iter
-    *init_file = "0_" + to_string(sample) + string("_w.csv");
-
-    // Testing:
-    // cout << "testing with manual init file: ";
-    // *init_file = "w0.csv";
-    // *init_file = to_string(iter) +  "_" +
-    //              to_string(sample) + string("_w.csv");
-    // cout << *init_file << endl;
   }
   else {
     *init_file = to_string(iter - 1) +  "_" +
@@ -1182,9 +1169,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
     step_direction = step_direction_mat.col(0);
   }
 
-  bool start_program_with_adjusting_stepsize =
-      FLAGS_start_program_with_adjusting_stepsize;
-  if (start_program_with_adjusting_stepsize) {
+  bool start_iterations_with_adjusting_stepsize =
+      FLAGS_start_iterations_with_adjusting_stepsize;
+  if (start_iterations_with_adjusting_stepsize) {
     MatrixXd prev_theta_s_mat =
       readCSV(dir + to_string(iter_start - 1) + string("_theta_s.csv"));
     MatrixXd prev_theta_sDDot_mat =
@@ -1289,10 +1276,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
     w_sol_vec.clear();
 
     // Run trajectory optimization for different tasks first
+    bool all_samples_are_success = true;
     bool a_sample_is_success = false;
     bool success_rate_is_high_enough = true;
-    if (start_program_with_adjusting_stepsize) {
-      // skip the sample evalution
+    if (start_iterations_with_adjusting_stepsize) {
+      // skip the sample evaluation
     } else {
       // Create vector of threads for multithreading
       vector<std::thread *> threads(std::min(CORES, n_sample));
@@ -1404,6 +1392,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
 
           // Logic of fail or success
+          all_samples_are_success =
+              (all_samples_are_success & (sample_success == 1));
           a_sample_is_success = (a_sample_is_success | (sample_success == 1));
           double fail_rate = double(n_failed_sample) / double(n_sample);
           if (fail_rate > FLAGS_fail_threshold) {
@@ -1413,6 +1403,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
 
           // If failure rate is higher than threshold, stop evaluating.
+          // If has_been_all_success = false, shouldn't stop evaluating?
           if (has_been_all_success && (!success_rate_is_high_enough)) {
             // Wait for the assigned threads to join, and then break;
             cout << n_failed_sample << " # of samples failed to find solution."
@@ -1432,7 +1423,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
         }
       }  // while(sample < n_sample)
-    }  // end if-else (start_program_with_adjusting_stepsize)
+    }  // end if-else (start_iterations_with_adjusting_stepsize)
     if (FLAGS_is_debug) break;
 
     // cout << "Only run for 1 iteration. for testing.\n";
@@ -1446,21 +1437,23 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // Logic for how to iterate
-    if (success_rate_is_high_enough && !is_get_nominal) {
-      has_been_all_success = true;
-    }
-    bool current_iter_is_success = has_been_all_success
-                                       ? success_rate_is_high_enough
-                                       : a_sample_is_success;
-    // Rerun the current iteration when the iteration was not successful
-    rerun_current_iteration = !current_iter_is_success;
-
-    if (start_program_with_adjusting_stepsize) {
+    if (start_iterations_with_adjusting_stepsize) {
       rerun_current_iteration = true;
+    } else {
+      if (success_rate_is_high_enough && !is_get_nominal) {
+        has_been_all_success = true;
+      }
+      // If has_been_all_success = false, should be easy on the snopt solver?
+      bool current_iter_is_success = has_been_all_success
+                                     ? success_rate_is_high_enough
+                                     : a_sample_is_success;
+
+      // Rerun the current iteration when the iteration was not successful
+      rerun_current_iteration = !current_iter_is_success;
     }
 
     // Some checks to prevent wrong logic
-    if (start_program_with_adjusting_stepsize) {
+    if (start_iterations_with_adjusting_stepsize) {
       DRAKE_DEMAND(
           !extend_model_this_iter);  // shouldn't extend model while starting
                                      // the program with adjusting step size
@@ -1492,11 +1485,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Never extend model again (we just extend it once)
       extend_model = false;
       continue;
-
     }  // end if extend_model_this_iter
     else if (rerun_current_iteration) {  // rerun the current iteration
       iter -= 1;
-      if (start_program_with_adjusting_stepsize || has_been_all_success ||
+      // If has_been_all_success=false, should maintain the step size and keep
+      // solving? (this could be a infinite loop. TODO: fix this)
+      if (start_iterations_with_adjusting_stepsize || has_been_all_success ||
           (n_rerun_after_success > 0)) {
         current_iter_step_size = current_iter_step_size / 2;
         // if(current_iter_step_size<1e-5){
@@ -1516,35 +1510,55 @@ int findGoldilocksModels(int argc, char* argv[]) {
         theta_s = theta.head(n_theta_s);
         theta_sDDot = theta.tail(n_theta_sDDot);
 
-        // for the case of (n_rerun_after_success > 0)  //TODO: why do we need this?
-        has_been_all_success = true;
+        // for the case of (n_rerun_after_success > 0)
+        has_been_all_success = true;  // so you can re-enter here again?
         n_rerun_after_success = 0;
 
-        // for start_program_with_adjusting_stepsize
-        start_program_with_adjusting_stepsize = false;
+        // for start_iterations_with_adjusting_stepsize
+        start_iterations_with_adjusting_stepsize = false;
       }
     }  // end if rerun_current_iteration
     else {
+      // The code only reach here when the current iteration is successful.
+
       // Read in the following files of the successful samples:
       // w_sol_vec, A_vec, H_vec, y_vec, lb_vec, ub_vec, b_vec, c_vec, B_vec;
       readApproxQpFiles(&w_sol_vec, &A_vec, &H_vec, &y_vec, &lb_vec, &ub_vec,
                         &b_vec, &c_vec, &B_vec,
                         n_sample, iter, dir);
-
       int n_succ_sample = c_vec.size();
 
-      // Print the total cost of this iteration
+      // Calculate the total cost of the successful samples
       double total_cost = 0;
-      for (int sample = 0; sample < n_succ_sample; sample++)
+      for (int sample = 0; sample < n_succ_sample; sample++) {
         total_cost += c_vec[sample](0) / n_succ_sample;
+      }
+      // Print the total cost of this iteration
       if (total_cost <= min_so_far) min_so_far = total_cost;
       cout << "total_cost = " << total_cost << " (min so far: " <<
            min_so_far << ")\n\n";
 
+      // We further decide if we should still shrink the step size because the
+      // cost is not small enough (we do this because sometimes snopt cannot
+      // find a good solution when the step size is too big). We don't do this
+      // when we are using stochastic tasks, because the tasks difficulty varies
+      // from iterations to iterations.
+      // We don't do this on iteration 2 because sometimes the cost goes up from
+      // iteration 1 to 2 (somehow).
+      // We require that ALL the samples were evaluated successfully when
+      // shrinking the step size based on cost.
+      if (!FLAGS_is_stochastic && (iter > 2) && all_samples_are_success) {
+        // If cost goes up, we restart the iteration and shrink the step size.
+        if (total_cost > min_so_far) {
+          cout << "The cost went up.\n";
+          start_iterations_with_adjusting_stepsize = true;
+          break;
+        }
+      }
+
       if (n_rerun_after_success < N_rerun) {
         n_rerun_after_success++;
         iter -= 1;
-        has_been_all_success = false;
         rerun_current_iteration = true;
       } else {  // Update parameters
         n_rerun_after_success = 0;

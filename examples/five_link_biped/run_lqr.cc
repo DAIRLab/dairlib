@@ -58,6 +58,8 @@ DEFINE_bool(contact_driven, false,
             "Set to true if want to use contact_driven fsm");
 DEFINE_bool(recalculateP, false,
             "Set to true if necessary to recalculate P(t) - for new trajs");
+DEFINE_bool(recalculateL, false,
+            "Set to true if necessary to recalculate L(t) - for new trajs");
 DEFINE_double(time_offset, 0.0, "offset added to FSM switching");
 DEFINE_double(init_fsm_state, 0, "Initial FSM state.");
 
@@ -242,7 +244,7 @@ int doMain(int argc, char* argv[]) {
   auto lqr = builder.AddSystem<systems::HybridLQRController>(
       plant, *plant_autodiff, contact_modes, contact_modes_ad, Q, R, Qf,
       state_trajs, input_trajs, impact_times, FLAGS_naive, FLAGS_minimal_coords,
-      FLAGS_recalculateP);
+      FLAGS_recalculateP, FLAGS_recalculateL);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Took " << elapsed.count() << "s to create LQR controller"

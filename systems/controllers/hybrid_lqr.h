@@ -29,22 +29,22 @@ namespace dairlib::systems {
 /// of the contact_info vector
 class HybridLQRController : public drake::systems::LeafSystem<double> {
  public:
-  HybridLQRController(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-      const std::vector<multibody::ContactInfo<double>>& contact_info,
-      const std::vector<multibody::ContactInfo<drake::AutoDiffXd>>&
-          contact_info_ad,
-      const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
-      const Eigen::MatrixXd& Qf,
-      const std::vector<
-          std::shared_ptr<drake::trajectories::Trajectory<double>>>&
-          state_trajs,
-      const std::vector<
-          std::shared_ptr<drake::trajectories::Trajectory<double>>>&
-          input_trajs,
-      const std::vector<double>& impact_times, bool naive_approach = false,
-      bool using_min_coords = false, bool calcP = false);
+  HybridLQRController(const drake::multibody::MultibodyPlant<double>& plant,
+                      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+                      const vector <multibody::ContactInfo<double>>& contact_info,
+                      const vector <multibody::ContactInfo<drake::AutoDiffXd>>& contact_info_ad,
+                      const Eigen::MatrixXd& Q,
+                      const Eigen::MatrixXd& R,
+                      const Eigen::MatrixXd& Qf,
+                      const std::vector<
+                          std::shared_ptr<drake::trajectories::Trajectory<double>>>& state_trajs,
+                      const std::vector<
+                          std::shared_ptr<drake::trajectories::Trajectory<double>>>& input_trajs,
+                      const std::vector<double>& impact_times,
+                      bool naive_approach = false,
+                      bool using_min_coords = false,
+                      bool calcP = false,
+                      bool calcL = false);
 
   //  const drake::systems::InputPort<double>& get_input_port_params() const {
   //    return this->get_input_port(input_port_params_index_);
@@ -129,9 +129,9 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd R_;
   Eigen::MatrixXd Qf_;
   const std::vector<std::shared_ptr<drake::trajectories::Trajectory<double>>>
-      state_traj_;
+      state_trajs_;
   const std::vector<std::shared_ptr<drake::trajectories::Trajectory<double>>>
-      input_traj_;
+      input_trajs_;
   const std::vector<double> impact_times_;
   bool naive_approach_;
   bool using_min_coords_;

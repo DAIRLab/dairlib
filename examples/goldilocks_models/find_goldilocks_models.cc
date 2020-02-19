@@ -344,7 +344,8 @@ void extendModel(string dir, int iter, int n_feature_s,
                  int & n_theta_s, int & n_theta_sDDot, int & n_theta,
                  MatrixXd & B_tau, VectorXd & theta_s, VectorXd & theta_sDDot,
                  VectorXd & theta, VectorXd & prev_theta,
-                 VectorXd & step_direction, double & min_so_far,
+                 VectorXd & step_direction,
+                 VectorXd & prev_step_direction, double & min_so_far,
                  int robot_option) {
 
   VectorXd theta_s_append = readCSV(dir +
@@ -410,6 +411,9 @@ void extendModel(string dir, int iter, int n_feature_s,
   prev_theta.resize(n_theta);
   prev_theta = theta;
   step_direction.resize(n_theta);
+  prev_step_direction.resize(n_theta);
+  prev_step_direction =
+      VectorXd::Zero(n_theta);  // must initialize it because of momentum term
   min_so_far = 10000000;
 }
 
@@ -971,6 +975,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int iter_start = FLAGS_iter_start;
   int max_outer_iter = FLAGS_max_outer_iter;
   double stopping_threshold = 1e-4;
+  // beta_momentum = 0 means we only use gradient at current iter.
+  // Momentum can give you faster convergence. And get out of a local minimum
+  // caused by step size. See: https://distill.pub/2017/momentum/ WARNING:
+  // beta_momentum is not used in newton's method
+  double beta_momentum = 0.8;
   double h_step;
   if (FLAGS_h_step > 0) {
     h_step = FLAGS_h_step;
@@ -999,7 +1008,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
                       // constraint is the constraint that is hard to satisfy?
       if (!FLAGS_is_stochastic) {
         h_step = 1e-3;  // we can always shrink steps if the cost goes up with
-                        // fixed tasks (it should go down theoratically)
+                        // fixed tasks (it should go down theoretically)
+      }
+      if (beta_momentum != 0) {
+        // haven't tried or tuned this yet.
+        h_step = 1e-3;
       }
     }
   }
@@ -1023,6 +1036,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
+  cout << "beta_momentum = " << beta_momentum << endl;
   cout << "eps_regularization = " << eps_regularization << endl;
   cout << "is_add_tau_in_cost = " << FLAGS_is_add_tau_in_cost << endl;
   FLAGS_is_zero_touchdown_impact ? cout << "Zero touchdown impact\n" :
@@ -1187,12 +1201,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "current iteration is a rerun? " << rerun_current_iteration << endl;
 
   VectorXd step_direction;
+  VectorXd prev_step_direction =
+      VectorXd::Zero(n_theta);  // must initialize this because of momentum term
   if (iter_start > 1) {
     cout << "Reading previous step direction... (will get memory issue if the "
             "file doesn't exist)\n";
-    MatrixXd step_direction_mat =
-      readCSV(dir + to_string(iter_start - 1) + string("_step_direction.csv"));
-    step_direction = step_direction_mat.col(0);
+    step_direction =
+        readCSV(dir + to_string(iter_start - 1) + string("_step_direction.csv"))
+            .col(0);
+    prev_step_direction =
+        readCSV(dir + to_string(iter_start - 1) + string("_step_direction.csv"))
+            .col(0);
   }
   double current_iter_step_size = h_step;
   if ((iter_start > 1) && FLAGS_read_previous_step_size) {
@@ -1510,7 +1529,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   n_feature_sDDot,
                   n_theta_s, n_theta_sDDot, n_theta,
                   B_tau, theta_s, theta_sDDot, theta,
-                  prev_theta, step_direction, min_so_far,
+                  prev_theta, step_direction, prev_step_direction, min_so_far,
                   FLAGS_robot_option);
 
       // So that we can re-run the current iter
@@ -1821,9 +1840,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
         cout << "gradient_cost norm: " << norm_grad_cost << endl << endl;
 
         // Calculate step_direction
-        step_direction = is_newton ? newton_step : -gradient_cost;
+        if (is_newton) {
+          step_direction = newton_step;
+        } else {
+          // gradient descent with momentum term
+          step_direction = -gradient_cost + beta_momentum * prev_step_direction;
+        }
         prefix = to_string(iter) +  "_";
         writeCSV(dir + prefix + string("step_direction.csv"), step_direction);
+        prev_step_direction = step_direction;
 
         // Calculate step size
         // current_iter_step_size = h_step;

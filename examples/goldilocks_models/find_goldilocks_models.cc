@@ -1149,6 +1149,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nOther settings:\n";
   double min_so_far;
   if (iter_start > 1  && !FLAGS_is_debug) {
+    // TODO: update the algorithm to check and compare all the previous costs
     double old_cost = 0;
     for (int i = 0; i < N_sample; i++) {
       MatrixXd c = readCSV(dir + to_string(iter_start - 1) +  "_" +
@@ -1338,7 +1339,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
           // Store the tasks or overwrite it with previous tasks
           // TODO: keep an eye on if you need "n_rerun_after_success == 0" in the logic
-          if (rerun_current_iteration) {
+          if (rerun_current_iteration || step_size_shrinked_last_loop) {
             stride_length = previous_stride_length(sample);
             ground_incline = previous_ground_incline(sample);
           } else {

@@ -251,10 +251,9 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
       num_positions_{num_positions},
       num_velocities_{num_velocities},
       num_quat_slack_{num_quat_slack} {
-  /*
   // Not sure why after adding sparsity pattern for dynamic constraint (tested,
-  th eimplementation is correct), the solve time and solution quality went
-  down...
+  // the implementation is correct), the solve time and solution quality went
+  // down...
 
   // Set sparsity pattern (conservative, independent of the robot)
   std::vector<std::pair<int, int>> sparsity;
@@ -286,7 +285,7 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
     }
   }
 
-  this->SetGradientSparsityPattern(sparsity);*/
+  this->SetGradientSparsityPattern(sparsity);
 }
 
 // The format of the input to the eval() function is the

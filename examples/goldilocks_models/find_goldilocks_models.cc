@@ -1850,12 +1850,21 @@ int findGoldilocksModels(int argc, char* argv[]) {
         writeCSV(dir + prefix + string("step_direction.csv"), step_direction);
         prev_step_direction = step_direction;
 
+        // Testing
+        writeCSV(dir + prefix + string("neg_gradient_cost.csv"), -gradient_cost);
+
+        // Calculate gradient norm
+        VectorXd step_direction_norm(1);
+        step_direction_norm << step_direction.norm();
+        writeCSV(dir + prefix + string("step_direction_norm.csv"), step_direction_norm);
+        cout << "step_direction norm: " << step_direction_norm << endl << endl;
+
         // Calculate step size
         // current_iter_step_size = h_step;
-        double norm_grad_cost_double = norm_grad_cost(0);
-        if (norm_grad_cost_double > 1) {
+        if (step_direction_norm(0) > 1) {
           // current_iter_step_size = h_step / sqrt(norm_grad_cost(0));  // Heuristic
-          current_iter_step_size = h_step / norm_grad_cost_double;  // Heuristic
+          // current_iter_step_size = h_step / norm_grad_cost(0);  // Heuristic
+          current_iter_step_size = h_step / step_direction_norm(0);  // Heuristic
         } else {
           current_iter_step_size = h_step;
         }

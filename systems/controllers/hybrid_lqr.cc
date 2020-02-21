@@ -206,8 +206,10 @@ HybridLQRController::HybridLQRController(
       //      traj_block.time_vector =
       //          VectorXd::LinSpaced(1000, state_trajs_[mode]->start_time(),
       //                              state_trajs_[mode]->end_time());
+//      traj_block.time_vector = VectorXd::LinSpaced(
+//          1000, impact_times_rev_[2 * mode], impact_times_rev_[2 * mode + 1]);
       traj_block.time_vector = VectorXd::LinSpaced(
-          1000, impact_times_rev_[2 * mode], impact_times_rev_[2 * mode + 1]);
+          1000, l_trajs_[mode]->start_time(), l_trajs_[mode]->end_time());
       traj_block.datapoints =
           generate_state_input_matrix(*l_trajs_[mode], traj_block.time_vector);
       if (using_min_coords_) {

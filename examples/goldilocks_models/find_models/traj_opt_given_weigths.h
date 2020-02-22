@@ -65,7 +65,7 @@ void trajOptGivenWeights(
   bool is_zero_touchdown_impact,
   bool extend_model,
   bool is_add_tau_in_cost,
-  int batch,
+  int sample_idx, int n_rerun,
   int robot_option);
 
 void addRegularization(bool is_get_nominal, double eps_reg,
@@ -75,7 +75,7 @@ void setInitialGuessFromFile(const VectorXd& w_sol,
 void augmentConstraintToFixThetaScaling(MatrixXd & B, MatrixXd & A,
                                         VectorXd & y, VectorXd & lb, VectorXd & ub,
                                         int n_s, int n_feature_s,
-                                        const VectorXd & theta_s, int batch);
+                                        const VectorXd & theta_s, int sample_idx);
 void extractResult(VectorXd& w_sol,
                    GoldilocksModelTrajOpt& gm_traj_opt,
                    const MathematicalProgramResult& result,
@@ -99,7 +99,7 @@ void extractResult(VectorXd& w_sol,
                    bool is_zero_touchdown_impact,
                    bool extend_model,
                    bool is_add_tau_in_cost,
-                   int batch,
+                   int sample_idx, int n_rerun,
                    int robot_option,
                    vector<DirconKinematicDataSet<double>*> dataset_list);
 void postProcessing(const VectorXd& w_sol,
@@ -125,7 +125,7 @@ void postProcessing(const VectorXd& w_sol,
                     bool is_zero_touchdown_impact,
                     bool extend_model,
                     bool is_add_tau_in_cost,
-                    int batch,
+                    int sample_idx,
                     int robot_option);
 void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
@@ -144,7 +144,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           bool is_zero_touchdown_impact,
                           bool extend_model,
                           bool is_add_tau_in_cost,
-                          int batch,
+                          int sample_idx, int n_rerun,
                           int robot_option);
 void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
@@ -165,7 +165,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    bool is_zero_touchdown_impact,
                    bool extend_model,
                    bool is_add_tau_in_cost,
-                   int batch,
+                   int sample_idx, int n_rerun,
                    int robot_option);
 
 // Position constraint of a body origin in one dimension (x, y, or z)

@@ -93,7 +93,7 @@ void setInitialGuessFromFile(string directory,
 void augmentConstraintToFixThetaScaling(MatrixXd & B, MatrixXd & A,
                                         VectorXd & y, VectorXd & lb, VectorXd & ub,
                                         int n_s, int n_feature_s,
-                                        const VectorXd & theta_s, int batch) {
+                                        const VectorXd & theta_s, int sample_idx) {
   // sum theta over a row = const
 
   int n_c = B.rows();
@@ -132,7 +132,7 @@ void augmentConstraintToFixThetaScaling(MatrixXd & B, MatrixXd & A,
   ub.resize(n_c + n_s);
   ub << ub_old, y_append;
 
-  if (batch == 0)
+  if (sample_idx == 0)
     cout << "parameters sum per position = " << y_append.transpose() << endl;
 }
 
@@ -159,7 +159,7 @@ void extractResult(VectorXd& w_sol,
                    bool is_zero_touchdown_impact,
                    bool extend_model,
                    bool is_add_tau_in_cost,
-                   int batch,
+                   int sample_idx, int n_rerun,
                    int robot_option,
                    vector<DirconKinematicDataSet<double>*> dataset_list) {
   //
@@ -195,7 +195,7 @@ void extractResult(VectorXd& w_sol,
     }
   }
 
-  /*cout << "batch# = " << batch << endl;
+  /*cout << "sample_idx# = " << sample_idx << endl;
   cout << "    stride_length = " << stride_length << " | "
        << "ground_incline = " << ground_incline << " | "
        << "init_file = " << init_file << endl;
@@ -203,7 +203,8 @@ void extractResult(VectorXd& w_sol,
   cout << solution_result <<  " | ";
   cout << "Cost:" << result.get_optimal_cost() <<
        " (tau cost = " << tau_cost << ")\n";*/
-  string string_to_print = "sample #" + to_string(batch) +
+  string string_to_print = "sample #" + to_string(sample_idx) +
+                           " (rerun #" + to_string(n_rerun) + ")"
                            "\n    stride_length = " + to_string(stride_length) +
                            " | ground_incline = " + to_string(ground_incline) +
                            " | init_file = " + init_file +
@@ -365,7 +366,7 @@ void postProcessing(const VectorXd& w_sol,
                     bool is_zero_touchdown_impact,
                     bool extend_model,
                     bool is_add_tau_in_cost,
-                    int batch,
+                    int sample_idx,
                     int robot_option) {
   if (is_get_nominal || !result.is_success()) {
     // Do nothing.
@@ -514,7 +515,7 @@ void postProcessing(const VectorXd& w_sol,
     // Augment the constraint matrices and vectors (B, A, y, lb, ub)
     // so that we fix the scaling of the model parameters
     /*augmentConstraintToFixThetaScaling(B, A, y, lb, ub,
-                                       n_s, n_feature_s, theta_s, batch);*/
+                                       n_s, n_feature_s, theta_s, sample_idx);*/
 
     // Push the solution to the vector
     /*w_sol_vec->push_back(w_sol);
@@ -1049,7 +1050,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           bool is_zero_touchdown_impact,
                           bool extend_model,
                           bool is_add_tau_in_cost,
-                          int batch,
+                          int sample_idx, int n_rerun,
                           int robot_option) {
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(
@@ -1323,7 +1324,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                 Q_double, R_double, eps_reg,
                 is_get_nominal, is_zero_touchdown_impact,
                 extend_model, is_add_tau_in_cost,
-                batch,
+                sample_idx, n_rerun,
                 robot_option,
                 dataset_list);
   postProcessing(w_sol, gm_traj_opt, result, elapsed,
@@ -1337,13 +1338,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                  Q_double, R_double, eps_reg,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
-                 batch,
+                 sample_idx,
                  robot_option);
-
-  // For multithreading purpose. Indicate this function has ended.
-  VectorXd thread_finished(1);
-  thread_finished << 1;
-  writeCSV(directory + prefix + string("thread_finished.csv"), thread_finished);
 }
 
 
@@ -1366,7 +1362,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    bool is_zero_touchdown_impact,
                    bool extend_model,
                    bool is_add_tau_in_cost,
-                   int batch,
+                   int sample_idx, int n_rerun,
                    int robot_option) {
   // Dircon parameter
   double minimum_timestep = 0.01;
@@ -1585,7 +1581,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   // Snopt settings
   /*cout << "WARNING: you are printing snopt log.\n";
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                           "../snopt_sample#"+to_string(batch)+".out");*/
+                           "../snopt_sample#"+to_string(sample_idx)+".out");*/
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -1979,7 +1975,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                 Q_double, R_double, eps_reg,
                 is_get_nominal, is_zero_touchdown_impact,
                 extend_model, is_add_tau_in_cost,
-                batch,
+                sample_idx, n_rerun,
                 robot_option,
                 dataset_list);
   postProcessing(w_sol, gm_traj_opt, result, elapsed,
@@ -1993,7 +1989,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                  Q_double, R_double, eps_reg,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
-                 batch,
+                 sample_idx,
                  robot_option);
 
   bool is_print_for_debugging = false;
@@ -2127,12 +2123,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
 
     cout << "total_cost (only the nominal traj cost terms) = " << total_cost << endl;
-  }
-
-  // For multithreading purpose. Indicate this function has ended.
-  VectorXd thread_finished(1);
-  thread_finished << 1;
-  writeCSV(directory + prefix + string("thread_finished.csv"), thread_finished);
+  }  // end if is_print_for_debugging
 }
 
 void trajOptGivenWeights(const MultibodyPlant<double> & plant,
@@ -2161,7 +2152,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          bool is_zero_touchdown_impact,
                          bool extend_model,
                          bool is_add_tau_in_cost,
-                         int batch,
+                         int sample_idx, int n_rerun,
                          int robot_option) {
   if (robot_option == 0) {
     fiveLinkRobotTrajOpt(plant, plant_autoDiff,
@@ -2173,7 +2164,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          Q_double, R_double, eps_reg,
                          is_get_nominal, is_zero_touchdown_impact,
                          extend_model, is_add_tau_in_cost,
-                         batch, robot_option);
+                         sample_idx, n_rerun, robot_option);
   } else if (robot_option == 1) {
     cassieTrajOpt(plant, plant_autoDiff,
                   n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
@@ -2185,8 +2176,13 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                   Q_double, R_double, eps_reg,
                   is_get_nominal, is_zero_touchdown_impact,
                   extend_model, is_add_tau_in_cost,
-                  batch, robot_option);
+                  sample_idx, n_rerun, robot_option);
   }
+
+  // For multithreading purpose. Indicate this function has ended.
+  VectorXd thread_finished(1);
+  thread_finished << 1;
+  writeCSV(directory + prefix + string("thread_finished.csv"), thread_finished);
 }
 
 }  // namespace goldilocks_models

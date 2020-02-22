@@ -1165,6 +1165,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Some setup
   cout << "\nOther settings:\n";
+  cout << "is_manual_initial_theta = " << FLAGS_is_manual_initial_theta << endl;
   double min_so_far;
   if (iter_start > 1  && !FLAGS_is_debug) {
     // TODO: update the algorithm to check and compare all the previous costs
@@ -1425,12 +1426,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
           assigned_thread_idx.push_back(
             std::make_pair(available_thread_idx.front(), sample_idx));
           available_thread_idx.pop();
-
-          // Queue the current sample back if it's not the last evaluation in
-          // this iteration
-          if (n_rerun[sample_idx] != N_rerun) {
-            awaiting_sample_idx.push(sample_idx);
-          }
         } else {
           // Select the thread to join
           int selected_idx = selectThreadIdxToWait(assigned_thread_idx, dir, iter);
@@ -1451,6 +1446,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           available_thread_idx.push(thread_to_wait_idx);
           assigned_thread_idx.erase(assigned_thread_idx.begin() + selected_idx);
+
+          // Queue the current sample back if it's not the last evaluation in
+          // this iteration
+          if (n_rerun[corresponding_sample] != N_rerun) {
+            awaiting_sample_idx.push(corresponding_sample);
+          }
 
           // Record success history
           prefix = to_string(iter) +  "_" + to_string(corresponding_sample) + "_";

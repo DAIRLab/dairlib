@@ -290,12 +290,12 @@ void remove_old_multithreading_files(string dir, int iter, int N_sample) {
       cout << prefix + "thread_finished.csv removed\n";
     }
   }
-  cout << endl;
 }
 
 int selectThreadIdxToWait(const vector<pair<int, int>> & assigned_thread_idx,
                           string dir, int iter) {
   bool no_files_exsit = true;
+  int counter = 0;
   while (no_files_exsit) {
     // cout << "Check if any file exists...\n";
     for (unsigned int i = 0; i < assigned_thread_idx.size(); i++) {
@@ -306,14 +306,15 @@ int selectThreadIdxToWait(const vector<pair<int, int>> & assigned_thread_idx,
         if ( !rm ) cout << "Error deleting files\n";
         // cout << prefix + "thread_finished.csv exists\n";
         return i;
-        no_files_exsit = false;
-        break;
       }
     }
     if (no_files_exsit) {
-      // cout << "No files exists yet. Sleep for 1 seconds.\n";
+      if ((counter % 60 == 0)) {
+        // cout << "No files exists yet. Sleep for 1 seconds.\n";
+      }
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
+    counter++;
   }
   // should never reach here
   cout << "Error: The code should never reach here.\n";
@@ -1349,7 +1350,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Create a index list indicating which thread is available for use
       std::queue<int> available_thread_idx;
-      for (int i = 0; i < CORES; i++)
+      for (int i = 0; i < std::min(CORES, N_sample); i++)
         available_thread_idx.push(i);
       vector<pair<int, int>> assigned_thread_idx;
 
@@ -1386,6 +1387,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
             stride_length += dist_sl(e1);
             ground_incline += dist_gi(e2);
           }
+
           // Store the tasks or overwrite it with previous tasks
           // (You need step_size_shrinked_last_loop because you might start the
           // program with shrinking step size)
@@ -1440,12 +1442,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
           string_to_be_print = "Finished adding sample #" + to_string(sample_idx) +
                                " to thread # " + to_string(available_thread_idx.front()) + ".\n";
           // cout << string_to_be_print;
+
           assigned_thread_idx.push_back(
             std::make_pair(available_thread_idx.front(), sample_idx));
           available_thread_idx.pop();
         } else {
           // Select the thread to join
           int selected_idx = selectThreadIdxToWait(assigned_thread_idx, dir, iter);
+          // cout << "selected_idx = " << selected_idx << endl;
 
           // Wait for the selected thread to join
           int thread_to_wait_idx = assigned_thread_idx[selected_idx].first;

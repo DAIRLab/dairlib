@@ -762,7 +762,7 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     H_ext.block(nw_i, 0, nl_i, nw_i) = A_active_vec[sample];
     H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
 
-    MatrixXd inv_H_ext = MoorePenrosePseudoInverse(H_ext, 1e-6);
+    MatrixXd inv_H_ext = MoorePenrosePseudoInverse(H_ext, 1e-8);
 
     MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
     MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);

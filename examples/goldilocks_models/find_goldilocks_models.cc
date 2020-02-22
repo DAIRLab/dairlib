@@ -280,6 +280,19 @@ inline bool file_exist (const std::string & name) {
   return (stat (name.c_str(), &buffer) == 0);
 }
 
+void remove_old_multithreading_files(string dir, int iter, int N_sample) {
+  cout << "\nRemoving old thread_finished.csv files...\n";
+  for (unsigned int i = 0; i < N_sample; i++) {
+    string prefix = to_string(iter) + "_" + to_string(i) + "_";
+    if (file_exist(dir + prefix + "thread_finished.csv")) {
+      bool rm = (remove((dir + prefix + string("thread_finished.csv")).c_str()) == 0);
+      if ( !rm ) cout << "Error deleting files\n";
+      cout << prefix + "thread_finished.csv removed\n";
+    }
+  }
+  cout << endl;
+}
+
 int selectThreadIdxToWait(const vector<pair<int, int>> & assigned_thread_idx,
                           string dir, int iter) {
   bool no_files_exsit = true;
@@ -1161,7 +1174,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nMultithreading settings:\n";
   int CORES = static_cast<int>(std::thread::hardware_concurrency());
   if (FLAGS_n_thread_to_use > 0) CORES = FLAGS_n_thread_to_use;
+  cout << "is multithread? " << FLAGS_is_multithread << endl;
   cout << "# of threads to be used " << CORES << endl;
+  if (FLAGS_is_multithread) {
+    remove_old_multithreading_files(dir, iter_start, N_sample);
+  }
 
   // Some setup
   cout << "\nOther settings:\n";

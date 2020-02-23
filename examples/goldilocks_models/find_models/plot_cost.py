@@ -151,6 +151,9 @@ while 1:
         plt.title('Cost over iterations')
         plt.legend()
 
+    # Set limit
+    #ax1.set_ylim(0, 6)
+
     plt.draw()
 
     # so that the label is not cut off by the window

@@ -8,6 +8,7 @@ plt.rcParams.update({'font.size': 18})
 
 only_plot_average_cost = True
 normalize_by_nominal_cost = True
+only_add_successful_samples_to_average_cost = True
 
 iter_start = 1
 iter_end = 11
@@ -22,7 +23,7 @@ if len(sys.argv) == 3:
 
 n_sampel_sl = 3  # should be > 0
 n_sampel_gi = 3  # should be > 0
-batch_max = n_sampel_sl * n_sampel_gi
+N_sample = n_sampel_sl * n_sampel_gi
 
 dist_0 = 0.2
 delta_dist = 0.1
@@ -43,13 +44,13 @@ min_incline = incline_0 - delta_incline * (n_sampel_gi - 1)/2.0
 # get nomial cost
 nominal_cost = 0.0
 if normalize_by_nominal_cost:
-    for batch in reversed(range(batch_max)):
+    for sample_i in range(N_sample):
         cost = []
-        assert os.path.isfile(directory+'nominal_no_constraint_traj/'+'0_'+str(batch)+'_'+file_name), 'file does not exist'
-        matrix = np.genfromtxt (directory+'nominal_no_constraint_traj/'+'0_'+str(batch)+'_'+file_name, delimiter=",")
+        assert os.path.isfile(directory+'nominal_no_constraint_traj/'+'0_'+str(sample_i)+'_'+file_name), 'file does not exist'
+        matrix = np.genfromtxt (directory+'nominal_no_constraint_traj/'+'0_'+str(sample_i)+'_'+file_name, delimiter=",")
         cost.append(matrix)
 
-        nominal_cost += cost[0] / batch_max;
+        nominal_cost += cost[0] / N_sample;
 else:
     nominal_cost = 1.0;
 print('nominal_cost = '+str(nominal_cost))
@@ -61,11 +62,11 @@ while 1:
 
     # Get the length of the cost first (in case the lengths of different samples are the not the same). This is for plotting the average cost
     len_total_cost = 0
-    for batch in reversed(range(batch_max)):
+    for sample_i in range(N_sample):
         cost = []
         iteration = iter_start
-        while os.path.isfile(directory+str(iteration)+'_'+str(batch)+'_'+file_name):
-            matrix = np.genfromtxt (directory+str(iteration)+'_'+str(batch)+'_'+file_name, delimiter=",") / nominal_cost
+        while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name):
+            matrix = np.genfromtxt (directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
             cost.append(matrix)
             if is_iter_end & (iteration == iter_end):
                 break;
@@ -75,16 +76,23 @@ while 1:
         else:
             len_total_cost = min(len_total_cost, len(cost))
 
-    total_cost = []
-    for batch in reversed(range(batch_max)):
+    # Initialize total_cost with all zeros
+    total_cost = [0] * len_total_cost
+
+    #
+    n_successful_sample_each_iter = [0] * len_total_cost;
+
+    # Plot each sample
+    for sample_i in range(N_sample):
+        # read in cost
         cost = []
         iteration = iter_start
-        while os.path.isfile(directory+str(iteration)+'_'+str(batch)+'_'+file_name):
+        while os.path.isfile(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name):
             # way1
-            matrix = np.genfromtxt (directory+str(iteration)+'_'+str(batch)+'_'+file_name, delimiter=",") / nominal_cost
+            matrix = np.genfromtxt (directory+str(iteration)+'_'+str(sample_i)+'_'+file_name, delimiter=",") / nominal_cost
             cost.append(matrix)
             # way2
-            # with open(directory+str(iteration)+'_'+str(batch)+'_'+file_name,'r') as csvfile:
+            # with open(directory+str(iteration)+'_'+str(sample_i)+'_'+file_name,'r') as csvfile:
             #     plots = csv.reader(csvfile, delimiter=',')
             #     for row in plots:
             #         cost.append(row[0])
@@ -92,26 +100,39 @@ while 1:
                 break;
             iteration+=1
 
+        # plot cost for each sample
         length = len(cost)
         t = range(iter_start,length+iter_start)
         if not only_plot_average_cost:
             if n_sampel_gi > 1:
-                ax1.plot(t,cost, label='stride length = '+str(min_dist+(batch%n_sampel_sl)*delta_dist)+' (m), ground incline = '+str(min_incline+(batch/n_sampel_gi)*delta_incline)+' (rad)')
+                ax1.plot(t,cost, label='stride length = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m), ground incline = '+str(min_incline+(sample_i/n_sampel_gi)*delta_incline)+' (rad)')
             else:
-                ax1.plot(t,cost, label='stride length = '+str(min_dist+(batch%n_sampel_sl)*delta_dist)+' (m)')
+                ax1.plot(t,cost, label='stride length = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m)')
 
-        # plot total cost
-        if batch == batch_max-1:
-            total_cost = cost
+        # Read in is_success
+        is_success = []
+        if only_add_successful_samples_to_average_cost:
+            for iter_i in range(iter_start, iter_start + len_total_cost):
+                matrix = np.genfromtxt (directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=",")
+                is_success.append(matrix)
         else:
-            total_cost = [x + y for x, y in zip(total_cost, cost[0:len_total_cost])]
-        if batch == 0:
-            average_cost = [x/batch_max for x in total_cost]
-            if only_plot_average_cost:
-                ax1.plot(t[0:len_total_cost],average_cost, 'k-', linewidth=3.0, label='Averaged cost')
-            else:
-                ax1.plot(t[0:len_total_cost],average_cost, 'k--', linewidth=3.0, label='Averaged cost')
+            is_success = [1] * len_total_cost
 
+        # Add to accumulated success
+        n_successful_sample_each_iter = [x + y for x, y in zip(n_successful_sample_each_iter, is_success)]
+
+        # Add to total cost
+        filtered_cost = [x * y for x, y in zip(is_success, cost[0:len_total_cost])]
+        total_cost = [x + y for x, y in zip(total_cost, filtered_cost[0:len_total_cost])]
+
+    # plot average cost
+    average_cost = [x / y for x, y in zip(total_cost, n_successful_sample_each_iter)]
+    if only_plot_average_cost:
+        ax1.plot(t[0:len_total_cost],average_cost, 'k-', linewidth=3.0, label='Averaged cost')
+    else:
+        ax1.plot(t[0:len_total_cost],average_cost, 'k--', linewidth=3.0, label='Averaged cost')
+
+    # labels
     plt.xlabel('Iteration')
     plt.ylabel('Averaged sample task cost')
     if not only_plot_average_cost:

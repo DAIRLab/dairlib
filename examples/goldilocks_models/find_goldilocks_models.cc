@@ -110,6 +110,11 @@ DEFINE_int32(extend_model_iter, -1, "The starting iteration #");
 DEFINE_bool(is_multithread, true, "Use multi-thread or not");
 DEFINE_int32(n_thread_to_use, -1, "# of threads you want to use");
 
+// Others
+DEFINE_string(
+    program_name, "",
+    "The name of the program (to keep a record for future references)");
+
 // Not tested yet. So backup before you try this.
 bool is_to_improve_solution = false;
 
@@ -828,6 +833,8 @@ void readPiQiFile(vector<MatrixXd> * P_vec, vector<VectorXd> * q_vec,
 
 int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  cout << "Trail name: " << FLAGS_program_name << endl;
 
   if (FLAGS_is_multithread) {
     cout << "Make sure that you turned off snopt log and constraint jacobian "

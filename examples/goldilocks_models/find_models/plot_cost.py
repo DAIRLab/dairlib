@@ -41,6 +41,18 @@ file_name = 'c_without_tau.csv'
 min_dist = dist_0 - delta_dist * (n_sampel_sl - 1)/2.0
 min_incline = incline_0 - delta_incline * (n_sampel_gi - 1)/2.0
 
+# visualization setting
+ave_cost_prop = ""
+if only_plot_average_cost:
+    ave_cost_prop = "k-"
+else:
+    ave_cost_prop = "k--"
+ave_cost_label = ""
+if only_add_successful_samples_to_average_cost:
+    ave_cost_label = "Averaged cost (excluding failed samples)";
+else:
+    ave_cost_label = "Averaged cost";
+
 # get nomial cost
 nominal_cost = 0.0
 if normalize_by_nominal_cost:
@@ -127,14 +139,14 @@ while 1:
 
     # plot average cost
     average_cost = [x / y for x, y in zip(total_cost, n_successful_sample_each_iter)]
-    if only_plot_average_cost:
-        ax1.plot(t[0:len_total_cost],average_cost, 'k-', linewidth=3.0, label='Averaged cost')
-    else:
-        ax1.plot(t[0:len_total_cost],average_cost, 'k--', linewidth=3.0, label='Averaged cost')
+    ax1.plot(t[0:len_total_cost],average_cost, ave_cost_prop, linewidth=3.0, label=ave_cost_label)
 
     # labels
     plt.xlabel('Iteration')
-    plt.ylabel('Averaged sample task cost')
+    if only_plot_average_cost & only_add_successful_samples_to_average_cost:
+        plt.ylabel('Averaged (successful) task cost')
+    else:
+        plt.ylabel('Averaged task cost')
     if not only_plot_average_cost:
         plt.title('Cost over iterations')
         plt.legend()

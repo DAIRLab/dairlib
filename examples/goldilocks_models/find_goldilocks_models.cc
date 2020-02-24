@@ -1250,6 +1250,20 @@ int findGoldilocksModels(int argc, char* argv[]) {
   theta << theta_s, theta_sDDot;
   bool rerun_current_iteration = FLAGS_start_current_iter_as_rerun;
   bool has_been_all_success = iter_start > 1;
+  if ((FLAGS_start_current_iter_as_rerun && (iter_start >= 1)) ||
+      (!FLAGS_start_current_iter_as_rerun && (iter_start >= 2))) {
+    int iter_check_all_success =
+        FLAGS_start_current_iter_as_rerun ? iter_start : iter_start - 1;
+
+    bool samples_are_success = true;
+    for (int i = 0; i < N_sample; i++) {
+      samples_are_success =
+          samples_are_success &&
+          readCSV(dir + to_string(iter_check_all_success) + "_" + to_string(i) +
+                  string("_is_success.csv"))(0);
+    }
+    has_been_all_success = samples_are_success;
+  }
   cout << "has_been_all_success = " << has_been_all_success << endl;
   cout << "iteration #" << iter_start << " is a rerun? "
        << rerun_current_iteration << endl;

@@ -260,16 +260,55 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
 
   //Testing
   if (is_debug) {
-    // *init_file = to_string(iter) +  "_" +
-    //                     to_string(sample) + string("_w.csv");//////////////////////////////////////////////////////////////////////////
-    // *init_file = string("1_2_w.csv");
-    // stride_length = 0.3;
-    // *init_file = string("19_2_w.csv");
-    // *init_file = string("1_0_w.csv");
+    // Hacks for improving solution quality
+    cout << "WARNING: hacking initial guess\n";
+    /*if(sample == 1) {sample = 2;}
+    if(sample == 3) {sample = 2;}
+    if(sample == 6) {sample = 7;}
+    if(sample == 11) {sample = 12;}
+    if(sample == 13) {sample = 12;}
+    if(sample == 18) {sample = 17;}
+    if(sample == 31) {sample = 32;}
+    if(sample == 35) {sample = 34;}*/
 
-    // stride_length = 0.314706; ground_incline = -0.0553895; *init_file = string("1_2_w.csv");
-    // stride_length = 0.294027; ground_incline = -0.00499089; *init_file = string("1_4_w.csv");
-    // stride_length = 0.27763; ground_incline = 0.0635912; *init_file = string("1_6_w.csv");
+    /*if(sample == 22) {sample = 35;}
+    if(sample == 26) {sample = 27;}
+    if(sample == 28) {sample = 29;}
+    if(sample == 37) {sample = 38;}*/
+
+    /*if(sample == 0) {sample = 13;}
+    if(sample == 4) {sample = 3;}
+    if(sample == 5) {sample = 6;}
+    if(sample == 8) {sample = 7;}
+    if(sample == 36) {sample = 37;}*/
+
+    /*if(sample == 9) {sample = 8;}
+    if(sample == 14) {sample = 13;}
+    if(sample == 23) {sample = 22;}
+    if(sample == 21) {sample = 22;}*/
+
+    /*if(sample == 10) {sample = 9;}
+    if(sample == 15) {sample = 14;}
+    if(sample == 24) {sample = 23;}
+    if(sample == 20) {sample = 21;}
+    if(sample == 19) {sample = 20;}*/
+
+    /*if(sample == 7) {sample = 8;}
+    if(sample == 13) {sample = 14;}
+    if(sample == 16) {sample = 15;}
+    if(sample == 19) {sample = 18;}
+    if(sample == 27) {sample = 26;}
+    if(sample == 28) {sample = 29;}
+    if(sample == 36) {sample = 35;}*/
+
+    /*if(sample == 11) {sample = 10;}
+    if(sample == 16) {sample = 17;}
+    if(sample == 18) {sample = 31;}*/
+
+    /*if(sample == 18) {sample = 19;}
+    if(sample == 36) {sample = 23;}*/
+
+    *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   }
 }
 
@@ -1557,10 +1596,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // If in debug mode, stop evaluating.
           if (FLAGS_is_debug) {
             // Wait for the assigned threads to join, and then break;
-            cout << "In debug mode. Wait for all threads to join and stop "
+            /*cout << "In debug mode. Wait for all threads to join and stop "
                     "current iteration.\n";
             waitForAllThreadsToJoin(&threads, &assigned_thread_idx, dir, iter);
-            break;
+            break;*/
           }
         }
       }  // while(sample < N_sample)

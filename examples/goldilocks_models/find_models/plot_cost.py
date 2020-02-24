@@ -21,14 +21,16 @@ if len(sys.argv) == 3:
     is_iter_end = 1
 
 
-n_sampel_sl = 3  # should be > 0
+n_sampel_sl = 13  # should be > 0
 n_sampel_gi = 3  # should be > 0
 N_sample = n_sampel_sl * n_sampel_gi
+print('n_sampel_sl = ' + str(n_sampel_sl))
+print('n_sampel_gi = ' + str(n_sampel_gi))
 
 dist_0 = 0.2
-delta_dist = 0.1
+delta_dist = 0.015 #0.1
 incline_0 = 0.0
-delta_incline = 0.08
+delta_incline = 0.05 #0.08
 
 robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
 # directory = 'data/robot_' + str(robot_option) + '/'

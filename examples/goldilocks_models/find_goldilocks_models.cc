@@ -1075,7 +1075,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   FLAGS_is_zero_touchdown_impact ? cout << "Zero touchdown impact\n" :
                                         cout << "Non-zero touchdown impact\n";
   cout << "# of re-run in each iteration = " << N_rerun << endl;
-  cout << "Failure rate threshold = " << FLAGS_fail_threshold << endl;
+  cout << "Failure rate threshold before seeing a all-success iteration = "
+       << FLAGS_fail_threshold << endl;
   cout << "method_to_solve_system_of_equations = "
        << method_to_solve_system_of_equations << endl;
   cout << "The maximum rate the cost can increase = " << max_cost_increase_rate
@@ -1528,9 +1529,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
             success_rate_is_high_enough = false;
           }
 
-          // If failure rate is higher than threshold, stop evaluating.
-          // If has_been_all_success = false, shouldn't stop evaluating?
-          if (has_been_all_success && (!success_rate_is_high_enough)) {
+          // Stop evaluating if
+          // 1. any sample failed after a all-success iteration
+          // 2. fail rate higher than threshold before seeing all-success
+          // iteration
+          if ((has_been_all_success && (!all_samples_are_success)) ||
+              (!has_been_all_success && (!success_rate_is_high_enough))) {
             // Wait for the assigned threads to join, and then break;
             cout << n_failed_sample << " # of samples failed to find solution."
                  " Latest failed sample is sample#" << corresponding_sample <<
@@ -1566,13 +1570,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
     if (start_iterations_with_shrinking_stepsize) {
       rerun_current_iteration = true;
     } else {
-      if (success_rate_is_high_enough && !is_get_nominal) {
+      if (all_samples_are_success && !is_get_nominal) {
         has_been_all_success = true;
       }
-      // If has_been_all_success = false, should be easy on the snopt solver?
+      // If all samples have been evaluated successfully in previous iteration,
+      // we don't allow any failure in the following iterations
       bool current_iter_is_success = has_been_all_success
-                                     ? success_rate_is_high_enough
-                                     : a_sample_is_success;
+                                     ? all_samples_are_success
+                                     : success_rate_is_high_enough;
 
       // Rerun the current iteration when the iteration was not successful
       rerun_current_iteration = !current_iter_is_success;
@@ -1615,29 +1620,26 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }  // end if extend_model_this_iter
     else if (rerun_current_iteration) {  // rerun the current iteration
       iter -= 1;
-      // If has_been_all_success=false, should maintain the step size and keep
-      // solving? (this could be a infinite loop. TODO: fix this)
-      if (start_iterations_with_shrinking_stepsize || has_been_all_success) {
-        current_iter_step_size = current_iter_step_size / 2;
-        // if(current_iter_step_size<1e-5){
-        //   cout<<"switch to the other method.";
-        //   is_newton = !is_newton;
-        // }
-        cout << "Step size shrinks to " << current_iter_step_size <<
-             ". Redo this iteration.\n\n";
 
-        // Descent
-        theta = prev_theta + current_iter_step_size * step_direction;
+      current_iter_step_size = current_iter_step_size / 2;
+      // if(current_iter_step_size<1e-5){
+      //   cout<<"switch to the other method.";
+      //   is_newton = !is_newton;
+      // }
+      cout << "Step size shrinks to " << current_iter_step_size <<
+           ". Redo this iteration.\n\n";
 
-        // Assign theta_s and theta_sDDot
-        theta_s = theta.head(n_theta_s);
-        theta_sDDot = theta.tail(n_theta_sDDot);
+      // Descent
+      theta = prev_theta + current_iter_step_size * step_direction;
 
-        // for start_iterations_with_shrinking_stepsize
-        start_iterations_with_shrinking_stepsize = false;
+      // Assign theta_s and theta_sDDot
+      theta_s = theta.head(n_theta_s);
+      theta_sDDot = theta.tail(n_theta_sDDot);
 
-        step_size_shrinked_last_loop = true;
-      }
+      // for start_iterations_with_shrinking_stepsize
+      start_iterations_with_shrinking_stepsize = false;
+
+      step_size_shrinked_last_loop = true;
     }  // end if rerun_current_iteration
     else {
       // The code only reach here when the current iteration is successful.

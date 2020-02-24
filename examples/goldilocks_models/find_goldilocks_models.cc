@@ -1031,7 +1031,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       //  1e-4: doesn't always decrease with a fixed task
       //  1e-5: barely increase with a fixed task
 
-      // Both with and without tau (I believe)
+      // Both with and without tau (I believe), fixed task.
       // h_step = 1e-3;  // This is with h_step / norm_grad_cost_double. (and with
                       // old traj opt)
 
@@ -1065,6 +1065,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
   const int method_to_solve_system_of_equations = 3;
+  double max_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
@@ -1077,6 +1078,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "Failure rate threshold = " << FLAGS_fail_threshold << endl;
   cout << "method_to_solve_system_of_equations = "
        << method_to_solve_system_of_equations << endl;
+  cout << "The maximum rate the cost can increase = " << max_cost_increase_rate
+       << endl;
 
   // Parameters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
@@ -1109,7 +1112,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nReduced-order model setting:\n";
   cout << "Warning: Need to make sure that the implementation in "
        "DynamicsExpression agrees with n_s and n_tau.\n";
-  int rom_option = 2;
+  int rom_option = 0;
   int n_s = 0;
   int n_tau = 0;
   setRomDim(&n_s, &n_tau, rom_option);
@@ -1658,14 +1661,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // We further decide if we should still shrink the step size because the
       // cost is not small enough (we do this because sometimes snopt cannot
-      // find a good solution when the step size is too big). We don't do this
-      // when we are using stochastic tasks, because the tasks difficulty varies
-      // from iterations to iterations.
-      // We don't do this on iteration 2 because sometimes the cost goes up from
-      // iteration 1 to 2 (somehow).
-      // We require that ALL the samples were evaluated successfully when
+      // find a good solution when the step size is too big).
+      // - We still do this when we are using stochastic tasks although the
+      // tasks difficulty varies from iterations to iterations. We can
+      // heuristically pick a range that contains the task difficulty variation,
+      // so that we don't eliminate the sample with hard task.
+      // - We don't do this on iteration 2 because sometimes the cost goes up
+      // from iteration 1 to 2 (somehow).
+      // - We require that ALL the samples were evaluated successfully when
       // shrinking the step size based on cost.
-      if (!FLAGS_is_stochastic && (iter > 2) && all_samples_are_success) {
+      if ((iter > 2) && all_samples_are_success) {
         // print
         if (total_cost > min_so_far) {
           cout << "The cost went up by "
@@ -1673,9 +1678,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         }
 
         // If cost goes up, we restart the iteration and shrink the step size.
-        // It seems to be unavoidable that the cost goes up even when we fix the
-        // tasks. Maybe it is caused by the calculation error in step direction?
-        if (total_cost > 1.01 * min_so_far) {
+        if (total_cost > (1 + max_cost_increase_rate) * min_so_far) {
           cout << "The cost went up too much. Shrink the step size.\n\n";
           start_iterations_with_shrinking_stepsize = true;
           iter--;
@@ -1683,7 +1686,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         }
       }
 
-      // Update parameters
+      // Update parameters below
 
       // Extract active and independent constraints (multithreading)
       auto start_time_extract = std::chrono::high_resolution_clock::now();

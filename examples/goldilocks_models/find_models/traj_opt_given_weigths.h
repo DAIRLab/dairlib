@@ -66,7 +66,7 @@ void trajOptGivenWeights(
   bool extend_model,
   bool is_add_tau_in_cost,
   int sample_idx, int n_rerun,
-  int robot_option);
+  int rom_option, int robot_option);
 
 void addRegularization(bool is_get_nominal, double eps_reg,
                        GoldilocksModelTrajOpt& gm_traj_opt);
@@ -99,7 +99,7 @@ void extractResult(VectorXd& w_sol,
                    bool is_zero_touchdown_impact,
                    bool extend_model,
                    bool is_add_tau_in_cost,
-                   int sample_idx, int n_rerun,
+                   int sample_idx, int n_rerun, int rom_option,
                    int robot_option,
                    vector<DirconKinematicDataSet<double>*> dataset_list);
 void postProcessing(const VectorXd& w_sol,
@@ -126,7 +126,7 @@ void postProcessing(const VectorXd& w_sol,
                     bool extend_model,
                     bool is_add_tau_in_cost,
                     int sample_idx,
-                    int robot_option);
+                    int rom_option, int robot_option);
 void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
                           int n_s, int n_sDDot, int n_tau,
@@ -145,7 +145,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           bool extend_model,
                           bool is_add_tau_in_cost,
                           int sample_idx, int n_rerun,
-                          int robot_option);
+                          int rom_option, int robot_option);
 void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
                    int n_s, int n_sDDot, int n_tau,
@@ -166,7 +166,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    bool extend_model,
                    bool is_add_tau_in_cost,
                    int sample_idx, int n_rerun,
-                   int robot_option);
+                   int rom_option, int robot_option);
 
 // Position constraint of a body origin in one dimension (x, y, or z)
 class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {

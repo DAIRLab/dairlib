@@ -160,6 +160,7 @@ void extractResult(VectorXd& w_sol,
                    bool extend_model,
                    bool is_add_tau_in_cost,
                    int sample_idx, int n_rerun,
+                   int rom_option,
                    int robot_option,
                    vector<DirconKinematicDataSet<double>*> dataset_list) {
   //
@@ -367,6 +368,7 @@ void postProcessing(const VectorXd& w_sol,
                     bool extend_model,
                     bool is_add_tau_in_cost,
                     int sample_idx,
+                    int rom_option,
                     int robot_option) {
   if (is_get_nominal || !result.is_success()) {
     // Do nothing.
@@ -425,8 +427,8 @@ void postProcessing(const VectorXd& w_sol,
     // Assume that the new features include all the old features (in dynamics)
     VectorXd prime_numbers = createPrimeNumbers(2 * (n_s + n_extend));
 
-    DynamicsExpression dyn_expr_old(n_sDDot, 0, robot_option);
-    DynamicsExpression dyn_expr_new(n_sDDot + n_extend, 0, robot_option);
+    DynamicsExpression dyn_expr_old(n_sDDot, 0, rom_option, robot_option);
+    DynamicsExpression dyn_expr_new(n_sDDot + n_extend, 0, rom_option, robot_option);
     VectorXd dummy_s_new = prime_numbers.head(n_s + n_extend);
     VectorXd dummy_sDDot_new = prime_numbers.tail(n_s + n_extend);
     VectorXd dummy_s_old = dummy_s_new.head(n_s);
@@ -1050,7 +1052,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           bool is_zero_touchdown_impact,
                           bool extend_model,
                           bool is_add_tau_in_cost,
-                          int sample_idx, int n_rerun,
+                          int sample_idx, int n_rerun, int rom_option,
                           int robot_option) {
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(
@@ -1292,7 +1294,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
     n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
     B_tau, theta_s, theta_sDDot,
     std::move(trajopt), &plant_autoDiff, &plant, num_time_samples,
-    is_get_nominal, is_add_tau_in_cost, robot_option);
+    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option);
 
   addRegularization(is_get_nominal, eps_reg, gm_traj_opt);
 
@@ -1325,6 +1327,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                 is_get_nominal, is_zero_touchdown_impact,
                 extend_model, is_add_tau_in_cost,
                 sample_idx, n_rerun,
+                rom_option,
                 robot_option,
                 dataset_list);
   postProcessing(w_sol, gm_traj_opt, result, elapsed,
@@ -1339,6 +1342,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
                  sample_idx,
+                 rom_option,
                  robot_option);
 }
 
@@ -1363,7 +1367,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    bool extend_model,
                    bool is_add_tau_in_cost,
                    int sample_idx, int n_rerun,
-                   int robot_option) {
+                   int rom_option, int robot_option) {
   // Dircon parameter
   double minimum_timestep = 0.01;
   DRAKE_DEMAND(duration / (n_node - 1) >= minimum_timestep);
@@ -1579,9 +1583,9 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-  /*cout << "WARNING: you are printing snopt log.\n";
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                           "../snopt_sample#"+to_string(sample_idx)+".out");*/
+//  cout << "WARNING: you are printing snopt log.\n";
+//  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+//                           "../snopt_sample#"+to_string(sample_idx)+".out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -1900,7 +1904,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
     B_tau, theta_s, theta_sDDot,
     std::move(trajopt), &plant_autoDiff, &plant, num_time_samples,
-    is_get_nominal, is_add_tau_in_cost, robot_option);
+    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option);
 
   addRegularization(is_get_nominal, eps_reg, gm_traj_opt);
 
@@ -1976,6 +1980,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                 is_get_nominal, is_zero_touchdown_impact,
                 extend_model, is_add_tau_in_cost,
                 sample_idx, n_rerun,
+                rom_option,
                 robot_option,
                 dataset_list);
   postProcessing(w_sol, gm_traj_opt, result, elapsed,
@@ -1990,6 +1995,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
                  sample_idx,
+                 rom_option,
                  robot_option);
 
   bool is_print_for_debugging = false;
@@ -2153,7 +2159,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          bool extend_model,
                          bool is_add_tau_in_cost,
                          int sample_idx, int n_rerun,
-                         int robot_option) {
+                         int rom_option, int robot_option) {
   if (robot_option == 0) {
     fiveLinkRobotTrajOpt(plant, plant_autoDiff,
                          n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
@@ -2164,7 +2170,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          Q_double, R_double, eps_reg,
                          is_get_nominal, is_zero_touchdown_impact,
                          extend_model, is_add_tau_in_cost,
-                         sample_idx, n_rerun, robot_option);
+                         sample_idx, n_rerun, rom_option, robot_option);
   } else if (robot_option == 1) {
     cassieTrajOpt(plant, plant_autoDiff,
                   n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
@@ -2176,7 +2182,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                   Q_double, R_double, eps_reg,
                   is_get_nominal, is_zero_touchdown_impact,
                   extend_model, is_add_tau_in_cost,
-                  sample_idx, n_rerun, robot_option);
+                  sample_idx, n_rerun, rom_option, robot_option);
   }
 
   // For multithreading purpose. Indicate this function has ended.

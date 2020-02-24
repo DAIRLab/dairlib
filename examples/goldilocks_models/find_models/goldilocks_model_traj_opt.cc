@@ -14,7 +14,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     const std::vector<int> & num_time_samples,
     bool is_get_nominal,
     bool is_add_tau_in_cost,
-    int robot_option):
+    int rom_option, int robot_option):
   n_s_(n_s),
   n_sDDot_(n_sDDot),
   n_tau_(n_tau),
@@ -43,13 +43,13 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
                                     n_s, n_feature_s, theta_s,
                                     n_sDDot, n_feature_sDDot, theta_sDDot,
                                     n_tau, B_tau, plant, plant_double,
-                                    true,
+                                    true, rom_option,
                                     robot_option);
     // dynamics_constraint_at_tail = make_shared<find_models::DynamicsConstraint>(
     //                                n_s, n_feature_s, theta_s,
     //                                n_sDDot, n_feature_sDDot, theta_sDDot,
     //                                n_tau, B_tau, plant, plant_double,
-    //                                false,
+    //                                false, rom_option,
     //                                robot_option);
 
     // Constraint scaling
@@ -60,14 +60,21 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     } else if (robot_option == 0) {
       // no need to scale for five-link robot case, but can add it.
       // TODO: add constraint scaling for five link robot
-    } else if ((robot_option == 1) && (n_sDDot == 2)) {
-      constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 26000.0));
-      constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 3200.0));
-    } else if ((robot_option == 1) && (n_sDDot == 4)) {
-      constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 26000.0));
-      constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 3200.0));
-      constraint_scale_map.insert(std::pair<int, double>(2, 1.0 / 26000.0));
-      constraint_scale_map.insert(std::pair<int, double>(3, 1.0 / 4000.0));
+    } else if (robot_option == 1) {
+      if (rom_option == 0) {
+        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 26000.0));
+        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 3200.0));
+      } else if (rom_option == 1) {
+        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 26000.0));
+        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 3200.0));
+        constraint_scale_map.insert(std::pair<int, double>(2, 1.0 / 26000.0));
+        constraint_scale_map.insert(std::pair<int, double>(3, 1.0 / 4000.0));
+      } else if (rom_option == 2) {
+        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 3200.0));
+      } else {
+        // The scaling of others hasn't tuned yet
+        DRAKE_DEMAND(false);
+      }
     } else {
       // The scaling of others hasn't tuned yet
       DRAKE_DEMAND(false);
@@ -78,11 +85,16 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     // TODO: need to tune variable as well.
     double tau1_scale = 26000.0;
     double tau2_scale = 4000.0;
-    if ((robot_option == 1) && (n_sDDot == 4)) {
-      for (int i = 0; i < N; i++) {
-        auto tau_i = reduced_model_input(i, n_tau);
-        dircon->SetVariableScaling(tau_i(0), tau1_scale);
-        dircon->SetVariableScaling(tau_i(1), tau2_scale);
+    if (robot_option == 1) {
+      if (rom_option == 1) {
+        for (int i = 0; i < N; i++) {
+          auto tau_i = reduced_model_input(i, n_tau);
+          dircon->SetVariableScaling(tau_i(0), tau1_scale);
+          dircon->SetVariableScaling(tau_i(1), tau2_scale);
+        }
+      } else if (rom_option == 3) {
+        // The scaling hasn't been tuned yet
+        DRAKE_DEMAND(false);
       }
     }
 
@@ -92,9 +104,14 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
       for (int i = 0; i < N; i++) {
         MatrixXd W = w_tau * MatrixXd::Identity(n_tau, n_tau);
 
-        if ((robot_option == 1) && (n_sDDot == 4)) {
-          W(0, 0) /= (tau1_scale * tau1_scale);
-          W(1, 1) /= (tau2_scale * tau2_scale);
+        if (robot_option == 1) {
+          if (rom_option == 1) {
+            W(0, 0) /= (tau1_scale * tau1_scale);
+            W(1, 1) /= (tau2_scale * tau2_scale);
+          } else if (rom_option == 3) {
+            // hasn't added
+            DRAKE_DEMAND(false);
+          }
         }
 
         auto tau_i = reduced_model_input(i, n_tau);

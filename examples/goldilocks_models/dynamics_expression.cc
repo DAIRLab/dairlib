@@ -5,16 +5,19 @@ namespace dairlib {
 namespace goldilocks_models {
 
 DynamicsExpression::DynamicsExpression(int n_sDDot, int n_feature_sDDot,
-                                       int robot_option) {
+                                       int rom_option, int robot_option) {
   n_feature_sDDot_ = n_feature_sDDot;
   n_sDDot_ = n_sDDot;
+  rom_option_ = rom_option;
   robot_option_ = robot_option;
 }
 DynamicsExpression::DynamicsExpression(int n_sDDot, int n_feature_sDDot,
-                                       MatrixXd B_tau, int robot_option) {
+                                       MatrixXd B_tau, int rom_option,
+                                       int robot_option) {
   n_feature_sDDot_ = n_feature_sDDot;
   n_sDDot_ = n_sDDot;
   B_tau_ = B_tau;
+  rom_option_ = rom_option;
   robot_option_ = robot_option;
 }
 
@@ -94,8 +97,8 @@ T DynamicsExpression::getFeature(const T & s, const T & ds) const {
   //            ds(1) * ds(1);
 
   // Version 6: ns = 1, all combinations until quadratic
-  if (n_sDDot_ == 1) {
-    // DRAKE_DEMAND(n_sDDot_ == 1);
+  if (rom_option_ == 2) {
+    DRAKE_DEMAND(n_sDDot_ == 1);
     T feature(6);
     feature << 1,     // constant
             s(0),  // linear
@@ -136,8 +139,8 @@ T DynamicsExpression::getFeature(const T & s, const T & ds) const {
   }*/
 
   // Version 9: ns = 3, all combinations until quadratic
-  /*if (n_sDDot_ == 3) {
-    // DRAKE_DEMAND(n_sDDot_ == 3);
+  if (rom_option_ == 3) {
+    DRAKE_DEMAND(n_sDDot_ == 3);
     T feature(28);  // 1 + 6 + (6Choose2 + 6) = 1 + 6 + 21 = 28
     feature << 1,  // constant
             s(0),
@@ -168,11 +171,11 @@ T DynamicsExpression::getFeature(const T & s, const T & ds) const {
             ds(1) * ds(2),
             ds(2) * ds(2);  // quadratic
     return feature;
-  }*/
+  }
 
   // Version 10: ns = 2, 2D LIPM with all quadratic combination
-  if (n_sDDot_ == 2) {
-    // DRAKE_DEMAND(n_sDDot_ == 2);
+  if (rom_option_ == 0) {
+    DRAKE_DEMAND(n_sDDot_ == 2);
     T feature(16);  // 1 + 1 + 4 + (4Choose2 + 4) = 1 + 1 + 4 + 10 = 16
     T first_element(1);
     if (s(1) == 0) {
@@ -201,8 +204,8 @@ T DynamicsExpression::getFeature(const T & s, const T & ds) const {
   }
 
   // Version 11: ns = 4, 2D LIPM with swing foot, with all quadratic combination
-  if (n_sDDot_ == 4) {
-    // DRAKE_DEMAND(n_sDDot_ == 4);
+  if (rom_option_ == 1) {
+    DRAKE_DEMAND(n_sDDot_ == 4);
     T feature(46);  // 1 + 1 + 8 + (8Choose2 + 8) = 1 + 1 + 8 + 36 = 46
     T first_element(1);
     if (s(1) == 0) {
@@ -260,11 +263,6 @@ T DynamicsExpression::getFeature(const T & s, const T & ds) const {
 
     return feature;
   }
-
-  // if (robot_option_ == 0) {
-  // } else if (robot_option_ == 1) {
-
-  // }
 
   DRAKE_DEMAND(false);  // shouldn't reach to this line of code
 }

@@ -162,56 +162,67 @@ void setCostWeight(double* Q, double* R, int robot_option) {
     *R = 0.1 * 0.01;
   }
 }
-void setRomDim(int* n_s, int* n_tau, int robot_option) {
-  if (robot_option == 0) {
-  } else if (robot_option == 1) {
+void setRomDim(int* n_s, int* n_tau, int rom_option) {
+  if (rom_option == 0) {
+    // 2D -- lipm
+    *n_s = 2;
+    *n_tau = 0;
+  } else if (rom_option == 1) {
+    // 4D -- lipm + swing foot
+    *n_s = 4;
+    *n_tau = 2;
+  } else if (rom_option == 2) {
+    // 1D -- fix com vertical acceleration
+    *n_s = 1;
+    *n_tau = 0;
+  } else if (rom_option == 3) {
+    // 3D -- fix com vertical acceleration + swing foot
+    *n_s = 3;
+    *n_tau = 2;
   }
-  // 2D -- lipm
-  *n_s = 2;
-  *n_tau = 0;
-  // 4D -- lipm + swing foot
-//  *n_s = 4;
-//  *n_tau = 2;
 }
-void setRomBMatrix(MatrixXd* B_tau, int robot_option) {
-  if (robot_option == 0) {
-  } else if (robot_option == 1) {
-  }
-  // *B_tau = MatrixXd::Identity(2, 2);
-  if (B_tau->rows() == 4) {
+void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
+  if (rom_option == 1) {
+    DRAKE_DEMAND(B_tau->rows() == 4);
     (*B_tau)(2, 0) = 1;
     (*B_tau)(3, 1) = 1;
   }
+  else if (rom_option == 3) {
+    DRAKE_DEMAND(B_tau->rows() == 3);
+    (*B_tau)(1, 0) = 1;
+    (*B_tau)(2, 1) = 1;
+  }
 }
 void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
-                     int n_feature_s, int robot_option) {
-  if (robot_option == 0) {
-  } else if (robot_option == 1) {
-  }
-  // theta_s(1) = 1;
-  // theta_s(2 + n_feature_s) = 1;
-  // theta_s(3 + 2 * n_feature_s) = 1;
-  // theta_s(2) = 1; // LIPM
-  // theta_sDDot(0) = 1;
-  // 1D LIPM (fixed height)
-  // theta_s(1) = 1;
-  // // 2D LIPM
-  theta_s(0) = 1;
-  theta_s(1 + n_feature_s) = 1;
-  theta_sDDot(0) = 1;
-  // // 2D LIPM with 2D swing foot
-  // theta_s(0) = 1;
-  // theta_s(1 + n_feature_s) = 1;
-  // theta_s(2 + 2 *n_feature_s) = 1;
-  // theta_s(3 + 3 * n_feature_s) = 1;
-  // theta_sDDot(0) = 1;
+                     int n_feature_s, int rom_option) {
   // // Testing intial theta
   // theta_s = 0.25*VectorXd::Ones(n_theta_s);
   // theta_sDDot = 0.5*VectorXd::Ones(n_theta_sDDot);
   // theta_s = VectorXd::Random(n_theta_s);
   // theta_sDDot = VectorXd::Random(n_theta_sDDot);
-}
 
+  if (rom_option == 0) {
+    // 2D -- lipm
+    theta_s(0) = 1;
+    theta_s(1 + n_feature_s) = 1;
+    theta_sDDot(0) = 1;
+  } else if (rom_option == 1) {
+    // 4D -- lipm + swing foot
+    theta_s(0) = 1;
+    theta_s(1 + n_feature_s) = 1;
+    theta_s(2 + 2 * n_feature_s) = 1;
+    theta_s(3 + 3 * n_feature_s) = 1;
+    theta_sDDot(0) = 1;
+  } else if (rom_option == 2) {
+    // 1D -- fix com vertical acceleration
+    theta_s(1) = 1;
+  } else if (rom_option == 3) {
+    // 3D -- fix com vertical acceleration + swing foot
+    theta_s(1) = 1;
+    theta_s(2 + 1 * n_feature_s) = 1;
+    theta_s(3 + 2 * n_feature_s) = 1;
+  }
+}
 
 void getInitFileName(string * init_file, const string & nominal_traj_init_file,
                      int iter, int sample, bool is_get_nominal,
@@ -285,9 +296,9 @@ inline bool file_exist (const std::string & name) {
   return (stat (name.c_str(), &buffer) == 0);
 }
 
-void remove_old_multithreading_files(string dir, int iter, int N_sample) {
+void remove_old_multithreading_files(const string& dir, int iter, int N_sample) {
   cout << "\nRemoving old thread_finished.csv files...\n";
-  for (unsigned int i = 0; i < N_sample; i++) {
+  for (int i = 0; i < N_sample; i++) {
     string prefix = to_string(iter) + "_" + to_string(i) + "_";
     if (file_exist(dir + prefix + "thread_finished.csv")) {
       bool rm = (remove((dir + prefix + string("thread_finished.csv")).c_str()) == 0);
@@ -365,7 +376,7 @@ void extendModel(string dir, int iter, int n_feature_s,
                  VectorXd & theta, VectorXd & prev_theta,
                  VectorXd & step_direction,
                  VectorXd & prev_step_direction, double & min_so_far,
-                 int robot_option) {
+                 int rom_option, int robot_option) {
 
   VectorXd theta_s_append = readCSV(dir +
                                     string("theta_s_append.csv")).col(0);
@@ -378,7 +389,7 @@ void extendModel(string dir, int iter, int n_feature_s,
   n_tau += n_extend;
   // update n_feature_sDDot
   int old_n_feature_sDDot = n_feature_sDDot;
-  DynamicsExpression dyn_expression(n_sDDot, 0, robot_option);
+  DynamicsExpression dyn_expression(n_sDDot, 0, rom_option, robot_option);
   VectorXd dummy_s = VectorXd::Zero(n_s);
   n_feature_sDDot = dyn_expression.getFeature(dummy_s, dummy_s).size();
   // update n_theta_s and n_theta_sDDot
@@ -905,7 +916,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     stride_length_0 = 0.3;
   } else if (FLAGS_robot_option == 1) {
     if (FLAGS_is_stochastic) {
-      delta_stride_length = 0.066; // 0.066 might be too big;
+      delta_stride_length = 0.015;//0.066; // 0.066 might be too big;
     } else {
       delta_stride_length = 0.1;
     }
@@ -921,7 +932,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     delta_ground_incline = 0.05;
   } else if (FLAGS_robot_option == 1) {
     if (FLAGS_is_stochastic) {
-      delta_ground_incline = 0.066; // 0.066 might be too big
+      delta_ground_incline = 0.05;//0.066; // 0.066 might be too big
     } else {
       delta_ground_incline = 0.08;
     }
@@ -1098,15 +1109,27 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nReduced-order model setting:\n";
   cout << "Warning: Need to make sure that the implementation in "
        "DynamicsExpression agrees with n_s and n_tau.\n";
-  int n_s = 0; //2
+  int rom_option = 2;
+  int n_s = 0;
   int n_tau = 0;
-  setRomDim(&n_s, &n_tau, FLAGS_robot_option);
+  setRomDim(&n_s, &n_tau, rom_option);
   int n_sDDot = n_s; // Assume that are the same (no quaternion)
   MatrixXd B_tau = MatrixXd::Zero(n_sDDot, n_tau);
-  setRomBMatrix(&B_tau, FLAGS_robot_option);
+  setRomBMatrix(&B_tau, rom_option);
   cout << "n_s = " << n_s << ", n_tau = " << n_tau << endl;
   cout << "B_tau = \n" << B_tau << endl;
   writeCSV(dir + string("B_tau.csv"), B_tau);
+  cout << "rom_option = " << rom_option << " ";
+  switch (rom_option) {
+    case 0: cout << "(2D -- lipm)\n";
+      break;
+    case 1: cout << "(4D -- lipm + swing foot)\n";
+      break;
+    case 2: cout << "(1D -- fix com vertical acceleration)\n";
+      break;
+    case 3: cout << "(3D -- fix com vertical acceleration + swing foot)\n";
+      break;
+  }
   cout << "Make sure that n_s and B_tau are correct.\nProceed? (Y/N)\n";
   char answer[1];
   cin >> answer;
@@ -1119,7 +1142,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Reduced order model setup
   KinematicsExpression<double> kin_expression(n_s, 0, &plant, FLAGS_robot_option);
-  DynamicsExpression dyn_expression(n_sDDot, 0, FLAGS_robot_option);
+  DynamicsExpression dyn_expression(n_sDDot, 0, rom_option, FLAGS_robot_option);
   VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
   VectorXd dummy_s = VectorXd::Ones(n_s);
   int n_feature_s = kin_expression.getFeature(dummy_q).size();
@@ -1136,7 +1159,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   theta_s = VectorXd::Zero(n_theta_s);
   theta_sDDot = VectorXd::Zero(n_theta_sDDot);
   if (iter_start == 0) {
-    setInitialTheta(theta_s, theta_sDDot, n_feature_s, FLAGS_robot_option);
+    setInitialTheta(theta_s, theta_sDDot, n_feature_s, rom_option);
     cout << "Make sure that you use the right initial theta.\nProceed? (Y/N)\n";
     char answer[1];
     cin >> answer;
@@ -1325,7 +1348,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
     // setup for each iteration
     bool is_get_nominal = iter == 0;
-    int max_inner_iter_pass_in = is_get_nominal ? 1000 : max_inner_iter;
+    int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
     bool extend_model_this_iter = extend_model && (iter == extend_model_iter) &&
                                   !has_visit_this_iter_for_model_extension;
     if (iter == extend_model_iter)
@@ -1444,7 +1467,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               FLAGS_is_zero_touchdown_impact,
               extend_model_this_iter,
               FLAGS_is_add_tau_in_cost,
-              sample_idx, n_rerun[sample_idx],
+              sample_idx, n_rerun[sample_idx], rom_option,
               FLAGS_robot_option);
           string_to_be_print = "Finished adding sample #" + to_string(sample_idx) +
                                " to thread # " + to_string(available_thread_idx.front()) + ".\n";
@@ -1574,7 +1597,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   n_theta_s, n_theta_sDDot, n_theta,
                   B_tau, theta_s, theta_sDDot, theta,
                   prev_theta, step_direction, prev_step_direction, min_so_far,
-                  FLAGS_robot_option);
+                  rom_option, FLAGS_robot_option);
 
       // So that we can re-run the current iter
       cout << "Reset \"has_been_all_success\" to false, in case the next iter "

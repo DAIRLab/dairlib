@@ -1218,7 +1218,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Some setup
   cout << "\nOther settings:\n";
   cout << "is_manual_initial_theta = " << FLAGS_is_manual_initial_theta << endl;
-  double min_so_far;
+  double min_so_far = std::numeric_limits<double>::infinity();
   if (iter_start > 1  && !FLAGS_is_debug) {
     // TODO: update the algorithm to check and compare all the previous costs
     double old_cost = 0;
@@ -1229,9 +1229,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
     min_so_far = old_cost;
     cout << "min_so_far = " << min_so_far << endl;
-  }
-  else {
-    min_so_far = 10000000;
   }
   // Tasks setup
   std::uniform_real_distribution<> dist_sl(
@@ -1264,7 +1261,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
     has_been_all_success = samples_are_success;
   }
-  cout << "has_been_all_success = " << has_been_all_success << endl;
+  cout << "has_been_all_success? " << has_been_all_success << endl;
   cout << "iteration #" << iter_start << " is a rerun? "
        << rerun_current_iteration << endl;
 

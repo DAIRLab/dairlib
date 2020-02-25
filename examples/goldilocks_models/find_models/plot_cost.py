@@ -154,7 +154,7 @@ while 1:
         plt.legend()
 
     # Set limit
-    #ax1.set_ylim(0, 6)
+    # ax1.set_ylim(0, 6)
 
     plt.draw()
 

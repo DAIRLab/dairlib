@@ -23,7 +23,8 @@ if len(sys.argv) >= 5:
 batch = 0
 
 robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
-directory = 'data/robot_' + str(robot_option) + '/'
+# directory = 'data/robot_' + str(robot_option) + '/'
+directory = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/'
 
 
 name_list = ['s', 'ds', 'dds', 'tau']

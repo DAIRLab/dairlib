@@ -272,52 +272,6 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
   //Testing
   if (is_debug) {
     // Hacks for improving solution quality
-    cout << "WARNING: hacking initial guess\n";
-    /*if(sample == 1) {sample = 2;}
-    if(sample == 3) {sample = 2;}
-    if(sample == 6) {sample = 7;}
-    if(sample == 11) {sample = 12;}
-    if(sample == 13) {sample = 12;}
-    if(sample == 18) {sample = 17;}
-    if(sample == 31) {sample = 32;}
-    if(sample == 35) {sample = 34;}*/
-
-    /*if(sample == 22) {sample = 35;}
-    if(sample == 26) {sample = 27;}
-    if(sample == 28) {sample = 29;}
-    if(sample == 37) {sample = 38;}*/
-
-    /*if(sample == 0) {sample = 13;}
-    if(sample == 4) {sample = 3;}
-    if(sample == 5) {sample = 6;}
-    if(sample == 8) {sample = 7;}
-    if(sample == 36) {sample = 37;}*/
-
-    /*if(sample == 9) {sample = 8;}
-    if(sample == 14) {sample = 13;}
-    if(sample == 23) {sample = 22;}
-    if(sample == 21) {sample = 22;}*/
-
-    /*if(sample == 10) {sample = 9;}
-    if(sample == 15) {sample = 14;}
-    if(sample == 24) {sample = 23;}
-    if(sample == 20) {sample = 21;}
-    if(sample == 19) {sample = 20;}*/
-
-    /*if(sample == 7) {sample = 8;}
-    if(sample == 13) {sample = 14;}
-    if(sample == 16) {sample = 15;}
-    if(sample == 19) {sample = 18;}
-    if(sample == 27) {sample = 26;}
-    if(sample == 28) {sample = 29;}
-    if(sample == 36) {sample = 35;}*/
-
-    /*if(sample == 11) {sample = 10;}
-    if(sample == 16) {sample = 17;}
-    if(sample == 18) {sample = 31;}*/
-
-    /*if(sample == 18) {sample = 19;}
-    if(sample == 36) {sample = 23;}*/
 
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   }
@@ -425,7 +379,7 @@ void extendModel(string dir, int iter, int n_feature_s,
                  MatrixXd & B_tau, VectorXd & theta_s, VectorXd & theta_sDDot,
                  VectorXd & theta, VectorXd & prev_theta,
                  VectorXd & step_direction,
-                 VectorXd & prev_step_direction, double & min_so_far,
+                 VectorXd & prev_step_direction, double & ave_min_cost_so_far,
                  int rom_option, int robot_option) {
 
   VectorXd theta_s_append = readCSV(dir +
@@ -494,7 +448,7 @@ void extendModel(string dir, int iter, int n_feature_s,
   prev_step_direction.resize(n_theta);
   prev_step_direction =
       VectorXd::Zero(n_theta);  // must initialize it because of momentum term
-  min_so_far = 10000000;
+  ave_min_cost_so_far = std::numeric_limits<double>::infinity();
 }
 
 void readApproxQpFiles(vector<VectorXd> * w_sol_vec, vector<MatrixXd> * A_vec,
@@ -504,6 +458,8 @@ void readApproxQpFiles(vector<VectorXd> * w_sol_vec, vector<MatrixXd> * A_vec,
                        vector<VectorXd> * b_vec, vector<VectorXd> * c_vec,
                        vector<MatrixXd> * B_vec,
                        int N_sample, int iter, string dir) {
+  // The order of samples in each vector must start from 0 to N_sample (because
+  // of the code where you compare the current cost and previous cost)
   for (int sample = 0; sample < N_sample; sample++) {
     string prefix = to_string(iter) +  "_" + to_string(sample) + "_";
     VectorXd success =
@@ -1268,17 +1224,40 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Some setup
   cout << "\nOther settings:\n";
   cout << "is_manual_initial_theta = " << FLAGS_is_manual_initial_theta << endl;
-  double min_so_far = std::numeric_limits<double>::infinity();
+  double ave_min_cost_so_far = std::numeric_limits<double>::infinity();
+  std::vector<double> each_min_cost_so_far(
+      N_sample, std::numeric_limits<double>::infinity());
   if (iter_start > 1  && !FLAGS_is_debug) {
-    // TODO: update the algorithm to check and compare all the previous costs
-    double old_cost = 0;
-    for (int i = 0; i < N_sample; i++) {
-      MatrixXd c = readCSV(dir + to_string(iter_start - 1) +  "_" +
-                           to_string(i) + string("_c.csv"));
-      old_cost += c(0, 0) / N_sample;
+    for (int iter = iter_start - 1; iter > 0; iter++) {
+      // Check if the cost for all samples exist
+      bool all_exsit = true;
+      for (int i = 0; i < N_sample; i++) {
+        all_exsit = all_exsit && file_exist(dir + to_string(iter) + "_" +
+                                            to_string(i) + string("_c.csv"));
+      }
+      if (!all_exsit) {
+        break;
+      }
+
+      // Get total cost and individual cost
+      double old_total_cost = 0;
+      for (int i = 0; i < N_sample; i++) {
+        double c = readCSV(dir + to_string(iter) +  "_" +
+            to_string(i) + string("_c.csv"))(0,0);
+        old_total_cost += c;
+
+        // Assign individual cost
+        if (each_min_cost_so_far[i] > c) {
+          each_min_cost_so_far[i] = c;
+        }
+      }
+
+      // Assign ave_min_cost_so_far
+      if (ave_min_cost_so_far > old_total_cost / N_sample) {
+        ave_min_cost_so_far = old_total_cost / N_sample;
+      }
     }
-    min_so_far = old_cost;
-    cout << "min_so_far = " << min_so_far << endl;
+    cout << "ave_min_cost_so_far = " << ave_min_cost_so_far << endl;
   }
   // Tasks setup
   std::uniform_real_distribution<> dist_sl(
@@ -1665,7 +1644,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   n_feature_sDDot,
                   n_theta_s, n_theta_sDDot, n_theta,
                   B_tau, theta_s, theta_sDDot, theta,
-                  prev_theta, step_direction, prev_step_direction, min_so_far,
+                  prev_theta, step_direction, prev_step_direction, ave_min_cost_so_far,
                   rom_option, FLAGS_robot_option);
 
       // So that we can re-run the current iter
@@ -1718,9 +1697,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
         total_cost += c_vec[sample](0) / n_succ_sample;
       }
       // Print the total cost of this iteration
-      if (total_cost <= min_so_far) min_so_far = total_cost;
+      if (total_cost <= ave_min_cost_so_far) ave_min_cost_so_far = total_cost;
       cout << "total_cost = " << total_cost << " (min so far: " <<
-           min_so_far << ")\n\n";
+           ave_min_cost_so_far << ")\n\n";
 
       // We further decide if we should still shrink the step size because the
       // cost is not small enough (we do this because sometimes snopt cannot
@@ -1734,19 +1713,30 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // - We require that ALL the samples were evaluated successfully when
       // shrinking the step size based on cost.
       if ((iter > 2) && all_samples_are_success) {
-        // print
-        if (total_cost > min_so_far) {
-          cout << "The cost went up by "
-               << (total_cost - min_so_far) / min_so_far * 100 << "%.\n";
-        }
+        // We do this to each sample cost instead of averaged one
+        DRAKE_DEMAND(c_vec.size() == each_min_cost_so_far.size());
 
-        // If cost goes up, we restart the iteration and shrink the step size.
-        if (total_cost > (1 + max_cost_increase_rate) * min_so_far) {
-          cout << "The cost went up too much. Shrink the step size.\n\n";
-          start_iterations_with_shrinking_stepsize = true;
-          iter--;
-          continue;
+        bool exit_current_iter_to_shrink_step_size = false;
+        for (int sample_i = 0; sample_i < N_sample; sample_i++) {
+          // print
+          if (c_vec[sample_i](0) > each_min_cost_so_far[sample_i]) {
+            cout << "The cost of sample #" << sample_i << " went up by "
+                 << (c_vec[sample_i](0) - each_min_cost_so_far[sample_i]) /
+                        each_min_cost_so_far[sample_i] * 100
+                 << "%.\n";
+          }
+
+          // If cost goes up, we restart the iteration and shrink the step size.
+          if (c_vec[sample_i](0) >
+              (1 + max_cost_increase_rate) * each_min_cost_so_far[sample_i]) {
+            cout << "The cost went up too much. Shrink the step size.\n\n";
+            start_iterations_with_shrinking_stepsize = true;
+            iter--;
+            exit_current_iter_to_shrink_step_size = true;
+            break;
+          }
         }
+        if (exit_current_iter_to_shrink_step_size) continue;
       }
 
       // Update parameters below

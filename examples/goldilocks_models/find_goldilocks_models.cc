@@ -52,6 +52,8 @@ namespace goldilocks_models {
 
 // Robot models
 DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
+// Reduced order models
+DEFINE_int32(rom_option, -1, "");
 
 // tasks
 DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
@@ -179,10 +181,15 @@ void setRomDim(int* n_s, int* n_tau, int rom_option) {
     // 3D -- fix com vertical acceleration + swing foot
     *n_s = 3;
     *n_tau = 2;
+  } else {
+    DRAKE_DEMAND(false); // should never reach here
   }
 }
 void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
-  if (rom_option == 1) {
+  if ((rom_option == 0) || (rom_option == 2)) {
+    // passive rom, so we don't need B_tau
+  }
+  else if (rom_option == 1) {
     DRAKE_DEMAND(B_tau->rows() == 4);
     (*B_tau)(2, 0) = 1;
     (*B_tau)(3, 1) = 1;
@@ -191,6 +198,8 @@ void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
     DRAKE_DEMAND(B_tau->rows() == 3);
     (*B_tau)(1, 0) = 1;
     (*B_tau)(2, 1) = 1;
+  } else {
+    DRAKE_DEMAND(false); // should never reach here
   }
 }
 void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
@@ -221,6 +230,8 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
     theta_s(1) = 1;
     theta_s(2 + 1 * n_feature_s) = 1;
     theta_s(3 + 2 * n_feature_s) = 1;
+  } else {
+    DRAKE_DEMAND(false); // should never reach here
   }
 }
 
@@ -1152,7 +1163,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nReduced-order model setting:\n";
   cout << "Warning: Need to make sure that the implementation in "
        "DynamicsExpression agrees with n_s and n_tau.\n";
-  int rom_option = 0;
+  int rom_option = (FLAGS_rom_option >= 0) ? FLAGS_rom_option : 0;
   int n_s = 0;
   int n_tau = 0;
   setRomDim(&n_s, &n_tau, rom_option);

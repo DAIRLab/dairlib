@@ -1223,6 +1223,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Some setup
   cout << "\nOther settings:\n";
+  cout << "is_debug? " << FLAGS_is_debug << endl;
   cout << "is_manual_initial_theta = " << FLAGS_is_manual_initial_theta << endl;
   double ave_min_cost_so_far = std::numeric_limits<double>::infinity();
   std::vector<double> each_min_cost_so_far(
@@ -1696,10 +1697,20 @@ int findGoldilocksModels(int argc, char* argv[]) {
       for (int sample = 0; sample < n_succ_sample; sample++) {
         total_cost += c_vec[sample](0) / n_succ_sample;
       }
-      // Print the total cost of this iteration
       if (total_cost <= ave_min_cost_so_far) ave_min_cost_so_far = total_cost;
+
+      // Print the total cost of this iteration
       cout << "total_cost = " << total_cost << " (min so far: " <<
            ave_min_cost_so_far << ")\n\n";
+
+      // Update each cost when all samples are successful
+      if (all_samples_are_success) {
+        for (int sample_i = 0; sample_i < N_sample; sample_i++) {
+          if (c_vec[sample_i](0) < each_min_cost_so_far[sample_i]) {
+            each_min_cost_so_far[sample_i] = c_vec[sample_i](0);
+          }
+        }
+      }
 
       // We further decide if we should still shrink the step size because the
       // cost is not small enough (we do this because sometimes snopt cannot

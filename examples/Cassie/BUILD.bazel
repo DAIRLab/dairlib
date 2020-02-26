@@ -306,6 +306,22 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_osc_jumping_controller",
+    srcs = ["run_osc_jumping_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//attic/multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "cassie_state_visualizer",
     srcs = ["cassie_state_visualizer.cc"],
     deps = [
@@ -370,6 +386,40 @@ cc_binary(
 cc_binary(
     name = "run_dircon_standing",
     srcs = ["run_dircon_standing.cc"],
+    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    deps = [
+        ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//solvers:optimization_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_dircon_jumping",
+    srcs = ["run_dircon_jumping.cc"],
+    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    deps = [
+        ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//solvers:optimization_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_dircon_jumping_two_modes",
+    srcs = ["run_dircon_jumping_two_modes.cc"],
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
     deps = [
         ":cassie_utils",

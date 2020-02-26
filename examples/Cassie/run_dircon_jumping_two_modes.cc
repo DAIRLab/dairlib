@@ -142,6 +142,11 @@ void DoMain() {
                                                    Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
+  int n_q = plant.num_positions();
+  int n_v = plant.num_velocities();
+  int n_x = n_q + n_v;
+
+  std::cout << "nq: " << n_q << " n_v: " << n_v << " n_x: " << n_x << std::endl;
   // Create maps for joints
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
@@ -165,12 +170,14 @@ void DoMain() {
       plant, toe_right, pt_front_contact, isXZ, ground_normal);
   auto right_toe_rear_constraint = DirconPositionData<double>(
       plant, toe_right, pt_rear_contact, isXZ, ground_normal);
+
   double mu = 1;
   left_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
   left_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
   right_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
   right_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
 
+  // Four bar constraints
   const auto& thigh_left = plant.GetBodyByName("thigh_left");
   const auto& heel_spring_left = plant.GetBodyByName("heel_spring_left");
   const auto& thigh_right = plant.GetBodyByName("thigh_right");
@@ -222,21 +229,21 @@ void DoMain() {
   auto flight_mode_dataset =
       DirconKinematicDataSet<double>(plant, &flight_mode_constraints);
   auto flight_mode_options =
-      DirconOptions(flight_mode_dataset.countConstraints());
+      DirconOptions(flight_mode_dataset.countConstraints(), &plant);
 
   // timesteps and modes setting
   vector<int> timesteps;  // Number of timesteps per mode
   timesteps.push_back(FLAGS_knot_points);
   timesteps.push_back(FLAGS_knot_points);
-  timesteps.push_back(FLAGS_knot_points);
+  //  timesteps.push_back(FLAGS_knot_points);
   vector<double> min_dt;  // min/max duration per timestep
   vector<double> max_dt;  // min_duration = knot_points * 0.01 ~= .1s
   min_dt.push_back(.01);
   min_dt.push_back(.01);
-  min_dt.push_back(.01);
+  //  min_dt.push_back(.01);
   max_dt.push_back(.3);
   max_dt.push_back(.3);
-  max_dt.push_back(.3);
+  //  max_dt.push_back(.3);
 
   // Add contact modes and contact decision
   // variables to single vector for DIRCON
@@ -244,19 +251,54 @@ void DoMain() {
   std::vector<DirconOptions> options_list;
   contact_mode_list.push_back(&double_stance_dataset);
   contact_mode_list.push_back(&flight_mode_dataset);
-  contact_mode_list.push_back(&double_stance_dataset);
+  //  contact_mode_list.push_back(&double_stance_dataset);
 
   options_list.push_back(double_stance_options);
   options_list.push_back(flight_mode_options);
-  options_list.push_back(double_stance_options);
+  //  options_list.push_back(double_stance_options);
+
+  //  double w_lambda = 1.0e-4;
+  //  // set force cost weight
+  //  for (int i = 0; i < 2; i++) {
+  //    options_list[i].setForceCost(w_lambda);
+  //  }
+
+  //  vector<int> stance_modes{0, 2};
+  //
+  //  for (int i : stance_modes) {
+  //    double s = 1;  // scale everything together
+  //    // Dynamic constraints
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 5);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 1500.0, 6, 16);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 28);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 4000.0, 29, 34);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 4000.0, 35, 36);
+  //    // Kinematic constraints
+  //    options_list[i].setKinConstraintScaling(s * 1.0 / 50.0, 0, 4);
+  //    options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
+  //    options_list[i].setKinConstraintScaling(s * 1.0 / 1800.0, 7 + 0, 7 + 4);
+  //    options_list[i].setKinConstraintScaling(s * 1.0, 7 + 5, 7 + 6);
+  //    options_list[i].setKinConstraintScaling(s * 1.0, 14 + 0, 14 + 4);
+  //    options_list[i].setKinConstraintScaling(s * 1.0 / 200, 14 + 5, 14 + 6);
+  //    // Impact constraints
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 24.0, 6, 7);
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 6.0, 8, 9);
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
+  //    options_list[i].setImpConstraintScaling(s * 1.0, 16, 17);
+  //  }
 
   auto trajopt = std::make_shared<HybridDircon<double>>(
       plant, timesteps, min_dt, max_dt, contact_mode_list, options_list);
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                           "../standing_snopt.out");
+                           "../jumping_snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 100000);
+                           "Major iterations limit", 150000);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
@@ -277,8 +319,7 @@ void DoMain() {
   //  int num_knot_points = FLAGS_knot_points * n_modes - (n_modes - 1);
   std::cout << "Setting initial conditions: " << std::endl;
   vector<int> mode_lengths = trajopt->mode_lengths();
-  int n_q = plant.num_positions();
-  int n_v = plant.num_velocities();
+
   int num_knot_points = trajopt->N();
   std::cout << "nq: " << n_q << endl;
   std::cout << "nv: " << n_v << endl;
@@ -311,20 +352,14 @@ void DoMain() {
     // Set initial guess for stance
     VectorXd x_guess(n_q + n_v);
     for (int i = 0; i < mode_lengths[0]; ++i) {
-      //      int knot_point = i;
+      int knot_point = i;
       x_guess << q_guess_stance[i], v_guess_stance[i];
-      trajopt->SetInitialGuess(trajopt->state(i), x_guess);
+      trajopt->SetInitialGuess(trajopt->state(knot_point), x_guess);
     }
     // Set initial guess for flight
     for (int i = 0; i < mode_lengths[1]; ++i) {
       int knot_point = mode_lengths[0] - 1 + i;
       x_guess << q_guess_flight[i], v_guess_flight[i];
-      trajopt->SetInitialGuess(trajopt->state(knot_point), x_guess);
-    }
-    // Set initial guess for flight
-    for (int i = 0; i < mode_lengths[2]; ++i) {
-      int knot_point = mode_lengths[0] + mode_lengths[1] - 2 + i;
-      x_guess << q_guess_stance[i], v_guess_stance[i];
       trajopt->SetInitialGuess(trajopt->state(knot_point), x_guess);
     }
 
@@ -393,11 +428,17 @@ void DoMain() {
   std::vector<std::string> trajectory_names;
 
   VectorXd segment_times(2 * num_modes);
-  segment_times << 0, state_traj.get_segment_times().at(FLAGS_knot_points - 1),
-      state_traj.get_segment_times().at(FLAGS_knot_points),
-      state_traj.get_segment_times().at(2 * FLAGS_knot_points - 1),
-      state_traj.get_segment_times().at(2 * FLAGS_knot_points),
-      state_traj.end_time();
+  //  segment_times << 0, state_traj.get_segment_times().at(FLAGS_knot_points -
+  //  1),
+  //      state_traj.get_segment_times().at(FLAGS_knot_points),
+  //      state_traj.get_segment_times().at(2 * FLAGS_knot_points - 1);
+  for (int mode = 0; mode < num_modes; ++mode) {
+    segment_times[2 * mode] =
+        state_traj.get_segment_times().at(mode * FLAGS_knot_points);
+    segment_times[2 * mode + 1] =
+        state_traj.get_segment_times().at((mode + 1) * FLAGS_knot_points - 1);
+  }
+
   for (int mode = 0; mode < num_modes; ++mode) {
     LcmTrajectory::Trajectory traj_block;
     traj_block.traj_name =
@@ -415,7 +456,8 @@ void DoMain() {
 
   trajectories.push_back(decision_vars);
   trajectory_names.push_back(decision_vars.traj_name);
-  LcmTrajectory saved_traj(trajectories, trajectory_names, "jumping_trajectory",
+  LcmTrajectory saved_traj(trajectories, trajectory_names,
+                           "jumping_trajectory_two_modes",
                            "Decision variables and state/input trajectories "
                            "for jumping");
   saved_traj.writeToFile(FLAGS_data_directory + FLAGS_save_filename);
@@ -556,8 +598,9 @@ vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
     double height_offset = apex_height - factor * (i - num_knot_points / 2.0) *
                                              (i - num_knot_points / 2.0);
     Vector3d pelvis_pos(0.0, 0.0, rest_height + height_offset);
-    Vector3d left_toe_pos(0.0, 0.12, 0.05 + height_offset);
-    Vector3d right_toe_pos(0.0, -0.12, 0.05 + height_offset);
+    // Do not raise the toes as much as the pelvis, (leg extension)
+    Vector3d left_toe_pos(0.0, 0.12, 0.05 + height_offset * 0.5);
+    Vector3d right_toe_pos(0.0, -0.12, 0.05 + height_offset * 0.5);
 
     const auto& world_frame = plant.world_frame();
     const auto& pelvis_frame = plant.GetFrameByName("pelvis");
@@ -692,9 +735,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   auto mode_lengths = trajopt->mode_lengths();
   auto x0 = trajopt->initial_state();
   //  auto x_bottom = trajopt->state(FLAGS_knot_points / 2);
-  auto x_top = trajopt->state(3 * FLAGS_knot_points / 2);
-  //  auto x_mid_point =
-  //      trajopt->state(FLAGS_knot_points * mode_lengths.size() / 2);
   auto xf = trajopt->final_state();
   auto u = trajopt->input();
   auto u0 = trajopt->input(0);
@@ -712,7 +752,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   // Jumping height constraints
 
-
   // Standing constraints
   std::cout << "Position constraints: " << std::endl;
   double rest_height = 1.125;
@@ -728,8 +767,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
                                     x0(pos_map.at("base_z")));
   trajopt->AddBoundingBoxConstraint(FLAGS_jump_height + rest_height,
                                     FLAGS_jump_height + rest_height,
-                                    x_top(pos_map.at("base_z")));
-  trajopt->AddBoundingBoxConstraint(rest_height, rest_height,
                                     xf(pos_map.at("base_z")));
   trajopt->AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                     x0.tail(n_v));
@@ -824,50 +861,57 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   //      &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(),
   //      -0.05);
   for (int index = 0; index < mode_lengths[0]; index++) {
-    auto x = trajopt->state(index);
-    trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
-    trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
+    auto x_i = trajopt->state(index);
+    trajopt->AddConstraint(left_foot_constraint, x_i.head(n_q));
+    trajopt->AddConstraint(right_foot_constraint, x_i.head(n_q));
   }
 
   // Only add constraints of lambdas for stance modes
-  vector<int> stance_modes{0, 2};
-  for (int mode : stance_modes) {
-    for (int index = 0; index < mode_lengths[mode]; index++) {
-      auto lambda = trajopt->force(mode, index);
-      trajopt->AddLinearConstraint(lambda(2) >= 10);
-      trajopt->AddLinearConstraint(lambda(5) >= 10);
-      trajopt->AddLinearConstraint(lambda(8) >= 10);
-      trajopt->AddLinearConstraint(lambda(11) >= 10);
-    }
+  vector<int> stance_modes{0};
+  //  for (int mode : stance_modes) {
+  for (int index = 0; index < mode_lengths[0]; index++) {
+    auto lambda = trajopt->force(0, index);
+    trajopt->AddLinearConstraint(lambda(2) >= 10);
+    trajopt->AddLinearConstraint(lambda(5) >= 10);
+    trajopt->AddLinearConstraint(lambda(8) >= 10);
+    trajopt->AddLinearConstraint(lambda(11) >= 10);
   }
+  for (int index = 0; index < mode_lengths[2]; index++) {
+    auto lambda = trajopt->force(2, index);
+    trajopt->AddLinearConstraint(lambda(2) <= 70);
+    trajopt->AddLinearConstraint(lambda(5) <= 70);
+    trajopt->AddLinearConstraint(lambda(8) <= 70);
+    trajopt->AddLinearConstraint(lambda(11) <= 70);
+  }
+  //  }
 
   const MatrixXd Q = 0.01 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 0.01 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
 
-  bool constrain_stance_leg_fourbar_force = true;
-  // Testing -- constraint left four-bar force (seems to help in high speed)
-  if (constrain_stance_leg_fourbar_force) {
-    for (int mode : stance_modes) {
-      for (int index = 0; index < mode_lengths[mode]; index++) {
-        auto lambda = trajopt->force(mode, index);
-        trajopt->AddLinearConstraint(lambda(12) <= 0);  // left leg four bar
-        trajopt->AddLinearConstraint(lambda(13) <= 0);  // left leg four bar
-      }
-    }
-    // Different indices for flight mode
-    for (int index = 0; index < mode_lengths[1]; index++) {
-      auto lambda = trajopt->force(1, index);
-      trajopt->AddLinearConstraint(lambda(0) <= 0);  // left leg four bar
-      trajopt->AddLinearConstraint(lambda(1) <= 0);  // left leg four bar
-    }
-  }
+  //  bool constrain_stance_leg_fourbar_force = true;
+  //  // Testing -- constraint left four-bar force (seems to help in high speed)
+  //  if (constrain_stance_leg_fourbar_force) {
+  //    for (int mode : stance_modes) {
+  //      for (int index = 0; index < mode_lengths[mode]; index++) {
+  //        auto lambda = trajopt->force(mode, index);
+  //        trajopt->AddLinearConstraint(lambda(12) <= 0);  // left leg four bar
+  //        trajopt->AddLinearConstraint(lambda(13) <= 0);  // left leg four bar
+  //      }
+  //    }
+  //    // Different indices for flight mode
+  //    for (int index = 0; index < mode_lengths[1]; index++) {
+  //      auto lambda = trajopt->force(1, index);
+  //      trajopt->AddLinearConstraint(lambda(0) <= 0);  // left leg four bar
+  //      trajopt->AddLinearConstraint(lambda(1) <= 0);  // left leg four bar
+  //    }
+  //  }
 
   // Add some cost to hip roll and yaw
-  double w_q_hip_roll = 10.0;
-  double w_q_hip_yaw = 10.0;
-  double w_q_hip_pitch = 10.0;
+  double w_q_hip_roll = 1.0;
+  double w_q_hip_yaw = 1.0;
+  double w_q_quat_xyz = 0.1;
   if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(7, 2);
@@ -880,12 +924,47 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
       trajopt->AddCost(w_q_hip_yaw * q.transpose() * q);
     }
   }
-  if (w_q_hip_pitch) {
+  if (w_q_quat_xyz) {
     for (int i = 0; i < N; i++) {
-      auto q = trajopt->state(i).segment(9, 2);
-      trajopt->AddCost(w_q_hip_yaw * q.transpose() * q);
+      auto q = trajopt->state(i).segment(1, 3);
+      trajopt->AddCost(w_q_quat_xyz * q.transpose() * q);
     }
   }
+
+  //  // Scale decision variable
+  //  double s_q_toe = 1;
+  //  double s_v_toe_l = 1;
+  //  double s_v_toe_r = 1;
+  //  // time
+  //  //  trajopt->ScaleTimeVariables(0.008);
+  //  // state
+  //  trajopt->ScaleStateVariables(0.5, 0, 3);
+  //  if (s_q_toe > 1) {
+  //    trajopt->ScaleStateVariables(s_q_toe, n_q - 2, n_q - 1);
+  //  }
+  //  trajopt->ScaleStateVariables(10, n_q, n_q + n_v - 3);
+  //  trajopt->ScaleStateVariables(10 * s_v_toe_l, n_q + n_v - 2, n_q + n_v -
+  //  2); trajopt->ScaleStateVariables(10 * s_v_toe_r, n_q + n_v - 1, n_q + n_v
+  //  - 1);
+  //  // input
+  //  trajopt->ScaleInputVariables(100, 0, 9);
+  //  // force
+  //  //  trajopt->ScaleForceVariables(1000, 0, 0,
+  //  //                               trajopt->num_kinematic_constraints(0) -
+  //  1);
+  //  //  trajopt->ScaleForceVariables(1000, 2, 0,
+  //  //                               trajopt->num_kinematic_constraints(2) -
+  //  1);
+  //  // impulse
+  //  //  trajopt->ScaleImpulseVariables(
+  //  //      10, 0, 0, trajopt->num_kinematic_constraints(0) - 1);  // 0.1
+  //  //  trajopt->ScaleImpulseVariables(
+  //  //      10, 2, 0, trajopt->num_kinematic_constraints(2) - 1);  // 0.1
+  //  // quaternion slack
+  //  trajopt->ScaleQuaternionSlackVariables(150);
+  //  // Constraint slack
+  //  trajopt->ScaleKinConstraintSlackVariables(50, 0, 0, 5);
+  //  trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
 }
 
 MatrixXd generate_state_input_matrix(const PiecewisePolynomial<double>& states,

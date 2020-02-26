@@ -423,7 +423,7 @@ void DoMain() {
   decision_vars.time_vector = VectorXd::Zero(decision_vars.datapoints.size());
   decision_vars.datatypes = vector<string>(decision_vars.datapoints.size());
 
-  int num_modes = 3;
+  int num_modes = 2;
   std::vector<LcmTrajectory::Trajectory> trajectories;
   std::vector<std::string> trajectory_names;
 
@@ -589,18 +589,18 @@ vector<VectorXd> GetInitGuessForQFlight(int num_knot_points, double apex_height,
       0.00927845, -0.000600725, -0.000895805, 1.15086, 0.610808, -1.38608,
       -1.35926, 0.806192, 1.00716, -M_PI / 2, -M_PI / 2;
 
-  double factor = apex_height / (num_knot_points * num_knot_points / 4.0);
+  double factor = apex_height / (num_knot_points * num_knot_points);
   double rest_height = 1.125;
 
   for (int i = 0; i < num_knot_points; i++) {
     double eps = 1e-3;
     Vector3d eps_vec = eps * VectorXd::Ones(3);
-    double height_offset = apex_height - factor * (i - num_knot_points / 2.0) *
-                                             (i - num_knot_points / 2.0);
+    double height_offset = apex_height - factor * (i - num_knot_points) *
+                                             (i - num_knot_points);
     Vector3d pelvis_pos(0.0, 0.0, rest_height + height_offset);
     // Do not raise the toes as much as the pelvis, (leg extension)
-    Vector3d left_toe_pos(0.0, 0.12, 0.05 + height_offset * 0.5);
-    Vector3d right_toe_pos(0.0, -0.12, 0.05 + height_offset * 0.5);
+    Vector3d left_toe_pos(0.0, 0.12, 0.1 + height_offset);
+    Vector3d right_toe_pos(0.0, -0.12, 0.1 + height_offset);
 
     const auto& world_frame = plant.world_frame();
     const auto& pelvis_frame = plant.GetFrameByName("pelvis");
@@ -875,13 +875,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
     trajopt->AddLinearConstraint(lambda(5) >= 10);
     trajopt->AddLinearConstraint(lambda(8) >= 10);
     trajopt->AddLinearConstraint(lambda(11) >= 10);
-  }
-  for (int index = 0; index < mode_lengths[2]; index++) {
-    auto lambda = trajopt->force(2, index);
-    trajopt->AddLinearConstraint(lambda(2) <= 70);
-    trajopt->AddLinearConstraint(lambda(5) <= 70);
-    trajopt->AddLinearConstraint(lambda(8) <= 70);
-    trajopt->AddLinearConstraint(lambda(11) <= 70);
   }
   //  }
 

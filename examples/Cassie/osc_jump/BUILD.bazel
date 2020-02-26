@@ -1,0 +1,46 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "osc_jump",
+    deps = [
+        "//examples/Cassie/osc_jump:com_traj_generator",
+        "//examples/Cassie/osc_jump:foot_traj_generator",
+        "//examples/Cassie/osc_jump:jumping_event_based_fsm",
+        "//systems/controllers/osc:operational_space_control",
+    ],
+)
+
+cc_library(
+    name = "com_traj_generator",
+    srcs = ["com_traj_generator.cc"],
+    hdrs = ["com_traj_generator.h"],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "foot_traj_generator",
+    srcs = ["foot_traj_generator.cc"],
+    hdrs = ["foot_traj_generator.h"],
+    deps = [
+        "//attic/multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "jumping_event_based_fsm",
+    srcs = ["jumping_event_based_fsm.cc"],
+    hdrs = ["jumping_event_based_fsm.h"],
+    deps = [
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

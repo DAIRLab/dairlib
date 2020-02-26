@@ -301,7 +301,7 @@ inline bool file_exist (const std::string & name) {
 }
 
 void remove_old_multithreading_files(const string& dir, int iter, int N_sample) {
-  cout << "\nRemoving old thread_finished.csv files...\n";
+  cout << "\nRemoving old thread_finished.csv files... ";
   for (int i = 0; i < N_sample; i++) {
     string prefix = to_string(iter) + "_" + to_string(i) + "_";
     if (file_exist(dir + prefix + "thread_finished.csv")) {
@@ -310,6 +310,7 @@ void remove_old_multithreading_files(const string& dir, int iter, int N_sample) 
       cout << prefix + "thread_finished.csv removed\n";
     }
   }
+  cout << "Done.\n";
 }
 
 int selectThreadIdxToWait(const vector<pair<int, int>> & assigned_thread_idx,
@@ -1395,6 +1396,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Start the gradient descent
   int iter;
   for (iter = iter_start; iter <= max_outer_iter; iter++)  {
+    bool is_get_nominal = iter == 0;
+
     if (is_to_improve_solution) {
       theta_s = readCSV(dir + to_string(iter) +
                         string("_theta_s.csv")).col(0);
@@ -1413,13 +1416,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
     // store initial parameter values
     prefix = to_string(iter) +  "_";
-    if (!FLAGS_is_debug) {
+    if (!is_get_nominal || !FLAGS_is_debug) {
       writeCSV(dir + prefix + string("theta_s.csv"), theta_s);
       writeCSV(dir + prefix + string("theta_sDDot.csv"), theta_sDDot);
     }
 
     // setup for each iteration
-    bool is_get_nominal = iter == 0;
     int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
     bool extend_model_this_iter = extend_model && (iter == extend_model_iter) &&
                                   !has_visit_this_iter_for_model_extension;

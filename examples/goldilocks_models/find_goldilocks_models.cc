@@ -521,7 +521,6 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
 
   MatrixXd A_active(nl_i, nw_i);
   MatrixXd B_active(nl_i, nt_i);
-  VectorXd y_active(nl_i);
 
   nl_i = 0;
   for (int i = 0; i < y_vec[sample].rows(); i++) {
@@ -529,7 +528,6 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
         y_vec[sample](i) <= lb_vec[sample](i) + tol) {
       A_active.row(nl_i) = A_vec[sample].row(i);
       B_active.row(nl_i) = B_vec[sample].row(i);
-      y_active(nl_i) = y_vec[sample](i);
       nl_i++;
     }
   }
@@ -567,56 +565,90 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
   // Only add the rows that are linearly independent if the method requires A to
   // be positive definite
   if (method_to_solve_system_of_equations != 3) {
-    cout << "n_w = " << nw_i << endl;
-    cout << "Start extracting independent rows of A (# of rows = " << nl_i << ")\n";
-    vector<int> full_row_rank_idx;
-    full_row_rank_idx.push_back(0);
-    for (int i = 1; i < nl_i; i++) {
-      // cout << "total i = " << nl_i;
-      // cout << ", i = " << i << endl;
-      // Construct test matrix
-      int n_current_rows = full_row_rank_idx.size();
-      MatrixXd A_test(n_current_rows + 1, nw_i);
-      for (unsigned int j = 0 ; j < full_row_rank_idx.size(); j++) {
-        A_test.block(j, 0, 1, nw_i) =
-            A_active.row(full_row_rank_idx[j]);
-      }
-      A_test.block(n_current_rows, 0, 1, nw_i) = A_active.row(i);
+    // extract_method = 0: Do SVD each time when adding a row. (might be incorrect)
+    // extract_method = 1: Do SVD only once.
+    // TODO: method = 1 hasn't been tested yet
+    int extract_method = 1;
 
-      // Perform svd to check rank
-      Eigen::BDCSVD<MatrixXd> svd(A_test);
-      // double sigular_value = svd.singularValues()(n_current_rows);
-      if (svd.singularValues()(n_current_rows) > indpt_row_tol) {
-        full_row_rank_idx.push_back(i);
+    if (extract_method == 0) {
+      cout << "n_w = " << nw_i << endl;
+      cout << "Start extracting independent rows of A (# of rows = " << nl_i << ")\n";
+      vector<int> full_row_rank_idx;
+      full_row_rank_idx.push_back(0);
+      for (int i = 1; i < nl_i; i++) {
+        // cout << "total i = " << nl_i;
+        // cout << ", i = " << i << endl;
+        // Construct test matrix
+        int n_current_rows = full_row_rank_idx.size();
+        MatrixXd A_test(n_current_rows + 1, nw_i);
+        for (unsigned int j = 0 ; j < full_row_rank_idx.size(); j++) {
+          A_test.block(j, 0, 1, nw_i) =
+              A_active.row(full_row_rank_idx[j]);
+        }
+        A_test.block(n_current_rows, 0, 1, nw_i) = A_active.row(i);
+
+        // Perform svd to check rank
+        Eigen::BDCSVD<MatrixXd> svd(A_test);
+        // double sigular_value = svd.singularValues()(n_current_rows);
+        if (svd.singularValues()(n_current_rows) > indpt_row_tol) {
+          full_row_rank_idx.push_back(i);
+        }
+
+        if (full_row_rank_idx.size() == nw_i) {
+          cout << "# of A's row is the same as the # of col. So stop adding rows.\n";
+          break;
+        }
+      }
+      nl_i = full_row_rank_idx.size();
+      cout << "Finished extracting independent rows of A (# of rows = " << nl_i <<
+           ")\n\n";
+
+      // Assign the rows
+      MatrixXd A_processed(nl_i, nw_i);
+      MatrixXd B_processed(nl_i, nt_i);
+      for (int i = 0; i < nl_i; i++) {
+        A_processed.row(i) = A_active.row(full_row_rank_idx[i]);
+        B_processed.row(i) = B_active.row(full_row_rank_idx[i]);
       }
 
-      if (full_row_rank_idx.size() == nw_i) {
-        cout << "# of A's row is the same as the # of col. So stop adding rows.\n";
-        break;
+      // Store the results in csv files
+      VectorXd nw_i_VectorXd(1); nw_i_VectorXd << nw_i;
+      VectorXd nl_i_VectorXd(1); nl_i_VectorXd << nl_i;
+      writeCSV(dir + prefix + string("nw_i.csv"), nw_i_VectorXd);
+      writeCSV(dir + prefix + string("nl_i.csv"), nl_i_VectorXd);
+      writeCSV(dir + prefix + string("A_processed.csv"), A_processed);
+      writeCSV(dir + prefix + string("B_processed.csv"), B_processed);
+    } else if (extract_method == 1) {
+      // SVD
+      Eigen::BDCSVD<MatrixXd> svd(A_active,
+                                  Eigen::ComputeFullU | Eigen::ComputeFullV);
+      //svd.setThreshold(indpt_row_tol); // the threshold is the biggest singular value * tol
+      //int rank = svd.rank();
+
+      const auto& singular_values = svd.singularValues();
+      int rank = 0;
+      for (rank = 0; rank < singular_values.size(); ++rank) {
+        if (singular_values(rank) < 0.5) {
+          break;
+        }
       }
+
+      // Assign the rows
+      MatrixXd A_processed =
+          svd.matrixU().block(0, 0, nl_i, rank).transpose() * A_active;
+      MatrixXd B_processed =
+          svd.matrixU().block(0, 0, nl_i, rank).transpose() * B_active;
+
+      // Store the results in csv files
+      VectorXd nw_i_VectorXd(1); nw_i_VectorXd << nw_i;
+      VectorXd nl_i_VectorXd(1); nl_i_VectorXd << rank;
+      writeCSV(dir + prefix + string("nw_i.csv"), nw_i_VectorXd);
+      writeCSV(dir + prefix + string("nl_i.csv"), nl_i_VectorXd);
+      writeCSV(dir + prefix + string("A_processed.csv"), A_processed);
+      writeCSV(dir + prefix + string("B_processed.csv"), B_processed);
+    } else {
+      throw std::runtime_error("Should not reach here");
     }
-    nl_i = full_row_rank_idx.size();
-    cout << "Finished extracting independent rows of A (# of rows = " << nl_i <<
-         ")\n\n";
-
-    // Assign the rows
-    MatrixXd A_processed(nl_i, nw_i);
-    MatrixXd B_processed(nl_i, nt_i);
-    VectorXd y_processed(nl_i);
-    for (int i = 0; i < nl_i; i++) {
-      A_processed.row(i) = A_active.row(full_row_rank_idx[i]);
-      B_processed.row(i) = B_active.row(full_row_rank_idx[i]);
-      y_processed(i) = y_active(full_row_rank_idx[i]);
-    }
-
-    // Store the results in csv files
-    VectorXd nw_i_VectorXd(1); nw_i_VectorXd << nw_i;
-    VectorXd nl_i_VectorXd(1); nl_i_VectorXd << nl_i;
-    writeCSV(dir + prefix + string("nw_i.csv"), nw_i_VectorXd);
-    writeCSV(dir + prefix + string("nl_i.csv"), nl_i_VectorXd);
-    writeCSV(dir + prefix + string("A_processed.csv"), A_processed);
-    writeCSV(dir + prefix + string("B_processed.csv"), B_processed);
-    writeCSV(dir + prefix + string("y_processed.csv"), y_processed);
 
     // cout << "sample #" << sample;
     // cout << "    A active and independent rows = " << nl_i << endl;
@@ -630,7 +662,6 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
     writeCSV(dir + prefix + string("nl_i.csv"), nl_i_VectorXd);
     writeCSV(dir + prefix + string("A_processed.csv"), A_active);
     writeCSV(dir + prefix + string("B_processed.csv"), B_active);
-    writeCSV(dir + prefix + string("y_processed.csv"), y_active);
   }
 }
 
@@ -638,7 +669,6 @@ void readNonredundentMatrixFile(vector<int> * nw_vec,
                                 vector<int> * nl_vec,
                                 vector<MatrixXd> * A_active_vec,
                                 vector<MatrixXd> * B_active_vec,
-                                vector<VectorXd> * y_active_vec,
                                 int n_succ_sample, string dir) {
   for (int sample = 0; sample < n_succ_sample; sample++) {
     string prefix = to_string(sample) + "_";
@@ -647,14 +677,12 @@ void readNonredundentMatrixFile(vector<int> * nw_vec,
     nl_vec->push_back(int(readCSV(dir + prefix + string("nl_i.csv"))(0)));
     A_active_vec->push_back(readCSV(dir + prefix + string("A_processed.csv")));
     B_active_vec->push_back(readCSV(dir + prefix + string("B_processed.csv")));
-    y_active_vec->push_back(readCSV(dir + prefix + string("y_processed.csv")));
 
     bool rm = true;
     rm = (remove((dir + prefix + string("nw_i.csv")).c_str()) == 0) & rm;
     rm = (remove((dir + prefix + string("nl_i.csv")).c_str()) == 0) & rm;
     rm = (remove((dir + prefix + string("A_processed.csv")).c_str()) == 0) & rm;
     rm = (remove((dir + prefix + string("B_processed.csv")).c_str()) == 0) & rm;
-    rm = (remove((dir + prefix + string("y_processed.csv")).c_str()) == 0) & rm;
     if ( !rm )
       cout << "Error deleting files\n";
   }
@@ -1207,7 +1235,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   vector<VectorXd> lb_vec;
   vector<VectorXd> ub_vec;
   vector<VectorXd> y_vec;
-  vector<VectorXd> y_active_vec;
   vector<MatrixXd> B_vec;
   vector<MatrixXd> B_active_vec;
 
@@ -1408,7 +1435,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
     lb_vec.clear();
     ub_vec.clear();
     y_vec.clear();
-    y_active_vec.clear();
     b_vec.clear();
     c_vec.clear();
     w_sol_vec.clear();
@@ -1783,7 +1809,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       vector<int> nw_vec;  // size of decision var of traj opt for all tasks
       vector<int> nl_vec;  // # of rows of active constraints for all tasks
       readNonredundentMatrixFile(&nw_vec, &nl_vec,
-                                 &A_active_vec, &B_active_vec, &y_active_vec,
+                                 &A_active_vec, &B_active_vec,
                                  n_succ_sample, dir);
       // Print out elapsed time
       auto finish_time_extract = std::chrono::high_resolution_clock::now();

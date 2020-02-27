@@ -46,6 +46,16 @@ VectorX<T> KinematicsExpression<T>::getExpression(
 }
 template <typename T>
 template <typename U, typename V>
+VectorX<T> KinematicsExpression<T>::getExpression(
+  const U & theta, const V & q, int n_s_append) const {
+  VectorX<T> expression(n_s_append);
+  for (int i = 0; i < n_s_append ; i++)
+    expression(i) =
+      theta.segment(i * n_feature_, n_feature_).dot(getFeature(q));
+  return expression;
+}
+template <typename T>
+template <typename U, typename V>
 VectorX<T> KinematicsExpression<T>::getExpressionDot(
   const U & theta, const V & q, const V & v) const {
   // DRAKE_DEMAND(n_s_ * n_feature_ == theta.size());  // check theta size
@@ -1028,7 +1038,9 @@ template class KinematicsExpression<AutoDiffXd>;
 
 // method getExpression ////////////////////////////////////////////////////////
 template VectorX<double> KinematicsExpression<double>::getExpression(
-  const VectorX<double> &, const VectorX<double> &) const;
+    const VectorX<double> &, const VectorX<double> &) const;
+template VectorX<double> KinematicsExpression<double>::getExpression(
+    const VectorX<double> &, const VectorX<double> &, int) const;
 
 // template VectorX<AutoDiffXd> KinematicsExpression<AutoDiffXd>::getExpression(
 //   const VectorX<double> &, const VectorX<double> &) const;

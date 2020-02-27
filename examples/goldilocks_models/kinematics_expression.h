@@ -46,6 +46,8 @@ class KinematicsExpression {
   template <typename U, typename V>
   VectorX<T> getExpression(const U & theta, const V & q) const;
   template <typename U, typename V>
+  VectorX<T> getExpression(const U & theta, const V & q, int n_s_append) const;
+  template <typename U, typename V>
   VectorX<T> getExpressionDot(const U & theta, const V & q, const V & v) const;
 
   template <typename U>

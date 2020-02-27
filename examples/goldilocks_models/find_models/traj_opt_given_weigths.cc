@@ -181,19 +181,6 @@ void extractResult(VectorXd& w_sol,
       binding.evaluator()->Eval(tau_i_double, &y_val);
       tau_cost += y_val(0);
     }
-  } else {
-    // Way 2
-    int N_accum = 0;
-    for (unsigned int l = 0; l < num_time_samples.size() ; l++) {
-      for (int m = 0; m < num_time_samples[l] - 1 ; m++) {
-        int i = N_accum + m;
-        auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
-        VectorXd tau_i_double = result.GetSolution(tau_i);
-        tau_cost += tau_i_double.transpose() * tau_i_double;
-      }
-      N_accum += num_time_samples[l];
-      N_accum -= 1;  // due to overlaps between modes
-    }
   }
 
   /*cout << "sample_idx# = " << sample_idx << endl;
@@ -387,30 +374,24 @@ void postProcessing(const VectorXd& w_sol,
         // cout << "i = " << i << endl;
         // Get tau_append
         auto x_i = gm_traj_opt.dircon->state_vars_by_mode(l, m);
-        auto tau_i = gm_traj_opt.reduced_model_input(i, n_tau);
         auto x_iplus1 = gm_traj_opt.dircon->state_vars_by_mode(l, m + 1);
-        auto tau_iplus1 = gm_traj_opt.reduced_model_input(i + 1, n_tau);
         auto h_btwn_knot_i_iplus1 = gm_traj_opt.dircon->timestep(i);
         VectorXd x_i_sol = result.GetSolution(x_i);
-        VectorXd tau_i_sol = result.GetSolution(tau_i);
         VectorXd x_iplus1_sol = result.GetSolution(x_iplus1);
-        VectorXd tau_iplus1_sol = result.GetSolution(tau_iplus1);
         VectorXd h_i_sol = result.GetSolution(h_btwn_knot_i_iplus1);
 
         VectorXd tau_append_head =
           gm_traj_opt.dynamics_constraint_at_head->computeTauToExtendModel(
             x_i_sol, x_iplus1_sol, h_i_sol, theta_s_append);
+        // cout << "tau_append_head = " << tau_append_head.transpose() << endl;
         // VectorXd tau_append_tail =
         //   gm_traj_opt.dynamics_constraint_at_tail->computeTauToExtendModel(
         //     x_i_sol, x_iplus1_sol, h_i_sol, theta_s_append);
-        // cout << "tau_append_head = " << tau_append_head.transpose() << endl;
         // cout << "tau_append_tail = " << tau_append_tail.transpose() << endl;
 
         // Update tau
-        tau_new.segment(i * (n_tau + n_extend), n_tau) = tau_i_sol;
         tau_new.segment(i * (n_tau + n_extend) + n_tau, n_extend) +=
           tau_append_head;
-        // tau_new.segment((i + 1) * (n_tau + n_extend), n_tau) = tau_iplus1_sol;
         // tau_new.segment((i + 1) * (n_tau + n_extend) + n_tau, n_extend) +=
         //   tau_append_tail;
       }
@@ -427,8 +408,16 @@ void postProcessing(const VectorXd& w_sol,
     // Assume that the new features include all the old features (in dynamics)
     VectorXd prime_numbers = createPrimeNumbers(2 * (n_s + n_extend));
 
+    int new_rom_option = 0;
+    if (rom_option == 0) {
+      new_rom_option = 1;
+    } else if (rom_option == 2) {
+      new_rom_option = 3;
+    } else {
+      DRAKE_DEMAND(false);
+    }
     DynamicsExpression dyn_expr_old(n_sDDot, 0, rom_option, robot_option);
-    DynamicsExpression dyn_expr_new(n_sDDot + n_extend, 0, rom_option, robot_option);
+    DynamicsExpression dyn_expr_new(n_sDDot + n_extend, 0, new_rom_option, robot_option);
     VectorXd dummy_s_new = prime_numbers.head(n_s + n_extend);
     VectorXd dummy_sDDot_new = prime_numbers.tail(n_s + n_extend);
     VectorXd dummy_s_old = dummy_s_new.head(n_s);

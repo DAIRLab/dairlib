@@ -131,7 +131,9 @@ void DynamicsConstraint::getSAndSDotInDouble(VectorXd x,
   plant_double_->MapVelocityToQDot(*context, v, &qdot);
 
   // 1. s
-  s = kin_expression_double_.getExpression(theta_s, q);
+  DRAKE_DEMAND(theta_s.size()%n_feature_s_ == 0);
+  s = kin_expression_double_.getExpression(theta_s, q,
+                                           theta_s.size() / n_feature_s_);
 
   // 2. ds
   // get gradient of feature wrt q =============================================

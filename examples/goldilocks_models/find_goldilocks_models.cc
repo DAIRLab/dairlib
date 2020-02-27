@@ -381,11 +381,20 @@ void extendModel(string dir, int iter, int n_feature_s,
                  VectorXd & theta, VectorXd & prev_theta,
                  VectorXd & step_direction,
                  VectorXd & prev_step_direction, double & ave_min_cost_so_far,
-                 int rom_option, int robot_option) {
+                 int & rom_option, int robot_option) {
 
   VectorXd theta_s_append = readCSV(dir +
                                     string("theta_s_append.csv")).col(0);
   int n_extend = theta_s_append.rows() / n_feature_s;
+
+  // update rom_option
+  if(rom_option == 0) {
+    rom_option = 1;
+  } else if (rom_option == 2) {
+    rom_option = 3;
+  } else {
+    DRAKE_DEMAND(false);
+  }
 
   // update n_s, n_sDDot and n_tau
   int old_n_s = n_s;

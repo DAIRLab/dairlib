@@ -79,19 +79,8 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
   plant_.CalcPointsPositions(*plant_context, hip_frame, pt_on_hip, world,
                              &hip_pos);
 
-  int segment_idx = -1;  // because times start at 0
-  for (double t0 : foot_traj_.get_segment_times()) {
-    if (t0 > t) {
-      break;
-    }
-    ++segment_idx;
-  }
-  if (segment_idx == foot_traj_.get_number_of_segments()) {
-    segment_idx--;
-  }
-
   const PiecewisePolynomial<double>& foot_traj_segment =
-      foot_traj_.slice(segment_idx, 1);
+      foot_traj_.slice(foot_traj_.get_segment_index(t), 1);
   std::vector<double> breaks = foot_traj_segment.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
 
@@ -118,7 +107,7 @@ void FlightFootTraj::CalcTraj(
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
 
-  PiecewisePolynomial<double>* casted_traj =
+  auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   switch ((int)fsm_state(0)) {

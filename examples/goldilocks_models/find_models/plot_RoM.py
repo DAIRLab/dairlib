@@ -11,6 +11,7 @@ iteration_start = 1
 iteration_end = 35
 iteration_spacing = 1
 name_idx = 0
+batch = 0
 if len(sys.argv) >= 2:
     iteration_start = int(sys.argv[1])
 if len(sys.argv) >= 3:
@@ -19,8 +20,9 @@ if len(sys.argv) >= 4:
     iteration_spacing = int(sys.argv[3])
 if len(sys.argv) >= 5:
     name_idx = int(sys.argv[4])
+if len(sys.argv) >= 6:
+    batch = int(sys.argv[5])
 
-batch = 0
 
 robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
 # directory = 'data/robot_' + str(robot_option) + '/'

@@ -6,7 +6,7 @@ import time
 import sys
 plt.rcParams.update({'font.size': 18})
 
-only_plot_average_cost = True
+only_plot_average_cost = False
 normalize_by_nominal_cost = True
 only_add_successful_samples_to_average_cost = False
 
@@ -151,7 +151,7 @@ while 1:
         plt.ylabel('Averaged task cost')
     if not only_plot_average_cost:
         plt.title('Cost over iterations')
-        plt.legend()
+        # plt.legend()
 
     # Set limit
     # ax1.set_ylim(0, 6)

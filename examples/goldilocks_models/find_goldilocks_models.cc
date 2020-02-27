@@ -1747,11 +1747,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // tasks difficulty varies from iterations to iterations. We can
       // heuristically pick a range that contains the task difficulty variation,
       // so that we don't eliminate the sample with hard task.
-      // - We don't do this on iteration 2 because sometimes the cost goes up
-      // from iteration 1 to 2 (somehow).
+      // - (changed) We don't do this on iteration 2 because sometimes the cost
+      // goes up from iteration 1 to 2 (somehow).
       // - We require that ALL the samples were evaluated successfully when
       // shrinking the step size based on cost.
-      if ((iter > 2) && all_samples_are_success) {
+      if ((iter > 1) && all_samples_are_success) {
         // We do this to each sample cost instead of averaged one
         DRAKE_DEMAND(c_vec.size() == each_min_cost_so_far.size());
 

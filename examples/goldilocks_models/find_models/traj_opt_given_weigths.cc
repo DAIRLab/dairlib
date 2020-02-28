@@ -191,7 +191,7 @@ void extractResult(VectorXd& w_sol,
   cout << solution_result <<  " | ";
   cout << "Cost:" << result.get_optimal_cost() <<
        " (tau cost = " << tau_cost << ")\n";*/
-  string string_to_print = "sample #" + to_string(sample_idx) +
+  /*string string_to_print = "sample #" + to_string(sample_idx) +
                            " (rerun #" + to_string(n_rerun) + ")"
                            "\n    stride_length = " + to_string(stride_length) +
                            " | ground_incline = " + to_string(ground_incline) +
@@ -199,7 +199,16 @@ void extractResult(VectorXd& w_sol,
                            "\n    Solve time:" + to_string(elapsed.count()) +
                            " | " + to_string(solution_result) +
                            " | Cost:" + to_string(result.get_optimal_cost()) +
-                           " (tau cost = " + to_string(tau_cost) + ")\n";
+                           " (tau cost = " + to_string(tau_cost) + ")\n";*/
+  string string_to_print = "  " + to_string(sample_idx) +
+      " (" + to_string(n_rerun) + ")"
+      " | " + to_string(stride_length) +
+      " | " + to_string(ground_incline) +
+      " | " + init_file +
+      " | " + to_string(solution_result) +
+      " | " + to_string(elapsed.count()) +
+      " | " + to_string(result.get_optimal_cost()) +
+      " (" + to_string(tau_cost) + ")\n";
   cout << string_to_print;
 
   // Check which solver we are using

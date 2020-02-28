@@ -37,6 +37,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::VectorXcd;
 using Eigen::MatrixXd;
+using Eigen::MatrixXi;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
 
@@ -238,7 +239,7 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 void getInitFileName(string * init_file, const string & nominal_traj_init_file,
                      int iter, int sample, bool is_get_nominal,
                      bool rerun_current_iteration, bool has_been_all_success,
-                     bool step_size_shrinked_last_loop,
+                     bool step_size_shrinked_last_loop, int n_rerun,
                      bool is_debug) {
   if (is_get_nominal && !rerun_current_iteration) {
     *init_file = nominal_traj_init_file;
@@ -248,9 +249,9 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     // *init_file = "0_" +
     //              to_string(sample) + string("_w.csv");
     // cout << *init_file << endl;
-  } else if (step_size_shrinked_last_loop) {  // this iter is a rerun and the
-                                              // step size was shrink in
-                                              // previous iter
+  } else if (step_size_shrinked_last_loop && n_rerun == 0) {
+    // the step size was shrink in previous iter and it's not a local rerun
+    // (n_rerun == 0)
     *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
   }
   else if (rerun_current_iteration) {
@@ -351,13 +352,13 @@ void waitForAllThreadsToJoin(vector<std::thread*> * threads,
     // Select index to wait and delete csv files
     int selected_idx = selectThreadIdxToWait(*assigned_thread_idx, dir, iter);
     int thread_to_wait_idx = (*assigned_thread_idx)[selected_idx].first;
-    string string_to_be_print = "Waiting for thread #" +
-                                to_string(thread_to_wait_idx) + " to join...\n";
+    //string string_to_be_print = "Waiting for thread #" +
+    //                            to_string(thread_to_wait_idx) + " to join...\n";
     // cout << string_to_be_print;
     (*threads)[thread_to_wait_idx]->join();
     delete (*threads)[thread_to_wait_idx];
-    string_to_be_print = "Thread #" + to_string(thread_to_wait_idx) +
-                         " has joined.\n";
+    //string_to_be_print = "Thread #" + to_string(thread_to_wait_idx) +
+    //                     " has joined.\n";
     // cout << string_to_be_print;
     /*cout << "Before erase: ";
     for (int i = 0; i < assigned_thread_idx->size(); i++) {
@@ -1103,7 +1104,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     if (FLAGS_robot_option == 0) {
       N_rerun = 1;
     } else if (FLAGS_robot_option == 1) {
-      N_rerun = 2;
+      N_rerun = 1;//2;
     } else {
       N_rerun = 0;
     }
@@ -1266,7 +1267,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   std::vector<double> each_min_cost_so_far(
       N_sample, std::numeric_limits<double>::infinity());
   if (iter_start > 1  && !FLAGS_is_debug) {
-    for (int iter = iter_start - 1; iter > 0; iter++) {
+    for (int iter = iter_start - 1; iter > 0; iter--) {
       // Check if the cost for all samples exist
       bool all_exsit = true;
       for (int i = 0; i < N_sample; i++) {
@@ -1401,6 +1402,35 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
 
+  // Set up for feeding good sample solution to adjacent bad samples
+  // (In 2D tasks space, the adjacent sample# for each sample is 4)
+  // TODO: reduce the computation time by half. We only need delta_idx in
+  //  positive direction
+  MatrixXi adjacent_sample_indices = -1 * MatrixXi::Ones(N_sample, 4);
+  MatrixXi delta_idx(4,2);
+  delta_idx << 1, 0, -1, 0, 0, 1, 0, -1;
+  for (int i = 0; i < N_sample_sl; i++) {  // stride length axis
+    for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
+      int current_sample_idx = i + j * N_sample_sl;
+      for (int k = 0; k < delta_idx.rows(); k++) {
+        int new_i = i+delta_idx(k,0);
+        int new_j = j+delta_idx(k,1);
+        int adjacent_sample_idx = new_i + new_j * N_sample_sl;
+        if ((new_i >= 0) && (new_i < N_sample_sl) && (new_j >= 0) &&
+            (new_j < N_sample_gi)) {
+          // Add to adjacent_sample_idx
+          for (int l = 0; l < 4; l++) {
+            if (adjacent_sample_indices(current_sample_idx, l) < 0) {
+              adjacent_sample_indices(current_sample_idx, l) = adjacent_sample_idx;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  cout << "adjacent_sample_indices = \n" << adjacent_sample_indices << endl;
+
   cout << "\nStart iterating...\n";
   // Start the gradient descent
   int iter;
@@ -1457,6 +1487,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
     if (start_iterations_with_shrinking_stepsize) {
       // skip the sample evaluation
     } else {
+      // Print message
+      cout << "sample# (rerun #) | stride | incline | Solve time | init_file | "
+              "Status | Cost (tau cost)\n";
+
       // Create vector of threads for multithreading
       vector<std::thread*> threads(std::min(CORES, N_sample));
 
@@ -1473,6 +1507,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
       std::queue<int> awaiting_sample_idx;
       for (int i = 0; i < N_sample; i++)
         awaiting_sample_idx.push(i);
+
+      // Set up for feeding good sample solution to adjacent bad samples
+      std::vector<int> is_good_solution(N_sample, -1);  // -1 means unset,
+                                                        // 0 is bad, 1 is good
+      std::vector<int> sample_idx_waiting_for_help;
+      // In the following int matrices, each row is a list that contains the
+      // sample idx that can help (or helped)
+      // -1 means empty.
+      // Since in 2D tasks space, the adjacent sample# for each sample is 4, we
+      // initialize the column number with 4.
+      MatrixXi sample_idx_waiting_to_help = -1 * MatrixXi::Ones(N_sample, 4);
+      MatrixXi sample_idx_that_helped = -1 * MatrixXi::Ones(N_sample, 4);
 
       // Evaluate samples
       int n_failed_sample = 0;
@@ -1518,12 +1564,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
           writeCSV(dir + prefix + string("ground_incline.csv"),
                    ground_incline * MatrixXd::Ones(1, 1));
 
+          // (Feature -- get initial guess from adjacent successful samples)
+          // If the current sample already finished N_rerun, and if the there
+          // are adjacent samples that can help the current sample, then run it
+          // TODO: add this.
+          // TODO: Remember to remove the helper from the helper list!
+
           // Get file name of initial seed
           string init_file_pass_in;
           getInitFileName(&init_file_pass_in, init_file, iter, sample_idx,
                           is_get_nominal,
                           current_sample_is_a_rerun, has_been_all_success,
-                          step_size_shrinked_last_loop,
+                          step_size_shrinked_last_loop, n_rerun[sample_idx],
                           FLAGS_is_debug);
 
           // Set up feasibility and optimality tolerance
@@ -1531,8 +1583,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
           //  solution?
 
           // Trajectory optimization with fixed model parameters
-          string string_to_be_print = "Adding sample #" + to_string(sample_idx) +
-                                      " to thread #" + to_string(available_thread_idx.front()) + "...\n";
+          //string string_to_be_print = "Adding sample #" + to_string(sample_idx) +
+          //                            " to thread #" + to_string(available_thread_idx.front()) + "...\n";
           // cout << string_to_be_print;
           threads[available_thread_idx.front()] = new std::thread(trajOptGivenWeights,
               std::ref(plant), std::ref(plant_autoDiff),
@@ -1551,8 +1603,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
               FLAGS_is_add_tau_in_cost,
               sample_idx, n_rerun[sample_idx], rom_option,
               FLAGS_robot_option);
-          string_to_be_print = "Finished adding sample #" + to_string(sample_idx) +
-                               " to thread # " + to_string(available_thread_idx.front()) + ".\n";
+          //string_to_be_print = "Finished adding sample #" + to_string(sample_idx) +
+          //                    " to thread # " + to_string(available_thread_idx.front()) + ".\n";
           // cout << string_to_be_print;
 
           assigned_thread_idx.push_back(
@@ -1563,34 +1615,26 @@ int findGoldilocksModels(int argc, char* argv[]) {
           int selected_idx = selectThreadIdxToWait(assigned_thread_idx, dir, iter);
           // cout << "selected_idx = " << selected_idx << endl;
 
-          // Wait for the selected thread to join
+          // Wait for the selected thread to join, then delete thread
           int thread_to_wait_idx = assigned_thread_idx[selected_idx].first;
           int corresponding_sample = assigned_thread_idx[selected_idx].second;
-          string string_to_be_print = "Waiting for thread #" +
-                                      to_string(thread_to_wait_idx) +
-                                      " to join...\n";
+          //string string_to_be_print = "Waiting for thread #" +
+          //                            to_string(thread_to_wait_idx) +
+          //                            " to join...\n";
           // cout << string_to_be_print;
           threads[thread_to_wait_idx]->join();
           delete threads[thread_to_wait_idx];
-          string_to_be_print = "Thread #" +
-                               to_string(thread_to_wait_idx) +
-                               " has joined.\n";
+          //string_to_be_print = "Thread #" +
+          //                     to_string(thread_to_wait_idx) +
+          //                     " has joined.\n";
           // cout << string_to_be_print;
-
           available_thread_idx.push(thread_to_wait_idx);
           assigned_thread_idx.erase(assigned_thread_idx.begin() + selected_idx);
-
-          // Queue the current sample back if it's not the last evaluation in
-          // this iteration
-          if (n_rerun[corresponding_sample] != N_rerun) {
-            awaiting_sample_idx.push(corresponding_sample);
-          }
 
           // Record success history
           prefix = to_string(iter) +  "_" + to_string(corresponding_sample) + "_";
           int sample_success =
-            (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
-
+              (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
           // Accumulate failed samples
           if (sample_success != 1) {
             n_failed_sample++;
@@ -1629,6 +1673,120 @@ int findGoldilocksModels(int argc, char* argv[]) {
             waitForAllThreadsToJoin(&threads, &assigned_thread_idx, dir, iter);
             break;*/
           }
+
+          // (Feature -- get initial guess from adjacent successful samples)
+          // Record if the current sample got a good solution. A good solution
+          // means:
+          // 1. optimal solution found
+          // 2. the cost didn't increase too much compared to that of the
+          // previous iteration
+          double sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
+          if ((sample_success == 1) &&
+              (sample_cost <= (1 + max_cost_increase_rate) *
+                                  each_min_cost_so_far[corresponding_sample])) {
+            // Set the current sample to be having good solution
+            is_good_solution[corresponding_sample] = 1;
+
+            // Look for any adjacent sample that needs help
+            for (int idx = 0; idx < adjacent_sample_indices.cols(); idx++) {
+              // if it's not a good solution and it's not in
+              // sample_idx_waiting_for_help, then add it
+              int adj_idx = adjacent_sample_indices(corresponding_sample, idx);
+              bool adj_has_bad_sol = is_good_solution[adj_idx] == 0;
+              if (adj_has_bad_sol) {
+                // 1. the "waiting for help" list
+                // (add if it doesn't exist in the waiting queue)
+                auto it = find(sample_idx_waiting_for_help.begin(),
+                               sample_idx_waiting_for_help.end(), adj_idx);
+                if (it == sample_idx_waiting_for_help.end()) {
+                  sample_idx_waiting_for_help.push_back(adj_idx);
+                }
+
+                // 2. the helper list
+                // (add if it doesn't exist in both sample_idx_waiting_to_help
+                //  and sample_idx_that_helped)
+                bool already_exist = false;
+                for (int i = 0; i < 4; i++) {
+                  already_exist =
+                      already_exist || (sample_idx_waiting_to_help(adj_idx, i) ==
+                                       corresponding_sample);
+                }
+                for (int i = 0; i < 4; i++) {
+                  already_exist =
+                      already_exist || (sample_idx_that_helped(adj_idx, i) ==
+                                       corresponding_sample);
+                }
+                if (!already_exist) {
+                  for (int i = 0; i < 4; i++) {
+                    if (sample_idx_waiting_to_help(adj_idx, i) == -1) {
+                      sample_idx_waiting_to_help(adj_idx, i) =
+                          corresponding_sample;
+                      break;
+                    }
+                  }
+                }
+              } // end if (adjacent sample has bad sol)
+            } // end for (Look for any adjacent sample that needs help)
+          } else {
+            // Set the current sample to be having bad solution
+            is_good_solution[corresponding_sample] = 0;
+
+            // the "waiting for help" list
+            // (add if it doesn't exist in the waiting queue)
+            auto it =
+                find(sample_idx_waiting_for_help.begin(),
+                     sample_idx_waiting_for_help.end(), corresponding_sample);
+            if (it == sample_idx_waiting_for_help.end()) {
+              sample_idx_waiting_for_help.push_back(corresponding_sample);
+            }
+
+            // Look for any adjacent sample that can help
+            for (int idx = 0; idx < adjacent_sample_indices.cols(); idx++) {
+              // if it's not a good solution and it's not in
+              // sample_idx_waiting_for_help, then add it
+              int adj_idx = adjacent_sample_indices(corresponding_sample, idx);
+              bool adj_has_good_sol = is_good_solution[adj_idx] == 1;
+              if (adj_has_good_sol) {
+                // The helper list
+                // (add if it doesn't exist in both sample_idx_waiting_to_help
+                //  and sample_idx_that_helped)
+                bool already_exist = false;
+                for (int i = 0; i < 4; i++) {
+                  already_exist = already_exist ||
+                                  (sample_idx_waiting_to_help(
+                                       corresponding_sample, i) == adj_idx);
+                }
+                for (int i = 0; i < 4; i++) {
+                  already_exist = already_exist ||
+                                  (sample_idx_that_helped(corresponding_sample,
+                                                          i) == adj_idx);
+                }
+                if (!already_exist) {
+                  for (int i = 0; i < 4; i++) {
+                    if (sample_idx_waiting_to_help(corresponding_sample, i) == -1) {
+                      sample_idx_waiting_to_help(corresponding_sample, i) =
+                          adj_idx;
+                      break;
+                    }
+                  }
+                }
+              }
+            } // end for (Look for any adjacent sample that can help)
+          } // end if current sample has good solution
+
+          // Queue the current sample back if
+          // 1. it's not the last evaluation for this sample
+          // 2. it can help other sample
+          if (n_rerun[corresponding_sample] != N_rerun) {
+            awaiting_sample_idx.push(corresponding_sample);
+          } else {
+            // TODO: add this.
+
+          }
+          // Queue adjacent samples if the current sample can help (and it's not
+          // in the awaiting_sample_idx)
+          // TODO: add this.
+
         }
       }  // while(sample < N_sample)
     }  // end if-else (start_iterations_with_shrinking_stepsize)

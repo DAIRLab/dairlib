@@ -293,12 +293,14 @@ void DoMain() {
   auto trajopt = std::make_shared<HybridDircon<double>>(
       plant, timesteps, min_dt, max_dt, contact_mode_list, options_list);
 
+
+
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
                            "../jumping_snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 150000);
+                           "Major iterations limit", 50000);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Iterations limit", 100000);  // QP subproblems
+                           "Iterations limit", 50000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);  // 0
   trajopt->SetSolverOption(
@@ -402,6 +404,24 @@ void DoMain() {
     }
   }
 
+  // Printing
+  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
+    cout << trajopt->decision_variable(i) << ", ";
+    cout << trajopt->decision_variable(i).get_id() << ", ";
+    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
+         << ", ";
+    auto scale_map = trajopt->GetVariableScaling();
+    auto it = scale_map.find(i);
+    if (it != scale_map.end()) {
+      cout << it->second;
+    } else {
+      cout << "none";
+    }
+    cout << ", ";
+    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
+    cout << endl;
+  }
+
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
 
@@ -415,6 +435,8 @@ void DoMain() {
   cout << "Solve time:" << elapsed.count() << std::endl;
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   std::cout << "Solve result: " << result.get_solution_result() << std::endl;
+
+  std::cout << result.GetSolution();
 
   const PiecewisePolynomial<double>& state_traj =
       trajopt->ReconstructStateTrajectory(result);
@@ -960,10 +982,10 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 //  trajopt->ScaleImpulseVariables(
 //      10, 2, 0, trajopt->num_kinematic_constraints(2) - 1);  // 0.1
   // quaternion slack
-  trajopt->ScaleQuaternionSlackVariables(150);
+//  trajopt->ScaleQuaternionSlackVariables(150);
   // Constraint slack
-  trajopt->ScaleKinConstraintSlackVariables(50, 0, 0, 5);
-  trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
+//  trajopt->ScaleKinConstraintSlackVariables(50, 0, 0, 5);
+//  trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
 }
 
 MatrixXd generate_state_input_matrix(const PiecewisePolynomial<double>& states,

@@ -33,6 +33,16 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "cassie_traj_plotter",
+    srcs = ["cassie_traj_plotter.py"],
+    deps = [
+        ":lcm_trajectory_py",
+        ":module_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

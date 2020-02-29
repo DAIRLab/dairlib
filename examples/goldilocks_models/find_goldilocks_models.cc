@@ -1569,7 +1569,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
 
-  // Set up for feeding good sample solution to adjacent bad samples
+  // Setup for getting good solution from adjacent samples
   // (In 2D tasks space, the adjacent sample# for each sample is 4)
   MatrixXi adjacent_sample_indices = -1 * MatrixXi::Ones(N_sample, 4);
   MatrixXi delta_idx(2, 2);
@@ -1583,7 +1583,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         int adjacent_sample_idx = new_i + new_j * N_sample_sl;
         if ((new_i >= 0) && (new_i < N_sample_sl) && (new_j >= 0) &&
             (new_j < N_sample_gi)) {
-          // Add to adjacent_sample_idx (both direction)
+          // Add to adjacent_sample_idx (both directions)
           for (int l = 0; l < 4; l++) {
             if (adjacent_sample_indices(current_sample_idx, l) < 0) {
               adjacent_sample_indices(current_sample_idx, l) =
@@ -1602,7 +1602,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       }
     }
   }
-  cout << "adjacent_sample_indices = \n" << adjacent_sample_indices << endl;
+  cout << "adjacent_sample_indices = \n"
+       << adjacent_sample_indices.transpose() << endl;
 
   cout << "\nStart iterating...\n";
   // Start the gradient descent
@@ -2235,6 +2236,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       cout << "inv_Q_theta's smallest and biggest singular value " <<
            svd.singularValues().tail(1) << ", " <<
            svd.singularValues()(0) << endl;*/
+
       // Newton decrement (can be a criterion to terminate your newton steps)
       double lambda_square = -gradient_cost.transpose() * newton_step;
       VectorXd lambda_square_vecXd(1); lambda_square_vecXd << lambda_square;

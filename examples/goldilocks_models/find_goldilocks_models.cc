@@ -544,6 +544,8 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
     if (sample == 0) {
       cout << "\n (After extracting active constraints) Run traj opt to "
            "check if your quadratic approximation is correct\n";
+      cout << "sample# | Solve Status | Cost | w_sol norm | (this should be 0 "
+              "if w=0 is optimal)\n";
     }
     nl_i = A_active.rows();
     MathematicalProgram quadprog;
@@ -555,17 +557,15 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
     quadprog.AddQuadraticCost(H_vec[sample], b_vec[sample], w2);
     const auto result = Solve(quadprog);
     auto solution_result = result.get_solution_result();
-    cout << "sample #" << sample << endl;
-    cout << "    " << solution_result << " | ";
-    cout << "Cost:" << result.get_optimal_cost() << " | ";
     if (result.is_success()) {
       VectorXd w_sol_check = result.GetSolution(
-                               quadprog.decision_variables());
-      cout << "w_sol norm:" << w_sol_check.norm() << endl;
-      // cout << "This should be zero\n" <<
-      //      VectorXd::Ones(nl_i).transpose()*A_active*w_sol_check << endl;
-      cout << "    if this is not zero, then w=0 is not optimal: " <<
-           w_sol_check.transpose()*b_vec[sample] << endl;
+          quadprog.decision_variables());
+      cout << sample << " | " << solution_result << " | "
+           << result.get_optimal_cost() << " | " << w_sol_check.norm() << " | "
+           << w_sol_check.transpose() * b_vec[sample] << endl;
+    } else {
+      cout << sample << " | " << solution_result << " | "
+           << result.get_optimal_cost() << endl;
     }
   }
 
@@ -740,6 +740,11 @@ void calcWInTermsOfTheta(int sample, const string& dir,
                          int method_to_solve_system_of_equations) {
   string prefix = to_string(sample) + "_";
 
+  if (sample == 0) {
+    cout << "sample # | max element of abs-Pi | qi norm (this number should be "
+            "close to 0)\n";
+  }
+
   MatrixXd Pi(nw_vec[sample], B_active_vec[sample].cols());
   VectorXd qi(nw_vec[sample]);
   if (method_to_solve_system_of_equations == 0) {
@@ -841,6 +846,7 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     Pi = -inv_H_ext12 * B_active_vec[sample];
     qi = -inv_H_ext11 * b_vec[sample];
   }
+
   writeCSV(dir + prefix + string("Pi.csv"), Pi);
   writeCSV(dir + prefix + string("qi.csv"), qi);
 
@@ -858,10 +864,12 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     for (int j = 0; j < abs_Pi.cols(); j++) {
       if (abs_Pi(i, j) > max_Pi_element) max_Pi_element = abs_Pi(i, j);
     }
-  string to_be_print = "sample #" + to_string(sample) + ":  " +
+  /*string to_be_print = "sample #" + to_string(sample) + ":  " +
                        "max element of abs-Pi = " + to_string(max_Pi_element) +
                        "\n           qi norm (this number should be close to 0) = " +
-                       to_string(qi.norm()) + "\n";
+                       to_string(qi.norm()) + "\n";*/
+  string to_be_print = to_string(sample) + " | " + to_string(max_Pi_element) +
+                       " | " + to_string(qi.norm()) + "\n";
   cout << to_be_print;
 }
 
@@ -1107,6 +1115,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   const int method_to_solve_system_of_equations = 3;
   double max_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
+  double max_cost_increase_rate_before_ask_for_help = 0.1;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
@@ -1120,8 +1129,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << FLAGS_fail_threshold << endl;
   cout << "method_to_solve_system_of_equations = "
        << method_to_solve_system_of_equations << endl;
-  cout << "The maximum rate the cost can increase = " << max_cost_increase_rate
-       << endl;
+  cout << "The maximum rate the cost can increase before shrinking step size = "
+       << max_cost_increase_rate << endl;
+  cout << "The maximum rate the cost can increase before asking adjacent "
+          "samples for help = "
+       << max_cost_increase_rate_before_ask_for_help << endl;
 
   // Parameters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
@@ -1403,8 +1415,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   MatrixXi adjacent_sample_indices = -1 * MatrixXi::Ones(N_sample, 4);
   MatrixXi delta_idx(2, 2);
   delta_idx << 1, 0, 0, 1;
-  for (int i = 0; i < N_sample_sl; i++) {    // stride length axis
-    for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
+  for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
+    for (int i = 0; i < N_sample_sl; i++) {  // stride length axis
       int current_sample_idx = i + j * N_sample_sl;
       for (int k = 0; k < delta_idx.rows(); k++) {
         int new_i = i + delta_idx(k, 0);
@@ -1490,8 +1502,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // skip the sample evaluation
     } else {
       // Print message
-      cout << "sample# (rerun #) | stride | incline | Solve time | init_file | "
-              "Status | Cost (tau cost)\n";
+      cout << "sample# (rerun #) | stride | incline | init_file | Status | "
+              "Solve time | Cost (tau cost)\n";
 
       // Create vector of threads for multithreading
       vector<std::thread*> threads(std::min(CORES, N_sample));
@@ -1550,7 +1562,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Store the tasks or overwrite it with previous tasks
           // (You need step_size_shrinked_last_loop because you might start the
           // program with shrinking step size)
-          // TODO: keep an eye on if you need "n_rerun == 0" in the logic
           if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
             stride_length = previous_stride_length(sample_idx);
             ground_incline = previous_ground_incline(sample_idx);
@@ -1583,6 +1594,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
                     break;
                   }
                 }
+                cout << "before adding idx # " << sample_idx << endl;
+                cout << "sample_idx_waiting_to_help = \n"
+                     << sample_idx_waiting_to_help.transpose() << endl;
+                cout << "sample_idx_that_helped = \n"
+                     << sample_idx_that_helped.transpose() << endl;
                 break;
               }
             }
@@ -1712,14 +1728,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // previous iteration
           double sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
           if ((sample_success == 1) &&
-              (sample_cost <= (1 + max_cost_increase_rate) *
+              (sample_cost <= (1 + max_cost_increase_rate_before_ask_for_help) *
                                   each_min_cost_so_far[sample_idx])) {
             // Set the current sample to be having good solution
             is_good_solution[sample_idx] = 1;
 
             // Remove the helpers for the current sample since it's successful.
             // However, the removal not necessary in the algorithm.
-            // TODO: double check
 
             // Look for any adjacent sample that needs help
             for (int j = 0; j < adjacent_sample_indices.cols(); j++) {
@@ -1727,6 +1742,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
               bool current_sample_has_helped = false;
 
               int adj_idx = adjacent_sample_indices(sample_idx, j);
+              if (adj_idx == -1) continue;
+
               bool adj_has_bad_sol = is_good_solution[adj_idx] == 0;
               if (adj_has_bad_sol) {
                 this_adjacent_sample_needs_help = true;
@@ -1769,6 +1786,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
                 if (it == awaiting_sample_idx.end()) {
                   awaiting_sample_idx.push_back(adj_idx);
                 }
+                cout << "idx #" << sample_idx << " got good sol, and idx #"
+                     << adj_idx << " needs help, so add to queue\n";
               }
             } // end for (Look for any adjacent sample that needs help)
 
@@ -1777,13 +1796,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
             is_good_solution[sample_idx] = 0;
 
             // Look for any adjacent sample that can help
-            for (int idx = 0; idx < adjacent_sample_indices.cols(); idx++) {
+            for (int j = 0; j < adjacent_sample_indices.cols(); j++) {
               bool this_adjacent_sample_can_help = false;
               bool this_adjacent_sample_is_waiting_to_help = false;
 
               // if the adjacent sample has a good solution, then add it to the
               // helper list
-              int adj_idx = adjacent_sample_indices(sample_idx, idx);
+              int adj_idx = adjacent_sample_indices(sample_idx, j);
+              if (adj_idx == -1) continue;
+
               bool adj_has_good_sol = is_good_solution[adj_idx] == 1;
               if (adj_has_good_sol) {
                 this_adjacent_sample_can_help = true;
@@ -1822,6 +1843,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   this_adjacent_sample_is_waiting_to_help) {
                 awaiting_sample_idx.push_back(sample_idx);
                 current_sample_is_queued = true;
+                cout << "idx #" << sample_idx << " got bad sol, and idx #"
+                     << adj_idx << " can help, so add to queue\n";
               }
             } // end for (Look for any adjacent sample that can help)
           } // end if current sample has good solution
@@ -1988,7 +2011,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Extract active and independent constraints (multithreading)
       auto start_time_extract = std::chrono::high_resolution_clock::now();
       vector<std::thread *> threads(std::min(CORES, n_succ_sample));
-      cout << "Extracting active (and independent rows) of A...\n";
+      cout << "\nExtracting active (and independent rows) of A...\n";
       int sample = 0;
       while (sample < n_succ_sample) {
         int sample_end = (sample + CORES >= n_succ_sample) ?

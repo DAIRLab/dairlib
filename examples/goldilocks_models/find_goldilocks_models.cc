@@ -889,7 +889,166 @@ void readPiQiFile(vector<MatrixXd> * P_vec, vector<VectorXd> * q_vec,
   }
 }
 
+// `GetAdjacentHelper` and `RecordSolutionQualityAndQueueList` are methods for
+// getting good solution from adjacent samples
+void GetAdjacentHelper(int sample_idx, MatrixXi& sample_idx_waiting_to_help,
+                       MatrixXi& sample_idx_that_helped,
+                       int& sample_idx_to_help) {
+  for (int i = 0; i < 4; i++) {
+    if (sample_idx_waiting_to_help(sample_idx, i) >= 0) {
+      sample_idx_to_help = sample_idx_waiting_to_help(sample_idx, i);
+      // remove sample_idx_to_help from sample_idx_waiting_to_help
+      sample_idx_waiting_to_help(sample_idx, i) = -1;
 
+      // add sample_idx_to_help to sample_idx_that_helped
+      for (int j = 0; j < 4; j++) {
+        if (sample_idx_that_helped(sample_idx, j) < 0) {
+          sample_idx_that_helped(sample_idx, j) = sample_idx_to_help;
+          break;
+        }
+      }
+      cout << "before adding idx # " << sample_idx << endl;
+      cout << "sample_idx_waiting_to_help = \n"
+           << sample_idx_waiting_to_help.transpose() << endl;
+      cout << "sample_idx_that_helped = \n"
+           << sample_idx_that_helped.transpose() << endl;
+      break;
+    }
+  }
+  DRAKE_DEMAND(sample_idx_to_help != -1);  // must exist a helper
+}
+void RecordSolutionQualityAndQueueList(
+    const string& dir, const string& prefix, int sample_idx,
+    const vector<double>& each_min_cost_so_far,
+    const MatrixXi& adjacent_sample_indices,
+    double max_cost_increase_rate_before_ask_for_help, int sample_success,
+    bool current_sample_is_queued, vector<int>& is_good_solution,
+    MatrixXi& sample_idx_waiting_to_help,
+    const MatrixXi& sample_idx_that_helped,
+    std::deque<int>& awaiting_sample_idx) {
+  // Record if the current sample got a good solution. A good solution
+  // means:
+  // 1. optimal solution found
+  // 2. the cost didn't increase too much compared to that of the
+  // previous iteration
+  double sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
+  if ((sample_success == 1) &&
+      (sample_cost <= (1 + max_cost_increase_rate_before_ask_for_help) *
+                          each_min_cost_so_far[sample_idx])) {
+    // Set the current sample to be having good solution
+    is_good_solution[sample_idx] = 1;
+
+    // Remove the helpers for the current sample since it's successful.
+    // However, the removal not necessary in the algorithm.
+
+    // Look for any adjacent sample that needs help
+    for (int j = 0; j < adjacent_sample_indices.cols(); j++) {
+      bool this_adjacent_sample_needs_help = false;
+      bool current_sample_has_helped = false;
+
+      int adj_idx = adjacent_sample_indices(sample_idx, j);
+      if (adj_idx == -1) continue;
+
+      bool adj_has_bad_sol = is_good_solution[adj_idx] == 0;
+      if (adj_has_bad_sol) {
+        this_adjacent_sample_needs_help = true;
+
+        // The helper list
+        // (add if it doesn't exist in both sample_idx_waiting_to_help
+        //  and sample_idx_that_helped)
+        bool already_exist = false;
+        for (int i = 0; i < 4; i++) {
+          already_exist = already_exist || (sample_idx_waiting_to_help(
+                                                adj_idx, i) == sample_idx);
+        }
+        for (int i = 0; i < 4; i++) {
+          already_exist = already_exist ||
+                          (sample_idx_that_helped(adj_idx, i) == sample_idx);
+          current_sample_has_helped =
+              current_sample_has_helped ||
+              (sample_idx_that_helped(adj_idx, i) == sample_idx);
+        }
+        if (!already_exist) {
+          for (int i = 0; i < 4; i++) {
+            if (sample_idx_waiting_to_help(adj_idx, i) == -1) {
+              sample_idx_waiting_to_help(adj_idx, i) = sample_idx;
+              break;
+            }
+          }
+        }
+      }  // end if (adjacent sample has bad sol)
+
+      // Queue adjacent samples if
+      // 1. it's not in the awaiting_sample_idx
+      // 2. the adjacent sample needs help
+      // 3. the current sample hasn't helped the adjacent sample
+      if (this_adjacent_sample_needs_help && current_sample_has_helped) {
+        auto it = find(awaiting_sample_idx.begin(), awaiting_sample_idx.end(),
+                       adj_idx);
+        if (it == awaiting_sample_idx.end()) {
+          awaiting_sample_idx.push_back(adj_idx);
+        }
+        cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
+             << " needs help, so add to queue\n";
+      }
+    }  // end for (Look for any adjacent sample that needs help)
+
+  } else {
+    // Set the current sample to be having bad solution
+    is_good_solution[sample_idx] = 0;
+
+    // Look for any adjacent sample that can help
+    for (int j = 0; j < adjacent_sample_indices.cols(); j++) {
+      bool this_adjacent_sample_can_help = false;
+      bool this_adjacent_sample_is_waiting_to_help = false;
+
+      // if the adjacent sample has a good solution, then add it to the
+      // helper list
+      int adj_idx = adjacent_sample_indices(sample_idx, j);
+      if (adj_idx == -1) continue;
+
+      bool adj_has_good_sol = is_good_solution[adj_idx] == 1;
+      if (adj_has_good_sol) {
+        this_adjacent_sample_can_help = true;
+
+        // The helper list
+        // (add if it doesn't exist in both sample_idx_waiting_to_help
+        //  and sample_idx_that_helped)
+        bool already_exist = false;
+        for (int i = 0; i < 4; i++) {
+          already_exist = already_exist || (sample_idx_waiting_to_help(
+                                                sample_idx, i) == adj_idx);
+          this_adjacent_sample_is_waiting_to_help = already_exist;
+        }
+        for (int i = 0; i < 4; i++) {
+          already_exist = already_exist ||
+                          (sample_idx_that_helped(sample_idx, i) == adj_idx);
+        }
+        if (!already_exist) {
+          for (int i = 0; i < 4; i++) {
+            if (sample_idx_waiting_to_help(sample_idx, i) == -1) {
+              sample_idx_waiting_to_help(sample_idx, i) = adj_idx;
+              break;
+            }
+          }
+          this_adjacent_sample_is_waiting_to_help = true;
+        }
+      }
+
+      // Queue the current sample back if
+      // 1. the current sample is not queued yet
+      // 2. the adjacent sample can help
+      // 3. the adjacent sample is waiting to help current sample
+      if (!current_sample_is_queued && this_adjacent_sample_can_help &&
+          this_adjacent_sample_is_waiting_to_help) {
+        awaiting_sample_idx.push_back(sample_idx);
+        current_sample_is_queued = true;
+        cout << "idx #" << sample_idx << " got bad sol, and idx #" << adj_idx
+             << " can help, so add to queue\n";
+      }
+    }  // end for (Look for any adjacent sample that can help)
+  }    // end if current sample has good solution
+}
 
 int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -1578,31 +1737,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // (Feature -- get initial guess from adjacent successful samples)
           // If the current sample already finished N_rerun, then it means that
-          // the exist a adjacent sample that can help the current sample.
+          // there exists a adjacent sample that can help the current sample.
           int sample_idx_to_help = -1;
           if (n_rerun[sample_idx] > N_rerun) {
-            for (int i = 0; i < 4; i++) {
-              if (sample_idx_waiting_to_help(sample_idx, i) >= 0) {
-                sample_idx_to_help = sample_idx_waiting_to_help(sample_idx, i);
-                // remove sample_idx_to_help from sample_idx_waiting_to_help
-                sample_idx_waiting_to_help(sample_idx, i) = -1;
-
-                // add sample_idx_to_help to sample_idx_that_helped
-                for (int j = 0; j < 4; j++) {
-                  if (sample_idx_that_helped(sample_idx, j) < 0) {
-                    sample_idx_that_helped(sample_idx, j) = sample_idx_to_help;
-                    break;
-                  }
-                }
-                cout << "before adding idx # " << sample_idx << endl;
-                cout << "sample_idx_waiting_to_help = \n"
-                     << sample_idx_waiting_to_help.transpose() << endl;
-                cout << "sample_idx_that_helped = \n"
-                     << sample_idx_that_helped.transpose() << endl;
-                break;
-              }
-            }
-            DRAKE_DEMAND(sample_idx_to_help != -1); // must exist a helper
+            GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
+                              sample_idx_that_helped, sample_idx_to_help);
           }
 
           // Get file name of initial seed
@@ -1620,7 +1759,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Trajectory optimization with fixed model parameters
           //string string_to_be_print = "Adding sample #" + to_string(sample_idx) +
-          //                            " to thread #" + to_string(available_thread_idx.front()) + "...\n";
+          //  " to thread #" + to_string(available_thread_idx.front()) + "...\n";
           // cout << string_to_be_print;
           threads[available_thread_idx.front()] = new std::thread(trajOptGivenWeights,
               std::ref(plant), std::ref(plant_autoDiff),
@@ -1640,7 +1779,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               sample_idx, n_rerun[sample_idx], rom_option,
               FLAGS_robot_option);
           //string_to_be_print = "Finished adding sample #" + to_string(sample_idx) +
-          //                    " to thread # " + to_string(available_thread_idx.front()) + ".\n";
+          //  " to thread # " + to_string(available_thread_idx.front()) + ".\n";
           // cout << string_to_be_print;
 
           assigned_thread_idx.push_back(
@@ -1681,6 +1820,24 @@ int findGoldilocksModels(int argc, char* argv[]) {
           prefix = to_string(iter) +  "_" + to_string(sample_idx) + "_";
           int sample_success =
               (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
+
+          // Get initial guess from adjacent successful samples
+          RecordSolutionQualityAndQueueList(
+              dir, prefix, sample_idx, each_min_cost_so_far,
+              adjacent_sample_indices,
+              max_cost_increase_rate_before_ask_for_help, sample_success,
+              current_sample_is_queued, is_good_solution,
+              sample_idx_waiting_to_help, sample_idx_that_helped,
+              awaiting_sample_idx);
+
+          // If the current sample is queued again because it could be helped by
+          // adjacent samples, then don't conclude that it's a failure yet
+          auto it = find(awaiting_sample_idx.begin(), awaiting_sample_idx.end(),
+                         sample_idx);
+          if (it != awaiting_sample_idx.end()) {
+            sample_success = 1;
+          }
+
           // Accumulate failed samples
           if (sample_success != 1) {
             n_failed_sample++;
@@ -1719,135 +1876,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
             waitForAllThreadsToJoin(&threads, &assigned_thread_idx, dir, iter);
             break;*/
           }
-
-          // (Feature -- get initial guess from adjacent successful samples)
-          // Record if the current sample got a good solution. A good solution
-          // means:
-          // 1. optimal solution found
-          // 2. the cost didn't increase too much compared to that of the
-          // previous iteration
-          double sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
-          if ((sample_success == 1) &&
-              (sample_cost <= (1 + max_cost_increase_rate_before_ask_for_help) *
-                                  each_min_cost_so_far[sample_idx])) {
-            // Set the current sample to be having good solution
-            is_good_solution[sample_idx] = 1;
-
-            // Remove the helpers for the current sample since it's successful.
-            // However, the removal not necessary in the algorithm.
-
-            // Look for any adjacent sample that needs help
-            for (int j = 0; j < adjacent_sample_indices.cols(); j++) {
-              bool this_adjacent_sample_needs_help = false;
-              bool current_sample_has_helped = false;
-
-              int adj_idx = adjacent_sample_indices(sample_idx, j);
-              if (adj_idx == -1) continue;
-
-              bool adj_has_bad_sol = is_good_solution[adj_idx] == 0;
-              if (adj_has_bad_sol) {
-                this_adjacent_sample_needs_help = true;
-
-                // The helper list
-                // (add if it doesn't exist in both sample_idx_waiting_to_help
-                //  and sample_idx_that_helped)
-                bool already_exist = false;
-                for (int i = 0; i < 4; i++) {
-                  already_exist =
-                      already_exist ||
-                      (sample_idx_waiting_to_help(adj_idx, i) == sample_idx);
-                }
-                for (int i = 0; i < 4; i++) {
-                  already_exist =
-                      already_exist ||
-                      (sample_idx_that_helped(adj_idx, i) == sample_idx);
-                  current_sample_has_helped =
-                      current_sample_has_helped ||
-                      (sample_idx_that_helped(adj_idx, i) == sample_idx);
-                }
-                if (!already_exist) {
-                  for (int i = 0; i < 4; i++) {
-                    if (sample_idx_waiting_to_help(adj_idx, i) == -1) {
-                      sample_idx_waiting_to_help(adj_idx, i) = sample_idx;
-                      break;
-                    }
-                  }
-                }
-              } // end if (adjacent sample has bad sol)
-
-              // Queue adjacent samples if
-              // 1. it's not in the awaiting_sample_idx
-              // 2. the adjacent sample needs help
-              // 3. the current sample hasn't helped the adjacent sample
-              if (this_adjacent_sample_needs_help &&
-                  current_sample_has_helped) {
-                auto it = find(awaiting_sample_idx.begin(),
-                               awaiting_sample_idx.end(), adj_idx);
-                if (it == awaiting_sample_idx.end()) {
-                  awaiting_sample_idx.push_back(adj_idx);
-                }
-                cout << "idx #" << sample_idx << " got good sol, and idx #"
-                     << adj_idx << " needs help, so add to queue\n";
-              }
-            } // end for (Look for any adjacent sample that needs help)
-
-          } else {
-            // Set the current sample to be having bad solution
-            is_good_solution[sample_idx] = 0;
-
-            // Look for any adjacent sample that can help
-            for (int j = 0; j < adjacent_sample_indices.cols(); j++) {
-              bool this_adjacent_sample_can_help = false;
-              bool this_adjacent_sample_is_waiting_to_help = false;
-
-              // if the adjacent sample has a good solution, then add it to the
-              // helper list
-              int adj_idx = adjacent_sample_indices(sample_idx, j);
-              if (adj_idx == -1) continue;
-
-              bool adj_has_good_sol = is_good_solution[adj_idx] == 1;
-              if (adj_has_good_sol) {
-                this_adjacent_sample_can_help = true;
-
-                // The helper list
-                // (add if it doesn't exist in both sample_idx_waiting_to_help
-                //  and sample_idx_that_helped)
-                bool already_exist = false;
-                for (int i = 0; i < 4; i++) {
-                  already_exist =
-                      already_exist ||
-                      (sample_idx_waiting_to_help(sample_idx, i) == adj_idx);
-                  this_adjacent_sample_is_waiting_to_help = already_exist;
-                }
-                for (int i = 0; i < 4; i++) {
-                  already_exist =
-                      already_exist ||
-                      (sample_idx_that_helped(sample_idx, i) == adj_idx);
-                }
-                if (!already_exist) {
-                  for (int i = 0; i < 4; i++) {
-                    if (sample_idx_waiting_to_help(sample_idx, i) == -1) {
-                      sample_idx_waiting_to_help(sample_idx, i) = adj_idx;
-                      break;
-                    }
-                  }
-                  this_adjacent_sample_is_waiting_to_help = true;
-                }
-              }
-
-              // Queue the current sample back if
-              // 1. the current sample is not queued yet
-              // 2. the adjacent sample can help
-              // 3. the adjacent sample is waiting to help current sample
-              if (!current_sample_is_queued && this_adjacent_sample_can_help &&
-                  this_adjacent_sample_is_waiting_to_help) {
-                awaiting_sample_idx.push_back(sample_idx);
-                current_sample_is_queued = true;
-                cout << "idx #" << sample_idx << " got bad sol, and idx #"
-                     << adj_idx << " can help, so add to queue\n";
-              }
-            } // end for (Look for any adjacent sample that can help)
-          } // end if current sample has good solution
         }
       }  // while(sample < N_sample)
     }  // end if-else (start_iterations_with_shrinking_stepsize)

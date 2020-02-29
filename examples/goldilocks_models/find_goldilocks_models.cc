@@ -1987,7 +1987,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         for (int sample_i = 0; sample_i < N_sample; sample_i++) {
           // print
           if (c_vec[sample_i](0) > each_min_cost_so_far[sample_i]) {
-            cout << "The cost of sample #" << sample_i << " went up by "
+            cout << "Cost #" << sample_i << " went up by "
                  << (c_vec[sample_i](0) - each_min_cost_so_far[sample_i]) /
                         each_min_cost_so_far[sample_i] * 100
                  << "%.\n";

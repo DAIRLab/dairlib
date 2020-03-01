@@ -184,7 +184,7 @@ void setRomDim(int* n_s, int* n_tau, int rom_option) {
     *n_s = 3;
     *n_tau = 2;
   } else {
-    DRAKE_DEMAND(false); // should never reach here
+    throw std::runtime_error("Should not reach here");
   }
 }
 void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
@@ -201,7 +201,7 @@ void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
     (*B_tau)(1, 0) = 1;
     (*B_tau)(2, 1) = 1;
   } else {
-    DRAKE_DEMAND(false); // should never reach here
+    throw std::runtime_error("Should not reach here");
   }
 }
 void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
@@ -233,7 +233,7 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
     theta_s(2 + 1 * n_feature_s) = 1;
     theta_s(3 + 2 * n_feature_s) = 1;
   } else {
-    DRAKE_DEMAND(false); // should never reach here
+    throw std::runtime_error("Should not reach here");
   }
 }
 
@@ -390,7 +390,7 @@ void extendModel(string dir, int iter, int n_feature_s,
   } else if (rom_option == 2) {
     rom_option = 3;
   } else {
-    DRAKE_DEMAND(false);
+    throw std::runtime_error("Should not reach here");
   }
 
   // update n_s, n_sDDot and n_tau
@@ -749,7 +749,8 @@ void calcWInTermsOfTheta(int sample, const string& dir,
   VectorXd qi(nw_vec[sample]);
   if (method_to_solve_system_of_equations == 0) {
     // Method 1: use optimization program to solve it??? ///////////////////////
-    DRAKE_DEMAND(false);  // not implemented yet
+    throw std::runtime_error(
+        "method_to_solve_system_of_equations = 0 is not implemented yet.");
   } else if (method_to_solve_system_of_equations == 1) {
     // Method 2: use schur complement (see notes) //////////////////////////////
     // This one requires the Hessian H to be pd.
@@ -1130,7 +1131,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
     stride_length_0 = 0.2;  //0.15
   } else {
-    DRAKE_DEMAND(false);
+    throw std::runtime_error("Should not reach here");
     delta_stride_length = 0;
     stride_length_0 = 0;
   }
@@ -1145,7 +1146,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       delta_ground_incline = 0.08;
     }
   } else {
-    DRAKE_DEMAND(false);
+    throw std::runtime_error("Should not reach here");
     delta_ground_incline = 0;
   }
   double duration = 0.4;
@@ -1822,7 +1823,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           int sample_success =
               (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
 
-          // Get initial guess from adjacent successful samples
+          // Get good initial guess from adjacent samples's solution
           RecordSolutionQualityAndQueueList(
               dir, prefix, sample_idx, each_min_cost_so_far,
               adjacent_sample_indices,

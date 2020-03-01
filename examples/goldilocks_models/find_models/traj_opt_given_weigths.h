@@ -101,7 +101,8 @@ void extractResult(VectorXd& w_sol,
                    bool is_add_tau_in_cost,
                    int sample_idx, int n_rerun, int rom_option,
                    int robot_option,
-                   vector<DirconKinematicDataSet<double>*> dataset_list);
+                   vector<DirconKinematicDataSet<double>*> dataset_list,
+                   bool is_print_for_debugging);
 void postProcessing(const VectorXd& w_sol,
                     GoldilocksModelTrajOpt& gm_traj_opt,
                     const MathematicalProgramResult& result,

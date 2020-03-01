@@ -162,7 +162,8 @@ void extractResult(VectorXd& w_sol,
                    int sample_idx, int n_rerun,
                    int rom_option,
                    int robot_option,
-                   vector<DirconKinematicDataSet<double>*> dataset_list) {
+                   vector<DirconKinematicDataSet<double>*> dataset_list,
+                   bool is_print_for_debugging) {
   //
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
@@ -234,6 +235,18 @@ void extractResult(VectorXd& w_sol,
   writeCSV(directory + prefix + string("xdot_cubic_spline.csv"),
            xdot_cubic_spline);
 
+  // Get the solution of all the decision variable
+  w_sol = result.GetSolution(gm_traj_opt.dircon->decision_variables());
+  writeCSV(directory + prefix + string("w.csv"), w_sol);
+  // if (result.is_success())
+  //   writeCSV(directory + prefix + string("w (success).csv"), w_sol);
+  if (is_print_for_debugging) {
+    for (int i = 0; i < w_sol.size(); i++) {
+      cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
+           << w_sol[i] << endl;
+    } cout << endl;
+  }
+
   // Store the time, state, and input at knot points
   VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);
   MatrixXd state_at_knots = gm_traj_opt.dircon->GetStateSamples(result);
@@ -245,10 +258,12 @@ void extractResult(VectorXd& w_sol,
   writeCSV(directory + prefix + string("time_at_knots.csv"), time_at_knots);
   writeCSV(directory + prefix + string("state_at_knots.csv"), state_at_knots);
   writeCSV(directory + prefix + string("input_at_knots.csv"), input_at_knots);
-  // cout << "time_at_knots = \n" << time_at_knots << "\n";
-  // cout << "state_at_knots = \n" << state_at_knots << "\n";
-  // cout << "state_at_knots.size() = " << state_at_knots.size() << endl;
-  // cout << "input_at_knots = \n" << input_at_knots << "\n";
+  if (is_print_for_debugging) {
+    cout << "time_at_knots = \n" << time_at_knots << "\n";
+    cout << "state_at_knots = \n" << state_at_knots << "\n";
+    //  cout << "state_at_knots.size() = " << state_at_knots.size() << endl;
+    cout << "input_at_knots = \n" << input_at_knots << "\n";
+  }
 
   // Also store lambda. We might need to look at it in the future!
   // (save it so we don't need to rerun)
@@ -259,18 +274,13 @@ void extractResult(VectorXd& w_sol,
   for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
     for (int index = 0; index < num_time_samples[mode]; index++) {
       auto lambdai = gm_traj_opt.dircon->force(mode, index);
-      // cout << result.GetSolution(lambdai).transpose() << endl;
       ofile << result.GetSolution(lambdai).transpose() << endl;
+      if (is_print_for_debugging) {
+        cout << result.GetSolution(lambdai).transpose() << endl;
+      }
     }
   }
   ofile.close();
-
-  // Get the solution of all the decision variable
-  w_sol = result.GetSolution(
-            gm_traj_opt.dircon->decision_variables());
-  writeCSV(directory + prefix + string("w.csv"), w_sol);
-  // if (result.is_success())
-  //   writeCSV(directory + prefix + string("w (success).csv"), w_sol);
 
   VectorXd c(1);
   c << result.get_optimal_cost();
@@ -278,7 +288,6 @@ void extractResult(VectorXd& w_sol,
   c_without_tau << c(0) - tau_cost;
   writeCSV(directory + prefix + string("c.csv"), c);
   writeCSV(directory + prefix + string("c_without_tau.csv"), c_without_tau);
-
 
   // Testing
   /*bool is_check_tau = true;
@@ -1053,8 +1062,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           int sample_idx, int n_rerun, int rom_option,
                           int robot_option) {
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(
-                               plant);
+  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> input_map = multibody::makeNameToActuatorsMap(plant);
   // for (auto const& element : pos_map)
   //   cout << element.first << " = " << element.second << endl;
@@ -1074,39 +1082,86 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // std::cout<<"n_u = "<<n_u<<"\n";
 
   const Body<double>& left_lower_leg = plant.GetBodyByName("left_lower_leg");
-  const Body<double>& right_lower_leg =
-    plant.GetBodyByName("right_lower_leg");
+  const Body<double>& right_lower_leg = plant.GetBodyByName("right_lower_leg");
 
   Vector3d pt;
   pt << 0, 0, -.5;
   bool isXZ = true;
   Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
   auto leftFootConstraint = DirconPositionData<double>(plant, left_lower_leg,
-                            pt, isXZ, ground_normal);
-  auto rightFootConstraint = DirconPositionData<double>(plant,
-                             right_lower_leg,
-                             pt, isXZ, ground_normal);
+                                                       pt, isXZ, ground_normal);
+  auto rightFootConstraint = DirconPositionData<double>(
+      plant, right_lower_leg, pt, isXZ, ground_normal);
 
   double mu = 1;
   leftFootConstraint.addFixedNormalFrictionConstraints(mu);
   rightFootConstraint.addFixedNormalFrictionConstraints(mu);
-  // std::cout<<leftFootConstraint.getLength()<<"\n"; //2 dim. I guess the contact point constraint in the x and z direction
 
   std::vector<DirconKinematicData<double>*> leftConstraints;
   leftConstraints.push_back(&leftFootConstraint);
-  auto leftDataSet = DirconKinematicDataSet<double>(plant, &leftConstraints);
+  auto ls_dataset = DirconKinematicDataSet<double>(plant, &leftConstraints);
 
   std::vector<DirconKinematicData<double>*> rightConstraints;
   rightConstraints.push_back(&rightFootConstraint);
-  auto rightDataSet = DirconKinematicDataSet<double>(plant,
-                      &rightConstraints);
+  auto rs_dataset = DirconKinematicDataSet<double>(plant, &rightConstraints);
 
-  auto leftOptions = DirconOptions(leftDataSet.countConstraints());
+  auto leftOptions = DirconOptions(ls_dataset.countConstraints(), plant);
   leftOptions.setConstraintRelative(0, true);
-  // std::cout<<"leftDataSet.countConstraints() = "<<leftDataSet.countConstraints()<<"\n";
-
-  auto rightOptions = DirconOptions(rightDataSet.countConstraints());
+  auto rightOptions = DirconOptions(rs_dataset.countConstraints(), plant);
   rightOptions.setConstraintRelative(0, true);
+
+  std::vector<DirconOptions> options_list;
+  options_list.push_back(leftOptions);
+  options_list.push_back(rightOptions);
+
+  // Constraint scaling
+  for (int i = 0; i < 2; i++) {
+    // before adding rom constraint
+    /*// Dynamic constraints
+    options_list[i].setDynConstraintScaling(1.0 / 40.0, 0, 4);
+    options_list[i].setDynConstraintScaling(1.0 / 60.0, 5, 5);
+    options_list[i].setDynConstraintScaling(1.0 / 40.0, 6, 6);
+    options_list[i].setDynConstraintScaling(1.0 / 60.0, 7, 7);
+    options_list[i].setDynConstraintScaling(1.0 / 40.0, 8, 8);
+    options_list[i].setDynConstraintScaling(1.0 / 100.0, 9, 9);
+    options_list[i].setDynConstraintScaling(1.0 / 1000.0, 10, 10);
+    options_list[i].setDynConstraintScaling(1.0 / 300.0, 11, 11);
+    options_list[i].setDynConstraintScaling(1.0 / 3000.0, 12, 12);
+    options_list[i].setDynConstraintScaling(1.0 / 400.0, 13, 13);
+    // Kinematic constraints
+    options_list[i].setKinConstraintScaling(1.0 / 1000.0, 0, 0);
+    options_list[i].setKinConstraintScaling(1.0 / 50.0, 1, 1);
+    // Impact constraints
+    options_list[i].setImpConstraintScaling(1.0 / 20.0, 0, 1);
+    options_list[i].setImpConstraintScaling(1.0 / 5.0, 2, 2);
+    options_list[i].setImpConstraintScaling(1.0 / 3.0, 3, 3);
+    options_list[i].setImpConstraintScaling(1.0 / 5.0, 4, 4);
+    options_list[i].setImpConstraintScaling(1.0 / 1.0, 5, 5);
+    options_list[i].setImpConstraintScaling(1.0 / 3.0, 6, 6);*/
+
+    // after adding rom constraint
+    // Dynamic constraints
+    options_list[i].setDynConstraintScaling(1.0 / 40.0, 0, 3);
+    options_list[i].setDynConstraintScaling(1.0 / 60.0, 4, 5);
+    options_list[i].setDynConstraintScaling(1.0 / 200.0, 6, 6); // end of pos
+    options_list[i].setDynConstraintScaling(1.0 / 180.0, 7, 7);
+    options_list[i].setDynConstraintScaling(1.0 / 120.0, 8, 8);
+    options_list[i].setDynConstraintScaling(1.0 / 300.0, 9, 9);
+    options_list[i].setDynConstraintScaling(1.0 / 1000.0, 10, 10);
+    options_list[i].setDynConstraintScaling(1.0 / 1500.0, 11, 11);
+    options_list[i].setDynConstraintScaling(1.0 / 3000.0, 12, 12);
+    options_list[i].setDynConstraintScaling(1.0 / 2800.0, 13, 13);
+    // Kinematic constraints
+    options_list[i].setKinConstraintScaling(1.0 / 1000.0, 0, 0);
+    options_list[i].setKinConstraintScaling(1.0 / 25.0, 1, 1);
+    // Impact constraints
+    options_list[i].setImpConstraintScaling(1.0 / 20.0, 0, 1);
+    options_list[i].setImpConstraintScaling(1.0 / 5.0, 2, 2);
+    options_list[i].setImpConstraintScaling(1.0 / 3.0, 3, 3);
+    options_list[i].setImpConstraintScaling(1.8 / 5.0, 4, 4);
+    options_list[i].setImpConstraintScaling(1.8 / 1.0, 5, 5);
+    options_list[i].setImpConstraintScaling(1.8 / 3.0, 6, 6);
+  }
 
   // Stated in the MultipleShooting class:
   // This class assumes that there are a fixed number (N) time steps/samples,
@@ -1129,21 +1184,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // std::cout<<"N = "<<N<<"\n";
 
   std::vector<DirconKinematicDataSet<double>*> dataset_list;
-  dataset_list.push_back(&leftDataSet);
-  dataset_list.push_back(&rightDataSet);
-
-  std::vector<DirconOptions> options_list;
-  options_list.push_back(leftOptions);
-  options_list.push_back(rightOptions);
-
-  // haven't done any scaling yet. Below is just a guess
-  // double omega_scale = 5;  // 10
-  // double input_scale = 5;
-  // double force_scale = 200;  // 400
-  // double time_scale = 0.01;
-  // double quaternion_scale = 1;
-  // double trans_pos_scale = 1;
-  // double rot_pos_scale = 1;
+  dataset_list.push_back(&ls_dataset);
+  dataset_list.push_back(&rs_dataset);
 
   auto trajopt = std::make_unique<HybridDircon<double>>(plant,
                  num_time_samples, min_dt, max_dt, dataset_list, options_list);
@@ -1152,8 +1194,9 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // However, we need it now, since we add the running cost by hand
   trajopt->AddDurationBounds(duration, duration);
 
-  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                          "Print file", "snopt_find_model.out");
+//  cout << "WARNING: you are printing snopt log.\n";
+//  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+//                           "../snopt_sample#"+to_string(sample_idx)+".out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -1167,14 +1210,13 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
   //                          "Major feasibility tolerance", 1e-5);  // target complementarity gap
 
-
   // Periodicity constraints
   auto x0 = trajopt->initial_state();
   // auto xf = trajopt->final_state();
-  auto xf = trajopt->state_vars_by_mode(num_time_samples.size() - 1,
-                                        num_time_samples[num_time_samples.size() - 1] - 1);
+  auto xf = trajopt->state_vars_by_mode(
+      num_time_samples.size() - 1,
+      num_time_samples[num_time_samples.size() - 1] - 1);
 
-  //Careful! if you have a string typo, the code still runs and the mapped value will be 0.
   // trajopt->AddLinearConstraint(x0(pos_map.at("planar_z")) == xf(
   //                                pos_map.at("planar_z")));
   trajopt->AddLinearConstraint(x0(pos_map.at("planar_roty")) == xf(
@@ -1245,6 +1287,38 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   trajopt->AddLinearConstraint(x0(pos_map.at("left_hip_pin")) <=
                                x0(pos_map.at("right_hip_pin")));
 
+  // testing -- swing foot height constraint
+  Vector3d z_hat(0, 0, 1);
+  Eigen::Quaterniond q;
+  q.setFromTwoVectors(z_hat, ground_normal);
+  Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
+  auto right_foot_constraint_z = std::make_shared<OneDimBodyPosConstraint>(
+      &plant, "right_lower_leg", pt, T_ground_incline, 2,
+      0 , std::numeric_limits<double>::infinity());
+  for (int index = 1; index < num_time_samples[0] - 1; index++) {
+    auto x_i = trajopt->state(index);
+    trajopt->AddConstraint(right_foot_constraint_z, x_i.head(n_q));
+  }
+
+  // Scale decision variable
+  // time
+  trajopt->ScaleTimeVariables(0.04);
+  // state
+//  trajopt->ScaleStateVariables(10, n_q, n_q + n_v - 1);
+  // input
+//  trajopt->ScaleInputVariables(10, 0, 3);
+  // force
+  trajopt->ScaleForceVariables(
+      50, 0, 0, ls_dataset.countConstraintsWithoutSkipping() - 1);
+  trajopt->ScaleForceVariables(
+      50, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
+  // impulse
+//  trajopt->ScaleImpulseVariables(
+//      10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
+  // Constraint slack
+//  trajopt->ScaleKinConstraintSlackVariables(50, 0, 0, 5);
+//  trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
+
   // Add cost
   MatrixXd R = MatrixXd::Identity(n_u, n_u);
   MatrixXd Q = MatrixXd::Zero(n_x, n_x);
@@ -1299,6 +1373,10 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // initial guess if the file exists
   if (!init_file.empty()) {
     setInitialGuessFromFile(directory, init_file, gm_traj_opt);
+  } else {
+    // Add random initial guess first (the seed for RNG is fixed)
+    gm_traj_opt.dircon->SetInitialGuessForAllVariables(
+        VectorXd::Random(gm_traj_opt.dircon->decision_variables().size()));
   }
 
   // Testing
@@ -1312,6 +1390,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
 
+  bool is_print_for_debugging = false;
   VectorXd w_sol;
   extractResult(w_sol, gm_traj_opt, result, elapsed,
                 num_time_samples, N,
@@ -1327,7 +1406,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                 sample_idx, n_rerun,
                 rom_option,
                 robot_option,
-                dataset_list);
+                dataset_list, is_print_for_debugging);
   postProcessing(w_sol, gm_traj_opt, result, elapsed,
                  num_time_samples, N,
                  plant, plant_autoDiff,
@@ -2001,6 +2080,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
 
+  bool is_print_for_debugging = false;
   VectorXd w_sol;
   extractResult(w_sol, gm_traj_opt, result, elapsed,
                 num_time_samples, N,
@@ -2016,7 +2096,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                 sample_idx, n_rerun,
                 rom_option,
                 robot_option,
-                dataset_list);
+                dataset_list, is_print_for_debugging);
   postProcessing(w_sol, gm_traj_opt, result, elapsed,
                  num_time_samples, N,
                  plant, plant_autoDiff,
@@ -2032,31 +2112,11 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                  rom_option,
                  robot_option);
 
-  bool is_print_for_debugging = false;
   if (is_print_for_debugging) {
-    // Print the solution
-//    VectorXd z = result.GetSolution(gm_traj_opt.dircon->decision_variables());
-//    for (int i = 0; i < z.size(); i++) {
-//      cout << i << ": " << gm_traj_opt.dircon->decision_variables()[i] << ", "
-//           << z[i] << endl;
-//    }
-//    cout << endl;
-
     // Extract result for printing
     VectorXd time_at_knots = gm_traj_opt.dircon->GetSampleTimes(result);
     MatrixXd state_at_knots = gm_traj_opt.dircon->GetStateSamples(result);
     MatrixXd input_at_knots = gm_traj_opt.dircon->GetInputSamples(result);
-
-    cout << "time_at_knots = \n" << time_at_knots << "\n";
-    cout << "state_at_knots = \n" << state_at_knots << "\n";
-    cout << "input_at_knots = \n" << input_at_knots << "\n";
-    cout << "lambda_sol = \n";
-    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
-      for (int index = 0; index < num_time_samples[mode]; index++) {
-        auto lambdai = gm_traj_opt.dircon->force(mode, index);
-        cout << result.GetSolution(lambdai).transpose() << endl;
-      }
-    }
 
     // Print weight
     cout << "\nw_Q = " << w_Q << endl;

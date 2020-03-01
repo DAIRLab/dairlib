@@ -58,8 +58,13 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     if (n_sDDot == 0) {
       // no constraint, so we don't need to scale
     } else if (robot_option == 0) {
-      // no need to scale for five-link robot case, but can add it.
-      // TODO: add constraint scaling for five link robot
+      if (rom_option == 0) {
+        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 3500.0));
+        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 600.0));
+      } else {
+        // The scaling of others hasn't tuned yet
+        DRAKE_DEMAND(false);
+      }
     } else if (robot_option == 1) {
       if (rom_option == 0) {
         constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 26000.0));

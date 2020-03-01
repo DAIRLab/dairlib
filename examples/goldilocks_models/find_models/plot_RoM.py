@@ -12,6 +12,7 @@ iteration_end = 35
 iteration_spacing = 1
 name_idx = 0
 batch = 0
+robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
 if len(sys.argv) >= 2:
     iteration_start = int(sys.argv[1])
 if len(sys.argv) >= 3:
@@ -22,9 +23,10 @@ if len(sys.argv) >= 5:
     name_idx = int(sys.argv[4])
 if len(sys.argv) >= 6:
     batch = int(sys.argv[5])
+if len(sys.argv) >= 7:
+    robot_option = int(sys.argv[6])
 
 
-robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
 # directory = 'data/robot_' + str(robot_option) + '/'
 directory = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/'
 

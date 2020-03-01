@@ -159,8 +159,8 @@ void createMBP(MultibodyPlant<double>* plant, int robot_option) {
 }
 void setCostWeight(double* Q, double* R, int robot_option) {
   if (robot_option == 0) {
-    *Q = 10;
-    *R = 10;
+    *Q = 1;
+    *R = 0.1;
   } else if (robot_option == 1) {
     *Q = 5 * 0.1;
     *R = 0.1 * 0.01;
@@ -1766,12 +1766,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
           threads[available_thread_idx.front()] = new std::thread(trajOptGivenWeights,
               std::ref(plant), std::ref(plant_autoDiff),
               n_s, n_sDDot, n_tau,
-              n_feature_s, n_feature_sDDot, B_tau,
+              n_feature_s, n_feature_sDDot, std::ref(B_tau),
               std::ref(theta_s), std::ref(theta_sDDot),
               stride_length, ground_incline,
               duration, n_node, max_inner_iter_pass_in,
               FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
-              dir, init_file_pass_in, prefix,
+              std::ref(dir), init_file_pass_in, prefix,
               Q, R,
               eps_regularization,
               is_get_nominal,

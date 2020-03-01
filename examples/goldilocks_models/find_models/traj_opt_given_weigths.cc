@@ -55,8 +55,7 @@ using dairlib::systems::trajectory_optimization::HybridDircon;
 
 // using Isometry3 = Eigen::Transform<Scalar, 3, Eigen::Isometry>
 
-namespace dairlib {
-namespace goldilocks_models {
+namespace dairlib::goldilocks_models {
 
 void addRegularization(bool is_get_nominal, double eps_reg,
                        GoldilocksModelTrajOpt& gm_traj_opt) {
@@ -74,8 +73,8 @@ void addRegularization(bool is_get_nominal, double eps_reg,
   }
 }
 
-void setInitialGuessFromFile(string directory,
-                             string init_file,
+void setInitialGuessFromFile(const string& directory,
+                             const string& init_file,
                              GoldilocksModelTrajOpt& gm_traj_opt) {
   VectorXd w0 = readCSV(directory + init_file).col(0);
   int n_dec = gm_traj_opt.dircon->decision_variables().rows();
@@ -147,12 +146,12 @@ void extractResult(VectorXd& w_sol,
                    int n_s, int n_sDDot, int n_tau,
                    int n_feature_s,
                    int n_feature_sDDot,
-                   MatrixXd B_tau,
+                   const MatrixXd& B_tau,
                    const VectorXd & theta_s, const VectorXd & theta_sDDot,
                    double stride_length, double ground_incline,
                    double duration, int max_iter,
-                   string directory,
-                   string init_file, string prefix,
+                   const string& directory,
+                   const string& init_file, const string& prefix,
                    double Q_double, double R_double,
                    double eps_reg,
                    bool is_get_nominal,
@@ -165,8 +164,8 @@ void extractResult(VectorXd& w_sol,
                    vector<DirconKinematicDataSet<double>*> dataset_list,
                    bool is_print_for_debugging) {
   //
-  int n_q = plant.num_positions();
-  int n_v = plant.num_velocities();
+  // int n_q = plant.num_positions();
+  // int n_v = plant.num_velocities();
   // int n_x = n_q + n_v;
   // int n_u = plant.num_actuators();
 
@@ -176,7 +175,7 @@ void extractResult(VectorXd& w_sol,
   if (is_add_tau_in_cost) {
     // Way 1
     for (auto const & binding : gm_traj_opt.tau_cost_bindings) {
-      auto tau_i = binding.variables();
+      const auto& tau_i = binding.variables();
       VectorXd tau_i_double = result.GetSolution(tau_i);
       VectorXd y_val(1);
       binding.evaluator()->Eval(tau_i_double, &y_val);
@@ -360,12 +359,13 @@ void postProcessing(const VectorXd& w_sol,
                     int n_s, int n_sDDot, int n_tau,
                     int n_feature_s,
                     int n_feature_sDDot,
-                    MatrixXd B_tau,
+                    const MatrixXd& B_tau,
                     const VectorXd & theta_s, const VectorXd & theta_sDDot,
                     double stride_length, double ground_incline,
                     double duration, int max_iter,
-                    string directory,
-                    string init_file, string prefix,
+                    const string& directory,
+                    const string& init_file,
+                    const string& prefix,
                     double Q_double, double R_double,
                     double eps_reg,
                     bool is_get_nominal,
@@ -466,9 +466,9 @@ void postProcessing(const VectorXd& w_sol,
     VectorXd y, lb, ub, b;
     // cout << "LinearizeConstraints...\n";
     solvers::LinearizeConstraints(
-      *gm_traj_opt.dircon.get(), w_sol, &y, &A, &lb, &ub);
+      *gm_traj_opt.dircon, w_sol, &y, &A, &lb, &ub);
     // cout << "SecondOrderCost...\n";
-    solvers::SecondOrderCost(*gm_traj_opt.dircon.get(), w_sol, &H, &b);
+    solvers::SecondOrderCost(*gm_traj_opt.dircon, w_sol, &H, &b);
 
     // Get matrix B (~get feature vectors)
     // cout << "\nGetting B.\n";
@@ -478,7 +478,7 @@ void postProcessing(const VectorXd& w_sol,
     MatrixXd B = MatrixXd::Zero(A.rows(), n_theta);
     // Get the row index of B matrix where dynamics constraint starts
     VectorXd ind_head = solvers::GetConstraintRows(
-                          *gm_traj_opt.dircon.get(),
+                          *gm_traj_opt.dircon,
                           gm_traj_opt.dynamics_constraint_at_head_bindings[0]);
     // cout << "ind_head = " << ind_head(0) << endl;
     // VectorXd ind_tail = solvers::GetConstraintRows(
@@ -1047,12 +1047,12 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           int n_s, int n_sDDot, int n_tau,
                           int n_feature_s,
                           int n_feature_sDDot,
-                          MatrixXd B_tau,
+                          const MatrixXd& B_tau,
                           const VectorXd & theta_s, const VectorXd & theta_sDDot,
                           double stride_length, double ground_incline,
                           double duration, int n_node, int max_iter,
-                          string directory,
-                          string init_file, string prefix,
+                          const string& directory,
+                          const string& init_file, const string& prefix,
                           double Q_double, double R_double,
                           double eps_reg,
                           bool is_get_nominal,
@@ -1178,8 +1178,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   max_dt.push_back(.3);
 
   int N = 0;
-  for (uint i = 0; i < num_time_samples.size(); i++)
-    N += num_time_samples[i];
+  for (int num_time_sample : num_time_samples)
+    N += num_time_sample;
   N -= num_time_samples.size() - 1; //Overlaps between modes
   // std::cout<<"N = "<<N<<"\n";
 
@@ -1320,12 +1320,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
 //  trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
 
   // Add cost
-  MatrixXd R = MatrixXd::Identity(n_u, n_u);
-  MatrixXd Q = MatrixXd::Zero(n_x, n_x);
-  MatrixXd I_x = MatrixXd::Identity(n_x, n_x);
-  for (int i = 0; i < n_v; i++) {
-    Q(i + n_q, i + n_q) = Q_double;
-  }
+  MatrixXd R = R_double * MatrixXd::Identity(n_u, n_u);
+  MatrixXd Q = Q_double * MatrixXd::Identity(n_v, n_v);
   // Don't use AddRunningCost, cause it makes cost Hessian to be indefinite
   // I'll fix the timestep and add cost myself
   /*auto u = trajopt->input();
@@ -1333,20 +1329,21 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   trajopt->AddRunningCost(x.transpose()*Q * x);*/
   // Add running cost by hand (Trapezoidal integration):
   double timestep = duration / (N - 1);
-  trajopt->AddQuadraticCost(Q * timestep / 2, VectorXd::Zero(n_x), x0);
+  trajopt->AddQuadraticCost(Q * timestep / 2, VectorXd::Zero(n_v), x0.tail(n_v));
   trajopt->AddQuadraticCost(R * timestep / 2, VectorXd::Zero(n_u), u0);
   for (int i = 1; i <= N - 2; i++) {
     auto ui = trajopt->input(i);
     auto xi = trajopt->state(i);
-    trajopt->AddQuadraticCost(Q * timestep, VectorXd::Zero(n_x), xi);
+    trajopt->AddQuadraticCost(Q * timestep, VectorXd::Zero(n_v), xi.tail(n_v));
     trajopt->AddQuadraticCost(R * timestep, VectorXd::Zero(n_u), ui);
   }
-  trajopt->AddQuadraticCost(Q * timestep / 2, VectorXd::Zero(n_x), xf);
+  trajopt->AddQuadraticCost(Q * timestep / 2, VectorXd::Zero(n_v), xf.tail(n_v));
   trajopt->AddQuadraticCost(R * timestep / 2, VectorXd::Zero(n_u), uf);
   // Add regularization term here so that hessian is pd (for outer loop), so
   // that we can use schur complement method
   // Actually, Hessian still has zero eigen value because of h_var and z_var
-  /*trajopt->AddQuadraticCost(eps_reg*I_x*timestep/2,VectorXd::Zero(n_x),x0);
+  /*MatrixXd I_x = MatrixXd::Identity(n_x, n_x);
+  trajopt->AddQuadraticCost(eps_reg*I_x*timestep/2,VectorXd::Zero(n_x),x0);
   for(int i=1; i<=N-2; i++){
     auto xi = trajopt->state(i);
     trajopt->AddQuadraticCost(eps_reg*I_x*timestep,VectorXd::Zero(n_x),xi);
@@ -1429,14 +1426,14 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    int n_s, int n_sDDot, int n_tau,
                    int n_feature_s,
                    int n_feature_sDDot,
-                   MatrixXd B_tau,
+                   const MatrixXd& B_tau,
                    const VectorXd & theta_s, const VectorXd & theta_sDDot,
                    double stride_length, double ground_incline,
                    double duration, int n_node, int max_iter,
                    double major_optimality_tol,
                    double major_feasibility_tol,
-                   string directory,
-                   string init_file, string prefix,
+                   const string& directory,
+                   const string& init_file, const string& prefix,
                    double Q_double, double R_double,
                    double eps_reg,
                    bool is_get_nominal,
@@ -1520,10 +1517,10 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   vector<string> sym_joint_names{"hip_pitch", "knee", "ankle_joint", "toe"};
   vector<string> joint_names{};
   vector<string> motor_names{};
-  for (auto l_r_pair : l_r_pairs) {
-    for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
-      joint_names.push_back(asy_joint_names[i] + l_r_pair.first);
-      motor_names.push_back(asy_joint_names[i] + l_r_pair.first + "_motor");
+  for (const auto& l_r_pair : l_r_pairs) {
+    for (const auto & asy_joint_name : asy_joint_names) {
+      joint_names.push_back(asy_joint_name + l_r_pair.first);
+      motor_names.push_back(asy_joint_name + l_r_pair.first + "_motor");
     }
     for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
       joint_names.push_back(sym_joint_names[i] + l_r_pair.first);
@@ -1771,20 +1768,20 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 
   // The legs joint positions/velocities/torque should be mirrored between legs
   // (notice that hip yaw and roll should be asymmetric instead of symmetric.)
-  for (auto l_r_pair : l_r_pairs) {
-    for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
+  for (const auto& l_r_pair : l_r_pairs) {
+    for (const auto & asy_joint_name : asy_joint_names) {
       // positions
       trajopt->AddLinearConstraint(
-          x0(pos_map.at(asy_joint_names[i] + l_r_pair.first)) ==
-              -xf(pos_map.at(asy_joint_names[i] + l_r_pair.second)));
+          x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
+              -xf(pos_map.at(asy_joint_name + l_r_pair.second)));
       // velocities
       trajopt->AddLinearConstraint(
-          x0(n_q + vel_map.at(asy_joint_names[i] + l_r_pair.first + "dot")) ==
-              -xf(n_q + vel_map.at(asy_joint_names[i] + l_r_pair.second + "dot")));
+          x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) ==
+              -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
       // inputs
       trajopt->AddLinearConstraint(
-          u0(act_map.at(asy_joint_names[i] + l_r_pair.first + "_motor")) ==
-              -uf(act_map.at(asy_joint_names[i] + l_r_pair.second + "_motor")));
+          u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
+              -uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
     }
     for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
       // positions
@@ -2231,13 +2228,13 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          int n_s, int n_sDDot, int n_tau,
                          int n_feature_s,
                          int n_feature_sDDot,
-                         MatrixXd B_tau,
+                         const MatrixXd& B_tau,
                          const VectorXd & theta_s, const VectorXd & theta_sDDot,
                          double stride_length, double ground_incline,
                          double duration, int n_node, int max_iter,
                          double major_optimality_tol,
                          double major_feasibility_tol,
-                         string directory,
+                         const string& directory,
                          string init_file, string prefix,
                          /*vector<VectorXd> * w_sol_vec,
                          vector<MatrixXd> * A_vec, vector<MatrixXd> * H_vec,
@@ -2285,6 +2282,5 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
   writeCSV(directory + prefix + string("thread_finished.csv"), thread_finished);
 }
 
-}  // namespace goldilocks_models
-}  // namespace dairlib
+}  // namespace dairlib::goldilocks_models
 

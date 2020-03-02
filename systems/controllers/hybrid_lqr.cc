@@ -183,6 +183,8 @@ HybridLQRController::HybridLQRController(
       } else {
         s_jump[mode] = calcJumpMap(S_pre, mode, tf);
       }
+      std::cout << "S_pre map" << S_pre << std::endl;
+      std::cout << "S_after map" << s_jump[mode] << std::endl;
       Eigen::LLT<MatrixXd> lltOfS(s_jump[mode]);  // reconstruct L_f
       L_f = lltOfS.matrixL();
     }
@@ -201,13 +203,14 @@ HybridLQRController::HybridLQRController(
     //        state_traj.end_time();
     for (size_t mode = 0; mode < contact_info.size(); ++mode) {
       LcmTrajectory::Trajectory traj_block;
-      traj_block.traj_name = "l_traj" + std::to_string(contact_info.size() - 1 -
-          mode);
+      traj_block.traj_name =
+          "l_traj" + std::to_string(contact_info.size() - 1 - mode);
       //      traj_block.time_vector =
       //          VectorXd::LinSpaced(1000, state_trajs_[mode]->start_time(),
       //                              state_trajs_[mode]->end_time());
-//      traj_block.time_vector = VectorXd::LinSpaced(
-//          1000, impact_times_rev_[2 * mode], impact_times_rev_[2 * mode + 1]);
+      //      traj_block.time_vector = VectorXd::LinSpaced(
+      //          1000, impact_times_rev_[2 * mode], impact_times_rev_[2 * mode
+      //          + 1]);
       traj_block.time_vector = VectorXd::LinSpaced(
           1000, l_trajs_[mode]->start_time(), l_trajs_[mode]->end_time());
       traj_block.datapoints =
@@ -219,13 +222,14 @@ HybridLQRController::HybridLQRController(
       l_trajectories.push_back(traj_block);
       trajectory_names.push_back(traj_block.traj_name);
     }
-    if(using_min_coords_){
-      LcmTrajectory saved_traj(l_trajectories, trajectory_names, "L_traj",
+    if (using_min_coords_) {
+      LcmTrajectory saved_traj(
+          l_trajectories, trajectory_names, "L_traj",
           "Square root of the time varying cost to go with min_coords");
       saved_traj.writeToFile("../projects/hybrid_lqr/saved_trajs/L_traj_min");
-    }else{
+    } else {
       LcmTrajectory saved_traj(l_trajectories, trajectory_names, "L_traj",
-          "Square root of the time varying cost to go");
+                               "Square root of the time varying cost to go");
       saved_traj.writeToFile("../projects/hybrid_lqr/saved_trajs/L_traj");
     }
   }
@@ -370,28 +374,38 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
   // Now calculate H
   MatrixXd R = MatrixXd::Zero(n_x_, n_x_);
   calcLinearResetMap(t, contact_mode, &R);
+  VectorXd dG(n_x_);
 
+  dG << J_pre.row(1).transpose(), VectorXd::Zero(n_q_);  // dphi/dq, dphi/dqdot
   VectorXd J_delta = R * xdot_pre;
-  double J_g = J_pre.row(1) * xdot_pre.head(n_q_);
+  double J_g = (J_pre.row(1) * xdot_pre.head(n_q_));
+
   MatrixXd H = MatrixXd::Zero(n_x_, n_x_);
   MatrixXd I = MatrixXd::Identity(S_pre.rows(), S_pre.cols());
 
-  VectorXd dG(n_x_);
-  dG << J_pre.row(1).transpose(), VectorXd::Zero(n_q_);  // dphi/dq, dphi/dqdot
-  //  cout << "xdot post: " << xdot_post << endl;
-  //  cout << "xdot pre: " << xdot_pre << endl;
-  //  cout << "J_delta: " << J_delta << endl;
-  //  cout << "J_g: " << J_g << endl;
-  //  cout << "dG: " << dG << endl;
+  cout << "xdot post: " << xdot_post << endl;
+  cout << "xdot pre: " << xdot_pre << endl;
+  cout << "J_delta: " << J_delta << endl;
+  cout << "J: " << J_pre << endl;
+  cout << "dG: " << dG << endl;
+  std::cout << "Additional term: "
+            << ((xdot_post - xdot_pre - J_delta) / J_g) * dG.transpose()
+            << std::endl;
+  std::cout << "R: " << R << std::endl;
   H << (R + ((xdot_post - xdot_pre - J_delta) / J_g) * dG.transpose());
   // Because we are working backwards, S(t,j) = (I + H(j)'*S(t,j+1)*(I + H(j))
   // which is what we want
   MatrixXd S_post;
   if (using_min_coords_) {
     MatrixXd P = calcMinimalCoordBasis(getReverseTime(t), 2 - contact_mode);
-    MatrixXd H_bar = P * H * P.transpose();  // H functions in the same
+    //    MatrixXd H_bar = P * H * P.transpose();  // H functions in the same
+    MatrixXd S_pre_max = P.transpose() * S_pre * P;  // H functions in the
+    // same
     // state-space as R
-    S_post = (I + H_bar.transpose()) * S_pre * (I + H_bar);
+    S_post = (I + H).transpose()
+        * S_pre_max * (I + H);
+    P = calcMinimalCoordBasis(getReverseTime(t), 2 - (contact_mode + 1));
+    S_post = P * S_post * P.transpose();
   } else {
     S_post = (I + H).transpose() * S_pre * (I + H);
   }
@@ -404,15 +418,20 @@ MatrixXd HybridLQRController::calcJumpMapNaive(const MatrixXd& S_pre,
                                                int contact_mode, double t) {
   MatrixXd R(n_x_, n_x_);
   calcLinearResetMap(t, contact_mode, &R);
-  MatrixXd I = MatrixXd::Identity(S_pre.rows(), S_pre.cols());
+  //  std::cout << "R: " << R << std::endl;
+  MatrixXd I = MatrixXd::Identity(n_x_, n_x_);
 
   MatrixXd S_post;
   if (using_min_coords_) {
     MatrixXd P = calcMinimalCoordBasis(getReverseTime(t), 2 - contact_mode);
-    MatrixXd R_bar = P * R * P.transpose();
-    S_post = (I + R_bar.transpose()) * S_pre * (I + R_bar);
+    MatrixXd S_pre_max = P.transpose() * S_pre * P;
+    //    MatrixXd R_bar = P * R * P.transpose();
+    //    S_post = (I + R_bar.transpose()) * S_pre * (I + R_bar);
+    S_post = (I + R).transpose() * S_pre_max * (I + R);
+    P = calcMinimalCoordBasis(getReverseTime(t), 2 - (contact_mode + 1));
+    S_post = P * S_post * P.transpose();
   } else {
-    S_post = (I + R.transpose()) * S_pre * (I + R);
+    S_post = (I + R).transpose() * S_pre * (I + R);
   }
   // This only holds if we work backwards
   return S_post;
@@ -454,13 +473,14 @@ void HybridLQRController::calcLinearResetMap(double t, int contact_mode,
       -M_inv * J.transpose() * (J * M_inv * J.transpose()).inverse() * J;
   MatrixX<AutoDiffXd> delta = R_non_linear * x_autodiff.tail(n_v_);
   *R = MatrixXd::Zero(n_x_, n_x_);
-  MatrixXd R_linear = autoDiffToGradientMatrix(delta).block(0, 0, n_v_, n_v_);
+  MatrixXd R_linear = autoDiffToGradientMatrix(delta).block(0, 0, n_v_, n_x_);
   R->block(0, 0, n_q_, n_q_) = MatrixXd::Identity(n_q_, n_q_);
   //  R->block(n_q_, n_q_, n_q_, n_q_) = autoDiffToValueMatrix(R_non_linear);
-  R->block(n_q_, n_q_, n_q_, n_q_) = R_linear;
+  R->block(n_q_, 0, n_v_, n_x_) = R_linear;
+  *R = *R - MatrixXd::Identity(n_x_, n_x_);
 
-  AutoDiffVecXd C(n_v_);
-  plant_ad_.CalcBiasTerm(*context, &C);
+  //  AutoDiffVecXd C(n_v_);
+  //  plant_ad_.CalcBiasTerm(*context, &C);
   //  std::cout << "M: " << M << std::endl;
   //  std::cout << "J: " << J << std::endl;
   //  std::cout << "B: " << plant_.MakeActuationMatrix() << std::endl;

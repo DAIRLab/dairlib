@@ -559,21 +559,21 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   //  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_y")));
 
   // Knee Angles
-  trajopt->AddBoundingBoxConstraint(-0.85, -0.75, x0(pos_map.at("knee_left")));
-  trajopt->AddBoundingBoxConstraint(-0.85, -0.75, x0(pos_map.at("knee_right")));
+//  trajopt->AddBoundingBoxConstraint(-0.85, -0.75, x0(pos_map.at("knee_left")));
+//  trajopt->AddBoundingBoxConstraint(-0.85, -0.75, x0(pos_map.at("knee_right")));
   // Hip orientations
-  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
-                                    x0(pos_map.at("hip_roll_left")));
-  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
-                                    x0(pos_map.at("hip_roll_right")));
+//  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
+//                                    x0(pos_map.at("hip_roll_left")));
+//  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
+//                                    x0(pos_map.at("hip_roll_right")));
   //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
   //                                    xf(pos_map.at("hip_roll_left")));
   //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
   //                                    xf(pos_map.at("hip_roll_right")));
-  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
-                                    x0(pos_map.at("hip_yaw_left")));
-  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
-                                    x0(pos_map.at("hip_yaw_right")));
+//  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
+//                                    x0(pos_map.at("hip_yaw_left")));
+//  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
+//                                    x0(pos_map.at("hip_yaw_right")));
   //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
   //                                    xf(pos_map.at("hip_yaw_left")));
   //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,

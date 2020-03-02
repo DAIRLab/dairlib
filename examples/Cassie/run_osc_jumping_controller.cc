@@ -6,7 +6,11 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/osc_jump/com_traj_generator.h"
+#include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
+#include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "examples/Cassie/simulator_drift.h"
+#include "lcm/lcm_trajectory.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -38,14 +42,17 @@ using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
-
+using drake::trajectories::PiecewisePolynomial;
+using examples::JumpingEventFsm;
+using examples::Cassie::osc_jump::COMTrajGenerator;
+using examples::Cassie::osc_jump::FlightFootTrajGenerator;
 using multibody::GetBodyIndexFromName;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
-DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
+DEFINE_double(publish_rate, 1000.0, "Target publish rate for OSC");
 
 DEFINE_string(channel_x, "CASSIE_STATE",
               "The name of the channel which receives state");
@@ -58,6 +65,7 @@ DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
+DEFINE_string(traj_name, "", "File to load saved trajectories from");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -114,9 +122,46 @@ int DoMain(int argc, char* argv[]) {
   // Note that we didn't add drift to yaw angle here because it requires
   // changing SimulatorDrift.
 
+  // Get trajectory from optimization
+  const LcmTrajectory& loaded_traj =
+      LcmTrajectory("examples/jumping/saved_trajs/" + FLAGS_traj_name);
 
+  const LcmTrajectory::Trajectory& com_traj =
+      loaded_traj.getTrajectory("center_of_mass_trajectory");
+  const LcmTrajectory::Trajectory& lcm_l_foot_traj =
+      loaded_traj.getTrajectory("left_foot_trajectory");
+  const LcmTrajectory::Trajectory& lcm_r_foot_traj =
+      loaded_traj.getTrajectory("right_foot_trajectory");
+  const LcmTrajectory::Trajectory& com_vel_traj =
+      loaded_traj.getTrajectory("center_of_mass_vel_trajectory");
+  const LcmTrajectory::Trajectory& lcm_l_foot_vel_traj =
+      loaded_traj.getTrajectory("left_foot_vel_trajectory");
+  const LcmTrajectory::Trajectory& lcm_r_foot_vel_traj =
+      loaded_traj.getTrajectory("right_foot_vel_trajectory");
+  //  const LcmTrajectory::Trajectory& lcm_torso_traj =
+  //      loaded_traj.getTrajectory("torso_trajectory");
+  //  cout << "com_vel:" << com_vel_traj.datapoints.size() << endl;
+  //  cout << "l_foot_vel: " << lcm_l_foot_vel_traj.datapoints.size() << endl;
+  //  cout << "r_foot_vel: " << lcm_r_foot_vel_traj.datapoints.size() << endl;
+  const PiecewisePolynomial<double>& center_of_mass_traj =
+      PiecewisePolynomial<double>::Cubic(
+          com_traj.time_vector, com_traj.datapoints, com_vel_traj.datapoints);
+  const PiecewisePolynomial<double>& l_foot_trajectory =
+      PiecewisePolynomial<double>::Cubic(lcm_l_foot_traj.time_vector,
+                                         lcm_l_foot_traj.datapoints,
+                                         lcm_l_foot_vel_traj.datapoints);
+  const PiecewisePolynomial<double>& r_foot_trajectory =
+      PiecewisePolynomial<double>::Cubic(lcm_r_foot_traj.time_vector,
+                                         lcm_r_foot_traj.datapoints,
+                                         lcm_r_foot_vel_traj.datapoints);
+  //  const PiecewisePolynomial<double>& torso_trajectory =
+  //      PiecewisePolynomial<double>::Pchip(lcm_torso_traj.time_vector,
+  //          lcm_torso_traj.datapoints);
 
-  auto lcm = builder.AddSystem < drake::systems::lcm::LcmInterfaceSystem();
+  double flight_time = 0.0;
+  double land_time = 0.0;
+
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto contact_results_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CONTACT_RESULTS", lcm));
@@ -125,32 +170,27 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_without_springs);
   // Create Operational space control
-  auto com_traj_generator = builder.AddSystem<CoMTraj>(
+  auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, l_toe_idx, r_toe_idx, center_of_mass_traj,
       FLAGS_balance_height);
-  auto l_foot_traj_generator = builder.AddSystem<FlightFootTraj>(
+  auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_with_springs, pelvis_idx, l_toe_idx);
-  auto r_foot_traj_generator = builder.AddSystem<FlightFootTraj>(
+  auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_with_springs, pelvis_idx, r_toe_idx);
-  auto pelvis_orientation_traj_generator = builder.AddSystem<TorsoTraj>(
-      plant_with_springs, pelvis_orientation_traj);
-  auto fsm = builder.AddSystem<dairlib::examples::JumpingFintieStateMachine>(
-      plant_with_springs);
+  //  auto pelvis_orientation_traj_generator =
+  //      builder.AddSystem<TorsoTraj>(plant_with_springs,
+  //      pelvis_orientation_traj);
+  auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
+      plant_with_springs, flight_time, land_time);
   // Create command sender.
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
+          FLAGS_channel_u, lcm, 1.0 / FLAGS_publish_rate));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_with_springs);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_with_springs, plant_without_springs, true,
       FLAGS_print_osc /*print_tracking_info*/);
-
-
-
-
-
-
 
   // OSC setup
 
@@ -180,10 +220,33 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  ComTrackingData center_of_mass_traj("lipm_traj", 3, K_p_com, K_d_com, W_com,
-      &tree_with_springs,
-      &tree_without_springs);
-  osc->AddTrackingData(&center_of_mass_traj);
+  ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
+                                    &plant_with_springs,
+                                    &plant_without_springs);
+  osc->AddTrackingData(&com_tracking_data);
+
+  // ****** Feet tracking term ******
+  MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
+  W_swing_foot(0, 0) = 1000;
+  W_swing_foot(1, 1) = 0;
+  W_swing_foot(2, 2) = 1000;
+  MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_sw_ft = 20 * MatrixXd::Identity(3, 3);
+  K_p_sw_ft(1, 1) = 0;
+  K_d_sw_ft(1, 1) = 0;
+
+  TransTaskSpaceTrackingData flight_phase_left_foot_traj(
+      "l_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
+      &plant_without_springs);
+  TransTaskSpaceTrackingData flight_phase_right_foot_traj(
+      "r_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
+      &plant_without_springs);
+  flight_phase_left_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
+                                                      "left_foot");
+  flight_phase_right_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
+                                                       "right_foot");
+  osc->AddTrackingData(&flight_phase_left_foot_traj);
+  osc->AddTrackingData(&flight_phase_right_foot_traj);
 
   // Build OSC problem
   osc->Build();
@@ -191,24 +254,30 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(lipm_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("lipm_traj"));
-  builder.Connect(cp_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("cp_traj"));
-  builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
-  builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_heading_traj"));
+  builder.Connect(com_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("com_traj"));
+  builder.Connect(state_receiver->get_output_port(0),
+                  l_foot_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  r_foot_traj_generator->get_state_input_port());
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
-
+  builder.Connect(contact_results_sub->get_output_port(),
+                  fsm->get_contact_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  fsm->get_state_input_port());
+  builder.Connect(fsm->get_output_port(0),
+                  traj_generator->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(0),
+                  l_foot_traj_generator->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(0),
+                  r_foot_traj_generator->get_fsm_input_port());
   // Create the diagram
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("osc walking controller");
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm3, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
-      false);
+      &lcm3, std::move(owned_diagram), state_receiver, FLAGS_channel_x, false);
   loop.Simulate();
 
   return 0;

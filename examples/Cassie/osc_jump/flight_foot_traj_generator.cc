@@ -1,4 +1,4 @@
-#include "foot_traj_generator.h"
+#include "flight_foot_traj_generator.h"
 #include "multibody/multibody_utils.h"
 
 using std::cout;
@@ -27,7 +27,7 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib::examples::Cassie::osc_jump {
 
-FlightFootTraj::FlightFootTraj(const MultibodyPlant<double>& plant,
+FlightFootTrajGenerator::FlightFootTrajGenerator(const MultibodyPlant<double>& plant,
                                const string& hip_name, bool isLeftFoot,
                                const PiecewisePolynomial<double>& foot_traj,
                                double height)
@@ -41,11 +41,11 @@ FlightFootTraj::FlightFootTraj(const MultibodyPlant<double>& plant,
   if (isLeftFoot) {
     this->set_name("l_foot_traj");
     this->DeclareAbstractOutputPort("l_foot_traj", traj_inst,
-                                    &FlightFootTraj::CalcTraj);
+                                    &FlightFootTrajGenerator::CalcTraj);
   } else {
     this->set_name("r_foot_traj");
     this->DeclareAbstractOutputPort("r_foot_traj", traj_inst,
-                                    &FlightFootTraj::CalcTraj);
+                                    &FlightFootTrajGenerator::CalcTraj);
   }
 
   // Input/Output Setup
@@ -56,7 +56,7 @@ FlightFootTraj::FlightFootTraj(const MultibodyPlant<double>& plant,
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
-  // DeclarePerStepDiscreteUpdateEvent(&FlightFootTraj::DiscreteVariableUpdate);
+  // DeclarePerStepDiscreteUpdateEvent(&FlightFootTrajGenerator::DiscreteVariableUpdate);
 }
 
 /*
@@ -64,7 +64,7 @@ FlightFootTraj::FlightFootTraj(const MultibodyPlant<double>& plant,
   The trajectory of the COM cannot be altered, so must solve for
   foot positions as a function of COM.
 */
-PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
+PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
     const drake::systems::Context<double>& context, VectorXd* q, VectorXd* v,
     double t) const {
   // Always remember to check 0-norm quaternion when using doKinematics
@@ -92,7 +92,7 @@ PiecewisePolynomial<double> FlightFootTraj::generateFlightTraj(
   return foot_traj_segment + hip_offset;
 }
 
-void FlightFootTraj::CalcTraj(
+void FlightFootTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state

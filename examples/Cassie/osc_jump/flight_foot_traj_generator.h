@@ -9,9 +9,9 @@
 
 namespace dairlib::examples::Cassie::osc_jump {
 
-class FlightFootTraj : public drake::systems::LeafSystem<double> {
+class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  FlightFootTraj(const drake::multibody::MultibodyPlant<double>& plant,
+  FlightFootTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
                  const std::string& hip_name,
                  bool isLeftFoot,
                  const drake::trajectories::PiecewisePolynomial<double>&

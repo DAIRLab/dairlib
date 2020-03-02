@@ -312,6 +312,8 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//attic/multibody:utils",
+        "//examples/Cassie/osc_jump",
+        "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",

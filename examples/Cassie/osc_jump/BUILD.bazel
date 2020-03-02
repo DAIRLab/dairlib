@@ -6,7 +6,7 @@ cc_library(
     name = "osc_jump",
     deps = [
         "//examples/Cassie/osc_jump:com_traj_generator",
-        "//examples/Cassie/osc_jump:foot_traj_generator",
+        "//examples/Cassie/osc_jump:flight_foot_traj_generator",
         "//examples/Cassie/osc_jump:jumping_event_based_fsm",
         "//systems/controllers/osc:operational_space_control",
     ],
@@ -23,9 +23,9 @@ cc_library(
 )
 
 cc_library(
-    name = "foot_traj_generator",
-    srcs = ["foot_traj_generator.cc"],
-    hdrs = ["foot_traj_generator.h"],
+    name = "flight_foot_traj_generator",
+    srcs = ["flight_foot_traj_generator.cc"],
+    hdrs = ["flight_foot_traj_generator.h"],
     deps = [
         "//attic/multibody:utils",
         "//systems/controllers:control_utils",

@@ -189,10 +189,10 @@ RomPlanningTrajOptWithFomImpactMap::RomPlanningTrajOptWithFomImpactMap(
         SetInitialGuess(x0_vars_by_mode(i).tail(2 * n_q - 1),
                         x_guess_left_in_front.tail(2 * n_q - 1));
         SetInitialGuess(xf_vars_by_mode(i).tail(2 * n_q - 1),
-                        x_guess_right_in_front.tail(2 * n_q - 1));
+                        x_guess_right_in_front.tail(2 * n_q - 1));  // TODO: this should be preimpact
       } else {
         SetInitialGuess(x0_vars_by_mode(i).tail(2 * n_q - 1),
-                        x_guess_right_in_front.tail(2 * n_q - 1));
+                        x_guess_right_in_front.tail(2 * n_q - 1));  // TODO: this should be preimpact
         SetInitialGuess(xf_vars_by_mode(i).tail(2 * n_q - 1),
                         x_guess_left_in_front.tail(2 * n_q - 1));
       }
@@ -325,6 +325,7 @@ RomPlanningTrajOptWithFomImpactMap::RomPlanningTrajOptWithFomImpactMap(
     vector<double> ub_for_fom_joints{ M_PI / 2.0, M_PI / 2.0};
     for (unsigned int k = 0; k < l_or_r.size(); k++) {
       for (unsigned int l = 0; l < fom_joint_names.size(); l++) {
+        // TODO: Change to bounding box constraint
         AddLinearConstraint(
           x0_vars_by_mode(i)(positions_map.at(l_or_r[k] + fom_joint_names[l])),
           lb_for_fom_joints[l], ub_for_fom_joints[l]);

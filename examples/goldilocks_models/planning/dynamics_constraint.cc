@@ -1,5 +1,6 @@
 #include "examples/goldilocks_models/planning/dynamics_constraint.h"
 
+#include "systems/goldilocks_models/file_utils.h"  // writeCSV
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -50,6 +51,10 @@ void DynamicsConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& ytyth,
 
   // Impose dynamics constraint
   *y = getConstraintValueInAutoDiff(y_i, tau_i, y_iplus1, tau_iplus1, h_i);
+
+//  auto output = getConstraintValueInAutoDiff(y_i, tau_i, y_iplus1, tau_iplus1, h_i);
+//  *y = output / 40.0;
+//  goldilocks_models::writeCSV("../dyn_constraint_grad.csv", autoDiffToGradientMatrix(output));
 }
 
 void DynamicsConstraint::DoEval(const Eigen::Ref<const VectorX<Variable>>& x,

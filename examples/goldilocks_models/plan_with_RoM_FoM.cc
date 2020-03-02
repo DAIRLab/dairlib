@@ -168,6 +168,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
       readCSV(dir_and_pf + string("state_at_knots.csv")).col(0);
     x_guess_right_in_front =
       readCSV(dir_and_pf + string("state_at_knots.csv")).col(knots_per_mode - 1);
+    cout << "WARNING: last column of state_at_knots.csv should be pre-impact state.\n";
     // cout << "h_guess = " << h_guess << endl;
     // cout << "r_guess = " << r_guess << endl;
     // cout << "dr_guess = " << dr_guess << endl;

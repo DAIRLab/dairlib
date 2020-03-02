@@ -30,6 +30,7 @@ cc_library(
         "//multibody:utils",
         "//examples/goldilocks_models:kinematics_expression",
         "//examples/goldilocks_models:dynamics_expression",
+        "//systems/goldilocks_models",
     ],
 )
 

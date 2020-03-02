@@ -1,5 +1,4 @@
 #include "com_traj_generator.h"
-#include <boost/signals2/detail/signal_template.hpp>
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
@@ -31,14 +30,14 @@ using drake::trajectories::Trajectory;
 namespace dairlib::examples::Cassie::osc_jump {
 
 COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
-                                   int hip_idx, int left_foot_idx,
-                                   int right_foot_idx,
+                                   int hip_idx, Vector3d front_contact_disp,
+                                   Vector3d rear_contact_disp,
                                    PiecewisePolynomial<double> crouch_traj,
                                    double height)
     : plant_(plant),
       hip_idx_(hip_idx),
-      left_foot_idx_(left_foot_idx),
-      right_foot_idx_(right_foot_idx),
+      front_contact_disp_(front_contact_disp),
+      rear_contact_disp_(rear_contact_disp),
       crouch_traj_(crouch_traj),
       height_(height) {
   this->set_name("com_traj");
@@ -97,7 +96,32 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
 PiecewisePolynomial<double> COMTrajGenerator::generateBalanceTraj(
     const drake::systems::Context<double>& context, VectorXd& q,
     VectorXd& v) const {
+  auto plant_context = createContext(plant_, q, v);
+  const drake::multibody::BodyFrame<double>& world = plant_.world_frame();
+  const drake::multibody::BodyFrame<double>& l_toe_frame =
+      plant_.GetBodyByName("toe_left").body_frame();
+  const drake::multibody::BodyFrame<double>& r_toe_frame =
+      plant_.GetBodyByName("toe_right").body_frame();
 
+  Vector3d front_contact_disp(-0.0457, 0.112, 0);
+
+  Vector3d l_toe_front;
+  Vector3d l_toe_rear;
+  Vector3d r_toe_front;
+  Vector3d r_toe_rear;
+
+  plant_.CalcPointsPositions(*plant_context, l_toe_frame, front_contact_disp_,
+                             world, &l_toe_front);
+  plant_.CalcPointsPositions(*plant_context, l_toe_frame, rear_contact_disp_,
+                             world, &l_toe_front);
+  plant_.CalcPointsPositions(*plant_context, r_toe_frame, front_contact_disp_,
+                             world, &r_toe_front);
+  plant_.CalcPointsPositions(*plant_context, r_toe_frame, rear_contact_disp_,
+                             world, &r_toe_rear);
+  Vector3d targetCoM = (l_toe_front + l_toe_rear + r_toe_front + r_toe_rear)/4;
+  targetCoM(2) = height_;
+
+  return PiecewisePolynomial<double>(targetCoM);
 }
 
 PiecewisePolynomial<double> COMTrajGenerator::generateCrouchTraj(
@@ -107,6 +131,8 @@ PiecewisePolynomial<double> COMTrajGenerator::generateCrouchTraj(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double t = robot_output->get_timestamp();
 
+  // This assumes that the crouch is starting at the exact position as the
+  // start of the target trajectory
   return crouch_traj_.slice(crouch_traj_.get_segment_index(t), 1);
 }
 

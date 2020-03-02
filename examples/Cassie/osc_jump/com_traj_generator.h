@@ -1,7 +1,6 @@
 #pragma once
 
 #include <drake/multibody/plant/multibody_plant.h>
-#include "attic/multibody/rigidbody_utils.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -12,8 +11,10 @@ namespace dairlib::examples::Cassie::osc_jump {
 
 class COMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  COMTrajGenerator(const drake::multibody::MultibodyPlant<double>& tree,
-                   int hip_idx, int left_foot_idx, int right_foot_idx,
+  COMTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
+                   int hip_idx,
+                   Eigen::Vector3d front_contact_disp,
+                   Eigen::Vector3d rear_contact_disp,
                    drake::trajectories::PiecewisePolynomial<double> crouch_traj,
                    double height = 0.7009);
 
@@ -51,8 +52,8 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   int com_x_offset_idx_;
 
   int hip_idx_;
-  int left_foot_idx_;
-  int right_foot_idx_;
+  Eigen::Vector3d front_contact_disp_;
+  Eigen::Vector3d rear_contact_disp_;
   drake::trajectories::PiecewisePolynomial<double> crouch_traj_;
   double height_;
 

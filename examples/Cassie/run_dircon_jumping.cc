@@ -552,9 +552,9 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   // Just position constraints
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_x")));
+//  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_x")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
-  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_y")));
+//  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_y")));
   //  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_x")));
   //  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_y")));
 

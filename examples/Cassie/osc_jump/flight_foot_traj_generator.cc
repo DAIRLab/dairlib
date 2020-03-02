@@ -29,12 +29,10 @@ namespace dairlib::examples::Cassie::osc_jump {
 
 FlightFootTrajGenerator::FlightFootTrajGenerator(
     const MultibodyPlant<double>& plant, const string& hip_name,
-    bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj,
-    double height)
+    bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj)
     : plant_(plant),
       hip_name_(hip_name),
-      foot_traj_(foot_traj),
-      height_(height) {
+      foot_traj_(foot_traj){
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
 

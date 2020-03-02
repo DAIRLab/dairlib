@@ -9,10 +9,8 @@
 #include "examples/Cassie/osc_jump/com_traj_generator.h"
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
-#include "examples/Cassie/simulator_drift.h"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/osc/operational_space_control.h"
-#include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "drake/multibody/joints/floating_base_types.h"
@@ -162,22 +160,24 @@ int DoMain(int argc, char* argv[]) {
   auto l_toe_idx = plant_with_springs.GetBodyByName("toe_left").index();
   auto r_toe_idx = plant_with_springs.GetBodyByName("toe_right").index();
 
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+//  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  drake::lcm::DrakeLcm lcm;
   auto contact_results_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CONTACT_RESULTS", lcm));
-  auto state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, lcm));
+          "CONTACT_RESULTS", &lcm));
+//  auto state_sub = builder.AddSystem(
+//      LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, lcm));
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_without_springs);
   // Create Operational space control
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_with_springs, pelvis_idx, l_toe_idx, r_toe_idx, center_of_mass_traj,
+      plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
+      center_of_mass_traj,
       FLAGS_balance_height);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_with_springs, pelvis_idx, l_toe_idx);
+      plant_with_springs, "pelvis", true, l_foot_trajectory);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_with_springs, pelvis_idx, r_toe_idx);
+      plant_with_springs, "pelvis", false, r_foot_trajectory);
   //  auto pelvis_orientation_traj_generator =
   //      builder.AddSystem<TorsoTraj>(plant_with_springs,
   //      pelvis_orientation_traj);
@@ -185,12 +185,12 @@ int DoMain(int argc, char* argv[]) {
       plant_with_springs, flight_time, land_time);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, lcm, 1.0 / FLAGS_publish_rate));
+          FLAGS_channel_u, &lcm, 1.0 / FLAGS_publish_rate));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_with_springs);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_with_springs, plant_without_springs, true,
-      FLAGS_print_osc /*print_tracking_info*/);
+      FLAGS_print_osc); /*print_tracking_info*/
 
   /**** OSC setup ****/
 
@@ -219,10 +219,10 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
-                                    &plant_with_springs,
-                                    &plant_without_springs);
-  osc->AddTrackingData(&com_tracking_data);
+//  ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
+//                                    &plant_with_springs,
+//                                    &plant_without_springs);
+//  osc->AddTrackingData(&com_tracking_data);
 
   // Feet tracking
   MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
@@ -234,18 +234,18 @@ int DoMain(int argc, char* argv[]) {
   K_p_sw_ft(1, 1) = 0;
   K_d_sw_ft(1, 1) = 0;
 
-  TransTaskSpaceTrackingData flight_phase_left_foot_traj(
-      "l_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
-      &plant_without_springs);
-  TransTaskSpaceTrackingData flight_phase_right_foot_traj(
-      "r_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
-      &plant_without_springs);
-  flight_phase_left_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
-                                                      "left_foot");
-  flight_phase_right_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
-                                                       "right_foot");
-  osc->AddTrackingData(&flight_phase_left_foot_traj);
-  osc->AddTrackingData(&flight_phase_right_foot_traj);
+//  TransTaskSpaceTrackingData flight_phase_left_foot_traj(
+//      "l_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
+//      &plant_without_springs);
+//  TransTaskSpaceTrackingData flight_phase_right_foot_traj(
+//      "r_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
+//      &plant_without_springs);
+//  flight_phase_left_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
+//                                                      "toe_left");
+//  flight_phase_right_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
+//                                                       "toe_right");
+//  osc->AddTrackingData(&flight_phase_left_foot_traj);
+//  osc->AddTrackingData(&flight_phase_right_foot_traj);
 
   // Build OSC problem
   osc->Build();

@@ -17,6 +17,8 @@ cc_library(
     srcs = ["com_traj_generator.cc"],
     hdrs = ["com_traj_generator.h"],
     deps = [
+        ":jumping_event_based_fsm",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -27,7 +29,8 @@ cc_library(
     srcs = ["flight_foot_traj_generator.cc"],
     hdrs = ["flight_foot_traj_generator.h"],
     deps = [
-        "//attic/multibody:utils",
+        ":jumping_event_based_fsm",
+        "//multibody:utils",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

@@ -475,16 +475,8 @@ void HybridLQRController::calcLinearResetMap(double t, int contact_mode,
   *R = MatrixXd::Zero(n_x_, n_x_);
   MatrixXd R_linear = autoDiffToGradientMatrix(delta).block(0, 0, n_v_, n_x_);
   R->block(0, 0, n_q_, n_q_) = MatrixXd::Identity(n_q_, n_q_);
-  //  R->block(n_q_, n_q_, n_q_, n_q_) = autoDiffToValueMatrix(R_non_linear);
   R->block(n_q_, 0, n_v_, n_x_) = R_linear;
   *R = *R - MatrixXd::Identity(n_x_, n_x_);
-
-  //  AutoDiffVecXd C(n_v_);
-  //  plant_ad_.CalcBiasTerm(*context, &C);
-  //  std::cout << "M: " << M << std::endl;
-  //  std::cout << "J: " << J << std::endl;
-  //  std::cout << "B: " << plant_.MakeActuationMatrix() << std::endl;
-  //  std::cout << "Coriolis: " << autoDiffToValueMatrix(C) << std::endl;
 }
 
 VectorXd HybridLQRController::calcLdot(double t, const VectorXd& l,

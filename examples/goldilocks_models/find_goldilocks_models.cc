@@ -9,23 +9,15 @@
 #include <sys/stat.h>  // Check the existence of a file/folder
 #include <cstdlib>  // System call to create folder (and also parent directory)
 
-#include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
-#include "systems/goldilocks_models/file_utils.h"
-
+#include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/primitives/trajectory_source.h"
-#include "drake/multibody/parsing/parser.h"
-
 #include "common/find_resource.h"
-
-#include "examples/goldilocks_models/kinematics_expression.h"
 #include "examples/goldilocks_models/dynamics_expression.h"
+#include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
+#include "examples/goldilocks_models/kinematics_expression.h"
+#include "systems/goldilocks_models/file_utils.h"
 
 using std::cin;
 using std::cout;
@@ -49,8 +41,7 @@ using drake::multibody::Parser;
 using drake::AutoDiffXd;
 using dairlib::FindResourceOrThrow;
 
-namespace dairlib {
-namespace goldilocks_models {
+namespace dairlib::goldilocks_models {
 
 // Robot models
 DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
@@ -2317,8 +2308,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   return 0;
 }  // int findGoldilocksModels
 
-}  // namespace goldilocks_models
-}  // namespace dairlib
+}  // namespace dairlib::goldilocks_models
 
 int main(int argc, char* argv[]) {
   return dairlib::goldilocks_models::findGoldilocksModels(argc, argv);

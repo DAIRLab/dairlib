@@ -37,9 +37,7 @@ JumpingEventFsm::JumpingEventFsm(
       &JumpingEventFsm::CalcFiniteState);
   DeclarePerStepDiscreteUpdateEvent(
       &JumpingEventFsm::DiscreteVariableUpdate);
-  // indices for discrete variables in drake leafsystem
-  //  contact_time_idx_ = this->DeclareDiscreteState(1);
-  //  contact_flag_idx_ = this->DeclareDiscreteState(1);
+
   prev_time_idx_ = this->DeclareDiscreteState(1);
   fsm_idx_ = this->DeclareDiscreteState(1);
 }
@@ -57,10 +55,6 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       input->get_value<drake::lcmt_contact_results_for_viz>();
   auto prev_time =
       discrete_state->get_mutable_vector(prev_time_idx_).get_mutable_value();
-//  auto contact_time =
-//      discrete_state->get_mutable_vector(contact_time_idx_).get_mutable_value();
-//  auto contact_flag =
-//      discrete_state->get_mutable_vector(contact_flag_idx_).get_mutable_value();
 
   const OutputVector<double>* robot_output =
   (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -76,16 +70,15 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   if (contact_driven_) {
     switch ((FSM_STATE)fsm_state(0)) {
       case (BALANCE):
-        if (contact_info_msg.num_point_pair_contacts != 1 &&
-            (current_time - prev_time(0)) > 0.05) {
+        if (current_time > delay_time_) {
           fsm_state << CROUCH;
           std::cout << "Setting fsm to CROUCH" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
           prev_time(0) = current_time;
         }
         break;
-      case (CROUCH):
-        if (contact_info_msg.num_point_pair_contacts != 1 &&
+      case (CROUCH): // This assumes perfect knowledge about contacts
+        if (contact_info_msg.num_point_pair_contacts == 0 &&
             (current_time - prev_time(0)) > 0.05) {
           fsm_state << FLIGHT;
           std::cout << "Setting fsm to FLIGHT" << std::endl;
@@ -94,7 +87,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
         }
         break;
       case (FLIGHT):
-        if (contact_info_msg.num_point_pair_contacts != 1 &&
+        if (contact_info_msg.num_point_pair_contacts != 0 &&
             (current_time - prev_time(0)) > 0.05) {
           fsm_state << LAND;
           std::cout << "Setting fsm to LAND" << std::endl;

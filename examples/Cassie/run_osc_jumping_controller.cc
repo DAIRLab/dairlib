@@ -85,6 +85,8 @@ int DoMain(int argc, char* argv[]) {
   Parser parser_with_springs(&plant_with_springs, &scene_graph);
   Parser parser_without_springs(&plant_without_springs, &scene_graph);
 
+  /**** Initialize the plants ****/
+
   parser_with_springs.AddModelFromFile(
       FindResourceOrThrow("examples/Cassie/urdf/cassie_v2.urdf"));
   parser_without_springs.AddModelFromFile(
@@ -109,20 +111,7 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> act_map =
       multibody::makeNameToActuatorsMap(plant_without_springs);
 
-  // Cassie parameters
-  Vector3d front_contact_disp(-0.0457, 0.112, 0);
-  Vector3d rear_contact_disp(0.088, 0, 0);
-  Vector3d mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2;
-
-  // Get body indices for cassie with springs
-  auto pelvis_idx = plant_with_springs.GetBodyByName("pelvis").index();
-  auto l_toe_idx = plant_with_springs.GetBodyByName("toe_left").index();
-  auto r_toe_idx = plant_with_springs.GetBodyByName("toe_right").index();
-
-  // Note that we didn't add drift to yaw angle here because it requires
-  // changing SimulatorDrift.
-
-  // Get trajectory from optimization
+  /**** Get trajectory from optimization ****/
   const LcmTrajectory& loaded_traj =
       LcmTrajectory("examples/jumping/saved_trajs/" + FLAGS_traj_name);
 
@@ -161,6 +150,18 @@ int DoMain(int argc, char* argv[]) {
   double flight_time = 0.0;
   double land_time = 0.0;
 
+  /**** Initialize all the leaf systems ****/
+
+  // Cassie parameters
+  Vector3d front_contact_disp(-0.0457, 0.112, 0);
+  Vector3d rear_contact_disp(0.088, 0, 0);
+  Vector3d mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2;
+
+  // Get body indices for cassie with springs
+  auto pelvis_idx = plant_with_springs.GetBodyByName("pelvis").index();
+  auto l_toe_idx = plant_with_springs.GetBodyByName("toe_left").index();
+  auto r_toe_idx = plant_with_springs.GetBodyByName("toe_right").index();
+
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto contact_results_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
@@ -182,7 +183,6 @@ int DoMain(int argc, char* argv[]) {
   //      pelvis_orientation_traj);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
       plant_with_springs, flight_time, land_time);
-  // Create command sender.
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, lcm, 1.0 / FLAGS_publish_rate));
@@ -192,18 +192,16 @@ int DoMain(int argc, char* argv[]) {
       plant_with_springs, plant_without_springs, true,
       FLAGS_print_osc /*print_tracking_info*/);
 
-  // OSC setup
+  /**** OSC setup ****/
 
   // Cost
   MatrixXd Q_accel = 0.001 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
-  // Soft constraint
-  // w_contact_relax shouldn't be too big, cause we want tracking error to be
-  // important
+  // Soft constraint on contacts
   double w_contact_relax = 20000;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
   double mu = 0.4;
-  // Friction coefficient
+  // Contact information for OSC
   osc->SetContactFriction(mu);
   vector<int> stance_modes = {0, 2};
   for (int mode : stance_modes) {
@@ -213,6 +211,7 @@ int DoMain(int argc, char* argv[]) {
     osc->AddStateAndContactPoint(mode, "toe_right", rear_contact_disp);
   }
 
+  /**** Tracking Data for OSC *****/
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2;
@@ -225,7 +224,7 @@ int DoMain(int argc, char* argv[]) {
                                     &plant_without_springs);
   osc->AddTrackingData(&com_tracking_data);
 
-  // ****** Feet tracking term ******
+  // Feet tracking
   MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
   W_swing_foot(0, 0) = 1000;
   W_swing_foot(1, 1) = 0;
@@ -250,34 +249,55 @@ int DoMain(int argc, char* argv[]) {
 
   // Build OSC problem
   osc->Build();
-  // Connect ports
+
+  /*****Connect ports*****/
+
+  // State receiver connections (Connected through LCM driven loop)
+
+  // OSC connections
+  builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
-  builder.Connect(state_receiver->get_output_port(0),
-                  l_foot_traj_generator->get_state_input_port());
-  builder.Connect(state_receiver->get_output_port(0),
-                  r_foot_traj_generator->get_state_input_port());
-  builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+  builder.Connect(l_foot_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("left_foot"));
+  builder.Connect(r_foot_traj_generator->get_output_port(0),
+                  osc->get_tracking_data_input_port("right_foot"));
+
+  // FSM connections
   builder.Connect(contact_results_sub->get_output_port(),
                   fsm->get_contact_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_state_input_port());
+
+  // Trajectory generator connections
   builder.Connect(fsm->get_output_port(0),
-                  traj_generator->get_fsm_input_port());
+                  com_traj_generator->get_fsm_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  l_foot_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  r_foot_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  com_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
                   l_foot_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
                   r_foot_traj_generator->get_fsm_input_port());
+
+  // Publisher connections
+  builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+  builder.Connect(command_sender->get_output_port(0),
+                  command_pub->get_input_port());
+
+  // Run lcm-driven simulation
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name("osc walking controller");
+  owned_diagram->set_name(("osc jumping controller"));
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm3, std::move(owned_diagram), state_receiver, FLAGS_channel_x, false);
+      &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, false);
   loop.Simulate();
 
   return 0;

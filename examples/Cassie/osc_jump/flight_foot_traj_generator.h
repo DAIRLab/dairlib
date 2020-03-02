@@ -5,6 +5,7 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "systems/framework/output_vector.h"
 #include "systems/controllers/control_utils.h"
+#include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 
 
 namespace dairlib::examples::Cassie::osc_jump {

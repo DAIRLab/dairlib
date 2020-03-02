@@ -402,23 +402,24 @@ void DoMain() {
     }
   }
 
-  // Printing
-  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
-    cout << trajopt->decision_variable(i) << ", ";
-    cout << trajopt->decision_variable(i).get_id() << ", ";
-    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
-         << ", ";
-    auto scale_map = trajopt->GetVariableScaling();
-    auto it = scale_map.find(i);
-    if (it != scale_map.end()) {
-      cout << it->second;
-    } else {
-      cout << "none";
-    }
-    cout << ", ";
-    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
-    cout << endl;
-  }
+  //  // Printing
+  //  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
+  //    cout << trajopt->decision_variable(i) << ", ";
+  //    cout << trajopt->decision_variable(i).get_id() << ", ";
+  //    cout <<
+  //    trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
+  //         << ", ";
+  //    auto scale_map = trajopt->GetVariableScaling();
+  //    auto it = scale_map.find(i);
+  //    if (it != scale_map.end()) {
+  //      cout << it->second;
+  //    } else {
+  //      cout << "none";
+  //    }
+  //    cout << ", ";
+  //    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
+  //    cout << endl;
+  //  }
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
@@ -503,6 +504,10 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
 
+  for (auto pair : pos_map) {
+    std::cout << pair.first << ": " << pair.second << std::endl;
+  }
+
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
@@ -535,18 +540,46 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   // Jumping height constraints
 
   // Standing constraints
-  std::cout << "Position constraints: " << std::endl;
-  double rest_height = 1.125;
+  double rest_height = 1.075;
+
+  // Fixing initial conditions
+  //  VectorXd q_init(n_q);
+  //  q_init << 1, -0.000439869, -3.78298e-06, 0.00024498, 0.000994219, -0.001,
+  //      1.20078, -0.00806937, 0.0140112, 0, 0, 0.583512, 0.532804, -1.17628,
+  //      -1.18182, 1.40317, 1.40871, -1.3, -1.3;
+  //  trajopt->AddBoundingBoxConstraint(q_init, q_init, x0.head(n_q));
+  //  trajopt->AddBoundingBoxConstraint(q_init, q_init, xf.head(n_q));
+
+  // Just position constraints
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_x")));
   trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_x")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
-  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_y")));
   trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_y")));
-  //  trajopt->AddBoundingBoxConstraint(0.9, 0.9,
-  //                                    x_mid_point(pos_map.at("base_z")));
-  //  trajopt->AddBoundingBoxConstraint(0.9, 0.9,
-  //  x_bottom(pos_map.at("base_z")));
+  //  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_x")));
+  //  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_y")));
+
+  // Knee Angles
+  trajopt->AddBoundingBoxConstraint(-0.85, -0.75, x0(pos_map.at("knee_left")));
+  trajopt->AddBoundingBoxConstraint(-0.85, -0.75, x0(pos_map.at("knee_right")));
+  // Hip orientations
+  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
+                                    x0(pos_map.at("hip_roll_left")));
+  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
+                                    x0(pos_map.at("hip_roll_right")));
+  //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
+  //                                    xf(pos_map.at("hip_roll_left")));
+  //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
+  //                                    xf(pos_map.at("hip_roll_right")));
+  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
+                                    x0(pos_map.at("hip_yaw_left")));
+  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
+                                    x0(pos_map.at("hip_yaw_right")));
+  //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
+  //                                    xf(pos_map.at("hip_yaw_left")));
+  //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
+  //                                    xf(pos_map.at("hip_yaw_right")));
+
+  // Jumping height constraints
   trajopt->AddBoundingBoxConstraint(rest_height, rest_height,
                                     x0(pos_map.at("base_z")));
   trajopt->AddBoundingBoxConstraint(FLAGS_jump_height + rest_height,
@@ -554,6 +587,8 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
                                     x_top(pos_map.at("base_z")));
   trajopt->AddBoundingBoxConstraint(rest_height, rest_height,
                                     xf(pos_map.at("base_z")));
+
+  // Zero starting and final velocities
   trajopt->AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                     x0.tail(n_v));
   trajopt->AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
@@ -671,7 +706,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   }
   //  }
 
-  const MatrixXd Q = 0.05 * MatrixXd::Identity(n_v, n_v);
+  const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 0.005 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
@@ -697,7 +732,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   // Add some cost to hip roll and yaw
   double w_q_hip_roll = 0.3;
   double w_q_hip_yaw = 0.3;
-//  double w_q_hip_pitch = 1.0;
+  double w_q_hip_pitch = 0.5;
   double w_q_quat_xyz = 0.3;
   if (w_q_hip_roll) {
     for (int i = 0; i < N; i++) {
@@ -711,12 +746,12 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
       trajopt->AddCost(w_q_hip_yaw * q.transpose() * q);
     }
   }
-//  if (w_q_hip_pitch) {
-//    for (int i = 0; i < N; i++) {
-//      auto q = trajopt->state(i).segment(11, 2);
-//      trajopt->AddCost(w_q_hip_yaw * q.transpose() * q);
-//    }
-//  }
+  if (w_q_hip_pitch) {
+    for (int i = 0; i < N; i++) {
+      auto q = trajopt->state(i).segment(11, 2);
+      trajopt->AddCost(w_q_hip_yaw * q.transpose() * q);
+    }
+  }
   if (w_q_quat_xyz) {
     for (int i = 0; i < N; i++) {
       auto q = trajopt->state(i).segment(1, 3);
@@ -808,7 +843,6 @@ vector<VectorXd> GetInitGuessForQStance(int num_knot_points,
         (ik.q())(positions_map.at("knee_right")) +
             (ik.q())(positions_map.at("ankle_joint_right")) ==
         M_PI * 13 / 180.0);
-
     ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
     const auto result = Solve(ik.prog());
     const auto q_sol = result.GetSolution(ik.q());

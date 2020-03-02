@@ -11,7 +11,9 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/multibody/tree/revolute_joint.h"
+#include "drake/solvers/solve.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
+#include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 
 #include "systems/robot_lcm_systems.h"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -32,17 +34,35 @@ using drake::systems::lcm::LcmPublisherSystem;
 using dairlib::systems::SubvectorPassThrough;
 
 
+using drake::math::RotationMatrix;
+using Eigen::Matrix3d;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
-DEFINE_double(target_realtime_rate, 1.0,  
-              "Desired rate relative to real time.  See documentation for "
-              "Simulator::set_target_realtime_rate() for details.");
-DEFINE_bool(time_stepping, false, "If 'true', the plant is modeled as a "
+DEFINE_double(target_realtime_rate, 1.0,
+    "Desired rate relative to real time.  See documentation for "
+    "Simulator::set_target_realtime_rate() for details.");
+DEFINE_bool(time_stepping, false,
+    "If 'true', the plant is modeled as a "
     "discrete system with periodic updates. "
     "If 'false', the plant is modeled as a continuous system.");
-DEFINE_double(dt, 1e-4, "The step size to use for compliant, ignored for time_stepping)");
-DEFINE_double(penetration_allowance, 1e-4, "Penalty for discrete time model");
+DEFINE_double(dt, 1e-4,
+    "The step size to use for compliant, ignored for time_stepping)");
+DEFINE_double(penetration_allowance, 1e-4,
+    "Penetration allowance for the contact model. Nearly equivalent"
+    " to (m)");
+DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
+    "End time for simulator");
+DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
+DEFINE_double(init_height, 0.2, "Initial starting height above ground");
+
+
+Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant,
+                                double init_height);
+
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -114,6 +134,8 @@ int do_main(int argc, char* argv[]) {
   diagram->SetDefaultContext(diagram_context.get());
   Context<double>& plant_context =
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
+  VectorXd q_init = GetInitialState(plant, FLAGS_init_height);
+  std::cout << q_init << std::endl;
 
   plant.GetJointByName<RevoluteJoint>("hip_pitch_left").
       set_angle(&plant_context, .269);
@@ -158,6 +180,74 @@ int do_main(int argc, char* argv[]) {
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
+}
+
+Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant,
+                                double init_height) {
+  int n_q = plant.num_positions();
+  std::map<std::string, int> positions_map =
+      multibody::makeNameToPositionsMap(plant);
+
+  for (auto pair : positions_map) {
+    std::cout << "name: " << pair.first << ": " << pair.second << std::endl;
+  }
+
+  VectorXd q_init_guess;
+  VectorXd q_ik_guess = VectorXd::Zero(plant.num_positions());
+  Eigen::Vector4d quat(2000.06, -0.339462, -0.609533, -0.760854);
+  q_ik_guess << quat.normalized(), 0.000889849, 0.000626865, 1.0009, -0.0112109,
+      0.00927845, -0.000600725, -0.000895805, 1.15086, 0.610808, -1.38608,
+      -1.35926, 0.806192, 1.00716, -M_PI / 2, -M_PI / 2;
+
+  double eps = 1e-3;
+  Vector3d eps_vec = eps * VectorXd::Ones(3);
+  Vector3d pelvis_pos(0.0, 0.0, 1.0 + init_height);
+  Vector3d left_toe_pos(0.0, 0.12, 0.05 + init_height);
+  Vector3d right_toe_pos(0.0, -0.12, 0.05 + init_height);
+
+  const auto& world_frame = plant.world_frame();
+  const auto& pelvis_frame = plant.GetFrameByName("pelvis");
+  const auto& toe_left_frame = plant.GetFrameByName("toe_left");
+  const auto& toe_right_frame = plant.GetFrameByName("toe_right");
+
+  drake::multibody::InverseKinematics ik(plant);
+  ik.AddPositionConstraint(pelvis_frame, Vector3d(0, 0, 0), world_frame,
+      pelvis_pos - eps * VectorXd::Ones(3),
+      pelvis_pos + eps * VectorXd::Ones(3));
+  ik.AddOrientationConstraint(pelvis_frame, RotationMatrix<double>(),
+      world_frame, RotationMatrix<double>(), eps);
+  ik.AddPositionConstraint(toe_left_frame, Vector3d(0, 0, 0), world_frame,
+      left_toe_pos - eps_vec, left_toe_pos + eps_vec);
+  ik.AddPositionConstraint(toe_right_frame, Vector3d(0, 0, 0), world_frame,
+      right_toe_pos - eps_vec, right_toe_pos + eps_vec);
+  ik.get_mutable_prog()->AddLinearConstraint(
+      (ik.q())(positions_map.at("hip_yaw_left")) == 0);
+  ik.get_mutable_prog()->AddLinearConstraint(
+      (ik.q())(positions_map.at("hip_yaw_right")) == 0);
+  // Four bar linkage constraint (without spring)
+  ik.get_mutable_prog()->AddLinearConstraint(
+      (ik.q())(positions_map.at("knee_left")) +
+          (ik.q())(positions_map.at("ankle_joint_left")) ==
+          M_PI * 13 / 180.0);
+  ik.get_mutable_prog()->AddLinearConstraint(
+      (ik.q())(positions_map.at("knee_right")) +
+          (ik.q())(positions_map.at("ankle_joint_right")) ==
+          M_PI * 13 / 180.0);
+  ik.get_mutable_prog()->AddLinearConstraint(
+      (ik.q())(positions_map.at("toe_left")) == -1.0);
+  ik.get_mutable_prog()->AddLinearConstraint(
+      (ik.q())(positions_map.at("toe_right")) == -1.0);
+
+  ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
+  const auto result = Solve(ik.prog());
+  const auto q_sol = result.GetSolution(ik.q());
+  // cout << "  q_sol = " << q_sol.transpose() << endl;
+  // cout << "  q_sol.head(4).norm() = " << q_sol.head(4).norm() << endl;
+  VectorXd q_sol_normd(n_q);
+  q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(n_q - 4);
+  q_init_guess = q_sol_normd;
+  //  return q_ik_guess;
+  return q_init_guess;
 }
 
 }  // namespace dairlib

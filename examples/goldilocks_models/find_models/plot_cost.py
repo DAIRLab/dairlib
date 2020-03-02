@@ -6,7 +6,7 @@ import time
 import sys
 plt.rcParams.update({'font.size': 18})
 
-only_plot_average_cost = False
+only_plot_average_cost = True
 normalize_by_nominal_cost = True
 only_add_successful_samples_to_average_cost = False
 
@@ -72,7 +72,8 @@ print('nominal_cost = '+str(nominal_cost))
 
 # plot
 while 1:
-    fig1 = plt.figure(1)
+    # fig1 = plt.figure(1)
+    fig1 = plt.figure(num=1, figsize=(6.4, 4.8))
     ax1 = fig1.gca()
 
     # Get the length of the cost first (in case the lengths of different samples are the not the same). This is for plotting the average cost
@@ -154,6 +155,9 @@ while 1:
         plt.title('Cost over iterations')
         # plt.legend()
 
+    # Change the ticks
+    # ax1.set_yticks(np.arange(1.05,1.301,0.05))
+
     # Set limit
     # ax1.set_ylim(0, 6)
 
@@ -162,6 +166,7 @@ while 1:
     # so that the label is not cut off by the window
     # plt.tight_layout()
     plt.gcf().subplots_adjust(bottom=0.15)
+    plt.gcf().subplots_adjust(left=0.15)
 
     plt.pause(10)
     plt.clf()

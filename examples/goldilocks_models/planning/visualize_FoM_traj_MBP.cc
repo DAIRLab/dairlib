@@ -115,7 +115,11 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   int robot_option = 0; // haven't implemented for Cassie yet
 
   // parameters
-  const string dir_data = "examples/goldilocks_models/planning/data/";
+//  const string dir_data = "examples/goldilocks_models/planning/data/";
+  const string dir = "../dairlib_data/goldilocks_models/planning/robot_" +
+      to_string(robot_option) + "/";
+  const string dir_data = dir + "data/";
+  const string dir_model = dir + "models/";
 
   bool start_with_left_stance = true;
   if (start_with_left_stance)
@@ -156,7 +160,6 @@ void visualizeFullOrderModelTraj(int argc, char* argv[]) {
   double d_clearance = FLAGS_d_clearance;
 
   // Read in the parameters
-  const string dir_model = "examples/goldilocks_models/planning/models/";
   string prefix = dir_model + to_string(FLAGS_iter);
   VectorXd theta_kin = readCSV(prefix + string("_theta_s.csv")).col(0);
 

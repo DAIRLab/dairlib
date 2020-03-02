@@ -28,6 +28,7 @@ cc_binary(
         "//systems/trajectory_optimization:dircon",
         ":kinematics_expression",
         ":dynamics_expression",
+        ":goldilocks_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -44,6 +45,7 @@ cc_binary(
         "@gflags",
         ":kinematics_expression",
         ":dynamics_expression",
+        ":goldilocks_utils",
         "//examples/goldilocks_models/planning:RoM_planning_traj_opt",
     ],
 )

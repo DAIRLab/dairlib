@@ -1,27 +1,17 @@
 #include <gflags/gflags.h>
 #include <chrono>
-#include <ctime>
-
-#include "systems/goldilocks_models/file_utils.h"
-
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/solve.h"
-
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/primitives/trajectory_source.h"
-#include "drake/multibody/parsing/parser.h"
 
 #include "common/find_resource.h"
-
-#include "examples/goldilocks_models/kinematics_expression.h"
 #include "examples/goldilocks_models/dynamics_expression.h"
-
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/kinematics_expression.h"
 #include "examples/goldilocks_models/planning/RoM_planning_traj_opt.h"
+#include "systems/goldilocks_models/file_utils.h"
 
+#include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
+#include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
 
 using std::cin;
 using std::cout;
@@ -48,14 +38,15 @@ namespace dairlib {
 namespace goldilocks_models {
 
 DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
+DEFINE_int32(rom_option, 1, "0: LIPM. 1: LIPM with point-mass swing foot");
 DEFINE_int32(iter, 20, "The iteration # of the theta that you use");
 DEFINE_int32(sample, 4, "The sample # of the initial condition that you use");
 DEFINE_string(init_file, "", "Initial Guess for Planning Optimization");
-DEFINE_int32(n_step, 3, "How many foot steps");
+DEFINE_int32(n_step, 3, "Number of foot steps");
 DEFINE_bool(print_snopt_file, false, "Print snopt output file");
 DEFINE_bool(zero_touchdown_impact, false, "Zero impact at foot touchdown");
 DEFINE_double(final_position, 2, "The final position for the robot");
-DEFINE_double(disturbance, 0, "Disturbance to FoM intial state");
+DEFINE_double(disturbance, 0, "Disturbance to FoM initial state");
 DEFINE_bool(fix_duration, false, "Fix the total time");
 DEFINE_bool(fix_all_timestep, true, "Make all timesteps the same size");
 // DEFINE_bool(add_x_pose_in_cost, false, "Add x0 and xf in the cost function");
@@ -82,12 +73,16 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);
 
   // Files parameters
-  const string dir_model = "examples/goldilocks_models/planning/models/";
-  const string dir_data = "examples/goldilocks_models/planning/data/";
+  const string dir = "../dairlib_data/goldilocks_models/planning/robot_" +
+      to_string(FLAGS_robot_option) + "/";
+  const string dir_model = dir + "models/";
+  const string dir_data = dir + "data/";
   string init_file = FLAGS_init_file;
+  if (!CreateFolderIfNotExist(dir_model)) return 0;
+  if (!CreateFolderIfNotExist(dir_data)) return 0;
 
   // Reduced order model parameters
-  cout << "Warning: Need to make sure that the implementation in "
+  cout << "\nWarning: Need to make sure that the implementation in "
        "DynamicsExpression agrees with n_s and n_tau.\n";
   int n_s = 4;
   int n_sDDot = n_s;
@@ -100,7 +95,8 @@ int planningWithRomAndFom(int argc, char* argv[]) {
 
   // Reduced order model setup
   KinematicsExpression<double> kin_expression(n_s, 0, &plant, FLAGS_robot_option);
-  DynamicsExpression dyn_expression(n_sDDot, 0, FLAGS_robot_option);
+  DynamicsExpression dyn_expression(n_sDDot, 0, FLAGS_rom_option,
+                                    FLAGS_robot_option);
   VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
   VectorXd dummy_s = VectorXd::Zero(n_s);
   int n_feature_s = kin_expression.getFeature(dummy_q).size();
@@ -200,14 +196,16 @@ int planningWithRomAndFom(int argc, char* argv[]) {
                    FLAGS_fix_all_timestep,
                    true,
                    false,
+                   FLAGS_rom_option,
                    FLAGS_robot_option);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   cout << "Construction time:" << elapsed.count() << "\n";
 
-  if (FLAGS_print_snopt_file)
+  if (FLAGS_print_snopt_file) {
     trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                             "Print file", "snopt.out");
+                             "Print file", "../snopt.out");
+  }
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", 10000);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),

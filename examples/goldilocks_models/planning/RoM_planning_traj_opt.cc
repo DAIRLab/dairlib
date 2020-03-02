@@ -65,6 +65,7 @@ RomPlanningTrajOptWithFomImpactMap::RomPlanningTrajOptWithFomImpactMap(
   bool fix_all_timestep,
   bool add_x_pose_in_cost,
   bool straight_leg_cost,
+  int rom_option,
   int robot_option) :
   MultipleShooting(n_tau,
                    2 * n_r,
@@ -227,7 +228,7 @@ RomPlanningTrajOptWithFomImpactMap::RomPlanningTrajOptWithFomImpactMap(
     // Add dynamics constraints at collocation points
     cout << "Adding dynamics constraint...\n";
     auto dyn_constraint = std::make_shared<planning::DynamicsConstraint>(
-                            n_r, n_r, n_feature_dyn, theta_dyn, n_tau, B_tau, robot_option);
+                            n_r, n_r, n_feature_dyn, theta_dyn, n_tau, B_tau, rom_option, robot_option);
     DRAKE_ASSERT(
       static_cast<int>(dyn_constraint->num_constraints()) == num_states());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {

@@ -17,6 +17,7 @@
 #include "examples/goldilocks_models/dynamics_expression.h"
 #include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
 #include "examples/goldilocks_models/kinematics_expression.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
 #include "systems/goldilocks_models/file_utils.h"
 
 using std::cin;
@@ -262,23 +263,6 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
     // Hacks for improving solution quality
 
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
-  }
-}
-
-bool folder_exist (const std::string & pathname_string) {
-  // Convert string to char
-  const char * pathname = pathname_string.c_str();
-
-  struct stat info;
-  if( stat( pathname, &info ) != 0 ) {
-    printf( "cannot access %s\n", pathname );
-    return false;
-  } else if( info.st_mode & S_IFDIR ) {
-    printf( "%s is a directory\n", pathname );
-    return true;
-  } else {
-    printf( "%s is no directory\n", pathname );
-    return false;
   }
 }
 
@@ -1079,30 +1063,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   const string dir = "../dairlib_data/goldilocks_models/find_models/robot_" +
                      to_string(FLAGS_robot_option) + "/";
   string init_file = FLAGS_init_file;
-  // init_file = "w0_with_z.csv";
   string prefix = "";
-  if (!folder_exist(dir)) {
-    cout << dir
-         << " doesn't exsit. We will create the folder.\nProceed? (Y/N)\n";
-    char answer[1];
-    cin >> answer;
-    if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-      cout << "Ending the program.\n";
-      return 0;
-    }
-
-    // Creating a directory
-    // This method probably only works in Linux/Unix?
-    // See: https://codeyarns.com/2014/08/07/how-to-create-directory-using-c-on-linux/
-    // It will create parent directories as well.
-    std::string string_for_system_call = "mkdir -p " + dir;
-    if (system(string_for_system_call.c_str()) == -1) {
-      printf("Error creating directory!n");
-      return 0;
-    } else {
-      cout << "This folder has been created: " << dir << endl;
-    }
-  }
+  if (!CreateFolderIfNotExist(dir)) return 0;
 
   // Parameters for tasks (stride length and ground incline)
   cout << "\nTasks settings:\n";

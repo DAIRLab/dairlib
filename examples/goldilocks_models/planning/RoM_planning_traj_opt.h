@@ -57,6 +57,7 @@ class RomPlanningTrajOptWithFomImpactMap :
                                      bool fix_all_timestep,
                                      bool add_x_pose_in_cost,
                                      bool straight_leg_cost,
+                                     int rom_option,
                                      int robot_option);
 
   ~RomPlanningTrajOptWithFomImpactMap() override {}

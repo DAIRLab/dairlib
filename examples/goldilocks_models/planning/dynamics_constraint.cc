@@ -5,26 +5,22 @@ namespace dairlib {
 namespace goldilocks_models {
 namespace planning {
 
-DynamicsConstraint::DynamicsConstraint(
-  int n_r, int n_ddr, int n_feature_dyn,
-  const VectorXd & theta_dyn,
-  int n_tau,
-  MatrixXd B_tau,
-  int robot_option,
-  const std::string& description):
-  Constraint(2 * n_r,
-             2 * (2 * n_r + n_tau) + 1,
-             VectorXd::Zero(2 * n_r),
-             VectorXd::Zero(2 * n_r),
-             description),
-  n_r_(n_r),
-  n_ddr_(n_ddr),
-  n_feature_dyn_(n_feature_dyn),
-  n_theta_dyn_(theta_dyn.size()),
-  theta_dyn_(theta_dyn),
-  n_y_(n_r + n_ddr),
-  n_tau_(n_tau),
-  dyn_expression_(DynamicsExpression(n_ddr, n_feature_dyn, B_tau, robot_option)) {
+DynamicsConstraint::DynamicsConstraint(int n_r, int n_ddr, int n_feature_dyn,
+                                       const VectorXd& theta_dyn, int n_tau,
+                                       MatrixXd B_tau, int rom_option,
+                                       int robot_option,
+                                       const std::string& description)
+    : Constraint(2 * n_r, 2 * (2 * n_r + n_tau) + 1, VectorXd::Zero(2 * n_r),
+                 VectorXd::Zero(2 * n_r), description),
+      n_r_(n_r),
+      n_ddr_(n_ddr),
+      n_feature_dyn_(n_feature_dyn),
+      n_theta_dyn_(theta_dyn.size()),
+      theta_dyn_(theta_dyn),
+      n_y_(n_r + n_ddr),
+      n_tau_(n_tau),
+      dyn_expression_(DynamicsExpression(n_ddr, n_feature_dyn, B_tau,
+                                         rom_option, robot_option)) {
   // Check the theta size
   DRAKE_DEMAND(n_ddr * n_feature_dyn == theta_dyn.size());
 

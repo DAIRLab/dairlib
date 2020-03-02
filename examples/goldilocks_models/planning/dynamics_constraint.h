@@ -58,7 +58,7 @@ class DynamicsConstraint : public Constraint {
   DynamicsConstraint(int n_r, int n_ddr, int n_feature_dyn,
                      const VectorXd & theta_dyn,
                      int n_tau,
-                     MatrixXd B_tau,
+                     MatrixXd B_tau, int rom_option,
                      int robot_option,
                      const std::string& description = "");
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& q,

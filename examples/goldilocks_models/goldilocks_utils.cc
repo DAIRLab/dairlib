@@ -1,5 +1,9 @@
 #include "examples/goldilocks_models/goldilocks_utils.h"
 
+#include <iostream>
+#include <sys/stat.h>  // Check the existence of a file/folder
+#include <cstdlib>  // System call to create folder (and also parent directory)
+
 namespace dairlib {
 namespace goldilocks_models  {
 
@@ -132,6 +136,49 @@ VectorXd createPrimeNumbers(int num_prime) {
   return prime_until_100.head(num_prime);
 }
 
+
+bool folder_exist (const std::string & pathname_string) {
+  // Convert string to char
+  const char * pathname = pathname_string.c_str();
+
+  struct stat info;
+  if( stat( pathname, &info ) != 0 ) {
+    printf( "cannot access %s\n", pathname );
+    return false;
+  } else if( info.st_mode & S_IFDIR ) {
+    printf( "%s is a directory\n", pathname );
+    return true;
+  } else {
+    printf( "%s is no directory\n", pathname );
+    return false;
+  }
+}
+
+bool CreateFolderIfNotExist(const string& dir) {
+  if (!folder_exist(dir)) {
+    cout << dir
+         << " doesn't exsit. We will create the folder.\nProceed? (Y/N)\n";
+    char answer[1];
+    std::cin >> answer;
+    if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
+      cout << "Ending the program.\n";
+      return false;
+    }
+
+    // Creating a directory
+    // This method probably only works in Linux/Unix?
+    // See: https://codeyarns.com/2014/08/07/how-to-create-directory-using-c-on-linux/
+    // It will create parent directories as well.
+    std::string string_for_system_call = "mkdir -p " + dir;
+    if (system(string_for_system_call.c_str()) == -1) {
+      printf("Error creating directory!n");
+      return false;
+    } else {
+      cout << "This folder has been created: " << dir << endl;
+    }
+  }
+  return true;
+}
 
 
 }  // namespace goldilocks_models

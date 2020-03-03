@@ -474,9 +474,9 @@ void HybridLQRController::calcLinearResetMap(double t, int contact_mode,
   MatrixX<AutoDiffXd> delta = R_non_linear * x_autodiff.tail(n_v_);
   *R = MatrixXd::Zero(n_x_, n_x_);
   MatrixXd R_linear = autoDiffToGradientMatrix(delta).block(0, 0, n_v_, n_x_);
-  R->block(0, 0, n_q_, n_q_) = MatrixXd::Identity(n_q_, n_q_);
+//  R->block(0, 0, n_q_, n_q_) = MatrixXd::Identity(n_q_, n_q_);
   R->block(n_q_, 0, n_v_, n_x_) = R_linear;
-  *R = *R - MatrixXd::Identity(n_x_, n_x_);
+//  *R = *R - MatrixXd::Identity(n_x_, n_x_);
 }
 
 VectorXd HybridLQRController::calcLdot(double t, const VectorXd& l,

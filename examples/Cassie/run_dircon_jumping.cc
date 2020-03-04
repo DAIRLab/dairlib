@@ -263,32 +263,32 @@ void DoMain() {
 
   vector<int> stance_modes{0, 2};
 
-  for (int i : stance_modes) {
-    double s = 1;  // scale everything together
-    // Dynamic constraints
-    options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 5);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 1500.0, 6, 16);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 28);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 2000.0, 29, 34);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 2000.0, 35, 36);
-    // Kinematic constraints
-    options_list[i].setKinConstraintScaling(s * 1.0 / 50.0, 0, 4);
-    options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
-    options_list[i].setKinConstraintScaling(s * 1.0 / 1000.0, 7 + 0, 7 + 4);
-    options_list[i].setKinConstraintScaling(s * 1.0, 7 + 5, 7 + 6);
-    options_list[i].setKinConstraintScaling(s * 1.0, 14 + 0, 14 + 4);
-    options_list[i].setKinConstraintScaling(s * 1.0 / 200, 14 + 5, 14 + 6);
-    // Impact constraints
-    options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 24.0, 6, 7);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 6.0, 8, 9);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
-    options_list[i].setImpConstraintScaling(s * 1.0, 16, 17);
-  }
+  //  for (int i : stance_modes) {
+  //    double s = 1;  // scale everything together
+  //    // Dynamic constraints
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 5);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 1500.0, 6, 16);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 28);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 2000.0, 29, 34);
+  //    options_list[i].setDynConstraintScaling(s * 1.0 / 2000.0, 35, 36);
+  //    // Kinematic constraints
+  //    options_list[i].setKinConstraintScaling(s * 1.0 / 50.0, 0, 4);
+  //    options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
+  //    options_list[i].setKinConstraintScaling(s * 1.0 / 1000.0, 7 + 0, 7 + 4);
+  //    options_list[i].setKinConstraintScaling(s * 1.0, 7 + 5, 7 + 6);
+  //    options_list[i].setKinConstraintScaling(s * 1.0, 14 + 0, 14 + 4);
+  //    options_list[i].setKinConstraintScaling(s * 1.0 / 200, 14 + 5, 14 + 6);
+  //    // Impact constraints
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 24.0, 6, 7);
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 6.0, 8, 9);
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
+  //    options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
+  //    options_list[i].setImpConstraintScaling(s * 1.0, 16, 17);
+  //  }
 
   auto trajopt = std::make_shared<HybridDircon<double>>(
       plant, timesteps, min_dt, max_dt, contact_mode_list, options_list);
@@ -402,24 +402,23 @@ void DoMain() {
     }
   }
 
-  //  // Printing
-  //  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
-  //    cout << trajopt->decision_variable(i) << ", ";
-  //    cout << trajopt->decision_variable(i).get_id() << ", ";
-  //    cout <<
-  //    trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
-  //         << ", ";
-  //    auto scale_map = trajopt->GetVariableScaling();
-  //    auto it = scale_map.find(i);
-  //    if (it != scale_map.end()) {
-  //      cout << it->second;
-  //    } else {
-  //      cout << "none";
-  //    }
-  //    cout << ", ";
-  //    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
-  //    cout << endl;
-  //  }
+  // Printing
+  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
+    cout << trajopt->decision_variable(i) << ", ";
+    cout << trajopt->decision_variable(i).get_id() << ", ";
+    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
+         << ", ";
+    auto scale_map = trajopt->GetVariableScaling();
+    auto it = scale_map.find(i);
+    if (it != scale_map.end()) {
+      cout << it->second;
+    } else {
+      cout << "none";
+    }
+    cout << ", ";
+    cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
+    cout << endl;
+  }
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
@@ -552,28 +551,29 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   // Just position constraints
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-//  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_x")));
+  //  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_x")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
-//  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_y")));
+  //  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_y")));
   //  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_x")));
   //  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_y")));
 
   // Knee Angles
-//  trajopt->AddBoundingBoxConstraint(-0.85, -0.75, x0(pos_map.at("knee_left")));
-//  trajopt->AddBoundingBoxConstraint(-0.85, -0.75, x0(pos_map.at("knee_right")));
+  //  trajopt->AddBoundingBoxConstraint(-0.85, -0.75,
+  //  x0(pos_map.at("knee_left"))); trajopt->AddBoundingBoxConstraint(-0.85,
+  //  -0.75, x0(pos_map.at("knee_right")));
   // Hip orientations
-//  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
-//                                    x0(pos_map.at("hip_roll_left")));
-//  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
-//                                    x0(pos_map.at("hip_roll_right")));
+  //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
+  //                                    x0(pos_map.at("hip_roll_left")));
+  //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
+  //                                    x0(pos_map.at("hip_roll_right")));
   //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
   //                                    xf(pos_map.at("hip_roll_left")));
   //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
   //                                    xf(pos_map.at("hip_roll_right")));
-//  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
-//                                    x0(pos_map.at("hip_yaw_left")));
-//  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
-//                                    x0(pos_map.at("hip_yaw_right")));
+  //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
+  //                                    x0(pos_map.at("hip_yaw_left")));
+  //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
+  //                                    x0(pos_map.at("hip_yaw_right")));
   //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
   //                                    xf(pos_map.at("hip_yaw_left")));
   //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
@@ -621,7 +621,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   l_r_pairs.pop_back();
 
-  //  std::cout << "Joint symmetric constraints: " << std::endl;
+  std::cout << "Joint symmetric constraints: " << std::endl;
   for (const auto& l_r_pair : l_r_pairs) {
     for (const auto& sym_joint_name : sym_joint_names) {
       trajopt->AddLinearConstraint(
@@ -760,21 +760,22 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   }
 
   // Scale decision variable
-  double s_q_toe = 1;
-  double s_v_toe_l = 1;
-  double s_v_toe_r = 1;
+  //  double s_q_toe = 1;
+  //  double s_v_toe_l = 1;
+  //  double s_v_toe_r = 1;
   // time
   //  trajopt->ScaleTimeVariables(0.008);
   // state
-  trajopt->ScaleStateVariables(0.5, 0, 3);
-  if (s_q_toe > 1) {
-    trajopt->ScaleStateVariables(s_q_toe, n_q - 2, n_q - 1);
-  }
-  trajopt->ScaleStateVariables(10, n_q, n_q + n_v - 3);
-  trajopt->ScaleStateVariables(10 * s_v_toe_l, n_q + n_v - 2, n_q + n_v - 2);
-  trajopt->ScaleStateVariables(10 * s_v_toe_r, n_q + n_v - 1, n_q + n_v - 1);
+  //  trajopt->ScaleStateVariables(0.5, 0, 3);
+  //  if (s_q_toe > 1) {
+  //    trajopt->ScaleStateVariables(s_q_toe, n_q - 2, n_q - 1);
+  //  }
+  //  trajopt->ScaleStateVariables(10, n_q, n_q + n_v - 3);
+  //  trajopt->ScaleStateVariables(10 * s_v_toe_l, n_q + n_v - 2, n_q + n_v -
+  //  2); trajopt->ScaleStateVariables(10 * s_v_toe_r, n_q + n_v - 1, n_q + n_v
+  //  - 1);
   // input
-  trajopt->ScaleInputVariables(100, 0, 9);
+  //  trajopt->ScaleInputVariables(100, 0, 9);
   // force
   //  trajopt->ScaleForceVariables(1000, 0, 0,
   //                               trajopt->num_kinematic_constraints(0) - 1);
@@ -1039,7 +1040,7 @@ MatrixXd generate_state_input_matrix(const PiecewisePolynomial<double>& states,
 
   for (int i = 0; i < times.size(); ++i) {
     states_matrix.col(i) = states.value(times[i]);
-    inputs_matrix.col(i) = states.value(times[i]);
+    inputs_matrix.col(i) = inputs.value(times[i]);
   }
   MatrixXd states_and_inputs(num_states + num_inputs, times.size());
   states_and_inputs.topRows(num_states) = states_matrix;

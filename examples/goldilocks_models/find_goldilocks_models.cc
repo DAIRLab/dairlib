@@ -895,41 +895,105 @@ void GetAdjacentHelper(int sample_idx, MatrixXi& sample_idx_waiting_to_help,
 }
 void RecordSolutionQualityAndQueueList(
     const string& dir, const string& prefix, int sample_idx,
-    const vector<double>& each_min_cost_so_far,
     const MatrixXi& adjacent_sample_indices,
-    double max_cost_increase_rate_before_ask_for_help, int sample_success,
-    bool current_sample_is_queued, vector<int>& is_good_solution,
-    MatrixXi& sample_idx_waiting_to_help,
-    const MatrixXi& sample_idx_that_helped,
+    double max_cost_increase_rate_before_ask_for_help,
+    double max_adj_cost_diff_rate_before_ask_for_help,
+    bool is_limit_difference_of_two_adjacent_costs, int sample_success,
+    bool current_sample_is_queued, vector<double>& each_min_cost_so_far,
+    vector<int>& is_good_solution, MatrixXi& sample_idx_waiting_to_help,
+    MatrixXi& sample_idx_that_helped,
     std::deque<int>& awaiting_sample_idx) {
-  // Record if the current sample got a good solution. A good solution
-  // means:
+  double sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
+
+  // When the current sample cost is lower than before, update
+  // 1. `each_min_cost_so_far` and
+  bool current_sample_improved =
+      (sample_cost < each_min_cost_so_far[sample_idx]);
+  if (current_sample_improved) {
+    each_min_cost_so_far[sample_idx] = sample_cost;
+  }
+
+  // Calculate low_below_adjacent_cost and high_above_adjacent_cost
+  vector<int> low_adjacent_cost_idx;
+  vector<int> high_adjacent_cost_idx;
+  if (is_limit_difference_of_two_adjacent_costs) {
+    for (int i = 0; i < adjacent_sample_indices.cols(); i++) {
+      int adj_idx = adjacent_sample_indices(sample_idx, i);
+      if (adj_idx == -1) continue;
+
+      double cost_diff =
+          sample_cost - each_min_cost_so_far[adj_idx];
+      if (cost_diff > max_adj_cost_diff_rate_before_ask_for_help *
+                          each_min_cost_so_far[sample_idx]) {
+        // if the current sample cost is much higher than the adjacent cost
+        low_adjacent_cost_idx.push_back(adj_idx);
+      } else if (cost_diff < -max_adj_cost_diff_rate_before_ask_for_help *
+                                 each_min_cost_so_far[sample_idx]) {
+        // if the current sample cost is much lower than the adjacent cost
+        high_adjacent_cost_idx.push_back(adj_idx);
+      }
+    }
+  }
+  bool too_high_above_adjacent_cost = !low_adjacent_cost_idx.empty();
+  bool too_low_below_adjacent_cost = !high_adjacent_cost_idx.empty();
+
+  // Record whether or not the current sample got a good solution. A good
+  // solution (of the current sample) means:
   // 1. optimal solution found
   // 2. the cost didn't increase too much compared to that of the
   // previous iteration
-  double sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
+  // 3. (optional) the cost is not too high above the adjacent costs
   if ((sample_success == 1) &&
       (sample_cost <= (1 + max_cost_increase_rate_before_ask_for_help) *
-                          each_min_cost_so_far[sample_idx])) {
+                          each_min_cost_so_far[sample_idx]) &&
+      !too_high_above_adjacent_cost) {
     // Set the current sample to be having good solution
     is_good_solution[sample_idx] = 1;
 
-    // Remove the helpers for the current sample since it's successful.
-    // However, the removal not necessary in the algorithm.
+    // Remove the helpers which wait to help the current sample since it's
+    // successful. However, the removal not necessary in the algorithm.
 
     // Look for any adjacent sample that needs help
     for (int j = 0; j < adjacent_sample_indices.cols(); j++) {
-      bool this_adjacent_sample_needs_help = false;
-      bool current_sample_has_helped = false;
-
       int adj_idx = adjacent_sample_indices(sample_idx, j);
       if (adj_idx == -1) continue;
 
+      // if the current sample improved after it helped others, than wipe it off
+      // the helped_list, and also add the idx that needs help
+      if (current_sample_improved) {
+        // Remove current sample from sample_idx_that_helped.
+        bool already_exist = false;
+        for (int i = 0; i < 4; i++) {
+          if (sample_idx_that_helped(adj_idx, i) == sample_idx) {
+            sample_idx_that_helped(adj_idx, i) = -1;
+            already_exist = true;
+            break;
+          }
+        }
+        // Add current sample to sample_idx_waiting_to_help.
+        if (already_exist) {
+          for (int i = 0; i < 4; i++) {
+            if (sample_idx_waiting_to_help(adj_idx, i) == -1) {
+              sample_idx_waiting_to_help(adj_idx, i) = sample_idx;
+              break;
+            }
+          }
+        }
+      }
+
+      bool this_adjacent_sample_needs_help = false;
+      bool current_sample_has_helped = false;
+
       bool adj_has_bad_sol = is_good_solution[adj_idx] == 0;
+      bool adj_has_too_high_cost =
+          (find(high_adjacent_cost_idx.begin(), high_adjacent_cost_idx.end(),
+                adj_idx) != high_adjacent_cost_idx.end());
+
+      bool revert_good_adj_sol_to_bad_sol = false; // for printing
       if (adj_has_bad_sol) {
         this_adjacent_sample_needs_help = true;
 
-        // The helper list
+        // Add current sample to the helper list of adjacent sample
         // (add if it doesn't exist in both sample_idx_waiting_to_help
         //  and sample_idx_that_helped)
         bool already_exist = false;
@@ -952,7 +1016,35 @@ void RecordSolutionQualityAndQueueList(
             }
           }
         }
-      }  // end if (adjacent sample has bad sol)
+      } else if (adj_has_too_high_cost) {
+        this_adjacent_sample_needs_help = true;
+
+        is_good_solution[adj_idx] = 0;
+        revert_good_adj_sol_to_bad_sol = true;
+
+        // Add current sample to sample_idx_waiting_to_help.
+        bool already_exist = false;
+        for (int i = 0; i < 4; i++) {
+          already_exist = already_exist || (sample_idx_waiting_to_help(
+                                                adj_idx, i) == sample_idx);
+        }
+        if (!already_exist) {
+          for (int i = 0; i < 4; i++) {
+            if (sample_idx_waiting_to_help(adj_idx, i) == -1) {
+              sample_idx_waiting_to_help(adj_idx, i) = sample_idx;
+              break;
+            }
+          }
+        }
+        // Remove current sample from sample_idx_that_helped.
+        for (int i = 0; i < 4; i++) {
+          if (sample_idx_that_helped(adj_idx, i) == sample_idx) {
+            sample_idx_that_helped(adj_idx, i) = -1;
+            break;
+          }
+        }
+      }
+      // end if (adjacent sample has bad sol) and else if
 
       // Queue adjacent samples if
       // 1. it's not in the awaiting_sample_idx
@@ -964,8 +1056,14 @@ void RecordSolutionQualityAndQueueList(
         if (it == awaiting_sample_idx.end()) {
           awaiting_sample_idx.push_back(adj_idx);
         }
-        cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
-             << " needs help, so add to queue\n";
+        if (revert_good_adj_sol_to_bad_sol) {
+          cout << "idx #" << sample_idx
+               << " cost is too low below that of  idx #" << adj_idx
+               << ", so add to queue\n";
+        } else {
+          cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
+               << " needs help, so add to queue\n";
+        }
       }
     }  // end for (Look for any adjacent sample that needs help)
 
@@ -984,6 +1082,10 @@ void RecordSolutionQualityAndQueueList(
       if (adj_idx == -1) continue;
 
       bool adj_has_good_sol = is_good_solution[adj_idx] == 1;
+      /*bool adj_has_too_low_cost =
+          (find(high_adjacent_cost_idx.begin(), high_adjacent_cost_idx.end(),
+                adj_idx) != high_adjacent_cost_idx.end());*/
+
       if (adj_has_good_sol) {
         this_adjacent_sample_can_help = true;
 
@@ -1019,12 +1121,18 @@ void RecordSolutionQualityAndQueueList(
           this_adjacent_sample_is_waiting_to_help) {
         awaiting_sample_idx.push_back(sample_idx);
         current_sample_is_queued = true;
-        cout << "idx #" << sample_idx << " got bad sol, and idx #" << adj_idx
-             << " can help, so add to queue\n";
+        if (too_high_above_adjacent_cost) {
+          cout << "idx #" << sample_idx << " cost is too low below idx #" << adj_idx
+               << ", so add to queue\n";
+        } else {
+          cout << "idx #" << sample_idx << " got bad sol, and idx #" << adj_idx
+               << " can help, so add to queue\n";
+        }
       }
     }  // end for (Look for any adjacent sample that can help)
   }    // end if current sample has good solution
 }
+
 
 int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -1229,6 +1337,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   const int method_to_solve_system_of_equations = 3;
   double max_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
   double max_cost_increase_rate_before_ask_for_help = 0.1;
+  double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
+  bool is_limit_difference_of_two_adjacent_costs =
+      max_adj_cost_diff_rate_before_ask_for_help > 0;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
@@ -1247,6 +1358,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "The maximum rate the cost can increase before asking adjacent "
           "samples for help = "
        << max_cost_increase_rate_before_ask_for_help << endl;
+  cout << "The maximum cost difference rate between two adjacent samples = "
+       << max_adj_cost_diff_rate_before_ask_for_help << endl;
 
   // Parameters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
@@ -1646,6 +1759,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // initialize the column number with 4.
       MatrixXi sample_idx_waiting_to_help = -1 * MatrixXi::Ones(N_sample, 4);
       MatrixXi sample_idx_that_helped = -1 * MatrixXi::Ones(N_sample, 4);
+      std::vector<double> local_each_min_cost_so_far = each_min_cost_so_far;
 
       // Evaluate samples
       int n_failed_sample = 0;
@@ -1778,10 +1892,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Get good initial guess from adjacent samples's solution
           RecordSolutionQualityAndQueueList(
-              dir, prefix, sample_idx, each_min_cost_so_far,
-              adjacent_sample_indices,
-              max_cost_increase_rate_before_ask_for_help, sample_success,
-              current_sample_is_queued, is_good_solution,
+              dir, prefix, sample_idx, adjacent_sample_indices,
+              max_cost_increase_rate_before_ask_for_help,
+              max_adj_cost_diff_rate_before_ask_for_help,
+              is_limit_difference_of_two_adjacent_costs, sample_success,
+              current_sample_is_queued, local_each_min_cost_so_far,
+              is_good_solution,
               sample_idx_waiting_to_help, sample_idx_that_helped,
               awaiting_sample_idx);
 

@@ -1612,67 +1612,69 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   for (int i = 0; i < 2; i++) {
     double s = 1;  // scale everything together
 
-    // old constraint scaling (from traj opt of cassie, without rom constraint)
-    /*// Dynamic constraints
-    options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 28);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
-    // Kinematic constraints
-    int n_l = options_list[i].getNumConstraints();
-    options_list[i].setKinConstraintScaling(s * 1.0 / 6000.0, 0, 4);
-    options_list[i].setKinConstraintScaling(s * 1.0 / 10.0, n_l + 0, n_l + 4);
-    options_list[i].setKinConstraintScaling(s * 1.0, 2 * n_l + 0, 2 * n_l + 4);
-    if (i == 0 || four_bar_in_right_support) {
-      options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
-      options_list[i].setKinConstraintScaling(s * 1.0, n_l + 5, n_l + 6);
-      options_list[i].setKinConstraintScaling(s * 1.0 * 20, 2 * n_l + 5,
-                                              2 * n_l + 6);
+    if (is_get_nominal) {
+      // old constraint scaling (from traj opt of cassie, without rom constraint)
+      // Dynamic constraints
+      options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 28);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
+      // Kinematic constraints
+      int n_l = options_list[i].getNumConstraints();
+      options_list[i].setKinConstraintScaling(s * 1.0 / 6000.0, 0, 4);
+      options_list[i].setKinConstraintScaling(s * 1.0 / 10.0, n_l + 0, n_l + 4);
+      options_list[i].setKinConstraintScaling(s * 1.0, 2 * n_l + 0, 2 * n_l + 4);
+      if (i == 0 || four_bar_in_right_support) {
+        options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
+        options_list[i].setKinConstraintScaling(s * 1.0, n_l + 5, n_l + 6);
+        options_list[i].setKinConstraintScaling(s * 1.0 * 20, 2 * n_l + 5,
+                                                2 * n_l + 6);
+      }
+      // Impact constraints
+      options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 24.0, 6, 7);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 6.0, 8, 9);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
+      options_list[i].setImpConstraintScaling(s * 1.0, 16, n_v - 1);
+    } else {
+      // new constraint scaling (20200227; after adding rom constraint)
+      // Dynamic constraints
+      options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 26);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 27, 28);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
+      options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
+      // Kinematic constraints
+      int n_l = options_list[i].getNumConstraints();
+      options_list[i].setKinConstraintScaling(s * 1.0 / 600.0, 0, 4);
+      options_list[i].setKinConstraintScaling(s * 1.0 / 1.0, n_l + 0, n_l + 4);
+      options_list[i].setKinConstraintScaling(s * 1.0, 2 * n_l + 0, 2 * n_l + 4);
+      if (i == 0 || four_bar_in_right_support) {
+        options_list[i].setKinConstraintScaling(s * 1.0 / 60.0 * 2, 5, 6);
+        options_list[i].setKinConstraintScaling(s * 10.0, n_l + 5, n_l + 6);
+        options_list[i].setKinConstraintScaling(s * 1.0 * 20, 2 * n_l + 5,
+                                                2 * n_l + 6);
+      }
+      // Impact constraints
+      options_list[i].setImpConstraintScaling(s * 1.0 / 5.0, 0, 2);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 30.0, 3, 5);
+      options_list[i].setImpConstraintScaling(s * 10.0 / 24.0, 6, 7);
+      options_list[i].setImpConstraintScaling(s * 10.0 / 6.0, 8, 9);
+      options_list[i].setImpConstraintScaling(s * 10.0 / 12.0, 10, 10);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 11, 11);
+      options_list[i].setImpConstraintScaling(s * 10.0 / 12.0, 12, 12);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 13, 13);
+      options_list[i].setImpConstraintScaling(s * 10.0 / 2.0, 14, 14);
+      options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 15, 15);
+      options_list[i].setImpConstraintScaling(s * 50.0, 16, 16);
+      options_list[i].setImpConstraintScaling(s * 1.0, n_v - 1, n_v - 1);
     }
-    // Impact constraints
-    options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 24.0, 6, 7);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 6.0, 8, 9);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
-    options_list[i].setImpConstraintScaling(s * 1.0, 16, n_v - 1);*/
-
-    // new constraint scaling (20200227; after adding rom constraint)
-    // Dynamic constraints
-    options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 26);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 27, 28);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
-    options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
-    // Kinematic constraints
-    int n_l = options_list[i].getNumConstraints();
-    options_list[i].setKinConstraintScaling(s * 1.0 / 600.0, 0, 4);
-    options_list[i].setKinConstraintScaling(s * 1.0 / 1.0, n_l + 0, n_l + 4);
-    options_list[i].setKinConstraintScaling(s * 1.0, 2 * n_l + 0, 2 * n_l + 4);
-    if (i == 0 || four_bar_in_right_support) {
-      options_list[i].setKinConstraintScaling(s * 1.0 / 60.0 * 2, 5, 6);
-      options_list[i].setKinConstraintScaling(s * 10.0, n_l + 5, n_l + 6);
-      options_list[i].setKinConstraintScaling(s * 1.0 * 20, 2 * n_l + 5,
-                                              2 * n_l + 6);
-    }
-    // Impact constraints
-    options_list[i].setImpConstraintScaling(s * 1.0 / 5.0, 0, 2);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 30.0, 3, 5);
-    options_list[i].setImpConstraintScaling(s * 10.0 / 24.0, 6, 7);
-    options_list[i].setImpConstraintScaling(s * 10.0 / 6.0, 8, 9);
-    options_list[i].setImpConstraintScaling(s * 10.0 / 12.0, 10, 10);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 11, 11);
-    options_list[i].setImpConstraintScaling(s * 10.0 / 12.0, 12, 12);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 13, 13);
-    options_list[i].setImpConstraintScaling(s * 10.0 / 2.0, 14, 14);
-    options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 15, 15);
-    options_list[i].setImpConstraintScaling(s * 50.0, 16, 16);
-    options_list[i].setImpConstraintScaling(s * 1.0, n_v - 1, n_v - 1);
   }
 
   // timesteps and modes setting
@@ -1860,16 +1862,22 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   trajopt->AddConstraint(right_foot_constraint_z0, x_mid.head(n_q));*/
 
   // testing -- swing foot contact point height constraint
-  auto right_foot_constraint_z1 = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", pt_front_contact, T_ground_incline, 2,
-      0 , std::numeric_limits<double>::infinity());
-  auto right_foot_constraint_z2 = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", pt_rear_contact, T_ground_incline, 2,
-      0 , std::numeric_limits<double>::infinity());
   for (int index = 1; index < num_time_samples[0] - 1; index++) {
-    auto x = trajopt->state(index);
-    trajopt->AddConstraint(right_foot_constraint_z1, x.head(n_q));
-    trajopt->AddConstraint(right_foot_constraint_z2, x.head(n_q));
+    double h_min = 0;
+    if (index == int(num_time_samples[0]/2)) {
+      h_min = 0.1;  // 10 centimeter high in the mid point
+    }
+
+    auto right_foot_constraint_z1 = std::make_shared<OneDimBodyPosConstraint>(
+        &plant, "toe_right", pt_front_contact, T_ground_incline, 2,
+        h_min , std::numeric_limits<double>::infinity());
+    auto right_foot_constraint_z2 = std::make_shared<OneDimBodyPosConstraint>(
+        &plant, "toe_right", pt_rear_contact, T_ground_incline, 2,
+        h_min , std::numeric_limits<double>::infinity());
+
+    auto x_i = trajopt->state(index);
+    trajopt->AddConstraint(right_foot_constraint_z1, x_i.head(n_q));
+    trajopt->AddConstraint(right_foot_constraint_z2, x_i.head(n_q));
   }
 
   // testing -- lock the swing toe joint position (otherwise it shakes too much)

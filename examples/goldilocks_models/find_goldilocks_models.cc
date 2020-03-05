@@ -865,6 +865,16 @@ void readPiQiFile(vector<MatrixXd> * P_vec, vector<VectorXd> * q_vec,
   }
 }
 
+bool IsSampleBeingEvaluated(const vector<pair<int, int>>& assigned_thread_idx,
+                            int sample_idx) {
+  for (auto& member : assigned_thread_idx) {
+    if (member.second == sample_idx) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // `GetAdjacentHelper` and `RecordSolutionQualityAndQueueList` are methods for
 // getting good solution from adjacent samples
 void GetAdjacentHelper(int sample_idx, MatrixXi& sample_idx_waiting_to_help,
@@ -895,6 +905,7 @@ void GetAdjacentHelper(int sample_idx, MatrixXi& sample_idx_waiting_to_help,
 }
 void RecordSolutionQualityAndQueueList(
     const string& dir, const string& prefix, int sample_idx,
+    const vector<pair<int, int>>& assigned_thread_idx,
     const MatrixXi& adjacent_sample_indices,
     double max_cost_increase_rate_before_ask_for_help,
     double max_adj_cost_diff_rate_before_ask_for_help,
@@ -1047,13 +1058,13 @@ void RecordSolutionQualityAndQueueList(
       // end if (adjacent sample has bad sol) and else if
 
       // Queue adjacent samples if
-      // 1. it's not in the awaiting_sample_idx
+      // 1. it's not in the awaiting_sample_idx and not being evaluated
       // 2. the adjacent sample needs help
       // 3. the current sample hasn't helped the adjacent sample
       if (this_adjacent_sample_needs_help && current_sample_has_helped) {
-        auto it = find(awaiting_sample_idx.begin(), awaiting_sample_idx.end(),
-                       adj_idx);
-        if (it == awaiting_sample_idx.end()) {
+        if ((find(awaiting_sample_idx.begin(), awaiting_sample_idx.end(),
+                  adj_idx) == awaiting_sample_idx.end()) &&
+            !(IsSampleBeingEvaluated(assigned_thread_idx, sample_idx))) {
           awaiting_sample_idx.push_back(adj_idx);
         }
         if (revert_good_adj_sol_to_bad_sol) {
@@ -1892,14 +1903,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Get good initial guess from adjacent samples's solution
           RecordSolutionQualityAndQueueList(
-              dir, prefix, sample_idx, adjacent_sample_indices,
+              dir, prefix, sample_idx, assigned_thread_idx,
+              adjacent_sample_indices,
               max_cost_increase_rate_before_ask_for_help,
               max_adj_cost_diff_rate_before_ask_for_help,
               is_limit_difference_of_two_adjacent_costs, sample_success,
               current_sample_is_queued, local_each_min_cost_so_far,
-              is_good_solution,
-              sample_idx_waiting_to_help, sample_idx_that_helped,
-              awaiting_sample_idx);
+              is_good_solution, sample_idx_waiting_to_help,
+              sample_idx_that_helped, awaiting_sample_idx);
 
           // If the current sample is queued again because it could be helped by
           // adjacent samples, then don't conclude that it's a failure yet

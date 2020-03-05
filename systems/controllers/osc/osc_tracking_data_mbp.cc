@@ -27,8 +27,7 @@ namespace dairlib::systems::controllers {
 using multibody::makeNameToPositionsMap;
 using multibody::makeNameToVelocitiesMap;
 
-// OscTrackingDataMBP
-// /////////////////////////////////////////////////////////////
+/**** OscTrackingDataMBP ****/
 OscTrackingDataMBP::OscTrackingDataMBP(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
@@ -41,12 +40,9 @@ OscTrackingDataMBP::OscTrackingDataMBP(
       K_d_(K_d),
       W_(W),
       world_w_spr_(plant_w_spr_->world_frame()),
-      world_wo_spr_(plant_wo_spr_->world_frame()) {
-  //  world_w_spr_ = plant_w_spr_->world_frame();
-  //  world_wo_spr_ = plant_wo_spr_->world_frame();
-}
+      world_wo_spr_(plant_wo_spr_->world_frame()) {}
 
-// Updater
+// Update
 bool OscTrackingDataMBP::Update(
     const VectorXd& x_w_spr, Context<double>& context_w_spr,
     const VectorXd& x_wo_spr, Context<double>& context_wo_spr,
@@ -159,7 +155,7 @@ void ComTrackingDataMBP::UpdateJ(const VectorXd& x_wo_spr,
 void ComTrackingDataMBP::UpdateJdotV(const VectorXd& x_wo_spr,
                                      Context<double>& context_wo_spr) {
   // TODO (yangwill): Implement CoM JdotV in MBP
-  JdotV_ = plant_wo_spr_->centerOfMassJacobianDotTimesV(context_wo_spr);
+  JdotV_ = plant_wo_spr_->CalcCenterOfMassJacobianDotTimesV(context_wo_spr);
 }
 
 void ComTrackingDataMBP::CheckDerivedOscTrackingData() {}
@@ -172,7 +168,6 @@ TaskSpaceTrackingDataMBP::TaskSpaceTrackingDataMBP(
     : OscTrackingDataMBP(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr) {}
 
 /**** TransTaskSpaceTrackingDataMBP ****/
-// //////////////////////////////////////////////////
 TransTaskSpaceTrackingDataMBP::TransTaskSpaceTrackingDataMBP(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
@@ -241,12 +236,12 @@ void TransTaskSpaceTrackingDataMBP::UpdateJdotV(
   //  JdotV_ = plant_wo_spr_->transformPointsJacobianDotTimesV(
   //      cache_wo_spr, pts_on_body_.at(GetStateIdx()),
   //      body_index_wo_spr_.at(GetStateIdx()), 0);
-  plant_wo_spr_
-      ->CalcBiasForJacobianSpatialVelocity(
-          context_wo_spr, drake::multibody::JacobianWrtVariable::kV,
-          body_frames_wo_spr_.at(GetStateIdx()), pts_on_body_.at(GetStateIdx()),
-          world_wo_spr_, world_wo_spr_)
-      .tail(3);
+  JdotV_ = plant_wo_spr_
+               ->CalcBiasForJacobianSpatialVelocity(
+                   context_wo_spr, drake::multibody::JacobianWrtVariable::kV,
+                   body_frames_wo_spr_.at(GetStateIdx()),
+                   pts_on_body_.at(GetStateIdx()), world_wo_spr_, world_wo_spr_)
+               .tail(3);
 }
 
 void TransTaskSpaceTrackingDataMBP::CheckDerivedOscTrackingData() {
@@ -264,7 +259,6 @@ void TransTaskSpaceTrackingDataMBP::CheckDerivedOscTrackingData() {
 }
 
 /**** RotTaskSpaceTrackingDataMBP ****/
-// ////////////////////////////////////////////////////
 RotTaskSpaceTrackingDataMBP::RotTaskSpaceTrackingDataMBP(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
@@ -292,13 +286,6 @@ void RotTaskSpaceTrackingDataMBP::AddStateAndFrameToTrack(
 
 void RotTaskSpaceTrackingDataMBP::UpdateYAndError(
     const VectorXd& x_w_spr, Context<double>& context_w_spr) {
-  // Get the quaternion in the form of VectorXd
-  //  Eigen::Matrix3d rot_mat =
-  //      plant_w_spr_
-  //          ->CalcBodyPoseInWorldFrame(
-  //              context_w_spr,
-  //              plant_w_spr_->get_body(body_index_w_spr_.at(GetStateIdx())))
-  //          .linear();
   auto transform_mat = plant_w_spr_->EvalBodyPoseInWorld(
       context_w_spr,
       plant_w_spr_->get_body(body_index_w_spr_.at(GetStateIdx())));
@@ -321,10 +308,6 @@ void RotTaskSpaceTrackingDataMBP::UpdateYAndError(
 void RotTaskSpaceTrackingDataMBP::UpdateYdotAndError(
     const VectorXd& x_w_spr, Context<double>& context_w_spr) {
   MatrixXd J_spatial;
-  //      plant_w_spr_->CalcFrameSpatialVelocityJacobianInWorldFrame(
-  //          context_w_spr,
-  //          plant_w_spr_->get_body(body_index_w_spr_.at(GetStateIdx())),
-  //          frame_pose_.at(GetStateIdx()));
   plant_w_spr_->CalcJacobianSpatialVelocity(
       context_w_spr, JacobianWrtVariable::kV,
       body_frames_w_spr_.at(GetStateIdx()),
@@ -386,8 +369,7 @@ void RotTaskSpaceTrackingDataMBP::CheckDerivedOscTrackingData() {
   }
 }
 
-// JointSpaceTrackingDataMBP
-// //////////////////////////////////////////////////////
+/**** JointSpaceTrackingDataMBP ****/
 JointSpaceTrackingDataMBP::JointSpaceTrackingDataMBP(
     const string& name, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
@@ -408,7 +390,8 @@ void JointSpaceTrackingDataMBP::AddJointToTrack(
       makeNameToVelocitiesMap(*plant_wo_spr_).at(joint_vel_name));
 }
 void JointSpaceTrackingDataMBP::AddStateAndJointToTrack(
-    int state, std::string joint_pos_name, const std::string& joint_vel_name) {
+    int state, const std::string& joint_pos_name,
+    const std::string& joint_vel_name) {
   AddState(state);
   AddJointToTrack(joint_pos_name, joint_vel_name);
 }

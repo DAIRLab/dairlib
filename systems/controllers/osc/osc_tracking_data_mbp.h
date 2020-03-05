@@ -9,7 +9,6 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/rigid_body_tree.h"
 
-#include "external/drake/multibody/plant/_virtual_includes/multibody_plant_core/drake/multibody/plant/multibody_plant.h"
 #include "systems/framework/output_vector.h"
 
 namespace dairlib {
@@ -210,8 +209,8 @@ class TaskSpaceTrackingDataMBP : public OscTrackingDataMBP {
   // If `body_index_w_spr_` is empty, `body_index_wo_spr_` replaces it.
   std::vector<drake::multibody::BodyIndex> body_index_w_spr_;
   std::vector<drake::multibody::BodyIndex> body_index_wo_spr_;
-  std::vector<drake::multibody::Frame<double>> body_frames_w_spr_;
-  std::vector<drake::multibody::Frame<double>> body_frames_wo_spr_;
+  std::vector<drake::multibody::BodyFrame<double>> body_frames_w_spr_;
+  std::vector<drake::multibody::BodyFrame<double>> body_frames_wo_spr_;
 };
 
 /// TransTaskSpaceTrackingData is used when we want to track a trajectory
@@ -333,7 +332,7 @@ class JointSpaceTrackingDataMBP final : public OscTrackingDataMBP {
 //  JointSpaceTrackingDataMBP() {}  // Default constructor
 
   void AddJointToTrack(const std::string& joint_pos_name, const std::string& joint_vel_name);
-  void AddStateAndJointToTrack(int state, std::string joint_pos_name,
+  void AddStateAndJointToTrack(int state, const std::string& joint_pos_name,
                                const std::string& joint_vel_name);
 
  private:

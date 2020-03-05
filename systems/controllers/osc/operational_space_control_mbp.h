@@ -14,7 +14,7 @@
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
 
-#include "external/drake/multibody/plant/_virtual_includes/multibody_plant_core/drake/multibody/plant/multibody_plant.h"
+#include "multibody/multibody_distance_constraint.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data_mbp.h"
 #include "systems/framework/output_vector.h"
@@ -111,7 +111,8 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   void SetWeightOfSoftContactConstraint(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
   }
-  void AddContactPoint(const std::string& body_name, const Eigen::VectorXd& pt_on_body);
+  void AddContactPoint(const std::string& body_name,
+                       const Eigen::VectorXd& pt_on_body);
   void AddStateAndContactPoint(int state, std::string body_name,
                                Eigen::VectorXd pt_on_body);
 
@@ -140,7 +141,8 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   void CheckConstraintSettings();
 
   // Get solution of OSC
-  Eigen::VectorXd SolveQp(Eigen::VectorXd x_w_spr, const Eigen::VectorXd& x_wo_spr,
+  Eigen::VectorXd SolveQp(Eigen::VectorXd x_w_spr,
+                          const Eigen::VectorXd& x_wo_spr,
                           const drake::systems::Context<double>& context,
                           double t, int fsm_state,
                           double time_since_last_state_switch) const;
@@ -185,6 +187,10 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   // Size of holonomic constraint and total contact constraints
   int n_h_;
   int n_c_;
+
+  // Manually specified holonomic constraints (only valid for plants_wo_springs)
+  const std::vector<multibody::MultibodyDistanceConstraint*>
+      position_constraints_;
 
   // robot input limits
   Eigen::VectorXd u_min_;
@@ -253,4 +259,4 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   std::vector<double> t_e_vec_;
 };
 
-}  // namespace dairlib
+}  // namespace dairlib::systems::controllers

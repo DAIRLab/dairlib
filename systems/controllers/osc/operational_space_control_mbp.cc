@@ -392,18 +392,19 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
   const RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
   VectorXd bias(n_q_);
   plant_wo_spr_.CalcBiasTerm(context, &bias);
-  VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces();
+  VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(context);
+  bias = bias + grav;
   //  VectorXd bias =
   //      plant_wo_spr_.dynamicsBiasTerm(cache_wo_spr, no_external_wrenches);
 
   // Get J and JdotV for holonomic constraint
-  // TODO (yangwill): Create class that implements position constraint
-  //  evaluations for MBP
-  MatrixXd J_h =
-      plant_wo_spr_.positionConstraintsJacobian(context_wo_spr, false);
-  //  MatrixXd J_h = plant_wo_spr_.Calc(cache_wo_spr, false);
-  VectorXd JdotV_h =
-      plant_wo_spr_.positionConstraintsJacDotTimesV(context_wo_spr);
+
+  MatrixXd J_h(position_constraints_.size(), n_v_);
+  VectorXd JdotV_h(position_constraints_.size());
+  for(int i = 0; i < position_constraints_.size(); ++i){
+    J_h.row(i) = position_constraints_[i]->getJ();
+    JdotV_h.segment(i,1) = position_constraints_[i]->getJdotv();
+  }
 
   // Get J and JdotV for contact constraint
   MatrixXd J_c = MatrixXd::Zero(n_c_, n_v_);

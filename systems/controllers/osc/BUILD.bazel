@@ -29,7 +29,9 @@ cc_library(
     ],
     deps = [
         ":osc_tracking_data_mbp",
-        "//attic/multibody:utils",
+        #        "//attic/multibody:utils",
+        "//multibody:multibody_distance_constraint",
+        "//multibody:utils",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
@@ -60,7 +62,7 @@ cc_library(
         "osc_tracking_data_mbp.h",
     ],
     deps = [
-        "//attic/multibody:utils",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

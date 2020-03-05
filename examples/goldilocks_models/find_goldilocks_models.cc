@@ -1111,7 +1111,7 @@ void RecordSolutionQualityAndQueueList(
                << ", so add #"<< adj_idx <<" to queue (revert it to bad sol)\n";
         } else {
           cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
-               << " needs help, so add to queue\n";
+               << " needs help, so add #"<< adj_idx <<" to queue\n";
         }
       }
     }  // end for (Look for any adjacent sample that needs help)
@@ -1141,9 +1141,12 @@ void RecordSolutionQualityAndQueueList(
             (sample_idx_that_helped(sample_idx, i) == adj_idx);
       }
 
+      bool add_adj_cause_low_cost = false; // for printing message
       if (adj_has_too_low_cost && !low_adj_cost_idx_has_helped) {
         this_adjacent_sample_can_help = true;
         this_adjacent_sample_is_waiting_to_help = true;
+
+        add_adj_cause_low_cost = true;
 
         // Add adj_idx to the top of the helper list because it has a good
         // solution (very low cost)
@@ -1209,13 +1212,13 @@ void RecordSolutionQualityAndQueueList(
           this_adjacent_sample_is_waiting_to_help) {
         awaiting_sample_idx.push_back(sample_idx);
         current_sample_is_queued = true;
-        if (too_high_above_adjacent_cost) {
+        if (add_adj_cause_low_cost) {
           cout << "idx #" << sample_idx
                << " cost is too high above adjacent idx #" << adj_idx
                << ", so add #" << sample_idx << " to queue\n";
         } else {
           cout << "idx #" << sample_idx << " got bad sol, and idx #" << adj_idx
-               << " can help, so add to queue\n";
+               << " can help, so add #" << sample_idx << " to queue\n";
         }
       }
     }  // end for (Look for any adjacent sample that can help)

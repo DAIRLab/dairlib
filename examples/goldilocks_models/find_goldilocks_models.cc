@@ -1069,8 +1069,8 @@ void RecordSolutionQualityAndQueueList(
         }
         if (revert_good_adj_sol_to_bad_sol) {
           cout << "idx #" << sample_idx
-               << " cost is too low below that of  idx #" << adj_idx
-               << ", so add to queue\n";
+               << " cost is too low below that of adjacent idx #" << adj_idx
+               << ", so add #"<< adj_idx <<" to queue\n";
         } else {
           cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
                << " needs help, so add to queue\n";
@@ -1133,8 +1133,9 @@ void RecordSolutionQualityAndQueueList(
         awaiting_sample_idx.push_back(sample_idx);
         current_sample_is_queued = true;
         if (too_high_above_adjacent_cost) {
-          cout << "idx #" << sample_idx << " cost is too low below idx #" << adj_idx
-               << ", so add to queue\n";
+          cout << "idx #" << sample_idx
+               << " cost is too high above adjacent idx #" << adj_idx
+               << ", so add #" << sample_idx << " to queue\n";
         } else {
           cout << "idx #" << sample_idx << " got bad sol, and idx #" << adj_idx
                << " can help, so add to queue\n";

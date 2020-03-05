@@ -1819,6 +1819,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // -1 means empty.
       // Since in 2D tasks space, the adjacent sample# for each sample is 4, we
       // initialize the column number with 4.
+      // TODO: you can re-implement this with
+      //  std::vector<std::shared_ptr<std::vector<int>>>
+      //  so the code is cleaner.
       MatrixXi sample_idx_waiting_to_help = -1 * MatrixXi::Ones(N_sample, 4);
       MatrixXi sample_idx_that_helped = -1 * MatrixXi::Ones(N_sample, 4);
       std::vector<double> local_each_min_cost_so_far = each_min_cost_so_far;

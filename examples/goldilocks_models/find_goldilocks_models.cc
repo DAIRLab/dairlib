@@ -865,6 +865,40 @@ void readPiQiFile(vector<MatrixXd> * P_vec, vector<VectorXd> * q_vec,
   }
 }
 
+MatrixXi GetAdjSampleIndices(int N_sample_sl, int N_sample_gi, int N_sample) {
+  MatrixXi adjacent_sample_indices = -1 * MatrixXi::Ones(N_sample, 4);
+  MatrixXi delta_idx(2, 2);
+  delta_idx << 1, 0, 0, 1;
+  for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
+    for (int i = 0; i < N_sample_sl; i++) {  // stride length axis
+      int current_sample_idx = i + j * N_sample_sl;
+      for (int k = 0; k < delta_idx.rows(); k++) {
+        int new_i = i + delta_idx(k, 0);
+        int new_j = j + delta_idx(k, 1);
+        int adjacent_sample_idx = new_i + new_j * N_sample_sl;
+        if ((new_i >= 0) && (new_i < N_sample_sl) && (new_j >= 0) &&
+            (new_j < N_sample_gi)) {
+          // Add to adjacent_sample_idx (both directions)
+          for (int l = 0; l < 4; l++) {
+            if (adjacent_sample_indices(current_sample_idx, l) < 0) {
+              adjacent_sample_indices(current_sample_idx, l) =
+                  adjacent_sample_idx;
+              break;
+            }
+          }
+          for (int l = 0; l < 4; l++) {
+            if (adjacent_sample_indices(adjacent_sample_idx, l) < 0) {
+              adjacent_sample_indices(adjacent_sample_idx, l) =
+                  current_sample_idx;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  return adjacent_sample_indices;
+}
 bool IsSampleBeingEvaluated(const vector<pair<int, int>>& assigned_thread_idx,
                             int sample_idx) {
   for (auto& member : assigned_thread_idx) {
@@ -937,11 +971,15 @@ void RecordSolutionQualityAndQueueList(
       if (cost_diff > max_adj_cost_diff_rate_before_ask_for_help *
                           each_min_cost_so_far[sample_idx]) {
         // if the current sample cost is much higher than the adjacent cost
-        low_adjacent_cost_idx.push_back(adj_idx);
+        if (is_good_solution[adj_idx] == 1) {
+          low_adjacent_cost_idx.push_back(adj_idx);
+        }
       } else if (cost_diff < -max_adj_cost_diff_rate_before_ask_for_help *
                                  each_min_cost_so_far[sample_idx]) {
         // if the current sample cost is much lower than the adjacent cost
-        high_adjacent_cost_idx.push_back(adj_idx);
+        if (is_good_solution[adj_idx] == 1) {
+          high_adjacent_cost_idx.push_back(adj_idx);
+        }
       }
     }
   }
@@ -1070,7 +1108,7 @@ void RecordSolutionQualityAndQueueList(
         if (revert_good_adj_sol_to_bad_sol) {
           cout << "idx #" << sample_idx
                << " cost is too low below that of adjacent idx #" << adj_idx
-               << ", so add #"<< adj_idx <<" to queue\n";
+               << ", so add #"<< adj_idx <<" to queue (revert it to bad sol)\n";
         } else {
           cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
                << " needs help, so add to queue\n";
@@ -1093,11 +1131,50 @@ void RecordSolutionQualityAndQueueList(
       if (adj_idx == -1) continue;
 
       bool adj_has_good_sol = is_good_solution[adj_idx] == 1;
-      /*bool adj_has_too_low_cost =
-          (find(high_adjacent_cost_idx.begin(), high_adjacent_cost_idx.end(),
-                adj_idx) != high_adjacent_cost_idx.end());*/
+      bool adj_has_too_low_cost =
+          (find(low_adjacent_cost_idx.begin(), low_adjacent_cost_idx.end(),
+                adj_idx) != low_adjacent_cost_idx.end());
 
-      if (adj_has_good_sol) {
+      bool low_adj_cost_idx_has_helped = false;
+      for (int i = 0; i < 4; i++) {
+        low_adj_cost_idx_has_helped = low_adj_cost_idx_has_helped ||
+            (sample_idx_that_helped(sample_idx, i) == adj_idx);
+      }
+
+      if (adj_has_too_low_cost && !low_adj_cost_idx_has_helped) {
+        this_adjacent_sample_can_help = true;
+        this_adjacent_sample_is_waiting_to_help = true;
+
+        // Add adj_idx to the top of the helper list because it has a good
+        // solution (very low cost)
+        // TODO: You can improve this algorithm, since currently if there are
+        // two adj with low cost, then you might push one of the adj in the back
+        // of the list.
+        int already_exist_matrix_idx = -1;
+        for (int i = 0; i < 4; i++) {
+          if (sample_idx_waiting_to_help(sample_idx, i) == adj_idx) {
+            already_exist_matrix_idx = i;
+            break;
+          }
+        }
+        int first_helper_idx = sample_idx_waiting_to_help(sample_idx, 0);
+        sample_idx_waiting_to_help(sample_idx, 0) = adj_idx;
+        if (already_exist_matrix_idx < 0) {
+          for (int i = 1; i < 4; i++) {
+            if (sample_idx_waiting_to_help(sample_idx, i) == -1) {
+              sample_idx_waiting_to_help(sample_idx, i) = first_helper_idx;
+              break;
+            }
+          }
+        } else if (already_exist_matrix_idx > 0) {
+          for (int i = 1; i < 4; i++) {
+            if (sample_idx_waiting_to_help(sample_idx, i) == adj_idx) {
+              sample_idx_waiting_to_help(sample_idx, i) = first_helper_idx;
+              break;
+            }
+          }
+        }
+      } else if (adj_has_good_sol) {
         this_adjacent_sample_can_help = true;
 
         // The helper list
@@ -1144,7 +1221,6 @@ void RecordSolutionQualityAndQueueList(
     }  // end for (Look for any adjacent sample that can help)
   }    // end if current sample has good solution
 }
-
 
 int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -1650,37 +1726,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Setup for getting good solution from adjacent samples
   // (In 2D tasks space, the adjacent sample# for each sample is 4)
-  MatrixXi adjacent_sample_indices = -1 * MatrixXi::Ones(N_sample, 4);
-  MatrixXi delta_idx(2, 2);
-  delta_idx << 1, 0, 0, 1;
-  for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
-    for (int i = 0; i < N_sample_sl; i++) {  // stride length axis
-      int current_sample_idx = i + j * N_sample_sl;
-      for (int k = 0; k < delta_idx.rows(); k++) {
-        int new_i = i + delta_idx(k, 0);
-        int new_j = j + delta_idx(k, 1);
-        int adjacent_sample_idx = new_i + new_j * N_sample_sl;
-        if ((new_i >= 0) && (new_i < N_sample_sl) && (new_j >= 0) &&
-            (new_j < N_sample_gi)) {
-          // Add to adjacent_sample_idx (both directions)
-          for (int l = 0; l < 4; l++) {
-            if (adjacent_sample_indices(current_sample_idx, l) < 0) {
-              adjacent_sample_indices(current_sample_idx, l) =
-                  adjacent_sample_idx;
-              break;
-            }
-          }
-          for (int l = 0; l < 4; l++) {
-            if (adjacent_sample_indices(adjacent_sample_idx, l) < 0) {
-              adjacent_sample_indices(adjacent_sample_idx, l) =
-                  current_sample_idx;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
+  const MatrixXi adjacent_sample_indices =
+      GetAdjSampleIndices(N_sample_sl, N_sample_gi, N_sample);
   cout << "adjacent_sample_indices = \n"
        << adjacent_sample_indices.transpose() << endl;
 

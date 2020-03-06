@@ -28,6 +28,9 @@ DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 
+DEFINE_string(channel_u, "CASSIE_INPUT",
+              "The name of the channel which publishes command");
+
 int doMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -63,7 +66,7 @@ int doMain(int argc, char* argv[]) {
   std::cout << "nu" << nu << std::endl;
 
   const std::string channel_x = FLAGS_channel_x;
-  const std::string channel_u = "CASSIE_INPUT";
+  const std::string channel_u = FLAGS_channel_u;
   const std::string channel_config = "PD_CONFIG";
 
   // Create state receiver.

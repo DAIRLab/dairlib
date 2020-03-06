@@ -43,18 +43,18 @@ cc_library(
 )
 
 cc_library(
-  name = "cassie_rbt_state_estimator",
-  srcs = ["cassie_rbt_state_estimator.cc",],
-  hdrs = ["cassie_rbt_state_estimator.h",],
-  deps = [
-    "@drake//:drake_shared_library",
-    "@inekf//src:InEKF",
-    "//systems/framework:vector",
-    "//examples/Cassie/datatypes:cassie_out_t",
-    "//examples/Cassie/datatypes:cassie_names",
-    "//attic/multibody:utils",
-    ":cassie_utils",
-  ],
+    name = "cassie_rbt_state_estimator",
+    srcs = ["cassie_rbt_state_estimator.cc"],
+    hdrs = ["cassie_rbt_state_estimator.h"],
+    deps = [
+        ":cassie_utils",
+        "//attic/multibody:utils",
+        "//examples/Cassie/datatypes:cassie_names",
+        "//examples/Cassie/datatypes:cassie_out_t",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@inekf//src:InEKF",
+    ],
 )
 
 cc_library(
@@ -110,6 +110,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers",
         "//systems/controllers:pd_config_lcm",
+        "//systems/goldilocks_models",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -297,7 +298,7 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//attic/multibody:utils",
-        "//examples/Cassie/osc:osc",
+        "//examples/Cassie/osc",
         "//systems:robot_lcm_systems",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",

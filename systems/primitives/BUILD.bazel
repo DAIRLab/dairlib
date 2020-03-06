@@ -10,10 +10,13 @@ load(
 cc_library(
     name = "primitives",
     srcs = [
+        "output_subvector_pass_through.cc",
         "subvector_pass_through.cc",
         "timestamped_subvector_pass_through.cc",
     ],
     hdrs = [
+        "output_subvector_pass_through.h",
+        "output_subvector_pass_through-inl.h",
         "subvector_pass_through.h",
         "subvector_pass_through-inl.h",
         "timestamped_subvector_pass_through.h",

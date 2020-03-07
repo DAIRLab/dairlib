@@ -1821,16 +1821,16 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   }
 
   if (is_get_nominal) {
-    cout << "Adding zero COM height acceleration constraint\n";
-    auto com_vel_constraint = std::make_shared<ComHeightVelConstraint>(&plant);
-    std::unordered_map<int, double> com_vel_constraint_scale;
-    com_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
-    com_vel_constraint->SetConstraintScaling(com_vel_constraint_scale);
-    for (int index = 0; index < num_time_samples[0] - 1; index++) {
-      auto x0 = trajopt->state(index);
-      auto x1 = trajopt->state(index + 1);
-      trajopt->AddConstraint(com_vel_constraint, {x0, x1});
-    }
+//    cout << "Adding zero COM height acceleration constraint\n";
+//    auto com_vel_constraint = std::make_shared<ComHeightVelConstraint>(&plant);
+//    std::unordered_map<int, double> com_vel_constraint_scale;
+//    com_vel_constraint_scale.insert(std::pair<int, double>(0, 0.1));
+//    com_vel_constraint->SetConstraintScaling(com_vel_constraint_scale);
+//    for (int index = 0; index < num_time_samples[0] - 1; index++) {
+//      auto x0 = trajopt->state(index);
+//      auto x1 = trajopt->state(index + 1);
+//      trajopt->AddConstraint(com_vel_constraint, {x0, x1});
+//    }
   }
 
   // toe position constraint in y direction (avoid leg crossing)
@@ -1878,6 +1878,17 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     auto x_i = trajopt->state(index);
     trajopt->AddConstraint(right_foot_constraint_z1, x_i.head(n_q));
     trajopt->AddConstraint(right_foot_constraint_z2, x_i.head(n_q));
+  }
+  // testing -- vertical touchdown velocity
+//  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(0) == 0);
+//  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(3) == 0);
+  // testing -- prevent backward lift off foot velocity
+  auto right_foot_vel_constraint = std::make_shared<OneDimBodyVelConstraint>(
+      &plant, "toe_right", Vector3d::Zero(), T_ground_incline, 0,
+      0 , std::numeric_limits<double>::infinity());
+  for (int index = 1; index < int(num_time_samples[0]/2); index++) {
+    auto x_i = trajopt->state(index);
+    trajopt->AddConstraint(right_foot_vel_constraint, x_i);
   }
 
   // testing -- lock the swing toe joint position (otherwise it shakes too much)

@@ -171,7 +171,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    int sample_idx, int n_rerun,
                    int rom_option, int robot_option);
 
-// Position constraint of a body origin in one dimension (x, y, or z)
+// Position constraint of a pt in one dimension (x, y, or z)
 class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
  public:
   OneDimBodyPosConstraint(const MultibodyPlant<double>* plant,
@@ -202,7 +202,51 @@ class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
     this->plant_->CalcPointsPositions(*context, body_.body_frame(),
                                       point_wrt_body_, plant_->world_frame(),
                                       &pt);
-    *y = (rot_mat_ * pt).segment(xyz_idx_, 1);
+    *y = rot_mat_.row(xyz_idx_) * pt;
+  };
+
+ private:
+  const MultibodyPlant<double>* plant_;
+  const drake::multibody::Body<double>& body_;
+  const Vector3d point_wrt_body_;
+  // xyz_idx_ takes value of 0, 1 or 2.
+  // 0 is x, 1 is y and 2 is z component of the position vector.
+  const int xyz_idx_;
+  Eigen::Matrix3d rot_mat_;
+};
+// Velocity constraint of a pt in one dimension (x, y, or z)
+class OneDimBodyVelConstraint : public DirconAbstractConstraint<double> {
+ public:
+  OneDimBodyVelConstraint(const MultibodyPlant<double>* plant,
+                          const string& body_name,
+                          const Vector3d& point_wrt_body,
+                          const Eigen::Matrix3d& rot_mat, int xyz_idx,
+                          double lb, double ub)
+      : DirconAbstractConstraint<double>(
+            1, plant->num_positions() + plant->num_velocities(),
+            VectorXd::Ones(1) * lb, VectorXd::Ones(1) * ub,
+            body_name + "_vel_constraint_" + std::to_string(xyz_idx)),
+        plant_(plant),
+        body_(plant->GetBodyByName(body_name)),
+        point_wrt_body_(point_wrt_body),
+        xyz_idx_(xyz_idx),
+        rot_mat_(rot_mat) {}
+  ~OneDimBodyVelConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    VectorXd v = x.tail(plant_->num_velocities());
+
+    std::unique_ptr<drake::systems::Context<double>> context =
+        plant_->CreateDefaultContext();
+    plant_->SetPositionsAndVelocities(context.get(), x);
+
+    MatrixX<double> J(3, plant_->num_velocities());
+    plant_->CalcJacobianTranslationalVelocity(
+        *context, drake::multibody::JacobianWrtVariable::kV, body_.body_frame(),
+        point_wrt_body_, plant_->world_frame(), plant_->world_frame(), &J);
+
+    *y = rot_mat_.row(xyz_idx_) * J * v;
   };
 
  private:

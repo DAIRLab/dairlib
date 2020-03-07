@@ -1880,8 +1880,8 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     trajopt->AddConstraint(right_foot_constraint_z2, x_i.head(n_q));
   }
   // testing -- vertical touchdown velocity
-//  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(0) == 0);
-//  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(3) == 0);
+  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(0) == 0);
+  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(3) == 0);
   // testing -- prevent backward lift off foot velocity
   auto right_foot_vel_constraint = std::make_shared<OneDimBodyVelConstraint>(
       &plant, "toe_right", Vector3d::Zero(), T_ground_incline, 0,

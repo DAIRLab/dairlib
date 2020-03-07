@@ -1038,6 +1038,9 @@ void RecordSolutionQualityAndQueueList(
           (find(high_adjacent_cost_idx.begin(), high_adjacent_cost_idx.end(),
                 adj_idx) != high_adjacent_cost_idx.end());
 
+      /*cout << "(sample_idx, adj_idx, adj_has_bad_sol, adj_has_too_high_cost) = "
+           << sample_idx << ", " << adj_idx << ", " << adj_has_bad_sol << ", "
+           << adj_has_too_high_cost << endl;*/
       bool revert_good_adj_sol_to_bad_sol = false; // for printing
       if (adj_has_bad_sol) {
         this_adjacent_sample_needs_help = true;

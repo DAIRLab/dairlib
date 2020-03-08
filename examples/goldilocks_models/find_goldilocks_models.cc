@@ -1108,7 +1108,7 @@ void RecordSolutionQualityAndQueueList(
       if (this_adjacent_sample_needs_help && current_sample_has_helped) {
         if ((find(awaiting_sample_idx.begin(), awaiting_sample_idx.end(),
                   adj_idx) == awaiting_sample_idx.end()) &&
-            !(IsSampleBeingEvaluated(assigned_thread_idx, sample_idx))) {
+            !(IsSampleBeingEvaluated(assigned_thread_idx, adj_idx))) {
           awaiting_sample_idx.push_back(adj_idx);
         }
         if (revert_good_adj_sol_to_bad_sol) {

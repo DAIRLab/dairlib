@@ -159,6 +159,7 @@ void extractResult(VectorXd& w_sol,
                    bool extend_model,
                    bool is_add_tau_in_cost,
                    int sample_idx, int n_rerun,
+                   double cost_threshold_for_update, int N_rerun,
                    int rom_option,
                    int robot_option,
                    vector<DirconKinematicDataSet<double>*> dataset_list,
@@ -213,6 +214,13 @@ void extractResult(VectorXd& w_sol,
 
   // Check which solver we are using
   // cout << "Solver: " << result.get_solver_id().name() << endl;
+
+  if ((result.get_optimal_cost() > cost_threshold_for_update) &&
+      (n_rerun > N_rerun)) {
+    cout << "the cost of idx #" << sample_idx
+         << " is higher than before, skip\n";
+    return;
+  }
 
   VectorXd is_success(1);
   if (result.is_success()) is_success << 1;
@@ -372,7 +380,8 @@ void postProcessing(const VectorXd& w_sol,
                     bool is_zero_touchdown_impact,
                     bool extend_model,
                     bool is_add_tau_in_cost,
-                    int sample_idx,
+                    int sample_idx, int n_rerun,
+                    double cost_threshold_for_update, int N_rerun,
                     int rom_option,
                     int robot_option) {
   if (is_get_nominal || !result.is_success()) {
@@ -459,6 +468,11 @@ void postProcessing(const VectorXd& w_sol,
     writeCSV(directory + string("theta_sDDot_new_index.csv"), new_idx);
 
   } else {
+    if ((result.get_optimal_cost() > cost_threshold_for_update) &&
+        (n_rerun > N_rerun)) {
+      return;
+    }
+
     // Assume theta is fixed. Get the linear approximation of
     //      // the cosntraints and second order approximation of the cost.
     // cout << "\nGetting A, H, y, lb, ub, b.\n";
@@ -1054,12 +1068,15 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           const string& directory,
                           const string& init_file, const string& prefix,
                           double Q_double, double R_double,
+                          double all_cost_scale,
                           double eps_reg,
                           bool is_get_nominal,
                           bool is_zero_touchdown_impact,
                           bool extend_model,
                           bool is_add_tau_in_cost,
-                          int sample_idx, int n_rerun, int rom_option,
+                          int sample_idx, int n_rerun,
+                          double cost_threshold_for_update, int N_rerun,
+                          int rom_option,
                           int robot_option) {
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
@@ -1400,7 +1417,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                 Q_double, R_double, eps_reg,
                 is_get_nominal, is_zero_touchdown_impact,
                 extend_model, is_add_tau_in_cost,
-                sample_idx, n_rerun,
+                sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
                 rom_option,
                 robot_option,
                 dataset_list, is_print_for_debugging);
@@ -1415,7 +1432,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                  Q_double, R_double, eps_reg,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
-                 sample_idx,
+                 sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
                  rom_option,
                  robot_option);
 }
@@ -1434,13 +1451,14 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    double major_feasibility_tol,
                    const string& directory,
                    const string& init_file, const string& prefix,
-                   double Q_double, double R_double,
+                   double Q_double, double R_double, double all_cost_scale,
                    double eps_reg,
                    bool is_get_nominal,
                    bool is_zero_touchdown_impact,
                    bool extend_model,
                    bool is_add_tau_in_cost,
                    int sample_idx, int n_rerun,
+                   double cost_threshold_for_update, int N_rerun,
                    int rom_option, int robot_option) {
   // Dircon parameter
   double minimum_timestep = 0.01;
@@ -1457,22 +1475,22 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   //    in the first phase, etc)
 
   // Cost on velocity and input
-  double scale_all_cost = 1;//0.2;
-  double w_Q = Q_double * scale_all_cost;
-  double w_Q_vy = w_Q * 1;  // prevent the pelvis from rocking in y
-  double w_Q_swing_toe = w_Q * 1;  // prevent the swing toe from shaking
-  double w_R = R_double * scale_all_cost;
-  double w_R_swing_toe = w_R * 1;  // prevent the swing toe from shaking
+  double w_Q = Q_double * all_cost_scale;
+  double w_Q_vy = w_Q * 10000 * all_cost_scale;  // prevent the pelvis from rocking in y
+  double w_Q_vz = w_Q * 10000 * all_cost_scale;  // prevent the pelvis from rocking in z
+  double w_Q_swing_toe = w_Q * 1 * all_cost_scale;  // prevent the swing toe from shaking
+  double w_R = R_double * all_cost_scale;
+  double w_R_swing_toe = w_R * 1 * all_cost_scale;  // prevent the swing toe from shaking
   // Cost on force (the final weight is w_lambda^2)
-  double w_lambda = 1.0e-4 * scale_all_cost * scale_all_cost;
+  double w_lambda = 1.0e-4 * all_cost_scale * all_cost_scale;
   // Cost on difference over time
-  double w_lambda_diff = 0.000001 * 0.1 * scale_all_cost;
-  double w_v_diff = 0.01 * 5 * 0.1 * scale_all_cost;
-  double w_u_diff = 0.00001 * 0.1 * scale_all_cost;
+  double w_lambda_diff = 0.000001 * 0.1 * all_cost_scale;
+  double w_v_diff = 0.01 * 5 * 0.1 * all_cost_scale;
+  double w_u_diff = 0.00001 * 0.1 * all_cost_scale;
   // Cost on position
-  double w_q_hip_roll = 1 * 5 * scale_all_cost;
-  double w_q_hip_yaw = 1 * 5 * scale_all_cost;
-  double w_q_quat_xyz = 1 * 5 * scale_all_cost;
+  double w_q_hip_roll = 1 * 5 * 10 * all_cost_scale;
+  double w_q_hip_yaw = 1 * 5 * all_cost_scale;
+  double w_q_quat_xyz = 1 * 5 * 10 * all_cost_scale;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -1727,6 +1745,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   auto xf = trajopt->state_vars_by_mode(
       num_time_samples.size() - 1,
       num_time_samples[num_time_samples.size() - 1] - 1);
+  auto x_mid = trajopt->state(int(num_time_samples[0] / 2));
 
   // Fix time duration
   trajopt->AddDurationBounds(duration, duration);
@@ -1879,17 +1898,25 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     trajopt->AddConstraint(right_foot_constraint_z1, x_i.head(n_q));
     trajopt->AddConstraint(right_foot_constraint_z2, x_i.head(n_q));
   }
-  // testing -- vertical touchdown velocity
-  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(0) == 0);
-  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(3) == 0);
-  // testing -- prevent backward lift off foot velocity
-  auto right_foot_vel_constraint = std::make_shared<OneDimBodyVelConstraint>(
-      &plant, "toe_right", Vector3d::Zero(), T_ground_incline, 0,
-      0 , std::numeric_limits<double>::infinity());
-  for (int index = 1; index < int(num_time_samples[0]/2); index++) {
-    auto x_i = trajopt->state(index);
-    trajopt->AddConstraint(right_foot_vel_constraint, x_i);
-  }
+//  // testing -- vertical touchdown velocity
+//  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(0) == 0);
+//  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(3) == 0);
+//  // testing -- prevent backward foot velocity
+//  auto right_foot_vel_constraint = std::make_shared<OneDimBodyVelConstraint>(
+//      &plant, "toe_right", Vector3d::Zero(), T_ground_incline, 0,
+//      0 , std::numeric_limits<double>::infinity());
+//  for (int index = 1; index < num_time_samples[0] - 1; index++) {
+//    auto x_i = trajopt->state(index);
+//    trajopt->AddConstraint(right_foot_vel_constraint, x_i);
+//  }
+
+  // testing -- swing foot pos at mid stance is the average of the start and the
+  // end of the stance
+  auto swing_foot_mid_stance_xy_constraint =
+      std::make_shared<SwingFootXYPosAtMidStanceConstraint>(&plant, "toe_right",
+                                                            Vector3d::Zero());
+  trajopt->AddConstraint(swing_foot_mid_stance_xy_constraint,
+                         {x0.head(n_q), x_mid.head(n_q), xf.head(n_q)});
 
   // testing -- lock the swing toe joint position (otherwise it shakes too much)
   // Somehow the swing toe doesn't shake that much anymore after adding
@@ -1951,7 +1978,8 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 
   // add cost
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
-  W_Q(4, 4) *= w_Q_vy;
+  W_Q(4, 4) = w_Q_vy;
+  W_Q(5, 5) = w_Q_vz;
   W_Q(n_v - 1, n_v - 1) = w_Q_swing_toe;
   MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
   W_R(n_u - 1, n_u - 1) = w_R_swing_toe;
@@ -2109,7 +2137,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                 Q_double, R_double, eps_reg,
                 is_get_nominal, is_zero_touchdown_impact,
                 extend_model, is_add_tau_in_cost,
-                sample_idx, n_rerun,
+                sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
                 rom_option,
                 robot_option,
                 dataset_list, is_print_for_debugging);
@@ -2124,9 +2152,13 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                  Q_double, R_double, eps_reg,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
-                 sample_idx,
+                 sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
                  rom_option,
                  robot_option);
+
+  if (sample_idx == 0) {
+    is_print_for_debugging = true;
+  }
 
   if (is_print_for_debugging) {
     // Extract result for printing
@@ -2263,12 +2295,14 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          vector<VectorXd> * c_vec,
                          vector<MatrixXd> * B_vec,*/
                          double Q_double, double R_double,
+                         double all_cost_scale,
                          double eps_reg,
                          bool is_get_nominal,
                          bool is_zero_touchdown_impact,
                          bool extend_model,
                          bool is_add_tau_in_cost,
                          int sample_idx, int n_rerun,
+                         double cost_threshold_for_update, int N_rerun,
                          int rom_option, int robot_option) {
   if (robot_option == 0) {
     fiveLinkRobotTrajOpt(plant, plant_autoDiff,
@@ -2277,10 +2311,11 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          stride_length, ground_incline,
                          duration, n_node, max_iter,
                          directory, init_file, prefix,
-                         Q_double, R_double, eps_reg,
+                         Q_double, R_double, all_cost_scale, eps_reg,
                          is_get_nominal, is_zero_touchdown_impact,
                          extend_model, is_add_tau_in_cost,
-                         sample_idx, n_rerun, rom_option, robot_option);
+                         sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
+                         rom_option, robot_option);
   } else if (robot_option == 1) {
     cassieTrajOpt(plant, plant_autoDiff,
                   n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
@@ -2289,10 +2324,11 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                   duration, n_node, max_iter,
                   major_optimality_tol, major_feasibility_tol,
                   directory, init_file, prefix,
-                  Q_double, R_double, eps_reg,
+                  Q_double, R_double, all_cost_scale, eps_reg,
                   is_get_nominal, is_zero_touchdown_impact,
                   extend_model, is_add_tau_in_cost,
-                  sample_idx, n_rerun, rom_option, robot_option);
+                  sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
+                  rom_option, robot_option);
   }
 
   // For multithreading purpose. Indicate this function has ended.

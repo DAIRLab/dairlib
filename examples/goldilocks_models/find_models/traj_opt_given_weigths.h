@@ -60,13 +60,13 @@ void trajOptGivenWeights(
   vector<VectorXd> * b_vec,
   vector<VectorXd> * c_vec,
   vector<MatrixXd> * B_vec,*/
-  double Q_double, double R_double,
+    double Q_double, double R_double, double all_cost_scale,
     double eps_reg,
     bool is_get_nominal,
     bool is_zero_touchdown_impact,
     bool extend_model,
     bool is_add_tau_in_cost,
-    int sample_idx, int n_rerun,
+    int sample_idx, int n_rerun, double cost_threshold_for_update, int N_rerun,
     int rom_option, int robot_option);
 
 void addRegularization(bool is_get_nominal, double eps_reg,
@@ -101,8 +101,9 @@ void extractResult(VectorXd& w_sol,
                    bool is_zero_touchdown_impact,
                    bool extend_model,
                    bool is_add_tau_in_cost,
-                   int sample_idx, int n_rerun, int rom_option,
-                   int robot_option,
+                   int sample_idx, int n_rerun,
+                   double cost_threshold_for_update, int N_rerun,
+                   int rom_option, int robot_option,
                    vector<DirconKinematicDataSet<double>*> dataset_list,
                    bool is_print_for_debugging);
 void postProcessing(const VectorXd& w_sol,
@@ -128,7 +129,8 @@ void postProcessing(const VectorXd& w_sol,
                     bool is_zero_touchdown_impact,
                     bool extend_model,
                     bool is_add_tau_in_cost,
-                    int sample_idx,
+                    int sample_idx, int n_rerun,
+                    double cost_threshold_for_update, int N_rerun,
                     int rom_option, int robot_option);
 void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
@@ -142,12 +144,14 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           const string& directory,
                           const string& init_file, const string&  prefix,
                           double Q_double, double R_double,
+                          double all_cost_scale,
                           double eps_reg,
                           bool is_get_nominal,
                           bool is_zero_touchdown_impact,
                           bool extend_model,
                           bool is_add_tau_in_cost,
                           int sample_idx, int n_rerun,
+                          double cost_threshold_for_update, int N_rerun,
                           int rom_option, int robot_option);
 void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
@@ -162,13 +166,14 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    double major_feasibility_tol,
                    const string& directory,
                    const string& init_file, const string&  prefix,
-                   double Q_double, double R_double,
+                   double Q_double, double R_double, double all_cost_scale,
                    double eps_reg,
                    bool is_get_nominal,
                    bool is_zero_touchdown_impact,
                    bool extend_model,
                    bool is_add_tau_in_cost,
                    int sample_idx, int n_rerun,
+                   double cost_threshold_for_update, int N_rerun,
                    int rom_option, int robot_option);
 
 // Position constraint of a pt in one dimension (x, y, or z)
@@ -258,6 +263,58 @@ class OneDimBodyVelConstraint : public DirconAbstractConstraint<double> {
   const int xyz_idx_;
   Eigen::Matrix3d rot_mat_;
 };
+
+// swing foot pos at mid stance constraint (x and y)
+class SwingFootXYPosAtMidStanceConstraint
+    : public DirconAbstractConstraint<double> {
+ public:
+  SwingFootXYPosAtMidStanceConstraint(const MultibodyPlant<double>* plant,
+                          const string& body_name,
+                          const Vector3d& point_wrt_body)
+      : DirconAbstractConstraint<double>(
+      2, 3 * plant->num_positions(), VectorXd::Zero(2),
+      VectorXd::Zero(2),
+      "swing_foot_xy_pos_at_mid_stance_constraint"),
+        plant_(plant),
+        body_(plant->GetBodyByName(body_name)),
+        point_wrt_body_(point_wrt_body) {}
+  ~SwingFootXYPosAtMidStanceConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    VectorXd q_0 = x.head(plant_->num_positions());
+    VectorXd q_mid = x.segment(plant_->num_positions(), plant_->num_positions());
+    VectorXd q_f = x.tail(plant_->num_positions());
+
+    std::unique_ptr<drake::systems::Context<double>> context =
+        plant_->CreateDefaultContext();
+
+    VectorX<double> pt_0(3);
+    VectorX<double> pt_mid(3);
+    VectorX<double> pt_f(3);
+    plant_->SetPositions(context.get(), q_0);
+    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
+                                      point_wrt_body_, plant_->world_frame(),
+                                      &pt_0);
+    plant_->SetPositions(context.get(), q_mid);
+    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
+                                      point_wrt_body_, plant_->world_frame(),
+                                      &pt_mid);
+    plant_->SetPositions(context.get(), q_f);
+    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
+                                      point_wrt_body_, plant_->world_frame(),
+                                      &pt_f);
+
+    *y = (pt_0.head(2) + pt_f.head(2)) - 2 * pt_mid.head(2);
+  };
+
+ private:
+  const MultibodyPlant<double>* plant_;
+  const drake::multibody::Body<double>& body_;
+  const Vector3d point_wrt_body_;
+};
+
+
 
 class ComHeightVelConstraint : public DirconAbstractConstraint<double> {
  public:

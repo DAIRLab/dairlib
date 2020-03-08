@@ -149,13 +149,16 @@ void createMBP(MultibodyPlant<double>* plant, int robot_option) {
     plant->Finalize();
   }
 }
-void setCostWeight(double* Q, double* R, int robot_option) {
+void setCostWeight(double* Q, double* R, double* all_cost_scale,
+                   int robot_option) {
   if (robot_option == 0) {
     *Q = 1;
     *R = 0.1;
+    //*all_cost_scale = 1;  // not implemented yet
   } else if (robot_option == 1) {
     *Q = 5 * 0.1;
     *R = 0.1 * 0.01;
+    *all_cost_scale = 0.2;
   }
 }
 void setRomDim(int* n_s, int* n_tau, int rom_option) {
@@ -927,14 +930,14 @@ void GetAdjacentHelper(int sample_idx, MatrixXi& sample_idx_waiting_to_help,
           break;
         }
       }
-      cout << "before adding idx # " << sample_idx << endl;
-      cout << "sample_idx_waiting_to_help = \n"
-           << sample_idx_waiting_to_help.transpose() << endl;
-      cout << "sample_idx_that_helped = \n"
-           << sample_idx_that_helped.transpose() << endl;
       break;
     }
   }
+  cout << "before adding idx # " << sample_idx << endl;
+  cout << "sample_idx_waiting_to_help = \n"
+       << sample_idx_waiting_to_help.transpose() << endl;
+  cout << "sample_idx_that_helped = \n"
+       << sample_idx_that_helped.transpose() << endl;
   DRAKE_DEMAND(sample_idx_to_help != -1);  // must exist a helper
 }
 void RecordSolutionQualityAndQueueList(
@@ -1144,12 +1147,12 @@ void RecordSolutionQualityAndQueueList(
             (sample_idx_that_helped(sample_idx, i) == adj_idx);
       }
 
-      bool add_adj_cause_low_cost = false; // for printing message
+      bool add_adj_as_helper_because_low_cost = false; // for printing message
       if (adj_has_too_low_cost && !low_adj_cost_idx_has_helped) {
         this_adjacent_sample_can_help = true;
         this_adjacent_sample_is_waiting_to_help = true;
 
-        add_adj_cause_low_cost = true;
+        add_adj_as_helper_because_low_cost = true;
 
         // Add adj_idx to the top of the helper list because it has a good
         // solution (very low cost)
@@ -1215,7 +1218,7 @@ void RecordSolutionQualityAndQueueList(
           this_adjacent_sample_is_waiting_to_help) {
         awaiting_sample_idx.push_back(sample_idx);
         current_sample_is_queued = true;
-        if (add_adj_cause_low_cost) {
+        if (add_adj_as_helper_because_low_cost) {
           cout << "idx #" << sample_idx
                << " cost is too high above adjacent idx #" << adj_idx
                << ", so add #" << sample_idx << " to queue\n";
@@ -1459,7 +1462,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int max_inner_iter = FLAGS_max_inner_iter;
   double Q = 0; // Cost on velocity
   double R = 0;  // Cost on input effort
-  setCostWeight(&Q, &R, FLAGS_robot_option);
+  double all_cost_scale = 1;
+  setCostWeight(&Q, &R, &all_cost_scale, FLAGS_robot_option);
   int n_node = 20;
   if (FLAGS_robot_option == 0) {
     n_node = 20;
@@ -1829,9 +1833,22 @@ int findGoldilocksModels(int argc, char* argv[]) {
       MatrixXi sample_idx_that_helped = -1 * MatrixXi::Ones(N_sample, 4);
       std::vector<double> local_each_min_cost_so_far = each_min_cost_so_far;
 
+      // Set up for deciding if we should update the solution
+      std::vector<double> cost_threshold_for_update(
+          N_sample, std::numeric_limits<double>::infinity());
+
       // Evaluate samples
       int n_failed_sample = 0;
       while (!awaiting_sample_idx.empty() || !assigned_thread_idx.empty()) {
+        /*cout << "awaiting_sample_idx = ";
+        for (auto mem : awaiting_sample_idx) {
+          cout << mem << ", ";
+        } cout << endl;
+        cout << "assigned_sample_idx = ";
+        for (auto mem : assigned_thread_idx) {
+          cout << mem.second << ", ";
+        } cout << endl;*/
+
         // Evaluate a sample when there is an available thread. Otherwise, wait.
         if (!awaiting_sample_idx.empty() && !available_thread_idx.empty()) {
           // Pick a sample to evaluate
@@ -1877,6 +1894,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // there exists a adjacent sample that can help the current sample.
           int sample_idx_to_help = -1;
           if (n_rerun[sample_idx] > N_rerun) {
+            cout << "is_good_solution = ";
+            for (auto & mem : is_good_solution) {
+              cout << mem << ", ";
+            } cout << endl;
             GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
                               sample_idx_that_helped, sample_idx_to_help);
           }
@@ -1907,13 +1928,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
               duration, n_node, max_inner_iter_pass_in,
               FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
               std::ref(dir), init_file_pass_in, prefix,
-              Q, R,
+              Q, R, all_cost_scale,
               eps_regularization,
               is_get_nominal,
               FLAGS_is_zero_touchdown_impact,
               extend_model_this_iter,
               FLAGS_is_add_tau_in_cost,
-              sample_idx, n_rerun[sample_idx], rom_option,
+              sample_idx, n_rerun[sample_idx],
+              cost_threshold_for_update[sample_idx], N_rerun,
+              rom_option,
               FLAGS_robot_option);
           //string_to_be_print = "Finished adding sample #" + to_string(sample_idx) +
           //  " to thread # " + to_string(available_thread_idx.front()) + ".\n";
@@ -1957,6 +1980,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
           prefix = to_string(iter) +  "_" + to_string(sample_idx) + "_";
           int sample_success =
               (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
+
+          // Update cost_threshold_for_update
+          if ((sample_success == 1) && (n_rerun[sample_idx] >= N_rerun)) {
+            auto sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
+            if (sample_cost < cost_threshold_for_update[sample_idx]) {
+              cost_threshold_for_update[sample_idx] = sample_cost;
+            }
+          }
 
           // Get good initial guess from adjacent samples's solution
           RecordSolutionQualityAndQueueList(

@@ -15,6 +15,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
   m.doc() = "Binding functions for saving/loading trajectories";
 
   py::class_<LcmTrajectory::Trajectory>(m, "Trajectory")
+      .def(py::init<>())
       .def_readwrite("traj_name", &LcmTrajectory::Trajectory::traj_name)
       .def_readwrite("time_vector", &LcmTrajectory::Trajectory::time_vector)
       .def_readwrite("datapoints", &LcmTrajectory::Trajectory::datapoints)
@@ -22,11 +23,17 @@ PYBIND11_MODULE(lcm_trajectory, m) {
 
   py::class_<LcmTrajectory>(m, "LcmTrajectory")
       .def(py::init<>())
+      .def(py::init<std::vector<LcmTrajectory::Trajectory>,
+          std::vector<std::string>, std::string, std::string>
+          (), py::arg("trajectories"),py::arg("trajectory_names"),
+          py::arg("name"), py::arg("description"))
       .def("loadFromFile", &LcmTrajectory::loadFromFile,
            py::arg("trajectory_name"))
       .def("getTrajectoryNames", &LcmTrajectory::getTrajectoryNames)
       .def("getTrajectory", &LcmTrajectory::getTrajectory,
-           py::arg("trajectory_name"));
+           py::arg("trajectory_name"))
+      .def("writeToFile", &LcmTrajectory::writeToFile,
+           py::arg("filepath"));
 }
 
 }  // namespace pydairlib

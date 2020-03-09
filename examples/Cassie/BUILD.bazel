@@ -315,7 +315,7 @@ cc_binary(
         "//examples/Cassie/osc_jump",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
-        "//systems/controllers/osc:operational_space_control",
+        "//systems/controllers/osc:operational_space_control_mbp",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",

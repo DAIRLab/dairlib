@@ -10,7 +10,7 @@
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "lcm/lcm_trajectory.h"
-#include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/osc/operational_space_control_mbp.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "drake/multibody/joints/floating_base_types.h"
@@ -18,6 +18,7 @@
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
+#include "systems/controllers/osc/osc_tracking_data.h"
 
 namespace dairlib {
 
@@ -45,10 +46,10 @@ using examples::JumpingEventFsm;
 using examples::Cassie::osc_jump::COMTrajGenerator;
 using examples::Cassie::osc_jump::FlightFootTrajGenerator;
 using multibody::GetBodyIndexFromName;
-using systems::controllers::ComTrackingData;
-using systems::controllers::JointSpaceTrackingData;
-using systems::controllers::RotTaskSpaceTrackingData;
-using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::ComTrackingDataMBP;
+using systems::controllers::JointSpaceTrackingDataMBP;
+using systems::controllers::RotTaskSpaceTrackingDataMBP;
+using systems::controllers::TransTaskSpaceTrackingDataMBP;
 
 DEFINE_double(publish_rate, 1000.0, "Target publish rate for OSC");
 
@@ -188,7 +189,8 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm, 1.0 / FLAGS_publish_rate));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_with_springs);
-  auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
+  auto osc = builder.AddSystem<systems::controllers
+      ::OperationalSpaceControlMBP>(
       plant_with_springs, plant_without_springs, true,
       FLAGS_print_osc); /*print_tracking_info*/
 
@@ -219,10 +221,10 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-//  ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
-//                                    &plant_with_springs,
-//                                    &plant_without_springs);
-//  osc->AddTrackingData(&com_tracking_data);
+  ComTrackingDataMBP com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
+                                    &plant_with_springs,
+                                    &plant_without_springs);
+  osc->AddTrackingData(&com_tracking_data);
 
   // Feet tracking
   MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
@@ -234,18 +236,18 @@ int DoMain(int argc, char* argv[]) {
   K_p_sw_ft(1, 1) = 0;
   K_d_sw_ft(1, 1) = 0;
 
-//  TransTaskSpaceTrackingData flight_phase_left_foot_traj(
-//      "l_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
-//      &plant_without_springs);
-//  TransTaskSpaceTrackingData flight_phase_right_foot_traj(
-//      "r_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
-//      &plant_without_springs);
-//  flight_phase_left_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
-//                                                      "toe_left");
-//  flight_phase_right_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
-//                                                       "toe_right");
-//  osc->AddTrackingData(&flight_phase_left_foot_traj);
-//  osc->AddTrackingData(&flight_phase_right_foot_traj);
+  TransTaskSpaceTrackingDataMBP flight_phase_left_foot_traj(
+      "l_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
+      &plant_without_springs);
+  TransTaskSpaceTrackingDataMBP flight_phase_right_foot_traj(
+      "r_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
+      &plant_without_springs);
+  flight_phase_left_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
+                                                      "toe_left");
+  flight_phase_right_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
+                                                       "toe_right");
+  osc->AddTrackingData(&flight_phase_left_foot_traj);
+  osc->AddTrackingData(&flight_phase_right_foot_traj);
 
   // Build OSC problem
   osc->Build();

@@ -20,6 +20,7 @@ def main():
     plt.plot(traj_mode1.time_vector, traj_mode1.datapoints.T[:,0:18])
     plt.plot(traj_mode2.time_vector, traj_mode2.datapoints.T[:,0:18])
     plt.legend(traj_mode0.datatypes[0:18])
+
     plt.show()
 
 if __name__ == "__main__":

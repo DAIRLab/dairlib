@@ -209,8 +209,8 @@ class TaskSpaceTrackingDataMBP : public OscTrackingDataMBP {
   // If `body_index_w_spr_` is empty, `body_index_wo_spr_` replaces it.
   std::vector<drake::multibody::BodyIndex> body_index_w_spr_;
   std::vector<drake::multibody::BodyIndex> body_index_wo_spr_;
-  std::vector<drake::multibody::BodyFrame<double>> body_frames_w_spr_;
-  std::vector<drake::multibody::BodyFrame<double>> body_frames_wo_spr_;
+  std::vector<const drake::multibody::BodyFrame<double>*> body_frames_w_spr_;
+  std::vector<const drake::multibody::BodyFrame<double>*> body_frames_wo_spr_;
 };
 
 /// TransTaskSpaceTrackingData is used when we want to track a trajectory

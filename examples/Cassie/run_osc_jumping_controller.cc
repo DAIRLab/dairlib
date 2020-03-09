@@ -11,6 +11,7 @@
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/osc/operational_space_control_mbp.h"
+#include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "drake/multibody/joints/floating_base_types.h"
@@ -18,7 +19,6 @@
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
-#include "systems/controllers/osc/osc_tracking_data.h"
 
 namespace dairlib {
 
@@ -111,8 +111,9 @@ int DoMain(int argc, char* argv[]) {
       multibody::makeNameToActuatorsMap(plant_without_springs);
 
   /**** Get trajectory from optimization ****/
-  const LcmTrajectory& loaded_traj =
-      LcmTrajectory("examples/jumping/saved_trajs/" + FLAGS_traj_name);
+  const LcmTrajectory& loaded_traj = LcmTrajectory(
+      "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/" +
+      FLAGS_traj_name);
 
   const LcmTrajectory::Trajectory& com_traj =
       loaded_traj.getTrajectory("center_of_mass_trajectory");
@@ -154,27 +155,26 @@ int DoMain(int argc, char* argv[]) {
   // Cassie parameters
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
-  Vector3d mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2;
+//  Vector3d mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2;
 
   // Get body indices for cassie with springs
   auto pelvis_idx = plant_with_springs.GetBodyByName("pelvis").index();
-  auto l_toe_idx = plant_with_springs.GetBodyByName("toe_left").index();
-  auto r_toe_idx = plant_with_springs.GetBodyByName("toe_right").index();
+//  auto l_toe_idx = plant_with_springs.GetBodyByName("toe_left").index();
+//  auto r_toe_idx = plant_with_springs.GetBodyByName("toe_right").index();
 
-//  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  //  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   drake::lcm::DrakeLcm lcm;
   auto contact_results_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CONTACT_RESULTS", &lcm));
-//  auto state_sub = builder.AddSystem(
-//      LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, lcm));
+  //  auto state_sub = builder.AddSystem(
+  //      LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, lcm));
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_without_springs);
   // Create Operational space control
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
-      center_of_mass_traj,
-      FLAGS_balance_height);
+      center_of_mass_traj, FLAGS_balance_height);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_with_springs, "pelvis", true, l_foot_trajectory);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
@@ -189,10 +189,10 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm, 1.0 / FLAGS_publish_rate));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_with_springs);
-  auto osc = builder.AddSystem<systems::controllers
-      ::OperationalSpaceControlMBP>(
-      plant_with_springs, plant_without_springs, true,
-      FLAGS_print_osc); /*print_tracking_info*/
+  auto osc =
+      builder.AddSystem<systems::controllers ::OperationalSpaceControlMBP>(
+          plant_with_springs, plant_without_springs, true,
+          FLAGS_print_osc); /*print_tracking_info*/
 
   /**** OSC setup ****/
 
@@ -222,8 +222,8 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
   ComTrackingDataMBP com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
-                                    &plant_with_springs,
-                                    &plant_without_springs);
+                                       &plant_with_springs,
+                                       &plant_without_springs);
   osc->AddTrackingData(&com_tracking_data);
 
   // Feet tracking

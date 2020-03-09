@@ -63,8 +63,10 @@ DEFINE_int32(scale_option, 0,
 DEFINE_double(tol, 1e-6, "Tolerance for constraint violation and dual gap");
 DEFINE_double(jump_height, 0.0, "Height to jump (m)");
 DEFINE_string(load_filename, "", "File to load decision vars from.");
-DEFINE_string(data_directory, "/home/yangwill/Documents/research/",
-              "Directory path to save decision vars to.");
+DEFINE_string(
+    data_directory,
+    "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/",
+    "Directory path to save decision vars to.");
 DEFINE_string(save_filename, "default_filename",
               "Filename to save decision "
               "vars to.");

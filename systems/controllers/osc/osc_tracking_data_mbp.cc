@@ -348,8 +348,7 @@ void RotTaskSpaceTrackingDataMBP::UpdateJdotV(const VectorXd& x_wo_spr,
                                               Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
                ->CalcBiasForJacobianSpatialVelocity(
-                   context_wo_spr, JacobianWrtVa
-                   riable::kV,
+                   context_wo_spr, JacobianWrtVariable::kV,
                    *body_frames_wo_spr_.at(GetStateIdx()),
                    frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
                    world_wo_spr_)

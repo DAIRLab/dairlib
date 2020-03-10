@@ -1,8 +1,5 @@
 #include "systems/controllers/osc/operational_space_control_mbp.h"
 #include <drake/multibody/plant/multibody_plant.h>
-//#include "attic/multibody/rigidbody_utils.h"
-//#include
-//"external/drake/multibody/plant/_virtual_includes/multibody_plant_core/drake/multibody/plant/multibody_plant.h"
 #include "multibody/multibody_utils.h"
 
 using std::cout;
@@ -72,33 +69,38 @@ OperationalSpaceControlMBP::OperationalSpaceControlMBP(
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   }
 
+  const std::map<string, int>
+      & pos_map_w_spr = multibody::makeNameToPositionsMap(plant_w_spr);
+  const std::map<string, int>
+      & vel_map_w_spr = multibody::makeNameToVelocitiesMap(plant_w_spr);
+  const std::map<string, int>
+      & pos_map_wo_spr = multibody::makeNameToPositionsMap(plant_wo_spr);
+  const std::map<string, int>
+      & vel_map_wo_spr = multibody::makeNameToVelocitiesMap(plant_wo_spr);
+
+
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ = MatrixXd::Zero(n_q_, n_q_w_spr);
-  //  for (int i = 0; i < n_q_; i++) {
-  for (JointIndex i(0); i < plant_wo_spr.num_joints(); i++) {
+  map_velocity_from_spring_to_no_spring_ = MatrixXd::Zero(n_v_, n_v_w_spr);
+
+  for (auto pos_pair_wo_spr : pos_map_wo_spr) {
     bool successfully_added = false;
-    for (JointIndex j(0); j < plant_w_spr.num_joints(); j++) {
-      //      std::string name_wo_spr = plant_wo_spr_.get_position_name(i);
-      std::string name_wo_spr = plant_wo_spr_.get_joint(i).name();
-      std::string name_w_spr = plant_w_spr_.get_joint(j).name();
-      if (name_wo_spr.compare(0, name_wo_spr.size(), name_w_spr) == 0) {
-        map_position_from_spring_to_no_spring_(i, j) = 1;
+    for (auto pos_pair_w_spr : pos_map_w_spr) {
+      if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
+        map_position_from_spring_to_no_spring_(pos_pair_wo_spr.second,
+            pos_pair_w_spr.second) = 1;
         successfully_added = true;
       }
     }
     DRAKE_DEMAND(successfully_added);
   }
 
-  map_velocity_from_spring_to_no_spring_ = MatrixXd::Zero(n_v_, n_v_w_spr);
-  for (JointIndex i(0); i < n_v_; i++) {
+  for (auto vel_pair_wo_spr : vel_map_wo_spr) {
     bool successfully_added = false;
-    for (JointIndex j(0); j < n_v_w_spr; j++) {
-      //      std::string name_wo_spr = plant_wo_spr_.get_velocity_name(i);
-      //      std::string name_w_spr = plant_w_spr_.get_velocity_name(j);
-      std::string name_wo_spr = plant_wo_spr_.get_joint(i).name();
-      std::string name_w_spr = plant_w_spr_.get_joint(j).name();
-      if (name_wo_spr.compare(0, name_wo_spr.size(), name_w_spr) == 0) {
-        map_velocity_from_spring_to_no_spring_(i, j) = 1;
+    for (auto vel_pair_w_spr : vel_map_w_spr) {
+      if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
+        map_velocity_from_spring_to_no_spring_(vel_pair_wo_spr.second,
+            vel_pair_w_spr.second) = 1;
         successfully_added = true;
       }
     }

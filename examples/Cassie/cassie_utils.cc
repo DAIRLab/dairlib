@@ -1,48 +1,49 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "common/find_resource.h"
-#include "drake/solvers/mathematical_program.h"
-#include "drake/multibody/tree/uniform_gravity_field_element.h"
-#include "drake/multibody/joints/revolute_joint.h"
-#include "drake/multibody/parsing/parser.h"
 #include "drake/geometry/scene_graph.h"
 #include "drake/math/rigid_transform.h"
+#include "drake/multibody/joints/revolute_joint.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/multibody/tree/linear_spring_damper.h"
+#include "drake/multibody/tree/uniform_gravity_field_element.h"
+#include "drake/solvers/mathematical_program.h"
 
-#include "drake/multibody/tree/revolute_spring.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/parsers/urdf_parser.h"
+#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/multibody/tree/revolute_spring.h"
 
 namespace dairlib {
 
-using Eigen::VectorXd;
-using Eigen::Vector3d;
-using drake::solvers::Constraint;
 using drake::AutoDiffVecXd;
-using drake::solvers::MathematicalProgram;
-using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;
+using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::RevoluteSpring;
 using drake::multibody::joints::FloatingBaseType;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
 void addCassieMultibody(MultibodyPlant<double>* plant,
-    SceneGraph<double>* scene_graph, bool floating_base, std::string filename) {
+                        SceneGraph<double>* scene_graph, bool floating_base,
+                        std::string filename) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
   parser.AddModelFromFile(full_name);
 
-  plant->mutable_gravity_field().set_gravity_vector(
-      -9.81 * Eigen::Vector3d::UnitZ());
+  plant->mutable_gravity_field().set_gravity_vector(-9.81 *
+                                                    Eigen::Vector3d::UnitZ());
 
   if (!floating_base) {
-    plant->WeldFrames(
-      plant->world_frame(), plant->GetFrameByName("pelvis"),
-      drake::math::RigidTransform<double>(Vector3d::Zero()));
+    plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("pelvis"),
+                      drake::math::RigidTransform<double>(Vector3d::Zero()));
   }
 
-  // Add springss
+  // Add springs
   // stiffness is 2300 in URDF, 1500 from gazebo
   plant->AddForceElement<RevoluteSpring>(
       dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
@@ -62,6 +63,31 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
       0, 1250);
 
   // TOOO(mposa): add loop closures when implemented in Drake
+  // Add a spring to represent loop closure
+  double achilles_stiffness = 2e6;
+  double achilles_damping = 200;
+  double achilles_length = .5012;
+  const auto& heel_spring_left = plant->GetBodyByName("heel_spring_left");
+  const auto& thigh_left = plant->GetBodyByName("thigh_left");
+  const auto& heel_spring_right = plant->GetBodyByName("heel_spring_right");
+  const auto& thigh_right = plant->GetBodyByName("thigh_right");
+
+  Vector3d rod_on_heel_spring;  // symmetric left and right
+  rod_on_heel_spring << .11877, -.01, 0.0;
+
+  Vector3d rod_on_thigh_left;
+  rod_on_thigh_left << 0.0, 0.0, 0.045;
+
+  Vector3d rod_on_thigh_right;
+  rod_on_thigh_right << 0.0, 0.0, -0.045;
+
+  plant->AddForceElement<drake::multibody::LinearSpringDamper>(
+      heel_spring_left, rod_on_heel_spring, thigh_left, rod_on_thigh_left,
+      achilles_length, achilles_stiffness, achilles_damping);
+
+  plant->AddForceElement<drake::multibody::LinearSpringDamper>(
+      heel_spring_right, rod_on_heel_spring, thigh_right, rod_on_thigh_right,
+      achilles_length, achilles_stiffness, achilles_damping);
 }
 
 std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(

@@ -115,34 +115,35 @@ int DoMain(int argc, char* argv[]) {
       "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/" +
       FLAGS_traj_name);
 
-  const LcmTrajectory::Trajectory& com_traj =
-      loaded_traj.getTrajectory("center_of_mass_trajectory");
+  const LcmTrajectory::Trajectory& pelvis_traj =
+      loaded_traj.getTrajectory("pelvis_trajectory");
   const LcmTrajectory::Trajectory& lcm_l_foot_traj =
       loaded_traj.getTrajectory("left_foot_trajectory");
   const LcmTrajectory::Trajectory& lcm_r_foot_traj =
       loaded_traj.getTrajectory("right_foot_trajectory");
-  const LcmTrajectory::Trajectory& com_vel_traj =
-      loaded_traj.getTrajectory("center_of_mass_vel_trajectory");
-  const LcmTrajectory::Trajectory& lcm_l_foot_vel_traj =
-      loaded_traj.getTrajectory("left_foot_vel_trajectory");
-  const LcmTrajectory::Trajectory& lcm_r_foot_vel_traj =
-      loaded_traj.getTrajectory("right_foot_vel_trajectory");
+  //  const LcmTrajectory::Trajectory& com_vel_traj =
+  //      loaded_traj.getTrajectory("center_of_mass_vel_trajectory");
+  //  const LcmTrajectory::Trajectory& lcm_l_foot_vel_traj =
+  //      loaded_traj.getTrajectory("left_foot_vel_trajectory");
+  //  const LcmTrajectory::Trajectory& lcm_r_foot_vel_traj =
+  //      loaded_traj.getTrajectory("right_foot_vel_trajectory");
   //  const LcmTrajectory::Trajectory& lcm_torso_traj =
   //      loaded_traj.getTrajectory("torso_trajectory");
   //  cout << "com_vel:" << com_vel_traj.datapoints.size() << endl;
   //  cout << "l_foot_vel: " << lcm_l_foot_vel_traj.datapoints.size() << endl;
   //  cout << "r_foot_vel: " << lcm_r_foot_vel_traj.datapoints.size() << endl;
   const PiecewisePolynomial<double>& center_of_mass_traj =
-      PiecewisePolynomial<double>::Cubic(
-          com_traj.time_vector, com_traj.datapoints, com_vel_traj.datapoints);
+      PiecewisePolynomial<double>::Cubic(pelvis_traj.time_vector,
+                                         pelvis_traj.datapoints.topRows(3),
+                                         pelvis_traj.datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& l_foot_trajectory =
-      PiecewisePolynomial<double>::Cubic(lcm_l_foot_traj.time_vector,
-                                         lcm_l_foot_traj.datapoints,
-                                         lcm_l_foot_vel_traj.datapoints);
+      PiecewisePolynomial<double>::Cubic(
+          lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints.topRows(3),
+          lcm_l_foot_traj.datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& r_foot_trajectory =
-      PiecewisePolynomial<double>::Cubic(lcm_r_foot_traj.time_vector,
-                                         lcm_r_foot_traj.datapoints,
-                                         lcm_r_foot_vel_traj.datapoints);
+      PiecewisePolynomial<double>::Cubic(
+          lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints.topRows(3),
+          lcm_r_foot_traj.datapoints.bottomRows(3));
   //  const PiecewisePolynomial<double>& torso_trajectory =
   //      PiecewisePolynomial<double>::Pchip(lcm_torso_traj.time_vector,
   //          lcm_torso_traj.datapoints);
@@ -155,12 +156,12 @@ int DoMain(int argc, char* argv[]) {
   // Cassie parameters
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
-//  Vector3d mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2;
+  //  Vector3d mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2;
 
   // Get body indices for cassie with springs
   auto pelvis_idx = plant_with_springs.GetBodyByName("pelvis").index();
-//  auto l_toe_idx = plant_with_springs.GetBodyByName("toe_left").index();
-//  auto r_toe_idx = plant_with_springs.GetBodyByName("toe_right").index();
+  //  auto l_toe_idx = plant_with_springs.GetBodyByName("toe_left").index();
+  //  auto r_toe_idx = plant_with_springs.GetBodyByName("toe_right").index();
 
   //  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   drake::lcm::DrakeLcm lcm;
@@ -169,8 +170,10 @@ int DoMain(int argc, char* argv[]) {
           "CONTACT_RESULTS", &lcm));
   //  auto state_sub = builder.AddSystem(
   //      LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, lcm));
+//  auto state_receiver =
+//      builder.AddSystem<systems::RobotOutputReceiver>(plant_without_springs);
   auto state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_without_springs);
+      builder.AddSystem<systems::RobotOutputReceiver>(plant_with_springs);
   // Create Operational space control
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
@@ -263,9 +266,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_foot"));
+                  osc->get_tracking_data_input_port("l_foot_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_foot"));
+                  osc->get_tracking_data_input_port("r_foot_traj"));
 
   // FSM connections
   builder.Connect(contact_results_sub->get_output_port(),
@@ -274,13 +277,13 @@ int DoMain(int argc, char* argv[]) {
                   fsm->get_state_input_port());
 
   // Trajectory generator connections
-  builder.Connect(fsm->get_output_port(0),
-                  com_traj_generator->get_fsm_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  com_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   l_foot_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   r_foot_traj_generator->get_state_input_port());
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(fsm->get_output_port(0),
                   com_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),
                   l_foot_traj_generator->get_fsm_input_port());

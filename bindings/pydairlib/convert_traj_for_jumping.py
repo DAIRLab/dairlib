@@ -10,7 +10,6 @@ from pydrake.multibody.tree import JacobianWrtVariable
 
 def main():
 
-
     builder = DiagramBuilder()
     plant, _ = AddMultibodyPlantSceneGraph(builder, 1e-4)
     Parser(plant).AddModelFromFile(
@@ -27,6 +26,7 @@ def main():
 
     l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
     r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
+    pelvis_frame = plant.GetBodyByName("pelvis").body_frame()
     world = plant.world_frame()
 
     # loadedTrajs = pydairlib.lcm_trajectory.LcmTrajectory()
@@ -44,13 +44,12 @@ def main():
                         traj_mode2.datapoints.T[:, 0:nx]))
     n_points = times.size
 
-
-
     context = plant.CreateDefaultContext()
-    CoM_pos = np.zeros((3, n_points))
-    CoM_vel = np.zeros((3, n_points))
+    # CoM_pos = np.zeros((3, n_points))
+    # CoM_vel = np.zeros((3, n_points))
     l_foot_state = np.zeros((6, n_points))
     r_foot_state = np.zeros((6, n_points))
+    pelvis_state = np.zeros((6, n_points))
     # l_foot_vel = np.zeros((3, n_points))
     # r_foot_vel = np.zeros((3, n_points))
 
@@ -66,7 +65,8 @@ def main():
                                                        no_offset, world)
         r_foot_state[0:3, [i]] = plant.CalcPointsPositions(context, r_toe_frame,
                                                        no_offset, world)
-
+        pelvis_state[0:3, [i]] = plant.CalcPointsPositions(context,pelvis_frame,
+                                                       no_offset, world)
 
         l_foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
             context, JacobianWrtVariable.kV, l_toe_frame, no_offset, world,
@@ -74,8 +74,10 @@ def main():
         r_foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
             context, JacobianWrtVariable.kV, r_toe_frame, no_offset, world,
             world) @ x[i, nq:nx]
+        pelvis_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
+            context, JacobianWrtVariable.kV, pelvis_frame, no_offset, world,
+            world) @ x[i, nq:nx]
 
-    import pdb; pdb.set_trace()
     lfoot_traj_block = Trajectory()
     lfoot_traj_block.traj_name = "left_foot_trajectory"
     lfoot_traj_block.datapoints = l_foot_state
@@ -88,8 +90,15 @@ def main():
     rfoot_traj_block.time_vector = times
     rfoot_traj_block.datatypes = ["rfoot_x", "rfoot_y", "rfoot_z"]
 
-    trajectories = [lfoot_traj_block, rfoot_traj_block]
-    trajectory_names = ["left_foot_trajectory", "right_foot_trajectory"]
+    pelvis_traj_block = Trajectory()
+    pelvis_traj_block.traj_name = "right_foot_trajectory"
+    pelvis_traj_block.datapoints = l_foot_state
+    pelvis_traj_block.time_vector = times
+    pelvis_traj_block.datatypes = ["rfoot_x", "rfoot_y", "rfoot_z"]
+
+    trajectories = [lfoot_traj_block, rfoot_traj_block, pelvis_traj_block]
+    trajectory_names = ["left_foot_trajectory", "right_foot_trajectory",
+                        "pelvis_trajectory"]
 
     processed_traj = LcmTrajectory(trajectories, trajectory_names,
                                    "jumping_trajectory", "Feet trajectories "

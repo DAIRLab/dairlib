@@ -1105,7 +1105,7 @@ void RecordSolutionQualityAndQueueList(
       // 1. it's not in the awaiting_sample_idx and not being evaluated
       // 2. the adjacent sample needs help
       // 3. the current sample hasn't helped the adjacent sample
-      if (this_adjacent_sample_needs_help && current_sample_has_helped) {
+      if (this_adjacent_sample_needs_help && !current_sample_has_helped) {
         if ((find(awaiting_sample_idx.begin(), awaiting_sample_idx.end(),
                   adj_idx) == awaiting_sample_idx.end()) &&
             !(IsSampleBeingEvaluated(assigned_thread_idx, adj_idx))) {

@@ -66,6 +66,8 @@ DEFINE_bool(is_two_phase, false,
             "false: both double and single support");
 DEFINE_string(traj_name, "", "File to load saved trajectories from");
 
+DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
+
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
 // performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
@@ -116,7 +118,7 @@ int DoMain(int argc, char* argv[]) {
       "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/" +
       FLAGS_traj_name);
 
-  const LcmTrajectory::Trajectory& pelvis_traj =
+  const LcmTrajectory::Trajectory& lcm_pelvis_traj =
       loaded_traj.getTrajectory("pelvis_trajectory");
   const LcmTrajectory::Trajectory& lcm_l_foot_traj =
       loaded_traj.getTrajectory("left_foot_trajectory");
@@ -133,10 +135,10 @@ int DoMain(int argc, char* argv[]) {
   //  cout << "com_vel:" << com_vel_traj.datapoints.size() << endl;
   //  cout << "l_foot_vel: " << lcm_l_foot_vel_traj.datapoints.size() << endl;
   //  cout << "r_foot_vel: " << lcm_r_foot_vel_traj.datapoints.size() << endl;
-  const PiecewisePolynomial<double>& center_of_mass_traj =
-      PiecewisePolynomial<double>::Cubic(pelvis_traj.time_vector,
-                                         pelvis_traj.datapoints.topRows(3),
-                                         pelvis_traj.datapoints.bottomRows(3));
+  const PiecewisePolynomial<double>& pelvis_traj =
+      PiecewisePolynomial<double>::Cubic(
+          lcm_pelvis_traj.time_vector, lcm_pelvis_traj.datapoints.topRows(3),
+          lcm_pelvis_traj.datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& l_foot_trajectory =
       PiecewisePolynomial<double>::Cubic(
           lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints.topRows(3),
@@ -171,14 +173,14 @@ int DoMain(int argc, char* argv[]) {
           "CONTACT_RESULTS", &lcm));
   //  auto state_sub = builder.AddSystem(
   //      LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, lcm));
-//  auto state_receiver =
-//      builder.AddSystem<systems::RobotOutputReceiver>(plant_without_springs);
+  //  auto state_receiver =
+  //      builder.AddSystem<systems::RobotOutputReceiver>(plant_without_springs);
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_with_springs);
   // Create Operational space control
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
-      center_of_mass_traj, FLAGS_balance_height);
+      pelvis_traj, FLAGS_balance_height);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_with_springs, "pelvis", true, l_foot_trajectory);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
@@ -187,7 +189,7 @@ int DoMain(int argc, char* argv[]) {
   //      builder.AddSystem<TorsoTraj>(plant_with_springs,
   //      pelvis_orientation_traj);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
-      plant_with_springs, flight_time, land_time);
+      plant_with_springs, flight_time, land_time, FLAGS_delay_time);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, 1.0 / FLAGS_publish_rate));
@@ -225,10 +227,11 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  ComTrackingDataMBP com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
-                                       &plant_with_springs,
-                                       &plant_without_springs);
-  osc->AddTrackingData(&com_tracking_data);
+  TransTaskSpaceTrackingDataMBP pelvis_tracking_data(
+      "pelvis_traj", 3, K_p_com, K_d_com, W_com, &plant_with_springs,
+      &plant_without_springs);
+  pelvis_tracking_data.AddPointToTrack("pelvis");
+  osc->AddTrackingData(&pelvis_tracking_data);
 
   // Feet tracking
   MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
@@ -240,18 +243,17 @@ int DoMain(int argc, char* argv[]) {
   K_p_sw_ft(1, 1) = 0;
   K_d_sw_ft(1, 1) = 0;
 
-  TransTaskSpaceTrackingDataMBP flight_phase_left_foot_traj(
+  TransTaskSpaceTrackingDataMBP left_foot_tracking_data(
       "l_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
       &plant_without_springs);
-  TransTaskSpaceTrackingDataMBP flight_phase_right_foot_traj(
+  TransTaskSpaceTrackingDataMBP right_foot_tracking_data(
       "r_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
       &plant_without_springs);
-  flight_phase_left_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
-                                                      "toe_left");
-  flight_phase_right_foot_traj.AddStateAndPointToTrack(examples::FLIGHT,
-                                                       "toe_right");
-  osc->AddTrackingData(&flight_phase_left_foot_traj);
-  osc->AddTrackingData(&flight_phase_right_foot_traj);
+  left_foot_tracking_data.AddStateAndPointToTrack(examples::FLIGHT, "toe_left");
+  right_foot_tracking_data.AddStateAndPointToTrack(examples::FLIGHT,
+                                                   "toe_right");
+  osc->AddTrackingData(&left_foot_tracking_data);
+  osc->AddTrackingData(&right_foot_tracking_data);
 
   // Build OSC problem
   osc->Build();
@@ -265,7 +267,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("com_traj"));
+                  osc->get_tracking_data_input_port("pelvis_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("l_foot_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),

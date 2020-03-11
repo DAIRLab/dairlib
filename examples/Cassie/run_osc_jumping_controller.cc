@@ -79,8 +79,9 @@ int DoMain(int argc, char* argv[]) {
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
-  MultibodyPlant<double> plant_with_springs(0.0);
-  MultibodyPlant<double> plant_without_springs(0.0);
+  // Initialize using timestepping to avoid joint limit warnings
+  MultibodyPlant<double> plant_with_springs(1e-5);
+  MultibodyPlant<double> plant_without_springs(1e-5);
   Parser parser_with_springs(&plant_with_springs, &scene_graph);
   Parser parser_without_springs(&plant_without_springs, &scene_graph);
 

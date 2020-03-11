@@ -125,6 +125,9 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
           prev_time(0) = current_time;
         }
         break;
+      case (LAND):
+        break;
+        // Do nothing
     }
   }
 

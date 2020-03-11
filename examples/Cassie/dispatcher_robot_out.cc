@@ -49,6 +49,7 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_int64(test_mode, -1, "-1: Regular EKF (not testing mode). "
                             "0: both feet always in contact with ground. "
                             "1: both feet never in contact with ground. ");
+DEFINE_double(init_imu_height, 0.969223, "The height of imu that we initialize the ekf with");
 
 void setInitialEkfState(const drake::systems::Diagram<double>& diagram,
                         systems::CassieRbtStateEstimator* state_estimator,
@@ -58,7 +59,7 @@ void setInitialEkfState(const drake::systems::Diagram<double>& diagram,
       diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
   state_estimator->setPreviousTime(&state_estimator_context, t0);
   state_estimator->setInitialImuPosition(
-      &state_estimator_context, Eigen::Vector3d(0.0318638, 0, 0.969223));
+      &state_estimator_context, Eigen::Vector3d(0.0318638, 0, FLAGS_init_imu_height));
   state_estimator->setInitialImuQuaternion(&state_estimator_context,
                                            Eigen::Vector4d(1, 0, 0, 0));
   // Initial imu values are all 0 if the robot is dropped from the air.

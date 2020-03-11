@@ -142,15 +142,16 @@ void ComTrackingDataMBP::UpdateYAndError(const VectorXd& x_w_spr,
 }
 void ComTrackingDataMBP::UpdateYdotAndError(const VectorXd& x_w_spr,
                                             Context<double>& context_w_spr) {
+  MatrixXd J_w_spr(3, plant_w_spr_->num_velocities());
   plant_w_spr_->CalcJacobianCenterOfMassVelocityInWorld(
-      context_w_spr, JacobianWrtVariable::kV, &J_);
-  dy_ = J_ * x_w_spr.tail(plant_w_spr_->num_velocities());
+      context_w_spr, JacobianWrtVariable::kV, &J_w_spr);
+  dy_ = J_w_spr * x_w_spr.tail(plant_w_spr_->num_velocities());
   error_dy_ = dy_des_ - dy_;
 }
 void ComTrackingDataMBP::UpdateYddotDes() { ddy_des_converted_ = ddy_des_; }
 void ComTrackingDataMBP::UpdateJ(const VectorXd& x_wo_spr,
                                  Context<double>& context_wo_spr) {
-  // TODO (yangwill): Implement CalcCenterOfMassJacobian in MBP
+  J_ = MatrixXd::Zero(3, plant_wo_spr_->num_velocities());
   plant_wo_spr_->CalcJacobianCenterOfMassVelocityInWorld(
       context_wo_spr, JacobianWrtVariable::kV, &J_);
 }

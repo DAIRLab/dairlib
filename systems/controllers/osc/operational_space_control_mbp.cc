@@ -360,29 +360,27 @@ drake::systems::EventStatus OperationalSpaceControlMBP::DiscreteVariableUpdate(
 }
 
 VectorXd OperationalSpaceControlMBP::SolveQp(
-    VectorXd x_w_spr, const VectorXd& x_wo_spr,
+    const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
     double time_since_last_state_switch) const {
   vector<bool> active_contact_flags = CalcActiveContactIndices(fsm_state);
 
-  VectorXd pos_w_spr = x_w_spr.head(n_q_);
-  VectorXd vel_w_spr = x_w_spr.tail(n_v_);
-  VectorXd pos_wo_spr = x_wo_spr.head(n_q_);
-  VectorXd vel_wo_spr = x_wo_spr.tail(n_v_);
   std::unique_ptr<drake::systems::Context<double>> context_w_spr =
-      createContext(plant_w_spr_, pos_w_spr, vel_w_spr);
+      plant_w_spr_.CreateDefaultContext();
   std::unique_ptr<drake::systems::Context<double>> context_wo_spr =
-      createContext(plant_wo_spr_, pos_wo_spr, vel_wo_spr);
+      plant_wo_spr_.CreateDefaultContext();
+  plant_w_spr_.SetPositionsAndVelocities(context_w_spr.get(), x_w_spr);
+  plant_wo_spr_.SetPositionsAndVelocities(context_wo_spr.get(), x_wo_spr);
 
   // Get M, f_cg, B matrices of the manipulator equation
   MatrixXd B = plant_wo_spr_.MakeActuationMatrix();
   //  MatrixXd B = plant_wo_spr_.B;
-  MatrixXd M(n_q_, n_q_);
-  plant_wo_spr_.CalcMassMatrixViaInverseDynamics(context, &M);
+  MatrixXd M(n_v_, n_v_);
+  plant_wo_spr_.CalcMassMatrixViaInverseDynamics(*context_wo_spr, &M);
   const RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
-  VectorXd bias(n_q_);
-  plant_wo_spr_.CalcBiasTerm(context, &bias);
-  VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(context);
+  VectorXd bias(n_v_);
+  plant_wo_spr_.CalcBiasTerm(*context_wo_spr, &bias);
+  VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr);
   bias = bias + grav;
   //  VectorXd bias =
   //      plant_wo_spr_.dynamicsBiasTerm(cache_wo_spr, no_external_wrenches);
@@ -414,7 +412,7 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
           plant_wo_spr_.CalcBiasForJacobianSpatialVelocity(
               *context_wo_spr, JacobianWrtVariable::kV,
               plant_wo_spr_.get_body(body_indices_[i]).body_frame(),
-              pts_on_body_[i], world_wo_spr_, world_wo_spr_);
+              pts_on_body_[i], world_wo_spr_, world_wo_spr_).tail(3);
     }
   }
 

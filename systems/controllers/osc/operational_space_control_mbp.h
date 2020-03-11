@@ -141,7 +141,7 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   void CheckConstraintSettings();
 
   // Get solution of OSC
-  Eigen::VectorXd SolveQp(Eigen::VectorXd x_w_spr,
+  Eigen::VectorXd SolveQp(const Eigen::VectorXd& x_w_spr,
                           const Eigen::VectorXd& x_wo_spr,
                           const drake::systems::Context<double>& context,
                           double t, int fsm_state,

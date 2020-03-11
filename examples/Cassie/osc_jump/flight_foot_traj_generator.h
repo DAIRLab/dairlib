@@ -29,8 +29,7 @@ class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
  private:
   drake::trajectories::PiecewisePolynomial<double> generateFlightTraj(
       const drake::systems::Context<double>& context,
-      Eigen::VectorXd* q,
-      Eigen::VectorXd* v,
+      const Eigen::VectorXd& x,
       double t) const;
 
   void CalcTraj(const drake::systems::Context<double>& context,

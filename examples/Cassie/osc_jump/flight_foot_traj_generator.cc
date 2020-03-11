@@ -61,15 +61,16 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
   foot positions as a function of COM.
 */
 PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
-    const drake::systems::Context<double>& context, VectorXd* q, VectorXd* v,
+    const drake::systems::Context<double>& context, const VectorXd& x,
     double t) const {
-  auto plant_context = createContext(plant_, *q, *v);
+  VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
+  auto plant_context = createContext(plant_, x, zero_input);
 
   const drake::multibody::BodyFrame<double>& world = plant_.world_frame();
   const drake::multibody::BodyFrame<double>& hip_frame =
       plant_.GetBodyByName(hip_name_).body_frame();
   Vector3d pt_on_hip = Vector3d::Zero();
-  Vector3d hip_pos;
+  Vector3d hip_pos = Vector3d::Zero();
   plant_.CalcPointsPositions(*plant_context, hip_frame, pt_on_hip, world,
       &hip_pos);
 
@@ -91,8 +92,7 @@ void FlightFootTrajGenerator::CalcTraj(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*) this->EvalVectorInput(context, state_port_);
-  VectorXd q = robot_output->GetPositions();
-  VectorXd v = robot_output->GetVelocities();
+  VectorXd x = robot_output->GetState();
   double timestamp = robot_output->get_timestamp();
 
   // Read in finite state machine
@@ -105,7 +105,8 @@ void FlightFootTrajGenerator::CalcTraj(
           traj);
   switch ((int) fsm_state(0)) {
     case (FLIGHT):  // FLIGHT
-      *casted_traj = generateFlightTraj(context, &q, &v, timestamp);
+      *casted_traj = generateFlightTraj(context, robot_output->GetState(),
+          timestamp);
       break;
     default:break;
   }

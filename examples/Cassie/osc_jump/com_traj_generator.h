@@ -27,17 +27,14 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
 
  private:
   drake::trajectories::PiecewisePolynomial<double> generateBalanceTraj(
-      const drake::systems::Context<double>& context, Eigen::VectorXd& q,
-      Eigen::VectorXd& v) const;
+      const drake::systems::Context<double>& context, const Eigen::VectorXd& x) const;
   drake::trajectories::PiecewisePolynomial<double> generateCrouchTraj(
-      const drake::systems::Context<double>& context, Eigen::VectorXd& q,
-      Eigen::VectorXd& v) const;
+      const drake::systems::Context<double>& context, const Eigen::VectorXd& x) const;
   drake::trajectories::PiecewisePolynomial<double> generateFlightTraj(
-      const drake::systems::Context<double>& context, Eigen::VectorXd& q,
-      Eigen::VectorXd& v) const;
+      const drake::systems::Context<double>& context, const Eigen::VectorXd& x)
+      const;
   drake::trajectories::PiecewisePolynomial<double> generateLandingTraj(
-      const drake::systems::Context<double>& context, Eigen::VectorXd& q,
-      Eigen::VectorXd& v) const;
+      const drake::systems::Context<double>& context, const Eigen::VectorXd& x) const;
 
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -59,8 +56,6 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
 
   int state_port_;
   int fsm_port_;
-  drake::trajectories::PiecewisePolynomial<double> generateBalancingComTraj(
-      Eigen::VectorXd& q) const;
 };
 
 }  // namespace dairlib::examples::Cassie::osc_jump

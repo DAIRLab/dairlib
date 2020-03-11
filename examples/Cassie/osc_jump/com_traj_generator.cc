@@ -82,10 +82,10 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
   if (prev_fsm_state(0) != fsm_state(0)) {  // When to reset the clock
     prev_fsm_state(0) = fsm_state(0);
     prev_time(0) = current_time;
-    VectorXd q = robot_output->GetPositions();
-    VectorXd v = robot_output->GetVelocities();
+    VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
 
-    auto plant_context = createContext(plant_, q, v);
+    auto plant_context = createContext(plant_, robot_output->GetState(),
+        zero_input);
     // Return the x diff between the desired and current COM pos
     com_x_offset(0) = plant_.CalcCenterOfMassPosition(*plant_context)(0) -
                       crouch_traj_.value(crouch_traj_.end_time())(0);
@@ -94,16 +94,14 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
 }
 
 PiecewisePolynomial<double> COMTrajGenerator::generateBalanceTraj(
-    const drake::systems::Context<double>& context, VectorXd& q,
-    VectorXd& v) const {
-  auto plant_context = createContext(plant_, q, v);
+    const drake::systems::Context<double>& context, const VectorXd& x) const {
+  VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
+  auto plant_context = createContext(plant_, x, zero_input);
   const drake::multibody::BodyFrame<double>& world = plant_.world_frame();
   const drake::multibody::BodyFrame<double>& l_toe_frame =
       plant_.GetBodyByName("toe_left").body_frame();
   const drake::multibody::BodyFrame<double>& r_toe_frame =
       plant_.GetBodyByName("toe_right").body_frame();
-
-  Vector3d front_contact_disp(-0.0457, 0.112, 0);
 
   Vector3d l_toe_front;
   Vector3d l_toe_rear;
@@ -118,15 +116,15 @@ PiecewisePolynomial<double> COMTrajGenerator::generateBalanceTraj(
                              world, &r_toe_front);
   plant_.CalcPointsPositions(*plant_context, r_toe_frame, rear_contact_disp_,
                              world, &r_toe_rear);
-  Vector3d targetCoM = (l_toe_front + l_toe_rear + r_toe_front + r_toe_rear)/4;
+  Vector3d targetCoM =
+      (l_toe_front + l_toe_rear + r_toe_front + r_toe_rear) / 4;
   targetCoM(2) = height_;
 
   return PiecewisePolynomial<double>(targetCoM);
 }
 
 PiecewisePolynomial<double> COMTrajGenerator::generateCrouchTraj(
-    const drake::systems::Context<double>& context, VectorXd& q,
-    VectorXd& v) const {
+    const drake::systems::Context<double>& context, const VectorXd& x) const {
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double t = robot_output->get_timestamp();
@@ -137,8 +135,7 @@ PiecewisePolynomial<double> COMTrajGenerator::generateCrouchTraj(
 }
 
 PiecewisePolynomial<double> COMTrajGenerator::generateLandingTraj(
-    const drake::systems::Context<double>& context, VectorXd& q,
-    VectorXd& v) const {
+    const drake::systems::Context<double>& context, const VectorXd& x) const {
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double t = robot_output->get_timestamp();
@@ -164,8 +161,6 @@ void COMTrajGenerator::CalcTraj(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  VectorXd q = robot_output->GetPositions();
-  VectorXd v = robot_output->GetVelocities();
 
   // Read in finite state machine
   const BasicVector<double>* fsm_output =
@@ -175,16 +170,17 @@ void COMTrajGenerator::CalcTraj(
   PiecewisePolynomial<double>* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
+  const drake::VectorX<double>& x = robot_output->GetState();
 
   switch (static_cast<int>(fsm_state(0))) {
     case (BALANCE):  //  BALANCE
-      *casted_traj = generateBalanceTraj(context, q, v);
+      *casted_traj = generateBalanceTraj(context, x);
       break;
     case (CROUCH):  //  CROUCH
-      *casted_traj = generateCrouchTraj(context, q, v);
+      *casted_traj = generateCrouchTraj(context, x);
       break;
     case (LAND):  //  LAND
-      *casted_traj = generateLandingTraj(context, q, v);
+      *casted_traj = generateLandingTraj(context, x);
       break;
   }
 }

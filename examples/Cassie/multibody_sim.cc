@@ -173,10 +173,15 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
   std::map<std::string, int> positions_map =
       multibody::makeNameToPositionsMap(plant);
 
-  VectorXd q_ik_guess = VectorXd::Zero(plant.num_positions());
+  for (auto pair : positions_map) {
+    std::cout << pair.first << ": " << pair.second << std::endl;
+  }
+
+  VectorXd q_ik_guess = VectorXd::Zero(n_q);
   Eigen::Vector4d quat(1, 0, 0, 0);
   q_ik_guess << quat.normalized(), 0.001, 0.001, 1.1, -0.01, 0.01, 0.0, 0.0,
-      1.15, 1.15, -1.35, -1.35, 1.0, 1.0, -M_PI / 2, -M_PI / 2;
+      1.15, 1.15, -1.35, -1.35, 1.0, 1.0, 0.0, 0.0, 0.0, -M_PI / 2, 0.0,
+      -M_PI / 2;
 
   double eps = 1e-3;
   Vector3d eps_vec = eps * VectorXd::Ones(3);

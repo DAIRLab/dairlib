@@ -13,6 +13,8 @@
 
 namespace dairlib {
 
+enum SteppingResults { dont_step, step, continue_balancing };
+
 class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   SafeTrajGenerator(const RigidBodyTree<double>& tree,
@@ -43,7 +45,7 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
   void CalcSwingTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
 
-  bool should_step(double current_time, double prev_td_time,
+  SteppingResults should_step(double current_time, double prev_td_time,
                    Eigen::Vector3d reduced_order_state) const;
 
   void find_next_stance_location(const Eigen::Vector3d& reduced_order_state,
@@ -137,6 +139,8 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
   std::unique_ptr<std::vector<double>> desired_swing_pos_x_hist_;
   std::unique_ptr<std::vector<double>> desired_swing_pos_y_hist_;
   std::unique_ptr<std::vector<double>> desired_swing_pos_z_hist_;
+  std::unique_ptr<std::vector<double>> stance_toe_angle_hist_;
+  std::unique_ptr<std::vector<double>> swing_toe_angle_hist_;
 };
 
 } // namespace dairlib

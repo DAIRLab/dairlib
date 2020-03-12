@@ -7,6 +7,8 @@
 
 namespace dairlib {
 
+enum StanceState { left_stance_state, right_stance_state };
+
 class StateBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
  public:
   StateBasedFiniteStateMachine(const RigidBodyTree<double>& tree,
@@ -21,8 +23,12 @@ class StateBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
   }
 
  private:
-  void CalcFiniteState(const drake::systems::Context<double>& context,
-                       drake::systems::BasicVector<double>* fsm_state) const;
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  void CopyFiniteState(const drake::systems::Context<double>& context,
+                       drake::systems::BasicVector<double>* output) const;
 
   const RigidBodyTree<double>& tree_;
   double left_foot_idx_;
@@ -30,12 +36,18 @@ class StateBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
   double right_foot_idx_;
   Eigen::Vector3d pt_on_right_foot_;
 
+  // Input port indices
   int state_port_;
+  int trajectory_port_;
 
-  int first_state_number_ = 0;
-  int second_state_number_ = 1;
-  int initial_state_number_ = 0; // TODO: change this later
+  // Discrete state indices
+  int fsm_state_index_;
+  int prev_fsm_change_time_idx_;
+
   double time_shift_;
+
+  const int left_stance_state_ = 0;
+  const int right_stance_state_ = 1;
 };
 
 

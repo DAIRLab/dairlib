@@ -139,13 +139,15 @@ SafeTrajGenerator::SafeTrajGenerator(
           .get();
 
   // Output port
-  PiecewisePolynomial<double> pp_traj(VectorXd(0));
+  PiecewisePolynomial<double> pp_com_traj((Vector3d()));
 
-  Trajectory<double>& traj_inst = pp_traj;
-  this->DeclareAbstractOutputPort("safe_lipm_traj", traj_inst,
+  Trajectory<double>& com_traj_inst = pp_com_traj;
+  this->DeclareAbstractOutputPort("safe_lipm_traj", com_traj_inst,
                                   &SafeTrajGenerator::CalcTraj);
 
-  this->DeclareAbstractOutputPort("swing_foot_traj", traj_inst,
+  PiecewisePolynomial<double> pp_swing_traj((Vector3d()));
+  Trajectory<double>& swing_traj_inst = pp_swing_traj;
+  this->DeclareAbstractOutputPort("swing_foot_traj", swing_traj_inst,
                                   &SafeTrajGenerator::CalcSwingTraj);
 
   DeclarePerStepDiscreteUpdateEvent(&SafeTrajGenerator::DiscreteVariableUpdate);
@@ -178,6 +180,8 @@ SafeTrajGenerator::SafeTrajGenerator(
   desired_swing_pos_x_hist_ = std::make_unique<std::vector<double>>();
   desired_swing_pos_y_hist_ = std::make_unique<std::vector<double>>();
   desired_swing_pos_z_hist_ = std::make_unique<std::vector<double>>();
+  stance_toe_angle_hist_ = std::make_unique<std::vector<double>>();
+  swing_toe_angle_hist_ = std::make_unique<std::vector<double>>();
 
   // Test private methods here
 }
@@ -205,9 +209,12 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
   double current_time = static_cast<double>(timestamp);
 
   std::cout << "current_time:" << current_time << std::endl;
+  std::cout << fsm_state(0) << std::endl;
+  std::cout << prev_fsm_state(0) << std::endl;
 
   // TODO(nanda): Modify this if condition to incorporate time
   if (fsm_state(0) != prev_fsm_state(0)) {
+    cout << "Inside change of fsm state in safe_traj_gen!" << endl;
     prev_fsm_state(0) = fsm_state(0);
     prev_td_time(0) = current_time;
     auto swing_foot_pos_td =
@@ -220,7 +227,7 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
     auto last_calc_time =
         discrete_state->get_vector(last_calculation_time_idx_).get_value();
     // std::cout << "last_calc_time: " << last_calc_time << std::endl;
-    if (current_time - last_calc_time(0) > 0.1) {
+    if (current_time - last_calc_time(0) > 0.05) {
       KinematicsCache<double> cache = tree_.CreateKinematicsCache();
       VectorXd q = robot_output->GetPositions();
 
@@ -228,6 +235,7 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
       if (is_quaternion_) {
         multibody::SetZeroQuaternionToIdentity(&q);
       }
+      cout << "q and v found" << endl;
 
       cache.initialize(q);
       tree_.doKinematics(cache);
@@ -249,6 +257,8 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
       MatrixXd J = tree_.centerOfMassJacobian(cache);
       Vector3d dCoM = J * v;
 
+      cout << "Cache computed" << endl;
+
       Vector3d stance_foot_pos =
           tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
       Vector3d swing_foot_pos =
@@ -260,6 +270,7 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
       const double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
       const double CoM_wrt_foot_z = CoM(2) - stance_foot_pos(2);
       DRAKE_DEMAND(CoM_wrt_foot_z > 0);
+      cout << "Passed the drake demand" << endl;
 
       double stance_location;
       double step_duration = 0;
@@ -281,7 +292,7 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
       discrete_state->get_mutable_vector(last_calculation_time_idx_)
               .get_mutable_value()
           << current_time;
-      exit(EXIT_FAILURE);
+      // exit(EXIT_FAILURE);
     }
   }
 
@@ -396,7 +407,7 @@ Vector3d SafeTrajGenerator::solveQP(const Vector3d& reduced_order_state) const {
   return Vector3d::Zero();
 }
 
-bool SafeTrajGenerator::should_step(double current_time, double prev_td_time,
+SteppingResults SafeTrajGenerator::should_step(double current_time, double prev_td_time,
                                     Vector3d reduced_order_state) const {
   std::map<Polynomiald::VarType, double> var_values;
   var_values[x[0].GetSimpleVariable()] = reduced_order_state(0);
@@ -406,13 +417,22 @@ bool SafeTrajGenerator::should_step(double current_time, double prev_td_time,
   double V0_val = V0_.EvaluateMultivariate(var_values);
   double V1_val = V1_.EvaluateMultivariate(var_values);
   double W0_val = W0_.EvaluateMultivariate(var_values);
+  // std::cout << "V0_val: " << V0_val << std::endl;
+  // std::cout << "V1_val: " << V1_val << std::endl;
+  // std::cout << "W0_val: " << W0_val << std::endl;
+  // std::cout << "*******************" << std::endl;
   if (W0_val <= 1 && V0_val > 1) {
     cout << "reduced_order_state: " << endl;
     cout << reduced_order_state << endl;
     std::cout << "Step!" << endl;
-    return true;
+    return SteppingResults::step;
+  } else if (W0_val <= 1 && V0_val <= 1) {
+    cout << "reduced_order_state: " << endl;
+    cout << reduced_order_state << endl;
+    std::cout << "Step (from within 0-step)!" << endl;
+    return SteppingResults::continue_balancing;
   }
-  return false;
+  return SteppingResults::dont_step;
 }
 
 // Use values of V here to see when the while loop can be stopped
@@ -420,6 +440,7 @@ bool SafeTrajGenerator::should_step(double current_time, double prev_td_time,
 void SafeTrajGenerator::find_next_stance_location(
     const Eigen::Vector3d& reduced_order_state, double& next_stance_loc,
     double& t) const {
+  cout << "Inside find_next_stance_location" << endl;
   double dt = 0.01;
   double total_time = 0;
   Vector3d state_dot;
@@ -428,7 +449,17 @@ void SafeTrajGenerator::find_next_stance_location(
       reduced_order_state(2);
   cout << "Current state: " << next_state.transpose() << endl;
 
+  if (should_step(total_time, 0, next_state) ==
+      SteppingResults::continue_balancing) {
+    cout << "Continue Balancing!" << endl;
+    t = 0.5;
+    next_state = Vector3d::Zero();
+    cout << "At the end of find_next_stance_location" << endl;
+    return;
+  }
+
   int num_steps = 0;
+  SteppingResults stepping_result;
   while (true) {
     state_dot = solveQP(next_state);
 
@@ -437,7 +468,9 @@ void SafeTrajGenerator::find_next_stance_location(
     total_time += dt;
     num_steps++;
 
-    if (should_step(total_time, 0, next_state)) { // Change time here
+    // Change time here
+    stepping_result = should_step(total_time, 0, next_state);
+    if (stepping_result == SteppingResults::step) {
       break;
     }
     if (num_steps > 200) {
@@ -445,11 +478,19 @@ void SafeTrajGenerator::find_next_stance_location(
     }
   }
   next_stance_loc = next_state(2);
-  if (num_steps > 200) {
+  if (num_steps > 200 &&
+      stepping_result == SteppingResults::continue_balancing) {
+    t = 0.5;
+    cout << "Continue balancing!" << endl;
+    // Think of what the state should be in this condition
+  } else if (stepping_result == SteppingResults::dont_step) {
     t = -1;
+    cout << "Can't balance!" << endl;
   } else {
     t = total_time;
+    cout << "Can balance!" << endl;
   }
+  cout << "At the end of find_next_stance_location" << endl;
   return;
 }
 
@@ -465,6 +506,8 @@ void SafeTrajGenerator::CalcTraj(const Context<double>& context,
 
   const auto prev_td_time =
       context.get_discrete_state(prev_td_time_idx_).get_value();
+  const double stance_duration =
+      context.get_discrete_state(duration_of_stance_idx_).get_value()(0);
 
   double timestamp = robot_output->get_timestamp();
   double current_time = static_cast<double>(timestamp);
@@ -504,8 +547,9 @@ void SafeTrajGenerator::CalcTraj(const Context<double>& context,
   const double CoM_wrt_foot_z = CoM_wrt_foot(2);
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
+
   const std::vector<double> breaks = {
-      current_time-0.02, prev_td_time(0) + 0.5};  // Think about this line
+      current_time, prev_td_time(0) + stance_duration + 0.002};  // Think about this line
 
   Vector3d reduced_order_state;
   reduced_order_state << CoM_wrt_foot(0), dCoM(0), swing_foot_pos(0);
@@ -615,6 +659,7 @@ PiecewisePolynomial<double> SafeTrajGenerator::createSplineForSwingFoot(
   Y_dot[2](2, 0) = desired_final_vertical_foot_velocity_;
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::Cubic(T_waypoint, Y, Y_dot);
+
   return swing_foot_spline;
 }
 
@@ -623,6 +668,11 @@ void SafeTrajGenerator::CalcSwingTraj(const Context<double>& context,
 
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+
+  const BasicVector<double>* fsm_output =
+      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
+  VectorXd fsm_state = fsm_output->get_value();
+
 
   // Get discrete states
   const auto swing_foot_pos_td =
@@ -663,45 +713,61 @@ void SafeTrajGenerator::CalcSwingTraj(const Context<double>& context,
   PiecewisePolynomial<double>* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *casted_traj = createSplineForSwingFoot(start_time_of_this_interval,
-                                          end_time_of_this_interval,
-                                          init_swing_foot_pos, next_stance_pos);
+  PiecewisePolynomial<double> pp_traj = createSplineForSwingFoot(
+      start_time_of_this_interval, end_time_of_this_interval,
+      init_swing_foot_pos, next_stance_pos);
+  *casted_traj = pp_traj;
 
-  KinematicsCache<double> cache = tree_.CreateKinematicsCache();
-  VectorXd q = robot_output->GetPositions();
+  // KinematicsCache<double> cache = tree_.CreateKinematicsCache();
+  // VectorXd q = robot_output->GetPositions();
 
-  cache.initialize(q);
-  tree_.doKinematics(cache);
+  // cache.initialize(q);
+  // tree_.doKinematics(cache);
 
-  int stance_foot_idx = left_foot_idx_;
-  Vector3d pt_on_stance_foot = pt_on_left_foot_;
-  int swing_foot_idx = right_foot_idx_;
-  Vector3d pt_on_swing_foot = pt_on_right_foot_;
+  // int stance_foot_idx =
+  //     (fsm_state(0) == right_stance_state_) ? right_foot_idx_ : left_foot_idx_;
+  // Vector3d pt_on_stance_foot = (fsm_state(0) == right_stance_state_)
+  //                                  ? pt_on_right_foot_
+  //                                  : pt_on_left_foot_;
+  // int swing_foot_idx =
+  //     (fsm_state(0) == right_stance_state_) ? left_foot_idx_ : right_foot_idx_;
+  // Vector3d pt_on_swing_foot = (fsm_state(0) == left_stance_state_)
+  //                                 ? pt_on_left_foot_
+  //                                 : pt_on_right_foot_;
+  // Vector3d stance_foot_pos =
+  //     tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
+  // Vector3d swing_foot_pos =
+  //     tree_.transformPoints(cache, pt_on_swing_foot, swing_foot_idx, 0);
 
-  Vector3d stance_foot_pos =
-      tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
-  Vector3d swing_foot_pos =
-      tree_.transformPoints(cache, pt_on_swing_foot, swing_foot_idx, 0);
+  // plt::clf();
+  // time_hist_->push_back(current_time);
+  // swing_pos_x_hist_->push_back(swing_foot_pos[0] - stance_foot_pos[0]);
+  // swing_pos_y_hist_->push_back(swing_foot_pos[1] - stance_foot_pos[1]);
+  // swing_pos_z_hist_->push_back(swing_foot_pos[2] - stance_foot_pos[2]);
 
-  plt::clf();
-  time_hist_->push_back(current_time);
-  swing_pos_x_hist_->push_back(swing_foot_pos[0] - stance_foot_pos[0]);
-  swing_pos_y_hist_->push_back(swing_foot_pos[1] - stance_foot_pos[1]);
-  swing_pos_z_hist_->push_back(swing_foot_pos[2] - stance_foot_pos[2]);
+  // Vector3d desired_swing_pos = casted_traj->value(current_time);
+  // desired_swing_pos_x_hist_->push_back(desired_swing_pos[0]);
+  // desired_swing_pos_y_hist_->push_back(desired_swing_pos[1]);
+  // desired_swing_pos_z_hist_->push_back(desired_swing_pos[2]);
 
-  Vector3d desired_swing_pos = casted_traj->value(current_time);
-  desired_swing_pos_x_hist_->push_back(desired_swing_pos[0]);
-  desired_swing_pos_y_hist_->push_back(desired_swing_pos[1]);
-  desired_swing_pos_z_hist_->push_back(desired_swing_pos[2]);
+  // plt::named_plot("Desred swing leg x", *time_hist_, *desired_swing_pos_x_hist_);
+  // plt::named_plot("Desired swing leg y", *time_hist_, *desired_swing_pos_y_hist_);
+  // plt::named_plot("Desired swing leg z", *time_hist_, *desired_swing_pos_z_hist_);
+  // plt::named_plot("Swing leg x", *time_hist_, *swing_pos_x_hist_);
+  // plt::named_plot("Swing leg y", *time_hist_, *swing_pos_y_hist_);
+  // plt::named_plot("Swing leg z", *time_hist_, *swing_pos_z_hist_);
+  // plt::legend();
+  // plt::pause(0.01);
 
-  plt::named_plot("Desred swing leg x", *time_hist_, *desired_swing_pos_x_hist_);
-  plt::named_plot("Desired swing leg y", *time_hist_, *desired_swing_pos_y_hist_);
-  plt::named_plot("Desired swing leg z", *time_hist_, *desired_swing_pos_z_hist_);
-  plt::named_plot("Swing leg x", *time_hist_, *swing_pos_x_hist_);
-  plt::named_plot("Swing leg y", *time_hist_, *swing_pos_y_hist_);
-  plt::named_plot("Swing leg z", *time_hist_, *swing_pos_z_hist_);
-  plt::legend();
-  plt::pause(0.01);
+  // plt::clf();
+  // time_hist_->push_back(current_time);
+  // stance_toe_angle_hist_->push_back(robot_output->GetPositionAtIndex(stance_foot_idx));
+  // swing_toe_angle_hist_->push_back(robot_output->GetPositionAtIndex(swing_foot_idx));
+
+  // plt::named_plot("Stance toe", *time_hist_, *stance_toe_angle_hist_);
+  // plt::named_plot("Swing toe", *time_hist_, *swing_toe_angle_hist_);
+  // plt::legend();
+  // plt::pause(0.01);
 }
 
 }  // namespace dairlib

@@ -13,6 +13,7 @@
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/systems/primitives/discrete_time_delay.h"
 
 #include "attic/multibody/rigidbody_utils.h"
 #include "common/find_resource.h"
@@ -107,8 +108,18 @@ int DoMain(int argc, char* argv[]) {
       tree, lipm_model, polynomial_loader, left_foot_idx, pt_on_left_foot,
       right_foot_idx, pt_on_right_foot, mid_foot_height,
       desired_final_foot_height, desired_final_vertical_foot_velocity, false);
+
+  // auto discrete_time_delay =
+  //   builder.AddSystem<drake::systems::DiscreteTimeDelay>(0.01, 1, 1);
+  // builder.Connect(fsm->get_output_port(0),
+  //                 discrete_time_delay->get_input_port());
+  // builder.Connect(discrete_time_delay->get_output_port(),
+  //                 safe_traj_generator->get_input_port_fsm());
   builder.Connect(fsm->get_output_port(0),
                   safe_traj_generator->get_input_port_fsm());
+
+  // builder.Connect(fsm->get_output_port(0),
+  //                 safe_traj_generator->get_input_port_fsm());
   builder.Connect(state_receiver->get_output_port(0),
                   safe_traj_generator->get_input_port_state());
 
@@ -116,7 +127,7 @@ int DoMain(int argc, char* argv[]) {
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       tree, tree, true, true);
   // Cost
-  int n_v = tree.get_num_velocities();
+  // int n_v = tree.get_num_velocities();
   // MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
   // osc->SetAccelerationCostForAllJoints(Q_accel);
 
@@ -174,7 +185,7 @@ int DoMain(int argc, char* argv[]) {
                                       &tree, &tree);
   osc->AddTrackingData(&center_of_mass_traj);
 
-  // Swing toe joint tracking (Currently use fix position)
+  // Swing toe joint tracking (Currently use fixed position)
   MatrixXd W_swing_toe = 20.0 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_swing_toe = 100.0 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_swing_toe = 10.0 * MatrixXd::Identity(1, 1);
@@ -203,16 +214,24 @@ int DoMain(int argc, char* argv[]) {
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
+
+
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
+
   builder.Connect(safe_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
   builder.Connect(safe_traj_generator->get_output_port(1),
                   osc->get_tracking_data_input_port("swing_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
 
+  builder.Connect(safe_traj_generator->get_output_port(1),
+                  fsm->get_input_port(1));
   // Create the diagram and context
   auto owned_diagram = builder.Build();
   auto context = owned_diagram->CreateDefaultContext();
+
+  // std::cout << "HasAnydirectFeedThrough ?" << std::endl;
+  // std::cout << fsm->HasAnyDirectFeedthrough() << std::endl;
 
   // Create the simulator
   const auto& diagram = *owned_diagram;

@@ -52,7 +52,7 @@ DEFINE_double(publish_rate, 1000.0, "Target publish rate for OSC");
 
 DEFINE_string(channel_x, "CASSIE_STATE",
               "The name of the channel which receives state");
-DEFINE_string(channel_u, "CASSIE_INPUT",
+DEFINE_string(channel_u, "OSC_JUMPING",
               "The name of the channel which publishes command");
 DEFINE_double(balance_height, 1.125,
               "Balancing height for Cassie before attempting the jump");
@@ -219,8 +219,8 @@ int DoMain(int argc, char* argv[]) {
   /**** Tracking Data for OSC *****/
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 2;
-  W_com(1, 1) = 2;
+  W_com(0, 0) = 200;
+  W_com(1, 1) = 200;
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
@@ -323,7 +323,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, false);
+      &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
   loop.Simulate();
 
   return 0;

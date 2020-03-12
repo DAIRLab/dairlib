@@ -15,6 +15,10 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+//TEMP
+using drake::multibody::JointActuatorIndex;
+
+
 namespace dairlib {
 
 int DoMain() {
@@ -31,6 +35,10 @@ int DoMain() {
   plant.mutable_gravity_field().set_gravity_vector(-9.81 *
                                                    Eigen::Vector3d::UnitZ());
   plant.Finalize();
+
+  std::cout << plant.get_joint_actuator(JointActuatorIndex(0)).effort_limit()
+  <<std::endl;
+
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
 
   int nq = plant.num_positions();

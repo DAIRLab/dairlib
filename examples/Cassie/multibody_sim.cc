@@ -186,8 +186,8 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
   double eps = 1e-3;
   Vector3d eps_vec = eps * VectorXd::Ones(3);
   Vector3d pelvis_pos(0.0, 0.0, 1.0);
-  Vector3d left_toe_pos(0.0, 0.12, 0.05);
-  Vector3d right_toe_pos(0.0, -0.12, 0.05);
+  Vector3d left_toe_pos(-0.05, 0.12, 0.05);
+  Vector3d right_toe_pos(-0.05, -0.12, 0.05);
 
   const auto& world_frame = plant.world_frame();
   const auto& pelvis_frame = plant.GetFrameByName("pelvis");
@@ -218,9 +218,9 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
           (ik.q())(positions_map.at("ankle_joint_right")) ==
       M_PI * 13 / 180.0);
   ik.get_mutable_prog()->AddLinearConstraint(
-      (ik.q())(positions_map.at("toe_left")) == -1.4);
+      (ik.q())(positions_map.at("toe_left")) == -1.5);
   ik.get_mutable_prog()->AddLinearConstraint(
-      (ik.q())(positions_map.at("toe_right")) == -1.4);
+      (ik.q())(positions_map.at("toe_right")) == -1.5);
 
   ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
   const auto result = Solve(ik.prog());

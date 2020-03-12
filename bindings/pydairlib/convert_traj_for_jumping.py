@@ -56,7 +56,7 @@ def main():
 
     no_offset = np.zeros(3)
 
-    for i in range(traj_mode0.datapoints.shape[0]):
+    for i in range(times.size):
         plant.SetPositionsAndVelocities(context, x[i, :])
         # CoM_pos[:, i] = plant.CalcCenterOfMassPosition(context)
         # CoM_vel[:, i] = plant.CalcCenterOfMassJacobian(context) @ x[i, nq:nx]

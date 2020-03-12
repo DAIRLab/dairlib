@@ -12,7 +12,7 @@ namespace dairlib::examples::Cassie::osc_jump {
 class COMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   COMTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
-                   int hip_idx,
+                   int pelvis_idx,
                    Eigen::Vector3d front_contact_disp,
                    Eigen::Vector3d rear_contact_disp,
                    drake::trajectories::PiecewisePolynomial<double> crouch_traj,

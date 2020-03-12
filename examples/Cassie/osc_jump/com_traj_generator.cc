@@ -30,12 +30,12 @@ using drake::trajectories::Trajectory;
 namespace dairlib::examples::Cassie::osc_jump {
 
 COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
-                                   int hip_idx, Vector3d front_contact_disp,
+                                   int pelvis_idx, Vector3d front_contact_disp,
                                    Vector3d rear_contact_disp,
                                    PiecewisePolynomial<double> crouch_traj,
                                    double height)
     : plant_(plant),
-      hip_idx_(hip_idx),
+      hip_idx_(pelvis_idx),
       front_contact_disp_(front_contact_disp),
       rear_contact_disp_(rear_contact_disp),
       crouch_traj_(crouch_traj),

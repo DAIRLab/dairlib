@@ -47,3 +47,14 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_binary(
+    name = "convert_traj_for_jumping",
+    srcs = ["convert_traj_for_jumping.cc"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+    ],
+)

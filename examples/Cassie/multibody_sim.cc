@@ -182,16 +182,21 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
   std::map<std::string, int> positions_map =
       multibody::makeNameToPositionsMap(plant);
 
-  VectorXd q_ik_guess = VectorXd::Zero(plant.num_positions());
+  for (auto pair : positions_map) {
+    std::cout << pair.first << ": " << pair.second << std::endl;
+  }
+
+  VectorXd q_ik_guess = VectorXd::Zero(n_q);
   Eigen::Vector4d quat(1, 0, 0, 0);
   q_ik_guess << quat.normalized(), 0.001, 0.001, 1.1, -0.01, 0.01, 0.0, 0.0,
-      1.15, 1.15, -1.35, -1.35, 1.0, 1.0, -M_PI / 2, -M_PI / 2;
+      1.15, 1.15, -1.35, -1.35, 1.0, 1.0, 0.0, 0.0, 0.0, -M_PI / 2, 0.0,
+      -M_PI / 2;
 
   double eps = 1e-3;
   Vector3d eps_vec = eps * VectorXd::Ones(3);
   Vector3d pelvis_pos(0.0, 0.0, 1.0);
-  Vector3d left_toe_pos(0.0, 0.12, 0.05);
-  Vector3d right_toe_pos(0.0, -0.12, 0.05);
+  Vector3d left_toe_pos(-0.05, 0.12, 0.05);
+  Vector3d right_toe_pos(-0.05, -0.12, 0.05);
 
   const auto& world_frame = plant.world_frame();
   const auto& pelvis_frame = plant.GetFrameByName("pelvis");
@@ -222,9 +227,9 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
           (ik.q())(positions_map.at("ankle_joint_right")) ==
       M_PI * 13 / 180.0);
   ik.get_mutable_prog()->AddLinearConstraint(
-      (ik.q())(positions_map.at("toe_left")) == -1.4);
+      (ik.q())(positions_map.at("toe_left")) == -1.5);
   ik.get_mutable_prog()->AddLinearConstraint(
-      (ik.q())(positions_map.at("toe_right")) == -1.4);
+      (ik.q())(positions_map.at("toe_right")) == -1.5);
 
   ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
   const auto result = Solve(ik.prog());

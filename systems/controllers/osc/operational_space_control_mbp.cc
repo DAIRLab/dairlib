@@ -69,15 +69,15 @@ OperationalSpaceControlMBP::OperationalSpaceControlMBP(
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   }
 
-  const std::map<string, int>
-      & pos_map_w_spr = multibody::makeNameToPositionsMap(plant_w_spr);
-  const std::map<string, int>
-      & vel_map_w_spr = multibody::makeNameToVelocitiesMap(plant_w_spr);
-  const std::map<string, int>
-      & pos_map_wo_spr = multibody::makeNameToPositionsMap(plant_wo_spr);
-  const std::map<string, int>
-      & vel_map_wo_spr = multibody::makeNameToVelocitiesMap(plant_wo_spr);
 
+  const std::map<string, int>& pos_map_w_spr =
+      multibody::makeNameToPositionsMap(plant_w_spr);
+  const std::map<string, int>& vel_map_w_spr =
+      multibody::makeNameToVelocitiesMap(plant_w_spr);
+  const std::map<string, int>& pos_map_wo_spr =
+      multibody::makeNameToPositionsMap(plant_wo_spr);
+  const std::map<string, int>& vel_map_wo_spr =
+      multibody::makeNameToVelocitiesMap(plant_wo_spr);
 
   // Initialize the mapping from spring to no spring
   map_position_from_spring_to_no_spring_ = MatrixXd::Zero(n_q_, n_q_w_spr);
@@ -111,9 +111,11 @@ OperationalSpaceControlMBP::OperationalSpaceControlMBP(
   VectorXd u_min(n_u_);
   VectorXd u_max(n_u_);
   //  for (int i = 0; i < n_u_; i++) {
-  for (JointActuatorIndex i(0); i < n_u_; i++) {
-    u_min(i) = -plant_wo_spr_.get_joint_actuator(i).effort_limit();
-    u_max(i) = plant_wo_spr_.get_joint_actuator(i).effort_limit();
+  for (JointActuatorIndex i(0); i < n_u_; ++i) {
+    u_min(i) = -300;
+    u_max(i) = 300;
+    //    u_min(i) = -plant_wo_spr_.get_joint_actuator(i).effort_limit();
+    //    u_max(i) = plant_wo_spr_.get_joint_actuator(i).effort_limit();
   }
   u_min_ = u_min;
   u_max_ = u_max;

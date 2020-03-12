@@ -298,7 +298,7 @@ void RotTaskSpaceTrackingDataMBP::UpdateYAndError(
 }
 void RotTaskSpaceTrackingDataMBP::UpdateYdotAndError(
     const VectorXd& x_w_spr, Context<double>& context_w_spr) {
-  MatrixXd J_spatial(6, plant_wo_spr_->num_velocities());
+  MatrixXd J_spatial(6, plant_w_spr_->num_velocities());
   plant_w_spr_->CalcJacobianSpatialVelocity(
       context_w_spr, JacobianWrtVariable::kV,
       *body_frames_w_spr_.at(GetStateIdx()),
@@ -316,7 +316,6 @@ void RotTaskSpaceTrackingDataMBP::UpdateYddotDes() {
   // Convert ddq into angular acceleration
   // See https://physics.stackexchange.com/q/460311
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  // Quaterniond dy_quat_des(dy_des_(0), dy_des_(1), dy_des_(2), dy_des_(3));
   Quaterniond ddy_quat_des(ddy_des_(0), ddy_des_(1), ddy_des_(2), ddy_des_(3));
   ddy_des_converted_ = 2 * (ddy_quat_des * y_quat_des.conjugate()).vec();
 }

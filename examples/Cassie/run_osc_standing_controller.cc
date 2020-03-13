@@ -42,7 +42,7 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
-
+DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_double(cost_weight_multiplier, 0.001,
               "A cosntant times with cost weight of OSC traj tracking");
 DEFINE_double(height, .89, "The desired height (m)");
@@ -110,7 +110,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-               tree_with_springs, tree_without_springs, false, false);
+               tree_with_springs, tree_without_springs, false, FLAGS_print_osc);
 
   // Cost
   // cout << "Adding cost\n";

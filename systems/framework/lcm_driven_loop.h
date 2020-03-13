@@ -160,7 +160,6 @@ class LcmDrivenLoop {
 
     // "Simulator" time
     double time = 0;  // initialize the current time with 0
-    double message_time;
     // Variable needed for the driven loop
     std::string previous_active_channel_name = active_channel_;
 

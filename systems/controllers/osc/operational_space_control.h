@@ -9,7 +9,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
-
+#include "dairlib/lcmt_osc_output.hpp"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
 
@@ -97,6 +97,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       std::string name) const {
     return this->get_input_port(traj_name_to_port_index_map_.at(name));
   }
+  const drake::systems::OutputPort<double>& get_osc_output_port() const {
+    return this->get_output_port(osc_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_osc_debug_port() const {
+    return this->get_output_port(osc_debug_port_);
+  }
 
   // Cost methods
   void SetInputCost(Eigen::MatrixXd W) {W_input_ = W;}
@@ -151,9 +157,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
 
+  void AssignOscLcmOutput(const drake::systems::Context<double>& context,
+                          dairlib::lcmt_osc_output* output) const;
+
   // Input/Output ports
   int state_port_;
   int fsm_port_;
+  int osc_output_port_;
+  int osc_debug_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;

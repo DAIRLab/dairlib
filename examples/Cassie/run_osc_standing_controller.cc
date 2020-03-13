@@ -90,6 +90,12 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
+  // Create osc debug sender.
+  auto osc_debug_pub = builder.AddSystem(
+                       LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+                           "OSC_DEBUG", &lcm_local,
+                           TriggerTypeSet({TriggerType::kForced})));
+
   // Get body indices for cassie with springs
   int pelvis_idx = GetBodyIndexFromName(tree_with_springs, "pelvis");
   int left_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_left");
@@ -199,8 +205,10 @@ int DoMain(int argc, char* argv[]) {
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_robot_output_input_port());
-  builder.Connect(osc->get_output_port(0),
+  builder.Connect(osc->get_osc_output_port(),
                   command_sender->get_input_port(0));
+  builder.Connect(osc->get_osc_debug_port(),
+                  osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
 

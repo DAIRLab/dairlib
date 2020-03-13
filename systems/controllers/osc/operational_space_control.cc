@@ -1,6 +1,6 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "attic/multibody/rigidbody_utils.h"
-
+#include "common/eigen_utils.h"
 using std::cout;
 using std::endl;
 
@@ -51,8 +51,11 @@ OperationalSpaceControl::OperationalSpaceControl(
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
       OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr)).get_index();
-  this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
-                                &OperationalSpaceControl::CalcOptimalInput);
+  osc_output_port_ = this->DeclareVectorOutputPort(
+      TimestampedVector<double>(n_u_w_spr),
+      &OperationalSpaceControl::CalcOptimalInput).get_index();
+  osc_debug_port_ = this->DeclareAbstractOutputPort(
+      &OperationalSpaceControl::AssignOscLcmOutput).get_index();
   if (used_with_finite_state_machine) {
     fsm_port_ = this->DeclareVectorInputPort(
                   BasicVector<double>(1)).get_index();
@@ -466,7 +469,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     if (tracking_data->GetTrackOrNot() &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
-      VectorXd ddy_t = tracking_data->GetCommandOutput();
+      VectorXd ddy_t = tracking_data->GetDdyCommand();
       MatrixXd W = tracking_data->GetWeight();
       MatrixXd J_t = tracking_data->GetJ();
       VectorXd JdotV_t = tracking_data->GetJdotTimesV();
@@ -506,6 +509,11 @@ VectorXd OperationalSpaceControl::SolveQp(
     cout << "epsilon_sol = " << epsilon_sol.transpose() << endl;
   }
 
+  // Calculate 
+  for (auto tracking_data : *tracking_data_vec_) {
+    tracking_data->SaveDdyCommandSol(dv_sol);
+  }
+
   // Print QP result
   if (print_tracking_info_) {
     cout << "**********************\n";
@@ -527,7 +535,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
       auto tracking_data = tracking_data_vec_->at(i);
       if (tracking_data->GetTrackOrNot()) {
-        VectorXd ddy_t = tracking_data->GetCommandOutput();
+        VectorXd ddy_t = tracking_data->GetDdyCommand();
         MatrixXd W = tracking_data->GetWeight();
         MatrixXd J_t = tracking_data->GetJ();
         VectorXd JdotV_t = tracking_data->GetJdotTimesV();
@@ -602,6 +610,45 @@ void OperationalSpaceControl::CalcOptimalInput(
   // Assign the control input
   control->SetDataVector(u_sol);
   control->set_timestamp(robot_output->get_timestamp());
+}
+
+void OperationalSpaceControl::AssignOscLcmOutput(
+    const Context<double>& context, dairlib::lcmt_osc_output* output) const{
+  auto state = (OutputVector<double>*)
+      this->EvalVectorInput(context, state_port_);
+      
+  output->utime = state->get_timestamp() * 1e6;
+  output->num_tracking_data = tracking_data_vec_->size();
+
+  output->tracking_data_names.clear();
+  output->tracking_data.clear();
+
+  for(const auto tracking_data : *tracking_data_vec_){
+    output->tracking_data_names.push_back(tracking_data->GetName());
+    lcmt_osc_tracking_data osc_output;
+    osc_output.y_dim = tracking_data->GetTrajDim();
+    osc_output.name = tracking_data->GetName();
+    osc_output.is_active = tracking_data->GetTrackOrNot();
+    osc_output.y = ConvertVectorXdToStdVector(
+        tracking_data->GetY());
+    osc_output.y_des = ConvertVectorXdToStdVector(
+        tracking_data->GetYDes());
+    osc_output.error_y = ConvertVectorXdToStdVector(
+        tracking_data->GetErrorY());
+    osc_output.dy = ConvertVectorXdToStdVector(
+        tracking_data->GetDy());
+    osc_output.dy_des = ConvertVectorXdToStdVector(
+        tracking_data->GetDyDes());
+    osc_output.error_dy = ConvertVectorXdToStdVector(
+        tracking_data->GetErrorDy());
+    osc_output.ddy_des = ConvertVectorXdToStdVector(
+        tracking_data->GetDdyDesConverted());
+    osc_output.ddy_command = ConvertVectorXdToStdVector(
+        tracking_data->GetDdyCommand());
+    osc_output.ddy_command_sol = ConvertVectorXdToStdVector(
+        tracking_data->GetDdyCommandSol());
+    output->tracking_data.push_back(osc_output);
+  }
 }
 
 }  // namespace controllers

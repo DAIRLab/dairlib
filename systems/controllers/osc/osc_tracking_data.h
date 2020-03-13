@@ -69,11 +69,23 @@ class OscTrackingData {
               KinematicsCache<double>& cache_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
               int finite_state_machine_state);
+  
+  // Getters for debugging
+  Eigen::VectorXd GetY() {return y_;}
+  Eigen::VectorXd GetYDes() {return y_des_;}
+  Eigen::VectorXd GetErrorY() {return error_y_;}
+  Eigen::VectorXd GetDy() {return dy_;}
+  Eigen::VectorXd GetDyDes() {return dy_des_;}
+  Eigen::VectorXd GetErrorDy() {return error_dy_;}
+  Eigen::VectorXd GetDdyDes() {return ddy_des_;}
+  Eigen::VectorXd GetDdyDesConverted() {return ddy_des_converted_;}
+  Eigen::VectorXd GetDdyCommandSol() {return ddy_command_sol_;}
+
   // Getters used by osc block
   Eigen::VectorXd GetOutput() {return y_;}
   Eigen::MatrixXd GetJ() {return J_;}
   Eigen::VectorXd GetJdotTimesV() {return JdotV_;}
-  Eigen::VectorXd GetCommandOutput() {return ddy_command_;}
+  Eigen::VectorXd GetDdyCommand() {return ddy_command_;}
   Eigen::MatrixXd GetWeight() {return W_;}
   // void UpdatePGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
   // void UpdateDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
@@ -84,8 +96,10 @@ class OscTrackingData {
   int GetTrajDim() {return n_r_;};
   bool GetTrackOrNot() {return track_at_current_step_;}
 
+  void SaveDdyCommandSol(const Eigen::VectorXd& dv);
+
   // Print feedback and desired values
-  void PrintFeedbackAndDesiredValues(Eigen::VectorXd dv);
+  void PrintFeedbackAndDesiredValues(const Eigen::VectorXd& dv);
 
   // Finalize and ensure that users construct OscTrackingData class correctly.
   void CheckOscTrackingData();
@@ -107,6 +121,9 @@ class OscTrackingData {
   Eigen::VectorXd dy_des_;
   Eigen::VectorXd ddy_des_;
   Eigen::VectorXd ddy_des_converted_;
+
+  // Osc solution
+  Eigen::VectorXd ddy_command_sol_;
 
   // `state_` is the finite state machine state when the tracking is enabled
   // If `state_` is empty, then the tracking is always on.

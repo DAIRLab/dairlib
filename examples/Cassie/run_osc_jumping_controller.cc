@@ -43,6 +43,7 @@ using examples::JumpingEventFsm;
 using examples::Cassie::osc_jump::COMTrajGenerator;
 using examples::Cassie::osc_jump::FlightFootTrajGenerator;
 using multibody::GetBodyIndexFromName;
+using multibody::MultibodyDistanceConstraint;
 using systems::controllers::ComTrackingDataMBP;
 using systems::controllers::JointSpaceTrackingDataMBP;
 using systems::controllers::RotTaskSpaceTrackingDataMBP;
@@ -133,9 +134,9 @@ int DoMain(int argc, char* argv[]) {
   //  cout << "l_foot_vel: " << lcm_l_foot_vel_traj.datapoints.size() << endl;
   //  cout << "r_foot_vel: " << lcm_r_foot_vel_traj.datapoints.size() << endl;
   const PiecewisePolynomial<double>& com_traj =
-      PiecewisePolynomial<double>::Cubic(
-          lcm_com_traj.time_vector, lcm_com_traj.datapoints.topRows(3),
-          lcm_com_traj.datapoints.bottomRows(3));
+      PiecewisePolynomial<double>::Cubic(lcm_com_traj.time_vector,
+                                         lcm_com_traj.datapoints.topRows(3),
+                                         lcm_com_traj.datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& l_foot_trajectory =
       PiecewisePolynomial<double>::Cubic(
           lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints.topRows(3),
@@ -208,13 +209,38 @@ int DoMain(int argc, char* argv[]) {
   double mu = 0.4;
   // Contact information for OSC
   osc->SetContactFriction(mu);
-  vector<int> stance_modes = {0, 2};
+  vector<int> stance_modes = {0, 1, 3};
   for (int mode : stance_modes) {
     osc->AddStateAndContactPoint(mode, "toe_left", front_contact_disp);
     osc->AddStateAndContactPoint(mode, "toe_left", rear_contact_disp);
     osc->AddStateAndContactPoint(mode, "toe_right", front_contact_disp);
     osc->AddStateAndContactPoint(mode, "toe_right", rear_contact_disp);
   }
+
+  double achilles_length = .5012;
+
+  const auto& thigh_left = plant_without_springs.GetBodyByName("thigh_left");
+  const auto& heel_spring_left =
+      plant_without_springs.GetBodyByName("heel_spring_left");
+  const auto& thigh_right = plant_without_springs.GetBodyByName("thigh_right");
+  const auto& heel_spring_right =
+      plant_without_springs.GetBodyByName("heel_spring_right");
+
+  Vector3d pt_on_heel_spring = Vector3d(.11877, -.01, 0.0);
+  Vector3d pt_on_thigh_left = Vector3d(0.0, 0.0, 0.045);
+  Vector3d pt_on_thigh_right = Vector3d(0.0, 0.0, -0.045);
+
+  MultibodyDistanceConstraint left_thigh_bar_constraint =
+      MultibodyDistanceConstraint(plant_without_springs, thigh_left,
+                                  pt_on_thigh_left, heel_spring_left,
+                                  pt_on_heel_spring, achilles_length);
+  MultibodyDistanceConstraint right_thigh_bar_constraint =
+      MultibodyDistanceConstraint(plant_without_springs, thigh_right,
+                                  pt_on_thigh_right, heel_spring_right,
+                                  pt_on_heel_spring, achilles_length);
+
+  osc->AddDistanceConstraint(left_thigh_bar_constraint);
+  osc->AddDistanceConstraint(right_thigh_bar_constraint);
 
   /**** Tracking Data for OSC *****/
   // Center of mass tracking
@@ -224,9 +250,9 @@ int DoMain(int argc, char* argv[]) {
   W_com(2, 2) = 2000;
   MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
-  ComTrackingDataMBP com_tracking_data(
-      "com_traj", 3, K_p_com, K_d_com, W_com, &plant_with_springs,
-      &plant_without_springs);
+  ComTrackingDataMBP com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
+                                       &plant_with_springs,
+                                       &plant_without_springs);
   osc->AddTrackingData(&com_tracking_data);
 
   // Feet tracking
@@ -259,16 +285,15 @@ int DoMain(int argc, char* argv[]) {
   W_pelvis(2, 2) = w_heading;
   Matrix3d K_p_pelvis = k_p_pelvis_balance * MatrixXd::Identity(3, 3);
   K_p_pelvis(2, 2) = k_p_heading;
-  Matrix3d K_d_pelvis = k_d_pelvis_balance*MatrixXd::Identity(3, 3);
+  Matrix3d K_d_pelvis = k_d_pelvis_balance * MatrixXd::Identity(3, 3);
   K_d_pelvis(2, 2) = k_d_heading;
-  RotTaskSpaceTrackingDataMBP pelvis_rot_traj("pelvis_rot_traj", 3,
-      K_p_pelvis, K_d_pelvis, W_pelvis,
+  RotTaskSpaceTrackingDataMBP pelvis_rot_traj(
+      "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis, W_pelvis,
       &plant_with_springs, &plant_without_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
   osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);
-
 
   osc->AddTrackingData(&left_foot_tracking_data);
   osc->AddTrackingData(&right_foot_tracking_data);

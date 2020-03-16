@@ -90,8 +90,8 @@ int DoMain() {
     MatrixXd J_CoM(3, nv);
     MatrixXd J_l_foot(3, nv);
     MatrixXd J_r_foot(3, nv);
-    plant.CalcJacobianCenterOfMassVelocityInWorld(
-        *context, JacobianWrtVariable::kV, &J_CoM);
+    plant.CalcJacobianCenterOfMassVelocity(
+        *context, JacobianWrtVariable::kV, *world, *world, &J_CoM);
     plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                             *l_toe_frame, zero_offset, *world,
                                             *world, &J_l_foot);

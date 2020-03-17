@@ -83,7 +83,8 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
   hip_points << hip_pos, hip_pos;
   PiecewisePolynomial<double> hip_offset =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, hip_points);
-  return foot_traj_segment + hip_offset;
+//  return foot_traj_segment + hip_offset;
+  return foot_traj_segment;
 }
 
 void FlightFootTrajGenerator::CalcTraj(

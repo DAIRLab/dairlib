@@ -149,8 +149,8 @@ int DoMain(int argc, char* argv[]) {
   //      PiecewisePolynomial<double>::Pchip(lcm_torso_traj.time_vector,
   //          lcm_torso_traj.datapoints);
 
-  double flight_time = 0.0;
-  double land_time = 0.0;
+  double flight_time = 0.21;
+  double land_time = 0.42;
 
   /**** Initialize all the leaf systems ****/
 
@@ -176,6 +176,8 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_with_springs);
   // Create Operational space control
+  std::cout << "Target balance height: " << lcm_com_traj.datapoints.col(0)(2)
+            << std::endl;
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
       com_traj, lcm_com_traj.datapoints.col(0)(2));
@@ -187,7 +189,7 @@ int DoMain(int argc, char* argv[]) {
   //      builder.AddSystem<TorsoTraj>(plant_with_springs,
   //      pelvis_orientation_traj);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
-      plant_with_springs, flight_time, land_time, FLAGS_delay_time);
+      plant_with_springs, flight_time, land_time, FLAGS_delay_time, false);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, 1.0 / FLAGS_publish_rate));
@@ -283,7 +285,7 @@ int DoMain(int argc, char* argv[]) {
   double k_d_heading = 40;
   Matrix3d W_pelvis = w_pelvis_balance * MatrixXd::Identity(3, 3);
   W_pelvis(2, 2) = w_heading;
-  Matrix3d K_p_pelvis = k_p_pelvis_balance * MatrixXd::Identity(3, 3);
+  Matrix3d K_p_pelvis = k_p_pelvis_balance * 2 * MatrixXd::Identity(3, 3);
   K_p_pelvis(2, 2) = k_p_heading;
   Matrix3d K_d_pelvis = k_d_pelvis_balance * MatrixXd::Identity(3, 3);
   K_d_pelvis(2, 2) = k_d_heading;

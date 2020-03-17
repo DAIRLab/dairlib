@@ -14,7 +14,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   JumpingEventFsm(
       const drake::multibody::MultibodyPlant<double>& plant,
       double flight_time, double land_time, double delay_time = 0.0,
-      bool contact_driven = true, int init_state = 0);
+      bool contact_driven = true, FSM_STATE init_state = BALANCE);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);

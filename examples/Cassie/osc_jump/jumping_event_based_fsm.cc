@@ -17,13 +17,13 @@ namespace examples {
 JumpingEventFsm::JumpingEventFsm(
     const MultibodyPlant<double>& plant, double flight_time,
     double land_time, double delay_time, bool contact_driven,
-    int init_state)
+    FSM_STATE init_state)
     : plant_(plant),
       flight_time_(flight_time),
       land_time_(land_time),
       delay_time_(delay_time),
       contact_driven_(contact_driven),
-      init_state_((FSM_STATE)init_state) {
+      init_state_(init_state) {
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
               plant.num_velocities(),

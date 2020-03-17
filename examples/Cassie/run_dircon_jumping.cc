@@ -206,6 +206,7 @@ void DoMain() {
   double_stance_constraints.push_back(&right_toe_rear_constraint);
   double_stance_constraints.push_back(&distance_constraint_left);
   double_stance_constraints.push_back(&distance_constraint_right);
+
   auto double_stance_dataset = DirconKinematicDataSet<double>(
       plant, &double_stance_constraints, skip_constraint_inds);
   auto double_stance_options =
@@ -642,17 +643,17 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
       }
     }
 
-    for (const auto& asy_joint_name : asy_joint_names) {
-      // positions
-      trajopt->AddLinearConstraint(
-          x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
-          xf(pos_map.at(asy_joint_name + l_r_pair.second)));
-
-      // inputs
-      trajopt->AddLinearConstraint(
-          u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
-          uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
-    }
+//    for (const auto& asy_joint_name : asy_joint_names) {
+//      // positions
+//      trajopt->AddLinearConstraint(
+//          x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
+//          xf(pos_map.at(asy_joint_name + l_r_pair.second)));
+//
+//      // inputs
+//      trajopt->AddLinearConstraint(
+//          u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
+//          uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
+//    }
   }
 
   // joint limits
@@ -677,10 +678,10 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   // toe position constraint in y direction (avoid leg crossing)
   // tighter constraint than before
   auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_left", 1, 0.05, 0.3);
+      &plant, "toe_left", 1, 0.05, 0.5);
   //      &plant, "toe_left", 1, 0.05, std::numeric_limits<double>::infinity());
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", 1, -0.3, -0.05);
+      &plant, "toe_right", 1, -0.5, -0.05);
   //      &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(),
   //      -0.05);
   for (int index = 0; index < mode_lengths[0]; index++) {
@@ -701,10 +702,10 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   }
   for (int index = 0; index < mode_lengths[2]; index++) {
     auto lambda = trajopt->force(2, index);
-    trajopt->AddLinearConstraint(lambda(2) <= 70);
-    trajopt->AddLinearConstraint(lambda(5) <= 70);
-    trajopt->AddLinearConstraint(lambda(8) <= 70);
-    trajopt->AddLinearConstraint(lambda(11) <= 70);
+    trajopt->AddLinearConstraint(lambda(2) <= 150);
+    trajopt->AddLinearConstraint(lambda(5) <= 150);
+    trajopt->AddLinearConstraint(lambda(8) <= 150);
+    trajopt->AddLinearConstraint(lambda(11) <= 150);
   }
   //  }
 

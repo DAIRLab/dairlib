@@ -111,7 +111,7 @@ PiecewisePolynomial<double> COMTrajGenerator::generateBalanceTraj(
   plant_.CalcPointsPositions(*plant_context, l_toe_frame, front_contact_disp_,
                              world, &l_toe_front);
   plant_.CalcPointsPositions(*plant_context, l_toe_frame, rear_contact_disp_,
-                             world, &l_toe_front);
+                             world, &l_toe_rear);
   plant_.CalcPointsPositions(*plant_context, r_toe_frame, front_contact_disp_,
                              world, &r_toe_front);
   plant_.CalcPointsPositions(*plant_context, r_toe_frame, rear_contact_disp_,

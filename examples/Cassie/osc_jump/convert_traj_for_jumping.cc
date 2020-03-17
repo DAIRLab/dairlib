@@ -53,7 +53,7 @@ int DoMain() {
 
   const LcmTrajectory& loadedTrajs = LcmTrajectory(
       "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/"
-      "March_3_jumping");
+      "March_17_jumping");
   auto traj_mode0 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u0");
   auto traj_mode1 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u1");
   auto traj_mode2 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u2");
@@ -139,7 +139,7 @@ int DoMain() {
 
   processed_traj.writeToFile(
       "/home/yangwill/Documents/research/projects/cassie/jumping"
-      "/saved_trajs/March_3_jumping_processed");
+      "/saved_trajs/March_17_jumping_processed");
   return 0;
 }
 

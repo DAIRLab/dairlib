@@ -16,7 +16,8 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
                    Eigen::Vector3d front_contact_disp,
                    Eigen::Vector3d rear_contact_disp,
                    drake::trajectories::PiecewisePolynomial<double> crouch_traj,
-                   double height = 0.7009);
+                   double height = 0.7009,
+                   double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);

@@ -104,7 +104,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       case (BALANCE):
         if (current_time > delay_time_) {
           fsm_state << CROUCH;
-          std::cout << "Setting fsm to RIGHT_FOOT" << std::endl;
+          std::cout << "Setting fsm to CROUCH" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
           prev_time(0) = current_time;
         }
@@ -112,7 +112,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       case (CROUCH):
         if (current_time > flight_time_) {
           fsm_state << FLIGHT;
-          std::cout << "Setting fsm to LEFT_FOOT_2" << std::endl;
+          std::cout << "Setting fsm to FLIGHT" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
           prev_time(0) = current_time;
         }
@@ -120,7 +120,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       case (FLIGHT):
         if (current_time > land_time_) {
           fsm_state << LAND;
-          std::cout << "Setting fsm to LEFT_FOOT" << std::endl;
+          std::cout << "Setting fsm to LAND" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
           prev_time(0) = current_time;
         }

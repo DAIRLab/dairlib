@@ -33,7 +33,8 @@ COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
                                    int pelvis_idx, Vector3d front_contact_disp,
                                    Vector3d rear_contact_disp,
                                    PiecewisePolynomial<double> crouch_traj,
-                                   double height)
+                                   double height,
+                                   double time_offset)
     : plant_(plant),
       hip_idx_(pelvis_idx),
       front_contact_disp_(front_contact_disp),
@@ -58,6 +59,8 @@ COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
   fsm_idx_ = this->DeclareDiscreteState(1);
 
   DeclarePerStepDiscreteUpdateEvent(&COMTrajGenerator::DiscreteVariableUpdate);
+
+  crouch_traj_.shiftRight(time_offset);
 }
 
 EventStatus COMTrajGenerator::DiscreteVariableUpdate(

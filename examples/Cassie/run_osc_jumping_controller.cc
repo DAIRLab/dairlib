@@ -49,6 +49,8 @@ using systems::controllers::JointSpaceTrackingDataMBP;
 using systems::controllers::RotTaskSpaceTrackingDataMBP;
 using systems::controllers::TransTaskSpaceTrackingDataMBP;
 
+namespace examples {
+
 DEFINE_double(publish_rate, 1000.0, "Target publish rate for OSC");
 
 DEFINE_string(channel_x, "CASSIE_STATE",
@@ -149,8 +151,8 @@ int DoMain(int argc, char* argv[]) {
   //      PiecewisePolynomial<double>::Pchip(lcm_torso_traj.time_vector,
   //          lcm_torso_traj.datapoints);
 
-  double flight_time = 0.21;
-  double land_time = 0.42;
+  double flight_time = FLAGS_delay_time + 0.21;
+  double land_time = FLAGS_delay_time + 0.42;
 
   /**** Initialize all the leaf systems ****/
 
@@ -180,11 +182,11 @@ int DoMain(int argc, char* argv[]) {
             << std::endl;
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
-      com_traj, lcm_com_traj.datapoints.col(0)(2));
+      com_traj, lcm_com_traj.datapoints.col(0)(2), FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_with_springs, "pelvis", true, l_foot_trajectory);
+      plant_with_springs, "pelvis", true, l_foot_trajectory, FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_with_springs, "pelvis", false, r_foot_trajectory);
+      plant_with_springs, "pelvis", false, r_foot_trajectory, FLAGS_delay_time);
   //  auto pelvis_orientation_traj_generator =
   //      builder.AddSystem<TorsoTraj>(plant_with_springs,
   //      pelvis_orientation_traj);
@@ -196,7 +198,7 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_with_springs);
   auto osc =
-      builder.AddSystem<systems::controllers ::OperationalSpaceControlMBP>(
+      builder.AddSystem<systems::controllers::OperationalSpaceControlMBP>(
           plant_with_springs, plant_without_springs, true,
           FLAGS_print_osc); /*print_tracking_info*/
 
@@ -211,8 +213,8 @@ int DoMain(int argc, char* argv[]) {
   double mu = 0.4;
   // Contact information for OSC
   osc->SetContactFriction(mu);
-  vector<int> stance_modes = {0, 1, 3};
-  for (int mode : stance_modes) {
+  vector<FSM_STATE> stance_modes = {BALANCE, CROUCH, LAND};
+  for (FSM_STATE mode : stance_modes) {
     osc->AddStateAndContactPoint(mode, "toe_left", front_contact_disp);
     osc->AddStateAndContactPoint(mode, "toe_left", rear_contact_disp);
     osc->AddStateAndContactPoint(mode, "toe_right", front_contact_disp);
@@ -255,15 +257,18 @@ int DoMain(int argc, char* argv[]) {
   ComTrackingDataMBP com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
                                        &plant_with_springs,
                                        &plant_without_springs);
+//  for (FSM_STATE mode : stance_modes) {
+//    com_tracking_data.AddStateToTrack(mode);
+//  }
   osc->AddTrackingData(&com_tracking_data);
 
-  // Feet tracking
+  // Feet tracking1
   MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
   W_swing_foot(0, 0) = 1000;
   W_swing_foot(1, 1) = 0;
   W_swing_foot(2, 2) = 1000;
-  MatrixXd K_p_sw_ft = 100 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_sw_ft = 20 * MatrixXd::Identity(3, 3);
+  MatrixXd K_p_sw_ft = 10 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_sw_ft = 4 * MatrixXd::Identity(3, 3);
   K_p_sw_ft(1, 1) = 0;
   K_d_sw_ft(1, 1) = 0;
 
@@ -273,9 +278,8 @@ int DoMain(int argc, char* argv[]) {
   TransTaskSpaceTrackingDataMBP right_foot_tracking_data(
       "r_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
       &plant_without_springs);
-  left_foot_tracking_data.AddStateAndPointToTrack(examples::FLIGHT, "toe_left");
-  right_foot_tracking_data.AddStateAndPointToTrack(examples::FLIGHT,
-                                                   "toe_right");
+  left_foot_tracking_data.AddStateAndPointToTrack(FLIGHT, "toe_left");
+  right_foot_tracking_data.AddStateAndPointToTrack(FLIGHT, "toe_right");
 
   double w_pelvis_balance = 200;
   double w_heading = 200;
@@ -289,13 +293,18 @@ int DoMain(int argc, char* argv[]) {
   K_p_pelvis(2, 2) = k_p_heading;
   Matrix3d K_d_pelvis = k_d_pelvis_balance * MatrixXd::Identity(3, 3);
   K_d_pelvis(2, 2) = k_d_heading;
-  RotTaskSpaceTrackingDataMBP pelvis_rot_traj(
-      "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis, W_pelvis,
+  RotTaskSpaceTrackingDataMBP pelvis_rot_tracking_data(
+      "pelvis_rot_tracking_data", 3, K_p_pelvis, K_d_pelvis, W_pelvis,
       &plant_with_springs, &plant_without_springs);
-  pelvis_rot_traj.AddFrameToTrack("pelvis");
+
+  for (FSM_STATE mode : stance_modes){
+    pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
+  }
+//  pelvis_rot_tracking_data.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
-  osc->AddConstTrackingData(&pelvis_rot_traj, pelvis_desired_quat);
+
+  osc->AddConstTrackingData(&pelvis_rot_tracking_data, pelvis_desired_quat);
 
   osc->AddTrackingData(&left_foot_tracking_data);
   osc->AddTrackingData(&right_foot_tracking_data);
@@ -355,7 +364,9 @@ int DoMain(int argc, char* argv[]) {
 
   return 0;
 }
-
+}  // namespace examples
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  return dairlib::examples::DoMain(argc, argv);
+}

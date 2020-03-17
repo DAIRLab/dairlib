@@ -16,8 +16,8 @@ class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
                  const std::string& hip_name,
                  bool isLeftFoot,
                  const drake::trajectories::PiecewisePolynomial<double>&
-                     foot_traj);
-//                 double height = 0.8);
+                     foot_traj,
+                 double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);

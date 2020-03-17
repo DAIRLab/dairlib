@@ -29,7 +29,8 @@ namespace dairlib::examples::Cassie::osc_jump {
 
 FlightFootTrajGenerator::FlightFootTrajGenerator(
     const MultibodyPlant<double>& plant, const string& hip_name,
-    bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj)
+    bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj, double
+    time_offset)
     : plant_(plant),
       hip_name_(hip_name),
       foot_traj_(foot_traj){
@@ -53,6 +54,9 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
               plant_.num_actuators()))
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
+
+  //Shift trajectory by time_offset
+  foot_traj_.shiftRight(time_offset);
 }
 
 /*

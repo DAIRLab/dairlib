@@ -400,7 +400,7 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
   VectorXd bias(n_v_);
   plant_wo_spr_.CalcBiasTerm(*context_wo_spr, &bias);
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr);
-  bias = bias + grav;
+  bias = bias - grav;
   //  VectorXd bias =
   //      plant_wo_spr_.dynamicsBiasTerm(cache_wo_spr, no_external_wrenches);
 

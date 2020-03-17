@@ -11,8 +11,9 @@ class MultibodyDistanceConstraint {
   MultibodyDistanceConstraint(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::multibody::Body<double>& body1,
+      const Eigen::Vector3d& pt_1,
       const drake::multibody::Body<double>& body2,
-      const Eigen::Vector3d& pt_1, const Eigen::Vector3d& pt_2,
+      const Eigen::Vector3d& pt_2,
       double distance);
 
   void updateConstraint(const drake::systems::Context<double>& context);
@@ -29,8 +30,8 @@ class MultibodyDistanceConstraint {
   const drake::multibody::MultibodyPlant<double>& plant_;
 
   const drake::multibody::Body<double>& body1_;
-  const drake::multibody::Body<double>& body2_;
   const Eigen::Vector3d pt1_;
+  const drake::multibody::Body<double>& body2_;
   const Eigen::Vector3d pt2_;
   double distance_;
   Eigen::VectorXd c_;

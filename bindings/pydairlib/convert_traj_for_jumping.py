@@ -86,15 +86,15 @@ def main():
 
     rfoot_traj_block = Trajectory()
     rfoot_traj_block.traj_name = "right_foot_trajectory"
-    rfoot_traj_block.datapoints = l_foot_state
+    rfoot_traj_block.datapoints = r_foot_state
     rfoot_traj_block.time_vector = times
     rfoot_traj_block.datatypes = ["rfoot_x", "rfoot_y", "rfoot_z"]
 
     pelvis_traj_block = Trajectory()
-    pelvis_traj_block.traj_name = "right_foot_trajectory"
-    pelvis_traj_block.datapoints = l_foot_state
+    pelvis_traj_block.traj_name = "pelvis_trajectory"
+    pelvis_traj_block.datapoints = pelvis_state
     pelvis_traj_block.time_vector = times
-    pelvis_traj_block.datatypes = ["rfoot_x", "rfoot_y", "rfoot_z"]
+    pelvis_traj_block.datatypes = ["pelvis_x", "pelvis_y", "pelvis_z"]
 
     trajectories = [lfoot_traj_block, rfoot_traj_block, pelvis_traj_block]
     trajectory_names = ["left_foot_trajectory", "right_foot_trajectory",

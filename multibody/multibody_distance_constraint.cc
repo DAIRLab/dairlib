@@ -8,59 +8,57 @@ namespace dairlib::multibody {
 MultibodyDistanceConstraint::MultibodyDistanceConstraint(
     const drake::multibody::MultibodyPlant<double>& plant,
     const drake::multibody::Body<double>& body_1,
-    const drake::multibody::Body<double>& body_2, const Vector3d& pt_1,
+    const Vector3d& pt_1,
+    const drake::multibody::Body<double>& body_2,
     const Vector3d& pt_2, double distance)
     : plant_(plant),
       body1_(body_1),
-      body2_(body_2),
       pt1_(pt_1),
+      body2_(body_2),
       pt2_(pt_2),
-      distance_(distance) {}
+      distance_(distance) {
+  c_ = VectorXd::Zero(1);
+  cdot_ = VectorXd::Zero(1);
+  J_ = MatrixXd::Zero(1, plant.num_velocities());
+  Jdotv_ = VectorXd::Zero(1);
+}
 
 void MultibodyDistanceConstraint::updateConstraint(
     const drake::systems::Context<double>& context) {
-  Vector3d pt1_wrt_w(3);
-  MatrixXd J1(3, plant_.num_velocities());
   const auto x = dynamic_cast<const drake::systems::BasicVector<double>&>(
-                     context.get_continuous_state_vector())
-                     .get_value();
-  const auto v = x.tail(this->plant_.num_velocities());
+      context.get_discrete_state_vector())
+      .get_value();
+  const auto v = x.tail(plant_.num_velocities());
 
-  const drake::multibody::Frame<double>& world = this->plant_.world_frame();
+  const drake::multibody::Frame<double>& world = plant_.world_frame();
 
-  Vector3d pt1_cast = pt1_.template cast<double>();
+  Vector3d pt1_wrt_w(3);
+  Vector3d pt2_wrt_w(3);
+  MatrixXd J1(3, plant_.num_velocities());
+  MatrixXd J2(3, plant_.num_velocities());
 
-  this->plant_.CalcPointsPositions(context, body1_.body_frame(), pt1_cast,
+  this->plant_.CalcPointsPositions(context, body1_.body_frame(), pt1_,
                                    world, &pt1_wrt_w);
   this->plant_.CalcJacobianTranslationalVelocity(
       context, drake::multibody::JacobianWrtVariable::kV, body1_.body_frame(),
-      pt1_cast, world, world, &J1);
-
+      pt1_, world, world, &J1);
   MatrixXd J1_times_v =
       this->plant_
           .CalcBiasForJacobianSpatialVelocity(
               context, drake::multibody::JacobianWrtVariable::kV,
-              body1_.body_frame(), pt1_cast, world, world)
+              body1_.body_frame(), pt1_, world, world)
           .tail(3);
 
-
-
-  Vector3d pt2_wrt_w(3);
-  MatrixXd J2(3, this->plant_.num_velocities());
-
-  VectorXd pt2_cast = pt2_.template cast<double>();
-
-  this->plant_.CalcPointsPositions(context, body2_.body_frame(), pt2_cast,
+  this->plant_.CalcPointsPositions(context, body2_.body_frame(), pt2_,
                                    world, &pt2_wrt_w);
   this->plant_.CalcJacobianTranslationalVelocity(
       context, drake::multibody::JacobianWrtVariable::kV, body2_.body_frame(),
-      pt2_cast, world, world, &J2);
-
+      pt2_, world, world, &J2);
   MatrixXd J2dot_times_v =
       this->plant_
           .CalcBiasForJacobianSpatialVelocity(
               context, drake::multibody::JacobianWrtVariable::kV,
-              body2_.body_frame(), pt2_cast, world, world)
+              body2_.body_frame(), pt2_, world, world)
           .tail(3);
 
   // Constraint is ||r1-r2||^2  - d^2, to keep it differentiable everywhere

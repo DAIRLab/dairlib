@@ -149,6 +149,12 @@ void OperationalSpaceControlMBP::AddStateAndContactPoint(int state,
   AddContactPoint(body_name, pt_on_body);
 }
 
+//
+void OperationalSpaceControlMBP::AddDistanceConstraint(
+    multibody::MultibodyDistanceConstraint& constraint) {
+  distance_constraints_.push_back(&constraint);
+}
+
 // Tracking data methods
 void OperationalSpaceControlMBP::AddTrackingData(
     OscTrackingDataMBP* tracking_data, double t_lb, double t_ub) {
@@ -210,7 +216,8 @@ void OperationalSpaceControlMBP::Build() {
 
   // Construct QP
   //  n_h_ = plant_wo_spr_.getNumPositionConstraints();
-  n_h_ = plant_wo_spr_.num_constraints();
+  //  n_h_ = plant_wo_spr_.num_constraints();
+  n_h_ = distance_constraints_.size();
   n_c_ = 3 * body_indices_.size();
   prog_ = std::make_unique<MathematicalProgram>();
 
@@ -224,14 +231,16 @@ void OperationalSpaceControlMBP::Build() {
   // Add constraints
   // 1. Dynamics constraint
   dynamics_constraint_ =
-      prog_->AddLinearEqualityConstraint(
+      prog_
+          ->AddLinearEqualityConstraint(
               MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
               VectorXd::Zero(n_v_), {dv_, lambda_c_, lambda_h_, u_})
           .evaluator()
           .get();
   // 2. Holonomic constraint
   holonomic_constraint_ =
-      prog_->AddLinearEqualityConstraint(MatrixXd::Zero(n_h_, n_v_),
+      prog_
+          ->AddLinearEqualityConstraint(MatrixXd::Zero(n_h_, n_v_),
                                         VectorXd::Zero(n_h_), dv_)
           .evaluator()
           .get();
@@ -239,13 +248,15 @@ void OperationalSpaceControlMBP::Build() {
   if (body_indices_.size() > 0) {
     if (w_soft_constraint_ <= 0) {
       contact_constraints_ =
-          prog_->AddLinearEqualityConstraint(MatrixXd::Zero(n_c_, n_v_),
+          prog_
+              ->AddLinearEqualityConstraint(MatrixXd::Zero(n_c_, n_v_),
                                             VectorXd::Zero(n_c_), dv_)
               .evaluator()
               .get();
     } else {
       // Relaxed version:
-      contact_constraints_ = prog_->AddLinearEqualityConstraint(
+      contact_constraints_ = prog_
+          ->AddLinearEqualityConstraint(
                                      MatrixXd::Zero(n_c_, n_v_ + n_c_),
                                      VectorXd::Zero(n_c_), {dv_, epsilon_})
                                  .evaluator()
@@ -262,35 +273,40 @@ void OperationalSpaceControlMBP::Build() {
     one << 1;
     for (unsigned int j = 0; j < body_indices_.size(); j++) {
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_minus1.transpose(), 0,
+          prog_
+              ->AddLinearConstraint(mu_minus1.transpose(), 0,
                                     numeric_limits<double>::infinity(),
                                     {lambda_c_.segment(3 * j + 2, 1),
                                      lambda_c_.segment(3 * j + 0, 1)})
               .evaluator()
               .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_plus1.transpose(), 0,
+          prog_
+              ->AddLinearConstraint(mu_plus1.transpose(), 0,
                                     numeric_limits<double>::infinity(),
                                     {lambda_c_.segment(3 * j + 2, 1),
                                      lambda_c_.segment(3 * j + 0, 1)})
               .evaluator()
               .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_minus1.transpose(), 0,
+          prog_
+              ->AddLinearConstraint(mu_minus1.transpose(), 0,
                                     numeric_limits<double>::infinity(),
                                     {lambda_c_.segment(3 * j + 2, 1),
                                      lambda_c_.segment(3 * j + 1, 1)})
               .evaluator()
               .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_plus1.transpose(), 0,
+          prog_
+              ->AddLinearConstraint(mu_plus1.transpose(), 0,
                                     numeric_limits<double>::infinity(),
                                     {lambda_c_.segment(3 * j + 2, 1),
                                      lambda_c_.segment(3 * j + 1, 1)})
               .evaluator()
               .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(one.transpose(), 0,
+          prog_
+              ->AddLinearConstraint(one.transpose(), 0,
                                     numeric_limits<double>::infinity(),
                                     lambda_c_.segment(3 * j + 2, 1))
               .evaluator()
@@ -320,7 +336,8 @@ void OperationalSpaceControlMBP::Build() {
   }
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    tracking_cost_.push_back(prog_->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
+    tracking_cost_.push_back(prog_
+        ->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
                                                     VectorXd::Zero(n_v_), dv_)
                                  .evaluator()
                                  .get());
@@ -389,11 +406,12 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
 
   // Get J and JdotV for holonomic constraint
 
-  MatrixXd J_h(position_constraints_.size(), n_v_);
-  VectorXd JdotV_h(position_constraints_.size());
-  for (unsigned int i = 0; i < position_constraints_.size(); ++i) {
-    J_h.row(i) = position_constraints_[i]->getJ();
-    JdotV_h.segment(i, 1) = position_constraints_[i]->getJdotv();
+  MatrixXd J_h(distance_constraints_.size(), n_v_);
+  VectorXd JdotV_h(distance_constraints_.size());
+  for (unsigned int i = 0; i < distance_constraints_.size(); ++i) {
+    distance_constraints_[i]->updateConstraint(*context_wo_spr);
+    J_h.row(i) = distance_constraints_[i]->getJ();
+    JdotV_h.segment(i, 1) = distance_constraints_[i]->getJdotv();
   }
 
   // Get J and JdotV for contact constraint
@@ -411,10 +429,12 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
           pts_on_body_[i], world_wo_spr_, world_wo_spr_, &J);
       J_c.block(3 * i, 0, 3, n_v_) = J;
       JdotV_c.segment(3 * i, 3) =
-          plant_wo_spr_.CalcBiasForJacobianSpatialVelocity(
-              *context_wo_spr, JacobianWrtVariable::kV,
-              plant_wo_spr_.get_body(body_indices_[i]).body_frame(),
-              pts_on_body_[i], world_wo_spr_, world_wo_spr_).tail(3);
+          plant_wo_spr_
+              .CalcBiasForJacobianSpatialVelocity(
+                  *context_wo_spr, JacobianWrtVariable::kV,
+                  plant_wo_spr_.get_body(body_indices_[i]).body_frame(),
+                  pts_on_body_[i], world_wo_spr_, world_wo_spr_)
+              .tail(3);
     }
   }
 

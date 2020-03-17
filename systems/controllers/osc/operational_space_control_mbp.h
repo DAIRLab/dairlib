@@ -115,7 +115,8 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
                        const Eigen::VectorXd& pt_on_body);
   void AddStateAndContactPoint(int state, std::string body_name,
                                Eigen::VectorXd pt_on_body);
-
+  void AddDistanceConstraint(
+      multibody::MultibodyDistanceConstraint& constraint);
   // Tracking data methods
   /// The third argument is used to set a period in which OSC does not track the
   /// desired traj (the period starts when the finite state machine switches to
@@ -189,8 +190,8 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   int n_c_;
 
   // Manually specified holonomic constraints (only valid for plants_wo_springs)
-  const std::vector<multibody::MultibodyDistanceConstraint*>
-      position_constraints_;
+  std::vector<multibody::MultibodyDistanceConstraint*>
+      distance_constraints_;
 
   // robot input limits
   Eigen::VectorXd u_min_;

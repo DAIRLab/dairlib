@@ -42,8 +42,8 @@ DirconAbstractConstraint<T>::DirconAbstractConstraint(
 
 template <typename T>
 void DirconAbstractConstraint<T>::SetConstraintScaling(
-    const std::unordered_map<int, double>& list) {
-  constraint_scaling_ = list;
+    const std::unordered_map<int, double>& map) {
+  constraint_scaling_ = map;
 }
 
 template <typename T>
@@ -56,7 +56,7 @@ void DirconAbstractConstraint<T>::ScaleConstraint(drake::VectorX<U>* y) const {
 
 template <typename T>
 void DirconAbstractConstraint<T>::ConstructSparsityPattern() {
-  drake::log()->warn(
+  static const drake::logging::Warn log_once(
       "Constraint cannot contain any if-statement conditioned on input values");
   std::vector<std::pair<int, int>> sparsity;
 

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory.h>
+#include <unordered_map>
 #include "systems/trajectory_optimization/dircon_kinematic_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "drake/common/drake_copyable.h"
@@ -33,7 +34,7 @@ class DirconAbstractConstraint : public drake::solvers::Constraint {
       const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>&,
       drake::VectorX<drake::symbolic::Expression>*) const override;
 
-  void SetConstraintScaling(const std::unordered_map<int, double>& list);
+  void SetConstraintScaling(const std::unordered_map<int, double>& map);
 
   virtual void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                                   drake::VectorX<T>* y) const = 0;

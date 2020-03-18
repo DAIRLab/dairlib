@@ -2,6 +2,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include <gflags/gflags.h>
 #include "attic/multibody/multibody_solvers.h"
@@ -103,7 +104,7 @@ DEFINE_double(tol, 1e-4, "Tolerance for constraint violation and dual gap");
 
 // Parameters which enable dircon-improving features
 DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
-DEFINE_bool(is_scale_variable, true, "Scale the decision variable");
+DEFINE_bool(is_scale_variable, false, "Scale the decision variable");
 
 namespace dairlib {
 
@@ -241,7 +242,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   const auto result = fp_solver.Solve();
   SolutionResult solution_result = result.get_solution_result();
   cout << to_string(solution_result) << endl;
-   cout << result.GetSolution() << endl;
+  // cout << result.GetSolution() << endl;
 
   VectorXd q_sol = fp_solver.GetSolutionQ();
   VectorXd u_sol = fp_solver.GetSolutionU();
@@ -418,9 +419,9 @@ void DoMain(double duration, int max_iter, string data_directory,
   // Constraint scaling
   if (FLAGS_is_scale_constraint) {
     // Dynamic constraints
-    double s_dyn_1 = (FLAGS_is_scale_variable)? 2.0 : 1.0;
-    double s_dyn_2 = (FLAGS_is_scale_variable)? 6.0 : 1.0;
-    double s_dyn_3 = (FLAGS_is_scale_variable)? 85.0 : 1.0;
+    double s_dyn_1 = (FLAGS_is_scale_variable) ? 2.0 : 1.0;
+    double s_dyn_2 = (FLAGS_is_scale_variable) ? 6.0 : 1.0;
+    double s_dyn_3 = (FLAGS_is_scale_variable) ? 85.0 : 1.0;
     double_all_options.setDynConstraintScaling(1.0 / 150.0, 0, 14);
     double_all_options.setDynConstraintScaling(1.0 / 150.0 / 3.33 / s_dyn_1, 15,
                                                16);
@@ -428,16 +429,24 @@ void DoMain(double duration, int max_iter, string data_directory,
     double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_1, 19, 26);
     double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_2, 27, 28);
     double_all_options.setDynConstraintScaling(1.0 / 150.0 / 10, 29, 34);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 15.0 / s_dyn_3, 35, 36);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 15.0 / s_dyn_3, 35,
+                                               36);
     // Kinematic constraints
-    double s_kin_1 = (FLAGS_is_scale_variable)? 10.0 : 1.0;
-    double s_kin_2 = (FLAGS_is_scale_variable)? 2.0 : 1.0;
-    double_all_options.setKinConstraintScaling(1.0/500.0 / s_kin_1, 0, 9);
-    double_all_options.setKinConstraintScaling(2.0/50.0 / s_kin_1, 10, 11);
-    double_all_options.setKinConstraintScaling(1.0/500.0* 500 * s_kin_2 / s_kin_1, 12 + 0, 12 + 9);
-    double_all_options.setKinConstraintScaling(2.0/50.0* 500 * s_kin_2 / s_kin_1, 12 + 10, 12 + 11);
-    double_all_options.setKinConstraintScaling(1.0/500.0 * 1000 * s_kin_2 / s_kin_1, 24 + 0, 24 + 9);
-    double_all_options.setKinConstraintScaling(2.0/50.0 * 1000 * s_kin_2 / s_kin_1, 24 + 10, 24 + 11);
+    int n_kin = double_all_dataset.countConstraints();
+    double s_kin_vel = 500;
+    double s_kin_acc = 1000;
+    double s_kin_1 = (FLAGS_is_scale_variable) ? 10.0 : 1.0;
+    double s_kin_2 = (FLAGS_is_scale_variable) ? 2.0 : 1.0;
+    double_all_options.setKinConstraintScaling(1.0 / 500.0 / s_kin_1, 0, 9);
+    double_all_options.setKinConstraintScaling(2.0 / 50.0 / s_kin_1, 10, 11);
+    double_all_options.setKinConstraintScaling(
+        1.0 / 500.0 * s_kin_vel * s_kin_2 / s_kin_1, n_kin + 0, n_kin + 9);
+    double_all_options.setKinConstraintScaling(
+        2.0 / 50.0 * s_kin_vel * s_kin_2 / s_kin_1, n_kin + 10, n_kin + 11);
+    double_all_options.setKinConstraintScaling(
+        1.0 / 500.0 * s_kin_acc * s_kin_2 / s_kin_1, 2*n_kin + 0, 2*n_kin + 9);
+    double_all_options.setKinConstraintScaling(
+        2.0 / 50.0 * s_kin_acc * s_kin_2 / s_kin_1, 2*n_kin + 10, 2*n_kin + 11);
   }
 
   // timesteps and modes setting
@@ -572,24 +581,10 @@ void DoMain(double duration, int max_iter, string data_directory,
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
 
-
-
-
-
-  // TODO:
-  // You can create five functions (t, x, u, lambda, impulse) in dircon for scaling
-  // Use FindDecisionVariableIndex in the functions to find index
-  // Go to your goldilocks models branch to see which variables you scaled.
-
-  // playing
-//  cout << "size = " << trajopt->decision_variables().size() << endl;
-//  for (int i=0; i < trajopt->decision_variables().size() ; i++) {
-//    cout << trajopt->decision_variable(i) << ", ";
-//    cout << trajopt->decision_variable(i).get_id() << ", ";
-//    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i)) << endl;
-//  }
-
-  // Testing
+  // Scale variable
+  // Scaling decision variable doesn't seem to help in the task of squatting.
+  // One hypothesis is that the initial guess we feed to the solver is very
+  // good, so the variable scaling doesn't matter to much.
   if (FLAGS_is_scale_variable) {
     // time
     trajopt->ScaleTimeVariables(0.015);
@@ -611,12 +606,11 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->ScaleForceVariables(10, 0, 9, 10);
     trajopt->ScaleForceVariables(1000, 0, 11, 11);
     trajopt->ScaleForceVariables(600, 0, 12, 13);
-//    trajopt->ScaleForceVariables(
-//        600, 0, 0, double_all_dataset.countConstraintsWithoutSkipping() - 1);
 //    trajopt->ScaleQuaternionSlackVariables(0.5);
 //    trajopt->ScaleKinConstraintSlackVariables(0.1, 0, 0, 13);
 
-    for (int i=0; i < trajopt->decision_variables().size() ; i++) {
+    // Print out the scaling factors
+    /*for (int i=0; i < trajopt->decision_variables().size() ; i++) {
       cout << trajopt->decision_variable(i) << ", ";
       cout << trajopt->decision_variable(i).get_id() << ", ";
       cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i)) << ", ";
@@ -626,7 +620,7 @@ void DoMain(double duration, int max_iter, string data_directory,
         cout << it->second;
       }
       cout << endl;
-    }
+    }*/
   }
 
   // initial guess

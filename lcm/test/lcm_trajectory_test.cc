@@ -83,28 +83,22 @@ class LcmTrajectoryTest : public ::testing::Test {
   LcmTrajectory lcm_traj_;
 };
 
-TEST_F(LcmTrajectoryTest, TestSavingAndLoadingTrajectory) {
-  lcm_traj_.writeToFile(TEST_FILEPATH);
-
-  lcmt_saved_traj loaded_lcm_traj = LcmTrajectory::loadFromFile(
-      TEST_FILEPATH);
-
-  EXPECT_EQ(loaded_lcm_traj.num_trajectories, NUM_TRAJECTORIES);
-  EXPECT_EQ(loaded_lcm_traj.trajectory_names.size(), NUM_TRAJECTORIES);
-  EXPECT_EQ(loaded_lcm_traj.trajectories.size(), NUM_TRAJECTORIES);
-  // Only checking datetime != ""
-  EXPECT_NE(loaded_lcm_traj.metadata.datetime, metadata_.datetime);
-  EXPECT_EQ(loaded_lcm_traj.metadata.name, TEST_NAME);
-  EXPECT_EQ(loaded_lcm_traj.metadata.description, TEST_DESCRIPTION);
-  EXPECT_EQ(loaded_lcm_traj.metadata.git_dirty_flag,
-            metadata_.git_dirty_flag);
-}
-
 TEST_F(LcmTrajectoryTest, TestConstructorFromLcmTObject) {
   lcm_traj_.writeToFile(TEST_FILEPATH);
 
-  LcmTrajectory loaded_traj = LcmTrajectory(LcmTrajectory::loadFromFile(
-      TEST_FILEPATH));
+  LcmTrajectory loaded_traj = LcmTrajectory(
+      TEST_FILEPATH);
+
+  // Test the LcmTrajectory fields first
+  EXPECT_EQ(loaded_traj.getTrajectoryNames().size(), NUM_TRAJECTORIES);
+  lcmt_metadata metadata = loaded_traj.getMetadata();
+  EXPECT_NE(metadata.datetime, metadata_.datetime);
+  EXPECT_EQ(metadata.name, TEST_NAME);
+  EXPECT_EQ(metadata.description, TEST_DESCRIPTION);
+  EXPECT_EQ(metadata.git_dirty_flag,
+      metadata_.git_dirty_flag);
+
+  // Test the individual LcmTrajectory::Trajectory objects
   EXPECT_TRUE(
       loaded_traj.getTrajectory(TEST_TRAJ_NAME_1).time_vector.isApprox(
           lcm_traj_.getTrajectory(TEST_TRAJ_NAME_1).time_vector));
@@ -123,6 +117,8 @@ TEST_F(LcmTrajectoryTest, TestConstructorFromLcmTObject) {
   EXPECT_TRUE(
       loaded_traj.getTrajectory(TEST_TRAJ_NAME_2).datatypes ==
           lcm_traj_.getTrajectory(TEST_TRAJ_NAME_2).datatypes);
+
+
 }
 
 }  // namespace dairlib

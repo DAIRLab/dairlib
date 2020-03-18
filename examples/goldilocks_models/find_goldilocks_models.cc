@@ -20,6 +20,9 @@
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "systems/goldilocks_models/file_utils.h"
 
+//edited by jianshu
+#include "examples/goldilocks_models/set_initial_guess.h"
+
 using std::cin;
 using std::cout;
 using std::endl;

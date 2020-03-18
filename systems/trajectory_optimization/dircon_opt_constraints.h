@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory.h>
+#include <unordered_map>
 #include "systems/trajectory_optimization/dircon_kinematic_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "drake/common/drake_copyable.h"

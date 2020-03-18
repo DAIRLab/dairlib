@@ -2,6 +2,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include <gflags/gflags.h>
 #include "attic/multibody/multibody_solvers.h"

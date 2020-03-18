@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 

@@ -401,16 +401,24 @@ void DoMain(double duration, int max_iter, string data_directory,
   double_all_options.setConstraintRelative(6, true);
   double_all_options.setConstraintRelative(8, true);
   // Constraint scaling
-  double one_fifty = 150;
-  double_all_options.setDynConstraintScaling(1.0/one_fifty, 0, 14);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty/3.0*10, 15, 16);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty, 17, 28);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty/10, 29, 34);
-  double_all_options.setDynConstraintScaling(1.0/one_fifty/15.0, 35, 36);
-  double_all_options.setKinConstraintScaling(1.0/500.0, 0, 9);
-  double_all_options.setKinConstraintScaling(2.0/50.0, 10, 11);
-  double_all_options.setKinConstraintScalingVel(500);
-  double_all_options.setKinConstraintScalingPos(1000);
+  int n_kin = double_all_dataset.countConstraints();
+  double s_kin_vel = 500;
+  double s_kin_acc = 1000;
+  double_all_options.setDynConstraintScaling(1.0 / 150.0, 0, 14);
+  double_all_options.setDynConstraintScaling(1.0 / 150.0 / 3.0 * 10, 15, 16);
+  double_all_options.setDynConstraintScaling(1.0 / 150.0, 17, 28);
+  double_all_options.setDynConstraintScaling(1.0 / 150.0 / 10, 29, 34);
+  double_all_options.setDynConstraintScaling(1.0 / 150.0 / 15.0, 35, 36);
+  double_all_options.setKinConstraintScaling(1.0 / 500.0, 0, 9);
+  double_all_options.setKinConstraintScaling(2.0 / 50.0, 10, 11);
+  double_all_options.setKinConstraintScaling(1.0 / 500.0 * s_kin_vel, n_kin + 0,
+                                             n_kin + 9);
+  double_all_options.setKinConstraintScaling(2.0 / 50.0 * s_kin_vel, n_kin + 10,
+                                             n_kin + 11);
+  double_all_options.setKinConstraintScaling(1.0 / 500.0 * s_kin_acc,
+                                             2 * n_kin + 0, 2 * n_kin + 9);
+  double_all_options.setKinConstraintScaling(2.0 / 50.0 * s_kin_acc,
+                                             2 * n_kin + 10, 2 * n_kin + 11);
 
   // timesteps and modes setting
   vector<double> min_dt;

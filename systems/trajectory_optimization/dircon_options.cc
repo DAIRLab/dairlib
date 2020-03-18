@@ -35,7 +35,7 @@ void DirconOptions::setDynConstraintScaling(double s, int row_start,
 }
 void DirconOptions::setKinConstraintScaling(double s, int row_start,
                                             int row_end) {
-  DRAKE_DEMAND(row_end < n_kin_constraints_);
+  DRAKE_DEMAND(row_end < 3 * n_kin_constraints_);
   addConstraintScaling(&kin_constraint_scaling_, s, row_start, row_end);
 }
 void DirconOptions::setImpConstraintScaling(double s, int row_start,
@@ -59,60 +59,49 @@ void DirconOptions::addConstraintScaling(
     }
   }
 }
-void DirconOptions::setKinConstraintScalingPos(double s) {
-  kin_constraint_scaling_pos_ = s;
-}
-void DirconOptions::setKinConstraintScalingVel(double s) {
-  kin_constraint_scaling_vel_ = s;
-}
 
-const unordered_map<int, double>& DirconOptions::getDynConstraintScaling() {
+unordered_map<int, double> DirconOptions::getDynConstraintScaling() {
   return dyn_constraint_scaling_;
 }
-const unordered_map<int, double>& DirconOptions::getImpConstraintScaling() {
+unordered_map<int, double> DirconOptions::getImpConstraintScaling() {
   return imp_constraint_scaling_;
 }
-const unordered_map<int, double>& DirconOptions::getKinConstraintScaling() {
+unordered_map<int, double> DirconOptions::getKinConstraintScaling() {
   return getKinConstraintScaling(kAll);
 }
-const unordered_map<int, double>& DirconOptions::getKinConstraintScalingStart() {
+unordered_map<int, double> DirconOptions::getKinConstraintScalingStart() {
   return getKinConstraintScaling(start_constraint_type_);
 }
-const unordered_map<int, double>& DirconOptions::getKinConstraintScalingEnd() {
+unordered_map<int, double> DirconOptions::getKinConstraintScalingEnd() {
   return getKinConstraintScaling(end_constraint_type_);
 }
-const unordered_map<int, double>& DirconOptions::getKinConstraintScaling(
+unordered_map<int, double> DirconOptions::getKinConstraintScaling(
     DirconKinConstraintType type) {
   // type == kAccelOnly
   if (type == kAccelOnly) {
-    return kin_constraint_scaling_;
+    // Extract the elements in the acceleration level
+    unordered_map<int, double> kin_constraint_scaling_accel;
+    for (auto member : kin_constraint_scaling_) {
+      if (member.first < n_kin_constraints_) {
+        kin_constraint_scaling_accel.insert(member);
+      }
+    }
+    return kin_constraint_scaling_accel;
   }
   // type == kAccelAndVel
   else if (type == kAccelAndVel) {
-    if (kin_constraint_scaling_2_.empty()) {
-      for (auto& member : kin_constraint_scaling_) {
-        kin_constraint_scaling_2_.insert(member);
-        kin_constraint_scaling_2_.insert(std::pair<int, double>(
-            member.first + n_kin_constraints_,
-            member.second * kin_constraint_scaling_vel_));
+    // Extract the elements in the acceleration and velocity level
+    unordered_map<int, double> kin_constraint_scaling_accel_and_vel;
+    for (auto member : kin_constraint_scaling_) {
+      if (member.first < 2 * n_kin_constraints_) {
+        kin_constraint_scaling_accel_and_vel.insert(member);
       }
     }
-    return kin_constraint_scaling_2_;
+    return kin_constraint_scaling_accel_and_vel;
   }
   // type == kAll
   else {
-    if (kin_constraint_scaling_3_.empty()) {
-      for (auto& member : kin_constraint_scaling_) {
-        kin_constraint_scaling_3_.insert(member);
-        kin_constraint_scaling_3_.insert(std::pair<int, double>(
-            member.first + n_kin_constraints_,
-            member.second * kin_constraint_scaling_vel_));
-        kin_constraint_scaling_3_.insert(std::pair<int, double>(
-            member.first + 2 * n_kin_constraints_,
-            member.second * kin_constraint_scaling_pos_));
-      }
-    }
-    return kin_constraint_scaling_3_;
+    return kin_constraint_scaling_;
   }
 }
 

@@ -21,13 +21,11 @@ class DirconOptions {
   void setDynConstraintScaling(double s, int row_start, int row_end);
   void setImpConstraintScaling(double s, int row_start, int row_end);
   void setKinConstraintScaling(double s, int row_start, int row_end);
-  void setKinConstraintScalingPos(double s);
-  void setKinConstraintScalingVel(double s);
-  const std::unordered_map<int, double>& getDynConstraintScaling();
-  const std::unordered_map<int, double>& getImpConstraintScaling();
-  const std::unordered_map<int, double>& getKinConstraintScaling();
-  const std::unordered_map<int, double>& getKinConstraintScalingStart();
-  const std::unordered_map<int, double>& getKinConstraintScalingEnd();
+  std::unordered_map<int, double> getDynConstraintScaling();
+  std::unordered_map<int, double> getImpConstraintScaling();
+  std::unordered_map<int, double> getKinConstraintScaling();
+  std::unordered_map<int, double> getKinConstraintScalingStart();
+  std::unordered_map<int, double> getKinConstraintScalingEnd();
 
   // Setters/getters for relativity of kinematic constraint
   void setAllConstraintsRelative(bool relative);
@@ -53,17 +51,13 @@ class DirconOptions {
   // methods for constraint scaling
   static void addConstraintScaling(std::unordered_map<int, double>* list,
                                    double s, int row_start, int row_end);
-  const std::unordered_map<int, double>& getKinConstraintScaling(
+  std::unordered_map<int, double> getKinConstraintScaling(
       DirconKinConstraintType type);
 
   // Constraint scaling
   std::unordered_map<int, double> dyn_constraint_scaling_;
   std::unordered_map<int, double> imp_constraint_scaling_;
   std::unordered_map<int, double> kin_constraint_scaling_;
-  std::unordered_map<int, double> kin_constraint_scaling_2_;
-  std::unordered_map<int, double> kin_constraint_scaling_3_;
-  double kin_constraint_scaling_pos_ = 1;
-  double kin_constraint_scaling_vel_ = 1;
   int n_v_ = -1;
   int n_x_ = -1;
 

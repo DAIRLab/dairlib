@@ -36,8 +36,6 @@ class DirconAbstractConstraint : public drake::solvers::Constraint {
 
   void SetConstraintScaling(const std::unordered_map<int, double>& map);
 
-  void ConstructSparsityPattern();
-
   virtual void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                                   drake::VectorX<T>* y) const = 0;
 

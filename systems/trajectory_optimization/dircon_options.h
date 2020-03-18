@@ -22,8 +22,8 @@ class DirconOptions {
   void setDynConstraintScaling(double s, int row_start, int row_end);
   void setImpConstraintScaling(double s, int row_start, int row_end);
   void setKinConstraintScaling(double s, int row_start, int row_end);
-  std::unordered_map<int, double> getDynConstraintScaling();
-  std::unordered_map<int, double> getImpConstraintScaling();
+  const std::unordered_map<int, double>& getDynConstraintScaling();
+  const std::unordered_map<int, double>& getImpConstraintScaling();
   std::unordered_map<int, double> getKinConstraintScaling();
   std::unordered_map<int, double> getKinConstraintScalingStart();
   std::unordered_map<int, double> getKinConstraintScalingEnd();

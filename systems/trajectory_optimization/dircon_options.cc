@@ -60,10 +60,10 @@ void DirconOptions::addConstraintScaling(
   }
 }
 
-unordered_map<int, double> DirconOptions::getDynConstraintScaling() {
+const unordered_map<int, double>& DirconOptions::getDynConstraintScaling() {
   return dyn_constraint_scaling_;
 }
-unordered_map<int, double> DirconOptions::getImpConstraintScaling() {
+const unordered_map<int, double>& DirconOptions::getImpConstraintScaling() {
   return imp_constraint_scaling_;
 }
 unordered_map<int, double> DirconOptions::getKinConstraintScaling() {

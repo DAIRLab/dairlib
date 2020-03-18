@@ -512,8 +512,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                           "../snopt.out");
+//  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+//                           "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -741,7 +741,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
     // time
     trajopt->ScaleTimeVariables(0.008);
     // state
-    // TODO: try increase the toe position by a factor of 10
+    // could try increasing the toe position by a factor of 10
     trajopt->ScaleStateVariables(0.5, 0, 3);
     if (s_q_toe > 1) {
       trajopt->ScaleStateVariables(s_q_toe, n_q - 2, n_q - 1);
@@ -752,13 +752,13 @@ void DoMain(double duration, double stride_length, double ground_incline,
     // input
     trajopt->ScaleInputVariables(100, 0, 9);
     // force
-    // TODO: try increase lambda 7 and 8 by 3 times
+    // could try increasing lambda 7 and 8 by 3 times
     trajopt->ScaleForceVariables(
         1000, 0, 0, ls_dataset.countConstraintsWithoutSkipping() - 1);
     trajopt->ScaleForceVariables(
         1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
     // impulse
-    // TODO: try increase impulse 7 and 8 by 2 times
+    // could try increasing impulse 7 and 8 by 2 times
     trajopt->ScaleImpulseVariables(
         10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
     // quaternion slack
@@ -971,8 +971,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
     }
   }
 
-  // Printing
-  for (int i = 0; i < trajopt->decision_variables().size(); i++) {
+  // Print out the scaling factor
+  /*for (int i = 0; i < trajopt->decision_variables().size(); i++) {
     cout << trajopt->decision_variable(i) << ", ";
     cout << trajopt->decision_variable(i).get_id() << ", ";
     cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
@@ -987,7 +987,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
     cout << ", ";
     cout << trajopt->GetInitialGuess(trajopt->decision_variable(i));
     cout << endl;
-  }
+  }*/
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
@@ -1015,11 +1015,11 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
 
   // Print the solution
-  for (int i = 0; i < z.size(); i++) {
+  /*for (int i = 0; i < z.size(); i++) {
     cout << i << ": " << trajopt->decision_variables()[i] << ", " << z[i]
          << endl;
   }
-  cout << endl;
+  cout << endl;*/
 
   // store the time, state, and input at knot points
   VectorXd time_at_knots = trajopt->GetSampleTimes(result);

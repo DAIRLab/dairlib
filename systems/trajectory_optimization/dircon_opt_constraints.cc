@@ -42,8 +42,8 @@ DirconAbstractConstraint<T>::DirconAbstractConstraint(
 
 template <typename T>
 void DirconAbstractConstraint<T>::SetConstraintScaling(
-    const std::unordered_map<int, double>& list) {
-  constraint_scaling_ = list;
+    const std::unordered_map<int, double>& map) {
+  constraint_scaling_ = map;
 }
 
 template <typename T>

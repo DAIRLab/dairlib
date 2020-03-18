@@ -2,6 +2,7 @@
 
 using std::unordered_map;
 using std::vector;
+using std::unordered_map;
 
 namespace dairlib {
 namespace systems {
@@ -28,44 +29,35 @@ DirconOptions::DirconOptions(
   n_x_ = plant->num_positions() + plant->num_velocities();
 }
 
-void DirconOptions::setDynConstraintScaling(double scale, int row_start,
+void DirconOptions::setDynConstraintScaling(double s, int row_start,
                                             int row_end) {
   DRAKE_DEMAND(row_end < n_x_);
-  addConstraintScaling(&dyn_constraint_scaling_, scale, row_start, row_end);
+  addConstraintScaling(&dyn_constraint_scaling_, s, row_start, row_end);
 }
-void DirconOptions::setKinConstraintScaling(double scale, int row_start,
+void DirconOptions::setKinConstraintScaling(double s, int row_start,
                                             int row_end) {
   DRAKE_DEMAND(row_end < 3 * n_kin_constraints_);
-  for (int i = row_start; i <= row_end; i++) {
-    if (i < n_kin_constraints_) {
-      addConstraintScaling(&kin_constraint_scaling_accel_vel_pos_, scale, i, i);
-      addConstraintScaling(&kin_constraint_scaling_accel_vel_, scale, i, i);
-      addConstraintScaling(&kin_constraint_scaling_accel_, scale, i, i);
-    } else if (i < 2 * n_kin_constraints_) {
-      addConstraintScaling(&kin_constraint_scaling_accel_vel_pos_, scale, i, i);
-      addConstraintScaling(&kin_constraint_scaling_accel_vel_, scale, i, i);
-    } else {
-      addConstraintScaling(&kin_constraint_scaling_accel_vel_pos_, scale, i, i);
-    }
-  }
+  addConstraintScaling(&kin_constraint_scaling_, s, row_start, row_end);
 }
-void DirconOptions::setImpConstraintScaling(double scale, int row_start,
+void DirconOptions::setImpConstraintScaling(double s, int row_start,
                                             int row_end) {
   DRAKE_DEMAND(row_end < n_v_);
-  addConstraintScaling(&imp_constraint_scaling_, scale, row_start, row_end);
+  addConstraintScaling(&imp_constraint_scaling_, s, row_start, row_end);
 }
-void DirconOptions::addConstraintScaling(std::unordered_map<int, double>* list,
-                                         double scale, int row_start,
-                                         int row_end) {
+void DirconOptions::addConstraintScaling(
+    std::unordered_map<int, double>* map, double s, int row_start,
+    int row_end) {
   DRAKE_DEMAND(0 <= row_start);
   DRAKE_DEMAND(row_start <= row_end);
+  DRAKE_DEMAND(0 < s);
   for (int i = row_start; i <= row_end; i++) {
-    // Check if the scaling has been set already
-    for (const auto& member : *list) {
-      DRAKE_DEMAND(i != member.first);
+    if (map->find(i) != map->end()) {
+      // Update the scaling factor
+      (*map)[i] = s;
+    } else {
+      // Add a new scaling factor
+      map->insert(std::pair<int, double>(i, s));
     }
-    // Add scaling
-    list->insert(std::pair<int, double>(i, scale));
   }
 }
 
@@ -75,26 +67,44 @@ const unordered_map<int, double>& DirconOptions::getDynConstraintScaling() {
 const unordered_map<int, double>& DirconOptions::getImpConstraintScaling() {
   return imp_constraint_scaling_;
 }
-const unordered_map<int, double>& DirconOptions::getKinConstraintScaling() {
+unordered_map<int, double> DirconOptions::getKinConstraintScaling() {
   return getKinConstraintScaling(kAll);
 }
-const unordered_map<int, double>&
-DirconOptions::getKinConstraintScalingStart() {
+unordered_map<int, double> DirconOptions::getKinConstraintScalingStart() {
   return getKinConstraintScaling(start_constraint_type_);
 }
-const unordered_map<int, double>& DirconOptions::getKinConstraintScalingEnd() {
+unordered_map<int, double> DirconOptions::getKinConstraintScalingEnd() {
   return getKinConstraintScaling(end_constraint_type_);
 }
-const unordered_map<int, double>& DirconOptions::getKinConstraintScaling(
+unordered_map<int, double> DirconOptions::getKinConstraintScaling(
     DirconKinConstraintType type) {
   DRAKE_DEMAND((type == kAccelOnly) || (type == kAccelAndVel) ||
                (type == kAll));
+  // type == kAccelOnly
   if (type == kAccelOnly) {
-    return kin_constraint_scaling_accel_;
-  } else if (type == kAccelAndVel) {
-    return kin_constraint_scaling_accel_vel_;
-  } else {
-    return kin_constraint_scaling_accel_vel_pos_;
+    // Extract the elements in the acceleration level
+    unordered_map<int, double> kin_constraint_scaling_accel;
+    for (auto member : kin_constraint_scaling_) {
+      if (member.first < n_kin_constraints_) {
+        kin_constraint_scaling_accel.insert(member);
+      }
+    }
+    return kin_constraint_scaling_accel;
+  }
+  // type == kAccelAndVel
+  else if (type == kAccelAndVel) {
+    // Extract the elements in the acceleration and velocity level
+    unordered_map<int, double> kin_constraint_scaling_accel_and_vel;
+    for (auto member : kin_constraint_scaling_) {
+      if (member.first < 2 * n_kin_constraints_) {
+        kin_constraint_scaling_accel_and_vel.insert(member);
+      }
+    }
+    return kin_constraint_scaling_accel_and_vel;
+  }
+  // type == kAll
+  else {
+    return kin_constraint_scaling_;
   }
 }
 

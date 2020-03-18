@@ -1,6 +1,7 @@
 #include "systems/trajectory_optimization/dircon_options.h"
 
 using std::vector;
+using std::unordered_map;
 
 namespace dairlib {
 namespace systems {
@@ -65,22 +66,22 @@ void DirconOptions::setKinConstraintScalingVel(double s) {
   kin_constraint_scaling_vel_ = s;
 }
 
-std::unordered_map<int, double>& DirconOptions::getDynConstraintScaling() {
+const unordered_map<int, double>& DirconOptions::getDynConstraintScaling() {
   return dyn_constraint_scaling_;
 }
-std::unordered_map<int, double>& DirconOptions::getImpConstraintScaling() {
+const unordered_map<int, double>& DirconOptions::getImpConstraintScaling() {
   return imp_constraint_scaling_;
 }
-std::unordered_map<int, double>& DirconOptions::getKinConstraintScaling() {
+const unordered_map<int, double>& DirconOptions::getKinConstraintScaling() {
   return getKinConstraintScaling(kAll);
 }
-std::unordered_map<int, double>& DirconOptions::getKinConstraintScalingStart() {
+const unordered_map<int, double>& DirconOptions::getKinConstraintScalingStart() {
   return getKinConstraintScaling(start_constraint_type_);
 }
-std::unordered_map<int, double>& DirconOptions::getKinConstraintScalingEnd() {
+const unordered_map<int, double>& DirconOptions::getKinConstraintScalingEnd() {
   return getKinConstraintScaling(end_constraint_type_);
 }
-std::unordered_map<int, double>& DirconOptions::getKinConstraintScaling(
+const unordered_map<int, double>& DirconOptions::getKinConstraintScaling(
     DirconKinConstraintType type) {
   // type == kAccelOnly
   if (type == kAccelOnly) {

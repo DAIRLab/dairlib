@@ -18,16 +18,16 @@ class DirconOptions {
 
   // Setters/getters for constraint scaling
   /// The impact constraint is for the impact at the beginning of the mode
-  void setDynConstraintScaling(double scale, int row_start, int row_end);
-  void setImpConstraintScaling(double scale, int row_start, int row_end);
-  void setKinConstraintScaling(double scale, int row_start, int row_end);
-  void setKinConstraintScalingPos(double scale);
-  void setKinConstraintScalingVel(double scale);
-  std::vector<std::pair<int, double>>& getDynConstraintScaling();
-  std::vector<std::pair<int, double>>& getImpConstraintScaling();
-  std::vector<std::pair<int, double>>& getKinConstraintScaling();
-  std::vector<std::pair<int, double>>& getKinConstraintScalingStart();
-  std::vector<std::pair<int, double>>& getKinConstraintScalingEnd();
+  void setDynConstraintScaling(double s, int row_start, int row_end);
+  void setImpConstraintScaling(double s, int row_start, int row_end);
+  void setKinConstraintScaling(double s, int row_start, int row_end);
+  void setKinConstraintScalingPos(double s);
+  void setKinConstraintScalingVel(double s);
+  std::unordered_map<int, double>& getDynConstraintScaling();
+  std::unordered_map<int, double>& getImpConstraintScaling();
+  std::unordered_map<int, double>& getKinConstraintScaling();
+  std::unordered_map<int, double>& getKinConstraintScalingStart();
+  std::unordered_map<int, double>& getKinConstraintScalingEnd();
 
   // Setters/getters for relativity of kinematic constraint
   void setAllConstraintsRelative(bool relative);
@@ -51,17 +51,17 @@ class DirconOptions {
 
  private:
   // methods for constraint scaling
-  static void addConstraintScaling(std::vector<std::pair<int, double>>* list,
-                                   double scale, int row_start, int row_end);
-  std::vector<std::pair<int, double>>& getKinConstraintScaling(
+  static void addConstraintScaling(std::unordered_map<int, double>* list,
+                                   double s, int row_start, int row_end);
+  std::unordered_map<int, double>& getKinConstraintScaling(
       DirconKinConstraintType type);
 
   // Constraint scaling
-  std::vector<std::pair<int, double>> dyn_constraint_scaling_;
-  std::vector<std::pair<int, double>> imp_constraint_scaling_;
-  std::vector<std::pair<int, double>> kin_constraint_scaling_;
-  std::vector<std::pair<int, double>> kin_constraint_scaling_2_;
-  std::vector<std::pair<int, double>> kin_constraint_scaling_3_;
+  std::unordered_map<int, double> dyn_constraint_scaling_;
+  std::unordered_map<int, double> imp_constraint_scaling_;
+  std::unordered_map<int, double> kin_constraint_scaling_;
+  std::unordered_map<int, double> kin_constraint_scaling_2_;
+  std::unordered_map<int, double> kin_constraint_scaling_3_;
   double kin_constraint_scaling_pos_ = 1;
   double kin_constraint_scaling_vel_ = 1;
   int n_v_ = -1;

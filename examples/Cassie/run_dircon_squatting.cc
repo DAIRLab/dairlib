@@ -526,8 +526,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
-  std::vector<std::pair<int, double>> odbp_constraint_scale;
-  odbp_constraint_scale.emplace_back(0, 0.5);
+  std::unordered_map<int, double> odbp_constraint_scale;
+  odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
   left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
   right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
   for (int index = 0; index < num_time_samples[0]; index++) {

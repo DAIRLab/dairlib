@@ -370,27 +370,6 @@ void DoMain() {
       trajopt->SetInitialGuess(trajopt->state(knot_point), x_guess);
     }
 
-    // Some guesses
-    //    for (int i = 0; i < trajopt->N(); ++i) {
-    //      auto u = trajopt->input(i);
-    //      trajopt->SetInitialGuess(u(0), 30);
-    //      trajopt->SetInitialGuess(u(2), -30);
-    //      trajopt->SetInitialGuess(u(4), 30);
-    //      trajopt->SetInitialGuess(u(6), 30);
-    //      trajopt->SetInitialGuess(u(8), 30);
-    //    }
-
-    //    for (int mode = 0; mode < n_modes; ++mode) {
-    //      for (int i = 0; i < FLAGS_knot_points; ++i) {
-    //        auto lambdas = dircon->force(mode, i);
-    //
-    //        dircon->SetInitialGuess(lambdas(0), 15);
-    //        dircon->SetInitialGuess(lambdas(1), 15);
-    //        dircon->SetInitialGuess(lambdas(2), 15);
-    //        dircon->SetInitialGuess(lambdas(3), 15);
-    //        dircon->SetInitialGuess(lambdas(4), 15);
-    //      }
-    //    }
   }
 
   // To avoid NaN quaternions

@@ -248,9 +248,9 @@ int DoMain(int argc, char* argv[]) {
   /**** Tracking Data for OSC *****/
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
-  W_com(0, 0) = 200;
+  W_com(0, 0) = 2000;
   W_com(1, 1) = 200;
-  W_com(2, 2) = 20000;
+  W_com(2, 2) = 2000;
   MatrixXd K_p_com = 100 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 20 * MatrixXd::Identity(3, 3);
   ComTrackingDataMBP com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
@@ -263,7 +263,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Feet tracking1
   MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
-  W_swing_foot(0, 0) = 100;
+  W_swing_foot(0, 0) = 1000;
   W_swing_foot(1, 1) = 100;
   W_swing_foot(2, 2) = 1000;
   MatrixXd K_p_sw_ft = 10 * MatrixXd::Identity(3, 3);

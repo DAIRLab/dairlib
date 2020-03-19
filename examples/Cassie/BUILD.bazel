@@ -337,6 +337,20 @@ cc_binary(
 )
 
 cc_binary(
+    name = "visualize_trajectory",
+    srcs = ["visualize_trajectory.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "benchmark_dynamics",
     srcs = ["test/benchmark_dynamics.cc"],
     deps = [

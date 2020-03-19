@@ -1,6 +1,6 @@
+#include <gflags/gflags.h>
 #include <drake/geometry/scene_graph.h>
 #include <drake/multibody/parsing/parser.h>
-#include <gflags/gflags.h>
 #include "examples/Cassie/cassie_utils.h"
 #include "lcm/lcm_trajectory.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -15,8 +15,16 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-// TEMP
-using drake::multibody::JointActuatorIndex;
+DEFINE_bool(are_feet_relative, true,
+            "Set to false if feet positions should "
+            "be measured relative to the world "
+            "instead of as an offset from the hips");
+DEFINE_string(trajectory_name, "",
+              "File name where the optimal trajectory is stored.");
+DEFINE_string(folder_path,
+              "/home/yangwill/Documents/research/projects/cassie"
+              "/jumping/saved_trajs/",
+              "Folder path for where the trajectory names are stored");
 
 namespace dairlib {
 
@@ -49,16 +57,15 @@ int DoMain() {
   auto hip_right_frame = &plant.GetBodyByName("hip_right").body_frame();
   auto world = &plant.world_frame();
 
-  const LcmTrajectory& loadedTrajs = LcmTrajectory(
-      "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/"
-      "March_19_jumping_0.2");
+  const LcmTrajectory& loadedTrajs =
+      LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
   auto traj_mode0 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u0");
   auto traj_mode1 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u1");
   auto traj_mode2 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u2");
 
   std::cout << traj_mode0.datapoints.rows() << std::endl;
   DRAKE_ASSERT(nx == traj_mode0.datapoints.rows());
-//  int knot_points = traj_mode0.datapoints.cols();
+  //  int knot_points = traj_mode0.datapoints.cols();
   int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
                  traj_mode2.datapoints.cols();
 
@@ -80,7 +87,7 @@ int DoMain() {
   MatrixXd pelvis_orientation(4, n_points);
   Vector3d zero_offset = Vector3d::Zero();
 
-  std::cout << xu.block(0, 2, nx, 1).size() << std::endl;
+  std::cout << "Initial state: " << xu.block(0, 0, nx, 1) << std::endl;
   for (unsigned int i = 0; i < times.size(); ++i) {
     plant.SetPositionsAndVelocities(context.get(), xu.block(0, i, nx, 1));
     center_of_mass_points.block(0, i, 3, 1) =
@@ -103,11 +110,11 @@ int DoMain() {
                               &r_hip_pos_block);
 
     pelvis_orientation.block(1, i, 3, 1) =
-        plant.CalcRelativeRotationMatrix(*context, *pelvis_frame, *world)
+        plant.CalcRelativeRotationMatrix(*context, *world, *pelvis_frame)
             .ToQuaternion()
             .vec();
     pelvis_orientation(0, i) =
-        plant.CalcRelativeRotationMatrix(*context, *pelvis_frame, *world)
+        plant.CalcRelativeRotationMatrix(*context, *world, *pelvis_frame)
             .ToQuaternion()
             .w();
 
@@ -143,8 +150,8 @@ int DoMain() {
     //        J_pelvis_orientation * xu.block(nq, i, nv, 1);
   }
 
-//  l_foot_points.topRows(3) = l_foot_points.topRows(3) - l_hip_points;
-//  r_foot_points.topRows(3) = r_foot_points.topRows(3) - r_hip_points;
+  //  l_foot_points.topRows(3) = l_foot_points.topRows(3) - l_hip_points;
+  //  r_foot_points.topRows(3) = r_foot_points.topRows(3) - r_hip_points;
   l_foot_points = l_foot_points - l_hip_points;
   r_foot_points = r_foot_points - r_hip_points;
 
@@ -189,15 +196,14 @@ int DoMain() {
                     "Feet trajectories "
                     "for Cassie jumping");
 
-  processed_traj.writeToFile(
-      "/home/yangwill/Documents/research/projects/cassie/jumping"
-      "/saved_trajs/March_19_jumping_0.2_processed");
+  processed_traj.writeToFile(FLAGS_folder_path + FLAGS_trajectory_name +
+                             "_processed");
   return 0;
 }
 
 }  // namespace dairlib
 
 int main(int argc, char* argv[]) {
-  //  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return dairlib::DoMain();
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  dairlib::DoMain();
 }

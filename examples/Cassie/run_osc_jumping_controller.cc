@@ -8,6 +8,7 @@
 #include "examples/Cassie/osc_jump/com_traj_generator.h"
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
+#include "examples/Cassie/osc_jump/pelvis_orientation_traj_generator.h"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/osc/operational_space_control_mbp.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -42,6 +43,7 @@ using drake::trajectories::PiecewisePolynomial;
 using examples::JumpingEventFsm;
 using examples::Cassie::osc_jump::COMTrajGenerator;
 using examples::Cassie::osc_jump::FlightFootTrajGenerator;
+using examples::Cassie::osc_jump::PPolyPassthrough;
 using multibody::GetBodyIndexFromName;
 using multibody::MultibodyDistanceConstraint;
 using systems::controllers::ComTrackingDataMBP;
@@ -124,17 +126,9 @@ int DoMain(int argc, char* argv[]) {
       loaded_traj.getTrajectory("left_foot_trajectory");
   const LcmTrajectory::Trajectory& lcm_r_foot_traj =
       loaded_traj.getTrajectory("right_foot_trajectory");
-  //  const LcmTrajectory::Trajectory& com_vel_traj =
-  //      loaded_traj.getTrajectory("center_of_mass_vel_trajectory");
-  //  const LcmTrajectory::Trajectory& lcm_l_foot_vel_traj =
-  //      loaded_traj.getTrajectory("left_foot_vel_trajectory");
-  //  const LcmTrajectory::Trajectory& lcm_r_foot_vel_traj =
-  //      loaded_traj.getTrajectory("right_foot_vel_trajectory");
-  //  const LcmTrajectory::Trajectory& lcm_torso_traj =
-  //      loaded_traj.getTrajectory("torso_trajectory");
-  //  cout << "com_vel:" << com_vel_traj.datapoints.size() << endl;
-  //  cout << "l_foot_vel: " << lcm_l_foot_vel_traj.datapoints.size() << endl;
-  //  cout << "r_foot_vel: " << lcm_r_foot_vel_traj.datapoints.size() << endl;
+  const LcmTrajectory::Trajectory& lcm_pelvis_rot_traj =
+      loaded_traj.getTrajectory("pelvis_rot_trajectory");
+
   const PiecewisePolynomial<double>& com_traj =
       PiecewisePolynomial<double>::Cubic(lcm_com_traj.time_vector,
                                          lcm_com_traj.datapoints.topRows(3),
@@ -147,12 +141,13 @@ int DoMain(int argc, char* argv[]) {
       PiecewisePolynomial<double>::Cubic(
           lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints.topRows(3),
           lcm_r_foot_traj.datapoints.bottomRows(3));
-  //  const PiecewisePolynomial<double>& torso_trajectory =
-  //      PiecewisePolynomial<double>::Pchip(lcm_torso_traj.time_vector,
-  //          lcm_torso_traj.datapoints);
+  const PiecewisePolynomial<double>& pelvis_rot_trajectory =
+      PiecewisePolynomial<double>::Pchip(
+          lcm_pelvis_rot_traj.time_vector,
+          lcm_pelvis_rot_traj.datapoints.topRows(4));
 
-  double flight_time = FLAGS_delay_time + 0.21;
-  double land_time = FLAGS_delay_time + 0.42;
+  double flight_time = FLAGS_delay_time + 0.285773;
+  double land_time = FLAGS_delay_time + 0.67272637;
 
   /**** Initialize all the leaf systems ****/
 
@@ -180,16 +175,20 @@ int DoMain(int argc, char* argv[]) {
   // Create Operational space control
   std::cout << "Target balance height: " << lcm_com_traj.datapoints.col(0)(2)
             << std::endl;
+  std::cout << "Target starting orientation: "
+            << lcm_pelvis_rot_traj.datapoints.col(0) << std::endl;
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
       com_traj, lcm_com_traj.datapoints.col(0)(2), FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_with_springs, "pelvis", true, l_foot_trajectory, FLAGS_delay_time);
+      plant_with_springs, "hip_left", true, l_foot_trajectory,
+      FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_with_springs, "pelvis", false, r_foot_trajectory, FLAGS_delay_time);
-  //  auto pelvis_orientation_traj_generator =
-  //      builder.AddSystem<TorsoTraj>(plant_with_springs,
-  //      pelvis_orientation_traj);
+      plant_with_springs, "hip_right", false, r_foot_trajectory,
+      FLAGS_delay_time);
+  auto pelvis_rot_traj_generator = builder.AddSystem<PPolyPassthrough>(
+      plant_with_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
+      FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
       plant_with_springs, flight_time, land_time, FLAGS_delay_time, false);
   auto command_pub =
@@ -205,8 +204,8 @@ int DoMain(int argc, char* argv[]) {
   /**** OSC setup ****/
 
   // Cost
-  MatrixXd Q_accel = 0.001 * MatrixXd::Identity(n_v, n_v);
-  osc->SetAccelerationCostForAllJoints(Q_accel);
+//  MatrixXd Q_accel = 0.001 * MatrixXd::Identity(n_v, n_v);
+//  osc->SetAccelerationCostForAllJoints(Q_accel);
   // Soft constraint on contacts
   double w_contact_relax = 20000;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
@@ -251,26 +250,24 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 200;
   W_com(1, 1) = 200;
-  W_com(2, 2) = 2000;
-  MatrixXd K_p_com = 50 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = 10 * MatrixXd::Identity(3, 3);
+  W_com(2, 2) = 20000;
+  MatrixXd K_p_com = 100 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_com = 20 * MatrixXd::Identity(3, 3);
   ComTrackingDataMBP com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
                                        &plant_with_springs,
                                        &plant_without_springs);
-//  for (FSM_STATE mode : stance_modes) {
-//    com_tracking_data.AddStateToTrack(mode);
-//  }
+  for (FSM_STATE mode : stance_modes) {
+    com_tracking_data.AddStateToTrack(mode);
+  }
   osc->AddTrackingData(&com_tracking_data);
 
   // Feet tracking1
   MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
-  W_swing_foot(0, 0) = 1000;
-  W_swing_foot(1, 1) = 0;
+  W_swing_foot(0, 0) = 100;
+  W_swing_foot(1, 1) = 100;
   W_swing_foot(2, 2) = 1000;
   MatrixXd K_p_sw_ft = 10 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_sw_ft = 4 * MatrixXd::Identity(3, 3);
-  K_p_sw_ft(1, 1) = 0;
-  K_d_sw_ft(1, 1) = 0;
 
   TransTaskSpaceTrackingDataMBP left_foot_tracking_data(
       "l_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,
@@ -281,12 +278,12 @@ int DoMain(int argc, char* argv[]) {
   left_foot_tracking_data.AddStateAndPointToTrack(FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(FLIGHT, "toe_right");
 
-  double w_pelvis_balance = 200;
-  double w_heading = 200;
-  double k_p_pelvis_balance = 100;
-  double k_d_pelvis_balance = 80;
-  double k_p_heading = 50;
-  double k_d_heading = 40;
+  double w_pelvis_balance = 20;
+  double w_heading = 10;
+  double k_p_pelvis_balance = 16;  // 100
+  double k_d_pelvis_balance = 8;   // 80
+  double k_p_heading = 16;         // 50
+  double k_d_heading = 8;          // 40
   Matrix3d W_pelvis = w_pelvis_balance * MatrixXd::Identity(3, 3);
   W_pelvis(2, 2) = w_heading;
   Matrix3d K_p_pelvis = k_p_pelvis_balance * 2 * MatrixXd::Identity(3, 3);
@@ -297,20 +294,23 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_rot_tracking_data", 3, K_p_pelvis, K_d_pelvis, W_pelvis,
       &plant_with_springs, &plant_without_springs);
 
-  for (FSM_STATE mode : stance_modes){
+  for (FSM_STATE mode : stance_modes) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
   }
-//  pelvis_rot_tracking_data.AddFrameToTrack("pelvis");
-  VectorXd pelvis_desired_quat(4);
-  pelvis_desired_quat << 1, 0, 0, 0;
+  //  pelvis_rot_tracking_data.AddFrameToTrack("pelvis");
+  //  VectorXd pelvis_desired_quat(4);
+  //  pelvis_desired_quat << 1, 0, 0, 0;
 
-  osc->AddConstTrackingData(&pelvis_rot_tracking_data, pelvis_desired_quat);
+  //  osc->AddConstTrackingData(&pelvis_rot_tracking_data, pelvis_desired_quat);
+  osc->AddTrackingData(&pelvis_rot_tracking_data);
 
   osc->AddTrackingData(&left_foot_tracking_data);
   osc->AddTrackingData(&right_foot_tracking_data);
 
   // Build OSC problem
   osc->Build();
+
+  std::cout << "Built Osc" << std::endl;
 
   /*****Connect ports*****/
 
@@ -326,6 +326,9 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("l_foot_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("r_foot_traj"));
+  builder.Connect(
+      pelvis_rot_traj_generator->get_output_port(0),
+      osc->get_tracking_data_input_port("pelvis_rot_tracking_data"));
 
   // FSM connections
   builder.Connect(contact_results_sub->get_output_port(),
@@ -340,6 +343,8 @@ int DoMain(int argc, char* argv[]) {
                   l_foot_traj_generator->get_state_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   r_foot_traj_generator->get_state_input_port());
+  builder.Connect(state_receiver->get_output_port(0),
+                  pelvis_rot_traj_generator->get_state_input_port());
   builder.Connect(fsm->get_output_port(0),
                   com_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),

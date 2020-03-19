@@ -24,6 +24,7 @@ using drake::systems::EventStatus;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
+using drake::multibody::JacobianWrtVariable;
 
 namespace dairlib::examples::Cassie::osc_jump {
 
@@ -73,22 +74,32 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
   const drake::multibody::BodyFrame<double>& world = plant_.world_frame();
   const drake::multibody::BodyFrame<double>& hip_frame =
       plant_.GetBodyByName(hip_name_).body_frame();
-  Vector3d pt_on_hip = Vector3d::Zero();
+
+  Vector3d zero_offset = Vector3d::Zero();
   Vector3d hip_pos = Vector3d::Zero();
-  plant_.CalcPointsPositions(*plant_context, hip_frame, pt_on_hip, world,
+  plant_.CalcPointsPositions(*plant_context, hip_frame, zero_offset, world,
       &hip_pos);
 
   const PiecewisePolynomial<double>& foot_traj_segment =
       foot_traj_.slice(foot_traj_.get_segment_index(t), 1);
+
+  // Hip offset stuff
   std::vector<double> breaks = foot_traj_segment.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
-
+  MatrixXd J_hip(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(*plant_context,
+      JacobianWrtVariable::kV,
+      hip_frame, zero_offset,
+      world, world, &J_hip);
+  double dt = breaks_vector[1] - breaks_vector[0];
   MatrixXd hip_points(3, 2);
-  hip_points << hip_pos, hip_pos;
+  hip_points << hip_pos, hip_pos + J_hip*x.tail(plant_.num_velocities()) * dt;
+//  hip_points << hip_pos, hip_pos;
   PiecewisePolynomial<double> hip_offset =
-      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, hip_points);
-//  return foot_traj_segment + hip_offset;
-  return foot_traj_segment;
+      PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, hip_points);
+
+  return foot_traj_segment + hip_offset;
+//  return foot_traj_segment;
 }
 
 void FlightFootTrajGenerator::CalcTraj(

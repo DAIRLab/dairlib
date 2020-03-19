@@ -465,8 +465,19 @@ void DoMain() {
     traj_block.traj_name =
         "cassie_jumping_trajectory_x_u" + std::to_string(mode);
     //      traj_block.time_vector = generate_time_matrix(state_traj, 1000);
-    traj_block.time_vector = VectorXd::LinSpaced(1000, segment_times(2 * mode),
-                                                 segment_times(2 * mode + 1));
+    //    traj_block.time_vector = VectorXd::LinSpaced(1000, segment_times(2 *
+    //    mode),
+    //                                                 segment_times(2 * mode +
+    //                                                 1));
+    //    traj_block.datapoints = generate_state_input_matrix(state_traj,
+    //    input_traj,
+    //                                                        traj_block.time_vector);
+    std::vector<double> breaks_copy =
+        std::vector(state_traj.get_segment_times());
+    std::cout << "num break points" << breaks_copy.size() << std::endl;
+    traj_block.time_vector =
+        Eigen::Map<Eigen::VectorXd>(breaks_copy.data(), breaks_copy.size())
+            .segment(FLAGS_knot_points * mode, FLAGS_knot_points);
     traj_block.datapoints = generate_state_input_matrix(state_traj, input_traj,
                                                         traj_block.time_vector);
     traj_block.datatypes =
@@ -525,6 +536,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   //  auto x_mid_point =
   //      trajopt->state(FLAGS_knot_points * mode_lengths.size() / 2);
   auto xf = trajopt->final_state();
+  auto x_second_to_last = trajopt->state(N - 2);
   auto u = trajopt->input();
   auto u0 = trajopt->input(0);
   auto uf = trajopt->input(N - 1);
@@ -596,6 +608,8 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
                                     x0.tail(n_v));
   trajopt->AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
                                     xf.tail(n_v));
+  trajopt->AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+                                    x_second_to_last.tail(n_v));
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{
@@ -643,17 +657,17 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
       }
     }
 
-//    for (const auto& asy_joint_name : asy_joint_names) {
-//      // positions
-//      trajopt->AddLinearConstraint(
-//          x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
-//          xf(pos_map.at(asy_joint_name + l_r_pair.second)));
-//
-//      // inputs
-//      trajopt->AddLinearConstraint(
-//          u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
-//          uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
-//    }
+    //    for (const auto& asy_joint_name : asy_joint_names) {
+    //      // positions
+    //      trajopt->AddLinearConstraint(
+    //          x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
+    //          xf(pos_map.at(asy_joint_name + l_r_pair.second)));
+    //
+    //      // inputs
+    //      trajopt->AddLinearConstraint(
+    //          u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
+    //          uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
+    //    }
   }
 
   // joint limits

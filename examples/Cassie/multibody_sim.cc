@@ -183,16 +183,31 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
       1.15, 1.15, -1.35, -1.35, 1.0, 1.0, 0.0, 0.0, 0.0, -M_PI / 2, 0.0,
       -M_PI / 2;
 
+  double achilles_length = .5012;
   double eps = 1e-3;
   Vector3d eps_vec = eps * VectorXd::Ones(3);
   Vector3d pelvis_pos(0.0, 0.0, 1.0);
   Vector3d left_toe_pos(-0.05, 0.12, 0.05);
   Vector3d right_toe_pos(-0.05, -0.12, 0.05);
 
+  Vector3d rod_on_heel_spring;  // symmetric left and right
+  rod_on_heel_spring << .11877, -.01, 0.0;
+
+  Vector3d rod_on_thigh_left;
+  rod_on_thigh_left << 0.0, 0.0, 0.045;
+
+  Vector3d rod_on_thigh_right;
+  rod_on_thigh_right << 0.0, 0.0, -0.045;
+
   const auto& world_frame = plant.world_frame();
   const auto& pelvis_frame = plant.GetFrameByName("pelvis");
   const auto& toe_left_frame = plant.GetFrameByName("toe_left");
   const auto& toe_right_frame = plant.GetFrameByName("toe_right");
+  const auto& thigh_left_frame = plant.GetFrameByName("thigh_left");
+  const auto& thigh_right_frame = plant.GetFrameByName("thigh_right");
+  const auto& heel_spring_left_frame = plant.GetFrameByName("heel_spring_left");
+  const auto& heel_spring_right_frame =
+      plant.GetFrameByName("heel_spring_right");
 
   drake::multibody::InverseKinematics ik(plant);
   ik.AddPositionConstraint(pelvis_frame, Vector3d(0, 0, 0), world_frame,
@@ -221,6 +236,12 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
       (ik.q())(positions_map.at("toe_left")) == -1.5);
   ik.get_mutable_prog()->AddLinearConstraint(
       (ik.q())(positions_map.at("toe_right")) == -1.5);
+  ik.AddPointToPointDistanceConstraint(
+      heel_spring_left_frame, rod_on_heel_spring, thigh_left_frame,
+      rod_on_thigh_left, achilles_length, achilles_length);
+  ik.AddPointToPointDistanceConstraint(
+      heel_spring_right_frame, rod_on_heel_spring, thigh_right_frame,
+      rod_on_thigh_right, achilles_length, achilles_length);
 
   ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
   const auto result = Solve(ik.prog());

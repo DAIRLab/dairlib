@@ -1,6 +1,5 @@
 #include "systems/trajectory_optimization/dircon_options.h"
 
-using std::unordered_map;
 using std::vector;
 using std::unordered_map;
 

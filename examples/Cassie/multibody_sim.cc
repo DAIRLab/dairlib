@@ -173,10 +173,6 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
   std::map<std::string, int> positions_map =
       multibody::makeNameToPositionsMap(plant);
 
-  for (auto pair : positions_map) {
-    std::cout << pair.first << ": " << pair.second << std::endl;
-  }
-
   VectorXd q_ik_guess = VectorXd::Zero(n_q);
   Eigen::Vector4d quat(1, 0, 0, 0);
   q_ik_guess << quat.normalized(), 0.001, 0.001, 1.1, -0.01, 0.01, 0.0, 0.0,
@@ -184,18 +180,20 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
       -M_PI / 2;
 
   double achilles_length = .5012;
-  double eps = 1e-3;
-  Vector3d eps_vec = eps * VectorXd::Ones(3);
+  double feet_xpos_offset = -0.15;
+  double eps = 1e-4;
   Vector3d pelvis_pos(0.0, 0.0, 1.0);
-  Vector3d left_toe_pos(-0.05, 0.12, 0.05);
-  Vector3d right_toe_pos(-0.05, -0.12, 0.05);
+  Vector3d rear_contact_disp(-0.0457, 0.112, 0);
+  Vector3d front_contact_disp(0.088, 0, 0);
+  Vector3d left_toe_rear_pos(-0.02115 + feet_xpos_offset, 0.12, 0.00);
+  Vector3d left_toe_front_pos(0.02115 + feet_xpos_offset, 0.12, 0.00);
+  Vector3d right_toe_rear_pos(-0.02115 + feet_xpos_offset, -0.12, 0.00);
+  Vector3d right_toe_front_pos(0.02115 + feet_xpos_offset, -0.12, 0.00);
 
   Vector3d rod_on_heel_spring;  // symmetric left and right
   rod_on_heel_spring << .11877, -.01, 0.0;
-
   Vector3d rod_on_thigh_left;
   rod_on_thigh_left << 0.0, 0.0, 0.045;
-
   Vector3d rod_on_thigh_right;
   rod_on_thigh_right << 0.0, 0.0, -0.045;
 
@@ -210,32 +208,20 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
       plant.GetFrameByName("heel_spring_right");
 
   drake::multibody::InverseKinematics ik(plant);
+
   ik.AddPositionConstraint(pelvis_frame, Vector3d(0, 0, 0), world_frame,
                            pelvis_pos - eps * VectorXd::Ones(3),
                            pelvis_pos + eps * VectorXd::Ones(3));
   ik.AddOrientationConstraint(pelvis_frame, RotationMatrix<double>(),
                               world_frame, RotationMatrix<double>(), eps);
-  ik.AddPositionConstraint(toe_left_frame, Vector3d(0, 0, 0), world_frame,
-                           left_toe_pos - eps_vec, left_toe_pos + eps_vec);
-  ik.AddPositionConstraint(toe_right_frame, Vector3d(0, 0, 0), world_frame,
-                           right_toe_pos - eps_vec, right_toe_pos + eps_vec);
-  ik.get_mutable_prog()->AddLinearConstraint(
-      (ik.q())(positions_map.at("hip_yaw_left")) == 0);
-  ik.get_mutable_prog()->AddLinearConstraint(
-      (ik.q())(positions_map.at("hip_yaw_right")) == 0);
-  // Four bar linkage constraint (without spring)
-  ik.get_mutable_prog()->AddLinearConstraint(
-      (ik.q())(positions_map.at("knee_left")) +
-          (ik.q())(positions_map.at("ankle_joint_left")) ==
-      M_PI * 13 / 180.0);
-  ik.get_mutable_prog()->AddLinearConstraint(
-      (ik.q())(positions_map.at("knee_right")) +
-          (ik.q())(positions_map.at("ankle_joint_right")) ==
-      M_PI * 13 / 180.0);
-  ik.get_mutable_prog()->AddLinearConstraint(
-      (ik.q())(positions_map.at("toe_left")) == -1.5);
-  ik.get_mutable_prog()->AddLinearConstraint(
-      (ik.q())(positions_map.at("toe_right")) == -1.5);
+  ik.AddPositionConstraint(toe_left_frame, rear_contact_disp, world_frame,
+                           left_toe_rear_pos, left_toe_rear_pos);
+  ik.AddPositionConstraint(toe_left_frame, front_contact_disp, world_frame,
+                           left_toe_front_pos, left_toe_front_pos);
+  ik.AddPositionConstraint(toe_right_frame, rear_contact_disp, world_frame,
+                           right_toe_rear_pos, right_toe_rear_pos);
+  ik.AddPositionConstraint(toe_right_frame, front_contact_disp, world_frame,
+                           right_toe_front_pos, right_toe_front_pos);
   ik.AddPointToPointDistanceConstraint(
       heel_spring_left_frame, rod_on_heel_spring, thigh_left_frame,
       rod_on_thigh_left, achilles_length, achilles_length);

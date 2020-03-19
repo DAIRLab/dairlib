@@ -33,14 +33,14 @@ COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
                                    int pelvis_idx, Vector3d front_contact_disp,
                                    Vector3d rear_contact_disp,
                                    PiecewisePolynomial<double> crouch_traj,
-                                   double height,
+                                   Vector3d support_center_offset,
                                    double time_offset)
     : plant_(plant),
       hip_idx_(pelvis_idx),
       front_contact_disp_(front_contact_disp),
       rear_contact_disp_(rear_contact_disp),
       crouch_traj_(crouch_traj),
-      height_(height) {
+      support_center_offset_(support_center_offset) {
   this->set_name("com_traj");
   // Input/Output Setup
   state_port_ =
@@ -87,8 +87,8 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     prev_time(0) = current_time;
     VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
 
-    auto plant_context = createContext(plant_, robot_output->GetState(),
-        zero_input);
+    auto plant_context =
+        createContext(plant_, robot_output->GetState(), zero_input);
     // Return the x diff between the desired and current COM pos
     com_x_offset(0) = plant_.CalcCenterOfMassPosition(*plant_context)(0) -
                       crouch_traj_.value(crouch_traj_.end_time())(0);
@@ -120,8 +120,8 @@ PiecewisePolynomial<double> COMTrajGenerator::generateBalanceTraj(
   plant_.CalcPointsPositions(*plant_context, r_toe_frame, rear_contact_disp_,
                              world, &r_toe_rear);
   Vector3d targetCoM =
-      (l_toe_front + l_toe_rear + r_toe_front + r_toe_rear) / 4;
-  targetCoM(2) = height_;
+      (l_toe_front + l_toe_rear + r_toe_front + r_toe_rear) / 4 +
+      support_center_offset_;
 
   return PiecewisePolynomial<double>(targetCoM);
 }

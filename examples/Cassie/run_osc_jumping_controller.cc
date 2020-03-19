@@ -173,13 +173,19 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_with_springs);
   // Create Operational space control
+  Vector3d support_center_offset;
+  double x_offset = com_traj.value(0)(0) - (r_foot_trajectory.value(0)(0));
+  //                    +
+  //                     (front_contact_disp[0] + rear_contact_disp[0]) / 2);
+  //  double x_offset = 0.0;
+  support_center_offset << x_offset, 0.0, com_traj.value(0)(2);
+
   std::cout << "Target balance height: " << lcm_com_traj.datapoints.col(0)(2)
             << std::endl;
-  std::cout << "Target starting orientation: "
-            << lcm_pelvis_rot_traj.datapoints.col(0) << std::endl;
+  std::cout << "Support center offset: " << support_center_offset << std::endl;
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
-      com_traj, lcm_com_traj.datapoints.col(0)(2), FLAGS_delay_time);
+      com_traj, support_center_offset, FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_with_springs, "hip_left", true, l_foot_trajectory,
       FLAGS_delay_time);
@@ -204,8 +210,8 @@ int DoMain(int argc, char* argv[]) {
   /**** OSC setup ****/
 
   // Cost
-//  MatrixXd Q_accel = 0.001 * MatrixXd::Identity(n_v, n_v);
-//  osc->SetAccelerationCostForAllJoints(Q_accel);
+  MatrixXd Q_accel = 1e-6 * MatrixXd::Identity(n_v, n_v);
+  osc->SetAccelerationCostForAllJoints(Q_accel);
   // Soft constraint on contacts
   double w_contact_relax = 20000;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
@@ -251,8 +257,8 @@ int DoMain(int argc, char* argv[]) {
   W_com(0, 0) = 2000;
   W_com(1, 1) = 200;
   W_com(2, 2) = 2000;
-  MatrixXd K_p_com = 100 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = 20 * MatrixXd::Identity(3, 3);
+  MatrixXd K_p_com = 64 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
   ComTrackingDataMBP com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
                                        &plant_with_springs,
                                        &plant_without_springs);

@@ -26,10 +26,6 @@ cc_library(
         "hybrid_dircon.h",
     ],
     deps = [
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//systems/framework",
-        "@drake//systems/trajectory_optimization",
+        "@drake//:drake_shared_library",
     ],
 )

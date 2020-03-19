@@ -238,7 +238,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
   drake::lcm::DrakeLcm lcm;
   drake::systems::DiagramBuilder<double> builder;
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
-      trajopt->ReconstructStateTrajectory();
+      trajopt->ReconstructStateTrajectory(result);
   auto state_source = builder.AddSystem<drake::systems::TrajectorySource>(
         pp_xtraj);
   auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree,
@@ -254,7 +254,7 @@ shared_ptr<HybridDircon<double>> runDircon(double stride_length, double duration
     drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(.2);
     simulator.Initialize();
-    simulator.StepTo(pp_xtraj.end_time());
+    simulator.AdvanceTo(pp_xtraj.end_time());
   }
 
   return trajopt;

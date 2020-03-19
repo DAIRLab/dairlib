@@ -12,6 +12,17 @@ Warning! This is very much "development-level" code and is provided as-is. APIs 
 git clone https://github.com/DAIRLab/dairlib.git
 ```
 
+2. Download and setup SNOPT
+
+dairlib, by default, assumes that users have access to SNOPT(https://web.stanford.edu/group/SOL/snopt.htm), though it is not required. **If you do not have SNOPT**, you will need to edit `.bazelrc` and change `build --define=WITH_SNOPT=ON` to `build --define=WITH_SNOPT=OFF`
+
+For users at Penn, download SNOPT (https://www.seas.upenn.edu/~posa/snopt/snopt7.6.tar.gz) and add the following line to your `~/.bashrc`
+```
+export SNOPT_PATH=<the directory you downloaded to>/snopt7.6.tar.gz
+```
+
+There is no need to extract the tar.
+
 ### Build Drake
 The library is meant to be built with Drake (see http://drake.mit.edu/ for more details). There are two ways to use Drake within dairlib:
 #### Option 1: use pegged revision
@@ -32,7 +43,39 @@ export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/my-workspace/drake
 
 ### Other dependencies
 These dependencies are necessary for some advanced visualization and process management. Many examples will work without a full installation of Director or libbot, but (for lab members), these are ultimately recommended. 
-1. Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2'. The prerequisites installation from Drake should add the proper repo for these. (This likely require's Drake's prerequisites to be installed from a source copy).
+
+#### LCM and libbot
+Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation from Drake should add the proper repo for these. (This likely require's Drake's prerequisites to be installed from a source copy).
+
+#### ROS
+To integrate with ROS (tested on ROS Melodic), the following steps are required.
+1. Install ROS http://wiki.ros.org/ROS/Installation
+2. Do not forget to setup your environment. For instance, add these lines to `~/.bashrc`
+```
+export ROS_MASTER_URI=http://localhost:11311
+source /opt/ros/melodic/setup.bash 
+```
+3. Install additional dependencies
+```
+sudo apt install python-rosinstall-generator python-catkin-tools
+```
+4. Build the ROS workspace using catkin. From `dairlib/`,
+```
+cd tools/workspace/ros
+./compile_ros_workspace.sh
+```
+5. Set the environment variable `DAIRLIB_WITH_ROS` to `ON`. For instance, add to `~/.bashrc`
+```
+export DAIRLIB_WITH_ROS=ON
+```
+
+#### Invariant-EKF
+State Estimation for Cassie is done using contact-aided invariant-EKF. `invariant-ekf` is an external repository forked from Ross Hartley's repository of the same name. By default, a pegged version of this forked repository is used i.e. the `bazel` branch of DAIR lab's fork of `invariant-ekf` is automatically downloaded and used. However, to make changes to the files, the [DAIR Lab's fork of invariant-ekf](https://github.com/DAIRLab/invariant-ekf/tree/bazel "DAIR Lab's fork of invariant-ekf") can be cloned as a local repository.
+
+To use local version of `invariant-ekf`, set the environment variable `DAIRLIB_LOCAL_INEKF_PATH`, e.g.
+```
+export DAIRLIB_LOCAL_INEKF_PATH=/home/user/my-workspace/invariant-ekf
+```
 
 ### Notes for macOS
 

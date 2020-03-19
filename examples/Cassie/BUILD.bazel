@@ -14,7 +14,6 @@ load(
     "drake_py_library",
     "drake_py_unittest",
 )
-
 load(
     "@drake//tools/skylark:pybind.bzl",
     "drake_pybind_library",
@@ -24,27 +23,17 @@ load(
 )
 
 cc_library(
-  name = "cassie_utils",
-  srcs = ["cassie_utils.cc"],
-  hdrs = ["cassie_utils.h"],
-  deps = [
+    name = "cassie_utils",
+    srcs = ["cassie_utils.cc"],
+    hdrs = ["cassie_utils.h"],
+    deps = [
         ":cassie_urdf",
         "//common",
         "//multibody:utils",
-        "//systems/primitives",
         "//systems:robot_lcm_systems",
+        "//systems/primitives",
         "//systems/sensors:sim_cassie_sensor_aggregator",
-        "@drake//attic/manipulation/util:sim_diagram_builder",
-        "@drake//attic/multibody/rigid_body_plant",
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//attic/multibody:rigid_body_tree_construction",
-        "@drake//attic/multibody/parsers",
-        "@drake//attic/systems/sensors:sensors",
-        "@drake//manipulation/util",
-        "@drake//multibody/parsing:parser",
-        "@drake//solvers:constraint",
-        "@drake//solvers:mathematical_program",
-        "@drake//lcm",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -58,12 +47,25 @@ cc_library(
   srcs = ["cassie_rbt_state_estimator.cc",],
   hdrs = ["cassie_rbt_state_estimator.h",],
   deps = [
-    "@drake//systems/framework",
+    "@drake//:drake_shared_library",
+    "@inekf//src:InEKF",
     "//systems/framework:vector",
     "//examples/Cassie/datatypes:cassie_out_t",
     "//examples/Cassie/datatypes:cassie_names",
     "//attic/multibody:utils",
-  ]
+    ":cassie_utils",
+  ],
+)
+
+cc_library(
+    name = "simulator_drift",
+    srcs = ["simulator_drift.cc"],
+    hdrs = ["simulator_drift.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
 )
 
 cc_binary(
@@ -72,6 +74,30 @@ cc_binary(
     deps = [
         "//examples/Cassie/datatypes:cassie_out_t",
         "//examples/Cassie/datatypes:cassie_user_in_t",
+    ],
+)
+
+cc_library(
+    name = "input_supervisor",
+    srcs = ["input_supervisor.cc"],
+    hdrs = ["input_supervisor.h"],
+    deps = [
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_test(
+    name = "input_supervisor_test",
+    size = "small",
+    srcs = ["test/input_supervisor_test.cc"],
+    deps = [
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie:input_supervisor",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
     ],
 )
 
@@ -84,11 +110,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers",
         "//systems/controllers:pd_config_lcm",
-        "@drake//lcm",
-        "@drake//manipulation/util",
-        "@drake//systems/analysis:simulator",
-        "@drake//systems/framework:diagram_builder",
-        "@drake//systems/lcm:lcm_pubsub_system",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -96,42 +118,27 @@ cc_binary(
     name = "visualizer",
     srcs = ["visualizer.cc"],
     deps = [
-            "//systems:robot_lcm_systems",
-            "//systems/primitives",
-            ":cassie_urdf",
-            "@drake//systems/framework:diagram_builder",
-            "@drake//systems/lcm:lcm_pubsub_system",
-            "@drake//systems/analysis:simulator",
-            "@drake//lcm",
-            "@drake//manipulation/util",
-            "@drake//geometry:geometry_visualization",
-            "@drake//systems/rendering:multibody_position_to_geometry_pose",
-            ":cassie_utils",
-            "@gflags",
-            ]
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )
-
 
 cc_binary(
     name = "run_simple_sim",
     srcs = ["run_simple_sim.cc"],
     deps = [
-        "//systems/sensors:sim_cassie_sensor_aggregator",
         ":cassie_urdf",
         ":cassie_utils",
         "//attic/multibody:multibody_solvers",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
-        "@drake//attic/manipulation/util:sim_diagram_builder",
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//attic/multibody/rigid_body_plant",
-        "@drake//attic/systems/sensors:sensors",
-        "@drake//common",
-        "@drake//lcm",
-        "@drake//manipulation/util",
-        "@drake//solvers",
-        "@drake//systems/analysis:simulator",
-        "@drake//systems/framework",
+        "//systems/sensors:sim_cassie_sensor_aggregator",
+        "@drake//:drake_shared_library",
         "@gflags",
     ],
 )
@@ -140,17 +147,10 @@ cc_binary(
     name = "standalone_multibody_sim",
     srcs = ["standalone_multibody_sim.cc"],
     deps = [
-        "@drake//systems/analysis:simulator",
-        "@drake//manipulation/util",
-        "@drake//systems/framework",
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//lcm",
-        "@drake//geometry:geometry_visualization",
-        "@drake//systems/primitives",
-        "@gflags",
         ":cassie_urdf",
         ":cassie_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 
@@ -158,19 +158,28 @@ cc_binary(
     name = "multibody_sim",
     srcs = ["multibody_sim.cc"],
     deps = [
-        "@drake//systems/analysis:simulator",
-        "@drake//manipulation/util",
-        "@drake//systems/framework",
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//lcm",
-        "@drake//geometry:geometry_visualization",
-        "@drake//systems/primitives",
-        "@gflags",
         ":cassie_urdf",
         ":cassie_utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_constrained_lqr_controller_sim",
+    srcs = ["run_constrained_lqr_controller_sim.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
+        "//attic/multibody:utility_systems",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:constrained_lqr_controller",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 
@@ -190,53 +199,52 @@ cc_binary(
         ":cassie_utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives:vector_aggregator",
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//lcm",
-        "@drake//systems/analysis:simulator",
-        "@drake//systems/framework:diagram_builder",
-        "@drake//systems/lcm",
+        "@drake//:drake_shared_library",
     ],
 )
 
 cc_binary(
-  name = "dispatcher_robot_out",
-  srcs = ["dispatcher_robot_out.cc"],
-  deps = ["//examples/Cassie/networking:udp_driven_loop",
-          "//examples/Cassie/networking:cassie_udp_pub_sub",
-          "@drake//lcm",
-          "@drake//systems/lcm:lcm_driven_loop",
-          "//lcmtypes:lcmt_robot",
-          "//systems:robot_lcm_systems",
-          ":cassie_utils",
-          ":cassie_rbt_state_estimator",
-          ":cassie_urdf",
-          "@gflags",
-         ],
+    name = "dispatcher_robot_out",
+    srcs = ["dispatcher_robot_out.cc"],
+    deps = [
+        ":cassie_rbt_state_estimator",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//examples/Cassie/networking:cassie_udp_pub_sub",
+        "//examples/Cassie/networking:udp_driven_loop",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )
 
 cc_binary(
     name = "dispatcher_robot_in",
     srcs = ["dispatcher_robot_in.cc"],
-    deps = ["//examples/Cassie/networking:cassie_udp_pub_sub",
-          "@drake//lcm",
-          "@drake//systems/lcm:lcm_driven_loop",
-          "//lcmtypes:lcmt_robot",
-          "//systems:robot_lcm_systems",
-          ":cassie_utils",
-          ":cassie_rbt_state_estimator",
-          ":cassie_urdf",
-          "@gflags",
-         ],
+    deps = [
+        ":cassie_rbt_state_estimator",
+        ":cassie_urdf",
+        ":cassie_utils",
+        ":input_supervisor",
+        "//examples/Cassie/networking:cassie_udp_pub_sub",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )
 
 cc_binary(
     name = "log_timing_test",
     srcs = ["test/log_timing_test.cc"],
     deps = [
-        "@drake//lcm",
-        "@gflags",
-        "@eigen",
         "//lcmtypes:lcmt_robot",
+        "@drake//lcm",
+        "@eigen",
+        "@gflags",
     ],
 )
 
@@ -244,9 +252,111 @@ cc_binary(
     name = "dispatcher_log_timing_test",
     srcs = ["test/dispatcher_log_timing_test.cc"],
     deps = [
-        "@drake//lcm",
-        "@gflags",
-        "@eigen",
         "//lcmtypes:lcmt_robot",
+        "@drake//lcm",
+        "@eigen",
+        "@gflags",
+    ],
+)
+
+cc_test(
+    name = "cassie_rbt_state_estimator_test",
+    size = "small",
+    srcs = ["test/cassie_rbt_state_estimator_test.cc"],
+    deps = [
+        ":cassie_rbt_state_estimator",
+        "//attic/multibody:multibody_solvers",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
+    ],
+)
+
+cc_binary(
+    name = "run_osc_walking_controller",
+    srcs = ["run_osc_walking_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        ":simulator_drift",
+        "//attic/multibody:utils",
+        "//examples/Cassie/osc_walk",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_osc_standing_controller",
+    srcs = ["run_osc_standing_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//attic/multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "cassie_state_visualizer",
+    srcs = ["cassie_state_visualizer.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "benchmark_dynamics",
+    srcs = ["test/benchmark_dynamics.cc"],
+    deps = [
+        ":cassie_urdf",
+        "//common",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//systems/sensors:sim_cassie_sensor_aggregator",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_dircon_squatting",
+    srcs = ["run_dircon_squatting.cc"],
+    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
+    deps = [
+        ":cassie_utils",
+        "//attic/multibody:multibody_solvers",
+        "//common",
+        "//solvers:optimization_utils",
+        "//systems/goldilocks_models",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_controller_switch",
+    srcs = ["run_controller_switch.cc"],
+    deps = [
+        "//systems/framework:lcm_driven_loop",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

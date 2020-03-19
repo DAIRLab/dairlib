@@ -58,7 +58,7 @@ int do_main(int argc, char* argv[]) {
   simulator.Initialize();
 
   std::cout << "Initialized! Starting." << std::endl;
-  simulator.StepTo(std::numeric_limits<double>::infinity());
+  simulator.AdvanceTo(std::numeric_limits<double>::infinity());
   std::cout << "Done. Waiting for threads to die." << std::endl;
   return 0;
 }

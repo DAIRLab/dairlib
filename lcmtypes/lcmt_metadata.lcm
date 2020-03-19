@@ -1,0 +1,17 @@
+package dairlib;
+
+/*  Metadata struct for saving/loading trajectories
+    All contents of lcmt_metadata besides name and description are 
+    automatically filled when the LcmTrajectory object is created
+*/
+
+struct lcmt_metadata 
+{
+  /* git_dirty_flag is set to true if there are any uncommitted changes
+  */
+  boolean git_dirty_flag;
+  string datetime;
+  string name;
+  string description;
+  string git_commit_hash;
+}

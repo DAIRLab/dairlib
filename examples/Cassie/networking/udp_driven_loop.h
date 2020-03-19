@@ -12,6 +12,8 @@ namespace dairlib {
 namespace systems {
 
 /**
+ * AS OF 5-17-2019, THIS CLASS IS DEPRECATED
+ *
  * This class implements a loop driven by a Cassie UDP message. The context time
  * is explicitly slaved to the time in the received Lcm message. This class is
  * intended to provide a generalized way to implement a message handling loop:
@@ -30,7 +32,7 @@ namespace systems {
  * <pre>
  * while(context.time < stop_time) {
  *   msg = wait_for_message("channel");
- *   simulator.StepTo(msg.time);
+ *   simulator.AdvanceTo(msg.time);
  *   if (publish) {
  *     system.Publish(simulator.context);
  *   }
@@ -45,7 +47,7 @@ namespace systems {
  * real time. One would observe 200 such actions occur in rapid succession
  * followed by nearly one second of silence. This is because
  * `msg = wait_for_message("channel")` takes about one second in real time,
- * and `simulator.StepTo(msg.time)`, which forwards the simulator's clock by
+ * and `simulator.AdvanceTo(msg.time)`, which forwards the simulator's clock by
  * one second and performs 200 actions takes about 0 seconds in real time.
  * The root cause is that the 200Hz rate of the handler system is tied to the
  * internal virtual clock rather than real time. This problem is less

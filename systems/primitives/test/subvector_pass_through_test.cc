@@ -48,8 +48,8 @@ class SubvectorPassThroughTest : public ::testing::Test {
 TEST_F(SubvectorPassThroughTest, VectorThroughPassThroughSystem) {
   /// Checks that the number of input ports in the system and in the context
   // are consistent.
-  ASSERT_EQ(1, context_->get_num_input_ports());
-  ASSERT_EQ(1, pass_through_->get_num_input_ports());
+  ASSERT_EQ(1, context_->num_input_ports());
+  ASSERT_EQ(1, pass_through_->num_input_ports());
 
   // Hook input of the expected size.
   context_->FixInputPort(
@@ -60,8 +60,8 @@ TEST_F(SubvectorPassThroughTest, VectorThroughPassThroughSystem) {
 
   // Checks that the number of output ports in the system and in the
   // output are consistent.
-  ASSERT_EQ(1, output_->get_num_ports());
-  ASSERT_EQ(1, pass_through_->get_num_output_ports());
+  ASSERT_EQ(1, output_->num_ports());
+  ASSERT_EQ(1, pass_through_->num_output_ports());
 
   Eigen::VectorXd output;
   const BasicVector<double>* output_vector = output_->get_vector_data(0);
@@ -76,11 +76,6 @@ TEST_F(SubvectorPassThroughTest, PassThroughIsStateless) {
   EXPECT_EQ(0, context_->get_continuous_state().size());
   EXPECT_EQ(0, context_->get_abstract_state().size());
   EXPECT_EQ(0, context_->get_discrete_state().num_groups());
-}
-
-// Tests that SubvectorPassThroughTest is direct feedthrough.
-TEST_F(SubvectorPassThroughTest, DirectFeedthrough) {
-  EXPECT_TRUE(pass_through_->HasAnyDirectFeedthrough());
 }
 
 TEST_F(SubvectorPassThroughTest, ToAutoDiff) {

@@ -94,7 +94,7 @@ int do_main(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
   auto start = std::chrono::high_resolution_clock::now();
-  simulator.StepTo(5);
+  simulator.AdvanceTo(5);
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration = 
       std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);

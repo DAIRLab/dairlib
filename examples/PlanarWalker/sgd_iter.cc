@@ -281,8 +281,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration,
   systems::trajectory_optimization::linearizeConstraints(trajopt.get(),
     x_sol, y, A, lb, ub);
 
-  double costval = systems::trajectory_optimization::secondOrderCost(
-    trajopt.get(), x_sol, H, w);
+  systems::trajectory_optimization::secondOrderCost(trajopt.get(), x_sol, H, w);
 
   VectorXd z = x_sol;
 
@@ -294,7 +293,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration,
     VectorXd features(m_constraint.n_features());
     for (int j = 0; j < m_constraint.n_features(); j++) {
       auto m_ij = trajopt->SubstitutePlaceholderVariables(m_constraint.getFeature(j), i);
-      features(j) = drake::ExtractDoubleOrThrow(trajopt->SubstituteSolution(m_ij));
+      features(j) = drake::ExtractDoubleOrThrow(result.GetSolution(m_ij));
     }
 
     VectorXd ind = systems::trajectory_optimization::getConstraintRows(
@@ -320,7 +319,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration,
   drake::lcm::DrakeLcm lcm;
   drake::systems::DiagramBuilder<double> builder;
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
-      trajopt->ReconstructStateTrajectory();
+      trajopt->ReconstructStateTrajectory(result);
   auto state_source = builder.AddSystem<drake::systems::TrajectorySource>(pp_xtraj);
   auto publisher = builder.AddSystem<drake::systems::DrakeVisualizer>(tree, &lcm);
   publisher->set_publish_period(1.0 / 60.0);
@@ -334,7 +333,7 @@ shared_ptr<HybridDircon<double>> sgdIter(double stride_length, double duration,
     drake::systems::Simulator<double> simulator(*diagram);
     simulator.set_target_realtime_rate(1);
     simulator.Initialize();
-    simulator.StepTo(pp_xtraj.end_time());
+    simulator.AdvanceTo(pp_xtraj.end_time());
   // }
 
   return trajopt;

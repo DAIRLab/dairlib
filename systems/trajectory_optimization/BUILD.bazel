@@ -6,60 +6,54 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "dircon",
     srcs = [
-#        "dircon.cc",
+        #        "dircon.cc",
         "dircon_opt_constraints.cc",
         "dircon_options.cc",
-        "dircon_util.cc",
         "hybrid_dircon.cc",
     ],
     hdrs = [
-#        "dircon.h",
+        #        "dircon.h",
         "dircon_opt_constraints.h",
         "dircon_options.h",
-        "dircon_util.h",
         "hybrid_dircon.h",
     ],
     deps = [
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//systems/framework",
-        "@drake//systems/trajectory_optimization",
         ":dircon_kinematic_data",
+        "//solvers:optimization_utils",
+        "//systems/goldilocks_models",
+        "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
     name = "dircon_kinematic_data",
     srcs = [
+        "dircon_distance_data.cc",
         "dircon_kinematic_data.cc",
-        "dircon_position_data.cc",
         "dircon_kinematic_data_set.cc",
+        "dircon_position_data.cc",
     ],
     hdrs = [
+        "dircon_distance_data.h",
         "dircon_kinematic_data.h",
-        "dircon_position_data.h",
         "dircon_kinematic_data_set.h",
+        "dircon_position_data.h",
     ],
     deps = [
-        "@drake//multibody/plant",
-        "@drake//common",
-        "@drake//solvers",
         "//multibody:utils",
+        "@drake//:drake_shared_library",
     ],
 )
 
-cc_test(
-    name = "cost_constraint_approximation_test",
-    size = "small",
-    srcs = ["test/cost_constraint_approximation_test.cc"],
+cc_binary(
+    name = "passive_constrained_pendulum_dircon",
+    srcs = ["test/passive_constrained_pendulum_dircon.cc"],
+    data = ["@drake//examples/acrobot:models"],
     deps = [
-        "@drake//common",
-        "@drake//solvers",
-        "@drake//solvers:mathematical_program",
-        "@drake//common/test_utilities:eigen_matrix_compare",
+        "//common",
+        "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
-        "@gtest//:main",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
-
-

@@ -70,6 +70,7 @@ DEFINE_string(traj_name, "", "File to load saved trajectories from");
 
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
 DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
+//DEFINE_double(x_offset, 0.18, "Offset to add to the CoM trajectory");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -166,7 +167,7 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm;
   auto contact_results_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CONTACT_RESULTS", &lcm));
+          "CASSIE_CONTACT_RESULTS", &lcm));
   //  auto state_sub = builder.AddSystem(
   //      LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, lcm));
   //  auto state_receiver =
@@ -202,7 +203,7 @@ int DoMain(int argc, char* argv[]) {
       plant_with_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
       FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
-      plant_with_springs, flight_time, land_time, FLAGS_delay_time, false);
+      plant_with_springs, flight_time, land_time, FLAGS_delay_time, true);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, 1.0 / FLAGS_publish_rate));

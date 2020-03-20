@@ -92,7 +92,7 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     // Return the x diff between the desired and current COM pos
 //    com_x_offset(0) = plant_.CalcCenterOfMassPosition(*plant_context)(0) -
 //                      crouch_traj_.value(crouch_traj_.end_time())(0);
-    com_x_offset(0) = 0.1;
+    com_x_offset(0) = 0.05;
   }
   return EventStatus::Succeeded();
 }
@@ -128,7 +128,7 @@ drake::trajectories::PiecewisePolynomial<double> COMTrajGenerator::generateBalan
   Vector3d targetCoM =
       (l_toe_front + l_toe_rear + r_toe_front + r_toe_rear) / 4;
   targetCoM(2) = height_;
-  targetCoM(0) += 0.055;
+  targetCoM(0) += 0.05;
 //      support_center_offset_;
   MatrixXd centerOfMassPoints(3, 2);
   centerOfMassPoints << currCoM, targetCoM;

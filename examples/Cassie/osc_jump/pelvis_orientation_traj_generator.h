@@ -12,21 +12,16 @@ namespace dairlib::examples::Cassie::osc_jump {
 /// General purpose leaf system that returns a trajectory segment at a
 /// particular time. Need the plant in order to get in the current simulator
 /// state.
-class PPolyPassthrough
-    : public drake::systems::LeafSystem<double> {
+class PPolyPassthrough : public drake::systems::LeafSystem<double> {
  public:
-  PPolyPassthrough(const drake::multibody::MultibodyPlant<double>& plant,
-                                 const drake::trajectories::PiecewisePolynomial<
-                                     double>& orientation_traj,
-                                 std::string traj_name,
-                                 double time_offset = 0.0);
+  PPolyPassthrough(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::trajectories::PiecewisePolynomial<double>& orientation_traj,
+      std::string traj_name, double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
   }
-//  const drake::systems::InputPort<double>& get_fsm_input_port() const {
-//    return this->get_input_port(fsm_port_);
-//  }
 
  private:
   void CalcTraj(const drake::systems::Context<double>& context,
@@ -36,7 +31,6 @@ class PPolyPassthrough
   drake::trajectories::PiecewisePolynomial<double> traj_;
 
   int state_port_;
-//  int fsm_port_;
 };
 
 }  // namespace dairlib::examples::Cassie::osc_jump

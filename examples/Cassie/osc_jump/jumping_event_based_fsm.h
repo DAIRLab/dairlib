@@ -40,8 +40,6 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   double delay_time_;
   bool contact_driven_;
 
-  //  int contact_time_idx_;
-  //  int contact_flag_idx_;
   int fsm_idx_;
   int prev_time_idx_;
 

@@ -89,9 +89,6 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
 
     auto plant_context =
         createContext(plant_, robot_output->GetState(), zero_input);
-    // Return the x diff between the desired and current COM pos
-//    com_x_offset(0) = plant_.CalcCenterOfMassPosition(*plant_context)(0) -
-//                      crouch_traj_.value(crouch_traj_.end_time())(0);
     com_x_offset(0) = 0.05;
   }
   return EventStatus::Succeeded();
@@ -129,14 +126,12 @@ drake::trajectories::PiecewisePolynomial<double> COMTrajGenerator::generateBalan
       (l_toe_front + l_toe_rear + r_toe_front + r_toe_rear) / 4;
   targetCoM(2) = height_;
   targetCoM(0) += 0.05;
-//      support_center_offset_;
   MatrixXd centerOfMassPoints(3, 2);
   centerOfMassPoints << currCoM, targetCoM;
   VectorXd breaks_vector(2);
   breaks_vector << 0, 20.0*(targetCoM - currCoM).norm();
 
-
-//  return PiecewisePolynomial<double>(targetCoM);
+  // Slowly move toward the desired initial configuration
   return PiecewisePolynomial<double>::FirstOrderHold(breaks_vector,
       centerOfMassPoints);
 }
@@ -146,23 +141,13 @@ drake::trajectories::PiecewisePolynomial<double> COMTrajGenerator::generateCrouc
         double>& context,
     const Eigen::VectorXd& x,
     double time) const {
-//  const OutputVector<double>* robot_output =
-//      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-//  double t = robot_output->get_timestamp();
+
   // This assumes that the crouch is starting at the exact position as the
-  // start of the target trajectory
+  // start of the target trajectory which should be handled by balance
+  // trajectory
   const PiecewisePolynomial<double>& com_traj =
       crouch_traj_.slice(crouch_traj_.get_segment_index(time), 1);
-//  MatrixXd offset_points(3, 2);
-//  Vector3d xy_offset = support_center_offset_;
-//  xy_offset[2] = 0;
-//  offset_points << xy_offset, xy_offset;
-//  std::vector<double> breaks = com_traj.get_segment_times();
-//  VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
-//
-//  PiecewisePolynomial<double> com_offset =
-//      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_points);
-//  return com_traj + com_offset;
+
   return com_traj;
 }
 
@@ -171,9 +156,7 @@ drake::trajectories::PiecewisePolynomial<double> COMTrajGenerator::generateLandi
         double>& context,
     const Eigen::VectorXd& x,
     double time) const {
-//  const OutputVector<double>* robot_output =
-//      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-//  double t = robot_output->get_timestamp();
+
   const VectorXd com_x_offset =
       context.get_discrete_state().get_vector(com_x_offset_idx_).get_value();
 
@@ -203,7 +186,7 @@ void COMTrajGenerator::CalcTraj(
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
 
-  PiecewisePolynomial<double>* casted_traj =
+  auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   const drake::VectorX<double>& x = robot_output->GetState();

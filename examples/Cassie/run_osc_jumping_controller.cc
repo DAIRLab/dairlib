@@ -160,18 +160,13 @@ int DoMain(int argc, char* argv[]) {
 
   // Get body indices for cassie with springs
   auto pelvis_idx = plant_with_springs.GetBodyByName("pelvis").index();
-  //  auto l_toe_idx = plant_with_springs.GetBodyByName("toe_left").index();
-  //  auto r_toe_idx = plant_with_springs.GetBodyByName("toe_right").index();
 
-  //  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   drake::lcm::DrakeLcm lcm;
   auto contact_results_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CASSIE_CONTACT_RESULTS", &lcm));
   //  auto state_sub = builder.AddSystem(
   //      LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, lcm));
-  //  auto state_receiver =
-  //      builder.AddSystem<systems::RobotOutputReceiver>(plant_without_springs);
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_with_springs);
   // Create Operational space control
@@ -189,7 +184,7 @@ int DoMain(int argc, char* argv[]) {
 
   std::cout << "Target balance height: " << lcm_com_traj.datapoints.col(0)(2)
             << std::endl;
-  std::cout << "Support center offset: " << support_center_offset << std::endl;
+
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
       com_traj, com_traj.value(0)(2), FLAGS_delay_time);
@@ -203,7 +198,8 @@ int DoMain(int argc, char* argv[]) {
       plant_with_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
       FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
-      plant_with_springs, flight_time, land_time, FLAGS_delay_time, true);
+      plant_with_springs, flight_time, land_time, FLAGS_delay_time, true,
+      BALANCE);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, 1.0 / FLAGS_publish_rate));
@@ -310,11 +306,7 @@ int DoMain(int argc, char* argv[]) {
   for (FSM_STATE mode : stance_modes) {
     pelvis_rot_tracking_data.AddStateAndFrameToTrack(mode, "pelvis");
   }
-  //  pelvis_rot_tracking_data.AddFrameToTrack("pelvis");
-  //  VectorXd pelvis_desired_quat(4);
-  //  pelvis_desired_quat << 1, 0, 0, 0;
 
-  //  osc->AddConstTrackingData(&pelvis_rot_tracking_data, pelvis_desired_quat);
   osc->AddTrackingData(&pelvis_rot_tracking_data);
 
   osc->AddTrackingData(&left_foot_tracking_data);

@@ -33,9 +33,8 @@ int DoMain() {
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
-  MultibodyPlant<double> plant(1e-5);
-  //  addCassieMultibody(&plant, &scene_graph, true,
-  //                     "examples/Cassie/urdf/cassie_fixed_springs.urdf");
+  MultibodyPlant<double> plant(1e-5); //non-zero timestep to avoid continuous
+  // model warnings
   Parser parser(&plant, &scene_graph);
   parser.AddModelFromFile(
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
@@ -65,7 +64,6 @@ int DoMain() {
 
   std::cout << traj_mode0.datapoints.rows() << std::endl;
   DRAKE_ASSERT(nx == traj_mode0.datapoints.rows());
-  //  int knot_points = traj_mode0.datapoints.cols();
   int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
                  traj_mode2.datapoints.cols();
 

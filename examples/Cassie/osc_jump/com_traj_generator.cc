@@ -33,14 +33,14 @@ COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
                                    int pelvis_idx, Vector3d front_contact_disp,
                                    Vector3d rear_contact_disp,
                                    PiecewisePolynomial<double> crouch_traj,
-                                   Vector3d support_center_offset,
+                                   double height,
                                    double time_offset)
     : plant_(plant),
       hip_idx_(pelvis_idx),
       front_contact_disp_(front_contact_disp),
       rear_contact_disp_(rear_contact_disp),
       crouch_traj_(crouch_traj),
-      support_center_offset_(support_center_offset) {
+      height_(height) {
   this->set_name("com_traj");
   // Input/Output Setup
   state_port_ =
@@ -90,14 +90,18 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     auto plant_context =
         createContext(plant_, robot_output->GetState(), zero_input);
     // Return the x diff between the desired and current COM pos
-    com_x_offset(0) = plant_.CalcCenterOfMassPosition(*plant_context)(0) -
-                      crouch_traj_.value(crouch_traj_.end_time())(0);
+//    com_x_offset(0) = plant_.CalcCenterOfMassPosition(*plant_context)(0) -
+//                      crouch_traj_.value(crouch_traj_.end_time())(0);
+    com_x_offset(0) = 0.1;
   }
   return EventStatus::Succeeded();
 }
 
-PiecewisePolynomial<double> COMTrajGenerator::generateBalanceTraj(
-    const drake::systems::Context<double>& context, const VectorXd& x) const {
+drake::trajectories::PiecewisePolynomial<double> COMTrajGenerator::generateBalanceTraj(
+    const drake::systems::Context<
+        double>& context,
+    const Eigen::VectorXd& x,
+    double time) const {
   VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
   auto plant_context = createContext(plant_, x, zero_input);
   const drake::multibody::BodyFrame<double>& world = plant_.world_frame();
@@ -119,29 +123,57 @@ PiecewisePolynomial<double> COMTrajGenerator::generateBalanceTraj(
                              world, &r_toe_front);
   plant_.CalcPointsPositions(*plant_context, r_toe_frame, rear_contact_disp_,
                              world, &r_toe_rear);
-  Vector3d targetCoM =
-      (l_toe_front + l_toe_rear + r_toe_front + r_toe_rear) / 4 +
-      support_center_offset_;
+  Vector3d currCoM = plant_.CalcCenterOfMassPosition(*plant_context);
 
-  return PiecewisePolynomial<double>(targetCoM);
+  Vector3d targetCoM =
+      (l_toe_front + l_toe_rear + r_toe_front + r_toe_rear) / 4;
+  targetCoM(2) = height_;
+  targetCoM(0) += 0.055;
+//      support_center_offset_;
+  MatrixXd centerOfMassPoints(3, 2);
+  centerOfMassPoints << currCoM, targetCoM;
+  VectorXd breaks_vector(2);
+  breaks_vector << 0, 20.0*(targetCoM - currCoM).norm();
+
+
+//  return PiecewisePolynomial<double>(targetCoM);
+  return PiecewisePolynomial<double>::FirstOrderHold(breaks_vector,
+      centerOfMassPoints);
 }
 
-PiecewisePolynomial<double> COMTrajGenerator::generateCrouchTraj(
-    const drake::systems::Context<double>& context, const VectorXd& x) const {
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  double t = robot_output->get_timestamp();
-
+drake::trajectories::PiecewisePolynomial<double> COMTrajGenerator::generateCrouchTraj(
+    const drake::systems::Context<
+        double>& context,
+    const Eigen::VectorXd& x,
+    double time) const {
+//  const OutputVector<double>* robot_output =
+//      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+//  double t = robot_output->get_timestamp();
   // This assumes that the crouch is starting at the exact position as the
   // start of the target trajectory
-  return crouch_traj_.slice(crouch_traj_.get_segment_index(t), 1);
+  const PiecewisePolynomial<double>& com_traj =
+      crouch_traj_.slice(crouch_traj_.get_segment_index(time), 1);
+//  MatrixXd offset_points(3, 2);
+//  Vector3d xy_offset = support_center_offset_;
+//  xy_offset[2] = 0;
+//  offset_points << xy_offset, xy_offset;
+//  std::vector<double> breaks = com_traj.get_segment_times();
+//  VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
+//
+//  PiecewisePolynomial<double> com_offset =
+//      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_points);
+//  return com_traj + com_offset;
+  return com_traj;
 }
 
-PiecewisePolynomial<double> COMTrajGenerator::generateLandingTraj(
-    const drake::systems::Context<double>& context, const VectorXd& x) const {
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  double t = robot_output->get_timestamp();
+drake::trajectories::PiecewisePolynomial<double> COMTrajGenerator::generateLandingTraj(
+    const drake::systems::Context<
+        double>& context,
+    const Eigen::VectorXd& x,
+    double time) const {
+//  const OutputVector<double>* robot_output =
+//      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+//  double t = robot_output->get_timestamp();
   const VectorXd com_x_offset =
       context.get_discrete_state().get_vector(com_x_offset_idx_).get_value();
 
@@ -149,7 +181,7 @@ PiecewisePolynomial<double> COMTrajGenerator::generateLandingTraj(
   Vector3d offset;
   offset << com_x_offset(0), 0, 0;
 
-  auto traj_segment = crouch_traj_.slice(crouch_traj_.get_segment_index(t), 1);
+  auto traj_segment = crouch_traj_.slice(crouch_traj_.get_segment_index(time), 1);
   std::vector<double> breaks = traj_segment.get_segment_times();
   MatrixXd offset_matrix = offset.replicate(1, breaks.size());
   VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
@@ -164,6 +196,7 @@ void COMTrajGenerator::CalcTraj(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  double time = robot_output->get_timestamp();
 
   // Read in finite state machine
   const BasicVector<double>* fsm_output =
@@ -177,13 +210,13 @@ void COMTrajGenerator::CalcTraj(
 
   switch (static_cast<int>(fsm_state(0))) {
     case (BALANCE):  //  BALANCE
-      *casted_traj = generateBalanceTraj(context, x);
+      *casted_traj = generateBalanceTraj(context, x, time);
       break;
     case (CROUCH):  //  CROUCH
-      *casted_traj = generateCrouchTraj(context, x);
+      *casted_traj = generateCrouchTraj(context, x, time);
       break;
     case (LAND):  //  LAND
-      *casted_traj = generateLandingTraj(context, x);
+      *casted_traj = generateLandingTraj(context, x, time);
       break;
   }
 }

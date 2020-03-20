@@ -69,6 +69,7 @@ DEFINE_bool(is_two_phase, false,
 DEFINE_string(traj_name, "", "File to load saved trajectories from");
 
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
+DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -129,7 +130,7 @@ int DoMain(int argc, char* argv[]) {
   const LcmTrajectory::Trajectory& lcm_pelvis_rot_traj =
       loaded_traj.getTrajectory("pelvis_rot_trajectory");
 
-  const PiecewisePolynomial<double>& com_traj =
+  PiecewisePolynomial<double> com_traj =
       PiecewisePolynomial<double>::Cubic(lcm_com_traj.time_vector,
                                          lcm_com_traj.datapoints.topRows(3),
                                          lcm_com_traj.datapoints.bottomRows(3));
@@ -173,19 +174,24 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_with_springs);
   // Create Operational space control
-  Vector3d support_center_offset;
-  double x_offset = com_traj.value(0)(0) - (r_foot_trajectory.value(0)(0));
-  //                    +
+//  double x_offset = com_traj.value(0)(0) -
+  //                    (r_foot_trajectory.value(0)(0) +
   //                     (front_contact_disp[0] + rear_contact_disp[0]) / 2);
-  //  double x_offset = 0.0;
-  support_center_offset << x_offset, 0.0, com_traj.value(0)(2);
+  Vector3d support_center_offset;
+  support_center_offset << FLAGS_x_offset, 0.0, 0.0;
+  std::vector<double> breaks = com_traj.get_segment_times();
+  VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
+  MatrixXd offset_points = support_center_offset.replicate(1, breaks.size());
+  PiecewisePolynomial<double> offset_traj =
+      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_points);
+  com_traj = com_traj + offset_traj;
 
   std::cout << "Target balance height: " << lcm_com_traj.datapoints.col(0)(2)
             << std::endl;
   std::cout << "Support center offset: " << support_center_offset << std::endl;
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
-      com_traj, support_center_offset, FLAGS_delay_time);
+      com_traj, com_traj.value(0)(2), FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_with_springs, "hip_left", true, l_foot_trajectory,
       FLAGS_delay_time);
@@ -270,10 +276,10 @@ int DoMain(int argc, char* argv[]) {
   // Feet tracking1
   MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
   W_swing_foot(0, 0) = 1000;
-  W_swing_foot(1, 1) = 100;
+  W_swing_foot(1, 1) = 1000;
   W_swing_foot(2, 2) = 1000;
-  MatrixXd K_p_sw_ft = 10 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_sw_ft = 4 * MatrixXd::Identity(3, 3);
+  MatrixXd K_p_sw_ft = 36 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_sw_ft = 12 * MatrixXd::Identity(3, 3);
 
   TransTaskSpaceTrackingDataMBP left_foot_tracking_data(
       "l_foot_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &plant_with_springs,

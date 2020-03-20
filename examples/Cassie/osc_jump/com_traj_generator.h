@@ -11,12 +11,11 @@ namespace dairlib::examples::Cassie::osc_jump {
 
 class COMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  COMTrajGenerator(
-      const drake::multibody::MultibodyPlant<double>& plant, int pelvis_idx,
-      Eigen::Vector3d front_contact_disp, Eigen::Vector3d rear_contact_disp,
-      drake::trajectories::PiecewisePolynomial<double> crouch_traj,
-      Eigen::Vector3d support_center_offset = Eigen::Vector3d::Zero(),
-      double time_offset = 0.0);
+  COMTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
+                   int pelvis_idx, Eigen::Vector3d front_contact_disp,
+                   Eigen::Vector3d rear_contact_disp,
+                   drake::trajectories::PiecewisePolynomial<double> crouch_traj,
+                   double height = 0.8, double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -27,17 +26,17 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
 
  private:
   drake::trajectories::PiecewisePolynomial<double> generateBalanceTraj(
-      const drake::systems::Context<double>& context,
-      const Eigen::VectorXd& x) const;
+      const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
+      double d) const;
   drake::trajectories::PiecewisePolynomial<double> generateCrouchTraj(
-      const drake::systems::Context<double>& context,
-      const Eigen::VectorXd& x) const;
+      const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
+      double d) const;
   drake::trajectories::PiecewisePolynomial<double> generateFlightTraj(
       const drake::systems::Context<double>& context,
       const Eigen::VectorXd& x) const;
   drake::trajectories::PiecewisePolynomial<double> generateLandingTraj(
-      const drake::systems::Context<double>& context,
-      const Eigen::VectorXd& x) const;
+      const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
+      double d) const;
 
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -55,8 +54,8 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   Eigen::Vector3d front_contact_disp_;
   Eigen::Vector3d rear_contact_disp_;
   drake::trajectories::PiecewisePolynomial<double> crouch_traj_;
-  Eigen::Vector3d support_center_offset_;
-  //  double height_;
+  //  Eigen::Vector3d support_center_offset_;
+  double height_;
 
   int state_port_;
   int fsm_port_;

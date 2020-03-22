@@ -23,7 +23,6 @@ cc_binary(
         ":dynamics_expression",
         ":goldilocks_utils",
         ":kinematics_expression",
-        ":set_initial_guess",  #edited by jianshu
         "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
         "//systems/goldilocks_models",
         "//systems/trajectory_optimization:dircon",
@@ -122,16 +121,16 @@ cc_library(
 )
 
 #edited by jianshu
-cc_library(
-    name = "set_initial_guess",
-    srcs = [
-        "set_initial_guess.cc",
-    ],
-    hdrs = [
-        "set_initial_guess.h",
-    ],
-    deps = [
-        "//systems/goldilocks_models",
-        "@drake//:drake_shared_library",
-    ],
-)
+#cc_library(
+#    name = "set_initial_guess",
+#    srcs = [
+#        "set_initial_guess.cc",
+#    ],
+#    hdrs = [
+#        "set_initial_guess.h",
+#    ],
+#    deps = [
+#        "//systems/goldilocks_models",
+#        "@drake//:drake_shared_library",
+#    ],
+#)

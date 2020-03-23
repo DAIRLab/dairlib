@@ -15,7 +15,6 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/constant_vector_source.h"
-
 #include "drake/systems/primitives/signal_logger.h"
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -44,16 +43,10 @@ using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using drake::math::RotationMatrix;
-using Eigen::Matrix3d;
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 
 DEFINE_double(target_realtime_rate, 1.0,
-
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
 DEFINE_bool(time_stepping, true,
@@ -92,7 +85,6 @@ int do_main(int argc, char* argv[]) {
 
   plant.Finalize();
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
-
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -176,7 +168,6 @@ int do_main(int argc, char* argv[]) {
   return 0;
 }
 
-
 Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
   int n_q = plant.num_positions();
   std::map<std::string, int> positions_map =
@@ -241,7 +232,6 @@ Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
   ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
   const auto result = Solve(ik.prog());
   const auto q_sol = result.GetSolution(ik.q());
-
   VectorXd q_sol_normd(n_q);
   q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(n_q - 4);
   return q_sol_normd;

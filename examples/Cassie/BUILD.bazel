@@ -243,7 +243,6 @@ cc_binary(
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//lcm",
-        "@eigen",
         "@gflags",
     ],
 )
@@ -254,7 +253,6 @@ cc_binary(
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//lcm",
-        "@eigen",
         "@gflags",
     ],
 )

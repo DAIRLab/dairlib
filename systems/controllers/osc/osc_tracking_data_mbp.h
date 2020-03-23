@@ -60,7 +60,7 @@ class OscTrackingDataMBP {
   Eigen::VectorXd GetDdyCommandSol() { return ddy_command_sol_; }
 
   // Update() updates the caches. It does the following things in order:
-  //  - update track_at_current_step_
+  //  - update track_at_current_state_
   //  - update desired output
   //  - update feedback output (Calling virtual methods)
   //  - update command output (desired output with pd control)
@@ -91,7 +91,7 @@ class OscTrackingDataMBP {
   // Getters
   std::string GetName() { return name_; };
   int GetTrajDim() { return n_r_; };
-  bool GetTrackOrNot() { return track_at_current_step_; }
+  bool IsActive() { return track_at_current_state_; }
 
   void SaveDdyCommandSol(const Eigen::VectorXd& dv);
 
@@ -174,7 +174,7 @@ class OscTrackingDataMBP {
   Eigen::MatrixXd W_;
 
   // cache
-  bool track_at_current_step_;
+  bool track_at_current_state_;
   int state_idx_ = 0;
 };
 

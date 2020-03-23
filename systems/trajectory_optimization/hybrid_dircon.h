@@ -152,7 +152,7 @@ class HybridDircon
   /**
    * Check whether the scaling of decision variable @p var is set or not .
    * @param var the decision variable
-   * @return true if all corresponding scaling factors are not set yet.
+   * @return true if the scaling factor is not set yet.
    *
    * See section "Variable scaling" in the documentation of MathematicalProgram
    * for more information.

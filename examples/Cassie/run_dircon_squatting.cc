@@ -217,17 +217,6 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
       -1.762, 68.42, 0.652, 1.744;
   mp->SetInitialGuessForAllVariables(init_guess);
 
-  // Test scaling
-  // Assume that lambda is located in the end of decision variables
-//  auto lambda_var = mp->decision_variables().tail(14);
-//  for (int i = 0; i < lambda_var.size(); i++) {
-//    mp->SetVariableScaling(100, mp->FindDecisionVariableIndex(lambda_var(i)));
-//  }
-//  auto u_var = mp->decision_variables().segment(n_q, n_u);
-//  for (int i = 0; i < u_var.size(); i++) {
-//    mp->SetVariableScaling(10, mp->FindDecisionVariableIndex(u_var(i)));
-//  }
-
 //  mp->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
 //                      "../snopt.out");
   // target nonlinear constraint violation
@@ -606,14 +595,13 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->ScaleForceVariables(10, 0, 9, 10);
     trajopt->ScaleForceVariables(1000, 0, 11, 11);
     trajopt->ScaleForceVariables(600, 0, 12, 13);
-//    trajopt->ScaleQuaternionSlackVariables(0.5);
-//    trajopt->ScaleKinConstraintSlackVariables(0.1, 0, 0, 13);
 
     // Print out the scaling factors
     /*for (int i=0; i < trajopt->decision_variables().size() ; i++) {
       cout << trajopt->decision_variable(i) << ", ";
       cout << trajopt->decision_variable(i).get_id() << ", ";
-      cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i)) << ", ";
+      cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
+          << ", ";
       auto scale_map = trajopt->GetVariableScaling();
       auto it = scale_map.find(i);
       if (it != scale_map.end()) {
@@ -701,7 +689,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   // Check which solver was used
   cout << "Solver: " << result.get_solver_id().name() << endl;
 
-  // Testing - check if the nonlinear constraints are all satisfied
+  // Check if the nonlinear constraints are all satisfied
   // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt,
   //                             result, tol);
   // cout << "constraint_satisfied = " << constraint_satisfied << endl;

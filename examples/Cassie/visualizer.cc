@@ -22,6 +22,7 @@ DEFINE_bool(com_ground, true,
     "If com=true, sets whether the COM should be shown on the ground (z=0)"
     " or at the correct height.");
 DEFINE_string(channel, "CASSIE_STATE", "LCM channel for receiving state.");
+DEFINE_bool(visualize_ground, true, "Visualize the ground plane");
 
 using std::endl;
 using std::cout;
@@ -51,7 +52,8 @@ int do_main(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
-  multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8);
+  multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8,
+                            FLAGS_visualize_ground);
 
   plant.Finalize();
 

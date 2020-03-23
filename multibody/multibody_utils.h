@@ -21,7 +21,8 @@ std::unique_ptr<drake::systems::Context<T>> createContext(
 template <typename T>
 void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     drake::geometry::SceneGraph<T>* scene_graph,
-                    double mu_static, double mu_kinetic);
+                    double mu_static, double mu_kinetic,
+                    bool visualize_ground = true);
 
 /// Given a MultiBodyTree, builds a map from position name to position index
 template <typename T>

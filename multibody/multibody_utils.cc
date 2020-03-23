@@ -44,7 +44,8 @@ std::unique_ptr<Context<T>> createContext(const MultibodyPlant<T>& plant,
 
 template <typename T>
 void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
-                    double mu_static, double mu_kinetic) {
+                    double mu_static, double mu_kinetic,
+                    bool visualize_ground) {
   if (!plant->geometry_source_is_registered()) {
     plant->RegisterAsSourceForSceneGraph(scene_graph);
   }
@@ -61,8 +62,10 @@ void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
       plant->world_body(), X_WG, HalfSpace(), "collision", friction);
 
   // Add visual for the ground.
-  plant->RegisterVisualGeometry(
-      plant->world_body(), X_WG, HalfSpace(), "visual");
+  if (visualize_ground) {
+    plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
+                                  "visual");
+  }
 }
 
 /// Construct a map between joint names and position indices

@@ -133,7 +133,7 @@ OperationalSpaceControlMBP::OperationalSpaceControlMBP(
 }
 
 std::vector<double> ConvertVectorXdToStdVector(
-    const Eigen::VectorXd& eigen_vec) {
+    Eigen::VectorXd eigen_vec) {
   return std::vector<double>(eigen_vec.data(),
       eigen_vec.data() + eigen_vec.size());
 }
@@ -191,8 +191,8 @@ void OperationalSpaceControlMBP::AddTrackingData(
   }
 }
 void OperationalSpaceControlMBP::AddConstTrackingData(
-    OscTrackingDataMBP* tracking_data, const VectorXd& v, double t_lb, double
-    t_ub) {
+    OscTrackingDataMBP* tracking_data, const VectorXd& v, double t_lb,
+    double t_ub) {
   tracking_data_vec_->push_back(tracking_data);
   fixed_position_vec_.push_back(v);
   t_s_vec_.push_back(t_lb);
@@ -273,8 +273,8 @@ void OperationalSpaceControlMBP::Build() {
           ->AddLinearEqualityConstraint(
                                      MatrixXd::Zero(n_c_, n_v_ + n_c_),
                                      VectorXd::Zero(n_c_), {dv_, epsilon_})
-                                 .evaluator()
-                                 .get();
+          .evaluator()
+          .get();
     }
   }
   // 4. Friction constraint (approximated firction cone)
@@ -353,8 +353,8 @@ void OperationalSpaceControlMBP::Build() {
     tracking_cost_.push_back(prog_
         ->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
                                                     VectorXd::Zero(n_v_), dv_)
-                                 .evaluator()
-                                 .get());
+        .evaluator()
+        .get());
   }
 }
 
@@ -528,7 +528,7 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
     auto tracking_data = tracking_data_vec_->at(i);
 
     // Check whether or not it is a constant trajectory, and update TrackingData
-    if (fixed_position_vec_.at(i).size() > 0) {
+    if (fixed_position_vec_.at(i).size() != 0) {
       // Create constant trajectory and update
       tracking_data->Update(
           x_w_spr, *context_w_spr, x_wo_spr, *context_wo_spr,
@@ -537,17 +537,18 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
       // Read in traj from input port
       string traj_name = tracking_data->GetName();
       int port_index = traj_name_to_port_index_map_.at(traj_name);
-      const drake::AbstractValue* traj_intput =
+      const drake::AbstractValue* input_traj =
           this->EvalAbstractInput(context, port_index);
-      DRAKE_DEMAND(traj_intput != nullptr);
+      DRAKE_DEMAND(input_traj != nullptr);
       const auto& traj =
-          traj_intput->get_value<drake::trajectories::Trajectory<double>>();
+          input_traj->get_value<drake::trajectories::Trajectory<double>>();
       // Update
       tracking_data->Update(x_w_spr, *context_w_spr, x_wo_spr, *context_wo_spr,
                             traj, t, fsm_state);
     }
-
-    if (tracking_data->GetTrackOrNot() &&
+    // TODO(yangwill): Should only really be updating the trajectory if it's
+    //  active
+    if (tracking_data->IsActive() &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
       VectorXd ddy_t = tracking_data->GetDdyCommand();
@@ -591,7 +592,8 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
   }
 
   for (auto tracking_data : *tracking_data_vec_) {
-    tracking_data->SaveDdyCommandSol(dv_sol);
+    if (tracking_data->IsActive())
+      tracking_data->SaveDdyCommandSol(dv_sol);
   }
 
   // Print QP result
@@ -615,7 +617,7 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
     }
     // 4. Tracking cost
     for (auto tracking_data : *tracking_data_vec_) {
-      if (tracking_data->GetTrackOrNot()) {
+      if (tracking_data->IsActive()) {
         VectorXd ddy_t = tracking_data->GetDdyCommand();
         MatrixXd W = tracking_data->GetWeight();
         MatrixXd J_t = tracking_data->GetJ();
@@ -633,7 +635,7 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
     // Target acceleration
     cout << "**********************\n";
     for (auto tracking_data : *tracking_data_vec_) {
-      if (tracking_data->GetTrackOrNot()) {
+      if (tracking_data->IsActive()) {
         tracking_data->PrintFeedbackAndDesiredValues(dv_sol);
       }
     }
@@ -649,32 +651,40 @@ void OperationalSpaceControlMBP::AssignOscLcmOutput(
       (OutputVector<double>*) this->EvalVectorInput(context, state_port_);
 
   output->utime = state->get_timestamp() * 1e6;
-  output->num_tracking_data = tracking_data_vec_->size();
-
   output->tracking_data_names.clear();
   output->tracking_data.clear();
 
-  for (const auto tracking_data : *tracking_data_vec_) {
-    output->tracking_data_names.push_back(tracking_data->GetName());
-    lcmt_osc_tracking_data osc_output;
-    osc_output.y_dim = tracking_data->GetTrajDim();
-    osc_output.name = tracking_data->GetName();
-    osc_output.is_active = tracking_data->GetTrackOrNot();
-    osc_output.y = ConvertVectorXdToStdVector(tracking_data->GetY());
-    osc_output.y_des = ConvertVectorXdToStdVector(tracking_data->GetYDes());
-    osc_output.error_y = ConvertVectorXdToStdVector(tracking_data->GetErrorY());
-    osc_output.dy = ConvertVectorXdToStdVector(tracking_data->GetDy());
-    osc_output.dy_des = ConvertVectorXdToStdVector(tracking_data->GetDyDes());
-    osc_output.error_dy =
-        ConvertVectorXdToStdVector(tracking_data->GetErrorDy());
-    osc_output.ddy_des =
-        ConvertVectorXdToStdVector(tracking_data->GetDdyDesConverted());
-    osc_output.ddy_command =
-        ConvertVectorXdToStdVector(tracking_data->GetDdyCommand());
-    osc_output.ddy_command_sol =
-        ConvertVectorXdToStdVector(tracking_data->GetDdyCommandSol());
-    output->tracking_data.push_back(osc_output);
+  std::cout << "Assigning osc debug info" << std::endl;
+
+  for (const auto& tracking_data : *tracking_data_vec_) {
+    if (tracking_data->IsActive()) {
+      output->tracking_data_names.push_back(tracking_data->GetName());
+      lcmt_osc_tracking_data osc_output;
+      osc_output.y_dim = tracking_data->GetTrajDim();
+      osc_output.name = tracking_data->GetName();
+      // This should always be true
+      osc_output.is_active = tracking_data->IsActive();
+      osc_output.y = ConvertVectorXdToStdVector(tracking_data->GetY());
+      osc_output.y_des = ConvertVectorXdToStdVector(tracking_data->GetYDes());
+      osc_output.error_y =
+          ConvertVectorXdToStdVector(tracking_data->GetErrorY());
+      osc_output.dy = ConvertVectorXdToStdVector(tracking_data->GetDy());
+      osc_output.dy_des = ConvertVectorXdToStdVector(tracking_data->GetDyDes());
+      osc_output.error_dy =
+          ConvertVectorXdToStdVector(tracking_data->GetErrorDy());
+      osc_output.ddy_des =
+          ConvertVectorXdToStdVector(tracking_data->GetDdyDesConverted());
+      osc_output.ddy_command =
+          ConvertVectorXdToStdVector(tracking_data->GetDdyCommand());
+      osc_output.ddy_command_sol =
+          ConvertVectorXdToStdVector(tracking_data->GetDdyCommandSol());
+      output->tracking_data.push_back(osc_output);
+    }
   }
+
+  output->num_tracking_data = output->tracking_data_names.size();
+
+  std::cout << "Finished assigning osc debug info" << std::endl;
 }
 
 void OperationalSpaceControlMBP::CalcOptimalInput(

@@ -48,15 +48,12 @@ bool OscTrackingDataMBP::Update(
     const VectorXd& x_wo_spr, Context<double>& context_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t,
     int finite_state_machine_state) {
-  // Update track_at_current_step_
+  // Update track_at_current_state_
   UpdateTrackingFlag(finite_state_machine_state);
 
-  // Proceed based on the result of track_at_current_step_
-  if (!track_at_current_step_) {
-    return track_at_current_step_;
-  } else {
+  // Proceed based on the result of track_at_current_state_
+  if (track_at_current_state_) {
     // Careful: must update y_des_ before calling UpdateYAndError()
-
     // Update desired output
     y_des_ = traj.value(t);
     dy_des_ = traj.MakeDerivative(1)->value(t);
@@ -72,23 +69,24 @@ bool OscTrackingDataMBP::Update(
     // Update command output (desired output with pd control)
     ddy_command_ = ddy_des_converted_ + K_p_ * (error_y_) + K_d_ * (error_dy_);
 
-    return track_at_current_step_;
   }
+  return track_at_current_state_;
 }
 
 void OscTrackingDataMBP::UpdateTrackingFlag(int finite_state_machine_state) {
   if (state_.empty()) {
-    track_at_current_step_ = true;
+    track_at_current_state_ = true;
     state_idx_ = 0;
     return;
   }
 
   auto it = find(state_.begin(), state_.end(), finite_state_machine_state);
   state_idx_ = std::distance(state_.begin(), it);
-  track_at_current_step_ = it != state_.end();
+  track_at_current_state_ = it != state_.end();
 }
 
 void OscTrackingDataMBP::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
+  DRAKE_ASSERT(track_at_current_state_);
   cout << name_ << ":\n";
   cout << "  y = " << y_.transpose() << endl;
   cout << "  y_des = " << y_des_.transpose() << endl;
@@ -102,6 +100,7 @@ void OscTrackingDataMBP::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
 }
 
 void OscTrackingDataMBP::SaveDdyCommandSol(const VectorXd& dv) {
+  DRAKE_ASSERT(track_at_current_state_);
   ddy_command_sol_ = J_ * dv + JdotV_;
 }
 

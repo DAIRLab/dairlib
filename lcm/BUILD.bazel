@@ -8,7 +8,7 @@ cc_binary(
     name = "log_sequence_rectifier",
     srcs = ["log_sequence_rectifier.cc"],
     deps = [
-        "@lcm"
+        "@lcm",
     ],
 )
 
@@ -17,20 +17,19 @@ cc_library(
     srcs = ["lcm_trajectory.cc"],
     hdrs = ["lcm_trajectory.h"],
     deps = [
-      "//lcmtypes:lcmt_robot",
-      "@eigen",
-      "@drake//systems/lcm",
-      "@lcm"
+        "//lcmtypes:lcmt_robot",
+        "@drake//systems/lcm",
+        "@lcm",
     ],
 )
 
 cc_test(
     name = "lcm_trajectory_saver_test",
+    size = "small",
     srcs = ["test/lcm_trajectory_test.cc"],
     deps = [
-      ":lcm_trajectory_saver", 
-      "@drake//:drake_shared_library",
-      "@gtest//:main",
+        ":lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
     ],
-    size = "small",
 )

@@ -70,11 +70,12 @@ void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
 ///  -Only accurately includes joints with a single position and single velocity
 ///  -Others are included as "position[ind]""
 ///  -Index mapping can also be used as a state mapping (assumes x = [q;v])
-map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
+template <typename T>
+map<string, int> makeNameToPositionsMap(const MultibodyPlant<T>& plant) {
   map<string, int> name_to_index_map;
   std::set<int> index_set;
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
-    const drake::multibody::Joint<double>& joint = plant.get_joint(i);
+    const drake::multibody::Joint<T>& joint = plant.get_joint(i);
     auto name = joint.name();
 
     if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
@@ -135,12 +136,13 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
 ///  -Others are included as "state[ind]"
 ///  -Index mapping can also be used as a state mapping, AFTER
 ///     an offset of num_positions is applied (assumes x = [q;v])
-map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
+template <typename T>
+map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
   map<string, int> name_to_index_map;
   std::set<int> index_set;
 
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
-    const drake::multibody::Joint<double>& joint = plant.get_joint(i);
+    const drake::multibody::Joint<T>& joint = plant.get_joint(i);
     // TODO(posa): this "dot" should be removed, it's an anachronism from
     // RBT
     auto name = joint.name() + "dot";
@@ -196,10 +198,11 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
   return name_to_index_map;
 }
 
-map<string, int> makeNameToActuatorsMap(const MultibodyPlant<double>& plant) {
+template <typename T>
+map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
   map<string, int> name_to_index_map;
   for (JointActuatorIndex i(0); i < plant.num_actuators(); ++i) {
-    const drake::multibody::JointActuator<double>& actuator =
+    const drake::multibody::JointActuator<T>& actuator =
         plant.get_joint_actuator(i);
     auto name = actuator.name();
 
@@ -263,6 +266,12 @@ bool isQuaternion(const drake::multibody::MultibodyPlant<double>& plant) {
 
 
 
+template map<string, int> makeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> makeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template map<string, int> makeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> makeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template map<string, int> makeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> makeNameToActuatorsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT

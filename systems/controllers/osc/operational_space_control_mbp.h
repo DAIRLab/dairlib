@@ -10,6 +10,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "dairlib/lcmt_osc_output.hpp"
 
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
@@ -25,25 +26,27 @@ namespace dairlib::systems::controllers {
 /// outputs torque command of the motors.
 
 /// Inputs of the constructor:
-///  - `tree_w_spr` a RigidBodyTree with springs
-///  - `tree_wo_spr` a RigidBodyTree without springs
+///  - `plant_w_spr` a MultibodyPlant with springs. If the full model of the
+///    plant does not have spring, then plant_w_spr and plant_wo_spr should
+///    refer to the same plant.
+///  - `plant_wo_spr` a MultibodyPlant without springs
 ///  - `used_with_finite_state_machine` a flag indicating whehter using osc with
 ///    finite state machine or not
 /// The springs here refer to the compliant components in the robots.
 
-/// OSC calculates feedback positions/velocities from `tree_w_spr`,
-/// but in the optimization it uses `tree_wo_spr`. The reason of using
+/// OSC calculates feedback positions/velocities from `plant_w_spr`,
+/// but in the optimization it uses `plant_wo_spr`. The reason of using
 /// RigidBodyTree without spring is that the OSC cannot track desired
 /// acceleration instantaneously when springs exist. (relative degrees of 4)
 
 /// Requirement:
-///  - the joints name (except for the spring joints) in `tree_w_spr` must be
-///    the same as those of `tree_wo_spr`
-///  - the bodies in both RBT's should be the same. (to get jacobian from
+///  - the joints name (except for the spring joints) in `plant_w_spr` must be
+///    the same as those of `plant_wo_spr`
+///  - the bodies in both MBP's should be the same. (to get Jacobian from
 ///    both trees)
 
-/// If the robot doesn't have any spring, the user can just pass two identical
-/// RigidBodyTree into the constructor.
+/// If the robot doesn't have any springs, the user can just pass two identical
+/// MultibodyPlants into the constructor.
 
 /// Users define
 ///     costs,
@@ -53,6 +56,7 @@ namespace dairlib::systems::controllers {
 
 /// Before adding desired trajectories to `OperationalSpaceControl` with the
 /// method `AddTrackingData`, users have to create
+///     `CenterOfMassTrackingData`,
 ///     `TransTaskSpaceTrackingData`,
 ///     `RotTaskSpaceTrackingData`,
 ///     and/or `JointSpaceTrackingData`.
@@ -86,6 +90,13 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
       bool used_with_finite_state_machine = true,
       bool print_tracking_info = false);
 
+  const drake::systems::OutputPort<double>& get_osc_output_port() const {
+    return this->get_output_port(osc_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_osc_debug_port() const {
+    return this->get_output_port(osc_debug_port_);
+  }
+
   // Input/output ports
   const drake::systems::InputPort<double>& get_robot_output_input_port() const {
     return this->get_input_port(state_port_);
@@ -99,8 +110,8 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   }
 
   // Cost methods
-  void SetInputCost(Eigen::MatrixXd W) { W_input_ = W; }
-  void SetAccelerationCostForAllJoints(Eigen::MatrixXd W) {
+  void SetInputCost(const Eigen::MatrixXd& W) { W_input_ = W; }
+  void SetAccelerationCostForAllJoints(const Eigen::MatrixXd& W) {
     W_joint_accel_ = W;
   }
   void AddAccelerationCost(const std::string& joint_vel_name, double w);
@@ -124,7 +135,8 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   void AddTrackingData(OscTrackingDataMBP* tracking_data, double t_lb = 0,
                        double t_ub = std::numeric_limits<double>::infinity());
   void AddConstTrackingData(
-      OscTrackingDataMBP* tracking_data, Eigen::VectorXd v, double t_lb = 0,
+      OscTrackingDataMBP* tracking_data, const Eigen::VectorXd& v, double t_lb
+      = 0,
       double t_ub = std::numeric_limits<double>::infinity());
   std::vector<OscTrackingDataMBP*>* GetAllTrackingData() {
     return tracking_data_vec_.get();
@@ -153,11 +165,16 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  void AssignOscLcmOutput(const drake::systems::Context<double>& context,
+                          dairlib::lcmt_osc_output* output) const;
+
   // Output function
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
 
   // Input/Output ports
+  int osc_debug_port_;
+  int osc_output_port_;
   int state_port_;
   int fsm_port_;
 
@@ -190,8 +207,7 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   int n_c_;
 
   // Manually specified holonomic constraints (only valid for plants_wo_springs)
-  std::vector<multibody::MultibodyDistanceConstraint*>
-      distance_constraints_;
+  std::vector<multibody::MultibodyDistanceConstraint*> distance_constraints_;
 
   // robot input limits
   Eigen::VectorXd u_min_;

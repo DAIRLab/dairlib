@@ -1,0 +1,18 @@
+package dairlib;
+
+struct lcmt_osc_tracking_data
+{
+  int32_t y_dim;
+  string name;
+  boolean is_active;
+
+  double y [y_dim];
+  double y_des [y_dim];
+  double error_y [y_dim];
+  double dy [y_dim];
+  double dy_des [y_dim];
+  double error_dy [y_dim];
+  double ddy_des [y_dim];
+  double ddy_command [y_dim];
+  double ddy_command_sol [y_dim];
+}

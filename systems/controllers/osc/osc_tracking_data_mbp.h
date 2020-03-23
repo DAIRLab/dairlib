@@ -48,7 +48,16 @@ class OscTrackingDataMBP {
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
-//  OscTrackingDataMBP() {}  // Default constructor
+  // Getters for debugging
+  Eigen::VectorXd GetY() { return y_; }
+  Eigen::VectorXd GetYDes() { return y_des_; }
+  Eigen::VectorXd GetErrorY() { return error_y_; }
+  Eigen::VectorXd GetDy() { return dy_; }
+  Eigen::VectorXd GetDyDes() { return dy_des_; }
+  Eigen::VectorXd GetErrorDy() { return error_dy_; }
+  Eigen::VectorXd GetDdyDes() { return ddy_des_; }
+  Eigen::VectorXd GetDdyDesConverted() { return ddy_des_converted_; }
+  Eigen::VectorXd GetDdyCommandSol() { return ddy_command_sol_; }
 
   // Update() updates the caches. It does the following things in order:
   //  - update track_at_current_step_
@@ -57,9 +66,9 @@ class OscTrackingDataMBP {
   //  - update command output (desired output with pd control)
   // Inputs/Arguments:
   //  - `x_w_spr`, state of the robot (with spring)
-  //  - `cache_w_spr`, kinematics cache of the robot (without spring)
+  //  - `cache_w_spr`, plant context of the robot (without spring)
   //  - `x_wo_spr`, state of the robot (with spring)
-  //  - `cache_wo_spr`, kinematics cache of the robot (without spring)
+  //  - `context_wo_spr`, plant context of the robot (without spring)
   //  - `traj`, desired trajectory
   //  - `t`, current time
   //  - `finite_state_machine_state`, current finite state machine state
@@ -73,7 +82,7 @@ class OscTrackingDataMBP {
   Eigen::VectorXd GetOutput() { return y_; }
   Eigen::MatrixXd GetJ() { return J_; }
   Eigen::VectorXd GetJdotTimesV() { return JdotV_; }
-  Eigen::VectorXd GetCommandOutput() { return ddy_command_; }
+  Eigen::VectorXd GetDdyCommand() { return ddy_command_; }
   Eigen::MatrixXd GetWeight() { return W_; }
   // void UpdatePGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
   // void UpdateDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
@@ -83,6 +92,8 @@ class OscTrackingDataMBP {
   std::string GetName() { return name_; };
   int GetTrajDim() { return n_r_; };
   bool GetTrackOrNot() { return track_at_current_step_; }
+
+  void SaveDdyCommandSol(const Eigen::VectorXd& dv);
 
   // Print feedback and desired values
   void PrintFeedbackAndDesiredValues(const Eigen::VectorXd& dv);
@@ -95,7 +106,7 @@ class OscTrackingDataMBP {
   int GetStateIdx() { return state_idx_; };
   void AddState(int state);
 
-  // Feedback output, jacobian and dJ/dt * v
+  // Feedback output, Jacobian and dJ/dt * v
   Eigen::VectorXd error_y_;
   Eigen::VectorXd error_dy_;
   Eigen::VectorXd y_;
@@ -108,6 +119,11 @@ class OscTrackingDataMBP {
   Eigen::VectorXd dy_des_;
   Eigen::VectorXd ddy_des_;
   Eigen::VectorXd ddy_des_converted_;
+
+  // Commanded acceleration after feedback terms
+  Eigen::VectorXd ddy_command_;
+  // Osc solution
+  Eigen::VectorXd ddy_command_sol_;
 
   // `state_` is the finite state machine state when the tracking is enabled
   // If `state_` is empty, then the tracking is always on.
@@ -144,7 +160,6 @@ class OscTrackingDataMBP {
   // correctly.
   virtual void CheckDerivedOscTrackingData() = 0;
 
-
   // Trajectory name
   std::string name_;
 
@@ -161,7 +176,6 @@ class OscTrackingDataMBP {
   // cache
   bool track_at_current_step_;
   int state_idx_ = 0;
-  Eigen::VectorXd ddy_command_;
 };
 
 /// ComTrackingData is used when we want to track center of mass trajectory.
@@ -173,7 +187,7 @@ class ComTrackingDataMBP final : public OscTrackingDataMBP {
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
-//  ComTrackingDataMBP() {}  // Default constructor
+  //  ComTrackingDataMBP() {}  // Default constructor
 
   // If state is not specified, it will track COM for all states
   void AddStateToTrack(int state);
@@ -201,7 +215,7 @@ class TaskSpaceTrackingDataMBP : public OscTrackingDataMBP {
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
-//  TaskSpaceTrackingDataMBP() {}  // Default constructor
+  //  TaskSpaceTrackingDataMBP() {}  // Default constructor
 
  protected:
   // `body_index_w_spr` is the index of the body
@@ -229,15 +243,16 @@ class TaskSpaceTrackingDataMBP : public OscTrackingDataMBP {
 class TransTaskSpaceTrackingDataMBP final : public TaskSpaceTrackingDataMBP {
  public:
   TransTaskSpaceTrackingDataMBP(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p, const Eigen::MatrixXd& K_d,
-      const Eigen::MatrixXd& W,
+      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
-//  TransTaskSpaceTrackingDataMBP() {}  // Default constructor
+  //  TransTaskSpaceTrackingDataMBP() {}  // Default constructor
 
-  void AddPointToTrack(const std::string& body_name,
-                       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
+  void AddPointToTrack(
+      const std::string& body_name,
+      const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
   void AddStateAndPointToTrack(
       int state, const std::string& body_name,
       const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
@@ -276,12 +291,12 @@ class TransTaskSpaceTrackingDataMBP final : public TaskSpaceTrackingDataMBP {
 class RotTaskSpaceTrackingDataMBP final : public TaskSpaceTrackingDataMBP {
  public:
   RotTaskSpaceTrackingDataMBP(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p, const Eigen::MatrixXd& K_d,
-      const Eigen::MatrixXd& W,
+      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
-//  RotTaskSpaceTrackingDataMBP() {}  // Default constructor
+  //  RotTaskSpaceTrackingDataMBP() {}  // Default constructor
 
   void AddFrameToTrack(
       const std::string& body_name,
@@ -329,9 +344,10 @@ class JointSpaceTrackingDataMBP final : public OscTrackingDataMBP {
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
-//  JointSpaceTrackingDataMBP() {}  // Default constructor
+  //  JointSpaceTrackingDataMBP() {}  // Default constructor
 
-  void AddJointToTrack(const std::string& joint_pos_name, const std::string& joint_vel_name);
+  void AddJointToTrack(const std::string& joint_pos_name,
+                       const std::string& joint_vel_name);
   void AddStateAndJointToTrack(int state, const std::string& joint_pos_name,
                                const std::string& joint_vel_name);
 

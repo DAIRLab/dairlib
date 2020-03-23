@@ -2,7 +2,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
-#include <algorithm>
+#include <unordered_map>
 
 #include <gflags/gflags.h>
 #include "attic/multibody/multibody_solvers.h"
@@ -97,14 +97,10 @@ using dairlib::multibody::GetBodyIndexFromName;
 DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
               "directory to save/read data");
-DEFINE_bool(store_data, false, "To store solution or not");
+DEFINE_bool(store_data, false, "To store soluation or not");
 DEFINE_int32(max_iter, 100000, "Iteration limit");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
 DEFINE_double(tol, 1e-4, "Tolerance for constraint violation and dual gap");
-
-// Parameters which enable dircon-improving features
-DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
-DEFINE_bool(is_scale_variable, true, "Scale the decision variable");
 
 namespace dairlib {
 
@@ -217,19 +213,8 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
       -1.762, 68.42, 0.652, 1.744;
   mp->SetInitialGuessForAllVariables(init_guess);
 
-  // Test scaling
-  // Assume that lambda is located in the end of decision variables
-//  auto lambda_var = mp->decision_variables().tail(14);
-//  for (int i = 0; i < lambda_var.size(); i++) {
-//    mp->SetVariableScaling(100, mp->FindDecisionVariableIndex(lambda_var(i)));
-//  }
-//  auto u_var = mp->decision_variables().segment(n_q, n_u);
-//  for (int i = 0; i < u_var.size(); i++) {
-//    mp->SetVariableScaling(10, mp->FindDecisionVariableIndex(u_var(i)));
-//  }
-
-//  mp->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-//                      "../snopt.out");
+  // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  //                     "Print file", "../snopt.out");
   // target nonlinear constraint violation
   // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
   //                     "Major optimality tolerance", 1e-6);
@@ -242,7 +227,7 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   const auto result = fp_solver.Solve();
   SolutionResult solution_result = result.get_solution_result();
   cout << to_string(solution_result) << endl;
-//   cout << result.GetSolution() << endl;
+  // cout << result.GetSolution() << endl;
 
   VectorXd q_sol = fp_solver.GetSolutionQ();
   VectorXd u_sol = fp_solver.GetSolutionU();
@@ -417,29 +402,24 @@ void DoMain(double duration, int max_iter, string data_directory,
   double_all_options.setConstraintRelative(6, true);
   double_all_options.setConstraintRelative(8, true);
   // Constraint scaling
-  if (FLAGS_is_scale_constraint) {
-    // Dynamic constraints
-    double s_dyn_1 = (FLAGS_is_scale_variable)? 2.0 : 1.0;
-    double s_dyn_2 = (FLAGS_is_scale_variable)? 6.0 : 1.0;
-    double s_dyn_3 = (FLAGS_is_scale_variable)? 85.0 : 1.0;
-    double_all_options.setDynConstraintScaling(1.0 / 150.0, 0, 14);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 3.33 / s_dyn_1, 15,
-                                               16);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0, 17, 18);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_1, 19, 26);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_2, 27, 28);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 10, 29, 34);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 15.0 / s_dyn_3, 35, 36);
-    // Kinematic constraints
-    double s_kin_1 = (FLAGS_is_scale_variable)? 10.0 : 1.0;
-    double s_kin_2 = (FLAGS_is_scale_variable)? 2.0 : 1.0;
-    double_all_options.setKinConstraintScaling(1.0/500.0 / s_kin_1, 0, 9);
-    double_all_options.setKinConstraintScaling(2.0/50.0 / s_kin_1, 10, 11);
-    double_all_options.setKinConstraintScaling(1.0/500.0* 500 * s_kin_2 / s_kin_1, 12 + 0, 12 + 9);
-    double_all_options.setKinConstraintScaling(2.0/50.0* 500 * s_kin_2 / s_kin_1, 12 + 10, 12 + 11);
-    double_all_options.setKinConstraintScaling(1.0/500.0 * 1000 * s_kin_2 / s_kin_1, 24 + 0, 24 + 9);
-    double_all_options.setKinConstraintScaling(2.0/50.0 * 1000 * s_kin_2 / s_kin_1, 24 + 10, 24 + 11);
-  }
+  int n_kin = double_all_dataset.countConstraints();
+  double s_kin_vel = 500;
+  double s_kin_acc = 1000;
+  double_all_options.setDynConstraintScaling(1.0 / 150.0, 0, 14);
+  double_all_options.setDynConstraintScaling(1.0 / 150.0 / 3.0 * 10, 15, 16);
+  double_all_options.setDynConstraintScaling(1.0 / 150.0, 17, 28);
+  double_all_options.setDynConstraintScaling(1.0 / 150.0 / 10, 29, 34);
+  double_all_options.setDynConstraintScaling(1.0 / 150.0 / 15.0, 35, 36);
+  double_all_options.setKinConstraintScaling(1.0 / 500.0, 0, 9);
+  double_all_options.setKinConstraintScaling(2.0 / 50.0, 10, 11);
+  double_all_options.setKinConstraintScaling(1.0 / 500.0 * s_kin_vel, n_kin + 0,
+                                             n_kin + 9);
+  double_all_options.setKinConstraintScaling(2.0 / 50.0 * s_kin_vel, n_kin + 10,
+                                             n_kin + 11);
+  double_all_options.setKinConstraintScaling(1.0 / 500.0 * s_kin_acc,
+                                             2 * n_kin + 0, 2 * n_kin + 9);
+  double_all_options.setKinConstraintScaling(2.0 / 50.0 * s_kin_acc,
+                                             2 * n_kin + 10, 2 * n_kin + 11);
 
   // timesteps and modes setting
   vector<double> min_dt;
@@ -457,8 +437,8 @@ void DoMain(double duration, int max_iter, string data_directory,
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-     trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                              "Print file", "../snopt.out");
+  //   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  //                            "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -555,12 +535,10 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
-  if (FLAGS_is_scale_constraint) {
-    std::unordered_map<int, double> odbp_constraint_scale;
-    odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
-    left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
-    right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
-  }
+  std::unordered_map<int, double> odbp_constraint_scale;
+  odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
+  left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+  right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
   for (int index = 0; index < num_time_samples[0]; index++) {
     auto x = trajopt->state(index);
     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
@@ -572,87 +550,6 @@ void DoMain(double duration, int max_iter, string data_directory,
   const MatrixXd R = 12.5 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
-
-
-
-
-
-  // TODO:
-  // You can create five functions (t, x, u, lambda, impulse) in dircon for scaling
-  // Use FindDecisionVariableIndex in the functions to find index
-  // Go to your goldilocks models branch to see which variables you scaled.
-
-  // playing
-//  cout << "size = " << trajopt->decision_variables().size() << endl;
-//  for (int i=0; i < trajopt->decision_variables().size() ; i++) {
-//    cout << trajopt->decision_variable(i) << ", ";
-//    cout << trajopt->decision_variable(i).get_id() << ", ";
-//    cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i)) << endl;
-//  }
-
-  // playing with nan
-//  double nan = std::numeric_limits<drake::AutoDiffXd>::quiet_NaN();
-//  double nan = std::numeric_limits<double>::quiet_NaN();
-//  cout << nan + 1 << endl;
-//  cout << nan * 1.0 << endl;
-//  cout << 1.0 / nan << endl;
-//  cout << sin(nan) << endl;
-//  cout << pow(nan, 2) << endl;
-//  Vector3d vec(nan,0,0);
-//  cout << vec.transpose() << endl;
-//  Vector3d ones(1, 1, 1);
-//  cout << (vec + ones).transpose() << endl;
-//  cout << vec.transpose() * ones << endl;
-//  Eigen::MatrixXd m_ones = Eigen::MatrixXd::Ones(3,3);
-//  cout << (m_ones * vec).transpose() << endl;
-//  cout << (Eigen::MatrixXd::Identity(3,3) * vec).transpose() << endl;
-//  // the following has issues
-//  (nan > 0) ? cout << "(nan > 0) true\n" : cout << "(nan > 0) false\n";
-//  (nan < 0) ? cout << "(nan < 0) true\n" : cout << "(nan < 0) false\n";
-//  (nan == 0) ? cout << "(nan == 0) true\n" : cout << "(nan == 0) false\n";
-//  cout << std::max(nan, 0.0) << endl;
-//  cout << std::max(0.0, nan) << endl;
-//  return;
-
-  // Testing
-  if (FLAGS_is_scale_variable) {
-    // time
-    trajopt->ScaleTimeVariables(0.015);
-    // state
-    trajopt->ScaleStateVariables(6, n_q, n_q + 9);
-    trajopt->ScaleStateVariables(3, n_q + 10, n_q + n_v - 1);
-    // input
-    trajopt->ScaleInputVariables(60, 0, 1);
-    trajopt->ScaleInputVariables(300, 2, 3); //300
-    trajopt->ScaleInputVariables(60, 4, 7);
-    trajopt->ScaleInputVariables(600, 8, 9); //600
-    // force
-    trajopt->ScaleForceVariables(10, 0, 0, 1);
-    trajopt->ScaleForceVariables(1000, 0, 2, 2); //1000
-    trajopt->ScaleForceVariables(10, 0, 3, 4);
-    trajopt->ScaleForceVariables(1000, 0, 5, 5);
-    trajopt->ScaleForceVariables(10, 0, 6, 7);
-    trajopt->ScaleForceVariables(1000, 0, 8, 8);
-    trajopt->ScaleForceVariables(10, 0, 9, 10);
-    trajopt->ScaleForceVariables(1000, 0, 11, 11);
-    trajopt->ScaleForceVariables(600, 0, 12, 13);
-//    trajopt->ScaleForceVariables(
-//        600, 0, 0, double_all_dataset.countConstraintsWithoutSkipping() - 1);
-//    trajopt->ScaleQuaternionSlackVariables(0.5);
-//    trajopt->ScaleKinConstraintSlackVariables(0.1, 0, 0, 13);
-
-    for (int i=0; i < trajopt->decision_variables().size() ; i++) {
-      cout << trajopt->decision_variable(i) << ", ";
-      cout << trajopt->decision_variable(i).get_id() << ", ";
-      cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i)) << ", ";
-      auto scale_map = trajopt->GetVariableScaling();
-      auto it = scale_map.find(i);
-      if (it != scale_map.end()) {
-        cout << it->second;
-      }
-      cout << endl;
-    }
-  }
 
   // initial guess
   if (!init_file.empty()) {

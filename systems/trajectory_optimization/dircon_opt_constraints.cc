@@ -1,5 +1,4 @@
 #include "dircon_opt_constraints.h"
-#include <cmath>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -42,8 +41,8 @@ DirconAbstractConstraint<T>::DirconAbstractConstraint(
 
 template <typename T>
 void DirconAbstractConstraint<T>::SetConstraintScaling(
-    const std::unordered_map<int, double>& list) {
-  constraint_scaling_ = list;
+    const std::unordered_map<int, double>& map) {
+  constraint_scaling_ = map;
 }
 
 template <typename T>
@@ -52,73 +51,6 @@ void DirconAbstractConstraint<T>::ScaleConstraint(drake::VectorX<U>* y) const {
   for (const auto& member : constraint_scaling_) {
     (*y)(member.first) *= member.second;
   }
-}
-
-template <typename T>
-void DirconAbstractConstraint<T>::ConstructSparsityPattern() {
-  drake::log()->warn(
-      "Constraint cannot contain any if-statement conditioned on input values");
-  std::vector<std::pair<int, int>> sparsity;
-
-  // Method 1: using NaN
-  for (int i = 0; i < this->num_vars(); i++) {
-    VectorX<double> input = VectorX<double>::Ones(this->num_vars());
-    input(i) = std::numeric_limits<double>::quiet_NaN();
-    VectorX<double> y;
-    EvaluateConstraint(input, &y);
-
-    for (int j = 0; j < num_constraints(); j++) {
-      if (std::isnan(y(j))) {
-        sparsity.push_back({j, i});
-      }
-    }
-  }
-  // Method 2: using random numbers
-  /*std::srand((unsigned int) time(0));
-  for (int count = 0; count < 5; count++) {
-    VectorX<double> rand = VectorX<double>::Random(this->num_vars());
-    std::cout << rand.transpose() << std::endl;
-    VectorX<double> y0;
-    EvaluateConstraint(rand, &y0);
-    for (int i = 0; i < this->num_vars(); i++) {
-      VectorX<double> input = rand;
-      input(i) += 0.1;
-      VectorX<double> y1;
-      EvaluateConstraint(input, &y1);
-
-      for (int j = 0; j < num_constraints(); j++) {
-        if (y1(j) != y0(j)) {
-          // Check if the sparsity element already exist. If not, add it.
-          bool exist = false;
-          for (auto member : sparsity) {
-            if ((member.first == j) && (member.second == i)) {
-              exist = true;
-              break;
-            }
-          }
-          if (!exist) {
-            sparsity.push_back({j, i});
-            if (count > 0) std::cout << "didn't exist in previous loops\n";
-          }
-        }
-      }
-    }
-  }*/
-
-  MatrixXd m_sp = MatrixXd::Zero(num_constraints(), num_vars());
-  for (auto member : sparsity) {
-    m_sp(member.first, member.second) = 1;
-  }
-  //  std::cout << m_sp << std::endl;
-  /*if (this->get_description().compare("dynamics_constraint") == 0) {
-    goldilocks_models::writeCSV("../dyn_constraint_sparsity.csv", m_sp);
-  } else if (this->get_description().compare("kinematics_constraint") == 0) {
-    goldilocks_models::writeCSV("../kin_constraint_sparsity.csv", m_sp);
-  } else if (this->get_description().compare("impact_constraint") == 0) {
-    goldilocks_models::writeCSV("../impact_constraint_sparsity.csv", m_sp);
-  }*/
-
-  this->SetGradientSparsityPattern(sparsity);
 }
 
 template <>
@@ -155,8 +87,6 @@ void DirconAbstractConstraint<AutoDiffXd>::DoEval(
 template <>
 void DirconAbstractConstraint<double>::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
-  MatrixXd original_grad = autoDiffToGradientMatrix(x);
-
   // forward differencing
   double dx = 1e-8;
 
@@ -171,32 +101,77 @@ void DirconAbstractConstraint<double>::DoEval(
     x_val(i) -= dx;
     dy.col(i) = (yi - y0) / dx;
   }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
-                                                     *y);
+  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy, *y);
 
   // std::cout << dy << std::endl  << std::endl << std::endl;
 
-  // central differencing
-  /*double dx = 1e-6;
+  // // central differencing
+  // double dx = 1e-8;
 
-  VectorXd x_val = autoDiffToValueMatrix(x);
-  VectorXd y0, yi;
-  EvaluateConstraint(x_val, &y0);
+  // VectorXd x_val = autoDiffToValueMatrix(x);
+  // VectorXd y0,yi;
+  // EvaluateConstraint(x_val,y0);
 
-  MatrixXd dy = MatrixXd(y0.size(), x_val.size());
-  for (int i = 0; i < x_val.size(); i++) {
-    x_val(i) -= dx / 2;
-    EvaluateConstraint(x_val, &y0);
-    x_val(i) += dx;
-    EvaluateConstraint(x_val, &yi);
-    x_val(i) -= dx / 2;
-    dy.col(i) = (yi - y0) / dx;
-  }
-  EvaluateConstraint(x_val, &y0);
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
-                                                     *y);*/
+  // MatrixXd dy = MatrixXd(y0.size(),x_val.size());
+  // for (int i=0; i < x_val.size(); i++) {
+  //   x_val(i) -= dx/2;
+  //   EvaluateConstraint(x_val,y0);
+  //   x_val(i) += dx;
+  //   EvaluateConstraint(x_val,yi);
+  //   x_val(i) -= dx/2;
+  //   dy.col(i) = (yi - y0)/dx;
+  // }
+  // EvaluateConstraint(x_val,y0);
+  // initializeAutoDiffGivenGradientMatrix(y0, dy, y);
 
   this->ScaleConstraint<AutoDiffXd>(y);
+
+  // hacky way to read gradient values (to tune variable/constraint scaling)
+  /*auto gradient = autoDiffToGradientMatrix(*y);
+  double max_element = gradient(0, 0);
+  double max_idx_i = 0;
+  double max_idx_j = 0;
+  for (int i = 0; i < gradient.rows(); i++)
+    for (int j = 0; j < gradient.cols(); j++) {
+      if (gradient(i, j) > max_element) {
+        max_element = gradient(i, j);
+        max_idx_i = i;
+        max_idx_j = j;
+      }
+    }
+  if (max_element > 1e3) {
+    std::cout << this->get_description();
+    std::cout << ":  gradient = " << max_element;
+    std::cout << ",  max_idx_i = " << max_idx_i;
+    std::cout << ",  max_idx_j = " << max_idx_j << std::endl;
+  }
+  if (this->get_description().compare("dynamics_constraint") == 0) {
+    goldilocks_models::writeCSV("dyn_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("kinematics_constraint") == 0) {
+    goldilocks_models::writeCSV("kin_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("impact_constraint") == 0) {
+    goldilocks_models::writeCSV("impact_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("quaternion_norm_constraint") == 0) {
+    goldilocks_models::writeCSV("quat_norm_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("rom_dyn_constraint") == 0) {
+    goldilocks_models::writeCSV("rom_dyn_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("com_height_constraint") == 0) {
+    goldilocks_models::writeCSV("com_height_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("com_height_vel_constraint") == 0) {
+    goldilocks_models::writeCSV("com_height_vel_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("toe_right_constraint") == 0) {
+    goldilocks_models::writeCSV("toe_right_constraint_grad.csv", gradient);
+  }
+  else if (this->get_description().compare("toe_left_constraint") == 0) {
+    goldilocks_models::writeCSV("toe_left_constraint_grad.csv", gradient);
+  }*/
 }
 
 template <typename T>
@@ -250,44 +225,7 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
           num_kinematic_constraints_wo_skipping},
       num_positions_{num_positions},
       num_velocities_{num_velocities},
-      num_quat_slack_{num_quat_slack} {
-  /*
-  // Not sure why after adding sparsity pattern for dynamic constraint (tested,
-  th eimplementation is correct), the solve time and solution quality went
-  down...
-
-  // Set sparsity pattern (conservative, independent of the robot)
-  std::vector<std::pair<int, int>> sparsity;
-  int j = 0;
-  while (j < 1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
-                 (2 * num_kinematic_constraints_wo_skipping)) {
-    for (int i = 0; i < num_positions + num_velocities; i++) {
-      sparsity.push_back({i, j});
-    }
-    j++;
-  }
-  while (j < 1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
-                 (3 * num_kinematic_constraints_wo_skipping)) {
-    for (int i = num_positions; i < num_positions + num_velocities; i++) {
-      sparsity.push_back({i, j});
-    }
-    j++;
-  }
-  while (j < 1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
-                 (4 * num_kinematic_constraints_wo_skipping)) {
-    for (int i = 0; i < num_positions; i++) {
-      sparsity.push_back({i, j});
-    }
-    j++;
-  }
-  if (num_quat_slack) {
-    for (int i = 0; i < 4; i++) {
-      sparsity.push_back({i, j});
-    }
-  }
-
-  this->SetGradientSparsityPattern(sparsity);*/
-}
+      num_quat_slack_{num_quat_slack} {}
 
 // The format of the input to the eval() function is the
 // tuple { timestep, state 0, state 1, input 0, input 1, force 0, force 1},
@@ -437,7 +375,7 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       n_relative_{
           static_cast<int>(std::count(is_constraint_relative.begin(),
                                       is_constraint_relative.end(), true))} {
-  // Set sparsity pattern and relative map
+  // ***Set sparsity pattern***
   std::vector<std::pair<int, int>> sparsity;
   // Acceleration constraints are dense in decision variables
   for (int i = 0; i < num_kinematic_constraints_; i++) {

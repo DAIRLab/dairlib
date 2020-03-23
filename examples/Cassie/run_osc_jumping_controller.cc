@@ -70,7 +70,7 @@ DEFINE_string(traj_name, "", "File to load saved trajectories from");
 
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
 DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
-//DEFINE_double(x_offset, 0.18, "Offset to add to the CoM trajectory");
+// DEFINE_double(x_offset, 0.18, "Offset to add to the CoM trajectory");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
 // publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
@@ -108,7 +108,6 @@ int DoMain(int argc, char* argv[]) {
   int n_v = plant_without_springs.num_velocities();
   int n_x = n_q + n_v;
 
-  std::cout << "nq: " << n_q << " n_v: " << n_v << " n_x: " << n_x << std::endl;
   // Create maps for joints
   map<string, int> pos_map =
       multibody::makeNameToPositionsMap(plant_without_springs);
@@ -131,10 +130,9 @@ int DoMain(int argc, char* argv[]) {
   const LcmTrajectory::Trajectory& lcm_pelvis_rot_traj =
       loaded_traj.getTrajectory("pelvis_rot_trajectory");
 
-  PiecewisePolynomial<double> com_traj =
-      PiecewisePolynomial<double>::Cubic(lcm_com_traj.time_vector,
-                                         lcm_com_traj.datapoints.topRows(3),
-                                         lcm_com_traj.datapoints.bottomRows(3));
+  PiecewisePolynomial<double> com_traj = PiecewisePolynomial<double>::Cubic(
+      lcm_com_traj.time_vector, lcm_com_traj.datapoints.topRows(3),
+      lcm_com_traj.datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& l_foot_trajectory =
       PiecewisePolynomial<double>::Cubic(
           lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints.topRows(3),
@@ -148,7 +146,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_pelvis_rot_traj.time_vector,
           lcm_pelvis_rot_traj.datapoints.topRows(4));
 
-  double flight_time = FLAGS_delay_time + 0.285773;
+  double flight_time = FLAGS_delay_time + 0.285773;  // For the time-based FSM
   double land_time = FLAGS_delay_time + 0.67272637;
 
   /**** Initialize all the leaf systems ****/
@@ -156,7 +154,6 @@ int DoMain(int argc, char* argv[]) {
   // Cassie parameters
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
   Vector3d rear_contact_disp(0.088, 0, 0);
-  //  Vector3d mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2;
 
   // Get body indices for cassie with springs
   auto pelvis_idx = plant_with_springs.GetBodyByName("pelvis").index();
@@ -170,7 +167,7 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_with_springs);
   // Create Operational space control
-//  double x_offset = com_traj.value(0)(0) -
+  //  double x_offset = com_traj.value(0)(0) -
   //                    (r_foot_trajectory.value(0)(0) +
   //                     (front_contact_disp[0] + rear_contact_disp[0]) / 2);
   Vector3d support_center_offset;
@@ -202,13 +199,17 @@ int DoMain(int argc, char* argv[]) {
       BALANCE);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm, 1.0 / FLAGS_publish_rate));
+          FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_with_springs);
   auto osc =
       builder.AddSystem<systems::controllers::OperationalSpaceControlMBP>(
           plant_with_springs, plant_without_springs, true,
           FLAGS_print_osc); /*print_tracking_info*/
+  auto osc_debug_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+          "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
+  //  "OSC_DEBUG", &lcm, 1.0 / FLAGS_publish_rate));
 
   /**** OSC setup ****/
 
@@ -358,9 +359,11 @@ int DoMain(int argc, char* argv[]) {
                   r_foot_traj_generator->get_fsm_input_port());
 
   // Publisher connections
-  builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+  builder.Connect(osc->get_osc_output_port(),
+      command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
+  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
 
   // Run lcm-driven simulation
   // Create the diagram

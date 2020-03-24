@@ -519,6 +519,7 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
 
 // Explicitly instantiates on the most common scalar types.
 template class DirconAbstractConstraint<double>;
+template class DirconAbstractConstraint<AutoDiffXd>;
 template class QuaternionNormConstraint<double>;
 template class QuaternionNormConstraint<AutoDiffXd>;
 template class DirconDynamicConstraint<double>;

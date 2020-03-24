@@ -49,7 +49,8 @@ bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
 
 // Check whether a MultibodyPlant contains quaternion floating-base joint or not
 // WARNING: This function assumes there is only one plant
-bool isQuaternion(const drake::multibody::MultibodyPlant<double>& plant);
+template <typename T>
+bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 
 }  // namespace multibody
 }  // namespace dairlib

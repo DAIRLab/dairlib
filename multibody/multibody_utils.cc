@@ -235,7 +235,7 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
 
 
 
-bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
+bool JointsWithinLimits(const MultibodyPlant<double>& plant,
                         VectorXd positions, double tolerance) {
   VectorXd joint_min = plant.GetPositionLowerLimits();
   VectorXd joint_max = plant.GetPositionUpperLimits();
@@ -252,8 +252,8 @@ bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
 }
 
 
-
-bool isQuaternion(const drake::multibody::MultibodyPlant<double>& plant) {
+template <typename T>
+bool isQuaternion(const MultibodyPlant<T>& plant) {
   auto unordered_index_set = plant.GetFloatingBaseBodies();
   if (unordered_index_set.empty()) {
     return false;
@@ -265,7 +265,8 @@ bool isQuaternion(const drake::multibody::MultibodyPlant<double>& plant) {
 
 
 
-
+template bool isQuaternion(const MultibodyPlant<double>& plant);  // NOLINT
+template bool isQuaternion(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> makeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> makeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> makeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant);  // NOLINT

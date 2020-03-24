@@ -36,22 +36,31 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
                     OutputVector<double>* output) const;
   int num_positions_;
   int num_velocities_;
+  int num_efforts_;
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;
+  std::map<std::string, int> effortIndexMap_;
 };
 
 
 /// Converts a OutputVector object to LCM type lcmt_robot_output
 class RobotOutputSender : public drake::systems::LeafSystem<double> {
  public:
-  explicit RobotOutputSender(const RigidBodyTree<double>& tree);
+  explicit RobotOutputSender(const RigidBodyTree<double>& tree,
+      const bool publish_efforts=false);
 
   explicit RobotOutputSender(
-    const drake::multibody::MultibodyPlant<double>& plant);
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const bool publish_efforts=false);;
 
   const drake::systems::InputPort<double>& get_input_port_state()
       const {
     return this->get_input_port(state_input_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_effort()
+      const {
+    return this->get_input_port(effort_input_port_);
   }
 
  private:
@@ -60,11 +69,16 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
 
   int num_positions_;
   int num_velocities_;
+  int num_efforts_;
   std::vector<std::string> ordered_position_names_;
   std::vector<std::string> ordered_velocity_names_;
+  std::vector<std::string> ordered_effort_names_;
   std::map<std::string, int> positionIndexMap_;
   std::map<std::string, int> velocityIndexMap_;
+  std::map<std::string, int> effortIndexMap_;
   int state_input_port_;
+  int effort_input_port_;
+  bool publish_efforts_;
 };
 
 /// Receives the output of an LcmSubsriberSystem that subsribes to the

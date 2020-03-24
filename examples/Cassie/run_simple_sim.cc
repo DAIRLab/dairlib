@@ -2,7 +2,6 @@
 #include <string>
 
 #include <gflags/gflags.h>
-#include "drake/lcm/drake_lcm.h"
 #include "drake/manipulation/util/sim_diagram_builder.h"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
@@ -10,6 +9,7 @@
 #include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/runge_kutta3_integrator.h"
@@ -39,7 +39,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
-DEFINE_double(youngs_modulus, 1e8, "The contact model's Young's modulus (Pa)");
+DEFINE_double(youngs_modulus, 1e9, "The contact model's Young's modulus (Pa)");
 DEFINE_double(us, 0.7, "The static coefficient of friction");
 DEFINE_double(ud, 0.7, "The dynamic coefficient of friction");
 DEFINE_double(v_tol, 0.01,
@@ -57,28 +57,43 @@ DEFINE_double(dt, 1e-3,
 DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
 DEFINE_bool(publish_state, true,
     "Publish state CASSIE_STATE (set to false when running w/dispatcher");
+DEFINE_string(state_channel_name, "CASSIE_STATE",
+              "The name of the lcm channel that sends Cassie's state");
+DEFINE_bool(publish_cassie_output, true, "Publish simulated CASSIE_OUTPUT");
 
 // Cassie model paramter
 DEFINE_bool(floating_base, false, "Fixed or floating base model");
-DEFINE_bool(is_imu_sim, true, "With simulated imu sensor or not");
+// Cassie inital positions
+DEFINE_double(init_height, 1.05, "Initial height of the pelvis");
+DEFINE_double(init_hip_pitch, .4, "Initial hip pitch angle");
+DEFINE_double(init_knee, -1.0, "Initial knee joint position");
+DEFINE_double(init_ankle, 1.3, "Initial ankle joint position");
+DEFINE_double(init_toe, -1.5, "Initial toe joint position");
+
+DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
+    "End time of simulation");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  drake::lcm::DrakeLcm lcm;
   std::unique_ptr<RigidBodyTree<double>> tree;
-  if (FLAGS_floating_base)
+  if (!FLAGS_floating_base){
+    tree = makeCassieTreePointer();
+  } else {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kQuaternion);
-  else
-    tree = makeCassieTreePointer();
+    const double terrain_size = 100;
+    const double terrain_depth = 0.20;
+    drake::multibody::AddFlatTerrainToWorld(
+        tree.get(), terrain_size, terrain_depth);
+  }
 
   // Add imu frame to Cassie's pelvis
-  if (FLAGS_is_imu_sim) addImuFrameToCassiePelvis(tree);
+  if (FLAGS_publish_cassie_output) addImuFrameToCassiePelvis(tree);
 
   drake::systems::DiagramBuilder<double> builder;
 
-  if (!FLAGS_is_imu_sim && !FLAGS_publish_state) {
+  if (!FLAGS_publish_cassie_output && !FLAGS_publish_state) {
     throw std::logic_error(
         "Must publish either via CASSIE_OUTPUT or CASSIE_STATE");
   }
@@ -86,6 +101,8 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_simulation_type != "timestepping") FLAGS_dt = 0.0;
   auto plant = builder.AddSystem<drake::systems::RigidBodyPlant<double>>(
       std::move(tree), FLAGS_dt);
+
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   // Note: this sets identical contact parameters across all object pairs:
   drake::systems::CompliantMaterial default_material;
@@ -101,7 +118,7 @@ int do_main(int argc, char* argv[]) {
   // Create input receiver
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          "CASSIE_INPUT", &lcm));
+          "CASSIE_INPUT", lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(
       plant->get_rigid_body_tree());
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
@@ -120,7 +137,7 @@ int do_main(int argc, char* argv[]) {
         plant->get_rigid_body_tree());
     auto state_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            "CASSIE_STATE", &lcm, 1.0 / FLAGS_publish_rate));
+            FLAGS_state_channel_name, lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(plant->state_output_port(),
                     state_sender->get_input_port_state());
     builder.Connect(state_sender->get_output_port(0),
@@ -128,12 +145,12 @@ int do_main(int argc, char* argv[]) {
   }
 
   // Create cassie output (containing simulated sensor) publisher
-  if (FLAGS_is_imu_sim) {
+  if (FLAGS_publish_cassie_output) {
     auto cassie_sensor_aggregator =
         addImuAndAggregatorToSimulation(builder, plant, passthrough);
     auto cassie_sensor_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
-            "CASSIE_OUTPUT", &lcm, 1.0 / FLAGS_publish_rate));
+            "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
     builder.Connect(cassie_sensor_aggregator->get_output_port(0),
                     cassie_sensor_pub->get_input_port());
   }
@@ -165,18 +182,19 @@ int do_main(int argc, char* argv[]) {
   Eigen::VectorXd x0 =
       Eigen::VectorXd::Zero(plant->get_rigid_body_tree().get_num_positions() +
                             plant->get_rigid_body_tree().get_num_velocities());
+
   std::map<std::string, int> map =
       plant->get_rigid_body_tree().computePositionNameToIndexMap();
-  x0(map.at("hip_pitch_left")) = .269;
-  x0(map.at("hip_pitch_right")) = .269;
+  x0(map.at("hip_pitch_left")) = FLAGS_init_hip_pitch;
+  x0(map.at("hip_pitch_right")) = FLAGS_init_hip_pitch;
   // x0(map.at("achilles_hip_pitch_left")) = -.44;
   // x0(map.at("achilles_hip_pitch_right")) = -.44;
   // x0(map.at("achilles_heel_pitch_left")) = -.105;
   // x0(map.at("achilles_heel_pitch_right")) = -.105;
-  x0(map.at("knee_left")) = -.644;
-  x0(map.at("knee_right")) = -.644;
-  x0(map.at("ankle_joint_left")) = .792;
-  x0(map.at("ankle_joint_right")) = .792;
+  x0(map.at("knee_left")) = FLAGS_init_knee;
+  x0(map.at("knee_right")) = FLAGS_init_knee;
+  x0(map.at("ankle_joint_left")) = FLAGS_init_ankle;
+  x0(map.at("ankle_joint_right")) = FLAGS_init_ankle;
 
   // x0(map.at("toe_crank_left")) = -90.0*M_PI/180.0;
   // x0(map.at("toe_crank_right")) = -90.0*M_PI/180.0;
@@ -184,14 +202,27 @@ int do_main(int argc, char* argv[]) {
   // x0(map.at("plantar_crank_pitch_left")) = 90.0*M_PI/180.0;
   // x0(map.at("plantar_crank_pitch_right")) = 90.0*M_PI/180.0;
 
-  x0(map.at("toe_left")) = -60.0 * M_PI / 180.0;
-  x0(map.at("toe_right")) = -60.0 * M_PI / 180.0;
+  x0(map.at("toe_left")) = FLAGS_init_toe;
+  x0(map.at("toe_right")) = FLAGS_init_toe;
 
   std::vector<int> fixed_joints;
   fixed_joints.push_back(map.at("hip_pitch_left"));
   fixed_joints.push_back(map.at("hip_pitch_right"));
   fixed_joints.push_back(map.at("knee_left"));
   fixed_joints.push_back(map.at("knee_right"));
+
+  if (FLAGS_floating_base) {
+    double quaternion_norm = x0.segment(3, 4).norm();
+    if (quaternion_norm != 0)  // Unit Quaternion
+      x0.segment(3, 4) = x0.segment(3, 4) / quaternion_norm;
+    else  // in case the user enters 0-norm quaternion
+      x0(3) = 1;
+  }
+
+  // Set the initial height of the robot so that it's above the ground.
+  if (FLAGS_floating_base) {
+    x0(2) = FLAGS_init_height;
+  }
 
   Eigen::VectorXd q0 =
       x0.head(plant->get_rigid_body_tree().get_num_positions());
@@ -227,7 +258,7 @@ int do_main(int argc, char* argv[]) {
     // state[3] = 0;
     // state[4] = 0;
   } else {
-    std::cout << "ngroups " << context.get_num_discrete_state_groups()
+    std::cout << "ngroups " << context.num_discrete_state_groups()
               << std::endl;
     drake::systems::BasicVector<double>& state =
         context.get_mutable_discrete_state(0);
@@ -247,10 +278,8 @@ int do_main(int argc, char* argv[]) {
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
 
-  lcm.StartReceiveThread();
-
-  simulator.StepTo(std::numeric_limits<double>::infinity());
-  // simulator.StepTo(.001);
+  simulator.AdvanceTo(FLAGS_end_time);
+  // simulator.AdvanceTo(.01);
   return 0;
 }
 

@@ -49,10 +49,6 @@ class SubvectorPassThrough final : public drake::systems::LeafSystem<T> {
       const drake::systems::Context<T>& context,
       drake::systems::BasicVector<T>* output) const;
 
-  // Override feedthrough detection to avoid the need for `DoToSymbolic()`.
-  drake::optional<bool> DoHasDirectFeedthrough(
-      int input_port, int output_port) const override;
-
  private:
   bool is_abstract() const { return false;}
 

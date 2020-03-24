@@ -1,0 +1,30 @@
+# -*- python -*-
+
+# Demo programs
+
+cc_binary(
+    name='main',
+    srcs=['test/main.cpp'],
+    deps=[
+        '@ros',
+    ],
+    tags=["ros"],
+)
+
+py_binary(
+    name='main_python',
+    srcs=['test/main_python.py'],
+    deps=[
+        '@ros//:ros_python',
+    ],
+    tags=["ros"],
+)
+
+py_binary(
+    name='genmsg_test',
+    srcs=['test/genmsg_test.py'],
+    deps=[
+        '@genpy_repo//:genpy',
+    ],
+    tags=["ros"],
+)

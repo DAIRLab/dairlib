@@ -21,7 +21,7 @@ cc_library(
     ],
     deps = [
         "//systems/framework:vector",
-        "@drake//systems/framework",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -33,8 +33,7 @@ cc_library(
     deps = [
         "//multibody:utils",
         "//systems/framework:vector",
-        "@drake//systems/framework:diagram_builder",
-        "@drake//systems/framework:leaf_system",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -47,7 +46,6 @@ cc_test(
     deps = [
         ":primitives",
         "@drake//common/test_utilities:eigen_matrix_compare",
-        "@drake//systems/framework",
         "@drake//systems/framework/test_utilities",
     ],
 )

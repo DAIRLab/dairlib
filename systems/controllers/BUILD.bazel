@@ -3,35 +3,82 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "control_utils",
+    srcs = [
+        "control_utils.cc",
+    ],
+    hdrs = [
+        "control_utils.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "pd_config_lcm",
     srcs = ["pd_config_lcm.cc"],
     hdrs = ["pd_config_lcm.h"],
     deps = [
         ":controllers",
-        "//lcmtypes:lcmt_robot",
         "//attic/multibody:utils",
-        "//systems/framework:vector",
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
-        "@drake//manipulation/util",
-        "@drake//systems/framework:leaf_system",
-        "@drake//multibody/plant",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
         "@lcm",
     ],
 )
 
 cc_library(
-    name = "controllers",
+    name = "linear_controller",
     srcs = [
-        "affine_controller.cc",
         "linear_controller.cc",
     ],
     hdrs = [
-        "affine_controller.h",
         "linear_controller.h",
     ],
     deps = [
         "//systems/framework:vector",
-        "@drake//systems/framework:leaf_system",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "affine_controller",
+    srcs = [
+        "affine_controller.cc",
+    ],
+    hdrs = [
+        "affine_controller.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "constrained_lqr_controller",
+    srcs = [
+        "constrained_lqr_controller.cc",
+    ],
+    hdrs = [
+        "constrained_lqr_controller.h",
+    ],
+    deps = [
+        "//attic/multibody:contact_toolkit",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "controllers",
+    deps = [
+        ":affine_controller",
+        ":constrained_lqr_controller",
+        ":linear_controller",
     ],
 )
 
@@ -42,16 +89,13 @@ cc_test(
     deps = [
         ":pd_config_lcm",
         "//examples/Cassie:cassie_urdf",
-        "@drake//attic/multibody:rigid_body_tree",
-        "@drake//attic/multibody/parsers",
-        "@drake//manipulation/util",
-        "@drake//systems/framework/test_utilities",
+        "@drake//:drake_shared_library",
         "@gtest//:main",
     ],
 )
 
 cc_test(
-    name = "controllers_test",
+    name = "affine_controller_test",
     size = "small",
     srcs = [
         "test/affine_controller_test.cc",
@@ -59,5 +103,86 @@ cc_test(
     deps = [
         ":controllers",
         "@gtest//:main",
+    ],
+)
+
+cc_library(
+    name = "time_based_fsm",
+    srcs = ["time_based_fsm.cc"],
+    hdrs = ["time_based_fsm.h"],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "lipm_traj_gen",
+    srcs = ["lipm_traj_gen.cc"],
+    hdrs = ["lipm_traj_gen.h"],
+    deps = [
+        ":control_utils",
+        "//attic/multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "cp_traj_gen",
+    srcs = ["cp_traj_gen.cc"],
+    hdrs = ["cp_traj_gen.h"],
+    deps = [
+        ":control_utils",
+        "//attic/multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_test(
+    name = "constrained_lqr_controller_test",
+    size = "small",
+    srcs = [
+        "test/constrained_lqr_controller_test.cc",
+    ],
+    deps = [
+        ":controllers",
+        "//attic/multibody:multibody_solvers",
+        "//examples/Cassie:cassie_utils",
+        "@gtest//:main",
+    ],
+)
+
+cc_library(
+    name = "safe_velocity_controller",
+    srcs = ["safe_velocity_controller.cc"],
+    hdrs = ["safe_velocity_controller.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "endeffector_position_controller",
+    srcs = ["endeffector_position_controller.cc"],
+    hdrs = ["endeffector_position_controller.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "endeffector_velocity_controller",
+    srcs = ["endeffector_velocity_controller.cc"],
+    hdrs = ["endeffector_velocity_controller.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
     ],
 )

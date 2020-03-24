@@ -45,7 +45,7 @@ int do_main(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm;
   auto tree = std::make_unique<RigidBodyTree<double>>();
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
-      "PlanarWalker.urdf",
+      "examples/PlanarWalker/PlanarWalker.urdf",
       drake::multibody::joints::kFixed, tree.get());
 
   drake::multibody::AddFlatTerrainToWorld(tree.get(), 100., 10.);  
@@ -95,7 +95,7 @@ int do_main(int argc, char* argv[]) {
     state[3] = 1;
     state[4] = 2;
   } else {
-    std::cout << "ngroups "<< context.get_num_discrete_state_groups() <<  std::endl;
+    std::cout << "ngroups "<< context.num_discrete_state_groups() <<  std::endl;
     drake::systems::BasicVector<double>& state = context.get_mutable_discrete_state(0); 
     std::cout << "Discrete " << state.size() << std::endl;
     state[1] = 1;
@@ -112,7 +112,7 @@ int do_main(int argc, char* argv[]) {
 
   simulator.set_target_realtime_rate(FLAGS_realtime_factor);
   simulator.Initialize();
-  //simulator.StepTo(10);
+  //simulator.AdvanceTo(10);
   return 0;
 }
 

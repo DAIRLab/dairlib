@@ -20,9 +20,13 @@ using drake::AutoDiffXd;
 
 template <typename T>
 VectorX<T> getInput(const MultibodyPlant<T>& plant, const Context<T>& context) {
-  VectorX<T> input = plant.EvalEigenVectorInput(context,
+  if (plant.num_actuators() > 0) {
+    VectorX<T> input = plant.EvalEigenVectorInput(context,
         plant.get_actuation_input_port().get_index());
-  return input;
+    return input;
+  } else {
+    return VectorX<T>(0);
+  }
 }
 
 template <typename T>
@@ -50,14 +54,15 @@ void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
   drake::multibody::CoulombFriction<T> friction(mu_static, mu_kinetic);
 
   // A half-space for the ground geometry.
+  const drake::math::RigidTransformd X_WG(
+      HalfSpace::MakePose(normal_W, point_W));
+
   plant->RegisterCollisionGeometry(
-      plant->world_body(), HalfSpace::MakePose(normal_W, point_W),
-      HalfSpace(), "collision", friction);
+      plant->world_body(), X_WG, HalfSpace(), "collision", friction);
 
   // Add visual for the ground.
   plant->RegisterVisualGeometry(
-      plant->world_body(), HalfSpace::MakePose(normal_W, point_W),
-      HalfSpace(), "visual");
+      plant->world_body(), X_WG, HalfSpace(), "visual");
 }
 
 /// Construct a map between joint names and position indices
@@ -65,11 +70,12 @@ void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
 ///  -Only accurately includes joints with a single position and single velocity
 ///  -Others are included as "position[ind]""
 ///  -Index mapping can also be used as a state mapping (assumes x = [q;v])
-map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
+template <typename T>
+map<string, int> makeNameToPositionsMap(const MultibodyPlant<T>& plant) {
   map<string, int> name_to_index_map;
   std::set<int> index_set;
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
-    const drake::multibody::Joint<double>& joint = plant.get_joint(i);
+    const drake::multibody::Joint<T>& joint = plant.get_joint(i);
     auto name = joint.name();
 
     if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
@@ -95,10 +101,29 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
     }
   }
 
+  auto floating_bodies = plant.GetFloatingBaseBodies();
+  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);  //remove once RBT deprecated
+  for (auto body_index : floating_bodies) {
+    const auto& body = plant.get_body(body_index);
+    DRAKE_ASSERT(body.has_quaternion_dofs());
+    int start = body.floating_positions_start();
+    std::string name = "base";  // should be body.name() once RBT is deprecated
+    name_to_index_map[name + "_qw"] = start;
+    name_to_index_map[name + "_qx"] = start + 1;
+    name_to_index_map[name + "_qy"] = start + 2;
+    name_to_index_map[name + "_qz"] = start + 3;
+    name_to_index_map[name + "_x"] = start + 4;
+    name_to_index_map[name + "_y"] = start + 5;
+    name_to_index_map[name + "_z"] = start + 6;
+    for (int i = 0; i < 7; i++) {
+      index_set.insert(start + i);
+    }
+  }
+
   for (int i = 0; i < plant.num_positions(); ++i) {
-    // if index has not already been captured, add it
+    // if index has not already been captured, throw an error
     if (index_set.find(i) == index_set.end()) {
-      name_to_index_map["position[" + std::to_string(i) + "]"] = i;
+      DRAKE_THROW_UNLESS(false);
     }
   }
 
@@ -111,12 +136,13 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<double>& plant) {
 ///  -Others are included as "state[ind]"
 ///  -Index mapping can also be used as a state mapping, AFTER
 ///     an offset of num_positions is applied (assumes x = [q;v])
-map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
+template <typename T>
+map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
   map<string, int> name_to_index_map;
   std::set<int> index_set;
 
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
-    const drake::multibody::Joint<double>& joint = plant.get_joint(i);
+    const drake::multibody::Joint<T>& joint = plant.get_joint(i);
     // TODO(posa): this "dot" should be removed, it's an anachronism from
     // RBT
     auto name = joint.name() + "dot";
@@ -144,20 +170,39 @@ map<string, int> makeNameToVelocitiesMap(const MultibodyPlant<double>& plant) {
     }
   }
 
+  auto floating_bodies = plant.GetFloatingBaseBodies();
+  // Remove throw once RBT deprecated
+  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
+  for (auto body_index : floating_bodies) {
+    const auto& body = plant.get_body(body_index);
+    int start = body.floating_velocities_start() - plant.num_positions();
+    std::string name = "base";  // should be body.name() once RBT is deprecated
+    name_to_index_map[name + "_wx"] = start;
+    name_to_index_map[name + "_wy"] = start + 1;
+    name_to_index_map[name + "_wz"] = start + 2;
+    name_to_index_map[name + "_vx"] = start + 3;
+    name_to_index_map[name + "_vy"] = start + 4;
+    name_to_index_map[name + "_vz"] = start + 5;
+    for (int i = 0; i < 6; i++) {
+      index_set.insert(start + i);
+    }
+  }
+
   for (int i = 0; i < plant.num_velocities(); ++i) {
-    // if index has not already been captured, add it
+    // if index has not already been captured, throw an error
     if (index_set.find(i) == index_set.end()) {
-      name_to_index_map["velocity[" + std::to_string(i) + "]"] = i;
+      DRAKE_THROW_UNLESS(false);
     }
   }
 
   return name_to_index_map;
 }
 
-map<string, int> makeNameToActuatorsMap(const MultibodyPlant<double>& plant) {
+template <typename T>
+map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
   map<string, int> name_to_index_map;
   for (JointActuatorIndex i(0); i < plant.num_actuators(); ++i) {
-    const drake::multibody::JointActuator<double>& actuator =
+    const drake::multibody::JointActuator<T>& actuator =
         plant.get_joint_actuator(i);
     auto name = actuator.name();
 
@@ -190,7 +235,7 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<double>& plant) {
 
 
 
-bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
+bool JointsWithinLimits(const MultibodyPlant<double>& plant,
                         VectorXd positions, double tolerance) {
   VectorXd joint_min = plant.GetPositionLowerLimits();
   VectorXd joint_max = plant.GetPositionUpperLimits();
@@ -206,6 +251,28 @@ bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
   return joints_within_limits;
 }
 
+
+template <typename T>
+bool isQuaternion(const MultibodyPlant<T>& plant) {
+  auto unordered_index_set = plant.GetFloatingBaseBodies();
+  if (unordered_index_set.empty()) {
+    return false;
+  }
+
+  auto first_body_idx = unordered_index_set.begin();
+  return plant.get_body(*first_body_idx).has_quaternion_dofs();
+}
+
+
+
+template bool isQuaternion(const MultibodyPlant<double>& plant);  // NOLINT
+template bool isQuaternion(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template map<string, int> makeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> makeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template map<string, int> makeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> makeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template map<string, int> makeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> makeNameToActuatorsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT

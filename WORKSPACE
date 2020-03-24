@@ -8,12 +8,12 @@ workspace(name = "dairlib")
 # If the environment variable DAIRLIB_LOCAL_DRAKE_PATH is set, it will use
 # a local version, ad the specified path. Otherwise, it will get a pegged
 # revision from github.
-# As an example, 
+# As an example,
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "109d0564603faf02c95c9e51ac670ab77923414a"
-DRAKE_CHECKSUM = "02ae65bd511bcc4c35403ee5b7f081db853ceedc10b11399f5b5c3a456963194"
+DRAKE_COMMIT = "0af03e2f368c40a786b613936abc14caa06eb423"
+DRAKE_CHECKSUM = "4aeec3d76d01123a635674c4cf9a4fde71af1b3cee01656f80b218a7fe7dd0ec"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 # DRAKE_CHECKSUM = "0" * 64
@@ -57,3 +57,77 @@ add_default_repositories()
 
 load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
 signal_scope_repository(name = "signal_scope")
+
+
+# Prebuilt ROS workspace
+new_local_repository(
+    name='ros',
+    path='tools/workspace/ros/bundle_ws/install',
+    build_file='tools/workspace/ros/ros.bazel',
+)
+
+# Other catkin packages from source
+# TODO: generate this automatically from rosinstall_generator
+
+http_archive(
+    name='genmsg_repo',
+    build_file='@//tools/workspace/ros/bazel:genmsg.BUILD',
+    sha256='d7627a2df169e4e8208347d9215e47c723a015b67ef3ed8cda8b61b6cfbf94d2',
+    urls = ['https://github.com/ros/genmsg/archive/0.5.8.tar.gz'],
+    strip_prefix='genmsg-0.5.8',
+)
+
+http_archive(
+    name='genpy_repo',
+    build_file='@//tools/workspace/ros/bazel:genpy.BUILD',
+    sha256='35e5cd2032f52a1f77190df5c31c02134dc460bfeda3f28b5a860a95309342b9',
+    urls = ['https://github.com/ros/genpy/archive/0.6.5.tar.gz'],
+    strip_prefix='genpy-0.6.5',
+)
+
+
+# dairlib can use either a local version of invariant-ekf or a pegged revision
+# If the environment variable DAIRLIB_LOCAL_INEKF_PATH is set, it will use
+# a local version, ad the specified path. Otherwise, it will get a pegged
+# revision from github.
+# As an example,
+#  export DAIRLIB_LOCAL_INEKF_PATH=/home/user/workspace/invariant-ekf
+
+# Choose a revision of InEKF to use.
+INEKF_COMMIT = "7fde9f84dbe536ba9439a3b8c319efb51ff760dd"
+INEKF_CHECKSUM = "f87e3262b0c9c9237881fcd539acd1c60000f97dfdfa47b0ae53cb7a0f3256e4"
+
+# Before changing the COMMIT, temporarily uncomment the next line so that Bazel
+# displays the suggested new value for the CHECKSUM.
+# INEKF_CHECKSUM = "0" * 64
+
+# Load an environment variable.
+environ_repository(name = "environ_inekf", vars = ["DAIRLIB_LOCAL_INEKF_PATH"])
+load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
+
+# The WORKSPACE file does not permit `if` statements, so we handle the local
+# option by toying with the repository names.  The selected repository is named
+# "@inekf", the other is named "@inekf_ignored".
+(_http_inekf_repo_name, _local_inekf_repo_name) = (
+    "inekf_ignored" if DAIRLIB_LOCAL_INEKF_PATH else "inekf",
+    "inekf" if DAIRLIB_LOCAL_INEKF_PATH else "inekf_ignored",
+)
+
+# Maybe download InEKF.
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = _http_inekf_repo_name,
+    urls = [x.format(INEKF_COMMIT) for x in [
+        "https://github.com/DAIRLab/invariant-ekf/archive/{}.tar.gz",
+    ]],
+    sha256 = INEKF_CHECKSUM,
+    strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
+)
+
+# Maybe use a local checkout of InEKF.
+print("Using DAIRLIB_LOCAL_INEKF_PATH={}".format(DAIRLIB_LOCAL_INEKF_PATH)) if DAIRLIB_LOCAL_INEKF_PATH else None  # noqa
+local_repository(
+    name = _local_inekf_repo_name,
+    path = DAIRLIB_LOCAL_INEKF_PATH,
+)
+

@@ -143,7 +143,7 @@ void PDConfigReceiver::CopyConfig(const Context<double>& context,
                                   LinearConfig* output) const {
   const AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_THROW_UNLESS(input != nullptr);
-  const auto& config_msg = input->GetValue<dairlib::lcmt_pd_config>();
+  const auto& config_msg = input->get_value<dairlib::lcmt_pd_config>();
 
 
   MatrixXd K = MatrixXd::Zero(num_actuators_, num_positions_ + num_velocities_);

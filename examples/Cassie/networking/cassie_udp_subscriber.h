@@ -10,6 +10,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <thread>
 
 #include "drake/common/drake_copyable.h"
 #include "drake/common/drake_deprecated.h"
@@ -20,6 +21,8 @@
 namespace dairlib {
 namespace systems {
 /**
+ * AS OF 5-17-2019, THIS CLASS IS DEPRECATED
+ *
  * Receives UDP messages from Cassie outputs them to a System<double>'s port
  * as a cassie_out_t struct. This class stores the most recently processed
  * message in the State. When a message arrives asynchronously, an update
@@ -82,7 +85,7 @@ class CassieUDPSubscriber : public drake::systems::LeafSystem<double> {
 
   /// Returns the sole output port.
   const drake::systems::OutputPort<double>& get_output_port() const {
-    DRAKE_THROW_UNLESS(this->get_num_output_ports() == 1);
+    DRAKE_THROW_UNLESS(this->num_output_ports() == 1);
     return drake::systems::LeafSystem<double>::get_output_port(0);
   }
 

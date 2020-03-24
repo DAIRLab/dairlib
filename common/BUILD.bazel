@@ -8,6 +8,6 @@ cc_library(
     ],
     deps = [
         "//third_party/spruce",
-        "@drake//common:essential",
+        "@drake//:drake_shared_library",
     ],
 )

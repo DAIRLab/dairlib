@@ -654,8 +654,6 @@ void OperationalSpaceControlMBP::AssignOscLcmOutput(
   output->tracking_data_names.clear();
   output->tracking_data.clear();
 
-  std::cout << "Assigning osc debug info" << std::endl;
-
   for (const auto& tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive()) {
       output->tracking_data_names.push_back(tracking_data->GetName());
@@ -683,8 +681,6 @@ void OperationalSpaceControlMBP::AssignOscLcmOutput(
   }
 
   output->num_tracking_data = output->tracking_data_names.size();
-
-  std::cout << "Finished assigning osc debug info" << std::endl;
 }
 
 void OperationalSpaceControlMBP::CalcOptimalInput(

@@ -1910,6 +1910,12 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 //    trajopt->AddConstraint(right_foot_vel_constraint, x_i);
 //  }
 
+  // testing -- zero impact
+  /*if (is_zero_touchdown_impact) {
+    trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(2) == 0);
+    trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(5) == 0);
+  }*/
+
   // testing -- swing foot pos at mid stance is the average of the start and the
   // end of the stance
   auto swing_foot_mid_stance_xy_constraint =

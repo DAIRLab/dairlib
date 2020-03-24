@@ -92,11 +92,12 @@ shared_ptr<HybridDircon<T>> runDircon(
   pt << 0, 0, -.5;
   bool isXZ = true;
 
+  Vector3d normal;
+  normal << 0, 0, 1;
   auto leftFootConstraint = DirconPositionData<T>(plant, left_lower_leg,
-                                                       pt, isXZ);
+                                                       pt, isXZ, normal);
   auto rightFootConstraint = DirconPositionData<T>(plant, right_lower_leg,
-                                                        pt, isXZ);
-
+                                                        pt, isXZ, normal);
 
   double mu = 1;
   leftFootConstraint.addFixedNormalFrictionConstraints(mu);
@@ -140,7 +141,7 @@ shared_ptr<HybridDircon<T>> runDircon(
   trajopt->AddDurationBounds(duration, duration);
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Print file", "snopt.out");
+                           "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", 100);
 
@@ -267,8 +268,8 @@ int main(int argc, char* argv[]) {
 
   parser.AddModelFromFile(full_name);
 
-  plant->template AddForceElement<
-      drake::multibody::UniformGravityFieldElement>();
+  plant->mutable_gravity_field().set_gravity_vector(
+      -9.81 * Eigen::Vector3d::UnitZ());
 
   plant->WeldFrames(
       plant->world_frame(), plant->GetFrameByName("base"),
@@ -276,14 +277,14 @@ int main(int argc, char* argv[]) {
 
   plant->Finalize();
 
-  int N = 10;
+  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(plant->num_positions() +
+                       plant->num_velocities());
 
   Eigen::VectorXd init_l_vec(2);
   init_l_vec << 0, 20*9.81;
   int nu = plant->num_actuators();
   int nx = plant->num_positions() + plant->num_velocities();
-
-  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(nx);
+  int N = 10;
 
   std::vector<MatrixXd> init_x;
   std::vector<MatrixXd> init_u;

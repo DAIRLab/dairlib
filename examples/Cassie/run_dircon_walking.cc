@@ -135,7 +135,8 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
     double stance_toe_pos_x = stride_length / 2;
     Vector3d stance_toe_pos(stance_toe_pos_x, 0.12,
                             0.05 + tan(-ground_incline) * stance_toe_pos_x);
-    double swing_toe_pos_x = -stride_length / 2 + 2 * stride_length * i / (N - 1);
+    double swing_toe_pos_x =
+        -stride_length / 2 + 2 * stride_length * i / (N - 1);
     Vector3d swing_toe_pos(swing_toe_pos_x, -0.12,
                            0.05 + 0.1 * (-abs((i - N / 2.0) / (N / 2.0)) + 1) +
                                tan(-ground_incline) * swing_toe_pos_x);
@@ -512,8 +513,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-//  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-//                           "../snopt.out");
+  //  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+  //                           "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -738,34 +739,41 @@ void DoMain(double duration, double stride_length, double ground_incline,
   double s_v_toe_l = 1;
   double s_v_toe_r = 1;
   if (FLAGS_is_scale_variable) {
+    std::vector<int> idx_list;
     // time
     trajopt->ScaleTimeVariables(0.008);
     // state
-    // could try increasing the toe position by a factor of 10
-    trajopt->ScaleStateVariables(0.5, 0, 3);
+    trajopt->ScaleStateVariables({0, 1, 2, 3}, 0.5);
     if (s_q_toe > 1) {
-      trajopt->ScaleStateVariables(s_q_toe, n_q - 2, n_q - 1);
+      trajopt->ScaleStateVariables({n_q - 2, n_q - 1}, s_q_toe);
     }
-    trajopt->ScaleStateVariables(10, n_q, n_q + n_v - 3);
-    trajopt->ScaleStateVariables(10 * s_v_toe_l, n_q + n_v - 2, n_q + n_v - 2);
-    trajopt->ScaleStateVariables(10 * s_v_toe_r, n_q + n_v - 1, n_q + n_v - 1);
+    idx_list.clear();
+    for (int i = n_q; i < n_q + n_v - 2; i++) {
+      idx_list.push_back(i);
+    }
+    trajopt->ScaleStateVariables(idx_list, 10);
+    trajopt->ScaleStateVariable(n_q + n_v - 2, 10 * s_v_toe_l);
+    trajopt->ScaleStateVariable(n_q + n_v - 1, 10 * s_v_toe_r);
     // input
-    trajopt->ScaleInputVariables(100, 0, 9);
+    trajopt->ScaleInputVariables({0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 100);
     // force
-    // could try increasing lambda 7 and 8 by 3 times
-    trajopt->ScaleForceVariables(
-        1000, 0, 0, ls_dataset.countConstraintsWithoutSkipping() - 1);
-    trajopt->ScaleForceVariables(
-        1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
+    idx_list.clear();
+    for (int i = 0; i < ls_dataset.countConstraintsWithoutSkipping(); i++) {
+      idx_list.push_back(i);
+    }
+    trajopt->ScaleForceVariables(0, idx_list, 1000);
+    idx_list.clear();
+    for (int i = 0; i < rs_dataset.countConstraintsWithoutSkipping(); i++) {
+      idx_list.push_back(i);
+    }
+    trajopt->ScaleForceVariables(1, idx_list, 1000);
     // impulse
-    // could try increasing impulse 7 and 8 by 2 times
-    trajopt->ScaleImpulseVariables(
-        10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
+    trajopt->ScaleImpulseVariables(0, idx_list, 10);
     // quaternion slack
     trajopt->ScaleQuaternionSlackVariables(30);
     // Constraint slack
-    trajopt->ScaleKinConstraintSlackVariables(50, 0, 0, 5);
-    trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
+    trajopt->ScaleKinConstraintSlackVariables(0, {0, 1, 2, 3, 4, 5}, 50);
+    trajopt->ScaleKinConstraintSlackVariables(0, {6, 7}, 500);
   }
 
   // add cost

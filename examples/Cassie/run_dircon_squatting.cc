@@ -217,8 +217,8 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
       -1.762, 68.42, 0.652, 1.744;
   mp->SetInitialGuessForAllVariables(init_guess);
 
-//  mp->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-//                      "../snopt.out");
+  //  mp->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+  //                      "../snopt.out");
   // target nonlinear constraint violation
   // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
   //                     "Major optimality tolerance", 1e-6);
@@ -433,9 +433,11 @@ void DoMain(double duration, int max_iter, string data_directory,
     double_all_options.setKinConstraintScaling(
         2.0 / 50.0 * s_kin_vel * s_kin_2 / s_kin_1, n_kin + 10, n_kin + 11);
     double_all_options.setKinConstraintScaling(
-        1.0 / 500.0 * s_kin_acc * s_kin_2 / s_kin_1, 2*n_kin + 0, 2*n_kin + 9);
+        1.0 / 500.0 * s_kin_acc * s_kin_2 / s_kin_1, 2 * n_kin + 0,
+        2 * n_kin + 9);
     double_all_options.setKinConstraintScaling(
-        2.0 / 50.0 * s_kin_acc * s_kin_2 / s_kin_1, 2*n_kin + 10, 2*n_kin + 11);
+        2.0 / 50.0 * s_kin_acc * s_kin_2 / s_kin_1, 2 * n_kin + 10,
+        2 * n_kin + 11);
   }
 
   // timesteps and modes setting
@@ -578,23 +580,31 @@ void DoMain(double duration, int max_iter, string data_directory,
     // time
     trajopt->ScaleTimeVariables(0.015);
     // state
-    trajopt->ScaleStateVariables(6, n_q, n_q + 9);
-    trajopt->ScaleStateVariables(3, n_q + 10, n_q + n_v - 1);
+    std::vector<int> idx_list;
+    for (int i = n_q; i <= n_q + 9; i++) {
+      idx_list.push_back(i);
+    }
+    trajopt->ScaleStateVariables(idx_list, 6);
+    idx_list.clear();
+    for (int i = n_q + 10; i <= n_q + n_v - 1; i++) {
+      idx_list.push_back(i);
+    }
+    trajopt->ScaleStateVariables(idx_list, 3);
     // input
-    trajopt->ScaleInputVariables(60, 0, 1);
-    trajopt->ScaleInputVariables(300, 2, 3); //300
-    trajopt->ScaleInputVariables(60, 4, 7);
-    trajopt->ScaleInputVariables(600, 8, 9); //600
+    trajopt->ScaleInputVariables({0, 1}, 60);
+    trajopt->ScaleInputVariables({2, 3}, 300);  // 300
+    trajopt->ScaleInputVariables({4, 7}, 60);
+    trajopt->ScaleInputVariables({8, 9}, 600);  // 600
     // force
-    trajopt->ScaleForceVariables(10, 0, 0, 1);
-    trajopt->ScaleForceVariables(1000, 0, 2, 2); //1000
-    trajopt->ScaleForceVariables(10, 0, 3, 4);
-    trajopt->ScaleForceVariables(1000, 0, 5, 5);
-    trajopt->ScaleForceVariables(10, 0, 6, 7);
-    trajopt->ScaleForceVariables(1000, 0, 8, 8);
-    trajopt->ScaleForceVariables(10, 0, 9, 10);
-    trajopt->ScaleForceVariables(1000, 0, 11, 11);
-    trajopt->ScaleForceVariables(600, 0, 12, 13);
+    trajopt->ScaleForceVariables(0, {0, 1}, 10);
+    trajopt->ScaleForceVariables(0, {2, 2}, 1000);  // 1000
+    trajopt->ScaleForceVariables(0, {3, 4}, 10);
+    trajopt->ScaleForceVariable(0, 5, 1000);
+    trajopt->ScaleForceVariables(0, {6, 7}, 10);
+    trajopt->ScaleForceVariable(0, 8, 1000);
+    trajopt->ScaleForceVariables(0, {9, 10}, 10);
+    trajopt->ScaleForceVariable(0, 11, 1000);
+    trajopt->ScaleForceVariables(0, {12, 13}, 600);
 
     // Print out the scaling factors
     /*for (int i=0; i < trajopt->decision_variables().size() ; i++) {

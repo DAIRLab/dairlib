@@ -599,11 +599,11 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->ScaleForceVariables(0, {0, 1}, 10);
     trajopt->ScaleForceVariables(0, {2, 2}, 1000);  // 1000
     trajopt->ScaleForceVariables(0, {3, 4}, 10);
-    trajopt->ScaleForceVariables(0, {5, 5}, 1000);
+    trajopt->ScaleForceVariable(0, 5, 1000);
     trajopt->ScaleForceVariables(0, {6, 7}, 10);
-    trajopt->ScaleForceVariables(0, {8, 8}, 1000);
+    trajopt->ScaleForceVariable(0, 8, 1000);
     trajopt->ScaleForceVariables(0, {9, 10}, 10);
-    trajopt->ScaleForceVariables(0, {11, 11}, 1000);
+    trajopt->ScaleForceVariable(0, 11, 1000);
     trajopt->ScaleForceVariables(0, {12, 13}, 600);
 
     // Print out the scaling factors

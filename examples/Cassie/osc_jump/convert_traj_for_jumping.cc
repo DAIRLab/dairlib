@@ -1,6 +1,6 @@
-#include <gflags/gflags.h>
 #include <drake/geometry/scene_graph.h>
 #include <drake/multibody/parsing/parser.h>
+#include <gflags/gflags.h>
 #include "examples/Cassie/cassie_utils.h"
 #include "lcm/lcm_trajectory.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -33,7 +33,7 @@ int DoMain() {
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
-  MultibodyPlant<double> plant(1e-5); //non-zero timestep to avoid continuous
+  MultibodyPlant<double> plant(1e-5);  // non-zero timestep to avoid continuous
   // model warnings
   Parser parser(&plant, &scene_graph);
   parser.AddModelFromFile(
@@ -122,8 +122,8 @@ int DoMain() {
     MatrixXd J_l_hip(3, nv);
     MatrixXd J_r_hip(3, nv);
     //    MatrixXd J_pelvis_orientation(3, nv);
-    plant.CalcJacobianCenterOfMassVelocity(*context, JacobianWrtVariable::kV,
-                                           *world, *world, &J_CoM);
+    plant.CalcJacobianTranslationalVelocityOfSystemCenterOfMass(
+        *context, JacobianWrtVariable::kV, *world, *world, &J_CoM);
     plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                             *l_toe_frame, zero_offset, *world,
                                             *world, &J_l_foot);

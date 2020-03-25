@@ -27,7 +27,7 @@ int DoMain() {
   parser.AddModelFromFile(
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
   plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-      Eigen::Vector3d::UnitZ());
+                                                   Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
@@ -51,8 +51,8 @@ int DoMain() {
   std::vector<LcmTrajectory::Trajectory> trajectories;
   std::vector<std::string> trajectory_names;
   for (unsigned int mode = 0; mode < 3; ++mode) {
-    auto traj_mode = loadedTrajs.getTrajectory
-        ("cassie_jumping_trajectory_x_u" + std::to_string(mode));
+    auto traj_mode = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u" +
+                                               std::to_string(mode));
     DRAKE_ASSERT(nx == traj_mode.datapoints.rows());
     int n_points = traj_mode.datapoints.cols();
 
@@ -82,35 +82,35 @@ int DoMain() {
       Eigen::Ref<Eigen::MatrixXd> r_hip_pos_block =
           r_hip_points.block(0, i, 3, 1);
       plant.CalcPointsPositions(*context, *l_toe_frame, zero_offset, *world,
-          &l_foot_pos_block);
+                                &l_foot_pos_block);
       plant.CalcPointsPositions(*context, *r_toe_frame, zero_offset, *world,
-          &r_foot_pos_block);
+                                &r_foot_pos_block);
       plant.CalcPointsPositions(*context, *hip_left_frame, zero_offset, *world,
-          &l_hip_pos_block);
+                                &l_hip_pos_block);
       plant.CalcPointsPositions(*context, *hip_right_frame, zero_offset, *world,
-          &r_hip_pos_block);
+                                &r_hip_pos_block);
 
       pelvis_orientation.block(1, i, 3, 1) =
           plant.CalcRelativeRotationMatrix(*context, *pelvis_frame, *world)
-               .ToQuaternion()
-               .vec();
+              .ToQuaternion()
+              .vec();
       pelvis_orientation(0, i) =
           plant.CalcRelativeRotationMatrix(*context, *pelvis_frame, *world)
-               .ToQuaternion()
-               .w();
+              .ToQuaternion()
+              .w();
 
       MatrixXd J_CoM(3, nv);
       MatrixXd J_l_foot(3, nv);
       MatrixXd J_r_foot(3, nv);
       //    MatrixXd J_pelvis_orientation(3, nv);
-      plant.CalcJacobianCenterOfMassVelocity(*context, JacobianWrtVariable::kV,
-          *world, *world, &J_CoM);
+      plant.CalcJacobianTranslationalVelocityOfSystemCenterOfMass(
+          *context, JacobianWrtVariable::kV, *world, *world, &J_CoM);
       plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
-          *l_toe_frame, zero_offset, *world,
-          *world, &J_l_foot);
+                                              *l_toe_frame, zero_offset, *world,
+                                              *world, &J_l_foot);
       plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
-          *r_toe_frame, zero_offset, *world,
-          *world, &J_r_foot);
+                                              *r_toe_frame, zero_offset, *world,
+                                              *world, &J_r_foot);
       //    plant.CalcJacobianAngularVelocity(*context, JacobianWrtVariable::kV,
       //                                      *r_toe_frame, *world, *world,
       //                                      &J_pelvis_orientation);
@@ -165,12 +165,10 @@ int DoMain() {
     trajectory_names.push_back(pelvis_orientation_block.traj_name);
   }
 
-
-
   auto processed_traj =
       LcmTrajectory(trajectories, trajectory_names, "jumping_trajectory",
-          "Feet trajectories "
-          "for Cassie jumping");
+                    "Feet trajectories "
+                    "for Cassie jumping");
 
   processed_traj.writeToFile(
       "/home/yangwill/Documents/research/projects/cassie/jumping"

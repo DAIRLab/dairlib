@@ -57,7 +57,8 @@ DEFINE_bool(is_zero_touchdown_impact, false,
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 
 // inner loop
-DEFINE_string(init_file, "w0.csv", "Initial Guess for Trajectory Optimization");
+DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization. "
+                             "E.g. w0.csv");
 DEFINE_double(major_feasibility_tol, 1e-4,
               "nonlinear constraint violation tol");
 DEFINE_int32(
@@ -69,7 +70,7 @@ DEFINE_int32(n_node, -1, "# of nodes for traj opt");
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
 
 // outer loop
-DEFINE_int32(iter_start, 1, "The starting iteration #. 0 is nominal traj.");
+DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
 DEFINE_bool(is_stochastic, true, "Random tasks or fixed tasks");
 DEFINE_bool(is_newton, false, "Newton method or gradient descent");
 DEFINE_double(h_step, -1, "The step size for outer loop");

@@ -226,8 +226,11 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
   const int num_velocities_{0};
 };
 
-// Position constraint of a point in the direction `dir`.
-// The point is specified by body_name and point_wrt_body.
+// Position constraint of a point in the directions `dir`, where the point is
+// specified by body_name and point_wrt_body.
+// Each row of `dir` is the direction in which you want to constrain the point,
+// and each row of lb/ub is the corresponding lower/upper bound.
+// To clarify, the # of constraints = `dir.rows()` = `lb.size()` = `ub.size()`
 template <typename T>
 class OneDimPointPosConstraint : public DirconAbstractConstraint<T> {
  public:
@@ -235,6 +238,12 @@ class OneDimPointPosConstraint : public DirconAbstractConstraint<T> {
                            const std::string& body_name,
                            const Eigen::Vector3d& point_wrt_body,
                            const Eigen::RowVector3d& dir, double lb, double ub);
+  OneDimPointPosConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+                           const std::string& body_name,
+                           const Eigen::Vector3d& point_wrt_body,
+                           const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+                           const Eigen::VectorXd& lb,
+                           const Eigen::VectorXd& ub);
   ~OneDimPointPosConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -244,12 +253,15 @@ class OneDimPointPosConstraint : public DirconAbstractConstraint<T> {
   const drake::multibody::MultibodyPlant<T>& plant_;
   const drake::multibody::Body<T>& body_;
   const drake::Vector3<T> point_wrt_body_;
-  const drake::RowVector3<T> dir_;
+  const Eigen::Matrix<T, Eigen::Dynamic, 3> dir_;
   std::unique_ptr<drake::systems::Context<T>> context_;
 };
 
-// Velocity constraint of a point in the direction `dir`.
-// The point is specified by body_name and point_wrt_body.
+// Velocity constraint of a point in the directions `dir`, where the point is
+// specified by body_name and point_wrt_body.
+// Each row of `dir` is the direction in which you want to constrain the point,
+// and each row of lb/ub is the corresponding lower/upper bound.
+// To clarify, the # of constraints = `dir.rows()` = `lb.size()` = `ub.size()`
 template <typename T>
 class OneDimPointVelConstraint : public DirconAbstractConstraint<T> {
  public:
@@ -257,6 +269,12 @@ class OneDimPointVelConstraint : public DirconAbstractConstraint<T> {
                            const std::string& body_name,
                            const Eigen::Vector3d& point_wrt_body,
                            const Eigen::RowVector3d& dir, double lb, double ub);
+  OneDimPointVelConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+                           const std::string& body_name,
+                           const Eigen::Vector3d& point_wrt_body,
+                           const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+                           const Eigen::VectorXd& lb,
+                           const Eigen::VectorXd& ub);
   ~OneDimPointVelConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -266,7 +284,7 @@ class OneDimPointVelConstraint : public DirconAbstractConstraint<T> {
   const drake::multibody::MultibodyPlant<T>& plant_;
   const drake::multibody::Body<T>& body_;
   const drake::Vector3<T> point_wrt_body_;
-  const drake::RowVector3<T> dir_;
+  const Eigen::Matrix<T, Eigen::Dynamic, 3> dir_;
   std::unique_ptr<drake::systems::Context<T>> context_;
 };
 

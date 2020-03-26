@@ -1313,8 +1313,9 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
   auto right_foot_constraint_z =
       std::make_shared<PointPositionConstraint<double>>(
-          plant, "right_lower_leg", pt, T_ground_incline.row(2), 0,
-          std::numeric_limits<double>::infinity());
+          plant, "right_lower_leg", pt, T_ground_incline.row(2),
+          0 * VectorXd::Ones(1),
+          std::numeric_limits<double>::infinity() * VectorXd::Ones(1));
   for (int index = 1; index < num_time_samples[0] - 1; index++) {
     auto x_i = trajopt->state(index);
     trajopt->AddConstraint(right_foot_constraint_z, x_i.head(n_q));

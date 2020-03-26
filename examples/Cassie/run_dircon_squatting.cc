@@ -70,6 +70,7 @@ using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
+using dairlib::systems::trajectory_optimization::OneDimPointPosConstraint;
 
 DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
@@ -255,42 +256,6 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   simulator.Initialize();
   simulator.AdvanceTo(0.2);
 }
-
-// Position constraint of a body origin in one dimension (x, y, or z)
-class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
- public:
-  OneDimBodyPosConstraint(const MultibodyPlant<double>* plant, string body_name,
-                          int xyz_idx, double lb, double ub)
-      : DirconAbstractConstraint<double>(
-            1, plant->num_positions(), VectorXd::Ones(1) * lb,
-            VectorXd::Ones(1) * ub, body_name + "_constraint"),
-        plant_(plant),
-        body_(plant->GetBodyByName(body_name)),
-        xyz_idx_(xyz_idx) {}
-  ~OneDimBodyPosConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override {
-    VectorXd q = x;
-
-    std::unique_ptr<drake::systems::Context<double>> context =
-        plant_->CreateDefaultContext();
-    plant_->SetPositions(context.get(), q);
-
-    VectorX<double> pt(3);
-    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
-                                      Vector3d::Zero(), plant_->world_frame(),
-                                      &pt);
-    *y = pt.segment(xyz_idx_, 1);
-  };
-
- private:
-  const MultibodyPlant<double>* plant_;
-  const drake::multibody::Body<double>& body_;
-  // xyz_idx_ takes value of 0, 1 or 2.
-  // 0 is x, 1 is y and 2 is z component of the position vector.
-  const int xyz_idx_;
-};
 
 void DoMain(double duration, int max_iter, string data_directory,
             string init_file, double tol, bool to_store_data) {
@@ -533,10 +498,14 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_left", 1, 0.05, std::numeric_limits<double>::infinity());
-  auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
+  auto left_foot_constraint =
+      std::make_shared<OneDimPointPosConstraint<double>>(
+          &plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+          0.05, std::numeric_limits<double>::infinity());
+  auto right_foot_constraint =
+      std::make_shared<OneDimPointPosConstraint<double>>(
+          &plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+          -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
   if (FLAGS_is_scale_constraint) {
     std::unordered_map<int, double> odbp_constraint_scale;

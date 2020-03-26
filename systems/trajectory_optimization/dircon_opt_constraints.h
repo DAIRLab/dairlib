@@ -1,9 +1,9 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <memory.h>
-#include <unordered_map>
 #include "systems/trajectory_optimization/dircon_kinematic_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "drake/common/drake_copyable.h"
@@ -224,6 +224,48 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
   const int num_kinematic_constraints_wo_skipping_{0};
   const int num_positions_{0};
   const int num_velocities_{0};
+};
+
+// Position constraint of a point in the direction `dir`.
+// The point is specified by body_name and point_wrt_body.
+template <typename T>
+class OneDimPointPosConstraint : public DirconAbstractConstraint<T> {
+ public:
+  OneDimPointPosConstraint(
+      const drake::multibody::MultibodyPlant<T>* plant,
+      const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+      const Eigen::RowVector3d& dir, double lb, double ub);
+  ~OneDimPointPosConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
+                          drake::VectorX<T>* y) const override;
+
+ private:
+  const drake::multibody::MultibodyPlant<T>* plant_;
+  const drake::multibody::Body<T>& body_;
+  const drake::Vector3<T> point_wrt_body_;
+  const drake::RowVector3<T> dir_;
+};
+
+// Velocity constraint of a point in the direction `dir`.
+// The point is specified by body_name and point_wrt_body.
+template <typename T>
+class OneDimPointVelConstraint : public DirconAbstractConstraint<T> {
+ public:
+  OneDimPointVelConstraint(
+      const drake::multibody::MultibodyPlant<T>* plant,
+      const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+      const Eigen::RowVector3d& dir, double lb, double ub);
+  ~OneDimPointVelConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
+                          drake::VectorX<T>* y) const override;
+
+ private:
+  const drake::multibody::MultibodyPlant<T>* plant_;
+  const drake::multibody::Body<T>& body_;
+  const drake::Vector3<T> point_wrt_body_;
+  const drake::RowVector3<T> dir_;
 };
 
 }  // namespace trajectory_optimization

@@ -46,6 +46,7 @@ using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
+using dairlib::systems::trajectory_optimization::OneDimPointPosConstraint;
 using drake::VectorX;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
@@ -227,47 +228,6 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_seed, double dt,
   }
   return v_seed;
 }
-
-// Position constraint of a body origin in one dimension (x, y, or z)
-class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
- public:
-  OneDimBodyPosConstraint(const MultibodyPlant<double>* plant,
-                          const string& body_name,
-                          const Eigen::Matrix3d& rot_mat, int xyz_idx,
-                          double lb, double ub)
-      : DirconAbstractConstraint<double>(
-            1, plant->num_positions(), VectorXd::Ones(1) * lb,
-            VectorXd::Ones(1) * ub,
-            body_name + "_constraint_" + std::to_string(xyz_idx)),
-        plant_(plant),
-        body_(plant->GetBodyByName(body_name)),
-        xyz_idx_(xyz_idx),
-        rot_mat_(rot_mat) {}
-  ~OneDimBodyPosConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override {
-    VectorXd q = x;
-
-    std::unique_ptr<drake::systems::Context<double>> context =
-        plant_->CreateDefaultContext();
-    plant_->SetPositions(context.get(), q);
-
-    VectorX<double> pt(3);
-    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
-                                      Vector3d::Zero(), plant_->world_frame(),
-                                      &pt);
-    *y = rot_mat_.row(xyz_idx_) * pt;
-  };
-
- private:
-  const MultibodyPlant<double>* plant_;
-  const drake::multibody::Body<double>& body_;
-  // xyz_idx_ takes value of 0, 1 or 2.
-  // 0 is x, 1 is y and 2 is z component of the position vector.
-  const int xyz_idx_;
-  Eigen::Matrix3d rot_mat_;
-};
 
 void DoMain(double duration, double stride_length, double ground_incline,
             bool is_fix_time, int n_node, int max_iter,
@@ -622,12 +582,15 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_left", MatrixXd::Identity(3, 3), 1, 0.05,
-      std::numeric_limits<double>::infinity());
-  auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", MatrixXd::Identity(3, 3), 1,
-      -std::numeric_limits<double>::infinity(), -0.05);
+  auto left_foot_constraint =
+      std::make_shared<OneDimPointPosConstraint<double>>(
+          &plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
+          0.05, std::numeric_limits<double>::infinity());
+  auto right_foot_constraint =
+      std::make_shared<OneDimPointPosConstraint<double>>(
+          &plant, "toe_right", Vector3d::Zero(),
+          MatrixXd::Identity(3, 3).row(1),
+          -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
   if (FLAGS_is_scale_constraint) {
     std::unordered_map<int, double> odbp_constraint_scale;
@@ -645,9 +608,10 @@ void DoMain(double duration, double stride_length, double ground_incline,
   Eigen::Quaterniond q;
   q.setFromTwoVectors(z_hat, ground_normal);
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
-  auto right_foot_constraint_z = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", T_ground_incline, 2, 0.08,
-      std::numeric_limits<double>::infinity());
+  auto right_foot_constraint_z =
+      std::make_shared<OneDimPointPosConstraint<double>>(
+          &plant, "toe_right", Vector3d::Zero(), T_ground_incline.row(2), 0.08,
+          std::numeric_limits<double>::infinity());
   auto x_mid = trajopt->state(num_time_samples[0] / 2);
   trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
 
@@ -1042,7 +1006,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   total_cost += cost_u;
   cout << "cost_u = " << cost_u << endl;
   double cost_lambda = 0;
-  for (int i = 0; i < num_time_samples.size(); i++) {
+  for (unsigned int i = 0; i < num_time_samples.size(); i++) {
     for (int j = 0; j < num_time_samples[i]; j++) {
       auto lambda = result.GetSolution(trajopt->force(i, j));
       cost_lambda += (options_list[i].getForceCost() * lambda).squaredNorm();

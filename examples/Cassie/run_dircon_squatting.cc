@@ -500,11 +500,11 @@ void DoMain(double duration, int max_iter, string data_directory,
   // toe position constraint in y direction (avoid leg crossing)
   auto left_foot_constraint =
       std::make_shared<OneDimPointPosConstraint<double>>(
-          &plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
           0.05, std::numeric_limits<double>::infinity());
   auto right_foot_constraint =
       std::make_shared<OneDimPointPosConstraint<double>>(
-          &plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
           -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
   if (FLAGS_is_scale_constraint) {

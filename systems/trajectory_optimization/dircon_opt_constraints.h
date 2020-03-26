@@ -231,17 +231,17 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
 template <typename T>
 class OneDimPointPosConstraint : public DirconAbstractConstraint<T> {
  public:
-  OneDimPointPosConstraint(
-      const drake::multibody::MultibodyPlant<T>* plant,
-      const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
-      const Eigen::RowVector3d& dir, double lb, double ub);
+  OneDimPointPosConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+                           const std::string& body_name,
+                           const Eigen::Vector3d& point_wrt_body,
+                           const Eigen::RowVector3d& dir, double lb, double ub);
   ~OneDimPointPosConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                           drake::VectorX<T>* y) const override;
 
  private:
-  const drake::multibody::MultibodyPlant<T>* plant_;
+  const drake::multibody::MultibodyPlant<T>& plant_;
   const drake::multibody::Body<T>& body_;
   const drake::Vector3<T> point_wrt_body_;
   const drake::RowVector3<T> dir_;
@@ -252,17 +252,17 @@ class OneDimPointPosConstraint : public DirconAbstractConstraint<T> {
 template <typename T>
 class OneDimPointVelConstraint : public DirconAbstractConstraint<T> {
  public:
-  OneDimPointVelConstraint(
-      const drake::multibody::MultibodyPlant<T>* plant,
-      const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
-      const Eigen::RowVector3d& dir, double lb, double ub);
+  OneDimPointVelConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+                           const std::string& body_name,
+                           const Eigen::Vector3d& point_wrt_body,
+                           const Eigen::RowVector3d& dir, double lb, double ub);
   ~OneDimPointVelConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                           drake::VectorX<T>* y) const override;
 
  private:
-  const drake::multibody::MultibodyPlant<T>* plant_;
+  const drake::multibody::MultibodyPlant<T>& plant_;
   const drake::multibody::Body<T>& body_;
   const drake::Vector3<T> point_wrt_body_;
   const drake::RowVector3<T> dir_;

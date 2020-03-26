@@ -476,14 +476,14 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
 
 template <typename T>
 OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
-    const drake::multibody::MultibodyPlant<T>* plant,
+    const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::RowVector3d& dir, double lb, double ub)
-    : DirconAbstractConstraint<T>(1, plant->num_positions(),
+    : DirconAbstractConstraint<T>(1, plant.num_positions(),
                                   Eigen::VectorXd::Ones(1) * lb,
                                   Eigen::VectorXd::Ones(1) * ub),
       plant_(plant),
-      body_(plant->GetBodyByName(body_name)),
+      body_(plant.GetBodyByName(body_name)),
       point_wrt_body_(point_wrt_body.template cast<T>()),
       dir_(dir.template cast<T>()) {
   if (dir(0) == 1) {
@@ -503,26 +503,25 @@ void OneDimPointPosConstraint<T>::EvaluateConstraint(
   drake::VectorX<T> q = x;
 
   std::unique_ptr<drake::systems::Context<T>> context =
-      plant_->CreateDefaultContext();
-  plant_->SetPositions(context.get(), q);
+      plant_.CreateDefaultContext();
+  plant_.SetPositions(context.get(), q);
 
   drake::VectorX<T> pt(3);
-  this->plant_->CalcPointsPositions(*context, body_.body_frame(),
-                                    point_wrt_body_, plant_->world_frame(),
-                                    &pt);
+  this->plant_.CalcPointsPositions(*context, body_.body_frame(),
+                                   point_wrt_body_, plant_.world_frame(), &pt);
   *y = dir_ * pt;
 };
 
 template <typename T>
 OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
-    const drake::multibody::MultibodyPlant<T>* plant,
+    const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::RowVector3d& dir, double lb, double ub)
     : DirconAbstractConstraint<T>(
-          1, plant->num_positions() + plant->num_velocities(),
+          1, plant.num_positions() + plant.num_velocities(),
           Eigen::VectorXd::Ones(1) * lb, Eigen::VectorXd::Ones(1) * ub),
       plant_(plant),
-      body_(plant->GetBodyByName(body_name)),
+      body_(plant.GetBodyByName(body_name)),
       point_wrt_body_(point_wrt_body.template cast<T>()),
       dir_(dir.template cast<T>()) {
   if (dir(0) == 1) {
@@ -539,16 +538,16 @@ OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
 template <typename T>
 void OneDimPointVelConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
-  drake::VectorX<T> v = x.tail(plant_->num_velocities());
+  drake::VectorX<T> v = x.tail(plant_.num_velocities());
 
   std::unique_ptr<drake::systems::Context<T>> context =
-      plant_->CreateDefaultContext();
-  plant_->SetPositionsAndVelocities(context.get(), x);
+      plant_.CreateDefaultContext();
+  plant_.SetPositionsAndVelocities(context.get(), x);
 
-  drake::MatrixX<T> J(3, plant_->num_velocities());
-  plant_->CalcJacobianTranslationalVelocity(
+  drake::MatrixX<T> J(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
       *context, drake::multibody::JacobianWrtVariable::kV, body_.body_frame(),
-      point_wrt_body_, plant_->world_frame(), plant_->world_frame(), &J);
+      point_wrt_body_, plant_.world_frame(), plant_.world_frame(), &J);
 
   *y = dir_ * J * v;
 };

@@ -584,12 +584,11 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // toe position constraint in y direction (avoid leg crossing)
   auto left_foot_constraint =
       std::make_shared<OneDimPointPosConstraint<double>>(
-          &plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
+          plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
           0.05, std::numeric_limits<double>::infinity());
   auto right_foot_constraint =
       std::make_shared<OneDimPointPosConstraint<double>>(
-          &plant, "toe_right", Vector3d::Zero(),
-          MatrixXd::Identity(3, 3).row(1),
+          plant, "toe_right", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
           -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
   if (FLAGS_is_scale_constraint) {
@@ -610,7 +609,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
   auto right_foot_constraint_z =
       std::make_shared<OneDimPointPosConstraint<double>>(
-          &plant, "toe_right", Vector3d::Zero(), T_ground_incline.row(2), 0.08,
+          plant, "toe_right", Vector3d::Zero(), T_ground_incline.row(2), 0.08,
           std::numeric_limits<double>::infinity());
   auto x_mid = trajopt->state(num_time_samples[0] / 2);
   trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));

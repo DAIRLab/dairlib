@@ -2,6 +2,7 @@ import sys
 import lcm
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import dairlib
 import drake
 import pydairlib.lcm_trajectory
@@ -75,6 +76,11 @@ def plot_nominal_traj(traj_mode0, traj_mode1, traj_mode2):
     plt.legend(traj_mode0.datatypes[indices])
 
 def main():
+    #Set default directory for saving figures
+    matplotlib.rcParams["savefig.directory"] = \
+        "/home/yangwill/Documents/research/projects/cassie/jumping/analysis" \
+        "/figures/"
+
     builder = DiagramBuilder()
     plant, _ = AddMultibodyPlantSceneGraph(builder, 1e-4)
     Parser(plant).AddModelFromFile(
@@ -107,6 +113,9 @@ def main():
     state_traj_mode0 = loadedStateTraj.getTrajectory("cassie_jumping_trajectory_x_u0")
     state_traj_mode1 = loadedStateTraj.getTrajectory("cassie_jumping_trajectory_x_u1")
     state_traj_mode2 = loadedStateTraj.getTrajectory("cassie_jumping_trajectory_x_u2")
+
+    # decision_vars = loadedStateTraj.getTrajectory("cassie_jumping_decision_vars")
+    # import pdb; pdb.set_trace()
 
     lcm_l_foot_traj = loadedTrackingDataTraj.getTrajectory("left_foot_trajectory")
     lcm_r_foot_traj = loadedTrackingDataTraj.getTrajectory("right_foot_trajectory")
@@ -170,31 +179,17 @@ def main():
                                                                       t_osc, t_osc_debug,
                                                                       t_state, v)
 
-    t_state_slice = plot_simulation_state(q, t_state, state_names)
+    t_state_slice = plot_simulation_state(q, v, t_state, state_names)
+
 
     # For printing out osc_values at a specific time interval
     t_osc_start_idx = get_index_at_time(t_osc_debug, 1)
     t_osc_end_idx = get_index_at_time(t_osc_debug, 2)
 
-    fig = plt.figure('controller inputs')
-    osc_indices = slice(t_osc_start_idx, t_osc_end_idx)
-    plt.plot(t_osc[osc_indices], control_inputs[osc_indices])
-    plt.ylim(-100,300)
-    plt.legend(state_traj_mode0.datatypes[-10:])
-
-    fig = plt.figure('target controller inputs')
-    input_traj = PiecewisePolynomial.FirstOrderHold(t_nominal,
-                                                    x_points_nominal[-10:])
-    inputs = np.zeros((1000, nu))
-    times = np.zeros(1000)
-    for i in range(1000):
-        timestep = t_nominal[-1]/1000*i
-        inputs[i] = input_traj.value(timestep).ravel()
-        times[i] = timestep
-    plt.plot(times, inputs)
-    plt.ylim(-100,300)
-    plt.legend(state_traj_mode0.datatypes[-10:])
-
+    # plot_nominal_control_inputs(control_inputs, state_traj_mode0, t_osc,
+    #                             t_osc_end_idx, t_osc_start_idx)
+    #
+    # plot_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal)
 
     fig = plt.figure('contact data')
     plt.plot(t_contact_info, contact_info[0, :, 2] + contact_info[1, :, 2],
@@ -242,6 +237,30 @@ def main():
     plt.show()
 
 
+def plot_nominal_control_inputs(control_inputs, state_traj_mode0, t_osc,
+                                t_osc_end_idx, t_osc_start_idx):
+    fig = plt.figure('controller inputs')
+    osc_indices = slice(t_osc_start_idx, t_osc_end_idx)
+    plt.plot(t_osc[osc_indices], control_inputs[osc_indices])
+    plt.ylim(-100, 300)
+    plt.legend(state_traj_mode0.datatypes[-10:])
+
+
+def plot_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal):
+    fig = plt.figure('target controller inputs')
+    input_traj = PiecewisePolynomial.FirstOrderHold(t_nominal,
+                                                    x_points_nominal[-10:])
+    inputs = np.zeros((1000, nu))
+    times = np.zeros(1000)
+    for i in range(1000):
+        timestep = t_nominal[-1] / 1000 * i
+        inputs[i] = input_traj.value(timestep).ravel()
+        times[i] = timestep
+    plt.plot(times, inputs)
+    plt.ylim(-100, 300)
+    plt.legend(state_traj_mode0.datatypes[-10:])
+
+
 def plot_feet_simulation(context, l_toe_frame, no_offset, plant, q, r_toe_frame,
                          t_state, t_state_slice, v, world):
     l_foot_state = np.zeros((6, t_state.size))
@@ -253,20 +272,36 @@ def plot_feet_simulation(context, l_toe_frame, no_offset, plant, q, r_toe_frame,
                                                            no_offset, world)
         r_foot_state[0:3, [i]] = plant.CalcPointsPositions(context, r_toe_frame,
                                                            no_offset, world)
+        l_foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
+            context, JacobianWrtVariable.kV, l_toe_frame, no_offset, world,
+            world) @ v[i, :]
+        r_foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
+            context, JacobianWrtVariable.kV, r_toe_frame, no_offset, world,
+            world) @ v[i, :]
     fig = plt.figure('l foot pos')
-    plt.plot(t_state[t_state_slice], l_foot_state.T[t_state_slice, :])
+    # plt.plot(t_state[t_state_slice], l_foot_state.T[t_state_slice, :])
     plt.plot(t_state[t_state_slice], r_foot_state.T[t_state_slice, :])
-    plt.legend(['x pos', 'y pos', 'z pos'])
+    # plt.legend(['x pos', 'y pos', 'z pos'])
+    plt.legend(['x pos', 'y pos', 'z pos', 'x vel', 'y vel', 'z vel'])
 
 
-def plot_simulation_state(q, t_state, state_names):
-    fig = plt.figure('simulation state')
+def plot_simulation_state(q, v, t_state, state_names):
+    fig = plt.figure('simulation positions')
     t_start_idx = get_index_at_time(t_state, 1)
     t_end_idx = get_index_at_time(t_state, 2)
     t_state_slice = slice(t_start_idx, t_end_idx)
     state_indices = slice(0, q.shape[1])
     plt.plot(t_state[t_state_slice], q[t_state_slice, state_indices])
     plt.legend(state_names[0:q.shape[1]])
+
+    fig = plt.figure('simulation velocities')
+    t_start_idx = get_index_at_time(t_state, 1)
+    t_end_idx = get_index_at_time(t_state, 2)
+    t_state_slice = slice(t_start_idx, t_end_idx)
+    state_indices = slice(0, v.shape[1])
+    plt.plot(t_state[t_state_slice], v[t_state_slice, state_indices])
+    plt.legend(state_names[q.shape[1]:q.shape[1] + v.shape[1]])
+
     return t_state_slice
 
 

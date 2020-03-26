@@ -70,6 +70,8 @@ DEFINE_string(traj_name, "", "File to load saved trajectories from");
 
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
 DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
+DEFINE_bool(use_contact_based_fsm, true, "The contact based fsm transitions "
+                                         "between states using contact data.");
 // DEFINE_double(x_offset, 0.18, "Offset to add to the CoM trajectory");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
@@ -195,8 +197,8 @@ int DoMain(int argc, char* argv[]) {
       plant_with_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
       FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
-      plant_with_springs, flight_time, land_time, FLAGS_delay_time, true,
-      BALANCE);
+      plant_with_springs, flight_time, land_time, FLAGS_delay_time,
+      FLAGS_use_contact_based_fsm, BALANCE);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));

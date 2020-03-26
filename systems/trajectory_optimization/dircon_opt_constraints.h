@@ -226,25 +226,30 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
   const int num_velocities_{0};
 };
 
-// Position constraint of a point in the directions `dir`, where the point is
-// specified by body_name and point_wrt_body.
+// Position constraint of a point in the directions `dir` with respect to the
+// world, where the point is specified by body_name and point_wrt_body.
 // Each row of `dir` is the direction in which you want to constrain the point,
 // and each row of lb/ub is the corresponding lower/upper bound.
 // To clarify, the # of constraints = `dir.rows()` = `lb.size()` = `ub.size()`
 template <typename T>
-class OneDimPointPosConstraint : public DirconAbstractConstraint<T> {
+class PointPositionConstraint : public DirconAbstractConstraint<T> {
  public:
-  OneDimPointPosConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+  PointPositionConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                            const std::string& body_name,
                            const Eigen::Vector3d& point_wrt_body,
                            const Eigen::RowVector3d& dir, double lb, double ub);
-  OneDimPointPosConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+  PointPositionConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                            const std::string& body_name,
                            const Eigen::Vector3d& point_wrt_body,
                            const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
                            const Eigen::VectorXd& lb,
                            const Eigen::VectorXd& ub);
-  ~OneDimPointPosConstraint() override = default;
+  // A constructor that fix the 3D position of a point wrt the world
+  PointPositionConstraint(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+      const Eigen::Vector3d& fix_pos = Eigen::Vector3d::Zero());
+  ~PointPositionConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                           drake::VectorX<T>* y) const override;
@@ -257,25 +262,30 @@ class OneDimPointPosConstraint : public DirconAbstractConstraint<T> {
   std::unique_ptr<drake::systems::Context<T>> context_;
 };
 
-// Velocity constraint of a point in the directions `dir`, where the point is
-// specified by body_name and point_wrt_body.
+// Velocity constraint of a point in the directions `dir` with respect to the
+// world, where the point is specified by body_name and point_wrt_body.
 // Each row of `dir` is the direction in which you want to constrain the point,
 // and each row of lb/ub is the corresponding lower/upper bound.
 // To clarify, the # of constraints = `dir.rows()` = `lb.size()` = `ub.size()`
 template <typename T>
-class OneDimPointVelConstraint : public DirconAbstractConstraint<T> {
+class PointVelocityConstraint : public DirconAbstractConstraint<T> {
  public:
-  OneDimPointVelConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+  PointVelocityConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                            const std::string& body_name,
                            const Eigen::Vector3d& point_wrt_body,
                            const Eigen::RowVector3d& dir, double lb, double ub);
-  OneDimPointVelConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+  PointVelocityConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                            const std::string& body_name,
                            const Eigen::Vector3d& point_wrt_body,
                            const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
                            const Eigen::VectorXd& lb,
                            const Eigen::VectorXd& ub);
-  ~OneDimPointVelConstraint() override = default;
+  // A constructor that fix the 3D velocity of a point wrt the world
+  PointVelocityConstraint(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+      const Eigen::Vector3d& fix_pos = Eigen::Vector3d::Zero());
+  ~PointVelocityConstraint() override = default;
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                           drake::VectorX<T>* y) const override;

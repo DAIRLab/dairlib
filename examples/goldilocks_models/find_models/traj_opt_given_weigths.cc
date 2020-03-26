@@ -52,8 +52,8 @@ using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
 using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
-using dairlib::systems::trajectory_optimization::OneDimPointPosConstraint;
-using dairlib::systems::trajectory_optimization::OneDimPointVelConstraint;
+using dairlib::systems::trajectory_optimization::PointPositionConstraint;
+using dairlib::systems::trajectory_optimization::PointVelocityConstraint;
 
 // using Isometry3 = Eigen::Transform<Scalar, 3, Eigen::Isometry>
 
@@ -1312,7 +1312,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   q.setFromTwoVectors(z_hat, ground_normal);
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
   auto right_foot_constraint_z =
-      std::make_shared<OneDimPointPosConstraint<double>>(
+      std::make_shared<PointPositionConstraint<double>>(
           plant, "right_lower_leg", pt, T_ground_incline.row(2), 0,
           std::numeric_limits<double>::infinity());
   for (int index = 1; index < num_time_samples[0] - 1; index++) {
@@ -1873,11 +1873,11 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 
   // toe position constraint in y direction (avoid leg crossing)
   auto left_foot_constraint =
-      std::make_shared<OneDimPointPosConstraint<double>>(
+      std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
           0.05, std::numeric_limits<double>::infinity());
   auto right_foot_constraint =
-      std::make_shared<OneDimPointPosConstraint<double>>(
+      std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(),
           MatrixXd::Identity(3, 3).row(1),
           -std::numeric_limits<double>::infinity(), -0.05);
@@ -1897,7 +1897,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   q.setFromTwoVectors(z_hat, ground_normal);
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
   /*  auto right_foot_constraint_z0 =
-    std::make_shared<OneDimPointPosConstraint<double>>( plant, "toe_right",
+    std::make_shared<PointPositionConstraint<double>>( plant, "toe_right",
     Vector3d::Zero(), T_ground_incline.row(2), 0.1,
         std::numeric_limits<double>::infinity());
     auto x_mid = trajopt->state(num_time_samples[0] / 2);
@@ -1911,11 +1911,11 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     }
 
     auto right_foot_constraint_z1 =
-        std::make_shared<OneDimPointPosConstraint<double>>(
+        std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_right", pt_front_contact, T_ground_incline.row(2),
             h_min, std::numeric_limits<double>::infinity());
     auto right_foot_constraint_z2 =
-        std::make_shared<OneDimPointPosConstraint<double>>(
+        std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_right", pt_rear_contact, T_ground_incline.row(2),
             h_min, std::numeric_limits<double>::infinity());
 
@@ -1927,7 +1927,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 //  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(0) == 0);
 //  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(3) == 0);
 //  // testing -- prevent backward foot velocity
-//  auto right_foot_vel_constraint = std::make_shared<OneDimPointVelConstraint<double>>(
+//  auto right_foot_vel_constraint = std::make_shared<PointVelocityConstraint<double>>(
 //      plant, "toe_right", Vector3d::Zero(), T_ground_incline.row(0),
 //      0 , std::numeric_limits<double>::infinity());
 //  for (int index = 1; index < num_time_samples[0] - 1; index++) {

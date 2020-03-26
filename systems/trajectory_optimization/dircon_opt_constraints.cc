@@ -485,7 +485,8 @@ OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
       plant_(plant),
       body_(plant.GetBodyByName(body_name)),
       point_wrt_body_(point_wrt_body.template cast<T>()),
-      dir_(dir.template cast<T>()) {
+      dir_(dir.template cast<T>()),
+      context_(plant_.CreateDefaultContext()){
   if (dir(0) == 1) {
     this->set_description(body_name + "_constraint_x");
   } else if (dir(1) == 1) {
@@ -500,14 +501,10 @@ OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
 template <typename T>
 void OneDimPointPosConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
-  drake::VectorX<T> q = x;
-
-  std::unique_ptr<drake::systems::Context<T>> context =
-      plant_.CreateDefaultContext();
-  plant_.SetPositions(context.get(), q);
+  plant_.SetPositions(context_.get(), x);
 
   drake::VectorX<T> pt(3);
-  this->plant_.CalcPointsPositions(*context, body_.body_frame(),
+  this->plant_.CalcPointsPositions(*context_, body_.body_frame(),
                                    point_wrt_body_, plant_.world_frame(), &pt);
   *y = dir_ * pt;
 };
@@ -523,7 +520,8 @@ OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
       plant_(plant),
       body_(plant.GetBodyByName(body_name)),
       point_wrt_body_(point_wrt_body.template cast<T>()),
-      dir_(dir.template cast<T>()) {
+      dir_(dir.template cast<T>()),
+      context_(plant_.CreateDefaultContext()){
   if (dir(0) == 1) {
     this->set_description(body_name + "_constraint_x");
   } else if (dir(1) == 1) {
@@ -538,18 +536,14 @@ OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
 template <typename T>
 void OneDimPointVelConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
-  drake::VectorX<T> v = x.tail(plant_.num_velocities());
-
-  std::unique_ptr<drake::systems::Context<T>> context =
-      plant_.CreateDefaultContext();
-  plant_.SetPositionsAndVelocities(context.get(), x);
+  plant_.SetPositionsAndVelocities(context_.get(), x);
 
   drake::MatrixX<T> J(3, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
-      *context, drake::multibody::JacobianWrtVariable::kV, body_.body_frame(),
+      *context_, drake::multibody::JacobianWrtVariable::kV, body_.body_frame(),
       point_wrt_body_, plant_.world_frame(), plant_.world_frame(), &J);
 
-  *y = dir_ * J * v;
+  *y = dir_ * J * x.tail(plant_.num_velocities());
 };
 
 // Explicitly instantiates on the most common scalar types.

@@ -245,6 +245,7 @@ class OneDimPointPosConstraint : public DirconAbstractConstraint<T> {
   const drake::multibody::Body<T>& body_;
   const drake::Vector3<T> point_wrt_body_;
   const drake::RowVector3<T> dir_;
+  std::unique_ptr<drake::systems::Context<T>> context_;
 };
 
 // Velocity constraint of a point in the direction `dir`.
@@ -266,6 +267,7 @@ class OneDimPointVelConstraint : public DirconAbstractConstraint<T> {
   const drake::multibody::Body<T>& body_;
   const drake::Vector3<T> point_wrt_body_;
   const drake::RowVector3<T> dir_;
+  std::unique_ptr<drake::systems::Context<T>> context_;
 };
 
 }  // namespace trajectory_optimization

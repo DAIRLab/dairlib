@@ -1872,15 +1872,16 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  auto left_foot_constraint =
-      std::make_shared<PointPositionConstraint<double>>(
-          plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
-          0.05, std::numeric_limits<double>::infinity());
+  VectorXd one = VectorXd::Ones(1);
+  auto left_foot_constraint = std::make_shared<PointPositionConstraint<double>>(
+      plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
+      0.05 * one, std::numeric_limits<double>::infinity() * one,
+      "left_foot_constraint_y");
   auto right_foot_constraint =
       std::make_shared<PointPositionConstraint<double>>(
-          plant, "toe_right", Vector3d::Zero(),
-          MatrixXd::Identity(3, 3).row(1),
-          -std::numeric_limits<double>::infinity(), -0.05);
+          plant, "toe_right", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
+          -std::numeric_limits<double>::infinity() * one, -0.05 * one,
+          "right_foot_constraint_y");
   // scaling
   /*std::unordered_map<int, double> odbp_constraint_scale;
   odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
@@ -1898,8 +1899,8 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
   /*  auto right_foot_constraint_z0 =
     std::make_shared<PointPositionConstraint<double>>( plant, "toe_right",
-    Vector3d::Zero(), T_ground_incline.row(2), 0.1,
-        std::numeric_limits<double>::infinity());
+    Vector3d::Zero(), T_ground_incline.row(2), 0.1 * one,
+        std::numeric_limits<double>::infinity() * one);
     auto x_mid = trajopt->state(num_time_samples[0] / 2);
     trajopt->AddConstraint(right_foot_constraint_z0, x_mid.head(n_q));*/
 
@@ -1913,11 +1914,12 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     auto right_foot_constraint_z1 =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_right", pt_front_contact, T_ground_incline.row(2),
-            h_min, std::numeric_limits<double>::infinity());
+            h_min * one, std::numeric_limits<double>::infinity() * one,
+            "right_foot_constraint_z");
     auto right_foot_constraint_z2 =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_right", pt_rear_contact, T_ground_incline.row(2),
-            h_min, std::numeric_limits<double>::infinity());
+            h_min * one, std::numeric_limits<double>::infinity() * one);
 
     auto x_i = trajopt->state(index);
     trajopt->AddConstraint(right_foot_constraint_z1, x_i.head(n_q));

@@ -148,24 +148,18 @@ class HybridDircon
       SubstitutePlaceholderVariables;
 
   void ScaleTimeVariables(double scale);
-  void ScaleStateVariables(double scale, int idx_start, int idx_end);
-  void ScaleInputVariables(double scale, int idx_start, int idx_end);
-  void ScaleForceVariables(double scale, int mode, int idx_start, int idx_end);
-  void ScaleImpulseVariables(double scale, int mode, int idx_start,
-                             int idx_end);
   void ScaleQuaternionSlackVariables(double scale);
-  void ScaleKinConstraintSlackVariables(double scale, int mode, int idx_start,
-                                        int idx_end);
-
-  /**
-   * Check whether the scaling of decision variable @p var is set or not .
-   * @param var the decision variable
-   * @return true if all corresponding scaling factors are not set yet.
-   *
-   * See section "Variable scaling" in the documentation of MathematicalProgram
-   * for more information.
-   */
-  bool IsVariableScalingUnset(const drake::symbolic::Variable& var);
+  void ScaleStateVariable(int idx, double scale);
+  void ScaleInputVariable(int idx, double scale);
+  void ScaleForceVariable(int mode, int idx, double scale);
+  void ScaleImpulseVariable(int mode, int idx, double scale);
+  void ScaleKinConstraintSlackVariable(int mode, int idx, double scale);
+  void ScaleStateVariables(std::vector<int> idx_list, double scale);
+  void ScaleInputVariables(std::vector<int> idx_list, double scale);
+  void ScaleForceVariables(int mode, std::vector<int> idx_list, double scale);
+  void ScaleImpulseVariables(int mode, std::vector<int> idx_list, double scale);
+  void ScaleKinConstraintSlackVariables(int mode, std::vector<int> idx_list,
+                                        double scale);
 
  private:
   // Implements a running cost at all timesteps using trapezoidal integration.

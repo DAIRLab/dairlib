@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 
@@ -19,14 +20,14 @@ class DirconOptions {
 
   // Setters/getters for constraint scaling
   /// The impact constraint is for the impact at the beginning of the mode
-  void setDynConstraintScaling(double scale, int row_start, int row_end);
-  void setImpConstraintScaling(double scale, int row_start, int row_end);
-  void setKinConstraintScaling(double scale, int row_start, int row_end);
+  void setDynConstraintScaling(double s, int row_start, int row_end);
+  void setImpConstraintScaling(double s, int row_start, int row_end);
+  void setKinConstraintScaling(double s, int row_start, int row_end);
   const std::unordered_map<int, double>& getDynConstraintScaling();
   const std::unordered_map<int, double>& getImpConstraintScaling();
-  const std::unordered_map<int, double>& getKinConstraintScaling();
-  const std::unordered_map<int, double>& getKinConstraintScalingStart();
-  const std::unordered_map<int, double>& getKinConstraintScalingEnd();
+  std::unordered_map<int, double> getKinConstraintScaling();
+  std::unordered_map<int, double> getKinConstraintScalingStart();
+  std::unordered_map<int, double> getKinConstraintScalingEnd();
 
   // Setters/getters for relativity of kinematic constraint
   void setAllConstraintsRelative(bool relative);
@@ -51,16 +52,14 @@ class DirconOptions {
  private:
   // methods for constraint scaling
   static void addConstraintScaling(std::unordered_map<int, double>* list,
-                                   double scale, int row_start, int row_end);
-  const std::unordered_map<int, double>& getKinConstraintScaling(
+                                   double s, int row_start, int row_end);
+  std::unordered_map<int, double> getKinConstraintScaling(
       DirconKinConstraintType type);
 
   // Constraint scaling
   std::unordered_map<int, double> dyn_constraint_scaling_;
   std::unordered_map<int, double> imp_constraint_scaling_;
-  std::unordered_map<int, double> kin_constraint_scaling_accel_;
-  std::unordered_map<int, double> kin_constraint_scaling_accel_vel_;
-  std::unordered_map<int, double> kin_constraint_scaling_accel_vel_pos_;
+  std::unordered_map<int, double> kin_constraint_scaling_;
   int n_v_ = -1;
   int n_x_ = -1;
 

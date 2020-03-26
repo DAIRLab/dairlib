@@ -103,8 +103,7 @@ void DirconAbstractConstraint<double>::DoEval(
     x_val(i) -= dx;
     dy.col(i) = (yi - y0) / dx;
   }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
-                                                     *y);
+  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy*original_grad, *y);
 
   // std::cout << dy << std::endl  << std::endl << std::endl;
 
@@ -477,6 +476,7 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
 
 // Explicitly instantiates on the most common scalar types.
 template class DirconAbstractConstraint<double>;
+template class DirconAbstractConstraint<AutoDiffXd>;
 template class QuaternionNormConstraint<double>;
 template class QuaternionNormConstraint<AutoDiffXd>;
 template class DirconDynamicConstraint<double>;

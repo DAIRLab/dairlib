@@ -25,16 +25,19 @@ void addTerrain(drake::multibody::MultibodyPlant<T>* plant,
                 Eigen::Vector3d normal_W = Eigen::Vector3d::Zero());
 
 /// Given a MultiBodyTree, builds a map from position name to position index
+template <typename T>
 std::map<std::string, int> makeNameToPositionsMap(
-    const drake::multibody::MultibodyPlant<double>& plant);
+    const drake::multibody::MultibodyPlant<T>& plant);
 
 /// Given a MultiBodyTree, builds a map from velocity name to velocity index
+template <typename T>
 std::map<std::string, int> makeNameToVelocitiesMap(
-    const drake::multibody::MultibodyPlant<double>& plant);
+    const drake::multibody::MultibodyPlant<T>& plant);
 
 /// Given a MultiBodyTree, builds a map from actuator name to actuator index
+template <typename T>
 std::map<std::string, int> makeNameToActuatorsMap(
-    const drake::multibody::MultibodyPlant<double>& plant);
+    const drake::multibody::MultibodyPlant<T>& plant);
 
 // TODO: The following two functions need to be implemented as a part of
 // RBT/Multibody and not as separate functions that take in RBTs. Make the
@@ -47,7 +50,8 @@ bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
 
 // Check whether a MultibodyPlant contains quaternion floating-base joint or not
 // WARNING: This function assumes there is only one plant
-bool isQuaternion(const drake::multibody::MultibodyPlant<double>& plant);
+template <typename T>
+bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 
 }  // namespace multibody
 }  // namespace dairlib

@@ -48,7 +48,7 @@ class ContactToolkitTest : public ::testing::Test {
 
     plant_ = builder.AddSystem<MultibodyPlant>(1.0);
     // Adding the ground
-    multibody::addTerrain(plant_, &scene_graph, .8, .8);
+    multibody::addFlatTerrain(plant_, &scene_graph, .8, .8);
     addCassieMultibody(plant_, &scene_graph, true);
     plant_->Finalize();
 

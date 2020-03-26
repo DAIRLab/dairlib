@@ -19,7 +19,7 @@ std::unique_ptr<drake::systems::Context<T>> createContext(
 /// Add terrain to an initialized, but not finalized, MultibodyPlant
 /// and scene graph. Uses the given values for coefficients of friction
 template <typename T>
-void addTerrain(drake::multibody::MultibodyPlant<T>* plant,
+void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                 drake::geometry::SceneGraph<T>* scene_graph,
                 double mu_static, double mu_kinetic,
                 Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0 , 1));

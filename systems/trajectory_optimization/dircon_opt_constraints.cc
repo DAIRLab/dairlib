@@ -493,7 +493,7 @@ OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
   } else if (dir(2) == 1) {
     this->set_description(body_name + "_constraint_2");
   } else {
-    this->set_description(body_name + "_constraint_-2");
+    this->set_description(body_name + "_constraint_-1");
   }
 }
 
@@ -532,7 +532,7 @@ OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
   } else if (dir(2) == 1) {
     this->set_description(body_name + "_constraint_2");
   } else {
-    this->set_description(body_name + "_constraint_-2");
+    this->set_description(body_name + "_constraint_-1");
   }
 }
 

@@ -168,7 +168,8 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       scene_graph_ik.set_name("scene_graph_ik");
       MultibodyPlant<double> plant_ik(0.0);
       Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
-      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8, ground_normal);
+      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8,
+                                ground_normal);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
@@ -426,30 +427,34 @@ void DoMain(double duration, double stride_length, double ground_incline,
     for (int i = 0; i < 2; i++) {
       double s = 1;  // scale everything together
       // Dynamic constraints
-      options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 28);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
+      options_list[i].setDynConstraintScaling({0, 1, 2, 3}, s * 1.0 / 30.0);
+      options_list[i].setDynConstraintScaling(
+          {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, s * 1.0 / 60.0);
+      options_list[i].setDynConstraintScaling({17, 18}, s * 1.0 / 300.0);
+      options_list[i].setDynConstraintScaling(
+          {19, 20, 21, 22, 23, 24, 25, 26, 27, 28}, s * 1.0 / 600.0);
+      options_list[i].setDynConstraintScaling({29, 30, 31, 32, 33, 34},
+                                              s * 1.0 / 3000.0);
+      options_list[i].setDynConstraintScaling({35, 36}, s * 1.0 / 60000.0);
       // Kinematic constraints
       int n_l = options_list[i].getNumConstraints();
-      options_list[i].setKinConstraintScaling(s * 1.0 / 6000.0, 0, 4);
-      options_list[i].setKinConstraintScaling(s * 1.0 / 10.0, n_l + 0, n_l + 4);
-      options_list[i].setKinConstraintScaling(s * 1.0, 2 * n_l + 0,
-                                              2 * n_l + 4);
-      options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
-      options_list[i].setKinConstraintScaling(s * 1.0, n_l + 5, n_l + 6);
-      options_list[i].setKinConstraintScaling(s * 1.0 * 20, 2 * n_l + 5,
-                                              2 * n_l + 6);
+      options_list[i].setKinConstraintScaling({0, 1, 2, 3, 4}, s / 6000.0);
+      options_list[i].setKinConstraintScaling(
+          {n_l + 0, n_l + 1, n_l + 2, n_l + 3, n_l + 4}, s / 10.0);
+      options_list[i].setKinConstraintScaling(
+          {2 * n_l + 0, 2 * n_l + 1, 2 * n_l + 2, 2 * n_l + 3, 2 * n_l + 4}, s);
+      options_list[i].setKinConstraintScaling({5, 6}, s / 300.0);
+      options_list[i].setKinConstraintScaling({n_l + 5, n_l + 6}, s);
+      options_list[i].setKinConstraintScaling({2 * n_l + 5, 2 * n_l + 6},
+                                              s * 20);
       // Impact constraints
-      options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 24.0, 6, 7);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 6.0, 8, 9);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
-      options_list[i].setImpConstraintScaling(s * 1.0, 16, n_v - 1);
+      options_list[i].setImpConstraintScaling({0, 1, 2}, s / 50.0);
+      options_list[i].setImpConstraintScaling({3, 4, 5}, s / 300.0);
+      options_list[i].setImpConstraintScaling({6, 7}, s / 24.0);
+      options_list[i].setImpConstraintScaling({8, 9}, s / 6.0);
+      options_list[i].setImpConstraintScaling({10, 11, 12, 13}, s / 12.0);
+      options_list[i].setImpConstraintScaling({14, 15}, s / 2.0);
+      options_list[i].setImpConstraintScaling({16, 17}, s);
     }
   }
 

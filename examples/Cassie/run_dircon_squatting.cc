@@ -388,33 +388,40 @@ void DoMain(double duration, int max_iter, string data_directory,
     double s_dyn_1 = (FLAGS_is_scale_variable) ? 2.0 : 1.0;
     double s_dyn_2 = (FLAGS_is_scale_variable) ? 6.0 : 1.0;
     double s_dyn_3 = (FLAGS_is_scale_variable) ? 85.0 : 1.0;
-    double_all_options.setDynConstraintScaling(1.0 / 150.0, 0, 14);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 3.33 / s_dyn_1, 15,
-                                               16);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0, 17, 18);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_1, 19, 26);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_2, 27, 28);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 10, 29, 34);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 15.0 / s_dyn_3, 35,
-                                               36);
+    double_all_options.setDynConstraintScaling(
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, 1.0 / 150.0);
+    double_all_options.setDynConstraintScaling({15, 16},
+                                               1.0 / 150.0 / 3.33 / s_dyn_1);
+    double_all_options.setDynConstraintScaling({17, 18}, 1.0 / 150.0);
+    double_all_options.setDynConstraintScaling({19, 20, 21, 22, 23, 24, 25, 26},
+                                               1.0 / 150.0 / s_dyn_1);
+    double_all_options.setDynConstraintScaling({27, 28}, 1.0 / 150.0 / s_dyn_2);
+    double_all_options.setDynConstraintScaling({29, 30, 31, 32, 33, 34},
+                                               1.0 / 150.0 / 10);
+    double_all_options.setDynConstraintScaling({35, 36},
+                                               1.0 / 150.0 / 15.0 / s_dyn_3);
     // Kinematic constraints
     int n_kin = double_all_dataset.countConstraints();
     double s_kin_vel = 500;
     double s_kin_acc = 1000;
     double s_kin_1 = (FLAGS_is_scale_variable) ? 10.0 : 1.0;
     double s_kin_2 = (FLAGS_is_scale_variable) ? 2.0 : 1.0;
-    double_all_options.setKinConstraintScaling(1.0 / 500.0 / s_kin_1, 0, 9);
-    double_all_options.setKinConstraintScaling(2.0 / 50.0 / s_kin_1, 10, 11);
+    double_all_options.setKinConstraintScaling({0, 9}, 1.0 / 500.0 / s_kin_1);
+    double_all_options.setKinConstraintScaling({10, 11}, 2.0 / 50.0 / s_kin_1);
     double_all_options.setKinConstraintScaling(
-        1.0 / 500.0 * s_kin_vel * s_kin_2 / s_kin_1, n_kin + 0, n_kin + 9);
+        {n_kin + 0, n_kin + 1, n_kin + 2, n_kin + 3, n_kin + 4, n_kin + 5,
+         n_kin + 6, n_kin + 7, n_kin + 8, n_kin + 9},
+        1.0 / 500.0 * s_kin_vel * s_kin_2 / s_kin_1);
     double_all_options.setKinConstraintScaling(
-        2.0 / 50.0 * s_kin_vel * s_kin_2 / s_kin_1, n_kin + 10, n_kin + 11);
+        {n_kin + 10, n_kin + 11}, 2.0 / 50.0 * s_kin_vel * s_kin_2 / s_kin_1);
     double_all_options.setKinConstraintScaling(
-        1.0 / 500.0 * s_kin_acc * s_kin_2 / s_kin_1, 2 * n_kin + 0,
-        2 * n_kin + 9);
+        {2 * n_kin + 0, 2 * n_kin + 1, 2 * n_kin + 2, 2 * n_kin + 3,
+         2 * n_kin + 4, 2 * n_kin + 5, 2 * n_kin + 6, 2 * n_kin + 7,
+         2 * n_kin + 8, 2 * n_kin + 9},
+        1.0 / 500.0 * s_kin_acc * s_kin_2 / s_kin_1);
     double_all_options.setKinConstraintScaling(
-        2.0 / 50.0 * s_kin_acc * s_kin_2 / s_kin_1, 2 * n_kin + 10,
-        2 * n_kin + 11);
+        {2 * n_kin + 10, 2 * n_kin + 11},
+        2.0 / 50.0 * s_kin_acc * s_kin_2 / s_kin_1);
   }
 
   // timesteps and modes setting

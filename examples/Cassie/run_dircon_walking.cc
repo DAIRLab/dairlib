@@ -33,51 +33,33 @@
 using std::cout;
 using std::endl;
 using std::map;
-using std::shared_ptr;
 using std::string;
 using std::vector;
 
-using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using dairlib::goldilocks_models::readCSV;
 using dairlib::goldilocks_models::writeCSV;
-using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
-using dairlib::systems::trajectory_optimization::DirconDynamicConstraint;
-using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
-using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
+using dairlib::systems::trajectory_optimization::OneDimPointPosConstraint;
 using drake::VectorX;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
-using drake::math::RollPitchYaw;
 using drake::math::RotationMatrix;
 using drake::multibody::Body;
-using drake::multibody::BodyIndex;
-using drake::multibody::JointActuator;
-using drake::multibody::JointActuatorIndex;
-using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::SpatialInertia;
 using drake::multibody::UnitInertia;
-using drake::solvers::Binding;
 using drake::solvers::Constraint;
-using drake::solvers::MathematicalProgram;
-using drake::solvers::MathematicalProgramResult;
-using drake::solvers::MatrixXDecisionVariable;
 using drake::solvers::SolutionResult;
-using drake::solvers::VectorXDecisionVariable;
-using drake::symbolic::Expression;
-using drake::symbolic::Variable;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
-using drake::systems::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_string(init_file, "", "the file name of initial guess");
@@ -108,6 +90,10 @@ DEFINE_double(ground_incline, 0.0,
 DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
 DEFINE_bool(is_scale_variable, true, "Scale the decision variable");
 
+// Others
+DEFINE_bool(visualize_init_guess, false,
+            "to visualize the poses of the initial guess");
+
 namespace dairlib {
 
 /// Trajectory optimization of fixed-spring cassie walking
@@ -115,7 +101,8 @@ namespace dairlib {
 // Do inverse kinematics to get configuration guess
 vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
                                   double ground_incline,
-                                  const MultibodyPlant<double>& plant) {
+                                  const MultibodyPlant<double>& plant,
+                                  bool visualize_init_guess = false) {
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_x = n_q + n_v;
@@ -179,15 +166,15 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
     q_ik_guess = q_sol_normd;
     q_init_guess.push_back(q_sol_normd);
 
-    bool visualize_init_traj = false;
-    if (visualize_init_traj) {
+    if (visualize_init_guess) {
       // Build temporary diagram for visualization
       drake::systems::DiagramBuilder<double> builder_ik;
       SceneGraph<double>& scene_graph_ik = *builder_ik.AddSystem<SceneGraph>();
       scene_graph_ik.set_name("scene_graph_ik");
       MultibodyPlant<double> plant_ik(0.0);
       Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
-      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8, ground_normal);
+      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8,
+                                ground_normal);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
@@ -241,47 +228,6 @@ vector<VectorXd> GetInitGuessForV(const vector<VectorXd>& q_seed, double dt,
   }
   return v_seed;
 }
-
-// Position constraint of a body origin in one dimension (x, y, or z)
-class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
- public:
-  OneDimBodyPosConstraint(const MultibodyPlant<double>* plant,
-                          const string& body_name,
-                          const Eigen::Matrix3d& rot_mat, int xyz_idx,
-                          double lb, double ub)
-      : DirconAbstractConstraint<double>(
-            1, plant->num_positions(), VectorXd::Ones(1) * lb,
-            VectorXd::Ones(1) * ub,
-            body_name + "_constraint_" + std::to_string(xyz_idx)),
-        plant_(plant),
-        body_(plant->GetBodyByName(body_name)),
-        xyz_idx_(xyz_idx),
-        rot_mat_(rot_mat) {}
-  ~OneDimBodyPosConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override {
-    VectorXd q = x;
-
-    std::unique_ptr<drake::systems::Context<double>> context =
-        plant_->CreateDefaultContext();
-    plant_->SetPositions(context.get(), q);
-
-    VectorX<double> pt(3);
-    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
-                                      Vector3d::Zero(), plant_->world_frame(),
-                                      &pt);
-    *y = rot_mat_.row(xyz_idx_) * pt;
-  };
-
- private:
-  const MultibodyPlant<double>* plant_;
-  const drake::multibody::Body<double>& body_;
-  // xyz_idx_ takes value of 0, 1 or 2.
-  // 0 is x, 1 is y and 2 is z component of the position vector.
-  const int xyz_idx_;
-  Eigen::Matrix3d rot_mat_;
-};
 
 void DoMain(double duration, double stride_length, double ground_incline,
             bool is_fix_time, int n_node, int max_iter,
@@ -339,7 +285,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
-  int n_x = n_q + n_v;
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{
@@ -446,30 +391,34 @@ void DoMain(double duration, double stride_length, double ground_incline,
     for (int i = 0; i < 2; i++) {
       double s = 1;  // scale everything together
       // Dynamic constraints
-      options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 28);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
+      options_list[i].setDynConstraintScaling({0, 1, 2, 3}, s * 1.0 / 30.0);
+      options_list[i].setDynConstraintScaling(
+          {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, s * 1.0 / 60.0);
+      options_list[i].setDynConstraintScaling({17, 18}, s * 1.0 / 300.0);
+      options_list[i].setDynConstraintScaling(
+          {19, 20, 21, 22, 23, 24, 25, 26, 27, 28}, s * 1.0 / 600.0);
+      options_list[i].setDynConstraintScaling({29, 30, 31, 32, 33, 34},
+                                              s * 1.0 / 3000.0);
+      options_list[i].setDynConstraintScaling({35, 36}, s * 1.0 / 60000.0);
       // Kinematic constraints
       int n_l = options_list[i].getNumConstraints();
-      options_list[i].setKinConstraintScaling(s * 1.0 / 6000.0, 0, 4);
-      options_list[i].setKinConstraintScaling(s * 1.0 / 10.0, n_l + 0, n_l + 4);
-      options_list[i].setKinConstraintScaling(s * 1.0, 2 * n_l + 0,
-                                              2 * n_l + 4);
-      options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
-      options_list[i].setKinConstraintScaling(s * 1.0, n_l + 5, n_l + 6);
-      options_list[i].setKinConstraintScaling(s * 1.0 * 20, 2 * n_l + 5,
-                                              2 * n_l + 6);
+      options_list[i].setKinConstraintScaling({0, 1, 2, 3, 4}, s / 6000.0);
+      options_list[i].setKinConstraintScaling(
+          {n_l + 0, n_l + 1, n_l + 2, n_l + 3, n_l + 4}, s / 10.0);
+      options_list[i].setKinConstraintScaling(
+          {2 * n_l + 0, 2 * n_l + 1, 2 * n_l + 2, 2 * n_l + 3, 2 * n_l + 4}, s);
+      options_list[i].setKinConstraintScaling({5, 6}, s / 300.0);
+      options_list[i].setKinConstraintScaling({n_l + 5, n_l + 6}, s);
+      options_list[i].setKinConstraintScaling({2 * n_l + 5, 2 * n_l + 6},
+                                              s * 20);
       // Impact constraints
-      options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 24.0, 6, 7);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 6.0, 8, 9);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
-      options_list[i].setImpConstraintScaling(s * 1.0, 16, n_v - 1);
+      options_list[i].setImpConstraintScaling({0, 1, 2}, s / 50.0);
+      options_list[i].setImpConstraintScaling({3, 4, 5}, s / 300.0);
+      options_list[i].setImpConstraintScaling({6, 7}, s / 24.0);
+      options_list[i].setImpConstraintScaling({8, 9}, s / 6.0);
+      options_list[i].setImpConstraintScaling({10, 11, 12, 13}, s / 12.0);
+      options_list[i].setImpConstraintScaling({14, 15}, s / 2.0);
+      options_list[i].setImpConstraintScaling({16, 17}, s);
     }
   }
 
@@ -633,12 +582,14 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_left", MatrixXd::Identity(3, 3), 1, 0.05,
-      std::numeric_limits<double>::infinity());
-  auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", MatrixXd::Identity(3, 3), 1,
-      -std::numeric_limits<double>::infinity(), -0.05);
+  auto left_foot_constraint =
+      std::make_shared<OneDimPointPosConstraint<double>>(
+          plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
+          0.05, std::numeric_limits<double>::infinity());
+  auto right_foot_constraint =
+      std::make_shared<OneDimPointPosConstraint<double>>(
+          plant, "toe_right", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
+          -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
   if (FLAGS_is_scale_constraint) {
     std::unordered_map<int, double> odbp_constraint_scale;
@@ -656,9 +607,10 @@ void DoMain(double duration, double stride_length, double ground_incline,
   Eigen::Quaterniond q;
   q.setFromTwoVectors(z_hat, ground_normal);
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
-  auto right_foot_constraint_z = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", T_ground_incline, 2, 0.08,
-      std::numeric_limits<double>::infinity());
+  auto right_foot_constraint_z =
+      std::make_shared<OneDimPointPosConstraint<double>>(
+          plant, "toe_right", Vector3d::Zero(), T_ground_incline.row(2), 0.08,
+          std::numeric_limits<double>::infinity());
   auto x_mid = trajopt->state(num_time_samples[0] / 2);
   trajopt->AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
 
@@ -826,8 +778,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
         VectorXd::Random(trajopt->decision_variables().size()));
 
     // Do inverse kinematics to get q initial guess
-    vector<VectorXd> q_seed =
-        GetInitGuessForQ(N, stride_length, ground_incline, plant);
+    vector<VectorXd> q_seed = GetInitGuessForQ(
+        N, stride_length, ground_incline, plant, FLAGS_visualize_init_guess);
     // Do finite differencing to get v initial guess
     vector<VectorXd> v_seed =
         GetInitGuessForV(q_seed, duration / (N - 1), plant);
@@ -1053,7 +1005,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   total_cost += cost_u;
   cout << "cost_u = " << cost_u << endl;
   double cost_lambda = 0;
-  for (int i = 0; i < num_time_samples.size(); i++) {
+  for (unsigned int i = 0; i < num_time_samples.size(); i++) {
     for (int j = 0; j < num_time_samples[i]; j++) {
       auto lambda = result.GetSolution(trajopt->force(i, j));
       cost_lambda += (options_list[i].getForceCost() * lambda).squaredNorm();

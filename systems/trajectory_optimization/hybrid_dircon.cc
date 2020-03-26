@@ -219,7 +219,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     }
 
     // Add force to cost function
-    if ((options[i].getForceCost() != 0)) {
+    if (options[i].getForceCost() != 0) {
       auto A = options[i].getForceCost() *
                MatrixXd::Identity(num_kinematic_constraints_wo_skipping(i),
                                   num_kinematic_constraints_wo_skipping(i));

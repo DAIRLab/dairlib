@@ -4,8 +4,8 @@
 #include <string>
 #include <algorithm>
 #include <unordered_map>
-
 #include <gflags/gflags.h>
+
 #include "attic/multibody/multibody_solvers.h"
 #include "attic/multibody/rigidbody_utils.h"
 #include "common/find_resource.h"
@@ -43,24 +43,11 @@ using std::shared_ptr;
 using std::string;
 using std::vector;
 
-using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::VectorX;
-using drake::solvers::Binding;
-using drake::solvers::Constraint;
-using drake::solvers::MathematicalProgram;
-using drake::solvers::MathematicalProgramResult;
-using drake::solvers::MatrixXDecisionVariable;
-using drake::solvers::SolutionResult;
-using drake::solvers::VectorXDecisionVariable;
-using drake::symbolic::Expression;
-using drake::symbolic::Variable;
-using drake::systems::trajectory_optimization::MultipleShooting;
-using drake::trajectories::PiecewisePolynomial;
-
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
@@ -69,31 +56,22 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::SpatialInertia;
 using drake::multibody::UnitInertia;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::SolutionResult;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
-
-using drake::multibody::BodyIndex;
-using drake::multibody::JointActuator;
-using drake::multibody::JointActuatorIndex;
-using drake::multibody::ModelInstanceIndex;
-
-using drake::math::RollPitchYaw;
-using drake::math::RotationMatrix;
-
-using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
-using dairlib::systems::trajectory_optimization::DirconDynamicConstraint;
-using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
-using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
-using dairlib::systems::trajectory_optimization::DirconOptions;
-using dairlib::systems::trajectory_optimization::HybridDircon;
-
-using dairlib::systems::SubvectorPassThrough;
+using drake::trajectories::PiecewisePolynomial;
 
 using dairlib::goldilocks_models::readCSV;
 using dairlib::goldilocks_models::writeCSV;
-
 using dairlib::multibody::ContactInfo;
 using dairlib::multibody::FixedPointSolver;
 using dairlib::multibody::GetBodyIndexFromName;
+using dairlib::systems::SubvectorPassThrough;
+using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
+using dairlib::systems::trajectory_optimization::DirconOptions;
+using dairlib::systems::trajectory_optimization::HybridDircon;
+using dairlib::systems::trajectory_optimization::OneDimPointPosConstraint;
 
 DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
@@ -280,42 +258,6 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
   simulator.AdvanceTo(0.2);
 }
 
-// Position constraint of a body origin in one dimension (x, y, or z)
-class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
- public:
-  OneDimBodyPosConstraint(const MultibodyPlant<double>* plant, string body_name,
-                          int xyz_idx, double lb, double ub)
-      : DirconAbstractConstraint<double>(
-            1, plant->num_positions(), VectorXd::Ones(1) * lb,
-            VectorXd::Ones(1) * ub, body_name + "_constraint"),
-        plant_(plant),
-        body_(plant->GetBodyByName(body_name)),
-        xyz_idx_(xyz_idx) {}
-  ~OneDimBodyPosConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override {
-    VectorXd q = x;
-
-    std::unique_ptr<drake::systems::Context<double>> context =
-        plant_->CreateDefaultContext();
-    plant_->SetPositions(context.get(), q);
-
-    VectorX<double> pt(3);
-    this->plant_->CalcPointsPositions(*context, body_.body_frame(),
-                                      Vector3d::Zero(), plant_->world_frame(),
-                                      &pt);
-    *y = pt.segment(xyz_idx_, 1);
-  };
-
- private:
-  const MultibodyPlant<double>* plant_;
-  const drake::multibody::Body<double>& body_;
-  // xyz_idx_ takes value of 0, 1 or 2.
-  // 0 is x, 1 is y and 2 is z component of the position vector.
-  const int xyz_idx_;
-};
-
 void DoMain(double duration, int max_iter, string data_directory,
             string init_file, double tol, bool to_store_data) {
   // Create fix-spring Cassie MBP
@@ -412,33 +354,40 @@ void DoMain(double duration, int max_iter, string data_directory,
     double s_dyn_1 = (FLAGS_is_scale_variable) ? 2.0 : 1.0;
     double s_dyn_2 = (FLAGS_is_scale_variable) ? 6.0 : 1.0;
     double s_dyn_3 = (FLAGS_is_scale_variable) ? 85.0 : 1.0;
-    double_all_options.setDynConstraintScaling(1.0 / 150.0, 0, 14);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 3.33 / s_dyn_1, 15,
-                                               16);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0, 17, 18);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_1, 19, 26);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_2, 27, 28);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 10, 29, 34);
-    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 15.0 / s_dyn_3, 35,
-                                               36);
+    double_all_options.setDynConstraintScaling(
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, 1.0 / 150.0);
+    double_all_options.setDynConstraintScaling({15, 16},
+                                               1.0 / 150.0 / 3.33 / s_dyn_1);
+    double_all_options.setDynConstraintScaling({17, 18}, 1.0 / 150.0);
+    double_all_options.setDynConstraintScaling({19, 20, 21, 22, 23, 24, 25, 26},
+                                               1.0 / 150.0 / s_dyn_1);
+    double_all_options.setDynConstraintScaling({27, 28}, 1.0 / 150.0 / s_dyn_2);
+    double_all_options.setDynConstraintScaling({29, 30, 31, 32, 33, 34},
+                                               1.0 / 150.0 / 10);
+    double_all_options.setDynConstraintScaling({35, 36},
+                                               1.0 / 150.0 / 15.0 / s_dyn_3);
     // Kinematic constraints
     int n_kin = double_all_dataset.countConstraints();
     double s_kin_vel = 500;
     double s_kin_acc = 1000;
     double s_kin_1 = (FLAGS_is_scale_variable) ? 10.0 : 1.0;
     double s_kin_2 = (FLAGS_is_scale_variable) ? 2.0 : 1.0;
-    double_all_options.setKinConstraintScaling(1.0 / 500.0 / s_kin_1, 0, 9);
-    double_all_options.setKinConstraintScaling(2.0 / 50.0 / s_kin_1, 10, 11);
+    double_all_options.setKinConstraintScaling({0, 9}, 1.0 / 500.0 / s_kin_1);
+    double_all_options.setKinConstraintScaling({10, 11}, 2.0 / 50.0 / s_kin_1);
     double_all_options.setKinConstraintScaling(
-        1.0 / 500.0 * s_kin_vel * s_kin_2 / s_kin_1, n_kin + 0, n_kin + 9);
+        {n_kin + 0, n_kin + 1, n_kin + 2, n_kin + 3, n_kin + 4, n_kin + 5,
+         n_kin + 6, n_kin + 7, n_kin + 8, n_kin + 9},
+        1.0 / 500.0 * s_kin_vel * s_kin_2 / s_kin_1);
     double_all_options.setKinConstraintScaling(
-        2.0 / 50.0 * s_kin_vel * s_kin_2 / s_kin_1, n_kin + 10, n_kin + 11);
+        {n_kin + 10, n_kin + 11}, 2.0 / 50.0 * s_kin_vel * s_kin_2 / s_kin_1);
     double_all_options.setKinConstraintScaling(
-        1.0 / 500.0 * s_kin_acc * s_kin_2 / s_kin_1, 2 * n_kin + 0,
-        2 * n_kin + 9);
+        {2 * n_kin + 0, 2 * n_kin + 1, 2 * n_kin + 2, 2 * n_kin + 3,
+         2 * n_kin + 4, 2 * n_kin + 5, 2 * n_kin + 6, 2 * n_kin + 7,
+         2 * n_kin + 8, 2 * n_kin + 9},
+        1.0 / 500.0 * s_kin_acc * s_kin_2 / s_kin_1);
     double_all_options.setKinConstraintScaling(
-        2.0 / 50.0 * s_kin_acc * s_kin_2 / s_kin_1, 2 * n_kin + 10,
-        2 * n_kin + 11);
+        {2 * n_kin + 10, 2 * n_kin + 11},
+        2.0 / 50.0 * s_kin_acc * s_kin_2 / s_kin_1);
   }
 
   // timesteps and modes setting
@@ -550,10 +499,14 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_left", 1, 0.05, std::numeric_limits<double>::infinity());
-  auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
+  auto left_foot_constraint =
+      std::make_shared<OneDimPointPosConstraint<double>>(
+          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+          0.05, std::numeric_limits<double>::infinity());
+  auto right_foot_constraint =
+      std::make_shared<OneDimPointPosConstraint<double>>(
+          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+          -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
   if (FLAGS_is_scale_constraint) {
     std::unordered_map<int, double> odbp_constraint_scale;

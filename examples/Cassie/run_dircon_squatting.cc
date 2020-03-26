@@ -499,14 +499,15 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  auto left_foot_constraint =
-      std::make_shared<PointPositionConstraint<double>>(
-          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          0.05, std::numeric_limits<double>::infinity());
+  auto left_foot_constraint = std::make_shared<PointPositionConstraint<double>>(
+      plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
+      VectorXd::Ones(1) * 0.05,
+      VectorXd::Ones(1) * std::numeric_limits<double>::infinity());
   auto right_foot_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          -std::numeric_limits<double>::infinity(), -0.05);
+          -std::numeric_limits<double>::infinity() * VectorXd::Ones(1),
+          -0.05 * VectorXd::Ones(1));
   // scaling
   if (FLAGS_is_scale_constraint) {
     std::unordered_map<int, double> odbp_constraint_scale;

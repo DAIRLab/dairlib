@@ -1,5 +1,6 @@
 #include "hybrid_dircon.h"
 
+#include <algorithm>  // std::max
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -416,6 +417,128 @@ void HybridDircon<T>::SetInitialForceTrajectory(
   }
   // call superclass method
   SetInitialGuess(collocation_slack_vars_[mode], guess_collocation_slack);
+}
+
+template <typename T>
+void HybridDircon<T>::ScaleTimeVariables(double scale) {
+  for (int i = 0; i < h_vars().size(); i++) {
+    this->SetVariableScaling(h_vars()(i), scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleQuaternionSlackVariables(double scale) {
+  DRAKE_DEMAND(multibody::isQuaternion(plant_));
+  for (size_t mode = 0; mode < mode_lengths_.size(); mode++) {
+    for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
+      this->SetVariableScaling(quaternion_slack_vars_[mode](j), scale);
+    }
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleStateVariable(int idx, double scale) {
+  int n_x = this->num_states();
+  DRAKE_DEMAND((0 <= idx) && (idx < n_x));
+
+  // x_vars_ in MathematicalProgram
+  for (int j_knot = 0; j_knot < N(); j_knot++) {
+    auto vars = this->state(j_knot);
+    this->SetVariableScaling(vars(idx), scale);
+  }
+
+  // v_post_impact_vars_
+  int n_q = plant_.num_positions();
+  if ((idx >= n_q) && (num_modes_ > 1)) {
+    idx -= n_q;
+    for (int mode = 0; mode < num_modes_ - 1; mode++) {
+      auto vars = v_post_impact_vars_by_mode(mode);
+      this->SetVariableScaling(vars(idx), scale);
+    }
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleInputVariable(int idx, double scale) {
+  int n_u = this->num_inputs();
+  DRAKE_DEMAND((0 <= idx) && (idx < n_u));
+
+  // u_vars_ in MathematicalProgram
+  for (int j_knot = 0; j_knot < N(); j_knot++) {
+    auto vars = this->input(j_knot);
+    this->SetVariableScaling(vars(idx), scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleForceVariable(int mode, int idx, double scale) {
+  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_));
+  int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
+  DRAKE_DEMAND((0 <= idx) && (idx < n_lambda));
+
+  // Force at knot points
+  auto vars = force_vars(mode);
+  for (int j = 0; j < mode_lengths_[mode]; j++) {
+    this->SetVariableScaling(vars(n_lambda * j + idx), scale);
+  }
+  // Force at collocation pints
+  auto vars_2 = collocation_force_vars(mode);
+  for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
+    this->SetVariableScaling(vars_2(n_lambda * j + idx), scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleImpulseVariable(int mode, int idx, double scale) {
+  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_ - 1));
+  int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
+  DRAKE_DEMAND((0 <= idx) && (idx < n_lambda));
+
+  auto vars = impulse_vars(mode);
+  this->SetVariableScaling(vars(idx), scale);
+}
+template <typename T>
+void HybridDircon<T>::ScaleKinConstraintSlackVariable(int mode, int idx,
+                                                      double scale) {
+  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_ - 1));
+  int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
+  DRAKE_DEMAND(idx < n_lambda);
+
+  auto vars = collocation_slack_vars(mode);
+  for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
+    this->SetVariableScaling(vars(n_lambda * j + idx), scale);
+  }
+}
+
+template <typename T>
+void HybridDircon<T>::ScaleStateVariables(std::vector<int> idx_list,
+                                          double scale) {
+  for (const auto& idx : idx_list) {
+    ScaleStateVariable(idx, scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleInputVariables(std::vector<int> idx_list,
+                                          double scale) {
+  for (const auto& idx : idx_list) {
+    ScaleInputVariable(idx, scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleForceVariables(int mode, std::vector<int> idx_list,
+                                          double scale) {
+  for (const auto& idx : idx_list) {
+    ScaleForceVariable(mode, idx, scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleImpulseVariables(int mode, std::vector<int> idx_list,
+                                            double scale) {
+  for (const auto& idx : idx_list) {
+    ScaleImpulseVariable(mode, idx, scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleKinConstraintSlackVariables(
+    int mode, std::vector<int> idx_list, double scale) {
+  for (const auto& idx : idx_list) {
+    ScaleKinConstraintSlackVariable(mode, idx, scale);
+  }
 }
 
 template class HybridDircon<double>;

@@ -77,6 +77,8 @@ unordered_map<int, double> DirconOptions::getKinConstraintScalingEnd() {
 }
 unordered_map<int, double> DirconOptions::getKinConstraintScaling(
     DirconKinConstraintType type) {
+  DRAKE_DEMAND((type == kAccelOnly) || (type == kAccelAndVel) ||
+               (type == kAll));
   // type == kAccelOnly
   if (type == kAccelOnly) {
     // Extract the elements in the acceleration level

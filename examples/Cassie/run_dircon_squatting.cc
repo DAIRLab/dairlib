@@ -97,10 +97,14 @@ using dairlib::multibody::GetBodyIndexFromName;
 DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",
               "directory to save/read data");
-DEFINE_bool(store_data, false, "To store soluation or not");
+DEFINE_bool(store_data, false, "To store solution or not");
 DEFINE_int32(max_iter, 100000, "Iteration limit");
 DEFINE_double(duration, 0.4, "Duration of the single support phase (s)");
 DEFINE_double(tol, 1e-4, "Tolerance for constraint violation and dual gap");
+
+// Parameters which enable dircon-improving features
+DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
+DEFINE_bool(is_scale_variable, false, "Scale the decision variable");
 
 namespace dairlib {
 
@@ -213,8 +217,8 @@ void GetInitFixedPointGuess(const Vector3d& pelvis_position,
       -1.762, 68.42, 0.652, 1.744;
   mp->SetInitialGuessForAllVariables(init_guess);
 
-  // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                     "Print file", "../snopt.out");
+  //  mp->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+  //                      "../snopt.out");
   // target nonlinear constraint violation
   // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
   //                     "Major optimality tolerance", 1e-6);
@@ -402,24 +406,39 @@ void DoMain(double duration, int max_iter, string data_directory,
   double_all_options.setConstraintRelative(6, true);
   double_all_options.setConstraintRelative(8, true);
   // Constraint scaling
-  int n_kin = double_all_dataset.countConstraints();
-  double s_kin_vel = 500;
-  double s_kin_acc = 1000;
-  double_all_options.setDynConstraintScaling(1.0 / 150.0, 0, 14);
-  double_all_options.setDynConstraintScaling(1.0 / 150.0 / 3.0 * 10, 15, 16);
-  double_all_options.setDynConstraintScaling(1.0 / 150.0, 17, 28);
-  double_all_options.setDynConstraintScaling(1.0 / 150.0 / 10, 29, 34);
-  double_all_options.setDynConstraintScaling(1.0 / 150.0 / 15.0, 35, 36);
-  double_all_options.setKinConstraintScaling(1.0 / 500.0, 0, 9);
-  double_all_options.setKinConstraintScaling(2.0 / 50.0, 10, 11);
-  double_all_options.setKinConstraintScaling(1.0 / 500.0 * s_kin_vel, n_kin + 0,
-                                             n_kin + 9);
-  double_all_options.setKinConstraintScaling(2.0 / 50.0 * s_kin_vel, n_kin + 10,
-                                             n_kin + 11);
-  double_all_options.setKinConstraintScaling(1.0 / 500.0 * s_kin_acc,
-                                             2 * n_kin + 0, 2 * n_kin + 9);
-  double_all_options.setKinConstraintScaling(2.0 / 50.0 * s_kin_acc,
-                                             2 * n_kin + 10, 2 * n_kin + 11);
+  if (FLAGS_is_scale_constraint) {
+    // Dynamic constraints
+    double s_dyn_1 = (FLAGS_is_scale_variable) ? 2.0 : 1.0;
+    double s_dyn_2 = (FLAGS_is_scale_variable) ? 6.0 : 1.0;
+    double s_dyn_3 = (FLAGS_is_scale_variable) ? 85.0 : 1.0;
+    double_all_options.setDynConstraintScaling(1.0 / 150.0, 0, 14);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 3.33 / s_dyn_1, 15,
+                                               16);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0, 17, 18);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_1, 19, 26);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / s_dyn_2, 27, 28);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 10, 29, 34);
+    double_all_options.setDynConstraintScaling(1.0 / 150.0 / 15.0 / s_dyn_3, 35,
+                                               36);
+    // Kinematic constraints
+    int n_kin = double_all_dataset.countConstraints();
+    double s_kin_vel = 500;
+    double s_kin_acc = 1000;
+    double s_kin_1 = (FLAGS_is_scale_variable) ? 10.0 : 1.0;
+    double s_kin_2 = (FLAGS_is_scale_variable) ? 2.0 : 1.0;
+    double_all_options.setKinConstraintScaling(1.0 / 500.0 / s_kin_1, 0, 9);
+    double_all_options.setKinConstraintScaling(2.0 / 50.0 / s_kin_1, 10, 11);
+    double_all_options.setKinConstraintScaling(
+        1.0 / 500.0 * s_kin_vel * s_kin_2 / s_kin_1, n_kin + 0, n_kin + 9);
+    double_all_options.setKinConstraintScaling(
+        2.0 / 50.0 * s_kin_vel * s_kin_2 / s_kin_1, n_kin + 10, n_kin + 11);
+    double_all_options.setKinConstraintScaling(
+        1.0 / 500.0 * s_kin_acc * s_kin_2 / s_kin_1, 2 * n_kin + 0,
+        2 * n_kin + 9);
+    double_all_options.setKinConstraintScaling(
+        2.0 / 50.0 * s_kin_acc * s_kin_2 / s_kin_1, 2 * n_kin + 10,
+        2 * n_kin + 11);
+  }
 
   // timesteps and modes setting
   vector<double> min_dt;
@@ -535,10 +554,12 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
       &plant, "toe_right", 1, -std::numeric_limits<double>::infinity(), -0.05);
   // scaling
-  std::unordered_map<int, double> odbp_constraint_scale;
-  odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
-  left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
-  right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+  if (FLAGS_is_scale_constraint) {
+    std::unordered_map<int, double> odbp_constraint_scale;
+    odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
+    left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+    right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+  }
   for (int index = 0; index < num_time_samples[0]; index++) {
     auto x = trajopt->state(index);
     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
@@ -550,6 +571,55 @@ void DoMain(double duration, int max_iter, string data_directory,
   const MatrixXd R = 12.5 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
+
+  // Scale variable
+  // Scaling decision variable doesn't seem to help in the task of squatting.
+  // One hypothesis is that the initial guess we feed to the solver is very
+  // good, so the variable scaling doesn't matter to much.
+  if (FLAGS_is_scale_variable) {
+    // time
+    trajopt->ScaleTimeVariables(0.015);
+    // state
+    std::vector<int> idx_list;
+    for (int i = n_q; i <= n_q + 9; i++) {
+      idx_list.push_back(i);
+    }
+    trajopt->ScaleStateVariables(idx_list, 6);
+    idx_list.clear();
+    for (int i = n_q + 10; i <= n_q + n_v - 1; i++) {
+      idx_list.push_back(i);
+    }
+    trajopt->ScaleStateVariables(idx_list, 3);
+    // input
+    trajopt->ScaleInputVariables({0, 1}, 60);
+    trajopt->ScaleInputVariables({2, 3}, 300);  // 300
+    trajopt->ScaleInputVariables({4, 7}, 60);
+    trajopt->ScaleInputVariables({8, 9}, 600);  // 600
+    // force
+    trajopt->ScaleForceVariables(0, {0, 1}, 10);
+    trajopt->ScaleForceVariables(0, {2, 2}, 1000);  // 1000
+    trajopt->ScaleForceVariables(0, {3, 4}, 10);
+    trajopt->ScaleForceVariable(0, 5, 1000);
+    trajopt->ScaleForceVariables(0, {6, 7}, 10);
+    trajopt->ScaleForceVariable(0, 8, 1000);
+    trajopt->ScaleForceVariables(0, {9, 10}, 10);
+    trajopt->ScaleForceVariable(0, 11, 1000);
+    trajopt->ScaleForceVariables(0, {12, 13}, 600);
+
+    // Print out the scaling factors
+    /*for (int i=0; i < trajopt->decision_variables().size() ; i++) {
+      cout << trajopt->decision_variable(i) << ", ";
+      cout << trajopt->decision_variable(i).get_id() << ", ";
+      cout << trajopt->FindDecisionVariableIndex(trajopt->decision_variable(i))
+          << ", ";
+      auto scale_map = trajopt->GetVariableScaling();
+      auto it = scale_map.find(i);
+      if (it != scale_map.end()) {
+        cout << it->second;
+      }
+      cout << endl;
+    }*/
+  }
 
   // initial guess
   if (!init_file.empty()) {
@@ -629,7 +699,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   // Check which solver was used
   cout << "Solver: " << result.get_solver_id().name() << endl;
 
-  // Testing - check if the nonlinear constraints are all satisfied
+  // Check if the nonlinear constraints are all satisfied
   // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt,
   //                             result, tol);
   // cout << "constraint_satisfied = " << constraint_satisfied << endl;

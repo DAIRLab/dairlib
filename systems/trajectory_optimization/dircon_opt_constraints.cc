@@ -487,13 +487,13 @@ OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
       point_wrt_body_(point_wrt_body.template cast<T>()),
       dir_(dir.template cast<T>()) {
   if (dir(0) == 1) {
-    this->set_description(body_name + "_constraint_0");
+    this->set_description(body_name + "_constraint_x");
   } else if (dir(1) == 1) {
-    this->set_description(body_name + "_constraint_1");
+    this->set_description(body_name + "_constraint_y");
   } else if (dir(2) == 1) {
-    this->set_description(body_name + "_constraint_2");
+    this->set_description(body_name + "_constraint_z");
   } else {
-    this->set_description(body_name + "_constraint_-1");
+    this->set_description(body_name + "_constraint_arb");
   }
 }
 
@@ -526,13 +526,13 @@ OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
       point_wrt_body_(point_wrt_body.template cast<T>()),
       dir_(dir.template cast<T>()) {
   if (dir(0) == 1) {
-    this->set_description(body_name + "_constraint_0");
+    this->set_description(body_name + "_constraint_x");
   } else if (dir(1) == 1) {
-    this->set_description(body_name + "_constraint_1");
+    this->set_description(body_name + "_constraint_y");
   } else if (dir(2) == 1) {
-    this->set_description(body_name + "_constraint_2");
+    this->set_description(body_name + "_constraint_z");
   } else {
-    this->set_description(body_name + "_constraint_-1");
+    this->set_description(body_name + "_constraint_arb");
   }
 }
 

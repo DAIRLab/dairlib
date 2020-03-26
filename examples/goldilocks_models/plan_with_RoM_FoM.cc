@@ -98,7 +98,7 @@ int planningWithRomAndFom(int argc, char* argv[]) {
   DynamicsExpression dyn_expression(n_sDDot, 0, FLAGS_rom_option,
                                     FLAGS_robot_option);
   VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
-  VectorXd dummy_s = VectorXd::Zero(n_s);
+  VectorXd dummy_s = VectorXd::Ones(n_s);
   int n_feature_s = kin_expression.getFeature(dummy_q).size();
   int n_feature_sDDot =
     dyn_expression.getFeature(dummy_s, dummy_s).size();

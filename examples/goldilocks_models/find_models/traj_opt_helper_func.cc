@@ -163,7 +163,7 @@ vector<VectorXd> GetCassieInitGuessForQ(int N, double stride_length,
       scene_graph_ik.set_name("scene_graph_ik");
       MultibodyPlant<double> plant_ik(0.0);
       Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
-      multibody::addTerrain(&plant_ik, &scene_graph_ik, .8, .8, ground_normal);
+      multibody::addFlatTerrain(&plant_ik, &scene_graph_ik, .8, .8, ground_normal);
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
         FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");

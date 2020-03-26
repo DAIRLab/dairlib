@@ -270,7 +270,7 @@ void visualizeGait(int argc, char* argv[]) {
     MultibodyPlant<double> plant(0.0);
     SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
     Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
-    multibody::addTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
+    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
     Parser parser(&plant, &scene_graph);
     std::string full_name;
     if (FLAGS_robot_option == 0) {

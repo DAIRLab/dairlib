@@ -475,11 +475,11 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
 }
 
 template <typename T>
-OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
+PointPositionConstraint<T>::PointPositionConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::RowVector3d& dir, double lb, double ub)
-    : OneDimPointPosConstraint(plant, body_name, point_wrt_body, dir,
+    : PointPositionConstraint(plant, body_name, point_wrt_body, dir,
                                Eigen::VectorXd::Ones(1) * lb,
                                Eigen::VectorXd::Ones(1) * ub) {
   if (dir(0) == 1) {
@@ -494,7 +494,15 @@ OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
 }
 
 template <typename T>
-OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
+PointPositionConstraint<T>::PointPositionConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Vector3d& fix_pos)
+    : PointPositionConstraint(plant, body_name, point_wrt_body,
+                               Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
+
+template <typename T>
+PointPositionConstraint<T>::PointPositionConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
@@ -508,7 +516,7 @@ OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
       context_(plant_.CreateDefaultContext()) {}
 
 template <typename T>
-void OneDimPointPosConstraint<T>::EvaluateConstraint(
+void PointPositionConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
   plant_.SetPositions(context_.get(), x);
 
@@ -519,11 +527,11 @@ void OneDimPointPosConstraint<T>::EvaluateConstraint(
 };
 
 template <typename T>
-OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
+PointVelocityConstraint<T>::PointVelocityConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::RowVector3d& dir, double lb, double ub)
-    : OneDimPointVelConstraint(plant, body_name, point_wrt_body, dir,
+    : PointVelocityConstraint(plant, body_name, point_wrt_body, dir,
                                Eigen::VectorXd::Ones(1) * lb,
                                Eigen::VectorXd::Ones(1) * ub) {
   if (dir(0) == 1) {
@@ -538,7 +546,15 @@ OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
 }
 
 template <typename T>
-OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
+PointVelocityConstraint<T>::PointVelocityConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Vector3d& fix_pos)
+    : PointVelocityConstraint(plant, body_name, point_wrt_body,
+                               Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
+
+template <typename T>
+PointVelocityConstraint<T>::PointVelocityConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
@@ -552,7 +568,7 @@ OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
       context_(plant_.CreateDefaultContext()) {}
 
 template <typename T>
-void OneDimPointVelConstraint<T>::EvaluateConstraint(
+void PointVelocityConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
   plant_.SetPositionsAndVelocities(context_.get(), x);
 
@@ -575,10 +591,10 @@ template class DirconKinematicConstraint<double>;
 template class DirconKinematicConstraint<AutoDiffXd>;
 template class DirconImpactConstraint<double>;
 template class DirconImpactConstraint<AutoDiffXd>;
-template class OneDimPointPosConstraint<double>;
-template class OneDimPointPosConstraint<AutoDiffXd>;
-template class OneDimPointVelConstraint<double>;
-template class OneDimPointVelConstraint<AutoDiffXd>;
+template class PointPositionConstraint<double>;
+template class PointPositionConstraint<AutoDiffXd>;
+template class PointVelocityConstraint<double>;
+template class PointVelocityConstraint<AutoDiffXd>;
 
 }  // namespace trajectory_optimization
 }  // namespace systems

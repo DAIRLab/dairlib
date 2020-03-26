@@ -479,24 +479,33 @@ OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::RowVector3d& dir, double lb, double ub)
-    : DirconAbstractConstraint<T>(1, plant.num_positions(),
-                                  Eigen::VectorXd::Ones(1) * lb,
-                                  Eigen::VectorXd::Ones(1) * ub),
+    : OneDimPointPosConstraint(plant, body_name, point_wrt_body, dir,
+                               Eigen::VectorXd::Ones(1) * lb,
+                               Eigen::VectorXd::Ones(1) * ub) {
+  if (dir(0) == 1) {
+    this->set_description(body_name + "_pos_constraint_x");
+  } else if (dir(1) == 1) {
+    this->set_description(body_name + "_pos_constraint_y");
+  } else if (dir(2) == 1) {
+    this->set_description(body_name + "_pos_constraint_z");
+  } else {
+    this->set_description(body_name + "_pos_constraint_arb");
+  }
+}
+
+template <typename T>
+OneDimPointPosConstraint<T>::OneDimPointPosConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+    const Eigen::VectorXd& lb, const Eigen::VectorXd& ub)
+    : DirconAbstractConstraint<T>(dir.rows(), plant.num_positions(), lb, ub,
+                                  body_name + "_pos_constraint"),
       plant_(plant),
       body_(plant.GetBodyByName(body_name)),
       point_wrt_body_(point_wrt_body.template cast<T>()),
       dir_(dir.template cast<T>()),
-      context_(plant_.CreateDefaultContext()){
-  if (dir(0) == 1) {
-    this->set_description(body_name + "_constraint_x");
-  } else if (dir(1) == 1) {
-    this->set_description(body_name + "_constraint_y");
-  } else if (dir(2) == 1) {
-    this->set_description(body_name + "_constraint_z");
-  } else {
-    this->set_description(body_name + "_constraint_arb");
-  }
-}
+      context_(plant_.CreateDefaultContext()) {}
 
 template <typename T>
 void OneDimPointPosConstraint<T>::EvaluateConstraint(
@@ -514,24 +523,33 @@ OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::RowVector3d& dir, double lb, double ub)
-    : DirconAbstractConstraint<T>(
-          1, plant.num_positions() + plant.num_velocities(),
-          Eigen::VectorXd::Ones(1) * lb, Eigen::VectorXd::Ones(1) * ub),
+    : OneDimPointVelConstraint(plant, body_name, point_wrt_body, dir,
+                               Eigen::VectorXd::Ones(1) * lb,
+                               Eigen::VectorXd::Ones(1) * ub) {
+  if (dir(0) == 1) {
+    this->set_description(body_name + "_vel_constraint_x");
+  } else if (dir(1) == 1) {
+    this->set_description(body_name + "_vel_constraint_y");
+  } else if (dir(2) == 1) {
+    this->set_description(body_name + "_vel_constraint_z");
+  } else {
+    this->set_description(body_name + "_vel_constraint_arb");
+  }
+}
+
+template <typename T>
+OneDimPointVelConstraint<T>::OneDimPointVelConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+    const Eigen::VectorXd& lb, const Eigen::VectorXd& ub)
+    : DirconAbstractConstraint<T>(dir.rows(), plant.num_positions(), lb, ub,
+                                  body_name + "_vel_constraint"),
       plant_(plant),
       body_(plant.GetBodyByName(body_name)),
       point_wrt_body_(point_wrt_body.template cast<T>()),
       dir_(dir.template cast<T>()),
-      context_(plant_.CreateDefaultContext()){
-  if (dir(0) == 1) {
-    this->set_description(body_name + "_constraint_x");
-  } else if (dir(1) == 1) {
-    this->set_description(body_name + "_constraint_y");
-  } else if (dir(2) == 1) {
-    this->set_description(body_name + "_constraint_z");
-  } else {
-    this->set_description(body_name + "_constraint_arb");
-  }
-}
+      context_(plant_.CreateDefaultContext()) {}
 
 template <typename T>
 void OneDimPointVelConstraint<T>::EvaluateConstraint(

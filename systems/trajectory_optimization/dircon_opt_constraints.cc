@@ -478,37 +478,20 @@ template <typename T>
 PointPositionConstraint<T>::PointPositionConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
-    const Eigen::RowVector3d& dir, double lb, double ub)
-    : PointPositionConstraint(plant, body_name, point_wrt_body, dir,
-                               Eigen::VectorXd::Ones(1) * lb,
-                               Eigen::VectorXd::Ones(1) * ub) {
-  if (dir(0) == 1) {
-    this->set_description(body_name + "_pos_constraint_x");
-  } else if (dir(1) == 1) {
-    this->set_description(body_name + "_pos_constraint_y");
-  } else if (dir(2) == 1) {
-    this->set_description(body_name + "_pos_constraint_z");
-  } else {
-    this->set_description(body_name + "_pos_constraint_arb");
-  }
-}
-
-template <typename T>
-PointPositionConstraint<T>::PointPositionConstraint(
-    const drake::multibody::MultibodyPlant<T>& plant,
-    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::Vector3d& fix_pos)
     : PointPositionConstraint(plant, body_name, point_wrt_body,
-                               Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
+                              Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
 
 template <typename T>
 PointPositionConstraint<T>::PointPositionConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
-    const Eigen::VectorXd& lb, const Eigen::VectorXd& ub)
-    : DirconAbstractConstraint<T>(dir.rows(), plant.num_positions(), lb, ub,
-                                  body_name + "_pos_constraint"),
+    const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+    const std::string& description)
+    : DirconAbstractConstraint<T>(
+          dir.rows(), plant.num_positions(), lb, ub,
+          description.empty() ? body_name + "_pos_constraint" : description),
       plant_(plant),
       body_(plant.GetBodyByName(body_name)),
       point_wrt_body_(point_wrt_body.template cast<T>()),
@@ -530,37 +513,20 @@ template <typename T>
 PointVelocityConstraint<T>::PointVelocityConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
-    const Eigen::RowVector3d& dir, double lb, double ub)
-    : PointVelocityConstraint(plant, body_name, point_wrt_body, dir,
-                               Eigen::VectorXd::Ones(1) * lb,
-                               Eigen::VectorXd::Ones(1) * ub) {
-  if (dir(0) == 1) {
-    this->set_description(body_name + "_vel_constraint_x");
-  } else if (dir(1) == 1) {
-    this->set_description(body_name + "_vel_constraint_y");
-  } else if (dir(2) == 1) {
-    this->set_description(body_name + "_vel_constraint_z");
-  } else {
-    this->set_description(body_name + "_vel_constraint_arb");
-  }
-}
-
-template <typename T>
-PointVelocityConstraint<T>::PointVelocityConstraint(
-    const drake::multibody::MultibodyPlant<T>& plant,
-    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::Vector3d& fix_pos)
     : PointVelocityConstraint(plant, body_name, point_wrt_body,
-                               Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
+                              Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
 
 template <typename T>
 PointVelocityConstraint<T>::PointVelocityConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
     const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
-    const Eigen::VectorXd& lb, const Eigen::VectorXd& ub)
-    : DirconAbstractConstraint<T>(dir.rows(), plant.num_positions(), lb, ub,
-                                  body_name + "_vel_constraint"),
+    const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+    const std::string& description)
+    : DirconAbstractConstraint<T>(
+          dir.rows(), plant.num_positions(), lb, ub,
+          description.empty() ? body_name + "_vel_constraint" : description),
       plant_(plant),
       body_(plant.GetBodyByName(body_name)),
       point_wrt_body_(point_wrt_body.template cast<T>()),

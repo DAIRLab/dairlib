@@ -235,15 +235,11 @@ template <typename T>
 class PointPositionConstraint : public DirconAbstractConstraint<T> {
  public:
   PointPositionConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                           const std::string& body_name,
-                           const Eigen::Vector3d& point_wrt_body,
-                           const Eigen::RowVector3d& dir, double lb, double ub);
-  PointPositionConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                           const std::string& body_name,
-                           const Eigen::Vector3d& point_wrt_body,
-                           const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
-                           const Eigen::VectorXd& lb,
-                           const Eigen::VectorXd& ub);
+                          const std::string& body_name,
+                          const Eigen::Vector3d& point_wrt_body,
+                          const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+                          const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+                          const std::string& description = "");
   // A constructor that fix the 3D position of a point wrt the world
   PointPositionConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
@@ -271,15 +267,11 @@ template <typename T>
 class PointVelocityConstraint : public DirconAbstractConstraint<T> {
  public:
   PointVelocityConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                           const std::string& body_name,
-                           const Eigen::Vector3d& point_wrt_body,
-                           const Eigen::RowVector3d& dir, double lb, double ub);
-  PointVelocityConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                           const std::string& body_name,
-                           const Eigen::Vector3d& point_wrt_body,
-                           const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
-                           const Eigen::VectorXd& lb,
-                           const Eigen::VectorXd& ub);
+                          const std::string& body_name,
+                          const Eigen::Vector3d& point_wrt_body,
+                          const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+                          const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+                          const std::string& description = "");
   // A constructor that fix the 3D velocity of a point wrt the world
   PointVelocityConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,

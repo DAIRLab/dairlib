@@ -213,12 +213,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           AddConstraint(
               constraint_j->getForceConstraint(k),
               force_vars(i).segment(start_index, constraint_j->getLength()));
-          // Testing -- Add constraints on force at collocation points
-          /*if (l != (mode_lengths_[i] - 1)) {
-            AddConstraint(constraint_j->getForceConstraint(k),
-                          collocation_force_vars(i).segment(
-                              start_index, constraint_j->getLength()));
-          }*/
         }
         start_index += constraint_j->getLength();
       }

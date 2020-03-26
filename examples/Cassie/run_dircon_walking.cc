@@ -305,20 +305,18 @@ void DoMain(double duration, double stride_length, double ground_incline,
   DRAKE_DEMAND((stride_length / n_node) <= max_distance_per_node);
 
   // Cost on velocity and input
-  double w_Q = 5 * 0.1;
-  double w_Q_swing_toe = w_Q * 1;  // prevent the swing toe from rocking
-  double w_R = 0.1 * 0.01;
-  double w_R_swing_toe = w_R * 1;  // prevent the swing toe from rocking
+  double w_Q = 0.05;
+  double w_R = 0.0001;
   // Cost on force
-  double w_lambda = 1.0e-4;
+  double w_lambda = sqrt(0.1) * 1.0e-4;
   // Cost on difference over time
-  double w_lambda_diff = 0.000001 * 0.1;
-  double w_v_diff = 0.01 * 5 * 0.1;
-  double w_u_diff = 0.00001 * 0.1;
+  double w_lambda_diff = 0.00000001;
+  double w_v_diff = 0.0005;
+  double w_u_diff = 0.0000001;
   // Cost on position
-  double w_q_hip_roll = 1 * 5;
-  double w_q_hip_yaw = 1 * 5;
-  double w_q_quat_xyz = 1 * 5;
+  double w_q_hip_roll = 0.5;
+  double w_q_hip_yaw = 0.5;
+  double w_q_quat_xyz = 0.5;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -778,9 +776,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   // add cost
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
-  W_Q(n_v - 1, n_v - 1) = w_Q_swing_toe;
   MatrixXd W_R = w_R * MatrixXd::Identity(n_u, n_u);
-  W_R(n_u - 1, n_u - 1) = w_R_swing_toe;
 
   W_Q(n_v - 2, n_v - 2) /= (s_v_toe_l * s_v_toe_l);
   W_Q(n_v - 1, n_v - 1) /= (s_v_toe_r * s_v_toe_r);
@@ -1061,9 +1057,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   // Print weight
   cout << "\nw_Q = " << w_Q << endl;
-  cout << "w_Q_swing_toe = " << w_Q_swing_toe << endl;
   cout << "w_R = " << w_R << endl;
-  cout << "w_R_swing_toe = " << w_R_swing_toe << endl;
   cout << "w_lambda = " << w_lambda << endl;
   cout << "w_lambda_diff = " << w_lambda_diff << endl;
   cout << "w_v_diff = " << w_v_diff << endl;

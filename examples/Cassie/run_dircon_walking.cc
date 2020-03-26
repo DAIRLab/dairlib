@@ -89,6 +89,10 @@ DEFINE_double(ground_incline, 0.0,
 DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
 DEFINE_bool(is_scale_variable, true, "Scale the decision variable");
 
+// Others
+DEFINE_bool(visualize_init_guess, false,
+            "to visualize the poses of the initial guess");
+
 namespace dairlib {
 
 /// Trajectory optimization of fixed-spring cassie walking
@@ -96,7 +100,8 @@ namespace dairlib {
 // Do inverse kinematics to get configuration guess
 vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
                                   double ground_incline,
-                                  const MultibodyPlant<double>& plant) {
+                                  const MultibodyPlant<double>& plant,
+                                  bool visualize_init_guess = false) {
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_x = n_q + n_v;
@@ -160,8 +165,7 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
     q_ik_guess = q_sol_normd;
     q_init_guess.push_back(q_sol_normd);
 
-    bool visualize_init_traj = false;
-    if (visualize_init_traj) {
+    if (visualize_init_guess) {
       // Build temporary diagram for visualization
       drake::systems::DiagramBuilder<double> builder_ik;
       SceneGraph<double>& scene_graph_ik = *builder_ik.AddSystem<SceneGraph>();
@@ -811,8 +815,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
         VectorXd::Random(trajopt->decision_variables().size()));
 
     // Do inverse kinematics to get q initial guess
-    vector<VectorXd> q_seed =
-        GetInitGuessForQ(N, stride_length, ground_incline, plant);
+    vector<VectorXd> q_seed = GetInitGuessForQ(
+        N, stride_length, ground_incline, plant, FLAGS_visualize_init_guess);
     // Do finite differencing to get v initial guess
     vector<VectorXd> v_seed =
         GetInitGuessForV(q_seed, duration / (N - 1), plant);

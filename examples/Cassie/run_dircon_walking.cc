@@ -33,51 +33,32 @@
 using std::cout;
 using std::endl;
 using std::map;
-using std::shared_ptr;
 using std::string;
 using std::vector;
 
-using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using dairlib::goldilocks_models::readCSV;
 using dairlib::goldilocks_models::writeCSV;
-using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
-using dairlib::systems::trajectory_optimization::DirconDynamicConstraint;
-using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
-using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
 using drake::VectorX;
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
-using drake::math::RollPitchYaw;
 using drake::math::RotationMatrix;
 using drake::multibody::Body;
-using drake::multibody::BodyIndex;
-using drake::multibody::JointActuator;
-using drake::multibody::JointActuatorIndex;
-using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::SpatialInertia;
 using drake::multibody::UnitInertia;
-using drake::solvers::Binding;
 using drake::solvers::Constraint;
-using drake::solvers::MathematicalProgram;
-using drake::solvers::MathematicalProgramResult;
-using drake::solvers::MatrixXDecisionVariable;
 using drake::solvers::SolutionResult;
-using drake::solvers::VectorXDecisionVariable;
-using drake::symbolic::Expression;
-using drake::symbolic::Variable;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
-using drake::systems::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_string(init_file, "", "the file name of initial guess");
@@ -339,7 +320,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
-  int n_x = n_q + n_v;
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{

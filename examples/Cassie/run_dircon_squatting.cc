@@ -3,8 +3,8 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-
 #include <gflags/gflags.h>
+
 #include "attic/multibody/multibody_solvers.h"
 #include "attic/multibody/rigidbody_utils.h"
 #include "common/find_resource.h"
@@ -42,24 +42,11 @@ using std::shared_ptr;
 using std::string;
 using std::vector;
 
-using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::VectorX;
-using drake::solvers::Binding;
-using drake::solvers::Constraint;
-using drake::solvers::MathematicalProgram;
-using drake::solvers::MathematicalProgramResult;
-using drake::solvers::MatrixXDecisionVariable;
-using drake::solvers::SolutionResult;
-using drake::solvers::VectorXDecisionVariable;
-using drake::symbolic::Expression;
-using drake::symbolic::Variable;
-using drake::systems::trajectory_optimization::MultipleShooting;
-using drake::trajectories::PiecewisePolynomial;
-
 using drake::geometry::SceneGraph;
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
@@ -68,31 +55,21 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::SpatialInertia;
 using drake::multibody::UnitInertia;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::SolutionResult;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
-
-using drake::multibody::BodyIndex;
-using drake::multibody::JointActuator;
-using drake::multibody::JointActuatorIndex;
-using drake::multibody::ModelInstanceIndex;
-
-using drake::math::RollPitchYaw;
-using drake::math::RotationMatrix;
-
-using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
-using dairlib::systems::trajectory_optimization::DirconDynamicConstraint;
-using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
-using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
-using dairlib::systems::trajectory_optimization::DirconOptions;
-using dairlib::systems::trajectory_optimization::HybridDircon;
-
-using dairlib::systems::SubvectorPassThrough;
+using drake::trajectories::PiecewisePolynomial;
 
 using dairlib::goldilocks_models::readCSV;
 using dairlib::goldilocks_models::writeCSV;
-
 using dairlib::multibody::ContactInfo;
 using dairlib::multibody::FixedPointSolver;
 using dairlib::multibody::GetBodyIndexFromName;
+using dairlib::systems::SubvectorPassThrough;
+using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
+using dairlib::systems::trajectory_optimization::DirconOptions;
+using dairlib::systems::trajectory_optimization::HybridDircon;
 
 DEFINE_string(init_file, "", "the file name of initial guess");
 DEFINE_string(data_directory, "../dairlib_data/cassie_trajopt_data/",

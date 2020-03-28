@@ -76,6 +76,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     num_kinematic_constraints_.push_back(constraints_[i]->countConstraints());
 
     // initialize decision variables
+    // force_vars_, collocation_force_vars_ and collocation_slack_vars_
     force_vars_.push_back(NewContinuousVariables(
         constraints_[i]->countConstraintsWithoutSkipping() *
             num_time_samples[i],
@@ -88,8 +89,8 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         constraints_[i]->countConstraintsWithoutSkipping() *
             (num_time_samples[i] - 1),
         "v_c[" + std::to_string(i) + "]"));
-    // slack variables used to scale quaternion norm to 1 in the dynamic
-    // constraints.
+    // quaternion_slack_vars_ (slack variables used to scale quaternion norm to
+    // 1 in the dynamic constraints)
     if (is_quaternion) {
       quaternion_slack_vars_.push_back(NewContinuousVariables(
           num_time_samples[i] - 1, "gamma_" + std::to_string(i)));
@@ -97,8 +98,10 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       quaternion_slack_vars_.push_back(
           NewContinuousVariables(0, "gamma_" + std::to_string(i)));
     }
+    // offset_vars_
     offset_vars_.push_back(NewContinuousVariables(
         options[i].getNumRelative(), "offset[" + std::to_string(i) + "]"));
+    // impulse_vars_
     if (i > 0) {
       impulse_vars_.push_back(NewContinuousVariables(
           constraints_[i]->countConstraintsWithoutSkipping(),
@@ -130,7 +133,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         options[i].getDynConstraintScaling());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       int time_index = mode_start_[i] + j;
-
       AddConstraint(
           dynamic_constraint,
           {h_vars().segment(time_index, 1), state_vars_by_mode(i, j),
@@ -148,7 +150,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
                            : quaternion_slack_vars(i).segment(0, 0)});
     }
 
-    // Adding kinematic constraints
+    // Adding kinematic constraints (interior nodes of the mode)
     auto kinematic_constraint = std::make_shared<DirconKinematicConstraint<T>>(
         plant_, *constraints_[i], options[i].getConstraintsRelative());
     kinematic_constraint->SetConstraintScaling(
@@ -164,7 +166,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
            offset_vars(i)});
     }
 
-    // special case first and last timestep based on options
+    // Adding kinematic constraints (start node of the mode)
     auto kinematic_constraint_start =
         std::make_shared<DirconKinematicConstraint<T>>(
             plant_, *constraints_[i], options[i].getConstraintsRelative(),
@@ -178,6 +180,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
          force_vars(i).segment(0, num_kinematic_constraints_wo_skipping(i)),
          offset_vars(i)});
 
+    // Adding kinematic constraints (end node of the mode)
     // Only add the end constraint if the length inside the mode is greater
     // than 1. (The first and the last timestamp are the same, if the length
     // inside the mode is 1.)
@@ -215,19 +218,20 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       }
     }
 
-    // Force cost option
+    // Add force to cost function
     if (options[i].getForceCost() != 0) {
       auto A = options[i].getForceCost() *
                MatrixXd::Identity(num_kinematic_constraints_wo_skipping(i),
                                   num_kinematic_constraints_wo_skipping(i));
       auto b = MatrixXd::Zero(num_kinematic_constraints_wo_skipping(i), 1);
       for (int j = 0; j < mode_lengths_[i]; j++) {
+        // Add || Ax - b ||^2
         AddL2NormCost(A, b, force(i, j));
       }
     }
 
     if (i > 0) {
-      if (num_kinematic_constraints_wo_skipping(i) > 0) {
+      if (constraints_[i]->countConstraintsWithoutSkipping() > 0) {
         auto impact_constraint = std::make_shared<DirconImpactConstraint<T>>(
             plant_, *constraints_[i]);
         impact_constraint->SetConstraintScaling(
@@ -309,6 +313,9 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
   // g_{N-1}*h_{N-2}/2.0.
 
+  // Here, we add the cost using symbolic expression. The expression is a
+  // polynomial of degree 3 which Drake can handle, although the
+  // documentation says it only supports up to second order.
   AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, 0) * h_vars()(0) /
           2);
   for (int i = 1; i <= N() - 2; i++) {
@@ -469,7 +476,7 @@ void HybridDircon<T>::ScaleInputVariable(int idx, double scale) {
 template <typename T>
 void HybridDircon<T>::ScaleForceVariable(int mode, int idx, double scale) {
   DRAKE_DEMAND((0 <= mode) && (mode < num_modes_));
-  int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
+  int n_lambda = num_kinematic_constraints_wo_skipping_[mode];
   DRAKE_DEMAND((0 <= idx) && (idx < n_lambda));
 
   // Force at knot points
@@ -486,8 +493,8 @@ void HybridDircon<T>::ScaleForceVariable(int mode, int idx, double scale) {
 template <typename T>
 void HybridDircon<T>::ScaleImpulseVariable(int mode, int idx, double scale) {
   DRAKE_DEMAND((0 <= mode) && (mode < num_modes_ - 1));
-  int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
-  DRAKE_DEMAND((0 <= idx) && (idx < n_lambda));
+  int n_impulse = constraints_[mode]->countConstraintsWithoutSkipping();
+  DRAKE_DEMAND((0 <= idx) && (idx < n_impulse));
 
   auto vars = impulse_vars(mode);
   this->SetVariableScaling(vars(idx), scale);
@@ -496,7 +503,7 @@ template <typename T>
 void HybridDircon<T>::ScaleKinConstraintSlackVariable(int mode, int idx,
                                                       double scale) {
   DRAKE_DEMAND((0 <= mode) && (mode < num_modes_ - 1));
-  int n_lambda = constraints_[mode]->countConstraintsWithoutSkipping();
+  int n_lambda = num_kinematic_constraints_wo_skipping_[mode];
   DRAKE_DEMAND(idx < n_lambda);
 
   auto vars = collocation_slack_vars(mode);

@@ -13,15 +13,19 @@ class DirconOptions {
  public:
   explicit DirconOptions(int n_constraints);
   DirconOptions(int n_constraints,
-                drake::multibody::MultibodyPlant<double>* plant);
-  DirconOptions(int n_constraints,
-                drake::multibody::MultibodyPlant<drake::AutoDiffXd>* plant);
+                const drake::multibody::MultibodyPlant<double>& plant);
+  DirconOptions(
+      int n_constraints,
+      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant);
 
   // Setters/getters for constraint scaling
   /// The impact constraint is for the impact at the beginning of the mode
-  void setDynConstraintScaling(double s, int row_start, int row_end);
-  void setImpConstraintScaling(double s, int row_start, int row_end);
-  void setKinConstraintScaling(double s, int row_start, int row_end);
+  void setDynConstraintScaling(int idx, double s);
+  void setImpConstraintScaling(int idx, double s);
+  void setKinConstraintScaling(int idx, double s);
+  void setDynConstraintScaling(std::vector<int> idx_list, double s);
+  void setImpConstraintScaling(std::vector<int> idx_list, double s);
+  void setKinConstraintScaling(std::vector<int> idx_list, double s);
   const std::unordered_map<int, double>& getDynConstraintScaling();
   const std::unordered_map<int, double>& getImpConstraintScaling();
   std::unordered_map<int, double> getKinConstraintScaling();
@@ -51,7 +55,7 @@ class DirconOptions {
  private:
   // methods for constraint scaling
   static void addConstraintScaling(std::unordered_map<int, double>* list,
-                                   double s, int row_start, int row_end);
+                                   int idx, double s);
   std::unordered_map<int, double> getKinConstraintScaling(
       DirconKinConstraintType type);
 

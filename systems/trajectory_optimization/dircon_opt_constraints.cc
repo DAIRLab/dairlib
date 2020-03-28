@@ -103,28 +103,30 @@ void DirconAbstractConstraint<double>::DoEval(
     x_val(i) -= dx;
     dy.col(i) = (yi - y0) / dx;
   }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy*original_grad, *y);
+  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
+                                                     *y);
 
   // std::cout << dy << std::endl  << std::endl << std::endl;
 
-  // // central differencing
-  // double dx = 1e-8;
+  // central differencing
+  /*double dx = 1e-6;
 
-  // VectorXd x_val = autoDiffToValueMatrix(x);
-  // VectorXd y0,yi;
-  // EvaluateConstraint(x_val,y0);
+  VectorXd x_val = autoDiffToValueMatrix(x);
+  VectorXd y0, yi;
+  EvaluateConstraint(x_val, &y0);
 
-  // MatrixXd dy = MatrixXd(y0.size(),x_val.size());
-  // for (int i=0; i < x_val.size(); i++) {
-  //   x_val(i) -= dx/2;
-  //   EvaluateConstraint(x_val,y0);
-  //   x_val(i) += dx;
-  //   EvaluateConstraint(x_val,yi);
-  //   x_val(i) -= dx/2;
-  //   dy.col(i) = (yi - y0)/dx;
-  // }
-  // EvaluateConstraint(x_val,y0);
-  // initializeAutoDiffGivenGradientMatrix(y0, dy, y);
+  MatrixXd dy = MatrixXd(y0.size(), x_val.size());
+  for (int i = 0; i < x_val.size(); i++) {
+    x_val(i) -= dx / 2;
+    EvaluateConstraint(x_val, &y0);
+    x_val(i) += dx;
+    EvaluateConstraint(x_val, &yi);
+    x_val(i) -= dx / 2;
+    dy.col(i) = (yi - y0) / dx;
+  }
+  EvaluateConstraint(x_val, &y0);
+  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
+                                                     *y);*/
 
   this->ScaleConstraint<AutoDiffXd>(y);
 }
@@ -330,7 +332,7 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       n_relative_{
           static_cast<int>(std::count(is_constraint_relative.begin(),
                                       is_constraint_relative.end(), true))} {
-  // ***Set sparsity pattern***
+  // Set sparsity pattern and relative map
   std::vector<std::pair<int, int>> sparsity;
   // Acceleration constraints are dense in decision variables
   for (int i = 0; i < num_kinematic_constraints_; i++) {
@@ -472,6 +474,78 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
       M * (v1 - v0) - constraints_->getJWithoutSkipping().transpose() * impulse;
 }
 
+template <typename T>
+PointPositionConstraint<T>::PointPositionConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Vector3d& fix_pos)
+    : PointPositionConstraint(plant, body_name, point_wrt_body,
+                              Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
+
+template <typename T>
+PointPositionConstraint<T>::PointPositionConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+    const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+    const std::string& description)
+    : DirconAbstractConstraint<T>(
+          dir.rows(), plant.num_positions(), lb, ub,
+          description.empty() ? body_name + "_pos_constraint" : description),
+      plant_(plant),
+      body_(plant.GetBodyByName(body_name)),
+      point_wrt_body_(point_wrt_body.template cast<T>()),
+      dir_(dir.template cast<T>()),
+      context_(plant_.CreateDefaultContext()) {}
+
+template <typename T>
+void PointPositionConstraint<T>::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
+  plant_.SetPositions(context_.get(), x);
+
+  drake::VectorX<T> pt(3);
+  this->plant_.CalcPointsPositions(*context_, body_.body_frame(),
+                                   point_wrt_body_, plant_.world_frame(), &pt);
+  *y = dir_ * pt;
+};
+
+template <typename T>
+PointVelocityConstraint<T>::PointVelocityConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Vector3d& fix_pos)
+    : PointVelocityConstraint(plant, body_name, point_wrt_body,
+                              Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
+
+template <typename T>
+PointVelocityConstraint<T>::PointVelocityConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+    const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+    const std::string& description)
+    : DirconAbstractConstraint<T>(
+          dir.rows(), plant.num_positions(), lb, ub,
+          description.empty() ? body_name + "_vel_constraint" : description),
+      plant_(plant),
+      body_(plant.GetBodyByName(body_name)),
+      point_wrt_body_(point_wrt_body.template cast<T>()),
+      dir_(dir.template cast<T>()),
+      context_(plant_.CreateDefaultContext()) {}
+
+template <typename T>
+void PointVelocityConstraint<T>::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
+  plant_.SetPositionsAndVelocities(context_.get(), x);
+
+  drake::MatrixX<T> J(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, drake::multibody::JacobianWrtVariable::kV, body_.body_frame(),
+      point_wrt_body_, plant_.world_frame(), plant_.world_frame(), &J);
+
+  *y = dir_ * J * x.tail(plant_.num_velocities());
+};
+
 // Explicitly instantiates on the most common scalar types.
 template class DirconAbstractConstraint<double>;
 template class DirconAbstractConstraint<AutoDiffXd>;
@@ -483,6 +557,10 @@ template class DirconKinematicConstraint<double>;
 template class DirconKinematicConstraint<AutoDiffXd>;
 template class DirconImpactConstraint<double>;
 template class DirconImpactConstraint<AutoDiffXd>;
+template class PointPositionConstraint<double>;
+template class PointPositionConstraint<AutoDiffXd>;
+template class PointVelocityConstraint<double>;
+template class PointVelocityConstraint<AutoDiffXd>;
 
 }  // namespace trajectory_optimization
 }  // namespace systems

@@ -51,8 +51,8 @@ DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
 DEFINE_int32(rom_option, -1, "");
 
 // tasks
-DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
-DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
+DEFINE_int32(N_sample_sl, 5, "Sampling # for stride length");
+DEFINE_int32(N_sample_gi, 5, "Sampling # for ground incline");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");

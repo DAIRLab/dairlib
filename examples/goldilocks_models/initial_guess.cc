@@ -11,7 +11,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
 * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
 */
     double theta_range = 0.1;
-    double theta_scale = 1;
+    double theta_scale;
     double gamma_scale = 1;
     int gamma_dimension = 2;
 //    initialize variables used for setting initial guess
@@ -28,6 +28,10 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                                              + string("_stride_length.csv"));
     VectorXd current_gamma(gamma_dimension);
     current_gamma << current_ground_incline(0, 0), current_stride_length(0, 0);
+//    get initial theta and set theta scale
+    VectorXd initial_theta = readCSV(directory + to_string(0) + string("_theta_s.csv"));
+    theta_scale = (initial_theta-current_theta).norm();
+
     for (past_iter = iter - 1; past_iter >= 0; past_iter--) {
 //        find useful theta according to the difference between previous theta and new theta
         VectorXd past_theta = readCSV(directory + to_string(past_iter) + string("_theta_s.csv"));

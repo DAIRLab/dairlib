@@ -435,7 +435,7 @@ void AbstractTrackingData::UpdateYAndError(
     const VectorXd& x_w_spr, KinematicsCache<double>& cache_w_spr) {
   // Not implemented yet
 }
-void AbstractTrackingData::UpdateYdot(const VectorXd& x_w_spr,
+void AbstractTrackingData::UpdateYdotAndError(const VectorXd& x_w_spr,
                                       KinematicsCache<double>& cache_w_spr) {
   // Not implemented yet
 }

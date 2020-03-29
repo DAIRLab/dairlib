@@ -370,7 +370,7 @@ class AbstractTrackingData final : public OscTrackingData {
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
                        KinematicsCache<double>& cache_w_spr) final;
-  void UpdateYdot(const Eigen::VectorXd& x_w_spr,
+  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
                   KinematicsCache<double>& cache_w_spr) final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                KinematicsCache<double>& cache_wo_spr) final;

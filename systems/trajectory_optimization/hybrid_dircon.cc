@@ -129,7 +129,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         plant_, *constraints_[i], is_quaternion);
     DRAKE_ASSERT(static_cast<int>(dynamic_constraint->num_constraints()) ==
                  num_states());
-    //        dynamic_constraint->ConstructSparsityPattern();
     dynamic_constraint->SetConstraintScaling(
         options[i].getDynConstraintScaling());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
@@ -154,7 +153,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     // Adding kinematic constraints (interior nodes of the mode)
     auto kinematic_constraint = std::make_shared<DirconKinematicConstraint<T>>(
         plant_, *constraints_[i], options[i].getConstraintsRelative());
-    //        kinematic_constraint->ConstructSparsityPattern();
     kinematic_constraint->SetConstraintScaling(
         options[i].getKinConstraintScaling());
     for (int j = 1; j < mode_lengths_[i] - 1; j++) {
@@ -173,7 +171,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         std::make_shared<DirconKinematicConstraint<T>>(
             plant_, *constraints_[i], options[i].getConstraintsRelative(),
             options[i].getStartType());
-    //            kinematic_constraint_start->ConstructSparsityPattern();
     kinematic_constraint_start->SetConstraintScaling(
         options[i].getKinConstraintScalingStart());
     AddConstraint(
@@ -192,7 +189,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           std::make_shared<DirconKinematicConstraint<T>>(
               plant_, *constraints_[i], options[i].getConstraintsRelative(),
               options[i].getEndType());
-      //            kinematic_constraint_end->ConstructSparsityPattern();
       kinematic_constraint_end->SetConstraintScaling(
           options[i].getKinConstraintScalingEnd());
       AddConstraint(
@@ -217,19 +213,13 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           AddConstraint(
               constraint_j->getForceConstraint(k),
               force_vars(i).segment(start_index, constraint_j->getLength()));
-          // Testing -- Add constraints on force at collocation points
-          /*if (l != (mode_lengths_[i] - 1)) {
-            AddConstraint(constraint_j->getForceConstraint(k),
-                          collocation_force_vars(i).segment(
-                              start_index, constraint_j->getLength()));
-          }*/
         }
         start_index += constraint_j->getLength();
       }
     }
 
     // Add force to cost function
-    if ((options[i].getForceCost() != 0)) {
+    if (options[i].getForceCost() != 0) {
       auto A = options[i].getForceCost() *
                MatrixXd::Identity(num_kinematic_constraints_wo_skipping(i),
                                   num_kinematic_constraints_wo_skipping(i));
@@ -244,7 +234,6 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       if (constraints_[i]->countConstraintsWithoutSkipping() > 0) {
         auto impact_constraint = std::make_shared<DirconImpactConstraint<T>>(
             plant_, *constraints_[i]);
-        //                impact_constraint->ConstructSparsityPattern();
         impact_constraint->SetConstraintScaling(
             options[i].getImpConstraintScaling());
         AddConstraint(impact_constraint,
@@ -374,8 +363,8 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory(
       }
       VectorX<T> xk = result.GetSolution(state_vars_by_mode(i, j));
       VectorX<T> uk = result.GetSolution(input(k_data));
-      states.col(k) = xk;
-      inputs.col(k) = uk;
+      states.col(k) = drake::math::DiscardGradient(xk);
+      inputs.col(k) = drake::math::DiscardGradient(uk);
       auto context = multibody::createContext(plant_, xk, uk);
       constraints_[i]->updateData(*context, result.GetSolution(force(i, j)));
       derivatives.col(k) =
@@ -440,89 +429,7 @@ void HybridDircon<T>::SetInitialForceTrajectory(
 template <typename T>
 void HybridDircon<T>::ScaleTimeVariables(double scale) {
   for (int i = 0; i < h_vars().size(); i++) {
-    DRAKE_DEMAND(IsVariableScalingUnset(h_vars()(i)));
     this->SetVariableScaling(h_vars()(i), scale);
-  }
-}
-template <typename T>
-void HybridDircon<T>::ScaleStateVariables(double scale, int idx_start,
-                                          int idx_end) {
-  int n_x = this->num_states();
-  DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_x));
-
-  // x_vars_ in MathematicalProgram
-  for (int j_knot = 0; j_knot < N(); j_knot++) {
-    auto vars = this->state(j_knot);
-    for (int i = idx_start; i <= idx_end; i++) {
-      DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
-      this->SetVariableScaling(vars(i), scale);
-    }
-  }
-
-  // v_post_impact_vars_
-  int n_q = plant_.num_positions();
-  if ((idx_end >= n_q) && (num_modes_ > 1)) {
-    idx_start = std::max(idx_start, n_q) - n_q;
-    idx_end -= n_q;
-    for (int mode = 0; mode < num_modes_ - 1; mode++) {
-      auto vars = v_post_impact_vars_by_mode(mode);
-      for (int i = idx_start; i <= idx_end; i++) {
-        DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
-        this->SetVariableScaling(vars(i), scale);
-      }
-    }
-  }
-}
-template <typename T>
-void HybridDircon<T>::ScaleInputVariables(double scale, int idx_start,
-                                          int idx_end) {
-  int n_u = this->num_inputs();
-  DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_u));
-
-  // u_vars_ in MathematicalProgram
-  for (int j_knot = 0; j_knot < N(); j_knot++) {
-    auto vars = this->input(j_knot);
-    for (int i = idx_start; i <= idx_end; i++) {
-      DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
-      this->SetVariableScaling(vars(i), scale);
-    }
-  }
-}
-template <typename T>
-void HybridDircon<T>::ScaleForceVariables(double scale, int mode, int idx_start,
-                                          int idx_end) {
-  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_));
-  int n_lambda = num_kinematic_constraints_wo_skipping_[mode];
-  DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_lambda));
-
-  // Force at knot points
-  auto vars = force_vars(mode);
-  for (int j = 0; j < mode_lengths_[mode]; j++) {
-    for (int i = idx_start; i <= idx_end; i++) {
-      DRAKE_DEMAND(IsVariableScalingUnset(vars(n_lambda * j + i)));
-      this->SetVariableScaling(vars(n_lambda * j + i), scale);
-    }
-  }
-  // Force at collocation pints
-  auto vars_2 = collocation_force_vars(mode);
-  for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
-    for (int i = idx_start; i <= idx_end; i++) {
-      DRAKE_DEMAND(IsVariableScalingUnset(vars_2(n_lambda * j + i)));
-      this->SetVariableScaling(vars_2(n_lambda * j + i), scale);
-    }
-  }
-}
-template <typename T>
-void HybridDircon<T>::ScaleImpulseVariables(double scale, int mode,
-                                            int idx_start, int idx_end) {
-  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_ - 1));
-  int n_impulse = constraints_[mode]->countConstraintsWithoutSkipping();
-  DRAKE_DEMAND((0 <= idx_start) && (idx_end < n_impulse));
-
-  auto vars = impulse_vars(mode);
-  for (int i = idx_start; i <= idx_end; i++) {
-    DRAKE_DEMAND(IsVariableScalingUnset(vars(i)));
-    this->SetVariableScaling(vars(i), scale);
   }
 }
 template <typename T>
@@ -530,38 +437,119 @@ void HybridDircon<T>::ScaleQuaternionSlackVariables(double scale) {
   DRAKE_DEMAND(multibody::isQuaternion(plant_));
   for (size_t mode = 0; mode < mode_lengths_.size(); mode++) {
     for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
-      DRAKE_DEMAND(IsVariableScalingUnset(quaternion_slack_vars_[mode](j)));
       this->SetVariableScaling(quaternion_slack_vars_[mode](j), scale);
     }
   }
 }
 template <typename T>
-void HybridDircon<T>::ScaleKinConstraintSlackVariables(double scale, int mode,
-                                                       int idx_start,
-                                                       int idx_end) {
+void HybridDircon<T>::ScaleStateVariable(int idx, double scale) {
+  int n_x = this->num_states();
+  DRAKE_DEMAND((0 <= idx) && (idx < n_x));
+
+  // x_vars_ in MathematicalProgram
+  for (int j_knot = 0; j_knot < N(); j_knot++) {
+    auto vars = this->state(j_knot);
+    this->SetVariableScaling(vars(idx), scale);
+  }
+
+  // v_post_impact_vars_
+  int n_q = plant_.num_positions();
+  if ((idx >= n_q) && (num_modes_ > 1)) {
+    idx -= n_q;
+    for (int mode = 0; mode < num_modes_ - 1; mode++) {
+      auto vars = v_post_impact_vars_by_mode(mode);
+      this->SetVariableScaling(vars(idx), scale);
+    }
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleInputVariable(int idx, double scale) {
+  int n_u = this->num_inputs();
+  DRAKE_DEMAND((0 <= idx) && (idx < n_u));
+
+  // u_vars_ in MathematicalProgram
+  for (int j_knot = 0; j_knot < N(); j_knot++) {
+    auto vars = this->input(j_knot);
+    this->SetVariableScaling(vars(idx), scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleForceVariable(int mode, int idx, double scale) {
+  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_));
+  int n_lambda = num_kinematic_constraints_wo_skipping_[mode];
+  DRAKE_DEMAND((0 <= idx) && (idx < n_lambda));
+
+  // Force at knot points
+  auto vars = force_vars(mode);
+  for (int j = 0; j < mode_lengths_[mode]; j++) {
+    this->SetVariableScaling(vars(n_lambda * j + idx), scale);
+  }
+  // Force at collocation pints
+  auto vars_2 = collocation_force_vars(mode);
+  for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
+    this->SetVariableScaling(vars_2(n_lambda * j + idx), scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleImpulseVariable(int mode, int idx, double scale) {
+  DRAKE_DEMAND((0 <= mode) && (mode < num_modes_ - 1));
+  int n_impulse = constraints_[mode]->countConstraintsWithoutSkipping();
+  DRAKE_DEMAND((0 <= idx) && (idx < n_impulse));
+
+  auto vars = impulse_vars(mode);
+  this->SetVariableScaling(vars(idx), scale);
+}
+template <typename T>
+void HybridDircon<T>::ScaleKinConstraintSlackVariable(int mode, int idx,
+                                                      double scale) {
   DRAKE_DEMAND((0 <= mode) && (mode < num_modes_ - 1));
   int n_lambda = num_kinematic_constraints_wo_skipping_[mode];
-  DRAKE_DEMAND(idx_end < n_lambda);
+  DRAKE_DEMAND(idx < n_lambda);
 
   auto vars = collocation_slack_vars(mode);
   for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
-    for (int i = idx_start; i <= idx_end; i++) {
-      DRAKE_DEMAND(IsVariableScalingUnset(vars(n_lambda * j + i)));
-      this->SetVariableScaling(vars(n_lambda * j + i), scale);
-    }
+    this->SetVariableScaling(vars(n_lambda * j + idx), scale);
   }
 }
 
 template <typename T>
-bool HybridDircon<T>::IsVariableScalingUnset(
-    const drake::symbolic::Variable& var) {
-  int idx = FindDecisionVariableIndex(var);
-  auto& scale_map = this->GetVariableScaling();
-  return (scale_map.find(idx) == scale_map.end());
+void HybridDircon<T>::ScaleStateVariables(std::vector<int> idx_list,
+                                          double scale) {
+  for (const auto& idx : idx_list) {
+    ScaleStateVariable(idx, scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleInputVariables(std::vector<int> idx_list,
+                                          double scale) {
+  for (const auto& idx : idx_list) {
+    ScaleInputVariable(idx, scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleForceVariables(int mode, std::vector<int> idx_list,
+                                          double scale) {
+  for (const auto& idx : idx_list) {
+    ScaleForceVariable(mode, idx, scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleImpulseVariables(int mode, std::vector<int> idx_list,
+                                            double scale) {
+  for (const auto& idx : idx_list) {
+    ScaleImpulseVariable(mode, idx, scale);
+  }
+}
+template <typename T>
+void HybridDircon<T>::ScaleKinConstraintSlackVariables(
+    int mode, std::vector<int> idx_list, double scale) {
+  for (const auto& idx : idx_list) {
+    ScaleKinConstraintSlackVariable(mode, idx, scale);
+  }
 }
 
 template class HybridDircon<double>;
-// template class HybridDircon<AutoDiffXd>;
+template class HybridDircon<AutoDiffXd>;
 
 }  // namespace trajectory_optimization
 }  // namespace systems

@@ -52,6 +52,8 @@ using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
 using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
+using dairlib::systems::trajectory_optimization::PointPositionConstraint;
+using dairlib::systems::trajectory_optimization::PointVelocityConstraint;
 
 // using Isometry3 = Eigen::Transform<Scalar, 3, Eigen::Isometry>
 
@@ -1093,7 +1095,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
 
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
-  int n_x = n_q + n_v;
+  //  int n_x = n_q + n_v;
   int n_u = plant.num_actuators();
   // std::cout<<"n_x = "<<n_x<<"\n";
   // std::cout<<"n_u = "<<n_u<<"\n";
@@ -1158,26 +1160,26 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
 
     // after adding rom constraint
     // Dynamic constraints
-    options_list[i].setDynConstraintScaling(1.0 / 40.0, 0, 3);
-    options_list[i].setDynConstraintScaling(1.0 / 60.0, 4, 5);
-    options_list[i].setDynConstraintScaling(1.0 / 200.0, 6, 6); // end of pos
-    options_list[i].setDynConstraintScaling(1.0 / 180.0, 7, 7);
-    options_list[i].setDynConstraintScaling(1.0 / 120.0, 8, 8);
-    options_list[i].setDynConstraintScaling(1.0 / 300.0, 9, 9);
-    options_list[i].setDynConstraintScaling(1.0 / 1000.0, 10, 10);
-    options_list[i].setDynConstraintScaling(1.0 / 1500.0, 11, 11);
-    options_list[i].setDynConstraintScaling(1.0 / 3000.0, 12, 12);
-    options_list[i].setDynConstraintScaling(1.0 / 2800.0, 13, 13);
+    options_list[i].setDynConstraintScaling({0, 1, 2, 3}, 1.0 / 40.0);
+    options_list[i].setDynConstraintScaling({4, 5}, 1.0 / 60.0);
+    options_list[i].setDynConstraintScaling(6, 1.0 / 200.0); // end of pos
+    options_list[i].setDynConstraintScaling(7, 1.0 / 180.0);
+    options_list[i].setDynConstraintScaling(8, 1.0 / 120.0);
+    options_list[i].setDynConstraintScaling(9, 1.0 / 300.0);
+    options_list[i].setDynConstraintScaling(10, 1.0 / 1000.0);
+    options_list[i].setDynConstraintScaling(11, 1.0 / 1500.0);
+    options_list[i].setDynConstraintScaling(12, 1.0 / 3000.0);
+    options_list[i].setDynConstraintScaling(13, 1.0 / 2800.0);
     // Kinematic constraints
-    options_list[i].setKinConstraintScaling(1.0 / 1000.0, 0, 0);
-    options_list[i].setKinConstraintScaling(1.0 / 25.0, 1, 1);
+    options_list[i].setKinConstraintScaling(0, 1.0 / 1000.0);
+    options_list[i].setKinConstraintScaling(1, 1.0 / 25.0);
     // Impact constraints
-    options_list[i].setImpConstraintScaling(1.0 / 20.0, 0, 1);
-    options_list[i].setImpConstraintScaling(1.0 / 5.0, 2, 2);
-    options_list[i].setImpConstraintScaling(1.0 / 3.0, 3, 3);
-    options_list[i].setImpConstraintScaling(1.8 / 5.0, 4, 4);
-    options_list[i].setImpConstraintScaling(1.8 / 1.0, 5, 5);
-    options_list[i].setImpConstraintScaling(1.8 / 3.0, 6, 6);
+    options_list[i].setImpConstraintScaling({0, 1}, 1.0 / 20.0);
+    options_list[i].setImpConstraintScaling(2, 1.0 / 5.0);
+    options_list[i].setImpConstraintScaling(3, 1.0 / 3.0);
+    options_list[i].setImpConstraintScaling(4, 1.8 / 5.0);
+    options_list[i].setImpConstraintScaling(5, 1.8 / 1.0);
+    options_list[i].setImpConstraintScaling(6, 1.8 / 3.0);
   }
 
   // Stated in the MultipleShooting class:
@@ -1309,9 +1311,11 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   Eigen::Quaterniond q;
   q.setFromTwoVectors(z_hat, ground_normal);
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
-  auto right_foot_constraint_z = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "right_lower_leg", pt, T_ground_incline, 2,
-      0 , std::numeric_limits<double>::infinity());
+  auto right_foot_constraint_z =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "right_lower_leg", pt, T_ground_incline.row(2),
+          0 * VectorXd::Ones(1),
+          std::numeric_limits<double>::infinity() * VectorXd::Ones(1));
   for (int index = 1; index < num_time_samples[0] - 1; index++) {
     auto x_i = trajopt->state(index);
     trajopt->AddConstraint(right_foot_constraint_z, x_i.head(n_q));
@@ -1325,10 +1329,17 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // input
 //  trajopt->ScaleInputVariables(10, 0, 3);
   // force
-  trajopt->ScaleForceVariables(
-      50, 0, 0, ls_dataset.countConstraintsWithoutSkipping() - 1);
-  trajopt->ScaleForceVariables(
-      50, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
+  std::vector<int> idx_list;
+  idx_list.clear();
+  for (int i = 0; i < ls_dataset.countConstraintsWithoutSkipping(); i++) {
+    idx_list.push_back(i);
+  }
+  trajopt->ScaleForceVariables(0, idx_list, 50);
+  idx_list.clear();
+  for (int i = 0; i < rs_dataset.countConstraintsWithoutSkipping(); i++) {
+    idx_list.push_back(i);
+  }
+  trajopt->ScaleForceVariables(1, idx_list, 50);
   // impulse
 //  trajopt->ScaleImpulseVariables(
 //      10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
@@ -1631,67 +1642,76 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     double s = 1;  // scale everything together
 
     if (is_get_nominal) {
-      // old constraint scaling (from traj opt of cassie, without rom constraint)
-      // Dynamic constraints
-      options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 28);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
+      // old constraint scaling (from traj opt of cassie, without rom
+      // constraint) Dynamic constraints
+      options_list[i].setDynConstraintScaling({0, 1, 2, 3}, s / 30.0);
+      options_list[i].setDynConstraintScaling(
+          {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, s / 60.0);
+      options_list[i].setDynConstraintScaling({17, 18}, s / 300.0);
+      options_list[i].setDynConstraintScaling(
+          {19, 20, 21, 22, 23, 24, 25, 26, 27, 28}, s / 600.0);
+      options_list[i].setDynConstraintScaling({29, 30, 31, 32, 33, 34},
+                                              s / 3000.0);
+      options_list[i].setDynConstraintScaling({35, 36}, s / 60000.0);
       // Kinematic constraints
       int n_l = options_list[i].getNumConstraints();
-      options_list[i].setKinConstraintScaling(s * 1.0 / 6000.0, 0, 4);
-      options_list[i].setKinConstraintScaling(s * 1.0 / 10.0, n_l + 0, n_l + 4);
-      options_list[i].setKinConstraintScaling(s * 1.0, 2 * n_l + 0, 2 * n_l + 4);
+      options_list[i].setKinConstraintScaling({0, 1, 2, 3, 4}, s / 6000.0);
+      options_list[i].setKinConstraintScaling(
+          {n_l + 0, n_l + 1, n_l + 2, n_l + 3, n_l + 4}, s / 10.0);
+      options_list[i].setKinConstraintScaling(
+          {2 * n_l + 0, 2 * n_l + 1, 2 * n_l + 2, 2 * n_l + 3, 2 * n_l + 4}, s);
       if (i == 0 || four_bar_in_right_support) {
-        options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
-        options_list[i].setKinConstraintScaling(s * 1.0, n_l + 5, n_l + 6);
-        options_list[i].setKinConstraintScaling(s * 1.0 * 20, 2 * n_l + 5,
-                                                2 * n_l + 6);
+        options_list[i].setKinConstraintScaling({5, 6}, s / 600.0 * 2);
+        options_list[i].setKinConstraintScaling({n_l + 5, n_l + 6}, s);
+        options_list[i].setKinConstraintScaling({2 * n_l + 5, 2 * n_l + 6},
+                                                s * 20);
       }
       // Impact constraints
-      options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 24.0, 6, 7);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 6.0, 8, 9);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
-      options_list[i].setImpConstraintScaling(s * 1.0, 16, n_v - 1);
+      options_list[i].setImpConstraintScaling({0, 1, 2}, s / 50.0);
+      options_list[i].setImpConstraintScaling({3, 4, 5}, s / 300.0);
+      options_list[i].setImpConstraintScaling({6, 7}, s / 24.0);
+      options_list[i].setImpConstraintScaling({8, 9}, s / 6.0);
+      options_list[i].setImpConstraintScaling({10, 11, 12, 13}, s / 12.0);
+      options_list[i].setImpConstraintScaling({14, 15}, s / 2.0);
+      options_list[i].setImpConstraintScaling({16, 17}, s);
     } else {
       // new constraint scaling (20200227; after adding rom constraint)
       // Dynamic constraints
-      options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 16);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 26);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 27, 28);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 3000.0, 29, 34);
-      options_list[i].setDynConstraintScaling(s * 1.0 / 60000.0, 35, 36);
+      options_list[i].setDynConstraintScaling({0, 1, 2, 3}, s * 1.0 / 30.0);
+      options_list[i].setDynConstraintScaling(
+          {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, s * 1.0 / 60.0);
+      options_list[i].setDynConstraintScaling({17, 18}, s * 1.0 / 300.0);
+      options_list[i].setDynConstraintScaling(
+          {19, 20, 21, 22, 23, 24, 25, 26}, s * 1.0 / 600.0);
+      options_list[i].setDynConstraintScaling({27, 28, 29, 30, 31, 32, 33, 34},
+                                              s * 1.0 / 3000.0);
+      options_list[i].setDynConstraintScaling({35, 36}, s * 1.0 / 60000.0);
       // Kinematic constraints
       int n_l = options_list[i].getNumConstraints();
-      options_list[i].setKinConstraintScaling(s * 1.0 / 600.0, 0, 4);
-      options_list[i].setKinConstraintScaling(s * 1.0 / 1.0, n_l + 0, n_l + 4);
-      options_list[i].setKinConstraintScaling(s * 1.0, 2 * n_l + 0, 2 * n_l + 4);
+      options_list[i].setKinConstraintScaling({0, 1, 2, 3, 4}, s / 600.0);
+      options_list[i].setKinConstraintScaling(
+          {n_l + 0, n_l + 1, n_l + 2, n_l + 3, n_l + 4}, s / 1.0);
+      options_list[i].setKinConstraintScaling(
+          {2 * n_l + 0, 2 * n_l + 1, 2 * n_l + 2, 2 * n_l + 3, 2 * n_l + 4}, s);
       if (i == 0 || four_bar_in_right_support) {
-        options_list[i].setKinConstraintScaling(s * 1.0 / 60.0 * 2, 5, 6);
-        options_list[i].setKinConstraintScaling(s * 10.0, n_l + 5, n_l + 6);
-        options_list[i].setKinConstraintScaling(s * 1.0 * 20, 2 * n_l + 5,
-                                                2 * n_l + 6);
+        options_list[i].setKinConstraintScaling({5, 6}, s / 60.0 * 2);
+        options_list[i].setKinConstraintScaling({n_l + 5, n_l + 6}, s * 10);
+        options_list[i].setKinConstraintScaling({2 * n_l + 5, 2 * n_l + 6},
+                                                s * 20);
       }
       // Impact constraints
-      options_list[i].setImpConstraintScaling(s * 1.0 / 5.0, 0, 2);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 30.0, 3, 5);
-      options_list[i].setImpConstraintScaling(s * 10.0 / 24.0, 6, 7);
-      options_list[i].setImpConstraintScaling(s * 10.0 / 6.0, 8, 9);
-      options_list[i].setImpConstraintScaling(s * 10.0 / 12.0, 10, 10);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 11, 11);
-      options_list[i].setImpConstraintScaling(s * 10.0 / 12.0, 12, 12);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 13, 13);
-      options_list[i].setImpConstraintScaling(s * 10.0 / 2.0, 14, 14);
-      options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 15, 15);
-      options_list[i].setImpConstraintScaling(s * 50.0, 16, 16);
-      options_list[i].setImpConstraintScaling(s * 1.0, n_v - 1, n_v - 1);
+      options_list[i].setImpConstraintScaling({0, 1, 2}, s / 5.0);
+      options_list[i].setImpConstraintScaling({3, 4, 5}, s / 30.0);
+      options_list[i].setImpConstraintScaling({6, 7}, s * 10.0 / 24.0);
+      options_list[i].setImpConstraintScaling({8, 9}, s * 10.0 / 6.0);
+      options_list[i].setImpConstraintScaling(10, s * 10.0 / 12.0);
+      options_list[i].setImpConstraintScaling(11, s / 12.0);
+      options_list[i].setImpConstraintScaling(12, s * 10.0 / 12.0);
+      options_list[i].setImpConstraintScaling(13, s / 12.0);
+      options_list[i].setImpConstraintScaling(14, s * 10.0 / 2.0);
+      options_list[i].setImpConstraintScaling(15, s / 2.0);
+      options_list[i].setImpConstraintScaling(16, s * 50.0);
+      options_list[i].setImpConstraintScaling(17, s);
     }
   }
 
@@ -1853,12 +1873,16 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   }
 
   // toe position constraint in y direction (avoid leg crossing)
-  auto left_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3), 1, 0.05,
-      std::numeric_limits<double>::infinity());
-  auto right_foot_constraint = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", Vector3d::Zero(),MatrixXd::Identity(3, 3), 1,
-      -std::numeric_limits<double>::infinity(), -0.05);
+  VectorXd one = VectorXd::Ones(1);
+  auto left_foot_constraint = std::make_shared<PointPositionConstraint<double>>(
+      plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
+      0.05 * one, std::numeric_limits<double>::infinity() * one,
+      "left_foot_constraint_y");
+  auto right_foot_constraint =
+      std::make_shared<PointPositionConstraint<double>>(
+          plant, "toe_right", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
+          -std::numeric_limits<double>::infinity() * one, -0.05 * one,
+          "right_foot_constraint_y");
   // scaling
   /*std::unordered_map<int, double> odbp_constraint_scale;
   odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
@@ -1874,11 +1898,12 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   Eigen::Quaterniond q;
   q.setFromTwoVectors(z_hat, ground_normal);
   Eigen::Matrix3d T_ground_incline = q.matrix().transpose();
-/*  auto right_foot_constraint_z0 = std::make_shared<OneDimBodyPosConstraint>(
-      &plant, "toe_right", Vector3d::Zero(), T_ground_incline, 2, 0.1,
-      std::numeric_limits<double>::infinity());
-  auto x_mid = trajopt->state(num_time_samples[0] / 2);
-  trajopt->AddConstraint(right_foot_constraint_z0, x_mid.head(n_q));*/
+  /*  auto right_foot_constraint_z0 =
+    std::make_shared<PointPositionConstraint<double>>( plant, "toe_right",
+    Vector3d::Zero(), T_ground_incline.row(2), 0.1 * one,
+        std::numeric_limits<double>::infinity() * one);
+    auto x_mid = trajopt->state(num_time_samples[0] / 2);
+    trajopt->AddConstraint(right_foot_constraint_z0, x_mid.head(n_q));*/
 
   // testing -- swing foot contact point height constraint
   for (int index = 1; index < num_time_samples[0] - 1; index++) {
@@ -1887,12 +1912,15 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
       h_min = 0.1;  // 10 centimeter high in the mid point
     }
 
-    auto right_foot_constraint_z1 = std::make_shared<OneDimBodyPosConstraint>(
-        &plant, "toe_right", pt_front_contact, T_ground_incline, 2,
-        h_min , std::numeric_limits<double>::infinity());
-    auto right_foot_constraint_z2 = std::make_shared<OneDimBodyPosConstraint>(
-        &plant, "toe_right", pt_rear_contact, T_ground_incline, 2,
-        h_min , std::numeric_limits<double>::infinity());
+    auto right_foot_constraint_z1 =
+        std::make_shared<PointPositionConstraint<double>>(
+            plant, "toe_right", pt_front_contact, T_ground_incline.row(2),
+            h_min * one, std::numeric_limits<double>::infinity() * one,
+            "right_foot_constraint_z");
+    auto right_foot_constraint_z2 =
+        std::make_shared<PointPositionConstraint<double>>(
+            plant, "toe_right", pt_rear_contact, T_ground_incline.row(2),
+            h_min * one, std::numeric_limits<double>::infinity() * one);
 
     auto x_i = trajopt->state(index);
     trajopt->AddConstraint(right_foot_constraint_z1, x_i.head(n_q));
@@ -1902,13 +1930,19 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 //  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(0) == 0);
 //  trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(3) == 0);
 //  // testing -- prevent backward foot velocity
-//  auto right_foot_vel_constraint = std::make_shared<OneDimBodyVelConstraint>(
-//      &plant, "toe_right", Vector3d::Zero(), T_ground_incline, 0,
+//  auto right_foot_vel_constraint = std::make_shared<PointVelocityConstraint<double>>(
+//      plant, "toe_right", Vector3d::Zero(), T_ground_incline.row(0),
 //      0 , std::numeric_limits<double>::infinity());
 //  for (int index = 1; index < num_time_samples[0] - 1; index++) {
 //    auto x_i = trajopt->state(index);
 //    trajopt->AddConstraint(right_foot_vel_constraint, x_i);
 //  }
+
+  // testing -- zero impact
+  /*if (is_zero_touchdown_impact) {
+    trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(2) == 0);
+    trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(5) == 0);
+  }*/
 
   // testing -- swing foot pos at mid stance is the average of the start and the
   // end of the stance
@@ -1953,28 +1987,38 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   }
 
   // Scale decision variable
+  std::vector<int> idx_list;
   // time
   trajopt->ScaleTimeVariables(0.008);
   // state
-  trajopt->ScaleStateVariables(0.5, 0, 3);
-  trajopt->ScaleStateVariables(10, n_q, n_q + n_v - 3);
-  trajopt->ScaleStateVariables(10, n_q + n_v - 2, n_q + n_v - 2);
-  trajopt->ScaleStateVariables(10, n_q + n_v - 1, n_q + n_v - 1);
+  trajopt->ScaleStateVariables({0, 1, 2, 3}, 0.5);
+  idx_list.clear();
+  for (int i = n_q; i < n_q + n_v - 2; i++) {
+    idx_list.push_back(i);
+  }
+  trajopt->ScaleStateVariables(idx_list, 10);
+  trajopt->ScaleStateVariables({n_q + n_v - 2, n_q + n_v - 2}, 10);
+  trajopt->ScaleStateVariables({n_q + n_v - 1, n_q + n_v - 1}, 10);
   // input
-  trajopt->ScaleInputVariables(100, 0, 9);
+  trajopt->ScaleInputVariables({0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 100);
   // force
-  trajopt->ScaleForceVariables(
-      1000, 0, 0, ls_dataset.countConstraintsWithoutSkipping() - 1);
-  trajopt->ScaleForceVariables(
-      1000, 1, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);
+  idx_list.clear();
+  for (int i = 0; i < ls_dataset.countConstraintsWithoutSkipping(); i++) {
+    idx_list.push_back(i);
+  }
+  trajopt->ScaleForceVariables(0, idx_list, 1000);
+  idx_list.clear();
+  for (int i = 0; i < rs_dataset.countConstraintsWithoutSkipping(); i++) {
+    idx_list.push_back(i);
+  }
+  trajopt->ScaleForceVariables(1, idx_list, 1000);
   // impulse
-  trajopt->ScaleImpulseVariables(
-      10, 0, 0, rs_dataset.countConstraintsWithoutSkipping() - 1);  // 0.1
+  trajopt->ScaleImpulseVariables(0, idx_list, 10);  // 0.1
   // quaternion slack
   trajopt->ScaleQuaternionSlackVariables(30);
   // Constraint slack
-  trajopt->ScaleKinConstraintSlackVariables(50, 0, 0, 5);
-  trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
+  trajopt->ScaleKinConstraintSlackVariables(0, {0, 1, 2, 3, 4, 5}, 50);
+  trajopt->ScaleKinConstraintSlackVariables(0, {6, 7}, 500);
 
   // add cost
   MatrixXd W_Q = w_Q * MatrixXd::Identity(n_v, n_v);
@@ -2202,7 +2246,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     total_cost += cost_u;
     cout << "cost_u = " << cost_u << endl;
     double cost_lambda = 0;
-    for (int i = 0; i < num_time_samples.size(); i++) {
+    for (unsigned int i = 0; i < num_time_samples.size(); i++) {
       for (int j = 0; j < num_time_samples[i]; j++) {
         auto lambda = result.GetSolution(gm_traj_opt.dircon->force(i, j));
         cost_lambda += (options_list[i].getForceCost() * lambda).squaredNorm();

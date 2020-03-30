@@ -1,5 +1,4 @@
 #include "dircon_opt_constraints.h"
-#include <cmath>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -42,8 +41,8 @@ DirconAbstractConstraint<T>::DirconAbstractConstraint(
 
 template <typename T>
 void DirconAbstractConstraint<T>::SetConstraintScaling(
-    const std::unordered_map<int, double>& list) {
-  constraint_scaling_ = list;
+    const std::unordered_map<int, double>& map) {
+  constraint_scaling_ = map;
 }
 
 template <typename T>
@@ -52,73 +51,6 @@ void DirconAbstractConstraint<T>::ScaleConstraint(drake::VectorX<U>* y) const {
   for (const auto& member : constraint_scaling_) {
     (*y)(member.first) *= member.second;
   }
-}
-
-template <typename T>
-void DirconAbstractConstraint<T>::ConstructSparsityPattern() {
-  drake::log()->warn(
-      "Constraint cannot contain any if-statement conditioned on input values");
-  std::vector<std::pair<int, int>> sparsity;
-
-  // Method 1: using NaN
-  for (int i = 0; i < this->num_vars(); i++) {
-    VectorX<double> input = VectorX<double>::Ones(this->num_vars());
-    input(i) = std::numeric_limits<double>::quiet_NaN();
-    VectorX<double> y;
-    EvaluateConstraint(input, &y);
-
-    for (int j = 0; j < num_constraints(); j++) {
-      if (std::isnan(y(j))) {
-        sparsity.push_back({j, i});
-      }
-    }
-  }
-  // Method 2: using random numbers
-  /*std::srand((unsigned int) time(0));
-  for (int count = 0; count < 5; count++) {
-    VectorX<double> rand = VectorX<double>::Random(this->num_vars());
-    std::cout << rand.transpose() << std::endl;
-    VectorX<double> y0;
-    EvaluateConstraint(rand, &y0);
-    for (int i = 0; i < this->num_vars(); i++) {
-      VectorX<double> input = rand;
-      input(i) += 0.1;
-      VectorX<double> y1;
-      EvaluateConstraint(input, &y1);
-
-      for (int j = 0; j < num_constraints(); j++) {
-        if (y1(j) != y0(j)) {
-          // Check if the sparsity element already exist. If not, add it.
-          bool exist = false;
-          for (auto member : sparsity) {
-            if ((member.first == j) && (member.second == i)) {
-              exist = true;
-              break;
-            }
-          }
-          if (!exist) {
-            sparsity.push_back({j, i});
-            if (count > 0) std::cout << "didn't exist in previous loops\n";
-          }
-        }
-      }
-    }
-  }*/
-
-  MatrixXd m_sp = MatrixXd::Zero(num_constraints(), num_vars());
-  for (auto member : sparsity) {
-    m_sp(member.first, member.second) = 1;
-  }
-  //  std::cout << m_sp << std::endl;
-  /*if (this->get_description().compare("dynamics_constraint") == 0) {
-    goldilocks_models::writeCSV("../dyn_constraint_sparsity.csv", m_sp);
-  } else if (this->get_description().compare("kinematics_constraint") == 0) {
-    goldilocks_models::writeCSV("../kin_constraint_sparsity.csv", m_sp);
-  } else if (this->get_description().compare("impact_constraint") == 0) {
-    goldilocks_models::writeCSV("../impact_constraint_sparsity.csv", m_sp);
-  }*/
-
-  this->SetGradientSparsityPattern(sparsity);
 }
 
 template <>
@@ -250,43 +182,7 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
           num_kinematic_constraints_wo_skipping},
       num_positions_{num_positions},
       num_velocities_{num_velocities},
-      num_quat_slack_{num_quat_slack} {
-  // Not sure why after adding sparsity pattern for dynamic constraint (tested,
-  // the implementation is correct), the solve time and solution quality went
-  // down...
-
-  // Set sparsity pattern (conservative, independent of the robot)
-  std::vector<std::pair<int, int>> sparsity;
-  int j = 0;
-  while (j < 1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
-                 (2 * num_kinematic_constraints_wo_skipping)) {
-    for (int i = 0; i < num_positions + num_velocities; i++) {
-      sparsity.push_back({i, j});
-    }
-    j++;
-  }
-  while (j < 1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
-                 (3 * num_kinematic_constraints_wo_skipping)) {
-    for (int i = num_positions; i < num_positions + num_velocities; i++) {
-      sparsity.push_back({i, j});
-    }
-    j++;
-  }
-  while (j < 1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
-                 (4 * num_kinematic_constraints_wo_skipping)) {
-    for (int i = 0; i < num_positions; i++) {
-      sparsity.push_back({i, j});
-    }
-    j++;
-  }
-  if (num_quat_slack) {
-    for (int i = 0; i < 4; i++) {
-      sparsity.push_back({i, j});
-    }
-  }
-
-  this->SetGradientSparsityPattern(sparsity);
-}
+      num_quat_slack_{num_quat_slack} {}
 
 // The format of the input to the eval() function is the
 // tuple { timestep, state 0, state 1, input 0, input 1, force 0, force 1},
@@ -578,8 +474,81 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
       M * (v1 - v0) - constraints_->getJWithoutSkipping().transpose() * impulse;
 }
 
+template <typename T>
+PointPositionConstraint<T>::PointPositionConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Vector3d& fix_pos)
+    : PointPositionConstraint(plant, body_name, point_wrt_body,
+                              Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
+
+template <typename T>
+PointPositionConstraint<T>::PointPositionConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+    const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+    const std::string& description)
+    : DirconAbstractConstraint<T>(
+          dir.rows(), plant.num_positions(), lb, ub,
+          description.empty() ? body_name + "_pos_constraint" : description),
+      plant_(plant),
+      body_(plant.GetBodyByName(body_name)),
+      point_wrt_body_(point_wrt_body.template cast<T>()),
+      dir_(dir.template cast<T>()),
+      context_(plant_.CreateDefaultContext()) {}
+
+template <typename T>
+void PointPositionConstraint<T>::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
+  plant_.SetPositions(context_.get(), x);
+
+  drake::VectorX<T> pt(3);
+  this->plant_.CalcPointsPositions(*context_, body_.body_frame(),
+                                   point_wrt_body_, plant_.world_frame(), &pt);
+  *y = dir_ * pt;
+};
+
+template <typename T>
+PointVelocityConstraint<T>::PointVelocityConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Vector3d& fix_pos)
+    : PointVelocityConstraint(plant, body_name, point_wrt_body,
+                              Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
+
+template <typename T>
+PointVelocityConstraint<T>::PointVelocityConstraint(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+    const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+    const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+    const std::string& description)
+    : DirconAbstractConstraint<T>(
+          dir.rows(), plant.num_positions(), lb, ub,
+          description.empty() ? body_name + "_vel_constraint" : description),
+      plant_(plant),
+      body_(plant.GetBodyByName(body_name)),
+      point_wrt_body_(point_wrt_body.template cast<T>()),
+      dir_(dir.template cast<T>()),
+      context_(plant_.CreateDefaultContext()) {}
+
+template <typename T>
+void PointVelocityConstraint<T>::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
+  plant_.SetPositionsAndVelocities(context_.get(), x);
+
+  drake::MatrixX<T> J(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, drake::multibody::JacobianWrtVariable::kV, body_.body_frame(),
+      point_wrt_body_, plant_.world_frame(), plant_.world_frame(), &J);
+
+  *y = dir_ * J * x.tail(plant_.num_velocities());
+};
+
 // Explicitly instantiates on the most common scalar types.
 template class DirconAbstractConstraint<double>;
+template class DirconAbstractConstraint<AutoDiffXd>;
 template class QuaternionNormConstraint<double>;
 template class QuaternionNormConstraint<AutoDiffXd>;
 template class DirconDynamicConstraint<double>;
@@ -588,6 +557,10 @@ template class DirconKinematicConstraint<double>;
 template class DirconKinematicConstraint<AutoDiffXd>;
 template class DirconImpactConstraint<double>;
 template class DirconImpactConstraint<AutoDiffXd>;
+template class PointPositionConstraint<double>;
+template class PointPositionConstraint<AutoDiffXd>;
+template class PointVelocityConstraint<double>;
+template class PointVelocityConstraint<AutoDiffXd>;
 
 }  // namespace trajectory_optimization
 }  // namespace systems

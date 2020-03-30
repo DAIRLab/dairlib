@@ -72,8 +72,8 @@ DEFINE_int32(n_node, -1, "# of nodes for traj opt");
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
 
 // outer loop
-DEFINE_int32(iter_start, 1, "The starting iteration #. 0 is nominal traj.");
-DEFINE_bool(is_stochastic, false, "Random tasks or fixed tasks");
+DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
+DEFINE_bool(is_stochastic, true, "Random tasks or fixed tasks");
 DEFINE_bool(is_newton, false, "Newton method or gradient descent");
 DEFINE_double(h_step, -1, "The step size for outer loop");
 DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
@@ -1349,6 +1349,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           ? ground_incline_0 +
                 delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
           : ground_incline_0 + delta_ground_incline * ((N_sample_gi - 1) / 2);
+  DRAKE_DEMAND(min_stride_length >= 0);
   cout << "stride length ranges from " << min_stride_length << " to "
        << max_stride_length << endl;
   cout << "ground incline ranges from " << min_ground_incline << " to "

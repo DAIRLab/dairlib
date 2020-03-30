@@ -14,8 +14,8 @@ DirconOptions::DirconOptions(int n_kin_constraints) {
   end_constraint_type_ = DirconKinConstraintType::kAll;
   force_cost_ = 1.0e-4;
 }
-DirconOptions::DirconOptions(int n_constraints,
-                             const drake::multibody::MultibodyPlant<double>& plant)
+DirconOptions::DirconOptions(
+    int n_constraints, const drake::multibody::MultibodyPlant<double>& plant)
     : DirconOptions(n_constraints) {
   n_v_ = plant.num_velocities();
   n_x_ = plant.num_positions() + plant.num_velocities();
@@ -28,44 +28,43 @@ DirconOptions::DirconOptions(
   n_x_ = plant.num_positions() + plant.num_velocities();
 }
 
-void DirconOptions::setDynConstraintScaling(double scale, int row_start,
-                                            int row_end) {
-  DRAKE_DEMAND(row_end < n_x_);
-  addConstraintScaling(&dyn_constraint_scaling_, scale, row_start, row_end);
-}
-void DirconOptions::setKinConstraintScaling(double scale, int row_start,
-                                            int row_end) {
-  DRAKE_DEMAND(row_end < 3 * n_kin_constraints_);
-  for (int i = row_start; i <= row_end; i++) {
-    if (i < n_kin_constraints_) {
-      addConstraintScaling(&kin_constraint_scaling_accel_vel_pos_, scale, i, i);
-      addConstraintScaling(&kin_constraint_scaling_accel_vel_, scale, i, i);
-      addConstraintScaling(&kin_constraint_scaling_accel_, scale, i, i);
-    } else if (i < 2 * n_kin_constraints_) {
-      addConstraintScaling(&kin_constraint_scaling_accel_vel_pos_, scale, i, i);
-      addConstraintScaling(&kin_constraint_scaling_accel_vel_, scale, i, i);
-    } else {
-      addConstraintScaling(&kin_constraint_scaling_accel_vel_pos_, scale, i, i);
-    }
+void DirconOptions::setDynConstraintScaling(vector<int> idx_list, double s) {
+  for (const auto& idx : idx_list) {
+    setDynConstraintScaling(idx, s);
   }
 }
-void DirconOptions::setImpConstraintScaling(double scale, int row_start,
-                                            int row_end) {
-  DRAKE_DEMAND(row_end < n_v_);
-  addConstraintScaling(&imp_constraint_scaling_, scale, row_start, row_end);
+void DirconOptions::setImpConstraintScaling(vector<int> idx_list, double s) {
+  for (const auto& idx : idx_list) {
+    setImpConstraintScaling(idx, s);
+  }
 }
-void DirconOptions::addConstraintScaling(std::unordered_map<int, double>* list,
-                                         double scale, int row_start,
-                                         int row_end) {
-  DRAKE_DEMAND(0 <= row_start);
-  DRAKE_DEMAND(row_start <= row_end);
-  for (int i = row_start; i <= row_end; i++) {
-    // Check if the scaling has been set already
-    for (const auto& member : *list) {
-      DRAKE_DEMAND(i != member.first);
-    }
-    // Add scaling
-    list->insert(std::pair<int, double>(i, scale));
+void DirconOptions::setKinConstraintScaling(vector<int> idx_list, double s) {
+  for (const auto& idx : idx_list) {
+    setKinConstraintScaling(idx, s);
+  }
+}
+void DirconOptions::setDynConstraintScaling(int idx, double s) {
+  DRAKE_DEMAND(idx < n_x_);
+  addConstraintScaling(&dyn_constraint_scaling_, idx, s);
+}
+void DirconOptions::setKinConstraintScaling(int idx, double s) {
+  DRAKE_DEMAND(idx < 3 * n_kin_constraints_);
+  addConstraintScaling(&kin_constraint_scaling_, idx, s);
+}
+void DirconOptions::setImpConstraintScaling(int idx, double s) {
+  DRAKE_DEMAND(idx < n_v_);
+  addConstraintScaling(&imp_constraint_scaling_, idx, s);
+}
+void DirconOptions::addConstraintScaling(std::unordered_map<int, double>* map,
+                                         int idx, double s) {
+  DRAKE_DEMAND(0 <= idx);
+  DRAKE_DEMAND(0 < s);
+  if (map->find(idx) != map->end()) {
+    // Update the scaling factor
+    (*map)[idx] = s;
+  } else {
+    // Add a new scaling factor
+    map->insert(std::pair<int, double>(idx, s));
   }
 }
 
@@ -75,26 +74,44 @@ const unordered_map<int, double>& DirconOptions::getDynConstraintScaling() {
 const unordered_map<int, double>& DirconOptions::getImpConstraintScaling() {
   return imp_constraint_scaling_;
 }
-const unordered_map<int, double>& DirconOptions::getKinConstraintScaling() {
+unordered_map<int, double> DirconOptions::getKinConstraintScaling() {
   return getKinConstraintScaling(kAll);
 }
-const unordered_map<int, double>&
-DirconOptions::getKinConstraintScalingStart() {
+unordered_map<int, double> DirconOptions::getKinConstraintScalingStart() {
   return getKinConstraintScaling(start_constraint_type_);
 }
-const unordered_map<int, double>& DirconOptions::getKinConstraintScalingEnd() {
+unordered_map<int, double> DirconOptions::getKinConstraintScalingEnd() {
   return getKinConstraintScaling(end_constraint_type_);
 }
-const unordered_map<int, double>& DirconOptions::getKinConstraintScaling(
+unordered_map<int, double> DirconOptions::getKinConstraintScaling(
     DirconKinConstraintType type) {
   DRAKE_DEMAND((type == kAccelOnly) || (type == kAccelAndVel) ||
                (type == kAll));
+  // type == kAccelOnly
   if (type == kAccelOnly) {
-    return kin_constraint_scaling_accel_;
-  } else if (type == kAccelAndVel) {
-    return kin_constraint_scaling_accel_vel_;
-  } else {
-    return kin_constraint_scaling_accel_vel_pos_;
+    // Extract the elements in the acceleration level
+    unordered_map<int, double> kin_constraint_scaling_accel;
+    for (auto member : kin_constraint_scaling_) {
+      if (member.first < n_kin_constraints_) {
+        kin_constraint_scaling_accel.insert(member);
+      }
+    }
+    return kin_constraint_scaling_accel;
+  }
+  // type == kAccelAndVel
+  else if (type == kAccelAndVel) {
+    // Extract the elements in the acceleration and velocity level
+    unordered_map<int, double> kin_constraint_scaling_accel_and_vel;
+    for (auto member : kin_constraint_scaling_) {
+      if (member.first < 2 * n_kin_constraints_) {
+        kin_constraint_scaling_accel_and_vel.insert(member);
+      }
+    }
+    return kin_constraint_scaling_accel_and_vel;
+  }
+  // type == kAll
+  else {
+    return kin_constraint_scaling_;
   }
 }
 

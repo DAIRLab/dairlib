@@ -98,7 +98,6 @@ void OscTrackingData::SaveDdyCommandSol(const VectorXd& dv) {
   ddy_command_sol_ = J_ * dv + JdotV_;
 }
 
-
 void OscTrackingData::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
   cout << name_ << ":\n";
   cout << "  y = " << y_.transpose() << endl;

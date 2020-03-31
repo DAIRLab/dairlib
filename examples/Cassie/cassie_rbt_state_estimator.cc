@@ -1206,7 +1206,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
                             &right_contact);
     }
 
-    // Testing on hardware
+    // Test mode needed for hardware experiment
     if (hardware_test_mode_ == 0){
       left_contact = 1;
       right_contact = 1;

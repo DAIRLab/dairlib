@@ -146,7 +146,7 @@ void ComTrackingDataMBP::UpdateYAndError(const VectorXd& x_w_spr,
 void ComTrackingDataMBP::UpdateYdotAndError(const VectorXd& x_w_spr,
                                             Context<double>& context_w_spr) {
   MatrixXd J_w_spr(3, plant_w_spr_->num_velocities());
-  plant_w_spr_->CalcJacobianTranslationalVelocityOfSystemCenterOfMass(
+  plant_w_spr_->CalcJacobianCenterOfMassTranslationalVelocity(
       context_w_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_,
       &J_w_spr);
   dy_ = J_w_spr * x_w_spr.tail(plant_w_spr_->num_velocities());
@@ -158,13 +158,13 @@ void ComTrackingDataMBP::UpdateYddotDes() { ddy_des_converted_ = ddy_des_; }
 void ComTrackingDataMBP::UpdateJ(const VectorXd& x_wo_spr,
                                  Context<double>& context_wo_spr) {
   J_ = MatrixXd::Zero(3, plant_wo_spr_->num_velocities());
-  plant_wo_spr_->CalcJacobianTranslationalVelocityOfSystemCenterOfMass(
+  plant_wo_spr_->CalcJacobianCenterOfMassTranslationalVelocity(
       context_wo_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_, &J_);
 }
 
 void ComTrackingDataMBP::UpdateJdotV(const VectorXd& x_wo_spr,
                                      Context<double>& context_wo_spr) {
-  JdotV_ = plant_wo_spr_->CalcBiasTranslationalAccelerationOfSystemCenterOfMass(
+  JdotV_ = plant_wo_spr_->CalcBiasCenterOfMassTranslationalAcceleration(
       context_wo_spr, JacobianWrtVariable::kV, world_wo_spr_, world_wo_spr_);
 }
 

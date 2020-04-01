@@ -1,17 +1,18 @@
 import sys
-import lcm
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
+
 import dairlib
 import drake
+import lcm
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 import pydairlib.lcm_trajectory
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
-from pydrake.trajectories import PiecewisePolynomial
-from pydrake.systems.analysis import Simulator
-from pydrake.systems.framework import DiagramBuilder
 from pydrake.multibody.tree import JacobianWrtVariable
+from pydrake.systems.framework import DiagramBuilder
+from pydrake.trajectories import PiecewisePolynomial
+
 
 class lcmt_osc_tracking_data_t:
     def __init__(self):
@@ -67,6 +68,7 @@ def print_osc_debug(t_idx, length, osc_debug):
         osc_debug.ddy_command_sol[t_idx:t_idx + length, :]))
 
 def plot_nominal_traj(traj_mode0, traj_mode1, traj_mode2):
+    # Doesn't work, need to reconstruct PPoly
     fig = plt.figure('Nominal Traj')
     indices = slice(0,19)
     plt.plot(traj_mode0.time_vector, traj_mode0.datapoints.T[:,indices])
@@ -74,6 +76,26 @@ def plot_nominal_traj(traj_mode0, traj_mode1, traj_mode2):
     plt.plot(traj_mode2.time_vector, traj_mode2.datapoints.T[:,indices])
     print(traj_mode0.datatypes)
     plt.legend(traj_mode0.datatypes[indices])
+
+
+def plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
+                       state_names_wo_spr):
+    q_nominal = []
+    v_nominal = []
+    v_traj_nominal = x_traj_nominal.derivative(1)
+    t_offset = 1.0
+    for t in (t_state[t_state_slice]):
+        q_nominal.append(x_traj_nominal.value(t - t_offset))
+        v_nominal.append(v_traj_nominal.value(t - t_offset))
+    # fig = plt.figure('Nominal Traj')
+    fig = plt.figure('simulation positions')
+    q_nominal = np.array(q_nominal)
+    v_nominal = np.array(v_nominal)
+    plt.plot(t_state[t_state_slice], v_nominal[:, :, 0])
+    # plt.plot(t_state[t_state_slice], q_nominal)
+    # plt.legend(state_names_wo_spr[7:19])
+    plt.legend(state_names_wo_spr[19 + 6: 37])
+
 
 def main():
     #Set default directory for saving figures
@@ -115,6 +137,7 @@ def main():
     state_traj_mode2 = loadedStateTraj.getTrajectory("cassie_jumping_trajectory_x_u2")
 
     # decision_vars = loadedStateTraj.getTrajectory("cassie_jumping_decision_vars")
+
     # import pdb; pdb.set_trace()
 
     lcm_l_foot_traj = loadedTrackingDataTraj.getTrajectory("left_foot_trajectory")
@@ -129,9 +152,13 @@ def main():
                            state_traj_mode1.time_vector,
                            state_traj_mode2.time_vector))
 
-    # x_traj_nominal = PiecewisePolynomial.Cubic(t_nominal,
-    #                                            x_points_nominal[0:19,:],
-    #                                            x_points_nominal[19:37,:])
+    nq_fb = 7
+    nv_fb = 6
+    x_traj_nominal = PiecewisePolynomial.Cubic(t_nominal,
+                                               x_points_nominal[0 +
+                                                                nq_fb:19, :],
+                                               x_points_nominal[19 +
+                                                                nv_fb:37, :])
     l_foot_traj = PiecewisePolynomial.Cubic(lcm_l_foot_traj.time_vector,
                                             lcm_l_foot_traj.datapoints[0:3,:],
                                             lcm_l_foot_traj.datapoints[3:6,:])
@@ -143,7 +170,7 @@ def main():
 
     generate_state_maps()
 
-    state_names = state_traj_mode0.datatypes
+    state_names_wo_spr = state_traj_mode0.datatypes
 
     if len(sys.argv) < 2:
         sys.stderr.write("Provide log file as command line argument!")
@@ -166,9 +193,12 @@ def main():
     switch_signal = []
     osc_debug = [lcmt_osc_tracking_data_t() for i in range(4)]
     contact_info = [[], [], [], []]
-    contact_info, control_inputs, estop_signal, log, osc_debug, \
-    q, switch_signal, t_contact_info, \
+    contact_info_locs = [[], [], [], []]
+
+    contact_info, contact_info_locs, control_inputs, estop_signal, log, \
+    osc_debug, q, switch_signal, t_contact_info, \
     t_controller_switch, t_osc, t_osc_debug, t_state, v = process_log(contact_info,
+                                                                      contact_info_locs,
                                                                       control_inputs,
                                                                       estop_signal, log,
                                                                       osc_debug,
@@ -178,24 +208,37 @@ def main():
                                                                       t_controller_switch,
                                                                       t_osc, t_osc_debug,
                                                                       t_state, v)
+    start_time = 1
+    end_time = 3
+    t_start_idx = get_index_at_time(t_state, start_time)
+    t_end_idx = get_index_at_time(t_state, end_time)
+    t_state_slice = slice(t_start_idx, t_end_idx)
 
-    t_state_slice = plot_simulation_state(q, v, t_state, state_names)
+    plot_simulation_state(q, v, t_state, t_state_slice, state_names_wo_spr)
+    plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
+                       state_names_wo_spr)
 
 
     # For printing out osc_values at a specific time interval
-    t_osc_start_idx = get_index_at_time(t_osc_debug, 1)
-    t_osc_end_idx = get_index_at_time(t_osc_debug, 2)
+    t_osc_start_idx = get_index_at_time(t_osc_debug, start_time)
+    t_osc_end_idx = get_index_at_time(t_osc_debug, end_time)
+    t_osc_slice = slice(t_osc_start_idx, t_osc_end_idx)
 
-    # plot_nominal_control_inputs(control_inputs, state_traj_mode0, t_osc,
-    #                             t_osc_end_idx, t_osc_start_idx)
+    plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
+                            t_osc_end_idx, t_osc_start_idx)
     #
-    # plot_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal)
+    # plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal)
 
     fig = plt.figure('contact data')
-    plt.plot(t_contact_info, contact_info[0, :, 2] + contact_info[1, :, 2],
-             label='$\lambda_n left$')
-    plt.plot(t_contact_info, contact_info[2, :, 2] + contact_info[3, :, 2],
-             label='$\lambda_n right$')
+    # plt.plot(t_contact_info, contact_info[0, :, 2] + contact_info[1, :, 2],
+    plt.plot(t_state[t_state_slice], contact_info[0, t_state_slice, 2],
+             label='$\lambda_n left_f$')
+    plt.plot(t_state[t_state_slice], contact_info[1, t_state_slice, 2],
+             label='$\lambda_n left_r$')
+    plt.plot(t_state[t_state_slice], contact_info[2, t_state_slice, 2],
+             label='$\lambda_n right_f$')
+    plt.plot(t_state[t_state_slice], contact_info[3, t_state_slice, 2],
+             label='$\lambda_n right_r$')
     plt.legend()
 
     # plt.plot(t_osc_debug[t_osc_start_idx:t_osc_end_idx], osc_debug[
@@ -203,9 +246,16 @@ def main():
     #                                                      t_osc_start_idx:t_osc_end_idx])
     # Will always be active, because we don't log the osc debug unless its
     # active
-
-    plot_feet_simulation(context, l_toe_frame, no_offset, plant, q, r_toe_frame,
-                         t_state, t_state_slice, v, world)
+    front_contact_disp = np.array((-0.0457, 0.112, 0))
+    rear_contact_disp = np.array((0.088, 0, 0))
+    # plot_feet_simulation(context, l_toe_frame, r_toe_frame, world, no_offset,
+    #                      plant, v, q, t_state, t_state_slice)
+    plot_feet_simulation(context, l_toe_frame, r_toe_frame, world,
+                         front_contact_disp,
+                         plant, v, q, t_state, t_state_slice)
+    plot_feet_simulation(context, l_toe_frame, r_toe_frame, world,
+                         rear_contact_disp,
+                         plant, v, q, t_state, t_state_slice)
 
     plt.show()
     # print_osc_debug(t_idx, 1, osc_debug[0])
@@ -237,8 +287,8 @@ def main():
     plt.show()
 
 
-def plot_nominal_control_inputs(control_inputs, state_traj_mode0, t_osc,
-                                t_osc_end_idx, t_osc_start_idx):
+def plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
+                            t_osc_end_idx, t_osc_start_idx):
     fig = plt.figure('controller inputs')
     osc_indices = slice(t_osc_start_idx, t_osc_end_idx)
     plt.plot(t_osc[osc_indices], control_inputs[osc_indices])
@@ -246,7 +296,8 @@ def plot_nominal_control_inputs(control_inputs, state_traj_mode0, t_osc,
     plt.legend(state_traj_mode0.datatypes[-10:])
 
 
-def plot_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal):
+def plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal,
+                                x_points_nominal):
     fig = plt.figure('target controller inputs')
     input_traj = PiecewisePolynomial.FirstOrderHold(t_nominal,
                                                     x_points_nominal[-10:])
@@ -261,49 +312,50 @@ def plot_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal):
     plt.legend(state_traj_mode0.datatypes[-10:])
 
 
-def plot_feet_simulation(context, l_toe_frame, no_offset, plant, q, r_toe_frame,
-                         t_state, t_state_slice, v, world):
+def plot_feet_simulation(context, l_toe_frame, r_toe_frame, world,
+                         front_contact_point, plant, v, q, t_state,
+                         t_state_slice):
     l_foot_state = np.zeros((6, t_state.size))
     r_foot_state = np.zeros((6, t_state.size))
     for i in range(t_state.size):
         x = np.hstack((q[i, :], v[i, :]))
         plant.SetPositionsAndVelocities(context, x)
-        l_foot_state[0:3, [i]] = plant.CalcPointsPositions(context, l_toe_frame,
-                                                           no_offset, world)
-        r_foot_state[0:3, [i]] = plant.CalcPointsPositions(context, r_toe_frame,
-                                                           no_offset, world)
+        # l_foot_state[0:3, [i]] = plant.CalcPointsPositions(context, l_toe_frame,
+        #                                                    no_offset, world)
+        # r_foot_state[0:3, [i]] = plant.CalcPointsPositions(context, r_toe_frame,
+        #                                                    no_offset, world)
         l_foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
-            context, JacobianWrtVariable.kV, l_toe_frame, no_offset, world,
+            context, JacobianWrtVariable.kV, l_toe_frame, front_contact_point,
+            world,
             world) @ v[i, :]
         r_foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
-            context, JacobianWrtVariable.kV, r_toe_frame, no_offset, world,
+            context, JacobianWrtVariable.kV, r_toe_frame, front_contact_point,
+            world,
             world) @ v[i, :]
     fig = plt.figure('l foot pos')
-    # plt.plot(t_state[t_state_slice], l_foot_state.T[t_state_slice, :])
-    plt.plot(t_state[t_state_slice], r_foot_state.T[t_state_slice, :])
+    plt.plot(t_state[t_state_slice], l_foot_state.T[t_state_slice, 3:6],
+             label=['xdot_l', 'ydot_l', 'zdot_l'])
+    plt.plot(t_state[t_state_slice], r_foot_state.T[t_state_slice, 3:6],
+             label=['xdot_r', 'ydot_r', 'zdot_r'])
+    plt.legend()
     # plt.legend(['x pos', 'y pos', 'z pos'])
-    plt.legend(['x pos', 'y pos', 'z pos', 'x vel', 'y vel', 'z vel'])
+    # plt.legend(['x pos', 'y pos', 'z pos', 'x vel', 'y vel', 'z vel'])
+    # plt.legend(['x pos', 'y pos', 'z pos', 'x vel', 'y vel', 'z vel'])
 
 
-def plot_simulation_state(q, v, t_state, state_names):
+def plot_simulation_state(q, v, t_state, t_state_slice, state_names):
     fig = plt.figure('simulation positions')
-    t_start_idx = get_index_at_time(t_state, 1)
-    t_end_idx = get_index_at_time(t_state, 2)
-    t_state_slice = slice(t_start_idx, t_end_idx)
-    state_indices = slice(0, q.shape[1])
-    plt.plot(t_state[t_state_slice], q[t_state_slice, state_indices])
-    plt.legend(state_names[0:q.shape[1]])
+    # state_indices = slice(0, q.shape[1])
+    n_fb_states = 7
+    # state_indices = slice(n_fb_states, q.shape[1])
+    # plt.plot(t_state[t_state_slice], q[t_state_slice, state_indices])
+    # plt.legend(state_names[state_indices])
 
-    fig = plt.figure('simulation velocities')
-    t_start_idx = get_index_at_time(t_state, 1)
-    t_end_idx = get_index_at_time(t_state, 2)
-    t_state_slice = slice(t_start_idx, t_end_idx)
+    # fig = plt.figure('simulation velocities')
+
     state_indices = slice(0, v.shape[1])
     plt.plot(t_state[t_state_slice], v[t_state_slice, state_indices])
     plt.legend(state_names[q.shape[1]:q.shape[1] + v.shape[1]])
-
-    return t_state_slice
-
 
 def generate_state_maps():
     pos_map = dict()
@@ -374,9 +426,14 @@ def plot_nominal_feet_traj(l_foot_traj, lcm_l_foot_traj, r_foot_traj):
         plt.plot(t, r_foot_traj.value(t).T, 'r.')
 
 
-def process_log(contact_info, control_inputs, estop_signal, log, osc_debug,
+def process_log(contact_info, contact_info_locs, control_inputs,
+                estop_signal, log, osc_debug,
                 q, switch_signal, t_contact_info,
                 t_controller_switch, t_osc, t_osc_debug, t_state, v):
+    # left_front_contact_loc = np.zeros(3)
+    # left_rear_contact_loc = np.zeros(3)
+    # right_front_contact_loc = np.zeros(3)
+    # right_rear_contact_loc = np.zeros(3)
     for event in log:
         if event.channel == "CASSIE_STATE":
             msg = dairlib.lcmt_robot_output.decode(event.data)
@@ -398,30 +455,39 @@ def process_log(contact_info, control_inputs, estop_signal, log, osc_debug,
                 osc_debug[i].append(msg.tracking_data[0])
             t_osc_debug.append(msg.utime / 1e6)
         if event.channel == "CASSIE_CONTACT_RESULTS":
+            # Need to distinguish between front and rear contact forces
+            # Best way is to track the contact location and group by proximity
             msg = drake.lcmt_contact_results_for_viz.decode(event.data)
             t_contact_info.append(msg.timestamp / 1e6)
             num_left_contacts = 0
             num_right_contacts = 0
             for i in range(msg.num_point_pair_contacts):
                 if msg.point_pair_contact_info[i].body2_name == "toe_left(2)":
+                    contact_info_locs[num_left_contacts].append(
+                        msg.point_pair_contact_info[i].contact_point)
                     contact_info[num_left_contacts].append(
-                        msg.point_pair_contact_info[
-                            i].contact_force)
+                        msg.point_pair_contact_info[i].contact_force)
                     num_left_contacts += 1
                 elif msg.point_pair_contact_info[
                     i].body2_name == "toe_right(2)":
+                    contact_info_locs[2 + num_right_contacts].append(
+                        msg.point_pair_contact_info[i].contact_point)
                     contact_info[2 + num_right_contacts].append(
-                        msg.point_pair_contact_info[
-                            i].contact_force)
+                        msg.point_pair_contact_info[i].contact_force)
                     num_right_contacts += 1
                 else:
                     print("ERROR")
             while num_left_contacts != 2:
                 contact_info[num_left_contacts].append((0.0, 0.0, 0.0))
+                contact_info_locs[num_left_contacts].append((0.0, 0.0, 0.0))
                 num_left_contacts += 1
             while num_right_contacts != 2:
                 contact_info[2 + num_right_contacts].append((0.0, 0.0, 0.0))
+                contact_info_locs[2 + num_right_contacts].append((0.0, 0.0,
+                                                                  0.0))
                 num_right_contacts += 1
+            # import pdb; pdb.set_trace()
+
     # Convert into numpy arrays
     t_state = np.array(t_state)
     t_osc = np.array(t_osc)
@@ -434,12 +500,29 @@ def process_log(contact_info, control_inputs, estop_signal, log, osc_debug,
     estop_signal = np.array(estop_signal)
     switch_signal = np.array(switch_signal)
     contact_info = np.array(contact_info)
+    contact_info_locs = np.array(contact_info_locs)
+
+    for i in range(contact_info.shape[1]):
+        # Swap front and rear contacts if necessary
+        # Order will be front in index 1
+        # import pdb; pdb.set_trace()
+        if contact_info_locs[0, i, 0] > contact_info_locs[1, i, 0]:
+            # contact_info_locs[0, i, :], contact_info_locs[1, i, :] = \
+            #     contact_info_locs[1, i, :], contact_info_locs[0, i, :]
+            # contact_info[0, i, :], contact_info[1, i, :] = \
+            #     contact_info[1, i, :], contact_info[0, i, :]
+            contact_info[[0, 1], i, :] = contact_info[[1, 0], i, :]
+            contact_info_locs[[0, 1], i, :] = contact_info_locs[[1, 0], i, :]
+        if contact_info_locs[2, i, 0] > contact_info_locs[3, i, 0]:
+            contact_info[[2, 3], i, :] = contact_info[[3, 2], i, :]
+            contact_info_locs[[2, 3], i, :] = contact_info_locs[[3, 2], i, :]
+
     for i in range(len(osc_debug)):
         osc_debug[i].convertToNP()
     # osc_debug.convertToNP()
-    return contact_info, control_inputs, estop_signal, log, osc_debug, \
-           q, switch_signal, t_contact_info, \
-           t_controller_switch, t_osc, t_osc_debug, t_state, v
+    return contact_info, contact_info_locs, control_inputs, estop_signal, log, \
+           osc_debug, q, switch_signal, t_contact_info, t_controller_switch, \
+           t_osc, t_osc_debug, t_state, v
 
 
 if __name__ == "__main__":

@@ -5,8 +5,6 @@
 #include <drake/multibody/plant/multibody_plant.h>
 #include "multibody/multibody_utils.h"
 
-//#include "attic/multibody/rigidbody_utils.h"
-
 using std::cout;
 using std::endl;
 

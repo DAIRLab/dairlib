@@ -57,7 +57,7 @@ OperationalSpaceControlMBP::OperationalSpaceControlMBP(
                         OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
                     .get_index();
   this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_w_spr),
-                                &OperationalSpaceControlMBP::CalcOptimalInput);
+      &OperationalSpaceControlMBP::CalcOptimalInput);
   if (used_with_finite_state_machine) {
     fsm_port_ =
         this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
@@ -117,18 +117,15 @@ OperationalSpaceControlMBP::OperationalSpaceControlMBP(
   // Get input limits
   VectorXd u_min(n_u_);
   VectorXd u_max(n_u_);
-  //  for (int i = 0; i < n_u_; i++) {
   for (JointActuatorIndex i(0); i < n_u_; ++i) {
-    u_min(i) = -300;
-    u_max(i) = 300;
-    //    u_min(i) = -plant_wo_spr_.get_joint_actuator(i).effort_limit();
-    //    u_max(i) = plant_wo_spr_.get_joint_actuator(i).effort_limit();
+    u_min(i) = -plant_wo_spr_.get_joint_actuator(i).effort_limit();
+    u_max(i) = plant_wo_spr_.get_joint_actuator(i).effort_limit();
   }
   u_min_ = u_min;
   u_max_ = u_max;
 
+
   // Check if the model is floating based
-  //  is_quaternion_ = multibody::IsFloatingBase(plant_w_spr);
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
 }
 
@@ -229,8 +226,6 @@ void OperationalSpaceControlMBP::Build() {
   }
 
   // Construct QP
-  //  n_h_ = plant_wo_spr_.getNumPositionConstraints();
-  //  n_h_ = plant_wo_spr_.num_constraints();
   n_h_ = distance_constraints_.size();
   n_c_ = 3 * body_indices_.size();
   prog_ = std::make_unique<MathematicalProgram>();
@@ -245,86 +240,77 @@ void OperationalSpaceControlMBP::Build() {
   // Add constraints
   // 1. Dynamics constraint
   dynamics_constraint_ =
-      prog_
-          ->AddLinearEqualityConstraint(
-              MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
-              VectorXd::Zero(n_v_), {dv_, lambda_c_, lambda_h_, u_})
-          .evaluator()
-          .get();
+      prog_->AddLinearEqualityConstraint(
+               MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
+               VectorXd::Zero(n_v_), {dv_, lambda_c_, lambda_h_, u_})
+           .evaluator()
+           .get();
   // 2. Holonomic constraint
   holonomic_constraint_ =
-      prog_
-          ->AddLinearEqualityConstraint(MatrixXd::Zero(n_h_, n_v_),
-                                        VectorXd::Zero(n_h_), dv_)
-          .evaluator()
-          .get();
+      prog_->AddLinearEqualityConstraint(MatrixXd::Zero(n_h_, n_v_),
+               VectorXd::Zero(n_h_), dv_)
+           .evaluator()
+           .get();
   // 3. Contact constraint
   if (body_indices_.size() > 0) {
     if (w_soft_constraint_ <= 0) {
       contact_constraints_ =
-          prog_
-              ->AddLinearEqualityConstraint(MatrixXd::Zero(n_c_, n_v_),
-                                            VectorXd::Zero(n_c_), dv_)
-              .evaluator()
-              .get();
+          prog_->AddLinearEqualityConstraint(MatrixXd::Zero(n_c_, n_v_),
+                   VectorXd::Zero(n_c_), dv_)
+               .evaluator()
+               .get();
     } else {
       // Relaxed version:
-      contact_constraints_ = prog_
-          ->AddLinearEqualityConstraint(
-                                     MatrixXd::Zero(n_c_, n_v_ + n_c_),
-                                     VectorXd::Zero(n_c_), {dv_, epsilon_})
-          .evaluator()
-          .get();
+      contact_constraints_ = prog_->AddLinearEqualityConstraint(
+                                      MatrixXd::Zero(n_c_, n_v_ + n_c_),
+                                      VectorXd::Zero(n_c_), {dv_, epsilon_})
+                                  .evaluator()
+                                  .get();
     }
   }
   // 4. Friction constraint (approximated firction cone)
   if (!body_indices_.empty()) {
     VectorXd mu_minus1(2);
-    mu_minus1 << mu_, -1;
     VectorXd mu_plus1(2);
-    mu_plus1 << mu_, 1;
     VectorXd one(1);
+    mu_minus1 << mu_, -1;
+    mu_plus1 << mu_, 1;
     one << 1;
     for (unsigned int j = 0; j < body_indices_.size(); j++) {
       friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(mu_minus1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(3 * j + 2, 1),
-                                     lambda_c_.segment(3 * j + 0, 1)})
-              .evaluator()
-              .get());
+          prog_->AddLinearConstraint(mu_minus1.transpose(), 0,
+                   numeric_limits<double>::infinity(),
+                   {lambda_c_.segment(3 * j + 2, 1),
+                    lambda_c_.segment(3 * j + 0, 1)})
+               .evaluator()
+               .get());
       friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(mu_plus1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(3 * j + 2, 1),
-                                     lambda_c_.segment(3 * j + 0, 1)})
-              .evaluator()
-              .get());
+          prog_->AddLinearConstraint(mu_plus1.transpose(), 0,
+                   numeric_limits<double>::infinity(),
+                   {lambda_c_.segment(3 * j + 2, 1),
+                    lambda_c_.segment(3 * j + 0, 1)})
+               .evaluator()
+               .get());
       friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(mu_minus1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(3 * j + 2, 1),
-                                     lambda_c_.segment(3 * j + 1, 1)})
-              .evaluator()
-              .get());
+          prog_->AddLinearConstraint(mu_minus1.transpose(), 0,
+                   numeric_limits<double>::infinity(),
+                   {lambda_c_.segment(3 * j + 2, 1),
+                    lambda_c_.segment(3 * j + 1, 1)})
+               .evaluator()
+               .get());
       friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(mu_plus1.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    {lambda_c_.segment(3 * j + 2, 1),
-                                     lambda_c_.segment(3 * j + 1, 1)})
-              .evaluator()
-              .get());
+          prog_->AddLinearConstraint(mu_plus1.transpose(), 0,
+                   numeric_limits<double>::infinity(),
+                   {lambda_c_.segment(3 * j + 2, 1),
+                    lambda_c_.segment(3 * j + 1, 1)})
+               .evaluator()
+               .get());
       friction_constraints_.push_back(
-          prog_
-              ->AddLinearConstraint(one.transpose(), 0,
-                                    numeric_limits<double>::infinity(),
-                                    lambda_c_.segment(3 * j + 2, 1))
-              .evaluator()
-              .get());
+          prog_->AddLinearConstraint(one.transpose(), 0,
+                   numeric_limits<double>::infinity(),
+                   lambda_c_.segment(3 * j + 2, 1))
+               .evaluator()
+               .get());
     }
   }
   // 5. Input constraint
@@ -350,11 +336,10 @@ void OperationalSpaceControlMBP::Build() {
   }
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
-    tracking_cost_.push_back(prog_
-        ->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
-                                                    VectorXd::Zero(n_v_), dv_)
-        .evaluator()
-        .get());
+    tracking_cost_.push_back(prog_->AddQuadraticCost(MatrixXd::Zero(n_v_, n_v_),
+                                      VectorXd::Zero(n_v_), dv_)
+                                  .evaluator()
+                                  .get());
   }
 }
 
@@ -407,7 +392,6 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
 
   // Get M, f_cg, B matrices of the manipulator equation
   MatrixXd B = plant_wo_spr_.MakeActuationMatrix();
-  //  MatrixXd B = plant_wo_spr_.B;
   MatrixXd M(n_v_, n_v_);
   plant_wo_spr_.CalcMassMatrixViaInverseDynamics(*context_wo_spr, &M);
   const RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
@@ -415,11 +399,8 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
   plant_wo_spr_.CalcBiasTerm(*context_wo_spr, &bias);
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr);
   bias = bias - grav;
-  //  VectorXd bias =
-  //      plant_wo_spr_.dynamicsBiasTerm(cache_wo_spr, no_external_wrenches);
 
   // Get J and JdotV for holonomic constraint
-
   MatrixXd J_h(distance_constraints_.size(), n_v_);
   VectorXd JdotV_h(distance_constraints_.size());
   for (unsigned int i = 0; i < distance_constraints_.size(); ++i) {
@@ -433,9 +414,6 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
   VectorXd JdotV_c = VectorXd::Zero(n_c_);
   for (unsigned int i = 0; i < active_contact_flags.size(); i++) {
     if (active_contact_flags[i]) {
-      //      J_c.block(3 * i, 0, 3, n_v_) =
-      //      plant_wo_spr_.transformPointsJacobian(
-      //          cache_wo_spr, pts_on_body_[i], body_indices_[i], 0, false);
       MatrixXd J = MatrixXd::Zero(3, n_v_);
       plant_wo_spr_.CalcJacobianTranslationalVelocity(
           *context_wo_spr, JacobianWrtVariable::kV,
@@ -690,9 +668,6 @@ void OperationalSpaceControlMBP::CalcOptimalInput(
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q_w_spr = robot_output->GetPositions();
-  //  if (is_quaternion_) {
-  //    multibody::SetZeroQuaternionToIdentity(&q_w_spr);
-  //  }
   VectorXd v_w_spr = robot_output->GetVelocities();
   VectorXd x_w_spr(plant_w_spr_.num_positions() +
                    plant_w_spr_.num_velocities());

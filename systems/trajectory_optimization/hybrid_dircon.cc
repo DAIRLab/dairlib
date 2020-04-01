@@ -363,7 +363,7 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory(
           drake::math::DiscardGradient(constraints_[i]->getXDot());
     }
   }
-  return PiecewisePolynomial<double>::Cubic(times, states, derivatives);
+  return PiecewisePolynomial<double>::CubicHermite(times, states, derivatives);
 }
 
 template <typename T>

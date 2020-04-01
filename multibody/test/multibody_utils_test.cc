@@ -27,7 +27,7 @@ class MultibodyUtilsTest : public ::testing::Test {
     plant_.Finalize();
   }
 
-  MultibodyPlant<double> plant_;
+  MultibodyPlant<double> plant_{0.0};
 };
 
 // Test that maps can be constructed without errrors caught by the functions

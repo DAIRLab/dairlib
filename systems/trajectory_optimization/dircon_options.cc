@@ -1,7 +1,7 @@
 #include "systems/trajectory_optimization/dircon_options.h"
 
-using std::vector;
 using std::unordered_map;
+using std::vector;
 
 namespace dairlib {
 namespace systems {
@@ -14,49 +14,57 @@ DirconOptions::DirconOptions(int n_kin_constraints) {
   end_constraint_type_ = DirconKinConstraintType::kAll;
   force_cost_ = 1.0e-4;
 }
-DirconOptions::DirconOptions(int n_constraints,
-                             drake::multibody::MultibodyPlant<double>* plant)
+DirconOptions::DirconOptions(
+    int n_constraints, const drake::multibody::MultibodyPlant<double>& plant)
     : DirconOptions(n_constraints) {
-  n_v_ = plant->num_velocities();
-  n_x_ = plant->num_positions() + plant->num_velocities();
+  n_v_ = plant.num_velocities();
+  n_x_ = plant.num_positions() + plant.num_velocities();
 }
 DirconOptions::DirconOptions(
     int n_constraints,
-    drake::multibody::MultibodyPlant<drake::AutoDiffXd>* plant)
+    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant)
     : DirconOptions(n_constraints) {
-  n_v_ = plant->num_velocities();
-  n_x_ = plant->num_positions() + plant->num_velocities();
+  n_v_ = plant.num_velocities();
+  n_x_ = plant.num_positions() + plant.num_velocities();
 }
 
-void DirconOptions::setDynConstraintScaling(double s, int row_start,
-                                            int row_end) {
-  DRAKE_DEMAND(row_end < n_x_);
-  addConstraintScaling(&dyn_constraint_scaling_, s, row_start, row_end);
+void DirconOptions::setDynConstraintScaling(vector<int> idx_list, double s) {
+  for (const auto& idx : idx_list) {
+    setDynConstraintScaling(idx, s);
+  }
 }
-void DirconOptions::setKinConstraintScaling(double s, int row_start,
-                                            int row_end) {
-  DRAKE_DEMAND(row_end < 3 * n_kin_constraints_);
-  addConstraintScaling(&kin_constraint_scaling_, s, row_start, row_end);
+void DirconOptions::setImpConstraintScaling(vector<int> idx_list, double s) {
+  for (const auto& idx : idx_list) {
+    setImpConstraintScaling(idx, s);
+  }
 }
-void DirconOptions::setImpConstraintScaling(double s, int row_start,
-                                            int row_end) {
-  DRAKE_DEMAND(row_end < n_v_);
-  addConstraintScaling(&imp_constraint_scaling_, s, row_start, row_end);
+void DirconOptions::setKinConstraintScaling(vector<int> idx_list, double s) {
+  for (const auto& idx : idx_list) {
+    setKinConstraintScaling(idx, s);
+  }
 }
-void DirconOptions::addConstraintScaling(
-    std::unordered_map<int, double>* map, double s, int row_start,
-    int row_end) {
-  DRAKE_DEMAND(0 <= row_start);
-  DRAKE_DEMAND(row_start <= row_end);
+void DirconOptions::setDynConstraintScaling(int idx, double s) {
+  DRAKE_DEMAND(idx < n_x_);
+  addConstraintScaling(&dyn_constraint_scaling_, idx, s);
+}
+void DirconOptions::setKinConstraintScaling(int idx, double s) {
+  DRAKE_DEMAND(idx < 3 * n_kin_constraints_);
+  addConstraintScaling(&kin_constraint_scaling_, idx, s);
+}
+void DirconOptions::setImpConstraintScaling(int idx, double s) {
+  DRAKE_DEMAND(idx < n_v_);
+  addConstraintScaling(&imp_constraint_scaling_, idx, s);
+}
+void DirconOptions::addConstraintScaling(std::unordered_map<int, double>* map,
+                                         int idx, double s) {
+  DRAKE_DEMAND(0 <= idx);
   DRAKE_DEMAND(0 < s);
-  for (int i = row_start; i <= row_end; i++) {
-    if (map->find(i) != map->end()) {
-      // Update the scaling factor
-      (*map)[i] = s;
-    } else {
-      // Add a new scaling factor
-      map->insert(std::pair<int, double>(i, s));
-    }
+  if (map->find(idx) != map->end()) {
+    // Update the scaling factor
+    (*map)[idx] = s;
+  } else {
+    // Add a new scaling factor
+    map->insert(std::pair<int, double>(idx, s));
   }
 }
 
@@ -77,6 +85,8 @@ unordered_map<int, double> DirconOptions::getKinConstraintScalingEnd() {
 }
 unordered_map<int, double> DirconOptions::getKinConstraintScaling(
     DirconKinConstraintType type) {
+  DRAKE_DEMAND((type == kAccelOnly) || (type == kAccelAndVel) ||
+               (type == kAll));
   // type == kAccelOnly
   if (type == kAccelOnly) {
     // Extract the elements in the acceleration level

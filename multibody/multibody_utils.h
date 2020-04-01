@@ -16,12 +16,15 @@ std::unique_ptr<drake::systems::Context<T>> createContext(
     const drake::multibody::MultibodyPlant<T>& plant,
     const drake::VectorX<T>& state, const drake::VectorX<T>& input);
 
-/// Add flat terrain to an initialized, but not finalized, MultibodyPlant
-/// and scene graph. Uses the given values for coefficients of friction
+/// Add terrain to an initialized, but not finalized, MultibodyPlant
+/// and scene graph. Uses the given values for coefficients of friction.
+/// normal_W is the normal direction of the ground (pointing to z as the
+/// default direction)
 template <typename T>
 void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     drake::geometry::SceneGraph<T>* scene_graph,
-                    double mu_static, double mu_kinetic);
+                    double mu_static, double mu_kinetic,
+                    Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1));
 
 /// Given a MultiBodyTree, builds a map from position name to position index
 template <typename T>
@@ -49,7 +52,8 @@ bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
 
 // Check whether a MultibodyPlant contains quaternion floating-base joint or not
 // WARNING: This function assumes there is only one plant
-bool isQuaternion(const drake::multibody::MultibodyPlant<double>& plant);
+template <typename T>
+bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 
 }  // namespace multibody
 }  // namespace dairlib

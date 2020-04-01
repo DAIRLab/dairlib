@@ -198,8 +198,9 @@ void LIPMTrajGenerator::CalcTraj(
   MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
   MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
 
-  PiecewisePolynomial<double> pp_part = PiecewisePolynomial<double>::Cubic(
-      T_waypoint_com, Y, Y_dot_start, Y_dot_end);
+  PiecewisePolynomial<double> pp_part =
+      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+          T_waypoint_com, Y, Y_dot_start, Y_dot_end);
 
   // Dynamics of LIPM
   // ddy = 9.81/CoM_wrt_foot_z*y, which has an analytical solution.

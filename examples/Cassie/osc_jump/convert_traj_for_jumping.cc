@@ -122,7 +122,7 @@ int DoMain() {
     MatrixXd J_l_hip(3, nv);
     MatrixXd J_r_hip(3, nv);
     //    MatrixXd J_pelvis_orientation(3, nv);
-    plant.CalcJacobianTranslationalVelocityOfSystemCenterOfMass(
+    plant.CalcJacobianCenterOfMassTranslationalVelocity(
         *context, JacobianWrtVariable::kV, *world, *world, &J_CoM);
     plant.CalcJacobianTranslationalVelocity(*context, JacobianWrtVariable::kV,
                                             *l_toe_frame, zero_offset, *world,

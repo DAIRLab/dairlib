@@ -132,19 +132,20 @@ int DoMain(int argc, char* argv[]) {
   const LcmTrajectory::Trajectory& lcm_pelvis_rot_traj =
       loaded_traj.getTrajectory("pelvis_rot_trajectory");
 
-  PiecewisePolynomial<double> com_traj = PiecewisePolynomial<double>::Cubic(
+  PiecewisePolynomial<double> com_traj =
+      PiecewisePolynomial<double>::CubicHermite(
       lcm_com_traj.time_vector, lcm_com_traj.datapoints.topRows(3),
       lcm_com_traj.datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& l_foot_trajectory =
-      PiecewisePolynomial<double>::Cubic(
+      PiecewisePolynomial<double>::CubicHermite(
           lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints.topRows(3),
           lcm_l_foot_traj.datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& r_foot_trajectory =
-      PiecewisePolynomial<double>::Cubic(
+      PiecewisePolynomial<double>::CubicHermite(
           lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints.topRows(3),
           lcm_r_foot_traj.datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& pelvis_rot_trajectory =
-      PiecewisePolynomial<double>::Pchip(
+      PiecewisePolynomial<double>::CubicShapePreserving(
           lcm_pelvis_rot_traj.time_vector,
           lcm_pelvis_rot_traj.datapoints.topRows(4));
 

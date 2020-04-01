@@ -210,7 +210,7 @@ void DoMain() {
   auto double_stance_dataset = DirconKinematicDataSet<double>(
       plant, &double_stance_constraints, skip_constraint_inds);
   auto double_stance_options =
-      DirconOptions(double_stance_dataset.countConstraints(), &plant);
+      DirconOptions(double_stance_dataset.countConstraints(), plant);
   /// Be careful setting relative constraint, because we also skip constraints.
   ///                 ||   lf  |   lr  |   rf  |   rr    | fourbar
   /// Before skipping || 0 1 2 | 3 4 5 | 6 7 8 | 9 10 11 | 12 13
@@ -230,7 +230,7 @@ void DoMain() {
   auto flight_mode_dataset =
       DirconKinematicDataSet<double>(plant, &flight_mode_constraints);
   auto flight_mode_options =
-      DirconOptions(flight_mode_dataset.countConstraints(), &plant);
+      DirconOptions(flight_mode_dataset.countConstraints(), plant);
 
   // timesteps and modes setting
   vector<int> timesteps;  // Number of timesteps per mode

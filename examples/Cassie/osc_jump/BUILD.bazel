@@ -56,6 +56,7 @@ cc_library(
     srcs = ["jumping_event_based_fsm.cc"],
     hdrs = ["jumping_event_based_fsm.h"],
     deps = [
+        "//lcmtypes:lcmt_robot",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

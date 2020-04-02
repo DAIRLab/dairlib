@@ -4,6 +4,7 @@
 #include <gflags/gflags.h>
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_cassie_mujoco_contact.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc_jump/com_traj_generator.h"
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
@@ -70,8 +71,10 @@ DEFINE_string(traj_name, "", "File to load saved trajectories from");
 
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
 DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
-DEFINE_bool(use_contact_based_fsm, true, "The contact based fsm transitions "
+DEFINE_bool(contact_based_fsm, true, "The contact based fsm transitions "
                                          "between states using contact data.");
+DEFINE_string(simulator, "DRAKE", "Simulator used, important for determining "
+                                  "how to interpret contact information");
 // DEFINE_double(x_offset, 0.18, "Offset to add to the CoM trajectory");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
@@ -151,8 +154,8 @@ int DoMain(int argc, char* argv[]) {
 
   double flight_time = FLAGS_delay_time + 0.285773;  // For the time-based FSM
   double land_time = FLAGS_delay_time + 0.67272637;
-
-  /**** Initialize all the leaf systems ****/
+  std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
+                                          land_time};
 
   // Cassie parameters
   Vector3d front_contact_disp(-0.0457, 0.112, 0);
@@ -161,15 +164,6 @@ int DoMain(int argc, char* argv[]) {
   // Get body indices for cassie with springs
   auto pelvis_idx = plant_with_springs.GetBodyByName("pelvis").index();
 
-  drake::lcm::DrakeLcm lcm;
-  auto contact_results_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CASSIE_CONTACT_RESULTS", &lcm));
-  //  auto state_sub = builder.AddSystem(
-  //      LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, lcm));
-  auto state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_with_springs);
-  // Create Operational space control
   //  double x_offset = com_traj.value(0)(0) -
   //                    (r_foot_trajectory.value(0)(0) +
   //                     (front_contact_disp[0] + rear_contact_disp[0]) / 2);
@@ -181,10 +175,20 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_points);
   com_traj = com_traj + offset_traj;
-
   std::cout << "Target balance height: " << lcm_com_traj.datapoints.col(0)(2)
             << std::endl;
 
+
+  /**** Initialize all the leaf systems ****/
+  SIMULATOR type;
+  if(FLAGS_simulator == "DRAKE")
+    type = DRAKE;
+  else if (FLAGS_simulator == "MUJOCO")
+    type = MUJOCO;
+
+  drake::lcm::DrakeLcm lcm;
+  auto state_receiver =
+      builder.AddSystem<systems::RobotOutputReceiver>(plant_with_springs);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
       plant_with_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
       com_traj, com_traj.value(0)(2), FLAGS_delay_time);
@@ -198,8 +202,8 @@ int DoMain(int argc, char* argv[]) {
       plant_with_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
       FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
-      plant_with_springs, flight_time, land_time, FLAGS_delay_time,
-      FLAGS_use_contact_based_fsm, BALANCE);
+      plant_with_springs, transition_times,
+      FLAGS_contact_based_fsm, BALANCE, type);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -212,10 +216,26 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
-  //  "OSC_DEBUG", &lcm, 1.0 / FLAGS_publish_rate));
+
+  LcmSubscriberSystem* contact_results_sub;
+  if(FLAGS_simulator == "DRAKE"){
+    contact_results_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
+            "CASSIE_CONTACT_DRAKE", &lcm));
+  }
+  else if (FLAGS_simulator == "MUJOCO"){
+    contact_results_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_cassie_mujoco_contact>(
+            "CASSIE_CONTACT_MUJOCO", &lcm));
+  }
+  else if (FLAGS_simulator == "GAZEBO"){
+    // TODO(yangwill): Set up contact results in Gazebo
+  }
+  else{
+    std::cerr << "Unknown simulator type!" << std::endl;
+  }
 
   /**** OSC setup ****/
-
   // Cost
   MatrixXd Q_accel = 1e-6 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
@@ -274,7 +294,7 @@ int DoMain(int argc, char* argv[]) {
   }
   osc->AddTrackingData(&com_tracking_data);
 
-  // Feet tracking1
+  // Feet tracking
   MatrixXd W_swing_foot = 1 * MatrixXd::Identity(3, 3);
   W_swing_foot(0, 0) = 1000;
   W_swing_foot(1, 1) = 1000;
@@ -319,7 +339,7 @@ int DoMain(int argc, char* argv[]) {
   // Build OSC problem
   osc->Build();
 
-  std::cout << "Built Osc" << std::endl;
+  std::cout << "Built OSC" << std::endl;
 
   /*****Connect ports*****/
 

@@ -8,13 +8,22 @@ namespace dairlib {
 namespace examples {
 
 enum FSM_STATE { BALANCE, CROUCH, FLIGHT, LAND};
+enum SIMULATOR { DRAKE, MUJOCO, GAZEBO};
+
+/// Event based FSM for jumping with option to change to a time-based FSM
+/// @param[plant] The MultibodyPlant that this FSM operates with
+/// @param[transition_times] Vector that contains the transition times for
+/// each mode. For the contact driven FSM, only the transition time for the
+/// initial state matters.
+/// @param[contact_driven] Flag that switches between contact/event based and
+/// time based FSM
 
 class JumpingEventFsm : public drake::systems::LeafSystem<double> {
  public:
-  JumpingEventFsm(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      double flight_time, double land_time, double delay_time = 0.0,
-      bool contact_driven = true, FSM_STATE init_state = BALANCE);
+  JumpingEventFsm(const drake::multibody::MultibodyPlant<double>& plant,
+                  const std::vector<double>& transition_times,
+                  bool contact_based = true, FSM_STATE init_state = BALANCE,
+                  SIMULATOR simulator_type = DRAKE);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -35,15 +44,17 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
   int state_port_;
   int contact_port_;
-  double flight_time_;
-  double land_time_;
-  double delay_time_;
-  bool contact_driven_;
+  std::vector<double> transition_times_;
+//  double flight_time_;
+//  double land_time_;
+//  double delay_time_;
+  bool contact_based_;
 
   int fsm_idx_;
   int prev_time_idx_;
 
   const FSM_STATE init_state_;
+  const SIMULATOR simulator_type_;
 };
 
 }  // namespace examples

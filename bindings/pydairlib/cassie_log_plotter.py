@@ -426,7 +426,8 @@ def plot_nominal_feet_traj(l_foot_traj, lcm_l_foot_traj, r_foot_traj):
         plt.plot(t, r_foot_traj.value(t).T, 'r.')
 
 
-def process_log(contact_info, contact_info_locs, control_inputs,
+def process_log(contact_info, contact_info_locs,
+                control_inputs,
                 estop_signal, log, osc_debug,
                 q, switch_signal, t_contact_info,
                 t_controller_switch, t_osc, t_osc_debug, t_state, v):
@@ -454,7 +455,8 @@ def process_log(contact_info, contact_info_locs, control_inputs,
             for i in range(num_osc_tracking_data):
                 osc_debug[i].append(msg.tracking_data[0])
             t_osc_debug.append(msg.utime / 1e6)
-        if event.channel == "CASSIE_CONTACT_RESULTS":
+        if event.channel == "CASSIE_CONTACT_RESULTS" or event.channel \
+                == "CASSIE_CONTACT_DRAKE":
             # Need to distinguish between front and rear contact forces
             # Best way is to track the contact location and group by proximity
             msg = drake.lcmt_contact_results_for_viz.decode(event.data)
@@ -486,7 +488,14 @@ def process_log(contact_info, contact_info_locs, control_inputs,
                 contact_info_locs[2 + num_right_contacts].append((0.0, 0.0,
                                                                   0.0))
                 num_right_contacts += 1
-            # import pdb; pdb.set_trace()
+        #IMPORTANT: should not have two simulators in the same log
+        if event.channel == "CASSIE_CONTACT_MUJOCO":
+            msg = dairlib.lcmt_cassie_mujoco_contact.decode(event.data)
+            t_contact_info.append(msg.utime / 1e6)
+            contact_info[0].append(msg.contact_forces[0:3])
+            contact_info[1].append((0.0, 0.0, 0.0))
+            contact_info[2].append(msg.contact_forces[6:9])
+            contact_info[3].append((0.0, 0.0, 0.0))
 
     # Convert into numpy arrays
     t_state = np.array(t_state)

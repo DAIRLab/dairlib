@@ -32,7 +32,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
                                    bool is_floating_base,
                                    bool test_with_ground_truth_state = false,
-                                   bool print_info_to_terminal = false);
+                                   bool print_info_to_terminal = false,
+                                   int hardware_test_mode = -1);
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
                            double* right_heel_spring) const;
@@ -66,13 +67,13 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
                                  Eigen::VectorXd imu_value);
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
+                                    systems::OutputVector<double>* output) const;
   void AssignActuationFeedbackToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
+                                             systems::OutputVector<double>* output) const;
   void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
+                                                systems::OutputVector<double>* output) const;
   void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
-      systems::OutputVector<double>* output) const;
+                                             systems::OutputVector<double>* output) const;
 
 
   drake::systems::EventStatus Update(
@@ -85,6 +86,9 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   // flag for testing and tuning
   bool test_with_ground_truth_state_;
   bool print_info_to_terminal_;
+  int hardware_test_mode_;
+  std::unique_ptr<int> counter_for_testing_ =
+      std::make_unique<int>(0);
 
   const RigidBodyTree<double>& tree_;
   const bool is_floating_base_;
@@ -170,8 +174,8 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   const double eps_cost_ = 1e-10;  // Avoid indefinite matrix
   const double w_soft_constraint_ = 100;  // Soft constraint cost
   const double alpha_ = 0.9;  // Low-pass filter constant for the acceleration
-                              // residual. 0 < alpha_ < 1. The bigger alpha_ is,
-                              // the higher the cut-off frequency is.
+  // residual. 0 < alpha_ < 1. The bigger alpha_ is,
+  // the higher the cut-off frequency is.
   // Contact Estimation - Quadratic Programing
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> quadprog_;

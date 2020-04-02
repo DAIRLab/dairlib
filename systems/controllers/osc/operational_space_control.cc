@@ -1,5 +1,6 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "attic/multibody/rigidbody_utils.h"
+#include "systems/controllers/osc/osc_utils.h"
 
 using std::cout;
 using std::endl;
@@ -65,32 +66,10 @@ OperationalSpaceControl::OperationalSpaceControl(
   }
 
   // Initialize the mapping from spring to no spring
-  map_position_from_spring_to_no_spring_ = MatrixXd::Zero(n_q_, n_q_w_spr);
-  for (int i = 0; i < n_q_; i++) {
-    bool successfully_added = false;
-    for (int j = 0; j < n_q_w_spr; j++) {
-      std::string name_wo_spr = tree_wo_spr_.get_position_name(i);
-      std::string name_w_spr = tree_w_spr_.get_position_name(j);
-      if (name_wo_spr.compare(0, name_wo_spr.size(), name_w_spr) == 0) {
-        map_position_from_spring_to_no_spring_(i, j) = 1;
-        successfully_added = true;
-      }
-    }
-    DRAKE_DEMAND(successfully_added);
-  }
-  map_velocity_from_spring_to_no_spring_ = MatrixXd::Zero(n_v_, n_v_w_spr);
-  for (int i = 0; i < n_v_; i++) {
-    bool successfully_added = false;
-    for (int j = 0; j < n_v_w_spr; j++) {
-      std::string name_wo_spr = tree_wo_spr_.get_velocity_name(i);
-      std::string name_w_spr = tree_w_spr_.get_velocity_name(j);
-      if (name_wo_spr.compare(0, name_wo_spr.size(), name_w_spr) == 0) {
-        map_velocity_from_spring_to_no_spring_(i, j) = 1;
-        successfully_added = true;
-      }
-    }
-    DRAKE_DEMAND(successfully_added);
-  }
+  map_position_from_spring_to_no_spring_ =
+      PositionMapFromSpringToNoSpring(tree_w_spr, tree_wo_spr);
+  map_velocity_from_spring_to_no_spring_ =
+      VelocityMapFromSpringToNoSpring(tree_w_spr, tree_wo_spr);
 
   // Get input limits
   VectorXd u_min(n_u_);

@@ -9,7 +9,7 @@
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 
 #include "systems/framework/output_vector.h"
-#include "systems/controllers/osc/osc_user_defined_traj.h"
+#include "systems/controllers/osc/osc_user_defined_pos.h"
 
 
 namespace dairlib {
@@ -357,13 +357,22 @@ class JointSpaceTrackingData final : public OscTrackingData {
   std::vector<int> joint_vel_idx_wo_spr_;
 };
 
+// TODO: the implementation of VToQdotMap is for MBP.
+//  Continue to implement this after we fully port OSC to MBP. Will need to
+//  verify that the functions are implemented correctly.
 class AbstractTrackingData final : public OscTrackingData {
  public:
   AbstractTrackingData(std::string name, int n_r, Eigen::MatrixXd K_p,
                        Eigen::MatrixXd K_d, Eigen::MatrixXd W,
                        const RigidBodyTree<double>* tree_w_spr,
                        const RigidBodyTree<double>* tree_wo_spr,
-                       OscUserDefinedTraj* user_defined_traj);
+                       OscUserDefinedPos* user_defined_pos);
+  AbstractTrackingData(std::string name, int n_r, Eigen::MatrixXd K_p,
+                       Eigen::MatrixXd K_d, Eigen::MatrixXd W,
+                       const RigidBodyTree<double>* tree_w_spr,
+                       const RigidBodyTree<double>* tree_wo_spr,
+                       OscUserDefinedPos* user_defined_pos_w_spr,
+                       OscUserDefinedPos* user_defined_pos_wo_spr);
 
   AbstractTrackingData() {}  // Default constructor
 
@@ -379,7 +388,28 @@ class AbstractTrackingData final : public OscTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  OscUserDefinedTraj* user_defined_traj_;
+  // Compute Jacobian (qdot version instead of v!) by forward differencing
+  Eigen::MatrixXd JacobianOfUserDefinedPos(
+      const OscUserDefinedPos& user_defined_pos, Eigen::VectorXd q) const;
+
+  // Compute the matrix for mapping local roll-pitch-yaw angular velocity to
+  // quaterion derivatives
+  // Ref1: equation 18 of https://arxiv.org/pdf/0811.2889.pdf
+  // Ref2: https://github.com/RobotLocomotion/drake/blob/a3af177/attic/multibody/joints/quaternion_floating_joint.h#L260
+  Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) const;
+  Eigen::MatrixXd VToQdotMap(const Eigen::VectorXd& q) const;
+
+  bool only_one_user_defined_pos_;
+
+  OscUserDefinedPos* user_defined_pos_wo_spr_;
+  OscUserDefinedPos* user_defined_pos_w_spr_;
+
+  // Map position/velocity from model with spring to without spring
+  Eigen::MatrixXd map_position_from_spring_to_no_spring_;
+  Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
+
+  // Step size for forward differencing
+  double dx_ = 1e-8;
 };
 
 }  // namespace controllers

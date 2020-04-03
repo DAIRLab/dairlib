@@ -5,14 +5,15 @@
 
 namespace dairlib::goldilocks_models {
 //edited by Jianshu to try a new way of setting initial guess
-string set_initial_guess(const string directory, int iter, int sample, int total_sample_num) {
+string set_initial_guess(const string directory, int iter, int sample, int total_sample_num,
+                         double min_sl, double max_sl, double min_gi, double max_gi) {
 /* define some parameters used in interpolation
 * theta_range :decide the range of theta to use in interpolation
 * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
 */
-    double theta_range = 0.1;
+    double theta_range = 0.01;
     double theta_scale;
-    double gamma_scale = 1;
+    double gamma_scale = pow(max_sl-min_sl,2)+pow(max_gi-min_gi,2);
     int gamma_dimension = 2;
 //    initialize variables used for setting initial guess
     VectorXd initial_guess;
@@ -30,7 +31,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
     current_gamma << current_ground_incline(0, 0), current_stride_length(0, 0);
 //    get initial theta and set theta scale
     VectorXd initial_theta = readCSV(directory + to_string(0) + string("_theta_s.csv"));
-    theta_scale = (initial_theta-current_theta).norm();
+    theta_scale = (initial_theta-current_theta).squaredNorm();
 
     for (past_iter = iter - 1; past_iter >= 0; past_iter--) {
 //        find useful theta according to the difference between previous theta and new theta

@@ -51,14 +51,14 @@ DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
 DEFINE_int32(rom_option, -1, "");
 
 // tasks
-DEFINE_int32(N_sample_sl, 5, "Sampling # for stride length");
-DEFINE_int32(N_sample_gi, 5, "Sampling # for ground incline");
+DEFINE_int32(N_sample_sl, 3, "Sampling # for stride length");
+DEFINE_int32(N_sample_gi, 3, "Sampling # for ground incline");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 
 // inner loop
-DEFINE_string(init_file, "w0.csv", "Initial Guess for Trajectory Optimization");
+DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization");
 DEFINE_bool(is_use_interpolated_initial_guess,false,"Use interpolated initial guess"
                                             " for Trajectory Optimization");
 DEFINE_double(major_feasibility_tol, 1e-4,
@@ -236,7 +236,7 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 }
 
 void getInitFileName(const string dir,int total_sample_num, string * init_file, const string & nominal_traj_init_file,
-                     int iter, int sample,
+                     int iter, int sample,double min_sl, double max_sl, double min_gi, double max_gi,
                      bool is_get_nominal,bool is_use_interpolated_initial_guess,
                      bool rerun_current_iteration, bool has_been_all_success,
                      bool step_size_shrinked_last_loop, int n_rerun,
@@ -254,7 +254,8 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file, 
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   }else if(is_use_interpolated_initial_guess){
 //      modified by Jianshu to test new initial guess
-      *init_file = set_initial_guess(dir, iter, sample, total_sample_num);
+      *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl,
+               min_gi, max_gi);
   } else{
       *init_file = to_string(iter - 1) +  "_" +
                    to_string(sample) + string("_w.csv");
@@ -1915,6 +1916,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           int total_sample_num = N_sample_sl*N_sample_gi;
           bool is_use_interpolated_initial_guess = FLAGS_is_use_interpolated_initial_guess;
           getInitFileName(dir, total_sample_num, &init_file_pass_in, init_file, iter, sample_idx,
+                          min_stride_length, max_stride_length, min_ground_incline, max_ground_incline,
                           is_get_nominal, is_use_interpolated_initial_guess,
                           current_sample_is_a_rerun, has_been_all_success,
                           step_size_shrinked_last_loop, n_rerun[sample_idx],
@@ -2506,11 +2508,11 @@ string test_set_initial_guess(int argc, char* argv[])
     const string directory = "../dairlib_data/goldilocks_models/find_models/robot_" +
                        to_string(0) + "/";
     int iter = 2;
-    int sample = 0;
-    int total_sample_num = 1;
+    int sample = 2;
+    int total_sample_num = 25;
     double theta_range = 1;
-    double theta_scale = 1;
-    double gamma_scale = 1;
+    double theta_scale ;
+    double gamma_scale = pow(0.3375-0.2625,2)+pow(0.125+0.125,2);
     int gamma_dimension = 2;
 //    initialize variables used for setting initial guess
     VectorXd initial_guess;
@@ -2526,11 +2528,17 @@ string test_set_initial_guess(int argc, char* argv[])
                                              +string("_stride_length.csv"));
     VectorXd current_gamma(gamma_dimension);
     current_gamma << current_ground_incline(0,0),current_stride_length(0,0);
+
+    //    get initial theta and set theta scale
+    VectorXd initial_theta = readCSV(directory + to_string(0) + string("_theta_s.csv"));
+    theta_scale = (initial_theta-current_theta).squaredNorm();
+
     for(past_iter=iter-1;past_iter>=0;past_iter--) {
 //        find useful theta according to the difference between previous theta and new theta
         VectorXd past_theta = readCSV(directory+to_string(past_iter)+string("_theta_s.csv"));
-        double theta_diff = (past_theta - current_theta).norm() / current_theta.norm();
-        if (theta_diff < theta_range) {
+        double theta_diff = (past_theta - current_theta).norm() / sqrt(theta_scale);
+        cout<<"theta_diff"<<theta_diff<<endl;
+        if (theta_diff <= theta_range) {
 //            take out corresponding w and calculate the weight for interpolation
             for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
                 MatrixXd past_ground_incline = readCSV(directory+to_string(past_iter)+string("_")
@@ -2541,8 +2549,8 @@ string test_set_initial_guess(int argc, char* argv[])
                 past_gamma << past_ground_incline(0,0),past_stride_length(0,0);
                 double distance = ((past_theta - current_theta).squaredNorm())/theta_scale
                                   + (past_gamma - current_gamma).squaredNorm()/gamma_scale;
-                cout<<"theta distance"<<(past_theta - current_theta).squaredNorm()<<endl;
-                cout<<"gamma distance"<<(past_gamma - current_gamma).squaredNorm()<<endl;
+                cout<<"theta distance"<<(past_theta - current_theta).squaredNorm()/theta_scale<<endl;
+                cout<<"gamma distance"<<(past_gamma - current_gamma).squaredNorm()/gamma_scale<<endl;
                 cout<<"distance"<<distance<<endl;
                 weight.conservativeResize(weight.rows()+1);
                 weight(weight.rows()-1) = 1 / sqrt(distance);
@@ -2559,7 +2567,7 @@ string test_set_initial_guess(int argc, char* argv[])
 //    normalize weight
     weight = weight/weight.sum();
     initial_guess = w_near*weight;
-    cout<<"w_near"<<w_near<<endl;
+//    cout<<"w_near"<<w_near<<endl;
 //    cout<<initial_guess<<endl;
 //    save initial guess and set init file
     string initial_file_name = to_string(iter)+"_"+to_string(sample)+string("_initial_guess.csv");
@@ -2572,7 +2580,7 @@ string test_set_initial_guess(int argc, char* argv[])
 }  // namespace dairlib::goldilocks_models
 
 int main(int argc, char* argv[]) {
-  return dairlib::goldilocks_models::findGoldilocksModels(argc, argv);
+    return dairlib::goldilocks_models::findGoldilocksModels(argc, argv);
 //    string init = dairlib::goldilocks_models::test_set_initial_guess(argc,argv);
 //    cout<<init<<endl;
 //    return 0;

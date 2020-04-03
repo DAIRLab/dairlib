@@ -6,8 +6,6 @@
 #include <queue>  // First in first out
 #include <deque>  // queue with feature of finding elements
 #include <utility>  // std::pair, std::make_pair
-#include <sys/stat.h>  // Check the existence of a file/folder
-#include <cstdlib>  // System call to create folder (and also parent directory)
 
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/mathematical_program.h"
@@ -268,12 +266,6 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
 
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   }
-}
-
-inline bool file_exist (const std::string & name) {
-  struct stat buffer;
-  // cout << name << " exist? " << (stat (name.c_str(), &buffer) == 0) << endl;
-  return (stat (name.c_str(), &buffer) == 0);
 }
 
 void remove_old_multithreading_files(const string& dir, int iter, int N_sample) {
@@ -580,7 +572,7 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
           full_row_rank_idx.push_back(i);
         }
 
-        if (full_row_rank_idx.size() == nw_i) {
+        if ((int)full_row_rank_idx.size() == nw_i) {
           cout << "# of A's row is the same as the # of col. So stop adding rows.\n";
           break;
         }
@@ -988,7 +980,7 @@ void RecordSolutionQualityAndQueueList(
     }
   }
   bool too_high_above_adjacent_cost = !low_adjacent_cost_idx.empty();
-  bool too_low_below_adjacent_cost = !high_adjacent_cost_idx.empty();
+  //bool too_low_below_adjacent_cost = !high_adjacent_cost_idx.empty();
 
   // Record whether or not the current sample got a good solution. A good
   // solution (of the current sample) means:

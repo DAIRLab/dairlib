@@ -33,12 +33,22 @@ py_binary(
     ],
 )
 
+py_library(
+    name = "process_lcm_log_py",
+    srcs = ["process_lcm_log.py"],
+    deps = [
+        ":module_py",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
 py_binary(
     name = "cassie_log_plotter",
     srcs = ["cassie_log_plotter.py"],
     deps = [
         ":lcm_trajectory_py",
         ":module_py",
+        ":process_lcm_log_py",
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )

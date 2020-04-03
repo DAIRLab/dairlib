@@ -40,7 +40,8 @@ COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
       front_contact_disp_(front_contact_disp),
       rear_contact_disp_(rear_contact_disp),
       crouch_traj_(crouch_traj),
-      height_(height) {
+      height_(height),
+      time_offset_(time_offset){
   this->set_name("com_traj");
   // Input/Output Setup
   state_port_ =
@@ -59,8 +60,7 @@ COMTrajGenerator::COMTrajGenerator(const MultibodyPlant<double>& plant,
   fsm_idx_ = this->DeclareDiscreteState(1);
 
   DeclarePerStepDiscreteUpdateEvent(&COMTrajGenerator::DiscreteVariableUpdate);
-
-  crouch_traj_.shiftRight(time_offset);
+  crouch_traj_.shiftRight(time_offset_);
 }
 
 EventStatus COMTrajGenerator::DiscreteVariableUpdate(
@@ -89,7 +89,10 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
 
     auto plant_context =
         createContext(plant_, robot_output->GetState(), zero_input);
-    com_x_offset(0) = 0.05;
+    com_x_offset(0) = 0.025;
+    // TODO(yangwill) Remove this or calculate it based on the robot's state.
+    // Actually, this is necessary due to the traj opt solution's placement
+    // of the final CoM
   }
   return EventStatus::Succeeded();
 }
@@ -125,7 +128,8 @@ drake::trajectories::PiecewisePolynomial<double> COMTrajGenerator::generateBalan
   Vector3d targetCoM =
       (l_toe_front + l_toe_rear + r_toe_front + r_toe_rear) / 4;
   targetCoM(2) = height_;
-  targetCoM(0) += 0.05;
+  targetCoM(0) = crouch_traj_.value(time_offset_)(0); // Make sagittal plane
+  // coordinates match before starting the jump
   MatrixXd centerOfMassPoints(3, 2);
   centerOfMassPoints << currCoM, targetCoM;
   VectorXd breaks_vector(2);

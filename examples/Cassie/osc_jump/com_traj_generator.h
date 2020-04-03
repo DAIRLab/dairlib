@@ -56,6 +56,7 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::trajectories::PiecewisePolynomial<double> crouch_traj_;
   //  Eigen::Vector3d support_center_offset_;
   double height_;
+  double time_offset_;
 
   int state_port_;
   int fsm_port_;

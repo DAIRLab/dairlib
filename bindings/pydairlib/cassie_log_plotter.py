@@ -154,15 +154,15 @@ def main():
 
     nq_fb = 7
     nv_fb = 6
-    x_traj_nominal = PiecewisePolynomial.Cubic(t_nominal,
+    x_traj_nominal = PiecewisePolynomial.CubicHermite(t_nominal,
                                                x_points_nominal[0 +
                                                                 nq_fb:19, :],
                                                x_points_nominal[19 +
                                                                 nv_fb:37, :])
-    l_foot_traj = PiecewisePolynomial.Cubic(lcm_l_foot_traj.time_vector,
+    l_foot_traj = PiecewisePolynomial.CubicHermite(lcm_l_foot_traj.time_vector,
                                             lcm_l_foot_traj.datapoints[0:3,:],
                                             lcm_l_foot_traj.datapoints[3:6,:])
-    r_foot_traj = PiecewisePolynomial.Cubic(lcm_r_foot_traj.time_vector,
+    r_foot_traj = PiecewisePolynomial.CubicHermite(lcm_r_foot_traj.time_vector,
                                             lcm_r_foot_traj.datapoints[0:3,:],
                                             lcm_r_foot_traj.datapoints[3:6,:])
 
@@ -208,7 +208,7 @@ def main():
                                                                       t_controller_switch,
                                                                       t_osc, t_osc_debug,
                                                                       t_state, v)
-    start_time = 1
+    start_time = 0
     end_time = 3
     t_start_idx = get_index_at_time(t_state, start_time)
     t_end_idx = get_index_at_time(t_state, end_time)
@@ -511,7 +511,7 @@ def process_log(contact_info, contact_info_locs,
     contact_info = np.array(contact_info)
     contact_info_locs = np.array(contact_info_locs)
 
-    for i in range(contact_info.shape[1]):
+    for i in range(contact_info_locs.shape[1]):
         # Swap front and rear contacts if necessary
         # Order will be front in index 1
         # import pdb; pdb.set_trace()

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pydairlib.lcm_trajectory
 import process_lcm_log
+import pydairlib.multibody_utils
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
@@ -53,6 +54,17 @@ def main():
     nx = plant.num_positions() + plant.num_velocities()
     nu = plant.num_actuators()
 
+    pos_map = pydairlib.multibody_utils.makeNameToPositionsMap(plant)
+    vel_map = pydairlib.multibody_utils.makeNameToVelocitiesMap(plant)
+    act_map = pydairlib.multibody_utils.makeNameToActuatorsMap(plant)
+
+    state_names_w_spr = [[] for i in range(len(pos_map) + len(vel_map))]
+    for name in pos_map:
+        state_names_w_spr[pos_map[name]] = name
+    for name in vel_map:
+        state_names_w_spr[nq + vel_map[name]] = name
+    # import pdb; pdb.set_trace()
+
     l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
     r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
     world = plant.world_frame()
@@ -85,7 +97,6 @@ def main():
     lcm_r_foot_traj = loadedTrackingDataTraj.getTrajectory(
         "right_foot_trajectory")
 
-    # plot_nominal_traj(state_traj_mode0, state_traj_mode1, state_traj_mode2)
     x_points_nominal = np.hstack((state_traj_mode0.datapoints,
                                   state_traj_mode1.datapoints,
                                   state_traj_mode2.datapoints))
@@ -133,7 +144,7 @@ def main():
 
     contact_info, contact_info_locs, control_inputs, estop_signal, osc_debug, \
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
-    t_state, v = process_lcm_log.process_log(log)
+    t_state, v = process_lcm_log.process_log(log, pos_map, vel_map)
 
     start_time = 0
     end_time = 3
@@ -141,7 +152,7 @@ def main():
     t_end_idx = get_index_at_time(t_state, end_time)
     t_state_slice = slice(t_start_idx, t_end_idx)
 
-    plot_simulation_state(q, v, t_state, t_state_slice, state_names_wo_spr)
+    plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
     # plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
     #                    state_names_wo_spr)
 
@@ -179,12 +190,14 @@ def main():
     # Foot plotting
     # plot_feet_simulation(context, l_toe_frame, r_toe_frame, world, no_offset,
     #                      plant, v, q, t_state, t_state_slice)
-    plot_feet_simulation(context, l_toe_frame, r_toe_frame, world,
-                         front_contact_disp,
-                         plant, v, q, t_state, t_state_slice)
-    # plot_feet_simulation(context, l_toe_frame, r_toe_frame, world,
-    #                      rear_contact_disp,
-    #                      plant, v, q, t_state, t_state_slice)
+    plot_feet_simulation(plant, context, q, v, l_toe_frame, front_contact_disp,
+                         world, t_state, t_state_slice, "left_", "_front")
+    plot_feet_simulation(plant, context, q, v, r_toe_frame, front_contact_disp,
+                         world, t_state, t_state_slice, "right_", "_front")
+    plot_feet_simulation(plant, context, q, v, l_toe_frame, rear_contact_disp,
+                         world, t_state, t_state_slice, "left_", "_rear")
+    plot_feet_simulation(plant, context, q, v, r_toe_frame, rear_contact_disp,
+                         world, t_state, t_state_slice, "right_", "_rear")
 
     plt.show()
 
@@ -195,17 +208,6 @@ def main():
         plt.plot(t_osc_debug, osc_debug.ddy_command[:, 1], label="ddy_command")
 
     plt.show()
-
-def plot_nominal_traj(traj_mode0, traj_mode1, traj_mode2):
-    # Doesn't work, need to reconstruct PPoly
-    fig = plt.figure('Nominal Traj')
-    indices = slice(0, 19)
-    plt.plot(traj_mode0.time_vector, traj_mode0.datapoints.T[:, indices])
-    plt.plot(traj_mode1.time_vector, traj_mode1.datapoints.T[:, indices])
-    plt.plot(traj_mode2.time_vector, traj_mode2.datapoints.T[:, indices])
-    print(traj_mode0.datatypes)
-    plt.legend(traj_mode0.datatypes[indices])
-
 
 def plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
                        state_names_wo_spr):
@@ -225,15 +227,6 @@ def plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
     # plt.legend(state_names_wo_spr[7:19])
     plt.legend(state_names_wo_spr[19 + 6: 37])
 
-def plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
-                            t_osc_end_idx, t_osc_start_idx):
-    fig = plt.figure('controller inputs')
-    osc_indices = slice(t_osc_start_idx, t_osc_end_idx)
-    plt.plot(t_osc[osc_indices], control_inputs[osc_indices])
-    plt.ylim(-100, 300)
-    plt.legend(state_traj_mode0.datatypes[-10:])
-
-
 def plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal,
                                 x_points_nominal):
     fig = plt.figure('target controller inputs')
@@ -249,31 +242,42 @@ def plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal,
     plt.ylim(-100, 300)
     plt.legend(state_traj_mode0.datatypes[-10:])
 
-def plot_feet_simulation(context, l_toe_frame, r_toe_frame, world,
-                         contact_point, plant, v, q, t_state,
-                         t_state_slice):
-    l_foot_state = np.zeros((6, t_state.size))
-    r_foot_state = np.zeros((6, t_state.size))
+def plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
+                            t_osc_end_idx, t_osc_start_idx):
+    fig = plt.figure('controller inputs')
+    osc_indices = slice(t_osc_start_idx, t_osc_end_idx)
+    plt.plot(t_osc[osc_indices], control_inputs[osc_indices])
+    plt.ylim(-100, 300)
+    plt.legend(state_traj_mode0.datatypes[-10:])
+
+def plot_feet_simulation(plant, context, q, v, toe_frame, contact_point, world,
+                         t_state, t_state_slice, foot_type, contact_type):
+    foot_state = np.zeros((6, t_state.size))
+    # r_foot_state = np.zeros((6, t_state.size))
     for i in range(t_state.size):
         x = np.hstack((q[i, :], v[i, :]))
         plant.SetPositionsAndVelocities(context, x)
-        l_foot_state[0:3, [i]] = plant.CalcPointsPositions(context, l_toe_frame,
+        foot_state[0:3, [i]] = plant.CalcPointsPositions(context, toe_frame,
                                                            contact_point, world)
-        r_foot_state[0:3, [i]] = plant.CalcPointsPositions(context, r_toe_frame,
-                                                           contact_point, world)
-        l_foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
-            context, JacobianWrtVariable.kV, l_toe_frame, contact_point,
+        foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
+            context, JacobianWrtVariable.kV, toe_frame, contact_point,
             world,
             world) @ v[i, :]
-        r_foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
-            context, JacobianWrtVariable.kV, r_toe_frame, contact_point,
-            world,
-            world) @ v[i, :]
+        # r_foot_state[0:3, [i]] = plant.CalcPointsPositions(context, r_toe_frame,
+        #                                                    contact_point, world)
+        # r_foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
+        #     context, JacobianWrtVariable.kV, r_toe_frame, contact_point,
+        #     world,
+        #     world) @ v[i, :]
     fig = plt.figure('l foot pos')
-    plt.plot(t_state[t_state_slice], l_foot_state.T[t_state_slice, 0:3],
-             label=['xdot_l', 'ydot_l', 'zdot_l'])
-    plt.plot(t_state[t_state_slice], r_foot_state.T[t_state_slice, 0:3],
-             label=['xdot_r', 'ydot_r', 'zdot_r'])
+    state_indices = slice(2, 3)
+    state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
+    state_names = [foot_type + name for name in state_names]
+    state_names = [name + contact_type for name in state_names]
+    plt.plot(t_state[t_state_slice], foot_state.T[t_state_slice, state_indices],
+             label=state_names[state_indices])
+    # plt.plot(t_state[t_state_slice], r_foot_state.T[t_state_slice, state_indices],
+    #          label=['xdot_r', 'ydot_r', 'zdot_r'])
     plt.legend()
     # plt.legend(['x pos', 'y pos', 'z pos'])
     # plt.legend(['x pos', 'y pos', 'z pos', 'x vel', 'y vel', 'z vel'])
@@ -284,8 +288,8 @@ def plot_simulation_state(q, v, t_state, t_state_slice, state_names):
     fig = plt.figure('simulation positions')
     # state_indices = slice(0, q.shape[1])
     n_fb_states = 7
-    # state_indices = slice(n_fb_states, q.shape[1])
-    state_indices = slice(0, n_fb_states)
+    state_indices = slice(n_fb_states, q.shape[1])
+    # state_indices = slice(0, n_fb_states)
     plt.plot(t_state[t_state_slice], q[t_state_slice, state_indices])
     plt.legend(state_names[state_indices])
 

@@ -41,7 +41,7 @@ class lcmt_osc_tracking_data_t:
         self.ddy_command = np.array(self.ddy_command)
         self.ddy_command_sol = np.array(self.ddy_command_sol)
 
-def process_log(log):
+def process_log(log, pos_map, vel_map):
 
     t_state = []
     t_osc = []
@@ -61,8 +61,17 @@ def process_log(log):
     for event in log:
         if event.channel == "CASSIE_STATE":
             msg = dairlib.lcmt_robot_output.decode(event.data)
-            q.append(msg.position)
-            v.append(msg.velocity)
+            q_temp = [[] for i in range(len(msg.position))]
+            v_temp = [[] for i in range(len(msg.velocity))]
+            for i in range(len(q_temp)):
+                q_temp[pos_map[msg.position_names[i]]] = msg.position[i]
+            for i in range(len(v_temp)):
+                v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
+            # import pdb; pdb.set_trace()
+            # q.append(msg.position)
+            # v.append(msg.velocity)
+            q.append(q_temp)
+            v.append(v_temp)
             t_state.append(msg.utime / 1e6)
         if event.channel == "CASSIE_INPUT":
             msg = dairlib.lcmt_robot_input.decode(event.data)

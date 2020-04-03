@@ -146,6 +146,8 @@ void createMBP(MultibodyPlant<double>* plant, int robot_option) {
     plant->mutable_gravity_field().set_gravity_vector(
       -9.81 * Eigen::Vector3d::UnitZ());
     plant->Finalize();
+  } else {
+    throw std::runtime_error("Should not reach here");
   }
 }
 void setCostWeight(double* Q, double* R, double* all_cost_scale,

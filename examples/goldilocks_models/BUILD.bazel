@@ -1,23 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-
-cc_binary(
-    name = "simple_traj_opt_MBP",
-    srcs = ["simple_traj_opt_MBP.cc"],
-    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
-    deps = [
-        "//common",
-        "//systems/primitives",
-        "//systems/goldilocks_models",
-        "//systems/trajectory_optimization:dircon",
-        "//solvers:optimization_utils",
-        "@drake//:drake_shared_library",
-        "@gflags",     
-    ],
-)
-
-
-
 cc_binary(
     name = "find_goldilocks_models",
     srcs = ["find_goldilocks_models.cc"],

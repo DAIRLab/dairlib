@@ -122,19 +122,19 @@ void runSampleTrajopt(/*const MultibodyPlant<double> & plant,
   Vector3d pt;
   pt << 0, 0, -.5;
   bool isXZ = true;
-  Eigen::Vector2d ground_rp(0, ground_incline);  // gournd incline in roll pitch
+  Vector3d ground_normal(sin(ground_incline), 0, cos(ground_incline));
 
   auto leftFootConstraint = DirconPositionData<double>(plant, left_lower_leg,
-                            pt, isXZ, ground_rp);
+                            pt, isXZ, ground_normal);
   auto rightFootConstraint = DirconPositionData<double>(plant,
                              right_lower_leg,
-                             pt, isXZ, ground_rp);
+                             pt, isXZ, ground_normal);
 
   Vector3d normal;
   normal << 0, 0, 1;
   double mu = 1;
-  leftFootConstraint.addFixedNormalFrictionConstraints(normal, mu);
-  rightFootConstraint.addFixedNormalFrictionConstraints(normal, mu);
+  leftFootConstraint.addFixedNormalFrictionConstraints(mu);
+  rightFootConstraint.addFixedNormalFrictionConstraints(mu);
   // std::cout<<leftFootConstraint.getLength()<<"\n"; //2 dim. I guess the contact point constraint in the x and z direction
 
   std::vector<DirconKinematicData<double>*> leftConstraints;

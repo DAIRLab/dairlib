@@ -6,6 +6,7 @@
 #include <queue>  // First in first out
 #include <deque>  // queue with feature of finding elements
 #include <utility>  // std::pair, std::make_pair
+#include <bits/stdc++.h>  // system call
 
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/mathematical_program.h"
@@ -1844,6 +1845,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
         for (auto mem : assigned_thread_idx) {
           cout << mem.second << ", ";
         } cout << endl;*/
+
+//        std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
 
         // Evaluate a sample when there is an available thread. Otherwise, wait.
         if (!awaiting_sample_idx.empty() && !available_thread_idx.empty()) {

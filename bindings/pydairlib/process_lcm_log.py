@@ -85,7 +85,7 @@ def process_log(log, pos_map, vel_map):
             msg = dairlib.lcmt_osc_output.decode(event.data)
             num_osc_tracking_data = len(msg.tracking_data)
             for i in range(num_osc_tracking_data):
-                osc_debug[i].append(msg.tracking_data[0])
+                osc_debug[i].append(msg.tracking_data[i])
             t_osc_debug.append(msg.utime / 1e6)
         if event.channel == "CASSIE_CONTACT_RESULTS" or event.channel \
                 == "CASSIE_CONTACT_DRAKE":

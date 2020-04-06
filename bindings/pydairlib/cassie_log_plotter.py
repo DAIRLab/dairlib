@@ -146,8 +146,8 @@ def main():
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
     t_state, v = process_lcm_log.process_log(log, pos_map, vel_map)
 
-    start_time = 0
-    end_time = 3
+    start_time = 1.0
+    end_time = 3.0
     t_start_idx = get_index_at_time(t_state, start_time)
     t_end_idx = get_index_at_time(t_state, end_time)
     t_state_slice = slice(t_start_idx, t_end_idx)
@@ -166,17 +166,10 @@ def main():
     #
     # plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal)
 
-    fig = plt.figure('contact data')
-    # plt.plot(t_contact_info, contact_info[0, :, 2] + contact_info[1, :, 2],
-    plt.plot(t_state[t_state_slice], contact_info[0, t_state_slice, 2],
-             label='$\lambda_n left_f$')
-    plt.plot(t_state[t_state_slice], contact_info[1, t_state_slice, 2],
-             label='$\lambda_n left_r$')
-    plt.plot(t_state[t_state_slice], contact_info[2, t_state_slice, 2],
-             label='$\lambda_n right_f$')
-    plt.plot(t_state[t_state_slice], contact_info[3, t_state_slice, 2],
-             label='$\lambda_n right_r$')
-    plt.legend()
+    plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
+
+
+
 
     # plt.plot(t_osc_debug[t_osc_start_idx:t_osc_end_idx], osc_debug[
     #                                                          0].is_active[
@@ -199,15 +192,35 @@ def main():
     plot_feet_simulation(plant, context, q, v, r_toe_frame, rear_contact_disp,
                          world, t_state, t_state_slice, "right_", "_rear")
 
-    plt.show()
-
     plot = False
     if (plot):
-        plt.plot(t_osc_debug, osc_debug.error_y[:, 1], label="error_y")
-        plt.plot(t_osc_debug, osc_debug.error_dy[:, 1], label="error_dy")
-        plt.plot(t_osc_debug, osc_debug.ddy_command[:, 1], label="ddy_command")
+        fig = plt.figure("osc_output")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].y[t_osc_slice], label="0")
+        plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].y_des[t_osc_slice],
+                 label="0")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].error_y[t_osc_slice],
+        #          label="y_error")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].error_dy[t_osc_slice],
+        #          label="dy_error")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[1].y[t_osc_slice], label="1")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[2].y[t_osc_slice], label="2")
+        plt.legend()
 
     plt.show()
+
+def plot_ground_reaction_forces(contact_info, t_state, t_state_slice):
+    fig = plt.figure('contact data')
+    # plt.plot(t_contact_info, contact_info[0, :, 2] + contact_info[1, :, 2],
+    plt.plot(t_state[t_state_slice], contact_info[0, t_state_slice, 2],
+             label='$\lambda_n left_f$')
+    plt.plot(t_state[t_state_slice], contact_info[1, t_state_slice, 2],
+             label='$\lambda_n left_r$')
+    plt.plot(t_state[t_state_slice], contact_info[2, t_state_slice, 2],
+             label='$\lambda_n right_f$')
+    plt.plot(t_state[t_state_slice], contact_info[3, t_state_slice, 2],
+             label='$\lambda_n right_r$')
+    plt.legend()
+
 
 def plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
                        state_names_wo_spr):

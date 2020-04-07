@@ -1846,7 +1846,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
           cout << mem.second << ", ";
         } cout << endl;*/
 
-//        std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
+        //std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
+        //std::system("top -bn2 | grep \"Cpu(s)\" | sed \"s/.*, *\\([0-9.]*\\)%* id.*/\1/\" | awk '{print 100 - $1\"%\"}'"); // print the CPU usage
+        //std::system("free -m"); // print memory usage
 
         // Evaluate a sample when there is an available thread. Otherwise, wait.
         if (!awaiting_sample_idx.empty() && !available_thread_idx.empty()) {

@@ -515,6 +515,10 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
 
   bool is_testing = true;
   if (is_testing) {
+    // Run a quadprog to check if the solution to the following problem is 0
+    // Theoratically, it should be 0. Otherwise, something is wrong
+    // min 0.5*w^T Q w + c^T w
+    // st  A w = 0
     if (sample == 0) {
       cout << "\n (After extracting active constraints) Run traj opt to "
            "check if your quadratic approximation is correct\n";
@@ -1110,7 +1114,8 @@ void RecordSolutionQualityAndQueueList(
         if (revert_good_adj_sol_to_bad_sol) {
           cout << "idx #" << sample_idx
                << " cost is too low below that of adjacent idx #" << adj_idx
-               << ", so add #"<< adj_idx <<" to queue (revert it to bad sol)\n";
+               << ", so add #" << adj_idx
+               << " to queue (revert the flag to bad sol)\n";
         } else {
           cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
                << " needs help, so add #"<< adj_idx <<" to queue\n";
@@ -1225,6 +1230,133 @@ void RecordSolutionQualityAndQueueList(
       }
     }  // end for (Look for any adjacent sample that can help)
   }    // end if current sample has good solution
+}
+
+// Calculate the cost gradient and its norm
+void CalcCostGradientAndNorm(int n_succ_sample, const vector<MatrixXd>& P_vec,
+                             const vector<VectorXd>& q_vec,
+                             const vector<VectorXd>& b_vec, const string& dir,
+                             const string& prefix, VectorXd* gradient_cost,
+                             double* norm_grad_cost) {
+  cout << "Calculating gradient\n";
+  for (int sample = 0; sample < n_succ_sample; sample++) {
+    (*gradient_cost) +=
+        P_vec[sample].transpose() * b_vec[sample] / n_succ_sample;
+  }
+
+  // Calculate gradient norm
+  (*norm_grad_cost) = gradient_cost->norm();
+  writeCSV(dir + prefix + string("norm_grad_cost.csv"),
+           (*norm_grad_cost) * VectorXd::Ones(1));
+  cout << "gradient_cost norm: " << (*norm_grad_cost) << endl << endl;
+}
+
+// Newton's method (not exactly the same, cause Q_theta is not pd but psd)
+// See your IOE611 lecture notes on page 7-17 to page 7-20
+void CalcNewtonStepAndNewtonDecrement(int n_theta, int n_succ_sample,
+                                      const vector<MatrixXd>& P_vec,
+                                      const vector<MatrixXd>& H_vec,
+                                      const VectorXd& gradient_cost,
+                                      const string& dir, const string& prefix,
+                                      VectorXd* newton_step,
+                                      double* lambda_square) {
+  /*// Check if Q_theta is pd
+  cout << "Checking if Q_theta is psd...\n";
+  MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
+  for (int sample = 0; sample < n_succ_sample; sample++)
+    Q_theta += P_vec[sample].transpose()*H_vec[sample]*P_vec[sample];
+  VectorXd eivals_real = Q_theta.eigenvalues().real();
+  for (int i = 0; i < eivals_real.size(); i++) {
+    if (eivals_real(i) <= 0)
+      cout << "Q_theta is not positive definite (with e-value = "
+           << eivals_real(i) << ")\n";
+  }
+  cout << endl;*/
+
+  // cout << "Getting Newton step\n";
+  MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
+  for (int sample = 0; sample < n_succ_sample; sample++) {
+    Q_theta += P_vec[sample].transpose() * H_vec[sample] * P_vec[sample] /
+               n_succ_sample;
+  }
+  double mu = 1e-4;  // 1e-6 caused unstable and might diverge
+  MatrixXd inv_Q_theta =
+      (Q_theta + mu * MatrixXd::Identity(n_theta, n_theta)).inverse();
+  (*newton_step) = -inv_Q_theta * gradient_cost;
+
+  // Testing
+  /*Eigen::BDCSVD<MatrixXd> svd(inv_Q_theta);
+  cout << "inv_Q_theta's smallest and biggest singular value " <<
+       svd.singularValues().tail(1) << ", " <<
+       svd.singularValues()(0) << endl;*/
+
+  // Newton decrement (can be a criterion to terminate your newton steps)
+  (*lambda_square) = -gradient_cost.transpose() * (*newton_step);
+  cout << "lambda_square = " << (*lambda_square) << endl;
+
+  // Store Newton decrement in a file
+  writeCSV(dir + prefix + string("lambda_square.csv"),
+           (*lambda_square) * VectorXd::Ones(1));
+}
+
+// Calculate the step direction and its norm
+void GetStepDirectionAndNorm(bool is_newton, const VectorXd& newton_step,
+                             const VectorXd& gradient_cost,
+                             double beta_momentum, const string& dir,
+                             const string& prefix,
+                             VectorXd* prev_step_direction,
+                             VectorXd* step_direction,
+                             double* step_direction_norm) {
+  if (is_newton) {
+    (*step_direction) = newton_step;
+  } else {
+    // gradient descent with momentum term
+    (*step_direction) = -gradient_cost + beta_momentum * (*prev_step_direction);
+  }
+  writeCSV(dir + prefix + string("step_direction.csv"), (*step_direction));
+  (*prev_step_direction) = (*step_direction);
+
+  // Calculate ans store the step direction norm
+  (*step_direction_norm) = step_direction->norm();
+  cout << "step_direction norm: " << step_direction_norm << endl << endl;
+  writeCSV(dir + prefix + string("step_direction_norm.csv"),
+           (*step_direction_norm) * VectorXd::Ones(1));
+}
+
+// Get the step size (heuristically tuned)
+void GetHeuristicStepSize(double h_step, double step_direction_norm,
+                          const string& dir, const string& prefix,
+                          double* current_iter_step_size) {
+  // (*current_iter_step_size) = h_step;
+  if (step_direction_norm > 1) {
+    // (*current_iter_step_size) = h_step / sqrt(norm_grad_cost);  // Heuristic
+    // (*current_iter_step_size) = h_step / norm_grad_cost;  // Heuristic
+    (*current_iter_step_size) = h_step / step_direction_norm;  // Heuristic
+  } else {
+    (*current_iter_step_size) = h_step;
+  }
+
+  // Store the step size in a file
+  writeCSV(dir + prefix + string("step_size.csv"),
+           (*current_iter_step_size) * VectorXd::Ones(1));
+  cout << "step size = " << (*current_iter_step_size) << "\n\n";
+}
+
+// Check if the model has achieved an optimum
+bool HasAchievedOptimum(bool is_newton, double stopping_threshold,
+                        double lambda_square, double norm_grad_cost) {
+  if (is_newton) {
+    if (lambda_square < stopping_threshold) {
+      cout << "Found optimal theta.\n\n";
+      return true;
+    }
+  } else {
+    if (norm_grad_cost < stopping_threshold) {
+      cout << "Found optimal theta.\n\n";
+      return true;
+    }
+  }
+  return false;
 }
 
 int findGoldilocksModels(int argc, char* argv[]) {
@@ -2152,7 +2284,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       auto finish_time_read_file = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_read_file =
           finish_time_read_file - start_time_read_file;
-      cout << "Time spent on reading files of sample evaluation: "
+      cout << "\nTime spent on reading files of sample evaluation: "
            << to_string(int(elapsed_read_file.count())) << " seconds\n";
       cout << endl;
 
@@ -2330,138 +2462,37 @@ int findGoldilocksModels(int argc, char* argv[]) {
            << to_string(int(elapsed_calc_w.count())) << " seconds\n";
       cout << endl;
 
+      prefix = to_string(iter) + "_";
 
+      // Get gradient of the cost wrt theta and the norm of the gradient
+      // Assumption: H_vec[sample] are symmetric
+      VectorXd gradient_cost(n_theta);
+      double norm_grad_cost;
+      CalcCostGradientAndNorm(n_succ_sample, P_vec, q_vec, b_vec, dir, prefix,
+                              &gradient_cost, &norm_grad_cost);
 
+      // Calculate Newton step and the decrement
+      VectorXd newton_step(n_theta);
+      double lambda_square;
+      CalcNewtonStepAndNewtonDecrement(n_theta, n_succ_sample, P_vec, H_vec,
+                                       gradient_cost, dir, prefix, &newton_step,
+                                       &lambda_square);
 
-      // // Testing
-      // MatrixXd invH = H_vec[0].inverse();
-      // Eigen::BDCSVD<MatrixXd> svd_4(invH);
-      // cout << "invH:\n";
-      // cout << "  biggest singular value is " << svd_4.singularValues()(0) << endl;
-      // cout << "  smallest singular value is "
-      //         << svd_4.singularValues().tail(1) << endl;
-      // // Testing
-      // Eigen::BDCSVD<MatrixXd> svd_2(A_active_vec[0]);
-      // cout << "A:\n";
-      // cout << "  biggest singular value is " << svd_2.singularValues()(0) << endl;
-      // cout << "  smallest singular value is "
-      //         << svd_2.singularValues().tail(1) << endl;
-      // // cout << "singular values are \n" << svd_2.singularValues() << endl;
-
-
-      // Run a quadprog to check if the solution to the following problem is 0
-      // Theoratically, it should be 0. Otherwise, something is wrong
-      // min 0.5*w^T Q w + c^T w
-      // st  A w = 0
-      /*cout << "Run traj opt to check if your quadratic approximation is correct\n";
-      int nl_i = nl_vec[0];
-      int nw_i = nw_vec[0];
-      MathematicalProgram quadprog;
-      auto w = quadprog.NewContinuousVariables(nw_i, "w");
-      quadprog.AddLinearConstraint( A_active_vec[0],
-                                VectorXd::Zero(nl_i),
-                                VectorXd::Zero(nl_i),
-                                w);
-      quadprog.AddQuadraticCost(H_vec[0],b_vec[0],w);
-      const auto result = Solve(quadprog);
-      auto solution_result = result.get_solution_result();
-      cout << solution_result << endl;
-      cout << "Cost:" << result.get_optimal_cost() << endl;
-      VectorXd w_sol = result.GetSolution(quadprog.decision_variables());
-      cout << "w_sol norm:" << w_sol.norm() << endl;
-      cout << "Finished traj opt\n\n";*/
-
-
-      /*// Check if Q_theta is pd
-      cout << "Checking if Q_theta is psd...\n";
-      MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
-      for (int sample = 0; sample < n_succ_sample; sample++)
-        Q_theta += P_vec[sample].transpose()*H_vec[sample]*P_vec[sample];
-      VectorXd eivals_real = Q_theta.eigenvalues().real();
-      for (int i = 0; i < eivals_real.size(); i++) {
-        if (eivals_real(i) <= 0)
-          cout << "Q_theta is not positive definite (with e-value = "
-               << eivals_real(i) << ")\n";
+      // Check optimality
+      if (HasAchievedOptimum(is_newton, stopping_threshold, lambda_square,
+                      norm_grad_cost)) {
+        break;
       }
-      cout << endl;*/
-
-
-
-
-
-
-
-      // Get gradient of the cost wrt theta (assume H_vec[sample] symmetric)
-      cout << "Calculating gradient\n";
-      VectorXd gradient_cost = VectorXd::Zero(theta.size());
-      for (sample = 0; sample < n_succ_sample; sample++) {
-        gradient_cost += P_vec[sample].transpose() * b_vec[sample] / n_succ_sample;
-        // gradient_cost +=
-        // P_vec[sample].transpose() * (b_vec[sample] + H_vec[sample] * q_vec[sample]);
-      }
-      // cout << "gradient_cost = \n" << gradient_cost;
-
-      // Newton's method (not exactly the same, cause Q_theta is not pd but psd)
-      // See your IOE611 lecture notes on page 7-17 to page 7-20
-      // cout << "Getting Newton step\n";
-      MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
-      for (sample = 0; sample < n_succ_sample; sample++) {
-        Q_theta +=
-            P_vec[sample].transpose() * H_vec[sample] * P_vec[sample] / n_succ_sample;
-      }
-      double mu = 1e-4; // 1e-6 caused unstable and might diverge
-      MatrixXd inv_Q_theta = (Q_theta + mu * MatrixXd::Identity(n_theta,
-                                                                n_theta)).inverse();
-      VectorXd newton_step = -inv_Q_theta * gradient_cost;
-      // Testing
-      /*Eigen::BDCSVD<MatrixXd> svd(inv_Q_theta);
-      cout << "inv_Q_theta's smallest and biggest singular value " <<
-           svd.singularValues().tail(1) << ", " <<
-           svd.singularValues()(0) << endl;*/
-
-      // Newton decrement (can be a criterion to terminate your newton steps)
-      double lambda_square = -gradient_cost.transpose() * newton_step;
-      VectorXd lambda_square_vecXd(1); lambda_square_vecXd << lambda_square;
-      writeCSV(dir + prefix + string("lambda_square.csv"), lambda_square_vecXd);
-      cout << "lambda_square = " << lambda_square << endl;
-
-      // Calculate gradient norm
-      VectorXd norm_grad_cost(1); norm_grad_cost << gradient_cost.norm();
-      writeCSV(dir + prefix + string("norm_grad_cost.csv"), norm_grad_cost);
-      cout << "gradient_cost norm: " << norm_grad_cost << endl << endl;
 
       // Calculate step_direction
-      if (is_newton) {
-        step_direction = newton_step;
-      } else {
-        // gradient descent with momentum term
-        step_direction = -gradient_cost + beta_momentum * prev_step_direction;
-      }
-      prefix = to_string(iter) +  "_";
-      writeCSV(dir + prefix + string("step_direction.csv"), step_direction);
-      prev_step_direction = step_direction;
-
-      // Testing
-      writeCSV(dir + prefix + string("neg_gradient_cost.csv"), -gradient_cost);
-
-      // Calculate gradient norm
-      VectorXd step_direction_norm(1);
-      step_direction_norm << step_direction.norm();
-      writeCSV(dir + prefix + string("step_direction_norm.csv"), step_direction_norm);
-      cout << "step_direction norm: " << step_direction_norm << endl << endl;
+      double step_direction_norm;
+      GetStepDirectionAndNorm(
+          is_newton, newton_step, gradient_cost, beta_momentum, dir, prefix,
+          &prev_step_direction, &step_direction, &step_direction_norm);
 
       // Calculate step size
-      // current_iter_step_size = h_step;
-      if (step_direction_norm(0) > 1) {
-        // current_iter_step_size = h_step / sqrt(norm_grad_cost(0));  // Heuristic
-        // current_iter_step_size = h_step / norm_grad_cost(0);  // Heuristic
-        current_iter_step_size = h_step / step_direction_norm(0);  // Heuristic
-      } else {
-        current_iter_step_size = h_step;
-      }
-      VectorXd step_size(1); step_size << current_iter_step_size;
-      writeCSV(dir + prefix + string("step_size.csv"), step_size);
-      cout << "step size = " << current_iter_step_size << "\n\n";
+      GetHeuristicStepSize(h_step, step_direction_norm, dir, prefix,
+                           &current_iter_step_size);
 
       // Gradient descent
       prev_theta = theta;
@@ -2471,20 +2502,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       theta_s = theta.head(n_theta_s);
       theta_sDDot = theta.tail(n_theta_sDDot);
 
-      // Check optimality
-      if (is_newton) {
-        if (lambda_square < stopping_threshold) {
-          cout << "Found optimal theta.\n\n";
-          break;
-        }
-      } else {
-        if (norm_grad_cost(0) < stopping_threshold) {
-          cout << "Found optimal theta.\n\n";
-          break;
-        }
-      }
-
-      cout << '\a';  // making noise to notify
+      cout << '\a';  // making noise to notify the user the end of an iteration
     }  // end if(!is_get_nominal)
   }  // end for
 

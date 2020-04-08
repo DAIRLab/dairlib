@@ -2142,9 +2142,21 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Read in the following files of the successful samples:
       // w_sol_vec, A_vec, H_vec, y_vec, lb_vec, ub_vec, b_vec, c_vec, B_vec;
+      auto start_time_read_file = std::chrono::high_resolution_clock::now();
+
       readApproxQpFiles(&w_sol_vec, &A_vec, &H_vec, &y_vec, &lb_vec, &ub_vec,
                         &b_vec, &c_vec, &B_vec,
                         N_sample, iter, dir);
+
+      // Print out elapsed time
+      auto finish_time_read_file = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> elapsed_read_file =
+          finish_time_read_file - start_time_read_file;
+      cout << "Time spent on reading files of sample evaluation: "
+           << to_string(int(elapsed_read_file.count())) << " seconds\n";
+      cout << endl;
+
+      // number of successful sample
       int n_succ_sample = c_vec.size();
 
       // Calculate the total cost of the successful samples

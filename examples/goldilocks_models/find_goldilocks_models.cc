@@ -947,9 +947,9 @@ void RecordSolutionQualityAndQueueList(
     double max_cost_increase_rate_before_ask_for_help,
     double max_adj_cost_diff_rate_before_ask_for_help,
     bool is_limit_difference_of_two_adjacent_costs, int sample_success,
-    bool current_sample_is_queued, vector<double>& each_min_cost_so_far,
-    vector<int>& is_good_solution, MatrixXi& sample_idx_waiting_to_help,
-    MatrixXi& sample_idx_that_helped,
+    bool current_sample_is_queued, const vector<int>& n_rerun, int N_rerun,
+    vector<double>& each_min_cost_so_far, vector<int>& is_good_solution,
+    MatrixXi& sample_idx_waiting_to_help, MatrixXi& sample_idx_that_helped,
     std::deque<int>& awaiting_sample_idx) {
   double sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
 
@@ -971,16 +971,21 @@ void RecordSolutionQualityAndQueueList(
 
       double cost_diff =
           sample_cost - each_min_cost_so_far[adj_idx];
+      // if the current sample cost is much higher than the adjacent cost
       if (cost_diff > max_adj_cost_diff_rate_before_ask_for_help *
                           each_min_cost_so_far[sample_idx]) {
-        // if the current sample cost is much higher than the adjacent cost
-        if (is_good_solution[adj_idx] == 1) {
+        // If the adjacent sample has a good solution and has finished basic reruns
+        if ((is_good_solution[adj_idx] == 1) &&
+            (n_rerun[adj_idx] >= N_rerun)) {
           low_adjacent_cost_idx.push_back(adj_idx);
         }
-      } else if (cost_diff < -max_adj_cost_diff_rate_before_ask_for_help *
+      }
+      // if the current sample cost is much lower than the adjacent cost
+      else if (cost_diff < -max_adj_cost_diff_rate_before_ask_for_help *
                                  each_min_cost_so_far[sample_idx]) {
-        // if the current sample cost is much lower than the adjacent cost
-        if (is_good_solution[adj_idx] == 1) {
+        // If the adjacent sample has a good solution and has finished basic reruns
+        if ((is_good_solution[adj_idx] == 1) &&
+            (n_rerun[adj_idx] >= N_rerun)) {
           high_adjacent_cost_idx.push_back(adj_idx);
         }
       }
@@ -988,6 +993,17 @@ void RecordSolutionQualityAndQueueList(
   }
   bool too_high_above_adjacent_cost = !low_adjacent_cost_idx.empty();
   //bool too_low_below_adjacent_cost = !high_adjacent_cost_idx.empty();
+
+  // Printing
+  /*cout << "low_adjacent_cost_idx = ";
+  for(auto mem : low_adjacent_cost_idx) {
+    cout << mem << ", ";
+  } cout << endl;
+  cout << "high_adjacent_cost_idx = ";
+  for(auto mem : high_adjacent_cost_idx) {
+    cout << mem << ", ";
+  } cout << endl;*/
+
 
   // Record whether or not the current sample got a good solution. A good
   // solution (of the current sample) means:
@@ -1244,8 +1260,6 @@ void CalcCostGradientAndNorm(int n_succ_sample, const vector<MatrixXd>& P_vec,
     (*gradient_cost) += P_vec[sample].transpose() * b_vec[sample];
   }
   (*gradient_cost) /= n_succ_sample;
-  cout << "gradient_cost = " << endl;
-  cout << (*gradient_cost) << endl;
 
   // Calculate gradient norm
   (*norm_grad_cost) = gradient_cost->norm();
@@ -1887,7 +1901,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // Print info about iteration # and current time
-    if (!step_size_shrinked_last_loop) {
+    if (!start_iterations_with_shrinking_stepsize) {
       auto end = std::chrono::system_clock::now();
       std::time_t end_time = std::chrono::system_clock::to_time_t(end);
       cout << "Current time: " << std::ctime(&end_time);
@@ -2134,9 +2148,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
               max_cost_increase_rate_before_ask_for_help,
               max_adj_cost_diff_rate_before_ask_for_help,
               is_limit_difference_of_two_adjacent_costs, sample_success,
-              current_sample_is_queued, local_each_min_cost_so_far,
-              is_good_solution, sample_idx_waiting_to_help,
-              sample_idx_that_helped, awaiting_sample_idx);
+              current_sample_is_queued, n_rerun, N_rerun,
+              local_each_min_cost_so_far, is_good_solution,
+              sample_idx_waiting_to_help, sample_idx_that_helped,
+              awaiting_sample_idx);
 
           // If the current sample is queued again because it could be helped by
           // adjacent samples, then don't conclude that it's a failure yet

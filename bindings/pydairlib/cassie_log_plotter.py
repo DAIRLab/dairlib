@@ -147,22 +147,23 @@ def main():
     t_state, v = process_lcm_log.process_log(log, pos_map, vel_map)
 
     start_time = 1.0
-    end_time = 3.0
+    end_time = 2.0
     t_start_idx = get_index_at_time(t_state, start_time)
     t_end_idx = get_index_at_time(t_state, end_time)
     t_state_slice = slice(t_start_idx, t_end_idx)
 
-    plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
+    # plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
     # plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
-    #                    state_names_wo_spr)
+    #                    state_names_wo_spr, start_time)
 
     # For printing out osc_values at a specific time interval
     t_osc_start_idx = get_index_at_time(t_osc_debug, start_time)
     t_osc_end_idx = get_index_at_time(t_osc_debug, end_time)
     t_osc_slice = slice(t_osc_start_idx, t_osc_end_idx)
+    print("Num osc samples", t_osc_end_idx - t_osc_start_idx)
 
-    plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
-                            t_osc_end_idx, t_osc_start_idx)
+    # plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
+    #                         t_osc_end_idx, t_osc_start_idx)
     #
     # plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal)
 
@@ -192,12 +193,19 @@ def main():
     plot_feet_simulation(plant, context, q, v, r_toe_frame, rear_contact_disp,
                          world, t_state, t_state_slice, "right_", "_rear")
 
-    plot = False
-    if (plot):
+    plot = True
+    if plot:
         fig = plt.figure("osc_output")
-        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].y[t_osc_slice], label="0")
-        plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].y_des[t_osc_slice],
+        plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].y[t_osc_slice], label="0")
+        plt.plot(t_osc_debug[t_osc_slice], osc_debug[1].y[t_osc_slice],
                  label="0")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].error_y[t_osc_slice],
+        #          label="0")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].error_dy[t_osc_slice],
+        #          label="0")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].ddy_command_sol[
+        #     t_osc_slice], 'b*',
+        #          label="0")
         # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].error_y[t_osc_slice],
         #          label="y_error")
         # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].error_dy[t_osc_slice],
@@ -223,11 +231,11 @@ def plot_ground_reaction_forces(contact_info, t_state, t_state_slice):
 
 
 def plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
-                       state_names_wo_spr):
+                       state_names_wo_spr, t_offset):
     q_nominal = []
     v_nominal = []
     v_traj_nominal = x_traj_nominal.derivative(1)
-    t_offset = 1.0
+    state_slice = slice(7, 19)
     for t in (t_state[t_state_slice]):
         q_nominal.append(x_traj_nominal.value(t - t_offset))
         v_nominal.append(v_traj_nominal.value(t - t_offset))
@@ -235,10 +243,10 @@ def plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
     fig = plt.figure('simulation positions')
     q_nominal = np.array(q_nominal)
     v_nominal = np.array(v_nominal)
-    plt.plot(t_state[t_state_slice], v_nominal[:, :, 0])
-    # plt.plot(t_state[t_state_slice], q_nominal)
-    # plt.legend(state_names_wo_spr[7:19])
-    plt.legend(state_names_wo_spr[19 + 6: 37])
+    # plt.plot(t_state[t_state_slice], v_nominal[:, :, 0])
+    plt.plot(t_state[t_state_slice], q_nominal[:, state_slice, 0])
+    plt.legend(state_names_wo_spr[state_slice])
+    # plt.legend(state_names_wo_spr[19 + 6: 37])
 
 def plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal,
                                 x_points_nominal):
@@ -283,7 +291,7 @@ def plot_feet_simulation(plant, context, q, v, toe_frame, contact_point, world,
         #     world,
         #     world) @ v[i, :]
     fig = plt.figure('l foot pos')
-    state_indices = slice(2, 3)
+    state_indices = slice(0, 3)
     state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
     state_names = [foot_type + name for name in state_names]
     state_names = [name + contact_type for name in state_names]

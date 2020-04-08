@@ -1239,10 +1239,13 @@ void CalcCostGradientAndNorm(int n_succ_sample, const vector<MatrixXd>& P_vec,
                              const string& prefix, VectorXd* gradient_cost,
                              double* norm_grad_cost) {
   cout << "Calculating gradient\n";
+  gradient_cost->setZero();
   for (int sample = 0; sample < n_succ_sample; sample++) {
-    (*gradient_cost) +=
-        P_vec[sample].transpose() * b_vec[sample] / n_succ_sample;
+    (*gradient_cost) += P_vec[sample].transpose() * b_vec[sample];
   }
+  (*gradient_cost) /= n_succ_sample;
+  cout << "gradient_cost = " << endl;
+  cout << (*gradient_cost) << endl;
 
   // Calculate gradient norm
   (*norm_grad_cost) = gradient_cost->norm();
@@ -1318,7 +1321,7 @@ void GetStepDirectionAndNorm(bool is_newton, const VectorXd& newton_step,
 
   // Calculate ans store the step direction norm
   (*step_direction_norm) = step_direction->norm();
-  cout << "step_direction norm: " << step_direction_norm << endl << endl;
+  cout << "step_direction norm: " << (*step_direction_norm) << endl << endl;
   writeCSV(dir + prefix + string("step_direction_norm.csv"),
            (*step_direction_norm) * VectorXd::Ones(1));
 }
@@ -1884,12 +1887,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // Print info about iteration # and current time
-    auto end = std::chrono::system_clock::now();
-    std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-    cout << "Current time: " << std::ctime(&end_time);
-    cout << "************ Iteration " << iter << " *************" << endl;
-    if (iter != 0) {
-      cout << "theta_sDDot.head(6) = " << theta_sDDot.head(6).transpose() << endl;
+    if (!step_size_shrinked_last_loop) {
+      auto end = std::chrono::system_clock::now();
+      std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+      cout << "Current time: " << std::ctime(&end_time);
+      cout << "************ Iteration " << iter << " *************" << endl;
+      if (iter != 0) {
+        cout << "theta_sDDot.head(6) = " << theta_sDDot.head(6).transpose() << endl;
+      }
     }
 
     // store initial parameter values

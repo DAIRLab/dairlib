@@ -376,6 +376,7 @@ void postProcessing(const VectorXd& w_sol,
                     const string& directory,
                     const string& init_file,
                     const string& prefix,
+                    const vector<std::shared_ptr<MatrixXd>> & H_vec,
                     double Q_double, double R_double,
                     double eps_reg,
                     bool is_get_nominal,
@@ -555,13 +556,17 @@ void postProcessing(const VectorXd& w_sol,
 
     // Store the vectors and matrices
     // cout << "\nStoring vectors and matrices into csv.\n";
-    writeCSV(directory + prefix + string("H.csv"), H);
+//    writeCSV(directory + prefix + string("H.csv"), H);
     writeCSV(directory + prefix + string("b.csv"), b);
     writeCSV(directory + prefix + string("A.csv"), A);
     writeCSV(directory + prefix + string("lb.csv"), lb);
     writeCSV(directory + prefix + string("ub.csv"), ub);
     writeCSV(directory + prefix + string("y.csv"), y);
     writeCSV(directory + prefix + string("B.csv"), B);
+
+    H_vec[sample_idx]->resizeLike(H); *(H_vec[sample_idx]) = H;
+
+
 
     // Store s, ds, dds and tau into csv files
     // cout << "\nStoring s, ds and dds into csv.\n";
@@ -1069,6 +1074,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           double duration, int n_node, int max_iter,
                           const string& directory,
                           const string& init_file, const string& prefix,
+                          const vector<std::shared_ptr<MatrixXd>> & H_vec,
                           double Q_double, double R_double,
                           double all_cost_scale,
                           double eps_reg,
@@ -1440,6 +1446,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                  stride_length, ground_incline,
                  duration, max_iter,
                  directory, init_file, prefix,
+                 H_vec,
                  Q_double, R_double, eps_reg,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
@@ -1462,6 +1469,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    double major_feasibility_tol,
                    const string& directory,
                    const string& init_file, const string& prefix,
+                   const vector<std::shared_ptr<MatrixXd>>& H_vec,
                    double Q_double, double R_double, double all_cost_scale,
                    double eps_reg,
                    bool is_get_nominal,
@@ -2193,6 +2201,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                  stride_length, ground_incline,
                  duration, max_iter,
                  directory, init_file, prefix,
+                 H_vec,
                  Q_double, R_double, eps_reg,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
@@ -2332,7 +2341,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          const string& directory,
                          string init_file, string prefix,
                          /*vector<VectorXd> * w_sol_vec,
-                         vector<MatrixXd> * A_vec, vector<MatrixXd> * H_vec,
+                         vector<MatrixXd> * A_vec, */const vector<std::shared_ptr<MatrixXd>>& H_vec,/*
                          vector<VectorXd> * y_vec,
                          vector<VectorXd> * lb_vec, vector<VectorXd> * ub_vec,
                          vector<VectorXd> * b_vec,
@@ -2355,6 +2364,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          stride_length, ground_incline,
                          duration, n_node, max_iter,
                          directory, init_file, prefix,
+                         H_vec,
                          Q_double, R_double, all_cost_scale, eps_reg,
                          is_get_nominal, is_zero_touchdown_impact,
                          extend_model, is_add_tau_in_cost,
@@ -2368,6 +2378,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                   duration, n_node, max_iter,
                   major_optimality_tol, major_feasibility_tol,
                   directory, init_file, prefix,
+                  H_vec,
                   Q_double, R_double, all_cost_scale, eps_reg,
                   is_get_nominal, is_zero_touchdown_impact,
                   extend_model, is_add_tau_in_cost,

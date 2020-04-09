@@ -106,6 +106,7 @@ cc_binary(
     deps = [
         "//common",
         "//systems/goldilocks_models",
+        "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:kinematics_expression",
         "//examples/goldilocks_models:dynamics_expression",
         "@gflags",

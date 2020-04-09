@@ -1,4 +1,4 @@
-#include "systems/controllers/osc/osc_user_defined_traj.h"
+#include "systems/controllers/osc/osc_user_defined_pos.h"
 
 namespace dairlib {
 namespace systems {

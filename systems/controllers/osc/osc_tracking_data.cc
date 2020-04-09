@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "attic/multibody/rigidbody_utils.h"
+#include "systems/controllers/osc/osc_utils.h"
 
 using std::cout;
 using std::endl;
@@ -427,28 +428,135 @@ AbstractTrackingData::AbstractTrackingData(
     string name, int n_r, MatrixXd K_p, MatrixXd K_d, MatrixXd W,
     const RigidBodyTree<double>* tree_w_spr,
     const RigidBodyTree<double>* tree_wo_spr,
-    OscUserDefinedTraj* user_defined_traj)
+    OscUserDefinedPos* user_defined_pos)
+    : AbstractTrackingData(name, n_r, K_p, K_d, W, tree_w_spr, tree_wo_spr,
+                           user_defined_pos, user_defined_pos) {}
+
+AbstractTrackingData::AbstractTrackingData(
+    string name, int n_r, MatrixXd K_p, MatrixXd K_d, MatrixXd W,
+    const RigidBodyTree<double>* tree_w_spr,
+    const RigidBodyTree<double>* tree_wo_spr,
+    OscUserDefinedPos* user_defined_pos_w_spr,
+    OscUserDefinedPos* user_defined_pos_wo_spr)
     : OscTrackingData(name, n_r, K_p, K_d, W, tree_w_spr, tree_wo_spr),
-      user_defined_traj_(user_defined_traj) {}
+      user_defined_pos_wo_spr_(user_defined_pos_wo_spr),
+      user_defined_pos_w_spr_(user_defined_pos_w_spr) {
+  only_one_user_defined_pos_ =
+      user_defined_pos_w_spr == user_defined_pos_wo_spr;
+
+  if (only_one_user_defined_pos_) {
+    map_position_from_spring_to_no_spring_ =
+        PositionMapFromSpringToNoSpring(*tree_w_spr, *tree_wo_spr);
+    map_velocity_from_spring_to_no_spring_ =
+        VelocityMapFromSpringToNoSpring(*tree_w_spr, *tree_wo_spr);
+  }
+}
 
 void AbstractTrackingData::UpdateYAndError(
     const VectorXd& x_w_spr, KinematicsCache<double>& cache_w_spr) {
-  // Not implemented yet
+  VectorXd q;
+  if (only_one_user_defined_pos_) {
+    q = map_position_from_spring_to_no_spring_ *
+        x_w_spr.head(tree_w_spr_->get_num_positions());
+  } else {
+    q = x_w_spr.head(tree_w_spr_->get_num_positions());
+  }
+
+  y_ = user_defined_pos_w_spr_->Position(q);
+  error_y_ = y_des_ - y_;
 }
-void AbstractTrackingData::UpdateYdotAndError(const VectorXd& x_w_spr,
-                                      KinematicsCache<double>& cache_w_spr) {
-  // Not implemented yet
+void AbstractTrackingData::UpdateYdotAndError(
+    const VectorXd& x_w_spr, KinematicsCache<double>& cache_w_spr) {
+  VectorXd q;
+  VectorXd v;
+  if (only_one_user_defined_pos_) {
+    q = map_position_from_spring_to_no_spring_ *
+        x_w_spr.head(tree_w_spr_->get_num_positions());
+    v = map_velocity_from_spring_to_no_spring_ *
+        x_w_spr.tail(tree_w_spr_->get_num_velocities());
+  } else {
+    q = x_w_spr.head(tree_w_spr_->get_num_positions());
+    v = x_w_spr.tail(tree_w_spr_->get_num_velocities());
+  }
+
+  dy_ =
+      JacobianOfUserDefinedPos(*user_defined_pos_w_spr_, q) * VToQdotMap(q) * v;
+  error_dy_ = dy_des_ - dy_;
 }
 void AbstractTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                    KinematicsCache<double>& cache_wo_spr) {
-  // Not implemented yet
+  VectorXd q = x_wo_spr.head(tree_wo_spr_->get_num_positions());
+
+  // Compute Jacobian by forward differencing
+  J_ = JacobianOfUserDefinedPos(*user_defined_pos_wo_spr_, q) * VToQdotMap(q);
 }
 void AbstractTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
                                        KinematicsCache<double>& cache_wo_spr) {
-  // Not implemented yet
+  VectorXd q = x_wo_spr.head(tree_wo_spr_->get_num_positions());
+  VectorXd v = x_wo_spr.tail(tree_wo_spr_->get_num_velocities());
+
+  VectorXd qdot = VToQdotMap(q) * v;
+
+  VectorXd Jv_0 = JacobianOfUserDefinedPos(*user_defined_pos_wo_spr_, q) * qdot;
+  VectorXd Jv_i;
+
+  MatrixXd nabla_Jv(Jv_0.size(), q.size());
+  for (int i = 0; i < q.size(); i++) {
+    q(i) += dx_;
+    Jv_i = JacobianOfUserDefinedPos(*user_defined_pos_wo_spr_, q) * qdot;
+    q(i) -= dx_;
+    nabla_Jv.col(i) = (Jv_i - Jv_0) / dx_;
+  }
+
+  JdotV_ = nabla_Jv * qdot;
 }
 void AbstractTrackingData::CheckDerivedOscTrackingData() {
-  // Not implemented yet
+  if (only_one_user_defined_pos_) {
+    DRAKE_DEMAND(GetTrajDim() == user_defined_pos_wo_spr_
+                                     ->Position(VectorXd::Ones(
+                                         tree_wo_spr_->get_num_positions()))
+                                     .size());
+  } else {
+    DRAKE_DEMAND(GetTrajDim() == user_defined_pos_wo_spr_
+                                     ->Position(VectorXd::Ones(
+                                         tree_wo_spr_->get_num_positions()))
+                                     .size());
+    DRAKE_DEMAND(GetTrajDim() == user_defined_pos_w_spr_
+                                     ->Position(VectorXd::Ones(
+                                         tree_w_spr_->get_num_positions()))
+                                     .size());
+  }
+}
+MatrixXd AbstractTrackingData::JacobianOfUserDefinedPos(
+    const OscUserDefinedPos& user_defined_pos, VectorXd q) const {
+  VectorXd r_0, r_i;
+  r_0 = user_defined_pos.Position(q);
+
+  MatrixXd J = MatrixXd(r_0.size(), q.size());
+  for (int i = 0; i < q.size(); i++) {
+    q(i) += dx_;
+    r_i = user_defined_pos.Position(q);
+    q(i) -= dx_;
+    J.col(i) = (r_i - r_0) / dx_;
+  }
+  return J;
+}
+MatrixXd AbstractTrackingData::WToQuatDotMap(const Eigen::Vector4d& q) const {
+  MatrixXd ret(4,3);
+  ret <<  -q(1), -q(2), -q(3),
+           q(0), -q(3),  q(2),
+           q(3),  q(0), -q(1),
+          -q(2),  q(1),  q(0);
+  ret *= 0.5;
+  return ret;
+}
+MatrixXd AbstractTrackingData::VToQdotMap(const Eigen::VectorXd& q) const {
+  int n_rest = q.size() - 3;
+
+  MatrixXd ret(q.size() + 1, q.size());
+  ret.block<4,3>(0,0) = WToQuatDotMap(q.head(4));
+  ret.block(4, 3, n_rest, n_rest) = MatrixXd::Identity(n_rest, n_rest);
+  return ret;
 }
 
 }  // namespace controllers

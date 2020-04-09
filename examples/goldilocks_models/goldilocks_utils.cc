@@ -1,4 +1,5 @@
 #include "examples/goldilocks_models/goldilocks_utils.h"
+#include <sys/stat.h>  // Check the existence of a file/folder
 
 #include <iostream>
 #include <sys/stat.h>  // Check the existence of a file/folder
@@ -136,6 +137,12 @@ VectorXd createPrimeNumbers(int num_prime) {
   return prime_until_100.head(num_prime);
 }
 
+
+bool file_exist (const std::string & name) {
+  struct stat buffer;
+  // cout << name << " exist? " << (stat (name.c_str(), &buffer) == 0) << endl;
+  return (stat (name.c_str(), &buffer) == 0);
+}
 
 bool folder_exist (const std::string & pathname_string) {
   // Convert string to char

@@ -1,34 +1,28 @@
-#include <gflags/gflags.h>
-#include <Eigen/Dense>
 #include <string>
-
-#include "systems/goldilocks_models/file_utils.h"
-#include "drake/common/drake_assert.h"
-
-#include "examples/goldilocks_models/kinematics_expression.h"
-#include "examples/goldilocks_models/dynamics_expression.h"
+#include <Eigen/Dense>
+#include <gflags/gflags.h>
 
 #include "common/find_resource.h"
-
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/primitives/trajectory_source.h"
+#include "examples/goldilocks_models/dynamics_expression.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/kinematics_expression.h"
+#include "systems/goldilocks_models/file_utils.h"
+#include "drake/common/drake_assert.h"
 #include "drake/multibody/parsing/parser.h"
 
-using Eigen::VectorXd;
 using Eigen::MatrixXd;
-using std::string;
-using std::to_string;
+using Eigen::VectorXd;
 using std::cin;
 using std::cout;
 using std::endl;
+using std::string;
+using std::to_string;
 
-using drake::geometry::SceneGraph;
-using drake::multibody::MultibodyPlant;
-using drake::multibody::Body;
-using drake::multibody::Parser;
 using dairlib::FindResourceOrThrow;
+using drake::geometry::SceneGraph;
+using drake::multibody::Body;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 
 namespace dairlib {
 namespace goldilocks_models {
@@ -44,15 +38,13 @@ DEFINE_int32(n_tau, 2, "dimension of the input of the RoM");
 DEFINE_int32(num_traj_opt_knots, 20, "# of traj opt knot points");
 DEFINE_int32(num_batch, 1, "total number of batch");
 
-inline bool file_exist (const std::string & name) {
-  struct stat buffer;
-  // cout << name << " exist? " << (stat (name.c_str(), &buffer) == 0) << endl;
-  return (stat (name.c_str(), &buffer) == 0);
-}
-
 // Terminal command samples:
-//  ./bazel-bin/examples/goldilocks_models/scale_theta --iter=211 --num_linear_term=4 --num_quadratic_term=10 --scaling_factor=0.2 --n_s=2 --num_traj_opt_knots=20 --n_tau=1
-//  ./bazel-bin/examples/goldilocks_models/scale_theta --iter=212 --num_linear_term=4 --num_quadratic_term=10 --scaling_factor=0.2 --n_s=2 --is_active_model=false
+//  ./bazel-bin/examples/goldilocks_models/scale_theta --iter=211
+//  --num_linear_term=4 --num_quadratic_term=10 --scaling_factor=0.2 --n_s=2
+//  --num_traj_opt_knots=20 --n_tau=1
+//  ./bazel-bin/examples/goldilocks_models/scale_theta --iter=212
+//  --num_linear_term=4 --num_quadratic_term=10 --scaling_factor=0.2 --n_s=2
+//  --is_active_model=false
 
 // Assumptions:
 // 1. The highest order is quadratic
@@ -118,18 +110,20 @@ int doMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
   std::string full_name = FindResourceOrThrow(
-                            "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
+      "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
   parser.AddModelFromFile(full_name);
   plant.AddForceElement<drake::multibody::UniformGravityFieldElement>(
-    -9.81 * Eigen::Vector3d::UnitZ());
-  plant.WeldFrames(
-    plant.world_frame(), plant.GetFrameByName("base"),
-    drake::math::RigidTransform<double>());
+      -9.81 * Eigen::Vector3d::UnitZ());
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
+                   drake::math::RigidTransform<double>());
   plant.Finalize();
 
   // Setup
-  KinematicsExpression<double> kin_expression(FLAGS_n_s, 0, &plant, FLAGS_robot_option);
-  DynamicsExpression dyn_expression(FLAGS_n_s, 0, FLAGS_robot_option);
+  int rom_option = 0;  // TODO: delete this, since it doesn't matter
+  KinematicsExpression<double> kin_expression(FLAGS_n_s, 0, &plant,
+                                              FLAGS_robot_option);
+  DynamicsExpression dyn_expression(FLAGS_n_s, 0, rom_option,
+                                    FLAGS_robot_option);
   VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
   VectorXd dummy_s = VectorXd::Ones(FLAGS_n_s);
   int n_feature_s = kin_expression.getFeature(dummy_q).size();
@@ -144,8 +138,8 @@ int doMain(int argc, char* argv[]) {
   double k_test_scale = 1.3;
   VectorXd scaled_dummy_s = k_test_scale * dummy_s;
   VectorXd original_feat = dyn_expression.getFeature(dummy_s, dummy_s);
-  VectorXd scaled_feat = dyn_expression.getFeature(
-                           scaled_dummy_s, scaled_dummy_s);
+  VectorXd scaled_feat =
+      dyn_expression.getFeature(scaled_dummy_s, scaled_dummy_s);
   for (int i = 0; i < n_feature_sDDot; i++) {
     if (scaled_feat(i) == original_feat(i)) {
       const_term_list.push_back(i);
@@ -159,14 +153,11 @@ int doMain(int argc, char* argv[]) {
     }
   }
   cout << "\nConstant terms: ";
-  for (int i : const_term_list)
-    cout << i << ", ";
+  for (int i : const_term_list) cout << i << ", ";
   cout << "\nLinear terms: ";
-  for (int i : linear_term_list)
-    cout << i << ", ";
+  for (int i : linear_term_list) cout << i << ", ";
   cout << "\nQuadratic terms: ";
-  for (int i : quadratic_term_list)
-    cout << i << ", ";
+  for (int i : quadratic_term_list) cout << i << ", ";
   cout << endl;
 
   for (int iter = FLAGS_iter_start; iter <= FLAGS_iter_end; iter++) {
@@ -187,7 +178,7 @@ int doMain(int argc, char* argv[]) {
         // Get scaling factor
         double theta_sum = 0;
         for (int j = 0; j < n_feature_s; j++) {
-          theta_sum += abs(theta_s(j + s_row * n_feature_s)); // 1-norm
+          theta_sum += abs(theta_s(j + s_row * n_feature_s));  // 1-norm
         }
         scaling_factors(s_row) = 1 / theta_sum;
       }
@@ -199,18 +190,21 @@ int doMain(int argc, char* argv[]) {
       // iterate through each element of s
 
       // Scaling of kinematics parameters
-      theta_s.segment(s_row * n_feature_s, n_feature_s) *= scaling_factors(s_row);
+      theta_s.segment(s_row * n_feature_s, n_feature_s) *=
+          scaling_factors(s_row);
 
       // Scaling of dynamics parameters
       // constant term
       for (int i : const_term_list)
-        theta_sDDot.segment(i + s_row * n_feature_sDDot, 1) *= scaling_factors(s_row);
+        theta_sDDot.segment(i + s_row * n_feature_sDDot, 1) *=
+            scaling_factors(s_row);
       // linear terms
       for (int i : linear_term_list)
         theta_sDDot.segment(i + s_row * n_feature_sDDot, 1) *= 1;
       // quadratic terms
       for (int i : quadratic_term_list)
-        theta_sDDot.segment(i + s_row * n_feature_sDDot, 1) /= scaling_factors(s_row);
+        theta_sDDot.segment(i + s_row * n_feature_sDDot, 1) /=
+            scaling_factors(s_row);
 
       // Store (overwrite) the parameters
       prefix = directory + to_string(iter);
@@ -220,7 +214,7 @@ int doMain(int argc, char* argv[]) {
 
     // Update t_and_s, t_and_ds, t_and_dds
     for (int batch = 0; batch < FLAGS_num_batch; batch++) {
-      prefix = directory + to_string(iter) +  "_" + to_string(batch);
+      prefix = directory + to_string(iter) + "_" + to_string(batch);
       MatrixXd t_s = readCSV(prefix + string("_t_and_s.csv"));
       MatrixXd t_ds = readCSV(prefix + string("_t_and_ds.csv"));
       MatrixXd t_dds = readCSV(prefix + string("_t_and_dds.csv"));
@@ -237,7 +231,7 @@ int doMain(int argc, char* argv[]) {
     // Input part
     if (FLAGS_is_active_model) {
       for (int batch = 0; batch < FLAGS_num_batch; batch++) {
-        prefix = directory + to_string(iter) +  "_" + to_string(batch);
+        prefix = directory + to_string(iter) + "_" + to_string(batch);
         VectorXd w = readCSV(prefix + string("_w.csv")).col(0);
 
         // Read in inputs
@@ -277,10 +271,9 @@ int doMain(int argc, char* argv[]) {
         writeCSV(prefix + string("_w_new.csv"), w);
         writeCSV(prefix + string("_t_and_tau_new.csv"), t_tau);
       }  // end for (batch)
-    }  // end if (FLAGS_is_active_model)
+    }    // end if (FLAGS_is_active_model)
 
   }  // end for (iter)
-
 
   return 0;
 }

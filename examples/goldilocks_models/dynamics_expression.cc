@@ -270,7 +270,7 @@ T DynamicsExpression::getFeature(const T & s, const T & ds) const {
 
 // Instantiation
 // TODO(yminchen): is there a way to implement getExpression() that returns
-// VectorX<double>?
+//  VectorX<double>?
 template VectorX<double> DynamicsExpression::getExpression(
   const VectorX<double> &, const VectorX<double> &,
   const VectorX<double> &, const VectorX<double> &) const;

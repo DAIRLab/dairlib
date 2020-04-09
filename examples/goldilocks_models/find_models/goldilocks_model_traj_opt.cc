@@ -59,8 +59,8 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
       // no constraint, so we don't need to scale
     } else if (robot_option == 0) {
       if (rom_option == 0) {
-        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 3500.0));
-        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 600.0));
+//        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 3500.0));
+//        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 600.0));
       } else {
         // The scaling of others hasn't tuned yet
         DRAKE_DEMAND(false);

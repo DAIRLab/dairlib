@@ -74,6 +74,7 @@ DEFINE_bool(is_stochastic, true, "Random tasks or fixed tasks");
 DEFINE_bool(is_newton, false, "Newton method or gradient descent");
 DEFINE_double(h_step, -1, "The step size for outer loop");
 DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
+DEFINE_double(beta_momentum, 0.8, "The weight on the previous step direction");
 
 // How to update the model iterations
 DEFINE_bool(start_current_iter_as_rerun, false,
@@ -1524,7 +1525,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Momentum can give you faster convergence. And get out of a local minimum
   // caused by step size. See: https://distill.pub/2017/momentum/ WARNING:
   // beta_momentum is not used in newton's method
-  double beta_momentum = 0.8;
+  double beta_momentum = FLAGS_beta_momentum;
   double h_step;
   if (FLAGS_h_step > 0) {
     h_step = FLAGS_h_step;
@@ -1539,6 +1540,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // 1e-2 is a good compromise on both speed and gittering
       // 1e-1 caused divergence when close to optimal sol
       h_step = 1e-4;
+      /*if (beta_momentum != 0) {
+        // haven't tried or tuned this yet.
+        h_step = 1e-5;
+      }*/
     } else if (FLAGS_robot_option == 1) {
       // Without tau: (This is with  h_step / sqrt(norm_grad_cost(0));)
       //  1e-4: doesn't always decrease with a fixed task
@@ -1578,7 +1583,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
   const int method_to_solve_system_of_equations = 3;
-  double max_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
+  double max_cost_increase_rate = 0;
+  if (FLAGS_robot_option == 0) {
+    max_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;
+  } else if (FLAGS_robot_option== 1) {
+    max_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
+  } else {
+    throw std::runtime_error("Should not reach here");
+  }
   double max_cost_increase_rate_before_ask_for_help = 0.1;
   double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
   bool is_limit_difference_of_two_adjacent_costs =

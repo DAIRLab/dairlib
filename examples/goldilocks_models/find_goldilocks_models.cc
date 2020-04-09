@@ -51,8 +51,8 @@ DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
 DEFINE_int32(rom_option, -1, "");
 
 // tasks
-DEFINE_int32(N_sample_sl, 3, "Sampling # for stride length");
-DEFINE_int32(N_sample_gi, 3, "Sampling # for ground incline");
+DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
+DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
@@ -76,6 +76,7 @@ DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
 DEFINE_bool(is_stochastic, true, "Random tasks or fixed tasks");
 DEFINE_bool(is_newton, false, "Newton method or gradient descent");
 DEFINE_double(h_step, -1, "The step size for outer loop");
+DEFINE_double(beta_momentum, -1, "Momentum term in gradient descent");
 DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
 
 // How to update the model iterations
@@ -246,7 +247,13 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file, 
   } else if (step_size_shrinked_last_loop && n_rerun == 0) {
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
-    *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
+    if (is_use_interpolated_initial_guess){
+        //      modified by Jianshu to test new initial guess
+        *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi);
+    }
+    else{
+        *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
+    }
   } else if (sample_idx_to_help >= 0) {
     *init_file = to_string(iter) + "_" + to_string(sample_idx_to_help) +
                  string("_w.csv");
@@ -254,8 +261,7 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file, 
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   }else if(is_use_interpolated_initial_guess){
 //      modified by Jianshu to test new initial guess
-      *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl,
-               min_gi, max_gi);
+      *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi);
   } else{
       *init_file = to_string(iter - 1) +  "_" +
                    to_string(sample) + string("_w.csv");
@@ -1387,7 +1393,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Momentum can give you faster convergence. And get out of a local minimum
   // caused by step size. See: https://distill.pub/2017/momentum/ WARNING:
   // beta_momentum is not used in newton's method
-  double beta_momentum = 0.8;
+
+//  original momentum term in the code
+//  double beta_momentum = 0.8;
+  double beta_momentum;
+  if(FLAGS_beta_momentum >= 0)
+  {
+      beta_momentum = FLAGS_beta_momentum;
+  }else{
+      beta_momentum = 0.8;
+  }
   double h_step;
   if (FLAGS_h_step > 0) {
     h_step = FLAGS_h_step;
@@ -2498,90 +2513,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   return 0;
 }  // int findGoldilocksModels
 
-//used for testing the result of set_initial_guess
-string test_set_initial_guess(int argc, char* argv[])
-{
-/* define some parameters used in interpolation
-* theta_range :decide the range of theta to use in interpolation
-* theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
-*/
-    const string directory = "../dairlib_data/goldilocks_models/find_models/robot_" +
-                       to_string(0) + "/";
-    int iter = 2;
-    int sample = 2;
-    int total_sample_num = 25;
-    double theta_range = 1;
-    double theta_scale ;
-    double gamma_scale = pow(0.3375-0.2625,2)+pow(0.125+0.125,2);
-    int gamma_dimension = 2;
-//    initialize variables used for setting initial guess
-    VectorXd initial_guess;
-    VectorXd weight;
-    MatrixXd w_near;
-    int past_iter;
-    int sample_num;
-//    get theta of current iteration and task of current sample
-    VectorXd current_theta = readCSV(directory+to_string(iter)+string("_theta_s.csv"));
-    MatrixXd current_ground_incline = readCSV(directory+to_string(iter)+string("_")+to_string(sample)
-                                              +string("_ground_incline.csv"));
-    MatrixXd current_stride_length = readCSV(directory+to_string(iter)+string("_")+to_string(sample)
-                                             +string("_stride_length.csv"));
-    VectorXd current_gamma(gamma_dimension);
-    current_gamma << current_ground_incline(0,0),current_stride_length(0,0);
-
-    //    get initial theta and set theta scale
-    VectorXd initial_theta = readCSV(directory + to_string(0) + string("_theta_s.csv"));
-    theta_scale = (initial_theta-current_theta).squaredNorm();
-
-    for(past_iter=iter-1;past_iter>=0;past_iter--) {
-//        find useful theta according to the difference between previous theta and new theta
-        VectorXd past_theta = readCSV(directory+to_string(past_iter)+string("_theta_s.csv"));
-        double theta_diff = (past_theta - current_theta).norm() / sqrt(theta_scale);
-        cout<<"theta_diff"<<theta_diff<<endl;
-        if (theta_diff <= theta_range) {
-//            take out corresponding w and calculate the weight for interpolation
-            for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
-                MatrixXd past_ground_incline = readCSV(directory+to_string(past_iter)+string("_")
-                                                       +to_string(sample_num)+string("_ground_incline.csv"));
-                MatrixXd past_stride_length = readCSV(directory+to_string(past_iter)+string("_")
-                                                      +to_string(sample_num)+string("_stride_length.csv"));
-                VectorXd past_gamma(gamma_dimension);
-                past_gamma << past_ground_incline(0,0),past_stride_length(0,0);
-                double distance = ((past_theta - current_theta).squaredNorm())/theta_scale
-                                  + (past_gamma - current_gamma).squaredNorm()/gamma_scale;
-                cout<<"theta distance"<<(past_theta - current_theta).squaredNorm()/theta_scale<<endl;
-                cout<<"gamma distance"<<(past_gamma - current_gamma).squaredNorm()/gamma_scale<<endl;
-                cout<<"distance"<<distance<<endl;
-                weight.conservativeResize(weight.rows()+1);
-                weight(weight.rows()-1) = 1 / sqrt(distance);
-                VectorXd w_to_interpolate = readCSV(directory+to_string(past_iter)+string("_")
-                                              +to_string(sample_num)+string("_w.csv"));
-                w_near.conservativeResize(w_to_interpolate.rows(),w_near.cols()+1);
-                w_near.col(w_near.cols()-1) = w_to_interpolate;
-            }
-        }
-        else {
-            break;
-        }
-    }
-//    normalize weight
-    weight = weight/weight.sum();
-    initial_guess = w_near*weight;
-//    cout<<"w_near"<<w_near<<endl;
-//    cout<<initial_guess<<endl;
-//    save initial guess and set init file
-    string initial_file_name = to_string(iter)+"_"+to_string(sample)+string("_initial_guess.csv");
-    writeCSV(directory+initial_file_name,initial_guess);
-
-    return initial_file_name;
-}
-
-
 }  // namespace dairlib::goldilocks_models
 
 int main(int argc, char* argv[]) {
     return dairlib::goldilocks_models::findGoldilocksModels(argc, argv);
-//    string init = dairlib::goldilocks_models::test_set_initial_guess(argc,argv);
-//    cout<<init<<endl;
-//    return 0;
 }

@@ -93,6 +93,17 @@ cc_library(
 #     ],
 # )
 
+cc_binary(
+    name = "test_initial_guess",
+    srcs = ["test_initial_guess.cc"],
+    deps = [
+        ":initial_guess",
+        "//common",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
 cc_library(
     name = "dummy_constraint",
     srcs = [

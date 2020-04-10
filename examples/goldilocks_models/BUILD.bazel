@@ -129,8 +129,6 @@ cc_library(
     deps = [
         "//systems/goldilocks_models",
         "@drake//:drake_shared_library",
-        "//systems/goldilocks_models",
-        "@drake//:drake_shared_library",
     ],
 )
 

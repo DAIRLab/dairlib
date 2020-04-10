@@ -75,7 +75,6 @@ DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
 DEFINE_bool(is_stochastic, true, "Random tasks or fixed tasks");
 DEFINE_bool(is_newton, false, "Newton method or gradient descent");
 DEFINE_double(h_step, -1, "The step size for outer loop");
-DEFINE_double(beta_momentum, -1, "Momentum term in gradient descent");
 DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
 DEFINE_double(beta_momentum, 0.8, "The weight on the previous step direction");
 

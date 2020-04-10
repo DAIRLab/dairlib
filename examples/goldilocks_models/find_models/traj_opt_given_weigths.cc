@@ -217,11 +217,15 @@ void extractResult(VectorXd& w_sol,
   // Check which solver we are using
   // cout << "Solver: " << result.get_solver_id().name() << endl;
 
-  if ((result.get_optimal_cost() > cost_threshold_for_update) &&
-      (n_rerun > N_rerun)) {
-    cout << "the cost of idx #" << sample_idx
-         << " is higher than before, skip\n";
-    return;
+  if (n_rerun > N_rerun) {
+    if (result.get_optimal_cost() > cost_threshold_for_update) {
+      cout << "the cost of idx #" << sample_idx
+           << " is higher than before, skip\n";
+      return;
+    } else if (!result.is_success()) {
+      cout << "the rerun of idx #" << sample_idx
+           << " was not successful, skip\n";
+    }
   }
 
   VectorXd is_success(1);
@@ -1166,7 +1170,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
 
     // after adding rom constraint
     // Dynamic constraints
-    options_list[i].setDynConstraintScaling({0, 1, 2, 3}, 1.0 / 40.0);
+    /*options_list[i].setDynConstraintScaling({0, 1, 2, 3}, 1.0 / 40.0);
     options_list[i].setDynConstraintScaling({4, 5}, 1.0 / 60.0);
     options_list[i].setDynConstraintScaling(6, 1.0 / 200.0); // end of pos
     options_list[i].setDynConstraintScaling(7, 1.0 / 180.0);
@@ -1185,7 +1189,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
     options_list[i].setImpConstraintScaling(3, 1.0 / 3.0);
     options_list[i].setImpConstraintScaling(4, 1.8 / 5.0);
     options_list[i].setImpConstraintScaling(5, 1.8 / 1.0);
-    options_list[i].setImpConstraintScaling(6, 1.8 / 3.0);
+    options_list[i].setImpConstraintScaling(6, 1.8 / 3.0);*/
   }
 
   // Stated in the MultipleShooting class:

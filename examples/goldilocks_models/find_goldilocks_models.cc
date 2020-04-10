@@ -1123,20 +1123,21 @@ void RecordSolutionQualityAndQueueList(
       // 2. the adjacent sample needs help
       // 3. the current sample hasn't helped the adjacent sample
       if (this_adjacent_sample_needs_help && !current_sample_has_helped) {
+        if (revert_good_adj_sol_to_bad_sol) {
+          cout << "idx #" << sample_idx
+               << " cost is too low below that of adjacent idx #" << adj_idx
+               << ", so revert the flag to bad sol. ";
+        } else {
+          cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
+               << " needs help. ";
+        }
         if ((find(awaiting_sample_idx.begin(), awaiting_sample_idx.end(),
                   adj_idx) == awaiting_sample_idx.end()) &&
             !(IsSampleBeingEvaluated(assigned_thread_idx, adj_idx))) {
           awaiting_sample_idx.push_back(adj_idx);
+          cout << "Add #" << adj_idx << " to queue";
         }
-        if (revert_good_adj_sol_to_bad_sol) {
-          cout << "idx #" << sample_idx
-               << " cost is too low below that of adjacent idx #" << adj_idx
-               << ", so add #" << adj_idx
-               << " to queue (revert the flag to bad sol)\n";
-        } else {
-          cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
-               << " needs help, so add #"<< adj_idx <<" to queue\n";
-        }
+        cout << "\n";
       }
     }  // end for (Look for any adjacent sample that needs help)
 
@@ -1585,7 +1586,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   const int method_to_solve_system_of_equations = 3;
   double max_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
-    max_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;
+    max_cost_increase_rate = FLAGS_is_stochastic? 0.4: 0.01;
   } else if (FLAGS_robot_option== 1) {
     max_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
   } else {
@@ -1593,6 +1594,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   double max_cost_increase_rate_before_ask_for_help = 0.1;
   double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
+  if (FLAGS_robot_option == 0) {
+    max_adj_cost_diff_rate_before_ask_for_help = 0.5;
+  }
   bool is_limit_difference_of_two_adjacent_costs =
       max_adj_cost_diff_rate_before_ask_for_help > 0;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
@@ -1615,9 +1619,30 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << max_cost_increase_rate_before_ask_for_help << endl;
   cout << "The maximum cost difference rate between two adjacent samples = "
        << max_adj_cost_diff_rate_before_ask_for_help << endl;
+  /// Notes: currently, there are a few conditions under any of which the
+  /// program would rerun trajectory optimization:
+  ///  1. if N_rerun is not 0, then after SNOPT found a solution this program
+  ///  feeds the solution back to SNOPT as a initial condition to resolve the
+  ///  program for N_rerun number of times.
+  ///  2. after N_rerun number of reruns, if there are two adjacent samples
+  ///  whose cost ratio (difference) are greater than a certain value decided by
+  ///  `max_adj_cost_diff_rate_before_ask_for_help` , then this program
+  ///  re-evaluates the sample with a high cost and feed it the solution with
+  ///  low cost as an initial condition.
+  ///  3. after N_rerun number of reruns, if any sample cost increases over a
+  ///  certain rate determined by `max_cost_increase_rate_before_ask_for_help`,
+  ///  then the program re-evaluates the sample (if any adjacent sample has
+  ///  lower cost).
+  ///  4. if all the samples are evaluated successfully and if the total cost
+  ///  increases over a certain rate determined by
+  ///  `max_cost_increase_rate_before_ask_for_help`, then the program rerun the
+  ///  iteration
 
   // Parameters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
+  if (FLAGS_robot_option == 0) {
+    max_inner_iter = 300;
+  }
   double Q = 0; // Cost on velocity
   double R = 0;  // Cost on input effort
   double all_cost_scale = 1;
@@ -2005,14 +2030,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Evaluate samples
       int n_failed_sample = 0;
       while (!awaiting_sample_idx.empty() || !assigned_thread_idx.empty()) {
-        /*cout << "awaiting_sample_idx = ";
+        cout << "awaiting_sample_idx = ";
         for (auto mem : awaiting_sample_idx) {
           cout << mem << ", ";
         } cout << endl;
         cout << "assigned_sample_idx = ";
         for (auto mem : assigned_thread_idx) {
           cout << mem.second << ", ";
-        } cout << endl;*/
+        } cout << endl;
 
         //std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
         //std::system("top -bn2 | grep \"Cpu(s)\" | sed \"s/.*, *\\([0-9.]*\\)%* id.*/\1/\" | awk '{print 100 - $1\"%\"}'"); // print the CPU usage
@@ -2160,16 +2185,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
 
           // Get good initial guess from adjacent samples's solution
-          RecordSolutionQualityAndQueueList(
-              dir, prefix, sample_idx, assigned_thread_idx,
-              adjacent_sample_indices,
-              max_cost_increase_rate_before_ask_for_help,
-              max_adj_cost_diff_rate_before_ask_for_help,
-              is_limit_difference_of_two_adjacent_costs, sample_success,
-              current_sample_is_queued, n_rerun, N_rerun,
-              local_each_min_cost_so_far, is_good_solution,
-              sample_idx_waiting_to_help, sample_idx_that_helped,
-              awaiting_sample_idx);
+          if (n_rerun[sample_idx] >= N_rerun) {
+            RecordSolutionQualityAndQueueList(
+                dir, prefix, sample_idx, assigned_thread_idx,
+                adjacent_sample_indices,
+                max_cost_increase_rate_before_ask_for_help,
+                max_adj_cost_diff_rate_before_ask_for_help,
+                is_limit_difference_of_two_adjacent_costs, sample_success,
+                current_sample_is_queued, n_rerun, N_rerun,
+                local_each_min_cost_so_far, is_good_solution,
+                sample_idx_waiting_to_help, sample_idx_that_helped,
+                awaiting_sample_idx);
+          }
 
           // If the current sample is queued again because it could be helped by
           // adjacent samples, then don't conclude that it's a failure yet

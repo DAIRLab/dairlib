@@ -36,7 +36,7 @@ namespace dairlib::systems::controllers {
 
 /// OSC calculates feedback positions/velocities from `plant_w_spr`,
 /// but in the optimization it uses `plant_wo_spr`. The reason of using
-/// RigidBodyTree without spring is that the OSC cannot track desired
+/// MultibodyPlant without spring is that the OSC cannot track desired
 /// acceleration instantaneously when springs exist. (relative degrees of 4)
 
 /// Requirement:
@@ -105,7 +105,7 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_tracking_data_input_port(
-      std::string name) const {
+      const std::string& name) const {
     return this->get_input_port(traj_name_to_port_index_map_.at(name));
   }
 
@@ -145,7 +145,7 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
     return tracking_data_vec_->at(index);
   }
 
-  // Osc leafsystem builder
+  // OSC LeafSystem builder
   void Build();
 
  private:
@@ -196,6 +196,10 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   // World frames
   const drake::multibody::BodyFrame<double>& world_w_spr_;
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
+
+  // MBP context's
+  std::unique_ptr<drake::systems::Context<double>> context_w_spr_;
+  std::unique_ptr<drake::systems::Context<double>> context_wo_spr_;
 
   // Size of position, velocity and input of the RBT without spring
   int n_q_;

@@ -124,6 +124,11 @@ OperationalSpaceControlMBP::OperationalSpaceControlMBP(
   u_min_ = u_min;
   u_max_ = u_max;
 
+  // Set the default contexts for both MBPs
+  context_w_spr_ =
+      plant_w_spr_.CreateDefaultContext();
+  context_wo_spr_ =
+      plant_wo_spr_.CreateDefaultContext();
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
@@ -383,28 +388,23 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
     double time_since_last_state_switch) const {
   vector<bool> active_contact_flags = CalcActiveContactIndices(fsm_state);
 
-  std::unique_ptr<drake::systems::Context<double>> context_w_spr =
-      plant_w_spr_.CreateDefaultContext();
-  std::unique_ptr<drake::systems::Context<double>> context_wo_spr =
-      plant_wo_spr_.CreateDefaultContext();
-  plant_w_spr_.SetPositionsAndVelocities(context_w_spr.get(), x_w_spr);
-  plant_wo_spr_.SetPositionsAndVelocities(context_wo_spr.get(), x_wo_spr);
+  plant_w_spr_.SetPositionsAndVelocities(context_w_spr_.get(), x_w_spr);
+  plant_wo_spr_.SetPositionsAndVelocities(context_wo_spr_.get(), x_wo_spr);
 
   // Get M, f_cg, B matrices of the manipulator equation
   MatrixXd B = plant_wo_spr_.MakeActuationMatrix();
   MatrixXd M(n_v_, n_v_);
-  plant_wo_spr_.CalcMassMatrixViaInverseDynamics(*context_wo_spr, &M);
-  const RigidBodyTree<double>::BodyToWrenchMap no_external_wrenches;
+  plant_wo_spr_.CalcMassMatrixViaInverseDynamics(*context_wo_spr_, &M);
   VectorXd bias(n_v_);
-  plant_wo_spr_.CalcBiasTerm(*context_wo_spr, &bias);
-  VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr);
+  plant_wo_spr_.CalcBiasTerm(*context_wo_spr_, &bias);
+  VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
   bias = bias - grav;
 
   // Get J and JdotV for holonomic constraint
   MatrixXd J_h(distance_constraints_.size(), n_v_);
   VectorXd JdotV_h(distance_constraints_.size());
   for (unsigned int i = 0; i < distance_constraints_.size(); ++i) {
-    distance_constraints_[i]->updateConstraint(*context_wo_spr);
+    distance_constraints_[i]->updateConstraint(*context_wo_spr_);
     J_h.row(i) = distance_constraints_[i]->getJ();
     JdotV_h.segment(i, 1) = distance_constraints_[i]->getJdotv();
   }
@@ -416,14 +416,14 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
     if (active_contact_flags[i]) {
       MatrixXd J = MatrixXd::Zero(3, n_v_);
       plant_wo_spr_.CalcJacobianTranslationalVelocity(
-          *context_wo_spr, JacobianWrtVariable::kV,
+          *context_wo_spr_, JacobianWrtVariable::kV,
           plant_wo_spr_.get_body(body_indices_[i]).body_frame(),
           pts_on_body_[i], world_wo_spr_, world_wo_spr_, &J);
       J_c.block(3 * i, 0, 3, n_v_) = J;
       JdotV_c.segment(3 * i, 3) =
           plant_wo_spr_
               .CalcBiasForJacobianSpatialVelocity(
-                  *context_wo_spr, JacobianWrtVariable::kV,
+                  *context_wo_spr_, JacobianWrtVariable::kV,
                   plant_wo_spr_.get_body(body_indices_[i]).body_frame(),
                   pts_on_body_[i], world_wo_spr_, world_wo_spr_)
               .tail(3);
@@ -509,7 +509,7 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
     if (fixed_position_vec_.at(i).size() != 0) {
       // Create constant trajectory and update
       tracking_data->Update(
-          x_w_spr, *context_w_spr, x_wo_spr, *context_wo_spr,
+          x_w_spr, *context_w_spr_, x_wo_spr, *context_wo_spr_,
           PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t, fsm_state);
     } else {
       // Read in traj from input port
@@ -521,8 +521,8 @@ VectorXd OperationalSpaceControlMBP::SolveQp(
       const auto& traj =
           input_traj->get_value<drake::trajectories::Trajectory<double>>();
       // Update
-      tracking_data->Update(x_w_spr, *context_w_spr, x_wo_spr, *context_wo_spr,
-                            traj, t, fsm_state);
+      tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                            *context_wo_spr_, traj, t, fsm_state);
     }
     // TODO(yangwill): Should only really be updating the trajectory if it's
     //  active

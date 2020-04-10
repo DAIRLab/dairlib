@@ -446,7 +446,7 @@ void extendModel(string dir, int iter, int n_feature_s,
 }
 
 void readApproxQpFiles(vector<VectorXd> * w_sol_vec, vector<MatrixXd> * A_vec,
-                       vector<MatrixXd> * H_vec,
+                       /*vector<MatrixXd> * H_vec,*/
                        vector<VectorXd> * y_vec,
                        vector<VectorXd> * lb_vec, vector<VectorXd> * ub_vec,
                        vector<VectorXd> * b_vec, vector<VectorXd> * c_vec,
@@ -461,7 +461,7 @@ void readApproxQpFiles(vector<VectorXd> * w_sol_vec, vector<MatrixXd> * A_vec,
     if (success(0)) {
       w_sol_vec->push_back(readCSV(dir + prefix + string("w.csv")));
       A_vec->push_back(readCSV(dir + prefix + string("A.csv")));
-      H_vec->push_back(readCSV(dir + prefix + string("H.csv")));
+//      H_vec->push_back(readCSV(dir + prefix + string("H.csv")));
       y_vec->push_back(readCSV(dir + prefix + string("y.csv")));
       lb_vec->push_back(readCSV(dir + prefix + string("lb.csv")));
       ub_vec->push_back(readCSV(dir + prefix + string("ub.csv")));
@@ -471,7 +471,7 @@ void readApproxQpFiles(vector<VectorXd> * w_sol_vec, vector<MatrixXd> * A_vec,
 
       bool rm = true;
       rm = (remove((dir + prefix + string("A.csv")).c_str()) == 0) & rm;
-      rm = (remove((dir + prefix + string("H.csv")).c_str()) == 0) & rm;
+//      rm = (remove((dir + prefix + string("H.csv")).c_str()) == 0) & rm;
       rm = (remove((dir + prefix + string("y.csv")).c_str()) == 0) & rm;
       rm = (remove((dir + prefix + string("lb.csv")).c_str()) == 0) & rm;
       rm = (remove((dir + prefix + string("ub.csv")).c_str()) == 0) & rm;
@@ -487,7 +487,7 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
                                      string dir,
                                      const vector<MatrixXd> & B_vec,
                                      const vector<MatrixXd> & A_vec,
-                                     const vector<MatrixXd> & H_vec,
+                                     const vector<std::shared_ptr<MatrixXd>> & H_vec,
                                      const vector<VectorXd> & b_vec,
                                      const vector<VectorXd> & lb_vec,
                                      const vector<VectorXd> & ub_vec,
@@ -545,7 +545,7 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
                                   VectorXd::Zero(nl_i),
                                   VectorXd::Zero(nl_i),
                                   w2);
-    quadprog.AddQuadraticCost(H_vec[sample], b_vec[sample], w2);
+    quadprog.AddQuadraticCost(*(H_vec[sample]), b_vec[sample], w2);
     const auto result = Solve(quadprog);
     auto solution_result = result.get_solution_result();
     if (result.is_success()) {
@@ -726,7 +726,7 @@ void calcWInTermsOfTheta(int sample, const string& dir,
                          const vector<int> & nw_vec,
                          const vector<MatrixXd> & A_active_vec,
                          const vector<MatrixXd> & B_active_vec,
-                         const vector<MatrixXd> & H_vec,
+                         const vector<std::shared_ptr<MatrixXd>> & H_vec,
                          const vector<VectorXd> & b_vec,
                          int method_to_solve_system_of_equations) {
   string prefix = to_string(sample) + "_";
@@ -750,8 +750,8 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     // that the condition number of A and invH is high, so AinvHA' makes it very
     // ill-conditioned.
     MatrixXd AinvHA = A_active_vec[sample] * solveInvATimesB(
-        H_vec[sample], A_active_vec[sample].transpose());
-    VectorXd invQc = solveInvATimesB(H_vec[sample], b_vec[sample]);
+        *(H_vec[sample]), A_active_vec[sample].transpose());
+    VectorXd invQc = solveInvATimesB(*(H_vec[sample]), b_vec[sample]);
     MatrixXd E = solveInvATimesB(AinvHA, B_active_vec[sample]);
     VectorXd F = -solveInvATimesB(AinvHA, A_active_vec[sample] * invQc);
     // Testing
@@ -764,9 +764,9 @@ void calcWInTermsOfTheta(int sample, const string& dir,
             "is ill-conditioned.\n";
     // cout << "singular values are \n" << svd.singularValues() << endl;
 
-    Pi = -solveInvATimesB(H_vec[sample],
+    Pi = -solveInvATimesB(*(H_vec[sample]),
                           A_active_vec[sample].transpose() * E);
-    qi = -solveInvATimesB(H_vec[sample],
+    qi = -solveInvATimesB(*(H_vec[sample]),
                           b_vec[sample] + A_active_vec[sample].transpose() * F);
     cout << "qi norm (this number should be close to 0) = "
          << qi.norm() << endl;
@@ -781,13 +781,13 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     int nl_i = nl_vec[sample];
     int nw_i = nw_vec[sample];
     MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
-    H_ext.block(0, 0, nw_i, nw_i) = H_vec[sample];
+    H_ext.block(0, 0, nw_i, nw_i) = *(H_vec[sample]);
     H_ext.block(0, nw_i, nw_i, nl_i) = A_active_vec[sample].transpose();
     H_ext.block(nw_i, 0, nl_i, nw_i) = A_active_vec[sample];
     H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
 
     // Testing
-    // Eigen::BDCSVD<MatrixXd> svd(H_vec[sample]);
+    // Eigen::BDCSVD<MatrixXd> svd(*(H_vec[sample]));
     // cout << "H:\n";
     // cout << "  biggest singular value is " << svd.singularValues()(0) <<
     // endl; cout << "  smallest singular value is "
@@ -825,7 +825,7 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     int nl_i = nl_vec[sample];
     int nw_i = nw_vec[sample];
     MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
-    H_ext.block(0, 0, nw_i, nw_i) = H_vec[sample];
+    H_ext.block(0, 0, nw_i, nw_i) = *(H_vec[sample]);
     H_ext.block(0, nw_i, nw_i, nl_i) = A_active_vec[sample].transpose();
     H_ext.block(nw_i, 0, nl_i, nw_i) = A_active_vec[sample];
     H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
@@ -1135,20 +1135,21 @@ void RecordSolutionQualityAndQueueList(
       // 2. the adjacent sample needs help
       // 3. the current sample hasn't helped the adjacent sample
       if (this_adjacent_sample_needs_help && !current_sample_has_helped) {
+        if (revert_good_adj_sol_to_bad_sol) {
+          cout << "idx #" << sample_idx
+               << " cost is too low below that of adjacent idx #" << adj_idx
+               << ", so revert the flag to bad sol. ";
+        } else {
+          cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
+               << " needs help. ";
+        }
         if ((find(awaiting_sample_idx.begin(), awaiting_sample_idx.end(),
                   adj_idx) == awaiting_sample_idx.end()) &&
             !(IsSampleBeingEvaluated(assigned_thread_idx, adj_idx))) {
           awaiting_sample_idx.push_back(adj_idx);
+          cout << "Add #" << adj_idx << " to queue";
         }
-        if (revert_good_adj_sol_to_bad_sol) {
-          cout << "idx #" << sample_idx
-               << " cost is too low below that of adjacent idx #" << adj_idx
-               << ", so add #" << adj_idx
-               << " to queue (revert the flag to bad sol)\n";
-        } else {
-          cout << "idx #" << sample_idx << " got good sol, and idx #" << adj_idx
-               << " needs help, so add #"<< adj_idx <<" to queue\n";
-        }
+        cout << "\n";
       }
     }  // end for (Look for any adjacent sample that needs help)
 
@@ -1285,7 +1286,7 @@ void CalcCostGradientAndNorm(int n_succ_sample, const vector<MatrixXd>& P_vec,
 // See your IOE611 lecture notes on page 7-17 to page 7-20
 void CalcNewtonStepAndNewtonDecrement(int n_theta, int n_succ_sample,
                                       const vector<MatrixXd>& P_vec,
-                                      const vector<MatrixXd>& H_vec,
+                                      const vector<std::shared_ptr<MatrixXd>>& H_vec,
                                       const VectorXd& gradient_cost,
                                       const string& dir, const string& prefix,
                                       VectorXd* newton_step,
@@ -1294,7 +1295,7 @@ void CalcNewtonStepAndNewtonDecrement(int n_theta, int n_succ_sample,
   cout << "Checking if Q_theta is psd...\n";
   MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
   for (int sample = 0; sample < n_succ_sample; sample++)
-    Q_theta += P_vec[sample].transpose()*H_vec[sample]*P_vec[sample];
+    Q_theta += P_vec[sample].transpose()*(*(H_vec[sample]))*P_vec[sample];
   VectorXd eivals_real = Q_theta.eigenvalues().real();
   for (int i = 0; i < eivals_real.size(); i++) {
     if (eivals_real(i) <= 0)
@@ -1306,7 +1307,7 @@ void CalcNewtonStepAndNewtonDecrement(int n_theta, int n_succ_sample,
   // cout << "Getting Newton step\n";
   MatrixXd Q_theta = MatrixXd::Zero(n_theta, n_theta);
   for (int sample = 0; sample < n_succ_sample; sample++) {
-    Q_theta += P_vec[sample].transpose() * H_vec[sample] * P_vec[sample] /
+    Q_theta += P_vec[sample].transpose() * (*(H_vec[sample])) * P_vec[sample] /
                n_succ_sample;
   }
   double mu = 1e-4;  // 1e-6 caused unstable and might diverge
@@ -1606,7 +1607,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   const int method_to_solve_system_of_equations = 3;
   double max_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
-    max_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;
+    max_cost_increase_rate = FLAGS_is_stochastic? 0.4: 0.01;
   } else if (FLAGS_robot_option== 1) {
     max_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
   } else {
@@ -1614,6 +1615,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   double max_cost_increase_rate_before_ask_for_help = 0.1;
   double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
+  if (FLAGS_robot_option == 0) {
+    max_adj_cost_diff_rate_before_ask_for_help = 0.5;
+  }
   bool is_limit_difference_of_two_adjacent_costs =
       max_adj_cost_diff_rate_before_ask_for_help > 0;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
@@ -1636,9 +1640,30 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << max_cost_increase_rate_before_ask_for_help << endl;
   cout << "The maximum cost difference rate between two adjacent samples = "
        << max_adj_cost_diff_rate_before_ask_for_help << endl;
+  /// Notes: currently, there are a few conditions under any of which the
+  /// program would rerun trajectory optimization:
+  ///  1. if N_rerun is not 0, then after SNOPT found a solution this program
+  ///  feeds the solution back to SNOPT as a initial condition to resolve the
+  ///  program for N_rerun number of times.
+  ///  2. after N_rerun number of reruns, if there are two adjacent samples
+  ///  whose cost ratio (difference) are greater than a certain value decided by
+  ///  `max_adj_cost_diff_rate_before_ask_for_help` , then this program
+  ///  re-evaluates the sample with a high cost and feed it the solution with
+  ///  low cost as an initial condition.
+  ///  3. after N_rerun number of reruns, if any sample cost increases over a
+  ///  certain rate determined by `max_cost_increase_rate_before_ask_for_help`,
+  ///  then the program re-evaluates the sample (if any adjacent sample has
+  ///  lower cost).
+  ///  4. if all the samples are evaluated successfully and if the total cost
+  ///  increases over a certain rate determined by
+  ///  `max_cost_increase_rate_before_ask_for_help`, then the program rerun the
+  ///  iteration
 
   // Parameters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
+  if (FLAGS_robot_option == 0) {
+    max_inner_iter = 300;
+  }
   double Q = 0; // Cost on velocity
   double R = 0;  // Cost on input effort
   double all_cost_scale = 1;
@@ -1749,7 +1774,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Vectors/Matrices for the outer loop
   vector<VectorXd> w_sol_vec;
-  vector<MatrixXd> H_vec;
+//  vector<MatrixXd> H_vec;
+  vector<std::shared_ptr<MatrixXd>> H_vec(N_sample);
+  for (int i = 0; i < N_sample; i++) {
+    auto matrix_i = std::make_shared<MatrixXd>();
+    H_vec[i] = matrix_i;
+  }
   vector<VectorXd> b_vec;
   vector<VectorXd> c_vec;
   vector<MatrixXd> A_vec;
@@ -1961,7 +1991,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // Clear the vectors/matrices before trajectory optimization
     A_vec.clear();
     B_vec.clear();
-    H_vec.clear();
+//    H_vec.clear();
     A_active_vec.clear();
     B_active_vec.clear();
     lb_vec.clear();
@@ -2021,14 +2051,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Evaluate samples
       int n_failed_sample = 0;
       while (!awaiting_sample_idx.empty() || !assigned_thread_idx.empty()) {
-        /*cout << "awaiting_sample_idx = ";
+        cout << "awaiting_sample_idx = ";
         for (auto mem : awaiting_sample_idx) {
           cout << mem << ", ";
         } cout << endl;
         cout << "assigned_sample_idx = ";
         for (auto mem : assigned_thread_idx) {
           cout << mem.second << ", ";
-        } cout << endl;*/
+        } cout << endl;
 
         //std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
         //std::system("top -bn2 | grep \"Cpu(s)\" | sed \"s/.*, *\\([0-9.]*\\)%* id.*/\1/\" | awk '{print 100 - $1\"%\"}'"); // print the CPU usage
@@ -2117,6 +2147,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               duration, n_node, max_inner_iter_pass_in,
               FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
               std::ref(dir), init_file_pass_in, prefix,
+              std::ref(H_vec),
               Q, R, all_cost_scale,
               eps_regularization,
               is_get_nominal,
@@ -2179,16 +2210,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
 
           // Get good initial guess from adjacent samples's solution
-          RecordSolutionQualityAndQueueList(
-              dir, prefix, sample_idx, assigned_thread_idx,
-              adjacent_sample_indices,
-              max_cost_increase_rate_before_ask_for_help,
-              max_adj_cost_diff_rate_before_ask_for_help,
-              is_limit_difference_of_two_adjacent_costs, sample_success,
-              current_sample_is_queued, n_rerun, N_rerun,
-              local_each_min_cost_so_far, is_good_solution,
-              sample_idx_waiting_to_help, sample_idx_that_helped,
-              awaiting_sample_idx);
+          if (n_rerun[sample_idx] >= N_rerun) {
+            RecordSolutionQualityAndQueueList(
+                dir, prefix, sample_idx, assigned_thread_idx,
+                adjacent_sample_indices,
+                max_cost_increase_rate_before_ask_for_help,
+                max_adj_cost_diff_rate_before_ask_for_help,
+                is_limit_difference_of_two_adjacent_costs, sample_success,
+                current_sample_is_queued, n_rerun, N_rerun,
+                local_each_min_cost_so_far, is_good_solution,
+                sample_idx_waiting_to_help, sample_idx_that_helped,
+                awaiting_sample_idx);
+          }
 
           // If the current sample is queued again because it could be helped by
           // adjacent samples, then don't conclude that it's a failure yet
@@ -2333,7 +2366,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // w_sol_vec, A_vec, H_vec, y_vec, lb_vec, ub_vec, b_vec, c_vec, B_vec;
       auto start_time_read_file = std::chrono::high_resolution_clock::now();
 
-      readApproxQpFiles(&w_sol_vec, &A_vec, &H_vec, &y_vec, &lb_vec, &ub_vec,
+      readApproxQpFiles(&w_sol_vec, &A_vec, /*&H_vec,*/ &y_vec, &lb_vec, &ub_vec,
                         &b_vec, &c_vec, &B_vec,
                         N_sample, iter, dir);
 

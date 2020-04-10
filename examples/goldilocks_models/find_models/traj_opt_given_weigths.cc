@@ -217,11 +217,15 @@ void extractResult(VectorXd& w_sol,
   // Check which solver we are using
   // cout << "Solver: " << result.get_solver_id().name() << endl;
 
-  if ((result.get_optimal_cost() > cost_threshold_for_update) &&
-      (n_rerun > N_rerun)) {
-    cout << "the cost of idx #" << sample_idx
-         << " is higher than before, skip\n";
-    return;
+  if (n_rerun > N_rerun) {
+    if (!result.is_success()) {
+      cout << "the rerun of idx #" << sample_idx
+           << " was not successful, skip\n";
+    } else if (result.get_optimal_cost() > cost_threshold_for_update) {
+      cout << "the cost of idx #" << sample_idx
+           << " is higher than before, skip\n";
+      return;
+    }
   }
 
   VectorXd is_success(1);
@@ -376,6 +380,7 @@ void postProcessing(const VectorXd& w_sol,
                     const string& directory,
                     const string& init_file,
                     const string& prefix,
+                    const vector<std::shared_ptr<MatrixXd>> & H_vec,
                     double Q_double, double R_double,
                     double eps_reg,
                     bool is_get_nominal,
@@ -555,13 +560,17 @@ void postProcessing(const VectorXd& w_sol,
 
     // Store the vectors and matrices
     // cout << "\nStoring vectors and matrices into csv.\n";
-    writeCSV(directory + prefix + string("H.csv"), H);
+//    writeCSV(directory + prefix + string("H.csv"), H);
     writeCSV(directory + prefix + string("b.csv"), b);
     writeCSV(directory + prefix + string("A.csv"), A);
     writeCSV(directory + prefix + string("lb.csv"), lb);
     writeCSV(directory + prefix + string("ub.csv"), ub);
     writeCSV(directory + prefix + string("y.csv"), y);
     writeCSV(directory + prefix + string("B.csv"), B);
+
+    H_vec[sample_idx]->resizeLike(H); *(H_vec[sample_idx]) = H;
+
+
 
     // Store s, ds, dds and tau into csv files
     // cout << "\nStoring s, ds and dds into csv.\n";
@@ -1069,6 +1078,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           double duration, int n_node, int max_iter,
                           const string& directory,
                           const string& init_file, const string& prefix,
+                          const vector<std::shared_ptr<MatrixXd>> & H_vec,
                           double Q_double, double R_double,
                           double all_cost_scale,
                           double eps_reg,
@@ -1160,7 +1170,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
 
     // after adding rom constraint
     // Dynamic constraints
-    options_list[i].setDynConstraintScaling({0, 1, 2, 3}, 1.0 / 40.0);
+    /*options_list[i].setDynConstraintScaling({0, 1, 2, 3}, 1.0 / 40.0);
     options_list[i].setDynConstraintScaling({4, 5}, 1.0 / 60.0);
     options_list[i].setDynConstraintScaling(6, 1.0 / 200.0); // end of pos
     options_list[i].setDynConstraintScaling(7, 1.0 / 180.0);
@@ -1179,7 +1189,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
     options_list[i].setImpConstraintScaling(3, 1.0 / 3.0);
     options_list[i].setImpConstraintScaling(4, 1.8 / 5.0);
     options_list[i].setImpConstraintScaling(5, 1.8 / 1.0);
-    options_list[i].setImpConstraintScaling(6, 1.8 / 3.0);
+    options_list[i].setImpConstraintScaling(6, 1.8 / 3.0);*/
   }
 
   // Stated in the MultipleShooting class:
@@ -1440,6 +1450,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                  stride_length, ground_incline,
                  duration, max_iter,
                  directory, init_file, prefix,
+                 H_vec,
                  Q_double, R_double, eps_reg,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
@@ -1462,6 +1473,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    double major_feasibility_tol,
                    const string& directory,
                    const string& init_file, const string& prefix,
+                   const vector<std::shared_ptr<MatrixXd>>& H_vec,
                    double Q_double, double R_double, double all_cost_scale,
                    double eps_reg,
                    bool is_get_nominal,
@@ -2193,6 +2205,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                  stride_length, ground_incline,
                  duration, max_iter,
                  directory, init_file, prefix,
+                 H_vec,
                  Q_double, R_double, eps_reg,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
@@ -2332,7 +2345,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          const string& directory,
                          string init_file, string prefix,
                          /*vector<VectorXd> * w_sol_vec,
-                         vector<MatrixXd> * A_vec, vector<MatrixXd> * H_vec,
+                         vector<MatrixXd> * A_vec, */const vector<std::shared_ptr<MatrixXd>>& H_vec,/*
                          vector<VectorXd> * y_vec,
                          vector<VectorXd> * lb_vec, vector<VectorXd> * ub_vec,
                          vector<VectorXd> * b_vec,
@@ -2355,6 +2368,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          stride_length, ground_incline,
                          duration, n_node, max_iter,
                          directory, init_file, prefix,
+                         H_vec,
                          Q_double, R_double, all_cost_scale, eps_reg,
                          is_get_nominal, is_zero_touchdown_impact,
                          extend_model, is_add_tau_in_cost,
@@ -2368,6 +2382,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                   duration, n_node, max_iter,
                   major_optimality_tol, major_feasibility_tol,
                   directory, init_file, prefix,
+                  H_vec,
                   Q_double, R_double, all_cost_scale, eps_reg,
                   is_get_nominal, is_zero_touchdown_impact,
                   extend_model, is_add_tau_in_cost,

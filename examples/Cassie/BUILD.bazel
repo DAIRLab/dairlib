@@ -316,6 +316,7 @@ cc_binary(
         "//systems/controllers/osc:operational_space_control_mbp",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
+        "//systems/sensors:gaussian_noise_pass_through",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

@@ -2,9 +2,9 @@
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/lcm/lcm_interface_system.h>
 #include <gflags/gflags.h>
+#include "dairlib/lcmt_cassie_mujoco_contact.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_cassie_mujoco_contact.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc_jump/com_traj_generator.h"
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
@@ -15,6 +15,7 @@
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/sensors/gaussian_noise_pass_through.h"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -71,10 +72,14 @@ DEFINE_string(traj_name, "", "File to load saved trajectories from");
 
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
 DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
-DEFINE_bool(contact_based_fsm, true, "The contact based fsm transitions "
-                                         "between states using contact data.");
-DEFINE_string(simulator, "DRAKE", "Simulator used, important for determining "
-                                  "how to interpret contact information");
+DEFINE_bool(contact_based_fsm, true,
+            "The contact based fsm transitions "
+            "between states using contact data.");
+DEFINE_string(simulator, "DRAKE",
+              "Simulator used, important for determining "
+              "how to interpret contact information");
+DEFINE_bool(add_noise, false, "Whether to add gaussian noise to state "
+                              "inputted to controller");
 // DEFINE_double(x_offset, 0.18, "Offset to add to the CoM trajectory");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
@@ -109,9 +114,9 @@ int DoMain(int argc, char* argv[]) {
   plant_with_springs.Finalize();
   plant_without_springs.Finalize();
 
-  int n_q = plant_without_springs.num_positions();
-  int n_v = plant_without_springs.num_velocities();
-  int n_x = n_q + n_v;
+  int nq = plant_without_springs.num_positions();
+  int nv = plant_without_springs.num_velocities();
+  int nx = nq + nv;
 
   // Create maps for joints
   map<string, int> pos_map =
@@ -137,8 +142,8 @@ int DoMain(int argc, char* argv[]) {
 
   PiecewisePolynomial<double> com_traj =
       PiecewisePolynomial<double>::CubicHermite(
-      lcm_com_traj.time_vector, lcm_com_traj.datapoints.topRows(3),
-      lcm_com_traj.datapoints.bottomRows(3));
+          lcm_com_traj.time_vector, lcm_com_traj.datapoints.topRows(3),
+          lcm_com_traj.datapoints.bottomRows(3));
   const PiecewisePolynomial<double>& l_foot_trajectory =
       PiecewisePolynomial<double>::CubicHermite(
           lcm_l_foot_traj.time_vector, lcm_l_foot_traj.datapoints.topRows(3),
@@ -178,10 +183,14 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Target balance height: " << lcm_com_traj.datapoints.col(0)(2)
             << std::endl;
 
+  MatrixXd pos_cov = MatrixXd::Zero(nq, nq);
+  pos_cov(4,4) = 100.0;
+  MatrixXd vel_cov = MatrixXd::Zero(nv, nv);
+
 
   /**** Initialize all the leaf systems ****/
   SIMULATOR type;
-  if(FLAGS_simulator == "DRAKE")
+  if (FLAGS_simulator == "DRAKE")
     type = DRAKE;
   else if (FLAGS_simulator == "MUJOCO")
     type = MUJOCO;
@@ -202,8 +211,8 @@ int DoMain(int argc, char* argv[]) {
       plant_with_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
       FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
-      plant_with_springs, transition_times,
-      FLAGS_contact_based_fsm, BALANCE, type);
+      plant_with_springs, transition_times, FLAGS_contact_based_fsm, BALANCE,
+      type);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -216,28 +225,28 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
+  auto gaussian_noise = builder.AddSystem<systems::GaussianNoisePassThrough>(
+      plant_with_springs.num_positions(), plant_with_springs.num_velocities(),
+      plant_with_springs.num_actuators(), pos_cov, vel_cov);
 
   LcmSubscriberSystem* contact_results_sub;
-  if(FLAGS_simulator == "DRAKE"){
+  if (FLAGS_simulator == "DRAKE") {
     contact_results_sub = builder.AddSystem(
         LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
             "CASSIE_CONTACT_DRAKE", &lcm));
-  }
-  else if (FLAGS_simulator == "MUJOCO"){
+  } else if (FLAGS_simulator == "MUJOCO") {
     contact_results_sub = builder.AddSystem(
         LcmSubscriberSystem::Make<dairlib::lcmt_cassie_mujoco_contact>(
             "CASSIE_CONTACT_MUJOCO", &lcm));
-  }
-  else if (FLAGS_simulator == "GAZEBO"){
+  } else if (FLAGS_simulator == "GAZEBO") {
     // TODO(yangwill): Set up contact results in Gazebo
-  }
-  else{
+  } else {
     std::cerr << "Unknown simulator type!" << std::endl;
   }
 
   /**** OSC setup ****/
   // Cost
-  MatrixXd Q_accel = 1e-6 * MatrixXd::Identity(n_v, n_v);
+  MatrixXd Q_accel = 1e-6 * MatrixXd::Identity(nv, nv);
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Soft constraint on contacts
   double w_contact_relax = 20000;
@@ -344,10 +353,18 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // State receiver connections (Connected through LCM driven loop)
+  builder.Connect(state_receiver->get_output_port(0),
+                  gaussian_noise->get_input_port());
+
+  drake::systems::LeafSystem<double>* controller_state_input = state_receiver;
+  if(FLAGS_add_noise){
+    std::cout << "Running with noise: " << std::endl;
+    controller_state_input = gaussian_noise;
+  }
 
   // OSC connections
   builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(controller_state_input->get_output_port(0),
                   osc->get_robot_output_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
@@ -362,17 +379,17 @@ int DoMain(int argc, char* argv[]) {
   // FSM connections
   builder.Connect(contact_results_sub->get_output_port(),
                   fsm->get_contact_input_port());
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(controller_state_input->get_output_port(0),
                   fsm->get_state_input_port());
 
   // Trajectory generator connections
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(controller_state_input->get_output_port(0),
                   com_traj_generator->get_state_input_port());
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(controller_state_input->get_output_port(0),
                   l_foot_traj_generator->get_state_input_port());
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(controller_state_input->get_output_port(0),
                   r_foot_traj_generator->get_state_input_port());
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(controller_state_input->get_output_port(0),
                   pelvis_rot_traj_generator->get_state_input_port());
   builder.Connect(fsm->get_output_port(0),
                   com_traj_generator->get_fsm_input_port());
@@ -383,7 +400,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Publisher connections
   builder.Connect(osc->get_osc_output_port(),
-      command_sender->get_input_port(0));
+                  command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
   builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());

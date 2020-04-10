@@ -7,15 +7,30 @@ cc_library(
     srcs = ["sim_cassie_sensor_aggregator.cc"],
     hdrs = ["sim_cassie_sensor_aggregator.h"],
     deps = [
+        "//attic/multibody:utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
-        "//attic/multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
     ],
 )
 
+cc_library(
+    name = "gaussian_noise_pass_through",
+    srcs = ["gaussian_noise_pass_through.cc"],
+    hdrs = [
+        "gaussian_noise_pass_through.h",
+    ],
+    deps = [
+        "//attic/multibody:utils",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
 
 cc_test(
     name = "sim_cassie_sensor_aggregator_test",
@@ -28,5 +43,3 @@ cc_test(
         "@gtest//:main",
     ],
 )
-
-

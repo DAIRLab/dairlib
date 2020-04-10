@@ -6,6 +6,7 @@ import lcm
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.io as sio
 import pydairlib.lcm_trajectory
 import process_lcm_log
 import pydairlib.multibody_utils
@@ -54,6 +55,9 @@ def main():
     nx = plant.num_positions() + plant.num_velocities()
     nu = plant.num_actuators()
 
+
+
+
     pos_map = pydairlib.multibody_utils.makeNameToPositionsMap(plant)
     vel_map = pydairlib.multibody_utils.makeNameToVelocitiesMap(plant)
     act_map = pydairlib.multibody_utils.makeNameToActuatorsMap(plant)
@@ -61,6 +65,7 @@ def main():
     state_names_w_spr = [[] for i in range(len(pos_map) + len(vel_map))]
     for name in pos_map:
         state_names_w_spr[pos_map[name]] = name
+        print(name)
     for name in vel_map:
         state_names_w_spr[nq + vel_map[name]] = name
     # import pdb; pdb.set_trace()
@@ -70,6 +75,8 @@ def main():
     world = plant.world_frame()
     no_offset = np.zeros(3)
     context = plant.CreateDefaultContext()
+
+
 
     loadedStateTraj = pydairlib.lcm_trajectory.LcmTrajectory()
     loadedTrackingDataTraj = pydairlib.lcm_trajectory.LcmTrajectory()
@@ -146,13 +153,23 @@ def main():
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
     t_state, v = process_lcm_log.process_log(log, pos_map, vel_map)
 
+    # init_x = np.hstack((q[0,:], v[0,:]))
+    # plant.SetPositionsAndVelocities(context, init_x)
+    # M = plant.CalcMassMatrixViaInverseDynamics(context)
+    # matlab_data = dict(M=M)
+    print(q[0, :])
+    # print(plant.)
+    # sio.savemat('/home/yangwill/Documents/research/projects/cassie/jumping'
+    #             '/logs/M_drake', matlab_data)
+    # print(plant.CalcMassMatrixViaInverseDynamics(context))
+
     start_time = 1.0
     end_time = 2.0
     t_start_idx = get_index_at_time(t_state, start_time)
     t_end_idx = get_index_at_time(t_state, end_time)
     t_state_slice = slice(t_start_idx, t_end_idx)
 
-    # plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
+    plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
     # plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
     #                    state_names_wo_spr, start_time)
 

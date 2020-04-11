@@ -1207,11 +1207,13 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     }
 
     // Test mode needed for hardware experiment
-    if (hardware_test_mode_ == 0){
+    // mode #0 assumes the feet are always on the ground
+    // mode #1 assumes the feet are always in the air
+    if (hardware_test_mode_ == 0) {
       left_contact = 1;
       right_contact = 1;
 
-      if((*counter_for_testing_)%5000 == 0){
+      if ((*counter_for_testing_) % 5000 == 0) {
         cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
       }
       *counter_for_testing_ = *counter_for_testing_ + 1;

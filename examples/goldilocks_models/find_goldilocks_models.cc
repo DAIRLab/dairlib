@@ -1973,8 +1973,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       auto end = std::chrono::system_clock::now();
       std::time_t end_time = std::chrono::system_clock::to_time_t(end);
       cout << "Current time: " << std::ctime(&end_time);
-      cout << "************ Iteration " << iter << " (shrink step size for "
-           << n_shrink_step << " times) *************" << endl;
+      cout << "************ Iteration " << iter << " ("
+           << n_shrink_step << "-time step size shrinking) *************" << endl;
       if (iter != 0) {
         cout << "theta_sDDot.head(6) = " << theta_sDDot.head(6).transpose() << endl;
       }

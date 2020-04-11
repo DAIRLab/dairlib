@@ -223,6 +223,7 @@ void extractResult(VectorXd& w_sol,
     if (!result.is_success()) {
       cout << "the rerun of idx #" << sample_idx
            << " was not successful, skip\n";
+      return;
     } else if (result.get_optimal_cost() > cost_threshold_for_update) {
       cout << "the cost of idx #" << sample_idx
            << " is higher than before, skip\n";

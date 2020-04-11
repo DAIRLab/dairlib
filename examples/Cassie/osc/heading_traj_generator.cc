@@ -94,10 +94,10 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   const auto pp = PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
 
   // Assign traj
-  PiecewisePolynomial<double>* casted_traj =
+  PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *casted_traj = pp;
+  *pp_traj = pp;
 }
 
 }  // namespace osc

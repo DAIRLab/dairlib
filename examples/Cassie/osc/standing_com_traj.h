@@ -30,6 +30,8 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
 
   int state_port_;
 
+  // The positions of the two contact points on Cassie's toe w.r.t. the origin
+  // of the toe.
   Eigen::Vector3d front_contact_disp_ = Eigen::Vector3d(-0.0457, 0.112, 0);
   Eigen::Vector3d rear_contact_disp_ = Eigen::Vector3d(0.088, 0, 0);
 

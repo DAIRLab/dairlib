@@ -32,11 +32,9 @@ StandingComTraj::StandingComTraj(const RigidBodyTree<double>& tree,
       right_foot_idx_(right_foot_idx),
       height_(height) {
   // Input/Output Setup
-  state_port_ = this
-                    ->DeclareVectorInputPort(OutputVector<double>(
+  state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
                         tree.get_num_positions(), tree.get_num_velocities(),
-                        tree.get_num_actuators()))
-                    .get_index();
+                        tree.get_num_actuators())).get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
   drake::trajectories::Trajectory<double>& traj_inst = pp;
@@ -79,10 +77,10 @@ void StandingComTraj::CalcDesiredTraj(
   // cout << "desired_com_pos = " << desired_com_pos.transpose() << endl;
 
   // Assign traj
-  PiecewisePolynomial<double>* casted_traj =
+  PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *casted_traj = PiecewisePolynomial<double>(desired_com_pos);
+  *pp_traj = PiecewisePolynomial<double>(desired_com_pos);
 }
 
 }  // namespace osc

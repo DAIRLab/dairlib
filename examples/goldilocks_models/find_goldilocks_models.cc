@@ -2051,14 +2051,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Evaluate samples
       int n_failed_sample = 0;
       while (!awaiting_sample_idx.empty() || !assigned_thread_idx.empty()) {
-        cout << "awaiting_sample_idx = ";
+        /*cout << "awaiting_sample_idx = ";
         for (auto mem : awaiting_sample_idx) {
           cout << mem << ", ";
         } cout << endl;
         cout << "assigned_sample_idx = ";
         for (auto mem : assigned_thread_idx) {
           cout << mem.second << ", ";
-        } cout << endl;
+        } cout << endl;*/
 
         //std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
         //std::system("top -bn2 | grep \"Cpu(s)\" | sed \"s/.*, *\\([0-9.]*\\)%* id.*/\1/\" | awk '{print 100 - $1\"%\"}'"); // print the CPU usage

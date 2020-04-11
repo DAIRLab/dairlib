@@ -33,14 +33,14 @@ namespace controllers {
 /// In this class, we let
 ///   - y_ (dy_) be the position (velocity) output of the robot
 ///   - y_des_ (dy_des_) be the desired value of the position (velocity) output
-///   - error_y_ (error_dy_) be the error between the real and the desired value
+///   - error_y_ (error_dy_) be the error between the desired and the real value
 ///     of the position (velocity) output
 /// Additionally, we let ddy_des_ be the desired acceleration for the output
 /// (the second time derivative of the desired trajectory). In the case of
 /// tracking a rotation output, the desired trajectory is represented in
 /// quaternion (4 dimensional). Therefore, we need to convert ddy_des_ (the
-/// second time derivatives) into ddy_des_converted_ which is the rotational
-/// acceleration.
+/// second time derivatives of quaternion) into ddy_des_converted_ which is the
+/// rotational acceleration.
 
 /// In OSC, the cost function used for tracking a trajectory is
 ///   (J_*dv + JdotV - ddy_command)^T * W_ * (J_*dv + JdotV - ddy_command) / 2,
@@ -91,8 +91,8 @@ class OscTrackingData {
               int finite_state_machine_state);
 
   // Getters for debugging
-  // (please the documentation of this class for information about the meaning
-  // of each member)
+  // (please see the documentation of this class for information about the
+  // meaning of each member)
   Eigen::VectorXd GetY() { return y_; }
   Eigen::VectorXd GetYDes() { return y_des_; }
   Eigen::VectorXd GetErrorY() { return error_y_; }
@@ -104,8 +104,8 @@ class OscTrackingData {
   Eigen::VectorXd GetDdyCommandSol() { return ddy_command_sol_; }
 
   // Getters used by osc block
-  // (please the documentation of this class for information about the meaning
-  // of each member)
+  // (please see the documentation of this class for information about the
+  // meaning of each member)
   Eigen::VectorXd GetOutput() { return y_; }
   Eigen::MatrixXd GetJ() { return J_; }
   Eigen::VectorXd GetJdotTimesV() { return JdotV_; }

@@ -2363,7 +2363,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }  // end if rerun_current_iteration
     else {
       // The code only reach here when the current iteration is successful.
-      n_shrink_step = 0;
 
       // Read in the following files of the successful samples:
       // w_sol_vec, A_vec, H_vec, y_vec, lb_vec, ub_vec, b_vec, c_vec, B_vec;
@@ -2610,6 +2609,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Assign theta_s and theta_sDDot
       theta_s = theta.head(n_theta_s);
       theta_sDDot = theta.tail(n_theta_sDDot);
+
+      // For message printed to the terminal
+      n_shrink_step = 0;
 
       cout << '\a';  // making noise to notify the user the end of an iteration
     }  // end if(!is_get_nominal)

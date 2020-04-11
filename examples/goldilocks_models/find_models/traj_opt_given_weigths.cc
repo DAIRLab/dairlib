@@ -217,6 +217,8 @@ void extractResult(VectorXd& w_sol,
   // Check which solver we are using
   // cout << "Solver: " << result.get_solver_id().name() << endl;
 
+  cout << "(sample_idx, n_rerun, N_rerun, is_success) = (" << sample_idx << ", "
+       << n_rerun << ", " << N_rerun << ", " << result.is_success() << ")\n";
   if (n_rerun > N_rerun) {
     if (!result.is_success()) {
       cout << "the rerun of idx #" << sample_idx
@@ -227,6 +229,7 @@ void extractResult(VectorXd& w_sol,
       return;
     }
   }
+  cout << "storing result...\n";
 
   VectorXd is_success(1);
   if (result.is_success()) is_success << 1;

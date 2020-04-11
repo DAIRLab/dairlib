@@ -1239,9 +1239,9 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
                            0);  // 0 // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major optimality tolerance", 1e-5);  // target nonlinear constraint violation
+                           "Major optimality tolerance", 1e-4);  // target nonlinear constraint violation
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major feasibility tolerance", 1e-5);  // target complementarity gap
+                           "Major feasibility tolerance", 1e-4);  // target complementarity gap
 
   // Periodicity constraints
   auto x0 = trajopt->initial_state();

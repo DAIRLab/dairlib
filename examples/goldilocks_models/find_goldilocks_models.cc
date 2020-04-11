@@ -1953,6 +1953,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nStart iterating...\n";
   // Start the gradient descent
   int iter;
+  int n_shrink_step = 0;
   for (iter = iter_start; iter <= max_outer_iter; iter++)  {
     bool is_get_nominal = iter == 0;
 
@@ -1963,12 +1964,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
                             string("_theta_sDDot.csv")).col(0);
     }
 
+    if (start_iterations_with_shrinking_stepsize) {
+      n_shrink_step++;
+    }
+
     // Print info about iteration # and current time
     if (!start_iterations_with_shrinking_stepsize) {
       auto end = std::chrono::system_clock::now();
       std::time_t end_time = std::chrono::system_clock::to_time_t(end);
       cout << "Current time: " << std::ctime(&end_time);
-      cout << "************ Iteration " << iter << " *************" << endl;
+      cout << "************ Iteration " << iter << " (shrink step size for "
+           << n_shrink_step << " times) *************" << endl;
       if (iter != 0) {
         cout << "theta_sDDot.head(6) = " << theta_sDDot.head(6).transpose() << endl;
       }
@@ -2357,6 +2363,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }  // end if rerun_current_iteration
     else {
       // The code only reach here when the current iteration is successful.
+      n_shrink_step = 0;
 
       // Read in the following files of the successful samples:
       // w_sol_vec, A_vec, H_vec, y_vec, lb_vec, ub_vec, b_vec, c_vec, B_vec;

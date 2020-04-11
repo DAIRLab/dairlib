@@ -9,19 +9,20 @@
 namespace dairlib {
 namespace systems {
 
-/// This class is copied from drake/systems/primitives/PassThrough
+/// This class is copied from systems/primitives/output_subvector_pass_through
 /// with the modification that it only passes through a subset of the vector
-/// Unliked SubvectorPassThrough, this is designed for use with
-/// TimeStampedVectors. It will pass through the subvector AND the timestamp.
+/// This is designed for use with OutputVector. It will pass through
+///  1. the subvector of position/velocity/input of an OutputVector,
+///  2. the IMUAcceleration
+///  3. the timestamp.
+/// The subvectors are specified by three pairs of (index_start, length),
+/// corresponding to position, velocity and input.
 template <typename T>
 class OutputSubvectorPassThrough final : public drake::systems::LeafSystem<T> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(OutputSubvectorPassThrough)
 
-  /// Constructs a pass through system (`y = u.segment(start,length)`).
-  /// @param vector_size the length of the input vector
-  /// @param start the initial index of the subvector
-  /// @param length number of elements in the subvector
+  /// Constructs a pass through system
   explicit OutputSubvectorPassThrough(int num_positions, int num_velocities,
                                       int num_inputs, int pos_start,
                                       int pos_length, int vel_start,

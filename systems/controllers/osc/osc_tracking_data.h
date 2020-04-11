@@ -25,13 +25,16 @@ namespace controllers {
 ///   is of ExponentialPlusPiecewisePolynomial class)
 
 /// Cost:
-///   0.5 * (J_*dv + JdotV - y_command)^T * W_ * (J_*dv + JdotV - y_command),
-///   where dv is the decision variable of QP, and
-///   y_commend = ddy_des_ + K_p_ * (error_y_) + K_d_ * (dy_des_ - J_ * v)
-/// We ignore the cosntant term in cost function, since it doesn't affect
+///  0.5 * (J_*dv + JdotV - ddy_command)^T * W_ * (J_*dv + JdotV - ddy_command),
+///   where
+///   dv is the decision variable of QP, and
+///   ddy_command = ddy_des_ + K_p_ * error_y_ + K_d_ * error_dy_ with
+///    error_y_ = y_des_ - y (most of the time), and
+///    error_dy_ = dy_des_ - J_ * v
+/// We ignore the constant term in cost function, since it doesn't affect
 /// solution.
 
-/// Most of the time, error_y_ = y_des_ - y_. The exception happends when we are
+/// Most of the time, error_y_ = y_des_ - y_. The exception happens when we are
 /// tracking rotation trajectory.
 
 /// error_y_, JdotV and J_ are implemented in the derived class.

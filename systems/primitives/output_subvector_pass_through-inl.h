@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file
-/// Template method implementations for pass_through.h.
+/// Template method implementations for output_subvector_pass_through.h.
 /// Most users should only include that file, not this one.
 /// For background, see http://drake.mit.edu/cxx_inl.html.
 
@@ -56,6 +56,7 @@ void OutputSubvectorPassThrough<T>::DoCalcVectorOutput(
   output->SetPositions(input.get_data().segment(pos_start_, pos_length_));
   output->SetVelocities(input.get_data().segment(vel_start_, vel_length_));
   output->SetEfforts(input.get_data().segment(input_start_, input_length_));
+  output->SetIMUAccelerations(input.GetIMUAccelerations());
   output->set_timestamp(input.get_timestamp());
 }
 

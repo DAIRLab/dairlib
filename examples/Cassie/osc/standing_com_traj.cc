@@ -74,7 +74,6 @@ void StandingComTraj::CalcDesiredTraj(
 
   Vector3d desired_com_pos(feet_center(0), feet_center(1),
                            feet_center(2) + height_);
-  // cout << "desired_com_pos = " << desired_com_pos.transpose() << endl;
 
   // Assign traj
   PiecewisePolynomial<double>* pp_traj =

@@ -38,7 +38,7 @@ class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
   /// @param print_info_to_terminal a flag for printing message of EKF to the
   /// terminal
   /// @param hardware_test_mode the mode of ekf
-  ///    -1: Regular EKF (not testing mode).
+  ///    -1: regular EKF (not a testing mode).
   ///    0: assume both feet are always in contact with ground.
   ///    1: assume both feet are always in the air.
   explicit CassieRbtStateEstimator(const RigidBodyTree<double>& tree,

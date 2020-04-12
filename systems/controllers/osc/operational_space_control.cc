@@ -629,23 +629,23 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     osc_output.y_dim = tracking_data->GetTrajDim();
     osc_output.name = tracking_data->GetName();
     osc_output.is_active = tracking_data->GetTrackOrNot();
-    osc_output.y = ConvertVectorXdToStdVector(
+    osc_output.y = CopyVectorXdToStdVector(
         tracking_data->GetY());
-    osc_output.y_des = ConvertVectorXdToStdVector(
+    osc_output.y_des = CopyVectorXdToStdVector(
         tracking_data->GetYDes());
-    osc_output.error_y = ConvertVectorXdToStdVector(
+    osc_output.error_y = CopyVectorXdToStdVector(
         tracking_data->GetErrorY());
-    osc_output.ydot = ConvertVectorXdToStdVector(
+    osc_output.ydot = CopyVectorXdToStdVector(
         tracking_data->GetYdot());
-    osc_output.ydot_des = ConvertVectorXdToStdVector(
+    osc_output.ydot_des = CopyVectorXdToStdVector(
         tracking_data->GetYdotDes());
-    osc_output.error_ydot = ConvertVectorXdToStdVector(
+    osc_output.error_ydot = CopyVectorXdToStdVector(
         tracking_data->GetErrorYdot());
-    osc_output.yddot_des = ConvertVectorXdToStdVector(
+    osc_output.yddot_des = CopyVectorXdToStdVector(
         tracking_data->GetYddotDesConverted());
-    osc_output.yddot_command = ConvertVectorXdToStdVector(
+    osc_output.yddot_command = CopyVectorXdToStdVector(
         tracking_data->GetYddotCommand());
-    osc_output.yddot_command_sol = ConvertVectorXdToStdVector(
+    osc_output.yddot_command_sol = CopyVectorXdToStdVector(
         tracking_data->GetYddotCommandSol());
     output->tracking_data.push_back(osc_output);
   }

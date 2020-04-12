@@ -79,7 +79,7 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
   double desired_final_vertical_foot_velocity_;
   bool add_extra_control_;
 
-  drake::systems::DiscreteStateIndex foot_position_idx_;
+  drake::systems::DiscreteStateIndex next_stance_foot_pos_idx_;
   drake::systems::DiscreteStateIndex last_calculation_time_idx_;
   drake::systems::DiscreteStateIndex duration_of_stance_idx_;
 

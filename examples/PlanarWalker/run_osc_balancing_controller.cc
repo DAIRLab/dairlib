@@ -102,7 +102,7 @@ int DoMain(int argc, char* argv[]) {
                                            "examples/PlanarWalker/csv/V_p.csv");
 
   double mid_foot_height = 0.05;
-  double desired_final_foot_height = 0.005; // 0.05
+  double desired_final_foot_height = 0.001; // 0.05
   double desired_final_vertical_foot_velocity = 0;
   auto safe_traj_generator = builder.AddSystem<SafeTrajGenerator>(
       tree, lipm_model, polynomial_loader, left_foot_idx, pt_on_left_foot,
@@ -117,7 +117,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      tree, tree, true, true);
+      tree, tree, true, false);
   // Cost
   // int n_v = tree.get_num_velocities();
   // MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
@@ -151,15 +151,11 @@ int DoMain(int argc, char* argv[]) {
                                rear_contact_disp);
 
   // Swing foot rear tracking
-  MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
-  MatrixXd K_p_sw_ft = 500.0 * MatrixXd::Identity(3, 3);
-  // K_p_sw_ft(0, 0) = 500.0;
-  // K_p_sw_ft(2, 2) = 150;
-  MatrixXd K_d_sw_ft = 50.0 * MatrixXd::Identity(3, 3);
-  // K_d_sw_ft(0, 0) = 50;
-  // K_d_sw_ft(2, 2) = 0.05;
+  MatrixXd W_swing_foot_rear = 200 * MatrixXd::Identity(3, 3);
+  MatrixXd K_p_sw_ft_rear = 500.0 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_sw_ft_rear = 50.0 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData swing_foot_traj(
-      "swing_traj", 3, K_p_sw_ft, K_d_sw_ft, W_swing_foot, &tree, &tree);
+      "swing_foot_rear_traj", 3, K_p_sw_ft_rear, K_d_sw_ft_rear, W_swing_foot_rear, &tree, &tree);
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "right_foot",
                                           rear_contact_disp);
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "left_foot",
@@ -167,13 +163,11 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(&swing_foot_traj);
 
   // Swing foot front tracking
-  MatrixXd W_swing_foot_toe = 200 * MatrixXd::Identity(3, 3);
-  MatrixXd K_p_sw_ft_toe = 500.0 * MatrixXd::Identity(3, 3);
-  // K_p_sw_ft(0, 0) = 500.0;
-  MatrixXd K_d_sw_ft_toe = 50.0 * MatrixXd::Identity(3, 3);
-  // K_d_sw_ft(0, 0) = 50;
+  MatrixXd W_swing_foot_front = 200 * MatrixXd::Identity(3, 3);
+  MatrixXd K_p_sw_ft_toe_front = 500.0 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_sw_ft_toe_front = 50.0 * MatrixXd::Identity(3, 3);
   TransTaskSpaceTrackingData swing_foot_toe_traj(
-      "swing_toe_traj", 3, K_p_sw_ft_toe, K_d_sw_ft_toe, W_swing_foot_toe,
+      "swing_foot_front_traj", 3, K_p_sw_ft_toe_front, K_d_sw_ft_toe_front, W_swing_foot_front,
       &tree, &tree);
   swing_foot_toe_traj.AddStateAndPointToTrack(left_stance_state, "right_foot",
                                               front_contact_disp);
@@ -208,15 +202,13 @@ int DoMain(int argc, char* argv[]) {
   // osc->AddConstTrackingData(&swing_toe_traj, -0.58234* VectorXd::Ones(1));
 
   // Torso tracking
-  // MatrixXd W_torso = 2 * MatrixXd::Identity(1, 1);
-  // MatrixXd K_p_torso = 100 * MatrixXd::Identity(1, 1);
-  // MatrixXd K_d_torso = 10 * MatrixXd::Identity(1, 1);
-  // JointSpaceTrackingData torso_traj("torso_traj", K_p_torso, K_d_torso, W_torso,
-  //                                   &tree, &tree);
-  // torso_traj.AddJointToTrack("left_hip_pin", "left_hip_pindot");
-  // osc->AddConstTrackingData(&torso_traj, 0.58234* VectorXd::Ones(1));
-  // torso_traj.AddJointToTrack("right_hip_pin", "right_hip_pindot");
-  // osc->AddConstTrackingData(&torso_traj, 0.58234* VectorXd::Ones(1));
+  MatrixXd W_torso = 100 * MatrixXd::Identity(1, 1);
+  MatrixXd K_p_torso = 100 * MatrixXd::Identity(1, 1);
+  MatrixXd K_d_torso = 10 * MatrixXd::Identity(1, 1);
+  JointSpaceTrackingData torso_traj("torso_traj", K_p_torso, K_d_torso, W_torso,
+                                    &tree, &tree);
+  torso_traj.AddJointToTrack("planar_roty", "planar_rotydot");
+  osc->AddConstTrackingData(&torso_traj, 0.5* VectorXd::Ones(1));
 
   // Build OSC problem
   osc->Build();
@@ -231,9 +223,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(safe_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
   builder.Connect(safe_traj_generator->get_output_port(1),
-                  osc->get_tracking_data_input_port("swing_traj"));
+                  osc->get_tracking_data_input_port("swing_foot_rear_traj"));
   builder.Connect(safe_traj_generator->get_output_port(1),
-                  osc->get_tracking_data_input_port("swing_toe_traj"));
+                  osc->get_tracking_data_input_port("swing_foot_front_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
 
   builder.Connect(safe_traj_generator->get_output_port(1),

@@ -161,7 +161,7 @@ SafeTrajGenerator::SafeTrajGenerator(
   // The swing foot position in the beginning of the swing phase
   prev_td_swing_foot_idx_ = this->DeclareDiscreteState(3);
 
-  foot_position_idx_ = this->DeclareDiscreteState(VectorXd::Zero(3));
+  next_stance_foot_pos_idx_ = this->DeclareDiscreteState(VectorXd::Zero(3));
   last_calculation_time_idx_ =
       this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
 
@@ -215,19 +215,17 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
   std::cout << fsm_state(0) << std::endl;
   std::cout << prev_fsm_state(0) << std::endl;
 
+  /* Generate Swing Foot End Leg Position */
+  /* Save it in a variable and keep track of when the variable was changed */
+  /* Redo this computation if sufficient time has passed */
+  auto last_calc_time =
+    discrete_state->get_vector(last_calculation_time_idx_).get_value();
+
   // TODO(nanda): Modify this if condition to incorporate time
   if (fsm_state(0) != prev_fsm_state(0)) {
     prev_fsm_state(0) = fsm_state(0);
     prev_td_time(0) = current_time;
-    auto swing_foot_pos_td =
-        discrete_state->get_mutable_vector(prev_td_swing_foot_idx_)
-            .get_mutable_value();
 
-    /* Generate Swing Foot End Leg Position */
-    /* Save it in a variable and keep track of when the variable was changed */
-    /* Redo this computation if sufficient time has passed */
-    auto last_calc_time =
-        discrete_state->get_vector(last_calculation_time_idx_).get_value();
     // std::cout << "last_calc_time: " << last_calc_time << std::endl;
     // std::cout << "current_time: " << current_time << std::endl;
     if (current_time - last_calc_time(0) > 0.02) {
@@ -263,7 +261,12 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
           tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
       Vector3d swing_foot_pos =
           tree_.transformPoints(cache, pt_on_swing_foot, swing_foot_idx, 0);
-      swing_foot_pos(0) -= stance_foot_pos(0);
+      // swing_foot_pos(0) -= stance_foot_pos(0);
+
+      auto swing_foot_pos_td =
+          discrete_state->get_mutable_vector(prev_td_swing_foot_idx_)
+              .get_mutable_value();
+      swing_foot_pos_td(0) = swing_foot_pos(0);
 
       Vector3d CoM_wrt_foot = CoM - stance_foot_pos;
       const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
@@ -282,13 +285,13 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
       std::cout << "step_duration: " << step_duration << std::endl;
       std::cout << "stance_location: " << stance_location << std::endl;
 
-      Vector3d stance_pos;
-      stance_pos << stance_foot_pos(0) + stance_location, 0, 0;
+      Vector3d next_stance_pos;
+      next_stance_pos << stance_foot_pos(0) + stance_location, 0, 0;
       discrete_state->get_mutable_vector(duration_of_stance_idx_)
               .get_mutable_value()
           << step_duration;
-      discrete_state->get_mutable_vector(foot_position_idx_).get_mutable_value()
-          << stance_pos;
+      discrete_state->get_mutable_vector(next_stance_foot_pos_idx_).get_mutable_value()
+          << next_stance_pos;
       discrete_state->get_mutable_vector(last_calculation_time_idx_)
               .get_mutable_value()
           << current_time;
@@ -484,7 +487,7 @@ void SafeTrajGenerator::find_next_stance_location(
   next_stance_loc = next_state(2);
   if (num_steps > 200 &&
       stepping_result == SteppingResults::continue_balancing) {
-    t = 0.3;
+    t = 0.2;
     cout << "Continue balancing!" << endl;
     // Think of what the state should be in this condition
   } else if (stepping_result == SteppingResults::dont_step) {
@@ -714,7 +717,7 @@ void SafeTrajGenerator::CalcSwingTraj(const Context<double>& context,
 
   /* Read the position of next stance leg */
   Vector3d next_stance_pos =
-      context.get_discrete_state(foot_position_idx_).get_value();
+      context.get_discrete_state(next_stance_foot_pos_idx_).get_value();
 
   // Swing foot position at touchdown
   Vector3d init_swing_foot_pos = swing_foot_pos_td;
@@ -757,7 +760,8 @@ void SafeTrajGenerator::CalcSwingTraj(const Context<double>& context,
   logger_swing_foot_ << desired_swing_pos[2] << ", ";
   logger_swing_foot_ << swing_foot_pos[0] << ", ";
   logger_swing_foot_ << swing_foot_pos[1] << ", ";
-  logger_swing_foot_ << swing_foot_pos[2] << std::endl;
+  logger_swing_foot_ << swing_foot_pos[2] << ", ";
+  logger_swing_foot_ << fsm_state(0) << std::endl;
   // plt::clf();
   // time_hist_->push_back(current_time);
   // swing_pos_x_hist_->push_back(swing_foot_pos[0] - stance_foot_pos[0]);

@@ -24,7 +24,7 @@ group "1.simulated_robot" {
                 --publish_state=true --publish_rate=200 --init_height=0.85 \
                 --left_hip_pin=-0.58234 --left_knee_pin=1.16473 --left_ankle=-0.58234 \
                 --right_hip_pin=-0.58234 --right_knee_pin=1.16473 --right_ankle=-0.58234 \
-                --end_time=10.0 --target_realtime_rate=0.01";
+                --end_time=10.0 --target_realtime_rate=0.1";
         host = "localhost";
     }
     cmd "3.osc-balancing-controller" {

@@ -11,7 +11,8 @@ group "2.lcm-tools" {
 
 group "1.simulated_robot" {
     cmd "0.simulator (dispatched)" {
-        exec = "bazel-bin/examples/PlanarWalker/run_simple_sim --publish_state=false";
+        exec = "bazel-bin/examples/PlanarWalker/run_simple_sim \
+                --publish_state=false --contact_radius=2e-4";
         host = "localhost";
     }
     cmd "1.simulator (no dispatcher)" {

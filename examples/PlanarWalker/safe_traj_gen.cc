@@ -149,6 +149,8 @@ SafeTrajGenerator::SafeTrajGenerator(
   Trajectory<double>& swing_traj_inst = pp_swing_traj;
   this->DeclareAbstractOutputPort("swing_foot_traj", swing_traj_inst,
                                   &SafeTrajGenerator::CalcSwingTraj);
+  // this->DeclareAbstractOutputPort("swing_foot_toe_traj", swing_traj_inst,
+  //                                 &SafeTrajGenerator::CalcSwingTraj);
 
   DeclarePerStepDiscreteUpdateEvent(&SafeTrajGenerator::DiscreteVariableUpdate);
 
@@ -163,7 +165,7 @@ SafeTrajGenerator::SafeTrajGenerator(
 
   foot_position_idx_ = this->DeclareDiscreteState(VectorXd::Zero(3));
   last_calculation_time_idx_ =
-      this->DeclareDiscreteState(-1 * VectorXd::Zero(1));
+      this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
 
   // Check if the model is floating based
   is_quaternion_ = multibody::IsFloatingBase(tree);
@@ -183,13 +185,15 @@ SafeTrajGenerator::SafeTrajGenerator(
   stance_toe_angle_hist_ = std::make_unique<std::vector<double>>();
   swing_toe_angle_hist_ = std::make_unique<std::vector<double>>();
 
+  // Logger
+  logger_.open("log.csv");
+
   // Test private methods here
 }
 
 EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
@@ -227,7 +231,8 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
     auto last_calc_time =
         discrete_state->get_vector(last_calculation_time_idx_).get_value();
     // std::cout << "last_calc_time: " << last_calc_time << std::endl;
-    if (current_time - last_calc_time(0) > 0.05) {
+    // std::cout << "current_time: " << current_time << std::endl;
+    if (current_time - last_calc_time(0) > 0.02) {
       KinematicsCache<double> cache = tree_.CreateKinematicsCache();
       VectorXd q = robot_output->GetPositions();
 
@@ -235,7 +240,6 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
       if (is_quaternion_) {
         multibody::SetZeroQuaternionToIdentity(&q);
       }
-      cout << "q and v found" << endl;
 
       cache.initialize(q);
       tree_.doKinematics(cache);
@@ -257,8 +261,6 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
       MatrixXd J = tree_.centerOfMassJacobian(cache);
       Vector3d dCoM = J * v;
 
-      cout << "Cache computed" << endl;
-
       Vector3d stance_foot_pos =
           tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
       Vector3d swing_foot_pos =
@@ -270,7 +272,6 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
       const double CoM_wrt_foot_y = CoM(1) - stance_foot_pos(1);
       const double CoM_wrt_foot_z = CoM(2) - stance_foot_pos(2);
       DRAKE_DEMAND(CoM_wrt_foot_z > 0);
-      cout << "Passed the drake demand" << endl;
 
       double stance_location;
       double step_duration = 0;
@@ -282,13 +283,14 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
 
       std::cout << "step_duration: " << step_duration << std::endl;
       std::cout << "stance_location: " << stance_location << std::endl;
+
       Vector3d stance_pos;
-      swing_foot_pos << stance_foot_pos(0) + stance_location, 0, 0;
+      stance_pos << stance_foot_pos(0) + stance_location, 0, 0;
       discrete_state->get_mutable_vector(duration_of_stance_idx_)
               .get_mutable_value()
           << step_duration;
       discrete_state->get_mutable_vector(foot_position_idx_).get_mutable_value()
-          << stance_foot_pos;
+          << stance_pos;
       discrete_state->get_mutable_vector(last_calculation_time_idx_)
               .get_mutable_value()
           << current_time;
@@ -335,7 +337,7 @@ Vector3d SafeTrajGenerator::solveQP(const Vector3d& reduced_order_state) const {
   VectorXd f = Vector3d::Zero();
   MatrixXd g = MatrixXd::Zero(3, 2);
   lipm_model_.controlAffineDynamics(0, reduced_order_state, f, g);
-  MatrixXd A_eq(1, 3);
+  MatrixXd A_eq = MatrixXd::Zero(1, 3);
   A_eq(0, 0) = g(1, 0);
   A_eq(0, 1) = g(1, 1);
   A_eq(0, 2) = -1;
@@ -382,10 +384,10 @@ Vector3d SafeTrajGenerator::solveQP(const Vector3d& reduced_order_state) const {
   barrier_constraint_->UpdateCoefficients(
       A_ineq, lb_ineq, ub_ineq);
 
-  auto constraints = quadprog_->GetAllConstraints();
+  // auto constraints = quadprog_->GetAllConstraints();
   // cout << "Number of Constraint: " << endl;
   // cout << constraints.size() << endl;
-  auto costs = quadprog_->GetAllCosts();
+  // auto costs = quadprog_->GetAllCosts();
   // cout << "Number of Costs: " << endl;
   // cout << costs.size() << endl;
   drake::solvers::MathematicalProgramResult result =
@@ -421,6 +423,11 @@ SteppingResults SafeTrajGenerator::should_step(double current_time, double prev_
   // std::cout << "V1_val: " << V1_val << std::endl;
   // std::cout << "W0_val: " << W0_val << std::endl;
   // std::cout << "*******************" << std::endl;
+
+  if (current_time < prev_td_time + 0.05) {
+    return SteppingResults::continue_balancing;
+  }
+
   if (W0_val <= 1 && V0_val > 1) {
     cout << "reduced_order_state: " << endl;
     cout << reduced_order_state << endl;
@@ -440,7 +447,6 @@ SteppingResults SafeTrajGenerator::should_step(double current_time, double prev_
 void SafeTrajGenerator::find_next_stance_location(
     const Eigen::Vector3d& reduced_order_state, double& next_stance_loc,
     double& t) const {
-  cout << "Inside find_next_stance_location" << endl;
   double dt = 0.01;
   double total_time = 0;
   Vector3d state_dot;
@@ -449,14 +455,14 @@ void SafeTrajGenerator::find_next_stance_location(
       reduced_order_state(2);
   cout << "Current state: " << next_state.transpose() << endl;
 
-  if (should_step(total_time, 0, next_state) ==
-      SteppingResults::continue_balancing) {
-    cout << "Continue Balancing!" << endl;
-    t = 0.5;
-    next_state = Vector3d::Zero();
-    cout << "At the end of find_next_stance_location" << endl;
-    return;
-  }
+  // if (should_step(total_time, 0, next_state) ==
+  //     SteppingResults::continue_balancing) {
+  //   cout << "Continue Balancing!" << endl;
+  //   t = 0.3;
+  //   next_state = Vector3d::Zero();
+  //   cout << "At the end of find_next_stance_location" << endl;
+  //   return;
+  // }
 
   int num_steps = 0;
   SteppingResults stepping_result;
@@ -480,7 +486,7 @@ void SafeTrajGenerator::find_next_stance_location(
   next_stance_loc = next_state(2);
   if (num_steps > 200 &&
       stepping_result == SteppingResults::continue_balancing) {
-    t = 0.5;
+    t = 0.3;
     cout << "Continue balancing!" << endl;
     // Think of what the state should be in this condition
   } else if (stepping_result == SteppingResults::dont_step) {
@@ -488,9 +494,9 @@ void SafeTrajGenerator::find_next_stance_location(
     cout << "Can't balance!" << endl;
   } else {
     t = total_time;
+    std::cout << "Total time: " << total_time << std::endl;
     cout << "Can balance!" << endl;
   }
-  cout << "At the end of find_next_stance_location" << endl;
   return;
 }
 
@@ -547,9 +553,8 @@ void SafeTrajGenerator::CalcTraj(const Context<double>& context,
   const double CoM_wrt_foot_z = CoM_wrt_foot(2);
   DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
-
   const std::vector<double> breaks = {
-      current_time, prev_td_time(0) + stance_duration + 0.002};  // Think about this line
+      current_time, prev_td_time(0) + stance_duration + 0.002};
 
   Vector3d reduced_order_state;
   reduced_order_state << CoM_wrt_foot(0), dCoM(0), swing_foot_pos(0);
@@ -571,7 +576,7 @@ void SafeTrajGenerator::CalcTraj(const Context<double>& context,
   MatrixXd Y_dot_start = MatrixXd::Zero(1, 1);
   Y_dot_start(1, 0) = 0.0;
   MatrixXd Y_dot_end = MatrixXd::Zero(1, 1);
-  Y_dot_end(1, 0) = 0.0; // Remove this maybe?
+  Y_dot_end(1, 0) = 0.0;
 
   PiecewisePolynomial<double> pp_part =
       PiecewisePolynomial<double>::Cubic(breaks, Y, Y_dot_start, Y_dot_end);
@@ -585,6 +590,13 @@ void SafeTrajGenerator::CalcTraj(const Context<double>& context,
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   *casted_traj = PiecewisePolynomial<double>(polynomials, breaks);
+
+  logger_ << current_time << ", ";
+  logger_ << reduced_order_state(0) << ", ";
+  logger_ << reduced_order_state(1) << ", ";
+  logger_ << reduced_order_state(2) << ", ";
+  logger_ << fsm_state(0) << ", ";
+  logger_ << std::endl;
 
   // plt::figure(0);
   // plt::clf();
@@ -600,8 +612,8 @@ void SafeTrajGenerator::CalcTraj(const Context<double>& context,
   // plt::named_plot("Center of Mass x", *time_hist_, *CoM_hist_x_);
   // plt::named_plot("Desired Center of Mass x", *time_hist_, *desired_CoM_hist_x_);
   // plt::quiver(std::vector<double>{(*time_hist_)[time_hist_->size() - 1]},
-  //             std::vector<double>{CoM_wrt_foot_x}, std::vector<double>{0},
-  //             std::vector<double>{com_ddpos(0)});
+  //             std::vector<double>{CoM(0)}, std::vector<double>{0},
+  //             std::vector<double>{state_dot(1)});
   // plt::legend();
   // plt::pause(0.01);
 
@@ -621,13 +633,13 @@ PiecewisePolynomial<double> SafeTrajGenerator::createSplineForSwingFoot(
     const double start_time_of_this_interval,
     const double end_time_of_this_interval, const Vector3d& init_swing_foot_pos,
     const Vector3d& CP) const {
-
   // Two segment of cubic polynomial with velocity constraints
   std::vector<double> T_waypoint = {
       start_time_of_this_interval,
       (start_time_of_this_interval + end_time_of_this_interval) / 2,
       end_time_of_this_interval};
 
+  std::cout << "Step location: " << CP(0) << std::endl;
   std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
   // x
   Y[0](0, 0) = init_swing_foot_pos(0);
@@ -665,7 +677,6 @@ PiecewisePolynomial<double> SafeTrajGenerator::createSplineForSwingFoot(
 
 void SafeTrajGenerator::CalcSwingTraj(const Context<double>& context,
                                       Trajectory<double>* traj) const {
-
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 

@@ -101,8 +101,8 @@ int DoMain(int argc, char* argv[]) {
   LoadLyapunovPolynomial polynomial_loader("examples/PlanarWalker/csv/V_M.csv",
                                            "examples/PlanarWalker/csv/V_p.csv");
 
-  double mid_foot_height = 0.1 + 0.05;
-  double desired_final_foot_height = 0.02; // 0.05
+  double mid_foot_height = 0.05;
+  double desired_final_foot_height = 0.005; // 0.05
   double desired_final_vertical_foot_velocity = 0;
   auto safe_traj_generator = builder.AddSystem<SafeTrajGenerator>(
       tree, lipm_model, polynomial_loader, left_foot_idx, pt_on_left_foot,
@@ -125,7 +125,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      tree, tree, true, true);
+      tree, tree, true, false);
   // Cost
   // int n_v = tree.get_num_velocities();
   // MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
@@ -145,7 +145,7 @@ int DoMain(int argc, char* argv[]) {
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
 
   // Firction coefficient
-  double mu = 0.8;
+  double mu = 0.7;
   osc->SetContactFriction(mu);
   Vector3d front_contact_disp(0.075, 0, 0);
   Vector3d rear_contact_disp(-0.075, 0, 0);
@@ -159,7 +159,7 @@ int DoMain(int argc, char* argv[]) {
                                rear_contact_disp);
 
   // Swing foot tracking
-  MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3); //200?
+  MatrixXd W_swing_foot = 200 * MatrixXd::Identity(3, 3);
   MatrixXd K_p_sw_ft = 250.0 * MatrixXd::Identity(3, 3);
   K_p_sw_ft(0, 0) = 500.0;
   // K_p_sw_ft(2, 2) = 150;
@@ -171,6 +171,24 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_traj.AddStateAndPointToTrack(left_stance_state, "right_foot");
   swing_foot_traj.AddStateAndPointToTrack(right_stance_state, "left_foot");
   osc->AddTrackingData(&swing_foot_traj);
+
+  // MatrixXd W_swing_foot_toe = 20 * MatrixXd::Identity(3, 3);
+  // MatrixXd K_p_sw_ft_toe = 25.0 * MatrixXd::Identity(3, 3);
+  // K_p_sw_ft(0, 0) = 50.0;
+  // // K_p_sw_ft(2, 2) = 150;
+  // MatrixXd K_d_sw_ft_toe = 1.0 * MatrixXd::Identity(3, 3);
+  // K_d_sw_ft(0, 0) = 5;
+  // // K_d_sw_ft(2, 2) = 0.05;
+  // TransTaskSpaceTrackingData swing_foot_toe_traj(
+  //     "swing_toe_traj", 3, K_p_sw_ft_toe, K_d_sw_ft_toe, W_swing_foot_toe,
+  //     &tree, &tree);
+  // Vector3d toe_displacement = Vector3d::Zero();
+  // toe_displacement(0)  = 0.075;
+  // swing_foot_toe_traj.AddStateAndPointToTrack(left_stance_state, "right_foot",
+  //                                             toe_displacement);
+  // swing_foot_toe_traj.AddStateAndPointToTrack(right_stance_state, "left_foot",
+  //                                             toe_displacement);
+  // osc->AddTrackingData(&swing_foot_toe_traj);
 
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);

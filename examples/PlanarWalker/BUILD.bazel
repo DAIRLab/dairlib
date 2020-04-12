@@ -237,6 +237,27 @@ cc_library(
     hdrs = ["matplotlibcpp.h"],
 )
 
+cc_binary(
+    name = "safe_traj_gen_test",
+    srcs = ["safe_traj_gen_test.cc"],
+    copts = ["-I/usr/include/python2.7/"], # TODO(nanda): Remove this line after testing
+    linkopts = ["-lpython2.7"], # TODO(nanda): Remove this line after testing
+    deps = [
+      ":safe_traj_gen",
+      ":planar_walker_urdfs",
+      ":lyapunov_csvs",
+      ":state_based_fsm",
+      "//common",
+      "//systems:robot_lcm_systems",
+      "//systems/primitives",
+      "//systems/controllers/osc:operational_space_control",
+      "//attic/multibody:utils",
+      "//multibody:utils",
+      "@gflags",
+      "@drake//:drake_shared_library",
+      "matplotlibcpp",
+    ]
+)
 # cc_test(
 #   name = "safe_traj_gen_test",
 #   size = "small",

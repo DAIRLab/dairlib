@@ -1,5 +1,8 @@
 #pragma once
 
+#include <fstream>
+#include <iostream>
+
 #include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -34,6 +37,16 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
 
+  Eigen::Vector3d solveQP(const Eigen::Vector3d& reduced_order_state) const;
+
+  SteppingResults should_step(double current_time, double prev_td_time,
+                   Eigen::Vector3d reduced_order_state) const;
+
+  void find_next_stance_location(const Eigen::Vector3d& reduced_order_state,
+                                 double& next_stance_loc,
+                                 double& t) const;
+
+
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
@@ -44,15 +57,6 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
 
   void CalcSwingTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
-
-  SteppingResults should_step(double current_time, double prev_td_time,
-                   Eigen::Vector3d reduced_order_state) const;
-
-  void find_next_stance_location(const Eigen::Vector3d& reduced_order_state,
-                                 double& next_stance_loc,
-                                 double& t) const;
-
-  Eigen::Vector3d solveQP(const Eigen::Vector3d& reduced_order_state) const;
 
   drake::trajectories::PiecewisePolynomial<double> createSplineForSwingFoot(
       const double start_time_of_this_interval,
@@ -126,6 +130,9 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
       dx_;
   Eigen::Matrix<drake::symbolic::Variable, Eigen::Dynamic, Eigen::Dynamic>
       rho_;
+
+  // Logging
+  mutable std::ofstream logger_;
 
   // Testing
   std::unique_ptr<std::vector<double>> time_hist_;

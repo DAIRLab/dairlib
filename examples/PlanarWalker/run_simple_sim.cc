@@ -91,7 +91,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   const double terrain_size = 100;
-  const double terrain_depth = 0.20;
+  const double terrain_depth = 1.0;
   drake::multibody::AddFlatTerrainToWorld(tree.get(), terrain_size,
                                           terrain_depth);
 

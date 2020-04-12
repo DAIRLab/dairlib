@@ -299,7 +299,7 @@
     <child link="left_lower_leg"/>
     <axis xyz="0 1 0"/>
     <origin xyz="0 0 -0.5"/>
-    <limit effort="100" lower="0"/>
+    <limit effort="100" lower="-100"/>
   </joint>
   <joint name="left_lower_leg_mass_weld" type="fixed">
     <parent link="left_lower_leg"/>
@@ -314,14 +314,14 @@
     <child link="left_foot"/>
     <axis xyz="0 1 0"/>
     <origin xyz="0 0 -0.5" rpy="0 1.57 0"/>
-    <limit effort="100" lower="0"/>
+    <limit effort="100" lower="-100"/>
   </joint>
   <joint name="right_knee_pin" type="continuous">
     <parent link="right_upper_leg"/>
     <child link="right_lower_leg"/>
     <axis xyz="0 1 0"/>
     <origin xyz="0 0 -0.5"/>
-    <limit effort="100" lower="0"/>
+    <limit effort="100" lower="-100"/>
   </joint>
   <joint name="right_upper_leg_mass_weld" type="fixed">
     <parent link="right_upper_leg"/>
@@ -336,7 +336,7 @@
     <child link="right_foot"/>
     <axis xyz="0 1 0"/>
     <origin xyz="0 0 -0.5" rpy="0 1.57 0"/>
-    <limit effort="100" lower="0"/>
+    <limit effort="100" lower="-100"/>
   </joint>
   <transmission name="left_hip_trans" type="SimpleTransmission">
     <actuator name="left_hip_torque"/>

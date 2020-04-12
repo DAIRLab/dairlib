@@ -4,10 +4,7 @@
 #include <vector>
 #include <Eigen/Dense>
 #include <drake/multibody/plant/multibody_plant.h>
-
-#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/multibody/rigid_body_tree.h"
+#include <drake/common/trajectories/trajectory.h>
 
 #include "systems/framework/output_vector.h"
 
@@ -21,9 +18,7 @@ namespace controllers {
 /// - dimension of the output/trajectory
 /// - gains of PD controller
 /// - cost weight
-/// - a flag indicating the trajectory is a constant
-/// - a flag indicating the trajectory has exponential term (that is, the traj
-///   is of ExponentialPlusPiecewisePolynomial class)
+/// - the multibody plants used for the OSC controller
 
 /// Cost:
 ///   0.5 * (J_*dv + JdotV - y_command)^T * W_ * (J_*dv + JdotV - y_command),
@@ -66,7 +61,7 @@ class OscTrackingDataMBP {
   //  - update command output (desired output with pd control)
   // Inputs/Arguments:
   //  - `x_w_spr`, state of the robot (with spring)
-  //  - `cache_w_spr`, plant context of the robot (without spring)
+  //  - `context_w_spr`, plant context of the robot (without spring)
   //  - `x_wo_spr`, state of the robot (with spring)
   //  - `context_wo_spr`, plant context of the robot (without spring)
   //  - `traj`, desired trajectory
@@ -78,15 +73,13 @@ class OscTrackingDataMBP {
               drake::systems::Context<double>& context_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
               int finite_state_machine_state);
+
   // Getters used by osc block
   Eigen::VectorXd GetOutput() { return y_; }
   Eigen::MatrixXd GetJ() { return J_; }
   Eigen::VectorXd GetJdotTimesV() { return JdotV_; }
   Eigen::VectorXd GetDdyCommand() { return ddy_command_; }
   Eigen::MatrixXd GetWeight() { return W_; }
-  // void UpdatePGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
-  // void UpdateDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
-  // void UpdateWeight(Eigen::MatrixXd W);
 
   // Getters
   std::string GetName() { return name_; };
@@ -156,6 +149,7 @@ class OscTrackingDataMBP {
                        drake::systems::Context<double>& context_wo_spr) = 0;
   virtual void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
                            drake::systems::Context<double>& context_wo_spr) = 0;
+
   // Finalize and ensure that users construct OscTrackingDataMBP derived class
   // correctly.
   virtual void CheckDerivedOscTrackingData() = 0;
@@ -173,7 +167,7 @@ class OscTrackingDataMBP {
   // Cost weights
   Eigen::MatrixXd W_;
 
-  // cache
+  // Store whether or not the tracking data is active
   bool track_at_current_state_;
   int state_idx_ = 0;
 };
@@ -215,8 +209,6 @@ class TaskSpaceTrackingDataMBP : public OscTrackingDataMBP {
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
-  //  TaskSpaceTrackingDataMBP() {}  // Default constructor
-
  protected:
   // `body_index_w_spr` is the index of the body
   // `body_index_wo_spr` is the index of the body
@@ -247,8 +239,6 @@ class TransTaskSpaceTrackingDataMBP final : public TaskSpaceTrackingDataMBP {
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
-
-  //  TransTaskSpaceTrackingDataMBP() {}  // Default constructor
 
   void AddPointToTrack(
       const std::string& body_name,
@@ -296,8 +286,6 @@ class RotTaskSpaceTrackingDataMBP final : public TaskSpaceTrackingDataMBP {
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
-  //  RotTaskSpaceTrackingDataMBP() {}  // Default constructor
-
   void AddFrameToTrack(
       const std::string& body_name,
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
@@ -343,8 +331,6 @@ class JointSpaceTrackingDataMBP final : public OscTrackingDataMBP {
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
-
-  //  JointSpaceTrackingDataMBP() {}  // Default constructor
 
   void AddJointToTrack(const std::string& joint_pos_name,
                        const std::string& joint_vel_name);

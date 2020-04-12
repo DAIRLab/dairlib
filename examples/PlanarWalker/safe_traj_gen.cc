@@ -149,8 +149,6 @@ SafeTrajGenerator::SafeTrajGenerator(
   Trajectory<double>& swing_traj_inst = pp_swing_traj;
   this->DeclareAbstractOutputPort("swing_foot_traj", swing_traj_inst,
                                   &SafeTrajGenerator::CalcSwingTraj);
-  // this->DeclareAbstractOutputPort("swing_foot_toe_traj", swing_traj_inst,
-  //                                 &SafeTrajGenerator::CalcSwingTraj);
 
   DeclarePerStepDiscreteUpdateEvent(&SafeTrajGenerator::DiscreteVariableUpdate);
 
@@ -186,7 +184,8 @@ SafeTrajGenerator::SafeTrajGenerator(
   swing_toe_angle_hist_ = std::make_unique<std::vector<double>>();
 
   // Logger
-  logger_.open("log.csv");
+  logger_com_.open("log_com.csv");
+  logger_swing_foot_.open("log_swing.csv");
 
   // Test private methods here
 }
@@ -218,7 +217,6 @@ EventStatus SafeTrajGenerator::DiscreteVariableUpdate(
 
   // TODO(nanda): Modify this if condition to incorporate time
   if (fsm_state(0) != prev_fsm_state(0)) {
-    cout << "Inside change of fsm state in safe_traj_gen!" << endl;
     prev_fsm_state(0) = fsm_state(0);
     prev_td_time(0) = current_time;
     auto swing_foot_pos_td =
@@ -591,12 +589,13 @@ void SafeTrajGenerator::CalcTraj(const Context<double>& context,
           traj);
   *casted_traj = PiecewisePolynomial<double>(polynomials, breaks);
 
-  logger_ << current_time << ", ";
-  logger_ << reduced_order_state(0) << ", ";
-  logger_ << reduced_order_state(1) << ", ";
-  logger_ << reduced_order_state(2) << ", ";
-  logger_ << fsm_state(0) << ", ";
-  logger_ << std::endl;
+  logger_com_ << current_time << ", ";
+  logger_com_ << reduced_order_state(0) << ", ";
+  logger_com_ << reduced_order_state(1) << ", ";
+  logger_com_ << reduced_order_state(2) << ", ";
+  logger_com_ << CoM(2) << ", ";
+  logger_com_ << fsm_state(0);
+  logger_com_ << std::endl;
 
   // plt::figure(0);
   // plt::clf();
@@ -659,11 +658,11 @@ PiecewisePolynomial<double> SafeTrajGenerator::createSplineForSwingFoot(
   std::vector<MatrixXd> Y_dot(T_waypoint.size(), MatrixXd::Zero(3, 1));
   // x
   Y_dot[0](0, 0) = 0;
-  Y_dot[1](0, 0) = (CP(0) - init_swing_foot_pos(0)) / duration_of_stance;
+  Y_dot[1](0, 0) = 0;
   Y_dot[2](0, 0) = 0;
   // y
   Y_dot[0](1, 0) = 0;
-  Y_dot[1](1, 0) = (CP(1) - init_swing_foot_pos(1)) / duration_of_stance;
+  Y_dot[1](1, 0) = 0;
   Y_dot[2](1, 0) = 0;
   // z
   Y_dot[0](2, 0) = 0;
@@ -729,27 +728,36 @@ void SafeTrajGenerator::CalcSwingTraj(const Context<double>& context,
       init_swing_foot_pos, next_stance_pos);
   *casted_traj = pp_traj;
 
-  // KinematicsCache<double> cache = tree_.CreateKinematicsCache();
-  // VectorXd q = robot_output->GetPositions();
+  // Logging
+  KinematicsCache<double> cache = tree_.CreateKinematicsCache();
+  VectorXd q = robot_output->GetPositions();
 
-  // cache.initialize(q);
-  // tree_.doKinematics(cache);
+  cache.initialize(q);
+  tree_.doKinematics(cache);
 
-  // int stance_foot_idx =
-  //     (fsm_state(0) == right_stance_state_) ? right_foot_idx_ : left_foot_idx_;
-  // Vector3d pt_on_stance_foot = (fsm_state(0) == right_stance_state_)
-  //                                  ? pt_on_right_foot_
-  //                                  : pt_on_left_foot_;
-  // int swing_foot_idx =
-  //     (fsm_state(0) == right_stance_state_) ? left_foot_idx_ : right_foot_idx_;
-  // Vector3d pt_on_swing_foot = (fsm_state(0) == left_stance_state_)
-  //                                 ? pt_on_left_foot_
-  //                                 : pt_on_right_foot_;
-  // Vector3d stance_foot_pos =
-  //     tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
-  // Vector3d swing_foot_pos =
-  //     tree_.transformPoints(cache, pt_on_swing_foot, swing_foot_idx, 0);
+  int stance_foot_idx =
+      (fsm_state(0) == right_stance_state_) ? right_foot_idx_ : left_foot_idx_;
+  Vector3d pt_on_stance_foot = (fsm_state(0) == right_stance_state_)
+                                   ? pt_on_right_foot_
+                                   : pt_on_left_foot_;
+  int swing_foot_idx =
+      (fsm_state(0) == right_stance_state_) ? left_foot_idx_ : right_foot_idx_;
+  Vector3d pt_on_swing_foot = (fsm_state(0) == left_stance_state_)
+                                  ? pt_on_left_foot_
+                                  : pt_on_right_foot_;
+  Vector3d stance_foot_pos =
+      tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
+  Vector3d swing_foot_pos =
+      tree_.transformPoints(cache, pt_on_swing_foot, swing_foot_idx, 0);
 
+  Vector3d desired_swing_pos = casted_traj->value(current_time);
+  logger_swing_foot_ << current_time << ", ";
+  logger_swing_foot_ << desired_swing_pos[0] << ", ";
+  logger_swing_foot_ << desired_swing_pos[1] << ", ";
+  logger_swing_foot_ << desired_swing_pos[2] << ", ";
+  logger_swing_foot_ << swing_foot_pos[0] << ", ";
+  logger_swing_foot_ << swing_foot_pos[1] << ", ";
+  logger_swing_foot_ << swing_foot_pos[2] << std::endl;
   // plt::clf();
   // time_hist_->push_back(current_time);
   // swing_pos_x_hist_->push_back(swing_foot_pos[0] - stance_foot_pos[0]);

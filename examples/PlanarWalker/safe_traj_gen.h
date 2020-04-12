@@ -132,7 +132,8 @@ class SafeTrajGenerator : public drake::systems::LeafSystem<double> {
       rho_;
 
   // Logging
-  mutable std::ofstream logger_;
+  mutable std::ofstream logger_com_;
+  mutable std::ofstream logger_swing_foot_;
 
   // Testing
   std::unique_ptr<std::vector<double>> time_hist_;

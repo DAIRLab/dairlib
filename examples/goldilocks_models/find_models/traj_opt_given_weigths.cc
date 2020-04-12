@@ -217,16 +217,20 @@ void extractResult(VectorXd& w_sol,
   // Check which solver we are using
   // cout << "Solver: " << result.get_solver_id().name() << endl;
 
+  cout << "(sample_idx, n_rerun, N_rerun, is_success) = (" << sample_idx << ", "
+       << n_rerun << ", " << N_rerun << ", " << result.is_success() << ")\n";
   if (n_rerun > N_rerun) {
     if (!result.is_success()) {
       cout << "the rerun of idx #" << sample_idx
            << " was not successful, skip\n";
+      return;
     } else if (result.get_optimal_cost() > cost_threshold_for_update) {
       cout << "the cost of idx #" << sample_idx
            << " is higher than before, skip\n";
       return;
     }
   }
+  cout << "storing result...\n";
 
   VectorXd is_success(1);
   if (result.is_success()) is_success << 1;
@@ -1234,10 +1238,10 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                            0);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
                            0);  // 0 // snopt doc said try 2 if seeing snopta exit 40
-  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                          "Major optimality tolerance", 1e-5);  // target nonlinear constraint violation
-  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                          "Major feasibility tolerance", 1e-5);  // target complementarity gap
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Major optimality tolerance", 1e-4);  // target nonlinear constraint violation
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Major feasibility tolerance", 1e-4);  // target complementarity gap
 
   // Periodicity constraints
   auto x0 = trajopt->initial_state();

@@ -1254,7 +1254,13 @@ void RecordSolutionQualityAndQueueList(
                << " cost is too high above adjacent idx #" << adj_idx
                << ", so add #" << sample_idx << " to queue\n";
         } else {
-          cout << "idx #" << sample_idx << " got bad sol, and idx #" << adj_idx
+          cout << "idx #" << sample_idx << " got bad sol ";
+          if (sample_success == 0) {
+            cout << "(snopt didn't find an optimal sol)";
+          } else {
+            cout << "(cost increased too much)";
+          }
+          cout << ", and idx #" << adj_idx
                << " can help, so add #" << sample_idx << " to queue\n";
         }
       }
@@ -1605,15 +1611,26 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
   const int method_to_solve_system_of_equations = 3;
-  double max_cost_increase_rate = 0;
+  double max_sample_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
-    max_cost_increase_rate = FLAGS_is_stochastic? 0.4: 0.01;
+    max_sample_cost_increase_rate = FLAGS_is_stochastic? 2.0: 0.01;
   } else if (FLAGS_robot_option== 1) {
-    max_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
+    max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
+  } else {
+    throw std::runtime_error("Should not reach here");
+  }
+  double max_average_cost_increase_rate = 0;
+  if (FLAGS_robot_option == 0) {
+    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;
+  } else if (FLAGS_robot_option== 1) {
+    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
   } else {
     throw std::runtime_error("Should not reach here");
   }
   double max_cost_increase_rate_before_ask_for_help = 0.1;
+  if (FLAGS_robot_option == 0) {
+    max_cost_increase_rate_before_ask_for_help = 0.5;
+  }
   double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
   if (FLAGS_robot_option == 0) {
     max_adj_cost_diff_rate_before_ask_for_help = 0.5;
@@ -1633,8 +1650,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << FLAGS_fail_threshold << endl;
   cout << "method_to_solve_system_of_equations = "
        << method_to_solve_system_of_equations << endl;
-  cout << "The maximum rate the cost can increase before shrinking step size = "
-       << max_cost_increase_rate << endl;
+  cout << "The maximum rate the cost of each sample cost can increase before "
+          "shrinking step size = "
+       << max_sample_cost_increase_rate << endl;
+  cout << "The maximum rate the averaged cost can increase before shrinking "
+          "step size = "
+       << max_average_cost_increase_rate << endl;
   cout << "The maximum rate the cost can increase before asking adjacent "
           "samples for help = "
        << max_cost_increase_rate_before_ask_for_help << endl;
@@ -1953,6 +1974,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nStart iterating...\n";
   // Start the gradient descent
   int iter;
+  int n_shrink_step = 0;
   for (iter = iter_start; iter <= max_outer_iter; iter++)  {
     bool is_get_nominal = iter == 0;
 
@@ -1963,12 +1985,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
                             string("_theta_sDDot.csv")).col(0);
     }
 
+    if (start_iterations_with_shrinking_stepsize) {
+      n_shrink_step++;
+    }
+
     // Print info about iteration # and current time
     if (!start_iterations_with_shrinking_stepsize) {
       auto end = std::chrono::system_clock::now();
       std::time_t end_time = std::chrono::system_clock::to_time_t(end);
       cout << "Current time: " << std::ctime(&end_time);
-      cout << "************ Iteration " << iter << " *************" << endl;
+      cout << "************ Iteration " << iter << " ("
+           << n_shrink_step << "-time step size shrinking) *************" << endl;
       if (iter != 0) {
         cout << "theta_sDDot.head(6) = " << theta_sDDot.head(6).transpose() << endl;
       }
@@ -2051,14 +2078,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Evaluate samples
       int n_failed_sample = 0;
       while (!awaiting_sample_idx.empty() || !assigned_thread_idx.empty()) {
-        cout << "awaiting_sample_idx = ";
+        /*cout << "awaiting_sample_idx = ";
         for (auto mem : awaiting_sample_idx) {
           cout << mem << ", ";
         } cout << endl;
         cout << "assigned_sample_idx = ";
         for (auto mem : assigned_thread_idx) {
           cout << mem.second << ", ";
-        } cout << endl;
+        } cout << endl;*/
 
         //std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
         //std::system("top -bn2 | grep \"Cpu(s)\" | sed \"s/.*, *\\([0-9.]*\\)%* id.*/\1/\" | awk '{print 100 - $1\"%\"}'"); // print the CPU usage
@@ -2413,9 +2440,24 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // - We require that ALL the samples were evaluated successfully when
       // shrinking the step size based on cost.
       if ((iter > 1) && all_samples_are_success) {
-        // We do this to each sample cost instead of averaged one
-        DRAKE_DEMAND(c_vec.size() == each_min_cost_so_far.size());
+        // 1. average cost
+        if (total_cost > ave_min_cost_so_far) {
+          cout << "Average cost went up by "
+               << (total_cost - ave_min_cost_so_far) / ave_min_cost_so_far * 100
+               << "%.\n";
+        }
+        if (total_cost >
+            (1 + max_average_cost_increase_rate) * ave_min_cost_so_far) {
+          cout << "The cost went up too much (over "
+               << max_average_cost_increase_rate * 100
+               << "%). Shrink the step size.\n\n";
+          start_iterations_with_shrinking_stepsize = true;
+          iter--;
+          continue;
+        }
 
+        // 2. each sample cost
+        DRAKE_DEMAND(c_vec.size() == each_min_cost_so_far.size());
         bool exit_current_iter_to_shrink_step_size = false;
         for (int sample_i = 0; sample_i < N_sample; sample_i++) {
           // print
@@ -2425,11 +2467,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
                         each_min_cost_so_far[sample_i] * 100
                  << "%.\n";
           }
-
           // If cost goes up, we restart the iteration and shrink the step size.
-          if (c_vec[sample_i](0) >
-              (1 + max_cost_increase_rate) * each_min_cost_so_far[sample_i]) {
-            cout << "The cost went up too much. Shrink the step size.\n\n";
+          if (c_vec[sample_i](0) > (1 + max_sample_cost_increase_rate) *
+                                       each_min_cost_so_far[sample_i]) {
+            cout << "The cost went up too much (over "
+                 << max_sample_cost_increase_rate * 100
+                 << "%). Shrink the step size.\n\n";
             start_iterations_with_shrinking_stepsize = true;
             iter--;
             exit_current_iter_to_shrink_step_size = true;
@@ -2591,6 +2634,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Assign theta_s and theta_sDDot
       theta_s = theta.head(n_theta_s);
       theta_sDDot = theta.tail(n_theta_sDDot);
+
+      // For message printed to the terminal
+      n_shrink_step = 0;
 
       cout << '\a';  // making noise to notify the user the end of an iteration
     }  // end if(!is_get_nominal)

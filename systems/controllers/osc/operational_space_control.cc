@@ -469,7 +469,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     if (tracking_data->GetTrackOrNot() &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
-      VectorXd ddy_t = tracking_data->GetYddotCommand();
+      VectorXd yddot_t = tracking_data->GetYddotCommand();
       MatrixXd W = tracking_data->GetWeight();
       MatrixXd J_t = tracking_data->GetJ();
       VectorXd JdotV_t = tracking_data->GetJdotTimesV();
@@ -479,7 +479,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       // 0.5 * (JdotV - y_command)^T * W * (JdotV - y_command),
       // since it doesn't change the result of QP.
       tracking_cost_.at(i)->UpdateCoefficients(J_t.transpose()* W * J_t,
-          J_t.transpose()* W * (JdotV_t - ddy_t));
+          J_t.transpose()* W * (JdotV_t - yddot_t));
     } else {
       tracking_cost_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                VectorXd::Zero(n_v_));
@@ -535,7 +535,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
       auto tracking_data = tracking_data_vec_->at(i);
       if (tracking_data->GetTrackOrNot()) {
-        VectorXd ddy_t = tracking_data->GetYddotCommand();
+        VectorXd yddot_t = tracking_data->GetYddotCommand();
         MatrixXd W = tracking_data->GetWeight();
         MatrixXd J_t = tracking_data->GetJ();
         VectorXd JdotV_t = tracking_data->GetJdotTimesV();
@@ -543,8 +543,8 @@ VectorXd OperationalSpaceControl::SolveQp(
         // the user can differentiate which error norm is bigger. The constant
         // term was not added to the QP since it doesn't change the result.
         cout << "Tracking cost (" << tracking_data->GetName() << ") = " <<
-             0.5 * (J_t * dv_sol + JdotV_t - ddy_t).transpose() * W *
-             (J_t * dv_sol + JdotV_t - ddy_t) << endl;
+             0.5 * (J_t * dv_sol + JdotV_t - yddot_t).transpose() * W *
+             (J_t * dv_sol + JdotV_t - yddot_t) << endl;
       }
     }
 
@@ -635,17 +635,17 @@ void OperationalSpaceControl::AssignOscLcmOutput(
         tracking_data->GetYDes());
     osc_output.error_y = ConvertVectorXdToStdVector(
         tracking_data->GetErrorY());
-    osc_output.dy = ConvertVectorXdToStdVector(
+    osc_output.ydot = ConvertVectorXdToStdVector(
         tracking_data->GetYdot());
-    osc_output.dy_des = ConvertVectorXdToStdVector(
+    osc_output.ydot_des = ConvertVectorXdToStdVector(
         tracking_data->GetYdotDes());
-    osc_output.error_dy = ConvertVectorXdToStdVector(
+    osc_output.error_ydot = ConvertVectorXdToStdVector(
         tracking_data->GetErrorYdot());
-    osc_output.ddy_des = ConvertVectorXdToStdVector(
+    osc_output.yddot_des = ConvertVectorXdToStdVector(
         tracking_data->GetYddotDesConverted());
-    osc_output.ddy_command = ConvertVectorXdToStdVector(
+    osc_output.yddot_command = ConvertVectorXdToStdVector(
         tracking_data->GetYddotCommand());
-    osc_output.ddy_command_sol = ConvertVectorXdToStdVector(
+    osc_output.yddot_command_sol = ConvertVectorXdToStdVector(
         tracking_data->GetYddotCommandSol());
     output->tracking_data.push_back(osc_output);
   }

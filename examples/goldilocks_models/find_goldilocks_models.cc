@@ -1354,8 +1354,7 @@ void GetHeuristicStepSize(double h_step, double step_direction_norm,
                           double* current_iter_step_size) {
   // (*current_iter_step_size) = h_step;
   if (step_direction_norm > 1) {
-    // (*current_iter_step_size) = h_step / sqrt(norm_grad_cost);  // Heuristic
-    // (*current_iter_step_size) = h_step / norm_grad_cost;  // Heuristic
+//    (*current_iter_step_size) = h_step / sqrt(step_direction_norm);  // Heuristic
     (*current_iter_step_size) = h_step / step_direction_norm;  // Heuristic
   } else {
     (*current_iter_step_size) = h_step;

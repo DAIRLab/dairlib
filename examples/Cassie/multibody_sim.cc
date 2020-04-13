@@ -6,7 +6,6 @@
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/joints/floating_base_types.h"
-#include "drake/multibody/tree/revolute_joint.h"
 #include "drake/solvers/solve.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
@@ -16,10 +15,12 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/primitives/signal_logger.h"
+#include "drake/common/trajectories/piecewise_quaternion.h"
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
@@ -31,7 +32,6 @@ using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
-using drake::multibody::RevoluteJoint;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
@@ -64,6 +64,18 @@ DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
 DEFINE_double(init_height, 1.1,
               "Initial starting height of the pelvis above "
               "ground");
+DEFINE_double(start_time, 0.0,
+    "Starting time of the simulator, intended to "
+    "be used with a user specified initial state");
+DEFINE_string(file_name, "",
+    "Filename containing the LCM_trajectory "
+    "that describes the desired robot state.");
+DEFINE_string(folder_path, "",
+    "Folder path containing the LCM_trajectory "
+    "that describes the desired robot state.");
+DEFINE_string(trajectory_name, "",
+    "Name of the desired trajectory that describes "
+    "the desired robot state.");
 
 Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant);
 
@@ -107,7 +119,7 @@ int do_main(int argc, char* argv[]) {
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CASSIE_CONTACT_DRAKE", lcm, 1.0 / FLAGS_publish_rate));
-//          "CASSIE_CONTACT_RESULTS", lcm, 1.0 / FLAGS_publish_rate));
+  //          "CASSIE_CONTACT_RESULTS", lcm, 1.0 / FLAGS_publish_rate));
   contact_results_publisher.set_name("contact_results_publisher");
 
   // connect leaf systems
@@ -139,16 +151,63 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   // Set initial conditions of the simulation
-  VectorXd q_init = GetInitialState(plant);
-  plant.SetPositions(&plant_context, q_init);
-  plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
 
-  if (FLAGS_floating_base) {
-    const drake::math::RigidTransformd transform(
-        RotationMatrix<double>(), Eigen::Vector3d(0, 0, FLAGS_init_height));
-    plant.SetFreeBodyPose(&plant_context, plant.GetBodyByName("pelvis"),
-                          transform);
+  int nq = plant.num_positions();
+  int nv = plant.num_velocities();
+  VectorXd q_v_init(nq + nv);
+
+  if (FLAGS_start_time != 0) {
+    DRAKE_ASSERT(!FLAGS_trajectory_name.empty());
+    // Convert points to a PiecewisePolynomial
+    const LcmTrajectory& loadedTrajs =
+        LcmTrajectory(FLAGS_folder_path + FLAGS_file_name);
+    const LcmTrajectory::Trajectory& trajectory =
+        loadedTrajs.getTrajectory(FLAGS_trajectory_name);
+    std::cout << "nq: " << nq << " nv: " << nv << std::endl;
+    std::cout << "n_rows " << trajectory.datapoints.rows() << std::endl;
+
+    DRAKE_ASSERT(nq + nv == trajectory.datapoints.rows())
+    std::vector<double> breaks = std::vector<double>(
+        trajectory.time_vector.data(),
+        trajectory.time_vector.data() + trajectory.time_vector.size());
+    long n_breaks = trajectory.datapoints.cols();
+    std::vector<Eigen::Quaterniond> quaternions;
+    quaternions.resize(n_breaks);
+    for (int i = 0; i < n_breaks; ++i) {
+      quaternions[i] =
+          Eigen::Quaterniond(trajectory.datapoints.block(0, i, 4, 1).data());
+      std::cout << "State at break: " << trajectory.datapoints.col(i)
+                << std::endl;
+    }
+    drake::trajectories::PiecewiseQuaternionSlerp<double> quaternion_slerp =
+        drake::trajectories::PiecewiseQuaternionSlerp<double>(
+            breaks, quaternions);
+    drake::trajectories::PiecewisePolynomial<double> x_traj_wo_quat =
+        drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+            trajectory.time_vector,
+            trajectory.datapoints.block(4, 0, nq - 4,
+                n_breaks),
+            trajectory.datapoints.block(nq + 3, 0, nv - 3,
+                n_breaks));
+    const drake::Quaternion<double>& orientation =
+        quaternion_slerp.orientation(FLAGS_start_time);
+    q_v_init << orientation.vec(), orientation.w(),
+        x_traj_wo_quat.value(FLAGS_start_time),
+        quaternion_slerp.angular_velocity(FLAGS_start_time),
+        x_traj_wo_quat.MakeDerivative(1)->value(FLAGS_start_time);
+    plant.SetPositionsAndVelocities(&plant_context, q_v_init);
+  } else {
+    q_v_init << GetInitialState(plant), VectorXd::Zero(nv);
+    plant.SetPositionsAndVelocities(&plant_context, q_v_init);
+    if (FLAGS_floating_base) {
+      const drake::math::RigidTransformd transform(
+          RotationMatrix<double>(), Eigen::Vector3d(0, 0, FLAGS_init_height));
+      plant.SetFreeBodyPose(&plant_context, plant.GetBodyByName("pelvis"),
+          transform);
+    }
   }
+  std::cout << "Setting initial state to: " << q_v_init << std::endl;
+
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 

@@ -160,6 +160,7 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
+        "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",

@@ -76,6 +76,8 @@ DEFINE_string(folder_path, "",
 DEFINE_string(trajectory_name, "",
     "Name of the desired trajectory that describes "
     "the desired robot state.");
+DEFINE_string(interp_method, "linear", "Interpolation method for the "
+                                       "trajectory.");
 
 Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant);
 
@@ -179,22 +181,30 @@ int do_main(int argc, char* argv[]) {
       std::cout << "State at break: " << trajectory.datapoints.col(i)
                 << std::endl;
     }
-    drake::trajectories::PiecewiseQuaternionSlerp<double> quaternion_slerp =
-        drake::trajectories::PiecewiseQuaternionSlerp<double>(
-            breaks, quaternions);
-    drake::trajectories::PiecewisePolynomial<double> x_traj_wo_quat =
-        drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
-            trajectory.time_vector,
-            trajectory.datapoints.block(4, 0, nq - 4,
-                n_breaks),
-            trajectory.datapoints.block(nq + 3, 0, nv - 3,
-                n_breaks));
-    const drake::Quaternion<double>& orientation =
-        quaternion_slerp.orientation(FLAGS_start_time);
-    q_v_init << orientation.vec(), orientation.w(),
-        x_traj_wo_quat.value(FLAGS_start_time),
-        quaternion_slerp.angular_velocity(FLAGS_start_time),
-        x_traj_wo_quat.MakeDerivative(1)->value(FLAGS_start_time);
+    drake::trajectories::PiecewisePolynomial<double> x_traj_wo_quat;
+    if(FLAGS_interp_method == "linear"){
+      x_traj_wo_quat = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold
+          (trajectory.time_vector, trajectory.datapoints.topRows(nq + nv));
+      q_v_init << x_traj_wo_quat.value(FLAGS_start_time);
+    }
+    else if(FLAGS_interp_method == "cubic") {
+      x_traj_wo_quat =
+          drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+              trajectory.time_vector,
+              trajectory.datapoints.block(4, 0, nq - 4,
+                  n_breaks),
+              trajectory.datapoints.block(nq + 3, 0, nv - 3,
+                  n_breaks));
+      drake::trajectories::PiecewiseQuaternionSlerp<double> quaternion_slerp =
+          drake::trajectories::PiecewiseQuaternionSlerp<double>(
+              breaks, quaternions);
+      const drake::Quaternion<double>& orientation =
+          quaternion_slerp.orientation(FLAGS_start_time);
+      q_v_init << orientation.vec(), orientation.w(),
+          x_traj_wo_quat.value(FLAGS_start_time),
+          quaternion_slerp.angular_velocity(FLAGS_start_time),
+          x_traj_wo_quat.MakeDerivative(1)->value(FLAGS_start_time);
+    }
     plant.SetPositionsAndVelocities(&plant_context, q_v_init);
   } else {
     q_v_init << GetInitialState(plant), VectorXd::Zero(nv);

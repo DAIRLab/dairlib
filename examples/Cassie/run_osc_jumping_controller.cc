@@ -80,6 +80,7 @@ DEFINE_string(simulator, "DRAKE",
               "how to interpret contact information");
 DEFINE_bool(add_noise, false, "Whether to add gaussian noise to state "
                               "inputted to controller");
+DEFINE_int32(init_fsm_state, BALANCE, "Initial state of the FSM");
 // DEFINE_double(x_offset, 0.18, "Offset to add to the CoM trajectory");
 
 // Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
@@ -211,8 +212,8 @@ int DoMain(int argc, char* argv[]) {
       plant_with_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
       FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
-      plant_with_springs, transition_times, FLAGS_contact_based_fsm, BALANCE,
-      type);
+      plant_with_springs, transition_times, FLAGS_contact_based_fsm,
+      (FSM_STATE)FLAGS_init_fsm_state, type);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));

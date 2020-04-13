@@ -99,7 +99,7 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
       index += n;
     }
 
-    plant_.CalcMassMatrixViaInverseDynamics(context, &M_);
+    plant_.CalcMassMatrix(context, &M_);
 
     // right_hand_side is the right hand side of the system's equations:
     // M*vdot -J^T*f = right_hand_side.

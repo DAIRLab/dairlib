@@ -47,29 +47,13 @@ int doMain(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph_null = *builder_null.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  MultibodyPlant<double>& plant_fixed_base =
-      *builder_null.AddSystem<MultibodyPlant>(1.0);
   MultibodyPlant<double>& plant = *builder_null.AddSystem<MultibodyPlant>(1.0);
-
-  addCassieMultibody(&plant_fixed_base, &scene_graph_null, false);
   if (FLAGS_floating_base) {
     addCassieMultibody(&plant, &scene_graph_null, true);
   } else {
     addCassieMultibody(&plant, &scene_graph_null, false);
   }
-  plant_fixed_base.Finalize();
   plant.Finalize();
-
-  int nq_fixed_base = plant_fixed_base.num_positions();
-  int nv_fixed_base = plant_fixed_base.num_velocities();
-  int nu_fixed_base = plant_fixed_base.num_actuators();
-  int nq = plant.num_positions();
-  int nv = plant.num_velocities();
-  int nu = plant.num_actuators();
-
-  std::cout << "nq_fixed_base" << nq_fixed_base << std::endl;
-  std::cout << "nv_fixed_base" << nv_fixed_base << std::endl;
-  std::cout << "nu_fixed_base" << nu_fixed_base << std::endl;
 
   const std::string channel_x = FLAGS_channel_x;
   const std::string channel_u = FLAGS_channel_u;
@@ -86,7 +70,7 @@ int doMain(int argc, char* argv[]) {
   auto config_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_pd_config>(channel_config, lcm));
   auto config_receiver =
-      builder.AddSystem<systems::PDConfigReceiver>(plant_fixed_base);
+      builder.AddSystem<systems::PDConfigReceiver>(plant);
   builder.Connect(config_sub->get_output_port(),
                   config_receiver->get_input_port(0));
 
@@ -95,25 +79,16 @@ int doMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           channel_u, lcm, 1.0 / 1000.0));
   auto command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant_fixed_base);
+      builder.AddSystem<systems::RobotCommandSender>(plant);
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
   auto controller = builder.AddSystem<systems::LinearController>(
-      plant_fixed_base.num_positions(), plant_fixed_base.num_velocities(),
-      plant_fixed_base.num_actuators());
-
-  auto floating_to_fixed_base =
-      builder.AddSystem<systems::OutputSubvectorPassThrough<double>>(
-          nq, nv, nu, nq - nq_fixed_base, nq_fixed_base,
-          nq + nv - nv_fixed_base, nv_fixed_base, nq + nv + nu - nu_fixed_base,
-          nu_fixed_base);
+      plant.num_positions(), plant.num_velocities(),
+      plant.num_actuators());
 
   builder.Connect(state_receiver->get_output_port(0),
-                  floating_to_fixed_base->get_input_port());
-
-  builder.Connect(floating_to_fixed_base->get_output_port(),
                   controller->get_input_port_output());
 
   builder.Connect(config_receiver->get_output_port(0),

@@ -1614,7 +1614,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   double max_average_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
-    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;
+    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01;
   } else if (FLAGS_robot_option== 1) {
     max_average_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
   } else {

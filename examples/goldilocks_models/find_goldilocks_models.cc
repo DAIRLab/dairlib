@@ -1602,7 +1602,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       N_rerun = 0;
     }
   }
-  const int method_to_solve_system_of_equations = 3;
+  const int method_to_solve_system_of_equations =
+      FLAGS_method_to_solve_system_of_equations;
   double max_sample_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
     max_sample_cost_increase_rate = FLAGS_is_stochastic? 2.0: 0.01;

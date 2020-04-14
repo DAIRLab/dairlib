@@ -76,6 +76,13 @@ DEFINE_double(h_step, -1, "The step size for outer loop");
 DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
 DEFINE_double(beta_momentum, 0.8, "The weight on the previous step direction");
 
+// Solving for the cost gradient
+DEFINE_int32(method_to_solve_system_of_equations, 3,
+             "Method 0: use optimization program to solve it "
+             "Method 1: use schur complement "
+             "Method 2: use inverse() directly "
+             "Method 3: use Moore-Penrose pseudo inverse ");
+
 // How to update the model iterations
 DEFINE_bool(start_current_iter_as_rerun, false,
             "Is `iter_start` a rerun? If it is, then you start with the stored "
@@ -551,10 +558,17 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
   // Only add the rows that are linearly independent if the method requires A to
   // be positive definite
   if (method_to_solve_system_of_equations != 3) {
-    // extract_method = 0: Do SVD each time when adding a row. (might be incorrect)
-    // extract_method = 1: Do SVD only once.
+    // extract_method = 0: Do SVD each time when adding a row. (This has been
+    //  working, but we later realized that the way we extract B matrix might be
+    //  incorrect in theory)
+    // extract_method = 1: Do SVD only once (see the notes on 20200220).
     // TODO: method = 1 hasn't been tested yet
     int extract_method = 1;
+
+    // Testing (use the old method)
+    if (method_to_solve_system_of_equations == 2) {
+      extract_method = 0;
+    }
 
     if (extract_method == 0) {
       cout << "n_w = " << nw_i << endl;
@@ -727,11 +741,11 @@ void calcWInTermsOfTheta(int sample, const string& dir,
   MatrixXd Pi(nw_vec[sample], B_active_vec[sample].cols());
   VectorXd qi(nw_vec[sample]);
   if (method_to_solve_system_of_equations == 0) {
-    // Method 1: use optimization program to solve it??? ///////////////////////
+    // Method 0: use optimization program to solve it??? ///////////////////////
     throw std::runtime_error(
         "method_to_solve_system_of_equations = 0 is not implemented yet.");
   } else if (method_to_solve_system_of_equations == 1) {
-    // Method 2: use schur complement (see notes) //////////////////////////////
+    // Method 1: use schur complement (see notes) //////////////////////////////
     // This one requires the Hessian H to be pd.
     // Also, although this method might be more computationally efficient, the
     // accuracy is not as high as when we use inverse() directly. The reason is
@@ -759,7 +773,7 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     cout << "qi norm (this number should be close to 0) = "
          << qi.norm() << endl;
   } else if (method_to_solve_system_of_equations == 2) {
-    // Method 3: use inverse() directly ////////////////////////////////////////
+    // Method 2: use inverse() directly ////////////////////////////////////////
     // (This one requires the Hessian H to be pd.)
     // This method has been working pretty well, but it requires H to be pd. And
     // in order to get pd H, we need to extract independent row of matrix A,
@@ -807,7 +821,7 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     Pi = -inv_H_ext12 * B_active_vec[sample];
     qi = -inv_H_ext11 * b_vec[sample];
   } else if (method_to_solve_system_of_equations == 3) {
-    // Method 4: use Moore–Penrose pseudo inverse //////////////////////////////
+    // Method 3: use Moore–Penrose pseudo inverse //////////////////////////////
 
     // H_ext = [H A'; A 0]
     int nl_i = nl_vec[sample];

@@ -1,6 +1,5 @@
 #include <gflags/gflags.h>
 
-#include "systems/primitives/output_subvector_pass_through.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"

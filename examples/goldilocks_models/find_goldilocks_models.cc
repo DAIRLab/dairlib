@@ -490,17 +490,14 @@ void readApproxQpFiles(vector<VectorXd> * w_sol_vec, vector<MatrixXd> * A_vec,
   }
 }
 
-void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
-                                     string dir,
-                                     const vector<MatrixXd> & B_vec,
-                                     const vector<MatrixXd> & A_vec,
-                                     const vector<std::shared_ptr<MatrixXd>> & H_vec,
-                                     const vector<VectorXd> & b_vec,
-                                     const vector<VectorXd> & lb_vec,
-                                     const vector<VectorXd> & ub_vec,
-                                     const vector<VectorXd> & y_vec,
-                                     const vector<VectorXd> & w_sol_vec,
-                                     int method_to_solve_system_of_equations) {
+void extractActiveAndIndependentRows(
+    int sample, double active_tol, double indpt_row_tol, string dir,
+    const vector<MatrixXd>& B_vec, const vector<MatrixXd>& A_vec,
+    const vector<std::shared_ptr<MatrixXd>>& H_vec,
+    const vector<VectorXd>& b_vec, const vector<VectorXd>& lb_vec,
+    const vector<VectorXd>& ub_vec, const vector<VectorXd>& y_vec,
+    const vector<VectorXd>& w_sol_vec,
+    int method_to_solve_system_of_equations) {
   string prefix = to_string(sample) + "_";
 
   DRAKE_ASSERT(b_vec[sample].cols() == 1);
@@ -513,10 +510,9 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
   int nw_i = A_vec[sample].cols();
 
   int nl_i = 0;
-  double tol = 1e-4;
   for (int i = 0; i < y_vec[sample].rows(); i++) {
-    if (y_vec[sample](i) >= ub_vec[sample](i) - tol ||
-        y_vec[sample](i) <= lb_vec[sample](i) + tol)
+    if (y_vec[sample](i) >= ub_vec[sample](i) - active_tol ||
+        y_vec[sample](i) <= lb_vec[sample](i) + active_tol)
       nl_i++;
   }
 
@@ -525,8 +521,8 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
 
   nl_i = 0;
   for (int i = 0; i < y_vec[sample].rows(); i++) {
-    if (y_vec[sample](i) >= ub_vec[sample](i) - tol ||
-        y_vec[sample](i) <= lb_vec[sample](i) + tol) {
+    if (y_vec[sample](i) >= ub_vec[sample](i) - active_tol ||
+        y_vec[sample](i) <= lb_vec[sample](i) + active_tol) {
       A_active.row(nl_i) = A_vec[sample].row(i);
       B_active.row(nl_i) = B_vec[sample].row(i);
       nl_i++;
@@ -555,8 +551,6 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
     quadprog.AddQuadraticCost(*(H_vec[sample]), b_vec[sample], w2);
 
     // Testing
-      cout << "\nChoose the best solver: "
-           << drake::solvers::ChooseBestSolver(quadprog).name() << endl;
       drake::solvers::SnoptSolver snopt_solver;
     const auto result = snopt_solver.Solve(quadprog);
 
@@ -613,8 +607,8 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
         }
       }
       nl_i = full_row_rank_idx.size();
-      cout << "Finished extracting independent rows of A (# of rows = " << nl_i <<
-           ")\n\n";
+      /*cout << "Finished extracting independent rows of A (# of rows = " <<
+         nl_i << ")\n\n";*/
 
       // Assign the rows
       MatrixXd A_processed(nl_i, nw_i);
@@ -2510,7 +2504,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         for (int sample_i = sample; sample_i < sample_end; sample_i++) {
           threads[thread_idx] = new std::thread(
               extractActiveAndIndependentRows,
-              sample_i, indpt_row_tol, dir,
+              sample_i, FLAGS_major_feasibility_tol, indpt_row_tol, dir,
               std::ref(B_vec), std::ref(A_vec), std::ref(H_vec),
               std::ref(b_vec), std::ref(lb_vec), std::ref(ub_vec),
               std::ref(y_vec), std::ref(w_sol_vec),

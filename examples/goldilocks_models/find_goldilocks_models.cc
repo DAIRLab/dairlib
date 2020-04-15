@@ -9,7 +9,9 @@
 #include <bits/stdc++.h>  // system call
 
 #include "drake/multibody/parsing/parser.h"
+#include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
 #include "common/find_resource.h"
@@ -551,7 +553,14 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
                                   VectorXd::Zero(nl_i),
                                   w2);
     quadprog.AddQuadraticCost(*(H_vec[sample]), b_vec[sample], w2);
-    const auto result = Solve(quadprog);
+
+    // Testing
+      cout << "\nChoose the best solver: "
+           << drake::solvers::ChooseBestSolver(quadprog).name() << endl;
+      drake::solvers::SnoptSolver snopt_solver;
+    const auto result = snopt_solver.Solve(quadprog);
+
+//    const auto result = Solve(quadprog);
     auto solution_result = result.get_solution_result();
     if (result.is_success()) {
       VectorXd w_sol_check = result.GetSolution(
@@ -632,13 +641,12 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
       // SVD
       Eigen::BDCSVD<MatrixXd> svd(A_active,
                                   Eigen::ComputeFullU | Eigen::ComputeFullV);
-      //svd.setThreshold(indpt_row_tol); // the threshold is the biggest singular value * tol
-      //int rank = svd.rank();
 
+      // find the rank of the matrix (use absolute tolerance)
       const auto& singular_values = svd.singularValues();
       int rank = 0;
       for (rank = 0; rank < singular_values.size(); ++rank) {
-        if (singular_values(rank) < 0.5) {
+        if (singular_values(rank) < indpt_row_tol) {
           break;
         }
       }
@@ -806,14 +814,14 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     //         << svd.singularValues().tail(1) << endl;
     // // cout << "singular values are \n" << svd.singularValues() << endl;
     // // Testing
-    if (sample == 0) {
+    /*if (sample == 0) {
       Eigen::BDCSVD<MatrixXd> svd_3(H_ext);
       cout << "H_ext:\n";
       cout << "  biggest singular value is " << svd_3.singularValues()(0)
            << endl;
       cout << "  smallest singular value is " << svd_3.singularValues().tail(1)
            << endl;
-    }
+    }*/
 
     // cout << "\nStart inverting the matrix.\n";
     MatrixXd inv_H_ext = H_ext.inverse();
@@ -1662,6 +1670,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   bool is_limit_difference_of_two_adjacent_costs =
       max_adj_cost_diff_rate_before_ask_for_help > 0;
+  cout << "Get good sols from adjacent samples to improve solution quality? "
+       << get_good_sol_from_adjacent_sample << endl;
   if (get_good_sol_from_adjacent_sample) {
     cout << "The maximum rate the cost can increase before asking adjacent "
             "samples for help = "
@@ -2646,7 +2656,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // For message printed to the terminal
       n_shrink_step = 0;
 
-      cout << '\a';  // making noise to notify the user the end of an iteration
+      //cout << '\a';  // making noise to notify the user the end of an iteration
     }  // end if(!is_get_nominal)
   }  // end for
 

@@ -58,6 +58,7 @@ DEFINE_double(dt, 8e-5,
 DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model. Nearly equivalent"
               " to (m)");
+DEFINE_double(mu, 0.8, "Coefficient of static/kinetic friction");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
@@ -78,6 +79,8 @@ DEFINE_string(trajectory_name, "",
     "the desired robot state.");
 DEFINE_string(interp_method, "linear", "Interpolation method for the "
                                        "trajectory.");
+DEFINE_int32(error_idx, 4, "Index in the state vector to inject error into");
+DEFINE_double(error, 0.0, "Value fo the error, see error_idx");
 
 Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant);
 
@@ -92,7 +95,7 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
+    multibody::addFlatTerrain(&plant, &scene_graph, FLAGS_mu, FLAGS_mu);
   }
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base,
                      "examples/Cassie/urdf/cassie_v2.urdf");
@@ -204,7 +207,11 @@ int do_main(int argc, char* argv[]) {
           x_traj_wo_quat.value(FLAGS_start_time),
           quaternion_slerp.angular_velocity(FLAGS_start_time),
           x_traj_wo_quat.MakeDerivative(1)->value(FLAGS_start_time);
+
+
     }
+    // Add any "errors" in the state here
+    q_v_init[FLAGS_error_idx] += FLAGS_error;
     plant.SetPositionsAndVelocities(&plant_context, q_v_init);
   } else {
     q_v_init << GetInitialState(plant), VectorXd::Zero(nv);

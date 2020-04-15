@@ -34,6 +34,51 @@ def print_osc_debug(t_idx, length, osc_debug):
     print('ddy_command_sol = ' + str(
         osc_debug.ddy_command_sol[t_idx:t_idx + length, :]))
 
+
+def calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v):
+    # This uses a hardcoded start and end time to calculate the net impulse
+    n_dim = 3
+    net_impulse = np.zeros((n_dim,1))
+    t_start = 0.11
+    t_end = 0.137
+    t_start_idx = get_index_at_time(t_contact_info, t_start)
+    t_end_idx = get_index_at_time(t_contact_info, t_end)
+    x = np.hstack((q, v))
+
+    l_contact_frame = plant.GetBodyByName("toe_left").body_frame()
+    r_contact_frame = plant.GetBodyByName("toe_right").body_frame()
+    world = plant.world_frame()
+    front_contact_disp = np.array((-0.0457, 0.112, 0))
+    rear_contact_disp = np.array((0.088, 0, 0))
+
+    t_slice = slice(t_start_idx, t_end_idx)
+    impulses = np.zeros((contact_info.shape[0], n_dim))
+    for i in range(contact_info.shape[0]):
+        for j in range(n_dim):
+            impulses[i, j] = np.trapz(contact_info[i, t_slice, j],
+                                   t_contact_info[t_slice])
+    print(impulses)
+    # import pdb; pdb.set_trace()
+
+    for i in range(t_start_idx, t_end_idx):
+        plant.SetPositionsAndVelocities(context, x[i])
+        J_l_r = plant.CalcJacobianTranslationalVelocity(context,
+                                                JacobianWrtVariable.kV,
+                                                l_contact_frame,
+                                                rear_contact_disp,
+                                                world,
+                                                world)
+        J_l_f = plant.CalcJacobianTranslationalVelocity(context,
+                                                        JacobianWrtVariable.kV, l_contact_frame, front_contact_disp, world, world)
+        J_r_r = plant.CalcJacobianTranslationalVelocity(context,
+                                                        JacobianWrtVariable.kV, r_contact_frame, rear_contact_disp, world, world)
+        J_r_r = plant.CalcJacobianTranslationalVelocity(context,
+                                                        JacobianWrtVariable.kV, r_contact_frame, front_contact_disp, world, world)
+        
+
+
+    return net_impulse
+
 def main():
     # Set default directory for saving figures
     matplotlib.rcParams["savefig.directory"] = \
@@ -157,14 +202,16 @@ def main():
     # plant.SetPositionsAndVelocities(context, init_x)
     # M = plant.CalcMassMatrixViaInverseDynamics(context)
     # matlab_data = dict(M=M)
-    print(q[0, :])
+    # print(q[0, :])
     # print(plant.)
     # sio.savemat('/home/yangwill/Documents/research/projects/cassie/jumping'
     #             '/logs/M_drake', matlab_data)
     # print(plant.CalcMassMatrixViaInverseDynamics(context))
 
-    start_time = 1.0
-    end_time = 2.0
+    calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v)
+
+    start_time = 0.0
+    end_time = 0.6
     t_start_idx = get_index_at_time(t_state, start_time)
     t_end_idx = get_index_at_time(t_state, end_time)
     t_state_slice = slice(t_start_idx, t_end_idx)
@@ -201,16 +248,17 @@ def main():
     # Foot plotting
     # plot_feet_simulation(context, l_toe_frame, r_toe_frame, world, no_offset,
     #                      plant, v, q, t_state, t_state_slice)
-    plot_feet_simulation(plant, context, q, v, l_toe_frame, front_contact_disp,
-                         world, t_state, t_state_slice, "left_", "_front")
-    plot_feet_simulation(plant, context, q, v, r_toe_frame, front_contact_disp,
-                         world, t_state, t_state_slice, "right_", "_front")
-    plot_feet_simulation(plant, context, q, v, l_toe_frame, rear_contact_disp,
-                         world, t_state, t_state_slice, "left_", "_rear")
-    plot_feet_simulation(plant, context, q, v, r_toe_frame, rear_contact_disp,
-                         world, t_state, t_state_slice, "right_", "_rear")
+    if False:
+        plot_feet_simulation(plant, context, q, v, l_toe_frame, front_contact_disp,
+                             world, t_state, t_state_slice, "left_", "_front")
+        plot_feet_simulation(plant, context, q, v, r_toe_frame, front_contact_disp,
+                             world, t_state, t_state_slice, "right_", "_front")
+        plot_feet_simulation(plant, context, q, v, l_toe_frame, rear_contact_disp,
+                             world, t_state, t_state_slice, "left_", "_rear")
+        plot_feet_simulation(plant, context, q, v, r_toe_frame, rear_contact_disp,
+                             world, t_state, t_state_slice, "right_", "_rear")
 
-    plot = True
+    plot = False
     if plot:
         fig = plt.figure("osc_output")
         plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].y[t_osc_slice], label="0")
@@ -323,19 +371,20 @@ def plot_feet_simulation(plant, context, q, v, toe_frame, contact_point, world,
 
 
 def plot_simulation_state(q, v, t_state, t_state_slice, state_names):
-    fig = plt.figure('simulation positions')
+    # fig = plt.figure('simulation positions')
     # state_indices = slice(0, q.shape[1])
-    n_fb_states = 7
-    state_indices = slice(n_fb_states, q.shape[1])
-    # state_indices = slice(0, n_fb_states)
-    plt.plot(t_state[t_state_slice], q[t_state_slice, state_indices])
-    plt.legend(state_names[state_indices])
+    n_fb_pos = 7
+    n_fb_vel = 6
+    state_indices = slice(n_fb_pos, q.shape[1])
+    # state_indices = slice(0, n_fb_pos)
+    # plt.plot(t_state[t_state_slice], q[t_state_slice, state_indices])
+    # plt.legend(state_names[state_indices])
 
-    # fig = plt.figure('simulation velocities')
+    fig = plt.figure('simulation velocities')
 
-    # state_indices = slice(0, v.shape[1])
-    # plt.plot(t_state[t_state_slice], v[t_state_slice, state_indices])
-    # plt.legend(state_names[q.shape[1]:q.shape[1] + v.shape[1]])
+    state_indices = slice(n_fb_vel, v.shape[1])
+    plt.plot(t_state[t_state_slice], v[t_state_slice, state_indices])
+    plt.legend(state_names[q.shape[1] + n_fb_vel:q.shape[1] + v.shape[1]])
 
 
 def plot_nominal_feet_traj(l_foot_traj, lcm_l_foot_traj, r_foot_traj):

@@ -85,11 +85,13 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
   if (prev_fsm_state(0) != fsm_state(0)) {  // When to reset the clock
     prev_fsm_state(0) = fsm_state(0);
     prev_time(0) = current_time;
-    VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
 
+    VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
     auto plant_context =
         createContext(plant_, robot_output->GetState(), zero_input);
-    com_x_offset(0) = 0.025;
+    VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*plant_context);
+    com_x_offset(0) = 0.025 + (center_of_mass(0) - crouch_traj_.value
+        (current_time)(0));
     // TODO(yangwill) Remove this or calculate it based on the robot's state.
     // Actually, this is necessary due to the traj opt solution's placement
     // of the final CoM

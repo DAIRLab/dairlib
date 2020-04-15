@@ -185,8 +185,9 @@ int DoMain(int argc, char* argv[]) {
             << std::endl;
 
   MatrixXd pos_cov = MatrixXd::Zero(nq, nq);
-  pos_cov(4,4) = 100.0;
+  pos_cov(4,4) = -0.05;
   MatrixXd vel_cov = MatrixXd::Zero(nv, nv);
+//  vel_cov(5,5) = 0.1;
 
 
   /**** Initialize all the leaf systems ****/

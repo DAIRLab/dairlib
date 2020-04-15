@@ -29,8 +29,11 @@ void GaussianNoisePassThrough::DoCalcVectorOutput(
     systems::OutputVector<double>* output) const {
   const systems::OutputVector<double>& input =
       *this->template EvalVectorInput<OutputVector>(context, 0);
+//  output->SetPositions(input.GetPositions() +
+//      pos_variance_ * Eigen::VectorXd::Random
+//          (num_positions_));
   output->SetPositions(input.GetPositions() +
-      pos_variance_ * Eigen::VectorXd::Random
+      pos_variance_ * Eigen::VectorXd::Ones
           (num_positions_));
   output->SetVelocities(input.GetVelocities() +
       vel_variance_ * Eigen::VectorXd::Random(num_velocities_));

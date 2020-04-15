@@ -74,7 +74,14 @@ DEFINE_bool(is_stochastic, true, "Random tasks or fixed tasks");
 DEFINE_bool(is_newton, false, "Newton method or gradient descent");
 DEFINE_double(h_step, -1, "The step size for outer loop");
 DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
-DEFINE_double(beta_momentum, 0.8, "The weight on the previous step direction");
+DEFINE_double(
+    beta_momentum, 0.8,
+    "The weight on the previous step direction."
+    "beta_momentum = 0 means we only use gradient at current iter."
+    "Momentum can give you faster convergence (seen in experiment), and avoid "
+    "some local minima caused by step size."
+    "See: https://distill.pub/2017/momentum/"
+    "WARNING: beta_momentum is not used in newton's method");
 
 // Solving for the cost gradient
 DEFINE_int32(method_to_solve_system_of_equations, 3,
@@ -1541,10 +1548,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int iter_start = FLAGS_iter_start;
   int max_outer_iter = FLAGS_max_outer_iter;
   double stopping_threshold = 1e-4;
-  // beta_momentum = 0 means we only use gradient at current iter.
-  // Momentum can give you faster convergence. And get out of a local minimum
-  // caused by step size. See: https://distill.pub/2017/momentum/ WARNING:
-  // beta_momentum is not used in newton's method
   double beta_momentum = FLAGS_beta_momentum;
   double h_step;
   if (FLAGS_h_step > 0) {

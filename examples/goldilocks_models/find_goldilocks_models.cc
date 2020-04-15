@@ -581,13 +581,7 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
     //  working, but we later realized that the way we extract B matrix might be
     //  incorrect in theory)
     // extract_method = 1: Do SVD only once (see the notes on 20200220).
-    // TODO: method = 1 hasn't been tested yet
     int extract_method = 1;
-
-    // Testing (use the old method)
-    if (method_to_solve_system_of_equations == 2) {
-      extract_method = 0;
-    }
 
     if (extract_method == 0) {
       cout << "n_w = " << nw_i << endl;
@@ -652,6 +646,8 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
       }
 
       // Assign the rows
+      // (I believe either adjoint() or transpose() works here because U is a
+      // real matrix when A is a real matrix)
       MatrixXd A_processed =
           svd.matrixU().block(0, 0, nl_i, rank).transpose() * A_active;
       MatrixXd B_processed =

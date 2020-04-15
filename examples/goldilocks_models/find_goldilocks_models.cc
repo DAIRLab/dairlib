@@ -98,6 +98,9 @@ DEFINE_int32(N_rerun, -1, "snopt might settle down at a bad sub-optimal"
                           " solution, so we rerun.");
 DEFINE_double(fail_threshold, 0.2,
               "Maximum acceptable failure rate of samples");
+DEFINE_bool(get_good_sol_from_adjacent_sample, true,
+            "Get a good solution from adjacent samples to improve the solution "
+            "quality of the current sample");
 
 // Other features for how to start the program
 DEFINE_bool(
@@ -1623,16 +1626,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   } else {
     throw std::runtime_error("Should not reach here");
   }
-  double max_cost_increase_rate_before_ask_for_help = 0.1;
-  if (FLAGS_robot_option == 0) {
-    max_cost_increase_rate_before_ask_for_help = 0.5;
-  }
-  double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
-  if (FLAGS_robot_option == 0) {
-    max_adj_cost_diff_rate_before_ask_for_help = 0.5;
-  }
-  bool is_limit_difference_of_two_adjacent_costs =
-      max_adj_cost_diff_rate_before_ask_for_help > 0;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
@@ -1652,11 +1645,30 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "The maximum rate the averaged cost can increase before shrinking "
           "step size = "
        << max_average_cost_increase_rate << endl;
-  cout << "The maximum rate the cost can increase before asking adjacent "
-          "samples for help = "
-       << max_cost_increase_rate_before_ask_for_help << endl;
-  cout << "The maximum cost difference rate between two adjacent samples = "
-       << max_adj_cost_diff_rate_before_ask_for_help << endl;
+  // Outer loop setting - help from adjacent samples
+  bool get_good_sol_from_adjacent_sample =
+      FLAGS_get_good_sol_from_adjacent_sample;
+  if (FLAGS_robot_option == 0) {
+    // five-link robot doesn't seem to need help
+    get_good_sol_from_adjacent_sample = false;
+  }
+  double max_cost_increase_rate_before_ask_for_help = 0.1;
+  if (FLAGS_robot_option == 0) {
+    max_cost_increase_rate_before_ask_for_help = 0.5;
+  }
+  double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
+  if (FLAGS_robot_option == 0) {
+    max_adj_cost_diff_rate_before_ask_for_help = 0.5;
+  }
+  bool is_limit_difference_of_two_adjacent_costs =
+      max_adj_cost_diff_rate_before_ask_for_help > 0;
+  if (get_good_sol_from_adjacent_sample) {
+    cout << "The maximum rate the cost can increase before asking adjacent "
+            "samples for help = "
+         << max_cost_increase_rate_before_ask_for_help << endl;
+    cout << "The maximum cost difference rate between two adjacent samples = "
+         << max_adj_cost_diff_rate_before_ask_for_help << endl;
+  }
   /// Notes: currently, there are a few conditions under any of which the
   /// program would rerun trajectory optimization:
   ///  1. if N_rerun is not 0, then after SNOPT found a solution this program
@@ -2131,13 +2143,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // If the current sample already finished N_rerun, then it means that
           // there exists a adjacent sample that can help the current sample.
           int sample_idx_to_help = -1;
-          if (n_rerun[sample_idx] > N_rerun) {
-            cout << "is_good_solution = ";
-            for (auto & mem : is_good_solution) {
-              cout << mem << ", ";
-            } cout << endl;
-            GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
-                              sample_idx_that_helped, sample_idx_to_help);
+          if (get_good_sol_from_adjacent_sample) {
+            if (n_rerun[sample_idx] > N_rerun) {
+              cout << "is_good_solution = ";
+              for (auto & mem : is_good_solution) {
+                cout << mem << ", ";
+              } cout << endl;
+              GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
+                                sample_idx_that_helped, sample_idx_to_help);
+            }
           }
 
           // Get file name of initial seed
@@ -2229,17 +2243,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
 
           // Get good initial guess from adjacent samples's solution
-          if (n_rerun[sample_idx] >= N_rerun) {
-            RecordSolutionQualityAndQueueList(
-                dir, prefix, sample_idx, assigned_thread_idx,
-                adjacent_sample_indices,
-                max_cost_increase_rate_before_ask_for_help,
-                max_adj_cost_diff_rate_before_ask_for_help,
-                is_limit_difference_of_two_adjacent_costs, sample_success,
-                current_sample_is_queued, n_rerun, N_rerun,
-                local_each_min_cost_so_far, is_good_solution,
-                sample_idx_waiting_to_help, sample_idx_that_helped,
-                awaiting_sample_idx);
+          if (get_good_sol_from_adjacent_sample) {
+            if (n_rerun[sample_idx] >= N_rerun) {
+              RecordSolutionQualityAndQueueList(
+                  dir, prefix, sample_idx, assigned_thread_idx,
+                  adjacent_sample_indices,
+                  max_cost_increase_rate_before_ask_for_help,
+                  max_adj_cost_diff_rate_before_ask_for_help,
+                  is_limit_difference_of_two_adjacent_costs, sample_success,
+                  current_sample_is_queued, n_rerun, N_rerun,
+                  local_each_min_cost_so_far, is_good_solution,
+                  sample_idx_waiting_to_help, sample_idx_that_helped,
+                  awaiting_sample_idx);
+            }
           }
 
           // If the current sample is queued again because it could be helped by

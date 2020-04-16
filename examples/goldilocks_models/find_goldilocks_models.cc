@@ -578,8 +578,8 @@ void extractActiveAndIndependentRows(
     int extract_method = 1;
 
     if (extract_method == 0) {
-      cout << "n_w = " << nw_i << endl;
-      cout << "Start extracting independent rows of A (# of rows = " << nl_i << ")\n";
+      /*cout << "n_w = " << nw_i << endl;
+      cout << "Start extracting independent rows of A (# of rows = " << nl_i << ")\n";*/
       vector<int> full_row_rank_idx;
       full_row_rank_idx.push_back(0);
       for (int i = 1; i < nl_i; i++) {

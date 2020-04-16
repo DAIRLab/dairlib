@@ -627,8 +627,11 @@ void OperationalSpaceControlMBP::AssignOscLcmOutput(
     const Context<double>& context, dairlib::lcmt_osc_output* output) const {
   auto state =
       (OutputVector<double>*) this->EvalVectorInput(context, state_port_);
+  auto fsm_output =
+      (BasicVector<double>*) this->EvalVectorInput(context, fsm_port_);
 
   output->utime = state->get_timestamp() * 1e6;
+  output->fsm_state = fsm_output->get_value()(0);
   output->tracking_data_names.clear();
   output->tracking_data.clear();
 

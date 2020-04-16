@@ -122,9 +122,9 @@ class OscTrackingDataMBP {
   // If `state_` is empty, then the tracking is always on.
   std::vector<int> state_;
 
-  /// OSC calculates feedback positions/velocities from `tree_w_spr_`,
-  /// but in the optimization it uses `tree_wo_spr_`. The reason of using
-  /// RigidBodyTree without spring is that the OSC cannot track desired
+  /// OSC calculates feedback positions/velocities from `plant_w_spr_`,
+  /// but in the optimization it uses `plant_wo_spr_`. The reason of using
+  /// MultibodyPlant without springs is that the OSC cannot track desired
   /// acceleration instantaneously when springs exist. (relative degrees of 4)
   const drake::multibody::MultibodyPlant<double>* plant_w_spr_;
   const drake::multibody::MultibodyPlant<double>* plant_wo_spr_;

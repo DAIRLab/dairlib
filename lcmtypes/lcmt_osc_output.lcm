@@ -3,6 +3,7 @@ package dairlib;
 struct lcmt_osc_output
 {
   int64_t utime;
+  int32_t fsm_state;
   int32_t num_tracking_data;
 
   lcmt_osc_tracking_data tracking_data[num_tracking_data];

@@ -1,0 +1,59 @@
+group "0.operator" {
+    cmd "0.drake-director-real-robot" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image --script examples/Cassie/director_scripts/pd_panel.py --script examples/Cassie/director_scripts/show_time.py --script examples/Cassie/director_scripts/set_channel_network.py";
+        host = "localhost";
+    }
+    cmd "1.state-visualizer-real-robot" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel NETWORK_CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
+}
+
+group "1.cassie-robot" {
+    cmd "1.dispatcher-robot-in-real-robot" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --address 10.10.10.3 --floating_base=true";
+        host = "dair-cassie";
+    }
+    cmd "2.pd-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_pd_controller";
+        host = "dair-cassie";
+    }
+    cmd "4.walking-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_walking_controller --channel=CASSIE_STATE_DISPATCHER";
+        host = "dair-cassie";
+    }
+    cmd "3.standing-controller-real-robot" {
+        exec = "/home/dair/workspace/dairlib/bazel-bin/examples/Cassie/run_osc_standing_controller --channel=CASSIE_STATE_DISPATCHER";
+        host = "dair-cassie";
+    }
+    cmd "0.dispatcher-robot-out-real-robot" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --address 10.10.10.100 --test_mode=0";
+        host = "dair-cassie";
+    }
+}
+
+group "2.lcm-tools" {
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/signalscope/signal-scope";
+        host = "localhost";
+    }
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+script "run-real-robot-pd-control" {
+    run_script "start-operator-real-robot";
+    start cmd "0.dispatcher-robot-out-real-robot";
+    start cmd "1.dispatcher-robot-in-real-robot";
+    start cmd "2.pd-controller-real-robot";
+}
+
+script "start-operator-real-robot" {
+    stop cmd "1.state-visualizer-real-robot";
+    stop cmd "2.drake-director-real-robot";
+    start cmd "2.drake-director-real-robot";
+    wait ms 3000;
+    start cmd "1.state-visualizer-real-robot";
+}

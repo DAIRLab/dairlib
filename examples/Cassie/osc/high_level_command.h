@@ -8,7 +8,7 @@
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walk {
+namespace osc {
 
 /// `HighLevelCommand` calculates desired velocity (~in local frame) and desired
 /// horizontal velocity (in local frame) of Cassie's pelvis.
@@ -100,7 +100,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   double vel_min_lateral_ = -0.5;
 };
 
-}  // namespace osc_walk
+}  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib
 

@@ -468,7 +468,7 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
   constraints_->updateData(*context, impulse);
 
   MatrixX<T> M(num_velocities_, num_velocities_);
-  plant_.CalcMassMatrixViaInverseDynamics(*context, &M);
+  plant_.CalcMassMatrix(*context, &M);
 
   *y =
       M * (v1 - v0) - constraints_->getJWithoutSkipping().transpose() * impulse;

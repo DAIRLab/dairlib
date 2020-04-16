@@ -8,7 +8,7 @@
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walk {
+namespace osc {
 
 /// `HeadingTrajGenerator` set the desired angles to be 0's for pitch and roll
 /// and take the desired yaw velocity from input port. The desired (roll, pitch,
@@ -45,6 +45,6 @@ class HeadingTrajGenerator : public drake::systems::LeafSystem<double> {
   int des_yaw_port_;
 };
 
-}  // namespace osc_walk
+}  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib

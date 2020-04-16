@@ -116,6 +116,8 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     if (is_quaternion) {
       auto quat_norm_constraint =
           std::make_shared<QuaternionNormConstraint<T>>();
+      quat_norm_constraint->SetConstraintScaling(
+          options[i].getQuatConstraintScaling());
       // If the current mode is not the first mode, start with the first knot.
       // Otherwise, start with the second knot in order to avoid imposing the
       // same constraint twice.

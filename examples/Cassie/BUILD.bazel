@@ -110,7 +110,9 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers",
         "//systems/controllers:pd_config_lcm",
+        "//systems/goldilocks_models",
         "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 
@@ -278,7 +280,7 @@ cc_binary(
         ":cassie_utils",
         ":simulator_drift",
         "//attic/multibody:utils",
-        "//examples/Cassie/osc_walk",
+        "//examples/Cassie/osc",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
@@ -294,22 +296,10 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//attic/multibody:utils",
+        "//examples/Cassie/osc",
         "//systems:robot_lcm_systems",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "cassie_state_visualizer",
-    srcs = ["cassie_state_visualizer.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",

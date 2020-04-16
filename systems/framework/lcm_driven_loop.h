@@ -160,7 +160,6 @@ class LcmDrivenLoop {
 
     // "Simulator" time
     double time = 0;  // initialize the current time with 0
-    double message_time;
     // Variable needed for the driven loop
     std::string previous_active_channel_name = active_channel_;
 
@@ -211,14 +210,7 @@ class LcmDrivenLoop {
         }
 
         // Get message time from the active channel to advance
-        message_time =
-            name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
-        // We cap the time from below just in case after we switch to a
-        // different input channel, the message time from the new channel is
-        // smaller then the current diagram time
-        if (message_time >= time) {
-          time = message_time;
-        }
+        time = name_to_input_sub_map_.at(active_channel_).message().utime * 1e-6;
 
         // Check if we are very far ahead or behind
         // (likely due to a restart of the driving clock)

@@ -6,7 +6,7 @@
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walk {
+namespace osc {
 
 // TODO(yminchen): we can replace cp with raibert style control. (feedforward
 // term is v*T/2)
@@ -80,7 +80,7 @@ class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
   double k_fp_fb_lateral_ = 0.02;
 };
 
-}  // namespace osc_walk
+}  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib
 

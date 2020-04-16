@@ -46,7 +46,7 @@ std::unique_ptr<Context<T>> createContext(const MultibodyPlant<T>& plant,
 template <typename T>
 void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic,
-                    Eigen::Vector3d normal_W, bool visualize_ground) {
+                    bool visualize_ground, const Eigen::Vector3d& normal_W) {
   if (!plant->geometry_source_is_registered()) {
     plant->RegisterAsSourceForSceneGraph(scene_graph);
   }
@@ -295,7 +295,7 @@ template map<string, int> makeNameToVelocitiesMap<double>(const MultibodyPlant<d
 template map<string, int> makeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> makeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> makeNameToActuatorsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W, bool visualize_ground);  // NOLINT
+template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, bool visualize_ground, const Eigen::Vector3d& normal_W);  // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
 template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const VectorX<double>& state, const VectorX<double>& input);  // NOLINT

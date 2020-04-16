@@ -51,9 +51,9 @@ script "run-real-robot-pd-control" {
 }
 
 script "start-operator-real-robot" {
-    stop cmd "3.state-visualizer-real-robot";
+    stop cmd "1.state-visualizer-real-robot";
     stop cmd "2.drake-director-real-robot";
     start cmd "2.drake-director-real-robot";
     wait ms 3000;
-    start cmd "3.state-visualizer-real-robot";
+    start cmd "1.state-visualizer-real-robot";
 }

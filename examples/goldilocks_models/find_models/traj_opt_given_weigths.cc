@@ -1405,7 +1405,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
     n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
     B_tau, theta_s, theta_sDDot,
     std::move(trajopt), &plant_autoDiff, &plant, num_time_samples,
-    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option);
+    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option, 1/*temporary*/);
 
   addRegularization(is_get_nominal, eps_reg, gm_traj_opt);
 
@@ -2126,7 +2126,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
     B_tau, theta_s, theta_sDDot,
     std::move(trajopt), &plant_autoDiff, &plant, num_time_samples,
-    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option);
+    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option, s);
 
   addRegularization(is_get_nominal, eps_reg, gm_traj_opt);
 

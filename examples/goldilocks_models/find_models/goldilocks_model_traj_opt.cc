@@ -14,7 +14,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     const std::vector<int> & num_time_samples,
     bool is_get_nominal,
     bool is_add_tau_in_cost,
-    int rom_option, int robot_option):
+    int rom_option, int robot_option, double constraint_scale):
   n_s_(n_s),
   n_sDDot_(n_sDDot),
   n_tau_(n_tau),
@@ -67,20 +67,20 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
       }
     } else if (robot_option == 1) {
       if (rom_option == 0) {
-        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 26000.0));
-        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 3200.0));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 3200.0));
       } else if (rom_option == 1) {
-        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 26000.0));
-        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 3200.0));
-        constraint_scale_map.insert(std::pair<int, double>(2, 1.0 / 26000.0));
-        constraint_scale_map.insert(std::pair<int, double>(3, 1.0 / 4000.0));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 3200.0));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 26000.0));
+        constraint_scale_map.insert(std::pair<int, double>(3, constraint_scale * 1.0 / 4000.0));
       } else if (rom_option == 2) {
-        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 3200.0));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 3200.0));
       } else if (rom_option == 3) {
         // TODO: The scaling hasn't been tuned yet
-        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 3200.0));
-        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 26000.0));
-        constraint_scale_map.insert(std::pair<int, double>(2, 1.0 / 4000.0));
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 3200.0));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 4000.0));
       } else {
         // The scaling of others hasn't tuned yet
         DRAKE_DEMAND(false);

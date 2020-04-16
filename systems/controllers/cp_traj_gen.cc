@@ -298,7 +298,7 @@ void CPTrajGenerator::CalcTrajs(
     const Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Cast traj for polymorphism
-  PiecewisePolynomial<double>* casted_traj =
+  PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
 
@@ -354,14 +354,14 @@ void CPTrajGenerator::CalcTrajs(
     Vector3d init_swing_foot_pos = swing_foot_pos_td;
 
     // Assign traj
-    *casted_traj = createSplineForSwingFoot(
+    *pp_traj = createSplineForSwingFoot(
         start_time_of_this_interval, end_time_of_this_interval,
         left_right_support_state_durations_[index], init_swing_foot_pos, CP,
         stance_foot_height);
 
   } else {
     // Assign a constant traj
-    *casted_traj = PiecewisePolynomial<double>(swing_foot_pos_td);
+    *pp_traj = PiecewisePolynomial<double>(swing_foot_pos_td);
   }
 }
 }  // namespace systems

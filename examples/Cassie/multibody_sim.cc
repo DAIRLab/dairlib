@@ -114,7 +114,7 @@ int do_main(int argc, char* argv[]) {
       plant.get_actuation_input_port().size());
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "CASSIE_STATE", lcm, 1.0 / FLAGS_publish_rate));
+          "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
 
   // Contact Information

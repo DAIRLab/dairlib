@@ -21,7 +21,6 @@ using std::vector;
 
 namespace dairlib::systems::controllers {
 
-// using multibody::GetBodyIndexFromName;
 using multibody::makeNameToPositionsMap;
 using multibody::makeNameToVelocitiesMap;
 

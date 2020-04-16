@@ -2,5 +2,6 @@ package dairlib;
 
 struct lcmt_controller_switch
 {
+  int64_t utime;
   string channel;
 }

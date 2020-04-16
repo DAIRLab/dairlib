@@ -49,7 +49,7 @@ class ControllerGui(QWidget):
         if 'pd_panel_state_channel' in globals():
             channel = pd_panel_state_channel
         else:
-            channel = "CASSIE_STATE"
+            channel = "CASSIE_STATE_SIMULATION"
 
         super(ControllerGui, self).__init__(parent)
 

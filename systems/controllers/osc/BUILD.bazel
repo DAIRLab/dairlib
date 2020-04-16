@@ -13,6 +13,8 @@ cc_library(
     deps = [
         ":osc_tracking_data",
         "//attic/multibody:utils",
+        "//common:eigen_utils",
+        "//systems:robot_lcm_systems",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
@@ -29,6 +31,7 @@ cc_library(
     ],
     deps = [
         ":osc_tracking_data_mbp",
+        "//common:eigen_utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:multibody_distance_constraint",
         "//multibody:utils",

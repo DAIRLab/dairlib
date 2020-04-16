@@ -1,6 +1,7 @@
 #include "systems/controllers/osc/operational_space_control_mbp.h"
 #include <drake/multibody/plant/multibody_plant.h>
 #include "multibody/multibody_utils.h"
+#include "common/eigen_utils.h"
 
 using std::cout;
 using std::endl;
@@ -132,12 +133,6 @@ OperationalSpaceControlMBP::OperationalSpaceControlMBP(
 
   // Check if the model is floating based
   is_quaternion_ = multibody::isQuaternion(plant_w_spr);
-}
-
-std::vector<double> ConvertVectorXdToStdVector(
-    Eigen::VectorXd eigen_vec) {
-  return std::vector<double>(eigen_vec.data(),
-      eigen_vec.data() + eigen_vec.size());
 }
 
 // Cost methods
@@ -627,8 +622,11 @@ void OperationalSpaceControlMBP::AssignOscLcmOutput(
     const Context<double>& context, dairlib::lcmt_osc_output* output) const {
   auto state =
       (OutputVector<double>*) this->EvalVectorInput(context, state_port_);
+  auto fsm_output =
+      (BasicVector<double>*) this->EvalVectorInput(context, fsm_port_);
 
   output->utime = state->get_timestamp() * 1e6;
+  output->fsm_state = fsm_output->get_value()(0);
   output->tracking_data_names.clear();
   output->tracking_data.clear();
 
@@ -640,20 +638,20 @@ void OperationalSpaceControlMBP::AssignOscLcmOutput(
       osc_output.name = tracking_data->GetName();
       // This should always be true
       osc_output.is_active = tracking_data->IsActive();
-      osc_output.y = ConvertVectorXdToStdVector(tracking_data->GetY());
-      osc_output.y_des = ConvertVectorXdToStdVector(tracking_data->GetYDes());
+      osc_output.y = CopyVectorXdToStdVector(tracking_data->GetY());
+      osc_output.y_des = CopyVectorXdToStdVector(tracking_data->GetYDes());
       osc_output.error_y =
-          ConvertVectorXdToStdVector(tracking_data->GetErrorY());
-      osc_output.dy = ConvertVectorXdToStdVector(tracking_data->GetDy());
-      osc_output.dy_des = ConvertVectorXdToStdVector(tracking_data->GetDyDes());
-      osc_output.error_dy =
-          ConvertVectorXdToStdVector(tracking_data->GetErrorDy());
-      osc_output.ddy_des =
-          ConvertVectorXdToStdVector(tracking_data->GetDdyDesConverted());
-      osc_output.ddy_command =
-          ConvertVectorXdToStdVector(tracking_data->GetDdyCommand());
-      osc_output.ddy_command_sol =
-          ConvertVectorXdToStdVector(tracking_data->GetDdyCommandSol());
+          CopyVectorXdToStdVector(tracking_data->GetErrorY());
+      osc_output.ydot = CopyVectorXdToStdVector(tracking_data->GetDy());
+      osc_output.ydot_des = CopyVectorXdToStdVector(tracking_data->GetDyDes());
+      osc_output.error_ydot =
+          CopyVectorXdToStdVector(tracking_data->GetErrorDy());
+      osc_output.yddot_des =
+          CopyVectorXdToStdVector(tracking_data->GetDdyDesConverted());
+      osc_output.yddot_command =
+          CopyVectorXdToStdVector(tracking_data->GetDdyCommand());
+      osc_output.yddot_command_sol =
+          CopyVectorXdToStdVector(tracking_data->GetDdyCommandSol());
       output->tracking_data.push_back(osc_output);
     }
   }

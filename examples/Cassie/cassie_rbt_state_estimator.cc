@@ -37,8 +37,8 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     const RigidBodyTree<double>& tree, bool is_floating_base,
     bool test_with_ground_truth_state, bool print_info_to_terminal,
     int hardware_test_mode) :
-    tree_(tree),
-    is_floating_base_(is_floating_base) {
+        tree_(tree),
+        is_floating_base_(is_floating_base) {
   // Flags for testing and tuning
   test_with_ground_truth_state_ = test_with_ground_truth_state;
   print_info_to_terminal_ = print_info_to_terminal;
@@ -46,11 +46,11 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 
   // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort("cassie_out_t",
-      drake::Value<cassie_out_t> {}).get_index();
+                           drake::Value<cassie_out_t> {}).get_index();
   this->DeclareVectorOutputPort(
       OutputVector<double>(tree.get_num_positions(),
-          tree.get_num_velocities(),
-          tree.get_num_actuators()),
+                           tree.get_num_velocities(),
+                           tree.get_num_actuators()),
       &CassieRbtStateEstimator::CopyStateOut);
 
   // Initialize index maps
@@ -76,9 +76,9 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     // Declare input port receiving robot's state (simulation ground truth state)
     if (test_with_ground_truth_state_) {
       state_input_port_ = this->DeclareVectorInputPort(
-          OutputVector<double>(tree_.get_num_positions(),
-              tree_.get_num_velocities(),
-              tree_.get_num_actuators())).get_index();
+                            OutputVector<double>(tree_.get_num_positions(),
+                                tree_.get_num_velocities(),
+                                tree_.get_num_actuators())).get_index();
     }
 
     // Declare update event for EKF
@@ -166,29 +166,29 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
     // Add equality constraints to the optimization program
     fourbar_constraint_ = quadprog_->AddLinearEqualityConstraint(
         MatrixXd::Zero(2, n_v), MatrixXd::Zero(2, 1), ddq_).
-                                       evaluator().get();
+        evaluator().get();
     left_contact_constraint_ = quadprog_->AddLinearEqualityConstraint(
         MatrixXd::Zero(6, n_v + 6), MatrixXd::Zero(6, 1), {ddq_, eps_cl_}).
-                                            evaluator().get();
+        evaluator().get();
     right_contact_constraint_ = quadprog_->AddLinearEqualityConstraint(
         MatrixXd::Zero(6, n_v + 6), MatrixXd::Zero(6, 1), {ddq_, eps_cr_}).
-                                             evaluator().get();
+        evaluator().get();
     imu_accel_constraint_ = quadprog_->AddLinearEqualityConstraint(
         MatrixXd::Zero(3, n_v + 3), MatrixXd::Zero(3, 1), {ddq_, eps_imu_}).
-                                         evaluator().get();
+        evaluator().get();
     // Add costs to the optimization program
     quadcost_eom_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(n_v + 14, n_v + 14),
         MatrixXd::Zero(n_v + 14, 1), {ddq_, lambda_b_, lambda_cl_, lambda_cr_}).
-                                 evaluator().get();
+        evaluator().get();
     quadcost_eps_cl_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(6, 6),
         MatrixXd::Zero(6, 1), eps_cl_).
-                                    evaluator().get();
+        evaluator().get();
     quadcost_eps_cr_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(6, 6),
         MatrixXd::Zero(6, 1), eps_cr_).
-                                    evaluator().get();
+        evaluator().get();
     quadcost_eps_imu_ = quadprog_->AddQuadraticCost(MatrixXd::Zero(3, 3),
         MatrixXd::Zero(3, 1), eps_imu_).
-                                     evaluator().get();
+        evaluator().get();
   }
 }
 
@@ -233,12 +233,12 @@ CassieRbtStateEstimator::CassieRbtStateEstimator(
 ///   where the spring lies. Instead, there is a small offset.
 ///   We account for this offset by `spring_rest_offset`.
 void CassieRbtStateEstimator::solveFourbarLinkage(const VectorXd& q,
-                                                  double* left_heel_spring, double* right_heel_spring) const {
+    double* left_heel_spring, double* right_heel_spring) const {
   // Get the spring length
   double spring_length = rod_on_heel_spring_.norm();
   // Spring rest angle offset
   double spring_rest_offset = atan(
-      rod_on_heel_spring_(1) / rod_on_heel_spring_(0));
+                              rod_on_heel_spring_(1) / rod_on_heel_spring_(0));
 
   std::vector<Vector3d> rod_on_thigh{rod_on_thigh_left_, rod_on_thigh_right_};
   std::vector<int> thigh_ind{left_thigh_idx_, right_thigh_idx_};
@@ -250,12 +250,12 @@ void CassieRbtStateEstimator::solveFourbarLinkage(const VectorXd& q,
   for (int i = 0; i < 2; i++) {
     // Get thigh pose and heel spring pose
     const Isometry3d thigh_pose = tree_.CalcBodyPoseInWorldFrame(
-        cache, tree_.get_body(thigh_ind[i]));
+                                    cache, tree_.get_body(thigh_ind[i]));
     const Vector3d thigh_pos = thigh_pose.translation();
     const MatrixXd thigh_rot_mat = thigh_pose.linear();
 
     const Isometry3d heel_spring_pose = tree_.CalcBodyPoseInWorldFrame(cache,
-        tree_.get_body(heel_spring_ind[i]));
+                                        tree_.get_body(heel_spring_ind[i]));
     const Vector3d r_heel_spring_base = heel_spring_pose.translation();
     const MatrixXd heel_spring_rot_mat = heel_spring_pose.linear();
 
@@ -278,14 +278,14 @@ void CassieRbtStateEstimator::solveFourbarLinkage(const VectorXd& q,
     double k = -y_tbj_wrt_hb / x_tbj_wrt_hb;
     double c =
         (pow(spring_length, 2) - pow(projected_rod_length, 2) +
-            pow(x_tbj_wrt_hb, 2) + pow(y_tbj_wrt_hb, 2)) / (2 * x_tbj_wrt_hb);
+         pow(x_tbj_wrt_hb, 2) + pow(y_tbj_wrt_hb, 2)) / (2 * x_tbj_wrt_hb);
 
     double y_sol_1 =
         (-k * c + sqrt(pow(k * c, 2) - (pow(k, 2) + 1) *
-            (pow(c, 2) - pow(spring_length, 2)))) / (pow(k, 2) + 1);
+                     (pow(c, 2) - pow(spring_length, 2)))) / (pow(k, 2) + 1);
     double y_sol_2 =
         (-k * c - sqrt(pow(k * c, 2) - (pow(k, 2) + 1) *
-            (pow(c, 2) - pow(spring_length, 2)))) / (pow(k, 2) + 1);
+                     (pow(c, 2) - pow(spring_length, 2)))) / (pow(k, 2) + 1);
     double x_sol_1 = k * y_sol_1 + c;
     double x_sol_2 = k * y_sol_2 + c;
 
@@ -307,10 +307,10 @@ void CassieRbtStateEstimator::solveFourbarLinkage(const VectorXd& q,
     int spring_deflect_sign = (r_rest_dir_cross_r_hs_to_sol(2) >= 0) ? 1 : -1;
     if (i == 0)
       *left_heel_spring = spring_deflect_sign * heel_spring_angle
-          - spring_rest_offset;
+                         - spring_rest_offset;
     else
       *right_heel_spring = spring_deflect_sign * heel_spring_angle
-          - spring_rest_offset;
+                          - spring_rest_offset;
   }  // end for
 }
 
@@ -327,26 +327,26 @@ void CassieRbtStateEstimator::AssignActuationFeedbackToOutputVector(
     const cassie_out_t& cassie_out, OutputVector<double>* output) const {
   // Copy actuators
   output->SetEffortAtIndex(actuator_idx_map_.at("hip_roll_left_motor"),
-      cassie_out.leftLeg.hipRollDrive.torque);
+                           cassie_out.leftLeg.hipRollDrive.torque);
   output->SetEffortAtIndex(actuator_idx_map_.at("hip_yaw_left_motor"),
-      cassie_out.leftLeg.hipYawDrive.torque);
+                           cassie_out.leftLeg.hipYawDrive.torque);
   output->SetEffortAtIndex(actuator_idx_map_.at("hip_pitch_left_motor"),
-      cassie_out.leftLeg.hipPitchDrive.torque);
+                           cassie_out.leftLeg.hipPitchDrive.torque);
   output->SetEffortAtIndex(actuator_idx_map_.at("knee_left_motor"),
-      cassie_out.leftLeg.kneeDrive.torque);
+                           cassie_out.leftLeg.kneeDrive.torque);
   output->SetEffortAtIndex(actuator_idx_map_.at("toe_left_motor"),
-      cassie_out.leftLeg.footDrive.torque);
+                           cassie_out.leftLeg.footDrive.torque);
 
   output->SetEffortAtIndex(actuator_idx_map_.at("hip_roll_right_motor"),
-      cassie_out.rightLeg.hipRollDrive.torque);
+                           cassie_out.rightLeg.hipRollDrive.torque);
   output->SetEffortAtIndex(actuator_idx_map_.at("hip_yaw_right_motor"),
-      cassie_out.rightLeg.hipYawDrive.torque);
+                           cassie_out.rightLeg.hipYawDrive.torque);
   output->SetEffortAtIndex(actuator_idx_map_.at("hip_pitch_right_motor"),
-      cassie_out.rightLeg.hipPitchDrive.torque);
+                           cassie_out.rightLeg.hipPitchDrive.torque);
   output->SetEffortAtIndex(actuator_idx_map_.at("knee_right_motor"),
-      cassie_out.rightLeg.kneeDrive.torque);
+                           cassie_out.rightLeg.kneeDrive.torque);
   output->SetEffortAtIndex(actuator_idx_map_.at("toe_right_motor"),
-      cassie_out.rightLeg.footDrive.torque);
+                           cassie_out.rightLeg.footDrive.torque);
 }
 
 void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
@@ -355,72 +355,72 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   // TODO(yuming): check what cassie_out.leftLeg.footJoint.position is.
   // Similarly, the other leg and the velocity of these joints.
   output->SetPositionAtIndex(position_idx_map_.at("hip_roll_left"),
-      cassie_out.leftLeg.hipRollDrive.position);
+                             cassie_out.leftLeg.hipRollDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("hip_yaw_left"),
-      cassie_out.leftLeg.hipYawDrive.position);
+                             cassie_out.leftLeg.hipYawDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("hip_pitch_left"),
-      cassie_out.leftLeg.hipPitchDrive.position);
+                             cassie_out.leftLeg.hipPitchDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("knee_left"),
-      cassie_out.leftLeg.kneeDrive.position);
+                             cassie_out.leftLeg.kneeDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("toe_left"),
-      cassie_out.leftLeg.footDrive.position);
+                             cassie_out.leftLeg.footDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("knee_joint_left"),
-      cassie_out.leftLeg.shinJoint.position);
+                             cassie_out.leftLeg.shinJoint.position);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_joint_left"),
-      cassie_out.leftLeg.tarsusJoint.position);
+                             cassie_out.leftLeg.tarsusJoint.position);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_left"),
-      0.0);
+                             0.0);
 
   output->SetPositionAtIndex(position_idx_map_.at("hip_roll_right"),
-      cassie_out.rightLeg.hipRollDrive.position);
+                             cassie_out.rightLeg.hipRollDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("hip_yaw_right"),
-      cassie_out.rightLeg.hipYawDrive.position);
+                             cassie_out.rightLeg.hipYawDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("hip_pitch_right"),
-      cassie_out.rightLeg.hipPitchDrive.position);
+                             cassie_out.rightLeg.hipPitchDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("knee_right"),
-      cassie_out.rightLeg.kneeDrive.position);
+                             cassie_out.rightLeg.kneeDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("toe_right"),
-      cassie_out.rightLeg.footDrive.position);
+                             cassie_out.rightLeg.footDrive.position);
   output->SetPositionAtIndex(position_idx_map_.at("knee_joint_right"),
-      cassie_out.rightLeg.shinJoint.position);
+                             cassie_out.rightLeg.shinJoint.position);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_joint_right"),
-      cassie_out.rightLeg.tarsusJoint.position);
+                             cassie_out.rightLeg.tarsusJoint.position);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_right"),
-      0.0);
+                             0.0);
 
   output->SetVelocityAtIndex(velocity_idx_map_.at("hip_roll_leftdot"),
-      cassie_out.leftLeg.hipRollDrive.velocity);
+                             cassie_out.leftLeg.hipRollDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("hip_yaw_leftdot"),
-      cassie_out.leftLeg.hipYawDrive.velocity);
+                             cassie_out.leftLeg.hipYawDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("hip_pitch_leftdot"),
-      cassie_out.leftLeg.hipPitchDrive.velocity);
+                             cassie_out.leftLeg.hipPitchDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("knee_leftdot"),
-      cassie_out.leftLeg.kneeDrive.velocity);
+                             cassie_out.leftLeg.kneeDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("toe_leftdot"),
-      cassie_out.leftLeg.footDrive.velocity);
+                             cassie_out.leftLeg.footDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("knee_joint_leftdot"),
-      cassie_out.leftLeg.shinJoint.velocity);
+                             cassie_out.leftLeg.shinJoint.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_joint_leftdot"),
-      cassie_out.leftLeg.tarsusJoint.velocity);
+                             cassie_out.leftLeg.tarsusJoint.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_spring_joint_leftdot"),
-      0.0);
+                             0.0);
 
   output->SetVelocityAtIndex(velocity_idx_map_.at("hip_roll_rightdot"),
-      cassie_out.rightLeg.hipRollDrive.velocity);
+                             cassie_out.rightLeg.hipRollDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("hip_yaw_rightdot"),
-      cassie_out.rightLeg.hipYawDrive.velocity);
+                             cassie_out.rightLeg.hipYawDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("hip_pitch_rightdot"),
-      cassie_out.rightLeg.hipPitchDrive.velocity);
+                             cassie_out.rightLeg.hipPitchDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("knee_rightdot"),
-      cassie_out.rightLeg.kneeDrive.velocity);
+                             cassie_out.rightLeg.kneeDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("toe_rightdot"),
-      cassie_out.rightLeg.footDrive.velocity);
+                             cassie_out.rightLeg.footDrive.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("knee_joint_rightdot"),
-      cassie_out.rightLeg.shinJoint.velocity);
+                             cassie_out.rightLeg.shinJoint.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_joint_rightdot"),
-      cassie_out.rightLeg.tarsusJoint.velocity);
+                             cassie_out.rightLeg.tarsusJoint.velocity);
   output->SetVelocityAtIndex(velocity_idx_map_.at("ankle_spring_joint_rightdot"),
-      0.0);
+                             0.0);
 
   // Solve fourbar linkage for heel spring positions
   double left_heel_spring = 0;
@@ -437,9 +437,9 @@ void CassieRbtStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   }
   solveFourbarLinkage(q, &left_heel_spring, &right_heel_spring);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_left"),
-      left_heel_spring);
+                             left_heel_spring);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_right"),
-      right_heel_spring);
+                             right_heel_spring);
 }
 
 
@@ -582,7 +582,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
   cost_b = B*u - C;
 
   quadcost_eom_->UpdateCoefficients(2*cost_A.transpose()*cost_A +
-          eps_cost_*MatrixXd::Identity(A_cols, A_cols),
+      eps_cost_*MatrixXd::Identity(A_cols, A_cols),
       -2*cost_A.transpose()*cost_b);
   quadcost_eps_cl_->UpdateCoefficients(
       w_soft_constraint_*MatrixXd::Identity(6, 6),
@@ -609,7 +609,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
   drake::solvers::EqualityConstrainedQPSolver solver;
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(drake::solvers::EqualityConstrainedQPSolver::id(),
-      "FeasibilityTol", 1e-6);
+               "FeasibilityTol", 1e-6);
   drake::solvers::MathematicalProgramResult result_double =
       solver.Solve(*quadprog_.get(), {}, solver_options);
 
@@ -620,16 +620,16 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
     // Initialize the optimization at the next time step with zeros
     discrete_state->get_mutable_vector(
         ddq_double_init_idx_).get_mutable_value() <<
-                                                  VectorXd::Zero(n_v, 1);
+        VectorXd::Zero(n_v, 1);
     discrete_state->get_mutable_vector(
         lambda_b_double_init_idx_).get_mutable_value() <<
-                                                       VectorXd::Zero(2, 1);
+        VectorXd::Zero(2, 1);
     discrete_state->get_mutable_vector(
         lambda_cl_double_init_idx_).get_mutable_value() <<
-                                                        VectorXd::Zero(6, 1);
+        VectorXd::Zero(6, 1);
     discrete_state->get_mutable_vector(
         lambda_cr_double_init_idx_).get_mutable_value() <<
-                                                        VectorXd::Zero(6, 1);
+        VectorXd::Zero(6, 1);
   } else {
     // Push the optimal cost to the optimal_cost vector
     optimal_cost->at(0) = result_double.get_optimal_cost() +
@@ -642,16 +642,16 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
     // Save current estimate for initial guess in the next iteration
     discrete_state->get_mutable_vector(
         ddq_double_init_idx_).get_mutable_value() <<
-                                                  ddq_val;
+        ddq_val;
     discrete_state->get_mutable_vector(
         lambda_b_double_init_idx_).get_mutable_value() <<
-                                                       result_double.GetSolution(lambda_b_);
+        result_double.GetSolution(lambda_b_);
     discrete_state->get_mutable_vector(
         lambda_cl_double_init_idx_).get_mutable_value() <<
-                                                        left_force;
+        left_force;
     discrete_state->get_mutable_vector(
         lambda_cr_double_init_idx_).get_mutable_value() <<
-                                                        right_force;
+        right_force;
 
     // Residual calculation
     // TODO(Nanda): Remove the residual calculation after testing on the real
@@ -662,10 +662,10 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
     VectorXd filtered_residual_double = discrete_state->get_vector(
         filtered_residual_double_idx_).get_value();
     filtered_residual_double = filtered_residual_double +
-        alpha_*(curr_residual - filtered_residual_double);
+      alpha_*(curr_residual - filtered_residual_double);
     discrete_state->get_mutable_vector(
         filtered_residual_double_idx_).get_mutable_value() <<
-                                                           filtered_residual_double;
+        filtered_residual_double;
   }
 
   // Mathematical program - left contact
@@ -681,7 +681,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
   cost_A << M, -1*Jb.transpose(), -1*Jcl.transpose(), MatrixXd::Zero(n_v, 6);
 
   quadcost_eom_->UpdateCoefficients(2*cost_A.transpose()*cost_A +
-          eps_cost_*MatrixXd::Identity(A_cols, A_cols),
+      eps_cost_*MatrixXd::Identity(A_cols, A_cols),
       -2*cost_A.transpose()*cost_b);
   quadcost_eps_cl_->UpdateCoefficients(
       w_soft_constraint_*MatrixXd::Identity(6, 6),
@@ -712,13 +712,13 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
     // Initialize the optimization with zero at the next time step
     discrete_state->get_mutable_vector(
         ddq_left_init_idx_).get_mutable_value() <<
-                                                VectorXd::Zero(n_v, 1);
+        VectorXd::Zero(n_v, 1);
     discrete_state->get_mutable_vector(
         lambda_b_left_init_idx_).get_mutable_value() <<
-                                                     VectorXd::Zero(2, 1);
+        VectorXd::Zero(2, 1);
     discrete_state->get_mutable_vector(
         lambda_cl_left_init_idx_).get_mutable_value() <<
-                                                      VectorXd::Zero(6, 1);
+        VectorXd::Zero(6, 1);
   } else {
     // Push the optimal cost to the optimal_cost vector
     optimal_cost->at(1) = result_left.get_optimal_cost() +
@@ -730,13 +730,13 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
     // Save current estimate for initial guess in the next iteration
     discrete_state->get_mutable_vector(
         ddq_left_init_idx_).get_mutable_value() <<
-                                                ddq_val;
+        ddq_val;
     discrete_state->get_mutable_vector(
         lambda_b_left_init_idx_).get_mutable_value() <<
-                                                     result_left.GetSolution(lambda_b_);
+        result_left.GetSolution(lambda_b_);
     discrete_state->get_mutable_vector(
         lambda_cl_left_init_idx_).get_mutable_value() <<
-                                                      left_force;
+        left_force;
 
     // Residual calculation
     // TODO(Nanda): Remove the residual calculation after testing on the real
@@ -750,7 +750,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
         alpha_*(curr_residual - filtered_residual_left);
     discrete_state->get_mutable_vector(
         filtered_residual_left_idx_).get_mutable_value() <<
-                                                         filtered_residual_left;
+        filtered_residual_left;
   }
 
   // Mathematical program - right contact
@@ -767,7 +767,7 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
   cost_A << M, -1*Jb.transpose(), MatrixXd::Zero(n_v, 6), -1*Jcr.transpose();
 
   quadcost_eom_->UpdateCoefficients(2*cost_A.transpose()*cost_A +
-          eps_cost_*MatrixXd::Identity(A_cols, A_cols),
+      eps_cost_*MatrixXd::Identity(A_cols, A_cols),
       -2*cost_A.transpose()*cost_b);
   quadcost_eps_cl_->UpdateCoefficients(
       MatrixXd::Zero(6, 6), VectorXd::Zero(6, 1));
@@ -801,13 +801,13 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
     // Initialize the optimization with zero at the next time step
     discrete_state->get_mutable_vector(
         ddq_right_init_idx_).get_mutable_value() <<
-                                                 VectorXd::Zero(n_v, 1);
+        VectorXd::Zero(n_v, 1);
     discrete_state->get_mutable_vector(
         lambda_b_right_init_idx_).get_mutable_value() <<
-                                                      VectorXd::Zero(2, 1);
+        VectorXd::Zero(2, 1);
     discrete_state->get_mutable_vector(
         lambda_cr_right_init_idx_).get_mutable_value() <<
-                                                       VectorXd::Zero(6 ,1);
+        VectorXd::Zero(6 ,1);
   } else {
     // Push the optimal cost to optimal_cost vector
     optimal_cost->at(2) = result_right.get_optimal_cost() +
@@ -819,13 +819,13 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
     // Save current estimate for initial guess in the next iteration
     discrete_state->get_mutable_vector(
         ddq_right_init_idx_).get_mutable_value() <<
-                                                 ddq_val;
+        ddq_val;
     discrete_state->get_mutable_vector(
         lambda_b_right_init_idx_).get_mutable_value() <<
-                                                      result_right.GetSolution(lambda_b_);
+        result_right.GetSolution(lambda_b_);
     discrete_state->get_mutable_vector(
         lambda_cr_right_init_idx_).get_mutable_value() <<
-                                                       right_force;
+        right_force;
 
     // Residual calculation
     // TODO(Nanda): Remove the residual calculation after testing on the real
@@ -836,10 +836,10 @@ void CassieRbtStateEstimator::UpdateContactEstimationCosts(
     VectorXd filtered_residual_right = discrete_state->get_vector(
         filtered_residual_right_idx_).get_value();
     filtered_residual_right = filtered_residual_right +
-        alpha_*(curr_residual - filtered_residual_right);
+      alpha_*(curr_residual - filtered_residual_right);
     discrete_state->get_mutable_vector(
         filtered_residual_right_idx_).get_mutable_value() <<
-                                                          filtered_residual_right;
+      filtered_residual_right;
   }
 
   // Record previous velocity (used in acceleration residual)
@@ -896,7 +896,7 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
   // costs in order. The corresponding indices are 0, 1, 2.
   // Here we get the index of min of left and right support costs.
   auto min_it = std::min_element(std::next(optimal_cost.begin(), 0),
-      optimal_cost.end());
+                                 optimal_cost.end());
   int min_index = std::distance(optimal_cost.begin(), min_it);
 
   // If all three costs are high, we believe it's going through impact event (
@@ -904,8 +904,8 @@ void CassieRbtStateEstimator::EstimateContactForEkf(
   // and we assume there is no support legs because we don't want moving feet
   // to mess up EKF.
   bool qp_informative = !((optimal_cost.at(0) >= cost_threshold_ekf_) &&
-      (optimal_cost.at(1) >= cost_threshold_ekf_) &&
-      (optimal_cost.at(2) >= cost_threshold_ekf_));
+                          (optimal_cost.at(1) >= cost_threshold_ekf_) &&
+                          (optimal_cost.at(2) >= cost_threshold_ekf_));
   bool double_contact_qp = (min_index == 0);
   bool left_contact_qp = (min_index == 1);
   bool right_contact_qp = (min_index == 2);
@@ -1001,8 +1001,8 @@ void CassieRbtStateEstimator::EstimateContactForController(
   // If all three costs are high, we believe it's going through impact event.
   // Since it's not very informative, we don't set any contact.
   bool qp_informative = !((optimal_cost.at(0) >= cost_threshold_ctrl_) &&
-      (optimal_cost.at(1) >= cost_threshold_ctrl_) &&
-      (optimal_cost.at(2) >= cost_threshold_ctrl_));
+                          (optimal_cost.at(1) >= cost_threshold_ctrl_) &&
+                          (optimal_cost.at(2) >= cost_threshold_ctrl_));
   bool double_contact_qp = (min_index == 0);
   bool left_contact_qp = (min_index == 1);
   bool right_contact_qp = (min_index == 2);
@@ -1020,10 +1020,10 @@ void CassieRbtStateEstimator::EstimateContactForController(
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
   bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ctrl_ ||
-      left_heel_spring < heel_spring_threshold_ctrl_);
+                              left_heel_spring < heel_spring_threshold_ctrl_);
   bool right_contact_spring =
       (right_knee_spring < knee_spring_threshold_ctrl_ ||
-          right_heel_spring < heel_spring_threshold_ctrl_);
+       right_heel_spring < heel_spring_threshold_ctrl_);
 
   // Determine contacts based on both spring deflation and QP cost
   if ((qp_informative && (double_contact_qp || left_contact_qp)) ||
@@ -1038,7 +1038,7 @@ void CassieRbtStateEstimator::EstimateContactForController(
 
 
 EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
-                                            drake::systems::State<double>* state) const {
+    drake::systems::State<double>* state) const {
   // Get cassie output
   const auto& cassie_out = this->EvalAbstractInput(
       context, cassie_out_input_port_)->get_value<cassie_out_t>();
@@ -1067,8 +1067,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
     // Get ground truth information
     OutputVector<double> output_gt(tree_.get_num_positions(),
-        tree_.get_num_velocities(),
-        tree_.get_num_actuators());
+                                   tree_.get_num_velocities(),
+                                   tree_.get_num_actuators());
     VectorXd imu_pos_wrt_world_gt(7);
     VectorXd imu_vel_wrt_world_gt(6);
     if(test_with_ground_truth_state_){
@@ -1181,8 +1181,8 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
 
     // Estimated robot output
     OutputVector<double> filtered_output(tree_.get_num_positions(),
-        tree_.get_num_velocities(),
-        tree_.get_num_actuators());
+                                   tree_.get_num_velocities(),
+                                   tree_.get_num_actuators());
     AssignImuValueToOutputVector(cassie_out, &filtered_output);
     AssignActuationFeedbackToOutputVector(cassie_out, &filtered_output);
     AssignNonFloatingBaseStateToOutputVector(cassie_out, &filtered_output);
@@ -1197,21 +1197,23 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       UpdateContactEstimationCosts(
           output_gt, dt, &(state->get_mutable_discrete_state()), &optimal_cost);
       EstimateContactForEkf(output_gt, optimal_cost, &left_contact,
-          &right_contact);
+                            &right_contact);
     } else {
       UpdateContactEstimationCosts(filtered_output, dt,
-          &(state->get_mutable_discrete_state()),
-          &optimal_cost);
+                                   &(state->get_mutable_discrete_state()),
+                                   &optimal_cost);
       EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
-          &right_contact);
+                            &right_contact);
     }
 
     // Test mode needed for hardware experiment
-    if (hardware_test_mode_ == 0){
+    // mode #0 assumes the feet are always on the ground
+    // mode #1 assumes the feet are always in the air
+    if (hardware_test_mode_ == 0) {
       left_contact = 1;
       right_contact = 1;
 
-      if((*counter_for_testing_)%5000 == 0){
+      if ((*counter_for_testing_) % 5000 == 0) {
         cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
       }
       *counter_for_testing_ = *counter_for_testing_ + 1;
@@ -1266,14 +1268,14 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       // Should fix this once moved to MBP (which has the API).
       MatrixXd J = tree_.transformPointsJacobian(
           cache, rear_contact_disp_, toe_indices[i], pelvis_idx_, false).
-                            block(0, 6, 3, 16);
+              block(0, 6, 3, 16);
       covariance.block<3, 3>(3, 3) = J * cov_w_ * J.transpose();
       inekf::Kinematics frame(i, pose, covariance);
       measured_kinematics.push_back(frame);
 
       if (print_info_to_terminal_) {
         cout << "covariance.block<3, 3>(3, 3) = \n" <<
-             covariance.block<3, 3>(3, 3) << endl;
+            covariance.block<3, 3>(3, 3) << endl;
       }
     }
     ekf.CorrectKinematics(measured_kinematics);
@@ -1321,14 +1323,14 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
     estimated_fb_state.tail(3) = ekf.getState().getVelocity() +
         omega_global.cross(r_imu_to_pelvis_global);
     state->get_mutable_discrete_state().get_mutable_vector(fb_state_idx_)
-         .get_mutable_value() << estimated_fb_state;
+        .get_mutable_value() << estimated_fb_state;
 
     // Store imu measurement
     state->get_mutable_discrete_state().get_mutable_vector(prev_imu_idx_)
-         .get_mutable_value() << imu_measurement;
+        .get_mutable_value() << imu_measurement;
     // Store current time
     state->get_mutable_discrete_state().get_mutable_vector(time_idx_)
-         .get_mutable_value() << current_time;
+        .get_mutable_value() << current_time;
   }
   return EventStatus::Succeeded();
 }
@@ -1357,8 +1359,8 @@ void CassieRbtStateEstimator::CopyStateOut(
         context.get_discrete_state(fb_state_idx_).get_value(), output);
     if (print_info_to_terminal_) {
       cout << "Assign floating base state of the imu. " <<
-           context.get_discrete_state(fb_state_idx_).get_value().transpose()
-           << endl;
+          context.get_discrete_state(fb_state_idx_).get_value().transpose()
+          << endl;
     }
   }
 
@@ -1370,13 +1372,13 @@ void CassieRbtStateEstimator::CopyStateOut(
 }
 
 void CassieRbtStateEstimator::setPreviousTime(Context<double>* context,
-                                              double time) {
+    double time) {
   context->get_mutable_discrete_state(time_idx_).get_mutable_value() << time;
 }
 void CassieRbtStateEstimator::setInitialImuPosition(Context<double>* context,
-                                                    Vector3d p) {
+    Vector3d p) {
   context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value()
-         .head(3) << p;
+      .head(3) << p;
   // Update EKF state
   auto& filter = context->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
   auto state = filter.getState();
@@ -1386,9 +1388,9 @@ void CassieRbtStateEstimator::setInitialImuPosition(Context<double>* context,
        filter.getState().getPosition().transpose() << endl;
 }
 void CassieRbtStateEstimator::setInitialImuQuaternion(Context<double>* context,
-                                                      Eigen::Vector4d q) {
+    Eigen::Vector4d q) {
   context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value()
-         .segment(3, 4) << q;
+      .segment(3, 4) << q;
   // Update EKF state
   auto& filter = context->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
   auto state = filter.getState();
@@ -1396,7 +1398,7 @@ void CassieRbtStateEstimator::setInitialImuQuaternion(Context<double>* context,
   filter.setState(state);
 }
 void CassieRbtStateEstimator::setPreviousImuMeasurement(Context<double>* context,
-                                                        VectorXd imu_value) {
+    VectorXd imu_value) {
   context->get_mutable_discrete_state(prev_imu_idx_).get_mutable_value()
       << imu_value;
 }

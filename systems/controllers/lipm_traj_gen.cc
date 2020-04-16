@@ -224,10 +224,9 @@ void LIPMTrajGenerator::CalcTraj(
   alpha << 1, 1;
 
   // Assign traj
-  ExponentialPlusPiecewisePolynomial<double>* casted_traj =
-      (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
-          ExponentialPlusPiecewisePolynomial<double>*>(traj);
-  *casted_traj =
+  auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
+      ExponentialPlusPiecewisePolynomial<double>*>(traj);
+  *exp_pp_traj =
       ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
 }
 

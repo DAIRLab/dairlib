@@ -43,7 +43,7 @@ namespace dairlib::systems::controllers {
 ///  - the joints name (except for the spring joints) in `plant_w_spr` must be
 ///    the same as those of `plant_wo_spr`
 ///  - the bodies in both MBP's should be the same. (to get Jacobian from
-///    both trees)
+///    both plants)
 
 /// If the robot doesn't have any springs, the user can just pass two identical
 /// MultibodyPlants into the constructor.
@@ -201,7 +201,7 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   std::unique_ptr<drake::systems::Context<double>> context_w_spr_;
   std::unique_ptr<drake::systems::Context<double>> context_wo_spr_;
 
-  // Size of position, velocity and input of the RBT without spring
+  // Size of position, velocity and input of the MBP without spring
   int n_q_;
   int n_v_;
   int n_u_;
@@ -217,7 +217,7 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd u_min_;
   Eigen::VectorXd u_max_;
 
-  // flag indicating whehter using osc with finite state machine or not
+  // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
 
   // flag indicating whether to print the tracking related values or not
@@ -243,7 +243,7 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user
-  /// could consider usnig acceleration cost instead.
+  /// could consider using acceleration cost instead.
   Eigen::MatrixXd W_input_;        // Input cost weight
   Eigen::MatrixXd W_joint_accel_;  // Joint acceleration cost weight
 
@@ -270,6 +270,7 @@ class OperationalSpaceControlMBP : public drake::systems::LeafSystem<double> {
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<OscTrackingDataMBP*>> tracking_data_vec_ =
       std::make_unique<std::vector<OscTrackingDataMBP*>>();
+
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;
 

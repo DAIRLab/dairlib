@@ -29,7 +29,19 @@ namespace systems {
 /// If the model is fixed-based, then it skips the second step.
 class CassieRbtStateEstimator : public drake::systems::LeafSystem<double> {
  public:
-  explicit CassieRbtStateEstimator(const RigidBodyTree<double>&,
+  /// Constructor
+  /// @param tree rigibodytree of the robot
+  /// @param is_floating_base a flag indicating whether or not the robot is in
+  /// floating base
+  /// @param test_with_ground_truth_state a flag indicating whether or not the
+  /// user is testing the estimated state with the ground-truth state
+  /// @param print_info_to_terminal a flag for printing message of EKF to the
+  /// terminal
+  /// @param hardware_test_mode the mode of ekf
+  ///    -1: regular EKF (not a testing mode).
+  ///    0: assume both feet are always in contact with ground.
+  ///    1: assume both feet are always in the air.
+  explicit CassieRbtStateEstimator(const RigidBodyTree<double>& tree,
                                    bool is_floating_base,
                                    bool test_with_ground_truth_state = false,
                                    bool print_info_to_terminal = false,

@@ -122,6 +122,7 @@ int do_main(int argc, char* argv[]) {
     // Get message time from the input channel
     double t_current = input_sub.message().utime * 1e-6;
     if (t_current >= t_threshold) {
+      msg.utime = (int)input_sub.message().utime;
       name_pub->get_input_port().FixValue(
           &(diagram_ptr->GetMutableSubsystemContext(*name_pub,
                                                     &diagram_context)),

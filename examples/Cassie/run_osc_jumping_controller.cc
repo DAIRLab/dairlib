@@ -231,7 +231,7 @@ int DoMain(int argc, char* argv[]) {
       plant_with_springs.num_positions(), plant_with_springs.num_velocities(),
       plant_with_springs.num_actuators(), pos_cov, vel_cov);
 
-  LcmSubscriberSystem* contact_results_sub;
+  LcmSubscriberSystem* contact_results_sub = nullptr;
   if (FLAGS_simulator == "DRAKE") {
     contact_results_sub = builder.AddSystem(
         LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(

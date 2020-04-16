@@ -36,13 +36,17 @@ def print_osc_debug(t_idx, length, osc_debug):
 
 
 def calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v):
-    # This uses a hardcoded start and end time to calculate the net impulse
     n_dim = 3
+    impact_duration = 0.05
     net_impulse = np.zeros((n_dim,1))
-    t_start = 0.11
-    t_end = 0.137
-    t_start_idx = get_index_at_time(t_contact_info, t_start)
-    t_end_idx = get_index_at_time(t_contact_info, t_end)
+
+    M = plant.CalcMassMatrixViaInverseDynamics(context)
+    M_inv = np.linalg.inv(M)
+
+    # Get the index for when the first grf is non-zero
+    t_start_idx = np.min(np.argwhere(contact_info > 0), 0)[1]
+    # Get the index for impact_duration (s) after the first non-zero grf
+    t_end_idx = get_index_at_time(t_contact_info, t_state[t_start_idx] + impact_duration)
     x = np.hstack((q, v))
 
     l_contact_frame = plant.GetBodyByName("toe_left").body_frame()
@@ -57,26 +61,41 @@ def calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v):
         for j in range(n_dim):
             impulses[i, j] = np.trapz(contact_info[i, t_slice, j],
                                    t_contact_info[t_slice])
-    print(impulses)
-    # import pdb; pdb.set_trace()
+
+    impulse_from_contact = np.zeros((t_end_idx - t_start_idx, v.shape[1]))
 
     for i in range(t_start_idx, t_end_idx):
         plant.SetPositionsAndVelocities(context, x[i])
         J_l_r = plant.CalcJacobianTranslationalVelocity(context,
-                                                JacobianWrtVariable.kV,
-                                                l_contact_frame,
-                                                rear_contact_disp,
-                                                world,
-                                                world)
+                    JacobianWrtVariable.kV, l_contact_frame, rear_contact_disp,
+                    world, world)
         J_l_f = plant.CalcJacobianTranslationalVelocity(context,
-                                                        JacobianWrtVariable.kV, l_contact_frame, front_contact_disp, world, world)
+                    JacobianWrtVariable.kV, l_contact_frame, front_contact_disp,
+                    world, world)
         J_r_r = plant.CalcJacobianTranslationalVelocity(context,
-                                                        JacobianWrtVariable.kV, r_contact_frame, rear_contact_disp, world, world)
-        J_r_r = plant.CalcJacobianTranslationalVelocity(context,
-                                                        JacobianWrtVariable.kV, r_contact_frame, front_contact_disp, world, world)
-        
+                    JacobianWrtVariable.kV, r_contact_frame, rear_contact_disp,
+                    world, world)
+        J_r_f = plant.CalcJacobianTranslationalVelocity(context,
+                    JacobianWrtVariable.kV, r_contact_frame, front_contact_disp,
+                    world, world)
 
+        # import pdb; pdb.set_trace()
+        impulse_from_contact[i - t_start_idx] = J_l_r.T @ contact_info[0, i]
+        impulse_from_contact[i - t_start_idx] = J_l_f.T @ contact_info[1, i]
+        impulse_from_contact[i - t_start_idx] = J_r_r.T @ contact_info[2, i]
+        impulse_from_contact[i - t_start_idx] = J_r_f.T @ contact_info[3, i]
 
+    #Assuming_the position change is negligible
+    # import pdb; pdb.set_trace()
+    net_impulse_from_contact = np.zeros(v.shape[1])
+    for j in range(v.shape[1]):
+        net_impulse_from_contact[j] = np.trapz(impulse_from_contact[:,j],
+                                             t_contact_info[
+            t_slice])
+    delta_v = M_inv @ net_impulse_from_contact
+    print("Interval between: ", t_state[t_start_idx], t_state[t_end_idx])
+    print(impulses)
+    print(delta_v)
     return net_impulse
 
 def main():
@@ -192,21 +211,21 @@ def main():
 
     log = lcm.EventLog(sys.argv[1], "r")
     log_samples = int(log.size() / 100)
-    print(log.size() / 100)
+    # print(log.size() / 100)
 
     contact_info, contact_info_locs, control_inputs, estop_signal, osc_debug, \
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
     t_state, v = process_lcm_log.process_log(log, pos_map, vel_map)
 
-    # init_x = np.hstack((q[0,:], v[0,:]))
-    # plant.SetPositionsAndVelocities(context, init_x)
-    # M = plant.CalcMassMatrixViaInverseDynamics(context)
-    # matlab_data = dict(M=M)
-    # print(q[0, :])
+    init_x = np.hstack((q[0,:], v[0,:]))
+    plant.SetPositionsAndVelocities(context, init_x)
+    M = plant.CalcMassMatrixViaInverseDynamics(context)
+    matlab_data = dict(M=M)
+    print(q[0, :])
     # print(plant.)
-    # sio.savemat('/home/yangwill/Documents/research/projects/cassie/jumping'
-    #             '/logs/M_drake', matlab_data)
-    # print(plant.CalcMassMatrixViaInverseDynamics(context))
+    sio.savemat('/home/yangwill/Documents/research/projects/cassie/jumping'
+                '/logs/M_drake', matlab_data)
+    print(plant.CalcMassMatrixViaInverseDynamics(context))
 
     calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v)
 
@@ -248,7 +267,7 @@ def main():
     # Foot plotting
     # plot_feet_simulation(context, l_toe_frame, r_toe_frame, world, no_offset,
     #                      plant, v, q, t_state, t_state_slice)
-    if False:
+    if True:
         plot_feet_simulation(plant, context, q, v, l_toe_frame, front_contact_disp,
                              world, t_state, t_state_slice, "left_", "_front")
         plot_feet_simulation(plant, context, q, v, r_toe_frame, front_contact_disp,
@@ -285,13 +304,13 @@ def plot_ground_reaction_forces(contact_info, t_state, t_state_slice):
     fig = plt.figure('contact data')
     # plt.plot(t_contact_info, contact_info[0, :, 2] + contact_info[1, :, 2],
     plt.plot(t_state[t_state_slice], contact_info[0, t_state_slice, 2],
-             label='$\lambda_n left_f$')
-    plt.plot(t_state[t_state_slice], contact_info[1, t_state_slice, 2],
              label='$\lambda_n left_r$')
+    plt.plot(t_state[t_state_slice], contact_info[1, t_state_slice, 2],
+             label='$\lambda_n left_f$')
     plt.plot(t_state[t_state_slice], contact_info[2, t_state_slice, 2],
-             label='$\lambda_n right_f$')
-    plt.plot(t_state[t_state_slice], contact_info[3, t_state_slice, 2],
              label='$\lambda_n right_r$')
+    plt.plot(t_state[t_state_slice], contact_info[3, t_state_slice, 2],
+             label='$\lambda_n right_f$')
     plt.legend()
 
 

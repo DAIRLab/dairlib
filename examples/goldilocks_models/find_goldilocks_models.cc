@@ -1612,7 +1612,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_robot_option == 0) {
     max_sample_cost_increase_rate = FLAGS_is_stochastic? 2.0: 0.01;
   } else if (FLAGS_robot_option== 1) {
-    max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
+    max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.3: 0.01;
   } else {
     throw std::runtime_error("Should not reach here");
   }

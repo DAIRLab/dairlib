@@ -1608,11 +1608,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   const int method_to_solve_system_of_equations =
       FLAGS_method_to_solve_system_of_equations;
+  // With bigger momentum, you might need a larger tolerance
   double max_sample_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
     max_sample_cost_increase_rate = FLAGS_is_stochastic? 2.0: 0.01;
   } else if (FLAGS_robot_option== 1) {
-    max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.3: 0.01;
+    max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01; //0.3
   } else {
     throw std::runtime_error("Should not reach here");
   }
@@ -1620,7 +1621,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_robot_option == 0) {
     max_average_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01;
   } else if (FLAGS_robot_option== 1) {
-    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
+    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;//0.15
   } else {
     throw std::runtime_error("Should not reach here");
   }

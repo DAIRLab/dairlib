@@ -7,6 +7,7 @@
 #include <deque>  // queue with feature of finding elements
 #include <utility>  // std::pair, std::make_pair
 #include <bits/stdc++.h>  // system call
+#include <cmath>
 
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
@@ -180,7 +181,7 @@ void setCostWeight(double* Q, double* R, double* all_cost_scale,
   } else if (robot_option == 1) {
     *Q = 5 * 0.1;
     *R = 0.1 * 0.01;
-    *all_cost_scale = 0.2;
+    *all_cost_scale = 0.2 * 0.12;
   }
 }
 void setRomDim(int* n_s, int* n_tau, int rom_option) {
@@ -1625,6 +1626,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
   } else {
     throw std::runtime_error("Should not reach here");
   }
+  // Since sometimes the above increase rates are too restrictive and cause the
+  // optimization to get stuck in some iteration, we relax the increase rate
+  // every `n_shrink_before_relaxing_tolerance` times of step size shrinking
+  int n_shrink_before_relaxing_tolerance = 6;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
@@ -1644,6 +1649,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "The maximum rate the averaged cost can increase before shrinking "
           "step size = "
        << max_average_cost_increase_rate << endl;
+  cout << "n_shrink_before_relaxing_tolerance = "
+       << n_shrink_before_relaxing_tolerance << endl;
   // Outer loop setting - help from adjacent samples
   bool get_good_sol_from_adjacent_sample =
       FLAGS_get_good_sol_from_adjacent_sample;
@@ -2455,10 +2462,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
                << (total_cost - ave_min_cost_so_far) / ave_min_cost_so_far * 100
                << "%.\n";
         }
-        if (total_cost >
-            (1 + max_average_cost_increase_rate) * ave_min_cost_so_far) {
-          cout << "The cost went up too much (over "
-               << max_average_cost_increase_rate * 100
+        double tol_total_cost =
+            max_average_cost_increase_rate *
+            std::floor(n_shrink_step /
+                       (double)n_shrink_before_relaxing_tolerance);
+        if (total_cost > (1 + tol_total_cost) * ave_min_cost_so_far) {
+          cout << "The cost went up too much (over " << tol_total_cost * 100
                << "%). Shrink the step size.\n\n";
           start_iterations_with_shrinking_stepsize = true;
           iter--;
@@ -2466,6 +2475,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
         }
 
         // 2. each sample cost
+        double tol_sample_cost =
+            max_sample_cost_increase_rate *
+                std::floor(n_shrink_step /
+                    (double)n_shrink_before_relaxing_tolerance);
         DRAKE_DEMAND(c_vec.size() == each_min_cost_so_far.size());
         bool exit_current_iter_to_shrink_step_size = false;
         for (int sample_i = 0; sample_i < N_sample; sample_i++) {
@@ -2477,10 +2490,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
                  << "%.\n";
           }
           // If cost goes up, we restart the iteration and shrink the step size.
-          if (c_vec[sample_i](0) > (1 + max_sample_cost_increase_rate) *
-                                       each_min_cost_so_far[sample_i]) {
-            cout << "The cost went up too much (over "
-                 << max_sample_cost_increase_rate * 100
+          if (c_vec[sample_i](0) >
+              (1 + tol_sample_cost) * each_min_cost_so_far[sample_i]) {
+            cout << "The cost went up too much (over " << tol_sample_cost * 100
                  << "%). Shrink the step size.\n\n";
             start_iterations_with_shrinking_stepsize = true;
             iter--;

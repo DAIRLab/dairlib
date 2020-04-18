@@ -83,7 +83,7 @@ class GoldilocksModelTrajOpt {
       const std::vector<int>& num_time_samples,
       bool is_get_nominal,
       bool is_add_tau_in_cost,
-      int rom_option, int robot_option);
+      int rom_option, int robot_option, double constraint_scale);
   GoldilocksModelTrajOpt() {};
 
   Eigen::VectorBlock<const VectorXDecisionVariable> reduced_model_input(

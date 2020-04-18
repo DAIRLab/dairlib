@@ -7,9 +7,12 @@
 #include <deque>  // queue with feature of finding elements
 #include <utility>  // std::pair, std::make_pair
 #include <bits/stdc++.h>  // system call
+#include <cmath>
 
 #include "drake/multibody/parsing/parser.h"
+#include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
 #include "common/find_resource.h"
@@ -76,7 +79,21 @@ DEFINE_bool(is_stochastic, true, "Random tasks or fixed tasks");
 DEFINE_bool(is_newton, false, "Newton method or gradient descent");
 DEFINE_double(h_step, -1, "The step size for outer loop");
 DEFINE_int32(max_outer_iter, 10000, "Max iteration # for theta update");
-DEFINE_double(beta_momentum, 0.8, "The weight on the previous step direction");
+DEFINE_double(
+    beta_momentum, 0.8,
+    "The weight on the previous step direction."
+    "beta_momentum = 0 means we only use gradient at current iter."
+    "Momentum can give you faster convergence (seen in experiment), and avoid "
+    "some local minima caused by step size."
+    "See: https://distill.pub/2017/momentum/"
+    "WARNING: beta_momentum is not used in newton's method");
+
+// Solving for the cost gradient
+DEFINE_int32(method_to_solve_system_of_equations, 3,
+             "Method 0: use optimization program to solve it "
+             "Method 1: use schur complement "
+             "Method 2: use inverse() directly "
+             "Method 3: use Moore-Penrose pseudo inverse ");
 
 // How to update the model iterations
 DEFINE_bool(start_current_iter_as_rerun, false,
@@ -86,6 +103,9 @@ DEFINE_int32(N_rerun, -1, "snopt might settle down at a bad sub-optimal"
                           " solution, so we rerun.");
 DEFINE_double(fail_threshold, 0.2,
               "Maximum acceptable failure rate of samples");
+DEFINE_bool(get_good_sol_from_adjacent_sample, true,
+            "Get a good solution from adjacent samples to improve the solution "
+            "quality of the current sample");
 
 // Other features for how to start the program
 DEFINE_bool(
@@ -163,7 +183,7 @@ void setCostWeight(double* Q, double* R, double* all_cost_scale,
   } else if (robot_option == 1) {
     *Q = 5 * 0.1;
     *R = 0.1 * 0.01;
-    *all_cost_scale = 0.2;
+    *all_cost_scale = 0.2 * 0.12;
   }
 }
 void setRomDim(int* n_s, int* n_tau, int rom_option) {
@@ -483,17 +503,14 @@ void readApproxQpFiles(vector<VectorXd> * w_sol_vec, vector<MatrixXd> * A_vec,
   }
 }
 
-void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
-                                     string dir,
-                                     const vector<MatrixXd> & B_vec,
-                                     const vector<MatrixXd> & A_vec,
-                                     const vector<std::shared_ptr<MatrixXd>> & H_vec,
-                                     const vector<VectorXd> & b_vec,
-                                     const vector<VectorXd> & lb_vec,
-                                     const vector<VectorXd> & ub_vec,
-                                     const vector<VectorXd> & y_vec,
-                                     const vector<VectorXd> & w_sol_vec,
-                                     int method_to_solve_system_of_equations) {
+void extractActiveAndIndependentRows(
+    int sample, double active_tol, double indpt_row_tol, string dir,
+    const vector<MatrixXd>& B_vec, const vector<MatrixXd>& A_vec,
+    const vector<std::shared_ptr<MatrixXd>>& H_vec,
+    const vector<VectorXd>& b_vec, const vector<VectorXd>& lb_vec,
+    const vector<VectorXd>& ub_vec, const vector<VectorXd>& y_vec,
+    const vector<VectorXd>& w_sol_vec,
+    int method_to_solve_system_of_equations) {
   string prefix = to_string(sample) + "_";
 
   DRAKE_ASSERT(b_vec[sample].cols() == 1);
@@ -506,10 +523,9 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
   int nw_i = A_vec[sample].cols();
 
   int nl_i = 0;
-  double tol = 1e-4;
   for (int i = 0; i < y_vec[sample].rows(); i++) {
-    if (y_vec[sample](i) >= ub_vec[sample](i) - tol ||
-        y_vec[sample](i) <= lb_vec[sample](i) + tol)
+    if (y_vec[sample](i) >= ub_vec[sample](i) - active_tol ||
+        y_vec[sample](i) <= lb_vec[sample](i) + active_tol)
       nl_i++;
   }
 
@@ -518,8 +534,8 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
 
   nl_i = 0;
   for (int i = 0; i < y_vec[sample].rows(); i++) {
-    if (y_vec[sample](i) >= ub_vec[sample](i) - tol ||
-        y_vec[sample](i) <= lb_vec[sample](i) + tol) {
+    if (y_vec[sample](i) >= ub_vec[sample](i) - active_tol ||
+        y_vec[sample](i) <= lb_vec[sample](i) + active_tol) {
       A_active.row(nl_i) = A_vec[sample].row(i);
       B_active.row(nl_i) = B_vec[sample].row(i);
       nl_i++;
@@ -546,7 +562,12 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
                                   VectorXd::Zero(nl_i),
                                   w2);
     quadprog.AddQuadraticCost(*(H_vec[sample]), b_vec[sample], w2);
-    const auto result = Solve(quadprog);
+
+    // Testing
+      drake::solvers::SnoptSolver snopt_solver;
+    const auto result = snopt_solver.Solve(quadprog);
+
+//    const auto result = Solve(quadprog);
     auto solution_result = result.get_solution_result();
     if (result.is_success()) {
       VectorXd w_sol_check = result.GetSolution(
@@ -563,14 +584,15 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
   // Only add the rows that are linearly independent if the method requires A to
   // be positive definite
   if (method_to_solve_system_of_equations != 3) {
-    // extract_method = 0: Do SVD each time when adding a row. (might be incorrect)
-    // extract_method = 1: Do SVD only once.
-    // TODO: method = 1 hasn't been tested yet
+    // extract_method = 0: Do SVD each time when adding a row. (This has been
+    //  working, but we later realized that the way we extract B matrix might be
+    //  incorrect in theory)
+    // extract_method = 1: Do SVD only once (see the notes on 20200220).
     int extract_method = 1;
 
     if (extract_method == 0) {
-      cout << "n_w = " << nw_i << endl;
-      cout << "Start extracting independent rows of A (# of rows = " << nl_i << ")\n";
+      /*cout << "n_w = " << nw_i << endl;
+      cout << "Start extracting independent rows of A (# of rows = " << nl_i << ")\n";*/
       vector<int> full_row_rank_idx;
       full_row_rank_idx.push_back(0);
       for (int i = 1; i < nl_i; i++) {
@@ -598,8 +620,8 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
         }
       }
       nl_i = full_row_rank_idx.size();
-      cout << "Finished extracting independent rows of A (# of rows = " << nl_i <<
-           ")\n\n";
+      /*cout << "Finished extracting independent rows of A (# of rows = " <<
+         nl_i << ")\n\n";*/
 
       // Assign the rows
       MatrixXd A_processed(nl_i, nw_i);
@@ -620,18 +642,19 @@ void extractActiveAndIndependentRows(int sample, double indpt_row_tol,
       // SVD
       Eigen::BDCSVD<MatrixXd> svd(A_active,
                                   Eigen::ComputeFullU | Eigen::ComputeFullV);
-      //svd.setThreshold(indpt_row_tol); // the threshold is the biggest singular value * tol
-      //int rank = svd.rank();
 
+      // find the rank of the matrix (use absolute tolerance)
       const auto& singular_values = svd.singularValues();
       int rank = 0;
       for (rank = 0; rank < singular_values.size(); ++rank) {
-        if (singular_values(rank) < 0.5) {
+        if (singular_values(rank) < indpt_row_tol) {
           break;
         }
       }
 
       // Assign the rows
+      // (I believe either adjoint() or transpose() works here because U is a
+      // real matrix when A is a real matrix)
       MatrixXd A_processed =
           svd.matrixU().block(0, 0, nl_i, rank).transpose() * A_active;
       MatrixXd B_processed =
@@ -739,11 +762,11 @@ void calcWInTermsOfTheta(int sample, const string& dir,
   MatrixXd Pi(nw_vec[sample], B_active_vec[sample].cols());
   VectorXd qi(nw_vec[sample]);
   if (method_to_solve_system_of_equations == 0) {
-    // Method 1: use optimization program to solve it??? ///////////////////////
+    // Method 0: use optimization program to solve it??? ///////////////////////
     throw std::runtime_error(
         "method_to_solve_system_of_equations = 0 is not implemented yet.");
   } else if (method_to_solve_system_of_equations == 1) {
-    // Method 2: use schur complement (see notes) //////////////////////////////
+    // Method 1: use schur complement (see notes) //////////////////////////////
     // This one requires the Hessian H to be pd.
     // Also, although this method might be more computationally efficient, the
     // accuracy is not as high as when we use inverse() directly. The reason is
@@ -771,7 +794,7 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     cout << "qi norm (this number should be close to 0) = "
          << qi.norm() << endl;
   } else if (method_to_solve_system_of_equations == 2) {
-    // Method 3: use inverse() directly ////////////////////////////////////////
+    // Method 2: use inverse() directly ////////////////////////////////////////
     // (This one requires the Hessian H to be pd.)
     // This method has been working pretty well, but it requires H to be pd. And
     // in order to get pd H, we need to extract independent row of matrix A,
@@ -794,14 +817,14 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     //         << svd.singularValues().tail(1) << endl;
     // // cout << "singular values are \n" << svd.singularValues() << endl;
     // // Testing
-    if (sample == 0) {
+    /*if (sample == 0) {
       Eigen::BDCSVD<MatrixXd> svd_3(H_ext);
       cout << "H_ext:\n";
       cout << "  biggest singular value is " << svd_3.singularValues()(0)
            << endl;
       cout << "  smallest singular value is " << svd_3.singularValues().tail(1)
            << endl;
-    }
+    }*/
 
     // cout << "\nStart inverting the matrix.\n";
     MatrixXd inv_H_ext = H_ext.inverse();
@@ -819,7 +842,7 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     Pi = -inv_H_ext12 * B_active_vec[sample];
     qi = -inv_H_ext11 * b_vec[sample];
   } else if (method_to_solve_system_of_equations == 3) {
-    // Method 4: use Moore–Penrose pseudo inverse //////////////////////////////
+    // Method 3: use Moore–Penrose pseudo inverse //////////////////////////////
 
     // H_ext = [H A'; A 0]
     int nl_i = nl_vec[sample];
@@ -1366,8 +1389,7 @@ void GetHeuristicStepSize(double h_step, double step_direction_norm,
                           double* current_iter_step_size) {
   // (*current_iter_step_size) = h_step;
   if (step_direction_norm > 1) {
-    // (*current_iter_step_size) = h_step / sqrt(norm_grad_cost);  // Heuristic
-    // (*current_iter_step_size) = h_step / norm_grad_cost;  // Heuristic
+//    (*current_iter_step_size) = h_step / sqrt(step_direction_norm);  // Heuristic
     (*current_iter_step_size) = h_step / step_direction_norm;  // Heuristic
   } else {
     (*current_iter_step_size) = h_step;
@@ -1540,20 +1562,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int iter_start = FLAGS_iter_start;
   int max_outer_iter = FLAGS_max_outer_iter;
   double stopping_threshold = 1e-4;
+
   // beta_momentum = 0 means we only use gradient at current iter.
   // Momentum can give you faster convergence. And get out of a local minimum
   // caused by step size. See: https://distill.pub/2017/momentum/ WARNING:
   // beta_momentum is not used in newton's method
-
-//  original momentum term in the code
-//  double beta_momentum = 0.8;
-  double beta_momentum;
-  if(FLAGS_beta_momentum >= 0)
-  {
-      beta_momentum = FLAGS_beta_momentum;
-  }else{
-      beta_momentum = 0.8;
-  }
+  double beta_momentum = FLAGS_beta_momentum;
   double h_step;
   if (FLAGS_h_step > 0) {
     h_step = FLAGS_h_step;
@@ -1610,33 +1624,29 @@ int findGoldilocksModels(int argc, char* argv[]) {
       N_rerun = 0;
     }
   }
-  const int method_to_solve_system_of_equations = 3;
+  const int method_to_solve_system_of_equations =
+      FLAGS_method_to_solve_system_of_equations;
+  // With bigger momentum, you might need a larger tolerance
   double max_sample_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
     max_sample_cost_increase_rate = FLAGS_is_stochastic? 2.0: 0.01;
   } else if (FLAGS_robot_option== 1) {
-    max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
+    max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01; //0.3
   } else {
     throw std::runtime_error("Should not reach here");
   }
   double max_average_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
-    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;
+    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01;
   } else if (FLAGS_robot_option== 1) {
-    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.15: 0.01;
+    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;//0.15
   } else {
     throw std::runtime_error("Should not reach here");
   }
-  double max_cost_increase_rate_before_ask_for_help = 0.1;
-  if (FLAGS_robot_option == 0) {
-    max_cost_increase_rate_before_ask_for_help = 0.5;
-  }
-  double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
-  if (FLAGS_robot_option == 0) {
-    max_adj_cost_diff_rate_before_ask_for_help = 0.5;
-  }
-  bool is_limit_difference_of_two_adjacent_costs =
-      max_adj_cost_diff_rate_before_ask_for_help > 0;
+  // Since sometimes the above increase rates are too restrictive and cause the
+  // optimization to get stuck in some iteration, we relax the increase rate
+  // every `n_shrink_before_relaxing_tolerance` times of step size shrinking
+  int n_shrink_before_relaxing_tolerance = 6;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
@@ -1656,11 +1666,34 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "The maximum rate the averaged cost can increase before shrinking "
           "step size = "
        << max_average_cost_increase_rate << endl;
-  cout << "The maximum rate the cost can increase before asking adjacent "
-          "samples for help = "
-       << max_cost_increase_rate_before_ask_for_help << endl;
-  cout << "The maximum cost difference rate between two adjacent samples = "
-       << max_adj_cost_diff_rate_before_ask_for_help << endl;
+  cout << "n_shrink_before_relaxing_tolerance = "
+       << n_shrink_before_relaxing_tolerance << endl;
+  // Outer loop setting - help from adjacent samples
+  bool get_good_sol_from_adjacent_sample =
+      FLAGS_get_good_sol_from_adjacent_sample;
+  if (FLAGS_robot_option == 0) {
+    // five-link robot doesn't seem to need help
+    get_good_sol_from_adjacent_sample = false;
+  }
+  double max_cost_increase_rate_before_ask_for_help = 0.1;
+  if (FLAGS_robot_option == 0) {
+    max_cost_increase_rate_before_ask_for_help = 0.5;
+  }
+  double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
+  if (FLAGS_robot_option == 0) {
+    max_adj_cost_diff_rate_before_ask_for_help = 0.5;
+  }
+  bool is_limit_difference_of_two_adjacent_costs =
+      max_adj_cost_diff_rate_before_ask_for_help > 0;
+  cout << "Get good sols from adjacent samples to improve solution quality? "
+       << get_good_sol_from_adjacent_sample << endl;
+  if (get_good_sol_from_adjacent_sample) {
+    cout << "The maximum rate the cost can increase before asking adjacent "
+            "samples for help = "
+         << max_cost_increase_rate_before_ask_for_help << endl;
+    cout << "The maximum cost difference rate between two adjacent samples = "
+         << max_adj_cost_diff_rate_before_ask_for_help << endl;
+  }
   /// Notes: currently, there are a few conditions under any of which the
   /// program would rerun trajectory optimization:
   ///  1. if N_rerun is not 0, then after SNOPT found a solution this program
@@ -2135,13 +2168,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // If the current sample already finished N_rerun, then it means that
           // there exists a adjacent sample that can help the current sample.
           int sample_idx_to_help = -1;
-          if (n_rerun[sample_idx] > N_rerun) {
-            cout << "is_good_solution = ";
-            for (auto & mem : is_good_solution) {
-              cout << mem << ", ";
-            } cout << endl;
-            GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
-                              sample_idx_that_helped, sample_idx_to_help);
+          if (get_good_sol_from_adjacent_sample) {
+            if (n_rerun[sample_idx] > N_rerun) {
+              cout << "is_good_solution = ";
+              for (auto & mem : is_good_solution) {
+                cout << mem << ", ";
+              } cout << endl;
+              GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
+                                sample_idx_that_helped, sample_idx_to_help);
+            }
           }
 
           // Get file name of initial seed
@@ -2237,17 +2272,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
 
           // Get good initial guess from adjacent samples's solution
-          if (n_rerun[sample_idx] >= N_rerun) {
-            RecordSolutionQualityAndQueueList(
-                dir, prefix, sample_idx, assigned_thread_idx,
-                adjacent_sample_indices,
-                max_cost_increase_rate_before_ask_for_help,
-                max_adj_cost_diff_rate_before_ask_for_help,
-                is_limit_difference_of_two_adjacent_costs, sample_success,
-                current_sample_is_queued, n_rerun, N_rerun,
-                local_each_min_cost_so_far, is_good_solution,
-                sample_idx_waiting_to_help, sample_idx_that_helped,
-                awaiting_sample_idx);
+          if (get_good_sol_from_adjacent_sample) {
+            if (n_rerun[sample_idx] >= N_rerun) {
+              RecordSolutionQualityAndQueueList(
+                  dir, prefix, sample_idx, assigned_thread_idx,
+                  adjacent_sample_indices,
+                  max_cost_increase_rate_before_ask_for_help,
+                  max_adj_cost_diff_rate_before_ask_for_help,
+                  is_limit_difference_of_two_adjacent_costs, sample_success,
+                  current_sample_is_queued, n_rerun, N_rerun,
+                  local_each_min_cost_so_far, is_good_solution,
+                  sample_idx_waiting_to_help, sample_idx_that_helped,
+                  awaiting_sample_idx);
+            }
           }
 
           // If the current sample is queued again because it could be helped by
@@ -2446,10 +2483,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
                << (total_cost - ave_min_cost_so_far) / ave_min_cost_so_far * 100
                << "%.\n";
         }
-        if (total_cost >
-            (1 + max_average_cost_increase_rate) * ave_min_cost_so_far) {
-          cout << "The cost went up too much (over "
-               << max_average_cost_increase_rate * 100
+        double tol_total_cost =
+            max_average_cost_increase_rate *
+            std::floor(n_shrink_step /
+                       (double)n_shrink_before_relaxing_tolerance);
+        if (total_cost > (1 + tol_total_cost) * ave_min_cost_so_far) {
+          cout << "The cost went up too much (over " << tol_total_cost * 100
                << "%). Shrink the step size.\n\n";
           start_iterations_with_shrinking_stepsize = true;
           iter--;
@@ -2457,6 +2496,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
         }
 
         // 2. each sample cost
+        double tol_sample_cost =
+            max_sample_cost_increase_rate *
+                std::floor(n_shrink_step /
+                    (double)n_shrink_before_relaxing_tolerance);
         DRAKE_DEMAND(c_vec.size() == each_min_cost_so_far.size());
         bool exit_current_iter_to_shrink_step_size = false;
         for (int sample_i = 0; sample_i < N_sample; sample_i++) {
@@ -2468,10 +2511,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
                  << "%.\n";
           }
           // If cost goes up, we restart the iteration and shrink the step size.
-          if (c_vec[sample_i](0) > (1 + max_sample_cost_increase_rate) *
-                                       each_min_cost_so_far[sample_i]) {
-            cout << "The cost went up too much (over "
-                 << max_sample_cost_increase_rate * 100
+          if (c_vec[sample_i](0) >
+              (1 + tol_sample_cost) * each_min_cost_so_far[sample_i]) {
+            cout << "The cost went up too much (over " << tol_sample_cost * 100
                  << "%). Shrink the step size.\n\n";
             start_iterations_with_shrinking_stepsize = true;
             iter--;
@@ -2496,7 +2538,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         for (int sample_i = sample; sample_i < sample_end; sample_i++) {
           threads[thread_idx] = new std::thread(
               extractActiveAndIndependentRows,
-              sample_i, indpt_row_tol, dir,
+              sample_i, FLAGS_major_feasibility_tol, indpt_row_tol, dir,
               std::ref(B_vec), std::ref(A_vec), std::ref(H_vec),
               std::ref(b_vec), std::ref(lb_vec), std::ref(ub_vec),
               std::ref(y_vec), std::ref(w_sol_vec),
@@ -2638,7 +2680,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // For message printed to the terminal
       n_shrink_step = 0;
 
-      cout << '\a';  // making noise to notify the user the end of an iteration
+      //cout << '\a';  // making noise to notify the user the end of an iteration
     }  // end if(!is_get_nominal)
   }  // end for
 

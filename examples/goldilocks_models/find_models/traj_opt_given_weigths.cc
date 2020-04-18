@@ -1405,7 +1405,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
     n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
     B_tau, theta_s, theta_sDDot,
     std::move(trajopt), &plant_autoDiff, &plant, num_time_samples,
-    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option);
+    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option, 1/*temporary*/);
 
   addRegularization(is_get_nominal, eps_reg, gm_traj_opt);
 
@@ -1654,9 +1654,9 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     options_list[i].setConstraintRelative(3, true);
   }
   // Constraint scaling
+  double s = 1;//100;  // scale every nonlinear constraint together
   for (int i = 0; i < 2; i++) {
-    double s = 1;  // scale everything together
-
+    options_list[i].setQuatConstraintScaling(s);
     if (is_get_nominal) {
       // old constraint scaling (from traj opt of cassie, without rom
       // constraint) Dynamic constraints
@@ -1900,10 +1900,10 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
           -std::numeric_limits<double>::infinity() * one, -0.05 * one,
           "right_foot_constraint_y");
   // scaling
-  /*std::unordered_map<int, double> odbp_constraint_scale;
-  odbp_constraint_scale.insert(std::pair<int, double>(0, 0.5));
+  std::unordered_map<int, double> odbp_constraint_scale;
+  odbp_constraint_scale.insert(std::pair<int, double>(0, s));
   left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
-  right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);*/
+  right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
   for (int index = 0; index < num_time_samples[0]; index++) {
     auto x = trajopt->state(index);
     trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
@@ -1928,6 +1928,8 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
       h_min = 0.1;  // 10 centimeter high in the mid point
     }
 
+    auto x_i = trajopt->state(index);
+
     auto right_foot_constraint_z1 =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_right", pt_front_contact, T_ground_incline.row(2),
@@ -1938,7 +1940,10 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
             plant, "toe_right", pt_rear_contact, T_ground_incline.row(2),
             h_min * one, std::numeric_limits<double>::infinity() * one);
 
-    auto x_i = trajopt->state(index);
+    // scaling
+    right_foot_constraint_z1->SetConstraintScaling(odbp_constraint_scale);
+    right_foot_constraint_z2->SetConstraintScaling(odbp_constraint_scale);
+
     trajopt->AddConstraint(right_foot_constraint_z1, x_i.head(n_q));
     trajopt->AddConstraint(right_foot_constraint_z2, x_i.head(n_q));
   }
@@ -2121,7 +2126,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
     B_tau, theta_s, theta_sDDot,
     std::move(trajopt), &plant_autoDiff, &plant, num_time_samples,
-    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option);
+    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option, s);
 
   addRegularization(is_get_nominal, eps_reg, gm_traj_opt);
 

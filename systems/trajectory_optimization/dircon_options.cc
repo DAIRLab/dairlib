@@ -28,6 +28,9 @@ DirconOptions::DirconOptions(
   n_x_ = plant.num_positions() + plant.num_velocities();
 }
 
+void DirconOptions::setQuatConstraintScaling(double s) {
+  addConstraintScaling(&quat_constraint_scaling_, 0, s);
+}
 void DirconOptions::setDynConstraintScaling(vector<int> idx_list, double s) {
   for (const auto& idx : idx_list) {
     setDynConstraintScaling(idx, s);
@@ -68,6 +71,9 @@ void DirconOptions::addConstraintScaling(std::unordered_map<int, double>* map,
   }
 }
 
+const unordered_map<int, double>& DirconOptions::getQuatConstraintScaling() {
+  return quat_constraint_scaling_;
+}
 const unordered_map<int, double>& DirconOptions::getDynConstraintScaling() {
   return dyn_constraint_scaling_;
 }

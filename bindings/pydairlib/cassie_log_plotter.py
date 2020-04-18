@@ -119,9 +119,6 @@ def main():
     nx = plant.num_positions() + plant.num_velocities()
     nu = plant.num_actuators()
 
-
-
-
     pos_map = pydairlib.multibody_utils.makeNameToPositionsMap(plant)
     vel_map = pydairlib.multibody_utils.makeNameToVelocitiesMap(plant)
     act_map = pydairlib.multibody_utils.makeNameToActuatorsMap(plant)
@@ -159,14 +156,18 @@ def main():
         "cassie_jumping_trajectory_x_u2")
 
     # Useful for optimal lambdas
-    # decision_vars = loadedStateTraj.getTrajectory("cassie_jumping_decision_vars")
+    decision_vars = loadedStateTraj.getTrajectory("cassie_jumping_decision_vars")
 
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
 
     lcm_l_foot_traj = loadedTrackingDataTraj.getTrajectory(
         "left_foot_trajectory")
     lcm_r_foot_traj = loadedTrackingDataTraj.getTrajectory(
         "right_foot_trajectory")
+    lcm_com_traj = loadedTrackingDataTraj.getTrajectory(
+        "center_of_mass_trajectory")
+
+    # import pdb; pdb.set_trace()
 
     x_points_nominal = np.hstack((state_traj_mode0.datapoints,
                                   state_traj_mode1.datapoints,
@@ -194,11 +195,25 @@ def main():
                                                    0:3, :],
                                                    lcm_r_foot_traj.datapoints[
                                                    3:6, :])
+    com_traj = PiecewisePolynomial.CubicHermite(lcm_com_traj.time_vector,
+                                                lcm_com_traj.datapoints[
+                                                   0:3, :],
+                                                lcm_com_traj.datapoints[
+                                                   3:6, :])
+    # l_foot_traj = PiecewisePolynomial.FirstOrderHold(lcm_l_foot_traj.time_vector,
+    #                                                lcm_l_foot_traj.datapoints[
+    #                                                0:3, :])
+    # r_foot_traj = PiecewisePolynomial.FirstOrderHold(lcm_r_foot_traj.time_vector,
+    #                                                lcm_r_foot_traj.datapoints[
+    #                                                0:3, :])
+    # com_traj = PiecewisePolynomial.FirstOrderHold(lcm_com_traj.time_vector,
+    #                                             lcm_com_traj.datapoints[
+    #                                                0:3, :])
+
     # Note this plots relative feet trajs as the target trajectory is relative
     # To get the nominal feet trajs in world coordinates, calculate it from
     # the full state traj
 
-    # plot_nominal_feet_traj(l_foot_traj, lcm_l_foot_traj, r_foot_traj)
 
     # generate_state_maps()
 
@@ -209,7 +224,9 @@ def main():
         sys.stderr.write("Must be an absolute path")
         sys.exit(1)
 
-    log = lcm.EventLog(sys.argv[1], "r")
+    global filename
+    filename = sys.argv[1]
+    log = lcm.EventLog(filename, "r")
     log_samples = int(log.size() / 100)
     # print(log.size() / 100)
 
@@ -217,25 +234,28 @@ def main():
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
     t_state, v = process_lcm_log.process_log(log, pos_map, vel_map)
 
-    init_x = np.hstack((q[0,:], v[0,:]))
-    plant.SetPositionsAndVelocities(context, init_x)
-    M = plant.CalcMassMatrixViaInverseDynamics(context)
-    matlab_data = dict(M=M)
-    print(q[0, :])
+    # init_x = np.hstack((q[0,:], v[0,:]))
+    # plant.SetPositionsAndVelocities(context, init_x)
+    # M = plant.CalcMassMatrixViaInverseDynamics(context)
+    # matlab_data = dict(M=M)
+    # print(q[0, :])
     # print(plant.)
-    sio.savemat('/home/yangwill/Documents/research/projects/cassie/jumping'
-                '/logs/M_drake', matlab_data)
-    print(plant.CalcMassMatrixViaInverseDynamics(context))
+    # sio.savemat('/home/yangwill/Documents/research/projects/cassie/jumping'
+    #             '/logs/M_drake', matlab_data)
+    # print(plant.CalcMassMatrixViaInverseDynamics(context))
+
+    plot_nominal_com_traj(com_traj, lcm_com_traj)
+    plot_nominal_feet_traj(l_foot_traj, lcm_l_foot_traj, r_foot_traj)
 
     calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v)
 
     start_time = 0.0
-    end_time = 0.6
+    end_time = 0.15
     t_start_idx = get_index_at_time(t_state, start_time)
     t_end_idx = get_index_at_time(t_state, end_time)
     t_state_slice = slice(t_start_idx, t_end_idx)
 
-    plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
+    # plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
     # plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
     #                    state_names_wo_spr, start_time)
 
@@ -245,12 +265,12 @@ def main():
     t_osc_slice = slice(t_osc_start_idx, t_osc_end_idx)
     print("Num osc samples", t_osc_end_idx - t_osc_start_idx)
 
-    # plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
-    #                         t_osc_end_idx, t_osc_start_idx)
+    plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
+                            t_osc_end_idx, t_osc_start_idx)
     #
     # plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal)
 
-    plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
+    # plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
 
 
 
@@ -267,7 +287,7 @@ def main():
     # Foot plotting
     # plot_feet_simulation(context, l_toe_frame, r_toe_frame, world, no_offset,
     #                      plant, v, q, t_state, t_state_slice)
-    if True:
+    if False:
         plot_feet_simulation(plant, context, q, v, l_toe_frame, front_contact_disp,
                              world, t_state, t_state_slice, "left_", "_front")
         plot_feet_simulation(plant, context, q, v, r_toe_frame, front_contact_disp,
@@ -277,12 +297,17 @@ def main():
         plot_feet_simulation(plant, context, q, v, r_toe_frame, rear_contact_disp,
                              world, t_state, t_state_slice, "right_", "_rear")
 
-    plot = False
+    plot = True
     if plot:
-        fig = plt.figure("osc_output")
-        plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].y[t_osc_slice], label="0")
-        plt.plot(t_osc_debug[t_osc_slice], osc_debug[1].y[t_osc_slice],
-                 label="0")
+        fig = plt.figure("osc_output: " + filename)
+        plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].ydot_des[t_osc_slice], \
+        label="0")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[1].ydot_des[t_osc_slice],
+        #          label="0")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].y_des[t_osc_slice], \
+        # label="0")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[1].ydot[t_osc_slice],
+        #          label="0")
         # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].error_y[t_osc_slice],
         #          label="0")
         # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].error_dy[t_osc_slice],
@@ -301,7 +326,7 @@ def main():
     plt.show()
 
 def plot_ground_reaction_forces(contact_info, t_state, t_state_slice):
-    fig = plt.figure('contact data')
+    fig = plt.figure('contact data: ' + filename)
     # plt.plot(t_contact_info, contact_info[0, :, 2] + contact_info[1, :, 2],
     plt.plot(t_state[t_state_slice], contact_info[0, t_state_slice, 2],
              label='$\lambda_n left_r$')
@@ -324,7 +349,7 @@ def plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
         q_nominal.append(x_traj_nominal.value(t - t_offset))
         v_nominal.append(v_traj_nominal.value(t - t_offset))
     # fig = plt.figure('Nominal Traj')
-    fig = plt.figure('simulation positions')
+    fig = plt.figure('Nominal state: ' + filename)
     q_nominal = np.array(q_nominal)
     v_nominal = np.array(v_nominal)
     # plt.plot(t_state[t_state_slice], v_nominal[:, :, 0])
@@ -334,7 +359,7 @@ def plot_nominal_state(x_traj_nominal, t_state, t_state_slice,
 
 def plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal,
                                 x_points_nominal):
-    fig = plt.figure('target controller inputs')
+    fig = plt.figure('target controller inputs: ' + filename)
     input_traj = PiecewisePolynomial.FirstOrderHold(t_nominal,
                                                     x_points_nominal[-10:])
     inputs = np.zeros((1000, nu))
@@ -349,11 +374,12 @@ def plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal,
 
 def plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
                             t_osc_end_idx, t_osc_start_idx):
-    fig = plt.figure('controller inputs')
+    fig = plt.figure('controller inputs: ' + filename)
     osc_indices = slice(t_osc_start_idx, t_osc_end_idx)
-    plt.plot(t_osc[osc_indices], control_inputs[osc_indices])
-    plt.ylim(-100, 300)
-    plt.legend(state_traj_mode0.datatypes[-10:])
+    actuator_indices = slice(4, 8)
+    plt.plot(t_osc[osc_indices], control_inputs[osc_indices, actuator_indices])
+    plt.ylim(-300, 300)
+    plt.legend((state_traj_mode0.datatypes[-10:])[actuator_indices])
 
 def plot_feet_simulation(plant, context, q, v, toe_frame, contact_point, world,
                          t_state, t_state_slice, foot_type, contact_type):
@@ -374,7 +400,8 @@ def plot_feet_simulation(plant, context, q, v, toe_frame, contact_point, world,
         #     context, JacobianWrtVariable.kV, r_toe_frame, contact_point,
         #     world,
         #     world) @ v[i, :]
-    fig = plt.figure('l foot pos')
+    # fig = plt.figure(foot_type + 'foot pos: ' + filename)
+    fig = plt.figure('foot pos: ' + filename)
     state_indices = slice(0, 3)
     state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
     state_names = [foot_type + name for name in state_names]
@@ -399,7 +426,7 @@ def plot_simulation_state(q, v, t_state, t_state_slice, state_names):
     # plt.plot(t_state[t_state_slice], q[t_state_slice, state_indices])
     # plt.legend(state_names[state_indices])
 
-    fig = plt.figure('simulation velocities')
+    fig = plt.figure('simulation velocities: ' + filename)
 
     state_indices = slice(n_fb_vel, v.shape[1])
     plt.plot(t_state[t_state_slice], v[t_state_slice, state_indices])
@@ -409,11 +436,41 @@ def plot_simulation_state(q, v, t_state, t_state_slice, state_names):
 def plot_nominal_feet_traj(l_foot_traj, lcm_l_foot_traj, r_foot_traj):
     start_time = lcm_l_foot_traj.time_vector[0]
     end_time = lcm_l_foot_traj.time_vector[-1]
-    fig = plt.figure('feet trajectories')
+    fig = plt.figure('feet trajectories: ' + filename)
+    l_foot_traj_dot = l_foot_traj.derivative(1)
+    # r_foot_traj_dot = r_foot_traj.derivative(2)
+    l_foot_points = []
+    times = []
     for i in range(1000):
         t = start_time + (end_time - start_time) * i / 1000
-        plt.plot(t, l_foot_traj.value(t).T, 'b.')
-        plt.plot(t, r_foot_traj.value(t).T, 'r.')
+        # plt.plot(t, l_foot_traj.value(t).T, 'b.')
+        # plt.plot(t, r_foot_traj.value(t).T, 'r.')
+        times.append(t)
+        l_foot_points.append(l_foot_traj_dot.value(t))
+    l_foot_points = np.array(l_foot_points)
+    plt.plot(times, l_foot_points[:,:,0])
+        # plt.plot(t, r_foot_traj_dot.value(t).T, 'r.')
+
+def plot_nominal_com_traj(com_traj, lcm_com_traj):
+    start_time = lcm_com_traj.time_vector[0]
+    end_time = lcm_com_traj.time_vector[-1]
+    fig = plt.figure('target com trajectory: ' + filename)
+    com_dot = com_traj.derivative(1)
+    com_ddot = com_traj.derivative(2)
+
+    dpoints = []
+    ddpoints = []
+    times = []
+    for i in range(1000):
+        t = start_time + (end_time - start_time) * i / 1000
+        times.append(t)
+        dpoints.append(com_dot.value(t))
+        ddpoints.append(com_ddot.value(t))
+    dpoints = np.array(dpoints)
+    ddpoints = np.array(ddpoints)
+    plt.plot(times, dpoints[:, 2, 0])
+    plt.plot(times, ddpoints[:, 2, 0])
+        # plt.plot(t, com_traj.value(t).T, 'b.')
 
 
 if __name__ == "__main__":

@@ -86,15 +86,16 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
   // Hip offset stuff
   std::vector<double> breaks = foot_traj_segment.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
-  MatrixXd J_hip(3, plant_.num_velocities());
-  plant_.CalcJacobianTranslationalVelocity(*plant_context,
-      JacobianWrtVariable::kV,
-      hip_frame, zero_offset,
-      world, world, &J_hip);
-  double dt = breaks_vector[1] - breaks_vector[0];
+//  MatrixXd J_hip(3, plant_.num_velocities());
+//  plant_.CalcJacobianTranslationalVelocity(*plant_context,
+//      JacobianWrtVariable::kV,
+//      hip_frame, zero_offset,
+//      world, world, &J_hip);
+//  double dt = breaks_vector[1] - breaks_vector[0];
   MatrixXd hip_points(3, 2);
-  hip_points << hip_pos, hip_pos + J_hip*x.tail(plant_.num_velocities()) * dt;
-//  hip_points << hip_pos, hip_pos;
+//  hip_points << hip_pos, hip_pos + J_hip*x.tail(plant_.num_velocities()) * dt;
+  // Velocity estimates are generally bad
+  hip_points << hip_pos, hip_pos;
   PiecewisePolynomial<double> hip_offset =
       PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, hip_points);
 

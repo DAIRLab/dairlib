@@ -75,6 +75,8 @@ DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
 DEFINE_bool(contact_based_fsm, true,
             "The contact based fsm transitions "
             "between states using contact data.");
+DEFINE_double(transition_delay, 0.0, "Time to wait after trigger to "
+                                     "transition between FSM states.");
 DEFINE_string(simulator, "DRAKE",
               "Simulator used, important for determining "
               "how to interpret contact information");
@@ -192,9 +194,10 @@ int DoMain(int argc, char* argv[]) {
 
   /**** Initialize all the leaf systems ****/
   SIMULATOR type;
-  if (FLAGS_simulator == "DRAKE")
-    type = DRAKE;
-  else if (FLAGS_simulator == "MUJOCO")
+  type = DRAKE;
+//  if (FLAGS_simulator == "DRAKE")
+//    type = DRAKE;
+  if (FLAGS_simulator == "MUJOCO")
     type = MUJOCO;
 
   drake::lcm::DrakeLcm lcm;
@@ -214,7 +217,7 @@ int DoMain(int argc, char* argv[]) {
       FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
       plant_with_springs, transition_times, FLAGS_contact_based_fsm,
-      (FSM_STATE)FLAGS_init_fsm_state, type);
+      FLAGS_transition_delay, (FSM_STATE)FLAGS_init_fsm_state, type);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));

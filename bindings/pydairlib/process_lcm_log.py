@@ -10,36 +10,36 @@ class lcmt_osc_tracking_data_t:
         self.y = []
         self.y_des = []
         self.error_y = []
-        self.dy = []
-        self.dy_des = []
-        self.error_dy = []
-        self.ddy_des = []
-        self.ddy_command = []
-        self.ddy_command_sol = []
+        self.ydot = []
+        self.ydot_des = []
+        self.error_ydot = []
+        self.yddot_des = []
+        self.yddot_command = []
+        self.yddot_command_sol = []
 
     def append(self, msg):
         self.is_active.append(msg.is_active)
         self.y.append(msg.y)
         self.y_des.append(msg.y_des)
         self.error_y.append(msg.error_y)
-        self.dy.append(msg.dy)
-        self.dy_des.append(msg.dy_des)
-        self.error_dy.append(msg.error_dy)
-        self.ddy_des.append(msg.ddy_des)
-        self.ddy_command.append(msg.ddy_command)
-        self.ddy_command_sol.append(msg.ddy_command_sol)
+        self.ydot.append(msg.ydot)
+        self.ydot_des.append(msg.ydot_des)
+        self.error_ydot.append(msg.error_ydot)
+        self.yddot_des.append(msg.yddot_des)
+        self.yddot_command.append(msg.yddot_command)
+        self.yddot_command_sol.append(msg.yddot_command_sol)
 
     def convertToNP(self):
         self.is_active = np.array(self.is_active)
         self.y = np.array(self.y)
         self.y_des = np.array(self.y_des)
         self.error_y = np.array(self.error_y)
-        self.dy = np.array(self.dy)
-        self.dy_des = np.array(self.dy_des)
-        self.error_dy = np.array(self.error_dy)
-        self.ddy_des = np.array(self.ddy_des)
-        self.ddy_command = np.array(self.ddy_command)
-        self.ddy_command_sol = np.array(self.ddy_command_sol)
+        self.ydot = np.array(self.ydot)
+        self.ydot_des = np.array(self.ydot_des)
+        self.error_ydot = np.array(self.error_ydot)
+        self.yddot_des = np.array(self.yddot_des)
+        self.yddot_command = np.array(self.yddot_command)
+        self.yddot_command_sol = np.array(self.yddot_command_sol)
 
 def process_log(log, pos_map, vel_map):
 
@@ -48,6 +48,7 @@ def process_log(log, pos_map, vel_map):
     t_controller_switch = []
     t_osc_debug = []
     t_contact_info = []
+    osc_fsm = []
     q = []
     v = []
     control_inputs = []
@@ -59,7 +60,7 @@ def process_log(log, pos_map, vel_map):
 
     is_mujoco = False
     for event in log:
-        if event.channel == "CASSIE_STATE":
+        if event.channel == "CASSIE_STATE_SIMULATION":
             msg = dairlib.lcmt_robot_output.decode(event.data)
             q_temp = [[] for i in range(len(msg.position))]
             v_temp = [[] for i in range(len(msg.velocity))]
@@ -87,6 +88,7 @@ def process_log(log, pos_map, vel_map):
             for i in range(num_osc_tracking_data):
                 osc_debug[i].append(msg.tracking_data[i])
             t_osc_debug.append(msg.utime / 1e6)
+            osc_fsm.append(msg.fsm_state)
         if event.channel == "CASSIE_CONTACT_RESULTS" or event.channel \
                 == "CASSIE_CONTACT_DRAKE":
             # Need to distinguish between front and rear contact forces
@@ -136,6 +138,7 @@ def process_log(log, pos_map, vel_map):
     t_controller_switch = np.array(t_controller_switch)
     t_contact_info = np.array(t_contact_info)
     t_osc_debug = np.array(t_osc_debug)
+    osc_fsm = np.array(osc_fsm)
     q = np.array(q)
     v = np.array(v)
     control_inputs = np.array(control_inputs)
@@ -166,6 +169,8 @@ def process_log(log, pos_map, vel_map):
     #     # q[:, fb_quat], q[:, fb_pos] = q[:, muj_fb_quat], q[:, muj_fb_pos]
     #     q[:, fb_pos], q[:, fb_quat] = q[:, muj_fb_pos], q[:, muj_fb_quat]
     # import pdb; pdb.set_trace()
+
+    print("Transition time: ", t_osc_debug[np.min(np.where(osc_fsm == 3))])
 
     return contact_info, contact_info_locs, control_inputs, estop_signal, \
            osc_debug, q, switch_signal, t_contact_info, t_controller_switch, \

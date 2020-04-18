@@ -56,7 +56,8 @@ int do_main(int argc, char* argv[]) {
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8);
+    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8,
+                              FLAGS_visualize_ground);
   }
 
   plant.Finalize();

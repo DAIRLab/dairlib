@@ -2486,8 +2486,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
         }
         double tol_total_cost =
             max_average_cost_increase_rate *
-            std::floor(n_shrink_step /
-                       (double)n_shrink_before_relaxing_tolerance);
+            (1 + std::floor(n_shrink_step /
+                            (double)n_shrink_before_relaxing_tolerance));
         if (total_cost > (1 + tol_total_cost) * ave_min_cost_so_far) {
           cout << "The cost went up too much (over " << tol_total_cost * 100
                << "%). Shrink the step size.\n\n";
@@ -2499,8 +2499,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
         // 2. each sample cost
         double tol_sample_cost =
             max_sample_cost_increase_rate *
-                std::floor(n_shrink_step /
-                    (double)n_shrink_before_relaxing_tolerance);
+            (1 + std::floor(n_shrink_step /
+                            (double)n_shrink_before_relaxing_tolerance));
         DRAKE_DEMAND(c_vec.size() == each_min_cost_so_far.size());
         bool exit_current_iter_to_shrink_step_size = false;
         for (int sample_i = 0; sample_i < N_sample; sample_i++) {

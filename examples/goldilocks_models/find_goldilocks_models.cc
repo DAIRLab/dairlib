@@ -564,8 +564,9 @@ void extractActiveAndIndependentRows(
     quadprog.AddQuadraticCost(*(H_vec[sample]), b_vec[sample], w2);
 
     // Testing
-      drake::solvers::SnoptSolver snopt_solver;
-    const auto result = snopt_solver.Solve(quadprog);
+//    drake::solvers::SnoptSolver snopt_solver;
+//    const auto result = snopt_solver.Solve(quadprog);
+    const auto result = Solve(quadprog);
 
 //    const auto result = Solve(quadprog);
     auto solution_result = result.get_solution_result();

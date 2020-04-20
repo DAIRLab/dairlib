@@ -217,6 +217,8 @@ void extractResult(VectorXd& w_sol,
   // Check which solver we are using
   // cout << "Solver: " << result.get_solver_id().name() << endl;
 
+  // Reminder: if you change the algorithm in the next few lines, you also need
+  // to change the one in postProcessing
   cout << "(sample_idx, n_rerun, N_rerun, is_success) = (" << sample_idx << ", "
        << n_rerun << ", " << N_rerun << ", " << result.is_success() << ")\n";
   if (n_rerun > N_rerun) {
@@ -479,9 +481,12 @@ void postProcessing(const VectorXd& w_sol,
     writeCSV(directory + string("theta_sDDot_new_index.csv"), new_idx);
 
   } else {
-    if ((result.get_optimal_cost() > cost_threshold_for_update) &&
-        (n_rerun > N_rerun)) {
-      return;
+    if (n_rerun > N_rerun) {
+      if (!result.is_success()) {
+        return;
+      } else if (result.get_optimal_cost() > cost_threshold_for_update) {
+        return;
+      }
     }
 
     // Assume theta is fixed. Get the linear approximation of

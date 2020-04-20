@@ -58,6 +58,7 @@ DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
+DEFINE_bool(is_uniform_grid, true, "Uniform grid of task space");
 
 // inner loop
 DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization");
@@ -106,6 +107,8 @@ DEFINE_double(fail_threshold, 0.2,
 DEFINE_bool(get_good_sol_from_adjacent_sample, true,
             "Get a good solution from adjacent samples to improve the solution "
             "quality of the current sample");
+DEFINE_bool(use_theta_gamma_from_files,false,
+        "To run the program with theta and gamma from saving files");
 
 // Other features for how to start the program
 DEFINE_bool(
@@ -1461,6 +1464,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Parameters for tasks (stride length and ground incline)
   cout << "\nTasks settings:\n";
+  bool uniform_grid = FLAGS_is_uniform_grid;
+
   int N_sample_sl = FLAGS_N_sample_sl;
   int N_sample_gi = FLAGS_N_sample_gi;
   int N_sample = N_sample_sl * N_sample_gi;  // 1;
@@ -1504,6 +1509,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "duration = " << duration << endl;
   DRAKE_DEMAND(N_sample_sl % 2 == 1);
   DRAKE_DEMAND(N_sample_gi % 2 == 1);
+  cout << "use_theta_gamma_from_files = " << FLAGS_use_theta_gamma_from_files << endl;
+  uniform_grid ? cout << "Uniform grid\n" : cout << "Non-Uniform grid\n";
   cout << "N_sample_sl = " << N_sample_sl << endl;
   cout << "N_sample_gi = " << N_sample_gi << endl;
   cout << "delta_stride_length = " << delta_stride_length << endl;
@@ -1650,6 +1657,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int n_shrink_before_relaxing_tolerance = 6;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
+  FLAGS_is_use_interpolated_initial_guess ? cout << "New_initial_guess\n" : cout << "Original_initial_guess\n";
   cout << "Step size = " << h_step << endl;
   cout << "beta_momentum = " << beta_momentum << endl;
   cout << "eps_regularization = " << eps_regularization << endl;
@@ -1896,15 +1904,22 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   // Tasks setup
   std::uniform_real_distribution<> dist_sl(
-    -delta_stride_length / 2, delta_stride_length / 2);
+          -delta_stride_length / 2, delta_stride_length / 2);
   vector<double> delta_stride_length_vec;
   for (int i = 0 - N_sample_sl / 2; i < N_sample_sl - N_sample_sl / 2; i++)
-    delta_stride_length_vec.push_back(i * delta_stride_length);
+      delta_stride_length_vec.push_back(i * delta_stride_length);
   std::uniform_real_distribution<> dist_gi(
-    -delta_ground_incline / 2, delta_ground_incline / 2);
+          -delta_ground_incline / 2, delta_ground_incline / 2);
   vector<double> delta_ground_incline_vec;
   for (int i = 0 - N_sample_gi / 2; i < N_sample_gi - N_sample_gi / 2; i++)
-    delta_ground_incline_vec.push_back(i * delta_ground_incline);
+      delta_ground_incline_vec.push_back(i * delta_ground_incline);
+  if(!uniform_grid && is_stochastic){
+      std::uniform_real_distribution<> dist_sl(
+              min_stride_length, max_stride_length);
+      std::uniform_real_distribution<> dist_gi(
+              min_ground_incline, max_ground_incline);
+  }
+
   // Some setup
   int n_theta = n_theta_s + n_theta_sDDot;
   VectorXd theta(n_theta);
@@ -2144,8 +2159,24 @@ int findGoldilocksModels(int argc, char* argv[]) {
               ground_incline_0 +
               delta_ground_incline_vec[sample_idx / N_sample_sl];
           if (!is_get_nominal && is_stochastic) {
-            stride_length += dist_sl(e1);
-            ground_incline += dist_gi(e2);
+              if (uniform_grid){
+                  stride_length += dist_sl(e1);
+                  ground_incline += dist_gi(e2);
+              }
+              else{
+                  stride_length = dist_sl(e1);
+                  ground_incline = dist_gi(e2);
+              }
+          }
+
+          // if use the gamma from file, overwrite the gamma
+          bool use_gamma_from_files = FLAGS_use_theta_gamma_from_files;
+          if(use_gamma_from_files)
+          {
+              stride_length = (readCSV(dir + to_string(iter) + string("_")
+                      + to_string(sample_idx) + string("_stride_length.csv")))(0,0);
+              ground_incline = (readCSV(dir + to_string(iter) + string("_")
+                      + to_string(sample_idx) + string("_ground_incline.csv")))(0,0);
           }
 
           // Store the tasks or overwrite it with previous tasks
@@ -2685,11 +2716,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }  // end if(!is_get_nominal)
   }  // end for
 
+
   // store parameter values
+
+  // if we want to use theta from files for next iteration,we can not save new theta
+  // which will then overwrite the original theta in files.
+  bool use_theta_from_files = FLAGS_use_theta_gamma_from_files;
   prefix = to_string(iter + 1) +  "_";
   if (!FLAGS_is_debug) {
-    writeCSV(dir + prefix + string("theta_s.csv"), theta_s);
-    writeCSV(dir + prefix + string("theta_sDDot.csv"), theta_sDDot);
+      if (!use_theta_from_files){
+          writeCSV(dir + prefix + string("theta_s.csv"), theta_s);
+          writeCSV(dir + prefix + string("theta_sDDot.csv"), theta_sDDot);
+      }
   }
 
   return 0;

@@ -1680,8 +1680,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Outer loop setting - help from adjacent samples
   bool get_good_sol_from_adjacent_sample =
       FLAGS_get_good_sol_from_adjacent_sample;
-  if (FLAGS_robot_option == 0) {
+  if (FLAGS_robot_option == 0 || !uniform_grid) {
     // five-link robot doesn't seem to need help
+    // adjacent sample makes no sense in non-uniform grid
     get_good_sol_from_adjacent_sample = false;
   }
   double max_cost_increase_rate_before_ask_for_help = 0.1;
@@ -2719,15 +2720,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // store parameter values
 
-  // if we want to use theta from files for next iteration,we can not save new theta
-  // which will then overwrite the original theta in files.
+  // if we want to use theta from files for next iteration,
+  // we need to overwrite the original theta with theta in files.
   bool use_theta_from_files = FLAGS_use_theta_gamma_from_files;
   prefix = to_string(iter + 1) +  "_";
+  if (use_theta_from_files){
+      theta_s = readCSV(dir + prefix + string("theta_s.csv"));
+      theta_sDDot = readCSV(dir + prefix + string("theta_sDDot.csv"));
+  }
   if (!FLAGS_is_debug) {
-      if (!use_theta_from_files){
-          writeCSV(dir + prefix + string("theta_s.csv"), theta_s);
-          writeCSV(dir + prefix + string("theta_sDDot.csv"), theta_sDDot);
-      }
+      writeCSV(dir + prefix + string("theta_s.csv"), theta_s);
+      writeCSV(dir + prefix + string("theta_sDDot.csv"), theta_sDDot);
   }
 
   return 0;

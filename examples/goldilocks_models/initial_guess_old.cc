@@ -33,7 +33,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
 * theta_range :decide the range of theta to use in interpolation
 * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
 */
-    double theta_range = 0.01;
+    double theta_range = 1;
     int gamma_dimension = 2;
     MatrixXd theta_scale = get_theta_scale(directory, iter);
     MatrixXd gamma_scale = get_gamma_scale(gamma_dimension, min_sl, max_sl, min_gi, max_gi);

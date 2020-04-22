@@ -49,17 +49,13 @@ py_library(
 
 PY_LIBRARIES = [
     ":module_py",
-]
-
-PY_LIBRARIES_WITH_INSTALL = [
     ":lcm_trajectory_py",
     "//bindings/pydairlib/common",
 ]
-
 
 # Package roll-up (for Bazel dependencies).
 py_library(
     name = "pydairlib",
     visibility = ["//visibility:public"],
-    deps =  PY_LIBRARIES_WITH_INSTALL + PY_LIBRARIES,
+    deps =  PY_LIBRARIES,
 )

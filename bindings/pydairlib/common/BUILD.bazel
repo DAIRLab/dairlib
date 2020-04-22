@@ -39,23 +39,13 @@ py_library(
     ],
 )
 
-PY_LIBRARIES_WITH_INSTALL = [
-    ":common_py",
-]
-
 PY_LIBRARIES = [
+    ":common_py",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
     name = "common",
     imports = PACKAGE_INFO.py_imports,
-    deps = PY_LIBRARIES_WITH_INSTALL + PY_LIBRARIES,
-)
-
-install(
-    name = "install",
-    targets = PY_LIBRARIES + [":all_py"],
-    py_dest = PACKAGE_INFO.py_dest,
-    deps = get_drake_py_installs(PY_LIBRARIES_WITH_INSTALL),
+    deps = PY_LIBRARIES,
 )

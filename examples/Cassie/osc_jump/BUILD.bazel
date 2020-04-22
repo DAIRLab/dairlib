@@ -88,12 +88,13 @@ cc_binary(
 )
 
 cc_binary(
-    name = "convert_traj_multiple_modes",
-    srcs = ["convert_traj_multiple_modes.cc"],
+    name = "convert_traj_higher_sample_rate",
+    srcs = ["convert_traj_higher_sample_rate.cc"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
         "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

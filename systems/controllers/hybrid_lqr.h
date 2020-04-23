@@ -101,7 +101,7 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   void calcLinearizedDynamics(double t, int contact_mode, Eigen::MatrixXd* A,
                               Eigen::MatrixXd* B);
   void calcLinearResetMap(double t, int contact_mode, Eigen::MatrixXd* R);
-  Eigen::MatrixXd calcMinimalCoordBasis(double t, int contact_mode) const;
+  Eigen::MatrixXd getMinimalCoordBasis(double t, int contact_mode) const;
   // Precompute the minimal coordinate basis for all the contact modes
   void calcMinimalCoordBasis();
 

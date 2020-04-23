@@ -132,18 +132,18 @@ HybridLQRController::HybridLQRController(
       const LcmTrajectory::Trajectory& P_mode1 = P_traj.getTrajectory("P1");
       const LcmTrajectory::Trajectory& P_mode2 = P_traj.getTrajectory("P2");
 
-      p_traj_.push_back(PiecewisePolynomial<double>::Pchip(P_mode0.time_vector,
-                                                           P_mode0.datapoints));
-      p_traj_.push_back(PiecewisePolynomial<double>::Pchip(P_mode1.time_vector,
-                                                           P_mode1.datapoints));
-      p_traj_.push_back(PiecewisePolynomial<double>::Pchip(P_mode2.time_vector,
-                                                           P_mode2.datapoints));
+      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+          P_mode0.time_vector, P_mode0.datapoints));
+      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+          P_mode1.time_vector, P_mode1.datapoints));
+      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+          P_mode2.time_vector, P_mode2.datapoints));
 
     } else {
       cout << "Calculating minimal coord basis and saving\n";
       calcMinimalCoordBasis();
     }
-    MatrixXd P = calcMinimalCoordBasis(0.0, 0);
+    MatrixXd P = getMinimalCoordBasis(0.0, 0);
     S_f = P * Qf_ * P.transpose();
   } else {
     S_f = Qf_;
@@ -163,7 +163,7 @@ HybridLQRController::HybridLQRController(
 
     VectorXd l_0 = Map<VectorXd>(L_f.data(), L_f.size());
     VectorXd defaultParams(0);
-    const InitialValueProblem<double>::SpecifiedValues default_values(
+    const InitialValueProblem<double>::OdeContext default_values(
         t0, l_0, defaultParams);
     InitialValueProblem<double> ivp(
         [this](const double& t, const VectorXd& ldot,
@@ -392,6 +392,7 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
   cout << "J_delta: " << J_delta << endl;
   cout << "J: " << J_pre << endl;
   cout << "dG: " << dG << endl;
+  cout << "J_g: " << J_g << endl;
   std::cout << "Additional term: "
             << ((xdot_post - xdot_pre - J_delta) / J_g) * dG.transpose()
             << std::endl;
@@ -401,14 +402,14 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
   // which is what we want
   MatrixXd S_post;
   if (using_min_coords_) {
-    MatrixXd P = calcMinimalCoordBasis(getReverseTime(t), 2 - contact_mode);
+    MatrixXd P = getMinimalCoordBasis(getReverseTime(t), 2 - contact_mode);
     //    MatrixXd H_bar = P * H * P.transpose();  // H functions in the same
     MatrixXd S_pre_max = P.transpose() * S_pre * P;  // H functions in the
     // same
     // state-space as R
     S_post = (I + H).transpose()
         * S_pre_max * (I + H);
-    P = calcMinimalCoordBasis(getReverseTime(t), 2 - (contact_mode + 1));
+    P = getMinimalCoordBasis(getReverseTime(t), 2 - (contact_mode + 1));
     S_post = P * S_post * P.transpose();
   } else {
     S_post = (I + H).transpose() * S_pre * (I + H);
@@ -427,12 +428,12 @@ MatrixXd HybridLQRController::calcJumpMapNaive(const MatrixXd& S_pre,
 
   MatrixXd S_post;
   if (using_min_coords_) {
-    MatrixXd P = calcMinimalCoordBasis(getReverseTime(t), 2 - contact_mode);
+    MatrixXd P = getMinimalCoordBasis(getReverseTime(t), 2 - contact_mode);
     MatrixXd S_pre_max = P.transpose() * S_pre * P;
     //    MatrixXd R_bar = P * R * P.transpose();
     //    S_post = (I + R_bar.transpose()) * S_pre * (I + R_bar);
     S_post = (I + R).transpose() * S_pre_max * (I + R);
-    P = calcMinimalCoordBasis(getReverseTime(t), 2 - (contact_mode + 1));
+    P = getMinimalCoordBasis(getReverseTime(t), 2 - (contact_mode + 1));
     S_post = P * S_post * P.transpose();
   } else {
     S_post = (I + R).transpose() * S_pre * (I + R);
@@ -478,9 +479,7 @@ void HybridLQRController::calcLinearResetMap(double t, int contact_mode,
   MatrixX<AutoDiffXd> delta = R_non_linear * x_autodiff.tail(n_v_);
   *R = MatrixXd::Zero(n_x_, n_x_);
   MatrixXd R_linear = autoDiffToGradientMatrix(delta).block(0, 0, n_v_, n_x_);
-//  R->block(0, 0, n_q_, n_q_) = MatrixXd::Identity(n_q_, n_q_);
   R->block(n_q_, 0, n_v_, n_x_) = R_linear;
-//  *R = *R - MatrixXd::Identity(n_x_, n_x_);
 }
 
 VectorXd HybridLQRController::calcLdot(double t, const VectorXd& l,
@@ -495,7 +494,7 @@ VectorXd HybridLQRController::calcLdot(double t, const VectorXd& l,
   MatrixXd lDot;
   if (using_min_coords_) {
     MatrixXd P =
-        calcMinimalCoordBasis(getReverseTime(t), 2 - getContactModeAtTime(t));
+        getMinimalCoordBasis(getReverseTime(t), 2 - getContactModeAtTime(t));
     //    cout << "mode: " << 2 - getContactModeAtTime(t) << endl;
     //    cout << "P at time t: " << getReverseTime(t) << "\n" << P << endl;
     //    cout << "P PT : " << P * P.transpose() << endl;
@@ -600,7 +599,7 @@ void HybridLQRController::CalcControl(
     // get the corresponding s_traj
     MatrixXd S = getSAtTimestamp(current_time, mode);
     if (using_min_coords_) {
-      MatrixXd P = calcMinimalCoordBasis(current_time, mode);
+      MatrixXd P = getMinimalCoordBasis(current_time, mode);
       MatrixXd K_minimal = -R_.inverse() * (P * B_linear).transpose() * S;
       u_sol = K_minimal * (P * x_error);
     } else {
@@ -653,9 +652,9 @@ void HybridLQRController::CalcCost(
           current_state->GetState() - state_trajs_[1]->value(current_time);
       VectorXd x_error2 =
           current_state->GetState() - state_trajs_[2]->value(current_time);
-      MatrixXd P0 = calcMinimalCoordBasis(current_time, 0);
-      MatrixXd P1 = calcMinimalCoordBasis(current_time, 1);
-      MatrixXd P2 = calcMinimalCoordBasis(current_time, 2);
+      MatrixXd P0 = getMinimalCoordBasis(current_time, 0);
+      MatrixXd P1 = getMinimalCoordBasis(current_time, 1);
+      MatrixXd P2 = getMinimalCoordBasis(current_time, 2);
       cost0 = x_error0.transpose() * P0.transpose() * S0 * P0 * x_error0;
       cost1 = x_error1.transpose() * P1.transpose() * S1 * P1 * x_error1;
       cost2 = x_error2.transpose() * P2.transpose() * S2 * P2 * x_error2;
@@ -705,21 +704,6 @@ void HybridLQRController::CalcCost(
   output->get_mutable_value() << current_time, cost0, cost1, cost2, cost3;
 }  // namespace dairlib::systems
 
-// drake::systems::EventStatus HybridLQRController::DiscreteVariableUpdate(
-//    const drake::systems::Context<double>& context,
-//    drake::systems::DiscreteValues<double>* discrete_state) const {
-//  // Read in finite state machine
-//  const BasicVector<double>* fsm_output =
-//      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-//  VectorXd fsm_state = fsm_output->get_value();
-//
-//  auto prev_fsm_state =
-//      discrete_state->get_mutable_vector(fsm_index_).get_mutable_value();
-//
-//  prev_fsm_state << fsm_state(0);
-//  return EventStatus::Succeeded();
-//}
-
 MatrixXd generate_state_input_matrix(drake::systems::DenseOutput<double>& p_t,
                                      VectorXd& times) {
   int num_states = p_t.Evaluate(times[0]).size();
@@ -732,7 +716,7 @@ MatrixXd generate_state_input_matrix(drake::systems::DenseOutput<double>& p_t,
 }
 
 // Forwards time
-MatrixXd HybridLQRController::calcMinimalCoordBasis(double t, int mode) const {
+MatrixXd HybridLQRController::getMinimalCoordBasis(double t, int mode) const {
   VectorXd p = p_traj_[mode].value(t);
   return Map<MatrixXd>(p.data(), n_d_, n_x_);
 }
@@ -789,7 +773,7 @@ void HybridLQRController::calcMinimalCoordBasis() {
     //    cout << "P0: " << P_0 << endl;
     VectorXd p0 = Map<VectorXd>(P_0.data(), (n_x_ - 2 * n_c_) * n_x_);
     VectorXd defaultParams(0);
-    const InitialValueProblem<double>::SpecifiedValues default_values(
+    const InitialValueProblem<double>::OdeContext default_values(
         t0, p0, defaultParams);
     InitialValueProblem<double> ivp(
         [this](const double& t, const VectorXd& pdot,
@@ -808,10 +792,12 @@ void HybridLQRController::calcMinimalCoordBasis() {
     trajectories.push_back(traj_block);
     trajectory_names.push_back(traj_block.traj_name);
   }
+  cout << "Saving P_traj" << endl;
   LcmTrajectory saved_traj(trajectories, trajectory_names, "P_traj",
                            "Time varying minimal coordinates basis");
-  saved_traj.writeToFile("../five_link_biped/projects/hybrid_lqr/saved_trajs"
+  saved_traj.writeToFile("../projects/five_link_biped/hybrid_lqr/saved_trajs"
                          "/P_traj");
+  cout << "Saved P traj" << endl;
   //  }
 }
 

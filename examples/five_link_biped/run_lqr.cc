@@ -102,7 +102,7 @@ int doMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   DiagramBuilder<double> builder;
 
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(1e-5);
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   Parser parser(&plant, &scene_graph);
   std::string full_name =
@@ -120,7 +120,7 @@ int doMain(int argc, char* argv[]) {
   //  LcmTrajectory(LcmTrajectory::loadFromFile(
   //      "../projects/hybrid_lqr/saved_trajs/2_step_walking_from_rest"));
   const LcmTrajectory& loaded_traj = LcmTrajectory(
-      "../projects/five_link_biped/hybrid_lqr/saved_trajs/2_step_walking_4_23");
+      "../projects/five_link_biped/hybrid_lqr/saved_trajs/walking_4_23");
   std::cout << "Saved trajectory names: " << std::endl;
   for (auto name : loaded_traj.getTrajectoryNames()) {
     std::cout << name << std::endl;

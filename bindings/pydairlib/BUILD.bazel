@@ -57,6 +57,9 @@ py_library(
 py_binary(
     name = "cassie_log_plotter",
     srcs = ["cassie_log_plotter.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
     deps = [
         ":lcm_trajectory_py",
         ":module_py",

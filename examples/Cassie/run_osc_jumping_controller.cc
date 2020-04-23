@@ -155,10 +155,19 @@ int DoMain(int argc, char* argv[]) {
       PiecewisePolynomial<double>::CubicHermite(
           lcm_r_foot_traj.time_vector, lcm_r_foot_traj.datapoints.topRows(3),
           lcm_r_foot_traj.datapoints.bottomRows(3));
-  const PiecewisePolynomial<double>& pelvis_rot_trajectory =
-      PiecewisePolynomial<double>::CubicShapePreserving(
-          lcm_pelvis_rot_traj.time_vector,
-          lcm_pelvis_rot_traj.datapoints.topRows(4));
+  PiecewisePolynomial<double> pelvis_rot_trajectory;
+  if (lcm_pelvis_rot_traj.datapoints.rows() == 8) {
+    std::cout << "Using cubic for orientation trajectory" << std::endl;
+    pelvis_rot_trajectory = PiecewisePolynomial<double>::CubicHermite(
+        lcm_pelvis_rot_traj.time_vector,
+        lcm_pelvis_rot_traj.datapoints.topRows(4),
+        lcm_pelvis_rot_traj.datapoints.bottomRows(4));
+  } else {
+    pelvis_rot_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
+        lcm_pelvis_rot_traj.time_vector,
+        lcm_pelvis_rot_traj.datapoints.topRows(4));
+  }
+  //  const PiecewisePolynomial<double>&
 
   double flight_time = FLAGS_delay_time + 0.285773;  // For the time-based FSM
   double land_time = FLAGS_delay_time + 0.67272637;

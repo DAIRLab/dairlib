@@ -59,7 +59,7 @@ int DoMain() {
   int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
                  traj_mode2.datapoints.cols();
 
-  MatrixXd xu(nx + nu, n_points);
+  MatrixXd xu(nx + nx + nu, n_points);
   VectorXd times(n_points);
   std::cout << "Mode transition 0 to 1: " << traj_mode0.time_vector.tail(1);
   std::cout << "\nMode transition 1 to 2: " << traj_mode1.time_vector.tail(1);
@@ -70,9 +70,10 @@ int DoMain() {
       traj_mode2.time_vector;
 
   MatrixXd x = xu.topRows(nx);
+  MatrixXd xdot = xu.topRows(2*nx).bottomRows(nx);
 
   PiecewisePolynomial<double> optimal_traj =
-      PiecewisePolynomial<double>::FirstOrderHold(times, x);
+      PiecewisePolynomial<double>::CubicHermite(times, x, xdot);
 
   multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
                                          optimal_traj);

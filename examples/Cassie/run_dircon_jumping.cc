@@ -258,11 +258,11 @@ void DoMain() {
   options_list.push_back(flight_mode_options);
   options_list.push_back(double_stance_options);
 
-  double w_lambda = 1.0e-4;
+//  double w_lambda = 1.0e-4;
   // set force cost weight
-  for (int i = 0; i < 2; i++) {
-    options_list[i].setForceCost(w_lambda);
-  }
+//  for (int i = 0; i < 2; i++) {
+//    options_list[i].setForceCost(w_lambda);
+//  }
 
   vector<int> stance_modes{0, 2};
 

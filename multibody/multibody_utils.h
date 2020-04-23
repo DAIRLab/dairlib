@@ -49,6 +49,11 @@ std::vector<std::string> createStateAndActuatorNameVectorFromMap(
     const std::map<std::string, int>& vel_map,
     const std::map<std::string, int>& act_map);
 
+std::vector<std::string> createStateAndActuatorNameVectorFromMapDot(
+    const std::map<std::string, int>& pos_map,
+    const std::map<std::string, int>& vel_map,
+    const std::map<std::string, int>& act_map);
+
 // TODO: The following two functions need to be implemented as a part of
 // RBT/Multibody and not as separate functions that take in RBTs. Make the
 // change once the codebase shifts to using multibody.

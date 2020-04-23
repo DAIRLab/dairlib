@@ -257,6 +257,28 @@ vector<string> createStateAndActuatorNameVectorFromMap(
   return state_and_actuator_names;
 }
 
+vector<string> createStateAndActuatorNameVectorFromMapDot(
+    const map<string, int>& pos_map, const map<string, int>& vel_map,
+    const map<string, int>& act_map) {
+  unsigned long nq = pos_map.size();
+  unsigned long nv = vel_map.size();
+  vector<string> state_and_actuator_names(nq + nv + act_map.size());
+
+  for (const auto& name_index_pair : pos_map) {
+    state_and_actuator_names[name_index_pair.second] = name_index_pair.first
+        + "_dot";
+  }
+  for (const auto& name_index_pair : vel_map) {
+    state_and_actuator_names[name_index_pair.second + nq] =
+        name_index_pair.first + "_dot";
+  }
+  for (const auto& name_index_pair : act_map) {
+    state_and_actuator_names[name_index_pair.second + nq + nv] =
+        name_index_pair.first + "_dot";
+  }
+  return state_and_actuator_names;
+}
+
 bool JointsWithinLimits(const MultibodyPlant<double>& plant,
                         VectorXd positions, double tolerance) {
   VectorXd joint_min = plant.GetPositionLowerLimits();

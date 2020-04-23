@@ -113,29 +113,42 @@ int DoMain() {
   auto traj_mode1 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u1");
   auto traj_mode2 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u2");
 
-  //  std::cout << traj_mode0.datapoints.rows() << std::endl;
-  //  DRAKE_ASSERT(nx == traj_mode0.datapoints.rows());
   int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
                  traj_mode2.datapoints.cols();
 
-  MatrixXd xu(nx_wo_spr + nu, n_points);
+  MatrixXd xu(2*nx_wo_spr + nu, n_points);
   VectorXd times(n_points);
 
   xu << traj_mode0.datapoints, traj_mode1.datapoints, traj_mode2.datapoints;
   times << traj_mode0.time_vector, traj_mode1.time_vector,
       traj_mode2.time_vector;
-
-  MatrixXd x_w_spr = map_state_from_no_spring_to_spring * xu.topRows(nx_wo_spr);
+  MatrixXd x_w_spr(2*nx_w_spr, n_points);
+  x_w_spr.topRows(nx_w_spr) =
+      map_state_from_no_spring_to_spring * xu.topRows(nx_wo_spr);
+  x_w_spr.bottomRows(nx_w_spr) =
+      map_state_from_no_spring_to_spring * xu.topRows(2*nx_wo_spr).bottomRows
+      (nx_wo_spr);
 
   auto state_traj_w_spr = LcmTrajectory::Trajectory();
-  state_traj_w_spr.traj_name = "cassie_jumping_trajectory_x_u";
+  state_traj_w_spr.traj_name = "cassie_jumping_trajectory_x";
   state_traj_w_spr.datapoints = x_w_spr;
   state_traj_w_spr.time_vector = times;
-  state_traj_w_spr.datatypes =
+  const std::vector<string>& state_names =
       multibody::createStateAndActuatorNameVectorFromMap(
           multibody::makeNameToPositionsMap(plant_w_spr),
           multibody::makeNameToVelocitiesMap(plant_w_spr),
-          multibody::makeNameToActuatorsMap(plant_w_spr));
+          std::map<std::string, int>());
+  const std::vector<string>& state_dot_names =
+      multibody::createStateAndActuatorNameVectorFromMapDot(
+          multibody::makeNameToPositionsMap(plant_w_spr),
+          multibody::makeNameToVelocitiesMap(plant_w_spr),
+          std::map<std::string, int>());
+
+  state_traj_w_spr.datatypes.reserve(2 * nx_w_spr);
+  state_traj_w_spr.datatypes.insert(state_traj_w_spr.datatypes.end(),
+      state_names.begin(), state_names.end());
+  state_traj_w_spr.datatypes.insert(state_traj_w_spr.datatypes.end(),
+      state_dot_names.begin(), state_dot_names.end());
 
   std::vector<LcmTrajectory::Trajectory> trajectories = {state_traj_w_spr};
   std::vector<std::string> trajectory_names = {state_traj_w_spr.traj_name};

@@ -1,8 +1,8 @@
 import sys
 
+import lcm
 import dairlib
 import drake
-import lcm
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -165,7 +165,7 @@ def main():
     #     "/saved_trajs/target_trajs/jumping_0.2")
     loadedStateTraj.loadFromFile(
         "/home/yangwill/Documents/research/projects/cassie/jumping"
-        "/saved_trajs/target_trajs/April_22_jumping_0.2")
+        "/saved_trajs/target_trajs/April_19_jumping_0.2")
         # "/saved_trajs/target_trajs/April_19_jumping_0.2")
     loadedTrackingDataTraj.loadFromFile(
         "/home/yangwill/Documents/research/projects/cassie/jumping"
@@ -222,8 +222,6 @@ def main():
                                                    0:3, :],
                                                 lcm_com_traj.datapoints[
                                                    3:6, :])
-    # import pdb; pdb.set_trace()
-
     # l_foot_traj = PiecewisePolynomial.FirstOrderHold(lcm_l_foot_traj.time_vector,
     #                                                lcm_l_foot_traj.datapoints[
     #                                                0:3, :])
@@ -238,10 +236,9 @@ def main():
     # To get the nominal feet trajs in world coordinates, calculate it from
     # the full state traj
 
-
     # generate_state_maps()
     integrate_q_v(x_traj_nominal)
-    evaluate_constraints(x_traj_nominal, u_traj_nominal)
+    # evaluate_constraints(x_traj_nominal, u_traj_nominal)
 
     state_names_wo_spr = state_traj_mode0.datatypes
 
@@ -252,6 +249,7 @@ def main():
 
     global filename
     filename = sys.argv[1]
+    import pdb; pdb.set_trace()
     log = lcm.EventLog(filename, "r")
     log_samples = int(log.size() / 100)
     # print(log.size() / 100)
@@ -271,19 +269,19 @@ def main():
     # print(plant.CalcMassMatrixViaInverseDynamics(context))
 
     # plot_nominal_com_traj(com_traj, lcm_com_traj)
-    plot_nominal_feet_traj(l_foot_traj, lcm_l_foot_traj, r_foot_traj)
+    # plot_nominal_feet_traj(l_foot_traj, lcm_l_foot_traj, r_foot_traj)
     # plot_nominal_input_traj(u_traj_nominal, state_traj_mode0)
 
-    calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v)
+    # calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v)
 
     start_time = 0.0
-    end_time = 0.15
+    end_time = 0.3
     t_start_idx = get_index_at_time(t_state, start_time)
     t_end_idx = get_index_at_time(t_state, end_time)
     t_state_slice = slice(t_start_idx, t_end_idx)
 
     # plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
-    plot_nominal_state(x_traj_nominal, state_names_wo_spr)
+    # plot_nominal_state(x_traj_nominal, state_names_wo_spr)
 
     # For printing out osc_values at a specific time interval
     t_osc_start_idx = get_index_at_time(t_osc_debug, start_time)
@@ -296,7 +294,7 @@ def main():
     #
     # plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal)
 
-    # plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
+    plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
 
 
 
@@ -310,8 +308,8 @@ def main():
     front_contact_disp = np.array((-0.0457, 0.112, 0))
     rear_contact_disp = np.array((0.088, 0, 0))
 
-    plot_feet_from_optimization(x_traj_nominal,
-                                front_contact_disp, world, "left_", "_front")
+    # plot_feet_from_optimization(x_traj_nominal,
+    #                             front_contact_disp, world, "left_", "_front")
 
     # Foot plotting
     # plot_feet_simulation(context, l_toe_frame, r_toe_frame, world, no_offset,
@@ -326,13 +324,17 @@ def main():
         plot_feet_simulation(plant, context, q, v, r_toe_frame, rear_contact_disp,
                              world, t_state, t_state_slice, "right_", "_rear")
 
-    plot = True
+    plot = False
     if plot:
         fig = plt.figure("osc_output: " + filename)
         plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].ydot_des[t_osc_slice], \
         label="0")
-        plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].ydot[t_osc_slice],
-                 label="0")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].ydot[t_osc_slice],
+        #          label="0")
+        plt.plot(t_osc_debug[t_osc_slice], osc_debug[1].ydot_des[t_osc_slice], \
+        label="1")
+        # plt.plot(t_osc_debug[t_osc_slice], osc_debug[1].ydot[t_osc_slice],
+        #          label="1")
         plt.legend()
     plt.show()
 
@@ -458,7 +460,6 @@ def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     constraint0 = M0 @ qddot_0 - (B @ u0 - c0 + g0 + Jc0.T @ lambda_0)
     constraint1 = M1 @ qddot_1 - (B @ u1 - c1 + g1)
     constraintc = Mc @ qddot_c - (B @ uc - cc + gc + Jcc.T @ lambda_c)
-    import pdb; pdb.set_trace()
 
 def plot_ground_reaction_forces(contact_info, t_state, t_state_slice):
     fig = plt.figure('contact data: ' + filename)

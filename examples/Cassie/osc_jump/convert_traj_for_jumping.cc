@@ -67,7 +67,7 @@ int DoMain() {
   int n_points = traj_mode0.datapoints.cols() + traj_mode1.datapoints.cols() +
                  traj_mode2.datapoints.cols();
 
-  MatrixXd xu(nx + nu, n_points);
+  MatrixXd xu(nx + nx + nu, n_points);
   VectorXd times(n_points);
 
   std::cout << "Mode transition 0 to 1: " << traj_mode0.time_vector.tail(1);
@@ -82,7 +82,8 @@ int DoMain() {
   MatrixXd l_hip_points(6, n_points);
   MatrixXd r_hip_points(6, n_points);
   MatrixXd center_of_mass_points(6, n_points);
-  MatrixXd pelvis_orientation(4, n_points);
+//  MatrixXd pelvis_orientation(4, n_points);
+  MatrixXd pelvis_orientation(8, n_points);
   Vector3d zero_offset = Vector3d::Zero();
 
   std::cout << "Initial state: " << xu.block(0, 0, nx, 1) << std::endl;
@@ -107,14 +108,16 @@ int DoMain() {
     plant.CalcPointsPositions(*context, *hip_right_frame, zero_offset, *world,
                               &r_hip_pos_block);
 
-    pelvis_orientation.block(1, i, 3, 1) =
-        plant.CalcRelativeRotationMatrix(*context, *world, *pelvis_frame)
-            .ToQuaternion()
-            .vec();
-    pelvis_orientation(0, i) =
-        plant.CalcRelativeRotationMatrix(*context, *world, *pelvis_frame)
-            .ToQuaternion()
-            .w();
+//    pelvis_orientation.block(1, i, 3, 1) =
+//        plant.CalcRelativeRotationMatrix(*context, *world, *pelvis_frame)
+//            .ToQuaternion()
+//            .vec();
+//    pelvis_orientation(0, i) =
+//        plant.CalcRelativeRotationMatrix(*context, *world, *pelvis_frame)
+//            .ToQuaternion()
+//            .w();
+    pelvis_orientation.block(0, i, 4, 1) = xu.block(0, i, 4, 1);
+    pelvis_orientation.block(4, i, 4, 1) = xu.block(nx, i, 4, 1);
 
     MatrixXd J_CoM(3, nv);
     MatrixXd J_l_foot(3, nv);
@@ -179,7 +182,9 @@ int DoMain() {
   pelvis_orientation_block.datapoints = pelvis_orientation;
   pelvis_orientation_block.time_vector = times;
   pelvis_orientation_block.datatypes = {"pelvis_rotw", "pelvis_rotx",
-                                        "pelvis_roty", "pelvis_rotz"};
+                                        "pelvis_roty", "pelvis_rotz",
+                                        "pelvis_rotwdot", "pelvis_rotxdot",
+                                        "pelvis_rotydot", "pelvis_rotzdot"};
   //      "pelvis_wx",   "pelvis_wy",   "pelvis_wz"};
 
   std::vector<LcmTrajectory::Trajectory> trajectories = {

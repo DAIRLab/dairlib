@@ -40,6 +40,7 @@ using drake::systems::lcm::LcmSubscriberSystem;
 
 using drake::math::RotationMatrix;
 using Eigen::Matrix3d;
+using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
@@ -159,6 +160,7 @@ int do_main(int argc, char* argv[]) {
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
+  int nx = nq + nv;
   VectorXd q_v_init(nq + nv);
 
   if (FLAGS_start_time != 0) {
@@ -184,29 +186,27 @@ int do_main(int argc, char* argv[]) {
       std::cout << "State at break: " << trajectory.datapoints.col(i)
                 << std::endl;
     }
-    drake::trajectories::PiecewisePolynomial<double> x_traj_wo_quat;
+    drake::trajectories::PiecewisePolynomial<double> x_traj;
     if(FLAGS_interp_method == "linear"){
-      x_traj_wo_quat = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold
+      x_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold
           (trajectory.time_vector, trajectory.datapoints.topRows(nq + nv));
-      q_v_init << x_traj_wo_quat.value(FLAGS_start_time);
+      q_v_init << x_traj.value(FLAGS_start_time);
     }
     else if(FLAGS_interp_method == "cubic") {
-      x_traj_wo_quat =
-          drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
-              trajectory.time_vector,
-              trajectory.datapoints.block(4, 0, nq - 4,
-                  n_breaks),
-              trajectory.datapoints.block(nq + 3, 0, nv - 3,
-                  n_breaks));
-      drake::trajectories::PiecewiseQuaternionSlerp<double> quaternion_slerp =
-          drake::trajectories::PiecewiseQuaternionSlerp<double>(
-              breaks, quaternions);
-      const drake::Quaternion<double>& orientation =
-          quaternion_slerp.orientation(FLAGS_start_time);
-      q_v_init << orientation.vec(), orientation.w(),
-          x_traj_wo_quat.value(FLAGS_start_time),
-          quaternion_slerp.angular_velocity(FLAGS_start_time),
-          x_traj_wo_quat.MakeDerivative(1)->value(FLAGS_start_time);
+      MatrixXd x = trajectory.datapoints.topRows(2*nx);
+      MatrixXd xdot = trajectory.datapoints.topRows(2*nx).bottomRows(nx);
+      x_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
+          trajectory.time_vector, x, xdot);
+      q_v_init << x_traj.value(FLAGS_start_time);
+//      drake::trajectories::PiecewiseQuaternionSlerp<double> quaternion_slerp =
+//          drake::trajectories::PiecewiseQuaternionSlerp<double>(
+//              breaks, quaternions);
+//      const drake::Quaternion<double>& orientation =
+//          quaternion_slerp.orientation(FLAGS_start_time);
+//      q_v_init << orientation.vec(), orientation.w(),
+//          x_traj_wo_quat.value(FLAGS_start_time),
+//          quaternion_slerp.angular_velocity(FLAGS_start_time),
+//          x_traj_wo_quat.MakeDerivative(1)->value(FLAGS_start_time);
 
 
     }

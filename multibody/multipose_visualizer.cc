@@ -15,7 +15,8 @@ using drake::multibody::MultibodyPlant;
 namespace dairlib {
 namespace multibody {
 
-MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses) : 
+MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
+    string weld_frame_to_world) : 
     num_poses_(num_poses) {
   DiagramBuilder<double> builder;
 
@@ -30,7 +31,12 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses) :
   for (int i = 0; i < num_poses_; i++) {
     auto index = 
         parser.AddModelFromFile(model_file, "model[" + std::to_string(i) + "]");
-    model_indices_.push_back(index);
+    model_indices_.push_back(index);  
+    if (!weld_frame_to_world.empty()) {
+      plant_->WeldFrames(plant_->world_frame(),
+          plant_->GetFrameByName(weld_frame_to_world, model_indices_.at(i)),
+          drake::math::RigidTransform<double>(Eigen::Vector3d::Zero()));
+    }
   }
 
   plant_->Finalize();

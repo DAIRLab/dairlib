@@ -27,7 +27,8 @@ class MultiposeVisualizer {
   /// Constructor
   /// @param model_file A full path to model (e.g. through FindResourceOrThrow)
   /// @param num_poses The number of simultaneous poses to draw (fixed)
-  explicit MultiposeVisualizer(std::string model_file, int num_poses);
+  explicit MultiposeVisualizer(std::string model_file, int num_poses,
+      std::string weld_frame_to_world = "");
 
   /// Draws the poses in the given (num_positions x num_poses) matrix
   /// Note: the matrix can have extra rows (e.g. velocities), which will be

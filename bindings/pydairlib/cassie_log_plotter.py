@@ -238,7 +238,7 @@ def main():
 
     # generate_state_maps()
     integrate_q_v(x_traj_nominal)
-    # evaluate_constraints(x_traj_nominal, u_traj_nominal)
+    evaluate_constraints(x_traj_nominal, u_traj_nominal)
 
     state_names_wo_spr = state_traj_mode0.datatypes
 
@@ -249,7 +249,6 @@ def main():
 
     global filename
     filename = sys.argv[1]
-    import pdb; pdb.set_trace()
     log = lcm.EventLog(filename, "r")
     log_samples = int(log.size() / 100)
     # print(log.size() / 100)
@@ -362,7 +361,7 @@ def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     breaks = x_traj_nominal.get_segment_times()
     t0 = breaks[8]
     t1 = breaks[9]
-    tc = 0.5 * ( breaks[8] + breaks[9] )
+    tc = 0.5 * (t0 + t1)
 
     xdot_traj_nominal = x_traj_nominal.derivative(1)
 
@@ -439,6 +438,7 @@ def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     gc = np.reshape(gc, (18, 1))
 
     nv = plant.num_velocities()
+    nq = plant.num_positions()
     qddot_0 = xdot_0[-nv:]
     qddot_1 = xdot_1[-nv:]
     qddot_c = xdot_c[-nv:]
@@ -456,10 +456,25 @@ def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     lambda_0 = np.reshape(lambda_0, (2, 1))
     lambda_c = np.array((125.558, 131.192))
     lambda_c = np.reshape(lambda_c, (2, 1))
+    gamma_c = np.array([[-26.1234], [-24.6006]])
 
     constraint0 = M0 @ qddot_0 - (B @ u0 - c0 + g0 + Jc0.T @ lambda_0)
     constraint1 = M1 @ qddot_1 - (B @ u1 - c1 + g1)
     constraintc = Mc @ qddot_c - (B @ uc - cc + gc + Jcc.T @ lambda_c)
+
+    qdot_c = xdot_c[:nq]
+    v_qdot_c = plant.MapQDotToVelocity(context, qdot_c)
+    v_c = plant.MapVelocityToQDot(context, xc[-18:])
+    Jgamma_c_qdot = plant.MapVelocityToQDot(context, Jcc.T@gamma_c)
+    v_qdot_c = np.reshape(v_qdot_c, (nv, 1))
+    v_c = np.reshape(v_c, (nq, 1))
+    Jgamma_c_qdot = np.reshape(Jgamma_c_qdot, (nq, 1))
+    y = qdot_c - (v_c + Jgamma_c_qdot)
+    print(Jcc@v_qdot_c)
+    print(Jcc@xc[-18:])
+    print(Jcc@Jcc.T@gamma_c)
+
+    import pdb; pdb.set_trace()
 
 def plot_ground_reaction_forces(contact_info, t_state, t_state_slice):
     fig = plt.figure('contact data: ' + filename)

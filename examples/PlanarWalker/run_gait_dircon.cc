@@ -29,6 +29,7 @@
 
 DEFINE_double(strideLength, 0.1, "The stride length.");
 DEFINE_double(duration, 1, "The stride duration");
+DEFINE_bool(autodiff, false, "Double or autodiff version");
 
 using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;
@@ -58,7 +59,11 @@ using systems::trajectory_optimization::DirconKinConstraintType;
 using systems::SubvectorPassThrough;
 
 
-shared_ptr<HybridDircon<double>> runDircon(
+template <typename T>
+shared_ptr<HybridDircon<T>> runDircon(
+    std::unique_ptr<MultibodyPlant<T>> plant_ptr,
+    MultibodyPlant<double>* plant_double_ptr,
+    std::unique_ptr<SceneGraph<double>> scene_graph_ptr,
     double stride_length,
     double duration,
     PiecewisePolynomial<double> init_x_traj,
@@ -68,22 +73,9 @@ shared_ptr<HybridDircon<double>> runDircon(
     vector<PiecewisePolynomial<double>> init_vc_traj) {
 
   drake::systems::DiagramBuilder<double> builder;
-  MultibodyPlant<double> plant(0.0);
-  SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
-  Parser parser(&plant, &scene_graph);
-
-  std::string full_name =
-      FindResourceOrThrow("examples/PlanarWalker/PlanarWalker.urdf");
-  parser.AddModelFromFile(full_name);
-
-  plant.mutable_gravity_field().set_gravity_vector(
-      -9.81 * Eigen::Vector3d::UnitZ());
-
-  plant.WeldFrames(
-      plant.world_frame(), plant.GetFrameByName("base"),
-      drake::math::RigidTransform<double>());
-
-  plant.Finalize();
+  MultibodyPlant<T>& plant = *plant_ptr;
+  SceneGraph<double>& scene_graph =
+      *builder.AddSystem(std::move(scene_graph_ptr));
 
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
@@ -93,8 +85,8 @@ shared_ptr<HybridDircon<double>> runDircon(
   for (auto const& element : velocities_map)
     cout << element.first << " = " << element.second << endl;
 
-  const Body<double>& left_lower_leg = plant.GetBodyByName("left_lower_leg");
-  const Body<double>& right_lower_leg = plant.GetBodyByName("right_lower_leg");
+  const Body<T>& left_lower_leg = plant.GetBodyByName("left_lower_leg");
+  const Body<T>& right_lower_leg = plant.GetBodyByName("right_lower_leg");
 
   Vector3d pt;
   pt << 0, 0, -.5;
@@ -102,22 +94,22 @@ shared_ptr<HybridDircon<double>> runDircon(
 
   Vector3d normal;
   normal << 0, 0, 1;
-  auto leftFootConstraint = DirconPositionData<double>(plant, left_lower_leg,
+  auto leftFootConstraint = DirconPositionData<T>(plant, left_lower_leg,
                                                        pt, isXZ, normal);
-  auto rightFootConstraint = DirconPositionData<double>(plant, right_lower_leg,
+  auto rightFootConstraint = DirconPositionData<T>(plant, right_lower_leg,
                                                         pt, isXZ, normal);
 
   double mu = 1;
   leftFootConstraint.addFixedNormalFrictionConstraints(mu);
   rightFootConstraint.addFixedNormalFrictionConstraints(mu);
 
-  std::vector<DirconKinematicData<double>*> leftConstraints;
+  std::vector<DirconKinematicData<T>*> leftConstraints;
   leftConstraints.push_back(&leftFootConstraint);
-  auto leftDataSet = DirconKinematicDataSet<double>(plant, &leftConstraints);
+  auto leftDataSet = DirconKinematicDataSet<T>(plant, &leftConstraints);
 
-  std::vector<DirconKinematicData<double>*> rightConstraints;
+  std::vector<DirconKinematicData<T>*> rightConstraints;
   rightConstraints.push_back(&rightFootConstraint);
-  auto rightDataSet = DirconKinematicDataSet<double>(plant, &rightConstraints);
+  auto rightDataSet = DirconKinematicDataSet<T>(plant, &rightConstraints);
 
   auto leftOptions = DirconOptions(leftDataSet.countConstraints());
   leftOptions.setConstraintRelative(0, true);
@@ -135,7 +127,7 @@ shared_ptr<HybridDircon<double>> runDircon(
   max_dt.push_back(.3);
   max_dt.push_back(.3);
 
-  std::vector<DirconKinematicDataSet<double>*> dataset_list;
+  std::vector<DirconKinematicDataSet<T>*> dataset_list;
   dataset_list.push_back(&leftDataSet);
   dataset_list.push_back(&rightDataSet);
 
@@ -143,13 +135,13 @@ shared_ptr<HybridDircon<double>> runDircon(
   options_list.push_back(leftOptions);
   options_list.push_back(rightOptions);
 
-  auto trajopt = std::make_shared<HybridDircon<double>>(plant,
+  auto trajopt = std::make_shared<HybridDircon<T>>(plant,
       timesteps, min_dt, max_dt, dataset_list, options_list);
 
   trajopt->AddDurationBounds(duration, duration);
 
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Print file", "snopt.out");
+                           "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", 100);
 
@@ -247,10 +239,9 @@ shared_ptr<HybridDircon<double>> runDircon(
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt->ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
-                                         pp_xtraj);
+  multibody::connectTrajectoryVisualizer(plant_double_ptr,
+      &builder, &scene_graph, pp_xtraj);
   auto diagram = builder.Build();
-
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
@@ -269,28 +260,31 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::srand(time(0));  // Initialize random number generator.
 
-  MultibodyPlant<double> plant(0.0);
-  SceneGraph<double> scene_graph;
-  Parser parser(&plant, &scene_graph);
+  auto plant = std::make_unique<MultibodyPlant<double>>();
+  auto scene_graph = std::make_unique<SceneGraph<double>>();
+  Parser parser(plant.get(), scene_graph.get());
   std::string full_name =
       dairlib::FindResourceOrThrow("examples/PlanarWalker/PlanarWalker.urdf");
 
   parser.AddModelFromFile(full_name);
 
-  plant.WeldFrames(
-      plant.world_frame(), plant.GetFrameByName("base"),
+  plant->mutable_gravity_field().set_gravity_vector(
+      -9.81 * Eigen::Vector3d::UnitZ());
+
+  plant->WeldFrames(
+      plant->world_frame(), plant->GetFrameByName("base"),
       drake::math::RigidTransform<double>());
 
-  plant.Finalize();
+  plant->Finalize();
 
-  
-    int N = 10;
+  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(plant->num_positions() +
+                       plant->num_velocities());
+
   Eigen::VectorXd init_l_vec(2);
   init_l_vec << 0, 20*9.81;
-  int nu = plant.num_actuators();
-  int nx = plant.num_positions() + plant.num_velocities();
-
-  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(nx);
+  int nu = plant->num_actuators();
+  int nx = plant->num_positions() + plant->num_velocities();
+  int N = 10;
 
   std::vector<MatrixXd> init_x;
   std::vector<MatrixXd> init_u;
@@ -330,7 +324,18 @@ int main(int argc, char* argv[]) {
     init_vc_traj.push_back(init_vc_traj_j);
   }
 
-  auto prog = dairlib::runDircon(FLAGS_strideLength, FLAGS_duration,
-    init_x_traj, init_u_traj,  init_l_traj, init_lc_traj, init_vc_traj);
+  if (FLAGS_autodiff) {
+    std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_autodiff =
+        drake::systems::System<double>::ToAutoDiffXd(*plant);
+    auto prog = dairlib::runDircon<drake::AutoDiffXd>(
+      std::move(plant_autodiff), plant.get(), std::move(scene_graph),
+      FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+      init_lc_traj, init_vc_traj);
+  } else {
+    auto prog = dairlib::runDircon<double>(
+      std::move(plant), plant.get(), std::move(scene_graph),
+      FLAGS_strideLength, FLAGS_duration, init_x_traj, init_u_traj, init_l_traj,
+      init_lc_traj, init_vc_traj);
+  }
 }
 

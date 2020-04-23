@@ -164,7 +164,7 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
   }
 
   std::unique_ptr<drake::systems::AbstractValues> AllocateAbstractState()
-      const override {
+  const {
     std::vector<std::unique_ptr<drake::AbstractValue>> abstract_vals(2);
     abstract_vals[kStateIndexMessage] =
         this->RosSubscriberSystem::AllocateOutputValue();

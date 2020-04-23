@@ -105,18 +105,27 @@ void DirconPositionData<T>::addFixedNormalFrictionConstraints(double mu) {
     ///     mu_*lambda_c(3*i+2) - lambda_c(3*i+1) >= 0
     ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
     ///                           lambda_c(3*i+2) >= 0
-    MatrixXd A = MatrixXd::Zero(5, 3);
+    /// The last inequality is implemented as bounding box constraint in drake
+    MatrixXd A = MatrixXd::Zero(4, 3);
     A.block(0, 2, 4, 1) = mu * VectorXd::Ones(4, 1);
     A(0, 0) = -1;
     A(1, 0) = 1;
     A(2, 1) = -1;
     A(3, 1) = 1;
-    A(4, 2) = 1;
-    VectorXd lb = VectorXd::Zero(5);
-    VectorXd ub = VectorXd::Ones(5) * std::numeric_limits<double>::infinity();
-    auto force_constraint = std::make_shared<drake::solvers::LinearConstraint>(
-        A, lb, ub);
-    this->force_constraints_.push_back(force_constraint);
+    VectorXd lb = VectorXd::Zero(4);
+    VectorXd ub = VectorXd::Ones(4) * std::numeric_limits<double>::infinity();
+    auto friction_constraint =
+        std::make_shared<drake::solvers::LinearConstraint>(A, lb, ub);
+    this->force_constraints_.push_back(friction_constraint);
+
+    VectorXd bounding_box_ub =
+        VectorXd::Ones(3) * std::numeric_limits<double>::infinity();
+    VectorXd bounding_box_lb = -bounding_box_ub;
+    bounding_box_lb(2) = 0;
+    auto bounding_box_constraint =
+        std::make_shared<drake::solvers::BoundingBoxConstraint>(
+            bounding_box_lb, bounding_box_ub);
+    this->force_constraints_.push_back(bounding_box_constraint);
   }
 }
 

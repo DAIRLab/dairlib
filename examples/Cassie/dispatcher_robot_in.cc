@@ -45,7 +45,7 @@ DEFINE_int64(supervisor_N, 10,
              "Maximum allowed consecutive failures of velocity limit.");
 DEFINE_string(state_channel_name, "CASSIE_STATE",
               "The name of the lcm channel that sends Cassie's state");
-DEFINE_string(control_channel_name_1, "PD_CONTROLLER",
+DEFINE_string(control_channel_name_1, "PD_CONTROL",
               "The name of the lcm channel that sends Cassie's state");
 DEFINE_string(control_channel_name_2, "OSC_STANDING",
               "The name of the lcm channel that sends Cassie's state");
@@ -144,7 +144,7 @@ int do_main(int argc, char* argv[]) {
        input_channels,
        FLAGS_control_channel_name_1,
        switch_channel,
-       false);
+       true);
   loop.Simulate();
 
   return 0;

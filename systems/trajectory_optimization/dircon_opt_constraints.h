@@ -1,14 +1,15 @@
 #pragma once
 
-#include <memory.h>
 #include <string>
+#include <unordered_map>
 #include <vector>
-#include "drake/common/drake_copyable.h"
-#include "drake/solvers/constraint.h"
-#include "drake/common/symbolic.h"
-#include "drake/systems/trajectory_optimization/multiple_shooting.h"
+#include <memory.h>
 #include "systems/trajectory_optimization/dircon_kinematic_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "drake/common/drake_copyable.h"
+#include "drake/common/symbolic.h"
+#include "drake/solvers/constraint.h"
+#include "drake/systems/trajectory_optimization/multiple_shooting.h"
 
 namespace dairlib {
 namespace systems {
@@ -20,11 +21,9 @@ template <typename T>
 class DirconAbstractConstraint : public drake::solvers::Constraint {
  public:
   DirconAbstractConstraint(int num_constraints, int num_vars,
-                           const Eigen::VectorXd& lb,
-                           const Eigen::VectorXd& ub,
+                           const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
                            const std::string& description = "");
 
- public:
   void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
               Eigen::VectorXd* y) const override;
 
@@ -35,8 +34,17 @@ class DirconAbstractConstraint : public drake::solvers::Constraint {
       const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>&,
       drake::VectorX<drake::symbolic::Expression>*) const override;
 
+  void SetConstraintScaling(const std::unordered_map<int, double>& map);
+
   virtual void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                                   drake::VectorX<T>* y) const = 0;
+
+ private:
+  template <typename U>
+  void ScaleConstraint(drake::VectorX<U>* y) const;
+
+  int num_constraints_;
+  std::unordered_map<int, double> constraint_scaling_;
 };
 
 enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
@@ -52,7 +60,6 @@ class QuaternionNormConstraint : public DirconAbstractConstraint<T> {
                           drake::VectorX<T>* y) const override;
 };
 
-
 /// Implements the direct collocation constraints for a first-order hold on
 /// the input and a cubic polynomial representation of the state trajectories.
 /// This class is based on the similar constraint used by DirectCollocation,
@@ -61,7 +68,7 @@ class QuaternionNormConstraint : public DirconAbstractConstraint<T> {
 template <typename T>
 class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
  public:
-//  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
+  //  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
 
  public:
   DirconDynamicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
@@ -121,18 +128,20 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
   /// @param plant the MultibodyPlant
   /// @param DirconKinematicDataSet the set of kinematic constraints
   /// @param type the constraint type. All (default), accel and vel, accel only.
-  DirconKinematicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                            DirconKinematicDataSet<T>& constraint_data,
-                            DirconKinConstraintType type = DirconKinConstraintType::kAll);
+  DirconKinematicConstraint(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      DirconKinematicDataSet<T>& constraint_data,
+      DirconKinConstraintType type = DirconKinConstraintType::kAll);
   /// Constructor
   /// @param plant the MultibodyPlant
   /// @param DirconKinematicDataSet the set of kinematic constraints
   /// @param is_constraint_relative vector of booleans
   /// @param type the constraint type. All (default), accel and vel, accel only.
-  DirconKinematicConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                            DirconKinematicDataSet<T>& constraint_data,
-                            std::vector<bool> is_constraint_relative,
-                            DirconKinConstraintType type = DirconKinConstraintType::kAll);
+  DirconKinematicConstraint(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      DirconKinematicDataSet<T>& constraint_data,
+      std::vector<bool> is_constraint_relative,
+      DirconKinConstraintType type = DirconKinConstraintType::kAll);
 
   ~DirconKinematicConstraint() override = default;
 
@@ -169,7 +178,8 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
 // Note: The order of arguments is a compromise between GSG and the desire to
 // match the AddConstraint interfaces in MathematicalProgram.
 //
-// mposa: I don't think this function is actually being used, and I'm not sure what it does
+// mposa: I don't think this function is actually being used, and I'm not sure
+// what it does
 template <typename T>
 drake::solvers::Binding<drake::solvers::Constraint> AddDirconConstraint(
     std::shared_ptr<DirconDynamicConstraint<T>> constraint,
@@ -180,8 +190,10 @@ drake::solvers::Binding<drake::solvers::Constraint> AddDirconConstraint(
     const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>& next_input,
     const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>& force,
     const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>& next_force,
-    const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>& collocation_force,
-    const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>& collocation_position_slack,
+    const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>&
+        collocation_force,
+    const Eigen::Ref<const drake::solvers::VectorXDecisionVariable>&
+        collocation_position_slack,
     drake::solvers::MathematicalProgram* prog);
 
 /// Implements the hybrid impact constraints used by Dircon
@@ -212,6 +224,70 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
   const int num_kinematic_constraints_wo_skipping_{0};
   const int num_positions_{0};
   const int num_velocities_{0};
+};
+
+// Position constraint of a point in the directions `dir` with respect to the
+// world, where the point is specified by body_name and point_wrt_body.
+// Each row of `dir` is the direction in which you want to constrain the point,
+// and each row of lb/ub is the corresponding lower/upper bound.
+// To clarify, the # of constraints = `dir.rows()` = `lb.size()` = `ub.size()`
+template <typename T>
+class PointPositionConstraint : public DirconAbstractConstraint<T> {
+ public:
+  PointPositionConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+                          const std::string& body_name,
+                          const Eigen::Vector3d& point_wrt_body,
+                          const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+                          const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+                          const std::string& description = "");
+  // A constructor that fix the 3D position of a point wrt the world
+  PointPositionConstraint(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+      const Eigen::Vector3d& fix_pos = Eigen::Vector3d::Zero());
+  ~PointPositionConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
+                          drake::VectorX<T>* y) const override;
+
+ private:
+  const drake::multibody::MultibodyPlant<T>& plant_;
+  const drake::multibody::Body<T>& body_;
+  const drake::Vector3<T> point_wrt_body_;
+  const Eigen::Matrix<T, Eigen::Dynamic, 3> dir_;
+  std::unique_ptr<drake::systems::Context<T>> context_;
+};
+
+// Velocity constraint of a point in the directions `dir` with respect to the
+// world, where the point is specified by body_name and point_wrt_body.
+// Each row of `dir` is the direction in which you want to constrain the point,
+// and each row of lb/ub is the corresponding lower/upper bound.
+// To clarify, the # of constraints = `dir.rows()` = `lb.size()` = `ub.size()`
+template <typename T>
+class PointVelocityConstraint : public DirconAbstractConstraint<T> {
+ public:
+  PointVelocityConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+                          const std::string& body_name,
+                          const Eigen::Vector3d& point_wrt_body,
+                          const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
+                          const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+                          const std::string& description = "");
+  // A constructor that fix the 3D velocity of a point wrt the world
+  PointVelocityConstraint(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
+      const Eigen::Vector3d& fix_pos = Eigen::Vector3d::Zero());
+  ~PointVelocityConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
+                          drake::VectorX<T>* y) const override;
+
+ private:
+  const drake::multibody::MultibodyPlant<T>& plant_;
+  const drake::multibody::Body<T>& body_;
+  const drake::Vector3<T> point_wrt_body_;
+  const Eigen::Matrix<T, Eigen::Dynamic, 3> dir_;
+  std::unique_ptr<drake::systems::Context<T>> context_;
 };
 
 }  // namespace trajectory_optimization

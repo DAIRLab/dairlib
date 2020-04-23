@@ -35,12 +35,14 @@ using multibody::GetBodyIndexFromName;
 
 CassieRbtStateEstimator::CassieRbtStateEstimator(
     const RigidBodyTree<double>& tree, bool is_floating_base,
-    bool test_with_ground_truth_state, bool print_info_to_terminal) :
+    bool test_with_ground_truth_state, bool print_info_to_terminal,
+    int hardware_test_mode) :
         tree_(tree),
         is_floating_base_(is_floating_base) {
   // Flags for testing and tuning
   test_with_ground_truth_state_ = test_with_ground_truth_state;
   print_info_to_terminal_ = print_info_to_terminal;
+  hardware_test_mode_ = hardware_test_mode;
 
   // Declare input/output ports
   cassie_out_input_port_ = this->DeclareAbstractInputPort("cassie_out_t",
@@ -1082,7 +1084,7 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
       AssignFloatingBaseStateToOutputVector(fb_state_gt, &output_gt);
 
       // We get 0's cassie_state in the beginning because dispatcher_robot_out
-      // is not triggerred by CASSIE_STATE message.
+      // is not triggered by CASSIE_STATE_SIMULATION message.
       // This wouldn't be an issue when you don't use ground truth state.
       if (output_gt.GetPositions().head(7).norm() == 0){
         output_gt.SetPositionAtIndex(position_idx_map_.at("base_qw"), 1);
@@ -1202,6 +1204,22 @@ EventStatus CassieRbtStateEstimator::Update(const Context<double>& context,
                                    &optimal_cost);
       EstimateContactForEkf(filtered_output, optimal_cost, &left_contact,
                             &right_contact);
+    }
+
+    // Test mode needed for hardware experiment
+    // mode #0 assumes the feet are always on the ground
+    // mode #1 assumes the feet are always in the air
+    if (hardware_test_mode_ == 0) {
+      left_contact = 1;
+      right_contact = 1;
+
+      if ((*counter_for_testing_) % 5000 == 0) {
+        cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
+      }
+      *counter_for_testing_ = *counter_for_testing_ + 1;
+    } else if (hardware_test_mode_ == 1) {
+      left_contact = 0;
+      right_contact = 0;
     }
 
     std::vector<std::pair<int, bool>> contacts;
@@ -1366,6 +1384,8 @@ void CassieRbtStateEstimator::setInitialImuPosition(Context<double>* context,
   auto state = filter.getState();
   state.setPosition(p);
   filter.setState(state);
+  cout << "Set initial IMU position to " <<
+       filter.getState().getPosition().transpose() << endl;
 }
 void CassieRbtStateEstimator::setInitialImuQuaternion(Context<double>* context,
     Eigen::Vector4d q) {

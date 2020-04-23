@@ -289,7 +289,7 @@ PiecewisePolynomial<double> CPTrajGenerator::createSplineForSwingFoot(
   Y_dot[1](2, 0) = 0;
   Y_dot[2](2, 0) = desired_final_vertical_foot_velocity_;
   PiecewisePolynomial<double> swing_foot_spline =
-      PiecewisePolynomial<double>::Cubic(T_waypoint, Y, Y_dot);
+      PiecewisePolynomial<double>::CubicHermite(T_waypoint, Y, Y_dot);
 
   return swing_foot_spline;
 }
@@ -298,7 +298,7 @@ void CPTrajGenerator::CalcTrajs(
     const Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Cast traj for polymorphism
-  PiecewisePolynomial<double>* casted_traj =
+  PiecewisePolynomial<double>* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
 
@@ -354,14 +354,14 @@ void CPTrajGenerator::CalcTrajs(
     Vector3d init_swing_foot_pos = swing_foot_pos_td;
 
     // Assign traj
-    *casted_traj = createSplineForSwingFoot(
+    *pp_traj = createSplineForSwingFoot(
         start_time_of_this_interval, end_time_of_this_interval,
         left_right_support_state_durations_[index], init_swing_foot_pos, CP,
         stance_foot_height);
 
   } else {
     // Assign a constant traj
-    *casted_traj = PiecewisePolynomial<double>(swing_foot_pos_td);
+    *pp_traj = PiecewisePolynomial<double>(swing_foot_pos_td);
   }
 }
 }  // namespace systems

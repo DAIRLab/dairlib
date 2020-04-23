@@ -63,8 +63,7 @@ int doMain(int argc, char* argv[]) {
       FindResourceOrThrow(filename), drake::multibody::joints::kFixed, &tree);
 
   KinematicsCache<double> cache = tree.CreateKinematicsCache();
-  const LcmTrajectory& loaded_traj = LcmTrajectory(
-      LcmTrajectory::loadFromFile("examples/jumping/saved_trajs/jumping_1_14"));
+  const LcmTrajectory& loaded_traj = LcmTrajectory("examples/jumping/saved_trajs/jumping_1_14");
   const LcmTrajectory::Trajectory& jumping_traj =
       loaded_traj.getTrajectory("jumping_trajectory_x_u");
   int num_positions = tree.get_num_positions();

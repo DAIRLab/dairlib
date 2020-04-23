@@ -120,8 +120,8 @@ int doMain(int argc, char* argv[]) {
   int l_foot_index = GetBodyIndexFromName(tree_with_springs, "left_foot");
   int r_foot_index = GetBodyIndexFromName(tree_with_springs, "right_foot");
   // int netural_height = FLAGS_height;
-  const LcmTrajectory& loaded_traj = LcmTrajectory(LcmTrajectory::loadFromFile(
-      "examples/jumping/saved_trajs/" + FLAGS_traj_name));
+  const LcmTrajectory& loaded_traj = LcmTrajectory(
+      "examples/jumping/saved_trajs/" + FLAGS_traj_name);
 
   const LcmTrajectory::Trajectory& com_traj =
       loaded_traj.getTrajectory("center_of_mass_trajectory");

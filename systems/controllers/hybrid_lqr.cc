@@ -125,7 +125,8 @@ HybridLQRController::HybridLQRController(
   if (using_min_coords_) {
     if (!calcP) {
       const LcmTrajectory& P_traj =
-          LcmTrajectory("../projects/hybrid_lqr/saved_trajs/P_traj");
+          LcmTrajectory("../projects/five_link_biped/hybrid_lqr/saved_trajs"
+                        "/P_traj");
 
       const LcmTrajectory::Trajectory& P_mode0 = P_traj.getTrajectory("P0");
       const LcmTrajectory::Trajectory& P_mode1 = P_traj.getTrajectory("P1");
@@ -226,11 +227,14 @@ HybridLQRController::HybridLQRController(
       LcmTrajectory saved_traj(
           l_trajectories, trajectory_names, "L_traj",
           "Square root of the time varying cost to go with min_coords");
-      saved_traj.writeToFile("../projects/hybrid_lqr/saved_trajs/L_traj_min");
+      saved_traj.writeToFile(
+          "../projects/five_link_biped/hybrid_lqr/saved_trajs/L_traj_min");
     } else {
       LcmTrajectory saved_traj(l_trajectories, trajectory_names, "L_traj",
                                "Square root of the time varying cost to go");
-      saved_traj.writeToFile("../projects/hybrid_lqr/saved_trajs/L_traj");
+      saved_traj.writeToFile(
+          "../projects/five_link_biped/hybrid_lqr/saved_trajs"
+          "/L_traj");
     }
   }
 }
@@ -806,7 +810,8 @@ void HybridLQRController::calcMinimalCoordBasis() {
   }
   LcmTrajectory saved_traj(trajectories, trajectory_names, "P_traj",
                            "Time varying minimal coordinates basis");
-  saved_traj.writeToFile("../projects/hybrid_lqr/saved_trajs/P_traj");
+  saved_traj.writeToFile("../five_link_biped/projects/hybrid_lqr/saved_trajs"
+                         "/P_traj");
   //  }
 }
 

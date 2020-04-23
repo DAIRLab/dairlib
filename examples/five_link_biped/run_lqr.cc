@@ -120,7 +120,7 @@ int doMain(int argc, char* argv[]) {
   //  LcmTrajectory(LcmTrajectory::loadFromFile(
   //      "../projects/hybrid_lqr/saved_trajs/2_step_walking_from_rest"));
   const LcmTrajectory& loaded_traj = LcmTrajectory(
-      "../projects/hybrid_lqr/saved_trajs/2_step_walking_1_20");
+      "../projects/five_link_biped/hybrid_lqr/saved_trajs/2_step_walking_4_23");
   std::cout << "Saved trajectory names: " << std::endl;
   for (auto name : loaded_traj.getTrajectoryNames()) {
     std::cout << name << std::endl;
@@ -137,25 +137,18 @@ int doMain(int argc, char* argv[]) {
         loaded_traj.getTrajectory("walking_trajectory_x_u" +
                                   std::to_string(mode));
     state_trajs.push_back(std::make_shared<PiecewisePolynomial<double>>(
-        PiecewisePolynomial<double>::Pchip(
+        PiecewisePolynomial<double>::CubicHermite(
             state_and_input.time_vector,
-            state_and_input.datapoints.topRows(nx))));
+            state_and_input.datapoints.topRows(nx),
+            state_and_input.datapoints.topRows(2*nx).bottomRows(nx))));
     input_trajs.push_back(std::make_shared<PiecewisePolynomial<double>>(
-        PiecewisePolynomial<double>::Pchip(
+        PiecewisePolynomial<double>::FirstOrderHold(
             state_and_input.time_vector,
             state_and_input.datapoints.bottomRows(nu))));
   }
 
   std::cout << "x at time .21: " << state_trajs[0]->value(.21).transpose()
             << std::endl;
-  //  const PiecewisePolynomial<double>& state_traj =
-  //      PiecewisePolynomial<double>::Pchip(
-  //          state_and_input.time_vector,
-  //          state_and_input.datapoints.topRows(nx));
-  //  const PiecewisePolynomial<double>& input_traj =
-  //      PiecewisePolynomial<double>::Pchip(
-  //          state_and_input.time_vector,
-  //          state_and_input.datapoints.bottomRows(nu));
 
   vector<multibody::ContactInfo<double>> contact_modes;
   vector<multibody::ContactInfo<AutoDiffXd>> contact_modes_ad;

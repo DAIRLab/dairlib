@@ -94,18 +94,22 @@ MatrixXd generate_state_input_matrix(const PiecewisePolynomial<double>& states,
   std::cout << "x0: " << states.value(0) << std::endl;
   int num_states = states.value(0).size();
   int num_inputs = inputs.value(0).size();
-  MatrixXd states_matrix = MatrixXd::Ones(num_states, times.size());
-  MatrixXd inputs_matrix = MatrixXd::Ones(num_inputs, times.size());
+  auto state_derivatives = states.MakeDerivative(1);
+  MatrixXd states_matrix = MatrixXd::Zero(num_states, times.size());
+  MatrixXd state_derivatives_matrix = MatrixXd::Zero(num_states, times.size());
+  MatrixXd inputs_matrix = MatrixXd::Zero(num_inputs, times.size());
 
   for (int i = 0; i < times.size(); ++i) {
     states_matrix.col(i) = states.value(times[i]);
+    state_derivatives_matrix.col(i) = state_derivatives->value(times[i]);
     inputs_matrix.col(i) = states.value(times[i]);
   }
-  MatrixXd states_and_inputs(num_states + num_inputs, times.size());
+  MatrixXd states_and_inputs(num_states + num_states + num_inputs,
+                             times.size());
   states_and_inputs.topRows(num_states) = states_matrix;
+  states_and_inputs.block(num_states, 0, num_states, times.size()) =
+      state_derivatives_matrix;
   states_and_inputs.bottomRows(num_inputs) = inputs_matrix;
-  //  states_and_inputs << states_matrix,
-  //      inputs_matrix;
 
   return states_and_inputs;
 }
@@ -306,26 +310,57 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
     std::vector<std::string> trajectory_names;
 
     VectorXd segment_times(2 * num_modes);
-    segment_times << 0,
-        state_traj.get_segment_times().at(FLAGS_knot_points - 1),
-        state_traj.get_segment_times().at(FLAGS_knot_points),
-        state_traj.get_segment_times().at(2 * FLAGS_knot_points - 1),
-        state_traj.get_segment_times().at(2 * FLAGS_knot_points),
-        state_traj.end_time();
+    std::vector<double> breaks_copy = state_traj.get_segment_times();
+    VectorXd full_breaks =
+        Eigen::Map<Eigen::VectorXd>(breaks_copy.data(), breaks_copy.size());
+//    segment_times << 0,
+//        state_traj.get_segment_times().at(FLAGS_knot_points - 1),
+//        state_traj.get_segment_times().at(FLAGS_knot_points),
+//        state_traj.get_segment_times().at(2 * FLAGS_knot_points - 1),
+//        state_traj.get_segment_times().at(2 * FLAGS_knot_points),
+//        state_traj.end_time();
     for (int mode = 0; mode < num_modes; ++mode) {
       LcmTrajectory::Trajectory traj_block;
       traj_block.traj_name = "walking_trajectory_x_u" + std::to_string(mode);
       //      traj_block.time_vector = generate_time_matrix(state_traj, 1000);
-      traj_block.time_vector = VectorXd::LinSpaced(1000, segment_times(2*mode),
-                                                   segment_times(2*mode + 1));
+//      traj_block.time_vector = VectorXd::LinSpaced(1000, segment_times(2*mode),
+//                                                   segment_times(2*mode + 1));
+      traj_block.time_vector = full_breaks.segment(FLAGS_knot_points * mode,
+          FLAGS_knot_points);
       traj_block.datapoints = generate_state_input_matrix(
           state_traj, input_traj, traj_block.time_vector);
-      traj_block.datatypes = {"planar_x",       "planar_z",      "planar_roty",
-                              "left_hip",       "right_hip",     "left_knee",
-                              "right_knee",     "planar_xdot",   "planar_zdot",
-                              "planar_rotydot", "left_hipdot",   "right_hipdot",
-                              "left_kneedot",   "right_kneedot", "u_lh",
-                              "u_rh",           "u_lk",          "u_rk"};
+      traj_block.datatypes = {"planar_x",
+                              "planar_z",
+                              "planar_roty",
+                              "left_hip",
+                              "right_hip",
+                              "left_knee",
+                              "right_knee",
+                              "planar_xdot",
+                              "planar_zdot",
+                              "planar_rotydot",
+                              "left_hipdot",
+                              "right_hipdot",
+                              "left_kneedot",
+                              "right_kneedot",
+                              "planar_xdot",
+                              "planar_zdot",
+                              "planar_rotydot",
+                              "left_hipdot",
+                              "right_hipdot",
+                              "left_kneedot",
+                              "right_kneedot",
+                              "planar_xdotdot",
+                              "planar_zdotdot",
+                              "planar_rotydotdot",
+                              "left_hipdotdot",
+                              "right_hipdotdot",
+                              "left_kneedotdot",
+                              "right_kneedotdot",
+                              "u_lh",
+                              "u_rh",
+                              "u_lk",
+                              "u_rk"};
       trajectories.push_back(traj_block);
       trajectory_names.push_back(traj_block.traj_name);
     }
@@ -333,7 +368,8 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
     LcmTrajectory saved_traj(
         trajectories, trajectory_names, "walking_trajectory",
         "State and input trajectory for walking (2 contacts)");
-    saved_traj.writeToFile("../projects/hybrid_lqr/saved_trajs/" +
+    saved_traj.writeToFile("../projects/five_link_biped/hybrid_lqr/saved_trajs"
+                           "/" +
                            FLAGS_file_name);
     writeTimeTrajToFile(state_traj,
                         "../projects/hybrid_lqr/walking_state_traj.txt");

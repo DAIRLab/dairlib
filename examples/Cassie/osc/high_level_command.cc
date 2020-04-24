@@ -1,4 +1,4 @@
-#include "examples/Cassie/osc_walk/high_level_command.h"
+#include "examples/Cassie/osc/high_level_command.h"
 
 #include <math.h>
 #include <string>
@@ -31,7 +31,7 @@ using drake::trajectories::PiecewisePolynomial;
 
 namespace dairlib {
 namespace cassie {
-namespace osc_walk {
+namespace osc {
 
 HighLevelCommand::HighLevelCommand(const RigidBodyTree<double>& tree, int pelvis_idx,
                            const Vector2d& global_target_position,
@@ -202,7 +202,7 @@ void HighLevelCommand::CopyDesiredHorizontalVel(const Context<double>& context,
   output->get_mutable_value() = delta_CP_3D_global;
 }
 
-}  // namespace osc_walk
+}  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib
 

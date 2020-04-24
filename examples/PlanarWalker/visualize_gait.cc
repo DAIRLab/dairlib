@@ -138,7 +138,7 @@ void visualizeGait(std::string file, int steps, double rate) {
 
   // repeat trajectory
   // std::vector<MatrixXd<Polynomial<double>>> trajectory_matrix;
-  std::vector<MatrixX<Polynomial<double>>> trajectory_matrix;
+  std::vector<MatrixX<drake::Polynomial<>>> trajectory_matrix;
   std::vector<double> breaks;
   breaks.push_back(pp_xtraj.start_time());
 
@@ -152,7 +152,7 @@ void visualizeGait(std::string file, int steps, double rate) {
     if (j % 2 == 1) {
       // mirror left right legs
       for (int i = ind_start; i < pp_xtraj.get_number_of_segments(); i++) {
-        MatrixX<Polynomial<double>> mat = pp_xtraj.getPolynomialMatrix(i);
+        MatrixX<drake::Polynomial<>> mat = pp_xtraj.getPolynomialMatrix(i);
         mat(0, 0) += step_distance*j;
 
         auto tmp = mat(3, 0);
@@ -176,7 +176,7 @@ void visualizeGait(std::string file, int steps, double rate) {
       }
     } else {
       for (int i = ind_start; i < pp_xtraj.get_number_of_segments(); i++) {
-        MatrixX<Polynomial<double>> mat = pp_xtraj.getPolynomialMatrix(i);
+        MatrixX<drake::Polynomial<>> mat = pp_xtraj.getPolynomialMatrix(i);
         mat(0, 0) += step_distance*j;
         trajectory_matrix.push_back(mat);
         breaks.push_back(t_start + pp_xtraj.end_time(i));

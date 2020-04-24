@@ -633,6 +633,8 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
 
+  trajopt->CreateVisualizationCallback("examples/Cassie/urdf/cassie_v2.urdf");
+
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;
 

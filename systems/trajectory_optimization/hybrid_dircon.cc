@@ -548,6 +548,28 @@ void HybridDircon<T>::ScaleKinConstraintSlackVariables(
   }
 }
 
+template <typename T>
+void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
+    std::string weld_frame_to_world) {
+  DRAKE_ASSERT(!callback_visualizer_);  // Cannot be set twice
+
+  // Create visualizer
+  callback_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
+    model_file, N(), weld_frame_to_world);
+
+  // Callback lambda function
+  auto my_callback = [this](const Eigen::Ref<const VectorXd>& vars) {
+    VectorXd vars_copy = vars;
+    Eigen::Map<MatrixXd> states(vars_copy.data(),
+        this->plant_.num_positions() + plant_.num_velocities(), this->N());
+
+    this->callback_visualizer_->DrawPoses(
+        states.block(0, 0, plant_.num_positions(), this->N()));
+  };
+
+  auto binding = AddVisualizationCallback(my_callback, x_vars());
+}
+
 template class HybridDircon<double>;
 template class HybridDircon<AutoDiffXd>;
 

@@ -15,6 +15,7 @@
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/trajectory_optimization/dircon_options.h"
+#include "multibody/multipose_visualizer.h"
 
 namespace dairlib {
 namespace systems {
@@ -64,6 +65,12 @@ class HybridDircon
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory(
       const drake::solvers::MathematicalProgramResult& result) const override;
+
+  /// Adds a default visualization callback that will visualize knot points
+  /// without transparency. Cannot be called twice
+  /// @param model_name The path of a URDF/SDF model name for visualization
+  void CreateVisualizationCallback(std::string model_file, 
+      std::string weld_frame_to_world = "");
 
   /// Set the initial guess for the force variables for a specific mode
   /// @param mode the mode index
@@ -178,6 +185,8 @@ class HybridDircon
   std::vector<drake::solvers::VectorXDecisionVariable> quaternion_slack_vars_;
   std::vector<int> num_kinematic_constraints_;
   std::vector<int> num_kinematic_constraints_wo_skipping_;
+
+  std::unique_ptr<multibody::MultiposeVisualizer> callback_visualizer_;
 };
 
 }  // namespace trajectory_optimization

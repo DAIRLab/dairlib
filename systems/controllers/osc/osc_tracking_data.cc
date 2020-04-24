@@ -468,9 +468,9 @@ void AbstractTrackingData::UpdateYdotAndError(
     v = x_w_spr.tail(tree_w_spr_->get_num_velocities());
   }
 
-  dy_ =
+  ydot_ =
       JacobianOfUserDefinedPos(*user_defined_pos_w_spr_, q) * VToQdotMap(q) * v;
-  error_dy_ = dy_des_ - dy_;
+  error_ydot_ = ydot_des_ - ydot_;
 }
 void AbstractTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                    KinematicsCache<double>& cache_wo_spr) {

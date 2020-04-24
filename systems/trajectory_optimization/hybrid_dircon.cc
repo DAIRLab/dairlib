@@ -567,7 +567,7 @@ void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
         states.block(0, 0, plant_.num_positions(), this->N()));
   };
 
-  auto binding = AddVisualizationCallback(my_callback, x_vars());
+  AddVisualizationCallback(my_callback, x_vars());
 }
 
 template class HybridDircon<double>;

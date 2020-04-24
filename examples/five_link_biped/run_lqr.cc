@@ -301,12 +301,14 @@ int doMain(int argc, char* argv[]) {
   MatrixXd estimated_cost = lqr_cost_logger->data();
 //  MatrixXd input_matrix = input_logger->data();
 
-  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/V.csv",
-                              value_function.transpose());
-  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/lqr.csv",
-                              estimated_cost.transpose());
-//  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/inputs.csv",
-//                              input_matrix.transpose());
+  goldilocks_models::writeCSV(
+      "../projects/five_link_biped/hybrid_lqr/plotting/V.csv",
+      value_function.transpose());
+  goldilocks_models::writeCSV(
+      "../projects/five_link_biped/hybrid_lqr/plotting/lqr.csv",
+      estimated_cost.transpose());
+  //  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/inputs.csv",
+  //                              input_matrix.transpose());
 
   return 0;
 }

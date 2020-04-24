@@ -200,8 +200,9 @@ int do_main(int argc, char* argv[]) {
   MatrixXd inputs_and_times(input_matrix.rows(),
                             input_matrix.cols() + times.cols());
   inputs_and_times << times , input_matrix;
-  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/inputs.csv",
-                              inputs_and_times);
+  goldilocks_models::writeCSV(
+      "../projects/five_link_biped/hybrid_lqr/plotting/inputs.csv",
+      inputs_and_times);
   return 0;
 }
 }  // namespace dairlib

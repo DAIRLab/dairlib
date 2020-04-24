@@ -69,7 +69,12 @@ class HybridDircon
   /// Adds a default visualization callback that will visualize knot points
   /// without transparency. Cannot be called twice
   /// @param model_name The path of a URDF/SDF model name for visualization
-  void CreateVisualizationCallback(std::string model_file, 
+  /// @param knot_period Regulates how many knot points are visualized. For
+  ///   period of T, displays knot points (1, 1+T, 1+2T, ..., N). Note how the
+  ///   last knot point will always be shown, regardless of period. Default = 1
+  /// @param weld_frame_to_world The name of a frame to weld to the world frame
+  ///   when parsing the model. Defaults to blank, which will not perform a weld
+  void CreateVisualizationCallback(std::string model_file, int knot_period = 1,
       std::string weld_frame_to_world = "");
 
   /// Set the initial guess for the force variables for a specific mode

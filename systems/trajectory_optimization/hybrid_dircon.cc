@@ -550,24 +550,46 @@ void HybridDircon<T>::ScaleKinConstraintSlackVariables(
 
 template <typename T>
 void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
-    std::string weld_frame_to_world) {
+    int knot_period, std::string weld_frame_to_world) {
   DRAKE_ASSERT(!callback_visualizer_);  // Cannot be set twice
+
+  // Pose count, adding final pose if necessary
+  int num_poses = 1 + (N() - 1) / knot_period;
+  if ((num_poses - 1) * knot_period != N() - 1) {
+    num_poses++;
+  }
+
+  // Assemble variable list
+  drake::solvers::VectorXDecisionVariable vars(
+      num_poses * plant_.num_positions());
+
+  for (int i = 0; i < num_poses; i++) {
+    int state_index = i * knot_period;
+
+    // Reset if this is actually the final pose
+    if (state_index >= N()) {
+      state_index = N() - 1;
+    }
+
+    // Set variable block, extracting positions only
+    vars.segment(i * plant_.num_positions(), plant_.num_positions()) = 
+      state(state_index).head(plant_.num_positions());
+  }
 
   // Create visualizer
   callback_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
-    model_file, N(), weld_frame_to_world);
+    model_file, num_poses, weld_frame_to_world);
 
   // Callback lambda function
-  auto my_callback = [this](const Eigen::Ref<const VectorXd>& vars) {
+  auto my_callback = [this, num_poses](const Eigen::Ref<const VectorXd>& vars) {
     VectorXd vars_copy = vars;
-    Eigen::Map<MatrixXd> states(vars_copy.data(),
-        this->plant_.num_positions() + plant_.num_velocities(), this->N());
+    Eigen::Map<MatrixXd> states(vars_copy.data(), this->plant_.num_positions(),
+        num_poses);
 
-    this->callback_visualizer_->DrawPoses(
-        states.block(0, 0, plant_.num_positions(), this->N()));
+    this->callback_visualizer_->DrawPoses(states);
   };
 
-  AddVisualizationCallback(my_callback, x_vars());
+  AddVisualizationCallback(my_callback, vars);
 }
 
 template class HybridDircon<double>;

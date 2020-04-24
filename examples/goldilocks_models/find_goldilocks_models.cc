@@ -1410,19 +1410,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   cout << "Trail name: " << FLAGS_program_name << endl;
-
-  if (FLAGS_is_multithread) {
-    cout << "Make sure that you turned off snopt log and constraint jacobian "
-         "writing.\nProceed? (Y/N)\n";
-    char answer[1];
-    cin >> answer;
-    if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-      cout << "Ending the program.\n";
-      return 0;
-    } else {
-      cout << "Continue constructing the problem...\n";
-    }
-  }
+  cout << "Git commit hash: " << endl;
+  std::system("git rev-parse HEAD");
+  cout << "Result of \"git diff-index HEAD\"\n";
+  std::system("git diff-index HEAD");
+  cout << endl;
 
   // Create MBP
   MultibodyPlant<double> plant(0.0);
@@ -1430,6 +1422,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Create autoDiff version of the plant
   MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);
+  cout << endl;
 
   // Random number generator
   std::random_device randgen;

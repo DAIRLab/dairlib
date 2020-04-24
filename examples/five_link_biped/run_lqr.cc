@@ -120,9 +120,9 @@ int doMain(int argc, char* argv[]) {
   //  LcmTrajectory(LcmTrajectory::loadFromFile(
   //      "../projects/hybrid_lqr/saved_trajs/2_step_walking_from_rest"));
   const LcmTrajectory& loaded_traj = LcmTrajectory(
-      "../projects/five_link_biped/hybrid_lqr/saved_trajs/walking_4_23");
+      "../projects/five_link_biped/hybrid_lqr/saved_trajs/walking_4_24");
   std::cout << "Saved trajectory names: " << std::endl;
-  for (auto name : loaded_traj.getTrajectoryNames()) {
+  for (const auto& name : loaded_traj.getTrajectoryNames()) {
     std::cout << name << std::endl;
   }
   int nx = plant.num_positions() + plant.num_velocities();
@@ -293,20 +293,20 @@ int doMain(int argc, char* argv[]) {
   std::cout << "Running simulation" << std::endl;
 
   drake::log()->info("controller started");
-  //  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
-  stepper->AdvanceTo(3.0);
+  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
+//  stepper->AdvanceTo(3.0);
 
   // Write all dataloggers to a CSV
   MatrixXd value_function = value_function_logger->data();
   MatrixXd estimated_cost = lqr_cost_logger->data();
 //  MatrixXd input_matrix = input_logger->data();
 
-  goldilocks_models::writeCSV(
-      "../projects/five_link_biped/hybrid_lqr/plotting/V.csv",
-      value_function.transpose());
-  goldilocks_models::writeCSV(
-      "../projects/five_link_biped/hybrid_lqr/plotting/lqr.csv",
-      estimated_cost.transpose());
+//  goldilocks_models::writeCSV(
+//      "../projects/five_link_biped/hybrid_lqr/plotting/V.csv",
+//      value_function.transpose());
+//  goldilocks_models::writeCSV(
+//      "../projects/five_link_biped/hybrid_lqr/plotting/lqr.csv",
+//      estimated_cost.transpose());
   //  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/inputs.csv",
   //                              input_matrix.transpose());
 

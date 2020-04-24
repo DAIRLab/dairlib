@@ -88,7 +88,7 @@ int do_main(int argc, char* argv[]) {
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   Parser parser(&plant, &scene_graph);
   std::string full_name =
-      FindResourceOrThrow("examples/jumping/five_link_biped.urdf");
+      FindResourceOrThrow("examples/five_link_biped/five_link_biped.urdf");
   parser.AddModelFromFile(full_name);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());

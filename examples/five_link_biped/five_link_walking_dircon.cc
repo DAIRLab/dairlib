@@ -102,7 +102,7 @@ MatrixXd generate_state_input_matrix(const PiecewisePolynomial<double>& states,
   for (int i = 0; i < times.size(); ++i) {
     states_matrix.col(i) = states.value(times[i]);
     state_derivatives_matrix.col(i) = state_derivatives->value(times[i]);
-    inputs_matrix.col(i) = states.value(times[i]);
+    inputs_matrix.col(i) = inputs.value(times[i]);
   }
   MatrixXd states_and_inputs(num_states + num_states + num_inputs,
                              times.size());

@@ -581,10 +581,12 @@ void HybridLQRController::CalcControl(
   VectorXd u_sol(n_u_);
   if (current_time < 1e-7) {
     u_sol = VectorXd::Zero(n_u_);
-  } else if (duringImpact(contact_info_msg)) {
-    std::cout << "During impact: " << std::endl;
-    u_sol = VectorXd::Zero(n_u_);
-  } else {
+  }
+//  else if (duringImpact(contact_info_msg)) {
+//    std::cout << "During impact: " << std::endl;
+//    u_sol = VectorXd::Zero(n_u_);
+//  }
+  else {
     VectorXd x_error =
         current_state->GetState() - state_trajs_[mode]->value(current_time);
     MatrixXd M(n_v_, n_v_);
@@ -609,7 +611,7 @@ void HybridLQRController::CalcControl(
   }
 
   for (int i = 0; i < u_sol.size(); ++i) {  // cap the actuator inputs
-    u_sol(i) = std::min<double>(300, std::max<double>(-300, u_sol(i)));
+    u_sol(i) = std::min<double>(30, std::max<double>(-30, u_sol(i)));
   }
   output->SetDataVector(u_sol);
   output->set_timestamp(current_state->get_timestamp());

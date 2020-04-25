@@ -64,7 +64,8 @@ class ContactToolkitTest : public ::testing::Test {
     builder.Connect(scene_graph.get_query_output_port(),
                     plant_->get_geometry_query_input_port());
 
-    // Setting the initial Cassie joint angles
+    // Setting the initial Cassie joint angles (standing with little ground
+    // penetration)
     auto diagram = builder.Build();
     std::unique_ptr<Context<double>> diagram_context =
       diagram->CreateDefaultContext();
@@ -72,17 +73,17 @@ class ContactToolkitTest : public ::testing::Test {
       diagram->GetMutableSubsystemContext(*plant_, diagram_context.get());
 
     plant_->GetJointByName<RevoluteJoint>("hip_roll_left").
-        set_angle(&plant_context, .1);
+        set_angle(&plant_context, .01);
     plant_->GetJointByName<RevoluteJoint>("hip_yaw_left").
         set_angle(&plant_context, .01);
     plant_->GetJointByName<RevoluteJoint>("hip_pitch_left").
-        set_angle(&plant_context, -.169);
+        set_angle(&plant_context, .269);
     plant_->GetJointByName<RevoluteJoint>("knee_left").
         set_angle(&plant_context, -.744);
     plant_->GetJointByName<RevoluteJoint>("ankle_joint_left").
         set_angle(&plant_context, .81);
     plant_->GetJointByName<RevoluteJoint>("toe_left").
-        set_angle(&plant_context, -30.0 * M_PI / 180.0);
+        set_angle(&plant_context, -70.0 * M_PI / 180.0);
 
     plant_->GetJointByName<RevoluteJoint>("hip_roll_right").
         set_angle(&plant_context, -.01);
@@ -95,10 +96,10 @@ class ContactToolkitTest : public ::testing::Test {
     plant_->GetJointByName<RevoluteJoint>("ankle_joint_right").
         set_angle(&plant_context, .81);
     plant_->GetJointByName<RevoluteJoint>("toe_right").
-        set_angle(&plant_context, -60.0 * M_PI / 180.0);
+        set_angle(&plant_context, -70.0 * M_PI / 180.0);
 
     const drake::math::RigidTransformd transform(
-        drake::math::RotationMatrix<double>(), Eigen::Vector3d(0, 0, 0.8));
+        drake::math::RotationMatrix<double>(), Eigen::Vector3d(0, 0, 1.13));
     plant_->SetFreeBodyPose(&plant_context, plant_->GetBodyByName("pelvis"),
         transform);
 

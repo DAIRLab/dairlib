@@ -3,9 +3,9 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/osc_walk/deviation_from_cp.h"
-#include "examples/Cassie/osc_walk/heading_traj_generator.h"
-#include "examples/Cassie/osc_walk/high_level_command.h"
+#include "examples/Cassie/osc/deviation_from_cp.h"
+#include "examples/Cassie/osc/heading_traj_generator.h"
+#include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/simulator_drift.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
@@ -131,7 +131,7 @@ int DoMain(int argc, char* argv[]) {
   //                     0.5    when x = 1
   //                     0.9993 when x = 2
   auto high_level_command =
-      builder.AddSystem<cassie::osc_walk::HighLevelCommand>(
+      builder.AddSystem<cassie::osc::HighLevelCommand>(
           tree_with_springs, pelvis_idx, global_target_position,
           params_of_no_turning);
   builder.Connect(state_receiver->get_output_port(0),
@@ -139,7 +139,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create heading traj generator
   auto head_traj_gen =
-      builder.AddSystem<cassie::osc_walk::HeadingTrajGenerator>(
+      builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
           tree_with_springs, pelvis_idx);
   builder.Connect(simulator_drift->get_output_port(0),
                   head_traj_gen->get_state_input_port());
@@ -212,7 +212,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create velocity control by foot placement
   auto deviation_from_cp =
-      builder.AddSystem<cassie::osc_walk::DeviationFromCapturePoint>(
+      builder.AddSystem<cassie::osc::DeviationFromCapturePoint>(
           tree_with_springs, pelvis_idx);
   builder.Connect(high_level_command->get_xy_output_port(),
                   deviation_from_cp->get_input_port_des_hor_vel());

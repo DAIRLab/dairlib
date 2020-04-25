@@ -75,5 +75,4 @@ cc_test(
         "@gtest//:main",
     ],
     size = "small",
-    tags = ["manual"],
 )

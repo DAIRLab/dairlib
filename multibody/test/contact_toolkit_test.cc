@@ -98,7 +98,7 @@ class ContactToolkitTest : public ::testing::Test {
         set_angle(&plant_context, -60.0 * M_PI / 180.0);
 
     const drake::math::RigidTransformd transform(
-        drake::math::RotationMatrix<double>(), Eigen::Vector3d(0, 0, 1.2));
+        drake::math::RotationMatrix<double>(), Eigen::Vector3d(0, 0, 0.8));
     plant_->SetFreeBodyPose(&plant_context, plant_->GetBodyByName("pelvis"),
         transform);
 

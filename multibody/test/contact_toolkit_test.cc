@@ -1,11 +1,12 @@
 #include <memory>
 #include <utility>
-
 #include <gtest/gtest.h>
-#include "examples/Cassie/cassie_utils.h"
+
 #include "multibody/contact_toolkit.h"
+#include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
 #include "drake/multibody/tree/revolute_joint.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 
 namespace dairlib {
 namespace systems {
@@ -52,9 +53,16 @@ class ContactToolkitTest : public ::testing::Test {
     addCassieMultibody(plant_, &scene_graph, true);
     plant_->Finalize();
 
-    const int num_positions = plant_->num_positions();
-    const int num_velocities = plant_->num_velocities();
-    const int num_states = num_positions + num_velocities;
+    auto u_source =
+        builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
+            VectorX<double>::Zero(plant_->num_actuators()));
+    builder.Connect(u_source->get_output_port(),
+                    plant_->get_actuation_input_port());
+    builder.Connect(
+        plant_->get_geometry_poses_output_port(),
+        scene_graph.get_source_pose_port(plant_->get_source_id().value()));
+    builder.Connect(scene_graph.get_query_output_port(),
+                    plant_->get_geometry_query_input_port());
 
     // Setting the initial Cassie joint angles
     auto diagram = builder.Build();

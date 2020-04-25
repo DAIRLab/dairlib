@@ -7,9 +7,6 @@
 #include "multibody/multibody_utils.h"
 #include "drake/multibody/tree/revolute_joint.h"
 #include "drake/systems/primitives/constant_vector_source.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include <drake/systems/lcm/lcm_interface_system.h>
-#include "drake/systems/analysis/simulator.h"
 
 namespace dairlib {
 namespace systems {
@@ -67,23 +64,8 @@ class ContactToolkitTest : public ::testing::Test {
     builder.Connect(scene_graph.get_query_output_port(),
                     plant_->get_geometry_query_input_port());
 
-
-
-    auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
-    auto state_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-            "CASSIE_STATE_SIMULATION", lcm, 1.0 / 200));
-    auto state_sender = builder.AddSystem<systems::RobotOutputSender>(*plant_);
-
-    // connect leaf systems
-    builder.Connect(plant_->get_state_output_port(),
-                    state_sender->get_input_port_state());
-    builder.Connect(*state_sender, *state_pub);
-
-
-
-
-    // Setting the initial Cassie joint angles
+    // Setting the initial Cassie joint angles (standing with little ground
+    // penetration)
     auto diagram = builder.Build();
     std::unique_ptr<Context<double>> diagram_context =
       diagram->CreateDefaultContext();
@@ -173,13 +155,6 @@ class ContactToolkitTest : public ::testing::Test {
     // ContactToolkit objects for both templates
     contact_toolkit_ =
         make_unique<ContactToolkit<double>>(*plant_, contact_info_);
-
-    auto diagram_ptr = diagram.get();
-    drake::systems::Simulator<double> simulator(*diagram, std::move(diagram_context));
-    auto& simulator_context = simulator.get_mutable_context();
-
-    diagram_ptr->Publish(simulator_context);
-
   }
 
   MultibodyPlant<double>* plant_;

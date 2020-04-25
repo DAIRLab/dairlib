@@ -7,6 +7,9 @@
 #include "multibody/multibody_utils.h"
 #include "drake/multibody/tree/revolute_joint.h"
 #include "drake/systems/primitives/constant_vector_source.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include <drake/systems/lcm/lcm_interface_system.h>
+#include "drake/systems/analysis/simulator.h"
 
 namespace dairlib {
 namespace systems {
@@ -64,6 +67,22 @@ class ContactToolkitTest : public ::testing::Test {
     builder.Connect(scene_graph.get_query_output_port(),
                     plant_->get_geometry_query_input_port());
 
+
+
+    auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+    auto state_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            "CASSIE_STATE_SIMULATION", lcm, 1.0 / 200));
+    auto state_sender = builder.AddSystem<systems::RobotOutputSender>(*plant_);
+
+    // connect leaf systems
+    builder.Connect(plant_->get_state_output_port(),
+                    state_sender->get_input_port_state());
+    builder.Connect(*state_sender, *state_pub);
+
+
+
+
     // Setting the initial Cassie joint angles
     auto diagram = builder.Build();
     std::unique_ptr<Context<double>> diagram_context =
@@ -72,17 +91,17 @@ class ContactToolkitTest : public ::testing::Test {
       diagram->GetMutableSubsystemContext(*plant_, diagram_context.get());
 
     plant_->GetJointByName<RevoluteJoint>("hip_roll_left").
-        set_angle(&plant_context, .1);
+        set_angle(&plant_context, .01);
     plant_->GetJointByName<RevoluteJoint>("hip_yaw_left").
         set_angle(&plant_context, .01);
     plant_->GetJointByName<RevoluteJoint>("hip_pitch_left").
-        set_angle(&plant_context, -.169);
+        set_angle(&plant_context, .269);
     plant_->GetJointByName<RevoluteJoint>("knee_left").
         set_angle(&plant_context, -.744);
     plant_->GetJointByName<RevoluteJoint>("ankle_joint_left").
         set_angle(&plant_context, .81);
     plant_->GetJointByName<RevoluteJoint>("toe_left").
-        set_angle(&plant_context, -30.0 * M_PI / 180.0);
+        set_angle(&plant_context, -70.0 * M_PI / 180.0);
 
     plant_->GetJointByName<RevoluteJoint>("hip_roll_right").
         set_angle(&plant_context, -.01);
@@ -95,10 +114,10 @@ class ContactToolkitTest : public ::testing::Test {
     plant_->GetJointByName<RevoluteJoint>("ankle_joint_right").
         set_angle(&plant_context, .81);
     plant_->GetJointByName<RevoluteJoint>("toe_right").
-        set_angle(&plant_context, -60.0 * M_PI / 180.0);
+        set_angle(&plant_context, -70.0 * M_PI / 180.0);
 
     const drake::math::RigidTransformd transform(
-        drake::math::RotationMatrix<double>(), Eigen::Vector3d(0, 0, 0.8));
+        drake::math::RotationMatrix<double>(), Eigen::Vector3d(0, 0, 1.13));
     plant_->SetFreeBodyPose(&plant_context, plant_->GetBodyByName("pelvis"),
         transform);
 
@@ -154,6 +173,13 @@ class ContactToolkitTest : public ::testing::Test {
     // ContactToolkit objects for both templates
     contact_toolkit_ =
         make_unique<ContactToolkit<double>>(*plant_, contact_info_);
+
+    auto diagram_ptr = diagram.get();
+    drake::systems::Simulator<double> simulator(*diagram, std::move(diagram_context));
+    auto& simulator_context = simulator.get_mutable_context();
+
+    diagram_ptr->Publish(simulator_context);
+
   }
 
   MultibodyPlant<double>* plant_;

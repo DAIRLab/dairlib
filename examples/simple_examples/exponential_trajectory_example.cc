@@ -64,7 +64,7 @@ int main() {
   Y2_dot[1](0, 0) = 2;
   Y2_dot[2](0, 0) = 0;
   PiecewisePolynomial<double> pp_part2 =
-    PiecewisePolynomial<double>::Cubic(T2_breakpoint, Y2, Y2_dot);
+    PiecewisePolynomial<double>::CubicHermite(T2_breakpoint, Y2, Y2_dot);
 
   auto exp_traj2 =
     ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part2);

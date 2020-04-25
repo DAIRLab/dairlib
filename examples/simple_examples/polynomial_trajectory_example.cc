@@ -71,7 +71,7 @@ int main() {
   //  *    `knots_dot` and `knots` have inconsistent dimensions,
   //  *    `breaks` has length smaller than 2.
   //  */
-  // static PiecewisePolynomial<T> Cubic(
+  // static PiecewisePolynomial<T> CubicHermite(
   //     const std::vector<double>& breaks,
   //     const std::vector<CoefficientMatrix>& knots,
   //     const std::vector<CoefficientMatrix>& knots_dot);
@@ -86,7 +86,7 @@ int main() {
   Y3_dot[1](0, 0) = 2;
   Y3_dot[2](0, 0) = 0;
   PiecewisePolynomial<double> spline3 =
-    PiecewisePolynomial<double>::Cubic(T3_breakpoint, Y3, Y3_dot);
+    PiecewisePolynomial<double>::CubicHermite(T3_breakpoint, Y3, Y3_dot);
   for (double d = 0; d <= 2; d += 0.1)
     std::cout << spline3.value(d) << " ";
   std::cout << std::endl;
@@ -105,7 +105,7 @@ int main() {
   //  *    inconsistent dimensions,
   //  *    `breaks` has length smaller than 2.
   //  */
-  // static PiecewisePolynomial<T> Cubic(
+  // static PiecewisePolynomial<T> CubicHermite(
   //     const std::vector<double>& breaks,
   //     const std::vector<CoefficientMatrix>& knots,
   //     const CoefficientMatrix& knot_dot_start,
@@ -120,7 +120,7 @@ int main() {
   Y3_dot_start(0, 0) = 0;
   Y3_dot_end(0, 0) = 0;
   PiecewisePolynomial<double> spline3_se =
-    PiecewisePolynomial<double>::Cubic(T3_breakpoint, Y3, Y3_dot_start,
+    PiecewisePolynomial<double>::CubicHermite(T3_breakpoint, Y3, Y3_dot_start,
                                        Y3_dot_end);
   for (double d = 0; d <= 2; d += 0.1)
     std::cout << spline3_se.value(d) << " ";
@@ -160,7 +160,7 @@ int main() {
   Y3_2D_dot_start(1, 0) = 0;
   Y3_2D_dot_end(1, 0) = 0;
   PiecewisePolynomial<double> spline3_2D =
-    PiecewisePolynomial<double>::Cubic(T3_breakpoint, Y3_2D, Y3_2D_dot_start,
+    PiecewisePolynomial<double>::CubicHermite(T3_breakpoint, Y3_2D, Y3_2D_dot_start,
                                        Y3_2D_dot_end);
   for (double d = 0; d <= 2; d += 0.1)
     std::cout << spline3_2D.value(d)(0, 0) << " ";

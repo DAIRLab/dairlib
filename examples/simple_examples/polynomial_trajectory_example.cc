@@ -6,9 +6,9 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
 using Eigen::MatrixXd;
-using Eigen::VectorXd;
 using Eigen::Vector3d;
 using Eigen::Vector4d;
+using Eigen::VectorXd;
 
 using drake::trajectories::PiecewisePolynomial;
 
@@ -16,7 +16,7 @@ typedef Polynomial<double> PolynomialType;
 
 int main() {
   // Create a piecewise polynomial
-  std::vector<double> T_breakpoint = { -3, -2, -1, 0, 1, 2, 3};
+  std::vector<double> T_breakpoint = {-3, -2, -1, 0, 1, 2, 3};
   std::vector<MatrixXd> Y(T_breakpoint.size(), MatrixXd::Zero(1, 1));
   Y[0](0, 0) = -1;
   Y[1](0, 0) = -1;
@@ -27,18 +27,16 @@ int main() {
   Y[6](0, 0) = 1;
 
   PiecewisePolynomial<double> spline1 =
-    PiecewisePolynomial<double>::Pchip(T_breakpoint, Y);
+      PiecewisePolynomial<double>::Pchip(T_breakpoint, Y);
 
   // This is how you evaluate the polynomial
   std::cout << "\nEvaluating polynomial at different time point:\n";
   double t_evaluationpoint = 0.5;
   std::cout << spline1.value(t_evaluationpoint) << std::endl;
 
-  for (double d = 0; d <= 1; d += 0.1)
-    std::cout << spline1.value(d) << " ";
+  for (double d = 0; d <= 1; d += 0.1) std::cout << spline1.value(d) << " ";
   std::cout << std::endl;
-  for (double d = 2; d <= 3; d += 0.1)
-    std::cout << spline1.value(d) << " ";
+  for (double d = 2; d <= 3; d += 0.1) std::cout << spline1.value(d) << " ";
   std::cout << std::endl;
 
   std::cout << spline1.value(3.1) << std::endl;
@@ -50,13 +48,12 @@ int main() {
   Y2[0](0, 0) = 1;
   Y2[1](0, 0) = 2;
   PiecewisePolynomial<double> spline2 =
-    PiecewisePolynomial<double>::Pchip(T2_breakpoint, Y2, true);
-  for (double d = 0; d <= 1; d += 0.1)
-    std::cout << spline2.value(d) << " ";
+      PiecewisePolynomial<double>::Pchip(T2_breakpoint, Y2, true);
+  for (double d = 0; d <= 1; d += 0.1) std::cout << spline2.value(d) << " ";
   std::cout << std::endl;
 
-  // If you want to impose a velocity constraints on every knot, you can do the following
-  // The code in the class:
+  // If you want to impose a velocity constraints on every knot, you can do the
+  // following The code in the class:
   // /**
   //  * Constructs a third order PiecewisePolynomial from `breaks`, `knots` and
   //  * `knots`dot.
@@ -86,9 +83,8 @@ int main() {
   Y3_dot[1](0, 0) = 2;
   Y3_dot[2](0, 0) = 0;
   PiecewisePolynomial<double> spline3 =
-    PiecewisePolynomial<double>::CubicHermite(T3_breakpoint, Y3, Y3_dot);
-  for (double d = 0; d <= 2; d += 0.1)
-    std::cout << spline3.value(d) << " ";
+      PiecewisePolynomial<double>::CubicHermite(T3_breakpoint, Y3, Y3_dot);
+  for (double d = 0; d <= 2; d += 0.1) std::cout << spline3.value(d) << " ";
   std::cout << std::endl;
   // /**
   //  * Constructs a third order PiecewisePolynomial from `breaks` and `knots`.
@@ -105,13 +101,13 @@ int main() {
   //  *    inconsistent dimensions,
   //  *    `breaks` has length smaller than 2.
   //  */
-  // static PiecewisePolynomial<T> CubicHermite(
+  // static PiecewisePolynomial<T> CubicWithContinuousSecondDerivatives(
   //     const std::vector<double>& breaks,
   //     const std::vector<CoefficientMatrix>& knots,
   //     const CoefficientMatrix& knot_dot_start,
   //     const CoefficientMatrix& knot_dot_end);
   std::cout << "\nTwo segment of cubic polynomial with velocity constraints "
-            "only at the start and end:\n";
+               "only at the start and end:\n";
   Y3[0](0, 0) = 1;
   Y3[1](0, 0) = 2;
   Y3[2](0, 0) = 3;
@@ -120,18 +116,16 @@ int main() {
   Y3_dot_start(0, 0) = 0;
   Y3_dot_end(0, 0) = 0;
   PiecewisePolynomial<double> spline3_se =
-    PiecewisePolynomial<double>::CubicHermite(T3_breakpoint, Y3, Y3_dot_start,
-                                       Y3_dot_end);
-  for (double d = 0; d <= 2; d += 0.1)
-    std::cout << spline3_se.value(d) << " ";
+      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+          T3_breakpoint, Y3, Y3_dot_start, Y3_dot_end);
+  for (double d = 0; d <= 2; d += 0.1) std::cout << spline3_se.value(d) << " ";
   std::cout << std::endl;
 
   // You can get derivative from the polynomial
   std::cout << "\nDerivative of the previous polynomial:\n";
   int order = 1;
   PiecewisePolynomial<double> spline3_dot = spline3.derivative(order);
-  for (double d = 0; d <= 2; d += 0.1)
-    std::cout << spline3_dot.value(d) << " ";
+  for (double d = 0; d <= 2; d += 0.1) std::cout << spline3_dot.value(d) << " ";
   std::cout << std::endl;
 
   // You can get the integral of your polynoial
@@ -139,13 +133,12 @@ int main() {
   // 342       const CoefficientMatrixRef& value_at_start_time) const;
   std::cout << "\nIntegral of the previous polynomial:\n";
   PiecewisePolynomial<double> spline3_int = spline3.integral(0);
-  for (double d = 0; d <= 2; d += 0.1)
-    std::cout << spline3_int.value(d) << " ";
+  for (double d = 0; d <= 2; d += 0.1) std::cout << spline3_int.value(d) << " ";
   std::cout << std::endl;
 
   // Create 2D two-segment cubic pollynomial
   std::cout << "\nTwo segment of cubic polynomial with velocity constraints "
-            "only at the start and end:\n";
+               "only at the start and end:\n";
   std::vector<MatrixXd> Y3_2D(T3_breakpoint.size(), MatrixXd::Zero(2, 1));
   Y3_2D[0](0, 0) = 1;
   Y3_2D[1](0, 0) = 2;
@@ -160,8 +153,8 @@ int main() {
   Y3_2D_dot_start(1, 0) = 0;
   Y3_2D_dot_end(1, 0) = 0;
   PiecewisePolynomial<double> spline3_2D =
-    PiecewisePolynomial<double>::CubicHermite(T3_breakpoint, Y3_2D, Y3_2D_dot_start,
-                                       Y3_2D_dot_end);
+      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+          T3_breakpoint, Y3_2D, Y3_2D_dot_start, Y3_2D_dot_end);
   for (double d = 0; d <= 2; d += 0.1)
     std::cout << spline3_2D.value(d)(0, 0) << " ";
   std::cout << std::endl;
@@ -188,7 +181,6 @@ int main() {
   // First you need to extract a polynomial out of piecewisepolynomial,
   // then use the polynomial's method, GetCoefficients ().
 
-
   // This is the ground truth for spline1
   std::cout << "\nCompare spline 1 to ground truth:\n";
 
@@ -207,11 +199,8 @@ int main() {
   for (double d = 0; d <= 1; d += 0.1)
     std::cout << polynomial.EvaluateUnivariate(d) << " ";
   std::cout << std::endl;
-  for (double d = 0; d <= 1; d += 0.1)
-    std::cout << spline1.value(d) << " ";
+  for (double d = 0; d <= 1; d += 0.1) std::cout << spline1.value(d) << " ";
   std::cout << std::endl;
-
-
 
   return 0;
 }

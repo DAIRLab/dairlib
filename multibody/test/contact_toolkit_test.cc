@@ -89,9 +89,8 @@ class ContactToolkitTest : public ::testing::Test {
     plant_->GetJointByName<RevoluteJoint>("toe_right").
         set_angle(&plant_context, -60.0 * M_PI / 180.0);
 
-    Eigen::Isometry3d transform;
-    transform.linear() = Eigen::Matrix3d::Identity();;
-    transform.translation() = Eigen::Vector3d(0, 0, 1.2);
+    const drake::math::RigidTransformd transform(
+        drake::math::RotationMatrix<double>(), Eigen::Vector3d(0, 0, 1.2));
     plant_->SetFreeBodyPose(&plant_context, plant_->GetBodyByName("pelvis"),
         transform);
 
@@ -108,7 +107,7 @@ class ContactToolkitTest : public ::testing::Test {
     auto contact_results_value =
       plant_->get_contact_results_output_port().Allocate();
     const ContactResults<double>& contact_results =
-      contact_results_value->GetValueOrThrow<ContactResults<double>>();
+      contact_results_value->get_value<ContactResults<double>>();
     // Compute the poses for each geometry in the model.
     plant_->get_contact_results_output_port().Calc(
       plant_context, contact_results_value.get());
@@ -120,8 +119,8 @@ class ContactToolkitTest : public ::testing::Test {
     auto toe_right_ind = plant_->GetBodyByName("toe_right").index();
     std::vector<const drake::multibody::Frame<double>*> frames;
     int k = 0;
-    for (int i = 0; i < contact_results.num_contacts(); i++) {
-      auto info = contact_results.contact_info(i);
+    for (int i = 0; i < contact_results.num_point_pair_contacts(); i++) {
+      auto info = contact_results.point_pair_contact_info(i);
       auto ind_a = info.bodyA_index();
       auto ind_b = info.bodyB_index();
       if ((ind_a == world_ind && ind_b == toe_left_ind) ||
@@ -139,7 +138,7 @@ class ContactToolkitTest : public ::testing::Test {
       }
     }
 
-    std::cout << contact_results.num_contacts() << std::endl;
+    std::cout << contact_results.num_point_pair_contacts() << std::endl;
 
     // Creating the contact info
     contact_info_ = {xA, xB, frames};

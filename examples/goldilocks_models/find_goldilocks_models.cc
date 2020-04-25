@@ -1412,7 +1412,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "Trail name: " << FLAGS_program_name << endl;
   cout << "Git commit hash: " << endl;
   std::system("git rev-parse HEAD");
-  cout << "Result of \"git diff-index HEAD\"\n";
+  cout << "Result of \"git diff-index HEAD\":" << endl;
   std::system("git diff-index HEAD");
   cout << endl;
 

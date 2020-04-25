@@ -51,7 +51,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                                              + string("_stride_length.csv"));
     VectorXd current_gamma(gamma_dimension);
     current_gamma << current_ground_incline(0, 0), current_stride_length(0, 0);
-    for (past_iter = iter - 1; past_iter >= 0; past_iter--) {
+    for (past_iter = iter - 1; past_iter > 0; past_iter--) {
 //        find useful theta according to the difference between previous theta and new theta
         VectorXd past_theta = readCSV(directory + to_string(past_iter) + string("_theta_s.csv"));
         double theta_diff = (past_theta - current_theta).norm() / current_theta.norm();

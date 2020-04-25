@@ -27,14 +27,7 @@ MatrixXd get_gamma_scale(int gamma_length, double min_sl, double max_sl, double 
 
 string set_initial_guess(const string directory, int iter, int sample, int total_sample_num,
                          double min_sl, double max_sl, double min_gi, double max_gi) {
-//    For iter = 1, theta_1 is the same with theta_0. So use the results of iter_0.
-    if(iter == 1)
-    {
-        return to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
-    }
-    else
-    {
-/* define some parameters used in interpolation
+    /* define some parameters used in interpolation
 * theta_range :decide the range of theta to use in interpolation
 * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
 */
@@ -56,7 +49,40 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                                              + string("_stride_length.csv"));
     VectorXd current_gamma(gamma_dimension);
     current_gamma << current_ground_incline(0, 0), current_stride_length(0, 0);
-    for (past_iter = iter - 1; past_iter >= 0; past_iter--) {
+//    For iter = 1, theta_1 is the same with theta_0. So use the results of iter_0.
+    if(iter == 1)
+    {
+        double distance_gamma_min = 10000; //initialize with a large one
+        int sample_near = 0;
+        for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
+//                check if this sample is success
+            int is_success = (readCSV(directory + to_string(iter-1) + string("_")
+                                      + to_string(sample_num) + string("_is_success.csv")))(0,0);
+            if(is_success == 1) {
+                MatrixXd past_ground_incline = readCSV(directory + to_string(iter-1) + string("_")
+                        +to_string(sample_num) + string("_ground_incline.csv"));
+                MatrixXd past_stride_length = readCSV(directory + to_string(iter-1) + string("_")
+                        + to_string(sample_num) + string("_stride_length.csv"));
+                VectorXd past_gamma(gamma_dimension);
+                past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0);
+                double distance_gamma = ((past_gamma - current_gamma).transpose()*gamma_scale*
+                                         (past_gamma - current_gamma))(0,0);
+                if (distance_gamma < distance_gamma_min) {
+                    distance_gamma_min = distance_gamma;
+                    sample_near = sample_num;
+                }
+            }
+        }
+        initial_guess = readCSV(directory + to_string(iter-1) + string("_")
+                                            + to_string(sample_near) + string("_w.csv"));
+        string initial_file_name = to_string(iter) + "_" + to_string(sample) + string("_initial_guess.csv");
+        writeCSV(directory + initial_file_name, initial_guess);
+
+        return initial_file_name;
+    }
+    else
+    {
+    for (past_iter = iter - 1; past_iter > 0; past_iter--) {
 //        find useful theta according to the difference between previous theta and new theta
         VectorXd past_theta = readCSV(directory + to_string(past_iter) + string("_theta_s.csv"));
         double theta_diff = (past_theta - current_theta).norm() / current_theta.norm();

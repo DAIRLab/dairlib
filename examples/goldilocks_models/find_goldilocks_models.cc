@@ -59,6 +59,8 @@ DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 DEFINE_bool(is_uniform_grid, true, "Uniform grid of task space");
+DEFINE_bool(is_restricted_sample_number, false, "Restrict the number of samples. This makes sense"
+                                               "only when is_uniform_grid=false");
 
 // inner loop
 DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization");
@@ -1465,6 +1467,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Parameters for tasks (stride length and ground incline)
   cout << "\nTasks settings:\n";
   bool uniform_grid = FLAGS_is_uniform_grid;
+  bool restricted_sample_number = FLAGS_is_restricted_sample_number;
 
   int N_sample_sl = FLAGS_N_sample_sl;
   int N_sample_gi = FLAGS_N_sample_gi;
@@ -1510,7 +1513,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   DRAKE_DEMAND(N_sample_sl % 2 == 1);
   DRAKE_DEMAND(N_sample_gi % 2 == 1);
   cout << "use_theta_gamma_from_files = " << FLAGS_use_theta_gamma_from_files << endl;
-  uniform_grid ? cout << "Uniform grid\n" : cout << "Non-Uniform grid\n";
+  uniform_grid ? cout << "Uniform grid\n" : cout << "Without uniform grid\n";
   cout << "N_sample_sl = " << N_sample_sl << endl;
   cout << "N_sample_gi = " << N_sample_gi << endl;
   cout << "delta_stride_length = " << delta_stride_length << endl;
@@ -1542,6 +1545,19 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << max_stride_length << endl;
   cout << "ground incline ranges from " << min_ground_incline << " to "
        << max_ground_incline << endl;
+
+  /// How to restrict the number of samples is still under testing
+  /// For now, the range of ground incline and stride length will not change while
+  /// the number of them will be the square root of themselves.
+  if(!uniform_grid && restricted_sample_number){
+      N_sample_gi = pow(N_sample_gi,0.5);
+      N_sample_sl = pow(N_sample_sl,0.5);
+      N_sample = N_sample_sl * N_sample_gi;
+      cout << "Restrict the number of samples in one iteration" << endl;
+      cout << "Restricted N_sample_sl = " << N_sample_sl << endl;
+      cout << "Restricted N_sample_gi = " << N_sample_gi << endl;
+  }
+
   VectorXd previous_ground_incline = VectorXd::Zero(N_sample);
   VectorXd previous_stride_length = VectorXd::Zero(N_sample);
   if (FLAGS_start_current_iter_as_rerun ||
@@ -1634,20 +1650,39 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   const int method_to_solve_system_of_equations =
       FLAGS_method_to_solve_system_of_equations;
-  // With bigger momentum, you might need a larger tolerance
+  // With bigger momentum, you might need a larger tolerance.
+  // If not uniform grid, considering sample cost increase makes no sense.
+  // So, use a very large tolerance on increase rate.
   double max_sample_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
-    max_sample_cost_increase_rate = FLAGS_is_stochastic? 2.0: 0.01;
+      if(uniform_grid){
+          max_sample_cost_increase_rate = FLAGS_is_stochastic? 2.0: 0.01;
+      }else{
+          max_sample_cost_increase_rate = 100;
+      }
   } else if (FLAGS_robot_option== 1) {
-    max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01; //0.3
+      if(uniform_grid){
+          max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01; //0.3
+      }else{
+          max_sample_cost_increase_rate = 100;
+      }
   } else {
     throw std::runtime_error("Should not reach here");
   }
+  // increase the tolerance a little bit for restricted number
   double max_average_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
     max_average_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01;
+    if(restricted_sample_number)
+    {
+        max_average_cost_increase_rate = 1.5;
+    }
   } else if (FLAGS_robot_option== 1) {
     max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;//0.15
+    if(restricted_sample_number)
+    {
+        max_average_cost_increase_rate = 1;
+    }
   } else {
     throw std::runtime_error("Should not reach here");
   }
@@ -1685,6 +1720,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // adjacent sample makes no sense in non-uniform grid
     get_good_sol_from_adjacent_sample = false;
   }
+
   double max_cost_increase_rate_before_ask_for_help = 0.1;
   if (FLAGS_robot_option == 0) {
     max_cost_increase_rate_before_ask_for_help = 0.5;
@@ -1904,22 +1940,22 @@ int findGoldilocksModels(int argc, char* argv[]) {
     cout << "ave_min_cost_so_far = " << ave_min_cost_so_far << endl;
   }
   // Tasks setup
+  // Distribution for uniform grid
   std::uniform_real_distribution<> dist_sl(
           -delta_stride_length / 2, delta_stride_length / 2);
+  std::uniform_real_distribution<> dist_gi(
+          -delta_ground_incline / 2, delta_ground_incline / 2);
   vector<double> delta_stride_length_vec;
   for (int i = 0 - N_sample_sl / 2; i < N_sample_sl - N_sample_sl / 2; i++)
       delta_stride_length_vec.push_back(i * delta_stride_length);
-  std::uniform_real_distribution<> dist_gi(
-          -delta_ground_incline / 2, delta_ground_incline / 2);
   vector<double> delta_ground_incline_vec;
   for (int i = 0 - N_sample_gi / 2; i < N_sample_gi - N_sample_gi / 2; i++)
       delta_ground_incline_vec.push_back(i * delta_ground_incline);
-  if(!uniform_grid && is_stochastic){
-      std::uniform_real_distribution<> dist_sl(
-              min_stride_length, max_stride_length);
-      std::uniform_real_distribution<> dist_gi(
-              min_ground_incline, max_ground_incline);
-  }
+  // Distribution without grid
+  std::uniform_real_distribution<> dist_sl_large_range(
+          min_stride_length, max_stride_length);
+  std::uniform_real_distribution<> dist_gi_large_range(
+          min_ground_incline, max_ground_incline);
 
   // Some setup
   int n_theta = n_theta_s + n_theta_sDDot;
@@ -2165,8 +2201,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   ground_incline += dist_gi(e2);
               }
               else{
-                  stride_length = dist_sl(e1);
-                  ground_incline = dist_gi(e2);
+                  stride_length = dist_sl_large_range(e1);
+                  ground_incline = dist_gi_large_range(e2);
               }
           }
 

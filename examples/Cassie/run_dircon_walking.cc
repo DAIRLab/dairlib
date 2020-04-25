@@ -907,7 +907,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }*/
 
   trajopt->CreateVisualizationCallback(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf", 2);
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;

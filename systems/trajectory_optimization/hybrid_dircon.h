@@ -66,15 +66,36 @@ class HybridDircon
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory(
       const drake::solvers::MathematicalProgramResult& result) const override;
 
-  /// Adds a default visualization callback that will visualize knot points
+  /// Adds a visualization callback that will visualize knot points
   /// without transparency. Cannot be called twice
   /// @param model_name The path of a URDF/SDF model name for visualization
-  /// @param knot_period Regulates how many knot points are visualized. For
-  ///   period of T, displays knot points (1, 1+T, 1+2T, ..., N). Note how the
-  ///   last knot point will always be shown, regardless of period. Default = 1
+  /// @param poses_per_mode Regulates how many knot points are visualized. A
+  ///   vector containing the nubmer of poses to show per mode. This is in
+  ///   addition to the start/end poses of every mode! The total number of poses
+  ///   is therefore [sum(poses_per_mode) + num_modes + 1]
   /// @param weld_frame_to_world The name of a frame to weld to the world frame
   ///   when parsing the model. Defaults to blank, which will not perform a weld
-  void CreateVisualizationCallback(std::string model_file, int knot_period = 1,
+  void CreateVisualizationCallback(std::string model_file,
+      std::vector<unsigned int> poses_per_mode,
+      std::string weld_frame_to_world = "");
+
+  /// See CreateVisualizationCallback(std::string model_file,
+  ///    std::vector<unsigned int> poses_per_mode,
+  ///    std::string weld_frame_to_world)
+  ///
+  /// Creates a callback using a single pose count parameter, num_poses
+  /// Evenly divides the poses among the different modes, weighting by number
+  /// of frames in that mode. Since start/end poses per mdoe are required, must
+  /// have num_poses >= num_modes + 1
+  void CreateVisualizationCallback(std::string model_file,
+      unsigned int num_poses, std::string weld_frame_to_world = "");
+
+  /// See CreateVisualizationCallback(std::string model_file,
+  ///    unsigned int poses_per_mode,
+  ///    std::string weld_frame_to_world)
+  ///
+  /// Creates a visualization callback that shows all knot points.
+  void CreateVisualizationCallback(std::string model_file,
       std::string weld_frame_to_world = "");
 
   /// Set the initial guess for the force variables for a specific mode

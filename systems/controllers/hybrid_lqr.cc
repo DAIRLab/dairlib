@@ -54,7 +54,7 @@ HybridLQRController::HybridLQRController(
     const MatrixXd& R, const MatrixXd& Qf,
     const vector<shared_ptr<Trajectory<double>>>& state_traj,
     const vector<shared_ptr<Trajectory<double>>>& input_traj,
-    const vector<double>& impact_times, bool naive_approach,
+    const vector<double>& impact_times, string folder_path, bool naive_approach,
     bool using_min_coords, bool calcP, bool calcL)
     : plant_(plant),
       plant_ad_(plant_ad),
@@ -65,6 +65,7 @@ HybridLQRController::HybridLQRController(
       state_trajs_(state_traj),
       input_trajs_(input_traj),
       impact_times_(impact_times),
+      folder_path_(folder_path),
       naive_approach_(naive_approach),
       using_min_coords_(using_min_coords),
       n_q_(plant.num_positions()),
@@ -125,8 +126,7 @@ HybridLQRController::HybridLQRController(
   if (using_min_coords_) {
     if (!calcP) {
       const LcmTrajectory& P_traj =
-          LcmTrajectory("../projects/five_link_biped/hybrid_lqr/saved_trajs"
-                        "/P_traj");
+          LcmTrajectory(folder_path_ + "P_traj");
 
       const LcmTrajectory::Trajectory& P_mode0 = P_traj.getTrajectory("P0");
       const LcmTrajectory::Trajectory& P_mode1 = P_traj.getTrajectory("P1");
@@ -228,13 +228,12 @@ HybridLQRController::HybridLQRController(
           l_trajectories, trajectory_names, "L_traj",
           "Square root of the time varying cost to go with min_coords");
       saved_traj.writeToFile(
-          "../projects/five_link_biped/hybrid_lqr/saved_trajs/L_traj_min");
+          folder_path_ + "L_traj_min");
     } else {
       LcmTrajectory saved_traj(l_trajectories, trajectory_names, "L_traj",
                                "Square root of the time varying cost to go");
       saved_traj.writeToFile(
-          "../projects/five_link_biped/hybrid_lqr/saved_trajs"
-          "/L_traj");
+          folder_path_ + "L_traj");
     }
   }
 }
@@ -797,8 +796,7 @@ void HybridLQRController::calcMinimalCoordBasis() {
   cout << "Saving P_traj" << endl;
   LcmTrajectory saved_traj(trajectories, trajectory_names, "P_traj",
                            "Time varying minimal coordinates basis");
-  saved_traj.writeToFile("../projects/five_link_biped/hybrid_lqr/saved_trajs"
-                         "/P_traj");
+  saved_traj.writeToFile(folder_path_ + "P_traj");
   cout << "Saved P traj" << endl;
   //  }
 }

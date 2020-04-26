@@ -79,6 +79,11 @@ DEFINE_double(penetration_allowance, 0.001,
               "Penetration allowance for the contact model. It's a penalty "
               "method so there aren't any physical units");
 DEFINE_double(stiction, 0.001, "Stiction tolerance for the contact model.");
+DEFINE_string(trajectory_name, "", "Filename for the trajectory that contains"
+                                   " the initial state.");
+DEFINE_string(folder_path, "", "Folder path for the folder that contains the "
+                               "saved trajectory");
+
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -106,7 +111,7 @@ int do_main(int argc, char* argv[]) {
 
   int nx = plant.num_positions() + plant.num_velocities();
   const LcmTrajectory& loaded_traj = LcmTrajectory(
-      "../projects/five_link_biped/hybrid_lqr/saved_trajs/walking_4_24");
+      FLAGS_folder_path + FLAGS_trajectory_name);
   const LcmTrajectory::Trajectory& state_and_input =
       loaded_traj.getTrajectory("walking_trajectory_x_u0");
   PiecewisePolynomial<double> state_traj = PiecewisePolynomial<double>::CubicHermite(

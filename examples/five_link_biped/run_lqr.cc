@@ -62,6 +62,10 @@ DEFINE_bool(recalculateL, false,
             "Set to true if necessary to recalculate L(t) - for new trajs");
 DEFINE_double(time_offset, 0.0, "offset added to FSM switching");
 DEFINE_double(init_fsm_state, 0, "Initial FSM state.");
+DEFINE_string(trajectory_name, "", "Filename for the trajectory that contains"
+                                   " the initial state.");
+DEFINE_string(folder_path, "", "Folder path for the folder that contains the "
+                               "saved trajectory");
 
 // using drake::multibody::MultibodyPlant;
 using drake::multibody::Body;
@@ -120,7 +124,7 @@ int doMain(int argc, char* argv[]) {
   //  LcmTrajectory(LcmTrajectory::loadFromFile(
   //      "../projects/hybrid_lqr/saved_trajs/2_step_walking_from_rest"));
   const LcmTrajectory& loaded_traj = LcmTrajectory(
-      "../projects/five_link_biped/hybrid_lqr/saved_trajs/walking_4_24");
+      FLAGS_folder_path + FLAGS_trajectory_name);
   std::cout << "Saved trajectory names: " << std::endl;
   for (const auto& name : loaded_traj.getTrajectoryNames()) {
     std::cout << name << std::endl;
@@ -236,7 +240,8 @@ int doMain(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   auto lqr = builder.AddSystem<systems::HybridLQRController>(
       plant, *plant_autodiff, contact_modes, contact_modes_ad, Q, R, Qf,
-      state_trajs, input_trajs, impact_times, FLAGS_naive, FLAGS_minimal_coords,
+      state_trajs, input_trajs, impact_times, FLAGS_folder_path, FLAGS_naive,
+      FLAGS_minimal_coords,
       FLAGS_recalculateP, FLAGS_recalculateL);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;

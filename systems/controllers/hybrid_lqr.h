@@ -41,6 +41,7 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
                       const std::vector<
                           std::shared_ptr<drake::trajectories::Trajectory<double>>>& input_trajs,
                       const std::vector<double>& impact_times,
+                      std::string folder_path,
                       bool naive_approach = false,
                       bool using_min_coords = false,
                       bool calcP = false,
@@ -133,6 +134,7 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   const std::vector<std::shared_ptr<drake::trajectories::Trajectory<double>>>
       input_trajs_;
   const std::vector<double> impact_times_;
+  const std::string folder_path_;
   bool naive_approach_;
   bool using_min_coords_;
   std::vector<double> impact_times_rev_;

@@ -15,6 +15,7 @@
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/trajectory_optimization/dircon_options.h"
+#include "multibody/multipose_visualizer.h"
 
 namespace dairlib {
 namespace systems {
@@ -64,6 +65,38 @@ class HybridDircon
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
   drake::trajectories::PiecewisePolynomial<double> ReconstructStateTrajectory(
       const drake::solvers::MathematicalProgramResult& result) const override;
+
+  /// Adds a visualization callback that will visualize knot points
+  /// without transparency. Cannot be called twice
+  /// @param model_name The path of a URDF/SDF model name for visualization
+  /// @param poses_per_mode Regulates how many knot points are visualized. A
+  ///   vector containing the nubmer of poses to show per mode. This is in
+  ///   addition to the start/end poses of every mode! The total number of poses
+  ///   is therefore [sum(poses_per_mode) + num_modes + 1]
+  /// @param weld_frame_to_world The name of a frame to weld to the world frame
+  ///   when parsing the model. Defaults to blank, which will not perform a weld
+  void CreateVisualizationCallback(std::string model_file,
+      std::vector<unsigned int> poses_per_mode,
+      std::string weld_frame_to_world = "");
+
+  /// See CreateVisualizationCallback(std::string model_file,
+  ///    std::vector<unsigned int> poses_per_mode,
+  ///    std::string weld_frame_to_world)
+  ///
+  /// Creates a callback using a single pose count parameter, num_poses
+  /// Evenly divides the poses among the different modes, weighting by number
+  /// of frames in that mode. Since start/end poses per mdoe are required, must
+  /// have num_poses >= num_modes + 1
+  void CreateVisualizationCallback(std::string model_file,
+      unsigned int num_poses, std::string weld_frame_to_world = "");
+
+  /// See CreateVisualizationCallback(std::string model_file,
+  ///    unsigned int poses_per_mode,
+  ///    std::string weld_frame_to_world)
+  ///
+  /// Creates a visualization callback that shows all knot points.
+  void CreateVisualizationCallback(std::string model_file,
+      std::string weld_frame_to_world = "");
 
   /// Set the initial guess for the force variables for a specific mode
   /// @param mode the mode index
@@ -178,6 +211,8 @@ class HybridDircon
   std::vector<drake::solvers::VectorXDecisionVariable> quaternion_slack_vars_;
   std::vector<int> num_kinematic_constraints_;
   std::vector<int> num_kinematic_constraints_wo_skipping_;
+
+  std::unique_ptr<multibody::MultiposeVisualizer> callback_visualizer_;
 };
 
 }  // namespace trajectory_optimization

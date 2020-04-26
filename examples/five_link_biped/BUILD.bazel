@@ -73,6 +73,7 @@ cc_binary(
     data = ["five_link_biped.urdf"],
     deps = [
         "//common",
+        "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems/goldilocks_models",
         "//systems/primitives",

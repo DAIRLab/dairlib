@@ -32,6 +32,7 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/sensors/accelerometer.h"
 #include "drake/systems/sensors/gyroscope.h"
+#include "lcm/lcm_trajectory.h"
 
 namespace dairlib {
 
@@ -49,6 +50,8 @@ using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::Trajectory;
 using Eigen::MatrixXd;
 
 // Simulation parameters.
@@ -100,6 +103,16 @@ int do_main(int argc, char* argv[]) {
   // Contact model parameters
   plant.set_stiction_tolerance(FLAGS_stiction);
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
+
+  int nx = plant.num_positions() + plant.num_velocities();
+  const LcmTrajectory& loaded_traj = LcmTrajectory(
+      "../projects/five_link_biped/hybrid_lqr/saved_trajs/walking_4_24");
+  const LcmTrajectory::Trajectory& state_and_input =
+      loaded_traj.getTrajectory("walking_trajectory_x_u0");
+  PiecewisePolynomial<double> state_traj = PiecewisePolynomial<double>::CubicHermite(
+      state_and_input.time_vector,
+      state_and_input.datapoints.topRows(nx),
+      state_and_input.datapoints.topRows(2*nx).bottomRows(nx));
   // Create input receiver.
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
@@ -167,8 +180,9 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_init_state == "Jumping") {
     x0 << 0, 0.778109, 0, -.3112, -.231, 0.427, 0.4689, 0, 0, 0, 0, 0, 0, 0;
   } else if (FLAGS_init_state == "Walking") {
-    x0 << 0, 0.798986, -0.00175796, -0.0541245, -0.320418, 0.1, 0.75, 0.225025,
-        0.00132182, 0.145054, 0.136536, -0.746619, 9.46774e-05, -0.0115747;
+    x0 << state_traj.value(0);
+//    x0 << 0, 0.798986, -0.00175796, -0.0541245, -0.320418, 0.1, 0.75, 0.225025,
+//        0.00132182, 0.145054, 0.136536, -0.746619, 9.46774e-05, -0.0115747;
   } else if (FLAGS_init_state == "Walking_2") {
     x0 << 0.075032, 0.79286, -0.0200404, 0.0081442, -0.184221, 0.200742,
         0.215107, 0.501089, -0.148784, -0.340658, -0.312183, 2.19227, 2.59285,

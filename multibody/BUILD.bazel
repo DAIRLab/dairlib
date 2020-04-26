@@ -35,6 +35,29 @@ cc_library(
 )
 
 cc_library(
+    name = "multipose_visualizer",
+    srcs = [
+        "multipose_visualizer.cc"
+    ],
+    hdrs = [
+        "multipose_visualizer.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_binary(
+    name = "multipose_visualizer_test",
+    srcs = ["test/multipose_visualizer_test.cc"],
+    deps = [
+        ":multipose_visualizer",
+        "//common",
+    ],
+)
+
+cc_library(
     name = "contact_toolkit",
     srcs = [
         "contact_toolkit.cc",
@@ -48,7 +71,6 @@ cc_library(
     ],
 )
 
-
 cc_test(
     name = "multibody_utils_test",
     srcs = ["test/multibody_utils_test.cc"],
@@ -61,7 +83,6 @@ cc_test(
             ],
     size = "small"
 )
-
 
 cc_test(
     name = "contact_toolkit_test",

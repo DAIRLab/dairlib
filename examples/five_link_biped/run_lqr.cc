@@ -120,9 +120,6 @@ int doMain(int argc, char* argv[]) {
   unique_ptr<MultibodyPlant<AutoDiffXd>> plant_autodiff =
       std::make_unique<MultibodyPlant<AutoDiffXd>>(plant);
 
-  //  const LcmTrajectory& loaded_traj =
-  //  LcmTrajectory(LcmTrajectory::loadFromFile(
-  //      "../projects/hybrid_lqr/saved_trajs/2_step_walking_from_rest"));
   const LcmTrajectory& loaded_traj = LcmTrajectory(
       FLAGS_folder_path + FLAGS_trajectory_name);
   std::cout << "Saved trajectory names: " << std::endl;
@@ -135,7 +132,6 @@ int doMain(int argc, char* argv[]) {
   int num_modes = loaded_traj.getTrajectoryNames().size();
   std::vector<shared_ptr<Trajectory<double>>> state_trajs;
   std::vector<shared_ptr<Trajectory<double>>> input_trajs;
-  //  std::vector<Trajectory<double>*> input_trajs;
   for (int mode = 0; mode < num_modes; ++mode) {
     const LcmTrajectory::Trajectory& state_and_input =
         loaded_traj.getTrajectory("walking_trajectory_x_u" +
@@ -150,9 +146,6 @@ int doMain(int argc, char* argv[]) {
             state_and_input.time_vector,
             state_and_input.datapoints.bottomRows(nu))));
   }
-
-  std::cout << "x at time .21: " << state_trajs[0]->value(.21).transpose()
-            << std::endl;
 
   vector<multibody::ContactInfo<double>> contact_modes;
   vector<multibody::ContactInfo<AutoDiffXd>> contact_modes_ad;

@@ -132,11 +132,17 @@ HybridLQRController::HybridLQRController(
       const LcmTrajectory::Trajectory& P_mode1 = P_traj.getTrajectory("P1");
       const LcmTrajectory::Trajectory& P_mode2 = P_traj.getTrajectory("P2");
 
-      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+//      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+//          P_mode0.time_vector, P_mode0.datapoints));
+//      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+//          P_mode1.time_vector, P_mode1.datapoints));
+//      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+//          P_mode2.time_vector, P_mode2.datapoints));
+      p_traj_.push_back(PiecewisePolynomial<double>::CubicShapePreserving(
           P_mode0.time_vector, P_mode0.datapoints));
-      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+      p_traj_.push_back(PiecewisePolynomial<double>::CubicShapePreserving(
           P_mode1.time_vector, P_mode1.datapoints));
-      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+      p_traj_.push_back(PiecewisePolynomial<double>::CubicShapePreserving(
           P_mode2.time_vector, P_mode2.datapoints));
 
     } else {

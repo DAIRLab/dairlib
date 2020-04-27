@@ -213,7 +213,7 @@ int doMain(int argc, char* argv[]) {
   //      plant, impact_times[1] + FLAGS_time_offset,
   //      impact_times[2] + FLAGS_time_offset, false);
   auto fsm = builder.AddSystem<WalkingFiniteStateMachine>(
-      plant, impact_times[1], impact_times[2], FLAGS_time_offset, true,
+      plant, impact_times[1], impact_times[2], FLAGS_time_offset, FLAGS_contact_driven,
       FLAGS_init_fsm_state);
   // Create state receiver.
   auto state_sub = builder.AddSystem(

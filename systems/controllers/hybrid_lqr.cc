@@ -190,8 +190,8 @@ HybridLQRController::HybridLQRController(
       } else {
         s_jump[mode] = calcJumpMap(S_pre, mode, tf);
       }
-      std::cout << "S_pre map" << S_pre << std::endl;
-      std::cout << "S_after map" << s_jump[mode] << std::endl;
+      std::cout << "S_pre map\n" << S_pre << std::endl;
+      std::cout << "S_after map\n" << s_jump[mode] << std::endl;
       Eigen::LLT<MatrixXd> lltOfS(s_jump[mode]);  // reconstruct L_f
       L_f = lltOfS.matrixL();
     }

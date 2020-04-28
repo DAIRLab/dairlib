@@ -2027,6 +2027,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Start the gradient descent
   int iter;
   int n_shrink_step = 0;
+  auto iter_start_time = std::chrono::system_clock::now();
   for (iter = iter_start; iter <= max_outer_iter; iter++)  {
     bool is_get_nominal = iter == 0;
 
@@ -2043,9 +2044,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
     // Print info about iteration # and current time
     if (!start_iterations_with_shrinking_stepsize) {
-      auto end = std::chrono::system_clock::now();
-      std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-      cout << "Current time: " << std::ctime(&end_time);
+      auto clock_now = std::chrono::system_clock::now();
+      if (!is_get_nominal) {
+        std::chrono::duration<double> iteration_elapse =
+            iter_start_time - clock_now;
+        iter_start_time = clock_now;
+        cout << "Last iteration takes " << iteration_elapse.count() << "s.\n";
+      }
+      std::time_t current_time = std::chrono::system_clock::to_time_t(clock_now);
+      cout << "Current time: " << std::ctime(&current_time);
       cout << "************ Iteration " << iter << " ("
            << n_shrink_step << "-time step size shrinking) *************" << endl;
       if (iter != 0) {

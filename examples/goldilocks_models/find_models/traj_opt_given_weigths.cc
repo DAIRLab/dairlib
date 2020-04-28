@@ -580,6 +580,7 @@ void postProcessing(const VectorXd& w_sol,
     writeCSV(directory + prefix + string("y.csv"), y);
     writeCSV(directory + prefix + string("B.csv"), B);*/
 
+    auto start = std::chrono::high_resolution_clock::now();
     w_sol_vec[sample_idx]->resizeLike(w_sol);
     A_vec[sample_idx]->resizeLike(A);
     H_vec[sample_idx]->resizeLike(H);
@@ -596,6 +597,10 @@ void postProcessing(const VectorXd& w_sol,
     *(ub_vec[sample_idx]) = ub;
     *(b_vec[sample_idx]) = b;
     *(B_vec[sample_idx]) = B;
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    cout << "time it takes to save matrices/vectors to RAM: " << elapsed.count()
+         << endl;
 
     // Store s, ds, dds and tau into csv files
     // cout << "\nStoring s, ds and dds into csv.\n";
@@ -2431,6 +2436,27 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          int sample_idx, int n_rerun,
                          double cost_threshold_for_update, int N_rerun,
                          int rom_option, int robot_option) {
+
+  //Testing
+//  if (sample_idx == 0) {
+//    int ret = 0;
+//    auto start = std::chrono::high_resolution_clock::now();
+//    auto finish = std::chrono::high_resolution_clock::now();
+//    std::chrono::duration<double> elapsed = finish - start;
+//    double goal_time_for_next_print = 5;
+//    while(elapsed.count() < 120.0) {
+//      finish = std::chrono::high_resolution_clock::now();
+//      elapsed = finish - start;
+//      if (elapsed.count() > goal_time_for_next_print) {
+//        ret = std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
+//        ret = std::system("top -bn2 | grep \"Cpu(s)\" | sed \"s/.*, *\\([0-9.]*\\)%* id.*/\1/\" | awk '{print 100 - $1\"%\"}'"); // print the CPU usage
+//        ret = std::system("free -m"); // print memory usage
+//
+//        goal_time_for_next_print += 5;
+//      }
+//    }
+//  }
+
   if (robot_option == 0) {
     fiveLinkRobotTrajOpt(plant, plant_autoDiff,
                          n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,

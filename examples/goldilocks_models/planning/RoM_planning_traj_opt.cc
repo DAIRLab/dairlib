@@ -481,7 +481,7 @@ RomPlanningTrajOptWithFomImpactMap::ReconstructStateTrajectory(
         drake::math::DiscardGradient(constraints_[i]->getXDot());*/
     }
   }
-  // return PiecewisePolynomial<double>::Cubic(times, states, derivatives);
+  // return PiecewisePolynomial<double>::CubicHermite(times, states, derivatives);
   return PiecewisePolynomial<double>::FirstOrderHold(times, states);
 }
 

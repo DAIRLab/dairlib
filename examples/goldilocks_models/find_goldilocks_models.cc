@@ -495,8 +495,8 @@ void extractActiveAndIndependentRows(
     if (sample == 0) {
       cout << "\n (After extracting active constraints) Run traj opt to "
            "check if your quadratic approximation is correct\n";
-      cout << "sample# | Solve Status | Cost | w_sol norm | (this should be 0 "
-              "if w=0 is optimal)\n";
+      cout << "sample# | Solve Status | Solve time | Cost | w_sol norm | (this "
+              "should be 0 if w=0 is optimal)\n";
     }
     nl_i = A_active.rows();
     MathematicalProgram quadprog;
@@ -507,21 +507,26 @@ void extractActiveAndIndependentRows(
                                   w2);
     quadprog.AddQuadraticCost(*(H_vec[sample]), *(b_vec[sample]), w2);
 
-    // Testing
-      drake::solvers::SnoptSolver snopt_solver;
-    const auto result = snopt_solver.Solve(quadprog);
+    // (Testing) use snopt to solve the QP
+    bool use_snopt = true;
+    drake::solvers::SnoptSolver snopt_solver;
 
-//    const auto result = Solve(quadprog);
+    auto start = std::chrono::high_resolution_clock::now();
+    const auto result =
+        use_snopt ? snopt_solver.Solve(quadprog) : Solve(quadprog);
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+
     auto solution_result = result.get_solution_result();
     if (result.is_success()) {
       VectorXd w_sol_check = result.GetSolution(
           quadprog.decision_variables());
-      cout << sample << " | " << solution_result << " | "
-           << result.get_optimal_cost() << " | " << w_sol_check.norm() << " | "
-           << w_sol_check.transpose() * (*(b_vec[sample])) << endl;
+      cout << sample << " | " << solution_result << " | " << elapsed.count()
+           << "| " << result.get_optimal_cost() << " | " << w_sol_check.norm()
+           << " | " << w_sol_check.transpose() * (*(b_vec[sample])) << endl;
     } else {
-      cout << sample << " | " << solution_result << " | "
-           << result.get_optimal_cost() << endl;
+      cout << sample << " | " << solution_result << " | " << elapsed.count()
+           << " | " << result.get_optimal_cost() << endl;
     }
   }
 

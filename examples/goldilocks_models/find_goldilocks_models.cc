@@ -133,6 +133,7 @@ DEFINE_int32(n_thread_to_use, -1, "# of threads you want to use");
 DEFINE_string(
     program_name, "",
     "The name of the program (to keep a record for future references)");
+DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 
 // Not tested yet. So backup before you try this.
 bool is_to_improve_solution = false;
@@ -1762,14 +1763,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
     case 3: cout << "(3D -- fix com vertical acceleration + swing foot)\n";
       break;
   }
-  cout << "Make sure that n_s and B_tau are correct.\nProceed? (Y/N)\n";
-  char answer[1];
-  cin >> answer;
-  if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-    cout << "Ending the program.\n";
-    return 0;
-  } else {
-    cout << "Continue constructing the problem...\n";
+  cout << "Make sure that n_s and B_tau are correct.\n";
+  if (!FLAGS_turn_off_cin) {
+    cout <<"Proceed? (Y/N)\n";
+    char answer[1];
+    cin >> answer;
+    if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
+      cout << "Ending the program.\n";
+      return 0;
+    } else {
+      cout << "Continue constructing the problem...\n";
+    }
   }
 
   // Reduced order model setup
@@ -1792,14 +1796,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
   theta_sDDot = VectorXd::Zero(n_theta_sDDot);
   if (iter_start == 0) {
     setInitialTheta(theta_s, theta_sDDot, n_feature_s, rom_option);
-    cout << "Make sure that you use the right initial theta.\nProceed? (Y/N)\n";
-    char answer[1];
-    cin >> answer;
-    if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-      cout << "Ending the program.\n";
-      return 0;
-    } else {
-      cout << "Continue constructing the problem...\n";
+    cout << "Make sure that you use the right initial theta.\n";
+    if (!FLAGS_turn_off_cin) {
+      cout << "Proceed? (Y/N)\n";
+      char answer[1];
+      cin >> answer;
+      if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
+        cout << "Ending the program.\n";
+        return 0;
+      } else {
+        cout << "Continue constructing the problem...\n";
+      }
     }
   }
   else {
@@ -1861,6 +1868,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Multithreading setup
   cout << "\nMultithreading settings:\n";
   int CORES = static_cast<int>(std::thread::hardware_concurrency());
+  cout << "# of threads availible on this computer: " << CORES << endl;
   if (FLAGS_n_thread_to_use > 0) CORES = FLAGS_n_thread_to_use;
   cout << "is multithread? " << FLAGS_is_multithread << endl;
   cout << "# of threads to be used " << CORES << endl;
@@ -2005,14 +2013,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
     cout << n_extend << " dimension.\n";
 
     cout << "Make sure that you include both old and new version of dynamics "
-         "feature.\nProceed? (Y/N)\n";
-    char answer[1];
-    cin >> answer;
-    if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-      cout << "Ending the program.\n";
-      return 0;
-    } else {
-      cout << "Continue constructing the problem...\n";
+         "feature.\n";
+    if (!FLAGS_turn_off_cin) {
+      cout << "Proceed? (Y/N)\n";
+      char answer[1];
+      cin >> answer;
+      if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
+        cout << "Ending the program.\n";
+        return 0;
+      } else {
+        cout << "Continue constructing the problem...\n";
+      }
     }
   }
 

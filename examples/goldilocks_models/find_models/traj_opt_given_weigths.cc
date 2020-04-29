@@ -580,7 +580,7 @@ void postProcessing(const VectorXd& w_sol,
     writeCSV(directory + prefix + string("y.csv"), y);
     writeCSV(directory + prefix + string("B.csv"), B);*/
 
-    auto start = std::chrono::high_resolution_clock::now();
+//    auto start = std::chrono::high_resolution_clock::now();
     w_sol_vec[sample_idx]->resizeLike(w_sol);
     A_vec[sample_idx]->resizeLike(A);
     H_vec[sample_idx]->resizeLike(H);
@@ -597,10 +597,12 @@ void postProcessing(const VectorXd& w_sol,
     *(ub_vec[sample_idx]) = ub;
     *(b_vec[sample_idx]) = b;
     *(B_vec[sample_idx]) = B;
-    auto finish = std::chrono::high_resolution_clock::now();
+    /*auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
     cout << "time it takes to save matrices/vectors to RAM: " << elapsed.count()
-         << endl;
+         << endl;*/
+    // It takes about 5 ms or 25 ms to store the above variables. (I guess 25ms
+    // is when it needs to resize to bigger memory)
 
     // Store s, ds, dds and tau into csv files
     // cout << "\nStoring s, ds and dds into csv.\n";

@@ -135,21 +135,6 @@ DEFINE_string(
     "The name of the program (to keep a record for future references)");
 DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 
-// Not tested yet. So backup before you try this.
-bool is_to_improve_solution = false;
-
-// Not sure why using the below function caused a problem.
-// Valgrind said: Conditional jump or move depends on uninitialised value(s)
-/*bool userAnsweredYes() {
-  char answer[1];
-  cin >> answer;
-  if ((answer[0] == 'Y') || (answer[0] == 'y')) {
-    return true;
-  } else {
-    return false;
-  }
-}*/
-
 void createMBP(MultibodyPlant<double>* plant, int robot_option) {
   if (robot_option == 0) {
     Parser parser(plant);
@@ -277,14 +262,6 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
   } else {
     *init_file = to_string(iter - 1) +  "_" +
                  to_string(sample) + string("_w.csv");
-  }
-
-  // Testing:
-  if (is_to_improve_solution) {
-    cout << "testing with manual init file: ";
-    *init_file = to_string(iter) +  "_" +
-                 to_string(sample) + string("_w.csv");
-    cout << *init_file << endl;
   }
 
   //Testing
@@ -2042,13 +2019,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   for (iter = iter_start; iter <= max_outer_iter; iter++)  {
     bool is_get_nominal = iter == 0;
 
-    if (is_to_improve_solution) {
-      theta_s = readCSV(dir + to_string(iter) +
-                        string("_theta_s.csv")).col(0);
-      theta_sDDot = readCSV(dir + to_string(iter) +
-                            string("_theta_sDDot.csv")).col(0);
-    }
-
     if (start_iterations_with_shrinking_stepsize) {
       n_shrink_step++;
     }
@@ -2378,12 +2348,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // cout << "Only run for 1 iteration. for testing.\n";
     // for (int i = 0; i < 100; i++) {cout << '\a';}  // making noise to notify
     // break;
-
-    // For testing
-    if (is_to_improve_solution) {
-      cout << "Not updating the parameters. for testing.\n";
-      continue;
-    }
 
     // Logic for how to iterate
     if (start_iterations_with_shrinking_stepsize) {

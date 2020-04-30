@@ -55,8 +55,8 @@ DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 DEFINE_int32(rom_option, -1, "");
 
 // tasks
-DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
-DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
+DEFINE_int32(N_sample_sl, -1, "Sampling # for stride length");
+DEFINE_int32(N_sample_gi, -1, "Sampling # for ground incline");
 DEFINE_int32(N_sample_tr, -1, "Sampling # for turning rate");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
@@ -1457,10 +1457,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Parameters for tasks (stride length and ground incline)
   cout << "\nTasks settings:\n";
-  int N_sample_sl = FLAGS_N_sample_sl;
-  int N_sample_gi = FLAGS_N_sample_gi;
+  int N_sample_sl = (FLAGS_N_sample_sl == -1)? 1 : FLAGS_N_sample_sl;
+  int N_sample_gi = (FLAGS_N_sample_gi == -1)? 1 : FLAGS_N_sample_gi;
   int N_sample_tr = (FLAGS_N_sample_tr == -1)? 1 : FLAGS_N_sample_tr;
   int N_sample = N_sample_sl * N_sample_gi * N_sample_tr;  // 1;
+  if (FLAGS_robot_option == 0) {
+    DRAKE_DEMAND(FLAGS_N_sample_tr < 1);
+  }
   double delta_stride_length;
   double stride_length_0;
   if (FLAGS_robot_option == 0) {
@@ -1562,12 +1565,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_start_current_iter_as_rerun ||
       FLAGS_start_iterations_with_shrinking_stepsize) {
     for (int i = 0; i < N_sample; i++) {
-      previous_stride_length(i) =
+      if (FLAGS_N_sample_sl > 0) {
+              previous_stride_length(i) =
           readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
               string("_stride_length.csv"))(0);
-      previous_ground_incline(i) =
+      }
+      if (FLAGS_N_sample_gi > 0) {
+              previous_ground_incline(i) =
           readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
                   string("_ground_incline.csv"))(0);
+      }
       if (FLAGS_N_sample_tr > 0) {
         previous_turning_rate(i) =
             readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
@@ -2093,7 +2100,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       auto clock_now = std::chrono::system_clock::now();
       if (!is_get_nominal) {
         std::chrono::duration<double> iteration_elapse =
-            iter_start_time - clock_now;
+            clock_now - iter_start_time;
         iter_start_time = clock_now;
         cout << "Last iteration takes " << iteration_elapse.count() << "s.\n";
       }
@@ -2210,9 +2217,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
               turning_rate_0 + delta_turning_rate_vec[std::get<2>(
                                    forward_task_idx_map.at(sample_idx))];
           if (!is_get_nominal && is_stochastic) {
-            stride_length += dist_sl(e1);
-            ground_incline += dist_gi(e2);
-            turning_rate += dist_tr(e3);
+            if (FLAGS_N_sample_sl > 0) {
+              stride_length += dist_sl(e1);
+            }
+            if (FLAGS_N_sample_gi > 0) {
+              ground_incline += dist_gi(e2);
+            }
+            if (FLAGS_N_sample_tr > 0) {
+              turning_rate += dist_tr(e3);
+            }
           }
 
           // Store the tasks or overwrite it with previous tasks

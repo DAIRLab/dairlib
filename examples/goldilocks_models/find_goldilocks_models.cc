@@ -9,6 +9,7 @@
 #include <bits/stdc++.h>  // system call
 #include <cmath>
 #include <numeric> // std::accumulate
+#include <tuple>
 
 
 #include "drake/multibody/parsing/parser.h"
@@ -56,6 +57,7 @@ DEFINE_int32(rom_option, -1, "");
 // tasks
 DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
 DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
+DEFINE_int32(N_sample_tr, -1, "Sampling # for turning rate");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
@@ -169,7 +171,7 @@ void setCostWeight(double* Q, double* R, double* all_cost_scale,
   } else if (robot_option == 1) {
     *Q = 5 * 0.1;
     *R = 0.1 * 0.01;
-    *all_cost_scale = 0.2 * 0.12;
+    *all_cost_scale = 0.2/* * 0.12*/;
   }
 }
 void setRomDim(int* n_s, int* n_tau, int rom_option) {
@@ -274,9 +276,8 @@ void getInitFileName(string * init_file, const string & nominal_traj_init_file,
 
 int selectThreadIdxToWait(const vector<pair<int, int>>& assigned_thread_idx,
                           vector<std::shared_ptr<int>> thread_finished_vec) {
-  bool no_new_thread_finished = true;
   int counter = 0;
-  while (no_new_thread_finished) {
+  while (true) {
     // cout << "Check if any thread has finished...\n";
     for (unsigned int i = 0; i < assigned_thread_idx.size(); i++) {
       if (*(thread_finished_vec[assigned_thread_idx[i].second]) == 1) {
@@ -285,17 +286,12 @@ int selectThreadIdxToWait(const vector<pair<int, int>>& assigned_thread_idx,
         return i;
       }
     }
-    if (no_new_thread_finished) {
-      if ((counter % 60 == 0)) {
-        // cout << "No files exists yet. Sleep for 1 seconds.\n";
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    if ((counter % 60 == 0)) {
+      // cout << "No files exists yet. Sleep for 1 seconds.\n";
     }
     counter++;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
-  // should never reach here
-  cout << "Error: The code should never reach here.\n";
-  return -1;
 }
 
 void waitForAllThreadsToJoin(vector<std::thread*> * threads,
@@ -797,32 +793,55 @@ void calcWInTermsOfTheta(int sample, const string& dir,
   cout << to_be_print;
 }
 
-MatrixXi GetAdjSampleIndices(int N_sample_sl, int N_sample_gi, int N_sample) {
-  MatrixXi adjacent_sample_indices = -1 * MatrixXi::Ones(N_sample, 4);
-  MatrixXi delta_idx(2, 2);
-  delta_idx << 1, 0, 0, 1;
-  for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
-    for (int i = 0; i < N_sample_sl; i++) {  // stride length axis
-      int current_sample_idx = i + j * N_sample_sl;
-      for (int k = 0; k < delta_idx.rows(); k++) {
-        int new_i = i + delta_idx(k, 0);
-        int new_j = j + delta_idx(k, 1);
-        int adjacent_sample_idx = new_i + new_j * N_sample_sl;
-        if ((new_i >= 0) && (new_i < N_sample_sl) && (new_j >= 0) &&
-            (new_j < N_sample_gi)) {
-          // Add to adjacent_sample_idx (both directions)
-          for (int l = 0; l < 4; l++) {
-            if (adjacent_sample_indices(current_sample_idx, l) < 0) {
-              adjacent_sample_indices(current_sample_idx, l) =
-                  adjacent_sample_idx;
-              break;
+void ConstructTaskIdxMap(
+    std::map<int, std::tuple<int, int, int>>* forward_task_idx_map,
+    std::map<std::tuple<int, int, int>, int>* inverse_task_idx_map,
+    int N_sample_sl, int N_sample_gi, int N_sample_tr) {
+  int sample_idx = 0;
+  for (int k = 0; k < N_sample_tr; k++) {
+    for (int j = 0; j < N_sample_gi; j++) {
+      for (int i = 0; i < N_sample_sl; i++) {
+        (*forward_task_idx_map)[sample_idx] = {i, j, k};
+        (*inverse_task_idx_map)[{i, j, k}] = sample_idx;
+        sample_idx++;
+      }
+    }
+  }
+}
+
+MatrixXi GetAdjSampleIndices(
+    int N_sample_sl, int N_sample_gi, int N_sample_tr, int N_sample,
+    int task_dim,
+    const std::map<std::tuple<int, int, int>, int>& inverse_task_idx_map) {
+  MatrixXi adjacent_sample_indices =
+      -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
+  MatrixXi delta_idx = MatrixXi::Identity(3, 3);
+  for (int k = 0; k < N_sample_gi; k++) {  // ground incline axis
+    for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
+      for (int i = 0; i < N_sample_sl; i++) {  // stride length axis
+        int current_sample_idx = inverse_task_idx_map.at({i, j, k});
+        for (int h = 0; h < delta_idx.rows(); h++) {
+          int new_i = i + delta_idx(h, 0);
+          int new_j = j + delta_idx(h, 1);
+          int new_k = k + delta_idx(h, 2);
+          if ((new_i >= 0) && (new_i < N_sample_sl) && (new_j >= 0) &&
+              (new_j < N_sample_gi) && (new_k >= 0) && (new_k < N_sample_tr)) {
+            int adjacent_sample_idx =
+                inverse_task_idx_map.at({new_i, new_j, new_k});
+            // Add to adjacent_sample_idx (both directions)
+            for (int l = 0; l < 2 * task_dim; l++) {
+              if (adjacent_sample_indices(current_sample_idx, l) < 0) {
+                adjacent_sample_indices(current_sample_idx, l) =
+                    adjacent_sample_idx;
+                break;
+              }
             }
-          }
-          for (int l = 0; l < 4; l++) {
-            if (adjacent_sample_indices(adjacent_sample_idx, l) < 0) {
-              adjacent_sample_indices(adjacent_sample_idx, l) =
-                  current_sample_idx;
-              break;
+            for (int l = 0; l < 2 * task_dim; l++) {
+              if (adjacent_sample_indices(adjacent_sample_idx, l) < 0) {
+                adjacent_sample_indices(adjacent_sample_idx, l) =
+                    current_sample_idx;
+                break;
+              }
             }
           }
         }
@@ -1424,6 +1443,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   std::default_random_engine e1(randgen());
   std::random_device randgen2;
   std::default_random_engine e2(randgen2());
+  std::random_device randgen3;
+  std::default_random_engine e3(randgen3());
 
   // Files parameters
   /*const string dir = "examples/goldilocks_models/find_models/data/robot_" +
@@ -1438,7 +1459,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nTasks settings:\n";
   int N_sample_sl = FLAGS_N_sample_sl;
   int N_sample_gi = FLAGS_N_sample_gi;
-  int N_sample = N_sample_sl * N_sample_gi;  // 1;
+  int N_sample_tr = (FLAGS_N_sample_tr == -1)? 1 : FLAGS_N_sample_tr;
+  int N_sample = N_sample_sl * N_sample_gi * N_sample_tr;  // 1;
   double delta_stride_length;
   double stride_length_0;
   if (FLAGS_robot_option == 0) {
@@ -1470,6 +1492,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
     throw std::runtime_error("Should not reach here");
     delta_ground_incline = 0;
   }
+  double delta_turning_rate;
+  double turning_rate_0 = 0;
+  if (FLAGS_robot_option == 0) {
+    delta_turning_rate = 0.0;
+  } else if (FLAGS_robot_option == 1) {
+    delta_turning_rate = 0.125;
+  } else {
+    throw std::runtime_error("Should not reach here");
+    delta_turning_rate = 0;
+  }
   double duration = 0.4;
   if (FLAGS_robot_option == 0) {
     duration = 0.746;  // Fix the duration now since we add cost ourselves
@@ -1479,12 +1511,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "duration = " << duration << endl;
   DRAKE_DEMAND(N_sample_sl % 2 == 1);
   DRAKE_DEMAND(N_sample_gi % 2 == 1);
+  DRAKE_DEMAND(N_sample_tr % 2 == 1);
   cout << "N_sample_sl = " << N_sample_sl << endl;
   cout << "N_sample_gi = " << N_sample_gi << endl;
+  cout << "N_sample_tr = " << N_sample_tr << endl;
   cout << "delta_stride_length = " << delta_stride_length << endl;
   cout << "stride_length_0 = " << stride_length_0 << endl;
   cout << "delta_ground_incline = " << delta_ground_incline << endl;
   cout << "ground_incline_0 = " << ground_incline_0 << endl;
+  cout << "delta_turning_rate = " << delta_turning_rate << endl;
+  cout << "turning_rate_0 = " << turning_rate_0 << endl;
   double min_stride_length =
       (FLAGS_is_stochastic)
           ? stride_length_0 -
@@ -1505,22 +1541,38 @@ int findGoldilocksModels(int argc, char* argv[]) {
           ? ground_incline_0 +
                 delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
           : ground_incline_0 + delta_ground_incline * ((N_sample_gi - 1) / 2);
+  double min_turning_rate =
+      (FLAGS_is_stochastic)
+          ? turning_rate_0 - delta_turning_rate * ((N_sample_tr - 1) / 2 + 0.5)
+          : turning_rate_0 - delta_turning_rate * ((N_sample_tr - 1) / 2);
+  double max_turning_rate =
+      (FLAGS_is_stochastic)
+          ? turning_rate_0 + delta_turning_rate * ((N_sample_tr - 1) / 2 + 0.5)
+          : turning_rate_0 + delta_turning_rate * ((N_sample_tr - 1) / 2);
   DRAKE_DEMAND(min_stride_length >= 0);
   cout << "stride length ranges from " << min_stride_length << " to "
        << max_stride_length << endl;
   cout << "ground incline ranges from " << min_ground_incline << " to "
        << max_ground_incline << endl;
+  cout << "turning rate ranges from " << min_turning_rate << " to "
+       << max_turning_rate << endl;
   VectorXd previous_ground_incline = VectorXd::Zero(N_sample);
   VectorXd previous_stride_length = VectorXd::Zero(N_sample);
+  VectorXd previous_turning_rate = VectorXd::Zero(N_sample);
   if (FLAGS_start_current_iter_as_rerun ||
       FLAGS_start_iterations_with_shrinking_stepsize) {
     for (int i = 0; i < N_sample; i++) {
+      previous_stride_length(i) =
+          readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
+              string("_stride_length.csv"))(0);
       previous_ground_incline(i) =
           readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
                   string("_ground_incline.csv"))(0);
-      previous_stride_length(i) =
-          readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
-                  string("_stride_length.csv"))(0);
+      if (FLAGS_N_sample_tr > 0) {
+        previous_turning_rate(i) =
+            readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
+                string("_turning_rate.csv"))(0);
+      }
     }
     // print
     /*for (int i = 0; i < N_sample; i++) {
@@ -1897,17 +1949,27 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
     cout << "ave_min_cost_so_far = " << ave_min_cost_so_far << endl;
   }
+  // Task indices setup
+  std::map<int, std::tuple<int, int, int>> forward_task_idx_map;
+  std::map<std::tuple<int, int, int>, int> inverse_task_idx_map;
+  ConstructTaskIdxMap(&forward_task_idx_map, &inverse_task_idx_map, N_sample_sl,
+                      N_sample_gi, N_sample_tr);
   // Tasks setup
-  std::uniform_real_distribution<> dist_sl(
-    -delta_stride_length / 2, delta_stride_length / 2);
+  std::uniform_real_distribution<> dist_sl(-delta_stride_length / 2,
+                                           delta_stride_length / 2);
   vector<double> delta_stride_length_vec;
   for (int i = 0 - N_sample_sl / 2; i < N_sample_sl - N_sample_sl / 2; i++)
     delta_stride_length_vec.push_back(i * delta_stride_length);
-  std::uniform_real_distribution<> dist_gi(
-    -delta_ground_incline / 2, delta_ground_incline / 2);
+  std::uniform_real_distribution<> dist_gi(-delta_ground_incline / 2,
+                                           delta_ground_incline / 2);
   vector<double> delta_ground_incline_vec;
   for (int i = 0 - N_sample_gi / 2; i < N_sample_gi - N_sample_gi / 2; i++)
     delta_ground_incline_vec.push_back(i * delta_ground_incline);
+  std::uniform_real_distribution<> dist_tr(-delta_turning_rate / 2,
+                                           delta_turning_rate / 2);
+  vector<double> delta_turning_rate_vec;
+  for (int i = 0 - N_sample_tr / 2; i < N_sample_tr - N_sample_tr / 2; i++)
+    delta_turning_rate_vec.push_back(i * delta_turning_rate);
   // Some setup
   int n_theta = n_theta_s + n_theta_sDDot;
   VectorXd theta(n_theta);
@@ -2005,9 +2067,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   // Setup for getting good solution from adjacent samples
-  // (In 2D tasks space, the adjacent sample# for each sample is 4)
+  int task_dim =
+      int(N_sample_sl > 1) + int(N_sample_gi > 1) + int(N_sample_tr > 1);
   const MatrixXi adjacent_sample_indices =
-      GetAdjSampleIndices(N_sample_sl, N_sample_gi, N_sample);
+      GetAdjSampleIndices(N_sample_sl, N_sample_gi, N_sample_tr, N_sample,
+                          task_dim, inverse_task_idx_map);
+  cout << "dimension of the task space = " << task_dim << endl;
   cout << "adjacent_sample_indices = \n"
        << adjacent_sample_indices.transpose() << endl;
 
@@ -2068,8 +2133,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // skip the sample evaluation
     } else {
       // Print message
-      cout << "sample# (rerun #) | stride | incline | init_file | Status | "
-              "Solve time | Cost (tau cost)\n";
+      cout << "sample# (rerun #) | stride | incline | turning | init_file | "
+              "Status | Solve time | Cost (tau cost)\n";
 
       // Create vector of threads for multithreading
       vector<std::thread*> threads(std::min(CORES, N_sample));
@@ -2094,13 +2159,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // In the following int matrices, each row is a list that contains the
       // sample idx that can help (or helped)
       // -1 means empty.
-      // Since in 2D tasks space, the adjacent sample# for each sample is 4, we
-      // initialize the column number with 4.
       // TODO: you can re-implement this with
       //  std::vector<std::shared_ptr<std::vector<int>>>
       //  so the code is cleaner.
-      MatrixXi sample_idx_waiting_to_help = -1 * MatrixXi::Ones(N_sample, 4);
-      MatrixXi sample_idx_that_helped = -1 * MatrixXi::Ones(N_sample, 4);
+      MatrixXi sample_idx_waiting_to_help =
+          -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
+      MatrixXi sample_idx_that_helped =
+          -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
       std::vector<double> local_each_min_cost_so_far = each_min_cost_so_far;
 
       // Set up for deciding if we should update the solution
@@ -2136,14 +2201,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // setup for each sample
           double stride_length =
-              stride_length_0 +
-              delta_stride_length_vec[sample_idx % N_sample_sl];
+              stride_length_0 + delta_stride_length_vec[std::get<0>(
+                                    forward_task_idx_map.at(sample_idx))];
           double ground_incline =
-              ground_incline_0 +
-              delta_ground_incline_vec[sample_idx / N_sample_sl];
+              ground_incline_0 + delta_ground_incline_vec[std::get<1>(
+                                     forward_task_idx_map.at(sample_idx))];
+          double turning_rate =
+              turning_rate_0 + delta_turning_rate_vec[std::get<2>(
+                                   forward_task_idx_map.at(sample_idx))];
           if (!is_get_nominal && is_stochastic) {
             stride_length += dist_sl(e1);
             ground_incline += dist_gi(e2);
+            turning_rate += dist_tr(e3);
           }
 
           // Store the tasks or overwrite it with previous tasks
@@ -2152,9 +2221,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
           if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
             stride_length = previous_stride_length(sample_idx);
             ground_incline = previous_ground_incline(sample_idx);
+            turning_rate = previous_turning_rate(sample_idx);
           } else {
             previous_stride_length(sample_idx) = stride_length;
             previous_ground_incline(sample_idx) = ground_incline;
+            previous_turning_rate(sample_idx) = turning_rate;
           }
           // Store tasks in files so we can use it in visualization
           prefix = to_string(iter) +  "_" + to_string(sample_idx) + "_";
@@ -2162,6 +2233,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
                    stride_length * MatrixXd::Ones(1, 1));
           writeCSV(dir + prefix + string("ground_incline.csv"),
                    ground_incline * MatrixXd::Ones(1, 1));
+          writeCSV(dir + prefix + string("turning_rate.csv"),
+                   turning_rate * MatrixXd::Ones(1, 1));
 
           // (Feature -- get initial guess from adjacent successful samples)
           // If the current sample already finished N_rerun, then it means that
@@ -2200,7 +2273,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               n_s, n_sDDot, n_tau,
               n_feature_s, n_feature_sDDot, std::ref(B_tau),
               std::ref(theta_s), std::ref(theta_sDDot),
-              stride_length, ground_incline,
+              stride_length, ground_incline, turning_rate,
               duration, n_node, max_inner_iter_pass_in,
               FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
               std::ref(dir), init_file_pass_in, prefix,
@@ -2703,6 +2776,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
       //cout << '\a';  // making noise to notify the user the end of an iteration
     }  // end if(!is_get_nominal)
   }  // end for
+
+  cout << "Exited the outer loop.\n";
+  cout << '\a';  // making noise to notify the user the end of an iteration
 
   // store parameter values
   prefix = to_string(iter + 1) +  "_";

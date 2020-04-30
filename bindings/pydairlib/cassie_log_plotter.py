@@ -17,8 +17,6 @@ from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.trajectories import PiecewisePolynomial
 
-
-
 def get_index_at_time(times, t):
     return np.argwhere(times - t > 0)[0][0]
 
@@ -156,8 +154,6 @@ def main():
     no_offset = np.zeros(3)
     context = plant.CreateDefaultContext()
 
-
-
     loadedStateTraj = pydairlib.lcm_trajectory.LcmTrajectory()
     loadedTrackingDataTraj = pydairlib.lcm_trajectory.LcmTrajectory()
     # loadedStateTraj.loadFromFile(
@@ -293,10 +289,7 @@ def main():
     #
     # plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal)
 
-    plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
-
-
-
+    # plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
 
     # plt.plot(t_osc_debug[t_osc_start_idx:t_osc_end_idx], osc_debug[
     #                                                          0].is_active[
@@ -311,9 +304,7 @@ def main():
     #                             front_contact_disp, world, "left_", "_front")
 
     # Foot plotting
-    # plot_feet_simulation(context, l_toe_frame, r_toe_frame, world, no_offset,
-    #                      plant, v, q, t_state, t_state_slice)
-    if False:
+    if True:
         plot_feet_simulation(plant, context, q, v, l_toe_frame, front_contact_disp,
                              world, t_state, t_state_slice, "left_", "_front")
         plot_feet_simulation(plant, context, q, v, r_toe_frame, front_contact_disp,
@@ -474,7 +465,7 @@ def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     print(Jcc@xc[-18:])
     print(Jcc@Jcc.T@gamma_c)
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
 def plot_ground_reaction_forces(contact_info, t_state, t_state_slice):
     fig = plt.figure('contact data: ' + filename)
@@ -542,7 +533,8 @@ def plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
     plt.plot(t_osc[osc_indices], control_inputs[osc_indices, actuator_indices])
     plt.ylim(-300, 300)
     plt.legend((state_traj_mode0.datatypes[-10:])[actuator_indices])
-
+    plt.xlabel("time (s)")
+    plt.ylabel("torque (Nm)")
 
 def integrand(t, y):
     return np.reshape(x_traj_nominal.value(t)[-15:], (15,))
@@ -593,7 +585,8 @@ def plot_feet_simulation(plant, context, q, v, toe_frame, contact_point, world,
         #     world) @ v[i, :]
     # fig = plt.figure(foot_type + 'foot pos: ' + filename)
     fig = plt.figure('foot pos: ' + filename)
-    state_indices = slice(0, 3)
+    # state_indices = slice(0, 3)
+    state_indices = slice(5, 6)
     state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
     state_names = [foot_type + name for name in state_names]
     state_names = [name + contact_type for name in state_names]

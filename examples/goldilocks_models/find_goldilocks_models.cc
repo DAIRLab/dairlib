@@ -1669,13 +1669,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
   } else {
     throw std::runtime_error("Should not reach here");
   }
-  // increase the tolerance a little bit for restricted number
+  /// Increase the tolerance for restricted number
+  /// Maybe we can turn off the shrinking step size when using restricted number of sample
+  /// Didn't see improvement after shrinking the step size.
   double max_average_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
     max_average_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01;
     if(restricted_sample_number)
     {
-        max_average_cost_increase_rate = 1.5;
+        max_average_cost_increase_rate = 2;
     }
   } else if (FLAGS_robot_option== 1) {
     max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;//0.15

@@ -1500,7 +1500,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_robot_option == 0) {
     delta_turning_rate = 0.0;
   } else if (FLAGS_robot_option == 1) {
-    delta_turning_rate = 0.125;
+    delta_turning_rate = 0.125 * 3;
   } else {
     throw std::runtime_error("Should not reach here");
     delta_turning_rate = 0;
@@ -2102,7 +2102,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         std::chrono::duration<double> iteration_elapse =
             clock_now - iter_start_time;
         iter_start_time = clock_now;
-        cout << "Last iteration takes " << iteration_elapse.count() << "s.\n";
+        cout << "\nLast iteration takes " << iteration_elapse.count() << "s.\n";
       }
       std::time_t current_time = std::chrono::system_clock::to_time_t(clock_now);
       cout << "Current time: " << std::ctime(&current_time);

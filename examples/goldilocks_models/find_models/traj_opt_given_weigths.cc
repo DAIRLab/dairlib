@@ -1612,14 +1612,13 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
       std::pair<string, string>("_left", "_right"),
       std::pair<string, string>("_right", "_left"),
   };
-  vector<string> asy_joint_names{
-      "hip_roll",
-      "hip_yaw",
-  };
+  vector<string> asy_joint_names;
   vector<string> sym_joint_names;
   if (turning_rate == 0) {
+    asy_joint_names = {"hip_roll", "hip_yaw"};
     sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
   } else {
+    asy_joint_names = {"hip_roll"};
     sym_joint_names = {"hip_pitch"};
   }
   vector<string> joint_names{};

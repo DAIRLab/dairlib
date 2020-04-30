@@ -813,10 +813,11 @@ MatrixXi GetAdjSampleIndices(
     int N_sample_sl, int N_sample_gi, int N_sample_tr, int N_sample,
     int task_dim,
     const std::map<std::tuple<int, int, int>, int>& inverse_task_idx_map) {
+  // cout << "Constructing adjacent index list...\n";
   MatrixXi adjacent_sample_indices =
       -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
   MatrixXi delta_idx = MatrixXi::Identity(3, 3);
-  for (int k = 0; k < N_sample_gi; k++) {  // ground incline axis
+  for (int k = 0; k < N_sample_tr; k++) {  // ground incline axis
     for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
       for (int i = 0; i < N_sample_sl; i++) {  // stride length axis
         int current_sample_idx = inverse_task_idx_map.at({i, j, k});

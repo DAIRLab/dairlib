@@ -70,12 +70,12 @@ DEFINE_string(state_simulation_channel, "RABBIT_STATE_SIMULATION",
               "Channel to publish/receive state from simulation");
 DEFINE_string(input_channel, "RABBIT_INPUT",
               "Channel to publish/receive inputs from controller");
-DEFINE_string(init_state, "Jumping",
+DEFINE_string(init_state, "Walking",
               "The stored initial state for the simulator");
 DEFINE_double(sim_time, std::numeric_limits<double>::infinity(),
               "The length of time to run the simulation");
 DEFINE_double(start_time, 0.0, "Time to start the simulator at.");
-DEFINE_double(penetration_allowance, 0.001,
+DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model. It's a penalty "
               "method so there aren't any physical units");
 DEFINE_double(stiction, 0.001, "Stiction tolerance for the contact model.");

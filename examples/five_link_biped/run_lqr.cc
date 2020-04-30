@@ -120,6 +120,9 @@ int doMain(int argc, char* argv[]) {
   unique_ptr<MultibodyPlant<AutoDiffXd>> plant_autodiff =
       std::make_unique<MultibodyPlant<AutoDiffXd>>(plant);
 
+  std::cout << "folder path: " << FLAGS_folder_path << std::endl;
+  std::cout << "trajectory name: " << FLAGS_trajectory_name << std::endl;
+
   const LcmTrajectory& loaded_traj = LcmTrajectory(
       FLAGS_folder_path + FLAGS_trajectory_name);
   std::cout << "Saved trajectory names: " << std::endl;

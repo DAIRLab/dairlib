@@ -140,7 +140,7 @@ cc_binary(
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie:simulator_drift",
-        "//examples/Cassie/osc_walk",
+        "//examples/Cassie/osc",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",

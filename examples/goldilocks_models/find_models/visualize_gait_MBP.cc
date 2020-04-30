@@ -262,7 +262,7 @@ void visualizeGait(int argc, char* argv[]) {
     }
     PiecewisePolynomial<double> pp_xtraj =
         (FLAGS_construct_cubic)
-            ? PiecewisePolynomial<double>::Cubic(T_breakpoint, Y, Y_dot)
+            ? PiecewisePolynomial<double>::CubicHermite(T_breakpoint, Y, Y_dot)
             : PiecewisePolynomial<double>::FirstOrderHold(T_breakpoint, Y);
 
     // Create MBP

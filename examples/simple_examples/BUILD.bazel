@@ -3,33 +3,29 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 # The tags "manual" prevents the files from being built when
-# the user types "..." in bazel build commmand. 
+# the user types "..." in bazel build commmand.
 cc_binary(
     name = "polynomial_trajectory_example",
-    tags = ["manual"], 
     srcs = ["polynomial_trajectory_example.cc"],
     deps = [
-            "//systems/framework:vector",
-            "@drake//common/trajectories:piecewise_polynomial",
-            ]
+        "//systems/framework:vector",
+        "@drake//common/trajectories:piecewise_polynomial",
+    ],
 )
 
 cc_binary(
     name = "exponential_trajectory_example",
-    tags = ["manual"], 
     srcs = ["exponential_trajectory_example.cc"],
     deps = [
-            "//systems/framework:vector",
-            "@drake//common/trajectories:piecewise_polynomial",
-            ]
+        "//systems/framework:vector",
+        "@drake//common/trajectories:piecewise_polynomial",
+    ],
 )
 
 cc_binary(
     name = "autoDiff_example",
-    tags = ["manual"], 
     srcs = ["autoDiff_example.cc"],
     deps = [
         "@drake//math:gradient",
     ],
 )
-

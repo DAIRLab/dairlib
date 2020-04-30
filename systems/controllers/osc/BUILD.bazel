@@ -14,6 +14,8 @@ cc_library(
         ":osc_tracking_data",
         ":osc_utils",
         "//attic/multibody:utils",
+        "//common:eigen_utils",
+        "//systems:robot_lcm_systems",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

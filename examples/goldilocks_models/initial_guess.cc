@@ -14,27 +14,29 @@ MatrixXd get_theta_scale(const string directory, int iter){
     return diag_theta_scale;
 }
 
-MatrixXd get_gamma_scale(int gamma_length, double min_sl, double max_sl, double min_gi, double max_gi){
+MatrixXd get_gamma_scale(int gamma_length, double min_sl, double max_sl, double min_gi, double max_gi,
+        double min_tr, double max_tr){
     VectorXd gamma_scale = VectorXd::Ones(gamma_length);
 //    If one of the ground incline and stride length is fixed, no need to scale
-    if( ! ((min_gi == max_gi) || (min_sl == max_sl)) )
+    if( ! ((min_gi == max_gi) || (min_sl == max_sl) || (min_tr == max_tr)) )
     {
-        gamma_scale << 1/pow(max_gi-min_gi,2), 1/pow(max_sl-min_sl,2);
+        gamma_scale << 1/pow(max_gi-min_gi,2), 1/pow(max_sl-min_sl,2), 1/pow(max_tr-min_tr,2);
     }
     MatrixXd diag_gamma_scale = gamma_scale.asDiagonal();
     return diag_gamma_scale;
 }
 
 string set_initial_guess(const string directory, int iter, int sample, int total_sample_num,
-                         double min_sl, double max_sl, double min_gi, double max_gi) {
+                         double min_sl, double max_sl, double min_gi, double max_gi, double min_tr,
+                         double max_tr) {
     /* define some parameters used in interpolation
 * theta_range :decide the range of theta to use in interpolation
 * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
 */
     double theta_range = 1; //Have not tuned yet!!
-    int gamma_dimension = 2;
+    int gamma_dimension = 3;
     MatrixXd theta_scale = get_theta_scale(directory, iter);
-    MatrixXd gamma_scale = get_gamma_scale(gamma_dimension, min_sl, max_sl, min_gi, max_gi);
+    MatrixXd gamma_scale = get_gamma_scale(gamma_dimension, min_sl, max_sl, min_gi, max_gi, min_tr, max_tr);
 //    initialize variables used for setting initial guess
     VectorXd initial_guess;
     VectorXd weight_theta;
@@ -47,8 +49,10 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                                               + string("_ground_incline.csv"));
     MatrixXd current_stride_length = readCSV(directory + to_string(iter) + string("_") + to_string(sample)
                                              + string("_stride_length.csv"));
+    MatrixXd current_turning_rate = readCSV(directory + to_string(iter) + string("_") + to_string(sample)
+                                             + string("_turning_rate.csv"));
     VectorXd current_gamma(gamma_dimension);
-    current_gamma << current_ground_incline(0, 0), current_stride_length(0, 0);
+    current_gamma << current_ground_incline(0, 0), current_stride_length(0, 0), current_turning_rate(0,0);
 //    For iter = 1, theta_1 is the same with theta_0. So use the results of iter_0.
     if(iter == 1)
     {
@@ -63,8 +67,10 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                         +to_string(sample_num) + string("_ground_incline.csv"));
                 MatrixXd past_stride_length = readCSV(directory + to_string(iter-1) + string("_")
                         + to_string(sample_num) + string("_stride_length.csv"));
+                MatrixXd past_turning_rate = readCSV(directory + to_string(iter-1) + string("_")
+                        + to_string(sample_num) + string("_turning_rate.csv"));
                 VectorXd past_gamma(gamma_dimension);
-                past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0);
+                past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0,0);
                 double distance_gamma = ((past_gamma - current_gamma).transpose()*gamma_scale*
                                          (past_gamma - current_gamma))(0,0);
                 if (distance_gamma < distance_gamma_min) {
@@ -99,8 +105,10 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                             +to_string(sample_num) + string("_ground_incline.csv"));
                     MatrixXd past_stride_length = readCSV(directory + to_string(past_iter) + string("_")
                             + to_string(sample_num) + string("_stride_length.csv"));
+                    MatrixXd past_turning_rate = readCSV(directory + to_string(past_iter) + string("_")
+                                                          + to_string(sample_num) + string("_turning_rate.csv"));
                     VectorXd past_gamma(gamma_dimension);
-                    past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0);
+                    past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0, 0);
                     double distance_gamma =  ((past_gamma - current_gamma).transpose() * gamma_scale *
                             (past_gamma - current_gamma))(0,0);
                     VectorXd w_to_interpolate = readCSV(directory + to_string(past_iter) + string("_")

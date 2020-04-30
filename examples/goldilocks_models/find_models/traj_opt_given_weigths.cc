@@ -151,9 +151,12 @@ void extractResult(VectorXd& w_sol,
                    const MatrixXd& B_tau,
                    const VectorXd & theta_s, const VectorXd & theta_sDDot,
                    double stride_length, double ground_incline,
+                   double turning_rate,
                    double duration, int max_iter,
                    const string& directory,
                    const string& init_file, const string& prefix,
+                   const vector<std::shared_ptr<VectorXd>>& c_vec,
+                   const vector<std::shared_ptr<int>>& is_success_vec,
                    double Q_double, double R_double,
                    double eps_reg,
                    bool is_get_nominal,
@@ -207,6 +210,7 @@ void extractResult(VectorXd& w_sol,
       " (" + to_string(n_rerun) + ")"
       " | " + to_string(stride_length) +
       " | " + to_string(ground_incline) +
+      " | " + to_string(turning_rate) +
       " | " + init_file +
       " | " + to_string(solution_result) +
       " | " + to_string(elapsed.count()) +
@@ -217,6 +221,8 @@ void extractResult(VectorXd& w_sol,
   // Check which solver we are using
   // cout << "Solver: " << result.get_solver_id().name() << endl;
 
+  // Reminder: if you change the algorithm in the next few lines, you also need
+  // to change the one in postProcessing
   cout << "(sample_idx, n_rerun, N_rerun, is_success) = (" << sample_idx << ", "
        << n_rerun << ", " << N_rerun << ", " << result.is_success() << ")\n";
   if (n_rerun > N_rerun) {
@@ -241,6 +247,8 @@ void extractResult(VectorXd& w_sol,
   if (result.is_success()) is_success << 1;
   else is_success << 0;
   writeCSV(directory + prefix + string("is_success.csv"), is_success);
+
+  *(is_success_vec[sample_idx]) = result.is_success()? 1 : 0;
 
   // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt, result, 1e-5);
   // cout << "constraint_satisfied = " << constraint_satisfied << endl;
@@ -310,6 +318,9 @@ void extractResult(VectorXd& w_sol,
   c_without_tau << c(0) - tau_cost;
   writeCSV(directory + prefix + string("c.csv"), c);
   writeCSV(directory + prefix + string("c_without_tau.csv"), c_without_tau);
+
+  c_vec[sample_idx]->resizeLike(c);
+  *(c_vec[sample_idx]) = c;
 
   // Testing
   /*bool is_check_tau = true;
@@ -384,12 +395,18 @@ void postProcessing(const VectorXd& w_sol,
                     int n_feature_sDDot,
                     const MatrixXd& B_tau,
                     const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                    double stride_length, double ground_incline,
                     double duration, int max_iter,
                     const string& directory,
                     const string& init_file,
                     const string& prefix,
-                    const vector<std::shared_ptr<MatrixXd>> & H_vec,
+                    const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
+                    const vector<std::shared_ptr<MatrixXd>>& A_vec,
+                    const vector<std::shared_ptr<MatrixXd>>& H_vec,
+                    const vector<std::shared_ptr<VectorXd>>& y_vec,
+                    const vector<std::shared_ptr<VectorXd>>& lb_vec,
+                    const vector<std::shared_ptr<VectorXd>>& ub_vec,
+                    const vector<std::shared_ptr<VectorXd>>& b_vec,
+                    const vector<std::shared_ptr<MatrixXd>>& B_vec,
                     double Q_double, double R_double,
                     double eps_reg,
                     bool is_get_nominal,
@@ -484,9 +501,12 @@ void postProcessing(const VectorXd& w_sol,
     writeCSV(directory + string("theta_sDDot_new_index.csv"), new_idx);
 
   } else {
-    if ((result.get_optimal_cost() > cost_threshold_for_update) &&
-        (n_rerun > N_rerun)) {
-      return;
+    if (n_rerun > N_rerun) {
+      if (!result.is_success()) {
+        return;
+      } else if (result.get_optimal_cost() > cost_threshold_for_update) {
+        return;
+      }
     }
 
     // Assume theta is fixed. Get the linear approximation of
@@ -556,30 +576,39 @@ void postProcessing(const VectorXd& w_sol,
     /*augmentConstraintToFixThetaScaling(B, A, y, lb, ub,
                                        n_s, n_feature_s, theta_s, sample_idx);*/
 
-    // Push the solution to the vector
-    /*w_sol_vec->push_back(w_sol);
-    H_vec->push_back(H);
-    b_vec->push_back(b);
-    c_vec->push_back(c);
-    A_vec->push_back(A);
-    lb_vec->push_back(lb);
-    ub_vec->push_back(ub);
-    y_vec->push_back(y);
-    B_vec->push_back(B);*/
-
     // Store the vectors and matrices
     // cout << "\nStoring vectors and matrices into csv.\n";
-//    writeCSV(directory + prefix + string("H.csv"), H);
+    /*writeCSV(directory + prefix + string("H.csv"), H);
     writeCSV(directory + prefix + string("b.csv"), b);
     writeCSV(directory + prefix + string("A.csv"), A);
     writeCSV(directory + prefix + string("lb.csv"), lb);
     writeCSV(directory + prefix + string("ub.csv"), ub);
     writeCSV(directory + prefix + string("y.csv"), y);
-    writeCSV(directory + prefix + string("B.csv"), B);
+    writeCSV(directory + prefix + string("B.csv"), B);*/
 
-    H_vec[sample_idx]->resizeLike(H); *(H_vec[sample_idx]) = H;
-
-
+//    auto start = std::chrono::high_resolution_clock::now();
+    w_sol_vec[sample_idx]->resizeLike(w_sol);
+    A_vec[sample_idx]->resizeLike(A);
+    H_vec[sample_idx]->resizeLike(H);
+    y_vec[sample_idx]->resizeLike(y);
+    lb_vec[sample_idx]->resizeLike(lb);
+    ub_vec[sample_idx]->resizeLike(ub);
+    b_vec[sample_idx]->resizeLike(b);
+    B_vec[sample_idx]->resizeLike(B);
+    *(w_sol_vec[sample_idx]) = w_sol;
+    *(A_vec[sample_idx]) = A;
+    *(H_vec[sample_idx]) = H;
+    *(y_vec[sample_idx]) = y;
+    *(lb_vec[sample_idx]) = lb;
+    *(ub_vec[sample_idx]) = ub;
+    *(b_vec[sample_idx]) = b;
+    *(B_vec[sample_idx]) = B;
+    /*auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    cout << "time it takes to save matrices/vectors to RAM: " << elapsed.count()
+         << endl;*/
+    // It takes about 5 ms or 25 ms to store the above variables. (I guess 25ms
+    // is when it needs to resize to bigger memory)
 
     // Store s, ds, dds and tau into csv files
     // cout << "\nStoring s, ds and dds into csv.\n";
@@ -1084,10 +1113,20 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           const MatrixXd& B_tau,
                           const VectorXd & theta_s, const VectorXd & theta_sDDot,
                           double stride_length, double ground_incline,
+                          double turning_rate,
                           double duration, int n_node, int max_iter,
                           const string& directory,
                           const string& init_file, const string& prefix,
-                          const vector<std::shared_ptr<MatrixXd>> & H_vec,
+                          const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
+                          const vector<std::shared_ptr<MatrixXd>>& A_vec,
+                          const vector<std::shared_ptr<MatrixXd>>& H_vec,
+                          const vector<std::shared_ptr<VectorXd>>& y_vec,
+                          const vector<std::shared_ptr<VectorXd>>& lb_vec,
+                          const vector<std::shared_ptr<VectorXd>>& ub_vec,
+                          const vector<std::shared_ptr<VectorXd>>& b_vec,
+                          const vector<std::shared_ptr<VectorXd>>& c_vec,
+                          const vector<std::shared_ptr<MatrixXd>>& B_vec,
+                          const vector<std::shared_ptr<int>>& is_success_vec,
                           double Q_double, double R_double,
                           double all_cost_scale,
                           double eps_reg,
@@ -1441,9 +1480,11 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                 plant, plant_autoDiff,
                 n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                 theta_s, theta_sDDot,
-                stride_length, ground_incline,
+                stride_length, ground_incline, turning_rate,
                 duration, max_iter,
                 directory, init_file, prefix,
+                c_vec,
+                is_success_vec,
                 Q_double, R_double, eps_reg,
                 is_get_nominal, is_zero_touchdown_impact,
                 extend_model, is_add_tau_in_cost,
@@ -1456,10 +1497,16 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                  plant, plant_autoDiff,
                  n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                  theta_s, theta_sDDot,
-                 stride_length, ground_incline,
                  duration, max_iter,
                  directory, init_file, prefix,
+                 w_sol_vec,
+                 A_vec,
                  H_vec,
+                 y_vec,
+                 lb_vec,
+                 ub_vec,
+                 b_vec,
+                 B_vec,
                  Q_double, R_double, eps_reg,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
@@ -1477,12 +1524,22 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    const MatrixXd& B_tau,
                    const VectorXd & theta_s, const VectorXd & theta_sDDot,
                    double stride_length, double ground_incline,
+                   double turning_rate,
                    double duration, int n_node, int max_iter,
                    double major_optimality_tol,
                    double major_feasibility_tol,
                    const string& directory,
                    const string& init_file, const string& prefix,
+                   const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
+                   const vector<std::shared_ptr<MatrixXd>>& A_vec,
                    const vector<std::shared_ptr<MatrixXd>>& H_vec,
+                   const vector<std::shared_ptr<VectorXd>>& y_vec,
+                   const vector<std::shared_ptr<VectorXd>>& lb_vec,
+                   const vector<std::shared_ptr<VectorXd>>& ub_vec,
+                   const vector<std::shared_ptr<VectorXd>>& b_vec,
+                   const vector<std::shared_ptr<VectorXd>>& c_vec,
+                   const vector<std::shared_ptr<MatrixXd>>& B_vec,
+                   const vector<std::shared_ptr<int>>& is_success_vec,
                    double Q_double, double R_double, double all_cost_scale,
                    double eps_reg,
                    bool is_get_nominal,
@@ -1522,7 +1579,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   // Cost on position
   double w_q_hip_roll = 1 * 5 * 10 * all_cost_scale;
   double w_q_hip_yaw = 1 * 5 * all_cost_scale;
-  double w_q_quat_xyz = 1 * 5 * 10 * all_cost_scale;
+  double w_q_quat = 1 * 5 * 10 * all_cost_scale;
 
   // Optional constraints
   // This seems to be important at higher walking speeds
@@ -1564,7 +1621,12 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
       "hip_roll",
       "hip_yaw",
   };
-  vector<string> sym_joint_names{"hip_pitch", "knee", "ankle_joint", "toe"};
+  vector<string> sym_joint_names;
+  if (turning_rate == 0) {
+    sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
+  } else {
+    sym_joint_names = {"hip_pitch"};
+  }
   vector<string> joint_names{};
   vector<string> motor_names{};
   for (const auto& l_r_pair : l_r_pairs) {
@@ -1574,7 +1636,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     }
     for (unsigned int i = 0; i < sym_joint_names.size(); i++) {
       joint_names.push_back(sym_joint_names[i] + l_r_pair.first);
-      if (sym_joint_names[i].compare("ankle_joint") != 0) {
+      if (sym_joint_names[i] != "ankle_joint") {
         motor_names.push_back(sym_joint_names[i] + l_r_pair.first + "_motor");
       }
     }
@@ -1792,41 +1854,104 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   trajopt->AddDurationBounds(duration, duration);
 
   // x position constraint
-  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-  trajopt->AddBoundingBoxConstraint(stride_length, stride_length,
-                                    xf(pos_map.at("base_x")));
+  if (turning_rate == 0) {
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
+    trajopt->AddBoundingBoxConstraint(stride_length, stride_length,
+                                      xf(pos_map.at("base_x")));
+  }
 
-  // testing(initial floating base)
-  // trajopt->AddLinearConstraint(x0(pos_map.at("base_z")) == 1);
-  // trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) == 0);
+  // Constraint on initial floating base quaternion
+  if (true /*&& ground_incline == 0*/) {
+    trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qx")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qy")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qz")));
+  }
+
+  // Constraint on final floating base quaternion
+  // TODO: below is a naive version. You can implement the constraint using
+  // rotation matrix and mirror around the x-z plane of local frame (however,
+  // the downside is the potential complexity of constraint)
+  double turning_angle = turning_rate * duration;
+  if (turning_rate != 0) {
+    trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
+                                      cos(turning_angle / 2),
+                                      xf(pos_map.at("base_qw")));
+    trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
+    trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
+    trajopt->AddBoundingBoxConstraint(sin(turning_angle / 2),
+                                      sin(turning_angle / 2),
+                                      xf(pos_map.at("base_qz")));
+  }
+
+  // floating base constraint when turning
+  if (turning_rate != 0) {
+    double radius = stride_length / abs(turning_angle);
+    int sign = (turning_angle >= 0) ? 1 : -1;
+    double delta_x = radius * sin(abs(turning_angle));
+    double delta_y = sign * radius * (1 - cos(turning_angle));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
+    trajopt->AddBoundingBoxConstraint(delta_x, delta_x,
+                                      xf(pos_map.at("base_x")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
+    trajopt->AddBoundingBoxConstraint(delta_y, delta_y,
+                                      xf(pos_map.at("base_y")));
+
+    // floating base velocity constraint at mid point
+    // TODO: double check that the floating base velocity is wrt local frame
+    trajopt->AddBoundingBoxConstraint(stride_length / duration,
+                                      stride_length / duration,
+                                      x_mid(n_q + vel_map.at("base_vx")));
+    trajopt->AddBoundingBoxConstraint(0, 0, x_mid(n_q + vel_map.at("base_vy")));
+    trajopt->AddBoundingBoxConstraint(turning_rate,
+                                      turning_rate,
+                                      x_mid(n_q + vel_map.at("base_wz")));
+
+    // velocity constraint at the end point
+    // TODO: double check that the floating base velocity is wrt local frame
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+        xf(n_q + vel_map.at("base_wx")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+        -xf(n_q + vel_map.at("base_wy")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+        xf(n_q + vel_map.at("base_wz")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+        xf(n_q + vel_map.at("base_vx")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+        -xf(n_q + vel_map.at("base_vy")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+        xf(n_q + vel_map.at("base_vz")));
+  }
 
   // Floating base periodicity
-  trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
-      xf(pos_map.at("base_qw")));
-  trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
-      -xf(pos_map.at("base_qx")));
-  trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
-      xf(pos_map.at("base_qy")));
-  trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
-      -xf(pos_map.at("base_qz")));
-  trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) ==
-      -xf(pos_map.at("base_y")));
   if (ground_incline == 0) {
     trajopt->AddLinearConstraint(x0(pos_map.at("base_z")) ==
         xf(pos_map.at("base_z")));
   }
-  trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-      xf(n_q + vel_map.at("base_wx")));
-  trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-      -xf(n_q + vel_map.at("base_wy")));
-  trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-      xf(n_q + vel_map.at("base_wz")));
-  trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-      xf(n_q + vel_map.at("base_vx")));
-  trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
-      -xf(n_q + vel_map.at("base_vy")));
-  trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-      xf(n_q + vel_map.at("base_vz")));
+  if (turning_rate == 0) {
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
+        xf(pos_map.at("base_qw")));
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
+        -xf(pos_map.at("base_qx")));
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
+        xf(pos_map.at("base_qy")));
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
+        -xf(pos_map.at("base_qz")));
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) ==
+        -xf(pos_map.at("base_y")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+        xf(n_q + vel_map.at("base_wx")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+        -xf(n_q + vel_map.at("base_wy")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+        xf(n_q + vel_map.at("base_wz")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+        xf(n_q + vel_map.at("base_vx")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+        -xf(n_q + vel_map.at("base_vy")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+        xf(n_q + vel_map.at("base_vz")));
+  }
 
   // The legs joint positions/velocities/torque should be mirrored between legs
   // (notice that hip yaw and roll should be asymmetric instead of symmetric.)
@@ -1855,7 +1980,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
           x0(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.first + "dot")) ==
               xf(n_q + vel_map.at(sym_joint_names[i] + l_r_pair.second + "dot")));
       // inputs (ankle joint is not actuated)
-      if (sym_joint_names[i].compare("ankle_joint") != 0) {
+      if (sym_joint_names[i] != "ankle_joint") {
         trajopt->AddLinearConstraint(
             u0(act_map.at(sym_joint_names[i] + l_r_pair.first + "_motor")) ==
                 uf(act_map.at(sym_joint_names[i] + l_r_pair.second + "_motor")));
@@ -1895,24 +2020,26 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 
   // toe position constraint in y direction (avoid leg crossing)
   VectorXd one = VectorXd::Ones(1);
-  auto left_foot_constraint = std::make_shared<PointPositionConstraint<double>>(
-      plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
-      0.05 * one, std::numeric_limits<double>::infinity() * one,
-      "left_foot_constraint_y");
-  auto right_foot_constraint =
-      std::make_shared<PointPositionConstraint<double>>(
-          plant, "toe_right", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
-          -std::numeric_limits<double>::infinity() * one, -0.05 * one,
-          "right_foot_constraint_y");
-  // scaling
-  std::unordered_map<int, double> odbp_constraint_scale;
+  std::unordered_map<int, double> odbp_constraint_scale; // scaling
   odbp_constraint_scale.insert(std::pair<int, double>(0, s));
-  left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
-  right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
-  for (int index = 0; index < num_time_samples[0]; index++) {
-    auto x = trajopt->state(index);
-    trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
-    trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
+  if (turning_rate == 0) {
+    auto left_foot_constraint = std::make_shared<PointPositionConstraint<double>>(
+        plant, "toe_left", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
+        0.05 * one, std::numeric_limits<double>::infinity() * one,
+        "left_foot_constraint_y");
+    auto right_foot_constraint =
+        std::make_shared<PointPositionConstraint<double>>(
+            plant, "toe_right", Vector3d::Zero(), MatrixXd::Identity(3, 3).row(1),
+            -std::numeric_limits<double>::infinity() * one, -0.05 * one,
+            "right_foot_constraint_y");
+    // scaling
+    left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+    right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+    for (int index = 0; index < num_time_samples[0]; index++) {
+      auto x = trajopt->state(index);
+      trajopt->AddConstraint(left_foot_constraint, x.head(n_q));
+      trajopt->AddConstraint(right_foot_constraint, x.head(n_q));
+    }
   }
   // toe height constraint at mid stance (avoid foot scuffing)
   Vector3d z_hat(0, 0, 1);
@@ -1927,10 +2054,15 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     trajopt->AddConstraint(right_foot_constraint_z0, x_mid.head(n_q));*/
 
   // testing -- swing foot contact point height constraint
-  for (int index = 1; index < num_time_samples[0] - 1; index++) {
+  for (int index = 0; index < num_time_samples[0] - 1; index++) {
     double h_min = 0;
     if (index == int(num_time_samples[0]/2)) {
       h_min = 0.1;  // 10 centimeter high in the mid point
+    }
+
+    double h_max = std::numeric_limits<double>::infinity();
+    if (index == 0) {
+      h_max = 0;
     }
 
     auto x_i = trajopt->state(index);
@@ -1938,12 +2070,11 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     auto right_foot_constraint_z1 =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_right", pt_front_contact, T_ground_incline.row(2),
-            h_min * one, std::numeric_limits<double>::infinity() * one,
-            "right_foot_constraint_z");
+            h_min * one, h_max * one, "right_foot_constraint_z");
     auto right_foot_constraint_z2 =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_right", pt_rear_contact, T_ground_incline.row(2),
-            h_min * one, std::numeric_limits<double>::infinity() * one);
+            h_min * one, h_max * one);
 
     // scaling
     right_foot_constraint_z1->SetConstraintScaling(odbp_constraint_scale);
@@ -1972,11 +2103,13 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 
   // testing -- swing foot pos at mid stance is the average of the start and the
   // end of the stance
-  auto swing_foot_mid_stance_xy_constraint =
-      std::make_shared<SwingFootXYPosAtMidStanceConstraint>(&plant, "toe_right",
-                                                            Vector3d::Zero());
-  trajopt->AddConstraint(swing_foot_mid_stance_xy_constraint,
-                         {x0.head(n_q), x_mid.head(n_q), xf.head(n_q)});
+//  if (turning_rate == 0) {
+    auto swing_foot_mid_stance_xy_constraint =
+        std::make_shared<SwingFootXYPosAtMidStanceConstraint>(&plant, "toe_right",
+                                                              Vector3d::Zero());
+    trajopt->AddConstraint(swing_foot_mid_stance_xy_constraint,
+                           {x0.head(n_q), x_mid.head(n_q), xf.head(n_q)});
+//  }
 
   // testing -- lock the swing toe joint position (otherwise it shakes too much)
   // Somehow the swing toe doesn't shake that much anymore after adding
@@ -1988,10 +2121,6 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     trajopt->AddLinearConstraint(x0(n_q - 1) + d(0) == x1(n_q - 1));
   }*/
 
-  // Testing -- constraint on initial floating base
-  if (true /*&& ground_incline == 0*/) {
-    trajopt->AddConstraint(x0(0) == 1);
-  }
   // Testing -- constraint on normal force
   for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
     for (int index = 0; index < num_time_samples[mode]; index++) {
@@ -2118,10 +2247,16 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
       trajopt->AddCost(w_q_hip_yaw * q.transpose() * q);
     }
   }
-  if (w_q_quat_xyz) {
+  if (w_q_quat) {
     for (int i = 0; i < N; i++) {
-      auto q = trajopt->state(i).segment(1, 3);
-      trajopt->AddCost(w_q_quat_xyz * q.transpose() * q);
+      // get desired turning rate at knot point i
+      double turning_rate_i = turning_rate * i / (N - 1);
+      VectorXd desired_quat(4);
+      desired_quat << cos(turning_rate_i / 2), 0, 0, sin(turning_rate_i / 2);
+
+      auto quat = trajopt->state(i).head(4);
+      trajopt->AddCost(w_q_quat * (quat - desired_quat).transpose() *
+                       (quat - desired_quat));
     }
   }
 
@@ -2201,9 +2336,11 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                 plant, plant_autoDiff,
                 n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                 theta_s, theta_sDDot,
-                stride_length, ground_incline,
+                stride_length, ground_incline, turning_rate,
                 duration, max_iter,
                 directory, init_file, prefix,
+                c_vec,
+                is_success_vec,
                 Q_double, R_double, eps_reg,
                 is_get_nominal, is_zero_touchdown_impact,
                 extend_model, is_add_tau_in_cost,
@@ -2216,10 +2353,16 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                  plant, plant_autoDiff,
                  n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                  theta_s, theta_sDDot,
-                 stride_length, ground_incline,
                  duration, max_iter,
                  directory, init_file, prefix,
+                 w_sol_vec,
+                 A_vec,
                  H_vec,
+                 y_vec,
+                 lb_vec,
+                 ub_vec,
+                 b_vec,
+                 B_vec,
                  Q_double, R_double, eps_reg,
                  is_get_nominal, is_zero_touchdown_impact,
                  extend_model, is_add_tau_in_cost,
@@ -2248,7 +2391,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     cout << "w_u_diff = " << w_u_diff << endl;
     cout << "w_q_hip_roll = " << w_q_hip_roll << endl;
     cout << "w_q_hip_yaw = " << w_q_hip_yaw << endl;
-    cout << "w_q_quat_xyz = " << w_q_quat_xyz << endl;
+    cout << "w_q_quat = " << w_q_quat << endl;
 
     // Calculate each term of the cost
     double total_cost = 0;
@@ -2335,8 +2478,14 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     // add cost on quaternion
     double cost_q_quat_xyz = 0;
     for (int i = 0; i < N; i++) {
-      auto q = result.GetSolution(gm_traj_opt.dircon->state(i).segment(1, 3));
-      cost_q_quat_xyz += w_q_quat_xyz * q.transpose() * q;
+      // get desired turning rate at knot point i
+      double turning_rate_i = turning_rate * i / (N - 1);
+      VectorXd desired_quat(4);
+      desired_quat << cos(turning_rate_i / 2), 0, 0, sin(turning_rate_i / 2);
+
+      auto quat = result.GetSolution(gm_traj_opt.dircon->state(i).head(4));
+      cost_q_quat_xyz +=
+          w_q_quat * (quat - desired_quat).transpose() * (quat - desired_quat);
     }
     total_cost += cost_q_quat_xyz;
     cout << "cost_q_quat_xyz = " << cost_q_quat_xyz << endl;
@@ -2353,18 +2502,23 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          const MatrixXd& B_tau,
                          const VectorXd & theta_s, const VectorXd & theta_sDDot,
                          double stride_length, double ground_incline,
+                         double turning_rate,
                          double duration, int n_node, int max_iter,
                          double major_optimality_tol,
                          double major_feasibility_tol,
                          const string& directory,
                          string init_file, string prefix,
-                         /*vector<VectorXd> * w_sol_vec,
-                         vector<MatrixXd> * A_vec, */const vector<std::shared_ptr<MatrixXd>>& H_vec,/*
-                         vector<VectorXd> * y_vec,
-                         vector<VectorXd> * lb_vec, vector<VectorXd> * ub_vec,
-                         vector<VectorXd> * b_vec,
-                         vector<VectorXd> * c_vec,
-                         vector<MatrixXd> * B_vec,*/
+                         const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
+                         const vector<std::shared_ptr<MatrixXd>>& A_vec,
+                         const vector<std::shared_ptr<MatrixXd>>& H_vec,
+                         const vector<std::shared_ptr<VectorXd>>& y_vec,
+                         const vector<std::shared_ptr<VectorXd>>& lb_vec,
+                         const vector<std::shared_ptr<VectorXd>>& ub_vec,
+                         const vector<std::shared_ptr<VectorXd>>& b_vec,
+                         const vector<std::shared_ptr<VectorXd>>& c_vec,
+                         const vector<std::shared_ptr<MatrixXd>>& B_vec,
+                         const vector<std::shared_ptr<int>>& is_success_vec,
+                         const vector<std::shared_ptr<int>>& thread_finished_vec,
                          double Q_double, double R_double,
                          double all_cost_scale,
                          double eps_reg,
@@ -2375,14 +2529,44 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          int sample_idx, int n_rerun,
                          double cost_threshold_for_update, int N_rerun,
                          int rom_option, int robot_option) {
+
+  //Testing
+//  if (sample_idx == 0) {
+//    int ret = 0;
+//    auto start = std::chrono::high_resolution_clock::now();
+//    auto finish = std::chrono::high_resolution_clock::now();
+//    std::chrono::duration<double> elapsed = finish - start;
+//    double goal_time_for_next_print = 5;
+//    while(elapsed.count() < 120.0) {
+//      finish = std::chrono::high_resolution_clock::now();
+//      elapsed = finish - start;
+//      if (elapsed.count() > goal_time_for_next_print) {
+//        ret = std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
+//        ret = std::system("top -bn2 | grep \"Cpu(s)\" | sed \"s/.*, *\\([0-9.]*\\)%* id.*/\1/\" | awk '{print 100 - $1\"%\"}'"); // print the CPU usage
+//        ret = std::system("free -m"); // print memory usage
+//
+//        goal_time_for_next_print += 5;
+//      }
+//    }
+//  }
+
   if (robot_option == 0) {
     fiveLinkRobotTrajOpt(plant, plant_autoDiff,
                          n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                          theta_s, theta_sDDot,
-                         stride_length, ground_incline,
+                         stride_length, ground_incline, turning_rate,
                          duration, n_node, max_iter,
                          directory, init_file, prefix,
+                         w_sol_vec,
+                         A_vec,
                          H_vec,
+                         y_vec,
+                         lb_vec,
+                         ub_vec,
+                         b_vec,
+                         c_vec,
+                         B_vec,
+                         is_success_vec,
                          Q_double, R_double, all_cost_scale, eps_reg,
                          is_get_nominal, is_zero_touchdown_impact,
                          extend_model, is_add_tau_in_cost,
@@ -2392,11 +2576,20 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
     cassieTrajOpt(plant, plant_autoDiff,
                   n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                   theta_s, theta_sDDot,
-                  stride_length, ground_incline,
+                  stride_length, ground_incline, turning_rate,
                   duration, n_node, max_iter,
                   major_optimality_tol, major_feasibility_tol,
                   directory, init_file, prefix,
+                  w_sol_vec,
+                  A_vec,
                   H_vec,
+                  y_vec,
+                  lb_vec,
+                  ub_vec,
+                  b_vec,
+                  c_vec,
+                  B_vec,
+                  is_success_vec,
                   Q_double, R_double, all_cost_scale, eps_reg,
                   is_get_nominal, is_zero_touchdown_impact,
                   extend_model, is_add_tau_in_cost,
@@ -2405,9 +2598,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
   }
 
   // For multithreading purpose. Indicate this function has ended.
-  VectorXd thread_finished(1);
-  thread_finished << 1;
-  writeCSV(directory + prefix + string("thread_finished.csv"), thread_finished);
+  *(thread_finished_vec[sample_idx]) = 1;
 }
 
 }  // namespace dairlib::goldilocks_models

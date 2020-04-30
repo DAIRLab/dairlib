@@ -37,7 +37,7 @@ PiecewisePolynomial<double> createCubicSplineGivenSAndSdot(
   }
 
   // Construct splines
-  return PiecewisePolynomial<double>::Cubic(T_breakpoint, s, s_dot);
+  return PiecewisePolynomial<double>::CubicHermite(T_breakpoint, s, s_dot);
 }
 
 

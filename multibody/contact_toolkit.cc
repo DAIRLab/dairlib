@@ -113,7 +113,7 @@ VectorX<T> ContactToolkit<T>::CalcTimeDerivatives(const Context<T>& context,
 
 
   MatrixX<T> M(num_velocities, num_velocities);
-  plant_.CalcMassMatrixViaInverseDynamics(context, &M);
+  plant_.CalcMassMatrix(context, &M);
 
   // Reusing the code in CalcMVDot as the same computation is required.
   VectorX<T> right_hand_side = CalcMVDot(context, lambda);

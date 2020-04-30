@@ -1,11 +1,12 @@
 #include <memory>
 #include <utility>
-
 #include <gtest/gtest.h>
-#include "examples/Cassie/cassie_utils.h"
+
 #include "multibody/contact_toolkit.h"
+#include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
 #include "drake/multibody/tree/revolute_joint.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 
 namespace dairlib {
 namespace systems {
@@ -52,11 +53,19 @@ class ContactToolkitTest : public ::testing::Test {
     addCassieMultibody(plant_, &scene_graph, true);
     plant_->Finalize();
 
-    const int num_positions = plant_->num_positions();
-    const int num_velocities = plant_->num_velocities();
-    const int num_states = num_positions + num_velocities;
+    auto u_source =
+        builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
+            VectorX<double>::Zero(plant_->num_actuators()));
+    builder.Connect(u_source->get_output_port(),
+                    plant_->get_actuation_input_port());
+    builder.Connect(
+        plant_->get_geometry_poses_output_port(),
+        scene_graph.get_source_pose_port(plant_->get_source_id().value()));
+    builder.Connect(scene_graph.get_query_output_port(),
+                    plant_->get_geometry_query_input_port());
 
-    // Setting the initial Cassie joint angles
+    // Setting the initial Cassie joint angles (standing with little ground
+    // penetration)
     auto diagram = builder.Build();
     std::unique_ptr<Context<double>> diagram_context =
       diagram->CreateDefaultContext();
@@ -64,17 +73,17 @@ class ContactToolkitTest : public ::testing::Test {
       diagram->GetMutableSubsystemContext(*plant_, diagram_context.get());
 
     plant_->GetJointByName<RevoluteJoint>("hip_roll_left").
-        set_angle(&plant_context, .1);
+        set_angle(&plant_context, .01);
     plant_->GetJointByName<RevoluteJoint>("hip_yaw_left").
         set_angle(&plant_context, .01);
     plant_->GetJointByName<RevoluteJoint>("hip_pitch_left").
-        set_angle(&plant_context, -.169);
+        set_angle(&plant_context, .269);
     plant_->GetJointByName<RevoluteJoint>("knee_left").
         set_angle(&plant_context, -.744);
     plant_->GetJointByName<RevoluteJoint>("ankle_joint_left").
         set_angle(&plant_context, .81);
     plant_->GetJointByName<RevoluteJoint>("toe_left").
-        set_angle(&plant_context, -30.0 * M_PI / 180.0);
+        set_angle(&plant_context, -70.0 * M_PI / 180.0);
 
     plant_->GetJointByName<RevoluteJoint>("hip_roll_right").
         set_angle(&plant_context, -.01);
@@ -87,11 +96,10 @@ class ContactToolkitTest : public ::testing::Test {
     plant_->GetJointByName<RevoluteJoint>("ankle_joint_right").
         set_angle(&plant_context, .81);
     plant_->GetJointByName<RevoluteJoint>("toe_right").
-        set_angle(&plant_context, -60.0 * M_PI / 180.0);
+        set_angle(&plant_context, -70.0 * M_PI / 180.0);
 
-    Eigen::Isometry3d transform;
-    transform.linear() = Eigen::Matrix3d::Identity();;
-    transform.translation() = Eigen::Vector3d(0, 0, 1.2);
+    const drake::math::RigidTransformd transform(
+        drake::math::RotationMatrix<double>(), Eigen::Vector3d(0, 0, 1.13));
     plant_->SetFreeBodyPose(&plant_context, plant_->GetBodyByName("pelvis"),
         transform);
 
@@ -108,7 +116,7 @@ class ContactToolkitTest : public ::testing::Test {
     auto contact_results_value =
       plant_->get_contact_results_output_port().Allocate();
     const ContactResults<double>& contact_results =
-      contact_results_value->GetValueOrThrow<ContactResults<double>>();
+      contact_results_value->get_value<ContactResults<double>>();
     // Compute the poses for each geometry in the model.
     plant_->get_contact_results_output_port().Calc(
       plant_context, contact_results_value.get());
@@ -120,8 +128,8 @@ class ContactToolkitTest : public ::testing::Test {
     auto toe_right_ind = plant_->GetBodyByName("toe_right").index();
     std::vector<const drake::multibody::Frame<double>*> frames;
     int k = 0;
-    for (int i = 0; i < contact_results.num_contacts(); i++) {
-      auto info = contact_results.contact_info(i);
+    for (int i = 0; i < contact_results.num_point_pair_contacts(); i++) {
+      auto info = contact_results.point_pair_contact_info(i);
       auto ind_a = info.bodyA_index();
       auto ind_b = info.bodyB_index();
       if ((ind_a == world_ind && ind_b == toe_left_ind) ||
@@ -139,7 +147,7 @@ class ContactToolkitTest : public ::testing::Test {
       }
     }
 
-    std::cout << contact_results.num_contacts() << std::endl;
+    std::cout << contact_results.num_point_pair_contacts() << std::endl;
 
     // Creating the contact info
     contact_info_ = {xA, xB, frames};

@@ -47,14 +47,14 @@ DEFINE_double(v_tol, 0.01,
               "The maximum slipping speed allowed during stiction (m/s)");
 DEFINE_string(state_simulation_channel, "RABBIT_STATE_SIMULATION",
               "Channel to publish/receive state from simulation");
-DEFINE_double(publish_rate, 1000, "Publishing frequency (Hz)");
+DEFINE_double(publish_rate, 2000, "Publishing frequency (Hz)");
 DEFINE_bool(naive, true,
             "Set to true if using the naive approach to hybrid "
             "lqr");
-DEFINE_bool(minimal_coords, false,
+DEFINE_bool(minimal_coords, true,
             "Set to true if using minimal coords for constrained hybrid "
             "lqr");
-DEFINE_bool(contact_driven, false,
+DEFINE_bool(contact_driven, true,
             "Set to true if want to use contact_driven fsm");
 DEFINE_bool(recalculateP, false,
             "Set to true if necessary to recalculate P(t) - for new trajs");

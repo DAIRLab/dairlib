@@ -55,7 +55,7 @@ HybridLQRController::HybridLQRController(
     const vector<shared_ptr<Trajectory<double>>>& state_traj,
     const vector<shared_ptr<Trajectory<double>>>& input_traj,
     const vector<double>& impact_times, string folder_path, bool naive_approach,
-    bool using_min_coords, bool calcP, bool calcL)
+    bool using_min_coords, bool recalculateP, bool recalculateL)
     : plant_(plant),
       plant_ad_(plant_ad),
       contact_info_(contact_info),
@@ -77,21 +77,21 @@ HybridLQRController::HybridLQRController(
       num_modes_(contact_info.size()) {
   //  DRAKE_DEMAND(state_trajs_.end_time() == input_trajs_.end_time());
   DRAKE_DEMAND(n_q_ == n_v_);
-  DRAKE_DEMAND(impact_times.size() == 2 * contact_info.size());
+  DRAKE_DEMAND(impact_times.size() == 2 * num_modes_);
 
   TXZ_ << 1, 0, 0, 0, 0, 1;
 
   // Not as simple as just reversing the vector. Need to change the times as
   // well
   impact_times_rev_ = std::vector<double>(impact_times_.size());
-  for (size_t i = 0; i < impact_times_.size(); ++i) {  // iterate in reverse
+  for (int i = 0; i < impact_times_.size(); ++i) {  // iterate in reverse
     impact_times_rev_[i] = getReverseTime(impact_times_[i]);
   }
   std::reverse(impact_times_rev_.begin(), impact_times_rev_.end());
   //  std::reverse_copy(std::begin(impact_times_), std::end(impact_times_),
   //                    std::begin(impact_times_rev_));
-  contact_info_rev_ = std::vector<ContactInfo<double>>(contact_info.size());
-  contact_info_ad_ = std::vector<ContactInfo<AutoDiffXd>>(contact_info.size());
+  contact_info_rev_ = std::vector<ContactInfo<double>>(num_modes_);
+  contact_info_ad_ = std::vector<ContactInfo<AutoDiffXd>>(num_modes_);
   std::reverse_copy(std::begin(contact_info_), std::end(contact_info_),
                     std::begin(contact_info_rev_));
   std::reverse_copy(std::begin(contact_info_ad), std::end(contact_info_ad),
@@ -117,131 +117,57 @@ HybridLQRController::HybridLQRController(
                           drake::Value<drake::lcmt_contact_results_for_viz>{})
                       .get_index();
 
-  l_trajs_ = std::vector<std::unique_ptr<drake::systems::DenseOutput<double>>>(
-      contact_info.size());
+  l_t_ = std::vector<std::unique_ptr<drake::systems::DenseOutput<double>>>(
+      num_modes_);
   p_t_ = std::vector<std::unique_ptr<drake::systems::DenseOutput<double>>>(
-      contact_info.size());
+      num_modes_);
 
   MatrixXd S_f;
   if (using_min_coords_) {
-    if (!calcP) {
-      const LcmTrajectory& P_traj =
-          LcmTrajectory(folder_path_ + "P_traj");
-
-      const LcmTrajectory::Trajectory& P_mode0 = P_traj.getTrajectory("P0");
-      const LcmTrajectory::Trajectory& P_mode1 = P_traj.getTrajectory("P1");
-      const LcmTrajectory::Trajectory& P_mode2 = P_traj.getTrajectory("P2");
-
-//      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
-//          P_mode0.time_vector, P_mode0.datapoints));
-//      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
-//          P_mode1.time_vector, P_mode1.datapoints));
-//      p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
-//          P_mode2.time_vector, P_mode2.datapoints));
-      p_traj_.push_back(PiecewisePolynomial<double>::CubicShapePreserving(
-          P_mode0.time_vector, P_mode0.datapoints));
-      p_traj_.push_back(PiecewisePolynomial<double>::CubicShapePreserving(
-          P_mode1.time_vector, P_mode1.datapoints));
-      p_traj_.push_back(PiecewisePolynomial<double>::CubicShapePreserving(
-          P_mode2.time_vector, P_mode2.datapoints));
-
-    } else {
+    if (recalculateP) {
       cout << "Calculating minimal coord basis and saving\n";
       calcMinimalCoordBasis();
     }
+    const LcmTrajectory& P_traj =
+        LcmTrajectory(folder_path_ + "P_traj");
+
+    const LcmTrajectory::Trajectory& P_mode0 = P_traj.getTrajectory("P0");
+    const LcmTrajectory::Trajectory& P_mode1 = P_traj.getTrajectory("P1");
+    const LcmTrajectory::Trajectory& P_mode2 = P_traj.getTrajectory("P2");
+
+    p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+        P_mode0.time_vector, P_mode0.datapoints));
+    p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+        P_mode1.time_vector, P_mode1.datapoints));
+    p_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+        P_mode2.time_vector, P_mode2.datapoints));
     MatrixXd P = getMinimalCoordBasis(0.0, 0);
     S_f = P * Qf_ * P.transpose();
   } else {
     S_f = Qf_;
   }
 
-  Eigen::LLT<MatrixXd> lltOfA(S_f);
-  MatrixXd L_f = lltOfA.matrixL();
-
-  std::vector<MatrixXd> s_jump(contact_info.size() - 1);  // not sure yet if we
-  // should store this
-  // REMEMBER, we are integrating "forwards" in backwards time
-  double t0;
-  double tf;
-  for (size_t mode = 0; mode < contact_info.size(); ++mode) {
-    t0 = impact_times_rev_[2 * mode];
-    tf = impact_times_rev_[2 * mode + 1];
-
-    VectorXd l_0 = Map<VectorXd>(L_f.data(), L_f.size());
-    VectorXd defaultParams(0);
-    const InitialValueProblem<double>::OdeContext default_values(
-        t0, l_0, defaultParams);
-    InitialValueProblem<double> ivp(
-        [this](const double& t, const VectorXd& ldot,
-               const VectorXd& k) -> VectorXd { return calcLdot(t, ldot, k); },
-        default_values);
-    cout << "Integrating from t0: " << t0 << " to tf: " << tf << endl;
-    cout << "For contact mode: " << mode << endl;
-    l_trajs_[mode] = ivp.DenseSolve(tf);  // store each segment
-
-    if (mode < (contact_info.size() - 1)) {  // Only if another jump is
-      cout << "Calculating jump map" << endl;
-      VectorXd l_pre = l_trajs_[mode]->Evaluate(tf);
-      MatrixXd L_pre =
-          Map<MatrixXd>(l_pre.data(), sqrt(l_pre.size()), sqrt(l_pre.size()));
-      MatrixXd S_pre = L_pre * L_pre.transpose();  // Retrieve S
-      if (naive_approach) {
-        s_jump[mode] = calcJumpMapNaive(S_pre, mode, tf);
-      } else {
-        s_jump[mode] = calcJumpMap(S_pre, mode, tf);
-      }
-      std::cout << "S_pre map\n" << S_pre << std::endl;
-      std::cout << "S_after map\n" << s_jump[mode] << std::endl;
-      Eigen::LLT<MatrixXd> lltOfS(s_jump[mode]);  // reconstruct L_f
-      L_f = lltOfS.matrixL();
-    }
+  if (recalculateL) {
+    calcCostToGo(S_f);
   }
+  std::string l_traj_filepath = folder_path_ + "L_traj";
+  if(using_min_coords_)
+    l_traj_filepath = l_traj_filepath + "_min";
+  std::cout << l_traj_filepath << std::endl;
+  const LcmTrajectory& L_traj = LcmTrajectory(l_traj_filepath);
 
-  if (calcL) {
-    std::vector<LcmTrajectory::Trajectory> l_trajectories;
-    std::vector<std::string> trajectory_names;
+  // Keep in mind that the L trajectory is backwards in time
+  const LcmTrajectory::Trajectory& L_mode0 = L_traj.getTrajectory("L2");
+  const LcmTrajectory::Trajectory& L_mode1 = L_traj.getTrajectory("L1");
+  const LcmTrajectory::Trajectory& L_mode2 = L_traj.getTrajectory("L0");
 
-    //    VectorXd segment_times(2 * num_modes);
-    //    segment_times << 0,
-    //        state_trajs_[0].start_time(),
-    //        state_traj.get_segment_times().at(FLAGS_knot_points),
-    //        state_traj.get_segment_times().at(2 * FLAGS_knot_points - 1),
-    //        state_traj.get_segment_times().at(2 * FLAGS_knot_points),
-    //        state_traj.end_time();
-    for (size_t mode = 0; mode < contact_info.size(); ++mode) {
-      LcmTrajectory::Trajectory traj_block;
-      traj_block.traj_name =
-          "l_traj" + std::to_string(contact_info.size() - 1 - mode);
-      //      traj_block.time_vector =
-      //          VectorXd::LinSpaced(1000, state_trajs_[mode]->start_time(),
-      //                              state_trajs_[mode]->end_time());
-      //      traj_block.time_vector = VectorXd::LinSpaced(
-      //          1000, impact_times_rev_[2 * mode], impact_times_rev_[2 * mode
-      //          + 1]);
-      traj_block.time_vector = VectorXd::LinSpaced(
-          1000, l_trajs_[mode]->start_time(), l_trajs_[mode]->end_time());
-      traj_block.datapoints =
-          generate_state_input_matrix(*l_trajs_[mode], traj_block.time_vector);
-      if (using_min_coords_) {
-        traj_block.datatypes = vector<string>(n_d_ * n_d_);
-      } else
-        traj_block.datatypes = vector<string>(n_x_ * n_x_);
-      l_trajectories.push_back(traj_block);
-      trajectory_names.push_back(traj_block.traj_name);
-    }
-    if (using_min_coords_) {
-      LcmTrajectory saved_traj(
-          l_trajectories, trajectory_names, "L_traj",
-          "Square root of the time varying cost to go with min_coords");
-      saved_traj.writeToFile(
-          folder_path_ + "L_traj_min");
-    } else {
-      LcmTrajectory saved_traj(l_trajectories, trajectory_names, "L_traj",
-                               "Square root of the time varying cost to go");
-      saved_traj.writeToFile(
-          folder_path_ + "L_traj");
-    }
-  }
+  l_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+      L_mode0.time_vector, L_mode0.datapoints));
+  l_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+      L_mode1.time_vector, L_mode1.datapoints));
+  l_traj_.push_back(PiecewisePolynomial<double>::FirstOrderHold(
+      L_mode2.time_vector, L_mode2.datapoints));
+
 }
 
 void HybridLQRController::calcLinearizedDynamics(double t, int contact_mode,
@@ -250,7 +176,7 @@ void HybridLQRController::calcLinearizedDynamics(double t, int contact_mode,
   DRAKE_DEMAND(A_linear->cols() == A_linear->rows());
   DRAKE_DEMAND(A_linear->cols() == n_x_);
   double t_rev = getReverseTime(t);
-  int rev_mode = num_modes_ - 1 - contact_mode;
+  int rev_mode = getReverseMode(contact_mode);
   VectorXd state = state_trajs_[rev_mode]->value(t_rev);
   VectorXd input = input_trajs_[rev_mode]->value(t_rev);
 
@@ -527,28 +453,27 @@ double HybridLQRController::getReverseTime(double t) const {
 }
 
 int HybridLQRController::getContactModeAtTime(double t) const {
-  for (int mode = 0; mode < contact_info_rev_.size(); ++mode) {
+  for (int mode = 0; mode < num_modes_; ++mode) {
     if (t < impact_times_rev_[2 * mode + 1]) {
       return mode;
     }
   }
-  return contact_info_rev_.size() - 1;  // final contact mode
+  return num_modes_ - 1;  // final contact mode
 }
 
 MatrixXd HybridLQRController::getSAtTimestamp(double t,
-                                              double fsm_state) const {
+                                              int fsm_state) const {
   double t_rev = getReverseTime(t);
-  size_t contact_mode_rev = contact_info_.size() - ((int)fsm_state + 1);
-  //  size_t contact_mode_rev = fsm_state;
+  int contact_mode_rev = getReverseMode(fsm_state);
   VectorXd l;
-  if (t_rev < l_trajs_[contact_mode_rev]->start_time()) {
-    l = l_trajs_[contact_mode_rev]->Evaluate(
-        l_trajs_[contact_mode_rev]->start_time());
-  } else if (t_rev > l_trajs_[contact_mode_rev]->end_time()) {
-    l = l_trajs_[contact_mode_rev]->Evaluate(
-        l_trajs_[contact_mode_rev]->end_time());
+  if (t_rev < l_traj_[contact_mode_rev].start_time()) {
+    l = l_traj_[contact_mode_rev].value(
+        l_traj_[contact_mode_rev].start_time());
+  } else if (t_rev > l_traj_[contact_mode_rev].end_time()) {
+    l = l_traj_[contact_mode_rev].value(
+        l_traj_[contact_mode_rev].end_time());
   } else {
-    l = l_trajs_[contact_mode_rev]->Evaluate(t_rev);
+    l = l_traj_[contact_mode_rev].value(t_rev);
   }
   MatrixXd L = Map<MatrixXd>(l.data(), sqrt(l.size()), sqrt(l.size()));
   return L * L.transpose();
@@ -733,13 +658,13 @@ void HybridLQRController::calcMinimalCoordBasis() {
   std::vector<LcmTrajectory::Trajectory> trajectories;
   std::vector<std::string> trajectory_names;
 
-  for (size_t mode = 0; mode < contact_info_.size(); ++mode) {
+  for (int mode = 0; mode < num_modes_; ++mode) {
     double t0 = impact_times_[2 * mode];
     double tf = impact_times_[2 * mode + 1];
     VectorXd state = state_trajs_[mode]->value(t0);
     VectorXd input = input_trajs_[mode]->value(t0);
 
-    int mode_rev = contact_info_rev_.size() - 1 - mode;
+    int mode_rev = getReverseMode(mode);
     VectorXd xu(n_x_ + n_u_);
     xu << state, input;
 
@@ -805,6 +730,84 @@ void HybridLQRController::calcMinimalCoordBasis() {
   saved_traj.writeToFile(folder_path_ + "P_traj");
   cout << "Saved P traj" << endl;
   //  }
+}
+
+void HybridLQRController::calcCostToGo(const MatrixXd& S_f){
+  Eigen::LLT<MatrixXd> lltOfA(S_f);
+  MatrixXd L_f = lltOfA.matrixL();
+
+  std::vector<MatrixXd> s_jump(num_modes_ - 1);
+  // REMEMBER, we are integrating "forwards" in backwards time
+  double t0;
+  double tf;
+  for (int mode = 0; mode < num_modes_; ++mode) {
+    t0 = impact_times_rev_[2 * mode];
+    tf = impact_times_rev_[2 * mode + 1];
+
+    VectorXd l_0 = Map<VectorXd>(L_f.data(), L_f.size());
+    VectorXd defaultParams(0);
+    const InitialValueProblem<double>::OdeContext default_values(
+        t0, l_0, defaultParams);
+    InitialValueProblem<double> ivp(
+        [this](const double& t, const VectorXd& ldot,
+               const VectorXd& k) -> VectorXd { return calcLdot(t, ldot, k); },
+        default_values);
+    cout << "Integrating from t0: " << t0 << " to tf: " << tf << endl;
+    cout << "For contact mode: " << mode << endl;
+    l_t_[mode] = ivp.DenseSolve(tf);  // store each segment
+
+    if (mode < (num_modes_ - 1)) {
+      cout << "Calculating jump map" << endl;
+      VectorXd l_pre = l_t_[mode]->Evaluate(tf);
+      MatrixXd L_pre =
+          Map<MatrixXd>(l_pre.data(), sqrt(l_pre.size()), sqrt(l_pre.size()));
+      MatrixXd S_pre = L_pre * L_pre.transpose();  // Retrieve S
+      if (naive_approach_) {
+        s_jump[mode] = calcJumpMapNaive(S_pre, mode, tf);
+      } else {
+        s_jump[mode] = calcJumpMap(S_pre, mode, tf);
+      }
+      std::cout << "S_pre map\n" << S_pre << std::endl;
+      std::cout << "S_after map\n" << s_jump[mode] << std::endl;
+      Eigen::LLT<MatrixXd> lltOfS(s_jump[mode]);  // reconstruct L_f
+      L_f = lltOfS.matrixL();
+    }
+  }
+
+  std::vector<LcmTrajectory::Trajectory> l_trajectories;
+  std::vector<std::string> trajectory_names;
+
+  for (int mode = 0; mode < num_modes_; ++mode) {
+    LcmTrajectory::Trajectory traj_block;
+    traj_block.traj_name =
+        "L" + std::to_string(getReverseMode(mode));
+    traj_block.time_vector = VectorXd::LinSpaced(
+        1000, l_t_[mode]->start_time(), l_t_[mode]->end_time());
+    traj_block.datapoints =
+        generate_state_input_matrix(*l_t_[mode], traj_block.time_vector);
+    if (using_min_coords_) {
+      traj_block.datatypes = vector<string>(n_d_ * n_d_);
+    } else
+      traj_block.datatypes = vector<string>(n_x_ * n_x_);
+    l_trajectories.push_back(traj_block);
+    trajectory_names.push_back(traj_block.traj_name);
+  }
+  if (using_min_coords_) {
+    LcmTrajectory saved_traj(
+        l_trajectories, trajectory_names, "L_traj",
+        "Square root of the time varying cost to go with min_coords");
+    saved_traj.writeToFile(
+        folder_path_ + "L_traj_min");
+  } else {
+    LcmTrajectory saved_traj(l_trajectories, trajectory_names, "L_traj",
+        "Square root of the time varying cost to go");
+    saved_traj.writeToFile(
+        folder_path_ + "L_traj");
+  }
+}
+
+int HybridLQRController::getReverseMode(int mode) const {
+  return num_modes_ - 1 - mode;
 }
 
 VectorXd HybridLQRController::calcPdot(double t, const Eigen::VectorXd& p,

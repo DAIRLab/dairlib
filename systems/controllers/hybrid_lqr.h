@@ -44,8 +44,8 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
                       std::string folder_path,
                       bool naive_approach = false,
                       bool using_min_coords = false,
-                      bool calcP = false,
-                      bool calcL = false);
+                      bool recalculateP = false,
+                      bool recalculateL = false);
 
   //  const drake::systems::InputPort<double>& get_input_port_params() const {
   //    return this->get_input_port(input_port_params_index_);
@@ -105,9 +105,10 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd getMinimalCoordBasis(double t, int contact_mode) const;
   // Precompute the minimal coordinate basis for all the contact modes
   void calcMinimalCoordBasis();
+  void calcCostToGo(const Eigen::MatrixXd& S_f);
 
   Eigen::Matrix<double, -1, -1> getSAtTimestamp(double t,
-                                                double fsm_state) const;
+                                                int fsm_state) const;
 
   // This is in reverse time. As in the reverse time will fetch
   // the corresponding reverse contact mode
@@ -115,6 +116,8 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
 
   // Get the corresponding reverse time. Only for use with trajectories
   double getReverseTime(double t) const;
+  // Get the corresponding reverse mode
+  int getReverseMode(int mode) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
@@ -138,9 +141,10 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   bool naive_approach_;
   bool using_min_coords_;
   std::vector<double> impact_times_rev_;
-  std::vector<std::unique_ptr<drake::systems::DenseOutput<double>>> l_trajs_;
+  std::vector<std::unique_ptr<drake::systems::DenseOutput<double>>> l_t_;
   std::vector<std::unique_ptr<drake::systems::DenseOutput<double>>> p_t_;
   std::vector<drake::trajectories::PiecewisePolynomial<double>> p_traj_;
+  std::vector<drake::trajectories::PiecewisePolynomial<double>> l_traj_;
   Eigen::Matrix<double, 2, 3> TXZ_;
   const int n_q_;
   const int n_v_;

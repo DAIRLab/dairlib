@@ -817,7 +817,7 @@ MatrixXi GetAdjSampleIndices(
   MatrixXi adjacent_sample_indices =
       -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
   MatrixXi delta_idx = MatrixXi::Identity(3, 3);
-  for (int k = 0; k < N_sample_tr; k++) {  // ground incline axis
+  for (int k = 0; k < N_sample_tr; k++) {  // turning rate axis
     for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
       for (int i = 0; i < N_sample_sl; i++) {  // stride length axis
         int current_sample_idx = inverse_task_idx_map.at({i, j, k});
@@ -2092,10 +2092,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   for (iter = iter_start; iter <= max_outer_iter; iter++)  {
     bool is_get_nominal = iter == 0;
 
-    if (start_iterations_with_shrinking_stepsize) {
-      n_shrink_step++;
-    }
-
     // Print info about iteration # and current time
     if (!start_iterations_with_shrinking_stepsize) {
       auto clock_now = std::chrono::system_clock::now();
@@ -2491,6 +2487,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }  // end if extend_model_this_iter
     else if (rerun_current_iteration) {  // rerun the current iteration
       iter -= 1;
+      n_shrink_step++;
 
       current_iter_step_size = current_iter_step_size / 2;
       // if(current_iter_step_size<1e-5){

@@ -29,10 +29,15 @@ def main():
 
     # print(simulator_cmd)
     # import pdb; pdb.set_trace()
-    simulator_process = subprocess.run(simulator_cmd)
+    controller_process = subprocess.Popen(controller_cmd)
+    logger_process = subprocess.Popen(lcm_logger_cmd)
     time.sleep(3)
-    controller_process = subprocess.run(controller_cmd)
-    logger_process = subprocess.run(lcm_logger_cmd)
+    simulator_process = subprocess.Popen(simulator_cmd)
+
+    time.sleep(5)
+    controller_process.kill()
+    logger_process.kill()
+    # simulator_process.kill()
     # time.sleep(3)
 
     # time_offsets = np.linspace(0.0, 0.05, 100)

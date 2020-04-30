@@ -864,15 +864,15 @@ bool IsSampleBeingEvaluated(const vector<pair<int, int>>& assigned_thread_idx,
 // getting good solution from adjacent samples
 void GetAdjacentHelper(int sample_idx, MatrixXi& sample_idx_waiting_to_help,
                        MatrixXi& sample_idx_that_helped,
-                       int& sample_idx_to_help) {
-  for (int i = 0; i < 4; i++) {
+                       int& sample_idx_to_help, int task_dim) {
+  for (int i = 0; i < 2 * task_dim; i++) {
     if (sample_idx_waiting_to_help(sample_idx, i) >= 0) {
       sample_idx_to_help = sample_idx_waiting_to_help(sample_idx, i);
       // remove sample_idx_to_help from sample_idx_waiting_to_help
       sample_idx_waiting_to_help(sample_idx, i) = -1;
 
       // add sample_idx_to_help to sample_idx_that_helped
-      for (int j = 0; j < 4; j++) {
+      for (int j = 0; j < 2 * task_dim; j++) {
         if (sample_idx_that_helped(sample_idx, j) < 0) {
           sample_idx_that_helped(sample_idx, j) = sample_idx_to_help;
           break;
@@ -895,10 +895,10 @@ void RecordSolutionQualityAndQueueList(
     double max_cost_increase_rate_before_ask_for_help,
     double max_adj_cost_diff_rate_before_ask_for_help,
     bool is_limit_difference_of_two_adjacent_costs, int sample_success,
-    bool current_sample_is_queued, const vector<int>& n_rerun, int N_rerun,
-    vector<double>& each_min_cost_so_far, vector<int>& is_good_solution,
-    MatrixXi& sample_idx_waiting_to_help, MatrixXi& sample_idx_that_helped,
-    std::deque<int>& awaiting_sample_idx) {
+    bool current_sample_is_queued, int task_dim, const vector<int>& n_rerun,
+    int N_rerun, vector<double>& each_min_cost_so_far,
+    vector<int>& is_good_solution, MatrixXi& sample_idx_waiting_to_help,
+    MatrixXi& sample_idx_that_helped, std::deque<int>& awaiting_sample_idx) {
   double sample_cost = (readCSV(dir + prefix + string("c.csv")))(0, 0);
 
   // When the current sample cost is lower than before, update
@@ -979,7 +979,7 @@ void RecordSolutionQualityAndQueueList(
       if (current_sample_improved) {
         // Remove current sample from sample_idx_that_helped.
         bool already_exist = false;
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2 * task_dim; i++) {
           if (sample_idx_that_helped(adj_idx, i) == sample_idx) {
             sample_idx_that_helped(adj_idx, i) = -1;
             already_exist = true;
@@ -988,7 +988,7 @@ void RecordSolutionQualityAndQueueList(
         }
         // Add current sample to sample_idx_waiting_to_help.
         if (already_exist) {
-          for (int i = 0; i < 4; i++) {
+          for (int i = 0; i < 2 * task_dim; i++) {
             if (sample_idx_waiting_to_help(adj_idx, i) == -1) {
               sample_idx_waiting_to_help(adj_idx, i) = sample_idx;
               break;
@@ -1016,11 +1016,11 @@ void RecordSolutionQualityAndQueueList(
         // (add if it doesn't exist in both sample_idx_waiting_to_help
         //  and sample_idx_that_helped)
         bool already_exist = false;
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2 * task_dim; i++) {
           already_exist = already_exist || (sample_idx_waiting_to_help(
                                                 adj_idx, i) == sample_idx);
         }
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2 * task_dim; i++) {
           already_exist = already_exist ||
                           (sample_idx_that_helped(adj_idx, i) == sample_idx);
           current_sample_has_helped =
@@ -1028,7 +1028,7 @@ void RecordSolutionQualityAndQueueList(
               (sample_idx_that_helped(adj_idx, i) == sample_idx);
         }
         if (!already_exist) {
-          for (int i = 0; i < 4; i++) {
+          for (int i = 0; i < 2 * task_dim; i++) {
             if (sample_idx_waiting_to_help(adj_idx, i) == -1) {
               sample_idx_waiting_to_help(adj_idx, i) = sample_idx;
               break;
@@ -1043,12 +1043,12 @@ void RecordSolutionQualityAndQueueList(
 
         // Add current sample to sample_idx_waiting_to_help.
         bool already_exist = false;
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2 * task_dim; i++) {
           already_exist = already_exist || (sample_idx_waiting_to_help(
                                                 adj_idx, i) == sample_idx);
         }
         if (!already_exist) {
-          for (int i = 0; i < 4; i++) {
+          for (int i = 0; i < 2 * task_dim; i++) {
             if (sample_idx_waiting_to_help(adj_idx, i) == -1) {
               sample_idx_waiting_to_help(adj_idx, i) = sample_idx;
               break;
@@ -1056,7 +1056,7 @@ void RecordSolutionQualityAndQueueList(
           }
         }
         // Remove current sample from sample_idx_that_helped.
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2 * task_dim; i++) {
           if (sample_idx_that_helped(adj_idx, i) == sample_idx) {
             sample_idx_that_helped(adj_idx, i) = -1;
             break;
@@ -1108,7 +1108,7 @@ void RecordSolutionQualityAndQueueList(
                 adj_idx) != low_adjacent_cost_idx.end());
 
       bool low_adj_cost_idx_has_helped = false;
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < 2 * task_dim; i++) {
         low_adj_cost_idx_has_helped = low_adj_cost_idx_has_helped ||
             (sample_idx_that_helped(sample_idx, i) == adj_idx);
       }
@@ -1126,7 +1126,7 @@ void RecordSolutionQualityAndQueueList(
         // two adj with low cost, then you might push one of the adj in the back
         // of the list.
         int already_exist_matrix_idx = -1;
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2 * task_dim; i++) {
           if (sample_idx_waiting_to_help(sample_idx, i) == adj_idx) {
             already_exist_matrix_idx = i;
             break;
@@ -1135,14 +1135,14 @@ void RecordSolutionQualityAndQueueList(
         int first_helper_idx = sample_idx_waiting_to_help(sample_idx, 0);
         sample_idx_waiting_to_help(sample_idx, 0) = adj_idx;
         if (already_exist_matrix_idx < 0) {
-          for (int i = 1; i < 4; i++) {
+          for (int i = 1; i < 2 * task_dim; i++) {
             if (sample_idx_waiting_to_help(sample_idx, i) == -1) {
               sample_idx_waiting_to_help(sample_idx, i) = first_helper_idx;
               break;
             }
           }
         } else if (already_exist_matrix_idx > 0) {
-          for (int i = 1; i < 4; i++) {
+          for (int i = 1; i < 2 * task_dim; i++) {
             if (sample_idx_waiting_to_help(sample_idx, i) == adj_idx) {
               sample_idx_waiting_to_help(sample_idx, i) = first_helper_idx;
               break;
@@ -1156,17 +1156,17 @@ void RecordSolutionQualityAndQueueList(
         // (add if it doesn't exist in both sample_idx_waiting_to_help
         //  and sample_idx_that_helped)
         bool already_exist = false;
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2 * task_dim; i++) {
           already_exist = already_exist || (sample_idx_waiting_to_help(
                                                 sample_idx, i) == adj_idx);
           this_adjacent_sample_is_waiting_to_help = already_exist;
         }
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2 * task_dim; i++) {
           already_exist = already_exist ||
                           (sample_idx_that_helped(sample_idx, i) == adj_idx);
         }
         if (!already_exist) {
-          for (int i = 0; i < 4; i++) {
+          for (int i = 0; i < 2 * task_dim; i++) {
             if (sample_idx_waiting_to_help(sample_idx, i) == -1) {
               sample_idx_waiting_to_help(sample_idx, i) = adj_idx;
               break;
@@ -2247,7 +2247,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
                 cout << mem << ", ";
               } cout << endl;
               GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
-                                sample_idx_that_helped, sample_idx_to_help);
+                                sample_idx_that_helped, sample_idx_to_help,
+                                task_dim);
             }
           }
 
@@ -2359,7 +2360,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   max_cost_increase_rate_before_ask_for_help,
                   max_adj_cost_diff_rate_before_ask_for_help,
                   is_limit_difference_of_two_adjacent_costs, sample_success,
-                  current_sample_is_queued, n_rerun, N_rerun,
+                  current_sample_is_queued, task_dim, n_rerun, N_rerun,
                   local_each_min_cost_so_far, is_good_solution,
                   sample_idx_waiting_to_help, sample_idx_that_helped,
                   awaiting_sample_idx);

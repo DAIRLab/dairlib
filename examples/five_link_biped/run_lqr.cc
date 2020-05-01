@@ -133,8 +133,8 @@ int doMain(int argc, char* argv[]) {
   int nu = plant.num_actuators();
 
   int num_modes = loaded_traj.getTrajectoryNames().size();
-  std::vector<shared_ptr<Trajectory<double>>> state_trajs;
-  std::vector<shared_ptr<Trajectory<double>>> input_trajs;
+  std::vector<shared_ptr<PiecewisePolynomial<double>>> state_trajs;
+  std::vector<shared_ptr<PiecewisePolynomial<double>>> input_trajs;
   for (int mode = 0; mode < num_modes; ++mode) {
     const LcmTrajectory::Trajectory& state_and_input =
         loaded_traj.getTrajectory("walking_trajectory_x_u" +
@@ -243,17 +243,17 @@ int doMain(int argc, char* argv[]) {
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Took " << elapsed.count() << "s to create LQR controller"
             << std::endl;
-  auto lqr_cost =
-      builder.AddSystem<LQRCost>(plant, Q, R, state_trajs, input_trajs);
-  auto lqr_cost_logger =
-      drake::systems::LogOutput(lqr_cost->get_output_port(0), &builder);
-  auto value_function_logger =
-      drake::systems::LogOutput(lqr->get_output_port(1), &builder);
+//  auto lqr_cost =
+//      builder.AddSystem<LQRCost>(plant, Q, R, state_trajs, input_trajs);
+//  auto lqr_cost_logger =
+//      drake::systems::LogOutput(lqr_cost->get_output_port(0), &builder);
+//  auto value_function_logger =
+//      drake::systems::LogOutput(lqr->get_output_port(1), &builder);
 //  auto input_logger =
 //      drake::systems::LogOutput(lqr->get_output_port(0), &builder);
 
-  value_function_logger->set_publish_period(0.00025);  // 1000Hz
-  lqr_cost_logger->set_publish_period(0.002);        // 1000Hz
+//  value_function_logger->set_publish_period(0.00025);  // 1000Hz
+//  lqr_cost_logger->set_publish_period(0.002);        // 1000Hz
 //  input_logger->set_publish_period(0.00025);           // 1000Hz
 
   // ******End of osc configuration*******
@@ -269,9 +269,9 @@ int doMain(int argc, char* argv[]) {
   builder.Connect(contact_results_sub->get_output_port(),
                   lqr->get_contact_input_port());
   builder.Connect(fsm->get_output_port(0), lqr->get_fsm_input_port());
-  builder.Connect(fsm->get_output_port(0), lqr_cost->get_input_port(1));
-  builder.Connect(state_receiver->get_output_port(0),
-                  lqr_cost->get_input_port(0));
+//  builder.Connect(fsm->get_output_port(0), lqr_cost->get_input_port(1));
+//  builder.Connect(state_receiver->get_output_port(0),
+//                  lqr_cost->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
   //  builder.Connect(contact_receiver->get_output_port(0),
@@ -298,8 +298,8 @@ int doMain(int argc, char* argv[]) {
 //  stepper->AdvanceTo(3.0);
 
   // Write all dataloggers to a CSV
-  MatrixXd value_function = value_function_logger->data();
-  MatrixXd estimated_cost = lqr_cost_logger->data();
+//  MatrixXd value_function = value_function_logger->data();
+//  MatrixXd estimated_cost = lqr_cost_logger->data();
 //  MatrixXd input_matrix = input_logger->data();
 
 //  goldilocks_models::writeCSV(

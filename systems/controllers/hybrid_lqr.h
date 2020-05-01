@@ -29,31 +29,22 @@ namespace dairlib::systems {
 /// of the contact_info vector
 class HybridLQRController : public drake::systems::LeafSystem<double> {
  public:
-  HybridLQRController(const drake::multibody::MultibodyPlant<double>& plant,
-                      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-                      const vector <multibody::ContactInfo<double>>& contact_info,
-                      const vector <multibody::ContactInfo<drake::AutoDiffXd>>& contact_info_ad,
-                      const Eigen::MatrixXd& Q,
-                      const Eigen::MatrixXd& R,
-                      const Eigen::MatrixXd& Qf,
-                      const std::vector<
-                          std::shared_ptr<drake::trajectories::Trajectory<double>>>& state_trajs,
-                      const std::vector<
-                          std::shared_ptr<drake::trajectories::Trajectory<double>>>& input_trajs,
-                      const std::vector<double>& impact_times,
-                      std::string folder_path,
-                      bool naive_approach = false,
-                      bool using_min_coords = false,
-                      bool recalculateP = false,
-                      bool recalculateL = false);
-
-  //  const drake::systems::InputPort<double>& get_input_port_params() const {
-  //    return this->get_input_port(input_port_params_index_);
-  //  }
-  //
-  //  const drake::systems::InputPort<double>& get_input_port_info() const {
-  //    return this->get_input_port(input_port_info_index_);
-  //  }
+  HybridLQRController(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      const vector<multibody::ContactInfo<double>>& contact_info,
+      const vector<multibody::ContactInfo<drake::AutoDiffXd>>& contact_info_ad,
+      const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
+      const Eigen::MatrixXd& Qf,
+      const std::vector<
+          std::shared_ptr<drake::trajectories::PiecewisePolynomial<double>>>&
+          state_trajs,
+      const std::vector<
+          std::shared_ptr<drake::trajectories::PiecewisePolynomial<double>>>&
+          input_trajs,
+      const std::vector<double>& impact_times, std::string folder_path,
+      bool naive_approach = false, bool using_min_coords = false,
+      bool recalculateP = false, bool recalculateL = false);
 
   const drake::systems::OutputPort<double>& get_output_port_control() const {
     return this->get_output_port(control_output_port_);
@@ -76,16 +67,6 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   }
 
 
-//  int get_state_input_port() { return state_port_; }
-//  int get_fsm_input_port() { return fsm_port_; }
-//  int get_contact_port() { return contact_port_; }
-
-  //  int get_
-
-  //  drake::systems::EventStatus DiscreteVariableUpdate(
-  //      const drake::systems::Context<double>& context,
-  //      drake::systems::DiscreteValues<double>* discrete_state) const;
-
  private:
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
@@ -101,14 +82,16 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
                                    int contact_mode, double t);
   void calcLinearizedDynamics(double t, int contact_mode, Eigen::MatrixXd* A,
                               Eigen::MatrixXd* B);
-  void calcLinearResetMap(double t, int contact_mode, Eigen::MatrixXd* R);
+  /// Dx_R is the Jacobian of R wrt the state x
+  void calcLinearResetMap(double t, int contact_mode, Eigen::MatrixXd* R,
+                          Eigen::MatrixXd* Dx_R);
   Eigen::MatrixXd getMinimalCoordBasis(double t, int contact_mode) const;
+
   // Precompute the minimal coordinate basis for all the contact modes
   void calcMinimalCoordBasis();
   void calcCostToGo(const Eigen::MatrixXd& S_f);
 
-  Eigen::Matrix<double, -1, -1> getSAtTimestamp(double t,
-                                                int fsm_state) const;
+  Eigen::Matrix<double, -1, -1> getSAtTimestamp(double t, int fsm_state) const;
 
   // This is in reverse time. As in the reverse time will fetch
   // the corresponding reverse contact mode
@@ -125,16 +108,14 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   vector<dairlib::multibody::ContactInfo<drake::AutoDiffXd>> contact_info_ad_;
   vector<dairlib::multibody::ContactInfo<double>> contact_info_rev_;
 
-  //  int input_port_info_index_;
-  //  int input_port_params_index_;
-  //  int output_port_control_index_;
-
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd R_;
   Eigen::MatrixXd Qf_;
-  const std::vector<std::shared_ptr<drake::trajectories::Trajectory<double>>>
+  const std::vector<
+      std::shared_ptr<drake::trajectories::PiecewisePolynomial<double>>>
       state_trajs_;
-  const std::vector<std::shared_ptr<drake::trajectories::Trajectory<double>>>
+  const std::vector<
+      std::shared_ptr<drake::trajectories::PiecewisePolynomial<double>>>
       input_trajs_;
   const std::vector<double> impact_times_;
   const std::string folder_path_;

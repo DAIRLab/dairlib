@@ -204,7 +204,7 @@
         <child link="left_upper_leg"/>
         <axis xyz="0 1 0"/>
         <origin xyz="0 0 0"/>
-        <limit effort="30"/>
+        <limit effort="35"/>
         <dynamics damping="0.2" />
     </joint>
     <joint name="right_hip_pin" type="revolute">
@@ -212,7 +212,7 @@
         <child link="right_upper_leg"/>
         <axis xyz="0 1 0"/>
         <origin xyz="0 0 0"/>
-        <limit effort="30"/>
+        <limit effort="35"/>
         <dynamics damping="0.2" />
     </joint>
     <joint name="left_knee_pin" type="revolute">
@@ -220,7 +220,7 @@
         <child link="left_lower_leg"/>
         <axis xyz="0 1 0"/>
         <origin xyz="0 0 -0.4"/>
-        <limit effort="30"/>
+        <limit effort="35"/>
         <dynamics damping="0.2" />
     </joint>
     <joint name="right_knee_pin" type="revolute">
@@ -228,7 +228,7 @@
         <child link="right_lower_leg"/>
         <axis xyz="0 1 0"/>
         <origin xyz="0 0 -0.4"/>
-        <limit effort="30"/>
+        <limit effort="35"/>
         <dynamics damping="0.2" />
     </joint>
     <joint name="right_foot" type="fixed">

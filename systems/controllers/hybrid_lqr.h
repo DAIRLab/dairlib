@@ -153,6 +153,8 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   const int n_c_;
   const int n_d_;
   const int num_modes_;
+  Eigen::VectorXd u_min_;
+  Eigen::VectorXd u_max_;
 
   //  int fsm_index_;
   drake::systems::InputPortIndex state_port_;

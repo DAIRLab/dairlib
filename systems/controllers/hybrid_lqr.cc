@@ -25,6 +25,7 @@ using drake::systems::InitialValueProblem;
 using drake::systems::controllers::LinearQuadraticRegulator;
 using drake::systems::controllers::LinearQuadraticRegulatorResult;
 using drake::trajectories::PiecewisePolynomial;
+using drake::multibody::JointActuatorIndex;
 
 namespace dairlib::systems {
 
@@ -116,6 +117,16 @@ HybridLQRController::HybridLQRController(
                           "lcmt_contact_info",
                           drake::Value<drake::lcmt_contact_results_for_viz>{})
                       .get_index();
+
+  // Get input limits
+  VectorXd u_min(n_u_);
+  VectorXd u_max(n_u_);
+  for (JointActuatorIndex i(0); i < n_u_; i++) {
+    u_min(i) = -plant.get_joint_actuator(i).effort_limit();
+    u_max(i) = plant.get_joint_actuator(i).effort_limit();
+  }
+  u_min_ = u_min;
+  u_max_ = u_max;
 
   l_t_ = std::vector<std::unique_ptr<drake::systems::DenseOutput<double>>>(
       num_modes_);
@@ -541,7 +552,7 @@ void HybridLQRController::CalcControl(
   }
 
   for (int i = 0; i < u_sol.size(); ++i) {  // cap the actuator inputs
-    u_sol(i) = std::min<double>(30, std::max<double>(-30, u_sol(i)));
+    u_sol(i) = std::min<double>(35, std::max<double>(-35, u_sol(i)));
   }
   output->SetDataVector(u_sol);
   output->set_timestamp(current_state->get_timestamp());

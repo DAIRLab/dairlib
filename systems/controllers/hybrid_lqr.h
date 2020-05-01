@@ -137,6 +137,8 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd u_min_;
   Eigen::VectorXd u_max_;
 
+  std::string l_traj_filepath_;
+
   //  int fsm_index_;
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;

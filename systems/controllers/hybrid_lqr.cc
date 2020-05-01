@@ -157,13 +157,17 @@ HybridLQRController::HybridLQRController(
     S_f = Qf_;
   }
 
+  // Set the filepath for the different options
+  l_traj_filepath_ = folder_path_ + "L_traj";
+  if (using_min_coords_) l_traj_filepath_ = l_traj_filepath_ + "_min";
+  if (!naive_approach_) l_traj_filepath_ = l_traj_filepath_ + "_adjusted";
+
   if (recalculateL) {
     calcCostToGo(S_f);
   }
-  std::string l_traj_filepath = folder_path_ + "L_traj";
-  if (using_min_coords_) l_traj_filepath = l_traj_filepath + "_min";
-  std::cout << l_traj_filepath << std::endl;
-  const LcmTrajectory& L_traj = LcmTrajectory(l_traj_filepath);
+
+  std::cout << l_traj_filepath_ << std::endl;
+  const LcmTrajectory& L_traj = LcmTrajectory(l_traj_filepath_);
 
   // Keep in mind that the L trajectory is backwards in time
   const LcmTrajectory::Trajectory& L_mode0 = L_traj.getTrajectory("L2");
@@ -339,13 +343,8 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
 
   MatrixXd H = MatrixXd::Zero(n_x_, n_x_);
 
-  cout << "dG: " << dG << endl;
   cout << "numerator: " << (xdot_post - xdot_pre - J_delta) << endl;
-  std::cout << "Additional term: \n"
-            << ((xdot_post - xdot_pre - J_delta) / J_g) * dG.transpose()
-            << std::endl;
   H << (R + ((xdot_post - xdot_pre - J_delta) / J_g) * dG.transpose());
-  std::cout << "H: " << H << std::endl;
   // Because we are working backwards, S(t,j) = (I + H(j)'*S(t,j+1)*(I + H(j))
   // which is what we want
   MatrixXd S_post;
@@ -806,16 +805,10 @@ void HybridLQRController::calcCostToGo(const MatrixXd& S_f) {
     l_trajectories.push_back(traj_block);
     trajectory_names.push_back(traj_block.traj_name);
   }
-  if (using_min_coords_) {
-    LcmTrajectory saved_traj(
-        l_trajectories, trajectory_names, "L_traj",
-        "Square root of the time varying cost to go with min_coords");
-    saved_traj.writeToFile(folder_path_ + "L_traj_min");
-  } else {
-    LcmTrajectory saved_traj(l_trajectories, trajectory_names, "L_traj",
-                             "Square root of the time varying cost to go");
-    saved_traj.writeToFile(folder_path_ + "L_traj");
-  }
+  LcmTrajectory saved_traj(
+      l_trajectories, trajectory_names, "L_traj",
+      "Square root of the time varying cost to go");
+  saved_traj.writeToFile(l_traj_filepath_);
 }
 
 int HybridLQRController::getReverseMode(int mode) const {

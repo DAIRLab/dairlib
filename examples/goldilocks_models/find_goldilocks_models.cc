@@ -254,6 +254,7 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 
 void getInitFileName(const string dir,int total_sample_num, string * init_file, const string & nominal_traj_init_file,
                      int iter, int sample,double min_sl, double max_sl, double min_gi, double max_gi,
+                     double min_tr, double max_tr,
                      bool is_get_nominal,bool is_use_interpolated_initial_guess,
                      bool rerun_current_iteration, bool has_been_all_success,
                      bool step_size_shrinked_last_loop, int n_rerun,
@@ -265,7 +266,8 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file, 
     // (n_rerun == 0)
     if (is_use_interpolated_initial_guess){
         //      modified by Jianshu to test new initial guess
-        *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi);
+        *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi,
+                min_tr, max_tr);
     }
     else{
         *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
@@ -277,7 +279,8 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file, 
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   }else if(is_use_interpolated_initial_guess){
 //      modified by Jianshu to test new initial guess
-      *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi);
+      *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi,
+              min_tr, max_tr);
   } else{
       *init_file = to_string(iter - 1) +  "_" +
                    to_string(sample) + string("_w.csv");
@@ -1590,7 +1593,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if(!uniform_grid && restricted_sample_number){
       N_sample_gi = pow(N_sample_gi, 0.5);
       N_sample_sl = pow(N_sample_sl, 0.5);
-      N_sample_tr = pow(N_sample_tr, 0.5)
+      N_sample_tr = pow(N_sample_tr, 0.5);
       N_sample = N_sample_sl * N_sample_gi * N_sample_tr;
       cout << "Restrict the number of samples in one iteration" << endl;
       cout << "Restricted N_sample_sl = " << N_sample_sl << endl;
@@ -2365,6 +2368,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           bool is_use_interpolated_initial_guess = FLAGS_is_use_interpolated_initial_guess;
           getInitFileName(dir, total_sample_num, &init_file_pass_in, init_file, iter, sample_idx,
                           min_stride_length, max_stride_length, min_ground_incline, max_ground_incline,
+                          min_turning_rate,max_turning_rate,
                           is_get_nominal, is_use_interpolated_initial_guess,
                           current_sample_is_a_rerun, has_been_all_success,
                           step_size_shrinked_last_loop, n_rerun[sample_idx],

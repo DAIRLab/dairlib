@@ -17,6 +17,8 @@ py_binary(
         "@drake//tools/workspace/drake_visualizer/plugin",
         "@drake_visualizer//:drake_visualizer_python_deps",
         "@optitrack_driver//lcmtypes:py_optitrack_lcmtypes",
+        "@drake//bindings/pydrake",
+        "//bindings/pydairlib",
     ],
 )
 

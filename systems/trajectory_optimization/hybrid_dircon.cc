@@ -548,6 +548,129 @@ void HybridDircon<T>::ScaleKinConstraintSlackVariables(
   }
 }
 
+template <typename T>
+void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
+    std::vector<unsigned int> poses_per_mode, std::string weld_frame_to_world) {
+  DRAKE_DEMAND(!callback_visualizer_);  // Cannot be set twice
+  DRAKE_DEMAND(poses_per_mode.size() == (uint) num_modes_);
+
+  // Count number of total poses
+  int num_poses = num_modes_ + 1; // start and finish of every mode
+  for (int i = 0; i < num_modes_; i++) {
+    DRAKE_DEMAND(poses_per_mode.at(i) == 0 || 
+        (poses_per_mode.at(i) + 2 <= (uint) mode_lengths_.at(i)));
+    num_poses += poses_per_mode.at(i);
+  }
+
+  // Assemble variable list
+  drake::solvers::VectorXDecisionVariable vars(
+      num_poses * plant_.num_positions());
+
+  int index = 0;
+  for (int i = 0; i < num_modes_; i++) {
+    // Set variable block, extracting positions only
+    vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
+      state_vars_by_mode(i, 0).head(plant_.num_positions());
+    index++;
+
+    for (uint j = 0; j < poses_per_mode.at(i); j++) {
+
+      // The jth element in mode i, counting in between the start/end poses
+      int modei_index =
+          (j + 1) * (mode_lengths_.at(i) - 1)/(poses_per_mode.at(i) + 1);
+
+      vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
+          state_vars_by_mode(i, modei_index).head(plant_.num_positions());
+      index++;
+    } 
+  }
+
+  // Final state
+  vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
+      state_vars_by_mode(num_modes_ - 1, mode_lengths_.at(num_modes_ - 1) - 1).
+          head(plant_.num_positions());
+
+  // Create visualizer
+  callback_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
+    model_file, num_poses, weld_frame_to_world);
+
+  // Callback lambda function
+  auto my_callback = [this, num_poses](const Eigen::Ref<const VectorXd>& vars) {
+    VectorXd vars_copy = vars;
+    Eigen::Map<MatrixXd> states(vars_copy.data(), this->plant_.num_positions(),
+        num_poses);
+
+    this->callback_visualizer_->DrawPoses(states);
+  };
+
+  AddVisualizationCallback(my_callback, vars);
+}
+
+template <typename T>
+void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
+      unsigned int num_poses, std::string weld_frame_to_world) {
+  // Check that there is an appropriate number of poses
+  DRAKE_DEMAND(num_poses >= (uint) num_modes_ + 1);
+  DRAKE_DEMAND(num_poses <= (uint) N());
+
+  // sum of mode lengths, excluding ends
+  int mode_sum = 0;
+  for (auto& n : mode_lengths_) {
+    if (n > 2) {
+      mode_sum += n - 2;
+    }
+  }
+
+  // Split up num_poses per modes, rounding down
+  // If NP is the total number of  poses to visualize, excluding ends (interior)
+  //   S is mode_sum, the total number of the interior knot points
+  //   and N the number of interior knot points for a particular mode, then 
+  //
+  //   poses = (NP * N )/S
+  unsigned int num_poses_without_ends = num_poses - num_modes_ - 1;
+  unsigned int assigned_sum = 0;
+  std::vector<unsigned int> num_poses_per_mode;
+  for (auto& n : mode_lengths_) {
+    if (n > 2) {
+      unsigned int mode_count = (num_poses_without_ends * (n - 2)) / mode_sum;
+      num_poses_per_mode.push_back(mode_count);
+      assigned_sum += mode_count;
+    } else {
+      num_poses_per_mode.push_back(0);
+    }
+  }
+
+  // Need to add back in the fractional bits, using the largest fractions
+  while (assigned_sum < num_poses_without_ends) {
+    int largest_mode = -1;
+    double value = 0;
+    for (int i = 0; i < num_modes_; i++) {
+      double fractional_value =
+          num_poses_without_ends * (mode_lengths_.at(i) - 2) - 
+              num_poses_per_mode.at(i) * mode_sum;
+
+      if (fractional_value > value) {
+        value = fractional_value;
+        largest_mode = i;
+      }
+    }
+
+    num_poses_per_mode.at(largest_mode)++;
+    assigned_sum++;
+  }
+
+  for (auto& n : num_poses_per_mode)
+    std::cout << n << std::endl;
+  CreateVisualizationCallback(model_file, num_poses_per_mode,
+      weld_frame_to_world);
+}
+
+template <typename T>
+void HybridDircon<T>::CreateVisualizationCallback(std::string model_file,
+      std::string weld_frame_to_world) {
+  CreateVisualizationCallback(model_file, N(), weld_frame_to_world);
+}
+
 template class HybridDircon<double>;
 template class HybridDircon<AutoDiffXd>;
 

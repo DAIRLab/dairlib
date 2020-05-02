@@ -148,7 +148,7 @@ PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory(
 
     derivatives[i] = drake::math::DiscardGradient(constraints_->getXDot());
   }
-  return PiecewisePolynomial<double>::Cubic(times_vec, states, derivatives);
+  return PiecewisePolynomial<double>::CubicHermite(times_vec, states, derivatives);
 }
 
 template <typename T>

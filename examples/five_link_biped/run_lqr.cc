@@ -81,6 +81,8 @@ using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::TriggerType;
+using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 using Eigen::Matrix3d;
@@ -234,7 +236,7 @@ int doMain(int argc, char* argv[]) {
   //  builder.AddSystem<systems::Contact>(plant);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          channel_u, &lcm, 1.0 / FLAGS_publish_rate));
+          channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
 
   auto start = std::chrono::high_resolution_clock::now();

@@ -1508,7 +1508,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_robot_option == 0) {
     delta_turning_rate = 0.0;
   } else if (FLAGS_robot_option == 1) {
-    delta_turning_rate = 0.125 * 3;
+    delta_turning_rate = 0.125;
   } else {
     throw std::runtime_error("Should not reach here");
     delta_turning_rate = 0;
@@ -1677,7 +1677,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_robot_option == 0) {
     max_average_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01;
   } else if (FLAGS_robot_option== 1) {
-    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;//0.15
+    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;//0.2//0.15
   } else {
     throw std::runtime_error("Should not reach here");
   }
@@ -1716,10 +1716,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double max_cost_increase_rate_before_ask_for_help = 0.1;
   if (FLAGS_robot_option == 0) {
     max_cost_increase_rate_before_ask_for_help = 0.5;
+  } else if (FLAGS_robot_option == 1) {
+    max_cost_increase_rate_before_ask_for_help = 0.15; //0.1
   }
   double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
   if (FLAGS_robot_option == 0) {
     max_adj_cost_diff_rate_before_ask_for_help = 0.5;
+  } else if (FLAGS_robot_option == 1) {
+    max_adj_cost_diff_rate_before_ask_for_help = 0.5; //0.1
   }
   bool is_limit_difference_of_two_adjacent_costs =
       max_adj_cost_diff_rate_before_ask_for_help > 0;

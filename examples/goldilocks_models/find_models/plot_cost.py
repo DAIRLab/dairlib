@@ -6,7 +6,7 @@ import time
 import sys
 plt.rcParams.update({'font.size': 18})
 
-only_plot_average_cost = False
+only_plot_average_cost = True
 normalize_by_nominal_cost = True
 only_add_successful_samples_to_average_cost = False
 

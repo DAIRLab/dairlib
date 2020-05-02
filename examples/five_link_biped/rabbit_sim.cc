@@ -83,6 +83,8 @@ DEFINE_string(trajectory_name, "", "Filename for the trajectory that contains"
                                    " the initial state.");
 DEFINE_string(folder_path, "", "Folder path for the folder that contains the "
                                "saved trajectory");
+DEFINE_int32(error_idx, 0, "Index in the state vector to inject error into");
+DEFINE_double(error, 0.0, "Value fo the error, see error_idx");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -185,7 +187,8 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_init_state == "Jumping") {
     x0 << 0, 0.778109, 0, -.3112, -.231, 0.427, 0.4689, 0, 0, 0, 0, 0, 0, 0;
   } else if (FLAGS_init_state == "Walking") {
-    x0 << state_traj.value(0);
+    x0 << state_traj.value(FLAGS_start_time);
+    x0[FLAGS_error_idx] += FLAGS_error;
 //    x0 << 0, 0.798986, -0.00175796, -0.0541245, -0.320418, 0.1, 0.75, 0.225025,
 //        0.00132182, 0.145054, 0.136536, -0.746619, 9.46774e-05, -0.0115747;
   } else if (FLAGS_init_state == "Walking_2") {

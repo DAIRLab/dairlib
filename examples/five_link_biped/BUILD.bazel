@@ -59,6 +59,7 @@ cc_binary(
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems/controllers:hybrid_lqr",
+        "//systems/framework:lcm_driven_loop",
         "//systems/framework:vector",
         "//systems/goldilocks_models",
         "//systems/primitives",

@@ -330,7 +330,6 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
   VectorXd xdot_post = state_trajs_[rev_mode_post]->derivative(1).value(t_rev);
 
   // Now calculate H
-//  MatrixXd I = MatrixXd::Identity(S_pre.rows(), S_pre.cols());
   MatrixXd I = MatrixXd::Identity(n_x_, n_x_);
   MatrixXd R = MatrixXd::Zero(n_x_, n_x_);
   MatrixXd Dx_R = MatrixXd::Zero(n_x_, n_x_);
@@ -343,7 +342,6 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
 
   MatrixXd H = MatrixXd::Zero(n_x_, n_x_);
 
-  cout << "numerator: " << (xdot_post - xdot_pre - J_delta) << endl;
   H << (R + ((xdot_post - xdot_pre - J_delta) / J_g) * dG.transpose());
   // Because we are working backwards, S(t,j) = (I + H(j)'*S(t,j+1)*(I + H(j))
   // which is what we want
@@ -443,9 +441,6 @@ VectorXd HybridLQRController::calcLdot(double t, const VectorXd& l,
   if (using_min_coords_) {
     MatrixXd P =
         getMinimalCoordBasis(getReverseTime(t), 2 - getContactModeAtTime(t));
-    //    cout << "mode: " << 2 - getContactModeAtTime(t) << endl;
-    //    cout << "P at time t: " << getReverseTime(t) << "\n" << P << endl;
-    //    cout << "P PT : " << P * P.transpose() << endl;
     MatrixXd A_bar = P * A * P.transpose();
     MatrixXd B_bar = P * B;
     lDot =
@@ -716,7 +711,6 @@ void HybridLQRController::calcMinimalCoordBasis() {
     MatrixXd P_0 = q_decomp.block(0, F.rows(), q_decomp.rows(),
                                   q_decomp.cols() - F.rows());
     P_0.transposeInPlace();
-    //    cout << "P0: " << P_0 << endl;
     VectorXd p0 = Map<VectorXd>(P_0.data(), (n_x_ - 2 * n_c_) * n_x_);
     VectorXd defaultParams(0);
     const InitialValueProblem<double>::OdeContext default_values(t0, p0,
@@ -743,7 +737,6 @@ void HybridLQRController::calcMinimalCoordBasis() {
                            "Time varying minimal coordinates basis");
   saved_traj.writeToFile(folder_path_ + "P_traj");
   cout << "Saved P traj" << endl;
-  //  }
 }
 
 void HybridLQRController::calcCostToGo(const MatrixXd& S_f) {
@@ -781,8 +774,8 @@ void HybridLQRController::calcCostToGo(const MatrixXd& S_f) {
       } else {
         s_jump[mode] = calcJumpMap(S_pre, mode, tf);
       }
-      std::cout << "S_pre map\n" << S_pre << std::endl;
-      std::cout << "S_after map\n" << s_jump[mode] << std::endl;
+      //      std::cout << "S_pre map\n" << S_pre << std::endl;
+      //      std::cout << "S_post map\n" << s_jump[mode] << std::endl;
       Eigen::LLT<MatrixXd> lltOfS(s_jump[mode]);  // reconstruct L_f
       L_f = lltOfS.matrixL();
     }

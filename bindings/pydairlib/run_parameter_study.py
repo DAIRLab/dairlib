@@ -1,6 +1,8 @@
 import subprocess
-import numpy as np
 import time
+
+import numpy as np
+
 
 def main():
 
@@ -23,12 +25,16 @@ def main():
     # simulator_process.kill()
     # time.sleep(3)
 
-    # time_offsets = np.linspace(0.0, 0.05, 21)
-    time_offsets = np.array([0.0])
+    # time_offsets = np.linspace(0.0, 0.02, 21)
+    time_offsets = np.linspace(0.0, 0.01, 21)
+    print(time_offsets)
+    # import pdb; pdb.set_trace()
+    # time_offsets = np.array([0.0])
 
     for i in range(time_offsets.shape[0]):
-        log_path = log_folder + "lcmlog-delay-%.3f" % time_offsets[i]
+        log_path = log_folder + "lcmlog-delay-%.4f" % time_offsets[i]
         controller_cmd = ['bazel-bin/examples/five_link_biped/run_lqr',
+                          '--contact_driven=%d' % False,
                           '--folder_path=%s' % folder_path,
                           '--trajectory_name=%s' % trajectory_name,
                           '--time_offset=%f' % time_offsets[i],

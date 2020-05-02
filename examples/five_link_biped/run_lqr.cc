@@ -38,6 +38,7 @@
 
 #include "examples/five_link_biped/walking_fsm.h"
 #include "systems/controllers/hybrid_lqr.h"
+#include "systems/framework/lcm_driven_loop.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/rigid_body_plant/contact_results_to_lcm.h"
 DEFINE_double(gravity, 9.81, "Gravity acceleration constant");
@@ -45,7 +46,7 @@ DEFINE_double(mu, 0.7, "The static coefficient of friction");
 // DEFINE_double(mu_kinetic, 0.7, "The dynamic coefficient of friction");
 DEFINE_double(v_tol, 0.01,
               "The maximum slipping speed allowed during stiction (m/s)");
-DEFINE_string(state_simulation_channel, "RABBIT_STATE_SIMULATION",
+DEFINE_string(channel_x, "RABBIT_STATE_SIMULATION",
               "Channel to publish/receive state from simulation");
 DEFINE_double(publish_rate, 2000, "Publishing frequency (Hz)");
 DEFINE_bool(naive, true,
@@ -62,10 +63,12 @@ DEFINE_bool(recalculateL, false,
             "Set to true if necessary to recalculate L(t) - for new trajs");
 DEFINE_double(time_offset, 0.0, "offset added to FSM switching");
 DEFINE_double(init_fsm_state, 0, "Initial FSM state.");
-DEFINE_string(trajectory_name, "", "Filename for the trajectory that contains"
-                                   " the initial state.");
-DEFINE_string(folder_path, "", "Folder path for the folder that contains the "
-                               "saved trajectory");
+DEFINE_string(trajectory_name, "",
+    "Filename for the trajectory that contains"
+    " the initial state.");
+DEFINE_string(folder_path, "",
+    "Folder path for the folder that contains the "
+    "saved trajectory");
 
 // using drake::multibody::MultibodyPlant;
 using drake::multibody::Body;
@@ -99,7 +102,7 @@ namespace examples {
 namespace five_link_biped {
 namespace hybrid_lqr {
 
-const std::string channel_x = FLAGS_state_simulation_channel;
+//const std::string channel_x = FLAGS_channel_x;
 const std::string channel_u = "RABBIT_INPUT";
 
 int doMain(int argc, char* argv[]) {
@@ -123,8 +126,8 @@ int doMain(int argc, char* argv[]) {
   std::cout << "folder path: " << FLAGS_folder_path << std::endl;
   std::cout << "trajectory name: " << FLAGS_trajectory_name << std::endl;
 
-  const LcmTrajectory& loaded_traj = LcmTrajectory(
-      FLAGS_folder_path + FLAGS_trajectory_name);
+  const LcmTrajectory& loaded_traj =
+      LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
   std::cout << "Saved trajectory names: " << std::endl;
   for (const auto& name : loaded_traj.getTrajectoryNames()) {
     std::cout << name << std::endl;
@@ -141,9 +144,8 @@ int doMain(int argc, char* argv[]) {
                                   std::to_string(mode));
     state_trajs.push_back(std::make_shared<PiecewisePolynomial<double>>(
         PiecewisePolynomial<double>::CubicHermite(
-            state_and_input.time_vector,
-            state_and_input.datapoints.topRows(nx),
-            state_and_input.datapoints.topRows(2*nx).bottomRows(nx))));
+            state_and_input.time_vector, state_and_input.datapoints.topRows(nx),
+            state_and_input.datapoints.topRows(2 * nx).bottomRows(nx))));
     input_trajs.push_back(std::make_shared<PiecewisePolynomial<double>>(
         PiecewisePolynomial<double>::FirstOrderHold(
             state_and_input.time_vector,
@@ -211,55 +213,56 @@ int doMain(int argc, char* argv[]) {
   // Create Operational space control
   // Create state receiver.
   // Create command sender.
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+//  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  drake::lcm::DrakeLcm lcm;
   //  auto fsm = builder.AddSystem<WalkingFiniteStateMachine>(
   //      plant, impact_times[1] + FLAGS_time_offset,
   //      impact_times[2] + FLAGS_time_offset, false);
   auto fsm = builder.AddSystem<WalkingFiniteStateMachine>(
-      plant, impact_times[1], impact_times[2], FLAGS_time_offset, FLAGS_contact_driven,
-      FLAGS_init_fsm_state);
+      plant, impact_times[1], impact_times[2], FLAGS_time_offset,
+      FLAGS_contact_driven, FLAGS_init_fsm_state);
   // Create state receiver.
-  auto state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x, lcm));
+  //  auto state_sub = builder.AddSystem(
+  //      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x,
+  //      lcm));
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto contact_results_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CONTACT_RESULTS", lcm));
+          "CONTACT_RESULTS", &lcm));
   //  auto contact_results_receiver =
   //  builder.AddSystem<systems::Contact>(plant);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          channel_u, lcm, 1.0 / FLAGS_publish_rate));
+          channel_u, &lcm, 1.0 / FLAGS_publish_rate));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
 
   auto start = std::chrono::high_resolution_clock::now();
   auto lqr = builder.AddSystem<systems::HybridLQRController>(
       plant, *plant_autodiff, contact_modes, contact_modes_ad, Q, R, Qf,
       state_trajs, input_trajs, impact_times, FLAGS_folder_path, FLAGS_naive,
-      FLAGS_minimal_coords,
-      FLAGS_recalculateP, FLAGS_recalculateL);
+      FLAGS_minimal_coords, FLAGS_recalculateP, FLAGS_recalculateL);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Took " << elapsed.count() << "s to create LQR controller"
             << std::endl;
-//  auto lqr_cost =
-//      builder.AddSystem<LQRCost>(plant, Q, R, state_trajs, input_trajs);
-//  auto lqr_cost_logger =
-//      drake::systems::LogOutput(lqr_cost->get_output_port(0), &builder);
-//  auto value_function_logger =
-//      drake::systems::LogOutput(lqr->get_output_port(1), &builder);
-//  auto input_logger =
-//      drake::systems::LogOutput(lqr->get_output_port(0), &builder);
+  //  auto lqr_cost =
+  //      builder.AddSystem<LQRCost>(plant, Q, R, state_trajs, input_trajs);
+  //  auto lqr_cost_logger =
+  //      drake::systems::LogOutput(lqr_cost->get_output_port(0), &builder);
+  //  auto value_function_logger =
+  //      drake::systems::LogOutput(lqr->get_output_port(1), &builder);
+  //  auto input_logger =
+  //      drake::systems::LogOutput(lqr->get_output_port(0), &builder);
 
-//  value_function_logger->set_publish_period(0.00025);  // 1000Hz
-//  lqr_cost_logger->set_publish_period(0.002);        // 1000Hz
-//  input_logger->set_publish_period(0.00025);           // 1000Hz
+  //  value_function_logger->set_publish_period(0.00025);  // 1000Hz
+  //  lqr_cost_logger->set_publish_period(0.002);        // 1000Hz
+  //  input_logger->set_publish_period(0.00025);           // 1000Hz
 
   // ******End of osc configuration*******
 
-  builder.Connect(state_sub->get_output_port(),
-                  state_receiver->get_input_port(0));
+  //  builder.Connect(state_sub->get_output_port(),
+  //                  state_receiver->get_input_port(0));
   builder.Connect(lqr->get_output_port(0), command_sender->get_input_port(0));
   builder.Connect(state_receiver->get_output_port(0), lqr->get_input_port(0));
   builder.Connect(state_receiver->get_output_port(0),
@@ -269,9 +272,9 @@ int doMain(int argc, char* argv[]) {
   builder.Connect(contact_results_sub->get_output_port(),
                   lqr->get_contact_input_port());
   builder.Connect(fsm->get_output_port(0), lqr->get_fsm_input_port());
-//  builder.Connect(fsm->get_output_port(0), lqr_cost->get_input_port(1));
-//  builder.Connect(state_receiver->get_output_port(0),
-//                  lqr_cost->get_input_port(0));
+  //  builder.Connect(fsm->get_output_port(0), lqr_cost->get_input_port(1));
+  //  builder.Connect(state_receiver->get_output_port(0),
+  //                  lqr_cost->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
   //  builder.Connect(contact_receiver->get_output_port(0),
@@ -281,35 +284,39 @@ int doMain(int argc, char* argv[]) {
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
 
-  std::cout << "Built diagram" << std::endl;
-  /// Use the simulator to drive at a fixed rate
-  /// If set_publish_every_time_step is true, this publishes twice
-  /// Set realtime rate. Otherwise, runs as fast as possible
-  auto stepper = std::make_unique<drake::systems::Simulator<double>>(
-      *diagram, std::move(context));
-  stepper->set_publish_every_time_step(false);
-  stepper->set_publish_at_initialization(false);
-  stepper->set_target_realtime_rate(1.0);
-  stepper->Initialize();
-  std::cout << "Running simulation" << std::endl;
-
-  drake::log()->info("controller started");
-  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
-//  stepper->AdvanceTo(3.0);
+//  std::cout << "Built diagram" << std::endl;
+//  /// Use the simulator to drive at a fixed rate
+//  /// If set_publish_every_time_step is true, this publishes twice
+//  /// Set realtime rate. Otherwise, runs as fast as possible
+//  auto stepper = std::make_unique<drake::systems::Simulator<double>>(
+//      *diagram, std::move(context));
+//  stepper->set_publish_every_time_step(false);
+//  stepper->set_publish_at_initialization(false);
+//  stepper->set_target_realtime_rate(1.0);
+//  stepper->Initialize();
+//  std::cout << "Running simulation" << std::endl;
+//
+//  drake::log()->info("controller started");
+//  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
+  //  stepper->AdvanceTo(3.0);
 
   // Write all dataloggers to a CSV
-//  MatrixXd value_function = value_function_logger->data();
-//  MatrixXd estimated_cost = lqr_cost_logger->data();
-//  MatrixXd input_matrix = input_logger->data();
+  //  MatrixXd value_function = value_function_logger->data();
+  //  MatrixXd estimated_cost = lqr_cost_logger->data();
+  //  MatrixXd input_matrix = input_logger->data();
 
-//  goldilocks_models::writeCSV(
-//      "../projects/five_link_biped/hybrid_lqr/plotting/V.csv",
-//      value_function.transpose());
-//  goldilocks_models::writeCSV(
-//      "../projects/five_link_biped/hybrid_lqr/plotting/lqr.csv",
-//      estimated_cost.transpose());
+  //  goldilocks_models::writeCSV(
+  //      "../projects/five_link_biped/hybrid_lqr/plotting/V.csv",
+  //      value_function.transpose());
+  //  goldilocks_models::writeCSV(
+  //      "../projects/five_link_biped/hybrid_lqr/plotting/lqr.csv",
+  //      estimated_cost.transpose());
   //  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/inputs.csv",
   //                              input_matrix.transpose());
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+      &lcm, std::move(diagram), state_receiver, FLAGS_channel_x, true);
+  loop.Simulate();
+  drake::log()->info("controller started");
 
   return 0;
 }

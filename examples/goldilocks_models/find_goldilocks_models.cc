@@ -96,7 +96,7 @@ DEFINE_double(
 //  The accuracy decreases in the direction from method 4 to method 6, while the
 //  solving speed increases (method4 is about 10x faster than method6).
 //  Method 1 and 2 require the matrix (A in Ax=b) being positive definite.
-DEFINE_int32(method_to_solve_system_of_equations, 3,
+DEFINE_int32(method_to_solve_system_of_equations, 4,
              "Method 0: use optimization program to solve it "
              "Method 1: inverse the matrix by schur complement "
              "Method 2: inverse the matrix by inverse() "
@@ -1553,11 +1553,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
                 delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
           : ground_incline_0 + delta_ground_incline * ((N_sample_gi - 1) / 2);
   double min_turning_rate =
-      (FLAGS_is_stochastic)
+      (FLAGS_is_stochastic && (FLAGS_N_sample_tr > 0))
           ? turning_rate_0 - delta_turning_rate * ((N_sample_tr - 1) / 2 + 0.5)
           : turning_rate_0 - delta_turning_rate * ((N_sample_tr - 1) / 2);
   double max_turning_rate =
-      (FLAGS_is_stochastic)
+      (FLAGS_is_stochastic && (FLAGS_N_sample_tr > 0))
           ? turning_rate_0 + delta_turning_rate * ((N_sample_tr - 1) / 2 + 0.5)
           : turning_rate_0 + delta_turning_rate * ((N_sample_tr - 1) / 2);
   DRAKE_DEMAND(min_stride_length >= 0);

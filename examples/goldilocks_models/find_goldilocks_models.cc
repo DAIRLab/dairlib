@@ -1468,7 +1468,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int N_sample_sl = (FLAGS_N_sample_sl == -1)? 1 : FLAGS_N_sample_sl;
   int N_sample_gi = (FLAGS_N_sample_gi == -1)? 1 : FLAGS_N_sample_gi;
   int N_sample_tr = (FLAGS_N_sample_tr == -1)? 1 : FLAGS_N_sample_tr;
-  int N_sample = N_sample_sl * N_sample_gi * N_sample_tr;  // 1;
+  int N_sample = N_sample_sl * N_sample_gi * N_sample_tr;
   if (FLAGS_robot_option == 0) {
     DRAKE_DEMAND(FLAGS_N_sample_tr < 1);
   }
@@ -1520,9 +1520,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
     duration = 0.4; // 0.4;
   }
   cout << "duration = " << duration << endl;
-  DRAKE_DEMAND(N_sample_sl % 2 == 1);
-  DRAKE_DEMAND(N_sample_gi % 2 == 1);
-  DRAKE_DEMAND(N_sample_tr % 2 == 1);
   cout << "N_sample_sl = " << N_sample_sl << endl;
   cout << "N_sample_gi = " << N_sample_gi << endl;
   cout << "N_sample_tr = " << N_sample_tr << endl;
@@ -1532,34 +1529,52 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "ground_incline_0 = " << ground_incline_0 << endl;
   cout << "delta_turning_rate = " << delta_turning_rate << endl;
   cout << "turning_rate_0 = " << turning_rate_0 << endl;
+  // Tasks setup
+  std::uniform_real_distribution<> dist_sl(-delta_stride_length / 2,
+                                           delta_stride_length / 2);
+  vector<double> delta_stride_length_vec;
+  for (int i = 0 - N_sample_sl / 2; i < N_sample_sl - N_sample_sl / 2; i++)
+    delta_stride_length_vec.push_back(i * delta_stride_length);
+  std::uniform_real_distribution<> dist_gi(-delta_ground_incline / 2,
+                                           delta_ground_incline / 2);
+  vector<double> delta_ground_incline_vec;
+  for (int i = 0 - N_sample_gi / 2; i < N_sample_gi - N_sample_gi / 2; i++)
+    delta_ground_incline_vec.push_back(i * delta_ground_incline);
+  std::uniform_real_distribution<> dist_tr(-delta_turning_rate / 2,
+                                           delta_turning_rate / 2);
+  vector<double> delta_turning_rate_vec;
+  for (int i = 0 - N_sample_tr / 2; i < N_sample_tr - N_sample_tr / 2; i++)
+    delta_turning_rate_vec.push_back(i * delta_turning_rate);
   double min_stride_length =
-      (FLAGS_is_stochastic)
-          ? stride_length_0 -
-                delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5)
-          : stride_length_0 - delta_stride_length * ((N_sample_sl - 1) / 2);
+      (FLAGS_is_stochastic && (FLAGS_N_sample_sl > 0))
+          ? stride_length_0 + delta_stride_length_vec.front() -
+                delta_stride_length * 0.5
+          : stride_length_0 + delta_stride_length_vec.front();
   double max_stride_length =
-      (FLAGS_is_stochastic)
-          ? stride_length_0 +
-                delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5)
-          : stride_length_0 + delta_stride_length * ((N_sample_sl - 1) / 2);
+      (FLAGS_is_stochastic && (FLAGS_N_sample_sl > 0))
+          ? stride_length_0 + delta_stride_length_vec.back() +
+                delta_stride_length * 0.5
+          : stride_length_0 + delta_stride_length_vec.back();
   double min_ground_incline =
-      (FLAGS_is_stochastic)
-          ? ground_incline_0 -
-                delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
-          : ground_incline_0 - delta_ground_incline * ((N_sample_gi - 1) / 2);
+      (FLAGS_is_stochastic && (FLAGS_N_sample_gi > 0))
+          ? ground_incline_0 + delta_ground_incline_vec.front() -
+                delta_ground_incline * 0.5
+          : ground_incline_0 + delta_ground_incline_vec.front();
   double max_ground_incline =
-      (FLAGS_is_stochastic)
-          ? ground_incline_0 +
-                delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
-          : ground_incline_0 + delta_ground_incline * ((N_sample_gi - 1) / 2);
+      (FLAGS_is_stochastic && (FLAGS_N_sample_gi > 0))
+          ? ground_incline_0 + delta_ground_incline_vec.back() +
+                delta_ground_incline * 0.5
+          : ground_incline_0 + delta_ground_incline_vec.back();
   double min_turning_rate =
       (FLAGS_is_stochastic && (FLAGS_N_sample_tr > 0))
-          ? turning_rate_0 - delta_turning_rate * ((N_sample_tr - 1) / 2 + 0.5)
-          : turning_rate_0 - delta_turning_rate * ((N_sample_tr - 1) / 2);
+          ? turning_rate_0 + delta_turning_rate_vec.front() -
+                delta_turning_rate * 0.5
+          : turning_rate_0 + delta_turning_rate_vec.front();
   double max_turning_rate =
       (FLAGS_is_stochastic && (FLAGS_N_sample_tr > 0))
-          ? turning_rate_0 + delta_turning_rate * ((N_sample_tr - 1) / 2 + 0.5)
-          : turning_rate_0 + delta_turning_rate * ((N_sample_tr - 1) / 2);
+          ? turning_rate_0 + delta_turning_rate_vec.back() +
+                delta_turning_rate * 0.5
+          : turning_rate_0 + delta_turning_rate_vec.back();
   DRAKE_DEMAND(min_stride_length >= 0);
   cout << "stride length ranges from " << min_stride_length << " to "
        << max_stride_length << endl;
@@ -1973,22 +1988,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   std::map<std::tuple<int, int, int>, int> inverse_task_idx_map;
   ConstructTaskIdxMap(&forward_task_idx_map, &inverse_task_idx_map, N_sample_sl,
                       N_sample_gi, N_sample_tr);
-  // Tasks setup
-  std::uniform_real_distribution<> dist_sl(-delta_stride_length / 2,
-                                           delta_stride_length / 2);
-  vector<double> delta_stride_length_vec;
-  for (int i = 0 - N_sample_sl / 2; i < N_sample_sl - N_sample_sl / 2; i++)
-    delta_stride_length_vec.push_back(i * delta_stride_length);
-  std::uniform_real_distribution<> dist_gi(-delta_ground_incline / 2,
-                                           delta_ground_incline / 2);
-  vector<double> delta_ground_incline_vec;
-  for (int i = 0 - N_sample_gi / 2; i < N_sample_gi - N_sample_gi / 2; i++)
-    delta_ground_incline_vec.push_back(i * delta_ground_incline);
-  std::uniform_real_distribution<> dist_tr(-delta_turning_rate / 2,
-                                           delta_turning_rate / 2);
-  vector<double> delta_turning_rate_vec;
-  for (int i = 0 - N_sample_tr / 2; i < N_sample_tr - N_sample_tr / 2; i++)
-    delta_turning_rate_vec.push_back(i * delta_turning_rate);
   // Some setup
   int n_theta = n_theta_s + n_theta_sDDot;
   VectorXd theta(n_theta);

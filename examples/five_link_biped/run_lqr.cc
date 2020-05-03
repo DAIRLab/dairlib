@@ -41,34 +41,6 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/rigid_body_plant/contact_results_to_lcm.h"
-DEFINE_double(gravity, 9.81, "Gravity acceleration constant");
-DEFINE_double(mu, 0.7, "The static coefficient of friction");
-// DEFINE_double(mu_kinetic, 0.7, "The dynamic coefficient of friction");
-DEFINE_double(v_tol, 0.01,
-              "The maximum slipping speed allowed during stiction (m/s)");
-DEFINE_string(channel_x, "RABBIT_STATE_SIMULATION",
-              "Channel to publish/receive state from simulation");
-DEFINE_double(publish_rate, 2000, "Publishing frequency (Hz)");
-DEFINE_bool(naive, true,
-            "Set to true if using the naive approach to hybrid "
-            "lqr");
-DEFINE_bool(minimal_coords, true,
-            "Set to true if using minimal coords for constrained hybrid "
-            "lqr");
-DEFINE_bool(contact_driven, true,
-            "Set to true if want to use contact_driven fsm");
-DEFINE_bool(recalculateP, false,
-            "Set to true if necessary to recalculate P(t) - for new trajs");
-DEFINE_bool(recalculateL, false,
-            "Set to true if necessary to recalculate L(t) - for new trajs");
-DEFINE_double(time_offset, 0.0, "offset added to FSM switching");
-DEFINE_double(init_fsm_state, 0, "Initial FSM state.");
-DEFINE_string(trajectory_name, "",
-    "Filename for the trajectory that contains"
-    " the initial state.");
-DEFINE_string(folder_path, "",
-    "Folder path for the folder that contains the "
-    "saved trajectory");
 
 // using drake::multibody::MultibodyPlant;
 using drake::multibody::Body;
@@ -95,6 +67,32 @@ using std::shared_ptr;
 using std::unique_ptr;
 using std::vector;
 
+DEFINE_double(gravity, 9.81, "Gravity acceleration constant");
+DEFINE_double(mu, 0.7, "The static coefficient of friction");
+DEFINE_double(v_tol, 0.01,
+              "The maximum slipping speed allowed during stiction (m/s)");
+DEFINE_string(channel_x, "RABBIT_STATE_SIMULATION",
+              "Channel to publish/receive state from simulation");
+DEFINE_double(publish_rate, 2000, "Publishing frequency (Hz)");
+DEFINE_bool(naive, true,
+            "Set to true if using the naive approach to hybrid lqr");
+DEFINE_bool(minimal_coords, true,
+            "Set to true if using minimal coords for constrained hybrid lqr");
+DEFINE_bool(contact_driven, true,
+            "Set to true if want to use contact_driven fsm");
+DEFINE_bool(recalculateP, false,
+            "Set to true if necessary to recalculate P(t) - for new trajs");
+DEFINE_bool(recalculateL, false,
+            "Set to true if necessary to recalculate L(t) - for new trajs");
+DEFINE_double(time_offset, 0.0, "offset added to FSM switching");
+DEFINE_double(init_fsm_state, 0, "Initial FSM state.");
+DEFINE_string(trajectory_name, "",
+              "Filename for the trajectory that contains"
+              " the initial state.");
+DEFINE_string(folder_path, "",
+              "Folder path for the folder that contains the "
+              "saved trajectory");
+
 namespace dairlib {
 
 using multibody::GetBodyIndexFromName;
@@ -104,7 +102,6 @@ namespace examples {
 namespace five_link_biped {
 namespace hybrid_lqr {
 
-//const std::string channel_x = FLAGS_channel_x;
 const std::string channel_u = "RABBIT_INPUT";
 
 int doMain(int argc, char* argv[]) {
@@ -115,7 +112,7 @@ int doMain(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   Parser parser(&plant, &scene_graph);
   std::string full_name =
-      FindResourceOrThrow("examples/jumping/five_link_biped.urdf");
+      FindResourceOrThrow("examples/five_link_biped/five_link_biped.urdf");
   parser.AddModelFromFile(full_name);
   plant.mutable_gravity_field().set_gravity_vector(-FLAGS_gravity *
                                                    Eigen::Vector3d::UnitZ());
@@ -184,6 +181,7 @@ int doMain(int argc, char* argv[]) {
   r_foot_contact_ad.xB = VectorXd::Zero(3);
   l_foot_contact_ad.frameA = l_foot_body_frame_ad;
   r_foot_contact_ad.frameA = r_foot_body_frame_ad;
+
   // Contact modes go l_foot, r_foot, l_foot
   contact_modes.push_back(l_foot_contact);
   contact_modes.push_back(r_foot_contact);
@@ -199,11 +197,6 @@ int doMain(int argc, char* argv[]) {
   MatrixXd Qf = Q;
   MatrixXd R = 0.01 * MatrixXd::Identity(nu, nu);
 
-  //  std::vector<double> impact_times(contact_modes.size() + 1);
-  //  impact_times[0] = state_trajs[0]->start_time();
-  //  impact_times[1] = state_trajs[1]->start_time();
-  //  impact_times[2] = state_trajs[2]->start_time();
-  //  impact_times[3] = state_trajs[2]->end_time();
   std::vector<double> impact_times(contact_modes.size() * 2);
   impact_times[0] = state_trajs[0]->start_time();
   impact_times[1] = state_trajs[0]->end_time();
@@ -215,11 +208,7 @@ int doMain(int argc, char* argv[]) {
   // Create Operational space control
   // Create state receiver.
   // Create command sender.
-//  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   drake::lcm::DrakeLcm lcm;
-  //  auto fsm = builder.AddSystem<WalkingFiniteStateMachine>(
-  //      plant, impact_times[1] + FLAGS_time_offset,
-  //      impact_times[2] + FLAGS_time_offset, false);
   auto fsm = builder.AddSystem<WalkingFiniteStateMachine>(
       plant, impact_times[1], impact_times[2], FLAGS_time_offset,
       FLAGS_contact_driven, FLAGS_init_fsm_state);

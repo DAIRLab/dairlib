@@ -53,6 +53,7 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
 using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 // Simulation parameters.
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
@@ -107,6 +108,8 @@ int do_main(int argc, char* argv[]) {
   multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);  // Add ground
   plant.Finalize();
 
+  int nu = plant.num_actuators();
+
   // Contact model parameters
   plant.set_stiction_tolerance(FLAGS_stiction);
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
@@ -114,12 +117,23 @@ int do_main(int argc, char* argv[]) {
   int nx = plant.num_positions() + plant.num_velocities();
   const LcmTrajectory& loaded_traj = LcmTrajectory(
       FLAGS_folder_path + FLAGS_trajectory_name);
-  const LcmTrajectory::Trajectory& state_and_input =
+  const LcmTrajectory::Trajectory& xu_0 =
       loaded_traj.getTrajectory("walking_trajectory_x_u0");
-  PiecewisePolynomial<double> state_traj = PiecewisePolynomial<double>::CubicHermite(
-      state_and_input.time_vector,
-      state_and_input.datapoints.topRows(nx),
-      state_and_input.datapoints.topRows(2*nx).bottomRows(nx));
+  const LcmTrajectory::Trajectory& xu_1 =
+      loaded_traj.getTrajectory("walking_trajectory_x_u1");
+  const LcmTrajectory::Trajectory& xu_2 =
+      loaded_traj.getTrajectory("walking_trajectory_x_u2");
+
+  int n_points =
+      xu_0.datapoints.cols() + xu_1.datapoints.cols() + xu_2.datapoints.cols();
+  MatrixXd xu(nx + nx + nu, n_points);
+  VectorXd times(n_points);
+  xu << xu_0.datapoints, xu_1.datapoints, xu_2.datapoints;
+  times << xu_0.time_vector, xu_1.time_vector, xu_2.time_vector;
+
+  PiecewisePolynomial<double> state_traj =
+      PiecewisePolynomial<double>::CubicHermite(
+          times, xu.topRows(nx), xu.topRows(2 * nx).bottomRows(nx));
   // Create input receiver.
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
@@ -132,7 +146,8 @@ int do_main(int argc, char* argv[]) {
   // Create state publisher.
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 4000.0));
+          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 8000.0));
+//          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 4000.0));
   ContactResultsToLcmSystem<double>& contact_viz =
       *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
   contact_viz.set_name("contact_visualization");
@@ -141,9 +156,6 @@ int do_main(int argc, char* argv[]) {
           "CONTACT_RESULTS", lcm, 1.0 / 4000.0));
   contact_results_publisher.set_name("contact_results_publisher");
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
-  auto input_logger =
-      drake::systems::LogOutput(passthrough->get_output_port(), &builder);
-  input_logger->set_publish_period(0.00025);  // 1000Hz
 
   // Contact results to lcm msg.
   //  auto contact_pub =
@@ -214,17 +226,9 @@ int do_main(int argc, char* argv[]) {
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
-  simulator.AdvanceTo(FLAGS_start_time + FLAGS_sim_time);
+//  simulator.AdvanceTo(FLAGS_start_time + FLAGS_sim_time);
+  simulator.AdvanceTo(FLAGS_sim_time);
 
-  MatrixXd input_matrix = input_logger->data().transpose();
-  MatrixXd times = input_logger->sample_times();
-  DRAKE_ASSERT(input_matrix.rows() == times.rows());
-  MatrixXd inputs_and_times(input_matrix.rows(),
-                            input_matrix.cols() + times.cols());
-  inputs_and_times << times , input_matrix;
-  goldilocks_models::writeCSV(
-      "../projects/five_link_biped/hybrid_lqr/plotting/inputs.csv",
-      inputs_and_times);
   return 0;
 }
 }  // namespace dairlib

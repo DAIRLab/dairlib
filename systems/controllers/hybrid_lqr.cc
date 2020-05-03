@@ -424,7 +424,8 @@ void HybridLQRController::calcLinearResetMap(double t, int contact_mode,
 
   MatrixX<AutoDiffXd> delta = R_non_linear * x_autodiff.tail(n_v_);
   MatrixXd R_linear = autoDiffToGradientMatrix(delta).block(0, 0, n_v_, n_x_);
-  R->block(n_q_, n_q_, n_v_, n_v_) = autoDiffToValueMatrix(R_non_linear);
+//  R->block(n_q_, n_q_, n_v_, n_v_) = autoDiffToValueMatrix(R_non_linear);
+  R->block(n_q_, 0, n_v_, n_x_) = R_linear;
   Dx_R->block(n_q_, 0, n_v_, n_x_) = R_linear;
 }
 
@@ -550,7 +551,8 @@ void HybridLQRController::CalcControl(
   }
 
   for (int i = 0; i < u_sol.size(); ++i) {  // cap the actuator inputs
-    u_sol(i) = std::min<double>(35, std::max<double>(-35, u_sol(i)));
+    u_sol(i) =
+        std::min<double>(u_max_(i), std::max<double>(u_min_(i), u_sol(i)));
   }
   output->SetDataVector(u_sol);
   output->set_timestamp(current_state->get_timestamp());

@@ -2398,6 +2398,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Accumulate failed samples
           if (sample_success != 1) {
+            // TODO: there might be a bug here. If a sample keeps failing even
+            // after the help from adjacent samples, it might over-count this
+            // failed sample
             n_failed_sample++;
           }
 
@@ -2497,28 +2500,32 @@ int findGoldilocksModels(int argc, char* argv[]) {
       continue;
     }  // end if extend_model_this_iter
     else if (rerun_current_iteration) {  // rerun the current iteration
+      // We only shrink step if it's iteration 2 or higher
+      if (iter != 1) {
+        current_iter_step_size = current_iter_step_size / 2;
+        // if(current_iter_step_size<1e-5){
+        //   cout<<"switch to the other method.";
+        //   is_newton = !is_newton;
+        // }
+        cout << "Step size shrinks to " << current_iter_step_size <<
+             ". Redo this iteration.\n\n";
+
+        // Descent
+        theta = prev_theta + current_iter_step_size * step_direction;
+
+        // Assign theta_s and theta_sDDot
+        theta_s = theta.head(n_theta_s);
+        theta_sDDot = theta.tail(n_theta_sDDot);
+
+        n_shrink_step++;
+      }
+
+      // Some logic for iterating
       iter -= 1;
-      n_shrink_step++;
-
-      current_iter_step_size = current_iter_step_size / 2;
-      // if(current_iter_step_size<1e-5){
-      //   cout<<"switch to the other method.";
-      //   is_newton = !is_newton;
-      // }
-      cout << "Step size shrinks to " << current_iter_step_size <<
-           ". Redo this iteration.\n\n";
-
-      // Descent
-      theta = prev_theta + current_iter_step_size * step_direction;
-
-      // Assign theta_s and theta_sDDot
-      theta_s = theta.head(n_theta_s);
-      theta_sDDot = theta.tail(n_theta_sDDot);
-
-      // for start_iterations_with_shrinking_stepsize
       start_iterations_with_shrinking_stepsize = false;
-
       step_size_shrinked_last_loop = true;
+      // The name `step_size_shrinked_last_loop` is a bit misleading if it's
+      // iter 1 but I think we still need it for getInitFileName()
     }  // end if rerun_current_iteration
     else {
       // The code only reach here when the current iteration is successful.

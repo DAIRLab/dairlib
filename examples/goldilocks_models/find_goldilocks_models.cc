@@ -10,7 +10,7 @@
 #include <cmath>
 #include <numeric> // std::accumulate
 #include <tuple>
-
+#include <Eigen/QR>  // CompleteOrthogonalDecomposition
 
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/choose_best_solver.h"
@@ -96,11 +96,19 @@ DEFINE_double(
     "WARNING: beta_momentum is not used in newton's method");
 
 // Solving for the cost gradient
-DEFINE_int32(method_to_solve_system_of_equations, 3,
+//  I didn't benchmark if method 4 to 6 get very slow when model parameter size
+//  is big (i.e. B matrix has many columns).
+//  The accuracy decreases in the direction from method 4 to method 6, while the
+//  solving speed increases (method4 is about 10x faster than method6).
+//  Method 1 and 2 require the matrix (A in Ax=b) being positive definite.
+DEFINE_int32(method_to_solve_system_of_equations, 4,
              "Method 0: use optimization program to solve it "
-             "Method 1: use schur complement "
-             "Method 2: use inverse() directly "
-             "Method 3: use Moore-Penrose pseudo inverse ");
+             "Method 1: inverse the matrix by schur complement "
+             "Method 2: inverse the matrix by inverse() "
+             "Method 3: use Moore-Penrose pseudo inverse "
+             "Method 4: linear solve by householderQr "
+             "Method 5: linear solve by ColPivHouseholderQR "
+             "Method 6: linear solve by bdcSvd ");
 
 // How to update the model iterations
 DEFINE_bool(start_current_iter_as_rerun, false,
@@ -480,7 +488,7 @@ void extractActiveAndIndependentRows(
     }
   }
 
-  bool is_testing = true;
+  bool is_testing = false;
   if (is_testing) {
     // Run a quadprog to check if the solution to the following problem is 0
     // Theoratically, it should be 0. Otherwise, something is wrong
@@ -526,7 +534,8 @@ void extractActiveAndIndependentRows(
 
   // Only add the rows that are linearly independent if the method requires A to
   // be positive definite
-  if (method_to_solve_system_of_equations != 3) {
+  if (method_to_solve_system_of_equations == 1 ||
+      method_to_solve_system_of_equations == 2) {
     // extract_method = 0: Do SVD each time when adding a row. (This has been
     //  working, but we later realized that the way we extract B matrix might be
     //  incorrect in theory)
@@ -630,6 +639,7 @@ void extractActiveAndIndependentRows(
 }
 
 MatrixXd solveInvATimesB(const MatrixXd & A, const MatrixXd & B) {
+  // Least squares solution to AX = B
   MatrixXd X = (A.transpose() * A).ldlt().solve(A.transpose() * B);
 
   // TODO: Test if the following line works better
@@ -716,57 +726,8 @@ void calcWInTermsOfTheta(int sample, const string& dir,
         (*(b_vec[sample])) + A_active_vec[sample]->transpose() * F);
     cout << "qi norm (this number should be close to 0) = "
          << qi.norm() << endl;
-  } else if (method_to_solve_system_of_equations == 2) {
-    // Method 2: use inverse() directly ////////////////////////////////////////
-    // (This one requires the Hessian H to be pd.)
-    // This method has been working pretty well, but it requires H to be pd. And
-    // in order to get pd H, we need to extract independent row of matrix A,
-    // which takes too much time in the current method.
-
-    // H_ext = [H A'; A 0]
-    int nl_i = (*(nl_vec[sample]));
-    int nw_i = (*(nw_vec[sample]));
-    MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
-    H_ext.block(0, 0, nw_i, nw_i) = *(H_vec[sample]);
-    H_ext.block(0, nw_i, nw_i, nl_i) = A_active_vec[sample]->transpose();
-    H_ext.block(nw_i, 0, nl_i, nw_i) = (*(A_active_vec[sample]));
-    H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
-
-    // Testing
-    // Eigen::BDCSVD<MatrixXd> svd(*(H_vec[sample]));
-    // cout << "H:\n";
-    // cout << "  biggest singular value is " << svd.singularValues()(0) <<
-    // endl; cout << "  smallest singular value is "
-    //         << svd.singularValues().tail(1) << endl;
-    // // cout << "singular values are \n" << svd.singularValues() << endl;
-    // // Testing
-    /*if (sample == 0) {
-      Eigen::BDCSVD<MatrixXd> svd_3(H_ext);
-      cout << "H_ext:\n";
-      cout << "  biggest singular value is " << svd_3.singularValues()(0)
-           << endl;
-      cout << "  smallest singular value is " << svd_3.singularValues().tail(1)
-           << endl;
-    }*/
-
-    // cout << "\nStart inverting the matrix.\n";
-    MatrixXd inv_H_ext = H_ext.inverse();
-    // cout << "Finsihed inverting the matrix.\n";
-    // // Testing
-    // Eigen::BDCSVD<MatrixXd> svd_5(inv_H_ext);
-    // cout << "inv_H_ext:\n";
-    // cout << "  biggest singular value is " << svd_5.singularValues()(0) <<
-    // endl; cout << "  smallest singular value is "
-    //      << svd_5.singularValues().tail(1) << endl;
-
-    MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
-    MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
-
-    Pi = -inv_H_ext12 * (*(B_active_vec[sample]));
-    qi = -inv_H_ext11 * (*(b_vec[sample]));
-  } else if (method_to_solve_system_of_equations == 3) {
-    // Method 3: use Moore–Penrose pseudo inverse //////////////////////////////
-
+  } else if ((method_to_solve_system_of_equations >= 2) &&
+             (method_to_solve_system_of_equations <= 6)) {
     // H_ext = [H A'; A 0]
     int nl_i = (*(nl_vec[sample]));
     int nw_i = (*(nw_vec[sample]));
@@ -776,13 +737,59 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     H_ext.block(nw_i, 0, nl_i, nw_i) = (*(A_active_vec[sample]));
     H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
 
-    MatrixXd inv_H_ext = MoorePenrosePseudoInverse(H_ext, 1e-8);
+    if (method_to_solve_system_of_equations == 2) {
+      // Method 2: use inverse() directly //////////////////////////////////////
+      // (This one requires the Hessian H to be pd.)
+      // This method has been working pretty well, but it requires H to be pd.
+      // And in order to get pd H, we need to extract independent row of matrix
+      // A, which takes too much time in the current method.
+      MatrixXd inv_H_ext = H_ext.inverse();
 
-    MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
-    MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
+      MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
+      MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
 
-    Pi = -inv_H_ext12 * (*(B_active_vec[sample]));
-    qi = -inv_H_ext11 * (*(b_vec[sample]));
+      Pi = -inv_H_ext12 * (*(B_active_vec[sample]));
+      qi = -inv_H_ext11 * (*(b_vec[sample]));
+    } else if (method_to_solve_system_of_equations == 3) {
+      // Method 3: use Moore–Penrose pseudo inverse ////////////////////////////
+      MatrixXd inv_H_ext = MoorePenrosePseudoInverse(H_ext, 1e-8);
+
+      MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
+      MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
+
+      Pi = -inv_H_ext12 * (*(B_active_vec[sample]));
+      qi = -inv_H_ext11 * (*(b_vec[sample]));
+    } else if (method_to_solve_system_of_equations == 4) {
+      // Method 4: linear solve with householderQr /////////////////////////////
+      MatrixXd B_aug =
+          MatrixXd::Zero(H_ext.rows(), B_active_vec[sample]->cols());
+      B_aug.bottomRows(nl_i) = -(*(B_active_vec[sample]));
+
+      Pi = H_ext.householderQr().solve(B_aug).topRows(nw_i);
+      qi = VectorXd::Zero(nw_i);
+    } else if (method_to_solve_system_of_equations == 5) {
+      // Method 5: linear solve with ColPivHouseholderQR ///////////////////////
+      MatrixXd B_aug =
+          MatrixXd::Zero(H_ext.rows(), B_active_vec[sample]->cols());
+      B_aug.bottomRows(nl_i) = -(*(B_active_vec[sample]));
+
+      Pi = Eigen::ColPivHouseholderQR<MatrixXd>(H_ext).solve(B_aug).topRows(
+          nw_i);
+      qi = VectorXd::Zero(nw_i);
+    } else if (method_to_solve_system_of_equations == 6) {
+      // Method 6: linear solve with bdcSvd ////////////////////////////////////
+      // https://eigen.tuxfamily.org/dox/group__TutorialLinearAlgebra.html
+      MatrixXd B_aug =
+          MatrixXd::Zero(H_ext.rows(), B_active_vec[sample]->cols());
+      B_aug.bottomRows(nl_i) = -(*(B_active_vec[sample]));
+
+      Pi = H_ext.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)
+               .solve(B_aug)
+               .topRows(nw_i);
+      qi = VectorXd::Zero(nw_i);
+    }
+  } else  {
+    throw std::runtime_error("Should not reach here");
   }
 
   P_vec[sample]->resizeLike(Pi);
@@ -833,10 +840,11 @@ MatrixXi GetAdjSampleIndices(
     int N_sample_sl, int N_sample_gi, int N_sample_tr, int N_sample,
     int task_dim,
     const std::map<std::tuple<int, int, int>, int>& inverse_task_idx_map) {
+  // cout << "Constructing adjacent index list...\n";
   MatrixXi adjacent_sample_indices =
       -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
   MatrixXi delta_idx = MatrixXi::Identity(3, 3);
-  for (int k = 0; k < N_sample_gi; k++) {  // ground incline axis
+  for (int k = 0; k < N_sample_tr; k++) {  // turning rate axis
     for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
       for (int i = 0; i < N_sample_sl; i++) {  // stride length axis
         int current_sample_idx = inverse_task_idx_map.at({i, j, k});
@@ -1572,11 +1580,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
                 delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
           : ground_incline_0 + delta_ground_incline * ((N_sample_gi - 1) / 2);
   double min_turning_rate =
-      (FLAGS_is_stochastic)
+      (FLAGS_is_stochastic && (FLAGS_N_sample_tr > 0))
           ? turning_rate_0 - delta_turning_rate * ((N_sample_tr - 1) / 2 + 0.5)
           : turning_rate_0 - delta_turning_rate * ((N_sample_tr - 1) / 2);
   double max_turning_rate =
-      (FLAGS_is_stochastic)
+      (FLAGS_is_stochastic && (FLAGS_N_sample_tr > 0))
           ? turning_rate_0 + delta_turning_rate * ((N_sample_tr - 1) / 2 + 0.5)
           : turning_rate_0 + delta_turning_rate * ((N_sample_tr - 1) / 2);
   DRAKE_DEMAND(min_stride_length >= 0);
@@ -1779,10 +1787,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double max_cost_increase_rate_before_ask_for_help = 0.1;
   if (FLAGS_robot_option == 0) {
     max_cost_increase_rate_before_ask_for_help = 0.5;
+  } else if (FLAGS_robot_option == 1) {
+    max_cost_increase_rate_before_ask_for_help = 0.15; //0.1
   }
   double max_adj_cost_diff_rate_before_ask_for_help = 0.1;
   if (FLAGS_robot_option == 0) {
     max_adj_cost_diff_rate_before_ask_for_help = 0.5;
+  } else if (FLAGS_robot_option == 1) {
+    max_adj_cost_diff_rate_before_ask_for_help = 0.5; //0.1
   }
   bool is_limit_difference_of_two_adjacent_costs =
       max_adj_cost_diff_rate_before_ask_for_help > 0;
@@ -2172,10 +2184,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   for (iter = iter_start; iter <= max_outer_iter; iter++)  {
     bool is_get_nominal = iter == 0;
 
-    if (start_iterations_with_shrinking_stepsize) {
-      n_shrink_step++;
-    }
-
     // Print info about iteration # and current time
     if (!start_iterations_with_shrinking_stepsize) {
       auto clock_now = std::chrono::system_clock::now();
@@ -2183,7 +2191,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         std::chrono::duration<double> iteration_elapse =
             clock_now - iter_start_time;
         iter_start_time = clock_now;
-        cout << "Last iteration takes " << iteration_elapse.count() << "s.\n";
+        cout << "\nLast iteration takes " << iteration_elapse.count() << "s.\n";
       }
       std::time_t current_time = std::chrono::system_clock::to_time_t(clock_now);
       cout << "Current time: " << std::ctime(&current_time);
@@ -2592,6 +2600,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }  // end if extend_model_this_iter
     else if (rerun_current_iteration) {  // rerun the current iteration
       iter -= 1;
+      n_shrink_step++;
 
       current_iter_step_size = current_iter_step_size / 2;
       // if(current_iter_step_size<1e-5){

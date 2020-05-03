@@ -1617,14 +1617,13 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
       std::pair<string, string>("_left", "_right"),
       std::pair<string, string>("_right", "_left"),
   };
-  vector<string> asy_joint_names{
-      "hip_roll",
-      "hip_yaw",
-  };
+  vector<string> asy_joint_names;
   vector<string> sym_joint_names;
   if (turning_rate == 0) {
+    asy_joint_names = {"hip_roll", "hip_yaw"};
     sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
   } else {
+    asy_joint_names = {"hip_roll"};
     sym_joint_names = {"hip_pitch"};
   }
   vector<string> joint_names{};
@@ -1853,39 +1852,67 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   // Fix time duration
   trajopt->AddDurationBounds(duration, duration);
 
-  // x position constraint
-  if (turning_rate == 0) {
-    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-    trajopt->AddBoundingBoxConstraint(stride_length, stride_length,
-                                      xf(pos_map.at("base_x")));
-  }
-
   // Constraint on initial floating base quaternion
-  if (true /*&& ground_incline == 0*/) {
-    trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
-    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qx")));
-    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qy")));
-    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qz")));
-  }
+  trajopt->AddBoundingBoxConstraint(1, 1, x0(pos_map.at("base_qw")));
+  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qx")));
+  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qy")));
+  trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_qz")));
 
   // Constraint on final floating base quaternion
   // TODO: below is a naive version. You can implement the constraint using
   // rotation matrix and mirror around the x-z plane of local frame (however,
   // the downside is the potential complexity of constraint)
   double turning_angle = turning_rate * duration;
-  if (turning_rate != 0) {
-    trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
-                                      cos(turning_angle / 2),
-                                      xf(pos_map.at("base_qw")));
-    trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
-    trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
-    trajopt->AddBoundingBoxConstraint(sin(turning_angle / 2),
-                                      sin(turning_angle / 2),
-                                      xf(pos_map.at("base_qz")));
-  }
+  trajopt->AddBoundingBoxConstraint(cos(turning_angle / 2),
+                                    cos(turning_angle / 2),
+                                    xf(pos_map.at("base_qw")));
+  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
+  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
+  trajopt->AddBoundingBoxConstraint(sin(turning_angle / 2),
+                                    sin(turning_angle / 2),
+                                    xf(pos_map.at("base_qz")));
 
-  // floating base constraint when turning
-  if (turning_rate != 0) {
+  // other floating base constraints
+  if (turning_rate == 0) {
+    // x position constraint
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
+    trajopt->AddBoundingBoxConstraint(stride_length, stride_length,
+                                      xf(pos_map.at("base_x")));
+
+    // Floating base periodicity
+    /*trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
+        xf(pos_map.at("base_qw")));
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
+        -xf(pos_map.at("base_qx")));
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
+        xf(pos_map.at("base_qy")));
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
+        -xf(pos_map.at("base_qz")));*/
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) ==
+        -xf(pos_map.at("base_y")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
+        xf(n_q + vel_map.at("base_wx")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
+        -xf(n_q + vel_map.at("base_wy")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
+        xf(n_q + vel_map.at("base_wz")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
+        xf(n_q + vel_map.at("base_vx")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+        -xf(n_q + vel_map.at("base_vy")));
+    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
+        xf(n_q + vel_map.at("base_vz")));
+
+  } else {
+    // z position constraint
+    // We don't need to impose this constraint when turning rate is 0, because
+    // the periodicity constraint already enforce the z height implicitly
+    trajopt->AddLinearConstraint(x0(pos_map.at("base_z")) ==
+                                 xf(pos_map.at("base_z")) +
+                                     xf(pos_map.at("base_x")) *
+                                         sin(ground_incline));
+
+    // x y position constraint
     double radius = stride_length / abs(turning_angle);
     int sign = (turning_angle >= 0) ? 1 : -1;
     double delta_x = radius * sin(abs(turning_angle));
@@ -1899,46 +1926,16 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 
     // floating base velocity constraint at mid point
     // TODO: double check that the floating base velocity is wrt local frame
-    trajopt->AddBoundingBoxConstraint(stride_length / duration,
+    /*trajopt->AddBoundingBoxConstraint(stride_length / duration,
                                       stride_length / duration,
                                       x_mid(n_q + vel_map.at("base_vx")));
     trajopt->AddBoundingBoxConstraint(0, 0, x_mid(n_q + vel_map.at("base_vy")));
     trajopt->AddBoundingBoxConstraint(turning_rate,
                                       turning_rate,
-                                      x_mid(n_q + vel_map.at("base_wz")));
+                                      x_mid(n_q + vel_map.at("base_wz")));*/
 
     // velocity constraint at the end point
     // TODO: double check that the floating base velocity is wrt local frame
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-        xf(n_q + vel_map.at("base_wx")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-        -xf(n_q + vel_map.at("base_wy")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-        xf(n_q + vel_map.at("base_wz")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-        xf(n_q + vel_map.at("base_vx")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
-        -xf(n_q + vel_map.at("base_vy")));
-    trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-        xf(n_q + vel_map.at("base_vz")));
-  }
-
-  // Floating base periodicity
-  if (ground_incline == 0) {
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_z")) ==
-        xf(pos_map.at("base_z")));
-  }
-  if (turning_rate == 0) {
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qw")) ==
-        xf(pos_map.at("base_qw")));
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qx")) ==
-        -xf(pos_map.at("base_qx")));
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qy")) ==
-        xf(pos_map.at("base_qy")));
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_qz")) ==
-        -xf(pos_map.at("base_qz")));
-    trajopt->AddLinearConstraint(x0(pos_map.at("base_y")) ==
-        -xf(pos_map.at("base_y")));
     trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
         xf(n_q + vel_map.at("base_wx")));
     trajopt->AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==

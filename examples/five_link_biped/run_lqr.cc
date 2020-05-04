@@ -131,7 +131,9 @@ int doMain(int argc, char* argv[]) {
   for (const auto& name : loaded_traj.getTrajectoryNames()) {
     std::cout << name << std::endl;
   }
-  int nx = plant.num_positions() + plant.num_velocities();
+  int nq = plant.num_positions();
+  int nv = plant.num_velocities();
+  int nx = nq + nv;
   int nu = plant.num_actuators();
 
   int num_modes = loaded_traj.getTrajectoryNames().size();
@@ -191,9 +193,7 @@ int doMain(int argc, char* argv[]) {
   contact_modes_ad.push_back(l_foot_contact_ad);
 
   MatrixXd Q = 1 * MatrixXd::Identity(nx, nx);
-  Q.block(0, 0, 7, 7) = 100 * MatrixXd::Identity(7, 7);
-  //  MatrixXd Q = 100 * MatrixXd::Identity(nx, nx);
-  //  Q.block(0, 0, 7, 7) = 10 * MatrixXd::Identity(7, 7);
+  Q.block(0, 0, nq, nq) = 100 * MatrixXd::Identity(nq, nq);
   MatrixXd Qf = Q;
   MatrixXd R = 0.01 * MatrixXd::Identity(nu, nu);
 

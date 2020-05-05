@@ -60,6 +60,8 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
+DEFINE_double(publish_rate, 2000.0,
+              "Publish rate in Hz.");
 DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
@@ -87,6 +89,8 @@ DEFINE_string(folder_path, "", "Folder path for the folder that contains the "
 DEFINE_int32(error_idx, 0, "Index in the state vector to inject error into");
 DEFINE_double(error, 0.0, "Value fo the error, see error_idx");
 
+VectorXd calcStateOffset(MultibodyPlant<double>& plant,
+                         Context<double>& context, VectorXd& x0);
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -108,6 +112,7 @@ int do_main(int argc, char* argv[]) {
   multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);  // Add ground
   plant.Finalize();
 
+  int nv = plant.num_velocities();
   int nu = plant.num_actuators();
 
   // Contact model parameters
@@ -146,14 +151,14 @@ int do_main(int argc, char* argv[]) {
   // Create state publisher.
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 8000.0));
+          "RABBIT_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
 //          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 4000.0));
   ContactResultsToLcmSystem<double>& contact_viz =
       *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CONTACT_RESULTS", lcm, 1.0 / 4000.0));
+          "CONTACT_RESULTS", lcm, 1.0 / FLAGS_publish_rate));
   contact_results_publisher.set_name("contact_results_publisher");
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
 
@@ -200,17 +205,13 @@ int do_main(int argc, char* argv[]) {
     x0 << 0, 0.778109, 0, -.3112, -.231, 0.427, 0.4689, 0, 0, 0, 0, 0, 0, 0;
   } else if (FLAGS_init_state == "Walking") {
     x0 << state_traj.value(FLAGS_start_time);
-    x0[FLAGS_error_idx] += FLAGS_error;
-//    x0 << 0, 0.798986, -0.00175796, -0.0541245, -0.320418, 0.1, 0.75, 0.225025,
-//        0.00132182, 0.145054, 0.136536, -0.746619, 9.46774e-05, -0.0115747;
-  } else if (FLAGS_init_state == "Walking_2") {
-    x0 << 0.075032, 0.79286, -0.0200404, 0.0081442, -0.184221, 0.200742,
-        0.215107, 0.501089, -0.148784, -0.340658, -0.312183, 2.19227, 2.59285,
-        -5.28952;
-  } else if (FLAGS_init_state == "Walking_3") {
-    x0 << 0.17696, 0.798739, 0.00405198, -0.337437, -0.0280155, 0.648008,
-        0.099669, 0.33931, -0.00910572, -0.061163, 0.472764, 0.477749, -2.2539,
-        0.016462;
+    if(FLAGS_error_idx >= nx){ //Not a generalized state
+      VectorXd v_offset = calcStateOffset(plant, plant_context, x0);
+      x0.tail(nv) = x0.tail(nv) + v_offset;
+    }
+    else{
+      x0[FLAGS_error_idx] += FLAGS_error;
+    }
   }
   plant.SetPositionsAndVelocities(&plant_context, x0);
   diagram_context->SetTime(FLAGS_start_time);
@@ -231,5 +232,35 @@ int do_main(int argc, char* argv[]) {
 
   return 0;
 }
+
+VectorXd calcStateOffset(MultibodyPlant<double>& plant,
+                         Context<double>& context, VectorXd& x0) {
+  plant.SetPositionsAndVelocities(&context, x0);
+  auto right_foot_frame = &plant
+      .GetBodyByName("right_foot").body_frame();
+  auto world = &plant.world_frame();
+  MatrixXd J_rfoot_3d = MatrixXd::Zero(3, plant.num_velocities());
+  plant.CalcJacobianTranslationalVelocity(
+      context, drake::multibody::JacobianWrtVariable::kV, *right_foot_frame,
+      Eigen::Vector3d::Zero(), *world, *world, &J_rfoot_3d);
+  MatrixXd TXZ = MatrixXd(2,3);
+  TXZ << 1, 0, 0,
+         0, 0, 1;
+  Eigen::Vector2d foot_vel_offset;
+  foot_vel_offset << 0.0, FLAGS_error;
+  MatrixXd J_rfoot_angles = MatrixXd(2,2);
+  // Taking only the Jacobian wrt right leg angles
+  J_rfoot_angles << (TXZ * J_rfoot_3d).col(4), (TXZ * J_rfoot_3d).col(6);
+  VectorXd joint_rate_offsets = J_rfoot_angles.colPivHouseholderQr().solve
+      (foot_vel_offset);
+  //Remove floating base offsets
+  VectorXd v_offset = VectorXd::Zero(plant.num_velocities());
+  v_offset(4) = joint_rate_offsets(0);
+  v_offset(6) = joint_rate_offsets(1);
+//  std::cout << v_offset << std::endl;
+//  std::cout << (TXZ * J_rfoot_3d) * v_offset << std::endl;
+  return v_offset;
+}
+
 }  // namespace dairlib
 int main(int argc, char* argv[]) { return dairlib::do_main(argc, argv); }

@@ -10,12 +10,15 @@ def main():
     folder_path = "/home/yangwill/Documents/research/projects/five_link_biped/hybrid_lqr/saved_trajs/"
     trajectory_name = "walking_4_24"
     log_folder = "/home/yangwill/Documents/research/projects/five_link_biped" \
-               "/hybrid_lqr/logs/parameter_study/varying_zdot/"
+               "/hybrid_lqr/logs/parameter_study/rfoot_z_velocity/"
     sim_time = 1.0
     penetration_allowance = 2e-4
-    error_idx = 1 + 7
-    start_time = 0.21
+    # error_idx = 1 + 7
+    error_idx = 14
+    start_time = 0.215
 
+    # time_offsets = np.linspace(0.0, 0.01, 21)
+    # x_error_values = np.linspace(-0.05, 0.05, 11)
     time_offsets = np.linspace(0.0, 0.01, 21)
     x_error_values = np.linspace(-0.05, 0.05, 11)
     # x_error_values = np.array([0.0])
@@ -37,6 +40,7 @@ def main():
             simulator_cmd = ['bazel-bin/examples/five_link_biped/rabbit_sim',
                              '--folder_path=%s' % folder_path,
                              '--trajectory_name=%s' % trajectory_name,
+                             '--publish_rate=%d' % 8000.0,
                              '--sim_time=%.3f' % sim_time,
                              '--dt=%.5f' % 1e-5,
                              '--penetration_allowance=%.4f' %

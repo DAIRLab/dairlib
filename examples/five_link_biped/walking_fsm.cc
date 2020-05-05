@@ -106,7 +106,8 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
   } else if (!contact_driven_) {
     switch ((FSM_STATE)fsm_state(0)) {
       case (LEFT_FOOT):
-        if (contact_info_msg.num_point_pair_contacts != 1 && !contact_flag(0) &&
+//        if (contact_info_msg.num_point_pair_contacts != 1 && !contact_flag(0) &&
+        if (contact_info_msg.num_point_pair_contacts == 2 && !contact_flag(0) &&
             (current_time - prev_time(0)) > 0.02) {
           contact_time(0) = current_time;
           contact_flag(0) = true;
@@ -122,7 +123,7 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
         }
         break;
       case (RIGHT_FOOT):
-        if (contact_info_msg.num_point_pair_contacts != 1 && !contact_flag(0) &&
+        if (contact_info_msg.num_point_pair_contacts == 2 && !contact_flag(0) &&
             (current_time - prev_time(0)) > 0.05) {
           contact_time(0) = current_time;
           contact_flag(0) = true;

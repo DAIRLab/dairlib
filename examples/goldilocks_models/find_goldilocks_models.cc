@@ -1597,11 +1597,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   /// How to restrict the number of samples is still under testing
   /// For now, the range of ground incline and stride length will not change while
-  /// the number of them will be the square root of themselves.
+  /// the number of them decreases.
   if(!uniform_grid && restricted_sample_number){
-      N_sample_gi = pow(N_sample_gi, 0.5);
-      N_sample_sl = pow(N_sample_sl, 0.5);
-      N_sample_tr = pow(N_sample_tr, 0.5);
+      if(N_sample_gi>2){
+          N_sample_gi = pow(N_sample_gi, 0.5) + 1;
+      }
+      if(N_sample_sl>2){
+          N_sample_sl = pow(N_sample_sl, 0.5) + 1;
+      }
+      if(N_sample_tr>2){
+          N_sample_tr = pow(N_sample_tr, 0.5) + 1;
+      }
       N_sample = N_sample_sl * N_sample_gi * N_sample_tr;
       cout << "Restrict the number of samples in one iteration" << endl;
       cout << "Restricted N_sample_sl = " << N_sample_sl << endl;

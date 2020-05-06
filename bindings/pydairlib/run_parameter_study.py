@@ -3,7 +3,6 @@ import time
 
 import numpy as np
 
-
 def main():
 
 
@@ -14,7 +13,9 @@ def main():
     sim_time = 1.0
     penetration_allowance = 2e-4
     # error_idx = 1 + 7
-    error_idx = 14
+    # error_idx = 14, 15, 16, 17
+    # order goes: lfoot x, rfoot x, lfoot z, rfoot z
+    error_idx = 17
     start_time = 0.215
 
     # time_offsets = np.linspace(0.0, 0.01, 21)

@@ -17,16 +17,7 @@ cc_library(
     srcs = ["walking_fsm.cc"],
     hdrs = ["walking_fsm.h"],
     deps = [
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "lqr_cost",
-    srcs = ["lqr_cost.cc"],
-    hdrs = ["lqr_cost.h"],
-    deps = [
+        "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -54,7 +45,6 @@ cc_binary(
     deps = [
         "//attic/multibody:utils",
         "//common",
-        "//examples/five_link_biped:lqr_cost",
         "//examples/five_link_biped:walking_fsm",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",

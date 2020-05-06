@@ -50,10 +50,6 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
     return this->get_output_port(control_output_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_cost() const {
-    return this->get_output_port(cost_output_port_);
-  }
-
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
   }
@@ -70,8 +66,6 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
  private:
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
-  void CalcCost(const drake::systems::Context<double>& context,
-                BasicVector<double>* output) const;
   Eigen::VectorXd calcLdot(double t, const Eigen::VectorXd& l,
                            const Eigen::VectorXd&);
   Eigen::VectorXd calcPdot(double t, const Eigen::VectorXd& P,
@@ -144,7 +138,6 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex fsm_port_;
   drake::systems::InputPortIndex contact_port_;
   drake::systems::OutputPortIndex control_output_port_;
-  drake::systems::OutputPortIndex cost_output_port_;
 };
 
 }  // namespace dairlib::systems

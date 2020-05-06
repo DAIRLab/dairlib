@@ -400,7 +400,7 @@ int doMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   // Initialize the plant
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   Parser parser(&plant, &scene_graph);
   std::string full_name =

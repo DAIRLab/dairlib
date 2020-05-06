@@ -4,6 +4,7 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "dairlib/lcmt_fsm_out.hpp"
 
 namespace dairlib {
 namespace examples {
@@ -25,6 +26,14 @@ class WalkingFiniteStateMachine : public drake::systems::LeafSystem<double> {
     return this->get_input_port(contact_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_fsm_output_port() const {
+    return this->get_output_port(fsm_output_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_lcm_output_port() const {
+    return this->get_output_port(lcm_port_);
+  }
+
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -32,10 +41,14 @@ class WalkingFiniteStateMachine : public drake::systems::LeafSystem<double> {
 
   void CalcFiniteState(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* fsm_state) const;
+  void AssignLcmOutput(const drake::systems::Context<double>& context,
+                       dairlib::lcmt_fsm_out* output) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   int state_port_;
   int contact_port_;
+  int fsm_output_port_;
+  int lcm_port_;
   double r_impact_time_;
   double l_impact_time_;
   double delay_time_;

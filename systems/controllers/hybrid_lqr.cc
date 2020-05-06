@@ -108,10 +108,6 @@ HybridLQRController::HybridLQRController(
       this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_),
                                     &HybridLQRController::CalcControl)
           .get_index();
-  cost_output_port_ =
-      this->DeclareVectorOutputPort(BasicVector<double>(4 + 5 * n_x_ + 2 * 3),
-                                    &HybridLQRController::CalcCost)
-          .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   contact_port_ = this->DeclareAbstractInputPort(
                           "lcmt_contact_info",
@@ -556,96 +552,7 @@ void HybridLQRController::CalcControl(
   }
   output->SetDataVector(u_sol);
   output->set_timestamp(current_state->get_timestamp());
-}  // namespace dairlib::systems
-
-void HybridLQRController::CalcCost(
-    const drake::systems::Context<double>& context,
-    BasicVector<double>* output) const {
-  auto* current_state =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  auto* contact_info = this->EvalAbstractInput(context, contact_port_);
-  const BasicVector<double>* fsm_state =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  //  const BasicVector<double>* fsm_state =
-  //      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  double timestamp = current_state->get_timestamp();
-  auto current_time = static_cast<double>(timestamp);
-  const auto& contact_info_msg =
-      contact_info->get_value<drake::lcmt_contact_results_for_viz>();
-
-  double cost0, cost1, cost2, cost3;
-  if (current_time < 1e-7) {  // arbitrary small time window
-    cost0 = 0;
-    cost1 = 0;
-    cost2 = 0;
-    cost3 = 0;
-  } else {
-    //    cost0 = current_state->GetState()(5);            // left knee
-    //    cost1 = state_trajs_.value(current_time)(5);      // left knee
-    //    cost2 = current_state->GetState()(5 + 7);        // left knee
-    //    cost3 = state_trajs_.value(current_time)(5 + 7);  // left knee
-    int mode = (int)fsm_state->get_value()(0);
-    MatrixXd S0 = getSAtTimestamp(current_time, 0);
-    MatrixXd S1 = getSAtTimestamp(current_time, 1);
-    MatrixXd S2 = getSAtTimestamp(current_time, 2);
-    if (using_min_coords_) {
-      VectorXd x_error0 =
-          current_state->GetState() - state_trajs_[0]->value(current_time);
-      VectorXd x_error1 =
-          current_state->GetState() - state_trajs_[1]->value(current_time);
-      VectorXd x_error2 =
-          current_state->GetState() - state_trajs_[2]->value(current_time);
-      MatrixXd P0 = getMinimalCoordBasis(current_time, 0);
-      MatrixXd P1 = getMinimalCoordBasis(current_time, 1);
-      MatrixXd P2 = getMinimalCoordBasis(current_time, 2);
-      cost0 = x_error0.transpose() * P0.transpose() * S0 * P0 * x_error0;
-      cost1 = x_error1.transpose() * P1.transpose() * S1 * P1 * x_error1;
-      cost2 = x_error2.transpose() * P2.transpose() * S2 * P2 * x_error2;
-      //      Map<VectorXd> VectorXd(
-      //          contact_info_msg.point_pair_contact_info[0].contact_force, 3);
-      VectorXd grf(6);
-      if (contact_info_msg.num_point_pair_contacts == 2) {
-        if (contact_info_msg.point_pair_contact_info[0].body1_name ==
-            "left_lower_leg(2)") {
-          grf << Vector3d(
-              contact_info_msg.point_pair_contact_info[0].contact_force),
-              Vector3d(
-                  contact_info_msg.point_pair_contact_info[1].contact_force);
-        } else {
-          grf << Vector3d(
-              contact_info_msg.point_pair_contact_info[1].contact_force),
-              Vector3d(
-                  contact_info_msg.point_pair_contact_info[0].contact_force);
-        }
-      } else {
-        if (contact_info_msg.point_pair_contact_info[0].body1_name ==
-            "left_lower_leg(2)") {
-          grf << Vector3d(
-              contact_info_msg.point_pair_contact_info[0].contact_force),
-              0, 0, 0;
-        } else {
-          grf << 0, 0, 0,
-              Vector3d(
-                  contact_info_msg.point_pair_contact_info[0].contact_force);
-        }
-      }
-      output->get_mutable_value() << current_time, cost0, cost1, cost2,
-          current_state->GetState(), state_trajs_[0]->value(current_time),
-          state_trajs_[1]->value(current_time),
-          state_trajs_[2]->value(current_time),
-          state_trajs_[mode]->value(current_time), grf;
-      return;  // TODO: clean up
-    } else {
-      VectorXd x_error =
-          current_state->GetState() - state_trajs_[mode]->value(current_time);
-      cost0 = x_error.transpose() * S0 * x_error;
-      cost1 = x_error.transpose() * S1 * x_error;
-      cost2 = x_error.transpose() * S2 * x_error;
-      cost3 = 0;
-    }
-  }
-  output->get_mutable_value() << current_time, cost0, cost1, cost2, cost3;
-}  // namespace dairlib::systems
+}
 
 MatrixXd generate_state_input_matrix(drake::systems::DenseOutput<double>& p_t,
                                      VectorXd& times) {
@@ -897,8 +804,6 @@ VectorXd HybridLQRController::calcPdot(double t, const Eigen::VectorXd& p,
   MatrixXd alpha_PFT = -1e-8 * (P * F.transpose());
 
   VectorXd pdot_rhs(num_rows);
-  //  pdot_rhs << Map<VectorXd>(alpha_PPT.data(), nd * nd),
-  //      VectorXd::Zero(nd * 2 * n_c_);
   pdot_rhs << VectorXd::Zero(nd * nd), VectorXd::Zero(nd * 2 * n_c_);
   MatrixXd pdot_lhs = MatrixXd::Zero(num_rows, nd * n_x_);
 

@@ -1,4 +1,5 @@
 #include "examples/five_link_biped/walking_fsm.h"
+#include "lcmtypes/_virtual_includes/lcmt_robot/dairlib/lcmt_fsm_out.hpp"
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 using dairlib::systems::OutputVector;
@@ -33,8 +34,13 @@ WalkingFiniteStateMachine::WalkingFiniteStateMachine(
                           "lcmt_contact_info",
                           drake::Value<drake::lcmt_contact_results_for_viz>{})
                       .get_index();
-  this->DeclareVectorOutputPort(BasicVector<double>(1),
-                                &WalkingFiniteStateMachine::CalcFiniteState);
+  fsm_output_port_ = this->DeclareVectorOutputPort(BasicVector<double>(1),
+                                &WalkingFiniteStateMachine::CalcFiniteState)
+                                    .get_index();
+  lcm_port_ = this->DeclareAbstractOutputPort(
+                      &WalkingFiniteStateMachine::AssignLcmOutput)
+                  .get_index();
+
   DeclarePerStepDiscreteUpdateEvent(
       &WalkingFiniteStateMachine::DiscreteVariableUpdate);
   // indices for discrete variables in drake leafsystem
@@ -189,6 +195,15 @@ void WalkingFiniteStateMachine::CalcFiniteState(
     const Context<double>& context, BasicVector<double>* fsm_state) const {
   fsm_state->get_mutable_value() =
       context.get_discrete_state().get_vector(fsm_idx_).get_value();
+}
+
+void WalkingFiniteStateMachine::AssignLcmOutput(
+    const Context<double>& context, dairlib::lcmt_fsm_out* output) const {
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  output->utime = robot_output->get_timestamp();
+  output->fsm_state =
+      context.get_discrete_state().get_vector(fsm_idx_).get_value()(0);
 }
 
 }  // namespace examples

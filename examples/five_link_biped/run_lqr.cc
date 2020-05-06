@@ -25,7 +25,7 @@
 #include "dairlib/lcmt_pd_config.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/five_link_biped/lqr_cost.h"
+#include "dairlib/lcmt_fsm_out.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -42,9 +42,7 @@
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/rigid_body_plant/contact_results_to_lcm.h"
 
-// using drake::multibody::MultibodyPlant;
 using drake::multibody::Body;
-// using drake::multibody::Parser;
 
 using drake::AutoDiffXd;
 using drake::geometry::SceneGraph;
@@ -205,7 +203,7 @@ int doMain(int argc, char* argv[]) {
   impact_times[4] = state_trajs[2]->start_time();
   impact_times[5] = state_trajs[2]->end_time();
 
-  // Create Operational space control
+  // Create Leaf Systems
   // Create state receiver.
   // Create command sender.
   drake::lcm::DrakeLcm lcm;
@@ -221,11 +219,12 @@ int doMain(int argc, char* argv[]) {
   auto contact_results_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CONTACT_RESULTS", &lcm));
-  //  auto contact_results_receiver =
-  //  builder.AddSystem<systems::Contact>(plant);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
+  auto fsm_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_fsm_out>(
+          "FSM", &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
 
   auto start = std::chrono::high_resolution_clock::now();
@@ -237,20 +236,11 @@ int doMain(int argc, char* argv[]) {
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Took " << elapsed.count() << "s to create LQR controller"
             << std::endl;
-  //  auto lqr_cost =
-  //      builder.AddSystem<LQRCost>(plant, Q, R, state_trajs, input_trajs);
-  //  auto lqr_cost_logger =
-  //      drake::systems::LogOutput(lqr_cost->get_output_port(0), &builder);
-  //  auto value_function_logger =
-  //      drake::systems::LogOutput(lqr->get_output_port(1), &builder);
-  //  auto input_logger =
-  //      drake::systems::LogOutput(lqr->get_output_port(0), &builder);
+//  auto fsm_logger =
+//            drake::systems::LogOutput(fsm->get_output_port(0), &builder);
+//  fsm_logger->set_forced_publish_only();
 
-  //  value_function_logger->set_publish_period(0.00025);  // 1000Hz
-  //  lqr_cost_logger->set_publish_period(0.002);        // 1000Hz
-  //  input_logger->set_publish_period(0.00025);           // 1000Hz
-
-  // ******End of osc configuration*******
+  // ******End of leaf system initialization*******
 
   //  builder.Connect(state_sub->get_output_port(),
   //                  state_receiver->get_input_port(0));
@@ -262,7 +252,8 @@ int doMain(int argc, char* argv[]) {
                   fsm->get_contact_input_port());
   builder.Connect(contact_results_sub->get_output_port(),
                   lqr->get_contact_input_port());
-  builder.Connect(fsm->get_output_port(0), lqr->get_fsm_input_port());
+  builder.Connect(fsm->get_fsm_output_port(), lqr->get_fsm_input_port());
+  builder.Connect(fsm->get_lcm_output_port(), fsm_pub->get_input_port());
   //  builder.Connect(fsm->get_output_port(0), lqr_cost->get_input_port(1));
   //  builder.Connect(state_receiver->get_output_port(0),
   //                  lqr_cost->get_input_port(0));
@@ -294,11 +285,11 @@ int doMain(int argc, char* argv[]) {
   // Write all dataloggers to a CSV
   //  MatrixXd value_function = value_function_logger->data();
   //  MatrixXd estimated_cost = lqr_cost_logger->data();
-  //  MatrixXd input_matrix = input_logger->data();
+//  MatrixXd fsm_output = fsm_logger->data();
 
-  //  goldilocks_models::writeCSV(
-  //      "../projects/five_link_biped/hybrid_lqr/plotting/V.csv",
-  //      value_function.transpose());
+//  goldilocks_models::writeCSV(
+//      "../projects/five_link_biped/hybrid_lqr/plotting/V.csv",
+//      fsm_output.transpose());
   //  goldilocks_models::writeCSV(
   //      "../projects/five_link_biped/hybrid_lqr/plotting/lqr.csv",
   //      estimated_cost.transpose());

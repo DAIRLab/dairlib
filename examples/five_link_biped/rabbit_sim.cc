@@ -236,29 +236,53 @@ int do_main(int argc, char* argv[]) {
 VectorXd calcStateOffset(MultibodyPlant<double>& plant,
                          Context<double>& context, VectorXd& x0) {
   plant.SetPositionsAndVelocities(&context, x0);
+
+  // common frames
   auto right_foot_frame = &plant
       .GetBodyByName("right_foot").body_frame();
+  auto left_foot_frame = &plant
+      .GetBodyByName("left_foot").body_frame();
   auto world = &plant.world_frame();
-  MatrixXd J_rfoot_3d = MatrixXd::Zero(3, plant.num_velocities());
-  plant.CalcJacobianTranslationalVelocity(
-      context, drake::multibody::JacobianWrtVariable::kV, *right_foot_frame,
-      Eigen::Vector3d::Zero(), *world, *world, &J_rfoot_3d);
   MatrixXd TXZ = MatrixXd(2,3);
   TXZ << 1, 0, 0,
          0, 0, 1;
-  Eigen::Vector2d foot_vel_offset;
-  foot_vel_offset << 0.0, FLAGS_error;
+
+  MatrixXd J_foot_3d = MatrixXd::Zero(3, plant.num_velocities());
+  Eigen::Vector2d foot_vel_offset = Eigen::Vector2d::Zero();
+  if(FLAGS_error_idx == 14 || FLAGS_error_idx == 16){ // left foot
+    plant.CalcJacobianTranslationalVelocity(
+        context, drake::multibody::JacobianWrtVariable::kV, *left_foot_frame,
+        Eigen::Vector3d::Zero(), *world, *world, &J_foot_3d);
+    if(FLAGS_error_idx == 14){ // x velocity
+      foot_vel_offset(0) += FLAGS_error;
+    }
+    else{
+      foot_vel_offset(1) += FLAGS_error;
+    }
+  }
+  else{
+    plant.CalcJacobianTranslationalVelocity(
+        context, drake::multibody::JacobianWrtVariable::kV, *right_foot_frame,
+        Eigen::Vector3d::Zero(), *world, *world, &J_foot_3d);
+    if(FLAGS_error_idx == 14){ // x velocity
+      foot_vel_offset(0) += FLAGS_error;
+    }
+    else{
+      foot_vel_offset(1) += FLAGS_error;
+    }
+  }
+
   MatrixXd J_rfoot_angles = MatrixXd(2,2);
   // Taking only the Jacobian wrt right leg angles
-  J_rfoot_angles << (TXZ * J_rfoot_3d).col(4), (TXZ * J_rfoot_3d).col(6);
-  VectorXd joint_rate_offsets = J_rfoot_angles.colPivHouseholderQr().solve
-      (foot_vel_offset);
+  J_rfoot_angles << (TXZ * J_foot_3d).col(4), (TXZ * J_foot_3d).col(6);
+  VectorXd joint_rate_offsets =
+      J_rfoot_angles.colPivHouseholderQr().solve(foot_vel_offset);
   //Remove floating base offsets
   VectorXd v_offset = VectorXd::Zero(plant.num_velocities());
   v_offset(4) = joint_rate_offsets(0);
   v_offset(6) = joint_rate_offsets(1);
 //  std::cout << v_offset << std::endl;
-//  std::cout << (TXZ * J_rfoot_3d) * v_offset << std::endl;
+//  std::cout << (TXZ * J_foot_3d) * v_offset << std::endl;
   return v_offset;
 }
 

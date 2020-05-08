@@ -264,7 +264,7 @@ VectorXd calcStateOffset(MultibodyPlant<double>& plant,
     plant.CalcJacobianTranslationalVelocity(
         context, drake::multibody::JacobianWrtVariable::kV, *right_foot_frame,
         Eigen::Vector3d::Zero(), *world, *world, &J_foot_3d);
-    if(FLAGS_error_idx == 14){ // x velocity
+    if(FLAGS_error_idx == 15){ // x velocity
       foot_vel_offset(0) += FLAGS_error;
     }
     else{

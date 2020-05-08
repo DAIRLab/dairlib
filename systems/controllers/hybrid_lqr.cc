@@ -271,8 +271,8 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
       *context, drake::multibody::JacobianWrtVariable::kV, contact_frame_pre,
       pt_cast, world, world, &J_pre_3d);
 
-  std::cout << "Pre-impact contact frame: " << contact_frame_pre.name()
-            << std::endl;
+//  std::cout << "Pre-impact contact frame: " << contact_frame_pre.name()
+//            << std::endl;
   MatrixXd JdotV_3d =
       plant_
           .CalcBiasForJacobianSpatialVelocity(
@@ -302,8 +302,8 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
   const drake::multibody::Frame<double>& new_contact_frame =
       *contact_info_rev_[contact_mode_post + 1].frameA[0];
 
-  std::cout << "Post-impact contact frame: " << new_contact_frame.name()
-            << std::endl;
+//  std::cout << "Post-impact contact frame: " << new_contact_frame.name()
+//            << std::endl;
   MatrixXd J_post_3d(3, n_v_);
 
   plant_.CalcJacobianTranslationalVelocity(
@@ -420,8 +420,8 @@ void HybridLQRController::calcLinearResetMap(double t, int contact_mode,
 
   MatrixX<AutoDiffXd> delta = R_non_linear * x_autodiff.tail(n_v_);
   MatrixXd R_linear = autoDiffToGradientMatrix(delta).block(0, 0, n_v_, n_x_);
-//  R->block(n_q_, n_q_, n_v_, n_v_) = autoDiffToValueMatrix(R_non_linear);
-  R->block(n_q_, 0, n_v_, n_x_) = R_linear;
+  R->block(n_q_, n_q_, n_v_, n_v_) = autoDiffToValueMatrix(R_non_linear);
+//  R->block(n_q_, 0, n_v_, n_x_) = R_linear;
   Dx_R->block(n_q_, 0, n_v_, n_x_) = R_linear;
 }
 
@@ -544,6 +544,7 @@ void HybridLQRController::CalcControl(
       MatrixXd K = -R_.inverse() * B_linear.transpose() * S;
       u_sol = K * (x_error);
     }
+    u_sol = u_sol + input_trajs_[mode]->value(current_time); // feedforward term
   }
 
   for (int i = 0; i < u_sol.size(); ++i) {  // cap the actuator inputs

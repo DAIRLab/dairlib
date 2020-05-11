@@ -10,9 +10,10 @@ def main():
     trajectory_name = "walking_4_24"
     log_folder = "/home/yangwill/Documents/research/projects/five_link_biped" \
                "/hybrid_lqr/logs/parameter_study/vary_ground_penetration" \
-                 "/rfoot_z_velocity_adjusted/"
+                 "/rfoot_z_velocity/"
+               # "/hybrid_lqr/logs/parameter_study/rfoot_x_velocity_adjusted/"
     sim_time = 1.0
-    penetration_allowances = 2e-4
+    # penetration_allowances = 2e-4
     # error_idx = 1 + 7
     # error_idx = 14, 15, 16, 17
     # order goes: lfoot x, rfoot x, lfoot z, rfoot z
@@ -23,7 +24,9 @@ def main():
     # x_error_values = np.linspace(-0.05, 0.05, 11)
     # time_offsets = np.linspace(0.0, 0.01, 21)
     penetration_allowances = np.array([1e-5, 1e-4, 2e-4])
-    time_offsets = np.linspace(0.0, 0.005, 11)
+    # penetration_allowances = np.array([2e-4])
+    # time_offsets = np.linspace(0.0, 0.005, 11)
+    time_offsets = np.linspace(0.000, 0.01, 21)
     x_error_values = np.linspace(-0.05, 0.05, 11)
     # x_error_values = np.array([0.0])
     parameter_file = open(log_folder + 'command_list.txt', 'w')
@@ -37,6 +40,9 @@ def main():
                            'lcmlog-delay_%.4f-error_%.2f_-pen_%.5f' % (
                         time_offsets[i], x_error_values[j],
                         penetration_allowances[k])
+                # log_path = log_folder + \
+                #            'lcmlog-delay_%.4f-error_%.2f' % (
+                #         time_offsets[i], x_error_values[j])
                 print(log_path)
                 controller_cmd = ['bazel-bin/examples/five_link_biped/run_lqr',
                                   '--contact_driven=%d' % False,

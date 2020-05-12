@@ -1,5 +1,5 @@
 #include "examples/five_link_biped/walking_fsm.h"
-#include "lcmtypes/_virtual_includes/lcmt_robot/dairlib/lcmt_fsm_out.hpp"
+#include "dairlib/lcmt_fsm_out.hpp"
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 using dairlib::systems::OutputVector;

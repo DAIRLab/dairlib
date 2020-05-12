@@ -208,7 +208,7 @@ int doMain(int argc, char* argv[]) {
   // Create command sender.
   drake::lcm::DrakeLcm lcm;
   auto fsm = builder.AddSystem<WalkingFiniteStateMachine>(
-      plant, impact_times[1], impact_times[2], FLAGS_time_offset,
+      plant, impact_times[1], impact_times[3], FLAGS_time_offset,
       FLAGS_contact_driven, FLAGS_init_fsm_state);
   // Create state receiver.
   //  auto state_sub = builder.AddSystem(

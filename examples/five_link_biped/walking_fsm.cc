@@ -79,7 +79,31 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
     prev_time(0) = current_time;
   }
 
-  if (contact_driven_) {
+  if(delay_time_ < 0.0){
+    switch ((FSM_STATE)fsm_state(0)) {
+      case (LEFT_FOOT):
+        if (current_time >= r_impact_time_ + delay_time_) {
+          fsm_state << RIGHT_FOOT;
+          std::cout << "current time: " << current_time << std::endl;
+          std::cout << "Setting fsm to RIGHT_FOOT" << std::endl;
+          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+          prev_time(0) = current_time;
+        }
+        break;
+      case (RIGHT_FOOT):
+        if (current_time >= l_impact_time_ + delay_time_) {
+          fsm_state << LEFT_FOOT_2;
+          std::cout << "current time: " << current_time << std::endl;
+          std::cout << "Setting fsm to LEFT_FOOT_2" << std::endl;
+          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+          prev_time(0) = current_time;
+        }
+        break;
+      case (LEFT_FOOT_2):
+        break;
+    }
+  }
+  else if (contact_driven_) {
     switch ((FSM_STATE)fsm_state(0)) {
       case (LEFT_FOOT):
         if (contact_info_msg.num_point_pair_contacts != 1 &&
@@ -100,13 +124,6 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
         }
         break;
       case (LEFT_FOOT_2):
-        if (contact_info_msg.num_point_pair_contacts != 1 &&
-            (current_time - prev_time(0)) > 0.05) {
-          fsm_state << LEFT_FOOT;
-          std::cout << "Setting fsm to LEFT_FOOT" << std::endl;
-          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
-          prev_time(0) = current_time;
-        }
         break;
     }
   } else if (!contact_driven_) {
@@ -145,18 +162,6 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
         }
         break;
       case (LEFT_FOOT_2):
-        if (contact_info_msg.num_point_pair_contacts != 1 && !contact_flag(0) &&
-            (current_time - prev_time(0)) > 0.05) {
-          contact_time(0) = current_time;
-          contact_flag(0) = true;
-        }
-        if (current_time - contact_time(0) >= delay_time_ && contact_flag(0)) {
-          fsm_state << LEFT_FOOT;
-          std::cout << "Setting fsm to LEFT_FOOT" << std::endl;
-          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
-          contact_flag(0) = false;
-          prev_time(0) = current_time;
-        }
         break;
     }
   } else {
@@ -173,14 +178,6 @@ EventStatus WalkingFiniteStateMachine::DiscreteVariableUpdate(
         if (current_time > l_impact_time_) {
           fsm_state << LEFT_FOOT_2;
           std::cout << "Setting fsm to LEFT_FOOT_2" << std::endl;
-          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
-          prev_time(0) = current_time;
-        }
-        break;
-      case (LEFT_FOOT_2):
-        if (current_time > 1.5) {
-          fsm_state << LEFT_FOOT;
-          std::cout << "Setting fsm to LEFT_FOOT" << std::endl;
           std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
           prev_time(0) = current_time;
         }

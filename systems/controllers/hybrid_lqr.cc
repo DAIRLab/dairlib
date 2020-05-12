@@ -330,15 +330,15 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
   MatrixXd R = MatrixXd::Zero(n_x_, n_x_);
   MatrixXd Dx_R = MatrixXd::Zero(n_x_, n_x_);
   calcLinearResetMap(t, contact_mode, &R, &Dx_R);
-  VectorXd dG(n_x_);
+  VectorXd D1_g(n_x_);
 
-  dG << J_pre.row(1).transpose(), VectorXd::Zero(n_q_);  // dphi/dq, dphi/dqdot
+  D1_g << J_pre.row(1).transpose(), VectorXd::Zero(n_q_);  // dphi/dq, dphi/dqdot
   VectorXd J_delta = Dx_R * xdot_pre;
   double J_g = (J_pre.row(1) * xdot_pre.head(n_q_));
 
   MatrixXd H = MatrixXd::Zero(n_x_, n_x_);
 
-  H << (R + ((xdot_post - xdot_pre - J_delta) / J_g) * dG.transpose());
+  H << (R + ((xdot_post - xdot_pre - J_delta) / J_g) * D1_g.transpose());
   // Because we are working backwards, S(t,j) = (I + H(j)'*S(t,j+1)*(I + H(j))
   // which is what we want
   MatrixXd S_post;
@@ -420,8 +420,8 @@ void HybridLQRController::calcLinearResetMap(double t, int contact_mode,
 
   MatrixX<AutoDiffXd> delta = R_non_linear * x_autodiff.tail(n_v_);
   MatrixXd R_linear = autoDiffToGradientMatrix(delta).block(0, 0, n_v_, n_x_);
-  R->block(n_q_, n_q_, n_v_, n_v_) = autoDiffToValueMatrix(R_non_linear);
-//  R->block(n_q_, 0, n_v_, n_x_) = R_linear;
+//  R->block(n_q_, n_q_, n_v_, n_v_) = autoDiffToValueMatrix(R_non_linear);
+  R->block(n_q_, 0, n_v_, n_x_) = R_linear;
   Dx_R->block(n_q_, 0, n_v_, n_x_) = R_linear;
 }
 

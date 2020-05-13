@@ -72,3 +72,19 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "visualize_trajectory",
+    srcs = ["visualize_trajectory.cc"],
+    data = ["five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:multipose_visualizer",
+        "//systems:robot_lcm_systems",
+        "//systems/goldilocks_models",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

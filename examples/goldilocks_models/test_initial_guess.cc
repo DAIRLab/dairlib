@@ -35,13 +35,15 @@ using dairlib::FindResourceOrThrow;
 namespace dairlib::goldilocks_models {
     int test_initial_guess(int argc, char* argv[]){
         const string dir = "../dairlib_data/goldilocks_models/find_models/robot_0/";
-        int iter = 1;
+        int iter = 2;
         int sample = 0;
-        int total_sample_num = 25;
-        double min_sl = 0.2625;
-        double max_sl = 0.3375;
+        int total_sample_num = 27;
+        double min_sl = 0.1625;
+        double max_sl = 0.2375;
         double min_gi = -0.125;
         double max_gi = 0.125;
+        double min_tr = -0.3125;
+        double max_tr = 0.3125;
         for (sample = 0;sample<25;sample++) {
             string initial_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi,
                                                     max_gi);

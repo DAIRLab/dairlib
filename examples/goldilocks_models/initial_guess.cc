@@ -72,13 +72,13 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                 VectorXd normalize_scale(gamma_dimension);
                 if( ! ((min_gi == max_gi) || (min_sl == max_sl) || (min_tr == max_tr)) )
                 {
-                    normalize_scale << max_gi-min_gi, max_sl-min_sl, max_tr-min_tr;
+                    normalize_scale << 1/(max_gi-min_gi), 1/(max_sl-min_sl), 1/(max_tr-min_tr);
                 }
                 else
                 {
                     normalize_scale << 1, 1, 1;
                 }
-                VectorXd dif_gamma = (past_gamma - current_gamma).array()*normalize_scale.array();
+                VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*normalize_scale.array();
                 VectorXd dif_gamma2 = dif_gamma.array().pow(2);
                 double distance_gamma =  (dif_gamma.transpose() * gamma_scale * dif_gamma2)(0,0);
                 if (distance_gamma < distance_gamma_min) {
@@ -121,13 +121,13 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                     VectorXd normalize_scale(gamma_dimension);
                     if( ! ((min_gi == max_gi) || (min_sl == max_sl) || (min_tr == max_tr)) )
                     {
-                        normalize_scale << max_gi-min_gi, max_sl-min_sl, max_tr-min_tr;
+                        normalize_scale << 1/(max_gi-min_gi), 1/(max_sl-min_sl), 1/(max_tr-min_tr);
                     }
                     else
                     {
                         normalize_scale << 1, 1, 1;
                     }
-                    VectorXd dif_gamma = (past_gamma - current_gamma).array()*normalize_scale.array();
+                    VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*normalize_scale.array();
                     VectorXd dif_gamma2 = dif_gamma.array().pow(2);
                     double distance_gamma =  (dif_gamma.transpose() * gamma_scale * dif_gamma2)(0,0);
                     VectorXd w_to_interpolate = readCSV(directory + to_string(past_iter) + string("_")

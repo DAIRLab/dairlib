@@ -16,12 +16,8 @@ MatrixXd get_theta_scale(const string directory, int iter){
 
 MatrixXd get_gamma_scale(int gamma_length, double min_sl, double max_sl, double min_gi, double max_gi,
         double min_tr, double max_tr){
-    VectorXd gamma_scale = VectorXd::Ones(gamma_length);
-//    If one of the ground incline and stride length is fixed, no need to scale
-    if( ! ((min_gi == max_gi) || (min_sl == max_sl) || (min_tr == max_tr)) )
-    {
-        gamma_scale << 1/pow(max_gi-min_gi,2), 1/pow(max_sl-min_sl,2), 1/pow(max_tr-min_tr,2);
-    }
+    VectorXd gamma_scale(gamma_length);
+    gamma_scale << 1, 1, 2;
     MatrixXd diag_gamma_scale = gamma_scale.asDiagonal();
     return diag_gamma_scale;
 }
@@ -56,7 +52,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
 //    For iter = 1, theta_1 is the same with theta_0. So use the results of iter_0.
     if(iter == 1)
     {
-        double distance_gamma_min = 10000; //initialize with a large one
+        double distance_gamma_min = 100000; //initialize with a large one
         int sample_near = 0;
         for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
 //                check if this sample is success
@@ -71,8 +67,20 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                         + to_string(sample_num) + string("_turning_rate.csv"));
                 VectorXd past_gamma(gamma_dimension);
                 past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0,0);
-                double distance_gamma = ((past_gamma - current_gamma).transpose()*gamma_scale*
-                                         (past_gamma - current_gamma))(0,0);
+
+                // normalize gamma
+                VectorXd normalize_scale(gamma_dimension);
+                if( ! ((min_gi == max_gi) || (min_sl == max_sl) || (min_tr == max_tr)) )
+                {
+                    normalize_scale << max_gi-min_gi, max_sl-min_sl, max_tr-min_tr;
+                }
+                else
+                {
+                    normalize_scale << 1, 1, 1;
+                }
+                VectorXd dif_gamma = (past_gamma - current_gamma).array()*normalize_scale.array();
+                VectorXd dif_gamma2 = dif_gamma.array().pow(2);
+                double distance_gamma =  (dif_gamma.transpose() * gamma_scale * dif_gamma2)(0,0);
                 if (distance_gamma < distance_gamma_min) {
                     distance_gamma_min = distance_gamma;
                     sample_near = sample_num;
@@ -102,15 +110,26 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                         + to_string(sample_num) + string("_is_success.csv")))(0,0);
                 if(is_success == 1) {
                     MatrixXd past_ground_incline = readCSV(directory + to_string(past_iter) + string("_")
-                            +to_string(sample_num) + string("_ground_incline.csv"));
+                            + to_string(sample_num) + string("_ground_incline.csv"));
                     MatrixXd past_stride_length = readCSV(directory + to_string(past_iter) + string("_")
                             + to_string(sample_num) + string("_stride_length.csv"));
                     MatrixXd past_turning_rate = readCSV(directory + to_string(past_iter) + string("_")
-                                                          + to_string(sample_num) + string("_turning_rate.csv"));
+                            + to_string(sample_num) + string("_turning_rate.csv"));
                     VectorXd past_gamma(gamma_dimension);
                     past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0, 0);
-                    double distance_gamma =  ((past_gamma - current_gamma).transpose() * gamma_scale *
-                            (past_gamma - current_gamma))(0,0);
+                    // normalize gamma
+                    VectorXd normalize_scale(gamma_dimension);
+                    if( ! ((min_gi == max_gi) || (min_sl == max_sl) || (min_tr == max_tr)) )
+                    {
+                        normalize_scale << max_gi-min_gi, max_sl-min_sl, max_tr-min_tr;
+                    }
+                    else
+                    {
+                        normalize_scale << 1, 1, 1;
+                    }
+                    VectorXd dif_gamma = (past_gamma - current_gamma).array()*normalize_scale.array();
+                    VectorXd dif_gamma2 = dif_gamma.array().pow(2);
+                    double distance_gamma =  (dif_gamma.transpose() * gamma_scale * dif_gamma2)(0,0);
                     VectorXd w_to_interpolate = readCSV(directory + to_string(past_iter) + string("_")
                                                         + to_string(sample_num) + string("_w.csv"));
                     if (distance_gamma == 0) {

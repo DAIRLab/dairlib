@@ -69,15 +69,20 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                 past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0,0);
 
                 // normalize gamma
-                VectorXd normalize_scale(gamma_dimension);
-                if( ! ((min_gi == max_gi) || (min_sl == max_sl) || (min_tr == max_tr)) )
+                VectorXd normalize_scale = VectorXd::Zero(gamma_dimension);
+                if(! (min_gi==max_gi))
                 {
-                    normalize_scale << 1/(max_gi-min_gi), 1/(max_sl-min_sl), 1/(max_tr-min_tr);
+                    normalize_scale[0] = 1/(max_gi-min_gi);
                 }
-                else
+                if(! (min_sl==max_sl))
                 {
-                    normalize_scale << 1, 1, 1;
+                    normalize_scale[1] = 1/(max_sl-min_sl);
                 }
+                if(! (min_tr==max_tr))
+                {
+                    normalize_scale[2] = 1/(max_tr-min_tr);
+                }
+
                 VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*normalize_scale.array();
                 VectorXd dif_gamma2 = dif_gamma.array().pow(2);
                 double distance_gamma =  (dif_gamma.transpose() * gamma_scale * dif_gamma2)(0,0);
@@ -118,14 +123,18 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                     VectorXd past_gamma(gamma_dimension);
                     past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0, 0);
                     // normalize gamma
-                    VectorXd normalize_scale(gamma_dimension);
-                    if( ! ((min_gi == max_gi) || (min_sl == max_sl) || (min_tr == max_tr)) )
+                    VectorXd normalize_scale = VectorXd::Zero(gamma_dimension);
+                    if(! (min_gi==max_gi))
                     {
-                        normalize_scale << 1/(max_gi-min_gi), 1/(max_sl-min_sl), 1/(max_tr-min_tr);
+                        normalize_scale[0] = 1/(max_gi-min_gi);
                     }
-                    else
+                    if(! (min_sl==max_sl))
                     {
-                        normalize_scale << 1, 1, 1;
+                        normalize_scale[1] = 1/(max_sl-min_sl);
+                    }
+                    if(! (min_tr==max_tr))
+                    {
+                        normalize_scale[2] = 1/(max_tr-min_tr);
                     }
                     VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*normalize_scale.array();
                     VectorXd dif_gamma2 = dif_gamma.array().pow(2);

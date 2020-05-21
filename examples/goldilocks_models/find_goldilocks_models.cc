@@ -257,22 +257,23 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
   }
 }
 
-void getInitFileName(const string dir,int total_sample_num, string * init_file, const string & nominal_traj_init_file,
-                     int iter, int sample,double min_sl, double max_sl, double min_gi, double max_gi,
-                     double min_tr, double max_tr,
-                     bool is_get_nominal,bool without_uniform_grid,
-                     bool rerun_current_iteration, bool has_been_all_success,
-                     bool step_size_shrinked_last_loop, int n_rerun,
-                     int sample_idx_to_help, bool is_debug) {
+void getInitFileName(const string dir,int total_sample_num, string * init_file,
+        const string & nominal_traj_init_file,
+        int iter, int sample, double current_step_size,
+        double min_sl, double max_sl, double min_gi, double max_gi,
+        double min_tr, double max_tr,
+        bool is_get_nominal,bool without_uniform_grid,
+        bool rerun_current_iteration, bool has_been_all_success,
+        bool step_size_shrinked_last_loop, int n_rerun,
+        int sample_idx_to_help, bool is_debug) {
   if (is_get_nominal && !rerun_current_iteration) {
     *init_file = nominal_traj_init_file;
   } else if (step_size_shrinked_last_loop && n_rerun == 0) {
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
     if (without_uniform_grid){
-        //      modified by Jianshu to test new initial guess
-        *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi,
-                min_tr, max_tr);
+        *init_file = set_initial_guess(dir, iter, sample, total_sample_num,
+                current_step_size, min_sl, max_sl, min_gi, max_gi, min_tr, max_tr);
     }
     else{
         *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
@@ -284,9 +285,9 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file, 
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   } else{
       if(without_uniform_grid){
-//      modified by Jianshu to test new initial guess
-          *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi,
-                                         min_tr, max_tr);
+          *init_file = set_initial_guess(dir, iter, sample, total_sample_num,
+                  current_step_size,
+                  min_sl, max_sl, min_gi, max_gi,min_tr, max_tr);
       } else{
           *init_file = to_string(iter - 1) +  "_" +
                   to_string(sample) + string("_w.csv");
@@ -2362,7 +2363,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Get file name of initial seed
           string init_file_pass_in;
           bool without_uniform_grid = ! uniform_grid;
-          getInitFileName(dir, N_sample, &init_file_pass_in, init_file, iter, sample_idx,
+          getInitFileName(dir, N_sample, &init_file_pass_in, init_file, iter, sample_idx,current_iter_step_size,
                           min_stride_length, max_stride_length, min_ground_incline, max_ground_incline,
                           min_turning_rate,max_turning_rate,
                           is_get_nominal, without_uniform_grid,

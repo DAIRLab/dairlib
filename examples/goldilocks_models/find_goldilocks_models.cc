@@ -259,7 +259,7 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 
 void getInitFileName(const string dir,int total_sample_num, string * init_file,
         const string & nominal_traj_init_file,
-        int iter, int sample, double current_step_size,
+        int iter, int sample,
         double min_sl, double max_sl, double min_gi, double max_gi,
         double min_tr, double max_tr,
         bool is_get_nominal,bool without_uniform_grid,
@@ -273,7 +273,7 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file,
     // (n_rerun == 0)
     if (without_uniform_grid){
         *init_file = set_initial_guess(dir, iter, sample, total_sample_num,
-                current_step_size, min_sl, max_sl, min_gi, max_gi, min_tr, max_tr);
+                min_sl, max_sl, min_gi, max_gi, min_tr, max_tr);
     }
     else{
         *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
@@ -286,7 +286,6 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file,
   } else{
       if(without_uniform_grid){
           *init_file = set_initial_guess(dir, iter, sample, total_sample_num,
-                  current_step_size,
                   min_sl, max_sl, min_gi, max_gi,min_tr, max_tr);
       } else{
           *init_file = to_string(iter - 1) +  "_" +
@@ -1491,7 +1490,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int N_sample_sl = (FLAGS_N_sample_sl == -1)? 1 : FLAGS_N_sample_sl;
   int N_sample_gi = (FLAGS_N_sample_gi == -1)? 1 : FLAGS_N_sample_gi;
   int N_sample_tr = (FLAGS_N_sample_tr == -1)? 1 : FLAGS_N_sample_tr;
-  int N_sample = N_sample_sl * N_sample_gi * N_sample_tr;  // 1;
+  int N_sample = N_sample_sl * N_sample_gi * N_sample_tr;
   if (FLAGS_robot_option == 0) {
     DRAKE_DEMAND(FLAGS_N_sample_tr < 1);
   }
@@ -1544,9 +1543,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
     duration = 0.4; // 0.4;
   }
   cout << "duration = " << duration << endl;
-  DRAKE_DEMAND(N_sample_sl % 2 == 1);
-  DRAKE_DEMAND(N_sample_gi % 2 == 1);
-  DRAKE_DEMAND(N_sample_tr % 2 == 1);
 
   uniform_grid ? cout << "Uniform grid\n" : cout << "Without uniform grid,use interpolated initial guess\n";
   cout << "N_sample_sl = " << N_sample_sl << endl;
@@ -1558,34 +1554,52 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "ground_incline_0 = " << ground_incline_0 << endl;
   cout << "delta_turning_rate = " << delta_turning_rate << endl;
   cout << "turning_rate_0 = " << turning_rate_0 << endl;
+  // Tasks setup
+  std::uniform_real_distribution<> dist_sl(-delta_stride_length / 2,
+                                           delta_stride_length / 2);
+  vector<double> delta_stride_length_vec;
+  for (int i = 0 - N_sample_sl / 2; i < N_sample_sl - N_sample_sl / 2; i++)
+    delta_stride_length_vec.push_back(i * delta_stride_length);
+  std::uniform_real_distribution<> dist_gi(-delta_ground_incline / 2,
+                                           delta_ground_incline / 2);
+  vector<double> delta_ground_incline_vec;
+  for (int i = 0 - N_sample_gi / 2; i < N_sample_gi - N_sample_gi / 2; i++)
+    delta_ground_incline_vec.push_back(i * delta_ground_incline);
+  std::uniform_real_distribution<> dist_tr(-delta_turning_rate / 2,
+                                           delta_turning_rate / 2);
+  vector<double> delta_turning_rate_vec;
+  for (int i = 0 - N_sample_tr / 2; i < N_sample_tr - N_sample_tr / 2; i++)
+    delta_turning_rate_vec.push_back(i * delta_turning_rate);
   double min_stride_length =
-      (FLAGS_is_stochastic)
-          ? stride_length_0 -
-                delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5)
-          : stride_length_0 - delta_stride_length * ((N_sample_sl - 1) / 2);
+      (FLAGS_is_stochastic && (FLAGS_N_sample_sl > 0))
+          ? stride_length_0 + delta_stride_length_vec.front() -
+                delta_stride_length * 0.5
+          : stride_length_0 + delta_stride_length_vec.front();
   double max_stride_length =
-      (FLAGS_is_stochastic)
-          ? stride_length_0 +
-                delta_stride_length * ((N_sample_sl - 1) / 2 + 0.5)
-          : stride_length_0 + delta_stride_length * ((N_sample_sl - 1) / 2);
+      (FLAGS_is_stochastic && (FLAGS_N_sample_sl > 0))
+          ? stride_length_0 + delta_stride_length_vec.back() +
+                delta_stride_length * 0.5
+          : stride_length_0 + delta_stride_length_vec.back();
   double min_ground_incline =
-      (FLAGS_is_stochastic)
-          ? ground_incline_0 -
-                delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
-          : ground_incline_0 - delta_ground_incline * ((N_sample_gi - 1) / 2);
+      (FLAGS_is_stochastic && (FLAGS_N_sample_gi > 0))
+          ? ground_incline_0 + delta_ground_incline_vec.front() -
+                delta_ground_incline * 0.5
+          : ground_incline_0 + delta_ground_incline_vec.front();
   double max_ground_incline =
-      (FLAGS_is_stochastic)
-          ? ground_incline_0 +
-                delta_ground_incline * ((N_sample_gi - 1) / 2 + 0.5)
-          : ground_incline_0 + delta_ground_incline * ((N_sample_gi - 1) / 2);
+      (FLAGS_is_stochastic && (FLAGS_N_sample_gi > 0))
+          ? ground_incline_0 + delta_ground_incline_vec.back() +
+                delta_ground_incline * 0.5
+          : ground_incline_0 + delta_ground_incline_vec.back();
   double min_turning_rate =
       (FLAGS_is_stochastic && (FLAGS_N_sample_tr > 0))
-          ? turning_rate_0 - delta_turning_rate * ((N_sample_tr - 1) / 2 + 0.5)
-          : turning_rate_0 - delta_turning_rate * ((N_sample_tr - 1) / 2);
+          ? turning_rate_0 + delta_turning_rate_vec.front() -
+                delta_turning_rate * 0.5
+          : turning_rate_0 + delta_turning_rate_vec.front();
   double max_turning_rate =
       (FLAGS_is_stochastic && (FLAGS_N_sample_tr > 0))
-          ? turning_rate_0 + delta_turning_rate * ((N_sample_tr - 1) / 2 + 0.5)
-          : turning_rate_0 + delta_turning_rate * ((N_sample_tr - 1) / 2);
+          ? turning_rate_0 + delta_turning_rate_vec.back() +
+                delta_turning_rate * 0.5
+          : turning_rate_0 + delta_turning_rate_vec.back();
   DRAKE_DEMAND(min_stride_length >= 0);
   cout << "stride length ranges from " << min_stride_length << " to "
        << max_stride_length << endl;
@@ -1593,7 +1607,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << max_ground_incline << endl;
   cout << "turning rate ranges from " << min_turning_rate << " to "
        << max_turning_rate << endl;
-
+  // Distribution without grid
+  std::uniform_real_distribution<> dist_sl_large_range(
+            min_stride_length, max_stride_length);
+  std::uniform_real_distribution<> dist_gi_large_range(
+            min_ground_incline, max_ground_incline);
+  std::uniform_real_distribution<> dist_tr_large_range(
+            min_turning_rate, max_turning_rate);
   /// How to restrict the number of samples is still under testing
   /// For now, the range of ground incline and stride length will not change while
   /// the number of them decreases.
@@ -2044,31 +2064,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   std::map<std::tuple<int, int, int>, int> inverse_task_idx_map;
   ConstructTaskIdxMap(&forward_task_idx_map, &inverse_task_idx_map, N_sample_sl,
                       N_sample_gi, N_sample_tr);
-  // Tasks setup
-  // Distribution for uniform grid
-  std::uniform_real_distribution<> dist_sl(-delta_stride_length / 2,
-                                           delta_stride_length / 2);
-  vector<double> delta_stride_length_vec;
-  for (int i = 0 - N_sample_sl / 2; i < N_sample_sl - N_sample_sl / 2; i++)
-    delta_stride_length_vec.push_back(i * delta_stride_length);
-  std::uniform_real_distribution<> dist_gi(-delta_ground_incline / 2,
-                                           delta_ground_incline / 2);
-  vector<double> delta_ground_incline_vec;
-  for (int i = 0 - N_sample_gi / 2; i < N_sample_gi - N_sample_gi / 2; i++)
-    delta_ground_incline_vec.push_back(i * delta_ground_incline);
-  std::uniform_real_distribution<> dist_tr(-delta_turning_rate / 2,
-                                           delta_turning_rate / 2);
-  vector<double> delta_turning_rate_vec;
-  for (int i = 0 - N_sample_tr / 2; i < N_sample_tr - N_sample_tr / 2; i++)
-    delta_turning_rate_vec.push_back(i * delta_turning_rate);
-
-  // Distribution without grid
-  std::uniform_real_distribution<> dist_sl_large_range(
-          min_stride_length, max_stride_length);
-  std::uniform_real_distribution<> dist_gi_large_range(
-          min_ground_incline, max_ground_incline);
-  std::uniform_real_distribution<> dist_tr_large_range(
-          min_turning_rate, max_turning_rate);
 
   // Some setup
   int n_theta = n_theta_s + n_theta_sDDot;
@@ -2363,7 +2358,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Get file name of initial seed
           string init_file_pass_in;
           bool without_uniform_grid = ! uniform_grid;
-          getInitFileName(dir, N_sample, &init_file_pass_in, init_file, iter, sample_idx,current_iter_step_size,
+          getInitFileName(dir, N_sample, &init_file_pass_in, init_file, iter, sample_idx,
                           min_stride_length, max_stride_length, min_ground_incline, max_ground_incline,
                           min_turning_rate,max_turning_rate,
                           is_get_nominal, without_uniform_grid,
@@ -2489,6 +2484,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Accumulate failed samples
           if (sample_success != 1) {
+            // TODO: there might be a bug here. If a sample keeps failing even
+            // after the help from adjacent samples, it might over-count this
+            // failed sample
             n_failed_sample++;
           }
 
@@ -2588,28 +2586,32 @@ int findGoldilocksModels(int argc, char* argv[]) {
       continue;
     }  // end if extend_model_this_iter
     else if (rerun_current_iteration) {  // rerun the current iteration
+      // We only shrink step if it's iteration 2 or higher
+      if (iter != 1) {
+        current_iter_step_size = current_iter_step_size / 2;
+        // if(current_iter_step_size<1e-5){
+        //   cout<<"switch to the other method.";
+        //   is_newton = !is_newton;
+        // }
+        cout << "Step size shrinks to " << current_iter_step_size <<
+             ". Redo this iteration.\n\n";
+
+        // Descent
+        theta = prev_theta + current_iter_step_size * step_direction;
+
+        // Assign theta_s and theta_sDDot
+        theta_s = theta.head(n_theta_s);
+        theta_sDDot = theta.tail(n_theta_sDDot);
+
+        n_shrink_step++;
+      }
+
+      // Some logic for iterating
       iter -= 1;
-      n_shrink_step++;
-
-      current_iter_step_size = current_iter_step_size / 2;
-      // if(current_iter_step_size<1e-5){
-      //   cout<<"switch to the other method.";
-      //   is_newton = !is_newton;
-      // }
-      cout << "Step size shrinks to " << current_iter_step_size <<
-           ". Redo this iteration.\n\n";
-
-      // Descent
-      theta = prev_theta + current_iter_step_size * step_direction;
-
-      // Assign theta_s and theta_sDDot
-      theta_s = theta.head(n_theta_s);
-      theta_sDDot = theta.tail(n_theta_sDDot);
-
-      // for start_iterations_with_shrinking_stepsize
       start_iterations_with_shrinking_stepsize = false;
-
       step_size_shrinked_last_loop = true;
+      // The name `step_size_shrinked_last_loop` is a bit misleading if it's
+      // iter 1 but I think we still need it for getInitFileName()
     }  // end if rerun_current_iteration
     else {
       // The code only reach here when the current iteration is successful.

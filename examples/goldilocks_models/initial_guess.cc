@@ -33,7 +33,6 @@ MatrixXd get_gamma_scale(int gamma_length, double min_sl, double max_sl, double 
 }
 
 string set_initial_guess(const string directory, int iter, int sample, int total_sample_num,
-                         double step_size,
                          double min_sl, double max_sl, double min_gi, double max_gi, double min_tr,
                          double max_tr) {
   /* define some parameters used in interpolation
@@ -130,7 +129,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                   + to_string(sample_num) + string("_turning_rate.csv"));
           VectorXd past_gamma(gamma_dimension);
           past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0, 0);
-          //calculate the weight for each sample using the third power of the distance between gamma
+          //calculate the weight for each sample using the third power of the difference between gamma
           VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
           VectorXd dif_gamma2 = dif_gamma.array().pow(2);
           double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);
@@ -158,7 +157,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
       //calculate the weighted sum for this iteration
       weight_gamma = weight_gamma/weight_gamma.sum();
       VectorXd w_to_interpolate = w_gamma*weight_gamma;
-      //calculate the weight for the result above using the distance between past theta and current theta
+      //calculate the weight for the result above using the difference between past theta and current theta
       VectorXd dif_theta = (past_theta - current_theta).array().abs()*theta_scale.array();
       double distance_theta =  (dif_theta.transpose() * dif_theta)(0,0);
       // if theta in this iteration accidentally equals to current theta, no need to interpolate and

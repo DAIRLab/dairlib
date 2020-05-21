@@ -25,7 +25,7 @@ MatrixXd get_gamma_scale(int gamma_length, double min_sl, double max_sl, double 
 string set_initial_guess(const string directory, int iter, int sample, int total_sample_num,
                          double min_sl, double max_sl, double min_gi, double max_gi, double min_tr,
                          double max_tr) {
-    /* define some parameters used in interpolation
+  /* define some parameters used in interpolation
 * theta_range :decide the range of theta to use in interpolation
 * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
 */
@@ -49,10 +49,11 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                                              + string("_turning_rate.csv"));
     VectorXd current_gamma(gamma_dimension);
     current_gamma << current_ground_incline(0, 0), current_stride_length(0, 0), current_turning_rate(0,0);
-//    For iter = 1, theta_1 is the same with theta_0. So use the results of iter_0.
+//    For iter = 1, we look for the closest task sample from iter 0 and use the solution from the sample
+//    for initial guess
     if(iter == 1)
     {
-        double distance_gamma_min = 100000; //initialize with a large one
+        double distance_gamma_min = std::numeric_limits<double>::infinity(); //initialize with a large one
         int sample_near = 0;
         for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
 //                check if this sample is success
@@ -99,6 +100,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
 
         return initial_file_name;
     }
+    //if iter > 1, use the results from past iterations to interpolate and set the initial guess
     else
     {
     for (past_iter = iter - 1; past_iter > 0; past_iter--) {

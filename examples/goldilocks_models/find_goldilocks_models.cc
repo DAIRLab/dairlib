@@ -62,14 +62,13 @@ DEFINE_int32(N_sample_tr, -1, "Sampling # for turning rate");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
-DEFINE_bool(is_uniform_grid, true, "Uniform grid of task space");
+DEFINE_bool(is_uniform_grid, true, "Uniform grid of task space. If not uniform grid, use the interpolated "
+                                   "initial guess");
 DEFINE_bool(is_restricted_sample_number, false, "Restrict the number of samples. This makes sense"
                                                "only when is_uniform_grid=false");
 
 // inner loop
 DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization");
-DEFINE_bool(is_use_interpolated_initial_guess,false,"Use interpolated initial guess"
-                                            " for Trajectory Optimization");
 DEFINE_double(major_feasibility_tol, 1e-4,
               "nonlinear constraint violation tol");
 DEFINE_int32(
@@ -121,8 +120,6 @@ DEFINE_double(fail_threshold, 0.2,
 DEFINE_bool(get_good_sol_from_adjacent_sample, true,
             "Get a good solution from adjacent samples to improve the solution "
             "quality of the current sample");
-DEFINE_bool(use_theta_gamma_from_files,false,
-        "To run the program with theta and gamma from saving files");
 
 // Other features for how to start the program
 DEFINE_bool(
@@ -263,7 +260,7 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 void getInitFileName(const string dir,int total_sample_num, string * init_file, const string & nominal_traj_init_file,
                      int iter, int sample,double min_sl, double max_sl, double min_gi, double max_gi,
                      double min_tr, double max_tr,
-                     bool is_get_nominal,bool is_use_interpolated_initial_guess,
+                     bool is_get_nominal,bool without_uniform_grid,
                      bool rerun_current_iteration, bool has_been_all_success,
                      bool step_size_shrinked_last_loop, int n_rerun,
                      int sample_idx_to_help, bool is_debug) {
@@ -272,7 +269,7 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file, 
   } else if (step_size_shrinked_last_loop && n_rerun == 0) {
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
-    if (is_use_interpolated_initial_guess){
+    if (without_uniform_grid){
         //      modified by Jianshu to test new initial guess
         *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi,
                 min_tr, max_tr);
@@ -285,13 +282,15 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file, 
                  string("_w.csv");
   } else if (rerun_current_iteration) {
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
-  }else if(is_use_interpolated_initial_guess){
-//      modified by Jianshu to test new initial guess
-      *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi,
-              min_tr, max_tr);
   } else{
-      *init_file = to_string(iter - 1) +  "_" +
-                   to_string(sample) + string("_w.csv");
+      if(without_uniform_grid){
+//      modified by Jianshu to test new initial guess
+          *init_file = set_initial_guess(dir, iter, sample, total_sample_num, min_sl, max_sl, min_gi, max_gi,
+                                         min_tr, max_tr);
+      } else{
+          *init_file = to_string(iter - 1) +  "_" +
+                  to_string(sample) + string("_w.csv");
+      }
   }
 
   //Testing
@@ -1548,8 +1547,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   DRAKE_DEMAND(N_sample_gi % 2 == 1);
   DRAKE_DEMAND(N_sample_tr % 2 == 1);
 
-  cout << "use_theta_gamma_from_files = " << FLAGS_use_theta_gamma_from_files << endl;
-  uniform_grid ? cout << "Uniform grid\n" : cout << "Without uniform grid\n";
+  uniform_grid ? cout << "Uniform grid\n" : cout << "Without uniform grid,use interpolated initial guess\n";
   cout << "N_sample_sl = " << N_sample_sl << endl;
   cout << "N_sample_gi = " << N_sample_gi << endl;
   cout << "N_sample_tr = " << N_sample_tr << endl;
@@ -1654,10 +1652,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int max_outer_iter = FLAGS_max_outer_iter;
   double stopping_threshold = 1e-4;
 
-  // beta_momentum = 0 means we only use gradient at current iter.
-  // Momentum can give you faster convergence. And get out of a local minimum
-  // caused by step size. See: https://distill.pub/2017/momentum/ WARNING:
-  // beta_momentum is not used in newton's method
   double beta_momentum = FLAGS_beta_momentum;
   double h_step;
   if (FLAGS_h_step > 0) {
@@ -1725,13 +1719,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
       if(uniform_grid){
           max_sample_cost_increase_rate = FLAGS_is_stochastic? 2.0: 0.01;
       }else{
-          max_sample_cost_increase_rate = 100;
+          max_sample_cost_increase_rate = std::numeric_limits<double>::infinity();
       }
   } else if (FLAGS_robot_option== 1) {
       if(uniform_grid){
           max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01; //0.3
       }else{
-          max_sample_cost_increase_rate = 100;
+          max_sample_cost_increase_rate = std::numeric_limits<double>::infinity();
       }
   } else {
     throw std::runtime_error("Should not reach here");
@@ -1761,7 +1755,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int n_shrink_before_relaxing_tolerance = 6;
   is_newton ? cout << "Newton method\n" : cout << "Gradient descent method\n";
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
-  FLAGS_is_use_interpolated_initial_guess ? cout << "New_initial_guess\n" : cout << "Original_initial_guess\n";
   cout << "Step size = " << h_step << endl;
   cout << "beta_momentum = " << beta_momentum << endl;
   cout << "eps_regularization = " << eps_regularization << endl;
@@ -2328,16 +2321,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   turning_rate = dist_tr_large_range(e3);
               }
           }
-//          // if use the gamma from file, overwrite the gamma
-          bool use_gamma_from_files = FLAGS_use_theta_gamma_from_files;
-          if(use_gamma_from_files){
-              stride_length = (readCSV(dir + to_string(iter) + string("_")
-                      + to_string(sample_idx) + string("_stride_length.csv")))(0,0);
-              ground_incline = (readCSV(dir + to_string(iter) + string("_")
-                      + to_string(sample_idx) + string("_ground_incline.csv")))(0,0);
-              turning_rate = (readCSV(dir + to_string(iter) + string("_")
-                                        + to_string(sample_idx) + string("_turning_rate.csv")))(0,0);
-          }
 
           // Store the tasks or overwrite it with previous tasks
           // (You need step_size_shrinked_last_loop because you might start the
@@ -2378,12 +2361,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Get file name of initial seed
           string init_file_pass_in;
-          int total_sample_num = N_sample_sl*N_sample_gi;
-          bool is_use_interpolated_initial_guess = FLAGS_is_use_interpolated_initial_guess;
-          getInitFileName(dir, total_sample_num, &init_file_pass_in, init_file, iter, sample_idx,
+          bool without_uniform_grid = ! uniform_grid;
+          getInitFileName(dir, N_sample, &init_file_pass_in, init_file, iter, sample_idx,
                           min_stride_length, max_stride_length, min_ground_incline, max_ground_incline,
                           min_turning_rate,max_turning_rate,
-                          is_get_nominal, is_use_interpolated_initial_guess,
+                          is_get_nominal, without_uniform_grid,
                           current_sample_is_a_rerun, has_been_all_success,
                           step_size_shrinked_last_loop, n_rerun[sample_idx],
                           sample_idx_to_help,
@@ -2914,14 +2896,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // store parameter values
 
-  // if we want to use theta from files for next iteration,
-  // we need to overwrite the original theta with theta in files.
-  bool use_theta_from_files = FLAGS_use_theta_gamma_from_files;
+
   prefix = to_string(iter + 1) +  "_";
-  if (use_theta_from_files){
-      theta_s = readCSV(dir + prefix + string("theta_s.csv"));
-      theta_sDDot = readCSV(dir + prefix + string("theta_sDDot.csv"));
-  }
   if (!FLAGS_is_debug) {
       writeCSV(dir + prefix + string("theta_s.csv"), theta_s);
       writeCSV(dir + prefix + string("theta_sDDot.csv"), theta_sDDot);

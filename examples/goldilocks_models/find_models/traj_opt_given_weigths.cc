@@ -238,10 +238,6 @@ void extractResult(VectorXd& w_sol,
   }
 
   cout << "storing result...\n";
-  // store solve time for Traj Opt
-  if (n_rerun == 0){
-      writeCSV(directory + prefix + string("solve_time.csv"), elapsed.count()*MatrixXd::Ones(1, 1));
-  }
 
   VectorXd is_success(1);
   if (result.is_success()) is_success << 1;

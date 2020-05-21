@@ -78,16 +78,16 @@ cc_library(
 #     ],
 # )
 
-cc_binary(
-    name = "test_initial_guess",
-    srcs = ["test_initial_guess.cc"],
-    deps = [
-        ":initial_guess",
-        "//common",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
+#cc_binary(
+#    name = "test_initial_guess",
+#    srcs = ["test_initial_guess.cc"],
+#    deps = [
+#        ":initial_guess",
+#        "//common",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#)
 
 cc_library(
     name = "dummy_constraint",
@@ -129,6 +129,22 @@ cc_library(
     deps = [
         "//systems/goldilocks_models",
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "find_boundary",
+    srcs = ["find_boundary.cc"],
+    deps = [
+        ":dynamics_expression",
+        ":goldilocks_utils",
+        ":initial_guess",
+        ":kinematics_expression",
+        "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
+        "//systems/goldilocks_models",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 

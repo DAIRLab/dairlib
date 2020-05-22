@@ -60,7 +60,9 @@ double boundary_for_one_dimension(int max_iteration,double initial_low,
   double low = initial_low;
   double high = initial_high;
   for (iter = 0; iter <= max_iteration; iter++){
-    int sample_success = traj_opt_result();
+    //run trajectory optimization and judge the solution
+    //int sample_success = traj_opt_result();
+    int sample_success = 1;
     if (sample_success){
       low = high;
       high = 2*high;
@@ -76,6 +78,8 @@ double boundary_for_one_dimension(int max_iteration,double initial_low,
 }
 
 int find_boundary(int argc, char* argv[]){
+  const string dir = "../dairlib_data/goldilocks_models/find_boundary/robot_" +
+      to_string(FLAGS_robot_option) + "/";
   /*
    * initialize model
    */
@@ -95,7 +99,7 @@ int find_boundary(int argc, char* argv[]){
   int max_sl_iter = 200;
   int min_sl_iter = 200;
   int max_gi_iter = 200;
-  int max_gi_iter = 200;
+  int min_gi_iter = 200;
 
   /*
    * start iteration
@@ -104,7 +108,7 @@ int find_boundary(int argc, char* argv[]){
   int iter;
   int boundary_sample_num = 0;
 
-  double sl = 0.2
+  double sl = 0.2;
   for (iter = 0; iter <= max_sl_iter; iter++){
     //fix stride length
     double sl = stride_length_0;
@@ -119,7 +123,7 @@ int find_boundary(int argc, char* argv[]){
     double min_gi = boundary_for_one_dimension(min_gi_iter,0,-ground_incline_0,
         ground_incline_resolution);
     boundary_sample_num += 1;
-    writeCSV();
+    writeCSV(directory + initial_file_name, initial_guess);
 
   }
 

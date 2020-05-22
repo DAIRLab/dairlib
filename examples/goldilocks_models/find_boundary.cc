@@ -54,19 +54,77 @@ using dairlib::FindResourceOrThrow;
 
 
 namespace dairlib::goldilocks_models {
-    int find_boundary(int argc, char* argv[]){
-        const string dir = "../dairlib_data/goldilocks_models/find_models/robot_0/";
-
-        // initialize model
-
-        // initialize task space
-
-        // run trajectory optimizations
-
-        // extend the task space
-
-        return 0;
+double boundary_for_one_dimension(int max_iteration,double initial_low,
+    double initial_high, double resolution){
+  int iter = 0;
+  double low = initial_low;
+  double high = initial_high;
+  for (iter = 0; iter <= max_iteration; iter++){
+    int sample_success = traj_opt_result();
+    if (sample_success){
+      low = high;
+      high = 2*high;
     }
+    else{
+      high = (high+low)/2;
+    }
+    if(abs(high-low) < resolution){
+      break;
+    }
+  }
+  return low;
+}
+
+int find_boundary(int argc, char* argv[]){
+  /*
+   * initialize model
+   */
+
+
+  /*
+   * initialize task space
+   */
+  double stride_length_0 = 0.2;
+  double stride_length_resolution = 0.01;
+  double ground_incline_0 = 0.1;
+  double ground_incline_resolution = 0.01;
+  double turning_rate_0 = 0.1;
+  double turning_rate_resolution = 0.125;
+
+  //iteration setting
+  int max_sl_iter = 200;
+  int min_sl_iter = 200;
+  int max_gi_iter = 200;
+  int max_gi_iter = 200;
+
+  /*
+   * start iteration
+   */
+
+  int iter;
+  int boundary_sample_num = 0;
+
+  double sl = 0.2
+  for (iter = 0; iter <= max_sl_iter; iter++){
+    //fix stride length
+    double sl = stride_length_0;
+
+    //find max ground incline
+    double max_gi = boundary_for_one_dimension(max_gi_iter,0,ground_incline_0,
+        ground_incline_resolution);
+    boundary_sample_num += 1;
+    writeCSV();
+
+    //find min ground incline
+    double min_gi = boundary_for_one_dimension(min_gi_iter,0,-ground_incline_0,
+        ground_incline_resolution);
+    boundary_sample_num += 1;
+    writeCSV();
+
+  }
+
+  return 0;
+}
 }
 
 

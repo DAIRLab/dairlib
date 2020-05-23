@@ -16,6 +16,11 @@ std::unique_ptr<drake::systems::Context<T>> createContext(
     const drake::multibody::MultibodyPlant<T>& plant,
     const drake::VectorX<T>& state, const drake::VectorX<T>& input);
 
+template <typename T>
+void setContext(const drake::multibody::MultibodyPlant<T>& plant,
+    const drake::VectorX<T>& state, const drake::VectorX<T>& input,
+    drake::systems::Context<T>* context);
+
 /// Add terrain to an initialized, but not finalized, MultibodyPlant
 /// and scene graph. Uses the given values for coefficients of friction.
 /// normal_W is the normal direction of the ground (pointing to z as the

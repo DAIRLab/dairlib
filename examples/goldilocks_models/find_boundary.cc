@@ -54,15 +54,186 @@ using dairlib::FindResourceOrThrow;
 
 
 namespace dairlib::goldilocks_models {
-double boundary_for_one_dimension(int max_iteration,double initial_low,
-    double initial_high, double resolution){
-  int iter = 0;
-  double low = initial_low;
-  double high = initial_high;
-  for (iter = 0; iter <= max_iteration; iter++){
+// Robot models
+DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
+// Reduced order models
+DEFINE_int32(rom_option, -1, "");
+
+// inner loop
+DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization");
+DEFINE_double(major_feasibility_tol, 1e-4,
+"nonlinear constraint violation tol");
+DEFINE_int32(
+    max_inner_iter, 150,
+"Max iteration # for traj opt. Sometimes, snopt takes very small steps "
+"(TODO: find out why), so maybe it's better to stop at some iterations and "
+"resolve again.");
+DEFINE_int32(n_node, -1, "# of nodes for traj opt");
+DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
+
+//tasks
+DEFINE_bool(is_zero_touchdown_impact, false,
+"No impact force at fist touchdown");
+DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
+
+// trajectory optimization for given task and model
+void trajOptGivenModel(double stride_length, double ground_incline,
+    double turning_rate,const string dir,int num,int sample_idx){
+  // Create MBP
+  MultibodyPlant<double> plant(0.0);
+  createMBP(&plant, FLAGS_robot_option);
+
+  // Create autoDiff version of the plant
+  MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);
+  cout << endl;
+
+  // Parameters for the inner loop optimization
+  int max_inner_iter = FLAGS_max_inner_iter;
+  if (FLAGS_robot_option == 0) {
+    max_inner_iter = 300;
+  }
+  double Q = 0; // Cost on velocity
+  double R = 0;  // Cost on input effort
+  double all_cost_scale = 1;
+  setCostWeight(&Q, &R, &all_cost_scale, FLAGS_robot_option);
+  int n_node = 20;
+  if (FLAGS_robot_option == 0) {
+    n_node = 20;
+  } else if (FLAGS_robot_option == 1) {
+    n_node = 20;
+  }
+  if (FLAGS_n_node > 0) n_node = FLAGS_n_node;
+  if (FLAGS_robot_option == 1) {
+    // If the node density is too low, it's harder for SNOPT to converge well.
+    // The ratio of distance per nodes = 0.2/16 is fine for snopt, but
+    // 0.3 / 16 is too high.
+    // However, currently it takes too much time to compute with many nodes, so
+    // we try 0.3/24.
+    double max_distance_per_node = 0.3 / 16;
+    DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
+  }
+
+  // Reduced order model parameters
+  int rom_option = (FLAGS_rom_option >= 0) ? FLAGS_rom_option : 0;
+  int n_s = 0;
+  int n_tau = 0;
+  setRomDim(&n_s, &n_tau, rom_option);
+  int n_sDDot = n_s; // Assume that are the same (no quaternion)
+  MatrixXd B_tau = MatrixXd::Zero(n_sDDot, n_tau);
+  setRomBMatrix(&B_tau, rom_option);
+
+  // Reduced order model setup
+  KinematicsExpression<double> kin_expression(n_s, 0, &plant, FLAGS_robot_option);
+  DynamicsExpression dyn_expression(n_sDDot, 0, rom_option, FLAGS_robot_option);
+  VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
+  VectorXd dummy_s = VectorXd::Ones(n_s);
+  int n_feature_s = kin_expression.getFeature(dummy_q).size();
+  int n_feature_sDDot =
+      dyn_expression.getFeature(dummy_s, dummy_s).size();
+  int n_theta_s = n_s * n_feature_s;
+  int n_theta_sDDot = n_sDDot * n_feature_sDDot;
+  VectorXd theta_s(n_theta_s);
+  VectorXd theta_sDDot(n_theta_sDDot);
+
+  // Initial guess of theta
+  theta_s = VectorXd::Zero(n_theta_s);
+  theta_sDDot = VectorXd::Zero(n_theta_sDDot);
+  setInitialTheta(theta_s, theta_sDDot, n_feature_s, rom_option);
+
+  double duration = 0.4;
+  if (FLAGS_robot_option == 0) {
+    duration = 0.746;  // Fix the duration now since we add cost ourselves
+  } else if (FLAGS_robot_option == 1) {
+    duration = 0.4; // 0.4;
+  }
+
+  bool is_get_nomial = false;
+  int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
+
+  string init_file_pass_in = '';
+  string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
+
+  // Vectors/Matrices for the outer loop
+  int N_Sample = 1;
+  vector<std::shared_ptr<VectorXd>> w_sol_vec(N_sample);
+  vector<std::shared_ptr<MatrixXd>> H_vec(N_sample);
+  vector<std::shared_ptr<VectorXd>> b_vec(N_sample);
+  vector<std::shared_ptr<VectorXd>> c_vec(N_sample);
+  vector<std::shared_ptr<MatrixXd>> A_vec(N_sample);
+  vector<std::shared_ptr<VectorXd>> lb_vec(N_sample);
+  vector<std::shared_ptr<VectorXd>> ub_vec(N_sample);
+  vector<std::shared_ptr<VectorXd>> y_vec(N_sample);
+  vector<std::shared_ptr<MatrixXd>> B_vec(N_sample);
+  vector<std::shared_ptr<int>> is_success_vec(N_sample);
+  for (int i = 0; i < N_sample; i++) {
+    w_sol_vec[i] = std::make_shared<VectorXd>();
+    H_vec[i] = std::make_shared<MatrixXd>();
+    b_vec[i] = std::make_shared<VectorXd>();
+    c_vec[i] = std::make_shared<VectorXd>();
+    A_vec[i] = std::make_shared<MatrixXd>();
+    lb_vec[i] = std::make_shared<VectorXd>();
+    ub_vec[i] = std::make_shared<VectorXd>();
+    y_vec[i] = std::make_shared<VectorXd>();
+    B_vec[i] = std::make_shared<MatrixXd>();
+    is_success_vec[i] = std::make_shared<int>();
+  }
+
+  vector<std::shared_ptr<int>> thread_finished_vec(N_sample);
+  for (int i = 0; i < N_sample; i++) {
+    thread_finished_vec[i] = std::make_shared<int>(0);
+  }
+
+  bool extend_model_this_iter = false;
+  int n_rerun = 0;
+  cost_threshold_for_update = std::numeric_limits<double>::infinity();
+  int N_rerun = 0;
+
+  //run trajectory optimization
+  trajOptGivenWeights(std::ref(plant), std::ref(plant_autoDiff),
+                      n_s, n_sDDot, n_tau,
+                      n_feature_s, n_feature_sDDot, std::ref(B_tau),
+                      std::ref(theta_s), std::ref(theta_sDDot),
+                      stride_length, ground_incline, turning_rate,
+                      duration, n_node, max_inner_iter_pass_in,
+                      FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
+                      std::ref(dir), init_file_pass_in, prefix,
+                      std::ref(w_sol_vec),
+                      std::ref(A_vec),
+                      std::ref(H_vec),
+                      std::ref(y_vec),
+                      std::ref(lb_vec),
+                      std::ref(ub_vec),
+                      std::ref(b_vec),
+                      std::ref(c_vec),
+                      std::ref(B_vec),
+                      std::ref(is_success_vec),
+                      std::ref(thread_finished_vec),
+                      Q, R, all_cost_scale,
+                      eps_regularization,
+                      is_get_nominal,
+                      FLAGS_is_zero_touchdown_impact,
+                      extend_model_this_iter,
+                      FLAGS_is_add_tau_in_cost,
+                      sample_idx, n_rerun,
+                      cost_threshold_for_update, N_rerun,
+                      rom_option,
+                      FLAGS_robot_option);
+}
+
+//search the max/min ground incline for fixed stride length
+double boundary_for_one_dimension(int max_iteration,double stride_length,
+    double gi_low,double gi_high,double turning_rate,double resolution,
+    const string dir,int num){
+  double low = gi_low;
+  double high = gi_high;
+  int sample_idx = 0;
+  for (sample_idx = 0; sample_idx <= max_iteration; sample_idx++){
     //run trajectory optimization and judge the solution
-    //int sample_success = traj_opt_result();
-    int sample_success = 1;
+    trajOptGivenModel(stride_length, high,
+        turning_rate, dir, num, sample_idx);
+    string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
+    int sample_success =
+        (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
     if (sample_success){
       low = high;
       high = 2*high;
@@ -77,55 +248,87 @@ double boundary_for_one_dimension(int max_iteration,double initial_low,
   return low;
 }
 
+//extend range of stride length
+int extend_range(double stride_length_0,int max_iter,double ground_incline_0,
+    double ground_incline_high,double ground_incline_low,
+    double ground_incline_resolution,int boundary_num,int update_direction){
+  //keep updating stride_length and search boundary of ground incline for each
+  //stride length
+  int iter;
+  double stride_length = stride_length_0;
+  for (iter = 0; iter <= max_iter; iter++){
+    //fix stride length and find max ground incline
+    double max_gi = boundary_for_one_dimension(max_iter, stride_length,
+        ground_incline_0, ground_incline_high,
+        turning_rate_0, ground_incline_resolution,
+        dir, boundary_sample_num);
+    VectorXd boundary_point(2);
+    boundary_point<<stride_length,max_gi;
+    writeCSV(dir + to_string(boundary_sample_num) +  "_" +
+        string("max_ground_incline.csv"), boundary_point);
+    boundary_sample_num += 1;
+
+    //find min ground incline
+    double min_gi = boundary_for_one_dimension(max_iter, stride_length,
+        ground_incline_0, ground_incline_low,
+        turning_rate_0, ground_incline_resolution,
+        dir, boundary_sample_num);
+    VectorXd boundary_point(2);
+    boundary_point<<stride_length,min_gi;
+    writeCSV(dir + to_string(boundary_sample_num) +  "_" +
+        string("min_ground_incline.csv"), boundary_point);
+    boundary_sample_num += 1;
+    //if max_gi and min_gi are same, find the boundary of stride length
+    if(min_gi==max_gi){
+      break;
+    }
+    //else continue search
+    else{
+      if(update_direction==0){
+        stride_length += delta_stride_length;
+      }
+      if(update_direction==1){
+        stride_length -= delta_stride_length;
+      }
+    }
+  }
+  return boundary_num;
+}
+
 int find_boundary(int argc, char* argv[]){
   const string dir = "../dairlib_data/goldilocks_models/find_boundary/robot_" +
       to_string(FLAGS_robot_option) + "/";
   /*
-   * initialize model
-   */
-
-
-  /*
    * initialize task space
    */
   double stride_length_0 = 0.2;
-  double stride_length_resolution = 0.01;
-  double ground_incline_0 = 0.1;
-  double ground_incline_resolution = 0.01;
-  double turning_rate_0 = 0.1;
-  double turning_rate_resolution = 0.125;
+  double delta_stride_length = 0.01;
 
-  //iteration setting
-  int max_sl_iter = 200;
-  int min_sl_iter = 200;
-  int max_gi_iter = 200;
-  int min_gi_iter = 200;
+  double ground_incline_0 = 0;
+  double initial_ground_incline_max = 0.1;
+  double initial_ground_incline_min = -0.1;
+  double ground_incline_resolution = 0.01;
+
+  double turning_rate_0 = 0;
+  double delta_turning_rate = 0;
 
   /*
    * start iteration
    */
-
-  int iter;
+  int max_iter = 50;
   int boundary_sample_num = 0;
+  int extend_direction;//0:decrease the stride length;1:increase stride length
 
-  double sl = 0.2;
-  for (iter = 0; iter <= max_sl_iter; iter++){
-    //fix stride length
-    double sl = stride_length_0;
-
-    //find max ground incline
-    double max_gi = boundary_for_one_dimension(max_gi_iter,0,ground_incline_0,
-        ground_incline_resolution);
-    boundary_sample_num += 1;
-    writeCSV();
-
-    //find min ground incline
-    double min_gi = boundary_for_one_dimension(min_gi_iter,0,-ground_incline_0,
-        ground_incline_resolution);
-    boundary_sample_num += 1;
-    writeCSV(directory + initial_file_name, initial_guess);
-
-  }
+  //search max stride length
+  extend_direction = 1;
+  boundary_sample_num = extend_range(stride_length_0,max_iter, ground_incline_0,
+      initial_ground_incline_max,initial_ground_incline_min,
+      ground_incline_resolution,boundary_sample_num, extend_direction);
+  //search min stride length
+  extend_direction = 0;
+  boundary_sample_num = extend_range(stride_length_0,max_iter, ground_incline_0,
+      initial_ground_incline_max,initial_ground_incline_min,
+      ground_incline_resolution,boundary_sample_num, extend_direction);
 
   return 0;
 }

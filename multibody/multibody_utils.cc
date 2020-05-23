@@ -43,6 +43,18 @@ std::unique_ptr<Context<T>> createContext(const MultibodyPlant<T>& plant,
 }
 
 template <typename T>
+void setContext(const MultibodyPlant<T>& plant,
+    const VectorX<T>& state, const VectorX<T>& input, Context<T>* context) {
+  plant.SetPositionsAndVelocities(context, state);
+
+  // TODO(mposa) Remove > 0 check once fixed upstream in Drake
+  if (input.size() > 0) {
+    context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
+  }
+}
+
+
+template <typename T>
 void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
                 double mu_static, double mu_kinetic, Eigen::Vector3d normal_W) {
   if (!plant->geometry_source_is_registered()) {
@@ -277,5 +289,7 @@ template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Con
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
 template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const VectorX<double>& state, const VectorX<double>& input);  // NOLINT
 template std::unique_ptr<Context<AutoDiffXd>> createContext(const MultibodyPlant<AutoDiffXd>& plant, const VectorX<AutoDiffXd>& state, const VectorX<AutoDiffXd>& input);  // NOLINT
+template void setContext(const MultibodyPlant<double>& plant, const VectorX<double>& state, const VectorX<double>& input, Context<double>* context);  // NOLINT
+template void setContext(const MultibodyPlant<AutoDiffXd>& plant, const VectorX<AutoDiffXd>& state, const VectorX<AutoDiffXd>& input, Context<AutoDiffXd>* context);  // NOLINT
 }  // namespace multibody
 }  // namespace dairlib

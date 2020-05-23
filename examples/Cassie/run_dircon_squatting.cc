@@ -575,6 +575,7 @@ void DoMain(double duration, int max_iter, string data_directory,
     }*/
   }
 
+  if (false) {
   // initial guess
   if (!init_file.empty()) {
     MatrixXd z0 = readCSV(data_directory + init_file);
@@ -620,6 +621,7 @@ void DoMain(double duration, int max_iter, string data_directory,
       // prev_lambda_init = lambda_init;
     }
   }
+}
   // Careful: MUST set the initial guess for quaternion, since 0-norm quaternion
   // produces NAN value in some calculation.
   for (int i = 0; i < N; i++) {
@@ -764,12 +766,12 @@ void DoMain(double duration, int max_iter, string data_directory,
   drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
   auto diagram = builder.Build();
 
-  while (true) {
-    drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(.1);
-    simulator.Initialize();
-    simulator.AdvanceTo(pp_xtraj.end_time());
-  }
+  // while (true) {
+  //   drake::systems::Simulator<double> simulator(*diagram);
+  //   simulator.set_target_realtime_rate(.1);
+  //   simulator.Initialize();
+  //   simulator.AdvanceTo(pp_xtraj.end_time());
+  // }
 
   return;
 }

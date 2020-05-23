@@ -332,7 +332,8 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       is_constraint_relative_{is_constraint_relative},
       n_relative_{
           static_cast<int>(std::count(is_constraint_relative.begin(),
-                                      is_constraint_relative.end(), true))} {
+                                      is_constraint_relative.end(), true))},
+      context_(plant_.CreateDefaultContext()) {
   // Set sparsity pattern and relative map
   std::vector<std::pair<int, int>> sparsity;
   // Acceleration constraints are dense in decision variables
@@ -395,8 +396,8 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
   const VectorX<T> offset = x.segment(
       num_states_ + num_inputs_ + num_kinematic_constraints_wo_skipping_,
       n_relative_);
-  auto context = multibody::createContext(plant_, state, input);
-  constraints_->updateData(*context, force);
+  multibody::setContext(plant_, state, input, context_.get());
+  constraints_->updateData(*context_, force);
   switch (type_) {
     case kAll:
       *y = VectorX<T>(3 * num_kinematic_constraints_);
@@ -438,7 +439,8 @@ DirconImpactConstraint<T>::DirconImpactConstraint(
       num_kinematic_constraints_wo_skipping_{
           num_kinematic_constraints_wo_skipping},
       num_positions_{num_positions},
-      num_velocities_{num_velocities} {}
+      num_velocities_{num_velocities},
+      context_(plant_.CreateDefaultContext()) {}
 
 // The format of the input to the eval() function is the
 // tuple { state 0, impulse, velocity 1},
@@ -464,12 +466,12 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
   const VectorX<T> u =
       VectorXd::Zero(plant_.num_actuators()).template cast<T>();
 
-  auto context = multibody::createContext(plant_, x0, u);
+  multibody::setContext(plant_, x0, u, context_.get());
 
-  constraints_->updateData(*context, impulse);
+  constraints_->updateData(*context_, impulse);
 
   MatrixX<T> M(num_velocities_, num_velocities_);
-  plant_.CalcMassMatrix(*context, &M);
+  plant_.CalcMassMatrix(*context_, &M);
 
   *y =
       M * (v1 - v0) - constraints_->getJWithoutSkipping().transpose() * impulse;

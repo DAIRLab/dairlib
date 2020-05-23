@@ -76,6 +76,114 @@ DEFINE_bool(is_zero_touchdown_impact, false,
 "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 
+void createMBP(MultibodyPlant<double>* plant, int robot_option) {
+  if (robot_option == 0) {
+    Parser parser(plant);
+    std::string full_name = FindResourceOrThrow(
+        "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
+    parser.AddModelFromFile(full_name);
+    plant->mutable_gravity_field().set_gravity_vector(
+        -9.81 * Eigen::Vector3d::UnitZ());
+    plant->WeldFrames(
+        plant->world_frame(), plant->GetFrameByName("base"),
+        drake::math::RigidTransform<double>());
+    plant->Finalize();
+
+  } else if (robot_option == 1) {
+    Parser parser(plant);
+    string full_name =
+        FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+    parser.AddModelFromFile(full_name);
+    plant->mutable_gravity_field().set_gravity_vector(
+        -9.81 * Eigen::Vector3d::UnitZ());
+    plant->Finalize();
+  } else {
+    throw std::runtime_error("Should not reach here");
+  }
+}
+void setCostWeight(double* Q, double* R, double* all_cost_scale,
+                   int robot_option) {
+  if (robot_option == 0) {
+    *Q = 1;
+    *R = 0.1;
+    //*all_cost_scale = 1;  // not implemented yet
+  } else if (robot_option == 1) {
+    *Q = 5 * 0.1;
+    *R = 0.1 * 0.01;
+    *all_cost_scale = 0.2/* * 0.12*/;
+  }
+}
+void setRomDim(int* n_s, int* n_tau, int rom_option) {
+  if (rom_option == 0) {
+    // 2D -- lipm
+    *n_s = 2;
+    *n_tau = 0;
+  } else if (rom_option == 1) {
+    // 4D -- lipm + swing foot
+    *n_s = 4;
+    *n_tau = 2;
+  } else if (rom_option == 2) {
+    // 1D -- fix com vertical acceleration
+    *n_s = 1;
+    *n_tau = 0;
+  } else if (rom_option == 3) {
+    // 3D -- fix com vertical acceleration + swing foot
+    *n_s = 3;
+    *n_tau = 2;
+  } else {
+    throw std::runtime_error("Should not reach here");
+  }
+}
+void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
+  if ((rom_option == 0) || (rom_option == 2)) {
+    // passive rom, so we don't need B_tau
+  }
+  else if (rom_option == 1) {
+    DRAKE_DEMAND(B_tau->rows() == 4);
+    (*B_tau)(2, 0) = 1;
+    (*B_tau)(3, 1) = 1;
+  }
+  else if (rom_option == 3) {
+    DRAKE_DEMAND(B_tau->rows() == 3);
+    (*B_tau)(1, 0) = 1;
+    (*B_tau)(2, 1) = 1;
+  } else {
+    throw std::runtime_error("Should not reach here");
+  }
+}
+void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
+                     int n_feature_s, int rom_option) {
+  // // Testing intial theta
+  // theta_s = 0.25*VectorXd::Ones(n_theta_s);
+  // theta_sDDot = 0.5*VectorXd::Ones(n_theta_sDDot);
+  // theta_s = VectorXd::Random(n_theta_s);
+  // theta_sDDot = VectorXd::Random(n_theta_sDDot);
+
+  if (rom_option == 0) {
+    // 2D -- lipm
+    theta_s(0) = 1;
+    theta_s(1 + n_feature_s) = 1;
+    theta_sDDot(0) = 1;
+  } else if (rom_option == 1) {
+    // 4D -- lipm + swing foot
+    theta_s(0) = 1;
+    theta_s(1 + n_feature_s) = 1;
+    theta_s(2 + 2 * n_feature_s) = 1;
+    theta_s(3 + 3 * n_feature_s) = 1;
+    theta_sDDot(0) = 1;
+  } else if (rom_option == 2) {
+    // 1D -- fix com vertical acceleration
+    theta_s(1) = 1;
+  } else if (rom_option == 3) {
+    // 3D -- fix com vertical acceleration + swing foot
+    theta_s(1) = 1;
+    theta_s(2 + 1 * n_feature_s) = 1;
+    theta_s(3 + 2 * n_feature_s) = 1;
+  } else {
+    throw std::runtime_error("Should not reach here");
+  }
+}
+
 // trajectory optimization for given task and model
 void trajOptGivenModel(double stride_length, double ground_incline,
     double turning_rate,const string dir,int num,int sample_idx){
@@ -110,7 +218,7 @@ void trajOptGivenModel(double stride_length, double ground_incline,
     // However, currently it takes too much time to compute with many nodes, so
     // we try 0.3/24.
     double max_distance_per_node = 0.3 / 16;
-    DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
+//    DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
   }
 
   // Reduced order model parameters
@@ -147,14 +255,14 @@ void trajOptGivenModel(double stride_length, double ground_incline,
     duration = 0.4; // 0.4;
   }
 
-  bool is_get_nomial = false;
+  bool is_get_nominal = false;
   int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
 
-  string init_file_pass_in = '';
+  string init_file_pass_in = "";
   string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
 
   // Vectors/Matrices for the outer loop
-  int N_Sample = 1;
+  int N_sample = 1;
   vector<std::shared_ptr<VectorXd>> w_sol_vec(N_sample);
   vector<std::shared_ptr<MatrixXd>> H_vec(N_sample);
   vector<std::shared_ptr<VectorXd>> b_vec(N_sample);
@@ -185,7 +293,7 @@ void trajOptGivenModel(double stride_length, double ground_incline,
 
   bool extend_model_this_iter = false;
   int n_rerun = 0;
-  cost_threshold_for_update = std::numeric_limits<double>::infinity();
+  double cost_threshold_for_update = std::numeric_limits<double>::infinity();
   int N_rerun = 0;
 
   //run trajectory optimization
@@ -209,7 +317,7 @@ void trajOptGivenModel(double stride_length, double ground_incline,
                       std::ref(is_success_vec),
                       std::ref(thread_finished_vec),
                       Q, R, all_cost_scale,
-                      eps_regularization,
+                      FLAGS_eps_regularization,
                       is_get_nominal,
                       FLAGS_is_zero_touchdown_impact,
                       extend_model_this_iter,
@@ -249,9 +357,12 @@ double boundary_for_one_dimension(int max_iteration,double stride_length,
 }
 
 //extend range of stride length
-int extend_range(double stride_length_0,int max_iter,double ground_incline_0,
+int extend_range(const string dir,
+    double stride_length_0,int max_iter,double ground_incline_0,
     double ground_incline_high,double ground_incline_low,
-    double ground_incline_resolution,int boundary_num,int update_direction){
+    double ground_incline_resolution,double turning_rate_0,
+    int boundary_num,int update_direction,
+    double delta_stride_length){
   //keep updating stride_length and search boundary of ground incline for each
   //stride length
   int iter;
@@ -261,23 +372,22 @@ int extend_range(double stride_length_0,int max_iter,double ground_incline_0,
     double max_gi = boundary_for_one_dimension(max_iter, stride_length,
         ground_incline_0, ground_incline_high,
         turning_rate_0, ground_incline_resolution,
-        dir, boundary_sample_num);
+        dir, boundary_num);
     VectorXd boundary_point(2);
     boundary_point<<stride_length,max_gi;
-    writeCSV(dir + to_string(boundary_sample_num) +  "_" +
+    writeCSV(dir + to_string(boundary_num) +  "_" +
         string("max_ground_incline.csv"), boundary_point);
-    boundary_sample_num += 1;
+    boundary_num += 1;
 
     //find min ground incline
     double min_gi = boundary_for_one_dimension(max_iter, stride_length,
         ground_incline_0, ground_incline_low,
         turning_rate_0, ground_incline_resolution,
-        dir, boundary_sample_num);
-    VectorXd boundary_point(2);
+        dir, boundary_num);
     boundary_point<<stride_length,min_gi;
-    writeCSV(dir + to_string(boundary_sample_num) +  "_" +
+    writeCSV(dir + to_string(boundary_num) +  "_" +
         string("min_ground_incline.csv"), boundary_point);
-    boundary_sample_num += 1;
+    boundary_num += 1;
     //if max_gi and min_gi are same, find the boundary of stride length
     if(min_gi==max_gi){
       break;
@@ -285,10 +395,10 @@ int extend_range(double stride_length_0,int max_iter,double ground_incline_0,
     //else continue search
     else{
       if(update_direction==0){
-        stride_length += delta_stride_length;
+        stride_length = stride_length+delta_stride_length;
       }
       if(update_direction==1){
-        stride_length -= delta_stride_length;
+        stride_length = stride_length-delta_stride_length;
       }
     }
   }
@@ -310,7 +420,7 @@ int find_boundary(int argc, char* argv[]){
   double ground_incline_resolution = 0.01;
 
   double turning_rate_0 = 0;
-  double delta_turning_rate = 0;
+//  double delta_turning_rate = 0;
 
   /*
    * start iteration
@@ -321,14 +431,20 @@ int find_boundary(int argc, char* argv[]){
 
   //search max stride length
   extend_direction = 1;
-  boundary_sample_num = extend_range(stride_length_0,max_iter, ground_incline_0,
+  boundary_sample_num = extend_range(dir,
+      stride_length_0,max_iter, ground_incline_0,
       initial_ground_incline_max,initial_ground_incline_min,
-      ground_incline_resolution,boundary_sample_num, extend_direction);
+      ground_incline_resolution,turning_rate_0,
+      boundary_sample_num, extend_direction,
+      delta_stride_length);
   //search min stride length
   extend_direction = 0;
-  boundary_sample_num = extend_range(stride_length_0,max_iter, ground_incline_0,
+  boundary_sample_num = extend_range(dir,
+      stride_length_0,max_iter, ground_incline_0,
       initial_ground_incline_max,initial_ground_incline_min,
-      ground_incline_resolution,boundary_sample_num, extend_direction);
+      ground_incline_resolution,turning_rate_0,
+      boundary_sample_num, extend_direction,
+      delta_stride_length);
 
   return 0;
 }

@@ -39,7 +39,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
 * theta_range :decide the range of theta to use in interpolation
 * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
 */
-  double theta_range = 0.004;
+  double theta_range = 0.004;//this is tuned by robot_option=1,rom_option=2,3d task space
   int gamma_dimension = 3;
   MatrixXd theta_scale = get_theta_scale(directory, iter);
   MatrixXd gamma_scale = get_gamma_scale(gamma_dimension, min_sl, max_sl, min_gi, max_gi, min_tr, max_tr);
@@ -110,7 +110,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
     VectorXd past_theta(past_theta_s.rows()+past_theta_sDDot.rows());
     past_theta << past_theta_s,past_theta_sDDot;
     double theta_diff = (past_theta - current_theta).norm() / current_theta.norm();
-    if ((theta_diff < theta_range) && (iter-past_iter<10)) {
+    if (theta_diff < theta_range) {
       //take out corresponding w and calculate the weight for interpolation
       MatrixXd w_gamma;
       VectorXd weight_gamma;

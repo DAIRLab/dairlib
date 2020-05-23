@@ -107,6 +107,7 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
   const int num_positions_{0};
   const int num_velocities_{0};
   const int num_quat_slack_{0};
+  std::unique_ptr<drake::systems::Context<T>> context_;
 };
 
 /// Implements the kinematic constraints used by Dircon

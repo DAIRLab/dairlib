@@ -182,7 +182,8 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
           num_kinematic_constraints_wo_skipping},
       num_positions_{num_positions},
       num_velocities_{num_velocities},
-      num_quat_slack_{num_quat_slack} {}
+      num_quat_slack_{num_quat_slack},
+      context_(plant_.CreateDefaultContext()) {}
 
 // The format of the input to the eval() function is the
 // tuple { timestep, state 0, state 1, input 0, input 1, force 0, force 1},
@@ -220,12 +221,12 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
                 num_kinematic_constraints_wo_skipping_);
   const VectorX<T> gamma = x.tail(num_quat_slack_);
 
-  auto context0 = multibody::createContext(plant_, x0, u0);
-  constraints_->updateData(*context0, l0);
+  multibody::setContext(plant_, x0, u0, context_.get());
+  constraints_->updateData(*context_, l0);
   const VectorX<T> xdot0 = constraints_->getXDot();
 
-  auto context1 = multibody::createContext(plant_, x1, u1);
-  constraints_->updateData(*context1, l1);
+  multibody::setContext(plant_, x1, u1, context_.get());
+  constraints_->updateData(*context_, l1);
   const VectorX<T> xdot1 = constraints_->getXDot();
 
   // Cubic interpolation to get xcol and xdotcol.
@@ -233,11 +234,11 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   const VectorX<T> xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
   const VectorX<T> ucol = 0.5 * (u0 + u1);
 
-  auto contextcol = multibody::createContext(plant_, xcol, ucol);
-  constraints_->updateData(*contextcol, lc);
+  multibody::setContext(plant_, xcol, ucol, context_.get());
+  constraints_->updateData(*context_, lc);
   auto g = constraints_->getXDot();
   VectorX<T> vc_in_qdot_space(num_positions_);
-  plant_.MapVelocityToQDot(*contextcol,
+  plant_.MapVelocityToQDot(*context_,
                            constraints_->getJWithoutSkipping().transpose() * vc,
                            &vc_in_qdot_space);
   g.head(num_positions_) += vc_in_qdot_space;

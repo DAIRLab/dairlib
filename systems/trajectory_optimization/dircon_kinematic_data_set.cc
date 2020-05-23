@@ -25,7 +25,7 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
     constraints_(constraints),
     num_positions_(plant.num_positions()),
     num_velocities_(plant.num_velocities()),
-    cache_(500) {
+    cache_(3000) {
   // Initialize matrices
   constraint_count_ = 0;
   for (uint i=0; i < constraints_->size(); i++) {
@@ -84,6 +84,7 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
     cddot_ = data.cddot_;
     vdot_ = data.vdot_;
     xdot_ = data.xdot_;
+    M_ = data.M_;
   } else {
     int index = 0;
     int n;
@@ -119,7 +120,7 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
     plant_.MapVelocityToQDot(context, v, &q_dot);
     xdot_ << q_dot, vdot_;
 
-    CacheData data{c_, cdot_, getJWithoutSkipping(),
+    CacheData data{c_, cdot_, M_, getJWithoutSkipping(),
                    Jdotv_, cddot_, vdot_, xdot_};
 
     cache_.AddData(key, data);
@@ -155,6 +156,12 @@ template <typename T>
 MatrixX<T> DirconKinematicDataSet<T>::getJ() {
   return constraint_map_.cast<T>() * J_;
 }
+
+template <typename T>
+MatrixX<T> DirconKinematicDataSet<T>::getM() {
+  return M_;
+}
+
 
 template <typename T>
 MatrixX<T> DirconKinematicDataSet<T>::getJWithoutSkipping() {

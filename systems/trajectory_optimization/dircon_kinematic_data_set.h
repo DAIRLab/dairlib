@@ -22,6 +22,7 @@ class DirconKinematicDataSet {
   drake::VectorX<T> getC();
   drake::VectorX<T> getCDot();
   drake::MatrixX<T> getJ();
+  drake::MatrixX<T> getM();
   drake::MatrixX<T> getJWithoutSkipping();
   drake::VectorX<T> getJdotv();
   drake::VectorX<T> getCDDot();
@@ -48,6 +49,7 @@ class DirconKinematicDataSet {
   struct CacheData {
     drake::VectorX<T> c_;
     drake::VectorX<T> cdot_;
+    drake::MatrixX<T> M_;
     drake::MatrixX<T> J_;
     drake::VectorX<T> Jdotv_;
     drake::VectorX<T> cddot_;

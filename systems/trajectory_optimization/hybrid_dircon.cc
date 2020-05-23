@@ -89,6 +89,12 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
         constraints_[i]->countConstraintsWithoutSkipping() *
             (num_time_samples[i] - 1),
         "v_c[" + std::to_string(i) + "]"));
+    vdot_vars_.push_back(NewContinuousVariables(
+        plant_.num_velocities() * num_time_samples[i],
+        "vdot[" + std::to_string(i) + "]"));
+    collocation_vdot_vars_.push_back(NewContinuousVariables(
+        plant_.num_velocities() * (num_time_samples[i] - 1),
+        "vdot_c[" + std::to_string(i) + "]"));
     // quaternion_slack_vars_ (slack variables used to scale quaternion norm to
     // 1 in the dynamic constraints)
     if (is_quaternion) {
@@ -124,6 +130,10 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       }
     }
 
+    // Adding vdot constraint
+    auto vdot_constraint = std::make_shared<DirconVelocityDotConstraint<T>>(
+        plant_, *constraints_[i]);
+
     // Adding dynamic constraints
     auto dynamic_constraint = std::make_shared<DirconDynamicConstraint<T>>(
         plant_, *constraints_[i], is_quaternion);
@@ -147,7 +157,26 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
                j * num_kinematic_constraints_wo_skipping(i),
                num_kinematic_constraints_wo_skipping(i)),
            (is_quaternion) ? quaternion_slack_vars(i).segment(j, 1)
-                           : quaternion_slack_vars(i).segment(0, 0)});
+                           : quaternion_slack_vars(i).segment(0, 0),
+           vdot_vars(i).segment(j * plant_.num_velocities(),
+                                plant.num_velocities()),
+           collocation_vdot_vars(i).segment(j * plant_.num_velocities(),
+                                plant.num_velocities()),
+           vdot_vars(i).segment((j + 1) * plant_.num_velocities(),
+                                plant.num_velocities())});
+    }
+
+    // Add vdot constraints
+    for (int j = 0; j < mode_lengths_[i]; j++) {
+      int time_index = mode_start_[i] + j;
+      AddConstraint(
+          vdot_constraint,
+          {state_vars_by_mode(i, j),
+           u_vars().segment(time_index * num_inputs(), num_inputs()),
+           force_vars(i).segment(j * num_kinematic_constraints_wo_skipping(i),
+                                 num_kinematic_constraints_wo_skipping(i)),
+           vdot_vars(i).segment(j * plant_.num_velocities(),
+                                plant.num_velocities())});
     }
 
     // Adding kinematic constraints (interior nodes of the mode)

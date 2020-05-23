@@ -124,6 +124,16 @@ class HybridDircon
     return offset_vars_[mode];
   }
 
+  const drake::solvers::VectorXDecisionVariable& vdot_vars(
+      int mode) const {
+    return vdot_vars_[mode];
+  }
+
+  const drake::solvers::VectorXDecisionVariable& collocation_vdot_vars(
+      int mode) const {
+    return collocation_vdot_vars_[mode];
+  }
+
   const drake::solvers::VectorXDecisionVariable& collocation_force_vars(
       int mode) const {
     return collocation_force_vars_[mode];
@@ -206,6 +216,8 @@ class HybridDircon
   std::vector<drake::solvers::VectorXDecisionVariable> force_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> collocation_force_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> collocation_slack_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> vdot_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> collocation_vdot_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> offset_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> impulse_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> quaternion_slack_vars_;

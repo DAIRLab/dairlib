@@ -109,6 +109,36 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
   const int num_quat_slack_{0};
 };
 
+
+template <typename T>
+class DirconVelocityDotConstraint : public DirconAbstractConstraint<T> {
+ public:
+  //  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
+
+ public:
+  DirconVelocityDotConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+                          DirconKinematicDataSet<T>& constraints);
+
+  ~DirconVelocityDotConstraint() override = default;
+
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
+                          drake::VectorX<T>* y) const override;
+
+ private:
+  DirconVelocityDotConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+                          DirconKinematicDataSet<T>& constraints,
+                          int num_positions, int num_velocities, int num_inputs,
+                          int num_kinematic_constraints_wo_skipping);
+
+  const drake::multibody::MultibodyPlant<T>& plant_;
+  DirconKinematicDataSet<T>* constraints_;
+  const int num_states_{0};
+  const int num_inputs_{0};
+  const int num_kinematic_constraints_wo_skipping_{0};
+  const int num_positions_{0};
+  const int num_velocities_{0};
+};
+
 /// Implements the kinematic constraints used by Dircon
 /// For constraints given by c(q), enforces the three constraints
 ///   c(q), d/dt c(q), d^2/dt^2 c(q)

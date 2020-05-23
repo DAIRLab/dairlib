@@ -87,24 +87,25 @@ void DirconAbstractConstraint<AutoDiffXd>::DoEval(
 template <>
 void DirconAbstractConstraint<double>::DoEval(
     const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
-  MatrixXd original_grad = autoDiffToGradientMatrix(x);
+  auto original_grad = autoDiffToGradientMatrix(x);
 
   // forward differencing
   double dx = 1e-8;
 
-  VectorXd x_val = autoDiffToValueMatrix(x);
+  auto x_val = autoDiffToValueMatrix(x);
   VectorXd y0, yi;
   EvaluateConstraint(x_val, &y0);
 
-  MatrixXd dy = MatrixXd(y0.size(), x_val.size());
+  // MatrixXd dy = MatrixXd(y0.size(), x_val.size());
+  MatrixXd dz = MatrixXd::Zero(y0.size(), original_grad.cols());
   for (int i = 0; i < x_val.size(); i++) {
     x_val(i) += dx;
     EvaluateConstraint(x_val, &yi);
     x_val(i) -= dx;
-    dy.col(i) = (yi - y0) / dx;
+    // dy.col(i) = (yi - y0) / dx;
+    dz += ((yi - y0) / dx) * original_grad.row(i);
   }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
-                                                     *y);
+  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dz, *y);
 
   // std::cout << dy << std::endl  << std::endl << std::endl;
 
@@ -168,11 +169,11 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
     int num_positions, int num_velocities, int num_inputs,
     int num_kinematic_constraints_wo_skipping, int num_quat_slack)
     : DirconAbstractConstraint<T>(
-          num_positions + num_velocities,
-          1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
+          num_positions +  2 * num_velocities,
+          1 + (2 * num_positions) + (5 * num_velocities) + (2 * num_inputs) +
               (4 * num_kinematic_constraints_wo_skipping) + num_quat_slack,
-          Eigen::VectorXd::Zero(num_positions + num_velocities),
-          Eigen::VectorXd::Zero(num_positions + num_velocities),
+          Eigen::VectorXd::Zero(num_positions + 2 * num_velocities),
+          Eigen::VectorXd::Zero(num_positions + 2 * num_velocities),
           "dynamics_constraint"),
       plant_(plant),
       constraints_(&constraints),
@@ -191,9 +192,10 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
 template <typename T>
 void DirconDynamicConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
-  DRAKE_ASSERT(x.size() == 1 + (2 * num_states_) + (2 * num_inputs_) +
+  DRAKE_DEMAND(x.size() == 1 + (2 * num_states_) + (2 * num_inputs_) +
                                4 * (num_kinematic_constraints_wo_skipping_) +
-                               num_quat_slack_);
+                               num_quat_slack_ + 
+                               3 * num_velocities_);
 
   // Extract our input variables:
   // h - current time (knot) value
@@ -218,7 +220,21 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
       x.segment(1 + 2 * (num_states_ + num_inputs_) +
                     3 * num_kinematic_constraints_wo_skipping_,
                 num_kinematic_constraints_wo_skipping_);
-  const VectorX<T> gamma = x.tail(num_quat_slack_);
+  const VectorX<T> gamma = x.segment(1 + 2 * (num_states_ + num_inputs_) +
+                    4 * num_kinematic_constraints_wo_skipping_,
+                    num_quat_slack_);
+
+  const VectorX<T> vdot0 = x.segment(1 + 2 * (num_states_ + num_inputs_) +
+                    4 * num_kinematic_constraints_wo_skipping_ +
+                    num_quat_slack_, num_velocities_);
+
+  const VectorX<T> vdotc = x.segment(1 + 2 * (num_states_ + num_inputs_) +
+                    4 * num_kinematic_constraints_wo_skipping_ + 
+                    num_quat_slack_ + num_velocities_,  num_velocities_);
+
+  const VectorX<T> vdot1 = x.segment(1 + 2 * (num_states_ + num_inputs_) +
+                    4 * num_kinematic_constraints_wo_skipping_ + 
+                    num_quat_slack_ + 2 * num_velocities_,  num_velocities_);
 
   auto context0 = multibody::createContext(plant_, x0, u0);
   constraints_->updateData(*context0, l0);
@@ -228,9 +244,16 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   constraints_->updateData(*context1, l1);
   const VectorX<T> xdot1 = constraints_->getXDot();
 
+  auto xdot0_spline = xdot0;
+  xdot0_spline.tail(num_velocities_) = vdot0;
+  auto xdot1_spline = xdot1;
+  xdot1_spline.tail(num_velocities_) = vdot1;
+
   // Cubic interpolation to get xcol and xdotcol.
-  const VectorX<T> xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
-  const VectorX<T> xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
+  const VectorX<T> xcol = 0.5 * (x0 + x1)
+      + h / 8 * (xdot0_spline - xdot1_spline);
+  const VectorX<T> xdotcol = -1.5 * (x0 - x1) / h
+      - .25 * (xdot0_spline + xdot1_spline);
   const VectorX<T> ucol = 0.5 * (u0 + u1);
 
   auto contextcol = multibody::createContext(plant_, xcol, ucol);
@@ -247,7 +270,13 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
     g.head(4) += xcol.head(4) * gamma;
   }
 
-  *y = xdotcol - g;
+  auto g_spline = g;
+  g_spline.tail(num_velocities_) = vdotc;
+
+  y->resize(num_positions_ + 2 * num_velocities_);
+
+  *y << xdotcol - g_spline,
+      vdotc - g.tail(num_velocities_);
 }
 
 template <typename T>
@@ -280,6 +309,54 @@ Binding<Constraint> AddDirconConstraint(
       constraint, {timestep, state, next_state, input, next_input, force,
                    next_force, collocation_force, collocation_position_slack});
 }
+
+template <typename T>
+DirconVelocityDotConstraint<T>::DirconVelocityDotConstraint(
+    const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints)
+    : DirconVelocityDotConstraint(plant, constraints, plant.num_positions(),
+                              plant.num_velocities(), plant.num_actuators(),
+                              constraints.countConstraintsWithoutSkipping()) {
+}
+
+template <typename T>
+DirconVelocityDotConstraint<T>::DirconVelocityDotConstraint(
+    const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
+    int num_positions, int num_velocities, int num_inputs,
+    int num_kinematic_constraints_wo_skipping)
+    : DirconAbstractConstraint<T>(num_velocities,
+          num_positions + 2 * num_velocities + num_inputs +
+              num_kinematic_constraints_wo_skipping,
+          Eigen::VectorXd::Zero(num_positions + num_velocities),
+          Eigen::VectorXd::Zero(num_positions + num_velocities),
+          "vdot_constraint"),
+      plant_(plant),
+      constraints_(&constraints),
+      num_states_{num_positions + num_velocities},
+      num_inputs_{num_inputs},
+      num_kinematic_constraints_wo_skipping_{
+          num_kinematic_constraints_wo_skipping},
+      num_positions_{num_positions},
+      num_velocities_{num_velocities} {}
+
+// The format of the input to the eval() function is the
+// tuple { state, input, force, vdot}
+template <typename T>
+void DirconVelocityDotConstraint<T>::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<T>>& con_input, VectorX<T>* y) const {
+  const VectorX<T> x = con_input.segment(0, num_states_);
+  const VectorX<T> u = con_input.segment(num_states_, num_inputs_);
+  const VectorX<T> l = con_input.segment(num_states_ + num_inputs_,
+                                  num_kinematic_constraints_wo_skipping_);
+  const VectorX<T> vdot = con_input.segment(num_states_ + num_inputs_ +
+                    num_kinematic_constraints_wo_skipping_, num_velocities_);
+
+  auto context = multibody::createContext(plant_, x, u);
+  constraints_->updateData(*context, l);
+  const VectorX<T> xdot = constraints_->getXDot();
+
+  *y = xdot.tail(num_velocities_) - vdot;
+}
+
 
 template <typename T>
 DirconKinematicConstraint<T>::DirconKinematicConstraint(
@@ -553,6 +630,8 @@ template class QuaternionNormConstraint<double>;
 template class QuaternionNormConstraint<AutoDiffXd>;
 template class DirconDynamicConstraint<double>;
 template class DirconDynamicConstraint<AutoDiffXd>;
+template class DirconVelocityDotConstraint<double>;
+template class DirconVelocityDotConstraint<AutoDiffXd>;
 template class DirconKinematicConstraint<double>;
 template class DirconKinematicConstraint<AutoDiffXd>;
 template class DirconImpactConstraint<double>;

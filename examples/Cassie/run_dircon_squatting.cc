@@ -405,8 +405,8 @@ void DoMain(double duration, int max_iter, string data_directory,
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-  //   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                            "Print file", "../snopt.out");
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                             "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -764,12 +764,12 @@ void DoMain(double duration, int max_iter, string data_directory,
   drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
   auto diagram = builder.Build();
 
-  while (true) {
-    drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(.1);
-    simulator.Initialize();
-    simulator.AdvanceTo(pp_xtraj.end_time());
-  }
+  // while (true) {
+  //   drake::systems::Simulator<double> simulator(*diagram);
+  //   simulator.set_target_realtime_rate(.1);
+  //   simulator.Initialize();
+  //   simulator.AdvanceTo(pp_xtraj.end_time());
+  // }
 
   return;
 }

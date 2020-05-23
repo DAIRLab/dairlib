@@ -35,10 +35,8 @@ std::unique_ptr<Context<T>> createContext(const MultibodyPlant<T>& plant,
   auto context = plant.CreateDefaultContext();
   plant.SetPositionsAndVelocities(context.get(), state);
 
-  // TODO(mposa) Remove > 0 check once fixed upstream in Drake
-  if (input.size() > 0) {
-    context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
-  }
+  context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
+
   return context;
 }
 
@@ -47,10 +45,7 @@ void setContext(const MultibodyPlant<T>& plant,
     const VectorX<T>& state, const VectorX<T>& input, Context<T>* context) {
   plant.SetPositionsAndVelocities(context, state);
 
-  // TODO(mposa) Remove > 0 check once fixed upstream in Drake
-  if (input.size() > 0) {
-    context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
-  }
+  context->FixInputPort(plant.get_actuation_input_port().get_index(), input);
 }
 
 

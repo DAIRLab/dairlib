@@ -76,6 +76,11 @@ DEFINE_bool(is_zero_touchdown_impact, false,
 "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 
+//others
+DEFINE_string(
+    program_name, "",
+"The name of the program (to keep a record for future references)");
+
 void createMBP(MultibodyPlant<double>* plant, int robot_option) {
   if (robot_option == 0) {
     Parser parser(plant);
@@ -292,7 +297,7 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   }
 
   bool extend_model_this_iter = false;
-  int n_rerun = 0;
+  int n_rerun = 1;
   double cost_threshold_for_update = std::numeric_limits<double>::infinity();
   int N_rerun = 0;
 
@@ -328,32 +333,57 @@ void trajOptGivenModel(double stride_length, double ground_incline,
                       FLAGS_robot_option);
 }
 
+//naive test function for search algorithm
+int sample_result(double stride_length,double ground_incline,
+    double turning_rate){
+  int result = 0;
+  if( (ground_incline<0.12) && (ground_incline>-0.12)){
+    if((stride_length<0.25) && (stride_length>0.15)){
+      result = 1;
+    }
+  }
+  return result;
+}
+
+
 //search the max/min ground incline for fixed stride length
 double boundary_for_one_dimension(int max_iteration,double stride_length,
     double gi_low,double gi_high,double turning_rate,double resolution,
     const string dir,int num){
-  double low = gi_low;
-  double high = gi_high;
   int sample_idx = 0;
+  cout << "sample# (rerun #) | stride | incline | turning | init_file | "
+          "Status | Solve time | Cost (tau cost)\n";
   for (sample_idx = 0; sample_idx <= max_iteration; sample_idx++){
     //run trajectory optimization and judge the solution
-    trajOptGivenModel(stride_length, high,
+    trajOptGivenModel(stride_length, gi_high,
         turning_rate, dir, num, sample_idx);
     string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
+    //store stride length, ground incline and turning rate
+    writeCSV(dir + prefix +
+        string("stride_length.csv"), stride_length*MatrixXd::Ones(1,1));
+    writeCSV(dir + prefix +
+        string("ground_incline.csv"), gi_high*MatrixXd::Ones(1,1));
+    writeCSV(dir + prefix +
+        string("turning_rate.csv"), turning_rate*MatrixXd::Ones(1,1));
+
     int sample_success =
         (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
+
+//    //test search algorithm
+//    int sample_success = sample_result(stride_length,high,turning_rate);
+
     if (sample_success){
-      low = high;
-      high = 2*high;
+      gi_low = gi_high;
+      gi_high = 2*gi_high;
     }
     else{
-      high = (high+low)/2;
+      gi_high = (gi_high+gi_low)/2;
     }
-    if(abs(high-low) < resolution){
+    if(abs(gi_high-gi_low) < resolution){
       break;
     }
   }
-  return low;
+  return gi_low;
 }
 
 //extend range of stride length
@@ -377,6 +407,9 @@ int extend_range(const string dir,
     boundary_point<<stride_length,max_gi;
     writeCSV(dir + to_string(boundary_num) +  "_" +
         string("max_ground_incline.csv"), boundary_point);
+    cout << "boundary point index | stride length | ground incline"<<endl;
+    cout<<" \t "<<boundary_num<< "\t" <<" | "<<"\t"<<stride_length
+        <<"\t"<<" | "<<"\t"<<max_gi<<endl;
     boundary_num += 1;
 
     //find min ground incline
@@ -387,6 +420,9 @@ int extend_range(const string dir,
     boundary_point<<stride_length,min_gi;
     writeCSV(dir + to_string(boundary_num) +  "_" +
         string("min_ground_incline.csv"), boundary_point);
+    cout << "boundary point index | stride length | ground incline"<<endl;
+    cout<<" \t "<<boundary_num<< "\t" <<" | "<<"\t"<<stride_length
+        <<"\t"<<" | "<<"\t"<<min_gi<<endl;
     boundary_num += 1;
     //if max_gi and min_gi are same, find the boundary of stride length
     if(min_gi==max_gi){
@@ -394,10 +430,10 @@ int extend_range(const string dir,
     }
     //else continue search
     else{
-      if(update_direction==0){
+      if(update_direction==1){
         stride_length = stride_length+delta_stride_length;
       }
-      if(update_direction==1){
+      if(update_direction==0){
         stride_length = stride_length-delta_stride_length;
       }
     }
@@ -406,18 +442,37 @@ int extend_range(const string dir,
 }
 
 int find_boundary(int argc, char* argv[]){
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  cout << "Trail name: " << FLAGS_program_name << endl;
+  cout << "Git commit hash: " << endl;
+  std::system("git rev-parse HEAD");
+  cout << "Result of \"git diff-index HEAD\":" << endl;
+  std::system("git diff-index HEAD");
+  cout << endl;
+
   const string dir = "../dairlib_data/goldilocks_models/find_boundary/robot_" +
       to_string(FLAGS_robot_option) + "/";
+  if (!CreateFolderIfNotExist(dir)) return 0;
+
   /*
    * initialize task space
    */
+  cout << "\nInitialize task space:\n";
   double stride_length_0 = 0.2;
   double delta_stride_length = 0.01;
+  cout<<"initial stride length "<<stride_length_0<<endl;
+  cout<<"delta stride length "<<delta_stride_length<<endl;
 
   double ground_incline_0 = 0;
   double initial_ground_incline_max = 0.1;
   double initial_ground_incline_min = -0.1;
   double ground_incline_resolution = 0.01;
+  cout<<"max ground incline initially located within "<<ground_incline_0
+      <<" to "<<initial_ground_incline_max<<endl;
+  cout<<"min ground incline initially located within "<<initial_ground_incline_min
+      <<" to "<<ground_incline_0<<endl;
+  cout<<"ground incline resolution "<<ground_incline_resolution<<endl;
 
   double turning_rate_0 = 0;
 //  double delta_turning_rate = 0;
@@ -425,11 +480,13 @@ int find_boundary(int argc, char* argv[]){
   /*
    * start iteration
    */
+  cout << "\nStart iteration:\n";
   int max_iter = 50;
   int boundary_sample_num = 0;
   int extend_direction;//0:decrease the stride length;1:increase stride length
 
   //search max stride length
+  cout<<"search along increasing the stride length"<<endl;
   extend_direction = 1;
   boundary_sample_num = extend_range(dir,
       stride_length_0,max_iter, ground_incline_0,
@@ -437,7 +494,9 @@ int find_boundary(int argc, char* argv[]){
       ground_incline_resolution,turning_rate_0,
       boundary_sample_num, extend_direction,
       delta_stride_length);
+
   //search min stride length
+  cout<<"search along decreasing the stride length"<<endl;
   extend_direction = 0;
   boundary_sample_num = extend_range(dir,
       stride_length_0,max_iter, ground_incline_0,

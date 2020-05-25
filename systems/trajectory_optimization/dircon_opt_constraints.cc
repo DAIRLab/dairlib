@@ -182,7 +182,8 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
           num_kinematic_constraints_wo_skipping},
       num_positions_{num_positions},
       num_velocities_{num_velocities},
-      num_quat_slack_{num_quat_slack} {}
+      num_quat_slack_{num_quat_slack},
+      context_(plant_.CreateDefaultContext()) {}
 
 // The format of the input to the eval() function is the
 // tuple { timestep, state 0, state 1, input 0, input 1, force 0, force 1},
@@ -220,12 +221,12 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
                 num_kinematic_constraints_wo_skipping_);
   const VectorX<T> gamma = x.tail(num_quat_slack_);
 
-  auto context0 = multibody::createContext(plant_, x0, u0);
-  constraints_->updateData(*context0, l0);
+  multibody::setContext(plant_, x0, u0, context_.get());
+  constraints_->updateData(*context_, l0);
   const VectorX<T> xdot0 = constraints_->getXDot();
 
-  auto context1 = multibody::createContext(plant_, x1, u1);
-  constraints_->updateData(*context1, l1);
+  multibody::setContext(plant_, x1, u1, context_.get());
+  constraints_->updateData(*context_, l1);
   const VectorX<T> xdot1 = constraints_->getXDot();
 
   // Cubic interpolation to get xcol and xdotcol.
@@ -233,11 +234,11 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   const VectorX<T> xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
   const VectorX<T> ucol = 0.5 * (u0 + u1);
 
-  auto contextcol = multibody::createContext(plant_, xcol, ucol);
-  constraints_->updateData(*contextcol, lc);
+  multibody::setContext(plant_, xcol, ucol, context_.get());
+  constraints_->updateData(*context_, lc);
   auto g = constraints_->getXDot();
   VectorX<T> vc_in_qdot_space(num_positions_);
-  plant_.MapVelocityToQDot(*contextcol,
+  plant_.MapVelocityToQDot(*context_,
                            constraints_->getJWithoutSkipping().transpose() * vc,
                            &vc_in_qdot_space);
   g.head(num_positions_) += vc_in_qdot_space;
@@ -331,7 +332,8 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       is_constraint_relative_{is_constraint_relative},
       n_relative_{
           static_cast<int>(std::count(is_constraint_relative.begin(),
-                                      is_constraint_relative.end(), true))} {
+                                      is_constraint_relative.end(), true))},
+      context_(plant_.CreateDefaultContext()) {
   // Set sparsity pattern and relative map
   std::vector<std::pair<int, int>> sparsity;
   // Acceleration constraints are dense in decision variables
@@ -394,8 +396,8 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
   const VectorX<T> offset = x.segment(
       num_states_ + num_inputs_ + num_kinematic_constraints_wo_skipping_,
       n_relative_);
-  auto context = multibody::createContext(plant_, state, input);
-  constraints_->updateData(*context, force);
+  multibody::setContext(plant_, state, input, context_.get());
+  constraints_->updateData(*context_, force);
   switch (type_) {
     case kAll:
       *y = VectorX<T>(3 * num_kinematic_constraints_);
@@ -437,7 +439,8 @@ DirconImpactConstraint<T>::DirconImpactConstraint(
       num_kinematic_constraints_wo_skipping_{
           num_kinematic_constraints_wo_skipping},
       num_positions_{num_positions},
-      num_velocities_{num_velocities} {}
+      num_velocities_{num_velocities},
+      context_(plant_.CreateDefaultContext()) {}
 
 // The format of the input to the eval() function is the
 // tuple { state 0, impulse, velocity 1},
@@ -463,12 +466,12 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
   const VectorX<T> u =
       VectorXd::Zero(plant_.num_actuators()).template cast<T>();
 
-  auto context = multibody::createContext(plant_, x0, u);
+  multibody::setContext(plant_, x0, u, context_.get());
 
-  constraints_->updateData(*context, impulse);
+  constraints_->updateData(*context_, impulse);
 
   MatrixX<T> M(num_velocities_, num_velocities_);
-  plant_.CalcMassMatrix(*context, &M);
+  plant_.CalcMassMatrix(*context_, &M);
 
   *y =
       M * (v1 - v0) - constraints_->getJWithoutSkipping().transpose() * impulse;

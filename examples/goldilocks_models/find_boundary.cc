@@ -297,10 +297,10 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   }
 
   bool extend_model_this_iter = false;
-  int n_rerun = 1;
+  int n_rerun = 0;
   double cost_threshold_for_update = std::numeric_limits<double>::infinity();
   int N_rerun = 0;
-
+  sample_idx = 0;
   //run trajectory optimization
   trajOptGivenWeights(std::ref(plant), std::ref(plant_autoDiff),
                       n_s, n_sDDot, n_tau,
@@ -371,13 +371,13 @@ double boundary_for_one_dimension(int max_iteration,double stride_length,
 
 //    //test search algorithm
 //    int sample_success = sample_result(stride_length,high,turning_rate);
-
+    double gi_interval = (gi_high-gi_low)/2;
     if (sample_success){
       gi_low = gi_high;
-      gi_high = 2*gi_high;
+      gi_high = gi_high+gi_interval;
     }
     else{
-      gi_high = (gi_high+gi_low)/2;
+      gi_high = gi_low+gi_interval;
     }
     if(abs(gi_high-gi_low) < resolution){
       break;

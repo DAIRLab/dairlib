@@ -76,6 +76,13 @@ DEFINE_bool(is_zero_touchdown_impact, false,
 "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 
+//outer loop
+DEFINE_int32(max_outer_iter, 50 , "max number of iterations for searching on each "
+                                "direction of one dimension");
+DEFINE_double(cost_increase_threshold, 0.5, "max increase threshold of cost "
+                                            "used for judging the quality of "
+                                            "solutions");
+
 //others
 DEFINE_string(
     program_name, "",
@@ -191,7 +198,7 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 
 // trajectory optimization for given task and model
 void trajOptGivenModel(double stride_length, double ground_incline,
-    double turning_rate,const string dir,int num,int sample_idx){
+    double turning_rate,const string dir,int num){
   // Create MBP
   MultibodyPlant<double> plant(0.0);
   createMBP(&plant, FLAGS_robot_option);
@@ -264,6 +271,8 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
 
   string init_file_pass_in = "";
+  //TODO:set initial guess for trajectory optimizations using interpolation
+  int sample_idx = 0;
   string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
 
   // Vectors/Matrices for the outer loop
@@ -300,7 +309,6 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   int n_rerun = 0;
   double cost_threshold_for_update = std::numeric_limits<double>::infinity();
   int N_rerun = 0;
-  sample_idx = 0;
   //run trajectory optimization
   trajOptGivenWeights(std::ref(plant), std::ref(plant_autoDiff),
                       n_s, n_sDDot, n_tau,
@@ -334,12 +342,12 @@ void trajOptGivenModel(double stride_length, double ground_incline,
 }
 
 //naive test function for search algorithm
-int sample_result(double stride_length,double ground_incline,
+double sample_result(double stride_length,double ground_incline,
     double turning_rate){
-  int result = 0;
+  double result = std::numeric_limits<double>::infinity();
   if( (ground_incline<0.12) && (ground_incline>-0.12)){
     if((stride_length<0.25) && (stride_length>0.15)){
-      result = 1;
+      result = 0;
     }
   }
   return result;
@@ -349,30 +357,33 @@ int sample_result(double stride_length,double ground_incline,
 //search the max/min ground incline for fixed stride length
 double boundary_for_one_dimension(int max_iteration,double stride_length,
     double gi_low,double gi_high,double turning_rate,double resolution,
-    const string dir,int num){
+    const string dir,int& num,double max_cost){
+  int iter = 0;
   int sample_idx = 0;
   cout << "sample# (rerun #) | stride | incline | turning | init_file | "
           "Status | Solve time | Cost (tau cost)\n";
-  for (sample_idx = 0; sample_idx <= max_iteration; sample_idx++){
-    //run trajectory optimization and judge the solution
-    trajOptGivenModel(stride_length, gi_high,
-        turning_rate, dir, num, sample_idx);
-    string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
+  for (iter = 0; iter <= max_iteration; iter++){
     //store stride length, ground incline and turning rate
+    num += 1;
+    string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
     writeCSV(dir + prefix +
         string("stride_length.csv"), stride_length*MatrixXd::Ones(1,1));
     writeCSV(dir + prefix +
         string("ground_incline.csv"), gi_high*MatrixXd::Ones(1,1));
     writeCSV(dir + prefix +
         string("turning_rate.csv"), turning_rate*MatrixXd::Ones(1,1));
+    //run trajectory optimization and judge the solution
+    trajOptGivenModel(stride_length, gi_high,
+        turning_rate, dir, num);
 
-    int sample_success =
-        (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
+    double sample_cost =
+        (readCSV(dir + prefix + string("c.csv")))(0, 0);
 
 //    //test search algorithm
-//    int sample_success = sample_result(stride_length,high,turning_rate);
+//    double sample_cost = sample_result(stride_length,gi_high,turning_rate);
+
     double gi_interval = (gi_high-gi_low)/2;
-    if (sample_success){
+    if (sample_cost<max_cost){
       gi_low = gi_high;
       gi_high = gi_high+gi_interval;
     }
@@ -387,12 +398,12 @@ double boundary_for_one_dimension(int max_iteration,double stride_length,
 }
 
 //extend range of stride length
-int extend_range(const string dir,
+void extend_range(const string dir,
     double stride_length_0,int max_iter,double ground_incline_0,
     double ground_incline_high,double ground_incline_low,
     double ground_incline_resolution,double turning_rate_0,
-    int boundary_num,int update_direction,
-    double delta_stride_length){
+    int& boundary_point_idx,int& traj_opt_idx, int update_direction,
+    double delta_stride_length,double max_cost){
   //keep updating stride_length and search boundary of ground incline for each
   //stride length
   int iter;
@@ -402,28 +413,28 @@ int extend_range(const string dir,
     double max_gi = boundary_for_one_dimension(max_iter, stride_length,
         ground_incline_0, ground_incline_high,
         turning_rate_0, ground_incline_resolution,
-        dir, boundary_num);
+        dir, traj_opt_idx,max_cost);
+    boundary_point_idx += 1;
     VectorXd boundary_point(2);
     boundary_point<<stride_length,max_gi;
-    writeCSV(dir + to_string(boundary_num) +  "_" +
+    writeCSV(dir + to_string(boundary_point_idx) +  "_" +
         string("max_ground_incline.csv"), boundary_point);
     cout << "boundary point index | stride length | ground incline"<<endl;
-    cout<<" \t "<<boundary_num<< "\t" <<" | "<<"\t"<<stride_length
+    cout<<" \t "<<boundary_point_idx<< "\t" <<" | "<<"\t"<<stride_length
         <<"\t"<<" | "<<"\t"<<max_gi<<endl;
-    boundary_num += 1;
 
     //find min ground incline
     double min_gi = boundary_for_one_dimension(max_iter, stride_length,
         ground_incline_0, ground_incline_low,
         turning_rate_0, ground_incline_resolution,
-        dir, boundary_num);
+        dir, traj_opt_idx,max_cost);
+    boundary_point_idx += 1;
     boundary_point<<stride_length,min_gi;
-    writeCSV(dir + to_string(boundary_num) +  "_" +
+    writeCSV(dir + to_string(boundary_point_idx) +  "_" +
         string("min_ground_incline.csv"), boundary_point);
     cout << "boundary point index | stride length | ground incline"<<endl;
-    cout<<" \t "<<boundary_num<< "\t" <<" | "<<"\t"<<stride_length
+    cout<<" \t "<<boundary_point_idx<< "\t" <<" | "<<"\t"<<stride_length
         <<"\t"<<" | "<<"\t"<<min_gi<<endl;
-    boundary_num += 1;
     //if max_gi and min_gi are same, find the boundary of stride length
     if(min_gi==max_gi){
       break;
@@ -438,7 +449,6 @@ int extend_range(const string dir,
       }
     }
   }
-  return boundary_num;
 }
 
 int find_boundary(int argc, char* argv[]){
@@ -478,32 +488,52 @@ int find_boundary(int argc, char* argv[]){
 //  double delta_turning_rate = 0;
 
   /*
+   * Iteration setting
+   */
+  int max_iter = FLAGS_max_outer_iter;
+  double cost_threshold = FLAGS_cost_increase_threshold;
+  int boundary_sample_num = 0;//use this to set the index for boundary point
+  int traj_opt_num = 0;//use this to set the index for Traj Opt
+  int extend_direction;//0:decrease the stride length;1:increase stride length
+
+  /*
    * start iteration
    */
+  cout << "\nCalculate Central Point Cost:\n";
+  writeCSV(dir +  to_string(traj_opt_num)  +
+      string("_0_stride_length.csv"), stride_length_0*MatrixXd::Ones(1,1));
+  writeCSV(dir + to_string(traj_opt_num) +
+      string("_0_ground_incline.csv"), ground_incline_0*MatrixXd::Ones(1,1));
+  writeCSV(dir + to_string(traj_opt_num) +
+      string("_0_turning_rate.csv"), turning_rate_0*MatrixXd::Ones(1,1));
+  trajOptGivenModel(stride_length_0, ground_incline_0,
+                    turning_rate_0, dir, traj_opt_num);
+  double nominal_cost = (readCSV(dir + to_string(traj_opt_num) +
+      string("_0_c.csv")))(0, 0);
+  double max_cost = nominal_cost*(1+cost_threshold);
+  cout << "nominal_cost: " <<nominal_cost<<endl;
+  cout << "increase threshold of cost: "<<cost_threshold<<endl;
+  cout << "max permitted cost " <<max_cost<<endl;
+
   cout << "\nStart iteration:\n";
-  int max_iter = 50;
-  int boundary_sample_num = 0;
-  int extend_direction;//0:decrease the stride length;1:increase stride length
 
   //search max stride length
   cout<<"search along increasing the stride length"<<endl;
   extend_direction = 1;
-  boundary_sample_num = extend_range(dir,
-      stride_length_0,max_iter, ground_incline_0,
+  extend_range(dir,stride_length_0,max_iter, ground_incline_0,
       initial_ground_incline_max,initial_ground_incline_min,
       ground_incline_resolution,turning_rate_0,
-      boundary_sample_num, extend_direction,
-      delta_stride_length);
+      boundary_sample_num,traj_opt_num, extend_direction,
+      delta_stride_length,max_cost);
 
   //search min stride length
   cout<<"search along decreasing the stride length"<<endl;
   extend_direction = 0;
-  boundary_sample_num = extend_range(dir,
-      stride_length_0,max_iter, ground_incline_0,
+  extend_range(dir,stride_length_0,max_iter, ground_incline_0,
       initial_ground_incline_max,initial_ground_incline_min,
       ground_incline_resolution,turning_rate_0,
-      boundary_sample_num, extend_direction,
-      delta_stride_length);
+      boundary_sample_num,traj_opt_num, extend_direction,
+      delta_stride_length,max_cost);
 
   return 0;
 }

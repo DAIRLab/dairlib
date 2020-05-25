@@ -107,6 +107,7 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
   const int num_positions_{0};
   const int num_velocities_{0};
   const int num_quat_slack_{0};
+  std::unique_ptr<drake::systems::Context<T>> context_;
 };
 
 /// Implements the kinematic constraints used by Dircon
@@ -170,6 +171,7 @@ class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
   const std::vector<bool> is_constraint_relative_;
   const int n_relative_;
   Eigen::MatrixXd relative_map_;
+  std::unique_ptr<drake::systems::Context<T>> context_;
 };
 
 /// Helper method to add a DirconDynamicConstraint to the @p prog,
@@ -224,6 +226,7 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
   const int num_kinematic_constraints_wo_skipping_{0};
   const int num_positions_{0};
   const int num_velocities_{0};
+  std::unique_ptr<drake::systems::Context<T>> context_;
 };
 
 // Position constraint of a point in the directions `dir` with respect to the

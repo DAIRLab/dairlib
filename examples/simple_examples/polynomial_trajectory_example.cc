@@ -11,8 +11,7 @@ using Eigen::Vector4d;
 using Eigen::VectorXd;
 
 using drake::trajectories::PiecewisePolynomial;
-
-typedef Polynomial<double> PolynomialType;
+using drake::Polynomial;
 
 int main() {
   // Create a piecewise polynomial
@@ -27,7 +26,7 @@ int main() {
   Y[6](0, 0) = 1;
 
   PiecewisePolynomial<double> spline1 =
-      PiecewisePolynomial<double>::Pchip(T_breakpoint, Y);
+      PiecewisePolynomial<double>::CubicShapePreserving(T_breakpoint, Y);
 
   // This is how you evaluate the polynomial
   std::cout << "\nEvaluating polynomial at different time point:\n";
@@ -48,7 +47,8 @@ int main() {
   Y2[0](0, 0) = 1;
   Y2[1](0, 0) = 2;
   PiecewisePolynomial<double> spline2 =
-      PiecewisePolynomial<double>::Pchip(T2_breakpoint, Y2, true);
+      PiecewisePolynomial<double>::CubicShapePreserving(T2_breakpoint, Y2,
+          true);
   for (double d = 0; d <= 1; d += 0.1) std::cout << spline2.value(d) << " ";
   std::cout << std::endl;
 
@@ -195,7 +195,7 @@ int main() {
   Eigen::Matrix<double, 4, 1> coeffs;
   coeffs << 0, 1, 1, -1;  // Test the fourth segment of spline1
 
-  Polynomial<double> polynomial = PolynomialType(coeffs);
+  Polynomial<double> polynomial(coeffs);
   for (double d = 0; d <= 1; d += 0.1)
     std::cout << polynomial.EvaluateUnivariate(d) << " ";
   std::cout << std::endl;

@@ -11,10 +11,19 @@ template <typename T>
 drake::VectorX<T> getInput(const drake::multibody::MultibodyPlant<T>& plant,
                            const drake::systems::Context<T>& context);
 
+/// Create a new MultibodyPlant context and set the corresponding state and
+/// input values. Note, this is potentially an expensive operation!
 template <typename T>
 std::unique_ptr<drake::systems::Context<T>> createContext(
     const drake::multibody::MultibodyPlant<T>& plant,
     const drake::VectorX<T>& state, const drake::VectorX<T>& input);
+
+/// Update an existing MultibodyPlant context, setiing corresponding state and
+/// input values.
+template <typename T>
+void setContext(const drake::multibody::MultibodyPlant<T>& plant,
+    const drake::VectorX<T>& state, const drake::VectorX<T>& input,
+    drake::systems::Context<T>* context);
 
 /// Add terrain to an initialized, but not finalized, MultibodyPlant
 /// and scene graph. Uses the given values for coefficients of friction.

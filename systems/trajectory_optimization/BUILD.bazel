@@ -21,6 +21,7 @@ cc_library(
         ":dircon_kinematic_data",
         "//solvers:optimization_utils",
         "//systems/goldilocks_models",
+        "//multibody:multipose_visualizer",
         "@drake//:drake_shared_library",
     ],
 )

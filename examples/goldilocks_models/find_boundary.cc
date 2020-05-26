@@ -196,6 +196,75 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
   }
 }
 
+//use interpolation to set the initial guess for the trajectory optimization
+string getInitFileName(const string directory, int traj_opt_num){
+  MatrixXd current_ground_incline = readCSV(directory + to_string(traj_opt_num)
+      + string("_0_ground_incline.csv"));
+  MatrixXd current_stride_length = readCSV(directory + to_string(traj_opt_num)
+      + string("_0_stride_length.csv"));
+  MatrixXd current_turning_rate = readCSV(directory + to_string(traj_opt_num)
+      + string("_0_turning_rate.csv"));
+  int gamma_dimension = 3;
+  VectorXd current_gamma(gamma_dimension);
+  current_gamma << current_ground_incline(0, 0), current_stride_length(0, 0),
+    current_turning_rate(0,0);
+  string initial_file_name;
+  if(traj_opt_num==0){
+    initial_file_name = "";
+  }else{
+    VectorXd initial_guess;
+    //take out corresponding w and calculate the weight for interpolation
+    MatrixXd w_gamma;
+    VectorXd weight_gamma;
+    //paras used to decide gamma scale
+    double delta_sl = 0.015;
+    double delta_gi = 0.05;
+    double delta_tr = 0.125;
+    //calculate the weighted sum of past solutions
+    int sample_num = 0;
+    for (sample_num = 0; sample_num < traj_opt_num; sample_num++) {
+      //check if this sample is success
+      int is_success = (readCSV(directory + to_string(sample_num)
+          + string("_0_is_success.csv")))(0,0);
+      if(is_success == 1) {
+        //extract past gamma
+        MatrixXd past_ground_incline = readCSV(directory + to_string(sample_num)
+            + string("_0_ground_incline.csv"));
+        MatrixXd past_stride_length = readCSV(directory + to_string(sample_num)
+            + string("_0_stride_length.csv"));
+        MatrixXd past_turning_rate = readCSV(directory + to_string(sample_num)
+            + string("_0_turning_rate.csv"));
+        VectorXd past_gamma(gamma_dimension);
+        past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0, 0);
+        //calculate the weight for each sample using the third power of the difference between gamma
+        VectorXd gamma_scale(gamma_dimension);
+        gamma_scale << 1/delta_gi,1/delta_sl,1.3/delta_tr;
+        VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
+        VectorXd dif_gamma2 = dif_gamma.array().pow(2);
+        double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);
+        //extract the solution of this sample
+        VectorXd w_to_interpolate = readCSV(directory + to_string(sample_num)
+            + string("_0_w.csv"));
+        //concatenate the weight and solution for further calculation
+        w_gamma.conservativeResize(w_to_interpolate.rows(),w_gamma.cols()+1);
+        w_gamma.col(w_gamma.cols()-1) = w_to_interpolate;
+        weight_gamma.conservativeResize(weight_gamma.rows()+1);
+        weight_gamma(weight_gamma.rows()-1)= 1 /distance_gamma;
+      }
+    }
+
+    //    normalize weight
+    weight_gamma = weight_gamma / weight_gamma.sum();
+    initial_guess = w_gamma * weight_gamma;
+    //    save initial guess and set init file
+    initial_file_name = to_string(traj_opt_num)
+        + string("_0_initial_guess.csv");
+    writeCSV(directory + initial_file_name, initial_guess);
+  }
+
+  return initial_file_name;
+}
+
 // trajectory optimization for given task and model
 void trajOptGivenModel(double stride_length, double ground_incline,
     double turning_rate,const string dir,int num){
@@ -270,8 +339,8 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   bool is_get_nominal = false;
   int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
 
-  string init_file_pass_in = "";
-  //TODO:set initial guess for trajectory optimizations using interpolation
+//  string init_file_pass_in = "";
+  string init_file_pass_in = getInitFileName(dir, num);
   int sample_idx = 0;
   string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
 
@@ -469,7 +538,13 @@ int find_boundary(int argc, char* argv[]){
    * initialize task space
    */
   cout << "\nInitialize task space:\n";
-  double stride_length_0 = 0.2;
+  double stride_length_0 = 0;
+  if(FLAGS_robot_option==0){
+    stride_length_0 = 0.3;
+  }
+  else if(FLAGS_robot_option==1){
+      stride_length_0 = 0.2;
+  }
   double delta_stride_length = 0.01;
   cout<<"initial stride length "<<stride_length_0<<endl;
   cout<<"delta stride length "<<delta_stride_length<<endl;

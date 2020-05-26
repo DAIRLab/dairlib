@@ -48,9 +48,9 @@ void DirconDistanceData<T>::updateConstraint(const Context<T>& context) {
       body1_.body_frame(), pt1_cast, world, world, &J1);
 
   MatrixX<T> J1_times_v =
-      this->plant_.CalcBiasForJacobianSpatialVelocity(
+      this->plant_.CalcBiasSpatialAcceleration(
           context, drake::multibody::JacobianWrtVariable::kV,
-          body1_.body_frame(), pt1_cast, world, world).tail(3);
+          body1_.body_frame(), pt1_cast, world, world).translational();
 
   Vector3<T> pt2_transform(3);
   MatrixX<T> J2(3, this->plant_.num_velocities());
@@ -65,9 +65,9 @@ void DirconDistanceData<T>::updateConstraint(const Context<T>& context) {
 
 
   MatrixX<T> J2dot_times_v =
-      this->plant_.CalcBiasForJacobianSpatialVelocity(
+      this->plant_.CalcBiasSpatialAcceleration(
           context, drake::multibody::JacobianWrtVariable::kV,
-          body2_.body_frame(), pt2_cast, world, world).tail(3);
+          body2_.body_frame(), pt2_cast, world, world).translational();
 
   // Constraint is ||r1-r2||^2  - d^2, to keep it differentiable everywhere
   // J is then 2*(r1-r2)^T * (J1 - J2)

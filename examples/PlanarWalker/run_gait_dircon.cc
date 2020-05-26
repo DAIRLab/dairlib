@@ -268,7 +268,7 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   std::srand(time(0));  // Initialize random number generator.
 
-  auto plant = std::make_unique<MultibodyPlant<double>>();
+  auto plant = std::make_unique<MultibodyPlant<double>>(0.0);
   auto scene_graph = std::make_unique<SceneGraph<double>>();
   Parser parser(plant.get(), scene_graph.get());
   std::string full_name =

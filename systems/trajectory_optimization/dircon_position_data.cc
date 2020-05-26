@@ -60,10 +60,10 @@ void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
       context, drake::multibody::JacobianWrtVariable::kV,
       body_.body_frame(), pt_cast, world, world, &J3d);
 
-  MatrixX<T> J3d_times_v = this->plant_.CalcBiasForJacobianSpatialVelocity(
+  MatrixX<T> J3d_times_v = this->plant_.CalcBiasSpatialAcceleration(
       context, drake::multibody::JacobianWrtVariable::kV,
       body_.body_frame(), pt_cast,
-      world, world).tail(3);
+      world, world).translational();
 
   if (isXZ_) {
     this->c_ = TXZ_and_ground_incline_ * pt_transform;

@@ -7,37 +7,37 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "utils",
     srcs = [
-        "multibody_utils.cc",
         "com_pose_system.cc",
+        "multibody_utils.cc",
     ],
     hdrs = [
-        "multibody_utils.h",
         "com_pose_system.h",
+        "multibody_utils.h",
     ],
     deps = [
+        ":visualization_utils",
         "@drake//multibody/plant",
-        ":visualization_utils"
     ],
 )
 
 cc_library(
     name = "visualization_utils",
     srcs = [
-        "visualization_utils.cc"
+        "visualization_utils.cc",
     ],
     hdrs = [
         "visualization_utils.h",
     ],
     deps = [
+        "//systems/primitives",
         "@drake//:drake_shared_library",
-         "//systems/primitives",
     ],
 )
 
 cc_library(
     name = "multipose_visualizer",
     srcs = [
-        "multipose_visualizer.cc"
+        "multipose_visualizer.cc",
     ],
     hdrs = [
         "multipose_visualizer.h",
@@ -46,7 +46,6 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_binary(
     name = "multipose_visualizer_test",
@@ -67,33 +66,45 @@ cc_library(
     ],
     deps = [
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "multibody_distance_constraint",
+    srcs = [
+        "multibody_distance_constraint.cc",
+    ],
+    hdrs = [
+        "multibody_distance_constraint.h",
+    ],
+    deps = [
         ":utils",
     ],
 )
 
 cc_test(
     name = "multibody_utils_test",
+    size = "small",
     srcs = ["test/multibody_utils_test.cc"],
     deps = [
-            ":utils",
-            "//examples/Cassie:cassie_urdf",
-            "//common",
-            "@drake//:drake_shared_library",
-            "@gtest//:main",
-            ],
-    size = "small"
+        ":utils",
+        "//common",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
+    ],
 )
 
 cc_test(
     name = "contact_toolkit_test",
+    size = "small",
     srcs = [
         "test/contact_toolkit_test.cc",
     ],
     deps = [
-        "//examples/Cassie:cassie_utils",
         ":contact_toolkit",
         ":utils",
+        "//examples/Cassie:cassie_utils",
         "@gtest//:main",
     ],
-    size = "small",
 )

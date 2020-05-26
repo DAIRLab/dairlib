@@ -92,6 +92,8 @@ MatrixXd generate_state_input_matrix(const PiecewisePolynomial<double>& states,
 vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
                                             const map<string, int>& vel_map,
                                             const map<string, int>& act_map);
+void printConstraint(const shared_ptr<HybridDircon<double>>& trajopt,
+                     const MathematicalProgramResult& result);
 
 // Position constraint of a body origin in one dimension (x, y, or z)
 class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
@@ -258,40 +260,17 @@ void DoMain() {
   options_list.push_back(flight_mode_options);
   options_list.push_back(double_stance_options);
 
-//  double w_lambda = 1.0e-4;
+  std::cout << "num_constraints" << options_list[1].getNumConstraints()
+            << std::endl;
+  options_list[1].setKinConstraintScaling({0, 1, 2, 3}, 1.0 / 100.0);
+
+  //  double w_lambda = 1.0e-4;
   // set force cost weight
 //  for (int i = 0; i < 2; i++) {
 //    options_list[i].setForceCost(w_lambda);
 //  }
 
   vector<int> stance_modes{0, 2};
-
-  //  for (int i : stance_modes) {
-  //    double s = 1;  // scale everything together
-  //    // Dynamic constraints
-  //    options_list[i].setDynConstraintScaling(s * 1.0 / 30.0, 0, 3);
-  //    options_list[i].setDynConstraintScaling(s * 1.0 / 60.0, 4, 5);
-  //    options_list[i].setDynConstraintScaling(s * 1.0 / 1500.0, 6, 16);
-  //    options_list[i].setDynConstraintScaling(s * 1.0 / 300.0, 17, 18);
-  //    options_list[i].setDynConstraintScaling(s * 1.0 / 600.0, 19, 28);
-  //    options_list[i].setDynConstraintScaling(s * 1.0 / 2000.0, 29, 34);
-  //    options_list[i].setDynConstraintScaling(s * 1.0 / 2000.0, 35, 36);
-  //    // Kinematic constraints
-  //    options_list[i].setKinConstraintScaling(s * 1.0 / 50.0, 0, 4);
-  //    options_list[i].setKinConstraintScaling(s * 1.0 / 600.0 * 2, 5, 6);
-  //    options_list[i].setKinConstraintScaling(s * 1.0 / 1000.0, 7 + 0, 7 + 4);
-  //    options_list[i].setKinConstraintScaling(s * 1.0, 7 + 5, 7 + 6);
-  //    options_list[i].setKinConstraintScaling(s * 1.0, 14 + 0, 14 + 4);
-  //    options_list[i].setKinConstraintScaling(s * 1.0 / 200, 14 + 5, 14 + 6);
-  //    // Impact constraints
-  //    options_list[i].setImpConstraintScaling(s * 1.0 / 50.0, 0, 2);
-  //    options_list[i].setImpConstraintScaling(s * 1.0 / 300.0, 3, 5);
-  //    options_list[i].setImpConstraintScaling(s * 1.0 / 24.0, 6, 7);
-  //    options_list[i].setImpConstraintScaling(s * 1.0 / 6.0, 8, 9);
-  //    options_list[i].setImpConstraintScaling(s * 1.0 / 12.0, 10, 13);
-  //    options_list[i].setImpConstraintScaling(s * 1.0 / 2.0, 14, 15);
-  //    options_list[i].setImpConstraintScaling(s * 1.0, 16, 17);
-  //  }
 
   auto trajopt = std::make_shared<HybridDircon<double>>(
       plant, timesteps, min_dt, max_dt, contact_mode_list, options_list);
@@ -416,7 +395,7 @@ void DoMain() {
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   std::cout << "Solve result: " << result.get_solution_result() << std::endl;
 
-  //  std::cout << result.GetSolution();
+  printConstraint(trajopt, result);
 
   const PiecewisePolynomial<double>& state_traj =
       trajopt->ReconstructStateTrajectory(result);
@@ -443,14 +422,6 @@ void DoMain() {
     LcmTrajectory::Trajectory traj_block;
     traj_block.traj_name =
         "cassie_jumping_trajectory_x_u" + std::to_string(mode);
-    //      traj_block.time_vector = generate_time_matrix(state_traj, 1000);
-    //    traj_block.time_vector = VectorXd::LinSpaced(1000, segment_times(2 *
-    //    mode),
-    //                                                 segment_times(2 * mode +
-    //                                                 1));
-    //    traj_block.datapoints = generate_state_input_matrix(state_traj,
-    //    input_traj,
-    //                                                        traj_block.time_vector);
     std::vector<double> breaks_copy =
         std::vector(state_traj.get_segment_times());
     std::cout << "num break points" << breaks_copy.size() << std::endl;
@@ -471,8 +442,6 @@ void DoMain() {
         datatypes_wo_inputs.begin(), datatypes_wo_inputs.end());
     traj_block.datatypes.insert(traj_block.datatypes.end(),
         datatypes_w_inputs.begin(), datatypes_w_inputs.end());
-//    traj_block.datatypes.insert(traj_block.datatypes.end(), datatypes.begin(),
-//                                datatypes.begin());
     std::cout << "datatypes size: " << traj_block.datatypes.size() << std::endl;
     trajectories.push_back(traj_block);
     trajectory_names.push_back(traj_block.traj_name);
@@ -502,6 +471,23 @@ void DoMain() {
   }
 }
 
+void printConstraint(const shared_ptr<HybridDircon<double>>& trajopt,
+                     const MathematicalProgramResult& result) {
+  for (auto const& binding : trajopt->generic_constraints()) {
+    double tol = 1e-6;
+    auto y = trajopt->EvalBinding(binding, result.GetSolution());
+    auto c = binding.evaluator();
+    bool isSatisfied = (y.array() >= c->lower_bound().array() - tol).all() &&
+        (y.array() <= c->upper_bound().array() + tol).all();
+    if (!isSatisfied) {
+      cout << "Constraint violation: " << c->get_description() << endl;
+      MatrixXd tmp(y.size(), 3);
+      tmp << c->lower_bound(), y, c->upper_bound();
+      cout << tmp << endl;
+    }
+  }
+}
+
 void setKinematicConstraints(HybridDircon<double>* trajopt,
                              const MultibodyPlant<double>& plant) {
   // Create maps for joints
@@ -518,7 +504,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   int n_u = plant.num_actuators();
 //  int n_x = n_q + n_v;
 
-  //  std::cout << "N: " << trajopt->N() << std::endl;
   // Get the decision variables that will be used
   int N = trajopt->N();
   auto mode_lengths = trajopt->mode_lengths();
@@ -547,12 +532,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   // Standing constraints
   double rest_height = 1.075;
-
-  // Fixing initial conditions
-  //  VectorXd q_init(n_q);
-  //  q_init << 1, -0.000439869, -3.78298e-06, 0.00024498, 0.000994219, -0.001,
-  //      1.20078, -0.00806937, 0.0140112, 0, 0, 0.583512, 0.532804, -1.17628,
-  //      -1.18182, 1.40317, 1.40871, -1.3, -1.3;
+  double eps = 1e-6;
   //  trajopt->AddBoundingBoxConstraint(q_init, q_init, x0.head(n_q));
   //  trajopt->AddBoundingBoxConstraint(q_init, q_init, xf.head(n_q));
 
@@ -560,48 +540,22 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
   //  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_x")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
-  //  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_y")));
-  //  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_x")));
-  //  trajopt->AddBoundingBoxConstraint(0, 0, x_top(pos_map.at("base_y")));
 
-  // Knee Angles
-  //  trajopt->AddBoundingBoxConstraint(-0.85, -0.75,
-  //  x0(pos_map.at("knee_left"))); trajopt->AddBoundingBoxConstraint(-0.85,
-  //  -0.75, x0(pos_map.at("knee_right")));
-  // Hip orientations
-  //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
-  //                                    x0(pos_map.at("hip_roll_left")));
-  //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
-  //                                    x0(pos_map.at("hip_roll_right")));
-  //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
-  //                                    xf(pos_map.at("hip_roll_left")));
-  //  trajopt->AddBoundingBoxConstraint(-1e-3, 1e-3,
-  //                                    xf(pos_map.at("hip_roll_right")));
-  //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
-  //                                    x0(pos_map.at("hip_yaw_left")));
-  //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
-  //                                    x0(pos_map.at("hip_yaw_right")));
-  //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
-  //                                    xf(pos_map.at("hip_yaw_left")));
-  //  trajopt->AddBoundingBoxConstraint(-1e-2, 1e-2,
-  //                                    xf(pos_map.at("hip_yaw_right")));
 
   // Jumping height constraints
-  trajopt->AddBoundingBoxConstraint(rest_height, rest_height,
+  trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
                                     x0(pos_map.at("base_z")));
-  trajopt->AddBoundingBoxConstraint(FLAGS_jump_height + rest_height,
-                                    FLAGS_jump_height + rest_height,
+  trajopt->AddBoundingBoxConstraint(FLAGS_jump_height + rest_height - eps,
+      FLAGS_jump_height + rest_height + eps,
                                     x_top(pos_map.at("base_z")));
-  trajopt->AddBoundingBoxConstraint(rest_height, rest_height,
+  trajopt->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
                                     xf(pos_map.at("base_z")));
 
   // Zero starting and final velocities
-  trajopt->AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-                                    x0.tail(n_v));
-  trajopt->AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-                                    xf.tail(n_v));
-  trajopt->AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-                                    x_second_to_last.tail(n_v));
+  trajopt->AddLinearConstraint(VectorXd::Zero(n_v) == x0.tail(n_v));
+  trajopt->AddLinearConstraint(VectorXd::Zero(n_v) == xf.tail(n_v));
+  trajopt->AddLinearConstraint(VectorXd::Zero(n_v) ==
+      x_second_to_last.tail(n_v));
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{

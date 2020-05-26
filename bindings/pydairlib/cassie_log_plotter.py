@@ -1,21 +1,19 @@
 import sys
 
 import lcm
-import dairlib
-import drake
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.io as sio
-from scipy import integrate
-import pydairlib.lcm_trajectory
 import process_lcm_log
+import pydairlib.lcm_trajectory
 import pydairlib.multibody_utils
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
 from pydrake.trajectories import PiecewisePolynomial
+from scipy import integrate
+
 
 def get_index_at_time(times, t):
     return np.argwhere(times - t > 0)[0][0]
@@ -158,11 +156,14 @@ def main():
     loadedTrackingDataTraj = pydairlib.lcm_trajectory.LcmTrajectory()
     # loadedStateTraj.loadFromFile(
     #     "/home/yangwill/Documents/research/projects/cassie/jumping"
-    #     "/saved_trajs/target_trajs/jumping_0.2")
+    #     "/saved_trajs/target_trajs/jumping_0.15")
     loadedStateTraj.loadFromFile(
         "/home/yangwill/Documents/research/projects/cassie/jumping"
         "/saved_trajs/target_trajs/April_19_jumping_0.2")
-        # "/saved_trajs/target_trajs/April_19_jumping_0.2")
+    #     # "/saved_trajs/target_trajs/April_19_jumping_0.2")
+    # loadedStateTraj.loadFromFile(
+    #     "/home/yangwill/Documents/research/projects/cassie/jumping"
+    #     "/saved_trajs/May_21_jumping_0.2")
     loadedTrackingDataTraj.loadFromFile(
         "/home/yangwill/Documents/research/projects/cassie/jumping"
         "/saved_trajs/target_trajs/April_19_jumping_0.2_processed")
@@ -218,15 +219,6 @@ def main():
                                                    0:3, :],
                                                 lcm_com_traj.datapoints[
                                                    3:6, :])
-    # l_foot_traj = PiecewisePolynomial.FirstOrderHold(lcm_l_foot_traj.time_vector,
-    #                                                lcm_l_foot_traj.datapoints[
-    #                                                0:3, :])
-    # r_foot_traj = PiecewisePolynomial.FirstOrderHold(lcm_r_foot_traj.time_vector,
-    #                                                lcm_r_foot_traj.datapoints[
-    #                                                0:3, :])
-    # com_traj = PiecewisePolynomial.FirstOrderHold(lcm_com_traj.time_vector,
-    #                                             lcm_com_traj.datapoints[
-    #                                                0:3, :])
 
     # Note this plots relative feet trajs as the target trajectory is relative
     # To get the nominal feet trajs in world coordinates, calculate it from
@@ -276,7 +268,7 @@ def main():
     t_state_slice = slice(t_start_idx, t_end_idx)
 
     # plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
-    # plot_nominal_state(x_traj_nominal, state_names_wo_spr)
+    plot_nominal_state(x_traj_nominal, state_names_wo_spr)
 
     # For printing out osc_values at a specific time interval
     t_osc_start_idx = get_index_at_time(t_osc_debug, start_time)
@@ -287,7 +279,8 @@ def main():
     plot_osc_control_inputs(control_inputs, state_traj_mode0, t_osc,
                             t_osc_end_idx, t_osc_start_idx)
     #
-    # plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal, x_points_nominal)
+    plot_nominal_control_inputs(nu, state_traj_mode0, t_nominal,
+                                x_points_nominal)
 
     # plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
 
@@ -300,8 +293,8 @@ def main():
     front_contact_disp = np.array((-0.0457, 0.112, 0))
     rear_contact_disp = np.array((0.088, 0, 0))
 
-    # plot_feet_from_optimization(x_traj_nominal,
-    #                             front_contact_disp, world, "left_", "_front")
+    plot_feet_from_optimization(x_traj_nominal,
+                                front_contact_disp, world, "left_", "_front")
 
     # Foot plotting
     if True:
@@ -465,7 +458,8 @@ def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     print(Jcc@xc[-18:])
     print(Jcc@Jcc.T@gamma_c)
 
-    # import pdb; pdb.set_trace()
+    import pdb;
+    pdb.set_trace()
 
 def plot_ground_reaction_forces(contact_info, t_state, t_state_slice):
     fig = plt.figure('contact data: ' + filename)

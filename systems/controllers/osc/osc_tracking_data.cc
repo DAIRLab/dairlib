@@ -1,4 +1,4 @@
-#include "systems/controllers/osc/osc_tracking_data_mbp.h"
+#include "systems/controllers/osc/osc_tracking_data.h"
 
 #include <math.h>
 #include <algorithm>
@@ -24,8 +24,8 @@ namespace dairlib::systems::controllers {
 using multibody::makeNameToPositionsMap;
 using multibody::makeNameToVelocitiesMap;
 
-/**** OscTrackingDataMBP ****/
-OscTrackingDataMBP::OscTrackingDataMBP(
+/**** OscTrackingData ****/
+OscTrackingData::OscTrackingData(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
     const MultibodyPlant<double>* plant_wo_spr)
@@ -40,7 +40,7 @@ OscTrackingDataMBP::OscTrackingDataMBP(
       W_(W) {}
 
 // Update
-bool OscTrackingDataMBP::Update(
+bool OscTrackingData::Update(
     const VectorXd& x_w_spr, Context<double>& context_w_spr,
     const VectorXd& x_wo_spr, Context<double>& context_wo_spr,
     const drake::trajectories::Trajectory<double>& traj, double t,
@@ -70,7 +70,7 @@ bool OscTrackingDataMBP::Update(
   return track_at_current_state_;
 }
 
-void OscTrackingDataMBP::UpdateTrackingFlag(int finite_state_machine_state) {
+void OscTrackingData::UpdateTrackingFlag(int finite_state_machine_state) {
   if (state_.empty()) {
     track_at_current_state_ = true;
     state_idx_ = 0;
@@ -82,7 +82,7 @@ void OscTrackingDataMBP::UpdateTrackingFlag(int finite_state_machine_state) {
   track_at_current_state_ = it != state_.end();
 }
 
-void OscTrackingDataMBP::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
+void OscTrackingData::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
   DRAKE_ASSERT(track_at_current_state_);
   cout << name_ << ":\n";
   cout << "  y = " << y_.transpose() << endl;
@@ -96,12 +96,12 @@ void OscTrackingDataMBP::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
   cout << "  ddy_command_sol = " << (J_ * dv + JdotV_).transpose() << endl;
 }
 
-void OscTrackingDataMBP::SaveDdyCommandSol(const VectorXd& dv) {
+void OscTrackingData::SaveDdyCommandSol(const VectorXd& dv) {
   DRAKE_ASSERT(track_at_current_state_);
   ddy_command_sol_ = J_ * dv + JdotV_;
 }
 
-void OscTrackingDataMBP::AddState(int state) {
+void OscTrackingData::AddState(int state) {
   // Avoid repeated states
   for (auto const& element : state_) {
     DRAKE_DEMAND(element != state);
@@ -110,8 +110,8 @@ void OscTrackingDataMBP::AddState(int state) {
 }
 
 // Run this function in OSC constructor to make sure that users constructed
-// OscTrackingDataMBP correctly.
-void OscTrackingDataMBP::CheckOscTrackingData() {
+// OscTrackingData correctly.
+void OscTrackingData::CheckOscTrackingData() {
   cout << "Checking " << name_ << endl;
   CheckDerivedOscTrackingData();
 
@@ -125,22 +125,22 @@ void OscTrackingDataMBP::CheckOscTrackingData() {
   DRAKE_DEMAND(all_state_are_different);
 }
 
-/**** ComTrackingDataMBP ****/
-ComTrackingDataMBP::ComTrackingDataMBP(
+/**** ComTrackingData ****/
+ComTrackingData::ComTrackingData(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
     const MultibodyPlant<double>* plant_wo_spr)
-    : OscTrackingDataMBP(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr) {}
+    : OscTrackingData(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr) {}
 
-void ComTrackingDataMBP::AddStateToTrack(int state) { AddState(state); }
+void ComTrackingData::AddStateToTrack(int state) { AddState(state); }
 
-void ComTrackingDataMBP::UpdateYAndError(const VectorXd& x_w_spr,
+void ComTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
                                          Context<double>& context_w_spr) {
   y_ = plant_w_spr_->CalcCenterOfMassPosition(context_w_spr);
   error_y_ = y_des_ - y_;
 }
 
-void ComTrackingDataMBP::UpdateYdotAndError(const VectorXd& x_w_spr,
+void ComTrackingData::UpdateYdotAndError(const VectorXd& x_w_spr,
                                             Context<double>& context_w_spr) {
   MatrixXd J_w_spr(3, plant_w_spr_->num_velocities());
   plant_w_spr_->CalcJacobianCenterOfMassTranslationalVelocity(
@@ -150,39 +150,39 @@ void ComTrackingDataMBP::UpdateYdotAndError(const VectorXd& x_w_spr,
   error_dy_ = dy_des_ - dy_;
 }
 
-void ComTrackingDataMBP::UpdateYddotDes() { ddy_des_converted_ = ddy_des_; }
+void ComTrackingData::UpdateYddotDes() { ddy_des_converted_ = ddy_des_; }
 
-void ComTrackingDataMBP::UpdateJ(const VectorXd& x_wo_spr,
+void ComTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                  Context<double>& context_wo_spr) {
   J_ = MatrixXd::Zero(3, plant_wo_spr_->num_velocities());
   plant_wo_spr_->CalcJacobianCenterOfMassTranslationalVelocity(
       context_wo_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_, &J_);
 }
 
-void ComTrackingDataMBP::UpdateJdotV(const VectorXd& x_wo_spr,
+void ComTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
                                      Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_->CalcBiasCenterOfMassTranslationalAcceleration(
       context_wo_spr, JacobianWrtVariable::kV, world_wo_spr_, world_wo_spr_);
 }
 
-void ComTrackingDataMBP::CheckDerivedOscTrackingData() {}
+void ComTrackingData::CheckDerivedOscTrackingData() {}
 
-/**** TaskSpaceTrackingDataMBP ****/
-TaskSpaceTrackingDataMBP::TaskSpaceTrackingDataMBP(
+/**** TaskSpaceTrackingData ****/
+TaskSpaceTrackingData::TaskSpaceTrackingData(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
     const MultibodyPlant<double>* plant_wo_spr)
-    : OscTrackingDataMBP(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr) {}
+    : OscTrackingData(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr) {}
 
-/**** TransTaskSpaceTrackingDataMBP ****/
-TransTaskSpaceTrackingDataMBP::TransTaskSpaceTrackingDataMBP(
+/**** TransTaskSpaceTrackingData ****/
+TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
     const MultibodyPlant<double>* plant_wo_spr)
-    : TaskSpaceTrackingDataMBP(name, n_r, K_p, K_d, W, plant_w_spr,
+    : TaskSpaceTrackingData(name, n_r, K_p, K_d, W, plant_w_spr,
                                plant_wo_spr) {}
 
-void TransTaskSpaceTrackingDataMBP::AddPointToTrack(
+void TransTaskSpaceTrackingData::AddPointToTrack(
     const std::string& body_name, const Vector3d& pt_on_body) {
   DRAKE_DEMAND(plant_w_spr_->HasBodyNamed(body_name));
   DRAKE_DEMAND(plant_wo_spr_->HasBodyNamed(body_name));
@@ -194,13 +194,13 @@ void TransTaskSpaceTrackingDataMBP::AddPointToTrack(
       &plant_wo_spr_->GetBodyByName(body_name).body_frame());
   pts_on_body_.push_back(pt_on_body);
 }
-void TransTaskSpaceTrackingDataMBP::AddStateAndPointToTrack(
+void TransTaskSpaceTrackingData::AddStateAndPointToTrack(
     int state, const std::string& body_name, const Vector3d& pt_on_body) {
   AddState(state);
   AddPointToTrack(body_name, pt_on_body);
 }
 
-void TransTaskSpaceTrackingDataMBP::UpdateYAndError(
+void TransTaskSpaceTrackingData::UpdateYAndError(
     const VectorXd& x_w_spr, Context<double>& context_w_spr) {
   y_ = Vector3d::Zero();
   plant_w_spr_->CalcPointsPositions(
@@ -209,7 +209,7 @@ void TransTaskSpaceTrackingDataMBP::UpdateYAndError(
   error_y_ = y_des_ - y_;
 }
 
-void TransTaskSpaceTrackingDataMBP::UpdateYdotAndError(
+void TransTaskSpaceTrackingData::UpdateYdotAndError(
     const VectorXd& x_w_spr, Context<double>& context_w_spr) {
   MatrixXd J(3, plant_w_spr_->num_velocities());
   plant_w_spr_->CalcJacobianTranslationalVelocity(
@@ -220,11 +220,11 @@ void TransTaskSpaceTrackingDataMBP::UpdateYdotAndError(
   error_dy_ = dy_des_ - dy_;
 }
 
-void TransTaskSpaceTrackingDataMBP::UpdateYddotDes() {
+void TransTaskSpaceTrackingData::UpdateYddotDes() {
   ddy_des_converted_ = ddy_des_;
 }
 
-void TransTaskSpaceTrackingDataMBP::UpdateJ(const VectorXd& x_wo_spr,
+void TransTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                             Context<double>& context_wo_spr) {
   J_ = MatrixXd::Zero(3, plant_wo_spr_->num_velocities());
   plant_wo_spr_->CalcJacobianTranslationalVelocity(
@@ -233,7 +233,7 @@ void TransTaskSpaceTrackingDataMBP::UpdateJ(const VectorXd& x_wo_spr,
       world_wo_spr_, world_wo_spr_, &J_);
 }
 
-void TransTaskSpaceTrackingDataMBP::UpdateJdotV(
+void TransTaskSpaceTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
                ->CalcBiasForJacobianSpatialVelocity(
@@ -243,7 +243,7 @@ void TransTaskSpaceTrackingDataMBP::UpdateJdotV(
                .tail(3);
 }
 
-void TransTaskSpaceTrackingDataMBP::CheckDerivedOscTrackingData() {
+void TransTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
   if (body_index_w_spr_.empty()) {
     body_index_w_spr_ = body_index_wo_spr_;
   }
@@ -257,15 +257,15 @@ void TransTaskSpaceTrackingDataMBP::CheckDerivedOscTrackingData() {
   }
 }
 
-/**** RotTaskSpaceTrackingDataMBP ****/
-RotTaskSpaceTrackingDataMBP::RotTaskSpaceTrackingDataMBP(
+/**** RotTaskSpaceTrackingData ****/
+RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
     const MultibodyPlant<double>* plant_wo_spr)
-    : TaskSpaceTrackingDataMBP(name, n_r, K_p, K_d, W, plant_w_spr,
+    : TaskSpaceTrackingData(name, n_r, K_p, K_d, W, plant_w_spr,
                                plant_wo_spr) {}
 
-void RotTaskSpaceTrackingDataMBP::AddFrameToTrack(
+void RotTaskSpaceTrackingData::AddFrameToTrack(
     const std::string& body_name, const Isometry3d& frame_pose) {
   DRAKE_DEMAND(plant_w_spr_->HasBodyNamed(body_name));
   DRAKE_DEMAND(plant_wo_spr_->HasBodyNamed(body_name));
@@ -278,13 +278,13 @@ void RotTaskSpaceTrackingDataMBP::AddFrameToTrack(
   frame_pose_.push_back(frame_pose);
 }
 
-void RotTaskSpaceTrackingDataMBP::AddStateAndFrameToTrack(
+void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(
     int state, const std::string& body_name, const Isometry3d& frame_pose) {
   AddState(state);
   AddFrameToTrack(body_name, frame_pose);
 }
 
-void RotTaskSpaceTrackingDataMBP::UpdateYAndError(
+void RotTaskSpaceTrackingData::UpdateYAndError(
     const VectorXd& x_w_spr, Context<double>& context_w_spr) {
   auto transform_mat = plant_w_spr_->EvalBodyPoseInWorld(
       context_w_spr,
@@ -306,7 +306,7 @@ void RotTaskSpaceTrackingDataMBP::UpdateYAndError(
   error_y_ = theta * rot_axis;
 }
 
-void RotTaskSpaceTrackingDataMBP::UpdateYdotAndError(
+void RotTaskSpaceTrackingData::UpdateYdotAndError(
     const VectorXd& x_w_spr, Context<double>& context_w_spr) {
   MatrixXd J_spatial(6, plant_w_spr_->num_velocities());
   plant_w_spr_->CalcJacobianSpatialVelocity(
@@ -323,7 +323,7 @@ void RotTaskSpaceTrackingDataMBP::UpdateYdotAndError(
   error_dy_ = w_des_ - dy_;
 }
 
-void RotTaskSpaceTrackingDataMBP::UpdateYddotDes() {
+void RotTaskSpaceTrackingData::UpdateYddotDes() {
   // Convert ddq into angular acceleration
   // See https://physics.stackexchange.com/q/460311
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
@@ -331,7 +331,7 @@ void RotTaskSpaceTrackingDataMBP::UpdateYddotDes() {
   ddy_des_converted_ = 2 * (ddy_quat_des * y_quat_des.conjugate()).vec();
 }
 
-void RotTaskSpaceTrackingDataMBP::UpdateJ(const VectorXd& x_wo_spr,
+void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                           Context<double>& context_wo_spr) {
   MatrixXd J_spatial(6, plant_wo_spr_->num_velocities());
   plant_wo_spr_->CalcJacobianSpatialVelocity(
@@ -342,7 +342,7 @@ void RotTaskSpaceTrackingDataMBP::UpdateJ(const VectorXd& x_wo_spr,
   J_ = J_spatial.block(0, 0, 3, J_spatial.cols());
 }
 
-void RotTaskSpaceTrackingDataMBP::UpdateJdotV(const VectorXd& x_wo_spr,
+void RotTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
                                               Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
                ->CalcBiasForJacobianSpatialVelocity(
@@ -353,7 +353,7 @@ void RotTaskSpaceTrackingDataMBP::UpdateJdotV(const VectorXd& x_wo_spr,
                .head(3);
 }
 
-void RotTaskSpaceTrackingDataMBP::CheckDerivedOscTrackingData() {
+void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
   if (body_index_w_spr_.empty()) {
     body_index_w_spr_ = body_index_wo_spr_;
   }
@@ -367,15 +367,15 @@ void RotTaskSpaceTrackingDataMBP::CheckDerivedOscTrackingData() {
   }
 }
 
-/**** JointSpaceTrackingDataMBP ****/
-JointSpaceTrackingDataMBP::JointSpaceTrackingDataMBP(
+/**** JointSpaceTrackingData ****/
+JointSpaceTrackingData::JointSpaceTrackingData(
     const string& name, const MatrixXd& K_p, const MatrixXd& K_d,
     const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
     const MultibodyPlant<double>* plant_wo_spr)
-    : OscTrackingDataMBP(name, 1, K_p, K_d, W, plant_w_spr, plant_wo_spr) {
+    : OscTrackingData(name, 1, K_p, K_d, W, plant_w_spr, plant_wo_spr) {
 }
 
-void JointSpaceTrackingDataMBP::AddJointToTrack(
+void JointSpaceTrackingData::AddJointToTrack(
     const std::string& joint_pos_name, const std::string& joint_vel_name) {
   joint_pos_idx_w_spr_.push_back(
       makeNameToPositionsMap(*plant_w_spr_).at(joint_pos_name));
@@ -387,20 +387,20 @@ void JointSpaceTrackingDataMBP::AddJointToTrack(
       makeNameToVelocitiesMap(*plant_wo_spr_).at(joint_vel_name));
 }
 
-void JointSpaceTrackingDataMBP::AddStateAndJointToTrack(
+void JointSpaceTrackingData::AddStateAndJointToTrack(
     int state, const std::string& joint_pos_name,
     const std::string& joint_vel_name) {
   AddState(state);
   AddJointToTrack(joint_pos_name, joint_vel_name);
 }
 
-void JointSpaceTrackingDataMBP::UpdateYAndError(
+void JointSpaceTrackingData::UpdateYAndError(
     const VectorXd& x_w_spr, Context<double>& context_w_spr) {
   y_ = x_w_spr.segment(joint_pos_idx_w_spr_.at(GetStateIdx()), 1);
   error_y_ = y_des_ - y_;
 }
 
-void JointSpaceTrackingDataMBP::UpdateYdotAndError(
+void JointSpaceTrackingData::UpdateYdotAndError(
     const VectorXd& x_w_spr, Context<double>& context_w_spr) {
   MatrixXd J = MatrixXd::Zero(1, plant_w_spr_->num_velocities());
   J(0, joint_vel_idx_w_spr_.at(GetStateIdx())) = 1;
@@ -408,22 +408,22 @@ void JointSpaceTrackingDataMBP::UpdateYdotAndError(
   error_dy_ = dy_des_ - dy_;
 }
 
-void JointSpaceTrackingDataMBP::UpdateYddotDes() {
+void JointSpaceTrackingData::UpdateYddotDes() {
   ddy_des_converted_ = ddy_des_;
 }
 
-void JointSpaceTrackingDataMBP::UpdateJ(const VectorXd& x_wo_spr,
+void JointSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                         Context<double>& context_wo_spr) {
   J_ = MatrixXd::Zero(1, plant_wo_spr_->num_velocities());
   J_(0, joint_vel_idx_wo_spr_.at(GetStateIdx())) = 1;
 }
 
-void JointSpaceTrackingDataMBP::UpdateJdotV(const VectorXd& x_wo_spr,
+void JointSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
                                             Context<double>& context_wo_spr) {
   JdotV_ = VectorXd::Zero(1);
 }
 
-void JointSpaceTrackingDataMBP::CheckDerivedOscTrackingData() {
+void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
   if (joint_pos_idx_w_spr_.empty()) {
     joint_pos_idx_w_spr_ = joint_pos_idx_wo_spr_;
     joint_vel_idx_w_spr_ = joint_vel_idx_wo_spr_;

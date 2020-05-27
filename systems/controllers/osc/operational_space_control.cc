@@ -167,7 +167,7 @@ void OperationalSpaceControl::AddDistanceConstraint(
 
 // Tracking data methods
 void OperationalSpaceControl::AddTrackingData(
-    OscTrackingDataMBP* tracking_data, double t_lb, double t_ub) {
+    OscTrackingData* tracking_data, double t_lb, double t_ub) {
   tracking_data_vec_->push_back(tracking_data);
   fixed_position_vec_.push_back(VectorXd::Zero(0));
   t_s_vec_.push_back(t_lb);
@@ -188,7 +188,7 @@ void OperationalSpaceControl::AddTrackingData(
   }
 }
 void OperationalSpaceControl::AddConstTrackingData(
-    OscTrackingDataMBP* tracking_data, const VectorXd& v, double t_lb,
+    OscTrackingData* tracking_data, const VectorXd& v, double t_lb,
     double t_ub) {
   tracking_data_vec_->push_back(tracking_data);
   fixed_position_vec_.push_back(v);

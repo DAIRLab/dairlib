@@ -17,7 +17,7 @@
 
 #include "multibody/multibody_distance_constraint.h"
 #include "systems/controllers/control_utils.h"
-#include "systems/controllers/osc/osc_tracking_data_mbp.h"
+#include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
 
 namespace dairlib::systems::controllers {
@@ -132,16 +132,16 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   /// The third argument is used to set a period in which OSC does not track the
   /// desired traj (the period starts when the finite state machine switches to
   /// a new state)
-  void AddTrackingData(OscTrackingDataMBP* tracking_data, double t_lb = 0,
+  void AddTrackingData(OscTrackingData* tracking_data, double t_lb = 0,
                        double t_ub = std::numeric_limits<double>::infinity());
   void AddConstTrackingData(
-      OscTrackingDataMBP* tracking_data, const Eigen::VectorXd& v, double t_lb
+      OscTrackingData* tracking_data, const Eigen::VectorXd& v, double t_lb
       = 0,
       double t_ub = std::numeric_limits<double>::infinity());
-  std::vector<OscTrackingDataMBP*>* GetAllTrackingData() {
+  std::vector<OscTrackingData*>* GetAllTrackingData() {
     return tracking_data_vec_.get();
   }
-  OscTrackingDataMBP* GetTrackingDataByIndex(int index) {
+  OscTrackingData* GetTrackingDataByIndex(int index) {
     return tracking_data_vec_->at(index);
   }
 
@@ -268,8 +268,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<bool> CalcActiveContactIndices(int fsm_state) const;
 
   // OSC tracking data (stored as a pointer because of caching)
-  std::unique_ptr<std::vector<OscTrackingDataMBP*>> tracking_data_vec_ =
-      std::make_unique<std::vector<OscTrackingDataMBP*>>();
+  std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =
+      std::make_unique<std::vector<OscTrackingData*>>();
 
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;

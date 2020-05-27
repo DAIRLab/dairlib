@@ -35,9 +35,9 @@ namespace controllers {
 /// Users can implement their own derived classes if the current implementation
 /// here is not comprehensive enough.
 
-class OscTrackingDataMBP {
+class OscTrackingData {
  public:
-  OscTrackingDataMBP(
+  OscTrackingData(
       const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
@@ -91,7 +91,7 @@ class OscTrackingDataMBP {
   // Print feedback and desired values
   void PrintFeedbackAndDesiredValues(const Eigen::VectorXd& dv);
 
-  // Finalize and ensure that users construct OscTrackingDataMBP class
+  // Finalize and ensure that users construct OscTrackingData class
   // correctly.
   void CheckOscTrackingData();
 
@@ -150,7 +150,7 @@ class OscTrackingDataMBP {
   virtual void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
                            drake::systems::Context<double>& context_wo_spr) = 0;
 
-  // Finalize and ensure that users construct OscTrackingDataMBP derived class
+  // Finalize and ensure that users construct OscTrackingData derived class
   // correctly.
   virtual void CheckDerivedOscTrackingData() = 0;
 
@@ -173,15 +173,15 @@ class OscTrackingDataMBP {
 };
 
 /// ComTrackingData is used when we want to track center of mass trajectory.
-class ComTrackingDataMBP final : public OscTrackingDataMBP {
+class ComTrackingData final : public OscTrackingData {
  public:
-  ComTrackingDataMBP(
+  ComTrackingData(
       const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
 
-  //  ComTrackingDataMBP() {}  // Default constructor
+  //  ComTrackingData() {}  // Default constructor
 
   // If state is not specified, it will track COM for all states
   void AddStateToTrack(int state);
@@ -200,10 +200,10 @@ class ComTrackingDataMBP final : public OscTrackingDataMBP {
   void CheckDerivedOscTrackingData() final;
 };
 
-// TaskSpaceTrackingDataMBP is still a virtual class
-class TaskSpaceTrackingDataMBP : public OscTrackingDataMBP {
+// TaskSpaceTrackingData is still a virtual class
+class TaskSpaceTrackingData : public OscTrackingData {
  public:
-  TaskSpaceTrackingDataMBP(
+  TaskSpaceTrackingData(
       const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
@@ -232,9 +232,9 @@ class TaskSpaceTrackingDataMBP : public OscTrackingDataMBP {
 /// pt_on_body_'s if state_ is not empty.
 /// This also means that AddPointToTrack and AddStateAndPointToTrack cannot be
 /// called one after another for the same TrackingData.
-class TransTaskSpaceTrackingDataMBP final : public TaskSpaceTrackingDataMBP {
+class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
-  TransTaskSpaceTrackingDataMBP(
+  TransTaskSpaceTrackingData(
       const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
@@ -278,9 +278,9 @@ class TransTaskSpaceTrackingDataMBP final : public TaskSpaceTrackingDataMBP {
 /// frame_pose_'s if state_ is not empty.
 /// This also means that AddFrameToTrack and AddStateAndFrameToTrack cannot be
 /// called one after another for the same TrackingData.
-class RotTaskSpaceTrackingDataMBP final : public TaskSpaceTrackingDataMBP {
+class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
-  RotTaskSpaceTrackingDataMBP(
+  RotTaskSpaceTrackingData(
       const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
@@ -324,9 +324,9 @@ class RotTaskSpaceTrackingDataMBP final : public TaskSpaceTrackingDataMBP {
 /// joint_idx's if state_ is not empty.
 /// This also means that AddJointToTrack and AddStateAndJointToTrack cannot be
 /// called one after another for the same TrackingData.
-class JointSpaceTrackingDataMBP final : public OscTrackingDataMBP {
+class JointSpaceTrackingData final : public OscTrackingData {
  public:
-  JointSpaceTrackingDataMBP(
+  JointSpaceTrackingData(
       const std::string& name, const Eigen::MatrixXd& K_p,
       const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,

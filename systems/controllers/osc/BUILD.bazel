@@ -25,10 +25,10 @@ cc_library(
 cc_library(
     name = "osc_tracking_data",
     srcs = [
-        "osc_tracking_data_mbp.cc",
+        "osc_tracking_data.cc",
     ],
     hdrs = [
-        "osc_tracking_data_mbp.h",
+        "osc_tracking_data.h",
     ],
     deps = [
         "//multibody:utils",

@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include <memory.h>
+#include "solvers/nonlinear_constraint.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "drake/common/drake_copyable.h"
@@ -15,43 +16,11 @@ namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
-/// Helper class for all dircon constraints
-/// manages evaluation of functions and numerical gradients
-template <typename T>
-class DirconAbstractConstraint : public drake::solvers::Constraint {
- public:
-  DirconAbstractConstraint(int num_constraints, int num_vars,
-                           const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
-                           const std::string& description = "");
-
-  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& x,
-              Eigen::VectorXd* y) const override;
-
-  void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
-              drake::AutoDiffVecXd* y) const override;
-
-  void DoEval(
-      const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>&,
-      drake::VectorX<drake::symbolic::Expression>*) const override;
-
-  void SetConstraintScaling(const std::unordered_map<int, double>& map);
-
-  virtual void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
-                                  drake::VectorX<T>* y) const = 0;
-
- private:
-  template <typename U>
-  void ScaleConstraint(drake::VectorX<U>* y) const;
-
-  int num_constraints_;
-  std::unordered_map<int, double> constraint_scaling_;
-};
-
 enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
 
 /// Unit-norm quaternion constraint
 template <typename T>
-class QuaternionNormConstraint : public DirconAbstractConstraint<T> {
+class QuaternionNormConstraint : public solvers::NonlinearConstraint<T> {
  public:
   QuaternionNormConstraint();
   ~QuaternionNormConstraint() override = default;
@@ -66,7 +35,7 @@ class QuaternionNormConstraint : public DirconAbstractConstraint<T> {
 /// but incorporates the effect of constraint forces
 
 template <typename T>
-class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
+class DirconDynamicConstraint : public solvers::NonlinearConstraint<T> {
  public:
   //  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DirconDynamicConstraint)
 
@@ -123,7 +92,7 @@ class DirconDynamicConstraint : public DirconAbstractConstraint<T> {
 /// we have the constriant c(q)=constant. The constant value is a then new
 /// optimization decision variable.
 template <typename T>
-class DirconKinematicConstraint : public DirconAbstractConstraint<T> {
+class DirconKinematicConstraint : public solvers::NonlinearConstraint<T> {
  public:
   /// Constructor. Defaults the relative constraints to be all false
   /// @param plant the MultibodyPlant
@@ -201,7 +170,7 @@ drake::solvers::Binding<drake::solvers::Constraint> AddDirconConstraint(
 /// Implements the hybrid impact constraints used by Dircon
 /// Enforces the impact constraint that vp = vm + M^{-1}*J^T*Lambda
 template <typename T>
-class DirconImpactConstraint : public DirconAbstractConstraint<T> {
+class DirconImpactConstraint : public solvers::NonlinearConstraint<T> {
  public:
   /// @param plant the MultibodyPlant
   /// @param DirconKinematicDataSet the set of kinematic constraints
@@ -235,7 +204,7 @@ class DirconImpactConstraint : public DirconAbstractConstraint<T> {
 // and each row of lb/ub is the corresponding lower/upper bound.
 // To clarify, the # of constraints = `dir.rows()` = `lb.size()` = `ub.size()`
 template <typename T>
-class PointPositionConstraint : public DirconAbstractConstraint<T> {
+class PointPositionConstraint : public solvers::NonlinearConstraint<T> {
  public:
   PointPositionConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                           const std::string& body_name,
@@ -267,7 +236,7 @@ class PointPositionConstraint : public DirconAbstractConstraint<T> {
 // and each row of lb/ub is the corresponding lower/upper bound.
 // To clarify, the # of constraints = `dir.rows()` = `lb.size()` = `ub.size()`
 template <typename T>
-class PointVelocityConstraint : public DirconAbstractConstraint<T> {
+class PointVelocityConstraint : public solvers::NonlinearConstraint<T> {
  public:
   PointVelocityConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                           const std::string& body_name,

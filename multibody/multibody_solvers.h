@@ -72,5 +72,45 @@ class DistanceConstraint : public solvers::NonlinearConstraint<T> {
   std::shared_ptr<drake::systems::Context<T>> context_;
 };
 
+ /// Constraint class to represent fixed points (equilbria)
+ /// may be computed with or without any contact information provided.
+ /// The constraint solves for the generalized positions (q) (Not the whole
+ /// state), control inputs (u) and constraint forces (lambda).
+ /// Contact information is provided through the ContactInfo parameter. All
+ /// contact information corresponds to point-ground plane contacts.
+ /// If no contact information is provided, q, u and lambda are computed for which
+ /// v and vdot are zero. In this case, lambda corresponds to the tree position
+ /// constraint forces.
+ /// If contact information is provided, contact forces are also taken into
+ /// account while computing q, u and lambda for which v and vdot are zero. The
+ /// solution of q then also makes sure that the required contacts with the ground
+ /// plane are made.
+ /// Getter/Setter interfaces have not been provided as the Constraint class
+ /// objects would ideally be created inside a solver class and not created
+ /// outside.
+class FixedPointConstraint : public drake::solvers::Constraint {
+ public:
+  FixedPointConstraint(const RigidBodyTree<double>& tree,
+                       ContactInfo contact_info = ContactInfo(),
+                       const std::string& description = "");
+  void DoEval(const Eigen::Ref<const Eigen::VectorXd>& q_u_l,
+              Eigen::VectorXd* y) const override;
+  void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& q_u_l,
+              drake::AutoDiffVecXd* y) const override;
+  void DoEval(
+      const Eigen::Ref<const drake::VectorX<drake::symbolic::Variable>>& q_u_l,
+      drake::VectorX<drake::symbolic::Expression>* y) const override;
+
+ private:
+  std::unique_ptr<ContactToolkit<drake::AutoDiffXd>> contact_toolkit_;
+  const RigidBodyTree<double>& tree_;
+  ContactInfo contact_info_;
+  const int num_positions_;
+  const int num_velocities_;
+  const int num_efforts_;
+  const int num_position_forces_;
+  const int num_forces_;
+};
+
 }  // namespace multibody
 }  // namespace dairlib

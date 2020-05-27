@@ -5,6 +5,21 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "multibody_solvers",
+    srcs = [
+        "multibody_solvers.cc",
+    ],
+    hdrs = [
+        "multibody_solvers.h",
+    ],
+    deps = [
+        ":contact_toolkit",
+        "//solvers:nonlinear_constraint",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "utils",
     srcs = [
         "multibody_utils.cc",

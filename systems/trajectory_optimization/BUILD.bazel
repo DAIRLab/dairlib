@@ -20,6 +20,7 @@ cc_library(
     deps = [
         ":dircon_kinematic_data",
         "//solvers:optimization_utils",
+        "//solvers:nonlinear_constraint",
         "//systems/goldilocks_models",
         "//multibody:multipose_visualizer",
         "@drake//:drake_shared_library",

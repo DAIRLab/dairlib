@@ -12,25 +12,6 @@ cc_library(
     ],
     deps = [
         ":osc_tracking_data",
-        "//attic/multibody:utils",
-        "//common:eigen_utils",
-        "//systems:robot_lcm_systems",
-        "//systems/controllers:control_utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "operational_space_control_mbp",
-    srcs = [
-        "operational_space_control_mbp.cc",
-    ],
-    hdrs = [
-        "operational_space_control_mbp.h",
-    ],
-    deps = [
-        ":osc_tracking_data_mbp",
         "//common:eigen_utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:multibody_distance_constraint",
@@ -43,21 +24,6 @@ cc_library(
 
 cc_library(
     name = "osc_tracking_data",
-    srcs = [
-        "osc_tracking_data.cc",
-    ],
-    hdrs = [
-        "osc_tracking_data.h",
-    ],
-    deps = [
-        "//attic/multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "osc_tracking_data_mbp",
     srcs = [
         "osc_tracking_data_mbp.cc",
     ],

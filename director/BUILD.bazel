@@ -2,24 +2,14 @@
 
 py_binary(
     name = "drake_director_py",
-    srcs = ["@drake//tools/workspace/drake_visualizer:drake_visualizer_bazel.py"],
-    data = [
-        "@drake//examples:prod_models",
-        "@drake_visualizer",
-    ],
-    main = "@drake//tools/workspace/drake_visualizer:drake_visualizer_bazel.py",
+    main = "drake_director.py",
+    srcs = ["drake_director.py"],
+    # Python libraries to import.
     deps = [
-        "//lcmtypes:lcmtypes_robot_py",
-        "//bindings/pydairlib",
-        "@drake//lcmtypes:lcmtypes_drake_py",
-        "@drake//tools/workspace/drake_visualizer:builtin_scripts_py",
-        "@drake//tools/workspace/drake_visualizer:stub_pydrake",
-        "@drake_visualizer//:drake_visualizer_python_deps",
-        "@optitrack_driver//lcmtypes:py_optitrack_lcmtypes",
+        "@drake//tools:drake_visualizer_py",
         "@drake//bindings/pydrake",
     ],
 )
-
 
 load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
 

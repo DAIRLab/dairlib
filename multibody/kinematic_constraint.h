@@ -6,7 +6,20 @@
 namespace dairlib {
 namespace multibody {
 
-/// Virtual class to represent arbitrary ik
+/// Virtual class to represent arbitrary kinematic constraints
+/// Constraints are defined by some function phi(q). Implementations
+/// must generate phi(q), J(q) (the Jacboian w.r.t. velocities v), 
+/// d/dt phi(q), and [d/dt J] * v
+///
+/// Constraints call also be classified as "active" or "inactive." Inactive
+/// constraints can still be evaluated via the CalcAllXXX methods, but will
+/// not be included in CalcActiveXXX. The purpose of this is to be able to
+/// not include certain constraints when using these methods to generate
+/// optimization constraints (for instance, not constraining x-y position) of
+/// a contact point. However, these terms might still be important for inclusion
+/// via constraint forces. The active/inactive distinction is also useful for
+/// avoiding redundant constraints, but still permitting their constraint
+/// forces (via J'*lambda)
 template <typename T>
 class KinematicConstraint {
  public:
@@ -73,12 +86,22 @@ class PlanarGroundContactConstraint :  public KinematicConstraint<T> {
   // Disabling copy construction and assignment
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PlanarGroundContactConstraint)
 
+  /// Constructor for PlanarGroundContactConstraint
+  /// @param plant
+  /// @param pt_A the contact point on the body
+  /// @param frame_A the frame of reference for pt_A
+  /// @param normal The normal vector for the contact (default [0;0;1])
+  /// @param offset The nominal world location of pt_A (default [0;0;0])
+  /// @param xy_active If true, then the tangential directions are active
+  ///    (constrained). If false, they be inactive, and thus still appear in
+  ///    the "Full" terms, but not the "Active" values
+
   PlanarGroundContactConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>* frame_A,
       const Eigen::Vector3d normal = (Eigen::Vector3d() << 0, 0, 1).finished(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
-      bool xy_active = "false");
+      bool tangent_active = "false");
 
   drake::VectorX<T> CalcFullConstraint(
       const drake::systems::Context<T>& context) const;

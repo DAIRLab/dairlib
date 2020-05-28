@@ -12,6 +12,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
+#include "solvers/nonlinear_constraint.h"
 #include "systems/goldilocks_models/file_utils.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
@@ -68,7 +69,6 @@ using dairlib::multibody::ContactInfo;
 using dairlib::multibody::FixedPointSolver;
 using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::systems::SubvectorPassThrough;
-using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
 using dairlib::systems::trajectory_optimization::PointPositionConstraint;
@@ -91,12 +91,12 @@ namespace dairlib {
 /// With the default initial guess, the solving time is about 2 mins.
 
 // Constraint to fix the position of a point on a body (for initial guess)
-class BodyPointPositionConstraint : public DirconAbstractConstraint<double> {
+class BodyPointPositionConstraint : public solvers::NonlinearConstraint<double> {
  public:
   BodyPointPositionConstraint(const RigidBodyTree<double>& tree,
                               string body_name, Vector3d translation,
                               Vector3d desired_pos)
-      : DirconAbstractConstraint<double>(3, tree.get_num_positions(),
+      : solvers::NonlinearConstraint<double>(3, tree.get_num_positions(),
                                          VectorXd::Zero(3), VectorXd::Zero(3),
                                          body_name + "_position_constraint"),
         tree_(tree),

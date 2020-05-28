@@ -133,7 +133,9 @@ cc_test(
     ],
     deps = [
         "//common",
+        "//examples/PlanarWalker:urdf",
         ":kinematic_constraint",
+        "@drake//common/test_utilities",
         "@gtest//:main",
     ],
     size = "small",

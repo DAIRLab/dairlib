@@ -99,7 +99,7 @@ class PlanarGroundContactConstraint :  public KinematicConstraint<T> {
 
   PlanarGroundContactConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>* frame_A,
+      const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
       const Eigen::Vector3d normal = Eigen::Vector3d({0, 0, 1}), //(Eigen::Vector3d() << 0, 0, 1).finished(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
       bool tangent_active = "false");
@@ -119,7 +119,7 @@ class PlanarGroundContactConstraint :  public KinematicConstraint<T> {
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
   const Eigen::Vector3d pt_A_;
-  const drake::multibody::Frame<T>* frame_A_;
+  const drake::multibody::Frame<T>& frame_A_;
   const Eigen::Vector3d offset_;
   const Eigen::Matrix3d rotation_;
 };

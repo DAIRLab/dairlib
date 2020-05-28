@@ -18,7 +18,7 @@ DynamicsConstraint::DynamicsConstraint(
   const MultibodyPlant<double> * plant_double,
   bool is_head,
   int rom_option, int robot_option,
-  const std::string& description) : DirconAbstractConstraint<double>(n_sDDot,
+  const std::string& description) : NonlinearConstraint<double>(n_sDDot,
         2 * (plant->num_positions() + plant->num_velocities() + n_tau) + 1,
         VectorXd::Zero(n_sDDot),
         VectorXd::Zero(n_sDDot),

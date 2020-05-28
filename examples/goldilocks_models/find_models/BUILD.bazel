@@ -11,21 +11,19 @@ cc_binary(
     ],
 )
 
-
 cc_binary(
     name = "visualize_gait_MBP",
     srcs = ["visualize_gait_MBP.cc"],
     data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
     deps = [
         "//common",
-        "//systems/primitives",
         "//systems/goldilocks_models",
+        "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
-        "@gflags",     
+        "@gflags",
     ],
 )
-
 
 cc_library(
     name = "goldilocks_model_traj_opt",
@@ -33,37 +31,35 @@ cc_library(
     hdrs = ["goldilocks_model_traj_opt.h"],
     deps = [
         "//common",
-        "//systems/primitives",
-        "//systems/goldilocks_models",
-        "//systems/trajectory_optimization:dircon",
+        "//examples/goldilocks_models/find_models:dynamics_constraint",
+        "//examples/goldilocks_models/find_models:kinematics_constraint",
         "//solvers:optimization_utils",
+        "//systems/goldilocks_models",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
-	    "//examples/goldilocks_models/find_models:kinematics_constraint",
-	    "//examples/goldilocks_models/find_models:dynamics_constraint",
     ],
 )
-
-
 
 cc_library(
     name = "traj_opt_given_weigths",
     srcs = ["traj_opt_given_weigths.cc"],
     hdrs = ["traj_opt_given_weigths.h"],
     deps = [
-        "//examples/goldilocks_models:goldilocks_utils",
-        "//examples/goldilocks_models:dynamics_expression",
-        "//examples/goldilocks_models/find_models:goldilocks_model_traj_opt",
-        "//systems/goldilocks_models",
+        ":traj_opt_helper_func",
         "//common",
+        "//examples/goldilocks_models:dynamics_expression",
+        "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models/find_models:goldilocks_model_traj_opt",
+        "//solvers:nonlinear_constraint",
+        "//solvers:optimization_utils",
+        "//systems/goldilocks_models",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
-        "//solvers:optimization_utils",
-        ":traj_opt_helper_func",
         "@drake//:drake_shared_library",
     ],
 )
 #        "@gurobi//:gurobi_cxx",
-
 
 cc_library(
     name = "kinematics_constraint",
@@ -71,16 +67,14 @@ cc_library(
         "kinematics_constraint.cc",
     ],
     hdrs = [
-        "kinematics_constraint.h"
+        "kinematics_constraint.h",
     ],
     deps = [
-        "@drake//:drake_shared_library",
-        "//multibody:utils",
         "//examples/goldilocks_models:kinematics_expression",
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
     ],
 )
-
-
 
 cc_library(
     name = "dynamics_constraint",
@@ -88,29 +82,29 @@ cc_library(
         "dynamics_constraint.cc",
     ],
     hdrs = [
-        "dynamics_constraint.h"
+        "dynamics_constraint.h",
     ],
     deps = [
-        "@drake//:drake_shared_library",
-        "//multibody:utils",
+        "//examples/goldilocks_models:dynamics_expression",
         "//examples/goldilocks_models:kinematics_expression",
-	    "//examples/goldilocks_models:dynamics_expression",
+        "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_binary(
     name = "scale_theta",
     srcs = ["scale_theta.cc"],
     deps = [
         "//common",
-        "//systems/goldilocks_models",
+        "//examples/goldilocks_models:dynamics_expression",
         "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:kinematics_expression",
-        "//examples/goldilocks_models:dynamics_expression",
-        "@gflags",
+        "//systems/goldilocks_models",
         "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 
@@ -124,20 +118,19 @@ cc_binary(
     ],
 )
 
-
 cc_library(
     name = "traj_opt_helper_func",
     srcs = [
         "traj_opt_helper_func.cc",
     ],
     hdrs = [
-        "traj_opt_helper_func.h"
+        "traj_opt_helper_func.h",
     ],
     deps = [
-        "@drake//:drake_shared_library",
-        "//multibody:utils",
-        "//systems/trajectory_optimization:dircon",
-        "//solvers:optimization_utils",
         "//common",
+        "//multibody:utils",
+        "//solvers:optimization_utils",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
     ],
 )

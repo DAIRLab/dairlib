@@ -11,6 +11,7 @@
 #include "drake/common/drake_assert.h"
 #include "examples/goldilocks_models/kinematics_expression.h"
 #include "examples/goldilocks_models/dynamics_expression.h"
+#include "solvers/nonlinear_constraint.h"
 
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 
@@ -54,9 +55,9 @@ namespace dairlib {
 namespace goldilocks_models {
 namespace find_models {
 
-using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
+using dairlib::solvers::NonlinearConstraint;
 
-class DynamicsConstraint : public DirconAbstractConstraint<double> {
+class DynamicsConstraint : public NonlinearConstraint<double> {
  public:
   DynamicsConstraint(int n_s, int n_feature_s,
                      const VectorXd & theta_s,

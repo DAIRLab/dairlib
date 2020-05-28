@@ -74,7 +74,7 @@ int do_main() {
   // Build and test multibody plant
   systems::DiagramBuilder<double> builder;
   MultibodyPlant<double>& multibody_plant =
-      *builder.AddSystem<MultibodyPlant>();
+      *builder.AddSystem<MultibodyPlant>(0.0);
 
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");

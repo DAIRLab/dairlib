@@ -2,7 +2,6 @@
 
 #include <gflags/gflags.h>
 #include "drake/multibody/rigid_body_tree_construction.h"
-#include "drake/manipulation/util/sim_diagram_builder.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"

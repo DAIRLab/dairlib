@@ -14,6 +14,7 @@
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
+#include "solvers/nonlinear_constraint.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
@@ -37,7 +38,6 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
 using dairlib::systems::trajectory_optimization::DirconDynamicConstraint;
 using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
 using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
@@ -95,11 +95,11 @@ vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
 void printConstraint(const shared_ptr<HybridDircon<double>>& trajopt,
                      const MathematicalProgramResult& result);
 // Position constraint of a body origin in one dimension (x, y, or z)
-class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
+class OneDimBodyPosConstraint : public solvers::NonlinearConstraint<double> {
  public:
   OneDimBodyPosConstraint(const MultibodyPlant<double>* plant, string body_name,
                           int xyz_idx, double lb, double ub)
-      : DirconAbstractConstraint<double>(
+      : solvers::NonlinearConstraint<double>(
       1, plant->num_positions(), VectorXd::Ones(1) * lb,
       VectorXd::Ones(1) * ub, body_name + "_constraint"),
         plant_(plant),

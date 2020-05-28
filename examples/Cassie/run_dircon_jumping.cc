@@ -37,7 +37,6 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
 using dairlib::systems::trajectory_optimization::DirconDynamicConstraint;
 using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
 using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
@@ -96,11 +95,11 @@ void printConstraint(const shared_ptr<HybridDircon<double>>& trajopt,
                      const MathematicalProgramResult& result);
 
 // Position constraint of a body origin in one dimension (x, y, or z)
-class OneDimBodyPosConstraint : public DirconAbstractConstraint<double> {
+class OneDimBodyPosConstraint : public solvers::NonlinearConstraint<double> {
  public:
   OneDimBodyPosConstraint(const MultibodyPlant<double>* plant, string body_name,
                           int xyz_idx, double lb, double ub)
-      : DirconAbstractConstraint<double>(
+      : solvers::NonlinearConstraint<double>(
             1, plant->num_positions(), VectorXd::Ones(1) * lb,
             VectorXd::Ones(1) * ub, body_name + "_constraint"),
         plant_(plant),

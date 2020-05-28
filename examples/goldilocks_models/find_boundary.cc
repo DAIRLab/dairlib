@@ -428,6 +428,19 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
           "Status | Solve time | Cost (tau cost)\n";
   for (iter = 1; iter <= max_iteration; iter++){
     new_gamma = init_gamma + iter*step;
+    //if stride length is negative,stop searching
+    if(new_gamma[0]<0){
+      boundary_point_idx += 1;
+      boundary_point = new_gamma-step;
+      writeCSV(dir + to_string(boundary_point_idx) +  "_" +
+          string("boundary_point.csv"), boundary_point);
+      cout << "boundary point index | stride length | ground incline"
+              " | turning rate"<<endl;
+      cout<<" \t "<<boundary_point_idx<< "\t" <<" | "<<"\t"<<boundary_point[0]
+          <<"\t"<<" | "<<"\t"<<boundary_point[1]<<"\t"<<" | "<<"\t"<<
+          boundary_point[2]<<endl;
+      break;
+    }
     //store stride length, ground incline and turning rate
     traj_num += 1;
     string prefix = to_string(traj_num) +  "_" + to_string(sample_idx) + "_";
@@ -487,7 +500,7 @@ int find_boundary(int argc, char* argv[]){
   int dimensions = 3;//dimension of the task space
   double stride_length_0 = 0;
   if(FLAGS_robot_option==0){
-    stride_length_0 = 0.3;
+    stride_length_0 = 0.2;
   }
   else if(FLAGS_robot_option==1){
       stride_length_0 = 0.2;
@@ -522,13 +535,13 @@ int find_boundary(int argc, char* argv[]){
   VectorXd extend_direction(dimensions);//the direction of searching
 
   //create components for each dimension used to decide the direction
-  int sl_comp_num = 3;
+  int sl_comp_num = 5;
   VectorXd e_sl(sl_comp_num);
-  e_sl<<0,-1,1;
+  e_sl<<0,-1,-0.5,0.5,1;
 
-  int gi_comp_num = 3;
+  int gi_comp_num = 5;
   VectorXd e_gi(gi_comp_num);
-  e_gi<<0,-1,1;
+  e_gi<<0,-1,-0.5,0.5,1;
 
   int tr_comp_num = 1;
   VectorXd e_tr(tr_comp_num);
@@ -537,35 +550,35 @@ int find_boundary(int argc, char* argv[]){
   /*
    * start iteration
    */
+  //evaluate initial point
+  cout << "\nCalculate Central Point Cost:\n";
+  writeCSV(dir +  to_string(traj_opt_num)  +
+      string("_0_gamma.csv"), initial_gamma);
+  cout << "sample# (rerun #) | stride | incline | turning | init_file | "
+          "Status | Solve time | Cost (tau cost)\n";
+  trajOptGivenModel(stride_length_0, ground_incline_0,
+                    turning_rate_0, dir, traj_opt_num, false);
+  //rerun the Traj Opt to avoid being stuck in local minimum
+  trajOptGivenModel(stride_length_0, ground_incline_0,
+                    turning_rate_0, dir, traj_opt_num, true);
+
   int dim1,dim2,dim3;
   VectorXd step(dimensions);
   //for all the direction, search the boundary
   for (dim1=0;dim1<sl_comp_num;dim1++){
     for(dim2=0;dim2<gi_comp_num;dim2++){
       for(dim3=0;dim3<tr_comp_num;dim3++){
-        extend_direction[0] = e_sl[dim1];
-        extend_direction[1] = e_gi[dim2];
-        extend_direction[2] = e_tr[dim3];
-        //direction elements all zero. evaluate initial sample
-        if((extend_direction[0]==0)&&(extend_direction[1]==0)
-          &&(extend_direction[2]==0)){
-          cout << "\nCalculate Central Point Cost:\n";
-          writeCSV(dir +  to_string(traj_opt_num)  +
-              string("_0_gamma.csv"), initial_gamma);
-          cout << "sample# (rerun #) | stride | incline | turning | init_file | "
-                  "Status | Solve time | Cost (tau cost)\n";
-          trajOptGivenModel(stride_length_0, ground_incline_0,
-                            turning_rate_0, dir, traj_opt_num, false);
-        }
+        extend_direction << e_sl[dim1],e_gi[dim2],e_tr[dim3];
+        //filter with infinity norm to avoid repetitive searching
         //search along the direction
-        else{
+        if( (extend_direction.lpNorm<Eigen::Infinity>()) >=1){
           cout << "Start searching along direction: ["<<extend_direction[0]
-            <<","<<extend_direction[1]<<","<<extend_direction[2]<<"]"<<endl;
+               <<","<<extend_direction[1]<<","<<extend_direction[2]<<"]"<<endl;
           //normalize the direction vector
           //extend_direction = extend_direction/extend_direction.norm();
           step = delta.array()*extend_direction.array();
           boundary_for_one_direction(dir,dimensions,max_iter,
-          initial_gamma,step,cost_threshold,traj_opt_num,boundary_sample_num);
+                                     initial_gamma,step,cost_threshold,traj_opt_num,boundary_sample_num);
         }
       }
     }

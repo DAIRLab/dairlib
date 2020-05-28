@@ -55,8 +55,8 @@ bool OscTrackingData::Update(
     // Careful: must update y_des_ before calling UpdateYAndError()
     // Update desired output
     y_des_ = traj.value(t);
-    dy_des_ = traj.MakeDerivative(1)->value(t);
-    ddy_des_ = traj.MakeDerivative(2)->value(t);
+    ydot_des_ = traj.MakeDerivative(1)->value(t);
+    yddot_des_ = traj.MakeDerivative(2)->value(t);
 
     // Update feedback output (Calling virtual methods)
     UpdateYAndError(x_w_spr, context_w_spr);
@@ -66,8 +66,8 @@ bool OscTrackingData::Update(
     UpdateJdotV(x_wo_spr, context_wo_spr);
 
     // Update command output (desired output with pd control)
-    ddy_command_ = ddy_des_converted_ + K_p_ * (error_y_) + K_d_ * (error_dy_);
-
+    yddot_command_ =
+        yddot_des_converted_ + K_p_ * (error_y_) + K_d_ * (error_ydot_);
   }
   return track_at_current_state_;
 }
@@ -90,17 +90,17 @@ void OscTrackingData::PrintFeedbackAndDesiredValues(const VectorXd& dv) {
   cout << "  y = " << y_.transpose() << endl;
   cout << "  y_des = " << y_des_.transpose() << endl;
   cout << "  error_y = " << error_y_.transpose() << endl;
-  cout << "  dy = " << dy_.transpose() << endl;
-  cout << "  dy_des = " << dy_des_.transpose() << endl;
-  cout << "  error_dy_ = " << error_dy_.transpose() << endl;
-  cout << "  ddy_des_converted = " << ddy_des_converted_.transpose() << endl;
-  cout << "  ddy_command = " << ddy_command_.transpose() << endl;
-  cout << "  ddy_command_sol = " << (J_ * dv + JdotV_).transpose() << endl;
+  cout << "  ydot = " << ydot_.transpose() << endl;
+  cout << "  ydot_des = " << ydot_des_.transpose() << endl;
+  cout << "  error_ydot_ = " << error_ydot_.transpose() << endl;
+  cout << "  yddot_des_converted = " << yddot_des_converted_.transpose() << endl;
+  cout << "  yddot_command = " << yddot_command_.transpose() << endl;
+  cout << "  yddot_command_sol = " << (J_ * dv + JdotV_).transpose() << endl;
 }
 
-void OscTrackingData::SaveDdyCommandSol(const VectorXd& dv) {
+void OscTrackingData::SaveYddotCommandSol(const VectorXd& dv) {
   DRAKE_ASSERT(track_at_current_state_);
-  ddy_command_sol_ = J_ * dv + JdotV_;
+  yddot_command_sol_ = J_ * dv + JdotV_;
 }
 
 void OscTrackingData::AddState(int state) {
@@ -148,11 +148,11 @@ void ComTrackingData::UpdateYdotAndError(const VectorXd& x_w_spr,
   plant_w_spr_->CalcJacobianCenterOfMassTranslationalVelocity(
       context_w_spr, JacobianWrtVariable::kV, world_w_spr_, world_w_spr_,
       &J_w_spr);
-  dy_ = J_w_spr * x_w_spr.tail(plant_w_spr_->num_velocities());
-  error_dy_ = dy_des_ - dy_;
+  ydot_ = J_w_spr * x_w_spr.tail(plant_w_spr_->num_velocities());
+  error_ydot_ = ydot_des_ - ydot_;
 }
 
-void ComTrackingData::UpdateYddotDes() { ddy_des_converted_ = ddy_des_; }
+void ComTrackingData::UpdateYddotDes() { yddot_des_converted_ = yddot_des_; }
 
 void ComTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                  Context<double>& context_wo_spr) {
@@ -218,12 +218,12 @@ void TransTaskSpaceTrackingData::UpdateYdotAndError(
       context_w_spr, JacobianWrtVariable::kV,
       *body_frames_w_spr_.at(GetStateIdx()), pts_on_body_.at(GetStateIdx()),
       world_w_spr_, world_w_spr_, &J);
-  dy_ = J * x_w_spr.tail(plant_w_spr_->num_velocities());
-  error_dy_ = dy_des_ - dy_;
+  ydot_ = J * x_w_spr.tail(plant_w_spr_->num_velocities());
+  error_ydot_ = ydot_des_ - ydot_;
 }
 
 void TransTaskSpaceTrackingData::UpdateYddotDes() {
-  ddy_des_converted_ = ddy_des_;
+  yddot_des_converted_ = yddot_des_;
 }
 
 void TransTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
@@ -316,21 +316,21 @@ void RotTaskSpaceTrackingData::UpdateYdotAndError(
       *body_frames_w_spr_.at(GetStateIdx()),
       frame_pose_.at(GetStateIdx()).translation(), world_w_spr_, world_w_spr_,
       &J_spatial);
-  dy_ = J_spatial.block(0, 0, 3, J_spatial.cols()) *
+  ydot_ = J_spatial.block(0, 0, 3, J_spatial.cols()) *
         x_w_spr.tail(plant_w_spr_->num_velocities());
   // Transform qdot to w
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  Quaterniond dy_quat_des(dy_des_(0), dy_des_(1), dy_des_(2), dy_des_(3));
+  Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2), ydot_des_(3));
   Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
-  error_dy_ = w_des_ - dy_;
+  error_ydot_ = w_des_ - ydot_;
 }
 
 void RotTaskSpaceTrackingData::UpdateYddotDes() {
   // Convert ddq into angular acceleration
   // See https://physics.stackexchange.com/q/460311
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  Quaterniond ddy_quat_des(ddy_des_(0), ddy_des_(1), ddy_des_(2), ddy_des_(3));
-  ddy_des_converted_ = 2 * (ddy_quat_des * y_quat_des.conjugate()).vec();
+  Quaterniond yddot_quat_des(yddot_des_(0), yddot_des_(1), yddot_des_(2), yddot_des_(3));
+  yddot_des_converted_ = 2 * (yddot_quat_des * y_quat_des.conjugate()).vec();
 }
 
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
@@ -406,12 +406,12 @@ void JointSpaceTrackingData::UpdateYdotAndError(
     const VectorXd& x_w_spr, Context<double>& context_w_spr) {
   MatrixXd J = MatrixXd::Zero(1, plant_w_spr_->num_velocities());
   J(0, joint_vel_idx_w_spr_.at(GetStateIdx())) = 1;
-  dy_ = J * x_w_spr.tail(plant_w_spr_->num_velocities());
-  error_dy_ = dy_des_ - dy_;
+  ydot_ = J * x_w_spr.tail(plant_w_spr_->num_velocities());
+  error_ydot_ = ydot_des_ - ydot_;
 }
 
 void JointSpaceTrackingData::UpdateYddotDes() {
-  ddy_des_converted_ = ddy_des_;
+  yddot_des_converted_ = yddot_des_;
 }
 
 void JointSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,

@@ -68,14 +68,14 @@ template <typename T>
 PlanarGroundContactConstraint<T>::PlanarGroundContactConstraint(
     const MultibodyPlant<T>& plant, const Vector3d pt_A,
     const Frame<T>* frame_A, const Vector3d offset, const Vector3d normal,
-    bool xy_active)
+    bool tangent_active)
     : KinematicConstraint<T>(3),
       plant_(plant),
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
       rotation_(drake::math::ComputeBasisFromAxis(2, normal)) {
-  if (!xy_active) {
+  if (!tangent_active) {
     this->set_active_inds({2});  // only z is active
   }
 }

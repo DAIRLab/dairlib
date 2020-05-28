@@ -428,8 +428,8 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
           "Status | Solve time | Cost (tau cost)\n";
   for (iter = 1; iter <= max_iteration; iter++){
     new_gamma = init_gamma + iter*step;
-    //if stride length is negative,stop searching
-    if(new_gamma[0]<0){
+    //if stride length is negative or zero,stop searching
+    if(new_gamma[0]<=0){
       boundary_point_idx += 1;
       boundary_point = new_gamma-step;
       writeCSV(dir + to_string(boundary_point_idx) +  "_" +

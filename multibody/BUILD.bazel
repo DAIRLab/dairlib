@@ -5,6 +5,19 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "kinematic_constraint",
+    srcs = [
+        "kinematic_constraint.cc",
+    ],
+    hdrs = [
+        "kinematic_constraint.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "multibody_solvers",
     srcs = [
         "multibody_solvers.cc",

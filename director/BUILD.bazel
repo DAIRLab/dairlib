@@ -13,7 +13,6 @@ py_binary(
     ],
 )
 
-
 load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
 
 drake_runfiles_binary(

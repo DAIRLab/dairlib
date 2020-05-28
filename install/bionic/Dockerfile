@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM ros:melodic-ros-base-bionic
 WORKDIR /dairlib
 COPY . .
 RUN apt update && apt install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip python

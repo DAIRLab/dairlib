@@ -65,6 +65,7 @@ cc_library(
         "contact_toolkit.h",
     ],
     deps = [
+        ":utils",
         "@drake//:drake_shared_library",
     ],
 )
@@ -79,6 +80,7 @@ cc_library(
     ],
     deps = [
         ":utils",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -101,6 +103,7 @@ cc_test(
     srcs = [
         "test/contact_toolkit_test.cc",
     ],
+    tags = ["manual"],
     deps = [
         ":contact_toolkit",
         ":utils",

@@ -3,12 +3,12 @@
 #include <string>
 #include <vector>
 #include <Eigen/Dense>
-#include <drake/multibody/plant/multibody_plant.h>
-#include <drake/common/trajectories/trajectory.h>
+
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/multibody/rigid_body_tree.h"
 
 #include "systems/framework/output_vector.h"
-#include "systems/controllers/osc/osc_user_defined_pos.h"
-
 
 namespace dairlib {
 namespace systems {
@@ -33,14 +33,14 @@ namespace controllers {
 /// In this class, we let
 ///   - y_ (ydot_) be the position (velocity) output of the robot
 ///   - y_des_ (ydot_des_) be the desired value of the position (velocity) output
-///   - error_y_ (error_ydot_) be the error between the desired and the real
-///     value of the position (velocity) output
+///   - error_y_ (error_ydot_) be the error between the desired and the real value
+///     of the position (velocity) output
 /// Additionally, we let yddot_des_ be the desired acceleration for the output
 /// (the second time derivative of the desired trajectory). In the case of
 /// tracking a rotation output, the desired trajectory is represented in
 /// quaternion (4 dimensional). Therefore, we need to convert yddot_des_ (the
-/// second time derivatives of quaternion) into yddot_des_converted_ which is
-/// the rotational acceleration.
+/// second time derivatives of quaternion) into yddot_des_converted_ which is the
+/// rotational acceleration.
 
 /// In OSC, the cost function used for tracking a trajectory is
 ///   (J_*dv + JdotV - yddot_command)^T * W_ * (J_*dv + JdotV - yddot_command) / 2,
@@ -65,33 +65,34 @@ namespace controllers {
 
 class OscTrackingData {
  public:
-  OscTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+  OscTrackingData(std::string name, int n_r, Eigen::MatrixXd K_p,
+                  Eigen::MatrixXd K_d, Eigen::MatrixXd W,
+                  const RigidBodyTree<double>* tree_w_spr,
+                  const RigidBodyTree<double>* tree_wo_spr);
+
+  OscTrackingData() {}  // Default constructor
 
   // Update() updates the caches. It does the following things in order:
-  //  - update track_at_current_state_
+  //  - update track_at_current_step_
   //  - update desired output
   //  - update feedback output (Calling virtual methods)
   //  - update command output (desired output with pd control)
   // Inputs/Arguments:
   //  - `x_w_spr`, state of the robot (with spring)
-  //  - `context_w_spr`, plant context of the robot (without spring)
+  //  - `cache_w_spr`, kinematics cache of the robot (without spring)
   //  - `x_wo_spr`, state of the robot (with spring)
-  //  - `context_wo_spr`, plant context of the robot (without spring)
+  //  - `cache_wo_spr`, kinematics cache of the robot (without spring)
   //  - `traj`, desired trajectory
   //  - `t`, current time
   //  - `finite_state_machine_state`, current finite state machine state
-  bool Update(const Eigen::VectorXd& x_w_spr,
-              drake::systems::Context<double>& context_w_spr,
-              const Eigen::VectorXd& x_wo_spr,
-              drake::systems::Context<double>& context_wo_spr,
+  bool Update(Eigen::VectorXd x_w_spr, KinematicsCache<double>& cache_w_spr,
+              Eigen::VectorXd x_wo_spr, KinematicsCache<double>& cache_wo_spr,
               const drake::trajectories::Trajectory<double>& traj, double t,
               int finite_state_machine_state);
 
   // Getters for debugging
+  // (please see the documentation of this class for information about the
+  // meaning of each member)
   Eigen::VectorXd GetY() { return y_; }
   Eigen::VectorXd GetYDes() { return y_des_; }
   Eigen::VectorXd GetErrorY() { return error_y_; }
@@ -103,31 +104,35 @@ class OscTrackingData {
   Eigen::VectorXd GetYddotCommandSol() { return yddot_command_sol_; }
 
   // Getters used by osc block
+  // (please see the documentation of this class for information about the
+  // meaning of each member)
   Eigen::VectorXd GetOutput() { return y_; }
   Eigen::MatrixXd GetJ() { return J_; }
   Eigen::VectorXd GetJdotTimesV() { return JdotV_; }
   Eigen::VectorXd GetYddotCommand() { return yddot_command_; }
   Eigen::MatrixXd GetWeight() { return W_; }
+  // void UpdatePGain(Eigen::MatrixXd K_p) {K_p_ = K_p;}
+  // void UpdateDGain(Eigen::MatrixXd K_d) {K_d_ = K_d;}
+  // void UpdateWeight(Eigen::MatrixXd W);
 
   // Getters
   std::string GetName() { return name_; };
   int GetTrajDim() { return n_r_; };
-  bool IsActive() { return track_at_current_state_; }
+  bool GetTrackOrNot() { return track_at_current_step_; }
 
   void SaveYddotCommandSol(const Eigen::VectorXd& dv);
 
   // Print feedback and desired values
   void PrintFeedbackAndDesiredValues(const Eigen::VectorXd& dv);
 
-  // Finalize and ensure that users construct OscTrackingData class
-  // correctly.
+  // Finalize and ensure that users construct OscTrackingData class correctly.
   void CheckOscTrackingData();
 
  protected:
   int GetStateIdx() { return state_idx_; };
   void AddState(int state);
 
-  // Feedback output, Jacobian and dJ/dt * v
+  // Feedback output, jacobian and dJ/dt * v
   Eigen::VectorXd error_y_;
   Eigen::VectorXd error_ydot_;
   Eigen::VectorXd y_;
@@ -141,8 +146,6 @@ class OscTrackingData {
   Eigen::VectorXd yddot_des_;
   Eigen::VectorXd yddot_des_converted_;
 
-  // Commanded acceleration after feedback terms
-  Eigen::VectorXd yddot_command_;
   // Osc solution
   Eigen::VectorXd yddot_command_sol_;
 
@@ -150,34 +153,27 @@ class OscTrackingData {
   // If `state_` is empty, then the tracking is always on.
   std::vector<int> state_;
 
-  /// OSC calculates feedback positions/velocities from `plant_w_spr_`,
-  /// but in the optimization it uses `plant_wo_spr_`. The reason of using
-  /// MultibodyPlant without springs is that the OSC cannot track desired
+  /// OSC calculates feedback positions/velocities from `tree_w_spr_`,
+  /// but in the optimization it uses `tree_wo_spr_`. The reason of using
+  /// RigidBodyTree without spring is that the OSC cannot track desired
   /// acceleration instantaneously when springs exist. (relative degrees of 4)
-  const drake::multibody::MultibodyPlant<double>* plant_w_spr_;
-  const drake::multibody::MultibodyPlant<double>* plant_wo_spr_;
-
-  // World frames
-  const drake::multibody::BodyFrame<double>& world_w_spr_;
-  const drake::multibody::BodyFrame<double>& world_wo_spr_;
+  const RigidBodyTree<double>* tree_w_spr_;
+  const RigidBodyTree<double>* tree_wo_spr_;
 
  private:
   // Check if we should do tracking in the current state
   void UpdateTrackingFlag(int finite_state_machine_state);
 
   // Updaters of feedback output, jacobian and dJ/dt * v
-  virtual void UpdateYAndError(
-      const Eigen::VectorXd& x_w_spr,
-      drake::systems::Context<double>& context_w_spr) = 0;
-  virtual void UpdateYdotAndError(
-      const Eigen::VectorXd& x_w_spr,
-      drake::systems::Context<double>& context_w_spr) = 0;
+  virtual void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
+                               KinematicsCache<double>& cache_w_spr) = 0;
+  virtual void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
+                                  KinematicsCache<double>& cache_w_spr) = 0;
   virtual void UpdateYddotDes() = 0;
   virtual void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-                       drake::systems::Context<double>& context_wo_spr) = 0;
+                       KinematicsCache<double>& cache_wo_spr) = 0;
   virtual void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                           drake::systems::Context<double>& context_wo_spr) = 0;
-
+                           KinematicsCache<double>& cache_wo_spr) = 0;
   // Finalize and ensure that users construct OscTrackingData derived class
   // correctly.
   virtual void CheckDerivedOscTrackingData() = 0;
@@ -195,35 +191,35 @@ class OscTrackingData {
   // Cost weights
   Eigen::MatrixXd W_;
 
-  // Store whether or not the tracking data is active
-  bool track_at_current_state_;
+  // cache
+  bool track_at_current_step_;
   int state_idx_ = 0;
+  Eigen::VectorXd yddot_command_;
 };
 
 /// ComTrackingData is used when we want to track center of mass trajectory.
 class ComTrackingData final : public OscTrackingData {
  public:
-  ComTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+  ComTrackingData(std::string name, int n_r, Eigen::MatrixXd K_p,
+                  Eigen::MatrixXd K_d, Eigen::MatrixXd W,
+                  const RigidBodyTree<double>* tree_w_spr,
+                  const RigidBodyTree<double>* tree_wo_spr);
 
-  //  ComTrackingData() {}  // Default constructor
+  ComTrackingData() {}  // Default constructor
 
   // If state is not specified, it will track COM for all states
   void AddStateToTrack(int state);
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
+                       KinematicsCache<double>& cache_w_spr) final;
   void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          drake::systems::Context<double>& context_w_spr) final;
+                          KinematicsCache<double>& cache_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
+               KinematicsCache<double>& cache_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
+                   KinematicsCache<double>& cache_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
 };
@@ -231,20 +227,19 @@ class ComTrackingData final : public OscTrackingData {
 // TaskSpaceTrackingData is still a virtual class
 class TaskSpaceTrackingData : public OscTrackingData {
  public:
-  TaskSpaceTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+  TaskSpaceTrackingData(std::string name, int n_r, Eigen::MatrixXd K_p,
+                        Eigen::MatrixXd K_d, Eigen::MatrixXd W,
+                        const RigidBodyTree<double>* tree_w_spr,
+                        const RigidBodyTree<double>* tree_wo_spr);
+
+  TaskSpaceTrackingData() {}  // Default constructor
 
  protected:
   // `body_index_w_spr` is the index of the body
   // `body_index_wo_spr` is the index of the body
   // If `body_index_w_spr_` is empty, `body_index_wo_spr_` replaces it.
-  std::vector<drake::multibody::BodyIndex> body_index_w_spr_;
-  std::vector<drake::multibody::BodyIndex> body_index_wo_spr_;
-  std::vector<const drake::multibody::BodyFrame<double>*> body_frames_w_spr_;
-  std::vector<const drake::multibody::BodyFrame<double>*> body_frames_wo_spr_;
+  std::vector<int> body_index_w_spr_;
+  std::vector<int> body_index_wo_spr_;
 };
 
 /// TransTaskSpaceTrackingData is used when we want to track a trajectory
@@ -262,34 +257,34 @@ class TaskSpaceTrackingData : public OscTrackingData {
 /// called one after another for the same TrackingData.
 class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
-  TransTaskSpaceTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+  TransTaskSpaceTrackingData(std::string name, int n_r, Eigen::MatrixXd K_p,
+                             Eigen::MatrixXd K_d, Eigen::MatrixXd W,
+                             const RigidBodyTree<double>* tree_w_spr,
+                             const RigidBodyTree<double>* tree_wo_spr);
 
-  void AddPointToTrack(
-      const std::string& body_name,
-      const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
+  TransTaskSpaceTrackingData() {}  // Default constructor
+
+  void AddPointToTrack(std::string body_name,
+                       Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
   void AddStateAndPointToTrack(
-      int state, const std::string& body_name,
-      const Eigen::Vector3d& pt_on_body = Eigen::Vector3d::Zero());
+      int state, std::string body_name,
+      Eigen::Vector3d pt_on_body = Eigen::Vector3d::Zero());
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
+                       KinematicsCache<double>& cache_w_spr) final;
   void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          drake::systems::Context<double>& context_w_spr) final;
+                          KinematicsCache<double>& cache_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
+               KinematicsCache<double>& cache_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
+                   KinematicsCache<double>& cache_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
 
   // `pt_on_body` is the position w.r.t. the origin of the body
-  std::vector<Eigen::Vector3d> pts_on_body_;
+  std::vector<Eigen::Vector3d> pt_on_body_;
 };
 
 /// RotTaskSpaceTrackingData is used when we want to track a trajectory
@@ -308,29 +303,30 @@ class TransTaskSpaceTrackingData final : public TaskSpaceTrackingData {
 /// called one after another for the same TrackingData.
 class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
  public:
-  RotTaskSpaceTrackingData(
-      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+  RotTaskSpaceTrackingData(std::string name, int n_r, Eigen::MatrixXd K_p,
+                           Eigen::MatrixXd K_d, Eigen::MatrixXd W,
+                           const RigidBodyTree<double>* tree_w_spr,
+                           const RigidBodyTree<double>* tree_wo_spr);
+
+  RotTaskSpaceTrackingData() {}  // Default constructor
 
   void AddFrameToTrack(
-      const std::string& body_name,
-      const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
+      std::string body_name,
+      Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
   void AddStateAndFrameToTrack(
-      int state, const std::string& body_name,
-      const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
+      int state, std::string body_name,
+      Eigen::Isometry3d frame_pose = Eigen::Isometry3d::Identity());
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
+                       KinematicsCache<double>& cache_w_spr) final;
   void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          drake::systems::Context<double>& context_w_spr) final;
+                          KinematicsCache<double>& cache_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
+               KinematicsCache<double>& cache_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
+                   KinematicsCache<double>& cache_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
 
@@ -354,27 +350,27 @@ class RotTaskSpaceTrackingData final : public TaskSpaceTrackingData {
 /// called one after another for the same TrackingData.
 class JointSpaceTrackingData final : public OscTrackingData {
  public:
-  JointSpaceTrackingData(
-      const std::string& name, const Eigen::MatrixXd& K_p,
-      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr);
+  JointSpaceTrackingData(std::string name, Eigen::MatrixXd K_p,
+                         Eigen::MatrixXd K_d, Eigen::MatrixXd W,
+                         const RigidBodyTree<double>* tree_w_spr,
+                         const RigidBodyTree<double>* tree_wo_spr);
 
-  void AddJointToTrack(const std::string& joint_pos_name,
-                       const std::string& joint_vel_name);
-  void AddStateAndJointToTrack(int state, const std::string& joint_pos_name,
-                               const std::string& joint_vel_name);
+  JointSpaceTrackingData() {}  // Default constructor
+
+  void AddJointToTrack(std::string joint_pos_name, std::string joint_vel_name);
+  void AddStateAndJointToTrack(int state, std::string joint_pos_name,
+                               std::string joint_vel_name);
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
+                       KinematicsCache<double>& cache_w_spr) final;
   void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                          drake::systems::Context<double>& context_w_spr) final;
+                          KinematicsCache<double>& cache_w_spr) final;
   void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
+               KinematicsCache<double>& cache_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
+                   KinematicsCache<double>& cache_wo_spr) final;
 
   void CheckDerivedOscTrackingData() final;
 
@@ -384,63 +380,6 @@ class JointSpaceTrackingData final : public OscTrackingData {
   std::vector<int> joint_vel_idx_w_spr_;
   std::vector<int> joint_pos_idx_wo_spr_;
   std::vector<int> joint_vel_idx_wo_spr_;
-};
-
-// TODO: the implementation of VToQdotMap is for MBP.
-//  Continue to implement this after we fully port OSC to MBP. Will need to
-//  verify that the functions are implemented correctly.
-class AbstractTrackingData final : public OscTrackingData {
- public:
-  AbstractTrackingData(
-      std::string name, int n_r, Eigen::MatrixXd K_p, Eigen::MatrixXd K_d,
-      Eigen::MatrixXd W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
-      OscUserDefinedPos* user_defined_pos);
-  AbstractTrackingData(
-      std::string name, int n_r, Eigen::MatrixXd K_p, Eigen::MatrixXd K_d,
-      Eigen::MatrixXd W,
-      const drake::multibody::MultibodyPlant<double>* plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
-      OscUserDefinedPos* user_defined_pos_w_spr,
-      OscUserDefinedPos* user_defined_pos_wo_spr);
-
-  // AbstractTrackingData() {}  // Default constructor
-
- private:
-  void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
-                       drake::systems::Context<double>& context_w_spr) final;
-  void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
-                  drake::systems::Context<double>& context_w_spr) final;
-  void UpdateJ(const Eigen::VectorXd& x_wo_spr,
-               drake::systems::Context<double>& context_wo_spr) final;
-  void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
-                   drake::systems::Context<double>& context_wo_spr) final;
-
-  void CheckDerivedOscTrackingData() final;
-
-  // Compute Jacobian (qdot version instead of v!) by forward differencing
-  Eigen::MatrixXd JacobianOfUserDefinedPos(
-      const OscUserDefinedPos& user_defined_pos, Eigen::VectorXd q) const;
-
-  // Compute the matrix for mapping local roll-pitch-yaw angular velocity to
-  // quaterion derivatives
-  // Ref1: equation 18 of https://arxiv.org/pdf/0811.2889.pdf
-  // Ref2: https://github.com/RobotLocomotion/drake/blob/a3af177/attic/multibody/joints/quaternion_floating_joint.h#L260
-  Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) const;
-  Eigen::MatrixXd VToQdotMap(const Eigen::VectorXd& q) const;
-
-  bool only_one_user_defined_pos_;
-
-  OscUserDefinedPos* user_defined_pos_wo_spr_;
-  OscUserDefinedPos* user_defined_pos_w_spr_;
-
-  // Map position/velocity from model with spring to without spring
-  Eigen::MatrixXd map_position_from_spring_to_no_spring_;
-  Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
-
-  // Step size for forward differencing
-  double dx_ = 1e-8;
 };
 
 }  // namespace controllers

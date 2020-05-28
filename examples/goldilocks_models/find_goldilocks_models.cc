@@ -1451,6 +1451,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   cout << "Trail name: " << FLAGS_program_name << endl;
+  std::time_t current_time =
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  cout << "Current time: " << std::ctime(&current_time);
   cout << "Git commit hash: " << endl;
   std::system("git rev-parse HEAD");
   cout << "Result of \"git diff-index HEAD\":" << endl;
@@ -2168,8 +2171,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       GetAdjSampleIndices(N_sample_sl, N_sample_gi, N_sample_tr, N_sample,
                           task_dim, inverse_task_idx_map);
   cout << "dimension of the task space = " << task_dim << endl;
-  cout << "adjacent_sample_indices = \n"
-       << adjacent_sample_indices.transpose() << endl;
+  cout << "adjacent_sample_indices = \n" << adjacent_sample_indices << endl;
 
   cout << "\nStart iterating...\n";
   // Start the gradient descent

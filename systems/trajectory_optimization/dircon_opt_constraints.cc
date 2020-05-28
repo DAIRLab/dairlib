@@ -33,108 +33,9 @@ using std::map;
 using std::string;
 
 template <typename T>
-DirconAbstractConstraint<T>::DirconAbstractConstraint(
-    int num_constraints, int num_vars, const VectorXd& lb, const VectorXd& ub,
-    const std::string& description)
-    : Constraint(num_constraints, num_vars, lb, ub, description),
-      num_constraints_(num_constraints) {}
-
-template <typename T>
-void DirconAbstractConstraint<T>::SetConstraintScaling(
-    const std::unordered_map<int, double>& map) {
-  constraint_scaling_ = map;
-}
-
-template <typename T>
-template <typename U>
-void DirconAbstractConstraint<T>::ScaleConstraint(drake::VectorX<U>* y) const {
-  for (const auto& member : constraint_scaling_) {
-    (*y)(member.first) *= member.second;
-  }
-}
-
-template <>
-void DirconAbstractConstraint<double>::DoEval(
-    const Eigen::Ref<const Eigen::VectorXd>& x, Eigen::VectorXd* y) const {
-  EvaluateConstraint(x, y);
-  this->ScaleConstraint<double>(y);
-}
-
-template <>
-void DirconAbstractConstraint<AutoDiffXd>::DoEval(
-    const Eigen::Ref<const Eigen::VectorXd>& x, Eigen::VectorXd* y) const {
-  AutoDiffVecXd y_t;
-  EvaluateConstraint(initializeAutoDiff(x), &y_t);
-  *y = autoDiffToValueMatrix(y_t);
-  this->ScaleConstraint<double>(y);
-}
-
-template <typename T>
-void DirconAbstractConstraint<T>::DoEval(
-    const Eigen::Ref<const VectorX<drake::symbolic::Variable>>& x,
-    VectorX<drake::symbolic::Expression>* y) const {
-  throw std::logic_error(
-      "DirconAbstractConstraint does not support symbolic evaluation.");
-}
-
-template <>
-void DirconAbstractConstraint<AutoDiffXd>::DoEval(
-    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
-  EvaluateConstraint(x, y);
-  this->ScaleConstraint<AutoDiffXd>(y);
-}
-
-template <>
-void DirconAbstractConstraint<double>::DoEval(
-    const Eigen::Ref<const AutoDiffVecXd>& x, AutoDiffVecXd* y) const {
-  MatrixXd original_grad = autoDiffToGradientMatrix(x);
-
-  // forward differencing
-  double dx = 1e-8;
-
-  VectorXd x_val = autoDiffToValueMatrix(x);
-  VectorXd y0, yi;
-  EvaluateConstraint(x_val, &y0);
-
-  MatrixXd dy = MatrixXd(y0.size(), x_val.size());
-  for (int i = 0; i < x_val.size(); i++) {
-    x_val(i) += dx;
-    EvaluateConstraint(x_val, &yi);
-    x_val(i) -= dx;
-    dy.col(i) = (yi - y0) / dx;
-  }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
-                                                     *y);
-
-  // std::cout << dy << std::endl  << std::endl << std::endl;
-
-  // central differencing
-  /*double dx = 1e-6;
-
-  VectorXd x_val = autoDiffToValueMatrix(x);
-  VectorXd y0, yi;
-  EvaluateConstraint(x_val, &y0);
-
-  MatrixXd dy = MatrixXd(y0.size(), x_val.size());
-  for (int i = 0; i < x_val.size(); i++) {
-    x_val(i) -= dx / 2;
-    EvaluateConstraint(x_val, &y0);
-    x_val(i) += dx;
-    EvaluateConstraint(x_val, &yi);
-    x_val(i) -= dx / 2;
-    dy.col(i) = (yi - y0) / dx;
-  }
-  EvaluateConstraint(x_val, &y0);
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
-                                                     *y);*/
-
-  this->ScaleConstraint<AutoDiffXd>(y);
-}
-
-template <typename T>
 QuaternionNormConstraint<T>::QuaternionNormConstraint()
-    : DirconAbstractConstraint<T>(1, 4, VectorXd::Zero(1), VectorXd::Zero(1),
-                                  "quaternion_norm_constraint") {}
+    : solvers::NonlinearConstraint<T>(1, 4, VectorXd::Zero(1), 
+          VectorXd::Zero(1), "quaternion_norm_constraint") {}
 template <typename T>
 void QuaternionNormConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
@@ -167,7 +68,7 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
     int num_positions, int num_velocities, int num_inputs,
     int num_kinematic_constraints_wo_skipping, int num_quat_slack)
-    : DirconAbstractConstraint<T>(
+    : solvers::NonlinearConstraint<T>(
           num_positions + num_velocities,
           1 + 2 * (num_positions + num_velocities) + (2 * num_inputs) +
               (4 * num_kinematic_constraints_wo_skipping) + num_quat_slack,
@@ -182,7 +83,8 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
           num_kinematic_constraints_wo_skipping},
       num_positions_{num_positions},
       num_velocities_{num_velocities},
-      num_quat_slack_{num_quat_slack} {}
+      num_quat_slack_{num_quat_slack},
+      context_(plant_.CreateDefaultContext()) {}
 
 // The format of the input to the eval() function is the
 // tuple { timestep, state 0, state 1, input 0, input 1, force 0, force 1},
@@ -220,12 +122,12 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
                 num_kinematic_constraints_wo_skipping_);
   const VectorX<T> gamma = x.tail(num_quat_slack_);
 
-  auto context0 = multibody::createContext(plant_, x0, u0);
-  constraints_->updateData(*context0, l0);
+  multibody::setContext(plant_, x0, u0, context_.get());
+  constraints_->updateData(*context_, l0);
   const VectorX<T> xdot0 = constraints_->getXDot();
 
-  auto context1 = multibody::createContext(plant_, x1, u1);
-  constraints_->updateData(*context1, l1);
+  multibody::setContext(plant_, x1, u1, context_.get());
+  constraints_->updateData(*context_, l1);
   const VectorX<T> xdot1 = constraints_->getXDot();
 
   // Cubic interpolation to get xcol and xdotcol.
@@ -233,11 +135,11 @@ void DirconDynamicConstraint<T>::EvaluateConstraint(
   const VectorX<T> xdotcol = -1.5 * (x0 - x1) / h - .25 * (xdot0 + xdot1);
   const VectorX<T> ucol = 0.5 * (u0 + u1);
 
-  auto contextcol = multibody::createContext(plant_, xcol, ucol);
-  constraints_->updateData(*contextcol, lc);
+  multibody::setContext(plant_, xcol, ucol, context_.get());
+  constraints_->updateData(*context_, lc);
   auto g = constraints_->getXDot();
   VectorX<T> vc_in_qdot_space(num_positions_);
-  plant_.MapVelocityToQDot(*contextcol,
+  plant_.MapVelocityToQDot(*context_,
                            constraints_->getJWithoutSkipping().transpose() * vc,
                            &vc_in_qdot_space);
   g.head(num_positions_) += vc_in_qdot_space;
@@ -309,7 +211,7 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
     std::vector<bool> is_constraint_relative, DirconKinConstraintType type,
     int num_positions, int num_velocities, int num_inputs,
     int num_kinematic_constraints, int num_kinematic_constraints_wo_skipping)
-    : DirconAbstractConstraint<T>(
+    : solvers::NonlinearConstraint<T>(
           type * num_kinematic_constraints,
           num_positions + num_velocities + num_inputs +
               num_kinematic_constraints_wo_skipping +
@@ -331,7 +233,8 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       is_constraint_relative_{is_constraint_relative},
       n_relative_{
           static_cast<int>(std::count(is_constraint_relative.begin(),
-                                      is_constraint_relative.end(), true))} {
+                                      is_constraint_relative.end(), true))},
+      context_(plant_.CreateDefaultContext()) {
   // Set sparsity pattern and relative map
   std::vector<std::pair<int, int>> sparsity;
   // Acceleration constraints are dense in decision variables
@@ -394,8 +297,8 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
   const VectorX<T> offset = x.segment(
       num_states_ + num_inputs_ + num_kinematic_constraints_wo_skipping_,
       n_relative_);
-  auto context = multibody::createContext(plant_, state, input);
-  constraints_->updateData(*context, force);
+  multibody::setContext(plant_, state, input, context_.get());
+  constraints_->updateData(*context_, force);
   switch (type_) {
     case kAll:
       *y = VectorX<T>(3 * num_kinematic_constraints_);
@@ -425,7 +328,7 @@ DirconImpactConstraint<T>::DirconImpactConstraint(
     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
     int num_positions, int num_velocities,
     int num_kinematic_constraints_wo_skipping)
-    : DirconAbstractConstraint<T>(num_velocities,
+    : solvers::NonlinearConstraint<T>(num_velocities,
                                   num_positions + 2 * num_velocities +
                                       num_kinematic_constraints_wo_skipping,
                                   VectorXd::Zero(num_velocities),
@@ -437,7 +340,8 @@ DirconImpactConstraint<T>::DirconImpactConstraint(
       num_kinematic_constraints_wo_skipping_{
           num_kinematic_constraints_wo_skipping},
       num_positions_{num_positions},
-      num_velocities_{num_velocities} {}
+      num_velocities_{num_velocities},
+      context_(plant_.CreateDefaultContext()) {}
 
 // The format of the input to the eval() function is the
 // tuple { state 0, impulse, velocity 1},
@@ -463,12 +367,12 @@ void DirconImpactConstraint<T>::EvaluateConstraint(
   const VectorX<T> u =
       VectorXd::Zero(plant_.num_actuators()).template cast<T>();
 
-  auto context = multibody::createContext(plant_, x0, u);
+  multibody::setContext(plant_, x0, u, context_.get());
 
-  constraints_->updateData(*context, impulse);
+  constraints_->updateData(*context_, impulse);
 
   MatrixX<T> M(num_velocities_, num_velocities_);
-  plant_.CalcMassMatrix(*context, &M);
+  plant_.CalcMassMatrix(*context_, &M);
 
   *y =
       M * (v1 - v0) - constraints_->getJWithoutSkipping().transpose() * impulse;
@@ -489,7 +393,7 @@ PointPositionConstraint<T>::PointPositionConstraint(
     const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
     const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
     const std::string& description)
-    : DirconAbstractConstraint<T>(
+    : solvers::NonlinearConstraint<T>(
           dir.rows(), plant.num_positions(), lb, ub,
           description.empty() ? body_name + "_pos_constraint" : description),
       plant_(plant),
@@ -524,7 +428,7 @@ PointVelocityConstraint<T>::PointVelocityConstraint(
     const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
     const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
     const std::string& description)
-    : DirconAbstractConstraint<T>(
+    : solvers::NonlinearConstraint<T>(
           dir.rows(), plant.num_positions(), lb, ub,
           description.empty() ? body_name + "_vel_constraint" : description),
       plant_(plant),
@@ -547,8 +451,6 @@ void PointVelocityConstraint<T>::EvaluateConstraint(
 };
 
 // Explicitly instantiates on the most common scalar types.
-template class DirconAbstractConstraint<double>;
-template class DirconAbstractConstraint<AutoDiffXd>;
 template class QuaternionNormConstraint<double>;
 template class QuaternionNormConstraint<AutoDiffXd>;
 template class DirconDynamicConstraint<double>;

@@ -4,6 +4,19 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "nonlinear_constraint",
+    srcs = [
+        "nonlinear_constraint.cc",
+    ],
+    hdrs = [
+        "nonlinear_constraint.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "optimization_utils",
     srcs = [
         "optimization_utils.cc",

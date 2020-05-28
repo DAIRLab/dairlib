@@ -46,7 +46,6 @@ using drake::multibody::Body;
 using drake::multibody::Parser;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 
-using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
 using dairlib::systems::trajectory_optimization::DirconDynamicConstraint;
 using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
 using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
@@ -2314,6 +2313,12 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   // Testing
 //   cout << "Choose the best solver: " <<
 //        drake::solvers::ChooseBestSolver(*(gm_traj_opt.dircon)).name() << endl;
+
+  // Testing -- visualize poses
+  if (sample_idx == 0) {
+//    gm_traj_opt.dircon->CreateVisualizationCallback(
+//        "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
+  }
 
   // cout << "Solving DIRCON (based on MultipleShooting)\n";
   auto start = std::chrono::high_resolution_clock::now();

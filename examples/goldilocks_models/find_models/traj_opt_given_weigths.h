@@ -3,12 +3,13 @@
 #include <string>
 #include <Eigen/Dense>
 #include "solvers/optimization_utils.h"
+#include "solvers/nonlinear_constraint.h"
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "systems/trajectory_optimization/hybrid_dircon.h"
 
+#include "systems/trajectory_optimization/hybrid_dircon.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/gurobi_solver.h"
 #include "drake/solvers/mathematical_program.h"
@@ -29,7 +30,7 @@ using std::vector;
 using drake::multibody::MultibodyPlant;
 using drake::AutoDiffXd;
 
-using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
+using dairlib::solvers::NonlinearConstraint;
 
 using drake::math::RotationMatrix;
 using drake::math::RollPitchYaw;
@@ -85,12 +86,12 @@ void augmentConstraintToFixThetaScaling(MatrixXd & B, MatrixXd & A,
 
 // swing foot pos at mid stance constraint (x and y)
 class SwingFootXYPosAtMidStanceConstraint
-    : public DirconAbstractConstraint<double> {
+    : public NonlinearConstraint<double> {
  public:
   SwingFootXYPosAtMidStanceConstraint(const MultibodyPlant<double>* plant,
                           const string& body_name,
                           const Vector3d& point_wrt_body)
-      : DirconAbstractConstraint<double>(
+      : NonlinearConstraint<double>(
       2, 3 * plant->num_positions(), VectorXd::Zero(2),
       VectorXd::Zero(2),
       "swing_foot_xy_pos_at_mid_stance_constraint"),
@@ -133,12 +134,10 @@ class SwingFootXYPosAtMidStanceConstraint
   const Vector3d point_wrt_body_;
 };
 
-
-
-class ComHeightVelConstraint : public DirconAbstractConstraint<double> {
+class ComHeightVelConstraint : public NonlinearConstraint<double> {
  public:
   ComHeightVelConstraint(const MultibodyPlant<double>* plant) :
-    DirconAbstractConstraint<double>(
+    NonlinearConstraint<double>(
       1, 2 * (plant->num_positions() + plant->num_velocities()),
       VectorXd::Zero(1), VectorXd::Zero(1),
       "com_height_vel_constraint"),

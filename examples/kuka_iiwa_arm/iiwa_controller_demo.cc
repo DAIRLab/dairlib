@@ -98,7 +98,7 @@ int do_main(int argc, char* argv[]) {
   // to the controller blocks for internal modelling.
   const auto X_WI = drake::math::RigidTransform<double>::Identity();
   std::unique_ptr<MultibodyPlant<double>> owned_plant =
-      std::make_unique<MultibodyPlant<double>>();
+      std::make_unique<MultibodyPlant<double>>(0.0);
 
   drake::multibody::Parser plant_parser(owned_plant.get());
   plant_parser.AddModelFromFile(urdf_string, "iiwa");

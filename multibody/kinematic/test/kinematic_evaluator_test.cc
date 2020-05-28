@@ -7,7 +7,8 @@
 #include "drake/multibody/parsing/parser.h"
 
 #include "common/find_resource.h"
-#include "multibody/kinematic_constraint.h"
+#include "multibody/kinematic/kinematic_evaluator.h"
+#include "multibody/kinematic/planar_ground_evaluator.h"
 
 namespace dairlib {
 namespace multibody {
@@ -23,7 +24,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
-class KinematicConstraintTest : public ::testing::Test {
+class KinematicEvaluatortEst : public ::testing::Test {
  protected:
   void SetUp() override {
     plant_ = std::make_unique<MultibodyPlant<double>>(0.0);
@@ -44,7 +45,7 @@ class KinematicConstraintTest : public ::testing::Test {
   std::unique_ptr<MultibodyPlant<double>> plant_;
 };
 
-TEST_F(KinematicConstraintTest, PlanarGroundConstraintTest) {
+TEST_F(KinematicEvaluatortEst, PlanarGroundEvaluatorTest) {
   const double tolerance = 1e-10;
 
 
@@ -53,7 +54,7 @@ TEST_F(KinematicConstraintTest, PlanarGroundConstraintTest) {
   const auto& frame = plant_->GetFrameByName("right_lower_leg");
 
   // Default constraint: vertical normal, zero offset
-  auto constraint = PlanarGroundContactConstraint<double>(*plant_, pt_A, frame,
+  auto constraint = PlanarGroundEvaluator<double>(*plant_, pt_A, frame,
       Vector3d({0, 0, 1}), Vector3d::Zero(), false);
 
   auto context = plant_->CreateDefaultContext();
@@ -64,56 +65,56 @@ TEST_F(KinematicConstraintTest, PlanarGroundConstraintTest) {
   VectorXd v = Eigen::VectorXd::Constant(plant_->num_velocities(), 1);
   plant_->SetVelocities(context.get(), v);
 
-  auto phi = constraint.CalcFullConstraint(*context);
+  auto phi = constraint.EvalFull(*context);
   EXPECT_TRUE(CompareMatrices(Vector3d({0, 0, -1}), phi, tolerance));
 
-  auto phi_active = constraint.CalcActiveConstraint(*context);
+  auto phi_active = constraint.EvalActive(*context);
 
   VectorXd phi_active_expected(1);
   phi_active_expected << -1;
   EXPECT_TRUE(CompareMatrices(phi_active_expected, phi_active, tolerance));
 
-  auto J = constraint.CalcFullJacobian(*context);
+  auto J = constraint.EvalFullJacobian(*context);
   MatrixXd J_expected(3, 6);
   J_expected.row(0) << 0, 0, 0, 0, 0, 0;
   J_expected.row(1) << 1, 0, -1, -1, 0, -.5;
   J_expected.row(2) << 0, 1, 0, 0, 0, 0;
   EXPECT_TRUE(CompareMatrices(J, J_expected, tolerance));
 
-  auto J_active = constraint.CalcActiveJacobian(*context);
+  auto J_active = constraint.EvalActiveJacobian(*context);
   MatrixXd J_active_expected(1, 6);
   J_active_expected << 0, 1, 0, 0, 0, 0;
   EXPECT_TRUE(CompareMatrices(J_active, J_active_expected, tolerance));
 
-  auto phidot = constraint.CalcFullConstraintDot(*context);
+  auto phidot = constraint.EvalFullTimeDerivative(*context);
   VectorXd phidot_expected(3);
   phidot_expected << 0, -1.5, 1;
   EXPECT_TRUE(CompareMatrices(phidot, phidot_expected, tolerance));
 
-  auto phidot_active = constraint.CalcActiveConstraintDot(*context);
+  auto phidot_active = constraint.EvalActiveTimeDerivative(*context);
   VectorXd phidot_active_expected(1);
   phidot_active_expected << 1;
   EXPECT_TRUE(CompareMatrices(phidot_active, phidot_active_expected,
       tolerance));
 
-  auto Jdotv = constraint.CalcFullJacobianDotTimesV(*context);
+  auto Jdotv = constraint.EvalFullJacobianDotTimesV(*context);
   VectorXd Jdotv_expected(3);
   Jdotv_expected << 0, 0, 6.5;
   EXPECT_TRUE(CompareMatrices(Jdotv, Jdotv_expected, tolerance));
 
-  auto Jdotv_active = constraint.CalcActiveJacobianDotTimesV(*context);
+  auto Jdotv_active = constraint.EvalActiveJacobianDotTimesV(*context);
   VectorXd Jdotv_active_expected(1);
   Jdotv_active_expected << 6.5;
   EXPECT_TRUE(CompareMatrices(Jdotv_active, Jdotv_active_expected, tolerance));
 
   // Non-default constraint: non-vertical normal, non-zero offset
   // Performing minmal tests
-  auto new_constraint = PlanarGroundContactConstraint<double>(*plant_, pt_A,
+  auto new_constraint = PlanarGroundEvaluator<double>(*plant_, pt_A,
       frame, Vector3d({1, 0, 0}), Vector3d({1, 2, 3}), true);
 
-  auto new_phi = new_constraint.CalcFullConstraint(*context);
+  auto new_phi = new_constraint.EvalFull(*context);
   EXPECT_TRUE(CompareMatrices(Vector3d({-4, 2, -1}), new_phi, tolerance));
-  auto new_phi_active = new_constraint.CalcActiveConstraint(*context);
+  auto new_phi_active = new_constraint.EvalActive(*context);
   EXPECT_TRUE(CompareMatrices(Vector3d({-4, 2, -1}), new_phi_active,
       tolerance));  
 }

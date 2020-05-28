@@ -1,0 +1,35 @@
+# -*- python -*-
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "kinematic_evaluator",
+    srcs = [
+        "kinematic_evaluator.cc",
+        "planar_ground_evaluator.cc",
+    ],
+    hdrs = [
+        "kinematic_evaluator.h",
+        "planar_ground_evaluator.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_test(
+    name = "kinematic_evaluator_test",
+    srcs = [
+        "test/kinematic_evaluator_test.cc",
+    ],
+    deps = [
+        ":kinematic_evaluator",
+        "//common",
+        "//examples/PlanarWalker:urdf",
+        "@drake//common/test_utilities",
+        "@gtest//:main",
+    ],
+    size = "small",
+)

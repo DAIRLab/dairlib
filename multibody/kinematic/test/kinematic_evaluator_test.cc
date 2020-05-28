@@ -7,6 +7,7 @@
 #include "drake/multibody/parsing/parser.h"
 
 #include "common/find_resource.h"
+#include "multibody/kinematic/distance_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator.h"
 #include "multibody/kinematic/planar_ground_evaluator.h"
 
@@ -24,7 +25,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
-class KinematicEvaluatortEst : public ::testing::Test {
+class KinematicEvaluatorTest : public ::testing::Test {
  protected:
   void SetUp() override {
     plant_ = std::make_unique<MultibodyPlant<double>>(0.0);
@@ -45,16 +46,14 @@ class KinematicEvaluatortEst : public ::testing::Test {
   std::unique_ptr<MultibodyPlant<double>> plant_;
 };
 
-TEST_F(KinematicEvaluatortEst, PlanarGroundEvaluatorTest) {
+TEST_F(KinematicEvaluatorTest, PlanarGroundEvaluatorTest) {
   const double tolerance = 1e-10;
-
-
 
   Vector3d pt_A({0, 0, -.5});
   const auto& frame = plant_->GetFrameByName("right_lower_leg");
 
-  // Default constraint: vertical normal, zero offset
-  auto constraint = PlanarGroundEvaluator<double>(*plant_, pt_A, frame,
+  // Default evaluator: vertical normal, zero offset
+  auto evaluator = PlanarGroundEvaluator<double>(*plant_, pt_A, frame,
       Vector3d({0, 0, 1}), Vector3d::Zero(), false);
 
   auto context = plant_->CreateDefaultContext();
@@ -65,134 +64,104 @@ TEST_F(KinematicEvaluatortEst, PlanarGroundEvaluatorTest) {
   VectorXd v = Eigen::VectorXd::Constant(plant_->num_velocities(), 1);
   plant_->SetVelocities(context.get(), v);
 
-  auto phi = constraint.EvalFull(*context);
+  auto phi = evaluator.EvalFull(*context);
   EXPECT_TRUE(CompareMatrices(Vector3d({0, 0, -1}), phi, tolerance));
 
-  auto phi_active = constraint.EvalActive(*context);
+  auto phi_active = evaluator.EvalActive(*context);
 
   VectorXd phi_active_expected(1);
   phi_active_expected << -1;
   EXPECT_TRUE(CompareMatrices(phi_active_expected, phi_active, tolerance));
 
-  auto J = constraint.EvalFullJacobian(*context);
+  auto J = evaluator.EvalFullJacobian(*context);
   MatrixXd J_expected(3, 6);
   J_expected.row(0) << 0, 0, 0, 0, 0, 0;
   J_expected.row(1) << 1, 0, -1, -1, 0, -.5;
   J_expected.row(2) << 0, 1, 0, 0, 0, 0;
   EXPECT_TRUE(CompareMatrices(J, J_expected, tolerance));
 
-  auto J_active = constraint.EvalActiveJacobian(*context);
+  auto J_active = evaluator.EvalActiveJacobian(*context);
   MatrixXd J_active_expected(1, 6);
   J_active_expected << 0, 1, 0, 0, 0, 0;
   EXPECT_TRUE(CompareMatrices(J_active, J_active_expected, tolerance));
 
-  auto phidot = constraint.EvalFullTimeDerivative(*context);
+  auto phidot = evaluator.EvalFullTimeDerivative(*context);
   VectorXd phidot_expected(3);
   phidot_expected << 0, -1.5, 1;
   EXPECT_TRUE(CompareMatrices(phidot, phidot_expected, tolerance));
 
-  auto phidot_active = constraint.EvalActiveTimeDerivative(*context);
+  auto phidot_active = evaluator.EvalActiveTimeDerivative(*context);
   VectorXd phidot_active_expected(1);
   phidot_active_expected << 1;
   EXPECT_TRUE(CompareMatrices(phidot_active, phidot_active_expected,
       tolerance));
 
-  auto Jdotv = constraint.EvalFullJacobianDotTimesV(*context);
+  auto Jdotv = evaluator.EvalFullJacobianDotTimesV(*context);
   VectorXd Jdotv_expected(3);
   Jdotv_expected << 0, 0, 6.5;
   EXPECT_TRUE(CompareMatrices(Jdotv, Jdotv_expected, tolerance));
 
-  auto Jdotv_active = constraint.EvalActiveJacobianDotTimesV(*context);
+  auto Jdotv_active = evaluator.EvalActiveJacobianDotTimesV(*context);
   VectorXd Jdotv_active_expected(1);
   Jdotv_active_expected << 6.5;
   EXPECT_TRUE(CompareMatrices(Jdotv_active, Jdotv_active_expected, tolerance));
 
-  // Non-default constraint: non-vertical normal, non-zero offset
+  // Non-default evaluator: non-vertical normal, non-zero offset
   // Performing minmal tests
-  auto new_constraint = PlanarGroundEvaluator<double>(*plant_, pt_A,
+  auto new_evaluator = PlanarGroundEvaluator<double>(*plant_, pt_A,
       frame, Vector3d({1, 0, 0}), Vector3d({1, 2, 3}), true);
 
-  auto new_phi = new_constraint.EvalFull(*context);
+  auto new_phi = new_evaluator.EvalFull(*context);
   EXPECT_TRUE(CompareMatrices(Vector3d({-4, 2, -1}), new_phi, tolerance));
-  auto new_phi_active = new_constraint.EvalActive(*context);
+  auto new_phi_active = new_evaluator.EvalActive(*context);
   EXPECT_TRUE(CompareMatrices(Vector3d({-4, 2, -1}), new_phi_active,
       tolerance));  
 }
 
+TEST_F(KinematicEvaluatorTest, DistanceEvaluatorTest) {
+  const double tolerance = 1e-6;
 
-// // Contact Jacobian test
-// TEST_F(ContactToolkitTest, ContactJacobianTest) {
-//   VectorX<double> x_double = x0_;
-//   VectorX<AutoDiffXd> x_autodiff = initializeAutoDiff(x0_);
-//   MatrixX<double> jac_double =
-//       contact_toolkit_->CalcContactJacobian(x_double);
-//   MatrixX<AutoDiffXd> jac_autodiff =
-//       contact_toolkit_autodiff_->CalcContactJacobian(x_autodiff);
+  Vector3d pt_A({0, 0, -.5});
+  const auto& frame_A = plant_->GetFrameByName("right_lower_leg");
+  Vector3d pt_B({0, 0, -.5});
+  const auto& frame_B = plant_->GetFrameByName("left_lower_leg");
 
-//   // Checking dimensions of the jacobian
-//   // Each contact has three directional jacobian componenets - the normal and
-//   // two surface tangents.
-//   ASSERT_EQ(jac_double.rows(), contact_toolkit_->get_num_contacts() * 3);
-//   ASSERT_EQ(jac_double.cols(), plant_->num_positions());
+  // Default evaluator: vertical normal, zero offset
+  auto evaluator = DistanceEvaluator<double>(*plant_, pt_A, frame_A, pt_B,
+      frame_B, .5);
 
-//   ASSERT_EQ(jac_autodiff.rows(),
-//             contact_toolkit_autodiff_->get_num_contacts() * 3);
-//   ASSERT_EQ(jac_autodiff.cols(), plant_->num_positions());
-// }
+  auto context = plant_->CreateDefaultContext();
 
-// // MVDot test
-// TEST_F(ContactToolkitTest, MVDotTest) {
-//   VectorX<double> x_double = x0_;
-//   VectorX<double> u_double = VectorXd::Random(plant_->num_actuators());
-//   VectorX<double> lambda_double =
-//       VectorXd::Random(tree_.getNumPositionConstraints() +
-//                        contact_toolkit_->get_num_contacts() * 3);
-//   VectorX<double> mvdot_double =
-//       contact_toolkit_->CalcMVDot(x_double, u_double, lambda_double);
+  // Test q = 0, legs straight down
+  VectorXd q(plant_->num_positions());
+  q(3) = M_PI/2.0;
+  plant_->SetPositions(context.get(), q);
+  VectorXd v = Eigen::VectorXd::Random(plant_->num_velocities());
+  plant_->SetVelocities(context.get(), v);
 
-//   VectorX<AutoDiffXd> x_autodiff = initializeAutoDiff(x_double);
-//   VectorX<AutoDiffXd> u_autodiff = initializeAutoDiff(u_double);
-//   VectorX<AutoDiffXd> lambda_autodiff = initializeAutoDiff(lambda_double);
-//   VectorX<AutoDiffXd> mvdot_autodiff = contact_toolkit_autodiff_->CalcMVDot(
-//       x_autodiff, u_autodiff, lambda_autodiff);
+  auto phi = evaluator.EvalFull(*context);
+  VectorXd phi_expected(1);
+  phi_expected << sqrt(2) - 0.5;
+  EXPECT_TRUE(CompareMatrices(phi_expected, phi, tolerance));
 
-//   // Verifying the dimensions
-//   ASSERT_EQ(mvdot_double.rows(), plant_->num_velocities());
-//   ASSERT_EQ(mvdot_autodiff.rows(), plant_->num_velocities());
+  auto J = evaluator.EvalFullJacobian(*context);
+  auto Jdotv = evaluator.EvalFullJacobianDotTimesV(*context);
 
-//   // Verifying that both templates return the same value
-//   ASSERT_TRUE(mvdot_double.isApprox(DiscardGradient(mvdot_autodiff)));
-// }
+  // Compare J using numerical approximation in v direction
+  double dt = 1e-8;
+  plant_->SetPositions(context.get(), q + dt * v);
+  auto phi_perturbed = evaluator.EvalFull(*context);
+  EXPECT_TRUE(CompareMatrices(J * v, (phi_perturbed - phi) / dt, dt * 100));
 
-// // Time derivatives test
-// TEST_F(ContactToolkitTest, TimeDerivativesTest) {
-//   VectorX<double> x_double = x0_;
-//   VectorX<double> u_double = VectorXd::Random(plant_->num_actuators());
-//   VectorX<double> lambda_double =
-//       VectorXd::Random(tree_.getNumPositionConstraints() +
-//                        contact_toolkit_->get_num_contacts() * 3);
-//   VectorX<double> xdot_double = contact_toolkit_->CalcTimeDerivatives(
-//       x_double, u_double, lambda_double);
-
-//   VectorX<AutoDiffXd> x_autodiff = initializeAutoDiff(x_double);
-//   VectorX<AutoDiffXd> u_autodiff = initializeAutoDiff(u_double);
-//   VectorX<AutoDiffXd> lambda_autodiff = initializeAutoDiff(lambda_double);
-//   VectorX<AutoDiffXd> xdot_autodiff =
-//       contact_toolkit_autodiff_->CalcTimeDerivatives(x_autodiff, u_autodiff,
-//                                                      lambda_autodiff);
-
-//   // Verifying the dimensions
-//   ASSERT_EQ(xdot_double.rows(),
-//             plant_->num_positions() + plant_->num_velocities());
-//   ASSERT_EQ(xdot_autodiff.rows(),
-//             plant_->num_velocities() + plant_->num_velocities());
-
-//   // Verifying that both templates return the same value
-//   ASSERT_TRUE(xdot_double.isApprox(DiscardGradient(xdot_autodiff)));
-// }
+  
+  // Compare Jdotv using numerical approximation
+  auto J_perturbed = evaluator.EvalFullJacobian(*context);
+  auto Jdot_approx = (J_perturbed - J) / dt;
+  EXPECT_TRUE(CompareMatrices(Jdotv, Jdot_approx * v, dt * 100));
+}
 
 }  // namespace
-}  // namespace systems
+}  // namespace multibody
 }  // namespace dairlib
 
 int main(int argc, char **argv) {

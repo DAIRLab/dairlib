@@ -29,7 +29,9 @@ template <typename T>
 VectorX<T> KinematicConstraint<T>::CalcActiveConstraint(
     const Context<T>& context) const {
   // TODO: With Eigen 3.4, can slice by (active_inds_);
+
   auto constraint_full = CalcFullConstraint(context);
+
   VectorX<T> constraint(num_active_);
   for (int i = 0; i < num_active_; i++) {
     constraint(i) = constraint_full(active_inds_.at(i));
@@ -78,8 +80,8 @@ VectorX<T> KinematicConstraint<T>::CalcActiveJacobianDotTimesV(
 
 template <typename T>
 void KinematicConstraint<T>::set_active_inds(std::vector<int> active_inds) {
-  num_active_ = active_inds_.size();
   active_inds_ = active_inds;
+  num_active_ = active_inds_.size();
 }
 
 /// 
@@ -88,7 +90,7 @@ void KinematicConstraint<T>::set_active_inds(std::vector<int> active_inds) {
 template <typename T>
 PlanarGroundContactConstraint<T>::PlanarGroundContactConstraint(
     const MultibodyPlant<T>& plant, const Vector3d pt_A,
-    const Frame<T>* frame_A, const Vector3d offset, const Vector3d normal,
+    const Frame<T>& frame_A, const Vector3d normal, const Vector3d offset,
     bool tangent_active)
     : KinematicConstraint<T>(3),
       plant_(plant),
@@ -107,7 +109,7 @@ VectorX<T> PlanarGroundContactConstraint<T>::CalcFullConstraint(
   VectorX<T> pt_world(3);
   const drake::multibody::Frame<T>& world = plant_.world_frame();
 
-  plant_.CalcPointsPositions(context, *frame_A_,
+  plant_.CalcPointsPositions(context, frame_A_,
       pt_A_.template cast<T>(), world, &pt_world);   
 
   return rotation_ * (pt_world - offset_);
@@ -116,8 +118,7 @@ VectorX<T> PlanarGroundContactConstraint<T>::CalcFullConstraint(
 template <typename T>
 VectorX<T> PlanarGroundContactConstraint<T>::CalcFullConstraintDot(
     const Context<T>& context) const {
-  auto J = CalcFullJacobian(context);
-  return J * plant_.GetVelocities(context);
+  return CalcFullJacobian(context) * plant_.GetVelocities(context);
 }
 
 template <typename T>
@@ -130,7 +131,7 @@ MatrixX<T> PlanarGroundContactConstraint<T>::CalcFullJacobian(
   // .template cast<T> converts pt_A_, as a double, into type T
   plant_.CalcJacobianTranslationalVelocity(
     context, drake::multibody::JacobianWrtVariable::kV,
-    *frame_A_, pt_A_.template cast<T>(), world, world, &J);
+    frame_A_, pt_A_.template cast<T>(), world, world, &J);
 
   return rotation_ * J;
 }
@@ -141,7 +142,7 @@ VectorX<T> PlanarGroundContactConstraint<T>::CalcFullJacobianDotTimesV(
   const drake::multibody::Frame<T>& world = plant_.world_frame();
 
   MatrixX<T> Jdot_times_V = plant_.CalcBiasSpatialAcceleration(
-      context, drake::multibody::JacobianWrtVariable::kV, *frame_A_,
+      context, drake::multibody::JacobianWrtVariable::kV, frame_A_,
       pt_A_.template cast<T>(), world, world).translational();
 
   return rotation_ * Jdot_times_V;

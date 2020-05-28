@@ -79,7 +79,7 @@ DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 //outer loop
 DEFINE_int32(max_outer_iter, 50 , "max number of iterations for searching on each "
                                 "direction of one dimension");
-DEFINE_double(max_cost_threshold, 20, "max cost used for judging "
+DEFINE_double(max_cost_threshold, 15, "max cost used for judging "
                                        "the quality of solutions");
 
 //others
@@ -196,56 +196,62 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 }
 
 //use interpolation to set the initial guess for the trajectory optimization
-string getInitFileName(const string directory, int traj_opt_num){
+string getInitFileName(const string directory, int traj_opt_num,
+    bool is_rerun){
   int gamma_dimension = 3;
   VectorXd current_gamma = readCSV(directory + to_string(traj_opt_num)
                                        + string("_0_gamma.csv"));
   string initial_file_name;
-  if(traj_opt_num==0){
-    initial_file_name = "";
-  }else{
-    VectorXd initial_guess;
-    //take out corresponding w and calculate the weight for interpolation
-    MatrixXd w_gamma;
-    VectorXd weight_gamma;
-    //paras used to decide gamma scale
-    double delta_sl = 0.015;
-    double delta_gi = 0.05;
-    double delta_tr = 0.125;
-    //calculate the weighted sum of past solutions
-    int sample_num = 0;
-    for (sample_num = 0; sample_num < traj_opt_num; sample_num++) {
-      //check if this sample is success
-      int is_success = (readCSV(directory + to_string(sample_num)
-          + string("_0_is_success.csv")))(0,0);
-      if(is_success == 1) {
-        //extract past gamma
-        VectorXd past_gamma = readCSV(directory + to_string(traj_opt_num)
-                                       + string("_0_gamma.csv"));
-        //calculate the weight for each sample using the third power of the difference between gamma
-        VectorXd gamma_scale(gamma_dimension);
-        gamma_scale << 1/delta_gi,1/delta_sl,1.3/delta_tr;
-        VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
-        VectorXd dif_gamma2 = dif_gamma.array().pow(2);
-        double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);
-        //extract the solution of this sample
-        VectorXd w_to_interpolate = readCSV(directory + to_string(sample_num)
-            + string("_0_w.csv"));
-        //concatenate the weight and solution for further calculation
-        w_gamma.conservativeResize(w_to_interpolate.rows(),w_gamma.cols()+1);
-        w_gamma.col(w_gamma.cols()-1) = w_to_interpolate;
-        weight_gamma.conservativeResize(weight_gamma.rows()+1);
-        weight_gamma(weight_gamma.rows()-1)= 1 /distance_gamma;
-      }
-    }
-
-    //    normalize weight
-    weight_gamma = weight_gamma / weight_gamma.sum();
-    initial_guess = w_gamma * weight_gamma;
-    //    save initial guess and set init file
+  if(is_rerun){
     initial_file_name = to_string(traj_opt_num)
-        + string("_0_initial_guess.csv");
-    writeCSV(directory + initial_file_name, initial_guess);
+        + string("_0_w.csv");;
+  }else{
+    if(traj_opt_num==0){
+      initial_file_name = "";
+    }else{
+      VectorXd initial_guess;
+      //take out corresponding w and calculate the weight for interpolation
+      MatrixXd w_gamma;
+      VectorXd weight_gamma;
+      //paras used to decide gamma scale
+      double delta_sl = 0.015;
+      double delta_gi = 0.05;
+      double delta_tr = 0.125;
+      //calculate the weighted sum of past solutions
+      int sample_num = 0;
+      for (sample_num = 0; sample_num < traj_opt_num; sample_num++) {
+        //check if this sample is success
+        int is_success = (readCSV(directory + to_string(sample_num)
+                                      + string("_0_is_success.csv")))(0,0);
+        if(is_success == 1) {
+          //extract past gamma
+          VectorXd past_gamma = readCSV(directory + to_string(sample_num)
+                                            + string("_0_gamma.csv"));
+          //calculate the weight for each sample using the third power of the difference between gamma
+          VectorXd gamma_scale(gamma_dimension);
+          gamma_scale << 1/delta_gi,1/delta_sl,1.3/delta_tr;
+          VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
+          VectorXd dif_gamma2 = dif_gamma.array().pow(2);
+          double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);
+          //extract the solution of this sample
+          VectorXd w_to_interpolate = readCSV(directory + to_string(sample_num)
+                                                  + string("_0_w.csv"));
+          //concatenate the weight and solution for further calculation
+          w_gamma.conservativeResize(w_to_interpolate.rows(),w_gamma.cols()+1);
+          w_gamma.col(w_gamma.cols()-1) = w_to_interpolate;
+          weight_gamma.conservativeResize(weight_gamma.rows()+1);
+          weight_gamma(weight_gamma.rows()-1)= 1 /distance_gamma;
+        }
+      }
+      DRAKE_DEMAND(weight_gamma.rows()>0);
+      //    normalize weight
+      weight_gamma = weight_gamma / weight_gamma.sum();
+      initial_guess = w_gamma * weight_gamma;
+      //    save initial guess and set init file
+      initial_file_name = to_string(traj_opt_num)
+          + string("_0_initial_guess.csv");
+      writeCSV(directory + initial_file_name, initial_guess);
+    }
   }
 
   return initial_file_name;
@@ -253,7 +259,7 @@ string getInitFileName(const string directory, int traj_opt_num){
 
 // trajectory optimization for given task and model
 void trajOptGivenModel(double stride_length, double ground_incline,
-    double turning_rate,const string dir,int num){
+    double turning_rate,const string dir,int num,bool is_rerun){
   // Create MBP
   MultibodyPlant<double> plant(0.0);
   createMBP(&plant, FLAGS_robot_option);
@@ -326,7 +332,7 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
 
 //  string init_file_pass_in = "";
-  string init_file_pass_in = getInitFileName(dir, num);
+  string init_file_pass_in = getInitFileName(dir, num, is_rerun);
   int sample_idx = 0;
   string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
 
@@ -415,6 +421,7 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     int& traj_num,int& boundary_point_idx){
   int iter;
   int sample_idx = 0;
+  bool rerun = false;
   VectorXd new_gamma(dims);
   VectorXd boundary_point(dims);
   cout << "sample# (rerun #) | stride | incline | turning | init_file | "
@@ -428,8 +435,15 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
         string("gamma.csv"), new_gamma);
     //run trajectory optimization and judge the solution
     trajOptGivenModel(new_gamma[0], new_gamma[1],
-        new_gamma[2], dir, traj_num);
-
+        new_gamma[2], dir, traj_num, rerun);
+    //check if snopt find a solution successfully. If not, rerun the Traj Opt
+    int is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
+    if(is_success==0){
+      rerun = true;
+      trajOptGivenModel(new_gamma[0], new_gamma[1],
+                        new_gamma[2], dir, traj_num,rerun);
+      rerun = false;
+    }
     double sample_cost =
         (readCSV(dir + prefix + string("c.csv")))(0, 0);
 
@@ -473,7 +487,7 @@ int find_boundary(int argc, char* argv[]){
   int dimensions = 3;//dimension of the task space
   double stride_length_0 = 0;
   if(FLAGS_robot_option==0){
-    stride_length_0 = 0.25;
+    stride_length_0 = 0.3;
   }
   else if(FLAGS_robot_option==1){
       stride_length_0 = 0.2;
@@ -541,14 +555,14 @@ int find_boundary(int argc, char* argv[]){
           cout << "sample# (rerun #) | stride | incline | turning | init_file | "
                   "Status | Solve time | Cost (tau cost)\n";
           trajOptGivenModel(stride_length_0, ground_incline_0,
-                            turning_rate_0, dir, traj_opt_num);
+                            turning_rate_0, dir, traj_opt_num, false);
         }
         //search along the direction
         else{
-          //normalize the direction vector
           cout << "Start searching along direction: ["<<extend_direction[0]
             <<","<<extend_direction[1]<<","<<extend_direction[2]<<"]"<<endl;
-          extend_direction = extend_direction/extend_direction.norm();
+          //normalize the direction vector
+          //extend_direction = extend_direction/extend_direction.norm();
           step = delta.array()*extend_direction.array();
           boundary_for_one_direction(dir,dimensions,max_iter,
           initial_gamma,step,cost_threshold,traj_opt_num,boundary_sample_num);

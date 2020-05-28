@@ -28,36 +28,57 @@ KinematicConstraint<T>::KinematicConstraint(int num_constraints) :
 template <typename T>
 VectorX<T> KinematicConstraint<T>::CalcActiveConstraint(
     const Context<T>& context) const {
-  return CalcFullConstraint(context)(active_inds_);
+  // TODO: With Eigen 3.4, can slice by (active_inds_);
+  auto constraint_full = CalcFullConstraint(context);
+  VectorX<T> constraint(num_active_);
+  for (int i = 0; i < num_active_; i++) {
+    constraint(i) = constraint_full(active_inds_.at(i));
+  }
+  return constraint;
 }
 
 template <typename T>
 VectorX<T> KinematicConstraint<T>::CalcActiveConstraintDot(
     const Context<T>& context) const {
-  return CalcFullConstraintDot(context)(active_inds_);
+  // TODO: With Eigen 3.4, can slice by (active_inds_);
+  auto constraint_dot_full = CalcFullConstraintDot(context);
+  VectorX<T> constraint_dot(num_active_);
+  for (int i = 0; i < num_active_; i++) {
+    constraint_dot(i) = constraint_dot_full(active_inds_.at(i));
+  }
+  return constraint_dot;
 }
 
 template <typename T>
 MatrixX<T> KinematicConstraint<T>::CalcActiveJacobian(
       const Context<T>& context) const {
+  // TODO: With Eigen 3.4, can slice by (active_inds_, all);
   auto J_full = CalcFullJacobian(context);
 
-  // Build a vector 0:J.cols()
-  std::vector<int> all_cols(J_full.cols());
-  std::iota(std::begin(all_cols), std::end(all_cols), 0);
+  MatrixX<T> J_active(num_active_, J_full.cols());
+  for (int i = 0; i < num_active_; i++) {
+    J_active.row(i) = J_full.row(active_inds_.at(i));
+  }
 
   // Extract active rows only
-  return J_full(active_inds_, all_cols);
+  return J_active;
 }
 
 template <typename T>
 VectorX<T> KinematicConstraint<T>::CalcActiveJacobianDotTimesV(
       const Context<T>& context) const {
-  return CalcFullJacobianDotTimesV(context)(active_inds_);
+  // TODO: With Eigen 3.4, can slice by (active_inds_);
+  auto Jdot_v_full = CalcFullJacobianDotTimesV(context);
+  VectorX<T> Jdot_v(num_active_);
+  for (int i = 0; i < num_active_; i++) {
+    Jdot_v(i) = Jdot_v_full(active_inds_.at(i));
+  }
+  return Jdot_v;
 }
 
 template <typename T>
 void KinematicConstraint<T>::set_active_inds(std::vector<int> active_inds) {
+  num_active_ = active_inds_.size();
   active_inds_ = active_inds;
 }
 
@@ -126,7 +147,9 @@ VectorX<T> PlanarGroundContactConstraint<T>::CalcFullJacobianDotTimesV(
   return rotation_ * Jdot_times_V;
 }
 
-DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_SCALARS(
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
+    class ::dairlib::multibody::KinematicConstraint)
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::multibody::PlanarGroundContactConstraint)
 
 }  // namespace multibody

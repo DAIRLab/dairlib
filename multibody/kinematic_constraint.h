@@ -51,21 +51,21 @@ class KinematicConstraint {
 
   /// Evaluates the constraint, phi(q), including inactive rows
   virtual drake::VectorX<T> CalcFullConstraint(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const = 0;
 
   /// Evaluates the time-derivative of the constraint, d/dt phi(q)
   virtual drake::VectorX<T> CalcFullConstraintDot(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const = 0;
 
   /// Evaluates the constraint Jacobian w.r.t. velocity v (not qdot)
   /// TODO (posa): could add an option to compute w.r.t. q
   virtual drake::MatrixX<T> CalcFullJacobian(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const = 0;
 
   /// Evaluates Jdot * v, useful for computing constraint second derivative,
   ///  which would be d^2 phi/dt^2 = J * vdot + Jdot * v
   virtual drake::VectorX<T> CalcFullJacobianDotTimesV(
-      const drake::systems::Context<T>& context) const;
+      const drake::systems::Context<T>& context) const = 0;
 
   void set_active_inds(std::vector<int> active_inds);
 
@@ -74,6 +74,7 @@ class KinematicConstraint {
   }
 
  private:
+  int num_active_;
   int num_constraints_;
   std::vector<int> active_inds_;
 };
@@ -99,7 +100,7 @@ class PlanarGroundContactConstraint :  public KinematicConstraint<T> {
   PlanarGroundContactConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>* frame_A,
-      const Eigen::Vector3d normal = (Eigen::Vector3d() << 0, 0, 1).finished(),
+      const Eigen::Vector3d normal = Eigen::Vector3d({0, 0, 1}), //(Eigen::Vector3d() << 0, 0, 1).finished(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
       bool tangent_active = "false");
 

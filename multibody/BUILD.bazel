@@ -138,4 +138,17 @@ cc_test(
         "//examples/Cassie:cassie_utils",
         "@gtest//:main",
     ],
+    size = "small",
 )
+
+cc_test(
+    name = "kinematic_constraint_test",
+    srcs = [
+        "test/kinematic_constraint_test.cc",
+    ],
+    deps = [
+        "//common",
+        ":kinematic_constraint",
+        "@gtest//:main",
+    ],
+    size = "small",

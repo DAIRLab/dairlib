@@ -61,6 +61,7 @@ cc_library(
         "osc_utils.h",
     ],
     deps = [
+        "//multibody:utils",
         "@drake//:drake_shared_library",
     ],
 )

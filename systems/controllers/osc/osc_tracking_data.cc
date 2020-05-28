@@ -442,7 +442,6 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
     DRAKE_DEMAND(joint_vel_idx_wo_spr_.size() == 1);
   }
 }
-/*
 // AbstractTrackingData ////////////////////////////////////////////////////////
 AbstractTrackingData::AbstractTrackingData(
     string name, int n_r, MatrixXd K_p, MatrixXd K_d, MatrixXd W,
@@ -577,6 +576,6 @@ MatrixXd AbstractTrackingData::VToQdotMap(const Eigen::VectorXd& q) const {
   ret.block<4,3>(0,0) = WToQuatDotMap(q.head(4));
   ret.block(4, 3, n_rest, n_rest) = MatrixXd::Identity(n_rest, n_rest);
   return ret;
-}*/
+}
 
 }  // namespace dairlib::systems::controllers

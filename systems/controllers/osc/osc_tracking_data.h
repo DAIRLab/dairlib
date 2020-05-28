@@ -386,7 +386,6 @@ class JointSpaceTrackingData final : public OscTrackingData {
   std::vector<int> joint_vel_idx_wo_spr_;
 };
 
-/*
 // TODO: the implementation of VToQdotMap is for MBP.
 //  Continue to implement this after we fully port OSC to MBP. Will need to
 //  verify that the functions are implemented correctly.
@@ -442,7 +441,7 @@ class AbstractTrackingData final : public OscTrackingData {
 
   // Step size for forward differencing
   double dx_ = 1e-8;
-};*/
+};
 
 }  // namespace controllers
 }  // namespace systems

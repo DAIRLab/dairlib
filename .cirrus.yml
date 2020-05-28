@@ -7,7 +7,9 @@ build_task:
   test_script:
     - bazel build
       --define=WITH_SNOPT=OFF
-      --local_resources=24000,8,1.0 --jobs=8 
+      --local_ram_resources=24000
+      --local_cpu_resources=8
+      --jobs=8 
       //...
     - bazel test
       --define=WITH_SNOPT=OFF
@@ -27,11 +29,15 @@ build_with_ros_task:
     - cd ../../../
     - bazel build
       --define=WITH_SNOPT=OFF
-      --local_resources=24000,8,1.0 --jobs=8 
+      --local_ram_resources=24000
+      --local_cpu_resources=8
+      --jobs=8 
       //...
     - bazel test
       --define=WITH_SNOPT=OFF
-      --local_resources=24000,8,1.0 --jobs=8 
+      --local_ram_resources=24000
+      --local_cpu_resources=8
+      --jobs=8 
       //...
 drake_master_build_task:
   timeout_in: 120m
@@ -50,9 +56,13 @@ drake_master_build_task:
     - cd ../../../
     - bazel build
       --define=WITH_SNOPT=OFF
-      --local_resources=24000,8,1.0 --jobs=8 
+      --local_ram_resources=24000
+      --local_cpu_resources=8
+      --jobs=8 
       //...
     - bazel test
       --define=WITH_SNOPT=OFF
-      --local_resources=24000,8,1.0 --jobs=8
+      --local_ram_resources=24000
+      --local_cpu_resources=8
+      --jobs=8 
       //...

@@ -9,7 +9,7 @@
 #include "examples/Cassie/simulator_drift.h"
 #include "systems/controllers/cp_traj_gen.h"
 #include "systems/controllers/lipm_traj_gen.h"
-#include "systems/controllers/osc/operational_space_control.h"
+#include "attic/systems/controllers/operational_space_control.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"

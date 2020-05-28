@@ -1,49 +1,63 @@
 #include "systems/controllers/osc/osc_utils.h"
+#include "multibody/multibody_utils.h"
 
+#include <string>
+
+using drake::multibody::MultibodyPlant;
 using Eigen::MatrixXd;
+using std::string;
 
 namespace dairlib {
 namespace systems {
 namespace controllers {
 
 Eigen::MatrixXd PositionMapFromSpringToNoSpring(
-    const RigidBodyTree<double>& tree_w_spr,
-    const RigidBodyTree<double>& tree_wo_spr) {
-  int n_q_wo_spr = tree_wo_spr.get_num_positions();
-  int n_q_w_spr = tree_w_spr.get_num_positions();
-  MatrixXd ret = MatrixXd::Zero(n_q_wo_spr, n_q_w_spr);
-  for (int i = 0; i < n_q_wo_spr; i++) {
+    const MultibodyPlant<double>& plant_w_spr,
+    const MultibodyPlant<double>& plant_wo_spr) {
+  const std::map<string, int>& pos_map_w_spr =
+      multibody::makeNameToPositionsMap(plant_w_spr);
+  const std::map<string, int>& pos_map_wo_spr =
+      multibody::makeNameToPositionsMap(plant_wo_spr);
+
+  // Initialize the mapping from spring to no spring
+  MatrixXd ret =
+      MatrixXd::Zero(plant_wo_spr.num_positions(), plant_w_spr.num_positions());
+  for (auto pos_pair_wo_spr : pos_map_wo_spr) {
     bool successfully_added = false;
-    for (int j = 0; j < n_q_w_spr; j++) {
-      std::string name_wo_spr = tree_wo_spr.get_position_name(i);
-      std::string name_w_spr = tree_w_spr.get_position_name(j);
-      if (name_wo_spr.compare(0, name_wo_spr.size(), name_w_spr) == 0) {
-        ret(i, j) = 1;
+    for (auto pos_pair_w_spr : pos_map_w_spr) {
+      if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
+        ret(pos_pair_wo_spr.second, pos_pair_w_spr.second) = 1;
         successfully_added = true;
       }
     }
     DRAKE_DEMAND(successfully_added);
   }
+
   return ret;
 }
+
 Eigen::MatrixXd VelocityMapFromSpringToNoSpring(
-    const RigidBodyTree<double>& tree_w_spr,
-    const RigidBodyTree<double>& tree_wo_spr) {
-  int n_v_wo_spr = tree_wo_spr.get_num_velocities();
-  int n_v_w_spr = tree_w_spr.get_num_velocities();
-  MatrixXd ret = MatrixXd::Zero(n_v_wo_spr, n_v_w_spr);
-  for (int i = 0; i < n_v_wo_spr; i++) {
+    const MultibodyPlant<double>& plant_w_spr,
+    const MultibodyPlant<double>& plant_wo_spr) {
+  const std::map<string, int>& vel_map_w_spr =
+      multibody::makeNameToVelocitiesMap(plant_w_spr);
+  const std::map<string, int>& vel_map_wo_spr =
+      multibody::makeNameToVelocitiesMap(plant_wo_spr);
+
+  // Initialize the mapping from spring to no spring
+  MatrixXd ret = MatrixXd::Zero(plant_wo_spr.num_velocities(),
+                                plant_w_spr.num_velocities());
+  for (auto vel_pair_wo_spr : vel_map_wo_spr) {
     bool successfully_added = false;
-    for (int j = 0; j < n_v_w_spr; j++) {
-      std::string name_wo_spr = tree_wo_spr.get_velocity_name(i);
-      std::string name_w_spr = tree_w_spr.get_velocity_name(j);
-      if (name_wo_spr.compare(0, name_wo_spr.size(), name_w_spr) == 0) {
-        ret(i, j) = 1;
+    for (auto vel_pair_w_spr : vel_map_w_spr) {
+      if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
+        ret(vel_pair_wo_spr.second, vel_pair_w_spr.second) = 1;
         successfully_added = true;
       }
     }
     DRAKE_DEMAND(successfully_added);
   }
+
   return ret;
 }
 

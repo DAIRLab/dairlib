@@ -43,7 +43,6 @@ using Eigen::VectorXd;
 using dairlib::goldilocks_models::readCSV;
 using dairlib::goldilocks_models::writeCSV;
 using dairlib::systems::SubvectorPassThrough;
-using dairlib::systems::trajectory_optimization::DirconAbstractConstraint;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
 using dairlib::systems::trajectory_optimization::PointPositionConstraint;
@@ -1103,7 +1102,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // *******Add COM visualization**********
   bool plot_com = true;
   bool com_on_ground = true;
-  auto ball_plant = std::make_unique<MultibodyPlant<double>>();
+  auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
   if (plot_com) {
     double radius = .02;
     UnitInertia<double> G_Bcm = UnitInertia<double>::SolidSphere(radius);

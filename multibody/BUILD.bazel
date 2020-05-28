@@ -5,21 +5,6 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "multibody_solvers",
-    srcs = [
-        "multibody_solvers.cc",
-    ],
-    hdrs = [
-        "multibody_solvers.h",
-    ],
-    deps = [
-        ":contact_toolkit",
-        "//solvers:nonlinear_constraint",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "utils",
     srcs = [
         "com_pose_system.cc",
@@ -125,19 +110,4 @@ cc_test(
         "//examples/Cassie:cassie_utils",
         "@gtest//:main",
     ],
-    size = "small",
 )
-
-cc_test(
-    name = "kinematic_constraint_test",
-    srcs = [
-        "test/kinematic_constraint_test.cc",
-    ],
-    deps = [
-        "//common",
-        "//examples/PlanarWalker:urdf",
-        ":kinematic_constraint",
-        "@drake//common/test_utilities",
-        "@gtest//:main",
-    ],
-    size = "small",

@@ -1,6 +1,7 @@
 #include "solvers/nonlinear_constraint.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
+#include "drake/common/default_scalars.h"
 
 namespace dairlib {
 namespace solvers {

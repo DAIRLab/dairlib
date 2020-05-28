@@ -82,7 +82,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                 + to_string(sample_num) + string("_turning_rate.csv"));
         VectorXd past_gamma(gamma_dimension);
         past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0,0);
-        // use the third power of the norm of difference between past gamma and current gamma to judge distance
+        // use the 3-norm of difference between past gamma and current gamma to judge distance
         VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
         VectorXd dif_gamma2 = dif_gamma.array().pow(2);
         double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);
@@ -129,7 +129,7 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                   + to_string(sample_num) + string("_turning_rate.csv"));
           VectorXd past_gamma(gamma_dimension);
           past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0, 0);
-          //calculate the weight for each sample using the third power of the difference between gamma
+          //calculate the weight for each sample using the 3-norm of the difference between gamma
           VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
           VectorXd dif_gamma2 = dif_gamma.array().pow(2);
           double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);

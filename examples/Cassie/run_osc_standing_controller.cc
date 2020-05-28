@@ -3,7 +3,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "systems/controllers/osc/operational_space_control.h"
+#include "attic/systems/controllers/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "examples/Cassie/osc/standing_com_traj.h"

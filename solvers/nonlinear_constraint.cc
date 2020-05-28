@@ -90,5 +90,5 @@ void NonlinearConstraint<double>::DoEval(
 }  // namespace solvers
 }  // namespace dairlib
 
-DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_SCALARS(
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::solvers::NonlinearConstraint)

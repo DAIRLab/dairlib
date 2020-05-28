@@ -13,7 +13,8 @@ build_task:
       //...
     - bazel test
       --define=WITH_SNOPT=OFF
-      --local_resources=24000,8,1.0 --jobs=8 
+      --local_ram_resources=24000
+      --local_cpu_resources=8
       //...
 build_with_ros_task:
   timeout_in: 120m

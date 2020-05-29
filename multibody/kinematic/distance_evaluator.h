@@ -41,6 +41,8 @@ class DistanceEvaluator :  public KinematicEvaluator<T> {
   drake::VectorX<T> EvalFullJacobianDotTimesV(
       const drake::systems::Context<T>& context) const;
 
+  using KinematicEvaluator<T>::plant;
+
  private:
   const Eigen::Vector3d pt_A_;
   const drake::multibody::Frame<T>& frame_A_;

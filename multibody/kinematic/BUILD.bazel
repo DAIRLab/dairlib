@@ -8,12 +8,12 @@ cc_library(
     name = "kinematic",
     srcs = [
         "kinematic_evaluator.cc",
-        "planar_ground_evaluator.cc",
+        "world_point_evaluator.cc",
         "distance_evaluator.cc",
     ],
     hdrs = [
         "kinematic_evaluator.h",
-        "planar_ground_evaluator.h",
+        "world_point_evaluator.h",
         "distance_evaluator.h",
     ],
     deps = [

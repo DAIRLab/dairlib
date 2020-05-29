@@ -1,4 +1,4 @@
-#include "multibody/kinematic/planar_ground_evaluator.h"
+#include "multibody/kinematic/world_point_evaluator.h"
 
 #include "drake/math/orthonormal_basis.h"
 
@@ -8,12 +8,28 @@ using drake::systems::Context;
 using drake::MatrixX;
 using drake::VectorX;
 using Eigen::Vector3d;
+using Eigen::Matrix3d;
 
 namespace dairlib {
 namespace multibody {
 
 template <typename T>
-PlanarGroundEvaluator<T>::PlanarGroundEvaluator(
+WorldPointEvaluator<T>::WorldPointEvaluator(
+    const MultibodyPlant<T>& plant, Vector3d pt_A,
+    const Frame<T>& frame_A,
+    const Matrix3d rotation,
+    const Vector3d offset,
+    std::vector<int> active_directions_)
+    : KinematicEvaluator<T>(plant, 3),
+      pt_A_(pt_A),
+      frame_A_(frame_A),
+      offset_(offset),
+      rotation_(rotation) {
+    this->set_active_inds(active_directions_);
+}
+
+template <typename T>
+WorldPointEvaluator<T>::WorldPointEvaluator(
     const MultibodyPlant<T>& plant, const Vector3d pt_A,
     const Frame<T>& frame_A, const Vector3d normal, const Vector3d offset,
     bool tangent_active)
@@ -28,7 +44,7 @@ PlanarGroundEvaluator<T>::PlanarGroundEvaluator(
 }
 
 template <typename T>
-VectorX<T> PlanarGroundEvaluator<T>::EvalFull(
+VectorX<T> WorldPointEvaluator<T>::EvalFull(
     const Context<T>& context) const {
   VectorX<T> pt_world(3);
   const drake::multibody::Frame<T>& world = plant().world_frame();
@@ -40,7 +56,7 @@ VectorX<T> PlanarGroundEvaluator<T>::EvalFull(
 }
 
 template <typename T>
-MatrixX<T> PlanarGroundEvaluator<T>::EvalFullJacobian(
+MatrixX<T> WorldPointEvaluator<T>::EvalFullJacobian(
     const Context<T>& context) const {
   MatrixX<T> J(3, plant().num_velocities());
 
@@ -55,7 +71,7 @@ MatrixX<T> PlanarGroundEvaluator<T>::EvalFullJacobian(
 }
 
 template <typename T>
-VectorX<T> PlanarGroundEvaluator<T>::EvalFullJacobianDotTimesV(
+VectorX<T> WorldPointEvaluator<T>::EvalFullJacobianDotTimesV(
     const Context<T>& context) const {
   const drake::multibody::Frame<T>& world = plant().world_frame();
 
@@ -67,7 +83,7 @@ VectorX<T> PlanarGroundEvaluator<T>::EvalFullJacobianDotTimesV(
 }
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-    class ::dairlib::multibody::PlanarGroundEvaluator)
+    class ::dairlib::multibody::WorldPointEvaluator)
 
 }  // namespace multibody
 }  // namespace dairlib

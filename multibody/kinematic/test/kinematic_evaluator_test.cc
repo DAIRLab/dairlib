@@ -9,7 +9,7 @@
 #include "common/find_resource.h"
 #include "multibody/kinematic/distance_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator.h"
-#include "multibody/kinematic/planar_ground_evaluator.h"
+#include "multibody/kinematic/world_point_evaluator.h"
 
 namespace dairlib {
 namespace multibody {
@@ -46,14 +46,14 @@ class KinematicEvaluatorTest : public ::testing::Test {
   std::unique_ptr<MultibodyPlant<double>> plant_;
 };
 
-TEST_F(KinematicEvaluatorTest, PlanarGroundEvaluatorTest) {
+TEST_F(KinematicEvaluatorTest, WorldPointEvaluatorTest) {
   const double tolerance = 1e-10;
 
   Vector3d pt_A({0, 0, -.5});
   const auto& frame = plant_->GetFrameByName("right_lower_leg");
 
   // Default evaluator: vertical normal, zero offset
-  auto evaluator = PlanarGroundEvaluator<double>(*plant_, pt_A, frame,
+  auto evaluator = WorldPointEvaluator<double>(*plant_, pt_A, frame,
       Vector3d({0, 0, 1}), Vector3d::Zero(), false);
 
   auto context = plant_->CreateDefaultContext();
@@ -108,7 +108,7 @@ TEST_F(KinematicEvaluatorTest, PlanarGroundEvaluatorTest) {
 
   // Non-default evaluator: non-vertical normal, non-zero offset
   // Performing minmal tests
-  auto new_evaluator = PlanarGroundEvaluator<double>(*plant_, pt_A,
+  auto new_evaluator = WorldPointEvaluator<double>(*plant_, pt_A,
       frame, Vector3d({1, 0, 0}), Vector3d({1, 2, 3}), true);
 
   auto new_phi = new_evaluator.EvalFull(*context);

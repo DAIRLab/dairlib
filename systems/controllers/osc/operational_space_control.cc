@@ -524,7 +524,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     if (tracking_data->IsActive() &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
         time_since_last_state_switch <= t_e_vec_.at(i)) {
-      VectorXd ddy_t = tracking_data->GetDdyCommand();
+      VectorXd ddy_t = tracking_data->GetYddotCommand();
       MatrixXd W = tracking_data->GetWeight();
       MatrixXd J_t = tracking_data->GetJ();
       VectorXd JdotV_t = tracking_data->GetJdotTimesV();
@@ -566,7 +566,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   for (auto tracking_data : *tracking_data_vec_) {
     if (tracking_data->IsActive())
-      tracking_data->SaveDdyCommandSol(dv_sol);
+      tracking_data->SaveYddotCommandSol(dv_sol);
   }
 
   // Print QP result
@@ -591,7 +591,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     // 4. Tracking cost
     for (auto tracking_data : *tracking_data_vec_) {
       if (tracking_data->IsActive()) {
-        VectorXd ddy_t = tracking_data->GetDdyCommand();
+        VectorXd ddy_t = tracking_data->GetYddotCommand();
         MatrixXd W = tracking_data->GetWeight();
         MatrixXd J_t = tracking_data->GetJ();
         VectorXd JdotV_t = tracking_data->GetJdotTimesV();
@@ -640,18 +640,18 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       osc_output.is_active = tracking_data->IsActive();
       osc_output.y = CopyVectorXdToStdVector(tracking_data->GetY());
       osc_output.y_des = CopyVectorXdToStdVector(tracking_data->GetYDes());
-      osc_output.error_y =
-          CopyVectorXdToStdVector(tracking_data->GetErrorY());
-      osc_output.ydot = CopyVectorXdToStdVector(tracking_data->GetDy());
-      osc_output.ydot_des = CopyVectorXdToStdVector(tracking_data->GetDyDes());
+      osc_output.error_y = CopyVectorXdToStdVector(tracking_data->GetErrorY());
+      osc_output.ydot = CopyVectorXdToStdVector(tracking_data->GetYdot());
+      osc_output.ydot_des =
+          CopyVectorXdToStdVector(tracking_data->GetYdotDes());
       osc_output.error_ydot =
-          CopyVectorXdToStdVector(tracking_data->GetErrorDy());
+          CopyVectorXdToStdVector(tracking_data->GetErrorYdot());
       osc_output.yddot_des =
-          CopyVectorXdToStdVector(tracking_data->GetDdyDesConverted());
+          CopyVectorXdToStdVector(tracking_data->GetYddotDesConverted());
       osc_output.yddot_command =
-          CopyVectorXdToStdVector(tracking_data->GetDdyCommand());
+          CopyVectorXdToStdVector(tracking_data->GetYddotCommand());
       osc_output.yddot_command_sol =
-          CopyVectorXdToStdVector(tracking_data->GetDdyCommandSol());
+          CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
       output->tracking_data.push_back(osc_output);
     }
   }

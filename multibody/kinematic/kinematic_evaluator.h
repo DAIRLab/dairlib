@@ -20,6 +20,9 @@ namespace multibody {
 /// via constraint forces. The active/inactive distinction is also useful for
 /// avoiding redundant constraints, but still permitting their constraint
 /// forces (via J'*lambda)
+///
+/// For efficiency, maintains a boolean all_active_ to determine whether all
+/// constraints are active. If true, can skip the slicing stage.
 template <typename T>
 class KinematicEvaluator {
  public:
@@ -82,6 +85,7 @@ class KinematicEvaluator {
   int num_active_;
   int length_;
   std::vector<int> active_inds_;
+  bool all_active_;
 };
 
 }  // namespace multibody

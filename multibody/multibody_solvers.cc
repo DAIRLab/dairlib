@@ -6,10 +6,69 @@ namespace multibody {
 
 using Eigen::VectorXd;
 using drake::multibody::MultibodyPlant;
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
+using drake::solvers::VectorXDecisionVariable;
 using drake::systems::Context;
 using drake::MatrixX;
 using drake::VectorX;
 using solvers::NonlinearConstraint;
+
+template <typename T>
+MultibodyProgram<T>::MultibodyProgram(const MultibodyPlant<T>& plant,
+    const std::vector<KinematicEvaluator<T>>& evaluators)
+    : drake::solvers::MathematicalProgram(),
+    plant_(plant),
+    evaluators_(evaluators),
+    context_(std::shared_ptr<Context<T>>(
+        plant_.CreateDefaultContext().release())) {}
+
+template <typename T>
+VectorXDecisionVariable MultibodyProgram<T>::AddPositionVariables() {
+  DRAKE_DEMAND(q_.size() == 0);
+  q_ = NewContinuousVariables(plant_.num_positions(), "q");
+  return q_;
+}
+
+template <typename T>
+VectorXDecisionVariable MultibodyProgram<T>::AddVelocityVariables() {
+  DRAKE_DEMAND(v_.size() == 0);
+  v_ = NewContinuousVariables(plant_.num_velocities(), "v");
+  return v_;
+}
+
+template <typename T>
+VectorXDecisionVariable MultibodyProgram<T>::AddInputVariables() {
+  DRAKE_DEMAND(u_.size() == 0);
+  u_ = NewContinuousVariables(plant_.num_actuators(), "u");
+  return u_;
+}
+
+template <typename T>
+VectorXDecisionVariable MultibodyProgram<T>::AddConstraintForceVariables() {
+  DRAKE_DEMAND(lambda_.size() == 0);
+  lambda_ = NewContinuousVariables(KinematicEvaluator<T>::CountFull(evaluators_),
+      "lambda");
+  return lambda_;
+}
+
+template <typename T>
+Binding<Constraint> MultibodyProgram<T>::AddKinematicConstraint(
+    VectorXDecisionVariable q) {
+  auto constraint = std::make_shared<KinematicPositionConstraint<T>>(
+        plant_, evaluators_, context_);
+  return AddConstraint(constraint, q);
+}
+
+template <typename T>
+Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraint(
+    VectorXDecisionVariable q, VectorXDecisionVariable v,
+    VectorXDecisionVariable u, VectorXDecisionVariable lambda) {
+  DRAKE_DEMAND(lambda.size() == KinematicEvaluator<T>::CountFull(evaluators_));
+  auto constraint = std::make_shared<FixedPointConstraint<T>>(
+        plant_, evaluators_, context_);
+  return AddConstraint(constraint, {q, v, u, lambda});
+}
 
 template <typename T>
 KinematicPositionConstraint<T>::KinematicPositionConstraint(

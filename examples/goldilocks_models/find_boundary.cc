@@ -79,8 +79,6 @@ DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 //outer loop
 DEFINE_int32(max_outer_iter, 50 , "max number of iterations for searching on each "
                                 "direction of one dimension");
-DEFINE_double(max_cost_threshold, 15, "max cost used for judging "
-                                       "the quality of solutions");
 
 //others
 DEFINE_string(
@@ -529,7 +527,7 @@ int find_boundary(int argc, char* argv[]){
    * Iteration setting
    */
   int max_iter = FLAGS_max_outer_iter;
-  double cost_threshold = FLAGS_max_cost_threshold;
+  double cost_threshold = 10;
   if(FLAGS_robot_option=0)
   {
     cost_threshold = 15;

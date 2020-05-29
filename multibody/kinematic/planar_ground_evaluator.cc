@@ -31,9 +31,9 @@ template <typename T>
 VectorX<T> PlanarGroundEvaluator<T>::EvalFull(
     const Context<T>& context) const {
   VectorX<T> pt_world(3);
-  const drake::multibody::Frame<T>& world = this->plant().world_frame();
+  const drake::multibody::Frame<T>& world = plant().world_frame();
 
-  this->plant().CalcPointsPositions(context, frame_A_,
+  plant().CalcPointsPositions(context, frame_A_,
       pt_A_.template cast<T>(), world, &pt_world);   
 
   return rotation_ * (pt_world - offset_);
@@ -42,12 +42,12 @@ VectorX<T> PlanarGroundEvaluator<T>::EvalFull(
 template <typename T>
 MatrixX<T> PlanarGroundEvaluator<T>::EvalFullJacobian(
     const Context<T>& context) const {
-  MatrixX<T> J(3, this->plant().num_velocities());
+  MatrixX<T> J(3, plant().num_velocities());
 
-  const drake::multibody::Frame<T>& world = this->plant().world_frame();
+  const drake::multibody::Frame<T>& world = plant().world_frame();
 
   // .template cast<T> converts pt_A_, as a double, into type T
-  this->plant().CalcJacobianTranslationalVelocity(
+  plant().CalcJacobianTranslationalVelocity(
     context, drake::multibody::JacobianWrtVariable::kV,
     frame_A_, pt_A_.template cast<T>(), world, world, &J);
 
@@ -57,9 +57,9 @@ MatrixX<T> PlanarGroundEvaluator<T>::EvalFullJacobian(
 template <typename T>
 VectorX<T> PlanarGroundEvaluator<T>::EvalFullJacobianDotTimesV(
     const Context<T>& context) const {
-  const drake::multibody::Frame<T>& world = this->plant().world_frame();
+  const drake::multibody::Frame<T>& world = plant().world_frame();
 
-  MatrixX<T> Jdot_times_V = this->plant().CalcBiasSpatialAcceleration(
+  MatrixX<T> Jdot_times_V = plant().CalcBiasSpatialAcceleration(
       context, drake::multibody::JacobianWrtVariable::kV, frame_A_,
       pt_A_.template cast<T>(), world, world).translational();
 

@@ -30,6 +30,7 @@ cc_library(
         ":cassie_urdf",
         "//common",
         "//multibody:utils",
+        "//multibody/kinematic",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "//systems/sensors:sim_cassie_sensor_aggregator",
@@ -98,6 +99,19 @@ cc_test(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gtest//:main",
+    ],
+)
+
+cc_binary(
+    name = "find_fixed_point",
+    srcs = ["find_fixed_point.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//multibody:multipose_visualizer",
+        "//multibody:multibody_solvers",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 

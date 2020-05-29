@@ -115,20 +115,20 @@ void KinematicEvaluator<T>::set_active_inds(std::vector<int> active_inds) {
 
 template <typename T>
 int KinematicEvaluator<T>::CountActive(
-    const std::vector<KinematicEvaluator<T>>& evaluators) {
+    const std::vector<KinematicEvaluator<T>*>& evaluators) {
   int count = 0;
   for (const auto& e : evaluators) {
-    count += e.length();
+    count += e->num_active();
   }
   return count;
 }
 
 template <typename T>
 int KinematicEvaluator<T>::CountFull(
-  const std::vector<KinematicEvaluator<T>>& evaluators) {
+  const std::vector<KinematicEvaluator<T>*>& evaluators) {
   int count = 0;
   for (const auto& e : evaluators) {
-    count += e.num_active();
+    count += e->length();
   }
   return count;
 }

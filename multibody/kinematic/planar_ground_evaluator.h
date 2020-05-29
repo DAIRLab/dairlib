@@ -11,9 +11,6 @@ namespace multibody {
 template <typename T>
 class PlanarGroundEvaluator :  public KinematicEvaluator<T> {
  public:
-  // Disabling copy construction and assignment
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PlanarGroundEvaluator)
-
   /// Constructor for PlanarGroundEvaluator
   /// @param plant
   /// @param pt_A the contact point on the body
@@ -29,7 +26,7 @@ class PlanarGroundEvaluator :  public KinematicEvaluator<T> {
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
       const Eigen::Vector3d normal = Eigen::Vector3d({0, 0, 1}), //(Eigen::Vector3d() << 0, 0, 1).finished(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
-      bool tangent_active = "false");
+      bool tangent_active = false);
 
   drake::VectorX<T> EvalFull(
       const drake::systems::Context<T>& context) const;

@@ -119,9 +119,9 @@ int DoMain(int argc, char* argv[]) {
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       tree, tree, true, false);
   // Cost
-  // int n_v = tree.get_num_velocities();
-  // MatrixXd Q_accel = 0.00002 * MatrixXd::Identity(n_v, n_v);
-  // osc->SetAccelerationCostForAllJoints(Q_accel);
+  int n_v = tree.get_num_velocities();
+  MatrixXd Q_accel = 0.0002 * MatrixXd::Identity(n_v, n_v);
+  osc->SetAccelerationCostForAllJoints(Q_accel);
 
   // double w_toe = 0.1;
   // osc->AddAccelerationCost("left_ankledot", w_toe);
@@ -202,13 +202,13 @@ int DoMain(int argc, char* argv[]) {
   // osc->AddConstTrackingData(&swing_toe_traj, -0.58234* VectorXd::Ones(1));
 
   // Torso tracking
-  MatrixXd W_torso = 100 * MatrixXd::Identity(1, 1);
+  MatrixXd W_torso = 5 * MatrixXd::Identity(1, 1);
   MatrixXd K_p_torso = 100 * MatrixXd::Identity(1, 1);
   MatrixXd K_d_torso = 10 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData torso_traj("torso_traj", K_p_torso, K_d_torso, W_torso,
                                     &tree, &tree);
   torso_traj.AddJointToTrack("planar_roty", "planar_rotydot");
-  osc->AddConstTrackingData(&torso_traj, 0.5* VectorXd::Ones(1));
+  osc->AddConstTrackingData(&torso_traj, 0.1* VectorXd::Ones(1));
 
   // Build OSC problem
   osc->Build();

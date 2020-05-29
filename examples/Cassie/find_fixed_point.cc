@@ -1,6 +1,7 @@
 #include <gflags/gflags.h>
 
 #include "examples/Cassie/cassie_utils.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_solvers.h"
 #include "multibody/multibody_utils.h"
@@ -30,34 +31,35 @@ int do_main(int argc, char* argv[]) {
                                                    Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
-  std::vector<multibody::KinematicEvaluator<double>*> evaluators;
+
+  multibody::KinematicEvaluatorSet<double> evaluators;
 
   // Add loop closures
   auto left_loop = LeftLoopClosureEvaluator(plant);
   auto right_loop = RightLoopClosureEvaluator(plant);
-  evaluators.push_back(&left_loop);
-  evaluators.push_back(&right_loop);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
 
   // Add contact points
   auto left_toe = LeftToe(plant);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(plant,
       left_toe.first, left_toe.second, Eigen::Vector3d(0,0,1));
-  evaluators.push_back(&left_toe_evaluator);
+  evaluators.add_evaluator(&left_toe_evaluator);
 
   auto right_toe = RightToe(plant);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(plant,
       right_toe.first, right_toe.second, Eigen::Vector3d(0,0,1));
-  evaluators.push_back(&right_toe_evaluator);
+  evaluators.add_evaluator(&right_toe_evaluator);
 
   auto left_heel = LeftHeel(plant);
   auto left_heel_evaluator = multibody::WorldPointEvaluator(plant,
       left_heel.first, left_heel.second, Eigen::Vector3d(0,0,1));
-  evaluators.push_back(&left_heel_evaluator);
+  evaluators.add_evaluator(&left_heel_evaluator);
 
   auto right_heel = RightHeel(plant);
   auto right_heel_evaluator = multibody::WorldPointEvaluator(plant,
       right_heel.first, right_heel.second, Eigen::Vector3d(0,0,1));
-  evaluators.push_back(&right_heel_evaluator);
+  evaluators.add_evaluator(&right_heel_evaluator);
 
   auto program = multibody::MultibodyProgram(plant, evaluators);
 

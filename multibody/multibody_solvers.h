@@ -1,6 +1,6 @@
 #pragma once
 
-#include "multibody/kinematic/kinematic_evaluator.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "solvers/nonlinear_constraint.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/solvers/mathematical_program.h"
@@ -13,7 +13,7 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
  public:
   MultibodyProgram(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const std::vector<KinematicEvaluator<T>*>& evaluators);
+      const KinematicEvaluatorSet<T>& evaluators);
 
   /// Adds and returns position decision variables. Can only be called once
   drake::solvers::VectorXDecisionVariable AddPositionVariables();
@@ -46,7 +46,7 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
-  const std::vector<KinematicEvaluator<T>*>& evaluators_;
+  const KinematicEvaluatorSet<T>& evaluators_;
   std::shared_ptr<drake::systems::Context<T>> context_;
 
   drake::solvers::VectorXDecisionVariable q_;
@@ -61,14 +61,14 @@ class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
   /// cached kinematic/dynamic computation within the ccontext
   KinematicPositionConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const std::vector<KinematicEvaluator<T>*>& evaluators,
+      const KinematicEvaluatorSet<T>& evaluators,
       std::shared_ptr<drake::systems::Context<T>> context,
       const std::string& description = "");
 
   /// This constructor will build its own shared_ptr<Context>
   KinematicPositionConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const std::vector<KinematicEvaluator<T>*>& evaluators,
+      const KinematicEvaluatorSet<T>& evaluators,
       const std::string& description = "kinematic position");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -76,7 +76,7 @@ class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
-  const std::vector<KinematicEvaluator<T>*>& evaluators_;
+  const KinematicEvaluatorSet<T>& evaluators_;
   std::shared_ptr<drake::systems::Context<T>> context_;
 };
 
@@ -87,14 +87,14 @@ class FixedPointConstraint : public solvers::NonlinearConstraint<T> {
   /// cached kinematic/dynamic computation within the ccontext
   FixedPointConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const std::vector<KinematicEvaluator<T>*>& evaluators,
+      const KinematicEvaluatorSet<T>& evaluators,
       std::shared_ptr<drake::systems::Context<T>> context,
       const std::string& description = "");
 
   /// This constructor will build its own shared_ptr<Context>
   FixedPointConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const std::vector<KinematicEvaluator<T>*>& evaluators,
+      const KinematicEvaluatorSet<T>& evaluators,
       const std::string& description = "fixed point");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -102,7 +102,7 @@ class FixedPointConstraint : public solvers::NonlinearConstraint<T> {
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
-  const std::vector<KinematicEvaluator<T>*>& evaluators_;
+  const KinematicEvaluatorSet<T>& evaluators_;
   std::shared_ptr<drake::systems::Context<T>> context_;
 };
 

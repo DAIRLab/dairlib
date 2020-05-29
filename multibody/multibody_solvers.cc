@@ -16,7 +16,7 @@ using solvers::NonlinearConstraint;
 
 template <typename T>
 MultibodyProgram<T>::MultibodyProgram(const MultibodyPlant<T>& plant,
-    const std::vector<KinematicEvaluator<T>*>& evaluators)
+    const KinematicEvaluatorSet<T>& evaluators)
     : drake::solvers::MathematicalProgram(),
     plant_(plant),
     evaluators_(evaluators),
@@ -40,8 +40,7 @@ VectorXDecisionVariable MultibodyProgram<T>::AddInputVariables() {
 template <typename T>
 VectorXDecisionVariable MultibodyProgram<T>::AddConstraintForceVariables() {
   DRAKE_DEMAND(lambda_.size() == 0);
-  lambda_ = NewContinuousVariables(KinematicEvaluator<T>::CountFull(evaluators_),
-      "lambda");
+  lambda_ = NewContinuousVariables(evaluators_.count_full(), "lambda");
   return lambda_;
 }
 
@@ -57,7 +56,7 @@ template <typename T>
 Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraint(
     VectorXDecisionVariable q, VectorXDecisionVariable u,
     VectorXDecisionVariable lambda) {
-  DRAKE_DEMAND(lambda.size() == KinematicEvaluator<T>::CountFull(evaluators_));
+  DRAKE_DEMAND(lambda.size() == evaluators_.count_full());
   auto constraint = std::make_shared<FixedPointConstraint<T>>(
         plant_, evaluators_, context_);
   return AddConstraint(constraint, {q, u, lambda});
@@ -81,12 +80,11 @@ void MultibodyProgram<T>::AddJointLimitConstraints(VectorXDecisionVariable q) {
 template <typename T>
 KinematicPositionConstraint<T>::KinematicPositionConstraint(
     const MultibodyPlant<T>& plant,
-    const std::vector<KinematicEvaluator<T>*>& evaluators,
+    const KinematicEvaluatorSet<T>& evaluators,
     std::shared_ptr<Context<T>> context, const std::string& description)
-    : NonlinearConstraint<T>(KinematicEvaluator<T>::CountActive(evaluators),
-          plant.num_positions(),
-          VectorXd::Zero(KinematicEvaluator<T>::CountActive(evaluators)),
-          VectorXd::Zero(KinematicEvaluator<T>::CountActive(evaluators)),
+    : NonlinearConstraint<T>(evaluators.count_active(), plant.num_positions(),
+          VectorXd::Zero(evaluators.count_active()),
+          VectorXd::Zero(evaluators.count_active()),
           description),
       plant_(plant), 
       evaluators_(evaluators),
@@ -95,7 +93,7 @@ KinematicPositionConstraint<T>::KinematicPositionConstraint(
 template <typename T>
 KinematicPositionConstraint<T>::KinematicPositionConstraint(
     const MultibodyPlant<T>& plant,
-    const std::vector<KinematicEvaluator<T>*>& evaluators,
+    const KinematicEvaluatorSet<T>& evaluators,
     const std::string& description) 
     : KinematicPositionConstraint<T>(plant, evaluators,
       std::shared_ptr<Context<T>>(plant_.CreateDefaultContext().release()),
@@ -109,23 +107,17 @@ void KinematicPositionConstraint<T>::EvaluateConstraint(
 
   plant_.SetPositions(context_.get(), q);
 
-  
-  y->resize(this->num_constraints());
-  int ind = 0;
-  for (const auto& e : evaluators_) {
-    y->segment(ind, e->num_active()) = e->EvalActive(*context_);
-    ind += e->num_active();
-  }
+  *y = evaluators_.EvalActive(*context_);
 }
 
 template <typename T>
 FixedPointConstraint<T>::FixedPointConstraint(
     const MultibodyPlant<T>& plant,
-    const std::vector<KinematicEvaluator<T>*>& evaluators,
+    const KinematicEvaluatorSet<T>& evaluators,
     std::shared_ptr<Context<T>> context, const std::string& description)
     : NonlinearConstraint<T>(plant.num_velocities(),
           plant.num_positions() + plant.num_actuators()
-          + KinematicEvaluator<T>::CountFull(evaluators),
+          + evaluators.count_full(),
           VectorXd::Zero(plant.num_velocities()),
           VectorXd::Zero(plant.num_velocities()),
           description),
@@ -136,7 +128,7 @@ FixedPointConstraint<T>::FixedPointConstraint(
 template <typename T>
 FixedPointConstraint<T>::FixedPointConstraint(
     const MultibodyPlant<T>& plant,
-    const std::vector<KinematicEvaluator<T>*>& evaluators,
+    const KinematicEvaluatorSet<T>& evaluators,
     const std::string& description) 
     : FixedPointConstraint<T>(plant, evaluators,
       std::shared_ptr<Context<T>>(plant_.CreateDefaultContext().release()),
@@ -148,21 +140,15 @@ void FixedPointConstraint<T>::EvaluateConstraint(
 
   auto u = input.segment(plant_.num_positions(), plant_.num_actuators());
   auto lambda = input.segment(plant_.num_positions() + plant_.num_actuators(),
-      KinematicEvaluator<T>::CountFull(evaluators_));
+      evaluators_.count_full());
   VectorX<T> x(plant_.num_positions() + plant_.num_velocities());
   x << input.head(plant_.num_positions()),
       VectorX<T>::Zero(plant_.num_velocities());
   // input order is x, u, lambda
   setContext<T>(plant_, x, u, context_.get());
   
-  // Build kinematic Jacobian
-  MatrixX<T> J(lambda.size(), plant_.num_velocities());
-  int ind = 0;
-  for (const auto& e : evaluators_) {
-    J.block(ind, 0, e->length(), plant_.num_velocities()) =
-        e->EvalFullJacobian(*context_);
-    ind += e->length();
-  }
+  // Evaluate kinematic Jacobian
+  auto J = evaluators_.EvalFullJacobian(*context_);
 
   // right_hand_side is the right hand side of the system's equations:
   // M*vdot -J^T*f = right_hand_side.

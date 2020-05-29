@@ -530,6 +530,13 @@ int find_boundary(int argc, char* argv[]){
    */
   int max_iter = FLAGS_max_outer_iter;
   double cost_threshold = FLAGS_max_cost_threshold;
+  if(FLAGS_robot_option=0)
+  {
+    cost_threshold = 15;
+  }
+  else{
+    cost_threshold = 10;
+  }
   int boundary_sample_num = 0;//use this to set the index for boundary point
   int traj_opt_num = 0;//use this to set the index for Traj Opt
   VectorXd extend_direction(dimensions);//the direction of searching

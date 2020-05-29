@@ -1,0 +1,136 @@
+package(default_visibility = ["//visibility:public"])
+#
+#cc_binary(
+#    name = "visualize_gait_RBP",
+#    srcs = ["visualize_gait_RBP.cc"],
+#    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+#    deps = [
+#        "//systems/goldilocks_models",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#)
+
+cc_binary(
+    name = "visualize_gait_MBP",
+    srcs = ["visualize_gait_MBP.cc"],
+    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
+    deps = [
+        "//common",
+        "//systems/goldilocks_models",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+#cc_library(
+#    name = "goldilocks_model_traj_opt",
+#    srcs = ["goldilocks_model_traj_opt.cc"],
+#    hdrs = ["goldilocks_model_traj_opt.h"],
+#    deps = [
+#        "//common",
+#        "//examples/goldilocks_models/find_models:dynamics_constraint",
+#        "//examples/goldilocks_models/find_models:kinematics_constraint",
+#        "//solvers:optimization_utils",
+#        "//systems/goldilocks_models",
+#        "//systems/primitives",
+#        "//systems/trajectory_optimization:dircon",
+#        "@drake//:drake_shared_library",
+#    ],
+#)
+
+#cc_library(
+#    name = "traj_opt_given_weigths",
+#    srcs = ["traj_opt_given_weigths.cc"],
+#    hdrs = ["traj_opt_given_weigths.h"],
+#    deps = [
+#        ":traj_opt_helper_func",
+#        "//common",
+#        "//examples/goldilocks_models:dynamics_expression",
+#        "//examples/goldilocks_models:goldilocks_utils",
+#        "//examples/goldilocks_models/find_models:goldilocks_model_traj_opt",
+#        "//solvers:nonlinear_constraint",
+#        "//solvers:optimization_utils",
+#        "//systems/goldilocks_models",
+#        "//systems/primitives",
+#        "//systems/trajectory_optimization:dircon",
+#        "@drake//:drake_shared_library",
+#    ],
+#)
+##        "@gurobi//:gurobi_cxx",
+#
+#cc_library(
+#    name = "kinematics_constraint",
+#    srcs = [
+#        "kinematics_constraint.cc",
+#    ],
+#    hdrs = [
+#        "kinematics_constraint.h",
+#    ],
+#    deps = [
+#        "//examples/goldilocks_models:kinematics_expression",
+#        "//multibody:utils",
+#        "@drake//:drake_shared_library",
+#    ],
+#)
+#
+#cc_library(
+#    name = "dynamics_constraint",
+#    srcs = [
+#        "dynamics_constraint.cc",
+#    ],
+#    hdrs = [
+#        "dynamics_constraint.h",
+#    ],
+#    deps = [
+#        "//examples/goldilocks_models:dynamics_expression",
+#        "//examples/goldilocks_models:kinematics_expression",
+#        "//multibody:utils",
+#        "//solvers:nonlinear_constraint",
+#        "//systems/trajectory_optimization:dircon",
+#        "@drake//:drake_shared_library",
+#    ],
+#)
+#
+#cc_binary(
+#    name = "scale_theta",
+#    srcs = ["scale_theta.cc"],
+#    deps = [
+#        "//common",
+#        "//examples/goldilocks_models:dynamics_expression",
+#        "//examples/goldilocks_models:goldilocks_utils",
+#        "//examples/goldilocks_models:kinematics_expression",
+#        "//systems/goldilocks_models",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#)
+#
+#cc_binary(
+#    name = "postadd_cost_without_tau",
+#    srcs = ["postadd_cost_without_tau.cc"],
+#    deps = [
+#        "//systems/goldilocks_models",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#)
+#
+#cc_library(
+#    name = "traj_opt_helper_func",
+#    srcs = [
+#        "traj_opt_helper_func.cc",
+#    ],
+#    hdrs = [
+#        "traj_opt_helper_func.h",
+#    ],
+#    deps = [
+#        "//common",
+#        "//multibody:utils",
+#        "//solvers:optimization_utils",
+#        "//systems/trajectory_optimization:dircon",
+#        "@drake//:drake_shared_library",
+#    ],
+#)

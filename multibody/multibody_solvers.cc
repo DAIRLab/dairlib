@@ -3,95 +3,61 @@
 namespace dairlib {
 namespace multibody {
 
-using drake::multibody::Frame;
+using Eigen::VectorXd;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::VectorX;
-using Eigen::VectorXd;
-
 using solvers::NonlinearConstraint;
 
 template <typename T>
-ContactConstraint<T>::ContactConstraint(const MultibodyPlant<T>& plant,
-    const ContactInfo<T>& contact_info, std::shared_ptr<Context<T>> context,
-    const std::string& description)
-    : NonlinearConstraint<T>(contact_info.num_contacts, plant.num_positions(),
-                 VectorXd::Zero(contact_info.num_contacts),
-                 VectorXd::Zero(contact_info.num_contacts), description),
-      plant_(plant), 
-      context_(context) {
-  // ContactToolkit pointer using the ContactInfo object.
-  contact_toolkit_ =
-      std::make_unique<ContactToolkit<T>>(plant, contact_info);
-}
-
-template <typename T>
-ContactConstraint<T>::ContactConstraint(const MultibodyPlant<T>& plant,
-    const ContactInfo<T>& contact_info, const std::string& description) 
-    : ContactConstraint<T>(plant, contact_info,
-      std::shared_ptr<Context<T>>(plant_.CreateDefaultContext().release()),
-      description) {}
-
-
-template <typename T>
-void ContactConstraint<T>::EvaluateConstraint(
-    const Eigen::Ref<const VectorX<T>>& q, VectorX<T>* y) const {
-  // Verifying the size of the input vector
-  DRAKE_DEMAND(q.size() == plant_.num_positions());
-
-  plant_.SetPositions(context_.get(), q);
-
-  *y = contact_toolkit_->CalcDistanceToGround(*context_);
-}
-
-
-template <typename T>
-DistanceConstraint<T>::DistanceConstraint(const MultibodyPlant<T>& plant,
-    const Frame<T>* frameA, const Eigen::Vector3d& ptA,
-    const Frame<T>* frameB, const Eigen::Vector3d& ptB,
-    double distance,
+KinematicPositionConstraint<T>::KinematicPositionConstraint(
+    const MultibodyPlant<T>& plant,
+    const std::vector<KinematicEvaluator<T>>& evaluators,
     std::shared_ptr<Context<T>> context, const std::string& description)
-    : NonlinearConstraint<T>(1, plant.num_positions(),
-                 VectorXd::Zero(1), VectorXd::Zero(1), description),
+    : NonlinearConstraint<T>(0, plant.num_positions(), VectorXd::Zero(0),
+          VectorXd::Zero(0), description),
       plant_(plant), 
-      frameA_(frameA),
-      ptA_(ptA),
-      frameB_(frameB),
-      ptB_(ptB),
-      distance_(distance),
-      context_(context) {}
+      evaluators_(evaluators),
+      context_(context) {
+  // Length and bounds set above are fake. Count up constraints now.
+  int num_constraints = 0;
+  for (const auto& e : evaluators_) {
+    num_constraints += e.num_active();
+  }
+
+  set_num_outputs(num_constraints);
+  set_bounds(VectorXd::Zero(num_constraints), VectorXd::Zero(num_constraints));
+
+}
 
 template <typename T>
-DistanceConstraint<T>::DistanceConstraint(const MultibodyPlant<T>& plant,
-    const Frame<T>* frameA, const Eigen::Vector3d& ptA,
-    const Frame<T>* frameB, const Eigen::Vector3d& ptB,
-    double distance,
+KinematicPositionConstraint<T>::KinematicPositionConstraint(
+    const MultibodyPlant<T>& plant,
+    const std::vector<KinematicEvaluator<T>>& evaluators,
     const std::string& description) 
-    : DistanceConstraint<T>(plant, frameA, ptA, frameB, ptB, distance,
+    : KinematicPositionConstraint<T>(plant, evaluators,
       std::shared_ptr<Context<T>>(plant_.CreateDefaultContext().release()),
       description) {}
 
-
 template <typename T>
-void DistanceConstraint<T>::EvaluateConstraint(
+void KinematicPositionConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& q, VectorX<T>* y) const {
   // Verifying the size of the input vector
   DRAKE_DEMAND(q.size() == plant_.num_positions());
 
   plant_.SetPositions(context_.get(), q);
 
-  // Calculate the position of ptA in frameB
-  VectorX<T> ptA_B(3);
-  plant_.CalcPointsPositions(*context_, *frameA_,
-        ptA_.template cast<T>(), *frameB_, &ptA_B);   
-
-  (*y)(0) = (ptB_ - ptA_B).norm() - distance_;
+  
+  y->resize(this->num_constraints());
+  int ind = 0;
+  for (const auto& e : evaluators_) {
+    y->segment(ind, e.num_active()) = e.EvalActive(*context_);
+    ind += e.num_active();
+  }
 }
 
 }  // namespace multibody
 }  // namespace dairlib
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-    class ::dairlib::multibody::ContactConstraint)
-DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-    class ::dairlib::multibody::DistanceConstraint)
+    class ::dairlib::multibody::KinematicPositionConstraint)

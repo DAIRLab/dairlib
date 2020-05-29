@@ -13,7 +13,7 @@ cc_library(
         "multibody_solvers.h",
     ],
     deps = [
-        ":contact_toolkit",
+        "//multibody/kinematic",
         "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
     ],
@@ -125,7 +125,6 @@ cc_test(
         "//examples/Cassie:cassie_utils",
         "@gtest//:main",
     ],
-    size = "small",
 )
 
 cc_test(
@@ -140,5 +139,4 @@ cc_test(
         "@drake//common/test_utilities",
         "@gtest//:main",
     ],
-    size = "small",
 )

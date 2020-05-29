@@ -26,9 +26,6 @@ namespace multibody {
 template <typename T>
 class KinematicEvaluator {
  public:
-  // Disabling copy construction and assignment
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(KinematicEvaluator)
-
   explicit KinematicEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
       int length);  
 
@@ -84,8 +81,8 @@ class KinematicEvaluator {
     return plant_;
   }
 
-  static int CountActive(const std::vector<KinematicEvaluator<T>>& evaluators);
-  static int CountFull(const std::vector<KinematicEvaluator<T>>& evaluators);
+  static int CountActive(const std::vector<KinematicEvaluator<T>*>& evaluators);
+  static int CountFull(const std::vector<KinematicEvaluator<T>*>& evaluators);
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;

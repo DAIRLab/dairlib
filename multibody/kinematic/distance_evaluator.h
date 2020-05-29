@@ -14,11 +14,8 @@ namespace multibody {
 //  The one exception is Jdotv, since Drake does not currently support
 /// MultibodyPlant.CalcBiasSpatialAcceleration with non-world frames,
 template <typename T>
-class DistanceEvaluator :  public KinematicEvaluator<T> {
+class DistanceEvaluator : public KinematicEvaluator<T> {
  public:
-  // Disabling copy construction and assignment
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(DistanceEvaluator)
-
   /// Constructor for DistanceEvaluator
   /// @param plant
   /// @param pt_A 

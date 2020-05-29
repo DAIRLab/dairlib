@@ -13,6 +13,7 @@ cc_library(
         "multibody_solvers.h",
     ],
     deps = [
+        ":utils",
         "//multibody/kinematic",
         "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",

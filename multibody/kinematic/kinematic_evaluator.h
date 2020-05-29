@@ -69,7 +69,7 @@ class KinematicEvaluator {
 
   void set_active_inds(std::vector<int> active_inds);
 
-  int length() const {
+  int num_full() const {
     return length_;
   }
 
@@ -80,9 +80,6 @@ class KinematicEvaluator {
   const drake::multibody::MultibodyPlant<T>& plant() const {
     return plant_;
   }
-
-  static int CountActive(const std::vector<KinematicEvaluator<T>*>& evaluators);
-  static int CountFull(const std::vector<KinematicEvaluator<T>*>& evaluators);
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;

@@ -84,6 +84,9 @@ class KinematicEvaluator {
     return plant_;
   }
 
+  static int CountActive(const std::vector<KinematicEvaluator<T>>& evaluators);
+  static int CountFull(const std::vector<KinematicEvaluator<T>>& evaluators);
+
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
   int num_active_;

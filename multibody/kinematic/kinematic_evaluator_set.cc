@@ -63,7 +63,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalActiveJacobianDotTimesV(
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalFull(
   const Context<T>& context) const {
-  VectorX<T> phi(count_active());
+  VectorX<T> phi(count_full());
   int ind = 0;
   for (const auto& e : evaluators_) {
     phi.segment(ind, e->num_full()) = e->EvalFull(context);
@@ -75,7 +75,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFull(
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalFullTimeDerivative(
   const Context<T>& context) const {
-  VectorX<T> phidot(count_active());
+  VectorX<T> phidot(count_full());
   int ind = 0;
   for (const auto& e : evaluators_) {
     phidot.segment(ind, e->num_full()) = e->EvalFullTimeDerivative(context);
@@ -88,7 +88,7 @@ template <typename T>
 MatrixX<T> KinematicEvaluatorSet<T>::EvalFullJacobian(
   const Context<T>& context) const {
   const int num_velocities = evaluators_.at(0)->plant().num_velocities();
-  MatrixX<T> J(count_active(), num_velocities);
+  MatrixX<T> J(count_full(), num_velocities);
   int ind = 0;
   for (const auto& e : evaluators_) {
     J.block(ind, 0, e->num_full(), num_velocities) =
@@ -101,7 +101,7 @@ MatrixX<T> KinematicEvaluatorSet<T>::EvalFullJacobian(
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalFullJacobianDotTimesV(
   const Context<T>& context) const {
-  VectorX<T> Jdotv(count_active());
+  VectorX<T> Jdotv(count_full());
   int ind = 0;
   for (const auto& e : evaluators_) {
     Jdotv.segment(ind, e->num_full()) = e->EvalFullJacobianDotTimesV(context);

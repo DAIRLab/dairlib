@@ -1,7 +1,7 @@
 #include <gflags/gflags.h>
 
 #include "examples/Cassie/cassie_utils.h"
-#include "multibody/kinematic/planar_ground_evaluator.h"
+#include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_solvers.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
@@ -40,23 +40,23 @@ int do_main(int argc, char* argv[]) {
 
   // Add contact points
   auto left_toe = LeftToe(plant);
-  auto left_toe_evaluator = multibody::PlanarGroundEvaluator(plant,
-      left_toe.first, left_toe.second);
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(plant,
+      left_toe.first, left_toe.second, Eigen::Vector3d(0,0,1));
   evaluators.push_back(&left_toe_evaluator);
 
   auto right_toe = RightToe(plant);
-  auto right_toe_evaluator = multibody::PlanarGroundEvaluator(plant,
-      right_toe.first, right_toe.second);
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(plant,
+      right_toe.first, right_toe.second, Eigen::Vector3d(0,0,1));
   evaluators.push_back(&right_toe_evaluator);
 
   auto left_heel = LeftHeel(plant);
-  auto left_heel_evaluator = multibody::PlanarGroundEvaluator(plant,
-      left_heel.first, left_heel.second);
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(plant,
+      left_heel.first, left_heel.second, Eigen::Vector3d(0,0,1));
   evaluators.push_back(&left_heel_evaluator);
 
   auto right_heel = RightHeel(plant);
-  auto right_heel_evaluator = multibody::PlanarGroundEvaluator(plant,
-      right_heel.first, right_heel.second);
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(plant,
+      right_heel.first, right_heel.second, Eigen::Vector3d(0,0,1));
   evaluators.push_back(&right_heel_evaluator);
 
   auto program = multibody::MultibodyProgram(plant, evaluators);

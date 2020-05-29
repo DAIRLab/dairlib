@@ -127,17 +127,3 @@ cc_test(
         "@gtest//:main",
     ],
 )
-
-cc_test(
-    name = "kinematic_constraint_test",
-    srcs = [
-        "test/kinematic_constraint_test.cc",
-    ],
-    deps = [
-        ":kinematic_constraint",
-        "//common",
-        "//examples/PlanarWalker:urdf",
-        "@drake//common/test_utilities",
-        "@gtest//:main",
-    ],
-)

@@ -76,6 +76,10 @@ class KinematicEvaluator {
     return length_;
   }
 
+  int num_active() const {
+    return num_active_;
+  }
+
   const drake::multibody::MultibodyPlant<T>& plant() const {
     return plant_;
   }

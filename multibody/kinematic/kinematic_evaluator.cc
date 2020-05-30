@@ -96,6 +96,11 @@ VectorX<T> KinematicEvaluator<T>::EvalFullTimeDerivative(
 
 template <typename T>
 void KinematicEvaluator<T>::set_active_inds(std::vector<int> active_inds) {
+  // Check active_inds [0, length()] bounds
+  for (auto& i : active_inds) {
+    DRAKE_DEMAND(i >= 0);
+    DRAKE_DEMAND(i < num_full());
+  }
   // TODO: should probably check for uniqueness
   active_inds_ = active_inds;
   num_active_ = active_inds_.size();

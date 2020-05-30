@@ -23,13 +23,14 @@ namespace dairlib {
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   srand((unsigned int) time(0));
-  drake::logging::set_log_level("err");
+  drake::logging::set_log_level("err");  // ignore warnings about joint limits
 
+  std::string urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+
+  // Build plant
   drake::multibody::MultibodyPlant<double> plant(0);
   drake::multibody::Parser parser(&plant);
-
-  std::string full_name =
-      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+  std::string full_name = FindResourceOrThrow(urdf);
   parser.AddModelFromFile(full_name);
   plant.mutable_gravity_field().set_gravity_vector(-9.81 *
                                                    Eigen::Vector3d::UnitZ());
@@ -137,7 +138,7 @@ int do_main(int argc, char* argv[]) {
   q_guess(positions_map.at("ankle_joint_right")) = 2;
   q_guess(positions_map.at("toe_right")) = -2;
 
-  // perturm positions
+  // Perturb positions
   q_guess += .1*Eigen::VectorXd::Random(plant.num_positions());
 
   // Only cost in this program: u^T u
@@ -147,8 +148,7 @@ int do_main(int argc, char* argv[]) {
   Eigen::VectorXd guess = Eigen::VectorXd::Random(program.num_vars());
   guess.head(plant.num_positions()) = q_guess;
 
-  auto visualizer = multibody::MultiposeVisualizer(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf", 1);
+  auto visualizer = multibody::MultiposeVisualizer(urdf, 1);
 
   // Draw initial guess
   visualizer.DrawPoses(q_guess);

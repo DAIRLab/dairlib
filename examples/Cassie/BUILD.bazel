@@ -110,6 +110,7 @@ cc_binary(
         ":cassie_utils",
         "//multibody:multipose_visualizer",
         "//multibody:multibody_solvers",
+        "//solvers:constraints",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

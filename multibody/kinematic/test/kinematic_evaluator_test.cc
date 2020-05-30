@@ -107,7 +107,7 @@ TEST_F(KinematicEvaluatorTest, WorldPointEvaluatorTest) {
   EXPECT_TRUE(CompareMatrices(Jdotv_active, Jdotv_active_expected, tolerance));
 
   // Non-default evaluator: non-vertical normal, non-zero offset
-  // Performing minmal tests
+  // Performing minimal tests
   auto new_evaluator = WorldPointEvaluator<double>(*plant_, pt_A,
       frame, Vector3d({1, 0, 0}), Vector3d({1, 2, 3}), true);
 
@@ -132,7 +132,7 @@ TEST_F(KinematicEvaluatorTest, DistanceEvaluatorTest) {
 
   auto context = plant_->CreateDefaultContext();
 
-  // Test q = 0, legs straight down
+  // Test q = pi/2, legs straight down
   VectorXd q(plant_->num_positions());
   q(3) = M_PI/2.0;
   plant_->SetPositions(context.get(), q);

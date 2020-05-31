@@ -119,6 +119,8 @@ class KinematicEvaluatorSet {
 
   int num_evaluators() const { return evaluators_.size(); };
 
+  const drake::multibody::MultibodyPlant<T>& plant() const { return plant_; };
+
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
   std::vector<KinematicEvaluator<T>*> evaluators_;

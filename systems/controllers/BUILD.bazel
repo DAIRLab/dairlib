@@ -67,7 +67,7 @@ cc_library(
         "constrained_lqr_controller.h",
     ],
     deps = [
-        "//attic/multibody:contact_toolkit",
+        "//multibody/kinematic",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

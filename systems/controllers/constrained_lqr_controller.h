@@ -1,9 +1,11 @@
 #pragma once
 
-#include "attic/multibody/contact_toolkit.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "systems/framework/output_vector.h"
+
 #include "drake/systems/controllers/linear_quadratic_regulator.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "systems/framework/output_vector.h"
+
 
 namespace dairlib {
 namespace systems {
@@ -38,12 +40,11 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
    * The constructor computes K and E and is the major computational block of
    * the controller class.
    */
-  ConstrainedLQRController(const RigidBodyTree<double>& tree,
-                           const Eigen::VectorXd& q, const Eigen::VectorXd& u,
-                           const Eigen::VectorXd& lambda,
-                           const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
-                           const dairlib::multibody::ContactInfo& contact_info =
-                               dairlib::multibody::ContactInfo());
+  ConstrainedLQRController(
+      const multibody::KinematicEvaluatorSet<drake::AutoDiffXd>& evaluators,
+      const drake::systems::Context<drake::AutoDiffXd>& context,
+      const Eigen::VectorXd& lambda, const Eigen::MatrixXd& Q,
+      const Eigen::MatrixXd& R);
 
   /*
    * Function to get the input port that takes in the current state
@@ -104,10 +105,8 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* control) const;
 
-  const RigidBodyTree<double>& tree_;
-  const dairlib::multibody::ContactInfo& contact_info_;
-  std::unique_ptr<dairlib::multibody::ContactToolkit<drake::AutoDiffXd>>
-      contact_toolkit_;
+  const multibody::KinematicEvaluatorSet<drake::AutoDiffXd>& evaluators_;
+  const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_;
   int input_port_info_index_;
   int output_port_efforts_index_;
   Eigen::MatrixXd K_;
@@ -118,10 +117,6 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd R_;
   drake::systems::controllers::LinearQuadraticRegulatorResult lqr_result_;
-  const int num_positions_;
-  const int num_velocities_;
-  const int num_states_;
-  const int num_efforts_;
   const int num_forces_;
 };
 

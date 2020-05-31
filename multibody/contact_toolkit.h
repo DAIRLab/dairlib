@@ -20,16 +20,9 @@ namespace multibody {
 template <typename T>
 struct ContactInfo {
   Eigen::Matrix3Xd xA;
+  Eigen::Matrix3Xd xB;
   std::vector<const drake::multibody::Frame<T>*> frameA;
   int num_contacts;
-
-  ContactInfo(Eigen::Matrix3Xd xA_in,
-      std::vector<const drake::multibody::Frame<T>*> frameA_in) : 
-      xA(xA_in),
-      frameA(frameA_in),
-      num_contacts(frameA_in.size()) {}
-
-  ContactInfo() {}
 };
 
 /*
@@ -50,13 +43,6 @@ class ContactToolkit {
 
   ContactToolkit(const drake::multibody::MultibodyPlant<T>& plant,
                  ContactInfo<T> contact_info);
-
-  /// Calculates the distance to the surface
-  /// Like other methods in this class, assumes simplistic contact with
-  /// a planar ground at height 0
-  drake::VectorX<T> CalcDistanceToGround(
-      const drake::systems::Context<T>& context) const;
-
 
   /*
    * Function to compute the contact jacobian. The normal and two surface

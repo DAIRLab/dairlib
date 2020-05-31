@@ -26,22 +26,6 @@ ContactToolkit<T>::ContactToolkit(const MultibodyPlant<T>& plant,
       num_contacts_(contact_info.frameA.size()) {}
 
 template <typename T>
-VectorX<T> ContactToolkit<T>::CalcDistanceToGround(
-      const drake::systems::Context<T>& context) const {
-  VectorX<T> distances(num_contacts_);
-  VectorX<T> point(3);
-  const drake::multibody::Frame<T>& world = plant_.world_frame();
-
-  for (int i = 0; i < num_contacts_; i++) {
-    plant_.CalcPointsPositions(context, *contact_info_.frameA.at(i), 
-        contact_info_.xA.col(i).template cast<T>(), world, &point);   
-    distances(i) = point(2); // extract z-component
-  }
-
-  return distances;
-}
-
-template <typename T>
 drake::MatrixX<T> ContactToolkit<T>::CalcContactJacobian(
     const Context<T>& context) const {
   // The normals at each contact are always facing upwards into z

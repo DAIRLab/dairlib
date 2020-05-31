@@ -18,7 +18,6 @@ void CassieFixedPointSolver(std::string filename, double height, double mu,
     VectorXd* u_result, VectorXd* lambda_result, bool draw_pose) {
   // Build plant
   drake::multibody::MultibodyPlant<double> plant(0);
-  drake::multibody::MultibodyPlant<double> plant2(0);
   drake::multibody::Parser parser(&plant);
   std::string full_name = FindResourceOrThrow(filename);
   parser.AddModelFromFile(full_name);

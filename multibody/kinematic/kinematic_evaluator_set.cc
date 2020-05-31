@@ -135,6 +135,98 @@ std::vector<int> KinematicEvaluatorSet<T>::FindUnion(
 }
 
 template <typename T>
+VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
+    const Context<T>& context, const VectorX<T>& lambda) const {
+  // M(q)vdot + C(q,v) = tau_g(q) + F_app + Bu + J(q)^T lambda
+  VectorX<T> C(plant_.num_velocities());
+  plant_.CalcBiasTerm(context, &C);
+
+  VectorX<T> Bu = plant_.MakeActuationMatrix()
+      * plant_.get_actuation_input_port().Eval(context);
+
+  VectorX<T> tau_g = plant_.CalcGravityGeneralizedForces(context);
+
+  drake::multibody::MultibodyForces<T> f_app(plant_);
+  plant_.CalcForceElementsContribution(context, &f_app);
+
+  VectorX<T> J_transpose_lambda =
+      EvalFullJacobian(context).transpose() * lambda;
+
+  return tau_g + f_app.generalized_forces()+ Bu + J_transpose_lambda - C;
+}
+
+template <typename T>
+VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
+    const Context<T>& context, const VectorX<T>& lambda) const {
+  MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
+  plant_.CalcMassMatrix(context, &M);
+
+  VectorX<T> right_hand_side = CalcMassMatrixTimesVDot(context, lambda);
+
+  VectorX<T> v_dot = M.llt().solve(right_hand_side);
+
+  VectorX<T> x_dot(plant_.num_positions() + plant_.num_velocities());
+  VectorX<T> q_dot(plant_.num_positions());
+
+  plant_.MapVelocityToQDot(context, plant_.GetVelocities(context), &q_dot);
+
+  x_dot << q_dot, v_dot;
+
+  return x_dot;
+}
+
+template <typename T>
+VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
+    const Context<T>& context, double alpha) const {
+  VectorX<T> lambda;
+  return CalcTimeDerivatives(context, &lambda, alpha);
+}
+
+template <typename T>
+VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
+    const Context<T>& context, VectorX<T>* lambda, double alpha) const {
+  // M(q) vdot + C(q,v) = tau_g(q) + Bu + J(q)^T lambda
+  // J vdot + Jdotv  + kp phi + kd phidot = 0
+  // Produces linear system of equations
+  // [[M J^T]  [[vdot  ]  =  [[-tau_g + Bu - C     ]
+  //  [J  0 ]]  [lambda]]     [ -kp phi - kd phidot]]
+
+  // Evaluate manipulator equation terms
+  MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
+  plant_.CalcMassMatrix(context, &M);
+
+  VectorX<T> C(plant_.num_velocities());
+  plant_.CalcBiasTerm(context, &C);
+
+  VectorX<T> Bu = plant_.MakeActuationMatrix()
+      * plant_.get_actuation_input_port().Eval(context);
+
+  VectorX<T> tau_g = plant_.CalcGravityGeneralizedForces(context);
+
+  drake::multibody::MultibodyForces<T> f_app(plant_);
+  plant_.CalcForceElementsContribution(context, &f_app);
+
+  // Evaluate constraint terms, phi/phidot for active. Jacboians for full
+  VectorX<T> phi = EvalActive(context);
+  VectorX<T> phidot = EvalActiveTimeDerivative(context);
+  MatrixX<T> J = EvalFullJacobian(context);
+  VectorX<T> Jdotv = EvalFullJacobianDotTimesV(context);
+
+
+  MatrixX<T> A(M.rows() + J.rows(),
+               M.cols() + J.rows());
+  VectorX<T> b(M.rows() + J.rows());
+  A << M, -J.transpose(),
+       J, MatrixX<T>::Zero(J.rows(), J.rows());
+  b << tau_g + f_app.generalized_forces() + Bu - C,
+       -(Jdotv + alpha * alpha * phi + 2 * alpha * phidot);
+  const VectorX<T> vdot_lambda = A.ldlt().solve(b);
+  
+  *lambda = vdot_lambda.tail(J.rows());
+  return vdot_lambda.head(plant_.num_velocities());
+}
+
+template <typename T>
 int KinematicEvaluatorSet<T>::evaluator_full_start(int index) const {
   int start = 0;
   for (int i = 0; i < index; i++) {

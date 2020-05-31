@@ -12,19 +12,14 @@
 #include "drake/solvers/snopt_solver.h"
 
 namespace dairlib {
-using Eigen::VectorXd;
-void CassieFixedPointSolver(std::string filename, double height, double mu,
-    double min_normal_force, bool linear_friction_cone, VectorXd* q_result,
-    VectorXd* u_result, VectorXd* lambda_result, bool draw_pose) {
-  // Build plant
-  drake::multibody::MultibodyPlant<double> plant(0);
-  drake::multibody::Parser parser(&plant);
-  std::string full_name = FindResourceOrThrow(filename);
-  parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
-  plant.Finalize();
 
+using Eigen::VectorXd;
+
+void CassieFixedPointSolver(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    double height, double mu, double min_normal_force,
+    bool linear_friction_cone, VectorXd* q_result, VectorXd* u_result,
+    VectorXd* lambda_result, std::string visualize_model_urdf) {
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
   // Add loop closures
@@ -140,6 +135,76 @@ void CassieFixedPointSolver(std::string filename, double height, double mu,
   Eigen::VectorXd guess = Eigen::VectorXd::Random(program.num_vars());
   guess.head(plant.num_positions()) = q_guess;
 
+  auto start = std::chrono::high_resolution_clock::now();
+  const auto result = drake::solvers::Solve(program, guess);
+       auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "Solve time:" << elapsed.count() << std::endl;
+
+  std::cout << to_string(result.get_solution_result()) << std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
+
+  // Draw final pose
+  if (visualize_model_urdf != "") {
+    auto visualizer = multibody::MultiposeVisualizer(visualize_model_urdf, 1);
+    visualizer.DrawPoses(result.GetSolution(q));
+  }
+
+  *q_result = result.GetSolution(q);
+  *u_result = result.GetSolution(u);
+  *lambda_result = result.GetSolution(lambda);
+}
+
+void CassieFixedBaseFixedPointSolver(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    VectorXd* q_result, VectorXd* u_result,
+    VectorXd* lambda_result, std::string visualize_model_urdf) {
+  multibody::KinematicEvaluatorSet<double> evaluators(plant);
+
+  // Add loop closures
+  auto left_loop = LeftLoopClosureEvaluator(plant);
+  auto right_loop = RightLoopClosureEvaluator(plant);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
+
+  auto program = multibody::MultibodyProgram(plant, evaluators);
+
+  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto q = program.AddPositionVariables();
+  auto u = program.AddInputVariables();
+  auto lambda = program.AddConstraintForceVariables();
+  auto kinematic_constraint = program.AddKinematicConstraint(q);
+  auto fp_constraint = program.AddFixedPointConstraint(q, u, lambda);
+  program.AddJointLimitConstraints(q);
+
+  // Add symmetry constraints, and zero roll/pitch on the hip
+  program.AddConstraint(q(positions_map.at("knee_left")) ==
+      q(positions_map.at("knee_right")));
+  program.AddConstraint(q(positions_map.at("hip_pitch_left")) ==
+      q(positions_map.at("hip_pitch_right")));
+  program.AddConstraint(q(positions_map.at("hip_roll_left")) == 0);
+  program.AddConstraint(q(positions_map.at("hip_roll_right")) == 0);
+  program.AddConstraint(q(positions_map.at("hip_yaw_right")) == 0);
+  program.AddConstraint(q(positions_map.at("hip_yaw_left")) == 0);
+
+  // Set initial guess/cost for q using a vaguely neutral position
+  Eigen::VectorXd q_guess = Eigen::VectorXd::Zero(plant.num_positions());
+  q_guess(0) = 1; //quaternion
+  q_guess(positions_map.at("hip_pitch_left")) = 1;
+  q_guess(positions_map.at("knee_left")) = -2;
+  q_guess(positions_map.at("ankle_joint_left")) = 2;
+  q_guess(positions_map.at("toe_left")) = -2;
+  q_guess(positions_map.at("hip_pitch_right")) = 1;
+  q_guess(positions_map.at("knee_right")) = -2;
+  q_guess(positions_map.at("ankle_joint_right")) = 2;
+  q_guess(positions_map.at("toe_right")) = -2;
+
+  // Only cost in this program: u^T u
+  program.AddQuadraticCost(u.dot(1.0 * u));
+
+  // Random guess, except for the positions
+  Eigen::VectorXd guess = Eigen::VectorXd::Random(program.num_vars());
+  guess.head(plant.num_positions()) = q_guess;
 
   auto start = std::chrono::high_resolution_clock::now();
   const auto result = drake::solvers::Solve(program, guess);
@@ -151,8 +216,8 @@ void CassieFixedPointSolver(std::string filename, double height, double mu,
   std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
 
   // Draw final pose
-  if (draw_pose) {
-    auto visualizer = multibody::MultiposeVisualizer(filename, 1);
+  if (visualize_model_urdf != "") {
+    auto visualizer = multibody::MultiposeVisualizer(visualize_model_urdf, 1);
     visualizer.DrawPoses(result.GetSolution(q));
   }
 

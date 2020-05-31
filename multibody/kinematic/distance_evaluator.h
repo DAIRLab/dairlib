@@ -11,7 +11,7 @@ namespace multibody {
 /// and point B in frame B
 ///   phi(q) = ||pt_A - pt_B|| - distance
 /// Calculations are performed in B, for efficiency.
-//  The one exception is Jdotv, since Drake does not currently support
+/// The one exception is Jdotv, since Drake does not currently support
 /// MultibodyPlant.CalcBiasSpatialAcceleration with non-world frames,
 template <typename T>
 class DistanceEvaluator : public KinematicEvaluator<T> {

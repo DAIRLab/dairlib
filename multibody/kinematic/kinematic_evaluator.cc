@@ -14,7 +14,7 @@ KinematicEvaluator<T>::KinematicEvaluator(const MultibodyPlant<T>& plant,
     : plant_(plant),
       length_(length) {
   std::vector<int> all_inds;
-  all_active_ = true;
+  all_active_default_order_ = true;
   for (int i = 0; i < length; i++) {
     all_inds.push_back(i);
   }
@@ -27,7 +27,7 @@ VectorX<T> KinematicEvaluator<T>::EvalActive(
   // TODO: With Eigen 3.4, can slice by (active_inds_);
 
   auto phi_full = EvalFull(context);
-  if (all_active_) {
+  if (all_active_default_order_) {
     return phi_full;
   }
 
@@ -43,7 +43,7 @@ VectorX<T> KinematicEvaluator<T>::EvalActiveTimeDerivative(
     const Context<T>& context) const {
   // TODO: With Eigen 3.4, can slice by (active_inds_);
   auto phidot_full = EvalFullTimeDerivative(context);
-  if (all_active_) {
+  if (all_active_default_order_) {
     return phidot_full;
   }
 
@@ -59,7 +59,7 @@ MatrixX<T> KinematicEvaluator<T>::EvalActiveJacobian(
       const Context<T>& context) const {
   // TODO: With Eigen 3.4, can slice by (active_inds_, all);
   auto J_full = EvalFullJacobian(context);
-  if (all_active_) {
+  if (all_active_default_order_) {
     return J_full;
   }
 
@@ -77,7 +77,7 @@ VectorX<T> KinematicEvaluator<T>::EvalActiveJacobianDotTimesV(
       const Context<T>& context) const {
   // TODO: With Eigen 3.4, can slice by (active_inds_);
   auto Jdot_v_full = EvalFullJacobianDotTimesV(context);
-  if (all_active_) {
+  if (all_active_default_order_) {
     return Jdot_v_full;
   }
 
@@ -101,20 +101,23 @@ void KinematicEvaluator<T>::set_active_inds(std::vector<int> active_inds) {
     DRAKE_DEMAND(i >= 0);
     DRAKE_DEMAND(i < num_full());
   }
-  // TODO: should probably check for uniqueness
+  // Create a set to check for uniqueness
+  std::set<int> s(active_inds.begin(), active_inds.end());
+  DRAKE_DEMAND(s.size() == active_inds.size());
+
   active_inds_ = active_inds;
   num_active_ = active_inds_.size();
 
   // Cannot just check length, because active_inds could be out of order
-  all_active_ = true;
+  all_active_default_order_ = true;
   if (num_active_ == length_) {
     for (int i = 0; i < num_active_; i++) {
       if (active_inds_.at(i) != i) {
-        all_active_ = false;
+        all_active_default_order_ = false;
       }
     }
   } else {
-    all_active_ = false;
+    all_active_default_order_ = false;
   }
 }
 

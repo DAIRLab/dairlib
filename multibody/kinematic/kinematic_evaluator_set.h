@@ -70,10 +70,10 @@ class KinematicEvaluatorSet {
   /// Adds an evaluator to the end of the list, returning the associated index
   int add_evaluator(KinematicEvaluator<T>* e);
 
-  /// Count the total number of active constraints
+  /// Count the total number of active rows
   int count_active() const;
 
-  /// Count the total number of constraints
+  /// Count the total number of rows
   int count_full() const;
 
   int num_evaluators() const { return evaluators_.size(); };

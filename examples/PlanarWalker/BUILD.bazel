@@ -1,6 +1,8 @@
 # -*- mode: python -*-
 # vi: set ft=python :
 
+package(default_visibility = ["//visibility:public"])
+
 cc_binary(
     name = "run_passive",
     srcs = ["run_passive.cc"],
@@ -115,4 +117,10 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+)
+
+cc_library(
+    name = "urdf",
+    data = ["PlanarWalker.urdf",
+            "PlanarWalkerWithTorso.urdf"]
 )

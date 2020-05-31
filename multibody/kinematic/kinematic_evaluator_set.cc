@@ -137,7 +137,7 @@ std::vector<int> KinematicEvaluatorSet<T>::FindUnion(
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
     const Context<T>& context, const VectorX<T>& lambda) const {
-  // M(q)vdot + C(q,v) = tau_g(q) + Bu + J(q)^T lambda
+  // M(q)vdot + C(q,v) = tau_g(q) + F_app + Bu + J(q)^T lambda
   VectorX<T> C(plant_.num_velocities());
   plant_.CalcBiasTerm(context, &C);
 
@@ -145,10 +145,14 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
       * plant_.get_actuation_input_port().Eval(context);
 
   VectorX<T> tau_g = plant_.CalcGravityGeneralizedForces(context);
+
+  drake::multibody::MultibodyForces<T> f_app(plant_);
+  plant_.CalcForceElementsContribution(context, &f_app);
+
   VectorX<T> J_transpose_lambda =
       EvalFullJacobian(context).transpose() * lambda;
 
-  return tau_g + Bu + J_transpose_lambda - C;
+  return tau_g + f_app.generalized_forces()+ Bu + J_transpose_lambda - C;
 }
 
 template <typename T>
@@ -199,6 +203,9 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
 
   VectorX<T> tau_g = plant_.CalcGravityGeneralizedForces(context);
 
+  drake::multibody::MultibodyForces<T> f_app(plant_);
+  plant_.CalcForceElementsContribution(context, &f_app);
+
   // Evaluate constraint terms, phi/phidot for active. Jacboians for full
   VectorX<T> phi = EvalActive(context);
   VectorX<T> phidot = EvalActiveTimeDerivative(context);
@@ -211,7 +218,7 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
   VectorX<T> b(M.rows() + J.rows());
   A << M, -J.transpose(),
        J, MatrixX<T>::Zero(J.rows(), J.rows());
-  b << tau_g + Bu - C,
+  b << tau_g + f_app.generalized_forces() + Bu - C,
        -(Jdotv + alpha * alpha * phi + 2 * alpha * phidot);
   const VectorX<T> vdot_lambda = A.ldlt().solve(b);
   

@@ -11,7 +11,8 @@ namespace multibody {
 template <typename T>
 class KinematicEvaluatorSet {
  public:
-  KinematicEvaluatorSet();
+  explicit KinematicEvaluatorSet(
+      const drake::multibody::MultibodyPlant<T>& plant);
 
   /// Evaluates phi(q), limited only to active rows
   drake::VectorX<T> EvalActive(
@@ -109,6 +110,7 @@ class KinematicEvaluatorSet {
   int num_evaluators() const { return evaluators_.size(); };
 
  private:
+  const drake::multibody::MultibodyPlant<T>& plant_;
   std::vector<KinematicEvaluator<T>*> evaluators_;
 };
 

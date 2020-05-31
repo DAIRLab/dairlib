@@ -29,6 +29,7 @@ int do_main(int argc, char* argv[]) {
 
   // Build plant
   drake::multibody::MultibodyPlant<double> plant(0);
+  drake::multibody::MultibodyPlant<double> plant2(0);
   drake::multibody::Parser parser(&plant);
   std::string full_name = FindResourceOrThrow(urdf);
   parser.AddModelFromFile(full_name);
@@ -36,7 +37,7 @@ int do_main(int argc, char* argv[]) {
                                                    Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
-  multibody::KinematicEvaluatorSet<double> evaluators;
+  multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
   // Add loop closures
   auto left_loop = LeftLoopClosureEvaluator(plant);

@@ -132,6 +132,35 @@ std::vector<int> KinematicEvaluatorSet<T>::FindUnion(
 }
 
 template <typename T>
+VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
+    const Context<T>& context, const VectorX<T>& lambda) const {
+  // M(q)vdot + C(q,v) = tau_g(q) + Bu + J(q)^T lambda
+  VectorX<T> C(plant_.num_velocities());
+  plant_.CalcBiasTerm(context, &C);
+
+  auto Bu = plant_.MakeActuationMatrix()
+      * plant_.get_actuation_input_port().Eval(context);
+
+  auto tau_g = plant_.CalcGravityGeneralizedForces(context);
+
+  auto JT_lambda = EvalActiveJacobian(context).transpose() * lambda;
+
+  return tau_g + Bu + JT_lambda - C;
+}
+
+// template <typename T>
+// VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
+//     const Context<T>& context, const VectorX<T>& lambda) const {
+
+// }
+
+// template <typename T>
+// VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
+//     const Context<T>& context, double kp, double kd) const {
+
+// }
+
+template <typename T>
 int KinematicEvaluatorSet<T>::evaluator_full_start(int index) const {
   int start = 0;
   for (int i = 0; i < index; i++) {

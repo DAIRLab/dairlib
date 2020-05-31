@@ -56,6 +56,37 @@ class KinematicEvaluatorSet {
   /// Again, note that this is an index set into the other object, not self.
   std::vector<int> FindUnion(KinematicEvaluatorSet<T> other);
 
+  /// Compute M(q) * d/dt v, given the state, control inputs and constraint
+  /// forces. Forces are associated with the active kinematic elements.
+  /// @param context
+  /// @param lambda constraint forces, applied via
+  ///   evaluators.EvalActiveJacobian().transpose() * lambda
+  drake::VectorX<T> CalcMassMatrixTimesVDot(
+      const drake::systems::Context<T>& context,
+      const drake::VectorX<T>& lambda) const;
+
+  /// Computes vdot given the state, control inputs and constraint
+  /// forces. Similar to CalcMassMatrixTimesVDot, but uses inv(M)
+  /// and includes qdot. Forces are associated with the active kinematic
+  /// elements.
+  /// @param context
+  /// @param lambda constraint forces, applied via
+  ///   evaluators.EvalActiveJacobian().transpose() * lambda
+  drake::VectorX<T> CalcTimeDerivatives(
+      const drake::systems::Context<T>& context,
+      const drake::VectorX<T>& lambda) const;
+
+  /// Computes vdot given the state and control inputs.
+  /// Solves for the constraint forces using the active kinematic elements.
+  /// Similar to CalcTimeDerivatives(context, evaluators, lambda), but solves
+  /// for the forces to satisfy ddot phi = -kp*phi - kd*phidot
+  /// @param context
+  /// @param kp A position gain for constraint stabilization. Default = 0
+  /// @param kp A velocity gain for constraint stabilization. Default = 0
+  drake::VectorX<T> CalcTimeDerivatives(
+      const drake::systems::Context<T>& context, double kp = 0,
+      double kd = 0) const;
+
   /// Gets the starting index into phi_full of the specified evaluator
   int evaluator_full_start(int index) const;
 

@@ -58,7 +58,7 @@ class KinematicEvaluatorSet {
   std::vector<int> FindUnion(KinematicEvaluatorSet<T> other);
 
   /// Compute M(q) * d/dt v, given the state, control inputs and constraint
-  /// forces. Forces are associated with the active kinematic elements.
+  /// forces. Forces are associated with the full kinematic elements.
   /// @param context
   /// @param lambda constraint forces, applied via
   ///   evaluators.EvalActiveJacobian().transpose() * lambda
@@ -68,7 +68,7 @@ class KinematicEvaluatorSet {
 
   /// Computes vdot given the state, control inputs and constraint
   /// forces. Similar to CalcMassMatrixTimesVDot, but uses inv(M)
-  /// and includes qdot. Forces are associated with the active kinematic
+  /// and includes qdot. Forces are associated with the full kinematic
   /// elements.
   /// @param context
   /// @param lambda constraint forces, applied via
@@ -77,16 +77,26 @@ class KinematicEvaluatorSet {
       const drake::systems::Context<T>& context,
       const drake::VectorX<T>& lambda) const;
 
-  /// Computes vdot given the state and control inputs.
-  /// Solves for the constraint forces using the active kinematic elements.
+  /// Computes vdot given the state and control inputs, satisfying kinematic
+  /// constraints.
+  /// Solves for the constraint forces using the full kinematic elements.
   /// Similar to CalcTimeDerivatives(context, evaluators, lambda), but solves
-  /// for the forces to satisfy ddot phi = -kp*phi - kd*phidot
+  /// for the forces to satisfy the constraint ddot phi = -kp*phi - kd*phidot
+  ///   NOTE: the constraint __only__ includes the active contacts, but the
+  ///   force lambda returns the full contact set
   /// @param context
-  /// @param kp A position gain for constraint stabilization. Default = 0
-  /// @param kp A velocity gain for constraint stabilization. Default = 0
+  /// @param alpha Inverse time constant for constraint stabilization.
+  ///   Results in kp = alpha^2, kd = 2*alpha. Default = 0
   drake::VectorX<T> CalcTimeDerivatives(
-      const drake::systems::Context<T>& context, double kp = 0,
-      double kd = 0) const;
+      const drake::systems::Context<T>& context, double alpha = 0) const;
+
+  /// Computes vdot given the state and control inputs, satisfying kinematic
+  /// constraints.
+  /// See CalcTimeDerivatives(context, kp, kd) for full details. This version
+  /// also returns the constraint force lambda via an input pointer.
+  drake::VectorX<T> CalcTimeDerivatives(
+      const drake::systems::Context<T>& context, drake::VectorX<T>* lambda, 
+      double alpha = 0) const;
 
   /// Gets the starting index into phi_full of the specified evaluator
   int evaluator_full_start(int index) const;

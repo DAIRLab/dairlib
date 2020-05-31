@@ -146,21 +146,8 @@ void FixedPointConstraint<T>::EvaluateConstraint(
       VectorX<T>::Zero(plant_.num_velocities());
   // input order is x, u, lambda
   setContext<T>(plant_, x, u, context_.get());
-  
-  // Evaluate kinematic Jacobian
-  auto J = evaluators_.EvalFullJacobian(*context_);
 
-  // right_hand_side is the right hand side of the system's equations:
-  // M*vdot -J^T*f = right_hand_side.
-  // BiasTerm is C(q,v) in manipulator equations
-  VectorX<T> generalized_forces(plant_.num_velocities());
-  plant_.CalcBiasTerm(*context_, &generalized_forces);
-
-  generalized_forces = -generalized_forces +
-      plant_.MakeActuationMatrix() * u +
-      plant_.CalcGravityGeneralizedForces(*context_) +
-      J.transpose() * lambda;
-  *y = generalized_forces;
+  *y = evaluators_.CalcMassMatrixTimesVDot(*context_, lambda);  
 }
 
 }  // namespace multibody

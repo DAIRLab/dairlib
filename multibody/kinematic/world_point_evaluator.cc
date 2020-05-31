@@ -19,13 +19,13 @@ WorldPointEvaluator<T>::WorldPointEvaluator(
     const Frame<T>& frame_A,
     const Matrix3d rotation,
     const Vector3d offset,
-    std::vector<int> active_directions_)
+    std::vector<int> active_directions)
     : KinematicEvaluator<T>(plant, 3),
       pt_A_(pt_A),
       frame_A_(frame_A),
       offset_(offset),
       rotation_(rotation) {
-    this->set_active_inds(active_directions_);
+    this->set_active_inds(active_directions);
 }
 
 template <typename T>

@@ -9,7 +9,7 @@ namespace multibody {
 /// Virtual class to represent arbitrary kinematic evaluations
 /// Evaluations are defined by some function phi(q). Implementations
 /// must generate phi(q), J(q) (the Jacboian w.r.t. velocities v), 
-/// d/dt phi(q), and [d/dt J] * v
+/// and [d/dt J] * v
 ///
 /// Evaluations call also be classified as "active" or "inactive." Inactive
 /// evaluations can still be evaluated via the EvalAllXXX methods, but will
@@ -21,8 +21,9 @@ namespace multibody {
 /// avoiding redundant constraints, but still permitting their constraint
 /// forces (via J'*lambda)
 ///
-/// For efficiency, maintains a boolean all_active_ to determine whether all
-/// constraints are active. If true, can skip the slicing stage.
+/// For efficiency, maintains a boolean all_active_default_order_ to
+/// determine whether all constraints are active in the original order {0,1,...}
+/// If true, can skip the slicing stage.
 template <typename T>
 class KinematicEvaluator {
  public:
@@ -86,7 +87,7 @@ class KinematicEvaluator {
   int num_active_;
   int length_;
   std::vector<int> active_inds_;
-  bool all_active_;
+  bool all_active_default_order_;
 };
 
 }  // namespace multibody

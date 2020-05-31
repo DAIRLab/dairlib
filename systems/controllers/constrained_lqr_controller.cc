@@ -1,4 +1,5 @@
 #include "systems/controllers/constrained_lqr_controller.h"
+#include "multibody/multibody_utils.h"
 
 #include "drake/math/autodiff_gradient.h"
 
@@ -27,7 +28,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   // Input port that takes in an OutputVector containing the current Cassie
   // state
   input_port_info_index_ = this->DeclareVectorInputPort(
-      OutputVector<double>(plant_.plant_.num_positions(),
+      OutputVector<double>(plant_.num_positions(),
           plant_.num_velocities(), plant_.num_actuators())).get_index();
 
   // Output port that outputs the efforts
@@ -50,7 +51,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   MatrixX<AutoDiffXd> J_full_qdot(J_full_v.rows(), plant_.num_positions());
   for (int i = 0; i < plant_.num_positions(); i++) {
     AutoDiffVecXd v_i(plant_.num_velocities());
-    AutoDiffVecXd qdot = AutoDiffVecXd::Zero(plant.num_positions());
+    AutoDiffVecXd qdot = AutoDiffVecXd::Zero(plant_.num_positions());
     qdot(i) = 1;
     plant_.MapQDotToVelocity(context, qdot, &v_i);
     J_active_qdot.col(i) = J_active_v * v_i;
@@ -81,6 +82,9 @@ ConstrainedLQRController::ConstrainedLQRController(
 
   VectorXd xul(plant_.num_positions() + plant_.num_velocities()
       + plant_.num_actuators() + num_forces_);
+  auto x = autoDiffToValueMatrix(plant_.GetPositionsAndVelocities(context));
+  auto u =
+      autoDiffToValueMatrix(plant_.get_actuation_input_port().Eval(context));
   xul << x, u, lambda;
   AutoDiffVecXd xul_ad = initializeAutoDiff(xul);
 
@@ -90,11 +94,11 @@ ConstrainedLQRController::ConstrainedLQRController(
       + plant_.num_velocities(), plant_.num_actuators());
   AutoDiffVecXd lambda_ad = xul_ad.tail(num_forces_);
 
-  auto context_ad = palnt_.CreateContext(x_ad, u_ad);
+  auto context_ad = multibody::createContext(plant_, x_ad, u_ad);
 
-  AutoDiffVecXd xdot = evaluators_.CalcTimeDerivatives(context_ad, lambda_ad);
+  AutoDiffVecXd xdot = evaluators_.CalcTimeDerivatives(*context_ad, lambda_ad);
 
-  MatrixXd AB = autoDiffToGradientMatrix(xdot_autodiff);
+  MatrixXd AB = autoDiffToGradientMatrix(xdot);
   MatrixXd A = AB.leftCols(plant_.num_positions() + plant_.num_velocities());
   MatrixXd B = AB.block(0, plant_.num_positions() + plant_.num_velocities(),
       AB.rows(), plant_.num_actuators());

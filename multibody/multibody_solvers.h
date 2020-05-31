@@ -32,16 +32,16 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
   /// Decision variables q here are required as an input to avoid calling
   /// this method out of order with AddPositionVariables()
   drake::solvers::Binding<drake::solvers::Constraint> AddKinematicConstraint(
-      drake::solvers::VectorXDecisionVariable q);
+      const drake::solvers::VectorXDecisionVariable& q);
 
   /// Adds a fixed point constraint, including the associated constraint
   /// forces. Decision variables q,u here are required as inputs to avoid 
   /// calling this method out of order. lambda is optional, since some systems
   /// will not have constraint forces. The length of lambda is checked.
   drake::solvers::Binding<drake::solvers::Constraint> AddFixedPointConstraint(
-      drake::solvers::VectorXDecisionVariable q,
-      drake::solvers::VectorXDecisionVariable u,
-      drake::solvers::VectorXDecisionVariable lambda =
+      const drake::solvers::VectorXDecisionVariable& q,
+      const drake::solvers::VectorXDecisionVariable& u,
+      const drake::solvers::VectorXDecisionVariable& lambda =
           drake::solvers::VectorXDecisionVariable(0));
 
  private:

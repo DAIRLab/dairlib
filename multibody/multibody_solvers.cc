@@ -46,7 +46,7 @@ VectorXDecisionVariable MultibodyProgram<T>::AddConstraintForceVariables() {
 
 template <typename T>
 Binding<Constraint> MultibodyProgram<T>::AddKinematicConstraint(
-    VectorXDecisionVariable q) {
+    const VectorXDecisionVariable& q) {
   auto constraint = std::make_shared<KinematicPositionConstraint<T>>(
         plant_, evaluators_, context_);
   return AddConstraint(constraint, q);
@@ -54,8 +54,8 @@ Binding<Constraint> MultibodyProgram<T>::AddKinematicConstraint(
 
 template <typename T>
 Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraint(
-    VectorXDecisionVariable q, VectorXDecisionVariable u,
-    VectorXDecisionVariable lambda) {
+    const VectorXDecisionVariable& q, const VectorXDecisionVariable& u,
+    const VectorXDecisionVariable& lambda) {
   DRAKE_DEMAND(lambda.size() == evaluators_.count_full());
   auto constraint = std::make_shared<FixedPointConstraint<T>>(
         plant_, evaluators_, context_);
@@ -73,9 +73,6 @@ void MultibodyProgram<T>::AddJointLimitConstraints(VectorXDecisionVariable q) {
   }
   }
 }
-
-
-
 
 template <typename T>
 KinematicPositionConstraint<T>::KinematicPositionConstraint(

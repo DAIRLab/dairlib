@@ -28,7 +28,7 @@ class WorldPointEvaluator :  public KinematicEvaluator<T> {
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
       const Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity(),
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
-      std::vector<int> active_directions_ = {0,1,2});
+      std::vector<int> active_directions = {0,1,2});
 
   /// Constructor for WorldPointEvaluator, defined via a normal direction
   /// This will automatically construct an appropriate rotation matrix.
@@ -43,15 +43,14 @@ class WorldPointEvaluator :  public KinematicEvaluator<T> {
   /// @param xy_active If true, then the tangential directions are active
   ///    If false, they be inactive, and thus still appear in
   ///    the "Full" terms, but not the "Active" values
-  ///    Note that this defaults to FALSE, while the base constructor above
-  ///    includes all dimensions by default.
+  ///    Note that this defaults to true.
 
   WorldPointEvaluator(
       const drake::multibody::MultibodyPlant<T>& plant,
       const Eigen::Vector3d pt_A, const drake::multibody::Frame<T>& frame_A,
       const Eigen::Vector3d normal,
       const Eigen::Vector3d offset = Eigen::Vector3d::Zero(),
-      bool tangent_active = false);
+      bool tangent_active = true);
 
   drake::VectorX<T> EvalFull(
       const drake::systems::Context<T>& context) const;

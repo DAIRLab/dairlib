@@ -59,7 +59,7 @@ TEST_F(KinematicEvaluatorTest, WorldPointEvaluatorTest) {
   auto context = plant_->CreateDefaultContext();
 
   // Test q = 0, legs straight down
-  VectorXd q(plant_->num_positions());
+  VectorXd q = VectorXd::Zero(plant_->num_positions());
   plant_->SetPositions(context.get(), q);
   VectorXd v = Eigen::VectorXd::Constant(plant_->num_velocities(), 1);
   plant_->SetVelocities(context.get(), v);
@@ -133,7 +133,7 @@ TEST_F(KinematicEvaluatorTest, DistanceEvaluatorTest) {
   auto context = plant_->CreateDefaultContext();
 
   // Test q = pi/2, legs straight down
-  VectorXd q(plant_->num_positions());
+  VectorXd q = VectorXd::Zero(plant_->num_positions());
   q(3) = M_PI/2.0;
   plant_->SetPositions(context.get(), q);
   VectorXd v = Eigen::VectorXd::Random(plant_->num_velocities());

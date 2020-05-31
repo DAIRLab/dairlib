@@ -3,9 +3,10 @@
 
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 
-DEFINE_double(height, 1, "Fixed height");
-DEFINE_double(mu, .5, "Coefficient of friction");
-DEFINE_bool(linear_friction_cone, true, "Use linear or nonlinear Lorentz cone");
+DEFINE_double(height, 1, "Fixed height,");
+DEFINE_double(mu, .5, "Coefficient of friction,");
+DEFINE_double(min_normal_force, 50, "Minimum normal force per contact pont.");
+DEFINE_bool(linear_friction_cone, true, "Use linear or nonlinear Lorentz cone,");
 
 namespace dairlib {
 
@@ -18,7 +19,7 @@ int do_main(int argc, char* argv[]) {
 
   Eigen::VectorXd q, u, lambda;
 
-  CassieFixedPointSolver(urdf, FLAGS_height, FLAGS_mu, 50,
+  CassieFixedPointSolver(urdf, FLAGS_height, FLAGS_mu, FLAGS_min_normal_force,
       FLAGS_linear_friction_cone, &q, &u, &lambda, true);
 
   std::cout << "Positions" << std::endl;

@@ -105,8 +105,8 @@ class ContactToolkitTest : public ::testing::Test {
 
     // Colliison detect
     VectorXd phi_total;
-    Matrix3Xd normal_total, xA_total;
-    vector<int> idxA_total;
+    Matrix3Xd normal_total, xA_total, xB_total;
+    vector<int> idxA_total, idxB_total;
 
     // plant_->CalcContactResults(plant_context,
     // const std::vector<PenetrationAsPointPair<T>>& point_pairs,
@@ -122,7 +122,7 @@ class ContactToolkitTest : public ::testing::Test {
       plant_context, contact_results_value.get());
 
     // // Extracting information into the four contacts.
-    Matrix3Xd normal(3, 4), xA(3, 4);
+    Matrix3Xd normal(3, 4), xA(3, 4), xB(3, 4);
     auto world_ind = plant_->world_body().index();
     auto toe_left_ind = plant_->GetBodyByName("toe_left").index();
     auto toe_right_ind = plant_->GetBodyByName("toe_right").index();
@@ -135,11 +135,13 @@ class ContactToolkitTest : public ::testing::Test {
       if ((ind_a == world_ind && ind_b == toe_left_ind) ||
           (ind_a == world_ind && ind_b == toe_right_ind)) {
         xA.col(k) = info.point_pair().p_WCb;
+        xB.col(k) = info.point_pair().p_WCa;
         frames.push_back(&plant_->get_body(ind_b).body_frame());
         ++k;
       } else if ((ind_a == toe_left_ind && ind_b == world_ind) ||
                  (ind_a == toe_right_ind && ind_b == world_ind)) {
         xA.col(k) = info.point_pair().p_WCa;
+        xB.col(k) = info.point_pair().p_WCb;
         frames.push_back(&plant_->get_body(ind_a).body_frame());
         ++k;
       }
@@ -148,7 +150,7 @@ class ContactToolkitTest : public ::testing::Test {
     std::cout << contact_results.num_point_pair_contacts() << std::endl;
 
     // Creating the contact info
-    contact_info_ = {xA, frames};
+    contact_info_ = {xA, xB, frames};
 
     // ContactToolkit objects for both templates
     contact_toolkit_ =
@@ -169,19 +171,22 @@ TEST_F(ContactToolkitTest, InitializationTest) {
   // ContactInfo getter
   ContactInfo<double> tmp_info = contact_toolkit_->get_contact_info();
   ASSERT_TRUE(tmp_info.xA.isApprox(contact_info_.xA));
-
+  ASSERT_TRUE(tmp_info.xB.isApprox(contact_info_.xB));
   ASSERT_TRUE(tmp_info.frameA == contact_info_.frameA);
 
   // num contacts getter
   ASSERT_EQ(contact_toolkit_->get_num_contacts(), 4);
 
   // Verifying the contact info setter
-  Matrix3Xd xA(3, 2);
+  Matrix3Xd xA(3, 2), xB(3, 2);
   vector<int> idxA = {0, 0};
   xA << 0.1, 0.2, 0.3, 0.2, -0.3, 2.3;
+  xB << 0.1, -0.3, 0.5, 1.7, 5.5, 0.9;
+  // tmp_info = {xA, xB, idxA};
 
   // contact_toolkit_->set_contact_info(tmp_info);
   // ASSERT_TRUE(xA.isApprox(contact_toolkit_->get_contact_info().xA));
+  // ASSERT_TRUE(xB.isApprox(contact_toolkit_->get_contact_info().xB));
   // ASSERT_TRUE(idxA == contact_toolkit_->get_contact_info().idxA);
 }
 

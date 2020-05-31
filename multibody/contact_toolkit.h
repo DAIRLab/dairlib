@@ -12,8 +12,9 @@ namespace multibody {
 /*
  * ContactInfo structure that holds all the required contact information.
  * xA: Positions on Body A (The robot) expressed in the frame of the robot.
+ * xB: Positions on Body B (Assumed to be the ground) expressed in the ground
  * frame (world frame).
- * frameA: Frame of the corresponding positions in the MultibodyPlant.
+ * idxA: Body indices of the corresponding positions in the RigidBodyTree.
  * This structure may be expanded in the future to incorporate more information.
  * Eg: for general body-body contact.
  */
@@ -22,7 +23,6 @@ struct ContactInfo {
   Eigen::Matrix3Xd xA;
   Eigen::Matrix3Xd xB;
   std::vector<const drake::multibody::Frame<T>*> frameA;
-  int num_contacts;
 };
 
 /*
@@ -43,6 +43,7 @@ class ContactToolkit {
 
   ContactToolkit(const drake::multibody::MultibodyPlant<T>& plant,
                  ContactInfo<T> contact_info);
+
 
   /*
    * Function to compute the contact jacobian. The normal and two surface

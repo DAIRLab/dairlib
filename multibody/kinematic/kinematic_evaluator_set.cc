@@ -8,7 +8,9 @@ using drake::VectorX;
 using drake::systems::Context;
 
 template <typename T>
-KinematicEvaluatorSet<T>::KinematicEvaluatorSet() {}
+KinematicEvaluatorSet<T>::KinematicEvaluatorSet(
+    const drake::multibody::MultibodyPlant<T>& plant) :
+    plant_(plant) {}
 
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalActive(
@@ -37,7 +39,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalActiveTimeDerivative(
 template <typename T>
 MatrixX<T> KinematicEvaluatorSet<T>::EvalActiveJacobian(
   const Context<T>& context) const {
-  const int num_velocities = evaluators_.at(0)->plant().num_velocities();
+  const int num_velocities = plant_.num_velocities();
   MatrixX<T> J(count_active(), num_velocities);
   int ind = 0;
   for (const auto& e : evaluators_) {
@@ -87,7 +89,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFullTimeDerivative(
 template <typename T>
 MatrixX<T> KinematicEvaluatorSet<T>::EvalFullJacobian(
   const Context<T>& context) const {
-  const int num_velocities = evaluators_.at(0)->plant().num_velocities();
+  const int num_velocities = plant_.num_velocities();
   MatrixX<T> J(count_full(), num_velocities);
   int ind = 0;
   for (const auto& e : evaluators_) {
@@ -112,7 +114,8 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFullJacobianDotTimesV(
 
 template <typename T>
 int KinematicEvaluatorSet<T>::add_evaluator(KinematicEvaluator<T>* e) {
-  // TODO Confirm that all evaluators share the same plant
+  // Compare plants for equality by reference
+  DRAKE_DEMAND(&plant_ == &e->plant());
   
   evaluators_.push_back(e);
   return evaluators_.size() - 1;

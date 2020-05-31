@@ -187,7 +187,6 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        ":cassie_fixed_point_solver",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",

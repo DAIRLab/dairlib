@@ -1,33 +1,37 @@
 #include <memory>
-#include <gflags/gflags.h>
 
-#include "drake/systems/lcm/lcm_interface_system.h"
+#include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
+#include <drake/systems/lcm/lcm_interface_system.h>
+#include <gflags/gflags.h>
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
-#include "drake/lcmt_contact_results_for_viz.hpp"
-#include "drake/multibody/plant/contact_results_to_lcm.h"
+#include "drake/multibody/joints/floating_base_types.h"
+#include "drake/multibody/tree/revolute_joint.h"
+#include "drake/solvers/solve.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/primitives/constant_vector_source.h"
+#include "drake/systems/primitives/signal_logger.h"
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-
-#include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
-
+#include "drake/lcmt_contact_results_for_viz.hpp"
+#include "drake/multibody/plant/contact_results_to_lcm.h"
 
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::RevoluteJoint;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
@@ -61,6 +65,7 @@ DEFINE_double(init_height, 1.1,
               "Initial starting height of the pelvis above "
               "ground");
 
+Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant);
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -133,19 +138,16 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   // Set initial conditions of the simulation
-  VectorXd q_init, u_init, lambda_init;
-
-  // Use fixed springs model to find a good fixed point
-  double mu_fp = .5;
-  double min_normal_fp = 50;
-  if (FLAGS_floating_base) {
-    CassieFixedPointSolver(plant, FLAGS_init_height, mu_fp, min_normal_fp,
-        true, &q_init, &u_init, &lambda_init);  
-  } else {
-    CassieFixedBaseFixedPointSolver(plant, &q_init, &u_init, &lambda_init);
-  }
+  VectorXd q_init = GetInitialState(plant);
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
+
+  if (FLAGS_floating_base) {
+    const drake::math::RigidTransformd transform(
+        RotationMatrix<double>(), Eigen::Vector3d(0, 0, FLAGS_init_height));
+    plant.SetFreeBodyPose(&plant_context, plant.GetBodyByName("pelvis"),
+                          transform);
+  }
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
@@ -166,6 +168,74 @@ int do_main(int argc, char* argv[]) {
   return 0;
 }
 
+Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
+  int n_q = plant.num_positions();
+  std::map<std::string, int> positions_map =
+      multibody::makeNameToPositionsMap(plant);
+
+  VectorXd q_ik_guess = VectorXd::Zero(n_q);
+  Eigen::Vector4d quat(1, 0, 0, 0);
+  q_ik_guess << quat.normalized(), 0.001, 0.001, 1.1, -0.01, 0.01, 0.0, 0.0,
+      1.15, 1.15, -1.35, -1.35, 1.0, 1.0, 0.0, 0.0, 0.0, -M_PI / 2, 0.0,
+      -M_PI / 2;
+
+  double achilles_length = .5012;
+  double feet_xpos_offset = -0.15;
+  double eps = 1e-4;
+  Vector3d pelvis_pos(0.0, 0.0, 1.0);
+  Vector3d rear_contact_disp(-0.0457, 0.112, 0);
+  Vector3d front_contact_disp(0.088, 0, 0);
+  Vector3d left_toe_rear_pos(-0.02115 + feet_xpos_offset, 0.12, 0.00);
+  Vector3d left_toe_front_pos(0.02115 + feet_xpos_offset, 0.12, 0.00);
+  Vector3d right_toe_rear_pos(-0.02115 + feet_xpos_offset, -0.12, 0.00);
+  Vector3d right_toe_front_pos(0.02115 + feet_xpos_offset, -0.12, 0.00);
+
+  Vector3d rod_on_heel_spring;  // symmetric left and right
+  rod_on_heel_spring << .11877, -.01, 0.0;
+  Vector3d rod_on_thigh_left;
+  rod_on_thigh_left << 0.0, 0.0, 0.045;
+  Vector3d rod_on_thigh_right;
+  rod_on_thigh_right << 0.0, 0.0, -0.045;
+
+  const auto& world_frame = plant.world_frame();
+  const auto& pelvis_frame = plant.GetFrameByName("pelvis");
+  const auto& toe_left_frame = plant.GetFrameByName("toe_left");
+  const auto& toe_right_frame = plant.GetFrameByName("toe_right");
+  const auto& thigh_left_frame = plant.GetFrameByName("thigh_left");
+  const auto& thigh_right_frame = plant.GetFrameByName("thigh_right");
+  const auto& heel_spring_left_frame = plant.GetFrameByName("heel_spring_left");
+  const auto& heel_spring_right_frame =
+      plant.GetFrameByName("heel_spring_right");
+
+  drake::multibody::InverseKinematics ik(plant);
+
+  ik.AddPositionConstraint(pelvis_frame, Vector3d(0, 0, 0), world_frame,
+                           pelvis_pos - eps * VectorXd::Ones(3),
+                           pelvis_pos + eps * VectorXd::Ones(3));
+  ik.AddOrientationConstraint(pelvis_frame, RotationMatrix<double>(),
+                              world_frame, RotationMatrix<double>(), eps);
+  ik.AddPositionConstraint(toe_left_frame, rear_contact_disp, world_frame,
+                           left_toe_rear_pos, left_toe_rear_pos);
+  ik.AddPositionConstraint(toe_left_frame, front_contact_disp, world_frame,
+                           left_toe_front_pos, left_toe_front_pos);
+  ik.AddPositionConstraint(toe_right_frame, rear_contact_disp, world_frame,
+                           right_toe_rear_pos, right_toe_rear_pos);
+  ik.AddPositionConstraint(toe_right_frame, front_contact_disp, world_frame,
+                           right_toe_front_pos, right_toe_front_pos);
+  ik.AddPointToPointDistanceConstraint(
+      heel_spring_left_frame, rod_on_heel_spring, thigh_left_frame,
+      rod_on_thigh_left, achilles_length, achilles_length);
+  ik.AddPointToPointDistanceConstraint(
+      heel_spring_right_frame, rod_on_heel_spring, thigh_right_frame,
+      rod_on_thigh_right, achilles_length, achilles_length);
+
+  ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
+  const auto result = Solve(ik.prog());
+  const auto q_sol = result.GetSolution(ik.q());
+  VectorXd q_sol_normd(n_q);
+  q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(n_q - 4);
+  return q_sol_normd;
+}
 
 }  // namespace dairlib
 

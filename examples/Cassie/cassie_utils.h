@@ -41,15 +41,10 @@ using drake::systems::lcm::LcmPublisherSystem;
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
 /// @param filename the URDF or SDF file to use for Cassie
 ///        omit to use default value
-/// @param add_leaf_springs Whether or not to add the 4 leaf springs in the legs
-///     Default = true
-/// @param add_loop_closure_springs Whether or not to add the loop closure
-///     distance constraint via stiff springs. Default = true.
 void addCassieMultibody(drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     bool floating_base = true,
-    std::string filename = "examples/Cassie/urdf/cassie_v2.urdf",
-    bool add_leaf_springs = true,  bool add_loop_closure_springs = true);
+    std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
 
 template <typename T>
 std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> LeftToe(

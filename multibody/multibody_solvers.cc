@@ -15,51 +15,66 @@ using drake::VectorX;
 using solvers::NonlinearConstraint;
 
 template <typename T>
-MultibodyProgram<T>::MultibodyProgram(const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators)
+MultibodyProgram<T>::MultibodyProgram(const MultibodyPlant<T>& plant)
     : drake::solvers::MathematicalProgram(),
     plant_(plant),
-    evaluators_(evaluators),
     context_(std::shared_ptr<Context<T>>(
         plant_.CreateDefaultContext().release())) {}
 
 template <typename T>
 VectorXDecisionVariable MultibodyProgram<T>::AddPositionVariables() {
-  DRAKE_DEMAND(q_.size() == 0);
-  q_ = NewContinuousVariables(plant_.num_positions(), "q");
-  return q_;
+  return NewContinuousVariables(plant_.num_positions(), "q");
 }
 
 template <typename T>
 VectorXDecisionVariable MultibodyProgram<T>::AddInputVariables() {
-  DRAKE_DEMAND(u_.size() == 0);
-  u_ = NewContinuousVariables(plant_.num_actuators(), "u");
-  return u_;
+  return NewContinuousVariables(plant_.num_actuators(), "u");
 }
 
 template <typename T>
-VectorXDecisionVariable MultibodyProgram<T>::AddConstraintForceVariables() {
-  DRAKE_DEMAND(lambda_.size() == 0);
-  lambda_ = NewContinuousVariables(evaluators_.count_full(), "lambda");
-  return lambda_;
+VectorXDecisionVariable MultibodyProgram<T>::AddConstraintForceVariables(
+    const KinematicEvaluatorSet<T>& evaluators) {
+  return NewContinuousVariables(evaluators.count_full(), "lambda");;
 }
 
 template <typename T>
 Binding<Constraint> MultibodyProgram<T>::AddKinematicConstraint(
-    const VectorXDecisionVariable& q) {
+    const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXDecisionVariable& q,
+    std::shared_ptr<Context<T>> local_context) {
+  DRAKE_DEMAND(q.size() == plant_.num_positions());
   auto constraint = std::make_shared<KinematicPositionConstraint<T>>(
-        plant_, evaluators_, context_);
+        plant_, evaluators, local_context);
   return AddConstraint(constraint, q);
 }
 
 template <typename T>
+Binding<Constraint> MultibodyProgram<T>::AddKinematicConstraint(
+    const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXDecisionVariable& q) {
+  AddKinematicConstraint(evaluators, q, context_);
+}
+
+template <typename T>
 Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraint(
+    const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXDecisionVariable& q, const VectorXDecisionVariable& u,
+    const VectorXDecisionVariable& lambda,
+    std::shared_ptr<Context<T>> local_context) {
+  DRAKE_DEMAND(q.size() == plant_.num_positions());
+  DRAKE_DEMAND(u.size() == plant_.num_actuators());
+  DRAKE_DEMAND(lambda.size() == evaluators.count_full());
+  auto constraint = std::make_shared<FixedPointConstraint<T>>(
+        plant_, evaluators, local_context);
+  return AddConstraint(constraint, {q, u, lambda});
+}
+
+template <typename T>
+Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraint(
+    const KinematicEvaluatorSet<T>& evaluators,
     const VectorXDecisionVariable& q, const VectorXDecisionVariable& u,
     const VectorXDecisionVariable& lambda) {
-  DRAKE_DEMAND(lambda.size() == evaluators_.count_full());
-  auto constraint = std::make_shared<FixedPointConstraint<T>>(
-        plant_, evaluators_, context_);
-  return AddConstraint(constraint, {q, u, lambda});
+  AddFixedPointConstraint(evaluators, q, u, lambda, context_);
 }
 
 template <typename T>

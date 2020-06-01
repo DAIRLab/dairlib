@@ -58,7 +58,7 @@ template <typename T>
 class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
  public:
   /// This constructor takes a shared_ptr<Context> as an argument to share
-  /// cached kinematic/dynamic computation within the ccontext
+  /// cached kinematic/dynamic computation within the context
   KinematicPositionConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
@@ -84,7 +84,7 @@ template <typename T>
 class FixedPointConstraint : public solvers::NonlinearConstraint<T> {
  public:
   /// This constructor takes a shared_ptr<Context> as an argument to share
-  /// cached kinematic/dynamic computation within the ccontext
+  /// cached kinematic/dynamic computation within the context
   FixedPointConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,

@@ -69,8 +69,8 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
   if (add_loop_closure_springs) {
     // TOOO(mposa): add loop closures when implemented in Drake
     // Add a spring to represent loop closure
-    double achilles_stiffness = 2e6;
-    double achilles_damping = 200;
+    double achilles_stiffness = 2e7;
+    double achilles_damping = 20000;
     double achilles_length = .5012;
     const auto& heel_spring_left = plant->GetBodyByName("heel_spring_left");
     const auto& thigh_left = plant->GetBodyByName("thigh_left");

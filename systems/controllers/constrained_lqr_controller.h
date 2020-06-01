@@ -116,6 +116,10 @@ class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd B_;
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd R_;
+  Eigen::MatrixXd F_;
+  Eigen::MatrixXd P_;
+  Eigen::MatrixXd A_full_;
+  Eigen::MatrixXd B_full_;
   drake::systems::controllers::LinearQuadraticRegulatorResult lqr_result_;
   const int num_forces_;
 };

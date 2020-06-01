@@ -44,29 +44,29 @@ ConstrainedLQRController::ConstrainedLQRController(
   DRAKE_DEMAND(R.rows() == R.cols());
 
   auto J_active_v = evaluators_.EvalActiveJacobian(context);
-  auto J_full_v = evaluators_.EvalFullJacobian(context);
 
   // convert to w.r.t. qdot one column at a time
   MatrixX<AutoDiffXd> J_active_qdot(J_active_v.rows(), plant_.num_positions());
-  MatrixX<AutoDiffXd> J_full_qdot(J_full_v.rows(), plant_.num_positions());
   for (int i = 0; i < plant_.num_positions(); i++) {
     AutoDiffVecXd v_i(plant_.num_velocities());
     AutoDiffVecXd qdot = AutoDiffVecXd::Zero(plant_.num_positions());
     qdot(i) = 1;
     plant_.MapQDotToVelocity(context, qdot, &v_i);
     J_active_qdot.col(i) = J_active_v * v_i;
-    J_full_qdot.col(i) = J_full_v * v_i;
   }
 
   // Computing F
   // F is the constraint matrix that represents the constraint in the form
   // Fx = 0 (where x is the full state vector of the model)
-  MatrixXd F(J_active_qdot.rows() + J_active_v.rows(),
+  MatrixXd F(J_active_qdot.rows() + J_active_v.rows() + 1,
              J_active_qdot.cols() + J_active_v.cols());
+  Eigen::RowVectorXd F_quat = Eigen::RowVectorXd::Zero(J_active_qdot.cols() + J_active_v.cols());
+  F_quat(0) = 1;
   F << autoDiffToValueMatrix(J_active_qdot),
        MatrixXd::Zero(J_active_qdot.rows(), J_active_v.cols()),
        MatrixXd::Zero(J_active_v.rows(), J_active_qdot.cols()),
-       autoDiffToValueMatrix(J_active_v);
+       autoDiffToValueMatrix(J_active_v),
+       F_quat;
 
   // Computing the null space of F
   Eigen::HouseholderQR<MatrixXd> qr_decomp(F.transpose());
@@ -80,28 +80,33 @@ ConstrainedLQRController::ConstrainedLQRController(
   // Creating a combined autodiff vector and then extracting the individual
   // components to ensure proper gradient initialization.
 
-  VectorXd xul(plant_.num_positions() + plant_.num_velocities()
-      + plant_.num_actuators() + num_forces_);
+  VectorXd xu(plant_.num_positions() + plant_.num_velocities()
+      + plant_.num_actuators());
   auto x = autoDiffToValueMatrix(plant_.GetPositionsAndVelocities(context));
   auto u =
       autoDiffToValueMatrix(plant_.get_actuation_input_port().Eval(context));
-  xul << x, u, lambda;
-  AutoDiffVecXd xul_ad = initializeAutoDiff(xul);
+  xu << x, u;
+  AutoDiffVecXd xu_ad = initializeAutoDiff(xu);
 
-  AutoDiffVecXd x_ad = xul_ad.head(plant_.num_positions()
+  AutoDiffVecXd x_ad = xu_ad.head(plant_.num_positions()
       + plant_.num_velocities());
-  AutoDiffVecXd u_ad = xul_ad.segment(plant_.num_positions()
+  AutoDiffVecXd u_ad = xu_ad.segment(plant_.num_positions()
       + plant_.num_velocities(), plant_.num_actuators());
-  AutoDiffVecXd lambda_ad = xul_ad.tail(num_forces_);
 
   auto context_ad = multibody::createContext(plant_, x_ad, u_ad);
 
-  AutoDiffVecXd xdot = evaluators_.CalcTimeDerivatives(*context_ad, lambda_ad);
+  AutoDiffVecXd xdot = evaluators_.CalcTimeDerivatives(*context_ad);
 
   MatrixXd AB = autoDiffToGradientMatrix(xdot);
   MatrixXd A = AB.leftCols(plant_.num_positions() + plant_.num_velocities());
   MatrixXd B = AB.block(0, plant_.num_positions() + plant_.num_velocities(),
       AB.rows(), plant_.num_actuators());
+
+  // quaternion restoration (hack)
+  // A(0,0) -= 100;
+
+  A_full_ = A;
+  B_full_ = B;
 
   // A and B matrices in the new coordinates
   A_ = P * A * P.transpose();
@@ -109,6 +114,8 @@ ConstrainedLQRController::ConstrainedLQRController(
   // Remapping the Q costs to the new coordinates
   Q_ = P * Q * P.transpose();
   R_ = R;
+  F_ = F;
+  P_ = P;
 
   // Validating the required dimesions after the matrix operations.
   DRAKE_DEMAND(B_.cols() == R_.rows());
@@ -116,6 +123,7 @@ ConstrainedLQRController::ConstrainedLQRController(
   lqr_result_ = LinearQuadraticRegulator(A_, B_, Q_, R_);
   K_ = lqr_result_.K * P;
   E_ = u;
+  desired_state_ = x;
 }
 
 void ConstrainedLQRController::CalcControl(
@@ -125,7 +133,8 @@ void ConstrainedLQRController::CalcControl(
                                                    input_port_info_index_);
 
   // Computing the controller output.
-  VectorXd u = K_ * (desired_state_ - info->GetState()) + E_;
+  VectorXd dx = (desired_state_ - info->GetState());
+  VectorXd u = K_ * dx + E_;
   control->SetDataVector(u);
   control->set_timestamp(info->get_timestamp());
 }

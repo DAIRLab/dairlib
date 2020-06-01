@@ -49,17 +49,19 @@ DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
             "If 'false', the plant is modeled as a continuous system.");
-DEFINE_double(dt, 8e-5,
-              "The step size to use for compliant, ignored for time_stepping)");
+DEFINE_double(dt, 1e-5,
+              "The step size to use for time_stepping, ignored for continuous");
+DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
 DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model. Nearly equivalent"
               " to (m)");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
-DEFINE_double(init_height, 1.1,
+DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
+DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
 
 int do_main(int argc, char* argv[]) {
@@ -75,11 +77,20 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_floating_base) {
     multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
   }
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base,
-                     "examples/Cassie/urdf/cassie_v2.urdf");
 
+  std::string urdf;
+  if (FLAGS_spring_model) {
+    urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+  } else {
+    urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+  }
+
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+      FLAGS_spring_model, true);
   plant.Finalize();
+
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
+  plant.set_stiction_tolerance(FLAGS_v_stiction);
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -135,9 +146,8 @@ int do_main(int argc, char* argv[]) {
   // Set initial conditions of the simulation
   VectorXd q_init, u_init, lambda_init;
 
-  // Use fixed springs model to find a good fixed point
-  double mu_fp = .5;
-  double min_normal_fp = 50;
+  double mu_fp = 0;
+  double min_normal_fp = 70;
   if (FLAGS_floating_base) {
     CassieFixedPointSolver(plant, FLAGS_init_height, mu_fp, min_normal_fp,
         true, &q_init, &u_init, &lambda_init);  

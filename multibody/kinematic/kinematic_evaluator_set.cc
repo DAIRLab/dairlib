@@ -188,8 +188,8 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
   // M(q) vdot + C(q,v) = tau_g(q) + Bu + J(q)^T lambda
   // J vdot + Jdotv  + kp phi + kd phidot = 0
   // Produces linear system of equations
-  // [[M J^T]  [[vdot  ]  =  [[-tau_g + Bu - C     ]
-  //  [J  0 ]]  [lambda]]     [ -kp phi - kd phidot]]
+  // [[M -J^T]  [[vdot  ]  =  [[tau_g + Bu - C     ]
+  //  [J  0 ]]  [lambda]]     [ -Jdotv - kp phi - kd phidot]]
 
   // Evaluate manipulator equation terms
   MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
@@ -223,7 +223,15 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
   const VectorX<T> vdot_lambda = A.ldlt().solve(b);
   
   *lambda = vdot_lambda.tail(J.rows());
-  return vdot_lambda.head(plant_.num_velocities());
+
+  VectorX<T> x_dot(plant_.num_positions() + plant_.num_velocities());
+  VectorX<T> q_dot(plant_.num_positions());
+
+  plant_.MapVelocityToQDot(context, plant_.GetVelocities(context), &q_dot);
+
+  x_dot << q_dot, vdot_lambda.head(plant_.num_velocities());
+
+  return x_dot;
 }
 
 template <typename T>

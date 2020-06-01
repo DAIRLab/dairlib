@@ -204,14 +204,22 @@ void readThetaFromFiles(const string dir,int theta_idx,
 
 //use interpolation to set the initial guess for the trajectory optimization
 string getInitFileName(const string directory, int traj_opt_num,
-    bool is_rerun){
+    bool is_rerun,int rerun_traj_idx=-1){
   int gamma_dimension = 3;
   VectorXd current_gamma = readCSV(directory + to_string(traj_opt_num)
                                        + string("_0_gamma.csv"));
   string initial_file_name;
   if(is_rerun){
-    initial_file_name = to_string(traj_opt_num)
-        + string("_0_w.csv");;
+    //if not specify which Traj Opt result to use, use its own result to rerun;
+    //else use the specified one.
+    if(rerun_traj_idx==-1) {
+      initial_file_name = to_string(traj_opt_num)
+          + string("_0_w.csv");
+    }
+    else{
+      initial_file_name = to_string(rerun_traj_idx)
+          + string("_0_w.csv");
+    }
   }else{
     if(traj_opt_num==0){
       initial_file_name = "";
@@ -266,7 +274,8 @@ string getInitFileName(const string directory, int traj_opt_num,
 
 // trajectory optimization for given task and model
 void trajOptGivenModel(double stride_length, double ground_incline,
-    double turning_rate,const string dir,int num,bool is_rerun){
+    double turning_rate,const string dir,int num,bool is_rerun,
+    int initial_guess_idx=-1){
   // Create MBP
   MultibodyPlant<double> plant(0.0);
   createMBP(&plant, FLAGS_robot_option);
@@ -348,7 +357,8 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
 
 //  string init_file_pass_in = "";
-  string init_file_pass_in = getInitFileName(dir, num, is_rerun);
+  string init_file_pass_in = getInitFileName(dir, num, is_rerun,
+      initial_guess_idx);
   int sample_idx = 0;
   string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
 
@@ -442,6 +452,7 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
   VectorXd last_gamma = init_gamma;
   VectorXd boundary_point(dims);
   VectorXd step = step_size.array()*step_direction.array();
+  VectorXd cost_list;
   double decay_factor;//take a large step at the beginning
   cout << "sample# (rerun #) | stride | incline | turning | init_file | "
           "Status | Solve time | Cost (tau cost)\n";
@@ -486,6 +497,9 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     }
     double sample_cost =
         (readCSV(dir + prefix + string("c.csv")))(0, 0);
+    //save the trajectory optimization index and corresponding cost for further use
+    cost_list.conservativeResize(cost_list.rows()+1, 2);
+    cost_list.row(cost_list.rows()-1)<<traj_num,sample_cost;
 
     //test search algorithm
 //    double sample_cost = sample_result(new_gamma[0],new_gamma[1],
@@ -504,7 +518,30 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
       break;
     }
   }
-  //TODO:check the adjacent sample to avoid being stuck in local minimum
+  cout << "\nStart checking the cost:\n";
+  //check the adjacent sample to avoid being stuck in local minimum
+  for(iter=cost_list.rows()-2;iter>=1;iter--){
+    //if cost is larger than adjacent sample, rerun with adjacent sample result
+    if( (cost_list(iter,1) > 1.2*cost_list(iter-1,1)) &&
+      (cost_list(iter,1) > 1.2*cost_list(iter+1,1)) ){
+      VectorXd gamma_to_rerun = readCSV(dir + to_string(iter)
+                                           + string("_0_gamma.csv"));
+      //choose the result of sample with lower cost as initial guess
+      if(cost_list(iter-1,1)<cost_list(iter+1,1)){
+        trajOptGivenModel(gamma_to_rerun[0], gamma_to_rerun[1],
+                          gamma_to_rerun[2], dir, iter, true, iter-1);
+      }
+      else{
+        trajOptGivenModel(gamma_to_rerun[0], gamma_to_rerun[1],
+                          gamma_to_rerun[2], dir, iter, true, iter+1);
+      }
+      //update cost list
+      cost_list(iter,1) = readCSV(dir + to_string(iter)
+                                      + string("_0_c.csv"))(0,0);
+    }
+  }
+  writeCSV(dir +  to_string(boundary_point_idx)  +
+      string("_cost_list.csv"), cost_list);
 }
 
 int find_boundary(int argc, char* argv[]){
@@ -561,7 +598,7 @@ int find_boundary(int argc, char* argv[]){
   cout<<"use optimized model: "<<FLAGS_use_optimized_model<<endl;
   int max_iter = FLAGS_max_outer_iter;
   //TODO:decide the threshold under different situation
-  double cost_threshold = 15;
+  double cost_threshold = 20;
   if(FLAGS_robot_option==0)
   {
     if(FLAGS_is_get_nominal){

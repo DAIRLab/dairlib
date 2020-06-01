@@ -9,7 +9,6 @@
 #include "drake/common/text_logging.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/solve.h"
-#include "drake/solvers/snopt_solver.h"
 
 namespace dairlib {
 

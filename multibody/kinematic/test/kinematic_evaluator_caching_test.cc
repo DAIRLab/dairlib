@@ -7,14 +7,14 @@
 #include "drake/multibody/parsing/parser.h"
 
 /// This is a timing test to determine how effective caching is using
-/// MultibodyPlant kinematics cacheing via a context.
+/// MultibodyPlant kinematics caching via a context.
 /// Tests phi, J, Jdotv in a few scenarios
 /// Results show that kinematics effectively track dependencies, and setting
 ///  context.q = context.q
 /// will not make the cache dirty.
 ///
 /// As of 5/31/2020, phi, J make effective use of the cache, across bodies,
-/// but Jdotv is ony partially effective.
+/// but Jdotv is only partially effective.
 ///
 /// Sample results from 5/31/2020 are below.
 

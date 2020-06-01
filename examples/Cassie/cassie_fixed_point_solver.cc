@@ -167,14 +167,15 @@ void CassieFixedBaseFixedPointSolver(
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
 
-  auto program = multibody::MultibodyProgram(plant, evaluators);
+  auto program = multibody::MultibodyProgram(plant);
 
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
-  auto lambda = program.AddConstraintForceVariables();
-  auto kinematic_constraint = program.AddKinematicConstraint(q);
-  auto fp_constraint = program.AddFixedPointConstraint(q, u, lambda);
+  auto lambda = program.AddConstraintForceVariables(evaluators);
+  auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
+  auto fp_constraint = program.AddFixedPointConstraint(evaluators, q, u,
+      lambda);
   program.AddJointLimitConstraints(q);
 
   // Add symmetry constraints, and zero roll/pitch on the hip

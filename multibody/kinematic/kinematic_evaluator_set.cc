@@ -1,4 +1,5 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "drake/math/autodiff_gradient.h"
 
 namespace dairlib {
 namespace multibody {

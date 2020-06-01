@@ -141,20 +141,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "constrained_lqr_controller_test",
-    size = "small",
-    srcs = [
-        "test/constrained_lqr_controller_test.cc",
-    ],
-    deps = [
-        ":controllers",
-        "//attic/multibody:multibody_solvers",
-        "//examples/Cassie:cassie_utils",
-        "@gtest//:main",
-    ],
-)
-
 cc_library(
     name = "safe_velocity_controller",
     srcs = ["safe_velocity_controller.cc"],

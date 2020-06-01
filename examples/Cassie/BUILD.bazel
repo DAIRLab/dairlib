@@ -207,22 +207,6 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "run_constrained_lqr_controller_sim",
-    srcs = ["run_constrained_lqr_controller_sim.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
-        "//attic/multibody:utility_systems",
-        "//systems:robot_lcm_systems",
-        "//systems/controllers:constrained_lqr_controller",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
 py_binary(
     name = "draw_graphviz",
     srcs = ["draw_graphviz.py"],

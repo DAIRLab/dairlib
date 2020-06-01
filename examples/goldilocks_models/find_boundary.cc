@@ -70,6 +70,8 @@ DEFINE_int32(
 "resolve again.");
 DEFINE_int32(n_node, -1, "# of nodes for traj opt");
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
+DEFINE_bool(is_get_nominal,false,"is calculating the cost without ROM constraints");
+DEFINE_bool(use_optimized_model,false,"read theta from files to apply optimized model");
 
 //tasks
 DEFINE_bool(is_zero_touchdown_impact, false,
@@ -77,7 +79,7 @@ DEFINE_bool(is_zero_touchdown_impact, false,
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 
 //outer loop
-DEFINE_int32(max_outer_iter, 50 , "max number of iterations for searching on each "
+DEFINE_int32(max_outer_iter, 100 , "max number of iterations for searching on each "
                                 "direction of one dimension");
 
 //others
@@ -191,6 +193,13 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
   } else {
     throw std::runtime_error("Should not reach here");
   }
+}
+
+//read theta from files to use optimized model
+void readThetaFromFiles(const string dir,int theta_idx,
+    VectorXd& theta_s, VectorXd& theta_sDDot){
+  theta_s = readCSV(dir + to_string(theta_idx) + string("_theta_s.csv"));
+  theta_sDDot = readCSV(dir + to_string(theta_idx) + string("_theta_sDDot.csv"));
 }
 
 //use interpolation to set the initial guess for the trajectory optimization
@@ -317,7 +326,16 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   // Initial guess of theta
   theta_s = VectorXd::Zero(n_theta_s);
   theta_sDDot = VectorXd::Zero(n_theta_sDDot);
-  setInitialTheta(theta_s, theta_sDDot, n_feature_s, rom_option);
+  if(FLAGS_use_optimized_model){
+    //you have to specify the theta to use
+    int theta_idx = 100;
+    const string dir_find_models = "../dairlib_data/goldilocks_models/find_models/robot_" +
+        to_string(FLAGS_robot_option) + "/";
+    readThetaFromFiles(dir_find_models, theta_idx, theta_s, theta_sDDot);
+  }
+  else{
+    setInitialTheta(theta_s, theta_sDDot, n_feature_s, rom_option);
+  }
 
   double duration = 0.4;
   if (FLAGS_robot_option == 0) {
@@ -326,7 +344,7 @@ void trajOptGivenModel(double stride_length, double ground_incline,
     duration = 0.4; // 0.4;
   }
 
-  bool is_get_nominal = false;
+  bool is_get_nominal = FLAGS_is_get_nominal;
   int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
 
 //  string init_file_pass_in = "";
@@ -415,17 +433,28 @@ double sample_result(double stride_length,double ground_incline,
 
 //search the boundary point along one direction
 void boundary_for_one_direction(const string dir,int dims,int max_iteration,
-    VectorXd init_gamma,VectorXd step,double max_cost,
-    int& traj_num,int& boundary_point_idx){
+    VectorXd init_gamma,VectorXd step_direction, VectorXd step_size,
+    double max_cost,int& traj_num,int& boundary_point_idx){
   int iter;
   int sample_idx = 0;
   bool rerun = false;
   VectorXd new_gamma(dims);
+  VectorXd last_gamma = init_gamma;
   VectorXd boundary_point(dims);
+  VectorXd step = step_size.array()*step_direction.array();
+  double decay_factor;//take a large step at the beginning
   cout << "sample# (rerun #) | stride | incline | turning | init_file | "
           "Status | Solve time | Cost (tau cost)\n";
   for (iter = 1; iter <= max_iteration; iter++){
-    new_gamma = init_gamma + iter*step;
+    decay_factor = 2*pow(0.95,iter);
+    if(decay_factor>1){
+      new_gamma = last_gamma+decay_factor*step;
+      last_gamma = new_gamma;
+    }
+    else{
+      new_gamma = last_gamma+step;
+      last_gamma = new_gamma;
+    }
     //if stride length is negative or zero,stop searching
     if(new_gamma[0]<=0){
       boundary_point_idx += 1;
@@ -475,6 +504,7 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
       break;
     }
   }
+  //TODO:check the adjacent sample to avoid being stuck in local minimum
 }
 
 int find_boundary(int argc, char* argv[]){
@@ -526,15 +556,30 @@ int find_boundary(int argc, char* argv[]){
   /*
    * Iteration setting
    */
+  cout << "\nIteration setting:\n";
+  cout<<"get nominal cost: "<<FLAGS_is_get_nominal<<endl;
+  cout<<"use optimized model: "<<FLAGS_use_optimized_model<<endl;
   int max_iter = FLAGS_max_outer_iter;
-  double cost_threshold = 10;
-  if(FLAGS_robot_option=0)
+  //TODO:decide the threshold under different situation
+  double cost_threshold = 15;
+  if(FLAGS_robot_option==0)
   {
-    cost_threshold = 15;
+    if(FLAGS_is_get_nominal){
+      cost_threshold = 25;
+    }
+    else{
+      cost_threshold = 20;
+    }
   }
   else{
-    cost_threshold = 10;
+    if(FLAGS_is_get_nominal){
+      cost_threshold = 20;
+    }
+    else{
+      cost_threshold = 15;
+    }
   }
+  cout<<"cost_threshold "<<cost_threshold<<endl;
   int boundary_sample_num = 0;//use this to set the index for boundary point
   int traj_opt_num = 0;//use this to set the index for Traj Opt
   VectorXd extend_direction(dimensions);//the direction of searching
@@ -581,9 +626,9 @@ int find_boundary(int argc, char* argv[]){
                <<","<<extend_direction[1]<<","<<extend_direction[2]<<"]"<<endl;
           //normalize the direction vector
           //extend_direction = extend_direction/extend_direction.norm();
-          step = delta.array()*extend_direction.array();
           boundary_for_one_direction(dir,dimensions,max_iter,
-                                     initial_gamma,step,cost_threshold,traj_opt_num,boundary_sample_num);
+              initial_gamma,extend_direction,delta,
+              cost_threshold,traj_opt_num,boundary_sample_num);
         }
       }
     }

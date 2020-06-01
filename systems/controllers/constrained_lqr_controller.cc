@@ -55,13 +55,34 @@ ConstrainedLQRController::ConstrainedLQRController(
     J_active_qdot.col(i) = J_active_v * v_i;
   }
 
+  // Add quaternion constraints to F
+  // Constraints come from the kinematic fact that ||q|| = 1, linearized is
+  // dot(q_0, delta_q) = 0
+  // Note that there is no corresponding constraint on angular velocity, which
+  // is already 3-dimensional (not 4).
+  int num_quat = 0;
+  std::vector<int> quat_start;
+  auto bodies = plant_.GetFloatingBaseBodies();
+  for (auto body : bodies) {
+    if (plant_.get_body(body).has_quaternion_dofs()) {
+      num_quat++;
+      quat_start.push_back(plant_.get_body(body).floating_positions_start());
+      std::cout << plant_.get_body(body).floating_positions_start() << std::endl;
+    }
+  }
+  std::cout << num_quat << std::endl;
+  MatrixXd F_quat =
+      MatrixXd::Zero(num_quat, J_active_qdot.cols() + J_active_v.cols());
+  for (int i = 0; i < num_quat; i++) {
+    F_quat.row(i).segment(quat_start.at(i), 4) = autoDiffToValueMatrix(
+        plant_.GetPositions(context).segment(quat_start.at(i),4));
+  }
+  std::cout << F_quat << std::endl;
   // Computing F
   // F is the constraint matrix that represents the constraint in the form
   // Fx = 0 (where x is the full state vector of the model)
-  MatrixXd F(J_active_qdot.rows() + J_active_v.rows() + 1,
+  MatrixXd F(J_active_qdot.rows() + J_active_v.rows() + num_quat,
              J_active_qdot.cols() + J_active_v.cols());
-  Eigen::RowVectorXd F_quat = Eigen::RowVectorXd::Zero(J_active_qdot.cols() + J_active_v.cols());
-  F_quat(0) = 1;
   F << autoDiffToValueMatrix(J_active_qdot),
        MatrixXd::Zero(J_active_qdot.rows(), J_active_v.cols()),
        MatrixXd::Zero(J_active_v.rows(), J_active_qdot.cols()),
@@ -101,9 +122,6 @@ ConstrainedLQRController::ConstrainedLQRController(
   MatrixXd A = AB.leftCols(plant_.num_positions() + plant_.num_velocities());
   MatrixXd B = AB.block(0, plant_.num_positions() + plant_.num_velocities(),
       AB.rows(), plant_.num_actuators());
-
-  // quaternion restoration (hack)
-  // A(0,0) -= 100;
 
   A_full_ = A;
   B_full_ = B;

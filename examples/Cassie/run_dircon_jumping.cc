@@ -263,12 +263,6 @@ void DoMain() {
             << std::endl;
   options_list[1].setKinConstraintScaling({0, 1, 2, 3}, 1.0 / 100.0);
 
-  //  double w_lambda = 1.0e-4;
-  // set force cost weight
-//  for (int i = 0; i < 2; i++) {
-//    options_list[i].setForceCost(w_lambda);
-//  }
-
   vector<int> stance_modes{0, 2};
 
   auto trajopt = std::make_shared<HybridDircon<double>>(
@@ -291,11 +285,9 @@ void DoMain() {
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major feasibility tolerance",
                            FLAGS_tol);  // target complementarity gap
-  //  HybridDircon<double>* dircon = trajopt.get();
+
   std::cout << "Adding kinematic constraints: " << std::endl;
   setKinematicConstraints(trajopt.get(), plant);
-
-  //  int num_knot_points = FLAGS_knot_points * n_modes - (n_modes - 1);
   std::cout << "Setting initial conditions: " << std::endl;
   vector<int> mode_lengths = trajopt->mode_lengths();
 
@@ -313,7 +305,6 @@ void DoMain() {
         loadSavedDecisionVars(FLAGS_data_directory + FLAGS_load_filename);
     trajopt->SetInitialGuessForAllVariables(decisionVars);
   } else {
-    //    double timestep = rabbit_traj.end_time() / dircon->N();
     // Initialize all decision vars to random by default. Will be overriding
     // later
     trajopt->SetInitialGuessForAllVariables(
@@ -331,7 +322,6 @@ void DoMain() {
     // Set initial guess for stance
     VectorXd x_guess(n_q + n_v);
     for (int i = 0; i < mode_lengths[0]; ++i) {
-      //      int knot_point = i;
       x_guess << q_guess_stance[i], v_guess_stance[i];
       trajopt->SetInitialGuess(trajopt->state(i), x_guess);
     }
@@ -341,7 +331,7 @@ void DoMain() {
       x_guess << q_guess_flight[i], v_guess_flight[i];
       trajopt->SetInitialGuess(trajopt->state(knot_point), x_guess);
     }
-    // Set initial guess for flight
+    // Set initial guess for landing phase (same as stance)
     for (int i = 0; i < mode_lengths[2]; ++i) {
       int knot_point = mode_lengths[0] + mode_lengths[1] - 2 + i;
       x_guess << q_guess_stance[i], v_guess_stance[i];
@@ -411,24 +401,18 @@ void DoMain() {
   std::vector<LcmTrajectory::Trajectory> trajectories;
   std::vector<std::string> trajectory_names;
 
-  VectorXd segment_times(2 * num_modes);
-  segment_times << 0, state_traj.get_segment_times().at(FLAGS_knot_points - 1),
-      state_traj.get_segment_times().at(FLAGS_knot_points),
-      state_traj.get_segment_times().at(2 * FLAGS_knot_points - 1),
-      state_traj.get_segment_times().at(2 * FLAGS_knot_points),
-      state_traj.end_time();
   for (int mode = 0; mode < num_modes; ++mode) {
     LcmTrajectory::Trajectory traj_block;
     traj_block.traj_name =
         "cassie_jumping_trajectory_x_u" + std::to_string(mode);
     std::vector<double> breaks_copy =
         std::vector(state_traj.get_segment_times());
-    std::cout << "num break points" << breaks_copy.size() << std::endl;
     traj_block.time_vector =
         Eigen::Map<Eigen::VectorXd>(breaks_copy.data(), breaks_copy.size())
             .segment(FLAGS_knot_points * mode, FLAGS_knot_points);
     traj_block.datapoints = generate_state_input_matrix(state_traj, input_traj,
                                                         traj_block.time_vector);
+    // To store x and xdot at the knot points
     const vector<string>& datatypes_wo_inputs =
         multibody::createStateAndActuatorNameVectorFromMap(pos_map, vel_map,
             std::map<string, int>());
@@ -461,9 +445,7 @@ void DoMain() {
   auto diagram = builder.Build();
 
   while (true) {
-    //    std::this_thread::sleep_for(std::chrono::seconds(2));
     drake::systems::Simulator<double> simulator(*diagram);
-
     simulator.set_target_realtime_rate(0.5);
     simulator.Initialize();
     simulator.AdvanceTo(optimal_traj.end_time());
@@ -501,23 +483,18 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
-//  int n_x = n_q + n_v;
+  int n_x = n_q + n_v;
 
   // Get the decision variables that will be used
   int N = trajopt->N();
   auto mode_lengths = trajopt->mode_lengths();
   auto x0 = trajopt->initial_state();
-  //  auto x_bottom = trajopt->state(FLAGS_knot_points / 2);
-  auto x_top = trajopt->state(3 * FLAGS_knot_points / 2);
-  //  auto x_mid_point =
-  //      trajopt->state(FLAGS_knot_points * mode_lengths.size() / 2);
+  auto x_top = trajopt->state(N / 2);
   auto xf = trajopt->final_state();
   auto x_second_to_last = trajopt->state(N - 2);
   auto u = trajopt->input();
   auto u0 = trajopt->input(0);
   auto uf = trajopt->input(N - 1);
-  //  auto lambda_init = trajopt->force_vars(0);
-  //  auto lambda_final = trajopt->force_vars(2);
   auto x = trajopt->state();
 
   // Duration Bounds
@@ -525,19 +502,12 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   double max_duration = 1.5;
   trajopt->AddDurationBounds(min_duration, max_duration);
 
-  // Periodicity constraints
-
-  // Jumping height constraints
-
   // Standing constraints
   double rest_height = 1.075;
   double eps = 1e-6;
-  //  trajopt->AddBoundingBoxConstraint(q_init, q_init, x0.head(n_q));
-  //  trajopt->AddBoundingBoxConstraint(q_init, q_init, xf.head(n_q));
 
   // Just position constraints
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-  //  trajopt->AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_x")));
   trajopt->AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
 
 
@@ -601,18 +571,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
             uf(act_map.at(sym_joint_name + l_r_pair.second + "_motor")));
       }
     }
-
-    //    for (const auto& asy_joint_name : asy_joint_names) {
-    //      // positions
-    //      trajopt->AddLinearConstraint(
-    //          x0(pos_map.at(asy_joint_name + l_r_pair.first)) ==
-    //          xf(pos_map.at(asy_joint_name + l_r_pair.second)));
-    //
-    //      // inputs
-    //      trajopt->AddLinearConstraint(
-    //          u0(act_map.at(asy_joint_name + l_r_pair.first + "_motor")) ==
-    //          uf(act_map.at(asy_joint_name + l_r_pair.second + "_motor")));
-    //    }
   }
 
   // joint limits
@@ -626,7 +584,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
         plant.GetJointByName(member).position_lower_limits()(0));
   }
 
-  // actuator limit
+  // actuator limits
   std::cout << "Actuator limit constraints: " << std::endl;
   for (int i = 0; i < trajopt->N(); i++) {
     auto ui = trajopt->input(i);
@@ -651,7 +609,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
 
   // Only add constraints of lambdas for stance modes
   vector<int> stance_modes{0, 2};
-  //  for (int mode : stance_modes) {
   // ALL BUT THE LAST SEGMENT (to ensure the feet can leave the ground
   for (int index = 0; index < (mode_lengths[0] - 1); index++) {
     auto lambda = trajopt->force(0, index);
@@ -660,12 +617,7 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
     trajopt->AddLinearConstraint(lambda(8) >= 10);
     trajopt->AddLinearConstraint(lambda(11) >= 10);
   }
-  // Allow lambda in the first segment to be larger
-//  auto lambda_first = trajopt->force(2, 0);
-//  trajopt->AddLinearConstraint(lambda_first(2) <= 800);
-//  trajopt->AddLinearConstraint(lambda_first(5) <= 800);
-//  trajopt->AddLinearConstraint(lambda_first(8) <= 800);
-//  trajopt->AddLinearConstraint(lambda_first(11) <= 800);
+  // Limit the ground reaction forces in the landing phase
   for (int index = 0; index < mode_lengths[2]; index++) {
     auto lambda = trajopt->force(2, index);
     trajopt->AddLinearConstraint(lambda(2) <= 300);
@@ -673,20 +625,11 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
     trajopt->AddLinearConstraint(lambda(8) <= 300);
     trajopt->AddLinearConstraint(lambda(11) <= 300);
   }
-  //  }
 
   const MatrixXd Q = 0.1 * MatrixXd::Identity(n_v, n_v);
   const MatrixXd R = 0.005 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
-
-  // Different indices for flight mode
-//  for (int index = 0; index < mode_lengths[1]; index++) {
-//    auto lambda = trajopt->force(1, index);
-//    trajopt->AddLinearConstraint(lambda(0) <= 0);  // left leg four bar
-//    trajopt->AddLinearConstraint(lambda(1) <= 0);  // left leg four bar
-//  }
-  //  }
 
   // Add some cost to hip roll and yaw
   double w_q_hip_roll = 0.3;
@@ -717,46 +660,6 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
       trajopt->AddCost(w_q_quat_xyz * q.transpose() * q);
     }
   }
-
-  // Scale decision variable
-  //  double s_q_toe = 1;
-  //  double s_v_toe_l = 1;
-  //  double s_v_toe_r = 1;
-  // time
-  //  trajopt->ScaleTimeVariables(0.008);
-  // state
-  //  trajopt->ScaleStateVariables(0.5, 0, 3);
-  //  if (s_q_toe > 1) {
-  //    trajopt->ScaleStateVariables(s_q_toe, n_q - 2, n_q - 1);
-  //  }
-  //  trajopt->ScaleStateVariables(10, n_q, n_q + n_v - 3);
-  //  trajopt->ScaleStateVariables(10 * s_v_toe_l, n_q + n_v - 2, n_q + n_v -
-  //  2); trajopt->ScaleStateVariables(10 * s_v_toe_r, n_q + n_v - 1, n_q + n_v
-  //  - 1);
-  // input
-  //  trajopt->ScaleInputVariables(100, 0, 9);
-  // force
-  //  trajopt->ScaleForceVariables(1000, 0, 0,
-  //                               trajopt->num_kinematic_constraints(0) - 1);
-  //  trajopt->ScaleForceVariables(1000, 2, 0,
-  //                               trajopt->num_kinematic_constraints(2) - 1);
-  // impulse
-  //  trajopt->ScaleImpulseVariables(
-  //      10, 0, 0, trajopt->num_kinematic_constraints(0) - 1);  // 0.1
-  //  trajopt->ScaleImpulseVariables(
-  //      10, 2, 0, trajopt->num_kinematic_constraints(2) - 1);  // 0.1
-  // quaternion slack
-  //  trajopt->ScaleQuaternionSlackVariables(150);
-  // Constraint slack
-//  vector<int> first_segment_slack_indices = {
-//      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
-  // There are 14 constraints
-//  trajopt->ScaleKinConstraintSlackVariables(2, first_segment_slack_indices,
-//                                            100);
-//  trajopt->ScaleKinConstraintSlackVariables(2, first_segment_slack_indices,
-//                                            100);
-//  trajopt->ScaleKinConstraintSlackVariable(1, 0, 100);
-//  trajopt->ScaleKinConstraintSlackVariable(1, 1, 100);
 }
 
 vector<VectorXd> GetInitGuessForQStance(int num_knot_points,

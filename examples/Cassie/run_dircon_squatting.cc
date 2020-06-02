@@ -5,9 +5,8 @@
 #include <unordered_map>
 #include <gflags/gflags.h>
 
-#include "attic/multibody/multibody_solvers.h"
-#include "attic/multibody/rigidbody_utils.h"
 #include "common/find_resource.h"
+#include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
@@ -23,8 +22,6 @@
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/rigid_body_plant/drake_visualizer.h"
-#include "drake/multibody/rigid_body_tree.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/constraint.h"
 #include "drake/solvers/mathematical_program.h"
@@ -64,9 +61,6 @@ using drake::trajectories::PiecewisePolynomial;
 
 using dairlib::goldilocks_models::readCSV;
 using dairlib::goldilocks_models::writeCSV;
-using dairlib::multibody::ContactInfo;
-using dairlib::multibody::FixedPointSolver;
-using dairlib::multibody::GetBodyIndexFromName;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;
@@ -85,178 +79,6 @@ DEFINE_bool(is_scale_constraint, true, "Scale the nonlinear constraint values");
 DEFINE_bool(is_scale_variable, false, "Scale the decision variable");
 
 namespace dairlib {
-
-/// Trajectory optimization of fixed-spring cassie squatting
-/// With the default initial guess, the solving time is about 2 mins.
-
-// Constraint to fix the position of a point on a body (for initial guess)
-class BodyPointPositionConstraint : public solvers::NonlinearConstraint<double> {
- public:
-  BodyPointPositionConstraint(const RigidBodyTree<double>& tree,
-                              string body_name, Vector3d translation,
-                              Vector3d desired_pos)
-      : solvers::NonlinearConstraint<double>(3, tree.get_num_positions(),
-                                         VectorXd::Zero(3), VectorXd::Zero(3),
-                                         body_name + "_position_constraint"),
-        tree_(tree),
-        body_idx_(multibody::GetBodyIndexFromName(tree, body_name)),
-        translation_(translation),
-        desired_pos_(desired_pos) {}
-  ~BodyPointPositionConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override {
-    VectorXd q = x;
-    KinematicsCache<double> cache = tree_.doKinematics(q);
-    VectorXd pt = tree_.transformPoints(cache, translation_, body_idx_, 0);
-
-    *y = pt - desired_pos_;
-  };
-
- private:
-  const RigidBodyTree<double>& tree_;
-  const int body_idx_;
-  const Vector3d translation_;
-  const Vector3d desired_pos_;
-};
-
-// Use fixed-point solver to get initial guess
-void GetInitFixedPointGuess(const Vector3d& pelvis_position,
-                            const RigidBodyTree<double>& tree, VectorXd* q_init,
-                            VectorXd* u_init, VectorXd* lambda_init) {
-  int n_q = tree.get_num_positions();
-  int n_v = tree.get_num_velocities();
-  int n_u = tree.get_num_actuators();
-
-  int toe_left_idx = GetBodyIndexFromName(tree, "toe_left");
-  int toe_right_idx = GetBodyIndexFromName(tree, "toe_right");
-  Vector3d pt_front_contact(-0.0457, 0.112, 0);
-  Vector3d pt_rear_contact(0.088, 0, 0);
-  MatrixXd xa(3, 4);
-  xa.col(0) = pt_front_contact;
-  xa.col(1) = pt_rear_contact;
-  xa.col(2) = pt_front_contact;
-  xa.col(3) = pt_rear_contact;
-  std::vector<int> idxa;
-  idxa.push_back(toe_left_idx);
-  idxa.push_back(toe_left_idx);
-  idxa.push_back(toe_right_idx);
-  idxa.push_back(toe_right_idx);
-  ContactInfo contact_info(xa, idxa);
-
-  VectorXd q_desired = VectorXd::Zero(n_q);
-  q_desired << 0, 0, 1.057, 1, 0, 0, 0, 0.0185, -0.0185, 0, 0, 0.383, 0.383,
-      -1.02, -1.02, 1.24, 1.24, -1.48, -1.48;
-  // The above numbers comes from one (FixedPointSolver) solution of cassie
-  // standing
-
-  std::map<int, double> fixed_joints;
-  // floating base x, y z position
-  for (int i = 0; i < 3; i++) {
-    fixed_joints[i] = pelvis_position[i];
-  }
-  // floating base quaternion
-  fixed_joints[3] = 1;
-  fixed_joints[4] = 0;
-  fixed_joints[5] = 0;
-  fixed_joints[6] = 0;
-  // hip yaw position
-  // fixed_joints[9] = 0;
-  // fixed_joints[10] = 0;
-
-  FixedPointSolver fp_solver(tree, contact_info, q_desired, VectorXd::Zero(n_u),
-                             MatrixXd::Zero(n_q, n_q),
-                             MatrixXd::Identity(n_u, n_u));
-  fp_solver.AddFrictionConeConstraint(0.8);
-  fp_solver.AddJointLimitConstraint(0);  // 0.1
-  fp_solver.AddFixedJointsConstraint(fixed_joints);
-  fp_solver.AddSpreadNormalForcesCost();
-
-  // get mathematicalprogram to add constraint ourselves
-  shared_ptr<MathematicalProgram> mp = fp_solver.get_program();
-  auto& q_var =
-      mp->decision_variables().head(n_q);  // Assume q is located at the start
-  Vector3d desired_left_toe_pos(0.06, 0.4, 0);
-  Vector3d desired_right_toe_pos(0.06, -0.4, 0);
-  auto left_foot_constraint = std::make_shared<BodyPointPositionConstraint>(
-      tree, "toe_left", pt_front_contact, desired_left_toe_pos);
-  auto right_foot_constraint = std::make_shared<BodyPointPositionConstraint>(
-      tree, "toe_right", pt_front_contact, desired_right_toe_pos);
-  mp->AddConstraint(left_foot_constraint, q_var);
-  mp->AddConstraint(right_foot_constraint, q_var);
-
-  VectorXd init_guess = VectorXd::Random(mp->decision_variables().size());
-  // Provide initial guess to shorten the runtime
-  // The numbers comes from one (FixedPointSolver) solution of cassie standing
-  init_guess << 0, 0, 1.05263, 1, 0, 0, 0, 0.0185236, -0.0185236, 0, 0, 0.3836,
-      0.3836, -1.026, -1.026, 1.249, 1.249, -1.480, -1.480, -0.1535, 0.1682,
-      0.1407, -0.1843, -6.124, -5.841, 35.76, 35.79, -5.46, -5.439, -398.5,
-      -396.3, 93.49, 17.75, 1.521, 68.57, -17.61, -1.503, 93.28, -0.7926,
-      -1.762, 68.42, 0.652, 1.744;
-  mp->SetInitialGuessForAllVariables(init_guess);
-
-  //  mp->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-  //                      "../snopt.out");
-  // target nonlinear constraint violation
-  // mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                     "Major optimality tolerance", 1e-6);
-  // target complementarity gap
-  mp->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                      "Major feasibility tolerance", 1e-8);
-
-  // solve for the standing pose
-  cout << "Solving for fixed point...\n";
-  const auto result = fp_solver.Solve();
-  SolutionResult solution_result = result.get_solution_result();
-  cout << to_string(solution_result) << endl;
-  // cout << result.GetSolution() << endl;
-
-  VectorXd q_sol = fp_solver.GetSolutionQ();
-  VectorXd u_sol = fp_solver.GetSolutionU();
-  VectorXd lambda_sol = fp_solver.GetSolutionLambda();
-
-  VectorXd q_sol_reorder(n_q);
-  q_sol_reorder << q_sol.segment(3, 4), q_sol.segment(0, 3), q_sol.tail(12);
-  // Careful that the contact constraint ordering should be consistent with
-  // those you set in DIRCON
-  VectorXd lambda_sol_reorder(lambda_sol.size());
-  VectorXd lambda_sol_contact = lambda_sol.tail(3 * idxa.size());
-  for (unsigned int i = 0; i < idxa.size(); i++) {
-    // We need to reorder cause contact toolkit's lambda ordering is different
-    // from dircon order
-    VectorXd lambda_dummy = lambda_sol_contact.segment(3 * i, 3);
-    lambda_sol_contact(0 + 3 * i) = lambda_dummy(1);
-    lambda_sol_contact(1 + 3 * i) = -lambda_dummy(2);
-    lambda_sol_contact(2 + 3 * i) = lambda_dummy(0);
-  }
-  lambda_sol_reorder << lambda_sol_contact,
-      lambda_sol.head(tree.getNumPositionConstraints());
-
-  *q_init = q_sol_reorder;
-  *u_init = u_sol;
-  *lambda_init = lambda_sol_reorder;
-
-  // Build temporary diagram for visualization
-  VectorXd x(n_q + n_v);
-  x << q_sol, VectorXd::Zero(n_v);
-  drake::lcm::DrakeLcm lcm;
-  drake::systems::DiagramBuilder<double> builder;
-  const PiecewisePolynomial<double> pp_xtraj = PiecewisePolynomial<double>(x);
-  auto state_source =
-      builder.AddSystem<drake::systems::TrajectorySource>(pp_xtraj);
-  auto publisher =
-      builder.AddSystem<drake::systems::DrakeVisualizer>(tree, &lcm);
-  publisher->set_publish_period(1.0 / 60.0);
-  builder.Connect(state_source->get_output_port(),
-                  publisher->get_input_port(0));
-
-  auto diagram = builder.Build();
-  drake::systems::Simulator<double> simulator(*diagram);
-  simulator.set_target_realtime_rate(1);
-  simulator.Initialize();
-  simulator.AdvanceTo(0.2);
-}
-
 void DoMain(double duration, int max_iter, string data_directory,
             string init_file, double tol, bool to_store_data) {
   // Create fix-spring Cassie MBP
@@ -405,8 +227,8 @@ void DoMain(double duration, int max_iter, string data_directory,
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-  //   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                            "Print file", "../snopt.out");
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -584,28 +406,20 @@ void DoMain(double duration, int max_iter, string data_directory,
     trajopt->SetInitialGuessForAllVariables(
         VectorXd::Random(trajopt->decision_variables().size()));
 
-    // Use RBT fixed point solver for state/input/force
-    RigidBodyTree<double> tree;
-    buildCassieTree(tree, "examples/Cassie/urdf/cassie_fixed_springs.urdf",
-                    drake::multibody::joints::kQuaternion, false);
-    const double terrain_size = 100;
-    const double terrain_depth = 0.20;
-    drake::multibody::AddFlatTerrainToWorld(&tree, terrain_size, terrain_depth);
-
     VectorXd q_init;
     VectorXd u_init;
     VectorXd lambda_init;
-    VectorXd prev_lambda_init;
 
     for (int i = 0; i < N; i++) {
-      Vector3d pelvis_position(0, 0, 1 + 0.1 * i / (N - 1));
-      GetInitFixedPointGuess(pelvis_position, tree, &q_init, &u_init,
-                             &lambda_init);
+      double height = 1 + 0.1 * i / (N - 1);
+      double min_normal_force = 70;
+      CassieFixedPointSolver(plant, height, 0, min_normal_force, true, &q_init,
+        &u_init, &lambda_init);
 
       // guess for state
       auto xi = trajopt->state(i);
       VectorXd xi_init(n_q + n_v);
-      xi_init << q_init.head(4), q_init.tail(n_q - 4), VectorXd::Zero(n_v);
+      xi_init << q_init, VectorXd::Zero(n_v);      
       trajopt->SetInitialGuess(xi, xi_init);
 
       // guess for input
@@ -613,11 +427,15 @@ void DoMain(double duration, int max_iter, string data_directory,
       trajopt->SetInitialGuess(ui, u_init);
 
       // guess for constraint force
-      auto lambdai = trajopt->force(0, i);
-      trajopt->SetInitialGuess(lambdai, lambda_init);
+      // Reorder force to be be consistent with
+      // those you set in DIRCON
+      VectorXd lambda_sol_reorder(lambda_init.size());
+      lambda_sol_reorder <<
+          lambda_sol_reorder.tail(lambda_sol_reorder.size() - 2),
+          lambda_sol_reorder.head(2);
 
-      // guess for constraint force at collocation points
-      // prev_lambda_init = lambda_init;
+      auto lambdai = trajopt->force(0, i);
+      trajopt->SetInitialGuess(lambdai, lambda_sol_reorder);
     }
   }
   // Careful: MUST set the initial guess for quaternion, since 0-norm quaternion

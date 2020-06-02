@@ -349,10 +349,9 @@ cc_binary(
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
     deps = [
         ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
+        ":cassie_fixed_point_solver",
         "//common",
         "//solvers:optimization_utils",
-        "//systems/goldilocks_models",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
@@ -366,7 +365,6 @@ cc_binary(
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
     deps = [
         ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
         "//common",
         "//solvers:optimization_utils",
         "//systems/goldilocks_models",

@@ -34,17 +34,17 @@ void CassieFixedPointSolver(
       Eigen::Vector3d::Zero(), false);
   evaluators.add_evaluator(&left_toe_evaluator);
 
-  auto right_toe = RightToe(plant);
-  auto right_toe_evaluator = multibody::WorldPointEvaluator(plant,
-      right_toe.first, right_toe.second, Eigen::Vector3d(0,0,1),
-      Eigen::Vector3d::Zero(), false);
-  evaluators.add_evaluator(&right_toe_evaluator);
-
   auto left_heel = LeftHeel(plant);
   auto left_heel_evaluator = multibody::WorldPointEvaluator(plant,
       left_heel.first, left_heel.second, Eigen::Vector3d(0,0,1),
       Eigen::Vector3d::Zero(), false);
   evaluators.add_evaluator(&left_heel_evaluator);
+
+  auto right_toe = RightToe(plant);
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(plant,
+      right_toe.first, right_toe.second, Eigen::Vector3d(0,0,1),
+      Eigen::Vector3d::Zero(), false);
+  evaluators.add_evaluator(&right_toe_evaluator);
 
   auto right_heel = RightHeel(plant);
   auto right_heel_evaluator = multibody::WorldPointEvaluator(plant,

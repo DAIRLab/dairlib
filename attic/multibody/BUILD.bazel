@@ -33,63 +33,6 @@ cc_library(
 )
 
 cc_library(
-    name = "contact_toolkit",
-    srcs = [
-        "contact_toolkit.cc",
-    ],
-    hdrs = [
-        "contact_toolkit.h",
-    ],
-    deps = [
-        "@drake//:drake_shared_library",
-        ":utils",
-    ],
-)
-
-cc_test(
-    name = "contact_toolkit_test",
-    srcs = [
-        "test/contact_toolkit_test.cc",
-    ],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        ":contact_toolkit",
-        ":utils",
-        "@gtest//:main",
-    ],
-    size = "small",
-)
-
-cc_library(
-    name = "multibody_solvers",
-    srcs = [
-        "multibody_solvers.cc",
-    ],
-    hdrs = [
-        "multibody_solvers.h",
-    ],
-    deps = [
-        "@drake//:drake_shared_library",
-        ":contact_toolkit",
-        ":utils",
-    ],
-)
-
-cc_test(
-    name = "multibody_solvers_test",
-    srcs = [
-        "test/multibody_solvers_test.cc",
-    ],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        ":multibody_solvers",
-        ":utils",
-        "@gtest//:main",
-    ],
-    size = "small",
-)
-
-cc_library(
     name = "utility_systems",
     srcs = [
         "utility_systems.cc",

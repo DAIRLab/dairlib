@@ -17,8 +17,9 @@ using Eigen::VectorXd;
 void CassieFixedPointSolver(
     const drake::multibody::MultibodyPlant<double>& plant,
     double height, double mu, double min_normal_force,
-    bool linear_friction_cone, VectorXd* q_result, VectorXd* u_result,
-    VectorXd* lambda_result, std::string visualize_model_urdf) {
+    bool linear_friction_cone, double toe_spread, VectorXd* q_result,
+    VectorXd* u_result, VectorXd* lambda_result,
+    std::string visualize_model_urdf) {
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
   // Add loop closures
@@ -30,8 +31,8 @@ void CassieFixedPointSolver(
   // Add contact points
   auto left_toe = LeftToe(plant);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(plant,
-      left_toe.first, left_toe.second, Eigen::Vector3d(0,0,1),
-      Eigen::Vector3d::Zero(), false);
+      left_toe.first, left_toe.second, Eigen::Matrix3d::Identity(),
+      Eigen::Vector3d(0, toe_spread, 0), {1, 2});
   evaluators.add_evaluator(&left_toe_evaluator);
 
   auto left_heel = LeftHeel(plant);
@@ -42,8 +43,8 @@ void CassieFixedPointSolver(
 
   auto right_toe = RightToe(plant);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(plant,
-      right_toe.first, right_toe.second, Eigen::Vector3d(0,0,1),
-      Eigen::Vector3d::Zero(), false);
+      right_toe.first, right_toe.second, Eigen::Matrix3d::Identity(),
+      Eigen::Vector3d(0, -toe_spread, 0), {1, 2});
   evaluators.add_evaluator(&right_toe_evaluator);
 
   auto right_heel = RightHeel(plant);
@@ -53,6 +54,8 @@ void CassieFixedPointSolver(
   evaluators.add_evaluator(&right_heel_evaluator);
 
   auto program = multibody::MultibodyProgram(plant);
+
+  std::cout << "N***** " << evaluators.count_active() << std::endl;
 
   auto positions_map = multibody::makeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
@@ -78,10 +81,10 @@ void CassieFixedPointSolver(
       q(positions_map.at("knee_right")));
   program.AddConstraint(q(positions_map.at("hip_pitch_left")) ==
       q(positions_map.at("hip_pitch_right")));
-  program.AddConstraint(q(positions_map.at("hip_roll_left")) == 0);
-  program.AddConstraint(q(positions_map.at("hip_roll_right")) == 0);
-  program.AddConstraint(q(positions_map.at("hip_yaw_right")) == 0);
-  program.AddConstraint(q(positions_map.at("hip_yaw_left")) == 0);
+  program.AddConstraint(q(positions_map.at("hip_roll_left")) ==
+      -q(positions_map.at("hip_roll_right")));
+  program.AddConstraint(q(positions_map.at("hip_yaw_right")) ==
+      -q(positions_map.at("hip_yaw_left")));
 
   // Add some contact force constraints: linear version
   if (linear_friction_cone) {
@@ -124,9 +127,6 @@ void CassieFixedPointSolver(
   q_guess(positions_map.at("knee_right")) = -2;
   q_guess(positions_map.at("ankle_joint_right")) = 2;
   q_guess(positions_map.at("toe_right")) = -2;
-
-  // Perturb positions
-  q_guess += .1*Eigen::VectorXd::Random(plant.num_positions());
 
   // Only cost in this program: u^T u
   program.AddQuadraticCost(u.dot(1.0 * u));

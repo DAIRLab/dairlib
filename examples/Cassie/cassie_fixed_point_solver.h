@@ -9,6 +9,7 @@ namespace dairlib {
 /// @param mu Coefficient of friction
 /// @param min_normal_force Minimum normal force at each contact point
 /// @param linear_friction_cone use linear approximation of friction cone
+/// @param toe_spread y-position of the toes (constrained)
 /// @param q Pointer to the resulting position
 /// @param u Pointer to the resulting actuation input
 /// @param lambda Pointer to the constraint force, though not that useful
@@ -19,7 +20,7 @@ namespace dairlib {
 void CassieFixedPointSolver(
     const drake::multibody::MultibodyPlant<double>& plant,
     double height, double mu, double min_normal_force,
-    bool linear_friction_cone, Eigen::VectorXd* q_result,
+    bool linear_friction_cone, double toe_spread, Eigen::VectorXd* q_result,
     Eigen::VectorXd* u_result, Eigen::VectorXd* lambda_result,
     std::string visualize_model_urdf = "");
 

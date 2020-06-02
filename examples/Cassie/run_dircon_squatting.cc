@@ -413,8 +413,9 @@ void DoMain(double duration, int max_iter, string data_directory,
     for (int i = 0; i < N; i++) {
       double height = 1 + 0.1 * i / (N - 1);
       double min_normal_force = 70;
-      CassieFixedPointSolver(plant, height, 0, min_normal_force, true, &q_init,
-        &u_init, &lambda_init);
+      double toe_spread = .3;
+      CassieFixedPointSolver(plant, height, 0, min_normal_force, true, 
+        toe_spread, &q_init, &u_init, &lambda_init);
 
       // guess for state
       auto xi = trajopt->state(i);
@@ -431,8 +432,8 @@ void DoMain(double duration, int max_iter, string data_directory,
       // those you set in DIRCON
       VectorXd lambda_sol_reorder(lambda_init.size());
       lambda_sol_reorder <<
-          lambda_sol_reorder.tail(lambda_sol_reorder.size() - 2),
-          lambda_sol_reorder.head(2);
+          lambda_init.tail(lambda_init.size() - 2),
+          lambda_init.head(2);
 
       auto lambdai = trajopt->force(0, i);
       trajopt->SetInitialGuess(lambdai, lambda_sol_reorder);

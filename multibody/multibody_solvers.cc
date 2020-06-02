@@ -153,6 +153,7 @@ void FixedPointConstraint<T>::EvaluateConstraint(
   setContext<T>(plant_, x, u, context_);
 
   *y = evaluators_.CalcMassMatrixTimesVDot(*context_, lambda);  
+  // std::cout << *y << std::endl << std::endl;
 }
 
 }  // namespace multibody

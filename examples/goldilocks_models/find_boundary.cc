@@ -610,7 +610,7 @@ int find_boundary(int argc, char* argv[]){
   cout<<"use optimized model: "<<FLAGS_use_optimized_model<<endl;
   int max_iter = FLAGS_max_outer_iter;
   //TODO:decide the threshold under different situation
-  double cost_threshold = 20;
+  double cost_threshold = 30;
   if(FLAGS_robot_option==0)
   {
     if(FLAGS_is_get_nominal){
@@ -622,10 +622,10 @@ int find_boundary(int argc, char* argv[]){
   }
   else{
     if(FLAGS_is_get_nominal){
-      cost_threshold = 20;
+      cost_threshold = 35;
     }
     else{
-      cost_threshold = 15;
+      cost_threshold = 30;
     }
   }
   cout<<"cost_threshold "<<cost_threshold<<endl;

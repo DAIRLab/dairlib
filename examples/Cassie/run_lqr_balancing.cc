@@ -66,9 +66,10 @@ int do_main(int argc, char* argv[]) {
   // Use fixed springs model to find a good fixed point
   double mu_fp = 0;
   double min_normal_fp = 70;
+  double toe_spread = .2;
   if (FLAGS_floating_base) {
     CassieFixedPointSolver(plant, FLAGS_height, mu_fp, min_normal_fp,
-        true, &q, &u, &lambda);  
+        true, toe_spread, &q, &u, &lambda);  
   } else {
     CassieFixedBaseFixedPointSolver(plant, &q, &u, &lambda);
   }

@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "common/find_resource.h"
+#include "multibody/kinematic/distance_evaluator.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/multibody/joints/revolute_joint.h"
 #include "drake/multibody/parsers/urdf_parser.h"
@@ -44,6 +45,30 @@ void addCassieMultibody(drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     bool floating_base = true,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf");
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> LeftToe(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> RightToe(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> LeftHeel(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> RightHeel(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
+    const drake::multibody::MultibodyPlant<T>& plant);
 
 /// Construct and create a unique pointer to a RigidBodyTree<double>
 /// These methods are to be used rather that direct construction of the tree

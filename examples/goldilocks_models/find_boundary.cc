@@ -79,7 +79,7 @@ DEFINE_bool(is_zero_touchdown_impact, false,
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 
 //outer loop
-DEFINE_int32(max_outer_iter, 100 , "max number of iterations for searching on each "
+DEFINE_int32(max_outer_iter, 150 , "max number of iterations for searching on each "
                                 "direction of one dimension");
 
 //others
@@ -447,17 +447,16 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     double max_cost,int& traj_num,int& boundary_point_idx){
   int iter;
   int sample_idx = 0;
-  bool rerun = false;
   VectorXd new_gamma(dims);
   VectorXd last_gamma = init_gamma;
   VectorXd boundary_point(dims);
   VectorXd step = step_size.array()*step_direction.array();
-  VectorXd cost_list;
+  MatrixXd cost_list;
   double decay_factor;//take a large step at the beginning
   cout << "sample# (rerun #) | stride | incline | turning | init_file | "
           "Status | Solve time | Cost (tau cost)\n";
   for (iter = 1; iter <= max_iteration; iter++){
-    decay_factor = 2*pow(0.95,iter);
+    decay_factor = 2.5*pow(0.95,iter);
     if(decay_factor>1){
       new_gamma = last_gamma+decay_factor*step;
       last_gamma = new_gamma;
@@ -486,17 +485,25 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
         string("gamma.csv"), new_gamma);
     //run trajectory optimization and judge the solution
     trajOptGivenModel(new_gamma[0], new_gamma[1],
-        new_gamma[2], dir, traj_num, rerun);
+        new_gamma[2], dir, traj_num, false);
     //check if snopt find a solution successfully. If not, rerun the Traj Opt
     int is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
     if(is_success==0){
-      rerun = true;
       trajOptGivenModel(new_gamma[0], new_gamma[1],
-                        new_gamma[2], dir, traj_num,rerun);
-      rerun = false;
+                        new_gamma[2], dir, traj_num,true);
     }
     double sample_cost =
         (readCSV(dir + prefix + string("c.csv")))(0, 0);
+    // without a good initial guess, the initial point is easily stuck in a local minimum
+    // use the first sample to judge the solution of initial point
+    if(iter==1){
+      double initial_cost =
+          (readCSV(dir + string("0_0_c.csv")))(0, 0);
+      if(initial_cost>1.2*sample_cost){
+        trajOptGivenModel(init_gamma[0], init_gamma[1],
+                          init_gamma[2], dir, 0,true,traj_num);
+      }
+    }
     //save the trajectory optimization index and corresponding cost for further use
     cost_list.conservativeResize(cost_list.rows()+1, 2);
     cost_list.row(cost_list.rows()-1)<<traj_num,sample_cost;
@@ -520,20 +527,24 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
   }
   cout << "\nStart checking the cost:\n";
   //check the adjacent sample to avoid being stuck in local minimum
+  int traj_idx;
   for(iter=cost_list.rows()-2;iter>=1;iter--){
+    traj_idx = cost_list(iter,0);
     //if cost is larger than adjacent sample, rerun with adjacent sample result
     if( (cost_list(iter,1) > 1.2*cost_list(iter-1,1)) &&
       (cost_list(iter,1) > 1.2*cost_list(iter+1,1)) ){
-      VectorXd gamma_to_rerun = readCSV(dir + to_string(iter)
+      VectorXd gamma_to_rerun = readCSV(dir + to_string(traj_idx)
                                            + string("_0_gamma.csv"));
       //choose the result of sample with lower cost as initial guess
       if(cost_list(iter-1,1)<cost_list(iter+1,1)){
         trajOptGivenModel(gamma_to_rerun[0], gamma_to_rerun[1],
-                          gamma_to_rerun[2], dir, iter, true, iter-1);
+                          gamma_to_rerun[2], dir, traj_idx,
+                          true, traj_idx-1);
       }
       else{
         trajOptGivenModel(gamma_to_rerun[0], gamma_to_rerun[1],
-                          gamma_to_rerun[2], dir, iter, true, iter+1);
+                          gamma_to_rerun[2], dir, traj_idx,
+                          true, traj_idx+1);
       }
       //update cost list
       cost_list(iter,1) = readCSV(dir + to_string(iter)
@@ -542,6 +553,7 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
   }
   writeCSV(dir +  to_string(boundary_point_idx)  +
       string("_cost_list.csv"), cost_list);
+  cout << "\nFinish checking the cost:\n";
 }
 
 int find_boundary(int argc, char* argv[]){
@@ -602,10 +614,10 @@ int find_boundary(int argc, char* argv[]){
   if(FLAGS_robot_option==0)
   {
     if(FLAGS_is_get_nominal){
-      cost_threshold = 25;
+      cost_threshold = 35;
     }
     else{
-      cost_threshold = 20;
+      cost_threshold = 30;
     }
   }
   else{

@@ -80,7 +80,11 @@ group "0.operator" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true";
         host = "localhost";
     }
-    cmd "1.state-visualizer-fixed-base" {
+    cmd "1.state-visualizer-fixed-base (from simulation)" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false --channel=CASSIE_STATE_SIMULATION";
+        host = "localhost";
+    }
+    cmd "1.state-visualizer-fixed-base (from dispatcher)" {
         exec = "bazel-bin/examples/Cassie/visualizer --floating_base=false";
         host = "localhost";
     }
@@ -162,11 +166,11 @@ script "run-mujoco-osc-standing" {
 }
 
 script "start-operator-simulation-fixed-base" {
-    stop cmd "1.state-visualizer-fixed-base";
+    stop cmd "1.state-visualizer-fixed-base (from simulation)";
     stop cmd "0.drake-director";
     start cmd "0.drake-director";
     wait ms 3000;
-    start cmd "1.state-visualizer-fixed-base";
+    start cmd "1.state-visualizer-fixed-base (from simulation)";
 }
 
 script "start-operator-simulation-floating-base" {

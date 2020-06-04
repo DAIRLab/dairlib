@@ -82,6 +82,8 @@ class KinematicEvaluator {
     return plant_;
   }
 
+  const std::vector<int>& active_inds() { return active_inds_; };
+
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
   int num_active_;

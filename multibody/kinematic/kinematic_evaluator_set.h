@@ -119,6 +119,11 @@ class KinematicEvaluatorSet {
 
   int num_evaluators() const { return evaluators_.size(); };
 
+  /// Returns true if the given index into the full constraint vector for the
+  /// set is a valid active index. Returns false if it is not active, or not
+  /// not valid
+  bool is_active(int index);
+
   const drake::multibody::MultibodyPlant<T>& plant() const { return plant_; };
 
  private:

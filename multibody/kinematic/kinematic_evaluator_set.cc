@@ -271,6 +271,24 @@ int KinematicEvaluatorSet<T>::count_full() const {
   return count;
 }
 
+template <typename T>
+bool KinematicEvaluatorSet<T>::is_active(int index) {
+  if (index < 0 || index >= count_full()) {
+    return false;
+  }
+  int count = 0;
+  for (const auto& e : evaluators_) {
+    if (index < count + e->num_full()) {
+      bool in_active_set =
+          std::find(e->active_inds().begin(), e->active_inds().end(),index)
+          != e->active_inds().end();
+      return in_active_set
+    } else {
+      count += e->num_full();
+    }
+  }
+  DRAKE_UNREACHABLE();
+}
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::multibody::KinematicEvaluatorSet)

@@ -81,7 +81,7 @@ int do_main(int argc, char* argv[]) {
     plant.get_source_id().value()));
 
   // *******Add COM visualization**********
-  auto ball_plant = std::make_unique<MultibodyPlant<double>>();
+  auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
   if (FLAGS_com) {
     double radius = .02;
     UnitInertia<double> G_Bcm = UnitInertia<double>::SolidSphere(radius);

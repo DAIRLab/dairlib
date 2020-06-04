@@ -8,7 +8,6 @@
 #include "drake/systems/framework/discrete_values.h"
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/rigid_body_plant/rigid_body_plant.h"
-#include "drake/manipulation/util/sim_diagram_builder.h"
 
 using Eigen::VectorXd;
 using drake::systems::LeafSystem;

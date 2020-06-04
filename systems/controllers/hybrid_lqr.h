@@ -35,7 +35,7 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
       const vector<multibody::ContactInfo<double>>& contact_info,
       const vector<multibody::ContactInfo<drake::AutoDiffXd>>& contact_info_ad,
       const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
-      const Eigen::MatrixXd& Qf,
+      const Eigen::MatrixXd& Qf, const double buffer_time,
       const std::vector<
           std::shared_ptr<drake::trajectories::PiecewisePolynomial<double>>>&
           state_trajs,
@@ -130,6 +130,7 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   const int num_modes_;
   Eigen::VectorXd u_min_;
   Eigen::VectorXd u_max_;
+  double buffer_time_;
 
   std::string l_traj_filepath_;
 

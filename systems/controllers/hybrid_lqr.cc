@@ -52,7 +52,7 @@ HybridLQRController::HybridLQRController(
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const vector<ContactInfo<double>>& contact_info,
     const vector<ContactInfo<AutoDiffXd>>& contact_info_ad, const MatrixXd& Q,
-    const MatrixXd& R, const MatrixXd& Qf,
+    const MatrixXd& R, const MatrixXd& Qf, const double buffer_time,
     const vector<shared_ptr<PiecewisePolynomial<double>>>& state_traj,
     const vector<shared_ptr<PiecewisePolynomial<double>>>& input_traj,
     const vector<double>& impact_times, string folder_path, bool naive_approach,
@@ -63,6 +63,7 @@ HybridLQRController::HybridLQRController(
       Q_(Q),
       R_(R),
       Qf_(Qf),
+      buffer_time_(buffer_time),
       state_trajs_(state_traj),
       input_trajs_(input_traj),
       impact_times_(impact_times),
@@ -94,19 +95,19 @@ HybridLQRController::HybridLQRController(
   contact_info_rev_ = std::vector<ContactInfo<double>>(num_modes_);
   contact_info_ad_ = std::vector<ContactInfo<AutoDiffXd>>(num_modes_);
   std::reverse_copy(std::begin(contact_info_), std::end(contact_info_),
-      std::begin(contact_info_rev_));
+                    std::begin(contact_info_rev_));
   std::reverse_copy(std::begin(contact_info_ad), std::end(contact_info_ad),
-      std::begin(contact_info_ad_));
+                    std::begin(contact_info_ad_));
 
   // Declare all system ports
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
-              plant.num_velocities(),
-              plant.num_actuators()))
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
           .get_index();
   control_output_port_ =
       this->DeclareVectorOutputPort(TimestampedVector<double>(n_u_),
-              &HybridLQRController::CalcControl)
+                                    &HybridLQRController::CalcControl)
           .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   contact_port_ = this->DeclareAbstractInputPort(
@@ -205,7 +206,7 @@ void HybridLQRController::calcLinearizedDynamics(double t, int contact_mode,
       *contact_info_ad_[contact_mode].frameA[0];
 
   plant_ad_.CalcPointsPositions(*context, contact_frame, pt_cast, world,
-      &pt_transform);
+                                &pt_transform);
   plant_ad_.CalcJacobianTranslationalVelocity(
       *context, drake::multibody::JacobianWrtVariable::kV, contact_frame,
       pt_cast, world, world, &J3d);
@@ -332,8 +333,8 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
   calcLinearResetMap(t, contact_mode, &R, &Dx_R);
   VectorXd D1_g(n_x_);
 
-  D1_g
-      << J_pre.row(1).transpose(), VectorXd::Zero(n_q_);  // dphi/dq, dphi/dqdot
+  D1_g << J_pre.row(1).transpose(),
+      VectorXd::Zero(n_q_);  // dphi/dq, dphi/dqdot
   VectorXd J_delta = Dx_R * xdot_pre;
   double J_g = (J_pre.row(1) * xdot_pre.head(n_q_));
 
@@ -351,7 +352,7 @@ MatrixXd HybridLQRController::calcJumpMap(MatrixXd& S_pre, int contact_mode,
 
     S_post = (I + H).transpose() * S_pre_max * (I + H);
     MatrixXd P_post = getMinimalCoordBasis(getReverseTime(t),
-        getReverseMode(contact_mode + 1));
+                                           getReverseMode(contact_mode + 1));
     S_post = P_post * S_post * P_post.transpose();
   } else {
     S_post = (I + H).transpose() * S_pre * (I + H);
@@ -373,7 +374,7 @@ MatrixXd HybridLQRController::calcJumpMapNaive(const MatrixXd& S_pre,
     MatrixXd S_pre_max = P.transpose() * S_pre * P;
     S_post = (I + R).transpose() * S_pre_max * (I + R);
     P = getMinimalCoordBasis(getReverseTime(t),
-        getReverseMode(contact_mode + 1));
+                             getReverseMode(contact_mode + 1));
     S_post = P * S_post * P.transpose();
   } else {
     S_post = (I + R).transpose() * S_pre * (I + R);
@@ -443,12 +444,11 @@ VectorXd HybridLQRController::calcLdot(double t, const VectorXd& l,
     MatrixXd B_bar = P * B;
     lDot =
         -0.5 * P * Q_ * P.transpose() * L.transpose().inverse() -
-            A_bar.transpose() * L +
-            0.5 * L * L.transpose() * B_bar * R_.inverse() * B_bar.transpose()
-                * L;
+        A_bar.transpose() * L +
+        0.5 * L * L.transpose() * B_bar * R_.inverse() * B_bar.transpose() * L;
   } else {
     lDot = -0.5 * Q_ * L.transpose().inverse() - A.transpose() * L +
-        0.5 * L * L.transpose() * B * R_.inverse() * B.transpose() * L;
+           0.5 * L * L.transpose() * B * R_.inverse() * B.transpose() * L;
   }
   lDot = -1 * lDot;
 
@@ -491,12 +491,12 @@ bool duringImpact(const drake::lcmt_contact_results_for_viz& contact_info) {
   double threshold = 400;
   if (contact_info.num_point_pair_contacts == 2) {
     return (abs(contact_info.point_pair_contact_info[0].contact_force[2]) >
-        threshold ||
-        abs(contact_info.point_pair_contact_info[1].contact_force[2]) >
-            threshold);
+                threshold ||
+            abs(contact_info.point_pair_contact_info[1].contact_force[2]) >
+                threshold);
   } else if (contact_info.num_point_pair_contacts == 1) {
     return abs(contact_info.point_pair_contact_info[0].contact_force[2]) >
-        threshold;
+           threshold;
   } else {
     return false;
   }
@@ -506,31 +506,35 @@ void HybridLQRController::CalcControl(
     const drake::systems::Context<double>& context,
     TimestampedVector<double>* output) const {
   auto* current_state =
-      (OutputVector<double>*) this->EvalVectorInput(context, state_port_);
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   const BasicVector<double>* fsm_state =
-      (BasicVector<double>*) this->EvalVectorInput(context, fsm_port_);
+      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   auto* contact_info = this->EvalAbstractInput(context, contact_port_);
   const auto& contact_info_msg =
       contact_info->get_value<drake::lcmt_contact_results_for_viz>();
 
   double timestamp = current_state->get_timestamp();
   auto current_time = static_cast<double>(timestamp);
-  int mode = (int) fsm_state->get_value()(0);
+  int mode = (int)fsm_state->get_value()(0);
   VectorXd u_sol(n_u_);
   if (current_time < 1e-7) {
     u_sol = VectorXd::Zero(n_u_);
   }
-    //  else if (duringImpact(contact_info_msg)) {
-    //    std::cout << "During impact: " << std::endl;
-    //    u_sol = VectorXd::Zero(n_u_);
-    //  }
+  //  else if (abs(current_time - state_trajs_[0]->end_time()) <
+  //                 0.5 * buffer_time_ ||
+  //             abs(current_time - state_trajs_[1]->end_time()) <
+  //                 0.5 * buffer_time_) {
+  else if ((current_time - state_trajs_[mode]->start_time()) < buffer_time_ &&
+           (current_time - state_trajs_[mode]->start_time()) > 0 && mode != 0) {
+    u_sol = VectorXd::Zero(n_u_);
+  }
   else {
     VectorXd x_error =
         current_state->GetState() - state_trajs_[mode]->value(current_time);
     MatrixXd M(n_v_, n_v_);
     std::unique_ptr<drake::systems::Context<double>> state_context =
         createContext(plant_, current_state->GetState(),
-            current_state->GetEfforts());
+                      current_state->GetEfforts());
     plant_.CalcMassMatrixViaInverseDynamics(*state_context, &M);
     MatrixXd B = plant_.MakeActuationMatrix();
     MatrixXd B_linear(n_x_, n_u_);
@@ -540,14 +544,15 @@ void HybridLQRController::CalcControl(
     MatrixXd S = getSAtTimestamp(current_time, mode);
     if (using_min_coords_) {
       MatrixXd P = getMinimalCoordBasis(current_time, mode);
-      MatrixXd K_minimal = R_.inverse() * B_linear.transpose() * (P
-          .transpose() * S * P);
+      MatrixXd K_minimal =
+          R_.inverse() * B_linear.transpose() * (P.transpose() * S * P);
       u_sol = -K_minimal * x_error;
     } else {
       MatrixXd K = -R_.inverse() * B_linear.transpose() * S;
       u_sol = K * (x_error);
     }
-    u_sol = u_sol + input_trajs_[mode]->value(current_time); // feedforward term
+    u_sol =
+        u_sol + input_trajs_[mode]->value(current_time);  // feedforward term
   }
 
   for (int i = 0; i < u_sol.size(); ++i) {  // cap the actuator inputs
@@ -610,7 +615,7 @@ void HybridLQRController::calcMinimalCoordBasis() {
     MatrixXd dJdq_flat = autoDiffToGradientMatrix(J).leftCols(n_q_);
     for (int i = 0; i < J_q.rows(); ++i) {
       dJdq_dqdt.row(i) = dJdq_flat.block(J.cols() * i, 0, J.cols(), J.cols()) *
-          state.tail(n_v_);
+                         state.tail(n_v_);
     }
     MatrixXd F =
         MatrixXd::Zero(J_q.rows() + J_q.rows(), J_q.cols() + J_q.cols());
@@ -622,12 +627,12 @@ void HybridLQRController::calcMinimalCoordBasis() {
     MatrixXd q_decomp = qr_decomp.householderQ();
 
     MatrixXd P_0 = q_decomp.block(0, F.rows(), q_decomp.rows(),
-        q_decomp.cols() - F.rows());
+                                  q_decomp.cols() - F.rows());
     P_0.transposeInPlace();
     VectorXd p0 = Map<VectorXd>(P_0.data(), (n_x_ - 2 * n_c_) * n_x_);
     VectorXd defaultParams(0);
     const InitialValueProblem<double>::OdeContext default_values(t0, p0,
-        defaultParams);
+                                                                 defaultParams);
     InitialValueProblem<double> ivp(
         [this](const double& t, const VectorXd& pdot,
                const VectorXd& k) -> VectorXd { return calcPdot(t, pdot, k); },
@@ -647,7 +652,7 @@ void HybridLQRController::calcMinimalCoordBasis() {
   }
   cout << "Saving P_traj" << endl;
   LcmTrajectory saved_traj(trajectories, trajectory_names, "P_traj",
-      "Time varying minimal coordinates basis");
+                           "Time varying minimal coordinates basis");
   saved_traj.writeToFile(folder_path_ + "P_traj");
   cout << "Saved P traj" << endl;
 }
@@ -667,7 +672,7 @@ void HybridLQRController::calcCostToGo(const MatrixXd& S_f) {
     VectorXd l_0 = Map<VectorXd>(L_f.data(), L_f.size());
     VectorXd defaultParams(0);
     const InitialValueProblem<double>::OdeContext default_values(t0, l_0,
-        defaultParams);
+                                                                 defaultParams);
     InitialValueProblem<double> ivp(
         [this](const double& t, const VectorXd& ldot,
                const VectorXd& k) -> VectorXd { return calcLdot(t, ldot, k); },
@@ -701,7 +706,7 @@ void HybridLQRController::calcCostToGo(const MatrixXd& S_f) {
     LcmTrajectory::Trajectory traj_block;
     traj_block.traj_name = "L" + std::to_string(getReverseMode(mode));
     traj_block.time_vector = VectorXd::LinSpaced(1000, l_t_[mode]->start_time(),
-        l_t_[mode]->end_time());
+                                                 l_t_[mode]->end_time());
     traj_block.datapoints =
         generate_state_input_matrix(*l_t_[mode], traj_block.time_vector);
     if (using_min_coords_) {
@@ -711,9 +716,8 @@ void HybridLQRController::calcCostToGo(const MatrixXd& S_f) {
     l_trajectories.push_back(traj_block);
     trajectory_names.push_back(traj_block.traj_name);
   }
-  LcmTrajectory saved_traj(
-      l_trajectories, trajectory_names, "L_traj",
-      "Square root of the time varying cost to go");
+  LcmTrajectory saved_traj(l_trajectories, trajectory_names, "L_traj",
+                           "Square root of the time varying cost to go");
   saved_traj.writeToFile(l_traj_filepath_);
 }
 
@@ -833,7 +837,7 @@ VectorXd HybridLQRController::calcPdot(double t, const Eigen::VectorXd& p,
   //  VectorXd pdot = pdot_lhs.householderQr().solve(pdot_rhs);  // Solve for
   //  pdot
   VectorXd pdot = pdot_lhs.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)
-                          .solve(pdot_rhs);  // Solve for pdot (min norm version)
+                      .solve(pdot_rhs);  // Solve for pdot (min norm version)
   MatrixXd Pdot(nd, n_x_);
   for (int i = 0; i < nd; ++i) {
     Pdot.row(i) = pdot.segment(i * n_x_, n_x_).transpose();

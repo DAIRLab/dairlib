@@ -22,10 +22,10 @@
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
 #include "attic/multibody/rigidbody_utils.h"
+#include "dairlib/lcmt_fsm_out.hpp"
 #include "dairlib/lcmt_pd_config.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_fsm_out.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -49,9 +49,9 @@ using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
+using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::TriggerType;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
@@ -72,6 +72,8 @@ DEFINE_double(v_tol, 0.01,
 DEFINE_string(channel_x, "RABBIT_STATE_SIMULATION",
               "Channel to publish/receive state from simulation");
 DEFINE_double(publish_rate, 2000, "Publishing frequency (Hz)");
+DEFINE_double(buffer_time, 0.0, "Time around nominal impact time to apply "
+                                "heuristic efforts");
 DEFINE_bool(naive, true,
             "Set to true if using the naive approach to hybrid lqr");
 DEFINE_bool(minimal_coords, true,
@@ -230,15 +232,16 @@ int doMain(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   auto lqr = builder.AddSystem<systems::HybridLQRController>(
       plant, *plant_autodiff, contact_modes, contact_modes_ad, Q, R, Qf,
-      state_trajs, input_trajs, impact_times, FLAGS_folder_path, FLAGS_naive,
-      FLAGS_minimal_coords, FLAGS_recalculateP, FLAGS_recalculateL);
+      FLAGS_buffer_time, state_trajs, input_trajs, impact_times,
+      FLAGS_folder_path, FLAGS_naive, FLAGS_minimal_coords, FLAGS_recalculateP,
+      FLAGS_recalculateL);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Took " << elapsed.count() << "s to create LQR controller"
             << std::endl;
-//  auto fsm_logger =
-//            drake::systems::LogOutput(fsm->get_output_port(0), &builder);
-//  fsm_logger->set_forced_publish_only();
+  //  auto fsm_logger =
+  //            drake::systems::LogOutput(fsm->get_output_port(0), &builder);
+  //  fsm_logger->set_forced_publish_only();
 
   // ******End of leaf system initialization*******
 
@@ -266,30 +269,30 @@ int doMain(int argc, char* argv[]) {
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
 
-//  std::cout << "Built diagram" << std::endl;
-//  /// Use the simulator to drive at a fixed rate
-//  /// If set_publish_every_time_step is true, this publishes twice
-//  /// Set realtime rate. Otherwise, runs as fast as possible
-//  auto stepper = std::make_unique<drake::systems::Simulator<double>>(
-//      *diagram, std::move(context));
-//  stepper->set_publish_every_time_step(false);
-//  stepper->set_publish_at_initialization(false);
-//  stepper->set_target_realtime_rate(1.0);
-//  stepper->Initialize();
-//  std::cout << "Running simulation" << std::endl;
-//
-//  drake::log()->info("controller started");
-//  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
+  //  std::cout << "Built diagram" << std::endl;
+  //  /// Use the simulator to drive at a fixed rate
+  //  /// If set_publish_every_time_step is true, this publishes twice
+  //  /// Set realtime rate. Otherwise, runs as fast as possible
+  //  auto stepper = std::make_unique<drake::systems::Simulator<double>>(
+  //      *diagram, std::move(context));
+  //  stepper->set_publish_every_time_step(false);
+  //  stepper->set_publish_at_initialization(false);
+  //  stepper->set_target_realtime_rate(1.0);
+  //  stepper->Initialize();
+  //  std::cout << "Running simulation" << std::endl;
+  //
+  //  drake::log()->info("controller started");
+  //  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
   //  stepper->AdvanceTo(3.0);
 
   // Write all dataloggers to a CSV
   //  MatrixXd value_function = value_function_logger->data();
   //  MatrixXd estimated_cost = lqr_cost_logger->data();
-//  MatrixXd fsm_output = fsm_logger->data();
+  //  MatrixXd fsm_output = fsm_logger->data();
 
-//  goldilocks_models::writeCSV(
-//      "../projects/five_link_biped/hybrid_lqr/plotting/V.csv",
-//      fsm_output.transpose());
+  //  goldilocks_models::writeCSV(
+  //      "../projects/five_link_biped/hybrid_lqr/plotting/V.csv",
+  //      fsm_output.transpose());
   //  goldilocks_models::writeCSV(
   //      "../projects/five_link_biped/hybrid_lqr/plotting/lqr.csv",
   //      estimated_cost.transpose());

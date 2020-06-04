@@ -32,7 +32,7 @@ using Eigen::VectorXd;
 /// from the URDF to centralize any modeling changes or additions
 void addCassieMultibody(MultibodyPlant<double>* plant,
     SceneGraph<double>* scene_graph, bool floating_base, std::string filename,
-    bool add_leaf_springs, bool add_loop_closure_springs) {
+    bool add_leaf_springs, bool add_loop_closure) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
   parser.AddModelFromFile(full_name);
@@ -66,11 +66,11 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
         0, 1250);
   }
 
-  if (add_loop_closure_springs) {
+  if (add_loop_closure) {
     // TOOO(mposa): add loop closures when implemented in Drake
     // Add a spring to represent loop closure
-    double achilles_stiffness = 2e7;
-    double achilles_damping = 20000;
+    double achilles_stiffness = 2e5;
+    double achilles_damping = 2e3;
     double achilles_length = .5012;
     const auto& heel_spring_left = plant->GetBodyByName("heel_spring_left");
     const auto& thigh_left = plant->GetBodyByName("thigh_left");

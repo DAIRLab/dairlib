@@ -128,6 +128,8 @@ void CassieFixedPointSolver(
   q_guess(positions_map.at("ankle_joint_right")) = 2;
   q_guess(positions_map.at("toe_right")) = -2;
 
+  q_guess += .05*Eigen::VectorXd::Random(plant.num_positions());
+
   // Only cost in this program: u^T u
   program.AddQuadraticCost(u.dot(1.0 * u));
 

@@ -157,7 +157,7 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
 }
 
 template <typename T>
-VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
+VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivativesGivenForce(
     const Context<T>& context, const VectorX<T>& lambda) const {
   MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
   plant_.CalcMassMatrix(context, &M);
@@ -186,10 +186,10 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
     const Context<T>& context, VectorX<T>* lambda, double alpha) const {
-  // M(q) vdot + C(q,v) = tau_g(q) + Bu + J(q)^T lambda
+  // M(q) vdot + C(q,v) = tau_g(q) + f_app + Bu + J(q)^T lambda
   // J vdot + Jdotv  + kp phi + kd phidot = 0
   // Produces linear system of equations
-  // [[M -J^T]  [[vdot  ]  =  [[tau_g + Bu - C     ]
+  // [[M -J^T]  [[vdot  ]  =  [[tau_g + f_app + Bu - C     ]
   //  [J  0 ]]  [lambda]]     [ -Jdotv - kp phi - kd phidot]]
 
   // Evaluate manipulator equation terms
@@ -207,11 +207,11 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
   drake::multibody::MultibodyForces<T> f_app(plant_);
   plant_.CalcForceElementsContribution(context, &f_app);
 
-  // Evaluate constraint terms, phi/phidot for active. Jacboians for full
+  // Evaluate active constraint terms.
   VectorX<T> phi = EvalActive(context);
   VectorX<T> phidot = EvalActiveTimeDerivative(context);
-  MatrixX<T> J = EvalFullJacobian(context);
-  VectorX<T> Jdotv = EvalFullJacobianDotTimesV(context);
+  MatrixX<T> J = EvalActiveJacobian(context);
+  VectorX<T> Jdotv = EvalActiveJacobianDotTimesV(context);
 
 
   MatrixX<T> A(M.rows() + J.rows(),

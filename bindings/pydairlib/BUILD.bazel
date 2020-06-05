@@ -87,6 +87,7 @@ PY_LIBRARIES = [
     ":module_py",
     ":lcm_trajectory_py",
     "//bindings/pydairlib/common",
+    "//bindings/pydairlib/multibody",
 ]
 
 # Package roll-up (for Bazel dependencies).

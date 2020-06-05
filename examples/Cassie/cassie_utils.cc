@@ -14,8 +14,10 @@
 
 namespace dairlib {
 
+using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
 using drake::geometry::SceneGraph;
+using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::RevoluteSpring;
@@ -36,7 +38,7 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
   parser.AddModelFromFile(full_name);
 
   plant->mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                    Eigen::Vector3d::UnitZ());
+                                                    Vector3d::UnitZ());
 
   if (!floating_base) {
     plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("pelvis"),
@@ -95,6 +97,60 @@ std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(
   auto tree = std::make_unique<RigidBodyTree<double>>();
   buildCassieTree(*tree.get(), filename, base_type, is_with_springs);
   return tree;
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> LeftToe(
+    const MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_left"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> RightToe(
+    const MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_right"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> LeftHeel(
+    const MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_left"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> RightHeel(
+    const MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_right"));
+}
+
+template <typename T>
+multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
+    const MultibodyPlant<T>& plant) {
+  double achilles_length = .5012;
+  const auto& heel_spring = plant.GetFrameByName("heel_spring_left");
+  const auto& thigh = plant.GetFrameByName("thigh_left");
+  Vector3d rod_on_heel(.11877, -.01, 0.0);
+  Vector3d rod_on_thigh(0.0, 0.0, 0.045);
+
+  return multibody::DistanceEvaluator<T>(plant, rod_on_heel, heel_spring,
+      rod_on_thigh, thigh, achilles_length);
+}
+
+template <typename T>
+multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
+    const MultibodyPlant<T>& plant) {
+  double achilles_length = .5012;
+  const auto& heel_spring = plant.GetFrameByName("heel_spring_right");
+  const auto& thigh = plant.GetFrameByName("thigh_right");
+  Vector3d rod_on_heel(.11877, -.01, 0.0);
+  Vector3d rod_on_thigh(0.0, 0.0, -0.045);
+
+  return multibody::DistanceEvaluator<T>(plant, rod_on_heel, heel_spring,
+      rod_on_thigh, thigh, achilles_length);
 }
 
 void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
@@ -160,7 +216,7 @@ void addImuFrameToCassiePelvis(std::unique_ptr<RigidBodyTree<double>> & tree){
   Eigen::Isometry3d Imu_pos_wrt_pelvis_origin;
   Imu_pos_wrt_pelvis_origin.linear() = Eigen::Matrix3d::Identity();;
   Imu_pos_wrt_pelvis_origin.translation() =
-      Eigen::Vector3d(0.03155, 0, -0.07996);
+      Vector3d(0.03155, 0, -0.07996);
 
   std::shared_ptr<RigidBodyFrame<double>> imu_frame =
            std::allocate_shared<RigidBodyFrame<double>>(
@@ -234,4 +290,16 @@ systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
   return cassie_sensor_aggregator;
 }
 
+template std::pair<const Vector3d, const Frame<double>&> LeftToe(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightToe(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftHeel(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightHeel(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToe(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToe(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template multibody::DistanceEvaluator<double> LeftLoopClosureEvaluator(const MultibodyPlant<double>& plant);  // NOLINT
+template multibody::DistanceEvaluator<double> RightLoopClosureEvaluator(const MultibodyPlant<double>& plant);  // NOLINT
+template multibody::DistanceEvaluator<AutoDiffXd> LeftLoopClosureEvaluator(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template multibody::DistanceEvaluator<AutoDiffXd> RightLoopClosureEvaluator(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 } // namespace dairlib

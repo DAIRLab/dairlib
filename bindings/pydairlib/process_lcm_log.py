@@ -170,7 +170,7 @@ def process_log(log, pos_map, vel_map):
     #     q[:, fb_pos], q[:, fb_quat] = q[:, muj_fb_pos], q[:, muj_fb_quat]
     # import pdb; pdb.set_trace()
 
-    print("Transition time: ", t_osc_debug[np.min(np.where(osc_fsm == 3))])
+    # print("Transition time: ", t_osc_debug[np.min(np.where(osc_fsm == 3))])
 
     return contact_info, contact_info_locs, control_inputs, estop_signal, \
            osc_debug, q, switch_signal, t_contact_info, t_controller_switch, \

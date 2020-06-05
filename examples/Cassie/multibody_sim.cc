@@ -170,8 +170,8 @@ int do_main(int argc, char* argv[]) {
         LcmTrajectory(FLAGS_folder_path + FLAGS_file_name);
     const LcmTrajectory::Trajectory& trajectory =
         loadedTrajs.getTrajectory(FLAGS_trajectory_name);
-    std::cout << "nq: " << nq << " nv: " << nv << std::endl;
-    std::cout << "n_rows " << trajectory.datapoints.rows() << std::endl;
+//    std::cout << "nq: " << nq << " nv: " << nv << std::endl;
+//    std::cout << "n_rows " << trajectory.datapoints.rows() << std::endl;
 
     DRAKE_ASSERT(nq + nv == trajectory.datapoints.rows())
     std::vector<double> breaks = std::vector<double>(
@@ -183,8 +183,8 @@ int do_main(int argc, char* argv[]) {
     for (int i = 0; i < n_breaks; ++i) {
       quaternions[i] =
           Eigen::Quaterniond(trajectory.datapoints.block(0, i, 4, 1).data());
-      std::cout << "State at break: " << trajectory.datapoints.col(i)
-                << std::endl;
+//      std::cout << "State at break: " << trajectory.datapoints.col(i)
+//                << std::endl;
     }
     drake::trajectories::PiecewisePolynomial<double> x_traj;
     if(FLAGS_interp_method == "linear"){
@@ -198,17 +198,6 @@ int do_main(int argc, char* argv[]) {
       x_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
           trajectory.time_vector, x, xdot);
       q_v_init << x_traj.value(FLAGS_start_time);
-//      drake::trajectories::PiecewiseQuaternionSlerp<double> quaternion_slerp =
-//          drake::trajectories::PiecewiseQuaternionSlerp<double>(
-//              breaks, quaternions);
-//      const drake::Quaternion<double>& orientation =
-//          quaternion_slerp.orientation(FLAGS_start_time);
-//      q_v_init << orientation.vec(), orientation.w(),
-//          x_traj_wo_quat.value(FLAGS_start_time),
-//          quaternion_slerp.angular_velocity(FLAGS_start_time),
-//          x_traj_wo_quat.MakeDerivative(1)->value(FLAGS_start_time);
-
-
     }
     // Add any "errors" in the state here
     q_v_init[FLAGS_error_idx] += FLAGS_error;
@@ -223,7 +212,7 @@ int do_main(int argc, char* argv[]) {
           transform);
     }
   }
-  std::cout << "Setting initial state to: " << q_v_init << std::endl;
+//  std::cout << "Setting initial state to: " << q_v_init << std::endl;
 
 
   Simulator<double> simulator(*diagram, std::move(diagram_context));

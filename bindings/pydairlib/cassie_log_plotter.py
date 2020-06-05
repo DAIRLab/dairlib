@@ -5,13 +5,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import process_lcm_log
-import pydairlib.lcm_trajectory
-import pydairlib.multibody_utils
-from loadLcmTrajs import loadLcmTrajs
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
+import pydairlib.lcm_trajectory
+import pydairlib.multibody_utils
+from loadLcmTrajs import loadLcmTrajs
 from scipy import integrate
 
 
@@ -32,85 +32,6 @@ def print_osc_debug(t_idx, length, osc_debug):
         osc_debug.ddy_command_sol[t_idx:t_idx + length, :]))
 
 
-def calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v):
-    n_dim = 3
-    impact_duration = 0.05
-    net_impulse = np.zeros((n_dim,1))
-
-    M = plant.CalcMassMatrixViaInverseDynamics(context)
-    M_inv = np.linalg.inv(M)
-
-    # Get the index for when the first grf is non-zero
-    t_start_idx = np.min(np.argwhere(contact_info > 0), 0)[1]
-    # Get the index for impact_duration (s) after the first non-zero grf
-    t_end_idx = get_index_at_time(t_contact_info, t_state[t_start_idx] + impact_duration)
-    x = np.hstack((q, v))
-
-    l_contact_frame = plant.GetBodyByName("toe_left").body_frame()
-    r_contact_frame = plant.GetBodyByName("toe_right").body_frame()
-    world = plant.world_frame()
-    front_contact_disp = np.array((-0.0457, 0.112, 0))
-    rear_contact_disp = np.array((0.088, 0, 0))
-
-    t_slice = slice(t_start_idx, t_end_idx)
-    impulses = np.zeros((contact_info.shape[0], n_dim))
-    for i in range(contact_info.shape[0]):
-        for j in range(n_dim):
-            impulses[i, j] = np.trapz(contact_info[i, t_slice, j],
-                                   t_contact_info[t_slice])
-
-    impulse_from_contact = np.zeros((t_end_idx - t_start_idx, v.shape[1]))
-
-    for i in range(t_start_idx, t_end_idx):
-        plant.SetPositionsAndVelocities(context, x[i])
-        J_l_r = plant.CalcJacobianTranslationalVelocity(context,
-                    JacobianWrtVariable.kV, l_contact_frame, rear_contact_disp,
-                    world, world)
-        J_l_f = plant.CalcJacobianTranslationalVelocity(context,
-                    JacobianWrtVariable.kV, l_contact_frame, front_contact_disp,
-                    world, world)
-        J_r_r = plant.CalcJacobianTranslationalVelocity(context,
-                    JacobianWrtVariable.kV, r_contact_frame, rear_contact_disp,
-                    world, world)
-        J_r_f = plant.CalcJacobianTranslationalVelocity(context,
-                    JacobianWrtVariable.kV, r_contact_frame, front_contact_disp,
-                    world, world)
-
-        # import pdb; pdb.set_trace()
-        impulse_from_contact[i - t_start_idx] = J_l_r.T @ contact_info[0, i]
-        impulse_from_contact[i - t_start_idx] = J_l_f.T @ contact_info[1, i]
-        impulse_from_contact[i - t_start_idx] = J_r_r.T @ contact_info[2, i]
-        impulse_from_contact[i - t_start_idx] = J_r_f.T @ contact_info[3, i]
-
-    #Assuming_the position change is negligible
-    # import pdb; pdb.set_trace()
-    net_impulse_from_contact = np.zeros(v.shape[1])
-    for j in range(v.shape[1]):
-        net_impulse_from_contact[j] = np.trapz(impulse_from_contact[:,j],
-                                             t_contact_info[
-            t_slice])
-    delta_v = M_inv @ net_impulse_from_contact
-    print("Interval between: ", t_state[t_start_idx], t_state[t_end_idx])
-    print(impulses)
-    print(delta_v)
-    return net_impulse
-
-
-def plot_nominal_input_traj(u_traj_nominal, datatypes):
-    start_time = u_traj_nominal.start_time()
-    end_time = u_traj_nominal.end_time()
-    fig = plt.figure('target input trajectory: ' + filename)
-    points = []
-    times = []
-    input_slice = slice(4,8)
-    for i in range(1000):
-        t = start_time + (end_time - start_time) * i / 1000
-        times.append(t)
-        points.append(u_traj_nominal.value(t))
-    points = np.array(points)
-    plt.plot(times, points[:, input_slice, 0])
-    plt.legend(datatypes[4 + 74: 8 + 74])
-
 
 def main():
     global x_traj_nominal
@@ -120,7 +41,7 @@ def main():
         "/figures/"
 
     builder = DiagramBuilder()
-    plant, _ = AddMultibodyPlantSceneGraph(builder, 1e-4)
+    plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
     Parser(plant).AddModelFromFile(
         "/home/yangwill/Documents/research/dairlib/examples/Cassie/urdf"
         "/cassie_v2.urdf")
@@ -144,7 +65,6 @@ def main():
         print(name)
     for name in vel_map:
         state_names_w_spr[nq + vel_map[name]] = name
-    # import pdb; pdb.set_trace()
 
     l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
     r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
@@ -154,10 +74,10 @@ def main():
 
     x_traj_nominal, x_hybrid_trajs_nominal, u_traj_nominal, \
     u_hybrid_trajs_nominal, decision_vars, datatypes \
-        = loadLcmTrajs(37, nu, 2)
+        = loadLcmTrajs(37, nu, 3)
 
-    loadedStateTraj = pydairlib.lcm_trajectory.LcmTrajectory()
-    loadedTrackingDataTraj = pydairlib.lcm_trajectory.LcmTrajectory()
+    # loadedStateTraj = pydairlib.lcm_trajectory.LcmTrajectory()
+    # loadedTrackingDataTraj = pydairlib.lcm_trajectory.LcmTrajectory()
     # loadedStateTraj.loadFromFile(
     #     "/home/yangwill/Documents/research/projects/cassie/jumping"
     #     "/saved_trajs/target_trajs/jumping_0.15")
@@ -166,64 +86,23 @@ def main():
     #     "/saved_trajs/target_trajs/April_19_jumping_0.2")
     # loadedStateTraj.loadFromFile(
     #     "/home/yangwill/Documents/research/projects/cassie/jumping"
-    #     "/saved_trajs/May_25_two_modes")
-    #     # "/saved_trajs/target_trajs/April_19_jumping_0.2")
-    # loadedStateTraj.loadFromFile(
+    #     "/saved_trajs/June_5_jumping_0.2")
+    # loadedTrackingDataTraj.loadFromFile(
     #     "/home/yangwill/Documents/research/projects/cassie/jumping"
-    #     "/saved_trajs/May_21_jumping_0.2")
-    loadedTrackingDataTraj.loadFromFile(
-        "/home/yangwill/Documents/research/projects/cassie/jumping"
-        "/saved_trajs/target_trajs/April_19_jumping_0.2_processed")
-        # "/saved_trajs/target_trajs/jumping_0.2_processed")
-
-    # state_traj_mode0 = loadedStateTraj.getTrajectory(
-    #     "cassie_jumping_trajectory_x_u0")
-    # state_traj_mode1 = loadedStateTraj.getTrajectory(
-    #     "cassie_jumping_trajectory_x_u1")
-    # state_traj_mode2 = loadedStateTraj.getTrajectory(
-    #     "cassie_jumping_trajectory_x_u2")
+    #     "/saved_trajs/June_5_jumping_0.2_processed")
 
     # Useful for optimal lambdas
 
-
-    lcm_l_foot_traj = loadedTrackingDataTraj.getTrajectory(
-        "left_foot_trajectory")
-    lcm_r_foot_traj = loadedTrackingDataTraj.getTrajectory(
-        "right_foot_trajectory")
-    lcm_com_traj = loadedTrackingDataTraj.getTrajectory(
-        "center_of_mass_trajectory")
-
-    # x_points_nominal = np.hstack((state_traj_mode0.datapoints,
-    #                               state_traj_mode1.datapoints,
-    #                               state_traj_mode2.datapoints))
-    # t_nominal = np.hstack((state_traj_mode0.time_vector,
-    #                        state_traj_mode1.time_vector,
-    #                        state_traj_mode2.time_vector))
+    # lcm_l_foot_traj = loadedTrackingDataTraj.getTrajectory(
+    #     "left_foot_trajectory")
+    # lcm_r_foot_traj = loadedTrackingDataTraj.getTrajectory(
+    #     "right_foot_trajectory")
+    # lcm_com_traj = loadedTrackingDataTraj.getTrajectory(
+    #     "center_of_mass_trajectory")
 
     nq_fb = 7
     nv_fb = 6
-    # x_traj_nominal = PiecewisePolynomial.CubicHermite(t_nominal,
-    #                                                   x_points_nominal[:37,
-    #                                                   :],
-    #                                                   x_points_nominal[37:74,
-    #                                                   :])
-    # u_traj_nominal = PiecewisePolynomial.FirstOrderHold(t_nominal,
-    #                                                     x_points_nominal[-10:])
-    # l_foot_traj = PiecewisePolynomial.CubicHermite(lcm_l_foot_traj.time_vector,
-    #                                                lcm_l_foot_traj.datapoints[
-    #                                                0:3, :],
-    #                                                lcm_l_foot_traj.datapoints[
-    #                                                3:6, :])
-    # r_foot_traj = PiecewisePolynomial.CubicHermite(lcm_r_foot_traj.time_vector,
-    #                                                lcm_r_foot_traj.datapoints[
-    #                                                0:3, :],
-    #                                                lcm_r_foot_traj.datapoints[
-    #                                                3:6, :])
-    # com_traj = PiecewisePolynomial.CubicHermite(lcm_com_traj.time_vector,
-    #                                             lcm_com_traj.datapoints[
-    #                                                0:3, :],
-    #                                             lcm_com_traj.datapoints[
-    #                                                3:6, :])
+
 
     # Note this plots relative feet trajs as the target trajectory is relative
     # To get the nominal feet trajs in world coordinates, calculate it from
@@ -273,7 +152,7 @@ def main():
     t_state_slice = slice(t_start_idx, t_end_idx)
 
     # plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
-    plot_nominal_state(x_traj_nominal, state_names_wo_spr)
+    # plot_nominal_state(x_traj_nominal, state_names_wo_spr)
 
     # For printing out osc_values at a specific time interval
     t_osc_start_idx = get_index_at_time(t_osc_debug, start_time)
@@ -284,11 +163,11 @@ def main():
     plot_osc_control_inputs(control_inputs, datatypes, t_osc,
                             t_osc_end_idx, t_osc_start_idx)
     #
-    plot_nominal_control_inputs(nu, datatypes,
-                                u_traj_nominal.get_segment_times(),
-                                u_traj_nominal)
+    # plot_nominal_control_inputs(nu, datatypes,
+    #                             u_traj_nominal.get_segment_times(),
+    #                             u_traj_nominal)
 
-    # plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
+    plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
 
     # plt.plot(t_osc_debug[t_osc_start_idx:t_osc_end_idx], osc_debug[
     #                                                          0].is_active[
@@ -299,18 +178,19 @@ def main():
     front_contact_disp = np.array((-0.0457, 0.112, 0))
     rear_contact_disp = np.array((0.088, 0, 0))
 
-    plot_feet_from_optimization(x_traj_nominal,
-                                front_contact_disp, world, "toe_left",
-                                "_front", front_contact_disp)
-    plot_feet_from_optimization(x_traj_nominal,
-                                front_contact_disp, world, "toe_right",
-                                "_front", front_contact_disp)
-    plot_feet_from_optimization(x_traj_nominal,
-                                front_contact_disp, world, "toe_left",
-                                "_front", rear_contact_disp)
-    plot_feet_from_optimization(x_traj_nominal,
-                                front_contact_disp, world, "toe_right",
-                                "_front", rear_contact_disp)
+    if False:
+        plot_feet_from_optimization(x_traj_nominal,
+                                    front_contact_disp, world, "toe_left",
+                                    "_front", front_contact_disp)
+        plot_feet_from_optimization(x_traj_nominal,
+                                    front_contact_disp, world, "toe_right",
+                                    "_front", front_contact_disp)
+        plot_feet_from_optimization(x_traj_nominal,
+                                    front_contact_disp, world, "toe_left",
+                                    "_front", rear_contact_disp)
+        plot_feet_from_optimization(x_traj_nominal,
+                                    front_contact_disp, world, "toe_right",
+                                    "_front", rear_contact_disp)
 
     # Foot plotting
     if True:
@@ -474,8 +354,83 @@ def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     print(Jcc@xc[-18:])
     print(Jcc@Jcc.T@gamma_c)
 
-    import pdb;
-    pdb.set_trace()
+def calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v):
+    n_dim = 3
+    impact_duration = 0.05
+    net_impulse = np.zeros((n_dim,1))
+
+    M = plant.CalcMassMatrixViaInverseDynamics(context)
+    M_inv = np.linalg.inv(M)
+
+    # Get the index for when the first grf is non-zero
+    t_start_idx = np.min(np.argwhere(contact_info > 0), 0)[1]
+    # Get the index for impact_duration (s) after the first non-zero grf
+    t_end_idx = get_index_at_time(t_contact_info, t_state[t_start_idx] + impact_duration)
+    x = np.hstack((q, v))
+
+    l_contact_frame = plant.GetBodyByName("toe_left").body_frame()
+    r_contact_frame = plant.GetBodyByName("toe_right").body_frame()
+    world = plant.world_frame()
+    front_contact_disp = np.array((-0.0457, 0.112, 0))
+    rear_contact_disp = np.array((0.088, 0, 0))
+
+    t_slice = slice(t_start_idx, t_end_idx)
+    impulses = np.zeros((contact_info.shape[0], n_dim))
+    for i in range(contact_info.shape[0]):
+        for j in range(n_dim):
+            impulses[i, j] = np.trapz(contact_info[i, t_slice, j],
+                                      t_contact_info[t_slice])
+
+    impulse_from_contact = np.zeros((t_end_idx - t_start_idx, v.shape[1]))
+
+    for i in range(t_start_idx, t_end_idx):
+        plant.SetPositionsAndVelocities(context, x[i])
+        J_l_r = plant.CalcJacobianTranslationalVelocity(context,
+                                                        JacobianWrtVariable.kV, l_contact_frame, rear_contact_disp,
+                                                        world, world)
+        J_l_f = plant.CalcJacobianTranslationalVelocity(context,
+                                                        JacobianWrtVariable.kV, l_contact_frame, front_contact_disp,
+                                                        world, world)
+        J_r_r = plant.CalcJacobianTranslationalVelocity(context,
+                                                        JacobianWrtVariable.kV, r_contact_frame, rear_contact_disp,
+                                                        world, world)
+        J_r_f = plant.CalcJacobianTranslationalVelocity(context,
+                                                        JacobianWrtVariable.kV, r_contact_frame, front_contact_disp,
+                                                        world, world)
+
+        impulse_from_contact[i - t_start_idx] = J_l_r.T @ contact_info[0, i]
+        impulse_from_contact[i - t_start_idx] = J_l_f.T @ contact_info[1, i]
+        impulse_from_contact[i - t_start_idx] = J_r_r.T @ contact_info[2, i]
+        impulse_from_contact[i - t_start_idx] = J_r_f.T @ contact_info[3, i]
+
+    #Assuming_the position change is negligible
+    net_impulse_from_contact = np.zeros(v.shape[1])
+    for j in range(v.shape[1]):
+        net_impulse_from_contact[j] = np.trapz(impulse_from_contact[:,j],
+                                               t_contact_info[
+                                                   t_slice])
+    delta_v = M_inv @ net_impulse_from_contact
+    print("Interval between: ", t_state[t_start_idx], t_state[t_end_idx])
+    print(impulses)
+    print(delta_v)
+    return net_impulse
+
+
+def plot_nominal_input_traj(u_traj_nominal, datatypes):
+    start_time = u_traj_nominal.start_time()
+    end_time = u_traj_nominal.end_time()
+    fig = plt.figure('target input trajectory: ' + filename)
+    points = []
+    times = []
+    input_slice = slice(4,8)
+    for i in range(1000):
+        t = start_time + (end_time - start_time) * i / 1000
+        times.append(t)
+        points.append(u_traj_nominal.value(t))
+    points = np.array(points)
+    plt.plot(times, points[:, input_slice, 0])
+    plt.legend(datatypes[4 + 74: 8 + 74])
+
 
 def plot_ground_reaction_forces(contact_info, t_state, t_state_slice):
     fig = plt.figure('contact data: ' + filename)
@@ -573,7 +528,6 @@ def integrate_q_v(x_traj_nominal):
         q0_no_fb = np.reshape(q0_no_fb, (15,))
         I = integrate.solve_ivp(integrand, tspan, q0_no_fb)
         print(q1_no_fb - np.reshape(I.y[:, -1], (15, 1)))
-    # import pdb; pdb.set_trace()
 
 
 def plot_feet_simulation(plant, context, q, v, toe_frame, contact_point, world,
@@ -652,11 +606,13 @@ def plot_feet_from_optimization(x_traj,
         #     world) @ v[i, :]
     # fig = plt.figure(foot_type + 'foot pos: ' + filename)
     fig = plt.figure('foot pos from optimization: ' + filename)
-    state_indices = slice(0, 3)
+    state_indices = slice(3, 6)
+    # state_indices = slice(0, 3)
+    # state_indices = [5]
     state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
     state_names = [foot_type + name for name in state_names]
     state_names = [name + contact_type for name in state_names]
-    plt.plot(times, foot_state.T[:, (0, 3)],
+    plt.plot(times, foot_state.T[:, state_indices],
              label=state_names[state_indices])
     plt.plot(x_traj.get_segment_times(), np.zeros(len(x_traj.get_segment_times(
     ))), 'k*')

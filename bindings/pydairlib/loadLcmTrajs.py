@@ -7,7 +7,7 @@ def loadLcmTrajs(nx, nu, n_modes):
   loadedStateTraj = pydairlib.lcm_trajectory.LcmTrajectory()
   loadedStateTraj.loadFromFile(
     "/home/yangwill/Documents/research/projects/cassie/jumping"
-    "/saved_trajs/May_25_two_modes")
+    "/saved_trajs/June_5_jumping_0.2")
   # loadedStateTraj.loadFromFile(
   #   "/home/yangwill/Documents/research/projects/cassie/jumping"
   #   "/saved_trajs/target_trajs/April_19_jumping_0.2")

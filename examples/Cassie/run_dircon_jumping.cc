@@ -261,9 +261,6 @@ void DoMain() {
 
   std::cout << "num_constraints" << options_list[1].getNumConstraints()
             << std::endl;
-  options_list[1].setKinConstraintScaling({0, 1, 2, 3}, 1.0 / 100.0);
-
-  vector<int> stance_modes{0, 2};
 
   auto trajopt = std::make_shared<HybridDircon<double>>(
       plant, timesteps, min_dt, max_dt, contact_mode_list, options_list);

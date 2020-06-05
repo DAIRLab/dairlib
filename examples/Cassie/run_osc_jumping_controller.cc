@@ -59,7 +59,7 @@ DEFINE_double(publish_rate, 1000.0, "Target publish rate for OSC");
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "The name of the channel which receives state");
-DEFINE_string(channel_u, "OSC_JUMPING",
+DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
 DEFINE_double(balance_height, 1.125,
               "Balancing height for Cassie before attempting the jump");

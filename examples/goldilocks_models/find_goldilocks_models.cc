@@ -1502,7 +1502,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double stride_length_0;
   if (FLAGS_robot_option == 0) {
     delta_stride_length = 0.015;
-    stride_length_0 = 0.3;
+    stride_length_0 = 0.25;
   } else if (FLAGS_robot_option == 1) {
     if (FLAGS_is_stochastic) {
       delta_stride_length = 0.015;//0.066; // 0.066 might be too big;

@@ -116,8 +116,8 @@ class KinematicEvaluatorSet {
   /// Gets the starting index into phi_active of the specified evaluator
   int evaluator_active_start(int index) const;
 
-  KinematicEvaluator<T>* get_evaluator(int index) {
-    return evaluators_.at(index);
+  const KinematicEvaluator<T>& get_evaluator(int index) const {
+    return *evaluators_.at(index);
   };
 
   /// Adds an evaluator to the end of the list, returning the associated index

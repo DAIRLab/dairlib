@@ -1,5 +1,6 @@
 #pragma once
-#include <map>
+#include <unordered_map>
+#include <vector>
 #include <set>
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -56,7 +57,7 @@ class DirconMode {
   /// Get the constraint type for a specific knotpoint in time, either
   /// kAll, kAccelAndVel, kAccelOnly. By default, all constraints (kAll) are
   /// included
-  const DirconKinConstraintType& get_constraint_type(int knotpoint_index);
+  DirconKinConstraintType get_constraint_type(int knotpoint_index) const;
 
   /// Set the impact constraint, for the start of this mode, to use a scale
   /// factor
@@ -158,12 +159,12 @@ class DirconMode {
       int evaluator_index, int constraint_index, double scale);
  
   const multibody::KinematicEvaluatorSet<T>& evaluators_;
-  int num_knotpoints_;
-  double max_T_;
-  double min_T_;
+  const int num_knotpoints_;
+  const double min_T_;
+  const double max_T_;
+  const double force_regularization_;
   std::set<int> relative_constraints_;
   std::unordered_map<int, DirconKinConstraintType> reduced_constraints_;
-  double force_regularization_;
 
   // Constraint scaling
   std::unordered_map<int, double> dynamics_scale_;

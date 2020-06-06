@@ -20,7 +20,7 @@ DirconMode<T>::DirconMode(
 template <typename T>
 void DirconMode<T>::MakeConstraintRelative(int evaluator_index,
     int constraint_index) {
-  DRAKE_DEMAND(evaluators_.get_evaluator(evaluator_index)->is_active(
+  DRAKE_DEMAND(evaluators_.get_evaluator(evaluator_index).is_active(
       constraint_index));
   int total_index = evaluators_.evaluator_full_start(evaluator_index) + 
       constraint_index;
@@ -36,11 +36,11 @@ void DirconMode<T>::set_constraint_type(int knotpoint_index,
 }
 
 template <typename T>
-const DirconKinConstraintType& DirconMode<T>::get_constraint_type(
-    int knotpoint_index) {
+DirconKinConstraintType DirconMode<T>::get_constraint_type(
+    int knotpoint_index) const {
   if (reduced_constraints_.find(knotpoint_index) == reduced_constraints_.end())
     return DirconKinConstraintType::kAll;
-  return reduced_constraints_[knotpoint_index];
+  return reduced_constraints_.at(knotpoint_index);
 }
 
 
@@ -142,3 +142,6 @@ void DirconMode<T>::SetKinScale(std::unordered_map<int, double>* scale_map,
 }  // namespace trajectory_optimization
 }  // namespace systems
 }  // namespace dairlib
+
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
+    class ::dairlib::systems::trajectory_optimization::DirconMode)

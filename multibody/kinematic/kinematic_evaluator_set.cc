@@ -146,7 +146,7 @@ std::vector<int> KinematicEvaluatorSet<T>::FindUnion(
   std::vector<int> union_index;
   for (int i = 0; i < other.num_evaluators(); i++) {
     if (std::find(evaluators_.begin(), evaluators_.end(),
-        other.get_evaluator(i)) != evaluators_.end()) {
+        &other.get_evaluator(i)) != evaluators_.end()) {
       union_index.push_back(i);
     }
   }

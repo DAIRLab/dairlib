@@ -365,7 +365,7 @@ PiecewisePolynomial<double> HybridDircon<T>::ReconstructStateTrajectory(
       VectorX<T> uk = result.GetSolution(input(k_data));
       states.col(k) = drake::math::DiscardGradient(xk);
       inputs.col(k) = drake::math::DiscardGradient(uk);
-      auto context = multibody::createContext(plant_, xk, uk);
+      auto context = multibody::createContext<T>(plant_, xk, uk);
       constraints_[i]->updateData(*context, result.GetSolution(force(i, j)));
       derivatives.col(k) =
           drake::math::DiscardGradient(constraints_[i]->getXDot());

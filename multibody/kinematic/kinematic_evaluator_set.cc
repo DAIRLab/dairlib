@@ -88,6 +88,24 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFullTimeDerivative(
 }
 
 template <typename T>
+VectorX<T> KinematicEvaluatorSet<T>::EvalFullSecondTimeDerivative(
+  const Context<T>& context,  const VectorX<T>& lambda) const {
+  const auto& vdot = CalcTimeDerivatives(context, lambda);
+  const auto& J = EvalFullJacobian(context);
+  const auto& Jdotv = EvalFullJacobianDotTimesV(context);
+  return J * vdot + Jdotv;
+}
+
+template <typename T>
+VectorX<T> KinematicEvaluatorSet<T>::EvalActiveSecondTimeDerivative(
+  const Context<T>& context,  const VectorX<T>& lambda) const {
+  const auto& vdot = CalcTimeDerivatives(context, lambda);
+  const auto& J = EvalActiveJacobian(context);
+  const auto& Jdotv = EvalActiveJacobianDotTimesV(context);
+  return J * vdot + Jdotv;
+}
+
+template <typename T>
 MatrixX<T> KinematicEvaluatorSet<T>::EvalFullJacobian(
   const Context<T>& context) const {
   const int num_velocities = plant_.num_velocities();
@@ -272,7 +290,7 @@ int KinematicEvaluatorSet<T>::count_full() const {
 }
 
 template <typename T>
-bool KinematicEvaluatorSet<T>::is_active(int index) {
+bool KinematicEvaluatorSet<T>::is_active(int index) const {
   if (index < 0 || index >= count_full()) {
     return false;
   }

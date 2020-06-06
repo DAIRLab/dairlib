@@ -23,6 +23,22 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "constraints",
+    srcs = [
+        "kinematic_constraints.cc",
+    ],
+    hdrs = [
+        "kinematic_constraints.h",
+    ],
+    deps = [
+        ":kinematic",
+        "//multibody:utils",
+        "//solvers:constraints",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "kinematic_evaluator_caching_test",
     srcs = [

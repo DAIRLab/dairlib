@@ -122,7 +122,7 @@ void KinematicEvaluator<T>::set_active_inds(std::vector<int> active_inds) {
 }
 
 template <typename T>
-bool KinematicEvaluator<T>::is_active(int index) {
+bool KinematicEvaluator<T>::is_active(int index) const {
   return std::find(active_inds_.begin(), active_inds_.end(), index)
       != active_inds_.end();
 }

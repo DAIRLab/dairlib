@@ -22,6 +22,12 @@ class KinematicEvaluatorSet {
   drake::VectorX<T> EvalActiveTimeDerivative(
       const drake::systems::Context<T>& context) const;
 
+  /// Evaluates the second time-derivative, d^2/dt^2 phi(q), given force
+  /// lambda (lambda for full constraints)
+  drake::VectorX<T> EvalActiveSecondTimeDerivative(
+      const drake::systems::Context<T>& context,
+      const drake::VectorX<T>& lambda) const;
+
   /// Evaluates the constraint Jacobian w.r.t. velocity v (not qdot)
   ///  limited only to active rows
   drake::MatrixX<T> EvalActiveJacobian(
@@ -36,6 +42,12 @@ class KinematicEvaluatorSet {
   /// Evaluates the time-derivative, d/dt phi(q)
   drake::VectorX<T> EvalFullTimeDerivative(
       const drake::systems::Context<T>& context) const;
+
+  /// Evaluates the second time-derivative, d^2/dt^2 phi(q), given force
+  /// lambda (lambda for full constraints)
+  drake::VectorX<T> EvalFullSecondTimeDerivative(
+      const drake::systems::Context<T>& context,
+      const drake::VectorX<T>& lambda) const;
 
   /// Evaluates, phi(q), including inactive rows
   drake::VectorX<T> EvalFull(
@@ -122,7 +134,7 @@ class KinematicEvaluatorSet {
   /// Returns true if the given index into the full constraint vector for the
   /// set is a valid active index. Returns false if it is not active, or not
   /// not valid
-  bool is_active(int index);
+  bool is_active(int index) const;
 
   const drake::multibody::MultibodyPlant<T>& plant() const { return plant_; };
 

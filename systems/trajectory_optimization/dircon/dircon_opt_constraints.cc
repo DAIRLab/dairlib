@@ -12,6 +12,8 @@ using drake::VectorX;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 
+
+using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 template <typename T>
@@ -109,322 +111,49 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
   *y = xdotcol - g;
 }
 
-// template <typename T>
-// Binding<Constraint> AddDirconConstraint(
-//     std::shared_ptr<DirconDynamicConstraint<T>> constraint,
-//     const Eigen::Ref<const VectorXDecisionVariable>& timestep,
-//     const Eigen::Ref<const VectorXDecisionVariable>& state,
-//     const Eigen::Ref<const VectorXDecisionVariable>& next_state,
-//     const Eigen::Ref<const VectorXDecisionVariable>& input,
-//     const Eigen::Ref<const VectorXDecisionVariable>& next_input,
-//     const Eigen::Ref<const VectorXDecisionVariable>& force,
-//     const Eigen::Ref<const VectorXDecisionVariable>& next_force,
-//     const Eigen::Ref<const VectorXDecisionVariable>& collocation_force,
-//     const Eigen::Ref<const VectorXDecisionVariable>& collocation_position_slack,
-//     MathematicalProgram* prog) {
-//   DRAKE_DEMAND(timestep.size() == 1);
-//   DRAKE_DEMAND(state.size() == constraint->num_states());
-//   DRAKE_DEMAND(next_state.size() == constraint->num_states());
-//   DRAKE_DEMAND(input.size() == constraint->num_inputs());
-//   DRAKE_DEMAND(next_input.size() == constraint->num_inputs());
-//   DRAKE_DEMAND(force.size() ==
-//                constraint->num_kinematic_constraints_wo_skipping());
-//   DRAKE_DEMAND(next_force.size() ==
-//                constraint->num_kinematic_constraints_wo_skipping());
-//   DRAKE_DEMAND(collocation_force.size() ==
-//                constraint->num_kinematic_constraints_wo_skipping());
-//   DRAKE_DEMAND(collocation_position_slack.size() ==
-//                constraint->num_kinematic_constraints_wo_skipping());
-//   return prog->AddConstraint(
-//       constraint, {timestep, state, next_state, input, next_input, force,
-//                    next_force, collocation_force, collocation_position_slack});
-// }
+template <typename T>
+DirconImpactConstraint<T>::DirconImpactConstraint(
+    const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
+    Context<T>* context, std::string description)
+    : NonlinearConstraint<T>(plant.num_velocities(),
+          plant.num_positions() + 2 * plant.num_velocities()
+              + evaluators.count_full(),
+          VectorXd::Zero(plant.num_velocities()),
+          VectorXd::Zero(plant.num_velocities()),
+          description),
+      plant_(plant),
+      evaluators_(evaluators),
+      context_(context),
+      n_x_(plant.num_positions() + plant.num_velocities()),
+      n_l_(evaluators.count_full()) {}
 
-// template <typename T>
-// DirconKinematicConstraint<T>::DirconKinematicConstraint(
-//     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
-//     DirconKinConstraintType type)
-//     : DirconKinematicConstraint(
-//           plant, constraints,
-//           std::vector<bool>(constraints.countConstraints(), false), type,
-//           plant.num_positions(), plant.num_velocities(), plant.num_actuators(),
-//           constraints.countConstraints(),
-//           constraints.countConstraintsWithoutSkipping()) {}
+// The format of the input to the eval() function is the
+// tuple { state 0, impulse, velocity 1},
+template <typename T>
+void DirconImpactConstraint<T>::EvaluateConstraint(
+    const Eigen::Ref<const VectorX<T>>& vars, VectorX<T>* y) const {
+  // Extract our input variables:
+  // x0, state vector at time k^-
+  // impulse, impulsive force at impact
+  // v1, post-impact velocity at time k^+
+  const auto& x0 = vars.head(n_x_);
+  const auto& impulse = vars.segment(n_x_, n_l_);
+  const auto& v1 = vars.segment(n_x_ + n_l_, plant_.num_velocities());
 
-// template <typename T>
-// DirconKinematicConstraint<T>::DirconKinematicConstraint(
-//     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
-//     std::vector<bool> is_constraint_relative, DirconKinConstraintType type)
-//     : DirconKinematicConstraint(plant, constraints, is_constraint_relative,
-//                                 type, plant.num_positions(),
-//                                 plant.num_velocities(), plant.num_actuators(),
-//                                 constraints.countConstraints(),
-//                                 constraints.countConstraintsWithoutSkipping()) {
-// }
+  plant_.SetPositionsAndVelocities(context_, x0);
+  drake::MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
+  plant_.CalcMassMatrix(*context_, &M);
 
-// template <typename T>
-// DirconKinematicConstraint<T>::DirconKinematicConstraint(
-//     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
-//     std::vector<bool> is_constraint_relative, DirconKinConstraintType type,
-//     int num_positions, int num_velocities, int num_inputs,
-//     int num_kinematic_constraints, int num_kinematic_constraints_wo_skipping)
-//     : solvers::NonlinearConstraint<T>(
-//           type * num_kinematic_constraints,
-//           num_positions + num_velocities + num_inputs +
-//               num_kinematic_constraints_wo_skipping +
-//               std::count(is_constraint_relative.begin(),
-//                          is_constraint_relative.end(), true),
-//           VectorXd::Zero(type * num_kinematic_constraints),
-//           VectorXd::Zero(type * num_kinematic_constraints),
-//           "kinematics_constraint"),
-//       plant_(plant),
-//       constraints_(&constraints),
-//       num_states_{num_positions + num_velocities},
-//       num_inputs_{num_inputs},
-//       num_kinematic_constraints_{num_kinematic_constraints},
-//       num_kinematic_constraints_wo_skipping_{
-//           num_kinematic_constraints_wo_skipping},
-//       num_positions_{num_positions},
-//       num_velocities_{num_velocities},
-//       type_{type},
-//       is_constraint_relative_{is_constraint_relative},
-//       n_relative_{
-//           static_cast<int>(std::count(is_constraint_relative.begin(),
-//                                       is_constraint_relative.end(), true))},
-//       context_(plant_.CreateDefaultContext()) {
-//   // Set sparsity pattern and relative map
-//   std::vector<std::pair<int, int>> sparsity;
-//   // Acceleration constraints are dense in decision variables
-//   for (int i = 0; i < num_kinematic_constraints_; i++) {
-//     for (int j = 0; j < this->num_vars(); j++) {
-//       sparsity.push_back({i, j});
-//     }
-//   }
-
-//   // Velocity constraint depends on q and v only
-//   if (type_ == kAll || type == kAccelAndVel) {
-//     for (int i = 0; i < num_kinematic_constraints_; i++) {
-//       for (int j = 0; j < num_states_; j++) {
-//         sparsity.push_back({i + num_kinematic_constraints_, j});
-//       }
-//     }
-//   }
-
-//   // Position constraint only depends on q and any offset variables
-//   // Set relative map in the same loop
-//   if (type == kAll) {
-//     relative_map_ = MatrixXd::Zero(num_kinematic_constraints_, n_relative_);
-//     int k = 0;
-
-//     for (int i = 0; i < num_kinematic_constraints_; i++) {
-//       for (int j = 0; j < num_positions_; j++) {
-//         sparsity.push_back({i + 2 * num_kinematic_constraints_, j});
-//       }
-
-//       if (is_constraint_relative_[i]) {
-//         relative_map_(i, k) = 1;
-//         // ith constraint depends on kth offset variable
-//         sparsity.push_back({i + 2 * num_kinematic_constraints_,
-//                             num_states_ + num_inputs_ +
-//                                 num_kinematic_constraints_wo_skipping + k});
-
-//         k++;
-//       }
-//     }
-//   }
-
-//   this->SetGradientSparsityPattern(sparsity);
-// }
-
-// template <typename T>
-// void DirconKinematicConstraint<T>::EvaluateConstraint(
-//     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
-//   DRAKE_ASSERT(x.size() == num_states_ + num_inputs_ +
-//                                num_kinematic_constraints_wo_skipping_ +
-//                                n_relative_);
-
-//   // Extract our input variables:
-//   // h - current time (knot) value
-//   // x0, x1 state vector at time steps k, k+1
-//   // u0, u1 input vector at time steps k, k+1
-//   const VectorX<T> state = x.segment(0, num_states_);
-//   const VectorX<T> input = x.segment(num_states_, num_inputs_);
-//   const VectorX<T> force = x.segment(num_states_ + num_inputs_,
-//                                      num_kinematic_constraints_wo_skipping_);
-//   const VectorX<T> offset = x.segment(
-//       num_states_ + num_inputs_ + num_kinematic_constraints_wo_skipping_,
-//       n_relative_);
-//   multibody::setContext(plant_, state, input, context_.get());
-//   constraints_->updateData(*context_, force);
-//   switch (type_) {
-//     case kAll:
-//       *y = VectorX<T>(3 * num_kinematic_constraints_);
-//       *y << constraints_->getCDDot(), constraints_->getCDot(),
-//           constraints_->getC() + relative_map_ * offset;
-//       break;
-//     case kAccelAndVel:
-//       *y = VectorX<T>(2 * num_kinematic_constraints_);
-//       *y << constraints_->getCDDot(), constraints_->getCDot();
-//       break;
-//     case kAccelOnly:
-//       *y = VectorX<T>(1 * num_kinematic_constraints_);
-//       *y << constraints_->getCDDot();
-//       break;
-//   }
-// }
-
-// template <typename T>
-// DirconImpactConstraint<T>::DirconImpactConstraint(
-//     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints)
-//     : DirconImpactConstraint(plant, constraints, plant.num_positions(),
-//                              plant.num_velocities(),
-//                              constraints.countConstraintsWithoutSkipping()) {}
-
-// template <typename T>
-// DirconImpactConstraint<T>::DirconImpactConstraint(
-//     const MultibodyPlant<T>& plant, DirconKinematicDataSet<T>& constraints,
-//     int num_positions, int num_velocities,
-//     int num_kinematic_constraints_wo_skipping)
-//     : solvers::NonlinearConstraint<T>(num_velocities,
-//                                   num_positions + 2 * num_velocities +
-//                                       num_kinematic_constraints_wo_skipping,
-//                                   VectorXd::Zero(num_velocities),
-//                                   VectorXd::Zero(num_velocities),
-//                                   "impact_constraint"),
-//       plant_(plant),
-//       constraints_(&constraints),
-//       num_states_{num_positions + num_velocities},
-//       num_kinematic_constraints_wo_skipping_{
-//           num_kinematic_constraints_wo_skipping},
-//       num_positions_{num_positions},
-//       num_velocities_{num_velocities},
-//       context_(plant_.CreateDefaultContext()) {}
-
-// // The format of the input to the eval() function is the
-// // tuple { state 0, impulse, velocity 1},
-// template <typename T>
-// void DirconImpactConstraint<T>::EvaluateConstraint(
-//     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
-//   DRAKE_ASSERT(x.size() == 2 * num_velocities_ + num_positions_ +
-//                                num_kinematic_constraints_wo_skipping_);
-
-//   // Extract our input variables:
-//   // x0, state vector at time k^-
-//   // impulse, impulsive force at impact
-//   // v1, post-impact velocity at time k^+
-//   const VectorX<T> x0 = x.segment(0, num_states_);
-//   const VectorX<T> impulse =
-//       x.segment(num_states_, num_kinematic_constraints_wo_skipping_);
-//   const VectorX<T> v1 = x.segment(
-//       num_states_ + num_kinematic_constraints_wo_skipping_, num_velocities_);
-
-//   const VectorX<T> v0 = x0.tail(num_velocities_);
-
-//   // vp = vm + M^{-1}*J^T*Lambda
-//   const VectorX<T> u =
-//       VectorXd::Zero(plant_.num_actuators()).template cast<T>();
-
-//   multibody::setContext(plant_, x0, u, context_.get());
-
-//   constraints_->updateData(*context_, impulse);
-
-//   MatrixX<T> M(num_velocities_, num_velocities_);
-//   plant_.CalcMassMatrix(*context_, &M);
-
-//   *y =
-//       M * (v1 - v0) - constraints_->getJWithoutSkipping().transpose() * impulse;
-// }
-
-// template <typename T>
-// PointPositionConstraint<T>::PointPositionConstraint(
-//     const drake::multibody::MultibodyPlant<T>& plant,
-//     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
-//     const Eigen::Vector3d& fix_pos)
-//     : PointPositionConstraint(plant, body_name, point_wrt_body,
-//                               Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
-
-// template <typename T>
-// PointPositionConstraint<T>::PointPositionConstraint(
-//     const drake::multibody::MultibodyPlant<T>& plant,
-//     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
-//     const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
-//     const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
-//     const std::string& description)
-//     : solvers::NonlinearConstraint<T>(
-//           dir.rows(), plant.num_positions(), lb, ub,
-//           description.empty() ? body_name + "_pos_constraint" : description),
-//       plant_(plant),
-//       body_(plant.GetBodyByName(body_name)),
-//       point_wrt_body_(point_wrt_body.template cast<T>()),
-//       dir_(dir.template cast<T>()),
-//       context_(plant_.CreateDefaultContext()) {}
-
-// template <typename T>
-// void PointPositionConstraint<T>::EvaluateConstraint(
-//     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
-//   plant_.SetPositions(context_.get(), x);
-
-//   VectorX<T> pt(3);
-//   this->plant_.CalcPointsPositions(*context_, body_.body_frame(),
-//                                    point_wrt_body_, plant_.world_frame(), &pt);
-//   *y = dir_ * pt;
-// };
-
-// template <typename T>
-// PointVelocityConstraint<T>::PointVelocityConstraint(
-//     const drake::multibody::MultibodyPlant<T>& plant,
-//     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
-//     const Eigen::Vector3d& fix_pos)
-//     : PointVelocityConstraint(plant, body_name, point_wrt_body,
-//                               Eigen::Matrix3d::Identity(), fix_pos, fix_pos) {}
-
-// template <typename T>
-// PointVelocityConstraint<T>::PointVelocityConstraint(
-//     const drake::multibody::MultibodyPlant<T>& plant,
-//     const std::string& body_name, const Eigen::Vector3d& point_wrt_body,
-//     const Eigen::Matrix<double, Eigen::Dynamic, 3>& dir,
-//     const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
-//     const std::string& description)
-//     : solvers::NonlinearConstraint<T>(
-//           dir.rows(), plant.num_positions(), lb, ub,
-//           description.empty() ? body_name + "_vel_constraint" : description),
-//       plant_(plant),
-//       body_(plant.GetBodyByName(body_name)),
-//       point_wrt_body_(point_wrt_body.template cast<T>()),
-//       dir_(dir.template cast<T>()),
-//       context_(plant_.CreateDefaultContext()) {}
-
-// template <typename T>
-// void PointVelocityConstraint<T>::EvaluateConstraint(
-//     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
-//   plant_.SetPositionsAndVelocities(context_.get(), x);
-
-//   drake::MatrixX<T> J(3, plant_.num_velocities());
-//   plant_.CalcJacobianTranslationalVelocity(
-//       *context_, drake::multibody::JacobianWrtVariable::kV, body_.body_frame(),
-//       point_wrt_body_, plant_.world_frame(), plant_.world_frame(), &J);
-
-//   *y = dir_ * J * x.tail(plant_.num_velocities());
-// };
+  *y = M * (v1 - x0.tail(plant_.num_velocities()))
+      - evaluators_.EvalFullJacobian(*context_).transpose() * impulse;
+}
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::systems::trajectory_optimization::QuaternionNormConstraint)
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::systems::trajectory_optimization::DirconCollocationConstraint)
-
-// Explicitly instantiates on the most common scalar types.
-// template class QuaternionNormConstraint<double>;
-// template class QuaternionNormConstraint<AutoDiffXd>;
-// template class DirconDynamicConstraint<double>;
-// template class DirconDynamicConstraint<AutoDiffXd>;
-// template class DirconKinematicConstraint<double>;
-// template class DirconKinematicConstraint<AutoDiffXd>;
-// template class DirconImpactConstraint<double>;
-// template class DirconImpactConstraint<AutoDiffXd>;
-// template class PointPositionConstraint<double>;
-// template class PointPositionConstraint<AutoDiffXd>;
-// template class PointVelocityConstraint<double>;
-// template class PointVelocityConstraint<AutoDiffXd>;
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
+    class ::dairlib::systems::trajectory_optimization::DirconImpactConstraint)
 
 }  // namespace trajectory_optimization
 }  // namespace systems

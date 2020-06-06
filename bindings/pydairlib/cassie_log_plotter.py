@@ -113,6 +113,8 @@ def main():
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
     t_state, v, fsm = process_lcm_log.process_log(log, pos_map, vel_map)
 
+    import pdb; pdb.set_trace()
+
     # init_x = np.hstack((q[0,:], v[0,:]))
     # plant.SetPositionsAndVelocities(context, init_x)
     # M = plant.CalcMassMatrixViaInverseDynamics(context)
@@ -129,8 +131,8 @@ def main():
 
     # calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v)
 
-    start_time = 0.0
-    end_time = 0.2
+    start_time = 0.6
+    end_time = 0.8
     t_start_idx = get_index_at_time(t_state, start_time)
     t_end_idx = get_index_at_time(t_state, end_time)
     t_state_slice = slice(t_start_idx, t_end_idx)

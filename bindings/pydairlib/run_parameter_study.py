@@ -12,13 +12,13 @@ def main():
   file_name_controller = "June_5_jumping_0.2_processed"
   trajectory_name = "cassie_jumping_trajectory_x"
   log_folder = "/home/yangwill/Documents/research/projects/cassie/jumping" \
-               "/logs/parameter_study/switching_time/"
+               "/logs/parameter_study/new_sim_2/"
 
   sim_time = 5.0
   # error_idx = 14, 15, 16, 17
   # order goes: lfoot x, rfoot x, lfoot z, rfoot z
   # error_idx = 17
-  start_time = 0.55
+  start_time = 0.6
   # start_time = 0.00
 
   time_offsets = np.linspace(0.0, 0.05, 51)
@@ -26,7 +26,8 @@ def main():
   # time_offsets = np.linspace(-0.01, 0.01, 21)
   # x_error_values = np.linspace(-0.05, 0.05, 11)
   # buffer_times = np.linspace(0.0, 0.1, 101)
-  penetration_allowances = np.array([1e-4, 1e-3, 5e-3])
+  # penetration_allowances = np.array([1e-4, 1e-3, 5e-3])
+  penetration_allowances = np.array([5e-3])
   # penetration_allowances = np.logspace(np.log10(1e-5), np.log10(2e-4), 20)
 
   # Override for single run
@@ -49,7 +50,7 @@ def main():
                    time_offsets[i], penetration_allowances[k])
       print(log_path)
       controller_cmd = ['bazel-bin/examples/Cassie/run_osc_jumping_controller',
-                        '--delay_time=%.3f' % delay_time,
+                        # '--delay_time=%.3f' % delay_time,
                         '--x_offset=%.3f' % x_offset,
                         '--init_fsm_state=%d' % init_fsm_state,
                         '--traj_name=%s' % file_name_controller,

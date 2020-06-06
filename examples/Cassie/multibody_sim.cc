@@ -214,7 +214,7 @@ int do_main(int argc, char* argv[]) {
   }
 //  std::cout << "Setting initial state to: " << q_v_init << std::endl;
 
-
+  diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
   if (!FLAGS_time_stepping) {

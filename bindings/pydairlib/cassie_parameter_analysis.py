@@ -108,15 +108,15 @@ def main():
   # stiffness = np.array([1e-4, 1e-3, 5e-3])
   stiffness = np.array([5e-3])
   data_folder = '../projects/cassie/jumping/analysis/processed_data/'
-  suffix = ''
+  suffix = '_new_sim_2'
   tracking_cost, u_cost = \
     load_parameters_from_log(context, switching_times, x_perturbations,
                              stiffness, suffix)
   save_parameters(tracking_cost, u_cost, suffix)
-  tracking_cost, u_cost = load_parameters(suffix)
+  # tracking_cost, u_cost = load_parameters(suffix)
 
-  t_window = np.arange(0, 0.9, step=0.00025)
-  plt.plot(1000 * t_window[:450], tracking_cost[:21, 0, :450].T[:, ::5])
+  t_window = np.arange(0.6, 1.0, step=0.00025)
+  plt.plot(1000 * t_window[:400], tracking_cost[:21, 0, :400].T[:, ::5])
   plt.xlabel('Time After Impact (ms)')
   plt.ylabel('OSC Tracking Cost')
   plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
@@ -124,7 +124,7 @@ def main():
               '10 ms delay', '15 ms delay',
               '20 ms delay'])
   plt.figure('u_cost')
-  plt.plot(1000 * t_window[:450], u_cost[:21, 0, :450].T[:, ::5])
+  plt.plot(1000 * t_window[:400], u_cost[:21, 0, :400].T[:, ::5])
   plt.xlabel('Time After Impact (ms)')
   plt.ylabel('Cumulative Controller Effort (Nm)')
   plt.legend(['0 ms delay', '5 ms delay',
@@ -136,8 +136,8 @@ def main():
 def calc_costs(t_state, t_osc, osc_debug, control_inputs, fsm_state, contact_info):
 
   # Cost is norm of efforts applied over impact event + OSC tracking error
-  t_impact_start_idx = np.argwhere(t_state >= 0.09)[0][0]
-  t_impact_start_idx = np.argwhere(contact_info[:, :, 2])[0,1]
+  t_impact_start_idx = np.argwhere(t_state >= 0.6)[0][0]
+  # t_impact_start_idx = np.argwhere(contact_info[:, :, 2])[0,1]
   t_impact_end_idx = np.argwhere(t_state >= 1.0)[0][0]
 
   t_impact_start = t_state[t_impact_start_idx]
@@ -171,7 +171,7 @@ def calc_costs(t_state, t_osc, osc_debug, control_inputs, fsm_state, contact_inf
                                                 t_impact_end_idx])
   # tracking_cost = cumtrapz(tracking_cost, t_state[t_impact_start_idx:
   #                                               t_impact_end_idx])
-  return tracking_cost[:3000], accumulated_u_cost[:3000]
+  return tracking_cost[:400], accumulated_u_cost[:400]
 
 def load_parameters(suffix):
   tracking_cost = np.load(data_folder + 'tracking_cost' + suffix + '.npy')
@@ -192,11 +192,13 @@ def load_parameters_from_log(context, switching_times, x_pertubations,
   n_dx = x_pertubations.shape[0]
   n_del = stiffness.shape[0]
 
-  tracking_cost = np.zeros((n_ts, n_dx, 3000))
-  u_cost = np.zeros((n_ts, n_dx, 3000))
+  tracking_cost = np.zeros((n_ts, n_dx, 400))
+  u_cost = np.zeros((n_ts, n_dx, 400))
 
+  # folder_path = \
+  #   "../projects/cassie/jumping/logs/parameter_study/switching_time/"
   folder_path = \
-    "../projects/cassie/jumping/logs/parameter_study/switching_time/"
+    "../projects/cassie/jumping/logs/parameter_study/new_sim_2/"
   for k in range(stiffness.shape[0]):
     for i in range(switching_times.shape[0]):
       for j in range(x_pertubations.shape[0]):

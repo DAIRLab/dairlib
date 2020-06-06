@@ -157,7 +157,7 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
 }
 
 template <typename T>
-VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivativesGivenForce(
+VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivativesWithForce(
     const Context<T>& context, const VectorX<T>& lambda) const {
   MatrixX<T> M(plant_.num_velocities(), plant_.num_velocities());
   plant_.CalcMassMatrix(context, &M);

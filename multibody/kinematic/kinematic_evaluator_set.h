@@ -73,7 +73,7 @@ class KinematicEvaluatorSet {
   /// @param context
   /// @param lambda constraint forces, applied via
   ///   evaluators.EvalActiveJacobian().transpose() * lambda
-  drake::VectorX<T> CalcTimeDerivativesGivenForce(
+  drake::VectorX<T> CalcTimeDerivativesWithForce(
       const drake::systems::Context<T>& context,
       const drake::VectorX<T>& lambda) const;
 
@@ -84,7 +84,7 @@ class KinematicEvaluatorSet {
   /// for the forces to satisfy the constraint ddot phi = -kp*phi - kd*phidot
   ///   NOTE: the constraint __only__ includes the active contacts, and the
   /// constraint force lambda is also only in terms of active contacts, unlike
-  /// the similar methods CalcTimeDerivativesGivenForce(context, lambda). 
+  /// the similar methods CalcTimeDerivativesWithForce(context, lambda). 
   /// To retrieve the computed lambda, see
   /// CalcTimeDeriviatives(context, lambda).
   /// @param context

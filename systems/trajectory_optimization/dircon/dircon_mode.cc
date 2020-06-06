@@ -1,4 +1,4 @@
-#include "systems/trajectory_optimization/dircon_mode.h"
+#include "systems/trajectory_optimization/dircon/dircon_mode.h"
 
 namespace dairlib {
 namespace systems {

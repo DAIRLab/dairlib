@@ -68,9 +68,6 @@ def process_log(log, pos_map, vel_map):
                 q_temp[pos_map[msg.position_names[i]]] = msg.position[i]
             for i in range(len(v_temp)):
                 v_temp[vel_map[msg.velocity_names[i]]] = msg.velocity[i]
-            # import pdb; pdb.set_trace()
-            # q.append(msg.position)
-            # v.append(msg.velocity)
             q.append(q_temp)
             v.append(v_temp)
             t_state.append(msg.utime / 1e6)
@@ -160,21 +157,9 @@ def process_log(log, pos_map, vel_map):
     for i in range(len(osc_debug)):
         osc_debug[i].convertToNP()
 
-    # Need to completely rearrange pos and vel matrix from mujoco simulation
-    # fb_quat = slice(0, 4)
-    # fb_pos = slice(4, 7)
-    # muj_fb_quat = slice(3, 7)
-    # muj_fb_pos = slice(0, 3)
-    # if is_mujoco:
-    #     # q[:, fb_quat], q[:, fb_pos] = q[:, muj_fb_quat], q[:, muj_fb_pos]
-    #     q[:, fb_pos], q[:, fb_quat] = q[:, muj_fb_pos], q[:, muj_fb_quat]
-    # import pdb; pdb.set_trace()
-
-    # print("Transition time: ", t_osc_debug[np.min(np.where(osc_fsm == 3))])
-
     return contact_info, contact_info_locs, control_inputs, estop_signal, \
            osc_debug, q, switch_signal, t_contact_info, t_controller_switch, \
-           t_osc, t_osc_debug, t_state, v
+           t_osc, t_osc_debug, t_state, v, osc_fsm
 
 
 def generate_wo_spring_state_map():

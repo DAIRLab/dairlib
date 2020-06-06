@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import process_lcm_log
+from numpy.linalg import norm
 from pydrake.multibody.parsing import Parser
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.multibody.tree import JacobianWrtVariable
@@ -22,19 +23,28 @@ def print_osc_debug(t_idx, length, osc_debug):
     print('y = ' + str(osc_debug.y[t_idx:t_idx + length, :]))
     print('y_des = ' + str(osc_debug.y_des[t_idx:t_idx + length, :]))
     print('error_y = ' + str(osc_debug.error_y[t_idx:t_idx + length, :]))
-    print('dy = ' + str(osc_debug.dy[t_idx:t_idx + length, :]))
-    print('dy_des = ' + str(osc_debug.dy_des[t_idx:t_idx + length, :]))
-    print('error_dy = ' + str(osc_debug.error_dy[t_idx:t_idx + length, :]))
-    print('ddy_des = ' + str(osc_debug.ddy_des[t_idx:t_idx + length, :]))
-    print('ddy_command = ' + str(
-        osc_debug.ddy_command[t_idx:t_idx + length, :]))
-    print('ddy_command_sol = ' + str(
-        osc_debug.ddy_command_sol[t_idx:t_idx + length, :]))
-
-
+    print('ydot = ' + str(osc_debug.ydot[t_idx:t_idx + length, :]))
+    print('ydot_des = ' + str(osc_debug.ydot_des[t_idx:t_idx + length, :]))
+    print('error_ydot = ' + str(osc_debug.error_ydot[t_idx:t_idx + length, :]))
+    print('yddot_des = ' + str(osc_debug.yddot_des[t_idx:t_idx + length, :]))
+    print('yddot_command = ' + str(
+        osc_debug.yddot_command[t_idx:t_idx + length, :]))
+    print('yddot_command_sol = ' + str(
+        osc_debug.yddot_command_sol[t_idx:t_idx + length, :]))
 
 def main():
+    global filename
     global x_traj_nominal
+    global u_traj_nominal
+    global x_hybrid_trajs_nominal
+    global u_hybrid_trajs_nominal
+    global state_slice
+    global time_slice
+    global t0_, tf_
+    global t_minus, t_plus, t_final, impact_idx
+    global plant
+    global world
+    global nq, nv, nx, nu
     # Set default directory for saving figures
     matplotlib.rcParams["savefig.directory"] = \
         "/home/yangwill/Documents/research/projects/cassie/jumping/analysis" \
@@ -76,33 +86,8 @@ def main():
     u_hybrid_trajs_nominal, decision_vars, datatypes \
         = loadLcmTrajs(37, nu, 3)
 
-    # loadedStateTraj = pydairlib.lcm_trajectory.LcmTrajectory()
-    # loadedTrackingDataTraj = pydairlib.lcm_trajectory.LcmTrajectory()
-    # loadedStateTraj.loadFromFile(
-    #     "/home/yangwill/Documents/research/projects/cassie/jumping"
-    #     "/saved_trajs/target_trajs/jumping_0.15")
-    # loadedStateTraj.loadFromFile(
-    #     "/home/yangwill/Documents/research/projects/cassie/jumping"
-    #     "/saved_trajs/target_trajs/April_19_jumping_0.2")
-    # loadedStateTraj.loadFromFile(
-    #     "/home/yangwill/Documents/research/projects/cassie/jumping"
-    #     "/saved_trajs/June_5_jumping_0.2")
-    # loadedTrackingDataTraj.loadFromFile(
-    #     "/home/yangwill/Documents/research/projects/cassie/jumping"
-    #     "/saved_trajs/June_5_jumping_0.2_processed")
-
-    # Useful for optimal lambdas
-
-    # lcm_l_foot_traj = loadedTrackingDataTraj.getTrajectory(
-    #     "left_foot_trajectory")
-    # lcm_r_foot_traj = loadedTrackingDataTraj.getTrajectory(
-    #     "right_foot_trajectory")
-    # lcm_com_traj = loadedTrackingDataTraj.getTrajectory(
-    #     "center_of_mass_trajectory")
-
     nq_fb = 7
     nv_fb = 6
-
 
     # Note this plots relative feet trajs as the target trajectory is relative
     # To get the nominal feet trajs in world coordinates, calculate it from
@@ -119,7 +104,6 @@ def main():
         sys.stderr.write("Must be an absolute path")
         sys.exit(1)
 
-    global filename
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
     log_samples = int(log.size() / 100)
@@ -127,7 +111,7 @@ def main():
 
     contact_info, contact_info_locs, control_inputs, estop_signal, osc_debug, \
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
-    t_state, v = process_lcm_log.process_log(log, pos_map, vel_map)
+    t_state, v, fsm = process_lcm_log.process_log(log, pos_map, vel_map)
 
     # init_x = np.hstack((q[0,:], v[0,:]))
     # plant.SetPositionsAndVelocities(context, init_x)
@@ -146,12 +130,12 @@ def main():
     # calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v)
 
     start_time = 0.0
-    end_time = 0.3
+    end_time = 0.2
     t_start_idx = get_index_at_time(t_state, start_time)
     t_end_idx = get_index_at_time(t_state, end_time)
     t_state_slice = slice(t_start_idx, t_end_idx)
 
-    # plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
+    plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
     # plot_nominal_state(x_traj_nominal, state_names_wo_spr)
 
     # For printing out osc_values at a specific time interval
@@ -162,10 +146,12 @@ def main():
 
     plot_osc_control_inputs(control_inputs, datatypes, t_osc,
                             t_osc_end_idx, t_osc_start_idx)
+
+    calc_costs(t_state, t_osc, osc_debug, control_inputs)
     #
-    # plot_nominal_control_inputs(nu, datatypes,
-    #                             u_traj_nominal.get_segment_times(),
-    #                             u_traj_nominal)
+    plot_nominal_control_inputs(nu, datatypes,
+                                u_traj_nominal.get_segment_times(),
+                                u_traj_nominal)
 
     plot_ground_reaction_forces(contact_info, t_state, t_state_slice)
 
@@ -193,7 +179,7 @@ def main():
                                     "_front", rear_contact_disp)
 
     # Foot plotting
-    if True:
+    if False:
         plot_feet_simulation(plant, context, q, v, l_toe_frame, front_contact_disp,
                              world, t_state, t_state_slice, "left_", "_front")
         plot_feet_simulation(plant, context, q, v, r_toe_frame, front_contact_disp,
@@ -216,6 +202,38 @@ def main():
         #          label="1")
         plt.legend()
     plt.show()
+
+def calc_costs(t_state, t_osc, osc_debug, control_inputs):
+
+    # Cost is norm of efforts applied over impact event + OSC tracking error
+    t_impact_start_idx = np.argwhere(t_state >= 0.0)[0][0]
+    t_impact_end_idx = np.argwhere(t_state >= 0.3)[0][0]
+
+    t_impact_start = t_state[t_impact_start_idx]
+    t_impact_end = t_state[t_impact_end_idx]
+
+    n_timesteps = t_impact_end_idx - t_impact_start_idx
+    u_cost = np.zeros(n_timesteps)
+
+    W0 = 2000 * np.eye(3)
+    W0[1, 1] = 200
+    W1 = 20 * np.eye(3)
+    W1[1, 1] = 10
+
+    for i in range(t_impact_start_idx, t_impact_end_idx):
+        u_i = np.reshape(control_inputs[get_index_at_time(t_osc, t_state[i])], (nu, 1))
+
+        u_cost[i - t_impact_start_idx] = norm(u_i)
+    accumulated_u_cost = np.trapz(u_cost, t_state[t_impact_start_idx:
+                                                  t_impact_end_idx])
+    osc_end_idx = get_index_at_time(t_osc, t_state[t_impact_end_idx])
+    tracking_err_0 = osc_debug[0].yddot_command_sol[osc_end_idx, :] - \
+                     osc_debug[0].yddot_des[osc_end_idx, :]
+    tracking_err_1 = osc_debug[0].yddot_command_sol[osc_end_idx, :] - \
+                     osc_debug[0].yddot_des[osc_end_idx, :]
+    tracking_cost = tracking_err_0.T @ W0 @ tracking_err_0 + \
+                    tracking_err_1.T @ W1 @ tracking_err_1
+    return tracking_cost, accumulated_u_cost
 
 def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     builder = DiagramBuilder()

@@ -72,6 +72,7 @@ DEFINE_int32(n_node, -1, "# of nodes for traj opt");
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
 DEFINE_bool(is_get_nominal,false,"is calculating the cost without ROM constraints");
 DEFINE_bool(use_optimized_model,false,"read theta from files to apply optimized model");
+DEFINE_int32(theta_index,-1,"# of optimized model to use");
 
 //tasks
 DEFINE_bool(is_zero_touchdown_impact, false,
@@ -337,7 +338,9 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   theta_sDDot = VectorXd::Zero(n_theta_sDDot);
   if(FLAGS_use_optimized_model){
     //you have to specify the theta to use
-    int theta_idx = 500;
+    DRAKE_DEMAND(FLAGS_theta_index>=0);
+    int theta_idx = FLAGS_theta_index;
+
     const string dir_find_models = "../dairlib_data/goldilocks_models/find_models/robot_" +
         to_string(FLAGS_robot_option) + "/";
     readThetaFromFiles(dir_find_models, theta_idx, theta_s, theta_sDDot);

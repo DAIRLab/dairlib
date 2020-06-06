@@ -7,12 +7,16 @@ cc_library(
     name = "dircon",
     srcs = [
         "dircon_mode.cc",
+        "dircon_opt_constraints.cc",
     ],
     hdrs = [
         "dircon_mode.h",
+        "dircon_opt_constraints.h",
     ],
     deps = [
+        "//multibody:utils",
         "//multibody/kinematic",
+        "//solvers:constraints",
         "@drake//:drake_shared_library",
     ],
 )

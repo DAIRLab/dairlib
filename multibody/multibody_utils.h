@@ -16,13 +16,15 @@ drake::VectorX<T> getInput(const drake::multibody::MultibodyPlant<T>& plant,
 template <typename T>
 std::unique_ptr<drake::systems::Context<T>> createContext(
     const drake::multibody::MultibodyPlant<T>& plant,
-    const drake::VectorX<T>& state, const drake::VectorX<T>& input);
+    const Eigen::Ref<const drake::VectorX<T>>& state,
+    const Eigen::Ref<const drake::VectorX<T>>& input);
 
 /// Update an existing MultibodyPlant context, setiing corresponding state and
 /// input values.
 template <typename T>
 void setContext(const drake::multibody::MultibodyPlant<T>& plant,
-    const drake::VectorX<T>& state, const drake::VectorX<T>& input,
+    const Eigen::Ref<const drake::VectorX<T>>& state,
+    const Eigen::Ref<const drake::VectorX<T>>& input,
     drake::systems::Context<T>* context);
 
 /// Add terrain to an initialized, but not finalized, MultibodyPlant
@@ -50,6 +52,10 @@ template <typename T>
 std::map<std::string, int> makeNameToActuatorsMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
+template <typename T>
+std::vector<int> QuaternionStartIndices(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
 // TODO: The following two functions need to be implemented as a part of
 // RBT/Multibody and not as separate functions that take in RBTs. Make the
 // change once the codebase shifts to using multibody.
@@ -61,6 +67,7 @@ bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
 
 // Check whether a MultibodyPlant contains quaternion floating-base joint or not
 // WARNING: This function assumes there is only one plant
+// TODO:d eprecate
 template <typename T>
 bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 

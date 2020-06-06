@@ -574,6 +574,13 @@ int find_boundary(int argc, char* argv[]){
   if (!CreateFolderIfNotExist(dir)) return 0;
 
   /*
+   * cout basic program information
+   */
+  cout << "\nBasic information:\n";
+  cout << "robot_option" << FLAGS_robot_option << endl;
+  cout << "rom_option" << FLAGS_rom_option << endl;
+
+  /*
    * initialize task space
    */
   cout << "\nInitialize task space:\n";
@@ -611,6 +618,7 @@ int find_boundary(int argc, char* argv[]){
   cout << "\nIteration setting:\n";
   cout<<"get nominal cost: "<<FLAGS_is_get_nominal<<endl;
   cout<<"use optimized model: "<<FLAGS_use_optimized_model<<endl;
+  cout<<"optimized model index: "<<FLAGS_theta_index<<endl;
   int max_iter = FLAGS_max_outer_iter;
   //TODO:decide the threshold under different situation
   double cost_threshold = 30;

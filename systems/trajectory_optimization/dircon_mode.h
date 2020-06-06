@@ -8,15 +8,31 @@ namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
+/// Specifies which constraints should be evaluated. The primary reason to use
+/// anything other than kAll (default), is to avoid redundant constraints.
+/// For instance, fully constraining the first state, x(0) = x_0, would leave
+/// position and velocity constraints on x_0 redundant.
 enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
 
+
+/// DirconMode is the primary class for defining constrained collocation
+/// (DIRCON) trajectory optimization problems. Each DirconMode object refers
+/// to a single hybrid mode of the optimization.  
 template <typename T>
 class DirconMode {
  public:
+
+  /// @param evaluators The set of constraints, active and full.
+  /// @param num_knotpoints The total number of knot points.
+  /// @param min_T The minimum total duration of the mode (default 0)
+  /// @param max_T The maximum total duration of the mode (default inf)
+  /// @param force_regularization A scalar c, such that 
+  ///   /sum_i c||force_i||^2 is added (summed over knotpoints) as a
+  ///   regularization cost
   explicit DirconMode(
       const multibody::KinematicEvaluatorSet<T>& evaluators, int num_knotpoints,
       double min_T = 0, double max_T = std::numeric_limits<double>::infinity(),
-      double force_regularization_ = 1.0e-4);
+      double force_regularization = 1.0e-4);
 
   /// Identify a constraint as being relative, e.g. constrained to be constant
   /// but not necessarily zero (via a new slack variable). Identifies the

@@ -337,7 +337,7 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   theta_sDDot = VectorXd::Zero(n_theta_sDDot);
   if(FLAGS_use_optimized_model){
     //you have to specify the theta to use
-    int theta_idx = 200;
+    int theta_idx = 500;
     const string dir_find_models = "../dairlib_data/goldilocks_models/find_models/robot_" +
         to_string(FLAGS_robot_option) + "/";
     readThetaFromFiles(dir_find_models, theta_idx, theta_s, theta_sDDot);

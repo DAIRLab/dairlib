@@ -10,21 +10,25 @@ using std::unordered_map;
 template <typename T>
 DirconMode<T>::DirconMode(
     const multibody::KinematicEvaluatorSet<T>& evaluators, int num_knotpoints,
-      double min_T, double max_T, double force_regularization_cost) :
+      double min_T, double max_T, double force_regularization_) :
     evaluators_(evaluators),
     num_knotpoints_(num_knotpoints),
     min_T_(min_T),
     max_T_(max_T),
-    force_regularization_cost_(force_regularization_cost) {}
+    force_regularization_(force_regularization_) {}
 
 template <typename T>
-void DirconMode<T>::MakeConstraintRelative(int index) {
-  DRAKE_DEMAND(evaluators_.is_active(index));
-  relative_constraints_.insert(index);
+void DirconMode<T>::MakeConstraintRelative(int evaluator_index,
+    int constraint_index) {
+  DRAKE_DEMAND(evaluators_.get_evaluator(evaluator_index)->is_active(
+      constraint_index));
+  int total_index = evaluators_.evaluator_full_start(evaluator_index) + 
+      constraint_index;
+  relative_constraints_.insert(total_index);
 }
 
 template <typename T>
-void DirconMode<T>::SetReducedConstraint(int knotpoint_index,
+void DirconMode<T>::set_constraint_type(int knotpoint_index,
     DirconKinConstraintType type) {
   DRAKE_DEMAND(knotpoint_index >= 0);
   DRAKE_DEMAND(knotpoint_index < num_knotpoints_);
@@ -32,75 +36,107 @@ void DirconMode<T>::SetReducedConstraint(int knotpoint_index,
 }
 
 template <typename T>
-DirconKinConstraintType DirconMode<T>::GetReducedConstraint(
+const DirconKinConstraintType& DirconMode<T>::get_constraint_type(
     int knotpoint_index) {
-  if (reduced_constraints_.find(index) == reduced_constraints_.end())
+  if (reduced_constraints_.find(knotpoint_index) == reduced_constraints_.end())
     return DirconKinConstraintType::kAll;
-  return reduced_constraints_[index];
+  return reduced_constraints_[knotpoint_index];
 }
 
 
 template <typename T>
-void DirconMode::SetDynConstraintScaling(vector<int> idx_list, double s) {
-  for (const auto& idx : idx_list) {
-    SetDynConstraintScaling(idx, s);
-  }
-}
-void DirconMode::SetImpConstraintScaling(vector<int> idx_list, double s) {
-  for (const auto& idx : idx_list) {
-    SetImpConstraintScaling(idx, s);
-  }
-}
-void DirconMode::SetKinConstraintScaling(vector<int> idx_list, double s) {
-  for (const auto& idx : idx_list) {
-    SetKinConstraintScaling(idx, s);
-  }
-}
-void DirconMode::SetDynConstraintScaling(int idx, double s) {
-  DRAKE_DEMAND(idx < evaluators_.plant().num_positions()
-      + evaluators_.plant().num_velocities());
-  addConstraintScaling(&dyn_constraint_scaling_, idx, s);
-}
-void DirconMode::SetKinConstraintScaling(int idx, double s) {
-  DRAKE_DEMAND(idx < 3 * evaluators_.count_active());
-  SddConstraintScaling(&kin_constraint_scaling_, idx, s);
-}
-void DirconMode::setImpConstraintScaling(int idx, double s) {
-  DRAKE_DEMAND(idx < evaluators_.plant().num_velocities());
-  AddConstraintScaling(&imp_constraint_scaling_, idx, s);
-}
-void DirconMode::AddConstraintScaling(unordered_map<int, double>* map,
-    int idx, double s) {
-  DRAKE_DEMAND(idx >= 0);
-  DRAKE_DEMAND(s < 0);
-  (*map)[idx] = s;
+void DirconMode<T>::SetImpactScale(int velocity_index, double scale) {
+  DRAKE_DEMAND(velocity_index >= 0);
+  DRAKE_DEMAND(velocity_index < evaluators_.plant().num_velocities());
+  impact_scale_[velocity_index] = scale;
 }
 
-unordered_map<int, double> DirconMode::GetKinConstraintScaling(
-    DirconKinConstraintType type) {
-  if (type == kAccelOnly) {
-    // Extract the elements in the acceleration level
-    unordered_map<int, double> kin_constraint_scaling_accel;
-    for (auto member : kin_constraint_scaling_) {
-      if (member.first < n_kin_constraints_) {
-        kin_constraint_scaling_accel.insert(member);
-      }
-    }
-    return kin_constraint_scaling_accel;
+template <typename T>
+void DirconMode<T>::SetDynamicsScale(int state_index, double scale) {
+  DRAKE_DEMAND(state_index >= 0);
+  DRAKE_DEMAND(state_index < evaluators_.plant().num_velocities()
+      + evaluators_.plant().num_positions());
+  dynamics_scale_[state_index] = scale;
+}
+
+
+template <typename T>
+void DirconMode<T>::SetKinPositionScale(int evaluator_index,
+    int constraint_index, double scale) {
+  SetKinScale(&kin_position_scale_, evaluator_index, constraint_index, scale);
+}
+
+template <typename T>
+void DirconMode<T>::SetKinVelocityScale(int evaluator_index,
+    int constraint_index, double scale) {
+  SetKinScale(&kin_velocity_scale_, evaluator_index, constraint_index, scale);
+}
+
+template <typename T>
+void DirconMode<T>::SetKinAccelerationScale(int evaluator_index,
+    int constraint_index, double scale) {
+  SetKinScale(&kin_acceleration_scale_, evaluator_index, constraint_index,
+      scale);
+}
+
+template <typename T>
+void DirconMode<T>::SetImpactScale(std::vector<int> velocity_indices,
+    double scale) {
+  for (const auto& idx : velocity_indices) {
+    SetImpactScale(idx, scale);
   }
-  else if (type == kAccelAndVel) {
-    // Extract the elements in the acceleration and velocity level
-    unordered_map<int, double> kin_constraint_scaling_accel_and_vel;
-    for (auto member : kin_constraint_scaling_) {
-      if (member.first < 2 * n_kin_constraints_) {
-        kin_constraint_scaling_accel_and_vel.insert(member);
-      }
-    }
-    return kin_constraint_scaling_accel_and_vel;
+}
+
+template <typename T>
+void DirconMode<T>::SetDynamicsScale(std::vector<int> state_indices,
+    double scale) {
+  for (const auto& idx : state_indices) {
+    SetDynamicsScale(idx, scale);
   }
-  else {
-    return kin_constraint_scaling_;
+}
+
+template <typename T>
+void DirconMode<T>::SetKinPositionScale(std::vector<int> evaluator_indices,
+      std::vector<int> constraint_indices, double scale) {
+  for (const auto& evaluator_index : evaluator_indices) {
+    for (const auto& constraint_index : constraint_indices) {
+      SetKinPositionScale(evaluator_index, constraint_index, scale);
+    }    
   }
+}
+
+template <typename T>
+void DirconMode<T>::SetKinAccelerationScale(std::vector<int> evaluator_indices,
+      std::vector<int> constraint_indices, double scale) {
+  for (const auto& evaluator_index : evaluator_indices) {
+    for (const auto& constraint_index : constraint_indices) {
+      SetKinAccelerationScale(evaluator_index, constraint_index, scale);
+    }    
+  }
+}
+
+template <typename T>
+void DirconMode<T>::SetKinVelocityScale(std::vector<int> evaluator_indices,
+      std::vector<int> constraint_indices, double scale) {
+  for (const auto& evaluator_index : evaluator_indices) {
+    for (const auto& constraint_index : constraint_indices) {
+      SetKinVelocityScale(evaluator_index, constraint_index, scale);
+    }    
+  }
+}
+
+
+template <typename T>
+void DirconMode<T>::SetKinScale(std::unordered_map<int, double>* scale_map,
+    int evaluator_index, int constraint_index, double scale) {
+  DRAKE_DEMAND(evaluator_index >= 0);
+  DRAKE_DEMAND(evaluator_index < evaluators_.num_evaluators());
+  DRAKE_DEMAND(constraint_index >= 0);
+  DRAKE_DEMAND(constraint_index <=
+      evaluators_.get_evaluator(evaluator_index).num_full());
+  int total_index = evaluators_.evaluator_full_start(evaluator_index) + 
+      constraint_index;
+  (*scale_map)[total_index] = scale;
 }
 
 }  // namespace trajectory_optimization

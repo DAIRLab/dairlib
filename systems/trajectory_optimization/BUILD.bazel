@@ -4,15 +4,28 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "dircon_new",
+    srcs = [
+        "dircon_mode.cc",
+    ],
+    hdrs = [
+        "dircon_mode.h",
+    ],
+    deps = [
+        "//multibody/kinematic",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_library(
     name = "dircon",
     srcs = [
-        #        "dircon.cc",
         "dircon_opt_constraints.cc",
         "dircon_options.cc",
         "hybrid_dircon.cc",
     ],
     hdrs = [
-        #        "dircon.h",
         "dircon_opt_constraints.h",
         "dircon_options.h",
         "hybrid_dircon.h",

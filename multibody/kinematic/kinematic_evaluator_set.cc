@@ -278,11 +278,8 @@ bool KinematicEvaluatorSet<T>::is_active(int index) {
   }
   int count = 0;
   for (const auto& e : evaluators_) {
-    if (index < count + e->num_full()) {
-      bool in_active_set =
-          std::find(e->active_inds().begin(), e->active_inds().end(),index)
-          != e->active_inds().end();
-      return in_active_set
+    if (index - count >= 0 && index - count < e->num_full()) {
+      return e->is_active(index - count);
     } else {
       count += e->num_full();
     }

@@ -6,14 +6,17 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "dircon",
     srcs = [
+        "dircon.cc",
         "dircon_mode.cc",
         "dircon_opt_constraints.cc",
     ],
     hdrs = [
+        "dircon.h",
         "dircon_mode.h",
         "dircon_opt_constraints.h",
     ],
     deps = [
+        "//multibody:multipose_visualizer",
         "//multibody:utils",
         "//multibody/kinematic",
         "//solvers:constraints",

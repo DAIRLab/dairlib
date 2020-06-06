@@ -34,6 +34,9 @@ class DirconCollocationConstraint : public solvers::NonlinearConstraint<T> {
  public:
 
  public:
+  /// Requires two context pointers to be pasesd as arguments, one for each
+  /// knot point. The constraint will create its own pointer for the collocation
+  /// point context.
   DirconCollocationConstraint(const drake::multibody::MultibodyPlant<T>& plant,
       const multibody::KinematicEvaluatorSet<T>& evaluators,
       drake::systems::Context<T>* context_0,
@@ -56,24 +59,13 @@ class DirconCollocationConstraint : public solvers::NonlinearConstraint<T> {
   int n_l_;
 };
 
-/// Implements the kinematic constraints used by Dircon
-/// For constraints given by c(q), enforces the three constraints
-///   c(q), d/dt c(q), d^2/dt^2 c(q)
-///   at the position, velocity, and constraint levels
-/// When used with states that are fully constrained, i.e. if q_0 or x_0
-/// is fully specified, this class contains the option DirconKinConstraintType
-/// to only include a subset of the three constraints above, avoiding
-/// redundancy.
-///
-/// Constraints may also be specified as relative, where rather than c(q)=0,
-/// we have the constriant c(q)=constant. The constant value is a then new
-/// optimization decision variable.
+/// Implements the impact constraint used by Dircon on mode transitions
+///     M(q) * (v_+ - v_-) = J(q)^T Lambda
+/// Inputs to this constraint are pre-impact state, x_0, the impulse Lambda,
+/// and the post-impact velocity v_1
 template <typename T>
 class DirconImpactConstraint : public solvers::NonlinearConstraint<T> {
  public:
-  /// Constructor
-  /// @param plant the MultibodyPlant
-  /// @param KinematicEvaluatorSet
   DirconImpactConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
       const multibody::KinematicEvaluatorSet<T>& evaluators,

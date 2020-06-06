@@ -12,7 +12,6 @@ using drake::VectorX;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 
-
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
@@ -68,6 +67,7 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
   DRAKE_ASSERT(x.size() == 1 + 2 * (n_x_ + n_u_) + 4* n_l_ +
       quat_start_indices_.size())
+  // Extract decision variables
   const T& h = x(0);
   const auto& x0 = x.segment(1, n_x_);
   const auto& x1 = x.segment(1 + n_x_, n_x_);
@@ -127,15 +127,14 @@ DirconImpactConstraint<T>::DirconImpactConstraint(
       n_x_(plant.num_positions() + plant.num_velocities()),
       n_l_(evaluators.count_full()) {}
 
-// The format of the input to the eval() function is the
-// tuple { state 0, impulse, velocity 1},
+/// The format of the input to the eval() function is in the order
+///   - x0, pre-impact state (q,v)
+///   - impulse, the impulsive force
+///   - v1, the post-impact velocity
 template <typename T>
 void DirconImpactConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& vars, VectorX<T>* y) const {
-  // Extract our input variables:
-  // x0, state vector at time k^-
-  // impulse, impulsive force at impact
-  // v1, post-impact velocity at time k^+
+  // Extract decision variables
   const auto& x0 = vars.head(n_x_);
   const auto& impulse = vars.segment(n_x_, n_l_);
   const auto& v1 = vars.segment(n_x_ + n_l_, plant_.num_velocities());

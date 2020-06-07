@@ -16,10 +16,11 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
       task_0_(task_0),
       task_delta_(task_delta),
       is_stochastic_(is_stochastic) {
-  DRAKE_DEMAND(names.size() == task_dim);
-  DRAKE_DEMAND(N_sample_vec.size() == task_dim);
-  DRAKE_DEMAND(task_0.size() == task_dim);
-  DRAKE_DEMAND(task_delta.size() == task_dim);
+  DRAKE_DEMAND(task_dim > 0);
+  DRAKE_DEMAND(names.size() == (unsigned)task_dim);
+  DRAKE_DEMAND(N_sample_vec.size() == (unsigned)task_dim);
+  DRAKE_DEMAND(task_0.size() == (unsigned)task_dim);
+  DRAKE_DEMAND(task_delta.size() == (unsigned)task_dim);
 
   // Random number generator
   std::random_device randgen;
@@ -32,10 +33,6 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
     task_dim_nondeg_ += int(n_sample > 1);
     N_sample_ *= n_sample;
   }
-
-  // Calculate task bounds
-  std::vector<double> task_max_range;
-  std::vector<double> task_min_range;
 
   // Create index map
   for (int i = 0; i < task_dim; i++) {
@@ -106,7 +103,7 @@ void GridTasksGenerator::RunThroughIndex(
     const std::vector<int>& N_sample, int i_layer, vector<int> index_tuple,
     int* sample_idx, std::map<int, std::vector<int>>* forward_task_idx_map,
     std::map<std::vector<int>, int>* inverse_task_idx_map) {
-  if (i_layer == N_sample.size()) {
+  if ((unsigned)i_layer == N_sample.size()) {
     (*forward_task_idx_map)[(*sample_idx)] = index_tuple;
     (*inverse_task_idx_map)[index_tuple] = (*sample_idx);
     (*sample_idx) += 1;

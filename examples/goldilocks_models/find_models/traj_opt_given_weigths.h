@@ -73,6 +73,7 @@ void trajOptGivenWeights(
     bool is_zero_touchdown_impact,
     bool extend_model,
     bool is_add_tau_in_cost,
+    bool snopt_scaling,
     int sample_idx, int n_rerun, double cost_threshold_for_update, int N_rerun,
     int rom_option, int robot_option);
 

@@ -30,7 +30,7 @@ class Tasks {
  public:
   Tasks(vector<string> names) : task_dim_(names.size()), names_(names) {
     // Create index map
-    for (int i = 0; i < names.size(); i++) {
+    for (unsigned int i = 0; i < names.size(); i++) {
       name_to_index_map_[names[i]] = i;
     }
   }
@@ -41,12 +41,12 @@ class Tasks {
   }
   const std::vector<double>& get() const { return task_; }
   void set(const std::vector<double>& values) {
-    DRAKE_DEMAND(values.size() == task_dim_);
+    DRAKE_DEMAND(values.size() == (unsigned)task_dim_);
     task_ = values;
   }
   VectorXd GetVectorXd() {
     VectorXd ret(task_.size());
-    for (int i = 0; i < task_.size(); i++) {
+    for (unsigned int i = 0; i < task_.size(); i++) {
       ret(i) = task_[i];
     }
     return ret;

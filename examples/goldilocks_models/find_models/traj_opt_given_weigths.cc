@@ -140,7 +140,7 @@ void extractResult(VectorXd& w_sol,
                    int n_feature_sDDot,
                    const MatrixXd& B_tau,
                    const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                   const Tasks tasks,
+                   const Tasks& tasks,
                    double duration, int max_iter,
                    const string& directory,
                    const string& init_file, const string& prefix,
@@ -1118,6 +1118,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           bool is_zero_touchdown_impact,
                           bool extend_model,
                           bool is_add_tau_in_cost,
+                          bool snopt_scaling,
                           int sample_idx, int n_rerun,
                           double cost_threshold_for_update, int N_rerun,
                           int rom_option,
@@ -1269,7 +1270,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
-                           0);  // 0 // snopt doc said try 2 if seeing snopta exit 40
+                           snopt_scaling? 2 : 0);  // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance", 1e-4);  // target nonlinear constraint violation
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -1533,6 +1534,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    bool is_zero_touchdown_impact,
                    bool extend_model,
                    bool is_add_tau_in_cost,
+                   bool snopt_scaling,
                    int sample_idx, int n_rerun,
                    double cost_threshold_for_update, int N_rerun,
                    int rom_option, int robot_option) {
@@ -1815,9 +1817,8 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                            "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);  // 0
-  trajopt->SetSolverOption(
-      drake::solvers::SnoptSolver::id(), "Scale option",
-      0);  // snopt doc said try 2 if seeing snopta exit 40
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
+                           snopt_scaling? 2 : 0);  // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance",
                            major_optimality_tol);  // target nonlinear constraint violation
@@ -2519,6 +2520,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          bool is_zero_touchdown_impact,
                          bool extend_model,
                          bool is_add_tau_in_cost,
+                         bool snopt_scaling,
                          int sample_idx, int n_rerun,
                          double cost_threshold_for_update, int N_rerun,
                          int rom_option, int robot_option) {
@@ -2562,7 +2564,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          is_success_vec,
                          Q_double, R_double, all_cost_scale, eps_reg,
                          is_get_nominal, is_zero_touchdown_impact,
-                         extend_model, is_add_tau_in_cost,
+                         extend_model, is_add_tau_in_cost, snopt_scaling,
                          sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
                          rom_option, robot_option);
   } else if (robot_option == 1) {
@@ -2585,7 +2587,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                   is_success_vec,
                   Q_double, R_double, all_cost_scale, eps_reg,
                   is_get_nominal, is_zero_touchdown_impact,
-                  extend_model, is_add_tau_in_cost,
+                  extend_model, is_add_tau_in_cost, snopt_scaling,
                   sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
                   rom_option, robot_option);
   }

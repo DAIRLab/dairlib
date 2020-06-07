@@ -73,6 +73,7 @@ DEFINE_int32(
     "resolve again.");
 DEFINE_int32(n_node, -1, "# of nodes for traj opt");
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
+DEFINE_bool(snopt_scaling, false, "SNOPT built-in scaling feature");
 
 // outer loop
 DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
@@ -1413,10 +1414,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   cout << "Current time: " << std::ctime(&current_time);
   cout << "Git commit hash: " << endl;
-  std::system("git rev-parse HEAD");
+  int sys_ret = std::system("git rev-parse HEAD");
+  DRAKE_DEMAND(sys_ret != -1);
   cout << "Result of \"git diff-index HEAD\":" << endl;
-  std::system("git diff-index HEAD");
-  cout << endl;
+  sys_ret = std::system("git diff-index HEAD");
+  DRAKE_DEMAND(sys_ret != -1);
 
   // Create MBP
   drake::logging::set_log_level("err");  // ignore warnings about joint limits
@@ -1704,6 +1706,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "major_optimality_tolerance = " << FLAGS_major_feasibility_tol << endl;
   cout << "major_feasibility_tolerance = " << FLAGS_major_feasibility_tol << endl;
   cout << "n_node = " << n_node << endl;
+  cout << "use SNOPT built-in scaling? " << FLAGS_snopt_scaling << endl;
   if (FLAGS_robot_option == 1) {
     // If the node density is too low, it's harder for SNOPT to converge well.
     // The ratio of distance per nodes = 0.2/16 is fine for snopt, but
@@ -2181,9 +2184,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
               std::ref(thread_finished_vec), Q, R, all_cost_scale,
               eps_regularization, is_get_nominal,
               FLAGS_is_zero_touchdown_impact, extend_model_this_iter,
-              FLAGS_is_add_tau_in_cost, sample_idx, n_rerun[sample_idx],
-              cost_threshold_for_update[sample_idx], N_rerun, rom_option,
-              FLAGS_robot_option);
+              FLAGS_is_add_tau_in_cost, FLAGS_snopt_scaling, sample_idx,
+              n_rerun[sample_idx], cost_threshold_for_update[sample_idx],
+              N_rerun, rom_option, FLAGS_robot_option);
           //string_to_be_print = "Finished adding sample #" + to_string(sample_idx) +
           //  " to thread # " + to_string(available_thread_idx.front()) + ".\n";
           // cout << string_to_be_print;

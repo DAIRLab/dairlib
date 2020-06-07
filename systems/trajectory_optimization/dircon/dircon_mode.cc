@@ -4,6 +4,7 @@ namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
+using drake::multibody::MultibodyPlant;
 using std::vector;
 using std::unordered_map;
 
@@ -25,6 +26,16 @@ void DirconMode<T>::MakeConstraintRelative(int evaluator_index,
   int total_index = evaluators_.evaluator_full_start(evaluator_index) + 
       constraint_index;
   relative_constraints_.insert(total_index);
+}
+
+template <typename T>
+void DirconMode<T>::SkipQuaternion(int knotpoint_index) {
+  skip_quaternion_.insert(knotpoint_index);
+}
+
+template <typename T>
+bool DirconMode<T>::IsSkipQuaternion(int knotpoint_index) const {
+  return skip_quaternion_.find(knotpoint_index) != skip_quaternion_.end();
 }
 
 template <typename T>
@@ -139,9 +150,35 @@ void DirconMode<T>::SetKinScale(std::unordered_map<int, double>* scale_map,
   (*scale_map)[total_index] = scale;
 }
 
+template <typename T>
+DirconModeSequence<T>::DirconModeSequence(const MultibodyPlant<T>& plant)
+    : plant_(plant) {}
+
+template <typename T>
+DirconModeSequence<T>::DirconModeSequence(DirconMode<T>* mode)
+    : plant_(mode->evaluators().plant()) {
+  AddMode(mode);
+}
+
+template <typename T>
+void DirconModeSequence<T>::AddMode(DirconMode<T>* mode) {
+  modes_.push_back(mode);
+}
+
+template <typename T>
+int DirconModeSequence<T>::count_knotpoints() const {
+  int sum = 1 - modes_.size(); // subtract shared knotpoints
+  for (const auto& mode : modes_) {
+    sum += mode->num_knotpoints();
+  }
+  return sum;
+}
+
 }  // namespace trajectory_optimization
 }  // namespace systems
 }  // namespace dairlib
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::systems::trajectory_optimization::DirconMode)
+DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
+    class ::dairlib::systems::trajectory_optimization::DirconModeSequence)

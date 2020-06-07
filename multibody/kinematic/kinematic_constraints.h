@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map>
+#include <set>
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "solvers/nonlinear_constraint.h"
@@ -37,7 +37,7 @@ class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
       drake::systems::Context<T>* context = nullptr,
-      const std::string& description = "kinematic position");
+      const std::string& description = "kinematic_position");
 
   /// This constructor takes a shared_ptr<Context> as an argument to share
   /// cached kinematic/dynamic computation within the context.
@@ -50,9 +50,9 @@ class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
       const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
-      const std::vector<bool>& full_constraint_relative,
+      const std::set<int>& full_constraint_relative,
       drake::systems::Context<T>* context = nullptr,
-      const std::string& description = "kinematic position");
+      const std::string& description = "kinematic_position");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                                   drake::VectorX<T>* y) const;
@@ -62,7 +62,7 @@ class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
   const KinematicEvaluatorSet<T>& evaluators_;
   drake::systems::Context<T>* context_;
   std::unique_ptr<drake::systems::Context<T>> owned_context_;
-  std::map<int, int> relative_map_;
+  std::set<int> full_constraint_relative_;
 };
 
 /// A constraint class to wrap the velocity component of a KinematicEvaluatorSet
@@ -86,7 +86,7 @@ class KinematicVelocityConstraint : public solvers::NonlinearConstraint<T> {
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
       drake::systems::Context<T>* context = nullptr,
-      const std::string& description = "kinematic velocity");
+      const std::string& description = "kinematic_velocity");
 
   /// This constructor takes a shared_ptr<Context> as an argument to share
   /// cached kinematic/dynamic computation within the context.
@@ -98,7 +98,7 @@ class KinematicVelocityConstraint : public solvers::NonlinearConstraint<T> {
       const KinematicEvaluatorSet<T>& evaluators,
       const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
       drake::systems::Context<T>* context = nullptr,
-      const std::string& description = "kinematic velocity");
+      const std::string& description = "kinematic_velocity");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                                   drake::VectorX<T>* y) const;
@@ -133,7 +133,7 @@ class KinematicAccelerationConstraint : public solvers::NonlinearConstraint<T> {
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
       drake::systems::Context<T>* context = nullptr,
-      const std::string& description = "kinematic acceleration");
+      const std::string& description = "kinematic_acceleration");
 
   /// This constructor takes a shared_ptr<Context> as an argument to share
   /// cached kinematic/dynamic computation within the context.
@@ -145,7 +145,7 @@ class KinematicAccelerationConstraint : public solvers::NonlinearConstraint<T> {
       const KinematicEvaluatorSet<T>& evaluators,
       const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
       drake::systems::Context<T>* context = nullptr,
-      const std::string& description = "kinematic acceleration");
+      const std::string& description = "kinematic_acceleration");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                                   drake::VectorX<T>* y) const;

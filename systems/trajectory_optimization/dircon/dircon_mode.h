@@ -15,7 +15,6 @@ namespace trajectory_optimization {
 /// position and velocity constraints on x_0 redundant.
 enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
 
-
 /// DirconMode is the primary class for defining constrained collocation
 /// (DIRCON) trajectory optimization problems. Each DirconMode object refers
 /// to a single hybrid mode of the optimization.  
@@ -45,6 +44,10 @@ class DirconMode {
   const std::set<int>& relative_constraints() const {
     return relative_constraints_;
   };
+
+  void SkipQuaternion(int knotpoint_index);
+
+  bool IsSkipQuaternion(int knotpoint_index) const;
   
   /// Count the nubmer of relative constraints
   int num_relative_constraints() const { return relative_constraints_.size(); };
@@ -154,6 +157,20 @@ class DirconMode {
   /// Get the cost on force regularization. Defaults to 1e-4
   double get_force_regularization() const { return force_regularization_;};
 
+  const multibody::KinematicEvaluatorSet<T>& evaluators() const {
+    return evaluators_;
+  };
+
+  int num_knotpoints() const { return num_knotpoints_; };
+
+  double min_T() const { return min_T_; };
+
+  double max_T() const { return max_T_; };
+
+  const drake::multibody::MultibodyPlant<T>& plant() const {
+    return evaluators_.plant();
+  };
+
  private:
   void SetKinScale(std::unordered_map<int, double>* scale_map,
       int evaluator_index, int constraint_index, double scale);
@@ -164,6 +181,7 @@ class DirconMode {
   const double max_T_;
   const double force_regularization_;
   std::set<int> relative_constraints_;
+  std::set<int> skip_quaternion_;
   std::unordered_map<int, DirconKinConstraintType> reduced_constraints_;
 
   // Constraint scaling
@@ -172,6 +190,31 @@ class DirconMode {
   std::unordered_map<int, double> kin_position_scale_;
   std::unordered_map<int, double> kin_velocity_scale_;
   std::unordered_map<int, double> kin_acceleration_scale_;
+};
+
+
+template <typename T>
+class DirconModeSequence {
+ public:
+  /// Initialize an empty mode sequence
+  DirconModeSequence(const drake::multibody::MultibodyPlant<T>& plant);
+
+  /// Initialize a single mode sequence
+  DirconModeSequence(DirconMode<T>* mode);
+
+  void AddMode(DirconMode<T>* mode);
+
+  int count_knotpoints() const;
+
+  int num_modes() const { return modes_.size(); };
+
+  const drake::multibody::MultibodyPlant<T>& plant() const { return plant_; };
+
+  const DirconMode<T>& mode(int index) const { return *modes_.at(index); };
+  
+ private:
+  const drake::multibody::MultibodyPlant<T>& plant_;
+  std::vector<DirconMode<T>*> modes_;
 };
 
 }  // namespace trajectory_optimization

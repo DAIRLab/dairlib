@@ -33,17 +33,11 @@ class Dircon
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Dircon)
 
-  /// Constructs the %MathematicalProgram% and adds the collocation constraints.
-  ///
-  /// @param plant The MultibodyPlant describing the plant and kinematics
-  /// @param num_time_samples The number of knot points in the trajectory.
-  /// @param minimum_timestep Minimum spacing between sample times.
-  /// @param maximum_timestep Maximum spacing between sample times.
-  /// @param constraints The set of kinematic constraints that must be enforced
-  /// @param opttions (see DirconOptions)
-  Dircon(const std::vector<DirconMode<T>*>& modes);
+  /// The default, hybrid constructor. Takes a mode sequence.
+  Dircon(const DirconModeSequence<T>& mode_sequence);
 
-  Dircon(const DirconMode<T>& modes);
+  /// For simplicity, a constructor that takes only a single mode as a pointer.
+  Dircon(DirconMode<T>* mode);
 
   /// Get the input trajectory at the solution as a
   /// %drake::trajectories::PiecewisePolynomialTrajectory%.
@@ -98,61 +92,50 @@ class Dircon
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_lc,
       const drake::trajectories::PiecewisePolynomial<double>& traj_init_vc);
 
-  const drake::solvers::VectorXDecisionVariable& force_vars(int mode) const {
-    return force_vars_[mode];
-  }
+  /// Get all knotpoint force variables associated with a specific mode and
+  /// knotpoint
+  const drake::solvers::VectorXDecisionVariable force_vars(int mode_index,
+      int knotpoint_index) const;
 
-  const drake::solvers::VectorXDecisionVariable& offset_vars(int mode) const {
-    return offset_vars_[mode];
-  }
+  /// Get all collocation force variables associated with a specific mode and
+  /// collocation point
+  const drake::solvers::VectorXDecisionVariable collocation_force_vars(
+      int mode_index, int collocation_index) const;
 
-  const drake::solvers::VectorXDecisionVariable& collocation_force_vars(
-      int mode) const {
-    return collocation_force_vars_[mode];
-  }
+  /// Get all kinematic relative offset variables associated with a specific
+  /// mode
+  const drake::solvers::VectorXDecisionVariable offset_vars(
+      int mode_index) const;
 
-  const drake::solvers::VectorXDecisionVariable& collocation_slack_vars(
-      int mode) const {
-    return collocation_slack_vars_[mode];
-  }
+  /// Get all velocity slack variables (gamma) associated with a specific mode
+  /// and collocation point
+  const drake::solvers::VectorXDecisionVariable collocation_slack_vars(
+      int mode_index, int collocation_index) const;
 
-  const drake::solvers::VectorXDecisionVariable& quaternion_slack_vars(
-      int mode) const {
-    return quaternion_slack_vars_[mode];
-  }
+  /// Get all quaternion slack variables associated with a specific mode
+  /// and collocation point
+  const drake::solvers::VectorXDecisionVariable quaternion_slack_vars(
+      int mode_index, int collocation_index) const;
 
-  const drake::solvers::VectorXDecisionVariable& v_post_impact_vars() const {
-    return v_post_impact_vars_;
-  }
+  /// Get all post-impact velocity variables associated with a specific
+  /// mode transition (0 is the first transition between modes 0 and 1)
+  const drake::solvers::VectorXDecisionVariable post_impact_velocity_vars(
+      int mode_transition_index) const;
 
-  const drake::solvers::VectorXDecisionVariable& impulse_vars(int mode) const {
-    return impulse_vars_[mode];
-  }
-
-  const Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
-  v_post_impact_vars_by_mode(int mode) const;
+  /// Get all impulsive force variables associated with a specific
+  /// mode transition (0 is the first transition between modes 0 and 1)
+  const drake::solvers::VectorXDecisionVariable impulse_vars(
+      int mode_transition_index) const;
 
   /// Get the state decision variables given a mode and a time_index
-  /// (time_index is w.r.t that particular mode). This will use the
+  /// (knotpoint_index is w.r.t that particular mode). This will use the
   ///  v_post_impact_vars_ if needed. Otherwise, it just returns the standard
   /// x_vars element
-  drake::solvers::VectorXDecisionVariable state_vars_by_mode(
-      int mode, int time_index) const;
+  const drake::solvers::VectorXDecisionVariable state_vars(
+      int mode_index, int knotpoint_index) const;
 
-  // Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable> force(
-  //     int mode, int index) const {
-  //   DRAKE_DEMAND(index < mode_lengths_[mode]);
-  //   return force_vars_[mode].segment(
-  //       index * num_kinematic_constraints_wo_skipping_[mode],
-  //       num_kinematic_constraints_wo_skipping_[mode]);
-  // }
-  // Eigen::VectorBlock<const drake::solvers::VectorXDecisionVariable>
-  //     collocation_force(int mode, int index) const {
-  //   DRAKE_DEMAND(index < mode_lengths_[mode] - 1);
-  //   return collocation_force_vars_[mode].segment(
-  //       index * num_kinematic_constraints_wo_skipping_[mode],
-  //       num_kinematic_constraints_wo_skipping_[mode]);
-  // }
+  const drake::solvers::VectorXDecisionVariable input_vars(
+      int mode_index, int knotpoint_index) const;
 
   drake::VectorX<drake::symbolic::Expression> SubstitutePlaceholderVariables(
       const drake::VectorX<drake::symbolic::Expression>& f,
@@ -177,18 +160,26 @@ class Dircon
                                         double scale);
 
  private:
-  std::vector<DirconMode<T>*> modes_;
-  const int num_modes_;
-  const std::vector<int> mode_lengths_;
+  // Private constructor to which public constructors funnel
+  Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
+      const DirconModeSequence<T>* ext_sequence,
+      const drake::multibody::MultibodyPlant<T>& plant,
+      int num_knotpoints);
+
+  std::unique_ptr<DirconModeSequence<T>> my_sequence_;
+  const drake::multibody::MultibodyPlant<T>& plant_;
+  const DirconModeSequence<T>& mode_sequence_;
   std::vector<int> mode_start_;
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;
-  const drake::solvers::VectorXDecisionVariable v_post_impact_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> force_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> collocation_force_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> collocation_slack_vars_;
-  std::vector<drake::solvers::VectorXDecisionVariable> offset_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> v_post_impact_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> impulse_vars_;
+  std::vector<drake::solvers::VectorXDecisionVariable> offset_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> quaternion_slack_vars_;
+  std::vector<std::vector<std::unique_ptr<drake::systems::Context<T>>>>
+    contexts_;
 
   std::unique_ptr<multibody::MultiposeVisualizer> callback_visualizer_;
 };

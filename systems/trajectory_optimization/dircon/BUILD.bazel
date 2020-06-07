@@ -19,6 +19,7 @@ cc_library(
         "//multibody:multipose_visualizer",
         "//multibody:utils",
         "//multibody/kinematic",
+        "//multibody/kinematic:constraints",
         "//solvers:constraints",
         "@drake//:drake_shared_library",
     ],

@@ -21,22 +21,21 @@ KinematicPositionConstraint<T>::KinematicPositionConstraint(
     : KinematicPositionConstraint<T>(plant, evaluators,
           VectorXd::Zero(evaluators.count_active()),
           VectorXd::Zero(evaluators.count_active()),
-          std::vector<bool>(), context, description) {}
+          std::set<int>(), context, description) {}
 
 template <typename T>
 KinematicPositionConstraint<T>::KinematicPositionConstraint(
     const MultibodyPlant<T>& plant,
     const KinematicEvaluatorSet<T>& evaluators,
     const VectorXd& lb, const VectorXd& ub,
-    const std::vector<bool>& full_constraint_relative,
+    const std::set<int>& full_constraint_relative,
     Context<T>* context, const std::string& description)
     : NonlinearConstraint<T>(evaluators.count_active(),
-          plant.num_positions() + 
-              std::count(full_constraint_relative.begin(),
-                         full_constraint_relative.end(), true),
+          plant.num_positions() + full_constraint_relative.size(),
           lb, ub, description),
       plant_(plant), 
-      evaluators_(evaluators) {
+      evaluators_(evaluators),
+      full_constraint_relative_(full_constraint_relative) {
   // Create a new context if one was not provided
   if (context == nullptr) {
     owned_context_ = plant_.CreateDefaultContext();
@@ -44,29 +43,22 @@ KinematicPositionConstraint<T>::KinematicPositionConstraint(
   } else {
     context_ = context;
   }
-
-  // Build a map from alpha relative variables to indices
-  // relative_map_[i] = j means alpha_i corresponds to constraint_j
-  int relative_count = 0;
-  for (int i = 0; i < evaluators_.count_active(); i++) {
-    if (full_constraint_relative.at(i) && evaluators_.is_active(i)) {
-      relative_map_[relative_count] = i;
-    }
-  }
 }
 
 template <typename T>
 void KinematicPositionConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& vars, VectorX<T>* y) const {
   const auto& q = vars.head(plant_.num_positions());
-  const auto& alpha = vars.tail(relative_map_.size());
+  const auto& alpha = vars.tail(full_constraint_relative_.size());
 
   plant_.SetPositions(context_, q);
 
   *y = evaluators_.EvalActive(*context_);
 
-  for(const auto& [alpha_index, constraint_index] : relative_map_) {
-    (*y)(constraint_index) -= alpha(alpha_index);
+  // Add relative offsets, looping through the list of relative constraints
+  auto it = full_constraint_relative_.begin();
+  for (uint i = 0; i < full_constraint_relative_.size(); i++) {
+    (*y)(*it) -= alpha(i);
   }
 }
 

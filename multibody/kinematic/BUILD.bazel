@@ -19,6 +19,7 @@ cc_library(
         "distance_evaluator.h",
     ],
     deps = [
+        "//solvers:constraint_factory",
         "@drake//:drake_shared_library",
     ],
 )

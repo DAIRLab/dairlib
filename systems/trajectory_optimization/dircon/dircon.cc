@@ -10,8 +10,10 @@ namespace systems {
 namespace trajectory_optimization {
 
 using drake::multibody::MultibodyPlant;
-using drake::systems::Context;
 using drake::solvers::VectorXDecisionVariable;
+using drake::symbolic::Expression;
+using drake::systems::Context;
+using drake::VectorX;
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -219,10 +221,42 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
         }
       }
     }
-    
+
+    ///
+    /// Add friction cone constraints to force variables
+    ///
+    /// TODO: hard-coding number of frictional faces, but this could be an
+    /// option, along with a choice of which friction cone constraint to use.
+    int num_faces = 4;
+    for (int k = 0; k < mode.evaluators().num_evaluators(); k++) {
+      const auto& e = mode.evaluators().get_evaluator(k);
+      auto force_constraint = e.CreateLinearFrictionConstraint(mode.mu(),
+          num_faces);
+      if (force_constraint) {
+        // Add to knot point forces
+        for (int j = 0; j < mode.num_knotpoints(); j++) {
+          AddConstraint(force_constraint,
+              force_vars(i_mode, j).segment(
+                  mode.evaluators().evaluator_full_start(k),
+                  e.num_full()));
+        }
+
+        // Add to impulse variables
+        AddConstraint(force_constraint,
+            impulse_vars(i_mode).segment(
+                mode.evaluators().evaluator_full_start(k),
+                e.num_full()));
+      }
+    }
+
+    // Add regularization cost on force
+    int n_l = mode.evaluators().count_full() * mode.num_knotpoints();
+    AddQuadraticCost(
+        mode.get_force_regularization() * MatrixXd::Identity(n_l, n_l),
+        VectorXd::Zero(n_l),
+        force_vars_.at(i_mode));
   }
 }
-
 
 ///
 /// Getters for decision variables
@@ -421,6 +455,18 @@ void Dircon<T>::CreateVisualizationCallback(std::string model_file,
       std::string weld_frame_to_world) {
   CreateVisualizationCallback(model_file, N(), weld_frame_to_world);
 }
+
+template <typename T>
+VectorX<Expression> Dircon<T>::SubstitutePlaceholderVariables(
+    const VectorX<Expression>& f, int interval_index) const {
+  VectorX<Expression> ret(f.size());
+  for (int i = 0; i < f.size(); i++) {
+    ret(i) =
+        MultipleShooting::SubstitutePlaceholderVariables(f(i), interval_index);
+  }
+  return ret;
+}
+
 
 }  // namespace trajectory_optimization
 }  // namespace systems

@@ -167,6 +167,10 @@ class DirconMode {
 
   double max_T() const { return max_T_; };
 
+  double mu() const { return mu_; };
+
+  void set_mu(double mu) { mu_ = mu; };
+
   const drake::multibody::MultibodyPlant<T>& plant() const {
     return evaluators_.plant();
   };
@@ -180,6 +184,7 @@ class DirconMode {
   const double min_T_;
   const double max_T_;
   const double force_regularization_;
+  double mu_;
   std::set<int> relative_constraints_;
   std::set<int> skip_quaternion_;
   std::unordered_map<int, DirconKinConstraintType> reduced_constraints_;

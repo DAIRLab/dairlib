@@ -63,11 +63,24 @@ class WorldPointEvaluator :  public KinematicEvaluator<T> {
 
   using KinematicEvaluator<T>::plant;
 
+  std::shared_ptr<drake::solvers::Constraint> CreateConicFrictionConstraint(
+      double mu) const;
+
+  std::shared_ptr<drake::solvers::Constraint> CreateLinearFrictionConstraint(
+      double mu, int num_faces = 8) const;
+
+  /// Identify this evaluator as frictional, for use when calling
+  /// CreateConicFrictionConstraint and CreateLinearFrictionConstraint
+  /// The normal direction is always assumed to be at index 2 in this
+  /// evaluator's output.
+  void SetFrictional() { is_frictional_ = true; };
+
  private:
   const Eigen::Vector3d pt_A_;
   const drake::multibody::Frame<T>& frame_A_;
   const Eigen::Vector3d offset_;
   const Eigen::Matrix3d rotation_;
+  bool is_frictional_ = false;
 };
 
 }  // namespace multibody

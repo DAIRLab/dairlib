@@ -116,7 +116,6 @@ cc_library(
     ],
 )
 
-
 cc_binary(
     name = "find_fixed_point",
     srcs = ["find_fixed_point.cc"],
@@ -125,6 +124,19 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "run_lqr_balancing",
+    srcs = ["run_lqr_balancing.cc"],
+    deps = [
+        ":cassie_fixed_point_solver",
+        ":cassie_utils",
+        ":cassie_urdf",
+        "//systems/controllers",
+        "@gflags",
+    ],
+)
+
 
 cc_binary(
     name = "run_pd_controller",
@@ -187,23 +199,8 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
+        ":cassie_fixed_point_solver",
         "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "run_constrained_lqr_controller_sim",
-    srcs = ["run_constrained_lqr_controller_sim.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
-        "//attic/multibody:utility_systems",
-        "//systems:robot_lcm_systems",
-        "//systems/controllers:constrained_lqr_controller",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -352,10 +349,9 @@ cc_binary(
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
     deps = [
         ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
+        ":cassie_fixed_point_solver",
         "//common",
         "//solvers:optimization_utils",
-        "//systems/goldilocks_models",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

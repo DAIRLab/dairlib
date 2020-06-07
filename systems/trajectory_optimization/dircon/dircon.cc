@@ -48,9 +48,9 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
       my_sequence_(std::move(my_sequence_)),
       plant_(plant),
       mode_sequence_(ext_sequence ? *ext_sequence : *my_sequence),
-      contexts_(mode_sequence_.num_modes()) {
+      contexts_(num_modes()) {
   // Loop over all modes
-  for (int i_mode = 0; i_mode < mode_sequence_.num_modes(); i_mode++) {    
+  for (int i_mode = 0; i_mode < num_modes(); i_mode++) {    
     const auto& mode = mode_sequence_.mode(i_mode);
 
     // Identify starting index for this mode, accounting for shared knotpoints
@@ -58,7 +58,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
       mode_start_[i_mode] = 0;
     } else {
       mode_start_[i_mode] = mode_start_[i_mode-1] +
-          mode_sequence_.mode(i_mode - 1).num_knotpoints() - 1;
+          mode_length(i_mode - 1) - 1;
     }
     
     //
@@ -194,7 +194,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     //
     if (i_mode > 0) {
       // Use pre-impact context
-      int pre_impact_index = mode_sequence_.mode(i_mode-1).num_knotpoints()-1;
+      int pre_impact_index = mode_length(i_mode - 1) - 1;
       auto impact_constraint = 
           std::make_shared<DirconImpactConstraint<T>>(
             plant_, mode.evaluators(),
@@ -334,13 +334,13 @@ template <typename T>
 void Dircon<T>::CreateVisualizationCallback(std::string model_file,
     std::vector<unsigned int> poses_per_mode, std::string weld_frame_to_world) {
   DRAKE_DEMAND(!callback_visualizer_);  // Cannot be set twice
-  DRAKE_DEMAND(poses_per_mode.size() == (uint) mode_sequence_.num_modes());
+  DRAKE_DEMAND(poses_per_mode.size() == (uint) num_modes());
 
   // Count number of total poses, start and finish of every mode
-  int num_poses = mode_sequence_.num_modes() + 1;
-  for (int i = 0; i < mode_sequence_.num_modes(); i++) {
+  int num_poses = num_modes() + 1;
+  for (int i = 0; i < num_modes(); i++) {
     DRAKE_DEMAND(poses_per_mode.at(i) == 0 ||  (poses_per_mode.at(i) + 2
-        <= (uint) mode_sequence_.mode(i).num_knotpoints()));
+        <= (uint) mode_length(i)));
     num_poses += poses_per_mode.at(i);
   }
 
@@ -349,7 +349,7 @@ void Dircon<T>::CreateVisualizationCallback(std::string model_file,
       num_poses * plant_.num_positions());
 
   int index = 0;
-  for (int i = 0; i < mode_sequence_.num_modes(); i++) {
+  for (int i = 0; i < num_modes(); i++) {
     // Set variable block, extracting positions only
     vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
         state_vars(i, 0).head(plant_.num_positions());
@@ -357,7 +357,7 @@ void Dircon<T>::CreateVisualizationCallback(std::string model_file,
 
     for (uint j = 0; j < poses_per_mode.at(i); j++) {
       // The jth element in mode i, counting in between the start/end poses
-      int modei_index = (j + 1) * (mode_sequence_.mode(i).num_knotpoints() - 1)
+      int modei_index = (j + 1) * (mode_length(i) - 1)
           /(poses_per_mode.at(i) + 1);
 
       vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
@@ -367,9 +367,9 @@ void Dircon<T>::CreateVisualizationCallback(std::string model_file,
   }
 
   // Final state
-  auto last_mode = mode_sequence_.mode(mode_sequence_.num_modes() - 1);
+  auto last_mode = mode_sequence_.mode(num_modes() - 1);
   vars.segment(index * plant_.num_positions(), plant_.num_positions()) = 
-      state_vars(mode_sequence_.num_modes() - 1,
+      state_vars(num_modes() - 1,
           last_mode.num_knotpoints() - 1).head(plant_.num_positions());
 
   // Create visualizer
@@ -392,12 +392,12 @@ template <typename T>
 void Dircon<T>::CreateVisualizationCallback(std::string model_file,
       unsigned int num_poses, std::string weld_frame_to_world) {
   // Check that there is an appropriate number of poses
-  DRAKE_DEMAND(num_poses >= (uint) mode_sequence_.num_modes() + 1);
+  DRAKE_DEMAND(num_poses >= (uint) num_modes() + 1);
   DRAKE_DEMAND(num_poses <= (uint) N());
 
   // sum of mode lengths, excluding ends
   int mode_sum = 0;
-  for (int i_mode = 0; i_mode < mode_sequence_.num_modes(); i_mode++) {
+  for (int i_mode = 0; i_mode < num_modes(); i_mode++) {
     auto mode = mode_sequence_.mode(i_mode);
     if (mode.num_knotpoints() > 2) {
       mode_sum += mode.num_knotpoints() - 2;
@@ -411,13 +411,13 @@ void Dircon<T>::CreateVisualizationCallback(std::string model_file,
   //
   //   poses = (NP * N )/S
   unsigned int num_poses_without_ends =
-      num_poses - mode_sequence_.num_modes() - 1;
+      num_poses - num_modes() - 1;
   unsigned int assigned_sum = 0;
   std::vector<unsigned int> num_poses_per_mode;
-  for (int i_mode = 0; i_mode < mode_sequence_.num_modes(); i_mode++) {
-    if (mode_sequence_.mode(i_mode).num_knotpoints() > 2) {
+  for (int i_mode = 0; i_mode < num_modes(); i_mode++) {
+    if (mode_length(i_mode) > 2) {
       unsigned int mode_count = (num_poses_without_ends
-            * (mode_sequence_.mode(i_mode).num_knotpoints() - 2)) / mode_sum;
+            * (mode_length(i_mode) - 2)) / mode_sum;
       num_poses_per_mode.push_back(mode_count);
       assigned_sum += mode_count;
     } else {
@@ -429,9 +429,9 @@ void Dircon<T>::CreateVisualizationCallback(std::string model_file,
   while (assigned_sum < num_poses_without_ends) {
     int largest_mode = -1;
     double value = 0;
-    for (int i_mode = 0; i_mode < mode_sequence_.num_modes(); i_mode++) {
+    for (int i_mode = 0; i_mode < num_modes(); i_mode++) {
       double fractional_value = num_poses_without_ends
-          * (mode_sequence_.mode(i_mode).num_knotpoints() - 2)
+          * (mode_length(i_mode) - 2)
           - num_poses_per_mode.at(i_mode) * mode_sum;
 
       if (fractional_value > value) {
@@ -467,6 +467,267 @@ VectorX<Expression> Dircon<T>::SubstitutePlaceholderVariables(
   return ret;
 }
 
+// TODO: need to configure this to handle the hybrid discontinuities properly
+template <typename T>
+void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
+  // Trapezoidal integration:
+  //    sum_{i=0...N-2} h_i/2.0 * (g_i + g_{i+1}), or
+  // g_0*h_0/2.0 + [sum_{i=1...N-2} g_i*(h_{i-1} + h_i)/2.0] +
+  // g_{N-1}*h_{N-2}/2.0.
+
+  // Here, we add the cost using symbolic expression. The expression is a
+  // polynomial of degree 3 which Drake can handle, although the
+  // documentation says it only supports up to second order.
+  AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, 0) * h_vars()(0) /
+          2);
+  for (int i = 1; i <= N() - 2; i++) {
+    AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, i) *
+            (h_vars()(i - 1) + h_vars()(i)) / 2);
+  }
+  AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, N() - 1) *
+          h_vars()(N() - 2) / 2);
+}
+
+// template <typename T>
+// PiecewisePolynomial<double> Dircon<T>::ReconstructInputTrajectory(
+//     const MathematicalProgramResult& result) const {
+//   Eigen::VectorXd times = GetSampleTimes(result);
+//   vector<double> times_vec(N());
+//   vector<Eigen::MatrixXd> inputs(N());
+//   for (int i = 0; i < N(); i++) {
+//     times_vec[i] = times(i);
+//     inputs[i] = result.GetSolution(input(i));
+//   }
+//   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
+// }
+
+// // TODO(mposa)
+// // need to configure this to handle the hybrid discontinuities properly
+// template <typename T>
+// PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory(
+//     const MathematicalProgramResult& result) const {
+//   VectorXd times_all(GetSampleTimes(result));
+//   VectorXd times(N() + num_modes_ - 1);
+
+//   MatrixXd states(num_states(), N() + num_modes_ - 1);
+//   MatrixXd inputs(num_inputs(), N() + num_modes_ - 1);
+//   MatrixXd derivatives(num_states(), N() + num_modes_ - 1);
+
+//   for (int i = 0; i < num_modes_; i++) {
+//     for (int j = 0; j < mode_lengths_[i]; j++) {
+//       int k = mode_start_[i] + j + i;
+//       int k_data = mode_start_[i] + j;
+//       times(k) = times_all(k_data);
+
+//       // False timestep to match velocities
+//       if (i > 0 && j == 0) {
+//         times(k) += +1e-6;
+//       }
+//       VectorX<T> xk = result.GetSolution(state_vars_by_mode(i, j));
+//       VectorX<T> uk = result.GetSolution(input(k_data));
+//       states.col(k) = drake::math::DiscardGradient(xk);
+//       inputs.col(k) = drake::math::DiscardGradient(uk);
+//       auto context = multibody::createContext<T>(plant_, xk, uk);
+//       constraints_[i]->updateData(*context, result.GetSolution(force(i, j)));
+//       derivatives.col(k) =
+//           drake::math::DiscardGradient(constraints_[i]->getXDot());
+//     }
+//   }
+//   return PiecewisePolynomial<double>::CubicHermite(times, states, derivatives);
+// }
+
+// template <typename T>
+// void Dircon<T>::SetInitialForceTrajectory(
+//     int mode, const PiecewisePolynomial<double>& traj_init_l,
+//     const PiecewisePolynomial<double>& traj_init_lc,
+//     const PiecewisePolynomial<double>& traj_init_vc) {
+//   double start_time = 0;
+//   double h;
+//   if (timesteps_are_decision_variables())
+//     h = GetInitialGuess(h_vars()[0]);
+//   else
+//     h = fixed_timestep();
+
+//   VectorXd guess_force(force_vars_[mode].size());
+//   if (traj_init_l.empty()) {
+//     guess_force.fill(0);  // Start with 0
+//   } else {
+//     for (int i = 0; i < mode_lengths_[mode]; ++i) {
+//       guess_force.segment(num_kinematic_constraints_wo_skipping_[mode] * i,
+//                           num_kinematic_constraints_wo_skipping_[mode]) =
+//           traj_init_l.value(start_time + i * h);
+//     }
+//   }
+//   SetInitialGuess(force_vars_[mode], guess_force);
+
+//   VectorXd guess_collocation_force(collocation_force_vars_[mode].size());
+//   if (traj_init_lc.empty()) {
+//     guess_collocation_force.fill(0);  // Start with 0
+//   } else {
+//     for (int i = 0; i < mode_lengths_[mode] - 1; ++i) {
+//       guess_collocation_force.segment(
+//           num_kinematic_constraints_wo_skipping_[mode] * i,
+//           num_kinematic_constraints_wo_skipping_[mode]) =
+//           traj_init_lc.value(start_time + (i + 0.5) * h);
+//     }
+//   }
+//   SetInitialGuess(collocation_force_vars_[mode], guess_collocation_force);
+
+//   VectorXd guess_collocation_slack(collocation_slack_vars_[mode].size());
+//   if (traj_init_vc.empty()) {
+//     guess_collocation_slack.fill(0);  // Start with 0
+//   } else {
+//     for (int i = 0; i < mode_lengths_[mode] - 1; ++i) {
+//       guess_collocation_slack.segment(
+//           num_kinematic_constraints_wo_skipping_[mode] * i,
+//           num_kinematic_constraints_wo_skipping_[mode]) =
+//           traj_init_vc.value(start_time + (i + 0.5) * h);
+//     }
+//   }
+//   // call superclass method
+//   SetInitialGuess(collocation_slack_vars_[mode], guess_collocation_slack);
+// }
+
+template <typename T>
+int Dircon<T>::num_modes() const {
+  return mode_sequence_.num_modes();
+}
+
+template <typename T>
+int Dircon<T>::mode_length(int mode_index) const {
+  return mode_sequence_.mode(mode_index).num_knotpoints();
+}
+
+template <typename T>
+void Dircon<T>::ScaleTimeVariables(double scale) {
+  for (int i = 0; i < h_vars().size(); i++) {
+    this->SetVariableScaling(h_vars()(i), scale);
+  }
+}
+
+template <typename T>
+void Dircon<T>::ScaleQuaternionSlackVariables(double scale) {
+  DRAKE_DEMAND(multibody::isQuaternion(plant_));
+  for (int i_mode = 0; i_mode < num_modes(); i_mode++) {
+    for (int j = 0; j < mode_length(i_mode) - 1; j++) {
+      const auto& vars = quaternion_slack_vars(i_mode, j);
+      for (int k = 0; k < vars.size(); k++) {
+        this->SetVariableScaling(vars(k), scale);
+      }
+    }
+  }
+}
+
+template <typename T>
+void Dircon<T>::ScaleStateVariable(int state_index, double scale) {
+  DRAKE_DEMAND(0 <= state_index &&
+      state_index < plant_.num_positions() + plant_.num_velocities());
+
+  // x_vars_ in MathematicalProgram
+  for (int j_knot = 0; j_knot < N(); j_knot++) {
+    auto vars = this->state(j_knot);
+    this->SetVariableScaling(vars(state_index), scale);
+  }
+
+  // v_post_impact_vars_
+  if (state_index > plant_.num_positions()) {
+    for (int mode = 0; mode < num_modes() - 1; mode++) {
+      auto vars = post_impact_velocity_vars(mode);
+      this->SetVariableScaling(vars(state_index - plant_.num_positions()),
+          scale);
+    }
+  }
+}
+
+template <typename T>
+void Dircon<T>::ScaleInputVariable(int input_index, double scale) {
+  DRAKE_DEMAND((0 <= input_index) && (input_index < plant_.num_actuators()));
+
+  // u_vars_ in MathematicalProgram
+  for (int j_knot = 0; j_knot < N(); j_knot++) {
+    auto vars = this->input(j_knot);
+    this->SetVariableScaling(vars(input_index), scale);
+  }
+}
+
+template <typename T>
+void Dircon<T>::ScaleForceVariable(int mode_index, int force_index, double scale) {
+  DRAKE_DEMAND((0 <= mode_index) && (mode_index < num_modes()));
+  int n_lambda = mode_sequence_.mode(mode_index).evaluators().count_full();
+  DRAKE_DEMAND((0 <= force_index) && (force_index < n_lambda));
+
+  // Force at knot points
+  for (int j = 0; j < mode_length(mode_index); j++) {
+    this->SetVariableScaling(force_vars(mode_index, j)(force_index), scale);
+  }
+  // Force at collocation pints
+  for (int j = 0; j < mode_length(mode_index) - 1; j++) {
+    this->SetVariableScaling(
+        collocation_force_vars(mode_index, j)(force_index), scale);
+  }
+}
+
+template <typename T>
+void Dircon<T>::ScaleImpulseVariable(int mode_index, int impulse_index,
+    double scale) {
+  DRAKE_DEMAND((0 <= mode_index) && (mode_index < num_modes() - 1));
+  int n_impulse = mode_sequence_.mode(mode_index).evaluators().count_full();
+  DRAKE_DEMAND((0 <= impulse_index) && (impulse_index < n_impulse));
+
+  this->SetVariableScaling(impulse_vars(mode_index)(impulse_index), scale);
+}
+
+template <typename T>
+void Dircon<T>::ScaleKinConstraintSlackVariable(int mode_index, int slack_index,
+    double scale) {
+  DRAKE_DEMAND((0 <= mode_index) && (mode_index < num_modes() - 1));
+  int n_lambda = mode_sequence_.mode(mode_index).evaluators().count_full();
+  DRAKE_DEMAND(slack_index < n_lambda);
+
+  for (int j = 0; j < mode_length(mode_index) - 1; j++) {
+    this->SetVariableScaling(collocation_slack_vars(mode_index, j)(slack_index),
+        scale);
+  }
+}
+
+template <typename T>
+void Dircon<T>::ScaleStateVariables(std::vector<int> index_list,
+    double scale) {
+  for (const auto& idx : index_list) {
+    ScaleStateVariable(idx, scale);
+  }
+}
+template <typename T>
+void Dircon<T>::ScaleInputVariables(std::vector<int> index_list,
+    double scale) {
+  for (const auto& idx : index_list) {
+    ScaleInputVariable(idx, scale);
+  }
+}
+
+template <typename T>
+void Dircon<T>::ScaleForceVariables(int mode, std::vector<int> index_list,
+    double scale) {
+  for (const auto& idx : index_list) {
+    ScaleForceVariable(mode, idx, scale);
+  }
+}
+
+template <typename T>
+void Dircon<T>::ScaleImpulseVariables(int mode, std::vector<int> index_list,
+    double scale) {
+  for (const auto& idx : index_list) {
+    ScaleImpulseVariable(mode, idx, scale);
+  }
+}
+
+template <typename T>
+void Dircon<T>::ScaleKinConstraintSlackVariables(
+    int mode, std::vector<int> index_list, double scale) {
+  for (const auto& idx : index_list) {
+    ScaleKinConstraintSlackVariable(mode, idx, scale);
+  }
+}
 
 }  // namespace trajectory_optimization
 }  // namespace systems

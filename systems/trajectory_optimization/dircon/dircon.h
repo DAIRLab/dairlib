@@ -145,6 +145,10 @@ class Dircon
   using drake::systems::trajectory_optimization::MultipleShooting::
       SubstitutePlaceholderVariables;
 
+  int num_modes() const ;
+
+  int mode_length(int mode_index) const; 
+
   void ScaleTimeVariables(double scale);
   void ScaleQuaternionSlackVariables(double scale);
   void ScaleStateVariable(int idx, double scale);
@@ -180,7 +184,6 @@ class Dircon
   std::vector<drake::solvers::VectorXDecisionVariable> quaternion_slack_vars_;
   std::vector<std::vector<std::unique_ptr<drake::systems::Context<T>>>>
     contexts_;
-
   std::unique_ptr<multibody::MultiposeVisualizer> callback_visualizer_;
 };
 

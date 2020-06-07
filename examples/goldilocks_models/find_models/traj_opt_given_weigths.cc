@@ -140,7 +140,7 @@ void extractResult(VectorXd& w_sol,
                    int n_feature_sDDot,
                    const MatrixXd& B_tau,
                    const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                   const Tasks& tasks,
+                   const Task& task,
                    double duration, int max_iter,
                    const string& directory,
                    const string& init_file, const string& prefix,
@@ -197,7 +197,7 @@ void extractResult(VectorXd& w_sol,
                            " (tau cost = " + to_string(tau_cost) + ")\n";*/
   string string_to_print = "  " + to_string(sample_idx) +
       " (" + to_string(n_rerun) + ")";
-  for (auto & task : tasks.get()) {
+  for (auto & task : task.get()) {
     string_to_print += " | " + to_string(task);
   }
   string_to_print +=
@@ -1097,7 +1097,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           int n_feature_sDDot,
                           const MatrixXd& B_tau,
                           const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                          const Tasks& tasks,
+                          const Task& task,
                           double duration, int n_node, int max_iter,
                           const string& directory,
                           const string& init_file, const string& prefix,
@@ -1123,8 +1123,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           double cost_threshold_for_update, int N_rerun,
                           int rom_option,
                           int robot_option) {
-  double stride_length = tasks.get("stride length");
-  double ground_incline = tasks.get("ground incline");
+  double stride_length = task.get("stride length");
+  double ground_incline = task.get("ground incline");
 
 
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
@@ -1469,7 +1469,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                 plant, plant_autoDiff,
                 n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                 theta_s, theta_sDDot,
-                tasks,
+                task,
                 duration, max_iter,
                 directory, init_file, prefix,
                 c_vec,
@@ -1512,7 +1512,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    int n_feature_sDDot,
                    const MatrixXd& B_tau,
                    const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                   const Tasks& tasks,
+                   const Task& task,
                    double duration, int n_node, int max_iter,
                    double major_optimality_tol,
                    double major_feasibility_tol,
@@ -1538,9 +1538,9 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    int sample_idx, int n_rerun,
                    double cost_threshold_for_update, int N_rerun,
                    int rom_option, int robot_option) {
-  double stride_length = tasks.get("stride length");
-  double ground_incline = tasks.get("ground incline");
-  double turning_rate = tasks.get("turning rate");
+  double stride_length = task.get("stride length");
+  double ground_incline = task.get("ground incline");
+  double turning_rate = task.get("turning rate");
 
   // Dircon parameter
   double minimum_timestep = 0.01;
@@ -2331,7 +2331,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                 plant, plant_autoDiff,
                 n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                 theta_s, theta_sDDot,
-                tasks,
+                task,
                 duration, max_iter,
                 directory, init_file, prefix,
                 c_vec,
@@ -2496,7 +2496,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          int n_feature_sDDot,
                          const MatrixXd& B_tau,
                          const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                         Tasks tasks,
+                         Task task,
                          double duration, int n_node, int max_iter,
                          double major_optimality_tol,
                          double major_feasibility_tol,
@@ -2549,7 +2549,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
     fiveLinkRobotTrajOpt(plant, plant_autoDiff,
                          n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                          theta_s, theta_sDDot,
-                         tasks,
+                         task,
                          duration, n_node, max_iter,
                          directory, init_file, prefix,
                          w_sol_vec,
@@ -2571,7 +2571,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
     cassieTrajOpt(plant, plant_autoDiff,
                   n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                   theta_s, theta_sDDot,
-                  tasks,
+                  task,
                   duration, n_node, max_iter,
                   major_optimality_tol, major_feasibility_tol,
                   directory, init_file, prefix,

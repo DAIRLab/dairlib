@@ -25,10 +25,10 @@ using std::vector;
 namespace dairlib {
 namespace goldilocks_models {
 
-// Tasks class
-class Tasks {
+// Task class
+class Task {
  public:
-  Tasks(vector<string> names) : task_dim_(names.size()), names_(names) {
+  Task(vector<string> names) : task_dim_(names.size()), names_(names) {
     // Create index map
     for (unsigned int i = 0; i < names.size(); i++) {
       name_to_index_map_[names[i]] = i;
@@ -43,13 +43,6 @@ class Tasks {
   void set(const std::vector<double>& values) {
     DRAKE_DEMAND(values.size() == (unsigned)task_dim_);
     task_ = values;
-  }
-  VectorXd GetVectorXd() {
-    VectorXd ret(task_.size());
-    for (unsigned int i = 0; i < task_.size(); i++) {
-      ret(i) = task_[i];
-    }
-    return ret;
   }
 
  private:
@@ -73,7 +66,7 @@ class GridTasksGenerator {
   int dim() { return task_dim_; }
   int dim_nondeg() { return task_dim_nondeg_; }
   vector<int> sample_numbers() { return N_sample_vec_; }
-  int total_number() { return N_sample_; }
+  int total_sample_number() { return N_sample_; }
   double task_min(const string& name) {
     return task_min_range_[name_to_index_map_.at(name)];
   }
@@ -88,7 +81,7 @@ class GridTasksGenerator {
   };
 
   // Generator
-  vector<double> NewTasks(int sample_idx, bool disable_stochastic);
+  vector<double> NewTask(int sample_idx, bool disable_stochastic);
 
  private:
   static void RunThroughIndex(

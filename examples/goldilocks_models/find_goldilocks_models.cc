@@ -54,9 +54,9 @@ DEFINE_int32(robot_option, 1, "0: plannar robot. 1: cassie_fixed_spring");
 DEFINE_int32(rom_option, -1, "");
 
 // tasks
-DEFINE_int32(N_sample_sl, -1, "Sampling # for stride length");
-DEFINE_int32(N_sample_gi, -1, "Sampling # for ground incline");
-DEFINE_int32(N_sample_tr, -1, "Sampling # for turning rate");
+DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
+DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
+DEFINE_int32(N_sample_tr, 1, "Sampling # for turning rate");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
@@ -803,7 +803,7 @@ void calcWInTermsOfTheta(int sample, const string& dir,
 MatrixXi GetAdjSampleIndices(GridTasksGenerator task_gen) {
   // Setup
   int task_dim = task_gen.dim_nondeg();
-  int N_sample = task_gen.total_number();
+  int N_sample = task_gen.total_sample_number();
 
   // cout << "Constructing adjacent index list...\n";
   MatrixXi adjacent_sample_indices =
@@ -1440,12 +1440,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Parameters for tasks (stride length and ground incline)
   cout << "\nTasks settings:\n";
-  int N_sample_sl = (FLAGS_N_sample_sl == -1)? 1 : FLAGS_N_sample_sl;
-  int N_sample_gi = (FLAGS_N_sample_gi == -1)? 1 : FLAGS_N_sample_gi;
-  int N_sample_tr = (FLAGS_N_sample_tr == -1)? 1 : FLAGS_N_sample_tr;
-  int N_sample = N_sample_sl * N_sample_gi * N_sample_tr;
   if (FLAGS_robot_option == 0) {
-    DRAKE_DEMAND(FLAGS_N_sample_tr < 1);
+    DRAKE_DEMAND(FLAGS_N_sample_tr == 1);
   }
   double delta_stride_length;
   double stride_length_0;
@@ -1499,34 +1495,31 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (FLAGS_robot_option == 0) {
     task_gen = GridTasksGenerator(
         2, {"stride length", "ground incline"},
-        {N_sample_sl, N_sample_gi},
+        {FLAGS_N_sample_sl, FLAGS_N_sample_gi},
         {stride_length_0, ground_incline_0},
         {delta_stride_length, delta_ground_incline},
         FLAGS_is_stochastic);
   } else if (FLAGS_robot_option == 1) {
     task_gen = GridTasksGenerator(
         3, {"stride length", "ground incline", "turning rate"},
-        {N_sample_sl, N_sample_gi, N_sample_tr},
+        {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_tr},
         {stride_length_0, ground_incline_0, turning_rate_0},
         {delta_stride_length, delta_ground_incline, delta_turning_rate},
         FLAGS_is_stochastic);
   }
   DRAKE_DEMAND(task_gen.task_min("stride length") >= 0);
-  Tasks tasks(task_gen.names());
+  int N_sample = task_gen.total_sample_number();
+  Task task(task_gen.names());
   SaveStringVecToCsv(task_gen.names(), dir + string("task_names.csv"));
-  vector<VectorXd> previous_tasks(N_sample, VectorXd::Zero(task_gen.dim()));
+  vector<VectorXd> previous_task(N_sample, VectorXd::Zero(task_gen.dim()));
   if (FLAGS_start_current_iter_as_rerun ||
       FLAGS_start_iterations_with_shrinking_stepsize) {
     for (int i = 0; i < N_sample; i++) {
       auto pre_task = readCSV(dir + to_string(FLAGS_iter_start) + "_" +
-                              to_string(i) + string("_tasks.csv"))
+                              to_string(i) + string("_task.csv"))
                           .col(0);
       DRAKE_DEMAND(pre_task.rows() == task_gen.dim());
-      previous_tasks[i] = pre_task;
-      // print
-      // cout << "previous_tasks[" << i << "] = " <<
-      // previous_tasks[i].transpose()
-      //     << endl;
+      previous_task[i] = pre_task;
     }
   }
 
@@ -1719,6 +1712,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   // Reduced order model parameters
+  // TODO: you can also create a ROM class.
+  //  .
+  //  virtual class MappingFunctionParametrization
+  //  derived class CassieMapping
+  //  derived class FiveLinkRobotMapping
+  //  .
+  //  virtual class ROM(MappingFunctionParametrization)
+  //  derived class 2dLip
+  //  derived class 2dLipWithSwingFoot
+  //  .
+  //  The ROM class takes in MappingFunctionParametrization and the derived
+  //  class has its own dynamics parametrization
   cout << "\nReduced-order model setting:\n";
   cout << "Warning: Need to make sure that the implementation in "
        "DynamicsExpression agrees with n_s and n_tau.\n";
@@ -2122,22 +2127,23 @@ int findGoldilocksModels(int argc, char* argv[]) {
           bool current_sample_is_a_rerun =
               rerun_current_iteration || (n_rerun[sample_idx] > 0);
 
-          // setup for each sample
-          tasks.set(task_gen.NewTasks(sample_idx, is_get_nominal));
+          // Prefix for the file name
+          prefix = to_string(iter) +  "_" + to_string(sample_idx) + "_";
 
-          // Store the tasks or overwrite it with previous tasks
+          // Generate a new task or use the same task if this is a rerun
           // (You need step_size_shrinked_last_loop because you might start the
           // program with shrinking step size)
           if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
-            tasks.set(CopyVectorXdToStdVector(previous_tasks[sample_idx]));
+            task.set(CopyVectorXdToStdVector(previous_task[sample_idx]));
           } else {
-            // TODO: you can remove GetVectorXd() method by creating a method that maps vector<> into VectorXd
-            //  https://stackoverflow.com/questions/40852757/c-how-to-convert-stdvector-to-eigenmatrixxd
-            previous_tasks[sample_idx] = tasks.GetVectorXd();
+            task.set(task_gen.NewTask(sample_idx, is_get_nominal));
+            // Map std::vector to VectorXd and create a copy of VectorXd
+            Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
+                task.get().data(), task.get().size());
+            previous_task[sample_idx] = task_vectorxd;
+            // Store task in files
+            writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
           }
-          // Store tasks in files so we can use it in visualization
-          prefix = to_string(iter) +  "_" + to_string(sample_idx) + "_";
-          writeCSV(dir + prefix + string("tasks.csv"), tasks.GetVectorXd());
 
           // (Feature -- get initial guess from adjacent successful samples)
           // If the current sample already finished N_rerun, then it means that
@@ -2174,7 +2180,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           threads[available_thread_idx.front()] = new std::thread(
               trajOptGivenWeights, std::ref(plant), std::ref(plant_autoDiff),
               n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
-              std::ref(B_tau), std::ref(theta_s), std::ref(theta_sDDot), tasks,
+              std::ref(B_tau), std::ref(theta_s), std::ref(theta_sDDot), task,
               duration, n_node, max_inner_iter_pass_in,
               FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
               std::ref(dir), init_file_pass_in, prefix, std::ref(w_sol_vec),

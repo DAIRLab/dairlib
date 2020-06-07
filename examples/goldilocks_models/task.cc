@@ -21,6 +21,9 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
   DRAKE_DEMAND(N_sample_vec.size() == (unsigned)task_dim);
   DRAKE_DEMAND(task_0.size() == (unsigned)task_dim);
   DRAKE_DEMAND(task_delta.size() == (unsigned)task_dim);
+  for (auto n_sample : N_sample_vec) {
+    DRAKE_DEMAND(n_sample > 0);
+  }
 
   // Random number generator
   std::random_device randgen;
@@ -79,7 +82,7 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
   }
 }
 
-vector<double> GridTasksGenerator::NewTasks(int sample_idx,
+vector<double> GridTasksGenerator::NewTask(int sample_idx,
                                             bool disable_stochastic) {
   auto index_tuple = forward_task_idx_map_.at(sample_idx);
   /*cout << sample_idx << ", (";

@@ -187,6 +187,40 @@ bool CreateFolderIfNotExist(const string& dir) {
   return true;
 }
 
+template <int Rows, int Cols>
+vector<std::string> ParseCsvToStringVec(const std::string& file_name) {
+  DRAKE_DEMAND(Rows != -1 || Cols != -1);
+  // cout << "parse " << file_name << endl;
+
+  // Read file into a std::string
+  std::ifstream ifs(file_name);
+  std::string content((std::istreambuf_iterator<char>(ifs)),
+                      (std::istreambuf_iterator<char>()));
+
+  // parse
+  vector<std::string> ret;
+  std::stringstream ss(content);
+  std::string item;
+  char delimiter = (Rows == -1) ? '\n' : ',';
+  while (std::getline(ss, item, delimiter)) {
+    // cout << item << endl;
+    ret.push_back(item);
+  }
+  return ret;
+}
+template vector<std::string> ParseCsvToStringVec<1, -1>(const std::string&);
+template vector<std::string> ParseCsvToStringVec<-1, 1>(const std::string&);
+
+void SaveStringVecToCsv(vector<std::string> strings,
+                        const std::string& file_name) {
+  std::ofstream ofile;
+  ofile.open(file_name, std::ofstream::out);
+  for (auto & mem : strings) {
+    ofile << mem << endl;
+  }
+  ofile.close();
+}
+
 
 }  // namespace goldilocks_models
 } // dairlib

@@ -19,6 +19,8 @@
 #include "multibody/multibody_utils.h"
 
 #include "examples/goldilocks_models/find_models/goldilocks_model_traj_opt.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/task.h"
 
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
@@ -49,7 +51,7 @@ void trajOptGivenWeights(
     int n_s, int n_sDDot, int n_tau, int n_feature_s, int n_feature_sDDot,
     const MatrixXd& B_tau,
     const VectorXd & theta_s, const VectorXd & theta_sDDot,
-    double stride_length, double ground_incline, double turning_rate,
+    Tasks tasks,
     double duration, int n_node, int max_iter,
     double major_optimality_tol, double major_feasibility_tol,
     const std::string& directory, string init_file,

@@ -23,9 +23,9 @@ if len(sys.argv) >= 4:
     robot_option = int(sys.argv[3])
 
 
-n_sampel_sl = 3  # should be > 0
-n_sampel_gi = 3  # should be > 0
-n_sampel_tr = 3  # should be > 0
+n_sampel_sl = 2  # should be > 0
+n_sampel_gi = 2  # should be > 0
+n_sampel_tr = 2  # should be > 0
 N_sample = n_sampel_sl * n_sampel_gi * n_sampel_tr
 print('n_sampel_sl = ' + str(n_sampel_sl))
 print('n_sampel_gi = ' + str(n_sampel_gi))

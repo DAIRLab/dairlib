@@ -8,6 +8,8 @@ cc_binary(
         ":dynamics_expression",
         ":goldilocks_utils",
         ":kinematics_expression",
+        ":task",
+        "//common:eigen_utils",
         "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
         "//systems/goldilocks_models",
         "//systems/trajectory_optimization:dircon",
@@ -101,6 +103,20 @@ cc_library(
     ],
     deps = [
         "//systems/goldilocks_models",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "task",
+    srcs = [
+        "task.cc",
+    ],
+    hdrs = [
+        "task.h",
+    ],
+    deps = [
+        "//common:eigen_utils",
         "@drake//:drake_shared_library",
     ],
 )

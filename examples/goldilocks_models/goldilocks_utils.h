@@ -1,3 +1,5 @@
+#pragma once
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "systems/goldilocks_models/file_utils.h"
 
@@ -47,6 +49,10 @@ bool file_exist (const std::string & name);
 bool folder_exist (const std::string & pathname_string);
 // return false when the user want to stop
 bool CreateFolderIfNotExist(const string& dir);
+
+vector<std::string> ParseCsvToStringVec(const std::string& file_name);
+void SaveStringVecToCsv(vector<std::string> strings,
+                        const std::string& file_name);
 
 }  // namespace goldilocks_models
 } // dairlib

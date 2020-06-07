@@ -389,6 +389,10 @@ class JointSpaceTrackingData final : public OscTrackingData {
 // TODO: the implementation of VToQdotMap is for MBP.
 //  Continue to implement this after we fully port OSC to MBP. Will need to
 //  verify that the functions are implemented correctly.
+
+// TODO: You can probably use symbolics of drake
+//  Also, drake polynomial function can potentially help you to do derivatives
+
 class AbstractTrackingData final : public OscTrackingData {
  public:
   AbstractTrackingData(

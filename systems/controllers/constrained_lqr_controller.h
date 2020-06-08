@@ -30,9 +30,6 @@ namespace systems {
  * obtain q*, u* and lambda* (Fixed point vectors).
  * The Q and R matrices need to be specified, which define the LQR cost
  * matrices.
- * If the system is in contact, ContactInfo may be provide and this information
- * is taken into account while computing the Jacobians. If it is not provided,
- * the controller assumes no contact.
  */
 class ConstrainedLQRController : public drake::systems::LeafSystem<double> {
  public:

@@ -85,17 +85,20 @@ class KinematicEvaluatorSet {
   /// @param context
   /// @param lambda constraint forces, applied via
   ///   evaluators.EvalActiveJacobian().transpose() * lambda
-  drake::VectorX<T> CalcTimeDerivatives(
+  drake::VectorX<T> CalcTimeDerivativesWithForce(
       const drake::systems::Context<T>& context,
       const drake::VectorX<T>& lambda) const;
 
   /// Computes vdot given the state and control inputs, satisfying kinematic
   /// constraints.
-  /// Solves for the constraint forces using the full kinematic elements.
+  /// Solves for the constraint forces using the ACTIVE kinematic elements.
   /// Similar to CalcTimeDerivatives(context, evaluators, lambda), but solves
   /// for the forces to satisfy the constraint ddot phi = -kp*phi - kd*phidot
-  ///   NOTE: the constraint __only__ includes the active contacts, but the
-  ///   force lambda returns the full contact set
+  ///   NOTE: the constraint __only__ includes the active contacts, and the
+  /// constraint force lambda is also only in terms of active contacts, unlike
+  /// the similar methods CalcTimeDerivativesWithForce(context, lambda). 
+  /// To retrieve the computed lambda, see
+  /// CalcTimeDeriviatives(context, lambda).
   /// @param context
   /// @param alpha Inverse time constant for constraint stabilization.
   ///   Results in kp = alpha^2, kd = 2*alpha. Default = 0

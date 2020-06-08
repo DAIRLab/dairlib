@@ -49,7 +49,7 @@ void addCassieMultibody(drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     bool floating_base = true,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf",
-    bool add_leaf_springs = true,  bool add_loop_closure_springs = true);
+    bool add_leaf_springs = true,  bool add_loop_closure = true);
 
 template <typename T>
 std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> LeftToe(

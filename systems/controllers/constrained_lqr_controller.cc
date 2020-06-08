@@ -57,7 +57,7 @@ ConstrainedLQRController::ConstrainedLQRController(
 
   // Add quaternion constraints to F
   // Constraints come from the kinematic fact that ||q|| = 1, linearized is
-  // dot(q_0, delta_q) = 0
+  // q_0^T delta_q = 0
   // Note that there is no corresponding constraint on angular velocity, which
   // is already 3-dimensional (not 4).
   int num_quat = 0;
@@ -70,6 +70,10 @@ ConstrainedLQRController::ConstrainedLQRController(
     }
   }
 
+  // F = [J_active_qdot, 0         ]
+  //     [0            , J_active_v]
+  //     [          F_quat         ]
+  // Note that d/dt J = 0 since this is time-invariant.
   MatrixXd F_quat =
       MatrixXd::Zero(num_quat, J_active_qdot.cols() + J_active_v.cols());
   for (int i = 0; i < num_quat; i++) {
@@ -119,8 +123,7 @@ ConstrainedLQRController::ConstrainedLQRController(
 
   MatrixXd AB = autoDiffToGradientMatrix(xdot);
   MatrixXd A = AB.leftCols(plant_.num_positions() + plant_.num_velocities());
-  MatrixXd B = AB.block(0, plant_.num_positions() + plant_.num_velocities(),
-      AB.rows(), plant_.num_actuators());
+  MatrixXd B = AB.rightCols(plant_.num_actuators());
 
   A_full_ = A;
   B_full_ = B;

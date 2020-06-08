@@ -56,6 +56,7 @@ DEFINE_int32(rom_option, -1, "");
 // tasks
 DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
 DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
+DEFINE_int32(N_sample_v, 1, "Sampling # for walking velocity");
 DEFINE_int32(N_sample_tr, 1, "Sampling # for turning rate");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
@@ -71,7 +72,7 @@ DEFINE_int32(
     "Max iteration # for traj opt. Sometimes, snopt takes very small steps "
     "(TODO: find out why), so maybe it's better to stop at some iterations and "
     "resolve again.");
-DEFINE_int32(n_node, -1, "# of nodes for traj opt");
+DEFINE_double(node_density, -1, "# of nodes per second in traj opt");
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
 DEFINE_bool(snopt_scaling, false, "SNOPT built-in scaling feature");
 
@@ -1438,90 +1439,26 @@ int findGoldilocksModels(int argc, char* argv[]) {
   string prefix = "";
   if (!CreateFolderIfNotExist(dir)) return 0;
 
-  // Parameters for tasks (stride length and ground incline)
+  // Parameters for tasks
   cout << "\nTasks settings:\n";
-  if (FLAGS_robot_option == 0) {
-    DRAKE_DEMAND(FLAGS_N_sample_tr == 1);
-  }
-  double delta_stride_length;
-  double stride_length_0;
-  if (FLAGS_robot_option == 0) {
-    delta_stride_length = 0.015;
-    stride_length_0 = 0.3;
-  } else if (FLAGS_robot_option == 1) {
-    if (FLAGS_is_stochastic) {
-      delta_stride_length = 0.015;//0.066; // 0.066 might be too big;
-    } else {
-      delta_stride_length = 0.1;
-    }
-    stride_length_0 = 0.2;  //0.15
-  } else {
-    throw std::runtime_error("Should not reach here");
-    delta_stride_length = 0;
-    stride_length_0 = 0;
-  }
-  double delta_ground_incline;
-  double ground_incline_0 = 0;
-  if (FLAGS_robot_option == 0) {
-    delta_ground_incline = 0.05;
-  } else if (FLAGS_robot_option == 1) {
-    if (FLAGS_is_stochastic) {
-      delta_ground_incline = 0.05;//0.066; // 0.066 might be too big
-    } else {
-      delta_ground_incline = 0.08;
-    }
-  } else {
-    throw std::runtime_error("Should not reach here");
-    delta_ground_incline = 0;
-  }
-  double delta_turning_rate;
-  double turning_rate_0 = 0;
-  if (FLAGS_robot_option == 0) {
-    delta_turning_rate = 0.0;
-  } else if (FLAGS_robot_option == 1) {
-    delta_turning_rate = 0.125;
-  } else {
-    throw std::runtime_error("Should not reach here");
-    delta_turning_rate = 0;
-  }
-  double duration = 0.4;
-  if (FLAGS_robot_option == 0) {
-    duration = 0.746;  // Fix the duration now since we add cost ourselves
-  } else if (FLAGS_robot_option == 1) {
-    duration = 0.4; // 0.4;
-  }
-  cout << "duration = " << duration << endl;
   GridTasksGenerator task_gen;
   if (FLAGS_robot_option == 0) {
     task_gen = GridTasksGenerator(
-        2, {"stride length", "ground incline"},
-        {FLAGS_N_sample_sl, FLAGS_N_sample_gi},
-        {stride_length_0, ground_incline_0},
-        {delta_stride_length, delta_ground_incline},
-        FLAGS_is_stochastic);
+        3, {"stride length", "ground incline", "velocity"},
+        {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v}, {0.3, 0, 0.4},
+        {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
   } else if (FLAGS_robot_option == 1) {
     task_gen = GridTasksGenerator(
-        3, {"stride length", "ground incline", "turning rate"},
-        {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_tr},
-        {stride_length_0, ground_incline_0, turning_rate_0},
-        {delta_stride_length, delta_ground_incline, delta_turning_rate},
-        FLAGS_is_stochastic);
+        4, {"stride length", "ground incline", "velocity", "turning rate"},
+        {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
+         FLAGS_N_sample_tr},
+        {0.2, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
+  } else {
+    throw std::runtime_error("Should not reach here");
+    task_gen = GridTasksGenerator();
   }
   DRAKE_DEMAND(task_gen.task_min("stride length") >= 0);
-  int N_sample = task_gen.total_sample_number();
-  Task task(task_gen.names());
-  SaveStringVecToCsv(task_gen.names(), dir + string("task_names.csv"));
-  vector<VectorXd> previous_task(N_sample, VectorXd::Zero(task_gen.dim()));
-  if (FLAGS_start_current_iter_as_rerun ||
-      FLAGS_start_iterations_with_shrinking_stepsize) {
-    for (int i = 0; i < N_sample; i++) {
-      auto pre_task = readCSV(dir + to_string(FLAGS_iter_start) + "_" +
-                              to_string(i) + string("_task.csv"))
-                          .col(0);
-      DRAKE_DEMAND(pre_task.rows() == task_gen.dim());
-      previous_task[i] = pre_task;
-    }
-  }
+  DRAKE_DEMAND(task_gen.task_min("velocity") >= 0);
 
   // Parameters for the outer loop optimization
   cout << "\nOptimization setting (outer loop):\n";
@@ -1687,32 +1624,26 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double R = 0;  // Cost on input effort
   double all_cost_scale = 1;
   setCostWeight(&Q, &R, &all_cost_scale, FLAGS_robot_option);
-  int n_node = 20;
-  if (FLAGS_robot_option == 0) {
-    n_node = 20;
-  } else if (FLAGS_robot_option == 1) {
-    n_node = 20;
-  }
-  if (FLAGS_n_node > 0) n_node = FLAGS_n_node;
+  double node_density = 40; // # per second
+  if (FLAGS_node_density > 0) node_density = FLAGS_node_density;
+  // Two things you need to be careful about node density (keep an eye on these
+  // in the future):
+  // 1. If the number of nodes are too high, it will take much time to solve.
+  //    (30 is probably considered to be high)
+  // 2. If the # of nodes per distance is too low, it's harder for SNOPT to
+  // converge well. E.g. the ratio of distance per nodes = 0.2/16 is fine for
+  // SNOPT, but 0.3 / 16 is too high.
   cout << "\nOptimization setting (inner loop):\n";
   cout << "max_inner_iter = " << max_inner_iter << endl;
   cout << "major_optimality_tolerance = " << FLAGS_major_feasibility_tol << endl;
   cout << "major_feasibility_tolerance = " << FLAGS_major_feasibility_tol << endl;
-  cout << "n_node = " << n_node << endl;
+  cout << "node_density = " << node_density << endl;
   cout << "use SNOPT built-in scaling? " << FLAGS_snopt_scaling << endl;
-  if (FLAGS_robot_option == 1) {
-    // If the node density is too low, it's harder for SNOPT to converge well.
-    // The ratio of distance per nodes = 0.2/16 is fine for snopt, but
-    // 0.3 / 16 is too high.
-    // However, currently it takes too much time to compute with many nodes, so
-    // we try 0.3/24.
-    double max_distance_per_node = 0.3 / 16;
-    DRAKE_DEMAND((task_gen.task_max("stride length") / n_node) <=
-                 max_distance_per_node);
-  }
 
   // Reduced order model parameters
-  // TODO: you can also create a ROM class.
+  // TODO: currently you can just create a class RomParameters to reduced the
+  //  argument size of some functions in the code
+  // TODO: later you can also create a ROM class.
   //  .
   //  virtual class MappingFunctionParametrization
   //  derived class CassieMapping
@@ -1760,6 +1691,22 @@ int findGoldilocksModels(int argc, char* argv[]) {
       cout << "Continue constructing the problem...\n";
     }
   }
+
+  // Tasks setup
+  int N_sample = task_gen.total_sample_number();
+  Task task(task_gen.names());
+  vector<VectorXd> previous_task(N_sample, VectorXd::Zero(task_gen.dim()));
+  if (FLAGS_start_current_iter_as_rerun ||
+      FLAGS_start_iterations_with_shrinking_stepsize) {
+    for (int i = 0; i < N_sample; i++) {
+      auto pre_task = readCSV(dir + to_string(FLAGS_iter_start) + "_" +
+          to_string(i) + string("_task.csv"))
+          .col(0);
+      DRAKE_DEMAND(pre_task.rows() == task_gen.dim());
+      previous_task[i] = pre_task;
+    }
+  }
+  SaveStringVecToCsv(task_gen.names(), dir + string("task_names.csv"));
 
   // Reduced order model setup
   KinematicsExpression<double> kin_expression(n_s, 0, &plant, FLAGS_robot_option);
@@ -2181,14 +2128,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
               trajOptGivenWeights, std::ref(plant), std::ref(plant_autoDiff),
               n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
               std::ref(B_tau), std::ref(theta_s), std::ref(theta_sDDot), task,
-              duration, n_node, max_inner_iter_pass_in,
-              FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
-              std::ref(dir), init_file_pass_in, prefix, std::ref(w_sol_vec),
-              std::ref(A_vec), std::ref(H_vec), std::ref(y_vec),
-              std::ref(lb_vec), std::ref(ub_vec), std::ref(b_vec),
-              std::ref(c_vec), std::ref(B_vec), std::ref(is_success_vec),
-              std::ref(thread_finished_vec), Q, R, all_cost_scale,
-              eps_regularization, is_get_nominal,
+              node_density, max_inner_iter_pass_in, FLAGS_major_feasibility_tol,
+              FLAGS_major_feasibility_tol, std::ref(dir), init_file_pass_in,
+              prefix, std::ref(w_sol_vec), std::ref(A_vec), std::ref(H_vec),
+              std::ref(y_vec), std::ref(lb_vec), std::ref(ub_vec),
+              std::ref(b_vec), std::ref(c_vec), std::ref(B_vec),
+              std::ref(is_success_vec), std::ref(thread_finished_vec), Q, R,
+              all_cost_scale, eps_regularization, is_get_nominal,
               FLAGS_is_zero_touchdown_impact, extend_model_this_iter,
               FLAGS_is_add_tau_in_cost, FLAGS_snopt_scaling, sample_idx,
               n_rerun[sample_idx], cost_threshold_for_update[sample_idx],
@@ -2353,13 +2299,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
       }
     } else if (extend_model_this_iter) {  // Extend the model
       cout << "Start extending model...\n";
-      extendModel(dir, iter, n_feature_s,
-                  n_s, n_sDDot, n_tau,
-                  n_feature_sDDot,
-                  n_theta_s, n_theta_sDDot, n_theta,
-                  B_tau, theta_s, theta_sDDot, theta,
-                  prev_theta, step_direction, prev_step_direction, ave_min_cost_so_far,
-                  rom_option, FLAGS_robot_option);
+      extendModel(dir, iter, n_feature_s, n_s, n_sDDot, n_tau, n_feature_sDDot,
+                  n_theta_s, n_theta_sDDot, n_theta, B_tau, theta_s,
+                  theta_sDDot, theta, prev_theta, step_direction,
+                  prev_step_direction, ave_min_cost_so_far, rom_option,
+                  FLAGS_robot_option);
 
       // So that we can re-run the current iter
       cout << "Reset \"has_been_all_success\" to false, in case the next iter "

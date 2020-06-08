@@ -23,7 +23,10 @@ template <typename T>
 void QuaternionNormConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
   (*y).resize(1);
-  *y << x.norm() - 1;
+  // Using x.norm() is better, numerically, than x.squaredNorm() except when
+  // x is near zero. The below is a permutation of x.norm() = 1 that will be
+  // differentiable everywhere, unlike x.norm(). 
+  *y << sqrt(x.squaredNorm() + 1e-3) - sqrt(1 + 1e-3);
 }
 
 template <typename T>
@@ -65,8 +68,6 @@ DirconCollocationConstraint<T>::DirconCollocationConstraint(
 template <typename T>
 void DirconCollocationConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& x, VectorX<T>* y) const {
-  DRAKE_ASSERT(x.size() == 1 + 2 * (n_x_ + n_u_) + 4* n_l_ +
-      quat_start_indices_.size())
   // Extract decision variables
   const T& h = x(0);
   const auto& x0 = x.segment(1, n_x_);
@@ -94,7 +95,7 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
   // Evaluate dynamics at colocation point
   multibody::setContext<T>(plant_, xcol, ucol, context_col_.get());
   auto g = evaluators_.CalcTimeDerivatives(*context_col_, lc);
-  
+
   // Add velocity slack contribution, J^T * gamma
   VectorX<T> gamma_in_qdot_space(plant_.num_positions());
   plant_.MapVelocityToQDot(*context_col_,
@@ -105,7 +106,7 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
   // Add quaternion slack contribution, quat * slack
   for (uint i = 0; i < quat_start_indices_.size(); i++) {
     g.segment(quat_start_indices_.at(i), 4) +=
-        g.segment(quat_start_indices_.at(i), 4) * quat_slack(i);
+        xcol.segment(quat_start_indices_.at(i), 4) * quat_slack(i);
   }
 
   *y = xdotcol - g;

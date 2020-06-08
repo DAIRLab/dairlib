@@ -173,6 +173,8 @@ class Dircon
   std::unique_ptr<DirconModeSequence<T>> my_sequence_;
   const drake::multibody::MultibodyPlant<T>& plant_;
   const DirconModeSequence<T>& mode_sequence_;
+  std::vector<std::vector<std::unique_ptr<drake::systems::Context<T>>>>
+      contexts_;
   std::vector<int> mode_start_;
   void DoAddRunningCost(const drake::symbolic::Expression& e) override;
   std::vector<drake::solvers::VectorXDecisionVariable> force_vars_;
@@ -182,8 +184,6 @@ class Dircon
   std::vector<drake::solvers::VectorXDecisionVariable> impulse_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> offset_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> quaternion_slack_vars_;
-  std::vector<std::vector<std::unique_ptr<drake::systems::Context<T>>>>
-    contexts_;
   std::unique_ptr<multibody::MultiposeVisualizer> callback_visualizer_;
 };
 

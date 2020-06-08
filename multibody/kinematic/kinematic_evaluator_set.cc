@@ -99,10 +99,10 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFullSecondTimeDerivative(
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalActiveSecondTimeDerivative(
   const Context<T>& context,  const VectorX<T>& lambda) const {
-  const auto& vdot = CalcTimeDerivatives(context, lambda);
+  const auto& xdot = CalcTimeDerivatives(context, lambda);
   const auto& J = EvalActiveJacobian(context);
   const auto& Jdotv = EvalActiveJacobianDotTimesV(context);
-  return J * vdot + Jdotv;
+  return J * xdot.tail(plant_.num_velocities()) + Jdotv;
 }
 
 template <typename T>
@@ -171,7 +171,7 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
   VectorX<T> J_transpose_lambda =
       EvalFullJacobian(context).transpose() * lambda;
 
-  return tau_g + f_app.generalized_forces()+ Bu + J_transpose_lambda - C;
+  return tau_g + f_app.generalized_forces() + Bu + J_transpose_lambda - C;
 }
 
 template <typename T>

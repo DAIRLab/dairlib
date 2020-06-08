@@ -10,9 +10,11 @@ namespace systems {
 namespace trajectory_optimization {
 
 using drake::multibody::MultibodyPlant;
+using drake::solvers::MathematicalProgramResult;
 using drake::solvers::VectorXDecisionVariable;
 using drake::symbolic::Expression;
 using drake::systems::Context;
+using drake::trajectories::PiecewisePolynomial;
 using drake::VectorX;
 
 using Eigen::MatrixXd;
@@ -44,11 +46,12 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     : drake::systems::trajectory_optimization::MultipleShooting(
           plant.num_actuators(),
           plant.num_positions() + plant.num_velocities(),
-          num_knotpoints, false),
+          num_knotpoints, 1e-8, 1e8),
       my_sequence_(std::move(my_sequence_)),
       plant_(plant),
       mode_sequence_(ext_sequence ? *ext_sequence : *my_sequence),
-      contexts_(num_modes()) {
+      contexts_(num_modes()),
+      mode_start_(num_modes()) {
   // Loop over all modes
   for (int i_mode = 0; i_mode < num_modes(); i_mode++) {    
     const auto& mode = mode_sequence_.mode(i_mode);
@@ -90,12 +93,18 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
         mode.evaluators().count_full() * (mode.num_knotpoints() - 1),
         "gamma[" + std::to_string(i_mode) + "]"));
 
+    // Bound collocation slack variables to avoid numerical issues
+    AddBoundingBoxConstraint(-.01, .01, collocation_slack_vars_.at(i_mode));
+
     // quaternion_slack_vars_ (slack variables used to scale quaternion norm to
     // 1 in the dynamic constraints)
     int num_quat = multibody::QuaternionStartIndices(plant_).size();
     quaternion_slack_vars_.push_back(NewContinuousVariables(
-        num_quat * mode.num_knotpoints(),
+        num_quat * (mode.num_knotpoints() - 1),
         "quat_slack[" + std::to_string(i_mode) + "]"));
+
+    // Bound quaternion slack variables to avoid false full rotations
+    AddBoundingBoxConstraint(-.01, .01, quaternion_slack_vars_.at(i_mode));
 
     // Impulse and post-impact variables
     if (i_mode > 0) {
@@ -280,6 +289,15 @@ const VectorXDecisionVariable Dircon<T>::collocation_force_vars(int mode_index,
 }
 
 template <typename T>
+const VectorXDecisionVariable Dircon<T>::collocation_slack_vars(int mode_index,
+    int knotpoint_index) const {
+  const auto& mode = mode_sequence_.mode(mode_index);
+  return collocation_slack_vars_.at(mode_index).segment(
+      knotpoint_index * mode.evaluators().count_full(),
+      mode.evaluators().count_full());
+}
+
+template <typename T>
 const VectorXDecisionVariable Dircon<T>::state_vars(int mode_index,
     int knotpoint_index) const {
   // If first knot of a mode after the first, use post impact velocity variables
@@ -292,7 +310,7 @@ const VectorXDecisionVariable Dircon<T>::state_vars(int mode_index,
         post_impact_velocity_vars(mode_index - 1);
     return ret;
   } else {
-    return x_vars().segment(mode_start_[mode_index]
+    return x_vars().segment((mode_start_[mode_index] + knotpoint_index)
             * (plant_.num_positions() + plant_.num_velocities()),
         plant_.num_positions() + plant_.num_velocities());
   }
@@ -301,8 +319,8 @@ const VectorXDecisionVariable Dircon<T>::state_vars(int mode_index,
 template <typename T>
 const VectorXDecisionVariable Dircon<T>::input_vars(int mode_index,
     int knotpoint_index) const {
-  return u_vars().segment(mode_start_[mode_index] * plant_.num_actuators(),
-      plant_.num_actuators());
+  return u_vars().segment((mode_start_[mode_index] + knotpoint_index)
+      * plant_.num_actuators(), plant_.num_actuators());
 }
 
 template <typename T>
@@ -444,8 +462,6 @@ void Dircon<T>::CreateVisualizationCallback(std::string model_file,
     assigned_sum++;
   }
 
-  for (auto& n : num_poses_per_mode)
-    std::cout << n << std::endl;
   CreateVisualizationCallback(model_file, num_poses_per_mode,
       weld_frame_to_world);
 }
@@ -488,105 +504,103 @@ void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
           h_vars()(N() - 2) / 2);
 }
 
-// template <typename T>
-// PiecewisePolynomial<double> Dircon<T>::ReconstructInputTrajectory(
-//     const MathematicalProgramResult& result) const {
-//   Eigen::VectorXd times = GetSampleTimes(result);
-//   vector<double> times_vec(N());
-//   vector<Eigen::MatrixXd> inputs(N());
-//   for (int i = 0; i < N(); i++) {
-//     times_vec[i] = times(i);
-//     inputs[i] = result.GetSolution(input(i));
-//   }
-//   return PiecewisePolynomial<double>::FirstOrderHold(times_vec, inputs);
-// }
+template <typename T>
+PiecewisePolynomial<double> Dircon<T>::ReconstructInputTrajectory(
+    const MathematicalProgramResult& result) const {
+  Eigen::VectorXd times = GetSampleTimes(result);
+  Eigen::MatrixXd inputs(plant_.num_actuators(), N());
+  for (int i = 0; i < N(); i++) {
+    inputs.col(i) = result.GetSolution(input(i));
+  }
+  return PiecewisePolynomial<double>::FirstOrderHold(times, inputs);
+}
 
-// // TODO(mposa)
-// // need to configure this to handle the hybrid discontinuities properly
-// template <typename T>
-// PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory(
-//     const MathematicalProgramResult& result) const {
-//   VectorXd times_all(GetSampleTimes(result));
-//   VectorXd times(N() + num_modes_ - 1);
+// TODO(posa)
+// need to configure this to handle the hybrid discontinuities properly
+template <typename T>
+PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory(
+    const MathematicalProgramResult& result) const {
+  VectorXd times_all(GetSampleTimes(result));
+  VectorXd times(N() + num_modes() - 1);
 
-//   MatrixXd states(num_states(), N() + num_modes_ - 1);
-//   MatrixXd inputs(num_inputs(), N() + num_modes_ - 1);
-//   MatrixXd derivatives(num_states(), N() + num_modes_ - 1);
+  MatrixXd states(num_states(), N() + num_modes() - 1);
+  MatrixXd inputs(num_inputs(), N() + num_modes() - 1);
+  MatrixXd derivatives(num_states(), N() + num_modes() - 1);
 
-//   for (int i = 0; i < num_modes_; i++) {
-//     for (int j = 0; j < mode_lengths_[i]; j++) {
-//       int k = mode_start_[i] + j + i;
-//       int k_data = mode_start_[i] + j;
-//       times(k) = times_all(k_data);
+  for (int i = 0; i < num_modes(); i++) {
+    for (int j = 0; j < mode_length(i); j++) {
+      int k = mode_start_[i] + j + i;
+      times(k) = times_all(mode_start_[i] + j);
 
-//       // False timestep to match velocities
-//       if (i > 0 && j == 0) {
-//         times(k) += +1e-6;
-//       }
-//       VectorX<T> xk = result.GetSolution(state_vars_by_mode(i, j));
-//       VectorX<T> uk = result.GetSolution(input(k_data));
-//       states.col(k) = drake::math::DiscardGradient(xk);
-//       inputs.col(k) = drake::math::DiscardGradient(uk);
-//       auto context = multibody::createContext<T>(plant_, xk, uk);
-//       constraints_[i]->updateData(*context, result.GetSolution(force(i, j)));
-//       derivatives.col(k) =
-//           drake::math::DiscardGradient(constraints_[i]->getXDot());
-//     }
-//   }
-//   return PiecewisePolynomial<double>::CubicHermite(times, states, derivatives);
-// }
+      // False timestep to match velocities
+      if (i > 0 && j == 0) {
+        times(k) += +1e-6;
+      }
+      VectorX<T> xk = result.GetSolution(state_vars(i, j));
+      VectorX<T> uk = result.GetSolution(input_vars(i, j));
+      states.col(k) = drake::math::DiscardGradient(xk);
+      inputs.col(k) = drake::math::DiscardGradient(uk);
+      auto context = multibody::createContext<T>(plant_, xk, uk);
+      auto xdot = mode_sequence_.mode(i).evaluators().CalcTimeDerivatives(
+          *context, result.GetSolution(force_vars(i, j)));
+      derivatives.col(k) = drake::math::DiscardGradient(xdot);
+    }
+  }
+  return PiecewisePolynomial<double>::CubicHermite(times, states, derivatives);
+}
 
-// template <typename T>
-// void Dircon<T>::SetInitialForceTrajectory(
-//     int mode, const PiecewisePolynomial<double>& traj_init_l,
-//     const PiecewisePolynomial<double>& traj_init_lc,
-//     const PiecewisePolynomial<double>& traj_init_vc) {
-//   double start_time = 0;
-//   double h;
-//   if (timesteps_are_decision_variables())
-//     h = GetInitialGuess(h_vars()[0]);
-//   else
-//     h = fixed_timestep();
+template <typename T>
+void Dircon<T>::SetInitialForceTrajectory(
+    int mode_index, const PiecewisePolynomial<double>& traj_init_l,
+    const PiecewisePolynomial<double>& traj_init_lc,
+    const PiecewisePolynomial<double>& traj_init_vc) {
+  const auto& mode = mode_sequence_.mode(mode_index);
+  double start_time = 0;
+  double h;
+  if (timesteps_are_decision_variables())
+    h = GetInitialGuess(h_vars()[0]);
+  else
+    h = fixed_timestep();
 
-//   VectorXd guess_force(force_vars_[mode].size());
-//   if (traj_init_l.empty()) {
-//     guess_force.fill(0);  // Start with 0
-//   } else {
-//     for (int i = 0; i < mode_lengths_[mode]; ++i) {
-//       guess_force.segment(num_kinematic_constraints_wo_skipping_[mode] * i,
-//                           num_kinematic_constraints_wo_skipping_[mode]) =
-//           traj_init_l.value(start_time + i * h);
-//     }
-//   }
-//   SetInitialGuess(force_vars_[mode], guess_force);
+  VectorXd guess_force(force_vars_[mode_index].size());
+  if (traj_init_l.empty()) {
+    guess_force.fill(0);  // Start with 0
+  } else {
+    for (int i = 0; i < mode.num_knotpoints(); ++i) {
+      guess_force.segment(mode.evaluators().count_full() * i,
+                          mode.evaluators().count_full()) =
+          traj_init_l.value(start_time + i * h);
+    }
+  }
+  SetInitialGuess(force_vars_[mode_index], guess_force);
 
-//   VectorXd guess_collocation_force(collocation_force_vars_[mode].size());
-//   if (traj_init_lc.empty()) {
-//     guess_collocation_force.fill(0);  // Start with 0
-//   } else {
-//     for (int i = 0; i < mode_lengths_[mode] - 1; ++i) {
-//       guess_collocation_force.segment(
-//           num_kinematic_constraints_wo_skipping_[mode] * i,
-//           num_kinematic_constraints_wo_skipping_[mode]) =
-//           traj_init_lc.value(start_time + (i + 0.5) * h);
-//     }
-//   }
-//   SetInitialGuess(collocation_force_vars_[mode], guess_collocation_force);
+  VectorXd guess_collocation_force(mode.evaluators().count_full());
+  if (traj_init_lc.empty()) {
+    guess_collocation_force.fill(0);  // Start with 0
+  } else {
+    for (int i = 0; i < mode.num_knotpoints() - 1; ++i) {
+      guess_collocation_force.segment(
+          mode.evaluators().count_full() * i,
+          mode.evaluators().count_full()) =
+          traj_init_lc.value(start_time + (i + 0.5) * h);
+    }
+  }
+  SetInitialGuess(collocation_force_vars_[mode_index], guess_collocation_force);
 
-//   VectorXd guess_collocation_slack(collocation_slack_vars_[mode].size());
-//   if (traj_init_vc.empty()) {
-//     guess_collocation_slack.fill(0);  // Start with 0
-//   } else {
-//     for (int i = 0; i < mode_lengths_[mode] - 1; ++i) {
-//       guess_collocation_slack.segment(
-//           num_kinematic_constraints_wo_skipping_[mode] * i,
-//           num_kinematic_constraints_wo_skipping_[mode]) =
-//           traj_init_vc.value(start_time + (i + 0.5) * h);
-//     }
-//   }
-//   // call superclass method
-//   SetInitialGuess(collocation_slack_vars_[mode], guess_collocation_slack);
-// }
+  VectorXd guess_collocation_slack(mode.evaluators().count_full());
+  if (traj_init_vc.empty()) {
+    guess_collocation_slack.fill(0);  // Start with 0
+  } else {
+    for (int i = 0; i < mode.num_knotpoints() - 1; ++i) {
+      guess_collocation_slack.segment(
+          mode.evaluators().count_full() * i,
+          mode.evaluators().count_full()) =
+          traj_init_vc.value(start_time + (i + 0.5) * h);
+    }
+  }
+  // call superclass method
+  SetInitialGuess(collocation_slack_vars_[mode_index], guess_collocation_slack);
+}
 
 template <typename T>
 int Dircon<T>::num_modes() const {
@@ -697,6 +711,7 @@ void Dircon<T>::ScaleStateVariables(std::vector<int> index_list,
     ScaleStateVariable(idx, scale);
   }
 }
+
 template <typename T>
 void Dircon<T>::ScaleInputVariables(std::vector<int> index_list,
     double scale) {

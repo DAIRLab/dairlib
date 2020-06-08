@@ -24,3 +24,16 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_binary(
+    name = "passive_constrained_pendulum_dircon",
+    srcs = ["test/passive_constrained_pendulum_dircon.cc"],
+    data = ["test/acrobot_floating.urdf"],
+    deps = [
+        "//common",
+        "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

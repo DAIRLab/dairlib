@@ -143,7 +143,7 @@ shared_ptr<HybridDircon<T>> runDircon(
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Print file", "../snopt.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 100);
+                           "Major iterations limit", 200);
 
   // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
   //    "Verify level","1");
@@ -228,11 +228,11 @@ shared_ptr<HybridDircon<T>> runDircon(
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
   std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
 
-  // Print out solution
-  VectorXd z = result.GetSolution(trajopt->decision_variables());
-  for (int i = 0; i < z.size(); i++) {
-    std::cout << trajopt->decision_variables()(i) << " = " << z(i) << std::endl;
-  }
+  // // Print out solution
+  // VectorXd z = result.GetSolution(trajopt->decision_variables());
+  // for (int i = 0; i < z.size(); i++) {
+  //   std::cout << trajopt->decision_variables()(i) << " = " << z(i) << std::endl;
+  // }
 
   // systems::trajectory_optimization::checkConstraints(trajopt.get(), result);
 

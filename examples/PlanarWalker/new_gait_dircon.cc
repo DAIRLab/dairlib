@@ -103,7 +103,7 @@ void runDircon(
   mode_left.MakeConstraintRelative(0, 0);  // x-coordinate
   mode_left.set_mu(mu);
 
-  auto mode_right = DirconMode<T>(evaluators_left, num_knotpoints,
+  auto mode_right = DirconMode<T>(evaluators_right, num_knotpoints,
       min_T, max_T);
   mode_right.MakeConstraintRelative(0, 0);  // x-coordinate
   mode_right.set_mu(mu);
@@ -123,7 +123,7 @@ void runDircon(
   // trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
   //    "Verify level","1");
 
-  for (uint j = 0; j < sequence.num_modes(); j++) {
+  for (int j = 0; j < sequence.num_modes(); j++) {
     trajopt.drake::systems::trajectory_optimization::MultipleShooting::
         SetInitialTrajectory(init_u_traj, init_x_traj);
     trajopt.SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j],
@@ -208,11 +208,11 @@ void runDircon(
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
   std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
 
-  // Print out solution
-  VectorXd z = result.GetSolution(trajopt.decision_variables());
-  for (int i = 0; i < z.size(); i++) {
-    std::cout << trajopt.decision_variables()(i) << " = " << z(i) << std::endl;
-  }
+  // // Print out solution
+  // VectorXd z = result.GetSolution(trajopt.decision_variables());
+  // for (int i = 0; i < z.size(); i++) {
+  //   std::cout << trajopt.decision_variables()(i) << " = " << z(i) << std::endl;
+  // }
 
 
   // systems::trajectory_optimization::checkConstraints(trajopt.get(), result);

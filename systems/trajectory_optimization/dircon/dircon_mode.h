@@ -32,7 +32,7 @@ class DirconMode {
   explicit DirconMode(
       const multibody::KinematicEvaluatorSet<T>& evaluators, int num_knotpoints,
       double min_T = 0, double max_T = std::numeric_limits<double>::infinity(),
-      double force_regularization = 1.0e-4);
+      double force_regularization = 1.0e-6);
 
   /// Identify a constraint as being relative, e.g. constrained to be constant
   /// but not necessarily zero (via a new slack variable). Identifies the

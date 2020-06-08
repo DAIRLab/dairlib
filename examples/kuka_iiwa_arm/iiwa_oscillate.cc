@@ -20,7 +20,6 @@
 #include "drake/lcmt_iiwa_status.hpp"
 #include "drake/manipulation/kuka_iiwa/iiwa_status_receiver.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_command_sender.h"
-#include "drake/manipulation/util/sim_diagram_builder.h"
 #include "drake/common/find_resource.h"
 #include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/common/text_logging.h"

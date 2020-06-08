@@ -36,7 +36,7 @@ int main() {
   Y1[0](0, 0) = 0;
   Y1[1](0, 0) = 0;
   PiecewisePolynomial<double> pp_part =
-    PiecewisePolynomial<double>::Pchip(T1_breakpoint, Y1, true);
+    PiecewisePolynomial<double>::CubicShapePreserving(T1_breakpoint, Y1, true);
 
   MatrixXd K = MatrixXd::Zero(1, 1);
   MatrixXd A = MatrixXd::Zero(1, 1);
@@ -126,7 +126,7 @@ int main() {
   Y3[0](1, 0) = 0;
   Y3[1](1, 0) = 0;
   PiecewisePolynomial<double> pp_part3 =
-    PiecewisePolynomial<double>::Pchip(T1_breakpoint, Y3, true);
+    PiecewisePolynomial<double>::CubicShapePreserving(T1_breakpoint, Y3, true);
 
   std::cout << "\n(2 dimension) sum of two exponential + "
                "one-segment zero polynomial\n";

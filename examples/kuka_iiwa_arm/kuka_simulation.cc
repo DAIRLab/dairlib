@@ -55,7 +55,7 @@ int DoMain() {
   std::unique_ptr<MultibodyPlant<double>> owned_world_plant =
       std::make_unique<MultibodyPlant<double>>(0.0001);
   std::unique_ptr<MultibodyPlant<double>> owned_controller_plant =
-      std::make_unique<MultibodyPlant<double>>();
+      std::make_unique<MultibodyPlant<double>>(0.0);
   std::unique_ptr<drake::geometry::SceneGraph<double>> owned_scene_graph =
       std::make_unique<drake::geometry::SceneGraph<double>>();
 

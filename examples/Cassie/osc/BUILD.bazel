@@ -5,6 +5,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "osc",
     deps = [
+        "//attic/systems/controllers:operational_space_control",
         "//examples/Cassie/osc:deviation_from_cp",
         "//examples/Cassie/osc:heading_traj_generator",
         "//examples/Cassie/osc:high_level_command",
@@ -12,7 +13,6 @@ cc_library(
         "//systems/controllers:cp_traj_gen",
         "//systems/controllers:lipm_traj_gen",
         "//systems/controllers:time_based_fsm",
-        "//systems/controllers/osc:operational_space_control",
     ],
 )
 
@@ -53,12 +53,12 @@ cc_library(
 
 cc_library(
     name = "standing_com_traj",
-    srcs = ["standing_com_traj.cc",],
+    srcs = ["standing_com_traj.cc"],
     hdrs = ["standing_com_traj.h"],
     deps = [
-            "//attic/multibody:utils",
-            "//systems/controllers:control_utils",
-            "//systems/framework:vector",
-            "@drake//:drake_shared_library",
-            ]
+        "//attic/multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
 )

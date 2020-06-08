@@ -1276,7 +1276,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
-                           0);  // 0 // snopt doc said try 2 if seeing snopta exit 40
+                           2);  // 0 // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance", 1e-4);  // target nonlinear constraint violation
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),

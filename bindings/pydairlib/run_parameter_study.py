@@ -12,13 +12,14 @@ def main():
   file_name_controller = "June_5_jumping_0.2_processed"
   trajectory_name = "cassie_jumping_trajectory_x"
   log_folder = "/home/yangwill/Documents/research/projects/cassie/jumping" \
-               "/logs/parameter_study/new_sim_2/"
+               "/logs/parameter_study/new_sim_3/"
 
   sim_time = 5.0
   # error_idx = 14, 15, 16, 17
   # order goes: lfoot x, rfoot x, lfoot z, rfoot z
   # error_idx = 17
-  start_time = 0.6
+  # start_time = 0.6
+  start_time = 0.5754
   # start_time = 0.00
 
   time_offsets = np.linspace(0.0, 0.05, 51)

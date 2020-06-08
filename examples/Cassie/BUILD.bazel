@@ -109,13 +109,12 @@ cc_library(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        "//multibody:multipose_visualizer",
         "//multibody:multibody_solvers",
+        "//multibody:multipose_visualizer",
         "//solvers:constraints",
         "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_binary(
     name = "find_fixed_point",
@@ -358,6 +357,7 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         "//lcm:lcm_trajectory_saver",
+        "//multibody:multipose_visualizer",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",

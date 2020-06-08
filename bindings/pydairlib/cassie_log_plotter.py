@@ -138,7 +138,7 @@ def main():
     t_state_slice = slice(t_start_idx, t_end_idx)
 
     plot_simulation_state(q, v, t_state, t_state_slice, state_names_w_spr)
-    # plot_nominal_state(x_traj_nominal, state_names_wo_spr)
+    plot_nominal_state(x_traj_nominal, state_names_wo_spr)
 
     # For printing out osc_values at a specific time interval
     t_osc_start_idx = get_index_at_time(t_osc_debug, start_time)
@@ -181,7 +181,7 @@ def main():
                                     "_front", rear_contact_disp)
 
     # Foot plotting
-    if False:
+    if True:
         plot_feet_simulation(plant, context, q, v, l_toe_frame, front_contact_disp,
                              world, t_state, t_state_slice, "left_", "_front")
         plot_feet_simulation(plant, context, q, v, r_toe_frame, front_contact_disp,
@@ -471,13 +471,13 @@ def plot_nominal_state(x_traj_nominal, state_names_wo_spr):
     xdot_nominal = []
     # v_nominal = []
     # xdot_traj_nominal = x_traj_nominal.derivative(1)
-    # pos_slice = slice(11, 15)
-    pos_slice = slice(4, 7)
-    # vel_slice = slice(19 + 10, 19 + 14)
-    vel_slice = slice(19 + 4, 19 + 7)
-    t_nominal = np.linspace(x_traj_nominal.start_time(),
-                            x_traj_nominal.end_time(), 3000)
-    # t_slice = slice(0, )
+    pos_slice = slice(11, 15)
+    # pos_slice = slice(4, 7)
+    vel_slice = slice(19 + 10, 19 + 14)
+    # vel_slice = slice(19 + 4, 19 + 7)
+    # t_nominal = np.linspace(x_traj_nominal.start_time(),
+    #                         x_traj_nominal.end_time(), 3000)
+    t_nominal = np.linspace(0.6, 0.8, 2000)
     for t in (t_nominal):
         x_nominal.append(x_traj_nominal.value(t))
         # xdot_nominal.append(xdot_traj_nominal.value(t))
@@ -486,16 +486,17 @@ def plot_nominal_state(x_traj_nominal, state_names_wo_spr):
     x_nominal = np.array(x_nominal)
     xdot_nominal = np.array(xdot_nominal)
     # v_nominal = np.array(v_nominal)
-    plt.plot(t_nominal, x_nominal[:, pos_slice, 0])
+    # plt.plot(t_nominal, x_nominal[:, pos_slice, 0])
     # plt.plot(t_nominal, x_nominal[:, vel_slice, 0])
     # plt.plot(t_nominal, x_nominal[:, 17, 0])
     plt.plot(t_nominal, x_nominal[:, vel_slice, 0])
     # plt.plot(t_nominal, xdot_nominal[:, vel_slice, 0])
     # plt.plot(t_state[t_state_slice], x_nominal[:, pos_slice, 0])
-    plt.legend(state_names_wo_spr[pos_slice])
+    # plt.legend(state_names_wo_spr[pos_slice])
+    plt.legend(state_names_wo_spr[vel_slice])
     # plt.legend(state_names_wo_spr[pos_slice])
     # plt.legend(state_names_wo_spr[15])
-    plt.plot(x_traj_nominal.get_segment_times(), np.zeros(len(x_traj_nominal.get_segment_times())), 'k*')
+    # plt.plot(x_traj_nominal.get_segment_times(), np.zeros(len(x_traj_nominal.get_segment_times())), 'k*')
 
 
 def plot_nominal_control_inputs(nu, datatypes, t_nominal,
@@ -571,8 +572,8 @@ def plot_feet_simulation(plant, context, q, v, toe_frame, contact_point, world,
         #     world) @ v[i, :]
     # fig = plt.figure(foot_type + 'foot pos: ' + filename)
     fig = plt.figure('foot pos: ' + filename)
-    # state_indices = slice(0, 3)
-    state_indices = slice(5, 6)
+    state_indices = slice(2, 3)
+    # state_indices = slice(5, 6)
     state_names = ["x", "y", "z", "xdot", "ydot", "zdot"]
     state_names = [foot_type + name for name in state_names]
     state_names = [name + contact_type for name in state_names]
@@ -656,10 +657,14 @@ def plot_simulation_state(q, v, t_state, t_state_slice, state_names):
     # plt.legend(state_names[state_indices])
 
     fig = plt.figure('simulation velocities: ' + filename)
+    # fig = plt.figure('Nominal state: ' + filename)
 
-    state_indices = slice(n_fb_vel, v.shape[1])
+    # state_indices = slice(n_fb_vel, v.shape[1])
+    state_indices = slice(10, 14)
     plt.plot(t_state[t_state_slice], v[t_state_slice, state_indices])
-    plt.legend(state_names[q.shape[1] + n_fb_vel:q.shape[1] + v.shape[1]])
+    # plt.legend(state_names[q.shape[1] + n_fb_vel:q.shape[1] + v.shape[1]])
+    plt.legend(state_names[q.shape[1] + 10:
+                           q.shape[1] + 14])
 
 
 def plot_nominal_feet_traj(l_foot_traj, lcm_l_foot_traj, r_foot_traj):

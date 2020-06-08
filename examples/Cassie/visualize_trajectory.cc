@@ -6,6 +6,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/multipose_visualizer.h"
 #include "multibody/visualization_utils.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
@@ -22,6 +23,7 @@ using Eigen::VectorXd;
 
 DEFINE_double(realtime_rate, 1.0, "Relative speed to animate the trajectory");
 DEFINE_string(trajectory_name, "", "File path to load the trajectory from");
+DEFINE_int32(num_poses, 1, "Number of poses per mode to draw");
 
 namespace dairlib {
 
@@ -70,24 +72,37 @@ int DoMain() {
       traj_mode2.time_vector;
 
   MatrixXd x = xu.topRows(nx);
-  MatrixXd xdot = xu.topRows(2*nx).bottomRows(nx);
+  MatrixXd xdot = xu.topRows(2 * nx).bottomRows(nx);
 
   PiecewisePolynomial<double> optimal_traj =
       PiecewisePolynomial<double>::CubicHermite(times, x, xdot);
 
-  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
-                                         optimal_traj);
 
-  auto diagram = builder.Build();
-
-  while (true) {
-    //    std::this_thread::sleep_for(std::chrono::seconds(2));
-    drake::systems::Simulator<double> simulator(*diagram);
-
-    simulator.set_target_realtime_rate(FLAGS_realtime_rate);
-    simulator.Initialize();
-    simulator.AdvanceTo(optimal_traj.end_time());
+  MatrixXd poses = MatrixXd::Zero(nq, FLAGS_num_poses);
+//  std::vector<double> indices = {0, 4, 8, 12, 16, 20, 24};
+  std::vector<double> indices = {0, 12, 20};
+  for (int i = 0; i < FLAGS_num_poses; ++i) {
+    poses.col(i) =
+        optimal_traj.value(times[indices[i]]);
   }
+  multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"),
+      FLAGS_num_poses);
+  visualizer.DrawPoses(poses);
+
+//  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
+//                                         optimal_traj);
+//
+//  auto diagram = builder.Build();
+//
+//  while (true) {
+//    //    std::this_thread::sleep_for(std::chrono::seconds(2));
+//    drake::systems::Simulator<double> simulator(*diagram);
+//
+//    simulator.set_target_realtime_rate(FLAGS_realtime_rate);
+//    simulator.Initialize();
+//    simulator.AdvanceTo(optimal_traj.end_time());
+//  }
 }
 
 }  // namespace dairlib

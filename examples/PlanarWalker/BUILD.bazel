@@ -36,6 +36,20 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "new_gait_dircon",
+    srcs = ["new_gait_dircon.cc"],
+    data = ["PlanarWalker.urdf"],
+    deps = [
+        "//systems/trajectory_optimization/dircon",
+        "//common",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+
 
 cc_binary(
     name = "run_rbt_gait_dircon",

@@ -47,9 +47,9 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
           plant.num_actuators(),
           plant.num_positions() + plant.num_velocities(),
           num_knotpoints, 1e-8, 1e8),
-      my_sequence_(std::move(my_sequence_)),
+      my_sequence_(std::move(my_sequence)),
       plant_(plant),
-      mode_sequence_(ext_sequence ? *ext_sequence : *my_sequence),
+      mode_sequence_(ext_sequence ? *ext_sequence : *my_sequence_),
       contexts_(num_modes()),
       mode_start_(num_modes()) {
   // Loop over all modes
@@ -574,7 +574,7 @@ void Dircon<T>::SetInitialForceTrajectory(
   }
   SetInitialGuess(force_vars_[mode_index], guess_force);
 
-  VectorXd guess_collocation_force(mode.evaluators().count_full());
+  VectorXd guess_collocation_force(collocation_force_vars_[mode_index].size());
   if (traj_init_lc.empty()) {
     guess_collocation_force.fill(0);  // Start with 0
   } else {
@@ -585,9 +585,10 @@ void Dircon<T>::SetInitialForceTrajectory(
           traj_init_lc.value(start_time + (i + 0.5) * h);
     }
   }
+
   SetInitialGuess(collocation_force_vars_[mode_index], guess_collocation_force);
 
-  VectorXd guess_collocation_slack(mode.evaluators().count_full());
+  VectorXd guess_collocation_slack(collocation_slack_vars_[mode_index].size());
   if (traj_init_vc.empty()) {
     guess_collocation_slack.fill(0);  // Start with 0
   } else {
@@ -598,6 +599,7 @@ void Dircon<T>::SetInitialForceTrajectory(
           traj_init_vc.value(start_time + (i + 0.5) * h);
     }
   }
+
   // call superclass method
   SetInitialGuess(collocation_slack_vars_[mode_index], guess_collocation_slack);
 }

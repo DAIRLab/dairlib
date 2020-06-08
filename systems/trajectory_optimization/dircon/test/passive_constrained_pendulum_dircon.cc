@@ -81,13 +81,12 @@ void runDircon() {
   double min_T = 3;
   double max_T = 3;
   auto mode = DirconMode<double>(evaluators, num_knotpoints, min_T, max_T);
-  auto sequence = DirconModeSequence<double>(&mode);
 
-  auto trajopt = std::make_shared<Dircon<double>>(sequence);
+  auto trajopt = Dircon<double>(&mode);
 
   const double R = 100;  // Cost on input effort
-  auto u = trajopt->input();
-  trajopt->AddRunningCost(u.transpose()*R*u);
+  auto u = trajopt.input();
+  trajopt.AddRunningCost(u.transpose()*R*u);
 
 
   auto positions_map = multibody::makeNameToPositionsMap(plant);
@@ -97,9 +96,9 @@ void runDircon() {
   //   std::cout << it.first << std::endl;
   // }
 
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Print file", "../snopt.out");
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+  // trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
+  //                          "Print file", "../snopt.out");
+  trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", 200);
 
   int nx = plant.num_positions() + plant.num_velocities();
@@ -116,25 +115,25 @@ void runDircon() {
   auto traj_init_u = PiecewisePolynomial<double>::FirstOrderHold(times, inputs);
   auto traj_init_x = PiecewisePolynomial<double>::FirstOrderHold(times, states);
 
-  trajopt->SetInitialTrajectory(traj_init_u, traj_init_x);
+  trajopt.SetInitialTrajectory(traj_init_u, traj_init_x);
 
-  auto x0 = trajopt->initial_state();
+  auto x0 = trajopt.initial_state();
   // Set initial floating base orientation without overconstraining when
   // combined with quaternion norm constraint
-  trajopt->AddLinearConstraint(x0(positions_map.at("base_qx")) == .2);
-  trajopt->AddLinearConstraint(x0(positions_map.at("base_qy")) == .3);
-  trajopt->AddLinearConstraint(x0(positions_map.at("base_qz")) == -.2);
-  trajopt->AddLinearConstraint(x0(positions_map.at("base_qw")) >= .1);
-  trajopt->AddLinearConstraint(x0(plant.num_positions() + 
+  trajopt.AddLinearConstraint(x0(positions_map.at("base_qx")) == .2);
+  trajopt.AddLinearConstraint(x0(positions_map.at("base_qy")) == .3);
+  trajopt.AddLinearConstraint(x0(positions_map.at("base_qz")) == -.2);
+  trajopt.AddLinearConstraint(x0(positions_map.at("base_qw")) >= .1);
+  trajopt.AddLinearConstraint(x0(plant.num_positions() + 
       velocities_map.at("base_wx")) == 0);
-  trajopt->AddLinearConstraint(x0(plant.num_positions() + 
+  trajopt.AddLinearConstraint(x0(plant.num_positions() + 
       velocities_map.at("base_wy")) == 0);
-  trajopt->AddLinearConstraint(x0(plant.num_positions() + 
+  trajopt.AddLinearConstraint(x0(plant.num_positions() + 
       velocities_map.at("base_wz")) == 0);
 
 
   auto start = std::chrono::high_resolution_clock::now();
-  const auto result = Solve(*trajopt, trajopt->initial_guess());
+  const auto result = Solve(trajopt, trajopt.initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Solve time:" << elapsed.count() <<std::endl;
@@ -147,15 +146,15 @@ void runDircon() {
   }
 
   // // Print out solution
-  // VectorXd z = result.GetSolution(trajopt->decision_variables());
+  // VectorXd z = result.GetSolution(trajopt.decision_variables());
   // for (int i = 0; i < z.size(); i++) {
-  //   std::cout << trajopt->decision_variables()(i) << " = " << z(i) << std::endl;
+  //   std::cout << trajopt.decision_variables()(i) << " = " << z(i) << std::endl;
   // }
 
 
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
-      trajopt->ReconstructStateTrajectory(result);
+      trajopt.ReconstructStateTrajectory(result);
   multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
                                          pp_xtraj);
   auto diagram = builder.Build();

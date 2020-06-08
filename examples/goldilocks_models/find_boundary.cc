@@ -223,8 +223,68 @@ string getInitFileName(const string directory, int traj_opt_num,
     }
   }else{
     if(traj_opt_num==0){
-      initial_file_name = "";
+      //specify initial guess if using optimized model
+      //use solutions during ROM optimization process to calculate the initial guess
+      if(FLAGS_use_optimized_model){
+        const string dir_find_models = "../dairlib_data/goldilocks_models/find_models/robot_" +
+            to_string(FLAGS_robot_option) + "/";
+        VectorXd initial_guess;
+        //take out corresponding w and calculate the weight for interpolation
+        MatrixXd w_gamma;
+        VectorXd weight_gamma;
+        //paras used to decide gamma scale
+        double delta_sl = 0.015;
+        double delta_gi = 0.05;
+        double delta_tr = 0.125;
+        //calculate the weighted sum of solutions
+        int theta_idx = FLAGS_theta_index;
+        int sample_num = 0;
+        while(file_exist(dir_find_models + to_string(theta_idx)+ '_' +
+        to_string(sample_num)+ string("_is_success.csv"))){
+          //check if this sample is success
+          int is_success = (readCSV(dir_find_models + to_string(theta_idx)+ '_'+
+              to_string(sample_num)+ string("_is_success.csv")))(0,0);
+          if(is_success == 1) {
+            //extract past gamma
+            MatrixXd past_ground_incline = readCSV(dir_find_models + to_string(theta_idx) + string("_")
+                + to_string(sample_num) + string("_ground_incline.csv"));
+            MatrixXd past_stride_length = readCSV(dir_find_models + to_string(theta_idx) + string("_")
+                + to_string(sample_num) + string("_stride_length.csv"));
+            MatrixXd past_turning_rate = readCSV(dir_find_models + to_string(theta_idx) + string("_")
+                + to_string(sample_num) + string("_turning_rate.csv"));
+            VectorXd past_gamma(gamma_dimension);
+            past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0, 0);
+            //calculate the weight for each sample using the 3-norm of the difference between gamma
+            VectorXd gamma_scale(gamma_dimension);
+            gamma_scale << 1/delta_gi,1/delta_sl,1.3/delta_tr;
+            VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
+            VectorXd dif_gamma2 = dif_gamma.array().pow(2);
+            double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);
+            //extract the solution of this sample
+            VectorXd w_to_interpolate = readCSV(dir_find_models + to_string(theta_idx)+ '_'+
+                to_string(sample_num) + string("_w.csv"));
+            //concatenate the weight and solution for further calculation
+            w_gamma.conservativeResize(w_to_interpolate.rows(),w_gamma.cols()+1);
+            w_gamma.col(w_gamma.cols()-1) = w_to_interpolate;
+            weight_gamma.conservativeResize(weight_gamma.rows()+1);
+            weight_gamma(weight_gamma.rows()-1)= 1 /distance_gamma;
+          }
+          sample_num = sample_num+1;
+        }
+        DRAKE_DEMAND(weight_gamma.rows()>0);
+        //    normalize weight
+        weight_gamma = weight_gamma / weight_gamma.sum();
+        initial_guess = w_gamma * weight_gamma;
+        //    save initial guess and set init file
+        initial_file_name = to_string(traj_opt_num)
+            + string("_0_initial_guess.csv");
+        writeCSV(directory + initial_file_name, initial_guess);
+      }
+      else{
+        initial_file_name = "";
+      }
     }else{
+      //use past solutions to calculate interpolated initial guess
       VectorXd initial_guess;
       //take out corresponding w and calculate the weight for interpolation
       MatrixXd w_gamma;

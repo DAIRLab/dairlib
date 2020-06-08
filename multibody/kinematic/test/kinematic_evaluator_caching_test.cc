@@ -87,6 +87,20 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     v = Eigen::VectorXd::Random(plant.num_velocities());
     plant.SetPositions(context.get(), q);
+    Eigen::MatrixXd M(plant.num_velocities(), plant.num_velocities());
+    evaluators.plant().CalcMassMatrix(*context, &M);
+    auto res = M.llt();
+  }
+  stop =  my_clock::now();
+  duration =
+    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "M.llt:\t" << (1.0*duration.count())/N << endl;
+
+  start =  my_clock::now();
+  for (int i = 0; i < N; i++) {
+    q = Eigen::VectorXd::Random(plant.num_positions());
+    v = Eigen::VectorXd::Random(plant.num_velocities());
+    plant.SetPositions(context.get(), q);
     plant.SetVelocities(context.get(), v);
     VectorXd C(plant.num_velocities());
     plant.CalcBiasTerm(*context, &C);

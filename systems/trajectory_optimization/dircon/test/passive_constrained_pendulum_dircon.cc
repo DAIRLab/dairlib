@@ -1,3 +1,7 @@
+#pragma GCC diagnostic ignored "-Wuninitialized"
+
+#include <gflags/gflags.h>
+
 #include <memory>
 #include <chrono>
 
@@ -28,6 +32,9 @@
 ///     upperlinks will be fixed relative to one another.
 ///
 /// Runs DIRCON from a given initial condition.
+
+DEFINE_bool(autodiff, false, "Use double or autodiff");
+
 namespace dairlib {
 namespace {
 using drake::multibody::MultibodyPlant;
@@ -48,17 +55,27 @@ using systems::trajectory_optimization::DirconKinConstraintType;
 static const char* const kDoublePendulumSdfPath =
   "systems/trajectory_optimization/dircon/test/acrobot_floating.urdf";
 
+template <typename T>
 void runDircon() {
   const std::string sdf_path =
       FindResourceOrThrow(kDoublePendulumSdfPath);
-  MultibodyPlant<double> plant(0.0);
+  MultibodyPlant<double> plant_double(0.0);
 
   drake::systems::DiagramBuilder<double> builder;
-  SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
-  Parser parser(&plant, &scene_graph);
+  auto& scene_graph = *builder.AddSystem<SceneGraph>();
+  Parser parser(&plant_double, &scene_graph);
 
   parser.AddModelFromFile(sdf_path);
-  plant.Finalize();
+  plant_double.Finalize();
+
+  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_pointer;
+  if (typeid(T) == typeid(drake::AutoDiffXd)) {
+    plant_pointer = drake::systems::System<double>::ToAutoDiffXd(
+      plant_double);
+  }
+  const MultibodyPlant<T>& plant = typeid(T) == typeid(double) ? 
+      reinterpret_cast<const MultibodyPlant<T>&>(plant_double) : 
+      reinterpret_cast<const MultibodyPlant<T>&>(*plant_pointer);
 
   const auto& base = plant.GetFrameByName("base_link");
   const auto& lower_link = plant.GetFrameByName("lower_link");
@@ -67,22 +84,22 @@ void runDircon() {
   Vector3d pt2(-1, 0, 0);
   double distance = .7;
 
-  auto distance_eval = multibody::DistanceEvaluator<double>(plant, pt1, base,
+  auto distance_eval = multibody::DistanceEvaluator<T>(plant, pt1, base,
       pt2, lower_link, distance);
 
-  auto pin_eval = multibody::WorldPointEvaluator<double>(plant,
+  auto pin_eval = multibody::WorldPointEvaluator<T>(plant,
       Vector3d::Zero(), base);
 
-  auto evaluators = multibody::KinematicEvaluatorSet<double>(plant);
+  auto evaluators = multibody::KinematicEvaluatorSet<T>(plant);
   evaluators.add_evaluator(&distance_eval);
   evaluators.add_evaluator(&pin_eval);
 
   int num_knotpoints = 30;
   double min_T = 3;
   double max_T = 3;
-  auto mode = DirconMode<double>(evaluators, num_knotpoints, min_T, max_T);
+  auto mode = DirconMode<T>(evaluators, num_knotpoints, min_T, max_T);
 
-  auto trajopt = Dircon<double>(&mode);
+  auto trajopt = Dircon<T>(&mode);
 
   const double R = 100;  // Cost on input effort
   auto u = trajopt.input();
@@ -155,7 +172,7 @@ void runDircon() {
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt.ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
+  multibody::connectTrajectoryVisualizer(&plant_double, &builder, &scene_graph,
                                          pp_xtraj);
   auto diagram = builder.Build();
 
@@ -172,5 +189,10 @@ void runDircon() {
 }  // namespace dairlib
 
 int main(int argc, char* argv[]) {
-  dairlib::runDircon();
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  if (FLAGS_autodiff) {
+    dairlib::runDircon<drake::AutoDiffXd>();
+  } else {
+    dairlib::runDircon<double>();
+  }
 }

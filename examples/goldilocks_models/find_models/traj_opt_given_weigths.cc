@@ -1821,7 +1821,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                            0);  // 0
   trajopt->SetSolverOption(
       drake::solvers::SnoptSolver::id(), "Scale option",
-      2);  // snopt doc said try 2 if seeing snopta exit 40
+      0);  // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance",
                            major_optimality_tol);  // target nonlinear constraint violation

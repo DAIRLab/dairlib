@@ -84,8 +84,8 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
   // Evaluate dynamics at k and k+1
   multibody::setContext<T>(plant_, x0, u0, context_0_);
   multibody::setContext<T>(plant_, x1, u1, context_1_);
-  const auto& xdot0 = evaluators_.CalcTimeDerivatives(*context_0_, l0);
-  const auto& xdot1 = evaluators_.CalcTimeDerivatives(*context_1_, l1);
+  const auto& xdot0 = evaluators_.CalcTimeDerivativesWithForce(*context_0_, l0);
+  const auto& xdot1 = evaluators_.CalcTimeDerivativesWithForce(*context_1_, l1);
 
   // Cubic interpolation to get xcol and xdotcol.
   const auto& xcol = 0.5 * (x0 + x1) + h / 8 * (xdot0 - xdot1);
@@ -94,7 +94,7 @@ void DirconCollocationConstraint<T>::EvaluateConstraint(
 
   // Evaluate dynamics at colocation point
   multibody::setContext<T>(plant_, xcol, ucol, context_col_.get());
-  auto g = evaluators_.CalcTimeDerivatives(*context_col_, lc);
+  auto g = evaluators_.CalcTimeDerivativesWithForce(*context_col_, lc);
 
   // Add velocity slack contribution, J^T * gamma
   VectorX<T> gamma_in_qdot_space(plant_.num_positions());

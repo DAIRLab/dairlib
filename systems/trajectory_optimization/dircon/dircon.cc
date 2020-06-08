@@ -94,7 +94,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
         "gamma[" + std::to_string(i_mode) + "]"));
 
     // Bound collocation slack variables to avoid numerical issues
-    AddBoundingBoxConstraint(-.01, .01, collocation_slack_vars_.at(i_mode));
+    AddBoundingBoxConstraint(-.1, .1, collocation_slack_vars_.at(i_mode));
 
     // quaternion_slack_vars_ (slack variables used to scale quaternion norm to
     // 1 in the dynamic constraints)
@@ -104,7 +104,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
         "quat_slack[" + std::to_string(i_mode) + "]"));
 
     // Bound quaternion slack variables to avoid false full rotations
-    AddBoundingBoxConstraint(-.01, .01, quaternion_slack_vars_.at(i_mode));
+    AddBoundingBoxConstraint(-.1, .1, quaternion_slack_vars_.at(i_mode));
 
     // Impulse and post-impact variables
     if (i_mode > 0) {
@@ -250,11 +250,13 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
                   e.num_full()));
         }
 
-        // Add to impulse variables
-        AddConstraint(force_constraint,
-            impulse_vars(i_mode).segment(
-                mode.evaluators().evaluator_full_start(k),
-                e.num_full()));
+        if (i_mode > 0) {
+          // Add to impulse variables
+          AddConstraint(force_constraint,
+              impulse_vars(i_mode - 1).segment(
+                  mode.evaluators().evaluator_full_start(k),
+                  e.num_full()));
+        }
       }
     }
 
@@ -541,8 +543,9 @@ PiecewisePolynomial<double> Dircon<T>::ReconstructStateTrajectory(
       states.col(k) = drake::math::DiscardGradient(xk);
       inputs.col(k) = drake::math::DiscardGradient(uk);
       auto context = multibody::createContext<T>(plant_, xk, uk);
-      auto xdot = mode_sequence_.mode(i).evaluators().CalcTimeDerivatives(
-          *context, result.GetSolution(force_vars(i, j)));
+      auto xdot = mode_sequence_.mode(i).evaluators().
+          CalcTimeDerivativesWithForce(*context,
+              result.GetSolution(force_vars(i, j)));
       derivatives.col(k) = drake::math::DiscardGradient(xdot);
     }
   }

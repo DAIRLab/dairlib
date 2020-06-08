@@ -64,10 +64,10 @@ class WorldPointEvaluator :  public KinematicEvaluator<T> {
   using KinematicEvaluator<T>::plant;
 
   std::shared_ptr<drake::solvers::Constraint> CreateConicFrictionConstraint(
-      double mu) const;
+      double mu) const override;
 
   std::shared_ptr<drake::solvers::Constraint> CreateLinearFrictionConstraint(
-      double mu, int num_faces = 8) const;
+      double mu, int num_faces = 8) const override;
 
   /// Identify this evaluator as frictional, for use when calling
   /// CreateConicFrictionConstraint and CreateLinearFrictionConstraint

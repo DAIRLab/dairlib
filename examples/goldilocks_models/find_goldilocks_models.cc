@@ -72,7 +72,15 @@ DEFINE_int32(
     "Max iteration # for traj opt. Sometimes, snopt takes very small steps "
     "(TODO: find out why), so maybe it's better to stop at some iterations and "
     "resolve again.");
-DEFINE_double(node_density, -1, "# of nodes per second in traj opt");
+DEFINE_bool(fix_node_number, false, "Fix the number of nodes in traj opt");
+DEFINE_double(node_density, 40, "# of nodes per second in traj opt");
+// Two things you need to be careful about node density (keep an eye on these
+// in the future):
+// 1. If the number of nodes are too high, it will take much time to solve.
+//    (30 is probably considered to be high)
+// 2. If the # of nodes per distance is too low, it's harder for SNOPT to
+// converge well. E.g. (Cassie) the ratio of distance per nodes = 0.2/16 is fine for
+// SNOPT, but 0.3 / 16 is too high.
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
 DEFINE_bool(snopt_scaling, false, "SNOPT built-in scaling feature");
 
@@ -801,7 +809,8 @@ void calcWInTermsOfTheta(int sample, const string& dir,
   cout << to_be_print;
 }
 
-MatrixXi GetAdjSampleIndices(GridTasksGenerator task_gen) {
+MatrixXi GetAdjSampleIndices(GridTasksGenerator task_gen,
+                             vector<int> n_node_vec) {
   // Setup
   int task_dim = task_gen.dim_nondeg();
   int N_sample = task_gen.total_sample_number();
@@ -815,21 +824,24 @@ MatrixXi GetAdjSampleIndices(GridTasksGenerator task_gen) {
       vector<int> new_index_tuple = task_gen.get_forward_map().at(sample_idx);
       new_index_tuple[i] += 1;
 
-      // if within range, then add the pair to adjacent map
+      // The new index tuple has to be valid
       if (new_index_tuple[i] < task_gen.sample_numbers()[i]) {
         int adjacent_sample_idx =
             task_gen.get_inverse_map().at(new_index_tuple);
-        // Add to adjacent_sample_idx (both directions)
-        for (int l = 0; l < 2 * task_dim; l++) {
-          if (adjacent_sample_indices(sample_idx, l) < 0) {
-            adjacent_sample_indices(sample_idx, l) = adjacent_sample_idx;
-            break;
+        // Number of nodes should be the same so that we can set initial guess
+        if (n_node_vec[sample_idx] == n_node_vec[adjacent_sample_idx]) {
+          // Add to adjacent_sample_idx (both directions)
+          for (int l = 0; l < 2 * task_dim; l++) {
+            if (adjacent_sample_indices(sample_idx, l) < 0) {
+              adjacent_sample_indices(sample_idx, l) = adjacent_sample_idx;
+              break;
+            }
           }
-        }
-        for (int l = 0; l < 2 * task_dim; l++) {
-          if (adjacent_sample_indices(adjacent_sample_idx, l) < 0) {
-            adjacent_sample_indices(adjacent_sample_idx, l) = sample_idx;
-            break;
+          for (int l = 0; l < 2 * task_dim; l++) {
+            if (adjacent_sample_indices(adjacent_sample_idx, l) < 0) {
+              adjacent_sample_indices(adjacent_sample_idx, l) = sample_idx;
+              break;
+            }
           }
         }
       }
@@ -1457,8 +1469,23 @@ int findGoldilocksModels(int argc, char* argv[]) {
     throw std::runtime_error("Should not reach here");
     task_gen = GridTasksGenerator();
   }
+  // Tasks setup
   DRAKE_DEMAND(task_gen.task_min("stride length") >= 0);
   DRAKE_DEMAND(task_gen.task_min("velocity") >= 0);
+  int N_sample = task_gen.total_sample_number();
+  Task task(task_gen.names());
+  vector<VectorXd> previous_task(N_sample, VectorXd::Zero(task_gen.dim()));
+  if (FLAGS_start_current_iter_as_rerun ||
+      FLAGS_start_iterations_with_shrinking_stepsize) {
+    for (int i = 0; i < N_sample; i++) {
+      auto pre_task = readCSV(dir + to_string(FLAGS_iter_start) + "_" +
+          to_string(i) + string("_task.csv"))
+          .col(0);
+      DRAKE_DEMAND(pre_task.rows() == task_gen.dim());
+      previous_task[i] = pre_task;
+    }
+  }
+  SaveStringVecToCsv(task_gen.names(), dir + string("task_names.csv"));
 
   // Parameters for the outer loop optimization
   cout << "\nOptimization setting (outer loop):\n";
@@ -1569,10 +1596,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Outer loop setting - help from adjacent samples
   bool get_good_sol_from_adjacent_sample =
       FLAGS_get_good_sol_from_adjacent_sample;
-  if (FLAGS_robot_option == 0) {
-    // five-link robot doesn't seem to need help
-    get_good_sol_from_adjacent_sample = false;
-  }
   double max_cost_increase_rate_before_ask_for_help = 0.1;
   if (FLAGS_robot_option == 0) {
     max_cost_increase_rate_before_ask_for_help = 0.5;
@@ -1624,21 +1647,27 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double R = 0;  // Cost on input effort
   double all_cost_scale = 1;
   setCostWeight(&Q, &R, &all_cost_scale, FLAGS_robot_option);
-  double node_density = 40; // # per second
-  if (FLAGS_node_density > 0) node_density = FLAGS_node_density;
-  // Two things you need to be careful about node density (keep an eye on these
-  // in the future):
-  // 1. If the number of nodes are too high, it will take much time to solve.
-  //    (30 is probably considered to be high)
-  // 2. If the # of nodes per distance is too low, it's harder for SNOPT to
-  // converge well. E.g. the ratio of distance per nodes = 0.2/16 is fine for
-  // SNOPT, but 0.3 / 16 is too high.
   cout << "\nOptimization setting (inner loop):\n";
   cout << "max_inner_iter = " << max_inner_iter << endl;
   cout << "major_optimality_tolerance = " << FLAGS_major_feasibility_tol << endl;
   cout << "major_feasibility_tolerance = " << FLAGS_major_feasibility_tol << endl;
-  cout << "node_density = " << node_density << endl;
   cout << "use SNOPT built-in scaling? " << FLAGS_snopt_scaling << endl;
+  cout << "Fix number of nodes in traj opt? " << FLAGS_fix_node_number << endl;
+  if (!FLAGS_fix_node_number)
+    cout << "node_density = " << FLAGS_node_density << endl;
+  // Inner loop setup
+  cout << "n_node for each sample = \n";
+  vector<int> n_node_vec(N_sample, 20);
+  if (!FLAGS_fix_node_number) {
+    for (int sample_idx = 0; sample_idx < N_sample; sample_idx++) {
+      task.set(task_gen.NewTask(sample_idx, true));
+      double duration = task.get("stride length") / task.get("velocity");
+      n_node_vec[sample_idx] = int(FLAGS_node_density * duration);
+      cout << n_node_vec[sample_idx] << ", ";
+    } cout << endl;
+    cout << "WARNING: we will only add adjacent samples to the list if it has "
+            "the same number of nodes\n";
+  }
 
   // Reduced order model parameters
   // TODO: currently you can just create a class RomParameters to reduced the
@@ -1691,22 +1720,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
       cout << "Continue constructing the problem...\n";
     }
   }
-
-  // Tasks setup
-  int N_sample = task_gen.total_sample_number();
-  Task task(task_gen.names());
-  vector<VectorXd> previous_task(N_sample, VectorXd::Zero(task_gen.dim()));
-  if (FLAGS_start_current_iter_as_rerun ||
-      FLAGS_start_iterations_with_shrinking_stepsize) {
-    for (int i = 0; i < N_sample; i++) {
-      auto pre_task = readCSV(dir + to_string(FLAGS_iter_start) + "_" +
-          to_string(i) + string("_task.csv"))
-          .col(0);
-      DRAKE_DEMAND(pre_task.rows() == task_gen.dim());
-      previous_task[i] = pre_task;
-    }
-  }
-  SaveStringVecToCsv(task_gen.names(), dir + string("task_names.csv"));
 
   // Reduced order model setup
   KinematicsExpression<double> kin_expression(n_s, 0, &plant, FLAGS_robot_option);
@@ -1949,7 +1962,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   // Setup for getting good solution from adjacent samples
-  const MatrixXi adjacent_sample_indices = GetAdjSampleIndices(task_gen);
+  const MatrixXi adjacent_sample_indices =
+      GetAdjSampleIndices(task_gen, n_node_vec);
   cout << "adjacent_sample_indices = \n" << adjacent_sample_indices << endl;
 
   cout << "\nStart iterating...\n";
@@ -2128,13 +2142,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
               trajOptGivenWeights, std::ref(plant), std::ref(plant_autoDiff),
               n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
               std::ref(B_tau), std::ref(theta_s), std::ref(theta_sDDot), task,
-              node_density, max_inner_iter_pass_in, FLAGS_major_feasibility_tol,
-              FLAGS_major_feasibility_tol, std::ref(dir), init_file_pass_in,
-              prefix, std::ref(w_sol_vec), std::ref(A_vec), std::ref(H_vec),
-              std::ref(y_vec), std::ref(lb_vec), std::ref(ub_vec),
-              std::ref(b_vec), std::ref(c_vec), std::ref(B_vec),
-              std::ref(is_success_vec), std::ref(thread_finished_vec), Q, R,
-              all_cost_scale, eps_regularization, is_get_nominal,
+              n_node_vec[sample_idx], max_inner_iter_pass_in,
+              FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
+              std::ref(dir), init_file_pass_in, prefix, std::ref(w_sol_vec),
+              std::ref(A_vec), std::ref(H_vec), std::ref(y_vec),
+              std::ref(lb_vec), std::ref(ub_vec), std::ref(b_vec),
+              std::ref(c_vec), std::ref(B_vec), std::ref(is_success_vec),
+              std::ref(thread_finished_vec), Q, R, all_cost_scale,
+              eps_regularization, is_get_nominal,
               FLAGS_is_zero_touchdown_impact, extend_model_this_iter,
               FLAGS_is_add_tau_in_cost, FLAGS_snopt_scaling, sample_idx,
               n_rerun[sample_idx], cost_threshold_for_update[sample_idx],

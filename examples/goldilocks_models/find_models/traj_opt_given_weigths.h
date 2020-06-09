@@ -51,7 +51,7 @@ void trajOptGivenWeights(
     int n_s, int n_sDDot, int n_tau, int n_feature_s, int n_feature_sDDot,
     const MatrixXd& B_tau,
     const VectorXd & theta_s, const VectorXd & theta_sDDot,
-    Task task, double node_density, int max_iter,
+    Task task, int n_node, int max_iter,
     double major_optimality_tol, double major_feasibility_tol,
     const std::string& directory, string init_file,
     string  prefix,

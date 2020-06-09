@@ -1097,7 +1097,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           int n_feature_sDDot,
                           const MatrixXd& B_tau,
                           const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                          const Task& task, double node_density, int max_iter,
+                          const Task& task, int n_node, int max_iter,
                           const string& directory,
                           const string& init_file, const string& prefix,
                           const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
@@ -1234,7 +1234,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // and that the trajectory is discretized into timesteps h (N-1 of these),
   // state x (N of these), and control input u (N of these).
   std::vector<int> num_time_samples;
-  num_time_samples.push_back(node_density * duration);
+  num_time_samples.push_back(n_node);
   num_time_samples.push_back(1);
   std::vector<double> min_dt;
   min_dt.push_back(0);
@@ -1512,7 +1512,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    int n_feature_sDDot,
                    const MatrixXd& B_tau,
                    const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                   const Task& task, double node_density, int max_iter,
+                   const Task& task, int n_node, int max_iter,
                    double major_optimality_tol,
                    double major_feasibility_tol,
                    const string& directory,
@@ -1795,7 +1795,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   max_dt.push_back(.3);
   max_dt.push_back(.3);
   vector<int> num_time_samples;
-  num_time_samples.push_back(node_density * duration);
+  num_time_samples.push_back(n_node);
   num_time_samples.push_back(1);
   vector<DirconKinematicDataSet<double>*> dataset_list;
   dataset_list.push_back(&ls_dataset);
@@ -2493,7 +2493,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          int n_feature_sDDot,
                          const MatrixXd& B_tau,
                          const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                         Task task, double node_density, int max_iter,
+                         Task task, int n_node, int max_iter,
                          double major_optimality_tol,
                          double major_feasibility_tol,
                          const string& directory,
@@ -2545,7 +2545,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
     fiveLinkRobotTrajOpt(plant, plant_autoDiff,
                          n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                          theta_s, theta_sDDot,
-                         task, node_density, max_iter,
+                         task, n_node, max_iter,
                          directory, init_file, prefix,
                          w_sol_vec,
                          A_vec,
@@ -2566,7 +2566,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
     cassieTrajOpt(plant, plant_autoDiff,
                   n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
                   theta_s, theta_sDDot,
-                  task, node_density, max_iter,
+                  task, n_node, max_iter,
                   major_optimality_tol, major_feasibility_tol,
                   directory, init_file, prefix,
                   w_sol_vec,

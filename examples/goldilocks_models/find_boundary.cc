@@ -728,9 +728,13 @@ int find_boundary(int argc, char* argv[]){
           "Status | Solve time | Cost (tau cost)\n";
   trajOptGivenModel(stride_length_0, ground_incline_0,
                     turning_rate_0, dir, traj_opt_num, false);
-  //rerun the Traj Opt to avoid being stuck in local minimum
-  trajOptGivenModel(stride_length_0, ground_incline_0,
-                    turning_rate_0, dir, traj_opt_num, true);
+  //make sure solution found for the initial point
+  int init_is_success = (readCSV(dir + string("0_0_is_success.csv")))(0,0);
+  while(!init_is_success){
+    trajOptGivenModel(stride_length_0, ground_incline_0,
+                      turning_rate_0, dir, traj_opt_num, true);
+    init_is_success = (readCSV(dir + string("0_0_is_success.csv")))(0,0);
+  }
 
   int dim1,dim2,dim3;
   VectorXd step(dimensions);

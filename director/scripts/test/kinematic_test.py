@@ -34,12 +34,10 @@ class TestGui(QWidget):
     def handle_thread(self):
         self.channel = "NETWORK_CASSIE_STATE_DISPATCHER"
         self.lcm = lcm.LCM()
-        self.prev_loc = [0, 0, 0]
-        self.line = []
-        self.prevLine = deque()
+        self.prev_loc = {}
         self.json_file = sys.argv[3];
-        self.duration = 0
-        self.point = None
+        self.duration = {}
+        self.shapes = {}
         subscription = self.lcm.subscribe(self.channel, self.state_handler)
         subscription.set_queue_capacity(1)
 
@@ -80,7 +78,6 @@ class TestGui(QWidget):
         for data in self.data['data']:
             jsonData = eval(str(data))
 
-
             # set the body and point on which to visualize the data
             pt_body = np.array(jsonData['point-on-body'])
             body_name = jsonData['body_part']
@@ -94,18 +91,30 @@ class TestGui(QWidget):
 
             # draw a continuous line
             if (jsonData['type'] == "line"):
-                if (np.all(self.prev_loc == [0, 0, 0])):
-                    self.prev_loc = next_loc
 
-                # initialize the duration
-                if (self.duration == 0):
-                    self.duration = msg.utime / 1000000
+                # check if this line has bee drawn or not
+                try:
+                    self.shapes[jsonData['name']]
+                except:
+                    self.shapes[jsonData['name']] = deque()
 
-                # visualize and trace line for 2 seconds
-                if ((msg.utime / 1000000) - self.duration <= jsonData['history']):
+                # check if there is any previously computed location
+                try:
+                    self.prev_loc[jsonData['name']]
+                except:
+                    self.prev_loc[jsonData['name']] = next_loc
+
+                # check if the duration has been initialized
+                try:
+                    self.duration[jsonData['name']]
+                except:
+                    self.duration[jsonData['name']] = msg.utime / 1000000
+
+                # visualize and trace line for 'history' seconds
+                if ((msg.utime / 1000000) - self.duration[jsonData['name']] <= jsonData['history']):
                     # add new line
                     d = DebugData()
-                    d.addLine(self.prev_loc, next_loc, radius = jsonData['thickness'])
+                    d.addLine(self.prev_loc[jsonData['name']], next_loc, radius = jsonData['thickness'])
                     line = vis.showPolyData(d.getPolyData(), 'line')
 
                     # set color and transparency of line
@@ -113,30 +122,37 @@ class TestGui(QWidget):
                     line.setProperty('Alpha', jsonData['alpha'])
 
                     # add line to the history of current lines drawn
-                    self.prevLine.append(line);
+                    self.shapes[jsonData['name']].append(line);
                 else:
                     # reset the points of the last placed line
                     d = DebugData()
-                    d.addLine(self.prev_loc, next_loc, radius = jsonData['thickness'])
-                    lastLine = self.prevLine.popleft()
+                    d.addLine(self.prev_loc[jsonData['name']], next_loc, radius = jsonData['thickness'])
+                    lastLine = self.shapes[jsonData['name']].popleft()
                     lastLine.setPolyData(d.getPolyData())
-                    self.prevLine.append(lastLine)
+                    self.shapes[jsonData['name']].append(lastLine)
 
-                self.prev_loc = next_loc
+                self.prev_loc[jsonData['name']] = next_loc
 
             # draw a point
             elif (jsonData['type'] == "point"):
+
+                # check if the point has already been drawn
+                try:
+                    self.shapes[jsonData['name']]
+                except:
+                    self.shapes[jsonData['name']] = None
+
                 d = DebugData()
                 d.addSphere(next_loc, radius = jsonData['radius'])
                 # create a new point
-                if (self.point == None):
-                    self.point = vis.showPolyData(d.getPolyData(), 'sphere')
+                if (self.shapes[jsonData['name']] == None):
+                    self.shapes[jsonData['name']] = vis.showPolyData(d.getPolyData(), 'sphere')
                     # set color and transparency of point
-                    self.point.setProperty('Color', jsonData['color'])
-                    self.point.setProperty('Alpha', jsonData['alpha'])
+                    self.shapes[jsonData['name']].setProperty('Color', jsonData['color'])
+                    self.shapes[jsonData['name']].setProperty('Alpha', jsonData['alpha'])
                 else:
                     # update the location of the last point
-                    self.point.setPolyData(d.getPolyData())
+                    self.shapes[jsonData['name']].setPolyData(d.getPolyData())
 
 # Adding a widget but there's nothing in the widget (yet)
 panel = TestGui()

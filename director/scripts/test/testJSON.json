@@ -17,6 +17,23 @@
               "alpha": 0.5,
               "type": "point",
               "radius": 0.05
+            },
+            {"name": "right_toe_point",
+              "body_part":"toe_right",
+              "point-on-body":[0, 0, 0],
+              "color":[0, 0, 1],
+              "alpha": 0.5,
+              "type": "point",
+              "radius": 0.05
+            },
+            {"name": "right_toe_line",
+              "body_part":"toe_right",
+              "point-on-body":[0, 0, 0],
+              "color":[1, 0, 1],
+              "alpha": 0.5,
+              "type": "line",
+              "thickness": 0.01,
+              "history": 2
               }
           ]
 }

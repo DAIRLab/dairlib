@@ -1,0 +1,22 @@
+{
+  "model_file": "examples/Cassie/urdf/cassie_v2.urdf",
+  "weld-body": "yes",
+  "data": [{"name": "toe_line",
+            "body_part":"toe_left",
+            "point-on-body":[0, 0, 0],
+            "color":[1, 0, 0],
+            "alpha": 0.5,
+            "type": "line",
+            "thickness": 0.01,
+            "history": 2
+            },
+            {"name": "toe_point",
+              "body_part":"toe_left",
+              "point-on-body":[0, 0, 0],
+              "color":[0, 1, 0],
+              "alpha": 0.5,
+              "type": "point",
+              "radius": 0.05
+              }
+          ]
+}

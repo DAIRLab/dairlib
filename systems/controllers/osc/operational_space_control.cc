@@ -159,10 +159,9 @@ void OperationalSpaceControl::AddStateAndContactPoint(int state,
   AddContactPoint(body_name, pt_on_body);
 }
 
-//
-void OperationalSpaceControl::AddDistanceConstraint(
-    multibody::MultibodyDistanceConstraint& constraint) {
-  distance_constraints_.push_back(&constraint);
+void OperationalSpaceControl::AddKinematicConstraint(
+    const multibody::KinematicEvaluatorSet<double>* evaluators) {
+  kinematic_evaluators_ = evaluators;
 }
 
 // Tracking data methods
@@ -226,7 +225,9 @@ void OperationalSpaceControl::Build() {
   }
 
   // Construct QP
-  n_h_ = distance_constraints_.size();
+  n_h_ = (kinematic_evaluators_ == nullptr)
+             ? 0
+             : kinematic_evaluators_->count_full();
   n_c_ = 3 * body_indices_.size();
   prog_ = std::make_unique<MathematicalProgram>();
 
@@ -268,7 +269,7 @@ void OperationalSpaceControl::Build() {
                                   .get();
     }
   }
-  // 4. Friction constraint (approximated firction cone)
+  // 4. Friction constraint (approximated friction cone)
   if (!body_indices_.empty()) {
     VectorXd mu_minus1(2);
     VectorXd mu_plus1(2);
@@ -396,12 +397,12 @@ VectorXd OperationalSpaceControl::SolveQp(
   bias = bias - grav;
 
   // Get J and JdotV for holonomic constraint
-  MatrixXd J_h(distance_constraints_.size(), n_v_);
-  VectorXd JdotV_h(distance_constraints_.size());
-  for (unsigned int i = 0; i < distance_constraints_.size(); ++i) {
-    distance_constraints_[i]->updateConstraint(*context_wo_spr_);
-    J_h.row(i) = distance_constraints_[i]->getJ();
-    JdotV_h.segment(i, 1) = distance_constraints_[i]->getJdotv();
+  MatrixXd J_h(n_h_, n_v_);
+  VectorXd JdotV_h(n_h_);
+  if (kinematic_evaluators_ != nullptr) {
+    J_h = kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
+    JdotV_h =
+        kinematic_evaluators_->EvalFullJacobianDotTimesV(*context_wo_spr_);
   }
 
   // Get J and JdotV for contact constraint
@@ -441,19 +442,21 @@ VectorXd OperationalSpaceControl::SolveQp(
   /// -> J_h*dv == -JdotV_h
   holonomic_constraint_->UpdateCoefficients(J_h, -JdotV_h);
   // 3. Contact constraint
-  if (w_soft_constraint_ <= 0) {
-    ///    JdotV_c + J_c*dv == 0
-    /// -> J_c*dv == -JdotV_c
-    contact_constraints_->UpdateCoefficients(J_c, -JdotV_c);
-  } else {
-    // Relaxed version:
-    ///    JdotV_c + J_c*dv == -epsilon
-    /// -> J_c*dv + I*epsilon == -JdotV_c
-    /// -> [J_c, I]* [dv, epsilon]^T == -JdotV_c
-    MatrixXd A_c = MatrixXd::Zero(n_c_, n_v_ + n_c_);
-    A_c.block(0, 0, n_c_, n_v_) = J_c;
-    A_c.block(0, n_v_, n_c_, n_c_) = MatrixXd::Identity(n_c_, n_c_);
-    contact_constraints_->UpdateCoefficients(A_c, -JdotV_c);
+  if (!body_indices_.empty()) {
+    if (w_soft_constraint_ <= 0) {
+      ///    JdotV_c + J_c*dv == 0
+      /// -> J_c*dv == -JdotV_c
+      contact_constraints_->UpdateCoefficients(J_c, -JdotV_c);
+    } else {
+      // Relaxed version:
+      ///    JdotV_c + J_c*dv == -epsilon
+      /// -> J_c*dv + I*epsilon == -JdotV_c
+      /// -> [J_c, I]* [dv, epsilon]^T == -JdotV_c
+      MatrixXd A_c = MatrixXd::Zero(n_c_, n_v_ + n_c_);
+      A_c.block(0, 0, n_c_, n_v_) = J_c;
+      A_c.block(0, n_v_, n_c_, n_c_) = MatrixXd::Identity(n_c_, n_c_);
+      contact_constraints_->UpdateCoefficients(A_c, -JdotV_c);
+    }
   }
   // 4. Friction constraint (approximated firction cone)
   /// For i = active contact indices

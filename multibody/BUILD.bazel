@@ -72,20 +72,6 @@ cc_binary(
     ],
 )
 
-cc_library(
-    name = "multibody_distance_constraint",
-    srcs = [
-        "multibody_distance_constraint.cc",
-    ],
-    hdrs = [
-        "multibody_distance_constraint.h",
-    ],
-    deps = [
-        ":utils",
-        "@drake//:drake_shared_library",
-    ],
-)
-
 cc_test(
     name = "multibody_utils_test",
     size = "small",

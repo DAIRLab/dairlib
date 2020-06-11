@@ -5,17 +5,17 @@
 #include <utility>
 #include <vector>
 #include <drake/multibody/plant/multibody_plant.h>
+#include "dairlib/lcmt_osc_output.hpp"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "dairlib/lcmt_osc_output.hpp"
 
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
 
-#include "multibody/multibody_distance_constraint.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
@@ -126,8 +126,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                        const Eigen::VectorXd& pt_on_body);
   void AddStateAndContactPoint(int state, std::string body_name,
                                Eigen::VectorXd pt_on_body);
-  void AddDistanceConstraint(
-      multibody::MultibodyDistanceConstraint& constraint);
+  // WARNING: the evaluators here should use plant_wo_spr
+  void AddKinematicConstraint(
+      const multibody::KinematicEvaluatorSet<double>* evaluators);
   // Tracking data methods
   /// The third argument is used to set a period in which OSC does not track the
   /// desired traj (the period starts when the finite state machine switches to
@@ -135,8 +136,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddTrackingData(OscTrackingData* tracking_data, double t_lb = 0,
                        double t_ub = std::numeric_limits<double>::infinity());
   void AddConstTrackingData(
-      OscTrackingData* tracking_data, const Eigen::VectorXd& v, double t_lb
-      = 0,
+      OscTrackingData* tracking_data, const Eigen::VectorXd& v, double t_lb = 0,
       double t_ub = std::numeric_limits<double>::infinity());
   std::vector<OscTrackingData*>* GetAllTrackingData() {
     return tracking_data_vec_.get();
@@ -211,7 +211,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_c_;
 
   // Manually specified holonomic constraints (only valid for plants_wo_springs)
-  std::vector<multibody::MultibodyDistanceConstraint*> distance_constraints_;
+  const multibody::KinematicEvaluatorSet<double>* kinematic_evaluators_;
 
   // robot input limits
   Eigen::VectorXd u_min_;

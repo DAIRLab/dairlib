@@ -132,42 +132,24 @@ void extractResult(VectorXd& w_sol,
                    const MathematicalProgramResult& result,
                    std::chrono::duration<double> elapsed,
                    std::vector<int> num_time_samples,
-                   int& N,
+                   int N,
                    const MultibodyPlant<double> & plant,
                    const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
-                   int n_s, int n_sDDot, int n_tau,
-                   int n_feature_s,
-                   int n_feature_sDDot,
-                   const MatrixXd& B_tau,
-                   const VectorXd & theta_s, const VectorXd & theta_sDDot,
+                   const InnerLoopSetting& setting,
+                   const RomData& rom,
                    const Task& task,
-                   double duration, int max_iter,
-                   const string& directory,
-                   const string& init_file, const string& prefix,
-                   const vector<std::shared_ptr<VectorXd>>& c_vec,
-                   const vector<std::shared_ptr<int>>& is_success_vec,
-                   double Q_double, double R_double,
-                   double eps_reg,
-                   bool is_get_nominal,
-                   bool is_zero_touchdown_impact,
-                   bool extend_model,
-                   bool is_add_tau_in_cost,
+                   const SubQpData& QPs,
                    int sample_idx, int n_rerun,
                    double cost_threshold_for_update, int N_rerun,
-                   int rom_option,
-                   int robot_option,
                    vector<DirconKinematicDataSet<double>*> dataset_list,
                    bool is_print_for_debugging) {
-  //
-  // int n_q = plant.num_positions();
-  // int n_v = plant.num_velocities();
-  // int n_x = n_q + n_v;
-  // int n_u = plant.num_actuators();
+  string directory = setting.directory;
+  string prefix = setting.prefix;
 
   // Extract solution
   SolutionResult solution_result = result.get_solution_result();
   double tau_cost = 0;
-  if (is_add_tau_in_cost) {
+  if (setting.is_add_tau_in_cost) {
     // Way 1
     for (auto const & binding : gm_traj_opt.tau_cost_bindings) {
       const auto& tau_i = binding.variables();
@@ -201,7 +183,7 @@ void extractResult(VectorXd& w_sol,
     string_to_print += " | " + to_string(task);
   }
   string_to_print +=
-      " | " + init_file +
+      " | " + setting.init_file +
       " | " + to_string(solution_result) +
       " | " + to_string(elapsed.count()) +
       " | " + to_string(result.get_optimal_cost()) +
@@ -233,7 +215,7 @@ void extractResult(VectorXd& w_sol,
   else is_success << 0;
   writeCSV(directory + prefix + string("is_success.csv"), is_success);
 
-  *(is_success_vec[sample_idx]) = result.is_success()? 1 : 0;
+  *(QPs.is_success_vec[sample_idx]) = result.is_success()? 1 : 0;
 
   // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt, result, 1e-5);
   // cout << "constraint_satisfied = " << constraint_satisfied << endl;
@@ -304,8 +286,8 @@ void extractResult(VectorXd& w_sol,
   writeCSV(directory + prefix + string("c.csv"), c);
   writeCSV(directory + prefix + string("c_without_tau.csv"), c_without_tau);
 
-  c_vec[sample_idx]->resizeLike(c);
-  *(c_vec[sample_idx]) = c;
+  QPs.c_vec[sample_idx]->resizeLike(c);
+  *(QPs.c_vec[sample_idx]) = c;
 
   // Testing
   /*bool is_check_tau = true;
@@ -367,44 +349,31 @@ void extractResult(VectorXd& w_sol,
   // cout << endl;
 }
 
-void postProcessing(const VectorXd& w_sol,
-                    GoldilocksModelTrajOpt& gm_traj_opt,
+void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
                     const MathematicalProgramResult& result,
-                    std::chrono::duration<double> elapsed,
-                    std::vector<int> num_time_samples,
-                    int& N,
-                    const MultibodyPlant<double> & plant,
-                    const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
-                    int n_s, int n_sDDot, int n_tau,
-                    int n_feature_s,
-                    int n_feature_sDDot,
-                    const MatrixXd& B_tau,
-                    const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                    double duration, int max_iter,
-                    const string& directory,
-                    const string& init_file,
-                    const string& prefix,
-                    const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
-                    const vector<std::shared_ptr<MatrixXd>>& A_vec,
-                    const vector<std::shared_ptr<MatrixXd>>& H_vec,
-                    const vector<std::shared_ptr<VectorXd>>& y_vec,
-                    const vector<std::shared_ptr<VectorXd>>& lb_vec,
-                    const vector<std::shared_ptr<VectorXd>>& ub_vec,
-                    const vector<std::shared_ptr<VectorXd>>& b_vec,
-                    const vector<std::shared_ptr<MatrixXd>>& B_vec,
-                    double Q_double, double R_double,
-                    double eps_reg,
-                    bool is_get_nominal,
-                    bool is_zero_touchdown_impact,
+                    std::vector<int> num_time_samples, int N,
+                    const MultibodyPlant<double>& plant,
+                    const MultibodyPlant<AutoDiffXd>& plant_autoDiff,
+                    const InnerLoopSetting& setting,
+                    const RomData& rom,
+                    const SubQpData& QPs, bool is_get_nominal,
                     bool extend_model,
-                    bool is_add_tau_in_cost,
                     int sample_idx, int n_rerun,
                     double cost_threshold_for_update, int N_rerun,
-                    int rom_option,
-                    int robot_option) {
+                    int rom_option, int robot_option) {
+  int n_s = rom.n_y();
+  int n_sDDot = rom.n_y();
+  int n_tau = rom.n_tau();
+  int n_feature_s = rom.n_feature_y();
+  const VectorXd& theta_s = rom.theta_y();
+  const VectorXd& theta_sDDot = rom.theta_yddot();
+
+  string directory = setting.directory;
+  string prefix = setting.prefix;
+
   if (is_get_nominal || !result.is_success()) {
     // Do nothing.
-  } else if (extend_model) {  // Extending the model
+  } else if (extend_model && (n_rerun == N_rerun)) {  // Extending the model
     VectorXd theta_s_append = readCSV(directory +
                                       string("theta_s_append.csv")).col(0);
     int n_extend = theta_s_append.rows() / n_feature_s;
@@ -572,22 +541,22 @@ void postProcessing(const VectorXd& w_sol,
     writeCSV(directory + prefix + string("B.csv"), B);*/
 
 //    auto start = std::chrono::high_resolution_clock::now();
-    w_sol_vec[sample_idx]->resizeLike(w_sol);
-    A_vec[sample_idx]->resizeLike(A);
-    H_vec[sample_idx]->resizeLike(H);
-    y_vec[sample_idx]->resizeLike(y);
-    lb_vec[sample_idx]->resizeLike(lb);
-    ub_vec[sample_idx]->resizeLike(ub);
-    b_vec[sample_idx]->resizeLike(b);
-    B_vec[sample_idx]->resizeLike(B);
-    *(w_sol_vec[sample_idx]) = w_sol;
-    *(A_vec[sample_idx]) = A;
-    *(H_vec[sample_idx]) = H;
-    *(y_vec[sample_idx]) = y;
-    *(lb_vec[sample_idx]) = lb;
-    *(ub_vec[sample_idx]) = ub;
-    *(b_vec[sample_idx]) = b;
-    *(B_vec[sample_idx]) = B;
+    QPs.w_sol_vec[sample_idx]->resizeLike(w_sol);
+    QPs.A_vec[sample_idx]->resizeLike(A);
+    QPs.H_vec[sample_idx]->resizeLike(H);
+    QPs.y_vec[sample_idx]->resizeLike(y);
+    QPs.lb_vec[sample_idx]->resizeLike(lb);
+    QPs.ub_vec[sample_idx]->resizeLike(ub);
+    QPs.b_vec[sample_idx]->resizeLike(b);
+    QPs.B_vec[sample_idx]->resizeLike(B);
+    *(QPs.w_sol_vec[sample_idx]) = w_sol;
+    *(QPs.A_vec[sample_idx]) = A;
+    *(QPs.H_vec[sample_idx]) = H;
+    *(QPs.y_vec[sample_idx]) = y;
+    *(QPs.lb_vec[sample_idx]) = lb;
+    *(QPs.ub_vec[sample_idx]) = ub;
+    *(QPs.b_vec[sample_idx]) = b;
+    *(QPs.B_vec[sample_idx]) = B;
     /*auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
     cout << "time it takes to save matrices/vectors to RAM: " << elapsed.count()
@@ -1092,32 +1061,12 @@ void postProcessing(const VectorXd& w_sol,
 
 void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
-                          int n_s, int n_sDDot, int n_tau,
-                          int n_feature_s,
-                          int n_feature_sDDot,
-                          const MatrixXd& B_tau,
-                          const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                          const Task& task, int n_node, int max_iter,
-                          const string& directory,
-                          const string& init_file, const string& prefix,
-                          const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
-                          const vector<std::shared_ptr<MatrixXd>>& A_vec,
-                          const vector<std::shared_ptr<MatrixXd>>& H_vec,
-                          const vector<std::shared_ptr<VectorXd>>& y_vec,
-                          const vector<std::shared_ptr<VectorXd>>& lb_vec,
-                          const vector<std::shared_ptr<VectorXd>>& ub_vec,
-                          const vector<std::shared_ptr<VectorXd>>& b_vec,
-                          const vector<std::shared_ptr<VectorXd>>& c_vec,
-                          const vector<std::shared_ptr<MatrixXd>>& B_vec,
-                          const vector<std::shared_ptr<int>>& is_success_vec,
-                          double Q_double, double R_double,
-                          double all_cost_scale,
-                          double eps_reg,
+                          const RomData& rom,
+                          const InnerLoopSetting& setting,
+                          const Task& task,
+                          const SubQpData& QPs,
                           bool is_get_nominal,
-                          bool is_zero_touchdown_impact,
                           bool extend_model,
-                          bool is_add_tau_in_cost,
-                          bool snopt_scaling,
                           int sample_idx, int n_rerun,
                           double cost_threshold_for_update, int N_rerun,
                           int rom_option,
@@ -1234,7 +1183,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // and that the trajectory is discretized into timesteps h (N-1 of these),
   // state x (N of these), and control input u (N of these).
   std::vector<int> num_time_samples;
-  num_time_samples.push_back(n_node);
+  num_time_samples.push_back(setting.n_node);
   num_time_samples.push_back(1);
   std::vector<double> min_dt;
   min_dt.push_back(0);
@@ -1264,17 +1213,19 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
 //  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
 //                           "../snopt_sample#"+to_string(sample_idx)+".out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", max_iter);
+                           "Major iterations limit", setting.max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
-                           snopt_scaling? 2 : 0);  // snopt doc said try 2 if seeing snopta exit 40
+                           setting.snopt_scaling? 2 : 0);  // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major optimality tolerance", 1e-4);  // target nonlinear constraint violation
+                           "Major optimality tolerance",
+                           setting.major_optimality_tol);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major feasibility tolerance", 1e-4);  // target complementarity gap
+                           "Major feasibility tolerance",
+                           setting.major_feasibility_tol);
 
   // Periodicity constraints
   auto x0 = trajopt->initial_state();
@@ -1395,8 +1346,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
 //  trajopt->ScaleKinConstraintSlackVariables(500, 0, 6, 7);
 
   // Add cost
-  MatrixXd R = R_double * MatrixXd::Identity(n_u, n_u);
-  MatrixXd Q = Q_double * MatrixXd::Identity(n_v, n_v);
+  MatrixXd R = setting.R_double * MatrixXd::Identity(n_u, n_u);
+  MatrixXd Q = setting.Q_double * MatrixXd::Identity(n_v, n_v);
   // Don't use AddRunningCost, cause it makes cost Hessian to be indefinite
   // I'll fix the timestep and add cost myself
   /*auto u = trajopt->input();
@@ -1414,19 +1365,9 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   }
   trajopt->AddQuadraticCost(Q * timestep / 2, VectorXd::Zero(n_v), xf.tail(n_v));
   trajopt->AddQuadraticCost(R * timestep / 2, VectorXd::Zero(n_u), uf);
-  // Add regularization term here so that hessian is pd (for outer loop), so
-  // that we can use schur complement method
-  // Actually, Hessian still has zero eigen value because of h_var and z_var
-  /*MatrixXd I_x = MatrixXd::Identity(n_x, n_x);
-  trajopt->AddQuadraticCost(eps_reg*I_x*timestep/2,VectorXd::Zero(n_x),x0);
-  for(int i=1; i<=N-2; i++){
-    auto xi = trajopt->state(i);
-    trajopt->AddQuadraticCost(eps_reg*I_x*timestep,VectorXd::Zero(n_x),xi);
-  }
-  trajopt->AddQuadraticCost(eps_reg*I_x*timestep/2,VectorXd::Zero(n_x),xf);*/
 
   // Zero impact at touchdown
-  if (is_zero_touchdown_impact)
+  if (setting.is_zero_touchdown_impact)
     trajopt->AddLinearConstraint(MatrixXd::Ones(1, 1),
                                  VectorXd::Zero(1),
                                  VectorXd::Zero(1),
@@ -1435,16 +1376,15 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // Move the trajectory optmization problem into GoldilocksModelTrajOpt
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
-    n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
-    B_tau, theta_s, theta_sDDot,
+    rom,
     std::move(trajopt), &plant_autoDiff, &plant, num_time_samples,
-    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option, 1/*temporary*/);
+    is_get_nominal, setting.is_add_tau_in_cost, rom_option, robot_option, 1/*temporary*/);
 
-  addRegularization(is_get_nominal, eps_reg, gm_traj_opt);
+  addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
   // initial guess if the file exists
-  if (!init_file.empty()) {
-    setInitialGuessFromFile(directory, init_file, gm_traj_opt);
+  if (!setting.init_file.empty()) {
+    setInitialGuessFromFile(setting.directory, setting.init_file, gm_traj_opt);
   } else {
     // Add random initial guess first (the seed for RNG is fixed)
     gm_traj_opt.dircon->SetInitialGuessForAllVariables(
@@ -1456,6 +1396,10 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   //      drake::solvers::ChooseBestSolver(*(gm_traj_opt.dircon)).name() << endl;
 
   // cout << "Solving DIRCON (based on MultipleShooting)\n";
+  cout << sample_idx << ": ";
+  cout << setting.init_file << ", ";
+  cout << gm_traj_opt.dircon->decision_variables().size() << ", ";
+  cout << gm_traj_opt.dircon->initial_guess().size() << endl;
   auto start = std::chrono::high_resolution_clock::now();
   const MathematicalProgramResult result = Solve(
         *gm_traj_opt.dircon, gm_traj_opt.dircon->initial_guess());
@@ -1464,84 +1408,36 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
 
   bool is_print_for_debugging = false;
   VectorXd w_sol;
-  extractResult(w_sol, gm_traj_opt, result, elapsed,
-                num_time_samples, N,
-                plant, plant_autoDiff,
-                n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
-                theta_s, theta_sDDot,
-                task,
-                duration, max_iter,
-                directory, init_file, prefix,
-                c_vec,
-                is_success_vec,
-                Q_double, R_double, eps_reg,
-                is_get_nominal, is_zero_touchdown_impact,
-                extend_model, is_add_tau_in_cost,
-                sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
-                rom_option,
-                robot_option,
+  extractResult(w_sol, gm_traj_opt, result, elapsed, num_time_samples, N, plant,
+                plant_autoDiff, setting, rom, task, QPs, sample_idx, n_rerun,
+                cost_threshold_for_update, N_rerun,
                 dataset_list, is_print_for_debugging);
-  postProcessing(w_sol, gm_traj_opt, result, elapsed,
-                 num_time_samples, N,
-                 plant, plant_autoDiff,
-                 n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
-                 theta_s, theta_sDDot,
-                 duration, max_iter,
-                 directory, init_file, prefix,
-                 w_sol_vec,
-                 A_vec,
-                 H_vec,
-                 y_vec,
-                 lb_vec,
-                 ub_vec,
-                 b_vec,
-                 B_vec,
-                 Q_double, R_double, eps_reg,
-                 is_get_nominal, is_zero_touchdown_impact,
-                 extend_model, is_add_tau_in_cost,
-                 sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
-                 rom_option,
-                 robot_option);
+  postProcessing(w_sol, gm_traj_opt, result, num_time_samples, N,
+                 plant, plant_autoDiff, setting, rom, QPs,
+                 is_get_nominal, extend_model, sample_idx, n_rerun,
+                 cost_threshold_for_update, N_rerun, rom_option, robot_option);
 }
 
 
 void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
-                   int n_s, int n_sDDot, int n_tau,
-                   int n_feature_s,
-                   int n_feature_sDDot,
-                   const MatrixXd& B_tau,
-                   const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                   const Task& task, int n_node, int max_iter,
-                   double major_optimality_tol,
-                   double major_feasibility_tol,
-                   const string& directory,
-                   const string& init_file, const string& prefix,
-                   const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
-                   const vector<std::shared_ptr<MatrixXd>>& A_vec,
-                   const vector<std::shared_ptr<MatrixXd>>& H_vec,
-                   const vector<std::shared_ptr<VectorXd>>& y_vec,
-                   const vector<std::shared_ptr<VectorXd>>& lb_vec,
-                   const vector<std::shared_ptr<VectorXd>>& ub_vec,
-                   const vector<std::shared_ptr<VectorXd>>& b_vec,
-                   const vector<std::shared_ptr<VectorXd>>& c_vec,
-                   const vector<std::shared_ptr<MatrixXd>>& B_vec,
-                   const vector<std::shared_ptr<int>>& is_success_vec,
-                   double Q_double, double R_double, double all_cost_scale,
-                   double eps_reg,
+                   const RomData& rom,
+                   const InnerLoopSetting& setting,
+                   const Task& task,
+                   const SubQpData& QPs,
                    bool is_get_nominal,
-                   bool is_zero_touchdown_impact,
                    bool extend_model,
-                   bool is_add_tau_in_cost,
-                   bool snopt_scaling,
                    int sample_idx, int n_rerun,
                    double cost_threshold_for_update, int N_rerun,
-                   int rom_option, int robot_option) {
+                   int rom_option,
+                   int robot_option)  {
   double stride_length = task.get("stride length");
   double ground_incline = task.get("ground incline");
   double walking_vel = task.get("velocity");
   double turning_rate = task.get("turning rate");
   double duration = stride_length / walking_vel;
+
+  double all_cost_scale = setting.all_cost_scale;
 
   // Walking modes
   int walking_mode = 0; // 0: instant change of support
@@ -1554,11 +1450,11 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   //    in the first phase, etc)
 
   // Cost on velocity and input
-  double w_Q = Q_double * all_cost_scale;
+  double w_Q = setting.Q_double * all_cost_scale;
   double w_Q_vy = w_Q * 10000 * all_cost_scale;  // prevent the pelvis from rocking in y
   double w_Q_vz = w_Q * 10000 * all_cost_scale;  // prevent the pelvis from rocking in z
   double w_Q_swing_toe = w_Q * 1 * all_cost_scale;  // prevent the swing toe from shaking
-  double w_R = R_double * all_cost_scale;
+  double w_R = setting.R_double * all_cost_scale;
   double w_R_swing_toe = w_R * 1 * all_cost_scale;  // prevent the swing toe from shaking
   // Cost on force (the final weight is w_lambda^2)
   double w_lambda = 1.0e-4 * all_cost_scale * all_cost_scale;
@@ -1795,7 +1691,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   max_dt.push_back(.3);
   max_dt.push_back(.3);
   vector<int> num_time_samples;
-  num_time_samples.push_back(n_node);
+  num_time_samples.push_back(setting.n_node);
   num_time_samples.push_back(1);
   vector<DirconKinematicDataSet<double>*> dataset_list;
   dataset_list.push_back(&ls_dataset);
@@ -1809,19 +1705,19 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 //  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
 //                           "../snopt_sample#"+to_string(sample_idx)+".out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", max_iter);
+                           "Major iterations limit", setting.max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);  // 0
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
-                           snopt_scaling? 2 : 0);  // snopt doc said try 2 if seeing snopta exit 40
+                           setting.snopt_scaling? 2 : 0);  // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance",
-                           major_optimality_tol);  // target nonlinear constraint violation
+                           setting.major_optimality_tol);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major feasibility tolerance",
-                           major_feasibility_tol);  // target complementarity gap
+                           setting.major_feasibility_tol);
 
   int N = 0;
   for (uint i = 0; i < num_time_samples.size(); i++) N += num_time_samples[i];
@@ -2082,7 +1978,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 //  }
 
   // testing -- zero impact
-  /*if (is_zero_touchdown_impact) {
+  /*if (setting.is_zero_touchdown_impact) {
     trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(2) == 0);
     trajopt->AddLinearConstraint(trajopt->impulse_vars(0)(5) == 0);
   }*/
@@ -2249,16 +2145,15 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   // Move the trajectory optimization problem into GoldilocksModelTrajOpt
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
-    n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot,
-    B_tau, theta_s, theta_sDDot,
+    rom,
     std::move(trajopt), &plant_autoDiff, &plant, num_time_samples,
-    is_get_nominal, is_add_tau_in_cost, rom_option, robot_option, s);
+    is_get_nominal, setting.is_add_tau_in_cost, rom_option, robot_option, s);
 
-  addRegularization(is_get_nominal, eps_reg, gm_traj_opt);
+  addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
 
   // initial guess if the file exists
-  if (!init_file.empty()) {
-    setInitialGuessFromFile(directory, init_file, gm_traj_opt);
+  if (!setting.init_file.empty()) {
+    setInitialGuessFromFile(setting.directory, setting.init_file, gm_traj_opt);
   } else {
     // Do inverse kinematics to get q initial guess
     vector<VectorXd> q_seed =
@@ -2323,44 +2218,14 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 
   bool is_print_for_debugging = false;
   VectorXd w_sol;
-  extractResult(w_sol, gm_traj_opt, result, elapsed,
-                num_time_samples, N,
-                plant, plant_autoDiff,
-                n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
-                theta_s, theta_sDDot,
-                task,
-                duration, max_iter,
-                directory, init_file, prefix,
-                c_vec,
-                is_success_vec,
-                Q_double, R_double, eps_reg,
-                is_get_nominal, is_zero_touchdown_impact,
-                extend_model, is_add_tau_in_cost,
-                sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
-                rom_option,
-                robot_option,
-                dataset_list, is_print_for_debugging);
-  postProcessing(w_sol, gm_traj_opt, result, elapsed,
-                 num_time_samples, N,
-                 plant, plant_autoDiff,
-                 n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
-                 theta_s, theta_sDDot,
-                 duration, max_iter,
-                 directory, init_file, prefix,
-                 w_sol_vec,
-                 A_vec,
-                 H_vec,
-                 y_vec,
-                 lb_vec,
-                 ub_vec,
-                 b_vec,
-                 B_vec,
-                 Q_double, R_double, eps_reg,
-                 is_get_nominal, is_zero_touchdown_impact,
-                 extend_model, is_add_tau_in_cost,
-                 sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
-                 rom_option,
-                 robot_option);
+  extractResult(w_sol, gm_traj_opt, result, elapsed, num_time_samples, N, plant,
+                plant_autoDiff, setting, rom, task, QPs, sample_idx, n_rerun,
+                cost_threshold_for_update, N_rerun, dataset_list,
+                is_print_for_debugging);
+  postProcessing(w_sol, gm_traj_opt, result, num_time_samples, N,
+                 plant, plant_autoDiff, setting, rom, QPs,
+                 is_get_nominal, extend_model, sample_idx, n_rerun,
+                 cost_threshold_for_update, N_rerun, rom_option, robot_option);
 
   if (sample_idx == 0) {
     is_print_for_debugging = true;
@@ -2486,40 +2351,18 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   }  // end if is_print_for_debugging
 }
 
-void trajOptGivenWeights(const MultibodyPlant<double> & plant,
-                         const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
-                         int n_s, int n_sDDot, int n_tau,
-                         int n_feature_s,
-                         int n_feature_sDDot,
-                         const MatrixXd& B_tau,
-                         const VectorXd & theta_s, const VectorXd & theta_sDDot,
-                         Task task, int n_node, int max_iter,
-                         double major_optimality_tol,
-                         double major_feasibility_tol,
-                         const string& directory,
-                         string init_file, string prefix,
-                         const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
-                         const vector<std::shared_ptr<MatrixXd>>& A_vec,
-                         const vector<std::shared_ptr<MatrixXd>>& H_vec,
-                         const vector<std::shared_ptr<VectorXd>>& y_vec,
-                         const vector<std::shared_ptr<VectorXd>>& lb_vec,
-                         const vector<std::shared_ptr<VectorXd>>& ub_vec,
-                         const vector<std::shared_ptr<VectorXd>>& b_vec,
-                         const vector<std::shared_ptr<VectorXd>>& c_vec,
-                         const vector<std::shared_ptr<MatrixXd>>& B_vec,
-                         const vector<std::shared_ptr<int>>& is_success_vec,
-                         const vector<std::shared_ptr<int>>& thread_finished_vec,
-                         double Q_double, double R_double,
-                         double all_cost_scale,
-                         double eps_reg,
-                         bool is_get_nominal,
-                         bool is_zero_touchdown_impact,
-                         bool extend_model,
-                         bool is_add_tau_in_cost,
-                         bool snopt_scaling,
-                         int sample_idx, int n_rerun,
-                         double cost_threshold_for_update, int N_rerun,
-                         int rom_option, int robot_option) {
+void trajOptGivenWeights(
+    const MultibodyPlant<double> & plant,
+    const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
+    const RomData& rom,
+    InnerLoopSetting inner_loop_setting,
+    Task task,
+    const SubQpData& QPs,
+    const vector<std::shared_ptr<int>>& thread_finished_vec,
+    bool is_get_nominal,
+    bool extend_model,
+    int sample_idx, int n_rerun, double cost_threshold_for_update, int N_rerun,
+    int rom_option, int robot_option) {
 
   //Testing
 //  if (sample_idx == 0) {
@@ -2542,48 +2385,14 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
 //  }
 
   if (robot_option == 0) {
-    fiveLinkRobotTrajOpt(plant, plant_autoDiff,
-                         n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
-                         theta_s, theta_sDDot,
-                         task, n_node, max_iter,
-                         directory, init_file, prefix,
-                         w_sol_vec,
-                         A_vec,
-                         H_vec,
-                         y_vec,
-                         lb_vec,
-                         ub_vec,
-                         b_vec,
-                         c_vec,
-                         B_vec,
-                         is_success_vec,
-                         Q_double, R_double, all_cost_scale, eps_reg,
-                         is_get_nominal, is_zero_touchdown_impact,
-                         extend_model, is_add_tau_in_cost, snopt_scaling,
-                         sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
-                         rom_option, robot_option);
+    fiveLinkRobotTrajOpt(plant, plant_autoDiff, rom, inner_loop_setting, task,
+                         QPs, is_get_nominal, extend_model, sample_idx, n_rerun,
+                         cost_threshold_for_update, N_rerun, rom_option,
+                         robot_option);
   } else if (robot_option == 1) {
-    cassieTrajOpt(plant, plant_autoDiff,
-                  n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
-                  theta_s, theta_sDDot,
-                  task, n_node, max_iter,
-                  major_optimality_tol, major_feasibility_tol,
-                  directory, init_file, prefix,
-                  w_sol_vec,
-                  A_vec,
-                  H_vec,
-                  y_vec,
-                  lb_vec,
-                  ub_vec,
-                  b_vec,
-                  c_vec,
-                  B_vec,
-                  is_success_vec,
-                  Q_double, R_double, all_cost_scale, eps_reg,
-                  is_get_nominal, is_zero_touchdown_impact,
-                  extend_model, is_add_tau_in_cost, snopt_scaling,
-                  sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
-                  rom_option, robot_option);
+    cassieTrajOpt(plant, plant_autoDiff, rom, inner_loop_setting, task, QPs,
+                  is_get_nominal, extend_model, sample_idx, n_rerun,
+                  cost_threshold_for_update, N_rerun, rom_option, robot_option);
   }
 
   // For multithreading purpose. Indicate this function has ended.

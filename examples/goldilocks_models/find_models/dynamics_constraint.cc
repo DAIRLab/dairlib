@@ -8,57 +8,52 @@ namespace find_models {
 
 
 DynamicsConstraint::DynamicsConstraint(
-  int n_s, int n_feature_s,
-  const VectorXd & theta_s,
-  int n_sDDot, int n_feature_sDDot,
-  const VectorXd & theta_sDDot,
-  int n_tau,
-  MatrixXd B_tau,
+  const RomData& rom,
   const MultibodyPlant<AutoDiffXd> * plant,
   const MultibodyPlant<double> * plant_double,
   bool is_head,
   int rom_option, int robot_option,
-  const std::string& description) : NonlinearConstraint<double>(n_sDDot,
-        2 * (plant->num_positions() + plant->num_velocities() + n_tau) + 1,
-        VectorXd::Zero(n_sDDot),
-        VectorXd::Zero(n_sDDot),
+  const std::string& description) : NonlinearConstraint<double>(rom.n_yddot(),
+        2 * (plant->num_positions() + plant->num_velocities() + rom.n_tau()) + 1,
+        VectorXd::Zero(rom.n_yddot()),
+        VectorXd::Zero(rom.n_yddot()),
         description),
   plant_double_(plant_double),
   n_q_(plant->num_positions()),
   n_v_(plant->num_velocities()),
   n_u_(plant->num_actuators()),
-  n_s_(n_s),
-  n_feature_s_(n_feature_s),
-  n_theta_s_(theta_s.size()),
-  theta_s_(theta_s),
-  n_sDDot_(n_sDDot),
-  n_feature_sDDot_(n_feature_sDDot),
-  n_theta_sDDot_(theta_sDDot.size()),
-  theta_sDDot_(theta_sDDot),
-  n_tau_(n_tau),
-  kin_expression_(KinematicsExpression<AutoDiffXd>(n_s, n_feature_s,
+  n_y_(rom.n_y()),
+  n_feature_y_(rom.n_feature_y()),
+  n_theta_y_(rom.theta_y().size()),
+  theta_y_(rom.theta_y()),
+  n_yddot_(rom.n_yddot()),
+  n_feature_yddot_(rom.n_feature_yddot()),
+  n_theta_yddot_(rom.theta_yddot().size()),
+  theta_yddot_(rom.theta_yddot()),
+  n_tau_(rom.n_tau()),
+  kin_expression_(KinematicsExpression<AutoDiffXd>(rom.n_y(), rom.n_feature_y(),
                   plant, robot_option)),
-  kin_expression_double_(KinematicsExpression<double>(n_s, n_feature_s,
+  kin_expression_double_(KinematicsExpression<double>(rom.n_y(), rom.n_feature_y(),
                          plant_double, robot_option)),
-  dyn_expression_(DynamicsExpression(n_sDDot, n_feature_sDDot, B_tau,
+  dyn_expression_(DynamicsExpression(rom.n_yddot(), rom.n_feature_yddot(), rom.B(),
                                      rom_option, robot_option)),
   is_head_(is_head) {
 
   // Check the theta size
-  DRAKE_DEMAND(n_s * n_feature_s == theta_s.size());
+  DRAKE_DEMAND(n_y_ * n_feature_y_ == theta_y_.size());
 
   // Check the feature size implemented in the model expression
   AutoDiffVecXd q_temp =
     initializeAutoDiff(VectorXd::Ones(plant->num_positions()));
-  DRAKE_DEMAND(n_feature_s == kin_expression_.getFeature(q_temp).size());
+  DRAKE_DEMAND(n_feature_y_ == kin_expression_.getFeature(q_temp).size());
 
   // Check the theta size
-  DRAKE_DEMAND(n_sDDot * n_feature_sDDot == theta_sDDot.size());
+  DRAKE_DEMAND(n_yddot_ * n_feature_yddot_ == theta_yddot_.size());
 
   // Check the feature size implemented in the model expression
-  VectorXd s_temp = VectorXd::Ones(n_sDDot);
-  VectorXd ds_temp = VectorXd::Ones(n_sDDot);
-  DRAKE_DEMAND(n_feature_sDDot ==
+  VectorXd s_temp = VectorXd::Ones(n_yddot_);
+  VectorXd ds_temp = VectorXd::Ones(n_yddot_);
+  DRAKE_DEMAND(n_feature_yddot_ ==
                dyn_expression_.getFeature(s_temp, ds_temp).size());
 }
 
@@ -76,22 +71,22 @@ void DynamicsConstraint::EvaluateConstraint(
   *y = getConstraintValueInDouble(x_i, tau_i,
                                   x_iplus1, tau_iplus1,
                                   h_i,
-                                  theta_s_, theta_sDDot_);
+                                  theta_y_, theta_yddot_);
 }
 
 VectorXd DynamicsConstraint::getConstraintValueInDouble(
   const VectorXd & x_i, const VectorXd & tau_i,
   const VectorXd & x_iplus1, const VectorXd & tau_iplus1,
   const VectorXd & h_i,
-  const VectorXd & theta_s, const VectorXd & theta_sDDot) const {
+  const VectorXd & theta_y, const VectorXd & theta_yddot) const {
 
   // Get s and ds at knot i and i+1
-  VectorXd s_i = VectorXd::Zero(n_s_);
-  VectorXd ds_i = VectorXd::Zero(n_s_);
-  VectorXd s_iplus1 = VectorXd::Zero(n_s_);
-  VectorXd ds_iplus1 = VectorXd::Zero(n_s_);
-  getSAndSDotInDouble(x_i, s_i, ds_i, theta_s);
-  getSAndSDotInDouble(x_iplus1, s_iplus1, ds_iplus1, theta_s);
+  VectorXd s_i = VectorXd::Zero(n_y_);
+  VectorXd ds_i = VectorXd::Zero(n_y_);
+  VectorXd s_iplus1 = VectorXd::Zero(n_y_);
+  VectorXd ds_iplus1 = VectorXd::Zero(n_y_);
+  getSAndSDotInDouble(x_i, s_i, ds_i, theta_y);
+  getSAndSDotInDouble(x_iplus1, s_iplus1, ds_iplus1, theta_y);
 
   // cout << "s_i = " << s_i.transpose() << endl;
   // cout << "ds_i = " << ds_i.transpose() << endl;
@@ -104,18 +99,18 @@ VectorXd DynamicsConstraint::getConstraintValueInDouble(
   if (is_head_) {
     return 2 * (-3 * (s_i - s_iplus1) - h_i(0) * (ds_iplus1 + 2 * ds_i)) /
            (h_i(0) * h_i(0)) -
-           dyn_expression_.getExpression(theta_sDDot, s_i, ds_i, tau_i);
+           dyn_expression_.getExpression(theta_yddot, s_i, ds_i, tau_i);
   } else {
     return (6 * (s_i - s_iplus1) + h_i(0) * (4 * ds_iplus1 + 2 * ds_i)) /
            (h_i(0) * h_i(0)) -
-           dyn_expression_.getExpression(theta_sDDot, s_iplus1, ds_iplus1, tau_iplus1);
+           dyn_expression_.getExpression(theta_yddot, s_iplus1, ds_iplus1, tau_iplus1);
   }
 }
 
 // Careful: need to initialize the size of s and ds before calling getSAndSDotInDouble
 void DynamicsConstraint::getSAndSDotInDouble(VectorXd x,
     VectorXd & s, VectorXd & ds,
-    const VectorXd & theta_s) const {
+    const VectorXd & theta_y) const {
   // Scale to real-life scale
   VectorXd state(n_q_ + n_v_);
   state << x.segment(0, 4),
@@ -131,16 +126,16 @@ void DynamicsConstraint::getSAndSDotInDouble(VectorXd x,
   plant_double_->MapVelocityToQDot(*context, v, &qdot);
 
   // 1. s
-  DRAKE_DEMAND(theta_s.size()%n_feature_s_ == 0);
-  s = kin_expression_double_.getExpression(theta_s, q,
-                                           theta_s.size() / n_feature_s_);
+  DRAKE_DEMAND(theta_y.size()%n_feature_y_ == 0);
+  s = kin_expression_double_.getExpression(theta_y, q,
+                                           theta_y.size() / n_feature_y_);
 
   // 2. ds
   // get gradient of feature wrt q =============================================
   /// Forward differencing
-  // MatrixXd d_phi_d_q = MatrixXd(n_feature_s_, q.size());
-  // VectorXd phi_0(n_feature_s_);
-  // VectorXd phi_1(n_feature_s_);
+  // MatrixXd d_phi_d_q = MatrixXd(n_feature_y_, q.size());
+  // VectorXd phi_0(n_feature_y_);
+  // VectorXd phi_1(n_feature_y_);
   // phi_0 = kin_expression_double_.getFeature(q);
   // for (int i = 0; i < q.size(); i++) {
   //   q(i) += eps_fd_feature_;
@@ -150,9 +145,9 @@ void DynamicsConstraint::getSAndSDotInDouble(VectorXd x,
   // }
 
   /// Central differencing
-  // MatrixXd d_phi_d_q = MatrixXd(n_feature_s_, q.size());
-  // VectorXd phi_0(n_feature_s_);
-  // VectorXd phi_1(n_feature_s_);
+  // MatrixXd d_phi_d_q = MatrixXd(n_feature_y_, q.size());
+  // VectorXd phi_0(n_feature_y_);
+  // VectorXd phi_1(n_feature_y_);
   // for (int i = 0; i < q.size(); i++) {
   //   q(i) -= eps_cd_feature_/2;
   //   phi_0 = kin_expression_double_.getFeature(q);
@@ -163,11 +158,11 @@ void DynamicsConstraint::getSAndSDotInDouble(VectorXd x,
   // }
 
   /// high order of finite differencing
-  MatrixXd d_phi_d_q = MatrixXd(n_feature_s_, q.size());
-  VectorXd phi_0(n_feature_s_);
-  VectorXd phi_1(n_feature_s_);
-  VectorXd phi_2(n_feature_s_);
-  VectorXd phi_3(n_feature_s_);
+  MatrixXd d_phi_d_q = MatrixXd(n_feature_y_, q.size());
+  VectorXd phi_0(n_feature_y_);
+  VectorXd phi_1(n_feature_y_);
+  VectorXd phi_2(n_feature_y_);
+  VectorXd phi_3(n_feature_y_);
   for (int i = 0; i < q.size(); i++) {
     q(i) -= eps_ho_feature_ / 2;
     phi_0 = kin_expression_double_.getFeature(q);
@@ -187,20 +182,20 @@ void DynamicsConstraint::getSAndSDotInDouble(VectorXd x,
   // AutoDiffVecXd q_autodiff = x_autodiff.head(n_q_);
   // MatrixXd d_phi_d_q_GROUNDTRUTH =
   //   autoDiffToGradientMatrix(
-  //     kin_expression_.getFeature(q_autodiff)).block(0, 0, n_feature_s_, n_q_);
+  //     kin_expression_.getFeature(q_autodiff)).block(0, 0, n_feature_y_, n_q_);
   // cout << "gradient difference = " << (d_phi_d_q_GROUNDTRUTH - d_phi_d_q).norm()
   //      << endl;
   // End of getting gradient ===================================================
 
   VectorXd dphi0_dt = d_phi_d_q * qdot;
-  for (int i = 0; i < n_s_ ; i++) {
-    ds(i) = theta_s.segment(i * n_feature_s_, n_feature_s_).dot(dphi0_dt);
+  for (int i = 0; i < n_y_ ; i++) {
+    ds(i) = theta_y.segment(i * n_feature_y_, n_feature_y_).dot(dphi0_dt);
   }
 }
 
 void DynamicsConstraint::getSAndSDot(const VectorXd & x,
                                      VectorXd & s, VectorXd & ds) const {
-  getSAndSDotInDouble(x, s, ds, theta_s_);
+  getSAndSDotInDouble(x, s, ds, theta_y_);
 }
 
 MatrixXd DynamicsConstraint::getGradientWrtTheta(
@@ -218,27 +213,27 @@ MatrixXd DynamicsConstraint::getGradientWrtTheta(
 
   // ////////// V1: Do forward differencing wrt theta //////////////////////////
   /*
-  // Get the gradient wrt theta_s and theta_sDDot
-  VectorXd theta(n_theta_s_ + n_theta_sDDot_);
-  theta << theta_s_, theta_sDDot_;
-  MatrixXd gradWrtTheta(n_s_, theta.size());
+  // Get the gradient wrt theta_y and theta_yddot
+  VectorXd theta(n_theta_y_ + n_theta_yddot_);
+  theta << theta_y_, theta_yddot_;
+  MatrixXd gradWrtTheta(n_y_, theta.size());
   vector<VectorXd> y_vec;
   for (int k = 0; k < theta.size(); k++) {
     for (double shift : fd_shift_vec_) {
       theta(k) += shift;
 
-      VectorXd theta_s = theta.head(n_theta_s_);
-      VectorXd theta_sDDot = theta.tail(n_theta_sDDot_);
+      VectorXd theta_y = theta.head(n_theta_y_);
+      VectorXd theta_yddot = theta.tail(n_theta_yddot_);
 
       // Evaluate constraint value
       // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
       //                                         x_i, x_iplus1, h_i,
-      //                                         theta_s, theta_sDDot)));
+      //                                         theta_y, theta_yddot)));
       y_vec.push_back(getConstraintValueInDouble(
                         x_i_double, tau_i,
                         x_iplus1_double, tau_iplus1,
                         h_i_double,
-                        theta_s, theta_sDDot));
+                        theta_y, theta_yddot));
 
       theta(k) -= shift;
     }
@@ -249,27 +244,27 @@ MatrixXd DynamicsConstraint::getGradientWrtTheta(
   }*/
 
   // ////////// V2: Do central differencing wrt theta //////////////////////////
-  // Get the gradient wrt theta_s and theta_sDDot
-  VectorXd theta(n_theta_s_ + n_theta_sDDot_);
-  theta << theta_s_, theta_sDDot_;
-  MatrixXd gradWrtTheta(n_s_, theta.size());
+  // Get the gradient wrt theta_y and theta_yddot
+  VectorXd theta(n_theta_y_ + n_theta_yddot_);
+  theta << theta_y_, theta_yddot_;
+  MatrixXd gradWrtTheta(n_y_, theta.size());
   vector<VectorXd> y_vec;
   for (int k = 0; k < theta.size(); k++) {
     for (double shift : cd_shift_vec_) {
       theta(k) += shift;
 
-      VectorXd theta_s = theta.head(n_theta_s_);
-      VectorXd theta_sDDot = theta.tail(n_theta_sDDot_);
+      VectorXd theta_y = theta.head(n_theta_y_);
+      VectorXd theta_yddot = theta.tail(n_theta_yddot_);
 
       // Evaluate constraint value
       // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
       //                                         x_i, x_iplus1, h_i,
-      //                                         theta_s, theta_sDDot)));
+      //                                         theta_y, theta_yddot)));
       y_vec.push_back(getConstraintValueInDouble(
                         x_i_double, tau_i,
                         x_iplus1_double, tau_iplus1,
                         h_i_double,
-                        theta_s, theta_sDDot));
+                        theta_y, theta_yddot));
 
       theta(k) -= shift;
     }
@@ -283,27 +278,27 @@ MatrixXd DynamicsConstraint::getGradientWrtTheta(
   // Reference: https://en.wikipedia.org/wiki/Numerical_differentiation#Higher-order_methods
 
   /*
-  // Get the gradient wrt theta_s and theta_sDDot
-  VectorXd theta(n_theta_s_ + n_theta_sDDot_);
-  theta << theta_s_, theta_sDDot_;
-  MatrixXd gradWrtTheta(n_s_, theta.size());
+  // Get the gradient wrt theta_y and theta_yddot
+  VectorXd theta(n_theta_y_ + n_theta_yddot_);
+  theta << theta_y_, theta_yddot_;
+  MatrixXd gradWrtTheta(n_y_, theta.size());
   vector<VectorXd> y_vec;
   for (int k = 0; k < theta.size(); k++) {
     for (double shift : ho_shift_vec_) {
       theta(k) += shift;
 
-      VectorXd theta_s = theta.head(n_theta_s_);
-      VectorXd theta_sDDot = theta.tail(n_theta_sDDot_);
+      VectorXd theta_y = theta.head(n_theta_y_);
+      VectorXd theta_yddot = theta.tail(n_theta_yddot_);
 
       // Evaluate constraint value
       // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
       //                                         x_i, x_iplus1, h_i,
-      //                                         theta_s, theta_sDDot)));
+      //                                         theta_y, theta_yddot)));
       y_vec.push_back(getConstraintValueInDouble(
                         x_i_double, tau_i,
                         x_iplus1_double, tau_iplus1,
                         h_i_double,
-                        theta_s, theta_sDDot));
+                        theta_y, theta_yddot));
 
       theta(k) -= shift;
     }
@@ -325,10 +320,10 @@ MatrixXd DynamicsConstraint::getGradientWrtTheta(
 
 VectorXd DynamicsConstraint::computeTauToExtendModel(
   const VectorXd & x_i_double, const VectorXd & x_iplus1_double,
-  const VectorXd & h_i, const VectorXd & theta_s_append) {
+  const VectorXd & h_i, const VectorXd & theta_y_append) {
 
   // Reset the model dimension, so that we can get the extended part of the model
-  int n_extend = theta_s_append.rows() / n_feature_s_;
+  int n_extend = theta_y_append.rows() / n_feature_y_;
   kin_expression_.setModelDimension(n_extend);
 
   // Get s and ds at knot i and i+1
@@ -336,11 +331,11 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
   VectorXd ds_i = VectorXd::Zero(n_extend);
   VectorXd s_iplus1 = VectorXd::Zero(n_extend);
   VectorXd ds_iplus1 = VectorXd::Zero(n_extend);
-  getSAndSDotInDouble(x_i_double, s_i, ds_i, theta_s_append);
-  getSAndSDotInDouble(x_iplus1_double, s_iplus1, ds_iplus1, theta_s_append);
+  getSAndSDotInDouble(x_i_double, s_i, ds_i, theta_y_append);
+  getSAndSDotInDouble(x_iplus1_double, s_iplus1, ds_iplus1, theta_y_append);
 
   // Set the model dimension back just in case
-  kin_expression_.setModelDimension(n_s_);
+  kin_expression_.setModelDimension(n_y_);
 
   // Get constraint value (without h(s,ds) and tau)
   if (is_head_) {
@@ -377,54 +372,54 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 // Below is Autodiff version (DoEval is implemented in Autodiff one)
 
 //DynamicsConstraintAutodiffVersion::DynamicsConstraintAutodiffVersion(
-//  int n_s, int n_feature_s,
-//  const VectorXd & theta_s,
-//  int n_sDDot, int n_feature_sDDot,
-//  const VectorXd & theta_sDDot,
+//  int n_y, int n_feature_y,
+//  const VectorXd & theta_y,
+//  int n_yddot, int n_feature_yddot,
+//  const VectorXd & theta_yddot,
 //  int n_tau,
 //  MatrixXd B_tau,
 //  const MultibodyPlant<AutoDiffXd> * plant,
 //  bool is_head,
 //  int robot_option,
 //  const std::string& description):
-//  Constraint(n_sDDot,
+//  Constraint(n_yddot,
 //             2 * (plant->num_positions() + plant->num_velocities() + n_tau) + 1,
-//             VectorXd::Zero(n_sDDot),
-//             VectorXd::Zero(n_sDDot),
+//             VectorXd::Zero(n_yddot),
+//             VectorXd::Zero(n_yddot),
 //             description),
 //  plant_(plant),
 //  n_q_(plant->num_positions()),
 //  n_v_(plant->num_velocities()),
-//  n_s_(n_s),
-//  n_feature_s_(n_feature_s),
-//  n_theta_s_(theta_s.size()),
-//  theta_s_(theta_s),
-//  n_sDDot_(n_sDDot),
-//  n_feature_sDDot_(n_feature_sDDot),
-//  n_theta_sDDot_(theta_sDDot.size()),
-//  theta_sDDot_(theta_sDDot),
+//  n_y_(n_y),
+//  n_feature_y_(n_feature_y),
+//  n_theta_y_(theta_y.size()),
+//  theta_y_(theta_y),
+//  n_yddot_(n_yddot),
+//  n_feature_yddot_(n_feature_yddot),
+//  n_theta_yddot_(theta_yddot.size()),
+//  theta_yddot_(theta_yddot),
 //  n_tau_(n_tau),
-//  kin_expression_(KinematicsExpression<AutoDiffXd>(n_s, n_feature_s, plant,
+//  kin_expression_(KinematicsExpression<AutoDiffXd>(n_y, n_feature_y, plant,
 //                  robot_option)),
-//  dyn_expression_(DynamicsExpression(n_sDDot, n_feature_sDDot, B_tau,
+//  dyn_expression_(DynamicsExpression(n_yddot, n_feature_yddot, B_tau,
 //                                     robot_option)),
 //  is_head_(is_head) {
 //
 //  // Check the theta size
-//  DRAKE_DEMAND(n_s * n_feature_s == theta_s.size());
+//  DRAKE_DEMAND(n_y * n_feature_y == theta_y.size());
 //
 //  // Check the feature size implemented in the model expression
 //  AutoDiffVecXd q_temp =
 //    initializeAutoDiff(VectorXd::Zero(plant->num_positions()));
-//  DRAKE_DEMAND(n_feature_s == kin_expression_.getFeature(q_temp).size());
+//  DRAKE_DEMAND(n_feature_y == kin_expression_.getFeature(q_temp).size());
 //
 //  // Check the theta size
-//  DRAKE_DEMAND(n_sDDot * n_feature_sDDot == theta_sDDot.size());
+//  DRAKE_DEMAND(n_yddot * n_feature_yddot == theta_yddot.size());
 //
 //  // Check the feature size implemented in the model expression
-//  VectorXd s_temp = VectorXd::Zero(n_sDDot);
-//  VectorXd ds_temp = VectorXd::Zero(n_sDDot);
-//  DRAKE_DEMAND(n_feature_sDDot ==
+//  VectorXd s_temp = VectorXd::Zero(n_yddot);
+//  VectorXd ds_temp = VectorXd::Zero(n_yddot);
+//  DRAKE_DEMAND(n_feature_yddot ==
 //               dyn_expression_.getFeature(s_temp, ds_temp).size());
 //}
 //
@@ -450,19 +445,19 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //  // Impose dynamics constraint
 //  // Way 1 /////////////////////////////////////////////////////////////////////
 //  *y = getConstraintValueInAutoDiff(x_i, tau_i, x_iplus1, tau_iplus1, h_i,
-//                                    theta_s_, theta_sDDot_);
+//                                    theta_y_, theta_yddot_);
 //
 //
 //  // Way 2 /////////////////////////////////////////////////////////////////////
 //  // (not up-to-date)
 //  // rhs is copied from DynamicsExpression.getExpression().
 //  /*// Get s and ds at knot i and i+1
-//  AutoDiffVecXd s_i = initializeAutoDiff(VectorXd::Zero(n_s_));
-//  AutoDiffVecXd ds_i = initializeAutoDiff(VectorXd::Zero(n_s_));
-//  AutoDiffVecXd s_iplus1 = initializeAutoDiff(VectorXd::Zero(n_s_));
-//  AutoDiffVecXd ds_iplus1 = initializeAutoDiff(VectorXd::Zero(n_s_));
-//  getSAndSDotInAutoDiff(x_i, s_i, ds_i, 0, theta_s_);
-//  getSAndSDotInAutoDiff(x_iplus1, s_iplus1, ds_iplus1, n_q_ + n_v_ + n_tau_, theta_s_);
+//  AutoDiffVecXd s_i = initializeAutoDiff(VectorXd::Zero(n_y_));
+//  AutoDiffVecXd ds_i = initializeAutoDiff(VectorXd::Zero(n_y_));
+//  AutoDiffVecXd s_iplus1 = initializeAutoDiff(VectorXd::Zero(n_y_));
+//  AutoDiffVecXd ds_iplus1 = initializeAutoDiff(VectorXd::Zero(n_y_));
+//  getSAndSDotInAutoDiff(x_i, s_i, ds_i, 0, theta_y_);
+//  getSAndSDotInAutoDiff(x_iplus1, s_iplus1, ds_iplus1, n_q_ + n_v_ + n_tau_, theta_y_);
 //
 //  // Get constraint value in autoDiff
 //  if (is_head_) {
@@ -471,10 +466,10 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //      (h_i(0) * h_i(0));
 //
 //    // AutoDiffVecXd rhs =
-//    //   dyn_expression_.getExpression(theta_sDDot_, s_i, ds_i, tau_i);
-//    AutoDiffVecXd rhs = initializeAutoDiff(VectorXd::Zero(n_sDDot_));
-//    for (int i = 0; i < n_sDDot_; i++)
-//      rhs(i) = theta_sDDot_.segment(i * n_feature_sDDot_, n_feature_sDDot_).dot(
+//    //   dyn_expression_.getExpression(theta_yddot_, s_i, ds_i, tau_i);
+//    AutoDiffVecXd rhs = initializeAutoDiff(VectorXd::Zero(n_yddot_));
+//    for (int i = 0; i < n_yddot_; i++)
+//      rhs(i) = theta_yddot_.segment(i * n_feature_yddot_, n_feature_yddot_).dot(
 //                 dyn_expression_.getFeature(s_i, ds_i));
 //
 //    *y = lhs - rhs;
@@ -485,10 +480,10 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //      (h_i(0) * h_i(0));
 //
 //    // AutoDiffVecXd rhs =
-//    //   dyn_expression_.getExpression(theta_sDDot_, s_iplus1, ds_iplus1, tau_iplus1);
-//    AutoDiffVecXd rhs = initializeAutoDiff(VectorXd::Zero(n_sDDot_));
-//    for (int i = 0; i < n_sDDot_; i++)
-//      rhs(i) = theta_sDDot_.segment(i * n_feature_sDDot_, n_feature_sDDot_).dot(
+//    //   dyn_expression_.getExpression(theta_yddot_, s_iplus1, ds_iplus1, tau_iplus1);
+//    AutoDiffVecXd rhs = initializeAutoDiff(VectorXd::Zero(n_yddot_));
+//    for (int i = 0; i < n_yddot_; i++)
+//      rhs(i) = theta_yddot_.segment(i * n_feature_yddot_, n_feature_yddot_).dot(
 //                 dyn_expression_.getFeature(s_iplus1, ds_iplus1));
 //
 //    *y = lhs - rhs;
@@ -508,26 +503,26 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //  const AutoDiffVecXd & x_i, const AutoDiffVecXd & tau_i,
 //  const AutoDiffVecXd & x_iplus1, const AutoDiffVecXd & tau_iplus1,
 //  const AutoDiffVecXd & h_i,
-//  const VectorXd & theta_s, const VectorXd & theta_sDDot) const {
+//  const VectorXd & theta_y, const VectorXd & theta_yddot) const {
 //
 //  // Get s and ds at knot i and i+1
-//  AutoDiffVecXd s_i = initializeAutoDiff(VectorXd::Zero(n_s_));
-//  AutoDiffVecXd ds_i = initializeAutoDiff(VectorXd::Zero(n_s_));
-//  AutoDiffVecXd s_iplus1 = initializeAutoDiff(VectorXd::Zero(n_s_));
-//  AutoDiffVecXd ds_iplus1 = initializeAutoDiff(VectorXd::Zero(n_s_));
-//  getSAndSDotInAutoDiff(x_i, s_i, ds_i, 0, theta_s);
+//  AutoDiffVecXd s_i = initializeAutoDiff(VectorXd::Zero(n_y_));
+//  AutoDiffVecXd ds_i = initializeAutoDiff(VectorXd::Zero(n_y_));
+//  AutoDiffVecXd s_iplus1 = initializeAutoDiff(VectorXd::Zero(n_y_));
+//  AutoDiffVecXd ds_iplus1 = initializeAutoDiff(VectorXd::Zero(n_y_));
+//  getSAndSDotInAutoDiff(x_i, s_i, ds_i, 0, theta_y);
 //  getSAndSDotInAutoDiff(x_iplus1, s_iplus1, ds_iplus1, n_q_ + n_v_ + n_tau_,
-//                        theta_s);
+//                        theta_y);
 //
 //  // Get constraint value in autoDiff
 //  if (is_head_) {
 //    return 2 * (-3 * (s_i - s_iplus1) - h_i(0) * (ds_iplus1 + 2 * ds_i)) /
 //           (h_i(0) * h_i(0)) -
-//           dyn_expression_.getExpression(theta_sDDot, s_i, ds_i, tau_i);
+//           dyn_expression_.getExpression(theta_yddot, s_i, ds_i, tau_i);
 //  } else {
 //    return (6 * (s_i - s_iplus1) + h_i(0) * (4 * ds_iplus1 + 2 * ds_i)) /
 //           (h_i(0) * h_i(0)) -
-//           dyn_expression_.getExpression(theta_sDDot, s_iplus1, ds_iplus1, tau_iplus1);
+//           dyn_expression_.getExpression(theta_yddot, s_iplus1, ds_iplus1, tau_iplus1);
 //  }
 //}
 //
@@ -535,30 +530,30 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //void DynamicsConstraintAutodiffVersion::getSAndSDotInAutoDiff(AutoDiffVecXd x,
 //    AutoDiffVecXd & s, AutoDiffVecXd & ds,
 //    const int & i_start,
-//    const VectorXd & theta_s) const {
+//    const VectorXd & theta_y) const {
 //  AutoDiffVecXd q = x.head(n_q_);
 //  AutoDiffVecXd v = x.tail(n_v_);
 //  // s
-//  s = kin_expression_.getExpression(theta_s, q);
+//  s = kin_expression_.getExpression(theta_y, q);
 //
 //  // ds
 //  MatrixXd d_phi_d_q =
 //    autoDiffToGradientMatrix(
-//      kin_expression_.getFeature(q)).block(0, i_start, n_feature_s_, n_q_);
+//      kin_expression_.getFeature(q)).block(0, i_start, n_feature_y_, n_q_);
 //  VectorXd v_val = DiscardGradient(x.tail(n_v_));
 //  VectorXd dphi0_dt = d_phi_d_q * v_val;
 //
 //  //TODO(yminchen): replace 2 * (n_q_ + n_v_ + n_tau_) + 1 with d_phi_d_q.cols() below
 //
 //  /////////////////// V2: forward differencing /////////////////////////////////
-//  /*MatrixXd grad_dphidt = MatrixXd::Zero(n_feature_s_, 2 * (n_q_ + n_v_ + n_tau_) + 1);
+//  /*MatrixXd grad_dphidt = MatrixXd::Zero(n_feature_y_, 2 * (n_q_ + n_v_ + n_tau_) + 1);
 //  for (int i = 0; i < n_q_ + n_v_; i++) {
 //    x(i) += eps_fd_;
 //
 //    q = x.head(n_q_);
 //    d_phi_d_q =
 //      autoDiffToGradientMatrix(
-//        kin_expression_.getFeature(q)).block(0, i_start, n_feature_s_, n_q_);
+//        kin_expression_.getFeature(q)).block(0, i_start, n_feature_y_, n_q_);
 //    v_val = DiscardGradient(x.tail(n_v_));
 //    VectorXd dphii_dt = d_phi_d_q * v_val;
 //
@@ -568,9 +563,9 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //  }*/
 //
 //  /////////////////// V2: central differencing /////////////////////////////////
-//  MatrixXd grad_dphidt = MatrixXd::Zero(n_feature_s_,
+//  MatrixXd grad_dphidt = MatrixXd::Zero(n_feature_y_,
 //                                        2 * (n_q_ + n_v_ + n_tau_) + 1);
-//  vector<VectorXd> dphii_dt_vec(2, VectorXd::Zero(n_feature_s_));
+//  vector<VectorXd> dphii_dt_vec(2, VectorXd::Zero(n_feature_y_));
 //  for (int i = 0; i < n_q_ + n_v_; i++) {
 //    for (unsigned int j = 0; j < cd_shift_vec_.size(); j++) {
 //      x(i) += cd_shift_vec_[j];
@@ -580,7 +575,7 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //      q = x.head(n_q_);
 //      d_phi_d_q =
 //        autoDiffToGradientMatrix(
-//          kin_expression_.getFeature(q)).block(0, i_start, n_feature_s_, n_q_);
+//          kin_expression_.getFeature(q)).block(0, i_start, n_feature_y_, n_q_);
 //      v_val = DiscardGradient(x.tail(n_v_));
 //      dphii_dt_vec[j] = d_phi_d_q * v_val;
 //
@@ -595,8 +590,8 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //  drake::math::initializeAutoDiffGivenGradientMatrix(
 //    dphi0_dt, grad_dphidt, dphi_dt);
 //
-//  for (int i = 0; i < n_s_ ; i++) {
-//    ds(i) = theta_s.segment(i * n_feature_s_, n_feature_s_).dot(dphi_dt);
+//  for (int i = 0; i < n_y_ ; i++) {
+//    ds(i) = theta_y.segment(i * n_feature_y_, n_feature_y_).dot(dphi_dt);
 //  }
 //}
 //
@@ -613,9 +608,9 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //  // 3. discard the gradient part
 //
 //  AutoDiffVecXd x_autoDiff = initializeAutoDiff(x);
-//  AutoDiffVecXd s_autoDiff = initializeAutoDiff(VectorXd::Zero(n_s_));
-//  AutoDiffVecXd ds_autoDiff = initializeAutoDiff(VectorXd::Zero(n_s_));
-//  getSAndSDotInAutoDiff(x_autoDiff, s_autoDiff, ds_autoDiff, 0, theta_s_);
+//  AutoDiffVecXd s_autoDiff = initializeAutoDiff(VectorXd::Zero(n_y_));
+//  AutoDiffVecXd ds_autoDiff = initializeAutoDiff(VectorXd::Zero(n_y_));
+//  getSAndSDotInAutoDiff(x_autoDiff, s_autoDiff, ds_autoDiff, 0, theta_y_);
 //
 //  s = DiscardGradient(s_autoDiff);
 //  ds = DiscardGradient(ds_autoDiff);
@@ -645,26 +640,26 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //  AutoDiffVecXd x_iplus1 = qvtqvth.segment(n_q_ + n_v_ + n_tau_, n_q_ + n_v_);
 //  const AutoDiffVecXd h_i = qvtqvth.tail(1);
 //
-//  // Get the gradient wrt theta_s and theta_sDDot
-//  VectorXd theta(n_theta_s_ + n_theta_sDDot_);
-//  theta << theta_s_, theta_sDDot_;
-//  MatrixXd gradWrtTheta(n_s_, theta.size());
+//  // Get the gradient wrt theta_y and theta_yddot
+//  VectorXd theta(n_theta_y_ + n_theta_yddot_);
+//  theta << theta_y_, theta_yddot_;
+//  MatrixXd gradWrtTheta(n_y_, theta.size());
 //  vector<VectorXd> y_vec;
 //  for (int k = 0; k < theta.size(); k++) {
 //    for (double shift : fd_shift_vec_) {
 //      theta(k) += shift;
 //
-//      VectorXd theta_s = theta.head(n_theta_s_);
-//      VectorXd theta_sDDot = theta.tail(n_theta_sDDot_);
+//      VectorXd theta_y = theta.head(n_theta_y_);
+//      VectorXd theta_yddot = theta.tail(n_theta_yddot_);
 //
 //      // Evaluate constraint value
 //      // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
 //      //                                         x_i, x_iplus1, h_i,
-//      //                                         theta_s, theta_sDDot)));
+//      //                                         theta_y, theta_yddot)));
 //      y_vec.push_back(getConstraintValueInDouble(x_i, tau_i_double,
 //                                              x_iplus1, tau_iplus1_double,
 //                                              autoDiffToValueMatrix(h_i),
-//                                              theta_s, theta_sDDot));
+//                                              theta_y, theta_yddot));
 //
 //      theta(k) -= shift;
 //    }
@@ -685,27 +680,27 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //  AutoDiffVecXd x_iplus1 = qvtqvth.segment(n_q_ + n_v_ + n_tau_, n_q_ + n_v_);
 //  const AutoDiffVecXd h_i = qvtqvth.tail(1);
 //
-//  // Get the gradient wrt theta_s and theta_sDDot
-//  VectorXd theta(n_theta_s_ + n_theta_sDDot_);
-//  theta << theta_s_, theta_sDDot_;
-//  MatrixXd gradWrtTheta(n_s_, theta.size());
+//  // Get the gradient wrt theta_y and theta_yddot
+//  VectorXd theta(n_theta_y_ + n_theta_yddot_);
+//  theta << theta_y_, theta_yddot_;
+//  MatrixXd gradWrtTheta(n_y_, theta.size());
 //  vector<VectorXd> y_vec;
 //  for (int k = 0; k < theta.size(); k++) {
 //    for (double shift : cd_shift_vec_) {
 //      theta(k) += shift;
 //
-//      VectorXd theta_s = theta.head(n_theta_s_);
-//      VectorXd theta_sDDot = theta.tail(n_theta_sDDot_);
+//      VectorXd theta_y = theta.head(n_theta_y_);
+//      VectorXd theta_yddot = theta.tail(n_theta_yddot_);
 //
 //      // Evaluate constraint value
 //      // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
 //      //                                         x_i, x_iplus1, h_i,
-//      //                                         theta_s, theta_sDDot)));
+//      //                                         theta_y, theta_yddot)));
 //      y_vec.push_back(getConstraintValueInDouble(
 //                        x_i, tau_i_double,
 //                        x_iplus1, tau_iplus1_double,
 //                        autoDiffToValueMatrix(h_i),
-//                        theta_s, theta_sDDot));
+//                        theta_y, theta_yddot));
 //
 //      theta(k) -= shift;
 //    }
@@ -728,26 +723,26 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //  AutoDiffVecXd x_iplus1 = qvtqvth.segment(n_q_ + n_v_ + n_tau_, n_q_ + n_v_);
 //  const AutoDiffVecXd h_i = qvtqvth.tail(1);
 //
-//  // Get the gradient wrt theta_s and theta_sDDot
-//  VectorXd theta(n_theta_s_ + n_theta_sDDot_);
-//  theta << theta_s_, theta_sDDot_;
-//  MatrixXd gradWrtTheta(n_s_, theta.size());
+//  // Get the gradient wrt theta_y and theta_yddot
+//  VectorXd theta(n_theta_y_ + n_theta_yddot_);
+//  theta << theta_y_, theta_yddot_;
+//  MatrixXd gradWrtTheta(n_y_, theta.size());
 //  vector<VectorXd> y_vec;
 //  for (int k = 0; k < theta.size(); k++) {
 //    for (double shift : ho_shift_vec_) {
 //      theta(k) += shift;
 //
-//      VectorXd theta_s = theta.head(n_theta_s_);
-//      VectorXd theta_sDDot = theta.tail(n_theta_sDDot_);
+//      VectorXd theta_y = theta.head(n_theta_y_);
+//      VectorXd theta_yddot = theta.tail(n_theta_yddot_);
 //
 //      // Evaluate constraint value
 //      // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
 //      //                                         x_i, x_iplus1, h_i,
-//      //                                         theta_s, theta_sDDot)));
+//      //                                         theta_y, theta_yddot)));
 //      y_vec.push_back(getConstraintValueInDouble(x_i, tau_i_double,
 //                                              x_iplus1, tau_iplus1_double,
 //                                              autoDiffToValueMatrix(h_i),
-//                                              theta_s, theta_sDDot));
+//                                              theta_y, theta_yddot));
 //
 //      theta(k) -= shift;
 //    }
@@ -769,10 +764,10 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //
 //VectorXd DynamicsConstraintAutodiffVersion::computeTauToExtendModel(
 //  const VectorXd & x_i_double, const VectorXd & x_iplus1_double,
-//  const VectorXd & h_i, const VectorXd & theta_s_append) {
+//  const VectorXd & h_i, const VectorXd & theta_y_append) {
 //
 //  // Reset the model dimension, so that we can get the extended part of the model
-//  int n_extend = theta_s_append.rows() / n_feature_s_;
+//  int n_extend = theta_y_append.rows() / n_feature_y_;
 //  kin_expression_.setModelDimension(n_extend);
 //
 //  // Get x_i, x_iplus1 in autoDiff (to get s and ds)
@@ -784,11 +779,11 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //  VectorXd ds_i = VectorXd::Zero(n_extend);
 //  VectorXd s_iplus1 = VectorXd::Zero(n_extend);
 //  VectorXd ds_iplus1 = VectorXd::Zero(n_extend);
-//  getSAndSDotInDouble(x_i, s_i, ds_i, 0, theta_s_append);
-//  getSAndSDotInDouble(x_iplus1, s_iplus1, ds_iplus1, 0, theta_s_append);
+//  getSAndSDotInDouble(x_i, s_i, ds_i, 0, theta_y_append);
+//  getSAndSDotInDouble(x_iplus1, s_iplus1, ds_iplus1, 0, theta_y_append);
 //
 //  // Set the model dimension back just in case
-//  kin_expression_.setModelDimension(n_s_);
+//  kin_expression_.setModelDimension(n_y_);
 //
 //  // Get constraint value (without h(s,ds) and tau)
 //  if (is_head_) {
@@ -813,47 +808,47 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
 //  const AutoDiffVecXd & x_i, const VectorXd & tau_i,
 //  const AutoDiffVecXd & x_iplus1, const VectorXd & tau_iplus1,
 //  const VectorXd & h_i,
-//  const VectorXd & theta_s, const VectorXd & theta_sDDot) const {
+//  const VectorXd & theta_y, const VectorXd & theta_yddot) const {
 //
 //  // Get s and ds at knot i and i+1
-//  VectorXd s_i = VectorXd::Zero(n_s_);
-//  VectorXd ds_i = VectorXd::Zero(n_s_);
-//  VectorXd s_iplus1 = VectorXd::Zero(n_s_);
-//  VectorXd ds_iplus1 = VectorXd::Zero(n_s_);
-//  getSAndSDotInDouble(x_i, s_i, ds_i, 0, theta_s);
+//  VectorXd s_i = VectorXd::Zero(n_y_);
+//  VectorXd ds_i = VectorXd::Zero(n_y_);
+//  VectorXd s_iplus1 = VectorXd::Zero(n_y_);
+//  VectorXd ds_iplus1 = VectorXd::Zero(n_y_);
+//  getSAndSDotInDouble(x_i, s_i, ds_i, 0, theta_y);
 //  getSAndSDotInDouble(x_iplus1, s_iplus1, ds_iplus1, n_q_ + n_v_ + n_tau_,
-//                      theta_s);
+//                      theta_y);
 //
 //  // Get constraint value in autoDiff
 //  if (is_head_) {
 //    return 2 * (-3 * (s_i - s_iplus1) - h_i(0) * (ds_iplus1 + 2 * ds_i)) /
 //           (h_i(0) * h_i(0)) -
-//           dyn_expression_.getExpression(theta_sDDot, s_i, ds_i, tau_i);
+//           dyn_expression_.getExpression(theta_yddot, s_i, ds_i, tau_i);
 //  } else {
 //    return (6 * (s_i - s_iplus1) + h_i(0) * (4 * ds_iplus1 + 2 * ds_i)) /
 //           (h_i(0) * h_i(0)) -
-//           dyn_expression_.getExpression(theta_sDDot, s_iplus1, ds_iplus1, tau_iplus1);
+//           dyn_expression_.getExpression(theta_yddot, s_iplus1, ds_iplus1, tau_iplus1);
 //  }
 //}
 //void DynamicsConstraintAutodiffVersion::getSAndSDotInDouble(AutoDiffVecXd x,
 //    VectorXd & s, VectorXd & ds,
 //    const int & i_start,
-//    const VectorXd & theta_s) const {
+//    const VectorXd & theta_y) const {
 //  AutoDiffVecXd q = x.head(n_q_);
 //  // s
 //  // TODO(yminchen): Below could be sped up by using double kin_expression_.
-//  s = autoDiffToValueMatrix(kin_expression_.getExpression(theta_s, q));
-//  // s = kin_expression_double.getExpression(theta_s, autoDiffToValueMatrix(q));
+//  s = autoDiffToValueMatrix(kin_expression_.getExpression(theta_y, q));
+//  // s = kin_expression_double.getExpression(theta_y, autoDiffToValueMatrix(q));
 //
 //  // ds
 //  MatrixXd d_phi_d_q =
 //    autoDiffToGradientMatrix(
-//      kin_expression_.getFeature(q)).block(0, i_start, n_feature_s_, n_q_);
+//      kin_expression_.getFeature(q)).block(0, i_start, n_feature_y_, n_q_);
 //  VectorXd v_val = DiscardGradient(x.tail(n_v_));
 //  VectorXd dphi0_dt = d_phi_d_q * v_val;
 //
-//  for (int i = 0; i < n_s_ ; i++) {
-//    ds(i) = theta_s.segment(i * n_feature_s_, n_feature_s_).dot(dphi0_dt);
+//  for (int i = 0; i < n_y_ ; i++) {
+//    ds(i) = theta_y.segment(i * n_feature_y_, n_feature_y_).dot(dphi0_dt);
 //  }
 //}
 //

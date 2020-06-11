@@ -11,6 +11,8 @@
 #include "drake/common/drake_assert.h"
 #include "examples/goldilocks_models/kinematics_expression.h"
 #include "examples/goldilocks_models/dynamics_expression.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
+
 #include "solvers/nonlinear_constraint.h"
 
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
@@ -59,12 +61,7 @@ using dairlib::solvers::NonlinearConstraint;
 
 class DynamicsConstraint : public NonlinearConstraint<double> {
  public:
-  DynamicsConstraint(int n_s, int n_feature_s,
-                     const VectorXd & theta_s,
-                     int n_sDDot, int n_feature_sDDot,
-                     const VectorXd & theta_sDDot,
-                     int n_tau,
-                     MatrixXd B_tau,
+  DynamicsConstraint(const RomData& rom,
                      const MultibodyPlant<AutoDiffXd> * plant,
                      const MultibodyPlant<double> * plant_double,
                      bool is_head, int rom_option,
@@ -76,7 +73,7 @@ class DynamicsConstraint : public NonlinearConstraint<double> {
 
   VectorXd getSDDot(const VectorXd & s, const VectorXd & ds,
                     const VectorXd & tau) const {
-    return dyn_expression_.getExpression(theta_sDDot_, s, ds, tau);
+    return dyn_expression_.getExpression(theta_yddot_, s, ds, tau);
   };
 
   MatrixXd getGradientWrtTheta(
@@ -93,7 +90,7 @@ class DynamicsConstraint : public NonlinearConstraint<double> {
   // the new dynamics row = tau.
   VectorXd computeTauToExtendModel(
     const VectorXd & x_i_double, const VectorXd & x_iplus1_double,
-    const VectorXd & h_i, const VectorXd & theta_s_append);
+    const VectorXd & h_i, const VectorXd & theta_y_append);
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
@@ -102,23 +99,23 @@ class DynamicsConstraint : public NonlinearConstraint<double> {
     const VectorXd & x_i, const VectorXd & tau_i,
     const VectorXd & x_iplus1, const VectorXd & tau_iplus1,
     const VectorXd & h_i,
-    const VectorXd & theta_s, const VectorXd & theta_sDDot) const;
+    const VectorXd & theta_y, const VectorXd & theta_yddot) const;
   void getSAndSDotInDouble(VectorXd x,
                            VectorXd & s, VectorXd & ds,
-                           const VectorXd & theta_s) const;
+                           const VectorXd & theta_y) const;
 
   const MultibodyPlant<double> * plant_double_;
   int n_q_;
   int n_v_;
   int n_u_;
-  int n_s_;
-  int n_feature_s_;
-  int n_theta_s_;
-  VectorXd theta_s_;
-  int n_sDDot_;
-  int n_feature_sDDot_;
-  int n_theta_sDDot_;
-  VectorXd theta_sDDot_;
+  int n_y_;
+  int n_feature_y_;
+  int n_theta_y_;
+  VectorXd theta_y_;
+  int n_yddot_;
+  int n_feature_yddot_;
+  int n_theta_yddot_;
+  VectorXd theta_yddot_;
   int n_tau_;
   KinematicsExpression<AutoDiffXd> kin_expression_;  // used to debug.
   //                                                 // (to compare gradient of features)
@@ -157,10 +154,10 @@ class DynamicsConstraint : public NonlinearConstraint<double> {
 
 //class DynamicsConstraintAutodiffVersion : public Constraint {
 // public:
-//  DynamicsConstraintAutodiffVersion(int n_s, int n_feature_s,
-//                                    const VectorXd & theta_s,
-//                                    int n_sDDot, int n_feature_sDDot,
-//                                    const VectorXd & theta_sDDot,
+//  DynamicsConstraintAutodiffVersion(int n_s, int n_feature_y,
+//                                    const VectorXd & theta_y,
+//                                    int n_yddot, int n_feature_yddot,
+//                                    const VectorXd & theta_yddot,
 //                                    int n_tau,
 //                                    MatrixXd B_tau,
 //                                    const MultibodyPlant<AutoDiffXd> * plant,
@@ -181,7 +178,7 @@ class DynamicsConstraint : public NonlinearConstraint<double> {
 //
 //  VectorXd getSDDot(const VectorXd & s, const VectorXd & ds,
 //                    const VectorXd & tau) const {
-//    return dyn_expression_.getExpression(theta_sDDot_, s, ds, tau);
+//    return dyn_expression_.getExpression(theta_yddot_, s, ds, tau);
 //  };
 //
 //  MatrixXd getGradientWrtTheta(
@@ -198,41 +195,41 @@ class DynamicsConstraint : public NonlinearConstraint<double> {
 //  // the new dynamics row = tau.
 //  VectorXd computeTauToExtendModel(
 //    const VectorXd & x_i_double, const VectorXd & x_iplus1_double,
-//    const VectorXd & h_i, const VectorXd & theta_s_append);
+//    const VectorXd & h_i, const VectorXd & theta_y_append);
 //
 // private:
 //  AutoDiffVecXd getConstraintValueInAutoDiff(
 //    const AutoDiffVecXd & x_i, const AutoDiffVecXd & tau_i,
 //    const AutoDiffVecXd & x_iplus1, const AutoDiffVecXd & tau_iplus1,
 //    const AutoDiffVecXd & h_i,
-//    const VectorXd & theta_s, const VectorXd & theta_sDDot) const;
+//    const VectorXd & theta_y, const VectorXd & theta_yddot) const;
 //  void getSAndSDotInAutoDiff(AutoDiffVecXd x_i,
 //                             AutoDiffVecXd & s_i,
 //                             AutoDiffVecXd & ds_i,
 //                             const int & i_start,
-//                             const VectorXd & theta_s) const;
+//                             const VectorXd & theta_y) const;
 //
 //  VectorXd getConstraintValueInDouble(
 //    const AutoDiffVecXd & x_i, const VectorXd & tau_i,
 //    const AutoDiffVecXd & x_iplus1, const VectorXd & tau_iplus1,
 //    const VectorXd & h_i,
-//    const VectorXd & theta_s, const VectorXd & theta_sDDot) const;
+//    const VectorXd & theta_y, const VectorXd & theta_yddot) const;
 //  void getSAndSDotInDouble(AutoDiffVecXd x,
 //                           VectorXd & s, VectorXd & ds,
 //                           const int & i_start,
-//                           const VectorXd & theta_s) const;
+//                           const VectorXd & theta_y) const;
 //
 //  const MultibodyPlant<AutoDiffXd> * plant_;
 //  int n_q_;
 //  int n_v_;
-//  int n_s_;
-//  int n_feature_s_;
-//  int n_theta_s_;
-//  VectorXd theta_s_;
-//  int n_sDDot_;
-//  int n_feature_sDDot_;
-//  int n_theta_sDDot_;
-//  VectorXd theta_sDDot_;
+//  int n_y_;
+//  int n_feature_y_;
+//  int n_theta_y_;
+//  VectorXd theta_y_;
+//  int n_yddot_;
+//  int n_feature_yddot_;
+//  int n_theta_yddot_;
+//  VectorXd theta_yddot_;
 //  int n_tau_;
 //  KinematicsExpression<AutoDiffXd> kin_expression_;
 //  DynamicsExpression dyn_expression_;

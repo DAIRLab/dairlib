@@ -8,6 +8,29 @@
 namespace dairlib {
 namespace goldilocks_models  {
 
+SubQpData::SubQpData(int N_sample) {
+  // Initialize all the member
+  for (int i = 0; i < N_sample; i++) {
+    w_sol_vec.push_back(std::make_shared<VectorXd>());
+    H_vec.push_back(std::make_shared<MatrixXd>());
+    b_vec.push_back(std::make_shared<VectorXd>());
+    c_vec.push_back(std::make_shared<VectorXd>());
+    A_vec.push_back(std::make_shared<MatrixXd>());
+    lb_vec.push_back(std::make_shared<VectorXd>());
+    ub_vec.push_back(std::make_shared<VectorXd>());
+    y_vec.push_back(std::make_shared<VectorXd>());
+    B_vec.push_back(std::make_shared<MatrixXd>());
+    is_success_vec.push_back(std::make_shared<int>());
+
+    A_active_vec.push_back(std::make_shared<MatrixXd>());
+    B_active_vec.push_back(std::make_shared<MatrixXd>());
+    nw_vec.push_back(std::make_shared<int>());
+    nl_vec.push_back(std::make_shared<int>());
+    P_vec.push_back(std::make_shared<MatrixXd>());
+    q_vec.push_back(std::make_shared<VectorXd>());
+  }
+}
+
 // Create time knots for creating cubic splines
 vector<double> createTimeKnotsGivenTimesteps(const vector<VectorXd> & h_vec) {
   vector<double> T_breakpoint;
@@ -220,7 +243,6 @@ void SaveStringVecToCsv(vector<std::string> strings,
   }
   ofile.close();
 }
-
 
 }  // namespace goldilocks_models
 } // dairlib

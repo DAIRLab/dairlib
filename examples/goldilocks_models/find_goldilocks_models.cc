@@ -1675,18 +1675,17 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nReduced-order model setting:\n";
   cout << "Warning: Need to make sure that the implementation in "
        "DynamicsExpression agrees with n_y and n_tau.\n";
-  int rom_option = FLAGS_rom_option;
   int n_y = 0;
   int n_tau = 0;
-  setRomDim(&n_y, &n_tau, rom_option);
+  setRomDim(&n_y, &n_tau, FLAGS_rom_option);
   int n_yddot = n_y; // Assume that are the same (no quaternion)
   MatrixXd B_tau = MatrixXd::Zero(n_yddot, n_tau);
-  setRomBMatrix(&B_tau, rom_option);
+  setRomBMatrix(&B_tau, FLAGS_rom_option);
   cout << "n_y = " << n_y << ", n_tau = " << n_tau << endl;
   cout << "B_tau = \n" << B_tau << endl;
   writeCSV(dir + string("B_tau.csv"), B_tau);
-  cout << "rom_option = " << rom_option << " ";
-  switch (rom_option) {
+  cout << "rom_option = " << FLAGS_rom_option << " ";
+  switch (FLAGS_rom_option) {
     case 0: cout << "(2D -- lipm)\n";
       break;
     case 1: cout << "(4D -- lipm + swing foot)\n";
@@ -1711,7 +1710,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Reduced order model setup
   KinematicsExpression<double> kin_expression(n_y, 0, &plant, FLAGS_robot_option);
-  DynamicsExpression dyn_expression(n_yddot, 0, rom_option, FLAGS_robot_option);
+  DynamicsExpression dyn_expression(n_yddot, 0, FLAGS_rom_option, FLAGS_robot_option);
   VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
   VectorXd dummy_s = VectorXd::Ones(n_y);
   int n_feature_y = kin_expression.getFeature(dummy_q).size();
@@ -1726,7 +1725,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   VectorXd theta_y = VectorXd::Zero(n_theta_y);
   VectorXd theta_yddot = VectorXd::Zero(n_theta_yddot);
   if (iter_start == 0) {
-    setInitialTheta(theta_y, theta_yddot, n_feature_y, rom_option);
+    setInitialTheta(theta_y, theta_yddot, n_feature_y, FLAGS_rom_option);
     cout << "Make sure that you use the right initial theta.\n";
     if (!FLAGS_turn_off_cin) {
       cout << "Proceed? (Y/N)\n";
@@ -2090,7 +2089,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               std::ref(QPs), std::ref(thread_finished_vec),
               is_get_nominal,
               extend_model_this_iter, sample_idx, n_rerun[sample_idx],
-              cost_threshold_for_update[sample_idx], N_rerun, rom_option,
+              cost_threshold_for_update[sample_idx], N_rerun, FLAGS_rom_option,
               FLAGS_robot_option);
           //string_to_be_print = "Finished adding sample #" + to_string(sample_idx) +
           //  " to thread # " + to_string(available_thread_idx.front()) + ".\n";
@@ -2255,7 +2254,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     } else if (extend_model_this_iter) {  // Extend the model
       cout << "Start extending model...\n";
       extendModel(dir, iter, rom, prev_theta, step_direction,
-                  prev_step_direction, ave_min_cost_so_far, rom_option,
+                  prev_step_direction, ave_min_cost_so_far, FLAGS_rom_option,
                   FLAGS_robot_option);
 
       // So that we can re-run the current iter

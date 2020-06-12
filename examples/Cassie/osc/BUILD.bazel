@@ -5,13 +5,13 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "osc",
     deps = [
-        #        "//examples/Cassie/osc:deviation_from_cp",
-        #        "//examples/Cassie/osc:heading_traj_generator",
-        #        "//examples/Cassie/osc:high_level_command",
+        "//examples/Cassie/osc:deviation_from_cp",
+        "//examples/Cassie/osc:heading_traj_generator",
+        "//examples/Cassie/osc:high_level_command",
         "//examples/Cassie/osc:standing_com_traj",
-        #        "//systems/controllers:cp_traj_gen",
-        #        "//systems/controllers:lipm_traj_gen",
-        #        "//systems/controllers:time_based_fsm",
+        "//systems/controllers:cp_traj_gen",
+        "//systems/controllers:lipm_traj_gen",
+        "//systems/controllers:time_based_fsm",
         "//systems/controllers/osc:operational_space_control",
     ],
 )

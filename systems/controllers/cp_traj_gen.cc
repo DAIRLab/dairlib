@@ -15,6 +15,8 @@ using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+using drake::multibody::Frame;
+using drake::multibody::JacobianWrtVariable;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
@@ -28,21 +30,20 @@ namespace dairlib {
 namespace systems {
 
 CPTrajGenerator::CPTrajGenerator(
-    const RigidBodyTree<double>& tree,
+    const drake::multibody::MultibodyPlant<double>& plant,
     std::vector<int> left_right_support_fsm_states,
     std::vector<double> left_right_support_state_durations,
-    std::vector<int> left_right_foot_body_indices,
-    std::vector<Vector3d> left_right_foot_pts_on_bodies, int pelvis_idx,
-    double mid_foot_height, double desired_final_foot_height,
+    std::vector<std::pair<const Vector3d, const Frame<double>&>>
+        left_right_foot,
+    std::string floating_base_body_name, double mid_foot_height,
+    double desired_final_foot_height,
     double desired_final_vertical_foot_velocity, double max_CoM_to_CP_dist,
     bool add_extra_control, bool is_feet_collision_avoid,
     bool is_using_predicted_com, double cp_offset, double center_line_offset)
-    : tree_(tree),
+    : plant_(plant),
       left_right_support_fsm_states_(left_right_support_fsm_states),
       left_right_support_state_durations_(left_right_support_state_durations),
-      left_right_foot_body_indices_(left_right_foot_body_indices),
-      left_right_foot_pts_on_bodies_(left_right_foot_pts_on_bodies),
-      pelvis_idx_(pelvis_idx),
+      left_right_foot_(left_right_foot),
       mid_foot_height_(mid_foot_height),
       desired_final_foot_height_(desired_final_foot_height),
       desired_final_vertical_foot_velocity_(
@@ -52,15 +53,17 @@ CPTrajGenerator::CPTrajGenerator(
       is_feet_collision_avoid_(is_feet_collision_avoid),
       is_using_predicted_com_(is_using_predicted_com),
       cp_offset_(cp_offset),
-      center_line_offset_(center_line_offset) {
+      center_line_offset_(center_line_offset),
+      world_(plant_.world_frame()),
+      pelvis_(plant_.GetBodyByName(floating_base_body_name)) {
   this->set_name("cp_traj");
 
   // Input/Output Setup
-  state_port_ = this
-                    ->DeclareVectorInputPort(OutputVector<double>(
-                        tree.get_num_positions(), tree.get_num_velocities(),
-                        tree.get_num_actuators()))
-                    .get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+          .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
   PiecewisePolynomial<double> pp(VectorXd::Zero(0));
@@ -88,8 +91,8 @@ CPTrajGenerator::CPTrajGenerator(
   // The last state of FSM
   prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
 
-  // Check if the model is floating based
-  is_quaternion_ = multibody::IsFloatingBase(tree);
+  // Create context
+  context_ = plant_.CreateDefaultContext();
 }
 
 EventStatus CPTrajGenerator::DiscreteVariableUpdate(
@@ -121,27 +124,15 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     double current_time = static_cast<double>(timestamp);
     prev_td_time(0) = current_time;
 
-    // Kinematics cache and indices
-    KinematicsCache<double> cache = tree_.CreateKinematicsCache();
     VectorXd q = robot_output->GetPositions();
-    // Modify the quaternion in the begining when the state is not received from
-    // the robot yet (cannot have 0-norm quaternion when using doKinematics)
-    if (is_quaternion_) {
-      multibody::SetZeroQuaternionToIdentity(&q);
-    }
-    cache.initialize(q);
-    tree_.doKinematics(cache);
-    int swing_foot_idx = (fsm_state(0) == left_right_support_fsm_states_[1])
-                             ? left_right_foot_body_indices_[0]
-                             : left_right_foot_body_indices_[1];
-    Vector3d pt_on_swing_foot =
-        (fsm_state(0) == left_right_support_fsm_states_[1])
-            ? left_right_foot_pts_on_bodies_[0]
-            : left_right_foot_pts_on_bodies_[1];
+    plant_.SetPositions(context_.get(), q);
 
     // Swing foot position (Forward Kinematics) at touchdown
-    swing_foot_pos_td =
-        tree_.transformPoints(cache, pt_on_swing_foot, swing_foot_idx, 0);
+    auto swing_foot = (fsm_state(0) == left_right_support_fsm_states_[1])
+                          ? left_right_foot_[0]
+                          : left_right_foot_[1];
+    plant_.CalcPointsPositions(*context_, swing_foot.second, swing_foot.first,
+                               world_, &swing_foot_pos_td);
   }
 
   return EventStatus::Succeeded();
@@ -156,28 +147,16 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
   VectorXd fsm_state = fsm_output->get_value();
 
-  // Get stance foot position and index
-  KinematicsCache<double> cache = tree_.CreateKinematicsCache();
   VectorXd q = robot_output->GetPositions();
-  // Modify the quaternion in the begining when the state is not received from
-  // the robot yet
-  if (is_quaternion_) {
-    multibody::SetZeroQuaternionToIdentity(&q);
-  }
-  cache.initialize(q);
-  tree_.doKinematics(cache);
+  plant_.SetPositions(context_.get(), q);
 
-  int stance_foot_idx;
-  Vector3d pt_on_stance_foot;
-  if (fsm_state(0) == left_right_support_fsm_states_[1]) {
-    stance_foot_idx = left_right_foot_body_indices_[1];
-    pt_on_stance_foot = left_right_foot_pts_on_bodies_[1];
-  } else {
-    stance_foot_idx = left_right_foot_body_indices_[0];
-    pt_on_stance_foot = left_right_foot_pts_on_bodies_[0];
-  }
-  Vector3d stance_foot_pos =
-      tree_.transformPoints(cache, pt_on_stance_foot, stance_foot_idx, 0);
+  // Stance foot position
+  auto stance_foot = (fsm_state(0) == left_right_support_fsm_states_[1])
+                         ? left_right_foot_[1]
+                         : left_right_foot_[0];
+  Vector3d stance_foot_pos;
+  plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
+                             world_, &stance_foot_pos);
 
   // Get CoM or predicted CoM
   Vector3d CoM;
@@ -193,9 +172,12 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
     dCoM = com_traj.MakeDerivative(1)->value(end_time_of_this_interval);
   } else {
     // Get the current center of mass position and velocity
-    MatrixXd J_com = tree_.centerOfMassJacobian(cache);
+
+    MatrixXd J_com(3, plant_.num_velocities());
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
     VectorXd v = robot_output->GetVelocities();
-    CoM = tree_.centerOfMass(cache);
+    CoM = plant_.CalcCenterOfMassPosition(*context_);
     dCoM = J_com * v;
   }
 
@@ -215,9 +197,7 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
   if (is_feet_collision_avoid_) {
     // Get approximated heading angle of pelvis
     Vector3d pelvis_heading_vec =
-        tree_.CalcBodyPoseInWorldFrame(cache, tree_.get_body(pelvis_idx_))
-            .linear()
-            .col(0);
+        plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
     double approx_pelvis_yaw =
         atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 

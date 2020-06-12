@@ -54,7 +54,6 @@ void StandingComTraj::CalcDesiredTraj(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q = robot_output->GetPositions();
 
-  // Always remember to check 0-norm quaternion when using doKinematics
   plant_.SetPositions(context_.get(), q);
 
   // Get center of left/right feet contact points positions

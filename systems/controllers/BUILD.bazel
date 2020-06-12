@@ -123,7 +123,7 @@ cc_library(
     hdrs = ["lipm_traj_gen.h"],
     deps = [
         ":control_utils",
-        "//attic/multibody:utils",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -135,7 +135,7 @@ cc_library(
     hdrs = ["cp_traj_gen.h"],
     deps = [
         ":control_utils",
-        "//attic/multibody:utils",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

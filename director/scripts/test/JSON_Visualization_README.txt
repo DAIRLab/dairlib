@@ -23,7 +23,11 @@ visualization of data during a simulation:
         "alpha": The transparency as a value from 0 to 1
         "type": "line",
         "thickness": The thickness of the line
-        "history": The time (in seconds) that the trace line will cover
+        "history": The time (in seconds) that the trace line will cover. Note
+                   that this assumes that there is a constant rate of messages
+                   coming through. However, if the messages are not coming at a
+                   constant rate then the displayed line might be of varying
+                   length.
 
         2) A point which has the following properties:
 

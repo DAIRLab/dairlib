@@ -513,6 +513,7 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
   VectorXd new_gamma(dims);
   VectorXd last_gamma = init_gamma;
   VectorXd boundary_point(dims);
+  VectorXd boundary_point_infor(dims+2);
   VectorXd step = step_size.array()*step_direction.array();
   MatrixXd cost_list;
   double decay_factor;//take a large step at the beginning
@@ -532,6 +533,9 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     if(new_gamma[0]<=0){
       boundary_point_idx += 1;
       boundary_point = new_gamma-step;
+      double boundary_point_cost = (readCSV(dir + to_string(traj_num) +  "_" +
+          to_string(sample_idx) + "_" + string("c.csv")))(0, 0);
+      boundary_point_infor << traj_num,boundary_point,boundary_point_cost;
       writeCSV(dir + to_string(boundary_point_idx) +  "_" +
           string("boundary_point.csv"), boundary_point);
       cout << "boundary point index | stride length | ground incline"
@@ -578,6 +582,8 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     if(sample_cost>max_cost){
       boundary_point_idx += 1;
       boundary_point = new_gamma-step;
+      double boundary_point_cost = sample_cost;
+      boundary_point_infor << traj_num,boundary_point,boundary_point_cost;
       writeCSV(dir + to_string(boundary_point_idx) +  "_" +
           string("boundary_point.csv"), boundary_point);
       cout << "boundary point index | stride length | ground incline"

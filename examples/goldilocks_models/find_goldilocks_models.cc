@@ -1509,7 +1509,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     } else {
       delta_stride_length = 0.1;
     }
-    stride_length_0 = 0.2;  //0.15
+    stride_length_0 = 0.3;  //0.15
   } else {
     throw std::runtime_error("Should not reach here");
     delta_stride_length = 0;

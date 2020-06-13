@@ -3,11 +3,11 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/standing_com_traj.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -70,6 +70,14 @@ int DoMain(int argc, char* argv[]) {
                      false);
   plant_wo_springs.Finalize();
 
+  // Get contact frames and position (doesn't matter whether we use
+  // plant_w_springs or plant_wo_springs because the contact frames exit in both
+  // plants)
+  auto left_toe = LeftToe(plant_wo_springs);
+  auto left_heel = LeftHeel(plant_wo_springs);
+  auto right_toe = RightToe(plant_wo_springs);
+  auto right_heel = RightHeel(plant_wo_springs);
+
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
@@ -95,13 +103,8 @@ int DoMain(int argc, char* argv[]) {
           "OSC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
   // Create desired center of mass traj
-  std::vector<
-      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
-      feet_contact_points;
-  feet_contact_points.push_back(LeftToe(plant_w_springs));
-  feet_contact_points.push_back(RightToe(plant_w_springs));
-  feet_contact_points.push_back(LeftHeel(plant_w_springs));
-  feet_contact_points.push_back(RightHeel(plant_w_springs));
+  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
+      feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
       plant_w_springs, feet_contact_points, FLAGS_height);
   builder.Connect(state_receiver->get_output_port(0),
@@ -121,15 +124,28 @@ int DoMain(int argc, char* argv[]) {
   // Soft constraint
   // We don't want w_contact_relax to be too big, cause we want tracking
   // error to be important
-  double w_contact_relax = 2000;
+  double w_contact_relax = 20000;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
-  // Firction coefficient
+  // Friction coefficient
   double mu = 0.8;
   osc->SetContactFriction(mu);
-  for (const auto& point_and_frame : feet_contact_points) {
-    osc->AddContactPoint(point_and_frame.second.name(), point_and_frame.first);
-  }
-
+  // Add contact points (The position doesn't matter. It's not used in OSC)
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
+  osc->AddContactPoint(&left_toe_evaluator);
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {0, 1, 2});
+  osc->AddContactPoint(&left_heel_evaluator);
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
+  osc->AddContactPoint(&right_toe_evaluator);
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, right_heel.first, right_heel.second,
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+  osc->AddContactPoint(&right_heel_evaluator);
   // Cost
   // cout << "Adding cost\n";
   int n_v = plant_wo_springs.num_velocities();

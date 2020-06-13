@@ -84,10 +84,16 @@ int DoMain(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
+  // Get contact frames and position (doesn't matter whether we use
+  // plant_w_springs or plant_wo_springs because the contact frames exit in both
+  // plants)
+  auto left_toe = LeftToe(plant_wo_springs);
+  auto left_heel = LeftHeel(plant_wo_springs);
+  auto right_toe = RightToe(plant_wo_springs);
+  auto right_heel = RightHeel(plant_wo_springs);
+
   // Get body frames and points
-  Vector3d front_contact_disp = LeftToe(plant_w_springs).first;
-  Vector3d rear_contact_disp = LeftHeel(plant_w_springs).first;
-  Vector3d mid_contact_point = (front_contact_disp + rear_contact_disp) / 2;
+  Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2;
   auto left_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
       mid_contact_point, plant_w_springs.GetFrameByName("toe_left"));
   auto right_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
@@ -266,23 +272,28 @@ int DoMain(int argc, char* argv[]) {
   // Friction coefficient
   double mu = 0.4;
   osc->SetContactFriction(mu);
-  osc->AddStateAndContactPoint(left_stance_state, "toe_left",
-                               front_contact_disp);
-  osc->AddStateAndContactPoint(left_stance_state, "toe_left",
-                               rear_contact_disp);
-  osc->AddStateAndContactPoint(right_stance_state, "toe_right",
-                               front_contact_disp);
-  osc->AddStateAndContactPoint(right_stance_state, "toe_right",
-                               rear_contact_disp);
+  // Add contact points (The position doesn't matter. It's not used in OSC)
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {0, 1, 2});
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, right_heel.first, right_heel.second,
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
+  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
+  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
+  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
   if (!FLAGS_is_two_phase) {
-    osc->AddStateAndContactPoint(double_support_state, "toe_left",
-                                 front_contact_disp);
-    osc->AddStateAndContactPoint(double_support_state, "toe_left",
-                                 rear_contact_disp);
-    osc->AddStateAndContactPoint(double_support_state, "toe_right",
-                                 front_contact_disp);
-    osc->AddStateAndContactPoint(double_support_state, "toe_right",
-                                 rear_contact_disp);
+    osc->AddStateAndContactPoint(double_support_state, &left_toe_evaluator);
+    osc->AddStateAndContactPoint(double_support_state, &left_heel_evaluator);
+    osc->AddStateAndContactPoint(double_support_state, &right_toe_evaluator);
+    osc->AddStateAndContactPoint(double_support_state, &right_heel_evaluator);
   }
 
   // Swing foot tracking

@@ -1877,8 +1877,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // However, currently it takes too much time to compute with many nodes, so
     // we try 0.3/24.
     double max_distance_per_node = 0.3 / 16;
-    //comment the line for cassie with large stride length
-//    DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
+    //comment the line for cassie with large stride length if necessary
+    DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
   }
 
   // Reduced order model parameters

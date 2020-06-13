@@ -62,48 +62,17 @@ string set_initial_guess(const string directory, int iter, int sample, int total
                                            + string("_turning_rate.csv"));
   VectorXd current_gamma(gamma_dimension);
   current_gamma << current_ground_incline(0, 0), current_stride_length(0, 0), current_turning_rate(0,0);
-//    For iter = 1, we look for the closest task sample from iter 0 and use the solution from the sample
-//    for initial guess
+  int iter_start;
+  //    For iter = 1, use the solutions from iteration 0 to set the initial guess
   if(iter == 1)
   {
-    double distance_gamma_min = std::numeric_limits<double>::infinity(); //initialize with a large one
-    int sample_near = 0;
-    for (sample_num = 0; sample_num < total_sample_num; sample_num++) {
-      //check if this sample is success
-      int is_success = (readCSV(directory + to_string(iter-1) + string("_")
-                                + to_string(sample_num) + string("_is_success.csv")))(0,0);
-      if(is_success == 1) {
-        //extract past gamma
-        MatrixXd past_ground_incline = readCSV(directory + to_string(iter-1) + string("_")
-                +to_string(sample_num) + string("_ground_incline.csv"));
-        MatrixXd past_stride_length = readCSV(directory + to_string(iter-1) + string("_")
-                + to_string(sample_num) + string("_stride_length.csv"));
-        MatrixXd past_turning_rate = readCSV(directory + to_string(iter-1) + string("_")
-                + to_string(sample_num) + string("_turning_rate.csv"));
-        VectorXd past_gamma(gamma_dimension);
-        past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0,0);
-        // use the 3-norm of difference between past gamma and current gamma to judge distance
-        VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
-        VectorXd dif_gamma2 = dif_gamma.array().pow(2);
-        double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);
-        if (distance_gamma < distance_gamma_min) {
-            distance_gamma_min = distance_gamma;
-            sample_near = sample_num;
-        }
-      }
-    }
-    //set the solution from the nearest sample as the initial guess
-    initial_guess = readCSV(directory + to_string(iter-1) + string("_")
-                                        + to_string(sample_near) + string("_w.csv"));
-    string initial_file_name = to_string(iter) + "_" + to_string(sample) + string("_initial_guess.csv");
-    writeCSV(directory + initial_file_name, initial_guess);
-
-    return initial_file_name;
+    iter_start = 0;
   }
   //if iter > 1, use the results from past iterations to interpolate and set the initial guess
-  else
-  {
-  for (past_iter = iter - 1; past_iter > 0; past_iter--) {
+  else{
+    iter_start = 1;
+  }
+  for (past_iter = iter - 1; past_iter >= iter_start; past_iter--) {
     //find useful theta according to the difference between previous theta and new theta
     VectorXd past_theta_s = readCSV(directory + to_string(past_iter) + string("_theta_s.csv"));
     VectorXd past_theta_sDDot = readCSV(directory + to_string(past_iter) + string("_theta_sDDot.csv"));
@@ -188,7 +157,6 @@ string set_initial_guess(const string directory, int iter, int sample, int total
   writeCSV(directory + initial_file_name, initial_guess);
 
   return initial_file_name;
-  }
 }
 
 } //namespace

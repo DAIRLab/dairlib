@@ -45,7 +45,7 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   CPTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
                   std::vector<int> left_right_support_fsm_states,
-                  std::vector<double> left_right_support_state_durations,
+                  std::vector<double> left_right_support_durations,
                   std::vector<std::pair<const Eigen::Vector3d,
                                         const drake::multibody::Frame<double>&>>
                       left_right_foot,
@@ -100,10 +100,6 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::vector<int> left_right_support_fsm_states_;
-  std::vector<double> left_right_support_state_durations_;
-  std::vector<
-      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
-      left_right_foot_;
   double mid_foot_height_;
   double desired_final_foot_height_;
   double desired_final_vertical_foot_velocity_;
@@ -119,6 +115,15 @@ class CPTrajGenerator : public drake::systems::LeafSystem<double> {
   // Parameters
   const double cp_offset_;           // in meters
   const double center_line_offset_;  // in meters
+
+  // Maps
+  std::map<int, std::pair<const Eigen::Vector3d,
+                          const drake::multibody::Frame<double>&>>
+      stance_foot_map_;
+  std::map<int, std::pair<const Eigen::Vector3d,
+                          const drake::multibody::Frame<double>&>>
+      swing_foot_map_;
+  std::map<int, double> duration_map_;
 };
 
 }  // namespace systems

@@ -4,6 +4,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <set>
 #include <drake/multibody/plant/multibody_plant.h>
 #include "dairlib/lcmt_osc_output.hpp"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
@@ -255,7 +256,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   double w_soft_constraint_ = -1;
 
   // Map finite state machine state to its active contact indices
-  std::map<int, std::vector<int>> contact_indices_map_ = {};
+  std::map<int, std::set<int>> contact_indices_map_ = {};
   // All contacts (used in contact constraints)
   std::vector<const multibody::WorldPointEvaluator<double>*> all_contacts_ = {};
   // single_contact_mode_ is true if there is only 1 contact mode in OSC

@@ -32,7 +32,7 @@ namespace systems {
 CPTrajGenerator::CPTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
     std::vector<int> left_right_support_fsm_states,
-    std::vector<double> left_right_support_state_durations,
+    std::vector<double> left_right_support_durations,
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
         left_right_foot,
     std::string floating_base_body_name, double mid_foot_height,
@@ -42,8 +42,6 @@ CPTrajGenerator::CPTrajGenerator(
     bool is_using_predicted_com, double cp_offset, double center_line_offset)
     : plant_(plant),
       left_right_support_fsm_states_(left_right_support_fsm_states),
-      left_right_support_state_durations_(left_right_support_state_durations),
-      left_right_foot_(left_right_foot),
       mid_foot_height_(mid_foot_height),
       desired_final_foot_height_(desired_final_foot_height),
       desired_final_vertical_foot_velocity_(
@@ -57,6 +55,10 @@ CPTrajGenerator::CPTrajGenerator(
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName(floating_base_body_name)) {
   this->set_name("cp_traj");
+
+  DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
+  DRAKE_DEMAND(left_right_support_durations.size() == 2);
+  DRAKE_DEMAND(left_right_foot.size() == 2);
 
   // Input/Output Setup
   state_port_ =
@@ -91,6 +93,20 @@ CPTrajGenerator::CPTrajGenerator(
   // The last state of FSM
   prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
 
+  // Construct maps
+  duration_map_.insert({left_right_support_fsm_states.at(0),
+                        left_right_support_durations.at(0)});
+  duration_map_.insert({left_right_support_fsm_states.at(1),
+                        left_right_support_durations.at(1)});
+  stance_foot_map_.insert(
+      {left_right_support_fsm_states.at(0), left_right_foot.at(0)});
+  stance_foot_map_.insert(
+      {left_right_support_fsm_states.at(1), left_right_foot.at(1)});
+  swing_foot_map_.insert(
+      {left_right_support_fsm_states.at(1), left_right_foot.at(1)});
+  swing_foot_map_.insert(
+      {left_right_support_fsm_states.at(0), left_right_foot.at(0)});
+
   // Create context
   context_ = plant_.CreateDefaultContext();
 }
@@ -106,7 +122,14 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
                             .get_mutable_value();
 
-  if (fsm_state(0) != prev_fsm_state(0)) {  // if at touchdown
+  // Find fsm_state in left_right_support_fsm_states
+  auto it = find(left_right_support_fsm_states_.begin(),
+                 left_right_support_fsm_states_.end(), int(fsm_state(0)));
+  // swing phase if current state is in left_right_support_fsm_states_
+  bool is_single_support_phase = it != left_right_support_fsm_states_.end();
+
+  // when entering a new state which is in left_right_support_fsm_states
+  if ((fsm_state(0) != prev_fsm_state(0)) && is_single_support_phase) {
     prev_fsm_state(0) = fsm_state(0);
 
     auto swing_foot_pos_td =
@@ -128,9 +151,7 @@ EventStatus CPTrajGenerator::DiscreteVariableUpdate(
     plant_.SetPositions(context_.get(), q);
 
     // Swing foot position (Forward Kinematics) at touchdown
-    auto swing_foot = (fsm_state(0) == left_right_support_fsm_states_[1])
-                          ? left_right_foot_[0]
-                          : left_right_foot_[1];
+    auto swing_foot = swing_foot_map_.at(int(fsm_state(0)));
     plant_.CalcPointsPositions(*context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_td);
   }
@@ -151,9 +172,7 @@ void CPTrajGenerator::calcCpAndStanceFootHeight(
   plant_.SetPositions(context_.get(), q);
 
   // Stance foot position
-  auto stance_foot = (fsm_state(0) == left_right_support_fsm_states_[1])
-                         ? left_right_foot_[1]
-                         : left_right_foot_[0];
+  auto stance_foot = stance_foot_map_.at(int(fsm_state(0)));
   Vector3d stance_foot_pos;
   plant_.CalcPointsPositions(*context_, stance_foot.second, stance_foot.first,
                              world_, &stance_foot_pos);
@@ -296,15 +315,13 @@ void CPTrajGenerator::CalcTrajs(
   // Find fsm_state in left_right_support_fsm_states
   auto it = find(left_right_support_fsm_states_.begin(),
                  left_right_support_fsm_states_.end(), int(fsm_state(0)));
-  int index = std::distance(left_right_support_fsm_states_.begin(), it);
 
   // swing phase if current state is in left_right_support_fsm_states_
-  bool is_swing_phase = !(it == left_right_support_fsm_states_.end());
+  bool is_single_support_phase = it != left_right_support_fsm_states_.end();
 
   // Generate trajectory based on CP if it's currently in swing phase.
-  // Otherwise, generate a constant trajectory in case the user still tracks
-  // the trajectory accidentally.
-  if (is_swing_phase) {
+  // Otherwise, generate a constant trajectory
+  if (is_single_support_phase) {
     // Read in current robot state
     const OutputVector<double>* robot_output =
         (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -316,7 +333,7 @@ void CPTrajGenerator::CalcTrajs(
     // Get the start time and the end time of the current stance phase
     double start_time_of_this_interval = prev_td_time(0);
     double end_time_of_this_interval =
-        prev_td_time(0) + left_right_support_state_durations_[index];
+        prev_td_time(0) + duration_map_.at(int(fsm_state(0)));
 
     // Ensure current_time < end_time_of_this_interval to avoid error in
     // creating trajectory.
@@ -336,12 +353,12 @@ void CPTrajGenerator::CalcTrajs(
     // Assign traj
     *pp_traj = createSplineForSwingFoot(
         start_time_of_this_interval, end_time_of_this_interval,
-        left_right_support_state_durations_[index], init_swing_foot_pos, CP,
+        duration_map_.at(int(fsm_state(0))), init_swing_foot_pos, CP,
         stance_foot_height);
 
   } else {
     // Assign a constant traj
-    *pp_traj = PiecewisePolynomial<double>(swing_foot_pos_td);
+    *pp_traj = PiecewisePolynomial<double>(Vector3d::Zero());
   }
 }
 }  // namespace systems

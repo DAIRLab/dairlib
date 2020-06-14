@@ -34,6 +34,8 @@ namespace dairlib::systems::controllers {
 using multibody::makeNameToVelocitiesMap;
 using multibody::WorldPointEvaluator;
 
+static const int SPACE_DIM = 3;
+
 OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr,
@@ -164,15 +166,14 @@ void OperationalSpaceControl::AddStateAndContactPoint(
   }
 
   // Find the finite state machine state in contact_indices_map_
-  auto it_map = contact_indices_map_.find(state);
-  if (it_map == contact_indices_map_.end()) {
+  auto map_iterator = contact_indices_map_.find(state);
+  if (map_iterator == contact_indices_map_.end()) {
     // state doesn't exist in the map
     contact_indices_map_[state] = {contact_idx};
   } else {
-    auto& list = it_map->second;
-    if (std::find(list.begin(), list.end(), contact_idx) == list.end()) {
-      list.push_back(contact_idx);
-    }
+    // Add contact_idx to the existing set (note that std::set removes
+    // duplicates automatically)
+    map_iterator->second.insert(contact_idx);
   }
 }
 
@@ -244,10 +245,9 @@ void OperationalSpaceControl::Build() {
   prog_ = std::make_unique<MathematicalProgram>();
 
   // Size of decision variable
-  n_h_ = (kinematic_evaluators_ == nullptr)
-             ? 0
-             : kinematic_evaluators_->count_full();
-  n_c_ = 3 * all_contacts_.size();
+  n_h_ = (kinematic_evaluators_ == nullptr)?
+      0 : kinematic_evaluators_->count_full();
+  n_c_ = SPACE_DIM * all_contacts_.size();
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
     n_c_active_ += evaluator->num_active();
@@ -294,45 +294,45 @@ void OperationalSpaceControl::Build() {
   }
   // 4. Friction constraint (approximated friction cone)
   if (!all_contacts_.empty()) {
-    VectorXd mu_minus1(2);
-    VectorXd mu_plus1(2);
+    VectorXd mu_neg1(2);
+    VectorXd mu_1(2);
     VectorXd one(1);
-    mu_minus1 << mu_, -1;
-    mu_plus1 << mu_, 1;
+    mu_neg1 << mu_, -1;
+    mu_1 << mu_, 1;
     one << 1;
     for (unsigned int j = 0; j < all_contacts_.size(); j++) {
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_minus1.transpose(), 0,
+          prog_->AddLinearConstraint(mu_neg1.transpose(), 0,
                                      numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(3 * j + 2, 1),
-                                      lambda_c_.segment(3 * j + 0, 1)})
+                                     {lambda_c_.segment(SPACE_DIM * j + 2, 1),
+                                      lambda_c_.segment(SPACE_DIM * j + 0, 1)})
                .evaluator()
                .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_plus1.transpose(), 0,
+          prog_->AddLinearConstraint(mu_1.transpose(), 0,
                                      numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(3 * j + 2, 1),
-                                      lambda_c_.segment(3 * j + 0, 1)})
+                                     {lambda_c_.segment(SPACE_DIM * j + 2, 1),
+                                      lambda_c_.segment(SPACE_DIM * j + 0, 1)})
                .evaluator()
                .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_minus1.transpose(), 0,
+          prog_->AddLinearConstraint(mu_neg1.transpose(), 0,
                                      numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(3 * j + 2, 1),
-                                      lambda_c_.segment(3 * j + 1, 1)})
+                                     {lambda_c_.segment(SPACE_DIM * j + 2, 1),
+                                      lambda_c_.segment(SPACE_DIM * j + 1, 1)})
                .evaluator()
                .get());
       friction_constraints_.push_back(
-          prog_->AddLinearConstraint(mu_plus1.transpose(), 0,
+          prog_->AddLinearConstraint(mu_1.transpose(), 0,
                                      numeric_limits<double>::infinity(),
-                                     {lambda_c_.segment(3 * j + 2, 1),
-                                      lambda_c_.segment(3 * j + 1, 1)})
+                                     {lambda_c_.segment(SPACE_DIM * j + 2, 1),
+                                      lambda_c_.segment(SPACE_DIM * j + 1, 1)})
                .evaluator()
                .get());
       friction_constraints_.push_back(
           prog_->AddLinearConstraint(one.transpose(), 0,
                                      numeric_limits<double>::infinity(),
-                                     lambda_c_.segment(3 * j + 2, 1))
+                                     lambda_c_.segment(SPACE_DIM * j + 2, 1))
                .evaluator()
                .get());
     }
@@ -394,13 +394,13 @@ VectorXd OperationalSpaceControl::SolveQp(
     const drake::systems::Context<double>& context, double t, int fsm_state,
     double time_since_last_state_switch) const {
   // Get active contact indices
-  vector<int> active_contact_list = {};
+  std::set<int> active_contact_set = {};
   if (single_contact_mode_) {
-    active_contact_list = contact_indices_map_.at(-1);
+    active_contact_set = contact_indices_map_.at(-1);
   } else {
-    auto it_map = contact_indices_map_.find(fsm_state);
-    if (it_map != contact_indices_map_.end()) {
-      active_contact_list = it_map->second;
+    auto map_iterator = contact_indices_map_.find(fsm_state);
+    if (map_iterator != contact_indices_map_.end()) {
+      active_contact_set = map_iterator->second;
     }
   }
 
@@ -429,9 +429,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Get J for external forces in equations of motion
   MatrixXd J_c = MatrixXd::Zero(n_c_, n_v_);
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
-    if (std::find(active_contact_list.begin(), active_contact_list.end(), i) !=
-        active_contact_list.end()) {
-      J_c.block(3 * i, 0, 3, n_v_) =
+    if (active_contact_set.find(i) != active_contact_set.end()) {
+      J_c.block(SPACE_DIM * i, 0, SPACE_DIM, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
     }
   }
@@ -442,13 +441,12 @@ VectorXd OperationalSpaceControl::SolveQp(
   int row_idx = 0;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
     auto contact_i = all_contacts_[i];
-    if (std::find(active_contact_list.begin(), active_contact_list.end(), i) !=
-        active_contact_list.end()) {
+    if (active_contact_set.find(i) != active_contact_set.end()) {
       // We don't call EvalActiveJacobian() because it'll repeat the computation
       // of the Jacobian. (J_c_active is just a stack of slices of J_c)
       for (int j = 0; j < contact_i->num_active(); j++) {
         J_c_active.row(row_idx + j) =
-            J_c.row(3 * i + contact_i->active_inds().at(j));
+            J_c.row(SPACE_DIM * i + contact_i->active_inds().at(j));
       }
       JdotV_c_active.segment(row_idx, contact_i->num_active()) =
           contact_i->EvalActiveJacobianDotTimesV(*context_wo_spr_);
@@ -506,8 +504,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     VectorXd inf_vectorxd(1);
     inf_vectorxd << numeric_limits<double>::infinity();
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
-      if (std::find(active_contact_list.begin(), active_contact_list.end(),
-                    i) != active_contact_list.end()) {
+      if (active_contact_set.find(i) != active_contact_set.end()) {
         // when the contact is active
         friction_constraints_.at(5 * i)->UpdateLowerBound(VectorXd::Zero(1));
         friction_constraints_.at(5 * i + 1)->UpdateLowerBound(

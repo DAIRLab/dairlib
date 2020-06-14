@@ -147,12 +147,10 @@ int DoMain(int argc, char* argv[]) {
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   osc->AddContactPoint(&right_heel_evaluator);
   // Cost
-  // cout << "Adding cost\n";
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = 0.01 * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
-  // cout << "Adding center of mass tracking\n";
   // Weighting x-y higher than z, as they are more important to balancing
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2000;
@@ -177,7 +175,6 @@ int DoMain(int argc, char* argv[]) {
                                       &plant_w_springs, &plant_wo_springs);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
-  // cout << "Adding pelvis rotation tracking\n";
   double w_pelvis_balance = 200;
   double w_heading = 200;
   double k_p_pelvis_balance = 10;

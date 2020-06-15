@@ -109,8 +109,8 @@ cc_library(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        "//multibody:multipose_visualizer",
         "//multibody:multibody_solvers",
+        "//multibody:multipose_visualizer",
         "//solvers:constraints",
         "@drake//:drake_shared_library",
     ],
@@ -130,13 +130,12 @@ cc_binary(
     srcs = ["run_lqr_balancing.cc"],
     deps = [
         ":cassie_fixed_point_solver",
-        ":cassie_utils",
         ":cassie_urdf",
+        ":cassie_utils",
         "//systems/controllers",
         "@gflags",
     ],
 )
-
 
 cc_binary(
     name = "run_pd_controller",
@@ -197,9 +196,9 @@ cc_binary(
     name = "multibody_sim",
     srcs = ["multibody_sim.cc"],
     deps = [
+        ":cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
-        ":cassie_fixed_point_solver",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -301,8 +300,8 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         ":simulator_drift",
-        "//attic/multibody:utils",
         "//examples/Cassie/osc",
+        "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
@@ -317,10 +316,11 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        "//attic/multibody:utils",
-        "//attic/systems/controllers:operational_space_control",
         "//examples/Cassie/osc",
+        "//multibody:utils",
+        "//multibody/kinematic",
         "//systems:robot_lcm_systems",
+        "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -348,8 +348,8 @@ cc_binary(
     srcs = ["run_dircon_squatting.cc"],
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
     deps = [
-        ":cassie_utils",
         ":cassie_fixed_point_solver",
+        ":cassie_utils",
         "//common",
         "//solvers:optimization_utils",
         "//systems/primitives",

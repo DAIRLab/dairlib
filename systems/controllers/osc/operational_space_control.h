@@ -4,18 +4,20 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <set>
 #include <drake/multibody/plant/multibody_plant.h>
+#include "dairlib/lcmt_osc_output.hpp"
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "dairlib/lcmt_osc_output.hpp"
 
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/solve.h"
 
-#include "multibody/multibody_distance_constraint.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "multibody/kinematic/world_point_evaluator.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/output_vector.h"
@@ -122,12 +124,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetWeightOfSoftContactConstraint(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
   }
-  void AddContactPoint(const std::string& body_name,
-                       const Eigen::VectorXd& pt_on_body);
-  void AddStateAndContactPoint(int state, std::string body_name,
-                               Eigen::VectorXd pt_on_body);
-  void AddDistanceConstraint(
-      multibody::MultibodyDistanceConstraint& constraint);
+  void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator);
+  void AddStateAndContactPoint(
+      int state, const multibody::WorldPointEvaluator<double>* evaluator);
+  void AddKinematicConstraint(
+      const multibody::KinematicEvaluatorSet<double>* evaluators);
   // Tracking data methods
   /// The third argument is used to set a period in which OSC does not track the
   /// desired traj (the period starts when the finite state machine switches to
@@ -135,8 +136,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddTrackingData(OscTrackingData* tracking_data, double t_lb = 0,
                        double t_ub = std::numeric_limits<double>::infinity());
   void AddConstTrackingData(
-      OscTrackingData* tracking_data, const Eigen::VectorXd& v, double t_lb
-      = 0,
+      OscTrackingData* tracking_data, const Eigen::VectorXd& v, double t_lb = 0,
       double t_ub = std::numeric_limits<double>::infinity());
   std::vector<OscTrackingData*>* GetAllTrackingData() {
     return tracking_data_vec_.get();
@@ -206,12 +206,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_v_;
   int n_u_;
 
-  // Size of holonomic constraint and total contact constraints
+  // Size of holonomic constraint and total/active contact constraints
   int n_h_;
   int n_c_;
+  int n_c_active_;
 
   // Manually specified holonomic constraints (only valid for plants_wo_springs)
-  std::vector<multibody::MultibodyDistanceConstraint*> distance_constraints_;
+  const multibody::KinematicEvaluatorSet<double>* kinematic_evaluators_;
 
   // robot input limits
   Eigen::VectorXd u_min_;
@@ -250,22 +251,16 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // OSC constraint members
   bool with_input_constraints_ = true;
 
-  // (flat ground) Contact constraints and friction cone constraints
-  std::vector<drake::multibody::BodyIndex> body_indices_ = {};
-  std::vector<Eigen::VectorXd> pts_on_body_ = {};
+  // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
 
-  // `fsm_state_when_active_` is the finite state machine state when the contact
-  // constraint is active. If `fsm_state_when_active_` is empty, then the
-  // constraint is always active.
-  // The states here can repeat, since there might be multiple contact points
-  // in a state of the finite state machine.
-  std::vector<int> fsm_state_when_active_;
-
-  // CalcActiveContactIndices gives a vector of flags indicating the active
-  // contact (constraint)
-  std::vector<bool> CalcActiveContactIndices(int fsm_state) const;
+  // Map finite state machine state to its active contact indices
+  std::map<int, std::set<int>> contact_indices_map_ = {};
+  // All contacts (used in contact constraints)
+  std::vector<const multibody::WorldPointEvaluator<double>*> all_contacts_ = {};
+  // single_contact_mode_ is true if there is only 1 contact mode in OSC
+  bool single_contact_mode_ = false;
 
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<OscTrackingData*>> tracking_data_vec_ =

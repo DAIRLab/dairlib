@@ -109,19 +109,30 @@ cc_library(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        "//multibody:multipose_visualizer",
         "//multibody:multibody_solvers",
+        "//multibody:multipose_visualizer",
         "//solvers:constraints",
         "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_binary(
     name = "find_fixed_point",
     srcs = ["find_fixed_point.cc"],
     deps = [
         ":cassie_fixed_point_solver",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_lqr_balancing",
+    srcs = ["run_lqr_balancing.cc"],
+    deps = [
+        ":cassie_fixed_point_solver",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//systems/controllers",
         "@gflags",
     ],
 )
@@ -185,25 +196,10 @@ cc_binary(
     name = "multibody_sim",
     srcs = ["multibody_sim.cc"],
     deps = [
+        ":cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
         "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "run_constrained_lqr_controller_sim",
-    srcs = ["run_constrained_lqr_controller_sim.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
-        "//attic/multibody:utility_systems",
-        "//systems:robot_lcm_systems",
-        "//systems/controllers:constrained_lqr_controller",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -304,8 +300,8 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         ":simulator_drift",
-        "//attic/multibody:utils",
         "//examples/Cassie/osc",
+        "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
@@ -320,10 +316,11 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        "//attic/multibody:utils",
-        "//attic/systems/controllers:operational_space_control",
         "//examples/Cassie/osc",
+        "//multibody:utils",
+        "//multibody/kinematic",
         "//systems:robot_lcm_systems",
+        "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -351,11 +348,10 @@ cc_binary(
     srcs = ["run_dircon_squatting.cc"],
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
     deps = [
+        ":cassie_fixed_point_solver",
         ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
         "//common",
         "//solvers:optimization_utils",
-        "//systems/goldilocks_models",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

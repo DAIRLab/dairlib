@@ -52,7 +52,7 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
   drake::solvers::Binding<drake::solvers::Constraint> AddKinematicConstraint(
       const KinematicEvaluatorSet<T>& evaluators,
       const drake::solvers::VectorXDecisionVariable& q,
-      std::shared_ptr<drake::systems::Context<T>> local_context);
+      drake::systems::Context<T>* local_context);
 
   /// See above. Uses the internal context_ (recommended for most use cases)
   drake::solvers::Binding<drake::solvers::Constraint> AddKinematicConstraint(
@@ -67,7 +67,7 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
       const drake::solvers::VectorXDecisionVariable& q,
       const drake::solvers::VectorXDecisionVariable& u,
       const drake::solvers::VectorXDecisionVariable& lambda,
-      std::shared_ptr<drake::systems::Context<T>> local_context);
+      drake::systems::Context<T>* local_context);
 
   /// See above. Uses the internal context_ (recommended for most use cases)
   drake::solvers::Binding<drake::solvers::Constraint> AddFixedPointConstraint(
@@ -78,24 +78,19 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
-  std::shared_ptr<drake::systems::Context<T>> context_;
+  std::unique_ptr<drake::systems::Context<T>> context_;
 };
 
 template <typename T>
 class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
  public:
   /// This constructor takes a shared_ptr<Context> as an argument to share
-  /// cached kinematic/dynamic computation within the context
+  /// cached kinematic/dynamic computation within the context.
+  /// If a context pointer is not provided, will create a new context.
   KinematicPositionConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
-      std::shared_ptr<drake::systems::Context<T>> context,
-      const std::string& description = "");
-
-  /// This constructor will build its own shared_ptr<Context>
-  KinematicPositionConstraint(
-      const drake::multibody::MultibodyPlant<T>& plant,
-      const KinematicEvaluatorSet<T>& evaluators,
+      drake::systems::Context<T>* context = nullptr,
       const std::string& description = "kinematic position");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -104,7 +99,8 @@ class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
   const KinematicEvaluatorSet<T>& evaluators_;
-  std::shared_ptr<drake::systems::Context<T>> context_;
+  drake::systems::Context<T>* context_;
+  std::unique_ptr<drake::systems::Context<T>> owned_context_;
 };
 
 template <typename T>
@@ -112,16 +108,11 @@ class FixedPointConstraint : public solvers::NonlinearConstraint<T> {
  public:
   /// This constructor takes a shared_ptr<Context> as an argument to share
   /// cached kinematic/dynamic computation within the context
+  /// If a context pointer is not provided, will create a new context.
   FixedPointConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
-      std::shared_ptr<drake::systems::Context<T>> context,
-      const std::string& description = "");
-
-  /// This constructor will build its own shared_ptr<Context>
-  FixedPointConstraint(
-      const drake::multibody::MultibodyPlant<T>& plant,
-      const KinematicEvaluatorSet<T>& evaluators,
+      drake::systems::Context<T>* context = nullptr,
       const std::string& description = "fixed point");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -130,7 +121,8 @@ class FixedPointConstraint : public solvers::NonlinearConstraint<T> {
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
   const KinematicEvaluatorSet<T>& evaluators_;
-  std::shared_ptr<drake::systems::Context<T>> context_;
+  drake::systems::Context<T>* context_;
+  std::unique_ptr<drake::systems::Context<T>> owned_context_;
 };
 
 }  // namespace multibody

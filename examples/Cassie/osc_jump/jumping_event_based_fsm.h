@@ -62,7 +62,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
   const FSM_STATE init_state_;
   const SIMULATOR simulator_type_;
 
-  const double buffer_time_ = 5e-4; // 1 ms to avoid lingering LCM messages
+  const double buffer_time_ = 1e-3; // 1 ms to avoid lingering LCM messages
 };
 
 }  // namespace examples

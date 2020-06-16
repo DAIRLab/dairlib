@@ -3,7 +3,6 @@
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/framework/leaf_system.h"
 
 using dairlib::multibody::createContext;

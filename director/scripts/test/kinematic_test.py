@@ -20,6 +20,7 @@ import numpy as np
 import json
 import sys
 from collections import deque
+from functools import partial
 
 
 class TestGui(QWidget):
@@ -27,17 +28,60 @@ class TestGui(QWidget):
     def __init__(self, parent = None):
 
         super(TestGui, self).__init__(parent)
+
+        self.checkBoxes = {}
+
+        # get names of all data
+        self.json_file = sys.argv[3];
+        with open(self.json_file) as json_file:
+            self.data = json.load(json_file)
+
+        # create the GUI
+        self.setWindowTitle("Testing Testing")
+        self.grid = QGridLayout()
+
+        # fill the labels for each data with its name
+        self.placeCheckBoxes()
+
+        self.setLayout(self.grid)
+        self.show()
+
         # Starting a new thread, since we need to block and wait for messages
         handle_thread = threading.Thread(target=self.handle_thread)
         handle_thread.start()
+
+    def placeCheckBoxes(self):
+        checkBoxes = []
+        count = 0
+        checkBoxes.append(QCheckBox("toe_point"))
+        checkBoxes[count].stateChanged.connect(lambda: self.checkBoxChecked(checkBoxes[count]))
+        self.grid.addWidget(checkBoxes[count])
+
+        count += 1
+        checkBoxes.append(QCheckBox("toe_line"))
+        checkBoxes[count].stateChanged.connect(lambda: self.checkBoxChecked(checkBoxes[count]))
+        self.grid.addWidget(checkBoxes[count])
+        # for data in self.data['data']:
+        #     jsonData = eval(str(data))
+        #     checkBoxes.append(QCheckBox(jsonData['name']))
+        #     checkBoxes[count].stateChanged.connect(self.checkBoxChecked("hi"))
+        #     self.grid.addWidget(checkBoxes[count])
+        #     count += 1
+
+    def checkBoxChecked(self, checkbox):
+        print(checkbox.text)
+        # if (checkbox == "right_toe_line"):
+        #     print("Hi")
+        # else:
+        #     print("Hello")
 
     def handle_thread(self):
         self.channel = "NETWORK_CASSIE_STATE_DISPATCHER"
         self.lcm = lcm.LCM()
         self.prev_loc = {}
-        self.json_file = sys.argv[3];
         self.duration = {}
         self.shapes = {}
+        self.json_file = sys.argv[3];
         subscription = self.lcm.subscribe(self.channel, self.state_handler)
         subscription.set_queue_capacity(1)
 
@@ -158,4 +202,7 @@ class TestGui(QWidget):
 panel = TestGui()
 app.addWidgetToDock(panel, QtCore.Qt.RightDockWidgetArea)
 
+import director.openscope as scope
+import subprocess
 view = applogic.getMainWindow()
+applogic.addShortcut(view, 'Ctrl+I', scope.startSignalScope)

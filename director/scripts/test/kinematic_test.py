@@ -30,6 +30,7 @@ class TestGui(QWidget):
         super(TestGui, self).__init__(parent)
 
         self.checkBoxes = {}
+        self.checkBoxesPrevState = {}
 
         # get names of all data
         self.json_file = sys.argv[3];
@@ -43,6 +44,10 @@ class TestGui(QWidget):
         # fill the labels for each data with its name
         self.placeCheckBoxes()
 
+        self.reset = QPushButton('Reset')
+        self.reset.clicked.connect(self.deleteShapes)
+        self.grid.addWidget(self.reset)
+
         self.setLayout(self.grid)
         self.show()
 
@@ -50,30 +55,32 @@ class TestGui(QWidget):
         handle_thread = threading.Thread(target=self.handle_thread)
         handle_thread.start()
 
+    def deleteShapes(self):
+        # vis.showText("hello", "Bobby", position=(100, 100))
+        for box in self.checkBoxes.values():
+            box.setChecked(False)
+
     def placeCheckBoxes(self):
-        checkBoxes = []
-        count = 0
-        checkBoxes.append(QCheckBox("toe_point"))
-        checkBoxes[count].stateChanged.connect(lambda: self.checkBoxChecked(checkBoxes[count]))
-        self.grid.addWidget(checkBoxes[count])
+        for data in self.data['data']:
+            jsonData = eval(str(data))
+            self.checkBoxes[jsonData['name']] = QCheckBox(jsonData['name'])
+            self.checkBoxes[jsonData['name']].setChecked(True)
+            self.checkBoxesPrevState[jsonData['name']] = True
+            self.grid.addWidget(self.checkBoxes[jsonData['name']])
 
-        count += 1
-        checkBoxes.append(QCheckBox("toe_line"))
-        checkBoxes[count].stateChanged.connect(lambda: self.checkBoxChecked(checkBoxes[count]))
-        self.grid.addWidget(checkBoxes[count])
-        # for data in self.data['data']:
-        #     jsonData = eval(str(data))
-        #     checkBoxes.append(QCheckBox(jsonData['name']))
-        #     checkBoxes[count].stateChanged.connect(self.checkBoxChecked("hi"))
-        #     self.grid.addWidget(checkBoxes[count])
-        #     count += 1
+    def checkBoxChecked(self, name):
+        if (type(self.shapes[name]) == deque):
+            for line in self.shapes[name]:
+                line.setProperty('Visible', True)
+        else:
+            self.shapes[name].setProperty('Visible', True)
 
-    def checkBoxChecked(self, checkbox):
-        print(checkbox.text)
-        # if (checkbox == "right_toe_line"):
-        #     print("Hi")
-        # else:
-        #     print("Hello")
+    def checkBoxNotChecked(self, name):
+        if (type(self.shapes[name]) == deque):
+            for line in self.shapes[name]:
+                line.setProperty('Visible', False)
+        else:
+            self.shapes[name].setProperty('Visible', False)
 
     def handle_thread(self):
         self.channel = "NETWORK_CASSIE_STATE_DISPATCHER"
@@ -121,6 +128,15 @@ class TestGui(QWidget):
 
         for data in self.data['data']:
             jsonData = eval(str(data))
+
+            if (self.checkBoxes[jsonData['name']].isChecked() == True):
+                if (self.checkBoxesPrevState[jsonData['name']] == False):
+                    self.checkBoxesPrevState[jsonData['name']] = True
+                    self.checkBoxChecked(jsonData['name'])
+            else:
+                if (self.checkBoxesPrevState[jsonData['name']] == True):
+                    self.checkBoxesPrevState[jsonData['name']] = False
+                    self.checkBoxNotChecked(jsonData['name'])
 
             # set the body and point on which to visualize the data
             pt_body = np.array(jsonData['point-on-body'])

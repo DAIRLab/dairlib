@@ -609,10 +609,10 @@ void setKinematicConstraints(HybridDircon<double>* trajopt,
   // ALL BUT THE LAST SEGMENT (to ensure the feet can leave the ground
   for (int index = 0; index < (mode_lengths[0] - 1); index++) {
     auto lambda = trajopt->force(0, index);
-    trajopt->AddLinearConstraint(lambda(2) >= 10);
-    trajopt->AddLinearConstraint(lambda(5) >= 10);
-    trajopt->AddLinearConstraint(lambda(8) >= 10);
-    trajopt->AddLinearConstraint(lambda(11) >= 10);
+    trajopt->AddLinearConstraint(lambda(2) >= 15);
+    trajopt->AddLinearConstraint(lambda(5) >= 15);
+    trajopt->AddLinearConstraint(lambda(8) >= 15);
+    trajopt->AddLinearConstraint(lambda(11) >= 15);
   }
   // Limit the ground reaction forces in the landing phase
   for (int index = 0; index < mode_lengths[2]; index++) {

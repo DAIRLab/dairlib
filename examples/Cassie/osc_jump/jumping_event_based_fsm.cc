@@ -108,88 +108,58 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
     transition_flag(0) = false;
   }
 
-  if (contact_based_) {
-    switch ((FSM_STATE)fsm_state(0)) {
-      case (BALANCE):
-        if (current_time > transition_times_[BALANCE]) {
-          fsm_state << CROUCH;
-          std::cout << "Current time: " << current_time << std::endl;
-          std::cout << "Setting fsm to CROUCH" << std::endl;
-          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
-          transition_flag(0) = false;
-          prev_time(0) = current_time;
-        }
-        break;
-      case (CROUCH):  // This assumes perfect knowledge about contacts
-        if (DetectGuardCondition(num_contacts == 0, current_time,
-                                 discrete_state)) {
-          state_trigger_time(0) = current_time;
-          transition_flag(0) = true;
-        }
-        if (current_time - state_trigger_time(0) >= transition_delay_ &&
-            (bool)transition_flag(0)) {
-          fsm_state << FLIGHT;
-          std::cout << "Current time: " << current_time << std::endl;
-          std::cout << "First detection time: " << state_trigger_time(0)
-                    << "\n";
-          std::cout << "Setting fsm to FLIGHT" << std::endl;
-          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
-          transition_flag(0) = false;
-          prev_time(0) = current_time;
-        }
-        break;
-      case (FLIGHT):
-        if (DetectGuardCondition(num_contacts != 0, current_time,
-                                 discrete_state)) {
-          state_trigger_time(0) = current_time;
-          transition_flag(0) = true;
-        }
-        if (current_time - state_trigger_time(0) >= transition_delay_ &&
-            (bool)transition_flag(0)) {
-          fsm_state << LAND;
-          std::cout << "Current time: " << current_time << "\n";
-          std::cout << "First detection time: " << state_trigger_time(0)
-                    << "\n";
-          std::cout << "Setting fsm to LAND"
-                    << "\n";
-          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << "\n";
-          transition_flag(0) = false;
-          prev_time(0) = current_time;
-        }
-        break;
-      case (LAND):
-        break;
-    }
-  } else {
-    switch ((FSM_STATE)fsm_state(0)) {
-      case (BALANCE):
-        if (current_time > transition_times_[BALANCE]) {
-          fsm_state << CROUCH;
-          std::cout << "Setting fsm to CROUCH" << std::endl;
-          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
-          prev_time(0) = current_time;
-        }
-        break;
-      case (CROUCH):
-        if (current_time > transition_times_[CROUCH]) {
-          fsm_state << FLIGHT;
-          std::cout << "Setting fsm to FLIGHT" << std::endl;
-          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
-          prev_time(0) = current_time;
-        }
-        break;
-      case (FLIGHT):
-        if (current_time > transition_times_[FLIGHT]) {
-          fsm_state << LAND;
-          std::cout << "Setting fsm to LAND" << std::endl;
-          std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
-          prev_time(0) = current_time;
-        }
-        break;
-      case (LAND):
-        // Sink state, should not switch to any other mode
-        break;
-    }
+  switch ((FSM_STATE)fsm_state(0)) {
+    case (BALANCE):
+      if (current_time > transition_times_[BALANCE]) {
+        fsm_state << CROUCH;
+        std::cout << "Current time: " << current_time << std::endl;
+        std::cout << "Setting fsm to CROUCH" << std::endl;
+        std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+        transition_flag(0) = false;
+        prev_time(0) = current_time;
+      }
+      break;
+    case (CROUCH):  // This assumes perfect knowledge about contacts
+      if (DetectGuardCondition(contact_based_
+                                   ? num_contacts == 0
+                                   : current_time > transition_times_[CROUCH],
+                               current_time, discrete_state)) {
+        state_trigger_time(0) = current_time;
+        transition_flag(0) = true;
+      }
+      if (current_time - state_trigger_time(0) >= transition_delay_ &&
+          (bool)transition_flag(0)) {
+        fsm_state << FLIGHT;
+        std::cout << "Current time: " << current_time << std::endl;
+        std::cout << "First detection time: " << state_trigger_time(0) << "\n";
+        std::cout << "Setting fsm to FLIGHT" << std::endl;
+        std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+        transition_flag(0) = false;
+        prev_time(0) = current_time;
+      }
+      break;
+    case (FLIGHT):
+      if (DetectGuardCondition(contact_based_
+                                   ? num_contacts != 0
+                                   : current_time > transition_times_[FLIGHT],
+                               current_time, discrete_state)) {
+        state_trigger_time(0) = current_time;
+        transition_flag(0) = true;
+      }
+      if (current_time - state_trigger_time(0) >= transition_delay_ &&
+          (bool)transition_flag(0)) {
+        fsm_state << LAND;
+        std::cout << "Current time: " << current_time << "\n";
+        std::cout << "First detection time: " << state_trigger_time(0) << "\n";
+        std::cout << "Setting fsm to LAND"
+                  << "\n";
+        std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << "\n";
+        transition_flag(0) = false;
+        prev_time(0) = current_time;
+      }
+      break;
+    case (LAND):
+      break;
   }
 
   return EventStatus::Succeeded();

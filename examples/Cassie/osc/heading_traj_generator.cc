@@ -3,7 +3,7 @@
 #include <math.h>
 #include <string>
 
-#include "attic/multibody/rigidbody_utils.h"
+#include "multibody/multibody_utils.h"
 
 using std::cout;
 using std::endl;
@@ -26,14 +26,17 @@ namespace dairlib {
 namespace cassie {
 namespace osc {
 
-HeadingTrajGenerator::HeadingTrajGenerator(const RigidBodyTree<double>& tree,
-                                           int pelvis_idx)
-    : tree_(tree), pelvis_idx_(pelvis_idx) {
+HeadingTrajGenerator::HeadingTrajGenerator(
+    const drake::multibody::MultibodyPlant<double>& plant)
+    : plant_(plant),
+      world_(plant_.world_frame()),
+      pelvis_(plant_.GetBodyByName("pelvis")) {
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(OutputVector<double>(
-                        tree.get_num_positions(), tree.get_num_velocities(),
-                        tree.get_num_actuators()))
-                    .get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+          .get_index();
   des_yaw_port_ =
       this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   // Provide an instance to allocate the memory first (for the output)
@@ -41,6 +44,9 @@ HeadingTrajGenerator::HeadingTrajGenerator(const RigidBodyTree<double>& tree,
   drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("heading_traj", traj_inst,
                                   &HeadingTrajGenerator::CalcHeadingTraj);
+
+  // Create context
+  context_ = plant_.CreateDefaultContext();
 }
 
 void HeadingTrajGenerator::CalcHeadingTraj(
@@ -56,20 +62,11 @@ void HeadingTrajGenerator::CalcHeadingTraj(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   VectorXd q = robotOutput->GetPositions();
 
-  // Kinematics cache and indices
-  KinematicsCache<double> cache = tree_.CreateKinematicsCache();
-  // Modify the quaternion in the begining when the state is not received from
-  // the robot yet
-  // Always remember to check 0-norm quaternion when using doKinematics
-  multibody::SetZeroQuaternionToIdentity(&q);
-  cache.initialize(q);
-  tree_.doKinematics(cache);
+  plant_.SetPositions(context_.get(), q);
 
   // Get approximated heading angle of pelvis
   Vector3d pelvis_heading_vec =
-      tree_.CalcBodyPoseInWorldFrame(cache, tree_.get_body(pelvis_idx_))
-          .linear()
-          .col(0);
+      plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
   double approx_pelvis_yaw_i =
       atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 
@@ -82,7 +79,7 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   /// Note that we construct trajectories in R^4 (quaternion space), so we need
   /// to transform the yaw trajectory into quaternion representation.
   double approx_pelvis_yaw_f = approx_pelvis_yaw_i + des_yaw_vel(0) * 0.1;
-  Eigen::Vector4d pelvis_rotation_i(q(3), q(4), q(5), q(6));
+  Eigen::Vector4d pelvis_rotation_i(q.head(4));
   Eigen::Vector4d pelvis_rotation_f(cos(approx_pelvis_yaw_f / 2), 0, 0,
                                     sin(approx_pelvis_yaw_f / 2));
 

@@ -121,6 +121,11 @@ void KinematicEvaluator<T>::set_active_inds(std::vector<int> active_inds) {
   }
 }
 
+template <typename T>
+const std::vector<int>& KinematicEvaluator<T>::active_inds() const {
+  return active_inds_;
+};
+
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::multibody::KinematicEvaluator)
 

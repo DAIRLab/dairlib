@@ -2,8 +2,9 @@
 
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -38,9 +39,9 @@ namespace osc {
 /// Requirement: quaternion floating-based Cassie only
 class HighLevelCommand : public drake::systems::LeafSystem<double> {
  public:
-  HighLevelCommand(const RigidBodyTree<double>& tree, int pelvis_idx,
-               const Eigen::Vector2d& global_target_position,
-               const Eigen::Vector2d& params_of_no_turning);
+  HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
+                   const Eigen::Vector2d& global_target_position,
+                   const Eigen::Vector2d& params_of_no_turning);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -65,10 +66,13 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* output) const;
 
-  const RigidBodyTree<double>& tree_;
-  int pelvis_idx_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::Body<double>& pelvis_;
   Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;
+
+  std::unique_ptr<drake::systems::Context<double>> context_;
 
   // Port index
   int state_port_;
@@ -103,4 +107,3 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
 }  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib
-

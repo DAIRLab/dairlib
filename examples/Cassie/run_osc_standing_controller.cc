@@ -1,40 +1,41 @@
 #include <gflags/gflags.h>
-#include "attic/multibody/rigidbody_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "attic/systems/controllers/operational_space_control.h"
+#include "examples/Cassie/osc/standing_com_traj.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "multibody/multibody_utils.h"
+#include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
-#include "examples/Cassie/osc/standing_com_traj.h"
 
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/multibody/joints/floating_base_types.h"
-#include "drake/multibody/rigid_body_tree.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
 
 namespace dairlib {
 
 using std::cout;
 using std::endl;
 
-using Eigen::Vector3d;
-using Eigen::VectorXd;
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
 
-using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::lcm::LcmPublisherSystem;
+using drake::geometry::SceneGraph;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
+using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 
 using multibody::GetBodyIndexFromName;
 using systems::controllers::ComTrackingData;
-using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
+using systems::controllers::RotTaskSpaceTrackingData;
+using systems::controllers::TransTaskSpaceTrackingData;
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -56,83 +57,100 @@ DEFINE_double(height, .89, "The desired height (m)");
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  // Build Cassie MBP
+  drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
+  addCassieMultibody(&plant_w_springs, nullptr, true /*floating base*/,
+                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     true /*spring model*/, false /*loop closure*/);
+  plant_w_springs.Finalize();
+  // Build fix-spring Cassie MBP
+  drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
+  addCassieMultibody(&plant_wo_springs, nullptr, true,
+                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                     false);
+  plant_wo_springs.Finalize();
+
+  // Get contact frames and position (doesn't matter whether we use
+  // plant_w_springs or plant_wo_springs because the contact frames exit in both
+  // plants)
+  auto left_toe = LeftToe(plant_wo_springs);
+  auto left_heel = LeftHeel(plant_wo_springs);
+  auto right_toe = RightToe(plant_wo_springs);
+  auto right_heel = RightHeel(plant_wo_springs);
+
+  // Build the controller diagram
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
-  RigidBodyTree<double> tree_with_springs;
-  RigidBodyTree<double> tree_without_springs;
-  buildCassieTree(tree_with_springs,
-                  "examples/Cassie/urdf/cassie_v2.urdf",
-                  drake::multibody::joints::kQuaternion);
-  buildCassieTree(tree_without_springs,
-                  "examples/Cassie/urdf/cassie_fixed_springs.urdf",
-                  drake::multibody::joints::kQuaternion, false/*no spring*/);
-  const double terrain_size = 100;
-  const double terrain_depth = 0.20;
-  drake::multibody::AddFlatTerrainToWorld(&tree_with_springs,
-                                          terrain_size, terrain_depth);
-  drake::multibody::AddFlatTerrainToWorld(&tree_without_springs,
-                                          terrain_size, terrain_depth);
-
   // Create state receiver.
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(
-                          tree_with_springs);
+  auto state_receiver =
+      builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
 
   // Create command sender.
-  auto command_pub = builder.AddSystem(
-                       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-                           FLAGS_channel_u, &lcm_local,
-                           TriggerTypeSet({TriggerType::kForced})));
-  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(
-                          tree_with_springs);
+  auto command_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+  auto command_sender =
+      builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
   // Create osc debug sender.
-  auto osc_debug_pub = builder.AddSystem(
-                       LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-                           "OSC_DEBUG", &lcm_local,
-                           TriggerTypeSet({TriggerType::kForced})));
-
-  // Get body indices for cassie with springs
-  int pelvis_idx = GetBodyIndexFromName(tree_with_springs, "pelvis");
-  int left_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_left");
-  int right_toe_idx = GetBodyIndexFromName(tree_with_springs, "toe_right");
-  DRAKE_DEMAND(pelvis_idx != -1 && left_toe_idx != -1 && right_toe_idx != -1);
+  auto osc_debug_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+          "OSC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
 
   // Create desired center of mass traj
+  std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
+      feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
-      tree_with_springs, pelvis_idx, left_toe_idx, right_toe_idx, FLAGS_height);
+      plant_w_springs, feet_contact_points, FLAGS_height);
   builder.Connect(state_receiver->get_output_port(0),
                   com_traj_generator->get_input_port_state());
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-               tree_with_springs, tree_without_springs, false, FLAGS_print_osc);
+      plant_w_springs, plant_wo_springs, false, FLAGS_print_osc);
 
-  // Cost
-  // cout << "Adding cost\n";
-  int n_v = tree_without_springs.get_num_velocities();
-  MatrixXd Q_accel = 10 * MatrixXd::Identity(n_v, n_v);
-  osc->SetAccelerationCostForAllJoints(Q_accel);
+  // Distance constraint
+  multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_springs);
+  auto left_loop = LeftLoopClosureEvaluator(plant_wo_springs);
+  auto right_loop = RightLoopClosureEvaluator(plant_wo_springs);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
+  osc->AddKinematicConstraint(&evaluators);
   // Soft constraint
-  // cout << "Adding constraint\n";
-  // We don't want this to be too big, cause we want tracking error to be important
+  // We don't want w_contact_relax to be too big, cause we want tracking
+  // error to be important
   double w_contact_relax = 20000;
   osc->SetWeightOfSoftContactConstraint(w_contact_relax);
-  // Firction coefficient
+  // Friction coefficient
   double mu = 0.8;
   osc->SetContactFriction(mu);
-  Vector3d front_contact_disp(-0.0457, 0.112, 0);
-  Vector3d rear_contact_disp(0.088, 0, 0);
-  osc->AddContactPoint("toe_left", front_contact_disp);
-  osc->AddContactPoint("toe_left", rear_contact_disp);
-  osc->AddContactPoint("toe_right", front_contact_disp);
-  osc->AddContactPoint("toe_right", rear_contact_disp);
+  // Add contact points (The position doesn't matter. It's not used in OSC)
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
+  osc->AddContactPoint(&left_toe_evaluator);
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, left_heel.first, left_heel.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {0, 1, 2});
+  osc->AddContactPoint(&left_heel_evaluator);
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      Vector3d::Zero(), {1, 2});
+  osc->AddContactPoint(&right_toe_evaluator);
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant_wo_springs, right_heel.first, right_heel.second,
+      Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
+  osc->AddContactPoint(&right_heel_evaluator);
+  // Cost
+  int n_v = plant_wo_springs.num_velocities();
+  MatrixXd Q_accel = 0.01 * MatrixXd::Identity(n_v, n_v);
+  osc->SetAccelerationCostForAllJoints(Q_accel);
   // Center of mass tracking
-  // cout << "Adding center of mass tracking\n";
   // Weighting x-y higher than z, as they are more important to balancing
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2000;
@@ -146,18 +164,17 @@ int DoMain(int argc, char* argv[]) {
   // -Kp * x + Kd * sqrt(g/l) * x = g/l * x
   // Kp = sqrt(g/l) * Kd - g/l
   double xy_scale = 10;
-  double g_over_l = 9.81/FLAGS_height;
-  MatrixXd K_p_com = (xy_scale*sqrt(g_over_l)  - g_over_l) *
-      MatrixXd::Identity(3, 3);
+  double g_over_l = 9.81 / FLAGS_height;
+  MatrixXd K_p_com =
+      (xy_scale * sqrt(g_over_l) - g_over_l) * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = xy_scale * MatrixXd::Identity(3, 3);
   K_p_com(2, 2) = 10;
   K_d_com(2, 2) = 10;
-  ComTrackingData center_of_mass_traj(
-      "com_traj", 3, K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
-      &tree_with_springs, &tree_without_springs);
+  ComTrackingData center_of_mass_traj("com_traj", 3, K_p_com, K_d_com,
+                                      W_com * FLAGS_cost_weight_multiplier,
+                                      &plant_w_springs, &plant_wo_springs);
   osc->AddTrackingData(&center_of_mass_traj);
   // Pelvis rotation tracking
-  // cout << "Adding pelvis rotation tracking\n";
   double w_pelvis_balance = 200;
   double w_heading = 200;
   double k_p_pelvis_balance = 10;
@@ -176,9 +193,10 @@ int DoMain(int argc, char* argv[]) {
   K_d_pelvis(0, 0) = k_d_pelvis_balance;
   K_d_pelvis(1, 1) = k_d_pelvis_balance;
   K_d_pelvis(2, 2) = k_d_heading;
-  RotTaskSpaceTrackingData pelvis_rot_traj("pelvis_rot_traj", 3,
-      K_p_pelvis, K_d_pelvis, W_pelvis * FLAGS_cost_weight_multiplier,
-      &tree_with_springs, &tree_without_springs);
+  RotTaskSpaceTrackingData pelvis_rot_traj(
+      "pelvis_rot_traj", 3, K_p_pelvis, K_d_pelvis,
+      W_pelvis * FLAGS_cost_weight_multiplier, &plant_w_springs,
+      &plant_wo_springs);
   pelvis_rot_traj.AddFrameToTrack("pelvis");
   VectorXd pelvis_desired_quat(4);
   pelvis_desired_quat << 1, 0, 0, 0;
@@ -189,15 +207,15 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_d_hip_yaw = 160 * MatrixXd::Identity(1, 1);
   JointSpaceTrackingData left_hip_yaw_traj(
       "left_hip_yaw_traj", K_p_hip_yaw, K_d_hip_yaw,
-      W_hip_yaw * FLAGS_cost_weight_multiplier, &tree_with_springs,
-      &tree_without_springs);
+      W_hip_yaw * FLAGS_cost_weight_multiplier, &plant_w_springs,
+      &plant_wo_springs);
   left_hip_yaw_traj.AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   osc->AddConstTrackingData(&left_hip_yaw_traj, VectorXd::Zero(1));
   // right hip yaw joint tracking
   JointSpaceTrackingData right_hip_yaw_traj(
       "right_hip_yaw_traj", K_p_hip_yaw, K_d_hip_yaw,
-      W_hip_yaw * FLAGS_cost_weight_multiplier, &tree_with_springs,
-      &tree_without_springs);
+      W_hip_yaw * FLAGS_cost_weight_multiplier, &plant_w_springs,
+      &plant_wo_springs);
   right_hip_yaw_traj.AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
   osc->AddConstTrackingData(&right_hip_yaw_traj, VectorXd::Zero(1));*/
   // Build OSC problem
@@ -207,8 +225,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_robot_output_input_port());
   builder.Connect(osc->get_osc_output_port(),
                   command_sender->get_input_port(0));
-  builder.Connect(osc->get_osc_debug_port(),
-                  osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_tracking_data_input_port("com_traj"));
 
@@ -217,12 +234,9 @@ int DoMain(int argc, char* argv[]) {
   owned_diagram->set_name(("osc standing controller"));
 
   // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop
-      (&lcm_local,
-       std::move(owned_diagram),
-       state_receiver,
-       FLAGS_channel_x,
-       true);
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+      &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
+      true);
   loop.Simulate();
 
   return 0;

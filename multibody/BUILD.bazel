@@ -72,34 +72,6 @@ cc_binary(
     ],
 )
 
-cc_library(
-    name = "contact_toolkit",
-    srcs = [
-        "contact_toolkit.cc",
-    ],
-    hdrs = [
-        "contact_toolkit.h",
-    ],
-    deps = [
-        ":utils",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "multibody_distance_constraint",
-    srcs = [
-        "multibody_distance_constraint.cc",
-    ],
-    hdrs = [
-        "multibody_distance_constraint.h",
-    ],
-    deps = [
-        ":utils",
-        "@drake//:drake_shared_library",
-    ],
-)
-
 cc_test(
     name = "multibody_utils_test",
     size = "small",
@@ -109,21 +81,6 @@ cc_test(
         "//common",
         "//examples/Cassie:cassie_urdf",
         "@drake//:drake_shared_library",
-        "@gtest//:main",
-    ],
-)
-
-cc_test(
-    name = "contact_toolkit_test",
-    size = "small",
-    srcs = [
-        "test/contact_toolkit_test.cc",
-    ],
-    tags = ["manual"],
-    deps = [
-        ":contact_toolkit",
-        ":utils",
-        "//examples/Cassie:cassie_utils",
         "@gtest//:main",
     ],
 )

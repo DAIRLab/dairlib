@@ -1,31 +1,27 @@
 #include <memory>
-
-#include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
-#include <drake/systems/lcm/lcm_interface_system.h>
 #include <gflags/gflags.h>
+
+#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
-#include "drake/multibody/joints/floating_base_types.h"
-#include "drake/solvers/solve.h"
+#include "drake/lcmt_contact_results_for_viz.hpp"
+#include "drake/multibody/plant/contact_results_to_lcm.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/systems/primitives/constant_vector_source.h"
-#include "drake/systems/primitives/signal_logger.h"
-#include "drake/common/trajectories/piecewise_quaternion.h"
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+
+#include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
-#include "drake/lcmt_contact_results_for_viz.hpp"
-#include "drake/multibody/plant/contact_results_to_lcm.h"
+
 
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
@@ -40,7 +36,6 @@ using drake::systems::lcm::LcmSubscriberSystem;
 
 using drake::math::RotationMatrix;
 using Eigen::Matrix3d;
-using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
@@ -55,35 +50,19 @@ DEFINE_bool(time_stepping, true,
             "discrete system with periodic updates. "
             "If 'false', the plant is modeled as a continuous system.");
 DEFINE_double(dt, 8e-5,
-              "The step size to use for compliant, ignored for time_stepping)");
+              "The step size to use for time_stepping, ignored for continuous");
+DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
 DEFINE_double(penetration_allowance, 1e-5,
               "Penetration allowance for the contact model. Nearly equivalent"
               " to (m)");
-DEFINE_double(mu, 0.8, "Coefficient of static/kinetic friction");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
               "End time for simulator");
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
-DEFINE_double(init_height, 1.1,
+DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
-DEFINE_double(start_time, 0.0,
-    "Starting time of the simulator, intended to "
-    "be used with a user specified initial state");
-DEFINE_string(file_name, "",
-    "Filename containing the LCM_trajectory "
-    "that describes the desired robot state.");
-DEFINE_string(folder_path, "",
-    "Folder path containing the LCM_trajectory "
-    "that describes the desired robot state.");
-DEFINE_string(trajectory_name, "",
-    "Name of the desired trajectory that describes "
-    "the desired robot state.");
-DEFINE_string(interp_method, "linear", "Interpolation method for the "
-                                       "trajectory.");
-DEFINE_int32(error_idx, 4, "Index in the state vector to inject error into");
-DEFINE_double(error, 0.0, "Value fo the error, see error_idx");
+DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 
-Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant);
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -96,13 +75,22 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, FLAGS_mu, FLAGS_mu);
+    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8);
   }
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base,
-                     "examples/Cassie/urdf/cassie_v2.urdf");
 
+  std::string urdf;
+  if (FLAGS_spring_model) {
+    urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+  } else {
+    urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+  }
+
+  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
+      FLAGS_spring_model, true);
   plant.Finalize();
+
   plant.set_penetration_allowance(FLAGS_penetration_allowance);
+  plant.set_stiction_tolerance(FLAGS_v_stiction);
 
   // Create lcm systems.
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
@@ -124,8 +112,7 @@ int do_main(int argc, char* argv[]) {
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CASSIE_CONTACT_DRAKE", lcm, 1.0 / FLAGS_publish_rate));
-  //          "CASSIE_CONTACT_RESULTS", lcm, 1.0 / FLAGS_publish_rate));
+          "CASSIE_CONTACT_RESULTS", lcm, 1.0 / FLAGS_publish_rate));
   contact_results_publisher.set_name("contact_results_publisher");
 
   // connect leaf systems
@@ -157,64 +144,20 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   // Set initial conditions of the simulation
+  VectorXd q_init, u_init, lambda_init;
 
-  int nq = plant.num_positions();
-  int nv = plant.num_velocities();
-  int nx = nq + nv;
-  VectorXd q_v_init(nq + nv);
-
-  if (FLAGS_start_time != 0) {
-    DRAKE_ASSERT(!FLAGS_trajectory_name.empty());
-    // Convert points to a PiecewisePolynomial
-    const LcmTrajectory& loadedTrajs =
-        LcmTrajectory(FLAGS_folder_path + FLAGS_file_name);
-    const LcmTrajectory::Trajectory& trajectory =
-        loadedTrajs.getTrajectory(FLAGS_trajectory_name);
-//    std::cout << "nq: " << nq << " nv: " << nv << std::endl;
-//    std::cout << "n_rows " << trajectory.datapoints.rows() << std::endl;
-
-    DRAKE_ASSERT(nq + nv == trajectory.datapoints.rows())
-    std::vector<double> breaks = std::vector<double>(
-        trajectory.time_vector.data(),
-        trajectory.time_vector.data() + trajectory.time_vector.size());
-    long n_breaks = trajectory.datapoints.cols();
-    std::vector<Eigen::Quaterniond> quaternions;
-    quaternions.resize(n_breaks);
-    for (int i = 0; i < n_breaks; ++i) {
-      quaternions[i] =
-          Eigen::Quaterniond(trajectory.datapoints.block(0, i, 4, 1).data());
-//      std::cout << "State at break: " << trajectory.datapoints.col(i)
-//                << std::endl;
-    }
-    drake::trajectories::PiecewisePolynomial<double> x_traj;
-    if(FLAGS_interp_method == "linear"){
-      x_traj = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold
-          (trajectory.time_vector, trajectory.datapoints.topRows(nq + nv));
-      q_v_init << x_traj.value(FLAGS_start_time);
-    }
-    else if(FLAGS_interp_method == "cubic") {
-      MatrixXd x = trajectory.datapoints.topRows(2*nx);
-      MatrixXd xdot = trajectory.datapoints.topRows(2*nx).bottomRows(nx);
-      x_traj = drake::trajectories::PiecewisePolynomial<double>::CubicHermite(
-          trajectory.time_vector, x, xdot);
-      q_v_init << x_traj.value(FLAGS_start_time);
-    }
-    // Add any "errors" in the state here
-    q_v_init[FLAGS_error_idx] += FLAGS_error;
-    plant.SetPositionsAndVelocities(&plant_context, q_v_init);
+  double mu_fp = 0;
+  double min_normal_fp = 70;
+  double toe_spread = .2;
+  if (FLAGS_floating_base) {
+    CassieFixedPointSolver(plant, FLAGS_init_height, mu_fp, min_normal_fp,
+        true, toe_spread, &q_init, &u_init, &lambda_init);  
   } else {
-    q_v_init << GetInitialState(plant), VectorXd::Zero(nv);
-    plant.SetPositionsAndVelocities(&plant_context, q_v_init);
-    if (FLAGS_floating_base) {
-      const drake::math::RigidTransformd transform(
-          RotationMatrix<double>(), Eigen::Vector3d(0, 0, FLAGS_init_height));
-      plant.SetFreeBodyPose(&plant_context, plant.GetBodyByName("pelvis"),
-          transform);
-    }
+    CassieFixedBaseFixedPointSolver(plant, &q_init, &u_init, &lambda_init);
   }
-//  std::cout << "Setting initial state to: " << q_v_init << std::endl;
+  plant.SetPositions(&plant_context, q_init);
+  plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
 
-  diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
 
   if (!FLAGS_time_stepping) {
@@ -234,74 +177,6 @@ int do_main(int argc, char* argv[]) {
   return 0;
 }
 
-Eigen::VectorXd GetInitialState(const MultibodyPlant<double>& plant) {
-  int n_q = plant.num_positions();
-  std::map<std::string, int> positions_map =
-      multibody::makeNameToPositionsMap(plant);
-
-  VectorXd q_ik_guess = VectorXd::Zero(n_q);
-  Eigen::Vector4d quat(1, 0, 0, 0);
-  q_ik_guess << quat.normalized(), 0.001, 0.001, 1.1, -0.01, 0.01, 0.0, 0.0,
-      1.15, 1.15, -1.35, -1.35, 1.0, 1.0, 0.0, 0.0, 0.0, -M_PI / 2, 0.0,
-      -M_PI / 2;
-
-  double achilles_length = .5012;
-  double feet_xpos_offset = -0.15;
-  double eps = 1e-4;
-  Vector3d pelvis_pos(0.0, 0.0, 1.0);
-  Vector3d rear_contact_disp(-0.0457, 0.112, 0);
-  Vector3d front_contact_disp(0.088, 0, 0);
-  Vector3d left_toe_rear_pos(-0.02115 + feet_xpos_offset, 0.12, 0.00);
-  Vector3d left_toe_front_pos(0.02115 + feet_xpos_offset, 0.12, 0.00);
-  Vector3d right_toe_rear_pos(-0.02115 + feet_xpos_offset, -0.12, 0.00);
-  Vector3d right_toe_front_pos(0.02115 + feet_xpos_offset, -0.12, 0.00);
-
-  Vector3d rod_on_heel_spring;  // symmetric left and right
-  rod_on_heel_spring << .11877, -.01, 0.0;
-  Vector3d rod_on_thigh_left;
-  rod_on_thigh_left << 0.0, 0.0, 0.045;
-  Vector3d rod_on_thigh_right;
-  rod_on_thigh_right << 0.0, 0.0, -0.045;
-
-  const auto& world_frame = plant.world_frame();
-  const auto& pelvis_frame = plant.GetFrameByName("pelvis");
-  const auto& toe_left_frame = plant.GetFrameByName("toe_left");
-  const auto& toe_right_frame = plant.GetFrameByName("toe_right");
-  const auto& thigh_left_frame = plant.GetFrameByName("thigh_left");
-  const auto& thigh_right_frame = plant.GetFrameByName("thigh_right");
-  const auto& heel_spring_left_frame = plant.GetFrameByName("heel_spring_left");
-  const auto& heel_spring_right_frame =
-      plant.GetFrameByName("heel_spring_right");
-
-  drake::multibody::InverseKinematics ik(plant);
-
-  ik.AddPositionConstraint(pelvis_frame, Vector3d(0, 0, 0), world_frame,
-                           pelvis_pos - eps * VectorXd::Ones(3),
-                           pelvis_pos + eps * VectorXd::Ones(3));
-  ik.AddOrientationConstraint(pelvis_frame, RotationMatrix<double>(),
-                              world_frame, RotationMatrix<double>(), eps);
-  ik.AddPositionConstraint(toe_left_frame, rear_contact_disp, world_frame,
-                           left_toe_rear_pos, left_toe_rear_pos);
-  ik.AddPositionConstraint(toe_left_frame, front_contact_disp, world_frame,
-                           left_toe_front_pos, left_toe_front_pos);
-  ik.AddPositionConstraint(toe_right_frame, rear_contact_disp, world_frame,
-                           right_toe_rear_pos, right_toe_rear_pos);
-  ik.AddPositionConstraint(toe_right_frame, front_contact_disp, world_frame,
-                           right_toe_front_pos, right_toe_front_pos);
-  ik.AddPointToPointDistanceConstraint(
-      heel_spring_left_frame, rod_on_heel_spring, thigh_left_frame,
-      rod_on_thigh_left, achilles_length, achilles_length);
-  ik.AddPointToPointDistanceConstraint(
-      heel_spring_right_frame, rod_on_heel_spring, thigh_right_frame,
-      rod_on_thigh_right, achilles_length, achilles_length);
-
-  ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
-  const auto result = Solve(ik.prog());
-  const auto q_sol = result.GetSolution(ik.q());
-  VectorXd q_sol_normd(n_q);
-  q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(n_q - 4);
-  return q_sol_normd;
-}
 
 }  // namespace dairlib
 

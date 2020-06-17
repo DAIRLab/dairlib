@@ -336,7 +336,7 @@ string getInitFileName(const string directory, int traj_opt_num,
 // trajectory optimization for given task and model
 void trajOptGivenModel(double stride_length, double ground_incline,
     double turning_rate,const string dir,int num,bool is_rerun,
-    int initial_guess_idx=-1){
+    int initial_guess_idx=-1,bool turn_on_scaling=true){
   // Create MBP
   MultibodyPlant<double> plant(0.0);
   createMBP(&plant, FLAGS_robot_option);
@@ -488,7 +488,8 @@ void trajOptGivenModel(double stride_length, double ground_incline,
                       sample_idx, n_rerun,
                       cost_threshold_for_update, N_rerun,
                       rom_option,
-                      FLAGS_robot_option);
+                      FLAGS_robot_option,
+                      turn_on_scaling);
 }
 
 //naive test function for search algorithm
@@ -554,12 +555,36 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     trajOptGivenModel(new_gamma[0], new_gamma[1],
         new_gamma[2], dir, traj_num, false);
     //check if snopt find a solution successfully. If not, rerun the Traj Opt
-    int max_rerun_num = 5;
-    for(iter=0;iter<5;iter++){
-      int is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
+    int max_rerun_num = 4;
+    int is_success;
+    for(iter=0;iter<max_rerun_num;iter++){
+      is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
       if(is_success==0){
         trajOptGivenModel(new_gamma[0], new_gamma[1],
                           new_gamma[2], dir, traj_num,true);
+      }
+      else{
+        break;
+      }
+    }
+    //if snopt still can't find a solution, try to use adjacent sample to help
+    for(iter=0;iter<max_rerun_num;iter++){
+      is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
+      if(is_success==0){
+        trajOptGivenModel(new_gamma[0], new_gamma[1],
+                          new_gamma[2], dir, traj_num,true,traj_num-1);
+      }
+      else{
+        break;
+      }
+    }
+    //if snopt still failed to find a solution,turn off the scaling option
+    // and try again
+    for(iter=0;iter<max_rerun_num;iter++){
+      is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
+      if(is_success==0){
+        trajOptGivenModel(new_gamma[0], new_gamma[1],
+                          new_gamma[2], dir, traj_num,true,-1,false);
       }
       else{
         break;

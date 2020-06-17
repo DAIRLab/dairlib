@@ -1132,7 +1132,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           int sample_idx, int n_rerun,
                           double cost_threshold_for_update, int N_rerun,
                           int rom_option,
-                          int robot_option) {
+                          int robot_option,
+                          bool turn_on_scaling) {
   map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
   map<string, int> input_map = multibody::makeNameToActuatorsMap(plant);
@@ -1275,8 +1276,15 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                            "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);
-  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
-                           2);  // 0 // snopt doc said try 2 if seeing snopta exit 40
+  if(turn_on_scaling){
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
+                             2);
+  }
+  else{
+    trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Scale option",
+                             0);
+  }
+  // 0 // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance", 1e-4);  // target nonlinear constraint violation
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -1543,7 +1551,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    bool is_add_tau_in_cost,
                    int sample_idx, int n_rerun,
                    double cost_threshold_for_update, int N_rerun,
-                   int rom_option, int robot_option) {
+                   int rom_option, int robot_option,bool turn_on_scaling) {
   // Dircon parameter
   double minimum_timestep = 0.01;
   DRAKE_DEMAND(duration / (n_node - 1) >= minimum_timestep);
@@ -1819,9 +1827,17 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
                            "Iterations limit", 100000);  // QP subproblems
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                            0);  // 0
-  trajopt->SetSolverOption(
-      drake::solvers::SnoptSolver::id(), "Scale option",
-      2);  // snopt doc said try 2 if seeing snopta exit 40
+  if(turn_on_scaling){
+    trajopt->SetSolverOption(
+        drake::solvers::SnoptSolver::id(), "Scale option",
+        2);
+  }
+  else{
+    trajopt->SetSolverOption(
+        drake::solvers::SnoptSolver::id(), "Scale option",
+        0);
+  }
+  // snopt doc said try 2 if seeing snopta exit 40
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major optimality tolerance",
                            major_optimality_tol);  // target nonlinear constraint violation
@@ -2526,7 +2542,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          bool is_add_tau_in_cost,
                          int sample_idx, int n_rerun,
                          double cost_threshold_for_update, int N_rerun,
-                         int rom_option, int robot_option) {
+                         int rom_option, int robot_option,bool turn_on_scaling) {
 
   //Testing
 //  if (sample_idx == 0) {
@@ -2569,7 +2585,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                          is_get_nominal, is_zero_touchdown_impact,
                          extend_model, is_add_tau_in_cost,
                          sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
-                         rom_option, robot_option);
+                         rom_option, robot_option,turn_on_scaling);
   } else if (robot_option == 1) {
     cassieTrajOpt(plant, plant_autoDiff,
                   n_s, n_sDDot, n_tau, n_feature_s, n_feature_sDDot, B_tau,
@@ -2592,7 +2608,7 @@ void trajOptGivenWeights(const MultibodyPlant<double> & plant,
                   is_get_nominal, is_zero_touchdown_impact,
                   extend_model, is_add_tau_in_cost,
                   sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
-                  rom_option, robot_option);
+                  rom_option, robot_option,turn_on_scaling);
   }
 
   // For multithreading purpose. Indicate this function has ended.

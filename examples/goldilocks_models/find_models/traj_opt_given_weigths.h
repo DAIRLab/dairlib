@@ -72,7 +72,7 @@ void trajOptGivenWeights(
     bool extend_model,
     bool is_add_tau_in_cost,
     int sample_idx, int n_rerun, double cost_threshold_for_update, int N_rerun,
-    int rom_option, int robot_option);
+    int rom_option, int robot_option,bool turn_on_scaling);
 
 void addRegularization(bool is_get_nominal, double eps_reg,
                        GoldilocksModelTrajOpt& gm_traj_opt);

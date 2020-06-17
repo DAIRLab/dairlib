@@ -59,6 +59,22 @@ cc_library(
 )
 
 cc_library(
+    name = "cassie_state_estimator",
+    srcs = ["cassie_state_estimator.cc"],
+    hdrs = ["cassie_state_estimator.h"],
+    deps = [
+        ":cassie_utils",
+        "//examples/Cassie/datatypes:cassie_names",
+        "//examples/Cassie/datatypes:cassie_out_t",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@inekf//src:InEKF",
+    ],
+)
+
+cc_library(
     name = "simulator_drift",
     srcs = ["simulator_drift.cc"],
     hdrs = ["simulator_drift.h"],
@@ -230,7 +246,7 @@ cc_binary(
     name = "dispatcher_robot_out",
     srcs = ["dispatcher_robot_out.cc"],
     deps = [
-        ":cassie_rbt_state_estimator",
+        ":cassie_state_estimator",
         ":cassie_urdf",
         ":cassie_utils",
         "//examples/Cassie/networking:cassie_udp_pub_sub",
@@ -247,7 +263,7 @@ cc_binary(
     name = "dispatcher_robot_in",
     srcs = ["dispatcher_robot_in.cc"],
     deps = [
-        ":cassie_rbt_state_estimator",
+        ":cassie_state_estimator",
         ":cassie_urdf",
         ":cassie_utils",
         ":input_supervisor",
@@ -281,13 +297,13 @@ cc_binary(
 )
 
 cc_test(
-    name = "cassie_rbt_state_estimator_test",
+    name = "cassie_state_estimator_test",
     size = "small",
-    srcs = ["test/cassie_rbt_state_estimator_test.cc"],
+    srcs = ["test/cassie_state_estimator_test.cc"],
     deps = [
-        ":cassie_rbt_state_estimator",
-        "//attic/multibody:multibody_solvers",
+        ":cassie_state_estimator",
         "//examples/Cassie:cassie_urdf",
+        "//multibody:multibody_solvers",
         "@drake//:drake_shared_library",
         "@gtest//:main",
     ],

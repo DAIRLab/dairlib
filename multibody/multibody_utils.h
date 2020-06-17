@@ -59,8 +59,24 @@ std::map<std::string, int> makeNameToActuatorsMap(
 bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
                         Eigen::VectorXd positions, double tolerance = 0.0);
 
-// Check whether a MultibodyPlant contains quaternion floating-base joint or not
-// WARNING: This function assumes there is only one plant
+/// Get a list of indices of any quaternion position coordinates into floating
+/// base joints. Returns the starting index of the length four quaternion
+/// coordinates.
+template <typename T>
+std::vector<int> QuaternionStartIndices(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+/// Gets the single index of the quaternion position coordinates for a floating
+/// base joint. Returns the starting index of the length four quaternion
+/// coordinates. If there are no quaternion floating base joints, returns -1.
+/// Throws an error if there are multiple quaternion floating base joints.
+template <typename T>
+int QuaternionStartIndex(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+/// Check whether a MultibodyPlant contains quaternion floating-base joint.
+/// Throws an error if there are multiple quaternion floating base joints.
+/// TODO: this method should be deprecated
 template <typename T>
 bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 

@@ -59,16 +59,17 @@ std::map<std::string, int> makeNameToActuatorsMap(
 bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
                         Eigen::VectorXd positions, double tolerance = 0.0);
 
-/// Get a list of indices of any quaternion position coordinates into floating
-/// base joints. Returns the starting index of the length four quaternion
-/// coordinates.
+/// Gets the single index of the quaternion position coordinates for a floating
+/// base joint. Returns the starting index of the length four quaternion
+/// coordinates into the generalized position vector 'q'.
 template <typename T>
 std::vector<int> QuaternionStartIndices(
     const drake::multibody::MultibodyPlant<T>& plant);
 
 /// Gets the single index of the quaternion position coordinates for a floating
 /// base joint. Returns the starting index of the length four quaternion
-/// coordinates. If there are no quaternion floating base joints, returns -1.
+/// coordinates into the generalized position vector 'q'.
+/// If there are no quaternion floating base joints, returns -1.
 /// Throws an error if there are multiple quaternion floating base joints.
 template <typename T>
 int QuaternionStartIndex(

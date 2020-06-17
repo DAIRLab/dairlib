@@ -554,10 +554,16 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     trajOptGivenModel(new_gamma[0], new_gamma[1],
         new_gamma[2], dir, traj_num, false);
     //check if snopt find a solution successfully. If not, rerun the Traj Opt
-    int is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
-    if(is_success==0){
-      trajOptGivenModel(new_gamma[0], new_gamma[1],
-                        new_gamma[2], dir, traj_num,true);
+    int max_rerun_num = 5;
+    for(iter=0;iter<5;iter++){
+      int is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
+      if(is_success==0){
+        trajOptGivenModel(new_gamma[0], new_gamma[1],
+                          new_gamma[2], dir, traj_num,true);
+      }
+      else{
+        break;
+      }
     }
     double sample_cost =
         (readCSV(dir + prefix + string("c.csv")))(0, 0);

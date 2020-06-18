@@ -675,6 +675,7 @@ int find_boundary(int argc, char* argv[]){
    * cout basic program information
    */
   cout << "\nBasic information:\n";
+  cout << FLAGS_program_name << endl;
   cout << "robot_option " << FLAGS_robot_option << endl;
   cout << "rom_option " << FLAGS_rom_option << endl;
 

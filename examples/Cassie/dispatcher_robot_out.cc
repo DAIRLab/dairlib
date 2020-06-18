@@ -97,13 +97,12 @@ int do_main(int argc, char* argv[]) {
   fourbar_evaluator.add_evaluator(&right_loop);
   // Evaluators for contact points (The position doesn't matter. It's not used
   // in OSC)
-  // TODO(yminchen): remove redudant constraint here and in EKF QP's
   multibody::KinematicEvaluatorSet<double> left_contact_evaluator(plant);
   auto left_toe = LeftToe(plant);
   auto left_heel = LeftHeel(plant);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant, left_toe.first, left_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {0, 1, 2});
+      Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
       plant, left_heel.first, left_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
@@ -114,7 +113,7 @@ int do_main(int argc, char* argv[]) {
   auto right_heel = RightHeel(plant);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
       plant, right_toe.first, right_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {0, 1, 2});
+      Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant, right_heel.first, right_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});

@@ -140,18 +140,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex filtered_residual_double_idx_;
   drake::systems::DiscreteStateIndex filtered_residual_left_idx_;
   drake::systems::DiscreteStateIndex filtered_residual_right_idx_;
-  // States related to contact estimation
-  // The states stores the previous QP solutions (acceleration and contact force)
-  drake::systems::DiscreteStateIndex ddq_double_init_idx_;
-  drake::systems::DiscreteStateIndex ddq_left_init_idx_;
-  drake::systems::DiscreteStateIndex ddq_right_init_idx_;
-  drake::systems::DiscreteStateIndex lambda_b_double_init_idx_;
-  drake::systems::DiscreteStateIndex lambda_b_left_init_idx_;
-  drake::systems::DiscreteStateIndex lambda_b_right_init_idx_;
-  drake::systems::DiscreteStateIndex lambda_cl_double_init_idx_;
-  drake::systems::DiscreteStateIndex lambda_cl_left_init_idx_;
-  drake::systems::DiscreteStateIndex lambda_cr_double_init_idx_;
-  drake::systems::DiscreteStateIndex lambda_cr_right_init_idx_;
 
   // Cassie parameters
   // TODO(yminchen): get the numbers below from plant
@@ -193,6 +181,12 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Contact Estimation - Quadratic Programing
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> quadprog_;
+  // Variable dimensions
+  int n_b_;
+  int n_cl_;
+  int n_cl_active_;
+  int n_cr_;
+  int n_cr_active_;
   // Cost and constraints (Bindings)
   drake::solvers::LinearEqualityConstraint* fourbar_constraint_;
   drake::solvers::LinearEqualityConstraint* left_contact_constraint_;

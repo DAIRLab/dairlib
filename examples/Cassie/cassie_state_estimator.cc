@@ -522,10 +522,11 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
   plant_.CalcMassMatrix(*context_, &M);
   VectorXd C(n_v_);
   plant_.CalcBiasTerm(*context_, &C);
-  MatrixXd B = plant_.MakeActuationMatrix();
-
-  // control input - obtained from cassie_input temporarily
-  VectorXd u = output.GetEfforts();
+  C -= plant_.CalcGravityGeneralizedForces(*context_);
+  drake::multibody::MultibodyForces<double> f_app(plant_);
+  plant_.CalcForceElementsContribution(*context_, &f_app);
+  C -= f_app.generalized_forces();
+  C -= plant_.MakeActuationMatrix() * output.GetEfforts();
 
   // J_b - Jacobian for fourbar linkage
   MatrixXd J_b = fourbar_evaluator_->EvalFullJacobian(*context_);
@@ -577,16 +578,16 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
 
   // Cost
   int A_cols = n_v_ + n_b_ + n_cl_ + n_cr_;
-  MatrixXd cost_A(n_v_, A_cols);
-  cost_A << M, -1 * J_b.transpose(), -1 * J_cl.transpose(),
+  MatrixXd A_dyn(n_v_, A_cols);
+  A_dyn << M, -1 * J_b.transpose(), -1 * J_cl.transpose(),
       -1 * J_cr.transpose();
-  VectorXd cost_b(n_v_);
-  cost_b = B * u - C;
+  VectorXd b_dyn(n_v_);
+  b_dyn = -C;
 
   quadcost_eom_->UpdateCoefficients(
-      2 * cost_A.transpose() * cost_A +
+      2 * A_dyn.transpose() * A_dyn +
           eps_cost_ * MatrixXd::Identity(A_cols, A_cols),
-      -2 * cost_A.transpose() * cost_b);
+      -2 * A_dyn.transpose() * b_dyn);
   quadcost_eps_cl_->UpdateCoefficients(
       w_soft_constraint_ * MatrixXd::Identity(n_cl_active_, n_cl_active_),
       VectorXd::Zero(n_cl_active_));
@@ -603,13 +604,8 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
   drake::solvers::SolverOptions solver_options;
   solver_options.SetOption(drake::solvers::EqualityConstrainedQPSolver::id(),
                            "FeasibilityTol", 1e-6); // default 1e-12
-  auto start = std::chrono::high_resolution_clock::now();
   drake::solvers::MathematicalProgramResult result_double =
       solver.Solve(*quadprog_, {}, solver_options);
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  cout << "double support: " << result_double.get_solution_result() << endl;
-  cout << "solve time: " << elapsed.count() << endl;
 
   if (!result_double.is_success()) {
     // If the optimization fails, push infinity into the optimal_cost vector
@@ -619,15 +615,7 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
     // Push the optimal cost to the optimal_cost vector
     optimal_cost->at(0) =
         result_double.get_optimal_cost() +
-        cost_b.transpose() * cost_b;  // the second term is the cosntant term
-
-    cout << "ddq_val = " << result_double.GetSolution(ddq_).transpose() << endl;
-    cout << "bar force = " << result_double.GetSolution(lambda_b_).transpose() << endl;
-    cout << "lambda_cl_ = " << result_double.GetSolution(lambda_cl_).transpose() << endl;
-    cout << "lambda_cr_ = " << result_double.GetSolution(lambda_cr_).transpose() << endl;
-    cout << "eps_cl_ = " << result_double.GetSolution(eps_cl_).transpose() << endl;
-    cout << "eps_cr_ = " << result_double.GetSolution(eps_cr_).transpose() << endl;
-    cout << "eps_imu_ = " << result_double.GetSolution(eps_imu_).transpose() << endl;
+        b_dyn.transpose() * b_dyn;  // the second term is the cosntant term
 
     // Residual calculation
     // TODO(Nanda): Remove the residual calculation after testing on the real
@@ -657,13 +645,13 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
       IMU_coeff, -1 * JdotV_imu + imu_accel_wrt_world);
 
   // Cost
-  cost_A << M, -1 * J_b.transpose(), -1 * J_cl.transpose(),
+  A_dyn << M, -1 * J_b.transpose(), -1 * J_cl.transpose(),
       MatrixXd::Zero(n_v_, n_cr_);
 
   quadcost_eom_->UpdateCoefficients(
-      2 * cost_A.transpose() * cost_A +
+      2 * A_dyn.transpose() * A_dyn +
           eps_cost_ * MatrixXd::Identity(A_cols, A_cols),
-      -2 * cost_A.transpose() * cost_b);
+      -2 * A_dyn.transpose() * b_dyn);
   quadcost_eps_cl_->UpdateCoefficients(
       w_soft_constraint_ * MatrixXd::Identity(n_cl_active_, n_cl_active_),
       VectorXd::Zero(n_cl_active_));
@@ -675,13 +663,8 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
   // closed form solution.
 
   // Solve the optimization problem
-  start = std::chrono::high_resolution_clock::now();
   drake::solvers::MathematicalProgramResult result_left =
       solver.Solve(*quadprog_, {}, solver_options);
-  finish = std::chrono::high_resolution_clock::now();
-  elapsed = finish - start;
-  cout << "left support: " << result_left.get_solution_result() << endl;
-  cout << "solve time: " << elapsed.count() << endl;
 
   if (!result_left.is_success()) {
     // Push infinity into optimal_cost vector if the optimization fails
@@ -690,15 +673,7 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
   } else {
     // Push the optimal cost to the optimal_cost vector
     optimal_cost->at(1) =
-        result_left.get_optimal_cost() + cost_b.transpose() * cost_b;
-
-    cout << "ddq_val = " << result_left.GetSolution(ddq_).transpose() << endl;
-    cout << "bar force = " << result_left.GetSolution(lambda_b_).transpose() << endl;
-    cout << "lambda_cl_ = " << result_left.GetSolution(lambda_cl_).transpose() << endl;
-    cout << "lambda_cr_ = " << result_left.GetSolution(lambda_cr_).transpose() << endl;
-    cout << "eps_cl_ = " << result_left.GetSolution(eps_cl_).transpose() << endl;
-    cout << "eps_cr_ = " << result_left.GetSolution(eps_cr_).transpose() << endl;
-    cout << "eps_imu_ = " << result_left.GetSolution(eps_imu_).transpose() << endl;
+        result_left.get_optimal_cost() + b_dyn.transpose() * b_dyn;
 
     // Residual calculation
     // TODO(Nanda): Remove the residual calculation after testing on the real
@@ -727,13 +702,13 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
       IMU_coeff, -1 * JdotV_imu + imu_accel_wrt_world);
 
   // Cost
-  cost_A << M, -1 * J_b.transpose(), MatrixXd::Zero(n_v_, n_cl_),
+  A_dyn << M, -1 * J_b.transpose(), MatrixXd::Zero(n_v_, n_cl_),
       -1 * J_cr.transpose();
 
   quadcost_eom_->UpdateCoefficients(
-      2 * cost_A.transpose() * cost_A +
+      2 * A_dyn.transpose() * A_dyn +
           eps_cost_ * MatrixXd::Identity(A_cols, A_cols),
-      -2 * cost_A.transpose() * cost_b);
+      -2 * A_dyn.transpose() * b_dyn);
   quadcost_eps_cl_->UpdateCoefficients(
       MatrixXd::Zero(n_cl_active_, n_cl_active_), VectorXd::Zero(n_cl_active_));
   quadcost_eps_cr_->UpdateCoefficients(
@@ -745,13 +720,8 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
   // closed form solution.
 
   // Solve the optimization problem
-  start = std::chrono::high_resolution_clock::now();
   drake::solvers::MathematicalProgramResult result_right =
       solver.Solve(*quadprog_, {}, solver_options);
-  finish = std::chrono::high_resolution_clock::now();
-  elapsed = finish - start;
-  cout << "right support: " << result_right.get_solution_result() << endl;
-  cout << "solve time: " << elapsed.count() << endl;
 
   if (!result_right.is_success()) {
     // If the optimization fails, push infinity to the optimal_cost vector
@@ -760,15 +730,7 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
   } else {
     // Push the optimal cost to optimal_cost vector
     optimal_cost->at(2) =
-        result_right.get_optimal_cost() + cost_b.transpose() * cost_b;
-
-    cout << "ddq_val = " << result_right.GetSolution(ddq_).transpose() << endl;
-    cout << "bar force = " << result_right.GetSolution(lambda_b_).transpose() << endl;
-    cout << "lambda_cl_ = " << result_right.GetSolution(lambda_cl_).transpose() << endl;
-    cout << "lambda_cr_ = " << result_right.GetSolution(lambda_cr_).transpose() << endl;
-    cout << "eps_cl_ = " << result_right.GetSolution(eps_cl_).transpose() << endl;
-    cout << "eps_cr_ = " << result_right.GetSolution(eps_cr_).transpose() << endl;
-    cout << "eps_imu_ = " << result_right.GetSolution(eps_imu_).transpose() << endl;
+        result_right.get_optimal_cost() + b_dyn.transpose() * b_dyn;
 
     // Residual calculation
     // TODO(Nanda): Remove the residual calculation after testing on the real
@@ -1106,7 +1068,7 @@ EventStatus CassieStateEstimator::Update(
       // cout << ekf.getState().getP() << endl;
       if (test_with_ground_truth_state_) {
         cout << "z difference: "
-             << ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[2]
+             << ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[6]
              << endl;
       }
     }
@@ -1257,7 +1219,7 @@ EventStatus CassieStateEstimator::Update(
     if (test_with_ground_truth_state_) {
       if (print_info_to_terminal_) {
         cout << "z difference: "
-             << ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[2]
+             << ekf.getState().getPosition()[2] - imu_pos_wrt_world_gt[6]
              << endl;
       }
     }

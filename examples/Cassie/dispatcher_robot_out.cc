@@ -41,8 +41,10 @@ DEFINE_bool(simulation, false,
             "Simulated or real robot (default=false, real robot)");
 DEFINE_bool(test_with_ground_truth_state, false,
             "Get floating base from ground truth state for testing");
+DEFINE_bool(print_ekf_info, false,
+            "Print ekf information to the terminal");
 
-// TODO(yminchen): delete the following flag after you finish testing
+// TODO(yminchen): delete the flag state_channel_name after finishing testing
 // cassie_state_estimator
 DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
               "The name of the lcm channel that sends Cassie's state");
@@ -124,7 +126,7 @@ int do_main(int argc, char* argv[]) {
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
       &right_contact_evaluator, FLAGS_test_with_ground_truth_state,
-      true /*print_info_to_terminal*/, FLAGS_test_mode);
+      FLAGS_print_ekf_info, FLAGS_test_mode);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot

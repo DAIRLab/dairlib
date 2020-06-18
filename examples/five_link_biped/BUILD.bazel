@@ -29,7 +29,6 @@ cc_binary(
     data = [":five_link_biped.urdf"],
     deps = [
         ":traj_logger",
-        "//attic/multibody:utils",
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//systems/primitives",
@@ -43,7 +42,6 @@ cc_binary(
     name = "run_lqr",
     srcs = ["run_lqr.cc"],
     deps = [
-        "//attic/multibody:utils",
         "//common",
         "//examples/five_link_biped:walking_fsm",
         "//lcm:lcm_trajectory_saver",

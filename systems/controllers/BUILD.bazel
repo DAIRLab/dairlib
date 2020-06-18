@@ -170,8 +170,8 @@ cc_library(
     deps = [
         "//common",
         "//lcm:lcm_trajectory_saver",
-        "//multibody:contact_toolkit",
-        "//multibody:utils",
+        "//multibody:multibody_solvers",
+        "//multibody/kinematic",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

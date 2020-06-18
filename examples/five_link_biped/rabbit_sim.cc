@@ -68,7 +68,7 @@ DEFINE_bool(time_stepping, true,
 DEFINE_double(dt, 1e-4,
               "The step size to use for time_stepping, ignored for "
               "continuous");
-DEFINE_string(state_simulation_channel, "RABBIT_STATE_SIMULATION",
+DEFINE_string(state_simulation_channel, "RABBIT_STATE",
               "Channel to publish/receive state from simulation");
 DEFINE_string(input_channel, "RABBIT_INPUT",
               "Channel to publish/receive inputs from controller");

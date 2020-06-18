@@ -2,7 +2,6 @@
 #include <thread>
 
 #include <gflags/gflags.h>
-#include "attic/multibody/rigidbody_utils.h"
 
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"

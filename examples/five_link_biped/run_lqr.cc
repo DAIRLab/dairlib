@@ -16,12 +16,9 @@
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake/multibody/rigid_body_plant/drake_visualizer.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/systems/primitives/trajectory_source.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
-#include "attic/multibody/rigidbody_utils.h"
 #include "dairlib/lcmt_fsm_out.hpp"
 #include "dairlib/lcmt_pd_config.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -30,6 +27,7 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "common/find_resource.h"
+#include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
 #include "systems/goldilocks_models/file_utils.h"
@@ -67,17 +65,16 @@ using std::vector;
 
 DEFINE_double(gravity, 9.81, "Gravity acceleration constant");
 DEFINE_double(mu, 0.7, "The static coefficient of friction");
-DEFINE_double(v_tol, 0.01,
-              "The maximum slipping speed allowed during stiction (m/s)");
-DEFINE_string(channel_x, "RABBIT_STATE_SIMULATION",
+DEFINE_string(channel_x, "RABBIT_STATE",
               "Channel to publish/receive state from simulation");
+DEFINE_string(channel_u, "RABBIT_INPUT",
+              "Channel to publish/receive control efforts from simulation");
 DEFINE_double(publish_rate, 2000, "Publishing frequency (Hz)");
-DEFINE_double(buffer_time, 0.0, "Time around nominal impact time to apply "
-                                "heuristic efforts");
+DEFINE_double(buffer_time, 0.0,
+              "Time around nominal impact time to apply "
+              "heuristic efforts");
 DEFINE_bool(naive, true,
             "Set to true if using the naive approach to hybrid lqr");
-DEFINE_bool(minimal_coords, true,
-            "Set to true if using minimal coords for constrained hybrid lqr");
 DEFINE_bool(contact_driven, true,
             "Set to true if want to use contact_driven fsm");
 DEFINE_bool(recalculateP, false,
@@ -95,7 +92,10 @@ DEFINE_string(folder_path, "",
 
 namespace dairlib {
 
+using drake::AutoDiffVecXd;
+using drake::multibody::Frame;
 using multibody::GetBodyIndexFromName;
+using multibody::WorldPointEvaluator;
 using systems::SubvectorPassThrough;
 
 namespace examples {
@@ -108,7 +108,7 @@ int doMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   DiagramBuilder<double> builder;
 
-  MultibodyPlant<double> plant(1e-5);
+  MultibodyPlant<double> plant(0.0);
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   Parser parser(&plant, &scene_graph);
   std::string full_name =
@@ -119,7 +119,7 @@ int doMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());
   plant.Finalize();
-  unique_ptr<MultibodyPlant<AutoDiffXd>> plant_autodiff =
+  unique_ptr<MultibodyPlant<AutoDiffXd>> plant_ad =
       std::make_unique<MultibodyPlant<AutoDiffXd>>(plant);
 
   std::cout << "folder path: " << FLAGS_folder_path << std::endl;
@@ -127,7 +127,6 @@ int doMain(int argc, char* argv[]) {
 
   const LcmTrajectory& loaded_traj =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
-  std::cout << "Saved trajectory names: " << std::endl;
   for (const auto& name : loaded_traj.getTrajectoryNames()) {
     std::cout << name << std::endl;
   }
@@ -153,51 +152,32 @@ int doMain(int argc, char* argv[]) {
             state_and_input.datapoints.bottomRows(nu))));
   }
 
-  vector<multibody::ContactInfo<double>> contact_modes;
-  vector<multibody::ContactInfo<AutoDiffXd>> contact_modes_ad;
-  vector<const drake::multibody::Frame<double>*> l_foot_body_frame;
-  vector<const drake::multibody::Frame<double>*> r_foot_body_frame;
-  vector<const drake::multibody::Frame<AutoDiffXd>*> l_foot_body_frame_ad;
-  vector<const drake::multibody::Frame<AutoDiffXd>*> r_foot_body_frame_ad;
-  l_foot_body_frame.push_back(&(plant.GetBodyByName("left_foot").body_frame()));
-  r_foot_body_frame.push_back(
-      &(plant.GetBodyByName("right_foot").body_frame()));
-  l_foot_body_frame_ad.push_back(
-      &(plant_autodiff->GetBodyByName("left_foot").body_frame()));
-  r_foot_body_frame_ad.push_back(
-      &(plant_autodiff->GetBodyByName("right_foot").body_frame()));
-  multibody::ContactInfo<double> l_foot_contact;
-  multibody::ContactInfo<double> r_foot_contact;
-  multibody::ContactInfo<AutoDiffXd> l_foot_contact_ad;
-  multibody::ContactInfo<AutoDiffXd> r_foot_contact_ad;
-  l_foot_contact.xA = VectorXd::Zero(3);
-  l_foot_contact.xB = VectorXd::Zero(3);
-  r_foot_contact.xA = VectorXd::Zero(3);
-  r_foot_contact.xB = VectorXd::Zero(3);
-  l_foot_contact.frameA = l_foot_body_frame;
-  r_foot_contact.frameA = r_foot_body_frame;
+  vector<WorldPointEvaluator<double>> contact_evals;
+  vector<WorldPointEvaluator<AutoDiffXd>> contact_evals_ad;
 
-  l_foot_contact_ad.xA = VectorXd::Zero(3);
-  l_foot_contact_ad.xB = VectorXd::Zero(3);
-  r_foot_contact_ad.xA = VectorXd::Zero(3);
-  r_foot_contact_ad.xB = VectorXd::Zero(3);
-  l_foot_contact_ad.frameA = l_foot_body_frame_ad;
-  r_foot_contact_ad.frameA = r_foot_body_frame_ad;
+  WorldPointEvaluator<double> left_foot = WorldPointEvaluator(
+      plant, VectorXd::Zero(3), plant.GetFrameByName("left_foot"));
+  WorldPointEvaluator<double> right_foot = WorldPointEvaluator(
+      plant, VectorXd::Zero(3), plant.GetFrameByName("right_foot"));
+  WorldPointEvaluator<AutoDiffXd> left_foot_ad = WorldPointEvaluator(
+      *plant_ad, VectorXd::Zero(3), plant_ad->GetFrameByName("left_foot"));
+  WorldPointEvaluator<AutoDiffXd> right_foot_ad = WorldPointEvaluator(
+      *plant_ad, VectorXd::Zero(3), plant_ad->GetFrameByName("left_foot"));
 
   // Contact modes go l_foot, r_foot, l_foot
-  contact_modes.push_back(l_foot_contact);
-  contact_modes.push_back(r_foot_contact);
-  contact_modes.push_back(l_foot_contact);
-  contact_modes_ad.push_back(l_foot_contact_ad);
-  contact_modes_ad.push_back(r_foot_contact_ad);
-  contact_modes_ad.push_back(l_foot_contact_ad);
+  contact_evals.push_back(left_foot);
+  contact_evals.push_back(right_foot);
+  contact_evals.push_back(left_foot);
+  contact_evals_ad.push_back(left_foot_ad);
+  contact_evals_ad.push_back(right_foot_ad);
+  contact_evals_ad.push_back(left_foot_ad);
 
   MatrixXd Q = 1 * MatrixXd::Identity(nx, nx);
   Q.block(0, 0, nq, nq) = 100 * MatrixXd::Identity(nq, nq);
   MatrixXd Qf = Q;
   MatrixXd R = 0.01 * MatrixXd::Identity(nu, nu);
 
-  std::vector<double> impact_times(contact_modes.size() * 2);
+  std::vector<double> impact_times(contact_evals.size() * 2);
   impact_times[0] = state_trajs[0]->start_time();
   impact_times[1] = state_trajs[0]->end_time();
   impact_times[2] = state_trajs[1]->start_time();
@@ -206,16 +186,10 @@ int doMain(int argc, char* argv[]) {
   impact_times[5] = state_trajs[2]->end_time();
 
   // Create Leaf Systems
-  // Create state receiver.
-  // Create command sender.
   drake::lcm::DrakeLcm lcm;
   auto fsm = builder.AddSystem<WalkingFiniteStateMachine>(
       plant, impact_times[1], impact_times[3], FLAGS_time_offset,
       FLAGS_contact_driven, FLAGS_init_fsm_state);
-  // Create state receiver.
-  //  auto state_sub = builder.AddSystem(
-  //      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(channel_x,
-  //      lcm));
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto contact_results_sub = builder.AddSystem(
@@ -231,10 +205,9 @@ int doMain(int argc, char* argv[]) {
 
   auto start = std::chrono::high_resolution_clock::now();
   auto lqr = builder.AddSystem<systems::HybridLQRController>(
-      plant, *plant_autodiff, contact_modes, contact_modes_ad, Q, R, Qf,
-      FLAGS_buffer_time, state_trajs, input_trajs, impact_times,
-      FLAGS_folder_path, FLAGS_naive, FLAGS_minimal_coords, FLAGS_recalculateP,
-      FLAGS_recalculateL);
+      plant, *plant_ad, contact_evals, contact_evals_ad, state_trajs,
+      input_trajs, Q, R, Qf, FLAGS_buffer_time, FLAGS_naive, FLAGS_folder_path,
+      FLAGS_recalculateP, FLAGS_recalculateL);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Took " << elapsed.count() << "s to create LQR controller"
@@ -245,8 +218,6 @@ int doMain(int argc, char* argv[]) {
 
   // ******End of leaf system initialization*******
 
-  //  builder.Connect(state_sub->get_output_port(),
-  //                  state_receiver->get_input_port(0));
   builder.Connect(lqr->get_output_port(0), command_sender->get_input_port(0));
   builder.Connect(state_receiver->get_output_port(0), lqr->get_input_port(0));
   builder.Connect(state_receiver->get_output_port(0),
@@ -257,47 +228,13 @@ int doMain(int argc, char* argv[]) {
                   lqr->get_contact_input_port());
   builder.Connect(fsm->get_fsm_output_port(), lqr->get_fsm_input_port());
   builder.Connect(fsm->get_lcm_output_port(), fsm_pub->get_input_port());
-  //  builder.Connect(fsm->get_output_port(0), lqr_cost->get_input_port(1));
-  //  builder.Connect(state_receiver->get_output_port(0),
-  //                  lqr_cost->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  //  builder.Connect(contact_receiver->get_output_port(0),
-  //      )
 
   // Create the diagram and context
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
 
-  //  std::cout << "Built diagram" << std::endl;
-  //  /// Use the simulator to drive at a fixed rate
-  //  /// If set_publish_every_time_step is true, this publishes twice
-  //  /// Set realtime rate. Otherwise, runs as fast as possible
-  //  auto stepper = std::make_unique<drake::systems::Simulator<double>>(
-  //      *diagram, std::move(context));
-  //  stepper->set_publish_every_time_step(false);
-  //  stepper->set_publish_at_initialization(false);
-  //  stepper->set_target_realtime_rate(1.0);
-  //  stepper->Initialize();
-  //  std::cout << "Running simulation" << std::endl;
-  //
-  //  drake::log()->info("controller started");
-  //  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
-  //  stepper->AdvanceTo(3.0);
-
-  // Write all dataloggers to a CSV
-  //  MatrixXd value_function = value_function_logger->data();
-  //  MatrixXd estimated_cost = lqr_cost_logger->data();
-  //  MatrixXd fsm_output = fsm_logger->data();
-
-  //  goldilocks_models::writeCSV(
-  //      "../projects/five_link_biped/hybrid_lqr/plotting/V.csv",
-  //      fsm_output.transpose());
-  //  goldilocks_models::writeCSV(
-  //      "../projects/five_link_biped/hybrid_lqr/plotting/lqr.csv",
-  //      estimated_cost.transpose());
-  //  goldilocks_models::writeCSV("../projects/hybrid_lqr/plotting/inputs.csv",
-  //                              input_matrix.transpose());
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(diagram), state_receiver, FLAGS_channel_x, true);
   loop.Simulate();

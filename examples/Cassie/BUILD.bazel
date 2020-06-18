@@ -381,7 +381,6 @@ cc_binary(
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
     deps = [
         ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
         "//common",
         "//solvers:optimization_utils",
         "//systems/goldilocks_models",

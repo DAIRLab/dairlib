@@ -463,7 +463,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
     for (int i = 0; i < 7; i++) {
       q[i] = 0;
     }
-    q[3] = 1;
+    q[0] = 1;
   }
   solveFourbarLinkage(q, &left_heel_spring, &right_heel_spring);
   output->SetPositionAtIndex(position_idx_map_.at("ankle_spring_joint_left"),
@@ -546,7 +546,7 @@ void CassieStateEstimator::UpdateContactEstimationCosts(
       right_contact_evaluator_->EvalActiveJacobianDotTimesV(*context_);
 
   // J_imu - Jacobian of the imu location
-  MatrixXd J_imu(3, n_v_);
+  MatrixXd J_imu(SPACE_DIM, n_v_);
   plant_.CalcJacobianTranslationalVelocity(*context_, JacobianWrtVariable::kV,
                                            pelvis_frame_, imu_pos_, world_,
                                            world_, &J_imu);
@@ -1156,8 +1156,8 @@ EventStatus CassieStateEstimator::Update(
         cout << ekf.getState().getRotation() << endl;
         cout << "Ground truth rotation: " << endl;
         Quaterniond q_real;
-        q_real.w() = output_gt.GetPositions()[3];
-        q_real.vec() = output_gt.GetPositions().segment<3>(4);
+        q_real.w() = output_gt.GetPositions()[0];
+        q_real.vec() = output_gt.GetPositions().segment<3>(1);
         MatrixXd R_actual = q_real.toRotationMatrix();
         cout << R_actual << endl;
       }

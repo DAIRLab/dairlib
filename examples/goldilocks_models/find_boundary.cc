@@ -555,9 +555,10 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     trajOptGivenModel(new_gamma[0], new_gamma[1],
         new_gamma[2], dir, traj_num, false);
     //check if snopt find a solution successfully. If not, rerun the Traj Opt
+    int rerun = 0;
     int max_rerun_num = 4;
     int is_success;
-    for(iter=0;iter<max_rerun_num;iter++){
+    for(rerun=0;rerun<max_rerun_num;rerun++){
       is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
       if(is_success==0){
         trajOptGivenModel(new_gamma[0], new_gamma[1],
@@ -568,7 +569,7 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
       }
     }
     //if snopt still can't find a solution, try to use adjacent sample to help
-    for(iter=0;iter<max_rerun_num;iter++){
+    for(rerun=0;rerun<max_rerun_num;rerun++){
       is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
       if(is_success==0){
         trajOptGivenModel(new_gamma[0], new_gamma[1],
@@ -580,7 +581,7 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     }
     //if snopt still failed to find a solution,turn off the scaling option
     // and try again
-    for(iter=0;iter<max_rerun_num;iter++){
+    for(rerun=0;rerun<max_rerun_num;rerun++){
       is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
       if(is_success==0){
         trajOptGivenModel(new_gamma[0], new_gamma[1],

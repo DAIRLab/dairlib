@@ -511,6 +511,9 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     double max_cost,int& traj_num,int& boundary_point_idx){
   int iter;
   int sample_idx = 0;
+  int rerun = 0;
+  int max_rerun_num = 4;
+  int is_success;
   VectorXd new_gamma(dims);
   VectorXd last_gamma = init_gamma;
   VectorXd boundary_point(dims);
@@ -555,9 +558,6 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     trajOptGivenModel(new_gamma[0], new_gamma[1],
         new_gamma[2], dir, traj_num, false);
     //check if snopt find a solution successfully. If not, rerun the Traj Opt
-    int rerun = 0;
-    int max_rerun_num = 4;
-    int is_success;
     for(rerun=0;rerun<max_rerun_num;rerun++){
       is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
       if(is_success==0){

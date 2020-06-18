@@ -641,11 +641,35 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
         trajOptGivenModel(gamma_to_rerun[0], gamma_to_rerun[1],
                           gamma_to_rerun[2], dir, traj_idx,
                           true, traj_idx-1);
+        //make sure this sample success
+        for(rerun=0;rerun<max_rerun_num;rerun++){
+          is_success = (readCSV(dir + to_string(traj_idx) +
+              string("_0_is_success.csv")))(0, 0);
+          if(is_success==0){
+            trajOptGivenModel(new_gamma[0], new_gamma[1],
+                              new_gamma[2], dir, traj_idx,true);
+          }
+          else{
+            break;
+          }
+        }
       }
       else{
         trajOptGivenModel(gamma_to_rerun[0], gamma_to_rerun[1],
                           gamma_to_rerun[2], dir, traj_idx,
                           true, traj_idx+1);
+        //make sure this sample success
+        for(rerun=0;rerun<max_rerun_num;rerun++){
+          is_success = (readCSV(dir + to_string(traj_idx) +
+              string("_0_is_success.csv")))(0, 0);
+          if(is_success==0){
+            trajOptGivenModel(new_gamma[0], new_gamma[1],
+                              new_gamma[2], dir, traj_idx,true);
+          }
+          else{
+            break;
+          }
+        }
       }
       //update cost list
       cost_list(iter,1) = readCSV(dir + to_string(iter)

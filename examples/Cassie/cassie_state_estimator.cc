@@ -104,7 +104,7 @@ CassieStateEstimator::CassieStateEstimator(
     // states related to EKF
     // 1. estimated floating base state (pelvis)
     VectorXd init_floating_base_state = VectorXd::Zero(7 + 6);
-    init_floating_base_state(3) = 1;
+    init_floating_base_state(0) = 1;
     fb_state_idx_ = DeclareDiscreteState(init_floating_base_state);
 
     // initialize ekf state mean and covariance
@@ -1288,7 +1288,7 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
     AssignFloatingBaseStateToOutputVector(
         context.get_discrete_state(fb_state_idx_).get_value(), output);
     if (print_info_to_terminal_) {
-      cout << "Assign floating base state of the imu. "
+      cout << "Assign floating base state of the pelvis. "
            << context.get_discrete_state(fb_state_idx_).get_value().transpose()
            << endl;
     }
@@ -1306,29 +1306,26 @@ void CassieStateEstimator::setPreviousTime(Context<double>* context,
                                            double time) {
   context->get_mutable_discrete_state(time_idx_).get_mutable_value() << time;
 }
-void CassieStateEstimator::setInitialImuPosition(Context<double>* context,
-                                                 Vector3d p) {
-  context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value().head(3)
-      << p;
+void CassieStateEstimator::setInitialPevlisPose(Context<double>* context,
+                                                Eigen::Vector4d quat,
+                                                Vector3d pelvis_pos) {
+  context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value().head(7)
+      << quat, pelvis_pos;
+
   // Update EKF state
+  // The imu's and pelvis's frames share the same rotation.
+  Matrix3d imu_rot_mat =
+      Quaterniond(quat[0], quat[1], quat[2], quat[3]).toRotationMatrix();
+  Vector3d imu_position = pelvis_pos + imu_rot_mat * imu_pos_;
   auto& filter = context->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
   auto state = filter.getState();
-  state.setPosition(p);
+  state.setPosition(imu_position);
+  state.setRotation(imu_rot_mat);
   filter.setState(state);
-  cout << "Set initial IMU position to "
+  cout << "Set initial IMU position to \n"
        << filter.getState().getPosition().transpose() << endl;
-}
-void CassieStateEstimator::setInitialImuQuaternion(Context<double>* context,
-                                                   Eigen::Vector4d q) {
-  context->get_mutable_discrete_state(fb_state_idx_)
-          .get_mutable_value()
-          .segment(3, 4)
-      << q;
-  // Update EKF state
-  auto& filter = context->get_mutable_abstract_state<inekf::InEKF>(ekf_idx_);
-  auto state = filter.getState();
-  state.setRotation(Quaterniond(q[0], q[1], q[2], q[3]).toRotationMatrix());
-  filter.setState(state);
+  cout << "Set initial IMU rotation to \n"
+       << filter.getState().getRotation() << endl;
 }
 void CassieStateEstimator::setPreviousImuMeasurement(
     Context<double>* context, const VectorXd& imu_value) {

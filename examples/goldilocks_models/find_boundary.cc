@@ -538,7 +538,7 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
           to_string(sample_idx) + "_" + string("c.csv")))(0, 0);
       boundary_point_infor << traj_num,boundary_point,boundary_point_cost;
       writeCSV(dir + to_string(boundary_point_idx) +  "_" +
-          string("boundary_point.csv"), boundary_point);
+          string("boundary_point.csv"), boundary_point_infor);
       cout << "boundary point index | stride length | ground incline"
               " | turning rate"<<endl;
       cout<<" \t "<<boundary_point_idx<< "\t" <<" | "<<"\t"<<boundary_point[0]
@@ -617,7 +617,7 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
       double boundary_point_cost = sample_cost;
       boundary_point_infor << traj_num,boundary_point,boundary_point_cost;
       writeCSV(dir + to_string(boundary_point_idx) +  "_" +
-          string("boundary_point.csv"), boundary_point);
+          string("boundary_point.csv"), boundary_point_infor);
       cout << "boundary point index | stride length | ground incline"
               " | turning rate"<<endl;
       cout<<" \t "<<boundary_point_idx<< "\t" <<" | "<<"\t"<<boundary_point[0]

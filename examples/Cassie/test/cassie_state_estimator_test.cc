@@ -111,8 +111,6 @@ TEST_F(ContactEstimationTest, solveFourbarLinkageTest) {
   double calc_left_heel_spring, calc_right_heel_spring;
   estimator_->solveFourbarLinkage(q_init, &calc_left_heel_spring,
                                   &calc_right_heel_spring);
-  std::cout << calc_left_heel_spring << ", " << calc_right_heel_spring
-            << std::endl;
 
   // Get the fix joint indices
   std::map<std::string, int> positionIndexMap =
@@ -145,12 +143,6 @@ TEST_F(ContactEstimationTest, solveFourbarLinkageTest) {
       q_sol(positionIndexMap.at("ankle_spring_joint_left"));
   double nlp_right_heel_spring =
       q_sol(positionIndexMap.at("ankle_spring_joint_right"));
-
-  std::cout << "calc_left_heel_spring = " << calc_left_heel_spring << std::endl;
-  std::cout << "nlp_left_heel_spring = " << nlp_left_heel_spring << std::endl;
-  std::cout << "calc_right_heel_spring = " << calc_right_heel_spring
-            << std::endl;
-  std::cout << "nlp_right_heel_spring = " << nlp_right_heel_spring << std::endl;
 
   EXPECT_TRUE((calc_left_heel_spring - nlp_left_heel_spring) < 1e-10);
   EXPECT_TRUE((calc_right_heel_spring - nlp_right_heel_spring) < 1e-10);

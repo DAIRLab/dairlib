@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-#include "drake/multibody/rigid_body_tree.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
+#include "drake/multibody/parsing/parser.h"
 
 
 /// SimulatorDrift emulates drift in the position data by executing a 
@@ -15,7 +15,7 @@
 /// n_positions x n_positions.
 class SimulatorDrift : public drake::systems::LeafSystem<double> {
  public:
-  SimulatorDrift(const RigidBodyTree<double>& tree,
+  SimulatorDrift(const drake::multibody::MultibodyPlant<double>& plant,
                  const Eigen::VectorXd& drift_mean,
                  const Eigen::MatrixXd& drift_cov);
 
@@ -33,7 +33,7 @@ class SimulatorDrift : public drake::systems::LeafSystem<double> {
 
   int time_idx_;
   int accumulated_drift_index_;
-  const RigidBodyTree<double>& tree_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
   Eigen::VectorXd drift_mean_;
   Eigen::MatrixXd drift_cov_;
   int state_port_;

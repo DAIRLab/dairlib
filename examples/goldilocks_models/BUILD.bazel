@@ -127,6 +127,7 @@ cc_library(
         "initial_guess.h",
     ],
     deps = [
+        ":goldilocks_utils",
         "//systems/goldilocks_models",
         "@drake//:drake_shared_library",
     ],

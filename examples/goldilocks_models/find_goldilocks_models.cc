@@ -78,6 +78,8 @@ DEFINE_int32(
     "resolve again.");
 DEFINE_int32(n_node, -1, "# of nodes for traj opt");
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
+DEFINE_bool(use_database,false,"use solutions from database to create initial "
+                                "guesses for traj opt");
 
 // outer loop
 DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
@@ -265,15 +267,25 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file,
         bool is_get_nominal,bool without_uniform_grid,
         bool rerun_current_iteration, bool has_been_all_success,
         bool step_size_shrinked_last_loop, int n_rerun,
-        int sample_idx_to_help, bool is_debug) {
+        int sample_idx_to_help, bool is_debug,bool use_database,
+        int robot_option) {
   if (is_get_nominal && !rerun_current_iteration) {
-    *init_file = nominal_traj_init_file;
+    if(FLAGS_use_database)
+    {
+      *init_file = set_initial_guess(dir, iter, sample, total_sample_num,
+          min_sl, max_sl, min_gi, max_gi, min_tr, max_tr,use_database,
+                                     robot_option);
+    }
+    else{
+      *init_file = nominal_traj_init_file;
+    }
   } else if (step_size_shrinked_last_loop && n_rerun == 0) {
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
     if (without_uniform_grid){
         *init_file = set_initial_guess(dir, iter, sample, total_sample_num,
-                min_sl, max_sl, min_gi, max_gi, min_tr, max_tr);
+                min_sl, max_sl, min_gi, max_gi, min_tr, max_tr,use_database,
+                robot_option);
     }
     else{
         *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
@@ -286,7 +298,8 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file,
   } else{
       if(without_uniform_grid){
           *init_file = set_initial_guess(dir, iter, sample, total_sample_num,
-                  min_sl, max_sl, min_gi, max_gi,min_tr, max_tr);
+                  min_sl, max_sl, min_gi, max_gi,min_tr, max_tr,use_database,
+                  robot_option);
       } else{
           *init_file = to_string(iter - 1) +  "_" +
                   to_string(sample) + string("_w.csv");
@@ -1728,7 +1741,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     if (FLAGS_robot_option == 0) {
       N_rerun = 1;
     } else if (FLAGS_robot_option == 1) {
-      N_rerun = 1;//2;
+      N_rerun = 2;//2;
     } else {
       N_rerun = 0;
     }
@@ -1878,7 +1891,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     // we try 0.3/24.
     double max_distance_per_node = 0.3 / 16;
     //comment the line for cassie with large stride length if necessary
-    DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
+//    DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
   }
 
   // Reduced order model parameters
@@ -2368,7 +2381,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                           current_sample_is_a_rerun, has_been_all_success,
                           step_size_shrinked_last_loop, n_rerun[sample_idx],
                           sample_idx_to_help,
-                          FLAGS_is_debug);
+                          FLAGS_is_debug,FLAGS_use_database,FLAGS_robot_option);
 
 
           // Set up feasibility and optimality tolerance

@@ -54,7 +54,7 @@ VectorX<T> KinematicsExpression<T>::getExpression(
       theta.segment(i * n_feature_, n_feature_).dot(getFeature(q));
   return expression;
 }
-template <typename T>
+/*template <typename T>
 template <typename U, typename V>
 VectorX<T> KinematicsExpression<T>::getExpressionDot(
   const U & theta, const V & q, const V & v) const {
@@ -65,7 +65,7 @@ VectorX<T> KinematicsExpression<T>::getExpressionDot(
     expression(i) =
       theta.segment(i * n_feature_, n_feature_).dot(getFeatureDot(q, v));
   return expression;
-}
+}*/
 
 template <typename T>
 template <typename U>
@@ -785,7 +785,7 @@ VectorX<U> KinematicsExpression<T>::getFeature(const VectorX<U> & q) const {
 }
 
 
-
+/*
 template <typename T>
 template <typename U>
 VectorX<U> KinematicsExpression<T>::getFeatureDot(
@@ -837,7 +837,7 @@ VectorX<U> KinematicsExpression<T>::getFeatureDot(
     // sin(q(6)), cos(q(6))
     // feature_base_dot(0), feature_base_dot(1), feature_base_dot(2), feature_base_dot(3)
 
-    /*
+    *//*
     VectorX<U> feature_dot(70);  // 4 + 1 + 10 + (10C2 + 10) = 4 + 1 + 10 + 55 = 70
     feature_dot << feature_base_dot,
                 0,
@@ -915,7 +915,7 @@ VectorX<U> KinematicsExpression<T>::getFeatureDot(
                  cos(q(6)) * v(6)* sin(q(6)) + sin(q(6)) * cos(q(6)) * v(6),
                 -sin(q(6)) * v(6)* sin(q(6)) + cos(q(6)) * cos(q(6)) * v(6),
                 // 10
-                -2 * cos(q(6)) * sin(q(6)) * v(6);*/
+                -2 * cos(q(6)) * sin(q(6)) * v(6);*//*
 
     VectorX<U> feature_dot(70);  // 4 + 1 + 10 + (10C2 + 10) = 4 + 1 + 10 + 55 = 70
 
@@ -1024,7 +1024,7 @@ VectorX<U> KinematicsExpression<T>::getFeatureDot(
   }
 
   DRAKE_DEMAND(false);  // shouldn't reach to this line of code
-}
+}*/
 
 
 
@@ -1065,17 +1065,17 @@ template VectorX<AutoDiffXd> KinematicsExpression<AutoDiffXd>::getFeature(
   const VectorX<AutoDiffXd> &) const;
 
 // method getExpressionDot /////////////////////////////////////////////////////
-template VectorX<double> KinematicsExpression<double>::getExpressionDot(
-  const VectorX<double> &,
-  const VectorX<double> &, const VectorX<double> &) const;
-template VectorX<AutoDiffXd> KinematicsExpression<AutoDiffXd>::getExpressionDot(
-  const VectorX<double> &,
-  const VectorX<AutoDiffXd> &, const VectorX<AutoDiffXd> &) const;
+//template VectorX<double> KinematicsExpression<double>::getExpressionDot(
+//  const VectorX<double> &,
+//  const VectorX<double> &, const VectorX<double> &) const;
+//template VectorX<AutoDiffXd> KinematicsExpression<AutoDiffXd>::getExpressionDot(
+//  const VectorX<double> &,
+//  const VectorX<AutoDiffXd> &, const VectorX<AutoDiffXd> &) const;
 // method getFeatureDot ////////////////////////////////////////////////////////
-template VectorX<double> KinematicsExpression<double>::getFeatureDot(
-  const VectorX<double> &, const VectorX<double> &) const;
-template VectorX<AutoDiffXd> KinematicsExpression<AutoDiffXd>::getFeatureDot(
-  const VectorX<AutoDiffXd> &, const VectorX<AutoDiffXd> &) const;
+//template VectorX<double> KinematicsExpression<double>::getFeatureDot(
+//  const VectorX<double> &, const VectorX<double> &) const;
+//template VectorX<AutoDiffXd> KinematicsExpression<AutoDiffXd>::getFeatureDot(
+//  const VectorX<AutoDiffXd> &, const VectorX<AutoDiffXd> &) const;
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

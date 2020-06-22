@@ -47,13 +47,13 @@ class KinematicsExpression {
   VectorX<T> getExpression(const U & theta, const V & q) const;
   template <typename U, typename V>
   VectorX<T> getExpression(const U & theta, const V & q, int n_s_append) const;
-  template <typename U, typename V>
-  VectorX<T> getExpressionDot(const U & theta, const V & q, const V & v) const;
+//  template <typename U, typename V>
+//  VectorX<T> getExpressionDot(const U & theta, const V & q, const V & v) const;
 
   template <typename U>
   VectorX<U> getFeature(const VectorX<U> & q) const;
-  template <typename U>
-  VectorX<U> getFeatureDot(const VectorX<U> & q, const VectorX<U> & v) const;
+//  template <typename U>
+//  VectorX<U> getFeatureDot(const VectorX<U> & q, const VectorX<U> & v) const;
 
   void setModelDimension(int n_s_new) {n_s_ = n_s_new;};
 

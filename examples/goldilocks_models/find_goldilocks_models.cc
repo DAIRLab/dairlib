@@ -1741,6 +1741,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     if (FLAGS_robot_option == 0) {
       N_rerun = 1;
     } else if (FLAGS_robot_option == 1) {
+      //increase the number of rerun if necessary
+      //for example, if the program is stuck, try to increase the number of rerun
       N_rerun = 2;//2;
     } else {
       N_rerun = 0;

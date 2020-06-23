@@ -123,6 +123,11 @@ class OscTrackingData {
   // correctly.
   void CheckOscTrackingData();
 
+  // For unit test
+  void UpdateJAndJdotVForUnitTest(
+      const Eigen::VectorXd& x_wo_spr,
+      drake::systems::Context<double>& context_wo_spr);
+
  protected:
   int GetStateIdx() { return state_idx_; };
   void AddState(int state);
@@ -390,20 +395,20 @@ class JointSpaceTrackingData final : public OscTrackingData {
 //  Continue to implement this after we fully port OSC to MBP. Will need to
 //  verify that the functions are implemented correctly.
 
-// TODO: You can probably use symbolics of drake
+// TODO(yminchen): You can probably use symbolics of drake
 //  Also, drake polynomial function can potentially help you to do derivatives
 
 class AbstractTrackingData final : public OscTrackingData {
  public:
   AbstractTrackingData(
-      std::string name, int n_r, Eigen::MatrixXd K_p, Eigen::MatrixXd K_d,
-      Eigen::MatrixXd W,
+      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
       OscUserDefinedPos* user_defined_pos);
   AbstractTrackingData(
-      std::string name, int n_r, Eigen::MatrixXd K_p, Eigen::MatrixXd K_d,
-      Eigen::MatrixXd W,
+      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
       OscUserDefinedPos* user_defined_pos_w_spr,
@@ -416,6 +421,7 @@ class AbstractTrackingData final : public OscTrackingData {
                        drake::systems::Context<double>& context_w_spr) final;
   void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
                   drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -432,7 +438,10 @@ class AbstractTrackingData final : public OscTrackingData {
   // Ref1: equation 18 of https://arxiv.org/pdf/0811.2889.pdf
   // Ref2: https://github.com/RobotLocomotion/drake/blob/a3af177/attic/multibody/joints/quaternion_floating_joint.h#L260
   Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) const;
-  Eigen::MatrixXd VToQdotMap(const Eigen::VectorXd& q) const;
+  Eigen::VectorXd VToQdot(const Eigen::VectorXd& q,
+                             const Eigen::VectorXd& v) const;
+  Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
+                                  const Eigen::MatrixXd& Jwrtqdot) const;
 
   bool only_one_user_defined_pos_;
 
@@ -443,8 +452,12 @@ class AbstractTrackingData final : public OscTrackingData {
   Eigen::MatrixXd map_position_from_spring_to_no_spring_;
   Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
-  // Step size for forward differencing
-  double dx_ = 1e-8;
+  // Step size for numerical differentiation
+  // It's tuned for minimizing JdotV error:
+  //   dx_ = 4e-4 if forward differencing
+  //   dx_ = 4e-4 if central differencing. error norm ~ 5e-8
+  double dx_ = 4e-4;
+  bool is_forward_differencing_ = true;
 };
 
 }  // namespace controllers

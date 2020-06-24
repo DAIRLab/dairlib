@@ -2,6 +2,7 @@
 #include <drake/multibody/plant/multibody_plant.h>
 #include "common/eigen_utils.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/osc/osc_utils.h"
 #include "drake/common/text_logging.h"
 
 using std::cout;
@@ -82,42 +83,11 @@ OperationalSpaceControl::OperationalSpaceControl(
                             &OperationalSpaceControl::AssignOscLcmOutput)
                         .get_index();
 
-  const std::map<string, int>& pos_map_w_spr =
-      multibody::makeNameToPositionsMap(plant_w_spr);
-  const std::map<string, int>& vel_map_w_spr =
-      multibody::makeNameToVelocitiesMap(plant_w_spr);
-  const std::map<string, int>& pos_map_wo_spr =
-      multibody::makeNameToPositionsMap(plant_wo_spr);
-  const std::map<string, int>& vel_map_wo_spr =
-      multibody::makeNameToVelocitiesMap(plant_wo_spr);
-
   // Initialize the mapping from spring to no spring
-  map_position_from_spring_to_no_spring_ = MatrixXd::Zero(n_q_, n_q_w_spr);
-  map_velocity_from_spring_to_no_spring_ = MatrixXd::Zero(n_v_, n_v_w_spr);
-
-  for (auto pos_pair_wo_spr : pos_map_wo_spr) {
-    bool successfully_added = false;
-    for (auto pos_pair_w_spr : pos_map_w_spr) {
-      if (pos_pair_wo_spr.first == pos_pair_w_spr.first) {
-        map_position_from_spring_to_no_spring_(pos_pair_wo_spr.second,
-                                               pos_pair_w_spr.second) = 1;
-        successfully_added = true;
-      }
-    }
-    DRAKE_DEMAND(successfully_added);
-  }
-
-  for (auto vel_pair_wo_spr : vel_map_wo_spr) {
-    bool successfully_added = false;
-    for (auto vel_pair_w_spr : vel_map_w_spr) {
-      if (vel_pair_wo_spr.first == vel_pair_w_spr.first) {
-        map_velocity_from_spring_to_no_spring_(vel_pair_wo_spr.second,
-                                               vel_pair_w_spr.second) = 1;
-        successfully_added = true;
-      }
-    }
-    DRAKE_DEMAND(successfully_added);
-  }
+  map_position_from_spring_to_no_spring_ =
+      PositionMapFromSpringToNoSpring(plant_w_spr, plant_wo_spr);
+  map_velocity_from_spring_to_no_spring_ =
+      VelocityMapFromSpringToNoSpring(plant_w_spr, plant_wo_spr);
 
   // Get input limits
   VectorXd u_min(n_u_);

@@ -12,6 +12,7 @@ cc_library(
     ],
     deps = [
         ":osc_tracking_data",
+        ":osc_utils",
         "//common:eigen_utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
@@ -42,7 +43,6 @@ cc_library(
 cc_library(
     name = "osc_user_defined_pos",
     srcs = [
-        "osc_user_defined_pos.cc",
     ],
     hdrs = [
         "osc_user_defined_pos.h",

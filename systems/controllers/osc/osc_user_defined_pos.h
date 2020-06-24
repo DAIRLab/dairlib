@@ -1,11 +1,3 @@
-// TODO(yminchen):
-// Finish writing this class. This class is for tracking rom traj
-// I think this is how you will use the class
-// - pass ChildOfOscUserDefinedPos's address into OscUserDefinedPosData
-//   (it could be into either OscUserDefinedPosData's method or constructor)
-// - the argument of such method/construct is OscUserDefinedPos* obj_ptr
-// - then you can call obj_ptr->Position
-
 #pragma once
 
 #include <Eigen/Dense>

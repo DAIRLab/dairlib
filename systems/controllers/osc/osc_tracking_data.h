@@ -391,13 +391,8 @@ class JointSpaceTrackingData final : public OscTrackingData {
   std::vector<int> joint_vel_idx_wo_spr_;
 };
 
-// TODO: the implementation of VToQdotMap is for MBP.
-//  Continue to implement this after we fully port OSC to MBP. Will need to
-//  verify that the functions are implemented correctly.
-
 // TODO(yminchen): You can probably use symbolics of drake
 //  Also, drake polynomial function can potentially help you to do derivatives
-
 class AbstractTrackingData final : public OscTrackingData {
  public:
   AbstractTrackingData(
@@ -429,17 +424,14 @@ class AbstractTrackingData final : public OscTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  // Compute Jacobian (qdot version instead of v!) by forward differencing
+  // Compute Jacobian (qdot version instead of v!) by numerical differentiation
   Eigen::MatrixXd JacobianOfUserDefinedPos(
       const OscUserDefinedPos& user_defined_pos, Eigen::VectorXd q) const;
 
-  // Compute the matrix for mapping local roll-pitch-yaw angular velocity to
-  // quaterion derivatives
-  // Ref1: equation 18 of https://arxiv.org/pdf/0811.2889.pdf
-  // Ref2: https://github.com/RobotLocomotion/drake/blob/a3af177/attic/multibody/joints/quaternion_floating_joint.h#L260
+  // Compute the matrix for mapping global roll-pitch-yaw angular velocity to
+  // quaternion derivatives
+  // Ref: equation 16 of https://arxiv.org/pdf/0811.2889.pdf
   Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) const;
-  Eigen::VectorXd VToQdot(const Eigen::VectorXd& q,
-                             const Eigen::VectorXd& v) const;
   Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
                                   const Eigen::MatrixXd& Jwrtqdot) const;
 
@@ -454,9 +446,14 @@ class AbstractTrackingData final : public OscTrackingData {
 
   // Step size for numerical differentiation
   // It's tuned for minimizing JdotV error:
-  //   dx_ = 4e-4 if forward differencing
-  //   dx_ = 4e-4 if central differencing. error norm ~ 5e-8
-  double dx_ = 4e-4;
+  // (states and user-defined functions are in the osc_tracking_data_test.cc)
+  //   dx_ = 1e-5 if forward differencing.
+  //                 JdotV error norm ~ 1e-5, J error norm ~ 1e-5,
+  //                 runtime for JdotV calculation (Cassie CoM) ~ 1.6ms
+  //   dx_ = 4e-4 if central differencing.
+  //                 JdotV error norm ~ 5e-8, J error norm ~ 5e-9
+  //                 runtime for JdotV calculation (Cassie CoM) ~ 3.0ms
+  double dx_ = 1e-5;
   bool is_forward_differencing_ = true;
 };
 

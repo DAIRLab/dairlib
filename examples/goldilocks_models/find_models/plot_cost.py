@@ -13,7 +13,7 @@ only_add_successful_samples_to_average_cost = False
 iter_start = 1
 iter_end = 11
 is_iter_end = 0
-robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
+robot_option = 0;  # 0 is five-link robot. 1 is cassie_fixed_spring
 if len(sys.argv) >= 2:
     iter_start = int(sys.argv[1])
 if len(sys.argv) >= 3:
@@ -23,20 +23,22 @@ if len(sys.argv) >= 4:
     robot_option = int(sys.argv[3])
 
 
-n_sampel_sl = 3  # should be > 0
-n_sampel_gi = 3  # should be > 0
-n_sampel_tr = 3  # should be > 0
-N_sample = n_sampel_sl * n_sampel_gi * n_sampel_tr
+n_sampel_sl = 2  # should be > 0
+n_sampel_gi = 2  # should be > 0
+n_sampel_v = 2  # should be > 0
+n_sampel_tr = 1  # should be > 0
+N_sample = n_sampel_sl * n_sampel_gi * n_sampel_v * n_sampel_tr
 print('n_sampel_sl = ' + str(n_sampel_sl))
 print('n_sampel_gi = ' + str(n_sampel_gi))
+print('n_sampel_v = ' + str(n_sampel_v))
 print('n_sampel_tr = ' + str(n_sampel_tr))
 
-dist_0 = 0.2
-delta_dist = 0.015 #0.1
-incline_0 = 0.0
-delta_incline = 0.05 #0.08
-turning_0 = 0.0
-delta_turning = 0.15
+# dist_0 = 0.2
+# delta_dist = 0.015 #0.1
+# incline_0 = 0.0
+# delta_incline = 0.05 #0.08
+# turning_0 = 0.0
+# delta_turning = 0.15
 
 # directory = 'data/robot_' + str(robot_option) + '/'
 directory = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_option) + '/'
@@ -45,9 +47,9 @@ directory = '../dairlib_data/goldilocks_models/find_models/robot_' + str(robot_o
 file_name = 'c_without_tau.csv'
 
 # preprocess
-min_dist = dist_0 - delta_dist * (n_sampel_sl - 1)/2.0
-min_incline = incline_0 - delta_incline * (n_sampel_gi - 1)/2.0
-min_turning = turning_0 - delta_turning * (n_sampel_tr - 1)/2.0
+# min_dist = dist_0 - delta_dist * (n_sampel_sl - 1)/2.0
+# min_incline = incline_0 - delta_incline * (n_sampel_gi - 1)/2.0
+# min_turning = turning_0 - delta_turning * (n_sampel_tr - 1)/2.0
 
 # visualization setting
 ave_cost_prop = ""
@@ -124,13 +126,13 @@ while 1:
         # plot cost for each sample
         length = len(cost)
         t = range(iter_start,length+iter_start)
-        if not only_plot_average_cost:
-            if (n_sampel_gi == 1) & (n_sampel_tr == 1):
-                ax1.plot(t,cost, label='sl = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m)')
-            elif n_sampel_tr == 1:
-                ax1.plot(t,cost, label='sl = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m), gi = '+str(min_incline+(sample_i/n_sampel_sl)*delta_incline)+' (rad)')
-            else:
-                ax1.plot(t,cost, label='sl = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m), gi = '+str(min_incline+(sample_i/n_sampel_sl)*delta_incline)+' (rad), turning rate = '+str(min_turning+(sample_i/(n_sampel_sl*n_sampel_gi))*delta_turning)+' (rad/s)')
+        # if not only_plot_average_cost:
+        #     if (n_sampel_gi == 1) & (n_sampel_tr == 1):
+        #         ax1.plot(t,cost, label='sl = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m)')
+        #     elif n_sampel_tr == 1:
+        #         ax1.plot(t,cost, label='sl = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m), gi = '+str(min_incline+(sample_i/n_sampel_sl)*delta_incline)+' (rad)')
+        #     else:
+        #         ax1.plot(t,cost, label='sl = '+str(min_dist+(sample_i%n_sampel_sl)*delta_dist)+' (m), gi = '+str(min_incline+(sample_i/n_sampel_sl)*delta_incline)+' (rad), turning rate = '+str(min_turning+(sample_i/(n_sampel_sl*n_sampel_gi))*delta_turning)+' (rad/s)')
 
         # Read in is_success
         is_success = []

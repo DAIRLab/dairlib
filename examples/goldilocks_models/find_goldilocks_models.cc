@@ -1,5 +1,4 @@
 #include <gflags/gflags.h>
-#include <stdio.h>  // For removing files
 #include <thread>  // multi-threading
 #include <chrono>
 #include <ctime>
@@ -8,22 +7,22 @@
 #include <utility>  // std::pair, std::make_pair
 #include <bits/stdc++.h>  // system call
 #include <cmath>
-#include <numeric> // std::accumulate
 #include <tuple>
 #include <Eigen/QR>  // CompleteOrthogonalDecomposition
 
 #include "drake/multibody/parsing/parser.h"
-#include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
+#include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/dynamics_expression.h"
 #include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
-#include "examples/goldilocks_models/kinematics_expression.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/initial_guess.h"
+#include "examples/goldilocks_models/kinematics_expression.h"
+#include "examples/goldilocks_models/task.h"
 #include "systems/goldilocks_models/file_utils.h"
 
 using std::cin;
@@ -53,12 +52,13 @@ namespace dairlib::goldilocks_models {
 // Robot models
 DEFINE_int32(robot_option, 0, "0: plannar robot. 1: cassie_fixed_spring");
 // Reduced order models
-DEFINE_int32(rom_option, -1, "");
+DEFINE_int32(rom_option, 0, "");
 
 // tasks
-DEFINE_int32(N_sample_sl, -1, "Sampling # for stride length");
-DEFINE_int32(N_sample_gi, -1, "Sampling # for ground incline");
-DEFINE_int32(N_sample_tr, -1, "Sampling # for turning rate");
+DEFINE_int32(N_sample_sl, 1, "Sampling # for stride length");
+DEFINE_int32(N_sample_gi, 1, "Sampling # for ground incline");
+DEFINE_int32(N_sample_v, 1, "Sampling # for walking velocity");
+DEFINE_int32(N_sample_tr, 1, "Sampling # for turning rate");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
@@ -68,7 +68,10 @@ DEFINE_bool(is_restricted_sample_number, false, "Restrict the number of samples.
                                                "only when is_uniform_grid=false");
 
 // inner loop
-DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization");
+DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization. "
+                             "E.g. w0.csv");
+DEFINE_double(major_optimality_tol, 1e-4,
+              "tolerance for optimality condition (complementarity gap)");
 DEFINE_double(major_feasibility_tol, 1e-4,
               "nonlinear constraint violation tol");
 DEFINE_int32(
@@ -76,10 +79,19 @@ DEFINE_int32(
     "Max iteration # for traj opt. Sometimes, snopt takes very small steps "
     "(TODO: find out why), so maybe it's better to stop at some iterations and "
     "resolve again.");
-DEFINE_int32(n_node, -1, "# of nodes for traj opt");
+DEFINE_bool(fix_node_number, false, "Fix the number of nodes in traj opt");
+DEFINE_double(node_density, 40, "# of nodes per second in traj opt");
+// Two things you need to be careful about node density (keep an eye on these
+// in the future):
+// 1. If the number of nodes are too high, it will take much time to solve.
+//    (30 is probably considered to be high)
+// 2. If the # of nodes per distance is too low, it's harder for SNOPT to
+// converge well. E.g. (Cassie) the ratio of distance per nodes = 0.2/16 is fine for
+// SNOPT, but 0.3 / 16 is too high.
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
 DEFINE_bool(use_database,false,"use solutions from database to create initial "
                                 "guesses for traj opt");
+DEFINE_bool(snopt_scaling, false, "SNOPT built-in scaling feature");
 
 // outer loop
 DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
@@ -133,8 +145,6 @@ DEFINE_bool(start_iterations_with_shrinking_stepsize, false,
 DEFINE_double(initial_extra_shrink_factor, -1,
               "shrinking factor for the step size");
 DEFINE_bool(is_debug, false, "Debugging or not");
-DEFINE_bool(is_manual_initial_theta, false,
-            "Assign initial theta of our choice");
 
 // Extend model from passive to actuated
 DEFINE_bool(extend_model, false, "Extend the model in iteration # iter_start "
@@ -154,8 +164,8 @@ DEFINE_bool(turn_off_cin, false, "disable std::cin to the program");
 void createMBP(MultibodyPlant<double>* plant, int robot_option) {
   if (robot_option == 0) {
     Parser parser(plant);
-    std::string full_name = FindResourceOrThrow(
-                              "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
+    string full_name = FindResourceOrThrow(
+        "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
     parser.AddModelFromFile(full_name);
     plant->mutable_gravity_field().set_gravity_vector(
       -9.81 * Eigen::Vector3d::UnitZ());
@@ -188,22 +198,22 @@ void setCostWeight(double* Q, double* R, double* all_cost_scale,
     *all_cost_scale = 0.2/* * 0.12*/;
   }
 }
-void setRomDim(int* n_s, int* n_tau, int rom_option) {
+void setRomDim(int* n_y, int* n_tau, int rom_option) {
   if (rom_option == 0) {
     // 2D -- lipm
-    *n_s = 2;
+    *n_y = 2;
     *n_tau = 0;
   } else if (rom_option == 1) {
     // 4D -- lipm + swing foot
-    *n_s = 4;
+    *n_y = 4;
     *n_tau = 2;
   } else if (rom_option == 2) {
     // 1D -- fix com vertical acceleration
-    *n_s = 1;
+    *n_y = 1;
     *n_tau = 0;
   } else if (rom_option == 3) {
     // 3D -- fix com vertical acceleration + swing foot
-    *n_s = 3;
+    *n_y = 3;
     *n_tau = 2;
   } else {
     throw std::runtime_error("Should not reach here");
@@ -226,34 +236,34 @@ void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
     throw std::runtime_error("Should not reach here");
   }
 }
-void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
-                     int n_feature_s, int rom_option) {
+void setInitialTheta(VectorXd& theta_y, VectorXd& theta_yddot,
+                     int n_feature_y, int rom_option) {
   // // Testing intial theta
-  // theta_s = 0.25*VectorXd::Ones(n_theta_s);
-  // theta_sDDot = 0.5*VectorXd::Ones(n_theta_sDDot);
-  // theta_s = VectorXd::Random(n_theta_s);
-  // theta_sDDot = VectorXd::Random(n_theta_sDDot);
+  // theta_y = 0.25*VectorXd::Ones(n_theta_y);
+  // theta_yddot = 0.5*VectorXd::Ones(n_theta_yddot);
+  // theta_y = VectorXd::Random(n_theta_y);
+  // theta_yddot = VectorXd::Random(n_theta_yddot);
 
   if (rom_option == 0) {
     // 2D -- lipm
-    theta_s(0) = 1;
-    theta_s(1 + n_feature_s) = 1;
-    theta_sDDot(0) = 1;
+    theta_y(0) = 1;
+    theta_y(1 + n_feature_y) = 1;
+    theta_yddot(0) = 1;
   } else if (rom_option == 1) {
     // 4D -- lipm + swing foot
-    theta_s(0) = 1;
-    theta_s(1 + n_feature_s) = 1;
-    theta_s(2 + 2 * n_feature_s) = 1;
-    theta_s(3 + 3 * n_feature_s) = 1;
-    theta_sDDot(0) = 1;
+    theta_y(0) = 1;
+    theta_y(1 + n_feature_y) = 1;
+    theta_y(2 + 2 * n_feature_y) = 1;
+    theta_y(3 + 3 * n_feature_y) = 1;
+    theta_yddot(0) = 1;
   } else if (rom_option == 2) {
     // 1D -- fix com vertical acceleration
-    theta_s(1) = 1;
+    theta_y(1) = 1;
   } else if (rom_option == 3) {
     // 3D -- fix com vertical acceleration + swing foot
-    theta_s(1) = 1;
-    theta_s(2 + 1 * n_feature_s) = 1;
-    theta_s(3 + 2 * n_feature_s) = 1;
+    theta_y(1) = 1;
+    theta_y(2 + 1 * n_feature_y) = 1;
+    theta_y(3 + 2 * n_feature_y) = 1;
   } else {
     throw std::runtime_error("Should not reach here");
   }
@@ -366,19 +376,16 @@ void waitForAllThreadsToJoin(vector<std::thread*> * threads,
   }
 }
 
-void extendModel(string dir, int iter, int n_feature_s,
-                 int & n_s, int & n_sDDot, int & n_tau,
-                 int & n_feature_sDDot,
-                 int & n_theta_s, int & n_theta_sDDot, int & n_theta,
-                 MatrixXd & B_tau, VectorXd & theta_s, VectorXd & theta_sDDot,
-                 VectorXd & theta, VectorXd & prev_theta,
+void extendModel(const string& dir, int iter, RomData& rom,
+                 VectorXd & prev_theta,
                  VectorXd & step_direction,
                  VectorXd & prev_step_direction, double & ave_min_cost_so_far,
                  int & rom_option, int robot_option) {
+  int n_feature_y = rom.n_feature_y();
 
   VectorXd theta_s_append = readCSV(dir +
                                     string("theta_s_append.csv")).col(0);
-  int n_extend = theta_s_append.rows() / n_feature_s;
+  int n_extend = theta_s_append.rows() / n_feature_y;
 
   // update rom_option
   if(rom_option == 0) {
@@ -389,101 +396,88 @@ void extendModel(string dir, int iter, int n_feature_s,
     throw std::runtime_error("Should not reach here");
   }
 
-  // update n_s, n_sDDot and n_tau
-  int old_n_s = n_s;
-  n_s += n_extend;
-  n_sDDot += n_extend;
-  n_tau += n_extend;
-  // update n_feature_sDDot
-  int old_n_feature_sDDot = n_feature_sDDot;
-  DynamicsExpression dyn_expression(n_sDDot, 0, rom_option, robot_option);
-  VectorXd dummy_s = VectorXd::Zero(n_s);
-  n_feature_sDDot = dyn_expression.getFeature(dummy_s, dummy_s).size();
-  // update n_theta_s and n_theta_sDDot
-  n_theta_s = n_s * n_feature_s;
-  n_theta_sDDot = n_sDDot * n_feature_sDDot;
-  n_theta = n_theta_s + n_theta_sDDot;
-  cout << "Updated n_s = " << n_s << endl;
-  cout << "Updated n_sDDot = " << n_sDDot << endl;
+  // update n_y, n_yddot and n_tau
+  int old_n_y = rom.n_y();
+  rom.set_n_y(rom.n_y() + n_extend);
+  rom.set_n_yddot(rom.n_yddot() + n_extend);
+  rom.set_n_tau(rom.n_tau() + n_extend);
+  int n_y = rom.n_y();
+  int n_yddot = rom.n_yddot();
+  int n_tau = rom.n_tau();
+
+  // update n_feature_yddot
+  int old_n_feature_sDDot = rom.n_feature_yddot();
+  DynamicsExpression dyn_expression(n_yddot, 0, rom_option, robot_option);
+  VectorXd dummy_s = VectorXd::Zero(n_y);
+  rom.set_n_feature_yddot(dyn_expression.getFeature(dummy_s, dummy_s).size());
+  int n_feature_yddot = rom.n_feature_yddot();
+  cout << "Updated n_y = " << n_y << endl;
+  cout << "Updated n_yddot = " << n_yddot << endl;
   cout << "Updated n_tau = " << n_tau << endl;
-  cout << "Updated n_feature_sDDot = " << n_feature_sDDot << endl;
-  cout << "Updated n_theta_s = " << n_theta_s << endl;
-  cout << "Updated n_theta_sDDot = " << n_theta_sDDot << endl;
-  cout << "Updated n_theta = " << n_theta << endl;
+  cout << "Updated n_feature_yddot = " << n_feature_yddot << endl;
 
   // update B_tau
-  MatrixXd B_tau_old = B_tau;
-  B_tau.resize(n_sDDot, n_tau);
-  B_tau = MatrixXd::Zero(n_sDDot, n_tau);
+  MatrixXd B_tau_old = rom.B();
+  MatrixXd B_tau(n_yddot, n_tau);
+  B_tau = MatrixXd::Zero(n_yddot, n_tau);
   B_tau.block(0, 0, B_tau_old.rows(), B_tau_old.cols()) = B_tau_old;
   B_tau.block(B_tau_old.rows(), B_tau_old.cols(), n_extend, n_extend) =
     MatrixXd::Identity(n_extend, n_extend);
-  cout << "Updated B_tau = \n" << B_tau << endl;
+  rom.SetB(B_tau);
+  cout << "Updated B_tau = \n" << rom.B() << endl;
   writeCSV(dir + string("B_tau (before extension).csv"), B_tau_old);
-  writeCSV(dir + string("B_tau.csv"), B_tau);
-  // update theta_s
+  writeCSV(dir + string("B_tau.csv"), rom.B());
+  // update theta_y
   string prefix = to_string(iter) +  "_";
-  writeCSV(dir + prefix + string("theta_s (before extension).csv"),
-           theta_s);
-  MatrixXd theta_s_old = theta_s;
-  theta_s.resize(n_theta_s);
-  theta_s << theta_s_old, theta_s_append;
-  // update theta_sDDot
-  writeCSV(dir + prefix + string("theta_sDDot (before extension).csv"),
-           theta_sDDot);
-  MatrixXd theta_sDDot_old = theta_sDDot;
-  theta_sDDot.resize(n_theta_sDDot);
-  theta_sDDot = VectorXd::Zero(n_theta_sDDot);
+  writeCSV(dir + prefix + string("theta_y (before extension).csv"),
+           rom.theta_y());
+  VectorXd theta_y(n_y * n_feature_y);
+  theta_y << rom.theta_y(), theta_s_append;
+  rom.SetThetaY(theta_y);
+  // update theta_yddot
+  writeCSV(dir + prefix + string("theta_yddot (before extension).csv"),
+           rom.theta_yddot());
+  VectorXd theta_sDDot_old = rom.theta_yddot();
+  VectorXd theta_yddot = VectorXd::Zero(n_yddot * n_feature_yddot);
   VectorXd new_idx = readCSV(dir +
                              string("theta_sDDot_new_index.csv")).col(0);
   for (int i = 0; i < old_n_feature_sDDot; i++)
-    for (int j = 0; j < old_n_s; j++)
-      theta_sDDot(new_idx(i) + j * n_feature_sDDot) = theta_sDDot_old(
+    for (int j = 0; j < old_n_y; j++)
+      theta_yddot(new_idx(i) + j * n_feature_yddot) = theta_sDDot_old(
             i + j * old_n_feature_sDDot);
-  // update theta
-  theta.resize(n_theta);
-  theta << theta_s, theta_sDDot;
+  rom.SetThetaYddot(theta_yddot);
 
   // Some setup
-  prev_theta.resize(n_theta);
-  prev_theta = theta;
-  step_direction.resize(n_theta);
-  prev_step_direction.resize(n_theta);
+  prev_theta.resize(rom.n_theta());
+  prev_theta = rom.theta();
+  step_direction.resize(rom.n_theta());
+  prev_step_direction.resize(rom.n_theta());
   prev_step_direction =
-      VectorXd::Zero(n_theta);  // must initialize it because of momentum term
+      VectorXd::Zero(rom.n_theta());  // must initialize it because of momentum term
   ave_min_cost_so_far = std::numeric_limits<double>::infinity();
+
+  rom.CheckDataConsistency();
 }
 
 void extractActiveAndIndependentRows(
     int sample, double active_tol, double indpt_row_tol, string dir,
-    const vector<std::shared_ptr<MatrixXd>>& B_vec,
-    const vector<std::shared_ptr<MatrixXd>>& A_vec,
-    const vector<std::shared_ptr<MatrixXd>>& H_vec,
-    const vector<std::shared_ptr<VectorXd>>& b_vec,
-    const vector<std::shared_ptr<VectorXd>>& lb_vec,
-    const vector<std::shared_ptr<VectorXd>>& ub_vec,
-    const vector<std::shared_ptr<VectorXd>>& y_vec,
-    const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
-    int method_to_solve_system_of_equations,
-    const vector<std::shared_ptr<int>>& nw_vec,
-    const vector<std::shared_ptr<int>>& nl_vec,
-    const vector<std::shared_ptr<MatrixXd>>& A_active_vec,
-    const vector<std::shared_ptr<MatrixXd>>& B_active_vec) {
+    const SubQpData& QPs,
+    int method_to_solve_system_of_equations) {
   string prefix = to_string(sample) + "_";
 
-  DRAKE_ASSERT(b_vec[sample]->cols() == 1);
-  DRAKE_ASSERT(lb_vec[sample]->cols() == 1);
-  DRAKE_ASSERT(ub_vec[sample]->cols() == 1);
-  DRAKE_ASSERT(y_vec[sample]->cols() == 1);
-  DRAKE_ASSERT(w_sol_vec[sample]->cols() == 1);
+  DRAKE_ASSERT(QPs.b_vec[sample]->cols() == 1);
+  DRAKE_ASSERT(QPs.lb_vec[sample]->cols() == 1);
+  DRAKE_ASSERT(QPs.ub_vec[sample]->cols() == 1);
+  DRAKE_ASSERT(QPs.y_vec[sample]->cols() == 1);
+  DRAKE_ASSERT(QPs.w_sol_vec[sample]->cols() == 1);
 
-  int nt_i = B_vec[sample]->cols();
-  int nw_i = A_vec[sample]->cols();
+  int nt_i = QPs.B_vec[sample]->cols();
+  int nw_i = QPs.A_vec[sample]->cols();
 
   int nl_i = 0;
-  for (int i = 0; i < y_vec[sample]->rows(); i++) {
-    if ((*(y_vec[sample]))(i) >= (*(ub_vec[sample]))(i) - active_tol ||
-        (*(y_vec[sample]))(i) <= (*(lb_vec[sample]))(i) + active_tol)
+  for (int i = 0; i < QPs.y_vec[sample]->rows(); i++) {
+    if ((*(QPs.y_vec[sample]))(i) >= (*(QPs.ub_vec[sample]))(i) - active_tol ||
+        (*(QPs.y_vec[sample]))(i) <= (*(QPs.lb_vec[sample]))(i) + active_tol)
       nl_i++;
   }
 
@@ -491,11 +485,11 @@ void extractActiveAndIndependentRows(
   MatrixXd B_active(nl_i, nt_i);
 
   nl_i = 0;
-  for (int i = 0; i < y_vec[sample]->rows(); i++) {
-    if ((*(y_vec[sample]))(i) >= (*(ub_vec[sample]))(i) - active_tol ||
-        (*(y_vec[sample]))(i) <= (*(lb_vec[sample]))(i) + active_tol) {
-      A_active.row(nl_i) = A_vec[sample]->row(i);
-      B_active.row(nl_i) = B_vec[sample]->row(i);
+  for (int i = 0; i < QPs.y_vec[sample]->rows(); i++) {
+    if ((*(QPs.y_vec[sample]))(i) >= (*(QPs.ub_vec[sample]))(i) - active_tol ||
+        (*(QPs.y_vec[sample]))(i) <= (*(QPs.lb_vec[sample]))(i) + active_tol) {
+      A_active.row(nl_i) = QPs.A_vec[sample]->row(i);
+      B_active.row(nl_i) = QPs.B_vec[sample]->row(i);
       nl_i++;
     }
   }
@@ -519,7 +513,7 @@ void extractActiveAndIndependentRows(
                                   VectorXd::Zero(nl_i),
                                   VectorXd::Zero(nl_i),
                                   w2);
-    quadprog.AddQuadraticCost(*(H_vec[sample]), *(b_vec[sample]), w2);
+    quadprog.AddQuadraticCost(*(QPs.H_vec[sample]), *(QPs.b_vec[sample]), w2);
 
     // (Testing) use snopt to solve the QP
     bool use_snopt = true;
@@ -537,7 +531,7 @@ void extractActiveAndIndependentRows(
           quadprog.decision_variables());
       cout << sample << " | " << solution_result << " | " << elapsed.count()
            << "| " << result.get_optimal_cost() << " | " << w_sol_check.norm()
-           << " | " << w_sol_check.transpose() * (*(b_vec[sample])) << endl;
+           << " | " << w_sol_check.transpose() * (*(QPs.b_vec[sample])) << endl;
     } else {
       cout << sample << " | " << solution_result << " | " << elapsed.count()
            << " | " << result.get_optimal_cost() << endl;
@@ -596,12 +590,12 @@ void extractActiveAndIndependentRows(
       }
 
       // Store the results in csv files
-      *(nw_vec[sample]) = nw_i;
-      *(nl_vec[sample]) = nl_i;
-      A_active_vec[sample]->resizeLike(A_processed);
-      B_active_vec[sample]->resizeLike(B_processed);
-      *(A_active_vec[sample]) = A_processed;
-      *(B_active_vec[sample]) = B_processed;
+      *(QPs.nw_vec[sample]) = nw_i;
+      *(QPs.nl_vec[sample]) = nl_i;
+      QPs.A_active_vec[sample]->resizeLike(A_processed);
+      QPs.B_active_vec[sample]->resizeLike(B_processed);
+      *(QPs.A_active_vec[sample]) = A_processed;
+      *(QPs.B_active_vec[sample]) = B_processed;
     } else if (extract_method == 1) {
       // SVD
       Eigen::BDCSVD<MatrixXd> svd(A_active,
@@ -625,12 +619,12 @@ void extractActiveAndIndependentRows(
           svd.matrixU().block(0, 0, nl_i, rank).transpose() * B_active;
 
       // Store the results in csv files
-      *(nw_vec[sample]) = nw_i;
-      *(nl_vec[sample]) = rank;
-      A_active_vec[sample]->resizeLike(A_processed);
-      B_active_vec[sample]->resizeLike(B_processed);
-      *(A_active_vec[sample]) = A_processed;
-      *(B_active_vec[sample]) = B_processed;
+      *(QPs.nw_vec[sample]) = nw_i;
+      *(QPs.nl_vec[sample]) = rank;
+      QPs.A_active_vec[sample]->resizeLike(A_processed);
+      QPs.B_active_vec[sample]->resizeLike(B_processed);
+      *(QPs.A_active_vec[sample]) = A_processed;
+      *(QPs.B_active_vec[sample]) = B_processed;
     } else {
       throw std::runtime_error("Should not reach here");
     }
@@ -641,12 +635,12 @@ void extractActiveAndIndependentRows(
     // No need to extract independent rows, so store the result right away
 
     // Store the results in csv files
-    *(nw_vec[sample]) = nw_i;
-    *(nl_vec[sample]) = nl_i;
-    A_active_vec[sample]->resizeLike(A_active);
-    B_active_vec[sample]->resizeLike(B_active);
-    *(A_active_vec[sample]) = A_active;
-    *(B_active_vec[sample]) = B_active;
+    *(QPs.nw_vec[sample]) = nw_i;
+    *(QPs.nl_vec[sample]) = nl_i;
+    QPs.A_active_vec[sample]->resizeLike(A_active);
+    QPs.B_active_vec[sample]->resizeLike(B_active);
+    *(QPs.A_active_vec[sample]) = A_active;
+    *(QPs.B_active_vec[sample]) = B_active;
   }
 }
 
@@ -687,15 +681,8 @@ MatrixXd MoorePenrosePseudoInverse(const MatrixXd& mat,
 }
 
 void calcWInTermsOfTheta(int sample, const string& dir,
-                         const vector<std::shared_ptr<int>>& nl_vec,
-                         const vector<std::shared_ptr<int>>& nw_vec,
-                         const vector<std::shared_ptr<MatrixXd>>& A_active_vec,
-                         const vector<std::shared_ptr<MatrixXd>>& B_active_vec,
-                         const vector<std::shared_ptr<MatrixXd>>& H_vec,
-                         const vector<std::shared_ptr<VectorXd>>& b_vec,
-                         int method_to_solve_system_of_equations,
-                         const vector<std::shared_ptr<MatrixXd>>& P_vec,
-                         const vector<std::shared_ptr<VectorXd>>& q_vec) {
+                         const SubQpData& QPs,
+                         int method_to_solve_system_of_equations) {
   string prefix = to_string(sample) + "_";
 
   if (sample == 0) {
@@ -703,8 +690,8 @@ void calcWInTermsOfTheta(int sample, const string& dir,
             "close to 0)\n";
   }
 
-  MatrixXd Pi(*(nw_vec[sample]), B_active_vec[sample]->cols());
-  VectorXd qi(*(nw_vec[sample]));
+  MatrixXd Pi(*(QPs.nw_vec[sample]), QPs.B_active_vec[sample]->cols());
+  VectorXd qi(*(QPs.nw_vec[sample]));
   if (method_to_solve_system_of_equations == 0) {
     // Method 0: use optimization program to solve it??? ///////////////////////
     throw std::runtime_error(
@@ -716,11 +703,11 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     // accuracy is not as high as when we use inverse() directly. The reason is
     // that the condition number of A and invH is high, so AinvHA' makes it very
     // ill-conditioned.
-    MatrixXd AinvHA = (*(A_active_vec[sample])) * solveInvATimesB(
-        *(H_vec[sample]), A_active_vec[sample]->transpose());
-    VectorXd invQc = solveInvATimesB(*(H_vec[sample]), *(b_vec[sample]));
-    MatrixXd E = solveInvATimesB(AinvHA, *(B_active_vec[sample]));
-    VectorXd F = -solveInvATimesB(AinvHA, (*(A_active_vec[sample])) * invQc);
+    MatrixXd AinvHA = (*(QPs.A_active_vec[sample])) * solveInvATimesB(
+        *(QPs.H_vec[sample]), QPs.A_active_vec[sample]->transpose());
+    VectorXd invQc = solveInvATimesB(*(QPs.H_vec[sample]), *(QPs.b_vec[sample]));
+    MatrixXd E = solveInvATimesB(AinvHA, *(QPs.B_active_vec[sample]));
+    VectorXd F = -solveInvATimesB(AinvHA, (*(QPs.A_active_vec[sample])) * invQc);
     // Testing
     Eigen::BDCSVD<MatrixXd> svd(AinvHA);
     cout << "AinvHA':\n";
@@ -731,22 +718,22 @@ void calcWInTermsOfTheta(int sample, const string& dir,
             "is ill-conditioned.\n";
     // cout << "singular values are \n" << svd.singularValues() << endl;
 
-    Pi = -solveInvATimesB(*(H_vec[sample]),
-                          A_active_vec[sample]->transpose() * E);
+    Pi = -solveInvATimesB(*(QPs.H_vec[sample]),
+                          QPs.A_active_vec[sample]->transpose() * E);
     qi = -solveInvATimesB(
-        *(H_vec[sample]),
-        (*(b_vec[sample])) + A_active_vec[sample]->transpose() * F);
+        *(QPs.H_vec[sample]),
+        (*(QPs.b_vec[sample])) + QPs.A_active_vec[sample]->transpose() * F);
     cout << "qi norm (this number should be close to 0) = "
          << qi.norm() << endl;
   } else if ((method_to_solve_system_of_equations >= 2) &&
              (method_to_solve_system_of_equations <= 6)) {
     // H_ext = [H A'; A 0]
-    int nl_i = (*(nl_vec[sample]));
-    int nw_i = (*(nw_vec[sample]));
+    int nl_i = (*(QPs.nl_vec[sample]));
+    int nw_i = (*(QPs.nw_vec[sample]));
     MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
-    H_ext.block(0, 0, nw_i, nw_i) = (*(H_vec[sample]));
-    H_ext.block(0, nw_i, nw_i, nl_i) = A_active_vec[sample]->transpose();
-    H_ext.block(nw_i, 0, nl_i, nw_i) = (*(A_active_vec[sample]));
+    H_ext.block(0, 0, nw_i, nw_i) = (*(QPs.H_vec[sample]));
+    H_ext.block(0, nw_i, nw_i, nl_i) = QPs.A_active_vec[sample]->transpose();
+    H_ext.block(nw_i, 0, nl_i, nw_i) = (*(QPs.A_active_vec[sample]));
     H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
 
     if (method_to_solve_system_of_equations == 2) {
@@ -760,8 +747,8 @@ void calcWInTermsOfTheta(int sample, const string& dir,
       MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
       MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
 
-      Pi = -inv_H_ext12 * (*(B_active_vec[sample]));
-      qi = -inv_H_ext11 * (*(b_vec[sample]));
+      Pi = -inv_H_ext12 * (*(QPs.B_active_vec[sample]));
+      qi = -inv_H_ext11 * (*(QPs.b_vec[sample]));
     } else if (method_to_solve_system_of_equations == 3) {
       // Method 3: use Moore–Penrose pseudo inverse ////////////////////////////
       MatrixXd inv_H_ext = MoorePenrosePseudoInverse(H_ext, 1e-8);
@@ -769,21 +756,21 @@ void calcWInTermsOfTheta(int sample, const string& dir,
       MatrixXd inv_H_ext11 = inv_H_ext.block(0, 0, nw_i, nw_i);
       MatrixXd inv_H_ext12 = inv_H_ext.block(0, nw_i, nw_i, nl_i);
 
-      Pi = -inv_H_ext12 * (*(B_active_vec[sample]));
-      qi = -inv_H_ext11 * (*(b_vec[sample]));
+      Pi = -inv_H_ext12 * (*(QPs.B_active_vec[sample]));
+      qi = -inv_H_ext11 * (*(QPs.b_vec[sample]));
     } else if (method_to_solve_system_of_equations == 4) {
       // Method 4: linear solve with householderQr /////////////////////////////
       MatrixXd B_aug =
-          MatrixXd::Zero(H_ext.rows(), B_active_vec[sample]->cols());
-      B_aug.bottomRows(nl_i) = -(*(B_active_vec[sample]));
+          MatrixXd::Zero(H_ext.rows(), QPs.B_active_vec[sample]->cols());
+      B_aug.bottomRows(nl_i) = -(*(QPs.B_active_vec[sample]));
 
       Pi = H_ext.householderQr().solve(B_aug).topRows(nw_i);
       qi = VectorXd::Zero(nw_i);
     } else if (method_to_solve_system_of_equations == 5) {
       // Method 5: linear solve with ColPivHouseholderQR ///////////////////////
       MatrixXd B_aug =
-          MatrixXd::Zero(H_ext.rows(), B_active_vec[sample]->cols());
-      B_aug.bottomRows(nl_i) = -(*(B_active_vec[sample]));
+          MatrixXd::Zero(H_ext.rows(), QPs.B_active_vec[sample]->cols());
+      B_aug.bottomRows(nl_i) = -(*(QPs.B_active_vec[sample]));
 
       Pi = Eigen::ColPivHouseholderQR<MatrixXd>(H_ext).solve(B_aug).topRows(
           nw_i);
@@ -792,8 +779,8 @@ void calcWInTermsOfTheta(int sample, const string& dir,
       // Method 6: linear solve with bdcSvd ////////////////////////////////////
       // https://eigen.tuxfamily.org/dox/group__TutorialLinearAlgebra.html
       MatrixXd B_aug =
-          MatrixXd::Zero(H_ext.rows(), B_active_vec[sample]->cols());
-      B_aug.bottomRows(nl_i) = -(*(B_active_vec[sample]));
+          MatrixXd::Zero(H_ext.rows(), QPs.B_active_vec[sample]->cols());
+      B_aug.bottomRows(nl_i) = -(*(QPs.B_active_vec[sample]));
 
       Pi = H_ext.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV)
                .solve(B_aug)
@@ -804,10 +791,10 @@ void calcWInTermsOfTheta(int sample, const string& dir,
     throw std::runtime_error("Should not reach here");
   }
 
-  P_vec[sample]->resizeLike(Pi);
-  q_vec[sample]->resizeLike(qi);
-  *(P_vec[sample]) = Pi;
-  *(q_vec[sample]) = qi;
+  QPs.P_vec[sample]->resizeLike(Pi);
+  QPs.q_vec[sample]->resizeLike(qi);
+  *(QPs.P_vec[sample]) = Pi;
+  *(QPs.q_vec[sample]) = qi;
 
   // Testing
   MatrixXd abs_Pi = Pi.cwiseAbs();
@@ -832,56 +819,38 @@ void calcWInTermsOfTheta(int sample, const string& dir,
   cout << to_be_print;
 }
 
-void ConstructTaskIdxMap(
-    std::map<int, std::tuple<int, int, int>>* forward_task_idx_map,
-    std::map<std::tuple<int, int, int>, int>* inverse_task_idx_map,
-    int N_sample_sl, int N_sample_gi, int N_sample_tr) {
-  int sample_idx = 0;
-  for (int k = 0; k < N_sample_tr; k++) {
-    for (int j = 0; j < N_sample_gi; j++) {
-      for (int i = 0; i < N_sample_sl; i++) {
-        (*forward_task_idx_map)[sample_idx] = {i, j, k};
-        (*inverse_task_idx_map)[{i, j, k}] = sample_idx;
-        sample_idx++;
-      }
-    }
-  }
-}
+MatrixXi GetAdjSampleIndices(GridTasksGenerator task_gen,
+                             vector<int> n_node_vec) {
+  // Setup
+  int task_dim = task_gen.dim_nondeg();
+  int N_sample = task_gen.total_sample_number();
 
-MatrixXi GetAdjSampleIndices(
-    int N_sample_sl, int N_sample_gi, int N_sample_tr, int N_sample,
-    int task_dim,
-    const std::map<std::tuple<int, int, int>, int>& inverse_task_idx_map) {
   // cout << "Constructing adjacent index list...\n";
   MatrixXi adjacent_sample_indices =
       -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
   MatrixXi delta_idx = MatrixXi::Identity(3, 3);
-  for (int k = 0; k < N_sample_tr; k++) {  // turning rate axis
-    for (int j = 0; j < N_sample_gi; j++) {  // ground incline axis
-      for (int i = 0; i < N_sample_sl; i++) {  // stride length axis
-        int current_sample_idx = inverse_task_idx_map.at({i, j, k});
-        for (int h = 0; h < delta_idx.rows(); h++) {
-          int new_i = i + delta_idx(h, 0);
-          int new_j = j + delta_idx(h, 1);
-          int new_k = k + delta_idx(h, 2);
-          if ((new_i >= 0) && (new_i < N_sample_sl) && (new_j >= 0) &&
-              (new_j < N_sample_gi) && (new_k >= 0) && (new_k < N_sample_tr)) {
-            int adjacent_sample_idx =
-                inverse_task_idx_map.at({new_i, new_j, new_k});
-            // Add to adjacent_sample_idx (both directions)
-            for (int l = 0; l < 2 * task_dim; l++) {
-              if (adjacent_sample_indices(current_sample_idx, l) < 0) {
-                adjacent_sample_indices(current_sample_idx, l) =
-                    adjacent_sample_idx;
-                break;
-              }
+  for (int sample_idx = 0; sample_idx < N_sample; sample_idx++) {
+    for (int i = 0; i < task_dim; i++) {
+      vector<int> new_index_tuple = task_gen.get_forward_map().at(sample_idx);
+      new_index_tuple[i] += 1;
+
+      // The new index tuple has to be valid
+      if (new_index_tuple[i] < task_gen.sample_numbers()[i]) {
+        int adjacent_sample_idx =
+            task_gen.get_inverse_map().at(new_index_tuple);
+        // Number of nodes should be the same so that we can set initial guess
+        if (n_node_vec[sample_idx] == n_node_vec[adjacent_sample_idx]) {
+          // Add to adjacent_sample_idx (both directions)
+          for (int l = 0; l < 2 * task_dim; l++) {
+            if (adjacent_sample_indices(sample_idx, l) < 0) {
+              adjacent_sample_indices(sample_idx, l) = adjacent_sample_idx;
+              break;
             }
-            for (int l = 0; l < 2 * task_dim; l++) {
-              if (adjacent_sample_indices(adjacent_sample_idx, l) < 0) {
-                adjacent_sample_indices(adjacent_sample_idx, l) =
-                    current_sample_idx;
-                break;
-              }
+          }
+          for (int l = 0; l < 2 * task_dim; l++) {
+            if (adjacent_sample_indices(adjacent_sample_idx, l) < 0) {
+              adjacent_sample_indices(adjacent_sample_idx, l) = sample_idx;
+              break;
             }
           }
         }
@@ -1468,26 +1437,20 @@ int findGoldilocksModels(int argc, char* argv[]) {
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   cout << "Current time: " << std::ctime(&current_time);
   cout << "Git commit hash: " << endl;
-  std::system("git rev-parse HEAD");
+  int sys_ret = std::system("git rev-parse HEAD");
+  DRAKE_DEMAND(sys_ret != -1);
   cout << "Result of \"git diff-index HEAD\":" << endl;
-  std::system("git diff-index HEAD");
-  cout << endl;
+  sys_ret = std::system("git diff-index HEAD");
+  DRAKE_DEMAND(sys_ret != -1);
 
   // Create MBP
+  drake::logging::set_log_level("err");  // ignore warnings about joint limits
   MultibodyPlant<double> plant(0.0);
   createMBP(&plant, FLAGS_robot_option);
 
   // Create autoDiff version of the plant
   MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);
   cout << endl;
-
-  // Random number generator
-  std::random_device randgen;
-  std::default_random_engine e1(randgen());
-  std::random_device randgen2;
-  std::default_random_engine e2(randgen2());
-  std::random_device randgen3;
-  std::default_random_engine e3(randgen3());
 
   // Files parameters
   /*const string dir = "examples/goldilocks_models/find_models/data/robot_" +
@@ -1498,190 +1461,41 @@ int findGoldilocksModels(int argc, char* argv[]) {
   string prefix = "";
   if (!CreateFolderIfNotExist(dir)) return 0;
 
-  // Parameters for tasks (stride length and ground incline)
+  // Parameters for tasks
   cout << "\nTasks settings:\n";
-  bool uniform_grid = FLAGS_is_uniform_grid;
-  bool restricted_sample_number = FLAGS_is_restricted_sample_number;
-
-  int N_sample_sl = (FLAGS_N_sample_sl == -1)? 1 : FLAGS_N_sample_sl;
-  int N_sample_gi = (FLAGS_N_sample_gi == -1)? 1 : FLAGS_N_sample_gi;
-  int N_sample_tr = (FLAGS_N_sample_tr == -1)? 1 : FLAGS_N_sample_tr;
-  int N_sample = N_sample_sl * N_sample_gi * N_sample_tr;
+  GridTasksGenerator task_gen;
   if (FLAGS_robot_option == 0) {
-    DRAKE_DEMAND(FLAGS_N_sample_tr < 1);
-  }
-
-  double delta_stride_length;
-  double stride_length_0;
-  if (FLAGS_robot_option == 0) {
-    delta_stride_length = 0.015;
-    stride_length_0 = 0.25;
+    task_gen = GridTasksGenerator(
+        3, {"stride length", "ground incline", "velocity"},
+        {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v}, {0.25, 0, 0.4},
+        {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
   } else if (FLAGS_robot_option == 1) {
-    if (FLAGS_is_stochastic) {
-      delta_stride_length = 0.015;//0.066; // 0.066 might be too big;
-    } else {
-      delta_stride_length = 0.1;
-    }
-    stride_length_0 = 0.3;  //0.15
+    task_gen = GridTasksGenerator(
+        4, {"stride length", "ground incline", "velocity", "turning rate"},
+        {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
+         FLAGS_N_sample_tr},
+        {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
   } else {
     throw std::runtime_error("Should not reach here");
-    delta_stride_length = 0;
-    stride_length_0 = 0;
+    task_gen = GridTasksGenerator();
   }
-  double delta_ground_incline;
-  double ground_incline_0 = 0;
-  if (FLAGS_robot_option == 0) {
-    delta_ground_incline = 0.05;
-  } else if (FLAGS_robot_option == 1) {
-    if (FLAGS_is_stochastic) {
-      delta_ground_incline = 0.05;//0.066; // 0.066 might be too big
-    } else {
-      delta_ground_incline = 0.08;
-    }
-  } else {
-    throw std::runtime_error("Should not reach here");
-    delta_ground_incline = 0;
-  }
-  double delta_turning_rate;
-  double turning_rate_0 = 0;
-  if (FLAGS_robot_option == 0) {
-    delta_turning_rate = 0.0;
-  } else if (FLAGS_robot_option == 1) {
-    delta_turning_rate = 0.125;
-  } else {
-    throw std::runtime_error("Should not reach here");
-    delta_turning_rate = 0;
-  }
-  double duration = 0.4;
-  if (FLAGS_robot_option == 0) {
-    duration = 0.746;  // Fix the duration now since we add cost ourselves
-  } else if (FLAGS_robot_option == 1) {
-    duration = 0.4; // 0.4;
-  }
-  cout << "duration = " << duration << endl;
-
-  uniform_grid ? cout << "Uniform grid\n" : cout << "Without uniform grid,use interpolated initial guess\n";
-  cout << "N_sample_sl = " << N_sample_sl << endl;
-  cout << "N_sample_gi = " << N_sample_gi << endl;
-  cout << "N_sample_tr = " << N_sample_tr << endl;
-  cout << "delta_stride_length = " << delta_stride_length << endl;
-  cout << "stride_length_0 = " << stride_length_0 << endl;
-  cout << "delta_ground_incline = " << delta_ground_incline << endl;
-  cout << "ground_incline_0 = " << ground_incline_0 << endl;
-  cout << "delta_turning_rate = " << delta_turning_rate << endl;
-  cout << "turning_rate_0 = " << turning_rate_0 << endl;
   // Tasks setup
-  std::uniform_real_distribution<> dist_sl(-delta_stride_length / 2,
-                                           delta_stride_length / 2);
-  vector<double> delta_stride_length_vec;
-  for (int i = 0 - N_sample_sl / 2; i < N_sample_sl - N_sample_sl / 2; i++)
-    delta_stride_length_vec.push_back(i * delta_stride_length);
-  std::uniform_real_distribution<> dist_gi(-delta_ground_incline / 2,
-                                           delta_ground_incline / 2);
-  vector<double> delta_ground_incline_vec;
-  for (int i = 0 - N_sample_gi / 2; i < N_sample_gi - N_sample_gi / 2; i++)
-    delta_ground_incline_vec.push_back(i * delta_ground_incline);
-  std::uniform_real_distribution<> dist_tr(-delta_turning_rate / 2,
-                                           delta_turning_rate / 2);
-  vector<double> delta_turning_rate_vec;
-  for (int i = 0 - N_sample_tr / 2; i < N_sample_tr - N_sample_tr / 2; i++)
-    delta_turning_rate_vec.push_back(i * delta_turning_rate);
-  double min_stride_length =
-      (FLAGS_is_stochastic && (FLAGS_N_sample_sl > 0))
-          ? stride_length_0 + delta_stride_length_vec.front() -
-                delta_stride_length * 0.5
-          : stride_length_0 + delta_stride_length_vec.front();
-  double max_stride_length =
-      (FLAGS_is_stochastic && (FLAGS_N_sample_sl > 0))
-          ? stride_length_0 + delta_stride_length_vec.back() +
-                delta_stride_length * 0.5
-          : stride_length_0 + delta_stride_length_vec.back();
-  double min_ground_incline =
-      (FLAGS_is_stochastic && (FLAGS_N_sample_gi > 0))
-          ? ground_incline_0 + delta_ground_incline_vec.front() -
-                delta_ground_incline * 0.5
-          : ground_incline_0 + delta_ground_incline_vec.front();
-  double max_ground_incline =
-      (FLAGS_is_stochastic && (FLAGS_N_sample_gi > 0))
-          ? ground_incline_0 + delta_ground_incline_vec.back() +
-                delta_ground_incline * 0.5
-          : ground_incline_0 + delta_ground_incline_vec.back();
-  double min_turning_rate =
-      (FLAGS_is_stochastic && (FLAGS_N_sample_tr > 0))
-          ? turning_rate_0 + delta_turning_rate_vec.front() -
-                delta_turning_rate * 0.5
-          : turning_rate_0 + delta_turning_rate_vec.front();
-  double max_turning_rate =
-      (FLAGS_is_stochastic && (FLAGS_N_sample_tr > 0))
-          ? turning_rate_0 + delta_turning_rate_vec.back() +
-                delta_turning_rate * 0.5
-          : turning_rate_0 + delta_turning_rate_vec.back();
-  DRAKE_DEMAND(min_stride_length >= 0);
-  cout << "stride length ranges from " << min_stride_length << " to "
-       << max_stride_length << endl;
-  cout << "ground incline ranges from " << min_ground_incline << " to "
-       << max_ground_incline << endl;
-  cout << "turning rate ranges from " << min_turning_rate << " to "
-       << max_turning_rate << endl;
-  // Distribution without grid
-  std::uniform_real_distribution<> dist_sl_large_range(
-            min_stride_length, max_stride_length);
-  std::uniform_real_distribution<> dist_gi_large_range(
-            min_ground_incline, max_ground_incline);
-  std::uniform_real_distribution<> dist_tr_large_range(
-            min_turning_rate, max_turning_rate);
-  /// How to restrict the number of samples is still under testing
-  /// For now, the range of ground incline and stride length will not change while
-  /// the number of them decreases.
-  if(!uniform_grid && restricted_sample_number){
-      if(N_sample_gi>2){
-          N_sample_gi = pow(N_sample_gi, 0.7);
-      }
-      if(N_sample_sl>2){
-          N_sample_sl = pow(N_sample_sl, 0.7);
-      }
-      if(N_sample_tr>2){
-          N_sample_tr = pow(N_sample_tr, 0.7);
-      }
-      N_sample = N_sample_sl * N_sample_gi * N_sample_tr;
-      cout << "Restrict the number of samples in one iteration" << endl;
-      cout << "Restricted N_sample_sl = " << N_sample_sl << endl;
-      cout << "Restricted N_sample_gi = " << N_sample_gi << endl;
-      cout << "Restricted N_sample_tr = " << N_sample_tr << endl;
-  }
-
-  VectorXd previous_ground_incline = VectorXd::Zero(N_sample);
-  VectorXd previous_stride_length = VectorXd::Zero(N_sample);
-  VectorXd previous_turning_rate = VectorXd::Zero(N_sample);
+  DRAKE_DEMAND(task_gen.task_min("stride length") >= 0);
+  DRAKE_DEMAND(task_gen.task_min("velocity") >= 0);
+  int N_sample = task_gen.total_sample_number();
+  Task task(task_gen.names());
+  vector<VectorXd> previous_task(N_sample, VectorXd::Zero(task_gen.dim()));
   if (FLAGS_start_current_iter_as_rerun ||
       FLAGS_start_iterations_with_shrinking_stepsize) {
     for (int i = 0; i < N_sample; i++) {
-      if (FLAGS_N_sample_sl > 0) {
-              previous_stride_length(i) =
-          readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
-              string("_stride_length.csv"))(0);
-      }
-      if (FLAGS_N_sample_gi > 0) {
-              previous_ground_incline(i) =
-          readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
-                  string("_ground_incline.csv"))(0);
-      }
-      if (FLAGS_N_sample_tr > 0) {
-        previous_turning_rate(i) =
-            readCSV(dir + to_string(FLAGS_iter_start) + "_" + to_string(i) +
-                string("_turning_rate.csv"))(0);
-      }
+      VectorXd pre_task = readCSV(dir + to_string(FLAGS_iter_start) + "_" +
+          to_string(i) + string("_task.csv"))
+          .col(0);
+      DRAKE_DEMAND(pre_task.rows() == task_gen.dim());
+      previous_task[i] = pre_task;
     }
-    // print
-    /*for (int i = 0; i < N_sample; i++) {
-      cout << previous_ground_incline(i) << ", ";
-    }
-    cout << endl;
-    for (int i = 0; i < N_sample; i++) {
-      cout << previous_stride_length(i) << ", ";
-    }
-    cout << endl;*/
   }
+  SaveStringVecToCsv(task_gen.names(), dir + string("task_names.csv"));
 
   // Parameters for the outer loop optimization
   cout << "\nOptimization setting (outer loop):\n";
@@ -1730,7 +1544,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
       }
     }
   }
-  double eps_regularization = FLAGS_eps_regularization;
   double indpt_row_tol = 1e-6;//1e-6
   bool is_newton = FLAGS_is_newton;
   bool is_stochastic = FLAGS_is_stochastic;
@@ -1796,10 +1609,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   is_stochastic ? cout << "Stochastic\n" : cout << "Non-stochastic\n";
   cout << "Step size = " << h_step << endl;
   cout << "beta_momentum = " << beta_momentum << endl;
-  cout << "eps_regularization = " << eps_regularization << endl;
-  cout << "is_add_tau_in_cost = " << FLAGS_is_add_tau_in_cost << endl;
-  FLAGS_is_zero_touchdown_impact ? cout << "Zero touchdown impact\n" :
-                                        cout << "Non-zero touchdown impact\n";
   cout << "# of re-run in each iteration = " << N_rerun << endl;
   cout << "Failure rate threshold before seeing a all-success iteration = "
        << FLAGS_fail_threshold << endl;
@@ -1873,45 +1682,73 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double R = 0;  // Cost on input effort
   double all_cost_scale = 1;
   setCostWeight(&Q, &R, &all_cost_scale, FLAGS_robot_option);
-  int n_node = 20;
-  if (FLAGS_robot_option == 0) {
-    n_node = 20;
-  } else if (FLAGS_robot_option == 1) {
-    n_node = 20;
-  }
-  if (FLAGS_n_node > 0) n_node = FLAGS_n_node;
   cout << "\nOptimization setting (inner loop):\n";
   cout << "max_inner_iter = " << max_inner_iter << endl;
-  cout << "major_optimality_tolerance = " << FLAGS_major_feasibility_tol << endl;
+  cout << "major_optimality_tolerance = " << FLAGS_major_optimality_tol << endl;
   cout << "major_feasibility_tolerance = " << FLAGS_major_feasibility_tol << endl;
-  cout << "n_node = " << n_node << endl;
-  if (FLAGS_robot_option == 1) {
-    // If the node density is too low, it's harder for SNOPT to converge well.
-    // The ratio of distance per nodes = 0.2/16 is fine for snopt, but
-    // 0.3 / 16 is too high.
-    // However, currently it takes too much time to compute with many nodes, so
-    // we try 0.3/24.
-    double max_distance_per_node = 0.3 / 16;
-    //comment the line for cassie with large stride length if necessary
-//    DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
+  cout << "use SNOPT built-in scaling? " << FLAGS_snopt_scaling << endl;
+  cout << "Fix number of nodes in traj opt? " << FLAGS_fix_node_number << endl;
+  if (!FLAGS_fix_node_number)
+    cout << "node_density = " << FLAGS_node_density << endl;
+  // Inner loop setup
+  cout << "n_node for each sample = \n";
+  vector<int> n_node_vec(N_sample, 20);
+  if (!FLAGS_fix_node_number) {
+    for (int sample_idx = 0; sample_idx < N_sample; sample_idx++) {
+      task.set(task_gen.NewTask(sample_idx, true));
+      double duration = task.get("stride length") / task.get("velocity");
+      n_node_vec[sample_idx] = int(FLAGS_node_density * duration);
+      cout << n_node_vec[sample_idx] << ", ";
+    } cout << endl;
+    cout << "WARNING: we will only add adjacent samples to the list if it has "
+            "the same number of nodes\n";
   }
+  cout << "eps_regularization = " << FLAGS_eps_regularization << endl;
+  cout << "is_add_tau_in_cost = " << FLAGS_is_add_tau_in_cost << endl;
+  FLAGS_is_zero_touchdown_impact ? cout << "Zero touchdown impact\n"
+                                 : cout << "Non-zero touchdown impact\n";
+  InnerLoopSetting inner_loop_setting = InnerLoopSetting();
+  inner_loop_setting.Q_double = Q;
+  inner_loop_setting.R_double = R;
+  inner_loop_setting.eps_reg = FLAGS_eps_regularization;
+  inner_loop_setting.all_cost_scale = all_cost_scale;
+  inner_loop_setting.is_add_tau_in_cost = FLAGS_is_add_tau_in_cost;
+  inner_loop_setting.is_zero_touchdown_impact = FLAGS_is_zero_touchdown_impact;
+  inner_loop_setting.max_iter = max_inner_iter;
+  inner_loop_setting.major_optimality_tol = FLAGS_major_optimality_tol;
+  inner_loop_setting.major_feasibility_tol = FLAGS_major_feasibility_tol;
+  inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
+  inner_loop_setting.directory = dir;
 
   // Reduced order model parameters
+  // TODO: currently you can just create a class RomParameters to reduced the
+  //  argument size of some functions in the code
+  // TODO: later you can also create a ROM class.
+  //  .
+  //  virtual class MappingFunctionParametrization
+  //  derived class CassieMapping
+  //  derived class FiveLinkRobotMapping
+  //  .
+  //  virtual class ROM(MappingFunctionParametrization)
+  //  derived class 2dLip
+  //  derived class 2dLipWithSwingFoot
+  //  .
+  //  The ROM class takes in MappingFunctionParametrization and the derived
+  //  class has its own dynamics parametrization
   cout << "\nReduced-order model setting:\n";
   cout << "Warning: Need to make sure that the implementation in "
-       "DynamicsExpression agrees with n_s and n_tau.\n";
-  int rom_option = (FLAGS_rom_option >= 0) ? FLAGS_rom_option : 0;
-  int n_s = 0;
+       "DynamicsExpression agrees with n_y and n_tau.\n";
+  int n_y = 0;
   int n_tau = 0;
-  setRomDim(&n_s, &n_tau, rom_option);
-  int n_sDDot = n_s; // Assume that are the same (no quaternion)
-  MatrixXd B_tau = MatrixXd::Zero(n_sDDot, n_tau);
-  setRomBMatrix(&B_tau, rom_option);
-  cout << "n_s = " << n_s << ", n_tau = " << n_tau << endl;
+  setRomDim(&n_y, &n_tau, FLAGS_rom_option);
+  int n_yddot = n_y; // Assume that are the same (no quaternion)
+  MatrixXd B_tau = MatrixXd::Zero(n_yddot, n_tau);
+  setRomBMatrix(&B_tau, FLAGS_rom_option);
+  cout << "n_y = " << n_y << ", n_tau = " << n_tau << endl;
   cout << "B_tau = \n" << B_tau << endl;
   writeCSV(dir + string("B_tau.csv"), B_tau);
-  cout << "rom_option = " << rom_option << " ";
-  switch (rom_option) {
+  cout << "rom_option = " << FLAGS_rom_option << " ";
+  switch (FLAGS_rom_option) {
     case 0: cout << "(2D -- lipm)\n";
       break;
     case 1: cout << "(4D -- lipm + swing foot)\n";
@@ -1921,7 +1758,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     case 3: cout << "(3D -- fix com vertical acceleration + swing foot)\n";
       break;
   }
-  cout << "Make sure that n_s and B_tau are correct.\n";
+  cout << "Make sure that n_y and B_tau are correct.\n";
   if (!FLAGS_turn_off_cin) {
     cout <<"Proceed? (Y/N)\n";
     char answer[1];
@@ -1935,25 +1772,23 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   // Reduced order model setup
-  KinematicsExpression<double> kin_expression(n_s, 0, &plant, FLAGS_robot_option);
-  DynamicsExpression dyn_expression(n_sDDot, 0, rom_option, FLAGS_robot_option);
+  KinematicsExpression<double> kin_expression(n_y, 0, &plant, FLAGS_robot_option);
+  DynamicsExpression dyn_expression(n_yddot, 0, FLAGS_rom_option, FLAGS_robot_option);
   VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
-  VectorXd dummy_s = VectorXd::Ones(n_s);
-  int n_feature_s = kin_expression.getFeature(dummy_q).size();
-  int n_feature_sDDot =
+  VectorXd dummy_s = VectorXd::Ones(n_y);
+  int n_feature_y = kin_expression.getFeature(dummy_q).size();
+  int n_feature_yddot =
     dyn_expression.getFeature(dummy_s, dummy_s).size();
-  cout << "n_feature_s = " << n_feature_s << endl;
-  cout << "n_feature_sDDot = " << n_feature_sDDot << endl;
-  int n_theta_s = n_s * n_feature_s;
-  int n_theta_sDDot = n_sDDot * n_feature_sDDot;
-  VectorXd theta_s(n_theta_s);
-  VectorXd theta_sDDot(n_theta_sDDot);
+  cout << "n_feature_y = " << n_feature_y << endl;
+  cout << "n_feature_yddot = " << n_feature_yddot << endl;
+  int n_theta_y = n_y * n_feature_y;
+  int n_theta_yddot = n_yddot * n_feature_yddot;
 
   // Initial guess of theta
-  theta_s = VectorXd::Zero(n_theta_s);
-  theta_sDDot = VectorXd::Zero(n_theta_sDDot);
+  VectorXd theta_y = VectorXd::Zero(n_theta_y);
+  VectorXd theta_yddot = VectorXd::Zero(n_theta_yddot);
   if (iter_start == 0) {
-    setInitialTheta(theta_s, theta_sDDot, n_feature_s, rom_option);
+    setInitialTheta(theta_y, theta_yddot, n_feature_y, FLAGS_rom_option);
     cout << "Make sure that you use the right initial theta.\n";
     if (!FLAGS_turn_off_cin) {
       cout << "Proceed? (Y/N)\n";
@@ -1968,60 +1803,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
   }
   else {
-    if (!FLAGS_is_manual_initial_theta) {
-      theta_s = readCSV(dir + to_string(iter_start) +
-                        string("_theta_s.csv")).col(0);
-      theta_sDDot = readCSV(dir + to_string(iter_start) +
-                            string("_theta_sDDot.csv")).col(0);
-    }
-    else {
-      MatrixXd theta_s_0_mat =
-        readCSV(dir + string("theta_s_0.csv"));
-      MatrixXd theta_sDDot_0_mat =
-        readCSV(dir + string("theta_sDDot_0.csv"));
-      theta_s.head(theta_s_0_mat.rows()) = theta_s_0_mat.col(0);
-      theta_sDDot.head(theta_sDDot_0_mat.rows()) = theta_sDDot_0_mat.col(0);
-    }
+    theta_y = readCSV(dir + to_string(iter_start) +
+        string("_theta_y.csv")).col(0);
+    theta_yddot = readCSV(dir + to_string(iter_start) +
+        string("_theta_yddot.csv")).col(0);
   }
+  RomData rom = RomData(n_y, n_tau, n_feature_y, n_feature_yddot, B_tau,
+                        theta_y, theta_yddot);
 
   // Vectors/Matrices for the outer loop
-  vector<std::shared_ptr<VectorXd>> w_sol_vec(N_sample);
-  vector<std::shared_ptr<MatrixXd>> H_vec(N_sample);
-  vector<std::shared_ptr<VectorXd>> b_vec(N_sample);
-  vector<std::shared_ptr<VectorXd>> c_vec(N_sample);
-  vector<std::shared_ptr<MatrixXd>> A_vec(N_sample);
-  vector<std::shared_ptr<MatrixXd>> A_active_vec(N_sample);
-  vector<std::shared_ptr<VectorXd>> lb_vec(N_sample);
-  vector<std::shared_ptr<VectorXd>> ub_vec(N_sample);
-  vector<std::shared_ptr<VectorXd>> y_vec(N_sample);
-  vector<std::shared_ptr<MatrixXd>> B_vec(N_sample);
-  vector<std::shared_ptr<MatrixXd>> B_active_vec(N_sample);
-  vector<std::shared_ptr<int>> is_success_vec(N_sample);
-  for (int i = 0; i < N_sample; i++) {
-    w_sol_vec[i] = std::make_shared<VectorXd>();
-    H_vec[i] = std::make_shared<MatrixXd>();
-    b_vec[i] = std::make_shared<VectorXd>();
-    c_vec[i] = std::make_shared<VectorXd>();
-    A_vec[i] = std::make_shared<MatrixXd>();
-    A_active_vec[i] = std::make_shared<MatrixXd>();
-    lb_vec[i] = std::make_shared<VectorXd>();
-    ub_vec[i] = std::make_shared<VectorXd>();
-    y_vec[i] = std::make_shared<VectorXd>();
-    B_vec[i] = std::make_shared<MatrixXd>();
-    B_active_vec[i] = std::make_shared<MatrixXd>();
-    is_success_vec[i] = std::make_shared<int>();
-  }
-  // Vectors/Matrices for the outer loop (when cost descent is successful)
-  vector<std::shared_ptr<int>> nw_vec(N_sample);  // size of traj opt dec var
-  vector<std::shared_ptr<int>> nl_vec(N_sample);  // # of active constraints
-  vector<std::shared_ptr<MatrixXd>> P_vec(N_sample);  // w = P_i * theta + q_i
-  vector<std::shared_ptr<VectorXd>> q_vec(N_sample);
-  for (int i = 0; i < N_sample; i++) {
-    nw_vec[i] = std::make_shared<int>();
-    nl_vec[i] = std::make_shared<int>();
-    P_vec[i] = std::make_shared<MatrixXd>();
-    q_vec[i] = std::make_shared<VectorXd>();
-  }
+  SubQpData QPs(N_sample);
 
   // Multithreading setup
   cout << "\nMultithreading settings:\n";
@@ -2034,15 +1825,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
   for (int i = 0; i < N_sample; i++) {
     thread_finished_vec[i] = std::make_shared<int>(0);
   }
-  cout << "thread_finished_vec = ";
-  for (auto member : thread_finished_vec) {
-    cout << *member << ", ";
-  } cout << endl;
 
   // Some setup
   cout << "\nOther settings:\n";
   cout << "is_debug? " << FLAGS_is_debug << endl;
-  cout << "is_manual_initial_theta = " << FLAGS_is_manual_initial_theta << endl;
   double ave_min_cost_so_far = std::numeric_limits<double>::infinity();
   std::vector<double> each_min_cost_so_far(
       N_sample, std::numeric_limits<double>::infinity());
@@ -2078,16 +1864,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
     cout << "ave_min_cost_so_far = " << ave_min_cost_so_far << endl;
   }
-  // Task indices setup
-  std::map<int, std::tuple<int, int, int>> forward_task_idx_map;
-  std::map<std::tuple<int, int, int>, int> inverse_task_idx_map;
-  ConstructTaskIdxMap(&forward_task_idx_map, &inverse_task_idx_map, N_sample_sl,
-                      N_sample_gi, N_sample_tr);
 
   // Some setup
-  int n_theta = n_theta_s + n_theta_sDDot;
-  VectorXd theta(n_theta);
-  theta << theta_s, theta_sDDot;
   bool rerun_current_iteration = FLAGS_start_current_iter_as_rerun;
   bool has_been_all_success = iter_start > 1;
   if ((FLAGS_start_current_iter_as_rerun && (iter_start >= 1)) ||
@@ -2110,7 +1888,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   VectorXd step_direction;
   VectorXd prev_step_direction =
-      VectorXd::Zero(n_theta);  // must initialize this because of momentum term
+      VectorXd::Zero(rom.n_theta());  // must initialize this because of momentum term
   if (iter_start > 1) {
     cout << "Reading previous step direction... (will get memory issue if the "
             "file doesn't exist)\n";
@@ -2129,13 +1907,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
                                      string("_step_size.csv"))(0, 0);
   }
 
-  VectorXd prev_theta = theta;
+  VectorXd prev_theta = rom.theta();
   if (iter_start > 1) {
-    MatrixXd prev_theta_s_mat =
-      readCSV(dir + to_string(iter_start - 1) + string("_theta_s.csv"));
-    MatrixXd prev_theta_sDDot_mat =
-      readCSV(dir + to_string(iter_start - 1) + string("_theta_sDDot.csv"));
-    prev_theta << prev_theta_s_mat.col(0), prev_theta_sDDot_mat.col(0);
+    MatrixXd prev_theta_y_mat =
+      readCSV(dir + to_string(iter_start - 1) + string("_theta_y.csv"));
+    MatrixXd prev_theta_yddot_mat =
+      readCSV(dir + to_string(iter_start - 1) + string("_theta_yddot.csv"));
+    prev_theta << prev_theta_y_mat.col(0), prev_theta_yddot_mat.col(0);
   }
 
   bool start_iterations_with_shrinking_stepsize =
@@ -2161,8 +1939,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
          " by ";
     VectorXd theta_s_append = readCSV(dir +
                                       string("theta_s_append.csv")).col(0);
-    DRAKE_DEMAND(theta_s_append.rows() % n_feature_s == 0);
-    int n_extend = theta_s_append.rows() / n_feature_s;
+    DRAKE_DEMAND(theta_s_append.rows() % n_feature_y == 0);
+    int n_extend = theta_s_append.rows() / n_feature_y;
     cout << n_extend << " dimension.\n";
 
     cout << "Make sure that you include both old and new version of dynamics "
@@ -2181,12 +1959,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   // Setup for getting good solution from adjacent samples
-  int task_dim =
-      int(N_sample_sl > 1) + int(N_sample_gi > 1) + int(N_sample_tr > 1);
   const MatrixXi adjacent_sample_indices =
-      GetAdjSampleIndices(N_sample_sl, N_sample_gi, N_sample_tr, N_sample,
-                          task_dim, inverse_task_idx_map);
-  cout << "dimension of the task space = " << task_dim << endl;
+      GetAdjSampleIndices(task_gen, n_node_vec);
   cout << "adjacent_sample_indices = \n" << adjacent_sample_indices << endl;
 
   cout << "\nStart iterating...\n";
@@ -2211,15 +1985,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
       cout << "************ Iteration " << iter << " ("
            << n_shrink_step << "-time step size shrinking) *************" << endl;
       if (iter != 0) {
-        cout << "theta_sDDot.head(6) = " << theta_sDDot.head(6).transpose() << endl;
+        cout << "theta_yddot.head(6) = " << rom.theta_yddot().head(6).transpose() << endl;
       }
     }
 
     // store initial parameter values
     prefix = to_string(iter) +  "_";
     if (!is_get_nominal || !FLAGS_is_debug) {
-      writeCSV(dir + prefix + string("theta_s.csv"), theta_s);
-      writeCSV(dir + prefix + string("theta_sDDot.csv"), theta_sDDot);
+      writeCSV(dir + prefix + string("theta_y.csv"), rom.theta_y());
+      writeCSV(dir + prefix + string("theta_yddot.csv"), rom.theta_yddot());
     }
 
     // setup for each iteration
@@ -2228,10 +2002,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
                                   !has_visit_this_iter_for_model_extension;
     if (iter == extend_model_iter)
       has_visit_this_iter_for_model_extension = true;
+    if (extend_model_this_iter) {
+      cout << "WILL EXTEND MODEL IN THIS ITERATION\n";
+    }
 
     // reset is_success_vec before trajectory optimization
     for (int i = 0; i < N_sample; i++) {
-      *(is_success_vec[i]) = 0;
+      *(QPs.is_success_vec[i]) = 0;
     }
 
     // Run trajectory optimization for different tasks first
@@ -2242,8 +2019,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // skip the sample evaluation
     } else {
       // Print message
-      cout << "sample# (rerun #) | stride | incline | turning | init_file | "
-              "Status | Solve time | Cost (tau cost)\n";
+      cout << "sample# (rerun #)";
+      for (auto& mem : task_gen.names()) {
+        cout << " | " << mem;
+      }
+      cout << " | init_file | Status | Solve time | Cost (tau cost)\n";
 
       // Create vector of threads for multithreading
       vector<std::thread*> threads(std::min(CORES, N_sample));
@@ -2272,9 +2052,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
       //  std::vector<std::shared_ptr<std::vector<int>>>
       //  so the code is cleaner.
       MatrixXi sample_idx_waiting_to_help =
-          -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
+          -1 * MatrixXi::Ones(N_sample, 2 * task_gen.dim());
       MatrixXi sample_idx_that_helped =
-          -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
+          -1 * MatrixXi::Ones(N_sample, 2 * task_gen.dim());
       std::vector<double> local_each_min_cost_so_far = each_min_cost_so_far;
 
       // Set up for deciding if we should update the solution
@@ -2308,54 +2088,23 @@ int findGoldilocksModels(int argc, char* argv[]) {
           bool current_sample_is_a_rerun =
               rerun_current_iteration || (n_rerun[sample_idx] > 0);
 
-          // setup for each sample
-          double stride_length =
-              stride_length_0 + delta_stride_length_vec[std::get<0>(
-                                    forward_task_idx_map.at(sample_idx))];
-          double ground_incline =
-              ground_incline_0 + delta_ground_incline_vec[std::get<1>(
-                                     forward_task_idx_map.at(sample_idx))];
-          double turning_rate =
-              turning_rate_0 + delta_turning_rate_vec[std::get<2>(
-                                   forward_task_idx_map.at(sample_idx))];
-          if (!is_get_nominal && is_stochastic) {
-              if (uniform_grid) {
-                  if (FLAGS_N_sample_sl > 0) {
-                      stride_length += dist_sl(e1);
-                  }
-                  if (FLAGS_N_sample_gi > 0) {
-                      ground_incline += dist_gi(e2);
-                  }
-                  if (FLAGS_N_sample_tr > 0) {
-                      turning_rate += dist_tr(e3);
-                  }
-              } else {
-                  stride_length = dist_sl_large_range(e1);
-                  ground_incline = dist_gi_large_range(e2);
-                  turning_rate = dist_tr_large_range(e3);
-              }
-          }
+          // Prefix for the file name
+          prefix = to_string(iter) +  "_" + to_string(sample_idx) + "_";
 
-          // Store the tasks or overwrite it with previous tasks
+          // Generate a new task or use the same task if this is a rerun
           // (You need step_size_shrinked_last_loop because you might start the
           // program with shrinking step size)
           if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
-            stride_length = previous_stride_length(sample_idx);
-            ground_incline = previous_ground_incline(sample_idx);
-            turning_rate = previous_turning_rate(sample_idx);
+            task.set(CopyVectorXdToStdVector(previous_task[sample_idx]));
           } else {
-            previous_stride_length(sample_idx) = stride_length;
-            previous_ground_incline(sample_idx) = ground_incline;
-            previous_turning_rate(sample_idx) = turning_rate;
+            task.set(task_gen.NewTask(sample_idx, is_get_nominal));
+            // Map std::vector to VectorXd and create a copy of VectorXd
+            Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
+                task.get().data(), task.get().size());
+            previous_task[sample_idx] = task_vectorxd;
+            // Store task in files
+            writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
           }
-          // Store tasks in files so we can use it in visualization
-          prefix = to_string(iter) +  "_" + to_string(sample_idx) + "_";
-          writeCSV(dir + prefix + string("stride_length.csv"),
-                   stride_length * MatrixXd::Ones(1, 1));
-          writeCSV(dir + prefix + string("ground_incline.csv"),
-                   ground_incline * MatrixXd::Ones(1, 1));
-          writeCSV(dir + prefix + string("turning_rate.csv"),
-                   turning_rate * MatrixXd::Ones(1, 1));
 
           // (Feature -- get initial guess from adjacent successful samples)
           // If the current sample already finished N_rerun, then it means that
@@ -2369,7 +2118,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               } cout << endl;
               GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
                                 sample_idx_that_helped, sample_idx_to_help,
-                                task_dim);
+                                task_gen.dim_nondeg());
             }
           }
 
@@ -2390,39 +2139,26 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // TODO: tighten tolerance at the last rerun for getting better
           //  solution?
 
+          // Some inner loop setting
+          inner_loop_setting.n_node = n_node_vec[sample_idx];
+          inner_loop_setting.max_iter = max_inner_iter_pass_in;
+          inner_loop_setting.prefix = prefix;
+          inner_loop_setting.init_file = init_file_pass_in;
+
           // Trajectory optimization with fixed model parameters
-          //string string_to_be_print = "Adding sample #" + to_string(sample_idx) +
-          //  " to thread #" + to_string(available_thread_idx.front()) + "...\n";
+          // string string_to_be_print = "Adding sample #" +
+          // to_string(sample_idx) +
+          //  " to thread #" + to_string(available_thread_idx.front()) +
+          //  "...\n";
           // cout << string_to_be_print;
-          threads[available_thread_idx.front()] = new std::thread(trajOptGivenWeights,
-              std::ref(plant), std::ref(plant_autoDiff),
-              n_s, n_sDDot, n_tau,
-              n_feature_s, n_feature_sDDot, std::ref(B_tau),
-              std::ref(theta_s), std::ref(theta_sDDot),
-              stride_length, ground_incline, turning_rate,
-              duration, n_node, max_inner_iter_pass_in,
-              FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
-              std::ref(dir), init_file_pass_in, prefix,
-              std::ref(w_sol_vec),
-              std::ref(A_vec),
-              std::ref(H_vec),
-              std::ref(y_vec),
-              std::ref(lb_vec),
-              std::ref(ub_vec),
-              std::ref(b_vec),
-              std::ref(c_vec),
-              std::ref(B_vec),
-              std::ref(is_success_vec),
-              std::ref(thread_finished_vec),
-              Q, R, all_cost_scale,
-              eps_regularization,
+          threads[available_thread_idx.front()] = new std::thread(
+              trajOptGivenWeights, std::ref(plant), std::ref(plant_autoDiff),
+              std::ref(rom),
+              inner_loop_setting, task,
+              std::ref(QPs), std::ref(thread_finished_vec),
               is_get_nominal,
-              FLAGS_is_zero_touchdown_impact,
-              extend_model_this_iter,
-              FLAGS_is_add_tau_in_cost,
-              sample_idx, n_rerun[sample_idx],
-              cost_threshold_for_update[sample_idx], N_rerun,
-              rom_option,
+              extend_model_this_iter, sample_idx, n_rerun[sample_idx],
+              cost_threshold_for_update[sample_idx], N_rerun, FLAGS_rom_option,
               FLAGS_robot_option);
           //string_to_be_print = "Finished adding sample #" + to_string(sample_idx) +
           //  " to thread # " + to_string(available_thread_idx.front()) + ".\n";
@@ -2477,7 +2213,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
           }
 
           // Get good initial guess from adjacent samples's solution
-          if (get_good_sol_from_adjacent_sample) {
+          // (we dont' get help from adjacent samples when extending model,
+          // because the length of decision variable is not the same)
+          if (get_good_sol_from_adjacent_sample && !extend_model_this_iter) {
             if (n_rerun[sample_idx] >= N_rerun) {
               RecordSolutionQualityAndQueueList(
                   dir, prefix, sample_idx, assigned_thread_idx,
@@ -2485,8 +2223,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   max_cost_increase_rate_before_ask_for_help,
                   max_adj_cost_diff_rate_before_ask_for_help,
                   is_limit_difference_of_two_adjacent_costs, sample_success,
-                  current_sample_is_queued, task_dim, n_rerun, N_rerun,
-                  local_each_min_cost_so_far, is_good_solution,
+                  current_sample_is_queued, task_gen.dim_nondeg(), n_rerun,
+                  N_rerun, local_each_min_cost_so_far, is_good_solution,
                   sample_idx_waiting_to_help, sample_idx_that_helped,
                   awaiting_sample_idx);
             }
@@ -2584,13 +2322,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
       }
     } else if (extend_model_this_iter) {  // Extend the model
       cout << "Start extending model...\n";
-      extendModel(dir, iter, n_feature_s,
-                  n_s, n_sDDot, n_tau,
-                  n_feature_sDDot,
-                  n_theta_s, n_theta_sDDot, n_theta,
-                  B_tau, theta_s, theta_sDDot, theta,
-                  prev_theta, step_direction, prev_step_direction, ave_min_cost_so_far,
-                  rom_option, FLAGS_robot_option);
+      extendModel(dir, iter, rom, prev_theta, step_direction,
+                  prev_step_direction, ave_min_cost_so_far, FLAGS_rom_option,
+                  FLAGS_robot_option);
 
       // So that we can re-run the current iter
       cout << "Reset \"has_been_all_success\" to false, in case the next iter "
@@ -2615,11 +2349,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
              ". Redo this iteration.\n\n";
 
         // Descent
-        theta = prev_theta + current_iter_step_size * step_direction;
-
-        // Assign theta_s and theta_sDDot
-        theta_s = theta.head(n_theta_s);
-        theta_sDDot = theta.tail(n_theta_sDDot);
+        rom.SetTheta(prev_theta + current_iter_step_size * step_direction);
 
         n_shrink_step++;
       }
@@ -2652,8 +2382,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Construct an index list for the successful sample
       std::vector<int> successful_idx_list;
-      for (uint i = 0; i < is_success_vec.size(); i++) {
-        if ((*(is_success_vec[i])) == 1) {
+      for (uint i = 0; i < QPs.is_success_vec.size(); i++) {
+        if ((*(QPs.is_success_vec[i])) == 1) {
           successful_idx_list.push_back(i);
         }
       }
@@ -2667,7 +2397,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Calculate the total cost of the successful samples
       double total_cost = 0;
       for (auto idx : successful_idx_list) {
-        total_cost += (*(c_vec[idx]))(0) / n_succ_sample;
+        total_cost += (*(QPs.c_vec[idx]))(0) / n_succ_sample;
       }
       if (total_cost <= ave_min_cost_so_far) ave_min_cost_so_far = total_cost;
 
@@ -2678,8 +2408,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       // Update each cost when all samples are successful
       if (all_samples_are_success) {
         for (int idx = 0; idx < N_sample; idx++) {
-          if ((*(c_vec[idx]))(0) < each_min_cost_so_far[idx]) {
-            each_min_cost_so_far[idx] = (*(c_vec[idx]))(0);
+          if ((*(QPs.c_vec[idx]))(0) < each_min_cost_so_far[idx]) {
+            each_min_cost_so_far[idx] = (*(QPs.c_vec[idx]))(0);
           }
         }
       }
@@ -2719,18 +2449,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
             max_sample_cost_increase_rate *
             (1 + std::floor(n_shrink_step /
                             (double)n_shrink_before_relaxing_tolerance));
-        DRAKE_DEMAND(c_vec.size() == each_min_cost_so_far.size());
+        DRAKE_DEMAND(QPs.c_vec.size() == each_min_cost_so_far.size());
         bool exit_current_iter_to_shrink_step_size = false;
         for (auto idx : successful_idx_list) {
           // print
-          if ((*(c_vec[idx]))(0) > each_min_cost_so_far[idx]) {
+          if ((*(QPs.c_vec[idx]))(0) > each_min_cost_so_far[idx]) {
             cout << "Cost #" << idx << " went up by "
-                 << ((*(c_vec[idx]))(0) - each_min_cost_so_far[idx]) /
+                 << ((*(QPs.c_vec[idx]))(0) - each_min_cost_so_far[idx]) /
                         each_min_cost_so_far[idx] * 100
                  << "%.\n";
           }
           // If cost goes up, we restart the iteration and shrink the step size.
-          if ((*(c_vec[idx]))(0) >
+          if ((*(QPs.c_vec[idx]))(0) >
               (1 + tol_sample_cost) * each_min_cost_so_far[idx]) {
             cout << "The cost went up too much (over " << tol_sample_cost * 100
                  << "%). Shrink the step size.\n\n";
@@ -2763,12 +2493,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
                 extractActiveAndIndependentRows,
                 successful_idx_list[idx_of_idx_list],
                 FLAGS_major_feasibility_tol, indpt_row_tol, dir,
-                std::ref(B_vec), std::ref(A_vec), std::ref(H_vec),
-                std::ref(b_vec), std::ref(lb_vec), std::ref(ub_vec),
-                std::ref(y_vec), std::ref(w_sol_vec),
-                method_to_solve_system_of_equations,
-                std::ref(nw_vec),std::ref(nl_vec),
-                std::ref(A_active_vec),std::ref(B_active_vec));
+                std::ref(QPs),
+                method_to_solve_system_of_equations);
             thread_idx++;
           }
           thread_idx = 0;
@@ -2838,10 +2564,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                idx_of_idx_list < temp_end_of_idx_list; idx_of_idx_list++) {
             threads[thread_idx] = new std::thread(
                 calcWInTermsOfTheta, successful_idx_list[idx_of_idx_list], dir,
-                std::ref(nl_vec), std::ref(nw_vec), std::ref(A_active_vec),
-                std::ref(B_active_vec), std::ref(H_vec), std::ref(b_vec),
-                method_to_solve_system_of_equations,
-                std::ref(P_vec), std::ref(q_vec));
+                QPs, method_to_solve_system_of_equations);
             thread_idx++;
           }
           thread_idx = 0;
@@ -2868,17 +2591,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Get gradient of the cost wrt theta and the norm of the gradient
       // Assumption: H_vec[sample] are symmetric
-      VectorXd gradient_cost(n_theta);
+      VectorXd gradient_cost(rom.n_theta());
       double norm_grad_cost;
-      CalcCostGradientAndNorm(successful_idx_list, P_vec, q_vec, b_vec, dir,
-                              prefix, &gradient_cost, &norm_grad_cost);
+      CalcCostGradientAndNorm(successful_idx_list, QPs.P_vec, QPs.q_vec,
+                              QPs.b_vec, dir, prefix, &gradient_cost,
+                              &norm_grad_cost);
 
       // Calculate Newton step and the decrement
-      VectorXd newton_step(n_theta);
+      VectorXd newton_step(rom.n_theta());
       double lambda_square;
-      CalcNewtonStepAndNewtonDecrement(n_theta, successful_idx_list, P_vec,
-                                       H_vec, gradient_cost, dir, prefix,
-                                       &newton_step, &lambda_square);
+      CalcNewtonStepAndNewtonDecrement(rom.n_theta(), successful_idx_list,
+                                       QPs.P_vec, QPs.H_vec, gradient_cost, dir,
+                                       prefix, &newton_step, &lambda_square);
 
       // Check optimality
       if (HasAchievedOptimum(is_newton, stopping_threshold, lambda_square,
@@ -2897,12 +2621,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
                            &current_iter_step_size);
 
       // Gradient descent
-      prev_theta = theta;
-      theta = theta + current_iter_step_size * step_direction;
-
-      // Assign theta_s and theta_sDDot
-      theta_s = theta.head(n_theta_s);
-      theta_sDDot = theta.tail(n_theta_sDDot);
+      prev_theta = rom.theta();
+      rom.SetTheta(rom.theta() + current_iter_step_size * step_direction);
 
       // For message printed to the terminal
       n_shrink_step = 0;
@@ -2920,8 +2640,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   prefix = to_string(iter + 1) +  "_";
   if (!FLAGS_is_debug) {
-      writeCSV(dir + prefix + string("theta_s.csv"), theta_s);
-      writeCSV(dir + prefix + string("theta_sDDot.csv"), theta_sDDot);
+    writeCSV(dir + prefix + string("theta_y.csv"), rom.theta_y());
+    writeCSV(dir + prefix + string("theta_yddot.csv"), rom.theta_yddot());
   }
 
   return 0;

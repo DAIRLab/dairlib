@@ -33,6 +33,7 @@
 
 #include "examples/goldilocks_models/find_models/kinematics_constraint.h"
 #include "examples/goldilocks_models/find_models/dynamics_constraint.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
 
 using std::cout;
 using std::endl;
@@ -74,9 +75,7 @@ using systems::SubvectorPassThrough;
 class GoldilocksModelTrajOpt {
  public:
   GoldilocksModelTrajOpt(
-      int n_s, int n_sDDot, int n_tau, int n_feature_s, int n_feature_sDDot,
-      MatrixXd B_tau,
-      const VectorXd & theta_s, const VectorXd & theta_sDDot,
+      const RomData& rom,
       std::unique_ptr<HybridDircon<double>> dircon_in,
       const MultibodyPlant<AutoDiffXd> * plant,
       const MultibodyPlant<double> * plant_double,
@@ -111,13 +110,6 @@ class GoldilocksModelTrajOpt {
 
  private:
   int num_knots_;
-  int n_s_;
-  int n_sDDot_;
-  int n_tau_;
-  int n_feature_s_;
-  int n_feature_sDDot_;
-  VectorXd theta_s_;
-  VectorXd theta_sDDot_;
   // VectorXDecisionVariable s_vars_;
   VectorXDecisionVariable tau_vars_;
 

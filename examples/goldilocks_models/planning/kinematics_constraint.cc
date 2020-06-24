@@ -53,7 +53,7 @@ void KinematicsConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& yx,
   AutoDiffVecXd h = kin_expression_.getExpression(theta_kin_, q);
 
   // Way 1: numerically by autodiff ////////////////////////////////////////////
-  /*VectorXd dhdt0 = autoDiffToGradientMatrix(h).block(0, n_y_, n_r_, n_q_) *
+  VectorXd dhdt0 = autoDiffToGradientMatrix(h).block(0, n_y_, n_r_, n_q_) *
                    DiscardGradient(v);
   MatrixXd grad_dhdt = MatrixXd::Zero(n_r_, n_y_ + n_x_);
   for (int i = n_y_; i < n_y_ + n_q_; i++) {
@@ -70,11 +70,11 @@ void KinematicsConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& yx,
 
   AutoDiffVecXd dhdt = initializeAutoDiff(dhdt0);
   drake::math::initializeAutoDiffGivenGradientMatrix(
-    dhdt0, grad_dhdt, dhdt);*/
+    dhdt0, grad_dhdt, dhdt);
 
   // Way 2: analytically by hand ///////////////////////////////////////////////
-  AutoDiffVecXd dhdt_analytic = kin_expression_.getExpressionDot(
-                                  theta_kin_, q, v);
+  // AutoDiffVecXd dhdt_analytic = kin_expression_.getExpressionDot(
+  //                                 theta_kin_, q, v);
 
   // Comparison ////////////////////////////////////////////////////////////////
   // AutoDiffVecXd difference_dr = dhdt0.transpose() - dhdt_analytic.transpose();
@@ -102,7 +102,7 @@ void KinematicsConstraint::DoEval(const Eigen::Ref<const AutoDiffVecXd>& yx,
 
   VectorX<AutoDiffXd> output(n_y_);
   output << r - h,
-         dr - dhdt_analytic;
+         dr - dhdt;
 
   // Impose dynamics constraint
   *value = output;

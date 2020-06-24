@@ -19,6 +19,8 @@ using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
 
+using drake::multibody::JacobianWrtVariable;
+using drake::multibody::MultibodyPlant;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 
@@ -26,35 +28,31 @@ namespace dairlib {
 namespace systems {
 
 LIPMTrajGenerator::LIPMTrajGenerator(
-    const RigidBodyTree<double>& tree, double desired_com_height,
+    const MultibodyPlant<double>& plant, double desired_com_height,
     const vector<int>& unordered_fsm_states,
     const vector<double>& unordered_state_durations,
-    const vector<vector<int>>& body_indices,
-    const vector<vector<Eigen::Vector3d>>& pts_on_bodies,
-    const vector<int>& constant_height_states)
-    : tree_(tree),
+    const vector<vector<std::pair<
+        const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
+        contact_points_in_each_state)
+    : plant_(plant),
       desired_com_height_(desired_com_height),
       unordered_fsm_states_(unordered_fsm_states),
       unordered_state_durations_(unordered_state_durations),
-      body_indices_(body_indices),
-      pts_on_bodies_(pts_on_bodies),
-      constant_height_states_(constant_height_states) {
+      contact_points_in_each_state_(contact_points_in_each_state),
+      world_(plant_.world_frame()) {
   this->set_name("lipm_traj");
 
   // Checking vector dimension
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
-  DRAKE_DEMAND(unordered_fsm_states.size() == body_indices.size());
-  DRAKE_DEMAND(unordered_fsm_states.size() == pts_on_bodies.size());
-  for (unsigned int i = 0; i < body_indices.size(); i++) {
-    DRAKE_DEMAND(body_indices.size() == pts_on_bodies.size());
-  }
+  DRAKE_DEMAND(unordered_fsm_states.size() ==
+               contact_points_in_each_state.size());
 
   // Input/Output Setup
-  state_port_ = this
-                    ->DeclareVectorInputPort(OutputVector<double>(
-                        tree.get_num_positions(), tree.get_num_velocities(),
-                        tree.get_num_actuators()))
-                    .get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+          .get_index();
   fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp_part(VectorXd(0));
@@ -73,8 +71,8 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   // The last state of FSM
   prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
 
-  // Check if the model is floating based
-  is_quaternion_ = multibody::IsFloatingBase(tree);
+  // Create context
+  context_ = plant_.CreateDefaultContext();
 }
 
 EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
@@ -120,11 +118,11 @@ void LIPMTrajGenerator::CalcTraj(
   // Find fsm_state in unordered_fsm_states_
   auto it = find(unordered_fsm_states_.begin(), unordered_fsm_states_.end(),
                  int(fsm_state(0)));
-  int index = std::distance(unordered_fsm_states_.begin(), it);
+  int mode_index = std::distance(unordered_fsm_states_.begin(), it);
   if (it == unordered_fsm_states_.end()) {
     cout << "WARNING: fsm state number " << fsm_state(0)
          << " doesn't exist in LIPMTrajGenerator\n";
-    index = 0;
+    mode_index = 0;
   }
 
   // Get discrete states
@@ -136,39 +134,35 @@ void LIPMTrajGenerator::CalcTraj(
   auto current_time = static_cast<double>(timestamp);
 
   double end_time_of_this_fsm_state =
-      prev_td_time(0) + unordered_state_durations_[index];
+      prev_td_time(0) + unordered_state_durations_[mode_index];
   // Ensure "current_time < end_time_of_this_fsm_state" to avoid error in
   // creating trajectory.
   if ((end_time_of_this_fsm_state <= current_time + 0.001)) {
     end_time_of_this_fsm_state = current_time + 0.002;
   }
 
-  // Kinematics cache and indices
-  KinematicsCache<double> cache = tree_.CreateKinematicsCache();
   VectorXd q = robot_output->GetPositions();
-
-  // Modify the quaternion in the beginning when the state is not received from
-  // the robot yet (cannot have 0-norm quaternion when using doKinematics)
-  if (is_quaternion_) {
-    multibody::SetZeroQuaternionToIdentity(&q);
-  }
-
-  cache.initialize(q);
-  tree_.doKinematics(cache);
+  plant_.SetPositions(context_.get(), q);
 
   // Get center of mass position and velocity
-  Vector3d CoM = tree_.centerOfMass(cache);
-  MatrixXd J = tree_.centerOfMassJacobian(cache);
+  Vector3d CoM = plant_.CalcCenterOfMassPosition(*context_);
+  MatrixXd J(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, world_, world_, &J);
   Vector3d dCoM = J * v;
 
   // Stance foot position (Forward Kinematics)
   // Take the average of all the points
   Vector3d stance_foot_pos = Vector3d::Zero();
-  for (unsigned int j = 0; j < body_indices_[index].size(); j++) {
-    stance_foot_pos += tree_.transformPoints(cache, pts_on_bodies_[index][j],
-                                             body_indices_[index][j], 0);
+  for (unsigned int j = 0; j < contact_points_in_each_state_[mode_index].size();
+       j++) {
+    Vector3d position;
+    plant_.CalcPointsPositions(
+        *context_, contact_points_in_each_state_[mode_index][j].second,
+        contact_points_in_each_state_[mode_index][j].first, world_, &position);
+    stance_foot_pos += position;
   }
-  stance_foot_pos /= body_indices_[index].size();
+  stance_foot_pos /= contact_points_in_each_state_[mode_index].size();
 
   // Get CoM_wrt_foot for LIPM
   const double CoM_wrt_foot_x = CoM(0) - stance_foot_pos(0);
@@ -182,10 +176,10 @@ void LIPMTrajGenerator::CalcTraj(
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   // Note that the start time in T_waypoint_com is also used by
   // ExponentialPlusPiecewisePolynomial.
-  std::vector<double> T_waypoint_com = {current_time,
+  vector<double> T_waypoint_com = {current_time,
                                         end_time_of_this_fsm_state};
 
-  std::vector<MatrixXd> Y(T_waypoint_com.size(), MatrixXd::Zero(3, 1));
+  vector<MatrixXd> Y(T_waypoint_com.size(), MatrixXd::Zero(3, 1));
   Y[0](0, 0) = stance_foot_pos(0);
   Y[1](0, 0) = stance_foot_pos(0);
   Y[0](1, 0) = stance_foot_pos(1);

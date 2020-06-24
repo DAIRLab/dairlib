@@ -3,7 +3,7 @@
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -24,7 +24,7 @@ namespace osc {
 /// Requirement: quaternion floating-based Cassie only
 class HeadingTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  HeadingTrajGenerator(const RigidBodyTree<double>& tree, int pelvis_idx);
+  HeadingTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -38,8 +38,10 @@ class HeadingTrajGenerator : public drake::systems::LeafSystem<double> {
   void CalcHeadingTraj(const drake::systems::Context<double>& context,
                        drake::trajectories::Trajectory<double>* traj) const;
 
-  const RigidBodyTree<double>& tree_;
-  int pelvis_idx_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::Body<double>& pelvis_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
 
   int state_port_;
   int des_yaw_port_;

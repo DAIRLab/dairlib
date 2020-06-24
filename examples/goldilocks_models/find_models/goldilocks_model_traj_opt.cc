@@ -5,21 +5,16 @@ namespace dairlib {
 namespace goldilocks_models {
 
 // Constructor
-GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
-    int n_feature_s, int n_feature_sDDot,
-    MatrixXd B_tau, const VectorXd & theta_s, const VectorXd & theta_sDDot,
+GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
+    const RomData& rom,
     std::unique_ptr<HybridDircon<double>> dircon_in,
     const MultibodyPlant<AutoDiffXd> * plant,
     const MultibodyPlant<double> * plant_double,
     const std::vector<int> & num_time_samples,
     bool is_get_nominal,
     bool is_add_tau_in_cost,
-    int rom_option, int robot_option, double constraint_scale):
-  n_s_(n_s),
-  n_sDDot_(n_sDDot),
-  n_tau_(n_tau),
-  n_feature_s_(n_feature_s),
-  n_feature_sDDot_(n_feature_sDDot) {
+    int rom_option, int robot_option, double constraint_scale) {
+  int n_tau = rom.n_tau();
 
   // Get total sample ponits
   int N = 0;
@@ -40,9 +35,7 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
   if (!is_get_nominal) {
     // Create dynamics constraint (pointer)
     dynamics_constraint_at_head = make_shared<find_models::DynamicsConstraint>(
-                                    n_s, n_feature_s, theta_s,
-                                    n_sDDot, n_feature_sDDot, theta_sDDot,
-                                    n_tau, B_tau, plant, plant_double,
+                                    rom, plant, plant_double,
                                     true, rom_option,
                                     robot_option);
     // dynamics_constraint_at_tail = make_shared<find_models::DynamicsConstraint>(
@@ -55,12 +48,14 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(int n_s, int n_sDDot, int n_tau,
     // Constraint scaling
     // TODO: re-tune this after you remove at_head and at_tail
     std::unordered_map<int, double> constraint_scale_map;
-    if (n_sDDot == 0) {
+    if (rom.n_yddot() == 0) {
       // no constraint, so we don't need to scale
     } else if (robot_option == 0) {
       if (rom_option == 0) {
 //        constraint_scale_map.insert(std::pair<int, double>(0, 1.0 / 3500.0));
 //        constraint_scale_map.insert(std::pair<int, double>(1, 1.0 / 600.0));
+      } else if (rom_option == 1) {
+        // Not tuned yet
       } else {
         // The scaling of others hasn't tuned yet
         DRAKE_DEMAND(false);

@@ -9,6 +9,8 @@ cc_binary(
         ":goldilocks_utils",
         ":initial_guess",
         ":kinematics_expression",
+        ":task",
+        "//common:eigen_utils",
         "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
         "//systems/goldilocks_models",
         "//systems/trajectory_optimization:dircon",
@@ -133,19 +135,16 @@ cc_library(
     ],
 )
 
-cc_binary(
-    name = "run_cassie_osc_walking_controller",
-    srcs = ["run_cassie_osc_walking_controller.cc"],
+cc_library(
+    name = "task",
+    srcs = [
+        "task.cc",
+    ],
+    hdrs = [
+        "task.h",
+    ],
     deps = [
-        "//attic/multibody:utils",
-        "//examples/Cassie:cassie_urdf",
-        "//examples/Cassie:cassie_utils",
-        "//examples/Cassie:simulator_drift",
-        "//examples/Cassie/osc",
-        "//systems:robot_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
+        "//common:eigen_utils",
         "@drake//:drake_shared_library",
-        "@gflags",
     ],
 )

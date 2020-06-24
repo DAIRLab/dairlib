@@ -19,7 +19,7 @@
 
 namespace dairlib {
 
-DEFINE_string(channel, "RABBIT_STATE_SIMULATION",
+DEFINE_string(channel, "RABBIT_STATE",
     "LCM channel for receiving state. ");
 DEFINE_bool(com, true, "Visualize the COM as a sphere");
 DEFINE_bool(com_ground, true,
@@ -49,8 +49,7 @@ int do_main(int argc, char* argv[]) {
 
   // MultibodyPlant<double> plant;
   std::string full_name = FindResourceOrThrow("examples/jumping/five_link_biped.urdf");
-  // MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(FLAGS_timestep);
-  MultibodyPlant<double> plant;
+  MultibodyPlant<double> plant(0.0);
   SceneGraph<double>* scene_graph = builder.AddSystem<SceneGraph>();
   scene_graph->set_name("scene_graph");
   Parser parser(&plant, scene_graph);
@@ -83,7 +82,7 @@ int do_main(int argc, char* argv[]) {
     plant.get_source_id().value()));
 
   // *******Add COM visualization**********
-  auto ball_plant = std::make_unique<MultibodyPlant<double>>();
+  auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
   if (FLAGS_com) {
     double radius = .02;
     UnitInertia<double> G_Bcm = UnitInertia<double>::SolidSphere(radius);
@@ -123,8 +122,6 @@ int do_main(int argc, char* argv[]) {
 
 
   drake::geometry::ConnectDrakeVisualizer(&builder, *scene_graph);
-
-  // state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   auto diagram = builder.Build();
 

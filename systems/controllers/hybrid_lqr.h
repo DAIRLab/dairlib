@@ -18,17 +18,13 @@
 
 namespace dairlib::systems {
 
-/// This is an implementation of the naive hybrid lqr controller as well as
+/// This is an implementation of the hybrid lqr controller as well as
 /// hybrid lqr with an adjusted reset map as described in Rijnen, Saccon,
 /// Nijmeijer 2015. The contact info should be WorldPointEvaluators that
 /// compute the distance of the foot with respect to the world frame
 ///
 /// Note although the LQR gains are integrated backwards. The contact
 /// info, state_traj, and input_traj should be supplied in forward time
-/// Also note that the size of impact_times must be one less than the size of
-/// of the contact_info vector
-static const double ALPHA = 1e-8;
-static const int RESOLUTION = 10000;
 
 class HybridLQRController : public drake::systems::LeafSystem<double> {
  public:
@@ -37,16 +33,17 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       const vector<multibody::KinematicEvaluatorSet<drake::AutoDiffXd>*>&
           contact_info,
-      const std::vector<drake::trajectories::PiecewisePolynomial<double>*>&
+      const std::vector<drake::trajectories::PiecewisePolynomial<double>>&
           state_trajs,
-      const std::vector<drake::trajectories::PiecewisePolynomial<double>*>&
+      const std::vector<drake::trajectories::PiecewisePolynomial<double>>&
           input_trajs,
       const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
       const Eigen::MatrixXd& Qf, double buffer_time, bool adjusted_reset_map,
       std::string folder_path, bool recalculateP, bool recalculateL);
 
+
   const drake::systems::OutputPort<double>& get_output_port_control() const {
-    return this->get_output_port(control_output_port_);
+    return this->get_output_port(efforts_port_);
   }
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
@@ -54,24 +51,36 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   }
 
   const drake::systems::InputPort<double>& get_fsm_input_port() const {
-    return this->get_input_port(fsm_port_);
+    return this->get_input_port(input_port_fsm_);
   }
 
   const drake::systems::InputPort<double>& get_contact_input_port() const {
-    return this->get_input_port(contact_port_);
+    return this->get_input_port(input_port_contact_);
   }
 
  private:
+
+  static constexpr double ALPHA = 1e-8;
+  static const int RESOLUTION = 1000;
+
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
 
+  /*
+   * Retrieve the minimal coordinate basis for a particular contact_mode at
+   * time t
+   */
   Eigen::MatrixXd getPAtTime(double t, int contact_mode) const;
+  /*
+   * Retrieve the quadratic cost term S for a particular contact_mode at
+   * time t
+   */
   Eigen::MatrixXd getSAtTime(double t, int contact_mode) const;
 
   // Computes the minimal coordinate basis P(t) for all the contact modes
   void calcMinimalCoordBasis();
 
-  // Calculate L(t) for all modes given S_f
+  // Calculate L(t) for all modes given S_f, where S(t) = L(t) L(t)^T
   void calcCostToGo(const Eigen::MatrixXd& S_f);
 
   // Calculates matrices A, B for linearized dynamics of the form f(x) = Ax + Bu
@@ -89,7 +98,7 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
 
   Eigen::VectorXd calcPdot(double t, const Eigen::VectorXd& P,
                            const Eigen::VectorXd&);
-  // Calculate Ldot such that S = L L.T
+
   Eigen::VectorXd calcLdot(double t, const Eigen::VectorXd& l,
                            const Eigen::VectorXd&);
 
@@ -109,10 +118,16 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
   const vector<multibody::KinematicEvaluatorSet<drake::AutoDiffXd>*>
       contact_info_;
 
-  const std::vector<drake::trajectories::PiecewisePolynomial<double>*>
+  /*
+   * Nominal/Target trajectories
+   */
+  const std::vector<drake::trajectories::PiecewisePolynomial<double>>
       state_trajs_;
-  const std::vector<drake::trajectories::PiecewisePolynomial<double>*>
+  const std::vector<drake::trajectories::PiecewisePolynomial<double>>
       input_trajs_;
+  /*
+   * Trajectories of the minimal coordinate basis and S
+   */
   std::vector<drake::trajectories::PiecewisePolynomial<double>> p_traj_;
   std::vector<drake::trajectories::PiecewisePolynomial<double>> l_traj_;
 
@@ -157,9 +172,9 @@ class HybridLQRController : public drake::systems::LeafSystem<double> {
 
   // Leaf system ports
   drake::systems::InputPortIndex state_port_;
-  drake::systems::InputPortIndex fsm_port_;
-  drake::systems::InputPortIndex contact_port_;
-  drake::systems::OutputPortIndex control_output_port_;
+  drake::systems::InputPortIndex input_port_fsm_;
+  drake::systems::InputPortIndex input_port_contact_;
+  drake::systems::OutputPortIndex efforts_port_;
 };
 
 }  // namespace dairlib::systems

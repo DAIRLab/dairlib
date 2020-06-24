@@ -72,6 +72,19 @@ cc_binary(
 )
 
 cc_binary(
+    name = "rabbit_visualizer",
+    srcs = ["rabbit_visualizer.cc"],
+    data = ["five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "visualize_trajectory",
     srcs = ["visualize_trajectory.cc"],
     data = ["five_link_biped.urdf"],

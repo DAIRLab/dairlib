@@ -68,9 +68,9 @@ DEFINE_bool(time_stepping, true,
 DEFINE_double(dt, 1e-4,
               "The step size to use for time_stepping, ignored for "
               "continuous");
-DEFINE_string(state_simulation_channel, "RABBIT_STATE",
+DEFINE_string(channel_x, "RABBIT_STATE",
               "Channel to publish/receive state from simulation");
-DEFINE_string(input_channel, "RABBIT_INPUT",
+DEFINE_string(channel_u, "RABBIT_INPUT",
               "Channel to publish/receive inputs from controller");
 DEFINE_string(init_state, "Walking",
               "The stored initial state for the simulator");
@@ -141,7 +141,7 @@ int do_main(int argc, char* argv[]) {
   // Create input receiver.
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_input_channel, lcm));
+          FLAGS_channel_u, lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
   // connect input receiver
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
@@ -150,7 +150,7 @@ int do_main(int argc, char* argv[]) {
   // Create state publisher.
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "RABBIT_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
+          FLAGS_channel_x, lcm, 1.0 / FLAGS_publish_rate));
 //          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 4000.0));
   ContactResultsToLcmSystem<double>& contact_viz =
       *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);

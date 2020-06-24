@@ -123,16 +123,3 @@ cc_binary(
         "@gflags",
     ],
 )
-
-cc_binary(
-    name = "rabbit_visualizer",
-    srcs = ["rabbit_visualizer.cc"],
-    data = ["five_link_biped.urdf"],
-    deps = [
-        "//common",
-        "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)

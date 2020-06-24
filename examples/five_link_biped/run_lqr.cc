@@ -3,8 +3,29 @@
 
 #include <gflags/gflags.h>
 
-#include "drake/lcm/drake_lcm.h"
+#include "common/find_resource.h"
+#include "dairlib/lcmt_fsm_out.hpp"
+#include "dairlib/lcmt_pd_config.hpp"
+#include "dairlib/lcmt_robot_input.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "examples/five_link_biped/walking_fsm.h"
+#include "lcm/lcm_trajectory.h"
+#include "multibody/kinematic/world_point_evaluator.h"
+#include "multibody/multibody_utils.h"
+#include "multibody/visualization_utils.h"
+#include "systems/controllers/hybrid_lqr.h"
+#include "systems/framework/lcm_driven_loop.h"
+#include "systems/goldilocks_models/file_utils.h"
+#include "systems/primitives/subvector_pass_through.h"
+#include "systems/robot_lcm_systems.h"
 
+#include "drake/geometry/geometry_visualization.h"
+#include "drake/lcm/drake_lcm.h"
+#include "drake/lcmt_contact_results_for_viz.hpp"
+#include "drake/multibody/parsers/urdf_parser.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/multibody/rigid_body_plant/contact_results_to_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -12,33 +33,8 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/signal_logger.h"
-
-#include "drake/geometry/geometry_visualization.h"
-#include "drake/multibody/parsing/parser.h"
-#include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/primitives/trajectory_source.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-
-#include "dairlib/lcmt_fsm_out.hpp"
-#include "dairlib/lcmt_pd_config.hpp"
-#include "dairlib/lcmt_robot_input.hpp"
-#include "dairlib/lcmt_robot_output.hpp"
-#include "lcm/lcm_trajectory.h"
-#include "systems/robot_lcm_systems.h"
-
-#include "common/find_resource.h"
-#include "multibody/kinematic/world_point_evaluator.h"
-#include "multibody/multibody_utils.h"
-#include "multibody/visualization_utils.h"
-#include "systems/goldilocks_models/file_utils.h"
-#include "systems/primitives/subvector_pass_through.h"
-#include "drake/multibody/parsers/urdf_parser.h"
-
-#include "examples/five_link_biped/walking_fsm.h"
-#include "systems/controllers/hybrid_lqr.h"
-#include "systems/framework/lcm_driven_loop.h"
-#include "drake/lcmt_contact_results_for_viz.hpp"
-#include "drake/multibody/rigid_body_plant/contact_results_to_lcm.h"
 
 using drake::multibody::Body;
 
@@ -73,7 +69,7 @@ DEFINE_double(publish_rate, 2000, "Publishing frequency (Hz)");
 DEFINE_double(buffer_time, 0.0,
               "Time around nominal impact time to apply "
               "heuristic efforts");
-DEFINE_bool(naive, true,
+DEFINE_bool(adjusted_reset_map, true,
             "Set to true if using the naive approach to hybrid lqr");
 DEFINE_bool(contact_driven, true,
             "Set to true if want to use contact_driven fsm");
@@ -95,6 +91,7 @@ namespace dairlib {
 using drake::AutoDiffVecXd;
 using drake::multibody::Frame;
 using multibody::GetBodyIndexFromName;
+using multibody::KinematicEvaluatorSet;
 using multibody::WorldPointEvaluator;
 using systems::SubvectorPassThrough;
 
@@ -136,41 +133,37 @@ int doMain(int argc, char* argv[]) {
   int nu = plant.num_actuators();
 
   int num_modes = loaded_traj.getTrajectoryNames().size();
-  std::vector<shared_ptr<PiecewisePolynomial<double>>> state_trajs;
-  std::vector<shared_ptr<PiecewisePolynomial<double>>> input_trajs;
+  std::vector<PiecewisePolynomial<double>> state_trajs;
+  std::vector<PiecewisePolynomial<double>> input_trajs;
   for (int mode = 0; mode < num_modes; ++mode) {
     const LcmTrajectory::Trajectory& state_and_input =
         loaded_traj.getTrajectory("walking_trajectory_x_u" +
                                   std::to_string(mode));
-    state_trajs.push_back(std::make_shared<PiecewisePolynomial<double>>(
+    state_trajs.push_back(PiecewisePolynomial<double>(
         PiecewisePolynomial<double>::CubicHermite(
             state_and_input.time_vector, state_and_input.datapoints.topRows(nx),
             state_and_input.datapoints.topRows(2 * nx).bottomRows(nx))));
-    input_trajs.push_back(std::make_shared<PiecewisePolynomial<double>>(
+    input_trajs.push_back(PiecewisePolynomial<double>(
         PiecewisePolynomial<double>::FirstOrderHold(
             state_and_input.time_vector,
             state_and_input.datapoints.bottomRows(nu))));
   }
 
-  vector<WorldPointEvaluator<double>> contact_evals;
-  vector<WorldPointEvaluator<AutoDiffXd>> contact_evals_ad;
+  vector<KinematicEvaluatorSet<AutoDiffXd>*> contact_evals;
 
-  WorldPointEvaluator<double> left_foot = WorldPointEvaluator(
-      plant, VectorXd::Zero(3), plant.GetFrameByName("left_foot"));
-  WorldPointEvaluator<double> right_foot = WorldPointEvaluator(
-      plant, VectorXd::Zero(3), plant.GetFrameByName("right_foot"));
-  WorldPointEvaluator<AutoDiffXd> left_foot_ad = WorldPointEvaluator(
+  WorldPointEvaluator<AutoDiffXd> left_foot_pt = WorldPointEvaluator(
       *plant_ad, VectorXd::Zero(3), plant_ad->GetFrameByName("left_foot"));
-  WorldPointEvaluator<AutoDiffXd> right_foot_ad = WorldPointEvaluator(
+  WorldPointEvaluator<AutoDiffXd> right_foot_pt = WorldPointEvaluator(
       *plant_ad, VectorXd::Zero(3), plant_ad->GetFrameByName("left_foot"));
 
+  KinematicEvaluatorSet<AutoDiffXd> left_foot_constraint(*plant_ad);
+  KinematicEvaluatorSet<AutoDiffXd> right_foot_constraint(*plant_ad);
+  left_foot_constraint.add_evaluator(&left_foot_pt);
+  right_foot_constraint.add_evaluator(&left_foot_pt);
   // Contact modes go l_foot, r_foot, l_foot
-  contact_evals.push_back(left_foot);
-  contact_evals.push_back(right_foot);
-  contact_evals.push_back(left_foot);
-  contact_evals_ad.push_back(left_foot_ad);
-  contact_evals_ad.push_back(right_foot_ad);
-  contact_evals_ad.push_back(left_foot_ad);
+  contact_evals.push_back(&left_foot_constraint);
+  contact_evals.push_back(&right_foot_constraint);
+  contact_evals.push_back(&left_foot_constraint);
 
   MatrixXd Q = 1 * MatrixXd::Identity(nx, nx);
   Q.block(0, 0, nq, nq) = 100 * MatrixXd::Identity(nq, nq);
@@ -178,14 +171,14 @@ int doMain(int argc, char* argv[]) {
   MatrixXd R = 0.01 * MatrixXd::Identity(nu, nu);
 
   std::vector<double> impact_times(contact_evals.size() * 2);
-  impact_times[0] = state_trajs[0]->start_time();
-  impact_times[1] = state_trajs[0]->end_time();
-  impact_times[2] = state_trajs[1]->start_time();
-  impact_times[3] = state_trajs[1]->end_time();
-  impact_times[4] = state_trajs[2]->start_time();
-  impact_times[5] = state_trajs[2]->end_time();
+  impact_times[0] = state_trajs[0].start_time();
+  impact_times[1] = state_trajs[0].end_time();
+  impact_times[2] = state_trajs[1].start_time();
+  impact_times[3] = state_trajs[1].end_time();
+  impact_times[4] = state_trajs[2].start_time();
+  impact_times[5] = state_trajs[2].end_time();
 
-  // Create Leaf Systems
+  // *******Start leaf system initialization*******
   drake::lcm::DrakeLcm lcm;
   auto fsm = builder.AddSystem<WalkingFiniteStateMachine>(
       plant, impact_times[1], impact_times[3], FLAGS_time_offset,
@@ -205,16 +198,13 @@ int doMain(int argc, char* argv[]) {
 
   auto start = std::chrono::high_resolution_clock::now();
   auto lqr = builder.AddSystem<systems::HybridLQRController>(
-      plant, *plant_ad, contact_evals, contact_evals_ad, state_trajs,
-      input_trajs, Q, R, Qf, FLAGS_buffer_time, FLAGS_naive, FLAGS_folder_path,
+      plant, *plant_ad, contact_evals, state_trajs, input_trajs, Q, R, Qf,
+      FLAGS_buffer_time, FLAGS_adjusted_reset_map, FLAGS_folder_path,
       FLAGS_recalculateP, FLAGS_recalculateL);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   std::cout << "Took " << elapsed.count() << "s to create LQR controller"
             << std::endl;
-  //  auto fsm_logger =
-  //            drake::systems::LogOutput(fsm->get_output_port(0), &builder);
-  //  fsm_logger->set_forced_publish_only();
 
   // ******End of leaf system initialization*******
 

@@ -1,37 +1,30 @@
-#include <map>
 #include <memory>
 #include <string>
-#include <drake/systems/primitives/signal_logger.h>
+
 #include <gflags/gflags.h>
+
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/goldilocks_models/file_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
+
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/lcmt_contact_results_for_viz.hpp"
-#include "drake/multibody/joints/floating_base_types.h"
-#include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake/multibody/rigid_body_tree.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
 #include "drake/multibody/tree/prismatic_joint.h"
-#include "drake/multibody/tree/revolute_joint.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/systems/sensors/accelerometer.h"
-#include "drake/systems/sensors/gyroscope.h"
-#include "lcm/lcm_trajectory.h"
 
 namespace dairlib {
 
@@ -42,8 +35,6 @@ using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::multibody::PrismaticJoint;
-using drake::multibody::RevoluteJoint;
-using drake::solvers::MathematicalProgramResult;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
@@ -151,7 +142,6 @@ int do_main(int argc, char* argv[]) {
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_channel_x, lcm, 1.0 / FLAGS_publish_rate));
-//          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 4000.0));
   ContactResultsToLcmSystem<double>& contact_viz =
       *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
   contact_viz.set_name("contact_visualization");
@@ -161,11 +151,6 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
 
-  // Contact results to lcm msg.
-  //  auto contact_pub =
-  //      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-  //          "RABBIT_STATE_SIMULATION", lcm, 1.0 / 10000.0));
-  //  auto contact_sender = builder.AddSystem<systems::>(plant);
   // connect state publisher
   builder.Connect(*input_sub, *input_receiver);
   builder.Connect(*input_receiver, *passthrough);
@@ -184,10 +169,6 @@ int do_main(int argc, char* argv[]) {
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
-
-  //  if (FLAGS_visualize) {
-  //    drake::geometry::ConnectDrakeVisualizer(&builder, scene_graph);
-  //  }
 
   auto diagram = builder.Build();
   // Create a context for this system:
@@ -215,18 +196,11 @@ int do_main(int argc, char* argv[]) {
   plant.SetPositionsAndVelocities(&plant_context, x0);
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));
-  //  if (!FLAGS_time_stepping) {
-  //    //
-  //    simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
-  //    //        *diagram, FLAGS_dt, &simulator.get_mutable_context());
-  //    simulator.reset_integrator<drake::systems::RungeKutta3Integrator<double>>(
-  //        plant, &simulator.get_mutable_context());
-  //  }
+
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(FLAGS_target_realtime_rate);
   simulator.Initialize();
-//  simulator.AdvanceTo(FLAGS_start_time + FLAGS_sim_time);
   simulator.AdvanceTo(FLAGS_sim_time);
 
   return 0;
@@ -280,8 +254,6 @@ VectorXd calcStateOffset(MultibodyPlant<double>& plant,
   VectorXd v_offset = VectorXd::Zero(plant.num_velocities());
   v_offset(4) = joint_rate_offsets(0);
   v_offset(6) = joint_rate_offsets(1);
-//  std::cout << v_offset << std::endl;
-//  std::cout << (TXZ * J_foot_3d) * v_offset << std::endl;
   return v_offset;
 }
 

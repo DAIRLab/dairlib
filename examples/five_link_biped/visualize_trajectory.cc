@@ -4,7 +4,6 @@
 #include <drake/systems/analysis/simulator.h>
 #include <gflags/gflags.h>
 #include "lcm/lcm_trajectory.h"
-#include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "multibody/multipose_visualizer.h"

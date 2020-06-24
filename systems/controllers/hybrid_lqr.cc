@@ -1,7 +1,6 @@
 #include "hybrid_lqr.h"
 
 #include <drake/lcmt_contact_results_for_viz.hpp>
-
 #include "multibody/multibody_utils.h"
 
 #include "drake/math/autodiff.h"

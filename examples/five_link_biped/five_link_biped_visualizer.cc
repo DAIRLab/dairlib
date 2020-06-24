@@ -13,9 +13,7 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "systems/robot_lcm_systems.h"
-#include "multibody/multibody_utils.h"
 #include "multibody/com_pose_system.h"
-
 
 namespace dairlib {
 

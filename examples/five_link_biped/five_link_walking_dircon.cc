@@ -2,34 +2,24 @@
 #include <thread>
 
 #include <gflags/gflags.h>
-
-#include "drake/geometry/geometry_visualization.h"
-#include "drake/lcm/drake_lcm.h"
-#include "drake/multibody/parsers/urdf_parser.h"
-#include "drake/multibody/parsing/parser.h"
-#include "drake/multibody/plant/multibody_plant.h"
-#include "drake/multibody/rigid_body_plant/drake_visualizer.h"
-#include "drake/solvers/constraint.h"
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/solution_result.h"
-#include "drake/solvers/solve.h"
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/primitives/trajectory_source.h"
-#include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-
 #include "common/find_resource.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "solvers/optimization_utils.h"
-#include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
+
+#include "drake/geometry/geometry_visualization.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/solvers/constraint.h"
+#include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solution_result.h"
+#include "drake/solvers/solve.h"
+#include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/diagram_builder.h"
 
 DEFINE_double(realtime_factor, .5,
               "Playback speed.  See documentation for "
@@ -68,7 +58,6 @@ using std::vector;
 
 namespace dairlib {
 
-using systems::SubvectorPassThrough;
 using systems::trajectory_optimization::DirconDynamicConstraint;
 using systems::trajectory_optimization::DirconKinConstraintType;
 using systems::trajectory_optimization::DirconKinematicConstraint;

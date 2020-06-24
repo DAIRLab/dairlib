@@ -614,7 +614,7 @@ MatrixXd AbstractTrackingData::JacobianOfUserDefinedPos(
   } else {
     // Central differencing
     VectorXd r_f, r_i;
-    MatrixXd J = MatrixXd(user_defined_pos.Position(q).size(), q.size());
+    MatrixXd J = MatrixXd(GetTrajDim(), q.size());
     for (int i = 0; i < q.size(); i++) {
       q(i) += dx_ / 2;
       r_f = user_defined_pos.Position(q);

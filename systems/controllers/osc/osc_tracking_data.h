@@ -92,27 +92,27 @@ class OscTrackingData {
               int finite_state_machine_state);
 
   // Getters for debugging
-  Eigen::VectorXd GetY() { return y_; }
-  Eigen::VectorXd GetYDes() { return y_des_; }
-  Eigen::VectorXd GetErrorY() { return error_y_; }
-  Eigen::VectorXd GetYdot() { return ydot_; }
-  Eigen::VectorXd GetYdotDes() { return ydot_des_; }
-  Eigen::VectorXd GetErrorYdot() { return error_ydot_; }
-  Eigen::VectorXd GetYddotDes() { return yddot_des_; }
-  Eigen::VectorXd GetYddotDesConverted() { return yddot_des_converted_; }
-  Eigen::VectorXd GetYddotCommandSol() { return yddot_command_sol_; }
+  Eigen::VectorXd GetY() const { return y_; }
+  Eigen::VectorXd GetYDes() const { return y_des_; }
+  Eigen::VectorXd GetErrorY() const { return error_y_; }
+  Eigen::VectorXd GetYdot() const { return ydot_; }
+  Eigen::VectorXd GetYdotDes() const { return ydot_des_; }
+  Eigen::VectorXd GetErrorYdot() const { return error_ydot_; }
+  Eigen::VectorXd GetYddotDes() const { return yddot_des_; }
+  Eigen::VectorXd GetYddotDesConverted() const { return yddot_des_converted_; }
+  Eigen::VectorXd GetYddotCommandSol() const { return yddot_command_sol_; }
 
   // Getters used by osc block
-  Eigen::VectorXd GetOutput() { return y_; }
-  Eigen::MatrixXd GetJ() { return J_; }
-  Eigen::VectorXd GetJdotTimesV() { return JdotV_; }
-  Eigen::VectorXd GetYddotCommand() { return yddot_command_; }
-  Eigen::MatrixXd GetWeight() { return W_; }
+  Eigen::VectorXd GetOutput() const { return y_; }
+  Eigen::MatrixXd GetJ() const { return J_; }
+  Eigen::VectorXd GetJdotTimesV() const { return JdotV_; }
+  Eigen::VectorXd GetYddotCommand() const { return yddot_command_; }
+  Eigen::MatrixXd GetWeight() const { return W_; }
 
   // Getters
-  std::string GetName() { return name_; };
-  int GetTrajDim() { return n_r_; };
-  bool IsActive() { return track_at_current_state_; }
+  std::string GetName() const { return name_; };
+  int GetTrajDim() const { return n_r_; };
+  bool IsActive() const { return track_at_current_state_; }
 
   void SaveYddotCommandSol(const Eigen::VectorXd& dv);
 
@@ -409,8 +409,6 @@ class AbstractTrackingData final : public OscTrackingData {
       OscUserDefinedPos* user_defined_pos_w_spr,
       OscUserDefinedPos* user_defined_pos_wo_spr);
 
-  // AbstractTrackingData() {}  // Default constructor
-
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
                        drake::systems::Context<double>& context_w_spr) final;
@@ -454,6 +452,7 @@ class AbstractTrackingData final : public OscTrackingData {
   //                 JdotV error norm ~ 5e-8, J error norm ~ 5e-9
   //                 runtime for JdotV calculation (Cassie CoM) ~ 3.0ms
   double dx_ = 1e-5;
+  // if is_forward_differencing_ = false, we use central differencing
   bool is_forward_differencing_ = true;
 };
 

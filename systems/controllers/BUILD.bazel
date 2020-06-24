@@ -173,3 +173,17 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "hybrid_lqr",
+    srcs = ["hybrid_lqr.cc"],
+    hdrs = ["hybrid_lqr.h"],
+    deps = [
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

@@ -1,0 +1,88 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "walking_fsm",
+    srcs = ["walking_fsm.cc"],
+    hdrs = ["walking_fsm.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "five_link_walking_dircon",
+    srcs = ["five_link_walking_dircon.cc"],
+    data = [":five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_lqr_controller",
+    srcs = ["run_lqr_controller.cc"],
+    deps = [
+        "//common",
+        "//examples/five_link_biped:walking_fsm",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers:hybrid_lqr",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/framework:vector",
+        "//systems/goldilocks_models",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "five_link_biped_sim",
+    srcs = ["five_link_biped_sim.cc"],
+    data = ["five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems/goldilocks_models",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "five_link_biped_visualizer",
+    srcs = ["five_link_biped_visualizer.cc"],
+    data = ["five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "visualize_trajectory",
+    srcs = ["visualize_trajectory.cc"],
+    data = ["five_link_biped.urdf"],
+    deps = [
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:multipose_visualizer",
+        "//systems:robot_lcm_systems",
+        "//systems/goldilocks_models",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

@@ -1635,13 +1635,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
   /// the number of them decreases.
   if(!uniform_grid && restricted_sample_number){
       if(N_sample_gi>2){
-          N_sample_gi = pow(N_sample_gi, 0.5) + 1;
+          N_sample_gi = pow(N_sample_gi, 0.7);
       }
       if(N_sample_sl>2){
-          N_sample_sl = pow(N_sample_sl, 0.5) + 1;
+          N_sample_sl = pow(N_sample_sl, 0.7);
       }
       if(N_sample_tr>2){
-          N_sample_tr = pow(N_sample_tr, 0.5) + 1;
+          N_sample_tr = pow(N_sample_tr, 0.7);
       }
       N_sample = N_sample_sl * N_sample_gi * N_sample_tr;
       cout << "Restrict the number of samples in one iteration" << endl;

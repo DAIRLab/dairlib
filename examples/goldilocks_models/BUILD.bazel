@@ -130,6 +130,7 @@ cc_library(
     ],
     deps = [
         ":goldilocks_utils",
+        ":task",
         "//systems/goldilocks_models",
         "@drake//:drake_shared_library",
     ],

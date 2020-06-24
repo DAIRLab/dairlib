@@ -269,11 +269,10 @@ void setInitialTheta(VectorXd& theta_y, VectorXd& theta_yddot,
   }
 }
 
-void getInitFileName(const string dir,int total_sample_num, string * init_file,
+
+void getInitFileName(const string dir, GridTasksGenerator task_gen,string * init_file,
         const string & nominal_traj_init_file,
         int iter, int sample,
-        double min_sl, double max_sl, double min_gi, double max_gi,
-        double min_tr, double max_tr,
         bool is_get_nominal,bool without_uniform_grid,
         bool rerun_current_iteration, bool has_been_all_success,
         bool step_size_shrinked_last_loop, int n_rerun,
@@ -282,8 +281,7 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file,
   if (is_get_nominal && !rerun_current_iteration) {
     if(FLAGS_use_database)
     {
-      *init_file = set_initial_guess(dir, iter, sample, total_sample_num,
-          min_sl, max_sl, min_gi, max_gi, min_tr, max_tr,use_database,
+      *init_file = set_initial_guess(dir, iter, sample, task_gen,use_database,
                                      robot_option);
     }
     else{
@@ -293,8 +291,7 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file,
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
     if (without_uniform_grid){
-        *init_file = set_initial_guess(dir, iter, sample, total_sample_num,
-                min_sl, max_sl, min_gi, max_gi, min_tr, max_tr,use_database,
+        *init_file = set_initial_guess(dir, iter, sample, task_gen,use_database,
                 robot_option);
     }
     else{
@@ -307,8 +304,7 @@ void getInitFileName(const string dir,int total_sample_num, string * init_file,
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   } else{
       if(without_uniform_grid){
-          *init_file = set_initial_guess(dir, iter, sample, total_sample_num,
-                  min_sl, max_sl, min_gi, max_gi,min_tr, max_tr,use_database,
+          *init_file = set_initial_guess(dir, iter, sample, task_gen,use_database,
                   robot_option);
       } else{
           *init_file = to_string(iter - 1) +  "_" +
@@ -1463,6 +1459,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Parameters for tasks
   cout << "\nTasks settings:\n";
+  bool uniform_grid = FLAGS_is_uniform_grid;
+  bool restricted_sample_number = FLAGS_is_restricted_sample_number;
+  //TODO:create task generator for non-uniform grid
   GridTasksGenerator task_gen;
   if (FLAGS_robot_option == 0) {
     task_gen = GridTasksGenerator(
@@ -2125,9 +2124,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Get file name of initial seed
           string init_file_pass_in;
           bool without_uniform_grid = ! uniform_grid;
-          getInitFileName(dir, N_sample, &init_file_pass_in, init_file, iter, sample_idx,
-                          min_stride_length, max_stride_length, min_ground_incline, max_ground_incline,
-                          min_turning_rate,max_turning_rate,
+          getInitFileName(dir, task_gen, &init_file_pass_in, init_file, iter, sample_idx,
                           is_get_nominal, without_uniform_grid,
                           current_sample_is_a_rerun, has_been_all_success,
                           step_size_shrinked_last_loop, n_rerun[sample_idx],

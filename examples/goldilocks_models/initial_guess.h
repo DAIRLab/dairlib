@@ -6,6 +6,7 @@
 #include "systems/goldilocks_models/file_utils.h"
 #include "drake/solvers/mathematical_program.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/task.h"
 
 using std::cout;
 using std::string;
@@ -17,8 +18,7 @@ using Eigen::MatrixXd;
 namespace dairlib::goldilocks_models {
 //    set initial guess using interpolation
     string set_initial_guess(const string directory, int iter,
-            int sample, int total_sample_num, double min_sl, double max_sl,
-            double min_gi, double max_gi, double min_tr, double max_tr,
+            int sample, GridTasksGenerator task_gen,
             bool use_database,int robot);
 //    set scale for theta and gamma
     MatrixXd get_theta_scale(const string directory, int iter);

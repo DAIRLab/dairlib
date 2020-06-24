@@ -32,15 +32,21 @@ MatrixXd get_gamma_scale(int gamma_length, double min_sl, double max_sl, double 
   return gamma_scale;
 }
 
-string set_initial_guess(const string directory, int iter, int sample, int total_sample_num,
-                         double min_sl, double max_sl, double min_gi, double max_gi, double min_tr,
-                         double max_tr,bool use_database,int robot) {
+string set_initial_guess(const string directory, int iter, int sample,
+                         GridTasksGenerator task_gen, bool use_database,int robot) {
   /* define some parameters used in interpolation
 * theta_range :decide the range of theta to use in interpolation
 * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
 */
   double theta_range = 0.004;//this is tuned by robot_option=1,rom_option=2,3d task space
   int gamma_dimension = 3;
+  int total_sample_num = task_gen.total_sample_number();
+  double min_sl = task_gen.task_min("stride_length");
+  double max_sl = task_gen.task_max("stride_length");
+  double min_gi = task_gen.task_min("ground_incline");
+  double max_gi = task_gen.task_max("ground_incline");
+  double min_tr = task_gen.task_min("turning_rate");
+  double max_tr = task_gen.task_max("turning_rate");
   MatrixXd theta_scale = get_theta_scale(directory, iter);
   MatrixXd gamma_scale = get_gamma_scale(gamma_dimension, min_sl, max_sl, min_gi, max_gi, min_tr, max_tr);
 //    initialize variables used for setting initial guess

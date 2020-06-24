@@ -43,9 +43,13 @@ std::map<std::string, int> makeNameToActuatorsMap(
 
 /// Given a set of maps constructed from the above functions, construct a
 /// vector of state and actuator names in order of their index
-std::vector<std::string> createStateAndActuatorNameVectorFromMap(
+std::vector<std::string> createStateNameVectorFromMap(
     const std::map<std::string, int>& pos_map,
-    const std::map<std::string, int>& vel_map,
+    const std::map<std::string, int>& vel_map);
+
+/// Given a set of maps constructed from the above functions, construct a
+/// vector of state and actuator names in order of their index
+std::vector<std::string> createActuatorNameVectorFromMap(
     const std::map<std::string, int>& act_map);
 
 // TODO: The following two functions need to be implemented as a part of

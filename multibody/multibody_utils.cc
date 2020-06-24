@@ -233,25 +233,28 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
   return name_to_index_map;
 }
 
-vector<string> createStateAndActuatorNameVectorFromMap(
-    const map<string, int>& pos_map, const map<string, int>& vel_map,
-    const map<string, int>& act_map) {
-  unsigned long nq = pos_map.size();
-  unsigned long nv = vel_map.size();
-  vector<string> state_and_actuator_names(nq + nv + act_map.size());
+vector<string> createStateNameVectorFromMap(
+    const map<string, int>& pos_map, const map<string, int>& vel_map) {
+  vector<string> state_names(pos_map.size() + vel_map.size());
 
   for (const auto& name_index_pair : pos_map) {
-    state_and_actuator_names[name_index_pair.second] = name_index_pair.first;
+    state_names[name_index_pair.second] = name_index_pair.first;
   }
   for (const auto& name_index_pair : vel_map) {
-    state_and_actuator_names[name_index_pair.second + nq] =
+    state_names[name_index_pair.second + pos_map.size()] =
         name_index_pair.first;
   }
+  return state_names;
+}
+
+vector<string> createActuatorNameVectorFromMap(
+    const map<string, int>& act_map) {
+  vector<string> actuator_names(act_map.size());
+
   for (const auto& name_index_pair : act_map) {
-    state_and_actuator_names[name_index_pair.second + nq + nv] =
-        name_index_pair.first;
+    actuator_names[name_index_pair.second] = name_index_pair.first;
   }
-  return state_and_actuator_names;
+  return actuator_names;
 }
 
 bool JointsWithinLimits(const MultibodyPlant<double>& plant,

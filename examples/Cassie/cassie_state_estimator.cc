@@ -993,14 +993,17 @@ EventStatus CassieStateEstimator::Update(
       // Get kinematics cache for ground truth
       plant_.SetPositionsAndVelocities(context_gt_.get(), output_gt.GetState());
       // rotational position
-      imu_pos_wrt_world_gt.head(4) = output_gt.GetPositions().segment<4>(0);
+      Eigen::Vector4d quat = output_gt.GetPositions().segment<4>(0);
+      imu_pos_wrt_world_gt.head(4) = quat;
       // translational position
       VectorXd pos(3);
       plant_.CalcPointsPositions(*context_gt_, pelvis_frame_, imu_pos_, world_,
                                  &pos);
       imu_pos_wrt_world_gt.tail(3) = pos;
       // rotational velocity
-      imu_vel_wrt_world_gt.head(3) = output_gt.GetVelocities().head(3);
+      imu_vel_wrt_world_gt.head(3) =
+          Quaterniond(quat(0), quat(1), quat(2), quat(3)).toRotationMatrix() *
+          output_gt.GetVelocities().head(3);
       // translational velocity
       MatrixXd J(3, n_v_);
       plant_.CalcJacobianTranslationalVelocity(
@@ -1013,7 +1016,7 @@ EventStatus CassieStateEstimator::Update(
         cout << "Positions: " << endl;
         cout << imu_pos_wrt_world_gt.transpose() << endl;
         cout << "Orientation (quaternion) : " << endl;
-        cout << output_gt.GetPositions().segment<4>(0).transpose() << endl;
+        cout << quat.transpose() << endl;
         cout << "Velocities: " << endl;
         cout << imu_vel_wrt_world_gt.transpose() << endl;
 
@@ -1085,10 +1088,10 @@ EventStatus CassieStateEstimator::Update(
     estimated_fb_state.segment<3>(4) =
         ekf.getState().getPosition() + r_imu_to_pelvis_global;
     // Rotational velocity
-    estimated_fb_state.segment<3>(7) = imu_measurement.head(3);
-    // Translational velocity
     Vector3d omega_global =
         ekf.getState().getRotation() * imu_measurement.head(3);
+    estimated_fb_state.segment<3>(7) = omega_global;
+    // Translational velocity
     estimated_fb_state.tail(3) = ekf.getState().getVelocity() +
                                  omega_global.cross(r_imu_to_pelvis_global);
 
@@ -1142,7 +1145,6 @@ EventStatus CassieStateEstimator::Update(
     plant_.SetPositionsAndVelocities(context_.get(),
                                      filtered_output.GetState());
 
-    Vector3d d, p;
     // rotation part of pose and covariance is unused in EKF
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
     Eigen::Matrix<double, 6, 6> covariance = MatrixXd::Identity(6, 6);
@@ -1235,9 +1237,9 @@ EventStatus CassieStateEstimator::Update(
     estimated_fb_state.segment<3>(4) =
         ekf.getState().getPosition() + r_imu_to_pelvis_global;
     // Rotational velocity
-    estimated_fb_state.segment<3>(7) = imu_measurement.head(3);
-    // Translational velocity
     omega_global = ekf.getState().getRotation() * imu_measurement.head(3);
+    estimated_fb_state.segment<3>(7) = omega_global;
+    // Translational velocity
     estimated_fb_state.tail(3) = ekf.getState().getVelocity() +
                                  omega_global.cross(r_imu_to_pelvis_global);
     state->get_mutable_discrete_state()

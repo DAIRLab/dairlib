@@ -34,8 +34,13 @@ namespace systems {
 /// Contact-Aided Invariant Extended Kalman Filtering for Robot State Estimation
 /// by Ross Hartley, Maani Ghaffari, Ryan M. Eustice, and Jessy W. Grizzle
 ///
-/// In the state estimator, we assume the orientation of the imu frame is the
-/// same as that of pelvis frame.
+/// A few notes:
+/// - the imu measurements are all in body frame, and the ekf state
+///   is expressed in the world frame.
+/// - the position and velocity of MBP's floating base coordinates are expressed
+///   in the world frame.
+/// - we assume the orientation of the imu frame is the same as that of pelvis
+///   frame.
 class CassieStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   /// Constructor

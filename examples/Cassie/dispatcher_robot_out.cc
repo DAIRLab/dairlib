@@ -101,8 +101,8 @@ int do_main(int argc, char* argv[]) {
   // Evaluators for contact points (The position doesn't matter. It's not used
   // in OSC)
   multibody::KinematicEvaluatorSet<double> left_contact_evaluator(plant);
-  auto left_toe = LeftToe(plant);
-  auto left_heel = LeftHeel(plant);
+  auto left_toe = LeftToeFront(plant);
+  auto left_heel = LeftToeRear(plant);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant, left_toe.first, left_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
@@ -112,8 +112,8 @@ int do_main(int argc, char* argv[]) {
   left_contact_evaluator.add_evaluator(&left_toe_evaluator);
   left_contact_evaluator.add_evaluator(&left_heel_evaluator);
   multibody::KinematicEvaluatorSet<double> right_contact_evaluator(plant);
-  auto right_toe = RightToe(plant);
-  auto right_heel = RightHeel(plant);
+  auto right_toe = RightToeFront(plant);
+  auto right_heel = RightToeRear(plant);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
       plant, right_toe.first, right_toe.second, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});

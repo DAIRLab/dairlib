@@ -29,6 +29,13 @@ namespace systems {
 ///    - imu accelerometer values
 ///
 /// If the model is fixed-based, then it skips the second step.
+///
+/// The state estimation part of the program is based on the paper
+/// Contact-Aided Invariant Extended Kalman Filtering for Robot State Estimation
+/// by Ross Hartley, Maani Ghaffari, Ryan M. Eustice, and Jessy W. Grizzle
+///
+/// In the state estimator, we assume the orientation of the imu frame is the
+/// same as that of pelvis frame.
 class CassieStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   /// Constructor
@@ -113,8 +120,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuator_idx_map_;
 
   // Body frames
-  std::vector<const drake::multibody::Body<double>*> thighs_;
-  std::vector<const drake::multibody::Body<double>*> heel_springs_;
   std::vector<const drake::multibody::Frame<double>*> toe_frames_;
   const drake::multibody::Frame<double>& pelvis_frame_;
   const drake::multibody::Body<double>& pelvis_;
@@ -141,13 +146,15 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex filtered_residual_right_idx_;
 
   // Cassie parameters
-  // TODO(yminchen): get the numbers below from plant
-  double rod_length_ = 0.5012;  // from cassie_utils
-  Eigen::Vector3d rod_on_heel_spring_ = Eigen::Vector3d(.11877, -.01, 0.0);
-  Eigen::Vector3d rod_on_thigh_left_ = Eigen::Vector3d(0.0, 0.0, 0.045);
-  Eigen::Vector3d rod_on_thigh_right_ = Eigen::Vector3d(0.0, 0.0, -0.045);
-  Eigen::Vector3d front_contact_disp_ = Eigen::Vector3d(-0.0457, 0.112, 0);
-  Eigen::Vector3d rear_contact_disp_ = Eigen::Vector3d(0.088, 0, 0);
+  std::vector<
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
+      rod_on_thighs_;
+  std::vector<
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
+      rod_on_heel_springs_;
+  double rod_length_;
+  Eigen::Vector3d front_contact_disp_;
+  Eigen::Vector3d rear_contact_disp_;
   Eigen::Vector3d mid_contact_disp_;
   // IMU location wrt pelvis
   Eigen::Vector3d imu_pos_ = Eigen::Vector3d(0.03155, 0, -0.07996);

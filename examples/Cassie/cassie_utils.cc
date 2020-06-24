@@ -103,58 +103,82 @@ std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(
   return tree;
 }
 
+double AchillesLength() {return .5012;}
+
 template <typename T>
-std::pair<const Vector3d, const Frame<T>&> LeftToe(
+std::pair<const Vector3d, const Frame<T>&> LeftToeFront(
     const MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
     Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_left"));
 }
 
 template <typename T>
-std::pair<const Vector3d, const Frame<T>&> RightToe(
+std::pair<const Vector3d, const Frame<T>&> RightToeFront(
     const MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
     Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_right"));
 }
 
 template <typename T>
-std::pair<const Vector3d, const Frame<T>&> LeftHeel(
+std::pair<const Vector3d, const Frame<T>&> LeftToeRear(
     const MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
     Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_left"));
 }
 
 template <typename T>
-std::pair<const Vector3d, const Frame<T>&> RightHeel(
+std::pair<const Vector3d, const Frame<T>&> RightToeRear(
     const MultibodyPlant<T>& plant) {
   return std::pair<const Vector3d, const Frame<T>&>(
     Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_right"));
 }
 
 template <typename T>
+std::pair<const Vector3d, const Frame<T>&> LeftRodOnThigh(
+    const drake::multibody::MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(0.0, 0.0, 0.045), plant.GetFrameByName("thigh_left"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> RightRodOnThigh(
+    const drake::multibody::MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(0.0, 0.0, -0.045), plant.GetFrameByName("thigh_right"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> LeftRodOnHeel(
+    const drake::multibody::MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(.11877, -.01, 0.0), plant.GetFrameByName("heel_spring_left"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> RightRodOnHeel(
+    const drake::multibody::MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(.11877, -.01, 0.0), plant.GetFrameByName("heel_spring_right"));
+}
+
+template <typename T>
 multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
     const MultibodyPlant<T>& plant) {
-  double achilles_length = .5012;
-  const auto& heel_spring = plant.GetFrameByName("heel_spring_left");
-  const auto& thigh = plant.GetFrameByName("thigh_left");
-  Vector3d rod_on_heel(.11877, -.01, 0.0);
-  Vector3d rod_on_thigh(0.0, 0.0, 0.045);
-
-  return multibody::DistanceEvaluator<T>(plant, rod_on_heel, heel_spring,
-      rod_on_thigh, thigh, achilles_length);
+  auto rod_on_thigh = LeftRodOnThigh(plant);
+  auto rod_on_heel = LeftRodOnHeel(plant);
+  return multibody::DistanceEvaluator<T>(plant, rod_on_heel.first,
+                                         rod_on_heel.second, rod_on_thigh.first,
+                                         rod_on_thigh.second, AchillesLength());
 }
 
 template <typename T>
 multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
     const MultibodyPlant<T>& plant) {
-  double achilles_length = .5012;
-  const auto& heel_spring = plant.GetFrameByName("heel_spring_right");
-  const auto& thigh = plant.GetFrameByName("thigh_right");
-  Vector3d rod_on_heel(.11877, -.01, 0.0);
-  Vector3d rod_on_thigh(0.0, 0.0, -0.045);
-
-  return multibody::DistanceEvaluator<T>(plant, rod_on_heel, heel_spring,
-      rod_on_thigh, thigh, achilles_length);
+  auto rod_on_thigh = RightRodOnThigh(plant);
+  auto rod_on_heel = RightRodOnHeel(plant);
+  return multibody::DistanceEvaluator<T>(plant, rod_on_heel.first,
+                                         rod_on_heel.second, rod_on_thigh.first,
+                                         rod_on_thigh.second, AchillesLength());
 }
 
 void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
@@ -294,14 +318,22 @@ systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
   return cassie_sensor_aggregator;
 }
 
-template std::pair<const Vector3d, const Frame<double>&> LeftToe(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> RightToe(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> LeftHeel(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> RightHeel(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToe(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToe(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftToeFront(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightToeFront(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftToeRear(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightToeRear(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToeFront(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToeFront(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToeRear(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToeRear(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftRodOnThigh(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightRodOnThigh(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftRodOnHeel(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightRodOnHeel(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftRodOnThigh(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightRodOnThigh(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftRodOnHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightRodOnHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template multibody::DistanceEvaluator<double> LeftLoopClosureEvaluator(const MultibodyPlant<double>& plant);  // NOLINT
 template multibody::DistanceEvaluator<double> RightLoopClosureEvaluator(const MultibodyPlant<double>& plant);  // NOLINT
 template multibody::DistanceEvaluator<AutoDiffXd> LeftLoopClosureEvaluator(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT

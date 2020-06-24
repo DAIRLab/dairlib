@@ -48,8 +48,8 @@ class ContactEstimationTest : public ::testing::Test {
     std::vector<int> inds = {0, 1, 2};
     left_contact_evaluator_ =
         std::make_unique<multibody::KinematicEvaluatorSet<double>>(plant_);
-    auto left_toe = LeftToe(plant_);
-    auto left_heel = LeftHeel(plant_);
+    auto left_toe = LeftToeFront(plant_);
+    auto left_heel = LeftToeRear(plant_);
     left_toe_evaluator_ =
         std::make_unique<multibody::WorldPointEvaluator<double>>(
             plant_, left_toe.first, left_toe.second, Matrix3d::Identity(),
@@ -62,8 +62,8 @@ class ContactEstimationTest : public ::testing::Test {
     left_contact_evaluator_->add_evaluator(left_heel_evaluator_.get());
     right_contact_evaluator_ =
         std::make_unique<multibody::KinematicEvaluatorSet<double>>(plant_);
-    auto right_toe = RightToe(plant_);
-    auto right_heel = RightHeel(plant_);
+    auto right_toe = RightToeFront(plant_);
+    auto right_heel = RightToeRear(plant_);
     right_toe_evaluator_ =
         std::make_unique<multibody::WorldPointEvaluator<double>>(
             plant_, right_toe.first, right_toe.second, Matrix3d::Identity(),

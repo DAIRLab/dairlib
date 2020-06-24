@@ -51,21 +51,39 @@ void addCassieMultibody(drake::multibody::MultibodyPlant<double>* plant,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf",
     bool add_leaf_springs = true,  bool add_loop_closure = true);
 
+double AchillesLength();
+
 template <typename T>
-std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> LeftToe(
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+LeftToeFront(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+RightToeFront(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> LeftToeRear(
     const drake::multibody::MultibodyPlant<T>& plant);
 
 template <typename T>
-std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> RightToe(
-    const drake::multibody::MultibodyPlant<T>& plant);
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+RightToeRear(const drake::multibody::MultibodyPlant<T>& plant);
 
 template <typename T>
-std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> LeftHeel(
-    const drake::multibody::MultibodyPlant<T>& plant);
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+LeftRodOnThigh(const drake::multibody::MultibodyPlant<T>& plant);
 
 template <typename T>
-std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> RightHeel(
-    const drake::multibody::MultibodyPlant<T>& plant);
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+RightRodOnThigh(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+LeftRodOnHeel(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+RightRodOnHeel(const drake::multibody::MultibodyPlant<T>& plant);
 
 template <typename T>
 multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(

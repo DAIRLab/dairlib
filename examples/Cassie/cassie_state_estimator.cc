@@ -51,14 +51,13 @@ CassieStateEstimator::CassieStateEstimator(
       world_(plant_.world_frame()),
       is_floating_base_(multibody::isQuaternion(plant)),
       context_(plant_.CreateDefaultContext()),
-      thighs_({&plant.GetBodyByName("thigh_left"),
-               &plant.GetBodyByName("thigh_right")}),
-      heel_springs_({&plant.GetBodyByName("heel_spring_left"),
-                     &plant.GetBodyByName("heel_spring_right")}),
       toe_frames_({&plant.GetFrameByName("toe_left"),
                    &plant.GetFrameByName("toe_right")}),
       pelvis_frame_(plant.GetFrameByName("pelvis")),
       pelvis_(plant.GetBodyByName("pelvis")),
+      rod_on_thighs_({LeftRodOnThigh(plant), RightRodOnThigh(plant)}),
+      rod_on_heel_springs_({LeftRodOnHeel(plant), RightRodOnHeel(plant)}),
+      rod_length_(AchillesLength()),
       context_gt_(plant_.CreateDefaultContext()),
       test_with_ground_truth_state_(test_with_ground_truth_state),
       print_info_to_terminal_(print_info_to_terminal),
@@ -85,6 +84,8 @@ CassieStateEstimator::CassieStateEstimator(
 
   if (is_floating_base_) {
     // Middle point between the front and the rear contact points
+    front_contact_disp_ = LeftToeFront(plant).first;
+    rear_contact_disp_ = LeftToeRear(plant).first;
     mid_contact_disp_ = (front_contact_disp_ + rear_contact_disp_) / 2;
 
     // Declare input port receiving robot's state (simulation ground truth
@@ -267,27 +268,26 @@ void CassieStateEstimator::solveFourbarLinkage(
     const VectorXd& q, double* left_heel_spring,
     double* right_heel_spring) const {
   // Get the spring length
-  double spring_length = rod_on_heel_spring_.norm();
+  double spring_length = rod_on_heel_springs_[0].first.norm();
   // Spring rest angle offset
   double spring_rest_offset =
-      atan(rod_on_heel_spring_(1) / rod_on_heel_spring_(0));
-  std::vector<Vector3d> rod_on_thigh{rod_on_thigh_left_, rod_on_thigh_right_};
+      atan(rod_on_heel_springs_[0].first(1) / rod_on_heel_springs_[0].first(0));
 
   plant_.SetPositions(context_.get(), q);
 
   for (int i = 0; i < 2; i++) {
     // Get thigh pose and heel spring pose
-    auto thigh_pose = plant_.EvalBodyPoseInWorld(*context_, *(thighs_[i]));
+    auto thigh_pose = rod_on_thighs_[i].second.CalcPoseInWorld(*context_);
     const Vector3d& thigh_pos = thigh_pose.translation();
     const auto& thigh_rot_mat = thigh_pose.rotation();
 
     auto heel_spring_pose =
-        plant_.EvalBodyPoseInWorld(*context_, *heel_springs_[i]);
+        rod_on_heel_springs_[i].second.CalcPoseInWorld(*context_);
     const Vector3d& r_heel_spring_base = heel_spring_pose.translation();
     const auto& heel_spring_rot_mat = heel_spring_pose.rotation();
 
     // Get r_heel_spring_base_to_thigh_ball_joint
-    Vector3d r_ball_joint = thigh_pos + thigh_rot_mat * rod_on_thigh[i];
+    Vector3d r_ball_joint = thigh_pos + thigh_rot_mat * rod_on_thighs_[i].first;
     Vector3d r_heel_spring_base_to_thigh_ball_joint =
         r_ball_joint - r_heel_spring_base;
     Vector3d r_thigh_ball_joint_wrt_heel_spring_base =
@@ -474,7 +474,6 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
 
 void CassieStateEstimator::AssignFloatingBaseStateToOutputVector(
     const VectorXd& est_fb_state, OutputVector<double>* output) const {
-  // TODO(yminchen): Joints names need to be changed when we move to MBP
   output->SetPositionAtIndex(position_idx_map_.at("base_qw"), est_fb_state(0));
   output->SetPositionAtIndex(position_idx_map_.at("base_qx"), est_fb_state(1));
   output->SetPositionAtIndex(position_idx_map_.at("base_qy"), est_fb_state(2));
@@ -1178,10 +1177,6 @@ EventStatus CassieStateEstimator::Update(
         // cout << pose.block<3, 1>(0, 3).transpose() << endl;
       }
 
-      // TODO(yminchen): the jacobian here should be J_imu_to_toe viewed in imu
-      //  frame. Currently it doesn't seem to be a problem for estimation.
-      //  Should fix this once moved to MBP (which has the API).
-      //  Done. Test if the code is correct
       plant_.CalcJacobianTranslationalVelocity(
           *context_, JacobianWrtVariable::kV, *toe_frames_[i],
           rear_contact_disp_, pelvis_frame_, pelvis_frame_, &J);

@@ -1273,10 +1273,6 @@ void CassieStateEstimator::CopyStateOut(const Context<double>& context,
   const auto& cassie_out =
       this->EvalAbstractInput(context, cassie_out_input_port_)
           ->get_value<cassie_out_t>();
-  // There might be a better way to initialize?
-  auto data =
-      output->get_mutable_data();  // This doesn't affect timestamp value
-  data = VectorXd::Zero(data.size());
 
   // Assign values robot output vector
   // Copy imu values and robot state excluding floating base
@@ -1306,7 +1302,7 @@ void CassieStateEstimator::setPreviousTime(Context<double>* context,
                                            double time) {
   context->get_mutable_discrete_state(time_idx_).get_mutable_value() << time;
 }
-void CassieStateEstimator::setInitialPevlisPose(Context<double>* context,
+void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
                                                 Eigen::Vector4d quat,
                                                 Vector3d pelvis_pos) {
   context->get_mutable_discrete_state(fb_state_idx_).get_mutable_value().head(7)

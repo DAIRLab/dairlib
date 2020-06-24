@@ -68,7 +68,7 @@ void setInitialEkfState(const drake::systems::Diagram<double>& diagram,
   auto& state_estimator_context =
       diagram.GetMutableSubsystemContext(*state_estimator, &diagram_context);
   state_estimator->setPreviousTime(&state_estimator_context, t0);
-  state_estimator->setInitialPevlisPose(
+  state_estimator->setInitialPelvisPose(
       &state_estimator_context, Eigen::Vector4d(1, 0, 0, 0),
       Eigen::Vector3d(0.0318638, 0, FLAGS_init_pelvis_height));
   // Initial imu values are all 0 if the robot is dropped from the air.

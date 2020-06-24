@@ -73,7 +73,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       int* left_contact, int* right_contact) const;
 
   void setPreviousTime(drake::systems::Context<double>* context, double time);
-  void setInitialPevlisPose(drake::systems::Context<double>* context,
+  void setInitialPelvisPose(drake::systems::Context<double>* context,
                             Eigen::Vector4d quat,
                             Eigen::Vector3d position);
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,

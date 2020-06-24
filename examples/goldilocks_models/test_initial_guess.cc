@@ -37,13 +37,27 @@ namespace dairlib::goldilocks_models {
       //create test data and save it
       int iter = 10;
       int sample = 0;
-      int total_sample_num = 27;
-      double min_sl = 0.1625;
-      double max_sl = 0.2375;
-      double min_gi = -0.125;
-      double max_gi = 0.125;
-      double min_tr = -0.3125;
-      double max_tr = 0.3125;
+      int robot = 1;
+      int use_database = false;
+      GridTasksGenerator task_gen;
+      if (robot == 0) {
+        task_gen = GridTasksGenerator(
+            3, {"stride length", "ground incline", "velocity"},
+            {10, 5, 5}, {0.25, 0, 0.4},
+            {0.015, 0.05, 0.02}, true);
+      } else{
+        task_gen = GridTasksGenerator(
+            4, {"stride length", "ground incline", "velocity", "turning rate"},
+            {10, 5, 5, 5},
+            {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, true);
+      }
+      int total_sample_num = task_gen.total_sample_number();
+      double min_sl = task_gen.task_min("stride_length");
+      double max_sl = task_gen.task_max("stride_length");
+      double min_gi = task_gen.task_min("ground_incline");
+      double max_gi = task_gen.task_max("ground_incline");
+      double min_tr = task_gen.task_min("turning_rate");
+      double max_tr = task_gen.task_max("turning_rate");
       const string dir = "../dairlib_data/goldilocks_models/find_models/robot_1_test/";
 
       bool use_created_data = true;
@@ -84,8 +98,8 @@ namespace dairlib::goldilocks_models {
           }
         }
       }
-      string initial_file = set_initial_guess(dir, iter, sample, total_sample_num,
-          min_sl, max_sl, min_gi, max_gi, min_tr, max_tr);
+      string initial_file = set_initial_guess(dir, iter, sample,task_gen,
+          use_database,robot);
       return 0;
     }
 }

@@ -57,7 +57,7 @@ CassieStateEstimator::CassieStateEstimator(
       pelvis_(plant.GetBodyByName("pelvis")),
       rod_on_thighs_({LeftRodOnThigh(plant), RightRodOnThigh(plant)}),
       rod_on_heel_springs_({LeftRodOnHeel(plant), RightRodOnHeel(plant)}),
-      rod_length_(AchillesLength()),
+      rod_length_(achilles_length),
       context_gt_(plant_.CreateDefaultContext()),
       test_with_ground_truth_state_(test_with_ground_truth_state),
       print_info_to_terminal_(print_info_to_terminal),

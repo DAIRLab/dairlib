@@ -27,84 +27,6 @@ using drake::solvers::MathematicalProgram;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-/// Add a fixed base cassie to the given multibody plant and scene graph
-/// These methods are to be used rather that direct construction of the plant
-/// from the URDF to centralize any modeling changes or additions
-void addCassieMultibody(MultibodyPlant<double>* plant,
-    SceneGraph<double>* scene_graph, bool floating_base, std::string filename,
-    bool add_leaf_springs, bool add_loop_closure) {
-  std::string full_name = FindResourceOrThrow(filename);
-  Parser parser(plant, scene_graph);
-  parser.AddModelFromFile(full_name);
-
-  plant->mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                    Vector3d::UnitZ());
-
-  if (!floating_base) {
-    plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("pelvis"),
-                      drake::math::RigidTransform<double>(Vector3d::Zero()));
-  }
-
-  if (add_leaf_springs) {
-    // Add springs
-    // stiffness is 2300 in URDF, 1500 from gazebo
-    plant->AddForceElement<RevoluteSpring>(
-        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
-            plant->GetJointByName("knee_joint_left")),
-        0, 1500);
-    plant->AddForceElement<RevoluteSpring>(
-        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
-            plant->GetJointByName("knee_joint_right")),
-        0, 1500);
-    plant->AddForceElement<RevoluteSpring>(
-        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
-            plant->GetJointByName("ankle_spring_joint_left")),
-        0, 1250);
-    plant->AddForceElement<RevoluteSpring>(
-        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
-            plant->GetJointByName("ankle_spring_joint_right")),
-        0, 1250);
-  }
-
-  if (add_loop_closure) {
-    // TOOO(mposa): add loop closures when implemented in Drake
-    // Add a spring to represent loop closure
-    double achilles_stiffness = 2e5;
-    double achilles_damping = 2e3;
-    double achilles_length = .5012;
-    const auto& heel_spring_left = plant->GetBodyByName("heel_spring_left");
-    const auto& thigh_left = plant->GetBodyByName("thigh_left");
-    const auto& heel_spring_right = plant->GetBodyByName("heel_spring_right");
-    const auto& thigh_right = plant->GetBodyByName("thigh_right");
-
-    Vector3d rod_on_heel_spring;  // symmetric left and right
-    rod_on_heel_spring << .11877, -.01, 0.0;
-
-    Vector3d rod_on_thigh_left;
-    rod_on_thigh_left << 0.0, 0.0, 0.045;
-
-    Vector3d rod_on_thigh_right;
-    rod_on_thigh_right << 0.0, 0.0, -0.045;
-
-    plant->AddForceElement<drake::multibody::LinearSpringDamper>(
-        heel_spring_left, rod_on_heel_spring, thigh_left, rod_on_thigh_left,
-        achilles_length, achilles_stiffness, achilles_damping);
-
-    plant->AddForceElement<drake::multibody::LinearSpringDamper>(
-        heel_spring_right, rod_on_heel_spring, thigh_right, rod_on_thigh_right,
-        achilles_length, achilles_stiffness, achilles_damping);
-  }
-}
-
-std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(
-    std::string filename, FloatingBaseType base_type, bool is_with_springs) {
-  auto tree = std::make_unique<RigidBodyTree<double>>();
-  buildCassieTree(*tree.get(), filename, base_type, is_with_springs);
-  return tree;
-}
-
-double AchillesLength() {return .5012;}
-
 template <typename T>
 std::pair<const Vector3d, const Frame<T>&> LeftToeFront(
     const MultibodyPlant<T>& plant) {
@@ -168,7 +90,7 @@ multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
   auto rod_on_heel = LeftRodOnHeel(plant);
   return multibody::DistanceEvaluator<T>(plant, rod_on_heel.first,
                                          rod_on_heel.second, rod_on_thigh.first,
-                                         rod_on_thigh.second, AchillesLength());
+                                         rod_on_thigh.second, achilles_length);
 }
 
 template <typename T>
@@ -178,7 +100,78 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
   auto rod_on_heel = RightRodOnHeel(plant);
   return multibody::DistanceEvaluator<T>(plant, rod_on_heel.first,
                                          rod_on_heel.second, rod_on_thigh.first,
-                                         rod_on_thigh.second, AchillesLength());
+                                         rod_on_thigh.second, achilles_length);
+}
+
+/// Add a fixed base cassie to the given multibody plant and scene graph
+/// These methods are to be used rather that direct construction of the plant
+/// from the URDF to centralize any modeling changes or additions
+void addCassieMultibody(MultibodyPlant<double>* plant,
+                        SceneGraph<double>* scene_graph, bool floating_base,
+                        std::string filename, bool add_leaf_springs,
+                        bool add_loop_closure) {
+  std::string full_name = FindResourceOrThrow(filename);
+  Parser parser(plant, scene_graph);
+  parser.AddModelFromFile(full_name);
+
+  plant->mutable_gravity_field().set_gravity_vector(-9.81 * Vector3d::UnitZ());
+
+  if (!floating_base) {
+    plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("pelvis"),
+                      drake::math::RigidTransform<double>(Vector3d::Zero()));
+  }
+
+  if (add_leaf_springs) {
+    // Add springs
+    // stiffness is 2300 in URDF, 1500 from gazebo
+    plant->AddForceElement<RevoluteSpring>(
+        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
+            plant->GetJointByName("knee_joint_left")),
+        0, 1500);
+    plant->AddForceElement<RevoluteSpring>(
+        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
+            plant->GetJointByName("knee_joint_right")),
+        0, 1500);
+    plant->AddForceElement<RevoluteSpring>(
+        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
+            plant->GetJointByName("ankle_spring_joint_left")),
+        0, 1250);
+    plant->AddForceElement<RevoluteSpring>(
+        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
+            plant->GetJointByName("ankle_spring_joint_right")),
+        0, 1250);
+  }
+
+  if (add_loop_closure) {
+    // TOOO(mposa): add loop closures when implemented in Drake
+    // Add a spring to represent loop closure
+    double achilles_stiffness = 2e5;
+    double achilles_damping = 2e3;
+    const auto& heel_spring_left = LeftRodOnHeel(*plant).second.body();
+    const auto& thigh_left = LeftRodOnThigh(*plant).second.body();
+    const auto& heel_spring_right = RightRodOnHeel(*plant).second.body();
+    const auto& thigh_right = RightRodOnThigh(*plant).second.body();
+
+    // symmetric left and right for heel
+    Vector3d rod_on_heel_spring = LeftRodOnHeel(*plant).first;
+    Vector3d rod_on_thigh_left = LeftRodOnThigh(*plant).first;
+    Vector3d rod_on_thigh_right = RightRodOnThigh(*plant).first;
+
+    plant->AddForceElement<drake::multibody::LinearSpringDamper>(
+        heel_spring_left, rod_on_heel_spring, thigh_left, rod_on_thigh_left,
+        achilles_length, achilles_stiffness, achilles_damping);
+
+    plant->AddForceElement<drake::multibody::LinearSpringDamper>(
+        heel_spring_right, rod_on_heel_spring, thigh_right, rod_on_thigh_right,
+        achilles_length, achilles_stiffness, achilles_damping);
+  }
+}
+
+std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(
+    std::string filename, FloatingBaseType base_type, bool is_with_springs) {
+  auto tree = std::make_unique<RigidBodyTree<double>>();
+  buildCassieTree(*tree.get(), filename, base_type, is_with_springs);
+  return tree;
 }
 
 void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
@@ -187,7 +180,6 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
       FindResourceOrThrow(filename), base_type, &tree);
 
   // Add distance constraints for the two legs
-  double achilles_length = .5012;
   int heel_spring_left = tree.FindBodyIndex("heel_spring_left");
   int thigh_left = tree.FindBodyIndex("thigh_left");
 

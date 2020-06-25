@@ -236,11 +236,10 @@ void TransTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void TransTaskSpaceTrackingData::UpdateJdotV(
     const VectorXd& x_wo_spr, Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
-               ->CalcBiasForJacobianSpatialVelocity(
+               ->CalcBiasTranslationalAcceleration(
                    context_wo_spr, drake::multibody::JacobianWrtVariable::kV,
                    *body_frames_wo_spr_.at(GetStateIdx()),
-                   pts_on_body_.at(GetStateIdx()), world_wo_spr_, world_wo_spr_)
-               .tail(3);
+                   pts_on_body_.at(GetStateIdx()), world_wo_spr_, world_wo_spr_);
 }
 
 void TransTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
@@ -345,12 +344,12 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
 void RotTaskSpaceTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
                                               Context<double>& context_wo_spr) {
   JdotV_ = plant_wo_spr_
-               ->CalcBiasForJacobianSpatialVelocity(
+               ->CalcBiasSpatialAcceleration(
                    context_wo_spr, JacobianWrtVariable::kV,
                    *body_frames_wo_spr_.at(GetStateIdx()),
                    frame_pose_.at(GetStateIdx()).translation(), world_wo_spr_,
                    world_wo_spr_)
-               .head(3);
+               .rotational();
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {

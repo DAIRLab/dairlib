@@ -80,14 +80,15 @@ cc_library(
 #     ],
 # )
 
-cc_binary(
-    name = "test_initial_guess",
-    srcs = ["test_initial_guess.cc"],
+cc_test(
+    name = "gtest_initial_guess",
+    srcs = ["gtest_initial_guess.cc"],
     deps = [
         ":initial_guess",
         "//common",
         "@drake//:drake_shared_library",
         "@gflags",
+        "@gtest//:main",
     ],
 )
 

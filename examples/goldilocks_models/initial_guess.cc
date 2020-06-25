@@ -13,21 +13,29 @@ MatrixXd get_theta_scale(const string directory, int iter){
     return theta_scale;
 }
 
-MatrixXd get_gamma_scale(int gamma_length, double min_sl, double max_sl, double min_gi, double max_gi,
-        double min_tr, double max_tr){
-  VectorXd gamma_scale = VectorXd::Zero(gamma_length);
+MatrixXd get_gamma_scale(GridTasksGenerator task_gen){
+  int gamma_dimension = task_gen.dim();
+  VectorXd gamma_scale = VectorXd::Zero(gamma_dimension);
   // if not fixed task, we need to scale the gamma
-  if(! (min_gi==max_gi))
+  int dim = 0;
+  double min;
+  double max;
+  for (dim=0;dim<gamma_dimension;dim++)
   {
-    gamma_scale[0] = 1/(max_gi-min_gi);
-  }
-  if(! (min_sl==max_sl))
-  {
-    gamma_scale[1] = 1/(max_sl-min_sl);
-  }
-  if(! (min_tr==max_tr))
-  {
-    gamma_scale[2] = 1.3/(max_tr-min_tr);
+    min = task_gen.task_min(task_gen.names()[dim]);
+    max = task_gen.task_min(task_gen.names()[dim]);
+    if(! (min == max))
+    {
+      //coefficient is different for different dimensions
+      if(task_gen.names()[dim]=="turning_rate")
+      {
+        gamma_scale[dim] = 1.3/(max-min);
+      }
+      else
+      {
+        gamma_scale[dim] = 1/(max-min);
+      }
+    }
   }
   return gamma_scale;
 }
@@ -39,16 +47,11 @@ string set_initial_guess(const string directory, int iter, int sample,
 * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
 */
   double theta_range = 0.004;//this is tuned by robot_option=1,rom_option=2,3d task space
-  int gamma_dimension = 3;
+  int gamma_dimension = task_gen.dim();
   int total_sample_num = task_gen.total_sample_number();
-  double min_sl = task_gen.task_min("stride_length");
-  double max_sl = task_gen.task_max("stride_length");
-  double min_gi = task_gen.task_min("ground_incline");
-  double max_gi = task_gen.task_max("ground_incline");
-  double min_tr = task_gen.task_min("turning_rate");
-  double max_tr = task_gen.task_max("turning_rate");
+
   MatrixXd theta_scale = get_theta_scale(directory, iter);
-  MatrixXd gamma_scale = get_gamma_scale(gamma_dimension, min_sl, max_sl, min_gi, max_gi, min_tr, max_tr);
+  MatrixXd gamma_scale = get_gamma_scale(task_gen);
 //    initialize variables used for setting initial guess
   VectorXd initial_guess;
   string initial_file_name;
@@ -57,18 +60,12 @@ string set_initial_guess(const string directory, int iter, int sample,
   int past_iter;
   int sample_num;
 //    get theta of current iteration and task of current sample
-  VectorXd current_theta_s = readCSV(directory + to_string(iter) + string("_theta_s.csv"));
-  VectorXd current_theta_sDDot = readCSV(directory + to_string(iter) + string("_theta_sDDot.csv"));
+  VectorXd current_theta_s = readCSV(directory + to_string(iter) + string("_theta_y.csv"));
+  VectorXd current_theta_sDDot = readCSV(directory + to_string(iter) + string("_theta_yDDot.csv"));
   VectorXd current_theta(current_theta_s.rows()+current_theta_sDDot.rows());
   current_theta << current_theta_s,current_theta_sDDot;
-  MatrixXd current_ground_incline = readCSV(directory + to_string(iter) + string("_") + to_string(sample)
-                                            + string("_ground_incline.csv"));
-  MatrixXd current_stride_length = readCSV(directory + to_string(iter) + string("_") + to_string(sample)
-                                           + string("_stride_length.csv"));
-  MatrixXd current_turning_rate = readCSV(directory + to_string(iter) + string("_") + to_string(sample)
-                                           + string("_turning_rate.csv"));
-  VectorXd current_gamma(gamma_dimension);
-  current_gamma << current_ground_incline(0, 0), current_stride_length(0, 0), current_turning_rate(0,0);
+  VectorXd current_gamma = readCSV(directory + to_string(iter) + string("_") + to_string(sample)
+      + string("_task.csv"));
   int iter_start;
   string data_dir;
   //if use solutions from database
@@ -136,9 +133,9 @@ string set_initial_guess(const string directory, int iter, int sample,
     for (past_iter = iter - 1; past_iter >= iter_start; past_iter--) {
       //find useful theta according to the difference between previous theta and new theta
       VectorXd past_theta_s =
-          readCSV(directory + to_string(past_iter) + string("_theta_s.csv"));
+          readCSV(directory + to_string(past_iter) + string("_theta_y.csv"));
       VectorXd past_theta_sDDot = readCSV(
-          directory + to_string(past_iter) + string("_theta_sDDot.csv"));
+          directory + to_string(past_iter) + string("_theta_yDDot.csv"));
       VectorXd past_theta(past_theta_s.rows() + past_theta_sDDot.rows());
       past_theta << past_theta_s, past_theta_sDDot;
       double theta_diff =
@@ -156,21 +153,8 @@ string set_initial_guess(const string directory, int iter, int sample,
                            + string("_is_success.csv")))(0, 0);
           if (is_success == 1) {
             //extract past gamma
-            MatrixXd past_ground_incline =
-                readCSV(directory + to_string(past_iter) + string("_")
-                            + to_string(sample_num)
-                            + string("_ground_incline.csv"));
-            MatrixXd past_stride_length =
-                readCSV(directory + to_string(past_iter) + string("_")
-                            + to_string(sample_num)
-                            + string("_stride_length.csv"));
-            MatrixXd past_turning_rate =
-                readCSV(directory + to_string(past_iter) + string("_")
-                            + to_string(sample_num)
-                            + string("_turning_rate.csv"));
-            VectorXd past_gamma(gamma_dimension);
-            past_gamma << past_ground_incline(0, 0), past_stride_length(0,0),
-              past_turning_rate(0,0);
+            VectorXd past_gamma = readCSV(directory + to_string(past_iter) + string("_") + to_string(sample)
+              + string("_task.csv"));
             //calculate the weight for each sample using the 3-norm of the difference between gamma
             VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()
                 * gamma_scale.array();
@@ -237,6 +221,67 @@ string set_initial_guess(const string directory, int iter, int sample,
 
   }
   return initial_file_name;
+}
+
+int test_initial_guess(int iter_,int sample_,int robot_){
+  //create test data and save it
+  int iter = iter_;
+  int sample = sample_;
+  int robot = robot_;
+  int use_database = false;
+  GridTasksGenerator task_gen;
+  if (robot == 0) {
+    task_gen = GridTasksGenerator(
+        3, {"stride length", "ground incline", "velocity"},
+        {10, 5, 5}, {0.25, 0, 0.4},
+        {0.015, 0.05, 0.02}, true);
+  } else{
+    task_gen = GridTasksGenerator(
+        4, {"stride length", "ground incline", "velocity", "turning rate"},
+        {10, 5, 5, 5},
+        {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, true);
+  }
+  int total_sample_num = task_gen.total_sample_number();
+  const string dir = "../dairlib_data/goldilocks_models/find_models/robot_1_test/";
+  if (!CreateFolderIfNotExist(dir)) return 0;
+
+  bool use_created_data = true;
+  if(use_created_data) {
+    //for each iteration, create theta_s and theta_sDDot
+    int iteration = 0;
+    for (iteration = 0; iteration <= iter; iteration++) {
+      VectorXd theta_y = VectorXd::Random(70);
+      VectorXd theta_yDDot = VectorXd::Random(7);
+      writeCSV(dir + to_string(iteration) + string("_theta_y.csv"),
+               theta_y);
+      writeCSV(dir + to_string(iteration) + string("_theta_yDDot.csv"),
+               theta_yDDot);
+      //for each sample, create gamma, is_success and w
+      int sample = 0;
+      int dim = 0;
+      for (sample = 0; sample <= total_sample_num; sample++) {
+        string prefix = to_string(iteration) + "_" + to_string(sample) + "_";
+        VectorXd gamma(task_gen.dim());
+        for (dim=0;dim<task_gen.dim();dim++)
+        {
+          double min = task_gen.task_min(task_gen.names()[dim]);
+          double max = task_gen.task_min(task_gen.names()[dim]);
+          std::uniform_real_distribution<double> dist(min,max);
+          std::default_random_engine re;
+          gamma[dim] = dist(re);
+        }
+        writeCSV(dir + prefix + string("_task.csv"),gamma);
+        bool is_success = 1;
+        writeCSV(dir + prefix + string("is_success.csv"),
+                 is_success * MatrixXd::Ones(1, 1));
+        VectorXd w = VectorXd::Random(1478);
+        writeCSV(dir + prefix + string("w.csv"), w);
+      }
+    }
+  }
+  string initial_file = set_initial_guess(dir, iter, sample,task_gen,
+                                          use_database,robot);
+  return 0;
 }
 
 } //namespace

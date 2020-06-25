@@ -9,15 +9,14 @@ namespace dairlib {
 using systems::OutputVector;
 using systems::TimestampedVector;
 
-InputSupervisor::InputSupervisor(const RigidBodyTree<double>& tree,
-                                 double max_joint_velocity,
-                                 double update_period,
-                                 int min_consecutive_failures,
-                                 double input_limit)
-    : tree_(tree),
-      num_actuators_(tree_.get_num_actuators()),
-      num_positions_(tree_.get_num_positions()),
-      num_velocities_(tree_.get_num_velocities()),
+InputSupervisor::InputSupervisor(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    double max_joint_velocity, double update_period,
+    int min_consecutive_failures, double input_limit)
+    : plant_(plant),
+      num_actuators_(plant_.num_actuators()),
+      num_positions_(plant_.num_positions()),
+      num_velocities_(plant_.num_velocities()),
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {

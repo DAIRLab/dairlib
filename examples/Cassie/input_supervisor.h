@@ -2,7 +2,7 @@
 #include <limits>
 
 #include "systems/framework/timestamped_vector.h"
-#include "drake/multibody/rigid_body_tree.h"
+#include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -27,7 +27,7 @@ namespace dairlib {
 class InputSupervisor : public drake::systems::LeafSystem<double> {
  public:
   // Constructor.
-  // @param tree The RigidBodyTree in a tree (to be replaced with MBP)
+  // @param plant MultibodyPlant of the robot
   // @param max_joint_velocity
   // @param update_period
   // @param min_consecutive_failures (default = 1) before failure is triggered
@@ -35,8 +35,9 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   // If necessary, the max_joint_velocity and input_limit could be
   // replaced with a joint-specific vectors.
   explicit InputSupervisor(
-      const RigidBodyTree<double>& tree, double max_joint_velocity,
-      double update_period, int min_consecutive_failures = 1,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      double max_joint_velocity, double update_period,
+      int min_consecutive_failures = 1,
       double input_limit = std::numeric_limits<double>::max());
 
   const drake::systems::InputPort<double>& get_input_port_command() const {
@@ -72,7 +73,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
                  systems::TimestampedVector<double>* output) const;
 
  private:
-  const RigidBodyTree<double>& tree_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
   const int num_actuators_;
   const int num_positions_;
   const int num_velocities_;

@@ -40,7 +40,7 @@ class LeftToePos final : public controllers::OscUserDefinedPos {
 
   Eigen::VectorXd Position(const Eigen::VectorXd& q) const final {
     plant_.SetPositions(context_.get(), q);
-    auto left_toe = LeftToe(plant_);
+    auto left_toe = LeftToeFront(plant_);
     VectorXd ret(3);
     plant_.CalcPointsPositions(*context_, left_toe.second, left_toe.first,
                                plant_.world_frame(), &ret);
@@ -138,7 +138,7 @@ TEST_F(TrackingDataTest, AbstractTrackingData1) {
 
 TEST_F(TrackingDataTest, AbstractTrackingData2) {
   // Toe
-  auto left_toe = LeftToe(plant_wo_spring_);
+  auto left_toe = LeftToeFront(plant_wo_spring_);
 
   LeftToePos user_defined_com_pos(plant_wo_spring_);
   controllers::AbstractTrackingData abstract_tracking_data(

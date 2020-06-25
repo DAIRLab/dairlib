@@ -34,7 +34,7 @@ using dairlib::systems::SubvectorPassThrough;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 
-static constexpr double achilles_length = 0.5012;
+static constexpr double kCassieAchillesLength = 0.5012;
 
 template <typename T>
 std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>

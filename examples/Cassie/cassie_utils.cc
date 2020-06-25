@@ -88,9 +88,9 @@ multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
     const MultibodyPlant<T>& plant) {
   auto rod_on_thigh = LeftRodOnThigh(plant);
   auto rod_on_heel = LeftRodOnHeel(plant);
-  return multibody::DistanceEvaluator<T>(plant, rod_on_heel.first,
-                                         rod_on_heel.second, rod_on_thigh.first,
-                                         rod_on_thigh.second, achilles_length);
+  return multibody::DistanceEvaluator<T>(
+      plant, rod_on_heel.first, rod_on_heel.second, rod_on_thigh.first,
+      rod_on_thigh.second, kCassieAchillesLength);
 }
 
 template <typename T>
@@ -98,9 +98,9 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
     const MultibodyPlant<T>& plant) {
   auto rod_on_thigh = RightRodOnThigh(plant);
   auto rod_on_heel = RightRodOnHeel(plant);
-  return multibody::DistanceEvaluator<T>(plant, rod_on_heel.first,
-                                         rod_on_heel.second, rod_on_thigh.first,
-                                         rod_on_thigh.second, achilles_length);
+  return multibody::DistanceEvaluator<T>(
+      plant, rod_on_heel.first, rod_on_heel.second, rod_on_thigh.first,
+      rod_on_thigh.second, kCassieAchillesLength);
 }
 
 /// Add a fixed base cassie to the given multibody plant and scene graph
@@ -159,11 +159,11 @@ void addCassieMultibody(MultibodyPlant<double>* plant,
 
     plant->AddForceElement<drake::multibody::LinearSpringDamper>(
         heel_spring_left, rod_on_heel_spring, thigh_left, rod_on_thigh_left,
-        achilles_length, achilles_stiffness, achilles_damping);
+        kCassieAchillesLength, achilles_stiffness, achilles_damping);
 
     plant->AddForceElement<drake::multibody::LinearSpringDamper>(
         heel_spring_right, rod_on_heel_spring, thigh_right, rod_on_thigh_right,
-        achilles_length, achilles_stiffness, achilles_damping);
+        kCassieAchillesLength, achilles_stiffness, achilles_damping);
   }
 }
 
@@ -196,10 +196,10 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
   rod_on_thigh_right << 0.0, 0.0, -0.045;
 
   tree.addDistanceConstraint(heel_spring_left, rod_on_heel_spring, thigh_left,
-                             rod_on_thigh_left, achilles_length);
+                             rod_on_thigh_left, kCassieAchillesLength);
 
   tree.addDistanceConstraint(heel_spring_right, rod_on_heel_spring, thigh_right,
-                             rod_on_thigh_right, achilles_length);
+                             rod_on_thigh_right, kCassieAchillesLength);
 
   // Add spring forces
   if(is_with_springs){

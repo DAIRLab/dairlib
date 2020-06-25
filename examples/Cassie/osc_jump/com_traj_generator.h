@@ -1,9 +1,11 @@
 #pragma once
 
 #include <drake/multibody/plant/multibody_plant.h>
+
 #include "jumping_event_based_fsm.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -11,11 +13,13 @@ namespace dairlib::examples::Cassie::osc_jump {
 
 class COMTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  COMTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
-                   int pelvis_idx, Eigen::Vector3d front_contact_disp,
-                   Eigen::Vector3d rear_contact_disp,
-                   drake::trajectories::PiecewisePolynomial<double> crouch_traj,
-                   double height = 0.8, double time_offset = 0.0);
+  COMTrajGenerator(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::vector<std::pair<const Eigen::Vector3d,
+                                  const drake::multibody::Frame<double>&>>&
+          feet_contact_points,
+      drake::trajectories::PiecewisePolynomial<double> crouch_traj,
+      double time_offset = 0.0);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
@@ -31,9 +35,6 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::trajectories::PiecewisePolynomial<double> generateCrouchTraj(
       const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
       double d) const;
-  drake::trajectories::PiecewisePolynomial<double> generateFlightTraj(
-      const drake::systems::Context<double>& context,
-      const Eigen::VectorXd& x) const;
   drake::trajectories::PiecewisePolynomial<double> generateLandingTraj(
       const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
       double d) const;
@@ -46,16 +47,18 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
                 drake::trajectories::Trajectory<double>* traj) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  int time_idx_;
+  const drake::multibody::BodyFrame<double>& world_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+
   int fsm_idx_;
   int com_x_offset_idx_;
 
-  int hip_idx_;
-  Eigen::Vector3d front_contact_disp_;
-  Eigen::Vector3d rear_contact_disp_;
+  // A list of pairs of contact body frame and contact point
+  const std::vector<
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>&
+      feet_contact_points_;
+
   drake::trajectories::PiecewisePolynomial<double> crouch_traj_;
-  //  Eigen::Vector3d support_center_offset_;
-  double height_;
   double time_offset_;
 
   int state_port_;

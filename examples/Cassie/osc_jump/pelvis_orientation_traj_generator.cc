@@ -1,4 +1,5 @@
 #include "pelvis_orientation_traj_generator.h"
+
 #include "multibody/multibody_utils.h"
 
 using std::cout;
@@ -45,7 +46,6 @@ PPolyPassthrough::PPolyPassthrough(
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
           .get_index();
-//  fsm_port_ = this->DeclareVectorInputPort(BasicVector<double>(1)).get_index();
 
   // Shift trajectory by time_offset
   traj_.shiftRight(time_offset);
@@ -60,9 +60,6 @@ void PPolyPassthrough::CalcTraj(
   double timestamp = robot_output->get_timestamp();
 
   // Read in finite state machine
-//  const BasicVector<double>* fsm_output =
-//      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-//  VectorXd fsm_state = fsm_output->get_value();
 
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(

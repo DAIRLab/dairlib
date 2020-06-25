@@ -12,12 +12,14 @@ from pydrake.multibody.tree import JacobianWrtVariable
 from pydrake.systems.framework import DiagramBuilder
 import pydairlib.lcm_trajectory
 import pydairlib.multibody_utils
+from pydairlib.common import FindResourceOrThrow
 from loadLcmTrajs import loadLcmTrajs
 from scipy import integrate
 
 
 def get_index_at_time(times, t):
     return np.argwhere(times - t > 0)[0][0]
+
 
 def print_osc_debug(t_idx, length, osc_debug):
     print('y = ' + str(osc_debug.y[t_idx:t_idx + length, :]))
@@ -32,7 +34,9 @@ def print_osc_debug(t_idx, length, osc_debug):
     print('yddot_command_sol = ' + str(
         osc_debug.yddot_command_sol[t_idx:t_idx + length, :]))
 
+
 def main():
+    # sys.settrace()
     global filename
     global x_traj_nominal
     global u_traj_nominal
@@ -49,12 +53,11 @@ def main():
     matplotlib.rcParams["savefig.directory"] = \
         "/home/yangwill/Documents/research/projects/cassie/jumping/analysis" \
         "/figures/"
-
     builder = DiagramBuilder()
     plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
     Parser(plant).AddModelFromFile(
-        "/home/yangwill/Documents/research/dairlib/examples/Cassie/urdf"
-        "/cassie_v2.urdf")
+        FindResourceOrThrow(
+            "examples/Cassie/urdf/cassie_v2.urdf"))
     plant.mutable_gravity_field().set_gravity_vector(
         -9.81 * np.array([0, 0, 1]))
     plant.Finalize()
@@ -108,13 +111,18 @@ def main():
     log = lcm.EventLog(filename, "r")
     log_samples = int(log.size() / 100)
     # print(log.size() / 100)
-
+    print("Loading log")
     contact_info, contact_info_locs, control_inputs, estop_signal, osc_debug, \
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
     t_state, v, fsm = process_lcm_log.process_log(log, pos_map, vel_map)
 
-    import pdb; pdb.set_trace()
 
+    plt.plot(t_osc, osc_debug[0].error_y[:,2])
+    plt.plot(t_osc, osc_debug[0].error_ydot[:,2])
+    # plt.plot(t_osc, osc_debug[0].yddot_command)
+    # plt.plot(t_osc, osc_debug[0].yddot_command_sol)
+    plt.show()
+    return
     # init_x = np.hstack((q[0,:], v[0,:]))
     # plant.SetPositionsAndVelocities(context, init_x)
     # M = plant.CalcMassMatrixViaInverseDynamics(context)
@@ -182,31 +190,35 @@ def main():
 
     # Foot plotting
     if True:
-        plot_feet_simulation(plant, context, q, v, l_toe_frame, front_contact_disp,
+        plot_feet_simulation(plant, context, q, v, l_toe_frame,
+                             front_contact_disp,
                              world, t_state, t_state_slice, "left_", "_front")
-        plot_feet_simulation(plant, context, q, v, r_toe_frame, front_contact_disp,
+        plot_feet_simulation(plant, context, q, v, r_toe_frame,
+                             front_contact_disp,
                              world, t_state, t_state_slice, "right_", "_front")
-        plot_feet_simulation(plant, context, q, v, l_toe_frame, rear_contact_disp,
+        plot_feet_simulation(plant, context, q, v, l_toe_frame,
+                             rear_contact_disp,
                              world, t_state, t_state_slice, "left_", "_rear")
-        plot_feet_simulation(plant, context, q, v, r_toe_frame, rear_contact_disp,
+        plot_feet_simulation(plant, context, q, v, r_toe_frame,
+                             rear_contact_disp,
                              world, t_state, t_state_slice, "right_", "_rear")
 
     plot = False
     if plot:
         fig = plt.figure("osc_output: " + filename)
         plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].ydot_des[t_osc_slice], \
-        label="0")
+                 label="0")
         # plt.plot(t_osc_debug[t_osc_slice], osc_debug[0].ydot[t_osc_slice],
         #          label="0")
         plt.plot(t_osc_debug[t_osc_slice], osc_debug[1].ydot_des[t_osc_slice], \
-        label="1")
+                 label="1")
         # plt.plot(t_osc_debug[t_osc_slice], osc_debug[1].ydot[t_osc_slice],
         #          label="1")
         plt.legend()
     plt.show()
 
-def calc_costs(t_state, t_osc, osc_debug, control_inputs):
 
+def calc_costs(t_state, t_osc, osc_debug, control_inputs):
     # Cost is norm of efforts applied over impact event + OSC tracking error
     t_impact_start_idx = np.argwhere(t_state >= 0.0)[0][0]
     t_impact_end_idx = np.argwhere(t_state >= 0.3)[0][0]
@@ -223,7 +235,8 @@ def calc_costs(t_state, t_osc, osc_debug, control_inputs):
     W1[1, 1] = 10
 
     for i in range(t_impact_start_idx, t_impact_end_idx):
-        u_i = np.reshape(control_inputs[get_index_at_time(t_osc, t_state[i])], (nu, 1))
+        u_i = np.reshape(control_inputs[get_index_at_time(t_osc, t_state[i])],
+                         (nu, 1))
 
         u_cost[i - t_impact_start_idx] = norm(u_i)
     accumulated_u_cost = np.trapz(u_cost, t_state[t_impact_start_idx:
@@ -236,6 +249,7 @@ def calc_costs(t_state, t_osc, osc_debug, control_inputs):
     tracking_cost = tracking_err_0.T @ W0 @ tracking_err_0 + \
                     tracking_err_1.T @ W1 @ tracking_err_1
     return tracking_cost, accumulated_u_cost
+
 
 def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     builder = DiagramBuilder()
@@ -282,49 +296,65 @@ def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     c0 = plant.CalcBiasTerm(context)
     g0 = plant.CalcGravityGeneralizedForces(context)
     J0_thigh_l = plant.CalcJacobianTranslationalVelocity(context,
-                                                 JacobianWrtVariable.kV, thigh_left, pt_on_thigh_left,
-                                                 world, world)
+                                                         JacobianWrtVariable.kV,
+                                                         thigh_left,
+                                                         pt_on_thigh_left,
+                                                         world, world)
     J0_thigh_r = plant.CalcJacobianTranslationalVelocity(context,
-                                                 JacobianWrtVariable.kV, thigh_right, pt_on_thigh_right,
-                                                 world, world)
+                                                         JacobianWrtVariable.kV,
+                                                         thigh_right,
+                                                         pt_on_thigh_right,
+                                                         world, world)
     J0_heel_l = plant.CalcJacobianTranslationalVelocity(context,
-                                                 JacobianWrtVariable.kV, heel_spring_left, pt_on_heel_spring,
-                                                 world, world)
+                                                        JacobianWrtVariable.kV,
+                                                        heel_spring_left,
+                                                        pt_on_heel_spring,
+                                                        world, world)
     J0_heel_r = plant.CalcJacobianTranslationalVelocity(context,
-                                                 JacobianWrtVariable.kV, heel_spring_right, pt_on_heel_spring,
-                                                 world, world)
+                                                        JacobianWrtVariable.kV,
+                                                        heel_spring_right,
+                                                        pt_on_heel_spring,
+                                                        world, world)
     r_heel_spring_l = plant.CalcPointsPositions(context, heel_spring_left,
                                                 pt_on_heel_spring, world)
     r_heel_spring_r = plant.CalcPointsPositions(context, heel_spring_right,
                                                 pt_on_heel_spring, world)
     r_thigh_l = plant.CalcPointsPositions(context, thigh_left,
-                                                pt_on_thigh_left, world)
+                                          pt_on_thigh_left, world)
     r_thigh_r = plant.CalcPointsPositions(context, thigh_right,
-                                         pt_on_thigh_right, world)
+                                          pt_on_thigh_right, world)
     plant.SetPositionsAndVelocities(context, xc)
     Mc = plant.CalcMassMatrixViaInverseDynamics(context)
     cc = plant.CalcBiasTerm(context)
     gc = plant.CalcGravityGeneralizedForces(context)
     Jc_thigh_l = plant.CalcJacobianTranslationalVelocity(context,
-                                                         JacobianWrtVariable.kV, thigh_left, pt_on_thigh_left,
+                                                         JacobianWrtVariable.kV,
+                                                         thigh_left,
+                                                         pt_on_thigh_left,
                                                          world, world)
     Jc_thigh_r = plant.CalcJacobianTranslationalVelocity(context,
-                                                         JacobianWrtVariable.kV, thigh_right, pt_on_thigh_right,
+                                                         JacobianWrtVariable.kV,
+                                                         thigh_right,
+                                                         pt_on_thigh_right,
                                                          world, world)
     Jc_heel_l = plant.CalcJacobianTranslationalVelocity(context,
-                                                        JacobianWrtVariable.kV, heel_spring_left, pt_on_heel_spring,
+                                                        JacobianWrtVariable.kV,
+                                                        heel_spring_left,
+                                                        pt_on_heel_spring,
                                                         world, world)
     Jc_heel_r = plant.CalcJacobianTranslationalVelocity(context,
-                                                        JacobianWrtVariable.kV, heel_spring_right, pt_on_heel_spring,
+                                                        JacobianWrtVariable.kV,
+                                                        heel_spring_right,
+                                                        pt_on_heel_spring,
                                                         world, world)
     rc_heel_spring_l = plant.CalcPointsPositions(context, heel_spring_left,
-                                                pt_on_heel_spring, world)
+                                                 pt_on_heel_spring, world)
     rc_heel_spring_r = plant.CalcPointsPositions(context, heel_spring_right,
-                                                pt_on_heel_spring, world)
+                                                 pt_on_heel_spring, world)
     rc_thigh_l = plant.CalcPointsPositions(context, thigh_left,
-                                          pt_on_thigh_left, world)
+                                           pt_on_thigh_left, world)
     rc_thigh_r = plant.CalcPointsPositions(context, thigh_right,
-                                          pt_on_thigh_right, world)
+                                           pt_on_thigh_right, world)
     plant.SetPositionsAndVelocities(context, x1)
     M1 = plant.CalcMassMatrixViaInverseDynamics(context)
     c1 = plant.CalcBiasTerm(context)
@@ -365,19 +395,20 @@ def evaluate_constraints(x_traj_nominal, u_traj_nominal):
     qdot_c = xdot_c[:nq]
     v_qdot_c = plant.MapQDotToVelocity(context, qdot_c)
     v_c = plant.MapVelocityToQDot(context, xc[-18:])
-    Jgamma_c_qdot = plant.MapVelocityToQDot(context, Jcc.T@gamma_c)
+    Jgamma_c_qdot = plant.MapVelocityToQDot(context, Jcc.T @ gamma_c)
     v_qdot_c = np.reshape(v_qdot_c, (nv, 1))
     v_c = np.reshape(v_c, (nq, 1))
     Jgamma_c_qdot = np.reshape(Jgamma_c_qdot, (nq, 1))
     y = qdot_c - (v_c + Jgamma_c_qdot)
-    print(Jcc@v_qdot_c)
-    print(Jcc@xc[-18:])
-    print(Jcc@Jcc.T@gamma_c)
+    print(Jcc @ v_qdot_c)
+    print(Jcc @ xc[-18:])
+    print(Jcc @ Jcc.T @ gamma_c)
+
 
 def calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v):
     n_dim = 3
     impact_duration = 0.05
-    net_impulse = np.zeros((n_dim,1))
+    net_impulse = np.zeros((n_dim, 1))
 
     M = plant.CalcMassMatrixViaInverseDynamics(context)
     M_inv = np.linalg.inv(M)
@@ -385,7 +416,8 @@ def calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v):
     # Get the index for when the first grf is non-zero
     t_start_idx = np.min(np.argwhere(contact_info > 0), 0)[1]
     # Get the index for impact_duration (s) after the first non-zero grf
-    t_end_idx = get_index_at_time(t_contact_info, t_state[t_start_idx] + impact_duration)
+    t_end_idx = get_index_at_time(t_contact_info,
+                                  t_state[t_start_idx] + impact_duration)
     x = np.hstack((q, v))
 
     l_contact_frame = plant.GetBodyByName("toe_left").body_frame()
@@ -406,16 +438,24 @@ def calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v):
     for i in range(t_start_idx, t_end_idx):
         plant.SetPositionsAndVelocities(context, x[i])
         J_l_r = plant.CalcJacobianTranslationalVelocity(context,
-                                                        JacobianWrtVariable.kV, l_contact_frame, rear_contact_disp,
+                                                        JacobianWrtVariable.kV,
+                                                        l_contact_frame,
+                                                        rear_contact_disp,
                                                         world, world)
         J_l_f = plant.CalcJacobianTranslationalVelocity(context,
-                                                        JacobianWrtVariable.kV, l_contact_frame, front_contact_disp,
+                                                        JacobianWrtVariable.kV,
+                                                        l_contact_frame,
+                                                        front_contact_disp,
                                                         world, world)
         J_r_r = plant.CalcJacobianTranslationalVelocity(context,
-                                                        JacobianWrtVariable.kV, r_contact_frame, rear_contact_disp,
+                                                        JacobianWrtVariable.kV,
+                                                        r_contact_frame,
+                                                        rear_contact_disp,
                                                         world, world)
         J_r_f = plant.CalcJacobianTranslationalVelocity(context,
-                                                        JacobianWrtVariable.kV, r_contact_frame, front_contact_disp,
+                                                        JacobianWrtVariable.kV,
+                                                        r_contact_frame,
+                                                        front_contact_disp,
                                                         world, world)
 
         impulse_from_contact[i - t_start_idx] = J_l_r.T @ contact_info[0, i]
@@ -423,10 +463,10 @@ def calcNetImpulse(plant, context, t_contact_info, contact_info, t_state, q, v):
         impulse_from_contact[i - t_start_idx] = J_r_r.T @ contact_info[2, i]
         impulse_from_contact[i - t_start_idx] = J_r_f.T @ contact_info[3, i]
 
-    #Assuming_the position change is negligible
+    # Assuming_the position change is negligible
     net_impulse_from_contact = np.zeros(v.shape[1])
     for j in range(v.shape[1]):
-        net_impulse_from_contact[j] = np.trapz(impulse_from_contact[:,j],
+        net_impulse_from_contact[j] = np.trapz(impulse_from_contact[:, j],
                                                t_contact_info[
                                                    t_slice])
     delta_v = M_inv @ net_impulse_from_contact
@@ -442,7 +482,7 @@ def plot_nominal_input_traj(u_traj_nominal, datatypes):
     fig = plt.figure('target input trajectory: ' + filename)
     points = []
     times = []
-    input_slice = slice(4,8)
+    input_slice = slice(4, 8)
     for i in range(1000):
         t = start_time + (end_time - start_time) * i / 1000
         times.append(t)
@@ -524,15 +564,16 @@ def plot_osc_control_inputs(control_inputs, datatypes, t_osc,
     plt.xlabel("time (s)")
     plt.ylabel("torque (Nm)")
 
+
 def integrand(t, y):
     return np.reshape(x_traj_nominal.value(t)[-15:], (15,))
 
-def integrate_q_v(x_traj_nominal):
 
+def integrate_q_v(x_traj_nominal):
     times = x_traj_nominal.get_segment_times()
-    for i in range(len(times) -1):
+    for i in range(len(times) - 1):
         t0 = times[i]
-        t1 = times[i+1]
+        t1 = times[i + 1]
 
         x0 = x_traj_nominal.value(t0)
         x1 = x_traj_nominal.value(t1)
@@ -559,7 +600,7 @@ def plot_feet_simulation(plant, context, q, v, toe_frame, contact_point, world,
         x = np.hstack((q[i, :], v[i, :]))
         plant.SetPositionsAndVelocities(context, x)
         foot_state[0:3, [i]] = plant.CalcPointsPositions(context, toe_frame,
-                                                           contact_point, world)
+                                                         contact_point, world)
         foot_state[3:6, i] = plant.CalcJacobianTranslationalVelocity(
             context, JacobianWrtVariable.kV, toe_frame, contact_point,
             world,
@@ -585,6 +626,7 @@ def plot_feet_simulation(plant, context, q, v, toe_frame, contact_point, world,
     # plt.legend(['x pos', 'y pos', 'z pos'])
     # plt.legend(['x pos', 'y pos', 'z pos', 'x vel', 'y vel', 'z vel'])
     # plt.legend(['x pos', 'y pos', 'z pos', 'x vel', 'y vel', 'z vel'])
+
 
 def plot_feet_from_optimization(x_traj,
                                 contact_point, world, foot_type,
@@ -646,6 +688,7 @@ def plot_feet_from_optimization(x_traj,
     # plt.legend(['x pos', 'y pos', 'z pos', 'x vel', 'y vel', 'z vel'])
     # plt.legend(['x pos', 'y pos', 'z pos', 'x vel', 'y vel', 'z vel'])
 
+
 def plot_simulation_state(q, v, t_state, t_state_slice, state_names):
     # fig = plt.figure('simulation positions')
     # state_indices = slice(0, q.shape[1])
@@ -684,8 +727,9 @@ def plot_nominal_feet_traj(l_foot_traj, lcm_l_foot_traj, r_foot_traj):
         # l_foot_points.append(l_foot_traj_dot.value(t))
         l_foot_points.append(l_foot_traj.value(t))
     l_foot_points = np.array(l_foot_points)
-    plt.plot(times, l_foot_points[:,:,0])
-        # plt.plot(t, r_foot_traj_dot.value(t).T, 'r.')
+    plt.plot(times, l_foot_points[:, :, 0])
+    # plt.plot(t, r_foot_traj_dot.value(t).T, 'r.')
+
 
 def plot_nominal_com_traj(com_traj, lcm_com_traj):
     start_time = lcm_com_traj.time_vector[0]
@@ -710,7 +754,7 @@ def plot_nominal_com_traj(com_traj, lcm_com_traj):
     plt.plot(times, points[:, :, 0])
     plt.plot(times, dpoints[:, :, 0])
     # plt.plot(times, ddpoints[:, 2, 0])
-        # plt.plot(t, com_traj.value(t).T, 'b.')
+    # plt.plot(t, com_traj.value(t).T, 'b.')
 
 
 if __name__ == "__main__":

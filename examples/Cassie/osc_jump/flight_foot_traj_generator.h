@@ -33,7 +33,9 @@ class FlightFootTrajGenerator : public drake::systems::LeafSystem<double> {
                 drake::trajectories::Trajectory<double>* traj) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  const std::string hip_name_;
+  const drake::multibody::Frame<double>& world_;
+  const drake::multibody::Frame<double>& hip_frame_;
+
   drake::trajectories::PiecewisePolynomial<double> foot_traj_;
 
   int state_port_;

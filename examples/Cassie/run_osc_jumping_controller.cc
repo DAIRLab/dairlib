@@ -27,6 +27,7 @@ using std::endl;
 using std::map;
 using std::string;
 using std::vector;
+using std::pair;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
@@ -42,6 +43,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
+using drake::multibody::Frame;
 using examples::JumpingEventFsm;
 using examples::Cassie::osc_jump::COMTrajGenerator;
 using examples::Cassie::osc_jump::FlightFootTrajGenerator;
@@ -55,18 +57,13 @@ using systems::controllers::TransTaskSpaceTrackingData;
 namespace examples {
 
 DEFINE_double(publish_rate, 1000.0, "Target publish rate for OSC");
-
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "The name of the channel which receives state");
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
 DEFINE_double(balance_height, 1.125,
               "Balancing height for Cassie before attempting the jump");
-
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
-DEFINE_bool(is_two_phase, false,
-            "true: only right/left single support"
-            "false: both double and single support");
 DEFINE_string(traj_name, "", "File to load saved trajectories from");
 
 DEFINE_double(delay_time, 0.0, "time to wait before executing jump");
@@ -82,13 +79,6 @@ DEFINE_string(simulator, "DRAKE",
 DEFINE_bool(add_noise, false, "Whether to add gaussian noise to state "
                               "inputted to controller");
 DEFINE_int32(init_fsm_state, BALANCE, "Initial state of the FSM");
-// DEFINE_double(x_offset, 0.18, "Offset to add to the CoM trajectory");
-
-// Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
-// publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
-// performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
-// Maybe we need to update the lcm driven loop to clear the queue of lcm message
-// if it's more than one message?
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -98,7 +88,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Built the Cassie MBPs
   drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
-  addCassieMultibody(&plant_w_springs, nullptr, true /*floating base*/,
+  addCassieMultibody(&plant_w_springs, nullptr, true,
       "examples/Cassie/urdf/cassie_v2.urdf",
       true /*spring model*/, false /*loop closure*/);
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
@@ -162,13 +152,6 @@ int DoMain(int argc, char* argv[]) {
   std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
                                           land_time};
 
-  // Cassie parameters
-  Vector3d front_contact_disp(-0.0457, 0.112, 0);
-  Vector3d rear_contact_disp(0.088, 0, 0);
-
-  // Get body indices for cassie with springs
-  auto pelvis_idx = plant_w_springs.GetBodyByName("pelvis").index();
-
   Vector3d support_center_offset;
   support_center_offset << FLAGS_x_offset, 0.0, 0.0;
   std::vector<double> breaks = com_traj.get_segment_times();
@@ -184,17 +167,24 @@ int DoMain(int argc, char* argv[]) {
   vel_cov(5,5) = 0.0;
 
   /**** Initialize all the leaf systems ****/
-  SIMULATOR type;
-  type = DRAKE; // Default is DRAKE
+  SIMULATOR simulator;
+  simulator = DRAKE; // Default is DRAKE
   if (FLAGS_simulator == "MUJOCO")
-    type = MUJOCO;
+    simulator = MUJOCO;
 
   drake::lcm::DrakeLcm lcm;
+
+  vector<pair<const Vector3d, const Frame<double>&>> contact_points;
+  contact_points.push_back(LeftToe(plant_wo_springs));
+  contact_points.push_back(RightToe(plant_wo_springs));
+  contact_points.push_back(LeftHeel(plant_wo_springs));
+  contact_points.push_back(RightHeel(plant_wo_springs));
+
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_springs, pelvis_idx, front_contact_disp, rear_contact_disp,
-      com_traj, com_traj.value(0)(2), FLAGS_delay_time);
+      plant_w_springs, contact_points,
+      com_traj, FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_w_springs, "hip_left", true, l_foot_trajectory,
       FLAGS_delay_time);
@@ -206,7 +196,7 @@ int DoMain(int argc, char* argv[]) {
       FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
       plant_w_springs, transition_times, FLAGS_contact_based_fsm,
-      FLAGS_transition_delay, (FSM_STATE)FLAGS_init_fsm_state, type);
+      FLAGS_transition_delay, (FSM_STATE)FLAGS_init_fsm_state, simulator);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));

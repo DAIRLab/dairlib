@@ -33,7 +33,8 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
     bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj, double
     time_offset)
     : plant_(plant),
-      hip_name_(hip_name),
+      hip_frame_(plant.GetFrameByName(hip_name)),
+      world_(plant.world_frame()),
       foot_traj_(foot_traj){
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
@@ -71,14 +72,10 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
   VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
   auto plant_context = createContext(plant_, x, zero_input);
 
-  const drake::multibody::BodyFrame<double>& world = plant_.world_frame();
-  const drake::multibody::BodyFrame<double>& hip_frame =
-      plant_.GetBodyByName(hip_name_).body_frame();
-
   Vector3d zero_offset = Vector3d::Zero();
   Vector3d hip_pos = Vector3d::Zero();
-  plant_.CalcPointsPositions(*plant_context, hip_frame, zero_offset, world,
-      &hip_pos);
+  plant_.CalcPointsPositions(*plant_context, hip_frame_, zero_offset, world_,
+                             &hip_pos);
 
   const PiecewisePolynomial<double>& foot_traj_segment =
       foot_traj_.slice(foot_traj_.get_segment_index(t), 1);
@@ -86,21 +83,13 @@ PiecewisePolynomial<double> FlightFootTrajGenerator::generateFlightTraj(
   // Hip offset stuff
   std::vector<double> breaks = foot_traj_segment.get_segment_times();
   VectorXd breaks_vector = Map<VectorXd>(breaks.data(), breaks.size());
-//  MatrixXd J_hip(3, plant_.num_velocities());
-//  plant_.CalcJacobianTranslationalVelocity(*plant_context,
-//      JacobianWrtVariable::kV,
-//      hip_frame, zero_offset,
-//      world, world, &J_hip);
-//  double dt = breaks_vector[1] - breaks_vector[0];
   MatrixXd hip_points(3, 2);
-//  hip_points << hip_pos, hip_pos + J_hip*x.tail(plant_.num_velocities()) * dt;
   // Velocity estimates are generally bad
   hip_points << hip_pos, hip_pos;
   PiecewisePolynomial<double> hip_offset =
-      PiecewisePolynomial<double>::FirstOrderHold(breaks_vector, hip_points);
+      PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, hip_points);
 
   return foot_traj_segment + hip_offset;
-//  return foot_traj_segment;
 }
 
 void FlightFootTrajGenerator::CalcTraj(

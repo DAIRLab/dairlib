@@ -8,9 +8,6 @@ def loadLcmTrajs(nx, nu, n_modes):
   loadedStateTraj.loadFromFile(
     "/home/yangwill/Documents/research/projects/cassie/jumping"
     "/saved_trajs/June_5_jumping_0.2")
-  # loadedStateTraj.loadFromFile(
-  #   "/home/yangwill/Documents/research/projects/cassie/jumping"
-  #   "/saved_trajs/target_trajs/April_19_jumping_0.2")
   state_trajs = []
   t_nominal = []
   x_points_nominal = []
@@ -34,9 +31,6 @@ def loadLcmTrajs(nx, nu, n_modes):
   t_nominal = np.array(t_nominal)
   x_points_nominal = np.array(x_points_nominal)
   t_nominal = np.reshape(t_nominal, (t_nominal.shape[1] * n_modes))
-  # x_points_nominal = np.reshape(x_points_nominal.transpose(2, 1, 0),
-  #                               (x_points_nominal.shape[1],
-  #                                x_points_nominal.shape[2] * n_modes))
   x_points_nominal = np.reshape(x_points_nominal.transpose(0, 2, 1),
                                 (x_points_nominal.shape[2] * n_modes,
                                  x_points_nominal.shape[1])).T

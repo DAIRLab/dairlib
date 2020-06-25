@@ -1,5 +1,7 @@
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
+
 #include <drake/lcmt_contact_results_for_viz.hpp>
+
 #include "dairlib/lcmt_cassie_mujoco_contact.hpp"
 
 using dairlib::systems::OutputVector;
@@ -31,6 +33,8 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
           .get_index();
+
+  // Configure the contact info port for the particular simulator
   if (simulator_type_ == DRAKE) {
     contact_port_ = this->DeclareAbstractInputPort(
                             "lcmt_contact_info",
@@ -64,9 +68,9 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   // Get inputs to the leaf system
-  const OutputVector<double>* robot_output =
+  const OutputVector<double>* state_feedback =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  const drake::AbstractValue* input =
+  const drake::AbstractValue* contact_info =
       this->EvalAbstractInput(context, contact_port_);
   // Get the discrete states
   auto fsm_state =
@@ -83,13 +87,13 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   int num_contacts = 0;
   if (simulator_type_ == DRAKE) {
     const auto& contact_info_msg =
-        input->get_value<drake::lcmt_contact_results_for_viz>();
+        contact_info->get_value<drake::lcmt_contact_results_for_viz>();
     num_contacts = contact_info_msg.num_point_pair_contacts;
   } else if (simulator_type_ == MUJOCO) {
     // MuJoCo has "persistent" contact so we have to check contact forces
     // instead of just a boolean value of on/off
     const auto& contact_info_msg =
-        input->get_value<dairlib::lcmt_cassie_mujoco_contact>();
+        contact_info->get_value<dairlib::lcmt_cassie_mujoco_contact>();
     num_contacts = std::count_if(contact_info_msg.contact_forces.begin(),
                                  contact_info_msg.contact_forces.end(),
                                  [&](auto const& force) {
@@ -98,7 +102,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
                                  });
   }
 
-  double timestamp = robot_output->get_timestamp();
+  double timestamp = state_feedback->get_timestamp();
   auto current_time = static_cast<double>(timestamp);
 
   if (current_time < prev_time(0)) {  // Simulator has restarted, reset FSM
@@ -151,8 +155,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
         fsm_state << LAND;
         std::cout << "Current time: " << current_time << "\n";
         std::cout << "First detection time: " << state_trigger_time(0) << "\n";
-        std::cout << "Setting fsm to LAND"
-                  << "\n";
+        std::cout << "Setting fsm to LAND" << "\n";
         std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << "\n";
         transition_flag(0) = false;
         prev_time(0) = current_time;
@@ -174,16 +177,11 @@ void JumpingEventFsm::CalcFiniteState(const Context<double>& context,
 bool JumpingEventFsm::DetectGuardCondition(
     bool guard_condition, double current_time,
     DiscreteValues<double>* discrete_state) const {
-  auto prev_time =
-      discrete_state->get_mutable_vector(prev_time_idx_).get_mutable_value();
   auto transition_flag =
       discrete_state->get_mutable_vector(transition_flag_idx_)
           .get_mutable_value();
   // Second condition is to prevent overwriting state_trigger_time
-  // Third condition is to prevent floating LCM message from previous
-  // simulation from causing unwanted triggers
-  return guard_condition && !(bool)transition_flag(0) &&
-         (current_time - prev_time(0)) > buffer_time_;
+  return guard_condition && !(bool)transition_flag(0);
 }
 
 }  // namespace examples

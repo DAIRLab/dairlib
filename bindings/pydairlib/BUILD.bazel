@@ -65,6 +65,7 @@ py_binary(
         ":module_py",
         ":multibody_utils_py",
         ":process_lcm_log_py",
+        "//bindings/pydairlib/common",
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
@@ -94,5 +95,5 @@ PY_LIBRARIES = [
 py_library(
     name = "pydairlib",
     visibility = ["//visibility:public"],
-    deps =  PY_LIBRARIES,
+    deps = PY_LIBRARIES,
 )

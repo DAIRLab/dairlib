@@ -114,10 +114,10 @@ int DoMain(int argc, char* argv[]) {
   map<string, int> act_map =
       multibody::makeNameToActuatorsMap(plant_wo_springs);
 
-  auto left_toe = LeftToe(plant_wo_springs);
-  auto left_heel = LeftHeel(plant_wo_springs);
-  auto right_toe = RightToe(plant_wo_springs);
-  auto right_heel = RightHeel(plant_wo_springs);
+  auto left_toe = LeftToeFront(plant_wo_springs);
+  auto left_heel = LeftToeRear(plant_wo_springs);
+  auto right_toe = RightToeFront(plant_wo_springs);
+  auto right_heel = RightToeRear(plant_wo_springs);
 
   /**** Get trajectory from optimization ****/
   const LcmTrajectory& original_traj = LcmTrajectory(
@@ -191,10 +191,10 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm;
 
   vector<pair<const Vector3d, const Frame<double>&>> contact_points;
-  contact_points.push_back(LeftToe(plant_wo_springs));
-  contact_points.push_back(RightToe(plant_wo_springs));
-  contact_points.push_back(LeftHeel(plant_wo_springs));
-  contact_points.push_back(RightHeel(plant_wo_springs));
+  contact_points.push_back(LeftToeFront(plant_wo_springs));
+  contact_points.push_back(RightToeFront(plant_wo_springs));
+  contact_points.push_back(LeftToeRear(plant_wo_springs));
+  contact_points.push_back(RightToeRear(plant_wo_springs));
 
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);

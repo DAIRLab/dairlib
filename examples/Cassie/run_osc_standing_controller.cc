@@ -73,10 +73,10 @@ int DoMain(int argc, char* argv[]) {
   // Get contact frames and position (doesn't matter whether we use
   // plant_w_springs or plant_wo_springs because the contact frames exit in both
   // plants)
-  auto left_toe = LeftToe(plant_wo_springs);
-  auto left_heel = LeftHeel(plant_wo_springs);
-  auto right_toe = RightToe(plant_wo_springs);
-  auto right_heel = RightHeel(plant_wo_springs);
+  auto left_toe = LeftToeFront(plant_wo_springs);
+  auto left_heel = LeftToeRear(plant_wo_springs);
+  auto right_toe = RightToeFront(plant_wo_springs);
+  auto right_heel = RightToeRear(plant_wo_springs);
 
   // Build the controller diagram
   DiagramBuilder<double> builder;

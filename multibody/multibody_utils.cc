@@ -111,13 +111,16 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<T>& plant) {
     }
   }
 
+  // TODO: once RBT fully deprecated, this block can likely be removed, using
+  // default coordinate names from Drake.
   auto floating_bodies = plant.GetFloatingBaseBodies();
-  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);  //remove once RBT deprecated
+  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);  
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
     DRAKE_ASSERT(body.has_quaternion_dofs());
     int start = body.floating_positions_start();
-    std::string name = "base";  // should be body.name() once RBT is deprecated
+    // should be body.name() once RBT is deprecated
+    std::string name = "base";  
     name_to_index_map[name + "_qw"] = start;
     name_to_index_map[name + "_qx"] = start + 1;
     name_to_index_map[name + "_qy"] = start + 2;
@@ -302,20 +305,41 @@ bool JointsWithinLimits(const MultibodyPlant<double>& plant,
   return joints_within_limits;
 }
 
+template <typename T>
+std::vector<int> QuaternionStartIndices(const MultibodyPlant<T>& plant) {
+  std::vector<int> quat_start;
+  auto bodies = plant.GetFloatingBaseBodies();
+  for (auto body : bodies) {
+    if (plant.get_body(body).has_quaternion_dofs()) {
+      quat_start.push_back(plant.get_body(body).floating_positions_start());
+    }
+  }
+  return quat_start;
+}
+
+template <typename T>
+int QuaternionStartIndex(const MultibodyPlant<T>& plant) {
+  std::vector<int> quat_start = QuaternionStartIndices(plant);
+  if (quat_start.size() > 1) {
+    throw std::runtime_error("Called QuaternionStartIndex(plant) with "
+        "multiple quaternion floating bases.");
+  } else if (quat_start.size() == 0) {
+    return -1;
+  } else {
+    return quat_start.at(0);
+  }
+  DRAKE_UNREACHABLE();  
+}
 
 template <typename T>
 bool isQuaternion(const MultibodyPlant<T>& plant) {
-  auto unordered_index_set = plant.GetFloatingBaseBodies();
-  if (unordered_index_set.empty()) {
-    return false;
-  }
-
-  auto first_body_idx = unordered_index_set.begin();
-  return plant.get_body(*first_body_idx).has_quaternion_dofs();
+  return QuaternionStartIndex(plant) != -1;
 }
 
-
-
+template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
+template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::vector<int> QuaternionStartIndices(const MultibodyPlant<double>& plant);  // NOLINT
+template std::vector<int> QuaternionStartIndices(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template bool isQuaternion(const MultibodyPlant<double>& plant);  // NOLINT
 template bool isQuaternion(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> makeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT

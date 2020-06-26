@@ -134,15 +134,13 @@ int DoMain() {
   state_traj_w_spr.datapoints = x_w_spr;
   state_traj_w_spr.time_vector = times;
   const std::vector<string>& state_names =
-      multibody::createStateAndActuatorNameVectorFromMap(
+      multibody::createStateNameVectorFromMap(
           multibody::makeNameToPositionsMap(plant_w_spr),
-          multibody::makeNameToVelocitiesMap(plant_w_spr),
-          std::map<std::string, int>());
+          multibody::makeNameToVelocitiesMap(plant_w_spr));
   const std::vector<string>& state_dot_names =
-      multibody::createStateAndActuatorNameVectorFromMapDot(
+      multibody::createStateNameVectorFromMap(
           multibody::makeNameToPositionsMap(plant_w_spr),
-          multibody::makeNameToVelocitiesMap(plant_w_spr),
-          std::map<std::string, int>());
+          multibody::makeNameToVelocitiesMap(plant_w_spr));
 
   state_traj_w_spr.datatypes.reserve(2 * nx_w_spr);
   state_traj_w_spr.datatypes.insert(state_traj_w_spr.datatypes.end(),

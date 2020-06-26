@@ -1,0 +1,9 @@
+package dairlib;
+
+struct lcmt_contact_mujoco
+{
+    int64_t utime;
+    int32_t num_contact_forces;
+
+    double contact_forces [num_contact_forces];
+}

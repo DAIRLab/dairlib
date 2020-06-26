@@ -1,9 +1,12 @@
 {
   "model_file": "examples/Cassie/urdf/cassie_v2.urdf",
   "weld-body": "yes",
-  "data": [{"name": "toe_line",
-            "body_part":"toe_left",
-            "point-on-body":[0, 0, 0],
+  "stateChannelName": "NETWORK_CASSIE_STATE_DISPATCHER",
+  "data": [
+            {"name": "toe_line",
+            "category":"kinematic_point",
+            "frame":"toe_left",
+            "point":[0, 0, 0],
             "color":[1, 0, 0],
             "alpha": 0.5,
             "type": "line",
@@ -11,29 +14,39 @@
             "history": 2
             },
             {"name": "toe_point",
-              "body_part":"toe_left",
-              "point-on-body":[0, 0, 0],
+              "category":"kinematic_point",
+              "frame":"toe_left",
+              "point":[0, 0, 0],
               "color":[0, 1, 0],
               "alpha": 0.5,
               "type": "point",
               "radius": 0.05
             },
-            {"name": "right_toe_point",
-              "body_part":"toe_right",
-              "point-on-body":[0, 0, 0],
-              "color":[0, 0, 1],
-              "alpha": 0.5,
-              "type": "point",
-              "radius": 0.05
-            },
             {"name": "right_toe_line",
-              "body_part":"toe_right",
-              "point-on-body":[0, 0, 0],
+              "category":"kinematic_point",
+              "frame":"toe_right",
+              "point":[0, 0, 0],
               "color":[1, 0, 1],
               "alpha": 0.5,
               "type": "line",
               "thickness": 0.01,
               "history": 2
-              }
+            },
+            {"name": "Axes",
+              "category":"kinematic_point",
+              "frame":"toe_left",
+              "point":[0, 0, 0],
+              "color":[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+              "alpha": 0.5,
+              "type": "axis",
+              "thickness": 0.01
+            },
+            {"name": "com_point",
+              "category":"CoM",
+              "color":[0, 1, 0],
+              "alpha": 0.5,
+              "type": "point",
+              "radius": 1
+            }
           ]
 }

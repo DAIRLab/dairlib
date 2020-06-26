@@ -17,8 +17,8 @@ visualization of data during a simulation:
         1) A trace line which has the following properties:
 
         "name": The line's name to be displayed in the GUI
-        "body_part": The name of the body part/context on which the line would be
-        "point-on-body": The location within the body part/context
+        "frame": The name of the body part/context on which the line would be
+        "point": The location within the body part/context
         "color": The line's color in the format [Red, Green, Blue]
         "alpha": The transparency as a value from 0 to 1
         "type": "line",
@@ -32,8 +32,8 @@ visualization of data during a simulation:
         2) A point which has the following properties:
 
         "name": The point's name to be displayed in the GUI
-        "body_part": The name of the body part/context on which the line would be
-        "point-on-body": The location within the body part/context
+        "frame": The name of the body part/context on which the line would be
+        "point": The location within the body part/context
         "color": The line's color in the format [Red, Green, Blue]
         "alpha": The transparency as a value from 0 to 1
         "type": "point",

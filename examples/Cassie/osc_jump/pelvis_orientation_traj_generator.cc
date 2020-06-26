@@ -28,7 +28,7 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib::examples::Cassie::osc_jump {
 
-PPolyPassthrough::PPolyPassthrough(
+PelvisOrientationTrajGenerator::PelvisOrientationTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
     const drake::trajectories::PiecewisePolynomial<double>& orientation_traj,
     std::string traj_name, double time_offset)
@@ -38,7 +38,7 @@ PPolyPassthrough::PPolyPassthrough(
 
   this->set_name("traj_name");
   this->DeclareAbstractOutputPort("traj_name", traj_inst,
-                                  &PPolyPassthrough::CalcTraj);
+                                  &PelvisOrientationTrajGenerator::CalcTraj);
 
   // Input/Output Setup
   state_port_ =
@@ -51,15 +51,13 @@ PPolyPassthrough::PPolyPassthrough(
   traj_.shiftRight(time_offset);
 }
 
-void PPolyPassthrough::CalcTraj(
+void PelvisOrientationTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double timestamp = robot_output->get_timestamp();
-
-  // Read in finite state machine
 
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(

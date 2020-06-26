@@ -9,12 +9,11 @@
 
 namespace dairlib::examples::Cassie::osc_jump {
 
-/// General purpose leaf system that returns a trajectory segment at a
-/// particular time. Need the plant in order to get in the current simulator
-/// state.
-class PPolyPassthrough : public drake::systems::LeafSystem<double> {
+/// TODO (yangwill) This leaf system just passes through the trajectory.
+/// It might be worth making this a general class
+class PelvisOrientationTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
-  PPolyPassthrough(
+  PelvisOrientationTrajGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::trajectories::PiecewisePolynomial<double>& orientation_traj,
       std::string traj_name, double time_offset = 0.0);

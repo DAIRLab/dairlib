@@ -2,6 +2,7 @@
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/lcm/lcm_interface_system.h>
 #include <gflags/gflags.h>
+
 #include "dairlib/lcmt_cassie_mujoco_contact.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -16,6 +17,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/sensors/gaussian_noise_pass_through.h"
+
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -25,9 +27,9 @@ namespace dairlib {
 using std::cout;
 using std::endl;
 using std::map;
+using std::pair;
 using std::string;
 using std::vector;
-using std::pair;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
@@ -35,6 +37,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::geometry::SceneGraph;
+using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
@@ -43,11 +46,10 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
-using drake::multibody::Frame;
 using examples::JumpingEventFsm;
 using examples::Cassie::osc_jump::COMTrajGenerator;
 using examples::Cassie::osc_jump::FlightFootTrajGenerator;
-using examples::Cassie::osc_jump::PPolyPassthrough;
+using examples::Cassie::osc_jump::PelvisOrientationTrajGenerator;
 using multibody::GetBodyIndexFromName;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
@@ -71,13 +73,15 @@ DEFINE_double(x_offset, 0.0, "Offset to add to the CoM trajectory");
 DEFINE_bool(contact_based_fsm, true,
             "The contact based fsm transitions "
             "between states using contact data.");
-DEFINE_double(transition_delay, 0.0, "Time to wait after trigger to "
-                                     "transition between FSM states.");
+DEFINE_double(transition_delay, 0.0,
+              "Time to wait after trigger to "
+              "transition between FSM states.");
 DEFINE_string(simulator, "DRAKE",
               "Simulator used, important for determining "
               "how to interpret contact information");
-DEFINE_bool(add_noise, false, "Whether to add gaussian noise to state "
-                              "inputted to controller");
+DEFINE_bool(add_noise, false,
+            "Whether to add gaussian noise to state "
+            "inputted to controller");
 DEFINE_int32(init_fsm_state, BALANCE, "Initial state of the FSM");
 
 int DoMain(int argc, char* argv[]) {
@@ -89,19 +93,19 @@ int DoMain(int argc, char* argv[]) {
   // Built the Cassie MBPs
   drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
   addCassieMultibody(&plant_w_springs, nullptr, true,
-      "examples/Cassie/urdf/cassie_v2.urdf",
-      true /*spring model*/, false /*loop closure*/);
+                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     true /*spring model*/, false /*loop closure*/);
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
   addCassieMultibody(&plant_wo_springs, nullptr, true,
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-      false);
+                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
+                     false);
   plant_w_springs.Finalize();
   plant_wo_springs.Finalize();
 
   int nq = plant_wo_springs.num_positions();
   int nv = plant_wo_springs.num_velocities();
   int nx = nq + nv;
-
+  int n_modes = 3;
   // Create maps for joints
   map<string, int> pos_map =
       multibody::makeNameToPositionsMap(plant_wo_springs);
@@ -116,18 +120,29 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel = RightHeel(plant_wo_springs);
 
   /**** Get trajectory from optimization ****/
-  const LcmTrajectory& loaded_traj = LcmTrajectory(
+  const LcmTrajectory& original_traj = LcmTrajectory(
       "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/" +
       FLAGS_traj_name);
+  const LcmTrajectory& processed_trajs = LcmTrajectory(
+      "/home/yangwill/Documents/research/projects/cassie/jumping/saved_trajs/" +
+      FLAGS_traj_name + "_processed");
 
   const LcmTrajectory::Trajectory& lcm_com_traj =
-      loaded_traj.getTrajectory("center_of_mass_trajectory");
+      processed_trajs.getTrajectory("center_of_mass_trajectory");
   const LcmTrajectory::Trajectory& lcm_l_foot_traj =
-      loaded_traj.getTrajectory("left_foot_trajectory");
+      processed_trajs.getTrajectory("left_foot_trajectory");
   const LcmTrajectory::Trajectory& lcm_r_foot_traj =
-      loaded_traj.getTrajectory("right_foot_trajectory");
+      processed_trajs.getTrajectory("right_foot_trajectory");
   const LcmTrajectory::Trajectory& lcm_pelvis_rot_traj =
-      loaded_traj.getTrajectory("pelvis_rot_trajectory");
+      processed_trajs.getTrajectory("pelvis_rot_trajectory");
+  vector<PiecewisePolynomial<double>> state_trajs;
+  for (int i = 0; i < n_modes; ++i) {
+    const LcmTrajectory::Trajectory& state_traj_i =  original_traj
+        .getTrajectory("cassie_jumping_trajectory_x_u" + std::to_string(i));
+    state_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
+        state_traj_i.time_vector, state_traj_i.datapoints.topRows(nx),
+        state_traj_i.datapoints.topRows(2*nx).bottomRows(nx)));
+  }
 
   PiecewisePolynomial<double> com_traj =
       PiecewisePolynomial<double>::CubicHermite(
@@ -147,8 +162,10 @@ int DoMain(int argc, char* argv[]) {
       lcm_pelvis_rot_traj.datapoints.topRows(4),
       lcm_pelvis_rot_traj.datapoints.bottomRows(4));
 
-  double flight_time = FLAGS_delay_time + 0.285773;  // For the time-based FSM
-  double land_time = FLAGS_delay_time + 0.67272637;
+  // For the time-based FSM
+  double flight_time =
+      FLAGS_delay_time + state_trajs[0].end_time();
+  double land_time = FLAGS_delay_time + state_trajs[1].end_time();
   std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
                                           land_time};
 
@@ -162,15 +179,14 @@ int DoMain(int argc, char* argv[]) {
   com_traj = com_traj + offset_traj;
 
   MatrixXd pos_cov = MatrixXd::Zero(nq, nq);
-  pos_cov(4,4) = 0.0;
+  pos_cov(4, 4) = 0.0;
   MatrixXd vel_cov = MatrixXd::Zero(nv, nv);
-  vel_cov(5,5) = 0.0;
+  vel_cov(5, 5) = 0.0;
 
   /**** Initialize all the leaf systems ****/
   SIMULATOR simulator;
-  simulator = DRAKE; // Default is DRAKE
-  if (FLAGS_simulator == "MUJOCO")
-    simulator = MUJOCO;
+  simulator = DRAKE;  // Default is DRAKE
+  if (FLAGS_simulator == "MUJOCO") simulator = MUJOCO;
 
   drake::lcm::DrakeLcm lcm;
 
@@ -183,17 +199,15 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_springs);
   auto com_traj_generator = builder.AddSystem<COMTrajGenerator>(
-      plant_w_springs, contact_points,
-      com_traj, FLAGS_delay_time);
+      plant_w_springs, contact_points, com_traj, FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, "hip_left", true, l_foot_trajectory,
-      FLAGS_delay_time);
+      plant_w_springs, "hip_left", true, l_foot_trajectory, FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
-      plant_w_springs, "hip_right", false, r_foot_trajectory,
-      FLAGS_delay_time);
-  auto pelvis_rot_traj_generator = builder.AddSystem<PPolyPassthrough>(
-      plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
-      FLAGS_delay_time);
+      plant_w_springs, "hip_right", false, r_foot_trajectory, FLAGS_delay_time);
+  auto pelvis_rot_traj_generator =
+      builder.AddSystem<PelvisOrientationTrajGenerator>(
+          plant_w_springs, pelvis_rot_trajectory, "pelvis_rot_tracking_data",
+          FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
       plant_w_springs, transition_times, FLAGS_contact_based_fsm,
       FLAGS_transition_delay, (FSM_STATE)FLAGS_init_fsm_state, simulator);
@@ -202,10 +216,9 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_springs);
-  auto osc =
-      builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-          plant_w_springs, plant_wo_springs, true,
-          FLAGS_print_osc); /*print_tracking_info*/
+  auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
+      plant_w_springs, plant_wo_springs, true,
+      FLAGS_print_osc); /*print_tracking_info*/
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -276,8 +289,7 @@ int DoMain(int argc, char* argv[]) {
   MatrixXd K_p_com = 64 * MatrixXd::Identity(3, 3);
   MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
   ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
-                                       &plant_w_springs,
-                                       &plant_wo_springs);
+                                    &plant_w_springs, &plant_wo_springs);
   for (FSM_STATE mode : stance_modes) {
     com_tracking_data.AddStateToTrack(mode);
   }
@@ -334,7 +346,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   gaussian_noise->get_input_port());
   drake::systems::LeafSystem<double>* controller_state_input = state_receiver;
-  if(FLAGS_add_noise){
+  if (FLAGS_add_noise) {
     std::cout << "Running with noise: " << std::endl;
     controller_state_input = gaussian_noise;
   }

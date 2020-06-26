@@ -8,6 +8,7 @@ namespace multibody {
 
 using std::map;
 using std::string;
+using std::vector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::geometry::SceneGraph;
@@ -242,7 +243,29 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
   return name_to_index_map;
 }
 
+vector<string> createStateNameVectorFromMap(
+    const map<string, int>& pos_map, const map<string, int>& vel_map) {
+  vector<string> state_names(pos_map.size() + vel_map.size());
 
+  for (const auto& name_index_pair : pos_map) {
+    state_names[name_index_pair.second] = name_index_pair.first;
+  }
+  for (const auto& name_index_pair : vel_map) {
+    state_names[name_index_pair.second + pos_map.size()] =
+        name_index_pair.first;
+  }
+  return state_names;
+}
+
+vector<string> createActuatorNameVectorFromMap(
+    const map<string, int>& act_map) {
+  vector<string> actuator_names(act_map.size());
+
+  for (const auto& name_index_pair : act_map) {
+    actuator_names[name_index_pair.second] = name_index_pair.first;
+  }
+  return actuator_names;
+}
 
 bool JointsWithinLimits(const MultibodyPlant<double>& plant,
                         VectorXd positions, double tolerance) {

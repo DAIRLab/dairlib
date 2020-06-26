@@ -40,8 +40,6 @@ class VisualizationGui(QWidget):
         self.clear = False
         self.ready = False
 
-
-
         # JSON attributes
         self.data = None
         self.modelFile = None

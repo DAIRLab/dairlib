@@ -116,11 +116,15 @@ def main():
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
     t_state, v, fsm = process_lcm_log.process_log(log, pos_map, vel_map)
 
-
     plt.plot(t_osc, osc_debug[0].error_y[:,2])
     plt.plot(t_osc, osc_debug[0].error_ydot[:,2])
-    # plt.plot(t_osc, osc_debug[0].yddot_command)
-    # plt.plot(t_osc, osc_debug[0].yddot_command_sol)
+    # plt.plot(t_osc, osc_debug[0].yddot_command[:,2])
+    plt.plot(t_osc, osc_debug[0].yddot_command[:, 2])
+    # plt.plot(t_osc, osc_debug[0].yddot_command_sol[:, 2])
+    # plt.plot(t_state, contact_info[0, :, 2])
+    # plt.plot(t_state, contact_info[1, :, 2])
+    # plt.plot(t_state, contact_info[2, :, 2])
+    # plt.plot(t_state, contact_info[3, :, 2])
     plt.show()
     return
     # init_x = np.hstack((q[0,:], v[0,:]))

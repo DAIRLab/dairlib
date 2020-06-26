@@ -206,9 +206,27 @@ void readThetaFromFiles(const string dir,int theta_idx,
 //use interpolation to set the initial guess for the trajectory optimization
 string getInitFileName(const string directory, int traj_opt_num,
     bool is_rerun,int rerun_traj_idx=-1){
-  int gamma_dimension = 3;
   VectorXd current_gamma = readCSV(directory + to_string(traj_opt_num)
                                        + string("_0_gamma.csv"));
+  int gamma_dimension = current_gamma.size();
+  VectorXd gamma_scale(gamma_dimension);
+  //paras used to decide gamma scale
+  if(FLAGS_robot_option==0)
+  {
+    double delta_sl = 0.015;
+    double delta_gi = 0.05;
+    double delta_v = 0.02;
+    gamma_scale << 1/delta_sl,1/delta_gi,1/delta_v;
+
+  }
+  else if(FLAGS_robot_option==1)
+  {
+    double delta_sl = 0.015;
+    double delta_gi = 0.05;
+    double delta_tr = 0.125;
+    double delta_v = 0.04;
+    gamma_scale << 1/delta_sl,1/delta_gi,1/delta_v,1.3/delta_tr;
+  }
   string initial_file_name;
   if(is_rerun){
     //if not specify which Traj Opt result to use, use its own result to rerun;
@@ -232,10 +250,6 @@ string getInitFileName(const string directory, int traj_opt_num,
         //take out corresponding w and calculate the weight for interpolation
         MatrixXd w_gamma;
         VectorXd weight_gamma;
-        //paras used to decide gamma scale
-        double delta_sl = 0.015;
-        double delta_gi = 0.05;
-        double delta_tr = 0.125;
         //calculate the weighted sum of solutions
         int theta_idx = FLAGS_theta_index;
         int sample_num = 0;
@@ -246,17 +260,9 @@ string getInitFileName(const string directory, int traj_opt_num,
               to_string(sample_num)+ string("_is_success.csv")))(0,0);
           if(is_success == 1) {
             //extract past gamma
-            MatrixXd past_ground_incline = readCSV(dir_find_models + to_string(theta_idx) + string("_")
-                + to_string(sample_num) + string("_ground_incline.csv"));
-            MatrixXd past_stride_length = readCSV(dir_find_models + to_string(theta_idx) + string("_")
-                + to_string(sample_num) + string("_stride_length.csv"));
-            MatrixXd past_turning_rate = readCSV(dir_find_models + to_string(theta_idx) + string("_")
-                + to_string(sample_num) + string("_turning_rate.csv"));
-            VectorXd past_gamma(gamma_dimension);
-            past_gamma << past_ground_incline(0, 0), past_stride_length(0, 0), past_turning_rate(0, 0);
+            VectorXd past_gamma = readCSV(dir_find_models + to_string(theta_idx) + string("_")
+                + to_string(sample_num) + string("_task.csv"));
             //calculate the weight for each sample using the 3-norm of the difference between gamma
-            VectorXd gamma_scale(gamma_dimension);
-            gamma_scale << 1/delta_gi,1/delta_sl,1.3/delta_tr;
             VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
             VectorXd dif_gamma2 = dif_gamma.array().pow(2);
             double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);
@@ -289,10 +295,6 @@ string getInitFileName(const string directory, int traj_opt_num,
       //take out corresponding w and calculate the weight for interpolation
       MatrixXd w_gamma;
       VectorXd weight_gamma;
-      //paras used to decide gamma scale
-      double delta_sl = 0.015;
-      double delta_gi = 0.05;
-      double delta_tr = 0.125;
       //calculate the weighted sum of past solutions
       int sample_num = 0;
       for (sample_num = 0; sample_num < traj_opt_num; sample_num++) {
@@ -304,8 +306,6 @@ string getInitFileName(const string directory, int traj_opt_num,
           VectorXd past_gamma = readCSV(directory + to_string(sample_num)
                                             + string("_0_gamma.csv"));
           //calculate the weight for each sample using the third power of the difference between gamma
-          VectorXd gamma_scale(gamma_dimension);
-          gamma_scale << 1/delta_gi,1/delta_sl,1.3/delta_tr;
           VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
           VectorXd dif_gamma2 = dif_gamma.array().pow(2);
           double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);

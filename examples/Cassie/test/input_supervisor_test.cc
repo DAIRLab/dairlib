@@ -2,8 +2,7 @@
 
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/parsers/urdf_parser.h"
-#include "drake/multibody/rigid_body_tree.h"
-#include "drake/multibody/rigid_body_tree_construction.h"
+#include "drake/multibody/plant/multibody_plant.h"
 #include "examples/Cassie/cassie_utils.h"
 #include <Eigen/Dense>
 #include <gtest/gtest.h>
@@ -18,22 +17,23 @@ using Eigen::VectorXd;
 
 class InputSupervisorTest : public ::testing::Test {
 protected:
-  InputSupervisorTest() {
-    buildCassieTree(tree_, "examples/Cassie/urdf/cassie_v2.urdf",
-                    drake::multibody::joints::kQuaternion);
-    drake::multibody::AddFlatTerrainToWorld(&tree_, 100, 0.2);
+  InputSupervisorTest() : plant_(drake::multibody::MultibodyPlant<double>(0.0)) {
+    addCassieMultibody(&plant_, nullptr, true /*floating base*/,
+                       "examples/Cassie/urdf/cassie_v2.urdf",
+                       true /*spring model*/, false /*loop closure*/);
+    plant_.Finalize();
     supervisor_ = std::make_unique<InputSupervisor>(
-        tree_, 10.0, 0.01, min_consecutive_failures, 20.0);
+        plant_, 10.0, 0.01, min_consecutive_failures, 20.0);
     context_ = supervisor_->CreateDefaultContext();
     status_output_ = std::make_unique<TimestampedVector<double>>(1);
     command_input_ =
-        std::make_unique<TimestampedVector<double>>(tree_.get_num_actuators());
+        std::make_unique<TimestampedVector<double>>(plant_.num_actuators());
     state_input_ = std::make_unique<OutputVector<double>>(
-        tree_.get_num_positions(), tree_.get_num_velocities(),
-        tree_.get_num_actuators());
+        plant_.num_positions(), plant_.num_velocities(),
+        plant_.num_actuators());
   }
 
-  RigidBodyTree<double> tree_;
+  drake::multibody::MultibodyPlant<double> plant_;
   const int min_consecutive_failures = 5;
   std::unique_ptr<InputSupervisor> supervisor_;
   std::unique_ptr<TimestampedVector<double>> status_output_;
@@ -44,7 +44,7 @@ protected:
 
 TEST_F(InputSupervisorTest, StatusBitTest) {
   double output_bit;
-  VectorXd zero_input = VectorXd::Zero(tree_.get_num_actuators());
+  VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
   command_input_->get_mutable_value() = zero_input;
   context_->FixInputPort(0, *command_input_);
 
@@ -52,14 +52,14 @@ TEST_F(InputSupervisorTest, StatusBitTest) {
   output_bit = status_output_->get_value()[0];
   EXPECT_EQ(output_bit, 0);
 
-  VectorXd large_input = 100 * VectorXd::Ones(tree_.get_num_actuators());
+  VectorXd large_input = 100 * VectorXd::Ones(plant_.num_actuators());
   command_input_->get_mutable_value() = large_input;
   context_->FixInputPort(0, *command_input_);
   supervisor_->SetStatus(*context_, status_output_.get());
   output_bit = status_output_->get_value()[0];
   EXPECT_EQ(output_bit, 2);
 
-  VectorXd high_velocities = 100 * VectorXd::Ones(tree_.get_num_velocities());
+  VectorXd high_velocities = 100 * VectorXd::Ones(plant_.num_velocities());
   state_input_->SetVelocities(high_velocities);
   context_->FixInputPort(1, *state_input_);
   supervisor_->UpdateErrorFlag(*context_,

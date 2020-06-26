@@ -3,7 +3,7 @@
 #include <math.h>
 #include <string>
 
-#include "attic/multibody/rigidbody_utils.h"
+#include "multibody/multibody_utils.h"
 #include "drake/math/quaternion.h"
 
 using std::cout;
@@ -27,25 +27,28 @@ using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
 using drake::systems::LeafSystem;
 
+using drake::multibody::JacobianWrtVariable;
 using drake::trajectories::PiecewisePolynomial;
 
 namespace dairlib {
 namespace cassie {
 namespace osc {
 
-HighLevelCommand::HighLevelCommand(const RigidBodyTree<double>& tree, int pelvis_idx,
-                           const Vector2d& global_target_position,
-                           const Vector2d& params_of_no_turning)
-    : tree_(tree),
-      pelvis_idx_(pelvis_idx),
+HighLevelCommand::HighLevelCommand(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const Vector2d& global_target_position,
+    const Vector2d& params_of_no_turning)
+    : plant_(plant),
+      world_(plant_.world_frame()),
+      pelvis_(plant_.GetBodyByName("pelvis")),
       global_target_position_(global_target_position),
       params_of_no_turning_(params_of_no_turning) {
   // Input/Output Setup
-  state_port_ = this
-                    ->DeclareVectorInputPort(OutputVector<double>(
-                        tree.get_num_positions(), tree.get_num_velocities(),
-                        tree.get_num_actuators()))
-                    .get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+          .get_index();
   yaw_port_ = this->DeclareVectorOutputPort(BasicVector<double>(1),
                                             &HighLevelCommand::CopyHeadingAngle)
                   .get_index();
@@ -65,6 +68,9 @@ HighLevelCommand::HighLevelCommand(const RigidBodyTree<double>& tree, int pelvis
 
   // Discrete state which stores the desired horizontal velocity
   des_horizontal_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(2));
+
+  // Create context
+  context_ = plant_.CreateDefaultContext();
 }
 
 EventStatus HighLevelCommand::DiscreteVariableUpdate(
@@ -83,26 +89,19 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     VectorXd q = robotOutput->GetPositions();
     VectorXd v = robotOutput->GetVelocities();
 
-    // Kinematics cache and indices
-    KinematicsCache<double> cache = tree_.CreateKinematicsCache();
-    // Modify the quaternion in the begining when the state is not received from
-    // the robot yet
-    // Always remember to check 0-norm quaternion when using doKinematics
-    multibody::SetZeroQuaternionToIdentity(&q);
-    cache.initialize(q);
-    tree_.doKinematics(cache);
+    plant_.SetPositions(context_.get(), q);
 
     // Get center of mass position and velocity
-    Vector3d com_pos = tree_.centerOfMass(cache);
-    MatrixXd J = tree_.centerOfMassJacobian(cache);
+    Vector3d com_pos = plant_.CalcCenterOfMassPosition(*context_);
+    MatrixXd J(3, plant_.num_velocities());
+    plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, world_, world_, &J);
     Vector3d com_vel = J * v;
 
     //////////// Get desired yaw velocity ////////////
     // Get approximated heading angle of pelvis
     Vector3d pelvis_heading_vec =
-        tree_.CalcBodyPoseInWorldFrame(cache, tree_.get_body(pelvis_idx_))
-            .linear()
-            .col(0);
+        plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
     double approx_pelvis_yaw =
         atan2(pelvis_heading_vec(1), pelvis_heading_vec(0));
 
@@ -122,10 +121,9 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
 
     // Convex combination of 0 and desired yaw velocity
     double weight = 1 / (1 + exp(-params_of_no_turning_(0) *
-        (global_com_pos_to_target_pos.norm() -
-            params_of_no_turning_(1))));
-    double desired_filtered_yaw_vel =
-        (1 - weight) * 0 + weight * des_yaw_vel;
+                                 (global_com_pos_to_target_pos.norm() -
+                                  params_of_no_turning_(1))));
+    double desired_filtered_yaw_vel = (1 - weight) * 0 + weight * des_yaw_vel;
     discrete_state->get_mutable_vector(des_yaw_vel_idx_).get_mutable_value()
         << desired_filtered_yaw_vel;
 
@@ -139,9 +137,9 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     // position.
     if (heading_error < M_PI / 2 && heading_error > -M_PI / 2) {
       // Extract quaternion from floating base position
-      Quaterniond Quat(q(3), q(4), q(5), q(6));
+      Quaterniond Quat(q(0), q(1), q(2), q(3));
       Quaterniond Quat_conj = Quat.conjugate();
-      Vector4d quat(q.segment(3, 4));
+      Vector4d quat(q.head(4));
       Vector4d quad_conj(Quat_conj.w(), Quat_conj.x(), Quat_conj.y(),
                          Quat_conj.z());
 
@@ -185,7 +183,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
 }
 
 void HighLevelCommand::CopyHeadingAngle(const Context<double>& context,
-                                    BasicVector<double>* output) const {
+                                        BasicVector<double>* output) const {
   double desired_heading_pos =
       context.get_discrete_state(des_yaw_vel_idx_).get_value()(0);
 
@@ -193,8 +191,8 @@ void HighLevelCommand::CopyHeadingAngle(const Context<double>& context,
   output->get_mutable_value() << desired_heading_pos;
 }
 
-void HighLevelCommand::CopyDesiredHorizontalVel(const Context<double>& context,
-                                            BasicVector<double>* output) const {
+void HighLevelCommand::CopyDesiredHorizontalVel(
+    const Context<double>& context, BasicVector<double>* output) const {
   auto delta_CP_3D_global =
       context.get_discrete_state(des_horizontal_vel_idx_).get_value();
 
@@ -205,4 +203,3 @@ void HighLevelCommand::CopyDesiredHorizontalVel(const Context<double>& context,
 }  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib
-

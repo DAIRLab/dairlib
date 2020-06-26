@@ -67,7 +67,8 @@ cc_library(
         "constrained_lqr_controller.h",
     ],
     deps = [
-        "//attic/multibody:contact_toolkit",
+        "//multibody:utils",
+        "//multibody/kinematic",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -122,7 +123,7 @@ cc_library(
     hdrs = ["lipm_traj_gen.h"],
     deps = [
         ":control_utils",
-        "//attic/multibody:utils",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -134,23 +135,9 @@ cc_library(
     hdrs = ["cp_traj_gen.h"],
     deps = [
         ":control_utils",
-        "//attic/multibody:utils",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
-    ],
-)
-
-cc_test(
-    name = "constrained_lqr_controller_test",
-    size = "small",
-    srcs = [
-        "test/constrained_lqr_controller_test.cc",
-    ],
-    deps = [
-        ":controllers",
-        "//attic/multibody:multibody_solvers",
-        "//examples/Cassie:cassie_utils",
-        "@gtest//:main",
     ],
 )
 

@@ -1,17 +1,29 @@
 #!/bin/bash
 
+# look in WORKSPACE file for appropriate commit number
 DRAKE_COMMIT=$(grep -oP '(?<=DRAKE_COMMIT = ")(.*)(?=")' $(dirname "$0")/../WORKSPACE)
 
 ubuntu_codename=$(lsb_release -sc)
 
 echo "Using Drake commit '${DRAKE_COMMIT}'"
-wget --quiet -O drake_binary_packages.txt \
-  "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/binary_distribution/packages-${ubuntu_codename}.txt"
-wget --quiet -O drake_source_packages.txt \
-  "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/packages-${ubuntu_codename}.txt"
-# We blacklist kcov-35 because it is only available from the Drake PPA, and we don't want to add that PPA to sources.list.
-sed -i 's#^kcov-35$##g' drake_source_packages.txt
-sudo apt-get -q install --no-install-recommends $(cat drake_binary_packages.txt)
-sudo apt-get -q install --no-install-recommends $(cat drake_source_packages.txt)
-rm drake_binary_packages.txt
-rm drake_source_packages.txt
+# Download and run drake install scripts
+mkdir tmp
+cd tmp
+wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/install_prereqs.sh"
+mkdir source_distribution
+cd source_distribution
+wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/install_prereqs.sh"
+wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/install_prereqs_user_environment.sh"
+wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/packages-${ubuntu_codename}.txt"
+cd ..
+mkdir binary_distribution
+cd binary_distribution
+wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/binary_distribution/install_prereqs.sh"
+wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/binary_distribution/packages-${ubuntu_codename}.txt"
+cd ..
+chmod +x install_prereqs.sh
+./install_prereqs.sh
+cd ..
+rm -rf tmp/
+# In addition to drake, install lcm and libbot2
+apt install lcm libbot2

@@ -127,6 +127,16 @@ bool KinematicEvaluator<T>::is_active(int index) const {
       != active_inds_.end();
 }
 
+template <typename T>
+int KinematicEvaluator<T>::full_index_to_active_index(int full_index) const {
+  for (size_t i = 0; i < active_inds_.size(); i++) {
+    if (active_inds_.at(i) == full_index) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::multibody::KinematicEvaluator)
 

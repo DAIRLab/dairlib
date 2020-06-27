@@ -17,6 +17,7 @@
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
 #include "systems/trajectory_optimization/dircon_position_data.h"
 #include "systems/trajectory_optimization/hybrid_dircon.h"
+#include "solvers/optimization_utils.h"
 
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
@@ -227,8 +228,8 @@ void DoMain(double duration, int max_iter, string data_directory,
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-  // trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
-  //                          "Print file", "../snopt.out");
+  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
+                           "Print file", "../old_squat.out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
                            "Major iterations limit", max_iter);
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -476,19 +477,30 @@ void DoMain(double duration, int max_iter, string data_directory,
   cout << "Solver: " << result.get_solver_id().name() << endl;
 
   // Check if the nonlinear constraints are all satisfied
-  // bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt,
-  //                             result, tol);
+  bool constraint_satisfied = solvers::CheckGenericConstraints(*trajopt,
+                              result, tol);
   // cout << "constraint_satisfied = " << constraint_satisfied << endl;
 
   // store the solution of the decision variable
   VectorXd z = result.GetSolution(trajopt->decision_variables());
+  VectorXd constraint_y, constraint_lb, constraint_ub;
+  MatrixXd constraint_A;
+  std::cout << "a" << std::endl;
+  solvers::LinearizeConstraints(*trajopt, z, &constraint_y, &constraint_A,
+                                &constraint_lb, &constraint_ub);
+  std::cout << "b" << std::endl;
   if (to_store_data) {
     writeCSV(data_directory + string("z.csv"), z);
+    writeCSV(data_directory + string("A.csv"), constraint_A);
+    writeCSV(data_directory + string("y.csv"), constraint_y);
+    writeCSV(data_directory + string("lb.csv"), constraint_lb);
+    writeCSV(data_directory + string("ub.csv"), constraint_ub);
   }
-  // for (int i = 0; i < z.size(); i++) {
-  //   cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
-  // }
-  // cout << endl;
+
+  for (int i = 0; i < z.size(); i++) {
+    cout << trajopt->decision_variables()[i] << ", " << z[i] << endl;
+  }
+  cout << endl;
 
   // store the time, state, and input at knot points
   VectorXd time_at_knots = trajopt->GetSampleTimes(result);

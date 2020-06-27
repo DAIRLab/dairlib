@@ -113,10 +113,8 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
     ub->segment(constraint_index, n) = c->upper_bound();
 
     auto variables = binding.variables();
-
     // Initialize AutoDiff vector for result
-    AutoDiffVecXd y_val = initializeAutoDiff(
-        VectorXd::Zero(c->num_constraints()), variables.size());
+    AutoDiffVecXd y_val;
 
     // Extract subset of decision variable vector
     VectorXd x_binding(variables.size());
@@ -124,7 +122,6 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
       x_binding(i) = x(prog.FindDecisionVariableIndex(variables(i)));
     }
     AutoDiffVecXd x_val = initializeAutoDiff(x_binding);
-
     // Evaluate constraint and extract gradient
     binding.evaluator()->Eval(x_val, &y_val);
     MatrixXd dx = autoDiffToGradientMatrix(y_val);
@@ -134,7 +131,6 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
       A->block(constraint_index,
           prog.FindDecisionVariableIndex(variables(i)), n, 1) = dx.col(i);
     }
-
     constraint_index += n;
   }
 }

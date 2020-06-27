@@ -13,7 +13,9 @@ namespace trajectory_optimization {
 /// anything other than kAll (default), is to avoid redundant constraints.
 /// For instance, fully constraining the first state, x(0) = x_0, would leave
 /// position and velocity constraints on x_0 redundant.
-enum DirconKinConstraintType { kAll = 3, kAccelAndVel = 2, kAccelOnly = 1 };
+enum class KinematicConstraintType {
+  kAll = 3, kAccelAndVel = 2, kAccelOnly = 1
+};
 
 /// DirconMode is the primary class for defining constrained collocation
 /// (DIRCON) trajectory optimization problems. Each DirconMode object refers
@@ -32,7 +34,7 @@ class DirconMode {
   explicit DirconMode(
       const multibody::KinematicEvaluatorSet<T>& evaluators, int num_knotpoints,
       double min_T = 0, double max_T = std::numeric_limits<double>::infinity(),
-      double force_regularization = 1.0e-6);
+      double force_regularization = 1.0e-4);
 
   /// Identify a constraint as being relative, e.g. constrained to be constant
   /// but not necessarily zero (via a new slack variable). Identifies the
@@ -55,12 +57,12 @@ class DirconMode {
   /// Set a specific knotpoint in time to use a specific constraint type, either
   /// kAll, kAccelAndVel, kAccelOnly. By default, all constraints (kAll) are
   /// included
-  void set_constraint_type(int knotpoint_index, DirconKinConstraintType type);
+  void set_constraint_type(int knotpoint_index, KinematicConstraintType type);
 
   /// Get the constraint type for a specific knotpoint in time, either
   /// kAll, kAccelAndVel, kAccelOnly. By default, all constraints (kAll) are
   /// included
-  DirconKinConstraintType get_constraint_type(int knotpoint_index) const;
+  KinematicConstraintType get_constraint_type(int knotpoint_index) const;
 
   /// Set the impact constraint, for the start of this mode, to use a scale
   /// factor
@@ -187,7 +189,7 @@ class DirconMode {
   double mu_;
   std::set<int> relative_constraints_;
   std::set<int> skip_quaternion_;
-  std::unordered_map<int, DirconKinConstraintType> reduced_constraints_;
+  std::unordered_map<int, KinematicConstraintType> reduced_constraints_;
 
   // Constraint scaling
   std::unordered_map<int, double> dynamics_scale_;

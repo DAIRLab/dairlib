@@ -10,6 +10,7 @@
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
 
 #include "systems/trajectory_optimization/dircon/dircon_mode.h"
+#include "systems/trajectory_optimization/dircon/dynamics_cache.h"
 #include "multibody/multipose_visualizer.h"
 
 namespace dairlib {
@@ -185,6 +186,7 @@ class Dircon
   std::vector<drake::solvers::VectorXDecisionVariable> offset_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> quaternion_slack_vars_;
   std::unique_ptr<multibody::MultiposeVisualizer> callback_visualizer_;
+  std::vector<std::unique_ptr<DynamicsCache<T>>> cache_;
 };
 
 }  // namespace trajectory_optimization

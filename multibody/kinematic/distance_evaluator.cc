@@ -34,7 +34,8 @@ VectorX<T> DistanceEvaluator<T>::EvalFull(
       pt_A_.template cast<T>(), frame_B_, &pt_A_B);  
   auto rel_pos = pt_A_B - pt_B_;
   VectorX<T> difference(1);
-  difference << rel_pos.norm() - distance_;
+  // difference << rel_pos.norm() - distance_;
+  difference << rel_pos.squaredNorm() - distance_ * distance_;
 
   return difference;
 }
@@ -58,7 +59,8 @@ MatrixX<T> DistanceEvaluator<T>::EvalFullJacobian(
     context, drake::multibody::JacobianWrtVariable::kV,
     frame_A_, pt_A_.template cast<T>(), frame_B_, frame_B_, &J_A);
 
-  return (rel_pos.transpose() * J_A) / rel_pos.norm();
+  // return (rel_pos.transpose() * J_A) / rel_pos.norm();
+  return  2 * (rel_pos.transpose() * J_A);
 }
 
 template <typename T>
@@ -119,9 +121,12 @@ VectorX<T> DistanceEvaluator<T>::EvalFullJacobianDotTimesV(
 
   // Compute all terms as scalars using dot products
   VectorX<T> J_dot_times_v(1);
-  J_dot_times_v << (J_rel_v).squaredNorm() / phi
-      + rel_pos.dot(J_rel_dot_times_v) / phi
-      - phidot * rel_pos.dot(J_rel_v) / (phi * phi);
+  // J_dot_times_v << (J_rel_v).squaredNorm() / phi
+  //     + rel_pos.dot(J_rel_dot_times_v) / phi
+  //     - phidot * rel_pos.dot(J_rel_v) / (phi * phi);
+  J_dot_times_v << 2 * (J_rel_v).squaredNorm()
+      + 2 * rel_pos.dot(J_rel_dot_times_v);
+      // - phidot * rel_pos.dot(J_rel_v) / (phi * phi);
   return J_dot_times_v;
 }
 

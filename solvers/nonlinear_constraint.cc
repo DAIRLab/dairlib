@@ -81,8 +81,7 @@ void NonlinearConstraint<double>::DoEval(
     x_val(i) -= eps_;
     dy.col(i) = (yi - y0) / eps_;
   }
-  drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad,
-                                                     *y);
+  *y = drake::math::initializeAutoDiffGivenGradientMatrix(y0, dy * original_grad);
 
   this->ScaleConstraint<AutoDiffXd>(y);
 }

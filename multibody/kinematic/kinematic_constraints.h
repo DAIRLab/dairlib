@@ -50,7 +50,7 @@ class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
       const drake::multibody::MultibodyPlant<T>& plant,
       const KinematicEvaluatorSet<T>& evaluators,
       const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
-      const std::set<int>& full_constraint_relative,
+      const std::set<int>& full_constraint_relative = {},
       drake::systems::Context<T>* context = nullptr,
       const std::string& description = "kinematic_position");
 

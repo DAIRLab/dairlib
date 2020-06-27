@@ -38,6 +38,7 @@ std::shared_ptr<LinearConstraint> CreateLinearFrictionConstraint(double mu,
     A(i, (normal_index + 1) % 3) = -cos(theta);
     A(i, (normal_index + 2) % 3) = -sin(theta);
   }
+
   VectorXd lb = VectorXd::Zero(num_faces);
   VectorXd ub = VectorXd::Constant(num_faces, 
       std::numeric_limits<double>::infinity());

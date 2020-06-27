@@ -21,11 +21,16 @@ DirconMode<T>::DirconMode(
 template <typename T>
 void DirconMode<T>::MakeConstraintRelative(int evaluator_index,
     int constraint_index) {
-  DRAKE_DEMAND(evaluators_.get_evaluator(evaluator_index).is_active(
-      constraint_index));
-  int total_index = evaluators_.evaluator_full_start(evaluator_index) + 
-      constraint_index;
-  relative_constraints_.insert(total_index);
+  DRAKE_DEMAND(constraint_index >= 0);
+  DRAKE_DEMAND(constraint_index <=
+      evaluators_.get_evaluator(evaluator_index).num_full());
+  int active_constraint_index = evaluators_.get_evaluator(
+      evaluator_index).full_index_to_active_index(constraint_index);
+  if (active_constraint_index != -1) {
+    int total_index = evaluators_.evaluator_active_start(evaluator_index)
+        + active_constraint_index;
+    relative_constraints_.insert(total_index);
+  }
 }
 
 template <typename T>
@@ -40,17 +45,17 @@ bool DirconMode<T>::IsSkipQuaternion(int knotpoint_index) const {
 
 template <typename T>
 void DirconMode<T>::set_constraint_type(int knotpoint_index,
-    DirconKinConstraintType type) {
+    KinematicConstraintType type) {
   DRAKE_DEMAND(knotpoint_index >= 0);
   DRAKE_DEMAND(knotpoint_index < num_knotpoints_);
   reduced_constraints_[knotpoint_index] = type;
 }
 
 template <typename T>
-DirconKinConstraintType DirconMode<T>::get_constraint_type(
+KinematicConstraintType DirconMode<T>::get_constraint_type(
     int knotpoint_index) const {
   if (reduced_constraints_.find(knotpoint_index) == reduced_constraints_.end())
-    return DirconKinConstraintType::kAll;
+    return KinematicConstraintType::kAll;
   return reduced_constraints_.at(knotpoint_index);
 }
 
@@ -145,9 +150,13 @@ void DirconMode<T>::SetKinScale(std::unordered_map<int, double>* scale_map,
   DRAKE_DEMAND(constraint_index >= 0);
   DRAKE_DEMAND(constraint_index <=
       evaluators_.get_evaluator(evaluator_index).num_full());
-  int total_index = evaluators_.evaluator_full_start(evaluator_index) + 
-      constraint_index;
-  (*scale_map)[total_index] = scale;
+  int active_constraint_index = evaluators_.get_evaluator(
+      evaluator_index).full_index_to_active_index(constraint_index);
+  if (active_constraint_index != -1) {
+    int total_index = evaluators_.evaluator_active_start(evaluator_index) + 
+        active_constraint_index;
+    (*scale_map)[total_index] = scale;
+  }
 }
 
 template <typename T>

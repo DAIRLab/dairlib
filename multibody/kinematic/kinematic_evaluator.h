@@ -87,6 +87,10 @@ class KinematicEvaluator {
 
   bool is_active(int index) const;
 
+  /// Convert an index, relative to the full index set, to be an active index.
+  /// Returns -1 if the given index is not active
+  int full_index_to_active_index(int full_index) const;
+
   /// Create a friction cone constraint on the force variables (associated with
   /// the full Jacboian). Subclasses which might be associated with frictional
   /// contact should implement this method.

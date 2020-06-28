@@ -12,19 +12,18 @@ namespace dairlib {
 namespace systems {
 
 TimeBasedFiniteStateMachine::TimeBasedFiniteStateMachine(
-    const RigidBodyTree<double>& tree, const std::vector<int>& states,
-    const std::vector<double>& state_durations, double t0)
-    : states_(states),
-      state_durations_(state_durations),
-      t0_(t0) {
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::vector<int>& states, const std::vector<double>& state_durations,
+    double t0)
+    : states_(states), state_durations_(state_durations), t0_(t0) {
   DRAKE_DEMAND(states.size() == state_durations.size());
 
   // Input/Output Setup
-  state_port_ = this
-                    ->DeclareVectorInputPort(OutputVector<double>(
-                        tree.get_num_positions(), tree.get_num_velocities(),
-                        tree.get_num_actuators()))
-                    .get_index();
+  state_port_ =
+      this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+          .get_index();
   this->DeclareVectorOutputPort(BasicVector<double>(1),
                                 &TimeBasedFiniteStateMachine::CalcFiniteState);
 

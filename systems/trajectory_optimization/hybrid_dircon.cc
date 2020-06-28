@@ -178,7 +178,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     AddConstraint(
         kinematic_constraint_start,
         {state_vars_by_mode(i, 0),
-         u_vars().segment(mode_start_[i], num_inputs()),
+         u_vars().segment(mode_start_[i] * num_inputs(), num_inputs()),
          force_vars(i).segment(0, num_kinematic_constraints_wo_skipping(i)),
          offset_vars(i)});
 

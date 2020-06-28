@@ -8,6 +8,29 @@
 namespace dairlib {
 namespace goldilocks_models  {
 
+SubQpData::SubQpData(int N_sample) {
+  // Initialize all the member
+  for (int i = 0; i < N_sample; i++) {
+    w_sol_vec.push_back(std::make_shared<VectorXd>());
+    H_vec.push_back(std::make_shared<MatrixXd>());
+    b_vec.push_back(std::make_shared<VectorXd>());
+    c_vec.push_back(std::make_shared<VectorXd>());
+    A_vec.push_back(std::make_shared<MatrixXd>());
+    lb_vec.push_back(std::make_shared<VectorXd>());
+    ub_vec.push_back(std::make_shared<VectorXd>());
+    y_vec.push_back(std::make_shared<VectorXd>());
+    B_vec.push_back(std::make_shared<MatrixXd>());
+    is_success_vec.push_back(std::make_shared<int>());
+
+    A_active_vec.push_back(std::make_shared<MatrixXd>());
+    B_active_vec.push_back(std::make_shared<MatrixXd>());
+    nw_vec.push_back(std::make_shared<int>());
+    nl_vec.push_back(std::make_shared<int>());
+    P_vec.push_back(std::make_shared<MatrixXd>());
+    q_vec.push_back(std::make_shared<VectorXd>());
+  }
+}
+
 // Create time knots for creating cubic splines
 vector<double> createTimeKnotsGivenTimesteps(const vector<VectorXd> & h_vec) {
   vector<double> T_breakpoint;
@@ -187,6 +210,39 @@ bool CreateFolderIfNotExist(const string& dir) {
   return true;
 }
 
+template <int Rows, int Cols>
+vector<std::string> ParseCsvToStringVec(const std::string& file_name) {
+  DRAKE_DEMAND(Rows != -1 || Cols != -1);
+  // cout << "parse " << file_name << endl;
+
+  // Read file into a std::string
+  std::ifstream ifs(file_name);
+  std::string content((std::istreambuf_iterator<char>(ifs)),
+                      (std::istreambuf_iterator<char>()));
+
+  // parse
+  vector<std::string> ret;
+  std::stringstream ss(content);
+  std::string item;
+  char delimiter = (Rows == -1) ? '\n' : ',';
+  while (std::getline(ss, item, delimiter)) {
+    // cout << item << endl;
+    ret.push_back(item);
+  }
+  return ret;
+}
+template vector<std::string> ParseCsvToStringVec<1, -1>(const std::string&);
+template vector<std::string> ParseCsvToStringVec<-1, 1>(const std::string&);
+
+void SaveStringVecToCsv(vector<std::string> strings,
+                        const std::string& file_name) {
+  std::ofstream ofile;
+  ofile.open(file_name, std::ofstream::out);
+  for (auto & mem : strings) {
+    ofile << mem << endl;
+  }
+  ofile.close();
+}
 
 }  // namespace goldilocks_models
 } // dairlib

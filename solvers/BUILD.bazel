@@ -4,6 +4,27 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "constraints",
+    deps = [
+        ":constraint_factory",
+        ":nonlinear_constraint",
+    ]
+)
+
+cc_library(
+    name = "constraint_factory",
+    srcs = [
+        "constraint_factory.cc",
+    ],
+    hdrs = [
+        "constraint_factory.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "nonlinear_constraint",
     srcs = [
         "nonlinear_constraint.cc",

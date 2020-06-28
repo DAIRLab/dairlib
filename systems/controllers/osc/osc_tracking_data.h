@@ -92,27 +92,27 @@ class OscTrackingData {
               int finite_state_machine_state);
 
   // Getters for debugging
-  Eigen::VectorXd GetY() { return y_; }
-  Eigen::VectorXd GetYDes() { return y_des_; }
-  Eigen::VectorXd GetErrorY() { return error_y_; }
-  Eigen::VectorXd GetYdot() { return ydot_; }
-  Eigen::VectorXd GetYdotDes() { return ydot_des_; }
-  Eigen::VectorXd GetErrorYdot() { return error_ydot_; }
-  Eigen::VectorXd GetYddotDes() { return yddot_des_; }
-  Eigen::VectorXd GetYddotDesConverted() { return yddot_des_converted_; }
-  Eigen::VectorXd GetYddotCommandSol() { return yddot_command_sol_; }
+  Eigen::VectorXd GetY() const { return y_; }
+  Eigen::VectorXd GetYDes() const { return y_des_; }
+  Eigen::VectorXd GetErrorY() const { return error_y_; }
+  Eigen::VectorXd GetYdot() const { return ydot_; }
+  Eigen::VectorXd GetYdotDes() const { return ydot_des_; }
+  Eigen::VectorXd GetErrorYdot() const { return error_ydot_; }
+  Eigen::VectorXd GetYddotDes() const { return yddot_des_; }
+  Eigen::VectorXd GetYddotDesConverted() const { return yddot_des_converted_; }
+  Eigen::VectorXd GetYddotCommandSol() const { return yddot_command_sol_; }
 
   // Getters used by osc block
-  Eigen::VectorXd GetOutput() { return y_; }
-  Eigen::MatrixXd GetJ() { return J_; }
-  Eigen::VectorXd GetJdotTimesV() { return JdotV_; }
-  Eigen::VectorXd GetYddotCommand() { return yddot_command_; }
-  Eigen::MatrixXd GetWeight() { return W_; }
+  Eigen::VectorXd GetOutput() const { return y_; }
+  Eigen::MatrixXd GetJ() const { return J_; }
+  Eigen::VectorXd GetJdotTimesV() const { return JdotV_; }
+  Eigen::VectorXd GetYddotCommand() const { return yddot_command_; }
+  Eigen::MatrixXd GetWeight() const { return W_; }
 
   // Getters
-  std::string GetName() { return name_; };
-  int GetTrajDim() { return n_r_; };
-  bool IsActive() { return track_at_current_state_; }
+  std::string GetName() const { return name_; };
+  int GetTrajDim() const { return n_r_; };
+  bool IsActive() const { return track_at_current_state_; }
 
   void SaveYddotCommandSol(const Eigen::VectorXd& dv);
 
@@ -122,6 +122,11 @@ class OscTrackingData {
   // Finalize and ensure that users construct OscTrackingData class
   // correctly.
   void CheckOscTrackingData();
+
+  // For unit test
+  void UpdateJAndJdotVForUnitTest(
+      const Eigen::VectorXd& x_wo_spr,
+      drake::systems::Context<double>& context_wo_spr);
 
  protected:
   int GetStateIdx() { return state_idx_; };
@@ -386,32 +391,30 @@ class JointSpaceTrackingData final : public OscTrackingData {
   std::vector<int> joint_vel_idx_wo_spr_;
 };
 
-// TODO: the implementation of VToQdotMap is for MBP.
-//  Continue to implement this after we fully port OSC to MBP. Will need to
-//  verify that the functions are implemented correctly.
+// TODO(yminchen): You can probably use symbolics of drake
+//  Also, drake polynomial function can potentially help you to do derivatives
 class AbstractTrackingData final : public OscTrackingData {
  public:
   AbstractTrackingData(
-      std::string name, int n_r, Eigen::MatrixXd K_p, Eigen::MatrixXd K_d,
-      Eigen::MatrixXd W,
+      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
       OscUserDefinedPos* user_defined_pos);
   AbstractTrackingData(
-      std::string name, int n_r, Eigen::MatrixXd K_p, Eigen::MatrixXd K_d,
-      Eigen::MatrixXd W,
+      const std::string& name, int n_r, const Eigen::MatrixXd& K_p,
+      const Eigen::MatrixXd& K_d, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>* plant_w_spr,
       const drake::multibody::MultibodyPlant<double>* plant_wo_spr,
       OscUserDefinedPos* user_defined_pos_w_spr,
       OscUserDefinedPos* user_defined_pos_wo_spr);
-
-  // AbstractTrackingData() {}  // Default constructor
 
  private:
   void UpdateYAndError(const Eigen::VectorXd& x_w_spr,
                        drake::systems::Context<double>& context_w_spr) final;
   void UpdateYdotAndError(const Eigen::VectorXd& x_w_spr,
                   drake::systems::Context<double>& context_w_spr) final;
+  void UpdateYddotDes() final;
   void UpdateJ(const Eigen::VectorXd& x_wo_spr,
                drake::systems::Context<double>& context_wo_spr) final;
   void UpdateJdotV(const Eigen::VectorXd& x_wo_spr,
@@ -419,16 +422,16 @@ class AbstractTrackingData final : public OscTrackingData {
 
   void CheckDerivedOscTrackingData() final;
 
-  // Compute Jacobian (qdot version instead of v!) by forward differencing
+  // Compute Jacobian (qdot version instead of v!) by numerical differentiation
   Eigen::MatrixXd JacobianOfUserDefinedPos(
       const OscUserDefinedPos& user_defined_pos, Eigen::VectorXd q) const;
 
-  // Compute the matrix for mapping local roll-pitch-yaw angular velocity to
-  // quaterion derivatives
-  // Ref1: equation 18 of https://arxiv.org/pdf/0811.2889.pdf
-  // Ref2: https://github.com/RobotLocomotion/drake/blob/a3af177/attic/multibody/joints/quaternion_floating_joint.h#L260
+  // Compute the matrix for mapping global roll-pitch-yaw angular velocity to
+  // quaternion derivatives
+  // Ref: equation 16 of https://arxiv.org/pdf/0811.2889.pdf
   Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) const;
-  Eigen::MatrixXd VToQdotMap(const Eigen::VectorXd& q) const;
+  Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
+                                  const Eigen::MatrixXd& Jwrtqdot) const;
 
   bool only_one_user_defined_pos_;
 
@@ -439,8 +442,18 @@ class AbstractTrackingData final : public OscTrackingData {
   Eigen::MatrixXd map_position_from_spring_to_no_spring_;
   Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
-  // Step size for forward differencing
-  double dx_ = 1e-8;
+  // Step size for numerical differentiation
+  // It's tuned for minimizing JdotV error:
+  // (states and user-defined functions are in the osc_tracking_data_test.cc)
+  //   dx_ = 1e-5 if forward differencing.
+  //                 JdotV error norm ~ 1e-5, J error norm ~ 1e-5,
+  //                 runtime for JdotV calculation (Cassie CoM) ~ 1.6ms
+  //   dx_ = 4e-4 if central differencing.
+  //                 JdotV error norm ~ 5e-8, J error norm ~ 5e-9
+  //                 runtime for JdotV calculation (Cassie CoM) ~ 3.0ms
+  double dx_ = 1e-5;
+  // if is_forward_differencing_ = false, we use central differencing
+  bool is_forward_differencing_ = true;
 };
 
 }  // namespace controllers

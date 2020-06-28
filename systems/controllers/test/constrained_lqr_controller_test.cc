@@ -2,8 +2,6 @@
 #include <utility>
 
 #include <gtest/gtest.h>
-#include "attic/multibody/multibody_solvers.h"
-#include "attic/multibody/rigidbody_utils.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "systems/controllers/constrained_lqr_controller.h"
 
@@ -22,15 +20,6 @@ using std::unique_ptr;
 using drake::multibody::joints::kFixed;
 using drake::multibody::joints::kRollPitchYaw;
 using drake::multibody::joints::kQuaternion;
-using drake::multibody::AddFlatTerrainToWorld;
-using drake::solvers::MathematicalProgram;
-using drake::solvers::MathematicalProgramResult;
-using dairlib::buildCassieTree;
-using dairlib::multibody::ContactInfo;
-using dairlib::multibody::ContactToolkit;
-using dairlib::multibody::FixedPointSolver;
-using dairlib::multibody::GetBodyIndexFromName;
-using dairlib::systems::ConstrainedLQRController;
 
 class ConstrainedLQRControllerTest : public ::testing::Test {
  protected:

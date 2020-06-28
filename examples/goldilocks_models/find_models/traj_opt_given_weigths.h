@@ -19,6 +19,8 @@
 #include "multibody/multibody_utils.h"
 
 #include "examples/goldilocks_models/find_models/goldilocks_model_traj_opt.h"
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/task.h"
 
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
@@ -46,31 +48,13 @@ namespace goldilocks_models  {
 void trajOptGivenWeights(
     const MultibodyPlant<double> & plant,
     const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
-    int n_s, int n_sDDot, int n_tau, int n_feature_s, int n_feature_sDDot,
-    const MatrixXd& B_tau,
-    const VectorXd & theta_s, const VectorXd & theta_sDDot,
-    double stride_length, double ground_incline, double turning_rate,
-    double duration, int n_node, int max_iter,
-    double major_optimality_tol, double major_feasibility_tol,
-    const std::string& directory, string init_file,
-    string  prefix,
-    const vector<std::shared_ptr<VectorXd>>& w_sol_vec,
-    const vector<std::shared_ptr<MatrixXd>>& A_vec,
-    const vector<std::shared_ptr<MatrixXd>>& H_vec,
-    const vector<std::shared_ptr<VectorXd>>& y_vec,
-    const vector<std::shared_ptr<VectorXd>>& lb_vec,
-    const vector<std::shared_ptr<VectorXd>>& ub_vec,
-    const vector<std::shared_ptr<VectorXd>>& b_vec,
-    const vector<std::shared_ptr<VectorXd>>& c_vec,
-    const vector<std::shared_ptr<MatrixXd>>& B_vec,
-    const vector<std::shared_ptr<int>>& is_success_vec,
+    const RomData& rom,
+    InnerLoopSetting inner_loop_setting,
+    Task task,
+    const SubQpData& QPs,
     const vector<std::shared_ptr<int>>& thread_finished_vec,
-    double Q_double, double R_double, double all_cost_scale,
-    double eps_reg,
     bool is_get_nominal,
-    bool is_zero_touchdown_impact,
     bool extend_model,
-    bool is_add_tau_in_cost,
     int sample_idx, int n_rerun, double cost_threshold_for_update, int N_rerun,
     int rom_option, int robot_option,bool turn_on_scaling);
 

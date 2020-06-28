@@ -31,6 +31,7 @@ cc_library(
     hdrs = ["goldilocks_model_traj_opt.h"],
     deps = [
         "//common",
+        "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models/find_models:dynamics_constraint",
         "//examples/goldilocks_models/find_models:kinematics_constraint",
         "//solvers:optimization_utils",
@@ -50,6 +51,7 @@ cc_library(
         "//common",
         "//examples/goldilocks_models:dynamics_expression",
         "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models:task",
         "//examples/goldilocks_models/find_models:goldilocks_model_traj_opt",
         "//solvers:nonlinear_constraint",
         "//solvers:optimization_utils",
@@ -86,6 +88,7 @@ cc_library(
     ],
     deps = [
         "//examples/goldilocks_models:dynamics_expression",
+        "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:kinematics_expression",
         "//multibody:utils",
         "//solvers:nonlinear_constraint",

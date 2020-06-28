@@ -270,19 +270,20 @@ void setInitialTheta(VectorXd& theta_y, VectorXd& theta_yddot,
 }
 
 
-void getInitFileName(const string dir, GridTasksGenerator task_gen,string * init_file,
+void getInitFileName(string * init_file,
         const string & nominal_traj_init_file,
-        int iter, int sample,
-        bool is_get_nominal,bool without_uniform_grid,
+        int iter, int sample,bool is_get_nominal,
         bool rerun_current_iteration, bool has_been_all_success,
         bool step_size_shrinked_last_loop, int n_rerun,
-        int sample_idx_to_help, bool is_debug,bool use_database,
-        int robot_option) {
+        int sample_idx_to_help, bool is_debug,
+        const string dir,GridTasksGenerator task_gen,
+        bool without_uniform_grid,bool use_database,
+        int robot_option,Task task,RomData rom) {
   if (is_get_nominal && !rerun_current_iteration) {
     if(FLAGS_use_database)
     {
-      *init_file = set_initial_guess(dir, iter, sample, task_gen,use_database,
-                                     robot_option);
+      *init_file = setInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
+                                     robot_option,task,rom);
     }
     else{
       *init_file = nominal_traj_init_file;
@@ -291,8 +292,8 @@ void getInitFileName(const string dir, GridTasksGenerator task_gen,string * init
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
     if (without_uniform_grid){
-        *init_file = set_initial_guess(dir, iter, sample, task_gen,use_database,
-                robot_option);
+        *init_file = setInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
+                robot_option,task,rom);
     }
     else{
         *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
@@ -304,8 +305,8 @@ void getInitFileName(const string dir, GridTasksGenerator task_gen,string * init
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   } else{
       if(without_uniform_grid){
-          *init_file = set_initial_guess(dir, iter, sample, task_gen,use_database,
-                  robot_option);
+          *init_file = setInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
+                  robot_option,task,rom);
       } else{
           *init_file = to_string(iter - 1) +  "_" +
                   to_string(sample) + string("_w.csv");
@@ -1581,9 +1582,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   } else {
     throw std::runtime_error("Should not reach here");
   }
-  /// Increase the tolerance for restricted number
-  /// Maybe we can turn off the shrinking step size when using restricted number of sample
-  /// Didn't see improvement after shrinking the step size.
+  // Increase the tolerance for restricted number
   double max_average_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
     max_average_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01;
@@ -1624,9 +1623,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Outer loop setting - help from adjacent samples
   bool get_good_sol_from_adjacent_sample =
       FLAGS_get_good_sol_from_adjacent_sample;
-  if (FLAGS_robot_option == 0 || !uniform_grid) {
-    // five-link robot doesn't seem to need help
-    // adjacent sample makes no sense in non-uniform grid
+  if ( !uniform_grid){
     get_good_sol_from_adjacent_sample = false;
   }
 
@@ -2123,13 +2120,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
           // Get file name of initial seed
           string init_file_pass_in;
-          bool without_uniform_grid = ! uniform_grid;
-          getInitFileName(dir, task_gen, &init_file_pass_in, init_file, iter, sample_idx,
-                          is_get_nominal, without_uniform_grid,
+          getInitFileName(&init_file_pass_in, init_file, iter, sample_idx,
+                          is_get_nominal,
                           current_sample_is_a_rerun, has_been_all_success,
                           step_size_shrinked_last_loop, n_rerun[sample_idx],
-                          sample_idx_to_help,
-                          FLAGS_is_debug,FLAGS_use_database,FLAGS_robot_option);
+                          sample_idx_to_help,FLAGS_is_debug,
+                          dir, task_gen, !uniform_grid,
+                          FLAGS_use_database,FLAGS_robot_option,task,rom);
 
 
           // Set up feasibility and optimality tolerance

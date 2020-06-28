@@ -62,10 +62,8 @@ DEFINE_int32(N_sample_tr, 1, "Sampling # for turning rate");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
-DEFINE_bool(is_uniform_grid, true, "Uniform grid of task space. If not uniform grid, use the interpolated "
-                                   "initial guess");
-DEFINE_bool(is_restricted_sample_number, false, "Restrict the number of samples. This makes sense"
-                                               "only when is_uniform_grid=false");
+DEFINE_bool(is_uniform_grid, true, "Uniform grid of task space. If non-uniform grid, use the interpolated "
+                                   "initial guess and restrict the number of samples");
 
 // inner loop
 DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization. "
@@ -1461,23 +1459,42 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Parameters for tasks
   cout << "\nTasks settings:\n";
   bool uniform_grid = FLAGS_is_uniform_grid;
-  bool restricted_sample_number = FLAGS_is_restricted_sample_number;
-  //TODO:create task generator for non-uniform grid
   GridTasksGenerator task_gen;
-  if (FLAGS_robot_option == 0) {
-    task_gen = GridTasksGenerator(
-        3, {"stride length", "ground incline", "velocity"},
-        {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v}, {0.25, 0, 0.4},
-        {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
-  } else if (FLAGS_robot_option == 1) {
-    task_gen = GridTasksGenerator(
-        4, {"stride length", "ground incline", "velocity", "turning rate"},
-        {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
-         FLAGS_N_sample_tr},
-        {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
-  } else {
-    throw std::runtime_error("Should not reach here");
-    task_gen = GridTasksGenerator();
+  if(uniform_grid){
+    GridTasksGenerator task_gen;
+    if (FLAGS_robot_option == 0) {
+      task_gen = GridTasksGenerator(
+          3, {"stride length", "ground incline", "velocity"},
+          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v}, {0.25, 0, 0.4},
+          {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
+    } else if (FLAGS_robot_option == 1) {
+      task_gen = GridTasksGenerator(
+          4, {"stride length", "ground incline", "velocity", "turning rate"},
+          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
+           FLAGS_N_sample_tr},
+          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
+    } else {
+      throw std::runtime_error("Should not reach here");
+      task_gen = GridTasksGenerator();
+    }
+  }
+  else{
+    UniformTasksGenerator task_gen;
+    if (FLAGS_robot_option == 0) {
+      task_gen = UniformTasksGenerator(
+          3, {"stride length", "ground incline", "velocity"},
+          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v}, {0.25, 0, 0.4},
+          {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
+    } else if (FLAGS_robot_option == 1) {
+      task_gen = UniformTasksGenerator(
+          4, {"stride length", "ground incline", "velocity", "turning rate"},
+          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
+           FLAGS_N_sample_tr},
+          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
+    } else {
+      throw std::runtime_error("Should not reach here");
+      task_gen = UniformTasksGenerator();
+    }
   }
   // Tasks setup
   DRAKE_DEMAND(task_gen.task_min("stride length") >= 0);
@@ -1586,13 +1603,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
   double max_average_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
     max_average_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01;
-    if(restricted_sample_number)
+    if(!uniform_grid)
     {
         max_average_cost_increase_rate = 2;
     }
   } else if (FLAGS_robot_option== 1) {
     max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;//0.15
-    if(restricted_sample_number)
+    if(!uniform_grid)
     {
         max_average_cost_increase_rate = 1;
     }

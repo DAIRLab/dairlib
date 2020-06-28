@@ -338,12 +338,16 @@ void trajOptGivenModel(double stride_length, double ground_incline,
     double turning_rate,const string dir,int num,bool is_rerun,
     int initial_guess_idx=-1,bool turn_on_scaling=true){
   // Create MBP
+  drake::logging::set_log_level("err");  // ignore warnings about joint limits
   MultibodyPlant<double> plant(0.0);
   createMBP(&plant, FLAGS_robot_option);
 
   // Create autoDiff version of the plant
   MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);
   cout << endl;
+
+  //Task Setting
+  Task task();
 
   // Parameters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
@@ -354,48 +358,54 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   double R = 0;  // Cost on input effort
   double all_cost_scale = 1;
   setCostWeight(&Q, &R, &all_cost_scale, FLAGS_robot_option);
-  int n_node = 20;
-  if (FLAGS_robot_option == 0) {
-    n_node = 20;
-  } else if (FLAGS_robot_option == 1) {
-    n_node = 20;
+  // Inner loop setup
+  vector<int> n_node_vec(N_sample, 20);
+  if (!FLAGS_fix_node_number) {
+    for (int sample_idx = 0; sample_idx < N_sample; sample_idx++) {
+      task.set(task_gen.NewTask(sample_idx, true));
+      double duration = task.get("stride length") / task.get("velocity");
+      n_node_vec[sample_idx] = int(FLAGS_node_density * duration);
+      cout << n_node_vec[sample_idx] << ", ";
+    } cout << endl;
+    cout << "WARNING: we will only add adjacent samples to the list if it has "
+            "the same number of nodes\n";
   }
-  if (FLAGS_n_node > 0) n_node = FLAGS_n_node;
-  if (FLAGS_robot_option == 1) {
-    // If the node density is too low, it's harder for SNOPT to converge well.
-    // The ratio of distance per nodes = 0.2/16 is fine for snopt, but
-    // 0.3 / 16 is too high.
-    // However, currently it takes too much time to compute with many nodes, so
-    // we try 0.3/24.
-    double max_distance_per_node = 0.3 / 16;
-//    DRAKE_DEMAND((max_stride_length / n_node) <= max_distance_per_node);
-  }
+  InnerLoopSetting inner_loop_setting = InnerLoopSetting();
+  inner_loop_setting.Q_double = Q;
+  inner_loop_setting.R_double = R;
+  inner_loop_setting.eps_reg = FLAGS_eps_regularization;
+  inner_loop_setting.all_cost_scale = all_cost_scale;
+  inner_loop_setting.is_add_tau_in_cost = FLAGS_is_add_tau_in_cost;
+  inner_loop_setting.is_zero_touchdown_impact = FLAGS_is_zero_touchdown_impact;
+  inner_loop_setting.max_iter = max_inner_iter;
+  inner_loop_setting.major_optimality_tol = FLAGS_major_optimality_tol;
+  inner_loop_setting.major_feasibility_tol = FLAGS_major_feasibility_tol;
+  inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
+  inner_loop_setting.directory = dir;
 
   // Reduced order model parameters
-  int rom_option = (FLAGS_rom_option >= 0) ? FLAGS_rom_option : 0;
-  int n_s = 0;
+  int n_y = 0;
   int n_tau = 0;
-  setRomDim(&n_s, &n_tau, rom_option);
-  int n_sDDot = n_s; // Assume that are the same (no quaternion)
-  MatrixXd B_tau = MatrixXd::Zero(n_sDDot, n_tau);
-  setRomBMatrix(&B_tau, rom_option);
+  setRomDim(&n_y, &n_tau, FLAGS_rom_option);
+  int n_yddot = n_y; // Assume that are the same (no quaternion)
+  MatrixXd B_tau = MatrixXd::Zero(n_yddot, n_tau);
+  setRomBMatrix(&B_tau, FLAGS_rom_option);
+  writeCSV(dir + string("B_tau.csv"), B_tau);
 
   // Reduced order model setup
-  KinematicsExpression<double> kin_expression(n_s, 0, &plant, FLAGS_robot_option);
-  DynamicsExpression dyn_expression(n_sDDot, 0, rom_option, FLAGS_robot_option);
+  KinematicsExpression<double> kin_expression(n_y, 0, &plant, FLAGS_robot_option);
+  DynamicsExpression dyn_expression(n_yddot, 0, FLAGS_rom_option, FLAGS_robot_option);
   VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
-  VectorXd dummy_s = VectorXd::Ones(n_s);
-  int n_feature_s = kin_expression.getFeature(dummy_q).size();
-  int n_feature_sDDot =
+  VectorXd dummy_s = VectorXd::Ones(n_y);
+  int n_feature_y = kin_expression.getFeature(dummy_q).size();
+  int n_feature_yddot =
       dyn_expression.getFeature(dummy_s, dummy_s).size();
-  int n_theta_s = n_s * n_feature_s;
-  int n_theta_sDDot = n_sDDot * n_feature_sDDot;
-  VectorXd theta_s(n_theta_s);
-  VectorXd theta_sDDot(n_theta_sDDot);
+  int n_theta_y = n_y * n_feature_y;
+  int n_theta_yddot = n_yddot * n_feature_yddot;
 
   // Initial guess of theta
-  theta_s = VectorXd::Zero(n_theta_s);
-  theta_sDDot = VectorXd::Zero(n_theta_sDDot);
+  theta_y = VectorXd::Zero(n_theta_y);
+  theta_yDDot = VectorXd::Zero(n_theta_yDDot);
   if(FLAGS_use_optimized_model){
     //you have to specify the theta to use
     DRAKE_DEMAND(FLAGS_theta_index>=0);
@@ -403,18 +413,14 @@ void trajOptGivenModel(double stride_length, double ground_incline,
 
     const string dir_find_models = "../dairlib_data/goldilocks_models/find_models/robot_" +
         to_string(FLAGS_robot_option) + "/";
-    readThetaFromFiles(dir_find_models, theta_idx, theta_s, theta_sDDot);
+    readThetaFromFiles(dir_find_models, theta_idx, theta_y, theta_yDDot);
   }
   else{
-    setInitialTheta(theta_s, theta_sDDot, n_feature_s, rom_option);
+    setInitialTheta(theta_y, theta_yDDot, n_feature_y, rom_option);
   }
 
-  double duration = 0.4;
-  if (FLAGS_robot_option == 0) {
-    duration = 0.746;  // Fix the duration now since we add cost ourselves
-  } else if (FLAGS_robot_option == 1) {
-    duration = 0.4; // 0.4;
-  }
+  RomData rom = RomData(n_y, n_tau, n_feature_y, n_feature_yddot, B_tau,
+                        theta_y, theta_yddot);
 
   bool is_get_nominal = FLAGS_is_get_nominal;
   int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
@@ -425,8 +431,14 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   int sample_idx = 0;
   string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
 
+  inner_loop_setting.n_node = n_node_vec[sample_idx];
+  inner_loop_setting.max_iter = max_inner_iter_pass_in;
+  inner_loop_setting.prefix = prefix;
+  inner_loop_setting.init_file = init_file_pass_in;
+
   // Vectors/Matrices for the outer loop
   int N_sample = 1;
+  SubQpData QPs(N_sample);
   vector<std::shared_ptr<VectorXd>> w_sol_vec(N_sample);
   vector<std::shared_ptr<MatrixXd>> H_vec(N_sample);
   vector<std::shared_ptr<VectorXd>> b_vec(N_sample);
@@ -460,36 +472,18 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   double cost_threshold_for_update = std::numeric_limits<double>::infinity();
   int N_rerun = 0;
   //run trajectory optimization
-  trajOptGivenWeights(std::ref(plant), std::ref(plant_autoDiff),
-                      n_s, n_sDDot, n_tau,
-                      n_feature_s, n_feature_sDDot, std::ref(B_tau),
-                      std::ref(theta_s), std::ref(theta_sDDot),
-                      stride_length, ground_incline, turning_rate,
-                      duration, n_node, max_inner_iter_pass_in,
-                      FLAGS_major_feasibility_tol, FLAGS_major_feasibility_tol,
-                      std::ref(dir), init_file_pass_in, prefix,
-                      std::ref(w_sol_vec),
-                      std::ref(A_vec),
-                      std::ref(H_vec),
-                      std::ref(y_vec),
-                      std::ref(lb_vec),
-                      std::ref(ub_vec),
-                      std::ref(b_vec),
-                      std::ref(c_vec),
-                      std::ref(B_vec),
-                      std::ref(is_success_vec),
-                      std::ref(thread_finished_vec),
-                      Q, R, all_cost_scale,
-                      FLAGS_eps_regularization,
-                      is_get_nominal,
-                      FLAGS_is_zero_touchdown_impact,
-                      extend_model_this_iter,
-                      FLAGS_is_add_tau_in_cost,
-                      sample_idx, n_rerun,
-                      cost_threshold_for_update, N_rerun,
-                      rom_option,
-                      FLAGS_robot_option,
-                      turn_on_scaling);
+  void trajOptGivenWeights(
+      std::ref(plant),
+      std::ref(plant_autoDiff),
+      std::ref(rom),
+      inner_loop_setting,
+      task,//
+      std::ref(QPs),//
+      std::ref(thread_finished_vec),
+      is_get_nominal,
+      extend_model_this_iter,
+      sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
+      rom_option, FLAGS_robot_option);
 }
 
 //naive test function for search algorithm
@@ -700,8 +694,8 @@ int find_boundary(int argc, char* argv[]){
    */
   cout << "\nBasic information:\n";
   cout << FLAGS_program_name << endl;
-  cout << "robot_option " << FLAGS_robot_option << endl;
-  cout << "rom_option " << FLAGS_rom_option << endl;
+  cout << "robot_option: " << FLAGS_robot_option << endl;
+  cout << "rom_option: " << FLAGS_rom_option << endl;
 
   /*
    * initialize task space

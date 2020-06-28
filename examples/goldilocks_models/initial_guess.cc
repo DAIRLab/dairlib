@@ -7,6 +7,8 @@ namespace dairlib::goldilocks_models {
 //edited by Jianshu to try a new way of setting initial guess
 
 VectorXd get_theta_scale(RomData rom){
+  //considering the scale for theta doesn't have a significant impact on improving
+  //the quality of the initial guess,set them all ones.
     return VectorXd::Ones(rom.n_y()+rom.n_yddot());
 }
 
@@ -126,6 +128,7 @@ string setInitialGuessByInterpolation(const string directory, int iter, int samp
     writeCSV(directory + initial_file_name, initial_guess);
   }
   else {
+    DRAKE_DEMAND(iter>0);
     //There are two-stage interpolation here.
     // Get interpolated results using solutions of different tasks for each theta.
     // Then calculate interpolation using results from different theta.

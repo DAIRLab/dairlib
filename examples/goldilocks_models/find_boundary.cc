@@ -664,13 +664,19 @@ int find_boundary(int argc, char* argv[]){
    * initialize task space
    */
   cout << "\nInitialize task space:\n";
-  Task task
+  Task task;
+  SearchSetting search_setting;
   if(FLAGS_robot_option==0)
   {
-    int dimensions = 3;
-    Task
+    task = Task({"stride length", "ground incline",
+                 "velocity"});
   }
-  int dimensions = 3;//dimension of the task space
+  else{
+    vector<string> task_names = {"stride length", "ground incline",
+                                 "velocity", "turning rate"};
+    task = Task(task_names);
+  }
+  int dimensions = task.dim();//dimension of the task space
   double stride_length_0 = 0;
   if(FLAGS_robot_option==0){
     stride_length_0 = 0.2;

@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "examples/goldilocks_models/initial_guess.h"
+#include "examples/goldilocks_models/find_models/initial_guess.h"
 
 namespace dairlib::goldilocks_models{
 

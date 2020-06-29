@@ -18,14 +18,14 @@ using Eigen::MatrixXd;
 
 namespace dairlib::goldilocks_models {
 //    set initial guess using interpolation
-  string setInitialGuessByInterpolation(const string directory, int iter,
+  string SetInitialGuessByInterpolation(const string directory, int iter,
           int sample, GridTasksGenerator task_gen,
           bool use_database,int robot,Task task,RomData rom);
 //    set scale for theta and gamma
-  VectorXd get_theta_scale(const string directory, int iter);
-  VectorXd get_gamma_scale(GridTasksGenerator task_gen);
+  VectorXd GetThetaScale(const string directory, int iter);
+  VectorXd GetGammaScale(GridTasksGenerator task_gen);
 //    utility functions
-  VectorXd calculate_interpolation(VectorXd weight_vector,MatrixXd solution_matrix);
-  void evaluate_sample(const string dir, string prefix,VectorXd current_gamma,
+  VectorXd CalculateInterpolation(VectorXd weight_vector,MatrixXd solution_matrix);
+  void InterpolateAmongDifferentTasks(const string dir, string prefix,VectorXd current_gamma,
       VectorXd gamma_scale,VectorXd& weight_vector,MatrixXd& solution_matrix);
 } //namespace

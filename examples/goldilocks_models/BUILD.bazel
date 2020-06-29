@@ -7,10 +7,10 @@ cc_binary(
     deps = [
         ":dynamics_expression",
         ":goldilocks_utils",
-        ":initial_guess",
         ":kinematics_expression",
         ":task",
         "//common:eigen_utils",
+        "//examples/goldilocks_models/find_models:initial_guess",
         "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
         "//systems/goldilocks_models",
         "//systems/trajectory_optimization:dircon",
@@ -80,18 +80,6 @@ cc_library(
 #     ],
 # )
 
-cc_test(
-    name = "gtest_initial_guess",
-    srcs = ["gtest_initial_guess.cc"],
-    deps = [
-        ":initial_guess",
-        "//common",
-        "@drake//:drake_shared_library",
-        "@gflags",
-        "@gtest//:main",
-    ],
-)
-
 cc_library(
     name = "dummy_constraint",
     srcs = [
@@ -115,23 +103,6 @@ cc_library(
         "goldilocks_utils.h",
     ],
     deps = [
-        "//systems/goldilocks_models",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-#edited by jianshu
-cc_library(
-    name = "initial_guess",
-    srcs = [
-        "initial_guess.cc",
-    ],
-    hdrs = [
-        "initial_guess.h",
-    ],
-    deps = [
-        ":goldilocks_utils",
-        ":task",
         "//systems/goldilocks_models",
         "@drake//:drake_shared_library",
     ],

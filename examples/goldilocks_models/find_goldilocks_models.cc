@@ -1458,43 +1458,30 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Parameters for tasks
   cout << "\nTasks settings:\n";
-  bool uniform_grid = FLAGS_is_uniform_grid;
   GridTasksGenerator task_gen;
-  if(uniform_grid){
-    GridTasksGenerator task_gen;
-    if (FLAGS_robot_option == 0) {
-      task_gen = GridTasksGenerator(
-          3, {"stride length", "ground incline", "velocity"},
-          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v}, {0.25, 0, 0.4},
-          {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
-    } else if (FLAGS_robot_option == 1) {
-      task_gen = GridTasksGenerator(
-          4, {"stride length", "ground incline", "velocity", "turning rate"},
-          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
-           FLAGS_N_sample_tr},
-          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
-    } else {
-      throw std::runtime_error("Should not reach here");
-      task_gen = GridTasksGenerator();
-    }
+  if (FLAGS_robot_option == 0) {
+    task_gen = GridTasksGenerator(
+        3, {"stride length", "ground incline", "velocity"},
+        {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v}, {0.25, 0, 0.4},
+        {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
+  } else if (FLAGS_robot_option == 1) {
+    task_gen = GridTasksGenerator(
+        4, {"stride length", "ground incline", "velocity", "turning rate"},
+        {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
+         FLAGS_N_sample_tr},
+        {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
+  } else {
+    throw std::runtime_error("Should not reach here");
+    task_gen = GridTasksGenerator();
   }
-  else{
+
+  bool uniform_grid = FLAGS_is_uniform_grid;
+  if(!uniform_grid){
+    GridTasksGenerator task_gen_base = task_gen;
     UniformTasksGenerator task_gen;
-    if (FLAGS_robot_option == 0) {
-      task_gen = UniformTasksGenerator(
-          3, {"stride length", "ground incline", "velocity"},
-          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v}, {0.25, 0, 0.4},
-          {0.015, 0.05, 0.02});
-    } else if (FLAGS_robot_option == 1) {
-      task_gen = UniformTasksGenerator(
-          4, {"stride length", "ground incline", "velocity", "turning rate"},
-          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
-           FLAGS_N_sample_tr},
-          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125});
-    } else {
-      throw std::runtime_error("Should not reach here");
-      task_gen = UniformTasksGenerator();
-    }
+    task_gen = UniformTasksGenerator(task_gen_base.dim(), task_gen_base.names(),
+        task_gen_base.sample_numbers(), task_gen_base.task_min_range(),
+        task_gen_base.task_max_range());
   }
   // Tasks setup
   DRAKE_DEMAND(task_gen.task_min("stride length") >= 0);

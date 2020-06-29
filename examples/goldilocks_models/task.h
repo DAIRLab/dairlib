@@ -73,6 +73,12 @@ class GridTasksGenerator {
   double task_max(const string& name) {
     return task_max_range_[name_to_index_map_.at(name)];
   }
+  vector<double> task_min_range() {
+    return task_min_range_;
+  }
+  vector<double> task_max_range() {
+    return task_max_range_;
+  }
   const std::map<int, std::vector<int>>& get_forward_map() {
     return forward_task_idx_map_;
   };
@@ -113,8 +119,8 @@ class GridTasksGenerator {
 class UniformTasksGenerator {
  public:
   UniformTasksGenerator(int task_dim, std::vector<string> names,
-                     std::vector<int> N_sample_vec, std::vector<double> task_0,
-                     std::vector<double> task_delta);
+                     std::vector<int> N_sample_vec, std::vector<double> task_min,
+                     std::vector<double> task_max);
 
   // Default constructor
   UniformTasksGenerator(){};
@@ -141,8 +147,6 @@ class UniformTasksGenerator {
   int task_dim_nondeg_;
   vector<string> names_;
   vector<int> N_sample_vec_;
-  vector<double> task_0_;
-  vector<double> task_delta_;
   vector<double> task_min_range_;
   vector<double> task_max_range_;
   vector<std::uniform_real_distribution<>> distribution_;

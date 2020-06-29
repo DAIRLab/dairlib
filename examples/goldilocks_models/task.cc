@@ -122,18 +122,18 @@ void GridTasksGenerator::RunThroughIndex(
 //Tasks are randomly generated from the whole optimization space
 UniformTasksGenerator::UniformTasksGenerator(int task_dim, std::vector<string> names,
                                        std::vector<int> N_sample_vec,
-                                       std::vector<double> task_0,
-                                       std::vector<double> task_delta)
+                                       std::vector<double> task_min,
+                                       std::vector<double> task_max)
     : task_dim_(task_dim),
       names_(names),
       N_sample_vec_(N_sample_vec),
-      task_0_(task_0),
-      task_delta_(task_delta){
+      task_min_range_(task_min),
+      task_max_range_(task_max){
   DRAKE_DEMAND(task_dim > 0);
   DRAKE_DEMAND(names.size() == (unsigned)task_dim);
   DRAKE_DEMAND(N_sample_vec.size() == (unsigned)task_dim);
-  DRAKE_DEMAND(task_0.size() == (unsigned)task_dim);
-  DRAKE_DEMAND(task_delta.size() == (unsigned)task_dim);
+  DRAKE_DEMAND(task_min.size() == (unsigned)task_dim);
+  DRAKE_DEMAND(task_max.size() == (unsigned)task_dim);
   for (auto n_sample : N_sample_vec) {
     DRAKE_DEMAND(n_sample > 0);
   }
@@ -155,26 +155,10 @@ UniformTasksGenerator::UniformTasksGenerator(int task_dim, std::vector<string> n
     name_to_index_map_[names[i]] = i;
   }
 
-
-  // Tasks setup
+  // Tasks distribution
   for (int i = 0; i < task_dim; i++) {
-    // Task grid
-    vector<double> sub_task_grid;
-    for (int j = 0 - N_sample_vec[i] / 2;
-         j < N_sample_vec[i] - N_sample_vec[i] / 2; j++)
-      sub_task_grid.push_back(j * task_delta[i]);
-    // Min
-    task_min_range_.push_back( (N_sample_vec[i] > 0)
-                              ? task_0[i] + sub_task_grid.front() -
-            task_delta[i] * 0.5
-                              : task_0[i] + sub_task_grid.front());
-    // Max
-    task_max_range_.push_back( (N_sample_vec[i] > 0)
-                              ? task_0[i] + sub_task_grid.back() +
-            task_delta[i] * 0.5
-                              : task_0[i] + sub_task_grid.back());
     // Distribution
-    distribution_.emplace_back(task_min_range_.back(), task_max_range_.back());
+    distribution_.emplace_back(task_min_range_[i], task_max_range_[i]);
   }
 
   //restricted number of sample
@@ -190,8 +174,6 @@ UniformTasksGenerator::UniformTasksGenerator(int task_dim, std::vector<string> n
   for (int i = 0; i < task_dim; i++) {
     cout << names[i] << ": \n";
     cout << "  # of samples = " << N_sample_vec[i] << endl;
-    cout << "  center = " << task_0[i] << endl;
-    cout << "  spacing = " << task_delta[i] << endl;
     cout << "  min = " << task_min_range_[i] << endl;
     cout << "  max = " << task_max_range_[i] << endl;
   }

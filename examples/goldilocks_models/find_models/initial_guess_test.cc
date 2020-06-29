@@ -65,7 +65,7 @@ int test_initial_guess(int iter,int sample,int robot){
     }
   }
 
-  string initial_file = setInitialGuessByInterpolation(dir, iter, sample,task_gen,
+  string initial_file = SetInitialGuessByInterpolation(dir, iter, sample,task_gen,
                                           use_database,robot,task,rom);
   return 0;
 }

@@ -161,15 +161,6 @@ UniformTasksGenerator::UniformTasksGenerator(int task_dim, std::vector<string> n
     distribution_.emplace_back(task_min_range_[i], task_max_range_[i]);
   }
 
-  //restricted number of sample
-  for (int dim=0;dim<task_dim_;dim++)
-  {
-    if(N_sample_vec_[dim]>1)
-    {
-      N_sample_vec_[dim]=pow(N_sample_vec_[dim],0.5)+1;
-    }
-  }
-
   // Print
   for (int i = 0; i < task_dim; i++) {
     cout << names[i] << ": \n";

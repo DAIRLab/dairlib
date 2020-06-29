@@ -12,10 +12,6 @@ RUN if type sudo 2>/dev/null; then \
      echo -e "#!/bin/sh\n\${@}" > /usr/sbin/sudo; \
      chmod +x /usr/sbin/sudo; \
     fi
-RUN  set -eux \
-  && wget https://github.com/bazelbuild/bazel/releases/download/3.0.0/bazel-3.0.0-installer-linux-x86_64.sh  \
-  && chmod +x bazel-3.0.0-installer-linux-x86_64.sh \
-  && ./bazel-3.0.0-installer-linux-x86_64.sh 
 RUN set -eux \
   && export DEBIAN_FRONTEND=noninteractive \
   && yes | install/install_prereqs_ubuntu.sh \

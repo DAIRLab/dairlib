@@ -5,6 +5,11 @@ DRAKE_COMMIT=$(grep -oP '(?<=DRAKE_COMMIT = ")(.*)(?=")' $(dirname "$0")/../WORK
 
 ubuntu_codename=$(lsb_release -sc)
 
+# Add drake apt repository for lcm and libbot2
+wget -O - https://drake-apt.csail.mit.edu/drake.pub.gpg | apt-key add
+echo "deb [arch=amd64] https://drake-apt.csail.mit.edu/bionic bionic main" > /etc/apt/sources.list.d/drake.list
+apt-get update
+
 echo "Using Drake commit '${DRAKE_COMMIT}'"
 # Download and run drake install scripts
 mkdir tmp
@@ -13,7 +18,8 @@ wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/se
 mkdir source_distribution
 cd source_distribution
 wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/install_prereqs.sh"
-wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/install_prereqs_user_environment.sh"
+# skipping drake's "install_prereqs_user_environment.sh"
+touch install_prereqs_user_environment.sh
 wget "https://raw.githubusercontent.com/RobotLocomotion/drake/${DRAKE_COMMIT}/setup/ubuntu/source_distribution/packages-${ubuntu_codename}.txt"
 cd ..
 mkdir binary_distribution

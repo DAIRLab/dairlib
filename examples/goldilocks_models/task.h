@@ -114,7 +114,7 @@ class UniformTasksGenerator {
  public:
   UniformTasksGenerator(int task_dim, std::vector<string> names,
                      std::vector<int> N_sample_vec, std::vector<double> task_0,
-                     std::vector<double> task_delta, bool is_stochastic);
+                     std::vector<double> task_delta);
 
   // Default constructor
   UniformTasksGenerator(){};
@@ -133,7 +133,7 @@ class UniformTasksGenerator {
   }
 
   // Generator
-  vector<double> NewTask(int sample_idx, bool disable_stochastic);
+  vector<double> NewTask(int sample_idx);
 
  private:
 
@@ -147,7 +147,6 @@ class UniformTasksGenerator {
   vector<double> task_max_range_;
   vector<std::uniform_real_distribution<>> distribution_;
   int N_sample_;
-  bool is_stochastic_;
 
   std::unordered_map<string, int> name_to_index_map_;
 

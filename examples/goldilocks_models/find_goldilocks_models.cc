@@ -20,7 +20,7 @@
 #include "examples/goldilocks_models/dynamics_expression.h"
 #include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/initial_guess.h"
+#include "examples/goldilocks_models/find_models/initial_guess.h"
 #include "examples/goldilocks_models/kinematics_expression.h"
 #include "examples/goldilocks_models/task.h"
 #include "systems/goldilocks_models/file_utils.h"
@@ -278,9 +278,9 @@ void getInitFileName(string * init_file,
         bool without_uniform_grid,bool use_database,
         int robot_option,Task task,RomData rom) {
   if (is_get_nominal && !rerun_current_iteration) {
-    if(FLAGS_use_database)
+    if(use_database)
     {
-      *init_file = setInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
+      *init_file = SetInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
                                      robot_option,task,rom);
     }
     else{
@@ -290,7 +290,7 @@ void getInitFileName(string * init_file,
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
     if (without_uniform_grid){
-        *init_file = setInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
+        *init_file = SetInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
                 robot_option,task,rom);
     }
     else{
@@ -303,7 +303,7 @@ void getInitFileName(string * init_file,
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   } else{
       if(without_uniform_grid){
-          *init_file = setInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
+          *init_file = SetInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
                   robot_option,task,rom);
       } else{
           *init_file = to_string(iter - 1) +  "_" +
@@ -1484,13 +1484,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
       task_gen = UniformTasksGenerator(
           3, {"stride length", "ground incline", "velocity"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v}, {0.25, 0, 0.4},
-          {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
+          {0.015, 0.05, 0.02});
     } else if (FLAGS_robot_option == 1) {
       task_gen = UniformTasksGenerator(
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
-          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
+          {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125});
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen = UniformTasksGenerator();

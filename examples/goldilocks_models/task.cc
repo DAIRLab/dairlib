@@ -123,14 +123,12 @@ void GridTasksGenerator::RunThroughIndex(
 UniformTasksGenerator::UniformTasksGenerator(int task_dim, std::vector<string> names,
                                        std::vector<int> N_sample_vec,
                                        std::vector<double> task_0,
-                                       std::vector<double> task_delta,
-                                       bool is_stochastic)
+                                       std::vector<double> task_delta)
     : task_dim_(task_dim),
       names_(names),
       N_sample_vec_(N_sample_vec),
       task_0_(task_0),
-      task_delta_(task_delta),
-      is_stochastic_(is_stochastic) {
+      task_delta_(task_delta){
   DRAKE_DEMAND(task_dim > 0);
   DRAKE_DEMAND(names.size() == (unsigned)task_dim);
   DRAKE_DEMAND(N_sample_vec.size() == (unsigned)task_dim);
@@ -166,12 +164,12 @@ UniformTasksGenerator::UniformTasksGenerator(int task_dim, std::vector<string> n
          j < N_sample_vec[i] - N_sample_vec[i] / 2; j++)
       sub_task_grid.push_back(j * task_delta[i]);
     // Min
-    task_min_range_.push_back((is_stochastic && (N_sample_vec[i] > 0))
+    task_min_range_.push_back( (N_sample_vec[i] > 0)
                               ? task_0[i] + sub_task_grid.front() -
             task_delta[i] * 0.5
                               : task_0[i] + sub_task_grid.front());
     // Max
-    task_max_range_.push_back((is_stochastic && (N_sample_vec[i] > 0))
+    task_max_range_.push_back( (N_sample_vec[i] > 0)
                               ? task_0[i] + sub_task_grid.back() +
             task_delta[i] * 0.5
                               : task_0[i] + sub_task_grid.back());
@@ -199,9 +197,7 @@ UniformTasksGenerator::UniformTasksGenerator(int task_dim, std::vector<string> n
   }
 }
 
-vector<double> UniformTasksGenerator::NewTask(int sample_idx,
-                                           bool disable_stochastic) {
-  DRAKE_DEMAND(disable_stochastic==false);
+vector<double> UniformTasksGenerator::NewTask(int sample_idx) {
 
   vector<double> ret(task_dim_, 0);
   for (int i = 0; i < task_dim_; i++) {

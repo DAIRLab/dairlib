@@ -2,8 +2,8 @@ FROM ros:melodic-ros-base-bionic
 WORKDIR /dairlib
 ENV DAIRLIB_DOCKER_VERSION=1
 COPY . .
-RUN apt update && apt install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip python
-RUN apt install -y python-rosinstall-generator python-catkin-tools
+RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip python
+RUN apt-get install -y python-rosinstall-generator python-catkin-tools
 RUN set -eux \
   && apt-get install --no-install-recommends  locales \
   && locale-gen en_US.UTF-8

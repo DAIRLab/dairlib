@@ -2,7 +2,7 @@ FROM ros:melodic-ros-base-bionic
 WORKDIR /dairlib
 ENV DAIRLIB_DOCKER_VERSION=1
 COPY . .
-RUN apt update && apt install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip python
+RUN apt-get update && apt-get install -y wget lsb-release pkg-config zip g++ zlib1g-dev unzip python
 RUN set -eux \
   && apt-get install --no-install-recommends  locales \
   && locale-gen en_US.UTF-8

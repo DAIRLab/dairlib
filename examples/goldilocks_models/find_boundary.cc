@@ -334,8 +334,7 @@ string getInitFileName(const string directory, int traj_opt_num,
 }
 
 // trajectory optimization for given task and model
-void trajOptGivenModel(double stride_length, double ground_incline,
-    double turning_rate,const string dir,int num,bool is_rerun,
+void trajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
     int initial_guess_idx=-1,bool turn_on_scaling=true){
   // Create MBP
   drake::logging::set_log_level("err");  // ignore warnings about joint limits
@@ -345,9 +344,6 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   // Create autoDiff version of the plant
   MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);
   cout << endl;
-
-  //Task Setting
-  Task task();
 
   // Parameters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
@@ -359,17 +355,6 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   double all_cost_scale = 1;
   setCostWeight(&Q, &R, &all_cost_scale, FLAGS_robot_option);
   // Inner loop setup
-  vector<int> n_node_vec(N_sample, 20);
-  if (!FLAGS_fix_node_number) {
-    for (int sample_idx = 0; sample_idx < N_sample; sample_idx++) {
-      task.set(task_gen.NewTask(sample_idx, true));
-      double duration = task.get("stride length") / task.get("velocity");
-      n_node_vec[sample_idx] = int(FLAGS_node_density * duration);
-      cout << n_node_vec[sample_idx] << ", ";
-    } cout << endl;
-    cout << "WARNING: we will only add adjacent samples to the list if it has "
-            "the same number of nodes\n";
-  }
   InnerLoopSetting inner_loop_setting = InnerLoopSetting();
   inner_loop_setting.Q_double = Q;
   inner_loop_setting.R_double = R;
@@ -380,7 +365,7 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   inner_loop_setting.max_iter = max_inner_iter;
   inner_loop_setting.major_optimality_tol = FLAGS_major_optimality_tol;
   inner_loop_setting.major_feasibility_tol = FLAGS_major_feasibility_tol;
-  inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
+  inner_loop_setting.snopt_scaling = turn_on_scaling;
   inner_loop_setting.directory = dir;
 
   // Reduced order model parameters
@@ -431,7 +416,7 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   int sample_idx = 0;
   string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
 
-  inner_loop_setting.n_node = n_node_vec[sample_idx];
+  inner_loop_setting.n_node = 20;//fix number of nodes
   inner_loop_setting.max_iter = max_inner_iter_pass_in;
   inner_loop_setting.prefix = prefix;
   inner_loop_setting.init_file = init_file_pass_in;
@@ -439,28 +424,6 @@ void trajOptGivenModel(double stride_length, double ground_incline,
   // Vectors/Matrices for the outer loop
   int N_sample = 1;
   SubQpData QPs(N_sample);
-  vector<std::shared_ptr<VectorXd>> w_sol_vec(N_sample);
-  vector<std::shared_ptr<MatrixXd>> H_vec(N_sample);
-  vector<std::shared_ptr<VectorXd>> b_vec(N_sample);
-  vector<std::shared_ptr<VectorXd>> c_vec(N_sample);
-  vector<std::shared_ptr<MatrixXd>> A_vec(N_sample);
-  vector<std::shared_ptr<VectorXd>> lb_vec(N_sample);
-  vector<std::shared_ptr<VectorXd>> ub_vec(N_sample);
-  vector<std::shared_ptr<VectorXd>> y_vec(N_sample);
-  vector<std::shared_ptr<MatrixXd>> B_vec(N_sample);
-  vector<std::shared_ptr<int>> is_success_vec(N_sample);
-  for (int i = 0; i < N_sample; i++) {
-    w_sol_vec[i] = std::make_shared<VectorXd>();
-    H_vec[i] = std::make_shared<MatrixXd>();
-    b_vec[i] = std::make_shared<VectorXd>();
-    c_vec[i] = std::make_shared<VectorXd>();
-    A_vec[i] = std::make_shared<MatrixXd>();
-    lb_vec[i] = std::make_shared<VectorXd>();
-    ub_vec[i] = std::make_shared<VectorXd>();
-    y_vec[i] = std::make_shared<VectorXd>();
-    B_vec[i] = std::make_shared<MatrixXd>();
-    is_success_vec[i] = std::make_shared<int>();
-  }
 
   vector<std::shared_ptr<int>> thread_finished_vec(N_sample);
   for (int i = 0; i < N_sample; i++) {
@@ -477,8 +440,8 @@ void trajOptGivenModel(double stride_length, double ground_incline,
       std::ref(plant_autoDiff),
       std::ref(rom),
       inner_loop_setting,
-      task,//
-      std::ref(QPs),//
+      task,
+      std::ref(QPs),
       std::ref(thread_finished_vec),
       is_get_nominal,
       extend_model_this_iter,
@@ -701,6 +664,12 @@ int find_boundary(int argc, char* argv[]){
    * initialize task space
    */
   cout << "\nInitialize task space:\n";
+  Task task
+  if(FLAGS_robot_option==0)
+  {
+    int dimensions = 3;
+    Task
+  }
   int dimensions = 3;//dimension of the task space
   double stride_length_0 = 0;
   if(FLAGS_robot_option==0){

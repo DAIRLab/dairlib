@@ -3,7 +3,6 @@
 //
 
 #include <gflags/gflags.h>
-#include <stdio.h>  // For removing files
 #include <thread>  // multi-threading
 #include <chrono>
 #include <ctime>
@@ -12,23 +11,24 @@
 #include <utility>  // std::pair, std::make_pair
 #include <bits/stdc++.h>  // system call
 #include <cmath>
-#include <numeric> // std::accumulate
 #include <tuple>
 #include <Eigen/QR>  // CompleteOrthogonalDecomposition
 
 #include "drake/multibody/parsing/parser.h"
-#include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
+#include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/dynamics_expression.h"
 #include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
-#include "examples/goldilocks_models/kinematics_expression.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/initial_guess.h"
+#include "examples/goldilocks_models/find_models/initial_guess.h"
+#include "examples/goldilocks_models/kinematics_expression.h"
+#include "examples/goldilocks_models/task.h"
 #include "systems/goldilocks_models/file_utils.h"
+#include "examples/goldilocks_models/find_boundary/search_setting.h"
 
 using std::cin;
 using std::cout;
@@ -664,44 +664,35 @@ int find_boundary(int argc, char* argv[]){
    * initialize task space
    */
   cout << "\nInitialize task space:\n";
-  Task task;
-  SearchSetting search_setting;
+  Task task;//Traj Opt tasks
+  SearchSetting search_setting;//Settings of searching the task space
   if(FLAGS_robot_option==0)
   {
     task = Task({"stride length", "ground incline",
                  "velocity"});
+    search_setting = SearchSetting(3,{"stride length", "ground incline",
+                                      "velocity"},{0.25,0,0.4},
+                                          {0.01,0.01,0});
   }
   else{
-    vector<string> task_names = {"stride length", "ground incline",
-                                 "velocity", "turning rate"};
-    task = Task(task_names);
+    task = Task({"stride length", "ground incline",
+                 "velocity", "turning rate"});
+    search_setting = SearchSetting(4,{"stride length", "ground incline",
+                                      "velocity","turning rate"},
+                                   {0.3,0,0.5,0},{0.01,0.01,0,0});
   }
-  int dimensions = task.dim();//dimension of the task space
-  double stride_length_0 = 0;
-  if(FLAGS_robot_option==0){
-    stride_length_0 = 0.2;
+  //cout initial point information
+  int dim = 0;
+  for(dim = 0;dim<search_setting.search_dim();dim++)
+  {
+    cout<<"initial "<<search_setting.names()[dim]<<
+    ": "+to_string(search_setting.task_0()[dim])<<endl;
   }
-  else if(FLAGS_robot_option==1){
-      stride_length_0 = 0.2;
-  }
-  double delta_stride_length = 0.01;
-  cout<<"initial stride length "<<stride_length_0<<endl;
-  cout<<"delta stride length "<<delta_stride_length<<endl;
 
-  double ground_incline_0 = 0;
-  double delta_ground_incline = 0.01;
-  cout<<"initial ground incline "<<ground_incline_0<<endl;
-  cout<<"delta ground incline "<<delta_ground_incline<<endl;
-
-  double turning_rate_0 = 0;
-  double delta_turning_rate = 0;
-  cout<<"initial turning rate "<<turning_rate_0<<endl;
-  cout<<"delta turning rate "<<delta_turning_rate<<endl;
-
-  VectorXd initial_gamma(dimensions);
-  initial_gamma<<stride_length_0,ground_incline_0,turning_rate_0;
-  VectorXd delta(dimensions);
-  delta<<delta_stride_length,delta_ground_incline,delta_turning_rate;
+  VectorXd initial_task = Eigen::Map<VectorXd>(search_setting.task_0().data(),
+      search_setting.task_0().size());
+  VectorXd delta_task = Eigen::Map<VectorXd>(search_setting.task_delta().data(),
+      search_setting.task_delta().size());
 
 
   /*
@@ -732,8 +723,8 @@ int find_boundary(int argc, char* argv[]){
     }
   }
   cout<<"cost_threshold "<<cost_threshold<<endl;
-  int boundary_sample_num = 0;//use this to set the index for boundary point
-  int traj_opt_num = 0;//use this to set the index for Traj Opt
+  int boundary_sample_num = 0;//use this to record the index of boundary point
+  int traj_opt_num = 0;//use this to record the index of Traj Opt
   VectorXd extend_direction(dimensions);//the direction of searching
 
   //create components for each dimension used to decide the direction

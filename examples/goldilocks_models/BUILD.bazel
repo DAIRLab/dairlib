@@ -20,6 +20,25 @@ cc_binary(
 )
 
 cc_binary(
+    name = "find_boundary",
+    srcs = ["find_boundary.cc"],
+    deps = [
+        ":dynamics_expression",
+        ":goldilocks_utils",
+        ":kinematics_expression",
+        ":task",
+        "//common:eigen_utils",
+        "//examples/goldilocks_models/find_boundary:search_setting",
+        "//examples/goldilocks_models/find_models:initial_guess",
+        "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
+        "//systems/goldilocks_models",
+        "//systems/trajectory_optimization:dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "plan_with_RoM_FoM",
     srcs = ["plan_with_RoM_FoM.cc"],
     data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),

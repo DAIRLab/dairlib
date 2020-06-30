@@ -1,1 +1,1 @@
-![run_osc_walking_controller.cc diagram](https://drive.google.com/file/d/1JeNzdul5PKnfKGvLbyGkZd-4uJAOz46b/view?usp=sharing)
+https://docs.google.com/drawings/d/1PnCexul7yWrtmpLJHSUGKIbXj79f9LhUMf0i4xE-Hns/edit?usp=sharing

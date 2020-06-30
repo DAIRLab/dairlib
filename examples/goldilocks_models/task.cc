@@ -5,22 +5,13 @@
 namespace dairlib {
 namespace goldilocks_models {
 
-GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
-                                       std::vector<int> N_sample_vec,
-                                       std::vector<double> task_0,
-                                       std::vector<double> task_delta,
-                                       bool is_stochastic)
-    : task_dim_(task_dim),
-      names_(names),
-      N_sample_vec_(N_sample_vec),
-      task_0_(task_0),
-      task_delta_(task_delta),
-      is_stochastic_(is_stochastic) {
+// Tasks are randomly generated from the whole optimization space
+TasksGenerator::TasksGenerator(int task_dim, std::vector<string> names,
+                               std::vector<int> N_sample_vec)
+    : task_dim_(task_dim), names_(names), N_sample_vec_(N_sample_vec) {
   DRAKE_DEMAND(task_dim > 0);
   DRAKE_DEMAND(names.size() == (unsigned)task_dim);
   DRAKE_DEMAND(N_sample_vec.size() == (unsigned)task_dim);
-  DRAKE_DEMAND(task_0.size() == (unsigned)task_dim);
-  DRAKE_DEMAND(task_delta.size() == (unsigned)task_dim);
   for (auto n_sample : N_sample_vec) {
     DRAKE_DEMAND(n_sample > 0);
   }
@@ -41,6 +32,19 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
   for (int i = 0; i < task_dim; i++) {
     name_to_index_map_[names[i]] = i;
   }
+}
+
+GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
+                                       std::vector<int> N_sample_vec,
+                                       std::vector<double> task_0,
+                                       std::vector<double> task_delta,
+                                       bool is_stochastic)
+    : TasksGenerator(task_dim, names, N_sample_vec),
+      task_0_(task_0),
+      task_delta_(task_delta),
+      is_stochastic_(is_stochastic) {
+  DRAKE_DEMAND(task_0.size() == (unsigned)task_dim);
+  DRAKE_DEMAND(task_delta.size() == (unsigned)task_dim);
 
   // Construct forward and backward index map
   int i_layer = 0;
@@ -82,8 +86,7 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
   }
 }
 
-vector<double> GridTasksGenerator::NewTask(int sample_idx,
-                                           bool disable_stochastic) {
+vector<double> GridTasksGenerator::NewNominalTask(int sample_idx) {
   auto index_tuple = forward_task_idx_map_.at(sample_idx);
   /*cout << sample_idx << ", (";
   for (auto mem : index_tuple) {
@@ -93,7 +96,21 @@ vector<double> GridTasksGenerator::NewTask(int sample_idx,
   vector<double> ret(task_dim_, 0);
   for (int i = 0; i < task_dim_; i++) {
     ret[i] = task_0_[i] + task_grid_[i][index_tuple[i]];
-    if (!disable_stochastic && is_stochastic_) {
+  }
+  return ret;
+}
+
+vector<double> GridTasksGenerator::NewTask(int sample_idx) {
+  auto index_tuple = forward_task_idx_map_.at(sample_idx);
+  /*cout << sample_idx << ", (";
+  for (auto mem : index_tuple) {
+    cout << mem << ", ";
+  } cout << ")\n";*/
+
+  vector<double> ret(task_dim_, 0);
+  for (int i = 0; i < task_dim_; i++) {
+    ret[i] = task_0_[i] + task_grid_[i][index_tuple[i]];
+    if (is_stochastic_) {
       if (N_sample_vec_[i] > 0) {
         ret[i] += distribution_[i](random_eng_);
       }
@@ -120,41 +137,15 @@ void GridTasksGenerator::RunThroughIndex(
 }
 
 // Tasks are randomly generated from the whole optimization space
-UniformTasksGenerator::UniformTasksGenerator(int task_dim,
-                                             std::vector<string> names,
-                                             std::vector<int> N_sample_vec,
-                                             std::vector<double> task_min,
-                                             std::vector<double> task_max)
-    : task_dim_(task_dim),
-      names_(names),
-      N_sample_vec_(N_sample_vec),
-      task_min_range_(task_min),
-      task_max_range_(task_max) {
-  DRAKE_DEMAND(task_dim > 0);
-  DRAKE_DEMAND(names.size() == (unsigned)task_dim);
-  DRAKE_DEMAND(N_sample_vec.size() == (unsigned)task_dim);
+UniformTasksGenerator::UniformTasksGenerator(
+    int task_dim, std::vector<string> names, std::vector<int> N_sample_vec,
+    const std::vector<double>& task_min, const std::vector<double>& task_max)
+    : TasksGenerator(task_dim, names, N_sample_vec) {
   DRAKE_DEMAND(task_min.size() == (unsigned)task_dim);
   DRAKE_DEMAND(task_max.size() == (unsigned)task_dim);
-  for (auto n_sample : N_sample_vec) {
-    DRAKE_DEMAND(n_sample > 0);
-  }
 
-  // Random number generator
-  std::random_device randgen;
-  random_eng_ = std::default_random_engine(randgen());
-
-  // Non-degenerate task dimension and total sample numbers
-  task_dim_nondeg_ = 0;
-  N_sample_ = 1;
-  for (auto n_sample : N_sample_vec) {
-    task_dim_nondeg_ += int(n_sample > 1);
-    N_sample_ *= n_sample;
-  }
-
-  // Create index map
-  for (int i = 0; i < task_dim; i++) {
-    name_to_index_map_[names[i]] = i;
-  }
+  task_min_range_ = task_min;
+  task_max_range_ = task_max;
 
   // Tasks distribution
   for (int i = 0; i < task_dim; i++) {

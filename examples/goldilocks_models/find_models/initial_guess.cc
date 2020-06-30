@@ -3,28 +3,36 @@
 //
 #include "examples/goldilocks_models/find_models/initial_guess.h"
 
+using std::cout;
+using std::endl;
+using std::string;
+using std::to_string;
+
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+
 namespace dairlib::goldilocks_models {
 // edited by Jianshu to try a new way of setting initial guess
 
-VectorXd GetThetaScale(RomData rom) {
+VectorXd GetThetaScale(const RomData& rom) {
   // considering the scale for theta doesn't have a significant impact on
   // improving the quality of the initial guess,set them all ones.
   return VectorXd::Ones(rom.n_y() + rom.n_yddot());
 }
 
-VectorXd GetGammaScale(GridTasksGenerator task_gen) {
-  int gamma_dimension = task_gen.dim();
+VectorXd GetGammaScale(const TasksGenerator* task_gen) {
+  int gamma_dimension = task_gen->dim();
   VectorXd gamma_scale = VectorXd::Zero(gamma_dimension);
   // if not fixed task, we need to scale the gamma
   int dim = 0;
   double min;
   double max;
   for (dim = 0; dim < gamma_dimension; dim++) {
-    min = task_gen.task_min(task_gen.names()[dim]);
-    max = task_gen.task_min(task_gen.names()[dim]);
+    min = task_gen->task_min(task_gen->names()[dim]);
+    max = task_gen->task_min(task_gen->names()[dim]);
     if (!(min == max)) {
       // coefficient is different for different dimensions
-      if (task_gen.names()[dim] == "turning_rate") {
+      if (task_gen->names()[dim] == "turning_rate") {
         gamma_scale[dim] = 1.3 / (max - min);
       } else {
         gamma_scale[dim] = 1 / (max - min);
@@ -35,7 +43,7 @@ VectorXd GetGammaScale(GridTasksGenerator task_gen) {
 }
 
 // calculate the interpolation weight; update weight vector and solution matrix
-void InterpolateAmongDifferentTasks(const string dir, string prefix,
+void InterpolateAmongDifferentTasks(const string& dir, string prefix,
                                     VectorXd current_gamma,
                                     VectorXd gamma_scale,
                                     VectorXd& weight_vector,
@@ -73,17 +81,18 @@ VectorXd CalculateInterpolation(VectorXd weight_vector,
   return interpolated_solution;
 }
 
-string SetInitialGuessByInterpolation(const string directory, int iter,
-                                      int sample, GridTasksGenerator task_gen,
-                                      bool use_database, int robot, Task task,
-                                      RomData rom) {
+string SetInitialGuessByInterpolation(const string& directory, int iter,
+                                      int sample,
+                                      const TasksGenerator* task_gen,
+                                      const Task& task, const RomData& rom,
+                                      bool use_database, int robot) {
   /* define some parameters used in interpolation
    * theta_range :decide the range of theta to use in interpolation
    * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
    */
   double theta_range =
       0.004;  // this is tuned by robot_option=1,rom_option=2,3d task space
-  int total_sample_num = task_gen.total_sample_number();
+  int total_sample_num = task_gen->total_sample_number();
 
   VectorXd theta_scale = GetThetaScale(rom);
   VectorXd gamma_scale = GetGammaScale(task_gen);

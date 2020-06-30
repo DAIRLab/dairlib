@@ -10,28 +10,22 @@
 #include "systems/goldilocks_models/file_utils.h"
 #include "drake/solvers/mathematical_program.h"
 
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
-using std::cout;
-using std::endl;
-using std::string;
-using std::to_string;
-
 namespace dairlib::goldilocks_models {
 // set initial guess using interpolation
-string SetInitialGuessByInterpolation(const string directory, int iter,
-                                      int sample, GridTasksGenerator task_gen,
-                                      bool use_database, int robot, Task task,
-                                      RomData rom);
+std::string SetInitialGuessByInterpolation(const std::string& directory,
+                                           int iter, int sample,
+                                           const TasksGenerator* task_gen,
+                                           const Task& task, const RomData& rom,
+                                           bool use_database, int robot);
 // set scale for theta and gamma
-VectorXd GetThetaScale(const string directory, int iter);
-VectorXd GetGammaScale(GridTasksGenerator task_gen);
+Eigen::VectorXd GetThetaScale(const std::string& directory, int iter);
+Eigen::VectorXd GetGammaScale(const TasksGenerator* task_gen);
 // utility functions
-VectorXd CalculateInterpolation(VectorXd weight_vector,
-                                MatrixXd solution_matrix);
-void InterpolateAmongDifferentTasks(const string dir, string prefix,
-                                    VectorXd current_gamma,
-                                    VectorXd gamma_scale,
-                                    VectorXd& weight_vector,
-                                    MatrixXd& solution_matrix);
+Eigen::VectorXd CalculateInterpolation(Eigen::VectorXd weight_vector,
+                                       Eigen::MatrixXd solution_matrix);
+void InterpolateAmongDifferentTasks(const std::string& dir, string prefix,
+                                    Eigen::VectorXd current_gamma,
+                                    Eigen::VectorXd gamma_scale,
+                                    Eigen::VectorXd& weight_vector,
+                                    Eigen::MatrixXd& solution_matrix);
 }  // namespace dairlib::goldilocks_models

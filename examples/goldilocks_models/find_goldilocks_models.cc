@@ -281,14 +281,14 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
                      int iter, int sample, bool is_get_nominal,
                      bool rerun_current_iteration, bool has_been_all_success,
                      bool step_size_shrinked_last_loop, int n_rerun,
-                     int sample_idx_to_help, bool is_debug, const string dir,
-                     GridTasksGenerator task_gen, bool non_grid_task,
-                     bool use_database, int robot_option, Task task,
-                     RomData rom) {
+                     int sample_idx_to_help, bool is_debug, const string& dir,
+                     const TasksGenerator* task_gen, const Task& task,
+                     const RomData& rom, bool non_grid_task, bool use_database,
+                     int robot_option) {
   if (is_get_nominal && !rerun_current_iteration) {
     if (use_database) {
       *init_file = SetInitialGuessByInterpolation(
-          dir, iter, sample, task_gen, use_database, robot_option, task, rom);
+          dir, iter, sample, task_gen, task, rom, use_database, robot_option);
     } else {
       *init_file = nominal_traj_init_file;
     }
@@ -297,7 +297,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
     // (n_rerun == 0)
     if (non_grid_task) {
       *init_file = SetInitialGuessByInterpolation(
-          dir, iter, sample, task_gen, use_database, robot_option, task, rom);
+          dir, iter, sample, task_gen, task, rom, use_database, robot_option);
     } else {
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
@@ -310,7 +310,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
   } else {
     if (non_grid_task) {
       *init_file = SetInitialGuessByInterpolation(
-          dir, iter, sample, task_gen, use_database, robot_option, task, rom);
+          dir, iter, sample, task_gen, task, rom, use_database, robot_option);
     } else {
       *init_file =
           to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
@@ -820,11 +820,11 @@ void calcWInTermsOfTheta(int sample, const string& dir,
   cout << to_be_print;
 }
 
-MatrixXi GetAdjSampleIndices(GridTasksGenerator task_gen,
+MatrixXi GetAdjSampleIndices(GridTasksGenerator task_gen_grid,
                              vector<int> n_node_vec) {
   // Setup
-  int task_dim = task_gen.dim_nondeg();
-  int N_sample = task_gen.total_sample_number();
+  int task_dim = task_gen_grid.dim_nondeg();
+  int N_sample = task_gen_grid.total_sample_number();
 
   // cout << "Constructing adjacent index list...\n";
   MatrixXi adjacent_sample_indices =
@@ -832,13 +832,14 @@ MatrixXi GetAdjSampleIndices(GridTasksGenerator task_gen,
   MatrixXi delta_idx = MatrixXi::Identity(3, 3);
   for (int sample_idx = 0; sample_idx < N_sample; sample_idx++) {
     for (int i = 0; i < task_dim; i++) {
-      vector<int> new_index_tuple = task_gen.get_forward_map().at(sample_idx);
+      vector<int> new_index_tuple =
+          task_gen_grid.get_forward_map().at(sample_idx);
       new_index_tuple[i] += 1;
 
       // The new index tuple has to be valid
-      if (new_index_tuple[i] < task_gen.sample_numbers()[i]) {
+      if (new_index_tuple[i] < task_gen_grid.sample_numbers()[i]) {
         int adjacent_sample_idx =
-            task_gen.get_inverse_map().at(new_index_tuple);
+            task_gen_grid.get_inverse_map().at(new_index_tuple);
         // Number of nodes should be the same so that we can set initial guess
         if (n_node_vec[sample_idx] == n_node_vec[adjacent_sample_idx]) {
           // Add to adjacent_sample_idx (both directions)
@@ -1464,34 +1465,36 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   // Parameters for tasks
   cout << "\nTasks settings:\n";
-  GridTasksGenerator task_gen;
   bool is_grid_task = FLAGS_is_grid_task;
+  TasksGenerator* task_gen;
+  GridTasksGenerator task_gen_grid;
+  UniformTasksGenerator task_gen_uniform;
   if (is_grid_task) {
     if (FLAGS_robot_option == 0) {
-      task_gen = GridTasksGenerator(
+      task_gen_grid = GridTasksGenerator(
           3, {"stride length", "ground incline", "velocity"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v},
           {0.25, 0, 0.4}, {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
     } else if (FLAGS_robot_option == 1) {
-      task_gen = GridTasksGenerator(
+      task_gen_grid = GridTasksGenerator(
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
           {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, FLAGS_is_stochastic);
     } else {
       throw std::runtime_error("Should not reach here");
-      task_gen = GridTasksGenerator();
+      task_gen_grid = GridTasksGenerator();
     }
+    task_gen = &task_gen_grid;
   } else {
-    UniformTasksGenerator task_gen;
     if (FLAGS_robot_option == 0) {
-      task_gen = UniformTasksGenerator(
+      task_gen_uniform = UniformTasksGenerator(
           3, {"stride length", "ground incline", "velocity"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v},
           {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min},
           {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max});
     } else if (FLAGS_robot_option == 1) {
-      task_gen = UniformTasksGenerator(
+      task_gen_uniform = UniformTasksGenerator(
           4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
@@ -1499,27 +1502,28 @@ int findGoldilocksModels(int argc, char* argv[]) {
           {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max, FLAGS_tr_max});
     } else {
       throw std::runtime_error("Should not reach here");
-      task_gen = UniformTasksGenerator();
+      task_gen_uniform = UniformTasksGenerator();
     }
+    task_gen = &task_gen_uniform;
   }
 
   // Tasks setup
-  DRAKE_DEMAND(task_gen.task_min("stride length") >= 0);
-  DRAKE_DEMAND(task_gen.task_min("velocity") >= 0);
-  int N_sample = task_gen.total_sample_number();
-  Task task(task_gen.names());
-  vector<VectorXd> previous_task(N_sample, VectorXd::Zero(task_gen.dim()));
+  DRAKE_DEMAND(task_gen->task_min("stride length") >= 0);
+  DRAKE_DEMAND(task_gen->task_min("velocity") >= 0);
+  int N_sample = task_gen->total_sample_number();
+  Task task(task_gen->names());
+  vector<VectorXd> previous_task(N_sample, VectorXd::Zero(task_gen->dim()));
   if (FLAGS_start_current_iter_as_rerun ||
       FLAGS_start_iterations_with_shrinking_stepsize) {
     for (int i = 0; i < N_sample; i++) {
       VectorXd pre_task = readCSV(dir + to_string(FLAGS_iter_start) + "_" +
           to_string(i) + string("_task.csv"))
           .col(0);
-      DRAKE_DEMAND(pre_task.rows() == task_gen.dim());
+      DRAKE_DEMAND(pre_task.rows() == task_gen->dim());
       previous_task[i] = pre_task;
     }
   }
-  SaveStringVecToCsv(task_gen.names(), dir + string("task_names.csv"));
+  SaveStringVecToCsv(task_gen->names(), dir + string("task_names.csv"));
 
   // Parameters for the outer loop optimization
   cout << "\nOptimization setting (outer loop):\n";
@@ -1609,13 +1613,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Increase the tolerance for restricted number
   double max_average_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
-    max_average_cost_increase_rate = FLAGS_is_stochastic ? 0.5 : 0.01;
-    if (!is_grid_task) {
+    if (is_grid_task) {
+      max_average_cost_increase_rate = FLAGS_is_stochastic ? 0.5 : 0.01;
+    } else {
       max_average_cost_increase_rate = 2;
     }
   } else if (FLAGS_robot_option == 1) {
-    max_average_cost_increase_rate = FLAGS_is_stochastic ? 0.2 : 0.01;  // 0.15
-    if (!is_grid_task) {
+    if (is_grid_task) {
+      max_average_cost_increase_rate =
+          FLAGS_is_stochastic ? 0.2 : 0.01;  // 0.15
+    } else {
       max_average_cost_increase_rate = 1;
     }
   } else {
@@ -1645,8 +1652,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Outer loop setting - help from adjacent samples
   bool get_good_sol_from_adjacent_sample =
       FLAGS_get_good_sol_from_adjacent_sample;
-  if ( !is_grid_task){
+  if (!is_grid_task) {
     get_good_sol_from_adjacent_sample = false;
+    cout << "WARNING: setting `get_good_sol_from_adjacent_sample` to false "
+            "for non-grid task\n";
   }
 
   double max_cost_increase_rate_before_ask_for_help = 0.1;
@@ -1709,11 +1718,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (!FLAGS_fix_node_number)
     cout << "node_density = " << FLAGS_node_density << endl;
   // Inner loop setup
+  if (!is_grid_task) {
+    DRAKE_DEMAND(FLAGS_fix_node_number);
+  }
   cout << "n_node for each sample = \n";
   vector<int> n_node_vec(N_sample, 20);
   if (!FLAGS_fix_node_number) {
     for (int sample_idx = 0; sample_idx < N_sample; sample_idx++) {
-      task.set(task_gen.NewTask(sample_idx, true));
+      task.set(task_gen_grid.NewNominalTask(sample_idx));
       double duration = task.get("stride length") / task.get("velocity");
       n_node_vec[sample_idx] = int(FLAGS_node_density * duration);
       cout << n_node_vec[sample_idx] << ", ";
@@ -1979,9 +1991,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   // Setup for getting good solution from adjacent samples
-  const MatrixXi adjacent_sample_indices =
-      GetAdjSampleIndices(task_gen, n_node_vec);
-  cout << "adjacent_sample_indices = \n" << adjacent_sample_indices << endl;
+  MatrixXi adjacent_sample_indices;
+  if (is_grid_task) {
+    adjacent_sample_indices = GetAdjSampleIndices(task_gen_grid, n_node_vec);
+    cout << "adjacent_sample_indices = \n" << adjacent_sample_indices << endl;
+  }
 
   cout << "\nStart iterating...\n";
   // Start the gradient descent
@@ -2042,7 +2056,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     } else {
       // Print message
       cout << "sample# (rerun #)";
-      for (auto& mem : task_gen.names()) {
+      for (auto& mem : task_gen->names()) {
         cout << " | " << mem;
       }
       cout << " | init_file | Status | Solve time | Cost (tau cost)\n";
@@ -2074,9 +2088,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
       //  std::vector<std::shared_ptr<std::vector<int>>>
       //  so the code is cleaner.
       MatrixXi sample_idx_waiting_to_help =
-          -1 * MatrixXi::Ones(N_sample, 2 * task_gen.dim());
+          -1 * MatrixXi::Ones(N_sample, 2 * task_gen->dim());
       MatrixXi sample_idx_that_helped =
-          -1 * MatrixXi::Ones(N_sample, 2 * task_gen.dim());
+          -1 * MatrixXi::Ones(N_sample, 2 * task_gen->dim());
       std::vector<double> local_each_min_cost_so_far = each_min_cost_so_far;
 
       // Set up for deciding if we should update the solution
@@ -2119,7 +2133,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
           if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
             task.set(CopyVectorXdToStdVector(previous_task[sample_idx]));
           } else {
-            task.set(task_gen.NewTask(sample_idx, is_get_nominal));
+            if (is_grid_task && is_get_nominal) {
+              task.set(task_gen_grid.NewNominalTask(sample_idx));
+            } else {
+              task.set(task_gen->NewTask(sample_idx));
+            }
             // Map std::vector to VectorXd and create a copy of VectorXd
             Eigen::VectorXd task_vectorxd = Eigen::Map<const VectorXd>(
                 task.get().data(), task.get().size());
@@ -2140,18 +2158,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
               } cout << endl;
               GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
                                 sample_idx_that_helped, sample_idx_to_help,
-                                task_gen.dim_nondeg());
+                                task_gen->dim_nondeg());
             }
           }
 
           // Get file name of initial seed
           string init_file_pass_in;
-          getInitFileName(&init_file_pass_in, init_file, iter, sample_idx,
-                          is_get_nominal, current_sample_is_a_rerun,
-                          has_been_all_success, step_size_shrinked_last_loop,
-                          n_rerun[sample_idx], sample_idx_to_help,
-                          FLAGS_is_debug, dir, task_gen, !is_grid_task,
-                          FLAGS_use_database, FLAGS_robot_option, task, rom);
+          getInitFileName(
+              &init_file_pass_in, init_file, iter, sample_idx, is_get_nominal,
+              current_sample_is_a_rerun, has_been_all_success,
+              step_size_shrinked_last_loop, n_rerun[sample_idx],
+              sample_idx_to_help, FLAGS_is_debug, dir, task_gen, task, rom,
+              !is_grid_task, FLAGS_use_database, FLAGS_robot_option);
 
           // Set up feasibility and optimality tolerance
           // TODO: tighten tolerance at the last rerun for getting better
@@ -2241,7 +2259,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                   max_cost_increase_rate_before_ask_for_help,
                   max_adj_cost_diff_rate_before_ask_for_help,
                   is_limit_difference_of_two_adjacent_costs, sample_success,
-                  current_sample_is_queued, task_gen.dim_nondeg(), n_rerun,
+                  current_sample_is_queued, task_gen->dim_nondeg(), n_rerun,
                   N_rerun, local_each_min_cost_so_far, is_good_solution,
                   sample_idx_waiting_to_help, sample_idx_that_helped,
                   awaiting_sample_idx);

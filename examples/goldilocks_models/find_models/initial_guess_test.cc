@@ -10,20 +10,21 @@ int test_initial_guess(int iter, int sample, int robot) {
   // create test data and save it
   int use_database = false;
   // create task_gen
-  GridTasksGenerator task_gen;
+  GridTasksGenerator task_gen_grid;
   if (robot == 0) {
-    task_gen = GridTasksGenerator(
+    task_gen_grid = GridTasksGenerator(
         3, {"stride length", "ground incline", "velocity"}, {10, 5, 5},
         {0.25, 0, 0.4}, {0.015, 0.05, 0.02}, true);
   } else {
-    task_gen = GridTasksGenerator(
+    task_gen_grid = GridTasksGenerator(
         4, {"stride length", "ground incline", "velocity", "turning rate"},
         {10, 5, 5, 5}, {0.3, 0, 0.5, 0}, {0.015, 0.05, 0.04, 0.125}, true);
   }
-  int total_sample_num = task_gen.total_sample_number();
+  TasksGenerator* task_gen = &task_gen_grid;
+  int total_sample_num = task_gen->total_sample_number();
   // create task
-  Task task(task_gen.names());
-  task.set(task_gen.NewTask(sample, true));
+  Task task(task_gen->names());
+  task.set(task_gen->NewTask(sample));
   // create rom
   RomData rom = RomData(1, 2, 2, 2);
   VectorXd current_theta = VectorXd::Random(4);
@@ -46,10 +47,10 @@ int test_initial_guess(int iter, int sample, int robot) {
     int dim = 0;
     for (sample = 0; sample <= total_sample_num; sample++) {
       string prefix = to_string(iteration) + "_" + to_string(sample) + "_";
-      VectorXd gamma(task_gen.dim());
-      for (dim = 0; dim < task_gen.dim(); dim++) {
-        double min = task_gen.task_min(task_gen.names()[dim]);
-        double max = task_gen.task_min(task_gen.names()[dim]);
+      VectorXd gamma(task_gen->dim());
+      for (dim = 0; dim < task_gen->dim(); dim++) {
+        double min = task_gen->task_min(task_gen->names()[dim]);
+        double max = task_gen->task_min(task_gen->names()[dim]);
         std::uniform_real_distribution<double> dist(min, max);
         std::default_random_engine re;
         gamma[dim] = dist(re);
@@ -64,7 +65,7 @@ int test_initial_guess(int iter, int sample, int robot) {
   }
 
   string initial_file = SetInitialGuessByInterpolation(
-      dir, iter, sample, task_gen, use_database, robot, task, rom);
+      dir, iter, sample, task_gen, task, rom, use_database, robot);
   return 0;
 }
 

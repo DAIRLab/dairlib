@@ -1653,7 +1653,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   bool get_good_sol_from_adjacent_sample =
       FLAGS_get_good_sol_from_adjacent_sample;
   if (!is_grid_task) {
-    DRAKE_DEMAND(!get_good_sol_from_adjacent_sample);
+    get_good_sol_from_adjacent_sample = false;
+    cout << "WARNING: setting `get_good_sol_from_adjacent_sample` to false "
+            "for non-grid task\n";
   }
 
   double max_cost_increase_rate_before_ask_for_help = 0.1;

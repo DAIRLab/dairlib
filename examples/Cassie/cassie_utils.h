@@ -34,6 +34,48 @@ using dairlib::systems::SubvectorPassThrough;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 
+static constexpr double kCassieAchillesLength = 0.5012;
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+LeftToeFront(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+RightToeFront(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> LeftToeRear(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+RightToeRear(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+LeftRodOnThigh(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+RightRodOnThigh(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+LeftRodOnHeel(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
+RightRodOnHeel(const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+template <typename T>
+multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
@@ -45,35 +87,12 @@ using drake::systems::lcm::LcmPublisherSystem;
 ///     Default = true
 /// @param add_loop_closure_springs Whether or not to add the loop closure
 ///     distance constraint via stiff springs. Default = true.
-void addCassieMultibody(drake::multibody::MultibodyPlant<double>* plant,
+void addCassieMultibody(
+    drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     bool floating_base = true,
     std::string filename = "examples/Cassie/urdf/cassie_v2.urdf",
-    bool add_leaf_springs = true,  bool add_loop_closure = true);
-
-template <typename T>
-std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> LeftToe(
-    const drake::multibody::MultibodyPlant<T>& plant);
-
-template <typename T>
-std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> RightToe(
-    const drake::multibody::MultibodyPlant<T>& plant);
-
-template <typename T>
-std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> LeftHeel(
-    const drake::multibody::MultibodyPlant<T>& plant);
-
-template <typename T>
-std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&> RightHeel(
-    const drake::multibody::MultibodyPlant<T>& plant);
-
-template <typename T>
-multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
-    const drake::multibody::MultibodyPlant<T>& plant);
-
-template <typename T>
-multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
-    const drake::multibody::MultibodyPlant<T>& plant);
+    bool add_leaf_springs = true, bool add_loop_closure = true);
 
 /// Construct and create a unique pointer to a RigidBodyTree<double>
 /// These methods are to be used rather that direct construction of the tree

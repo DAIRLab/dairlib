@@ -92,13 +92,19 @@ int DoMain(int argc, char* argv[]) {
 
   // Built the Cassie MBPs
   drake::multibody::MultibodyPlant<double> plant_w_springs(0.0);
+  //  addCassieMultibody(&plant_w_springs, nullptr, true,
+  //                     "examples/Cassie/urdf/cassie_v2.urdf",
+  //                     true /*spring model*/, false /*loop closure*/);
   addCassieMultibody(&plant_w_springs, nullptr, true,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     "examples/Cassie/urdf/cassie_agility.urdf",
                      true /*spring model*/, false /*loop closure*/);
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
+  //  addCassieMultibody(&plant_wo_springs, nullptr, true,
+  //                     "examples/Cassie/urdf/cassie_fixed_springs.urdf",
+  //                     false, false);
   addCassieMultibody(&plant_wo_springs, nullptr, true,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-                     false);
+                     "examples/Cassie/urdf/cassie_agility_fixed_springs.urdf",
+                     false, false);
   plant_w_springs.Finalize();
   plant_wo_springs.Finalize();
 
@@ -137,11 +143,11 @@ int DoMain(int argc, char* argv[]) {
       processed_trajs.getTrajectory("pelvis_rot_trajectory");
   vector<PiecewisePolynomial<double>> state_trajs;
   for (int i = 0; i < n_modes; ++i) {
-    const LcmTrajectory::Trajectory& state_traj_i =  original_traj
-        .getTrajectory("cassie_jumping_trajectory_x_u" + std::to_string(i));
+    const LcmTrajectory::Trajectory& state_traj_i = original_traj.getTrajectory(
+        "cassie_jumping_trajectory_x_u" + std::to_string(i));
     state_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
         state_traj_i.time_vector, state_traj_i.datapoints.topRows(nx),
-        state_traj_i.datapoints.topRows(2*nx).bottomRows(nx)));
+        state_traj_i.datapoints.topRows(2 * nx).bottomRows(nx)));
   }
 
   PiecewisePolynomial<double> com_traj =
@@ -163,8 +169,7 @@ int DoMain(int argc, char* argv[]) {
       lcm_pelvis_rot_traj.datapoints.bottomRows(4));
 
   // For the time-based FSM
-  double flight_time =
-      FLAGS_delay_time + state_trajs[0].end_time();
+  double flight_time = FLAGS_delay_time + state_trajs[0].end_time();
   double land_time = FLAGS_delay_time + state_trajs[1].end_time();
   std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
                                           land_time};

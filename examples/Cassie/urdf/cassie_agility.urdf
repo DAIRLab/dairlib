@@ -18,9 +18,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/pelvis.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color
           rgba="0.2 0.2 0.2 1.0" />
@@ -31,8 +31,8 @@
   <link name="yaw_left">
     <inertial>
       <origin
-        xyz=".0257 0.0001 .0179"
-        rpy="0 -1.570796 0" />
+        xyz="-0.01793 0.0001 -0.04428"
+        rpy="0 1.570796 0" />
       <mass value="1.82" />
       <inertia
         ixx="0.003431"
@@ -46,9 +46,9 @@
       <origin
         xyz="0 0 -0.07"
         rpy="0 -1.570796 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/agility/left_yaw.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
       </material>
@@ -58,8 +58,8 @@
   <link name="yaw_right">
     <inertial>
       <origin
-        xyz=".0257 -0.0001 .0179"
-        rpy="0 -1.570796 0" />
+        xyz="-0.01793 0.0001 -0.04428"
+        rpy="0 1.570796 0" />
       <mass value="1.82" />
       <inertia
         ixx="0.003431"
@@ -73,9 +73,9 @@
       <origin
         xyz="0 0 -0.07"
         rpy="0 -1.570796 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/agility/right_yaw.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
       </material>
@@ -85,8 +85,8 @@
   <link name="hip_left">
     <inertial>
       <origin
-        xyz="-.05572 0 0.00001"
-        rpy="-1.570796 1.570796 0" />
+        xyz="0 -1e-05 -0.034277"
+        rpy="0 -1.570796 0" />
       <mass value="1.171" />
       <inertia
         ixx="0.002443"
@@ -100,9 +100,9 @@
       <origin
         xyz="0 0 -0.09"
         rpy="-1.570796 1.570796 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/agility/left_hip.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
       </material>
@@ -112,8 +112,8 @@
   <link name="hip_right">
     <inertial>
       <origin
-        xyz="-.05572 0 -0.00001"
-        rpy="-1.570796 1.570796 0" />
+        xyz="0 1e-05 -0.034277"
+        rpy="0 -1.570796 0" />
       <mass value="1.171" />
       <inertia
         ixx="0.002443"
@@ -127,9 +127,9 @@
       <origin
         xyz="0 0 -0.09"
         rpy="-1.570796 1.570796 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/agility/right_hip.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
       </material>
@@ -140,7 +140,7 @@
     <inertial>
       <origin
         xyz="0.05946 0.00005 -.03581"
-        rpy="0 0 0" />
+        rpy="1.570796 -1.570796 0" />
       <mass value="5.52" />
       <inertia
         ixx="0.010898"
@@ -154,9 +154,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/agility/left_thigh.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
       </material>
@@ -167,7 +167,7 @@
     <inertial>
       <origin
         xyz="0.05946 0.00005 .03581"
-        rpy="0 0 0" />
+        rpy="1.570796 -1.570796 0" />
       <mass value="5.52" />
       <inertia
         ixx="0.010898"
@@ -181,9 +181,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/agility/right_thigh.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
       </material>
@@ -194,7 +194,7 @@
     <inertial>
       <origin
         xyz="0.023 0.03207 -0.002181"
-        rpy="0 0 0" />
+        rpy="0 0 -0.7854" />
       <mass value="0.7578" />
       <inertia
         ixx="0.001376"
@@ -208,9 +208,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/knee-output.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
       </material>
@@ -221,7 +221,7 @@
     <inertial>
       <origin
         xyz="0.023 0.03207 0.002181"
-        rpy="0 0 0" />
+        rpy="0 0 -0.7854" />
       <mass value="0.7578" />
       <inertia
         ixx="0.001376"
@@ -235,9 +235,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/knee-output-r.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
       </material>
@@ -262,9 +262,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/agility/left_shin.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
       </material>
@@ -289,9 +289,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/agility/right_shin.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
       </material>
@@ -316,9 +316,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/knee-spring.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1" />
       </material>
@@ -343,9 +343,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/knee-spring.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1" />
       </material>
@@ -358,21 +358,21 @@
         xyz=".11046 -.03058 -.00131"
         rpy="0 0 0" />
       <mass value="0.782" />
-      <inertia
-        ixx="0.00039238"
-        iyy="0.013595"
-        izz="0.013674"
-        ixy="0.00023651"
-        ixz="-4.987e-05"
-        iyz="-4.82e-06" />
+        <inertia
+        ixx=".001125"
+        ixy="-.002878"
+        ixz="-.00006329"
+        iyy=".023138"
+        iyz=".00003615"
+        izz=".023947" />
     </inertial>
     <visual>
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/tarsus.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
       </material>
@@ -382,24 +382,24 @@
   <link name="tarsus_right">
     <inertial>
       <origin
-        xyz=".11046 -.03058 -.00131"
+        xyz=".11046 -.03058 .00131"
         rpy="0 0 0" />
       <mass value="0.782" />
       <inertia
-        ixx="0.00039238"
-        iyy="0.013595"
-        izz="0.013674"
-        ixy="0.00023651"
-        ixz="4.987e-05"
-        iyz="4.82e-06" />
+        ixx=".001125"
+        ixy="-.002878"
+        ixz=".00006329"
+        iyy=".023138"
+        iyz="-.00003615"
+        izz=".023947" />
     </inertial>
     <visual>
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/tarsus-r.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
       </material>
@@ -424,9 +424,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/heel-spring.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1" />
       </material>
@@ -451,9 +451,9 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/heel-spring.obj" />
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1" />
       </material>
@@ -462,7 +462,7 @@
 
   <!--
       **************************************************************
-      lumped masses for the foot crank and plantar rods--attaching them
+      lumped masses for the foot crank and plantar rods-attaching them
       to the foot at the heel location
       **************************************************************
   -->
@@ -508,37 +508,37 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/agility/left_foot.obj" />
         <!-- <mesh filename="meshes/toe.obj" /> -->
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
       </material>
     </visual>
 
     <visual>
-      <geometry=
+      <geometry>
         <sphere radius="0.001"/>
-      </geometry=
+      </geometry>
       <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
     </visual>
     <collision>
-      <geometry=
+      <geometry>
         <sphere radius="0.0"/>
-      </geometry=
+      </geometry>
       <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
     </collision>
    <visual>
-      <geometry=
+      <geometry>
         <sphere radius="0.001"/>
-      </geometry=
+      </geometry>
       <origin xyz="0.088 0 0" rpy="0 0 0"/>
     </visual>
     <collision>
-      <geometry=
+      <geometry>
         <sphere radius="0.0"/>
-      </geometry=
+      </geometry>
       <origin xyz="0.088 0 0" rpy="0 0 0"/>
     </collision>
    </link>
@@ -561,36 +561,36 @@
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
-      <geometry=
+      <geometry>
         <mesh filename="meshes/agility/right_foot.obj" />
         <!-- <mesh filename="meshes/toe-r.obj" /> -->
-      </geometry=
+      </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
       </material>
     </visual>
         <visual>
-      <geometry=
+      <geometry>
         <sphere radius="0.001"/>
-      </geometry=
+      </geometry>
       <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
     </visual>
     <collision>
-      <geometry=
+      <geometry>
         <sphere radius="0.0"/>
-      </geometry=
+      </geometry>
       <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
     </collision>
    <visual>
-      <geometry=
+      <geometry>
         <sphere radius="0.001"/>
-      </geometry=
+      </geometry>
       <origin xyz="0.088 0 0" rpy="0 0 0"/>
     </visual>
     <collision>
-      <geometry=
+      <geometry>
         <sphere radius="0.0"/>
-      </geometry=
+      </geometry>
       <origin xyz="0.088 0 0" rpy="0 0 0"/>
     </collision>
   </link>

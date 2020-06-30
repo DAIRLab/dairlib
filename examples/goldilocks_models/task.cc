@@ -83,7 +83,7 @@ GridTasksGenerator::GridTasksGenerator(int task_dim, std::vector<string> names,
 }
 
 vector<double> GridTasksGenerator::NewTask(int sample_idx,
-                                            bool disable_stochastic) {
+                                           bool disable_stochastic) {
   auto index_tuple = forward_task_idx_map_.at(sample_idx);
   /*cout << sample_idx << ", (";
   for (auto mem : index_tuple) {
@@ -119,16 +119,17 @@ void GridTasksGenerator::RunThroughIndex(
   }
 }
 
-//Tasks are randomly generated from the whole optimization space
-UniformTasksGenerator::UniformTasksGenerator(int task_dim, std::vector<string> names,
-                                       std::vector<int> N_sample_vec,
-                                       std::vector<double> task_min,
-                                       std::vector<double> task_max)
+// Tasks are randomly generated from the whole optimization space
+UniformTasksGenerator::UniformTasksGenerator(int task_dim,
+                                             std::vector<string> names,
+                                             std::vector<int> N_sample_vec,
+                                             std::vector<double> task_min,
+                                             std::vector<double> task_max)
     : task_dim_(task_dim),
       names_(names),
       N_sample_vec_(N_sample_vec),
       task_min_range_(task_min),
-      task_max_range_(task_max){
+      task_max_range_(task_max) {
   DRAKE_DEMAND(task_dim > 0);
   DRAKE_DEMAND(names.size() == (unsigned)task_dim);
   DRAKE_DEMAND(N_sample_vec.size() == (unsigned)task_dim);
@@ -171,7 +172,6 @@ UniformTasksGenerator::UniformTasksGenerator(int task_dim, std::vector<string> n
 }
 
 vector<double> UniformTasksGenerator::NewTask(int sample_idx) {
-
   vector<double> ret(task_dim_, 0);
   for (int i = 0; i < task_dim_; i++) {
     ret[i] = distribution_[i](random_eng_);

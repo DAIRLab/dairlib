@@ -70,8 +70,10 @@ DEFINE_double(tr_max, 0, "max turning rate");
 DEFINE_bool(is_zero_touchdown_impact, false,
             "No impact force at fist touchdown");
 DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
-DEFINE_bool(is_uniform_grid, true, "Uniform grid of task space. If non-uniform grid, use the interpolated "
-                                   "initial guess and restrict the number of samples");
+DEFINE_bool(
+    is_grid_task, true,
+    "Uniform grid of task space. If non-uniform grid, use the interpolated "
+    "initial guess and restrict the number of samples");
 
 // inner loop
 DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization. "
@@ -92,12 +94,12 @@ DEFINE_double(node_density, 40, "# of nodes per second in traj opt");
 // 1. If the number of nodes are too high, it will take much time to solve.
 //    (30 is probably considered to be high)
 // 2. If the # of nodes per distance is too low, it's harder for SNOPT to
-// converge well. E.g. (Cassie) the ratio of distance per nodes = 0.2/16 is fine for
-// SNOPT, but 0.3 / 16 is too high.
+// converge well. E.g. (Cassie) the ratio of distance per nodes = 0.2/16 is fine
+// for SNOPT, but 0.3 / 16 is too high.
 DEFINE_double(eps_regularization, 1e-8, "Weight of regularization term"); //1e-4
-DEFINE_bool(use_database,false,"use solutions from database to create initial "
-                                "guesses for traj opt");
 DEFINE_bool(snopt_scaling, false, "SNOPT built-in scaling feature");
+DEFINE_bool(use_database,false,"use solutions from database to create initial "
+                               "guesses for traj opt");
 
 // outer loop
 DEFINE_int32(iter_start, 0, "The starting iteration #. 0 is nominal traj.");
@@ -275,51 +277,47 @@ void setInitialTheta(VectorXd& theta_y, VectorXd& theta_yddot,
   }
 }
 
-
-void getInitFileName(string * init_file,
-        const string & nominal_traj_init_file,
-        int iter, int sample,bool is_get_nominal,
-        bool rerun_current_iteration, bool has_been_all_success,
-        bool step_size_shrinked_last_loop, int n_rerun,
-        int sample_idx_to_help, bool is_debug,
-        const string dir,GridTasksGenerator task_gen,
-        bool without_uniform_grid,bool use_database,
-        int robot_option,Task task,RomData rom) {
+void getInitFileName(string* init_file, const string& nominal_traj_init_file,
+                     int iter, int sample, bool is_get_nominal,
+                     bool rerun_current_iteration, bool has_been_all_success,
+                     bool step_size_shrinked_last_loop, int n_rerun,
+                     int sample_idx_to_help, bool is_debug, const string dir,
+                     GridTasksGenerator task_gen, bool non_grid_task,
+                     bool use_database, int robot_option, Task task,
+                     RomData rom) {
   if (is_get_nominal && !rerun_current_iteration) {
-    if(use_database)
-    {
-      *init_file = SetInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
-                                     robot_option,task,rom);
-    }
-    else{
+    if (use_database) {
+      *init_file = SetInitialGuessByInterpolation(
+          dir, iter, sample, task_gen, use_database, robot_option, task, rom);
+    } else {
       *init_file = nominal_traj_init_file;
     }
   } else if (step_size_shrinked_last_loop && n_rerun == 0) {
     // the step size was shrink in previous iter and it's not a local rerun
     // (n_rerun == 0)
-    if (without_uniform_grid){
-        *init_file = SetInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
-                robot_option,task,rom);
-    }
-    else{
-        *init_file = to_string(iter-1) + "_" + to_string(sample) + string("_w.csv");
+    if (non_grid_task) {
+      *init_file = SetInitialGuessByInterpolation(
+          dir, iter, sample, task_gen, use_database, robot_option, task, rom);
+    } else {
+      *init_file =
+          to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
     }
   } else if (sample_idx_to_help >= 0) {
     *init_file = to_string(iter) + "_" + to_string(sample_idx_to_help) +
                  string("_w.csv");
   } else if (rerun_current_iteration) {
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
-  } else{
-      if(without_uniform_grid){
-          *init_file = SetInitialGuessByInterpolation(dir, iter, sample, task_gen,use_database,
-                  robot_option,task,rom);
-      } else{
-          *init_file = to_string(iter - 1) +  "_" +
-                  to_string(sample) + string("_w.csv");
-      }
+  } else {
+    if (non_grid_task) {
+      *init_file = SetInitialGuessByInterpolation(
+          dir, iter, sample, task_gen, use_database, robot_option, task, rom);
+    } else {
+      *init_file =
+          to_string(iter - 1) + "_" + to_string(sample) + string("_w.csv");
+    }
   }
 
-  //Testing
+  // Testing
   if (is_debug) {
     // Hacks for improving solution quality
 
@@ -455,8 +453,8 @@ void extendModel(const string& dir, int iter, RomData& rom,
   prev_theta = rom.theta();
   step_direction.resize(rom.n_theta());
   prev_step_direction.resize(rom.n_theta());
-  prev_step_direction =
-      VectorXd::Zero(rom.n_theta());  // must initialize it because of momentum term
+  prev_step_direction = VectorXd::Zero(
+      rom.n_theta());  // must initialize it because of momentum term
   ave_min_cost_so_far = std::numeric_limits<double>::infinity();
 
   rom.CheckDataConsistency();
@@ -1467,13 +1465,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Parameters for tasks
   cout << "\nTasks settings:\n";
   GridTasksGenerator task_gen;
-  bool uniform_grid = FLAGS_is_uniform_grid;
-  if(uniform_grid){
+  bool is_grid_task = FLAGS_is_grid_task;
+  if (is_grid_task) {
     if (FLAGS_robot_option == 0) {
       task_gen = GridTasksGenerator(
           3, {"stride length", "ground incline", "velocity"},
-          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v}, {0.25, 0, 0.4},
-          {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
+          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v},
+          {0.25, 0, 0.4}, {0.015, 0.05, 0.02}, FLAGS_is_stochastic);
     } else if (FLAGS_robot_option == 1) {
       task_gen = GridTasksGenerator(
           4, {"stride length", "ground incline", "velocity", "turning rate"},
@@ -1484,22 +1482,21 @@ int findGoldilocksModels(int argc, char* argv[]) {
       throw std::runtime_error("Should not reach here");
       task_gen = GridTasksGenerator();
     }
-  }
-  else{
+  } else {
     UniformTasksGenerator task_gen;
     if (FLAGS_robot_option == 0) {
       task_gen = UniformTasksGenerator(
-          3,{"stride length", "ground incline", "velocity"},
+          3, {"stride length", "ground incline", "velocity"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v},
-          {FLAGS_sl_min,FLAGS_gi_min,FLAGS_v_min},
-          {FLAGS_sl_max,FLAGS_gi_max,FLAGS_v_max});
+          {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min},
+          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max});
     } else if (FLAGS_robot_option == 1) {
       task_gen = UniformTasksGenerator(
-          4,{"stride length", "ground incline", "velocity","turning rate"},
+          4, {"stride length", "ground incline", "velocity", "turning rate"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_v,
            FLAGS_N_sample_tr},
-          {FLAGS_sl_min,FLAGS_gi_min,FLAGS_v_min,FLAGS_tr_min},
-          {FLAGS_sl_max,FLAGS_gi_max,FLAGS_v_max,FLAGS_tr_max});
+          {FLAGS_sl_min, FLAGS_gi_min, FLAGS_v_min, FLAGS_tr_min},
+          {FLAGS_sl_max, FLAGS_gi_max, FLAGS_v_max, FLAGS_tr_max});
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen = UniformTasksGenerator();
@@ -1538,7 +1535,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
     h_step = 1e-3;
     if (FLAGS_robot_option == 0) {
       // After adding tau
-      // 1e-4 doesn't diverge   // This is with  h_step / sqrt(norm_grad_cost(0));
+      // 1e-4 doesn't diverge // This is with  h_step / sqrt(norm_grad_cost(0));
       // 1e-3 diverges
       // Before adding tau
       // 1e-3 is small enough to avoid gittering at the end
@@ -1555,8 +1552,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       //  1e-5: barely increase with a fixed task
 
       // Both with and without tau (I believe), fixed task.
-      // h_step = 1e-3;  // This is with h_step / norm_grad_cost_double. (and with
-                      // old traj opt)
+      // h_step = 1e-3;  // This is with h_step / norm_grad_cost_double.
+                         // (and with old traj opt)
 
       // (20200216) After using new traj opt
       h_step = 1e-4;  // maybe h_step shouldn't be too high, because rom
@@ -1595,33 +1592,31 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // So, use a very large tolerance on increase rate.
   double max_sample_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
-      if(uniform_grid){
-          max_sample_cost_increase_rate = FLAGS_is_stochastic? 2.0: 0.01;
-      }else{
-          max_sample_cost_increase_rate = std::numeric_limits<double>::infinity();
-      }
-  } else if (FLAGS_robot_option== 1) {
-      if(uniform_grid){
-          max_sample_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01; //0.3
-      }else{
-          max_sample_cost_increase_rate = std::numeric_limits<double>::infinity();
-      }
+    if (is_grid_task) {
+      max_sample_cost_increase_rate = FLAGS_is_stochastic ? 2.0 : 0.01;
+    } else {
+      max_sample_cost_increase_rate = std::numeric_limits<double>::infinity();
+    }
+  } else if (FLAGS_robot_option == 1) {
+    if (is_grid_task) {
+      max_sample_cost_increase_rate = FLAGS_is_stochastic ? 0.5 : 0.01;  // 0.3
+    } else {
+      max_sample_cost_increase_rate = std::numeric_limits<double>::infinity();
+    }
   } else {
     throw std::runtime_error("Should not reach here");
   }
   // Increase the tolerance for restricted number
   double max_average_cost_increase_rate = 0;
   if (FLAGS_robot_option == 0) {
-    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.5: 0.01;
-    if(!uniform_grid)
-    {
-        max_average_cost_increase_rate = 2;
+    max_average_cost_increase_rate = FLAGS_is_stochastic ? 0.5 : 0.01;
+    if (!is_grid_task) {
+      max_average_cost_increase_rate = 2;
     }
-  } else if (FLAGS_robot_option== 1) {
-    max_average_cost_increase_rate = FLAGS_is_stochastic? 0.2: 0.01;//0.15
-    if(!uniform_grid)
-    {
-        max_average_cost_increase_rate = 1;
+  } else if (FLAGS_robot_option == 1) {
+    max_average_cost_increase_rate = FLAGS_is_stochastic ? 0.2 : 0.01;  // 0.15
+    if (!is_grid_task) {
+      max_average_cost_increase_rate = 1;
     }
   } else {
     throw std::runtime_error("Should not reach here");
@@ -1650,7 +1645,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Outer loop setting - help from adjacent samples
   bool get_good_sol_from_adjacent_sample =
       FLAGS_get_good_sol_from_adjacent_sample;
-  if ( !uniform_grid){
+  if ( !is_grid_task){
     get_good_sol_from_adjacent_sample = false;
   }
 
@@ -1795,8 +1790,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
 
   // Reduced order model setup
-  KinematicsExpression<double> kin_expression(n_y, 0, &plant, FLAGS_robot_option);
-  DynamicsExpression dyn_expression(n_yddot, 0, FLAGS_rom_option, FLAGS_robot_option);
+  KinematicsExpression<double> kin_expression(n_y, 0, &plant,
+                                              FLAGS_robot_option);
+  DynamicsExpression dyn_expression(n_yddot, 0, FLAGS_rom_option,
+                                    FLAGS_robot_option);
   VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
   VectorXd dummy_s = VectorXd::Ones(n_y);
   int n_feature_y = kin_expression.getFeature(dummy_q).size();
@@ -1910,8 +1907,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << rerun_current_iteration << endl;
 
   VectorXd step_direction;
-  VectorXd prev_step_direction =
-      VectorXd::Zero(rom.n_theta());  // must initialize this because of momentum term
+  VectorXd prev_step_direction = VectorXd::Zero(
+      rom.n_theta());  // must initialize this because of momentum term
   if (iter_start > 1) {
     cout << "Reading previous step direction... (will get memory issue if the "
             "file doesn't exist)\n";
@@ -1991,7 +1988,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   int iter;
   int n_shrink_step = 0;
   auto iter_start_time = std::chrono::system_clock::now();
-  for (iter = iter_start; iter <= max_outer_iter; iter++)  {
+  for (iter = iter_start; iter <= max_outer_iter; iter++) {
     bool is_get_nominal = iter == 0;
 
     // Print info about iteration # and current time
@@ -2003,12 +2000,14 @@ int findGoldilocksModels(int argc, char* argv[]) {
         iter_start_time = clock_now;
         cout << "\nLast iteration takes " << iteration_elapse.count() << "s.\n";
       }
-      std::time_t current_time = std::chrono::system_clock::to_time_t(clock_now);
+      std::time_t current_time =
+          std::chrono::system_clock::to_time_t(clock_now);
       cout << "Current time: " << std::ctime(&current_time);
-      cout << "************ Iteration " << iter << " ("
-           << n_shrink_step << "-time step size shrinking) *************" << endl;
+      cout << "************ Iteration " << iter << " (" << n_shrink_step
+           << "-time step size shrinking) *************" << endl;
       if (iter != 0) {
-        cout << "theta_yddot.head(6) = " << rom.theta_yddot().head(6).transpose() << endl;
+        cout << "theta_yddot.head(6) = "
+             << rom.theta_yddot().head(6).transpose() << endl;
       }
     }
 
@@ -2148,13 +2147,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Get file name of initial seed
           string init_file_pass_in;
           getInitFileName(&init_file_pass_in, init_file, iter, sample_idx,
-                          is_get_nominal,
-                          current_sample_is_a_rerun, has_been_all_success,
-                          step_size_shrinked_last_loop, n_rerun[sample_idx],
-                          sample_idx_to_help,FLAGS_is_debug,
-                          dir, task_gen, !uniform_grid,
-                          FLAGS_use_database,FLAGS_robot_option,task,rom);
-
+                          is_get_nominal, current_sample_is_a_rerun,
+                          has_been_all_success, step_size_shrinked_last_loop,
+                          n_rerun[sample_idx], sample_idx_to_help,
+                          FLAGS_is_debug, dir, task_gen, !is_grid_task,
+                          FLAGS_use_database, FLAGS_robot_option, task, rom);
 
           // Set up feasibility and optimality tolerance
           // TODO: tighten tolerance at the last rerun for getting better

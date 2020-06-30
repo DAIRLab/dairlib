@@ -2,7 +2,7 @@
 
 #include <drake/multibody/plant/multibody_plant.h>
 
-#include "jumping_event_based_fsm.h"
+#include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 
@@ -63,6 +63,8 @@ class COMTrajGenerator : public drake::systems::LeafSystem<double> {
 
   int state_port_;
   int fsm_port_;
+
+  static constexpr double kTransitionSpeed = 20.0; // 20 m/s
 };
 
 }  // namespace dairlib::examples::Cassie::osc_jump

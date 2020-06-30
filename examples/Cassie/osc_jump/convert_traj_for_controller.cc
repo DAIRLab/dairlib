@@ -28,8 +28,12 @@ DEFINE_string(folder_path,
 
 namespace dairlib {
 
+/// This program pre-computes the output trajectories (center of mass, pelvis
+/// orientation, feet trajectories) for the OSC controller.
+///
+
 int DoMain() {
-  // Drake system initialization stuff
+  // Drake system initialization
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");

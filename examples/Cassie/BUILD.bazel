@@ -295,6 +295,24 @@ cc_test(
 )
 
 cc_binary(
+    name = "run_osc_jumping_controller",
+    srcs = ["run_osc_jumping_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//examples/Cassie/osc_jump",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "//systems/sensors:gaussian_noise_pass_through",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "run_osc_walking_controller",
     srcs = ["run_osc_walking_controller.cc"],
     deps = [
@@ -382,6 +400,18 @@ cc_binary(
     deps = [
         "//systems/framework:lcm_driven_loop",
         "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "visualize_trajectory",
+    srcs = ["visualize_trajectory.cc"],
+    deps = [
+        ":cassie_utils",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:multipose_visualizer",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

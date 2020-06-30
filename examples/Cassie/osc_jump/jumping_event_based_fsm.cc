@@ -1,6 +1,7 @@
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 
 #include <drake/lcmt_contact_results_for_viz.hpp>
+
 #include "dairlib/lcmt_contact_mujoco.hpp"
 
 using dairlib::systems::OutputVector;
@@ -67,8 +68,8 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   // Get inputs to the leaf system
-  const OutputVector<double>* state_feedback =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  const auto state_feedback =
+      this->template EvalVectorInput<OutputVector>(context, state_port_);
   const drake::AbstractValue* contact_info =
       this->EvalAbstractInput(context, contact_port_);
   // Get the discrete states
@@ -102,66 +103,68 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   }
 
   double timestamp = state_feedback->get_timestamp();
-  auto current_time = static_cast<double>(timestamp);
 
-  if (current_time < prev_time(0)) {  // Simulator has restarted, reset FSM
+  // Simulator has restarted, reset FSM
+  if (timestamp < prev_time(0)) {
     std::cout << "Simulator has restarted!" << std::endl;
     fsm_state << init_state_;
-    prev_time(0) = current_time;
+    prev_time(0) = timestamp;
     transition_flag(0) = false;
   }
 
-  switch ((FSM_STATE)fsm_state(0)) {
-    case (BALANCE):
-      if (current_time > transition_times_[BALANCE]) {
-        fsm_state << CROUCH;
-        std::cout << "Current time: " << current_time << std::endl;
-        std::cout << "Setting fsm to CROUCH" << std::endl;
-        std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
-        transition_flag(0) = false;
-        prev_time(0) = current_time;
-      }
-      break;
-    case (CROUCH):  // This assumes perfect knowledge about contacts
-      if (DetectGuardCondition(contact_based_
-                                   ? num_contacts == 0
-                                   : current_time > transition_times_[CROUCH],
-                               current_time, discrete_state)) {
-        state_trigger_time(0) = current_time;
-        transition_flag(0) = true;
-      }
-      if (current_time - state_trigger_time(0) >= transition_delay_ &&
-          (bool)transition_flag(0)) {
-        fsm_state << FLIGHT;
-        std::cout << "Current time: " << current_time << std::endl;
-        std::cout << "First detection time: " << state_trigger_time(0) << "\n";
-        std::cout << "Setting fsm to FLIGHT" << std::endl;
-        std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
-        transition_flag(0) = false;
-        prev_time(0) = current_time;
-      }
-      break;
-    case (FLIGHT):
-      if (DetectGuardCondition(contact_based_
-                                   ? num_contacts != 0
-                                   : current_time > transition_times_[FLIGHT],
-                               current_time, discrete_state)) {
-        state_trigger_time(0) = current_time;
-        transition_flag(0) = true;
-      }
-      if (current_time - state_trigger_time(0) >= transition_delay_ &&
-          (bool)transition_flag(0)) {
-        fsm_state << LAND;
-        std::cout << "Current time: " << current_time << "\n";
-        std::cout << "First detection time: " << state_trigger_time(0) << "\n";
-        std::cout << "Setting fsm to LAND" << "\n";
-        std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << "\n";
-        transition_flag(0) = false;
-        prev_time(0) = current_time;
-      }
-      break;
-    case (LAND):
-      break;
+  // To test delayed switching times, there is an "intermediate" state
+  // between each state change when the guard condition is first triggered
+  // The fsm state will change transition_delay_ seconds after the guard
+  // condition was first triggered.
+  // This supports both contact-based and time-based guard conditions
+  if (fsm_state(0) == BALANCE) {
+    if (timestamp > transition_times_[BALANCE]) {
+      fsm_state << CROUCH;
+      std::cout << "Current time: " << timestamp << std::endl;
+      std::cout << "Setting fsm to CROUCH" << std::endl;
+      std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+      transition_flag(0) = false;
+      prev_time(0) = timestamp;
+    }
+  } else if (fsm_state(0) == CROUCH) {
+    if (DetectGuardCondition(contact_based_
+                                 ? num_contacts == 0
+                                 : timestamp > transition_times_[CROUCH],
+                             timestamp, discrete_state)) {
+      state_trigger_time(0) = timestamp;
+      transition_flag(0) = true;
+    }
+    if (timestamp - state_trigger_time(0) >= transition_delay_ &&
+        (bool)transition_flag(0)) {
+      fsm_state << FLIGHT;
+      std::cout << "Current time: " << timestamp << std::endl;
+      std::cout << "First detection time: " << state_trigger_time(0) << "\n";
+      std::cout << "Setting fsm to FLIGHT" << std::endl;
+      std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+      transition_flag(0) = false;
+      prev_time(0) = timestamp;
+    }
+  } else if (fsm_state(0) == FLIGHT) {
+    if (DetectGuardCondition(contact_based_
+                                 ? num_contacts != 0
+                                 : timestamp > transition_times_[FLIGHT],
+                             timestamp, discrete_state)) {
+      state_trigger_time(0) = timestamp;
+      transition_flag(0) = true;
+    }
+    if (timestamp - state_trigger_time(0) >= transition_delay_ &&
+        (bool)transition_flag(0)) {
+      fsm_state << LAND;
+      std::cout << "Current time: " << timestamp << "\n";
+      std::cout << "First detection time: " << state_trigger_time(0) << "\n";
+      std::cout << "Setting fsm to LAND"
+                << "\n";
+      std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << "\n";
+      transition_flag(0) = false;
+      prev_time(0) = timestamp;
+    }
+  } else if (fsm_state(0) == LAND) {
+    // no more transitions
   }
 
   return EventStatus::Succeeded();

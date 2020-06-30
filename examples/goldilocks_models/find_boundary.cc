@@ -657,8 +657,10 @@ int find_boundary(int argc, char* argv[]){
    */
   cout << "\nBasic information:\n";
   cout << FLAGS_program_name << endl;
-  cout << "robot_option: " << FLAGS_robot_option << endl;
-  cout << "rom_option: " << FLAGS_rom_option << endl;
+  int robot_option = FLAGS_robot_option;
+  int rom_potion = FLAGS_rom_option;
+  cout << "robot_option: " << robot_option << endl;
+  cout << "rom_option: " << rom_option << endl;
 
   /*
    * initialize task space
@@ -666,7 +668,7 @@ int find_boundary(int argc, char* argv[]){
   cout << "\nInitialize task space:\n";
   Task task;//Traj Opt tasks
   SearchSetting search_setting;//Settings of searching the task space
-  if(FLAGS_robot_option==0)
+  if(robot_option==0)
   {
     task = Task({"stride length", "ground incline",
                  "velocity"});
@@ -674,7 +676,7 @@ int find_boundary(int argc, char* argv[]){
                                       "velocity"},{0.25,0,0.4},
                                           {0.01,0.01,0});
   }
-  else{
+  else if(robot_option==1){
     task = Task({"stride length", "ground incline",
                  "velocity", "turning rate"});
     search_setting = SearchSetting(4,{"stride length", "ground incline",
@@ -689,11 +691,10 @@ int find_boundary(int argc, char* argv[]){
     ": "+to_string(search_setting.task_0()[dim])<<endl;
   }
 
-  VectorXd initial_task = Eigen::Map<VectorXd>(search_setting.task_0().data(),
-      search_setting.task_0().size());
-  VectorXd delta_task = Eigen::Map<VectorXd>(search_setting.task_delta().data(),
-      search_setting.task_delta().size());
-
+//  VectorXd initial_task = Eigen::Map<VectorXd>(search_setting.task_0().data(),
+//      search_setting.task_0().size());
+//  VectorXd delta_task = Eigen::Map<VectorXd>(search_setting.task_delta().data(),
+//      search_setting.task_delta().size());
 
   /*
    * Iteration setting
@@ -705,7 +706,7 @@ int find_boundary(int argc, char* argv[]){
   int max_iter = FLAGS_max_outer_iter;
   //TODO:decide the threshold under different situation
   double cost_threshold = 30;
-  if(FLAGS_robot_option==0)
+  if(robot_option==0)
   {
     if(FLAGS_is_get_nominal){
       cost_threshold = 35;
@@ -714,7 +715,7 @@ int find_boundary(int argc, char* argv[]){
       cost_threshold = 30;
     }
   }
-  else{
+  else if(robot_option==1){
     if(FLAGS_is_get_nominal){
       cost_threshold = 35;
     }
@@ -723,30 +724,38 @@ int find_boundary(int argc, char* argv[]){
     }
   }
   cout<<"cost_threshold "<<cost_threshold<<endl;
-  int boundary_sample_num = 0;//use this to record the index of boundary point
-  int traj_opt_num = 0;//use this to record the index of Traj Opt
-  VectorXd extend_direction(dimensions);//the direction of searching
 
   //create components for each dimension used to decide the direction
-  int sl_comp_num = 5;
-  VectorXd e_sl(sl_comp_num);
-  e_sl<<0,-1,-0.5,0.5,1;
-
-  int gi_comp_num = 5;
-  VectorXd e_gi(gi_comp_num);
-  e_gi<<0,-1,-0.5,0.5,1;
-
-  int tr_comp_num = 1;
-  VectorXd e_tr(tr_comp_num);
-  e_tr<<0;
+  if(robot_option==0){
+    search_setting.SetExtendComponents("stride length",5,{0,-1,0.5,0.5,1});
+    search_setting.SetExtendComponents("ground incline",5,{0,-1,0.5,0.5,1});
+    search_setting.SetExtendComponents("velocity",1,{0});
+  }
+  else if(robot_option==1)
+  {
+    search_setting.SetExtendComponents("stride length",5,{0,-1,0.5,0.5,1});
+    search_setting.SetExtendComponents("ground incline",5,{0,-1,0.5,0.5,1});
+    search_setting.SetExtendComponents("velocity",1,{0});
+    search_setting.SetExtendComponents("turning rate",1,{0});
+  }
 
   /*
    * start iteration
    */
+  int boundary_sample_num = 0;//use this to record the index of boundary point
+  int traj_opt_num = 0;//use this to record the index of Traj Opt
   //evaluate initial point
-  cout << "\nCalculate Central Point Cost:\n";
+  VectorXd initial_task = Eigen::Map<VectorXd>(search_setting.task_0().data(),
+      search_setting.task_0().size());
   writeCSV(dir +  to_string(traj_opt_num)  +
-      string("_0_gamma.csv"), initial_gamma);
+      string("_0_task.csv"), initial_task);
+  cout << "\nCalculate Central Point Cost:\n";
+  if(robot_option==0)
+  {
+    cout << "sample# (rerun #) | stride | incline | velocity | init_file | "
+            "Status | Solve time | Cost (tau cost)\n";
+  }
+
   cout << "sample# (rerun #) | stride | incline | turning | init_file | "
           "Status | Solve time | Cost (tau cost)\n";
   trajOptGivenModel(stride_length_0, ground_incline_0,

@@ -39,7 +39,8 @@
               "color":[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
               "alpha": 0.5,
               "type": "axis",
-              "thickness": 0.01
+              "thickness": 0.01,
+              "length": 0.4
             },
             {"name": "com_point",
               "category":"CoM",

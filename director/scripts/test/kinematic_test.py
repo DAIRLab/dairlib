@@ -1,5 +1,5 @@
 import lcm
-import threading
+import threading, queue
 
 from PythonQt.QtGui import *
 from PythonQt.QtCore import *
@@ -20,6 +20,10 @@ import numpy as np
 import json
 import sys
 from collections import deque
+import faulthandler
+
+
+q = queue.Queue()
 
 class VisualizationGui(QWidget):
 
@@ -28,6 +32,13 @@ class VisualizationGui(QWidget):
         super(VisualizationGui, self).__init__(parent)
         self.channel = "NETWORK_CASSIE_STATE_DISPATCHER"
         self.lcm = lcm.LCM()
+
+        # self.abstract_channel = "OSC_DEBUG"
+        # self.abstract_type = "lcmt_osc_output"
+        # self.abstract_field = "lcmt_osc_tracking_data"
+        # self.abstract_x_index = 3
+        # self.abstract_y_index = 3
+        # self.abstract_z_index = 3
 
         # GUI attributes
         self.checkBoxes = {}
@@ -49,6 +60,13 @@ class VisualizationGui(QWidget):
         self.shapes = {}
         self.plant = None
 
+        subscription = self.lcm.subscribe(self.channel, self.state_handler)
+        subscription.set_queue_capacity(1)
+
+        # abstract_subscription = \
+        #     self.lcm.subscribe(self.abstract_channel, self.abstract_handler)
+        # abstract_subscription.set_queue_capacity(1)
+
         # create the GUI
         self.setWindowTitle("Testing Testing")
         self.vbox = QVBoxLayout()
@@ -68,8 +86,6 @@ class VisualizationGui(QWidget):
         handle_thread.start()
 
     def resetGUI(self):
-
-        # self.__init__()
 
         # delete checkboxes from GUI
         for i in reversed(range(self.checkBoxArea.count())):
@@ -120,6 +136,7 @@ class VisualizationGui(QWidget):
                 self.vbox.addWidget(self.clearBtn)
 
     def deleteShapes(self):
+        print("Test0")
         if (self.delete == False):
             self.delete = True
         else:
@@ -135,24 +152,19 @@ class VisualizationGui(QWidget):
             self.reset = True
 
     def clearHistory(self):
-        print("Test-1")
         if (self.clear == False):
             self.clear = True
         else:
             print("Test0")
             for shape in self.shapes.values():
                 print("Test1")
-                if (type(shape.object) == deque):
+                if (shape.type == "line"):
                     print("Test2")
-                    lastline = shape.object.pop()
-                    print("Test3")
                     for line in shape.object:
-                        print("Test4")
+                        print("Test3")
                         om.removeFromObjectModel(line)
-                    print("Test5")
-                    shape.object = deque()
-                    print("Test6")
-                    shape.object.append(lastline)
+                    print("Test4")
+                shape.object = deque()
             self.clear = False
 
     def placeCheckBoxes(self):
@@ -162,15 +174,15 @@ class VisualizationGui(QWidget):
                 self.checkBoxArea = QVBoxLayout()
                 addToGUI = True
             for name in self.shapes:
-                dotOrLine = "•"
+                dotOrLine = " •"
                 if (self.shapes[name].type == "point"):
-                    dotOrLine = "•"
+                    dotOrLine = " •"
                 else:
-                    dotOrLine = "---"
+                    dotOrLine = " ---"
 
                 addToList = False
                 if (name not in self.checkBoxes):
-                    self.checkBoxes[name] = QCheckBox(name + " " + dotOrLine)
+                    self.checkBoxes[name] = QCheckBox(name + dotOrLine)
                     color = self.shapes[name].color
                     self.checkBoxes[name].setStyleSheet("color: rgb("+str(color[0] * 255)+", "+str(color[1] * 255)+", "+str(color[2] * 255)+")")
                     addToList = True
@@ -203,12 +215,24 @@ class VisualizationGui(QWidget):
         return math.sqrt(sum)
 
     def handle_thread(self):
-        subscription = self.lcm.subscribe(self.channel, self.state_handler)
-        subscription.set_queue_capacity(1)
-
         print('Starting to handle LCM messages')
         while True:
             self.lcm.handle_timeout(100)
+
+    def abstract_handler(self, channel, data):
+        decoder = getattr(dairlib, self.abstract_type)
+        msg = decoder.decode(data)
+        field = getattr(msg, "tracking_data")
+        # pt = np.array([field[self.abstract_x_index],
+        #                field[self.abstract_y_index],
+        #                field[self.abstract_z_index]])
+
+        a = None
+        for el in field:
+            if (el.name == "cp_traj"):
+                a = el.y
+                print(a)
+                break
 
     def state_handler(self, channel, data):
         if (self.ready == True):
@@ -232,8 +256,7 @@ class VisualizationGui(QWidget):
             self.plant.SetPositions(self.context, self.msg.position)
             self.plant.SetVelocities(self.context, self.msg.velocity)
 
-            # print(self.plant.EvalBodyPoseInWorld(self.context, self.plant.GetBodyByName("toe_right")).rotation().matrix().transpose())
-
+            # check if the checkboxes are checked
             for name in self.shapes:
                 if (self.checkBoxes[name].isChecked() == True):
                     if (self.checkBoxesPrevState[name] == False):
@@ -245,7 +268,6 @@ class VisualizationGui(QWidget):
                         self.checkBoxNotChecked(name)
 
                 currShape = self.shapes[name]
-
                 next_loc = None
 
                 if (currShape.category == "kinematic_point"):
@@ -259,84 +281,99 @@ class VisualizationGui(QWidget):
                 elif (currShape.category == "CoM"):
                     next_loc = currShape.point
 
-                # draw a continuous line
-                if (currShape.type == "line"):
-                    # check if there is any previously computed location
-                    if (len(currShape.prev_loc) == 0):
-                        currShape.prev_loc = next_loc
+                self.drawShape(currShape, next_loc)
 
-                    # check if the duration has been initialized
-                    if (currShape.duration == None):
-                        currShape.duration = self.msg.utime / 1000000
+            if (self.clear == True):
+                self.clearHistory()
 
-                    # visualize and trace line for 'history' seconds
-                    if ((self.msg.utime / 1000000) - currShape.duration <= currShape.history or currShape.history <= 0):
-                        if (self.distance(currShape.prev_loc, next_loc) >= 10e-5):
-                            # add new line
-                            d = DebugData()
-                            d.addLine(currShape.prev_loc, next_loc, radius = currShape.thickness)
-                            line = vis.showPolyData(d.getPolyData(), "line")
+            if (self.delete == True):
+                self.deleteShapes()
 
-                            # set color and transparency of line
-                            line.setProperty('Color', currShape.color)
-                            line.setProperty('Alpha', currShape.alpha)
+            if (self.reset == True):
+                self.resetGUI()
 
-                            # add line to the history of current lines drawn
-                            currShape.object.append(line)
-                    elif (currShape.history > 0):
-                        if (len(self.shapes[name].object) == 0):
-                            currShape.duration = self.msg.utime / 1000000
-                        else:
-                            if (self.distance(currShape.prev_loc, next_loc) >= 10e-5):
-                                # reset the points of the last placed line
-                                d = DebugData()
-                                d.addLine(currShape.prev_loc, next_loc, radius = currShape.thickness)
-                                lastLine = self.shapes[name].object.popleft()
-                                lastLine.setPolyData(d.getPolyData())
-                                self.shapes[name].object.append(lastLine)
+    def drawShape(self, currShape, next_loc):
+        # draw a continuous line
+        if (currShape.type == "line"):
+            # check if there is any previously computed location
+            if (len(currShape.prev_loc) == 0):
+                currShape.prev_loc = next_loc
 
-                    currShape.prev_loc = next_loc
+            # check if the duration has been initialized
+            if (currShape.duration == None or len(currShape.object) == 0):
+                currShape.duration = self.msg.utime / 1000000
 
-                # draw a point
-                elif (currShape.type == "point"):
+            # add new line
+            d = DebugData()
+            d.addLine(currShape.prev_loc, next_loc, radius = currShape.thickness)
+            line = vis.showPolyData(d.getPolyData(), "line")
+
+            # set color and transparency of line
+            line.setProperty('Color', currShape.color)
+            line.setProperty('Alpha', currShape.alpha)
+
+            # add line to the history of current lines drawn
+            currShape.object.append(line)
+
+            # visualize and trace line for 'history' seconds
+            if ((self.msg.utime / 1000000) - currShape.duration <= currShape.history or currShape.history <= 0):
+                # if (self.distance(currShape.prev_loc, next_loc) >= 10e-5):
+                    # add new line
                     d = DebugData()
-                    d.addSphere(next_loc, radius = currShape.radius)
-                    # create a new point
-                    if (currShape.object == None):
-                        currShape.object = vis.showPolyData(d.getPolyData(), "sphere")
-                        # set color and transparency of point
-                        currShape.object.setProperty('Color', currShape.color)
-                        currShape.object.setProperty('Alpha', currShape.alpha)
-                    else:
-                        # update the location of the last point
-                        currShape.object.setPolyData(d.getPolyData())
+                    d.addLine(currShape.prev_loc, next_loc, radius = currShape.thickness)
+                    line = vis.showPolyData(d.getPolyData(), "line")
 
-                # draw a set of axes
-                elif (currShape.type == "axis"):
-                    # get the rotation matrix
-                    rigTrans = self.plant.EvalBodyPoseInWorld(self.context, self.plant.GetBodyByName("toe_right"))
-                    rot_matrix = rigTrans.rotation().matrix().transpose()
+                    # set color and transparency of line
+                    line.setProperty('Color', currShape.color)
+                    line.setProperty('Alpha', currShape.alpha)
 
-                    d = DebugData()
-                    for i in range(3):
-                        d.addArrow(next_loc, next_loc + (rot_matrix[i]/4), headRadius=0.03, color = currShape.color[i])
+                    # add line to the history of current lines drawn
+                    currShape.object.append(line)
+            elif (currShape.history > 0):
+                if (len(currShape.object) == 0):
+                    currShape.duration = self.msg.utime / 1000000
+                else:
+                    # if (self.distance(currShape.prev_loc, next_loc) >= 10e-5):
+                        # reset the points of the last placed line
+                        d = DebugData()
+                        d.addLine(currShape.prev_loc, next_loc, radius = currShape.thickness)
+                        lastLine = currShape.object.popleft()
+                        lastLine.setPolyData(d.getPolyData())
+                        currShape.object.append(lastLine)
 
-                    # create the 3 axes
-                    if (currShape.object == None):
-                        currShape.object = vis.showPolyData(d.getPolyData(), "axis", colorByName='RGB255')
-                        currShape.object.setProperty('Alpha', currShape.alpha)
-                    else:
-                        # update the location of the last point
-                        currShape.object.setPolyData(d.getPolyData())
+            currShape.prev_loc = next_loc
 
-        if (self.clear == True):
-            self.clearHistory()
+        # draw a point
+        elif (currShape.type == "point"):
+            d = DebugData()
+            d.addSphere(next_loc, radius = currShape.radius)
+            # create a new point
+            if (currShape.object == None):
+                currShape.object = vis.showPolyData(d.getPolyData(), "sphere")
+                # set color and transparency of point
+                currShape.object.setProperty('Color', currShape.color)
+                currShape.object.setProperty('Alpha', currShape.alpha)
+            else:
+                # update the location of the last point
+                currShape.object.setPolyData(d.getPolyData())
 
-        if (self.delete == True):
-            self.deleteShapes()
+        # draw a set of axes
+        elif (currShape.type == "axis"):
+            # get the rotation matrix
+            rigTrans = self.plant.EvalBodyPoseInWorld(self.context, self.plant.GetBodyByName(currShape.frame))
+            rot_matrix = rigTrans.rotation().matrix().transpose()
 
-        if (self.reset == True):
-            self.resetGUI()
+            d = DebugData()
+            for i in range(3):
+                d.addArrow(next_loc, next_loc + (rot_matrix[i]/4), headRadius=0.03, color = currShape.color[i])
+
+            # create the 3 axes
+            if (currShape.object == None):
+                currShape.object = vis.showPolyData(d.getPolyData(), "axis", colorByName='RGB255')
+                currShape.object.setProperty('Alpha', currShape.alpha)
+            else:
+                # update the location of the last point
+                currShape.object.setPolyData(d.getPolyData())
 
 class ObjectToDraw():
     def __init__(self, data):
@@ -375,7 +412,6 @@ class ObjectToDraw():
         self.point = otherObject.point
         self.color = otherObject.color
         self.alpha = otherObject.alpha
-        self.GUIName = otherObject.GUIName
 
         if (self.type == "line"):
             self.thickness = otherObject.thickness

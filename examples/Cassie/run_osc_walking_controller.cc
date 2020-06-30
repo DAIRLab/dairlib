@@ -52,6 +52,8 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "The name of the channel which publishes command");
 
+DEFINE_bool(publish_osc_data, true,
+            "whether to publish lcm messages for OscTrackData");
 DEFINE_bool(print_osc, false, "whether to print the osc debug message or not");
 DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
@@ -390,6 +392,13 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+  if (FLAGS_publish_osc_data) {
+    // Create osc debug sender.
+    auto osc_debug_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+            "OSC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
+    builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+  }
 
   // Create the diagram
   auto owned_diagram = builder.Build();

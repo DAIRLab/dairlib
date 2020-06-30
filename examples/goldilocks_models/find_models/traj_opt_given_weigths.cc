@@ -208,6 +208,7 @@ void extractResult(VectorXd& w_sol,
       return;
     }
   }
+
   cout << "storing result...\n";
 
   VectorXd is_success(1);
@@ -1209,7 +1210,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // However, we need it now, since we add the running cost by hand
   trajopt->AddDurationBounds(duration, duration);
 
-//  cout << "WARNING: you are printing snopt log.\n";
+//  cout << "WARNING: you are printing snopt log.\n for five-link model";
 //  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
 //                           "../snopt_sample#"+to_string(sample_idx)+".out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -1392,8 +1393,8 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   }
 
   // Testing
-  // cout << "Choose the best solver: " <<
-  //      drake::solvers::ChooseBestSolver(*(gm_traj_opt.dircon)).name() << endl;
+//   cout << "Choose the best solver: " <<
+//        drake::solvers::ChooseBestSolver(*(gm_traj_opt.dircon)).name() << endl;
 
   // cout << "Solving DIRCON (based on MultipleShooting)\n";
   cout << sample_idx << ": ";
@@ -1701,7 +1702,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
       plant, num_time_samples, min_dt, max_dt, dataset_list, options_list);
 
   // Snopt settings
-//  cout << "WARNING: you are printing snopt log.\n";
+//  cout << "WARNING: you are printing snopt log.\n for Cassie";
 //  trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
 //                           "../snopt_sample#"+to_string(sample_idx)+".out");
   trajopt->SetSolverOption(drake::solvers::SnoptSolver::id(),
@@ -2200,8 +2201,8 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   }*/
 
   // Testing
-  // cout << "Choose the best solver: " <<
-  //      drake::solvers::ChooseBestSolver(*(gm_traj_opt.dircon)).name() << endl;
+//   cout << "Choose the best solver: " <<
+//        drake::solvers::ChooseBestSolver(*(gm_traj_opt.dircon)).name() << endl;
 
   // Testing -- visualize poses
   if (sample_idx == 0) {

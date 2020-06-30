@@ -10,6 +10,7 @@ cc_binary(
         ":kinematics_expression",
         ":task",
         "//common:eigen_utils",
+        "//examples/goldilocks_models/find_models:initial_guess",
         "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
         "//systems/goldilocks_models",
         "//systems/trajectory_optimization:dircon",

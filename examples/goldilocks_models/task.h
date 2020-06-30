@@ -73,6 +73,8 @@ class GridTasksGenerator {
   double task_max(const string& name) {
     return task_max_range_[name_to_index_map_.at(name)];
   }
+  vector<double> task_min_range() { return task_min_range_; }
+  vector<double> task_max_range() { return task_max_range_; }
   const std::map<int, std::vector<int>>& get_forward_map() {
     return forward_task_idx_map_;
   };
@@ -104,6 +106,47 @@ class GridTasksGenerator {
 
   std::map<int, vector<int>> forward_task_idx_map_;
   std::map<vector<int>, int> inverse_task_idx_map_;
+
+  std::unordered_map<string, int> name_to_index_map_;
+
+  std::default_random_engine random_eng_;
+};
+
+class UniformTasksGenerator {
+ public:
+  UniformTasksGenerator(int task_dim, std::vector<string> names,
+                        std::vector<int> N_sample_vec,
+                        std::vector<double> task_min,
+                        std::vector<double> task_max);
+
+  // Default constructor
+  UniformTasksGenerator(){};
+
+  // Getters
+  vector<string> names() { return names_; }
+  int dim() { return task_dim_; }
+  int dim_nondeg() { return task_dim_nondeg_; }
+  vector<int> sample_numbers() { return N_sample_vec_; }
+  int total_sample_number() { return N_sample_; }
+  double task_min(const string& name) {
+    return task_min_range_[name_to_index_map_.at(name)];
+  }
+  double task_max(const string& name) {
+    return task_max_range_[name_to_index_map_.at(name)];
+  }
+
+  // Generator
+  vector<double> NewTask(int sample_idx);
+
+ private:
+  int task_dim_;
+  int task_dim_nondeg_;
+  vector<string> names_;
+  vector<int> N_sample_vec_;
+  vector<double> task_min_range_;
+  vector<double> task_max_range_;
+  vector<std::uniform_real_distribution<>> distribution_;
+  int N_sample_;
 
   std::unordered_map<string, int> name_to_index_map_;
 

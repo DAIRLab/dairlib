@@ -137,3 +137,32 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+#edited by jianshu
+cc_library(
+    name = "initial_guess",
+    srcs = [
+        "initial_guess.cc",
+    ],
+    hdrs = [
+        "initial_guess.h",
+    ],
+    deps = [
+        "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models:task",
+        "//systems/goldilocks_models",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_test(
+    name = "initial_guess_test",
+    srcs = ["initial_guess_test.cc"],
+    deps = [
+        ":initial_guess",
+        "//common",
+        "@drake//:drake_shared_library",
+        "@gflags",
+        "@gtest//:main",
+    ],
+)

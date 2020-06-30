@@ -155,6 +155,9 @@ int do_main(int argc, char* argv[]) {
   } else {
     CassieFixedBaseFixedPointSolver(plant, &q_init, &u_init, &lambda_init);
   }
+  q_init << 1, 0, 0, 0, 0, 0, 1.0, .0045, -.0045, 0, 0, .4973,
+      .4973, -1.1997, -1.1997, 0, 0, 1.4267, 1.4267, 0,
+      -1.5968, 0, -1.5968;
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
 

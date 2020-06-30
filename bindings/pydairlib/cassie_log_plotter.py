@@ -15,6 +15,7 @@ import pydairlib.multibody_utils
 from pydairlib.common import FindResourceOrThrow
 from loadLcmTrajs import loadLcmTrajs
 from scipy import integrate
+import scipy.io
 
 
 def get_index_at_time(times, t):
@@ -57,7 +58,11 @@ def main():
     plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
     Parser(plant).AddModelFromFile(
         FindResourceOrThrow(
+            # "examples/Cassie/urdf/cassie_agility.urdf"))
             "examples/Cassie/urdf/cassie_v2.urdf"))
+    # Parser(plant).AddModelFromFile(
+    #     FindResourceOrThrow(
+    #         "examples/Cassie/urdf/cassie_full_model.urdf"))
     plant.mutable_gravity_field().set_gravity_vector(
         -9.81 * np.array([0, 0, 1]))
     plant.Finalize()
@@ -76,6 +81,7 @@ def main():
     for name in pos_map:
         state_names_w_spr[pos_map[name]] = name
         print(name)
+        print(pos_map[name])
     for name in vel_map:
         state_names_w_spr[nq + vel_map[name]] = name
 
@@ -88,6 +94,14 @@ def main():
     x_traj_nominal, x_hybrid_trajs_nominal, u_traj_nominal, \
     u_hybrid_trajs_nominal, decision_vars, datatypes \
         = loadLcmTrajs(37, nu, 3)
+
+    qpos_init = np.array([1, 0, 0, 0, 0, 0, 1.0, .0045, -.0045, 0, 0, .4973,
+                          .4973, -1.1997, -1.1997, 0, 0, 1.4267, 1.4267, 0,
+                          -1.5968, 0, -1.5968])
+
+    plant.SetPositions(context, qpos_init)
+    M = plant.CalcMassMatrixViaInverseDynamics(context)
+    scipy.io.savemat('/home/yangwill/Downloads/M.mat', dict(M=M))
 
     nq_fb = 7
     nv_fb = 6
@@ -109,18 +123,17 @@ def main():
 
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
-    log_samples = int(log.size() / 100)
-    # print(log.size() / 100)
     print("Loading log")
     contact_info, contact_info_locs, control_inputs, estop_signal, osc_debug, \
     q, switch_signal, t_contact_info, t_controller_switch, t_osc, t_osc_debug, \
     t_state, v, fsm = process_lcm_log.process_log(log, pos_map, vel_map)
 
-    plt.plot(t_osc, osc_debug[0].error_y[:,2])
-    plt.plot(t_osc, osc_debug[0].error_ydot[:,2])
-    # plt.plot(t_osc, osc_debug[0].yddot_command[:,2])
+    # plt.plot(t_osc, osc_debug[0].error_y[:, 2])
+    # plt.plot(t_osc, osc_debug[0].error_ydot[:, 2])
     plt.plot(t_osc, osc_debug[0].yddot_command[:, 2])
-    # plt.plot(t_osc, osc_debug[0].yddot_command_sol[:, 2])
+    plt.plot(t_osc, osc_debug[0].yddot_command_sol[:, 2])
+    # plt.plot(t_osc, osc_debug[0].yddot_command[:,2])
+    # plt.plot(t_osc, control_inputs)
     # plt.plot(t_state, contact_info[0, :, 2])
     # plt.plot(t_state, contact_info[1, :, 2])
     # plt.plot(t_state, contact_info[2, :, 2])

@@ -284,10 +284,10 @@ int DoMain(int argc, char* argv[]) {
   // Center of mass tracking
   MatrixXd W_com = MatrixXd::Identity(3, 3);
   W_com(0, 0) = 2000;
-  W_com(1, 1) = 200;
+  W_com(1, 1) = 20;
   W_com(2, 2) = 2000;
-  MatrixXd K_p_com = 64 * MatrixXd::Identity(3, 3);
-  MatrixXd K_d_com = 16 * MatrixXd::Identity(3, 3);
+  MatrixXd K_p_com = 36 * MatrixXd::Identity(3, 3);
+  MatrixXd K_d_com = 12 * MatrixXd::Identity(3, 3);
   ComTrackingData com_tracking_data("com_traj", 3, K_p_com, K_d_com, W_com,
                                     &plant_w_springs, &plant_wo_springs);
   for (FSM_STATE mode : stance_modes) {

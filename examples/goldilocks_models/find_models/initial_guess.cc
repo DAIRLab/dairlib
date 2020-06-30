@@ -159,7 +159,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
       VectorXd past_theta_s =
           readCSV(directory + to_string(past_iter) + string("_theta_y.csv"));
       VectorXd past_theta_sDDot = readCSV(directory + to_string(past_iter) +
-                                          string("_theta_yDDot.csv"));
+                                          string("_theta_yddot.csv"));
       VectorXd past_theta(past_theta_s.rows() + past_theta_sDDot.rows());
       past_theta << past_theta_s, past_theta_sDDot;
       double theta_diff =

@@ -204,7 +204,8 @@ void readThetaFromFiles(const string dir,int theta_idx,
   theta_y = readCSV(dir + to_string(theta_idx) + string("_theta_y.csv"));
   theta_yddot = readCSV(dir + to_string(theta_idx) + string("_theta_yddot.csv"));
 }
-////TODO:MODIFY THIS FUNCTION!
+
+
 //use interpolation to set the initial guess for the trajectory optimization
 string getInitFileName(const string directory, int traj_opt_num,
     bool is_rerun,int rerun_traj_idx=-1){

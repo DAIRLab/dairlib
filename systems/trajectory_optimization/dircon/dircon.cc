@@ -64,11 +64,6 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     //
     double min_dt = mode.min_T() / (mode.num_knotpoints() - 1);
     double max_dt = mode.max_T() / (mode.num_knotpoints() - 1);
-    // set timestep bounds
-    // for (int j = 0; j < mode.num_knotpoints() - 1; j++) {
-    //   AddBoundingBoxConstraint(min_dt, max_dt,
-    //                            timestep(mode_start_[i_mode] + j));
-    // }
     AddBoundingBoxConstraint(min_dt, max_dt, timestep(mode_start_[i_mode]));
     for (int j = 0; j < mode.num_knotpoints() - 2; j++) {
       // all timesteps must be equal
@@ -89,12 +84,6 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
         mode.evaluators().count_full() * (mode.num_knotpoints() - 1),
         "gamma[" + std::to_string(i_mode) + "]"));
 
-    double slack_bound = .01 * 100;
-
-    // Bound collocation slack variables to avoid numerical issues
-    // AddBoundingBoxConstraint(-slack_bound, slack_bound,
-    //                          collocation_slack_vars_.at(i_mode));
-
     // quaternion_slack_vars_ (slack variables used to scale quaternion norm to
     // 1 in the dynamic constraints)
     int num_quat = multibody::QuaternionStartIndices(plant_).size();
@@ -103,6 +92,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
                                "quat_slack[" + std::to_string(i_mode) + "]"));
 
     // Bound quaternion slack variables to avoid false full rotations
+    double slack_bound = 1;
     AddBoundingBoxConstraint(-slack_bound, slack_bound,
                              quaternion_slack_vars_.at(i_mode));
 
@@ -252,11 +242,37 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
       }
     }
 
-    // Add regularization cost on force
-    int n_l = mode.evaluators().count_full() * mode.num_knotpoints();
-    // AddQuadraticCost(
-    //     mode.get_force_regularization() * MatrixXd::Identity(n_l, n_l),
-    //     VectorXd::Zero(n_l), force_vars_.at(i_mode));
+    if (mode.get_force_regularization() != 0) {
+      // Add regularization cost on force
+      int n_l = mode.evaluators().count_full() * mode.num_knotpoints();
+      {
+        int size = force_vars_.at(i_mode).size();
+        AddQuadraticCost(
+            mode.get_force_regularization() * MatrixXd::Identity(size, size),
+            VectorXd::Zero(n_l), force_vars_.at(i_mode));
+      }
+
+      {
+        int size = collocation_force_vars_.at(i_mode).size();
+        AddQuadraticCost(
+            mode.get_force_regularization() * MatrixXd::Identity(size, size),
+            VectorXd::Zero(n_l), collocation_force_vars_.at(i_mode));
+      }
+
+      {
+        int size = collocation_slack_vars_.at(i_mode).size();
+        AddQuadraticCost(
+            mode.get_force_regularization() * MatrixXd::Identity(size, size),
+            VectorXd::Zero(n_l), collocation_slack_vars_.at(i_mode));
+      }
+
+      {
+        int size = quaternion_slack_vars_.at(i_mode).size();
+        AddQuadraticCost(
+            mode.get_force_regularization() * MatrixXd::Identity(size, size),
+            VectorXd::Zero(n_l), quaternion_slack_vars_.at(i_mode));
+      }
+    }
   }
 }
 
@@ -490,7 +506,7 @@ void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // Here, we add the cost using symbolic expression. The expression is a
   // polynomial of degree 3 which Drake can handle, although the
   // documentation says it only supports up to second order.
-  
+
   AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, 0) * h_vars()(0) /
           2);
   for (int i = 1; i <= N() - 2; i++) {

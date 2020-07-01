@@ -123,10 +123,10 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto right_toe_rear_constraint = DirconPositionData<double>(
       plant, toe_right, pt_rear_contact, isXZ, ground_normal);
   double mu = 1;
-  // left_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
-  // left_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
-  // right_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
-  // right_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
+  left_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
+  left_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
+  right_toe_front_constraint.addFixedNormalFrictionConstraints(mu);
+  right_toe_rear_constraint.addFixedNormalFrictionConstraints(mu);
 
   const auto& thigh_left = plant.GetBodyByName("thigh_left");
   const auto& heel_spring_left = plant.GetBodyByName("heel_spring_left");

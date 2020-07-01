@@ -122,22 +122,22 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto left_toe_eval = multibody::WorldPointEvaluator(
       plant, left_toe_pair.first, left_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
-  // left_toe_eval.SetFrictional();
+  left_toe_eval.SetFrictional();
 
   auto left_heel_eval = multibody::WorldPointEvaluator(
       plant, left_heel_pair.first, left_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
-  // left_heel_eval.SetFrictional();
+  left_heel_eval.SetFrictional();
 
   auto right_toe_eval = multibody::WorldPointEvaluator(
       plant, right_toe_pair.first, right_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
-  // right_toe_eval.SetFrictional();
+  right_toe_eval.SetFrictional();
 
   auto right_heel_eval = multibody::WorldPointEvaluator(
       plant, right_heel_pair.first, right_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
-  // right_heel_eval.SetFrictional();
+  right_heel_eval.SetFrictional();
 
   auto evaluators = multibody::KinematicEvaluatorSet<double>(plant);
   evaluators.add_evaluator(&left_toe_eval);
@@ -148,8 +148,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   evaluators.add_evaluator(&right_loop_eval);
 
   int num_knotpoints = 20;
-  double min_T = .1;
-  double max_T = 2;
+  double min_T = .01 * 19;
+  double max_T = .3 * 19;
   double mu = 1;
   auto double_support =
       DirconMode<double>(evaluators, num_knotpoints, min_T, max_T);
@@ -182,24 +182,23 @@ void DoMain(double duration, int max_iter, string data_directory,
 
     // // Kinematic constraints
     double s_kin_vel = 500;
-    double s_kin_acc = 1000;
+    double s_kin_pos = 1000;
     double s_kin_1 = (FLAGS_scale_variable) ? 10.0 : 1.0;
     double s_kin_2 = (FLAGS_scale_variable) ? 2.0 : 1.0;
-    // double_support.SetKinAccelerationScale({0, 1, 2, 3}, {0, 1, 2}, 
-    //     1.0 / 50.0 / s_kin_1);
-    double_support.SetKinAccelerationScale(0, 0, 1.0 / 500.0 / s_kin_1);
-    double_support.SetKinAccelerationScale(3, 2, 1.0 / 500.0 / s_kin_1);
-    double_support.SetKinAccelerationScale({4, 5}, {0}, 2.0 / 50.0 / s_kin_1);
+
+    double dist_scale = 2.0 / 55;
+
+    // double_support.SetKinAccelerationScale({4, 5}, {0}, dist_scale / s_kin_1);
 
     double_support.SetKinVelocityScale(
         {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * s_kin_vel * s_kin_2 / s_kin_1);
     double_support.SetKinVelocityScale(
-        {4, 5}, {0}, 2.0 / 50.0 * s_kin_vel * s_kin_2 / s_kin_1);
+        {4, 5}, {0}, dist_scale * s_kin_vel * s_kin_2 / s_kin_1);
 
     double_support.SetKinPositionScale(
-        {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * s_kin_acc * s_kin_2 / s_kin_1);
+        {0, 1, 2, 3}, {0, 1, 2}, 1.0 / 500.0 * s_kin_pos * s_kin_2 / s_kin_1);
     double_support.SetKinPositionScale(
-        {4, 5}, {0}, 2.0 / 50.0 * s_kin_acc * s_kin_2 / s_kin_1);
+        {4, 5}, {0}, dist_scale * s_kin_pos * s_kin_2 / s_kin_1);
   }
 
   for (int i = 0; i < num_knotpoints; i++) {
@@ -237,23 +236,27 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
 
   // height constraint
-  trajopt.AddLinearConstraint(x0(positions_map.at("base_z")) == 1);
-  trajopt.AddLinearConstraint(xf(positions_map.at("base_z")) == 1.1);
-  // trajopt.AddLinearConstraint(xf(positions_map.at("base_z")) == 1);
+  trajopt.AddBoundingBoxConstraint(1, 1, x0(positions_map.at("base_z")));
+  trajopt.AddBoundingBoxConstraint(1.1, 1.1, xf(positions_map.at("base_z")));
 
   // initial pelvis position
-  trajopt.AddLinearConstraint(x0(positions_map.at("base_x")) == 0);
-  trajopt.AddLinearConstraint(x0(positions_map.at("base_y")) == 0);
+  trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_x")));
+  trajopt.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_y")));
 
   // pelvis pose constraints
-  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("base_qw")) == 1);
-  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("base_qx")) == 0);
-  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("base_qy")) == 0);
-  trajopt.AddConstraintToAllKnotPoints(x(positions_map.at("base_qz")) == 0);
+  for (int i = 0; i < num_knotpoints; i++) {
+    auto xi = trajopt.state(i);
+    trajopt.AddBoundingBoxConstraint(1, 1, xi(positions_map.at("base_qw")));
+    trajopt.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qx")));
+    trajopt.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qy")));
+    trajopt.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qz")));
+  }
 
   // start/end velocity constraints
-  trajopt.AddLinearConstraint(x0.tail(n_v) == VectorXd::Zero(n_v));
-  trajopt.AddLinearConstraint(xf.tail(n_v) == VectorXd::Zero(n_v));
+  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+                                   x0.tail(n_v));
+  trajopt.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
+                                   xf.tail(n_v));
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{
@@ -326,7 +329,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
   for (int index = 0; index < num_knotpoints; index++) {
     auto x = trajopt.state(index);
-    // trajopt.AddConstraint(foot_y_constraint, x.head(n_q));
+    trajopt.AddConstraint(foot_y_constraint, x.head(n_q));
   }
 
   // add cost
@@ -451,6 +454,7 @@ void DoMain(double duration, int max_iter, string data_directory,
 
   cout << "Solving DIRCON\n\n";
   auto start = std::chrono::high_resolution_clock::now();
+
   const auto result = Solve(trajopt, trajopt.initial_guess());
   SolutionResult solution_result = result.get_solution_result();
   auto finish = std::chrono::high_resolution_clock::now();
@@ -479,13 +483,13 @@ void DoMain(double duration, int max_iter, string data_directory,
     writeCSV(data_directory + string("lb.csv"), constraint_lb);
     writeCSV(data_directory + string("ub.csv"), constraint_ub);
   }
-  for (int i = 0; i < z.size(); i++) {
-    cout << trajopt.decision_variables()[i] << ", " << z[i] << endl;
-  }
-  cout << endl;
+  // for (int i = 0; i < z.size(); i++) {
+  //   cout << trajopt.decision_variables()[i] << ", " << z[i] << endl;
+  // }
+  // cout << endl;
 
   // Check if the nonlinear constraints are all satisfied
-  solvers::CheckGenericConstraints(trajopt, result, tol);
+  // solvers::CheckGenericConstraints(trajopt, result, tol);
   // cout << "constraint_satisfied = " << constraint_satisfied << endl;
 
   // store the time, state, and input at knot points
@@ -493,26 +497,12 @@ void DoMain(double duration, int max_iter, string data_directory,
   MatrixXd state_at_knots = trajopt.GetStateSamples(result);
   MatrixXd input_at_knots = trajopt.GetInputSamples(result);
   state_at_knots.col(num_knotpoints - 1) = result.GetSolution(xf);
-  cout << "time_at_knots = \n" << time_at_knots << "\n";
-  cout << "state_at_knots = \n" << state_at_knots << "\n";
-  cout << "state_at_knots.size() = " << state_at_knots.size() << endl;
-  cout << "input_at_knots = \n" << input_at_knots << "\n";
+
   if (to_store_data) {
     writeCSV(data_directory + string("t_i.csv"), time_at_knots);
     writeCSV(data_directory + string("x_i.csv"), state_at_knots);
     writeCSV(data_directory + string("u_i.csv"), input_at_knots);
   }
-
-  // Store lambda
-  std::ofstream ofile;
-  ofile.open(data_directory + "lambda.txt", std::ofstream::out);
-  cout << "lambda_sol = \n";
-  for (int index = 0; index < num_knotpoints; index++) {
-    auto lambdai = trajopt.force_vars(0, index);
-    cout << result.GetSolution(lambdai).transpose() << endl;
-    ofile << result.GetSolution(lambdai).transpose() << endl;
-  }
-  ofile.close();
 
   // visualizer
   const PiecewisePolynomial<double> pp_xtraj =

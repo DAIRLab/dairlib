@@ -1,17 +1,17 @@
 //
 // Created by jianshu on 6/29/20.
 //
-#include "examples/goldilocks_models/find_boundary/search_setting.h"
+#include "examples/goldilocks_models/find_boundary_utils/search_setting.h"
 
 
 namespace dairlib {
 namespace goldilocks_models {
 
-SearchSetting::SearchSetting(int search_dim,
+SearchSetting::SearchSetting(int task_dim,
                              std::vector <string> names,
                              std::vector<double> task_0,
                              std::vector<double> task_delta)
-    : search_dim_(search_dim),
+    : task_dim_(task_dim),
       names_(names),
       task_0_(task_0),
       task_delta_(task_delta) {
@@ -23,7 +23,7 @@ SearchSetting::SearchSetting(int search_dim,
 
 void SearchSetting::SetExtendComponents(string task_name,int n_element,
                          vector<double> element){
-  DRAKE_DEMAND(n_element==element.size());
+  DRAKE_DEMAND((unsigned)n_element==element.size());
   n_elements_[name_to_index_map_[task_name]] = n_element;
   elements_[name_to_index_map_[task_name]] = element;
 }

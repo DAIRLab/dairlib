@@ -84,7 +84,7 @@ void visualizeGait(int argc, char* argv[]) {
   int n_step = FLAGS_n_step;  // Should be > 0
   /*const string directory = "examples/goldilocks_models/find_models/data/robot_"
                            + to_string(FLAGS_robot_option) + "/";*/
-  const string directory = "../dairlib_data/goldilocks_models/find_boundary/robot_" +
+  const string directory = "../dairlib_data/goldilocks_models/find_boundary_utils/robot_" +
       to_string(FLAGS_robot_option) + "/";
 
   // Looping through the iterations

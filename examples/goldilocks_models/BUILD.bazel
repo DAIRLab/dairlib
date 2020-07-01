@@ -28,7 +28,7 @@ cc_binary(
         ":kinematics_expression",
         ":task",
         "//common:eigen_utils",
-        "//examples/goldilocks_models/find_boundary:search_setting",
+        "//examples/goldilocks_models/find_boundary_utils:search_setting",
         "//examples/goldilocks_models/find_models:initial_guess",
         "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
         "//systems/goldilocks_models",

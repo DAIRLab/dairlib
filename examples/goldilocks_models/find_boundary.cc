@@ -28,7 +28,7 @@
 #include "examples/goldilocks_models/kinematics_expression.h"
 #include "examples/goldilocks_models/task.h"
 #include "systems/goldilocks_models/file_utils.h"
-#include "examples/goldilocks_models/find_boundary/search_setting.h"
+#include "examples/goldilocks_models/find_boundary_utils/search_setting.h"
 
 using std::cin;
 using std::cout;
@@ -61,6 +61,8 @@ DEFINE_int32(rom_option, -1, "");
 
 // inner loop
 DEFINE_string(init_file, "", "Initial Guess for Trajectory Optimization");
+DEFINE_double(major_optimality_tol, 1e-4,
+"tolerance for optimality condition (complementarity gap)");
 DEFINE_double(major_feasibility_tol, 1e-4,
 "nonlinear constraint violation tol");
 DEFINE_int32(
@@ -198,16 +200,16 @@ void setInitialTheta(VectorXd& theta_s, VectorXd& theta_sDDot,
 
 //read theta from files to use optimized model
 void readThetaFromFiles(const string dir,int theta_idx,
-    VectorXd& theta_s, VectorXd& theta_sDDot){
-  theta_s = readCSV(dir + to_string(theta_idx) + string("_theta_s.csv"));
-  theta_sDDot = readCSV(dir + to_string(theta_idx) + string("_theta_sDDot.csv"));
+    VectorXd& theta_y, VectorXd& theta_yddot){
+  theta_y = readCSV(dir + to_string(theta_idx) + string("_theta_y.csv"));
+  theta_yddot = readCSV(dir + to_string(theta_idx) + string("_theta_yddot.csv"));
 }
-
+////TODO:MODIFY THIS FUNCTION!
 //use interpolation to set the initial guess for the trajectory optimization
 string getInitFileName(const string directory, int traj_opt_num,
     bool is_rerun,int rerun_traj_idx=-1){
   VectorXd current_gamma = readCSV(directory + to_string(traj_opt_num)
-                                       + string("_0_gamma.csv"));
+                                       + string("_0_task.csv"));
   int gamma_dimension = current_gamma.size();
   VectorXd gamma_scale(gamma_dimension);
   //paras used to decide gamma scale
@@ -229,7 +231,7 @@ string getInitFileName(const string directory, int traj_opt_num,
   }
   string initial_file_name;
   if(is_rerun){
-    //if not specify which Traj Opt result to use, use its own result to rerun;
+    //if not specify which Traj Opt solution to use, use its own result to rerun;
     //else use the specified one.
     if(rerun_traj_idx==-1) {
       initial_file_name = to_string(traj_opt_num)
@@ -240,47 +242,32 @@ string getInitFileName(const string directory, int traj_opt_num,
           + string("_0_w.csv");
     }
   }else{
+    VectorXd initial_guess;
+    //take out corresponding w and calculate the weight for interpolation
+    MatrixXd w_gamma;
+    VectorXd weight_gamma;
+    int sample_num = 0;
+    string prefix;
+    // initial guess for initial point
     if(traj_opt_num==0){
       //specify initial guess if using optimized model
       //use solutions during ROM optimization process to calculate the initial guess
       if(FLAGS_use_optimized_model){
         const string dir_find_models = "../dairlib_data/goldilocks_models/find_models/robot_" +
             to_string(FLAGS_robot_option) + "/";
-        VectorXd initial_guess;
-        //take out corresponding w and calculate the weight for interpolation
-        MatrixXd w_gamma;
-        VectorXd weight_gamma;
         //calculate the weighted sum of solutions
         int theta_idx = FLAGS_theta_index;
-        int sample_num = 0;
         while(file_exist(dir_find_models + to_string(theta_idx)+ '_' +
         to_string(sample_num)+ string("_is_success.csv"))){
-          //check if this sample is success
-          int is_success = (readCSV(dir_find_models + to_string(theta_idx)+ '_'+
-              to_string(sample_num)+ string("_is_success.csv")))(0,0);
-          if(is_success == 1) {
-            //extract past gamma
-            VectorXd past_gamma = readCSV(dir_find_models + to_string(theta_idx) + string("_")
-                + to_string(sample_num) + string("_task.csv"));
-            //calculate the weight for each sample using the 3-norm of the difference between gamma
-            VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
-            VectorXd dif_gamma2 = dif_gamma.array().pow(2);
-            double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);
-            //extract the solution of this sample
-            VectorXd w_to_interpolate = readCSV(dir_find_models + to_string(theta_idx)+ '_'+
-                to_string(sample_num) + string("_w.csv"));
-            //concatenate the weight and solution for further calculation
-            w_gamma.conservativeResize(w_to_interpolate.rows(),w_gamma.cols()+1);
-            w_gamma.col(w_gamma.cols()-1) = w_to_interpolate;
-            weight_gamma.conservativeResize(weight_gamma.rows()+1);
-            weight_gamma(weight_gamma.rows()-1)= 1 /distance_gamma;
-          }
+          prefix = to_string(theta_idx)+"_"+to_string(sample_num);
+          //calculate interpolation weight and extract solutions
+          InterpolateAmongDifferentTasks(dir_find_models, prefix,
+              current_gamma,gamma_scale,weight_gamma,w_gamma);
           sample_num = sample_num+1;
         }
-        DRAKE_DEMAND(weight_gamma.rows()>0);
-        //    normalize weight
-        weight_gamma = weight_gamma / weight_gamma.sum();
-        initial_guess = w_gamma * weight_gamma;
+        //calculate interpolated initial guess
+        initial_guess = CalculateInterpolation(weight_gamma,
+            w_gamma);
         //    save initial guess and set init file
         initial_file_name = to_string(traj_opt_num)
             + string("_0_initial_guess.csv");
@@ -291,38 +278,14 @@ string getInitFileName(const string directory, int traj_opt_num,
       }
     }else{
       //use past solutions to calculate interpolated initial guess
-      VectorXd initial_guess;
-      //take out corresponding w and calculate the weight for interpolation
-      MatrixXd w_gamma;
-      VectorXd weight_gamma;
       //calculate the weighted sum of past solutions
-      int sample_num = 0;
       for (sample_num = 0; sample_num < traj_opt_num; sample_num++) {
-        //check if this sample is success
-        int is_success = (readCSV(directory + to_string(sample_num)
-                                      + string("_0_is_success.csv")))(0,0);
-        if(is_success == 1) {
-          //extract past gamma
-          VectorXd past_gamma = readCSV(directory + to_string(sample_num)
-                                            + string("_0_gamma.csv"));
-          //calculate the weight for each sample using the third power of the difference between gamma
-          VectorXd dif_gamma = (past_gamma - current_gamma).array().abs()*gamma_scale.array();
-          VectorXd dif_gamma2 = dif_gamma.array().pow(2);
-          double distance_gamma =  (dif_gamma.transpose() * dif_gamma2)(0,0);
-          //extract the solution of this sample
-          VectorXd w_to_interpolate = readCSV(directory + to_string(sample_num)
-                                                  + string("_0_w.csv"));
-          //concatenate the weight and solution for further calculation
-          w_gamma.conservativeResize(w_to_interpolate.rows(),w_gamma.cols()+1);
-          w_gamma.col(w_gamma.cols()-1) = w_to_interpolate;
-          weight_gamma.conservativeResize(weight_gamma.rows()+1);
-          weight_gamma(weight_gamma.rows()-1)= 1 /distance_gamma;
-        }
+        prefix = to_string(sample_num)+"_"+to_string(0);
+        InterpolateAmongDifferentTasks(directory, prefix,
+            current_gamma,gamma_scale,weight_gamma,w_gamma);
       }
-      DRAKE_DEMAND(weight_gamma.rows()>0);
-      //    normalize weight
-      weight_gamma = weight_gamma / weight_gamma.sum();
-      initial_guess = w_gamma * weight_gamma;
+      initial_guess = CalculateInterpolation(weight_gamma,
+                                             w_gamma);
       //    save initial guess and set init file
       initial_file_name = to_string(traj_opt_num)
           + string("_0_initial_guess.csv");
@@ -343,7 +306,6 @@ void trajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
 
   // Create autoDiff version of the plant
   MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);
-  cout << endl;
 
   // Parameters for the inner loop optimization
   int max_inner_iter = FLAGS_max_inner_iter;
@@ -389,8 +351,8 @@ void trajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
   int n_theta_yddot = n_yddot * n_feature_yddot;
 
   // Initial guess of theta
-  theta_y = VectorXd::Zero(n_theta_y);
-  theta_yDDot = VectorXd::Zero(n_theta_yDDot);
+  VectorXd theta_y = VectorXd::Zero(n_theta_y);
+  VectorXd theta_yddot = VectorXd::Zero(n_theta_yddot);
   if(FLAGS_use_optimized_model){
     //you have to specify the theta to use
     DRAKE_DEMAND(FLAGS_theta_index>=0);
@@ -398,10 +360,10 @@ void trajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
 
     const string dir_find_models = "../dairlib_data/goldilocks_models/find_models/robot_" +
         to_string(FLAGS_robot_option) + "/";
-    readThetaFromFiles(dir_find_models, theta_idx, theta_y, theta_yDDot);
+    readThetaFromFiles(dir_find_models, theta_idx, theta_y, theta_yddot);
   }
   else{
-    setInitialTheta(theta_y, theta_yDDot, n_feature_y, rom_option);
+    setInitialTheta(theta_y, theta_yddot, n_feature_y, FLAGS_rom_option);
   }
 
   RomData rom = RomData(n_y, n_tau, n_feature_y, n_feature_yddot, B_tau,
@@ -435,7 +397,7 @@ void trajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
   double cost_threshold_for_update = std::numeric_limits<double>::infinity();
   int N_rerun = 0;
   //run trajectory optimization
-  void trajOptGivenWeights(
+  trajOptGivenWeights(
       std::ref(plant),
       std::ref(plant_autoDiff),
       std::ref(rom),
@@ -446,143 +408,140 @@ void trajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
       is_get_nominal,
       extend_model_this_iter,
       sample_idx, n_rerun, cost_threshold_for_update, N_rerun,
-      rom_option, FLAGS_robot_option);
+      FLAGS_rom_option, FLAGS_robot_option);
 }
 
-//naive test function for search algorithm
-double sample_result(double stride_length,double ground_incline,
-    double turning_rate){
-  double result = std::numeric_limits<double>::infinity();
-  if( (ground_incline<0.12) && (ground_incline>-0.12)){
-    if((stride_length<0.35) && (stride_length>0.25)){
-      result = 0;
-    }
+//Save boundary point information
+void SaveBoundaryPointInfor(const string dir,int boundary_point_index,
+    int traj_num,const VectorXd& boundary_point){
+  VectorXd boundary_point_infor(boundary_point.rows()+2);
+  double boundary_point_cost = (readCSV(dir + to_string(traj_num) +
+      string("_0_c.csv")))(0, 0);
+  boundary_point_infor << traj_num,boundary_point_cost,boundary_point;
+  writeCSV(dir + to_string(boundary_point_index) +  "_" +
+      string("boundary_point.csv"), boundary_point_infor);
+  cout << "boundary point index | stride length | ground incline"
+          " | velocity | turning rate"<<endl;
+  cout << " \t "<<boundary_point_index;
+  for(int i=0;i<boundary_point.rows();i++)
+  {
+    cout<<"\t" <<" | "<<"\t"<<boundary_point[i];
   }
-  return result;
+  cout<<endl;
 }
 
-
-//search the boundary point along one direction
-void boundary_for_one_direction(const string dir,int dims,int max_iteration,
-    VectorXd init_gamma,VectorXd step_direction, VectorXd step_size,
-    double max_cost,int& traj_num,int& boundary_point_idx){
-  int iter;
-  int sample_idx = 0;
+//check the solution of trajectory optimization and rerun if necessary
+void CheckSolution(const Task& task, const string dir,int traj_num){
   int rerun = 0;
   int max_rerun_num = 4;
   int is_success;
-  VectorXd new_gamma(dims);
-  VectorXd last_gamma = init_gamma;
-  VectorXd boundary_point(dims);
-  VectorXd boundary_point_infor(dims+2);
+  //check if snopt find a solution successfully. If not, rerun the Traj Opt
+  for(rerun=0;rerun<max_rerun_num;rerun++){
+    is_success = (readCSV(dir + to_string(traj_num) +
+        string("_0_is_success.csv")))(0, 0);
+    if(is_success==0){
+      trajOptGivenModel(task, dir, traj_num,true);
+    }
+    else{
+      break;
+    }
+  }
+  //if snopt still can't find a solution, try to use adjacent sample to help
+  for(rerun=0;rerun<max_rerun_num;rerun++){
+    is_success = (readCSV(dir + to_string(traj_num) +
+        string("_0_is_success.csv")))(0, 0);
+    if(is_success==0){
+      trajOptGivenModel(task, dir, traj_num,true,traj_num-1);
+    }
+    else{
+      break;
+    }
+  }
+  //if snopt still failed to find a solution,turn off the scaling option
+  // and try again
+  for(rerun=0;rerun<max_rerun_num;rerun++){
+    is_success = (readCSV(dir + to_string(traj_num) +
+        string("_0_is_success.csv")))(0, 0);
+    if(is_success==0){
+      trajOptGivenModel(task, dir, traj_num,true,-1,false);
+    }
+    else{
+      break;
+    }
+  }
+}
+
+//search the boundary point along one direction
+void boundary_for_one_direction(const string dir,int max_iteration,
+    const Task& initial_task,const VectorXd& step_direction, const VectorXd& step_size,
+    double max_cost,int& traj_num,int& boundary_point_idx){
+  int iter;
+  Task task=initial_task;//create a copy for future use
+  VectorXd new_task(task.dim());
+  VectorXd last_task = Eigen::Map<const VectorXd>(task.get().data(),
+      task.get().size());
+  VectorXd boundary_point(task.dim());
   VectorXd step = step_size.array()*step_direction.array();
   MatrixXd cost_list;
   double decay_factor;//take a large step at the beginning
-  cout << "sample# (rerun #) | stride | incline | turning | init_file | "
-          "Status | Solve time | Cost (tau cost)\n";
+  cout << "sample# (rerun #) | stride | incline | velocity | turning rate | "
+          "init_file | Status | Solve time | Cost (tau cost)\n";
   for (iter = 1; iter <= max_iteration; iter++){
     decay_factor = 2.5*pow(0.95,iter);
+    //if decay_factor is larger than 1, use it to decrease the step size;
+    //otherwise directly use the step size.
     if(decay_factor>1){
-      new_gamma = last_gamma+decay_factor*step;
-      last_gamma = new_gamma;
+      new_task = last_task+decay_factor*step;
+      last_task = new_task;
     }
     else{
-      new_gamma = last_gamma+step;
-      last_gamma = new_gamma;
+      new_task = last_task+step;
+      last_task = new_task;
     }
     //if stride length is negative or zero,stop searching
-    if(new_gamma[0]<=0){
+    if(new_task[0]<=0){
       boundary_point_idx += 1;
-      boundary_point = new_gamma-step;
-      double boundary_point_cost = (readCSV(dir + to_string(traj_num) +  "_" +
-          to_string(sample_idx) + "_" + string("c.csv")))(0, 0);
-      boundary_point_infor << traj_num,boundary_point,boundary_point_cost;
-      writeCSV(dir + to_string(boundary_point_idx) +  "_" +
-          string("boundary_point.csv"), boundary_point_infor);
-      cout << "boundary point index | stride length | ground incline"
-              " | turning rate"<<endl;
-      cout<<" \t "<<boundary_point_idx<< "\t" <<" | "<<"\t"<<boundary_point[0]
-          <<"\t"<<" | "<<"\t"<<boundary_point[1]<<"\t"<<" | "<<"\t"<<
-          boundary_point[2]<<endl;
+      boundary_point = new_task-step;
+      SaveBoundaryPointInfor(dir,boundary_point_idx,
+          traj_num,boundary_point);
       break;
     }
-    //store stride length, ground incline and turning rate
+    //start searching
+    //set tasks
+    vector<double> new_task_vector(new_task.data(),
+        new_task.data()+new_task.size());
+    task.set(new_task_vector);
+    //save tasks
     traj_num += 1;
-    string prefix = to_string(traj_num) +  "_" + to_string(sample_idx) + "_";
-    writeCSV(dir + prefix +
-        string("gamma.csv"), new_gamma);
+    writeCSV(dir + to_string(traj_num) +
+        string("_0_task.csv"), new_task);
     //run trajectory optimization and judge the solution
-    trajOptGivenModel(new_gamma[0], new_gamma[1],
-        new_gamma[2], dir, traj_num, false);
-    //check if snopt find a solution successfully. If not, rerun the Traj Opt
-    for(rerun=0;rerun<max_rerun_num;rerun++){
-      is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
-      if(is_success==0){
-        trajOptGivenModel(new_gamma[0], new_gamma[1],
-                          new_gamma[2], dir, traj_num,true);
-      }
-      else{
-        break;
-      }
-    }
-    //if snopt still can't find a solution, try to use adjacent sample to help
-    for(rerun=0;rerun<max_rerun_num;rerun++){
-      is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
-      if(is_success==0){
-        trajOptGivenModel(new_gamma[0], new_gamma[1],
-                          new_gamma[2], dir, traj_num,true,traj_num-1);
-      }
-      else{
-        break;
-      }
-    }
-    //if snopt still failed to find a solution,turn off the scaling option
-    // and try again
-    for(rerun=0;rerun<max_rerun_num;rerun++){
-      is_success = (readCSV(dir + prefix + string("is_success.csv")))(0, 0);
-      if(is_success==0){
-        trajOptGivenModel(new_gamma[0], new_gamma[1],
-                          new_gamma[2], dir, traj_num,true,-1,false);
-      }
-      else{
-        break;
-      }
-    }
+    trajOptGivenModel(task, dir, traj_num, false);
+    CheckSolution(task,dir,traj_num);
     double sample_cost =
-        (readCSV(dir + prefix + string("c.csv")))(0, 0);
+        (readCSV(dir + to_string(traj_num) + string("_0_c.csv")))(0, 0);
     // without a good initial guess, the initial point is easily stuck in a local minimum
     // use the first sample to judge the solution of initial point
     if(iter==1){
       double initial_cost =
           (readCSV(dir + string("0_0_c.csv")))(0, 0);
       if(initial_cost>1.2*sample_cost){
-        trajOptGivenModel(init_gamma[0], init_gamma[1],
-                          init_gamma[2], dir, 0,true,traj_num);
+        trajOptGivenModel(initial_task, dir, 0,true,traj_num);
       }
     }
     //save the trajectory optimization index and corresponding cost for further use
     cost_list.conservativeResize(cost_list.rows()+1, 2);
     cost_list.row(cost_list.rows()-1)<<traj_num,sample_cost;
 
-    //test search algorithm
-//    double sample_cost = sample_result(new_gamma[0],new_gamma[1],
-//        new_gamma[2]);
-
     if(sample_cost>max_cost){
       boundary_point_idx += 1;
-      boundary_point = new_gamma-step;
-      double boundary_point_cost = sample_cost;
-      boundary_point_infor << traj_num,boundary_point,boundary_point_cost;
-      writeCSV(dir + to_string(boundary_point_idx) +  "_" +
-          string("boundary_point.csv"), boundary_point_infor);
-      cout << "boundary point index | stride length | ground incline"
-              " | turning rate"<<endl;
-      cout<<" \t "<<boundary_point_idx<< "\t" <<" | "<<"\t"<<boundary_point[0]
-          <<"\t"<<" | "<<"\t"<<boundary_point[1]<<"\t"<<" | "<<"\t"<<
-          boundary_point[2]<<endl;
+      boundary_point = new_task-step;
+      SaveBoundaryPointInfor(dir,boundary_point_idx,
+                             traj_num,boundary_point);
       break;
     }
   }
+
   cout << "\nStart checking the cost:\n";
   //check the adjacent sample to avoid being stuck in local minimum
   int traj_idx;
@@ -591,45 +550,26 @@ void boundary_for_one_direction(const string dir,int dims,int max_iteration,
     //if cost is larger than adjacent sample, rerun with adjacent sample result
     if( (cost_list(iter,1) > 1.2*cost_list(iter-1,1)) &&
       (cost_list(iter,1) > 1.2*cost_list(iter+1,1)) ){
-      VectorXd gamma_to_rerun = readCSV(dir + to_string(traj_idx)
-                                           + string("_0_gamma.csv"));
+      VectorXd task_to_rerun = readCSV(dir + to_string(traj_idx)
+                                           + string("_0_task.csv"));
+      vector<double> task_vector(task_to_rerun.data(),
+          task_to_rerun.data()+task_to_rerun.size());
+      task.set(task_vector);
       //choose the result of sample with lower cost as initial guess
       if(cost_list(iter-1,1)<cost_list(iter+1,1)){
-        trajOptGivenModel(gamma_to_rerun[0], gamma_to_rerun[1],
-                          gamma_to_rerun[2], dir, traj_idx,
+        trajOptGivenModel(task, dir, traj_idx,
                           true, traj_idx-1);
         //make sure this sample success
-        for(rerun=0;rerun<max_rerun_num;rerun++){
-          is_success = (readCSV(dir + to_string(traj_idx) +
-              string("_0_is_success.csv")))(0, 0);
-          if(is_success==0){
-            trajOptGivenModel(new_gamma[0], new_gamma[1],
-                              new_gamma[2], dir, traj_idx,true);
-          }
-          else{
-            break;
-          }
-        }
+        CheckSolution(task,dir,traj_idx);
       }
       else{
-        trajOptGivenModel(gamma_to_rerun[0], gamma_to_rerun[1],
-                          gamma_to_rerun[2], dir, traj_idx,
+        trajOptGivenModel(task, dir, traj_idx,
                           true, traj_idx+1);
         //make sure this sample success
-        for(rerun=0;rerun<max_rerun_num;rerun++){
-          is_success = (readCSV(dir + to_string(traj_idx) +
-              string("_0_is_success.csv")))(0, 0);
-          if(is_success==0){
-            trajOptGivenModel(new_gamma[0], new_gamma[1],
-                              new_gamma[2], dir, traj_idx,true);
-          }
-          else{
-            break;
-          }
-        }
+        CheckSolution(task,dir,traj_idx);
       }
       //update cost list
-      cost_list(iter,1) = readCSV(dir + to_string(iter)
+      cost_list(iter,1) = readCSV(dir + to_string(traj_idx)
                                       + string("_0_c.csv"))(0,0);
     }
   }
@@ -658,7 +598,7 @@ int find_boundary(int argc, char* argv[]){
   cout << "\nBasic information:\n";
   cout << FLAGS_program_name << endl;
   int robot_option = FLAGS_robot_option;
-  int rom_potion = FLAGS_rom_option;
+  int rom_option = FLAGS_rom_option;
   cout << "robot_option: " << robot_option << endl;
   cout << "rom_option: " << rom_option << endl;
 
@@ -674,27 +614,22 @@ int find_boundary(int argc, char* argv[]){
                  "velocity"});
     search_setting = SearchSetting(3,{"stride length", "ground incline",
                                       "velocity"},{0.25,0,0.4},
-                                          {0.01,0.01,0});
+                                          {0.01,0.01,0.02});
   }
   else if(robot_option==1){
     task = Task({"stride length", "ground incline",
                  "velocity", "turning rate"});
     search_setting = SearchSetting(4,{"stride length", "ground incline",
                                       "velocity","turning rate"},
-                                   {0.3,0,0.5,0},{0.01,0.01,0,0});
+                                   {0.3,0,0.5,0},{0.01,0.01,0.02,0.01});
   }
   //cout initial point information
   int dim = 0;
-  for(dim = 0;dim<search_setting.search_dim();dim++)
+  for(dim = 0;dim<search_setting.task_dim();dim++)
   {
     cout<<"initial "<<search_setting.names()[dim]<<
     ": "+to_string(search_setting.task_0()[dim])<<endl;
   }
-
-//  VectorXd initial_task = Eigen::Map<VectorXd>(search_setting.task_0().data(),
-//      search_setting.task_0().size());
-//  VectorXd delta_task = Eigen::Map<VectorXd>(search_setting.task_delta().data(),
-//      search_setting.task_delta().size());
 
   /*
    * Iteration setting
@@ -725,7 +660,9 @@ int find_boundary(int argc, char* argv[]){
   }
   cout<<"cost_threshold "<<cost_threshold<<endl;
 
-  //create components for each dimension used to decide the direction
+  // create components for each dimension used to decide the direction
+  // considering we can only visualize 2D landscape, we only search within
+  // 2D space and fix other dimension
   if(robot_option==0){
     search_setting.SetExtendComponents("stride length",5,{0,-1,0.5,0.5,1});
     search_setting.SetExtendComponents("ground incline",5,{0,-1,0.5,0.5,1});
@@ -747,44 +684,70 @@ int find_boundary(int argc, char* argv[]){
   //evaluate initial point
   VectorXd initial_task = Eigen::Map<VectorXd>(search_setting.task_0().data(),
       search_setting.task_0().size());
+  task.set(search_setting.task_0());
   writeCSV(dir +  to_string(traj_opt_num)  +
       string("_0_task.csv"), initial_task);
   cout << "\nCalculate Central Point Cost:\n";
-  if(robot_option==0)
-  {
-    cout << "sample# (rerun #) | stride | incline | velocity | init_file | "
-            "Status | Solve time | Cost (tau cost)\n";
-  }
-
-  cout << "sample# (rerun #) | stride | incline | turning | init_file | "
-          "Status | Solve time | Cost (tau cost)\n";
-  trajOptGivenModel(stride_length_0, ground_incline_0,
-                    turning_rate_0, dir, traj_opt_num, false);
+  cout << "sample# (rerun #) | stride | incline | velocity | turning rate | "
+          "init_file | Status | Solve time | Cost (tau cost)\n";
+  trajOptGivenModel(task, dir, traj_opt_num, false);
   //make sure solution found for the initial point
   int init_is_success = (readCSV(dir + string("0_0_is_success.csv")))(0,0);
   while(!init_is_success){
-    trajOptGivenModel(stride_length_0, ground_incline_0,
-                      turning_rate_0, dir, traj_opt_num, true);
+    trajOptGivenModel(task, dir, traj_opt_num, true);
     init_is_success = (readCSV(dir + string("0_0_is_success.csv")))(0,0);
   }
 
-  int dim1,dim2,dim3;
-  VectorXd step(dimensions);
-  //for all the direction, search the boundary
-  for (dim1=0;dim1<sl_comp_num;dim1++){
-    for(dim2=0;dim2<gi_comp_num;dim2++){
-      for(dim3=0;dim3<tr_comp_num;dim3++){
-        extend_direction << e_sl[dim1],e_gi[dim2],e_tr[dim3];
-        //filter with infinity norm to avoid repetitive searching
-        //search along the direction
-        if( (extend_direction.lpNorm<Eigen::Infinity>()) >=1){
-          cout << "Start searching along direction: ["<<extend_direction[0]
-               <<","<<extend_direction[1]<<","<<extend_direction[2]<<"]"<<endl;
-          //normalize the direction vector
-          //extend_direction = extend_direction/extend_direction.norm();
-          boundary_for_one_direction(dir,dimensions,max_iter,
-              initial_gamma,extend_direction,delta,
-              cost_threshold,traj_opt_num,boundary_sample_num);
+  // find which task dimension to search
+  dim = 0;
+  VectorXd extend_direction;
+  if(robot_option==0)
+  {
+    VectorXd extend_direction(3);
+  }
+  else if(robot_option==1)
+  {
+    VectorXd extend_direction(4);
+  }
+  int ele1,ele2,ele3,ele4;
+  // search the boundary
+  VectorXd task_delta = Eigen::Map<VectorXd>(search_setting.task_delta().data(),
+      search_setting.task_delta().size());
+  for (ele1=0;ele1<search_setting.get_n_element(0);ele1++){
+    for(ele2=0;ele2<search_setting.get_n_element(1);ele2++){
+      for(ele3=0;ele3<search_setting.get_n_element(2);ele3++){
+        if(robot_option==0) {
+          extend_direction << search_setting.get_element(0,ele1),
+              search_setting.get_element(1,ele2),
+              search_setting.get_element(2,ele3);
+          //filter with infinity norm to avoid repetitive searching
+          //search along the direction
+          if ((extend_direction.lpNorm<Eigen::Infinity>()) >= 1) {
+            cout << "Start searching along direction: [" << extend_direction[0]
+                 << "," << extend_direction[1] << "," << extend_direction[2]
+                 << "]" << endl;
+            boundary_for_one_direction(dir,max_iter,
+                task, extend_direction, task_delta,
+                cost_threshold,traj_opt_num,boundary_sample_num);
+          }
+        }
+        else if(robot_option==1){
+          for(ele4=0;ele4<search_setting.get_n_element(3);ele4++){
+            extend_direction << search_setting.get_element(0,ele1),
+                search_setting.get_element(1,ele2),
+                search_setting.get_element(2,ele3),
+                search_setting.get_element(3,ele4);
+            //filter with infinity norm to avoid repetitive searching
+            //search along the direction
+            if ((extend_direction.lpNorm<Eigen::Infinity>()) >= 1) {
+              cout << "Start searching along direction: [" << extend_direction[0]
+                   << "," << extend_direction[1] << "," << extend_direction[2]
+                   << "," << extend_direction[3] << "]" << endl;
+              boundary_for_one_direction(dir,max_iter,
+                  task, extend_direction, task_delta,
+                  cost_threshold,traj_opt_num,boundary_sample_num);
+            }
+          }
         }
       }
     }

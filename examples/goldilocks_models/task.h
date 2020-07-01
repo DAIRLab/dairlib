@@ -34,12 +34,14 @@ class Task {
       name_to_index_map_[names[i]] = i;
     }
   }
+  //Default constructor;
+  Task(){};
 
   // Getters and setters
   double get(const string& name) const {
     return task_.at(name_to_index_map_.at(name));
   }
-  int dim() {return task_dim_};
+  int dim() {return task_dim_;}
   const std::vector<double>& get() const { return task_; }
   void set(const std::vector<double>& values) {
     DRAKE_DEMAND(values.size() == (unsigned)task_dim_);

@@ -92,8 +92,8 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     double slack_bound = .01 * 100;
 
     // Bound collocation slack variables to avoid numerical issues
-    AddBoundingBoxConstraint(-slack_bound, slack_bound,
-                             collocation_slack_vars_.at(i_mode));
+    // AddBoundingBoxConstraint(-slack_bound, slack_bound,
+    //                          collocation_slack_vars_.at(i_mode));
 
     // quaternion_slack_vars_ (slack variables used to scale quaternion norm to
     // 1 in the dynamic constraints)
@@ -254,9 +254,9 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
 
     // Add regularization cost on force
     int n_l = mode.evaluators().count_full() * mode.num_knotpoints();
-    AddQuadraticCost(
-        mode.get_force_regularization() * MatrixXd::Identity(n_l, n_l),
-        VectorXd::Zero(n_l), force_vars_.at(i_mode));
+    // AddQuadraticCost(
+    //     mode.get_force_regularization() * MatrixXd::Identity(n_l, n_l),
+    //     VectorXd::Zero(n_l), force_vars_.at(i_mode));
   }
 }
 
@@ -490,6 +490,7 @@ void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // Here, we add the cost using symbolic expression. The expression is a
   // polynomial of degree 3 which Drake can handle, although the
   // documentation says it only supports up to second order.
+  
   AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, 0) * h_vars()(0) /
           2);
   for (int i = 1; i <= N() - 2; i++) {

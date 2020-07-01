@@ -285,16 +285,16 @@ void DoMain(int argc, char* argv[]) {
       autoDiffToValueMatrix(phi - y_old.tail(evaluators.count_active()))
       << std::endl;
 
-//   std::cout << "dPhiddot: " << std::endl <<
-//       autoDiffToGradientMatrix(phiddot - y_old.head(evaluators.count_active()))
-//       << std::endl;
-//   std::cout << "dPhidot: " << std::endl <<
-//       autoDiffToGradientMatrix(phidot - y_old.segment(evaluators.count_active(),
-//           evaluators.count_active()))
-//       << std::endl;
-//   std::cout << "dPhi: " << std::endl <<
-//       autoDiffToGradientMatrix(phi - y_old.tail(evaluators.count_active()))
-//       << std::endl;
+  std::cout << "dPhiddot: " << std::endl <<
+      autoDiffToGradientMatrix(phiddot - y_old.head(evaluators.count_active()))
+      << std::endl;
+  std::cout << "dPhidot: " << std::endl <<
+      autoDiffToGradientMatrix(phidot - y_old.segment(evaluators.count_active(),
+          evaluators.count_active()))
+      << std::endl;
+  std::cout << "dPhi: " << std::endl <<
+      autoDiffToGradientMatrix(phi - y_old.tail(evaluators.count_active()))
+      << std::endl;
 
   auto vars_collocation = drake::math::initializeAutoDiff(
       Eigen::VectorXd::Random(collocation_constraint.num_vars()));

@@ -122,22 +122,22 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto left_toe_eval = multibody::WorldPointEvaluator(
       plant, left_toe_pair.first, left_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
-  left_toe_eval.SetFrictional();
+  // left_toe_eval.SetFrictional();
 
   auto left_heel_eval = multibody::WorldPointEvaluator(
       plant, left_heel_pair.first, left_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
-  left_heel_eval.SetFrictional();
+  // left_heel_eval.SetFrictional();
 
   auto right_toe_eval = multibody::WorldPointEvaluator(
       plant, right_toe_pair.first, right_toe_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), toe_active_inds);
-  right_toe_eval.SetFrictional();
+  // right_toe_eval.SetFrictional();
 
   auto right_heel_eval = multibody::WorldPointEvaluator(
       plant, right_heel_pair.first, right_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), heel_active_inds);
-  right_heel_eval.SetFrictional();
+  // right_heel_eval.SetFrictional();
 
   auto evaluators = multibody::KinematicEvaluatorSet<double>(plant);
   evaluators.add_evaluator(&left_toe_eval);
@@ -148,7 +148,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   evaluators.add_evaluator(&right_loop_eval);
 
   int num_knotpoints = 20;
-  double min_T = .2;
+  double min_T = .1;
   double max_T = 2;
   double mu = 1;
   auto double_support =

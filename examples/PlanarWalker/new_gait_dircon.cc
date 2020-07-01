@@ -43,7 +43,7 @@ namespace {
 using systems::trajectory_optimization::DirconModeSequence;
 using systems::trajectory_optimization::DirconMode;
 using systems::trajectory_optimization::Dircon;
-using systems::trajectory_optimization::DirconKinConstraintType;
+using systems::trajectory_optimization::KinematicConstraintType;
 
 using std::vector;
 using std::cout;

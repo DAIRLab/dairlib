@@ -57,7 +57,8 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalActiveJacobianDotTimesV(
   VectorX<T> Jdotv(count_active());
   int ind = 0;
   for (const auto& e : evaluators_) {
-    Jdotv.segment(ind, e->num_active()) = e->EvalActiveJacobianDotTimesV(context);
+    Jdotv.segment(ind, e->num_active()) =
+        e->EvalActiveJacobianDotTimesV(context);
     ind += e->num_active();
   }
   return Jdotv;

@@ -28,11 +28,15 @@ template <typename T>
 VectorX<T> DistanceEvaluator<T>::EvalFull(
     const Context<T>& context) const {
   // Transform point A to frame B, and compute norm
-  VectorX<T> pt_A_B(3);
+  const drake::multibody::Frame<T>& world = plant().world_frame();
+  VectorX<T> pt_A_W(3);
+  VectorX<T> pt_B_W(3);
 
   plant().CalcPointsPositions(context, frame_A_,
-      pt_A_.template cast<T>(), frame_B_, &pt_A_B);  
-  auto rel_pos = pt_A_B - pt_B_;
+      pt_A_.template cast<T>(), world, &pt_A_W);
+  plant().CalcPointsPositions(context, frame_B_,
+      pt_B_.template cast<T>(), world, &pt_B_W);
+  auto rel_pos = pt_A_W - pt_B_W;
   VectorX<T> difference(1);
   // difference << rel_pos.norm() - distance_;
   difference << rel_pos.squaredNorm() - distance_ * distance_;
@@ -46,21 +50,30 @@ MatrixX<T> DistanceEvaluator<T>::EvalFullJacobian(
   /// Jacobian of ||pt_A - pt_B||, evaluated all in frame B, is
   ///   (pt_A - pt_B)^T * (J_A - J_B) / ||pt_A - pt_B||
 
-  VectorX<T> pt_A_B(3);
+  const drake::multibody::Frame<T>& world = plant().world_frame();
+  VectorX<T> pt_A_W(3);
+  VectorX<T> pt_B_W(3);
 
   plant().CalcPointsPositions(context, frame_A_,
-      pt_A_.template cast<T>(), frame_B_, &pt_A_B);   
-  auto rel_pos = pt_A_B - pt_B_;
+      pt_A_.template cast<T>(), world, &pt_A_W);
+  plant().CalcPointsPositions(context, frame_B_,
+      pt_B_.template cast<T>(), world, &pt_B_W);
+  auto rel_pos = pt_A_W - pt_B_W;
 
   MatrixX<T> J_A(3, plant().num_velocities());
+
+  MatrixX<T> J_B(3, plant().num_velocities());
 
   // .template cast<T> converts pt_A_, as a double, into type T
   plant().CalcJacobianTranslationalVelocity(
     context, drake::multibody::JacobianWrtVariable::kV,
-    frame_A_, pt_A_.template cast<T>(), frame_B_, frame_B_, &J_A);
-
+    frame_A_, pt_A_.template cast<T>(), world, world, &J_A);
+  plant().CalcJacobianTranslationalVelocity(
+    context, drake::multibody::JacobianWrtVariable::kV,
+    frame_B_, pt_B_.template cast<T>(), world, world, &J_B);
+  
   // return (rel_pos.transpose() * J_A) / rel_pos.norm();
-  return  2 * (rel_pos.transpose() * J_A);
+  return  2 * rel_pos.transpose() * (J_A - J_B);
 }
 
 template <typename T>

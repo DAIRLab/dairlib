@@ -316,14 +316,23 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // Here, we add the cost using symbolic expression. The expression is a
   // polynomial of degree 3 which Drake can handle, although the
   // documentation says it only supports up to second order.
+  std::cout << MultipleShooting::SubstitutePlaceholderVariables(g, 0) *
+                   h_vars()(0) / 2
+            << std::endl;
   AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, 0) * h_vars()(0) /
           2);
   for (int i = 1; i <= N() - 2; i++) {
+    std::cout << MultipleShooting::SubstitutePlaceholderVariables(g, i) *
+                     (h_vars()(i - 1) + h_vars()(i)) / 2
+              << std::endl;
     AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, i) *
             (h_vars()(i - 1) + h_vars()(i)) / 2);
   }
   AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, N() - 1) *
           h_vars()(N() - 2) / 2);
+  std::cout << MultipleShooting::SubstitutePlaceholderVariables(g, N() - 1) *
+                   h_vars()(N() - 2) / 2
+            << std::endl;
 }
 
 template <typename T>

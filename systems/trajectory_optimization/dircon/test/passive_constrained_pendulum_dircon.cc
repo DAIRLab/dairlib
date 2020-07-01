@@ -49,7 +49,6 @@ using Eigen::MatrixXd;
 using systems::trajectory_optimization::DirconModeSequence;
 using systems::trajectory_optimization::DirconMode;
 using systems::trajectory_optimization::Dircon;
-using systems::trajectory_optimization::DirconKinConstraintType;
 
 // Fixed path to double pendulum SDF model.
 static const char* const kDoublePendulumSdfPath =

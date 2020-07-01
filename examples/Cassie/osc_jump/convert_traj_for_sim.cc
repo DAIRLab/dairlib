@@ -109,8 +109,6 @@ int DoMain() {
                                            nv_wo_spr) =
       map_velocity_from_no_spring_to_spring;
 
-  std::cout << map_state_from_no_spring_to_spring << std::endl;
-
   const LcmTrajectory& loadedTrajs =
       LcmTrajectory(FLAGS_folder_path + FLAGS_trajectory_name);
   auto traj_mode0 = loadedTrajs.getTrajectory("cassie_jumping_trajectory_x_u0");

@@ -190,10 +190,11 @@ void DoMain(double duration, int max_iter, string data_directory,
     // Kinematic constraints
     int n_kin = double_all_dataset.countConstraints();
     double s_kin_vel = 500;
-    double s_kin_acc = 1000;
+    double s_kin_pos = 1000;
     double s_kin_1 = (FLAGS_is_scale_variable) ? 10.0 : 1.0;
     double s_kin_2 = (FLAGS_is_scale_variable) ? 2.0 : 1.0;
-    double_all_options.setKinConstraintScaling({0, 9}, 1.0 / 500.0 / s_kin_1);
+    double_all_options.setKinConstraintScaling({0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+                                               1.0 / 500.0 / s_kin_1);
     double_all_options.setKinConstraintScaling({10, 11}, 2.0 / 50.0 / s_kin_1);
     double_all_options.setKinConstraintScaling(
         {n_kin + 0, n_kin + 1, n_kin + 2, n_kin + 3, n_kin + 4, n_kin + 5,
@@ -205,10 +206,10 @@ void DoMain(double duration, int max_iter, string data_directory,
         {2 * n_kin + 0, 2 * n_kin + 1, 2 * n_kin + 2, 2 * n_kin + 3,
          2 * n_kin + 4, 2 * n_kin + 5, 2 * n_kin + 6, 2 * n_kin + 7,
          2 * n_kin + 8, 2 * n_kin + 9},
-        1.0 / 500.0 * s_kin_acc * s_kin_2 / s_kin_1);
+        1.0 / 500.0 * s_kin_pos * s_kin_2 / s_kin_1);
     double_all_options.setKinConstraintScaling(
         {2 * n_kin + 10, 2 * n_kin + 11},
-        2.0 / 50.0 * s_kin_acc * s_kin_2 / s_kin_1);
+        2.0 / 50.0 * s_kin_pos * s_kin_2 / s_kin_1);
   }
 
   // timesteps and modes setting
@@ -260,22 +261,27 @@ void DoMain(double duration, int max_iter, string data_directory,
       num_time_samples[num_time_samples.size() - 1] / 2);
 
   // height constraint
-  trajopt->AddLinearConstraint(x0(positions_map.at("base_z")) == 1);
-  // trajopt->AddLinearConstraint(xmid(positions_map.at("base_z")) == 1.1);
-  trajopt->AddLinearConstraint(xf(positions_map.at("base_z")) == 1.1);
+  trajopt->AddBoundingBoxConstraint(1, 1, x0(positions_map.at("base_z")));
+  // trajopt->AddBoundingBoxConstraint(1.1, 1.1, xmid(positions_map.at("base_z")));
+  trajopt->AddBoundingBoxConstraint(1.1, 1.1, xf(positions_map.at("base_z")));
 
   // initial pelvis position
   // trajopt->AddLinearConstraint(x0(positions_map.at("base_y")) == 0);
 
   // pelvis pose constraints
-  trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qw")) == 1);
-  trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qx")) == 0);
-  trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qy")) == 0);
-  trajopt->AddConstraintToAllKnotPoints(x(positions_map.at("base_qz")) == 0);
+  for (int i = 0; i < N; i++) {
+    auto xi = trajopt->state(i);
+    trajopt->AddBoundingBoxConstraint(1, 1, xi(positions_map.at("base_qw")));
+    trajopt->AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qx")));
+    trajopt->AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qy")));
+    trajopt->AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qz")));
+  }
 
   // start/end velocity constraints
-  trajopt->AddLinearConstraint(x0.tail(n_v) == VectorXd::Zero(n_v));
-  trajopt->AddLinearConstraint(xf.tail(n_v) == VectorXd::Zero(n_v));
+  for (int i = 0; i < n_v; i++) {
+    trajopt->AddBoundingBoxConstraint(0, 0, x0(n_q + i));
+    trajopt->AddBoundingBoxConstraint(0, 0, xf(n_q + i));
+  }
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{
@@ -343,8 +349,8 @@ void DoMain(double duration, int max_iter, string data_directory,
   }
 
   // add cost
-  const MatrixXd Q = 10 * 12.5 * MatrixXd::Identity(n_v, n_v);
-  const MatrixXd R = 12.5 * MatrixXd::Identity(n_u, n_u);
+  const MatrixXd Q = 0.0125 * MatrixXd::Identity(n_v, n_v);
+  const MatrixXd R = 0.00125 * MatrixXd::Identity(n_u, n_u);
   trajopt->AddRunningCost(x.tail(n_v).transpose() * Q * x.tail(n_v));
   trajopt->AddRunningCost(u.transpose() * R * u);
 
@@ -369,11 +375,11 @@ void DoMain(double duration, int max_iter, string data_directory,
     // input
     trajopt->ScaleInputVariables({0, 1}, 60);
     trajopt->ScaleInputVariables({2, 3}, 300);  // 300
-    trajopt->ScaleInputVariables({4, 7}, 60);
+    trajopt->ScaleInputVariables({4, 5, 6, 7}, 60);
     trajopt->ScaleInputVariables({8, 9}, 600);  // 600
     // force
     trajopt->ScaleForceVariables(0, {0, 1}, 10);
-    trajopt->ScaleForceVariables(0, {2, 2}, 1000);  // 1000
+    trajopt->ScaleForceVariable(0, 2, 1000);  // 1000
     trajopt->ScaleForceVariables(0, {3, 4}, 10);
     trajopt->ScaleForceVariable(0, 5, 1000);
     trajopt->ScaleForceVariables(0, {6, 7}, 10);
@@ -437,6 +443,27 @@ void DoMain(double duration, int max_iter, string data_directory,
 
       auto lambdai = trajopt->force(0, i);
       trajopt->SetInitialGuess(lambdai, lambda_sol_reorder);
+    }
+    // guess for constraint force at the collocation points
+    for (int i = 0; i < N - 1; i++) {
+      auto lambda0 = trajopt->GetInitialGuess(trajopt->force(0, i));
+      auto lambda1 = trajopt->GetInitialGuess(trajopt->force(0, i + 1));
+      auto collocation_lambda = trajopt->collocation_force(0, i);
+      trajopt->SetInitialGuess(collocation_lambda, (lambda0 + lambda1) / 2);
+    }
+    // initial guess for slack variables
+    auto vars_kinematics = trajopt->collocation_slack_vars(0);
+    for (int i = 0; i < vars_kinematics.size(); i++) {
+      trajopt->SetInitialGuess(vars_kinematics(i), 0);
+    }
+    auto vars_quaternion = trajopt->quaternion_slack_vars(0);
+    for (int i = 0; i < vars_quaternion.size(); i++) {
+      trajopt->SetInitialGuess(vars_quaternion(i), 0);
+    }
+    // initial condition for timestep
+    for (int i = 0; i < N - 1; i++) {
+      auto h_var = trajopt->timestep(i);
+      trajopt->SetInitialGuess(h_var(0), duration / (N - 1));
     }
   }
   // Careful: MUST set the initial guess for quaternion, since 0-norm quaternion

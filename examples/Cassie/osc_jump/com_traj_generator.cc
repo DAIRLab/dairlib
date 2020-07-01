@@ -77,14 +77,12 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
   VectorXd fsm_state = fsm_output->get_value();
 
   const auto robot_output =
-      this->template EvalVectorInput<OutputVector>(context,
-                                                           state_port_);
+      this->template EvalVectorInput<OutputVector>(context, state_port_);
   double timestamp = robot_output->get_timestamp();
 
   if (prev_fsm_state(0) != fsm_state(0)) {  // When to reset the clock
     prev_fsm_state(0) = fsm_state(0);
 
-    VectorXd zero_input = VectorXd::Zero(plant_.num_actuators());
     VectorXd q = robot_output->GetPositions();
     plant_.SetPositions(context_.get(), q);
     VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
@@ -106,14 +104,15 @@ COMTrajGenerator::generateBalanceTraj(
   VectorXd q = robot_output->GetPositions();
   plant_.SetPositions(context_.get(), q);
 
-  Vector3d targetCoM = crouch_traj_.value(time_offset_);
-  Vector3d currCoM = plant_.CalcCenterOfMassPosition(*context_);
+  Vector3d target_com = crouch_traj_.value(time_offset_);
+  Vector3d curr_com = plant_.CalcCenterOfMassPosition(*context_);
 
   // generate a trajectory from current position to target position
   MatrixXd centerOfMassPoints(3, 2);
-  centerOfMassPoints << currCoM, targetCoM;
+  centerOfMassPoints << curr_com, target_com;
   VectorXd breaks_vector(2);
-  breaks_vector << time, time + kTransitionSpeed * (currCoM - targetCoM).norm();
+  breaks_vector << time,
+      time + kTransitionSpeed * (curr_com - target_com).norm();
 
   return PiecewisePolynomial<double>::FirstOrderHold(breaks_vector,
                                                      centerOfMassPoints);
@@ -139,7 +138,6 @@ COMTrajGenerator::generateLandingTraj(
 
   // Only offset the x-position
   Vector3d offset(com_x_offset[0], 0, 0);
-  //  offset << com_x_offset(0), 0, 0;
 
   auto traj_segment =
       crouch_traj_.slice(crouch_traj_.get_segment_index(time), 1);
@@ -156,8 +154,7 @@ void COMTrajGenerator::CalcTraj(
     drake::trajectories::Trajectory<double>* traj) const {
   // Read in current state
   const auto robot_output =
-      this->template EvalVectorInput<OutputVector>(context,
-                                                           state_port_);
+      this->template EvalVectorInput<OutputVector>(context, state_port_);
   double time = robot_output->get_timestamp();
 
   // Read in finite state machine

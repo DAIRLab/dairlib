@@ -135,11 +135,11 @@ int DoMain(int argc, char* argv[]) {
       processed_trajs.getTrajectory("pelvis_rot_trajectory");
   vector<PiecewisePolynomial<double>> state_trajs;
   for (int i = 0; i < n_modes; ++i) {
-    const LcmTrajectory::Trajectory& state_traj_i =  original_traj
-        .getTrajectory("cassie_jumping_trajectory_x_u" + std::to_string(i));
+    const LcmTrajectory::Trajectory& state_traj_i = original_traj.getTrajectory(
+        "cassie_jumping_trajectory_x_u" + std::to_string(i));
     state_trajs.push_back(PiecewisePolynomial<double>::CubicHermite(
         state_traj_i.time_vector, state_traj_i.datapoints.topRows(nx),
-        state_traj_i.datapoints.topRows(2*nx).bottomRows(nx)));
+        state_traj_i.datapoints.topRows(2 * nx).bottomRows(nx)));
   }
 
   PiecewisePolynomial<double> com_traj =
@@ -161,8 +161,7 @@ int DoMain(int argc, char* argv[]) {
       lcm_pelvis_rot_traj.datapoints.bottomRows(4));
 
   // For the time-based FSM
-  double flight_time =
-      FLAGS_delay_time + state_trajs[0].end_time();
+  double flight_time = FLAGS_delay_time + state_trajs[0].end_time();
   double land_time = FLAGS_delay_time + state_trajs[1].end_time();
   std::vector<double> transition_times = {FLAGS_delay_time, flight_time,
                                           land_time};
@@ -175,11 +174,6 @@ int DoMain(int argc, char* argv[]) {
   PiecewisePolynomial<double> offset_traj =
       PiecewisePolynomial<double>::ZeroOrderHold(breaks_vector, offset_points);
   com_traj = com_traj + offset_traj;
-
-  MatrixXd pos_cov = MatrixXd::Zero(nq, nq);
-  pos_cov(4, 4) = 0.0;
-  MatrixXd vel_cov = MatrixXd::Zero(nv, nv);
-  vel_cov(5, 5) = 0.0;
 
   /**** Initialize all the leaf systems ****/
   SIMULATOR simulator;
@@ -220,9 +214,6 @@ int DoMain(int argc, char* argv[]) {
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG", &lcm, TriggerTypeSet({TriggerType::kForced})));
-  auto gaussian_noise = builder.AddSystem<systems::GaussianNoisePassThrough>(
-      plant_w_springs.num_positions(), plant_w_springs.num_velocities(),
-      plant_w_springs.num_actuators(), pos_cov, vel_cov);
 
   LcmSubscriberSystem* contact_results_sub = nullptr;
   if (FLAGS_simulator == "DRAKE") {
@@ -341,11 +332,18 @@ int DoMain(int argc, char* argv[]) {
 
   /*****Connect ports*****/
   // State receiver connections (Connected through LCM driven loop)
-  builder.Connect(state_receiver->get_output_port(0),
-                  gaussian_noise->get_input_port());
   drake::systems::LeafSystem<double>* controller_state_input = state_receiver;
   if (FLAGS_add_noise) {
     std::cout << "Running with noise: " << std::endl;
+    MatrixXd pos_cov = MatrixXd::Zero(nq, nq);
+    pos_cov(4, 4) = 0.0;
+    MatrixXd vel_cov = MatrixXd::Zero(nv, nv);
+    vel_cov(5, 5) = 0.0;
+    auto gaussian_noise = builder.AddSystem<systems::GaussianNoisePassThrough>(
+        plant_w_springs.num_positions(), plant_w_springs.num_velocities(),
+        plant_w_springs.num_actuators(), pos_cov, vel_cov);
+    builder.Connect(state_receiver->get_output_port(0),
+                    gaussian_noise->get_input_port());
     controller_state_input = gaussian_noise;
   }
 

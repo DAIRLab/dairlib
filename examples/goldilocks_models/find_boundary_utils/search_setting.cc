@@ -21,11 +21,11 @@ SearchSetting::SearchSetting(int task_dim,
   }
 }
 
-void SearchSetting::SetExtendComponents(string task_name,int n_element,
+void SearchSetting::SetExtendComponents(const string task_name,int n_element,
                          vector<double> element){
   DRAKE_DEMAND((unsigned)n_element==element.size());
-  n_elements_[name_to_index_map_[task_name]] = n_element;
-  elements_[name_to_index_map_[task_name]] = element;
+  n_elements_.push_back(n_element);
+  elements_.push_back(element);
 }
 
 }

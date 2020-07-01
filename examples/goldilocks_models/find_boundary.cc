@@ -379,7 +379,7 @@ void trajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
   int sample_idx = 0;
   string prefix = to_string(num) +  "_" + to_string(sample_idx) + "_";
 
-  inner_loop_setting.n_node = 20;//fix number of nodes
+  inner_loop_setting.n_node = (FLAGS_n_node>0)? FLAGS_n_node : 20;//fix number of nodes
   inner_loop_setting.max_iter = max_inner_iter_pass_in;
   inner_loop_setting.prefix = prefix;
   inner_loop_setting.init_file = init_file_pass_in;
@@ -387,6 +387,10 @@ void trajOptGivenModel(Task task, const string dir,int num,bool is_rerun,
   // Vectors/Matrices for the outer loop
   int N_sample = 1;
   SubQpData QPs(N_sample);
+  // reset is_success_vec before trajectory optimization
+  for (int i = 0; i < N_sample; i++) {
+    *(QPs.is_success_vec[i]) = 0;
+  }
 
   vector<std::shared_ptr<int>> thread_finished_vec(N_sample);
   for (int i = 0; i < N_sample; i++) {
@@ -676,6 +680,14 @@ int find_boundary(int argc, char* argv[]){
     search_setting.SetExtendComponents("velocity",1,{0});
     search_setting.SetExtendComponents("turning rate",1,{0});
   }
+  cout<<"search along: ";
+  for (dim=0;dim<search_setting.task_dim();dim++)
+  {
+    if(search_setting.get_n_element(dim)>1){
+      cout<<search_setting.names()[dim]<<" ";
+    }
+  }
+  cout<<endl;
 
   /*
    * start iteration

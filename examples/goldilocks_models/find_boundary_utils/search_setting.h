@@ -1,6 +1,7 @@
 //
 // Created by jianshu on 6/29/20.
 //
+#include <iostream>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -31,7 +32,7 @@ class SearchSetting {
   }
 
   //setters
-  void SetExtendComponents(string task_name,int n_element,
+  void SetExtendComponents(const string task_name,int n_element,
       vector<double> element);
 
  private:

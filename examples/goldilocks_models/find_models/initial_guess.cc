@@ -44,8 +44,8 @@ VectorXd GetGammaScale(const TasksGenerator* task_gen) {
 
 // calculate the interpolation weight; update weight vector and solution matrix
 void InterpolateAmongDifferentTasks(const string& dir, string prefix,
-                                    VectorXd current_gamma,
-                                    VectorXd gamma_scale,
+                                    const VectorXd& current_gamma,
+                                    const VectorXd& gamma_scale,
                                     VectorXd& weight_vector,
                                     MatrixXd& solution_matrix) {
   // check if this sample is success
@@ -71,8 +71,8 @@ void InterpolateAmongDifferentTasks(const string& dir, string prefix,
 }
 
 // calculate interpolated initial guess using weight vector and solution matrix
-VectorXd CalculateInterpolation(VectorXd weight_vector,
-                                MatrixXd solution_matrix) {
+VectorXd CalculateInterpolation(VectorXd& weight_vector,
+                                const MatrixXd& solution_matrix) {
   DRAKE_DEMAND(weight_vector.rows() > 0);
   // normalize weight
   weight_vector.normalize();

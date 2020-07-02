@@ -94,7 +94,7 @@ class ImpactConstraint : public solvers::NonlinearConstraint<T> {
 /// KinematicEvaluatorSet, using DIRCON's DynamicsCache
 /// 
 /// This constraint is of the form
-///    lb <= d^2/dt^2 phi(q) <= u
+///    d^2/dt^2 phi(q) = 0
 /// corresponding to the __active__ constraints only.
 ///
 /// To calculate acceleration, the decision variables for this constraint are

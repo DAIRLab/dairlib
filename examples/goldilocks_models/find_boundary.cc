@@ -713,18 +713,14 @@ int find_boundary(int argc, char* argv[]){
 
   // find which task dimension to search
   dim = 0;
-  VectorXd extend_direction;
-  if(robot_option==0)
+  VectorXd extend_direction(3);
+  if(robot_option==1)
   {
-    VectorXd extend_direction(3);
-  }
-  else if(robot_option==1)
-  {
-    VectorXd extend_direction(4);
+    extend_direction.conservativeResize(extend_direction.rows() + 1);
   }
   int ele1,ele2,ele3,ele4;
   // search the boundary
-  VectorXd task_delta = Eigen::Map<VectorXd>(search_setting.task_delta().data(),
+  VectorXd task_delta = Eigen::Map<const VectorXd>(search_setting.task_delta().data(),
       search_setting.task_delta().size());
   for (ele1=0;ele1<search_setting.get_n_element(0);ele1++){
     for(ele2=0;ele2<search_setting.get_n_element(1);ele2++){

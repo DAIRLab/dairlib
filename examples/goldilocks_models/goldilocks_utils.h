@@ -193,7 +193,7 @@ VectorXd createPrimeNumbers(int num_prime);
 bool file_exist (const std::string & name);
 bool folder_exist (const std::string & pathname_string);
 // return false when the user want to stop
-bool CreateFolderIfNotExist(const string& dir);
+bool CreateFolderIfNotExist(const string& dir, bool ask_for_permission = true);
 
 vector<std::string> ParseCsvToStringVec(const std::string& file_name);
 void SaveStringVecToCsv(vector<std::string> strings,

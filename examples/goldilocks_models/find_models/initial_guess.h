@@ -1,6 +1,3 @@
-//
-// Created by jianshu on 3/25/20.
-//
 #include <iostream>
 #include <random>
 #include <Eigen/Dense>

@@ -1,6 +1,3 @@
-//
-// Created by jianshu on 6/29/20.
-//
 #include "examples/goldilocks_models/find_boundary_utils/search_setting.h"
 
 
@@ -10,22 +7,17 @@ namespace goldilocks_models {
 SearchSetting::SearchSetting(int task_dim,
                              std::vector <string> names,
                              std::vector<double> task_0,
-                             std::vector<double> task_delta)
+                             std::vector<double> task_delta,
+                             std::vector<std::vector<double>> elements)
     : task_dim_(task_dim),
       names_(names),
       task_0_(task_0),
-      task_delta_(task_delta) {
+      task_delta_(task_delta),
+      elements_(elements){
 
   for (unsigned int i = 0; i < names.size(); i++) {
     name_to_index_map_[names[i]] = i;
   }
-}
-
-void SearchSetting::SetExtendComponents(const string task_name,int n_element,
-                         vector<double> element){
-  DRAKE_DEMAND((unsigned)n_element==element.size());
-  n_elements_.push_back(n_element);
-  elements_.push_back(element);
 }
 
 }

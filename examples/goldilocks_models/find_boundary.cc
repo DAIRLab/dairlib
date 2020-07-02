@@ -1,7 +1,3 @@
-//
-// Created by jianshu on 5/20/20.
-//
-
 #include <gflags/gflags.h>
 #include <thread>  // multi-threading
 #include <chrono>
@@ -613,20 +609,34 @@ int find_boundary(int argc, char* argv[]){
   cout << "\nInitialize task space:\n";
   Task task;//Traj Opt tasks
   SearchSetting search_setting;//Settings of searching the task space
+  // create components for each dimension used to decide the direction
+  // considering we can only visualize 2D landscape, we only search within
+  // 2D space and fix other dimension
   if(robot_option==0)
   {
+    vector<vector<double>> elements{
+        {0,-1,0.5,0.5,1}, //stride length
+        {0,-1,0.5,0.5,1}, //ground incline
+        {0} //velocity
+    };
     task = Task({"stride length", "ground incline",
                  "velocity"});
     search_setting = SearchSetting(3,{"stride length", "ground incline",
                                       "velocity"},{0.25,0,0.4},
-                                          {0.01,0.01,0.02});
+                                          {0.01,0.01,0.02},elements);
   }
   else if(robot_option==1){
+    vector<vector<double>> elements{
+        {0,-1,0.5,0.5,1}, //stride length
+        {0,-1,0.5,0.5,1}, //ground incline
+        {0}, //velocity
+        {0} //turning rate
+    };
     task = Task({"stride length", "ground incline",
                  "velocity", "turning rate"});
     search_setting = SearchSetting(4,{"stride length", "ground incline",
                                       "velocity","turning rate"},
-                                   {0.3,0,0.5,0},{0.01,0.01,0.02,0.01});
+                                   {0.3,0,0.5,0},{0.01,0.01,0.02,0.01},elements);
   }
   //cout initial point information
   int dim = 0;
@@ -665,21 +675,6 @@ int find_boundary(int argc, char* argv[]){
   }
   cout<<"cost_threshold "<<cost_threshold<<endl;
 
-  // create components for each dimension used to decide the direction
-  // considering we can only visualize 2D landscape, we only search within
-  // 2D space and fix other dimension
-  if(robot_option==0){
-    search_setting.SetExtendComponents("stride length",5,{0,-1,0.5,0.5,1});
-    search_setting.SetExtendComponents("ground incline",5,{0,-1,0.5,0.5,1});
-    search_setting.SetExtendComponents("velocity",1,{0});
-  }
-  else if(robot_option==1)
-  {
-    search_setting.SetExtendComponents("stride length",5,{0,-1,0.5,0.5,1});
-    search_setting.SetExtendComponents("ground incline",5,{0,-1,0.5,0.5,1});
-    search_setting.SetExtendComponents("velocity",1,{0});
-    search_setting.SetExtendComponents("turning rate",1,{0});
-  }
   cout<<"search along: ";
   for (dim=0;dim<search_setting.task_dim();dim++)
   {
@@ -695,8 +690,8 @@ int find_boundary(int argc, char* argv[]){
   int boundary_sample_num = 0;//use this to record the index of boundary point
   int traj_opt_num = 0;//use this to record the index of Traj Opt
   //evaluate initial point
-  VectorXd initial_task = Eigen::Map<VectorXd>(search_setting.task_0().data(),
-      search_setting.task_0().size());
+  VectorXd initial_task = Eigen::Map<const VectorXd>
+      (search_setting.task_0().data(),search_setting.task_0().size());
   task.set(search_setting.task_0());
   writeCSV(dir +  to_string(traj_opt_num)  +
       string("_0_task.csv"), initial_task);

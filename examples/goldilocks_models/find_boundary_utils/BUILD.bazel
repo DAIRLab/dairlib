@@ -1,19 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-cc_binary(
-    name = "visualize_gait_MBP",
-    srcs = ["visualize_gait_MBP.cc"],
-    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
-    deps = [
-        "//common",
-        "//systems/goldilocks_models",
-        "//systems/primitives",
-        "//systems/trajectory_optimization:dircon",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
 cc_library(
     name = "search_setting",
     srcs = [

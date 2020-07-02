@@ -1,6 +1,3 @@
-//
-// Created by jianshu on 3/25/20.
-//
 #include "examples/goldilocks_models/find_models/initial_guess.h"
 
 using std::cout;

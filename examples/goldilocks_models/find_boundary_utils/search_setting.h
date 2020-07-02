@@ -1,6 +1,3 @@
-//
-// Created by jianshu on 6/29/20.
-//
 #include <iostream>
 #include <string>
 #include <vector>
@@ -18,22 +15,19 @@ class SearchSetting {
   // Default constructor
   SearchSetting(){};
   SearchSetting(int task_dim, vector<string> names,
-      vector<double> task_0,vector<double> task_delta);
+      vector<double> task_0,vector<double> task_delta,
+      vector<vector<double>> elements);
 
   //getters
-  int task_dim(){return task_dim_;}
-  vector<string> names(){return names_;}
-  vector<double> task_0(){return task_0_;}
-  const vector<double> task_delta(){return task_delta_;}
-  int index(string task_name){return name_to_index_map_[task_name];}
-  int get_n_element(int task_dim){return n_elements_[task_dim];}
-  double get_element(int task_index,int element_index){
+  int task_dim() const {return task_dim_;}
+  const vector<string>& names() const {return names_;}
+  const vector<double>& task_0() const {return task_0_;}
+  const vector<double>& task_delta() const {return task_delta_;}
+  int index(string task_name) const {return name_to_index_map_.at(task_name);}
+  int get_n_element(int task_dim) const {return elements_[task_dim].size();}
+  double get_element(int task_index,int element_index) const {
     return elements_[task_index][element_index];
   }
-
-  //setters
-  void SetExtendComponents(const string task_name,int n_element,
-      vector<double> element);
 
  private:
   int task_dim_;
@@ -41,7 +35,6 @@ class SearchSetting {
   vector<double> task_0_;
   vector<double> task_delta_;
   std::unordered_map<string, int> name_to_index_map_;
-  vector<int> n_elements_;
   vector<vector<double>> elements_;
 };
 

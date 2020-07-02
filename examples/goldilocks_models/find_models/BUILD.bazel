@@ -138,7 +138,6 @@ cc_library(
     ],
 )
 
-#edited by jianshu
 cc_library(
     name = "initial_guess",
     srcs = [

@@ -71,13 +71,11 @@ void InterpolateAmongDifferentTasks(const string& dir, string prefix,
 }
 
 // calculate interpolated initial guess using weight vector and solution matrix
-VectorXd CalculateInterpolation(VectorXd& weight_vector,
+VectorXd CalculateInterpolation(const VectorXd& weight_vector,
                                 const MatrixXd& solution_matrix) {
   DRAKE_DEMAND(weight_vector.rows() > 0);
-  // normalize weight
-  weight_vector.normalize();
   // interpolation
-  VectorXd interpolated_solution = solution_matrix * weight_vector;
+  VectorXd interpolated_solution = solution_matrix * weight_vector.normalized();
   return interpolated_solution;
 }
 

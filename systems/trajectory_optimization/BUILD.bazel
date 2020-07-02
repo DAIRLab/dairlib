@@ -6,13 +6,11 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "dircon",
     srcs = [
-        #        "dircon.cc",
         "dircon_opt_constraints.cc",
         "dircon_options.cc",
         "hybrid_dircon.cc",
     ],
     hdrs = [
-        #        "dircon.h",
         "dircon_opt_constraints.h",
         "dircon_options.h",
         "hybrid_dircon.h",

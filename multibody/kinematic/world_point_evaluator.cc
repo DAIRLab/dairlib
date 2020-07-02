@@ -1,5 +1,7 @@
 #include "multibody/kinematic/world_point_evaluator.h"
 
+#include "solvers/constraint_factory.h"
+
 #include "drake/math/orthonormal_basis.h"
 
 using drake::multibody::Frame;
@@ -80,6 +82,28 @@ VectorX<T> WorldPointEvaluator<T>::EvalFullJacobianDotTimesV(
       pt_A_.template cast<T>(), world, world).translational();
 
   return rotation_ * Jdot_times_V;
+}
+
+template <typename T>
+std::shared_ptr<drake::solvers::Constraint> WorldPointEvaluator<T>::
+    CreateConicFrictionConstraint(double mu) const {
+  // The normal index is 2
+  if (is_frictional_) {
+    return solvers::CreateConicFrictionConstraint(mu, 2);
+  } else {
+    return nullptr;
+  }
+}
+
+template <typename T>
+std::shared_ptr<drake::solvers::Constraint> WorldPointEvaluator<T>::
+    CreateLinearFrictionConstraint(double mu, int num_faces) const {
+  // The normal index is 2
+  if (is_frictional_) {
+    return solvers::CreateLinearFrictionConstraint(mu, num_faces, 2);
+  } else {
+    return nullptr;
+  }
 }
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(

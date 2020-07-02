@@ -1,4 +1,5 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
+
 #include "drake/math/autodiff_gradient.h"
 
 namespace dairlib {
@@ -10,12 +11,12 @@ using drake::systems::Context;
 
 template <typename T>
 KinematicEvaluatorSet<T>::KinematicEvaluatorSet(
-    const drake::multibody::MultibodyPlant<T>& plant) :
-    plant_(plant) {}
+    const drake::multibody::MultibodyPlant<T>& plant)
+    : plant_(plant) {}
 
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalActive(
-  const Context<T>& context) const {
+    const Context<T>& context) const {
   VectorX<T> phi(count_active());
   int ind = 0;
   for (const auto& e : evaluators_) {
@@ -27,7 +28,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalActive(
 
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalActiveTimeDerivative(
-  const Context<T>& context) const {
+    const Context<T>& context) const {
   VectorX<T> phidot(count_active());
   int ind = 0;
   for (const auto& e : evaluators_) {
@@ -39,7 +40,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalActiveTimeDerivative(
 
 template <typename T>
 MatrixX<T> KinematicEvaluatorSet<T>::EvalActiveJacobian(
-  const Context<T>& context) const {
+    const Context<T>& context) const {
   const int num_velocities = plant_.num_velocities();
   MatrixX<T> J(count_active(), num_velocities);
   int ind = 0;
@@ -53,19 +54,19 @@ MatrixX<T> KinematicEvaluatorSet<T>::EvalActiveJacobian(
 
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalActiveJacobianDotTimesV(
-  const Context<T>& context) const {
+    const Context<T>& context) const {
   VectorX<T> Jdotv(count_active());
   int ind = 0;
   for (const auto& e : evaluators_) {
-    Jdotv.segment(ind, e->num_active()) = e->EvalActiveJacobianDotTimesV(context);
+    Jdotv.segment(ind, e->num_active()) =
+        e->EvalActiveJacobianDotTimesV(context);
     ind += e->num_active();
   }
   return Jdotv;
 }
 
 template <typename T>
-VectorX<T> KinematicEvaluatorSet<T>::EvalFull(
-  const Context<T>& context) const {
+VectorX<T> KinematicEvaluatorSet<T>::EvalFull(const Context<T>& context) const {
   VectorX<T> phi(count_full());
   int ind = 0;
   for (const auto& e : evaluators_) {
@@ -77,7 +78,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFull(
 
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalFullTimeDerivative(
-  const Context<T>& context) const {
+    const Context<T>& context) const {
   VectorX<T> phidot(count_full());
   int ind = 0;
   for (const auto& e : evaluators_) {
@@ -88,8 +89,26 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFullTimeDerivative(
 }
 
 template <typename T>
+VectorX<T> KinematicEvaluatorSet<T>::EvalFullSecondTimeDerivative(
+    const Context<T>& context, const VectorX<T>& lambda) const {
+  const auto& vdot = CalcTimeDerivativesWithForce(context, lambda);
+  const auto& J = EvalFullJacobian(context);
+  const auto& Jdotv = EvalFullJacobianDotTimesV(context);
+  return J * vdot + Jdotv;
+}
+
+template <typename T>
+VectorX<T> KinematicEvaluatorSet<T>::EvalActiveSecondTimeDerivative(
+    const Context<T>& context, const VectorX<T>& lambda) const {
+  const auto& xdot = CalcTimeDerivativesWithForce(context, lambda);
+  const auto& J = EvalActiveJacobian(context);
+  const auto& Jdotv = EvalActiveJacobianDotTimesV(context);
+  return J * xdot.tail(plant_.num_velocities()) + Jdotv;
+}
+
+template <typename T>
 MatrixX<T> KinematicEvaluatorSet<T>::EvalFullJacobian(
-  const Context<T>& context) const {
+    const Context<T>& context) const {
   const int num_velocities = plant_.num_velocities();
   MatrixX<T> J(count_full(), num_velocities);
   int ind = 0;
@@ -103,7 +122,7 @@ MatrixX<T> KinematicEvaluatorSet<T>::EvalFullJacobian(
 
 template <typename T>
 VectorX<T> KinematicEvaluatorSet<T>::EvalFullJacobianDotTimesV(
-  const Context<T>& context) const {
+    const Context<T>& context) const {
   VectorX<T> Jdotv(count_full());
   int ind = 0;
   for (const auto& e : evaluators_) {
@@ -117,19 +136,37 @@ template <typename T>
 int KinematicEvaluatorSet<T>::add_evaluator(KinematicEvaluator<T>* e) {
   // Compare plants for equality by reference
   DRAKE_DEMAND(&plant_ == &e->plant());
-  
+
   evaluators_.push_back(e);
   return evaluators_.size() - 1;
 }
 
 template <typename T>
-std::vector<int> KinematicEvaluatorSet<T>::FindUnion(
-    KinematicEvaluatorSet<T> other) {
+std::vector<int> KinematicEvaluatorSet<T>::FindFullUnion(
+    KinematicEvaluatorSet<T> other) const {
   std::vector<int> union_index;
   for (int i = 0; i < other.num_evaluators(); i++) {
     if (std::find(evaluators_.begin(), evaluators_.end(),
-        other.get_evaluator(i)) != evaluators_.end()) {
+                  &other.get_evaluator(i)) != evaluators_.end()) {
       union_index.push_back(i);
+    }
+  }
+  return union_index;
+}
+
+template <typename T>
+std::vector<int> KinematicEvaluatorSet<T>::FindActiveUnion(
+    KinematicEvaluatorSet<T> other) const {
+  std::vector<int> union_index;
+  for (int i = 0; i < other.num_evaluators(); i++) {
+    if (other.is_active(i)) {
+      auto it = std::find(evaluators_.begin(), evaluators_.end(),
+                          &other.get_evaluator(i));
+      if (it != evaluators_.end()) {
+        if (is_active(std::distance(evaluators_.begin(), it))) {
+          union_index.push_back(i);
+        }
+      }
     }
   }
   return union_index;
@@ -142,8 +179,8 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
   VectorX<T> C(plant_.num_velocities());
   plant_.CalcBiasTerm(context, &C);
 
-  VectorX<T> Bu = plant_.MakeActuationMatrix()
-      * plant_.get_actuation_input_port().Eval(context);
+  VectorX<T> Bu = plant_.MakeActuationMatrix() *
+                  plant_.get_actuation_input_port().Eval(context);
 
   VectorX<T> tau_g = plant_.CalcGravityGeneralizedForces(context);
 
@@ -153,7 +190,7 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
   VectorX<T> J_transpose_lambda =
       EvalFullJacobian(context).transpose() * lambda;
 
-  return tau_g + f_app.generalized_forces()+ Bu + J_transpose_lambda - C;
+  return tau_g + 0 * f_app.generalized_forces() + Bu + J_transpose_lambda - C;
 }
 
 template <typename T>
@@ -199,8 +236,8 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
   VectorX<T> C(plant_.num_velocities());
   plant_.CalcBiasTerm(context, &C);
 
-  VectorX<T> Bu = plant_.MakeActuationMatrix()
-      * plant_.get_actuation_input_port().Eval(context);
+  VectorX<T> Bu = plant_.MakeActuationMatrix() *
+                  plant_.get_actuation_input_port().Eval(context);
 
   VectorX<T> tau_g = plant_.CalcGravityGeneralizedForces(context);
 
@@ -213,16 +250,13 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcTimeDerivatives(
   MatrixX<T> J = EvalActiveJacobian(context);
   VectorX<T> Jdotv = EvalActiveJacobianDotTimesV(context);
 
-
-  MatrixX<T> A(M.rows() + J.rows(),
-               M.cols() + J.rows());
+  MatrixX<T> A(M.rows() + J.rows(), M.cols() + J.rows());
   VectorX<T> b(M.rows() + J.rows());
-  A << M, -J.transpose(),
-       J, MatrixX<T>::Zero(J.rows(), J.rows());
+  A << M, -J.transpose(), J, MatrixX<T>::Zero(J.rows(), J.rows());
   b << tau_g + f_app.generalized_forces() + Bu - C,
-       -(Jdotv + alpha * alpha * phi + 2 * alpha * phidot);
+      -(Jdotv + alpha * alpha * phi + 2 * alpha * phidot);
   const VectorX<T> vdot_lambda = A.ldlt().solve(b);
-  
+
   *lambda = vdot_lambda.tail(J.rows());
 
   VectorX<T> x_dot(plant_.num_positions() + plant_.num_velocities());
@@ -271,6 +305,21 @@ int KinematicEvaluatorSet<T>::count_full() const {
   return count;
 }
 
+template <typename T>
+bool KinematicEvaluatorSet<T>::is_active(int index) const {
+  if (index < 0 || index >= count_full()) {
+    return false;
+  }
+  int count = 0;
+  for (const auto& e : evaluators_) {
+    if (index - count >= 0 && index - count < e->num_full()) {
+      return e->is_active(index - count);
+    } else {
+      count += e->num_full();
+    }
+  }
+  DRAKE_UNREACHABLE();
+}
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
     class ::dairlib::multibody::KinematicEvaluatorSet)

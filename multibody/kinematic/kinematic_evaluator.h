@@ -1,6 +1,7 @@
 #pragma once
 
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/solvers/constraint.h"
 #include "drake/systems/framework/context.h"
 
 namespace dairlib {
@@ -83,6 +84,28 @@ class KinematicEvaluator {
   const drake::multibody::MultibodyPlant<T>& plant() const {
     return plant_;
   }
+
+  const std::vector<int>& active_inds() { return active_inds_; };
+
+  bool is_active(int index) const;
+
+  /// Convert an index, relative to the full index set, to be an active index.
+  /// Returns -1 if the given index is not active
+  int full_index_to_active_index(int full_index) const;
+
+  /// Create a friction cone constraint on the force variables (associated with
+  /// the full Jacboian). Subclasses which might be associated with frictional
+  /// contact should implement this method.
+  virtual std::shared_ptr<drake::solvers::Constraint>
+      CreateConicFrictionConstraint(double mu) const { return nullptr; };
+
+  /// Create a friction cone constraint on the force variables (associated with
+  /// the full Jacboian). Subclasses which might be associated with frictional
+  /// contact should implement this method.
+  virtual std::shared_ptr<drake::solvers::Constraint>
+      CreateLinearFrictionConstraint(double mu, int num_faces = 8) const {
+    return nullptr;
+  };
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;

@@ -122,6 +122,22 @@ void KinematicEvaluator<T>::set_active_inds(std::vector<int> active_inds) {
 }
 
 template <typename T>
+bool KinematicEvaluator<T>::is_active(int index) const {
+  return std::find(active_inds_.begin(), active_inds_.end(), index)
+      != active_inds_.end();
+}
+
+template <typename T>
+int KinematicEvaluator<T>::full_index_to_active_index(int full_index) const {
+  for (size_t i = 0; i < active_inds_.size(); i++) {
+    if (active_inds_.at(i) == full_index) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+template <typename T>
 const std::vector<int>& KinematicEvaluator<T>::active_inds() const {
   return active_inds_;
 };

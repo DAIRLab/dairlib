@@ -15,12 +15,17 @@ class KinematicEvaluatorSet {
       const drake::multibody::MultibodyPlant<T>& plant);
 
   /// Evaluates phi(q), limited only to active rows
-  drake::VectorX<T> EvalActive(
-      const drake::systems::Context<T>& context) const;
+  drake::VectorX<T> EvalActive(const drake::systems::Context<T>& context) const;
 
   /// Evaluates the time-derivative, d/dt phi(q), limited only to active rows
   drake::VectorX<T> EvalActiveTimeDerivative(
       const drake::systems::Context<T>& context) const;
+
+  /// Evaluates the second time-derivative, d^2/dt^2 phi(q), given force
+  /// lambda (lambda for full constraints)
+  drake::VectorX<T> EvalActiveSecondTimeDerivative(
+      const drake::systems::Context<T>& context,
+      const drake::VectorX<T>& lambda) const;
 
   /// Evaluates the constraint Jacobian w.r.t. velocity v (not qdot)
   ///  limited only to active rows
@@ -37,9 +42,14 @@ class KinematicEvaluatorSet {
   drake::VectorX<T> EvalFullTimeDerivative(
       const drake::systems::Context<T>& context) const;
 
+  /// Evaluates the second time-derivative, d^2/dt^2 phi(q), given force
+  /// lambda (lambda for full constraints)
+  drake::VectorX<T> EvalFullSecondTimeDerivative(
+      const drake::systems::Context<T>& context,
+      const drake::VectorX<T>& lambda) const;
+
   /// Evaluates, phi(q), including inactive rows
-  drake::VectorX<T> EvalFull(
-      const drake::systems::Context<T>& context) const;
+  drake::VectorX<T> EvalFull(const drake::systems::Context<T>& context) const;
 
   /// Evaluates the Jacobian w.r.t. velocity v (not qdot)
   drake::MatrixX<T> EvalFullJacobian(
@@ -55,7 +65,16 @@ class KinematicEvaluatorSet {
   /// by a comparison of the KinematicEvaluator<T>* pointers.
   ///
   /// Again, note that this is an index set into the other object, not self.
-  std::vector<int> FindUnion(KinematicEvaluatorSet<T> other);
+  std::vector<int> FindFullUnion(KinematicEvaluatorSet<T> other) const;
+
+  /// Determines the list of active evaluators contained in the union with
+  /// another set Specifically, `index` is in the returned vector if 'index' is
+  /// active and other.evaluators_.at(index) is an active element of
+  /// other.evaluators, as judged by a comparison of the KinematicEvaluator<T>*
+  /// pointers.
+  ///
+  /// Again, note that this is an index set into the other object, not self.
+  std::vector<int> FindActiveUnion(KinematicEvaluatorSet<T> other) const;
 
   /// Compute M(q) * d/dt v, given the state, control inputs and constraint
   /// forces. Forces are associated with the full kinematic elements.
@@ -84,7 +103,7 @@ class KinematicEvaluatorSet {
   /// for the forces to satisfy the constraint ddot phi = -kp*phi - kd*phidot
   ///   NOTE: the constraint __only__ includes the active contacts, and the
   /// constraint force lambda is also only in terms of active contacts, unlike
-  /// the similar methods CalcTimeDerivativesWithForce(context, lambda). 
+  /// the similar methods CalcTimeDerivativesWithForce(context, lambda).
   /// To retrieve the computed lambda, see
   /// CalcTimeDeriviatives(context, lambda).
   /// @param context
@@ -98,7 +117,7 @@ class KinematicEvaluatorSet {
   /// See CalcTimeDerivatives(context, kp, kd) for full details. This version
   /// also returns the constraint force lambda via an input pointer.
   drake::VectorX<T> CalcTimeDerivatives(
-      const drake::systems::Context<T>& context, drake::VectorX<T>* lambda, 
+      const drake::systems::Context<T>& context, drake::VectorX<T>* lambda,
       double alpha = 0) const;
 
   /// Gets the starting index into phi_full of the specified evaluator
@@ -107,8 +126,12 @@ class KinematicEvaluatorSet {
   /// Gets the starting index into phi_active of the specified evaluator
   int evaluator_active_start(int index) const;
 
-  KinematicEvaluator<T>* get_evaluator(int index) {
-    return evaluators_.at(index);
+  const KinematicEvaluator<T>& get_evaluator(int index) const {
+    return *evaluators_.at(index);
+  };
+
+  const std::vector<KinematicEvaluator<T>*>& get_evaluators() const {
+      return evaluators_;
   };
 
   /// Adds an evaluator to the end of the list, returning the associated index
@@ -121,6 +144,11 @@ class KinematicEvaluatorSet {
   int count_full() const;
 
   int num_evaluators() const { return evaluators_.size(); };
+
+  /// Returns true if the given index into the full constraint vector for the
+  /// set is a valid active index. Returns false if it is not active, or not
+  /// not valid
+  bool is_active(int index) const;
 
   const drake::multibody::MultibodyPlant<T>& plant() const { return plant_; };
 

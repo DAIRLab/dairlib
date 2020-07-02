@@ -8,6 +8,7 @@ namespace multibody {
 
 using std::map;
 using std::string;
+using std::vector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::geometry::SceneGraph;
@@ -110,13 +111,16 @@ map<string, int> makeNameToPositionsMap(const MultibodyPlant<T>& plant) {
     }
   }
 
+  // TODO: once RBT fully deprecated, this block can likely be removed, using
+  // default coordinate names from Drake.
   auto floating_bodies = plant.GetFloatingBaseBodies();
-  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);  //remove once RBT deprecated
+  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);  
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
     DRAKE_ASSERT(body.has_quaternion_dofs());
     int start = body.floating_positions_start();
-    std::string name = "base";  // should be body.name() once RBT is deprecated
+    // should be body.name() once RBT is deprecated
+    std::string name = "base";  
     name_to_index_map[name + "_qw"] = start;
     name_to_index_map[name + "_qx"] = start + 1;
     name_to_index_map[name + "_qy"] = start + 2;
@@ -242,7 +246,29 @@ map<string, int> makeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
   return name_to_index_map;
 }
 
+vector<string> createStateNameVectorFromMap(
+    const map<string, int>& pos_map, const map<string, int>& vel_map) {
+  vector<string> state_names(pos_map.size() + vel_map.size());
 
+  for (const auto& name_index_pair : pos_map) {
+    state_names[name_index_pair.second] = name_index_pair.first;
+  }
+  for (const auto& name_index_pair : vel_map) {
+    state_names[name_index_pair.second + pos_map.size()] =
+        name_index_pair.first;
+  }
+  return state_names;
+}
+
+vector<string> createActuatorNameVectorFromMap(
+    const map<string, int>& act_map) {
+  vector<string> actuator_names(act_map.size());
+
+  for (const auto& name_index_pair : act_map) {
+    actuator_names[name_index_pair.second] = name_index_pair.first;
+  }
+  return actuator_names;
+}
 
 bool JointsWithinLimits(const MultibodyPlant<double>& plant,
                         VectorXd positions, double tolerance) {
@@ -273,12 +299,28 @@ std::vector<int> QuaternionStartIndices(const MultibodyPlant<T>& plant) {
 }
 
 template <typename T>
-bool isQuaternion(const MultibodyPlant<T>& plant) {
-  return QuaternionStartIndices(plant).size() > 0;
+int QuaternionStartIndex(const MultibodyPlant<T>& plant) {
+  std::vector<int> quat_start = QuaternionStartIndices(plant);
+  if (quat_start.size() > 1) {
+    throw std::runtime_error("Called QuaternionStartIndex(plant) with "
+        "multiple quaternion floating bases.");
+  } else if (quat_start.size() == 0) {
+    return -1;
+  } else {
+    return quat_start.at(0);
+  }
+  DRAKE_UNREACHABLE();  
 }
 
+template <typename T>
+bool isQuaternion(const MultibodyPlant<T>& plant) {
+  return QuaternionStartIndex(plant) != -1;
+}
 
-
+template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
+template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::vector<int> QuaternionStartIndices(const MultibodyPlant<double>& plant);  // NOLINT
+template std::vector<int> QuaternionStartIndices(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template bool isQuaternion(const MultibodyPlant<double>& plant);  // NOLINT
 template bool isQuaternion(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> makeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT

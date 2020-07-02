@@ -111,10 +111,10 @@ void DoMain(double duration, int max_iter, string data_directory,
   auto left_loop_eval = LeftLoopClosureEvaluator(plant);
   auto right_loop_eval = RightLoopClosureEvaluator(plant);
 
-  auto left_toe_pair = LeftToe(plant);
-  auto left_heel_pair = LeftHeel(plant);
-  auto right_toe_pair = RightToe(plant);
-  auto right_heel_pair = RightHeel(plant);
+  auto left_toe_pair = LeftToeFront(plant);
+  auto left_heel_pair = LeftToeRear(plant);
+  auto right_toe_pair = RightToeFront(plant);
+  auto right_heel_pair = RightToeRear(plant);
 
   std::vector<int> toe_active_inds{0, 1, 2};
   std::vector<int> heel_active_inds{1, 2};

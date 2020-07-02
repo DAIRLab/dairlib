@@ -8,7 +8,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 
-#include "attic/multibody/rigidbody_utils.h"
+#include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "examples/Cassie/input_supervisor.h"
 #include "examples/Cassie/networking/cassie_udp_publisher.h"
@@ -65,21 +65,21 @@ int do_main(int argc, char* argv[]) {
 
   DiagramBuilder<double> builder;
 
-  std::unique_ptr<RigidBodyTree<double>> tree;
-  if (FLAGS_floating_base)
-    tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
-                                 drake::multibody::joints::kQuaternion);
-  else
-    tree = makeCassieTreePointer();
+  // Build Cassie MBP
+  drake::multibody::MultibodyPlant<double> plant(0.0);
+  addCassieMultibody(&plant, nullptr, FLAGS_floating_base /*floating base*/,
+                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     true /*spring model*/, false /*loop closure*/);
+  plant.Finalize();
 
   // Create LCM receiver for commands
-  auto command_receiver = builder.AddSystem<RobotInputReceiver>(*tree);
+  auto command_receiver = builder.AddSystem<RobotInputReceiver>(plant);
 
   // Create state estimate receiver, used for safety checks
   auto state_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_state_channel_name, &lcm_local));
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*tree);
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   builder.Connect(*state_sub, *state_receiver);
 
   double input_supervisor_update_period = 1.0 / 1000.0;
@@ -89,7 +89,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   auto input_supervisor =
-      builder.AddSystem<InputSupervisor>(*tree,
+      builder.AddSystem<InputSupervisor>(plant,
                                          FLAGS_max_joint_velocity,
                                          input_supervisor_update_period,
                                          FLAGS_supervisor_N,
@@ -101,7 +101,7 @@ int do_main(int argc, char* argv[]) {
 
   // Create and connect translator
   auto input_translator =
-      builder.AddSystem<systems::CassieInputTranslator>(*tree);
+      builder.AddSystem<systems::CassieInputTranslator>(plant);
   builder.Connect(input_supervisor->get_output_port_command(),
       input_translator->get_input_port(0));
 
@@ -112,7 +112,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*input_translator, *input_pub);
 
   // Create and connect LCM command echo to network
-  auto net_command_sender = builder.AddSystem<RobotCommandSender>(*tree);
+  auto net_command_sender = builder.AddSystem<RobotCommandSender>(plant);
   auto net_command_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           "NETWORK_CASSIE_INPUT", &lcm_network,

@@ -44,14 +44,15 @@ cc_library(
 )
 
 cc_library(
-    name = "cassie_rbt_state_estimator",
-    srcs = ["cassie_rbt_state_estimator.cc"],
-    hdrs = ["cassie_rbt_state_estimator.h"],
+    name = "cassie_state_estimator",
+    srcs = ["cassie_state_estimator.cc"],
+    hdrs = ["cassie_state_estimator.h"],
     deps = [
         ":cassie_utils",
-        "//attic/multibody:utils",
         "//examples/Cassie/datatypes:cassie_names",
         "//examples/Cassie/datatypes:cassie_out_t",
+        "//multibody:utils",
+        "//multibody/kinematic",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@inekf//src:InEKF",
@@ -109,8 +110,8 @@ cc_library(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        "//multibody:multipose_visualizer",
         "//multibody:multibody_solvers",
+        "//multibody:multipose_visualizer",
         "//solvers:constraints",
         "@drake//:drake_shared_library",
     ],
@@ -130,13 +131,12 @@ cc_binary(
     srcs = ["run_lqr_balancing.cc"],
     deps = [
         ":cassie_fixed_point_solver",
-        ":cassie_utils",
         ":cassie_urdf",
+        ":cassie_utils",
         "//systems/controllers",
         "@gflags",
     ],
 )
-
 
 cc_binary(
     name = "run_pd_controller",
@@ -197,9 +197,9 @@ cc_binary(
     name = "multibody_sim",
     srcs = ["multibody_sim.cc"],
     deps = [
+        ":cassie_fixed_point_solver",
         ":cassie_urdf",
         ":cassie_utils",
-        ":cassie_fixed_point_solver",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -231,7 +231,7 @@ cc_binary(
     name = "dispatcher_robot_out",
     srcs = ["dispatcher_robot_out.cc"],
     deps = [
-        ":cassie_rbt_state_estimator",
+        ":cassie_state_estimator",
         ":cassie_urdf",
         ":cassie_utils",
         "//examples/Cassie/networking:cassie_udp_pub_sub",
@@ -248,7 +248,7 @@ cc_binary(
     name = "dispatcher_robot_in",
     srcs = ["dispatcher_robot_in.cc"],
     deps = [
-        ":cassie_rbt_state_estimator",
+        ":cassie_state_estimator",
         ":cassie_urdf",
         ":cassie_utils",
         ":input_supervisor",
@@ -282,13 +282,13 @@ cc_binary(
 )
 
 cc_test(
-    name = "cassie_rbt_state_estimator_test",
+    name = "cassie_state_estimator_test",
     size = "small",
-    srcs = ["test/cassie_rbt_state_estimator_test.cc"],
+    srcs = ["test/cassie_state_estimator_test.cc"],
     deps = [
-        ":cassie_rbt_state_estimator",
-        "//attic/multibody:multibody_solvers",
+        ":cassie_state_estimator",
         "//examples/Cassie:cassie_urdf",
+        "//multibody:multibody_solvers",
         "@drake//:drake_shared_library",
         "@gtest//:main",
     ],
@@ -301,8 +301,8 @@ cc_binary(
         ":cassie_urdf",
         ":cassie_utils",
         ":simulator_drift",
-        "//attic/multibody:utils",
         "//examples/Cassie/osc",
+        "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
@@ -317,10 +317,11 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
-        "//attic/multibody:utils",
-        "//attic/systems/controllers:operational_space_control",
         "//examples/Cassie/osc",
+        "//multibody:utils",
+        "//multibody/kinematic",
         "//systems:robot_lcm_systems",
+        "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -348,8 +349,8 @@ cc_binary(
     srcs = ["run_dircon_squatting.cc"],
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
     deps = [
-        ":cassie_utils",
         ":cassie_fixed_point_solver",
+        ":cassie_utils",
         "//common",
         "//solvers:optimization_utils",
         "//systems/primitives",
@@ -401,7 +402,6 @@ cc_binary(
     data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
     deps = [
         ":cassie_utils",
-        "//attic/multibody:multibody_solvers",
         "//common",
         "//solvers:optimization_utils",
         "//systems/goldilocks_models",

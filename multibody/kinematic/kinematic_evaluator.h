@@ -71,6 +71,8 @@ class KinematicEvaluator {
 
   void set_active_inds(std::vector<int> active_inds);
 
+  const std::vector<int>& active_inds() const;
+
   int num_full() const {
     return length_;
   }

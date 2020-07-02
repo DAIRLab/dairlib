@@ -109,21 +109,21 @@ int do_main(int argc, char* argv[]) {
 
   // Add contact points. Tangent basis must now be active, to treat these
   // as true constraints.
-  auto left_toe = LeftToe(*plant_ad);
+  auto left_toe = LeftToeFront(*plant_ad);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(*plant_ad,
       left_toe.first, left_toe.second, Eigen::Matrix3d::Identity(),
       Eigen::Vector3d::Zero(), {1,2});
 
-  auto right_toe = RightToe(*plant_ad);
+  auto right_toe = RightToeFront(*plant_ad);
   auto right_toe_evaluator = multibody::WorldPointEvaluator(*plant_ad,
       right_toe.first, right_toe.second, Eigen::Matrix3d::Identity(),
       Eigen::Vector3d::Zero(), {1,2});
 
-  auto left_heel = LeftHeel(*plant_ad);
+  auto left_heel = LeftToeRear(*plant_ad);
   auto left_heel_evaluator = multibody::WorldPointEvaluator(*plant_ad,
       left_heel.first, left_heel.second);
 
-  auto right_heel = RightHeel(*plant_ad);
+  auto right_heel = RightToeRear(*plant_ad);
   auto right_heel_evaluator = multibody::WorldPointEvaluator(*plant_ad,
       right_heel.first, right_heel.second);
 

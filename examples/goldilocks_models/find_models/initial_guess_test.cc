@@ -32,7 +32,7 @@ int test_initial_guess(int iter, int sample, int robot) {
 
   const string dir =
       "../dairlib_data/goldilocks_models/find_models/robot_1_test/";
-  if (!CreateFolderIfNotExist(dir)) return 0;
+  if (!CreateFolderIfNotExist(dir, false)) return 0;
 
   // for each iteration, create theta_s and theta_sDDot
   int iteration = 0;

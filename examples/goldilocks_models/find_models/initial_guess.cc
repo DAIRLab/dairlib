@@ -44,8 +44,8 @@ VectorXd GetGammaScale(const TasksGenerator* task_gen) {
 
 // calculate the interpolation weight; update weight vector and solution matrix
 void InterpolateAmongDifferentTasks(const string& dir, string prefix,
-                                    VectorXd current_gamma,
-                                    VectorXd gamma_scale,
+                                    const VectorXd& current_gamma,
+                                    const VectorXd& gamma_scale,
                                     VectorXd& weight_vector,
                                     MatrixXd& solution_matrix) {
   // check if this sample is success
@@ -71,13 +71,11 @@ void InterpolateAmongDifferentTasks(const string& dir, string prefix,
 }
 
 // calculate interpolated initial guess using weight vector and solution matrix
-VectorXd CalculateInterpolation(VectorXd weight_vector,
-                                MatrixXd solution_matrix) {
+VectorXd CalculateInterpolation(const VectorXd& weight_vector,
+                                const MatrixXd& solution_matrix) {
   DRAKE_DEMAND(weight_vector.rows() > 0);
-  // normalize weight
-  weight_vector.normalize();
   // interpolation
-  VectorXd interpolated_solution = solution_matrix * weight_vector;
+  VectorXd interpolated_solution = solution_matrix * weight_vector.normalized();
   return interpolated_solution;
 }
 
@@ -159,7 +157,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
       VectorXd past_theta_s =
           readCSV(directory + to_string(past_iter) + string("_theta_y.csv"));
       VectorXd past_theta_sDDot = readCSV(directory + to_string(past_iter) +
-                                          string("_theta_yDDot.csv"));
+                                          string("_theta_yddot.csv"));
       VectorXd past_theta(past_theta_s.rows() + past_theta_sDDot.rows());
       past_theta << past_theta_s, past_theta_sDDot;
       double theta_diff =

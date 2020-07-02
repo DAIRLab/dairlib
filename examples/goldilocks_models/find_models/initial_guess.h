@@ -21,11 +21,11 @@ std::string SetInitialGuessByInterpolation(const std::string& directory,
 Eigen::VectorXd GetThetaScale(const std::string& directory, int iter);
 Eigen::VectorXd GetGammaScale(const TasksGenerator* task_gen);
 // utility functions
-Eigen::VectorXd CalculateInterpolation(Eigen::VectorXd weight_vector,
-                                       Eigen::MatrixXd solution_matrix);
+Eigen::VectorXd CalculateInterpolation(const Eigen::VectorXd& weight_vector,
+                                       const Eigen::MatrixXd& solution_matrix);
 void InterpolateAmongDifferentTasks(const std::string& dir, string prefix,
-                                    Eigen::VectorXd current_gamma,
-                                    Eigen::VectorXd gamma_scale,
+                                    const Eigen::VectorXd& current_gamma,
+                                    const Eigen::VectorXd& gamma_scale,
                                     Eigen::VectorXd& weight_vector,
                                     Eigen::MatrixXd& solution_matrix);
 }  // namespace dairlib::goldilocks_models

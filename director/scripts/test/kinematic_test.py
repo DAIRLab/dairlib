@@ -5,7 +5,7 @@ from PythonQt.QtGui import *
 from PythonQt.QtCore import *
 
 import dairlib.lcmt_robot_output
-
+from director import visualization as vis
 import director.applogic
 import director.mainwindowapp
 from director.debugVis import DebugData
@@ -20,25 +20,13 @@ import numpy as np
 import json
 import sys
 from collections import deque
-import faulthandler
-
-
-q = queue.Queue()
 
 class VisualizationGui(QWidget):
 
     def __init__(self, parent = None):
-
         super(VisualizationGui, self).__init__(parent)
         self.channel = "NETWORK_CASSIE_STATE_DISPATCHER"
         self.lcm = lcm.LCM()
-
-        # self.abstract_channel = "OSC_DEBUG"
-        # self.abstract_type = "lcmt_osc_output"
-        # self.abstract_field = "lcmt_osc_tracking_data"
-        # self.abstract_x_index = 3
-        # self.abstract_y_index = 3
-        # self.abstract_z_index = 3
 
         # GUI attributes
         self.checkBoxes = {}
@@ -55,17 +43,12 @@ class VisualizationGui(QWidget):
         self.data = None
         self.modelFile = None
         self.weldBody = False
-        self.prev_loc = {}
-        self.duration = {}
         self.shapes = {}
         self.plant = None
 
+        # add lcm channel
         subscription = self.lcm.subscribe(self.channel, self.state_handler)
         subscription.set_queue_capacity(1)
-
-        # abstract_subscription = \
-        #     self.lcm.subscribe(self.abstract_channel, self.abstract_handler)
-        # abstract_subscription.set_queue_capacity(1)
 
         # create the GUI
         self.setWindowTitle("Testing Testing")
@@ -86,6 +69,9 @@ class VisualizationGui(QWidget):
         handle_thread.start()
 
     def resetGUI(self):
+        '''
+        Function for reseting the GUI to its initial state
+        '''
 
         # delete checkboxes from GUI
         for i in reversed(range(self.checkBoxArea.count())):
@@ -94,17 +80,25 @@ class VisualizationGui(QWidget):
         # reset GUI variables
         self.checkBoxes = {}
         self.checkBoxesPrevState = {}
-        self.data = None
-        self.prev_loc = {}
-        self.duration = {}
         self.shapes = {}
-        self.plant = None
         self.reset = False
         self.delete = False
         self.clear = False
         self.ready = False
 
+        # reset JSON variables
+        self.data = None
+        self.modelFile = None
+        self.weldBody = False
+        self.shapes = {}
+        self.plant = None
+
     def readJSONFile(self):
+        '''
+        Function for reading JSON input file and populating the JSON
+        and GUI attributes
+        '''
+
         if (self.JSONInput.text != ""):
             self.json_file = self.JSONInput.text
             with open(self.json_file) as json_file:
@@ -122,9 +116,10 @@ class VisualizationGui(QWidget):
                 else:
                     self.shapes[newObject.name].update(newObject)
 
-            # fill the labels for each data with its name and add the reset button
+            # fill the chackbox for each data with its name
             self.placeCheckBoxes()
 
+            # add "reset" and "clear history" buttons
             if (self.resetBtn == None):
                 self.resetBtn = QPushButton('Reset')
                 self.resetBtn.clicked.connect(self.deleteShapes)
@@ -136,38 +131,25 @@ class VisualizationGui(QWidget):
                 self.vbox.addWidget(self.clearBtn)
 
     def deleteShapes(self):
-        print("Test0")
+        '''
+        Function for setting the flag for deleting all shapes currently present
+        '''
         if (self.delete == False):
             self.delete = True
-        else:
-            print("Test1")
-            for shape in self.shapes.values():
-                if (shape.type == "line"):
-                    for line in shape.object:
-                        om.removeFromObjectModel(line)
-                else:
-                    om.removeFromObjectModel(shape.object)
-
-            self.delete = False
-            self.reset = True
 
     def clearHistory(self):
+        '''
+        Function for setting the flag for clearing the history of any line present
+        '''
         if (self.clear == False):
             self.clear = True
-        else:
-            print("Test0")
-            for shape in self.shapes.values():
-                print("Test1")
-                if (shape.type == "line"):
-                    print("Test2")
-                    for line in shape.object:
-                        print("Test3")
-                        om.removeFromObjectModel(line)
-                    print("Test4")
-                shape.object = deque()
-            self.clear = False
 
     def placeCheckBoxes(self):
+        '''
+        Function for placing the chackboxes of the GUI. Each checkbox corresponds
+        to a shape/object that has been drawn with the corresponding color and
+        shape
+        '''
         if (self.ready == True):
             addToGUI = False
             if (self.checkBoxArea == None):
@@ -194,20 +176,29 @@ class VisualizationGui(QWidget):
                         self.vbox.addLayout(self.checkBoxArea)
 
     def checkBoxChecked(self, name):
-        if (type(self.shapes[name].object) == deque):
+        '''
+        Function for showing a shape when its corresponding checkbox is checked
+        '''
+        if (self.shapes[name].type == "line"):
             for line in self.shapes[name].object:
                 line.setProperty('Visible', True)
         else:
             self.shapes[name].object.setProperty('Visible', True)
 
     def checkBoxNotChecked(self, name):
-        if (type(self.shapes[name].object) == deque):
+        '''
+        Function for hiding a shape when its corresponding checkbox is unchecked
+        '''
+        if (self.shapes[name].type == "line"):
             for line in self.shapes[name].object:
                 line.setProperty('Visible', False)
         else:
             self.shapes[name].object.setProperty('Visible', False)
 
     def distance(self, pt1, pt2):
+        '''
+        Function for computing distance between 2 given 3D points
+        '''
         sum = 0
         for i in range(len(pt1)):
             sum += pow(pt2[i] - pt1[i], 2)
@@ -215,36 +206,67 @@ class VisualizationGui(QWidget):
         return math.sqrt(sum)
 
     def handle_thread(self):
+        '''
+        Function for running the main thread
+        '''
         print('Starting to handle LCM messages')
         while True:
+            # read lcm messages
             self.lcm.handle_timeout(100)
 
-    def abstract_handler(self, channel, data):
-        decoder = getattr(dairlib, self.abstract_type)
-        msg = decoder.decode(data)
-        field = getattr(msg, "tracking_data")
-        # pt = np.array([field[self.abstract_x_index],
-        #                field[self.abstract_y_index],
-        #                field[self.abstract_z_index]])
+            # handle delete, clear, and reset flags
+            if (self.delete == True):
+                for shape in self.shapes.values():
+                    if (shape.type == "line"):
+                        for line in shape.object:
+                            om.removeFromObjectModel(line)
+                    else:
+                        om.removeFromObjectModel(shape.object)
 
-        a = None
-        for el in field:
-            if (el.name == "cp_traj"):
-                a = el.y
-                print(a)
-                break
+                self.delete = False
+                self.reset = True
+
+            if (self.clear == True):
+                for shape in self.shapes.values():
+                    if (shape.type == "line"):
+                        for line in shape.object:
+                            om.removeFromObjectModel(line)
+                    shape.object = deque()
+                self.clear = False
+
+    # The following is a test function for handling messages from different lcm
+    # channels
+
+    # def abstract_handler(self, channel, data):
+    #     decoder = getattr(dairlib, self.abstract_type)
+    #     msg = decoder.decode(data)
+    #     field = getattr(msg, "tracking_data")
+    #     # pt = np.array([field[self.abstract_x_index],
+    #     #                field[self.abstract_y_index],
+    #     #                field[self.abstract_z_index]])
+    #
+    #     a = None
+    #     for el in field:
+    #         if (el.name == "cp_traj"):
+    #             a = el.y
+    #             print(a)
+    #             break
 
     def state_handler(self, channel, data):
+        '''
+        Function for handling main lcm channel
+        '''
         if (self.ready == True):
             if (self.plant == None):
-                # Create the plant (TODO: URDF name a JSON option)
+
+                # create the plant
                 builder = pydrake.systems.framework.DiagramBuilder()
                 self.plant, scene_graph = \
                     pydrake.multibody.plant.AddMultibodyPlantSceneGraph(builder, 0)
                 pydrake.multibody.parsing.Parser(self.plant).AddModelFromFile(
                 FindResourceOrThrow(self.modelFile))
 
-                # Fixed-base model (weld-body, or null, a JSON option)
+                # determing is there is a need to use "weldframes" function
                 if (self.weldBody == True):
                     self.plant.WeldFrames(self.plant.world_frame(),
                         self.plant.GetFrameByName("pelvis"), RigidTransform.Identity())
@@ -270,6 +292,8 @@ class VisualizationGui(QWidget):
                 currShape = self.shapes[name]
                 next_loc = None
 
+                # determine the next location based on the type of data being
+                # currently processed
                 if (currShape.category == "kinematic_point"):
                     # Use Drake's CalcPointsPositions to determine where that point is
                     # in the world
@@ -283,16 +307,11 @@ class VisualizationGui(QWidget):
 
                 self.drawShape(currShape, next_loc)
 
-            if (self.clear == True):
-                self.clearHistory()
-
-            if (self.delete == True):
-                self.deleteShapes()
-
-            if (self.reset == True):
-                self.resetGUI()
-
     def drawShape(self, currShape, next_loc):
+        '''
+        Function for drawing shapes. Currently this supports lines, points, and
+        3D axes
+        '''
         # draw a continuous line
         if (currShape.type == "line"):
             # check if there is any previously computed location
@@ -376,7 +395,11 @@ class VisualizationGui(QWidget):
                 currShape.object.setPolyData(d.getPolyData())
 
 class ObjectToDraw():
+    '''
+    Wrapper class for any object/shape being drawn
+    '''
     def __init__(self, data):
+        # set attributes from given data (originating from input JSON file)
         jsonData = eval(str(data))
         self.category = jsonData['category']
         self.name = jsonData['name']
@@ -406,8 +429,10 @@ class ObjectToDraw():
         elif (self.type == "axis"):
             self.thickness = jsonData['thickness']
 
-
     def update(self, otherObject):
+        '''
+        Function for updating certain attributes of already existing object
+        '''
         self.frame = otherObject.frame
         self.point = otherObject.point
         self.color = otherObject.color

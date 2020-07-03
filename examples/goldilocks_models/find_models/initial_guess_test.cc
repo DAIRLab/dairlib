@@ -8,7 +8,7 @@ class InitialGuessTest : public ::testing::Test {};
 
 int test_initial_guess(int iter, int sample, int robot) {
   // create test data and save it
-  int use_database = false;
+  bool use_database = false;
   // create task_gen
   GridTasksGenerator task_gen_grid;
   if (robot == 0) {
@@ -32,16 +32,26 @@ int test_initial_guess(int iter, int sample, int robot) {
 
   const string dir =
       "../dairlib_data/goldilocks_models/find_models/robot_1_test/";
-  if (!CreateFolderIfNotExist(dir, false)) return 0;
+  //create folder if it doesn't exist
+  if(!folder_exist(dir)){
+    cout<<"Test folder doesn't exist"<<endl;
+    std::string string_for_system_call = "mkdir -p " + dir;
+    if (system(string_for_system_call.c_str()) == -1) {
+      printf("Error creating directory!n");
+      return 0;
+    } else {
+      cout << "Test folder has been created: " << dir << endl;
+    }
+  }
 
   // for each iteration, create theta_s and theta_sDDot
   int iteration = 0;
   for (iteration = 0; iteration <= iter; iteration++) {
-    VectorXd theta_y = VectorXd::Random(2);
-    VectorXd theta_yDDot = VectorXd::Random(2);
+    VectorXd theta_y = VectorXd::Ones(2)+VectorXd::Random(2);
+    VectorXd theta_yddot = VectorXd::Ones(2)+VectorXd::Random(2);
     writeCSV(dir + to_string(iteration) + string("_theta_y.csv"), theta_y);
-    writeCSV(dir + to_string(iteration) + string("_theta_yDDot.csv"),
-             theta_yDDot);
+    writeCSV(dir + to_string(iteration) + string("_theta_yddot.csv"),
+             theta_yddot);
     // for each sample, create gamma, is_success and w
     int sample = 0;
     int dim = 0;
@@ -55,29 +65,29 @@ int test_initial_guess(int iter, int sample, int robot) {
         std::default_random_engine re;
         gamma[dim] = dist(re);
       }
-      writeCSV(dir + prefix + string("_task.csv"), gamma);
-      bool is_success = 1;
+      writeCSV(dir + prefix + string("task.csv"), gamma);
+      int is_success = 1;
       writeCSV(dir + prefix + string("is_success.csv"),
                is_success * MatrixXd::Ones(1, 1));
       VectorXd w = VectorXd::Random(20);
       writeCSV(dir + prefix + string("w.csv"), w);
     }
   }
-
+  bool is_test= true;
   string initial_file = SetInitialGuessByInterpolation(
-      dir, iter, sample, task_gen, task, rom, use_database, robot);
-  return 0;
+      dir, iter, sample, task_gen, task, rom, use_database, robot, is_test);
+  return 1;
 }
 
 TEST_F(InitialGuessTest, DifferentIter) {
-  EXPECT_EQ(0, test_initial_guess(10, 0, 0));
-  EXPECT_EQ(0, test_initial_guess(15, 0, 0));
-  EXPECT_EQ(0, test_initial_guess(20, 0, 0));
+  EXPECT_EQ(1, test_initial_guess(10, 0, 0));
+  EXPECT_EQ(1, test_initial_guess(15, 0, 0));
+  EXPECT_EQ(1, test_initial_guess(20, 0, 0));
 }
 TEST_F(InitialGuessTest, DifferentRobot) {
-  EXPECT_EQ(0, test_initial_guess(10, 0, 1));
-  EXPECT_EQ(0, test_initial_guess(15, 0, 1));
-  EXPECT_EQ(0, test_initial_guess(20, 0, 1));
+  EXPECT_EQ(1, test_initial_guess(10, 0, 1));
+  EXPECT_EQ(1, test_initial_guess(15, 0, 1));
+  EXPECT_EQ(1, test_initial_guess(20, 0, 1));
 }
 
 }  // namespace dairlib::goldilocks_models

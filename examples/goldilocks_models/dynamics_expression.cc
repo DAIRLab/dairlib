@@ -264,6 +264,52 @@ T DynamicsExpression::getFeature(const T & s, const T & ds) const {
     return feature;
   }
 
+  // Version 12: ns = 3, all combinations until quadratic. 3D LIPM
+  if (rom_option_ == 4) {
+    DRAKE_DEMAND(n_sDDot_ == 3);
+    T feature(30);  // 2 + 6 + (6Choose2 + 6) = 1 + 6 + 21 = 28
+    T entended_elements(2);
+    if (s(2) == 0) {
+      // avoid singularity
+      cout << "In dynamics_expression, avoid singularity\n";
+      entended_elements << (9.80665 / (s(2) + 1e-8))*s(0),
+                           (9.80665 / (s(2) + 1e-8))*s(1);
+    } else {
+      entended_elements << (9.80665 / s(2))*s(0),
+                           (9.80665 / s(2))*s(1);
+    }
+    feature << entended_elements,
+        1,  // constant
+        s(0),
+        s(1),
+        s(2),
+        ds(0),
+        ds(1),
+        ds(2),  // linear
+        s(0) * s(0),
+        s(0) * s(1),
+        s(0) * s(2),
+        s(0) * ds(0),
+        s(0) * ds(1),
+        s(0) * ds(2),
+        s(1) * s(1),
+        s(1) * s(2),
+        s(1) * ds(0),
+        s(1) * ds(1),
+        s(1) * ds(2),
+        s(2) * s(2),
+        s(2) * ds(0),
+        s(2) * ds(1),
+        s(2) * ds(2),
+        ds(0) * ds(0),
+        ds(0) * ds(1),
+        ds(0) * ds(2),
+        ds(1) * ds(1),
+        ds(1) * ds(2),
+        ds(2) * ds(2);  // quadratic
+    return feature;
+  }
+
   DRAKE_DEMAND(false);  // shouldn't reach to this line of code
 }
 

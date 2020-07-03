@@ -224,12 +224,16 @@ void setRomDim(int* n_y, int* n_tau, int rom_option) {
     // 3D -- fix com vertical acceleration + swing foot
     *n_y = 3;
     *n_tau = 2;
+  } else if (rom_option == 4) {
+    // 3D -- 3D LIPM
+    *n_y = 3;
+    *n_tau = 0;
   } else {
     throw std::runtime_error("Should not reach here");
   }
 }
 void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
-  if ((rom_option == 0) || (rom_option == 2)) {
+  if ((rom_option == 0) || (rom_option == 2) || (rom_option == 4)) {
     // passive rom, so we don't need B_tau
   }
   else if (rom_option == 1) {
@@ -246,7 +250,7 @@ void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
   }
 }
 void setInitialTheta(VectorXd& theta_y, VectorXd& theta_yddot,
-                     int n_feature_y, int rom_option) {
+                     int n_feature_y, int n_feature_yddot, int rom_option) {
   // // Testing intial theta
   // theta_y = 0.25*VectorXd::Ones(n_theta_y);
   // theta_yddot = 0.5*VectorXd::Ones(n_theta_yddot);
@@ -273,6 +277,13 @@ void setInitialTheta(VectorXd& theta_y, VectorXd& theta_yddot,
     theta_y(1) = 1;
     theta_y(2 + 1 * n_feature_y) = 1;
     theta_y(3 + 2 * n_feature_y) = 1;
+  } else if (rom_option == 4) {
+    // 3D -- 3D lipm
+    theta_y(0) = 1;
+    theta_y(1 + n_feature_y) = 1;
+    theta_y(2 + 2 * n_feature_y) = 1;
+    theta_yddot(0) = 1;
+    theta_yddot(1 + n_feature_yddot) = 1;
   } else {
     throw std::runtime_error("Should not reach here");
   }
@@ -1788,6 +1799,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       break;
     case 3: cout << "(3D -- fix com vertical acceleration + swing foot)\n";
       break;
+    case 4: cout << "(3D -- 3D lipm)\n";
+      break;
   }
   cout << "Make sure that n_y and B_tau are correct.\n";
   if (!FLAGS_turn_off_cin) {
@@ -1816,12 +1829,18 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "n_feature_yddot = " << n_feature_yddot << endl;
   int n_theta_y = n_y * n_feature_y;
   int n_theta_yddot = n_yddot * n_feature_yddot;
+  if (FLAGS_rom_option <= 3) {
+    // TODO: This is a temporary gaurd for KinematicsExpression(). Won't need
+    // this once I finished the new ROM class
+    DRAKE_DEMAND(n_feature_y == 70);
+  }
 
   // Initial guess of theta
   VectorXd theta_y = VectorXd::Zero(n_theta_y);
   VectorXd theta_yddot = VectorXd::Zero(n_theta_yddot);
   if (iter_start == 0) {
-    setInitialTheta(theta_y, theta_yddot, n_feature_y, FLAGS_rom_option);
+    setInitialTheta(theta_y, theta_yddot, n_feature_y, n_feature_yddot,
+                    FLAGS_rom_option);
     cout << "Make sure that you use the right initial theta.\n";
     if (!FLAGS_turn_off_cin) {
       cout << "Proceed? (Y/N)\n";

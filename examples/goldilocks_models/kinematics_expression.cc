@@ -658,7 +658,7 @@ VectorX<U> KinematicsExpression<T>::getFeature(const VectorX<U> & q) const {
   } else if (robot_option_ == 1) {
 
     //////////// Version 1: features contain LIPM & swing foot //////////////////
-    // Currently it doesn't include floating base coordinates
+    /*// Currently it doesn't include floating base coordinates
     // Didn't use sin and cos just to keep the size small for now
 
     // Get CoM position
@@ -776,7 +776,121 @@ VectorX<U> KinematicsExpression<T>::getFeature(const VectorX<U> & q) const {
             q(17) * q(17),
             q(18) * q(17),
             // 10
-            q(18) * q(18);
+            q(18) * q(18);*/
+
+    //////////// Version 2: features contain 3D LIPM ///////////////////////////
+    // Currently it doesn't include floating base coordinates
+    // Didn't use sin and cos just to keep the size small for now
+
+    // Get CoM position
+    plant_->SetPositions(context_.get(), q);
+    VectorX<U> CoM = plant_->CalcCenterOfMassPosition(*context_);
+    // Stance foot position (left foot)
+    VectorX<U> left_foot_pos(3);
+    const auto & left_toe = plant_->GetBodyByName("toe_left");
+    plant_->CalcPointsPositions(*context_, left_toe.body_frame(), mid_disp_,
+                                plant_->world_frame(), &left_foot_pos);
+    VectorX<U> st_to_CoM = CoM - left_foot_pos;
+    // cout << "CoM = " << CoM.transpose() << endl;
+    // cout << "left_foot_pos = " << left_foot_pos.transpose() << endl;
+    // cout << "right_foot_pos = " << right_foot_pos.transpose() << endl;
+    // cout << "CoM from MBP = " << CoM(0) << " " << CoM(2) << endl;
+    // cout << "st_to_CoM from MBP = " << st_to_CoM(0) << " " << st_to_CoM(2) << endl;
+
+    VectorX<U> feature_base(3);
+    feature_base << st_to_CoM;
+
+    // elements: (no ankle joint, since it's redundant info for fixed_spring model)
+    // q(7)
+    // q(8)
+    // q(9)
+    // q(10)
+    // q(11)
+    // q(12)
+    // q(13)
+    // q(14)
+    // q(17)
+    // q(18)
+    // feature_base
+
+    VectorX<U> feature(69);  // 3 + 1 + 10 + (10C2 + 10) = 4 + 1 + 10 + 55 = 69
+    feature << feature_base,
+        1,
+        q(7),
+        q(8),
+        q(9),
+        q(10),
+        q(11),
+        q(12),
+        q(13),
+        q(14),
+        q(17),
+        q(18),  // linear until here, below are quadratic
+        // 1
+        q(7) * q(7),
+        q(8) * q(7),
+        q(9) * q(7),
+        q(10) * q(7),
+        q(11) * q(7),
+        q(12) * q(7),
+        q(13) * q(7),
+        q(14) * q(7),
+        q(17) * q(7),
+        q(18) * q(7),
+        // 2
+        q(8) * q(8),
+        q(9) * q(8),
+        q(10) * q(8),
+        q(11) * q(8),
+        q(12) * q(8),
+        q(13) * q(8),
+        q(14) * q(8),
+        q(17) * q(8),
+        q(18) * q(8),
+        // 3
+        q(9) * q(9),
+        q(10) * q(9),
+        q(11) * q(9),
+        q(12) * q(9),
+        q(13) * q(9),
+        q(14) * q(9),
+        q(17) * q(9),
+        q(18) * q(9),
+        // 4
+        q(10) * q(10),
+        q(11) * q(10),
+        q(12) * q(10),
+        q(13) * q(10),
+        q(14) * q(10),
+        q(17) * q(10),
+        q(18) * q(10),
+        // 5
+        q(11) * q(11),
+        q(12) * q(11),
+        q(13) * q(11),
+        q(14) * q(11),
+        q(17) * q(11),
+        q(18) * q(11),
+        // 6
+        q(12) * q(12),
+        q(13) * q(12),
+        q(14) * q(12),
+        q(17) * q(12),
+        q(18) * q(12),
+        // 7
+        q(13) * q(13),
+        q(14) * q(13),
+        q(17) * q(13),
+        q(18) * q(13),
+        // 8
+        q(14) * q(14),
+        q(17) * q(14),
+        q(18) * q(14),
+        // 9
+        q(17) * q(17),
+        q(18) * q(17),
+        // 10
+        q(18) * q(18);
 
     return feature;
   }

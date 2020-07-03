@@ -78,6 +78,10 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
         constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 3200.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
         constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 4000.0 * rom_scale));
+      } else if (rom_option == 4) {
+        constraint_scale_map.insert(std::pair<int, double>(0, constraint_scale * 1.0 / 26000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(1, constraint_scale * 1.0 / 26000.0 * rom_scale));
+        constraint_scale_map.insert(std::pair<int, double>(2, constraint_scale * 1.0 / 3200.0 * rom_scale));
       } else {
         // The scaling of others hasn't tuned yet
         DRAKE_DEMAND(false);

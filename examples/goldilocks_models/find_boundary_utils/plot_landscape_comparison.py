@@ -1,11 +1,5 @@
 import matplotlib.pyplot as plt
-import matplotlib
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-from scipy.linalg import solve
-import torch
-from torch import tensor
-import csv
 import os
 
 robot_option = 1
@@ -13,27 +7,17 @@ normalized_cost = True
 file_dir = '/Users/jason-hu/'
 
 # optimization setting
-if robot_option == 0:
-    min_gi1 = -0.325
-    max_gi1 = 0.275
-    min_sl1 = 0.0925
-    max_sl1 = 0.3925
-
-    min_gi2 = -0.175
-    max_gi2 = 0.125
-    min_sl2 = 0.1675
-    max_sl2 = 0.3175
+# large range
+min_gi1 = -0.325
+max_gi1 = 0.275
+min_sl1 = 0.0925
+max_sl1 = 0.3925
+# small range
+min_gi2 = -0.175
+max_gi2 = 0.125
+min_sl2 = 0.1675
+max_sl2 = 0.3175
 plot_large_range = 1
-if robot_option == 1:
-    min_gi1 = -0.325
-    max_gi1 = 0.275
-    min_sl1 = 0.1425
-    max_sl1 = 0.4425
-
-    min_gi2 = -0.175
-    max_gi2 = 0.125
-    min_sl2 = 0.2175
-    max_sl2 = 0.3675
 plot_small_range = 1
 
 if robot_option == 0:

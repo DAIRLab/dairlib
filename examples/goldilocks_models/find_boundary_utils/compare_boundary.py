@@ -1,11 +1,14 @@
+"""
+This function is used for comparing two cost landscape and plot the landscape with discrete color map.
+1.For every point in cost landscape 1 (C1), we check if this point exists in cost landscape 2 (C2):
+If it exists in C2, we compare the costs between them and set the corresponding value for this point.
+Else, we set the value zero for this point.
+2.For every point in C2, we do the same thing while we ignore the intersected point, and we set a large
+value for point existing in C2 rather than in C1.
+"""
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-from scipy.linalg import solve
-import torch
-from torch import tensor
-import csv
 import os
 
 robot_option = 1

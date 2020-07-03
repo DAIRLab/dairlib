@@ -58,9 +58,6 @@ void runDircon() {
 
   parser.AddModelFromFile(sdf_path);
 
-  plant.mutable_gravity_field().set_gravity_vector(
-      -9.81 * Eigen::Vector3d::UnitZ());
-
   plant.WeldFrames(
       plant.world_frame(), plant.GetFrameByName("base_link"),
       drake::math::RigidTransform<double>());

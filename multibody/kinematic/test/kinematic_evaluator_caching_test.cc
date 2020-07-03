@@ -309,8 +309,6 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::Parser parser(&plant);
   std::string full_name = FindResourceOrThrow(filename);
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);

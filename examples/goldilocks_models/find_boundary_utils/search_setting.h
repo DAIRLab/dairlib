@@ -24,7 +24,7 @@ class SearchSetting {
   const vector<double>& task_0() const {return task_0_;}
   const vector<double>& task_delta() const {return task_delta_;}
   int index(string task_name) const {return name_to_index_map_.at(task_name);}
-  int get_n_element(int task_dim) const {return elements_[task_dim].size();}
+  int get_n_element(int task_index) const {return elements_[task_index].size();}
   double get_element(int task_index,int element_index) const {
     return elements_[task_index][element_index];
   }

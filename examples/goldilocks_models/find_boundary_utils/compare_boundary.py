@@ -54,23 +54,22 @@ if robot_option == 0:
            '_small_task_space_iter1000/'
     dir8 = file_dir+'dairlib_data/find_boundary/' + robot + 'small_task_space/' + 'robot_' + str(robot_option) + \
            '_small_task_space_iter2000_with_scaling/'
-else:
-    if robot_option == 1:
-        robot = 'cassie/'
-        dir1 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/'+'robot_' + str(robot_option) + \
-               '_2d_nominal/'
-        dir2 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-               '_2d_initial_model/'
-        dir3 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-               '_small_iter300/'
-        dir4 = file_dir + 'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-               '_large_iter150/'
-        dir5 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-               '_2d_initial_model/'
-        dir6 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-               '_small_iter200/'
-        dir7 = file_dir + 'dairlib_data/find_boundary/' + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
-               '_large_iter100/'
+if robot_option == 1:
+    robot = 'cassie/'
+    dir1 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/'+'robot_' + str(robot_option) + \
+           '_2d_nominal/'
+    dir2 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
+           '_2d_initial_model/'
+    dir3 = file_dir+'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
+           '_small_iter300/'
+    dir4 = file_dir + 'dairlib_data/find_boundary/' + robot + '1D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
+           '_large_iter150/'
+    dir5 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
+           '_2d_initial_model/'
+    dir6 = file_dir+'dairlib_data/find_boundary/' + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
+           '_small_iter200/'
+    dir7 = file_dir + 'dairlib_data/find_boundary/' + robot + '2D_rom/2D_task_space/' + 'robot_' + str(robot_option) + \
+           '_large_iter100/'
 
 
 x = []

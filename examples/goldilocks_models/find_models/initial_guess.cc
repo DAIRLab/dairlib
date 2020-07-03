@@ -83,8 +83,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
                                       int sample,
                                       const TasksGenerator* task_gen,
                                       const Task& task, const RomData& rom,
-                                      bool use_database, int robot,
-                                      bool is_test) {
+                                      bool use_database, int robot) {
   /* define some parameters used in interpolation
    * theta_range :decide the range of theta to use in interpolation
    * theta_sclae,gamma_scale :used to scale the theta and gamma in interpolation
@@ -163,7 +162,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
       past_theta << past_theta_s, past_theta_sDDot;
       double theta_diff =
           (past_theta - current_theta).norm() / current_theta.norm();
-      if ( (theta_diff < theta_range) || (is_test) ) {
+      if ( (theta_diff < theta_range) ) {
         // take out corresponding solution and store it in each column of
         // w_gamma calculate the interpolation weight and store it in
         // weight_gamma

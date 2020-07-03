@@ -27,7 +27,8 @@ int test_initial_guess(int iter, int sample, int robot) {
   task.set(task_gen->NewTask(sample));
   // create rom
   RomData rom = RomData(1, 2, 2, 2);
-  VectorXd current_theta = VectorXd::Random(4);
+  //make sure difference between thetas within theta_range
+  VectorXd current_theta = VectorXd::Random(4)/10000+VectorXd::Ones(4);
   rom.SetTheta(current_theta);
 
   const string dir =
@@ -47,8 +48,9 @@ int test_initial_guess(int iter, int sample, int robot) {
   // for each iteration, create theta_s and theta_sDDot
   int iteration = 0;
   for (iteration = 0; iteration <= iter; iteration++) {
-    VectorXd theta_y = VectorXd::Ones(2)+VectorXd::Random(2);
-    VectorXd theta_yddot = VectorXd::Ones(2)+VectorXd::Random(2);
+    //make sure difference between thetas within theta_range
+    VectorXd theta_y = VectorXd::Ones(2)+VectorXd::Random(2)/10000;
+    VectorXd theta_yddot = VectorXd::Ones(2)+VectorXd::Random(2)/10000;
     writeCSV(dir + to_string(iteration) + string("_theta_y.csv"), theta_y);
     writeCSV(dir + to_string(iteration) + string("_theta_yddot.csv"),
              theta_yddot);
@@ -73,9 +75,8 @@ int test_initial_guess(int iter, int sample, int robot) {
       writeCSV(dir + prefix + string("w.csv"), w);
     }
   }
-  bool is_test= true;
   string initial_file = SetInitialGuessByInterpolation(
-      dir, iter, sample, task_gen, task, rom, use_database, robot, is_test);
+      dir, iter, sample, task_gen, task, rom, use_database, robot);
   return 1;
 }
 

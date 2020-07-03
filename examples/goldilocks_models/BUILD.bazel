@@ -121,3 +121,17 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "reduced_order_models",
+    srcs = [
+        "reduced_order_models.cc",
+    ],
+    hdrs = [
+        "reduced_order_models.h",
+    ],
+    deps = [
+        "//systems/goldilocks_models",
+        "@drake//:drake_shared_library",
+    ],
+)

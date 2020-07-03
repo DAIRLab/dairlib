@@ -90,6 +90,7 @@ cc_library(
         "//examples/goldilocks_models:dynamics_expression",
         "//examples/goldilocks_models:goldilocks_utils",
         "//examples/goldilocks_models:kinematics_expression",
+        "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
         "//solvers:nonlinear_constraint",
         "//systems/trajectory_optimization:dircon",
@@ -149,6 +150,7 @@ cc_library(
     ],
     deps = [
         "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models:reduced_order_models",
         "//examples/goldilocks_models:task",
         "//systems/goldilocks_models",
         "@drake//:drake_shared_library",

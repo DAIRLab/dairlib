@@ -6,6 +6,7 @@
 #include <Eigen/Dense>
 
 #include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/task.h"
 #include "systems/goldilocks_models/file_utils.h"
 #include "drake/solvers/mathematical_program.h"

@@ -18,10 +18,11 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/dynamics_expression.h"
+#include "examples/goldilocks_models/find_models/initial_guess.h"
 #include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
-#include "examples/goldilocks_models/find_models/initial_guess.h"
 #include "examples/goldilocks_models/kinematics_expression.h"
+#include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/task.h"
 #include "systems/goldilocks_models/file_utils.h"
 

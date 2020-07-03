@@ -5,7 +5,6 @@
 namespace dairlib {
 namespace goldilocks_models {
 
-// Tasks are randomly generated from the whole optimization space
 TasksGenerator::TasksGenerator(int task_dim, std::vector<string> names,
                                std::vector<int> N_sample_vec)
     : task_dim_(task_dim), names_(names), N_sample_vec_(N_sample_vec) {

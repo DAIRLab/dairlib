@@ -11,8 +11,41 @@ load(
     "pybind_py_library",
 )
 
+py_library(
+    name = "planar_scene_simulator_py",
+    srcs = ["planar_scene_simulator.py"],
+    deps = ["@drake//bindings/pydrake"],
+)
+
 py_binary(
     name = "simulate_planar_scene",
     srcs = ["simulate_planar_scene.py"],
-    deps = ["@drake//bindings/pydrake"],
+    deps = [":planar_scene_simulator_py",
+            ":module_py",],
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py"
+    ],
+)
+
+PY_LIBRARIES = [
+    ":planar_scene_simulator_py",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "examples",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
 )

@@ -190,7 +190,7 @@ VectorX<T> KinematicEvaluatorSet<T>::CalcMassMatrixTimesVDot(
   VectorX<T> J_transpose_lambda =
       EvalFullJacobian(context).transpose() * lambda;
 
-  return tau_g + 0 * f_app.generalized_forces() + Bu + J_transpose_lambda - C;
+  return tau_g + f_app.generalized_forces() + Bu + J_transpose_lambda - C;
 }
 
 template <typename T>

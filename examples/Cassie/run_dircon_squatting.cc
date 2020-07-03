@@ -237,7 +237,7 @@ void DoMain(double duration, int max_iter, string data_directory,
   } else {
     // Snopt settings
     auto id = drake::solvers::SnoptSolver::id();
-    trajopt.SetSolverOption(id, "Print file", "../snopt.out");
+    // trajopt.SetSolverOption(id, "Print file", "../snopt.out");
     trajopt.SetSolverOption(id, "Major iterations limit", max_iter);
     trajopt.SetSolverOption(id, "Iterations limit", 100000);
     trajopt.SetSolverOption(id, "Verify level", 0);

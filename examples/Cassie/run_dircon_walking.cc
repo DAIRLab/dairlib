@@ -176,8 +176,6 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
       parser.AddModelFromFile(full_name);
-      plant_ik.mutable_gravity_field().set_gravity_vector(
-          -9.81 * Eigen::Vector3d::UnitZ());
       plant_ik.Finalize();
 
       // Visualize
@@ -270,8 +268,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
   string full_name =
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
   // Create maps for joints

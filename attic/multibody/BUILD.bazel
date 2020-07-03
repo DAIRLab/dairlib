@@ -52,22 +52,6 @@ cc_library(
     deprecation = "Attic/RigidBodyTree is deprecated."
 )
 
-cc_test(
-    name = "contact_toolkit_test",
-    srcs = [
-        "test/contact_toolkit_test.cc",
-    ],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        ":contact_toolkit",
-        ":utils",
-        "@gtest//:main",
-    ],
-    size = "small",
-    tags = ["manual"],
-    deprecation = "Attic/RigidBodyTree is deprecated."
-)
-
 cc_library(
     name = "multibody_solvers",
     srcs = [
@@ -81,22 +65,6 @@ cc_library(
         ":contact_toolkit",
         ":utils",
     ],
-    tags = ["manual"],
-    deprecation = "Attic/RigidBodyTree is deprecated."
-)
-
-cc_test(
-    name = "multibody_solvers_test",
-    srcs = [
-        "test/multibody_solvers_test.cc",
-    ],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        ":multibody_solvers",
-        ":utils",
-        "@gtest//:main",
-    ],
-    size = "small",
     tags = ["manual"],
     deprecation = "Attic/RigidBodyTree is deprecated."
 )

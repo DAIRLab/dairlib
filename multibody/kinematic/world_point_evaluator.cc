@@ -77,9 +77,9 @@ VectorX<T> WorldPointEvaluator<T>::EvalFullJacobianDotTimesV(
     const Context<T>& context) const {
   const drake::multibody::Frame<T>& world = plant().world_frame();
 
-  MatrixX<T> Jdot_times_V = plant().CalcBiasSpatialAcceleration(
+  MatrixX<T> Jdot_times_V = plant().CalcBiasTranslationalAcceleration(
       context, drake::multibody::JacobianWrtVariable::kV, frame_A_,
-      pt_A_.template cast<T>(), world, world).translational();
+      pt_A_.template cast<T>(), world, world);
 
   return rotation_ * Jdot_times_V;
 }

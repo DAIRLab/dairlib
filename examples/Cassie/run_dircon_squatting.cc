@@ -7,6 +7,8 @@
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
+#include "common/file_utils.h"
+
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/com_pose_system.h"
@@ -15,7 +17,6 @@
 #include "multibody/multibody_utils.h"
 #include "solvers/nonlinear_constraint.h"
 #include "solvers/optimization_utils.h"
-#include "systems/goldilocks_models/file_utils.h"
 #include "systems/trajectory_optimization/dircon/dircon.h"
 
 #include "drake/geometry/geometry_visualization.h"

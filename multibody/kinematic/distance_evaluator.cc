@@ -107,18 +107,13 @@ VectorX<T> DistanceEvaluator<T>::EvalFullJacobianDotTimesV(
       world, world, &J_B);
   auto J_rel = J_A - J_B;
 
-  VectorX<T> J_A_dot_times_v =
-      plant()
-          .CalcBiasSpatialAcceleration(
-              context, drake::multibody::JacobianWrtVariable::kV, frame_A_,
-              pt_A_cast, world, world)
-          .translational();
-  VectorX<T> J_B_dot_times_v =
-      plant()
-          .CalcBiasSpatialAcceleration(
-              context, drake::multibody::JacobianWrtVariable::kV, frame_B_,
-              pt_B_cast, world, world)
-          .translational();
+  VectorX<T> J_A_dot_times_v = plant().CalcBiasTranslationalAcceleration(
+      context, drake::multibody::JacobianWrtVariable::kV, frame_A_, pt_A_cast,
+      world, world);
+  VectorX<T> J_B_dot_times_v = plant().CalcBiasTranslationalAcceleration(
+      context, drake::multibody::JacobianWrtVariable::kV, frame_B_, pt_B_cast,
+      world, world);
+
   auto J_rel_dot_times_v = J_A_dot_times_v - J_B_dot_times_v;
   T phi = rel_pos.norm();
 

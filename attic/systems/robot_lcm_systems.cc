@@ -33,6 +33,23 @@ RobotOutputReceiver::RobotOutputReceiver(
     &RobotOutputReceiver::CopyOutput);
 }
 
+// RBT constructor--to be deprecated when move to MBP is complete
+RobotOutputReceiver::RobotOutputReceiver(
+    const RigidBodyTree<double>& tree) {
+  num_positions_ = tree.get_num_positions();
+  num_velocities_ = tree.get_num_velocities();
+  num_efforts_ = tree.get_num_actuators();
+  positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
+  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
+  effortIndexMap_ = multibody::makeNameToActuatorsMap(tree);
+  this->DeclareAbstractInputPort("lcmt_robot_output",
+    drake::Value<dairlib::lcmt_robot_output>{});
+  this->DeclareVectorOutputPort(OutputVector<double>(
+    tree.get_num_positions(), tree.get_num_velocities(),
+    tree.get_num_actuators()),
+    &RobotOutputReceiver::CopyOutput);
+}
+
 void RobotOutputReceiver::CopyOutput(
     const Context<double>& context, OutputVector<double>* output) const {
   const drake::AbstractValue* input =
@@ -64,6 +81,43 @@ void RobotOutputReceiver::CopyOutput(
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputSender.
+
+// RBT constructor--to be deprecated when move to MBP is complete
+RobotOutputSender::RobotOutputSender(const RigidBodyTree<double>& tree,
+    const bool publish_efforts):publish_efforts_(publish_efforts) {
+  num_positions_ = tree.get_num_positions();
+  num_velocities_ = tree.get_num_velocities();
+  num_efforts_ = tree.get_num_actuators();
+
+  for (int i = 0; i < num_positions_; i++) {
+    ordered_position_names_.push_back(tree.get_position_name(i));
+  }
+
+  for (int i = 0; i < num_velocities_; i++) {
+    ordered_velocity_names_.push_back(tree.get_velocity_name(i));
+  }
+
+  positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
+  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
+  effortIndexMap_ = multibody::makeNameToActuatorsMap(tree);
+
+  for (int i = 0; i < num_efforts_; i++) {
+    for (auto& x : effortIndexMap_) {
+      if (x.second == i) {
+        ordered_effort_names_.push_back(x.first);
+        break;
+      }
+    }
+  }
+
+  state_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
+      num_positions_ + num_velocities_)).get_index();
+  if (publish_efforts_) {
+    effort_input_port_ = this->DeclareVectorInputPort(BasicVector<double>(
+          num_efforts_)).get_index();
+  }
+  this->DeclareAbstractOutputPort(&RobotOutputSender::Output);
+}
 
 RobotOutputSender::RobotOutputSender(
     const drake::multibody::MultibodyPlant<double>& plant,
@@ -153,6 +207,14 @@ void RobotOutputSender::Output(const Context<double>& context,
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotInputReceiver.
+RobotInputReceiver::RobotInputReceiver(const RigidBodyTree<double>& tree) {
+  num_actuators_ = tree.get_num_actuators();
+  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
+  this->DeclareAbstractInputPort("lcmt_robot_input",
+    drake::Value<dairlib::lcmt_robot_input>{});
+  this->DeclareVectorOutputPort(TimestampedVector<double>(num_actuators_),
+                                &RobotInputReceiver::CopyInputOut);
+}
 
 RobotInputReceiver::RobotInputReceiver(
       const drake::multibody::MultibodyPlant<double>& plant) {
@@ -183,6 +245,18 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotCommandSender.
+
+RobotCommandSender::RobotCommandSender(const RigidBodyTree<double>& tree) {
+  num_actuators_ = tree.get_num_actuators();
+  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
+
+for (int i = 0; i < num_actuators_; i++) {
+    ordered_actuator_names_.push_back(tree.actuators[i].name_);
+  }
+
+  this->DeclareVectorInputPort(TimestampedVector<double>(num_actuators_));
+  this->DeclareAbstractOutputPort(&RobotCommandSender::OutputCommand);
+}
 
 RobotCommandSender::RobotCommandSender(
     const drake::multibody::MultibodyPlant<double>& plant) {

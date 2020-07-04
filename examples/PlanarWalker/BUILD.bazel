@@ -11,6 +11,8 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated.",
 )
 
 cc_binary(
@@ -21,6 +23,8 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated.",
 )
 
 cc_binary(

@@ -21,7 +21,6 @@ cc_library(
     hdrs = ["pd_config_lcm.h"],
     deps = [
         ":controllers",
-        "//attic/multibody:utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
@@ -80,18 +79,6 @@ cc_library(
         ":affine_controller",
         ":constrained_lqr_controller",
         ":linear_controller",
-    ],
-)
-
-cc_test(
-    name = "pd_config_lcm_test",
-    size = "small",
-    srcs = ["test/pd_config_lcm_test.cc"],
-    deps = [
-        ":pd_config_lcm",
-        "//examples/Cassie:cassie_urdf",
-        "@drake//:drake_shared_library",
-        "@gtest//:main",
     ],
 )
 

@@ -46,6 +46,7 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
 )
 
 cc_library(

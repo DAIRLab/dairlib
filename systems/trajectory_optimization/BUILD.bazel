@@ -19,7 +19,7 @@ cc_library(
         ":dircon_kinematic_data",
         "//solvers:optimization_utils",
         "//solvers:nonlinear_constraint",
-        "//systems/goldilocks_models",
+        "//common",
         "//multibody:multipose_visualizer",
         "@drake//:drake_shared_library",
     ],

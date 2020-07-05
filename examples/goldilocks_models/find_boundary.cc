@@ -227,7 +227,7 @@ string getInitFileName(const string directory, int traj_opt_num,
     double delta_sl = 0.015;
     double delta_gi = 0.05;
     double delta_tr = 0.125;
-    double delta_v = 0.04;
+    double delta_v = 0.02;
     gamma_scale << 1/delta_sl,1/delta_gi,1/delta_v,1.3/delta_tr;
   }
   string initial_file_name;

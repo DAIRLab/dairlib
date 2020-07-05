@@ -41,8 +41,8 @@ VectorXd GetGammaScale(const TasksGenerator* task_gen) {
 
 // calculate the interpolation weight; update weight vector and solution matrix
 void InterpolateAmongDifferentTasks(const string& dir, string prefix,
-                                    VectorXd current_gamma,
-                                    VectorXd gamma_scale,
+                                    const VectorXd& current_gamma,
+                                    const VectorXd& gamma_scale,
                                     VectorXd& weight_vector,
                                     MatrixXd& solution_matrix) {
   // check if this sample is success
@@ -68,13 +68,11 @@ void InterpolateAmongDifferentTasks(const string& dir, string prefix,
 }
 
 // calculate interpolated initial guess using weight vector and solution matrix
-VectorXd CalculateInterpolation(VectorXd weight_vector,
-                                MatrixXd solution_matrix) {
+VectorXd CalculateInterpolation(const VectorXd& weight_vector,
+                                const MatrixXd& solution_matrix) {
   DRAKE_DEMAND(weight_vector.rows() > 0);
-  // normalize weight
-  weight_vector.normalize();
   // interpolation
-  VectorXd interpolated_solution = solution_matrix * weight_vector;
+  VectorXd interpolated_solution = solution_matrix * weight_vector.normalized();
   return interpolated_solution;
 }
 
@@ -161,7 +159,7 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
       past_theta << past_theta_s, past_theta_sDDot;
       double theta_diff =
           (past_theta - current_theta).norm() / current_theta.norm();
-      if ((theta_diff < theta_range)) {
+      if ( (theta_diff < theta_range) ) {
         // take out corresponding solution and store it in each column of
         // w_gamma calculate the interpolation weight and store it in
         // weight_gamma

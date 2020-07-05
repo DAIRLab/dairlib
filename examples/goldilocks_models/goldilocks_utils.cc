@@ -184,15 +184,17 @@ bool folder_exist (const std::string & pathname_string) {
   }
 }
 
-bool CreateFolderIfNotExist(const string& dir) {
+bool CreateFolderIfNotExist(const string& dir, bool ask_for_permission) {
   if (!folder_exist(dir)) {
-    cout << dir
-         << " doesn't exsit. We will create the folder.\nProceed? (Y/N)\n";
-    char answer[1];
-    std::cin >> answer;
-    if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-      cout << "Ending the program.\n";
-      return false;
+    if (ask_for_permission) {
+      cout << dir
+           << " doesn't exsit. We will create the folder.\nProceed? (Y/N)\n";
+      char answer[1];
+      std::cin >> answer;
+      if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
+        cout << "Ending the program.\n";
+        return false;
+      }
     }
 
     // Creating a directory

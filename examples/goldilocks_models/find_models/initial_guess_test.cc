@@ -26,7 +26,7 @@ int test_initial_guess(int iter, int sample, int robot) {
   Task task(task_gen->names());
   task.set(task_gen->NewTask(sample));
   // create rom
-  RomData rom = RomData(1, 2, 2, 2);
+  ReducedOrderModel rom = ReducedOrderModel(1, 2, 2, 2);
   VectorXd current_theta = VectorXd::Random(4);
   rom.SetTheta(current_theta);
 

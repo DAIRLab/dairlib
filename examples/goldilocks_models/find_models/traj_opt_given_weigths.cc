@@ -136,7 +136,7 @@ void extractResult(VectorXd& w_sol,
                    const MultibodyPlant<double> & plant,
                    const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
                    const InnerLoopSetting& setting,
-                   const RomData& rom,
+                   const ReducedOrderModel& rom,
                    const Task& task,
                    const SubQpData& QPs,
                    int sample_idx, int n_rerun,
@@ -356,12 +356,13 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
                     const MultibodyPlant<double>& plant,
                     const MultibodyPlant<AutoDiffXd>& plant_autoDiff,
                     const InnerLoopSetting& setting,
-                    const RomData& rom,
+                    const ReducedOrderModel& rom,
                     const SubQpData& QPs, bool is_get_nominal,
                     bool extend_model,
                     int sample_idx, int n_rerun,
                     double cost_threshold_for_update, int N_rerun,
                     int rom_option, int robot_option) {
+  int n_q = plant.num_positions();
   int n_s = rom.n_y();
   int n_sDDot = rom.n_y();
   int n_tau = rom.n_tau();
@@ -583,11 +584,11 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
         VectorXd x_i_sol = result.GetSolution(x_i);
         VectorXd tau_i_sol = result.GetSolution(tau_i);
 
-        VectorXd s(n_s);
-        VectorXd ds(n_s);
-        gm_traj_opt.dynamics_constraint_at_head->getSAndSDot(x_i_sol, s, ds);
+        VectorXd s =
+            gm_traj_opt.dynamics_constraint_at_head->GetY(x_i_sol.head(n_q));
+        VectorXd ds = gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
         VectorXd dds =
-          gm_traj_opt.dynamics_constraint_at_head->getSDDot(s, ds, tau_i_sol);
+            gm_traj_opt.dynamics_constraint_at_head->GetYddot(s, ds, tau_i_sol);
         s_vec.push_back(s);
         ds_vec.push_back(ds);
         dds_vec.push_back(dds);
@@ -693,18 +694,18 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
           VectorXd x_i_sol = result.GetSolution(x_i);
           VectorXd x_iplus1_sol = result.GetSolution(x_iplus1);
 
-          VectorXd s_i(n_s);
-          VectorXd ds_i(n_s);
-          VectorXd s_iplus1(n_s);
-          VectorXd ds_iplus1(n_s);
-          gm_traj_opt.dynamics_constraint_at_head->getSAndSDot(
-            x_i_sol, s_i, ds_i);
-          // cout << "ds_i_byhand - ds_i = " <<
-          // theta_s(0) * 2 * x_i_sol(1)*x_i_sol(1 + 7) - ds_i(0) << endl;
-          gm_traj_opt.dynamics_constraint_at_head->getSAndSDot(
-            x_iplus1_sol, s_iplus1, ds_iplus1);
-          // cout << "ds_iplus1_byhand - ds_iplus1 = " <<
-          // theta_s(0) * 2 * x_iplus1_sol(1)*x_iplus1_sol(1 + 7) - ds_iplus1(0) << endl;
+          VectorXd y_i =
+              gm_traj_opt.dynamics_constraint_at_head->GetY(x_i_sol.head(n_q));
+          VectorXd ydot_i =
+              gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_i_sol);
+          VectorXd y_iplus1 = gm_traj_opt.dynamics_constraint_at_head->GetY(
+              x_iplus1_sol.head(n_q));
+          VectorXd ydot_iplus1 =
+              gm_traj_opt.dynamics_constraint_at_head->GetYdot(x_iplus1_sol);
+          // cout << "ydot_i_byhand - ydot_i = " <<
+          // theta_s(0) * 2 * x_i_sol(1)*x_i_sol(1 + 7) - ydot_i(0) << endl;
+          // cout << "ydot_iplus1_byhand - ydot_iplus1 = " <<
+          // theta_s(0) * 2 * x_iplus1_sol(1)*x_iplus1_sol(1 + 7) - ydot_iplus1(0) << endl;
         }
         N_accum += num_time_samples[l];
         N_accum -= 1;  // due to overlaps between modes
@@ -1062,7 +1063,7 @@ void postProcessing(const VectorXd& w_sol, GoldilocksModelTrajOpt& gm_traj_opt,
 
 void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
                           const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
-                          const RomData& rom,
+                          const ReducedOrderModel& rom,
                           const InnerLoopSetting& setting,
                           const Task& task,
                           const SubQpData& QPs,
@@ -1378,7 +1379,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
     rom,
-    std::move(trajopt), &plant_autoDiff, &plant, num_time_samples,
+    std::move(trajopt), plant, num_time_samples,
     is_get_nominal, setting.is_add_tau_in_cost, rom_option, robot_option, 1/*temporary*/);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
@@ -1422,7 +1423,7 @@ void fiveLinkRobotTrajOpt(const MultibodyPlant<double> & plant,
 
 void cassieTrajOpt(const MultibodyPlant<double> & plant,
                    const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
-                   const RomData& rom,
+                   const ReducedOrderModel& rom,
                    const InnerLoopSetting& setting,
                    const Task& task,
                    const SubQpData& QPs,
@@ -2147,7 +2148,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
   // where we add the constraints for reduced order model
   GoldilocksModelTrajOpt gm_traj_opt(
     rom,
-    std::move(trajopt), &plant_autoDiff, &plant, num_time_samples,
+    std::move(trajopt), plant, num_time_samples,
     is_get_nominal, setting.is_add_tau_in_cost, rom_option, robot_option, s);
 
   addRegularization(is_get_nominal, setting.eps_reg, gm_traj_opt);
@@ -2355,7 +2356,7 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
 void trajOptGivenWeights(
     const MultibodyPlant<double> & plant,
     const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
-    const RomData& rom,
+    const ReducedOrderModel& rom,
     InnerLoopSetting inner_loop_setting,
     Task task,
     const SubQpData& QPs,
@@ -2364,27 +2365,6 @@ void trajOptGivenWeights(
     bool extend_model,
     int sample_idx, int n_rerun, double cost_threshold_for_update, int N_rerun,
     int rom_option, int robot_option) {
-
-  //Testing
-//  if (sample_idx == 0) {
-//    int ret = 0;
-//    auto start = std::chrono::high_resolution_clock::now();
-//    auto finish = std::chrono::high_resolution_clock::now();
-//    std::chrono::duration<double> elapsed = finish - start;
-//    double goal_time_for_next_print = 5;
-//    while(elapsed.count() < 120.0) {
-//      finish = std::chrono::high_resolution_clock::now();
-//      elapsed = finish - start;
-//      if (elapsed.count() > goal_time_for_next_print) {
-//        ret = std::system("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
-//        ret = std::system("top -bn2 | grep \"Cpu(s)\" | sed \"s/.*, *\\([0-9.]*\\)%* id.*/\1/\" | awk '{print 100 - $1\"%\"}'"); // print the CPU usage
-//        ret = std::system("free -m"); // print memory usage
-//
-//        goal_time_for_next_print += 5;
-//      }
-//    }
-//  }
-
   if (robot_option == 0) {
     fiveLinkRobotTrajOpt(plant, plant_autoDiff, rom, inner_loop_setting, task,
                          QPs, is_get_nominal, extend_model, sample_idx, n_rerun,

@@ -14,7 +14,7 @@ using Eigen::VectorXd;
 namespace dairlib::goldilocks_models {
 // edited by Jianshu to try a new way of setting initial guess
 
-VectorXd GetThetaScale(const RomData& rom) {
+VectorXd GetThetaScale(const ReducedOrderModel& rom) {
   // considering the scale for theta doesn't have a significant impact on
   // improving the quality of the initial guess,set them all ones.
   return VectorXd::Ones(rom.n_y() + rom.n_yddot());
@@ -82,7 +82,7 @@ VectorXd CalculateInterpolation(const VectorXd& weight_vector,
 string SetInitialGuessByInterpolation(const string& directory, int iter,
                                       int sample,
                                       const TasksGenerator* task_gen,
-                                      const Task& task, const RomData& rom,
+                                      const Task& task, const ReducedOrderModel& rom,
                                       bool use_database, int robot) {
   /* define some parameters used in interpolation
    * theta_range :decide the range of theta to use in interpolation

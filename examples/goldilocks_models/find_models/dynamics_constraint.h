@@ -9,8 +9,6 @@
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/drake_assert.h"
-#include "examples/goldilocks_models/kinematics_expression.h"
-#include "examples/goldilocks_models/dynamics_expression.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 
@@ -62,30 +60,26 @@ using dairlib::solvers::NonlinearConstraint;
 
 class DynamicsConstraint : public NonlinearConstraint<double> {
  public:
-  DynamicsConstraint(const RomData& rom,
-                     const MultibodyPlant<AutoDiffXd> * plant,
-                     const MultibodyPlant<double> * plant_double,
-                     bool is_head, int rom_option,
-                     int robot_option,
+  DynamicsConstraint(const ReducedOrderModel& rom,
+                     const MultibodyPlant<double>& plant,
+                     bool is_head,
                      const std::string& description = "rom_dyn_constraint");
 
-  void getSAndSDot(const VectorXd & x,
-                   VectorXd & s, VectorXd & ds) const;
-
-  VectorXd getSDDot(const VectorXd & s, const VectorXd & ds,
-                    const VectorXd & tau) const {
-    return dyn_expression_.getExpression(theta_yddot_, s, ds, tau);
+  ~DynamicsConstraint() override {
+    // Need to manually delete rom_ because I called rom.Clone() in constructor
+    delete rom_;
   };
+
+  // Getters
+  VectorXd GetY(const VectorXd& q) const;
+  VectorXd GetYdot(const VectorXd& x) const;
+  VectorXd GetYddot(const VectorXd& y, const VectorXd& ydot,
+                    const VectorXd& tau) const;
 
   MatrixXd getGradientWrtTheta(
     const VectorXd & x_i_double, const VectorXd & tau_i_double,
     const VectorXd & x_iplus1_double, const VectorXd & tau_iplus1_double,
     const VectorXd & h_i_double) const;
-
-  VectorXd getDynFeatures(const VectorXd & s, const VectorXd & ds,
-                          const VectorXd & tau) const {
-    return dyn_expression_.getFeature(s, ds);
-  };
 
   // Extend the model by assuming the parameters of the new dynamics row are 0's
   // the new dynamics row = tau.
@@ -96,32 +90,19 @@ class DynamicsConstraint : public NonlinearConstraint<double> {
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override;
-  VectorXd getConstraintValueInDouble(
+  VectorXd EvalConstraintWithModelParams(
     const VectorXd & x_i, const VectorXd & tau_i,
     const VectorXd & x_iplus1, const VectorXd & tau_iplus1,
     const VectorXd & h_i,
     const VectorXd & theta_y, const VectorXd & theta_yddot) const;
-  void getSAndSDotInDouble(VectorXd x,
-                           VectorXd & s, VectorXd & ds,
-                           const VectorXd & theta_y) const;
 
-  const MultibodyPlant<double> * plant_double_;
+  ReducedOrderModel* rom_;
+
   int n_q_;
   int n_v_;
   int n_u_;
-  int n_y_;
-  int n_feature_y_;
-  int n_theta_y_;
-  VectorXd theta_y_;
-  int n_yddot_;
-  int n_feature_yddot_;
-  int n_theta_yddot_;
-  VectorXd theta_yddot_;
   int n_tau_;
-  KinematicsExpression<AutoDiffXd> kin_expression_;  // used to debug.
-  //                                                 // (to compare gradient of features)
-  KinematicsExpression<double> kin_expression_double_;
-  DynamicsExpression dyn_expression_;
+
   bool is_head_;
 
   // Finite differencing to get gradient of feature wrt q

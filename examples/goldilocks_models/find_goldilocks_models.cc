@@ -17,6 +17,7 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
+#include "examples/Cassie/cassie_utils.h"
 #include "examples/goldilocks_models/dynamics_expression.h"
 #include "examples/goldilocks_models/find_models/initial_guess.h"
 #include "examples/goldilocks_models/find_models/traj_opt_given_weigths.h"
@@ -26,27 +27,28 @@
 #include "examples/goldilocks_models/task.h"
 #include "systems/goldilocks_models/file_utils.h"
 
+using Eigen::MatrixXd;
+using Eigen::MatrixXi;
+using Eigen::Vector3d;
+using Eigen::VectorXcd;
+using Eigen::VectorXd;
 using std::cin;
 using std::cout;
 using std::endl;
-using std::vector;
 using std::pair;
 using std::string;
 using std::to_string;
-using Eigen::Vector3d;
-using Eigen::VectorXd;
-using Eigen::VectorXcd;
-using Eigen::MatrixXd;
-using Eigen::MatrixXi;
+using std::vector;
+
+using dairlib::FindResourceOrThrow;
+using drake::AutoDiffXd;
+using drake::geometry::SceneGraph;
+using drake::multibody::Body;
+using drake::multibody::Frame;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
-
-using drake::geometry::SceneGraph;
-using drake::multibody::MultibodyPlant;
-using drake::multibody::Body;
-using drake::multibody::Parser;
-using drake::AutoDiffXd;
-using dairlib::FindResourceOrThrow;
 
 namespace dairlib::goldilocks_models {
 
@@ -295,7 +297,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
                      bool step_size_shrinked_last_loop, int n_rerun,
                      int sample_idx_to_help, bool is_debug, const string& dir,
                      const TasksGenerator* task_gen, const Task& task,
-                     const RomData& rom, bool non_grid_task, bool use_database,
+                     const ReducedOrderModel& rom, bool non_grid_task, bool use_database,
                      int robot_option) {
   if (is_get_nominal && !rerun_current_iteration) {
     if (use_database) {
@@ -389,11 +391,14 @@ void waitForAllThreadsToJoin(vector<std::thread*> * threads,
   }
 }
 
-void extendModel(const string& dir, int iter, RomData& rom,
+void extendModel(const string& dir, int iter, ReducedOrderModel& rom,
                  VectorXd & prev_theta,
                  VectorXd & step_direction,
                  VectorXd & prev_step_direction, double & ave_min_cost_so_far,
                  int & rom_option, int robot_option) {
+  throw std::runtime_error(
+      "Model extension implementation hasn't not been updated");
+/*
   int n_feature_y = rom.n_feature_y();
 
   VectorXd theta_s_append = readCSV(dir +
@@ -469,7 +474,8 @@ void extendModel(const string& dir, int iter, RomData& rom,
       rom.n_theta());  // must initialize it because of momentum term
   ave_min_cost_so_far = std::numeric_limits<double>::infinity();
 
-  rom.CheckDataConsistency();
+  rom.CheckModelConsistency();
+  */
 }
 
 void extractActiveAndIndependentRows(
@@ -1446,6 +1452,9 @@ bool HasAchievedOptimum(bool is_newton, double stopping_threshold,
 int findGoldilocksModels(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  DRAKE_DEMAND((FLAGS_robot_option == 0) || FLAGS_robot_option == 1);
+  DRAKE_DEMAND((FLAGS_rom_option >= 0) && FLAGS_rom_option <= 4);
+
   cout << "Trail name: " << FLAGS_program_name << endl;
   std::time_t current_time =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -1762,106 +1771,84 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.snopt_scaling = FLAGS_snopt_scaling;
   inner_loop_setting.directory = dir;
 
-  // Reduced order model parameters
-  // TODO: currently you can just create a class RomParameters to reduced the
-  //  argument size of some functions in the code
-  // TODO: later you can also create a ROM class.
-  //  .
-  //  virtual class MappingFunctionParametrization
-  //  derived class CassieMapping
-  //  derived class FiveLinkRobotMapping
-  //  .
-  //  virtual class ROM(MappingFunctionParametrization)
-  //  derived class 2dLip
-  //  derived class 2dLipWithSwingFoot
-  //  .
-  //  The ROM class takes in MappingFunctionParametrization and the derived
-  //  class has its own dynamics parametrization
+  // Construct reduced order model
   cout << "\nReduced-order model setting:\n";
-  cout << "Warning: Need to make sure that the implementation in "
-       "DynamicsExpression agrees with n_y and n_tau.\n";
-  int n_y = 0;
-  int n_tau = 0;
-  setRomDim(&n_y, &n_tau, FLAGS_rom_option);
-  int n_yddot = n_y; // Assume that are the same (no quaternion)
-  MatrixXd B_tau = MatrixXd::Zero(n_yddot, n_tau);
-  setRomBMatrix(&B_tau, FLAGS_rom_option);
-  cout << "n_y = " << n_y << ", n_tau = " << n_tau << endl;
-  cout << "B_tau = \n" << B_tau << endl;
-  writeCSV(dir + string("B_tau.csv"), B_tau);
-  cout << "rom_option = " << FLAGS_rom_option << " ";
-  switch (FLAGS_rom_option) {
-    case 0: cout << "(2D -- lipm)\n";
-      break;
-    case 1: cout << "(4D -- lipm + swing foot)\n";
-      break;
-    case 2: cout << "(1D -- fix com vertical acceleration)\n";
-      break;
-    case 3: cout << "(3D -- fix com vertical acceleration + swing foot)\n";
-      break;
-    case 4: cout << "(3D -- 3D lipm)\n";
-      break;
+  cout << "rom_option = " << FLAGS_rom_option << endl;
+  // Basis for mapping function (dependent on the robot)
+  std::vector<int> skip_inds;
+  if (FLAGS_robot_option == 0) {
+    skip_inds = {};
+  } else if (FLAGS_robot_option == 1) {
+    skip_inds = {3, 4, 5};  // quat_z, x, and y
   }
-  cout << "Make sure that n_y and B_tau are correct.\n";
-  if (!FLAGS_turn_off_cin) {
-    cout <<"Proceed? (Y/N)\n";
-    char answer[1];
-    cin >> answer;
-    if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-      cout << "Ending the program.\n";
-      return 0;
-    } else {
-      cout << "Continue constructing the problem...\n";
-    }
+  MonomialFeatures mapping_basis(2, plant.num_positions(), skip_inds,
+                                 "mapping basis");
+  // Basis for dynamic function
+  int n_y;
+  if (FLAGS_rom_option == 0) {
+    n_y = TwoDimLipm::kDimension;
+  } else if (FLAGS_rom_option == 1) {
+    n_y = TwoDimLipmWithSwingFoot::kDimension;
+  } else {
+    // TODO: finish implementing the rest of the ROM
+    throw std::runtime_error("Not implemented");
   }
+  MonomialFeatures dynamic_basis(2, 2 * n_y, {}, "dynamic basis");
+  // Contact frames and position for mapping function
+  string stance_foot_body_name;
+  Vector3d stance_foot_contact_point_pos;
+  string swing_foot_body_name;
+  Vector3d swing_foot_contact_point_pos;
+  if (FLAGS_robot_option == 0) {
+    // TODO: finish implementing the rest of the ROM
+    throw std::runtime_error("Not implemented");
+
+    //    stance_foot_body_name
+    //    stance_foot_contact_point_pos
+    //    swing_foot_body_name =
+    //    swing_foot_contact_point_pos =
+
+  } else {  // FLAGS_robot_option == 1
+    auto left_toe = LeftToeFront(plant);
+    auto left_heel = LeftToeRear(plant);
+    stance_foot_body_name = "toe_left";
+    stance_foot_contact_point_pos = (left_toe.first + left_heel.first) / 2;
+    swing_foot_body_name = "toe_right";
+    swing_foot_contact_point_pos = (left_toe.first + left_heel.first) / 2;
+  }
+  auto stance_foot = std::pair<const Vector3d, const Frame<double>&>(
+      stance_foot_contact_point_pos,
+      plant.GetFrameByName(stance_foot_body_name));
+  auto swing_foot = std::pair<const Vector3d, const Frame<double>&>(
+      swing_foot_contact_point_pos, plant.GetFrameByName(swing_foot_body_name));
+  // Construct reduced-order model
+  ReducedOrderModel* rom;
+  if (FLAGS_rom_option == 0) {
+    rom = new TwoDimLipm(plant, stance_foot, mapping_basis, dynamic_basis);
+  } else if (FLAGS_rom_option == 1) {
+    rom = new TwoDimLipmWithSwingFoot(
+        plant, stance_foot, swing_foot, mapping_basis, dynamic_basis);
+  } else {
+    // TODO: finish implementing the rest of the ROM
+    throw std::runtime_error("Not implemented");
+  }
+  writeCSV(dir + string("B_tau.csv"), rom->B());
+  cout << "Construct reduced-order model (" << rom->name()
+       << ") with parameters\n";
+  cout << "n_y = " << rom->n_y() << ", n_tau = " << rom->n_tau() << endl;
+  cout << "B_tau = \n" << rom->B() << "\n";
+  cout << "n_feature_y = " << rom->n_feature_y() << endl;
+  cout << "n_feature_yddot = " << rom->n_feature_yddot() << endl;
 
   // Reduced order model setup
-  KinematicsExpression<double> kin_expression(n_y, 0, &plant,
-                                              FLAGS_robot_option);
-  DynamicsExpression dyn_expression(n_yddot, 0, FLAGS_rom_option,
-                                    FLAGS_robot_option);
-  VectorXd dummy_q = VectorXd::Ones(plant.num_positions());
-  VectorXd dummy_s = VectorXd::Ones(n_y);
-  int n_feature_y = kin_expression.getFeature(dummy_q).size();
-  int n_feature_yddot =
-    dyn_expression.getFeature(dummy_s, dummy_s).size();
-  cout << "n_feature_y = " << n_feature_y << endl;
-  cout << "n_feature_yddot = " << n_feature_yddot << endl;
-  int n_theta_y = n_y * n_feature_y;
-  int n_theta_yddot = n_yddot * n_feature_yddot;
-  if (FLAGS_rom_option <= 3) {
-    // TODO: This is a temporary gaurd for KinematicsExpression(). Won't need
-    // this once I finished the new ROM class
-    DRAKE_DEMAND(n_feature_y == 70);
-  }
-
-  // Initial guess of theta
-  VectorXd theta_y = VectorXd::Zero(n_theta_y);
-  VectorXd theta_yddot = VectorXd::Zero(n_theta_yddot);
-  if (iter_start == 0) {
-    setInitialTheta(theta_y, theta_yddot, n_feature_y, n_feature_yddot,
-                    FLAGS_rom_option);
-    cout << "Make sure that you use the right initial theta.\n";
-    if (!FLAGS_turn_off_cin) {
-      cout << "Proceed? (Y/N)\n";
-      char answer[1];
-      cin >> answer;
-      if (!((answer[0] == 'Y') || (answer[0] == 'y'))) {
-        cout << "Ending the program.\n";
-        return 0;
-      } else {
-        cout << "Continue constructing the problem...\n";
-      }
-    }
-  }
-  else {
-    theta_y = readCSV(dir + to_string(iter_start) +
+  if (iter_start != 0) {
+    VectorXd theta_y = readCSV(dir + to_string(iter_start) +
         string("_theta_y.csv")).col(0);
-    theta_yddot = readCSV(dir + to_string(iter_start) +
+    VectorXd theta_yddot = readCSV(dir + to_string(iter_start) +
         string("_theta_yddot.csv")).col(0);
+    rom->SetThetaY(theta_y);
+    rom->SetThetaYddot(theta_yddot);
   }
-  RomData rom = RomData(n_y, n_tau, n_feature_y, n_feature_yddot, B_tau,
-                        theta_y, theta_yddot);
 
   // Vectors/Matrices for the outer loop
   SubQpData QPs(N_sample);
@@ -1940,7 +1927,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   VectorXd step_direction;
   VectorXd prev_step_direction = VectorXd::Zero(
-      rom.n_theta());  // must initialize this because of momentum term
+      rom->n_theta());  // must initialize this because of momentum term
   if (iter_start > 1) {
     cout << "Reading previous step direction... (will get memory issue if the "
             "file doesn't exist)\n";
@@ -1959,7 +1946,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
                                      string("_step_size.csv"))(0, 0);
   }
 
-  VectorXd prev_theta = rom.theta();
+  VectorXd prev_theta = rom->theta();
   if (iter_start > 1) {
     MatrixXd prev_theta_y_mat =
       readCSV(dir + to_string(iter_start - 1) + string("_theta_y.csv"));
@@ -1987,7 +1974,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   extend_model_iter = (extend_model_iter == 0) ? 1 : extend_model_iter;
   bool has_visit_this_iter_for_model_extension = false;
   if (extend_model) {
-    cout << "\nWill extend the model at iteration # " << extend_model_iter <<
+    throw std::runtime_error(
+        "Model extension implementation hasn't not been updated");
+/*    cout << "\nWill extend the model at iteration # " << extend_model_iter <<
          " by ";
     VectorXd theta_s_append = readCSV(dir +
                                       string("theta_s_append.csv")).col(0);
@@ -2007,7 +1996,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       } else {
         cout << "Continue constructing the problem...\n";
       }
-    }
+    }*/
   }
 
   // Setup for getting good solution from adjacent samples
@@ -2041,15 +2030,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
            << "-time step size shrinking) *************" << endl;
       if (iter != 0) {
         cout << "theta_yddot.head(6) = "
-             << rom.theta_yddot().head(6).transpose() << endl;
+             << rom->theta_yddot().head(6).transpose() << endl;
       }
     }
 
     // store initial parameter values
     prefix = to_string(iter) +  "_";
     if (!is_get_nominal || !FLAGS_is_debug) {
-      writeCSV(dir + prefix + string("theta_y.csv"), rom.theta_y());
-      writeCSV(dir + prefix + string("theta_yddot.csv"), rom.theta_yddot());
+      writeCSV(dir + prefix + string("theta_y.csv"), rom->theta_y());
+      writeCSV(dir + prefix + string("theta_yddot.csv"), rom->theta_yddot());
     }
 
     // setup for each iteration
@@ -2188,7 +2177,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
               &init_file_pass_in, init_file, iter, sample_idx, is_get_nominal,
               current_sample_is_a_rerun, has_been_all_success,
               step_size_shrinked_last_loop, n_rerun[sample_idx],
-              sample_idx_to_help, FLAGS_is_debug, dir, task_gen, task, rom,
+              sample_idx_to_help, FLAGS_is_debug, dir, task_gen, task, *rom,
               !is_grid_task, FLAGS_use_database, FLAGS_robot_option);
 
           // Set up feasibility and optimality tolerance
@@ -2209,7 +2198,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // cout << string_to_be_print;
           threads[available_thread_idx.front()] = new std::thread(
               trajOptGivenWeights, std::ref(plant), std::ref(plant_autoDiff),
-              std::ref(rom),
+              std::ref(*rom),
               inner_loop_setting, task,
               std::ref(QPs), std::ref(thread_finished_vec),
               is_get_nominal,
@@ -2378,7 +2367,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       }
     } else if (extend_model_this_iter) {  // Extend the model
       cout << "Start extending model...\n";
-      extendModel(dir, iter, rom, prev_theta, step_direction,
+      extendModel(dir, iter, *rom, prev_theta, step_direction,
                   prev_step_direction, ave_min_cost_so_far, FLAGS_rom_option,
                   FLAGS_robot_option);
 
@@ -2405,7 +2394,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
              ". Redo this iteration.\n\n";
 
         // Descent
-        rom.SetTheta(prev_theta + current_iter_step_size * step_direction);
+        rom->SetTheta(prev_theta + current_iter_step_size * step_direction);
 
         n_shrink_step++;
       }
@@ -2647,16 +2636,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Get gradient of the cost wrt theta and the norm of the gradient
       // Assumption: H_vec[sample] are symmetric
-      VectorXd gradient_cost(rom.n_theta());
+      VectorXd gradient_cost(rom->n_theta());
       double norm_grad_cost;
       CalcCostGradientAndNorm(successful_idx_list, QPs.P_vec, QPs.q_vec,
                               QPs.b_vec, dir, prefix, &gradient_cost,
                               &norm_grad_cost);
 
       // Calculate Newton step and the decrement
-      VectorXd newton_step(rom.n_theta());
+      VectorXd newton_step(rom->n_theta());
       double lambda_square;
-      CalcNewtonStepAndNewtonDecrement(rom.n_theta(), successful_idx_list,
+      CalcNewtonStepAndNewtonDecrement(rom->n_theta(), successful_idx_list,
                                        QPs.P_vec, QPs.H_vec, gradient_cost, dir,
                                        prefix, &newton_step, &lambda_square);
 
@@ -2677,8 +2666,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
                            &current_iter_step_size);
 
       // Gradient descent
-      prev_theta = rom.theta();
-      rom.SetTheta(rom.theta() + current_iter_step_size * step_direction);
+      prev_theta = rom->theta();
+      rom->SetTheta(rom->theta() + current_iter_step_size * step_direction);
 
       // For message printed to the terminal
       n_shrink_step = 0;
@@ -2690,14 +2679,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   cout << "Exited the outer loop.\n";
   cout << '\a';  // making noise to notify the user the end of an iteration
+  current_time =
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  cout << "Current time: " << std::ctime(&current_time);
 
   // store parameter values
-
-
   prefix = to_string(iter + 1) +  "_";
   if (!FLAGS_is_debug) {
-    writeCSV(dir + prefix + string("theta_y.csv"), rom.theta_y());
-    writeCSV(dir + prefix + string("theta_yddot.csv"), rom.theta_yddot());
+    writeCSV(dir + prefix + string("theta_y.csv"), rom->theta_y());
+    writeCSV(dir + prefix + string("theta_yddot.csv"), rom->theta_yddot());
   }
 
   return 0;

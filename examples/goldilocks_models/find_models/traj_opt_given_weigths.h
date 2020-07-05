@@ -48,7 +48,7 @@ namespace goldilocks_models  {
 void trajOptGivenWeights(
     const MultibodyPlant<double> & plant,
     const MultibodyPlant<AutoDiffXd> & plant_autoDiff,
-    const RomData& rom,
+    const ReducedOrderModel& rom,
     InnerLoopSetting inner_loop_setting,
     Task task,
     const SubQpData& QPs,

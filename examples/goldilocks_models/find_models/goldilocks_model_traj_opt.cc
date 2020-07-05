@@ -6,10 +6,9 @@ namespace goldilocks_models {
 
 // Constructor
 GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
-    const RomData& rom,
+    const ReducedOrderModel& rom,
     std::unique_ptr<HybridDircon<double>> dircon_in,
-    const MultibodyPlant<AutoDiffXd> * plant,
-    const MultibodyPlant<double> * plant_double,
+    const MultibodyPlant<double>& plant,
     const std::vector<int> & num_time_samples,
     bool is_get_nominal,
     bool is_add_tau_in_cost,
@@ -35,15 +34,12 @@ GoldilocksModelTrajOpt::GoldilocksModelTrajOpt(
   if (!is_get_nominal) {
     // Create dynamics constraint (pointer)
     dynamics_constraint_at_head = make_shared<find_models::DynamicsConstraint>(
-                                    rom, plant, plant_double,
-                                    true, rom_option,
-                                    robot_option);
+        rom, plant, true);
     // dynamics_constraint_at_tail = make_shared<find_models::DynamicsConstraint>(
     //                                n_s, n_feature_s, theta_s,
     //                                n_sDDot, n_feature_sDDot, theta_sDDot,
     //                                n_tau, B_tau, plant, plant_double,
-    //                                false, rom_option,
-    //                                robot_option);
+    //                                false);
 
     // Constraint scaling
     // TODO: re-tune this after you remove at_head and at_tail

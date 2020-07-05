@@ -6,56 +6,34 @@ namespace dairlib {
 namespace goldilocks_models {
 namespace find_models {
 
+DynamicsConstraint::DynamicsConstraint(const ReducedOrderModel& rom,
+                                       const MultibodyPlant<double>& plant,
+                                       bool is_head,
+                                       const std::string& description)
+    : NonlinearConstraint<double>(
+          rom.n_yddot(),
+          2 * (plant.num_positions() + plant.num_velocities() + rom.n_tau()) +
+              1,
+          VectorXd::Zero(rom.n_yddot()), VectorXd::Zero(rom.n_yddot()),
+          description),
+      rom_(rom.Clone()),
+      n_q_(plant.num_positions()),
+      n_v_(plant.num_velocities()),
+      n_u_(plant.num_actuators()),
+      n_tau_(rom.n_tau()),
+      is_head_(is_head) {}
 
-DynamicsConstraint::DynamicsConstraint(
-  const RomData& rom,
-  const MultibodyPlant<AutoDiffXd> * plant,
-  const MultibodyPlant<double> * plant_double,
-  bool is_head,
-  int rom_option, int robot_option,
-  const std::string& description) : NonlinearConstraint<double>(rom.n_yddot(),
-        2 * (plant->num_positions() + plant->num_velocities() + rom.n_tau()) + 1,
-        VectorXd::Zero(rom.n_yddot()),
-        VectorXd::Zero(rom.n_yddot()),
-        description),
-  plant_double_(plant_double),
-  n_q_(plant->num_positions()),
-  n_v_(plant->num_velocities()),
-  n_u_(plant->num_actuators()),
-  n_y_(rom.n_y()),
-  n_feature_y_(rom.n_feature_y()),
-  n_theta_y_(rom.theta_y().size()),
-  theta_y_(rom.theta_y()),
-  n_yddot_(rom.n_yddot()),
-  n_feature_yddot_(rom.n_feature_yddot()),
-  n_theta_yddot_(rom.theta_yddot().size()),
-  theta_yddot_(rom.theta_yddot()),
-  n_tau_(rom.n_tau()),
-  kin_expression_(KinematicsExpression<AutoDiffXd>(rom.n_y(), rom.n_feature_y(),
-                  plant, robot_option)),
-  kin_expression_double_(KinematicsExpression<double>(rom.n_y(), rom.n_feature_y(),
-                         plant_double, robot_option)),
-  dyn_expression_(DynamicsExpression(rom.n_yddot(), rom.n_feature_yddot(), rom.B(),
-                                     rom_option, robot_option)),
-  is_head_(is_head) {
-
-  // Check the theta size
-  DRAKE_DEMAND(n_y_ * n_feature_y_ == theta_y_.size());
-
-  // Check the feature size implemented in the model expression
-  AutoDiffVecXd q_temp =
-    initializeAutoDiff(VectorXd::Ones(plant->num_positions()));
-  DRAKE_DEMAND(n_feature_y_ == kin_expression_.getFeature(q_temp).size());
-
-  // Check the theta size
-  DRAKE_DEMAND(n_yddot_ * n_feature_yddot_ == theta_yddot_.size());
-
-  // Check the feature size implemented in the model expression
-  VectorXd s_temp = VectorXd::Ones(n_yddot_);
-  VectorXd ds_temp = VectorXd::Ones(n_yddot_);
-  DRAKE_DEMAND(n_feature_yddot_ ==
-               dyn_expression_.getFeature(s_temp, ds_temp).size());
-}
+// Getters
+VectorXd DynamicsConstraint::GetY(const VectorXd& q) const {
+  return rom_->EvalMappingFunc(q);
+};
+VectorXd DynamicsConstraint::GetYdot(const VectorXd& x) const {
+  return rom_->EvalMappingFuncJV(x.head(n_q_), x.tail(n_v_));
+};
+VectorXd DynamicsConstraint::GetYddot(const VectorXd& y, const VectorXd& ydot,
+                                      const VectorXd& tau) const {
+  return rom_->EvalDynamicFunc(y, ydot, tau);
+};
 
 void DynamicsConstraint::EvaluateConstraint(
   const Eigen::Ref<const drake::VectorX<double>>& x,
@@ -68,25 +46,22 @@ void DynamicsConstraint::EvaluateConstraint(
   VectorXd tau_iplus1 = x.segment(2 * (n_q_ + n_v_) + n_tau_, n_tau_);
   const VectorXd h_i = x.tail(1);
 
-  *y = getConstraintValueInDouble(x_i, tau_i,
-                                  x_iplus1, tau_iplus1,
-                                  h_i,
-                                  theta_y_, theta_yddot_);
+  *y = EvalConstraintWithModelParams(x_i, tau_i, x_iplus1, tau_iplus1, h_i,
+                                     rom_->theta_y(), rom_->theta_yddot());
 }
-
-VectorXd DynamicsConstraint::getConstraintValueInDouble(
+VectorXd DynamicsConstraint::EvalConstraintWithModelParams(
   const VectorXd & x_i, const VectorXd & tau_i,
   const VectorXd & x_iplus1, const VectorXd & tau_iplus1,
   const VectorXd & h_i,
   const VectorXd & theta_y, const VectorXd & theta_yddot) const {
 
   // Get s and ds at knot i and i+1
-  VectorXd s_i = VectorXd::Zero(n_y_);
-  VectorXd ds_i = VectorXd::Zero(n_y_);
-  VectorXd s_iplus1 = VectorXd::Zero(n_y_);
-  VectorXd ds_iplus1 = VectorXd::Zero(n_y_);
-  getSAndSDotInDouble(x_i, s_i, ds_i, theta_y);
-  getSAndSDotInDouble(x_iplus1, s_iplus1, ds_iplus1, theta_y);
+  rom_->SetThetaY(theta_y);
+  rom_->SetThetaYddot(theta_yddot);
+  VectorXd s_i = GetY(x_i.head(n_q_));
+  VectorXd ds_i = GetYdot(x_i);
+  VectorXd s_iplus1 = GetY(x_iplus1.head(n_q_));
+  VectorXd ds_iplus1 = GetYdot(x_iplus1);
 
   // cout << "s_i = " << s_i.transpose() << endl;
   // cout << "ds_i = " << ds_i.transpose() << endl;
@@ -98,104 +73,13 @@ VectorXd DynamicsConstraint::getConstraintValueInDouble(
   // Get constraint value
   if (is_head_) {
     return 2 * (-3 * (s_i - s_iplus1) - h_i(0) * (ds_iplus1 + 2 * ds_i)) /
-           (h_i(0) * h_i(0)) -
-           dyn_expression_.getExpression(theta_yddot, s_i, ds_i, tau_i);
+               (h_i(0) * h_i(0)) -
+           rom_->EvalDynamicFunc(s_i, ds_i, tau_i);
   } else {
     return (6 * (s_i - s_iplus1) + h_i(0) * (4 * ds_iplus1 + 2 * ds_i)) /
-           (h_i(0) * h_i(0)) -
-           dyn_expression_.getExpression(theta_yddot, s_iplus1, ds_iplus1, tau_iplus1);
+               (h_i(0) * h_i(0)) -
+           rom_->EvalDynamicFunc(s_iplus1, ds_iplus1, tau_iplus1);
   }
-}
-
-// Careful: need to initialize the size of s and ds before calling getSAndSDotInDouble
-void DynamicsConstraint::getSAndSDotInDouble(VectorXd x,
-    VectorXd & s, VectorXd & ds,
-    const VectorXd & theta_y) const {
-  // Scale to real-life scale
-  VectorXd state(n_q_ + n_v_);
-  state << x.segment(0, 4),
-        x.segment(4, n_q_ - 4),
-        x.segment(n_q_, n_v_);
-
-  VectorXd q = state.head(n_q_);
-  VectorXd v = state.tail(n_v_);
-
-  VectorXd qdot(n_q_);
-  VectorXd u = VectorXd::Zero(n_u_);
-  auto context = multibody::createContext(*plant_double_, state, u);
-  plant_double_->MapVelocityToQDot(*context, v, &qdot);
-
-  // 1. s
-  DRAKE_DEMAND(theta_y.size()%n_feature_y_ == 0);
-  s = kin_expression_double_.getExpression(theta_y, q,
-                                           theta_y.size() / n_feature_y_);
-
-  // 2. ds
-  // get gradient of feature wrt q =============================================
-  /// Forward differencing
-  // MatrixXd d_phi_d_q = MatrixXd(n_feature_y_, q.size());
-  // VectorXd phi_0(n_feature_y_);
-  // VectorXd phi_1(n_feature_y_);
-  // phi_0 = kin_expression_double_.getFeature(q);
-  // for (int i = 0; i < q.size(); i++) {
-  //   q(i) += eps_fd_feature_;
-  //   phi_1 = kin_expression_double_.getFeature(q);
-  //   q(i) -= eps_fd_feature_;
-  //   d_phi_d_q.col(i) = (phi_1 - phi_0) / eps_fd_feature_;
-  // }
-
-  /// Central differencing
-  // MatrixXd d_phi_d_q = MatrixXd(n_feature_y_, q.size());
-  // VectorXd phi_0(n_feature_y_);
-  // VectorXd phi_1(n_feature_y_);
-  // for (int i = 0; i < q.size(); i++) {
-  //   q(i) -= eps_cd_feature_/2;
-  //   phi_0 = kin_expression_double_.getFeature(q);
-  //   q(i) += eps_cd_feature_;
-  //   phi_1 = kin_expression_double_.getFeature(q);
-  //   q(i) -= eps_cd_feature_/2;
-  //   d_phi_d_q.col(i) = (phi_1 - phi_0) / eps_cd_feature_;
-  // }
-
-  /// high order of finite differencing
-  MatrixXd d_phi_d_q = MatrixXd(n_feature_y_, q.size());
-  VectorXd phi_0(n_feature_y_);
-  VectorXd phi_1(n_feature_y_);
-  VectorXd phi_2(n_feature_y_);
-  VectorXd phi_3(n_feature_y_);
-  for (int i = 0; i < q.size(); i++) {
-    q(i) -= eps_ho_feature_ / 2;
-    phi_0 = kin_expression_double_.getFeature(q);
-    q(i) += eps_ho_feature_ / 4;
-    phi_1 = kin_expression_double_.getFeature(q);
-    q(i) += eps_ho_feature_ / 2;
-    phi_2 = kin_expression_double_.getFeature(q);
-    q(i) += eps_ho_feature_ / 4;
-    phi_3 = kin_expression_double_.getFeature(q);
-    q(i) -= eps_ho_feature_ / 2;
-    d_phi_d_q.col(i) = (-phi_3 + 8 * phi_2 - 8 * phi_1 + phi_0) /
-                       (3 * eps_ho_feature_);
-  }
-
-  /// ground truth (testing the accuracy of gradients)
-  // AutoDiffVecXd x_autodiff = initializeAutoDiff(x);
-  // AutoDiffVecXd q_autodiff = x_autodiff.head(n_q_);
-  // MatrixXd d_phi_d_q_GROUNDTRUTH =
-  //   autoDiffToGradientMatrix(
-  //     kin_expression_.getFeature(q_autodiff)).block(0, 0, n_feature_y_, n_q_);
-  // cout << "gradient difference = " << (d_phi_d_q_GROUNDTRUTH - d_phi_d_q).norm()
-  //      << endl;
-  // End of getting gradient ===================================================
-
-  VectorXd dphi0_dt = d_phi_d_q * qdot;
-  for (int i = 0; i < n_y_ ; i++) {
-    ds(i) = theta_y.segment(i * n_feature_y_, n_feature_y_).dot(dphi0_dt);
-  }
-}
-
-void DynamicsConstraint::getSAndSDot(const VectorXd & x,
-                                     VectorXd & s, VectorXd & ds) const {
-  getSAndSDotInDouble(x, s, ds, theta_y_);
 }
 
 MatrixXd DynamicsConstraint::getGradientWrtTheta(
@@ -229,7 +113,7 @@ MatrixXd DynamicsConstraint::getGradientWrtTheta(
       // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
       //                                         x_i, x_iplus1, h_i,
       //                                         theta_y, theta_yddot)));
-      y_vec.push_back(getConstraintValueInDouble(
+      y_vec.push_back(EvalConstraintWithModelParams(
                         x_i_double, tau_i,
                         x_iplus1_double, tau_iplus1,
                         h_i_double,
@@ -245,26 +129,21 @@ MatrixXd DynamicsConstraint::getGradientWrtTheta(
 
   // ////////// V2: Do central differencing wrt theta //////////////////////////
   // Get the gradient wrt theta_y and theta_yddot
-  VectorXd theta(n_theta_y_ + n_theta_yddot_);
-  theta << theta_y_, theta_yddot_;
-  MatrixXd gradWrtTheta(n_y_, theta.size());
+  VectorXd theta = rom_->theta();
+  MatrixXd gradWrtTheta(rom_->n_y(), theta.size());
   vector<VectorXd> y_vec;
   for (int k = 0; k < theta.size(); k++) {
     for (double shift : cd_shift_vec_) {
       theta(k) += shift;
 
-      VectorXd theta_y = theta.head(n_theta_y_);
-      VectorXd theta_yddot = theta.tail(n_theta_yddot_);
-
       // Evaluate constraint value
       // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
       //                                         x_i, x_iplus1, h_i,
-      //                                         theta_y, theta_yddot)));
-      y_vec.push_back(getConstraintValueInDouble(
-                        x_i_double, tau_i,
-                        x_iplus1_double, tau_iplus1,
-                        h_i_double,
-                        theta_y, theta_yddot));
+      //                                         theta.head(rom_->n_theta_y()),
+      //                                         theta.tail(rom_->n_theta_yddot())));
+      y_vec.push_back(EvalConstraintWithModelParams(
+          x_i_double, tau_i, x_iplus1_double, tau_iplus1, h_i_double,
+          theta.head(rom_->n_theta_y()), theta.tail(rom_->n_theta_yddot())));
 
       theta(k) -= shift;
     }
@@ -294,7 +173,7 @@ MatrixXd DynamicsConstraint::getGradientWrtTheta(
       // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
       //                                         x_i, x_iplus1, h_i,
       //                                         theta_y, theta_yddot)));
-      y_vec.push_back(getConstraintValueInDouble(
+      y_vec.push_back(EvalConstraintWithModelParams(
                         x_i_double, tau_i,
                         x_iplus1_double, tau_iplus1,
                         h_i_double,
@@ -318,10 +197,27 @@ MatrixXd DynamicsConstraint::getGradientWrtTheta(
   return gradWrtTheta;
 }
 
+// Careful: need to initialize the size of s and ds before calling GetYAndYdotInDouble
+/*void DynamicsConstraint::GetYAndYdotInDouble(const VectorXd& x, VectorXd& s,
+                                             VectorXd& ds) const {
+  VectorXd q = x.head(n_q_);
+  VectorXd v = x.tail(n_v_);
+
+  s = rom_->EvalMappingFunc(q);
+  ds = rom_->EvalMappingFuncJV(q, v);
+
+  // TODO: check can you incorporate the following old API here for
+  // computeTauToExtendModel()
+  //  s = kin_expression_double_.getExpression(theta_y, q,
+  //                                           theta_y.size() / n_feature_y_);
+}*/
+
 VectorXd DynamicsConstraint::computeTauToExtendModel(
   const VectorXd & x_i_double, const VectorXd & x_iplus1_double,
   const VectorXd & h_i, const VectorXd & theta_y_append) {
-
+  // TODO: finish implementing the rest of the ROM
+  throw std::runtime_error("Not implemented");
+/*
   // Reset the model dimension, so that we can get the extended part of the model
   int n_extend = theta_y_append.rows() / n_feature_y_;
   kin_expression_.setModelDimension(n_extend);
@@ -331,8 +227,8 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
   VectorXd ds_i = VectorXd::Zero(n_extend);
   VectorXd s_iplus1 = VectorXd::Zero(n_extend);
   VectorXd ds_iplus1 = VectorXd::Zero(n_extend);
-  getSAndSDotInDouble(x_i_double, s_i, ds_i, theta_y_append);
-  getSAndSDotInDouble(x_iplus1_double, s_iplus1, ds_iplus1, theta_y_append);
+  GetYAndYdotInDouble(x_i_double, s_i, ds_i, theta_y_append);
+  GetYAndYdotInDouble(x_iplus1_double, s_iplus1, ds_iplus1, theta_y_append);
 
   // Set the model dimension back just in case
   kin_expression_.setModelDimension(n_y_);
@@ -344,7 +240,7 @@ VectorXd DynamicsConstraint::computeTauToExtendModel(
   } else {
     return (6 * (s_i - s_iplus1) + h_i(0) * (4 * ds_iplus1 + 2 * ds_i)) /
            (h_i(0) * h_i(0));
-  }
+  }*/
 }
 
 

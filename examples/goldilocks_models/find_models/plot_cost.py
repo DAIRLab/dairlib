@@ -13,7 +13,7 @@ only_add_successful_samples_to_average_cost = False
 iter_start = 1
 iter_end = 11
 is_iter_end = 0
-robot_option = 0;  # 0 is five-link robot. 1 is cassie_fixed_spring
+robot_option = 1;  # 0 is five-link robot. 1 is cassie_fixed_spring
 if len(sys.argv) >= 2:
     iter_start = int(sys.argv[1])
 if len(sys.argv) >= 3:
@@ -23,9 +23,9 @@ if len(sys.argv) >= 4:
     robot_option = int(sys.argv[3])
 
 
-n_sampel_sl = 2  # should be > 0
-n_sampel_gi = 2  # should be > 0
-n_sampel_v = 2  # should be > 0
+n_sampel_sl = 1  # should be > 0
+n_sampel_gi = 1  # should be > 0
+n_sampel_v = 1  # should be > 0
 n_sampel_tr = 1  # should be > 0
 N_sample = n_sampel_sl * n_sampel_gi * n_sampel_v * n_sampel_tr
 print('n_sampel_sl = ' + str(n_sampel_sl))

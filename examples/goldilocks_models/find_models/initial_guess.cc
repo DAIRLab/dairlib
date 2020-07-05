@@ -76,7 +76,7 @@ VectorXd CalculateInterpolation(VectorXd& weight_vector,
   DRAKE_DEMAND(weight_vector.rows() > 0);
   // interpolation
   weight_vector = weight_vector/weight_vector.sum();
-  VectorXd interpolated_solution = solution_matrix * weight_vector.normalized();
+  VectorXd interpolated_solution = solution_matrix * weight_vector;
   return interpolated_solution;
 }
 

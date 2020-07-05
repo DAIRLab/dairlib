@@ -574,6 +574,8 @@ void BoundaryForOneDirection(const string dir,int max_iteration,
                                       + string("_0_c.csv"))(0,0);
     }
   }
+  writeCSV(dir + to_string(boundary_point+idx) +
+    string("_searching_direction.csv"), step_direction);
   writeCSV(dir +  to_string(boundary_point_idx)  +
       string("_cost_list.csv"), cost_list);
   cout << "\nFinish checking the cost:\n";

@@ -120,8 +120,10 @@ string SetInitialGuessByInterpolation(const string& directory, int iter,
 
     // calculate the weighted sum of past solutions
     int sample_num = 0;
-    string prefix = to_string(sample_num) + "_0";
-    while (file_exist(data_dir + prefix + string("_is_success.csv"))) {
+    string prefix;
+    while (file_exist(data_dir + to_string(sample_num) + "_0"
+         + string("_is_success.csv"))) {
+      prefix = to_string(sample_num) + "_0";
       InterpolateAmongDifferentTasks(data_dir, prefix, current_gamma,
                                      gamma_scale, weight_gamma, w_gamma);
       sample_num = sample_num + 1;

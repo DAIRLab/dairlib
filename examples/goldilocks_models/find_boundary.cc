@@ -80,6 +80,10 @@ DEFINE_bool(is_add_tau_in_cost, true, "Add RoM input in the cost function");
 //outer loop
 DEFINE_int32(max_outer_iter, 150 , "max number of iterations for searching on each "
                                 "direction of one dimension");
+DEFINE_bool(search_sl,true,"decide whether to search the stride length");
+DEFINE_bool(search_gi,true,"decide whether to search the ground incline");
+DEFINE_bool(search_v,false,"decide whether to search the velocity");
+DEFINE_bool(search_tr,false,"decide whether to search the turning rate");
 
 //others
 DEFINE_string(
@@ -574,7 +578,7 @@ void BoundaryForOneDirection(const string dir,int max_iteration,
                                       + string("_0_c.csv"))(0,0);
     }
   }
-  writeCSV(dir + to_string(boundary_point+idx) +
+  writeCSV(dir + to_string(boundary_point_idx) +
     string("_searching_direction.csv"), step_direction);
   writeCSV(dir +  to_string(boundary_point_idx)  +
       string("_cost_list.csv"), cost_list);
@@ -644,13 +648,14 @@ int find_boundary(int argc, char* argv[]){
   // create components for each dimension used to decide the direction
   // considering we can only visualize 2D landscape, we only search within
   // 2D space and fix other dimension
+  vector<double> search_elements = {0,-1,-0.5,0.5,1};
+  vector<double> non_search_elements = {0};
   if(robot_option==0)
   {
     vector<vector<double>> elements{
-        {0,-1,-0.5,0.5,1}, //stride length
-        {0,-1,-0.5,0.5,1}, //ground incline
-        {0} //velocity
-    };
+      FLAGS_search_sl ? search_elements : non_search_elements,
+      FLAGS_search_gi ? search_elements : non_search_elements,
+      FLAGS_search_v ? search_elements : non_search_elements};
     task = Task({"stride length", "ground incline",
                  "velocity"});
     search_setting = SearchSetting(3,{"stride length", "ground incline",
@@ -659,11 +664,10 @@ int find_boundary(int argc, char* argv[]){
   }
   else if(robot_option==1){
     vector<vector<double>> elements{
-        {0,-1,-0.5,0.5,1}, //stride length
-        {0,-1,-0.5,0.5,1}, //ground incline
-        {0}, //velocity
-        {0} //turning rate
-    };
+      FLAGS_search_sl ? search_elements : non_search_elements,
+      FLAGS_search_gi ? search_elements : non_search_elements,
+      FLAGS_search_v ? search_elements : non_search_elements,
+      FLAGS_search_tr ? search_elements : non_search_elements};
     task = Task({"stride length", "ground incline",
                  "velocity", "turning rate"});
     search_setting = SearchSetting(4,{"stride length", "ground incline",

@@ -51,7 +51,9 @@ cc_binary(
     deps = [
             "@drake//:drake_shared_library",
             "//common:common",
-    ]
+    ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated.",
 )
 
 cc_library(

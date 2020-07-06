@@ -235,19 +235,6 @@ ReducedOrderModel::ReducedOrderModel(int n_y, int n_tau,
       dynamic_basis_(dynamic_basis),
       theta_y_(VectorXd::Zero(n_y * n_feature_y)),
       theta_yddot_(VectorXd::Zero(n_y * n_feature_yddot)){};
-// We don't need to define copy constructor ourselves. Just use the default one.
-//ReducedOrderModel::ReducedOrderModel(const ReducedOrderModel& old_obj)
-//    : name_(old_obj.name()),
-//      n_y_(old_obj.n_y()),
-//      n_yddot_(old_obj.n_y()),
-//      n_tau_(old_obj.n_tau()),
-//      B_tau_(old_obj.B()),
-//      n_feature_y_(old_obj.n_feature_y()),
-//      n_feature_yddot_(old_obj.n_feature_yddot()),
-//      mapping_basis_(old_obj.mapping_basis()),
-//      dynamic_basis_(old_obj.dynamic_basis()),
-//      theta_y_(old_obj.theta_y()),
-//      theta_yddot_(old_obj.theta_yddot()) {}
 
 /// Methods of ReducedOrderModel
 void ReducedOrderModel::CheckModelConsistency() const {
@@ -319,39 +306,51 @@ VectorX<double> ReducedOrderModel::EvalDynamicFuncJdotV(
   return JdotV;
 }
 
-/// 2D LIPM
-TwoDimLipm::TwoDimLipm(const MultibodyPlant<double>& plant,
-                       const BodyPoint& stance_contact_point,
-                       const MonomialFeatures& mapping_basis,
-                       const MonomialFeatures& dynamic_basis)
-    : ReducedOrderModel(kDimension, 0, MatrixX<double>::Zero(kDimension, 0),
-                        2 + mapping_basis.length(), 1 + dynamic_basis.length(),
-                        mapping_basis, dynamic_basis, "2D lipm"),
+/// LIPM
+Lipm::Lipm(const MultibodyPlant<double>& plant,
+           const BodyPoint& stance_contact_point,
+           const MonomialFeatures& mapping_basis,
+           const MonomialFeatures& dynamic_basis, int world_dim)
+    : ReducedOrderModel(world_dim, 0, MatrixX<double>::Zero(world_dim, 0),
+                        world_dim + mapping_basis.length(),
+                        (world_dim - 1) + dynamic_basis.length(), mapping_basis,
+                        dynamic_basis, to_string(world_dim) + "D lipm"),
       plant_(plant),
       context_(plant_.CreateDefaultContext()),
       world_(plant_.world_frame()),
-      stance_contact_point_(stance_contact_point) {
+      stance_contact_point_(stance_contact_point),
+      world_dim_(world_dim) {
+  DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
+
   // Initialize model parameters (dependant on the feature vectors)
   VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
-  VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
   theta_y(0) = 1;
   theta_y(1 + n_feature_y()) = 1;
-  theta_yddot(0) = 1;
+  if (world_dim == 3) {
+    theta_y(2 + 2 * n_feature_y()) = 1;
+  }
   SetThetaY(theta_y);
+
+  VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
+  theta_yddot(0) = 1;
+  if (world_dim == 3) {
+    theta_yddot(1 + n_feature_yddot()) = 1;
+  }
   SetThetaYddot(theta_yddot);
 
   // Always check dimension after model construction
   CheckModelConsistency();
 };
 // Copy constructor
-TwoDimLipm::TwoDimLipm(const TwoDimLipm& old_obj)
+Lipm::Lipm(const Lipm& old_obj)
     : ReducedOrderModel(old_obj),
       plant_(old_obj.plant()),
       context_(old_obj.plant().CreateDefaultContext()),
       world_(old_obj.world()),
-      stance_contact_point_(old_obj.stance_foot()) {}
+      stance_contact_point_(old_obj.stance_foot()),
+      world_dim_(old_obj.world_dim()) {}
 
-VectorX<double> TwoDimLipm::EvalMappingFeat(const VectorX<double>& q) const {
+VectorX<double> Lipm::EvalMappingFeat(const VectorX<double>& q) const {
   // Get CoM position
   plant_.SetPositions(context_.get(), q);
   VectorX<double> CoM = plant_.CalcCenterOfMassPosition(*context_);
@@ -368,29 +367,33 @@ VectorX<double> TwoDimLipm::EvalMappingFeat(const VectorX<double>& q) const {
   // endl;
 
   VectorX<double> feature(n_feature_y());
-  feature << st_to_CoM(0), st_to_CoM(2), mapping_basis().Eval(q);
-
+  if (world_dim_ == 2) {
+    feature << st_to_CoM(0), st_to_CoM(2), mapping_basis().Eval(q);
+  } else {
+    feature << st_to_CoM, mapping_basis().Eval(q);
+  }
   return feature;
 }
-VectorX<double> TwoDimLipm::EvalDynamicFeat(const VectorX<double>& y,
-                                            const VectorX<double>& ydot) const {
-  VectorX<double> feature_extension(1);
-  if (y(1) == 0) {
+VectorX<double> Lipm::EvalDynamicFeat(const VectorX<double>& y,
+                                      const VectorX<double>& ydot) const {
+  VectorX<double> feature_extension = y.head(world_dim_ - 1);
+  double z = y(world_dim_ - 1);
+  if (z == 0) {
     cout << "avoid singularity in dynamics_expression\n";
-    feature_extension << (9.80665 / (y(1) + 1e-8)) * y(0);  // avoid singularity
+    feature_extension *= 9.80665 / (1e-8);
   } else {
-    feature_extension << (9.80665 / y(1)) * y(0);
+    feature_extension *= 9.80665 / z;
   }
 
-  VectorX<double> y_and_ydot(2 * kDimension);
+  VectorX<double> y_and_ydot(2 * n_y());
   y_and_ydot << y, ydot;
 
   VectorX<double> feature(n_feature_yddot());
-  feature << feature_extension(0), dynamic_basis().Eval(y_and_ydot);
+  feature << feature_extension, dynamic_basis().Eval(y_and_ydot);
   return feature;
 }
-VectorX<double> TwoDimLipm::EvalMappingFeatJV(const VectorX<double>& q,
-                                              const VectorX<double>& v) const {
+VectorX<double> Lipm::EvalMappingFeatJV(const VectorX<double>& q,
+                                        const VectorX<double>& v) const {
   plant_.SetPositions(context_.get(), q);
   // Get CoM velocity
   MatrixX<double> J_com(3, plant_.num_velocities());
@@ -408,11 +411,15 @@ VectorX<double> TwoDimLipm::EvalMappingFeatJV(const VectorX<double>& q,
   plant_.MapVelocityToQDot(*context_, v, &qdot);
 
   VectorX<double> ret(n_feature_y());
-  ret << JV_st_to_CoM(0), JV_st_to_CoM(2), mapping_basis().EvalJV(q, qdot);
+  if (world_dim_ == 2) {
+    ret << JV_st_to_CoM(0), JV_st_to_CoM(2), mapping_basis().EvalJV(q, qdot);
+  } else {
+    ret << JV_st_to_CoM, mapping_basis().EvalJV(q, qdot);
+  }
   return ret;
 }
-VectorX<double> TwoDimLipm::EvalDynamicFeatJdotV(
-    const VectorX<double>& q, const VectorX<double>& v) const {
+VectorX<double> Lipm::EvalDynamicFeatJdotV(const VectorX<double>& q,
+                                           const VectorX<double>& v) const {
   VectorX<double> x(plant_.num_positions() + plant_.num_positions());
   x << q, v;
   plant_.SetPositionsAndVelocities(context_.get(), x);
@@ -432,8 +439,12 @@ VectorX<double> TwoDimLipm::EvalDynamicFeatJdotV(
   plant_.MapVelocityToQDot(*context_, v, &qdot);
 
   VectorX<double> ret(n_feature_y());
-  ret << JdotV_st_to_com(0), JdotV_st_to_com(2),
-      mapping_basis().EvalJdotV(q, qdot);
+  if (world_dim_ == 2) {
+    ret << JdotV_st_to_com(0), JdotV_st_to_com(2),
+        mapping_basis().EvalJdotV(q, qdot);
+  } else {
+    ret << JdotV_st_to_com, mapping_basis().EvalJdotV(q, qdot);
+  }
   return ret;
 }
 

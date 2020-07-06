@@ -592,7 +592,7 @@ void extractActiveAndIndependentRows(
         }
 
         if ((int)full_row_rank_idx.size() == nw_i) {
-          cout << "# of A's row is the same as the # of col. So stop adding rows.\n";
+          cout << "A.row() == A.cols(), so stop adding rows.\n";
           break;
         }
       }
@@ -1454,6 +1454,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
   DRAKE_DEMAND((FLAGS_robot_option == 0) || FLAGS_robot_option == 1);
   DRAKE_DEMAND((FLAGS_rom_option >= 0) && FLAGS_rom_option <= 4);
+  if (FLAGS_robot_option == 0) {
+    DRAKE_DEMAND(FLAGS_rom_option != 4);
+  }
 
   cout << "Trail name: " << FLAGS_program_name << endl;
   std::time_t current_time =
@@ -1775,25 +1778,30 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nReduced-order model setting:\n";
   cout << "rom_option = " << FLAGS_rom_option << endl;
   // Basis for mapping function (dependent on the robot)
-  std::vector<int> skip_inds;
+  MonomialFeatures* mapping_basis;
   if (FLAGS_robot_option == 0) {
-    skip_inds = {};
-  } else if (FLAGS_robot_option == 1) {
-    skip_inds = {3, 4, 5};  // quat_z, x, and y
+    mapping_basis =
+        new MonomialFeatures(2, plant.num_positions(), {}, "mapping basis");
+  } else { // FLAGS_robot_option == 1
+    vector<int> skip_inds = {3, 4, 5};  // quat_z, x, and y
+    mapping_basis = new MonomialFeatures(2, plant.num_positions(), skip_inds,
+                                         "mapping basis");
   }
-  MonomialFeatures mapping_basis(2, plant.num_positions(), skip_inds,
-                                 "mapping basis");
   // Basis for dynamic function
-  int n_y;
+  MonomialFeatures* dynamic_basis;
   if (FLAGS_rom_option == 0) {
-    n_y = TwoDimLipm::kDimension;
+    dynamic_basis =
+        new MonomialFeatures(2, 2 * Lipm::kDimension(2), {}, "dynamic basis");
   } else if (FLAGS_rom_option == 1) {
-    n_y = TwoDimLipmWithSwingFoot::kDimension;
+    dynamic_basis = new MonomialFeatures(
+        2, 2 * TwoDimLipmWithSwingFoot::kDimension, {}, "dynamic basis");
+  } else if (FLAGS_rom_option == 4) {
+    dynamic_basis =
+        new MonomialFeatures(2, 2 * Lipm::kDimension(3), {}, "dynamic basis");
   } else {
     // TODO: finish implementing the rest of the ROM
     throw std::runtime_error("Not implemented");
   }
-  MonomialFeatures dynamic_basis(2, 2 * n_y, {}, "dynamic basis");
   // Contact frames and position for mapping function
   string stance_foot_body_name;
   Vector3d stance_foot_contact_point_pos;
@@ -1824,10 +1832,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Construct reduced-order model
   ReducedOrderModel* rom;
   if (FLAGS_rom_option == 0) {
-    rom = new TwoDimLipm(plant, stance_foot, mapping_basis, dynamic_basis);
+    rom = new Lipm(plant, stance_foot, *mapping_basis, *dynamic_basis, 2);
   } else if (FLAGS_rom_option == 1) {
-    rom = new TwoDimLipmWithSwingFoot(
-        plant, stance_foot, swing_foot, mapping_basis, dynamic_basis);
+    rom = new TwoDimLipmWithSwingFoot(plant, stance_foot, swing_foot,
+                                      *mapping_basis, *dynamic_basis);
+  } else if (FLAGS_rom_option == 4) {
+    rom = new Lipm(plant, stance_foot, *mapping_basis, *dynamic_basis, 3);
   } else {
     // TODO: finish implementing the rest of the ROM
     throw std::runtime_error("Not implemented");

@@ -19,8 +19,8 @@ using BodyPoint =
 class MonomialFeatures {
  public:
   /// Construct a basis features composed of monomials up to order `n_order`.
-  /// `n_q` is the input size, and skip_inds denotes the indices of the input
-  /// which we are not used to construct the monomials.
+  /// `n_q` is the input size, and `skip_inds` denotes the indices of the input
+  /// which are not used to construct the monomials.
   MonomialFeatures(int n_order, int n_q, std::vector<int> skip_inds = {},
                    const std::string& name = "");
 
@@ -75,7 +75,7 @@ class MonomialFeatures {
       second_ord_partial_diff_;
 };
 
-/// ReducedOrderModel assume the following structures of mapping function and
+/// ReducedOrderModel assumes the following structures of mapping function and
 /// dynamics function
 ///   y = r(q) = Theta_r * phi_r(q)
 ///   yddot = g(y, ydot, tau) = Theta_g * phi_g(y, ydot) + B * tau
@@ -145,11 +145,6 @@ class ReducedOrderModel {
 
   void CheckModelConsistency() const;
 
- protected:
-  // Copy constructor for the Clone() method
-  // (We don't need to define this ourselves. Just use the default one.)
-  //  ReducedOrderModel(const ReducedOrderModel&);
-
  private:
   std::string name_;
   int n_y_;
@@ -167,17 +162,21 @@ class ReducedOrderModel {
   Eigen::VectorXd theta_yddot_;
 };
 
-class TwoDimLipm : public ReducedOrderModel {
+/// Linear inverted pendulum model (either 2D or 3D, determined by `world_dim`)
+class Lipm : public ReducedOrderModel {
  public:
-  static const int kDimension = 2;
+  static int kDimension(int world_dim) {
+    DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
+    return world_dim;
+  };
 
-  TwoDimLipm(const drake::multibody::MultibodyPlant<double>& plant,
-             const BodyPoint& stance_contact_point,
-             const MonomialFeatures& mapping_basis,
-             const MonomialFeatures& dynamic_basis);
+  Lipm(const drake::multibody::MultibodyPlant<double>& plant,
+       const BodyPoint& stance_contact_point,
+       const MonomialFeatures& mapping_basis,
+       const MonomialFeatures& dynamic_basis, int world_dim);
 
   // Use covariant return type for Clone method. It's more useful.
-  TwoDimLipm* Clone() const override { return new TwoDimLipm(*this); }
+  Lipm* Clone() const override { return new Lipm(*this); }
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   drake::VectorX<double> EvalMappingFeat(
@@ -198,16 +197,19 @@ class TwoDimLipm : public ReducedOrderModel {
   };
   const drake::multibody::BodyFrame<double>& world() const { return world_; };
   const BodyPoint& stance_foot() const { return stance_contact_point_; };
+  int world_dim() const {return world_dim_;};
 
  private:
   // Copy constructor for the Clone() method
-  TwoDimLipm(const TwoDimLipm&);
+  Lipm(const Lipm&);
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::BodyFrame<double>& world_;
   // contact body frame and contact point of the stance foot
   const BodyPoint& stance_contact_point_;
+
+  int world_dim_;
 };
 
 class TwoDimLipmWithSwingFoot : public ReducedOrderModel {

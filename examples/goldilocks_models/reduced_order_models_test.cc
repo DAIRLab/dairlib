@@ -219,6 +219,16 @@ TEST_F(MonomialFeatureTest, SkipIndices) {
   EXPECT_TRUE((features.EvalJdotV(q, qdot) - expected_JdotV).norm() == 0);
 }
 
+// Need a unit test for y and ydot
+// Example in traj_opt_given_weigths.cc
+
+// Need a unit test for JV which you can compare against numerical
+// differentiation
+// Example in traj_opt_given_weigths.cc
+
+// Need a unit test for B matrix in find_model::DynamicsConstraint
+
+
 }  // namespace
 }  // namespace goldilocks_models
 }  // namespace dairlib

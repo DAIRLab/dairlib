@@ -99,7 +99,8 @@ bool folder_exist (const std::string & pathname_string);
 // return false when the user want to stop
 bool CreateFolderIfNotExist(const string& dir, bool ask_for_permission = true);
 
-vector<std::string> ParseCsvToStringVec(const std::string& file_name);
+vector<std::string> ParseCsvToStringVec(const std::string& file_name,
+                                        bool is_row_vector = true);
 void SaveStringVecToCsv(vector<std::string> strings,
                         const std::string& file_name);
 

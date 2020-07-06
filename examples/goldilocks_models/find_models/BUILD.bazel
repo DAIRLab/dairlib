@@ -1,22 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
-    name = "visualize_gait_RBP",
-    srcs = ["visualize_gait_RBP.cc"],
-    data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
-    deps = [
-        "//systems/goldilocks_models",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "visualize_gait_MBP",
     srcs = ["visualize_gait_MBP.cc"],
     data = glob(["examples/goldilocks_models/PlanarWalkerWithTorso.urdf"]),
     deps = [
         "//common",
+        "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models:task",
         "//systems/goldilocks_models",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
@@ -139,7 +130,6 @@ cc_library(
     ],
 )
 
-#edited by jianshu
 cc_library(
     name = "initial_guess",
     srcs = [

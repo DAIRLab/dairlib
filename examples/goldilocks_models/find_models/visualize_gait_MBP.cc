@@ -1,57 +1,40 @@
+#include <chrono>
+#include <string>
 #include <gflags/gflags.h>
 
-#include <memory>
-#include <chrono>
-
-#include <string>
-
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/primitives/trajectory_source.h"
-
-#include "drake/lcm/drake_lcm.h"
-
-#include "drake/multibody/parsing/parser.h"
-#include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-#include "drake/geometry/geometry_visualization.h"
-
 #include "common/find_resource.h"
-#include "systems/primitives/subvector_pass_through.h"
-
+#include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/task.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/primitives/trajectory_source.h"
-#include "drake/lcm/drake_lcm.h"
-
-#include "drake/common/trajectories/piecewise_polynomial.h"
-
 #include "systems/goldilocks_models/file_utils.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/geometry/geometry_visualization.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/diagram_builder.h"
 
-using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;
 using drake::multibody::Body;
+using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 
+using drake::MatrixX;
+using drake::trajectories::PiecewisePolynomial;
+using Eigen::Matrix3Xd;
+using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using Eigen::Matrix3Xd;
-using drake::trajectories::PiecewisePolynomial;
-using drake::MatrixX;
-using std::vector;
-using std::shared_ptr;
 using std::cout;
 using std::endl;
+using std::shared_ptr;
 using std::string;
 using std::to_string;
+using std::vector;
 
 namespace dairlib {
+namespace goldilocks_models {
 
 DEFINE_int32(iter_start, 1, "The iter #");
 DEFINE_int32(iter_end, -1, "The iter #");
@@ -66,8 +49,8 @@ DEFINE_bool(construct_cubic, false,
             "2019.12.31) didn't store derivatives information, so this option "
             "cannot be used on those files.");
 
-    void swapTwoBlocks(MatrixXd* mat, int i_1, int j_1, int i_2, int j_2,
-                       int n_row, int n_col) {
+void swapTwoBlocks(MatrixXd* mat, int i_1, int j_1, int i_2, int j_2, int n_row,
+                   int n_col) {
   MatrixXd temp_block1 = mat->block(i_1, j_1, n_row, n_col);
   MatrixXd temp_block2 = mat->block(i_2, j_2, n_row, n_col);
   mat->block(i_1, j_1, n_row, n_col) = temp_block2;
@@ -79,20 +62,27 @@ void visualizeGait(int argc, char* argv[]) {
 
   // parameters
   int iter_start = FLAGS_iter_start;
-  int iter_end = (FLAGS_iter_end >= FLAGS_iter_start) ?
-                 FLAGS_iter_end : FLAGS_iter_start;
+  int iter_end =
+      (FLAGS_iter_end >= FLAGS_iter_start) ? FLAGS_iter_end : FLAGS_iter_start;
   int n_step = FLAGS_n_step;  // Should be > 0
-  /*const string directory = "examples/goldilocks_models/find_models/data/robot_"
+  /*const string directory =
+     "examples/goldilocks_models/find_models/data/robot_"
                            + to_string(FLAGS_robot_option) + "/";*/
-  const string directory = "../dairlib_data/goldilocks_models/find_models/robot_" +
+  const string directory =
+      "../dairlib_data/goldilocks_models/find_models/robot_" +
       to_string(FLAGS_robot_option) + "/";
+
+  // Read in task name
+  vector<string> task_name = ParseCsvToStringVec(directory + "task_names.csv");
+  Task task(task_name);
+  int ground_incline_idx = task.name_to_index_map().at("ground incline");
 
   // Looping through the iterations
   for (int iter = iter_start; iter <= iter_end; iter++) {
     // Read in ground incline
     double ground_incline = goldilocks_models::readCSV(
         directory + to_string(iter) + string("_") + to_string(FLAGS_batch) +
-        string("_ground_incline.csv"))(0, 0);
+        string("_task.csv"))(ground_incline_idx, 0);
 
     // Read in trajecotry
     VectorXd time_mat;
@@ -125,7 +115,7 @@ void visualizeGait(int argc, char* argv[]) {
       n_q = 19;
     } else {
       n_q = -1;
-      DRAKE_DEMAND(false); // Shouldn't come here
+      DRAKE_DEMAND(false);  // Shouldn't come here
     }
     int n_node = time_mat.rows();
     VectorXd ones = VectorXd::Ones(n_node - 1);
@@ -140,19 +130,20 @@ void visualizeGait(int argc, char* argv[]) {
     } else {
       translation_size = -1;
       translation_start_idx = -1;
-      DRAKE_DEMAND(false); // Shouldn't come here
+      DRAKE_DEMAND(false);  // Shouldn't come here
     }
     VectorXd xyz_translation =
-      state_mat.block(translation_start_idx, n_node - 1, translation_size, 1)
-      - state_mat.block(translation_start_idx, 0, translation_size, 1);
+        state_mat.block(translation_start_idx, n_node - 1, translation_size,
+                        1) -
+        state_mat.block(translation_start_idx, 0, translation_size, 1);
 
     // Concatenate the traj so it has multiple steps
     // 1. time
     VectorXd time_mat_cat(n_step * n_node - (n_step - 1));
     time_mat_cat(0) = 0;
     for (int i = 0; i < n_step; i++) {
-      time_mat_cat.segment(1 + (n_node - 1)*i, n_node - 1) =
-        time_mat.tail(n_node - 1) + time_mat_cat((n_node - 1) * i) * ones;
+      time_mat_cat.segment(1 + (n_node - 1) * i, n_node - 1) =
+          time_mat.tail(n_node - 1) + time_mat_cat((n_node - 1) * i) * ones;
     }
     // 2. state (and its derivatives)
     std::vector<MatrixXd> mat_cat;  // first element is state (and second
@@ -167,29 +158,29 @@ void visualizeGait(int argc, char* argv[]) {
     }
     for (int i = 0; i < n_step; i++) {
       // Copy over the data at all knots but the first one
-      mat_cat[0].block(0, 1 + (n_node - 1)*i, n_state, n_node - 1) =
+      mat_cat[0].block(0, 1 + (n_node - 1) * i, n_state, n_node - 1) =
           state_mat.block(0, 1, n_state, n_node - 1);
       if (FLAGS_construct_cubic) {
-        mat_cat[1].block(0, 1 + (n_node - 1)*i, n_state, n_node - 1) =
+        mat_cat[1].block(0, 1 + (n_node - 1) * i, n_state, n_node - 1) =
             statedot_mat.block(0, 1, n_state, n_node - 1);
       }
 
       // Translate x and z (only for position not its derivatives)
       if (FLAGS_robot_option == 0) {
         for (int j = 0; j < translation_size; j++) {
-          mat_cat[0].block(j, 1 + (n_node - 1)*i, 1, n_node - 1)
-            = state_mat.block(j, 1, 1, n_node - 1)  +
+          mat_cat[0].block(j, 1 + (n_node - 1) * i, 1, n_node - 1) =
+              state_mat.block(j, 1, 1, n_node - 1) +
               i * xyz_translation(j) * ones.transpose();
         }
       } else if (FLAGS_robot_option == 1) {
         if (i > 0) {
           for (int j = 0; j < translation_size; j++) {
             if (j == 1) {
-              // It's mirror in x-z plane, so we don't need to translate in y here.
+              // It's mirror in x-z plane, so we don't need to translate in y.
             } else {
-              mat_cat[0].block(j + translation_start_idx,
-                                  1 + (n_node - 1)*i, 1, n_node - 1)
-                = state_mat.block(j + translation_start_idx, 1, 1, n_node - 1)  +
+              mat_cat[0].block(j + translation_start_idx, 1 + (n_node - 1) * i,
+                               1, n_node - 1) =
+                  state_mat.block(j + translation_start_idx, 1, 1, n_node - 1) +
                   i * xyz_translation(j) * ones.transpose();
             }
           }
@@ -246,7 +237,7 @@ void visualizeGait(int argc, char* argv[]) {
           }
         }
       }  // end if (i % 2)
-    }  // end for n_step
+    }    // end for n_step
 
     // Create a testing piecewise polynomial
     std::vector<double> T_breakpoint;
@@ -275,18 +266,17 @@ void visualizeGait(int argc, char* argv[]) {
     std::string full_name;
     if (FLAGS_robot_option == 0) {
       full_name = FindResourceOrThrow(
-                    "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
+          "examples/goldilocks_models/PlanarWalkerWithTorso.urdf");
     } else if (FLAGS_robot_option == 1) {
-      full_name = FindResourceOrThrow(
-                    "examples/Cassie/urdf/cassie_fixed_springs.urdf");
+      full_name =
+          FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
     }
     parser.AddModelFromFile(full_name);
-    plant.mutable_gravity_field().set_gravity_vector(
-      -9.81 * Eigen::Vector3d::UnitZ());
+    plant.mutable_gravity_field().set_gravity_vector(-9.81 *
+                                                     Eigen::Vector3d::UnitZ());
     if (FLAGS_robot_option == 0) {
-      plant.WeldFrames(
-        plant.world_frame(), plant.GetFrameByName("base"),
-        drake::math::RigidTransform<double>());
+      plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
+                       drake::math::RigidTransform<double>());
     }
     plant.Finalize();
 
@@ -304,15 +294,13 @@ void visualizeGait(int argc, char* argv[]) {
     }
   }  // end for(int iter...)
 
-
   return;
 }
-} // dairlib
+}  // namespace goldilocks_models
+}  // namespace dairlib
 
 int main(int argc, char* argv[]) {
-
-  dairlib::visualizeGait(argc, argv);
+  dairlib::goldilocks_models::visualizeGait(argc, argv);
 
   return 0;
 }
-

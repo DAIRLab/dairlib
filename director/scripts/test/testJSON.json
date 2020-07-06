@@ -11,7 +11,7 @@
             "alpha": 0.5,
             "type": "line",
             "thickness": 0.01,
-            "history": 2
+            "history": -1
             },
             {"name": "toe_point",
               "category":"kinematic_point",

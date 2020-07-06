@@ -672,7 +672,7 @@ int find_boundary(int argc, char* argv[]){
                  "velocity", "turning rate"});
     search_setting = SearchSetting(4,{"stride length", "ground incline",
                                       "velocity","turning rate"},
-                                   {0.3,0,0.5,0},{0.01,0.01,0.02,0.01},elements);
+                                   {0.3,0,0.5,0},{0.01,0.01,0.01,0.02},elements);
   }
   //cout initial point information
   int dim = 0;

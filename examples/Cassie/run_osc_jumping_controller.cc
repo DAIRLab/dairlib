@@ -96,7 +96,7 @@ int DoMain(int argc, char* argv[]) {
   //                     "examples/Cassie/urdf/cassie_v2.urdf",
   //                     true /*spring model*/, false /*loop closure*/);
   addCassieMultibody(&plant_w_springs, nullptr, true,
-                     "examples/Cassie/urdf/cassie_agility.urdf",
+                     "examples/Cassie/urdf/cassie_agility_v2.urdf",
                      true /*spring model*/, false /*loop closure*/);
   drake::multibody::MultibodyPlant<double> plant_wo_springs(0.0);
   //  addCassieMultibody(&plant_wo_springs, nullptr, true,

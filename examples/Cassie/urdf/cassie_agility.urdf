@@ -32,7 +32,7 @@
     <inertial>
       <origin
         xyz="-0.01793 0.0001 -0.04428"
-        rpy="0 1.570796 0" />
+        rpy="0 0 0" />
       <mass value="1.82" />
       <inertia
         ixx="0.003431"
@@ -59,7 +59,7 @@
     <inertial>
       <origin
         xyz="-0.01793 0.0001 -0.04428"
-        rpy="0 1.570796 0" />
+        rpy="0 0 0" />
       <mass value="1.82" />
       <inertia
         ixx="0.003431"
@@ -86,7 +86,7 @@
     <inertial>
       <origin
         xyz="0 -1e-05 -0.034277"
-        rpy="0 -1.570796 0" />
+        rpy="0 0 0" />
       <mass value="1.171" />
       <inertia
         ixx="0.002443"
@@ -113,7 +113,7 @@
     <inertial>
       <origin
         xyz="0 1e-05 -0.034277"
-        rpy="0 -1.570796 0" />
+        rpy="0 0 0" />
       <mass value="1.171" />
       <inertia
         ixx="0.002443"
@@ -140,7 +140,7 @@
     <inertial>
       <origin
         xyz="0.05946 0.00005 -.03581"
-        rpy="1.570796 -1.570796 0" />
+        rpy="0 0 0" />
       <mass value="5.52" />
       <inertia
         ixx="0.010898"
@@ -167,7 +167,7 @@
     <inertial>
       <origin
         xyz="0.05946 0.00005 .03581"
-        rpy="1.570796 -1.570796 0" />
+        rpy="0 0 0" />
       <mass value="5.52" />
       <inertia
         ixx="0.010898"
@@ -194,7 +194,7 @@
     <inertial>
       <origin
         xyz="0.023 0.03207 -0.002181"
-        rpy="0 0 -0.7854" />
+        rpy="0 0 0" />
       <mass value="0.7578" />
       <inertia
         ixx="0.001376"
@@ -221,7 +221,7 @@
     <inertial>
       <origin
         xyz="0.023 0.03207 0.002181"
-        rpy="0 0 -0.7854" />
+        rpy="0 0 0" />
       <mass value="0.7578" />
       <inertia
         ixx="0.001376"
@@ -249,7 +249,7 @@
       <origin
         xyz=".18338 0.001169 0.0002123"
         rpy="0 0 0" />
-      <mass value="0.5771" />
+      <mass value="0.577" />
       <inertia
         ixx="0.00035939"
         iyy="0.014728"
@@ -276,7 +276,7 @@
       <origin
         xyz=".18338 0.001169 -0.0002123"
         rpy="0 0 0" />
-      <mass value="0.5771" />
+      <mass value="0.577" />
       <inertia
         ixx="0.00035939"
         iyy="0.014728"
@@ -303,7 +303,7 @@
       <origin
         xyz=".08364 0.003427 0.0"
         rpy="0 0 0" />
-      <mass value="0.1864" />
+      <mass value="0.186" />
       <inertia
         ixx="5.215e-05"
         iyy="0.00041205"
@@ -330,7 +330,7 @@
       <origin
         xyz=".08364 0.003427 0.0"
         rpy="0 0 0" />
-      <mass value="0.1864" />
+      <mass value="0.186" />
       <inertia
         ixx="5.215e-05"
         iyy="0.00041205"
@@ -358,13 +358,13 @@
         xyz=".11046 -.03058 -.00131"
         rpy="0 0 0" />
       <mass value="0.782" />
-        <inertia
-        ixx=".001125"
-        ixy="-.002878"
-        ixz="-.00006329"
-        iyy=".023138"
-        iyz=".00003615"
-        izz=".023947" />
+      <inertia
+        ixx="0.00039238"
+        iyy="0.013595"
+        izz="0.013674"
+        ixy="0.00023651"
+        ixz="-4.987e-05"
+        iyz="-4.82e-06" />
     </inertial>
     <visual>
       <origin
@@ -386,12 +386,12 @@
         rpy="0 0 0" />
       <mass value="0.782" />
       <inertia
-        ixx=".001125"
-        ixy="-.002878"
-        ixz=".00006329"
-        iyy=".023138"
-        iyz="-.00003615"
-        izz=".023947" />
+        ixx="0.00039238"
+        iyy="0.013595"
+        izz="0.013674"
+        ixy="0.00023651"
+        ixz="4.987e-05"
+        iyz="4.82e-06" />
     </inertial>
     <visual>
       <origin
@@ -411,7 +411,7 @@
       <origin
         xyz="0.08097 0.00223 -0.0000385"
         rpy="0 0 0" />
-      <mass value="0.1259" />
+      <mass value="0.126" />
       <inertia
         ixx="2.959e-05"
         iyy="0.00022231"
@@ -438,7 +438,7 @@
       <origin
         xyz="0.08097 0.00223 -0.0000385"
         rpy="0 0 0" />
-      <mass value="0.1259" />
+      <mass value="0.126" />
       <inertia
         ixx="2.959e-05"
         iyy="0.00022231"
@@ -466,27 +466,100 @@
       to the foot at the heel location
       **************************************************************
   -->
+
   <link name="foot_crank_mass_left">
     <inertial>
-      <mass value="0.129"/>
+      <origin
+        xyz="0.00493 2e-5 -0.00215"
+        rpy="0 0 0" />
+      <mass value="0.1261"/>
+      <inertia
+        ixx="2.6941e-05"
+        iyy="4.9621e-05"
+        izz="6.3352e-05"
+        ixy="-2.1e-09"
+        ixz="-3.9623e-06"
+        iyz="-1.09e-08" />
     </inertial>
   </link>
 
   <link name="foot_crank_mass_right">
     <inertial>
-      <mass value="0.129"/>
+      <origin
+        xyz="0.00493 2e-5 -0.00215"
+        rpy="0 0 0" />
+      <mass value="0.1261"/>
+      <inertia
+        ixx="2.6941e-05"
+        iyy="4.9621e-05"
+        izz="6.3352e-05"
+        ixy="-2.1e-09"
+        ixz="3.9623e-06"
+        iyz="1.09e-08" />
     </inertial>
   </link>
 
   <link name="plantar_rod_mass_left">
     <inertial>
+      <origin
+        xyz="0.17792 0 0"
+        rpy="0 0 0" />
       <mass value="0.1186"/>
+      <inertia
+        ixx="2.779e-06"
+        iyy="0.001774"
+        izz="0.001775"
+        ixy="-2.34e-08"
+        ixz="-8.1e-09"
+        iyz="0" />
     </inertial>
   </link>
 
   <link name="plantar_rod_mass_right">
     <inertial>
+      <origin
+        xyz="0.17792 0 0"
+        rpy="0 0 0" />
       <mass value="0.1186"/>
+      <inertia
+        ixx="2.779e-06"
+        iyy="0.001774"
+        izz="0.001775"
+        ixy="-2.34e-08"
+        ixz="8.1e-09"
+        iyz="0" />
+    </inertial>
+  </link>
+
+  <link name="achilles_rod_left">
+    <inertial>
+      <origin
+        xyz="0.24719 0 0"
+        rpy="0 0 0" />
+      <mass value="0.1567"/>
+      <inertia
+        ixx="3.754e-06"
+        iyy="0.004487"
+        izz="0.004488"
+        ixy="-3.74e-08"
+        ixz="-1.61e-08"
+        iyz="0" />
+    </inertial>
+  </link>
+
+  <link name="achilles_rod_right">
+    <inertial>
+      <origin
+        xyz="0.24719 0 0"
+        rpy="0 0 0" />
+      <mass value="0.1567"/>
+      <inertia
+        ixx="3.754e-06"
+        iyy="0.004487"
+        izz="0.004488"
+        ixy="-3.74e-08"
+        ixz="1.61e-08"
+        iyz="0" />
     </inertial>
   </link>
 
@@ -529,7 +602,7 @@
       </geometry>
       <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
     </collision>
-   <visual>
+    <visual>
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
@@ -541,7 +614,7 @@
       </geometry>
       <origin xyz="0.088 0 0" rpy="0 0 0"/>
     </collision>
-   </link>
+  </link>
 
   <link name="toe_right">
     <inertial>
@@ -569,7 +642,7 @@
         <color rgba="0.4 0.4 0.4 1" />
       </material>
     </visual>
-        <visual>
+    <visual>
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
@@ -581,7 +654,7 @@
       </geometry>
       <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
     </collision>
-   <visual>
+    <visual>
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
@@ -596,17 +669,17 @@
   </link>
 
 
- 
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
- <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+  <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
 
 
   <joint name="hip_roll_left" type="revolute">
@@ -615,7 +688,7 @@
     <child link="yaw_left" />
     <axis xyz="0 0 1" />
     <limit lower="-0.262" upper="0.393" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
   <joint name="hip_roll_right" type="revolute">
@@ -624,9 +697,8 @@
     <child link="yaw_right" />
     <axis xyz="0 0 1" />
     <limit lower="-0.393" upper="0.262" effort="300"/>
-    <dynamics damping="1" /> 
-  </joint> 
-
+    <dynamics damping="1" />
+  </joint>
 
   <joint name="hip_yaw_left" type="revolute">
     <origin xyz="0 0 -0.07" rpy="0 -1.570796 0" />
@@ -634,16 +706,16 @@
     <child link="hip_left" />
     <axis xyz="0 0 1" />
     <limit lower="-0.393" upper="0.393" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
-   <joint name="hip_yaw_right" type="revolute">
+  <joint name="hip_yaw_right" type="revolute">
     <origin xyz="0 0 -0.07" rpy="0 -1.570796 0" />
     <parent link="yaw_right" />
     <child link="hip_right" />
     <axis xyz="0 0 1" />
     <limit lower="-0.393" upper="0.393" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
 
@@ -653,7 +725,7 @@
     <child link="thigh_left" />
     <axis xyz="0 0 1" />
     <limit lower="-0.873" upper="1.396" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
   <joint name="hip_pitch_right" type="revolute">
@@ -662,7 +734,7 @@
     <child link="thigh_right" />
     <axis xyz="0 0 1" />
     <limit lower="-0.873" upper="1.396" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
   <joint name="knee_left" type="revolute">
@@ -683,29 +755,40 @@
     <dynamics damping="1" />
   </joint>
 
-
   <joint name="foot_crank_mass_left" type="fixed">
-    <origin xyz=".055 0 .00776"/>
-    <parent link="toe_left" />
+    <origin xyz=".058 -0.034 .02275"/>
+    <parent link="tarsus_left" />
     <child link="foot_crank_mass_left" />
   </joint>
 
   <joint name="foot_crank_mass_right" type="fixed">
-    <origin xyz=".055 0 -.00776"/>
-    <parent link="toe_right" />
+    <origin xyz=".058 -0.034 -.02275"/>
+    <parent link="tarsus_right" />
     <child link="foot_crank_mass_right" />
   </joint>
 
   <joint name="plantar_rod_mass_left" type="fixed">
-    <origin xyz=".055 0 .00776"/>
-    <parent link="toe_left" />
+    <origin xyz=".055 0 -.00791"/>
+    <parent link="foot_crank_mass_left" />
     <child link="plantar_rod_mass_left" />
   </joint>
 
   <joint name="plantar_rod_mass_right" type="fixed">
-    <origin xyz=".055 0 -.00776"/>
-    <parent link="toe_right" />
+    <origin xyz=".055 0 .00791"/>
+    <parent link="foot_crank_mass_right" />
     <child link="plantar_rod_mass_right" />
+  </joint>
+
+  <joint name="achilles_rod__left" type="fixed">
+    <origin xyz="0 0 0.045"/>
+    <parent link="hip_left" />
+    <child link="achilles_rod_left" />
+  </joint>
+
+  <joint name="achilles_rod_right" type="fixed">
+    <origin xyz="0 0 -0.045"/>
+    <parent link="hip_right" />
+    <child link="achilles_rod_right" />
   </joint>
 
   <joint name="knee_joint_left" type="revolute">
@@ -726,19 +809,17 @@
     <dynamics damping=".1" />
   </joint>
 
-
   <joint name="knee_spring_left_fixed" type="fixed">
     <origin xyz="0.06068 0.08241 0" rpy="0 0 0" />
     <parent link="knee_left" />
     <child link="knee_spring_left" />
-  </joint> 
+  </joint>
 
   <joint name="knee_spring_right_fixed" type="fixed">
     <origin xyz="0.06068 0.08241 0" rpy="0 0 0" />
     <parent link="knee_right" />
     <child link="knee_spring_right" />
-  </joint> 
-
+  </joint>
 
   <joint name="ankle_joint_left" type="revolute">
     <origin xyz="0.43476 0.02 0" rpy="0 0 0" />
@@ -746,7 +827,7 @@
     <child link="tarsus_left" />
     <axis xyz="0 0 1" />
     <limit lower=".8" upper="3"/>
-    <dynamics damping="0.1" /> 
+    <dynamics damping="0.1" />
   </joint>
 
   <joint name="ankle_joint_right" type="revolute">
@@ -758,7 +839,7 @@
     <dynamics damping="0.1" />
   </joint>
 
-<!-- rpy="-0.0689 -0.0370 2.7208"-->
+  <!-- rpy="-0.0689 -0.0370 2.7208"-->
   <joint name="ankle_spring_joint_left" type="revolute">
     <origin xyz="-.01269 -.03059 .00092" rpy="0.0780 0.00549 2.7192" />
     <parent link="tarsus_left" />
@@ -766,9 +847,9 @@
     <limit lower="-.1" upper="0.1"/>
     <axis xyz="0 0 1" />
     <dynamics damping="10" /> <!-- made up value -->
-  </joint> 
+  </joint>
 
-<!-- rpy="0.0734 0.0269 2.7201"-->
+  <!-- rpy="0.0734 0.0269 2.7201"-->
   <joint name="ankle_spring_joint_right" type="revolute">
     <origin xyz="-.01269 -.03059 -.00092" rpy="-0.0780 -0.00549 2.7192" />
     <parent link="tarsus_right" />
@@ -776,8 +857,7 @@
     <limit lower="-.1" upper="0.1"/>
     <axis xyz="0 0 1" />
     <dynamics damping="10" /> <!-- made up value -->
-  </joint> 
-
+  </joint>
 
   <joint name="toe_left" type="revolute">
     <origin xyz="0.408 -0.040 0" rpy="0 0 0" />
@@ -785,7 +865,7 @@
     <child link="toe_left" />
     <axis xyz="0 0 1" />
     <limit lower="-2.8" upper="0" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
   <joint name="toe_right" type="revolute">
@@ -794,19 +874,19 @@
     <child link="toe_right" />
     <axis xyz="0 0 1" />
     <limit lower="-2.8" upper="0" effort="300"/>
-    <dynamics damping="1" /> 
+    <dynamics damping="1" />
   </joint>
 
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
- <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
+  <!-- MOTORS ||| MOTORS ||| MOTORS ||| MOTORS ||| MOTORS |||-->
 
   <transmission name="hip_roll_left_trans" type="transmission_interface/SimpleTransmission">
     <actuator name="hip_roll_left_motor"/>
@@ -868,16 +948,16 @@
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
- <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
+  <!-- SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS ||| SPRINGS |||-->
 
   <!-- Real springs -->
   <force_element name="left_knee_spring">

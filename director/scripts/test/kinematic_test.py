@@ -265,6 +265,7 @@ class VisualizationGui(QWidget):
                     next_loc = pt_world.transpose()[0]
 
                 elif (currShape.category == "CoM"):
+                    print(self.plant.CalcCenterOfMassPosition())
                     next_loc = currShape.point
 
                 self.drawShape(currShape, next_loc)
@@ -340,6 +341,7 @@ class VisualizationGui(QWidget):
 
                     if (currShape.polyline == None):
                         currShape.polyline = vis.showPolyData(d.getPolyData(), "line")
+                        currShape.polyline.setProperty('Color', currShape.color)
                     else:
                         currShape.polyline.setPolyData(d.getPolyData())
 
@@ -358,6 +360,7 @@ class VisualizationGui(QWidget):
                 if (len(currShape.points) == 0):
                     currShape.duration = self.msg.utime / 1000000
                 else:
+                    # visualize and trace line for 'history' seconds, adding points at a distance at least 10e-5
                     if (self.distance(currShape.points[-1], next_loc) >= 10e-5):
                         currShape.points.popleft()
                         currShape.points.append(next_loc)

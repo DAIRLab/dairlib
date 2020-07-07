@@ -21,7 +21,7 @@ std::string SetInitialGuessByInterpolation(const std::string& directory,
 Eigen::VectorXd GetThetaScale(const std::string& directory, int iter);
 Eigen::VectorXd GetGammaScale(const TasksGenerator* task_gen);
 // utility functions
-Eigen::VectorXd CalculateInterpolation(Eigen::VectorXd& weight_vector,
+Eigen::VectorXd CalculateInterpolation(const Eigen::VectorXd& weight_vector,
                                        const Eigen::MatrixXd& solution_matrix);
 void InterpolateAmongDifferentTasks(const std::string& dir, string prefix,
                                     const Eigen::VectorXd& current_gamma,

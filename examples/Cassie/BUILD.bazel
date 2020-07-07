@@ -147,7 +147,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers",
         "//systems/controllers:pd_config_lcm",
-        "//systems/goldilocks_models",
+        "//common",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -204,14 +204,6 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
-)
-
-py_binary(
-    name = "draw_graphviz",
-    srcs = ["draw_graphviz.py"],
-    deps = [
-        "@drake//bindings/pydrake",
     ],
 )
 
@@ -342,6 +334,7 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
 )
 
 cc_binary(
@@ -368,7 +361,6 @@ cc_binary(
         ":cassie_utils",
         "//common",
         "//solvers:optimization_utils",
-        "//systems/goldilocks_models",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

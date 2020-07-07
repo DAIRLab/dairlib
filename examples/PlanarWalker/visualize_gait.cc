@@ -23,7 +23,7 @@
 #include "attic/systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "attic/systems/trajectory_optimization/hybrid_dircon.h"
 #include "attic/systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;

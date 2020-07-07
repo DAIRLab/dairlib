@@ -398,6 +398,10 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_tracking_data_input_port("pelvis_heading_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   if (FLAGS_publish_osc_data) {
+    // Create osc debug sender.
+    auto osc_debug_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+            "OSC_DEBUG", &lcm_local, TriggerTypeSet({TriggerType::kForced})));
     builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
   }
 

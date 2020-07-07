@@ -50,6 +50,17 @@ template <typename T>
 std::map<std::string, int> makeNameToActuatorsMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
+/// Given a set of maps constructed from the above functions, construct a
+/// vector of state and actuator names in order of their index
+std::vector<std::string> createStateNameVectorFromMap(
+    const std::map<std::string, int>& pos_map,
+    const std::map<std::string, int>& vel_map);
+
+/// Given a set of maps constructed from the above functions, construct a
+/// vector of state and actuator names in order of their index
+std::vector<std::string> createActuatorNameVectorFromMap(
+    const std::map<std::string, int>& act_map);
+
 // TODO: The following two functions need to be implemented as a part of
 // RBT/Multibody and not as separate functions that take in RBTs. Make the
 // change once the codebase shifts to using multibody.

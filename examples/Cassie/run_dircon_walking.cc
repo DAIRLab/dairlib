@@ -10,6 +10,7 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
 #include "common/file_utils.h"
+#include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
@@ -38,8 +39,6 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using dairlib::goldilocks_models::readCSV;
-using dairlib::goldilocks_models::writeCSV;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;

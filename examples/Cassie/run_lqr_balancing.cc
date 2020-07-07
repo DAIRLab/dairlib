@@ -1,6 +1,7 @@
 #include <gflags/gflags.h>
 
 #include "drake/lcm/drake_lcm.h"
+#include "drake/math/autodiff.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -40,6 +41,9 @@ DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::multibody::MultibodyPlant;
+using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::LcmSubscriberSystem;
+
 using Eigen::VectorXd;
 
 int do_main(int argc, char* argv[]) {

@@ -119,7 +119,7 @@ void visualizeGait(std::string file, int steps, double rate) {
                                                         options_list);
 
   // read in file and set decision variable values
-  MatrixXd z = dairlib::goldilocks_models::readCSV(file);
+  MatrixXd z = readCSV(file);
 
   // go through solver interface
   auto solver = std::make_shared<drake::solvers::SnoptSolver>();

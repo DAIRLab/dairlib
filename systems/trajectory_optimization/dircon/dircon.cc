@@ -131,7 +131,12 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     //
     // Create and add collocation constraints
     //
-    int cache_size = 1000;
+
+    // Want to set cache_size > number of decision variables. While we have not
+    // declared every decision variable yet (see impulse variables below), the
+    // impulse variables do not enter into any dynamics evaluations, so we are
+    // safe. Add a small factor (10%) just for safety margin.
+    int cache_size = 1.1 * num_vars();
     cache_.push_back(
         std::make_unique<DynamicsCache<T>>(mode.evaluators(), cache_size));
     for (int j = 0; j < mode.num_knotpoints() - 1; j++) {
@@ -159,7 +164,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
         VectorXd ub = VectorXd::Zero(mode.evaluators().count_active());
 
         // If we are in the first knotpoint, do not constrain the position of
-        // any constraints that overlap with the o avoirevious mode, as such a
+        // any constraints that overlap with the previous mode, as such a
         // constraint would be redundant. We do this here by setting bounds to
         // +/-inf.
         if (j == 0 && i_mode > 0) {

@@ -310,9 +310,14 @@ bool KinematicEvaluatorSet<T>::is_active(int index) const {
   if (index < 0 || index >= count_full()) {
     return false;
   }
+
+  // Loop over the individual evaluators. If the given index is in the index
+  // range for a particular evaluator, check if it is active. 
+  // `count` here refers to the starting index of the current evaluator into the
+  // full vector.
   int count = 0;
   for (const auto& e : evaluators_) {
-    if (index - count >= 0 && index - count < e->num_full()) {
+    if (index >= count && index < count + e->num_full()) {
       return e->is_active(index - count);
     } else {
       count += e->num_full();

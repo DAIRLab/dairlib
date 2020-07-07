@@ -9,7 +9,7 @@ namespace multibody {
 
 /// Virtual class to represent arbitrary kinematic evaluations
 /// Evaluations are defined by some function phi(q). Implementations
-/// must generate phi(q), J(q) (the Jacboian w.r.t. velocities v), 
+/// must generate phi(q), J(q) (the Jacobian w.r.t. velocities v), 
 /// and [d/dt J] * v
 ///
 /// Evaluations call also be classified as "active" or "inactive." Inactive
@@ -94,13 +94,13 @@ class KinematicEvaluator {
   int full_index_to_active_index(int full_index) const;
 
   /// Create a friction cone constraint on the force variables (associated with
-  /// the full Jacboian). Subclasses which might be associated with frictional
+  /// the full Jacobian). Subclasses which might be associated with frictional
   /// contact should implement this method.
   virtual std::shared_ptr<drake::solvers::Constraint>
       CreateConicFrictionConstraint(double mu) const { return nullptr; };
 
   /// Create a friction cone constraint on the force variables (associated with
-  /// the full Jacboian). Subclasses which might be associated with frictional
+  /// the full Jacobian). Subclasses which might be associated with frictional
   /// contact should implement this method.
   virtual std::shared_ptr<drake::solvers::Constraint>
       CreateLinearFrictionConstraint(double mu, int num_faces = 8) const {

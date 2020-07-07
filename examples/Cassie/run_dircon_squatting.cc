@@ -143,10 +143,10 @@ void DoMain(double duration, int max_iter, string data_directory,
   right_heel_eval.SetFrictional();
 
   auto evaluators = multibody::KinematicEvaluatorSet<double>(plant);
-  evaluators.add_evaluator(&left_toe_eval);
-  evaluators.add_evaluator(&left_heel_eval);
-  evaluators.add_evaluator(&right_toe_eval);
-  evaluators.add_evaluator(&right_heel_eval);
+  int left_toe_eval_ind = evaluators.add_evaluator(&left_toe_eval);
+  int left_heel_eval_ind = evaluators.add_evaluator(&left_heel_eval);
+  int right_toe_eval_ind = evaluators.add_evaluator(&right_toe_eval);
+  int right_heel_eval_ind = evaluators.add_evaluator(&right_heel_eval);
   evaluators.add_evaluator(&left_loop_eval);
   evaluators.add_evaluator(&right_loop_eval);
 
@@ -158,14 +158,14 @@ void DoMain(double duration, int max_iter, string data_directory,
       DirconMode<double>(evaluators, num_knotpoints, min_T, max_T);
   double_support.set_mu(mu);
   // Set x-y coordinates as relative
-  double_support.MakeConstraintRelative(0, 0);  // left_toe, x
-  double_support.MakeConstraintRelative(0, 1);  // left_toe, y
-  double_support.MakeConstraintRelative(1, 0);  // left_heel x
-  double_support.MakeConstraintRelative(1, 1);  // left_heel, y
-  double_support.MakeConstraintRelative(2, 0);  // right_toe, x
-  double_support.MakeConstraintRelative(2, 1);  // right_toe, y
-  double_support.MakeConstraintRelative(3, 0);  // right_heel, x
-  double_support.MakeConstraintRelative(3, 1);  // right_heel, y
+  double_support.MakeConstraintRelative(left_toe_eval_ind, 0);    // x
+  double_support.MakeConstraintRelative(left_toe_eval_ind, 1);    // y
+  double_support.MakeConstraintRelative(left_heel_eval_ind, 0);   // x
+  double_support.MakeConstraintRelative(left_heel_eval_ind, 1);   // y
+  double_support.MakeConstraintRelative(right_toe_eval_ind, 0);   // x
+  double_support.MakeConstraintRelative(right_toe_eval_ind, 1);   // y
+  double_support.MakeConstraintRelative(right_heel_eval_ind, 0);  // x
+  double_support.MakeConstraintRelative(right_heel_eval_ind, 1);  // y
 
   // Constraint scaling
   if (FLAGS_scale_constraint) {

@@ -55,7 +55,7 @@ class DirconMode {
 
   bool IsSkipQuaternion(int knotpoint_index) const;
 
-  /// Count the nubmer of relative constraints
+  /// Count the number of relative constraints
   int num_relative_constraints() const { return relative_constraints_.size(); };
 
   /// Set a specific knotpoint in time to use a specific constraint type, either
@@ -159,7 +159,7 @@ class DirconMode {
     return kin_acceleration_scale_;
   };
 
-  /// Get the cost on force regularization. Defaults to 1e-4
+  /// Get the cost on force regularization.
   double get_force_regularization() const { return force_regularization_; };
 
   const multibody::KinematicEvaluatorSet<T>& evaluators() const {
@@ -192,6 +192,8 @@ class DirconMode {
   double mu_;
   std::set<int> relative_constraints_;
   std::set<int> skip_quaternion_;
+
+  // Manually-set constraint types, organized by index. See set_constraint_type.
   std::unordered_map<int, KinematicConstraintType> reduced_constraints_;
 
   // Constraint scaling

@@ -59,8 +59,6 @@ using drake::solvers::SolutionResult;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 using drake::trajectories::PiecewisePolynomial;
 
-using dairlib::goldilocks_models::readCSV;
-using dairlib::goldilocks_models::writeCSV;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;

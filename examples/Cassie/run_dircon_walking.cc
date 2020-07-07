@@ -39,8 +39,6 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using dairlib::goldilocks_models::readCSV;
-using dairlib::goldilocks_models::writeCSV;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::trajectory_optimization::DirconOptions;
 using dairlib::systems::trajectory_optimization::HybridDircon;

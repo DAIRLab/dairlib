@@ -28,12 +28,11 @@ cc_library(
     hdrs = ["cassie_utils.h"],
     deps = [
         ":cassie_urdf",
+        ":sim_cassie_sensor_aggregator",
         "//common",
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        "//systems/sensors:sim_cassie_sensor_aggregator",
         "@drake//:drake_shared_library",
     ],
 )
@@ -100,6 +99,19 @@ cc_test(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gtest//:main",
+    ],
+)
+
+cc_library(
+    name = "sim_cassie_sensor_aggregator",
+    srcs = ["sim_cassie_sensor_aggregator.cc"],
+    hdrs = ["sim_cassie_sensor_aggregator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
     ],
 )
 
@@ -176,10 +188,11 @@ cc_binary(
         "//attic/multibody:multibody_solvers",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
-        "//systems/sensors:sim_cassie_sensor_aggregator",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated.",
 )
 
 cc_binary(
@@ -326,11 +339,11 @@ cc_binary(
     srcs = ["test/benchmark_dynamics.cc"],
     deps = [
         ":cassie_urdf",
+        ":sim_cassie_sensor_aggregator",
         "//common",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
-        "//systems/sensors:sim_cassie_sensor_aggregator",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

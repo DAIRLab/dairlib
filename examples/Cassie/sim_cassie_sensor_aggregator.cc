@@ -1,4 +1,4 @@
-#include "systems/sensors/sim_cassie_sensor_aggregator.h"
+#include "examples/Cassie/sim_cassie_sensor_aggregator.h"
 
 namespace dairlib {
 namespace systems {
@@ -14,13 +14,13 @@ using std::cout;
 using std::endl;
 
 SimCassieSensorAggregator::SimCassieSensorAggregator(
-  const RigidBodyTree<double>& tree) {
-  num_positions_ = tree.get_num_positions();
-  num_velocities_ = tree.get_num_velocities();
+  const drake::multibody::MultibodyPlant<double>& plant) {
+  num_positions_ = plant.num_positions();
+  num_velocities_ = plant.num_velocities();
 
-  positionIndexMap_ = multibody::makeNameToPositionsMap(tree);
-  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(tree);
-  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(tree);
+  positionIndexMap_ = multibody::makeNameToPositionsMap(plant);
+  velocityIndexMap_ = multibody::makeNameToVelocitiesMap(plant);
+  actuatorIndexMap_ = multibody::makeNameToActuatorsMap(plant);
 
   input_input_port_ = this->DeclareVectorInputPort(
                         BasicVector<double>(10)).get_index();

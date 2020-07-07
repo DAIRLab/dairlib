@@ -1,23 +1,21 @@
 #pragma once
 
-#include <string>
 #include <map>
+#include <string>
 #include <vector>
 
-#include "drake/multibody/plant/multibody_plant.h"
-#include "drake/systems/framework/leaf_system.h"
+#include "dairlib/lcmt_cassie_joint_out.hpp"
+#include "dairlib/lcmt_cassie_leg_out.hpp"
+#include "dairlib/lcmt_cassie_out.hpp"
+#include "dairlib/lcmt_cassie_pelvis_out.hpp"
+#include "dairlib/lcmt_elmo_out.hpp"
+#include "dairlib/lcmt_vectornav_out.hpp"
+#include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 
-#include "attic/multibody/rigidbody_utils.h"
-#include "multibody/multibody_utils.h"
-
-#include "dairlib/lcmt_cassie_out.hpp"
-#include "dairlib/lcmt_cassie_pelvis_out.hpp"
-#include "dairlib/lcmt_vectornav_out.hpp"
-#include "dairlib/lcmt_cassie_leg_out.hpp"
-#include "dairlib/lcmt_elmo_out.hpp"
-#include "dairlib/lcmt_cassie_joint_out.hpp"
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -27,7 +25,8 @@ namespace systems {
 /// dairlib::lcmt_cassie_out.
 class SimCassieSensorAggregator : public drake::systems::LeafSystem<double> {
  public:
-  explicit SimCassieSensorAggregator(const RigidBodyTree<double>& tree);
+  explicit SimCassieSensorAggregator(
+      const drake::multibody::MultibodyPlant<double>& plant);
 
   const drake::systems::InputPort<double>& get_input_port_input() const {
     return this->get_input_port(input_input_port_);

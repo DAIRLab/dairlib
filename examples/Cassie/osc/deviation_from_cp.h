@@ -1,18 +1,17 @@
 #pragma once
 
-#include "drake/multibody/rigid_body_tree.h"
-#include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace cassie {
 namespace osc {
 
 // TODO(yminchen): we can replace cp with raibert style control. (feedforward
-// term is v*T/2)
+//  term is v*T/2)
 // TODO(yminchen): we can make global target position an input port of the
-// the system if it's needed in the future.
-
+//  the system if it's needed in the future.
 
 /// DeviationFromCapturePoint calculates and outputs the deviation from capture
 /// point in order to track a desired velocity of center of mass.
@@ -48,8 +47,8 @@ namespace osc {
 /// Requirement: quaternion floating-based Cassie only
 class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
  public:
-  DeviationFromCapturePoint(const RigidBodyTree<double>& tree,
-      int pelvis_idx);
+  DeviationFromCapturePoint(
+      const drake::multibody::MultibodyPlant<double>& plant);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -62,10 +61,13 @@ class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
   void CalcFootPlacement(const drake::systems::Context<double>& context,
                          drake::systems::BasicVector<double>* output) const;
 
-  const RigidBodyTree<double>& tree_;
-  int pelvis_idx_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::Body<double>& pelvis_;
   Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;
+
+  std::unique_ptr<drake::systems::Context<double>> context_;
 
   int state_port_;
   int xy_port_;
@@ -83,5 +85,3 @@ class DeviationFromCapturePoint : public drake::systems::LeafSystem<double> {
 }  // namespace osc
 }  // namespace cassie
 }  // namespace dairlib
-
-

@@ -8,7 +8,6 @@
 #include "drake/systems/framework/leaf_system.h"
 
 #include "multibody/multibody_utils.h"
-#include "attic/multibody/rigidbody_utils.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 #include "examples/Cassie/datatypes/cassie_user_in_t.h"
@@ -22,8 +21,6 @@ class CassieInputTranslator : public drake::systems::LeafSystem<double> {
  public:
   explicit CassieInputTranslator(
       const drake::multibody::MultibodyPlant<double>&);
-  explicit CassieInputTranslator(
-      const RigidBodyTree<double>&);
  private:
   void Output(const drake::systems::Context<double>& context,
                    cassie_user_in_t* output) const;

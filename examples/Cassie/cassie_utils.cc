@@ -27,69 +27,144 @@ using drake::solvers::MathematicalProgram;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> LeftToeFront(
+    const MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_left"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> RightToeFront(
+    const MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_right"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> LeftToeRear(
+    const MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_left"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> RightToeRear(
+    const MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_right"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> LeftRodOnThigh(
+    const drake::multibody::MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(0.0, 0.0, 0.045), plant.GetFrameByName("thigh_left"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> RightRodOnThigh(
+    const drake::multibody::MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(0.0, 0.0, -0.045), plant.GetFrameByName("thigh_right"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> LeftRodOnHeel(
+    const drake::multibody::MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(.11877, -.01, 0.0), plant.GetFrameByName("heel_spring_left"));
+}
+
+template <typename T>
+std::pair<const Vector3d, const Frame<T>&> RightRodOnHeel(
+    const drake::multibody::MultibodyPlant<T>& plant) {
+  return std::pair<const Vector3d, const Frame<T>&>(
+    Vector3d(.11877, -.01, 0.0), plant.GetFrameByName("heel_spring_right"));
+}
+
+template <typename T>
+multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
+    const MultibodyPlant<T>& plant) {
+  auto rod_on_thigh = LeftRodOnThigh(plant);
+  auto rod_on_heel = LeftRodOnHeel(plant);
+  return multibody::DistanceEvaluator<T>(
+      plant, rod_on_heel.first, rod_on_heel.second, rod_on_thigh.first,
+      rod_on_thigh.second, kCassieAchillesLength);
+}
+
+template <typename T>
+multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
+    const MultibodyPlant<T>& plant) {
+  auto rod_on_thigh = RightRodOnThigh(plant);
+  auto rod_on_heel = RightRodOnHeel(plant);
+  return multibody::DistanceEvaluator<T>(
+      plant, rod_on_heel.first, rod_on_heel.second, rod_on_thigh.first,
+      rod_on_thigh.second, kCassieAchillesLength);
+}
+
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
 void addCassieMultibody(MultibodyPlant<double>* plant,
                         SceneGraph<double>* scene_graph, bool floating_base,
-                        std::string filename) {
+                        std::string filename, bool add_leaf_springs,
+                        bool add_loop_closure) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
   parser.AddModelFromFile(full_name);
 
-  plant->mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                    Vector3d::UnitZ());
+  plant->mutable_gravity_field().set_gravity_vector(-9.81 * Vector3d::UnitZ());
 
   if (!floating_base) {
     plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("pelvis"),
                       drake::math::RigidTransform<double>(Vector3d::Zero()));
   }
 
-  // Add springs
-  // stiffness is 2300 in URDF, 1500 from gazebo
-  plant->AddForceElement<RevoluteSpring>(
-      dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
-          plant->GetJointByName("knee_joint_left")),
-      0, 1500);
-  plant->AddForceElement<RevoluteSpring>(
-      dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
-          plant->GetJointByName("knee_joint_right")),
-      0, 1500);
-  plant->AddForceElement<RevoluteSpring>(
-      dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
-          plant->GetJointByName("ankle_spring_joint_left")),
-      0, 1250);
-  plant->AddForceElement<RevoluteSpring>(
-      dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
-          plant->GetJointByName("ankle_spring_joint_right")),
-      0, 1250);
+  if (add_leaf_springs) {
+    // Add springs
+    // stiffness is 2300 in URDF, 1500 from gazebo
+    plant->AddForceElement<RevoluteSpring>(
+        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
+            plant->GetJointByName("knee_joint_left")),
+        0, 1500);
+    plant->AddForceElement<RevoluteSpring>(
+        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
+            plant->GetJointByName("knee_joint_right")),
+        0, 1500);
+    plant->AddForceElement<RevoluteSpring>(
+        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
+            plant->GetJointByName("ankle_spring_joint_left")),
+        0, 1250);
+    plant->AddForceElement<RevoluteSpring>(
+        dynamic_cast<const drake::multibody::RevoluteJoint<double>&>(
+            plant->GetJointByName("ankle_spring_joint_right")),
+        0, 1250);
+  }
 
-  // TOOO(mposa): add loop closures when implemented in Drake
-  // Add a spring to represent loop closure
-  double achilles_stiffness = 2e6;
-  double achilles_damping = 200;
-  double achilles_length = .5012;
-  const auto& heel_spring_left = plant->GetBodyByName("heel_spring_left");
-  const auto& thigh_left = plant->GetBodyByName("thigh_left");
-  const auto& heel_spring_right = plant->GetBodyByName("heel_spring_right");
-  const auto& thigh_right = plant->GetBodyByName("thigh_right");
+  if (add_loop_closure) {
+    // TOOO(mposa): add loop closures when implemented in Drake
+    // Add a spring to represent loop closure
+    double achilles_stiffness = 2e5;
+    double achilles_damping = 2e3;
+    const auto& heel_spring_left = LeftRodOnHeel(*plant).second.body();
+    const auto& thigh_left = LeftRodOnThigh(*plant).second.body();
+    const auto& heel_spring_right = RightRodOnHeel(*plant).second.body();
+    const auto& thigh_right = RightRodOnThigh(*plant).second.body();
 
-  Vector3d rod_on_heel_spring;  // symmetric left and right
-  rod_on_heel_spring << .11877, -.01, 0.0;
+    // symmetric left and right for heel
+    Vector3d rod_on_heel_spring = LeftRodOnHeel(*plant).first;
+    Vector3d rod_on_thigh_left = LeftRodOnThigh(*plant).first;
+    Vector3d rod_on_thigh_right = RightRodOnThigh(*plant).first;
 
-  Vector3d rod_on_thigh_left;
-  rod_on_thigh_left << 0.0, 0.0, 0.045;
+    plant->AddForceElement<drake::multibody::LinearSpringDamper>(
+        heel_spring_left, rod_on_heel_spring, thigh_left, rod_on_thigh_left,
+        kCassieAchillesLength, achilles_stiffness, achilles_damping);
 
-  Vector3d rod_on_thigh_right;
-  rod_on_thigh_right << 0.0, 0.0, -0.045;
-
-  plant->AddForceElement<drake::multibody::LinearSpringDamper>(
-      heel_spring_left, rod_on_heel_spring, thigh_left, rod_on_thigh_left,
-      achilles_length, achilles_stiffness, achilles_damping);
-
-  plant->AddForceElement<drake::multibody::LinearSpringDamper>(
-      heel_spring_right, rod_on_heel_spring, thigh_right, rod_on_thigh_right,
-      achilles_length, achilles_stiffness, achilles_damping);
+    plant->AddForceElement<drake::multibody::LinearSpringDamper>(
+        heel_spring_right, rod_on_heel_spring, thigh_right, rod_on_thigh_right,
+        kCassieAchillesLength, achilles_stiffness, achilles_damping);
+  }
 }
 
 std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(
@@ -99,67 +174,12 @@ std::unique_ptr<RigidBodyTree<double>> makeCassieTreePointer(
   return tree;
 }
 
-template <typename T>
-std::pair<const Vector3d, const Frame<T>&> LeftToe(
-    const MultibodyPlant<T>& plant) {
-  return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_left"));
-}
-
-template <typename T>
-std::pair<const Vector3d, const Frame<T>&> RightToe(
-    const MultibodyPlant<T>& plant) {
-  return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(-0.0457, 0.112, 0), plant.GetFrameByName("toe_right"));
-}
-
-template <typename T>
-std::pair<const Vector3d, const Frame<T>&> LeftHeel(
-    const MultibodyPlant<T>& plant) {
-  return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_left"));
-}
-
-template <typename T>
-std::pair<const Vector3d, const Frame<T>&> RightHeel(
-    const MultibodyPlant<T>& plant) {
-  return std::pair<const Vector3d, const Frame<T>&>(
-    Vector3d(0.088, 0, 0), plant.GetFrameByName("toe_right"));
-}
-
-template <typename T>
-multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
-    const MultibodyPlant<T>& plant) {
-  double achilles_length = .5012;
-  const auto& heel_spring = plant.GetFrameByName("heel_spring_left");
-  const auto& thigh = plant.GetFrameByName("thigh_left");
-  Vector3d rod_on_heel(.11877, -.01, 0.0);
-  Vector3d rod_on_thigh(0.0, 0.0, 0.045);
-
-  return multibody::DistanceEvaluator<T>(plant, rod_on_heel, heel_spring,
-      rod_on_thigh, thigh, achilles_length);
-}
-
-template <typename T>
-multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
-    const MultibodyPlant<T>& plant) {
-  double achilles_length = .5012;
-  const auto& heel_spring = plant.GetFrameByName("heel_spring_right");
-  const auto& thigh = plant.GetFrameByName("thigh_right");
-  Vector3d rod_on_heel(.11877, -.01, 0.0);
-  Vector3d rod_on_thigh(0.0, 0.0, -0.045);
-
-  return multibody::DistanceEvaluator<T>(plant, rod_on_heel, heel_spring,
-      rod_on_thigh, thigh, achilles_length);
-}
-
 void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
                      FloatingBaseType base_type, bool is_with_springs) {
   drake::parsers::urdf::AddModelInstanceFromUrdfFileToWorld(
       FindResourceOrThrow(filename), base_type, &tree);
 
   // Add distance constraints for the two legs
-  double achilles_length = .5012;
   int heel_spring_left = tree.FindBodyIndex("heel_spring_left");
   int thigh_left = tree.FindBodyIndex("thigh_left");
 
@@ -176,10 +196,10 @@ void buildCassieTree(RigidBodyTree<double>& tree, std::string filename,
   rod_on_thigh_right << 0.0, 0.0, -0.045;
 
   tree.addDistanceConstraint(heel_spring_left, rod_on_heel_spring, thigh_left,
-                             rod_on_thigh_left, achilles_length);
+                             rod_on_thigh_left, kCassieAchillesLength);
 
   tree.addDistanceConstraint(heel_spring_right, rod_on_heel_spring, thigh_right,
-                             rod_on_thigh_right, achilles_length);
+                             rod_on_thigh_right, kCassieAchillesLength);
 
   // Add spring forces
   if(is_with_springs){
@@ -290,14 +310,22 @@ systems::SimCassieSensorAggregator * addImuAndAggregatorToSimulation(
   return cassie_sensor_aggregator;
 }
 
-template std::pair<const Vector3d, const Frame<double>&> LeftToe(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> RightToe(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> LeftHeel(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<double>&> RightHeel(const MultibodyPlant<double>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToe(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToe(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftToeFront(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightToeFront(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftToeRear(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightToeRear(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToeFront(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToeFront(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftToeRear(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightToeRear(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftRodOnThigh(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightRodOnThigh(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> LeftRodOnHeel(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<double>&> RightRodOnHeel(const MultibodyPlant<double>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftRodOnThigh(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightRodOnThigh(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> LeftRodOnHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template std::pair<const Vector3d, const Frame<AutoDiffXd>&> RightRodOnHeel(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template multibody::DistanceEvaluator<double> LeftLoopClosureEvaluator(const MultibodyPlant<double>& plant);  // NOLINT
 template multibody::DistanceEvaluator<double> RightLoopClosureEvaluator(const MultibodyPlant<double>& plant);  // NOLINT
 template multibody::DistanceEvaluator<AutoDiffXd> LeftLoopClosureEvaluator(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT

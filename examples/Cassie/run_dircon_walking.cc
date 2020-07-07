@@ -9,7 +9,7 @@
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 #include "systems/trajectory_optimization/dircon_distance_data.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
 #include "systems/trajectory_optimization/dircon_opt_constraints.h"
@@ -19,13 +19,11 @@
 #include "drake/lcm/drake_lcm.h"
 #include "drake/multibody/inverse_kinematics/inverse_kinematics.h"
 #include "drake/multibody/parsing/parser.h"
-#include "drake/multibody/rigid_body_tree.h"
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/constraint.h"
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 #include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/trajectory_source.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
@@ -178,8 +176,6 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
       parser.AddModelFromFile(full_name);
-      plant_ik.mutable_gravity_field().set_gravity_vector(
-          -9.81 * Eigen::Vector3d::UnitZ());
       plant_ik.Finalize();
 
       // Visualize
@@ -272,8 +268,6 @@ void DoMain(double duration, double stride_length, double ground_incline,
   string full_name =
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
   parser.AddModelFromFile(full_name);
-  plant.mutable_gravity_field().set_gravity_vector(-9.81 *
-                                                   Eigen::Vector3d::UnitZ());
   plant.Finalize();
 
   // Create maps for joints

@@ -21,7 +21,6 @@ cc_library(
     hdrs = ["pd_config_lcm.h"],
     deps = [
         ":controllers",
-        "//attic/multibody:utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
@@ -67,7 +66,8 @@ cc_library(
         "constrained_lqr_controller.h",
     ],
     deps = [
-        "//attic/multibody:contact_toolkit",
+        "//multibody:utils",
+        "//multibody/kinematic",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -79,18 +79,6 @@ cc_library(
         ":affine_controller",
         ":constrained_lqr_controller",
         ":linear_controller",
-    ],
-)
-
-cc_test(
-    name = "pd_config_lcm_test",
-    size = "small",
-    srcs = ["test/pd_config_lcm_test.cc"],
-    deps = [
-        ":pd_config_lcm",
-        "//examples/Cassie:cassie_urdf",
-        "@drake//:drake_shared_library",
-        "@gtest//:main",
     ],
 )
 
@@ -122,7 +110,7 @@ cc_library(
     hdrs = ["lipm_traj_gen.h"],
     deps = [
         ":control_utils",
-        "//attic/multibody:utils",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -134,23 +122,9 @@ cc_library(
     hdrs = ["cp_traj_gen.h"],
     deps = [
         ":control_utils",
-        "//attic/multibody:utils",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
-    ],
-)
-
-cc_test(
-    name = "constrained_lqr_controller_test",
-    size = "small",
-    srcs = [
-        "test/constrained_lqr_controller_test.cc",
-    ],
-    deps = [
-        ":controllers",
-        "//attic/multibody:multibody_solvers",
-        "//examples/Cassie:cassie_utils",
-        "@gtest//:main",
     ],
 )
 

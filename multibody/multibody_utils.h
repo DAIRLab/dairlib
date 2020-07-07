@@ -50,6 +50,17 @@ template <typename T>
 std::map<std::string, int> makeNameToActuatorsMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
+/// Given a set of maps constructed from the above functions, construct a
+/// vector of state and actuator names in order of their index
+std::vector<std::string> createStateNameVectorFromMap(
+    const std::map<std::string, int>& pos_map,
+    const std::map<std::string, int>& vel_map);
+
+/// Given a set of maps constructed from the above functions, construct a
+/// vector of state and actuator names in order of their index
+std::vector<std::string> createActuatorNameVectorFromMap(
+    const std::map<std::string, int>& act_map);
+
 // TODO: The following two functions need to be implemented as a part of
 // RBT/Multibody and not as separate functions that take in RBTs. Make the
 // change once the codebase shifts to using multibody.
@@ -59,8 +70,25 @@ std::map<std::string, int> makeNameToActuatorsMap(
 bool JointsWithinLimits(const drake::multibody::MultibodyPlant<double>& plant,
                         Eigen::VectorXd positions, double tolerance = 0.0);
 
-// Check whether a MultibodyPlant contains quaternion floating-base joint or not
-// WARNING: This function assumes there is only one plant
+/// Gets the single index of the quaternion position coordinates for a floating
+/// base joint. Returns the starting index of the length four quaternion
+/// coordinates into the generalized position vector 'q'.
+template <typename T>
+std::vector<int> QuaternionStartIndices(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+/// Gets the single index of the quaternion position coordinates for a floating
+/// base joint. Returns the starting index of the length four quaternion
+/// coordinates into the generalized position vector 'q'.
+/// If there are no quaternion floating base joints, returns -1.
+/// Throws an error if there are multiple quaternion floating base joints.
+template <typename T>
+int QuaternionStartIndex(
+    const drake::multibody::MultibodyPlant<T>& plant);
+
+/// Check whether a MultibodyPlant contains quaternion floating-base joint.
+/// Throws an error if there are multiple quaternion floating base joints.
+/// TODO: this method should be deprecated
 template <typename T>
 bool isQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 

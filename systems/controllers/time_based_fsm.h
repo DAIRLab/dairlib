@@ -2,7 +2,8 @@
 
 #include <string>
 #include "systems/framework/output_vector.h"
-#include "drake/multibody/rigid_body_tree.h"
+
+#include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -15,7 +16,7 @@ namespace systems {
 /// specified by the corresponding duration.
 
 /// Constructor:
-///  @param tree, rigid body tree
+///  @param plant, multibody plant
 ///  @param states, integer representation of each state
 ///  @param state_durations, duration of each state
 ///  @param t0, time offset of the whole finite state machine
@@ -34,10 +35,10 @@ namespace systems {
 ///
 class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
  public:
-  TimeBasedFiniteStateMachine(const RigidBodyTree<double>& tree,
-                              const std::vector<int>& states,
-                              const std::vector<double>& state_durations,
-                              double t0 = 0);
+  TimeBasedFiniteStateMachine(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const std::vector<int>& states,
+      const std::vector<double>& state_durations, double t0 = 0);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);

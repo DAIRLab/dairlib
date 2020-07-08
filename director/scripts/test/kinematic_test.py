@@ -28,7 +28,7 @@ class VisualizationGui(QWidget):
         super(VisualizationGui, self).__init__(parent)
 
         self.abstract_channel = "OSC_DEBUG"
-        self.abstract_type = "lcmt_osc_output"
+        self.abstract_type = "dairlib.lcmt_osc_output"
         self.abstract_field = "lcmt_osc_tracking_data"
         self.abstract_x_index = 3
         self.abstract_y_index = 3
@@ -81,7 +81,7 @@ class VisualizationGui(QWidget):
                 self.data = json.load(json_file)
 
             # start listenning to LCM messages
-            self.subscription = lcmUtils.addSubscriber(self.data['channelName'], messageClass=eval(self.data['channel_type']), callback=self.state_handler)
+            # self.subscription = lcmUtils.addSubscriber(self.data['channelName'], messageClass=eval(self.data['channel_type']), callback=self.state_handler)
 
             self.subscription = lcmUtils.addSubscriber(self.abstract_channel, messageClass=eval(self.abstract_type), callback=self.abstract_handler)
 
@@ -197,9 +197,10 @@ class VisualizationGui(QWidget):
         #                field[self.abstract_y_index],
         #                field[self.abstract_z_index]])
 
+
         a = None
         for el in field:
-            if (el.name == "cp_traj"):
+            if (el.name == "com_traj"):
                 a = el.y
                 print(a)
                 break

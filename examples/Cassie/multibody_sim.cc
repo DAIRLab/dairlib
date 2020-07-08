@@ -151,7 +151,7 @@ int do_main(int argc, char* argv[]) {
   double toe_spread = .2;
   if (FLAGS_floating_base) {
     CassieFixedPointSolver(plant, FLAGS_init_height, mu_fp, min_normal_fp,
-        true, toe_spread, &q_init, &u_init, &lambda_init);  
+        true, toe_spread, &q_init, &u_init, &lambda_init);
   } else {
     CassieFixedBaseFixedPointSolver(plant, &q_init, &u_init, &lambda_init);
   }

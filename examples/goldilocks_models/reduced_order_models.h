@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <set>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <Eigen/Dense>
@@ -90,10 +91,11 @@ class ReducedOrderModel {
                     const std::string& name = "");
 
   // Clone() is used for deep-copying a polymorphic object
-  virtual ReducedOrderModel* Clone() const = 0;
+  virtual std::unique_ptr<ReducedOrderModel> Clone() const = 0;
 
-  // Virtual destructor for Clone()
-  // (because we need to manually "delete" for the dynamic allocation)
+  // We must make the base class destructor virtual for Clone()
+  // Otherwise, the computer doesn't call the derived class's destructor for the
+  // polymorphic object
   virtual ~ReducedOrderModel() = default;
 
   // Getters
@@ -175,8 +177,13 @@ class Lipm : public ReducedOrderModel {
        const MonomialFeatures& mapping_basis,
        const MonomialFeatures& dynamic_basis, int world_dim);
 
+  // Copy constructor for the Clone() method
+  Lipm(const Lipm&);
+
   // Use covariant return type for Clone method. It's more useful.
-  Lipm* Clone() const override { return new Lipm(*this); }
+  std::unique_ptr<ReducedOrderModel> Clone() const override {
+    return std::make_unique<Lipm>(*this);
+  }
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   drake::VectorX<double> EvalMappingFeat(
@@ -200,8 +207,6 @@ class Lipm : public ReducedOrderModel {
   int world_dim() const { return world_dim_; };
 
  private:
-  // Copy constructor for the Clone() method
-  Lipm(const Lipm&);
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
@@ -222,9 +227,12 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
                           const MonomialFeatures& mapping_basis,
                           const MonomialFeatures& dynamic_basis);
 
+  // Copy constructor for the Clone() method
+  TwoDimLipmWithSwingFoot(const TwoDimLipmWithSwingFoot&);
+
   // Use covariant return type for Clone method. It's more useful.
-  TwoDimLipmWithSwingFoot* Clone() const override {
-    return new TwoDimLipmWithSwingFoot(*this);
+  std::unique_ptr<ReducedOrderModel> Clone() const override {
+    return std::make_unique<TwoDimLipmWithSwingFoot>(*this);
   }
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
@@ -249,8 +257,6 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
   const BodyPoint& swing_foot() const { return swing_contact_point_; };
 
  private:
-  // Copy constructor for the Clone() method
-  TwoDimLipmWithSwingFoot(const TwoDimLipmWithSwingFoot&);
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
@@ -270,8 +276,13 @@ class FixHeightAccel : public ReducedOrderModel {
                  const MonomialFeatures& mapping_basis,
                  const MonomialFeatures& dynamic_basis);
 
+  // Copy constructor for the Clone() method
+  FixHeightAccel(const FixHeightAccel&);
+
   // Use covariant return type for Clone method. It's more useful.
-  FixHeightAccel* Clone() const override { return new FixHeightAccel(*this); }
+  std::unique_ptr<ReducedOrderModel> Clone() const override {
+    return std::make_unique<FixHeightAccel>(*this);
+  }
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   drake::VectorX<double> EvalMappingFeat(
@@ -294,8 +305,6 @@ class FixHeightAccel : public ReducedOrderModel {
   const BodyPoint& stance_foot() const { return stance_contact_point_; };
 
  private:
-  // Copy constructor for the Clone() method
-  FixHeightAccel(const FixHeightAccel&);
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
@@ -315,9 +324,12 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
       const MonomialFeatures& mapping_basis,
       const MonomialFeatures& dynamic_basis);
 
+  // Copy constructor for the Clone() method
+  FixHeightAccelWithSwingFoot(const FixHeightAccelWithSwingFoot&);
+
   // Use covariant return type for Clone method. It's more useful.
-  FixHeightAccelWithSwingFoot* Clone() const override {
-    return new FixHeightAccelWithSwingFoot(*this);
+  std::unique_ptr<ReducedOrderModel> Clone() const override {
+    return std::make_unique<FixHeightAccelWithSwingFoot>(*this);
   }
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
@@ -342,8 +354,6 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
   const BodyPoint& swing_foot() const { return swing_contact_point_; };
 
  private:
-  // Copy constructor for the Clone() method
-  FixHeightAccelWithSwingFoot(const FixHeightAccelWithSwingFoot&);
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;

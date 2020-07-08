@@ -61,14 +61,8 @@ using dairlib::solvers::NonlinearConstraint;
 class DynamicsConstraint : public NonlinearConstraint<double> {
  public:
   DynamicsConstraint(const ReducedOrderModel& rom,
-                     const MultibodyPlant<double>& plant,
-                     bool is_head,
+                     const MultibodyPlant<double>& plant, bool is_head,
                      const std::string& description = "rom_dyn_constraint");
-
-  ~DynamicsConstraint() override {
-    // Need to manually delete rom_ because I called rom.Clone() in constructor
-    delete rom_;
-  };
 
   // Getters
   VectorXd GetY(const VectorXd& q) const;
@@ -96,7 +90,7 @@ class DynamicsConstraint : public NonlinearConstraint<double> {
     const VectorXd & h_i,
     const VectorXd & theta_y, const VectorXd & theta_yddot) const;
 
-  ReducedOrderModel* rom_;
+  std::unique_ptr<ReducedOrderModel> rom_;
 
   int n_q_;
   int n_v_;

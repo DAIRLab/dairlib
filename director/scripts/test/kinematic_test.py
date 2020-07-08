@@ -26,14 +26,13 @@ class VisualizationGui(QWidget):
 
     def __init__(self, parent = None):
         super(VisualizationGui, self).__init__(parent)
-        self.channel = "NETWORK_CASSIE_STATE_DISPATCHER"
 
-        # self.abstract_channel = "OSC_DEBUG"
-        # self.abstract_type = "lcmt_osc_output"
-        # self.abstract_field = "lcmt_osc_tracking_data"
-        # self.abstract_x_index = 3
-        # self.abstract_y_index = 3
-        # self.abstract_z_index = 3
+        self.abstract_channel = "OSC_DEBUG"
+        self.abstract_type = "lcmt_osc_output"
+        self.abstract_field = "lcmt_osc_tracking_data"
+        self.abstract_x_index = 3
+        self.abstract_y_index = 3
+        self.abstract_z_index = 3
 
         # GUI attributes
         self.checkBoxes = {}
@@ -47,20 +46,15 @@ class VisualizationGui(QWidget):
         self.ready = False
 
         # JSON attributes
+        self.channel = ""
         self.data = None
         self.modelFile = None
         self.weldBody = False
         self.shapes = {}
         self.plant = None
 
-        self.subscription = lcmUtils.addSubscriber(self.channel, messageClass=dairlib.lcmt_robot_output, callback=self.state_handler)
-
-        # abstract_subscription = \
-        #     self.lcm.subscribe(self.abstract_channel, self.abstract_handler)
-        # abstract_subscription.set_queue_capacity(1)
-
         # create the GUI
-        self.setWindowTitle("Testing Testing")
+        self.setWindowTitle("Visualization GUI")
         self.vbox = QVBoxLayout()
         hbox = QHBoxLayout()
 
@@ -85,6 +79,11 @@ class VisualizationGui(QWidget):
             self.json_file = self.JSONInput.text
             with open(self.json_file) as json_file:
                 self.data = json.load(json_file)
+
+            # start listenning to LCM messages
+            self.subscription = lcmUtils.addSubscriber(self.data['channelName'], messageClass=eval(self.data['channel_type']), callback=self.state_handler)
+
+            self.subscription = lcmUtils.addSubscriber(self.abstract_channel, messageClass=eval(self.abstract_type), callback=self.abstract_handler)
 
             self.ready = True
             self.modelFile = self.data['model_file']
@@ -140,18 +139,24 @@ class VisualizationGui(QWidget):
                 addToGUI = True
             for name in self.shapes:
                 # create appropriate symbol extention
-                dotOrLine = " •"
-                if (self.shapes[name].type == "point"):
-                    dotOrLine = " •"
-                else:
-                    dotOrLine = " ---"
+                extension = " •"
+                type = self.shapes[name].type
+                if (type == "point"):
+                    extension = " •"
+                elif (type == "line"):
+                    extension = " ---"
+                elif (type == "axis"):
+                    extension = " |_"
 
                 # create each checkbox and conditionally add it to the GUI
                 addToList = False
                 if (name not in self.checkBoxes):
-                    self.checkBoxes[name] = QCheckBox(name + dotOrLine)
-                    color = self.shapes[name].color
-                    self.checkBoxes[name].setStyleSheet("color: rgb("+str(color[0] * 255)+", "+str(color[1] * 255)+", "+str(color[2] * 255)+")")
+                    self.checkBoxes[name] = QCheckBox(name + extension)
+
+                    if (self.shapes[name].type == "point" or self.shapes[name].type == "line"):
+                        color = self.shapes[name].color
+                        self.checkBoxes[name].setStyleSheet("color: rgb("+str(color[0] * 255)+", "+str(color[1] * 255)+", "+str(color[2] * 255)+")")
+
                     addToList = True
                 self.checkBoxes[name].setChecked(True)
                 self.checkBoxesPrevState[name] = True
@@ -164,27 +169,13 @@ class VisualizationGui(QWidget):
         '''
         Function for showing a shape when its corresponding checkbox is checked
         '''
-        if (self.shapes[name].type == "line"):
-            self.shapes[name].polyline.setProperty('Visible', True)
-
-        elif (self.shapes[name].type == "point"):
-            self.shapes[name].sphere.setProperty('Visible', True)
-
-        elif (self.shapes[name].type == "axis"):
-            self.shapes[name].axis.setProperty('Visible', True)
+        self.shapes[name].object.setProperty('Visible', True)
 
     def checkBoxNotChecked(self, name):
         '''
         Function for hiding a shape when its corresponding checkbox is unchecked
         '''
-        if (self.shapes[name].type == "line"):
-            self.shapes[name].polyline.setProperty('Visible', False)
-
-        elif (self.shapes[name].type == "point"):
-            self.shapes[name].sphere.setProperty('Visible', False)
-
-        elif (self.shapes[name].type == "axis"):
-            self.shapes[name].axis.setProperty('Visible', False)
+        self.shapes[name].object.setProperty('Visible', False)
 
     def distance(self, pt1, pt2):
         '''
@@ -200,20 +191,18 @@ class VisualizationGui(QWidget):
     # The following is a test function for handling messages from different lcm
     # channels
 
-    # def abstract_handler(self, channel, data):
-    #     decoder = getattr(dairlib, self.abstract_type)
-    #     msg = decoder.decode(data)
-    #     field = getattr(msg, "tracking_data")
-    #     # pt = np.array([field[self.abstract_x_index],
-    #     #                field[self.abstract_y_index],
-    #     #                field[self.abstract_z_index]])
-    #
-    #     a = None
-    #     for el in field:
-    #         if (el.name == "cp_traj"):
-    #             a = el.y
-    #             print(a)
-    #             break
+    def abstract_handler(self, msg):
+        field = getattr(msg, "tracking_data")
+        # pt = np.array([field[self.abstract_x_index],
+        #                field[self.abstract_y_index],
+        #                field[self.abstract_z_index]])
+
+        a = None
+        for el in field:
+            if (el.name == "cp_traj"):
+                a = el.y
+                print(a)
+                break
 
     def state_handler(self, msg):
         '''
@@ -265,8 +254,7 @@ class VisualizationGui(QWidget):
                     next_loc = pt_world.transpose()[0]
 
                 elif (currShape.category == "CoM"):
-                    print(self.plant.CalcCenterOfMassPosition())
-                    next_loc = currShape.point
+                    next_loc = self.plant.CalcCenterOfMassPosition(context = self.context)
 
                 self.drawShape(currShape, next_loc)
 
@@ -274,22 +262,15 @@ class VisualizationGui(QWidget):
             if (self.clear == True):
                 for shape in self.shapes.values():
                     if (shape.type == "line"):
-                        om.removeFromObjectModel(shape.polyline)
-                        shape.polyline = None
+                        om.removeFromObjectModel(shape.object)
+                        shape.object = None
                         shape.points = deque()
                 self.clear = False
 
             # handle flags for deleting objects
             if (self.delete == True):
                 for shape in self.shapes.values():
-                    if (shape.type == "line"):
-                        om.removeFromObjectModel(shape.polyline)
-
-                    elif(shape.type == "point"):
-                        om.removeFromObjectModel(shape.sphere)
-
-                    elif(shape.type == "axis"):
-                        om.removeFromObjectModel(shape.axis)
+                    om.removeFromObjectModel(shape.object)
 
                 self.delete = False
                 self.reset = True
@@ -339,11 +320,11 @@ class VisualizationGui(QWidget):
                     d = DebugData()
                     d.addPolyLine(currShape.points, radius=currShape.thickness, color=currShape.color)
 
-                    if (currShape.polyline == None):
-                        currShape.polyline = vis.showPolyData(d.getPolyData(), "line")
-                        currShape.polyline.setProperty('Color', currShape.color)
+                    if (currShape.object == None):
+                        currShape.object = vis.showPolyData(d.getPolyData(), "line")
+                        currShape.object.setProperty('Color', currShape.color)
                     else:
-                        currShape.polyline.setPolyData(d.getPolyData())
+                        currShape.object.setPolyData(d.getPolyData())
 
                 else:
                     if (self.distance(currShape.points[-1], next_loc) >= 10e-5):
@@ -351,10 +332,10 @@ class VisualizationGui(QWidget):
                         d = DebugData()
                         d.addPolyLine(currShape.points, radius=currShape.thickness, color=currShape.color)
 
-                        if (currShape.polyline == None):
-                            currShape.polyline = vis.showPolyData(d.getPolyData(), "line")
+                        if (currShape.object == None):
+                            currShape.object = vis.showPolyData(d.getPolyData(), "line")
                         else:
-                            currShape.polyline.setPolyData(d.getPolyData())
+                            currShape.object.setPolyData(d.getPolyData())
 
             elif (currShape.history > 0):
                 if (len(currShape.points) == 0):
@@ -366,10 +347,10 @@ class VisualizationGui(QWidget):
                         currShape.points.append(next_loc)
                         d = DebugData()
                         d.addPolyLine(currShape.points, radius=currShape.thickness, color=currShape.color)
-                        if (currShape.polyline == None):
-                            currShape.polyLine = vis.showPolyData(d.getPolyData(), "line")
+                        if (currShape.object == None):
+                            currShape.object = vis.showPolyData(d.getPolyData(), "line")
                         else:
-                            currShape.polyline.setPolyData(d.getPolyData())
+                            currShape.object.setPolyData(d.getPolyData())
 
         # draw a point
         elif (currShape.type == "point"):
@@ -377,14 +358,14 @@ class VisualizationGui(QWidget):
             d.addSphere(next_loc, radius = currShape.radius)
             # create a new point
             if (currShape.created == True):
-                currShape.sphere = vis.showPolyData(d.getPolyData(), "sphere")
+                currShape.object = vis.showPolyData(d.getPolyData(), "sphere")
                 # set color and transparency of point
-                currShape.sphere.setProperty('Color', currShape.color)
-                currShape.sphere.setProperty('Alpha', currShape.alpha)
+                currShape.object.setProperty('Color', currShape.color)
+                currShape.object.setProperty('Alpha', currShape.alpha)
                 currShape.created = False
             else:
                 # update the location of the last point
-                currShape.sphere.setPolyData(d.getPolyData())
+                currShape.object.setPolyData(d.getPolyData())
 
         # draw a set of axes
         elif (currShape.type == "axis"):
@@ -392,18 +373,20 @@ class VisualizationGui(QWidget):
             rigTrans = self.plant.EvalBodyPoseInWorld(self.context, self.plant.GetBodyByName(currShape.frame))
             rot_matrix = rigTrans.rotation().matrix().transpose()
 
+            colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
             d = DebugData()
             for i in range(3):
-                d.addArrow(next_loc, next_loc + (rot_matrix[i]/4), headRadius=0.03, color = currShape.color[i])
+                d.addArrow(next_loc, next_loc + (rot_matrix[i]/4), headRadius=0.03, color = colors[i])
 
             # create the 3 axes
             if (currShape.created == True):
-                currShape.axis = vis.showPolyData(d.getPolyData(), "axis", colorByName='RGB255')
-                currShape.axis.setProperty('Alpha', currShape.alpha)
+                currShape.object = vis.showPolyData(d.getPolyData(), "axis", colorByName='RGB255')
+                currShape.object.setProperty('Alpha', currShape.alpha)
                 currShape.created = False
             else:
                 # update the location of the last point
-                currShape.axis.setPolyData(d.getPolyData())
+                currShape.object.setPolyData(d.getPolyData())
 
 class ObjectToDraw():
     '''
@@ -411,56 +394,54 @@ class ObjectToDraw():
     '''
     def __init__(self, data):
         # set attributes from given data (originating from input JSON file)
-        jsonData = eval(str(data))
-        self.category = jsonData['category']
-        self.name = jsonData['name']
+        self.name = data['name']
+
+        info = data['info']
+        source_data = info['source_data']
+        type_data = info['type_data']
+
+        self.category = source_data['category']
 
         if (self.category == "kinematic_point"):
-            self.frame = jsonData['frame']
-            self.point = jsonData['point']
+            self.frame = source_data['frame']
+            self.point = source_data['point']
 
-        elif (self.category == "CoM"):
-            self.point = [0, 0, 0]
-
-        self.color = jsonData['color']
-        self.alpha = jsonData['alpha']
-        self.type = jsonData['type']
+        self.alpha = type_data['alpha']
+        self.type = type_data['type']
         self.created = True
+        self.object = None
 
         if (self.type == "line"):
-            self.thickness = jsonData['thickness']
-            self.history = jsonData['history']
+            self.color = type_data['color']
+            self.thickness = type_data['thickness']
+            self.history = type_data['history']
             self.duration = None
-            self.polyline = None
             self.points = deque()
 
         elif (self.type == "point"):
-            self.radius = jsonData['radius']
-            self.sphere = None
+            self.color = type_data['color']
+            self.radius = type_data['radius']
 
         elif (self.type == "axis"):
-            self.thickness = jsonData['thickness']
-            self.axis = None
+            self.thickness = type_data['thickness']
 
     def update(self, otherObject):
         '''
         Function for updating certain attributes of already existing object
         '''
-        self.color = otherObject.color
         self.alpha = otherObject.alpha
 
         if (self.category == "kinematic_point"):
             self.frame = otherObject.frame
             self.point = otherObject.point
 
-        elif (self.category == "CoM"):
-            self.point = otherObject.point
-
         if (self.type == "line"):
+            self.color = otherObject.color
             self.thickness = otherObject.thickness
             self.history = otherObject.history
 
         elif (self.type == "point"):
+            self.color = otherObject.color
             self.radius = otherObject.radius
 
         elif (self.type == "axis"):

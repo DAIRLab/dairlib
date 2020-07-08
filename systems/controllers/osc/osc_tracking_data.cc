@@ -26,6 +26,9 @@ namespace dairlib::systems::controllers {
 
 using multibody::makeNameToPositionsMap;
 using multibody::makeNameToVelocitiesMap;
+using multibody::WToQuatDotMap;
+using multibody::JwrtqdotToJwrtv;
+using goldilocks_models::ReducedOrderModel;
 
 /**** OscTrackingData ****/
 OscTrackingData::OscTrackingData(
@@ -459,6 +462,7 @@ void JointSpaceTrackingData::CheckDerivedOscTrackingData() {
     DRAKE_DEMAND(joint_vel_idx_wo_spr_.size() == 1);
   }
 }
+
 // AbstractTrackingData ////////////////////////////////////////////////////////
 AbstractTrackingData::AbstractTrackingData(
     const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
@@ -626,28 +630,53 @@ MatrixXd AbstractTrackingData::JacobianOfUserDefinedPos(
   }
 }
 
-MatrixXd AbstractTrackingData::WToQuatDotMap(const Eigen::Vector4d& q) const {
-  // Note: The same calculation happens in Drake's
-  // QuaternionFloatingMobilizer<T>::AngularVelocityToQuaternionRateMatrix()
-  // This matrix transforms angular velocity wrt the WORLD to d/dt quaternion
-  MatrixXd ret(4,3);
-  ret <<  -q(1), -q(2), -q(3),
-           q(0),  q(3), -q(2),
-          -q(3),  q(0),  q(1),
-           q(2), -q(1),  q(0);
-  ret *= 0.5;
-  return ret;
+// OptimalRomTrackingData //////////////////////////////////////////////////////
+OptimalRomTrackingData::OptimalRomTrackingData(
+    const string& name, int n_r, const MatrixXd& K_p, const MatrixXd& K_d,
+    const MatrixXd& W, const MultibodyPlant<double>* plant_w_spr,
+    const MultibodyPlant<double>* plant_wo_spr, const ReducedOrderModel& rom)
+    : OscTrackingData(name, n_r, K_p, K_d, W, plant_w_spr, plant_wo_spr),
+      rom_(rom) {
+  map_position_from_spring_to_no_spring_ =
+      PositionMapFromSpringToNoSpring(*plant_w_spr, *plant_wo_spr);
+  map_velocity_from_spring_to_no_spring_ =
+      VelocityMapFromSpringToNoSpring(*plant_w_spr, *plant_wo_spr);
 }
-MatrixXd AbstractTrackingData::JwrtqdotToJwrtv(
-    const Eigen::VectorXd& q, const Eigen::MatrixXd& Jwrtqdot) const {
-  //[J_1:4, J_5:end] * [WToQuatDotMap, 0] = [J_1:4 * WToQuatDotMap, J_5:end]
-  //                   [      0      , I]
-  DRAKE_DEMAND(Jwrtqdot.cols() == q.size());
 
-  MatrixXd ret(Jwrtqdot.rows(), q.size() -1);
-  ret << Jwrtqdot.leftCols<4>() * WToQuatDotMap(q.head<4>()),
-      Jwrtqdot.rightCols(q.size() - 4);
-  return ret;
+void OptimalRomTrackingData::UpdateYAndError(const VectorXd& x_w_spr,
+                                             Context<double>& context_w_spr) {
+  VectorXd q = map_position_from_spring_to_no_spring_ *
+               x_w_spr.head(plant_w_spr_->num_positions());
+  y_ = rom_.EvalMappingFunc(q);
+
+  error_y_ = y_des_ - y_;
+}
+void OptimalRomTrackingData::UpdateYdotAndError(
+    const VectorXd& x_w_spr, Context<double>& context_w_spr) {
+  VectorXd q = map_position_from_spring_to_no_spring_ *
+               x_w_spr.head(plant_w_spr_->num_positions());
+  VectorXd v = map_velocity_from_spring_to_no_spring_ *
+               x_w_spr.tail(plant_w_spr_->num_velocities());
+
+  ydot_ = rom_.EvalMappingFuncJV(q, v);
+  error_ydot_ = ydot_des_ - ydot_;
+}
+void OptimalRomTrackingData::UpdateYddotDes() {
+  yddot_des_converted_ = yddot_des_;
+}
+void OptimalRomTrackingData::UpdateJ(const VectorXd& x_wo_spr,
+                                     Context<double>& context_wo_spr) {
+  VectorXd q = x_wo_spr.head(plant_wo_spr_->num_positions());
+  J_ = rom_.EvalMappingFuncJ(q);
+}
+void OptimalRomTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
+                                         Context<double>& context_wo_spr) {
+  VectorXd q = x_wo_spr.head(plant_wo_spr_->num_positions());
+  VectorXd v = x_wo_spr.tail(plant_wo_spr_->num_velocities());
+  JdotV_ = rom_.EvalMappingFuncJdotV(q,v);
+}
+void OptimalRomTrackingData::CheckDerivedOscTrackingData() {
+  DRAKE_DEMAND(GetTrajDim() == rom_.n_y());
 }
 
 }  // namespace dairlib::systems::controllers

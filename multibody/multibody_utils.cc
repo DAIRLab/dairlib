@@ -314,6 +314,30 @@ bool isQuaternion(const MultibodyPlant<T>& plant) {
   return QuaternionStartIndex(plant) != -1;
 }
 
+Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) {
+  // clang-format off
+  Eigen::MatrixXd ret(4,3);
+  ret <<  -q(1), -q(2), -q(3),
+           q(0),  q(3), -q(2),
+          -q(3),  q(0),  q(1),
+           q(2), -q(1),  q(0);
+  ret *= 0.5;
+  // clang-format on
+  return ret;
+}
+
+Eigen::MatrixXd JwrtqdotToJwrtv(
+    const Eigen::VectorXd& q, const Eigen::MatrixXd& Jwrtqdot) {
+  //[J_1:4, J_5:end] * [WToQuatDotMap, 0] = [J_1:4 * WToQuatDotMap, J_5:end]
+  //                   [      0      , I]
+  DRAKE_DEMAND(Jwrtqdot.cols() == q.size());
+
+  Eigen::MatrixXd ret(Jwrtqdot.rows(), q.size() -1);
+  ret << Jwrtqdot.leftCols<4>() * WToQuatDotMap(q.head<4>()),
+      Jwrtqdot.rightCols(q.size() - 4);
+  return ret;
+}
+
 template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
 template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template std::vector<int> QuaternionStartIndices(const MultibodyPlant<double>& plant);  // NOLINT

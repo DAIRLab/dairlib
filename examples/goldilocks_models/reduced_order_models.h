@@ -27,10 +27,11 @@ class MonomialFeatures {
 
   drake::VectorX<double> Eval(const drake::VectorX<double>& q) const;
   // Note that both EvalJV() and EvalJdotV() use qdot not v.
-  // Also, we implement EvalJV instead of EvalJ to exploit the sparsity (though
-  // not sure how much this helps)
+  // Also, we recommend using EvalJV instead of EvalJ to exploit the sparsity of
+  // Jacobian (though not sure how much this helps)
   drake::VectorX<double> EvalJV(const drake::VectorX<double>& q,
                                 const drake::VectorX<double>& qdot) const;
+  drake::MatrixX<double> EvalJwrtqdot(const drake::VectorX<double>& q) const;
   drake::VectorX<double> EvalJdotV(const drake::VectorX<double>& q,
                                    const drake::VectorX<double>& qdot) const;
 
@@ -76,6 +77,9 @@ class MonomialFeatures {
       second_ord_partial_diff_;
 };
 
+// TODO: pass context into ReducedOrderModel's eval methods in order to utilize
+//  drake's caching system
+
 /// ReducedOrderModel assumes the following structures of mapping function and
 /// dynamics function
 ///   y = r(q) = Theta_r * phi_r(q)
@@ -84,7 +88,7 @@ class MonomialFeatures {
 /// https://dair.seas.upenn.edu/wp-content/uploads/Chen2020.pdf
 class ReducedOrderModel {
  public:
-  ReducedOrderModel(int n_y, int n_tau, const Eigen::MatrixXd& B_tau,
+  ReducedOrderModel(int n_y, int n_tau, const Eigen::MatrixXd& B,
                     int n_feature_y, int n_feature_yddot,
                     const MonomialFeatures& mapping_basis,
                     const MonomialFeatures& dynamic_basis,
@@ -105,7 +109,7 @@ class ReducedOrderModel {
   int n_tau() const { return n_tau_; };
   int n_feature_y() const { return n_feature_y_; };
   int n_feature_yddot() const { return n_feature_yddot_; };
-  const Eigen::MatrixXd& B() const { return B_tau_; };
+  const Eigen::MatrixXd& B() const { return B_; };
 
   // Getters for basis functions
   const MonomialFeatures& mapping_basis() const { return mapping_basis_; };
@@ -129,8 +133,12 @@ class ReducedOrderModel {
       const drake::VectorX<double>& tau) const;
   drake::VectorX<double> EvalMappingFuncJV(
       const drake::VectorX<double>& q, const drake::VectorX<double>& v) const;
-  drake::VectorX<double> EvalDynamicFuncJdotV(
+  drake::VectorX<double> EvalMappingFuncJdotV(
       const drake::VectorX<double>& q, const drake::VectorX<double>& v) const;
+  // Recommend using EvalMappingFuncJV instead of EvalMappingFuncJ to exploit
+  // the sparsity of Jacobian
+  drake::MatrixX<double> EvalMappingFuncJ(
+      const drake::VectorX<double>& q) const;
 
   // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
   virtual drake::VectorX<double> EvalMappingFeat(
@@ -141,9 +149,11 @@ class ReducedOrderModel {
   virtual drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q,
       const drake::VectorX<double>& v) const = 0;
-  virtual drake::VectorX<double> EvalDynamicFeatJdotV(
+  virtual drake::VectorX<double> EvalMappingFeatJdotV(
       const drake::VectorX<double>& q,
       const drake::VectorX<double>& v) const = 0;
+  virtual drake::MatrixX<double> EvalMappingFeatJ(
+      const drake::VectorX<double>& q) const = 0;
 
   void CheckModelConsistency() const;
 
@@ -152,7 +162,7 @@ class ReducedOrderModel {
   int n_y_;
   int n_yddot_;
   int n_tau_;
-  Eigen::MatrixXd B_tau_;
+  Eigen::MatrixXd B_;
 
   int n_feature_y_;
   int n_feature_yddot_;
@@ -194,9 +204,11 @@ class Lipm : public ReducedOrderModel {
   drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q,
       const drake::VectorX<double>& v) const final;
-  drake::VectorX<double> EvalDynamicFeatJdotV(
+  drake::VectorX<double> EvalMappingFeatJdotV(
       const drake::VectorX<double>& q,
       const drake::VectorX<double>& v) const final;
+  drake::MatrixX<double> EvalMappingFeatJ(
+      const drake::VectorX<double>& q) const final;
 
   // Getters for copy constructor
   const drake::multibody::MultibodyPlant<double>& plant() const {
@@ -244,9 +256,11 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
   drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q,
       const drake::VectorX<double>& v) const final;
-  drake::VectorX<double> EvalDynamicFeatJdotV(
+  drake::VectorX<double> EvalMappingFeatJdotV(
       const drake::VectorX<double>& q,
       const drake::VectorX<double>& v) const final;
+  drake::MatrixX<double> EvalMappingFeatJ(
+      const drake::VectorX<double>& q) const final;
 
   // Getters for copy constructor
   const drake::multibody::MultibodyPlant<double>& plant() const {
@@ -293,9 +307,11 @@ class FixHeightAccel : public ReducedOrderModel {
   drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q,
       const drake::VectorX<double>& v) const final;
-  drake::VectorX<double> EvalDynamicFeatJdotV(
+  drake::VectorX<double> EvalMappingFeatJdotV(
       const drake::VectorX<double>& q,
       const drake::VectorX<double>& v) const final;
+  drake::MatrixX<double> EvalMappingFeatJ(
+      const drake::VectorX<double>& q) const final;
 
   // Getters for copy constructor
   const drake::multibody::MultibodyPlant<double>& plant() const {
@@ -341,9 +357,11 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
   drake::VectorX<double> EvalMappingFeatJV(
       const drake::VectorX<double>& q,
       const drake::VectorX<double>& v) const final;
-  drake::VectorX<double> EvalDynamicFeatJdotV(
+  drake::VectorX<double> EvalMappingFeatJdotV(
       const drake::VectorX<double>& q,
       const drake::VectorX<double>& v) const final;
+  drake::MatrixX<double> EvalMappingFeatJ(
+      const drake::VectorX<double>& q) const final;
 
   // Getters for copy constructor
   const drake::multibody::MultibodyPlant<double>& plant() const {

@@ -1,4 +1,5 @@
 #include "examples/goldilocks_models/reduced_order_models.h"
+#include "multibody/multibody_utils.h"
 
 #include <algorithm>
 
@@ -25,6 +26,9 @@ using std::vector;
 
 namespace dairlib {
 namespace goldilocks_models {
+
+using multibody::JwrtqdotToJwrtv;
+using multibody::WToQuatDotMap;
 
 MonomialFeatures::MonomialFeatures(int n_order, int n_q, vector<int> skip_inds,
                                    const std::string& name)
@@ -108,6 +112,14 @@ MonomialFeatures::MonomialFeatures(int n_order, int n_q, vector<int> skip_inds,
         }
       }
     }
+  }
+
+  // Sanity Check
+  for (const auto& ele : first_ord_partial_diff_) {
+    DRAKE_DEMAND(ele.first.second.size() == 1);
+  }
+  for (const auto& ele : second_ord_partial_diff_) {
+    DRAKE_DEMAND(ele.first.second.size() == 2);
   }
 };
 
@@ -217,10 +229,30 @@ VectorX<double> MonomialFeatures::EvalFeatureTimeDerivatives(
   return ret;
 }
 
+drake::MatrixX<double> MonomialFeatures::EvalJwrtqdot(
+    const drake::VectorX<double>& q) const {
+  DRAKE_DEMAND(q.size() == n_q_);
+
+  MatrixX<double> ret = MatrixX<double>::Zero(features_.size(), n_q_);
+  for (const auto& ele : first_ord_partial_diff_) {
+    const auto& key = ele.first;
+    const auto& term = ele.second;
+
+    double value = term.first;
+    for (const auto& q_idx : term.second) {
+      value *= q(q_idx);
+    }
+
+    ret(key.first, *key.second.begin()) = value;
+  }
+
+  return ret;
+}
+
 /// Constructors of ReducedOrderModel
 ReducedOrderModel::ReducedOrderModel(int n_y, int n_tau,
-                                     const Eigen::MatrixXd& B_tau,
-                                     int n_feature_y, int n_feature_yddot,
+                                     const Eigen::MatrixXd& B, int n_feature_y,
+                                     int n_feature_yddot,
                                      const MonomialFeatures& mapping_basis,
                                      const MonomialFeatures& dynamic_basis,
                                      const std::string& name)
@@ -228,7 +260,7 @@ ReducedOrderModel::ReducedOrderModel(int n_y, int n_tau,
       n_y_(n_y),
       n_yddot_(n_y),
       n_tau_(n_tau),
-      B_tau_(B_tau),
+      B_(B),
       n_feature_y_(n_feature_y),
       n_feature_yddot_(n_feature_yddot),
       mapping_basis_(mapping_basis),
@@ -238,8 +270,8 @@ ReducedOrderModel::ReducedOrderModel(int n_y, int n_tau,
 
 /// Methods of ReducedOrderModel
 void ReducedOrderModel::CheckModelConsistency() const {
-  DRAKE_DEMAND(B_tau_.rows() == n_yddot_);
-  DRAKE_DEMAND(B_tau_.cols() == n_tau_);
+  DRAKE_DEMAND(B_.rows() == n_yddot_);
+  DRAKE_DEMAND(B_.cols() == n_tau_);
   DRAKE_DEMAND(theta_y_.size() == n_y_ * n_feature_y_);
   DRAKE_DEMAND(theta_yddot_.size() == n_yddot_ * n_feature_yddot_);
 };
@@ -282,7 +314,7 @@ VectorX<double> ReducedOrderModel::EvalDynamicFunc(
     expression(i) =
         theta_yddot_.segment(i * n_feature_yddot_, n_feature_yddot_).dot(phi);
   }
-  expression += B_tau_ * tau;
+  expression += B_ * tau;
   return expression;
 }
 VectorX<double> ReducedOrderModel::EvalMappingFuncJV(
@@ -295,15 +327,26 @@ VectorX<double> ReducedOrderModel::EvalMappingFuncJV(
   }
   return JV;
 }
-VectorX<double> ReducedOrderModel::EvalDynamicFuncJdotV(
+VectorX<double> ReducedOrderModel::EvalMappingFuncJdotV(
     const VectorX<double>& q, const VectorX<double>& v) const {
-  VectorX<double> JdotV_feat = EvalDynamicFeatJdotV(q, v);
+  VectorX<double> JdotV_feat = EvalMappingFeatJdotV(q, v);
 
   VectorX<double> JdotV(n_y_);
   for (int i = 0; i < n_y_; i++) {
     JdotV(i) = theta_y_.segment(i * n_feature_y_, n_feature_y_).dot(JdotV_feat);
   }
   return JdotV;
+}
+drake::MatrixX<double> ReducedOrderModel::EvalMappingFuncJ(
+    const drake::VectorX<double>& q) const {
+  MatrixX<double> J_feat = EvalMappingFeatJ(q);
+
+  MatrixX<double> J(n_y_, J_feat.cols());
+  for (int i = 0; i < n_y_; i++) {
+    J.row(i) =
+        theta_y_.segment(i * n_feature_y_, n_feature_y_).transpose() * J_feat;
+  }
+  return J;
 }
 
 /// LIPM
@@ -418,7 +461,30 @@ VectorX<double> Lipm::EvalMappingFeatJV(const VectorX<double>& q,
   }
   return ret;
 }
-VectorX<double> Lipm::EvalDynamicFeatJdotV(const VectorX<double>& q,
+drake::MatrixX<double> Lipm::EvalMappingFeatJ(
+    const drake::VectorX<double>& q) const {
+  plant_.SetPositions(context_.get(), q);
+  // Get CoM velocity
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+  // Stance foot velocity
+  MatrixX<double> J_sf(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_, &J_sf);
+  MatrixX<double> J_st_to_CoM = J_com - J_sf;
+
+  MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
+  if (world_dim_ == 2) {
+    ret << J_st_to_CoM.row(0), J_st_to_CoM.row(2),
+        JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+  } else {
+    ret << J_st_to_CoM, JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+  }
+  return ret;
+}
+VectorX<double> Lipm::EvalMappingFeatJdotV(const VectorX<double>& q,
                                            const VectorX<double>& v) const {
   VectorX<double> x(plant_.num_positions() + plant_.num_positions());
   x << q, v;
@@ -566,7 +632,32 @@ VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJV(
       mapping_basis().EvalJV(q, qdot);
   return ret;
 }
-VectorX<double> TwoDimLipmWithSwingFoot::EvalDynamicFeatJdotV(
+drake::MatrixX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJ(
+    const drake::VectorX<double>& q) const {
+  plant_.SetPositions(context_.get(), q);
+  // Get CoM velocity
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+  // Stance foot velocity
+  MatrixX<double> J_sf(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_, &J_sf);
+  MatrixX<double> J_st_to_CoM = J_com - J_sf;
+  // Swing foot velocity
+  MatrixX<double> J_sw(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, swing_contact_point_.second,
+      swing_contact_point_.first, world_, world_, &J_sw);
+  MatrixX<double> J_CoM_to_sw = J_sw - J_com;
+
+  MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
+  ret << J_st_to_CoM.row(0), J_st_to_CoM.row(2), J_CoM_to_sw.row(0),
+      J_CoM_to_sw.row(2), JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+  return ret;
+}
+VectorX<double> TwoDimLipmWithSwingFoot::EvalMappingFeatJdotV(
     const VectorX<double>& q, const VectorX<double>& v) const {
   VectorX<double> x(plant_.num_positions() + plant_.num_positions());
   x << q, v;
@@ -597,7 +688,7 @@ VectorX<double> TwoDimLipmWithSwingFoot::EvalDynamicFeatJdotV(
   return ret;
 }
 
-/// Fixed vertial COM acceleration
+/// Fixed vertical COM acceleration
 const int FixHeightAccel::kDimension = 1;
 
 FixHeightAccel::FixHeightAccel(const MultibodyPlant<double>& plant,
@@ -678,7 +769,26 @@ VectorX<double> FixHeightAccel::EvalMappingFeatJV(
   ret << JV_st_to_CoM(2), mapping_basis().EvalJV(q, qdot);
   return ret;
 }
-VectorX<double> FixHeightAccel::EvalDynamicFeatJdotV(
+drake::MatrixX<double> FixHeightAccel::EvalMappingFeatJ(
+    const drake::VectorX<double>& q) const {
+  plant_.SetPositions(context_.get(), q);
+  // Get CoM velocity
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+  // Stance foot velocity
+  MatrixX<double> J_sf(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_, &J_sf);
+  MatrixX<double> J_st_to_CoM = J_com - J_sf;
+
+  MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
+  ret << J_st_to_CoM.row(2),
+      JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+  return ret;
+}
+VectorX<double> FixHeightAccel::EvalMappingFeatJdotV(
     const VectorX<double>& q, const VectorX<double>& v) const {
   VectorX<double> x(plant_.num_positions() + plant_.num_positions());
   x << q, v;
@@ -703,7 +813,7 @@ VectorX<double> FixHeightAccel::EvalDynamicFeatJdotV(
   return ret;
 }
 
-/// Fixed vertial COM acceleration + 2D swing foot
+/// Fixed vertical COM acceleration + 2D swing foot
 const int FixHeightAccelWithSwingFoot::kDimension = 3;
 
 FixHeightAccelWithSwingFoot::FixHeightAccelWithSwingFoot(
@@ -803,7 +913,32 @@ VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJV(
       mapping_basis().EvalJV(q, qdot);
   return ret;
 }
-VectorX<double> FixHeightAccelWithSwingFoot::EvalDynamicFeatJdotV(
+drake::MatrixX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJ(
+    const drake::VectorX<double>& q) const {
+  plant_.SetPositions(context_.get(), q);
+  // Get CoM velocity
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+  // Stance foot velocity
+  MatrixX<double> J_sf(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_, &J_sf);
+  MatrixX<double> J_st_to_CoM = J_com - J_sf;
+  // Swing foot velocity
+  MatrixX<double> J_sw(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, swing_contact_point_.second,
+      swing_contact_point_.first, world_, world_, &J_sw);
+  MatrixX<double> J_CoM_to_sw = J_sw - J_com;
+
+  MatrixX<double> ret(n_feature_y(), plant_.num_velocities());
+  ret << J_st_to_CoM.row(2), J_CoM_to_sw.row(0), J_CoM_to_sw.row(2),
+      JwrtqdotToJwrtv(q, mapping_basis().EvalJwrtqdot(q));
+  return ret;
+}
+VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJdotV(
     const VectorX<double>& q, const VectorX<double>& v) const {
   VectorX<double> x(plant_.num_positions() + plant_.num_positions());
   x << q, v;

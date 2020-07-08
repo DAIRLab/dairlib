@@ -34,6 +34,7 @@ cc_library(
     deps = [
         ":osc_user_defined_pos",
         ":osc_utils",
+        "//examples/goldilocks_models:reduced_order_models",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

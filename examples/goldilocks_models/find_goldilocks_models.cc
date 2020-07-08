@@ -1697,32 +1697,35 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nReduced-order model setting:\n";
   cout << "rom_option = " << FLAGS_rom_option << endl;
   // Basis for mapping function (dependent on the robot)
-  MonomialFeatures* mapping_basis;
+  vector<int> empty_inds = {};
+  std::unique_ptr<MonomialFeatures> mapping_basis;
   if (FLAGS_robot_option == 0) {
-    mapping_basis =
-        new MonomialFeatures(2, plant.num_positions(), {}, "mapping basis");
-  } else { // FLAGS_robot_option == 1
+    mapping_basis = std::make_unique<MonomialFeatures>(
+        2, plant.num_positions(), empty_inds, "mapping basis");
+  } else {                              // FLAGS_robot_option == 1
     vector<int> skip_inds = {3, 4, 5};  // quat_z, x, and y
-    mapping_basis = new MonomialFeatures(2, plant.num_positions(), skip_inds,
-                                         "mapping basis");
+    mapping_basis = std::make_unique<MonomialFeatures>(
+        2, plant.num_positions(), skip_inds, "mapping basis");
   }
   // Basis for dynamic function
-  MonomialFeatures* dynamic_basis;
+  std::unique_ptr<MonomialFeatures> dynamic_basis;
   if (FLAGS_rom_option == 0) {
-    dynamic_basis =
-        new MonomialFeatures(2, 2 * Lipm::kDimension(2), {}, "dynamic basis");
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * Lipm::kDimension(2), empty_inds, "dynamic basis");
   } else if (FLAGS_rom_option == 1) {
-    dynamic_basis = new MonomialFeatures(
-        2, 2 * TwoDimLipmWithSwingFoot::kDimension, {}, "dynamic basis");
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * TwoDimLipmWithSwingFoot::kDimension, empty_inds,
+        "dynamic basis");
   } else if (FLAGS_rom_option == 2) {
-    dynamic_basis = new MonomialFeatures(2, 2 * FixHeightAccel::kDimension, {},
-                                         "dynamic basis");
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * FixHeightAccel::kDimension, empty_inds, "dynamic basis");
   } else if (FLAGS_rom_option == 3) {
-    dynamic_basis = new MonomialFeatures(
-        2, 2 * FixHeightAccelWithSwingFoot::kDimension, {}, "dynamic basis");
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * FixHeightAccelWithSwingFoot::kDimension, empty_inds,
+        "dynamic basis");
   } else if (FLAGS_rom_option == 4) {
-    dynamic_basis =
-        new MonomialFeatures(2, 2 * Lipm::kDimension(3), {}, "dynamic basis");
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else {
     // TODO: finish implementing the rest of the ROM
     throw std::runtime_error("Not implemented");
@@ -1755,20 +1758,22 @@ int findGoldilocksModels(int argc, char* argv[]) {
   auto swing_foot = std::pair<const Vector3d, const Frame<double>&>(
       swing_foot_contact_point_pos, plant.GetFrameByName(swing_foot_body_name));
   // Construct reduced-order model
-  ReducedOrderModel* rom;
+  std::unique_ptr<ReducedOrderModel> rom;
   if (FLAGS_rom_option == 0) {
-    rom = new Lipm(plant, stance_foot, *mapping_basis, *dynamic_basis, 2);
+    rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
+                                 *dynamic_basis, 2);
   } else if (FLAGS_rom_option == 1) {
-    rom = new TwoDimLipmWithSwingFoot(plant, stance_foot, swing_foot,
-                                      *mapping_basis, *dynamic_basis);
+    rom = std::make_unique<TwoDimLipmWithSwingFoot>(
+        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis);
   } else if (FLAGS_rom_option == 2) {
-    rom =
-        new FixHeightAccel(plant, stance_foot, *mapping_basis, *dynamic_basis);
+    rom = std::make_unique<FixHeightAccel>(plant, stance_foot, *mapping_basis,
+                                           *dynamic_basis);
   } else if (FLAGS_rom_option == 3) {
-    rom = new FixHeightAccelWithSwingFoot(plant, stance_foot, swing_foot,
-                                          *mapping_basis, *dynamic_basis);
+    rom = std::make_unique<FixHeightAccelWithSwingFoot>(
+        plant, stance_foot, swing_foot, *mapping_basis, *dynamic_basis);
   } else if (FLAGS_rom_option == 4) {
-    rom = new Lipm(plant, stance_foot, *mapping_basis, *dynamic_basis, 3);
+    rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,
+                                 *dynamic_basis, 3);
   } else {
     // TODO: finish implementing the rest of the ROM
     throw std::runtime_error("Not implemented");

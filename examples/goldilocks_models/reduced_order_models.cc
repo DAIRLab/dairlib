@@ -449,6 +449,8 @@ VectorX<double> Lipm::EvalDynamicFeatJdotV(const VectorX<double>& q,
 }
 
 /// 2D LIPM with a 2D swing foot
+const int TwoDimLipmWithSwingFoot::kDimension = 4;
+
 TwoDimLipmWithSwingFoot::TwoDimLipmWithSwingFoot(
     const MultibodyPlant<double>& plant, const BodyPoint& stance_contact_point,
     const BodyPoint& swing_contact_point, const MonomialFeatures& mapping_basis,
@@ -592,6 +594,243 @@ VectorX<double> TwoDimLipmWithSwingFoot::EvalDynamicFeatJdotV(
   VectorX<double> ret(n_feature_y());
   ret << JdotV_st_to_com(0), JdotV_st_to_com(2), JdotV_com_to_sw(0),
       JdotV_com_to_sw(2), mapping_basis().EvalJdotV(q, qdot);
+  return ret;
+}
+
+/// Fixed vertial COM acceleration
+const int FixHeightAccel::kDimension = 1;
+
+FixHeightAccel::FixHeightAccel(const MultibodyPlant<double>& plant,
+                               const BodyPoint& stance_contact_point,
+                               const MonomialFeatures& mapping_basis,
+                               const MonomialFeatures& dynamic_basis)
+    : ReducedOrderModel(kDimension, 0, MatrixX<double>::Zero(kDimension, 0),
+                        1 + mapping_basis.length(), 0 + dynamic_basis.length(),
+                        mapping_basis, dynamic_basis,
+                        "Fixed COM vertical acceleration"),
+      plant_(plant),
+      context_(plant_.CreateDefaultContext()),
+      world_(plant_.world_frame()),
+      stance_contact_point_(stance_contact_point) {
+  // Initialize model parameters (dependant on the feature vectors)
+  VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
+  VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
+  theta_y(0) = 1;
+  SetThetaY(theta_y);
+  SetThetaYddot(theta_yddot);
+
+  // Always check dimension after model construction
+  CheckModelConsistency();
+};
+// Copy constructor
+FixHeightAccel::FixHeightAccel(const FixHeightAccel& old_obj)
+    : ReducedOrderModel(old_obj),
+      plant_(old_obj.plant()),
+      context_(old_obj.plant().CreateDefaultContext()),
+      world_(old_obj.world()),
+      stance_contact_point_(old_obj.stance_foot()) {}
+
+VectorX<double> FixHeightAccel::EvalMappingFeat(
+    const VectorX<double>& q) const {
+  // Get CoM position
+  plant_.SetPositions(context_.get(), q);
+  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(*context_);
+  // Stance foot position
+  VectorX<double> left_foot_pos(3);
+  plant_.CalcPointsPositions(*context_, stance_contact_point_.second,
+                             stance_contact_point_.first, plant_.world_frame(),
+                             &left_foot_pos);
+  VectorX<double> st_to_CoM = CoM - left_foot_pos;
+
+  VectorX<double> feature(n_feature_y());
+  feature << st_to_CoM(2), mapping_basis().Eval(q);
+
+  return feature;
+}
+VectorX<double> FixHeightAccel::EvalDynamicFeat(
+    const VectorX<double>& y, const VectorX<double>& ydot) const {
+  VectorX<double> y_and_ydot(2 * kDimension);
+  y_and_ydot << y, ydot;
+
+  VectorX<double> feature(n_feature_yddot());
+  feature << dynamic_basis().Eval(y_and_ydot);
+  return feature;
+}
+VectorX<double> FixHeightAccel::EvalMappingFeatJV(
+    const VectorX<double>& q, const VectorX<double>& v) const {
+  plant_.SetPositions(context_.get(), q);
+  // Get CoM velocity
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+  // Stance foot velocity
+  MatrixX<double> J_sf(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_, &J_sf);
+  VectorX<double> JV_st_to_CoM = (J_com - J_sf) * v;
+
+  // Convert v to qdot
+  VectorX<double> qdot(plant_.num_positions());
+  plant_.MapVelocityToQDot(*context_, v, &qdot);
+
+  VectorX<double> ret(n_feature_y());
+  ret << JV_st_to_CoM(2), mapping_basis().EvalJV(q, qdot);
+  return ret;
+}
+VectorX<double> FixHeightAccel::EvalDynamicFeatJdotV(
+    const VectorX<double>& q, const VectorX<double>& v) const {
+  VectorX<double> x(plant_.num_positions() + plant_.num_positions());
+  x << q, v;
+  plant_.SetPositionsAndVelocities(context_.get(), x);
+
+  // Get CoM JdotV
+  VectorX<double> JdotV_com =
+      plant_.CalcBiasCenterOfMassTranslationalAcceleration(
+          *context_, JacobianWrtVariable::kV, world_, world_);
+  // Stance foot JdotV
+  VectorX<double> JdotV_st = plant_.CalcBiasTranslationalAcceleration(
+      *context_, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_);
+  VectorX<double> JdotV_st_to_com = JdotV_com - JdotV_st;
+
+  // Convert v to qdot
+  VectorX<double> qdot(plant_.num_positions());
+  plant_.MapVelocityToQDot(*context_, v, &qdot);
+
+  VectorX<double> ret(n_feature_y());
+  ret << JdotV_st_to_com(2), mapping_basis().EvalJdotV(q, qdot);
+  return ret;
+}
+
+/// Fixed vertial COM acceleration + 2D swing foot
+const int FixHeightAccelWithSwingFoot::kDimension = 3;
+
+FixHeightAccelWithSwingFoot::FixHeightAccelWithSwingFoot(
+    const MultibodyPlant<double>& plant, const BodyPoint& stance_contact_point,
+    const BodyPoint& swing_contact_point, const MonomialFeatures& mapping_basis,
+    const MonomialFeatures& dynamic_basis)
+    : ReducedOrderModel(
+          kDimension, 2,
+          (MatrixX<double>(kDimension, 2) << 0, 0, 1, 0, 0, 1).finished(),
+          3 + mapping_basis.length(), 0 + dynamic_basis.length(), mapping_basis,
+          dynamic_basis, "Fixed COM vertical acceleration + 2D swing foot"),
+      plant_(plant),
+      context_(plant_.CreateDefaultContext()),
+      world_(plant_.world_frame()),
+      stance_contact_point_(stance_contact_point),
+      swing_contact_point_(swing_contact_point) {
+  // Initialize model parameters (dependant on the feature vectors)
+  VectorXd theta_y = VectorXd::Zero(n_y() * n_feature_y());
+  VectorXd theta_yddot = VectorXd::Zero(n_yddot() * n_feature_yddot());
+  theta_y(0) = 1;
+  theta_y(1 + n_feature_y()) = 1;
+  theta_y(2 + 2 * n_feature_y()) = 1;
+  SetThetaY(theta_y);
+  SetThetaYddot(theta_yddot);
+
+  // Always check dimension after model construction
+  CheckModelConsistency();
+};
+// Copy constructor
+FixHeightAccelWithSwingFoot::FixHeightAccelWithSwingFoot(
+    const FixHeightAccelWithSwingFoot& old_obj)
+    : ReducedOrderModel(old_obj),
+      plant_(old_obj.plant()),
+      context_(old_obj.plant().CreateDefaultContext()),
+      world_(old_obj.world()),
+      stance_contact_point_(old_obj.stance_foot()),
+      swing_contact_point_(old_obj.swing_foot()) {}
+
+VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeat(
+    const VectorX<double>& q) const {
+  // Get CoM position
+  plant_.SetPositions(context_.get(), q);
+  VectorX<double> CoM = plant_.CalcCenterOfMassPosition(*context_);
+  // Stance foot position
+  VectorX<double> left_foot_pos(3);
+  plant_.CalcPointsPositions(*context_, stance_contact_point_.second,
+                             stance_contact_point_.first, plant_.world_frame(),
+                             &left_foot_pos);
+  VectorX<double> st_to_CoM = CoM - left_foot_pos;
+  // Swing foot position
+  VectorX<double> right_foot_pos(3);
+  plant_.CalcPointsPositions(*context_, swing_contact_point_.second,
+                             swing_contact_point_.first, plant_.world_frame(),
+                             &right_foot_pos);
+  VectorX<double> CoM_to_sw = right_foot_pos - CoM;
+
+  VectorX<double> feature(n_feature_y());
+  feature << st_to_CoM(2), CoM_to_sw(0), CoM_to_sw(2), mapping_basis().Eval(q);
+
+  return feature;
+}
+VectorX<double> FixHeightAccelWithSwingFoot::EvalDynamicFeat(
+    const VectorX<double>& y, const VectorX<double>& ydot) const {
+  VectorX<double> y_and_ydot(2 * kDimension);
+  y_and_ydot << y, ydot;
+
+  VectorX<double> feature(n_feature_yddot());
+  feature << dynamic_basis().Eval(y_and_ydot);
+  return feature;
+}
+VectorX<double> FixHeightAccelWithSwingFoot::EvalMappingFeatJV(
+    const VectorX<double>& q, const VectorX<double>& v) const {
+  plant_.SetPositions(context_.get(), q);
+  // Get CoM velocity
+  MatrixX<double> J_com(3, plant_.num_velocities());
+  plant_.CalcJacobianCenterOfMassTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, world_, world_, &J_com);
+  // Stance foot velocity
+  MatrixX<double> J_sf(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_, &J_sf);
+  VectorX<double> JV_st_to_CoM = (J_com - J_sf) * v;
+  // Swing foot velocity
+  MatrixX<double> J_sw(3, plant_.num_velocities());
+  plant_.CalcJacobianTranslationalVelocity(
+      *context_, JacobianWrtVariable::kV, swing_contact_point_.second,
+      swing_contact_point_.first, world_, world_, &J_sw);
+  VectorX<double> JV_CoM_to_sw = (J_sw - J_com) * v;
+
+  // Convert v to qdot
+  VectorX<double> qdot(plant_.num_positions());
+  plant_.MapVelocityToQDot(*context_, v, &qdot);
+
+  VectorX<double> ret(n_feature_y());
+  ret << JV_st_to_CoM(2), JV_CoM_to_sw(0), JV_CoM_to_sw(2),
+      mapping_basis().EvalJV(q, qdot);
+  return ret;
+}
+VectorX<double> FixHeightAccelWithSwingFoot::EvalDynamicFeatJdotV(
+    const VectorX<double>& q, const VectorX<double>& v) const {
+  VectorX<double> x(plant_.num_positions() + plant_.num_positions());
+  x << q, v;
+  plant_.SetPositionsAndVelocities(context_.get(), x);
+
+  // Get CoM JdotV
+  VectorX<double> JdotV_com =
+      plant_.CalcBiasCenterOfMassTranslationalAcceleration(
+          *context_, JacobianWrtVariable::kV, world_, world_);
+  // Stance foot JdotV
+  VectorX<double> JdotV_st = plant_.CalcBiasTranslationalAcceleration(
+      *context_, JacobianWrtVariable::kV, stance_contact_point_.second,
+      stance_contact_point_.first, world_, world_);
+  VectorX<double> JdotV_st_to_com = JdotV_com - JdotV_st;
+  // Swing foot JdotV
+  VectorX<double> JdotV_sw = plant_.CalcBiasTranslationalAcceleration(
+      *context_, JacobianWrtVariable::kV, swing_contact_point_.second,
+      swing_contact_point_.first, world_, world_);
+  VectorX<double> JdotV_com_to_sw = JdotV_sw - JdotV_com;
+
+  // Convert v to qdot
+  VectorX<double> qdot(plant_.num_positions());
+  plant_.MapVelocityToQDot(*context_, v, &qdot);
+
+  VectorX<double> ret(n_feature_y());
+  ret << JdotV_st_to_com(2), JdotV_com_to_sw(0), JdotV_com_to_sw(2),
+      mapping_basis().EvalJdotV(q, qdot);
   return ret;
 }
 

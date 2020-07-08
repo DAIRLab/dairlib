@@ -209,87 +209,6 @@ void setCostWeight(double* Q, double* R, double* all_cost_scale,
     *all_cost_scale = 0.2/* * 0.12*/;
   }
 }
-void setRomDim(int* n_y, int* n_tau, int rom_option) {
-  if (rom_option == 0) {
-    // 2D -- lipm
-    *n_y = 2;
-    *n_tau = 0;
-  } else if (rom_option == 1) {
-    // 4D -- lipm + swing foot
-    *n_y = 4;
-    *n_tau = 2;
-  } else if (rom_option == 2) {
-    // 1D -- fix com vertical acceleration
-    *n_y = 1;
-    *n_tau = 0;
-  } else if (rom_option == 3) {
-    // 3D -- fix com vertical acceleration + swing foot
-    *n_y = 3;
-    *n_tau = 2;
-  } else if (rom_option == 4) {
-    // 3D -- 3D LIPM
-    *n_y = 3;
-    *n_tau = 0;
-  } else {
-    throw std::runtime_error("Should not reach here");
-  }
-}
-void setRomBMatrix(MatrixXd* B_tau, int rom_option) {
-  if ((rom_option == 0) || (rom_option == 2) || (rom_option == 4)) {
-    // passive rom, so we don't need B_tau
-  }
-  else if (rom_option == 1) {
-    DRAKE_DEMAND(B_tau->rows() == 4);
-    (*B_tau)(2, 0) = 1;
-    (*B_tau)(3, 1) = 1;
-  }
-  else if (rom_option == 3) {
-    DRAKE_DEMAND(B_tau->rows() == 3);
-    (*B_tau)(1, 0) = 1;
-    (*B_tau)(2, 1) = 1;
-  } else {
-    throw std::runtime_error("Should not reach here");
-  }
-}
-void setInitialTheta(VectorXd& theta_y, VectorXd& theta_yddot,
-                     int n_feature_y, int n_feature_yddot, int rom_option) {
-  // // Testing intial theta
-  // theta_y = 0.25*VectorXd::Ones(n_theta_y);
-  // theta_yddot = 0.5*VectorXd::Ones(n_theta_yddot);
-  // theta_y = VectorXd::Random(n_theta_y);
-  // theta_yddot = VectorXd::Random(n_theta_yddot);
-
-  if (rom_option == 0) {
-    // 2D -- lipm
-    theta_y(0) = 1;
-    theta_y(1 + n_feature_y) = 1;
-    theta_yddot(0) = 1;
-  } else if (rom_option == 1) {
-    // 4D -- lipm + swing foot
-    theta_y(0) = 1;
-    theta_y(1 + n_feature_y) = 1;
-    theta_y(2 + 2 * n_feature_y) = 1;
-    theta_y(3 + 3 * n_feature_y) = 1;
-    theta_yddot(0) = 1;
-  } else if (rom_option == 2) {
-    // 1D -- fix com vertical acceleration
-    theta_y(1) = 1;
-  } else if (rom_option == 3) {
-    // 3D -- fix com vertical acceleration + swing foot
-    theta_y(1) = 1;
-    theta_y(2 + 1 * n_feature_y) = 1;
-    theta_y(3 + 2 * n_feature_y) = 1;
-  } else if (rom_option == 4) {
-    // 3D -- 3D lipm
-    theta_y(0) = 1;
-    theta_y(1 + n_feature_y) = 1;
-    theta_y(2 + 2 * n_feature_y) = 1;
-    theta_yddot(0) = 1;
-    theta_yddot(1 + n_feature_yddot) = 1;
-  } else {
-    throw std::runtime_error("Should not reach here");
-  }
-}
 
 void getInitFileName(string* init_file, const string& nominal_traj_init_file,
                      int iter, int sample, bool is_get_nominal,
@@ -1795,6 +1714,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
   } else if (FLAGS_rom_option == 1) {
     dynamic_basis = new MonomialFeatures(
         2, 2 * TwoDimLipmWithSwingFoot::kDimension, {}, "dynamic basis");
+  } else if (FLAGS_rom_option == 2) {
+    dynamic_basis = new MonomialFeatures(2, 2 * FixHeightAccel::kDimension, {},
+                                         "dynamic basis");
+  } else if (FLAGS_rom_option == 3) {
+    dynamic_basis = new MonomialFeatures(
+        2, 2 * FixHeightAccelWithSwingFoot::kDimension, {}, "dynamic basis");
   } else if (FLAGS_rom_option == 4) {
     dynamic_basis =
         new MonomialFeatures(2, 2 * Lipm::kDimension(3), {}, "dynamic basis");
@@ -1836,6 +1761,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
   } else if (FLAGS_rom_option == 1) {
     rom = new TwoDimLipmWithSwingFoot(plant, stance_foot, swing_foot,
                                       *mapping_basis, *dynamic_basis);
+  } else if (FLAGS_rom_option == 2) {
+    rom =
+        new FixHeightAccel(plant, stance_foot, *mapping_basis, *dynamic_basis);
+  } else if (FLAGS_rom_option == 3) {
+    rom = new FixHeightAccelWithSwingFoot(plant, stance_foot, swing_foot,
+                                          *mapping_basis, *dynamic_basis);
   } else if (FLAGS_rom_option == 4) {
     rom = new Lipm(plant, stance_foot, *mapping_basis, *dynamic_basis, 3);
   } else {

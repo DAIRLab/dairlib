@@ -197,7 +197,7 @@ class Lipm : public ReducedOrderModel {
   };
   const drake::multibody::BodyFrame<double>& world() const { return world_; };
   const BodyPoint& stance_foot() const { return stance_contact_point_; };
-  int world_dim() const {return world_dim_;};
+  int world_dim() const { return world_dim_; };
 
  private:
   // Copy constructor for the Clone() method
@@ -214,7 +214,7 @@ class Lipm : public ReducedOrderModel {
 
 class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
  public:
-  static const int kDimension = 4;
+  static const int kDimension;
 
   TwoDimLipmWithSwingFoot(const drake::multibody::MultibodyPlant<double>& plant,
                           const BodyPoint& stance_contact_point,
@@ -261,17 +261,98 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
   const BodyPoint& swing_contact_point_;
 };
 
-// if (FLAGS_rom_option == 0) {
-// cout << "(2D -- lipm)\n";
-//} else if (FLAGS_rom_option == 1) {
-// cout << "(4D -- lipm + swing foot)\n";
-//} else if (FLAGS_rom_option == 2) {
-// cout << "(1D -- fix com vertical acceleration)\n";
-//} else if (FLAGS_rom_option == 3) {
-// cout << "(3D -- fix com vertical acceleration + swing foot)\n";
-//} else if (FLAGS_rom_option == 4) {
-// cout << "(3D -- 3D lipm)\n";
-//}
+class FixHeightAccel : public ReducedOrderModel {
+ public:
+  static const int kDimension;
+
+  FixHeightAccel(const drake::multibody::MultibodyPlant<double>& plant,
+                 const BodyPoint& stance_contact_point,
+                 const MonomialFeatures& mapping_basis,
+                 const MonomialFeatures& dynamic_basis);
+
+  // Use covariant return type for Clone method. It's more useful.
+  FixHeightAccel* Clone() const override { return new FixHeightAccel(*this); }
+
+  // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
+  drake::VectorX<double> EvalMappingFeat(
+      const drake::VectorX<double>& q) const final;
+  drake::VectorX<double> EvalDynamicFeat(
+      const drake::VectorX<double>& y,
+      const drake::VectorX<double>& ydot) const final;
+  drake::VectorX<double> EvalMappingFeatJV(
+      const drake::VectorX<double>& q,
+      const drake::VectorX<double>& v) const final;
+  drake::VectorX<double> EvalDynamicFeatJdotV(
+      const drake::VectorX<double>& q,
+      const drake::VectorX<double>& v) const final;
+
+  // Getters for copy constructor
+  const drake::multibody::MultibodyPlant<double>& plant() const {
+    return plant_;
+  };
+  const drake::multibody::BodyFrame<double>& world() const { return world_; };
+  const BodyPoint& stance_foot() const { return stance_contact_point_; };
+
+ private:
+  // Copy constructor for the Clone() method
+  FixHeightAccel(const FixHeightAccel&);
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const drake::multibody::BodyFrame<double>& world_;
+  // contact body frame and contact point of the stance foot
+  const BodyPoint& stance_contact_point_;
+};
+
+class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
+ public:
+  static const int kDimension;
+
+  FixHeightAccelWithSwingFoot(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const BodyPoint& stance_contact_point,
+      const BodyPoint& swing_contact_point,
+      const MonomialFeatures& mapping_basis,
+      const MonomialFeatures& dynamic_basis);
+
+  // Use covariant return type for Clone method. It's more useful.
+  FixHeightAccelWithSwingFoot* Clone() const override {
+    return new FixHeightAccelWithSwingFoot(*this);
+  }
+
+  // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
+  drake::VectorX<double> EvalMappingFeat(
+      const drake::VectorX<double>& q) const final;
+  drake::VectorX<double> EvalDynamicFeat(
+      const drake::VectorX<double>& y,
+      const drake::VectorX<double>& ydot) const final;
+  drake::VectorX<double> EvalMappingFeatJV(
+      const drake::VectorX<double>& q,
+      const drake::VectorX<double>& v) const final;
+  drake::VectorX<double> EvalDynamicFeatJdotV(
+      const drake::VectorX<double>& q,
+      const drake::VectorX<double>& v) const final;
+
+  // Getters for copy constructor
+  const drake::multibody::MultibodyPlant<double>& plant() const {
+    return plant_;
+  };
+  const drake::multibody::BodyFrame<double>& world() const { return world_; };
+  const BodyPoint& stance_foot() const { return stance_contact_point_; };
+  const BodyPoint& swing_foot() const { return swing_contact_point_; };
+
+ private:
+  // Copy constructor for the Clone() method
+  FixHeightAccelWithSwingFoot(const FixHeightAccelWithSwingFoot&);
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  std::unique_ptr<drake::systems::Context<double>> context_;
+  const drake::multibody::BodyFrame<double>& world_;
+  // contact body frame and contact point of the stance foot
+  const BodyPoint& stance_contact_point_;
+  // contact body frame and contact point of the swing foot
+  const BodyPoint& swing_contact_point_;
+};
 
 }  // namespace goldilocks_models
 }  // namespace dairlib

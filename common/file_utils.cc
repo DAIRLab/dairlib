@@ -17,7 +17,6 @@ const static Eigen::IOFormat CSVFormat(Eigen::StreamPrecision,
                                        Eigen::DontAlignCols, ", ", "\n");
 
 namespace dairlib {
-namespace goldilocks_models {
 
 MatrixXd readCSV(const string & path) {
     ifstream indata;
@@ -48,5 +47,4 @@ void writeCSV(const std::string& path, const MatrixXd& M) {
   outfile.close();
 }
 
-}  // namespace goldilocks_models
 }  // namespace dairlib

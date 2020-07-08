@@ -1,7 +1,5 @@
 #include "examples/Cassie/input_supervisor.h"
 
-#include "drake/multibody/joints/floating_base_types.h"
-#include "drake/multibody/parsers/urdf_parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "examples/Cassie/cassie_utils.h"
 #include <Eigen/Dense>

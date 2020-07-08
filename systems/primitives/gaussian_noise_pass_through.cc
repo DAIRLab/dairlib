@@ -1,7 +1,4 @@
-#include "systems/sensors/gaussian_noise_pass_through.h"
-
-#include <memory>
-#include <utility>
+#include "systems/primitives/gaussian_noise_pass_through.h"
 
 #include <drake/common/eigen_types.h>
 
@@ -37,6 +34,7 @@ void GaussianNoisePassThrough::DoCalcVectorOutput(
       pos_variance_ * Eigen::VectorXd::Random(num_positions_);
   output->GetMutableVelocities() +=
       vel_variance_ * Eigen::VectorXd::Random(num_velocities_);
+//  std::cout << output->
 }
 
 }  // namespace systems

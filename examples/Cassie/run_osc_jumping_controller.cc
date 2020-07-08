@@ -1,6 +1,5 @@
 #include <drake/lcmt_contact_results_for_viz.hpp>
 #include <drake/multibody/parsing/parser.h>
-#include <drake/systems/lcm/lcm_interface_system.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_contact_mujoco.hpp"
@@ -15,10 +14,9 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/gaussian_noise_pass_through.h"
 #include "systems/robot_lcm_systems.h"
-#include "systems/sensors/gaussian_noise_pass_through.h"
 
-#include "drake/multibody/joints/floating_base_types.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -50,7 +48,6 @@ using examples::JumpingEventFsm;
 using examples::Cassie::osc_jump::COMTrajGenerator;
 using examples::Cassie::osc_jump::FlightFootTrajGenerator;
 using examples::Cassie::osc_jump::PelvisOrientationTrajGenerator;
-using multibody::GetBodyIndexFromName;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
@@ -333,11 +330,13 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
   // State receiver connections (Connected through LCM driven loop)
   drake::systems::LeafSystem<double>* controller_state_input = state_receiver;
+  std::cout << "Running with noise: " << FLAGS_add_noise << std::endl;
   if (FLAGS_add_noise) {
-    std::cout << "Running with noise: " << std::endl;
-    MatrixXd pos_cov = MatrixXd::Zero(nq, nq);
+    MatrixXd pos_cov = MatrixXd::Zero(plant_w_springs.num_positions(),
+                                      plant_w_springs.num_positions());
     pos_cov(4, 4) = 0.0;
-    MatrixXd vel_cov = MatrixXd::Zero(nv, nv);
+    MatrixXd vel_cov = MatrixXd::Zero(plant_w_springs.num_velocities(),
+                                      plant_w_springs.num_velocities());
     vel_cov(5, 5) = 0.0;
     auto gaussian_noise = builder.AddSystem<systems::GaussianNoisePassThrough>(
         plant_w_springs.num_positions(), plant_w_springs.num_velocities(),

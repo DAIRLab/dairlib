@@ -55,7 +55,6 @@ int DoMain() {
 
   auto l_toe_frame = &plant.GetBodyByName("toe_left").body_frame();
   auto r_toe_frame = &plant.GetBodyByName("toe_right").body_frame();
-  auto pelvis_frame = &plant.GetBodyByName("pelvis").body_frame();
   auto hip_left_frame = &plant.GetBodyByName("hip_left").body_frame();
   auto hip_right_frame = &plant.GetBodyByName("hip_right").body_frame();
   auto world = &plant.world_frame();

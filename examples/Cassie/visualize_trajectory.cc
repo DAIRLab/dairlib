@@ -46,7 +46,6 @@ int DoMain() {
   std::unique_ptr<Context<double>> context = plant.CreateDefaultContext();
 
   int nq = plant.num_positions();
-  int nv = plant.num_velocities();
   int nu = plant.num_actuators();
   int nx = plant.num_positions() + plant.num_velocities();
 

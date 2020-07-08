@@ -172,9 +172,9 @@ void COMTrajGenerator::CalcTraj(
     *casted_traj = generateCrouchTraj(context, x, time);
   else if (fsm_state[0] == LAND)
     *casted_traj = generateLandingTraj(context, x, time);
-  else
-    std::cerr << "Unrecognized state: " << fsm_state[0]
-              << " in center of mass trajectory generator";
+//  else
+//    std::cerr << "Unrecognized or unused state: " << fsm_state[0]
+//              << " in center of mass trajectory generator";
 }
 
 }  // namespace dairlib::examples::Cassie::osc_jump

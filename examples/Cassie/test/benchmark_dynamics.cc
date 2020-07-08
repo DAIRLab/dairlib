@@ -83,9 +83,6 @@ int do_main() {
   parser.AddModelFromFile(dairlib::FindResourceOrThrow(
       "examples/Cassie/urdf/cassie_v2.urdf"));
 
-  multibody_plant.mutable_gravity_field().set_gravity_vector(
-      -9.81 * Eigen::Vector3d::UnitZ());
-
   multibody_plant.WeldFrames(
     multibody_plant.world_frame(), multibody_plant.GetFrameByName("pelvis"));
   multibody_plant.Finalize();

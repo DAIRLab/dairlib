@@ -28,12 +28,11 @@ cc_library(
     hdrs = ["cassie_utils.h"],
     deps = [
         ":cassie_urdf",
+        ":sim_cassie_sensor_aggregator",
         "//common",
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        "//systems/sensors:sim_cassie_sensor_aggregator",
         "@drake//:drake_shared_library",
     ],
 )
@@ -104,6 +103,19 @@ cc_test(
 )
 
 cc_library(
+    name = "sim_cassie_sensor_aggregator",
+    srcs = ["sim_cassie_sensor_aggregator.cc"],
+    hdrs = ["sim_cassie_sensor_aggregator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
     name = "cassie_fixed_point_solver",
     srcs = ["cassie_fixed_point_solver.cc"],
     hdrs = ["cassie_fixed_point_solver.h"],
@@ -147,7 +159,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems/controllers",
         "//systems/controllers:pd_config_lcm",
-        "//systems/goldilocks_models",
+        "//common",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -176,10 +188,11 @@ cc_binary(
         "//attic/multibody:multibody_solvers",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
-        "//systems/sensors:sim_cassie_sensor_aggregator",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated.",
 )
 
 cc_binary(
@@ -204,14 +217,6 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
-)
-
-py_binary(
-    name = "draw_graphviz",
-    srcs = ["draw_graphviz.py"],
-    deps = [
-        "@drake//bindings/pydrake",
     ],
 )
 
@@ -334,14 +339,15 @@ cc_binary(
     srcs = ["test/benchmark_dynamics.cc"],
     deps = [
         ":cassie_urdf",
+        ":sim_cassie_sensor_aggregator",
         "//common",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
-        "//systems/sensors:sim_cassie_sensor_aggregator",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    tags = ["manual"],
 )
 
 cc_binary(
@@ -368,7 +374,6 @@ cc_binary(
         ":cassie_utils",
         "//common",
         "//solvers:optimization_utils",
-        "//systems/goldilocks_models",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

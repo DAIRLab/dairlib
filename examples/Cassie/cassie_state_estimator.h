@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/solvers/mathematical_program.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "src/InEKF.h"
 

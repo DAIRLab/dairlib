@@ -50,10 +50,10 @@ CPTrajGenerator::CPTrajGenerator(
       add_extra_control_(add_extra_control),
       is_feet_collision_avoid_(is_feet_collision_avoid),
       is_using_predicted_com_(is_using_predicted_com),
-      cp_offset_(cp_offset),
-      center_line_offset_(center_line_offset),
       world_(plant_.world_frame()),
-      pelvis_(plant_.GetBodyByName(floating_base_body_name)) {
+      pelvis_(plant_.GetBodyByName(floating_base_body_name)),
+      cp_offset_(cp_offset),
+      center_line_offset_(center_line_offset) {
   this->set_name("cp_traj");
 
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);

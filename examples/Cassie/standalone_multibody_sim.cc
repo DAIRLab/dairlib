@@ -2,7 +2,6 @@
 
 #include <gflags/gflags.h>
 #include "drake/lcm/drake_lcm.h"
-#include "drake/multibody/joints/floating_base_types.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"

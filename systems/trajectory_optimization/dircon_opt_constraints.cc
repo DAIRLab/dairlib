@@ -3,11 +3,11 @@
 #include <utility>
 #include <vector>
 
+#include "common/file_utils.h"
 #include "multibody/multibody_utils.h"
+
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
-
-#include "systems/goldilocks_models/file_utils.h"  // writeCSV
 
 namespace dairlib {
 namespace systems {

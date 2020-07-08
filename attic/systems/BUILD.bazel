@@ -8,18 +8,12 @@ cc_library(
     ],
     deps = [
         "//lcmtypes:lcmt_robot",
+        "//attic/multibody:utils",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
     ],
-)
-
-cc_library(
-    name = "vector_scope",
-    srcs = ["vector_scope.cc"],
-    hdrs = ["vector_scope.h"],
-    deps = [
-        "@drake//:drake_shared_library",
-    ]
+    tags = ["manual"],
+    deprecation = "Attic/RigidBodyTree is deprecated."
 )

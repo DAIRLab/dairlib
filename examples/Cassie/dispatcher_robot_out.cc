@@ -18,8 +18,8 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
-#include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/primitives/subvector_pass_through.h"
 
 namespace dairlib {
 

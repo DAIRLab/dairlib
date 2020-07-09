@@ -21,7 +21,6 @@ DEFINE_bool(com, true, "Visualize the COM as a sphere");
 DEFINE_bool(com_ground, true,
     "If com=true, sets whether the COM should be shown on the ground (z=0)"
     " or at the correct height.");
-DEFINE_bool(visualize_ground, true, "Visualize the ground plane");
 DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
@@ -56,8 +55,7 @@ int do_main(int argc, char* argv[]) {
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8,
-                              FLAGS_visualize_ground);
+    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8);
   }
 
   plant.Finalize();

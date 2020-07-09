@@ -87,7 +87,7 @@ EventStatus COMTrajGenerator::DiscreteVariableUpdate(
     plant_.SetPositions(context_.get(), q);
     VectorXd center_of_mass = plant_.CalcCenterOfMassPosition(*context_);
     com_x_offset(0) =
-        0.025 + (center_of_mass(0) - crouch_traj_.value(timestamp)(0));
+        kLandingOffset + (center_of_mass(0) - crouch_traj_.value(timestamp)(0));
     // TODO(yangwill) Remove this or calculate it based on the robot's state.
     // Actually, this is necessary due to the traj opt solution's placement
     // of the final CoM
@@ -172,9 +172,6 @@ void COMTrajGenerator::CalcTraj(
     *casted_traj = generateCrouchTraj(context, x, time);
   else if (fsm_state[0] == LAND)
     *casted_traj = generateLandingTraj(context, x, time);
-//  else
-//    std::cerr << "Unrecognized or unused state: " << fsm_state[0]
-//              << " in center of mass trajectory generator";
 }
 
 }  // namespace dairlib::examples::Cassie::osc_jump

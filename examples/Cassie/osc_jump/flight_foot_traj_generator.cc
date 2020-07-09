@@ -111,9 +111,6 @@ void FlightFootTrajGenerator::CalcTraj(
   if (fsm_state[0] == FLIGHT) {
     *casted_traj =
         generateFlightTraj(context, robot_output->GetState(), timestamp);
-  } else {
-//    std::cerr << "Unrecognized or unused state: " << fsm_state[0]
-//              << " in flight foot generator";
   }
 }
 

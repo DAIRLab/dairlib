@@ -2,7 +2,6 @@
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
 
-#include "dairlib/lcmt_contact_mujoco.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
@@ -173,10 +172,6 @@ int DoMain(int argc, char* argv[]) {
   com_traj = com_traj + offset_traj;
 
   /**** Initialize all the leaf systems ****/
-  SIMULATOR simulator;
-  simulator = DRAKE;  // Default is DRAKE
-  if (FLAGS_simulator == "MUJOCO") simulator = MUJOCO;
-
   drake::lcm::DrakeLcm lcm;
 
   vector<pair<const Vector3d, const Frame<double>&>> contact_points;
@@ -199,7 +194,7 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_delay_time);
   auto fsm = builder.AddSystem<dairlib::examples::JumpingEventFsm>(
       plant_w_springs, transition_times, FLAGS_contact_based_fsm,
-      FLAGS_transition_delay, (FSM_STATE)FLAGS_init_fsm_state, simulator);
+      FLAGS_transition_delay, (FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -219,7 +214,7 @@ int DoMain(int argc, char* argv[]) {
             "CASSIE_CONTACT_DRAKE", &lcm));
   } else if (FLAGS_simulator == "MUJOCO") {
     contact_results_sub = builder.AddSystem(
-        LcmSubscriberSystem::Make<dairlib::lcmt_contact_mujoco>(
+        LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
             "CASSIE_CONTACT_MUJOCO", &lcm));
   } else if (FLAGS_simulator == "GAZEBO") {
     // TODO(yangwill): Set up contact results in Gazebo
@@ -373,8 +368,6 @@ int DoMain(int argc, char* argv[]) {
                   l_foot_traj_generator->get_state_input_port());
   builder.Connect(controller_state_input->get_output_port(0),
                   r_foot_traj_generator->get_state_input_port());
-  builder.Connect(controller_state_input->get_output_port(0),
-                  pelvis_rot_traj_generator->get_state_input_port());
   builder.Connect(fsm->get_output_port(0),
                   com_traj_generator->get_fsm_input_port());
   builder.Connect(fsm->get_output_port(0),

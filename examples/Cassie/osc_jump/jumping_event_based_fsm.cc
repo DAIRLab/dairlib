@@ -2,8 +2,6 @@
 
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
-#include "dairlib/lcmt_contact_mujoco.hpp"
-
 using dairlib::systems::OutputVector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
@@ -21,13 +19,12 @@ namespace examples {
 JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                  const vector<double>& transition_times,
                                  bool contact_based, double delay_time,
-                                 FSM_STATE init_state, SIMULATOR simulator_type)
+                                 FSM_STATE init_state)
     : plant_(plant),
       transition_times_(transition_times),
       contact_based_(contact_based),
       transition_delay_(delay_time),
-      init_state_(init_state),
-      simulator_type_(simulator_type) {
+      init_state_(init_state) {
   state_port_ =
       this->DeclareVectorInputPort(OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
@@ -35,18 +32,10 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
           .get_index();
 
   // Configure the contact info port for the particular simulator
-  if (simulator_type_ == DRAKE) {
-    contact_port_ = this->DeclareAbstractInputPort(
-                            "lcmt_contact_info",
-                            drake::Value<drake::lcmt_contact_results_for_viz>{})
-                        .get_index();
-  } else if (simulator_type_ == MUJOCO) {
-    contact_port_ = this->DeclareAbstractInputPort(
-                            "lcmt_contact_info",
-                            drake::Value<dairlib::lcmt_contact_mujoco>{})
-                        .get_index();
-  } else if (simulator_type_ == GAZEBO) {
-  }
+  contact_port_ = this->DeclareAbstractInputPort(
+                          "lcmt_contact_info",
+                          drake::Value<drake::lcmt_contact_results_for_viz>{})
+                      .get_index();
   this->DeclareVectorOutputPort(BasicVector<double>(1),
                                 &JumpingEventFsm::CalcFiniteState);
   DeclarePerStepDiscreteUpdateEvent(&JumpingEventFsm::DiscreteVariableUpdate);
@@ -70,8 +59,9 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   // Get inputs to the leaf system
   const auto state_feedback =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
-  const drake::AbstractValue* contact_info =
-      this->EvalAbstractInput(context, contact_port_);
+  const auto& contact_info =
+      this->EvalInputValue<drake::lcmt_contact_results_for_viz>(context,
+                                                                contact_port_);
   // Get the discrete states
   auto fsm_state =
       discrete_state->get_mutable_vector(fsm_idx_).get_mutable_value();
@@ -84,24 +74,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       discrete_state->get_mutable_vector(transition_flag_idx_)
           .get_mutable_value();
 
-  int num_contacts = 0;
-  if (simulator_type_ == DRAKE) {
-    const auto& contact_info_msg =
-        contact_info->get_value<drake::lcmt_contact_results_for_viz>();
-    num_contacts = contact_info_msg.num_point_pair_contacts;
-  } else if (simulator_type_ == MUJOCO) {
-    // MuJoCo has "persistent" contact so we have to check contact forces
-    // instead of just a boolean value of on/off
-    const auto& contact_info_msg =
-        contact_info->get_value<dairlib::lcmt_contact_mujoco>();
-    num_contacts = std::count_if(contact_info_msg.contact_forces.begin(),
-                                 contact_info_msg.contact_forces.end(),
-                                 [&](auto const& force) {
-                                   double threshold = 1e-6;
-                                   return std::abs(force) >= threshold;
-                                 });
-  }
-
+  int num_contacts = contact_info->num_point_pair_contacts;
   double timestamp = state_feedback->get_timestamp();
 
   // Simulator has restarted, reset FSM

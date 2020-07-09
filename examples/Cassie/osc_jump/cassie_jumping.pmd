@@ -109,13 +109,13 @@ group "2.controllers" {
 }
 
 
-script "osc-jump (mujoco)" {
+script "osc-jumping (mujoco)" {
     stop cmd "osc_jumping_controller (mujoco)";
     stop cmd "dispatcher-robot-in";
-    stop cmd "2.cassie-mujoco" wait "stopped";
+    stop cmd "cassie-mujoco" wait "stopped";
     start cmd "osc_jumping_controller (mujoco)" wait "running";
     start cmd "dispatcher-robot-in";
-    start cmd "2.cassie-mujoco";
+    start cmd "cassie-mujoco";
 }
 
 script "osc-jumping (drake)" {
@@ -126,7 +126,7 @@ script "osc-jumping (drake)" {
 }
 
 script "osc_standing (mujoco)" {
-    start cmd "2.cassie-mujoco";
+    start cmd "cassie-mujoco";
     start cmd "dispatcher-robot-in";
     start cmd "osc_standing_controller";
 }

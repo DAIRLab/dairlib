@@ -34,8 +34,8 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
     bool isLeftFoot, const PiecewisePolynomial<double>& foot_traj,
     double time_offset)
     : plant_(plant),
-      hip_frame_(plant.GetFrameByName(hip_name)),
       world_(plant.world_frame()),
+      hip_frame_(plant.GetFrameByName(hip_name)),
       foot_traj_(foot_traj) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;

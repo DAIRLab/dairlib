@@ -21,13 +21,6 @@ PelvisOrientationTrajGenerator::PelvisOrientationTrajGenerator(
   this->DeclareAbstractOutputPort(traj_name, traj_inst,
                                   &PelvisOrientationTrajGenerator::CalcTraj);
 
-  // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort(OutputVector<double>(plant_.num_positions(),
-                                                        plant_.num_velocities(),
-                                                        plant_.num_actuators()))
-          .get_index();
-
   // Shift trajectory by time_offset
   traj_.shiftRight(time_offset);
 }
@@ -36,11 +29,6 @@ void PelvisOrientationTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     Trajectory<double>* traj) const {
   // Read in current state
-  const auto robot_output =
-      this->template EvalVectorInput<OutputVector>(context,
-          state_port_);
-  double timestamp = robot_output->get_timestamp();
-
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);

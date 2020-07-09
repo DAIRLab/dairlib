@@ -18,10 +18,6 @@ class PelvisOrientationTrajGenerator : public drake::systems::LeafSystem<double>
       const drake::trajectories::PiecewisePolynomial<double>& orientation_traj,
       std::string traj_name, double time_offset = 0.0);
 
-  const drake::systems::InputPort<double>& get_state_input_port() const {
-    return this->get_input_port(state_port_);
-  }
-
  private:
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;

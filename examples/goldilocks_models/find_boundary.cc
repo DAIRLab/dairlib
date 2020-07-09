@@ -695,7 +695,7 @@ int find_boundary(int argc, char* argv[]){
   if(robot_option==0)
   {
     if(FLAGS_is_get_nominal){
-      cost_threshold = 35;
+      cost_threshold = 30;
     }
     else{
       cost_threshold = 30;
@@ -703,7 +703,7 @@ int find_boundary(int argc, char* argv[]){
   }
   else if(robot_option==1){
     if(FLAGS_is_get_nominal){
-      cost_threshold = 35;
+      cost_threshold = 30;
     }
     else{
       cost_threshold = 30;

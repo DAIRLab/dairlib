@@ -1,18 +1,19 @@
 import lcm
-import threading
+import threading, queue
 
 from PythonQt.QtGui import *
 from PythonQt.QtCore import *
 
 import dairlib.lcmt_robot_output
 from director import visualization as vis
+from director import lcmUtils
 import director.applogic
 import director.mainwindowapp
 from director.debugVis import DebugData
-
+import director.objectmodel as om
 from pydairlib.common import FindResourceOrThrow
 
-from pydrake.math import RigidTransform
+from pydrake.math import RigidTransform, RotationMatrix
 import pydrake.systems.framework
 import pydrake.multibody.plant
 import pydrake.multibody.parsing
@@ -21,12 +22,10 @@ import json
 import sys
 from collections import deque
 
-class TestGui(QWidget):
+class VisualizationGui(QWidget):
 
     def __init__(self, parent = None):
         super(VisualizationGui, self).__init__(parent)
-        self.channel = "NETWORK_CASSIE_STATE_DISPATCHER"
-        self.lcm = lcm.LCM()
 
         # GUI attributes
         self.checkBoxes = {}
@@ -40,18 +39,15 @@ class TestGui(QWidget):
         self.ready = False
 
         # JSON attributes
+        self.channel = ""
         self.data = None
         self.modelFile = None
         self.weldBody = False
         self.shapes = {}
         self.plant = None
 
-        # add lcm channel
-        subscription = self.lcm.subscribe(self.channel, self.state_handler)
-        subscription.set_queue_capacity(1)
-
         # create the GUI
-        self.setWindowTitle("Testing Testing")
+        self.setWindowTitle("Visualization GUI")
         self.vbox = QVBoxLayout()
         hbox = QHBoxLayout()
 
@@ -64,34 +60,6 @@ class TestGui(QWidget):
         hbox.addWidget(self.readJSON)
         self.vbox.addLayout(hbox)
 
-        # Starting a new thread, since we need to block and wait for messages
-        handle_thread = threading.Thread(target=self.handle_thread)
-        handle_thread.start()
-
-    def resetGUI(self):
-        '''
-        Function for reseting the GUI to its initial state
-        '''
-
-        # delete checkboxes from GUI
-        for i in reversed(range(self.checkBoxArea.count())):
-            self.checkBoxArea.itemAt(i).widget().deleteLater()
-
-        # reset GUI variables
-        self.checkBoxes = {}
-        self.checkBoxesPrevState = {}
-        self.shapes = {}
-        self.reset = False
-        self.delete = False
-        self.clear = False
-        self.ready = False
-
-        # reset JSON variables
-        self.data = None
-        self.modelFile = None
-        self.weldBody = False
-        self.shapes = {}
-        self.plant = None
 
     def readJSONFile(self):
         '''
@@ -99,16 +67,21 @@ class TestGui(QWidget):
         and GUI attributes
         '''
 
+        # load only if input is not empty
         if (self.JSONInput.text != ""):
             self.json_file = self.JSONInput.text
             with open(self.json_file) as json_file:
                 self.data = json.load(json_file)
+
+            # start listenning to LCM messages
+            self.subscription = lcmUtils.addSubscriber(self.data['channelName'], messageClass=eval(self.data['channel_type']), callback=self.state_handler)
 
             self.ready = True
             self.modelFile = self.data['model_file']
             if ('weld-body' in self.data):
                 self.weldBody = True
 
+            # create each object/shape to be drawn
             for data in self.data['data']:
                 newObject = ObjectToDraw(data)
                 if (newObject.name not in self.shapes):
@@ -116,7 +89,7 @@ class TestGui(QWidget):
                 else:
                     self.shapes[newObject.name].update(newObject)
 
-            # fill the chackbox for each data with its name
+            # fill the labels for each data with its name and add the reset button
             self.placeCheckBoxes()
 
             # add "reset" and "clear history" buttons
@@ -156,34 +129,44 @@ class TestGui(QWidget):
                 self.checkBoxArea = QVBoxLayout()
                 addToGUI = True
             for name in self.shapes:
-                dotOrLine = " •"
-                if (self.shapes[name].type == "point"):
-                    dotOrLine = " •"
-                else:
-                    dotOrLine = " ---"
+                # create appropriate symbol extention
+                extension = " •"
+                type = self.shapes[name].type
+                if (type == "point"):
+                    extension = " •"
+                elif (type == "line"):
+                    extension = " ---"
+                elif (type == "axis"):
+                    extension = " |_"
 
-        with open(self.json_file) as json_file:
-            self.data = json.load(json_file)
+                # create each checkbox and conditionally add it to the GUI
+                addToList = False
+                if (name not in self.checkBoxes):
+                    self.checkBoxes[name] = QCheckBox(name + extension)
+
+                    if (self.shapes[name].type == "point" or self.shapes[name].type == "line"):
+                        color = self.shapes[name].color
+                        self.checkBoxes[name].setStyleSheet("color: rgb("+str(color[0] * 255)+", "+str(color[1] * 255)+", "+str(color[2] * 255)+")")
+
+                    addToList = True
+                self.checkBoxes[name].setChecked(True)
+                self.checkBoxesPrevState[name] = True
+                if (addToList == True):
+                    self.checkBoxArea.addWidget(self.checkBoxes[name])
+                if (addToGUI == True):
+                    self.vbox.addLayout(self.checkBoxArea)
 
     def checkBoxChecked(self, name):
         '''
         Function for showing a shape when its corresponding checkbox is checked
         '''
-        if (self.shapes[name].type == "line"):
-            for line in self.shapes[name].object:
-                line.setProperty('Visible', True)
-        else:
-            self.shapes[name].object.setProperty('Visible', True)
+        self.shapes[name].object.setProperty('Visible', True)
 
     def checkBoxNotChecked(self, name):
         '''
         Function for hiding a shape when its corresponding checkbox is unchecked
         '''
-        if (self.shapes[name].type == "line"):
-            for line in self.shapes[name].object:
-                line.setProperty('Visible', False)
-        else:
-            self.shapes[name].object.setProperty('Visible', False)
+        self.shapes[name].object.setProperty('Visible', False)
 
     def distance(self, pt1, pt2):
         '''
@@ -193,74 +176,37 @@ class TestGui(QWidget):
         for i in range(len(pt1)):
             sum += pow(pt2[i] - pt1[i], 2)
 
-        if (weldBody):
-            self.plant.WeldFrames(self.plant.world_frame(),
-                self.plant.GetFrameByName("pelvis"), RigidTransform.Identity())
-        self.plant.Finalize()
-        self.context = self.plant.CreateDefaultContext()
+        return math.sqrt(sum)
 
-    def handle_thread(self):
-        '''
-        Function for running the main thread
-        '''
-        print('Starting to handle LCM messages')
-        while True:
-            # read lcm messages
-            self.lcm.handle_timeout(100)
-
-            # handle delete, clear, and reset flags
-            if (self.delete == True):
-                for shape in self.shapes.values():
-                    if (shape.type == "line"):
-                        for line in shape.object:
-                            om.removeFromObjectModel(line)
-                    else:
-                        om.removeFromObjectModel(shape.object)
-
-                self.delete = False
-                self.reset = True
-
-            if (self.clear == True):
-                for shape in self.shapes.values():
-                    if (shape.type == "line"):
-                        for line in shape.object:
-                            om.removeFromObjectModel(line)
-                    shape.object = deque()
-                self.clear = False
 
     # The following is a test function for handling messages from different lcm
     # channels
 
-    # def abstract_handler(self, channel, data):
-    #     decoder = getattr(dairlib, self.abstract_type)
-    #     msg = decoder.decode(data)
+    # def abstract_handler(self, msg):
     #     field = getattr(msg, "tracking_data")
-    #     # pt = np.array([field[self.abstract_x_index],
-    #     #                field[self.abstract_y_index],
-    #     #                field[self.abstract_z_index]])
     #
     #     a = None
     #     for el in field:
-    #         if (el.name == "cp_traj"):
+    #         if (el.name == "com_traj"):
     #             a = el.y
     #             print(a)
     #             break
 
-    def state_handler(self, channel, data):
+    def state_handler(self, msg):
         '''
         Function for handling main lcm channel
         '''
+        # start listenning to messages once the JSON file has been read
         if (self.ready == True):
             if (self.plant == None):
-
-                # create the plant
+                # Create the plant
                 builder = pydrake.systems.framework.DiagramBuilder()
                 self.plant, scene_graph = \
                     pydrake.multibody.plant.AddMultibodyPlantSceneGraph(builder, 0)
                 pydrake.multibody.parsing.Parser(self.plant).AddModelFromFile(
                 FindResourceOrThrow(self.modelFile))
 
-                # determing is there is a need to use "weldframes" function
+                # determine if there is a need to use the "weldframes" function
                 if (self.weldBody == True):
                     self.plant.WeldFrames(self.plant.world_frame(),
                         self.plant.GetFrameByName("pelvis"), RigidTransform.Identity())
@@ -268,7 +214,7 @@ class TestGui(QWidget):
                 self.context = self.plant.CreateDefaultContext()
 
             # TODO (for Michael): bind our more robust decoding mechanisms to python
-            self.msg = dairlib.lcmt_robot_output.decode(data)
+            self.msg = msg
             self.plant.SetPositions(self.context, self.msg.position)
             self.plant.SetVelocities(self.context, self.msg.velocity)
 
@@ -284,10 +230,9 @@ class TestGui(QWidget):
                         self.checkBoxNotChecked(name)
 
                 currShape = self.shapes[name]
-                next_loc = None
 
-                # determine the next location based on the type of data being
-                # currently processed
+                # define next_loc according to each shape/object to be drawn
+                next_loc = None
                 if (currShape.category == "kinematic_point"):
                     # Use Drake's CalcPointsPositions to determine where that point is
                     # in the world
@@ -296,10 +241,54 @@ class TestGui(QWidget):
                         currShape.point, self.plant.world_frame())
                     next_loc = pt_world.transpose()[0]
 
+                elif (currShape.category == "CoM"):
+                    next_loc = self.plant.CalcCenterOfMassPosition(context = self.context)
 
-            # set the body and point on which to visualize the data
-            pt_body = np.array(jsonData['point-on-body'])
-            body_name = jsonData['body_part']
+                self.drawShape(currShape, next_loc)
+
+            # handle flags for clearing line histories
+            if (self.clear == True):
+                for shape in self.shapes.values():
+                    if (shape.type == "line"):
+                        om.removeFromObjectModel(shape.object)
+                        shape.object = None
+                        shape.points = deque()
+                self.clear = False
+
+            # handle flags for deleting objects
+            if (self.delete == True):
+                for shape in self.shapes.values():
+                    om.removeFromObjectModel(shape.object)
+
+                self.delete = False
+                self.reset = True
+
+            # handle flags for reseting the GUI
+            if (self.reset == True):
+                # delete checkboxes from GUI
+                for i in reversed(range(self.checkBoxArea.count())):
+                    self.checkBoxArea.itemAt(i).widget().deleteLater()
+
+                self.resetBtn.deleteLater()
+                self.clearBtn.deleteLater()
+
+                # reset GUI variables
+                self.checkBoxes = {}
+                self.checkBoxesPrevState = {}
+                self.resetBtn = None
+                self.clearBtn = None
+                self.checkBoxArea = None
+                self.reset = False
+                self.delete = False
+                self.clear = False
+                self.ready = False
+
+                # reset JSON attributes
+                self.data = None
+                self.modelFile = None
+                self.weldBody = False
+                self.shapes = {}
+                self.plant = None
 
     def drawShape(self, currShape, next_loc):
         '''
@@ -308,61 +297,60 @@ class TestGui(QWidget):
         '''
         # draw a continuous line
         if (currShape.type == "line"):
-            # check if there is any previously computed location
-            if (len(currShape.prev_loc) == 0):
-                currShape.prev_loc = next_loc
-
             # check if the duration has been initialized
-            if (currShape.duration == None or len(currShape.object) == 0):
+            if (currShape.duration == None or len(currShape.points) == 0):
                 currShape.duration = self.msg.utime / 1000000
 
-            # add new line
-            d = DebugData()
-            d.addLine(currShape.prev_loc, next_loc, radius = currShape.thickness)
-            line = vis.showPolyData(d.getPolyData(), "line")
-
-            # set color and transparency of line
-            line.setProperty('Color', currShape.color)
-            line.setProperty('Alpha', currShape.alpha)
-
-            # add line to the history of current lines drawn
-            currShape.object.append(line)
-
-            # visualize and trace line for 'history' seconds
-            if ((self.msg.utime / 1000000) - currShape.duration <= currShape.history or currShape.history <= 0):
-                # if (self.distance(currShape.prev_loc, next_loc) >= 10e-5):
-                    # add new line
+            # visualize and trace line for 'history' seconds, adding points at a distance at least 10e-5
+            if (((self.msg.utime / 1000000) - currShape.duration <= currShape.history) or currShape.history <= 0):
+                if (len(currShape.points) < 2):
+                    currShape.points.append(next_loc)
                     d = DebugData()
-                    d.addLine(self.prev_loc, next_loc, radius = jsonData['thickness'])
-                    line = vis.showPolyData(d.getPolyData(), 'line')
+                    d.addPolyLine(currShape.points, radius=currShape.thickness, color=currShape.color)
 
-                    # set color and transparency of line
-                    line.setProperty('Color', jsonData['color'])
-                    line.setProperty('Alpha', jsonData['alpha'])
+                    if (currShape.object == None):
+                        currShape.object = vis.showPolyData(d.getPolyData(), "line")
+                        currShape.object.setProperty('Color', currShape.color)
+                    else:
+                        currShape.object.setPolyData(d.getPolyData())
 
-                    # add line to the history of current lines drawn
-                    self.prevLine.append(line);
                 else:
-                    # if (self.distance(currShape.prev_loc, next_loc) >= 10e-5):
-                        # reset the points of the last placed line
+                    if (self.distance(currShape.points[-1], next_loc) >= 10e-5):
+                        currShape.points.append(next_loc)
                         d = DebugData()
-                        d.addLine(currShape.prev_loc, next_loc, radius = currShape.thickness)
-                        lastLine = currShape.object.popleft()
-                        lastLine.setPolyData(d.getPolyData())
-                        currShape.object.append(lastLine)
+                        d.addPolyLine(currShape.points, radius=currShape.thickness, color=currShape.color)
 
-            currShape.prev_loc = next_loc
+                        if (currShape.object == None):
+                            currShape.object = vis.showPolyData(d.getPolyData(), "line")
+                        else:
+                            currShape.object.setPolyData(d.getPolyData())
+
+            elif (currShape.history > 0):
+                if (len(currShape.points) == 0):
+                    currShape.duration = self.msg.utime / 1000000
+                else:
+                    # visualize and trace line for 'history' seconds, adding points at a distance at least 10e-5
+                    if (self.distance(currShape.points[-1], next_loc) >= 10e-5):
+                        currShape.points.popleft()
+                        currShape.points.append(next_loc)
+                        d = DebugData()
+                        d.addPolyLine(currShape.points, radius=currShape.thickness, color=currShape.color)
+                        if (currShape.object == None):
+                            currShape.object = vis.showPolyData(d.getPolyData(), "line")
+                        else:
+                            currShape.object.setPolyData(d.getPolyData())
 
         # draw a point
         elif (currShape.type == "point"):
             d = DebugData()
             d.addSphere(next_loc, radius = currShape.radius)
             # create a new point
-            if (currShape.object == None):
+            if (currShape.created == True):
                 currShape.object = vis.showPolyData(d.getPolyData(), "sphere")
                 # set color and transparency of point
                 currShape.object.setProperty('Color', currShape.color)
                 currShape.object.setProperty('Alpha', currShape.alpha)
+                currShape.created = False
             else:
                 # update the location of the last point
                 currShape.object.setPolyData(d.getPolyData())
@@ -373,14 +361,17 @@ class TestGui(QWidget):
             rigTrans = self.plant.EvalBodyPoseInWorld(self.context, self.plant.GetBodyByName(currShape.frame))
             rot_matrix = rigTrans.rotation().matrix().transpose()
 
+            colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+
             d = DebugData()
             for i in range(3):
-                d.addArrow(next_loc, next_loc + (rot_matrix[i]/4), headRadius=0.03, color = currShape.color[i])
+                d.addArrow(next_loc, next_loc + (rot_matrix[i]/4), headRadius=0.03, color = colors[i])
 
             # create the 3 axes
-            if (currShape.object == None):
+            if (currShape.created == True):
                 currShape.object = vis.showPolyData(d.getPolyData(), "axis", colorByName='RGB255')
                 currShape.object.setProperty('Alpha', currShape.alpha)
+                currShape.created = False
             else:
                 # update the location of the last point
                 currShape.object.setPolyData(d.getPolyData())
@@ -391,53 +382,61 @@ class ObjectToDraw():
     '''
     def __init__(self, data):
         # set attributes from given data (originating from input JSON file)
-        jsonData = eval(str(data))
-        self.category = jsonData['category']
-        self.name = jsonData['name']
+        self.name = data['name']
+
+        info = data['info']
+        source_data = info['source_data']
+        type_data = info['type_data']
+
+        self.category = source_data['category']
 
         if (self.category == "kinematic_point"):
-            self.frame = jsonData['frame']
-            self.point = jsonData['point']
+            self.frame = source_data['frame']
+            self.point = source_data['point']
 
-        elif (self.category == "CoM"):
-            self.point = [0, 0, 0]
-
-        self.color = jsonData['color']
-        self.alpha = jsonData['alpha']
-        self.type = jsonData['type']
+        self.alpha = type_data['alpha']
+        self.type = type_data['type']
+        self.created = True
         self.object = None
 
         if (self.type == "line"):
-            self.thickness = jsonData['thickness']
-            self.history = jsonData['history']
-            self.prev_loc = []
+            self.color = type_data['color']
+            self.thickness = type_data['thickness']
+            self.history = type_data['history']
             self.duration = None
-            self.object = deque()
+            self.points = deque()
 
         elif (self.type == "point"):
-            self.radius = jsonData['radius']
+            self.color = type_data['color']
+            self.radius = type_data['radius']
 
         elif (self.type == "axis"):
-            self.thickness = jsonData['thickness']
+            self.thickness = type_data['thickness']
 
     def update(self, otherObject):
         '''
         Function for updating certain attributes of already existing object
         '''
-        self.frame = otherObject.frame
-        self.point = otherObject.point
-        self.color = otherObject.color
         self.alpha = otherObject.alpha
 
+        if (self.category == "kinematic_point"):
+            self.frame = otherObject.frame
+            self.point = otherObject.point
+
         if (self.type == "line"):
+            self.color = otherObject.color
             self.thickness = otherObject.thickness
             self.history = otherObject.history
 
         elif (self.type == "point"):
+            self.color = otherObject.color
             self.radius = otherObject.radius
 
-# Adding a widget but there's nothing in the widget (yet)
-panel = TestGui()
-app.addWidgetToDock(panel, QtCore.Qt.RightDockWidgetArea)
+        elif (self.type == "axis"):
+            self.thickness = otherObject.thickness
 
-view = applogic.getMainWindow()
+# Adding the widget
+panel = VisualizationGui()
+panel.show()
+panel.setLayout(panel.vbox)
+app.addWidgetToDock(panel, QtCore.Qt.RightDockWidgetArea)

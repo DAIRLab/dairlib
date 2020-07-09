@@ -9,7 +9,7 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
 #include "solvers/optimization_utils.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 #include "systems/goldilocks_models/symbolic_manifold.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data_set.h"

@@ -1,6 +1,6 @@
 #include "examples/goldilocks_models/planning/dynamics_constraint.h"
 
-#include "systems/goldilocks_models/file_utils.h"  // writeCSV
+#include "common/file_utils.h"  // writeCSV
 
 namespace dairlib {
 namespace goldilocks_models {

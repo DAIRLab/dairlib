@@ -7,7 +7,7 @@
 #include "examples/goldilocks_models/task.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/geometry/geometry_visualization.h"
 #include "drake/multibody/parsing/parser.h"

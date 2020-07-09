@@ -25,7 +25,7 @@
 #include "examples/goldilocks_models/kinematics_expression.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 #include "examples/goldilocks_models/task.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 
 using Eigen::MatrixXd;
 using Eigen::MatrixXi;

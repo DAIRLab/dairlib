@@ -6,7 +6,7 @@
 #include "examples/goldilocks_models/dynamics_expression.h"
 #include "examples/goldilocks_models/goldilocks_utils.h"
 #include "examples/goldilocks_models/kinematics_expression.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 #include "drake/common/drake_assert.h"
 #include "drake/multibody/parsing/parser.h"
 

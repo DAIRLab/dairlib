@@ -1,13 +1,13 @@
 #pragma once
 
 #include <iostream>
-#include <set>
 #include <memory>
+#include <set>
 #include <string>
 #include <tuple>
 #include <Eigen/Dense>
 
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
@@ -24,6 +24,8 @@ class MonomialFeatures {
   /// which are not used to construct the monomials.
   MonomialFeatures(int n_order, int n_q, std::vector<int> skip_inds = {},
                    const std::string& name = "");
+
+  MonomialFeatures();
 
   drake::VectorX<double> Eval(const drake::VectorX<double>& q) const;
   // Note that both EvalJV() and EvalJdotV() use qdot not v.
@@ -219,7 +221,6 @@ class Lipm : public ReducedOrderModel {
   int world_dim() const { return world_dim_; };
 
  private:
-
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::BodyFrame<double>& world_;
@@ -271,7 +272,6 @@ class TwoDimLipmWithSwingFoot : public ReducedOrderModel {
   const BodyPoint& swing_foot() const { return swing_contact_point_; };
 
  private:
-
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::BodyFrame<double>& world_;
@@ -321,7 +321,6 @@ class FixHeightAccel : public ReducedOrderModel {
   const BodyPoint& stance_foot() const { return stance_contact_point_; };
 
  private:
-
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::BodyFrame<double>& world_;
@@ -372,7 +371,6 @@ class FixHeightAccelWithSwingFoot : public ReducedOrderModel {
   const BodyPoint& swing_foot() const { return swing_contact_point_; };
 
  private:
-
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> context_;
   const drake::multibody::BodyFrame<double>& world_;

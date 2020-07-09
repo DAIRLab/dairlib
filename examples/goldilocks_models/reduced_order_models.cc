@@ -30,6 +30,8 @@ namespace goldilocks_models {
 using multibody::JwrtqdotToJwrtv;
 using multibody::WToQuatDotMap;
 
+MonomialFeatures::MonomialFeatures() : MonomialFeatures(0, 0, {}) {}
+
 MonomialFeatures::MonomialFeatures(int n_order, int n_q, vector<int> skip_inds,
                                    const std::string& name)
     : n_q_(n_q), name_(name) {

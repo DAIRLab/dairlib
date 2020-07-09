@@ -36,7 +36,7 @@
 #include "drake/solvers/snopt_solver.h"
 #include "drake/solvers/solve.h"
 
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 
 #include "examples/goldilocks_models/planning/kinematics_constraint_cost.h"
 #include "examples/goldilocks_models/planning/kinematics_constraint_given_r.h"

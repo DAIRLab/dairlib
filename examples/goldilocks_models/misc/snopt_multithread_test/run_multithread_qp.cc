@@ -5,7 +5,7 @@
 #include <ctime>
 
 #include "examples/goldilocks_models/misc/snopt_multithread_test/run_sample_qp.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/snopt_solver.h"

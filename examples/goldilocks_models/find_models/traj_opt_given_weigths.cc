@@ -7,7 +7,7 @@
 #include "common/find_resource.h"
 #include "examples/goldilocks_models/dynamics_expression.h"
 #include "examples/goldilocks_models/find_models/traj_opt_helper_func.h"
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/systems/analysis/simulator.h"

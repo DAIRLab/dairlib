@@ -4,6 +4,58 @@
 
 namespace dairlib::goldilocks_models {
 
+/// ROM for testing
+class DummyRom : public ReducedOrderModel {
+ public:
+  static const int kDimension = 1;
+
+  DummyRom(const MonomialFeatures& mapping_basis,
+           const MonomialFeatures& dynamic_basis)
+      : ReducedOrderModel(kDimension, 0,
+                          drake::MatrixX<double>::Zero(kDimension, 0),
+                          mapping_basis.length(), dynamic_basis.length(),
+                          mapping_basis, dynamic_basis, "Dummy ROM") {
+    // Always check dimension after model construction
+    CheckModelConsistency();
+  };
+
+  // Copy constructor for the Clone() method
+  DummyRom(const DummyRom& old_obj) : ReducedOrderModel(old_obj){};
+
+  // Use covariant return type for Clone method. It's more useful.
+  std::unique_ptr<ReducedOrderModel> Clone() const override {
+    return std::make_unique<DummyRom>(*this);
+  }
+
+  // Evaluators for features of y, yddot, y's Jacobian and y's JdotV
+  drake::VectorX<double> EvalMappingFeat(
+      const drake::VectorX<double>& q) const final {
+    return mapping_basis().Eval(q);
+  };
+  drake::VectorX<double> EvalDynamicFeat(
+      const drake::VectorX<double>& y,
+      const drake::VectorX<double>& ydot) const final {
+    throw std::runtime_error("not implemented");
+    return drake::VectorX<double>::Zero(0);
+  };
+  drake::VectorX<double> EvalMappingFeatJV(
+      const drake::VectorX<double>& q,
+      const drake::VectorX<double>& v) const final {
+    throw std::runtime_error("not implemented");
+    return drake::VectorX<double>::Zero(0);
+  };
+  drake::VectorX<double> EvalMappingFeatJdotV(
+      const drake::VectorX<double>& q,
+      const drake::VectorX<double>& v) const final {
+    throw std::runtime_error("not implemented");
+    return drake::VectorX<double>::Zero(0);
+  };
+  drake::MatrixX<double> EvalMappingFeatJ(
+      const drake::VectorX<double>& q) const final {
+    return mapping_basis().EvalJwrtqdot(q);
+  };
+};
+
 class InitialGuessTest : public ::testing::Test {};
 
 int test_initial_guess(int iter, int sample, int robot) {
@@ -26,9 +78,15 @@ int test_initial_guess(int iter, int sample, int robot) {
   Task task(task_gen->names());
   task.set(task_gen->NewTask(sample));
   // create rom
-  ReducedOrderModel rom = ReducedOrderModel(1, 2, 2, 2);
-  VectorXd current_theta = VectorXd::Random(4);
-  rom.SetTheta(current_theta);
+  MonomialFeatures basis(1,2,{});
+  DummyRom dummy_rom(basis, basis);
+  ReducedOrderModel* rom = &dummy_rom;
+  int n_theta_y = rom->n_theta_y();
+  int n_theta_yddot = rom->n_theta_yddot();
+  VectorXd current_theta = VectorXd::Random(n_theta_y + n_theta_yddot);
+  rom->SetTheta(current_theta);
+  // dummy decision variable size
+  int n_w = 20;
 
   const string dir =
       "../dairlib_data/goldilocks_models/find_models/robot_1_test/";
@@ -37,8 +95,8 @@ int test_initial_guess(int iter, int sample, int robot) {
   // for each iteration, create theta_s and theta_sDDot
   int iteration = 0;
   for (iteration = 0; iteration <= iter; iteration++) {
-    VectorXd theta_y = VectorXd::Random(2);
-    VectorXd theta_yDDot = VectorXd::Random(2);
+    VectorXd theta_y = VectorXd::Random(n_theta_y);
+    VectorXd theta_yDDot = VectorXd::Random(n_theta_yddot);
     writeCSV(dir + to_string(iteration) + string("_theta_y.csv"), theta_y);
     writeCSV(dir + to_string(iteration) + string("_theta_yDDot.csv"),
              theta_yDDot);
@@ -59,13 +117,13 @@ int test_initial_guess(int iter, int sample, int robot) {
       bool is_success = 1;
       writeCSV(dir + prefix + string("is_success.csv"),
                is_success * MatrixXd::Ones(1, 1));
-      VectorXd w = VectorXd::Random(20);
+      VectorXd w = VectorXd::Random(n_w);
       writeCSV(dir + prefix + string("w.csv"), w);
     }
   }
 
   string initial_file = SetInitialGuessByInterpolation(
-      dir, iter, sample, task_gen, task, rom, use_database, robot);
+      dir, iter, sample, task_gen, task, *rom, use_database, robot);
   return 0;
 }
 

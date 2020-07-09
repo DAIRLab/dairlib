@@ -13,7 +13,7 @@ cc_binary(
         "//examples/Cassie:cassie_utils",
         "//examples/goldilocks_models/find_models:initial_guess",
         "//examples/goldilocks_models/find_models:traj_opt_given_weigths",
-        "//systems/goldilocks_models",
+        "//common:file_utils",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -30,7 +30,7 @@ cc_binary(
         ":kinematics_expression",
         "//common",
         "//examples/goldilocks_models/planning:RoM_planning_traj_opt",
-        "//systems/goldilocks_models",
+        "//common:file_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -104,7 +104,7 @@ cc_library(
         "goldilocks_utils.h",
     ],
     deps = [
-        "//systems/goldilocks_models",
+        "//common:file_utils",
         "@drake//:drake_shared_library",
     ],
 )
@@ -133,7 +133,7 @@ cc_library(
     ],
     deps = [
         "//multibody:utils",
-        "//systems/goldilocks_models",
+        "//common:file_utils",
         "@drake//:drake_shared_library",
     ],
 )

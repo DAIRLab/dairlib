@@ -30,7 +30,7 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
-#include "systems/goldilocks_models/file_utils.h"
+#include "common/file_utils.h"
 
 using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;

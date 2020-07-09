@@ -77,8 +77,8 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
           new_alpha = std::max(new_alpha, 0.0);
           new_alpha = std::min(new_alpha, 1.0);
           phong.set(phong.r(), phong.g(), phong.b(), new_alpha);
-          new_props.AddProperty("phong", "diffuse", phong,
-                                drake::geometry::AddPolicy::kOverwrite);
+
+          new_props.UpdateProperty("phong", "diffuse", phong);
           scene_graph->AssignRole(plant_->get_source_id().value(), geometry_id,
                                   new_props,
                                   drake::geometry::RoleAssign::kReplace);

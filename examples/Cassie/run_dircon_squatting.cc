@@ -450,8 +450,10 @@ void DoMain(double duration, int max_iter, string data_directory,
     }
   }
 
+  double alpha = .2;
+  int num_poses = 5;
   trajopt->CreateVisualizationCallback(
-      "examples/Cassie/urdf/cassie_fixed_springs.urdf", 5);
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf", num_poses, alpha);
 
   cout << "\nChoose the best solver: "
        << drake::solvers::ChooseBestSolver(*trajopt).name() << endl;

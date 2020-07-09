@@ -1608,9 +1608,9 @@ void cassieTrajOpt(const MultibodyPlant<double> & plant,
     options_list[i].setConstraintRelative(3, true);
   }
   // Constraint scaling
-  double s = 1;//100;  // scale every nonlinear constraint together
+  double s = 1;//100;  // scale every nonlinear constraint together except quaternion
   for (int i = 0; i < 2; i++) {
-    options_list[i].setQuatConstraintScaling(s);
+    // options_list[i].setQuatConstraintScaling(s);
     if (is_get_nominal) {
       // old constraint scaling (from traj opt of cassie, without rom
       // constraint) Dynamic constraints
